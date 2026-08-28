@@ -13,13 +13,18 @@ import { mockUsers, type MockUserRecord } from "../mocks/user.mock";
 
 // mock ไม่มี session ฝั่ง server จริง — เก็บ "ใครล็อกอินอยู่" ไว้ตรงนี้แทน
 // เรียก setMockCurrentUser() จาก onSuccess ของ useLogin/useLogout (ดู hooks/useAuth.ts)
-let currentMockUserId: number | null = null;
+let currentMockUserId: number | null = (() => {
+  const saved = Number(localStorage.getItem("ltms-mock-user-id"));
+  return Number.isInteger(saved) && saved > 0 ? saved : null;
+})();
 export function setMockCurrentUser(id: number | null): void {
   currentMockUserId = id;
+  if (id === null) localStorage.removeItem("ltms-mock-user-id");
+  else localStorage.setItem("ltms-mock-user-id", String(id));
 }
 
 function stripSecrets(u: MockUserRecord): MeDto {
-  const { userType, passwordForMock, ...me } = u;
+  const { passwordForMock, ...me } = u;
   return me;
 }
 

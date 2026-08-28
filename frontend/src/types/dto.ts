@@ -47,6 +47,7 @@ export interface MeDto {
   id: number;
   fullName: string;
   email: string;
+  userType: UserType;
   gender: Gender;
   birthDate: string;
   facultyId: number;

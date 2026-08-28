@@ -1,9 +1,13 @@
-import { Bell, ChevronDown, Home, Search, Shield, Trophy, Users, CalendarDays, UserRound } from 'lucide-react'
+import { Bell, ChevronDown, Home, LogOut, Search, Shield, Trophy, Users, CalendarDays, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
+import type { MeDto } from '../../types/dto'
 
 interface AppShellProps {
   activeNav: string
   onNavigate: (label: string) => void
+  userType: 'student' | 'staff' | 'external'
+  user: MeDto
+  onLogout: () => void
   children: ReactNode
 }
 
@@ -14,7 +18,9 @@ const navItems = [
   { label: 'Inbox', icon: Bell, badge: 3 },
 ]
 
-export function AppShell({ activeNav, onNavigate, children }: AppShellProps) {
+export function AppShell({ activeNav, onNavigate, userType, user, onLogout, children }: AppShellProps) {
+  const isAdmin = userType === 'staff'
+  const roleLabel = isAdmin ? 'Admin' : userType === 'external' ? 'External user' : 'Student'
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -45,9 +51,9 @@ export function AppShell({ activeNav, onNavigate, children }: AppShellProps) {
           <button className="nav-item nav-item-muted" type="button" onClick={() => onNavigate('Profile')}>
             <UserRound size={17} /> Profile
           </button>
-          <button className="nav-item nav-item-muted" type="button" onClick={() => onNavigate('Admin')}>
+          {isAdmin && <button className="nav-item nav-item-muted" type="button" onClick={() => onNavigate('Admin')}>
             <Shield size={17} /> Admin
-          </button>
+          </button>}
         </div>
       </aside>
 
@@ -62,10 +68,11 @@ export function AppShell({ activeNav, onNavigate, children }: AppShellProps) {
             <div className="topbar-actions">
               <button className="icon-button" type="button" aria-label="Notifications"><Bell size={18} /><span className="notification-dot" /></button>
               <button className="account-button" type="button" onClick={() => onNavigate('Profile')}>
-                <span className="avatar avatar-red">TS</span>
-                <span className="account-copy"><strong>Thanwa Sirichai</strong><small>Organizer</small></span>
+                <span className="avatar avatar-red">{user.fullName.slice(0, 2).toUpperCase()}</span>
+                <span className="account-copy"><strong>{user.fullName}</strong><small>{roleLabel}</small></span>
                 <ChevronDown size={16} />
               </button>
+              <button className="icon-button" type="button" aria-label="Switch role" title="Switch role" onClick={onLogout}><LogOut size={17} /></button>
             </div>
           </div>
         </header>
