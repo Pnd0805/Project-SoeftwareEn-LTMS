@@ -73,3 +73,8 @@ export default defineConfig([
 ])
 
 ```
+
+
+READ THIS BEFORE DO ANYTHINGS :
+
+เราจะแจกแจงให้ชำแหละ prototype HTML 
