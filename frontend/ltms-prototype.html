@@ -81,6 +81,10 @@ body{background:
 .spread{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;}
+.refgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start;}
+@media(max-width:900px){.refgrid{grid-template-columns:1fr;}}
+.refcard{display:flex;}
+.refempty{padding:12px 0;font-size:15px;color:var(--bone-faint);}
 .mt{margin-top:16px;}
 
 /* a button is a cut-out: hard outline, hard shadow, and it physically moves when
@@ -3654,6 +3658,57 @@ function regsOf2(teamId){
 }
 
 /* — matches for me — */
+/* A referee's open matches are never one queue — onsite and online swap who
+   moves next (PRODUCT.md's Operating Context), so "waiting on you" means three
+   different things: score not in yet, an online submission needs your
+   confirm, or the ball is in the squads' court and there is nothing to do. */
+const REF_BUCKETS = {
+  score:   { label: "Needs your score",         empty: "Nothing waiting on a score right now." },
+  confirm: { label: "Needs your confirmation",   empty: "No submissions waiting on you." },
+  waiting: { label: "Waiting on the squads",     empty: "Nothing parked here." }
+};
+function refBucket(m, tr){
+  if (tr.channel === "onsite" && m.status === "scheduled" && m.sa == null) return "score";
+  if (tr.channel === "online" && m.status === "pending") return "confirm";
+  return "waiting";
+}
+function refCard(m, tr){
+  const inCount = m.checkedIn.length, total = [m.a,m.b].reduce((n,x)=>n+lineupOf(m,x).length,0);
+  return `<button type="button" class="panel quiet capsule vstack refcard" style="gap:10px;text-align:left;width:100%;font:inherit;color:inherit;cursor:pointer"
+      data-act="refquick" data-id="${m.id}">
+    <div class="spread"><span class="tag"><em>//</em> ${esc(tr.name)}</span>${statusBadge(m)}</div>
+    <div class="hstack" style="gap:9px">${chip(m.a)}<span class="tag">vs</span>${chip(m.b)}</div>
+    <div class="statline">
+      <div><span class="tag">Kick-off</span><span class="v" style="font-size:16px;font-family:var(--f-mono)">${esc(fmtDate(m.kickoff))}</span></div>
+      <div><span class="tag">Venue</span><span class="v" style="font-size:16px;font-family:var(--f-ui)">${venueLine(m.venue, matchPin(m))}</span></div>
+      <div><span class="tag">Checked in</span><span class="v" style="font-size:16px;font-family:var(--f-mono)">${inCount} / ${total}</span></div>
+    </div>
+  </button>`;
+}
+/* The quick-pick popup: a card summary opens straight into a short menu of
+   what to do next, instead of the full match form — the same "pick a
+   destination" idiom as workPicker(), scoped to one match. */
+function refQuickCard(m){
+  const tr = tour(m.tour), bucket = refBucket(m, tr);
+  const primary = bucket === "score" ? "Enter the score"
+    : bucket === "confirm" ? "Confirm the result" : "Open the match";
+  const blurb = bucket === "score" ? "Both sides are due on court — record the result once it's in."
+    : bucket === "confirm" ? "The winning squad already submitted online — confirm it to close this out."
+    : "Nothing for you to do yet — waiting on the squads.";
+  return `<div class="vstack">
+    <div class="spread"><span class="tag"><em>//</em> ${esc(tr.name)}</span>${statusBadge(m)}</div>
+    <div class="hstack" style="gap:9px">${chip(m.a)}<span class="tag">vs</span>${chip(m.b)}</div>
+    <span class="sub">${esc(blurb)}</span>
+    <div class="vstack" style="gap:8px">
+      <button class="who" data-act="workgo" data-h="#/m/${m.id}">
+        <span class="meta"><b>${esc(primary)}</b><span class="tag">Match page</span></span>${ic("chev",13)}</button>
+      ${tr.channel === "onsite" ? `<button class="who" data-act="workgo" data-h="#/checkin/${m.id}">
+        <span class="meta"><b>Check-in console</b><span class="tag">${m.checkedIn.length} checked in</span></span>${ic("chev",13)}</button>` : ""}
+    </div>
+    <button class="btn ghost" data-act="closemodal">Cancel</button>
+  </div>`;
+}
+
 function viewMatches(){
   const u = me(); if (!u) return viewLogin();
   /* One person wears several hats at once — officiating one tournament, playing in
@@ -3688,23 +3743,18 @@ function viewMatches(){
         </div>`; }).join("")}
     </div>` : ""}
     ${orgDisputes.length ? `<div class="banner crit">${ic("warn",17)}<span class="grow"><b>${orgDisputes.length} dispute${orgDisputes.length===1?"":"s"} need your decision.</b></span></div>${table(orgDisputes)}` : ""}
-    ${refOpen.length ? `<div class="tag"><em>//</em> You are officiating — waiting on you · ${refOpen.length}</div>
-      <div class="grid2">${refOpen.map(m => { const tr = tour(m.tour);
-        const inCount = m.checkedIn.length, total = [m.a,m.b].reduce((n,x)=>n+lineupOf(m,x).length,0);
-        const needScore = m.status === "scheduled" && tr.channel === "onsite";
-        return `<div class="panel quiet vstack" style="gap:10px">
-          <div class="spread"><span class="tag"><em>//</em> ${esc(tr.name)}</span>${statusBadge(m)}</div>
-          <div class="hstack" style="gap:9px">${chipLink(m.a)}<span class="tag">vs</span>${chipLink(m.b)}</div>
-          <div class="statline">
-            <div><span class="tag">Kick-off</span><span class="v" style="font-size:16px;font-family:var(--f-mono)">${esc(fmtDate(m.kickoff))}</span></div>
-            <div><span class="tag">Venue</span><span class="v" style="font-size:16px;font-family:var(--f-ui)">${venueLine(m.venue, matchPin(m))}</span></div>
-            <div><span class="tag">Checked in</span><span class="v" style="font-size:16px;font-family:var(--f-mono)">${inCount} / ${total}</span></div>
-          </div>
-          
-          <div class="hstack">
-            <button class="btn" data-act="nav" data-h="#/checkin/${m.id}">Check-in console</button>
-            <button class="btn primary" data-act="nav" data-h="#/m/${m.id}">${needScore ? "Enter the score" : "Open the match"}</button>
-          </div></div>`; }).join("")}</div>` : ""}
+    ${refOpen.length ? (() => {
+      const grouped = { score: [], confirm: [], waiting: [] };
+      refOpen.forEach(m => grouped[refBucket(m, tour(m.tour))].push(m));
+      return `<div class="tag"><em>//</em> You are officiating — waiting on you · ${refOpen.length}</div>
+      <div class="refgrid">
+        ${Object.keys(REF_BUCKETS).map(k => `<div class="vstack" style="gap:12px">
+          <span class="tag"><em>//</em> ${esc(REF_BUCKETS[k].label)} · ${grouped[k].length}</span>
+          ${grouped[k].length
+            ? `<div class="vstack" style="gap:12px">${grouped[k].map(m => refCard(m, tour(m.tour))).join("")}</div>`
+            : `<span class="refempty">${esc(REF_BUCKETS[k].empty)}</span>`}
+        </div>`).join("")}
+      </div>`; })() : ""}
     ${asRef.length ? `<div class="tag"><em>//</em> You are officiating — every match · ${asRef.length}</div>${table(asRef)}` : ""}
     ${asPlayer.length ? `<div class="tag"><em>//</em> Your squad plays · ${asPlayer.length}</div>${table(asPlayer)}` : ""}
     ${asOrg.length ? `<div class="tag"><em>//</em> You run this tournament · ${asOrg.length}</div>${table(asOrg)}` : ""}
@@ -4514,6 +4564,7 @@ const A = {
     if (entries.length) modal(workPicker(labels[el.dataset.kind], entries));
   },
   workgo(el){ closeModal(); go(el.dataset.h); },
+  refquick(el){ const m = S.matches.find(x => x.id === el.dataset.id); if (m) modal(refQuickCard(m)); },
   skipmain(){ const m = document.getElementById("main"); if (m) m.focus(); },
   palette(){ paletteOpen = true; renderPalette(); },
   palettego(el){ paletteOpen = false; closeModal(); go(el.dataset.h); render(); },
