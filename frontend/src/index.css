@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+/* The ported prototype's own stylesheet — tokens, sticker construction, every
+   class name the ported components still use (.panel, .tag, .bracket, …).
+   Loaded after Tailwind's reset so its own body/button rules win. */
+@import "./styles/prototype.css";
 
 @custom-variant dark (&:is(.dark *));
 

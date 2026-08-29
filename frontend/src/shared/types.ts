@@ -1,0 +1,185 @@
+/**
+ * src/shared/types.ts
+ *
+ * Entity shapes ported 1:1 from ltms-prototype.html's `S` store, named with the
+ * CONTEXT.md glossary. This is the single source of truth for the ported UI —
+ * src/types/dto.ts stays the shape the *real* API will hand back, and the two
+ * meet in an adapter when the backend lands (PLAN.md phase 2).
+ */
+
+export type Role = 'Admin' | 'User'
+export type Channel = 'onsite' | 'online'
+export type Format = 'single' | 'double' | 'roundrobin'
+export type TourStatus = 'pending' | 'private' | 'public'
+export type MatchStatus = 'scheduled' | 'pending' | 'confirmed' | 'disputed' | 'void'
+export type RegStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn'
+export type InviteStatus = 'pending' | 'accepted' | 'declined'
+export type BracketSide = 'W' | 'L' | 'GF'
+
+export interface Pin { lat: number; lng: number }
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: Role
+  gender: 'Male' | 'Female'
+  dob: string
+  faculty: string
+  major: string
+  year: number
+}
+
+export interface Team {
+  id: string
+  name: string
+  code: string
+  color: string
+  leader: string
+  members: string[]
+  created: number
+  disabled: boolean
+  permanent: boolean
+  sport?: string
+  logo?: string
+}
+
+/** The Hard filter's conditions. `any` means the condition is not set — see CONTEXT.md. */
+export interface Rules {
+  gender: 'any' | 'Male' | 'Female'
+  ageMin: number | 'any'
+  ageMax: number | 'any'
+  faculty: string
+  major: string
+  year: number | 'any'
+}
+
+export interface FilterChangeRequest {
+  rules: Rules
+  reason: string
+  at: number
+}
+
+export interface Tournament {
+  id: string
+  name: string
+  sport: string
+  format: Format
+  channel: Channel
+  status: TourStatus
+  date: string
+  venue: string
+  pin: Pin | null
+  cap: number
+  organizer: string
+  referees: string[]
+  rules: Rules
+  entryNotes?: string
+  drawn: boolean
+  drawnAt?: number
+  rounds: number
+  champion: string | null
+  filterChangeRequest?: FilterChangeRequest | null
+}
+
+export interface Registration {
+  id: string
+  tour: string
+  team: string
+  status: RegStatus
+  at: number
+  /** Squad list — the subset of the Team entered into this Tournament. */
+  squad: string[]
+  reason?: string
+  withdrawRequested?: boolean
+}
+
+export interface PlayerStat {
+  team: string
+  goals: number
+  assists: number
+  x: Record<string, number>
+}
+
+export interface Lineup {
+  starters: string[]
+  subs: string[]
+}
+
+export interface Decider {
+  a: number
+  b: number
+  kind: string
+}
+
+export interface Edge { m: string; side: 'a' | 'b' }
+
+export interface Match {
+  id: string
+  tour: string
+  round: number
+  slot: number
+  /** 'W' winners · 'L' losers · 'GF' grand final · 'RR' round robin matchday */
+  bracket?: BracketSide | 'RR'
+  /** the name the draw gave this match — the round arithmetic is only the single-elim fallback */
+  stage?: string
+  tag?: string
+  depth?: number
+  /** where the winner (and in double elimination, the loser) goes next */
+  winTo?: Edge | null
+  loseTo?: Edge | null
+  a: string | null
+  b: string | null
+  sa: number | null
+  sb: number | null
+  status: MatchStatus
+  channel: Channel
+  enteredBy: string | null
+  confirmedBy: string | null
+  confirmedByOrg?: boolean
+  disputedBy: string | null
+  /** a Dispute is recorded against the Team, not the person who clicked */
+  disputedTeam?: string | null
+  note: string
+  venue: string
+  pin?: Pin | null
+  roomCode?: string
+  refs: string[]
+  checkedIn: string[]
+  stats: Record<string, PlayerStat>
+  teamStats?: Record<string, Record<string, number | string>>
+  lineup?: Record<string, Lineup>
+  decider?: Decider | null
+  replay?: string
+  kickoff: string
+}
+
+export interface Invite { id: string; team: string; user: string; status: InviteStatus }
+export interface RefInvite { id: string; tour: string; user: string; status: InviteStatus }
+export interface Announcement { id: string; tour: string; by: string; title: string; body: string; at: number }
+export interface Notification { id: string; to: string; text: string; href: string; at: number; read: boolean }
+export interface Pick { id: string; match: string; by: string; team: string }
+export interface Vote { id: string; tour: string; by: string; player: string }
+export interface Comment { id: string; match: string; by: string; text: string; at: number }
+export interface Feedback { id: string; tour: string; by: string; rating: number; text: string; at: number }
+export interface PermanentRequest { id: string; team: string; by: string; reason: string; at: number; status: 'pending' | 'approved' | 'declined' }
+
+export interface State {
+  seq: number
+  session: string | null
+  users: User[]
+  teams: Team[]
+  tournaments: Tournament[]
+  registrations: Registration[]
+  matches: Match[]
+  invites: Invite[]
+  refInvites: RefInvite[]
+  announcements: Announcement[]
+  notifications: Notification[]
+  picks: Pick[]
+  votes: Vote[]
+  follows: string[]
+  comments: Comment[]
+  feedback: Feedback[]
+  permanentRequests: PermanentRequest[]
+}

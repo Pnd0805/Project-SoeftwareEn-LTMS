@@ -1,84 +1,98 @@
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { useLogout, useMe } from './hooks/useAuth'
-import { AppShell } from './components/layout/AppShell'
-import { RoleSelector } from './components/auth/RoleSelector'
-import { HomePage } from './pages/HomePage'
-import { TournamentsPage } from './pages/TournamentsPage'
-import { TeamsPage } from './pages/TeamsPage'
-import { MatchesPage } from './pages/MatchesPage'
-import { InboxPage } from './pages/InboxPage'
-import { ProfilePage } from './pages/ProfilePage'
-import { AdminPage } from './pages/AdminPage'
-import './App.css'
+/**
+ * src/App.tsx
+ *
+ * Route table for the ported prototype (77 screens, FRONTEND-SPEC.md "Screen
+ * list"). One PUBLIC list decides who gets the shell without signing in — a
+ * guest, or anyone once they choose "Continue as guest" — everything else
+ * bounces to /login, same as the prototype's `render()` guard.
+ */
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Shell } from './components/layout/Shell'
+import { Toasts } from './components/kit/Toasts'
+import { useLtms } from './shared/store'
+import { isGuest, me } from './shared/selectors'
+import { LoginPage } from './features/auth/LoginPage'
+import { HomePage } from './features/home/HomePage'
+import { TournamentPage } from './features/tournament/TournamentPage'
+import { MatchPage } from './features/match/MatchPage'
+import { FixturePage } from './features/match/FixturePage'
+import { CheckinPage } from './features/checkin/CheckinPage'
+import { MvpPage } from './features/mvp/MvpPage'
+import { TeamPage } from './features/team/TeamPage'
+import { PlayerPage } from './features/player/PlayerPage'
+import { WatchPage } from './features/watch/WatchPage'
+import { TeamsPage } from './features/team/TeamsPage'
+import { MatchesPage } from './features/matches/MatchesPage'
+import { InboxPage } from './features/inbox/InboxPage'
+import { ProfilePage } from './features/profile/ProfilePage'
+import { AdminPage } from './features/admin/AdminPage'
+import { RequestPage } from './features/request/RequestPage'
+import { SearchPage } from './features/search/SearchPage'
 
-const navToPath: Record<string, string> = {
-  Home: '/home',
-  Tournaments: '/tournaments',
-  Teams: '/teams',
-  Matches: '/matches',
-  Inbox: '/inbox',
-  Profile: '/profile',
-  Admin: '/admin',
+/* every route a Guest may open without signing in — bracket, schedule, search,
+   a squad or player profile, and the tournament page itself (visibleTo still
+   gates a private draft) */
+const PUBLIC_PATHS = [
+  /^\/$/, /^\/home/, /^\/t\//, /^\/m\//, /^\/checkin\//, /^\/mvp\//,
+  /^\/team\//, /^\/player\//, /^\/watch\//, /^\/search/, /^\/login$/,
+]
+
+function Guard({ children }: { children: React.ReactNode }) {
+  const s = useLtms()
+  const location = useLocation()
+  const signedIn = !!me(s)
+  const guest = isGuest(s)
+  const isPublic = PUBLIC_PATHS.some(p => p.test(location.pathname))
+  if (!signedIn && !guest && !isPublic) return <Navigate to="/login" replace />
+  return <>{children}</>
 }
 
-const pathToNav: Record<string, string> = Object.fromEntries(
-  Object.entries(navToPath).map(([label, path]) => [path, label]),
-)
-
-function AppContent() {
+export default function App() {
+  const s = useLtms()
+  const u = me(s)
   const location = useLocation()
-  const navigate = useNavigate()
-  const { data: me, isPending } = useMe()
-  const logout = useLogout()
 
-  const activeNav = pathToNav[location.pathname] ?? 'Tournaments'
-
-  const handleNavigate = (label: string) => {
-    const nextPath = navToPath[label] ?? '/tournaments'
-    navigate(nextPath)
-  }
-
-  if (isPending) return <div className="role-loading">Loading workspace...</div>
-  if (!me) {
+  if (location.pathname === '/login') {
     return (
-      <RoleSelector
-        onRoleSelected={(role) => navigate(role === 'Admin' ? '/admin' : '/tournaments')}
-      />
+      <>
+        <LoginPage />
+        <Toasts />
+      </>
     )
   }
 
-  const userType = me?.userType ?? 'student'
-  const isAdmin = userType === 'staff'
-  const safeNav = activeNav === 'Admin' && !isAdmin ? 'Tournaments' : activeNav
-
   return (
-    <AppShell
-      activeNav={safeNav}
-      onNavigate={handleNavigate}
-      userType={userType}
-      user={me}
-      onLogout={() => logout.mutate()}
-    >
-      <Routes>
-        <Route path="/" element={<Navigate to={isAdmin ? '/admin' : '/tournaments'} replace />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/tournaments" element={<TournamentsPage onNavigate={handleNavigate} />} />
-        <Route path="/teams" element={<TeamsPage onNavigate={handleNavigate} />} />
-        <Route path="/matches" element={<MatchesPage />} />
-        <Route path="/inbox" element={<InboxPage />} />
-        <Route path="/profile" element={<ProfilePage user={me} />} />
-        <Route
-          path="/admin"
-          element={isAdmin ? <AdminPage onNavigate={handleNavigate} /> : <Navigate to="/tournaments" replace />}
-        />
-        <Route path="*" element={<Navigate to={isAdmin ? '/admin' : '/tournaments'} replace />} />
-      </Routes>
-    </AppShell>
+    <Guard>
+      <Shell>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/home/:tab" element={<HomePage />} />
+          <Route path="/t/:id" element={<TournamentPage />} />
+          <Route path="/t/:id/:tab" element={<TournamentPage />} />
+          <Route path="/t/:id/:tab/:sub" element={<TournamentPage />} />
+          <Route path="/m/:id" element={<MatchPage />} />
+          <Route path="/m/:id/fixture" element={<FixturePage />} />
+          <Route path="/m/:id/:tab" element={<MatchPage />} />
+          <Route path="/checkin/:id" element={<CheckinPage />} />
+          <Route path="/mvp/:id" element={<MvpPage />} />
+          <Route path="/team/:id" element={<TeamPage />} />
+          <Route path="/player/:id" element={<PlayerPage />} />
+          <Route path="/watch/:id" element={<WatchPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/search/:q" element={<SearchPage />} />
+
+          <Route path="/teams" element={u ? <TeamsPage /> : <Navigate to="/login" replace />} />
+          <Route path="/matches" element={u ? <MatchesPage /> : <Navigate to="/login" replace />} />
+          <Route path="/inbox" element={u ? <InboxPage /> : <Navigate to="/login" replace />} />
+          <Route path="/me" element={u ? <ProfilePage /> : <Navigate to="/login" replace />} />
+          <Route path="/request" element={u ? <RequestPage /> : <Navigate to="/login" replace />} />
+          <Route path="/admin" element={u ? <AdminPage /> : <Navigate to="/login" replace />} />
+          <Route path="/admin/:tab" element={u ? <AdminPage /> : <Navigate to="/login" replace />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Shell>
+      <Toasts />
+    </Guard>
   )
 }
-
-function App() {
-  return <AppContent />
-}
-
-export default App
