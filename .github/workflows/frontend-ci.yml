@@ -1,0 +1,56 @@
+name: frontend
+
+# ทำไมต้องมี: ทีมสี่คนแก้ไฟล์ทับกันในสไลซ์ที่ต่อกัน โดยไม่มีอะไรตรวจก่อน merge เลย
+# workflow นี้เป็นด่านเดียวที่กัน "โค้ดที่ compile ไม่ผ่าน" หลุดเข้า branch ร่วม
+#
+# ยิงเฉพาะตอนที่ frontend/ เปลี่ยนจริง — commit ที่แก้แต่เอกสารไม่ต้องรอ CI 3 นาที
+
+on:
+  pull_request:
+    branches: [frontend, main]
+    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
+  push:
+    branches: [frontend, main]
+    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
+
+# push ซ้ำเข้า PR เดิม ให้ยกเลิกรอบเก่าทิ้ง ไม่ต้องรันค้างสองรอบ
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # ตรงกับ frontend/.nvmrc — Vite 8 ไม่รันบน Node 18
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # ci ไม่ใช่ install — ล้าง node_modules แล้วลงตาม lockfile เป๊ะ
+      # ถ้า package.json กับ lockfile ไม่ตรงกัน ขั้นนี้จะพังทันที ซึ่งเป็นสิ่งที่ต้องการ
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -b --force
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # ยังไม่บล็อก: มี error ค้างอยู่ 5 ข้อตั้งแต่ก่อนตั้ง CI กระจายในไฟล์ของสามคน
+      # (ดู "Lint debt" ใน frontend/PLAN.md) เคลียร์ครบเมื่อไหร่ ลบ continue-on-error ออก
+      # แล้ว lint จะกลายเป็นด่านจริง
+      - name: Lint (ยังไม่บล็อก)
+        run: npm run lint
+        continue-on-error: true

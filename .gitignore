@@ -1,0 +1,18 @@
+# .gitignore ที่ root — frontend/.gitignore ดูแลของตัวเองแยกต่างหาก
+#
+# มีไว้เพราะทุกคนเห็น .claude/ โผล่ค้างใน `git status` เป็น untracked ตลอด
+# noise แบบนี้ทำให้คนเลิกอ่าน git status แล้ว commit ของที่ไม่ตั้งใจไปด้วย
+
+# เครื่องมือผู้ช่วย — ตั้งค่าเฉพาะเครื่องใครเครื่องมัน (path ของ node.exe ฯลฯ)
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
