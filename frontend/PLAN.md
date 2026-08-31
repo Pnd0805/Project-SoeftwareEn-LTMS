@@ -304,6 +304,23 @@ back into the pure layer.
 
 **✅ Fix `vite.config.ts`** — `__dirname` → `import.meta.dirname`.
 
+**✅ Guard rails the repo had none of.** The plan says who owns what; nothing enforced any of it, and
+nothing told a new teammate how to start the app.
+
+- `.github/workflows/frontend-ci.yml` — `npm ci`, `tsc -b`, `npm test`, `npm run build` on every PR
+  into `frontend` or `main`, only when `frontend/**` changed. Lint runs but does not block until the
+  five errors below are cleared; then delete one `continue-on-error` line.
+- `.gitattributes` (repo root) — `text=auto eol=lf`, PDFs binary. Not hygiene: `npm install` rewrote
+  `package-lock.json` as CRLF during this work, git reported a 6,858-line diff on a file identical to
+  the remote byte for byte, and `pull` refused to run.
+- `.env.example` — `VITE_USE_MOCK` and `VITE_API_BASE_URL`. `api/client.ts` had read both since it was
+  written with no file mentioning they exist. Note the sharp edge it records: `client.ts` tests
+  `!== "false"`, so `"FALSE"` or `"0"` silently stays on mocks.
+- `.nvmrc` + `engines` — Node 20.19+. Vite 8 does not start on Node 18 and says so unhelpfully.
+- `README.md` — was the untouched Vite template, pointing at Oxc and SWC. Now: how to run, what the
+  folders are, the frozen-file rule, the two kit layers, and where each question is answered.
+- Root `.gitignore` — `.claude/` was untracked noise in everyone's `git status`.
+
 **Split `workQueue.ts` into per-domain contributions** (see the rule above) so migrations stop
 serialising through it. Not done — it needs all four owners to agree what each contributes.
 
