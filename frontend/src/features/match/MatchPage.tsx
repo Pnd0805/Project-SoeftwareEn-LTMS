@@ -213,13 +213,14 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
 export function MatchPage() {
   const navigate = useNavigate()
   const { id, tab: tabParam } = useParams()
-  const matchId = Number(id)
-  const validId = Number.isFinite(matchId)
+  /* ส่ง id ดิบจาก URL ไป — ชั้น API รับได้ทั้งเลขของ API และ string ของ store
+     ระหว่างที่สไลซ์อื่นยังไม่ย้าย (ดู mocks/storeBridge.ts) */
+  const matchId = id
 
-  const { data: m, isPending, isError } = useMatch(validId ? matchId : undefined)
-  const { data: result } = useResult(validId ? matchId : undefined)
+  const { data: m, isPending, isError } = useMatch(matchId)
+  const { data: result } = useResult(matchId)
 
-  if (!validId || isError) return <Empty icon="warn" title="No such match" />
+  if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the match…</span></Panel>
 
   const tab = TABS.includes(tabParam ?? '') ? tabParam! : 'overview'

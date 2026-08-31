@@ -101,15 +101,13 @@ function SquadPanel({ m, team, checkins }: {
 export function CheckinPage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const matchId = Number(id)
-  const validId = Number.isFinite(matchId)
-
-  const { data: m, isPending, isError } = useMatch(validId ? matchId : undefined)
-  const { data: checkinData } = useCheckins(validId ? matchId : undefined)
-  const update = useUpdateMatch(matchId, m?.tournamentId)
+  const matchId = id
+  const { data: m, isPending, isError } = useMatch(matchId)
+  const { data: checkinData } = useCheckins(matchId)
+  const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const [room, setRoom] = useState('')
 
-  if (!validId || isError) return <Empty icon="warn" title="No such match" />
+  if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading check-in…</span></Panel>
 
   const checkins = checkinData?.items ?? []

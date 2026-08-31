@@ -19,24 +19,8 @@ import { matchStateOf, toTeamView } from '../match/matchView'
 
 export function ScheduleTab({ tournamentId }: { tournamentId: number | string }) {
   const navigate = useNavigate()
-  const id = Number(tournamentId)
-  const usable = Number.isFinite(id)
-  const { data, isPending } = useTournamentMatches(usable ? id : undefined)
+  const { data, isPending } = useTournamentMatches(tournamentId)
 
-  /* สไลซ์ 2 ยังส่ง id ของ store (เช่น "t-vb") มาอยู่ ซึ่งค้นจาก API ไม่ได้
-     บอกตรงๆ ดีกว่าโชว์ตารางว่างที่ดูเหมือนยังไม่มีแมตช์ */
-  if (!usable) {
-    return (
-      <Panel quiet>
-        <span className="tag"><em>//</em> Schedule</span>
-        <div className="sub">
-          This tab reads the <code>matches</code> table through the API and needs the tournament's
-          numeric id. The tournament page still holds a prototype id — it starts working when slice 2
-          migrates. See PLAN.md, the two id spaces.
-        </div>
-      </Panel>
-    )
-  }
 
   if (isPending) return <Panel quiet><span className="sub">Loading the schedule…</span></Panel>
 

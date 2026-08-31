@@ -30,18 +30,16 @@ const toLocal = (iso: string | null) => {
 export function FixturePage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const matchId = Number(id)
-  const validId = Number.isFinite(matchId)
-
-  const { data: m, isPending, isError } = useMatch(validId ? matchId : undefined)
-  const update = useUpdateMatch(matchId, m?.tournamentId)
-  const assign = useAssignReferees(matchId, m?.tournamentId)
+  const matchId = id
+  const { data: m, isPending, isError } = useMatch(matchId)
+  const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
+  const assign = useAssignReferees(matchId ?? 0, m?.tournamentId)
 
   const [kickoff, setKickoff] = useState<string | null>(null)
   const [venue, setVenue] = useState<string | null>(null)
   const [refs, setRefs] = useState<number[] | null>(null)
 
-  if (!validId || isError) return <Empty icon="warn" title="No such match" />
+  if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the fixture…</span></Panel>
 
   /* ค่าที่แก้อยู่ยังไม่ commit — ยังไม่แตะช่องไหนก็ใช้ค่าจาก server */

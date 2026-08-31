@@ -27,18 +27,19 @@ import type {
   VerifyCheckinRequest,
   SaveMatchStatsRequest,
 } from "../types/match.dto";
+import type { MatchRef } from "../mocks/storeBridge";
 
 // ══════════════ query keys ══════════════
 
 export const matchKeys = {
   all: ["match"] as const,
-  detail: (id: number) => ["match", id] as const,
-  result: (id: number) => ["match", id, "result"] as const,
-  checkins: (id: number) => ["match", id, "checkins"] as const,
-  stats: (id: number) => ["match", id, "stats"] as const,
-  byTournament: (tid: number) => ["matches", "tournament", tid] as const,
+  detail: (id: MatchRef) => ["match", id] as const,
+  result: (id: MatchRef) => ["match", id, "result"] as const,
+  checkins: (id: MatchRef) => ["match", id, "checkins"] as const,
+  stats: (id: MatchRef) => ["match", id, "stats"] as const,
+  byTournament: (tid: MatchRef) => ["matches", "tournament", tid] as const,
   mine: ["matches", "mine"] as const,
-  standings: (tid: number) => ["standings", tid] as const,
+  standings: (tid: MatchRef) => ["standings", tid] as const,
   statDefs: (sportTypeId: number) => ["match", "statDefinitions", sportTypeId] as const,
 };
 
@@ -46,7 +47,7 @@ export const matchKeys = {
  * ผลกับแมตช์เปลี่ยนพร้อมกันเสมอ — และ standings ก็ขยับตามผลที่ยืนยันแล้ว
  * เรียกตัวนี้ใน onSuccess ของทุก mutation ที่แตะผล จะได้ไม่ลืมสัก key
  */
-function touchMatch(qc: QueryClient, matchId: number, tournamentId?: number) {
+function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef) {
   qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.result(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.mine });
@@ -58,18 +59,18 @@ function touchMatch(qc: QueryClient, matchId: number, tournamentId?: number) {
 
 // ══════════════ queries ══════════════
 
-export function useMatch(matchId: number | undefined) {
+export function useMatch(matchId: MatchRef | undefined) {
   return useQuery({
-    queryKey: matchKeys.detail(matchId as number),
-    queryFn: () => matchApi.getMatch(matchId as number),
+    queryKey: matchKeys.detail(matchId as MatchRef),
+    queryFn: () => matchApi.getMatch(matchId as MatchRef),
     enabled: matchId !== undefined,
   });
 }
 
-export function useTournamentMatches(tournamentId: number | undefined) {
+export function useTournamentMatches(tournamentId: MatchRef | undefined) {
   return useQuery({
-    queryKey: matchKeys.byTournament(tournamentId as number),
-    queryFn: () => matchApi.getTournamentMatches(tournamentId as number),
+    queryKey: matchKeys.byTournament(tournamentId as MatchRef),
+    queryFn: () => matchApi.getTournamentMatches(tournamentId as MatchRef),
     enabled: tournamentId !== undefined,
   });
 }
@@ -83,35 +84,35 @@ export function useMyMatches() {
  * ยังไม่มีผล = 404 ไม่ใช่ error ที่ต้อง retry — retry: false กัน request รัวเปล่าๆ
  * ตัวเรียกเช็ค `isError` แล้วโชว์ ResultForm ได้เลย
  */
-export function useResult(matchId: number | undefined) {
+export function useResult(matchId: MatchRef | undefined) {
   return useQuery({
-    queryKey: matchKeys.result(matchId as number),
-    queryFn: () => matchApi.getResult(matchId as number),
+    queryKey: matchKeys.result(matchId as MatchRef),
+    queryFn: () => matchApi.getResult(matchId as MatchRef),
     enabled: matchId !== undefined,
     retry: false,
   });
 }
 
-export function useCheckins(matchId: number | undefined) {
+export function useCheckins(matchId: MatchRef | undefined) {
   return useQuery({
-    queryKey: matchKeys.checkins(matchId as number),
-    queryFn: () => matchApi.getCheckins(matchId as number),
+    queryKey: matchKeys.checkins(matchId as MatchRef),
+    queryFn: () => matchApi.getCheckins(matchId as MatchRef),
     enabled: matchId !== undefined,
   });
 }
 
-export function useMatchStats(matchId: number | undefined) {
+export function useMatchStats(matchId: MatchRef | undefined) {
   return useQuery({
-    queryKey: matchKeys.stats(matchId as number),
-    queryFn: () => matchApi.getMatchStats(matchId as number),
+    queryKey: matchKeys.stats(matchId as MatchRef),
+    queryFn: () => matchApi.getMatchStats(matchId as MatchRef),
     enabled: matchId !== undefined,
   });
 }
 
-export function useStandings(tournamentId: number | undefined) {
+export function useStandings(tournamentId: MatchRef | undefined) {
   return useQuery({
-    queryKey: matchKeys.standings(tournamentId as number),
-    queryFn: () => matchApi.getStandings(tournamentId as number),
+    queryKey: matchKeys.standings(tournamentId as MatchRef),
+    queryFn: () => matchApi.getStandings(tournamentId as MatchRef),
     enabled: tournamentId !== undefined,
   });
 }
@@ -129,7 +130,7 @@ export function useStatDefinitions(sportTypeId: number | undefined) {
 // ══════════════ mutations ══════════════
 
 /** FixturePage — จัดเวลา/สนาม/เวลาเปิดเช็คอิน */
-export function useUpdateMatch(matchId: number, tournamentId?: number) {
+export function useUpdateMatch(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateMatchRequest) => matchApi.updateMatch(matchId, input),
@@ -138,7 +139,7 @@ export function useUpdateMatch(matchId: number, tournamentId?: number) {
 }
 
 /** FixturePage — มอบหมายกรรมการเข้าแมตช์ (เขียนทับทั้งชุด) */
-export function useAssignReferees(matchId: number, tournamentId?: number) {
+export function useAssignReferees(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (refereeUserIds: number[]) => matchApi.assignReferees(matchId, refereeUserIds),
@@ -147,7 +148,7 @@ export function useAssignReferees(matchId: number, tournamentId?: number) {
 }
 
 /** S01 — ส่งผล กดซ้ำได้ปลอดภัย (idempotent ที่ฝั่ง DB) */
-export function useSubmitResult(matchId: number, tournamentId?: number) {
+export function useSubmitResult(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SubmitResultRequest) => matchApi.submitResult(matchId, input),
@@ -155,7 +156,7 @@ export function useSubmitResult(matchId: number, tournamentId?: number) {
   });
 }
 
-export function useVerifyResult(matchId: number, tournamentId?: number) {
+export function useVerifyResult(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: VerifyResultRequest = {}) => matchApi.verifyResult(matchId, input),
@@ -163,7 +164,7 @@ export function useVerifyResult(matchId: number, tournamentId?: number) {
   });
 }
 
-export function useDisputeResult(matchId: number, tournamentId?: number) {
+export function useDisputeResult(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: DisputeResultRequest) => matchApi.disputeResult(matchId, input),
@@ -171,7 +172,7 @@ export function useDisputeResult(matchId: number, tournamentId?: number) {
   });
 }
 
-export function useResolveDispute(matchId: number, tournamentId?: number) {
+export function useResolveDispute(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ResolveDisputeRequest) => matchApi.resolveDispute(matchId, input),
@@ -179,7 +180,7 @@ export function useResolveDispute(matchId: number, tournamentId?: number) {
   });
 }
 
-export function useCheckin(matchId: number) {
+export function useCheckin(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CheckinRequest) => matchApi.checkin(matchId, input),
@@ -187,7 +188,7 @@ export function useCheckin(matchId: number) {
   });
 }
 
-export function useVerifyCheckin(matchId: number) {
+export function useVerifyCheckin(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { userId: number; input: VerifyCheckinRequest }) =>
@@ -196,7 +197,7 @@ export function useVerifyCheckin(matchId: number) {
   });
 }
 
-export function useSaveMatchStats(matchId: number) {
+export function useSaveMatchStats(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SaveMatchStatsRequest) => matchApi.saveMatchStats(matchId, input),
@@ -204,7 +205,7 @@ export function useSaveMatchStats(matchId: number) {
   });
 }
 
-export function useSetLivestream(matchId: number) {
+export function useSetLivestream(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (url: string | null) => matchApi.setLivestream(matchId, url),

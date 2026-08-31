@@ -20,22 +20,8 @@ import { TeamLinkView } from '../../components/kit/chips'
 import { useStandings } from '../../hooks/useMatch'
 
 export function LeaderboardTab({ tournamentId }: { tournamentId: number | string }) {
-  const id = Number(tournamentId)
-  const usable = Number.isFinite(id)
-  const { data, isPending } = useStandings(usable ? id : undefined)
+  const { data, isPending } = useStandings(tournamentId)
 
-  if (!usable) {
-    return (
-      <Panel quiet>
-        <span className="tag"><em>//</em> Leaderboard</span>
-        <div className="sub">
-          Reads <code>tournament_standings</code> through the API and needs the tournament's numeric
-          id. The tournament page still holds a prototype id — it starts working when slice 2
-          migrates. See PLAN.md, the two id spaces.
-        </div>
-      </Panel>
-    )
-  }
 
   if (isPending) return <Panel quiet><span className="sub">Loading the table…</span></Panel>
 
