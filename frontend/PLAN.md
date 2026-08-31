@@ -20,6 +20,36 @@ Source of truth: `ltms-prototype.html` (77 screens), `FRONTEND-SPEC.md`, `CONTEX
 v1 is not wrong about intent. It is wrong about state. The build is further along than it describes,
 and the remaining work is a different shape.
 
+## Decisions carried over from v1 — unchanged, still binding
+
+Rewriting the plan against the code dropped these on the first pass. They are v1's calls, they still
+hold, and they are restated here so the rewrite does not quietly repeal them:
+
+- **Client state**: plain React (`useState` / context) plus URL search params for anything shareable —
+  filters, tabs, the open row. **No Zustand, no Redux.** Add a store only when a cross-cutting case
+  actually demands one, and say so in a PR before you do.
+- **Forms**: React Hook Form + Zod, reusing the schemas rather than re-declaring validation in the
+  component. Both are already dependencies.
+- **Repo structure**: one Vite app, folder-separated (`src/shared`, `src/features/*`). No pnpm
+  workspace, no monorepo — four people do not need package-boundary overhead.
+- **Naming**: `CONTEXT.md` is the glossary and it wins. An entity is a Tournament, an Organizer, a
+  Squad list, a Lineup — including in DTO field names and query keys. `shared/types.ts` was written
+  against that glossary; keep new types on it.
+
+### Two stack claims from v1 that the code does not honour
+
+Both need a decision, not a silent drift:
+
+- **shadcn/ui.** v1 names it in the stack. `@/components/ui/` holds seven generated components and
+  **`src/` imports none of them** — the app renders through the hand-built `components/kit/` against
+  `styles/prototype.css`, which is what `FRONTEND-SPEC.md` describes. Either adopt shadcn deliberately
+  or drop the folder, `components.json`, and the unused deps. Leaving it is what produces two of the
+  five standing lint errors.
+- **React Hook Form.** Installed, along with `@hookform/resolvers` and Zod — and **imported by zero
+  files.** The forms that exist (`match/ResultForm.tsx`, `tournament/RegisterForm.tsx`) are
+  hand-rolled. Migrating a write screen is the moment to settle this; the migration steps below assume
+  RHF + Zod, per v1.
+
 ---
 
 ## The actual situation: two stacks
@@ -99,11 +129,17 @@ Edits to the frozen files are allowed only for genuine bug fixes, and only after
 **Migration template** — Person 3's Match slice is the worked example, copy its shape:
 
 ```
-src/types/<domain>.dto.ts    DTOs derived from schema.sql, camelCase, one owner
-src/mocks/<domain>.mock.ts   fixtures covering every status the UI must render
-src/api/<domain>.ts          USE_MOCK switch inside each function, same as api/auth.ts
-src/hooks/use<Domain>.ts     TanStack Query, query keys namespaced to the domain
+src/types/<domain>.dto.ts     DTOs derived from schema.sql, camelCase, one owner
+src/mocks/<domain>.mock.ts    fixtures covering every status the UI must render
+src/api/<domain>.ts           USE_MOCK switch inside each function, same as api/auth.ts
+src/hooks/use<Domain>.ts      TanStack Query, query keys namespaced to the domain
+src/schemas/<domain>.schema.ts  Zod, for the write screens — mirrors the backend's rules
 ```
+
+`src/schemas/auth.schema.ts` is the shape to copy for the last one: Thai error messages per NF-US-03,
+validation copied from the backend rather than invented, and a deliberate note about which rules must
+*not* be duplicated client-side (a login form never re-checks password length, or everyone who
+registered before the rule changed is locked out).
 
 Then rewrite your feature components to call the hooks instead of `useLtms()` + store functions,
 and delete the store functions you replaced.
@@ -187,8 +223,20 @@ request to Person 1 instead of editing:
 |---|---|---|
 | `shared/selectors.ts` | 82 | everyone |
 | `shared/career.ts` | 108 | `player/` `profile/` `team/` — Persons 1 and 4 |
-| `components/kit/Scorebug.tsx` | 54 | `match/` (P3) and `watch/` (P1) |
-| `components/kit/primitives.tsx` | 176 | everyone |
+| `components/kit/primitives.tsx` | 190 | everyone |
+| `components/kit/Scorebug.tsx` | 99 | `match/` (P3) and `watch/` (P1) |
+| `components/kit/chips.tsx` | 74 | everyone |
+| `components/kit/viewModels.ts` | 55 | everyone |
+
+**The kit rule is now narrower than "ask before touching".** Since the split, each of those kit files
+has two layers, and they are governed differently:
+
+- the **view layer** (`TeamChipView`, `TeamLinkView`, `PlayerLinkView`, `TeamMarkView`,
+  `ScorebugView`, `MatchStateBadge`) is the shared contract — use it freely from any slice with your
+  own data, no permission needed. That is what it was built for.
+- the **store-backed layer** (`TeamChip`, `TeamLink`, `PlayerLink`, `TeamMark`, `Scorebug`,
+  `StatusBadge`) and `viewModels.ts` stay Person 1's. Changing a prop there breaks every caller, so
+  ask first.
 
 `toggleFollow` is no longer on this list — it moved into Person 1's Engagement slice along with the
 screens that call it, which is what made it cross-cutting in the first place.
@@ -280,7 +328,9 @@ and cannot corrupt anything when it is wrong.
 1. **DTO + mock + api + hooks** for your domain — four new files, touches nobody
 2. **One read-only screen** wired to a query hook — proves the chain
 3. **Remaining read screens**
-4. **Write screens** — mutations, optimistic updates, error states
+4. **Write screens** — React Hook Form + Zod against your domain schema, mutations, error states.
+   Field-level errors come back from the API in `ApiErrorBody.fields`; feed them to the form rather
+   than showing a banner
 5. **Delete the store functions you replaced**, and the `rules.ts` helpers only your domain used
 
 Person 3's Match slice is at step 1 complete (`match.dto.ts`, `match.mock.ts`, `api/match.ts`,
