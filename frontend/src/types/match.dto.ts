@@ -73,6 +73,32 @@ export interface MatchDto {
   updatedAt: string | null;
   /** TODO(schema): `matches` ยังไม่มีคอลัมน์ livestream_url — E12 รอ schema แก้ก่อน */
   livestreamUrl?: string | null;
+
+  // ── สิ่งที่หน้าแมตช์ต้องใช้ และ server รู้อยู่แล้ว ────────────────────────
+  /** ทัวร์นาเมนต์ที่สังกัด — พอสำหรับ breadcrumb กับประโยค "ได้แชมป์" */
+  tournament: {
+    id: number;
+    name: string;
+    /** ทีมที่ได้แชมป์ — null ถ้ายังไม่จบ */
+    championTeamId: number | null;
+  };
+  /**
+   * ชื่อรอบที่อ่านออก server คำนวณให้
+   * `stage` = "Quarter-final" · `tag` = "QF1" (มาจาก bracket_nodes.node_code)
+   * frontend คำนวณเองไม่ได้ถ้าไม่ดึงทั้งสายมา — และมันเป็นข้อมูลของสไลซ์ 2
+   */
+  stage: string;
+  tag: string;
+  /** กรรมการที่ถูกมอบหมายให้แมตช์นี้ (match_referees) */
+  referees: PlayerRef[];
+  /** ห้องแข่งสำหรับโหมด online */
+  roomCode: string | null;
+  /** ลิงก์วิดีโอย้อนหลัง */
+  replayUrl: string | null;
+  checkedIn: number;
+  lineupSize: number;
+  /** สิ่งที่คนที่กำลังดูอยู่ทำได้ */
+  viewer: MatchViewerContext;
 }
 
 /**
@@ -83,20 +109,55 @@ export interface MatchDto {
 export type MatchViewerRole = "referee" | "player" | "organizer";
 
 /**
+ * สิ่งที่ "คนที่กำลังดูอยู่" ทำได้กับแมตช์นี้ — ตัดสินโดย server
+ *
+ * โค้ดเดิมคำนวณเองทั้งหมด: ไล่ดูว่าอยู่ใน `m.refs` ไหม, เป็น organizer ของ
+ * ทัวร์นาเมนต์ไหม, เป็นหัวหน้าของทีมที่ชนะไหม แล้วเอามาผสมกับสถานะแมตช์
+ * เป็นต้นไม้เงื่อนไข — ซึ่งมีปัญหาสองข้อ
+ *
+ *   1. backend ต้องเช็คซ้ำอยู่ดี (ห้ามเชื่อ client) กติกาเดียวกันจึงถูกเขียนสองที่
+ *      และจะเพี้ยนจากกันวันใดวันหนึ่ง
+ *   2. frontend ต้องโหลด roster ทุกทีม + รายชื่อกรรมการ มาตอบคำถามที่ server
+ *      ตอบได้อยู่แล้วในคำสั่งเดียว
+ *
+ * ที่นี่ server บอกว่าทำอะไรได้ · UI แค่วาดตาม
+ * ⚠️ ยังไม่ยืนยันกับ GUIDE/06 — ดู TODO(guide) ใน api/match.ts
+ */
+export interface MatchViewerContext {
+  roles: MatchViewerRole[];
+  /** ทีมของเราในแมตช์นี้ — null ถ้าไม่ได้ลงเล่น */
+  myTeamId: number | null;
+  /** เป็นหัวหน้าทีมของทีมที่ลงแมตช์นี้ */
+  isTeamLeader: boolean;
+  can: {
+    /** กรอกผล (S01) — onsite = กรรมการ · online = หัวหน้าทีมที่ชนะ */
+    submitResult: boolean;
+    /** ยืนยันผลที่คนอื่นส่ง — สลับกับข้างบนตามโหมด */
+    verifyResult: boolean;
+    /** ค้านผล — เฉพาะ onsite, online ใช้การตรวจของกรรมการแทน */
+    disputeResult: boolean;
+    /** ตัดสินข้อพิพาท — organizer/admin เท่านั้น */
+    resolveDispute: boolean;
+    /** แก้เวลา สนาม กรรมการ */
+    editFixture: boolean;
+    /** บันทึกสถิติผู้เล่น */
+    recordStats: boolean;
+    /** เปิดคอนโซลเช็คอิน */
+    manageCheckin: boolean;
+  };
+}
+
+/**
  * แถวในหน้ารายการแมตช์ — denormalize มาให้พร้อมใช้ กัน N+1
  * ถ้าไม่มี tournamentName / score / checkedIn ติดมาด้วย หน้า list ต้องยิงเพิ่มอีก 3 request ต่อแถว
  */
 export interface MatchListItemDto extends MatchDto {
-  tournamentName: string;
-  /** ทัวร์นาเมนต์นี้เล่นแบบไหน — RefCard ใช้ตัดสินว่าใครต้องขยับก่อน */
-  tournamentMode: Mode;
-  viewerRoles: MatchViewerRole[];
-  /** สกอร์ถูกดึงขึ้นมาจาก match_results.score_data ให้แล้ว — null = ยังไม่มีผล */
+  /**
+   * สกอร์ถูกดึงขึ้นมาจาก match_results.score_data ให้แล้ว — null = ยังไม่มีผล
+   * หน้า list ต้องการแค่ตัวเลข ไม่ต้องการ MatchResultDto ทั้งก้อน
+   */
   score: { a: number | null; b: number | null } | null;
   resultStatus: MatchResultStatus | null;
-  checkedIn: number;
-  /** จำนวนคนที่ต้องเช็คอินทั้งหมด (สองทีมรวมกัน) — ตัวหารของ "3 / 10" */
-  lineupSize: number;
 }
 
 /** PATCH /matches/:id — จัดตาราง/สนาม/เวลาเปิดเช็คอิน */

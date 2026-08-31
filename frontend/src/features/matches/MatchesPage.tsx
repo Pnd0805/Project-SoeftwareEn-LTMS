@@ -12,7 +12,7 @@
  * ข้อมูลแมตช์มาจาก `useMyMatches()` ไม่ใช่ `useLtms()` — ซึ่งแปลว่าหน้านี้เป็น
  * หน้าแรกในแอปที่เป็น async จริง จึงมี loading/error state ที่เดิมไม่เคยต้องมี
  *
- * `viewerRoles` มาจาก server: มันรู้อยู่แล้วว่าเราเกี่ยวข้องกับแมตช์นี้ในฐานะอะไร
+ * `viewer.roles` มาจาก server: มันรู้อยู่แล้วว่าเราเกี่ยวข้องกับแมตช์นี้ในฐานะอะไร
  * ดีกว่าให้ frontend เดาเอาจาก roster ซึ่งต้องโหลดทีมทุกทีมมาไล่ดู
  *
  * ⚠️ กล่อง "คำเชิญเป็นกรรมการ" ยังใช้ store อยู่ — `refInvites` กับ
@@ -40,7 +40,7 @@ function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
     <button type="button" className="panel quiet capsule vstack refcard" onClick={onPick}
       style={{ gap: 10, textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit', cursor: 'pointer' }}>
       <div className="spread">
-        <span className="tag"><em>//</em> {m.tournamentName}</span>
+        <span className="tag"><em>//</em> {m.tournament.name}</span>
         <MatchStateBadge state={matchStateOf(m)} />
       </div>
       <div className="hstack" style={{ gap: 9 }}>
@@ -84,7 +84,7 @@ function MatchTable({ list }: { list: MatchListItemDto[] }) {
           {list.map(m => (
             <tr key={m.id}>
               <td className="num">{m.scheduledTime ? fmtDate(m.scheduledTime) : '—'}</td>
-              <td className="sub">{m.tournamentName}</td>
+              <td className="sub">{m.tournament.name}</td>
               <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
               <td className="tag">vs</td>
               <td><TeamLinkView team={toTeamView(m.teamB)} /></td>
@@ -111,7 +111,7 @@ function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void
   return (
     <>
       <div className="spread">
-        <span className="tag"><em>//</em> {m.tournamentName}</span>
+        <span className="tag"><em>//</em> {m.tournament.name}</span>
         <MatchStateBadge state={matchStateOf(m)} />
       </div>
       <div className="hstack" style={{ gap: 9 }}>
@@ -124,7 +124,7 @@ function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void
         <button className="who" type="button" onClick={() => go(`/m/${m.id}`)}>
           <span className="meta"><b>{primary}</b><span className="tag">Match page</span></span><Icon name="chev" size={13} />
         </button>
-        {m.tournamentMode === 'onsite' ? (
+        {m.mode === 'onsite' ? (
           <button className="who" type="button" onClick={() => go(`/checkin/${m.id}`)}>
             <span className="meta"><b>Check-in console</b><span className="tag">{m.checkedIn} checked in</span></span>
             <Icon name="chev" size={13} />
@@ -203,9 +203,9 @@ export function MatchesPage() {
   }
 
   const all = data.items
-  const asRef = all.filter(m => m.viewerRoles.includes('referee'))
-  const asPlayer = all.filter(m => m.viewerRoles.includes('player'))
-  const asOrg = all.filter(m => m.viewerRoles.includes('organizer'))
+  const asRef = all.filter(m => m.viewer.roles.includes('referee'))
+  const asPlayer = all.filter(m => m.viewer.roles.includes('player'))
+  const asOrg = all.filter(m => m.viewer.roles.includes('organizer'))
   const orgDisputes = asOrg.filter(m => matchStateOf(m) === 'disputed')
   const refOpen = asRef.filter(isOpen)
 

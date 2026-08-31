@@ -6,15 +6,15 @@
  * (id เป็น string, shape คนละแบบ) ส่วนไฟล์นี้เป็นรูปที่ "API จริงจะส่งกลับมา"
  *
  * ตั้งใจให้ครอบคลุมทุกสถานะที่ UI ต้องรับมือ — อย่าตัดออกเวลาแก้:
- *   m.301 completed + verified   → happy path
- *   m.302 disputed               → ResultTrail ต้องโชว์ timeline ข้อพิพาท
- *   m.303 checkin_open           → CheckinPage
- *   m.304 scheduled + ทีมยังไม่ครบ → TBD slot
+ *   301 completed + verified      กรรมการ · จบแล้ว ไม่มีอะไรให้ทำ
+ *   302 disputed                  ผู้จัด · ต้องตัดสินข้อพิพาท
+ *   303 checkin_open              กรรมการ + ผู้เล่น · ต้องกรอกผลและคุมเช็คอิน
+ *   304 scheduled + ยังไม่รู้คู่แข่ง  ผู้เล่น · TBD
  */
 import type {
   MatchDto,
   MatchListItemDto,
-  MatchViewerRole,
+  MatchViewerContext,
   MatchResultDto,
   MatchCheckinDto,
   PlayerMatchStatDto,
@@ -26,7 +26,7 @@ import type {
 const TZ = "+07:00";
 const iso = (d: string) => `${d}${TZ}`;
 
-// ── ทีมและผู้เล่น (ref เฉยๆ — เจ้าของจริงคือ Person 4) ──────────────────────
+// ── ทีมและผู้เล่น (ref เฉยๆ — เจ้าของจริงคือสไลซ์ 4) ────────────────────────
 export const mockTeams: Record<number, MatchTeamRef> = {
   11: { id: 11, name: "Byte Force", code: "BYT", color: "#E5484D", logoUrl: null },
   12: { id: 12, name: "Engineering United", code: "ENG", color: "#30A46C", logoUrl: null },
@@ -41,76 +41,104 @@ export const mockPlayers: Record<number, PlayerRef> = {
   9: { id: 9, fullName: "Rattana Admin", avatarUrl: null },
 };
 
+const TOURNAMENT = { id: 201, name: "Inter-Faculty Futsal 2026", championTeamId: null };
+
+/** ไม่มีสิทธิ์อะไรเลย — จุดตั้งต้นที่ทุกแมตช์เปิดจากตรงนี้แล้วเปิดเฉพาะที่ควรได้ */
+const noPowers: MatchViewerContext["can"] = {
+  submitResult: false, verifyResult: false, disputeResult: false, resolveDispute: false,
+  editFixture: false, recordStats: false, manageCheckin: false,
+};
+
+const viewer = (
+  roles: MatchViewerContext["roles"],
+  can: Partial<MatchViewerContext["can"]> = {},
+  extra: Partial<Pick<MatchViewerContext, "myTeamId" | "isTeamLeader">> = {},
+): MatchViewerContext => ({
+  roles,
+  myTeamId: extra.myTeamId ?? null,
+  isTeamLeader: extra.isTeamLeader ?? false,
+  can: { ...noPowers, ...can },
+});
+
+type MatchSeed = Partial<MatchDto> & Pick<MatchDto, "id" | "status" | "mode" | "viewer" | "stage" | "tag">;
+
+/** ค่าตั้งต้นของแมตช์ — เขียนเฉพาะที่ต่างจากนี้ */
+const mk = (seed: MatchSeed): MatchDto => ({
+  tournamentId: TOURNAMENT.id,
+  tournament: TOURNAMENT,
+  bracketNodeId: null,
+  nextMatchId: null,
+  loserNextMatchId: null,
+  roundNumber: 1,
+  teamA: null,
+  teamB: null,
+  scheduledTime: null,
+  venue: null,
+  checkinOpenAt: null,
+  createdAt: iso("2026-02-20T09:00:00"),
+  updatedAt: null,
+  referees: [],
+  roomCode: null,
+  replayUrl: null,
+  checkedIn: 0,
+  lineupSize: 10,
+  ...seed,
+});
+
 // ── Matches ────────────────────────────────────────────────────────────────
 export const mockMatches: MatchDto[] = [
-  {
-    id: 301,
-    tournamentId: 201,
-    bracketNodeId: 401,
-    nextMatchId: 305,
-    loserNextMatchId: null,
-    roundNumber: 1,
-    teamA: mockTeams[11],
-    teamB: mockTeams[12],
+  mk({
+    id: 301, stage: "Semi-final", tag: "SF1",
+    bracketNodeId: 401, nextMatchId: 305,
+    teamA: mockTeams[11], teamB: mockTeams[12],
     scheduledTime: iso("2026-03-08T13:00:00"),
     venue: "Indoor Court 1",
     checkinOpenAt: iso("2026-03-08T12:00:00"),
-    status: "completed",
-    mode: "onsite",
-    createdAt: iso("2026-02-20T09:00:00"),
+    status: "completed", mode: "onsite",
     updatedAt: iso("2026-03-08T15:10:00"),
-  },
-  {
-    id: 302,
-    tournamentId: 201,
-    bracketNodeId: 402,
-    nextMatchId: 305,
-    loserNextMatchId: null,
-    roundNumber: 1,
-    teamA: mockTeams[13],
-    teamB: mockTeams[14],
+    referees: [mockPlayers[3]],
+    replayUrl: "https://example.test/replay/301",
+    checkedIn: 10,
+    // ผลยืนยันแล้ว ไม่มีอะไรให้ใครทำอีก
+    viewer: viewer(["referee"], { recordStats: true }),
+  }),
+  mk({
+    id: 302, stage: "Semi-final", tag: "SF2",
+    bracketNodeId: 402, nextMatchId: 305,
+    teamA: mockTeams[13], teamB: mockTeams[14],
     scheduledTime: iso("2026-03-08T15:00:00"),
     venue: "Indoor Court 1",
     checkinOpenAt: iso("2026-03-08T14:00:00"),
-    status: "disputed",
-    mode: "onsite",
-    createdAt: iso("2026-02-20T09:00:00"),
+    status: "disputed", mode: "onsite",
     updatedAt: iso("2026-03-08T17:30:00"),
-  },
-  {
-    id: 303,
-    tournamentId: 201,
+    referees: [mockPlayers[3]],
+    checkedIn: 8,
+    // ผู้จัดเป็นคนเดียวที่ปิดข้อพิพาทได้
+    viewer: viewer(["organizer"], { resolveDispute: true }),
+  }),
+  mk({
+    id: 303, stage: "Final", tag: "F1",
     bracketNodeId: 403,
-    nextMatchId: null,
-    loserNextMatchId: null,
-    roundNumber: 1,
-    teamA: mockTeams[11],
-    teamB: mockTeams[13],
+    teamA: mockTeams[11], teamB: mockTeams[13],
     scheduledTime: iso("2026-03-09T13:00:00"),
     venue: "Indoor Court 2",
     checkinOpenAt: iso("2026-03-09T12:00:00"),
-    status: "checkin_open",
-    mode: "onsite",
-    createdAt: iso("2026-02-20T09:00:00"),
-    updatedAt: null,
-  },
-  {
-    id: 304,
-    tournamentId: 201,
-    bracketNodeId: 404,
-    nextMatchId: 305,
-    loserNextMatchId: null,
-    roundNumber: 1,
-    teamA: mockTeams[12],
-    teamB: null, // TBD — ยังไม่มีคู่แข่ง
-    scheduledTime: null,
-    venue: null,
-    checkinOpenAt: null,
-    status: "scheduled",
-    mode: "online",
-    createdAt: iso("2026-02-20T09:00:00"),
-    updatedAt: null,
-  },
+    status: "checkin_open", mode: "onsite",
+    referees: [mockPlayers[3]],
+    checkedIn: 3,
+    // onsite: กรรมการกรอกผล และคุมเช็คอิน · เราลงเล่นด้วยและเป็นหัวหน้าทีม
+    viewer: viewer(["referee", "player"],
+      { submitResult: true, manageCheckin: true, recordStats: true },
+      { myTeamId: 11, isTeamLeader: true }),
+  }),
+  mk({
+    id: 304, stage: "Round 1", tag: "R1-M4",
+    bracketNodeId: 404, nextMatchId: 305,
+    teamA: mockTeams[12], teamB: null,  // TBD — ยังไม่รู้คู่แข่ง
+    status: "scheduled", mode: "online",
+    roomCode: "LTMS-8842",
+    viewer: viewer(["player"], {}, { myTeamId: 12, isTeamLeader: false }),
+  }),
 ];
 
 // ── Results ────────────────────────────────────────────────────────────────
@@ -220,37 +248,14 @@ export const mockStandings: TournamentStandingDto[] = [
 ];
 
 // ── รายการแมตช์ของฉัน (หน้า /matches) ─────────────────────────────────────
-/**
- * ประกอบจาก mockMatches ด้านบน ไม่ได้พิมพ์ซ้ำ — แก้ที่เดียวแล้วตรงกันหมด
- * viewerRoles จำลองคนที่สวมสามหมวกพร้อมกัน เพื่อให้หน้า list โชว์ครบทุกกลุ่ม
- */
-const VIEWER_ROLES: Record<number, MatchViewerRole[]> = {
-  301: ["referee"],
-  302: ["organizer"],
-  303: ["referee", "player"],
-  304: ["player"],
-};
-
-const CHECKED_IN: Record<number, [number, number]> = {
-  301: [10, 10],
-  302: [8, 10],
-  303: [3, 10],
-  304: [0, 10],
-};
-
+/** ประกอบจาก mockMatches ไม่ได้พิมพ์ซ้ำ — แก้ที่เดียวแล้วตรงกันหมด */
 export const mockMyMatches: MatchListItemDto[] = mockMatches.map((m) => {
   const result = mockResults.find((r) => r.matchId === m.id);
   const sd = result?.scoreData as { a?: number; b?: number } | null | undefined;
-  const [checkedIn, lineupSize] = CHECKED_IN[m.id] ?? [0, 0];
   return {
     ...m,
-    tournamentName: "Inter-Faculty Futsal 2026",
-    tournamentMode: m.mode,
-    viewerRoles: VIEWER_ROLES[m.id] ?? [],
     score: sd ? { a: sd.a ?? null, b: sd.b ?? null } : null,
     resultStatus: result?.status ?? null,
-    checkedIn,
-    lineupSize,
   };
 });
 

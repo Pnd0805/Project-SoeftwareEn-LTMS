@@ -52,8 +52,8 @@ export const REF_BUCKETS = {
 export type RefBucket = keyof typeof REF_BUCKETS
 
 export function refBucketOf(m: MatchListItemDto): RefBucket {
-  if (m.tournamentMode === 'onsite' && m.resultStatus === null && m.status !== 'completed') return 'score'
-  if (m.tournamentMode === 'online' && m.resultStatus === 'submitted') return 'confirm'
+  if (m.mode === 'onsite' && m.resultStatus === null && m.status !== 'completed') return 'score'
+  if (m.mode === 'online' && m.resultStatus === 'submitted') return 'confirm'
   return 'waiting'
 }
 
