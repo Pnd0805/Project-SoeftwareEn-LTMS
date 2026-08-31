@@ -39,6 +39,7 @@ export const matchKeys = {
   byTournament: (tid: number) => ["matches", "tournament", tid] as const,
   mine: ["matches", "mine"] as const,
   standings: (tid: number) => ["standings", tid] as const,
+  statDefs: (sportTypeId: number) => ["match", "statDefinitions", sportTypeId] as const,
 };
 
 /**
@@ -113,6 +114,16 @@ export function useStandings(tournamentId: number | undefined) {
     queryFn: () => matchApi.getStandings(tournamentId as number),
     enabled: tournamentId !== undefined,
   });
+}
+
+/** กติกาสถิติของกีฬาแทบไม่เปลี่ยน — ไม่ต้อง refetch ระหว่าง session */
+export function useStatDefinitions(sportTypeId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.statDefs(sportTypeId as number),
+    queryFn: () => matchApi.getStatDefinitions(sportTypeId as number),
+    enabled: sportTypeId !== undefined,
+    staleTime: Infinity,
+  })
 }
 
 // ══════════════ mutations ══════════════

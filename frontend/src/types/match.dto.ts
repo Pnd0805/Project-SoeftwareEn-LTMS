@@ -42,6 +42,17 @@ export interface MatchTeamRef {
   code: string;
   color: string | null;
   logoUrl: string | null;
+  /**
+   * ผู้เล่นที่ลงแมตช์นี้ได้ — server เป็นคนตัดสินว่าใครเข้าเกณฑ์
+   *
+   * ⚠️ CONTEXT.md นิยาม Squad list (ชุดที่ส่งลงทัวร์นาเมนต์) กับ Lineup
+   *    (ชุดที่ลงแมตช์) ไว้ แต่ **ทั้งสองอย่างไม่มีตารางใน schema** —
+   *    `tournament_applications` ไม่มีคอลัมน์รายชื่อ และไม่มีตาราง lineup เลย
+   *    ที่มีคือ `team_members.position` ซึ่งเป็นตัวจริง/สำรอง **ระดับทีม**
+   *    ตรงกับ SRS FR-TM-04 (Team Management) ไม่ใช่ระดับแมตช์
+   *    ดู PLAN.md หัวข้อ Blocked — ต้องตัดสินใจก่อนสร้างหน้า Lineup ใหม่
+   */
+  players: PlayerRef[];
 }
 
 export interface PlayerRef {
@@ -81,6 +92,9 @@ export interface MatchDto {
     name: string;
     /** ทีมที่ได้แชมป์ — null ถ้ายังไม่จบ */
     championTeamId: number | null;
+    /** ชนิดกีฬา — ตัวกำหนดว่าแมตช์นี้เก็บสถิติอะไรบ้าง */
+    sportTypeId: number;
+    sportName: string;
   };
   /**
    * ชื่อรอบที่อ่านออก server คำนวณให้

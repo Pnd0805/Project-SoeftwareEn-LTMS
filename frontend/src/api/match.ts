@@ -31,6 +31,7 @@ import type {
   VerifyCheckinRequest,
   SaveMatchStatsRequest,
 } from "../types/match.dto";
+import type { StatDefinition } from "../types/dto";
 import {
   mockMatches,
   mockMyMatches,
@@ -38,6 +39,7 @@ import {
   mockCheckins,
   mockStats,
   mockStandings,
+  mockStatDefinitions,
   mockPlayers,
   takeNextMockId,
 } from "../mocks/match.mock";
@@ -289,6 +291,18 @@ export async function saveMatchStats(
     return mockDelay({ items: mockStats.filter((s) => s.matchId === matchId) });
   }
   return apiFetch(`/matches/${matchId}/stats`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+/**
+ * TODO(guide): GET /sport-types/:id/stat-definitions
+ * "กีฬานี้เก็บสถิติอะไรบ้าง" — ตาราง sport_stat_definitions เป็นของสไลซ์ 3
+ * แทนที่ statLabels()/statExtra() ใน rules.ts ที่ hardcode ตามชื่อกีฬา
+ */
+export async function getStatDefinitions(sportTypeId: number): Promise<{ items: StatDefinition[] }> {
+  if (USE_MOCK) {
+    return mockDelay({ items: mockStatDefinitions[sportTypeId] ?? mockStatDefinitions[0] });
+  }
+  return apiFetch(`/sport-types/${sportTypeId}/stat-definitions`);
 }
 
 // ══════════════ Standings ══════════════

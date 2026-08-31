@@ -22,16 +22,17 @@ import type {
   MatchTeamRef,
   PlayerRef,
 } from "../types/match.dto";
+import type { StatDefinition } from "../types/dto";
 
 const TZ = "+07:00";
 const iso = (d: string) => `${d}${TZ}`;
 
 // ── ทีมและผู้เล่น (ref เฉยๆ — เจ้าของจริงคือสไลซ์ 4) ────────────────────────
 export const mockTeams: Record<number, MatchTeamRef> = {
-  11: { id: 11, name: "Byte Force", code: "BYT", color: "#E5484D", logoUrl: null },
-  12: { id: 12, name: "Engineering United", code: "ENG", color: "#30A46C", logoUrl: null },
-  13: { id: 13, name: "Circuit Breakers", code: "CIR", color: "#F5D90A", logoUrl: null },
-  14: { id: 14, name: "Null Pointers", code: "NUL", color: "#8E4EC6", logoUrl: null },
+  11: { id: 11, name: "Byte Force", code: "BYT", color: "#E5484D", logoUrl: null, players: [] },
+  12: { id: 12, name: "Engineering United", code: "ENG", color: "#30A46C", logoUrl: null, players: [] },
+  13: { id: 13, name: "Circuit Breakers", code: "CIR", color: "#F5D90A", logoUrl: null, players: [] },
+  14: { id: 14, name: "Null Pointers", code: "NUL", color: "#8E4EC6", logoUrl: null, players: [] },
 };
 
 export const mockPlayers: Record<number, PlayerRef> = {
@@ -41,7 +42,36 @@ export const mockPlayers: Record<number, PlayerRef> = {
   9: { id: 9, fullName: "Rattana Admin", avatarUrl: null },
 };
 
-const TOURNAMENT = { id: 201, name: "Inter-Faculty Futsal 2026", championTeamId: null };
+/** ผู้เล่นที่ลงแมตช์ได้ของแต่ละทีม — ผูกหลัง mockPlayers ถูกประกาศแล้ว */
+mockTeams[11].players = [mockPlayers[1], mockPlayers[2]];
+mockTeams[12].players = [mockPlayers[2], mockPlayers[9]];
+mockTeams[13].players = [mockPlayers[3], mockPlayers[9]];
+mockTeams[14].players = [mockPlayers[1], mockPlayers[3]];
+
+const TOURNAMENT = {
+  id: 201,
+  name: "Inter-Faculty Futsal 2026",
+  championTeamId: null,
+  sportTypeId: 5,
+  sportName: "Futsal",
+};
+
+/**
+ * "กีฬานี้เก็บสถิติอะไรบ้าง" — ตาราง sport_stat_definitions
+ * key 0 คือชุดกลางสำหรับกีฬาที่ยังไม่ได้นิยาม
+ * ⚠️ dataType 'decimal'/'boolean' เก็บจริงไม่ได้ — player_match_stat_values มีแค่ value_int
+ */
+export const mockStatDefinitions: Record<number, StatDefinition[]> = {
+  5: [
+    { statDefinitionId: 1, statKey: "goals", statLabelTh: "ประตู", dataType: "integer", displayOrder: 1 },
+    { statDefinitionId: 2, statKey: "assists", statLabelTh: "แอสซิสต์", dataType: "integer", displayOrder: 2 },
+    { statDefinitionId: 3, statKey: "yellow_cards", statLabelTh: "ใบเหลือง", dataType: "integer", displayOrder: 3 },
+    { statDefinitionId: 4, statKey: "red_cards", statLabelTh: "ใบแดง", dataType: "integer", displayOrder: 4 },
+  ],
+  0: [
+    { statDefinitionId: 90, statKey: "points", statLabelTh: "แต้ม", dataType: "integer", displayOrder: 1 },
+  ],
+};
 
 /** ไม่มีสิทธิ์อะไรเลย — จุดตั้งต้นที่ทุกแมตช์เปิดจากตรงนี้แล้วเปิดเฉพาะที่ควรได้ */
 const noPowers: MatchViewerContext["can"] = {
