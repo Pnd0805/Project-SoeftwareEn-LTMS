@@ -18,7 +18,6 @@ import type {
   MatchResultDto,
   MatchCheckinDto,
   PlayerMatchStatDto,
-  TournamentStandingDto,
   MatchTeamRef,
   PlayerRef,
 } from "../types/match.dto";
@@ -280,13 +279,6 @@ export const mockStats: PlayerMatchStatDto[] = [
   },
 ];
 
-// ── Standings ──────────────────────────────────────────────────────────────
-export const mockStandings: TournamentStandingDto[] = [
-  { tournamentId: 201, team: mockTeams[11], played: 1, won: 1, lost: 0, points: 3, updatedAt: iso("2026-03-08T15:10:00"), rank: 1 },
-  { tournamentId: 201, team: mockTeams[13], played: 1, won: 1, lost: 0, points: 3, updatedAt: iso("2026-03-08T17:05:00"), rank: 1 },
-  { tournamentId: 201, team: mockTeams[12], played: 1, won: 0, lost: 1, points: 0, updatedAt: iso("2026-03-08T15:10:00"), rank: 3 },
-  { tournamentId: 201, team: mockTeams[14], played: 1, won: 0, lost: 1, points: 0, updatedAt: iso("2026-03-08T17:05:00"), rank: 3 },
-];
 
 // ── รายการแมตช์ของฉัน (หน้า /matches) ─────────────────────────────────────
 /** ประกอบจาก mockMatches ไม่ได้พิมพ์ซ้ำ — แก้ที่เดียวแล้วตรงกันหมด */

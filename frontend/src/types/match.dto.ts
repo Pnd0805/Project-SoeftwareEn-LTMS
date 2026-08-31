@@ -321,21 +321,71 @@ export interface SaveMatchStatsRequest {
 // ══════════════ Standings — ตาราง `tournament_standings` ══════════════
 
 /**
- * ตาราง `tournament_standings` เก็บแค่ played/won/lost/points
- * ไม่มี drawn / goalsFor / goalsAgainst — แต่ UI ที่ port มา (rules.ts `BoardRow`)
- * ใช้ gf/ga/gd/form ในการจัดอันดับ round robin
+ * ── ตารางอันดับ ────────────────────────────────────────────────────────────
  *
- * ⚠️ ช่องว่างนี้ต้องคุยกับทีม: จะให้ backend คำนวณส่งมา หรือ frontend คำนวณจาก
- *    รายการแมตช์เอง ดูหัวข้อ "ของค้างที่ต้องตัดสินใจ" ในแผนงาน
+ * FRONTEND-SPEC กำหนดว่าสามฟอร์แมตอ่านคนละแบบ และนั่นคือเหตุผลที่ต้องมี wrapper
+ * ไม่ใช่แค่ array ของแถว — UI ต้องรู้ฟอร์แมตก่อนถึงจะรู้ว่าคอลัมน์ไหนมีความหมาย
+ *
+ *   single elimination  จัดอันดับตามรอบที่ตกรอบ · ทีมที่ตกรอบเดียวกันได้อันดับเท่ากัน
+ *                       **ไม่มีคอลัมน์ Lost** เพราะมันเป็น 0 หรือ 1 เสมอ ไม่บอกอะไร
+ *   double elimination  จัดอันดับตามรอบที่แพ้ครั้งที่สอง · Lost เป็น 0 หรือ 2 เสมอ ตัดออกเหมือนกัน
+ *   round robin         ตารางเต็ม · Lost กับ Level มีความหมายจริงเพราะมันแปรผัน
+ *
+ * SRS FR-RS-05 ให้ backend คำนวณใหม่ทุกครั้งที่ผลถูกยืนยัน frontend อ่านอย่างเดียว
+ * (FRONTEND-SPEC เขียนว่า "derived, never stored" — หมายถึงฝั่ง client ไม่เก็บ
+ *  ส่วน `tournament_standings` เป็น cache ที่ backend คำนวณลงไป)
  */
-export interface TournamentStandingDto {
-  tournamentId: number;
+export type StandingsFormat = "single_elimination" | "double_elimination" | "round_robin";
+
+/** ผลนัดล่าสุด — elimination มีแค่ W/L · round robin มี D ด้วย */
+export type FormResult = "W" | "D" | "L";
+
+export interface StandingRowDto {
   team: MatchTeamRef;
+  /** ทีมที่คะแนนเท่ากันได้อันดับเดียวกัน */
+  rank: number;
   played: number;
   won: number;
   lost: number;
   points: number;
+
+  /**
+   * ── round robin เท่านั้น ────────────────────────────────────────────────
+   * ⚠️ TODO(schema): `tournament_standings` มีแค่ played / won / lost / points
+   *    สามตัวนี้ยังไม่มีคอลัมน์รองรับ ต้องเพิ่ม:
+   *      ALTER TABLE tournament_standings
+   *        ADD level          INT NOT NULL DEFAULT 0,
+   *        ADD scored_for     INT NOT NULL DEFAULT 0,
+   *        ADD scored_against INT NOT NULL DEFAULT 0;
+   *
+   *    ตั้งใจไม่ตั้งชื่อว่า goals — FRONTEND-SPEC ระบุว่า "a scoreline is not
+   *    always goals" วอลเลย์บอลนับเซ็ต หมากรุกนับผล เรียก goals คือฝังฟุตบอล
+   *    ลงไปใน schema ถาวร · scoreDifference ไม่ต้องเป็นคอลัมน์ คำนวณจากสองตัวข้างบน
+   */
+  level: number;
+  scoredFor: number;
+  scoredAgainst: number;
+  scoreDifference: number;
+
+  /**
+   * ผลห้านัดหลัง เรียงเก่า→ใหม่ — คำนวณจากประวัติแมตช์ ไม่ใช่คอลัมน์ในตาราง
+   * backend คำนวณส่งมา ไม่ควรให้ frontend ดึงทุกแมตช์มานับเอง
+   */
+  form: FormResult[];
+
+  /**
+   * ── elimination เท่านั้น ────────────────────────────────────────────────
+   * ป้ายบอกว่าจบตรงไหน เช่น "Quarter-final" หรือ "Champion"
+   * server เป็นคนตั้งชื่อรอบ เพราะต้องรู้ว่าสายมีกี่รอบ
+   */
+  outLabel: string;
+}
+
+export interface StandingsDto {
+  tournamentId: number;
+  format: StandingsFormat;
+  /** ชื่อสิ่งที่นับ — Goals / Points / Sets / Games / Rounds / Result */
+  scoreUnit: string;
   updatedAt: string;
-  /** อันดับที่ backend คำนวณให้ — ทีมที่คะแนนเท่ากันได้ rank เดียวกัน */
-  rank: number;
+  rows: StandingRowDto[];
 }

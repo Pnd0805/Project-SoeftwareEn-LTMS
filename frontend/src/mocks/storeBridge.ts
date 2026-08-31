@@ -28,11 +28,11 @@
  */
 import { getState } from '../shared/store'
 import { isOrg, me, team, tour } from '../shared/selectors'
-import { standings, winnerId } from '../shared/rules'
+import { formatOf, leaderboard, scoreUnit, winnerId } from '../shared/rules'
 import type { Match as StoreMatch, State, Team as StoreTeam } from '../shared/types'
 import type {
   MatchDto, MatchListItemDto, MatchResultDto, MatchTeamRef, MatchViewerContext,
-  MatchViewerRole, PlayerRef, TournamentStandingDto,
+  MatchViewerRole, PlayerRef, StandingsDto, StandingsFormat, FormResult,
 } from '../types/match.dto'
 
 /** id ที่มาจาก URL — ตัวเลขของ API หรือ string ของ store ก็ได้ */
@@ -202,28 +202,47 @@ export function findStoreTournamentMatches(ref: MatchRef): StoreMatch[] {
 }
 
 /**
- * ตารางคะแนนจาก seed — ใช้ `standings()` ใน rules.ts คำนวณ
- * ของจริง backend เป็นคนคำนวณตอนยืนยันผล (SRS FR-RS-05) นี่แค่ให้เดโมมีข้อมูลดู
+ * ตารางอันดับจาก seed — `leaderboard()` ใน rules.ts รู้จักทั้งสามฟอร์แมตอยู่แล้ว
+ * (คัดออกอ่านเป็นรอบที่ตกรอบ · พบกันหมดอ่านเป็นตารางคะแนน)
+ * ของจริง backend คำนวณตอนยืนยันผล (SRS FR-RS-05) นี่แค่ให้เดโมมีข้อมูลดู
  */
-export function findStoreStandings(ref: MatchRef): TournamentStandingDto[] {
+const FORMAT: Record<string, StandingsFormat> = {
+  single: 'single_elimination',
+  double: 'double_elimination',
+  roundrobin: 'round_robin',
+}
+
+export function findStoreStandings(ref: MatchRef): StandingsDto | null {
   const s = getState()
   const raw = String(ref)
   const t = s.tournaments.find(x => x.id === raw) ?? s.tournaments.find(x => numOf(x.id) === Number(ref))
-  if (!t) return []
-  return standings(s, t).map(row => {
-    const tm = team(s, row.team)
-    return {
-      tournamentId: numOf(t.id),
-      team: tm ? asTeam(s, tm, { a: null, b: null, lineup: {} } as unknown as StoreMatch)!
-        : { id: 0, name: '—', code: '—', color: null, logoUrl: null, players: [] },
-      played: row.p,
-      won: row.w,
-      lost: row.l,
-      points: row.pts,
-      updatedAt: new Date().toISOString(),
-      rank: row.rank,
-    }
-  })
+  if (!t) return null
+  const blank: MatchTeamRef = { id: 0, name: '—', code: '—', color: null, logoUrl: null, players: [] }
+  return {
+    tournamentId: numOf(t.id),
+    format: FORMAT[formatOf(t)] ?? 'single_elimination',
+    scoreUnit: scoreUnit(t.sport),
+    updatedAt: new Date().toISOString(),
+    rows: leaderboard(s, t).map(row => {
+      const tm = team(s, row.team)
+      return {
+        team: tm
+          ? { id: numOf(tm.id), name: tm.name, code: tm.code, color: tm.color, logoUrl: tm.logo ?? null, players: [] }
+          : blank,
+        rank: row.rank,
+        played: row.p,
+        won: row.w,
+        lost: row.l,
+        points: row.pts,
+        level: row.d,
+        scoredFor: row.gf,
+        scoredAgainst: row.ga,
+        scoreDifference: row.gd,
+        form: (row.form ?? []) as FormResult[],
+        outLabel: row.outLabel ?? '',
+      }
+    }),
+  }
 }
 
 /**
