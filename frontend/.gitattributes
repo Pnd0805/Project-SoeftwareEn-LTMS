@@ -1,0 +1,27 @@
+# ── บรรทัดจบท้าย (line endings) ────────────────────────────────────────────
+# ทีมนี้ทำงานบน Windows แต่ไฟล์ในรีโปเป็น LF — ถ้าไม่บังคับตรงนี้ จะเกิดอาการที่
+# เจอมาแล้วจริงๆ ในโปรเจกต์นี้: `npm install` เขียน package-lock.json ใหม่เป็น CRLF
+# แล้ว git แสดง diff ทั้งไฟล์ 6,858 บรรทัด ทั้งที่เนื้อหาเหมือนเดิมทุกตัวอักษร
+# จน pull ไม่ผ่านเพราะ "local changes would be overwritten"
+#
+# `text=auto eol=lf` = เก็บใน repo เป็น LF เสมอ ส่วนใน working copy ปล่อยตาม OS
+# ผลคือไม่มีใครเห็น diff ปลอม และ conflict ที่ไม่ใช่ conflict จริงจะหายไป
+
+* text=auto eol=lf
+
+# ไฟล์ที่ห้ามแตะ byte เด็ดขาด
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+
+# ── ลด noise ตอนรีวิว PR ───────────────────────────────────────────────────
+# lockfile เปลี่ยนทีเป็นพันบรรทัด ไม่มีใครอ่าน — ยุบใน diff แต่ยัง merge ปกติ
+package-lock.json linguist-generated=true diff=lockfile
