@@ -25,6 +25,7 @@ import { ScorebugView } from '../../components/kit/Scorebug'
 import {
   useMatch, useResult, useVerifyResult, useDisputeResult, useResolveDispute, useSetLivestream,
 } from '../../hooks/useMatch'
+import { tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
 import { ResultForm } from './ResultForm'
 import { ResultTrail } from './ResultTrail'
@@ -231,7 +232,7 @@ export function MatchPage() {
 
   return (
     <>
-      <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${m.tournament.id}`) }}>{m.tag}</Crumb>
+      <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}`) }}>{m.tag}</Crumb>
       <div className="spread">
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
         <MatchStateBadge state={state} />

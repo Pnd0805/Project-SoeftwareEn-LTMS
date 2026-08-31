@@ -43,7 +43,7 @@ export type MatchRef = number | string
  * seed เป็น deterministic (PRNG seed เดียว) ลำดับจึงเหมือนกันทุกเครื่อง
  * ตัวเลขเริ่มที่ 100000 เพื่อไม่ชนกับ id ของ mock ที่เขียนมือ (301, 201, ...)
  */
-const numOf = (storeId: string) => {
+export const numOf = (storeId: string) => {
   let h = 0
   for (const c of storeId) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return 100000 + (h % 800000)
@@ -224,6 +224,19 @@ export function findStoreStandings(ref: MatchRef): TournamentStandingDto[] {
       rank: row.rank,
     }
   })
+}
+
+/**
+ * id ที่ใช้ "เดินทาง" ไปหน้าทัวร์นาเมนต์ — คนละเรื่องกับ id ใน DTO
+ *
+ * `TournamentPage` เป็นของสไลซ์ 2 และยังอ่าน store ล้วน ส่ง id ตัวเลขไปมันหาไม่เจอ
+ * ตัวนี้แปลงกลับเป็น id ของ store ให้ถ้าแปลงได้ ไม่งั้นคืนตัวเลขตามเดิม
+ * ลบทิ้งพร้อมไฟล์นี้ตอนสไลซ์ 2 ย้ายเสร็จ
+ */
+export function tournamentRouteId(id: number | string): string {
+  const raw = String(id)
+  const hit = getState().tournaments.find(t => t.id === raw || numOf(t.id) === Number(id))
+  return hit ? hit.id : raw
 }
 
 export const storeState = getState

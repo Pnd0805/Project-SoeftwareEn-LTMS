@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { useMatch, useUpdateMatch, useAssignReferees } from '../../hooks/useMatch'
+import { tournamentRouteId } from '../../mocks/storeBridge'
 
 /** datetime-local wants a local wall clock, not an ISO instant. */
 const toLocal = (iso: string | null) => {
@@ -50,7 +51,7 @@ export function FixturePage() {
   if (!m.viewer.can.editFixture) {
     return (
       <>
-        <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${m.tournament.id}`) }}>Fixture</Crumb>
+        <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}`) }}>Fixture</Crumb>
         <Empty icon="warn" title="403 — not yours to set"
           sub="Kick-off, venue and officials are the organizer's to place." />
       </>
@@ -70,14 +71,14 @@ export function FixturePage() {
       venue: venueVal || null,
     })
     await assign.mutateAsync(refsVal)
-    navigate(`/t/${m.tournament.id}/schedule`)
+    navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
   }
 
   const saving = update.isPending || assign.isPending
 
   return (
     <>
-      <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${m.tournament.id}/schedule`) }}>Fixture</Crumb>
+      <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`) }}>Fixture</Crumb>
       <div className="spread">
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
         {open

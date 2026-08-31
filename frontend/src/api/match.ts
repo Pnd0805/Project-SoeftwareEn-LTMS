@@ -33,7 +33,7 @@ import type {
 } from "../types/match.dto";
 import type { StatDefinition } from "../types/dto";
 import {
-  findStoreMatch, findStoreStandings, findStoreTournamentMatches, storeState,
+  findStoreMatch, findStoreStandings, findStoreTournamentMatches, numOf, storeState,
   toListItem, toMatchDto, toResultDto, type MatchRef,
 } from "../mocks/storeBridge";
 import {
@@ -56,11 +56,15 @@ const notFound = <T>(what: string): Promise<T> =>
 /** TODO(guide): GET /tournaments/:id/matches */
 export async function getTournamentMatches(tournamentId: MatchRef): Promise<{ items: MatchDto[] }> {
   if (USE_MOCK) {
-    const own = mockMatches.filter((m) => m.tournamentId === Number(tournamentId));
-    if (own.length) return mockDelay({ items: own });
-    // ยังไม่มีในชุดที่เขียนมือ → มาจาก seed (ดู mocks/storeBridge.ts)
+    /* ref อาจเป็น id ของ store ("t-fut") หรือเลข — แปลงให้เป็นเลขก่อนเทียบ
+       ไม่งั้น Number("t-fut") เป็น NaN แล้ว fixture ที่ผูกกับทัวร์นาเมนต์นั้นหายไป */
+    const numeric = Number.isFinite(Number(tournamentId))
+      ? Number(tournamentId)
+      : numOf(String(tournamentId));
+    const own = mockMatches.filter((m) => m.tournamentId === numeric);
     const s = storeState();
-    return mockDelay({ items: findStoreTournamentMatches(tournamentId).map((m) => toMatchDto(s, m)) });
+    const seeded = findStoreTournamentMatches(tournamentId).map((m) => toMatchDto(s, m));
+    return mockDelay({ items: [...own, ...seeded] });
   }
   return apiFetch(`/tournaments/${tournamentId}/matches`);
 }

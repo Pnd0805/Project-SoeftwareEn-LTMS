@@ -23,6 +23,7 @@ import type {
   PlayerRef,
 } from "../types/match.dto";
 import type { StatDefinition } from "../types/dto";
+import { numOf } from "./storeBridge";
 
 const TZ = "+07:00";
 const iso = (d: string) => `${d}${TZ}`;
@@ -48,8 +49,13 @@ mockTeams[12].players = [mockPlayers[2], mockPlayers[9]];
 mockTeams[13].players = [mockPlayers[3], mockPlayers[9]];
 mockTeams[14].players = [mockPlayers[1], mockPlayers[3]];
 
+/**
+ * ชี้ไปทัวร์นาเมนต์ที่มีอยู่จริงใน seed (`t-fut` ชื่อเดียวกันเป๊ะ) แทนที่จะตั้ง id
+ * ลอยๆ — ไม่งั้น breadcrumb จาก fixture พวกนี้จะพาไปหน้าทัวร์นาเมนต์ที่ไม่มีตัวตน
+ * พอ backend จริงมา id มาจาก DB ทั้งคู่ ปัญหานี้หายไปเอง
+ */
 const TOURNAMENT = {
-  id: 201,
+  id: numOf("t-fut"),
   name: "Inter-Faculty Futsal 2026",
   championTeamId: null,
   sportTypeId: 5,
