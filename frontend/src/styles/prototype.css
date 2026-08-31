@@ -351,8 +351,12 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .sb .item svg{width:16px;height:16px;flex:none;}
 .sb .item.on{color:var(--ink);background:var(--teal);border-left-color:var(--ink);}
 .sb .item.on svg{color:var(--ink);}
+/* The base .pill is a filter chip and carries min-height:44px for its touch
+   target. This one is a count, not a control — inheriting that stretched it to
+   the full row height, a 19x44 capsule where a 19x20 badge belongs. */
 .sb .item .pill{margin-left:auto;background:var(--red);color:var(--ink);border:2px solid var(--ink);
-  font-family:var(--f-mono);font-size:12px;font-weight:700;padding:0 4px;line-height:1.35;}
+  font-family:var(--f-mono);font-size:12px;font-weight:700;padding:0 4px;line-height:1.35;
+  min-height:0;}
 .sb .foot{margin-top:auto;padding:16px 16px 0;border-top:2px solid var(--ink);}
 
 .tb{border-bottom:2px solid var(--ink);position:sticky;top:0;background:var(--panel);z-index:4;}
