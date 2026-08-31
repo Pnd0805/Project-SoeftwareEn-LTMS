@@ -9,6 +9,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
 import { ago, fmtDate, pinHref } from '../../shared/rules'
+import { matchState, type MatchState } from './viewModels'
 import type { Match, Pin } from '../../shared/types'
 
 type Kind = 'ok' | 'warn' | 'crit' | 'neutral'
@@ -148,12 +149,25 @@ export function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor?
   )
 }
 
-export const StatusBadge = ({ m }: { m: Match }) =>
-  m.status === 'confirmed' ? <Badge kind="ok">{m.note === 'bye' ? 'Bye' : 'Confirmed'}</Badge>
-    : m.status === 'disputed' ? <Badge kind="crit">Disputed</Badge>
-      : m.status === 'pending' ? <Badge kind="warn">Awaiting confirmation</Badge>
-        : m.a && m.b ? <Badge kind="neutral">Scheduled</Badge>
-          : <Badge kind="neutral">Waiting on teams</Badge>
+/** ป้ายสถานะแมตช์ — ชุดสถานะกลางกับตัวแปลงอยู่ที่ `./viewModels` */
+const MATCH_STATE: Record<MatchState, { kind: Kind; label: string }> = {
+  bye: { kind: 'ok', label: 'Bye' },
+  confirmed: { kind: 'ok', label: 'Confirmed' },
+  disputed: { kind: 'crit', label: 'Disputed' },
+  pending: { kind: 'warn', label: 'Awaiting confirmation' },
+  checkin: { kind: 'warn', label: 'Check-in open' },
+  live: { kind: 'warn', label: 'In progress' },
+  scheduled: { kind: 'neutral', label: 'Scheduled' },
+  waiting: { kind: 'neutral', label: 'Waiting on teams' },
+}
+
+/** ชั้นล่าง — รับสถานะที่ตัดสินมาแล้ว ไม่รู้จัก store และไม่รู้จัก DTO */
+export function MatchStateBadge({ state }: { state: MatchState }) {
+  const { kind, label } = MATCH_STATE[state]
+  return <Badge kind={kind}>{label}</Badge>
+}
+
+export const StatusBadge = ({ m }: { m: Match }) => <MatchStateBadge state={matchState(m)} />
 
 /** The check-in code, drawn rather than fetched — the page has to work offline. */
 export function Qr({ size = 19, seed = 7 }: { size?: number; seed?: number }) {

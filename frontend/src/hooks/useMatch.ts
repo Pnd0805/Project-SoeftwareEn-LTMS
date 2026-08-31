@@ -1,0 +1,193 @@
+/**
+ * src/hooks/useMatch.ts — Person 3 (Match + Results + Standings)
+ *
+ * ชั้นเดียวที่ feature component เรียก — ไม่มี component ไหน import api/match.ts ตรงๆ
+ * พอ backend มาถึง แก้แค่ใน api/match.ts ไฟล์เดียว hook กับ component ไม่ต้องแตะ
+ *
+ * ── query key namespace ───────────────────────────────────────────────────
+ * ขึ้นต้นด้วย 'match' / 'matches' / 'standings' เท่านั้น
+ * Person 1 ใช้ 'me' / 'faculties' / 'sportTypes' · Person 2 ควรใช้ 'tournament*'
+ * · Person 4 ใช้ 'admin*' — ตกลงกันไว้ในแผนงาน เพื่อไม่ให้ invalidate ข้ามโดเมนกัน
+ *
+ * ── กฎ invalidate ที่พลาดไม่ได้ ────────────────────────────────────────────
+ * schema.sql กำหนดว่า พอผลถูก dispute → matches.match_status ต้องเป็น 'disputed'
+ * ในทรานแซกชันเดียวกัน แปลว่า mutation ที่แตะผล ต้อง invalidate ทั้ง result และ match
+ * ไม่งั้น UI จะค้างโชว์สถานะแมตช์เก่า — ทำเป็น helper `touchMatch` ไว้ข้างล่าง
+ */
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
+import * as matchApi from "../api/match";
+import type {
+  UpdateMatchRequest,
+  SubmitResultRequest,
+  VerifyResultRequest,
+  DisputeResultRequest,
+  ResolveDisputeRequest,
+  CheckinRequest,
+  VerifyCheckinRequest,
+  SaveMatchStatsRequest,
+} from "../types/match.dto";
+
+// ══════════════ query keys ══════════════
+
+export const matchKeys = {
+  all: ["match"] as const,
+  detail: (id: number) => ["match", id] as const,
+  result: (id: number) => ["match", id, "result"] as const,
+  checkins: (id: number) => ["match", id, "checkins"] as const,
+  stats: (id: number) => ["match", id, "stats"] as const,
+  byTournament: (tid: number) => ["matches", "tournament", tid] as const,
+  mine: ["matches", "mine"] as const,
+  standings: (tid: number) => ["standings", tid] as const,
+};
+
+/**
+ * ผลกับแมตช์เปลี่ยนพร้อมกันเสมอ — และ standings ก็ขยับตามผลที่ยืนยันแล้ว
+ * เรียกตัวนี้ใน onSuccess ของทุก mutation ที่แตะผล จะได้ไม่ลืมสัก key
+ */
+function touchMatch(qc: QueryClient, matchId: number, tournamentId?: number) {
+  qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+  qc.invalidateQueries({ queryKey: matchKeys.result(matchId) });
+  qc.invalidateQueries({ queryKey: matchKeys.mine });
+  if (tournamentId !== undefined) {
+    qc.invalidateQueries({ queryKey: matchKeys.byTournament(tournamentId) });
+    qc.invalidateQueries({ queryKey: matchKeys.standings(tournamentId) });
+  }
+}
+
+// ══════════════ queries ══════════════
+
+export function useMatch(matchId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.detail(matchId as number),
+    queryFn: () => matchApi.getMatch(matchId as number),
+    enabled: matchId !== undefined,
+  });
+}
+
+export function useTournamentMatches(tournamentId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.byTournament(tournamentId as number),
+    queryFn: () => matchApi.getTournamentMatches(tournamentId as number),
+    enabled: tournamentId !== undefined,
+  });
+}
+
+/** หน้า /matches — แมตช์ที่ฉันต้องทำอะไรสักอย่าง */
+export function useMyMatches() {
+  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches });
+}
+
+/**
+ * ยังไม่มีผล = 404 ไม่ใช่ error ที่ต้อง retry — retry: false กัน request รัวเปล่าๆ
+ * ตัวเรียกเช็ค `isError` แล้วโชว์ ResultForm ได้เลย
+ */
+export function useResult(matchId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.result(matchId as number),
+    queryFn: () => matchApi.getResult(matchId as number),
+    enabled: matchId !== undefined,
+    retry: false,
+  });
+}
+
+export function useCheckins(matchId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.checkins(matchId as number),
+    queryFn: () => matchApi.getCheckins(matchId as number),
+    enabled: matchId !== undefined,
+  });
+}
+
+export function useMatchStats(matchId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.stats(matchId as number),
+    queryFn: () => matchApi.getMatchStats(matchId as number),
+    enabled: matchId !== undefined,
+  });
+}
+
+export function useStandings(tournamentId: number | undefined) {
+  return useQuery({
+    queryKey: matchKeys.standings(tournamentId as number),
+    queryFn: () => matchApi.getStandings(tournamentId as number),
+    enabled: tournamentId !== undefined,
+  });
+}
+
+// ══════════════ mutations ══════════════
+
+/** FixturePage — จัดเวลา/สนาม/เวลาเปิดเช็คอิน */
+export function useUpdateMatch(matchId: number, tournamentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateMatchRequest) => matchApi.updateMatch(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+/** S01 — ส่งผล กดซ้ำได้ปลอดภัย (idempotent ที่ฝั่ง DB) */
+export function useSubmitResult(matchId: number, tournamentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SubmitResultRequest) => matchApi.submitResult(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+export function useVerifyResult(matchId: number, tournamentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: VerifyResultRequest = {}) => matchApi.verifyResult(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+export function useDisputeResult(matchId: number, tournamentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DisputeResultRequest) => matchApi.disputeResult(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+export function useResolveDispute(matchId: number, tournamentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ResolveDisputeRequest) => matchApi.resolveDispute(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+export function useCheckin(matchId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CheckinRequest) => matchApi.checkin(matchId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) }),
+  });
+}
+
+export function useVerifyCheckin(matchId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { userId: number; input: VerifyCheckinRequest }) =>
+      matchApi.verifyCheckin(matchId, v.userId, v.input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) }),
+  });
+}
+
+export function useSaveMatchStats(matchId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveMatchStatsRequest) => matchApi.saveMatchStats(matchId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.stats(matchId) }),
+  });
+}
+
+export function useSetLivestream(matchId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string | null) => matchApi.setLivestream(matchId, url),
+    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) }),
+  });
+}
