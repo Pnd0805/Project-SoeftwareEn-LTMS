@@ -42,11 +42,30 @@ Four slices. Work only inside yours; for anything else, open a request to its ow
 | **3** | Match · Results · Standings · Check-in | `features/match/**` (minus `SocialBar.tsx`) `features/matches` `features/checkin` `features/tournament/LeaderboardTab.tsx` `features/tournament/ScheduleTab.tsx` | `/matches` `/m/:id` `/m/:id/:tab` `/m/:id/fixture` `/checkin/:id` | `match` `matches` `standings` `checkins` |
 | **4** | Teams · Admin · Organizer approval · Referee management | `features/team` `features/admin` `features/request` `features/player` `features/tournament/manage/RefereePanel.tsx` | `/teams` `/team/:id` `/admin` `/admin/:tab` `/request` `/player/:id` | `admin` `organizer` `referees` `team` `teams` `audit` |
 
-Person 1 additionally owns `src/shared/`, `src/components/kit/`, `src/components/layout/Shell.tsx`,
-`src/api/client.ts`.
-
 *Two screens sit in another slice's folder on purpose: `LeaderboardTab` and `ScheduleTab` render
 `tournament_standings` and `matches`, which belong to slice 3. A view belongs with its data.*
+
+Person 1 additionally owns `src/shared/`, `src/components/kit/`, `src/components/layout/Shell.tsx`,
+`src/api/client.ts`, and:
+
+| Path | Lines | Why it is one person's |
+|---|---|---|
+| `src/styles/prototype.css` | 553 | every colour token and every class the ported markup uses, both themes |
+| `src/index.css` | 133 | the Tailwind entry, and where `prototype.css` is pulled in |
+| `src/main.tsx` | 18 | **the `QueryClient` every slice's hooks run through** — its defaults (`staleTime`, `retry`) are global |
+| `src/assets/` | — | shared images |
+
+*`main.tsx` is four lines of setup and the highest-leverage file in the repo: change a QueryClient
+default and you change caching for all four slices at once.*
+
+### Shared build config — no owner, but announce first
+
+`vite.config.ts` · `tsconfig.json` · `tsconfig.app.json` · `tsconfig.node.json` · `eslint.config.js` ·
+`index.html` · `package.json` · `components.json`
+
+Anyone may change these; nobody may change them quietly. Put the change in its own commit, say so in
+the PR, and expect the other three to have an opinion — a compiler option or a lint rule lands on
+every file in the repo.
 
 ### Never read or invalidate a query key outside your namespace
 
@@ -109,16 +128,33 @@ Shared shapes and prototype converters live in `src/components/kit/viewModels.ts
 `pending` is really a *result* status (`match_results.status='submitted'`). Map into `MatchState` at
 your own edge.
 
-### 3. Per-domain DTO files, never `src/types/dto.ts`
+### 3. Colours come from tokens — never a literal
+
+Both themes are live: `prototype.css` defines the dark palette on `:root` and the light one on
+`:root[data-theme="light"]`, with `@media (prefers-color-scheme: light)` covering viewers who have not
+chosen. `index.html` stamps the choice before first paint; `Shell.tsx` toggles it and persists to
+`localStorage` under `ltms-theme`.
+
+A hex literal in a component works in one theme and breaks in the other. There are currently **zero**
+outside `:root` — keep it that way.
+
+Two traps worth knowing:
+
+- `--ink` is an outline colour, not a surface. It stays near-black in both themes, so
+  `background: var(--ink)` paints a black slab on cream. Where a container is painted so a 2px gap
+  shows through as a hairline, use `--line`.
+- `--qr-bg` and `--qr-ink` deliberately do not flip. A scanner needs real contrast, not a theme match.
+
+### 4. Per-domain DTO files, never `src/types/dto.ts`
 
 `dto.ts` is Person 1's and forbids fields for endpoints not yet in `GUIDE/06`. Use
 `src/types/<domain>.dto.ts`. Reconcile once, later.
 
-### 4. `src/App.tsx` holds every route
+### 5. `src/App.tsx` holds every route
 
 Touch only your own lines, and commit that change on its own.
 
-### 5. Cross-cutting files — Person 1 owns, others request
+### 6. Cross-cutting files — Person 1 owns, others request
 
 `shared/selectors.ts` (82) · `shared/career.ts` (108) · `components/kit/primitives.tsx` (190) ·
 `components/kit/Scorebug.tsx` (99) · `components/kit/chips.tsx` (74) ·
@@ -210,7 +246,7 @@ line in the CI workflow and lint becomes a real gate.
    three against itself. Needs an owner.
 4. **shadcn/ui is in the stack but unused** — seven components, zero imports. Adopt it deliberately or
    delete the folder, `components.json` and the unused deps.
-5. **`workQueue.ts` is unsplit** (see Rule 5). Do this before two people migrate at once.
+5. **`workQueue.ts` is unsplit** (see Rule 6). Do this before two people migrate at once.
 
 ---
 

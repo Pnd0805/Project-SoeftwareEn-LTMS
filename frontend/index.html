@@ -4,7 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my-app</title>
+    <meta name="color-scheme" content="dark light" />
+    <title>LTMS — Local Tournament Management System</title>
+    <script>
+      // Stamp the theme before first paint. React mounts too late: without this
+      // a viewer whose OS is light but who chose dark sees a cream flash first.
+      // Same localStorage key the prototype used, so a saved choice carries over.
+      (function () {
+        try {
+          var saved = localStorage.getItem('ltms-theme');
+          var light = saved
+            ? saved === 'light'
+            : window.matchMedia('(prefers-color-scheme: light)').matches;
+          document.documentElement.dataset.theme = light ? 'light' : 'dark';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -41,7 +41,79 @@
   --hard:4px 4px 0 var(--ink);
   --hard-sm:2px 2px 0 var(--ink);
   --f-mono:ui-monospace,"SF Mono","SFMono-Regular","Cascadia Mono",Consolas,Menlo,monospace;
+  /* the two washes over the ground — tokens so the light theme can dial them
+     back instead of the gradient carrying a hardcoded velvet-tuned green */
+  --aurora-1:rgba(58,174,124,.14);
+  --aurora-2:rgba(61,107,84,.20);
 }
+
+/* ── Light theme ───────────────────────────────────────────────────────────
+   Ported from the prototype's `LIGHT_THEME` object, value for value. It lived
+   in JavaScript there (applied with style.setProperty) so it did not survive
+   the port to React — the toggle in Shell.tsx set data-theme and nothing
+   answered it.
+
+   The prototype's own note on how these were chosen, kept because it explains
+   why some of them look wrong out of context:
+
+     The ground goes from near-black to cream. Fill colors sit at the one
+     lightness band that keeps --ink legible on top of them (badges, primary
+     buttons); that band is too dark to also clear 4.5:1 as body text, so red
+     carries a separate --red-text the way the base theme already does — teal
+     and amber accept the same 3:1 "large/bold" floor the base theme's
+     graphics-only tokens accept, since every place they sit under --ink is
+     bold uppercase, never running text.
+
+   --qr-bg and --qr-ink are deliberately absent: a scanner needs real contrast,
+   not a theme match, so the check-in code stays a light chip with dark modules
+   in both themes.
+
+   Three tokens below are not in the prototype's list. They are shadows, and a
+   shadow tuned for near-black ground reads as soot on cream. */
+:root[data-theme="light"]{
+  --void:#F8F4EC; --void-2:#F1E9D8;
+  --panel:#FFFFFF; --panel-2:#F8F4EC; --panel-3:#F0E6D0; --panel-4:#E4D4B0;
+  --line:#E6D9BE; --line-hot:#8F7A4C; --hairline:#6E5D3E;
+  --bone:#2A2117; --bone-dim:#5A4E36; --bone-faint:#6E5F42;
+  --red:#C23B57; --red-text:#8A1C38;
+  --red-ghost:#F8E5EA; --red-lift:#D45571; --red-lift-2:#DE6B85;
+  --red-press:#A32E47; --red-ghost-2:#F2D2DA;
+  --teal:#12764E; --teal-ghost:#E1EFE6;
+  --amber:#806124; --amber-ghost:#FAF1DC;
+  --azurite:#6B8F73; --crystal:#C7B78D;
+  --ink:#1E170F;
+
+  /* rgba(0,0,0,.9) under a card is a hole in cream — same geometry, less soot */
+  --lift:0 14px 30px -16px rgba(42,33,23,.34);
+  /* a 5% white inset highlight does nothing on a white panel */
+  --sheen:inset 0 1px 0 rgba(255,255,255,0);
+  /* the aurora is a green wash tuned for velvet; on cream it turns the page sickly */
+  --aurora-1:rgba(18,118,78,.07);
+  --aurora-2:rgba(107,143,115,.10);
+}
+
+/* No explicit choice yet: follow the OS. Guarded so a viewer who picked dark
+   still gets dark on a light-mode machine. */
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --void:#F8F4EC; --void-2:#F1E9D8;
+    --panel:#FFFFFF; --panel-2:#F8F4EC; --panel-3:#F0E6D0; --panel-4:#E4D4B0;
+    --line:#E6D9BE; --line-hot:#8F7A4C; --hairline:#6E5D3E;
+    --bone:#2A2117; --bone-dim:#5A4E36; --bone-faint:#6E5F42;
+    --red:#C23B57; --red-text:#8A1C38;
+    --red-ghost:#F8E5EA; --red-lift:#D45571; --red-lift-2:#DE6B85;
+    --red-press:#A32E47; --red-ghost-2:#F2D2DA;
+    --teal:#12764E; --teal-ghost:#E1EFE6;
+    --amber:#806124; --amber-ghost:#FAF1DC;
+    --azurite:#6B8F73; --crystal:#C7B78D;
+    --ink:#1E170F;
+    --lift:0 14px 30px -16px rgba(42,33,23,.34);
+    --sheen:inset 0 1px 0 rgba(255,255,255,0);
+    --aurora-1:rgba(18,118,78,.07);
+    --aurora-2:rgba(107,143,115,.10);
+  }
+}
+
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;min-height:100%;}
 body{background:var(--void);color:var(--bone);font-family:var(--f-ui);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
@@ -54,8 +126,8 @@ a{color:var(--teal);text-decoration-thickness:2px;text-underline-offset:3px;}
 /* the aurora is two still washes over the velvet — no animation loop, nothing to
    repaint, and nothing above the app to swallow a click */
 body{background:
-  radial-gradient(90% 55% at 12% -8%, rgba(58,174,124,.14) 0%, transparent 62%),
-  radial-gradient(80% 50% at 88% -4%, rgba(61,107,84,.20) 0%, transparent 58%),
+  radial-gradient(90% 55% at 12% -8%, var(--aurora-1) 0%, transparent 62%),
+  radial-gradient(80% 50% at 88% -4%, var(--aurora-2) 0%, transparent 58%),
   var(--void);
   background-attachment:fixed;}
 #app{position:relative;z-index:2;}
@@ -218,9 +290,14 @@ button.sb-name:hover .sb-abbr{color:var(--teal);}
 
 .sportcard{background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:12px;
   border:2px solid var(--ink);border-radius:var(--r);box-shadow:var(--hard-sm);}
-.sportcard .statline{background:var(--ink);}
+/* These four paint the container and let a 2px grid/flex gap show through as a
+   hairline. The gap colour must be --line, not --ink: an --ink container shows
+   as a black slab wherever a track has no child to cover it — auto-fit leaves
+   empty tracks whenever the child count is not a multiple of the column count.
+   Invisible in dark (--ink and --void are near-identical), a hole in light. */
+.sportcard .statline{background:var(--line);}
 .sportcard .statline>div{background:var(--panel-2);}
-.statline{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;background:var(--ink);
+.statline{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;background:var(--line);
   border:2px solid var(--ink);}
 .statline>div{background:var(--panel);padding:12px 16px;display:flex;flex-direction:column;gap:4px;}
 .statline .v{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--teal);}
@@ -252,7 +329,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 ::view-transition-group(root){animation-duration:0s;}
 @media (prefers-reduced-motion: reduce){ ::view-transition-group(*){animation-duration:0s;} }
 
-.rounds{display:flex;gap:2px;background:var(--ink);flex-wrap:wrap;border:2px solid var(--ink);}
+.rounds{display:flex;gap:2px;background:var(--line);flex-wrap:wrap;border:2px solid var(--ink);}
 .rounds .r{flex:1;min-width:104px;background:var(--panel);padding:8px 12px;display:flex;flex-direction:column;gap:4px;
   font-family:var(--f-mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--bone-faint);border:0;text-align:left;}
 .rounds .r b{font-family:var(--f-display);font-weight:700;font-stretch:87.5%;font-size:16px;letter-spacing:.02em;color:var(--bone-dim);}
@@ -443,7 +520,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .phero .lv b{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1;color:var(--teal);}
 .phero .lv span{font-family:var(--f-mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--bone-faint);}
 
-.showcase{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:2px;background:var(--ink);
+.showcase{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:2px;background:var(--line);
   border:2px solid var(--ink);}
 .showcase>div{background:var(--panel-2);padding:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;}
 .showcase .v{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1;font-variant-numeric:tabular-nums;color:var(--teal);}

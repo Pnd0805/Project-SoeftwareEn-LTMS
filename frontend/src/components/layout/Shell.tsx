@@ -35,11 +35,20 @@ function useNav(): NavItem[] {
   return items
 }
 
+/**
+ * The theme is already stamped on <html> by the boot script in index.html, so
+ * this reads it rather than deciding it — that is what keeps the button label
+ * honest for someone whose OS is light and who never touched the toggle.
+ * The choice persists under the same key the prototype used.
+ */
+const THEME_KEY = 'ltms-theme'
+
 function useThemeToggle() {
   const [light, setLight] = useState(() => document.documentElement.dataset.theme === 'light')
   const toggle = () => {
     const next = !light
     document.documentElement.dataset.theme = next ? 'light' : 'dark'
+    try { localStorage.setItem(THEME_KEY, next ? 'light' : 'dark') } catch { /* private mode */ }
     setLight(next)
   }
   return { light, toggle }
