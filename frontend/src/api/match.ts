@@ -102,6 +102,24 @@ export async function setLivestream(matchId: number, url: string | null): Promis
   return apiFetch(`/matches/${matchId}/livestream`, { method: "PUT", body: JSON.stringify({ url }) });
 }
 
+/**
+ * TODO(guide): PUT /matches/:id/referees
+ * มอบหมายกรรมการเข้าแมตช์ — เขียนทับทั้งชุด ไม่ใช่เพิ่มทีละคน
+ * ตาราง match_referees มี UNIQUE(match_id, tournament_referee_id) อยู่แล้ว
+ */
+export async function assignReferees(matchId: number, refereeUserIds: number[]): Promise<MatchDto> {
+  if (USE_MOCK) {
+    const m = mockMatches.find((x) => x.id === matchId);
+    if (!m) return notFound<MatchDto>("แมตช์");
+    m.referees = m.availableReferees.filter((r) => refereeUserIds.includes(r.id));
+    return mockDelay(m);
+  }
+  return apiFetch(`/matches/${matchId}/referees`, {
+    method: "PUT",
+    body: JSON.stringify({ refereeUserIds }),
+  });
+}
+
 // ══════════════ Result ══════════════
 
 /** TODO(guide): GET /matches/:id/result — ยังไม่มีผล = 404 ไม่ใช่ null */

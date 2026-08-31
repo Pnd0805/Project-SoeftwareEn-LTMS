@@ -137,6 +137,15 @@ export function useUpdateMatch(matchId: number, tournamentId?: number) {
   });
 }
 
+/** FixturePage — มอบหมายกรรมการเข้าแมตช์ (เขียนทับทั้งชุด) */
+export function useAssignReferees(matchId: number, tournamentId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (refereeUserIds: number[]) => matchApi.assignReferees(matchId, refereeUserIds),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
 /** S01 — ส่งผล กดซ้ำได้ปลอดภัย (idempotent ที่ฝั่ง DB) */
 export function useSubmitResult(matchId: number, tournamentId?: number) {
   const qc = useQueryClient();

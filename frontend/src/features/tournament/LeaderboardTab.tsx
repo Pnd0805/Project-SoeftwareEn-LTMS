@@ -1,138 +1,77 @@
 /**
- * src/features/tournament/LeaderboardTab.tsx
+ * src/features/tournament/LeaderboardTab.tsx — owned by slice 3
  *
- * Derived from the format and never stored. Single elimination reads as the
- * round a squad went out in; round robin swaps the whole table for Standings —
- * played, won, level, lost, units for and against, and points.
+ * SRS FR-DL-02: แสดงอันดับของทีมที่เข้าแข่งขัน อัปเดตอัตโนมัติทันทีที่มีการยืนยันผล
+ * FR-RS-05 makes that the backend's job — confirming a result recomputes the
+ * bracket, the standings and the leaderboard. So this table is read, never
+ * derived here.
+ *
+ * ── ของเดิมคำนวณเองทั้งหมด ─────────────────────────────────────────────────
+ * `leaderboard()` / `standings()` ใน rules.ts ไล่แมตช์ทุกนัดมาบวกเอง ซึ่งขัดกับ
+ * FR-RS-05 และแปลว่ากติกาการจัดอันดับถูกเขียนสองที่ — ที่นี่กับที่ backend
+ *
+ * ⚠️ `tournament_standings` เก็บแค่ played / won / lost / points
+ *    ตารางเดิมจัดอันดับ round robin ด้วยผลต่างประตู → ประตูได้ → mini-table
+ *    และโชว์ฟอร์มห้านัดหลัง ซึ่ง **ไม่มีคอลัมน์รองรับสักตัว**
+ *    ต้องตกลงกันว่า backend จะส่งเพิ่มไหม — ดู PLAN.md หัวข้อ Blocked ข้อ 2
  */
-import { Empty, FormGuide, TableWrap } from '../../components/kit/primitives'
-import { PlayerLink, TeamLink } from '../../components/kit/chips'
-import { toggleFollow, useLtms } from '../../shared/store'
-import { isFollowing, matchesOf, me, team } from '../../shared/selectors'
-import { formatOf, leaderboard, scoreUnit, statLabels } from '../../shared/rules'
-import type { Tournament } from '../../shared/types'
+import { Empty, Panel, TableWrap } from '../../components/kit/primitives'
+import { TeamLinkView } from '../../components/kit/chips'
+import { useStandings } from '../../hooks/useMatch'
 
-/** Leading scorers, tallied off what referees actually recorded. */
-function TopScorers({ t }: { t: Tournament }) {
-  const s = useLtms()
-  const tally: Record<string, { g: number; a: number; team: string }> = {}
-  matchesOf(s, t.id).filter(m => m.status === 'confirmed').forEach(m =>
-    Object.entries(m.stats || {}).forEach(([pid, st]) => {
-      tally[pid] = tally[pid] || { g: 0, a: 0, team: st.team }
-      tally[pid].g += st.goals
-      tally[pid].a += st.assists
-    }))
-  const rows = Object.entries(tally)
-    .filter(([, v]) => v.g || v.a)
-    .sort((x, y) => y[1].g - x[1].g || y[1].a - x[1].a)
-    .slice(0, 8)
-  if (!rows.length) return null
-  const L = statLabels(t.sport)
-  return (
-    <>
-      <div className="tag" style={{ marginTop: 6 }}>
-        <em>//</em> Leading {(L.g || 'scorers').toLowerCase()}
-      </div>
-      <TableWrap>
-        <table>
-          <thead><tr><th>Player</th><th>Squad</th><th>{L.g || 'Scored'}</th><th>{L.a || 'Assists'}</th></tr></thead>
-          <tbody>
-            {rows.map(([pid, v]) => (
-              <tr key={pid}>
-                <td><PlayerLink id={pid} /></td>
-                <td><TeamLink id={v.team} /></td>
-                <td className="num">{v.g}</td>
-                <td className="num">{v.a}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableWrap>
-    </>
-  )
-}
+export function LeaderboardTab({ tournamentId }: { tournamentId: number | string }) {
+  const id = Number(tournamentId)
+  const usable = Number.isFinite(id)
+  const { data, isPending } = useStandings(usable ? id : undefined)
 
-export function LeaderboardTab({ t }: { t: Tournament }) {
-  const s = useLtms()
-  const rows = leaderboard(s, t)
-  const u = me(s)
-  if (!rows.length) return <Empty title="No standings yet" />
-
-  const played = matchesOf(s, t.id).filter(m => m.status === 'confirmed' && m.note !== 'bye').length
-
-  if (formatOf(t) === 'roundrobin') {
+  if (!usable) {
     return (
-      <>
-        <div className="statline">
-          <div><span className="tag">Matches played</span><span className="v">{played}</span></div>
-          <div><span className="tag">Squads</span><span className="v">{rows.length}</span></div>
-          <div><span className="tag">Level results</span><span className="v">{rows.reduce((n, r) => n + r.d, 0) / 2}</span></div>
-          <div>
-            <span className="tag">Leader</span>
-            <span className="v" style={{ fontSize: 19, paddingTop: 8 }}>{team(s, rows[0].team)?.name ?? '—'}</span>
-          </div>
+      <Panel quiet>
+        <span className="tag"><em>//</em> Leaderboard</span>
+        <div className="sub">
+          Reads <code>tournament_standings</code> through the API and needs the tournament's numeric
+          id. The tournament page still holds a prototype id — it starts working when slice 2
+          migrates. See PLAN.md, the two id spaces.
         </div>
-        <TableWrap>
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th>
-                <th>{scoreUnit(t.sport)} for</th><th>Against</th><th>Diff</th><th>Pts</th><th>Form</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.team}>
-                  <td className="num">{r.rank === rows[0].rank ? <b style={{ color: 'var(--teal)' }}>{r.rank}</b> : r.rank}</td>
-                  <td><TeamLink id={r.team} /></td>
-                  <td className="num">{r.p}</td><td className="num">{r.w}</td>
-                  <td className="num">{r.d}</td><td className="num">{r.l}</td>
-                  <td className="num">{r.gf}</td><td className="num">{r.ga}</td>
-                  <td className="num">{r.gd > 0 ? '+' : ''}{r.gd}</td>
-                  <td className="num"><b>{r.pts}</b></td>
-                  <td>{r.form.length ? <FormGuide form={r.form} /> : <span className="sub">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableWrap>
-        <TopScorers t={t} />
-      </>
+      </Panel>
     )
+  }
+
+  if (isPending) return <Panel quiet><span className="sub">Loading the table…</span></Panel>
+
+  const rows = data?.items ?? []
+  if (!rows.length) {
+    return <Empty icon="trophy" title="No table yet" sub="Positions appear once a result is confirmed." />
   }
 
   return (
     <>
-      <div className="statline">
-        <div><span className="tag">Matches played</span><span className="v">{played}</span></div>
-        <div><span className="tag">Squads</span><span className="v">{rows.length}</span></div>
-        <div><span className="tag">Disputes</span><span className="v">{matchesOf(s, t.id).filter(m => m.status === 'disputed').length}</span></div>
-        <div><span className="tag">Still in</span><span className="v">{rows.filter(r => r.out === null).length}</span></div>
-      </div>
       <TableWrap>
         <table>
-          <thead><tr><th>Rank</th><th>Team</th><th>Went out in</th><th>P</th><th>W</th><th>Form</th><th /></tr></thead>
+          <thead>
+            <tr>
+              <th>#</th><th>Squad</th><th>Played</th><th>Won</th><th>Lost</th><th>Points</th>
+            </tr>
+          </thead>
           <tbody>
             {rows.map(r => (
-              <tr key={r.team}>
-                <td className="num">{r.rank === rows[0].rank ? <b style={{ color: 'var(--teal)' }}>{r.rank}</b> : r.rank}</td>
-                <td><TeamLink id={r.team} /></td>
-                <td className="sub">{r.outLabel}</td>
-                <td className="num">{r.p}</td><td className="num">{r.w}</td>
-                <td>{r.form.length ? <FormGuide form={r.form} /> : <span className="sub">—</span>}</td>
-                <td>
-                  {u ? (
-                    <button className="btn ghost" type="button" onClick={() => toggleFollow(`team:${r.team}`)}>
-                      {isFollowing(s, `team:${r.team}`) ? 'Following' : 'Follow'}
-                    </button>
-                  ) : null}
-                </td>
+              <tr key={r.team.id}>
+                <td className="num">{r.rank}</td>
+                <td><TeamLinkView team={r.team} /></td>
+                <td className="num">{r.played}</td>
+                <td className="num">{r.won}</td>
+                <td className="num">{r.lost}</td>
+                <td className="num"><b>{r.points}</b></td>
               </tr>
             ))}
           </tbody>
         </table>
       </TableWrap>
-      <TopScorers t={t} />
+      <span className="sub">
+        Teams level on points share a position. Goal difference, goals for and recent form are not in
+        <code> tournament_standings</code> yet, so ties are not broken further here — the decision on
+        whether the backend sends those columns is open.
+      </span>
     </>
   )
 }

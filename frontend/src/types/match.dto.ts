@@ -105,8 +105,24 @@ export interface MatchDto {
   tag: string;
   /** กรรมการที่ถูกมอบหมายให้แมตช์นี้ (match_referees) */
   referees: PlayerRef[];
+  /**
+   * กรรมการที่ตอบรับคำเชิญของทัวร์นาเมนต์นี้แล้ว = คนที่มอบหมายเข้าแมตช์ได้
+   *
+   * ต้นทางคือ `tournament_referees` ซึ่งเป็นตารางของสไลซ์ 4 — แต่หน้า Fixture
+   * ต้องใช้ ให้ server join มาให้ในคำขอเดียว ดีกว่าให้ frontend ยิงข้ามโดเมนเอง
+   * (แต่งตั้งให้ "มีสิทธิ์" · มอบหมายเข้าแมตช์ให้ "รับผิดชอบ" — คนละเรื่องกัน)
+   */
+  availableReferees: PlayerRef[];
   /** ห้องแข่งสำหรับโหมด online */
   roomCode: string | null;
+  /**
+   * โทเคนเช็คอินหน้างาน — server สร้างและหมุนทุก 60 วินาที
+   *
+   * prototype สร้างเองฝั่ง client จาก match id ซึ่งไม่มีความหมายเชิงความปลอดภัยเลย
+   * ใครเปิด devtools ก็คำนวณได้ ของจริงต้องมาจาก server และ POST /checkin
+   * ต้องเป็นฝ่ายตรวจ null เมื่อเป็นโหมด online หรือเรายังไม่มีสิทธิ์เห็น
+   */
+  checkinToken: string | null;
   /** ลิงก์วิดีโอย้อนหลัง */
   replayUrl: string | null;
   checkedIn: number;
@@ -179,6 +195,8 @@ export interface UpdateMatchRequest {
   scheduledTime?: string | null;
   venue?: string | null;
   checkinOpenAt?: string | null;
+  /** โหมด online — เลขห้องจาก game client ที่กรรมการกรอกให้ทั้งสองทีมเห็น */
+  roomCode?: string | null;
 }
 
 // ══════════════ Result — ตาราง `match_results` ══════════════

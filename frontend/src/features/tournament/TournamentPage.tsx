@@ -118,8 +118,8 @@ export function TournamentPage() {
             onPick={k => navigate(`/t/${t.id}/${k}`)}
           />
           {tab === 'bracket' ? <BracketTab t={t} /> : null}
-          {tab === 'schedule' ? <ScheduleTab t={t} /> : null}
-          {tab === 'leaderboard' ? <LeaderboardTab t={t} /> : null}
+          {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
+          {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
           {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
           {tab === 'community' ? <CommunityTab t={t} org={org} /> : null}
           {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}

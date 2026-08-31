@@ -108,7 +108,9 @@ const mk = (seed: MatchSeed): MatchDto => ({
   createdAt: iso("2026-02-20T09:00:00"),
   updatedAt: null,
   referees: [],
+  availableReferees: [mockPlayers[3], mockPlayers[2]],
   roomCode: null,
+  checkinToken: null,
   replayUrl: null,
   checkedIn: 0,
   lineupSize: 10,
@@ -143,8 +145,8 @@ export const mockMatches: MatchDto[] = [
     updatedAt: iso("2026-03-08T17:30:00"),
     referees: [mockPlayers[3]],
     checkedIn: 8,
-    // ผู้จัดเป็นคนเดียวที่ปิดข้อพิพาทได้
-    viewer: viewer(["organizer"], { resolveDispute: true }),
+    // ผู้จัดเป็นคนเดียวที่ปิดข้อพิพาทได้ และเป็นคนจัดตาราง (FR-MM-02)
+    viewer: viewer(["organizer"], { resolveDispute: true, editFixture: true }),
   }),
   mk({
     id: 303, stage: "Final", tag: "F1",
@@ -156,6 +158,7 @@ export const mockMatches: MatchDto[] = [
     status: "checkin_open", mode: "onsite",
     referees: [mockPlayers[3]],
     checkedIn: 3,
+    checkinToken: "K7M-2Q9",
     // onsite: กรรมการกรอกผล และคุมเช็คอิน · เราลงเล่นด้วยและเป็นหัวหน้าทีม
     viewer: viewer(["referee", "player"],
       { submitResult: true, manageCheckin: true, recordStats: true },
@@ -167,7 +170,9 @@ export const mockMatches: MatchDto[] = [
     teamA: mockTeams[12], teamB: null,  // TBD — ยังไม่รู้คู่แข่ง
     status: "scheduled", mode: "online",
     roomCode: "LTMS-8842",
-    viewer: viewer(["player"], {}, { myTeamId: 12, isTeamLeader: false }),
+    // ยังไม่มีใครเช็คอิน → fixture ยังแก้ได้ ใช้ทดสอบทางที่แก้ได้จริง
+    viewer: viewer(["player", "organizer"], { editFixture: true },
+      { myTeamId: 12, isTeamLeader: false }),
   }),
 ];
 
