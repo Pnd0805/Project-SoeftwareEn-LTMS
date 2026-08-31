@@ -25,3 +25,6 @@
 # ── ลด noise ตอนรีวิว PR ───────────────────────────────────────────────────
 # lockfile เปลี่ยนทีเป็นพันบรรทัด ไม่มีใครอ่าน — ยุบใน diff แต่ยัง merge ปกติ
 package-lock.json linguist-generated=true diff=lockfile
+
+# PDF ที่ root — ห้าม git แตะ byte เด็ดขาด
+*.pdf binary
