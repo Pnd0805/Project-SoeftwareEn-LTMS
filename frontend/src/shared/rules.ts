@@ -121,13 +121,6 @@ export function parsePin(text: string): Pin | null {
 export const pinHref = (pin: Pin) => `https://www.google.com/maps?q=${pin.lat},${pin.lng}`
 export const pinText = (pin?: Pin | null) => (pin ? `${pin.lat}, ${pin.lng}` : '')
 
-/** The rotating token an on-site check-in scans. Rolls once a minute. */
-export function qrToken(matchId: string, at = NOW()): string {
-  const win = Math.floor(at / 60000)
-  let h = 2166136261
-  for (const ch of String(matchId) + ':' + win) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) }
-  return (h >>> 0).toString(36).toUpperCase().padStart(6, '0').slice(-6)
-}
 
 /* ───────── the Hard filter ───────── */
 export const ageOf = (dob: string) => {
@@ -338,19 +331,12 @@ export const winnerId = (m?: Match | null): string | null => {
   if (m.sa === m.sb) return m.decider ? (m.decider.a > m.decider.b ? m.a : m.b) : null
   return (m.sa ?? 0) > (m.sb ?? 0) ? m.a : m.b
 }
-export const isLevel = (m?: Match | null) => !!m && !!m.a && !!m.b && m.sa !== null && m.sa === m.sb && !m.decider
 export const wonBy = (m: Match, tid: string | null) => !!tid && winnerId(m) === tid
 export const winnerOf = (m: Match) => (m.status === 'confirmed' ? winnerId(m) : null)
-
 export const nextOf = (s: State, m: Match): Match | undefined =>
   m.winTo
     ? s.matches.find(x => x.id === m.winTo!.m)
     : s.matches.find(x => x.tour === m.tour && x.round === m.round + 1 && x.slot === (m.slot >> 1))
-
-export const feedersOf = (s: State, m: Match): Match[] =>
-  s.matches.filter(x => x.tour === m.tour
-    && (x.winTo?.m === m.id || x.loseTo?.m === m.id
-      || (!x.winTo && x.round === m.round - 1 && (x.slot >> 1) === m.slot)))
 
 /** Until the first match starts, the organizer may keep rearranging the draw. */
 export function drawStarted(s: State, tr: Tournament) {
@@ -360,24 +346,6 @@ export function drawStarted(s: State, tr: Tournament) {
     || (!!m.kickoff && new Date(m.kickoff).getTime() <= NOW()))
 }
 
-/** A Dispute is named after the Team, with the person in brackets. */
-export function disputeName(s: State, m: Match) {
-  const tm = m.disputedTeam ? s.teams.find(t => t.id === m.disputedTeam) : null
-  const u = s.users.find(x => x.id === m.disputedBy)
-  if (tm) return `${tm.name}${u ? ` (${u.name})` : ''}`
-  return u ? u.name : 'A squad'
-}
-
-/* ───────── who is playing ───────── */
-export function teamTotals(m: Match, tid: string) {
-  const out = { goals: 0, assists: 0, x: {} as Record<string, number> }
-  Object.values(m.stats || {}).filter(st => st.team === tid).forEach(st => {
-    out.goals += st.goals || 0
-    out.assists += st.assists || 0
-    Object.entries(st.x || {}).forEach(([k, v]) => { out.x[k] = (out.x[k] || 0) + v })
-  })
-  return out
-}
 
 /**
  * A Leader names a Lineup per match; until they do it is the Squad list they
@@ -391,14 +359,6 @@ export function lineupOf(s: State, m: Match, tid: string | null): string[] {
   const reg = s.registrations.find(r => r.tour === m.tour && r.team === tm.id && r.status === 'approved')
   const squad = reg?.squad?.length ? reg.squad.filter(id => tm.members.includes(id)) : null
   return squad?.length ? squad : tm.members
-}
-export const startersOf = (s: State, m: Match, tid: string) => {
-  const named = (m.lineup || {})[tid]
-  return named?.starters?.length ? named.starters : lineupOf(s, m, tid)
-}
-export const allCheckedIn = (s: State, m: Match) => {
-  const need = [m.a, m.b].filter(Boolean).flatMap(tid => lineupOf(s, m, tid))
-  return need.length > 0 && need.every(id => m.checkedIn.includes(id))
 }
 
 /* ───────── the leaderboard, derived and never stored ───────── */
