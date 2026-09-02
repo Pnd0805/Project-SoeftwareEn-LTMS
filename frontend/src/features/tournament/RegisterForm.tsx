@@ -10,9 +10,14 @@
  * players only — a member left off cannot fail it, because they are not entering.
  */
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, TableWrap } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
-import { registerSquad, useLtms } from '../../shared/store'
+import { useLtms } from '../../shared/store'
+import { useApplyToTournament } from '../../hooks/useTournament'
+import { ApiError } from '../../api/client'
+import { applyToTournamentSchema, type ApplyToTournamentInput } from '../../schemas/tournament.schema'
 import { user } from '../../shared/selectors'
 import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
 import type { Team, Tournament } from '../../shared/types'
@@ -43,17 +48,30 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
   const fails = useMemo(() => hardFilter(s, tm, tr, squad), [s, tm, tr, squad])
   const shut = regWindowClosed(tr)
   const locked = options.length < 2
+  const apply = useApplyToTournament(Number(tr.id))
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
+    resolver: zodResolver(applyToTournamentSchema),
+    defaultValues: { teamId: Number(tm.id) },
+  })
 
   const toggle = (id: string) =>
     setSquad(cur => (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]))
 
-  const submit = () => {
-    registerSquad(tr.id, tm.id, squad, fails.length ? fails.map(f => `${f.user.name} — ${f.rule}`).join('; ') : null)
-    onClose()
+  const submit = async (input: ApplyToTournamentInput) => {
+    try {
+      await apply.mutateAsync(input)
+      onClose()
+    } catch (error) {
+      if (error instanceof ApiError && error.fields) {
+        Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ApplyToTournamentInput, { type: 'server', message }))
+      }
+    }
   }
 
   return (
     <Modal open={open} onClose={onClose} title={`Register ${tm.name}`}>
+      <form onSubmit={handleSubmit(submit)}>
+      <input type="hidden" {...register('teamId', { valueAsNumber: true })} />
       {locked ? (
         <Field label="Tournament">
           <div className="sub">{tr.name} — {tr.sport} · {tr.channel}</div>
@@ -114,11 +132,12 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
 
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>Cancel</button>
-        <button className="btn primary" type="button" disabled={!!fails.length || !!shut || !squad.length}
-          onClick={submit}>
+        {errors.teamId?.message ? <span className="sub">{errors.teamId.message}</span> : null}
+        <button className="btn primary" type="submit" disabled={!!fails.length || !!shut || !squad.length || isSubmitting || apply.isPending}>
           Submit registration
         </button>
       </div>
+      </form>
     </Modal>
   )
 }

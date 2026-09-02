@@ -11,7 +11,8 @@
  * entry, mid-bracket with a live dispute, a round robin part-played, and one
  * finished with a champion and MVP votes — across six sports, onsite and online.
  */
-import { buildBracket, NOW, refsNeeded, statLabels, winnerId } from './rules'
+import { NOW, refsNeeded, statLabels, winnerId } from './rules'
+import { buildBracket } from '../features/tournament/bracketBuilders'
 import type {
   Match, Pin, Registration, Rules, State, Team, Tournament, User,
 } from './types'

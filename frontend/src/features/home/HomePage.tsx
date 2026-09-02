@@ -12,6 +12,7 @@ import { Icon } from '../../components/kit/Icon'
 import { Empty, Panel, Tabs } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
+import { useTournaments } from '../../hooks/useTournament'
 import { me, myTeams, regsOf, visibleTo } from '../../shared/selectors'
 import { tourLifecycle } from '../../shared/rules'
 import type { Registration, Tournament } from '../../shared/types'
@@ -19,6 +20,7 @@ import { TournamentCard } from './TournamentCard'
 import type { Rel } from './TournamentCard'
 import { workQueue } from './workQueue'
 import type { WorkEntry, WorkKind } from './workQueue'
+import { tournamentView } from '../tournament/tournamentView'
 
 const KIND_COLS: [WorkKind, string][] = [['crit', 'Urgent'], ['warn', 'Waiting'], ['ok', 'Ready']]
 const STAGES: [string, string][] = [['', 'All'], ['open', 'Open for entry'], ['competing', 'In progress'], ['finished', 'Finished']]
@@ -53,6 +55,7 @@ function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries
 
 export function HomePage() {
   const s = useLtms()
+  const { data: tournamentData, isPending: tournamentsPending } = useTournaments()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
   const u = me(s)
@@ -61,7 +64,7 @@ export function HomePage() {
   const [openKind, setOpenKind] = useState<WorkKind | null>(null)
 
   const q = useMemo(() => workQueue(s), [s])
-  const all = s.tournaments.filter(t => visibleTo(s, t))
+  const all = (tournamentData?.items ?? []).map(tournamentView).filter(t => visibleTo(s, t))
   const needle = query.trim().toLowerCase()
   const textFiltered = needle
     ? all.filter(t => `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
@@ -96,6 +99,7 @@ export function HomePage() {
 
   return (
     <>
+      {tournamentsPending ? <Panel quiet><span className="sub">Loading tournaments…</span></Panel> : null}
       <div className="spread">
         <div>
           <div className="tag"><em>//</em> University Sports Council · Season 2026</div>

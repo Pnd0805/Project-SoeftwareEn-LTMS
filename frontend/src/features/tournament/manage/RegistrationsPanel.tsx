@@ -6,11 +6,16 @@
  * not a decision, because nobody here made it and nobody can undo it.
  */
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Panel, TableWrap } from '../../../components/kit/primitives'
+import { Badge, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { TeamLink } from '../../../components/kit/chips'
 import { Modal } from '../../../components/kit/Modal'
-import { allowWithdraw, approveAll, approveRegistration, rejectRegistration, useLtms } from '../../../shared/store'
+import { useLtms } from '../../../shared/store'
+import { useAllowWithdrawal, useApproveAllRegistrations, useApproveRegistration, useRejectRegistration } from '../../../hooks/useTournament'
+import { ApiError } from '../../../api/client'
+import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
 import { regsOf, team, user } from '../../../shared/selectors'
 import { fmtDate, hardFilter } from '../../../shared/rules'
 import type { Registration, Tournament } from '../../../shared/types'
@@ -24,6 +29,11 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const approved = regs.filter(r => r.status === 'approved')
   const rejected = regs.filter(r => r.status === 'rejected')
   const withdrawing = regs.filter(r => r.withdrawRequested)
+  const approve = useApproveRegistration(Number(t.id))
+  const approveAll = useApproveAllRegistrations(Number(t.id))
+  const reject = useRejectRegistration(Number(t.id))
+  const allowWithdraw = useAllowWithdrawal(Number(t.id))
+  const { register, handleSubmit, setError, reset, formState: { errors } } = useForm<ReviewTournamentApplicationInput>({ resolver: zodResolver(reviewTournamentApplicationSchema) })
 
   const reviewTeam = review ? team(s, review.team) : null
   const fails = review && reviewTeam ? hardFilter(s, reviewTeam, t, review.squad) : []
@@ -38,7 +48,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
 
         {pend.length > 1 ? (
           <div className="hstack" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn" type="button" onClick={() => approveAll(t.id)}>Approve all {pend.length}</button>
+            <button className="btn" type="button" onClick={() => approveAll.mutate()}>Approve all {pend.length}</button>
           </div>
         ) : null}
 
@@ -58,7 +68,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
                   {f.length ? <Badge kind="crit">{`${f.length} failed`}</Badge> : <Badge kind="ok">Passed</Badge>}
                   <span className="hstack">
                     <button className="btn ghost" type="button" onClick={() => setReview(r)}>Review</button>
-                    <button className="btn primary" type="button" onClick={() => approveRegistration(r.id)}>Approve</button>
+                    <button className="btn primary" type="button" onClick={() => approve.mutate(Number(r.id))}>Approve</button>
                   </span>
                 </div>
               )
@@ -79,7 +89,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
                     <tr key={r.id}>
                       <td><TeamLink id={r.team} /></td>
                       <td className="sub">Every remaining opponent receives a walkover.</td>
-                      <td><button className="btn danger" type="button" onClick={() => allowWithdraw(r.id)}>Allow withdrawal</button></td>
+                      <td><button className="btn danger" type="button" onClick={() => allowWithdraw.mutate(Number(r.id))}>Allow withdrawal</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -157,14 +167,24 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
         ) : null}
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setReview(null)}>Cancel</button>
-          <button className="btn danger" type="button"
-            onClick={() => { if (review) rejectRegistration(review.id, 'Declined on the entry notes'); setReview(null) }}>
+          <form onSubmit={handleSubmit(async input => {
+            if (!review) return
+            try { await reject.mutateAsync({ applicationId: Number(review.id), rejectionReason: input.rejectionReason ?? '' }); setReview(null); reset() }
+            catch (error) { if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ReviewTournamentApplicationInput, { type: 'server', message })) }
+          })}>
+          <input type="hidden" value="rejected" {...register('status')} />
+          <Field label="Reason" htmlFor="registration-reason">
+            <textarea id="registration-reason" rows={3} {...register('rejectionReason')} />
+            {errors.rejectionReason?.message ? <span className="sub">{errors.rejectionReason.message}</span> : null}
+          </Field>
+          <button className="btn danger" type="submit">
             Decline
           </button>
           <button className="btn primary" type="button"
-            onClick={() => { if (review) approveRegistration(review.id); setReview(null) }}>
+            onClick={() => { if (review) approve.mutate(Number(review.id), { onSuccess: () => setReview(null) }) }}>
             Approve
           </button>
+          </form>
         </div>
       </Modal>
     </>

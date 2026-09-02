@@ -10,7 +10,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
-import { isOrg, matchesOf, regsOf, team, tour, user, visibleTo } from '../../shared/selectors'
+import { useTournament } from '../../hooks/useTournament'
+import { isOrg, matchesOf, regsOf, team, user, visibleTo } from '../../shared/selectors'
 import { formatName, ruleSummary } from '../../shared/rules'
 import { BracketTab } from './BracketTab'
 import { ScheduleTab } from './ScheduleTab'
@@ -19,6 +20,7 @@ import { AnnouncementsTab } from './AnnouncementsTab'
 import { CommunityTab } from './CommunityTab'
 import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
+import { tournamentView } from './tournamentView'
 
 const PUBLIC_TABS = ['bracket', 'schedule', 'leaderboard', 'announcements', 'community']
 
@@ -26,7 +28,13 @@ export function TournamentPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id, tab: tabParam, sub } = useParams()
-  const t = tour(s, id)
+  const tournamentId = id && Number.isInteger(Number(id)) ? Number(id) : undefined
+  const { data: tournamentData, isPending } = useTournament(tournamentId)
+  const t = tournamentData ? tournamentView(tournamentData) : undefined
+
+  if (isPending) {
+    return <Empty title="Loading tournament" />
+  }
 
   if (!t) {
     return (
