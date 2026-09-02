@@ -9,7 +9,7 @@
  *
  * Auth header ตรงตาม GUIDE/04 §9: "Authorization: Bearer <accessToken>"
  */
-import type { ApiErrorBody } from "../types/dto";
+import type { ApiErrorBody, ApiErrorResponse } from "../types/dto";
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false"; // ไม่ตั้งค่า = mock ไว้ก่อน ปลอดภัยสุด
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -43,7 +43,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new ApiError(res.status, (body as ApiErrorBody) ?? { code: "UNKNOWN", message: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ" });
+    const errorBody = body && typeof body === "object" && "error" in body
+      ? (body as ApiErrorResponse).error
+      : body as ApiErrorBody | null;
+    throw new ApiError(res.status, errorBody ?? { code: "UNKNOWN", message: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ" });
   }
   return body as T;
 }
