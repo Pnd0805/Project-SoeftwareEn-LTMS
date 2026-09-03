@@ -13,13 +13,15 @@ import type { LoginResponse, RegisterResponse, RegisterRequest } from "../types/
 import { mockUsers, takeNextMockUserId } from "./user.mock";
 import { mockDelay, mockReject } from "../api/client";
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 /**
  * Mock login — ตรวจ email + passwordForMock จาก mockUsers
  * ถ้าถูก → return LoginResponse พร้อม accessToken
  * ถ้าผิด → mockReject 401 INVALID_CREDENTIALS
  */
 export async function mockLogin(email: string, password: string): Promise<LoginResponse> {
-  const user = mockUsers.find((u) => u.email === email);
+  const user = mockUsers.find((u) => u.email === normalizeEmail(email));
   // GUIDE/04 §12: หาไม่เจอ กับ รหัสผิด ต้องตอบข้อความเดียวกัน (กัน user enumeration)
   if (!user || user.passwordForMock !== password) {
     return mockReject(401, {
@@ -46,7 +48,8 @@ export async function mockLogin(email: string, password: string): Promise<LoginR
  * ถ้า unique → สร้าง user ใหม่ + backend ตั้งเองให้ userType='student' (ดู GUIDE/04 §12)
  */
 export async function mockRegister(input: RegisterRequest): Promise<RegisterResponse> {
-  if (mockUsers.some((u) => u.email === input.email)) {
+  const email = normalizeEmail(input.email);
+  if (mockUsers.some((u) => u.email === email)) {
     return mockReject(400, {
       code: "EMAIL_TAKEN",
       message: "อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ",
@@ -58,7 +61,7 @@ export async function mockRegister(input: RegisterRequest): Promise<RegisterResp
   mockUsers.push({
     id,
     fullName: input.fullName,
-    email: input.email,
+    email,
     gender: input.gender,
     birthDate: input.birthDate,
     facultyId: input.facultyId,
@@ -75,6 +78,8 @@ export async function mockRegister(input: RegisterRequest): Promise<RegisterResp
     userType: "student",
     passwordForMock: input.password,
   });
+
+  localStorage.setItem("ltms-mock-users", JSON.stringify(mockUsers));
 
   return mockDelay<RegisterResponse>({
     id,

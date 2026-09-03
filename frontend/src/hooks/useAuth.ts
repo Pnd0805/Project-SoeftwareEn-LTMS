@@ -7,6 +7,7 @@ import * as authApi from "../api/auth";
 import * as userApi from "../api/user";
 import { USE_MOCK } from "../api/client";
 import type { LoginRequest, RegisterRequest } from "../types/dto";
+import type { User } from "../shared/types";
 import { getState, login as setLegacySession, signout as clearLegacySession } from "../shared/store";
 
 export function useMe() {
@@ -25,8 +26,26 @@ export function useLogin() {
       if (USE_MOCK) {
         userApi.setMockCurrentUser(data.user.id);
         // Temporary bridge: legacy screens still read the prototype session.
-        const legacyUser = getState().users.find((user) => user.email === input.email);
-        if (legacyUser) setLegacySession(legacyUser.id);
+        const state = getState();
+        let legacyUser = state.users.find(
+          (user) => user.email.trim().toLowerCase() === input.email.trim().toLowerCase(),
+        );
+        if (!legacyUser) {
+          const newUser: User = {
+            id: String(data.user.id),
+            name: data.user.fullName,
+            email: input.email.trim().toLowerCase(),
+            role: data.user.userType === "staff" ? "Admin" : "User",
+            gender: "Male",
+            dob: "2000-01-01",
+            faculty: "—",
+            major: "—",
+            year: 1,
+          };
+          state.users.push(newUser);
+          legacyUser = newUser;
+        }
+        setLegacySession(legacyUser.id);
       }
       qc.invalidateQueries({ queryKey: ["me"] });
     },
