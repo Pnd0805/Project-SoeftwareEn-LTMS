@@ -11,20 +11,20 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { Modal } from '../../components/kit/Modal'
-import { useLtms } from '../../shared/store'
-import { useCreateTournamentAnnouncement } from '../../hooks/useTournament'
+import { useCreateTournamentAnnouncement, useTournamentAnnouncements } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
 import { createTournamentAnnouncementSchema, type CreateTournamentAnnouncementInput } from '../../schemas/tournament.schema'
-import { user } from '../../shared/selectors'
-import { fmtDate } from '../../shared/rules'
 import type { Tournament } from '../../shared/types'
 
 export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
-  const s = useLtms()
   const [open, setOpen] = useState(false)
-  const publish = useCreateTournamentAnnouncement(Number(t.id))
+  const tournamentId = Number(t.id)
+  const publish = useCreateTournamentAnnouncement(tournamentId)
+  const announcements = useTournamentAnnouncements(tournamentId)
   const { register, handleSubmit, setError, reset, formState: { errors, isSubmitting } } = useForm<CreateTournamentAnnouncementInput>({ resolver: zodResolver(createTournamentAnnouncementSchema) })
-  const list = s.announcements.filter(a => a.tour === t.id).sort((a, b) => b.at - a.at)
+  const list = [...(announcements.data?.items ?? [])].sort((a, b) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
 
   const post = async (input: CreateTournamentAnnouncementInput) => {
     try { await publish.mutateAsync(input); reset(); setOpen(false) }
@@ -44,7 +44,7 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
       {list.length ? list.map(a => (
         <Panel quiet key={a.id}>
           <div className="spread">
-            <span className="tag"><em>//</em> {user(s, a.by)?.name ?? 'Organizer'} · {fmtDate(a.at)}</span>
+            <span className="tag"><em>//</em> Organizer · {new Date(a.createdAt).toLocaleDateString()}</span>
           </div>
           <div className="disp" style={{ fontSize: 19 }}>{a.title}</div>
           <div style={{ fontSize: 15, lineHeight: 1.55 }}>{a.body}</div>

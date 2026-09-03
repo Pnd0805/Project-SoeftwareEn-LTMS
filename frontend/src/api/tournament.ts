@@ -13,6 +13,7 @@ import type {
   TournamentListResponse,
   CreateTournamentAnnouncementRequest,
   TournamentAnnouncementDto,
+  TournamentAnnouncementListResponse,
   SubmitTournamentFeedbackRequest,
   TournamentFeedbackDto,
   DrawTournamentRequest,
@@ -26,6 +27,7 @@ import {
   mockTournamentReferees,
   mockTournamentTeams,
   mockTournamentUsers,
+  mockTournamentAnnouncements,
   mockTournaments,
   nextTournamentMockId,
 } from "../mocks/tournament.mock";
@@ -238,8 +240,19 @@ export async function drawTournament(id: number, input: DrawTournamentRequest = 
 }
 
 export async function createAnnouncement(id: number, input: CreateTournamentAnnouncementRequest): Promise<TournamentAnnouncementDto> {
-  if (USE_MOCK) return tournamentMockDelay({ id: nextTournamentMockId(), tournamentId: id, authorId: 1, ...input, createdAt: isoNow() });
+  if (USE_MOCK) {
+    const announcement = { id: nextTournamentMockId(), tournamentId: id, authorId: 1, ...input, createdAt: isoNow() };
+    mockTournamentAnnouncements.push(announcement);
+    return tournamentMockDelay(announcement);
+  }
   return apiFetch(`/tournaments/${id}/announcements`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function getAnnouncements(id: number): Promise<TournamentAnnouncementListResponse> {
+  if (USE_MOCK) {
+    return tournamentMockDelay({ items: mockTournamentAnnouncements.filter(item => item.tournamentId === id) });
+  }
+  return apiFetch(`/tournaments/${id}/announcements`);
 }
 
 export async function submitFeedback(id: number, input: SubmitTournamentFeedbackRequest): Promise<TournamentFeedbackDto> {

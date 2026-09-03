@@ -4,6 +4,7 @@ import type {
   TournamentApplicationDto,
   TournamentDto,
   TournamentRefereeDto,
+  TournamentAnnouncementDto,
 } from "../types/tournament.dto";
 
 const TZ = "+07:00";
@@ -132,6 +133,8 @@ export const mockTournamentApplications: TournamentApplicationDto[] = [
     appliedAt: "2026-08-08T12:00:00+07:00",
   },
 ];
+
+export const mockTournamentAnnouncements: TournamentAnnouncementDto[] = [];
 
 export const mockDelay = <T>(value: T, ms = 100): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));

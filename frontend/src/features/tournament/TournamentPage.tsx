@@ -11,7 +11,7 @@ import { Badge, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../compon
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { useTournament } from '../../hooks/useTournament'
-import { isOrg, matchesOf, regsOf, team, user, visibleTo } from '../../shared/selectors'
+import { isOrg, matchesOf, regsOf, team, tour, user, visibleTo } from '../../shared/selectors'
 import { formatName, ruleSummary } from '../../shared/rules'
 import { BracketTab } from './BracketTab'
 import { ScheduleTab } from './ScheduleTab'
@@ -30,9 +30,10 @@ export function TournamentPage() {
   const { id, tab: tabParam, sub } = useParams()
   const tournamentId = id && Number.isInteger(Number(id)) ? Number(id) : undefined
   const { data: tournamentData, isPending } = useTournament(tournamentId)
-  const t = tournamentData ? tournamentView(tournamentData) : undefined
+  const legacyTournament = tour(s, id)
+  const t = tournamentData ? tournamentView(tournamentData) : legacyTournament
 
-  if (isPending) {
+  if (isPending && !legacyTournament) {
     return <Empty title="Loading tournament" />
   }
 
@@ -147,7 +148,7 @@ export function TournamentPage() {
               ['Run by', user(s, t.organizer)?.name ?? '—'],
             ]} />
           </Panel>
-          <EntryPanel t={t} />
+          <EntryPanel t={t} applications={tournamentData?.applications} />
           {t.entryNotes ? (
             <Panel quiet>
               <span className="tag"><em>//</em> Soft filter from the organizer</span>

@@ -12,15 +12,18 @@ import { useLtms } from '../../shared/store'
 import { me, regsOf, squadsFor, team } from '../../shared/selectors'
 import { minSquad, regWindowClosed, ruleSummary, teamReady } from '../../shared/rules'
 import type { Tournament } from '../../shared/types'
+import type { TournamentApplicationDto } from '../../types/tournament.dto'
 import { RegisterForm } from './RegisterForm'
 
-export function EntryPanel({ t }: { t: Tournament }) {
+export function EntryPanel({ t, applications }: { t: Tournament; applications?: TournamentApplicationDto[] }) {
   const s = useLtms()
   const u = me(s)
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
-  const approved = regsOf(s, t.id).filter(r => r.status === 'approved').length
+  const approved = applications
+    ? applications.filter(application => application.status === 'approved').length
+    : regsOf(s, t.id).filter(r => r.status === 'approved').length
   const closed = t.drawn ? 'The bracket is drawn — entries are closed.'
     : t.status !== 'public' ? 'Not open for registration yet.'
       : approved >= t.cap ? `Full at ${t.cap} squads.`

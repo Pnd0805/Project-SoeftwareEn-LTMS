@@ -140,7 +140,21 @@ export function useDrawTournament(tournamentId: number) {
 
 export function useCreateTournamentAnnouncement(tournamentId: number) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (input: CreateTournamentAnnouncementRequest) => tournamentApi.createAnnouncement(tournamentId, input), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
+  return useMutation({
+    mutationFn: (input: CreateTournamentAnnouncementRequest) => tournamentApi.createAnnouncement(tournamentId, input),
+    onSuccess: () => {
+      invalidateTournament(queryClient, tournamentId);
+      queryClient.invalidateQueries({ queryKey: ["announcements", tournamentId] });
+    },
+  });
+}
+
+export function useTournamentAnnouncements(tournamentId: number | undefined) {
+  return useQuery({
+    queryKey: ["announcements", tournamentId],
+    queryFn: () => tournamentApi.getAnnouncements(tournamentId as number),
+    enabled: tournamentId !== undefined,
+  });
 }
 
 export function useSubmitTournamentFeedback(tournamentId: number) {

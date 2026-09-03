@@ -138,6 +138,10 @@ export interface TournamentAnnouncementDto {
   createdAt: string;
 }
 
+export interface TournamentAnnouncementListResponse {
+  items: TournamentAnnouncementDto[]
+}
+
 export interface CreateTournamentAnnouncementRequest {
   title: string;
   body: string;
