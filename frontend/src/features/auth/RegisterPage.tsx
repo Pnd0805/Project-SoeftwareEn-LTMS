@@ -4,11 +4,13 @@
  * Minimal registration page wired to useRegister() and the schema.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Icon } from '../../components/kit/Icon'
 import { useRegister } from '../../hooks/useAuth'
+import { useDepartments, useFaculties } from '../../hooks/useReference'
 import { registerSchema, type RegisterInput } from '../../schemas/auth.schema'
 
 const defaultValues: RegisterInput = {
@@ -25,11 +27,21 @@ const defaultValues: RegisterInput = {
 export function RegisterPage() {
   const navigate = useNavigate()
   const register = useRegister()
+  const faculties = useFaculties()
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues,
   })
+  const facultyId = form.watch('facultyId')
+  const departments = useDepartments(facultyId)
+
+  useEffect(() => {
+    const firstDepartment = departments.data?.items[0]
+    if (firstDepartment && !departments.data?.items.some(item => item.id === form.getValues('departmentId'))) {
+      form.setValue('departmentId', firstDepartment.id, { shouldValidate: true })
+    }
+  }, [departments.data, form])
 
   const submit = async (values: RegisterInput) => {
     try {
@@ -95,13 +107,22 @@ export function RegisterPage() {
 
         <label className="field">
           <span className="label">คณะ</span>
-          <input type="number" min={1} {...form.register('facultyId', { valueAsNumber: true })} />
+          <select {...form.register('facultyId', { valueAsNumber: true })} disabled={faculties.isLoading}>
+            {faculties.data?.items.map(faculty => (
+              <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
+            ))}
+          </select>
         </label>
         {form.formState.errors.facultyId && <span className="error">{form.formState.errors.facultyId.message}</span>}
 
         <label className="field">
           <span className="label">ภาควิชา</span>
-          <input type="number" min={1} {...form.register('departmentId', { valueAsNumber: true })} />
+          <select {...form.register('departmentId', { valueAsNumber: true })}
+            disabled={departments.isLoading || !departments.data?.items.length}>
+            {departments.data?.items.map(department => (
+              <option key={department.id} value={department.id}>{department.name}</option>
+            ))}
+          </select>
         </label>
         {form.formState.errors.departmentId && <span className="error">{form.formState.errors.departmentId.message}</span>}
 
