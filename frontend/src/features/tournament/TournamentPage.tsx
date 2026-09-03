@@ -85,7 +85,9 @@ export function TournamentPage() {
 
   const tabs = [...PUBLIC_TABS, ...(org ? ['manage'] : [])]
   const tab = tabs.includes(tabParam ?? '') ? tabParam! : 'bracket'
-  const approved = regsOf(s, t.id).filter(r => r.status === 'approved')
+  const approved = tournamentData?.applications
+    ? tournamentData.applications.filter(application => application.status === 'approved')
+    : regsOf(s, t.id).filter(r => r.status === 'approved')
   const champion = t.champion ? team(s, t.champion) : null
   const watchable = matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
 

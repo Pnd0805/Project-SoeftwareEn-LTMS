@@ -21,6 +21,7 @@ import { applyToTournamentSchema, type ApplyToTournamentInput } from '../../sche
 import { user } from '../../shared/selectors'
 import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
 import type { Team, Tournament } from '../../shared/types'
+import { numOf } from '../../mocks/storeBridge'
 
 /** What the organizer wrote about entering — shown, never checked by the system. */
 function EntryNotesBlock({ tr }: { tr: Tournament }) {
@@ -51,7 +52,7 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
   const apply = useApplyToTournament(Number(tr.id))
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
     resolver: zodResolver(applyToTournamentSchema),
-    defaultValues: { teamId: Number(tm.id) },
+    defaultValues: { teamId: Number.isFinite(Number(tm.id)) ? Number(tm.id) : numOf(tm.id) },
   })
 
   const toggle = (id: string) =>

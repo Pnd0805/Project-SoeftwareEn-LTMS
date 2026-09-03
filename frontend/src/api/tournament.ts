@@ -31,6 +31,7 @@ import {
   mockTournaments,
   nextTournamentMockId,
 } from "../mocks/tournament.mock";
+import { findStoreTeam } from "../mocks/teamBridge";
 
 const notFound = <T>(message: string): Promise<T> =>
   mockReject(404, { code: "NOT_FOUND", message });
@@ -165,7 +166,9 @@ export async function inviteReferee(id: number, input: InviteTournamentRefereeRe
 export async function applyToTournament(id: number, input: ApplyToTournamentRequest): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
     if (!findTournament(id)) return notFound("ไม่พบการแข่งขัน");
-    const team = mockTournamentTeams.find((item) => item.id === input.teamId);
+    const storeTeam = findStoreTeam(input.teamId);
+    const team = mockTournamentTeams.find((item) => item.id === input.teamId)
+      ?? (storeTeam ? { id: input.teamId, name: storeTeam.name } : undefined);
     if (!team) return notFound("ไม่พบทีม");
     const application: TournamentApplicationDto = {
       id: nextTournamentMockId(), tournamentId: id, teamId: input.teamId, team,

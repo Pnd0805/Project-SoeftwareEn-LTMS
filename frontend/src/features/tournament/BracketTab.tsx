@@ -8,11 +8,60 @@
  */
 import { useLayoutEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Empty, StatusBadge } from '../../components/kit/primitives'
+import { Empty, MatchStateBadge, Panel, StatusBadge } from '../../components/kit/primitives'
+import { TeamLinkView } from '../../components/kit/chips'
+import { useTournamentMatches } from '../../hooks/useMatch'
+import { toTeamView } from '../match/matchView'
 import { useLtms } from '../../shared/store'
 import { matchesOf, isOrg, regsOf, team } from '../../shared/selectors'
 import { formatName, formatOf, matchStage, matchTag, nextOf, roundName } from '../../shared/rules'
 import type { Match, Tournament } from '../../shared/types'
+import type { MatchDto } from '../../types/match.dto'
+
+function ApiBracketNode({ m }: { m: MatchDto }) {
+  const navigate = useNavigate()
+  const state = m.teamA && m.teamB
+    ? m.status === 'disputed' ? 'disputed'
+      : m.status === 'completed' ? 'confirmed'
+        : m.status === 'in_progress' ? 'live' : 'scheduled'
+    : 'waiting'
+
+  return (
+    <button className={`bnode ${state === 'disputed' ? 'act' : ''}`} type="button"
+      data-mid={m.id} onClick={() => navigate(`/m/${m.id}`)}>
+      <span className="bhead">
+        <span className="tag"><em>//</em> {m.tag || m.stage}</span>
+        <MatchStateBadge state={state} />
+      </span>
+      <span className="brow">
+        <TeamLinkView team={toTeamView(m.teamA)} />
+        <span className="sc">—</span>
+      </span>
+      <span className="brow">
+        <TeamLinkView team={toTeamView(m.teamB)} />
+        <span className="sc">—</span>
+      </span>
+    </button>
+  )
+}
+
+function ApiBracket({ matches }: { matches: MatchDto[] }) {
+  const rounds = [...new Set(matches.map(match => match.roundNumber ?? 0))].sort((a, b) => a - b)
+  return (
+    <Panel quiet>
+      <div className="bracket">
+        {rounds.map(round => (
+          <div className="bcol" key={round}>
+            <div className="tag" style={{ textAlign: 'center' }}><em>//</em> Round {round + 1}</div>
+            {matches.filter(match => (match.roundNumber ?? 0) === round).map(match => (
+              <ApiBracketNode key={match.id} m={match} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  )
+}
 
 function BracketNode({ m }: { m: Match }) {
   const s = useLtms()
@@ -97,8 +146,15 @@ export function BracketTab({ t }: { t: Tournament }) {
   const s = useLtms()
   const navigate = useNavigate()
   const ms = matchesOf(s, t.id)
+  const apiTournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
+  const apiMatches = useTournamentMatches(apiTournamentId)
   const host = useBracketLines(ms.length)
   const rr = formatOf(t) === 'roundrobin'
+
+  if (apiTournamentId !== undefined) {
+    if (apiMatches.isPending) return <Panel quiet><span className="sub">Loading the bracket…</span></Panel>
+    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} />
+  }
 
   if (!t.drawn) {
     return (
