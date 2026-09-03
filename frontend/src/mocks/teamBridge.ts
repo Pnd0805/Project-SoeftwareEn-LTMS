@@ -24,12 +24,12 @@ import type {
 
 export type TeamRef = number | string
 
-const asUser = (s: State, id: string | null | undefined): UserRefDto | null => {
+export const asUser = (s: State, id: string | null | undefined): UserRefDto | null => {
   const u = s.users.find(x => x.id === id)
   return u ? { id: numOf(u.id), fullName: u.name, avatarUrl: null } : null
 }
 
-const unknownUser: UserRefDto = { id: 0, fullName: '—', avatarUrl: null }
+export const unknownUser: UserRefDto = { id: 0, fullName: '—', avatarUrl: null }
 
 const teamStub = (t: StoreTeam) => ({
   id: numOf(t.id), name: t.name, code: t.code, color: t.color,
