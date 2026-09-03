@@ -1,0 +1,1938 @@
+openapi: 3.1.0
+info:
+  title: LTMS API — MVP (R01)
+  version: "0.1.0"
+  description: >
+    Local Tournament Management System — เฉพาะ endpoint ที่อยู่ในเฟส MVP (92 endpoint)
+    ครอบคลุมเส้นทางหลัก OF-01 ถึง OF-03 ตั้งแต่ขอจัดตั้งทัวร์นาเมนต์จนถึงประกาศผู้ชนะ
+    ดูฉบับ Sprint #1/#2 ที่ LTMS_OpenAPI_Sprint1-2.yaml (แยกไฟล์ตามกำหนดส่งมอบใน SRS หัวข้อ 2.7)
+  contact:
+    name: ทีม WWW.
+servers:
+  - url: https://api.ltms.example.com/api/v1
+    description: Production (ตัวอย่าง — เปลี่ยนตาม deployment จริง)
+  - url: http://localhost:3000/api/v1
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Reference Data
+  - name: Teams
+  - name: Tournaments
+  - name: Referees
+  - name: Applications
+  - name: Brackets & Matches
+  - name: Match Results
+  - name: Engagement
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Access token อายุ 7 วัน (ตั้งค่าผ่าน JWT_EXPIRES_IN) — ไม่มี refresh token
+        (ดูเหตุผลใน LTMS_API_Design_Part0-1.md หัวข้อ 1.3)
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+
+  schemas:
+    # ---- Shared / envelope ----
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+      required: [page, pageSize, totalItems, totalPages]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, description: "คงที่ ภาษาอังกฤษ ดูรายการเต็มใน LTMS_API_Design_Part4.md" }
+            message: { type: string, description: "ภาษาไทย แสดงผลได้ทันที" }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+          required: [code, message]
+      required: [error]
+
+    UserRef:
+      type: object
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        avatarUrl: { type: string, nullable: true }
+      required: [id, fullName]
+
+    TeamRef:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        sportTypeId: { type: integer }
+      required: [id, name, sportTypeId]
+
+    # ---- Auth ----
+    RegisterRequest:
+      type: object
+      required: [fullName, email, password, gender, birthDate, facultyId, departmentId, year]
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        gender: { type: string, enum: [male, female, other] }
+        birthDate: { type: string, format: date }
+        facultyId: { type: integer }
+        departmentId: { type: integer }
+        year: { type: integer }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        expiresIn: { type: integer, description: "วินาที — ปัจจุบัน 604800 (7 วัน)" }
+        tokenType: { type: string, enum: [Bearer] }
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            fullName: { type: string }
+            userType: { type: string, enum: [student, staff, external] }
+
+    # ---- Users ----
+    MeProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string }
+        gender: { type: string }
+        birthDate: { type: string, format: date }
+        facultyId: { type: integer }
+        departmentId: { type: integer }
+        year: { type: integer }
+        avatarUrl: { type: string, nullable: true }
+        contactInfo: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        totalPoints: { type: integer }
+        notificationPrefs: { type: object, additionalProperties: { type: boolean } }
+        createdAt: { type: string, format: date-time }
+
+    PublicProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        facultyId: { type: integer }
+        departmentId: { type: integer }
+        teams: { type: array, items: { $ref: '#/components/schemas/TeamRef' } }
+
+    # ---- Sport type / reference ----
+    SportType:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        minMembers: { type: integer }
+        maxMembers: { type: integer }
+        defaultMode: { type: string, enum: [onsite, online] }
+
+    # ---- Teams ----
+    Team:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        sportTypeId: { type: integer }
+        readinessStatus: { type: string, enum: [Forming, Ready, Inactive] }
+        officialStatus: { type: string, enum: [unofficial, pending, official] }
+        leader: { $ref: '#/components/schemas/UserRef' }
+        memberCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    TeamMember:
+      type: object
+      properties:
+        userId: { type: integer }
+        fullName: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        position: { type: string, enum: [starter, substitute] }
+        joinedAt: { type: string, format: date-time }
+
+    # ---- Tournaments ----
+    Tournament:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        sportTypeId: { type: integer }
+        status: { type: string, enum: [pending_approval, private, public, ongoing, completed, rejected, auto_deleted] }
+        bracketFormat: { type: string, enum: [single_elim, double_elim, round_robin] }
+        scopeType: { type: string, enum: [department, faculty, university] }
+        registrationOpen: { type: boolean }
+        registrationStart: { type: string, format: date-time }
+        registrationEnd: { type: string, format: date-time }
+        eventStartDate: { type: string, format: date }
+        eventEndDate: { type: string, format: date }
+        maxTeams: { type: integer }
+        minTeams: { type: integer }
+        venue: { type: string }
+        genderRequirement: { type: string, enum: [any, male, female] }
+        minAge: { type: integer, nullable: true }
+        maxAge: { type: integer, nullable: true }
+        organizer: { $ref: '#/components/schemas/UserRef' }
+        approvedTeamCount: { type: integer }
+
+    TournamentCreateRequest:
+      type: object
+      required: [name, sportTypeId, bracketFormat, scopeType, organizingFacultyId, registrationStart, registrationEnd, eventStartDate, eventEndDate, maxTeams, minTeams, venue, genderRequirement]
+      properties:
+        name: { type: string }
+        sportTypeId: { type: integer }
+        bracketFormat: { type: string, enum: [single_elim, double_elim, round_robin] }
+        scopeType: { type: string, enum: [department, faculty, university], description: "⚠️ 'university' ต้องผ่าน Change Management ก่อน (ดูข้อ 4.3)" }
+        organizingFacultyId: { type: integer }
+        organizingDepartmentId: { type: integer, nullable: true }
+        registrationStart: { type: string, format: date-time }
+        registrationEnd: { type: string, format: date-time }
+        eventStartDate: { type: string, format: date }
+        eventEndDate: { type: string, format: date }
+        maxTeams: { type: integer }
+        minTeams: { type: integer }
+        venue: { type: string }
+        genderRequirement: { type: string, enum: [any, male, female] }
+        minAge: { type: integer, nullable: true }
+        maxAge: { type: integer, nullable: true }
+
+    # ---- Referees ----
+    RefereeInvitation:
+      type: object
+      properties:
+        id: { type: integer }
+        user: { $ref: '#/components/schemas/UserRef' }
+        invitationStatus: { type: string, enum: [pending, accepted, rejected] }
+        isExternal: { type: boolean }
+        externalApprovalStatus: { type: string, enum: [not_required, pending, approved, rejected] }
+
+    # ---- Applications ----
+    Application:
+      type: object
+      properties:
+        id: { type: integer }
+        tournamentId: { type: integer }
+        team: { $ref: '#/components/schemas/TeamRef' }
+        status: { type: string, enum: [pending, approved, rejected, cancelled, withdrawn] }
+        hardFilterPassed: { type: boolean }
+        rejectionReason: { type: string, nullable: true }
+        appliedAt: { type: string, format: date-time }
+
+    HardFilterDetail:
+      type: object
+      properties:
+        userId: { type: integer }
+        fullName: { type: string }
+        passed: { type: boolean }
+        reason: { type: string, enum: [gender, age, year, faculty], nullable: true }
+
+    # ---- Matches ----
+    Match:
+      type: object
+      properties:
+        id: { type: integer }
+        tournamentId: { type: integer }
+        round: { type: integer }
+        teamA: { allOf: [{ $ref: '#/components/schemas/TeamRef' }], nullable: true }
+        teamB: { allOf: [{ $ref: '#/components/schemas/TeamRef' }], nullable: true }
+        scheduledTime: { type: string, format: date-time, nullable: true }
+        venue: { type: string, nullable: true }
+        checkinOpenAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [scheduled, checkin_open, in_progress, completed, disputed] }
+        mode: { type: string, enum: [onsite, online] }
+        nextMatchId: { type: integer, nullable: true }
+
+    Checkin:
+      type: object
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        fullName: { type: string }
+        method: { type: string, enum: [qr, document] }
+        status: { type: string, enum: [checked_in, pending_verification, verified, rejected] }
+        checkedInAt: { type: string, format: date-time }
+
+    # ---- Results ----
+    MatchResult:
+      type: object
+      properties:
+        matchId: { type: integer }
+        winnerTeamId: { type: integer }
+        scoreData: { type: object, additionalProperties: { type: integer } }
+        isAmended: { type: boolean }
+        amendedAt: { type: string, format: date-time, nullable: true }
+        amendReason: { type: string, nullable: true }
+        verifiedAt: { type: string, format: date-time }
+
+    Standing:
+      type: object
+      properties:
+        team: { $ref: '#/components/schemas/TeamRef' }
+        wins: { type: integer }
+        losses: { type: integer }
+        pointsFor: { type: integer }
+        pointsAgainst: { type: integer }
+        rank: { type: integer }
+
+  responses:
+    Unauthorized:
+      description: ไม่ได้เข้าสู่ระบบ หรือ token หมดอายุ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: ไม่มีสิทธิ์ทำรายการนี้
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: ไม่พบข้อมูลที่ต้องการ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationError:
+      description: ข้อมูลที่ส่งมาไม่ถูกต้อง
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: ขัดกับสถานะปัจจุบันหรือ business rule
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+paths:
+  # ============ 1. AUTH ============
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerUser
+      security: []
+      summary: สมัครสมาชิก (FR-UM-01)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: สมัครสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, fullName: {type: string}, email: {type: string} }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      summary: เข้าสู่ระบบ (FR-UM-02)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: เข้าสู่ระบบสำเร็จ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { description: "อีเมลหรือรหัสผ่านไม่ถูกต้อง (INVALID_CREDENTIALS)" }
+        '403': { description: "บัญชีถูกระงับ (ACCOUNT_SUSPENDED)" }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: ออกจากระบบ
+      responses:
+        '204': { description: สำเร็จ }
+
+  # ============ 2. USERS & PROFILE ============
+  /me:
+    get:
+      tags: [Users]
+      operationId: getMe
+      summary: ข้อมูลของฉัน
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Users]
+      operationId: updateMe
+      summary: แก้ไขโปรไฟล์ (FR-UM-03)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatarUrl: { type: string }
+                contactInfo: { type: string }
+                address: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeProfile' }
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      operationId: getPublicProfile
+      summary: โปรไฟล์สาธารณะของผู้เล่น (FR-PP-01)
+      security: []
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicProfile' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{id}/stats:
+    get:
+      tags: [Users]
+      operationId: getPlayerStats
+      summary: สถิติผู้เล่น (read-only, จาก player_profile_stats)
+      security: []
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId: { type: integer }
+                  overall:
+                    type: object
+                    properties:
+                      matchesPlayed: { type: integer }
+                      wins: { type: integer }
+                      losses: { type: integer }
+                      winRate: { type: number }
+                      championCount: { type: integer }
+                  bySport:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sportTypeId: { type: integer }
+                        sportName: { type: string }
+                        matchesPlayed: { type: integer }
+                        wins: { type: integer }
+                        losses: { type: integer }
+
+  /users/search:
+    get:
+      tags: [Users]
+      operationId: searchUsers
+      summary: ค้นหาผู้ใช้เพื่อเชิญเข้าทีม (FR-TM-02)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 3 }
+      responses:
+        '200':
+          description: OK (จำกัด 20 รายการ)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserRef' }
+        '400': { description: "QUERY_TOO_SHORT" }
+
+  # ============ 3. REFERENCE DATA ============
+  /faculties:
+    get:
+      tags: [Reference Data]
+      operationId: listFaculties
+      security: []
+      summary: "รายชื่อคณะ ⚠️ multi-faculty ยังไม่ผ่าน Change Management"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties: { id: {type: integer}, name: {type: string} }
+
+  /faculties/{id}/departments:
+    get:
+      tags: [Reference Data]
+      operationId: listDepartments
+      security: []
+      summary: รายชื่อสาขาของคณะ
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties: { id: {type: integer}, name: {type: string}, facultyId: {type: integer} }
+
+  /sport-types:
+    get:
+      tags: [Reference Data]
+      operationId: listSportTypes
+      security: []
+      summary: รายชื่อประเภทกีฬาพร้อมกติกาจำนวนสมาชิก
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/SportType' }
+
+  /sport-types/{id}/stat-definitions:
+    get:
+      tags: [Reference Data]
+      operationId: listSportStatDefinitions
+      security: []
+      summary: "🆕 (รอบ 5) ให้ frontend รู้ว่ากีฬานี้ต้องโชว์ฟอร์มกรอกสถิติอะไรบ้าง ก่อนเรียก POST /matches/{id}/stats"
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        statDefinitionId: { type: integer }
+                        statKey: { type: string }
+                        statLabelTh: { type: string }
+                        dataType: { type: string, enum: [integer, decimal, boolean] }
+                        displayOrder: { type: integer }
+
+  # ============ 4. TEAMS ============
+  /teams:
+    post:
+      tags: [Teams]
+      operationId: createTeam
+      summary: สร้างทีม (FR-TM-01)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, sportTypeId]
+              properties: { name: {type: string}, sportTypeId: {type: integer} }
+      responses:
+        '201':
+          description: สร้างสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  sportTypeId: { type: integer }
+                  readinessStatus: { type: string, enum: [Forming] }
+                  leaderId: { type: integer }
+        '409': { description: "TEAM_NAME_TAKEN" }
+        '422': { description: "TEAM_QUOTA_EXCEEDED (BR-05)" }
+
+  /me/teams:
+    get:
+      tags: [Teams]
+      operationId: getMyTeams
+      summary: ทีมของฉันทั้งหมด (ใช้ตอนเลือกทีมลงสมัคร)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Team'
+                        - type: object
+                          properties: { role: {type: string, enum: [leader, member]} }
+
+  /teams/{id}:
+    get:
+      tags: [Teams]
+      operationId: getTeam
+      security: []
+      summary: ดูข้อมูลทีม (สาธารณะ)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Team' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Teams]
+      operationId: updateTeam
+      summary: แก้ไขชื่อทีม (Team Leader เท่านั้น) — FR-TM-04
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { name: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Team' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Teams]
+      operationId: deleteTeam
+      summary: ลบทีม (Team Leader เท่านั้น, ไม่ให้ลบระหว่างแข่ง) — FR-TM-05
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '204': { description: ลบสำเร็จ }
+        '409': { description: "TEAM_IN_COMPETITION — แนะนำให้ใช้ POST /applications/{id}/withdraw แทน" }
+
+  /teams/{id}/members:
+    get:
+      tags: [Teams]
+      operationId: getTeamMembers
+      summary: รายชื่อสมาชิกทีม
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/TeamMember' }
+
+  /teams/{id}/members/{uid}:
+    patch:
+      tags: [Teams]
+      operationId: updateMemberPosition
+      summary: ตั้งตัวจริง/ตัวสำรอง (Team Leader) — FR-TM-04
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: uid, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { position: { type: string, enum: [starter, substitute] } }
+      responses:
+        '200': { description: OK }
+    delete:
+      tags: [Teams]
+      operationId: removeMember
+      summary: ถอดสมาชิกออกจากทีม (Team Leader)
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: uid, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: "ถอดสำเร็จ (อาจทำให้ readinessStatus เปลี่ยนเป็น Forming)" }
+
+  /teams/{id}/invitations:
+    post:
+      tags: [Teams]
+      operationId: inviteToTeam
+      summary: เชิญสมาชิกเข้าทีม (Team Leader) — FR-TM-02
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invitedUserId]
+              properties: { invitedUserId: { type: integer } }
+      responses:
+        '201':
+          description: ส่งคำเชิญสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  invitedUserId: { type: integer }
+                  status: { type: string, enum: [pending] }
+                  expiresAt: { type: string, format: date-time }
+        '409': { description: "ALREADY_MEMBER" }
+    get:
+      tags: [Teams]
+      operationId: listTeamInvitations
+      summary: ดูสถานะคำเชิญทั้งหมดของทีม (Team Leader)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /teams/{id}/invitations/{iid}:
+    delete:
+      tags: [Teams]
+      operationId: cancelInvitation
+      summary: ยกเลิกคำเชิญที่ยังไม่ตอบ (Team Leader)
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: iid, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: ยกเลิกสำเร็จ }
+        '409': { description: "INVITATION_ALREADY_ANSWERED" }
+
+  /me/invitations:
+    get:
+      tags: [Teams]
+      operationId: getMyInvitations
+      summary: คำเชิญเข้าทีมที่รอฉันตอบ
+      responses:
+        '200': { description: OK }
+
+  /invitations/{id}/accept:
+    post:
+      tags: [Teams]
+      operationId: acceptInvitation
+      summary: ตอบรับคำเชิญเข้าทีม (BR-05) — FR-TM-03
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: สำเร็จ — ค่า teamReadinessStatus คือค่าล่าสุดหลังรับเข้า
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teamId: { type: integer }
+                  teamReadinessStatus: { type: string, enum: [Forming, Ready] }
+        '410': { description: "INVITATION_EXPIRED" }
+        '422': { description: "TEAM_QUOTA_EXCEEDED (BR-05)" }
+
+  /invitations/{id}/decline:
+    post:
+      tags: [Teams]
+      operationId: declineInvitation
+      summary: ปฏิเสธคำเชิญเข้าทีม
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '204': { description: สำเร็จ }
+
+  /teams/{id}/official-request:
+    post:
+      tags: [Teams]
+      operationId: requestOfficialStatus
+      summary: ยื่นคำร้องเปลี่ยนสถานะทีมเป็น Official (Team Leader) — FR-TM-06
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [supportingDocs]
+              properties: { supportingDocs: { type: array, items: { type: string } } }
+      responses:
+        '201': { description: ส่งคำร้องสำเร็จ }
+
+  /admin/team-requests:
+    get:
+      tags: [Teams]
+      operationId: listTeamRequests
+      summary: คิวคำร้องรออนุมัติ (Admin, scope=university_wide) — FR-TM-06
+      parameters:
+        - { $ref: '#/components/parameters/PageParam' }
+        - { $ref: '#/components/parameters/PageSizeParam' }
+      responses:
+        '200': { description: OK }
+
+  /admin/team-requests/{id}/approve:
+    post:
+      tags: [Teams]
+      operationId: approveTeamRequest
+      summary: อนุมัติคำร้อง Official (Admin) — ตรวจ BR-05
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { teamId: {type: integer}, officialStatus: {type: string, enum: [official]} }
+        '422': { description: "MEMBER_CONFLICT (BR-05) — มากับ conflictingMembers" }
+
+  /admin/team-requests/{id}/reject:
+    post:
+      tags: [Teams]
+      operationId: rejectTeamRequest
+      summary: ปฏิเสธคำร้อง Official (Admin)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  # ============ 5. TOURNAMENTS ============
+  /tournaments:
+    post:
+      tags: [Tournaments]
+      operationId: createTournament
+      summary: ยื่นคำร้องขอจัดตั้งทัวร์นาเมนต์ (FR-TC-01, BR-01)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TournamentCreateRequest' }
+      responses:
+        '201':
+          description: สร้างคำขอสำเร็จ (status=pending_approval เสมอ)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [pending_approval]}, name: {type: string} }
+        '400': { $ref: '#/components/responses/ValidationError' }
+    get:
+      tags: [Tournaments]
+      operationId: listTournaments
+      security: []
+      summary: ค้นหา/กรองรายการทัวร์นาเมนต์ (สาธารณะ) — FR-TR-01
+      parameters:
+        - { name: sportTypeId, in: query, schema: { type: integer } }
+        - { name: facultyId, in: query, schema: { type: integer } }
+        - { name: q, in: query, schema: { type: string } }
+        - { $ref: '#/components/parameters/PageParam' }
+        - { $ref: '#/components/parameters/PageSizeParam' }
+      responses:
+        '200':
+          description: "OK — backend บังคับ status='public' เสมอ ไม่สนใจ query ที่ client ส่งมา"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Tournament' } }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+
+  /me/tournament-requests:
+    get:
+      tags: [Tournaments]
+      operationId: getMyTournamentRequests
+      summary: คำขอจัดตั้งทัวร์นาเมนต์ของฉัน
+      responses:
+        '200': { description: OK }
+
+  /admin/tournament-requests:
+    get:
+      tags: [Tournaments]
+      operationId: listTournamentRequests
+      summary: คิวคำขอรอพิจารณา (Admin, scope=faculty) — FR-TC-02
+      parameters:
+        - { $ref: '#/components/parameters/PageParam' }
+        - { $ref: '#/components/parameters/PageSizeParam' }
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}/approve:
+    post:
+      tags: [Tournaments]
+      operationId: approveTournament
+      summary: อนุมัติคำขอจัดตั้งทัวร์นาเมนต์ (Admin) — BR-01, BR-02
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [private]}, organizerId: {type: integer} }
+
+  /tournaments/{id}/reject:
+    post:
+      tags: [Tournaments]
+      operationId: rejectTournament
+      summary: ปฏิเสธคำขอจัดตั้งทัวร์นาเมนต์ (Admin)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}:
+    get:
+      tags: [Tournaments]
+      operationId: getTournament
+      security: []
+      summary: ดูรายละเอียดทัวร์นาเมนต์ — private เห็นได้เฉพาะ Organizer/Admin
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tournament' }
+        '404': { description: "TOURNAMENT_NOT_FOUND (ใช้แทน 403 ถ้าเป็น private และไม่มีสิทธิ์ — ไม่ยืนยันการมีอยู่)" }
+    patch:
+      tags: [Tournaments]
+      operationId: updateTournament
+      summary: แก้ไขข้อมูลทั่วไป (Organizer) — เฉพาะฟิลด์ที่ไม่กระทบเงื่อนไขสมัคร FR-OM-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { venue: { type: string }, description: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tournament' }
+
+  /tournaments/{id}/amendment-requests:
+    post:
+      tags: [Tournaments]
+      operationId: requestAmendment
+      summary: ขออนุมัติแก้ไขข้อมูลสำคัญ (Organizer) — FR-OM-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { requestedChanges: { type: object } }
+      responses:
+        '201': { description: "สร้างคำขอสำเร็จ (status=pending)" }
+
+  /admin/amendment-requests:
+    get:
+      tags: [Tournaments]
+      operationId: listAmendmentRequests
+      summary: คิวคำขอแก้ไขทัวร์นาเมนต์ (Admin)
+      responses:
+        '200': { description: OK }
+
+  /amendment-requests/{id}/approve:
+    post:
+      tags: [Tournaments]
+      operationId: approveAmendment
+      summary: อนุมัติคำขอแก้ไข — apply การแก้ไขจริงในทรานแซกชันเดียวกัน
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /amendment-requests/{id}/reject:
+    post:
+      tags: [Tournaments]
+      operationId: rejectAmendment
+      summary: ปฏิเสธคำขอแก้ไข
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}/publish:
+    post:
+      tags: [Tournaments]
+      operationId: publishTournament
+      summary: เปิดเผยแพร่ทัวร์นาเมนต์ (Organizer) — ตรวจ BR-10
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [public]} }
+        '409':
+          description: "REFEREES_INCOMPLETE (BR-10) — มากับ refereesAccepted/refereesRequired"
+
+  /tournaments/{id}/unpublish:
+    post:
+      tags: [Tournaments]
+      operationId: unpublishTournament
+      summary: ปิดเผยแพร่ทัวร์นาเมนต์ (Organizer)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}/open-registration:
+    post:
+      tags: [Tournaments]
+      operationId: openRegistration
+      summary: เปิดรับสมัคร (Organizer) — FR-OM-03
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}/close-registration:
+    post:
+      tags: [Tournaments]
+      operationId: closeRegistration
+      summary: ปิดรับสมัคร (คำขอที่ค้างยังพิจารณาได้) — FR-OM-03
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}/eligibility-rules:
+    get:
+      tags: [Tournaments]
+      operationId: getEligibilityRules
+      security: []
+      summary: เงื่อนไขคุณสมบัติของทัวร์นาเมนต์
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  # ============ 6. REFEREES ============
+  /tournaments/{id}/referees:
+    post:
+      tags: [Referees]
+      operationId: inviteReferee
+      summary: เชิญกรรมการเข้าร่วมทัวร์นาเมนต์ (Organizer) — FR-OM-05
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, isExternal]
+              properties: { userId: { type: integer }, isExternal: { type: boolean } }
+      responses:
+        '201':
+          description: "OK — เชิญซ้ำได้ไม่จำกัดครั้ง (ไม่มี UNIQUE แล้ว ตั้งแต่รอบ 5)"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RefereeInvitation' }
+    get:
+      tags: [Referees]
+      operationId: listReferees
+      summary: ดูสถานะกรรมการของทัวร์นาเมนต์ (Organizer)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/RefereeInvitation' } }
+                  acceptedCount: { type: integer, description: "ใช้เช็ค BR-10 ก่อนกด publish" }
+
+  /tournaments/{id}/referees/{rid}:
+    delete:
+      tags: [Referees]
+      operationId: removeReferee
+      summary: "ถอดกรรมการออกจากทัวร์นาเมนต์ (Organizer) — soft delete (removed_at/removed_by) ไม่ลบจริง (รอบ 5)"
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: rid, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: "สำเร็จ — ตั้ง removed_at เท่านั้น ไม่ลบแถวจริง" }
+        '409': { description: "WOULD_BREAK_REFEREE_MINIMUM (BR-10)" }
+
+  /me/referee-invitations:
+    get:
+      tags: [Referees]
+      operationId: getMyRefereeInvitations
+      summary: คำเชิญเป็นกรรมการที่รอฉันตอบ
+      responses:
+        '200': { description: OK }
+
+  /referee-invitations/{id}/accept:
+    post:
+      tags: [Referees]
+      operationId: acceptRefereeInvitation
+      summary: ตอบรับเป็นกรรมการ (ตอบครั้งเดียว ใช้ได้ทุกแมตช์ที่มอบหมายภายหลัง) — FR-RM-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  invitationStatus: { type: string, enum: [accepted] }
+                  requiresAdminApproval: { type: boolean, description: "true ถ้าเป็นกรรมการภายนอก" }
+
+  /referee-invitations/{id}/decline:
+    post:
+      tags: [Referees]
+      operationId: declineRefereeInvitation
+      summary: ปฏิเสธเป็นกรรมการ
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '204': { description: สำเร็จ }
+
+  /matches/{id}/referees:
+    post:
+      tags: [Referees]
+      operationId: assignRefereeToMatch
+      summary: มอบหมายกรรมการเข้าคุมแมตช์ (Organizer) — ต้อง accepted ในทัวร์ก่อน
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tournamentRefereeId]
+              properties: { tournamentRefereeId: { type: integer } }
+      responses:
+        '201': { description: OK }
+        '409': { description: "REFEREE_NOT_ACCEPTED" }
+    get:
+      tags: [Referees]
+      operationId: listMatchReferees
+      summary: รายชื่อกรรมการที่คุมแมตช์นี้
+      security: []
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /matches/{id}/referees/{rid}:
+    delete:
+      tags: [Referees]
+      operationId: unassignRefereeFromMatch
+      summary: ถอดกรรมการออกจากแมตช์นี้เท่านั้น (ไม่กระทบสถานะระดับทัวร์)
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: rid, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: สำเร็จ }
+
+  # ============ 7. APPLICATIONS ============
+  /tournaments/{id}/applications:
+    post:
+      tags: [Applications]
+      operationId: applyToTournament
+      summary: สมัครเข้าร่วมการแข่งขัน (Team Leader) — BR-04, BR-08, BR-09
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [teamId]
+              properties: { teamId: { type: integer } }
+      responses:
+        '201':
+          description: สมัครสำเร็จ (Hard Filter ผ่านแล้ว)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [pending]}, hardFilterPassed: {type: boolean, enum: [true]} }
+        '422':
+          description: "HARD_FILTER_FAILED (BR-08) — มากับ details รายบุคคล"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code: { type: string, enum: [HARD_FILTER_FAILED] }
+                      message: { type: string }
+                      details: { type: array, items: { $ref: '#/components/schemas/HardFilterDetail' } }
+        '409': { description: "REGISTRATION_CLOSED | ALREADY_APPLIED | TEAM_NOT_READY" }
+    get:
+      tags: [Applications]
+      operationId: listApplications
+      summary: ดูใบสมัครทั้งหมดของทัวร์นาเมนต์ (Organizer) — FR-OM-04
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { $ref: '#/components/parameters/PageParam' }
+        - { $ref: '#/components/parameters/PageSizeParam' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Application' } }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+
+  /me/applications:
+    get:
+      tags: [Applications]
+      operationId: getMyApplications
+      summary: สถานะการสมัครของทีมฉัน (เรียลไทม์) — FR-TR-05
+      responses:
+        '200': { description: OK }
+
+  /applications/{id}:
+    get:
+      tags: [Applications]
+      operationId: getApplication
+      summary: รายละเอียดใบสมัคร + เอกสาร Soft Filter (Organizer/Team Leader) — FR-PV-02
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: "OK — softFilterDocuments เป็นรูปบัตรเท่านั้น (ข้อ 12.5)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  tournamentId: { type: integer }
+                  team: { $ref: '#/components/schemas/TeamRef' }
+                  status: { type: string }
+                  hardFilterDetails: { type: array, items: { $ref: '#/components/schemas/HardFilterDetail' } }
+                  softFilterDocuments: { type: array, items: { type: string }, description: "presigned URL" }
+
+  /applications/{id}/approve:
+    post:
+      tags: [Applications]
+      operationId: approveApplication
+      summary: อนุมัติใบสมัคร (Organizer, Soft Filter ผ่านดุลพินิจ)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /applications/{id}/reject:
+    post:
+      tags: [Applications]
+      operationId: rejectApplication
+      summary: ปฏิเสธใบสมัคร (Organizer)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  /applications/{id}/cancel:
+    post:
+      tags: [Applications]
+      operationId: cancelApplication
+      summary: ยกเลิกการสมัครก่อนได้รับอนุมัติ (Team Leader) — FR-TR-04
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [cancelled]} }
+        '409': { description: "ALREADY_DECIDED — ต้องเป็น pending เท่านั้น" }
+
+  /applications/{id}/withdraw:
+    post:
+      tags: [Applications]
+      operationId: withdrawApplication
+      summary: ถอนตัวหลังได้รับอนุมัติ (Team Leader) — คืนช่องว่าง + แจ้ง Organizer — FR-TR-04
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: "OK — bracketExists=true ต้องแสดงคำเตือนว่าต้องจัดสายใหม่"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  status: { type: string, enum: [withdrawn] }
+                  bracketExists: { type: boolean }
+
+  /tournaments/{id}/teams:
+    get:
+      tags: [Applications]
+      operationId: getApprovedTeams
+      security: []
+      summary: รายชื่อทีมที่ได้รับอนุมัติแล้ว (สาธารณะ)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/TeamRef' } }
+
+  # ============ 8. BRACKETS & MATCHES ============
+  /tournaments/{id}/bracket:
+    post:
+      tags: [Brackets & Matches]
+      operationId: createBracket
+      summary: สร้างสายการแข่งขัน (Organizer) — FR-MM-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seedingMethod]
+              properties:
+                seedingMethod: { type: string, enum: [random, manual] }
+                manualSeeds: { type: array, items: { type: integer } }
+      responses:
+        '201':
+          description: "สร้างสำเร็จ — บันทึกลงตาราง bracket_nodes (MySQL) ★ รอบ 5 — ถ้า bracketFormat='round_robin' ไม่สร้าง bracket_nodes เลย (nodeCount=0) และ matches ทุกแถวมี next_match_id=NULL (ข้อ 12.3)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { matchCount: {type: integer}, bracketFormat: {type: string}, nodeCount: {type: integer} }
+        '422': { description: "TEAM_COUNT_MISMATCH" }
+    get:
+      tags: [Brackets & Matches]
+      operationId: getBracket
+      security: []
+      summary: "ดูสายการแข่งขัน (Organizer/สาธารณะ) — ★ รอบ 5: อ่านจาก bracket_nodes ใน MySQL (เดิมอ่านจาก MongoDB)"
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: "OK — Round Robin คืน nodes เป็น array ว่างเสมอ (ไม่มีแนวคิด node) frontend ใช้ GET /tournaments/{id}/matches แทน"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bracketFormat: { type: string }
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nodeId: { type: integer }
+                        bracketType: { type: string, enum: [winners, losers, grand_final] }
+                        round: { type: integer, nullable: true }
+                        matchNumber: { type: integer }
+                        teamA: { allOf: [{ $ref: '#/components/schemas/TeamRef' }], nullable: true }
+                        teamB: { allOf: [{ $ref: '#/components/schemas/TeamRef' }], nullable: true }
+                        matchId: { type: integer, nullable: true }
+                        matchStatus: { type: string, nullable: true }
+                        advancesToNodeId:
+                          type: integer
+                          nullable: true
+                          description: "คำนวณตอน query จาก matches.next_match_id ไม่ได้เก็บเป็นคอลัมน์จริงใน bracket_nodes (เลือกทาง B — MySQL เป็น source of truth ตัวเดียว)"
+
+  /tournaments/{id}/matches:
+    get:
+      tags: [Brackets & Matches]
+      operationId: listMatches
+      security: []
+      summary: ตารางแข่งขันของทัวร์นาเมนต์ — FR-MM-03
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: teamId, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: round, in: query, schema: { type: integer } }
+        - { $ref: '#/components/parameters/PageParam' }
+        - { $ref: '#/components/parameters/PageSizeParam' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+
+  /matches/{id}:
+    get:
+      tags: [Brackets & Matches]
+      operationId: getMatch
+      security: []
+      summary: รายละเอียดแมตช์ (รวมสถานที่) — FR-MM-05
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Match' }
+
+  /matches/{id}/schedule:
+    patch:
+      tags: [Brackets & Matches]
+      operationId: scheduleMatch
+      summary: จัดวันเวลา/สนามให้แมตช์ (Organizer) — ตรวจทับซ้อน FR-MM-02
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheduledTime, venue]
+              properties:
+                scheduledTime: { type: string, format: date-time }
+                venue: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Match' }
+        '409': { description: "SCHEDULE_CONFLICT — มากับ conflictingMatchId" }
+
+  /matches/{id}/open-checkin:
+    post:
+      tags: [Brackets & Matches]
+      operationId: openCheckin
+      summary: เปิดให้เช็คอิน (Organizer) — FR-MM-04
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [checkin_open]}, checkinOpenAt: {type: string, format: date-time} }
+
+  /matches/{id}/start:
+    post:
+      tags: [Brackets & Matches]
+      operationId: startMatch
+      summary: เริ่มการแข่งขัน (Referee)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, status: {type: string, enum: [in_progress]} }
+        '409': { description: "INSUFFICIENT_CHECKINS" }
+
+  /matches/{id}/checkin-qr:
+    get:
+      tags: [Brackets & Matches]
+      operationId: getCheckinQR
+      summary: QR Code สำหรับเช็คอินแบบ on-site (Organizer/Referee)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { qrPayload: {type: string}, expiresAt: {type: string, format: date-time} }
+
+  /matches/{id}/checkins:
+    post:
+      tags: [Brackets & Matches]
+      operationId: checkin
+      summary: เช็คอินก่อนแข่ง (idempotent) — FR-PV-03/04
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [method, qrPayload]
+                  properties: { method: {type: string, enum: [qr]}, qrPayload: {type: string} }
+                - type: object
+                  required: [method, documentType, documentS3Key]
+                  properties:
+                    method: { type: string, enum: [document] }
+                    documentType: { type: string, enum: [student_id, national_id] }
+                    documentS3Key: { type: string }
+      responses:
+        '201':
+          description: "สำเร็จ (หรือ 200 ถ้ากดซ้ำ — idempotent ตาม UNIQUE (match_id, user_id))"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Checkin' }
+        '403': { description: "NOT_IN_APPROVED_ROSTER" }
+    get:
+      tags: [Brackets & Matches]
+      operationId: listCheckins
+      summary: รายชื่อผู้เช็คอิน (Referee/Organizer)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Checkin' } }
+
+  /matches/{id}/checkins/{cid}/verify:
+    post:
+      tags: [Brackets & Matches]
+      operationId: verifyCheckin
+      summary: ตรวจสอบเอกสารเช็คอินแบบ online (Referee) — FR-PV-04
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: cid, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+
+  /matches/{id}/checkins/{cid}/reject:
+    post:
+      tags: [Brackets & Matches]
+      operationId: rejectCheckin
+      summary: ปฏิเสธการเช็คอิน (Referee)
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { name: cid, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  /uploads/presign:
+    post:
+      tags: [Brackets & Matches]
+      operationId: presignUpload
+      summary: ขอ presigned URL สำหรับอัปโหลดไฟล์ (S3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose, contentType]
+              properties:
+                purpose: { type: string, enum: [checkin_document, soft_filter_document] }
+                contentType: { type: string, enum: [image/jpeg, image/png] }
+                matchId: { type: integer }
+                tournamentId: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { uploadUrl: {type: string}, objectKey: {type: string}, expiresIn: {type: integer} }
+
+  # ============ 9. MATCH RESULTS ============
+  /matches/{id}/result:
+    post:
+      tags: [Match Results]
+      operationId: submitResult
+      summary: ส่งผลการแข่งขัน (ผู้ส่งขึ้นกับ mode ตาม BR-13) — FR-RS-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [winnerTeamId, scoreData]
+              properties:
+                winnerTeamId: { type: integer }
+                scoreData: { type: object, additionalProperties: { type: integer } }
+      responses:
+        '201':
+          description: OK (status=submitted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { id: {type: integer}, matchId: {type: integer}, status: {type: string, enum: [submitted]}, submittedBy: {type: integer} }
+        '403': { description: "WRONG_SUBMITTER_ROLE (BR-13)" }
+        '409': { description: "INSUFFICIENT_REFEREES (BR-11)" }
+    get:
+      tags: [Match Results]
+      operationId: getResult
+      security: []
+      summary: ดูผลการแข่งขัน (สาธารณะเมื่อ verified แล้ว)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchResult' }
+        '404': { description: "ยังไม่ verified" }
+
+  /matches/{id}/result/verify:
+    post:
+      tags: [Match Results]
+      operationId: verifyResult
+      summary: >
+        ยืนยันผลการแข่งขัน (อีกฝ่ายตาม BR-13, ไม่ใช่คนเดียวกับผู้ส่ง — BR-12)
+        เป็น transaction ที่สำคัญที่สุดของระบบ (9 ขั้นตอน — ดู Part 0-1 หัวข้อ 1.15)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: "OK — response กลับมาแปลว่าทุกขั้นตอนสำเร็จครบแล้ว (bracket, standings, stats, pick'em, notify, audit)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matchId: { type: integer }
+                  status: { type: string, enum: [verified] }
+                  winnerTeamId: { type: integer }
+                  nextMatchId: { type: integer, nullable: true }
+        '403': { description: "SAME_PERSON_CANNOT_VERIFY (BR-12)" }
+
+  /matches/{id}/result/dispute:
+    post:
+      tags: [Match Results]
+      operationId: disputeResult
+      summary: โต้แย้งผลการแข่งขัน (Team Leader/Referee) — FR-RS-04, BR-14
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { matchId: {type: integer}, status: {type: string, enum: [disputed]} }
+        '409': { description: "DISPUTE_WINDOW_CLOSED | DISPUTE_ALREADY_ACTIVE (BR-14)" }
+
+  /matches/{id}/result/resolve:
+    post:
+      tags: [Match Results]
+      operationId: resolveDispute
+      summary: ตัดสินข้อพิพาท (Organizer) — sync match_results + matches ในทรานแซกชันเดียว
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolution, resolutionNote]
+              properties:
+                resolution: { type: string, enum: [uphold, reject] }
+                resolutionNote: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { matchId: {type: integer}, status: {type: string, enum: [verified, rejected]} }
+
+  /matches/{id}/stats:
+    post:
+      tags: [Match Results]
+      operationId: recordPlayerStats
+      summary: "บันทึกสถิติรายบุคคล (Referee) — BR-11 · ★ รอบ 5: อิง sport_stat_definitions แทน field อิสระ"
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerStats]
+              properties:
+                playerStats:
+                  type: array
+                  items:
+                    type: object
+                    required: [userId, values]
+                    properties:
+                      userId: { type: integer }
+                      values:
+                        type: array
+                        items:
+                          type: object
+                          required: [statDefinitionId, value]
+                          properties:
+                            statDefinitionId: { type: integer }
+                            value: { type: number }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { matchId: {type: integer}, recordedCount: {type: integer} }
+        '400': { description: "UNKNOWN_STAT_DEFINITION — statDefinitionId ไม่ตรงกับ sport_type_id ของทัวร์นาเมนต์นี้" }
+    get:
+      tags: [Match Results]
+      operationId: getMatchPlayerStats
+      security: []
+      summary: ดูสถิติผู้เล่นของแมตช์นี้
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId: { type: integer }
+                        fullName: { type: string }
+                        stats:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              statKey: { type: string }
+                              statLabelTh: { type: string }
+                              value: { type: number }
+
+  /tournaments/{id}/winner:
+    get:
+      tags: [Match Results]
+      operationId: getTournamentWinner
+      security: []
+      summary: ผู้ชนะทัวร์นาเมนต์ + สรุปสถิติ (เมื่อ completed) — FR-RS-06
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200': { description: OK }
+
+  /tournaments/{id}/dashboard:
+    get:
+      tags: [Match Results]
+      operationId: getDashboard
+      security: []
+      summary: ภาพรวมทัวร์นาเมนต์ — FR-DL-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teamCount: { type: integer }
+                  playerCount: { type: integer }
+                  matchCount: { type: integer }
+                  matchesCompleted: { type: integer }
+
+  /tournaments/{id}/standings:
+    get:
+      tags: [Match Results]
+      operationId: getStandings
+      security: []
+      summary: ตารางคะแนน (read-only, ระบบคำนวณ) — FR-DL-02
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Standing' } }
+
+  # ============ 10. ENGAGEMENT (MVP subset) ============
+  /tournaments/{id}/announcements:
+    post:
+      tags: [Engagement]
+      operationId: createAnnouncement
+      summary: สร้างประกาศ (Organizer) — FR-AN-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties: { title: { type: string }, body: { type: string } }
+      responses:
+        '201': { description: OK }
+    get:
+      tags: [Engagement]
+      operationId: listAnnouncements
+      security: []
+      summary: ดูประกาศของทัวร์นาเมนต์
+      parameters:
+        - { $ref: '#/components/parameters/IdParam' }
+        - { $ref: '#/components/parameters/PageParam' }
+        - { $ref: '#/components/parameters/PageSizeParam' }
+      responses:
+        '200': { description: OK }
+
+  /announcements/{id}:
+    patch:
+      tags: [Engagement]
+      operationId: updateAnnouncement
+      summary: แก้ไขประกาศ (Organizer)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { title: { type: string }, body: { type: string } }
+      responses:
+        '200': { description: OK }
+    delete:
+      tags: [Engagement]
+      operationId: deleteAnnouncement
+      summary: ลบประกาศ (Organizer, soft delete)
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      responses:
+        '204': { description: OK }
+
+  /matches/{id}/livestream:
+    put:
+      tags: [Engagement]
+      operationId: setLivestream
+      summary: ตั้งลิงก์ถ่ายทอดสด YouTube (Organizer) — FR-LS-01
+      parameters: [{ $ref: '#/components/parameters/IdParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [youtubeUrl]
+              properties: { youtubeUrl: { type: string } }
+      responses:
+        '200': { description: OK }
+        '400': { description: "INVALID_YOUTUBE_URL" }
