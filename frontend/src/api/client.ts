@@ -26,6 +26,34 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * ควรลองยิงซ้ำไหมเมื่อพลาด — ใช้กับ `retry` ของ useQuery ทุกตัว
+ *
+ * ค่าเริ่มต้นของ TanStack คือลองซ้ำ 3 ครั้ง หน่วง 1s→2s→4s ซึ่งเหมาะกับเน็ตสะดุด
+ * แต่กับ 404/403/501 มันคือการรอ ~8 วินาทีเพื่อได้คำตอบเดิม ผู้ใช้เห็นแต่วงกลมหมุน
+ * กว่าจะขึ้นว่า "ไม่พบ" — ยิงซ้ำก็ไม่ทำให้ของที่ไม่มีอยู่โผล่มา
+ *
+ * เกณฑ์: 4xx กับ 501 คือคำตอบสุดท้าย ไม่ลองซ้ำ · 5xx กับ network error ลองอีก 2 ครั้ง
+ */
+export function retryPolicy(failureCount: number, error: unknown): boolean {
+  const status = statusOf(error);
+  if (status !== null && (status < 500 || status === 501)) return false;
+  return failureCount < 2;
+}
+
+/**
+ * อ่าน HTTP status จาก error โดยดูที่ "รูปร่าง" ไม่ใช่ `instanceof ApiError`
+ *
+ * ระหว่างพัฒนา HMR โหลด client.ts ใหม่ได้ ทำให้มีคลาส ApiError สองชุดพร้อมกัน
+ * error ที่ throw จากชุดเก่าจะไม่ `instanceof` ชุดใหม่ — เช็คแบบนั้นจึงหลุดเงียบๆ
+ * แล้วกลับไป retry 404 เหมือนเดิม (ยืนยันแล้วว่าเกิดขึ้นจริงในเบราว์เซอร์)
+ */
+function statusOf(error: unknown): number | null {
+  if (typeof error !== "object" || error === null) return null;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" ? status : null;
+}
+
 let accessToken: string | null = null;
 export function setAccessToken(token: string | null): void {
   accessToken = token;

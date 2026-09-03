@@ -21,7 +21,7 @@ import type {
   MatchResultDto,
   MatchCheckinDto,
   PlayerMatchStatDto,
-  TournamentStandingDto,
+  StandingsDto,
   UpdateMatchRequest,
   SubmitResultRequest,
   VerifyResultRequest,
@@ -42,7 +42,6 @@ import {
   mockResults,
   mockCheckins,
   mockStats,
-  mockStandings,
   mockStatDefinitions,
   mockPlayers,
   takeNextMockId,
@@ -351,11 +350,7 @@ export async function getStatDefinitions(sportTypeId: number): Promise<{ items: 
 // ══════════════ Standings ══════════════
 
 /** TODO(guide): GET /tournaments/:id/standings */
-export async function getStandings(tournamentId: MatchRef): Promise<{ items: TournamentStandingDto[] }> {
-  if (USE_MOCK) {
-    const own = mockStandings.filter((s) => s.tournamentId === Number(tournamentId));
-    if (own.length) return mockDelay({ items: own });
-    return mockDelay({ items: findStoreStandings(tournamentId) });
-  }
+export async function getStandings(tournamentId: MatchRef): Promise<StandingsDto | null> {
+  if (USE_MOCK) return mockDelay(findStoreStandings(tournamentId));
   return apiFetch(`/tournaments/${tournamentId}/standings`);
 }

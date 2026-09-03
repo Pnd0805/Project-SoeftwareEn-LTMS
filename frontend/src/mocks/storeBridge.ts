@@ -28,15 +28,27 @@
  */
 import { getState } from '../shared/store'
 import { isOrg, me, team, tour } from '../shared/selectors'
-import { standings, winnerId } from '../shared/rules'
+import { NOW, formatOf, leaderboard, scoreUnit, winnerId } from '../shared/rules'
 import type { Match as StoreMatch, State, Team as StoreTeam } from '../shared/types'
 import type {
   MatchDto, MatchListItemDto, MatchResultDto, MatchTeamRef, MatchViewerContext,
-  MatchViewerRole, PlayerRef, TournamentStandingDto,
+  MatchViewerRole, PlayerRef, StandingsDto, StandingsFormat, FormResult,
 } from '../types/match.dto'
 
 /** id ที่มาจาก URL — ตัวเลขของ API หรือ string ของ store ก็ได้ */
 export type MatchRef = number | string
+
+/**
+ * เวลาอ้างอิงของ mock — คงที่ทั้ง session
+ *
+ * เดิมเรียก `new Date()` สดๆ ตรงจุดที่ store ไม่ได้เก็บเวลาไว้ ซึ่งพัง 2 ทาง
+ *   1. ค่าเปลี่ยนทุกครั้งที่ refetch → structural sharing ของ TanStack เทียบแล้วไม่เท่า
+ *      คืน object ใหม่ทุกรอบ ทุก component ที่ subscribe รีเรนเดอร์ทั้งที่ข้อมูลเท่าเดิม
+ *      (refetchOnWindowFocus เปิดอยู่ตามค่าเริ่มต้น — แค่สลับแท็บกลับมาก็โดน)
+ *   2. อะไรที่แสดงเป็น "เมื่อ x นาทีที่แล้ว" จะอ่านว่า "เมื่อสักครู่" ตลอดกาล
+ * ใช้ NOW() ตัวเดียวกับที่ seed ใช้ ทั้งชุดข้อมูลจึงอยู่บนเส้นเวลาเดียวกัน
+ */
+export const MOCK_NOW = new Date(NOW()).toISOString()
 
 /**
  * store id เป็น string, DTO ต้องการ number — จับคู่ให้เสถียร
@@ -135,7 +147,7 @@ export function toMatchDto(s: State, m: StoreMatch): MatchDto {
       : m.status === 'disputed' ? 'disputed'
         : m.checkedIn.length ? 'checkin_open' : 'scheduled',
     mode: t?.channel ?? 'onsite',
-    createdAt: new Date().toISOString(),
+    createdAt: MOCK_NOW,
     updatedAt: null,
     stage: m.stage ?? `Round ${m.round}`,
     tag: m.tag ?? `R${m.round}-M${m.slot}`,
@@ -174,16 +186,16 @@ export function toResultDto(s: State, m: StoreMatch): MatchResultDto | null {
     status: m.status === 'confirmed' ? 'verified' : m.status === 'disputed' ? 'disputed' : 'submitted',
     disputeReason: null,
     disputeRaisedBy: asPlayer(s, m.disputedBy),
-    disputeRaisedAt: m.disputedBy ? new Date().toISOString() : null,
+    disputeRaisedAt: m.disputedBy ? MOCK_NOW : null,
     disputeResolvedBy: null,
     disputeResolution: null,
     disputeResolvedAt: null,
     verifiedBy: asPlayer(s, m.confirmedBy),
-    verifiedAt: m.confirmedBy ? new Date().toISOString() : null,
+    verifiedAt: m.confirmedBy ? MOCK_NOW : null,
     amendedBy: null,
     amendReason: null,
     amendedAt: null,
-    createdAt: new Date().toISOString(),
+    createdAt: MOCK_NOW,
   }
 }
 
@@ -202,28 +214,47 @@ export function findStoreTournamentMatches(ref: MatchRef): StoreMatch[] {
 }
 
 /**
- * ตารางคะแนนจาก seed — ใช้ `standings()` ใน rules.ts คำนวณ
- * ของจริง backend เป็นคนคำนวณตอนยืนยันผล (SRS FR-RS-05) นี่แค่ให้เดโมมีข้อมูลดู
+ * ตารางอันดับจาก seed — `leaderboard()` ใน rules.ts รู้จักทั้งสามฟอร์แมตอยู่แล้ว
+ * (คัดออกอ่านเป็นรอบที่ตกรอบ · พบกันหมดอ่านเป็นตารางคะแนน)
+ * ของจริง backend คำนวณตอนยืนยันผล (SRS FR-RS-05) นี่แค่ให้เดโมมีข้อมูลดู
  */
-export function findStoreStandings(ref: MatchRef): TournamentStandingDto[] {
+const FORMAT: Record<string, StandingsFormat> = {
+  single: 'single_elimination',
+  double: 'double_elimination',
+  roundrobin: 'round_robin',
+}
+
+export function findStoreStandings(ref: MatchRef): StandingsDto | null {
   const s = getState()
   const raw = String(ref)
   const t = s.tournaments.find(x => x.id === raw) ?? s.tournaments.find(x => numOf(x.id) === Number(ref))
-  if (!t) return []
-  return standings(s, t).map(row => {
-    const tm = team(s, row.team)
-    return {
-      tournamentId: numOf(t.id),
-      team: tm ? asTeam(s, tm, { a: null, b: null, lineup: {} } as unknown as StoreMatch)!
-        : { id: 0, name: '—', code: '—', color: null, logoUrl: null, players: [] },
-      played: row.p,
-      won: row.w,
-      lost: row.l,
-      points: row.pts,
-      updatedAt: new Date().toISOString(),
-      rank: row.rank,
-    }
-  })
+  if (!t) return null
+  const blank: MatchTeamRef = { id: 0, name: '—', code: '—', color: null, logoUrl: null, players: [] }
+  return {
+    tournamentId: numOf(t.id),
+    format: FORMAT[formatOf(t)] ?? 'single_elimination',
+    scoreUnit: scoreUnit(t.sport),
+    updatedAt: MOCK_NOW,
+    rows: leaderboard(s, t).map(row => {
+      const tm = team(s, row.team)
+      return {
+        team: tm
+          ? { id: numOf(tm.id), name: tm.name, code: tm.code, color: tm.color, logoUrl: tm.logo ?? null, players: [] }
+          : blank,
+        rank: row.rank,
+        played: row.p,
+        won: row.w,
+        lost: row.l,
+        points: row.pts,
+        level: row.d,
+        scoredFor: row.gf,
+        scoredAgainst: row.ga,
+        scoreDifference: row.gd,
+        form: (row.form ?? []) as FormResult[],
+        outLabel: row.outLabel ?? '',
+      }
+    }),
+  }
 }
 
 /**

@@ -237,10 +237,23 @@ line in the CI workflow and lint becomes a real gate.
 1. **`GUIDE/04` and `GUIDE/06` are not in the repo.** Code references them throughout. Only four
    endpoint codes survive, from comments in `schema.sql`: `T09/T12/T13`, `C08`, `E12`, `S01`. Every
    other path in `src/api/` is inferred and marked `TODO(guide)`. Whoever has these files, commit them.
-2. **`tournament_standings` cannot feed the standings UI.** It stores `played`/`won`/`lost`/`points`.
-   `BoardRow` ranks round-robin by goal difference, then goals for, then a mini-table, and shows recent
-   form. Decide: backend computes the extra columns, or frontend derives them from the match list.
-   Blocks the last step of slice 3.
+2. **`tournament_standings` is three columns short.** It stores `played`/`won`/`lost`/`points`.
+   Round-robin ranking needs the level count and both score totals as well, and the UI shows recent
+   form. Concrete proposal, ready to apply:
+
+   ```sql
+   ALTER TABLE tournament_standings
+     ADD level          INT NOT NULL DEFAULT 0,
+     ADD scored_for     INT NOT NULL DEFAULT 0,
+     ADD scored_against INT NOT NULL DEFAULT 0;
+   ```
+
+   Deliberately not `goals_*`: FRONTEND-SPEC says a scoreline is not always goals — volleyball counts
+   sets, chess counts results — and `scoreUnit(sport)` already names the unit per sport. Difference
+   needs no column, it is the two subtracted. Form is not stored either; the backend derives it from
+   recent matches, the way FR-RS-05 already recomputes the rest on confirmation.
+
+   The frontend side is done and reads these fields; only the columns are missing.
 3. **Three columns the API needs do not exist**: `matches.livestream_url` (E12),
    `team_invitations.expires_at` (T09/T12/T13), `tournaments.description` (C08). `schema.sql` notes all
    three against itself. Needs an owner.
