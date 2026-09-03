@@ -15,6 +15,7 @@
  * ไม่งั้น UI จะค้างโชว์สถานะแมตช์เก่า — ทำเป็น helper `touchMatch` ไว้ข้างล่าง
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { retryPolicy } from "../api/client";
 import type { QueryClient } from "@tanstack/react-query";
 import * as matchApi from "../api/match";
 import type {
@@ -64,6 +65,7 @@ export function useMatch(matchId: MatchRef | undefined) {
     queryKey: matchKeys.detail(matchId as MatchRef),
     queryFn: () => matchApi.getMatch(matchId as MatchRef),
     enabled: matchId !== undefined,
+    retry: retryPolicy,
   });
 }
 
@@ -72,12 +74,13 @@ export function useTournamentMatches(tournamentId: MatchRef | undefined) {
     queryKey: matchKeys.byTournament(tournamentId as MatchRef),
     queryFn: () => matchApi.getTournamentMatches(tournamentId as MatchRef),
     enabled: tournamentId !== undefined,
+    retry: retryPolicy,
   });
 }
 
 /** หน้า /matches — แมตช์ที่ฉันต้องทำอะไรสักอย่าง */
 export function useMyMatches() {
-  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches });
+  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, retry: retryPolicy });
 }
 
 /**
@@ -98,6 +101,7 @@ export function useCheckins(matchId: MatchRef | undefined) {
     queryKey: matchKeys.checkins(matchId as MatchRef),
     queryFn: () => matchApi.getCheckins(matchId as MatchRef),
     enabled: matchId !== undefined,
+    retry: retryPolicy,
   });
 }
 
@@ -106,6 +110,7 @@ export function useMatchStats(matchId: MatchRef | undefined) {
     queryKey: matchKeys.stats(matchId as MatchRef),
     queryFn: () => matchApi.getMatchStats(matchId as MatchRef),
     enabled: matchId !== undefined,
+    retry: retryPolicy,
   });
 }
 
@@ -114,6 +119,7 @@ export function useStandings(tournamentId: MatchRef | undefined) {
     queryKey: matchKeys.standings(tournamentId as MatchRef),
     queryFn: () => matchApi.getStandings(tournamentId as MatchRef),
     enabled: tournamentId !== undefined,
+    retry: retryPolicy,
   });
 }
 
@@ -124,6 +130,7 @@ export function useStatDefinitions(sportTypeId: number | undefined) {
     queryFn: () => matchApi.getStatDefinitions(sportTypeId as number),
     enabled: sportTypeId !== undefined,
     staleTime: Infinity,
+    retry: retryPolicy,
   })
 }
 

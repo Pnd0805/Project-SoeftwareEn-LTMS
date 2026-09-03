@@ -12,6 +12,7 @@
  * ทำเป็น helper ไว้ จะได้ไม่ลืมสัก key
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { retryPolicy } from "../api/client";
 import type { QueryClient } from "@tanstack/react-query";
 import * as teamApi from "../api/team";
 import type { TeamRef } from "../mocks/teamBridge";
@@ -48,7 +49,7 @@ function touchTeam(qc: QueryClient, teamId?: TeamRef) {
 // ══════════════ queries ══════════════
 
 export function useMyTeams() {
-  return useQuery({ queryKey: teamKeys.mine, queryFn: teamApi.getMyTeams });
+  return useQuery({ queryKey: teamKeys.mine, queryFn: teamApi.getMyTeams, retry: retryPolicy });
 }
 
 export function useTeam(teamId: TeamRef | undefined) {
@@ -56,11 +57,12 @@ export function useTeam(teamId: TeamRef | undefined) {
     queryKey: teamKeys.detail(teamId as TeamRef),
     queryFn: () => teamApi.getTeam(teamId as TeamRef),
     enabled: teamId !== undefined,
+    retry: retryPolicy,
   });
 }
 
 export function useMyInvitations() {
-  return useQuery({ queryKey: teamKeys.myInvitations, queryFn: teamApi.getMyInvitations });
+  return useQuery({ queryKey: teamKeys.myInvitations, queryFn: teamApi.getMyInvitations, retry: retryPolicy });
 }
 
 export function useTeamInvitations(teamId: TeamRef | undefined) {
@@ -68,11 +70,12 @@ export function useTeamInvitations(teamId: TeamRef | undefined) {
     queryKey: teamKeys.invitations(teamId as TeamRef),
     queryFn: () => teamApi.getTeamInvitations(teamId as TeamRef),
     enabled: teamId !== undefined,
+    retry: retryPolicy,
   });
 }
 
 export function useTeamAdminRequests() {
-  return useQuery({ queryKey: teamKeys.adminRequests, queryFn: teamApi.getTeamAdminRequests });
+  return useQuery({ queryKey: teamKeys.adminRequests, queryFn: teamApi.getTeamAdminRequests, retry: retryPolicy });
 }
 
 export function usePlayerProfile(userId: TeamRef | undefined) {
@@ -80,6 +83,7 @@ export function usePlayerProfile(userId: TeamRef | undefined) {
     queryKey: teamKeys.player(userId as TeamRef),
     queryFn: () => teamApi.getPlayerProfile(userId as TeamRef),
     enabled: userId !== undefined,
+    retry: retryPolicy,
   });
 }
 

@@ -5,6 +5,7 @@
  * (`team`/`teams` อยู่ใน useTeam.ts)
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { retryPolicy } from "../api/client";
 import * as adminApi from "../api/admin";
 import type { TeamRef } from "../mocks/teamBridge";
 import type {
@@ -31,6 +32,7 @@ export function useTournamentRequests() {
   return useQuery({
     queryKey: adminKeys.tournamentRequests,
     queryFn: adminApi.getTournamentRequests,
+    retry: retryPolicy,
   });
 }
 
@@ -39,6 +41,7 @@ export function useTournamentReferees(tournamentId: TeamRef | undefined) {
     queryKey: adminKeys.referees(tournamentId as TeamRef),
     queryFn: () => adminApi.getTournamentReferees(tournamentId as TeamRef),
     enabled: tournamentId !== undefined,
+    retry: retryPolicy,
   });
 }
 
@@ -48,21 +51,23 @@ export function useRefereeCoverage(tournamentId: TeamRef | undefined) {
     queryKey: adminKeys.coverage(tournamentId as TeamRef),
     queryFn: () => adminApi.getRefereeCoverage(tournamentId as TeamRef),
     enabled: tournamentId !== undefined,
+    retry: retryPolicy,
   });
 }
 
 export function useUsersForAdmin() {
-  return useQuery({ queryKey: adminKeys.users, queryFn: adminApi.getUsersForAdmin });
+  return useQuery({ queryKey: adminKeys.users, queryFn: adminApi.getUsersForAdmin, retry: retryPolicy });
 }
 
 export function useAdminScopes() {
-  return useQuery({ queryKey: adminKeys.scopes, queryFn: adminApi.getAdminScopes });
+  return useQuery({ queryKey: adminKeys.scopes, queryFn: adminApi.getAdminScopes, retry: retryPolicy });
 }
 
 export function useAuditLogs(query: AuditLogQuery = {}) {
   return useQuery({
     queryKey: adminKeys.audit(query),
     queryFn: () => adminApi.getAuditLogs(query),
+    retry: retryPolicy,
   });
 }
 
