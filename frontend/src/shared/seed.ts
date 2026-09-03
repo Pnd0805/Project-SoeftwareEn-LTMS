@@ -240,7 +240,8 @@ export function SEED(): State {
    */
   const record = (tr: Tournament, m: Match) => {
     const [lo, hi] = SPORT_SCORE[tr.sport] || [0, 5]
-    let sa = int(lo, hi), sb = int(lo, hi)
+    const sa = int(lo, hi)
+    let sb = int(lo, hi)
     if (sa === sb) sb = sa > lo ? sa - 1 : sa + 1        // no confirmed draw in a knockout
     m.sa = sa; m.sb = sb
     m.status = 'confirmed'

@@ -7,6 +7,9 @@
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+
+/* eslint-disable react-refresh/only-export-components */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamLink } from '../../components/kit/chips'

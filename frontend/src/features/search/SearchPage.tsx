@@ -11,9 +11,12 @@ import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { visibleTo } from '../../shared/selectors'
 import { formatName, teamReady } from '../../shared/rules'
+import { useMe } from '../../hooks/useAuth'
+import { useSearchUsers } from '../../hooks/useUser'
 
 export function SearchPage() {
   const s = useLtms()
+  const { data: currentUser } = useMe()
   const navigate = useNavigate()
   const { q: qParam } = useParams()
   const [q, setQ] = useState(decodeURIComponent(qParam ?? ''))
@@ -23,9 +26,8 @@ export function SearchPage() {
     ? s.tournaments.filter(t => visibleTo(s, t) && `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
     : []
   const teams = needle ? s.teams.filter(t => `${t.name} ${t.code}`.toLowerCase().includes(needle)) : []
-  const players = needle
-    ? s.users.filter(u => `${u.name} ${u.faculty} ${u.major}`.toLowerCase().includes(needle)).slice(0, 12)
-    : []
+  const userSearch = useSearchUsers(q, !!currentUser)
+  const players = userSearch.data?.items ?? []
   const total = tournaments.length + teams.length + players.length
 
   return (
@@ -81,13 +83,17 @@ export function SearchPage() {
         </Panel>
       ) : null}
 
-      {players.length ? (
+      {userSearch.isError ? (
+        <Panel quiet>
+          <span className="error">Unable to search players right now.</span>
+        </Panel>
+      ) : players.length ? (
         <Panel quiet>
           <span className="tag"><em>//</em> Players · {players.length}</span>
           {players.map(u => (
             <button className="who" type="button" key={u.id} onClick={() => navigate(`/player/${u.id}`)}>
-              <span className="avatar">{u.name.slice(0, 1)}</span>
-              <span className="meta"><b>{u.name}</b><span className="tag">{u.faculty} · {u.major} · Year {u.year}</span></span>
+              <span className="avatar">{u.fullName.slice(0, 1)}</span>
+              <span className="meta"><b>{u.fullName}</b></span>
               <Icon name="chev" size={13} />
             </button>
           ))}

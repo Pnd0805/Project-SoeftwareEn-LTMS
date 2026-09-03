@@ -24,8 +24,9 @@ export function setMockCurrentUser(id: number | null): void {
 }
 
 function stripSecrets(u: MockUserRecord): MeDto {
-  const { passwordForMock, ...me } = u;
-  return me;
+  return Object.fromEntries(
+    Object.entries(u).filter(([key]) => key !== "passwordForMock"),
+  ) as MeDto;
 }
 
 export async function getMe(): Promise<MeDto> {

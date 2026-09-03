@@ -139,3 +139,7 @@ export interface ApiErrorBody {
   message: string;
   fields?: Record<string, string>;
 }
+
+export interface ApiErrorResponse {
+  error: ApiErrorBody;
+}

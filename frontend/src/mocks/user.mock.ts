@@ -12,7 +12,7 @@ export interface MockUserRecord extends MeDto {
   passwordForMock: string;
 }
 
-export const mockUsers: MockUserRecord[] = [
+const seedUsers: MockUserRecord[] = [
   {
     id: 1, fullName: "Rattana Admin", email: "admin@ltms.test",
     gender: "female", birthDate: "1985-03-14", facultyId: 1, departmentId: 1, year: 0,
@@ -50,6 +50,21 @@ export const mockUsers: MockUserRecord[] = [
     userType: "student", passwordForMock: "password123",
   },
 ];
+
+const MOCK_USERS_KEY = "ltms-mock-users";
+
+function loadMockUsers(): MockUserRecord[] {
+  try {
+    const saved = localStorage.getItem(MOCK_USERS_KEY);
+    if (!saved) return seedUsers;
+    const users = JSON.parse(saved) as MockUserRecord[];
+    return Array.isArray(users) ? users : seedUsers;
+  } catch {
+    return seedUsers;
+  }
+}
+
+export const mockUsers: MockUserRecord[] = loadMockUsers();
 
 export let nextMockUserId = mockUsers.length + 1;
 export function takeNextMockUserId(): number {

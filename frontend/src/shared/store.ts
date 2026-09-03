@@ -250,41 +250,87 @@ export function decidePermanent(reqId: string, approve: boolean) {
   toast(approve ? 'Exempted from automatic disabling' : 'Request declined', approve ? 'ok' : 'warn')
 }
 
-/* ───────── community ───────── */
-export function postComment(matchId: string, by: string, text: string) {
-  if (!text.trim()) return
-  state.comments.push({ id: uid('c'), match: matchId, by, text: text.trim(), at: NOW() })
+/* ───────── the draw ───────── */
+export function drawBracket(trId: string, order?: string[]) {
+  const tr = state.tournaments.find(t => t.id === trId)
+  if (!tr) return
+  const approved = state.registrations.filter(r => r.tour === trId && r.status === 'approved').map(r => r.team)
+  const ids = order?.length ? order.slice() : approved.slice()
+  if (!order) for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]] }
+  if (ids.length < 2) { toast('It needs two approved squads', 'crit'); return }
+  state.matches = state.matches.filter(m => m.tour !== trId)
+  const made = buildBracket(tr, ids, () => uid('m'))
+  made.forEach(m => { m.venue = tr.venue; m.pin = tr.pin })
+  state.matches.push(...made)
+  tr.drawn = true
+  tr.drawnAt = NOW()
+  tr.champion = null
+  resolveByes(tr)
+  notifyAll(
+    state.registrations.filter(r => r.tour === trId && r.status === 'approved')
+      .flatMap(r => state.teams.find(t => t.id === r.team)?.members ?? []),
+    `The draw for ${tr.name} is out — your fixtures are up.`, `/t/${tr.id}`)
   commit()
-}
-export function removeComment(commentId: string) {
-  state.comments = state.comments.filter(c => c.id !== commentId)
-  commit()
-  toast('Comment removed', 'warn')
+  toast(order?.length ? 'Draw saved' : 'Bracket drawn — entry is closed')
 }
 
-/** One correct prediction pays one Token. Officials cannot predict in their own. */
-export function placePick(matchId: string, by: string, teamId: string) {
-  const existing = state.picks.find(p => p.match === matchId && p.by === by)
-  if (existing) existing.team = teamId
-  else state.picks.push({ id: uid('p'), match: matchId, by, team: teamId })
-  commit()
-  toast('Call recorded')
+function resolveByes(tr: Tournament) {
+  state.matches.filter(m => m.tour === tr.id && m.round === 0 && !!m.a !== !!m.b).forEach(m => {
+    m.status = 'confirmed'
+    m.note = 'bye'
+    m.sa = m.a ? 1 : 0
+    m.sb = m.b ? 1 : 0
+    advance(m)
+  })
 }
 
-/** One vote per User per Tournament, opened the moment a Champion is decided. */
-export function voteMvp(trId: string, by: string, player: string) {
-  if (state.votes.some(v => v.tour === trId && v.by === by)) { toast('You have already voted in this tournament', 'warn'); return }
-  state.votes.push({ id: uid('v'), tour: trId, by, player })
+/** Where a result goes next. One rule for all three formats. */
+function advance(m: Match) {
+  const tr = state.tournaments.find(t => t.id === m.tour)
+  if (!tr) return
+  const win = winnerId(m)
+  const lose = win ? [m.a, m.b].find(x => x && x !== win) ?? null : null
+  const put = (edge: { m: string; side: 'a' | 'b' } | null | undefined, tid: string | null) => {
+    if (!edge || !tid) return
+    const nx = state.matches.find(x => x.id === edge.m)
+    if (nx) nx[edge.side] = tid
+  }
+  put(m.winTo, win)
+  put(m.loseTo, lose)
+  if (!m.winTo && win && formatOf(tr) !== 'roundrobin') tr.champion = win
+  crownIfDone(tr)
+}
+
+/** A round robin has no final to win — the table decides, and a dead heat waits. */
+function crownIfDone(tr: Tournament) {
+  if (formatOf(tr) !== 'roundrobin' || tr.champion) return
+  const ms = state.matches.filter(m => m.tour === tr.id && m.status !== 'void')
+  if (!ms.length || ms.some(m => m.status !== 'confirmed')) return
+  const table = standings(state, tr)
+  if (!table.length || (table.length > 1 && table[1].rank === 1)) return
+  tr.champion = table[0].team
+}
+
+
+export function postAnnouncement(trId: string, by: string, title: string, body: string) {
+  const tr = state.tournaments.find(t => t.id === trId)
+  if (!tr || !title.trim()) return
+  state.announcements.push({ id: uid('a'), tour: trId, by, title: title.trim(), body: body.trim(), at: NOW() })
+  notifyAll(
+    state.registrations.filter(r => r.tour === trId && r.status === 'approved')
+      .map(r => state.teams.find(t => t.id === r.team)?.leader),
+    `${tr.name}: ${title.trim()}`, `/t/${trId}/announcements`)
   commit()
-  toast('Vote cast — one per person, and it cannot be changed')
+  toast('Posted — announcements cannot be unsent')
 }
 
 /** A rating is public in aggregate; the note is read only by the Organizer. */
-export function toggleFollow(key: string) {
-  state.follows = state.follows.includes(key)
-    ? state.follows.filter(k => k !== key)
-    : [...state.follows, key]
+export function sendFeedback(trId: string, by: string, rating: number, text: string) {
+  const mine = state.feedback.find(f => f.tour === trId && f.by === by)
+  if (mine) { mine.rating = rating; mine.text = text; mine.at = NOW() }
+  else state.feedback.push({ id: uid('f'), tour: trId, by, rating, text, at: NOW() })
   commit()
+  toast('Sent to the organizer')
 }
 
 export function markAllRead(userId: string) {
