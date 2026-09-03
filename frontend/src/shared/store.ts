@@ -439,15 +439,6 @@ export function postAnnouncement(trId: string, by: string, title: string, body: 
   toast('Posted — announcements cannot be unsent')
 }
 
-/** One correct prediction pays one Token. Officials cannot predict in their own. */
-export function placePick(matchId: string, by: string, teamId: string) {
-  const existing = state.picks.find(p => p.match === matchId && p.by === by)
-  if (existing) existing.team = teamId
-  else state.picks.push({ id: uid('p'), match: matchId, by, team: teamId })
-  commit()
-  toast('Call recorded')
-}
-
 /** A rating is public in aggregate; the note is read only by the Organizer. */
 export function sendFeedback(trId: string, by: string, rating: number, text: string) {
   const mine = state.feedback.find(f => f.tour === trId && f.by === by)

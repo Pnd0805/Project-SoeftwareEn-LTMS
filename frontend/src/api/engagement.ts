@@ -3,6 +3,7 @@ import type {
   CommentListDto,
   FollowListDto,
   MvpVoteListDto,
+  PickListDto,
 } from "../types/engagement.dto"
 import {
   getMockFollows,
@@ -15,6 +16,7 @@ import {
   mockPostComment,
   mockRemoveComment,
 } from "../mocks/comment.mock"
+import { getMockPicks, mockPlacePick } from "../mocks/pick.mock"
 
 export async function getFollows(userId: number): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(getMockFollows(userId))
@@ -111,4 +113,25 @@ export async function removeComment(
     `/matches/${encodeURIComponent(matchId)}/comments/${encodeURIComponent(commentId)}`,
     { method: "DELETE" },
   )
+}
+
+export async function getPicks(matchId: string, userId: string): Promise<PickListDto> {
+  if (USE_MOCK) return mockDelay(getMockPicks(matchId, userId))
+
+  // TODO(guide): confirm the match Pick'em list endpoint path.
+  return apiFetch<PickListDto>(`/matches/${encodeURIComponent(matchId)}/picks`)
+}
+
+export async function placePick(
+  matchId: string,
+  userId: string,
+  teamId: string,
+): Promise<PickListDto> {
+  if (USE_MOCK) return mockDelay(mockPlacePick(matchId, userId, teamId))
+
+  // TODO(guide): confirm the Pick'em action endpoint path.
+  return apiFetch<PickListDto>(`/matches/${encodeURIComponent(matchId)}/picks`, {
+    method: "POST",
+    body: JSON.stringify({ teamId }),
+  })
 }

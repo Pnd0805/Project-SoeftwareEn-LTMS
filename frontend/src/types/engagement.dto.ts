@@ -26,3 +26,15 @@ export interface CommentDto {
 export interface CommentListDto {
   items: CommentDto[]
 }
+
+export interface PickDto {
+  id: string
+  matchId: string
+  userId: string
+  teamId: string
+}
+
+export interface PickListDto {
+  items: PickDto[]
+  mine: PickDto | null
+}

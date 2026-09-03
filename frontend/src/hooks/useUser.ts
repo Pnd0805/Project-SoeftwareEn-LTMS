@@ -117,3 +117,27 @@ export function useComments(matchId: string | undefined) {
 
   return { ...comments, post, remove }
 }
+
+export function usePicks(
+  matchId: string | undefined,
+  userId: string | undefined,
+) {
+  const queryClient = useQueryClient()
+  const queryKey = ["picks", matchId, userId]
+  const picks = useQuery({
+    queryKey,
+    queryFn: () => engagementApi.getPicks(matchId as string, userId as string),
+    enabled: matchId !== undefined && userId !== undefined,
+  })
+
+  const place = useMutation({
+    mutationFn: (teamId: string) => engagementApi.placePick(
+      matchId as string,
+      userId as string,
+      teamId,
+    ),
+    onSuccess: data => queryClient.setQueryData(queryKey, data),
+  })
+
+  return { ...picks, place }
+}

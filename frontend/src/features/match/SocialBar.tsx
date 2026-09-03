@@ -9,11 +9,11 @@
 import { useState } from 'react'
 import { Badge, Field, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
-import { placePick, useLtms } from '../../shared/store'
+import { useLtms } from '../../shared/store'
 import { isOrg, me, officiates, team, tour } from '../../shared/selectors'
 import { fmtDate, matchStage, winnerOf } from '../../shared/rules'
 import type { Match } from '../../shared/types'
-import { useComments } from '../../hooks/useUser'
+import { useComments, usePicks } from '../../hooks/useUser'
 
 /** Public to read, signed-in to write, and the organizer can take a post down. */
 function CommentBlock({ m, onClose }: { m: Match; onClose: () => void }) {
@@ -80,6 +80,7 @@ function CommentBlock({ m, onClose }: { m: Match; onClose: () => void }) {
 function PickBlock({ m, onClose }: { m: Match; onClose: () => void }) {
   const s = useLtms()
   const u = me(s)
+  const picks = usePicks(m.id, u?.id)
   if (!u || !m.a || !m.b) return null
 
   /* an official betting on their own competition is the conflict — the control is
@@ -94,12 +95,12 @@ function PickBlock({ m, onClose }: { m: Match; onClose: () => void }) {
     )
   }
 
-  const mine = s.picks.find(p => p.match === m.id && p.by === u.id)
+  const mine = picks.data?.mine ?? null
   const open = m.status === 'scheduled'
-  const tally = s.picks.filter(p => p.match === m.id)
-  const pct = (tid: string) => (tally.length ? Math.round(tally.filter(p => p.team === tid).length / tally.length * 100) : 0)
+  const tally = picks.data?.items ?? []
+  const pct = (tid: string) => (tally.length ? Math.round(tally.filter(p => p.teamId === tid).length / tally.length * 100) : 0)
   const outcome = m.status === 'confirmed' && mine
-    ? (mine.team === winnerOf(m) ? <Badge kind="ok">+1 — you called it</Badge> : <Badge kind="crit">0 — wrong call</Badge>)
+    ? (mine.teamId === winnerOf(m) ? <Badge kind="ok">+1 — you called it</Badge> : <Badge kind="crit">0 — wrong call</Badge>)
     : m.status === 'disputed' && mine ? <Badge kind="neutral">Held until the dispute settles</Badge> : null
 
   return (
@@ -111,10 +112,10 @@ function PickBlock({ m, onClose }: { m: Match; onClose: () => void }) {
       <h3 style={{ margin: 0, fontSize: 20 }}>{matchStage(s, m)}</h3>
       <div className="grid2">
         {([m.a, m.b] as string[]).map(tid => (
-          <button key={tid} type="button" disabled={!open}
-            className={`btn ${mine?.team === tid ? 'primary' : ''}`}
+          <button key={tid} type="button" disabled={!open || picks.place.isPending}
+            className={`btn ${mine?.teamId === tid ? 'primary' : ''}`}
             style={{ justifyContent: 'space-between', padding: '13px 16px' }}
-            onClick={() => placePick(m.id, u.id, tid)}>
+            onClick={() => picks.place.mutate(tid)}>
             <span>{team(s, tid)?.name}</span><span className="num">{pct(tid)}%</span>
           </button>
         ))}
@@ -127,18 +128,19 @@ function PickBlock({ m, onClose }: { m: Match; onClose: () => void }) {
 export function SocialBar({ m }: { m: Match }) {
   const s = useLtms()
   const u = me(s)
+  const picks = usePicks(m.id, u?.id)
   const [openPick, setOpenPick] = useState(false)
   const [openTalk, setOpenTalk] = useState(false)
   const comments = useComments(m.id)
 
   const rows = comments.data?.items.length ?? 0
-  const tally = s.picks.filter(p => p.match === m.id).length
-  const mine = u ? s.picks.find(p => p.match === m.id && p.by === u.id) : null
+  const tally = picks.data?.items.length ?? 0
+  const mine = picks.data?.mine ?? null
   const canPick = !!(u && m.a && m.b && !officiates(s, m.tour))
   const says = !u ? 'Sign in to call this one.'
     : !m.a || !m.b ? 'Both squads have to be known first.'
       : officiates(s, m.tour) ? 'Closed to you — you officiate this tournament, and whoever decides a result cannot have a stake in it.'
-        : mine ? `You called ${team(s, mine.team)?.name}.`
+        : mine ? `You called ${team(s, mine.teamId)?.name}.`
           : m.status === 'scheduled' ? 'You have not called this one.'
             : 'Predictions closed before you got to it.'
 
