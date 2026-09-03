@@ -460,14 +460,6 @@ export function placePick(matchId: string, by: string, teamId: string) {
   toast('Call recorded')
 }
 
-/** One vote per User per Tournament, opened the moment a Champion is decided. */
-export function voteMvp(trId: string, by: string, player: string) {
-  if (state.votes.some(v => v.tour === trId && v.by === by)) { toast('You have already voted in this tournament', 'warn'); return }
-  state.votes.push({ id: uid('v'), tour: trId, by, player })
-  commit()
-  toast('Vote cast — one per person, and it cannot be changed')
-}
-
 /** A rating is public in aggregate; the note is read only by the Organizer. */
 export function sendFeedback(trId: string, by: string, rating: number, text: string) {
   const mine = state.feedback.find(f => f.tour === trId && f.by === by)

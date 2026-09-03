@@ -68,3 +68,29 @@ export function useFollow(
     toggle,
   }
 }
+
+export function useMvpVotes(
+  tournamentId: string | undefined,
+  userId: string | undefined,
+) {
+  const queryClient = useQueryClient()
+  const queryKey = ["votes", "mvp", tournamentId, userId]
+  const votes = useQuery({
+    queryKey,
+    queryFn: () => engagementApi.getMvpVotes(tournamentId as string, userId as string),
+    enabled: tournamentId !== undefined && userId !== undefined,
+  })
+
+  const cast = useMutation({
+    mutationFn: (playerId: string) => engagementApi.castMvpVote(
+      tournamentId as string,
+      userId as string,
+      playerId,
+    ),
+    onSuccess: data => {
+      queryClient.setQueryData(queryKey, data)
+    },
+  })
+
+  return { ...votes, cast }
+}
