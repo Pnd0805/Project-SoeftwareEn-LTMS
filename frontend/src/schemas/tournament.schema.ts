@@ -10,7 +10,7 @@ import {
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)");
 const dateTimeSchema = z.string().datetime({ offset: true, message: "รูปแบบวันเวลาไม่ถูกต้อง" });
 
-export const createTournamentSchema = z.object({
+const tournamentFieldsSchema = z.object({
   name: z.string().trim().min(1, "กรุณาระบุชื่อการแข่งขัน").max(200, "ชื่อการแข่งขันต้องไม่เกิน 200 ตัวอักษร"),
   sportTypeId: z.number().int().positive(),
   bracketFormat: BracketFormatEnum.nullable().optional(),
@@ -26,7 +26,9 @@ export const createTournamentSchema = z.object({
   genderRequirement: GenderRequirementEnum.optional(),
   minAge: z.number().int().nonnegative().nullable().optional(),
   maxAge: z.number().int().nonnegative().nullable().optional(),
-}).refine((value) => value.minTeams <= value.maxTeams, {
+});
+
+export const createTournamentSchema = tournamentFieldsSchema.refine((value) => value.minTeams <= value.maxTeams, {
   message: "จำนวนทีมขั้นต่ำต้องไม่มากกว่าจำนวนทีมสูงสุด",
   path: ["minTeams"],
 }).refine((value) => !value.eventEndDate || value.eventEndDate >= value.eventStartDate, {
@@ -37,7 +39,7 @@ export const createTournamentSchema = z.object({
   path: ["minAge"],
 });
 
-export const updateTournamentSchema = createTournamentSchema.partial().extend({
+export const updateTournamentSchema = tournamentFieldsSchema.partial().extend({
   registrationOpen: z.boolean().optional(),
   registrationStart: dateTimeSchema.nullable().optional(),
   registrationEnd: dateTimeSchema.nullable().optional(),

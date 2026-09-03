@@ -11,8 +11,9 @@
  */
 import { useSyncExternalStore } from 'react'
 import { SEED } from './seed'
-import { NOW } from './rules'
-import type { State, Tournament } from './types'
+import { NOW, formatOf, standings, winnerId } from './rules'
+import { buildBracket } from '../features/tournament/bracketBuilders'
+import type { Match, State, Tournament } from './types'
 
 const KEY = 'ltms.v1'
 
@@ -185,6 +186,22 @@ export function requestPermanent(teamId: string, reason: string, by: string) {
     `${state.teams.find(t => t.id === teamId)?.name ?? 'A squad'} asked to be made permanent.`, '/admin')
   commit()
   toast('Sent to an admin — exemption is a judgement, not a checkbox')
+}
+
+export function requestWithdraw(regId: string) {
+  const r = state.registrations.find(x => x.id === regId)
+  if (!r) return
+  const tr = state.tournaments.find(t => t.id === r.tour)
+  if (tr && !tr.drawn) {
+    r.status = 'withdrawn'
+    commit()
+    toast('Withdrawn — the bracket had not been drawn', 'warn')
+    return
+  }
+  r.withdrawRequested = true
+  notify(tr?.organizer, `${state.teams.find(t => t.id === r.team)?.name} asked to withdraw from ${tr?.name}.`, `/t/${r.tour}/manage/registrations`)
+  commit()
+  toast('Asked the organizer — the bracket is live, so it is their call', 'warn')
 }
 
 export function decideTournament(trId: string, approve: boolean) {
