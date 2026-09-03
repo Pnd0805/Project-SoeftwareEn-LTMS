@@ -8,8 +8,9 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel } from '../../components/kit/primitives'
 import { TeamChip } from '../../components/kit/chips'
-import { useLtms, voteMvp } from '../../shared/store'
+import { useLtms } from '../../shared/store'
 import { matchesOf, me, team, tour, user } from '../../shared/selectors'
+import { useMvpVotes } from '../../hooks/useUser'
 
 export function MvpPage() {
   const s = useLtms()
@@ -17,6 +18,7 @@ export function MvpPage() {
   const { id } = useParams()
   const t = tour(s, id)
   const u = me(s)
+  const mvp = useMvpVotes(t?.id, u?.id)
 
   if (!t) return <Empty icon="warn" title="No such tournament" />
 
@@ -46,9 +48,9 @@ export function MvpPage() {
       .map(x => [x[0], { ...x[1] }] as [string, { goals: number; assists: number; team: string }])
   }
 
-  const votes = s.votes.filter(v => v.tour === t.id)
-  const mine = u ? votes.find(v => v.by === u.id) : null
-  const pct = (pid: string) => (votes.length ? Math.round(votes.filter(v => v.player === pid).length / votes.length * 100) : 0)
+  const votes = mvp.data?.items ?? []
+  const mine = mvp.data?.mine ?? null
+  const pct = (pid: string) => (votes.length ? Math.round(votes.filter(v => v.playerId === pid).length / votes.length * 100) : 0)
 
   return (
     <>
@@ -60,7 +62,7 @@ export function MvpPage() {
 
       <Banner kind={mine ? 'ok' : 'warn'} icon="star">
         {mine
-          ? <>You voted for <b>{user(s, mine.player)?.name}</b>. One vote per person, and it can't be changed.</>
+          ? <>You voted for <b>{user(s, mine.playerId)?.name}</b>. One vote per person, and it can't be changed.</>
           : <>You have <b>one vote for the whole tournament</b>. Candidates are ranked on the statistics referees recorded.</>}
       </Banner>
 
@@ -78,8 +80,9 @@ export function MvpPage() {
               <TeamChip id={st.team} />
               <span className="num" style={{ marginLeft: 'auto' }}>{pct(pid)}%</span>
               {u && !mine ? (
-                <button className="btn primary" type="button" onClick={() => voteMvp(t.id, u.id, pid)}>Vote</button>
-              ) : mine?.player === pid ? <Badge kind="ok">Your vote</Badge> : null}
+                <button className="btn primary" type="button" onClick={() => mvp.cast.mutate(pid)}
+                  disabled={mvp.cast.isPending}>Vote</button>
+              ) : mine?.playerId === pid ? <Badge kind="ok">Your vote</Badge> : null}
             </div>
           )
         })}

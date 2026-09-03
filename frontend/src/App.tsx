@@ -10,8 +10,10 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Shell } from './components/layout/Shell'
 import { Toasts } from './components/kit/Toasts'
 import { useLtms } from './shared/store'
-import { isGuest, me } from './shared/selectors'
+import { isGuest } from './shared/selectors'
+import { useMe } from './hooks/useAuth'
 import { LoginPage } from './features/auth/LoginPage'
+import { RegisterPage } from './features/auth/RegisterPage'
 import { HomePage } from './features/home/HomePage'
 import { TournamentPage } from './features/tournament/TournamentPage'
 import { MatchPage } from './features/match/MatchPage'
@@ -37,32 +39,36 @@ const PUBLIC_PATHS = [
   /^\/team\//, /^\/player\//, /^\/watch\//, /^\/search/, /^\/login$/,
 ]
 
-function Guard({ children }: { children: React.ReactNode }) {
+function Guard({ children, currentUser, isLoading }: {
+  children: React.ReactNode
+  currentUser: ReturnType<typeof useMe>['data']
+  isLoading: boolean
+}) {
   const s = useLtms()
   const location = useLocation()
-  const signedIn = !!me(s)
+  const signedIn = !!currentUser
   const guest = isGuest(s)
   const isPublic = PUBLIC_PATHS.some(p => p.test(location.pathname))
+  if (isLoading) return null
   if (!signedIn && !guest && !isPublic) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 export default function App() {
-  const s = useLtms()
-  const u = me(s)
+  const { data: currentUser, isLoading } = useMe()
   const location = useLocation()
 
-  if (location.pathname === '/login') {
+  if (location.pathname === '/login' || location.pathname === '/register') {
     return (
       <>
-        <LoginPage />
+        {location.pathname === '/login' ? <LoginPage /> : <RegisterPage />}
         <Toasts />
       </>
     )
   }
 
   return (
-    <Guard>
+    <Guard currentUser={currentUser} isLoading={isLoading}>
       <Shell>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -80,14 +86,15 @@ export default function App() {
           <Route path="/watch/:id" element={<WatchPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/search/:q" element={<SearchPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-          <Route path="/teams" element={u ? <TeamsPage /> : <Navigate to="/login" replace />} />
-          <Route path="/matches" element={u ? <MatchesPage /> : <Navigate to="/login" replace />} />
-          <Route path="/inbox" element={u ? <InboxPage /> : <Navigate to="/login" replace />} />
-          <Route path="/me" element={u ? <ProfilePage /> : <Navigate to="/login" replace />} />
-          <Route path="/request" element={u ? <RequestPage /> : <Navigate to="/login" replace />} />
-          <Route path="/admin" element={u ? <AdminPage /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/:tab" element={u ? <AdminPage /> : <Navigate to="/login" replace />} />
+          <Route path="/teams" element={currentUser ? <TeamsPage /> : <Navigate to="/login" replace />} />
+          <Route path="/matches" element={currentUser ? <MatchesPage /> : <Navigate to="/login" replace />} />
+          <Route path="/inbox" element={currentUser ? <InboxPage /> : <Navigate to="/login" replace />} />
+          <Route path="/me" element={currentUser ? <ProfilePage /> : <Navigate to="/login" replace />} />
+          <Route path="/request" element={currentUser ? <RequestPage /> : <Navigate to="/login" replace />} />
+          <Route path="/admin" element={currentUser ? <AdminPage /> : <Navigate to="/login" replace />} />
+          <Route path="/admin/:tab" element={currentUser ? <AdminPage /> : <Navigate to="/login" replace />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

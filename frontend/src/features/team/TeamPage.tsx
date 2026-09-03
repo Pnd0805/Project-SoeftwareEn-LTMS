@@ -8,10 +8,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, FormGuide, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { TeamLink } from '../../components/kit/chips'
-import { toggleFollow, useLtms } from '../../shared/store'
-import { isFollowing, me, team, tour, user } from '../../shared/selectors'
+import { useLtms } from '../../shared/store'
+import { team, tour, user } from '../../shared/selectors'
 import { ageOf, fmtDate, leaderboard, minSquad, statLabels, teamReady } from '../../shared/rules'
 import { teamBySport } from '../../shared/career'
+import { useMe } from '../../hooks/useAuth'
+import { useFollow } from '../../hooks/useUser'
 
 const ordinal = (n: number) => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`
 
@@ -19,6 +21,8 @@ export function TeamPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()
+  const { data: currentUser } = useMe()
+  const follow = useFollow(currentUser?.id, `team:${id ?? ''}`)
   const t = team(s, id)
 
   if (!t) {
@@ -74,10 +78,11 @@ export function TeamPage() {
             </span>
           </span>
         </span>
-        {me(s) ? (
-          <button className={`btn ${isFollowing(s, `team:${t.id}`) ? 'ghost' : 'primary'}`} type="button"
-            onClick={() => toggleFollow(`team:${t.id}`)}>
-            {isFollowing(s, `team:${t.id}`) ? 'Following' : 'Follow this squad'}
+        {currentUser ? (
+          <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
+            onClick={() => follow.toggle.mutate()}
+            disabled={follow.toggle.isPending}>
+            {follow.isFollowing ? 'Following' : 'Follow this squad'}
           </button>
         ) : null}
       </div>

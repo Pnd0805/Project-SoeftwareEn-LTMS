@@ -8,33 +8,48 @@
 import { Badge, Facts, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamLink } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
-import { me, tour } from '../../shared/selectors'
+import { tour } from '../../shared/selectors'
 import { ageOf } from '../../shared/rules'
 import { careerByTournament, pickScore } from '../../shared/career'
 import { CareerPanel } from '../player/PlayerPage'
+import { useMe } from '../../hooks/useAuth'
+import { useFollows, useUserStats } from '../../hooks/useUser'
 
 export function ProfilePage() {
   const s = useLtms()
-  const u = me(s)
-  if (!u) return null
+  const { data: currentUser, isLoading, isError } = useMe()
+  const {
+    data: userStats,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useUserStats(currentUser?.id)
+  const { data: followsData } = useFollows(currentUser?.id)
 
-  const byTour = careerByTournament(s, u.id)
-  const played = byTour.reduce((n, r) => n + r.p, 0)
-  const won = byTour.reduce((n, r) => n + r.w, 0)
-  const titles = byTour.filter(r => r.finish === 'Champion').length
-  const p = pickScore(s, u.id)
-  const squads = s.teams.filter(t => t.members.includes(u.id))
-  const mvpVotes = s.votes.filter(v => v.player === u.id).length
-  const follows = s.follows
+  if (isLoading || statsLoading || isError || statsError || !currentUser || !userStats) {
+    return null
+  }
+
+  // Legacy profile sections still use string IDs until their APIs are migrated.
+  const legacyUser = s.users.find(user => user.email === currentUser.email)
+  if (!legacyUser) return null
+
+  const byTour = careerByTournament(s, legacyUser.id)
+  const played = userStats.overall.matchesPlayed
+  const won = userStats.overall.wins
+  const titles = userStats.overall.championCount
+  const p = pickScore(s, legacyUser.id)
+  const squads = s.teams.filter(t => t.members.includes(legacyUser.id))
+  const mvpVotes = s.votes.filter(v => v.player === legacyUser.id).length
+  const follows = followsData?.targets ?? []
 
   return (
     <>
       <div className="spread">
         <div>
-          <div className="tag"><em>//</em> {u.role === 'Admin' ? 'Administrator' : 'Student record'}</div>
-          <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>{u.name}</h1>
+          <div className="tag"><em>//</em> {legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'}</div>
+          <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>{currentUser.fullName}</h1>
         </div>
-        <Badge kind="neutral">{u.email}</Badge>
+        <Badge kind="neutral">{currentUser.email}</Badge>
       </div>
 
       <div className="statline">
@@ -46,7 +61,7 @@ export function ProfilePage() {
 
       <div className="split">
         <div>
-          <CareerPanel pid={u.id} />
+          <CareerPanel pid={legacyUser.id} />
 
           <Panel quiet>
             <span className="tag"><em>//</em> Pick'em</span>
@@ -71,7 +86,7 @@ export function ProfilePage() {
                     {squads.map(t => (
                       <tr key={t.id}>
                         <td><TeamLink id={t.id} /></td>
-                        <td className="sub">{t.leader === u.id ? 'Leader' : 'Player'}</td>
+                        <td className="sub">{t.leader === legacyUser.id ? 'Leader' : 'Player'}</td>
                         <td className="sub">{t.sport ?? '—'}</td>
                       </tr>
                     ))}
@@ -107,12 +122,12 @@ export function ProfilePage() {
           <Panel>
             <span className="tag"><em>//</em> Student record — the registry owns this</span>
             <Facts rows={[
-              ['Faculty', u.faculty],
-              ['Major', u.major],
-              ['Year', String(u.year)],
-              ['Age', String(ageOf(u.dob))],
-              ['Gender', u.gender],
-              ['Role', u.role === 'Admin' ? 'Admin' : 'User'],
+              ['Faculty', legacyUser.faculty],
+              ['Major', legacyUser.major],
+              ['Year', String(currentUser.year)],
+              ['Age', String(ageOf(currentUser.birthDate))],
+              ['Gender', currentUser.gender],
+              ['Role', currentUser.userType === 'staff' ? 'Admin' : 'User'],
             ]} />
             <span className="sub">
               The Hard filter reads these. They cannot be edited here — ask the registry if one is wrong.

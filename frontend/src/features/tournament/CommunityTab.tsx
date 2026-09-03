@@ -5,6 +5,8 @@
  * aggregate, the note is read only by the Organizer. One per person, replaced
  * rather than stacked when sent again. Beside it, the match threads.
  */
+
+/* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Field, Panel, TableWrap } from '../../components/kit/primitives'

@@ -15,11 +15,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '../kit/Icon'
 import type { IconName } from '../kit/Icon'
 import { signout, useLtms } from '../../shared/store'
-import { me, unread } from '../../shared/selectors'
+import { me } from '../../shared/selectors'
+import { useMe } from '../../hooks/useAuth'
+import { useNotifications } from '../../hooks/useNotifications'
 
 interface NavItem { to: string; icon: IconName; label: string; pill?: number }
 
-function useNav(): NavItem[] {
+function useNav(unreadCount: number): NavItem[] {
   const s = useLtms()
   const u = me(s)
   if (!u) return []
@@ -30,7 +32,7 @@ function useNav(): NavItem[] {
   }
   items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: invites })
   items.push({ to: '/matches', icon: 'match', label: 'Matches' })
-  items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unread(s) })
+  items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unreadCount })
   items.push({ to: '/me', icon: 'user', label: 'Profile' })
   return items
 }
@@ -86,10 +88,13 @@ function SearchBox() {
 export function Shell({ children }: { children: React.ReactNode }) {
   const s = useLtms()
   const u = me(s)
-  const nav = useNav()
+  const { data: currentUser } = useMe()
+  const { data: notificationData } = useNotifications(currentUser?.id)
+  const unreadCount = notificationData?.items.filter(notification => !notification.read).length ?? 0
+  const nav = useNav(unreadCount)
   const location = useLocation()
   const navigate = useNavigate()
-  const n = unread(s)
+  const n = unreadCount
 
   /* the first tab stop — standard on GitHub, Wikipedia, gov.uk */
   const skip = (

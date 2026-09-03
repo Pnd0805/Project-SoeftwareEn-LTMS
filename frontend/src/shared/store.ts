@@ -427,18 +427,6 @@ function crownIfDone(tr: Tournament) {
 }
 
 
-/* ───────── community ───────── */
-export function postComment(matchId: string, by: string, text: string) {
-  if (!text.trim()) return
-  state.comments.push({ id: uid('c'), match: matchId, by, text: text.trim(), at: NOW() })
-  commit()
-}
-export function removeComment(commentId: string) {
-  state.comments = state.comments.filter(c => c.id !== commentId)
-  commit()
-  toast('Comment removed', 'warn')
-}
-
 export function postAnnouncement(trId: string, by: string, title: string, body: string) {
   const tr = state.tournaments.find(t => t.id === trId)
   if (!tr || !title.trim()) return
@@ -451,23 +439,6 @@ export function postAnnouncement(trId: string, by: string, title: string, body: 
   toast('Posted — announcements cannot be unsent')
 }
 
-/** One correct prediction pays one Token. Officials cannot predict in their own. */
-export function placePick(matchId: string, by: string, teamId: string) {
-  const existing = state.picks.find(p => p.match === matchId && p.by === by)
-  if (existing) existing.team = teamId
-  else state.picks.push({ id: uid('p'), match: matchId, by, team: teamId })
-  commit()
-  toast('Call recorded')
-}
-
-/** One vote per User per Tournament, opened the moment a Champion is decided. */
-export function voteMvp(trId: string, by: string, player: string) {
-  if (state.votes.some(v => v.tour === trId && v.by === by)) { toast('You have already voted in this tournament', 'warn'); return }
-  state.votes.push({ id: uid('v'), tour: trId, by, player })
-  commit()
-  toast('Vote cast — one per person, and it cannot be changed')
-}
-
 /** A rating is public in aggregate; the note is read only by the Organizer. */
 export function sendFeedback(trId: string, by: string, rating: number, text: string) {
   const mine = state.feedback.find(f => f.tour === trId && f.by === by)
@@ -475,13 +446,6 @@ export function sendFeedback(trId: string, by: string, rating: number, text: str
   else state.feedback.push({ id: uid('f'), tour: trId, by, rating, text, at: NOW() })
   commit()
   toast('Sent to the organizer')
-}
-
-export function toggleFollow(key: string) {
-  state.follows = state.follows.includes(key)
-    ? state.follows.filter(k => k !== key)
-    : [...state.follows, key]
-  commit()
 }
 
 export function markAllRead(userId: string) {

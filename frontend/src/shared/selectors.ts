@@ -57,8 +57,6 @@ export const unread = (s: State) => {
   return u ? s.notifications.filter(n => n.to === u.id && !n.read).length : 0
 }
 
-export const isFollowing = (s: State, key: string) => s.follows.includes(key)
-
 /** Which tournaments this squad could still enter. */
 export const openToEnter = (state: State, t: Team) =>
   state.tournaments.filter(x => x.status === 'public' && !x.drawn
