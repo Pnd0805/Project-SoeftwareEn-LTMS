@@ -12,7 +12,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Badge, Panel, Trail } from '../../../components/kit/primitives'
 import type { TrailStep } from '../../../components/kit/primitives'
-import { drawBracket, publishTournament, useLtms } from '../../../shared/store'
+import { useLtms } from '../../../shared/store'
+import { useDrawTournament, usePublishTournament } from '../../../hooks/useTournament'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { formatName, refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
@@ -20,6 +21,8 @@ import type { Tournament } from '../../../shared/types'
 export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
   const s = useLtms()
   const navigate = useNavigate()
+  const publish = usePublishTournament(Number(t.id))
+  const draw = useDrawTournament(Number(t.id))
   const need = refsNeeded(t)
   const approved = regsOf(s, t.id).filter(r => r.status === 'approved')
   const pend = regsOf(s, t.id).filter(r => r.status === 'pending')
@@ -41,7 +44,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         : t.status === 'pending' ? 'An admin has the request. Nothing to do until they answer it.'
           : 'Nobody can register while it is private, and LTMS deletes a private tournament on its match date.',
       cta: t.status === 'private'
-        ? <button className="btn primary" type="button" onClick={() => publishTournament(t.id)}>Open to public</button>
+        ? <button className="btn primary" type="button" onClick={() => publish.mutate()}>Open to public</button>
         : undefined,
     },
     {
@@ -55,7 +58,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       note: t.drawn
         ? `${formatName(t)} — drawn, so entry is closed.`
         : `${formatName(t)} — needs two approved squads, and closes entry for good.`,
-      cta: <button className="btn primary" type="button" onClick={() => drawBracket(t.id)}>Generate bracket · random draw</button>,
+      cta: <button className="btn primary" type="button" onClick={() => draw.mutate({})}>Generate bracket · random draw</button>,
     },
     {
       state: ms.length > 0 && ready.length === ms.length ? 'done' : 'idle',

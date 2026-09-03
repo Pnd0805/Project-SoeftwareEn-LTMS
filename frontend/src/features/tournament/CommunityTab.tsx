@@ -5,13 +5,18 @@
  * aggregate, the note is read only by the Organizer. One per person, replaced
  * rather than stacked when sent again. Beside it, the match threads.
  */
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamLink } from '../../components/kit/chips'
-import { sendFeedback, useLtms } from '../../shared/store'
+import { useLtms } from '../../shared/store'
+import { useSubmitTournamentFeedback } from '../../hooks/useTournament'
+import { ApiError } from '../../api/client'
+import { submitTournamentFeedbackSchema, type SubmitTournamentFeedbackInput } from '../../schemas/tournament.schema'
 import { commentsOf, matchesOf, me } from '../../shared/selectors'
 import { matchTag } from '../../shared/rules'
 import type { State, Tournament } from '../../shared/types'
@@ -29,8 +34,11 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
   const navigate = useNavigate()
   const f = feedbackOf(s, t.id)
   const mine = u ? f.rows.find(x => x.by === u.id) : null
-  const [rating, setRating] = useState(mine?.rating ?? 5)
-  const [text, setText] = useState(mine?.text ?? '')
+  const submit = useSubmitTournamentFeedback(Number(t.id))
+  const { register, handleSubmit, setError, reset, formState: { errors, isSubmitting } } = useForm<SubmitTournamentFeedbackInput>({
+    resolver: zodResolver(submitTournamentFeedbackSchema),
+    defaultValues: { rating: mine?.rating ?? 5, text: mine?.text ?? '' },
+  })
 
   const talked = matchesOf(s, t.id)
     .map(m => ({ m, n: commentsOf(s, m.id).length }))
@@ -63,19 +71,24 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
             </div>
           ) : (
             <>
+              <form onSubmit={handleSubmit(async input => {
+                try { await submit.mutateAsync(input); reset(input) }
+                catch (error) { if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof SubmitTournamentFeedbackInput, { type: 'server', message })) }
+              })}>
               <Field label="Rating — 1 to 5" htmlFor="fb-rating">
-                <select id="fb-rating" value={rating} onChange={e => setRating(Number(e.target.value))}>
+                <select id="fb-rating" {...register('rating', { valueAsNumber: true })}>
                   {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} out of 5</option>)}
                 </select>
               </Field>
               <Field label="What would you change?" htmlFor="fb-text">
-                <textarea id="fb-text" rows={3} maxLength={600} value={text}
-                  onChange={e => setText(e.target.value)} placeholder="Only the organizer reads this." />
+                <textarea id="fb-text" rows={3} maxLength={600} {...register('text')} placeholder="Only the organizer reads this." />
               </Field>
-              <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-                onClick={() => sendFeedback(t.id, u.id, rating, text)}>
+              {errors.rating?.message ? <span className="sub">{errors.rating.message}</span> : null}
+              {errors.text?.message ? <span className="sub">{errors.text.message}</span> : null}
+              <button className="btn primary" type="submit" disabled={isSubmitting || submit.isPending} style={{ alignSelf: 'flex-start' }}>
                 {mine ? 'Update my feedback' : 'Send to the organizer'}
               </button>
+              </form>
             </>
           )}
         </Panel>

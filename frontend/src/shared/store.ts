@@ -11,8 +11,8 @@
  */
 import { useSyncExternalStore } from 'react'
 import { SEED } from './seed'
-import { NOW, buildBracket, formatOf, refsNeeded, standings, winnerId } from './rules'
-import type { Match, Rules, State, Tournament } from './types'
+import { NOW } from './rules'
+import type { State, Tournament } from './types'
 
 const KEY = 'ltms.v1'
 
@@ -187,90 +187,6 @@ export function requestPermanent(teamId: string, reason: string, by: string) {
   toast('Sent to an admin — exemption is a judgement, not a checkbox')
 }
 
-/* ───────── registration ───────── */
-/** The Hard filter's verdict is the caller's; this records what it decided. */
-export function registerSquad(trId: string, teamId: string, squad: string[], failed: string | null) {
-  const tr = state.tournaments.find(t => t.id === trId)
-  if (!tr) return
-  if (failed) {
-    state.registrations.push({ id: uid('r'), tour: trId, team: teamId, status: 'rejected', at: NOW(), squad, reason: failed })
-    commit()
-    toast('Rejected by the hard filter — nobody can override it', 'crit')
-    return
-  }
-  state.registrations.push({ id: uid('r'), tour: trId, team: teamId, status: 'pending', at: NOW(), squad })
-  notify(tr.organizer, `${state.teams.find(t => t.id === teamId)?.name ?? 'A squad'} registered for ${tr.name}.`, `/t/${tr.id}/manage/registrations`)
-  commit()
-  toast('Entered — the organizer reviews it against the entry notes')
-}
-
-export function approveRegistration(regId: string) {
-  const r = state.registrations.find(x => x.id === regId)
-  if (!r) return
-  r.status = 'approved'
-  const tm = state.teams.find(t => t.id === r.team)
-  notifyAll(tm ? [tm.leader] : [], `Your entry to ${state.tournaments.find(t => t.id === r.tour)?.name} was approved.`, `/t/${r.tour}`)
-  commit()
-  toast('Squad approved')
-}
-
-export function rejectRegistration(regId: string, reason: string) {
-  const r = state.registrations.find(x => x.id === regId)
-  if (!r) return
-  r.status = 'rejected'
-  r.reason = reason
-  const tm = state.teams.find(t => t.id === r.team)
-  notifyAll(tm ? [tm.leader] : [], `Your entry to ${state.tournaments.find(t => t.id === r.tour)?.name} was declined.`, `/t/${r.tour}`)
-  commit()
-  toast('Squad declined', 'warn')
-}
-
-export function approveAll(trId: string) {
-  const pend = state.registrations.filter(r => r.tour === trId && r.status === 'pending')
-  pend.forEach(r => { r.status = 'approved' })
-  commit()
-  toast(`${pend.length} squad${pend.length === 1 ? '' : 's'} approved`)
-}
-
-export function requestWithdraw(regId: string) {
-  const r = state.registrations.find(x => x.id === regId)
-  if (!r) return
-  const tr = state.tournaments.find(t => t.id === r.tour)
-  if (tr && !tr.drawn) {
-    r.status = 'withdrawn'
-    commit()
-    toast('Withdrawn — the bracket had not been drawn', 'warn')
-    return
-  }
-  r.withdrawRequested = true
-  notify(tr?.organizer, `${state.teams.find(t => t.id === r.team)?.name} asked to withdraw from ${tr?.name}.`, `/t/${r.tour}/manage/registrations`)
-  commit()
-  toast('Asked the organizer — the bracket is live, so it is their call', 'warn')
-}
-
-export function allowWithdraw(regId: string) {
-  const r = state.registrations.find(x => x.id === regId)
-  if (!r) return
-  r.status = 'withdrawn'
-  r.withdrawRequested = false
-  state.matches.filter(m => m.tour === r.tour && (m.a === r.team || m.b === r.team) && m.status === 'scheduled')
-    .forEach(m => { m.note = 'walkover' })
-  commit()
-  toast('Withdrawal allowed — remaining opponents get a walkover', 'warn')
-}
-
-/* ───────── the tournament lifecycle ───────── */
-export function requestTournament(input: Omit<Tournament, 'id' | 'status' | 'drawn' | 'rounds' | 'champion' | 'referees'> & { referees?: string[] }) {
-  const id = uid('t')
-  state.tournaments.push({
-    ...input, id, status: 'pending', drawn: false, rounds: 0, champion: null, referees: input.referees ?? [],
-  })
-  notifyAll(state.users.filter(u => u.role === 'Admin').map(u => u.id), `${input.name} is waiting on your approval.`, '/admin')
-  commit()
-  toast('Request sent — an admin decides')
-  return id
-}
-
 export function decideTournament(trId: string, approve: boolean) {
   const tr = state.tournaments.find(t => t.id === trId)
   if (!tr) return
@@ -281,18 +197,6 @@ export function decideTournament(trId: string, approve: boolean) {
     : `${tr.name} was declined.`, approve ? `/t/${tr.id}/manage/progress` : '/')
   commit()
   toast(approve ? 'Approved — it is the organizer\'s draft now' : 'Request declined', approve ? 'ok' : 'warn')
-}
-
-export function publishTournament(trId: string) {
-  const tr = state.tournaments.find(t => t.id === trId)
-  if (!tr) return
-  if ((tr.referees || []).length < refsNeeded(tr)) {
-    toast(`It needs ${refsNeeded(tr)} referees to have accepted first`, 'crit')
-    return
-  }
-  tr.status = 'public'
-  commit()
-  toast('Open to the public — squads can find it and enter')
 }
 
 export function appointReferee(trId: string, userId: string) {
@@ -323,25 +227,6 @@ export function removeReferee(trId: string, userId: string) {
   state.refInvites = state.refInvites.filter(i => !(i.tour === trId && i.user === userId))
   commit()
   toast('Removed from this tournament', 'warn')
-}
-
-export function saveEntryNotes(trId: string, text: string) {
-  const tr = state.tournaments.find(t => t.id === trId)
-  if (!tr) return
-  tr.entryNotes = text
-  commit()
-  toast('Published on the tournament page')
-}
-
-/** The conditions are set once. An Organizer who wants them changed asks. */
-export function requestFilterChange(trId: string, rules: Rules, reason: string) {
-  const tr = state.tournaments.find(t => t.id === trId)
-  if (!tr) return
-  tr.filterChangeRequest = { rules, reason, at: NOW() }
-  notifyAll(state.users.filter(u => u.role === 'Admin').map(u => u.id),
-    `${tr.name}: the organizer asked to change the entry conditions.`, '/admin')
-  commit()
-  toast('Sent to an admin — nobody edits the filter in place')
 }
 
 export function decideFilterChange(trId: string, approve: boolean) {

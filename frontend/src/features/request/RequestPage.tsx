@@ -6,41 +6,39 @@
  * and only here — after an admin approves them, changing them means asking again
  * with a reason.
  */
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
-import { requestTournament, useLtms } from '../../shared/store'
-import { me } from '../../shared/selectors'
-import { FACULTIES, FORMATS, MAJORS, SPORTS, parsePin, ruleSummary } from '../../shared/rules'
-import type { Format, Rules } from '../../shared/types'
+import { useCreateTournament } from '../../hooks/useTournament'
+import { useSportTypes } from '../../hooks/useReference'
+import { useMe } from '../../hooks/useAuth'
+import { ApiError } from '../../api/client'
+import { createTournamentSchema, type CreateTournamentInput } from '../../schemas/tournament.schema'
+import { BracketFormatOptions, BracketFormatLabel, GenderRequirementOptions, GenderRequirementLabel, TournamentScopeTypeOptions, TournamentScopeTypeLabel } from '../../types/enums'
 
 export function RequestPage() {
-  const s = useLtms()
-  const u = me(s)
   const navigate = useNavigate()
+  const { data: me } = useMe()
+  const { data: sports } = useSportTypes()
+  const create = useCreateTournament()
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<CreateTournamentInput>({
+    resolver: zodResolver(createTournamentSchema),
+    defaultValues: { sportTypeId: 1, bracketFormat: 'single_elimination', scopeType: 'university', eventStartDate: '2026-04-01', maxTeams: 8, minTeams: 2, genderRequirement: 'any' },
+  })
 
-  const [name, setName] = useState('')
-  const [sport, setSport] = useState(SPORTS[0])
-  const [format, setFormat] = useState<Format>('single')
-  const [channel, setChannel] = useState<'onsite' | 'online'>('onsite')
-  const [venue, setVenue] = useState('')
-  const [pinText, setPinText] = useState('')
-  const [date, setDate] = useState('2026-04-01')
-  const [cap, setCap] = useState(8)
-  const [notes, setNotes] = useState('')
-  const [rules, setRules] = useState<Rules>({ gender: 'any', ageMin: 'any', ageMax: 'any', faculty: 'any', major: 'any', year: 'any' })
-
-  if (!u) return null
-  const set = (patch: Partial<Rules>) => setRules(r => ({ ...r, ...patch }))
-
-  const submit = () => {
-    const id = requestTournament({
-      name: name.trim(), sport, format, channel, date, venue: venue.trim(),
-      pin: parsePin(pinText), cap, organizer: u.id, rules, entryNotes: notes.trim(),
-      drawnAt: undefined, filterChangeRequest: null,
-    })
-    navigate(`/t/${id}`)
+  if (!me) return null
+  const submit = async (input: CreateTournamentInput) => {
+    try {
+      const result = await create.mutateAsync(input)
+      navigate(`/t/${result.id}`)
+    } catch (error) {
+      if (error instanceof ApiError && error.fields) {
+        Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof CreateTournamentInput, { type: 'server', message }))
+      }
+    }
   }
+  const fieldError = (field: keyof CreateTournamentInput) => errors[field]?.message
 
   return (
     <>
@@ -52,31 +50,36 @@ export function RequestPage() {
       </div>
 
       <div className="split">
-        <div>
+        <form onSubmit={handleSubmit(submit)}>
           <Panel>
             <span className="tag"><em>//</em> What it is</span>
             <Field label="Name" htmlFor="rq-name">
-              <input id="rq-name" value={name} onChange={e => setName(e.target.value)} placeholder="Faculty Football Cup 2026" />
+              <input id="rq-name" {...register('name')} placeholder="Faculty Football Cup 2026" aria-invalid={!!errors.name} />
+              {fieldError('name') ? <span className="sub">{fieldError('name')}</span> : null}
             </Field>
             <div className="grid2">
               <Field label="Sport" htmlFor="rq-sport">
-                <select id="rq-sport" value={sport} onChange={e => setSport(e.target.value)}>
-                  {SPORTS.map(x => <option key={x} value={x}>{x}</option>)}
+                <select id="rq-sport" {...register('sportTypeId', { valueAsNumber: true })}>
+                  {(sports?.items ?? []).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
                 </select>
               </Field>
               <Field label="Format — fixed once the draw is made" htmlFor="rq-format">
-                <select id="rq-format" value={format} onChange={e => setFormat(e.target.value as Format)}>
-                  {(Object.keys(FORMATS) as Format[]).map(f => <option key={f} value={f}>{FORMATS[f]}</option>)}
+                <select id="rq-format" {...register('bracketFormat')}>
+                  {BracketFormatOptions.map(f => <option key={f} value={f}>{BracketFormatLabel[f]}</option>)}
                 </select>
               </Field>
-              <Field label="Played" htmlFor="rq-channel">
-                <select id="rq-channel" value={channel} onChange={e => setChannel(e.target.value as 'onsite' | 'online')}>
-                  <option value="onsite">On-site — two referees per match</option>
-                  <option value="online">Online — one referee per match</option>
+              <Field label="Scope" htmlFor="rq-scope">
+                <select id="rq-scope" {...register('scopeType')}>
+                  {TournamentScopeTypeOptions.map(x => <option key={x} value={x}>{TournamentScopeTypeLabel[x]}</option>)}
                 </select>
               </Field>
               <Field label="Squad cap" htmlFor="rq-cap">
-                <input id="rq-cap" type="number" min={2} max={64} value={cap} onChange={e => setCap(Number(e.target.value))} />
+                <input id="rq-cap" type="number" min={2} max={64} {...register('maxTeams', { valueAsNumber: true })} />
+                {fieldError('maxTeams') ? <span className="sub">{fieldError('maxTeams')}</span> : null}
+              </Field>
+              <Field label="Minimum squads" htmlFor="rq-min-teams">
+                <input id="rq-min-teams" type="number" min={1} {...register('minTeams', { valueAsNumber: true })} />
+                {fieldError('minTeams') ? <span className="sub">{fieldError('minTeams')}</span> : null}
               </Field>
             </div>
           </Panel>
@@ -85,19 +88,12 @@ export function RequestPage() {
             <span className="tag"><em>//</em> When and where</span>
             <div className="grid2">
               <Field label="First match date" htmlFor="rq-date">
-                <input id="rq-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                <input id="rq-date" type="date" {...register('eventStartDate')} />
               </Field>
               <Field label="Default venue" htmlFor="rq-venue">
-                <input id="rq-venue" value={venue} onChange={e => setVenue(e.target.value)} placeholder="Main Stadium" />
+                <input id="rq-venue" {...register('venue')} placeholder="Main Stadium" />
               </Field>
             </div>
-            <Field label="Map pin — paste a Google Maps link, or lat, lng" htmlFor="rq-pin">
-              <input id="rq-pin" value={pinText} onChange={e => setPinText(e.target.value)} placeholder="13.7367, 100.5232" />
-            </Field>
-            <span className="sub">
-              Stored as coordinates and rendered as a link out to Google Maps, never an embedded map.
-              An online match has no venue.
-            </span>
           </Panel>
 
           <Panel>
@@ -109,50 +105,31 @@ export function RequestPage() {
             </Banner>
             <div className="grid2">
               <Field label="Gender" htmlFor="rq-gender">
-                <select id="rq-gender" value={rules.gender} onChange={e => set({ gender: e.target.value as Rules['gender'] })}>
-                  <option value="any">Any</option><option value="Male">Male</option><option value="Female">Female</option>
-                </select>
-              </Field>
-              <Field label="Year of study" htmlFor="rq-year">
-                <select id="rq-year" value={String(rules.year)} onChange={e => set({ year: e.target.value === 'any' ? 'any' : Number(e.target.value) })}>
-                  <option value="any">Any</option>{[1, 2, 3, 4].map(y => <option key={y} value={y}>{y}</option>)}
+                <select id="rq-gender" {...register('genderRequirement')}>
+                  {GenderRequirementOptions.map(x => <option key={x} value={x}>{GenderRequirementLabel[x]}</option>)}
                 </select>
               </Field>
               <Field label="Minimum age" htmlFor="rq-lo">
-                <input id="rq-lo" value={String(rules.ageMin)} onChange={e => set({ ageMin: e.target.value === 'any' || !e.target.value ? 'any' : Number(e.target.value) })} />
+                <input id="rq-lo" type="number" {...register('minAge', { setValueAs: value => value === '' ? null : Number(value) })} />
               </Field>
               <Field label="Maximum age" htmlFor="rq-hi">
-                <input id="rq-hi" value={String(rules.ageMax)} onChange={e => set({ ageMax: e.target.value === 'any' || !e.target.value ? 'any' : Number(e.target.value) })} />
+                <input id="rq-hi" type="number" {...register('maxAge', { setValueAs: value => value === '' ? null : Number(value) })} />
               </Field>
               <Field label="Faculty" htmlFor="rq-fac">
-                <select id="rq-fac" value={rules.faculty} onChange={e => set({ faculty: e.target.value })}>
-                  <option value="any">Any</option>{FACULTIES.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </Field>
-              <Field label="Major" htmlFor="rq-maj">
-                <select id="rq-maj" value={rules.major} onChange={e => set({ major: e.target.value })}>
-                  <option value="any">Any</option>{MAJORS.map(m => <option key={m} value={m}>{m}</option>)}
+                <select id="rq-fac" {...register('organizingFacultyId', { setValueAs: value => value === '' ? null : Number(value) })}>
+                  <option value="">Any</option>{[1, 2, 3, 4, 5, 6, 7, 8].map(f => <option key={f} value={f}>Faculty {f}</option>)}
                 </select>
               </Field>
             </div>
           </Panel>
 
-          <Panel>
-            <span className="tag"><em>//</em> Entry notes — the soft filter</span>
-            <Field label="What you expect beyond the hard filter" htmlFor="rq-notes">
-              <textarea id="rq-notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)}
-                placeholder="Kit, paperwork, conduct — anything the entry rules cannot express as a field." />
-            </Field>
-            <span className="sub">The system never checks these; it only shows them. You read them when you review a squad.</span>
-          </Panel>
-
           <div className="hstack">
             <button className="btn" type="button" onClick={() => navigate('/')}>Cancel</button>
-            <button className="btn primary" type="button" disabled={!name.trim() || !venue.trim()} onClick={submit}>
+            <button className="btn primary" type="submit" disabled={isSubmitting || create.isPending}>
               Send the request
             </button>
           </div>
-        </div>
+        </form>
 
         <div className="rail">
           <Panel quiet>
@@ -162,7 +139,7 @@ export function RequestPage() {
               the referees, then open it to the public. LTMS deletes a private tournament on its match date.
             </div>
             <span className="tag"><em>//</em> Entry conditions as they read now</span>
-            <div style={{ fontSize: 15 }}>{ruleSummary(rules) || 'Open to everybody'}</div>
+            <div style={{ fontSize: 15 }}>The server validates entry conditions before creating the request.</div>
           </Panel>
         </div>
       </div>

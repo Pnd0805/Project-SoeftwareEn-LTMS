@@ -11,13 +11,15 @@
  */
 import { useState } from 'react'
 import { Badge, Panel } from '../../../components/kit/primitives'
-import { drawBracket, useLtms } from '../../../shared/store'
+import { useLtms } from '../../../shared/store'
+import { useDrawTournament } from '../../../hooks/useTournament'
 import { matchesOf, team } from '../../../shared/selectors'
 import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Registration, Tournament } from '../../../shared/types'
 
 export function DrawPanel({ t, approved }: { t: Tournament; approved: Registration[] }) {
   const s = useLtms()
+  const draw = useDrawTournament(Number(t.id))
   const ids = approved.map(r => r.team)
   const need = formatOf(t) === 'double' ? 4 : 2
 
@@ -81,7 +83,7 @@ export function DrawPanel({ t, approved }: { t: Tournament; approved: Registrati
             </div>
           </div>
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            onClick={() => drawBracket(t.id, positions)}>
+            onClick={() => draw.mutate({ teamIds: positions.filter(Boolean).map(Number) })}>
             {t.drawn ? 'Save this draw' : 'Draw this way'}
           </button>
         </>

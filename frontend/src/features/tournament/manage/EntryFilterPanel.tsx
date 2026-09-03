@@ -10,7 +10,8 @@ import { useState } from 'react'
 import { Badge, Field, Panel } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
-import { requestFilterChange, saveEntryNotes, useLtms } from '../../../shared/store'
+import { useLtms } from '../../../shared/store'
+import { useRequestFilterChange, useSaveEntryNotes } from '../../../hooks/useTournament'
 import { FACULTIES, MAJORS, ruleSummary } from '../../../shared/rules'
 import type { Rules, Tournament } from '../../../shared/types'
 
@@ -50,6 +51,8 @@ function RulesForm({ value, onChange }: { value: Rules; onChange: (r: Rules) => 
 
 export function EntryFilterPanel({ t }: { t: Tournament }) {
   useLtms()
+  const saveNotes = useSaveEntryNotes(Number(t.id))
+  const requestChange = useRequestFilterChange(Number(t.id))
   const [notesOpen, setNotesOpen] = useState(false)
   const [notes, setNotes] = useState(t.entryNotes ?? '')
   const [changeOpen, setChangeOpen] = useState(false)
@@ -101,7 +104,7 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
         </Field>
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setNotesOpen(false)}>Cancel</button>
-          <button className="btn primary" type="button" onClick={() => { saveEntryNotes(t.id, notes); setNotesOpen(false) }}>Save</button>
+          <button className="btn primary" type="button" onClick={() => { saveNotes.mutate(notes); setNotesOpen(false) }}>Save</button>
         </div>
       </Modal>
 
@@ -117,7 +120,7 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setChangeOpen(false)}>Cancel</button>
           <button className="btn primary" type="button"
-            onClick={() => { requestFilterChange(t.id, draft, reason); setChangeOpen(false) }}>
+            onClick={() => { requestChange.mutate({ rules: draft, reason }); setChangeOpen(false) }}>
             Send to an admin
           </button>
         </div>
