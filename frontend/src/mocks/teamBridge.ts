@@ -15,7 +15,7 @@
 import { getState } from '../shared/store'
 import { me } from '../shared/selectors'
 import { minSquad, teamReady } from '../shared/rules'
-import { numOf } from './storeBridge'
+import { MOCK_NOW, numOf } from './storeBridge'
 import type { State, Team as StoreTeam } from '../shared/types'
 import type {
   TeamDto, TeamInvitationDto, TeamAdminRequestDto, TeamMemberDto, UserRefDto,
@@ -70,7 +70,7 @@ export function toTeamDto(s: State, t: StoreTeam): TeamDto {
     createdAt: new Date(t.created).toISOString(),
     updatedAt: null,
     lastCompetedAt: null,
-    deletedAt: t.disabled ? new Date().toISOString() : null,
+    deletedAt: t.disabled ? MOCK_NOW : null,
     deletedReason: t.disabled ? 'inactive_6_months' : null,
     viewer: {
       isLeader,
@@ -121,8 +121,8 @@ export function myStoreInvitations(): TeamInvitationDto[] {
         invitedBy: t ? asUser(s, t.leader) ?? unknownUser : unknownUser,
         /* store ใช้ 'declined' — schema ใช้ 'rejected' */
         status: i.status === 'declined' ? 'rejected' : i.status,
-        createdAt: new Date().toISOString(),
-        respondedAt: i.status === 'pending' ? null : new Date().toISOString(),
+        createdAt: MOCK_NOW,
+        respondedAt: i.status === 'pending' ? null : MOCK_NOW,
         expiresAt: null,   // TODO(schema): ไม่มีคอลัมน์ ดู team.dto.ts
       }
     })
@@ -138,8 +138,8 @@ export function teamStoreInvitations(ref: TeamRef): TeamInvitationDto[] {
     invitedUser: asUser(s, i.user) ?? unknownUser,
     invitedBy: asUser(s, t.leader) ?? unknownUser,
     status: i.status === 'declined' ? 'rejected' : i.status,
-    createdAt: new Date().toISOString(),
-    respondedAt: i.status === 'pending' ? null : new Date().toISOString(),
+    createdAt: MOCK_NOW,
+    respondedAt: i.status === 'pending' ? null : MOCK_NOW,
     expiresAt: null,
   }))
 }
@@ -165,7 +165,7 @@ export function storeTeamAdminRequests(): TeamAdminRequestDto[] {
       status: r.status === 'declined' ? 'rejected' : r.status,
       requestedAt: new Date(r.at).toISOString(),
       reviewedBy: null,
-      reviewedAt: r.status === 'pending' ? null : new Date().toISOString(),
+      reviewedAt: r.status === 'pending' ? null : MOCK_NOW,
       rejectionReason: null,
       blockingMembers: blocking.map(uid => asUser(s, uid) ?? unknownUser),
     }

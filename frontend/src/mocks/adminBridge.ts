@@ -11,7 +11,7 @@
  */
 import { getState } from '../shared/store'
 import { refsNeeded } from '../shared/rules'
-import { numOf } from './storeBridge'
+import { MOCK_NOW, numOf } from './storeBridge'
 import { asUser, unknownUser, type TeamRef } from './teamBridge'
 import type {
   TournamentRequestDto, TournamentRefereeDto, RefereeCoverageDto,
@@ -41,7 +41,7 @@ export function storeTournamentRequests(): TournamentRequestDto[] {
         minAge: t.rules.ageMin === 'any' ? null : t.rules.ageMin,
         maxAge: t.rules.ageMax === 'any' ? null : t.rules.ageMax,
       },
-      requestedAt: new Date().toISOString(),
+      requestedAt: MOCK_NOW,
       reviewedBy: null,
       reviewedAt: null,
       rejectionReason: null,
@@ -76,7 +76,7 @@ export function storeTournamentReferees(ref: TeamRef): TournamentRefereeDto[] {
     externalApprovalStatus: 'not_required' as const,
     approvedBy: null,
     approvedAt: null,
-    createdAt: new Date().toISOString(),
+    createdAt: MOCK_NOW,
     removedAt: null,
     removedBy: null,
     /* FR-RM-01 + FR-RM-02: ตอบรับแล้ว และถ้าเป็นคนนอกต้องอนุมัติแล้วด้วย */
@@ -109,6 +109,13 @@ export function storeRefereeCoverage(ref: TeamRef): RefereeCoverageDto | null {
 
 export function storeUsersForAdmin(): UserAdminViewDto[] {
   const s = getState()
+  /* ดึง scope มาครั้งเดียวแล้วทำดัชนี — เดิมเรียก storeAdminScopes() ในลูป
+     แปลว่า getState() 97 ครั้งและวน filter 97×97 รอบ ต่อการโหลดหน้าเดียว */
+  const scopesByUser = new Map<number, AdminScopeDto[]>()
+  for (const sc of storeAdminScopes()) {
+    const list = scopesByUser.get(sc.user.id)
+    if (list) list.push(sc); else scopesByUser.set(sc.user.id, [sc])
+  }
   return s.users.map(u => ({
     user: { id: numOf(u.id), fullName: u.name, avatarUrl: null },
     email: u.email,
@@ -117,7 +124,7 @@ export function storeUsersForAdmin(): UserAdminViewDto[] {
     /* prototype ไม่มีการระงับบัญชี — คอลัมน์ users.is_suspended มีใน schema แล้ว */
     isSuspended: false,
     suspendedReason: null,
-    adminScopes: storeAdminScopes().filter(sc => sc.user.id === numOf(u.id)),
+    adminScopes: scopesByUser.get(numOf(u.id)) ?? [],
     teamCount: s.teams.filter(t => t.members.includes(u.id)).length,
   }))
 }
@@ -135,7 +142,7 @@ export function storeAdminScopes(): AdminScopeDto[] {
     scopeType: 'university_wide' as const,
     facultyId: null,
     facultyName: null,
-    createdAt: new Date().toISOString(),
+    createdAt: MOCK_NOW,
     createdBy: null,
   }))
 }
