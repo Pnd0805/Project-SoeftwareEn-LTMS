@@ -13,24 +13,34 @@ import { ageOf } from '../../shared/rules'
 import { careerByTournament, pickScore } from '../../shared/career'
 import { CareerPanel } from '../player/PlayerPage'
 import { useMe } from '../../hooks/useAuth'
+import { useFollows, useUserStats } from '../../hooks/useUser'
 
 export function ProfilePage() {
   const s = useLtms()
   const { data: currentUser, isLoading, isError } = useMe()
-  if (isLoading || isError || !currentUser) return null
+  const {
+    data: userStats,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useUserStats(currentUser?.id)
+  const { data: followsData } = useFollows(currentUser?.id)
+
+  if (isLoading || statsLoading || isError || statsError || !currentUser || !userStats) {
+    return null
+  }
 
   // Legacy profile sections still use string IDs until their APIs are migrated.
   const legacyUser = s.users.find(user => user.email === currentUser.email)
   if (!legacyUser) return null
 
   const byTour = careerByTournament(s, legacyUser.id)
-  const played = byTour.reduce((n, r) => n + r.p, 0)
-  const won = byTour.reduce((n, r) => n + r.w, 0)
-  const titles = byTour.filter(r => r.finish === 'Champion').length
+  const played = userStats.overall.matchesPlayed
+  const won = userStats.overall.wins
+  const titles = userStats.overall.championCount
   const p = pickScore(s, legacyUser.id)
   const squads = s.teams.filter(t => t.members.includes(legacyUser.id))
   const mvpVotes = s.votes.filter(v => v.player === legacyUser.id).length
-  const follows = s.follows
+  const follows = followsData?.targets ?? []
 
   return (
     <>

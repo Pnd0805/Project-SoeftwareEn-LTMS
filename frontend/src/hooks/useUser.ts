@@ -3,8 +3,9 @@
  * User queries stay separate from auth: auth owns the current user, while this
  * hook owns public profiles, stats, and authenticated user search.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as userApi from "../api/user";
+import * as engagementApi from "../api/engagement";
 
 export function usePublicUser(userId: number | undefined) {
   return useQuery({
@@ -29,4 +30,41 @@ export function useSearchUsers(query: string, enabled = true) {
     queryFn: () => userApi.searchUsers(normalizedQuery),
     enabled: enabled && normalizedQuery.length >= 3,
   });
+}
+
+export function useFollows(userId: number | undefined) {
+  return useQuery({
+    queryKey: ["follows", userId],
+    queryFn: () => engagementApi.getFollows(userId as number),
+    enabled: userId !== undefined,
+  });
+}
+
+export function useFollow(
+  userId: number | undefined,
+  target: string,
+) {
+  const queryClient = useQueryClient()
+  const queryKey = ["follows", userId]
+
+  const follows = useFollows(userId)
+
+  const toggle = useMutation({
+    mutationFn: async () => {
+      const isFollowing = follows.data?.targets.includes(target) ?? false
+
+      return isFollowing
+        ? engagementApi.unfollow(userId as number, target)
+        : engagementApi.follow(userId as number, target)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
+
+  return {
+    isFollowing: follows.data?.targets.includes(target) ?? false,
+    isLoading: follows.isLoading,
+    toggle,
+  }
 }

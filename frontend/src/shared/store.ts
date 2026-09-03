@@ -477,13 +477,6 @@ export function sendFeedback(trId: string, by: string, rating: number, text: str
   toast('Sent to the organizer')
 }
 
-export function toggleFollow(key: string) {
-  state.follows = state.follows.includes(key)
-    ? state.follows.filter(k => k !== key)
-    : [...state.follows, key]
-  commit()
-}
-
 export function markAllRead(userId: string) {
   state.notifications.filter(n => n.to === userId).forEach(n => { n.read = true })
   commit()
