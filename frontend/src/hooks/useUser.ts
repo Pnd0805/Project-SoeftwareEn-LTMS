@@ -94,3 +94,26 @@ export function useMvpVotes(
 
   return { ...votes, cast }
 }
+
+export function useComments(matchId: string | undefined) {
+  const queryClient = useQueryClient()
+  const queryKey = ["comments", matchId]
+  const comments = useQuery({
+    queryKey,
+    queryFn: () => engagementApi.getComments(matchId as string),
+    enabled: matchId !== undefined,
+  })
+
+  const post = useMutation({
+    mutationFn: (input: { userId: string; userName: string; text: string }) =>
+      engagementApi.postComment(matchId as string, input.userId, input.userName, input.text),
+    onSuccess: data => queryClient.setQueryData(queryKey, data),
+  })
+
+  const remove = useMutation({
+    mutationFn: (commentId: string) => engagementApi.removeComment(matchId as string, commentId),
+    onSuccess: data => queryClient.setQueryData(queryKey, data),
+  })
+
+  return { ...comments, post, remove }
+}

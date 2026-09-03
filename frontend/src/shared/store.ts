@@ -427,18 +427,6 @@ function crownIfDone(tr: Tournament) {
 }
 
 
-/* ───────── community ───────── */
-export function postComment(matchId: string, by: string, text: string) {
-  if (!text.trim()) return
-  state.comments.push({ id: uid('c'), match: matchId, by, text: text.trim(), at: NOW() })
-  commit()
-}
-export function removeComment(commentId: string) {
-  state.comments = state.comments.filter(c => c.id !== commentId)
-  commit()
-  toast('Comment removed', 'warn')
-}
-
 export function postAnnouncement(trId: string, by: string, title: string, body: string) {
   const tr = state.tournaments.find(t => t.id === trId)
   if (!tr || !title.trim()) return

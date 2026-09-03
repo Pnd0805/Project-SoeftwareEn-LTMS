@@ -9,17 +9,19 @@
 import { useState } from 'react'
 import { Badge, Field, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
-import { placePick, postComment, removeComment, useLtms } from '../../shared/store'
-import { commentsOf, isOrg, me, officiates, team, tour, user } from '../../shared/selectors'
+import { placePick, useLtms } from '../../shared/store'
+import { isOrg, me, officiates, team, tour } from '../../shared/selectors'
 import { fmtDate, matchStage, winnerOf } from '../../shared/rules'
 import type { Match } from '../../shared/types'
+import { useComments } from '../../hooks/useUser'
 
 /** Public to read, signed-in to write, and the organizer can take a post down. */
 function CommentBlock({ m, onClose }: { m: Match; onClose: () => void }) {
   const s = useLtms()
   const u = me(s)
   const org = isOrg(s, tour(s, m.tour))
-  const rows = commentsOf(s, m.id)
+  const comments = useComments(m.id)
+  const rows = comments.data?.items ?? []
   const [text, setText] = useState('')
 
   return (
@@ -31,17 +33,18 @@ function CommentBlock({ m, onClose }: { m: Match; onClose: () => void }) {
       {rows.length ? (
         <div className="vstack" style={{ gap: 0 }}>
           {rows.map(c => {
-            const au = user(s, c.by)
+            const canRemove = u && (c.userId === u.id || org)
             return (
               <div className="notif" style={{ alignItems: 'flex-start' }} key={c.id}>
-                <span className="avatar">{(au?.name ?? '?').slice(0, 1)}</span>
+                <span className="avatar">{c.userName.slice(0, 1)}</span>
                 <span className="txt">
-                  <b>{au?.name ?? 'Unknown'}</b>
-                  <span className="tag" style={{ marginLeft: 8 }}>{fmtDate(c.at)}</span>
+                  <b>{c.userName}</b>
+                  <span className="tag" style={{ marginLeft: 8 }}>{fmtDate(new Date(c.createdAt).getTime())}</span>
                   <br />{c.text}
                 </span>
-                {u && (c.by === u.id || org)
-                  ? <button className="btn ghost" type="button" onClick={() => removeComment(c.id)}>Remove</button>
+                {canRemove
+                  ? <button className="btn ghost" type="button" onClick={() => comments.remove.mutate(c.id)}
+                    disabled={comments.remove.isPending}>Remove</button>
                   : null}
               </div>
             )
@@ -58,7 +61,12 @@ function CommentBlock({ m, onClose }: { m: Match; onClose: () => void }) {
           <div className="hstack">
             <button className="btn ghost" type="button" onClick={onClose}>Done</button>
             <button className="btn primary" type="button"
-              onClick={() => { postComment(m.id, u.id, text); setText('') }}>Post</button>
+              onClick={() => {
+                if (!text.trim()) return
+                comments.post.mutate({ userId: u.id, userName: u.name, text })
+                setText('')
+              }}
+              disabled={comments.post.isPending}>Post</button>
           </div>
         </>
       ) : (
@@ -121,8 +129,9 @@ export function SocialBar({ m }: { m: Match }) {
   const u = me(s)
   const [openPick, setOpenPick] = useState(false)
   const [openTalk, setOpenTalk] = useState(false)
+  const comments = useComments(m.id)
 
-  const rows = commentsOf(s, m.id).length
+  const rows = comments.data?.items.length ?? 0
   const tally = s.picks.filter(p => p.match === m.id).length
   const mine = u ? s.picks.find(p => p.match === m.id && p.by === u.id) : null
   const canPick = !!(u && m.a && m.b && !officiates(s, m.tour))

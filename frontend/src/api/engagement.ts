@@ -1,11 +1,20 @@
 import { apiFetch, mockDelay, USE_MOCK } from "./client"
-import type { FollowListDto, MvpVoteListDto } from "../types/engagement.dto"
+import type {
+  CommentListDto,
+  FollowListDto,
+  MvpVoteListDto,
+} from "../types/engagement.dto"
 import {
   getMockFollows,
   mockFollow,
   mockUnfollow,
 } from "../mocks/engagement.mock"
 import { getMockMvpVotes, mockCastMvpVote } from "../mocks/mvp.mock"
+import {
+  getMockComments,
+  mockPostComment,
+  mockRemoveComment,
+} from "../mocks/comment.mock"
 
 export async function getFollows(userId: number): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(getMockFollows(userId))
@@ -66,5 +75,40 @@ export async function castMvpVote(
       method: "POST",
       body: JSON.stringify({ playerId }),
     },
+  )
+}
+
+export async function getComments(matchId: string): Promise<CommentListDto> {
+  if (USE_MOCK) return mockDelay(getMockComments(matchId))
+
+  // TODO(guide): confirm the match comments endpoint path.
+  return apiFetch<CommentListDto>(`/matches/${encodeURIComponent(matchId)}/comments`)
+}
+
+export async function postComment(
+  matchId: string,
+  userId: string,
+  userName: string,
+  text: string,
+): Promise<CommentListDto> {
+  if (USE_MOCK) return mockDelay(mockPostComment(matchId, userId, userName, text))
+
+  // TODO(guide): confirm the match comment action endpoint path.
+  return apiFetch<CommentListDto>(`/matches/${encodeURIComponent(matchId)}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  })
+}
+
+export async function removeComment(
+  matchId: string,
+  commentId: string,
+): Promise<CommentListDto> {
+  if (USE_MOCK) return mockDelay(mockRemoveComment(matchId, commentId))
+
+  // TODO(guide): confirm the comment delete endpoint path.
+  return apiFetch<CommentListDto>(
+    `/matches/${encodeURIComponent(matchId)}/comments/${encodeURIComponent(commentId)}`,
+    { method: "DELETE" },
   )
 }
