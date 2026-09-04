@@ -111,7 +111,11 @@ export function SEED(): State {
   ]
   CLUBS.forEach(([id, name, code, color, sport], i) => {
     const roster = take(7)
-    T(id, name, code, color, roster[0], roster, { permanent: i < 4, created: daysAgo(300 + i * 5), sport })
+    /* สองบัญชีเดโมเป็นนิสิตวิศวฯ จึงอยู่ทีมฟุตบอลคณะตัวเองด้วย — คนหนึ่งอยู่ได้
+       หลายทีมถ้าคนละกีฬา (ดูหน้าโปรไฟล์ "a club can field sides in several")
+       ถ้าไม่ทำแบบนี้ ทั้งสองบัญชีจะมีแต่นัด online ของ Byte Force ให้ลอง */
+    const members = id === 't-eng' ? ['u-lead', 'u-play', ...roster] : roster
+    T(id, name, code, color, roster[0], members, { permanent: i < 4, created: daysAgo(300 + i * 5), sport })
   })
 
   /* Byte Force is the squad the demo drives, so its ages are pinned: everyone
@@ -207,17 +211,16 @@ export function SEED(): State {
   })
   ;['t-byt', 't-cir', 't-rgu', 't-nqx'].forEach(id => REG(rovCup, id, 'approved', { at: daysAgo(12) }))
 
-  /* ── 5c · a LAN final: the same esports squads, but played on-site ──
-     บัญชีเดโมที่เป็นผู้เล่นทั้งสองใบอยู่ Byte Force ซึ่งเล่น VALORANT แบบ online
-     ล้วน แปลว่าไม่มีใครในหน้าเลือกบัญชีมีนัด on-site ให้ลองสแกน QR เลย
-     รายการนี้เป็นรอบชิงแบบ LAN ของกีฬาเดิม — ทีมเดิม ไม่ต้องแก้รายชื่อใคร
-     และได้เส้นทาง on-site ครบทั้งฝั่งผู้เล่นและกรรมการ */
-  const lan = TR({
-    id: 't-lan', name: 'VALORANT LAN Finals 2026', sport: 'VALORANT', format: 'single', channel: 'onsite',
+  /* ── 5c · a football cup that has not kicked off yet ──
+     เส้นทาง on-site ต้องมีนัดที่ยังไม่แข่งให้เช็คอินด้วย QR — Faculty Football Cup
+     เล่นไปหมดแล้ว รายการนี้จึงเป็นถ้วยที่เพิ่งจับสาย ยังไม่มีใครลงสนาม
+     ฟุตบอลเป็นตัวอย่างที่ตรงกับ on-site ที่สุด ต่างจากอีสปอร์ตที่คนอ่านแล้วนึกถึง online */
+  const springCup = TR({
+    id: 't-spr', name: 'Spring Faculty Cup 2026', sport: 'Football', format: 'single', channel: 'onsite',
     status: 'public', organizer: 'u-org', venue: 'Main Stadium', date: '2026-03-28', cap: 4,
     referees: ['u-ref', 'u-ref2'], rules: rules({ ageMin: 'any', ageMax: 'any' }),
   })
-  ;['t-byt', 't-cir', 't-rgu', 't-nqx'].forEach(id => REG(lan, id, 'approved', { at: daysAgo(9) }))
+  ;['t-eng', 't-sci', 't-med', 't-law'].forEach(id => REG(springCup, id, 'approved', { at: daysAgo(9) }))
 
   /* ── 6 · a request an admin has not answered ── */
   const chess = TR({
@@ -326,9 +329,9 @@ export function SEED(): State {
   draw(rovCup, 6)
   resolveByes(rovCup)
 
-  /* the LAN finals: drawn, nothing played — เส้นทาง on-site ที่ยังต้องเช็คอินด้วย QR */
-  draw(lan, 4)
-  resolveByes(lan)
+  /* the spring cup: drawn, nothing played — เส้นทาง on-site ที่ยังต้องเช็คอินด้วย QR */
+  draw(springCup, 4)
+  resolveByes(springCup)
 
   /* the VALORANT league: played to the end, champion crowned */
   const vlrMatches = draw(valorant, 80)
