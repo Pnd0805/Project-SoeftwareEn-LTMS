@@ -20,6 +20,7 @@ import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../
 import { useMatch, useCheckins, useCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
 import { TeamMarkView } from '../../components/kit/chips'
+import { IdPhotoModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
 
 /** A stable-ish seed so the drawn code looks like the token it stands for. */
@@ -36,6 +37,13 @@ function SquadPanel({ m, team, checkins }: {
   const verify = useVerifyCheckin(m.id)
   const isRef = m.viewer.can.manageCheckin
   const inCount = team.players.filter(p => checkins.some(c => c.user.id === p.id && c.status === 'success')).length
+
+  /** ผู้เล่นที่กำลังยืนยันตัวตนอยู่ · null = ไม่ได้เปิดโมดัล */
+  const [capture, setCapture] = useState<number | null>(null)
+  /** รูปที่กรรมการกำลังตรวจ */
+  const [review, setReview] = useState<{ userId: number; name: string; photo: string | null } | null>(null)
+
+  const closeCapture = () => setCapture(null)
 
   return (
     <Panel quiet>
@@ -69,16 +77,19 @@ function SquadPanel({ m, team, checkins }: {
                     {c?.rejectionReason ? <span className="sub"> {c.rejectionReason}</span> : null}
                   </td>
                   <td>
-                    {!c && isMe ? (
+                    {(!c || c.status === 'rejected') && isMe ? (
+                      /* ยืนยันตัวตนก่อนเสมอ — on-site สแกน QR · online ถ่ายรูปคู่บัตร */
                       <button className="btn primary" type="button" disabled={checkin.isPending}
-                        onClick={() => checkin.mutate({
-                          method: m.mode === 'onsite' ? 'qr_onsite' : 'photo_online',
-                          userId: p.id,
-                          ...(m.mode === 'onsite' && m.checkinToken ? { qrToken: m.checkinToken } : {}),
-                        })}>
-                        {m.mode === 'onsite' ? 'Scan the QR' : 'Check in'}
+                        onClick={() => setCapture(p.id)}>
+                        {m.mode === 'onsite' ? 'Scan the QR' : 'Take the photo'}
                       </button>
-                    ) : c && c.status !== 'rejected' && isRef ? (
+                    ) : c && c.status === 'exception' && isRef ? (
+                      /* รูปที่รอตรวจ — กรรมการเปิดดูแล้วตัดสิน (FR-PV-04) */
+                      <button className="btn primary" type="button"
+                        onClick={() => setReview({ userId: p.id, name: p.fullName, photo: c.documentS3Key })}>
+                        Review photo
+                      </button>
+                    ) : c && c.status === 'success' && isRef ? (
                       <button className="btn danger" type="button" disabled={verify.isPending}
                         onClick={() => verify.mutate({
                           userId: p.id,
@@ -96,6 +107,53 @@ function SquadPanel({ m, team, checkins }: {
       </TableWrap>
       {/* TODO(schema): starter / substitute อยู่ที่ team_members.position (ระดับทีม,
           FR-TM-04, สไลซ์ 4) ไม่ใช่ระดับแมตช์ — คอลัมน์นั้นจึงยังไม่มีที่นี่ */}
+
+      <QrScanModal
+        open={capture !== null && m.mode === 'onsite'}
+        onClose={closeCapture}
+        expectedToken={m.checkinToken}
+        pending={checkin.isPending}
+        onScanned={token => {
+          if (capture === null) return
+          checkin.mutate(
+            { method: 'qr_onsite', userId: capture, qrToken: token },
+            { onSuccess: closeCapture },
+          )
+        }}
+      />
+
+      <IdPhotoModal
+        open={capture !== null && m.mode === 'online'}
+        onClose={closeCapture}
+        pending={checkin.isPending}
+        onSubmit={({ photo, documentType }) => {
+          if (capture === null) return
+          checkin.mutate(
+            { method: 'photo_online', userId: capture, documentType, documentS3Key: photo },
+            { onSuccess: closeCapture },
+          )
+        }}
+      />
+
+      <ReviewPhotoModal
+        open={!!review}
+        onClose={() => setReview(null)}
+        playerName={review?.name ?? ''}
+        photo={review?.photo ?? null}
+        pending={verify.isPending}
+        onDecide={(approve, reason) => {
+          if (!review) return
+          verify.mutate(
+            {
+              userId: review.userId,
+              input: approve
+                ? { status: 'success' }
+                : { status: 'rejected', rejectionReason: reason ?? 'ไม่ผ่านการตรวจ' },
+            },
+            { onSuccess: () => setReview(null) },
+          )
+        }}
+      />
     </Panel>
   )
 }

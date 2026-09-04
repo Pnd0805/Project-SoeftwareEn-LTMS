@@ -47,7 +47,8 @@ import {
   takeNextMockId,
 } from "../mocks/match.mock";
 import {
-  writeCheckin, writeDispute, writeLivestream, writeMatchReferees, writeRejectCheckin,
+  writeApproveCheckin, writeCheckin, writeDispute, writeLivestream, writeMatchReferees,
+  writeRejectCheckin,
   writeResolve, writeResult, writeSchedule, writeStats, writeVerify,
 } from "../mocks/matchWrites";
 
@@ -334,7 +335,11 @@ export async function getCheckins(matchId: MatchRef): Promise<{ items: MatchChec
 /** TODO(guide): POST /matches/:id/checkin */
 export async function checkin(matchId: MatchRef, input: CheckinRequest): Promise<MatchCheckinDto> {
   if (USE_MOCK) {
-    if (writeCheckin(matchId, input.userId)) {
+    if (writeCheckin(matchId, input.userId, {
+      method: input.method,
+      documentUrl: input.documentS3Key ?? null,
+      documentType: input.documentType ?? null,
+    })) {
       const c = storeCheckinDtos(matchId).find((x) => x.user.id === (input.userId ?? x.user.id));
       if (c) return mockDelay(c);
     }
@@ -365,8 +370,8 @@ export async function verifyCheckin(
 ): Promise<MatchCheckinDto> {
   if (USE_MOCK) {
     if (input.status === "rejected"
-      ? writeRejectCheckin(matchId, userId)
-      : writeCheckin(matchId, userId)) {
+      ? writeRejectCheckin(matchId, userId, input.rejectionReason ?? undefined)
+      : writeApproveCheckin(matchId, userId)) {
       const c = storeCheckinDtos(matchId).find((x) => x.user.id === userId);
       if (c) return mockDelay(c);
     }

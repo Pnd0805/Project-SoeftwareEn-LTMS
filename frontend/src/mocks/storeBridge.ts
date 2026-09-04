@@ -242,19 +242,29 @@ export function storeCheckinDtos(ref: MatchRef): MatchCheckinDto[] {
   const m = findStoreMatch(ref)
   if (!m) return []
   const online = tour(s, m.tour)?.channel === 'online'
-  return m.checkedIn.map((uid, i) => ({
-    id: numOf(m.id) + 2000 + i,
-    matchId: numOf(m.id),
-    user: asPlayer(s, uid) ?? { id: 0, fullName: '—', avatarUrl: null },
-    method: online ? ('photo_online' as const) : ('qr_onsite' as const),
-    status: 'success' as const,
-    rejectionReason: null,
-    documentType: null,
-    documentS3Key: null,
-    verifiedByReferee: asPlayer(s, m.refs[0] ?? null),
-    checkedInAt: MOCK_NOW,
-    verifiedAt: MOCK_NOW,
-  }))
+
+  /* คนที่มีหลักฐานบันทึกไว้ รวมกับคนที่ seed ใส่มาแบบไม่มีรายละเอียด
+     (seed เก่ามีแค่ `checkedIn` — ถือว่าผ่านแบบปกติ) */
+  const ids = [...new Set([...Object.keys(m.checkins ?? {}), ...m.checkedIn])]
+
+  return ids.map((uid, i) => {
+    const rec = m.checkins?.[uid]
+    return {
+      id: numOf(m.id) + 2000 + i,
+      matchId: numOf(m.id),
+      user: asPlayer(s, uid) ?? { id: 0, fullName: '—', avatarUrl: null },
+      method: rec?.method ?? (online ? ('photo_online' as const) : ('qr_onsite' as const)),
+      status: rec?.status ?? ('success' as const),
+      rejectionReason: rec?.rejectionReason ?? null,
+      documentType: rec?.documentType ?? null,
+      /* mock เก็บรูปเป็น data URL ตรงๆ — ของจริงช่องนี้เป็น S3 key ที่ต้องขอ
+         presigned URL ก่อนแสดง (NF-SE-03) ผู้เรียกจึงไม่ควรถือว่าเปิดได้เสมอ */
+      documentS3Key: rec?.documentUrl ?? null,
+      verifiedByReferee: asPlayer(s, rec?.verifiedBy ?? m.refs[0] ?? null),
+      checkedInAt: rec ? new Date(rec.at).toISOString() : MOCK_NOW,
+      verifiedAt: (rec?.status ?? 'success') === 'exception' ? null : MOCK_NOW,
+    }
+  })
 }
 
 /**

@@ -17,6 +17,7 @@
 import { commitStore, getState, notifyStore } from '../shared/store'
 import { me } from '../shared/selectors'
 import { winnerId } from '../shared/rules'
+import { tour } from '../shared/selectors'
 import { findStoreMatch, numOf } from './storeBridge'
 import type { Match as StoreMatch, PlayerStat, State } from '../shared/types'
 import type { MatchRef } from './storeBridge'
@@ -158,8 +159,22 @@ export function writeStats(
   return true
 }
 
-/** เช็คอิน — store เก็บเป็นรายชื่อผู้ใช้ที่เช็คอินแล้ว (FR-MM-04, FR-PV-03) */
-export function writeCheckin(ref: MatchRef, userId?: number): boolean {
+/**
+ * เช็คอิน (FR-MM-04, FR-PV-03, FR-PV-04)
+ *
+ * on-site สแกน QR ของกรรมการ ตรงรหัสก็ผ่านทันที — คนที่อยู่หน้างานเท่านั้นที่เห็น QR
+ * online ไม่มีอะไรพิสูจน์ว่าอยู่ตรงไหน จึงส่งรูปคู่บัตรแล้วรอกรรมการตรวจ
+ * สถานะจึงเป็น `exception` ไม่ใช่ `success` — ยังไม่นับว่าเข้าแล้วจนกว่าจะถูกอนุมัติ
+ */
+export function writeCheckin(
+  ref: MatchRef,
+  userId?: number,
+  detail?: {
+    method?: 'qr_onsite' | 'photo_online' | 'manual_by_referee'
+    documentUrl?: string | null
+    documentType?: 'student_id' | 'national_id' | null
+  },
+): boolean {
   const s = getState()
   const m = findStoreMatch(ref)
   if (!m) return false
@@ -167,19 +182,64 @@ export function writeCheckin(ref: MatchRef, userId?: number): boolean {
     ? s.users.find(u => numOf(u.id) === userId)?.id
     : actor(s)
   if (!uid) return false
+
+  const online = tour(s, m.tour)?.channel === 'online'
+  const method = detail?.method ?? (online ? 'photo_online' : 'qr_onsite')
+  /* รูปที่รอตรวจยังไม่นับเข้า — ยอด "3 of 10" ต้องหมายถึงคนที่ผ่านจริงเท่านั้น */
+  const status = method === 'photo_online' ? 'exception' as const : 'success' as const
+
+  m.checkins = m.checkins ?? {}
+  m.checkins[uid] = {
+    method,
+    status,
+    documentUrl: detail?.documentUrl ?? null,
+    documentType: detail?.documentType ?? null,
+    rejectionReason: null,
+    at: Date.now(),
+    verifiedBy: status === 'success' ? (m.refs[0] ?? null) : null,
+  }
+  if (status === 'success' && !m.checkedIn.includes(uid)) m.checkedIn.push(uid)
+  commitStore()
+  return true
+}
+
+/** กรรมการอนุมัติรูปที่ส่งมา (FR-PV-04) — นับเข้าเมื่อผ่านแล้วเท่านั้น */
+export function writeApproveCheckin(ref: MatchRef, userId: number): boolean {
+  const s = getState()
+  const m = findStoreMatch(ref)
+  if (!m) return false
+  const uid = s.users.find(u => numOf(u.id) === userId)?.id
+  if (!uid) return false
+  const rec = m.checkins?.[uid]
+  if (rec) {
+    rec.status = 'success'
+    rec.rejectionReason = null
+    rec.verifiedBy = actor(s) ?? m.refs[0] ?? null
+  }
   if (!m.checkedIn.includes(uid)) m.checkedIn.push(uid)
   commitStore()
   return true
 }
 
-/** กรรมการปฏิเสธการเช็คอิน — ถอดชื่อออกจากรายการ */
-export function writeRejectCheckin(ref: MatchRef, userId: number): boolean {
+/** กรรมการปฏิเสธ — ถอดออกจากยอด และเก็บเหตุผลไว้ให้ผู้เล่นเห็น */
+export function writeRejectCheckin(ref: MatchRef, userId: number, reason?: string): boolean {
   const s = getState()
   const m = findStoreMatch(ref)
   if (!m) return false
   const uid = s.users.find(u => numOf(u.id) === userId)?.id
   if (!uid) return false
   m.checkedIn = m.checkedIn.filter(x => x !== uid)
+  m.checkins = m.checkins ?? {}
+  const prev = m.checkins[uid]
+  m.checkins[uid] = {
+    method: prev?.method ?? 'manual_by_referee',
+    status: 'rejected',
+    documentUrl: prev?.documentUrl ?? null,
+    documentType: prev?.documentType ?? null,
+    rejectionReason: reason ?? 'กรรมการไม่รับหลักฐานนี้',
+    at: prev?.at ?? Date.now(),
+    verifiedBy: actor(s) ?? m.refs[0] ?? null,
+  }
   commitStore()
   return true
 }

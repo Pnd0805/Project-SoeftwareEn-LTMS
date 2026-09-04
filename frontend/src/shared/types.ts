@@ -120,6 +120,19 @@ export interface Decider {
 
 export interface Edge { m: string; side: 'a' | 'b' }
 
+/** หลักฐานการเช็คอินหนึ่งคน — คู่กับ MatchCheckinDto ฝั่ง API */
+export interface CheckinRecord {
+  method: 'qr_onsite' | 'photo_online' | 'manual_by_referee'
+  status: 'success' | 'rejected' | 'exception'
+  /** รูปคู่บัตรที่ผู้เล่นส่ง — ของจริงเป็น S3 key ไม่ใช่ data URL (NF-SE-03) */
+  documentUrl?: string | null
+  documentType?: 'student_id' | 'national_id' | null
+  rejectionReason?: string | null
+  at: number
+  /** กรรมการที่ตรวจ — ว่างแปลว่ายังไม่มีใครตรวจ */
+  verifiedBy?: string | null
+}
+
 export interface Match {
   id: string
   tour: string
@@ -152,6 +165,16 @@ export interface Match {
   roomCode?: string
   refs: string[]
   checkedIn: string[]
+  /**
+   * รายละเอียดการเช็คอินรายคน (FR-PV-03, FR-PV-04)
+   *
+   * `checkedIn` เก็บแค่ "ใครเข้าแล้ว" ซึ่งพอสำหรับ prototype เดิม แต่ไม่พอกับ
+   * การยืนยันตัวตน: on-site สแกน QR ผ่านทันที ส่วน online ส่งรูปคู่บัตรแล้ว
+   * ต้องรอกรรมการตรวจ (สถานะ exception) ซึ่งอาจถูกปฏิเสธพร้อมเหตุผล
+   *
+   * แถวใน seed ที่ไม่มีคีย์ตรงนี้ถือว่าผ่านแบบปกติ — ฝั่งอ่านเติมค่าเริ่มต้นให้
+   */
+  checkins?: Record<string, CheckinRecord>
   stats: Record<string, PlayerStat>
   teamStats?: Record<string, Record<string, number | string>>
   lineup?: Record<string, Lineup>
