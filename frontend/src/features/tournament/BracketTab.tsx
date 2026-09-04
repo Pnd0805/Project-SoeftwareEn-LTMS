@@ -14,6 +14,7 @@ import { useTournamentMatches } from '../../hooks/useMatch'
 import { toTeamView } from '../match/matchView'
 import { useLtms } from '../../shared/store'
 import { matchesOf, isOrg, regsOf, team } from '../../shared/selectors'
+import { TeamMarkView } from '../../components/kit/chips'
 import { formatName, formatOf, matchStage, matchTag, nextOf, roundName } from '../../shared/rules'
 import type { Match, Tournament } from '../../shared/types'
 import type { MatchDto } from '../../types/match.dto'
@@ -72,7 +73,10 @@ function BracketNode({ m }: { m: Match }) {
     const t = team(s, id)
     return (
       <span className={`brow ${win ? 'win' : lose ? 'lose' : ''}`}>
-        <i style={{ background: t ? t.color : 'var(--hairline)' }} />
+        {/* ใช้ตราเดียวกับที่อื่นทั้งแอป จะได้ขึ้นโลโก้ทีมด้วยถ้าหัวหน้าทีมตั้งไว้ */}
+        {t
+          ? <TeamMarkView team={{ id: t.id, name: t.name, code: t.code, color: t.color, logoUrl: t.logo ?? null }} />
+          : <i style={{ background: 'var(--hairline)' }} />}
         <span className="nm">{t ? t.name : 'TBD'}</span>
         <span className="sc">{score ?? '—'}</span>
       </span>

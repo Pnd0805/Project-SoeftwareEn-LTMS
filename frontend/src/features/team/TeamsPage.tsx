@@ -18,6 +18,8 @@ import { ledTeams, me, myTeams, openToEnter, team, tour, user } from '../../shar
 import { SPORTS, minSquad, teamReady } from '../../shared/rules'
 import type { Team } from '../../shared/types'
 import { RegisterForm } from '../tournament/RegisterForm'
+import { useUpdateTeam } from '../../hooks/useTeam'
+import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
 
 function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const s = useLtms()
@@ -81,6 +83,66 @@ function InviteModal({ tm, open, onClose }: { tm: Team | null; open: boolean; on
   )
 }
 
+
+/** ตราประจำทีม — ใช้โลโก้ถ้ามี ไม่มีก็ใช้รหัสทีมบนสีประจำทีมเหมือนเดิม */
+function TeamCrest({ t, size = 32 }: { t: Team; size?: number }) {
+  const shape = {
+    width: size, height: size, flex: 'none' as const, display: 'grid' as const,
+    placeItems: 'center' as const, background: t.color, color: 'var(--void)',
+    fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: Math.round(size * 0.4),
+    clipPath: 'polygon(0 0,100% 0,100% 74%,74% 100%,0 100%)',
+    overflow: 'hidden' as const,
+  }
+  return (
+    <span style={shape}>
+      {t.logo
+        ? <img src={t.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : t.code}
+    </span>
+  )
+}
+
+/**
+ * ตั้งหรือถอดโลโก้ทีม (FR-TM-04)
+ *
+ * แยกเป็นคอมโพเนนต์เพราะการ์ดทีมถูก render ในลูป — เรียก useUpdateTeam ในลูป
+ * ของ parent ไม่ได้ ต้องมีคอมโพเนนต์ต่อหนึ่งทีม
+ */
+function TeamLogoControl({ t }: { t: Team }) {
+  const update = useUpdateTeam(t.id)
+  const [err, setErr] = useState<string | null>(null)
+  const inputId = `logo-${t.id}`
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setErr(null)
+    try {
+      update.mutate({ logoUrl: await shrinkImage(file) })
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'ตั้งโลโก้ไม่สำเร็จ')
+    }
+  }
+
+  return (
+    <>
+      <input id={inputId} type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }}
+        onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
+      <label className="btn ghost" htmlFor={inputId} style={{ cursor: 'pointer' }}>
+        <Icon name="plus" size={12} /> {t.logo ? 'Change logo' : 'Add a logo'}
+      </label>
+      {t.logo ? (
+        <button className="btn ghost" type="button" disabled={update.isPending}
+          onClick={() => update.mutate({ logoUrl: null })}>
+          Remove logo
+        </button>
+      ) : null}
+      {err || update.isError ? (
+        <span className="sub">{err ?? (update.error as Error).message}</span>
+      ) : null}
+    </>
+  )
+}
+
 export function TeamsPage() {
   const s = useLtms()
   const u = me(s)
@@ -141,11 +203,7 @@ export function TeamsPage() {
           <Panel key={t.id}>
             <div className="spread">
               <span className="hstack" style={{ gap: 12 }}>
-                <span style={{
-                  width: 32, height: 32, flex: 'none', display: 'grid', placeItems: 'center', background: t.color,
-                  color: 'var(--void)', fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 13,
-                  clipPath: 'polygon(0 0,100% 0,100% 74%,74% 100%,0 100%)',
-                }}>{t.code}</span>
+                <TeamCrest t={t} />
                 <span className="disp" style={{ fontSize: 21 }}>{t.name}</span>
                 <span className="tag">{t.code}</span>
               </span>
@@ -224,6 +282,7 @@ export function TeamsPage() {
                 <button className="btn" type="button" onClick={() => setInviteTo(t)}>
                   <Icon name="plus" size={12} /> Invite a player
                 </button>
+                <TeamLogoControl t={t} />
                 <button className="btn primary" type="button" disabled={!ready || t.disabled || !openToEnter(s, t).length}
                   onClick={() => setRegisterFor(t)}>
                   Register for a tournament

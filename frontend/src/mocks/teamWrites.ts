@@ -51,13 +51,15 @@ export function writeCreateTeam(
 /** FR-TM-04 — แก้ชื่อ รหัส สี ของทีม */
 export function writeUpdateTeam(
   ref: TeamRef,
-  input: { name?: string; code?: string; color?: string },
+  input: { name?: string; code?: string; color?: string; logoUrl?: string | null },
 ): boolean {
   const t = findStoreTeam(ref)
   if (!t) return false
   if (input.name !== undefined) t.name = input.name
   if (input.code !== undefined) t.code = input.code.toUpperCase().slice(0, 3)
   if (input.color !== undefined) t.color = input.color
+  /* null = เอารูปออก · undefined = ไม่แตะ จึงต้องเทียบกับ undefined ไม่ใช่ falsy */
+  if (input.logoUrl !== undefined) t.logo = input.logoUrl ?? undefined
   commitStore()
   return true
 }

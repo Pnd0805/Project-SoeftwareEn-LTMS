@@ -104,6 +104,11 @@ export interface UpdateTeamRequest {
   name?: string;
   code?: string;
   color?: string;
+  /**
+   * โลโก้ทีม — null คือเอารูปออก
+   * ของจริงเป็น S3 key (NF-SE-03) โหมด mock เก็บ data URL ที่ย่อแล้ว
+   */
+  logoUrl?: string | null;
 }
 
 export interface SetMemberPositionRequest {
