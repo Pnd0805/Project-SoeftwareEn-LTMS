@@ -10,6 +10,7 @@
  * ⚠️ passwordForMock อยู่ใน user.mock.ts — auth.mock ใช้ read/write mockUsers ตรงนี้
  */
 import type { LoginResponse, RegisterResponse, RegisterRequest } from "../types/dto";
+import { findStoreUserByEmail } from "./storeUsers";
 import { mockUsers, takeNextMockUserId } from "./user.mock";
 import { mockDelay, mockReject } from "../api/client";
 
@@ -21,7 +22,11 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
  * ถ้าผิด → mockReject 401 INVALID_CREDENTIALS
  */
 export async function mockLogin(email: string, password: string): Promise<LoginResponse> {
-  const user = mockUsers.find((u) => u.email === normalizeEmail(email));
+  /* บัญชีที่เขียนมือ 5 ใบก่อน แล้วค่อยตกไปหาคนใน seed ทั้ง 97 คน
+     สิทธิ์เกือบทั้งหมดผูกกับความสัมพันธ์ ไม่ใช่ role — ถ้าล็อกอินได้แค่ห้าคน
+     ปุ่มส่วนใหญ่จะไม่มีใครมีสิทธิ์กด ดู mocks/storeUsers.ts */
+  const user = mockUsers.find((u) => u.email === normalizeEmail(email))
+    ?? findStoreUserByEmail(email);
   // GUIDE/04 §12: หาไม่เจอ กับ รหัสผิด ต้องตอบข้อความเดียวกัน (กัน user enumeration)
   if (!user || user.passwordForMock !== password) {
     return mockReject(401, {

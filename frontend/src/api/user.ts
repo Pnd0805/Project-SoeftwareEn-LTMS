@@ -10,6 +10,7 @@ import type {
   UserSearchResult,
 } from "../types/dto";
 import { mockUsers, type MockUserRecord } from "../mocks/user.mock";
+import { findStoreUserById } from "../mocks/storeUsers";
 
 // mock ไม่มี session ฝั่ง server จริง — เก็บ "ใครล็อกอินอยู่" ไว้ตรงนี้แทน
 // เรียก setMockCurrentUser() จาก onSuccess ของ useLogin/useLogout (ดู hooks/useAuth.ts)
@@ -31,7 +32,8 @@ function stripSecrets(u: MockUserRecord): MeDto {
 
 export async function getMe(): Promise<MeDto> {
   if (USE_MOCK) {
-    const u = mockUsers.find((x) => x.id === currentMockUserId);
+    const u = mockUsers.find((x) => x.id === currentMockUserId)
+      ?? (currentMockUserId !== null ? findStoreUserById(currentMockUserId) : undefined);
     if (!u) return mockReject(401, { code: "UNAUTHORIZED", message: "ยังไม่ได้เข้าสู่ระบบ" });
     return mockDelay(stripSecrets(u));
   }
