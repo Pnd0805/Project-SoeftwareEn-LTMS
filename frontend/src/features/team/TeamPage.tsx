@@ -9,7 +9,8 @@ import { Badge, Crumb, Empty, FormGuide, Panel, TableWrap } from '../../componen
 import { Icon } from '../../components/kit/Icon'
 import { TeamLink } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
-import { team, tour, user } from '../../shared/selectors'
+import { tour, user } from '../../shared/selectors'
+import { routeTeam } from '../../mocks/routeIds'
 import { TeamCrestView } from '../../components/kit/chips'
 import { toTeamView } from '../../components/kit/viewModels'
 import { ageOf, fmtDate, leaderboard, minSquad, statLabels, teamReady } from '../../shared/rules'
@@ -25,7 +26,7 @@ export function TeamPage() {
   const { id } = useParams()
   const { data: currentUser } = useMe()
   const follow = useFollow(currentUser?.id, `team:${id ?? ''}`)
-  const t = team(s, id)
+  const t = routeTeam(s, id)
 
   if (!t) {
     return (

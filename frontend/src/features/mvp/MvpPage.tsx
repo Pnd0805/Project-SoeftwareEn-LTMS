@@ -9,14 +9,15 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel } from '../../components/kit/primitives'
 import { TeamChip } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
-import { matchesOf, me, team, tour, user } from '../../shared/selectors'
+import { matchesOf, me, team, user } from '../../shared/selectors'
+import { routeTour } from '../../mocks/routeIds'
 import { useMvpVotes } from '../../hooks/useUser'
 
 export function MvpPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()
-  const t = tour(s, id)
+  const t = routeTour(s, id)
   const u = me(s)
   const mvp = useMvpVotes(t?.id, u?.id)
 

@@ -10,7 +10,7 @@ import { Badge, Crumb, Empty, FormGuide, Panel, TableWrap } from '../../componen
 import { Icon } from '../../components/kit/Icon'
 import { TeamLink } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
-import { user } from '../../shared/selectors'
+import { routeUser } from '../../mocks/routeIds'
 import { ageOf, statLabels, teamReady } from '../../shared/rules'
 import { careerBySport, careerByTournament } from '../../shared/career'
 import { useMe } from '../../hooks/useAuth'
@@ -77,7 +77,7 @@ export function PlayerPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()
-  const p = user(s, id)
+  const p = routeUser(s, id)
   const { data: currentUser } = useMe()
   const follow = useFollow(currentUser?.id, `player:${id ?? ''}`)
 

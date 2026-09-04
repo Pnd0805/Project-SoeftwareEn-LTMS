@@ -39,7 +39,6 @@ import {
 } from "../mocks/storeBridge";
 import {
   mockMatches,
-  buildMockMyMatches,
   mockResults,
   mockCheckins,
   mockStats,
@@ -118,13 +117,25 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
  */
 export async function getMyMatches(): Promise<{ items: MatchListItemDto[] }> {
   if (USE_MOCK) {
-    /* ชุดที่เขียนมือ + ทุกแมตช์ใน seed ที่เราเกี่ยวข้อง — คนที่สลับ role ในเดโม
-       จะได้เห็นของตัวเองจริงๆ ไม่ใช่ fixture ตายตัวสี่นัด */
+    /**
+     * เฉพาะแมตช์ใน seed ที่เราเกี่ยวข้อง
+     *
+     * เคยรวม fixture ที่เขียนมือ (id 301–304) เข้ามาด้วย แต่ทีมของ fixture ใช้ id
+     * ชุดที่สาม (11–14) ซึ่งไม่ใช่ทั้ง id ของ store และไม่ใช่ `numOf` — ลิงก์ชื่อทีม
+     * จากแถวพวกนั้นจึงพาไป `/team/13` แล้วขึ้น "No such squad" และสองในสี่ทีมนั้น
+     * ไม่มีตัวตนใน store เลย จะ join ด้วยชื่อก็ไม่รอด
+     *
+     * seed ครอบคลุมทุกสถานะที่ fixture เคยสาธิตอยู่แล้ว — confirmed 11 นัด
+     * disputed 1 · pending 1 · scheduled 3 · คู่ที่ยังไม่รู้คู่แข่ง 1 · ทัวร์นาเมนต์
+     * แบบ online 2 รายการ จึงไม่ได้เสียอะไรไป และทุกลิงก์ในรายการชี้ของที่เปิดได้จริง
+     *
+     * fixture ยังเปิดตรงๆ ได้ที่ /m/301 ถึง /m/304 สำหรับทดสอบรูปร่าง DTO
+     */
     const s = storeState();
     const seeded = s.matches
       .map((m) => toListItem(s, m))
       .filter((m) => m.viewer.roles.length);
-    return mockDelay({ items: [...buildMockMyMatches(), ...seeded] });
+    return mockDelay({ items: seeded });
   }
   return apiFetch("/matches?assignedToMe=true");
 }

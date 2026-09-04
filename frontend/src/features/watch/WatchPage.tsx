@@ -12,14 +12,15 @@ import { Icon } from '../../components/kit/Icon'
 import { Scorebug } from '../../components/kit/Scorebug'
 import { PlayerLink, TeamLink } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
-import { matchesOf, tour, user } from '../../shared/selectors'
+import { matchesOf, user } from '../../shared/selectors'
+import { routeTour } from '../../mocks/routeIds'
 import { matchStage, matchTag } from '../../shared/rules'
 
 export function WatchPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()
-  const t = tour(s, id)
+  const t = routeTour(s, id)
 
   if (!t) return <Empty icon="warn" title="No such tournament" />
 

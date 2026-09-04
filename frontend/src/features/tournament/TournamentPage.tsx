@@ -11,7 +11,8 @@ import { Badge, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../compon
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { useTournament } from '../../hooks/useTournament'
-import { isOrg, matchesOf, regsOf, team, tour, user, visibleTo } from '../../shared/selectors'
+import { isOrg, matchesOf, regsOf, team, user, visibleTo } from '../../shared/selectors'
+import { routeTour } from '../../mocks/routeIds'
 import { formatName, ruleSummary } from '../../shared/rules'
 import { BracketTab } from './BracketTab'
 import { ScheduleTab } from './ScheduleTab'
@@ -30,7 +31,7 @@ export function TournamentPage() {
   const { id, tab: tabParam, sub } = useParams()
   const tournamentId = id && Number.isInteger(Number(id)) ? Number(id) : undefined
   const { data: tournamentData, isPending } = useTournament(tournamentId)
-  const legacyTournament = tour(s, id)
+  const legacyTournament = routeTour(s, id)
   const t = tournamentData ? tournamentView(tournamentData) : legacyTournament
 
   if (isPending && !legacyTournament) {
