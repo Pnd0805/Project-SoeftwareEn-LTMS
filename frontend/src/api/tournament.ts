@@ -236,7 +236,10 @@ export async function drawTournament(id: number, input: DrawTournamentRequest = 
   if (USE_MOCK) {
     const tournament = findTournament(id);
     if (!tournament) return notFound("ไม่พบการแข่งขัน");
-    tournament.status = "completed";
+    /* เดิมตั้ง status = "completed" ตรงนี้ — การจับสายทำให้ทัวร์นาเมนต์จบทันที
+       ซึ่งกลับหัวกลับหางกับความหมายของมัน การสร้างแมตช์จริงเป็นของ Match API
+       (SDS §S5: POST /tournaments/{id}/brackets) mock จึงยังไม่สร้างสายให้
+       แต่ต้องไม่ทำลายสถานะที่ถูกอยู่แล้ว */
     return tournamentMockDelay(tournament);
   }
   return apiFetch(`/tournaments/${id}/draw`, { method: "POST", body: JSON.stringify(input) });

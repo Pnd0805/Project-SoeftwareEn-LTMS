@@ -9,8 +9,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Panel, TableWrap, Tabs } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
-import { regsOf, user } from '../../../shared/selectors'
-import { fmtDate, formatOf, refsNeeded } from '../../../shared/rules'
+import { user } from '../../../shared/selectors'
+import { fmtDate, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import { feedbackOf } from '../CommunityTab'
 import { DrawPanel } from './DrawPanel'
@@ -58,10 +58,8 @@ const LABELS: Record<string, string> = {
 }
 
 export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
-  const s = useLtms()
   const navigate = useNavigate()
   const [finder, setFinder] = useState(false)
-  const approved = regsOf(s, t.id).filter(r => r.status === 'approved')
   const showDraw = formatOf(t) !== 'roundrobin'
   const subtabs = ['progress', 'registrations', 'entry', ...(showDraw ? ['draw'] : []), 'referees', 'feedback']
   const active = subtabs.includes(sub ?? '') ? sub! : 'registrations'
@@ -76,8 +74,8 @@ export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
       {active === 'progress' ? <SetupTrail t={t} onAppoint={() => setFinder(true)} /> : null}
       {active === 'registrations' ? <RegistrationsPanel t={t} /> : null}
       {active === 'entry' ? <EntryFilterPanel t={t} /> : null}
-      {active === 'draw' ? <DrawPanel t={t} approved={approved} /> : null}
-      {active === 'referees' ? <RefereePanel t={t} need={refsNeeded(t)} onAppoint={() => setFinder(true)} /> : null}
+      {active === 'draw' ? <DrawPanel t={t} /> : null}
+      {active === 'referees' ? <RefereePanel t={t} onAppoint={() => setFinder(true)} /> : null}
       {active === 'feedback' ? <FeedbackPanel t={t} /> : null}
       <RefereeFinder t={t} open={finder} onClose={() => setFinder(false)} />
     </>

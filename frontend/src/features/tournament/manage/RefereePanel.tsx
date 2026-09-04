@@ -82,14 +82,14 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
   )
 }
 
-export function RefereePanel({ t, need, onAppoint }: { t: Tournament; need: number; onAppoint: () => void }) {
+export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
   const { data: referees, isPending } = useTournamentReferees(t.id)
   const { data: coverage } = useRefereeCoverage(t.id)
   const remove = useRemoveReferee(t.id)
 
   const rows = referees?.items ?? []
   /* FR-RM-03 นับเฉพาะคนที่ตอบรับแล้ว — คำเชิญที่ยังไม่ตอบไม่นับ */
-  const required = coverage?.required ?? need
+  const required = coverage?.required ?? (t.channel === 'onsite' ? 2 : 1)
   const accepted = coverage?.accepted ?? rows.filter(r => r.invitationStatus === 'accepted').length
   const short = Math.max(0, required - accepted)
 
