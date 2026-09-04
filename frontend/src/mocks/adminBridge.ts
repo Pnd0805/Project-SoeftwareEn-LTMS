@@ -141,9 +141,8 @@ export function storeUsersForAdmin(): UserAdminViewDto[] {
     email: u.email,
     userType: u.role === 'Admin' ? 'staff' : 'student',
     facultyName: u.faculty || null,
-    /* prototype ไม่มีการระงับบัญชี — คอลัมน์ users.is_suspended มีใน schema แล้ว */
-    isSuspended: false,
-    suspendedReason: null,
+    isSuspended: !!u.suspended,
+    suspendedReason: u.suspendedReason ?? null,
     adminScopes: scopesByUser.get(numOf(u.id)) ?? [],
     teamCount: s.teams.filter(t => t.members.includes(u.id)).length,
   }))

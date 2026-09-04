@@ -28,6 +28,12 @@ export interface User {
   faculty: string
   major: string
   year: number
+  /**
+   * FR-UM-05 — บัญชีที่ถูกระงับเข้าสู่ระบบไม่ได้ และไม่นับเป็นสมาชิกทีมที่ลงแข่งได้
+   * schema มีคอลัมน์ users.is_suspended อยู่แล้ว ที่นี่เพิ่มให้ prototype เก็บได้ด้วย
+   */
+  suspended?: boolean
+  suspendedReason?: string | null
 }
 
 export interface Team {

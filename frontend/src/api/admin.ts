@@ -31,16 +31,13 @@ import {
   removeReferee as storeRemoveReferee,
 } from "../shared/store";
 import { numOf } from "../mocks/storeBridge";
+import {
+  writeGrantAdminScope, writeRevokeAdminScope, writeReviewTournamentRequest, writeSuspendUser,
+} from "../mocks/adminWrites";
 import type { TeamRef } from "../mocks/teamBridge";
 
 const notFound = <T>(what: string): Promise<T> =>
   mockReject<T>(404, { code: "NOT_FOUND", message: `ไม่พบ${what}ที่ต้องการ` });
-
-const notImplemented = <T>(what: string): Promise<T> =>
-  mockReject<T>(501, {
-    code: "MOCK_READ_ONLY",
-    message: `โหมด mock ยังไม่รองรับ${what} — ต่อ backend จริงก่อน`,
-  });
 
 // ══════════════ คิวอนุมัติทัวร์นาเมนต์ — FR-TC-02 ══════════════
 
@@ -58,7 +55,20 @@ export async function getTournamentRequests(): Promise<{ items: TournamentReques
 export async function reviewTournamentRequest(
   requestId: TeamRef, input: ReviewTournamentRequest,
 ): Promise<TournamentRequestDto> {
-  if (USE_MOCK) return notImplemented<TournamentRequestDto>("การพิจารณาคำขอจัดทัวร์นาเมนต์");
+  if (USE_MOCK) {
+    /* อ่านแถวไว้ก่อนตัดสิน — พอตัดสินแล้วทัวร์นาเมนต์ออกจากคิว (สถานะไม่ใช่ pending)
+       `storeTournamentRequests()` จะหาไม่เจออีก ผู้เรียกจึงต้องได้ของที่อ่านไว้ก่อน */
+    const before = storeTournamentRequests().find((r) => r.id === Number(requestId));
+    if (!writeReviewTournamentRequest(requestId, input.approve)) {
+      return notFound<TournamentRequestDto>("คำขอจัดทัวร์นาเมนต์");
+    }
+    if (!before) return notFound<TournamentRequestDto>("คำขอจัดทัวร์นาเมนต์");
+    return mockDelay<TournamentRequestDto>({
+      ...before,
+      status: input.approve ? "private" : "rejected",
+      rejectionReason: input.approve ? null : (input.rejectionReason ?? null),
+    });
+  }
   return apiFetch(`/admin/tournament-requests/${requestId}/review`, {
     method: "POST", body: JSON.stringify(input),
   });
@@ -146,7 +156,16 @@ export async function removeReferee(
 export async function approveExternalReferee(
   refereeId: TeamRef, approve: boolean,
 ): Promise<TournamentRefereeDto> {
-  if (USE_MOCK) return notImplemented<TournamentRefereeDto>("การอนุมัติกรรมการภายนอก");
+  if (USE_MOCK) {
+    /* FR-RM-02 ใช้กับกรรมการที่เป็นบุคคลภายนอกเท่านั้น แต่ prototype ไม่มีแนวคิดนี้
+       ทุกคนเป็นนิสิตในระบบ `storeTournamentReferees()` จึงคืน isExternal: false เสมอ
+       ตอบ 409 ตรงๆ ดีกว่าแกล้งสำเร็จ เพราะไม่มีอะไรให้อนุมัติจริง */
+    void refereeId; void approve;
+    return mockReject<TournamentRefereeDto>(409, {
+      code: "NOT_APPLICABLE",
+      message: "ชุดข้อมูลตัวอย่างไม่มีกรรมการภายนอก — ทุกคนเป็นนิสิตในระบบอยู่แล้ว",
+    });
+  }
   return apiFetch(`/admin/referee-approvals/${refereeId}`, {
     method: "POST", body: JSON.stringify({ approve }),
   });
@@ -168,13 +187,20 @@ export async function getAdminScopes(): Promise<{ items: AdminScopeDto[] }> {
 
 /** TODO(guide): POST /admin/scopes — ให้สิทธิ์ผู้ดูแล */
 export async function grantAdminScope(input: GrantAdminScopeRequest): Promise<AdminScopeDto> {
-  if (USE_MOCK) return notImplemented<AdminScopeDto>("การให้สิทธิ์ผู้ดูแล");
+  if (USE_MOCK) {
+    if (!writeGrantAdminScope(input.userId)) return notFound<AdminScopeDto>("ผู้ใช้");
+    const row = storeAdminScopes().find((sc) => sc.user.id === input.userId);
+    return row ? mockDelay(row) : notFound<AdminScopeDto>("สิทธิ์ที่เพิ่งให้");
+  }
   return apiFetch("/admin/scopes", { method: "POST", body: JSON.stringify(input) });
 }
 
 /** TODO(guide): DELETE /admin/scopes/:id — เพิกถอนสิทธิ์ */
 export async function revokeAdminScope(scopeId: TeamRef): Promise<void> {
-  if (USE_MOCK) return notImplemented<void>("การเพิกถอนสิทธิ์");
+  if (USE_MOCK) {
+    if (!writeRevokeAdminScope(scopeId)) return notFound<void>("สิทธิ์ผู้ดูแล");
+    return mockDelay(undefined);
+  }
   return apiFetch(`/admin/scopes/${scopeId}`, { method: "DELETE" });
 }
 
@@ -186,7 +212,13 @@ export async function revokeAdminScope(scopeId: TeamRef): Promise<void> {
 export async function suspendUser(
   userId: TeamRef, input: SuspendUserRequest,
 ): Promise<UserAdminViewDto> {
-  if (USE_MOCK) return notImplemented<UserAdminViewDto>("การระงับบัญชี");
+  if (USE_MOCK) {
+    if (!writeSuspendUser(userId, input.suspend, input.reason)) {
+      return notFound<UserAdminViewDto>("ผู้ใช้");
+    }
+    const row = storeUsersForAdmin().find((u) => u.user.id === Number(userId));
+    return row ? mockDelay(row) : notFound<UserAdminViewDto>("ผู้ใช้หลังระงับ");
+  }
   return apiFetch(`/admin/users/${userId}/suspension`, {
     method: "POST", body: JSON.stringify(input),
   });

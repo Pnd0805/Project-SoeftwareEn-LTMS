@@ -30,15 +30,20 @@ import {
   storeTeamAdminRequests, teamStoreInvitations, toTeamDto, type TeamRef,
 } from "../mocks/teamBridge";
 import { getState } from "../shared/store";
+import {
+  writeAnswerInvitation, writeCreateTeam, writeDisbandTeam, writeInviteMember,
+  writeKickMember, writeRequestOfficial, writeReviewTeamRequest, writeSetMemberPosition,
+  writeTransferLeader, writeUpdateTeam,
+} from "../mocks/teamWrites";
+
+/** สร้าง TeamDto กลับจาก store หลังเขียนเสร็จ */
+const teamDto = (ref: TeamRef): TeamDto | null => {
+  const t = findStoreTeam(ref);
+  return t ? toTeamDto(getState(), t) : null;
+};
 
 const notFound = <T>(what: string): Promise<T> =>
   mockReject<T>(404, { code: "NOT_FOUND", message: `ไม่พบ${what}ที่ต้องการ` });
-
-const notImplemented = <T>(what: string): Promise<T> =>
-  mockReject<T>(501, {
-    code: "MOCK_READ_ONLY",
-    message: `โหมด mock ยังไม่รองรับ${what} — ต่อ backend จริงก่อน`,
-  });
 
 // ══════════════ อ่าน ══════════════
 
@@ -95,13 +100,21 @@ export async function getPlayerProfile(userId: TeamRef): Promise<PlayerProfileDt
 
 /** TODO(guide): POST /teams — FR-TM-01 (ชื่อซ้ำในกีฬาเดียวกันไม่ได้ · เกิน 5 ทีม Unofficial ไม่ได้) */
 export async function createTeam(input: CreateTeamRequest): Promise<TeamDto> {
-  if (USE_MOCK) return notImplemented<TeamDto>("การสร้างทีม");
+  if (USE_MOCK) {
+    const id = writeCreateTeam(input);
+    const dto = id !== null ? teamDto(id) : null;
+    return dto ? mockDelay(dto) : notFound<TeamDto>("ผู้ใช้ที่ล็อกอินอยู่");
+  }
   return apiFetch("/teams", { method: "POST", body: JSON.stringify(input) });
 }
 
 /** TODO(guide): PATCH /teams/:id — FR-TM-04 */
 export async function updateTeam(teamId: TeamRef, input: UpdateTeamRequest): Promise<TeamDto> {
-  if (USE_MOCK) return notImplemented<TeamDto>("การแก้ข้อมูลทีม");
+  if (USE_MOCK) {
+    if (!writeUpdateTeam(teamId, input)) return notFound<TeamDto>("ทีม");
+    const dto = teamDto(teamId);
+    return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
+  }
   return apiFetch(`/teams/${teamId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
@@ -109,7 +122,13 @@ export async function updateTeam(teamId: TeamRef, input: UpdateTeamRequest): Pro
 export async function setMemberPosition(
   teamId: TeamRef, input: SetMemberPositionRequest,
 ): Promise<TeamDto> {
-  if (USE_MOCK) return notImplemented<TeamDto>("การกำหนดตัวจริง/ตัวสำรอง");
+  if (USE_MOCK) {
+    if (!writeSetMemberPosition(teamId, input.userId, input.position)) {
+      return notFound<TeamDto>("ทีมหรือสมาชิก");
+    }
+    const dto = teamDto(teamId);
+    return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
+  }
   return apiFetch(`/teams/${teamId}/members/${input.userId}/position`, {
     method: "PUT", body: JSON.stringify({ position: input.position }),
   });
@@ -117,7 +136,11 @@ export async function setMemberPosition(
 
 /** TODO(guide): DELETE /teams/:id/members/:userId */
 export async function kickMember(teamId: TeamRef, userId: number): Promise<TeamDto> {
-  if (USE_MOCK) return notImplemented<TeamDto>("การนำสมาชิกออก");
+  if (USE_MOCK) {
+    if (!writeKickMember(teamId, userId)) return notFound<TeamDto>("ทีมหรือสมาชิก");
+    const dto = teamDto(teamId);
+    return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
+  }
   return apiFetch(`/teams/${teamId}/members/${userId}`, { method: "DELETE" });
 }
 
@@ -125,7 +148,17 @@ export async function kickMember(teamId: TeamRef, userId: number): Promise<TeamD
 export async function inviteMember(
   teamId: TeamRef, input: InviteMemberRequest,
 ): Promise<TeamInvitationDto> {
-  if (USE_MOCK) return notImplemented<TeamInvitationDto>("การส่งคำเชิญ");
+  if (USE_MOCK) {
+    if (!writeInviteMember(teamId, input.userId)) return notFound<TeamInvitationDto>("ทีมหรือผู้ใช้");
+    /* store กันเชิญซ้ำและกันเชิญคนที่อยู่ในทีมแล้ว — ถ้าไม่มีแถวใหม่แปลว่าโดนกฎนั้น */
+    const row = teamStoreInvitations(teamId).find((i) => i.invitedUser.id === input.userId);
+    return row
+      ? mockDelay(row)
+      : mockReject<TeamInvitationDto>(409, {
+          code: "ALREADY_INVITED",
+          message: "คนนี้อยู่ในทีมแล้ว หรือมีคำเชิญค้างอยู่",
+        });
+  }
   return apiFetch(`/teams/${teamId}/invitations`, { method: "POST", body: JSON.stringify(input) });
 }
 
@@ -136,7 +169,12 @@ export async function inviteMember(
 export async function answerInvitation(
   invitationId: TeamRef, accept: boolean,
 ): Promise<TeamInvitationDto> {
-  if (USE_MOCK) return notImplemented<TeamInvitationDto>("การตอบรับคำเชิญ");
+  if (USE_MOCK) {
+    const teamOfInvite = writeAnswerInvitation(invitationId, accept);
+    if (!teamOfInvite) return notFound<TeamInvitationDto>("คำเชิญ");
+    const row = teamStoreInvitations(teamOfInvite).find((i) => i.id === Number(invitationId));
+    return row ? mockDelay(row) : notFound<TeamInvitationDto>("คำเชิญหลังตอบ");
+  }
   return apiFetch(`/team-invitations/${invitationId}`, {
     method: "POST", body: JSON.stringify({ accept }),
   });
@@ -144,7 +182,10 @@ export async function answerInvitation(
 
 /** TODO(guide): DELETE /teams/:id — FR-TM-05 ทีมที่กำลังแข่งต้องถูกปฏิเสธ */
 export async function disbandTeam(teamId: TeamRef): Promise<void> {
-  if (USE_MOCK) return notImplemented<void>("การลบทีม");
+  if (USE_MOCK) {
+    if (!writeDisbandTeam(teamId)) return notFound<void>("ทีม");
+    return mockDelay(undefined);
+  }
   return apiFetch(`/teams/${teamId}`, { method: "DELETE" });
 }
 
@@ -152,7 +193,12 @@ export async function disbandTeam(teamId: TeamRef): Promise<void> {
 export async function requestOfficialStatus(
   teamId: TeamRef, input: RequestOfficialStatusRequest,
 ): Promise<TeamAdminRequestDto> {
-  if (USE_MOCK) return notImplemented<TeamAdminRequestDto>("การยื่นขอเป็นทีม Official");
+  if (USE_MOCK) {
+    if (!writeRequestOfficial(teamId, input.reason)) return notFound<TeamAdminRequestDto>("ทีม");
+    const rows = storeTeamAdminRequests();
+    const row = rows[rows.length - 1];
+    return row ? mockDelay(row) : notFound<TeamAdminRequestDto>("คำร้องที่เพิ่งยื่น");
+  }
   return apiFetch(`/teams/${teamId}/official-request`, {
     method: "POST", body: JSON.stringify(input),
   });
@@ -162,7 +208,24 @@ export async function requestOfficialStatus(
 export async function transferLeader(
   teamId: TeamRef, input: TransferLeaderRequest,
 ): Promise<TeamAdminRequestDto> {
-  if (USE_MOCK) return notImplemented<TeamAdminRequestDto>("การโอนสิทธิ์หัวหน้าทีม");
+  if (USE_MOCK) {
+    /* prototype โอนทันที — FR-TM-08 บอกว่าทีม Official ต้องผ่าน Admin ก่อน
+       ซึ่ง store ยังไม่มีคำร้องชนิดนั้น จึงคืนสถานะ approved ตรงไปตรงมา */
+    if (!writeTransferLeader(teamId, input.targetUserId)) {
+      return notFound<TeamAdminRequestDto>("ทีมหรือสมาชิก");
+    }
+    const t = findStoreTeam(teamId);
+    const dto = t ? toTeamDto(getState(), t) : null;
+    return dto
+      ? mockDelay({
+          id: dto.id, team: { id: dto.id, name: dto.name, code: dto.code, color: dto.color },
+          requestType: "leader_transfer" as const, requestedBy: dto.leader,
+          targetUser: dto.leader, status: "approved" as const,
+          requestedAt: new Date(dto.createdAt).toISOString(), reviewedBy: null,
+          reviewedAt: null, rejectionReason: null, blockingMembers: [],
+        })
+      : notFound<TeamAdminRequestDto>("ทีม");
+  }
   return apiFetch(`/teams/${teamId}/leader-transfer`, {
     method: "POST", body: JSON.stringify(input),
   });
@@ -172,7 +235,12 @@ export async function transferLeader(
 export async function reviewTeamRequest(
   requestId: TeamRef, input: ReviewTeamRequestRequest,
 ): Promise<TeamAdminRequestDto> {
-  if (USE_MOCK) return notImplemented<TeamAdminRequestDto>("การพิจารณาคำร้อง");
+  if (USE_MOCK) {
+    const id = writeReviewTeamRequest(requestId, input.approve);
+    if (!id) return notFound<TeamAdminRequestDto>("คำร้อง");
+    const row = storeTeamAdminRequests().find((r) => r.id === Number(requestId));
+    return row ? mockDelay(row) : notFound<TeamAdminRequestDto>("คำร้องหลังตัดสิน");
+  }
   return apiFetch(`/admin/team-requests/${requestId}/review`, {
     method: "POST", body: JSON.stringify(input),
   });
