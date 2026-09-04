@@ -44,6 +44,7 @@ export const scoreText = (m: MatchListItemDto): string =>
  * online: หัวหน้าทีมส่งผลมาก่อน กรรมการเป็นคนยืนยัน
  */
 export const REF_BUCKETS = {
+  room: { label: 'Needs a room', empty: 'Every online match has its room open.' },
   score: { label: 'Needs your score', empty: 'Nothing waiting on a score right now.' },
   confirm: { label: 'Needs your confirmation', empty: 'No submissions waiting on you.' },
   waiting: { label: 'Waiting on the squads', empty: 'Nothing parked here.' },
@@ -51,8 +52,19 @@ export const REF_BUCKETS = {
 
 export type RefBucket = keyof typeof REF_BUCKETS
 
+/**
+ * งานของกรรมการเรียงตามลำดับที่มันเกิดจริง
+ *
+ * online: กรรมการเปิดห้องก่อน แล้วทีมที่ชนะส่งผล แล้วกรรมการยืนยัน
+ * onsite: ผู้เล่นสแกน QR เข้ามา แล้วกรรมการกรอกผล แล้วหัวหน้าทีมที่ชนะยืนยัน
+ *
+ * เดิมนัด online ที่ยังไม่มีผลตกไปอยู่ถัง 'waiting' ทั้งหมด ทั้งที่สิ่งที่มันรออยู่คือ
+ * กรรมการเปิดห้อง ไม่ใช่รอทีม — กรรมการจึงมองไม่เห็นว่าตัวเองต้องทำอะไรกับนัด online
+ */
 export function refBucketOf(m: MatchListItemDto): RefBucket {
-  if (m.mode === 'onsite' && m.resultStatus === null && m.status !== 'completed') return 'score'
+  const done = m.status === 'completed'
+  if (m.mode === 'online' && !done && m.resultStatus === null && !m.roomCode) return 'room'
+  if (m.mode === 'onsite' && m.resultStatus === null && !done) return 'score'
   if (m.mode === 'online' && m.resultStatus === 'submitted') return 'confirm'
   return 'waiting'
 }

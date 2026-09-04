@@ -106,10 +106,13 @@ function MatchTable({ list }: { list: MatchListItemDto[] }) {
 function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void }) {
   const navigate = useNavigate()
   const bucket = refBucketOf(m)
-  const primary = bucket === 'score' ? 'Enter the score' : bucket === 'confirm' ? 'Confirm the result' : 'Open the match'
-  const blurb = bucket === 'score' ? "Both sides are due on court — record the result once it's in."
-    : bucket === 'confirm' ? 'The winning squad already submitted online — confirm it to close this out.'
-      : 'Nothing for you to do yet — waiting on the squads.'
+  const primary = bucket === 'room' ? 'Open the room'
+    : bucket === 'score' ? 'Enter the score'
+      : bucket === 'confirm' ? 'Confirm the result' : 'Open the match'
+  const blurb = bucket === 'room' ? 'ไม่มี QR ให้สแกนเพราะแข่งออนไลน์ — ประกาศรหัสห้องก่อน แล้วทั้งสองทีมจะได้รับแจ้ง'
+    : bucket === 'score' ? "Both sides are due on court — record the result once it's in."
+      : bucket === 'confirm' ? 'The winning squad already submitted online — confirm it to close this out.'
+        : 'Nothing for you to do yet — waiting on the squads.'
   const go = (href: string) => { onClose(); navigate(href) }
   return (
     <>
@@ -127,12 +130,16 @@ function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void
         <button className="who" type="button" onClick={() => go(`/m/${m.id}`)}>
           <span className="meta"><b>{primary}</b><span className="tag">Match page</span></span><Icon name="chev" size={13} />
         </button>
-        {m.mode === 'onsite' ? (
-          <button className="who" type="button" onClick={() => go(`/checkin/${m.id}`)}>
-            <span className="meta"><b>Check-in console</b><span className="tag">{m.checkedIn} checked in</span></span>
-            <Icon name="chev" size={13} />
-          </button>
-        ) : null}
+        {/* online ก็ต้องเข้าคอนโซลได้ — เป็นที่เดียวที่ประกาศรหัสห้องได้ */}
+        <button className="who" type="button" onClick={() => go(`/checkin/${m.id}`)}>
+          <span className="meta">
+            <b>{m.mode === 'online' ? 'Room & check-in' : 'Check-in console'}</b>
+            <span className="tag">
+              {m.mode === 'online' && !m.roomCode ? 'no room yet' : `${m.checkedIn} checked in`}
+            </span>
+          </span>
+          <Icon name="chev" size={13} />
+        </button>
       </div>
       <button className="btn ghost" type="button" onClick={onClose}>Cancel</button>
     </>
@@ -229,7 +236,7 @@ export function MatchesPage() {
   const orgDisputes = asOrg.filter(m => matchStateOf(m) === 'disputed')
   const refOpen = asRef.filter(isOpen)
 
-  const grouped: Record<RefBucket, MatchListItemDto[]> = { score: [], confirm: [], waiting: [] }
+  const grouped: Record<RefBucket, MatchListItemDto[]> = { room: [], score: [], confirm: [], waiting: [] }
   refOpen.forEach(m => { grouped[refBucketOf(m)].push(m) })
 
   return (

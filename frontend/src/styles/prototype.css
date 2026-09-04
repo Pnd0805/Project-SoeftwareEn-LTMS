@@ -148,7 +148,8 @@ body{background:
 .spread{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;}
-.refgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start;}
+/* auto-fit ไม่ใช่เลข 3 ตายตัว — ถังงานของกรรมการเพิ่มได้ (เพิ่ม 'Needs a room' มาแล้ว) */
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px;align-items:start;}
 @media(max-width:900px){.refgrid{grid-template-columns:1fr;}}
 .refcard{display:flex;}
 .refempty{padding:12px 0;font-size:15px;color:var(--bone-faint);}
