@@ -207,6 +207,18 @@ export function SEED(): State {
   })
   ;['t-byt', 't-cir', 't-rgu', 't-nqx'].forEach(id => REG(rovCup, id, 'approved', { at: daysAgo(12) }))
 
+  /* ── 5c · a LAN final: the same esports squads, but played on-site ──
+     บัญชีเดโมที่เป็นผู้เล่นทั้งสองใบอยู่ Byte Force ซึ่งเล่น VALORANT แบบ online
+     ล้วน แปลว่าไม่มีใครในหน้าเลือกบัญชีมีนัด on-site ให้ลองสแกน QR เลย
+     รายการนี้เป็นรอบชิงแบบ LAN ของกีฬาเดิม — ทีมเดิม ไม่ต้องแก้รายชื่อใคร
+     และได้เส้นทาง on-site ครบทั้งฝั่งผู้เล่นและกรรมการ */
+  const lan = TR({
+    id: 't-lan', name: 'VALORANT LAN Finals 2026', sport: 'VALORANT', format: 'single', channel: 'onsite',
+    status: 'public', organizer: 'u-org', venue: 'Main Stadium', date: '2026-03-28', cap: 4,
+    referees: ['u-ref', 'u-ref2'], rules: rules({ ageMin: 'any', ageMax: 'any' }),
+  })
+  ;['t-byt', 't-cir', 't-rgu', 't-nqx'].forEach(id => REG(lan, id, 'approved', { at: daysAgo(9) }))
+
   /* ── 6 · a request an admin has not answered ── */
   const chess = TR({
     id: 't-chs', name: 'Campus Chess Ladder', sport: 'Chess', format: 'roundrobin', channel: 'online',
@@ -313,6 +325,10 @@ export function SEED(): State {
      ประกาศรหัสห้องก่อน ซึ่งเป็นสิ่งที่เดโมต้องการ */
   draw(rovCup, 6)
   resolveByes(rovCup)
+
+  /* the LAN finals: drawn, nothing played — เส้นทาง on-site ที่ยังต้องเช็คอินด้วย QR */
+  draw(lan, 4)
+  resolveByes(lan)
 
   /* the VALORANT league: played to the end, champion crowned */
   const vlrMatches = draw(valorant, 80)
