@@ -75,6 +75,10 @@ function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef)
   /* ผลที่ยืนยันแล้วเปลี่ยนสายและแชมป์ ซึ่งอยู่ในโดเมนของสไลซ์ 2 */
   qc.invalidateQueries({ queryKey: ["tournament"] });
   qc.invalidateQueries({ queryKey: ["tournaments"] });
+  /* การกระทำเหล่านี้สร้างการแจ้งเตือนใน store (ประกาศรหัสห้อง ยืนยันผล ฯลฯ)
+     กระดิ่งบน Shell อ่านจาก ["notifications", userId] จึงต้องล้างด้วย ไม่งั้น
+     เลขไม่ขยับจนกว่าจะเปลี่ยนหน้า */
+  qc.invalidateQueries({ queryKey: ["notifications"] });
   void tournamentId;
 }
 
@@ -207,11 +211,21 @@ export function useResolveDispute(matchId: MatchRef, tournamentId?: MatchRef) {
   });
 }
 
+/**
+ * เช็คอินไม่ได้เปลี่ยนแค่รายชื่อ — `MatchDto.checkedIn` (ยอด "3 of 10") และสถานะ
+ * แมตช์ (`checkin_open`) อยู่บน detail คนละ key กัน ล้างแค่ checkins ยอดจะค้าง
+ */
+function touchCheckin(qc: QueryClient, matchId: MatchRef) {
+  qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) });
+  qc.invalidateQueries({ queryKey: matchKeys.all });
+  qc.invalidateQueries({ queryKey: ["matches"] });
+}
+
 export function useCheckin(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CheckinRequest) => matchApi.checkin(matchId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) }),
+    onSuccess: () => touchCheckin(qc, matchId),
   });
 }
 
@@ -220,7 +234,7 @@ export function useVerifyCheckin(matchId: MatchRef) {
   return useMutation({
     mutationFn: (v: { userId: number; input: VerifyCheckinRequest }) =>
       matchApi.verifyCheckin(matchId, v.userId, v.input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) }),
+    onSuccess: () => touchCheckin(qc, matchId),
   });
 }
 
@@ -241,6 +255,9 @@ export function useSetLivestream(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (url: string | null) => matchApi.setLivestream(matchId, url),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: matchKeys.all });
+      qc.invalidateQueries({ queryKey: ["matches"] });
+    },
   });
 }

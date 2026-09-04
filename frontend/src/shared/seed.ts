@@ -196,6 +196,17 @@ export function SEED(): State {
   })
   ;['t-nur', 't-bus', 't-edu', 't-spk'].forEach(id => REG(volley, id, 'approved'))
 
+  /* ── 5b · an online cup the demo referee runs, drawn but not played ──
+     เดโมของการแข่งแบบ online ต้องมีสักนัดที่ยังไม่เริ่ม เพื่อให้กรรมการได้ประกาศ
+     รหัสห้อง (แทน QR ที่ใช้ได้เฉพาะหน้างาน) แล้วผู้เล่นเห็นประกาศใน inbox
+     t-vlr จบไปแล้วและใช้กรรมการคนอื่น จึงต้องมีรายการนี้แยก */
+  const rovCup = TR({
+    id: 't-rov', name: 'ROV Online Clash 2026', sport: 'ROV', format: 'single', channel: 'online',
+    status: 'public', organizer: 'u-org', venue: 'Discord — LTMS Arena', date: '2026-03-20', cap: 8,
+    referees: ['u-ref', 'u-ref2'], rules: rules({ ageMin: 'any', ageMax: 'any' }),
+  })
+  ;['t-byt', 't-cir', 't-rgu', 't-nqx'].forEach(id => REG(rovCup, id, 'approved', { at: daysAgo(12) }))
+
   /* ── 6 · a request an admin has not answered ── */
   const chess = TR({
     id: 't-chs', name: 'Campus Chess Ladder', sport: 'Chess', format: 'roundrobin', channel: 'online',
@@ -296,6 +307,12 @@ export function SEED(): State {
     m.enteredBy = 'u-ref'
     m.checkedIn = [m.a, m.b].filter(Boolean).flatMap(tid => S.teams.find(t => t.id === tid)!.members)
   }
+
+  /* the ROV cup: drawn, nothing played — this is where the room-code flow is demoed.
+     ไม่มีการเรียก record() เลย รอบแรกจึงค้างเป็น scheduled และกรรมการยังต้อง
+     ประกาศรหัสห้องก่อน ซึ่งเป็นสิ่งที่เดโมต้องการ */
+  draw(rovCup, 6)
+  resolveByes(rovCup)
 
   /* the VALORANT league: played to the end, champion crowned */
   const vlrMatches = draw(valorant, 80)

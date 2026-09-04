@@ -44,6 +44,8 @@ function touchTeam(qc: QueryClient, teamId?: TeamRef) {
   }
   qc.invalidateQueries({ queryKey: teamKeys.mine });
   qc.invalidateQueries({ queryKey: teamKeys.myInvitations });
+  /* การกระทำเหล่านี้แจ้งเตือนผู้ใช้ — กระดิ่งบน Shell ต้องอ่านใหม่ */
+  qc.invalidateQueries({ queryKey: ["notifications"] });
 }
 
 // ══════════════ queries ══════════════

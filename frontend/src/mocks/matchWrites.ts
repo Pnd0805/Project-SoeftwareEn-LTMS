@@ -14,7 +14,7 @@
  *
  * ทั้งไฟล์ตายตอน `VITE_USE_MOCK=false`
  */
-import { commitStore, getState } from '../shared/store'
+import { commitStore, getState, notifyStore } from '../shared/store'
 import { me } from '../shared/selectors'
 import { winnerId } from '../shared/rules'
 import { findStoreMatch, numOf } from './storeBridge'
@@ -184,16 +184,41 @@ export function writeRejectCheckin(ref: MatchRef, userId: number): boolean {
   return true
 }
 
-/** จัดเวลาและสนาม (FR-MM-02) — SDS §S5 PATCH /matches/{id}/schedule */
+/** ผู้เล่นทุกคนของทั้งสองทีมในแมตช์นี้ — คนที่ต้องรู้เมื่อมีอะไรเปลี่ยน */
+function squadMembers(s: State, m: StoreMatch): string[] {
+  return [m.a, m.b]
+    .filter((x): x is string => !!x)
+    .flatMap(tid => s.teams.find(t => t.id === tid)?.members ?? [])
+}
+
+/**
+ * จัดเวลา สนาม และรหัสห้อง (FR-MM-02) — SDS §S5 PATCH /matches/{id}/schedule
+ *
+ * การแข่งแบบ online ไม่มี QR ให้สแกนที่หน้างาน กรรมการจึงประกาศรหัสห้องแทน
+ * และรหัสนั้นไร้ประโยชน์ถ้าผู้เล่นไม่รู้ — ประกาศแล้วต้องเด้งเข้า inbox ของทั้ง
+ * สองทีมทันที พร้อมลิงก์กลับมาที่แมตช์
+ */
 export function writeSchedule(
   ref: MatchRef,
   input: { kickoffAt?: string | null; venue?: string | null; roomCode?: string | null },
 ): boolean {
+  const s = getState()
   const m = findStoreMatch(ref)
   if (!m) return false
+  const roomBefore = m.roomCode ?? ''
   if (input.kickoffAt !== undefined) m.kickoff = input.kickoffAt ?? ''
   if (input.venue !== undefined) m.venue = input.venue ?? ''
   if (input.roomCode !== undefined) m.roomCode = input.roomCode ?? undefined
+
+  const roomAfter = m.roomCode ?? ''
+  if (roomAfter && roomAfter !== roomBefore) {
+    const t = s.tournaments.find(x => x.id === m.tour)
+    notifyStore(
+      squadMembers(s, m),
+      `ห้องแข่งของ ${t?.name ?? 'แมตช์'} เปิดแล้ว — รหัส ${roomAfter}`,
+      `/m/${m.id}`,
+    )
+  }
   commitStore()
   return true
 }

@@ -92,6 +92,8 @@ export function useReviewTournamentRequest() {
 function touchReferees(qc: ReturnType<typeof useQueryClient>, tid: TeamRef) {
   qc.invalidateQueries({ queryKey: adminKeys.referees(tid) });
   qc.invalidateQueries({ queryKey: adminKeys.coverage(tid) });
+  /* การกระทำเหล่านี้แจ้งเตือนผู้ใช้ — กระดิ่งบน Shell ต้องอ่านใหม่ */
+  qc.invalidateQueries({ queryKey: ["notifications"] });
 }
 
 export function useAppointReferee(tournamentId: TeamRef) {

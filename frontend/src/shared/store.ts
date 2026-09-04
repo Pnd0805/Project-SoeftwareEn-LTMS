@@ -53,6 +53,16 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
  */
 export const commitStore = () => commit()
 
+/**
+ * ให้ชั้น mock ส่งการแจ้งเตือนได้ — ท่อเหมือน `commitStore` ไม่ใช่ mutation ใหม่
+ *
+ * `matchWrites` ต้องแจ้งผู้เล่นเมื่อกรรมการประกาศรหัสห้อง ซึ่งเป็นเหตุการณ์ที่
+ * prototype ไม่เคยมี (เดิมไม่มีใครตั้งรหัสห้องได้เลย) จึงไม่มี action เดิมให้เรียก
+ * ไม่ commit ให้ — ผู้เรียกรวบไปกับการเขียนของตัวเองทีเดียว
+ */
+export const notifyStore = (userIds: (string | null | undefined)[], text: string, href = '') =>
+  notifyAll(userIds, text, href)
+
 /** Read the store. Components re-render when any action commits. */
 export function useLtms(): State {
   useSyncExternalStore(subscribe, () => version, () => version)
@@ -95,7 +105,15 @@ export function useToasts(): Toast[] {
 /* ───────── notifications ───────── */
 function notify(to: string | null | undefined, text: string, href = '') {
   if (!to) return
-  state.notifications.unshift({ id: uid('n'), to, text, href, at: NOW(), read: false })
+  /**
+   * เวลาจริง ไม่ใช่ NOW() ของ seed
+   *
+   * NOW() ตรึงไว้ที่ 2026-02-08 เพื่อให้ข้อมูลตัวอย่างมีเส้นเวลาคงที่ แต่ inbox
+   * คำนวณ "เมื่อไหร่" เทียบกับ Date.now() จริง ประกาศที่เพิ่งกดจึงขึ้นว่า
+   * "6mo ago" ทันทีที่สร้าง — ของที่ seed ใส่มาเองส่ง `at` ของตัวเองอยู่แล้ว
+   * บรรทัดนี้จึงกระทบเฉพาะการกระทำสดในเดโม
+   */
+  state.notifications.unshift({ id: uid('n'), to, text, href, at: Date.now(), read: false })
 }
 const notifyAll = (ids: (string | null | undefined)[], text: string, href = '') =>
   [...new Set(ids.filter(Boolean))].forEach(id => notify(id, text, href))
