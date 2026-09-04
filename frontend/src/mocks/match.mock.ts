@@ -87,9 +87,11 @@ const noPowers: MatchViewerContext["can"] = {
 const viewer = (
   roles: MatchViewerContext["roles"],
   can: Partial<MatchViewerContext["can"]> = {},
-  extra: Partial<Pick<MatchViewerContext, "myTeamId" | "isTeamLeader">> = {},
+  extra: Partial<Pick<MatchViewerContext, "myUserId" | "myTeamId" | "isTeamLeader">> = {},
 ): MatchViewerContext => ({
   roles,
+  /* fixture สมมติว่าเราคือ mockPlayers[1] เว้นแต่ระบุเอง */
+  myUserId: extra.myUserId ?? 1,
   myTeamId: extra.myTeamId ?? null,
   isTeamLeader: extra.isTeamLeader ?? false,
   can: { ...noPowers, ...can },

@@ -13,13 +13,14 @@
  * ที่พิมพ์/ที่จำลองว่าสแกนได้ กับ `expectedToken` ตรงๆ ของจริงต้องต่อ
  * BarcodeDetector หรือ zxing แล้วอ่านจากเฟรมวิดีโอ — จุดต่อคือ `onScanned`
  *
- * กล้องเปิดด้วย getUserMedia จริง ถ้าเครื่องไม่มีกล้องหรือผู้ใช้ไม่อนุญาต จะตกไป
- * ใช้การเลือกไฟล์แทน ทั้งสองทางให้ผลเหมือนกัน — เดโมจึงไม่ตันเพราะสิทธิ์กล้อง
+ * กล้องเปิดด้วย getUserMedia จริง ถ้าเครื่องไม่มีกล้องหรือผู้ใช้ไม่อนุญาต **ไม่มี**
+ * ทางให้แนบไฟล์แทน — UC-04 E2b กำหนดว่าเมื่อกล้องใช้ไม่ได้ ให้กรรมการยืนยันด้วย
+ * ตนเองแล้วบันทึกเป็นข้อยกเว้นพร้อมเหตุผล ซึ่งสมเหตุสมผล เพราะไฟล์ที่แนบมาจะเป็น
+ * รูปเมื่อไหร่ก็ได้ ไม่ได้พิสูจน์ว่าคนนั้นอยู่ตรงนั้นตอนนี้จริง (ดู ManualVerifyModal)
  */
 import { useEffect, useRef, useState } from 'react'
 import { Badge, Banner, Field } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
-import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
 
 /**
  * เปิดกล้อง ถ้าไม่ได้ก็บอกเหตุผลแล้วให้เลือกไฟล์แทน
@@ -177,6 +178,8 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
   const [shot, setShot] = useState<string | null>(null)
   const [docType, setDocType] = useState<'student_id' | 'national_id'>('student_id')
   const [bad, setBad] = useState<string | null>(null)
+  /* UC-04 online ขั้นที่ 2 — จัดเก็บภาพต้องมาพร้อมการบันทึกความยินยอม (DC-08, PDPA) */
+  const [consent, setConsent] = useState(false)
 
   const capture = async () => {
     const v = videoRef.current
@@ -190,12 +193,6 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
     ctx.drawImage(v, 0, 0, canvas.width, canvas.height)
     setBad(null)
     setShot(canvas.toDataURL('image/jpeg', 0.8))
-  }
-
-  const pickFile = async (file: File | undefined) => {
-    if (!file) return
-    try { setBad(null); setShot(await shrinkImage(file, 640)) }
-    catch (e) { setBad(e instanceof Error ? e.message : 'อ่านไฟล์ไม่ได้') }
   }
 
   return (
@@ -223,7 +220,10 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
       </div>
 
       {error && !shot ? (
-        <Banner kind="warn"><b>เปิดกล้องไม่ได้</b> — {error} เลือกรูปจากเครื่องแทนได้</Banner>
+        <Banner kind="crit">
+          <b>เปิดกล้องไม่ได้</b> — {error}{' '}
+          แนบไฟล์แทนไม่ได้ตามข้อกำหนด ให้แจ้งกรรมการยืนยันตัวตนให้ที่หน้างานแทน (UC-04 E2b)
+        </Banner>
       ) : null}
       {bad ? <Banner kind="crit">{bad}</Banner> : null}
 
@@ -235,20 +235,23 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
         </select>
       </Field>
 
-      <input id="id-file" type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }}
-        onChange={e => { void pickFile(e.target.files?.[0]); e.target.value = '' }} />
+      <label className="hstack" style={{ gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
+        <span className="sub">
+          ยินยอมให้จัดเก็บภาพนี้เพื่อยืนยันตัวตน และเข้าใจว่าภาพจะถูกลบเมื่อการแข่งขันสิ้นสุด
+          (เห็นได้เฉพาะกรรมการของแมตช์และผู้ดูแลระบบ)
+        </span>
+      </label>
 
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
         {shot ? (
           <button className="btn" type="button" onClick={() => setShot(null)}>ถ่ายใหม่</button>
         ) : (
-          <>
-            <label className="btn ghost" htmlFor="id-file" style={{ cursor: 'pointer' }}>เลือกไฟล์แทน</label>
-            <button className="btn" type="button" disabled={!ready} onClick={() => void capture()}>ถ่ายรูป</button>
-          </>
+          <button className="btn" type="button" disabled={!ready} onClick={() => void capture()}>ถ่ายรูป</button>
         )}
-        <button className="btn primary" type="button" disabled={!shot || pending}
+        <button className="btn primary" type="button" disabled={!shot || !consent || pending}
+          title={consent ? undefined : 'ต้องให้ความยินยอมก่อนส่งภาพ'}
           onClick={() => shot && onSubmit({ photo: shot, documentType: docType })}>
           {pending ? 'กำลังส่ง…' : 'ส่งให้กรรมการตรวจ'}
         </button>
@@ -304,6 +307,53 @@ function ReviewPhotoBody({ onClose, playerName, photo, onDecide, pending }: Revi
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => onDecide(true)}>
           {pending ? 'กำลังบันทึก…' : 'อนุมัติ'}
+        </button>
+      </div>
+    </>
+  )
+}
+
+// ══════════════ UC-04 E2b — กรรมการยืนยันด้วยตนเอง ══════════════
+
+/**
+ * ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันตัวตนหน้างานแล้วบันทึกเป็นข้อยกเว้น
+ * ต้องมีเหตุผลเสมอ เพราะเป็นการข้ามหลักฐานที่ระบบเก็บไว้ตรวจสอบย้อนหลังได้
+ */
+interface ManualProps {
+  open: boolean
+  onClose: () => void
+  playerName: string
+  onConfirm: (reason: string) => void
+  pending: boolean
+}
+
+export function ManualVerifyModal(props: ManualProps) {
+  return (
+    <Modal open={props.open} onClose={props.onClose} label="ยืนยันด้วยตนเอง"
+      title={props.playerName}>
+      {props.open ? <ManualVerifyBody {...props} /> : null}
+    </Modal>
+  )
+}
+
+function ManualVerifyBody({ onClose, onConfirm, pending }: ManualProps) {
+  const [reason, setReason] = useState('')
+  return (
+    <>
+      <Banner kind="warn">
+        <b>ใช้เมื่อกล้องหรือสัญญาณใช้ไม่ได้เท่านั้น</b>{' '}
+        คุณกำลังรับรองว่าตรวจบัตรของผู้เล่นคนนี้ด้วยตาที่หน้างานแล้ว — บันทึกนี้ตรวจสอบ
+        ย้อนหลังได้ จึงต้องระบุเหตุผล
+      </Banner>
+      <Field label="เหตุผล" htmlFor="manual-why">
+        <input id="manual-why" value={reason} onChange={e => setReason(e.target.value)}
+          placeholder="เช่น กล้องของผู้เล่นเสีย ตรวจบัตรนักศึกษาที่หน้างานแล้ว" />
+      </Field>
+      <div className="hstack">
+        <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
+        <button className="btn primary" type="button" disabled={pending || !reason.trim()}
+          onClick={() => onConfirm(reason.trim())}>
+          {pending ? 'กำลังบันทึก…' : 'ยืนยันว่าตรวจแล้ว'}
         </button>
       </div>
     </>

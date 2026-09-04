@@ -20,7 +20,7 @@ import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../
 import { useMatch, useCheckins, useCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
 import { TeamMarkView } from '../../components/kit/chips'
-import { IdPhotoModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
+import { IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
 
 /** A stable-ish seed so the drawn code looks like the token it stands for. */
@@ -42,6 +42,8 @@ function SquadPanel({ m, team, checkins }: {
   const [capture, setCapture] = useState<number | null>(null)
   /** รูปที่กรรมการกำลังตรวจ */
   const [review, setReview] = useState<{ userId: number; name: string; photo: string | null } | null>(null)
+  /** UC-04 E2b — กรรมการยืนยันแทนเมื่อกล้องใช้ไม่ได้ */
+  const [manual, setManual] = useState<{ userId: number; name: string } | null>(null)
 
   const closeCapture = () => setCapture(null)
 
@@ -57,7 +59,13 @@ function SquadPanel({ m, team, checkins }: {
           <tbody>
             {team.players.map(p => {
               const c = checkins.find(x => x.user.id === p.id)
-              const isMe = m.viewer.myTeamId === team.id
+              /* UC-04 บังคับว่าเป็นตัวเองเท่านั้น — on-site "สแกนขณะเข้าสู่ระบบด้วย
+                 บัญชีตนเอง" · online "ถ่ายภาพตนเองคู่บัตร" เทียบที่ผู้ใช้ ไม่ใช่ที่ทีม
+                 (เดิมเทียบ myTeamId === team.id ซึ่งแปลว่าใครก็ได้ในทีมทำแทนกันได้)
+
+                 ใช้ `viewer.myUserId` ที่ server บอกมา ไม่ใช่ id จาก useMe() เพราะ
+                 บัญชีเดโมกับรายชื่อผู้เล่นมาคนละชุด id */
+              const isMe = m.viewer.myUserId !== null && p.id === m.viewer.myUserId
               return (
                 <tr key={p.id}>
                   <td>
@@ -88,6 +96,13 @@ function SquadPanel({ m, team, checkins }: {
                       <button className="btn primary" type="button"
                         onClick={() => setReview({ userId: p.id, name: p.fullName, photo: c.documentS3Key })}>
                         Review photo
+                      </button>
+                    ) : !c && isRef ? (
+                      /* UC-04 E2b — ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันเองแล้ว
+                         บันทึกเป็นข้อยกเว้นพร้อมเหตุผล */
+                      <button className="btn ghost" type="button"
+                        onClick={() => setManual({ userId: p.id, name: p.fullName })}>
+                        Verify by hand
                       </button>
                     ) : c && c.status === 'success' && isRef ? (
                       <button className="btn danger" type="button" disabled={verify.isPending}
@@ -131,6 +146,21 @@ function SquadPanel({ m, team, checkins }: {
           checkin.mutate(
             { method: 'photo_online', userId: capture, documentType, documentS3Key: photo },
             { onSuccess: closeCapture },
+          )
+        }}
+      />
+
+      <ManualVerifyModal
+        open={!!manual}
+        onClose={() => setManual(null)}
+        playerName={manual?.name ?? ''}
+        pending={checkin.isPending}
+        onConfirm={(reason: string) => {
+          if (!manual) return
+          /* เหตุผลถูกเก็บเป็นหลักฐานแทนภาพ — ช่องเดียวกับที่ปกติเก็บรูป */
+          checkin.mutate(
+            { method: 'manual_by_referee', userId: manual.userId, documentS3Key: reason },
+            { onSuccess: () => setManual(null) },
           )
         }}
       />

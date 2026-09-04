@@ -102,6 +102,7 @@ function viewerOf(s: State, m: StoreMatch): MatchViewerContext {
 
   return {
     roles,
+    myUserId: u ? numOf(u.id) : null,
     myTeamId: myTeam ? numOf(myTeam) : null,
     isTeamLeader: anyLeader,
     can: {

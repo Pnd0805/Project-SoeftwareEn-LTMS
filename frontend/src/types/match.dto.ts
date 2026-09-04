@@ -155,6 +155,14 @@ export type MatchViewerRole = "referee" | "player" | "organizer";
  */
 export interface MatchViewerContext {
   roles: MatchViewerRole[];
+  /**
+   * id ของผู้ที่กำลังดูอยู่ ในชุด id เดียวกับ `MatchTeamRef.players[].id`
+   *
+   * UC-04 บังคับว่าเช็คอินได้เฉพาะบัญชีตนเอง ("สแกนขณะเข้าสู่ระบบด้วยบัญชีตนเอง"
+   * และ "ถ่ายภาพตนเองคู่บัตร") หน้าจอจึงต้องเทียบรายบุคคล ไม่ใช่เทียบว่าอยู่ทีมไหน
+   * ให้ server เป็นคนบอก เพราะ id ของ `me` กับ id ในรายชื่อผู้เล่นอาจมาคนละทาง
+   */
+  myUserId: number | null;
   /** ทีมของเราในแมตช์นี้ — null ถ้าไม่ได้ลงเล่น */
   myTeamId: number | null;
   /** เป็นหัวหน้าทีมของทีมที่ลงแมตช์นี้ */
