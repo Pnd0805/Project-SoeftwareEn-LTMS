@@ -10,6 +10,8 @@ import { Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { visibleTo } from '../../shared/selectors'
+import { TeamCrestView } from '../../components/kit/chips'
+import { toTeamView } from '../../components/kit/viewModels'
 import { formatName, teamReady } from '../../shared/rules'
 import { useMe } from '../../hooks/useAuth'
 import { useSearchUsers } from '../../hooks/useUser'
@@ -72,7 +74,7 @@ export function SearchPage() {
           <span className="tag"><em>//</em> Squads · {teams.length}</span>
           {teams.map(t => (
             <button className="who" type="button" key={t.id} onClick={() => navigate(`/team/${t.id}`)}>
-              <span className="avatar" style={{ background: t.color }}>{t.code}</span>
+              <TeamCrestView team={toTeamView(t)} size={24} />
               <span className="meta">
                 <b>{t.name}</b>
                 <span className="tag">{t.sport ?? 'no sport named'} · {teamReady(t) ? 'Ready' : 'Forming'} · {t.members.length} players</span>

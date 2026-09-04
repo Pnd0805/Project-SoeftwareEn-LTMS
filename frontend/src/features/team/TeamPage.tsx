@@ -10,6 +10,8 @@ import { Icon } from '../../components/kit/Icon'
 import { TeamLink } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
 import { team, tour, user } from '../../shared/selectors'
+import { TeamCrestView } from '../../components/kit/chips'
+import { toTeamView } from '../../components/kit/viewModels'
 import { ageOf, fmtDate, leaderboard, minSquad, statLabels, teamReady } from '../../shared/rules'
 import { teamBySport } from '../../shared/career'
 import { useMe } from '../../hooks/useAuth'
@@ -61,11 +63,7 @@ export function TeamPage() {
 
       <div className="spread">
         <span className="hstack" style={{ gap: 16 }}>
-          <span style={{
-            width: 64, height: 64, flex: 'none', display: 'grid', placeItems: 'center', background: t.color,
-            color: 'var(--void)', fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 24,
-            clipPath: 'polygon(0 0,100% 0,100% 74%,74% 100%,0 100%)',
-          }}>{t.code}</span>
+          <TeamCrestView team={toTeamView(t)} size={64} />
           <span className="vstack" style={{ gap: 5 }}>
             <span className="disp" style={{ fontSize: 32 }}>{t.name}</span>
             <span className="hstack">

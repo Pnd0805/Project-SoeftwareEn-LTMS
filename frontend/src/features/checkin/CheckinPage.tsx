@@ -19,6 +19,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../components/kit/primitives'
 import { useMatch, useCheckins, useCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
+import { TeamMarkView } from '../../components/kit/chips'
+import { toTeamView } from '../match/matchView'
 
 /** A stable-ish seed so the drawn code looks like the token it stands for. */
 const hashCode = (str: string) => {
@@ -38,7 +40,7 @@ function SquadPanel({ m, team, checkins }: {
   return (
     <Panel quiet>
       <div className="spread">
-        <span className="tchip"><i style={{ background: team.color ?? 'var(--hairline)' }} /><b>{team.name}</b></span>
+        <span className="tchip"><TeamMarkView team={toTeamView(team)} /><b>{team.name}</b></span>
         <span className="tag">{inCount} of {team.players.length} in</span>
       </div>
       <TableWrap>

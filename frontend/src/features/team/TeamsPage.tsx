@@ -9,7 +9,8 @@ import { useState } from 'react'
 import { Badge, Banner, Empty, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { Modal, ConfirmCard } from '../../components/kit/Modal'
-import { PlayerLink } from '../../components/kit/chips'
+import { PlayerLink, TeamCrestView, TeamMarkView } from '../../components/kit/chips'
+import { toTeamView } from '../../components/kit/viewModels'
 import {
   answerInvite, createTeam, disbandTeam, invitePlayer, kickPlayer, requestPermanent, requestWithdraw,
   transferLeader, useLtms,
@@ -83,24 +84,6 @@ function InviteModal({ tm, open, onClose }: { tm: Team | null; open: boolean; on
   )
 }
 
-
-/** ตราประจำทีม — ใช้โลโก้ถ้ามี ไม่มีก็ใช้รหัสทีมบนสีประจำทีมเหมือนเดิม */
-function TeamCrest({ t, size = 32 }: { t: Team; size?: number }) {
-  const shape = {
-    width: size, height: size, flex: 'none' as const, display: 'grid' as const,
-    placeItems: 'center' as const, background: t.color, color: 'var(--void)',
-    fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: Math.round(size * 0.4),
-    clipPath: 'polygon(0 0,100% 0,100% 74%,74% 100%,0 100%)',
-    overflow: 'hidden' as const,
-  }
-  return (
-    <span style={shape}>
-      {t.logo
-        ? <img src={t.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : t.code}
-    </span>
-  )
-}
 
 /**
  * ตั้งหรือถอดโลโก้ทีม (FR-TM-04)
@@ -176,7 +159,7 @@ export function TeamsPage() {
             return (
               <div className="vstack" style={{ gap: 9 }} key={i.id}>
                 <div className="hstack">
-                  <span className="tchip"><i style={{ background: tm.color }} /><b>{tm.name}</b></span>
+                  <span className="tchip"><TeamMarkView team={toTeamView(tm)} /><b>{tm.name}</b></span>
                   <span className="sub">{user(s, tm.leader)?.name} invited you</span>
                 </div>
                 <Banner kind="warn" icon="team">
@@ -203,7 +186,7 @@ export function TeamsPage() {
           <Panel key={t.id}>
             <div className="spread">
               <span className="hstack" style={{ gap: 12 }}>
-                <TeamCrest t={t} />
+                <TeamCrestView team={toTeamView(t)} />
                 <span className="disp" style={{ fontSize: 21 }}>{t.name}</span>
                 <span className="tag">{t.code}</span>
               </span>

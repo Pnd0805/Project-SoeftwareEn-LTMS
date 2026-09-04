@@ -23,10 +23,33 @@ import type { Team } from '../../shared/types'
 
 // ══════════════ ชั้น View — ไม่แตะ store ══════════════
 
-export function TeamMarkView({ team: t }: { team: TeamView }) {
+export function TeamMarkView({ team: t }: { team?: TeamView | null }) {
+  if (!t) return <i style={{ background: 'var(--hairline)' }} />
   return t.logoUrl
     ? <img src={t.logoUrl} alt="" width={16} height={16} style={{ borderRadius: 4, objectFit: 'cover', flex: '0 0 auto' }} />
     : <i style={{ background: t.color ?? 'var(--hairline)' }} />
+}
+
+/**
+ * ตราประจำทีมแบบสี่เหลี่ยม — ใช้โลโก้ถ้าหัวหน้าทีมตั้งไว้ ไม่มีก็รหัสทีมบนสีประจำทีม
+ *
+ * ตัวเดียวสำหรับทุกที่ที่เคยวาดกล่องสีเองแล้วลืมรองรับรูป (หน้าทีม หน้าค้นหา
+ * หน้าเช็คอิน พาเนลอนุมัติใบสมัคร) — เพิ่มโลโก้ที่เดียวแล้วขึ้นครบทุกจอ
+ */
+export function TeamCrestView({ team: t, size = 32 }: { team?: TeamView | null; size?: number }) {
+  if (!t) return <span className="avatar" style={{ width: size, height: size }}>?</span>
+  return (
+    <span style={{
+      width: size, height: size, flex: 'none', display: 'grid', placeItems: 'center',
+      background: t.color ?? 'var(--hairline)', color: 'var(--void)',
+      fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: Math.round(size * 0.4),
+      clipPath: 'polygon(0 0,100% 0,100% 74%,74% 100%,0 100%)', overflow: 'hidden',
+    }}>
+      {t.logoUrl
+        ? <img src={t.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : t.code}
+    </span>
+  )
 }
 
 export function TeamChipView({ team: t }: { team?: TeamView | null }) {

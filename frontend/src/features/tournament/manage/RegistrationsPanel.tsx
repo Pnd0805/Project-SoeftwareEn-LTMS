@@ -20,7 +20,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Field, Panel, TableWrap } from '../../../components/kit/primitives'
-import { TeamLink } from '../../../components/kit/chips'
+import { TeamCrestView, TeamLink } from '../../../components/kit/chips'
+import { toTeamView } from '../../../components/kit/viewModels'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import {
@@ -144,9 +145,9 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
               const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
               return (
                 <div className="who" key={r.key}>
-                  <span className="avatar" style={tm ? { background: tm.color } : undefined}>
-                    {tm?.code ?? r.teamName.slice(0, 3).toUpperCase()}
-                  </span>
+                  <TeamCrestView size={24} team={tm
+                    ? toTeamView(tm)
+                    : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} />
                   <span className="meta">
                     <b>{r.teamName}</b>
                     <span className="tag">
@@ -209,9 +210,9 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
                 const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
                 return (
                   <div className="who" key={r.key}>
-                    <span className="avatar" style={tm ? { background: tm.color } : undefined}>
-                      {tm?.code ?? r.teamName.slice(0, 3).toUpperCase()}
-                    </span>
+                    <TeamCrestView size={24} team={tm
+                      ? toTeamView(tm)
+                      : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} />
                     <span className="meta">
                       <b>{r.teamName}</b>
                       <span className="tag">
