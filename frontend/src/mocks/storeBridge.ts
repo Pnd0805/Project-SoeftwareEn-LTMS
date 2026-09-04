@@ -31,7 +31,8 @@ import { isOrg, me, team, tour } from '../shared/selectors'
 import { NOW, formatOf, leaderboard, scoreUnit, winnerId } from '../shared/rules'
 import type { Match as StoreMatch, State, Team as StoreTeam } from '../shared/types'
 import type {
-  MatchDto, MatchListItemDto, MatchResultDto, MatchTeamRef, MatchViewerContext,
+  MatchCheckinDto, MatchDto, MatchListItemDto, MatchResultDto, MatchTeamRef,
+  MatchViewerContext, PlayerMatchStatDto,
   MatchViewerRole, PlayerRef, StandingsDto, StandingsFormat, FormResult,
 } from '../types/match.dto'
 
@@ -211,6 +212,49 @@ export function findStoreTournamentMatches(ref: MatchRef): StoreMatch[] {
   const raw = String(ref)
   const t = s.tournaments.find(x => x.id === raw) ?? s.tournaments.find(x => numOf(x.id) === Number(ref))
   return t ? s.matches.filter(m => m.tour === t.id) : []
+}
+
+/**
+ * สถิติรายคนของแมตช์ในรูป DTO — สร้างจาก `m.stats` ที่ `matchWrites` เขียนไว้
+ * store เก็บ goals/assists เป็นช่องตรง ที่เหลืออยู่ใน `x` จึงต้องรวมกลับเป็น values
+ */
+export function storeStatDtos(ref: MatchRef): PlayerMatchStatDto[] {
+  const s = getState()
+  const m = findStoreMatch(ref)
+  if (!m) return []
+  return Object.entries(m.stats).map(([uid, st], i) => ({
+    id: numOf(m.id) + 1000 + i,
+    matchId: numOf(m.id),
+    player: asPlayer(s, uid) ?? { id: 0, fullName: '—', avatarUrl: null },
+    teamId: st.team ? numOf(st.team) : 0,
+    recordedByReferee: asPlayer(s, m.enteredBy ?? m.refs[0] ?? null) ?? { id: 0, fullName: '—', avatarUrl: null },
+    values: { goals: st.goals, assists: st.assists, ...st.x },   // x ทับได้ เพราะเก็บด้วย statKey จริง
+    createdAt: MOCK_NOW,
+  }))
+}
+
+/**
+ * การเช็คอินในรูป DTO — store เก็บแค่รายชื่อคนที่เช็คอินแล้ว ไม่มีวิธีหรือเอกสาร
+ * จึงรายงานเป็น qr_onsite/success ตามเส้นทางปกติ ส่วน exception ยังต้องใช้ fixture
+ */
+export function storeCheckinDtos(ref: MatchRef): MatchCheckinDto[] {
+  const s = getState()
+  const m = findStoreMatch(ref)
+  if (!m) return []
+  const online = tour(s, m.tour)?.channel === 'online'
+  return m.checkedIn.map((uid, i) => ({
+    id: numOf(m.id) + 2000 + i,
+    matchId: numOf(m.id),
+    user: asPlayer(s, uid) ?? { id: 0, fullName: '—', avatarUrl: null },
+    method: online ? ('photo_online' as const) : ('qr_onsite' as const),
+    status: 'success' as const,
+    rejectionReason: null,
+    documentType: null,
+    documentS3Key: null,
+    verifiedByReferee: asPlayer(s, m.refs[0] ?? null),
+    checkedInAt: MOCK_NOW,
+    verifiedAt: MOCK_NOW,
+  }))
 }
 
 /**

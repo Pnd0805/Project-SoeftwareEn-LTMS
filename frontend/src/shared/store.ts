@@ -43,6 +43,16 @@ function commit() {
 }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 
+/**
+ * เปิด `commit` ให้ชั้น mock เรียกได้ — ไม่ใช่ mutation ใหม่ แต่เป็นท่อ
+ *
+ * `src/mocks/matchWrites.ts` เขียนผลการแข่งขันลง state ตรงๆ เพราะฝั่งอ่าน
+ * (`storeBridge`) ก็อ่านจาก state เดียวกัน ถ้าเขียนลงอาร์เรย์แยกจะได้สองแหล่ง
+ * ความจริงที่ไม่มีวันตรงกัน — แต่เขียนแล้วต้องบอกให้จอวาดใหม่และบันทึกลงเครื่อง
+ * ซึ่งเป็นหน้าที่ของ commit() ตัวนี้ ตายพร้อมชั้น mock ตอน VITE_USE_MOCK=false
+ */
+export const commitStore = () => commit()
+
 /** Read the store. Components re-render when any action commits. */
 export function useLtms(): State {
   useSyncExternalStore(subscribe, () => version, () => version)

@@ -33,8 +33,9 @@ import type {
 } from "../types/match.dto";
 import type { StatDefinition } from "../types/dto";
 import {
-  findStoreMatch, findStoreStandings, findStoreTournamentMatches, numOf, storeState,
-  toListItem, toMatchDto, toResultDto, type MatchRef,
+  findStoreMatch, findStoreStandings, findStoreTournamentMatches, numOf,
+  storeCheckinDtos, storeState, storeStatDtos, toListItem, toMatchDto, toResultDto,
+  type MatchRef,
 } from "../mocks/storeBridge";
 import {
   mockMatches,
@@ -46,6 +47,36 @@ import {
   mockPlayers,
   takeNextMockId,
 } from "../mocks/match.mock";
+import {
+  writeCheckin, writeDispute, writeLivestream, writeMatchReferees, writeRejectCheckin,
+  writeResolve, writeResult, writeSchedule, writeStats, writeVerify,
+} from "../mocks/matchWrites";
+
+/**
+ * สร้าง DTO กลับจาก store หลังเขียนเสร็จ — ผู้เรียกได้ของที่ตรงกับสิ่งที่เพิ่งบันทึก
+ * ไม่ใช่ของที่ค้างอยู่ในอาร์เรย์เขียนมือ
+ */
+const storeMatchDto = (ref: MatchRef): MatchDto | null => {
+  const sm = findStoreMatch(ref);
+  return sm ? toMatchDto(storeState(), sm) : null;
+};
+/** scoreData เป็น Record<string, unknown> ตามสัญญา — คลี่ให้เป็นตัวเลขก่อนเขียน store */
+const asScore = (d: Record<string, unknown> | null | undefined) => {
+  if (!d) return undefined;
+  const dec = d.decider as Record<string, unknown> | undefined;
+  return {
+    a: typeof d.a === "number" ? d.a : null,
+    b: typeof d.b === "number" ? d.b : null,
+    decider: dec && typeof dec.a === "number" && typeof dec.b === "number"
+      ? { a: dec.a, b: dec.b, kind: String(dec.kind ?? "Decider") }
+      : null,
+  };
+};
+
+const storeResultDto = (ref: MatchRef): MatchResultDto | null => {
+  const sm = findStoreMatch(ref);
+  return sm ? toResultDto(storeState(), sm) : null;
+};
 
 const notFound = <T>(what: string): Promise<T> =>
   mockReject<T>(404, { code: "NOT_FOUND", message: `ไม่พบ${what}ที่ต้องการ` });
@@ -101,6 +132,12 @@ export async function getMyMatches(): Promise<{ items: MatchListItemDto[] }> {
 /** TODO(guide): PATCH /matches/:id — จัดตาราง/สนาม/เวลาเปิดเช็คอิน (FixturePage) */
 export async function updateMatch(matchId: MatchRef, input: UpdateMatchRequest): Promise<MatchDto> {
   if (USE_MOCK) {
+    if (writeSchedule(matchId, {
+      kickoffAt: input.scheduledTime, venue: input.venue, roomCode: input.roomCode,
+    })) {
+      const d = storeMatchDto(matchId);
+      if (d) return mockDelay(d);
+    }
     const m = mockMatches.find((x) => x.id === Number(matchId));
     if (!m) return notFound<MatchDto>("แมตช์");
     Object.assign(m, input, { updatedAt: new Date().toISOString() });
@@ -115,6 +152,10 @@ export async function updateMatch(matchId: MatchRef, input: UpdateMatchRequest):
  */
 export async function setLivestream(matchId: MatchRef, url: string | null): Promise<MatchDto> {
   if (USE_MOCK) {
+    if (writeLivestream(matchId, url)) {
+      const d = storeMatchDto(matchId);
+      if (d) return mockDelay(d);
+    }
     const m = mockMatches.find((x) => x.id === Number(matchId));
     if (!m) return notFound<MatchDto>("แมตช์");
     m.livestreamUrl = url;
@@ -130,6 +171,10 @@ export async function setLivestream(matchId: MatchRef, url: string | null): Prom
  */
 export async function assignReferees(matchId: MatchRef, refereeUserIds: number[]): Promise<MatchDto> {
   if (USE_MOCK) {
+    if (writeMatchReferees(matchId, refereeUserIds)) {
+      const d = storeMatchDto(matchId);
+      if (d) return mockDelay(d);
+    }
     const m = mockMatches.find((x) => x.id === Number(matchId));
     if (!m) return notFound<MatchDto>("แมตช์");
     m.referees = m.availableReferees.filter((r) => refereeUserIds.includes(r.id));
@@ -162,6 +207,11 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
  */
 export async function submitResult(matchId: MatchRef, input: SubmitResultRequest): Promise<MatchResultDto> {
   if (USE_MOCK) {
+    /* แมตช์จาก seed เขียนกลับ store — ที่เดียวกับที่ฝั่งอ่านใช้ */
+    if (writeResult(matchId, asScore(input.scoreData) ?? { a: null, b: null, decider: null })) {
+      const r = storeResultDto(matchId);
+      if (r) return mockDelay(r);
+    }
     const existing = mockResults.find((x) => x.matchId === Number(matchId));
     if (existing) {
       Object.assign(existing, input, { status: "submitted" as const });
@@ -197,6 +247,10 @@ export async function submitResult(matchId: MatchRef, input: SubmitResultRequest
 /** TODO(guide): POST /matches/:id/result/verify */
 export async function verifyResult(matchId: MatchRef, input: VerifyResultRequest = {}): Promise<MatchResultDto> {
   if (USE_MOCK) {
+    if (writeVerify(matchId)) {
+      const r = storeResultDto(matchId);
+      if (r) return mockDelay(r);
+    }
     const r = mockResults.find((x) => x.matchId === Number(matchId));
     if (!r) return notFound<MatchResultDto>("ผลการแข่งขัน");
     r.status = "verified";
@@ -214,6 +268,10 @@ export async function verifyResult(matchId: MatchRef, input: VerifyResultRequest
  */
 export async function disputeResult(matchId: MatchRef, input: DisputeResultRequest): Promise<MatchResultDto> {
   if (USE_MOCK) {
+    if (writeDispute(matchId, input.reason)) {
+      const r = storeResultDto(matchId);
+      if (r) return mockDelay(r);
+    }
     const r = mockResults.find((x) => x.matchId === Number(matchId));
     if (!r) return notFound<MatchResultDto>("ผลการแข่งขัน");
     r.status = "disputed";
@@ -230,6 +288,10 @@ export async function disputeResult(matchId: MatchRef, input: DisputeResultReque
 /** TODO(guide): POST /matches/:id/result/resolve — Organizer/Admin เท่านั้น */
 export async function resolveDispute(matchId: MatchRef, input: ResolveDisputeRequest): Promise<MatchResultDto> {
   if (USE_MOCK) {
+    if (writeResolve(matchId, asScore(input.scoreData))) {
+      const r = storeResultDto(matchId);
+      if (r) return mockDelay(r);
+    }
     const r = mockResults.find((x) => x.matchId === Number(matchId));
     if (!r) return notFound<MatchResultDto>("ผลการแข่งขัน");
     r.status = "verified";
@@ -250,6 +312,9 @@ export async function resolveDispute(matchId: MatchRef, input: ResolveDisputeReq
 /** TODO(guide): GET /matches/:id/checkins */
 export async function getCheckins(matchId: MatchRef): Promise<{ items: MatchCheckinDto[] }> {
   if (USE_MOCK) {
+    /* แมตช์จาก seed อ่านจาก store — ที่เดียวกับที่ฝั่งเขียนใช้ */
+    const fromStore = storeCheckinDtos(matchId);
+    if (fromStore.length) return mockDelay({ items: fromStore });
     return mockDelay({ items: mockCheckins.filter((c) => c.matchId === Number(matchId)) });
   }
   return apiFetch(`/matches/${matchId}/checkins`);
@@ -258,6 +323,10 @@ export async function getCheckins(matchId: MatchRef): Promise<{ items: MatchChec
 /** TODO(guide): POST /matches/:id/checkin */
 export async function checkin(matchId: MatchRef, input: CheckinRequest): Promise<MatchCheckinDto> {
   if (USE_MOCK) {
+    if (writeCheckin(matchId, input.userId)) {
+      const c = storeCheckinDtos(matchId).find((x) => x.user.id === (input.userId ?? x.user.id));
+      if (c) return mockDelay(c);
+    }
     const created: MatchCheckinDto = {
       id: takeNextMockId(),
       matchId: Number(matchId),
@@ -284,6 +353,12 @@ export async function verifyCheckin(
   input: VerifyCheckinRequest,
 ): Promise<MatchCheckinDto> {
   if (USE_MOCK) {
+    if (input.status === "rejected"
+      ? writeRejectCheckin(matchId, userId)
+      : writeCheckin(matchId, userId)) {
+      const c = storeCheckinDtos(matchId).find((x) => x.user.id === userId);
+      if (c) return mockDelay(c);
+    }
     const c = mockCheckins.find((x) => x.matchId === Number(matchId) && x.user.id === userId);
     if (!c) return notFound<MatchCheckinDto>("การเช็คอิน");
     c.status = input.status;
@@ -303,6 +378,8 @@ export async function verifyCheckin(
 /** TODO(guide): GET /matches/:id/stats */
 export async function getMatchStats(matchId: MatchRef): Promise<{ items: PlayerMatchStatDto[] }> {
   if (USE_MOCK) {
+    const fromStore = storeStatDtos(matchId);
+    if (fromStore.length) return mockDelay({ items: fromStore });
     return mockDelay({ items: mockStats.filter((s) => s.matchId === Number(matchId)) });
   }
   return apiFetch(`/matches/${matchId}/stats`);
@@ -314,6 +391,9 @@ export async function saveMatchStats(
   input: SaveMatchStatsRequest,
 ): Promise<{ items: PlayerMatchStatDto[] }> {
   if (USE_MOCK) {
+    if (writeStats(matchId, input.entries)) {
+      return mockDelay({ items: storeStatDtos(matchId) });
+    }
     input.entries.forEach((e) => {
       const existing = mockStats.find((s) => s.matchId === Number(matchId) && s.player.id === e.userId);
       if (existing) {
