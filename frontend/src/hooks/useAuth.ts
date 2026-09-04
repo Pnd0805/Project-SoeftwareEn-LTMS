@@ -15,6 +15,16 @@ export function useMe() {
     queryKey: ["me"],
     queryFn: userApi.getMe,
     retry: false, // 401 ไม่ต้อง retry — แปลว่ายังไม่ได้ล็อกอิน ไม่ใช่ network error
+    /**
+     * ห้ามยิงใหม่ตอนมี observer เพิ่ม ไม่งั้นผู้ที่ยังไม่ล็อกอินจะเจอหน้าขาวถาวร
+     *
+     * queryObserver.js:317 — query ที่ status เป็น error และยังไม่มี data จะถูกยิงใหม่
+     * ทุกครั้งที่มี observer mount เว้นแต่ตั้งค่านี้ ซึ่งพอรวมกับ `if (isLoading) return null`
+     * ใน Guard แล้วกลายเป็นลูป: 401 → Guard คืน null → Shell ถูกถอด → settle → Shell
+     * mount ใหม่ → useMe() ตัวใน Shell ยิงซ้ำ → 401 → วนราว 30 รอบต่อวินาที
+     * ผลคือหน้าแรกว่างเปล่าโดยไม่มี error ให้เห็นเลย
+     */
+    retryOnMount: false,
   });
 }
 
