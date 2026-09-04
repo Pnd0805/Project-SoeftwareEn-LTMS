@@ -51,11 +51,31 @@ export const matchKeys = {
 function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef) {
   qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.result(matchId) });
+  /* สถิติเปลี่ยนไปพร้อมผลเสมอ เพราะ ResultForm ส่งสองคำขอติดกัน */
+  qc.invalidateQueries({ queryKey: matchKeys.stats(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.mine });
-  if (tournamentId !== undefined) {
-    qc.invalidateQueries({ queryKey: matchKeys.byTournament(tournamentId) });
-    qc.invalidateQueries({ queryKey: matchKeys.standings(tournamentId) });
-  }
+
+  /**
+   * ล้างทั้ง namespace ไม่ใช่เฉพาะ key ของ id ที่ส่งมา
+   *
+   * แอปมี id สองระบบพร้อมกัน: หน้าที่มาจาก DTO ถือ id ตัวเลข (`553102`) ส่วนหน้าที่
+   * ยังมาจาก prototype ถือ id string (`'t-vb'`) — LeaderboardTab กับ ScheduleTab
+   * รับ `t.id` ซึ่งเป็น string ตรงๆ แปลว่า `["standings","t-vb"]` กับ
+   * `["standings",553102]` เป็นคนละ cache key ทั้งที่หมายถึงทัวร์นาเมนต์เดียวกัน
+   * invalidate ด้วย id เดียวจึงพลาดอีกฝั่งเสมอ — สกอร์เปลี่ยนแล้วตารางคะแนนค้าง
+   *
+   * ล้างทั้ง namespace แพงกว่าเล็กน้อย (refetch เกินบ้าง) แต่ถูกเสมอ
+   * เมื่อไหร่ที่เลิกใช้ store แล้วเหลือ id ระบบเดียว ค่อยกลับไปเจาะจง key ได้
+   */
+  /* หน้าแมตช์เองก็โดนด้วย — MatchPage ส่ง id ดิบจาก URL ('m-130') ให้ useMatch
+     ส่วน mutation ถือ id ตัวเลขจาก DTO จึงเป็นคนละ key เหมือนกัน */
+  qc.invalidateQueries({ queryKey: matchKeys.all });
+  qc.invalidateQueries({ queryKey: ["matches"] });
+  qc.invalidateQueries({ queryKey: ["standings"] });
+  /* ผลที่ยืนยันแล้วเปลี่ยนสายและแชมป์ ซึ่งอยู่ในโดเมนของสไลซ์ 2 */
+  qc.invalidateQueries({ queryKey: ["tournament"] });
+  qc.invalidateQueries({ queryKey: ["tournaments"] });
+  void tournamentId;
 }
 
 // ══════════════ queries ══════════════
@@ -208,7 +228,12 @@ export function useSaveMatchStats(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SaveMatchStatsRequest) => matchApi.saveMatchStats(matchId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matchKeys.stats(matchId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: matchKeys.stats(matchId) });
+      /* สถิติรายคนไหลไปหน้าโปรไฟล์และตารางดาวซัลโวด้วย */
+      qc.invalidateQueries({ queryKey: ["standings"] });
+      qc.invalidateQueries({ queryKey: ["team", "player"] });
+    },
   });
 }
 

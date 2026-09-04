@@ -136,7 +136,9 @@ body{background:
 .tag{font-family:var(--f-mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--bone-faint);}
 .tag em{font-style:normal;color:var(--teal);}
 .sub{color:var(--bone-dim);font-size:15px;line-height:1.6;}
-.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;}
+/* ค่าที่เป็นหน่วยเดียว: สกอร์ '2 – 2' และวันที่ 'Mar 08, 03:00 PM' ห้ามแตกบรรทัด
+   th มี nowrap อยู่แล้ว แต่ td ไม่มี ในตารางแคบๆ จึงตัดตรงช่องว่างกลางค่า */
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .hint{font-size:15px;line-height:1.6;color:var(--bone-dim);}
 .h-sec{font-family:var(--f-display);font-weight:700;font-stretch:87.5%;font-size:24px;letter-spacing:.01em;text-transform:uppercase;}
 /* the section heading gets a marker stroke under it, like a tag underlined twice */
@@ -234,7 +236,7 @@ tr:hover td{background:var(--panel-2);}
 
 .avatar{width:24px;height:24px;flex:none;display:grid;place-items:center;background:var(--teal);color:var(--ink);
   border:2px solid var(--ink);font-family:var(--f-mono);font-size:12px;font-weight:700;}
-.tchip{display:inline-flex;align-items:center;gap:8px;}
+.tchip{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;}
 button.tchip.link{background:none;border:0;padding:2px 0;color:var(--bone);font:inherit;text-align:left;
   border-bottom:2px solid transparent;transition:color .12s ease,border-color .12s ease;}
 button.tchip.link:hover{color:var(--teal);border-bottom-color:var(--teal);}
@@ -297,7 +299,10 @@ button.sb-name:hover .sb-abbr{color:var(--teal);}
    Invisible in dark (--ink and --void are near-identical), a hole in light. */
 .sportcard .statline{background:var(--line);}
 .sportcard .statline>div{background:var(--panel-2);}
-.statline{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;background:var(--line);
+/* 150px แคบเกินไปสำหรับค่าอย่าง 'Mar 09, 01:00 PM' — ในการ์ดสามคอลัมน์ของหน้า
+   /matches มันพอดีให้เกิดสองคอลัมน์แล้วค่าตัดบรรทัดกลางคำ 172px ทำให้การ์ดแคบ
+   เหลือคอลัมน์เดียวเต็มความกว้าง ส่วนแผงกว้างยังเรียงหลายคอลัมน์เหมือนเดิม */
+.statline{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:2px;background:var(--line);
   border:2px solid var(--ink);}
 .statline>div{background:var(--panel);padding:12px 16px;display:flex;flex-direction:column;gap:4px;}
 .statline .v{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--teal);}
@@ -337,8 +342,11 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .rounds .r.done b{color:var(--bone);}
 
 /* shell */
-.shell{position:relative;z-index:2;display:grid;grid-template-columns:214px 1fr;min-height:100vh;}
-.shell.guest{grid-template-columns:1fr;}
+/* minmax(0,1fr) ไม่ใช่ 1fr เฉยๆ — grid track มี min-width:auto โดยปริยาย
+   คอลัมน์เนื้อหาจึงยืดตามตารางที่กว้างที่สุด ดันทั้งหน้าให้เลื่อนแนวนอน
+   แทนที่จะให้ .tblwrap (overflow-x:auto) เลื่อนอยู่ในกรอบตัวเอง */
+.shell{position:relative;z-index:2;display:grid;grid-template-columns:214px minmax(0,1fr);min-height:100vh;}
+.shell.guest{grid-template-columns:minmax(0,1fr);}
 .sb{background:var(--panel);border-right:2px solid var(--ink);padding:16px 0;display:flex;flex-direction:column;
   position:sticky;top:0;max-height:100vh;overflow-y:auto;}
 .sb .brand{display:flex;align-items:center;gap:8px;padding:0 16px 16px;border-bottom:2px solid var(--ink);margin-bottom:8px;}
@@ -378,7 +386,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 @media (prefers-reduced-motion:reduce){.theme-toggle svg{transition:none;}}
 .bell i{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;background:var(--red);color:var(--ink);
   border:2px solid var(--ink);font-family:var(--f-mono);font-size:12px;font-style:normal;display:grid;place-items:center;padding:0 4px;}
-.main{padding:24px 24px 48px;display:flex;flex-direction:column;gap:16px;max-width:1180px;}
+.main{padding:24px 24px 48px;display:flex;flex-direction:column;gap:16px;max-width:1180px;min-width:0;}
 .crumb{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
 .crumb button{background:none;border:0;color:var(--teal);font-weight:700;font-family:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;padding:0;}
 
@@ -552,7 +560,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
   background:var(--teal);opacity:.85;transform:rotate(-2deg);pointer-events:none;}
 
 @media (max-width:820px){
-  .shell{grid-template-columns:1fr;}
+  .shell{grid-template-columns:minmax(0,1fr);}
   .sb{position:static;max-height:none;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px;}
   .sb .brand{border:0;margin:0;padding:0 8px;}
   .sb .item{width:auto;border-left:0;border-bottom:4px solid transparent;padding:8px 12px;}
