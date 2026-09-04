@@ -129,6 +129,9 @@ export function writeKickMember(ref: TeamRef, userId: number): boolean {
   const t = findStoreTeam(ref)
   const uid = userIdOf(s, userId)
   if (!t || !uid) return false
+  /* เตะหัวหน้าทีมออกแล้วทีมจะไม่มีคนตัดสินใจอะไรได้อีกเลย — ต้องโอนสิทธิ์ก่อน
+     (FR-TM-08) หน้าจอไม่แสดงปุ่มที่แถวหัวหน้าอยู่แล้ว แต่ชั้น API เรียกตรงได้ */
+  if (t.leader === uid) return false
   kickPlayer(t.id, uid)
   return true
 }

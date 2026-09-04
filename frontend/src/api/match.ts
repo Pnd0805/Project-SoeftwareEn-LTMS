@@ -48,8 +48,8 @@ import {
   takeNextMockId,
 } from "../mocks/match.mock";
 import {
-  writeApproveCheckin, writeCheckin, writeDispute, writeLivestream, writeMatchReferees,
-  writeRejectCheckin,
+  storeSquadHas, whyResultBlocked, writeApproveCheckin, writeCheckin, writeDispute, writeLivestream,
+  writeMatchReferees, writeRejectCheckin,
   writeResolve, writeResult, writeSchedule, writeStats, writeVerify,
 } from "../mocks/matchWrites";
 
@@ -73,6 +73,16 @@ const asScore = (d: Record<string, unknown> | null | undefined) => {
       : null,
   };
 };
+
+/**
+ * ปฏิเสธเพราะสถานะของแมตช์ ไม่ใช่เพราะหาไม่เจอ
+ *
+ * ทางเขียนของ store คืน false ได้สองความหมาย — "ไม่ใช่แมตช์ของ seed" กับ
+ * "เป็นแมตช์ของ seed แต่สถานะไม่ให้ทำ" ถ้าไม่แยก ตัวที่ถูกกฎปฏิเสธจะไหลไปเข้า
+ * ทาง fixture ที่เขียนมือแล้วสำเร็จเงียบๆ ซึ่งเท่ากับไม่มีด่านเลย
+ */
+const blocked = <T>(why: string): Promise<T> =>
+  mockReject<T>(409, { code: "MATCH_STATE", message: why });
 
 const storeResultDto = (ref: MatchRef): MatchResultDto | null => {
   const sm = findStoreMatch(ref);
@@ -221,7 +231,11 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
 export async function submitResult(matchId: MatchRef, input: SubmitResultRequest): Promise<MatchResultDto> {
   if (USE_MOCK) {
     /* แมตช์จาก seed เขียนกลับ store — ที่เดียวกับที่ฝั่งอ่านใช้ */
-    if (writeResult(matchId, asScore(input.scoreData) ?? { a: null, b: null, decider: null })) {
+    const sm = findStoreMatch(matchId);
+    if (sm) {
+      const why = whyResultBlocked(sm);
+      if (why) return blocked<MatchResultDto>(why);
+      writeResult(matchId, asScore(input.scoreData) ?? { a: null, b: null, decider: null });
       const r = storeResultDto(matchId);
       if (r) return mockDelay(r);
     }
@@ -281,7 +295,14 @@ export async function verifyResult(matchId: MatchRef, input: VerifyResultRequest
  */
 export async function disputeResult(matchId: MatchRef, input: DisputeResultRequest): Promise<MatchResultDto> {
   if (USE_MOCK) {
-    if (writeDispute(matchId, input.reason)) {
+    const smD = findStoreMatch(matchId);
+    if (smD) {
+      if (smD.status !== "pending") {
+        return blocked<MatchResultDto>(
+          "ค้านได้เฉพาะตอนที่ผลยังรอการยืนยัน — ผลที่ปิดแล้วต้องให้ผู้จัดเปิดใหม่",
+        );
+      }
+      writeDispute(matchId, input.reason);
       const r = storeResultDto(matchId);
       if (r) return mockDelay(r);
     }
@@ -336,6 +357,16 @@ export async function getCheckins(matchId: MatchRef): Promise<{ items: MatchChec
 /** TODO(guide): POST /matches/:id/checkin */
 export async function checkin(matchId: MatchRef, input: CheckinRequest): Promise<MatchCheckinDto> {
   if (USE_MOCK) {
+    const smC = findStoreMatch(matchId);
+    if (smC && (smC.status === "confirmed" || smC.status === "void")) {
+      return blocked<MatchCheckinDto>("แมตช์นี้จบไปแล้ว เช็คอินไม่ได้");
+    }
+    if (smC && input.userId !== undefined && !storeSquadHas(matchId, input.userId)) {
+      return mockReject<MatchCheckinDto>(403, {
+        code: "NOT_IN_SQUAD",
+        message: "คนนี้ไม่ได้อยู่ในทีมที่ลงแมตช์นี้",
+      });
+    }
     if (writeCheckin(matchId, input.userId, {
       method: input.method,
       documentUrl: input.documentS3Key ?? null,

@@ -49,6 +49,31 @@ function advance(s: State, m: StoreMatch): void {
   }
 }
 
+/** คนนี้อยู่ในทีมใดทีมหนึ่งของแมตช์นี้ไหม (UC-04) */
+export function storeSquadHas(ref: MatchRef, userId: number): boolean {
+  const s = getState()
+  const m = findStoreMatch(ref)
+  if (!m) return false
+  const uid = s.users.find(u => numOf(u.id) === userId)?.id
+  if (!uid) return false
+  return [m.a, m.b]
+    .filter((x): x is string => !!x)
+    .some(tid => s.teams.find(t => t.id === tid)?.members.includes(uid))
+}
+
+/**
+ * เหตุผลที่แมตช์นี้ยังรับผลไม่ได้ — null แปลว่ารับได้
+ *
+ * ด่านพวกนี้ซ้อนกับที่หน้าจอกันอยู่แล้ว แต่ชั้น API ถูกเรียกตรงได้ จึงต้องตรวจซ้ำ
+ * ทุกข้อคือสถานะที่เกิดขึ้นไม่ได้จริง ไม่ใช่แค่เรื่องสิทธิ์
+ */
+export function whyResultBlocked(m: StoreMatch): string | null {
+  if (!m.a || !m.b) return 'แมตช์นี้ยังไม่รู้คู่แข่งทั้งสองฝั่ง จึงยังบันทึกผลไม่ได้'
+  if (m.status === 'confirmed') return 'ผลนัดนี้ยืนยันแล้ว ต้องเปิดข้อโต้แย้งก่อนถึงจะแก้ได้'
+  if (m.status === 'void') return 'แมตช์นี้ถูกยกเลิกไปแล้ว'
+  return null
+}
+
 interface ScoreInput {
   a: number | null
   b: number | null
@@ -60,6 +85,7 @@ export function writeResult(ref: MatchRef, score: ScoreInput): boolean {
   const s = getState()
   const m = findStoreMatch(ref)
   if (!m) return false
+  if (whyResultBlocked(m)) return false
   m.sa = score.a
   m.sb = score.b
   m.decider = score.decider ?? null
@@ -95,6 +121,9 @@ export function writeDispute(ref: MatchRef, reason: string): boolean {
   const s = getState()
   const m = findStoreMatch(ref)
   if (!m) return false
+  /* ค้านได้เฉพาะตอนที่ผลยังรอการยืนยัน — ตรงกับ `can.disputeResult` ที่หน้าจอใช้
+     ผลที่ปิดไปแล้วต้องให้ผู้จัดเปิดใหม่ ไม่ใช่ค้านซ้อนเข้าไป */
+  if (m.status !== 'pending') return false
   const u = actor(s)
   m.status = 'disputed'
   m.disputedBy = u
@@ -138,10 +167,17 @@ export function writeStats(
   const userById = new Map(s.users.map(u => [numOf(u.id), u.id]))
   const teamById = new Map(s.teams.map(t => [numOf(t.id), t.id]))
 
+  /* บันทึกสถิติได้เฉพาะคนที่อยู่ในทีมใดทีมหนึ่งของแมตช์นี้
+     สถิติของคนนอกจะไหลไปโผล่ในโปรไฟล์และตารางดาวซัลโวโดยไม่มีที่มา */
+  const squad = new Set(
+    [m.a, m.b].filter((x): x is string => !!x)
+      .flatMap(tid => s.teams.find(t => t.id === tid)?.members ?? []),
+  )
+
   entries.forEach(e => {
     const uid = userById.get(e.userId)
     const tid = teamById.get(e.teamId)
-    if (!uid) return
+    if (!uid || !squad.has(uid)) return
     const prev: PlayerStat = m.stats[uid] ?? { team: tid ?? '', goals: 0, assists: 0, x: {} }
     /* เก็บด้วย statKey เดิมเสมอ — ฝั่งอ่านต้องได้คีย์เดียวกับที่ sport_stat_definitions
        ประกาศไว้ ('points' ของวอลเลย์บอลไม่ใช่ 'goals') ส่วน goals/assists ที่ store
@@ -182,6 +218,9 @@ export function writeCheckin(
     ? s.users.find(u => numOf(u.id) === userId)?.id
     : actor(s)
   if (!uid) return false
+
+  /* เช็คอินหลังแมตช์จบไม่มีความหมาย — การเช็คอินคือการยืนยันว่าจะลงเล่น */
+  if (m.status === 'confirmed' || m.status === 'void') return false
 
   /* UC-04 "ผู้ที่ไม่อยู่ในทีมสแกนต้องถูกปฏิเสธ" — หน้าจอวาดเฉพาะรายชื่อในทีมอยู่แล้ว
      แต่ชั้น API ถูกเรียกตรงได้ จึงต้องตรวจซ้ำที่นี่ */

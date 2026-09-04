@@ -110,6 +110,34 @@ export async function appointReferee(
     const tid = storeTournamentIdOf(tournamentId);
     const uid = storeUserIdOf(input.userId);
     if (!tid || !uid) return notFound<TournamentRefereeDto>("ทัวร์นาเมนต์หรือผู้ใช้");
+
+    const state = getState();
+    const t = state.tournaments.find((x: { id: string }) => x.id === tid);
+
+    /* เชิญคนเดิมซ้ำไม่มีความหมาย — store กันเฉพาะคำเชิญที่ยังค้าง ไม่ได้กันคนที่
+       ตอบรับไปแล้ว ปล่อยไว้จะได้แถวซ้ำในรายชื่อกรรมการ */
+    if ((t?.referees ?? []).includes(uid)) {
+      return mockReject<TournamentRefereeDto>(409, {
+        code: "ALREADY_REFEREE",
+        message: "คนนี้เป็นกรรมการของรายการนี้อยู่แล้ว",
+      });
+    }
+
+    /* กรรมการต้องไม่ลงแข่งในรายการที่ตัวเองตัดสิน — คนที่ได้ประโยชน์จากผล
+       ไม่ควรเป็นคนบันทึกผล (NF-SE-05 ตรวจสอบย้อนหลังได้ก็ต่อเมื่อไม่มีส่วนได้เสีย) */
+    const entered = state.registrations
+      .filter((r: { tour: string; status: string }) => r.tour === tid && r.status === 'approved')
+      .map((r: { team: string }) => r.team);
+    const playsHere = state.teams.some(
+      (tm: { id: string; members: string[] }) => entered.includes(tm.id) && tm.members.includes(uid),
+    );
+    if (playsHere) {
+      return mockReject<TournamentRefereeDto>(409, {
+        code: "REFEREE_IS_COMPETING",
+        message: "คนนี้ลงแข่งในรายการนี้อยู่ จึงเป็นกรรมการรายการเดียวกันไม่ได้",
+      });
+    }
+
     storeAppointReferee(tid, uid);
     const row = storeTournamentReferees(tid).find((r) => r.user.id === input.userId);
     return row ? mockDelay(row) : notFound<TournamentRefereeDto>("คำเชิญที่เพิ่งสร้าง");
