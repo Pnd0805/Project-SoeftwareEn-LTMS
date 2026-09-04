@@ -49,7 +49,8 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
   const fails = useMemo(() => hardFilter(s, tm, tr, squad), [s, tm, tr, squad])
   const shut = regWindowClosed(tr)
   const locked = options.length < 2
-  const apply = useApplyToTournament(Number(tr.id))
+  /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store — ส่งตัวที่หน้าถืออยู่ */
+  const apply = useApplyToTournament(tr.id)
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
     resolver: zodResolver(applyToTournamentSchema),
     defaultValues: { teamId: Number.isFinite(Number(tm.id)) ? Number(tm.id) : numOf(tm.id) },
@@ -60,7 +61,8 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
 
   const submit = async (input: ApplyToTournamentInput) => {
     try {
-      await apply.mutateAsync(input)
+      /* ส่งรายชื่อที่เลือกไว้ไปด้วย hard filter ตรวจจากรายชื่อนี้ ไม่ใช่ทั้งทีม */
+      await apply.mutateAsync({ ...input, squad })
       onClose()
     } catch (error) {
       if (error instanceof ApiError && error.fields) {

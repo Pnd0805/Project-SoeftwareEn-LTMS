@@ -88,11 +88,11 @@ export function useInviteTournamentReferee(tournamentId: number) {
   });
 }
 
-export function useApplyToTournament(tournamentId: number) {
+export function useApplyToTournament(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ApplyToTournamentRequest) => tournamentApi.applyToTournament(tournamentId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: tournamentKeys.detail(tournamentId) }),
+    onSuccess: () => invalidateTournament(queryClient, tournamentId),
   });
 }
 

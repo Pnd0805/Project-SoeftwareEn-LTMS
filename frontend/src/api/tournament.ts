@@ -1,6 +1,7 @@
 import { apiFetch, mockReject, USE_MOCK } from "./client";
 import {
-  storeApplicationDto, writeAllowWithdrawal, writeApproveAllRegistrations,
+  storeApplicationDto, whyApplyBlocked, writeAllowWithdrawal, writeApplyToTournament,
+  writeApproveAllRegistrations,
   writeApproveRegistration, writeDrawTournament, writeRejectRegistration,
   type TournamentRef,
 } from "../mocks/tournamentWrites";
@@ -168,15 +169,26 @@ export async function inviteReferee(id: number, input: InviteTournamentRefereeRe
   return apiFetch(`/tournaments/${id}/referees`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function applyToTournament(id: number, input: ApplyToTournamentRequest): Promise<TournamentApplicationDto> {
+export async function applyToTournament(id: TournamentRef, input: ApplyToTournamentRequest): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
-    if (!findTournament(id)) return notFound("ไม่พบการแข่งขัน");
+    /* ทัวร์นาเมนต์จาก seed สมัครเข้า store — พร้อมด่านครบชุด (ช่วงรับสมัคร ที่นั่งเต็ม
+       สมัครซ้ำ hard filter และคนเดียวลงสองทีม) ดู mocks/tournamentWrites.ts */
+    const why = whyApplyBlocked(id, input.teamId, input.squad ?? []);
+    if (why === null) {
+      const rid = writeApplyToTournament(id, input.teamId, input.squad ?? []);
+      const dto = rid ? storeApplicationDto(rid) : null;
+      if (dto) return tournamentMockDelay(dto);
+    } else if (why !== 'ไม่พบการแข่งขัน' && why !== 'ไม่พบทีม') {
+      return mockReject<TournamentApplicationDto>(422, { code: "ENTRY_REFUSED", message: why });
+    }
+
+    if (!findTournament(Number(id))) return notFound("ไม่พบการแข่งขัน");
     const storeTeam = findStoreTeam(input.teamId);
     const team = mockTournamentTeams.find((item) => item.id === input.teamId)
       ?? (storeTeam ? { id: input.teamId, name: storeTeam.name } : undefined);
     if (!team) return notFound("ไม่พบทีม");
     const application: TournamentApplicationDto = {
-      id: nextTournamentMockId(), tournamentId: id, teamId: input.teamId, team,
+      id: nextTournamentMockId(), tournamentId: Number(id), teamId: input.teamId, team,
       hardFilterPassed: null, hardFilterDetails: null, softFilterDocuments: null,
       status: "pending", reviewedBy: null, reviewedAt: null, rejectionReason: null, appliedAt: isoNow(),
     };

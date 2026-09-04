@@ -122,6 +122,11 @@ export interface InviteTournamentRefereeRequest {
 
 export interface ApplyToTournamentRequest {
   teamId: number;
+  /**
+   * รายชื่อผู้ลงแข่งของนัดนี้ — ไม่ส่งมาก็ถือว่าทั้งทีม
+   * Hard filter ตรวจรายคนจากรายชื่อนี้ ไม่ใช่จากสมาชิกทั้งทีม (FR-PV-01)
+   */
+  squad?: string[];
 }
 
 export interface ReviewTournamentApplicationRequest {
