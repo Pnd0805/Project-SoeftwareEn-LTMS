@@ -18,6 +18,26 @@ import type {
   AdminScopeDto, UserAdminViewDto, AuditLogDto,
 } from '../types/admin.dto'
 
+// ── แปลง id ตัวเลขกลับเป็น id ของ store ───────────────────────────────────
+/**
+ * `numOf` เป็นแฮชทางเดียว การย้อนกลับจึงต้องกวาดหาตัวที่แฮชตรงกัน
+ * ใช้เฉพาะตอนรับคำสั่งเขียนจาก UI ที่ถือ id ตัวเลขของ DTO อยู่
+ * ตายพร้อมสะพานตอน `VITE_USE_MOCK=false`
+ */
+const resolve = <T extends { id: string }>(rows: T[], ref: TeamRef): T | undefined => {
+  const raw = String(ref)
+  return rows.find(r => r.id === raw) ?? rows.find(r => numOf(r.id) === Number(ref))
+}
+
+export const storeTournamentIdOf = (ref: TeamRef): string | undefined =>
+  resolve(getState().tournaments, ref)?.id
+
+export const storeUserIdOf = (ref: TeamRef): string | undefined =>
+  resolve(getState().users, ref)?.id
+
+export const storeRefInviteIdOf = (ref: TeamRef): string | undefined =>
+  resolve(getState().refInvites, ref)?.id
+
 // ── คิวอนุมัติทัวร์นาเมนต์ (FR-TC-02) ──────────────────────────────────────
 
 export function storeTournamentRequests(): TournamentRequestDto[] {

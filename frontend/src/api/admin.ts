@@ -20,9 +20,17 @@ import type {
   AuditLogQuery,
 } from "../types/admin.dto";
 import {
-  storeAdminScopes, storeAuditLogs, storeRefereeCoverage, storeTournamentReferees,
-  storeTournamentRequests, storeUsersForAdmin,
+  storeAdminScopes, storeAuditLogs, storeRefereeCoverage, storeRefInviteIdOf,
+  storeTournamentIdOf, storeTournamentReferees, storeTournamentRequests,
+  storeUserIdOf, storeUsersForAdmin,
 } from "../mocks/adminBridge";
+import {
+  getState,
+  appointReferee as storeAppointReferee,
+  answerAppointment as storeAnswerAppointment,
+  removeReferee as storeRemoveReferee,
+} from "../shared/store";
+import { numOf } from "../mocks/storeBridge";
 import type { TeamRef } from "../mocks/teamBridge";
 
 const notFound = <T>(what: string): Promise<T> =>
@@ -78,23 +86,45 @@ export async function getRefereeCoverage(tournamentId: TeamRef): Promise<Referee
   return apiFetch(`/tournaments/${tournamentId}/referee-coverage`);
 }
 
-/** TODO(guide): POST /tournaments/:id/referees — เชิญเป็นกรรมการ (FR-RM-01) */
+/**
+ * SDS §S3: POST /tournaments/{id}/referees — แต่งตั้งกรรมการ (FR-OM-05, FR-RM-01)
+ *
+ * โหมด mock สั่งงานผ่าน store โดยตรง ไม่ใช่เขียนลง array แยก
+ * เพราะ `storeTournamentReferees()` อ่านจาก store อยู่แล้ว — เขียนที่อื่นจะได้
+ * สองแหล่งความจริงที่ค่อยๆ เพี้ยนออกจากกัน
+ */
 export async function appointReferee(
   tournamentId: TeamRef, input: AppointRefereeRequest,
 ): Promise<TournamentRefereeDto> {
-  if (USE_MOCK) return notImplemented<TournamentRefereeDto>("การเชิญกรรมการ");
+  if (USE_MOCK) {
+    const tid = storeTournamentIdOf(tournamentId);
+    const uid = storeUserIdOf(input.userId);
+    if (!tid || !uid) return notFound<TournamentRefereeDto>("ทัวร์นาเมนต์หรือผู้ใช้");
+    storeAppointReferee(tid, uid);
+    const row = storeTournamentReferees(tid).find((r) => r.user.id === input.userId);
+    return row ? mockDelay(row) : notFound<TournamentRefereeDto>("คำเชิญที่เพิ่งสร้าง");
+  }
   return apiFetch(`/tournaments/${tournamentId}/referees`, {
     method: "POST", body: JSON.stringify(input),
   });
 }
 
-/** TODO(guide): POST /referee-appointments/:id — ตอบรับหรือปฏิเสธ (FR-RM-01) */
+/** SDS §S3: PATCH /referee-assignments/{id} — ตอบรับหรือปฏิเสธ (FR-RM-01) */
 export async function answerAppointment(
   appointmentId: TeamRef, input: AnswerAppointmentRequest,
 ): Promise<TournamentRefereeDto> {
-  if (USE_MOCK) return notImplemented<TournamentRefereeDto>("การตอบรับเป็นกรรมการ");
-  return apiFetch(`/referee-appointments/${appointmentId}`, {
-    method: "POST", body: JSON.stringify(input),
+  if (USE_MOCK) {
+    const inviteId = storeRefInviteIdOf(appointmentId);
+    if (!inviteId) return notFound<TournamentRefereeDto>("คำเชิญเป็นกรรมการ");
+    const invite = getState().refInvites.find((i: { id: string }) => i.id === inviteId);
+    storeAnswerAppointment(inviteId, input.accept);
+    const row = invite
+      ? storeTournamentReferees(invite.tour).find((r) => r.user.id === numOf(invite.user))
+      : undefined;
+    return row ? mockDelay(row) : notFound<TournamentRefereeDto>("กรรมการหลังตอบรับ");
+  }
+  return apiFetch(`/referee-assignments/${appointmentId}`, {
+    method: "PATCH", body: JSON.stringify(input),
   });
 }
 
@@ -102,7 +132,13 @@ export async function answerAppointment(
 export async function removeReferee(
   tournamentId: TeamRef, userId: number,
 ): Promise<void> {
-  if (USE_MOCK) return notImplemented<void>("การถอดกรรมการ");
+  if (USE_MOCK) {
+    const tid = storeTournamentIdOf(tournamentId);
+    const uid = storeUserIdOf(userId);
+    if (!tid || !uid) return notFound<void>("ทัวร์นาเมนต์หรือกรรมการ");
+    storeRemoveReferee(tid, uid);
+    return mockDelay(undefined);
+  }
   return apiFetch(`/tournaments/${tournamentId}/referees/${userId}`, { method: "DELETE" });
 }
 
