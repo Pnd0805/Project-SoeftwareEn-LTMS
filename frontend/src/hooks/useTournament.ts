@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as tournamentApi from "../api/tournament";
+import type { TournamentRef } from "../mocks/tournamentWrites";
 import type {
   ApplyToTournamentRequest,
   CreateEligibilityRuleRequest,
@@ -104,28 +105,36 @@ export function useReviewTournamentApplication(tournamentId: number) {
   });
 }
 
-function invalidateTournament(queryClient: ReturnType<typeof useQueryClient>, id: number) {
-  return queryClient.invalidateQueries({ queryKey: tournamentKeys.detail(id) });
+function invalidateTournament(queryClient: ReturnType<typeof useQueryClient>, id: TournamentRef) {
+  /* id สองระบบอีกเช่นเคย — ล้างทั้ง namespace ให้หน้าที่ถือ id คนละแบบอัปเดตด้วย
+     รวมถึงตารางแมตช์กับตารางคะแนน เพราะการจับสายสร้างแมตช์ใหม่ทั้งชุด */
+  queryClient.invalidateQueries({ queryKey: ["tournament"] });
+  queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+  queryClient.invalidateQueries({ queryKey: ["match"] });
+  queryClient.invalidateQueries({ queryKey: ["matches"] });
+  queryClient.invalidateQueries({ queryKey: ["standings"] });
+  void id;
+  return Promise.resolve();
 }
 
-export function useApproveRegistration(tournamentId: number) {
+export function useApproveRegistration(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (applicationId: number) => tournamentApi.approveApplication(tournamentId, applicationId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
+  return useMutation({ mutationFn: (applicationId: TournamentRef) => tournamentApi.approveApplication(tournamentId, applicationId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useRejectRegistration(tournamentId: number) {
+export function useRejectRegistration(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (value: { applicationId: number; rejectionReason: string }) => tournamentApi.rejectApplication(tournamentId, value.applicationId, value.rejectionReason), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
+  return useMutation({ mutationFn: (value: { applicationId: TournamentRef; rejectionReason: string }) => tournamentApi.rejectApplication(tournamentId, value.applicationId, value.rejectionReason), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useApproveAllRegistrations(tournamentId: number) {
+export function useApproveAllRegistrations(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: () => tournamentApi.approveAllApplications(tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useAllowWithdrawal(tournamentId: number) {
+export function useAllowWithdrawal(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (applicationId: number) => tournamentApi.allowApplicationWithdrawal(tournamentId, applicationId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
+  return useMutation({ mutationFn: (applicationId: TournamentRef) => tournamentApi.allowApplicationWithdrawal(tournamentId, applicationId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
 export function usePublishTournament(tournamentId: number) {
@@ -133,7 +142,7 @@ export function usePublishTournament(tournamentId: number) {
   return useMutation({ mutationFn: () => tournamentApi.publishTournament(tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useDrawTournament(tournamentId: number) {
+export function useDrawTournament(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: tournamentApi.drawTournament.bind(null, tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }

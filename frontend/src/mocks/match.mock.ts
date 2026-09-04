@@ -281,8 +281,15 @@ export const mockStats: PlayerMatchStatDto[] = [
 
 
 // ── รายการแมตช์ของฉัน (หน้า /matches) ─────────────────────────────────────
-/** ประกอบจาก mockMatches ไม่ได้พิมพ์ซ้ำ — แก้ที่เดียวแล้วตรงกันหมด */
-export const mockMyMatches: MatchListItemDto[] = mockMatches.map((m) => {
+/**
+ * ประกอบจาก mockMatches ไม่ได้พิมพ์ซ้ำ — แก้ที่เดียวแล้วตรงกันหมด
+ *
+ * ⚠️ ต้องเป็นฟังก์ชัน ไม่ใช่ const ที่คำนวณตอนโหลดโมดูล
+ *    เดิมเป็นอาร์เรย์ที่ map ครั้งเดียวตอน import แปลว่าเป็นภาพนิ่ง พอ mutation
+ *    ไปแก้ mockResults ทีหลัง (ชี้ขาดข้อพิพาท แก้สกอร์) รายการหน้า /matches ยัง
+ *    โชว์ของเก่าอยู่ตลอด — เปิดเข้าไปในแมตช์เห็นสกอร์ใหม่ แต่ข้างนอกยัง 2 – 2
+ */
+export const buildMockMyMatches = (): MatchListItemDto[] => mockMatches.map((m) => {
   const result = mockResults.find((r) => r.matchId === m.id);
   const sd = result?.scoreData as { a?: number; b?: number } | null | undefined;
   return {

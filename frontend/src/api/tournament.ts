@@ -1,4 +1,9 @@
 import { apiFetch, mockReject, USE_MOCK } from "./client";
+import {
+  storeApplicationDto, writeAllowWithdrawal, writeApproveAllRegistrations,
+  writeApproveRegistration, writeDrawTournament, writeRejectRegistration,
+  type TournamentRef,
+} from "../mocks/tournamentWrites";
 import type {
   ApplyToTournamentRequest,
   CreateEligibilityRuleRequest,
@@ -181,8 +186,16 @@ export async function applyToTournament(id: number, input: ApplyToTournamentRequ
   return apiFetch(`/tournaments/${id}/applications`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function reviewApplication(id: number, applicationId: number, input: ReviewTournamentApplicationRequest): Promise<TournamentApplicationDto> {
+export async function reviewApplication(id: TournamentRef, applicationId: TournamentRef, input: ReviewTournamentApplicationRequest): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
+    /* ทัวร์นาเมนต์จาก seed ตัดสินใบสมัครที่ store — ที่เดียวกับที่หน้าจัดการอ่าน */
+    const ok = input.status === "approved"
+      ? writeApproveRegistration(applicationId)
+      : writeRejectRegistration(applicationId, input.rejectionReason ?? "");
+    if (ok) {
+      const dto = storeApplicationDto(applicationId);
+      if (dto) return tournamentMockDelay(dto);
+    }
     const application = mockTournamentApplications.find((item) => item.id === applicationId && item.tournamentId === id);
     if (!application) return notFound("ไม่พบใบสมัคร");
     application.status = input.status;
@@ -194,16 +207,17 @@ export async function reviewApplication(id: number, applicationId: number, input
   return apiFetch(`/tournaments/${id}/applications/${applicationId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
-export async function approveApplication(id: number, applicationId: number): Promise<TournamentApplicationDto> {
+export async function approveApplication(id: TournamentRef, applicationId: TournamentRef): Promise<TournamentApplicationDto> {
   return reviewApplication(id, applicationId, { status: "approved" });
 }
 
-export async function rejectApplication(id: number, applicationId: number, rejectionReason: string): Promise<TournamentApplicationDto> {
+export async function rejectApplication(id: TournamentRef, applicationId: TournamentRef, rejectionReason: string): Promise<TournamentApplicationDto> {
   return reviewApplication(id, applicationId, { status: "rejected", rejectionReason });
 }
 
-export async function approveAllApplications(id: number): Promise<void> {
+export async function approveAllApplications(id: TournamentRef): Promise<void> {
   if (USE_MOCK) {
+    if (writeApproveAllRegistrations(id) > 0) return tournamentMockDelay(undefined);
     mockTournamentApplications.filter((item) => item.tournamentId === id && item.status === "pending")
       .forEach((item) => { item.status = "approved"; item.reviewedBy = 1; item.reviewedAt = isoNow(); });
     return tournamentMockDelay(undefined);
@@ -211,8 +225,12 @@ export async function approveAllApplications(id: number): Promise<void> {
   return apiFetch(`/tournaments/${id}/applications/approve-all`, { method: "POST" });
 }
 
-export async function allowApplicationWithdrawal(id: number, applicationId: number): Promise<TournamentApplicationDto> {
+export async function allowApplicationWithdrawal(id: TournamentRef, applicationId: TournamentRef): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
+    if (writeAllowWithdrawal(applicationId)) {
+      const dto = storeApplicationDto(applicationId);
+      if (dto) return tournamentMockDelay(dto);
+    }
     const application = mockTournamentApplications.find((item) => item.tournamentId === id && item.id === applicationId);
     if (!application) return notFound("ไม่พบใบสมัคร");
     application.status = "withdrawn";
@@ -232,9 +250,15 @@ export async function publishTournament(id: number): Promise<TournamentDto> {
   return apiFetch(`/tournaments/${id}/publish`, { method: "POST" });
 }
 
-export async function drawTournament(id: number, input: DrawTournamentRequest = {}): Promise<TournamentDto> {
+export async function drawTournament(id: TournamentRef, input: DrawTournamentRequest = {}): Promise<TournamentDto> {
   if (USE_MOCK) {
-    const tournament = findTournament(id);
+    if (writeDrawTournament(id, input.teamIds)) {
+      /* สายถูกสร้างใน store แล้ว — ไม่มี TournamentDto ให้คืน จึงคืนตัวที่มีอยู่
+         ผู้เรียกใช้แค่รู้ว่าสำเร็จ แล้ว invalidate ให้หน้าอ่านใหม่เอง */
+      const first = mockTournaments[0];
+      if (first) return tournamentMockDelay(first);
+    }
+    const tournament = findTournament(Number(id));
     if (!tournament) return notFound("ไม่พบการแข่งขัน");
     /* เดิมตั้ง status = "completed" ตรงนี้ — การจับสายทำให้ทัวร์นาเมนต์จบทันที
        ซึ่งกลับหัวกลับหางกับความหมายของมัน การสร้างแมตช์จริงเป็นของ Match API

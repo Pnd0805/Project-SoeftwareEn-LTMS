@@ -9,10 +9,9 @@
  * ทัวร์นาเมนต์ที่ route id เป็นตัวเลขมาจาก API — ใบสมัครอ่านจาก
  * `useTournament(id).applications` และ mutation ใช้ `application.id` ได้ตรงๆ
  *
- * ทัวร์นาเมนต์ของ prototype ยังใช้ id เป็น string ('t-fut') ซึ่ง API ไม่รู้จัก
- * จึงยังอ่านจาก store ต่อไป แต่**ปิดปุ่มไว้** เพราะ mutation ต้องการ id ตัวเลข
- * โค้ดเดิมส่ง `Number('reg-3')` = NaN เข้า API เงียบๆ ปุ่มจึงกดแล้วไม่เกิดอะไร
- * โดยไม่มีใครรู้ — ปิดพร้อมบอกเหตุผลตรงไปตรงมากว่า
+ * ทัวร์นาเมนต์ของ prototype ใช้ id เป็น string ('t-fut') — อ่านจาก store และ
+ * สั่งงานได้เหมือนกัน เพราะชั้น API รับ ref ทั้งสองแบบแล้วเขียนกลับ store
+ * (ดู mocks/tournamentWrites.ts) เดิมส่ง `Number('reg-3')` = NaN เข้า API เงียบๆ
  *
  * ทั้งสองทางถูกแปลงเป็น `RegRow` ชุดเดียวก่อนวาด JSX จึงมีเส้นทางแสดงผลเดียว
  */
@@ -41,7 +40,7 @@ import type { TournamentApplicationDto } from '../../../types/tournament.dto'
  */
 interface RegRow {
   key: string
-  applicationId: number | null
+  applicationId: number | string | null
   /** id ของทีมในฝั่ง store — มีเฉพาะทางเดิม ใช้ผูก TeamLink และอวาตาร์ */
   teamStoreId: string | null
   teamName: string
@@ -78,7 +77,7 @@ function rowsFromStore(s: State, t: Tournament): RegRow[] {
     const fails = tm ? hardFilter(s, tm, t, r.squad) : []
     return {
       key: `store-${r.id}`,
-      applicationId: null,
+      applicationId: r.id,
       teamStoreId: r.team,
       teamName: tm?.name ?? '—',
       status: r.status as RegRow['status'],
@@ -108,8 +107,8 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const rejected = rows.filter(r => r.status === 'rejected')
   const withdrawing = rows.filter(r => r.withdrawRequested)
 
-  /* hook ต้องเรียกเสมอ แต่ส่ง 0 เมื่อไม่มี id จริง แล้วกันที่ปุ่มแทน */
-  const apiId = tournamentId ?? 0
+  /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store จึงส่งตัวที่หน้าถืออยู่ไปตรงๆ */
+  const apiId = tournamentId ?? t.id
   const approve = useApproveRegistration(apiId)
   const approveAll = useApproveAllRegistrations(apiId)
   const reject = useRejectRegistration(apiId)
@@ -120,7 +119,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
 
   /** ปุ่มสั่งงานได้ต่อเมื่อแถวนั้นมี applicationId จริง */
   const actionable = (r: RegRow) => r.applicationId !== null
-  const blockedHint = 'ทัวร์นาเมนต์นี้ยังอยู่บนข้อมูลของ prototype — สั่งงานผ่าน API ไม่ได้จนกว่าจะย้ายมาใช้ id ของ backend'
+  const blockedHint = 'ใบสมัครนี้ไม่มี id ที่สั่งงานได้'
 
   return (
     <>
@@ -130,13 +129,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
           <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} in · ${pend.length} waiting`}</Badge>
         </div>
 
-        {!live && rows.length ? (
-          <div className="banner warn">
-            <span className="grow">{blockedHint}</span>
-          </div>
-        ) : null}
-
-        {pend.length > 1 && live ? (
+        {pend.length > 1 ? (
           <div className="hstack" style={{ justifyContent: 'flex-end' }}>
             <button className="btn" type="button" disabled={approveAll.isPending}
               onClick={() => approveAll.mutate()}>

@@ -14,8 +14,9 @@
  * ทัวร์นาเมนต์ที่มาจาก API จะได้อาร์เรย์ว่างตลอด ตอนนี้พาเนลหาเองจากแหล่งเดียวกับ
  * RegistrationsPanel — id ตัวเลขใช้ applications จาก API · id string ใช้ store
  *
- * ปุ่มส่งผลจับสายเปิดเฉพาะทาง API เพราะ `teamIds` ต้องเป็นตัวเลข
- * โค้ดเดิมส่ง `positions.map(Number)` โดยที่ positions เป็น id ของ store
+ * ปุ่มส่งผลจับสายทำงานได้ทั้งสองทาง — ชั้น API รับ ref ทั้ง id ตัวเลขและ id ของ
+ * store แล้วเขียนกลับ store ผ่าน `drawBracket` เดิม (mocks/tournamentWrites.ts)
+ * โค้ดก่อนหน้านี้ส่ง `positions.map(Number)` โดยที่ positions เป็น id ของ store
  * ('tm-3') ผลคืออาร์เรย์ของ NaN ทั้งชุด
  */
 import { useState } from 'react'
@@ -27,22 +28,23 @@ import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 
 /** ทีมหนึ่งทีมในสายจับ — id เก็บเป็น string เสมอเพื่อให้ <select> เทียบค่าได้ */
-interface Entry { id: string; name: string; numericId: number | null }
+interface Entry { id: string; name: string; ref: number | string }
 
 export function DrawPanel({ t }: { t: Tournament }) {
   const s = useLtms()
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const { data: detail } = useTournament(tournamentId)
   const live = tournamentId !== undefined && !!detail
-  const draw = useDrawTournament(tournamentId ?? 0)
+  /* ชั้น API รับได้ทั้งสอง ref จึงส่งตัวที่หน้าถืออยู่ */
+  const draw = useDrawTournament(tournamentId ?? t.id)
 
   const entries: Entry[] = live
     ? detail.applications
         .filter(a => a.status === 'approved')
-        .map(a => ({ id: String(a.teamId), name: a.team.name, numericId: a.teamId }))
+        .map(a => ({ id: String(a.teamId), name: a.team.name, ref: a.teamId }))
     : regsOf(s, t.id)
         .filter(r => r.status === 'approved')
-        .map(r => ({ id: r.team, name: team(s, r.team)?.name ?? r.team, numericId: null }))
+        .map(r => ({ id: r.team, name: team(s, r.team)?.name ?? r.team, ref: r.team }))
 
   const ids = entries.map(e => e.id)
   const need = formatOf(t) === 'double' ? 4 : 2
@@ -89,9 +91,9 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
   const submit = () => {
     const teamIds = positions
-      .map(id => byId.get(id)?.numericId)
-      .filter((n): n is number => typeof n === 'number')
-    if (teamIds.length) draw.mutate({ teamIds })
+      .map(id => byId.get(id)?.ref)
+      .filter((n): n is number | string => n !== undefined)
+    if (teamIds.length) draw.mutate({ teamIds: teamIds as number[] })
   }
 
   return (
@@ -102,13 +104,6 @@ export function DrawPanel({ t }: { t: Tournament }) {
           : t.drawn ? <Badge kind="warn">Open until the first match starts</Badge>
             : <Badge kind="neutral">Not drawn yet</Badge>}
       </div>
-
-      {!live ? (
-        <Banner kind="warn">
-          ทัวร์นาเมนต์นี้ยังอยู่บนข้อมูลของ prototype — จัดเรียงดูได้ แต่ส่งผลจับสายผ่าน API
-          ไม่ได้จนกว่าจะย้ายมาใช้ id ของ backend
-        </Banner>
-      ) : null}
 
       {draw.isError ? (
         <Banner kind="crit"><b>จับสายไม่สำเร็จ</b> {(draw.error as Error).message}</Banner>
@@ -128,8 +123,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
             </div>
           </div>
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={!live || draw.isPending}
-            title={live ? undefined : 'ต้องเป็นทัวร์นาเมนต์ที่มาจาก backend จึงจะส่งผลจับสายได้'}
+            disabled={draw.isPending}
             onClick={submit}>
             {t.drawn ? 'Save this draw' : 'Draw this way'}
           </button>

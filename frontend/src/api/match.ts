@@ -39,7 +39,7 @@ import {
 } from "../mocks/storeBridge";
 import {
   mockMatches,
-  mockMyMatches,
+  buildMockMyMatches,
   mockResults,
   mockCheckins,
   mockStats,
@@ -124,7 +124,7 @@ export async function getMyMatches(): Promise<{ items: MatchListItemDto[] }> {
     const seeded = s.matches
       .map((m) => toListItem(s, m))
       .filter((m) => m.viewer.roles.length);
-    return mockDelay({ items: [...mockMyMatches, ...seeded] });
+    return mockDelay({ items: [...buildMockMyMatches(), ...seeded] });
   }
   return apiFetch("/matches?assignedToMe=true");
 }
