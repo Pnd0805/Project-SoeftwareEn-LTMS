@@ -92,6 +92,11 @@ export function writeDrawTournament(ref: TournamentRef, teamRefs?: TournamentRef
     ?.map(x => s.teams.find(tm => tm.id === String(x))?.id
       ?? s.teams.find(tm => numOf(tm.id) === Number(x))?.id)
     .filter((x): x is string => !!x)
+
+  /* ทีมเดียวกันลงสองช่องไม่ได้ — หน้าจอกันไว้แล้ว แต่ชั้น API ถูกเรียกตรงได้
+     ถ้าปล่อยผ่าน buildBracket จะสร้างนัดที่ทีมแข่งกับตัวเอง ซึ่งไม่มีทางจบ */
+  if (order && new Set(order).size !== order.length) return false
+
   drawBracket(t.id, order?.length ? order : undefined)
   return true
 }

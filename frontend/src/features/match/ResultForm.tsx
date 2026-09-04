@@ -20,6 +20,7 @@ import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives
 import { TeamChipView } from '../../components/kit/chips'
 import { useStatDefinitions, useSubmitResult, useSaveMatchStats } from '../../hooks/useMatch'
 import { toTeamView } from './matchView'
+import { checkResult } from './resultRules'
 import type { MatchDto, MatchTeamRef } from '../../types/match.dto'
 
 type Nums = Record<string, number>
@@ -77,6 +78,25 @@ export function ResultForm({ m }: { m: MatchDto }) {
   /* ผลเสมอที่ไม่มีตัวตัดสิน = ไม่มีผู้ชนะ ซึ่ง bracket เดินต่อไม่ได้
      Round Robin เสมอได้ แต่สายแพ้คัดออกไม่ได้ — กันไว้ตรงที่คนกรอกเห็น */
   const blocked = level && !deciderGiven && !!m.nextMatchId
+
+  /* สถิติที่ขัดกับสกอร์ — เช่นฟุตบอลที่มีแอสซิสต์ทั้งที่ไม่มีประตู
+     ตรวจสดขณะกรอก คนกรอกจะได้เห็นก่อนกดส่ง ไม่ใช่โดนปฏิเสธทีหลัง */
+  const statProblems = m.viewer.can.recordStats && statDefs.length
+    ? checkResult({
+        sportName: m.tournament.sportName,
+        teamA: m.teamA ? { id: m.teamA.id, name: m.teamA.name } : null,
+        teamB: m.teamB ? { id: m.teamB.id, name: m.teamB.name } : null,
+        scoreA: sa,
+        scoreB: sb,
+        deciderGiven,
+        statKeys: statDefs.map(d => d.statKey),
+        entries: sides.flatMap(t => t.players.map(p => ({
+          userId: p.id,
+          teamId: t.id,
+          values: Object.fromEntries(statDefs.map(d => [d.statKey, stat[key(p.id, d.statKey)] ?? 0])),
+        }))),
+      })
+    : []
 
   return (
     <Panel>
@@ -137,6 +157,15 @@ export function ResultForm({ m }: { m: MatchDto }) {
         </>
       ) : null}
 
+      {statProblems.length ? (
+        <Banner kind="crit">
+          <b>สถิติยังไม่สอดคล้องกับสกอร์</b>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            {statProblems.map(p => <li key={p}>{p}</li>)}
+          </ul>
+        </Banner>
+      ) : null}
+
       {submit.isError ? (
         <Banner kind="crit">
           Could not save the result.{' '}
@@ -145,7 +174,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
       ) : null}
 
       <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-        disabled={submit.isPending || saveStats.isPending || blocked}
+        disabled={submit.isPending || saveStats.isPending || blocked || statProblems.length > 0}
         onClick={onSubmit}>
         {submit.isPending || saveStats.isPending ? 'Saving…' : 'Submit result'}
       </button>

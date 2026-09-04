@@ -80,6 +80,31 @@ const SCORE_UNIT: Record<string, string> = {
 }
 export const scoreUnit = (sport: string) => SCORE_UNIT[sport] || 'Points'
 
+/**
+ * สถิติ `g` ของผู้เล่นรวมกันแล้วต้องเท่าสกอร์ของทีมไหม
+ *
+ * จริงเฉพาะกีฬาที่หน่วยของสถิติรายคนกับหน่วยของสกอร์เป็นอันเดียวกัน
+ *   ฟุตบอล/ฟุตซอล  ประตูรายคนรวมกัน = ประตูของทีม ✓
+ *   บาสเกตบอล      แต้มรายคนรวมกัน = แต้มของทีม ✓
+ *   วอลเลย์บอล      สกอร์คือ "เซต" ส่วนสถิติคือ "แต้ม" — คนละหน่วย ✗
+ *   VALORANT/ROV    สกอร์คือ "แมป/เกม" ส่วนสถิติคือ "คิล" ✗
+ */
+export const playerStatSumsToScore = (sport: string) => {
+  const g = statLabels(sport).g
+  return !!g && g === scoreUnit(sport)
+}
+
+/**
+ * แอสซิสต์ต้องมีประตูรองรับไหม
+ *
+ * ในฟุตบอลกับฟุตซอล แอสซิสต์คือจ่ายบอลให้เกิดประตู ไม่มีประตูก็ไม่มีแอสซิสต์
+ * และหนึ่งประตูมีแอสซิสต์ได้ไม่เกินหนึ่ง แอสซิสต์ของทีมจึงไม่เกินประตูของทีม
+ *
+ * เกมยิงอย่าง VALORANT/ROV ไม่ใช่แบบนั้น — หนึ่งคิลมีคนช่วยได้หลายคน
+ * แอสซิสต์รวมจึงเกินจำนวนคิลได้ตามปกติ ห้ามเอากฎนี้ไปใช้
+ */
+export const assistNeedsGoal = (sport: string) => statLabels(sport).unit === 'goal'
+
 /** And what settles it when the scoreline is level. */
 const DECIDER: Record<string, string> = {
   Football: 'Penalties', Futsal: 'Penalties', Basketball: 'Overtime', Volleyball: 'Tiebreak',

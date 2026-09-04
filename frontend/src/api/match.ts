@@ -34,7 +34,8 @@ import type {
 import type { StatDefinition } from "../types/dto";
 import {
   findStoreMatch, findStoreStandings, findStoreTournamentMatches, numOf,
-  storeCheckinDtos, storeState, storeStatDtos, toListItem, toMatchDto, toResultDto,
+  storeCheckinDtos, storeState, storeStatDefinitions, storeStatDtos, toListItem, toMatchDto,
+  toResultDto,
   type MatchRef,
 } from "../mocks/storeBridge";
 import {
@@ -438,7 +439,12 @@ export async function saveMatchStats(
  */
 export async function getStatDefinitions(sportTypeId: number): Promise<{ items: StatDefinition[] }> {
   if (USE_MOCK) {
-    return mockDelay({ items: mockStatDefinitions[sportTypeId] ?? mockStatDefinitions[0] });
+    /* ชุดที่เขียนมือก่อน แล้วค่อยสร้างจากตารางกีฬาใน rules.ts
+       ฟุตบอลจึงได้ ประตู/แอสซิสต์/ใบเหลือง/ใบแดง ไม่ใช่ "แต้ม" ช่องเดียว */
+    const fixture = mockStatDefinitions[sportTypeId];
+    if (fixture) return mockDelay({ items: fixture });
+    const derived = storeStatDefinitions(sportTypeId);
+    return mockDelay({ items: derived.length ? derived : mockStatDefinitions[0] });
   }
   return apiFetch(`/sport-types/${sportTypeId}/stat-definitions`);
 }

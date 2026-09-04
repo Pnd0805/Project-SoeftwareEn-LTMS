@@ -28,8 +28,9 @@
  */
 import { getState } from '../shared/store'
 import { isOrg, me, team, tour } from '../shared/selectors'
-import { NOW, formatOf, leaderboard, scoreUnit, winnerId } from '../shared/rules'
+import { NOW, SPORTS, formatOf, leaderboard, scoreUnit, statLabels, winnerId } from '../shared/rules'
 import type { Match as StoreMatch, State, Team as StoreTeam } from '../shared/types'
+import type { StatDefinition } from '../types/dto'
 import type {
   MatchCheckinDto, MatchDto, MatchListItemDto, MatchResultDto, MatchTeamRef,
   MatchViewerContext, PlayerMatchStatDto,
@@ -56,6 +57,39 @@ export const MOCK_NOW = new Date(NOW()).toISOString()
  * seed เป็น deterministic (PRNG seed เดียว) ลำดับจึงเหมือนกันทุกเครื่อง
  * ตัวเลขเริ่มที่ 100000 เพื่อไม่ชนกับ id ของ mock ที่เขียนมือ (301, 201, ...)
  */
+/**
+ * ชื่อกีฬาใน store → sportTypeId ของ DTO
+ *
+ * `SPORTS` เรียงตรงกับ `mockSportTypes` (1..8) จึงใช้ลำดับแปลงได้ตรงๆ
+ * เดิมฮาร์ดโค้ดเป็น 0 ทุกแมตช์ ผลคือฟอร์มกรอกผลได้ชุดสถิติกลาง ("แต้ม" ช่องเดียว)
+ * แม้เป็นฟุตบอล — ช่องประตูกับแอสซิสต์จึงไม่เคยโผล่เลย
+ */
+export const sportTypeIdOf = (sport?: string | null): number => {
+  const i = sport ? SPORTS.indexOf(sport) : -1
+  return i >= 0 ? i + 1 : 0
+}
+
+/**
+ * นิยามสถิติรายกีฬา สร้างจากตาราง `SPORT_STATS` ที่ rules.ts ถืออยู่แล้ว
+ * จะได้ไม่ต้องเขียนซ้ำสองที่แล้วหลุดจากกันเมื่อเพิ่มกีฬาใหม่
+ */
+export function storeStatDefinitions(sportTypeId: number): StatDefinition[] {
+  const sport = SPORTS[sportTypeId - 1]
+  if (!sport) return []
+  const L = statLabels(sport)
+  const defs: StatDefinition[] = []
+  let order = 1
+  const push = (statKey: string, statLabelTh: string) => {
+    defs.push({ statDefinitionId: sportTypeId * 100 + order, statKey, statLabelTh, dataType: 'integer', displayOrder: order })
+    order += 1
+  }
+  /* ช่องคะแนนใช้ statKey ตามหน่วยของกีฬา — ฝั่งตรวจกฎ (resultRules) อ่านคีย์นี้ */
+  if (L.g) push(L.g === 'Goals' ? 'goals' : L.g === 'Kills' ? 'kills' : 'points', L.g)
+  if (L.a) push('assists', L.a)
+  L.extra.forEach(([k, label]) => push(k, label))
+  return defs
+}
+
 export const numOf = (storeId: string) => {
   let h = 0
   for (const c of storeId) h = (h * 31 + c.charCodeAt(0)) >>> 0
@@ -132,7 +166,7 @@ export function toMatchDto(s: State, m: StoreMatch): MatchDto {
       id: t ? numOf(t.id) : 0,
       name: t?.name ?? '—',
       championTeamId: t?.champion ? numOf(t.champion) : null,
-      sportTypeId: 0,               // mock: ใช้ชุดสถิติกลาง
+      sportTypeId: sportTypeIdOf(t?.sport),
       sportName: t?.sport ?? '—',
     },
     bracketNodeId: null,

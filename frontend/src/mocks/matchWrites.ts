@@ -183,6 +183,13 @@ export function writeCheckin(
     : actor(s)
   if (!uid) return false
 
+  /* UC-04 "ผู้ที่ไม่อยู่ในทีมสแกนต้องถูกปฏิเสธ" — หน้าจอวาดเฉพาะรายชื่อในทีมอยู่แล้ว
+     แต่ชั้น API ถูกเรียกตรงได้ จึงต้องตรวจซ้ำที่นี่ */
+  const inSquad = [m.a, m.b]
+    .filter((x): x is string => !!x)
+    .some(tid => s.teams.find(t => t.id === tid)?.members.includes(uid))
+  if (!inSquad) return false
+
   const online = tour(s, m.tour)?.channel === 'online'
   const method = detail?.method ?? (online ? 'photo_online' : 'qr_onsite')
   /* รูปที่รอตรวจยังไม่นับเข้า — ยอด "3 of 10" ต้องหมายถึงคนที่ผ่านจริงเท่านั้น */

@@ -26,6 +26,7 @@ import { useDrawTournament, useTournament } from '../../../hooks/useTournament'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
+import { checkDraw } from '../../match/resultRules'
 
 /** ทีมหนึ่งทีมในสายจับ — id เก็บเป็น string เสมอเพื่อให้ <select> เทียบค่าได้ */
 interface Entry { id: string; name: string; ref: number | string }
@@ -89,7 +90,11 @@ export function DrawPanel({ t }: { t: Tournament }) {
       </span>
     )
 
+  /* ทีมเดียวกันลงสองช่องไม่ได้ — ตรวจสดขณะเลือก ไม่ใช่ตอนกดส่ง */
+  const drawProblems = checkDraw(positions, id => byId.get(id)?.name ?? id)
+
   const submit = () => {
+    if (drawProblems.length) return
     const teamIds = positions
       .map(id => byId.get(id)?.ref)
       .filter((n): n is number | string => n !== undefined)
@@ -104,6 +109,15 @@ export function DrawPanel({ t }: { t: Tournament }) {
           : t.drawn ? <Badge kind="warn">Open until the first match starts</Badge>
             : <Badge kind="neutral">Not drawn yet</Badge>}
       </div>
+
+      {drawProblems.length ? (
+        <Banner kind="crit">
+          <b>สายนี้ยังส่งไม่ได้</b>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            {drawProblems.map(p => <li key={p}>{p}</li>)}
+          </ul>
+        </Banner>
+      ) : null}
 
       {draw.isError ? (
         <Banner kind="crit"><b>จับสายไม่สำเร็จ</b> {(draw.error as Error).message}</Banner>
@@ -123,7 +137,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
             </div>
           </div>
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={draw.isPending}
+            disabled={draw.isPending || drawProblems.length > 0}
             onClick={submit}>
             {t.drawn ? 'Save this draw' : 'Draw this way'}
           </button>
