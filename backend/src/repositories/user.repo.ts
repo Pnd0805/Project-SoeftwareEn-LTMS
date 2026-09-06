@@ -18,6 +18,7 @@ export async function findById(userId : number): Promise<UserRow | null>{
     return user ?? null;
 }
 
+
 type NewUser = {
   fullName: string;
   email: string;

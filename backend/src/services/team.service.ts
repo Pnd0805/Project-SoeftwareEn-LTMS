@@ -4,12 +4,12 @@ import * as UserRepo from '../repositories/user.repo.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
-import { toCreateTeam , toMyTeam, toTeamDto} from '../mappers/team.mapper.js';
-import type { MyTeam } from '../mappers/team.mapper.js';
+import { toCreateTeam , toMyTeam, toTeamDto, toUpdateMember} from '../mappers/team.mapper.js';
+import { toTeamMemberDto, type MyTeam , type TeamMemberDto} from '../mappers/team.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 
 import { AppError } from '../utils/AppError.js';
-import { checkTeam } from '../utils/checkExist.js';
+import { checkTeam, checkUser } from '../utils/checkExist.js';
 import type { ResultSetHeader } from 'mysql2';
 
 export async function createTeam(input : TeamInput , leaderId : number){
@@ -80,7 +80,46 @@ export async function deleteTeam(teamId : number){
     if(team['deleted_at'] !== null){
         throw new AppError(404 , "TEAM_NOT_FOUND" , "ไม่พบทีมนี้ในระบบ");
     }
-    
+
 
     return await TeamRepo.deleteTeam(teamId);
+}
+
+export async function getTeamMemberById(teamId :number , userId : number){
+    const team = await checkTeam(teamId);
+
+    const user = await TeamRepo.isMemberOf(team['team_id'] , userId);
+    if(!user){
+        throw new AppError(403 , "FORBIDDEN" , "คุณไม่มีสิทธิ์ทํารายการนี้ ");
+    }
+    const members = await TeamRepo.findTeamMemberById(team['team_id']);
+    const data = members.map(toTeamMemberDto)
+    return { items : data };
+}
+
+export async function updateMember(userId : number , teamId : number , position : 'starter' | 'substitute'){
+    const user = await TeamRepo.isMemberOf(teamId, userId);
+    if(!user){
+        throw new AppError(404 , "USER_NOT_FOUND" , "ผู้ใช้ไม่อยู่ในทีมนี้");
+    }
+    await TeamRepo.updateMember(userId , teamId , position);
+
+    const member = await TeamRepo.isMemberOf(teamId , userId);
+
+    return toUpdateMember(member!);   
+}
+
+export async function deleteMember(userId : number , teamId : number , sportId : number){
+    const user = await TeamRepo.isMemberOf(teamId, userId);
+    if(!user){
+        throw new AppError(404 , "USER_NOT_FOUND" , "ผู้ใช้ไม่อยู่ในทีมนี้");
+    }
+
+    await TeamRepo.deleteMember(userId , teamId);
+    const memberCount = await TeamRepo.countMemberByTeamId(teamId);
+    const sport_rule = await SportRepo.findSportTypeById(sportId);
+    if(memberCount < sport_rule!.min_members){
+        await TeamRepo.updateStatus(teamId , 'Forming');
+    }
+    return;
 }

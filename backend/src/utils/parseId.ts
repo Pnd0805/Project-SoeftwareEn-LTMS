@@ -5,7 +5,7 @@ import { AppError } from "./AppError.js";
  * @param label ชื่อของสิ่งที่ตรวจ ใช้ประกอบข้อความ เช่น 'รหัสคณะ'
  * @param field ชื่อ key ใน fields ที่ frontend ใช้หาว่าช่องไหนผิด (ค่าเริ่มต้น 'id')
  */
-export function parseId(raw: string | string[] | undefined, label: string, field = 'id'): number {
+export function parseId(raw: string | string[] | undefined , label: string, field = 'id'): number {
     const id = Array.isArray(raw) ? NaN : Number(raw);
 
     if (!Number.isInteger(id) || id < 1) {
