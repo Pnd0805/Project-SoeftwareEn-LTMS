@@ -1,6 +1,6 @@
-import type { TeamRow } from "../types/db.js";
+import type { TeamRow , TeamMemberRow } from "../types/db.js";
 import type { UserRefDto } from "./user.mapper.js";
-
+import type { UserRow } from "../types/db.js";
 export type TeamRef = {
     id : number,
     name : string,
@@ -85,3 +85,30 @@ export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_
 }
 
 // ---- Member
+export type TeamMemberDto = {
+    userId : number,
+    fullName : string,
+    avatarUrl : string | null,
+    position : 'starter' | 'substitute',
+    joinedAt : string
+}
+
+export type TeamMemberWithUserRef = Pick<TeamMemberRow , 'position' | 'joined_at'> 
+                                   & Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'>;
+
+export function toTeamMemberDto(rows : TeamMemberWithUserRef ) : TeamMemberDto{
+    return{
+        userId : rows.user_id,
+        fullName : rows.full_name,
+        avatarUrl : rows.profile_image_key,
+        position : rows.position,
+        joinedAt : rows.joined_at.toISOString()
+    }
+}
+
+export function toUpdateMember(rows : Pick<TeamMemberRow , 'user_id' | 'position'>) : { userId : number , position : 'starter' | 'substitute'}{
+    return {
+        userId : rows.user_id,
+        position : rows.position
+    }
+}
