@@ -10,7 +10,11 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit --skipLibCheck false"
+    "typecheck": "tsc --noEmit --skipLibCheck false",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:slow": "vitest run --config vitest.slow.config.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -27,8 +31,10 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^5.0.0",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true,
