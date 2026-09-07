@@ -1,8 +1,10 @@
 import pool from "../config/db.js";
 import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 
-import type { UserRow } from "../types/db.js";
+import type { TeamInvitationRow, TeamRow, UserRow } from "../types/db.js";
 import type { UpdateMeInput } from "../schemas/user.schema.js";
+import type { UserRefDto } from "../mappers/user.mapper.js";
+import type { TeamRef } from "../mappers/team.mapper.js";
 
 export async function findByEmail(email : string): Promise<UserRow | null>{
     const [rows] = await pool.query<(UserRow & RowDataPacket)[]>('SELECT * FROM users WHERE email = ?',[email]);
@@ -70,4 +72,20 @@ export async function update(userId : number , input : UpdateMeInput) : Promise<
                                                         ,[ ...values , userId]);
 
     return result.affectedRows;
+}
+
+export type MyInvitationRow = Pick<TeamInvitationRow , 'team_invitation_id' | 'expires_at'> &
+                              Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'> &
+                              Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' >;
+
+export async function getMyInvitation(invitedUserId : number) : Promise<MyInvitationRow[]>{
+    const [ rows ] = await pool.query<(MyInvitationRow & RowDataPacket)[]>(`SELECT inv.team_invitation_id , inv.expires_at ,
+                                                                            u.user_id , u.full_name , u.profile_image_key  ,
+                                                                            t.team_id , t.name , t.sport_type_id
+                                                                            FROM team_invitations inv JOIN teams t ON inv.team_id = t.team_id
+                                                                            JOIN users u ON u.user_id = inv.invited_by_user_id
+
+                                                                            WHERE inv.invited_user_id = ? AND inv.team_invitation_status = ? AND inv.expires_at > NOW()`
+                                                                            ,[invitedUserId , 'pending']);
+    return rows;
 }

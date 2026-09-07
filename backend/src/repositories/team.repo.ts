@@ -1,8 +1,7 @@
 import pool from "../config/db.js";
 import type { TeamDto, TeamMemberWithUserRef } from "../mappers/team.mapper.js";
 import type { TeamInput , updateTeamInput} from "../schemas/team.schema.js";
-
-import type { TeamRow ,TeamMemberRow} from "../types/db.js";
+import type { TeamRow ,TeamMemberRow, TeamInvitationRow , UserRow} from "../types/db.js";
 import type { RowDataPacket , ResultSetHeader } from "mysql2";
 
 
@@ -112,3 +111,46 @@ export async function updateStatus(teamId : number , status : 'Forming' | 'Ready
     const [ result ] = await pool.query<ResultSetHeader>('UPDATE teams SET readiness_status = ? , updated_at = NOW() WHERE team_id = ?',[status , teamId]);
     return result.affectedRows;
 }
+
+
+
+//Invitations
+export async function findInvitationsById(invitedId : number): Promise<TeamInvitationRow|null>{
+    const [ rows ] = await pool.query<(TeamInvitationRow & RowDataPacket)[]>('SELECT * FROM team_invitations WHERE team_invitation_id = ?', [invitedId]);
+    return rows[0] ?? null;
+}
+
+
+export async function findInvitationsByIdAndTeam(teamId : number , invitedId : number) : Promise<TeamInvitationRow | null>{
+    const [ rows ] = await pool.query<(TeamInvitationRow & RowDataPacket)[]>('SELECT * FROM team_invitations WHERE team_invitation_id = ? AND team_id = ?', [invitedId , teamId]);
+    return rows[0] ?? null;
+}
+
+
+
+export type getInvitation = Pick<TeamInvitationRow , 'team_invitation_id' | 'team_invitation_status' | 'created_at'> &
+                            Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'>;
+
+export async function findAllInvitationOfTeam(teamId : number) : Promise<getInvitation[]>{
+    const [ rows ] = await pool.query<(getInvitation & RowDataPacket)[]>(`SELECT inv.team_invitation_id , inv.team_invitation_status , inv.created_at ,
+                                                                          u.user_id , u.full_name , u.profile_image_key
+                                                                          FROM users u JOIN team_invitations inv ON inv.invited_user_id = u.user_id 
+                                                                          WHERE inv.team_id = ?` , [teamId]);
+    return rows
+}
+
+
+
+export async function createInvitation(teamId : number , invitedUserId : number , invitedByUserId : number , expireAt : Date) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(`INSERT INTO team_invitations(team_id , invited_user_id , invited_by_user_id , team_invitation_status , expires_at)
+                                                        VALUES(? , ? , ? , ? , ?)` , [teamId , invitedUserId , invitedByUserId , 'pending' , expireAt]);
+    return result.insertId;
+}
+
+
+
+export async function deletePendingInvite(teamId : number , invitedId : number){
+    const [ result ] = await pool.query<ResultSetHeader>(`DELETE FROM team_invitations WHERE team_id = ? AND team_invitation_id = ? AND team_invitation_status = ?`
+                                                         ,[teamId , invitedId , 'pending']);
+    return result.affectedRows;
+};

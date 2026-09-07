@@ -55,3 +55,23 @@ export async function deleteMember(req : Request , res : Response){
     await TeamService.deleteMember( userId , teamId , req.team!.sport_type_id);
     return res.status(204).send();
 }
+
+
+
+// Invitations
+export async function createTeamInvitation(req : Request , res : Response){
+    const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
+    return res.status(201).json(await TeamService.createInvitation(teamId , req.body.invitedUserId , req.user!.user_id));
+}
+
+export async function getAllInvitation(req : Request , res : Response){
+    const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
+    return res.status(200).json(await TeamService.getAllInvitation(teamId));
+};
+
+export async function deletePendingInvite(req : Request , res : Response){
+    const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
+    const inviteId = parseId(req.params['iid'] , 'รหัสคำเชิญ' , 'iid');
+    await TeamService.deletePendingInvite(teamId , inviteId);
+    return res.status(204).send();
+}

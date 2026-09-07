@@ -5,7 +5,7 @@ import * as StatRepo from '../repositories/playerStat.repo.js';
 import { AppError } from '../utils/AppError.js';
 import { checkUser } from '../utils/checkExist.js';
 
-import { toPublicUserDto , toUserRef , toMeDto} from '../mappers/user.mapper.js';
+import { toPublicUserDto , toUserRef , toMeDto, toGetMyInvitation} from '../mappers/user.mapper.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { toUserStatsDto } from '../mappers/stat.mapper.js';
 
@@ -39,3 +39,9 @@ export async function updateMe(userId : number , input : UpdateMeInput){
     const user = await checkUser(userId);
     return toMeDto(user);
 }
+
+export async function getMyInvitation(userId : number){
+    const userInvitation = await UserRepo.getMyInvitation(userId);
+    return { items : userInvitation.map(toGetMyInvitation)};
+} 
+

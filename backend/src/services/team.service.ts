@@ -4,13 +4,12 @@ import * as UserRepo from '../repositories/user.repo.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
-import { toCreateTeam , toMyTeam, toTeamDto, toUpdateMember} from '../mappers/team.mapper.js';
-import { toTeamMemberDto, type MyTeam , type TeamMemberDto} from '../mappers/team.mapper.js';
+import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toUpdateMember, toGetAllInvitation } from '../mappers/team.mapper.js';
+import { toTeamMemberDto, type MyTeam } from '../mappers/team.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
-import type { ResultSetHeader } from 'mysql2';
 
 export async function createTeam(input : TeamInput , leaderId : number){
 
@@ -85,6 +84,9 @@ export async function deleteTeam(teamId : number){
     return await TeamRepo.deleteTeam(teamId);
 }
 
+
+
+//Member
 export async function getTeamMemberById(teamId :number , userId : number){
     const team = await checkTeam(teamId);
 
@@ -121,5 +123,46 @@ export async function deleteMember(userId : number , teamId : number , sportId :
     if(memberCount < sport_rule!.min_members){
         await TeamRepo.updateStatus(teamId , 'Forming');
     }
+    return;
+}
+
+
+
+//Invitation
+export async function createInvitation(teamId : number , invitedUserId : number , invitedByUserId : number){
+    await checkUser(invitedUserId);
+
+    const member = await TeamRepo.isMemberOf(teamId , invitedUserId);
+    if(member){
+        throw new AppError(409 , "ALREADY_MEMBER" , " ผู้ใช้นี้อยู่ในทีมแล้ว");
+    }
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); 
+    const invitedId = await TeamRepo.createInvitation(teamId , invitedUserId , invitedByUserId , expiresAt);
+
+    const invitation = await TeamRepo.findInvitationsById(invitedId);
+    return toCreateTeamInvitation(invitation!);
+}
+
+
+export async function getAllInvitation(teamId : number){
+    await checkTeam(teamId);
+
+    const allInvitations = await TeamRepo.findAllInvitationOfTeam(teamId);
+    return { items : allInvitations.map(toGetAllInvitation) };
+}
+
+
+export async function deletePendingInvite(teamId : number , invitedId : number){
+    await checkTeam(teamId);
+    const invited = await TeamRepo.findInvitationsByIdAndTeam(teamId,invitedId);
+    if(!invited){
+        throw new AppError(404 , 'INVITATION_NOT_FOUND' , 'ไม่พบคําเชิญนี้');
+    }
+    if(invited.team_invitation_status !== 'pending'){
+        throw new AppError(409 , 'INVITATION_ALREADY_ANSWERED' , 'คําเชิญนี้ถูกตอบรับ/ปฏิเสธไปแล้ว ยกเลิกไม่ได้');
+    }
+
+    await TeamRepo.deletePendingInvite(teamId , invitedId);
     return;
 }

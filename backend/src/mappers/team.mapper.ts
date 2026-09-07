@@ -1,6 +1,7 @@
-import type { TeamRow , TeamMemberRow } from "../types/db.js";
+import type { TeamRow , TeamMemberRow, TeamInvitationRow } from "../types/db.js";
 import type { UserRefDto } from "./user.mapper.js";
 import type { UserRow } from "../types/db.js";
+import type { getInvitation } from "../repositories/team.repo.js";
 export type TeamRef = {
     id : number,
     name : string,
@@ -112,3 +113,38 @@ export function toUpdateMember(rows : Pick<TeamMemberRow , 'user_id' | 'position
         position : rows.position
     }
 }
+
+
+//Invitations
+export type createInvitationDto = {
+    id : number,
+    invitedUserId : number,
+    status : 'pending' | 'accepted' | 'rejected' | 'expired', 
+    expiresAt : string
+};
+
+export function toCreateTeamInvitation(rows : TeamInvitationRow): createInvitationDto{
+    return{
+        id : rows.team_invitation_id,
+        invitedUserId : rows.invited_user_id,
+        status : rows.team_invitation_status,
+        expiresAt : rows.expires_at.toISOString()
+    };
+};
+
+export type getAllInvitation = {
+    id : number,
+    invitedUser : UserRefDto
+    status : 'pending' | 'accepted' | 'rejected' | 'expired', 
+    createdAt : string
+};
+
+export function toGetAllInvitation(rows : getInvitation) : getAllInvitation{
+    const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : rows.profile_image_key};
+    return {
+        id : rows.team_invitation_id,
+        invitedUser : user,
+        status : rows.team_invitation_status,
+        createdAt : rows.created_at.toISOString()
+    };
+};

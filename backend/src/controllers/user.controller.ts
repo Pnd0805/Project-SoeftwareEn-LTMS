@@ -39,3 +39,7 @@ export async function patchMe(req : Request , res : Response){
     }
     res.status(200).json(await UserService.updateMe( req.user.user_id , req.body));
 }
+
+export async function getMyInvitation(req : Request , res : Response){
+    res.status(200).json(await UserService.getMyInvitation(req.user!.user_id));
+}

@@ -5,6 +5,7 @@ import Me from './me.routes.js';
 import Reference from './reference.routes.js';
 import User from './users.routes.js';
 import Team from './team.routes.js';
+import Invitation from './invitation.routes.js';
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/auth' , Auth);
 router.use('/me' , Me);
 router.use('/users' , User);
 router.use('/teams' , Team);
+router.use('/invitations' , Invitation);
 
 export default router;

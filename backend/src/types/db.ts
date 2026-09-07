@@ -81,3 +81,15 @@ export type TeamMemberRow = {
     position : 'starter' | 'substitute';
     joined_at : Date
 };
+
+
+export type TeamInvitationRow = {
+    team_invitation_id : number,
+    team_id : number,
+    invited_user_id : number,
+    invited_by_user_id : number,
+    team_invitation_status : 'pending' | 'accepted' | 'rejected' | 'expired', 
+    created_at : Date,
+    expires_at : Date,
+    responded_at : Date | null
+};

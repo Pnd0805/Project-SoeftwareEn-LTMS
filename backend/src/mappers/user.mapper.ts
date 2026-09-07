@@ -1,3 +1,4 @@
+import type { MyInvitationRow } from '../repositories/user.repo.js';
 import type { UserRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
 
@@ -71,5 +72,24 @@ export function toPublicUserDto(row :UserRow , team: TeamRef[]) : PublicUserDto{
     facultyId : row.faculty_id,
     departmentId : row.department_id,
     teams : team
+  }
+}
+
+export type getMyInvitationDto = {
+  id : number,
+  team : TeamRef,
+  invitedBy : UserRefDto,
+  expiresAt : string
+};
+
+export function toGetMyInvitation(rows : MyInvitationRow) : getMyInvitationDto{
+  const team:TeamRef = {id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
+  const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : rows.profile_image_key,}
+
+  return{
+    id : rows.team_invitation_id,
+    team : team,
+    invitedBy : user,
+    expiresAt : rows.expires_at.toISOString()
   }
 }
