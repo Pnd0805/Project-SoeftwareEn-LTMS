@@ -36,6 +36,7 @@ export async function createAcceptInvite(invitedId : number , teamId : number , 
 
 export async function createRejectInvite(invitedId : number , userId : number) :Promise<number>{
     const [ result ] = await pool.query<ResultSetHeader>(`UPDATE team_invitations SET team_invitation_status = ? , responded_at = NOW()
-                                                          WHERE team_invitation_id = ? AND invited_user_id = ?`, ['rejected' , invitedId , userId]);
+                                                          WHERE team_invitation_id = ? AND invited_user_id = ? AND team_invitation_status = ?`
+                                                          , ['rejected' , invitedId , userId , 'pending']);
     return result.affectedRows;
 }
