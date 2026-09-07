@@ -7,10 +7,10 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "dev" : "tsx watch src/server.ts",
-    "build" : "tsc",
-    "start" : "node dist/server.js",
-    "typecheck" : "tsc --noEmit --skipLibCheck false"
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit --skipLibCheck false"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -29,5 +29,9 @@
     "@types/node": "^26.2.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "esbuild@0.28.2": true
   }
 }
