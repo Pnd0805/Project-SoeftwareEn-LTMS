@@ -73,3 +73,82 @@ export type PlayerProfileStatRow = {
     championships : number,
     updated_at : Date
 }
+
+export type TournamentRefereeRow = {
+    tournament_referee_id : number,
+    tournament_id : number,
+    user_id : number,
+    invited_by : number,
+    invitation_status : 'pending' | 'accepted' | 'rejected',
+    is_external : number,                   
+    external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
+    approved_by : number | null,
+    approved_at : Date | null,
+    created_at : Date,
+    removed_at : Date | null,
+    removed_by : number | null
+}
+
+export type MatchRefereeRow = {
+    match_referee_id : number,
+    match_id : number,
+    tournament_referee_id : number,
+    created_at : Date
+}
+
+export type TournamentRow = {
+    tournament_id : number,
+    name : string,
+    sport_type_id : number,
+    bracket_format : 'single_elimination' | 'double_elimination' | 'round_robin' | null,
+    scope_type : 'department' | 'faculty' | 'university',
+    organizing_faculty_id : number | null,
+    organizing_department_id : number | null,
+    requested_by_user_id : number,
+    organizer_external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
+    organizer_external_reviewed_by : number | null,
+    organizer_external_reviewed_at : Date | null,
+    organizer_external_rejection_reason : string | null,
+    organizer_external_verification_docs : string[] | null,
+    tournament_status : 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted',
+    registration_open : number,
+    registration_start : Date | null,
+    registration_end : Date | null,
+    event_start_date : string,
+    event_end_date : string | null,
+    max_teams : number,
+    min_teams : number,
+    venue : string | null,
+    dispute_window_hours : number,
+    gender_requirement : 'any' | 'male' | 'female',
+    min_age : number | null,
+    max_age : number | null,
+    rejection_reason : string | null,
+    approved_by : number | null,
+    approved_at : Date | null,
+    created_at : Date,
+    updated_at : Date | null,
+    updated_by : number | null,
+    deleted_at : Date | null,
+    deleted_by : number | null
+}
+
+export type MatchRow = {
+    match_id : number,
+    tournament_id : number,
+    bracket_node_id : number | null,
+    next_match_id : number | null,
+    loser_next_match_id : number | null,
+    round_number : number | null,
+    team_a_id : number | null,
+    team_b_id : number | null,
+    scheduled_time : Date | null,
+    venue : string | null,
+    checkin_open_at : Date | null,
+    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed',
+    mode : 'onsite' | 'online',
+    created_at : Date,
+    updated_at : Date | null
+}
+
+
