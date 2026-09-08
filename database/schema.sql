@@ -198,6 +198,7 @@ CREATE TABLE official_team_memberships (
 CREATE TABLE tournaments (
   tournament_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(200) NOT NULL,
+  description VARCHAR(255) NULL,
   sport_type_id INT NOT NULL,
   bracket_format ENUM('single_elimination','double_elimination','round_robin') NULL,
   scope_type ENUM('department','faculty','university') NOT NULL,  -- ⚠️ 'university' รอ Change Management
@@ -231,7 +232,6 @@ CREATE TABLE tournaments (
   deleted_at DATETIME NULL,
   deleted_by INT NULL,   -- NULL = auto_deleted (ระบบ) · มีค่า = Admin สั่งลบ
   -- Organizer ไม่มีสิทธิ์ลบทัวร์นาเมนต์เอง มีแค่ unpublish (private ↔ public)
-  -- ⚠️ ไม่มีคอลัมน์ description แต่ C08 (PATCH /tournaments/:id) รับ field นี้ — ดู GUIDE/07
   FOREIGN KEY (sport_type_id) REFERENCES sport_types(sport_type_id),
   FOREIGN KEY (organizing_faculty_id) REFERENCES faculties(faculty_id),
   FOREIGN KEY (organizing_department_id) REFERENCES departments(department_id),

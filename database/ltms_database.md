@@ -237,6 +237,7 @@ CREATE TABLE official_team_memberships (
 CREATE TABLE tournaments (
   tournament_id INT PRIMARY KEY AUTO_INCREMENT,       -- ♻️ เปลี่ยนชื่อจาก id
   name VARCHAR(200) NOT NULL,
+  description VARCHAR(255) NULL,
   sport_type_id INT NOT NULL,
   bracket_format ENUM('single_elimination','double_elimination','round_robin') NULL,
   scope_type ENUM('department','faculty','university') NOT NULL,  -- ⚠️ 'university' รอ Change Management

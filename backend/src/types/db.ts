@@ -66,6 +66,7 @@ export type TeamRow = {
 export type TournamentRow = {
     tournament_id : number,
     name : string,
+    description : string | null,
     sport_type_id : number,
     bracket_format : 'single_elimination' | 'double_elimination' | 'round_robin' | null,
     scope_type : 'department' | 'faculty' | 'university',
