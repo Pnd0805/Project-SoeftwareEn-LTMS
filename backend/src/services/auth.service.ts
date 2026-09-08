@@ -57,4 +57,3 @@ export async function login(email: string, password: string) {
   return { accessToken : accessToken, expiresIn: authConfig.expireIn, tokenType: "Bearer" as const ,
            user: { id: user.user_id , fullName : user.full_name , userType: user.user_type }}
 }
-
