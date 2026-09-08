@@ -9,7 +9,8 @@ const pool = mysql.createPool({
     port : env.DB_PORT,
     database : env.DB_NAME,
     timezone : 'Z',
-    dateStrings : ['DATE']
+    dateStrings : ['DATE'],
+    charset : 'utf8mb4'
 });
 
 export default pool;
