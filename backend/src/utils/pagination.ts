@@ -1,6 +1,6 @@
 import type { ParsedQs } from 'qs';
 
-export function parsePagination(rawPage : string | string[] | ParsedQs | undefined , rawpageSize : string | string[] | ParsedQs | undefined){
+export function parsePagination(rawPage : string | (string | ParsedQs)[] | ParsedQs | undefined , rawpageSize : string | (string | ParsedQs)[]  | ParsedQs | undefined){
     const page = Number(rawPage);
     const pageSize = Number(rawpageSize);
 

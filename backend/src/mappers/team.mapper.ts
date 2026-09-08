@@ -1,4 +1,4 @@
-import type { TeamRow , TeamMemberRow, TeamInvitationRow } from "../types/db.js";
+import type { TeamRow , TeamMemberRow, TeamInvitationRow, TeamAdminRequestRow } from "../types/db.js";
 import type { UserRefDto } from "./user.mapper.js";
 import type { UserRow } from "../types/db.js";
 import type { getInvitation } from "../repositories/team.repo.js";
@@ -148,3 +148,33 @@ export function toGetAllInvitation(rows : getInvitation) : getAllInvitation{
         createdAt : rows.created_at.toISOString()
     };
 };
+
+
+////Team request
+export type getTeamOfficialRequest = {
+    id : number,
+    status : 'pending' | 'approved' | 'rejected'
+};
+
+export function getTeamOfficialRequestDto(rows : TeamAdminRequestRow): getTeamOfficialRequest{
+    return {
+        id : rows.team_admin_request_id,
+        status : rows.team_admin_request_status
+    }
+}
+
+export type OfficialMemberConflict = Pick<UserRow , 'user_id' | 'full_name' > & { conflictingTeamName : string }
+
+export type OfficialMemberConflictDto = {
+    userId : number,
+    fullName : string,
+    conflictingTeamName : string
+}
+
+export function toOfficialMemberConflictDto(rows : OfficialMemberConflict): OfficialMemberConflictDto{
+    return { 
+        userId : rows.user_id,
+        fullName : rows.full_name,
+        conflictingTeamName : rows.conflictingTeamName
+    }
+}

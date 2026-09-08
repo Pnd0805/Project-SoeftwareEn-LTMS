@@ -7,6 +7,7 @@ import User from './users.routes.js';
 import Application from './application.routes.js'
 import Team from './team.routes.js';
 import Invitation from './invitation.routes.js';
+import Admin from './adminScope.routes.js';
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use('/me' , Me);
 router.use('/users' , User);
 router.use('/teams' , Team);
 router.use('/invitations' , Invitation);
+router.use('/admin' , Admin);
 
 export default router;

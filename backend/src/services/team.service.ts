@@ -4,7 +4,7 @@ import * as UserRepo from '../repositories/user.repo.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
-import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toUpdateMember, toGetAllInvitation } from '../mappers/team.mapper.js';
+import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toUpdateMember, toGetAllInvitation, getTeamOfficialRequestDto } from '../mappers/team.mapper.js';
 import { toTeamMemberDto, type MyTeam } from '../mappers/team.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 
@@ -165,4 +165,15 @@ export async function deletePendingInvite(teamId : number , invitedId : number){
 
     await TeamRepo.deletePendingInvite(teamId , invitedId);
     return;
+}
+
+export async function createOfficialRequest(userId : number , teamId : number , docs : string[]){
+    const team = await checkTeam(teamId);
+    if(docs.length === 0){
+        const fields = { supportingDocs : "กรุณายื่นเอกสารประกอบ"};
+        throw new AppError(400 , "OFFICIAL_DOCS_REQUIRED" , "กรุณาแนบเอกสารประกอบคําร้อง" , { fields});
+    }
+    const requestId = await TeamRepo.createOfficialRequest(teamId ,userId ,docs);
+    const OfficialReq = await TeamRepo.findOfficialRequestById(requestId);
+    return getTeamOfficialRequestDto(OfficialReq!);
 }

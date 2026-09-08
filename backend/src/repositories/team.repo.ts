@@ -1,7 +1,7 @@
 import pool from "../config/db.js";
-import type { TeamDto, TeamMemberWithUserRef } from "../mappers/team.mapper.js";
+import type { TeamDto, TeamMemberWithUserRef , OfficialMemberConflict } from "../mappers/team.mapper.js";
 import type { TeamInput , updateTeamInput} from "../schemas/team.schema.js";
-import type { TeamRow ,TeamMemberRow, TeamInvitationRow , UserRow} from "../types/db.js";
+import type { TeamRow ,TeamMemberRow, TeamInvitationRow , UserRow, TeamAdminRequestRow} from "../types/db.js";
 import type { RowDataPacket , ResultSetHeader } from "mysql2";
 
 
@@ -154,3 +154,40 @@ export async function deletePendingInvite(teamId : number , invitedId : number){
                                                          ,[teamId , invitedId , 'pending']);
     return result.affectedRows;
 };
+
+
+
+
+//Team request
+export async function findOfficialRequestById(requestId : number) : Promise<TeamAdminRequestRow | null>{
+    const [ rows ] = await pool.query<(TeamAdminRequestRow & RowDataPacket)[]>(`SELECT * FROM team_admin_requests WHERE team_admin_request_id = ? AND request_type =?`,
+                                                                                [requestId , 'official_status']);
+    return rows[0] ?? null;
+}
+
+
+export async function findOfficialRequestByIdAndStatus(requestId : number , status : 'pending' | 'approved' | 'rejected') : Promise<TeamAdminRequestRow | null>{
+    const [ rows ] = await pool.query<(TeamAdminRequestRow & RowDataPacket)[]>(`SELECT * FROM team_admin_requests WHERE team_admin_request_id = ? AND request_type =? AND team_admin_request_status = ?`,
+                                                                                [requestId , 'official_status' , status]);
+    return rows[0] ?? null;
+}
+
+
+
+export async function createOfficialRequest(teamId : number , userId : number , docs : string[]) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(`INSERT INTO team_admin_requests(team_id , request_type , requested_by , team_admin_request_status , supporting_docs)
+                                                          VALUES(? , ? , ? , ? , ? )`,[teamId , 'official_status' , userId , 'pending', JSON.stringify(docs)]);
+    return result.insertId
+}
+
+
+export async function findOfficialMemberConflict(teamId : number , sportId : number) : Promise<OfficialMemberConflict[]>{
+    const [ rows ] = await pool.query<(OfficialMemberConflict & RowDataPacket)[]>(`SELECT u.user_id , u.full_name , t2.name as conflictingTeamName
+                                                          FROM team_members tm1 JOIN team_members tm2 ON tm1.user_id = tm2.user_id
+                                                          JOIN teams t2 ON t2.team_id = tm2.team_id
+                                                          JOIN users u ON tm1.user_id = u.user_id
+                                                          WHERE tm1.team_id != tm2.team_id
+                                                          AND tm1.team_id = ? AND t2.sport_type_id = ? AND t2.official_status = ?`
+                                                          ,[ teamId , sportId , 'Official']);
+    return rows;
+}

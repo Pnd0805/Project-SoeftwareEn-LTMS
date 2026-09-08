@@ -130,3 +130,26 @@ export type TeamInvitationRow = {
     expires_at : Date,
     responded_at : Date | null
 };
+
+export type TeamAdminRequestRow = {
+    team_admin_request_id : number,
+    team_id : number,
+    request_type : 'official_status' | 'leader_transfer',
+    requested_by : number,
+    target_user_id : number | null,
+    team_admin_request_status : 'pending' | 'approved' | 'rejected',
+    requested_at : Date,
+    reviewed_by : number | null,
+    reviewed_at : Date | null,
+    rejection_reason : string | null,
+    supporting_docs : string[] | null;
+}
+
+export type AdminScopeRow = {
+    admin_scope_id : number,
+    user_id : number,
+    scope_type : 'faculty' | 'university_wide',
+    faculty_id : number | null,
+    created_at : Date,
+    created_by : number | null
+}
