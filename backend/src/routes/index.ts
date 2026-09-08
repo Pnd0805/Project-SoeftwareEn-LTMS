@@ -8,8 +8,10 @@ import Application from './application.routes.js'
 import Team from './team.routes.js';
 import Invitation from './invitation.routes.js';
 import Admin from './adminScope.routes.js';
+import { tournamentRefereeRouter, matchRefereeRouter, meRefereeRouter, refereeInvitationRouter } from './referee.routes.js';
 
 const router = express.Router();
+
 
 router.use('/' , Reference);
 router.use('/' , Application);
@@ -20,5 +22,10 @@ router.use('/users' , User);
 router.use('/teams' , Team);
 router.use('/invitations' , Invitation);
 router.use('/admin' , Admin);
+
+router.use('/tournaments' , tournamentRefereeRouter);
+router.use('/matches' , matchRefereeRouter);
+router.use('/me' , meRefereeRouter);
+router.use('/referee-invitations' , refereeInvitationRouter);
 
 export default router;
