@@ -7,11 +7,13 @@ import User from './users.routes.js';
 import Application from './application.routes.js'
 import Team from './team.routes.js';
 import Invitation from './invitation.routes.js';
+import Match from './match.routes.js'
 
 const router = express.Router();
 
 router.use('/' , Reference);
 router.use('/' , Application);
+router.use('/' , Match);
 
 router.use('/auth' , Auth);
 router.use('/me' , Me);

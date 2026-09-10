@@ -125,8 +125,76 @@ export type TeamInvitationRow = {
     team_id : number,
     invited_user_id : number,
     invited_by_user_id : number,
-    team_invitation_status : 'pending' | 'accepted' | 'rejected' | 'expired', 
+    team_invitation_status : 'pending' | 'accepted' | 'rejected' | 'expired',
     created_at : Date,
     expires_at : Date,
     responded_at : Date | null
+};
+
+export type MatchRow = {
+    match_id : number,
+    tournament_id : number,
+    bracket_node_id : number | null,
+    next_match_id : number | null,
+    loser_next_match_id : number | null,
+    round_number : number | null,
+    team_a_id : number | null,
+    team_b_id : number | null,
+    scheduled_time : Date | null,
+    venue : string | null,
+    checkin_open_at : Date | null,
+    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed',
+    mode : 'onsite' | 'online',
+    created_at : Date,
+    updated_at : Date | null,
+};
+
+export type BracketNodeRow = {
+    bracket_node_id : number,
+    tournament_id : number,
+    node_code : string,
+    bracket_type : 'winners' | 'losers' | 'grand_final',
+    round : number | null,
+    match_number : number,
+    team_a_id : number | null,
+    team_b_id : number | null,
+    match_id : number | null,
+    created_at : Date,
+    updated_at : Date | null,
+};
+
+export type MatchCheckinRow = {
+    match_checkin_id : number,
+    match_id : number,
+    user_id : number,
+    method : 'qr_onsite' | 'photo_online' | 'manual_by_referee',
+    match_checkin_status : 'success' | 'rejected' | 'exception',
+    rejection_reason : string | null,
+    document_type : 'student_id' | 'national_id' | null,
+    document_s3_key : string | null,
+    verified_by_referee_id : number | null,
+    checked_in_at : Date,
+    verified_at : Date | null,
+};
+
+export type TournamentRefereeRow = {
+    tournament_referee_id : number,
+    tournament_id : number,
+    user_id : number,
+    invited_by : number,
+    invitation_status : 'pending' | 'accepted' | 'rejected',
+    is_external : number,
+    external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
+    approved_by : number | null,
+    approved_at : Date | null,
+    created_at : Date,
+    removed_at : Date | null,
+    removed_by : number | null,
+};
+
+export type MatchRefereeRow = {
+    match_referee_id : number,
+    match_id : number,
+    tournament_referee_id : number,
+    created_at : Date,
 };
