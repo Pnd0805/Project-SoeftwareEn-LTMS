@@ -1,5 +1,5 @@
 import pool from '../config/db.js';
-import type { MatchRow} from '../types/db.js';
+import type { MatchRow, MatchCheckinRow } from '../types/db.js';
 import type { RowDataPacket } from 'mysql2';
 
 export type MatchListRow = {
@@ -94,5 +94,67 @@ export async function openMatchCheckin(matchId: number): Promise<void> {
     await pool.query(
         "UPDATE matches SET match_status = 'checkin_open', checkin_open_at = NOW(), updated_at = NOW() WHERE match_id = ?",
         [matchId]
+    );
+}
+
+export async function countSuccessfulCheckins(matchId: number, teamId: number | null): Promise<number> {
+    if (teamId === null) return 0;
+    const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM match_checkins mc
+         JOIN team_members tm ON mc.user_id = tm.user_id
+         WHERE mc.match_id = ? AND tm.team_id = ? AND mc.match_checkin_status = 'success'`,
+        [matchId, teamId]
+    );
+    return rows[0]?.cnt ?? 0;
+}
+
+export type MatchCheckinListRow = {
+    user_id: number;
+    full_name: string;
+    method: 'qr_onsite' | 'photo_online' | 'manual_by_referee';
+    match_checkin_status: 'success' | 'rejected' | 'exception';
+    checked_in_at: Date;
+};
+
+export async function findCheckinsByMatch(matchId: number): Promise<MatchCheckinListRow[]> {
+    const [rows] = await pool.query<(MatchCheckinListRow & RowDataPacket)[]>(
+        `SELECT mc.user_id, u.full_name, mc.method, mc.match_checkin_status, mc.checked_in_at
+         FROM match_checkins mc
+         JOIN users u ON mc.user_id = u.user_id
+         WHERE mc.match_id = ?`,
+        [matchId]
+    );
+    return rows;
+}
+
+export type MatchCheckinDetailRow = Pick<MatchCheckinRow,
+    'match_checkin_id' | 'match_id' | 'match_checkin_status' | 'rejection_reason' | 'verified_by_referee_id' | 'verified_at'
+>;
+
+export async function findCheckinById(checkinId: number): Promise<MatchCheckinDetailRow | null> {
+    const [rows] = await pool.query<(MatchCheckinDetailRow & RowDataPacket)[]>(
+        `SELECT match_checkin_id, match_id, match_checkin_status, rejection_reason, verified_by_referee_id, verified_at
+         FROM match_checkins
+         WHERE match_checkin_id = ?`,
+        [checkinId]
+    );
+    return rows[0] ?? null;
+}
+
+export async function verifyCheckin(checkinId: number, refereeUserId: number): Promise<void> {
+    await pool.query(
+        `UPDATE match_checkins
+         SET match_checkin_status = 'success', verified_by_referee_id = ?, verified_at = NOW()
+         WHERE match_checkin_id = ?`,
+        [refereeUserId, checkinId]
+    );
+}
+
+export async function rejectCheckin(checkinId: number, refereeUserId: number, reason: string): Promise<void> {
+    await pool.query(
+        `UPDATE match_checkins
+         SET match_checkin_status = 'rejected', rejection_reason = ?, verified_by_referee_id = ?, verified_at = NOW()
+         WHERE match_checkin_id = ?`,
+        [reason, refereeUserId, checkinId]
     );
 }

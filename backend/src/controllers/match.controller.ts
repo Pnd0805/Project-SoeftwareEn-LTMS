@@ -29,3 +29,37 @@ export async function openCheckinMatch(req: Request, res: Response){
     const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
     res.status(200).json(await MatchService.openCheckinMatch(matchId, req.user.user_id));
 }
+
+export async function startMatch(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.startMatch(matchId, req.user.user_id));
+}
+
+export async function getMatchCheckins(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.getMatchCheckins(matchId, req.user.user_id));
+}
+
+export async function verifyCheckin(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const checkinId = parseId(req.params['cid'], 'รหัสการเช็คอิน');
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.verifyCheckin(checkinId, matchId , req.user.user_id));
+}
+
+export async function rejectCheckin(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const checkinId = parseId(req.params['cid'], 'รหัสการเช็คอิน');
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.rejectCheckin(checkinId, matchId, req.user.user_id, req.body.reason));
+}

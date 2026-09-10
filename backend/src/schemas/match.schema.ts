@@ -6,3 +6,9 @@ export const scheduleMatchSchema = z.object({
 });
 
 export type ScheduleMatchInput = z.infer<typeof scheduleMatchSchema>;
+
+export const rejectCheckinSchema = z.object({
+    reason: z.string().min(1, 'กรุณาระบุเหตุผลที่ปฏิเสธการยืนยันตัวตน'),
+});
+
+export type RejectCheckinInput = z.infer<typeof rejectCheckinSchema>;

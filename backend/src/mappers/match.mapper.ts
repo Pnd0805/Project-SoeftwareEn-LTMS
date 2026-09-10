@@ -1,4 +1,4 @@
-import type { MatchDetailRow, MatchListRow } from '../repositories/match.repo.js';
+import type { MatchDetailRow, MatchListRow, MatchCheckinListRow } from '../repositories/match.repo.js';
 
 export type MatchListItemDto = {
     id: number;
@@ -57,5 +57,23 @@ export function toMatchDetailDto(row: MatchDetailRow): MatchDetailItemDto {
         status: row.match_status,
         mode: row.mode,
         nextMatchId: row.next_match_id
+    };
+}
+
+export type CheckinListItemDto = {
+    userId: number;
+    fullName: string;
+    method: 'qr_onsite' | 'photo_online' | 'manual_by_referee';
+    status: 'success' | 'rejected' | 'exception';
+    checkedInAt: Date;
+};
+
+export function toCheckinListItemDto(row: MatchCheckinListRow): CheckinListItemDto {
+    return {
+        userId: row.user_id,
+        fullName: row.full_name,
+        method: row.method,
+        status: row.match_checkin_status,
+        checkedInAt: row.checked_in_at,
     };
 }
