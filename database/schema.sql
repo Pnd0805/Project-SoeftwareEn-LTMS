@@ -356,6 +356,7 @@ CREATE TABLE matches (
   team_a_id INT NULL,
   team_b_id INT NULL,
   scheduled_time DATETIME NULL,
+  scheduled_end_time  DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
   match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed') NOT NULL DEFAULT 'scheduled',

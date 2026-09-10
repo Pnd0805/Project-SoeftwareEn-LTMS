@@ -8,6 +8,10 @@ import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { toRefereeStatus } from '../mappers/referee.mapper.js';
 import type { RefereeStatusFields } from '../mappers/referee.mapper.js';
+import * as MatchRepo from '../repositories/match.repo.js';
+import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import { env } from '../config/env.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -42,8 +46,8 @@ export async function listTournamentReferees(tournamentId : number){
     // ตอบรับแล้วกี่คน — ตัวเลขที่แสดงบนหน้าจอ
     const acceptedCount = items.filter(i => i.invitationStatus === 'accepted').length;
 
-    // ★ พร้อมปฏิบัติงานจริงกี่คน — กรรมการภายนอกที่ admin ยังไม่อนุมัติ ยังคุมแมตช์ไม่ได้
-    //   BR-10 (C13 publish) ต้องเช็คตัวนี้ ไม่ใช่ acceptedCount — ดู GUIDE/07 ข้อ F-8
+    // พร้อมปฏิบัติงานจริงกี่คน — กรรมการภายนอกที่ admin ยังไม่อนุมัติ ยังคุมแมตช์ไม่ได้
+    //  BR-10 (C13 publish) ต้องเช็คตัวนี้ ไม่ใช่ acceptedCount 
     const effectiveCount = items.filter(i =>
         i.invitationStatus === 'accepted'
         && (!i.isExternal || i.externalApprovalStatus === 'approved')).length;
@@ -59,7 +63,7 @@ export async function listMyRefereeInvitations(userId : number){
 export async function acceptRefereeInvitation(invitationId : number, userId : number){
     const invitation = await RefRepo.findById(invitationId);
 
-    // ★ ไม่มีจริง / ถูกถอดแล้ว / ไม่ใช่ของเรา → 404 เหมือนกันหมด
+    // ไม่มีจริง / ถูกถอดแล้ว / ไม่ใช่ของเรา → 404 เหมือนกันหมด
     if(!invitation || invitation.removed_at !== null || invitation.user_id !== userId){
         throw new AppError(404, 'INVITATION_NOT_FOUND', 'ไม่พบคำเชิญนี้');
     }
@@ -102,7 +106,7 @@ export async function declineRefereeInvitation(invitationId : number, userId : n
 export async function assignRefereeToMatch(matchId : number, tournamentId : number, input : AssignRefereeInput){
     const tr = await RefRepo.findById(input.tournamentRefereeId);
 
-    // ★ ต้องเป็นกรรมการของ "ทัวร์เดียวกับแมตช์นี้" เท่านั้น
+    // ต้องเป็นกรรมการของ "ทัวร์เดียวกับแมตช์นี้" เท่านั้น
     if(!tr || tr.tournament_id !== tournamentId){
         throw new AppError(404, 'REFEREE_NOT_FOUND', 'ไม่พบกรรมการคนนี้ในทัวร์นาเมนต์นี้');
     }
@@ -145,11 +149,17 @@ export async function unassignRefereeFromMatch(matchId : number, tournamentRefer
     }
 }
 
-/** กรรมการขั้นต่ำที่ทัวร์นี้ต้องมี */
+/** กรรมการขั้นต่ำที่ทัวร์นี้ต้องมี — BR-10 คำนวณจากตารางแข่งจริง */
 async function requiredRefereeCount(tournamentId : number): Promise<number> {
-    // TODO(F-4a): เมื่อ sport_types มี match_duration_minutes แล้ว เปลี่ยนเป็น
-    //   max(จำนวนแมตช์ที่เวลาทับกัน) × กรรมการต่อแมตช์ (BR-11 = 2 ถ้า on-site + บันทึกสถิติ)
-    return 1;
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    if(!tournament) return env.REFEREE_MINIMUM;
+
+    // BR-11: on-site ที่ต้องบันทึกสถิติ ใช้กรรมการ 2 คนต่อแมตช์
+    const statDefs = await SportTypeRepo.findStatDefinitionsBySportType(tournament.sport_type_id);
+    const perOnsiteMatch = statDefs.length > 0 ? 2 : 1;
+
+    const need = await MatchRepo.findMaxConcurrentRefereeNeed(tournamentId, perOnsiteMatch);
+    return Math.max(need, env.REFEREE_MINIMUM);
 }
 
 export async function removeTournamentReferee(

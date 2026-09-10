@@ -144,6 +144,7 @@ export type MatchRow = {
     team_a_id : number | null,
     team_b_id : number | null,
     scheduled_time : Date | null,
+    scheduled_end_time : Date | null,    
     venue : string | null,
     checkin_open_at : Date | null,
     match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed',

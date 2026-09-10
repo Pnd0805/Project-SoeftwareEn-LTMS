@@ -18,7 +18,7 @@ export type RefereeStatusFields =
     & { removed_at? : Date | null };
 
 /**
- * ★ นิยามเดียวของ "กรรมการอยู่สถานะไหน" ทั้งระบบ
+ * นิยามเดียวของ "กรรมการอยู่สถานะไหน" ทั้งระบบ
  * services/referee.service.ts → isActiveReferee() เรียกฟังก์ชันนี้ ห้ามเขียนเงื่อนไขซ้ำที่อื่น
  * (กฎอยู่ฝั่ง mapper เพราะ service เรียก mapper ได้ แต่ mapper เรียก service ไม่ได้)
  */

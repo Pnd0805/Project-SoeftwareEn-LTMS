@@ -9,6 +9,10 @@ function requireEnv(name:string):string {
     return value;
 };
 
+function optionalEnv(name : string, fallback : string): string {
+    return process.env[name] ?? fallback;
+}
+
 export const env = {
     HOST : requireEnv("DB_HOST"),
     USER : requireEnv("DB_USER"),
@@ -19,5 +23,7 @@ export const env = {
     JWT_SECRET : requireEnv("JWT_SECRET"),
     JWT_EXPIRES_IN : requireEnv("JWT_EXPIRES_IN"),
 
-    PORT : Number(requireEnv("PORT"))
+    PORT : Number(requireEnv("PORT")),
+
+    REFEREE_MINIMUM : Number(optionalEnv("REFEREE_MINIMUM", "1"))
 };
