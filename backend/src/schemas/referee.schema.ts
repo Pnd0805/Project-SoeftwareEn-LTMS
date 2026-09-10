@@ -5,4 +5,9 @@ export const inviteRefereeSchema = z.object({
     isExternal : z.boolean('กรุณาระบุว่าเป็นกรรมการภายนอกหรือไม่')
 });
 
+export const assignRefereeSchema = z.object({
+    tournamentRefereeId : z.int('รหัสกรรมการต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกกรรมการ')
+});
+
 export type InviteRefereeInput = z.infer<typeof inviteRefereeSchema>;
+export type AssignRefereeInput = z.infer<typeof assignRefereeSchema>;

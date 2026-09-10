@@ -453,10 +453,19 @@ VALUES (LAST_INSERT_ID(), 1, 'onsite');
 | F-1 | `ALREADY_INVITED` — Part 3 มี / Part 4 ยกเลิก | ยึด Part 4 · ไม่มี error นี้ |
 | F-2 | F03 ลบ `match_referees` ตามไหม | ไม่ลบ (Part 2 รอบ 5) |
 | F-3 | enum `declined` vs DB `rejected` | ใช้ `rejected` |
-| F-4 | BR-10 ขั้นต่ำกี่คน | ตั้ง `REFEREE_MINIMUM` ใน config · **รอทีมยืนยัน** |
+| F-4 | BR-10 ขั้นต่ำกี่คน | **คำนวณจากตารางแข่ง** — `max(จำนวนแมตช์ที่เวลาทับกัน) × กรรมการต่อแมตช์` (ทีมยืนยัน 9 ก.ย. 2026) · ต้องได้ F-4a ก่อนถึงคำนวณได้จริง |
 | F-5 | F13 `:rid` คือ id ตัวไหน | `tournament_referee_id` |
-| F-6 | `external_approval_status` ตั้ง `pending` ตอนไหน | ตอน F05 accept ถ้า `is_external` |
+| F-6 | `external_approval_status` ตั้ง `pending` ตอนไหน | **ตอน F05 accept ถ้า `is_external`** — ทีมยืนยันแล้ว 9 ก.ย. 2026 (โค้ดปัจจุบันถูกอยู่แล้ว) |
 | F-7 | เชิญซ้ำคนที่ `accepted` อยู่แล้วได้ไหม | **ไม่ได้** → 409 (กันสิทธิ์โดนลดเป็น pending เงียบๆ) |
+| F-8 | BR-10 นับ `acceptedCount` หรือ `effectiveCount` | **`effectiveCount`** — กรรมการภายนอกที่ admin ยังไม่อนุมัติ ตอบรับแล้วก็คุมแมตช์ไม่ได้ · F02 คืนทั้งสองตัว |
+| F-9 | มอบหมายกรรมการภายนอกที่ `accepted` แต่ admin ยังไม่อนุมัติ เข้าแมตช์ได้ไหม | **ไม่ได้** → 409 `REFEREE_EXTERNAL_APPROVAL_PENDING` (F11 ใช้ `isActiveReferee`) |
+| F-10 | admin ถอนการอนุมัติกรรมการภายนอกภายหลังได้ไหม | **รอทีมตอบ** — ถ้าได้ ต้องกำหนดด้วยว่าแมตช์ที่เขาถูกมอบหมายไว้แล้วจะเป็นอย่างไร และทัวร์ที่ publish ไปแล้วต้องถูกดึงกลับหรือไม่ |
+| F-11 | ลำดับการอนุมัติคนนอก | **ตกไป** — ทีมใช้ลำดับเดิม: ORG เชิญ → ref กดรับ → ส่งเอกสารให้ admin → admin ตรวจ |
+| F-12 | สถานะ `Pending_Admin` เก็บยังไง | **อย่าเพิ่มค่าใน enum `invitation_status`** — ใช้คู่ (`accepted` + `external_approval_status='pending'`) ที่มีอยู่ แล้วให้ mapper คำนวณ `refereeStatus` ส่งออก |
+| F-13 | เก็บเอกสารที่ ref ส่งให้ admin ไว้ที่ไหน | **ยังไม่มีที่เก็บ** — ต้องเพิ่ม `verification_docs JSON NULL` + `rejection_reason TEXT NULL` ใน `tournament_referees` (แก้ schema) |
+| F-14 | "เอกสารที่ admin ระบุไว้" กำหนดที่ไหน | **รอทีมตอบ** — ค่าคงที่ทั้งระบบ / ตั้งต่อทัวร์ / admin ตั้งเอง |
+| F-15 | admin ไม่อนุมัติคนนอก แล้วยังไงต่อ | **รอทีมตอบ** — แจ้ง ORG ให้หาคนแทนไหม · ORG เชิญคนเดิมซ้ำได้ไหม |
+| F-4a | ระยะเวลาต่อแมตช์ (ใช้คำนวณเวลาทับซ้อน) | **ยังไม่มีที่เก็บ** — เสนอ `match_duration_minutes` ใน `sport_types` · **บล็อกทั้ง BR-10 แบบใหม่ และ M06 ตรวจทับซ้อน 3 มิติ** |
 
 ---
 
