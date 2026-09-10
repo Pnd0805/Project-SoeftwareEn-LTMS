@@ -23,3 +23,20 @@ meRefereeRouter.get('/referee-invitations', requireAuth, Referee.listMyInvitatio
 // F05 / F06
 refereeInvitationRouter.post('/:id/accept', requireAuth, Referee.accept);
 refereeInvitationRouter.post('/:id/decline', requireAuth, Referee.decline);
+
+import { requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
+import { assignRefereeSchema } from '../schemas/referee.schema.js';
+
+// F11
+matchRefereeRouter.post('/:id/referees',
+    requireAuth, requireOrganizerOfMatch, validate(assignRefereeSchema), Referee.assignToMatch);
+
+// F12 — สาธารณะ ไม่มี middleware
+matchRefereeRouter.get('/:id/referees', Referee.listByMatch);
+
+// F13
+matchRefereeRouter.delete('/:id/referees/:rid',
+    requireAuth, requireOrganizerOfMatch, Referee.unassignFromMatch);
+
+// F03
+tournamentRefereeRouter.delete('/:id/referees/:rid', requireAuth, requireOrganizer, Referee.removeFromTournament);

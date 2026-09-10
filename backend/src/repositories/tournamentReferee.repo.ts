@@ -99,3 +99,14 @@ export async function decline(tournamentRefereeId : number): Promise<boolean>{
         [tournamentRefereeId]);
     return result.affectedRows === 1;
 }
+
+/** ถอดทุกแถวของ user คนนี้ในทัวร์นี้ — คืนจำนวนแถวที่ถูกถอด */
+export async function removeAllByUser(tournamentId : number, userId : number, removedBy : number)
+        : Promise<number>{
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournament_referees
+         SET removed_at = NOW(), removed_by = ?
+         WHERE tournament_id = ? AND user_id = ? AND removed_at IS NULL`,
+        [removedBy, tournamentId, userId]);
+    return result.affectedRows;
+}
