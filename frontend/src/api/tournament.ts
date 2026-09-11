@@ -216,7 +216,11 @@ export async function reviewApplication(id: TournamentRef, applicationId: Tourna
     application.reviewedAt = isoNow();
     return tournamentMockDelay(application);
   }
-  return apiFetch(`/tournaments/${id}/applications/${applicationId}`, { method: "PATCH", body: JSON.stringify(input) });
+  const action = input.status === "approved" ? "approve" : "reject";
+  const body = input.status === "rejected"
+    ? JSON.stringify({ rejectionReason: input.rejectionReason ?? null })
+    : undefined;
+  return apiFetch(`/applications/${applicationId}/${action}`, { method: "POST", body });
 }
 
 export async function approveApplication(id: TournamentRef, applicationId: TournamentRef): Promise<TournamentApplicationDto> {
@@ -227,6 +231,17 @@ export async function rejectApplication(id: TournamentRef, applicationId: Tourna
   return reviewApplication(id, applicationId, { status: "rejected", rejectionReason });
 }
 
+export async function cancelApplication(id: TournamentRef, applicationId: TournamentRef): Promise<TournamentApplicationDto> {
+  if (USE_MOCK) {
+    const application = mockTournamentApplications.find((item) => item.tournamentId === id && item.id === applicationId);
+    if (!application) return notFound("ไม่พบใบสมัคร");
+    application.status = "cancelled";
+    return tournamentMockDelay(application);
+  }
+  void id;
+  return apiFetch(`/applications/${applicationId}/cancel`, { method: "POST" });
+}
+
 export async function approveAllApplications(id: TournamentRef): Promise<void> {
   if (USE_MOCK) {
     if (writeApproveAllRegistrations(id) > 0) return tournamentMockDelay(undefined);
@@ -234,7 +249,11 @@ export async function approveAllApplications(id: TournamentRef): Promise<void> {
       .forEach((item) => { item.status = "approved"; item.reviewedBy = 1; item.reviewedAt = isoNow(); });
     return tournamentMockDelay(undefined);
   }
-  return apiFetch(`/tournaments/${id}/applications/approve-all`, { method: "POST" });
+  void id;
+  return mockReject<void>(501, {
+    code: "NOT_IMPLEMENTED",
+    message: "Backend ยังไม่มี endpoint สำหรับอนุมัติใบสมัครทั้งหมด",
+  });
 }
 
 export async function allowApplicationWithdrawal(id: TournamentRef, applicationId: TournamentRef): Promise<TournamentApplicationDto> {
@@ -248,7 +267,8 @@ export async function allowApplicationWithdrawal(id: TournamentRef, applicationI
     application.status = "withdrawn";
     return tournamentMockDelay(application);
   }
-  return apiFetch(`/tournaments/${id}/applications/${applicationId}/withdraw`, { method: "POST" });
+  void id;
+  return apiFetch(`/applications/${applicationId}/withdraw`, { method: "POST" });
 }
 
 export async function publishTournament(id: number): Promise<TournamentDto> {

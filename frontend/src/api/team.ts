@@ -175,8 +175,8 @@ export async function answerInvitation(
     const row = teamStoreInvitations(teamOfInvite).find((i) => i.id === Number(invitationId));
     return row ? mockDelay(row) : notFound<TeamInvitationDto>("คำเชิญหลังตอบ");
   }
-  return apiFetch(`/team-invitations/${invitationId}`, {
-    method: "POST", body: JSON.stringify({ accept }),
+  return apiFetch(`/invitations/${invitationId}/${accept ? "accept" : "decline"}`, {
+    method: "POST",
   });
 }
 
@@ -241,7 +241,9 @@ export async function reviewTeamRequest(
     const row = storeTeamAdminRequests().find((r) => r.id === Number(requestId));
     return row ? mockDelay(row) : notFound<TeamAdminRequestDto>("คำร้องหลังตัดสิน");
   }
-  return apiFetch(`/admin/team-requests/${requestId}/review`, {
-    method: "POST", body: JSON.stringify(input),
-  });
+  const action = input.approve ? "approve" : "reject";
+  const body = input.approve
+    ? undefined
+    : JSON.stringify({ rejectionReason: input.rejectionReason ?? null });
+  return apiFetch(`/admin/team-requests/${requestId}/${action}`, { method: "POST", body });
 }
