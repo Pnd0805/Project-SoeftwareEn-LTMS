@@ -2,11 +2,14 @@ import express from 'express';
 import * as Match from '../controllers/match.controller.js';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
-import { scheduleMatchSchema, rejectCheckinSchema } from '../schemas/match.schema.js';
+import { scheduleMatchSchema, rejectCheckinSchema, createBracketSchema } from '../schemas/match.schema.js';
 import { requireReferee } from '../middlewares/requireReferee.js';
+import { requireOrganizer } from '../middlewares/requireOrganizer.js';
 
 const router = express.Router();
 
+router.post('/tournaments/:id/bracket' , requireAuth , requireOrganizer , validate(createBracketSchema) , Match.createBracket);
+router.get('/tournaments/:id/bracket' , Match.getBracket);
 router.get('/tournaments/:id/matches' , Match.getTournamentMatches);
 router.get('/matches/:id' , Match.getMatchDetail);
 router.patch('/matches/:id/schedule' , requireAuth , validate(scheduleMatchSchema) , Match.scheduleMatch);

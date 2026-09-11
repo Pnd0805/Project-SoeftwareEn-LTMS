@@ -12,3 +12,13 @@ export const rejectCheckinSchema = z.object({
 });
 
 export type RejectCheckinInput = z.infer<typeof rejectCheckinSchema>;
+
+export const createBracketSchema = z.object({
+    seedingMethod: z.enum(['random', 'manual']),
+    manualSeeds: z.array(z.number()).optional(),
+}).refine(
+    (data) => data.seedingMethod !== 'manual' || (data.manualSeeds !== undefined && data.manualSeeds.length > 0),
+    { message: 'ต้องระบุ manualSeeds เมื่อเลือก seedingMethod เป็น manual', path: ['manualSeeds'] }
+);
+
+export type CreateBracketInput = z.infer<typeof createBracketSchema>;

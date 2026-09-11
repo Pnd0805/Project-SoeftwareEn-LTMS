@@ -2,6 +2,26 @@ import type { Request, Response } from 'express';
 import { parseId } from '../utils/parseId.js';
 import { AppError } from '../utils/AppError.js';
 import * as MatchService from '../services/match.service.js';
+import * as BracketService from '../services/bracket.service.js';
+
+export async function createBracket(req: Request, res: Response) {
+    if (!req.user) {
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    const result = await BracketService.createBracket(
+        tournamentId,
+        req.user.user_id,
+        req.body.seedingMethod,
+        req.body.manualSeeds
+    );
+    res.status(201).json(result);
+}
+
+export async function getBracket(req: Request, res: Response) {
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await BracketService.getBracket(tournamentId));
+}
 
 export async function getTournamentMatches(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');

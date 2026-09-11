@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import type { MatchRow, MatchCheckinRow } from '../types/db.js';
-import type { RowDataPacket } from 'mysql2';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2';
+import type { PoolConnection } from 'mysql2/promise';
 
 export type MatchListRow = {
     match_id: number;
@@ -156,5 +157,37 @@ export async function rejectCheckin(checkinId: number, refereeUserId: number, re
          SET match_checkin_status = 'rejected', rejection_reason = ?, verified_by_referee_id = ?, verified_at = NOW()
          WHERE match_checkin_id = ?`,
         [reason, refereeUserId, checkinId]
+    );
+}
+
+export async function countMatchesByTournament(tournamentId: number): Promise<number> {
+    const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM matches WHERE tournament_id = ?`,
+        [tournamentId]
+    );
+    return rows[0]?.cnt ?? 0;
+}
+
+type InsertMatchInput = {
+    tournamentId: number;
+    roundNumber: number | null;
+    teamAId: number | null;
+    teamBId: number | null;
+};
+
+// mode ถูก hardcode เป็น 'onsite' ไปก่อน เพราะ M01 ไม่มีช่องให้ organizer เลือก mode ตอนสร้างสาย — ต้องคุยทีม
+export async function insertMatchTx(conn: PoolConnection, input: InsertMatchInput): Promise<number> {
+    const [result] = await conn.query<ResultSetHeader>(
+        `INSERT INTO matches (tournament_id, round_number, team_a_id, team_b_id, match_status, mode)
+         VALUES (?, ?, ?, ?, 'scheduled', 'onsite')`,
+        [input.tournamentId, input.roundNumber, input.teamAId, input.teamBId]
+    );
+    return result.insertId;
+}
+
+export async function updateMatchNextMatchIdTx(conn: PoolConnection, matchId: number, nextMatchId: number): Promise<void> {
+    await conn.query(
+        `UPDATE matches SET next_match_id = ? WHERE match_id = ?`,
+        [nextMatchId, matchId]
     );
 }
