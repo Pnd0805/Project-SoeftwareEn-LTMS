@@ -31,7 +31,7 @@ export function TeamsPage() {
   }
 
   const items = teams.data?.items ?? []
-  if (!items.length) {
+  if (!items.length && !invitations.data?.items.length) {
     return (
       <Empty icon="team" title="You are not in any teams yet">
         <p className="sub">Create a team or accept an invitation to register for a tournament.</p>
