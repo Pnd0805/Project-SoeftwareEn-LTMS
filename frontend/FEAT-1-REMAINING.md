@@ -62,7 +62,7 @@ its type, hook, and consuming screen are complete:
 
 Implementation requirements:
 
-- [ ] Use the backend hard-filter result for eligibility feedback. On
+- [x] Use the backend hard-filter result for eligibility feedback. On
    `422 HARD_FILTER_FAILED`, show the failed member details returned by the
    server; the frontend may provide guidance but must not require a duplicated
    client-side eligibility calculation.
