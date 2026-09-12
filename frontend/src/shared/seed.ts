@@ -19,6 +19,9 @@ import type {
 
 const DAY = 86400000
 const daysAgo = (d: number) => NOW() - d * DAY
+// Demo fixtures remain deterministic, but Inbox needs relative dates to match
+// the real clock each time the user presses "Reset demo data".
+const notificationDaysAgo = (d: number) => Date.now() - d * DAY
 const atDay = (d: number, hour = 14) =>
   new Date(NOW() + d * DAY - (12 - hour) * 3600000).toISOString()
 
@@ -375,12 +378,12 @@ export function SEED(): State {
   /* ── notifications for the accounts a reviewer will sign into ── */
   const notify = (to: string, text: string, href: string, at: number, read = false) =>
     S.notifications.push({ id: nid('n'), to, text, href, at, read })
-  notify('u-org', 'Shuttle Squad registered for Inter-Faculty Futsal 2026.', '/t/t-fut/manage/registrations', daysAgo(2))
-  notify('u-org', 'A result in Faculty Football Cup 2026 was disputed.', `/m/${semis[0]?.id ?? ''}`, daysAgo(1))
-  notify('u-ref', 'You were appointed to officiate Faculty Basketball Showdown.', '/matches', daysAgo(3))
-  notify('u-lead', 'Your request to organize Campus Chess Ladder is with an admin.', '/t/t-chs', daysAgo(3), true)
-  notify('u-play', 'Circuit Breakers invited you to join the squad.', '/teams', daysAgo(1))
-  notify('u-admin', 'Campus Chess Ladder is waiting on your approval.', '/admin', daysAgo(3))
+  notify('u-org', 'Shuttle Squad registered for Inter-Faculty Futsal 2026.', '/t/t-fut/manage/registrations', notificationDaysAgo(2))
+  notify('u-org', 'A result in Faculty Football Cup 2026 was disputed.', `/m/${semis[0]?.id ?? ''}`, notificationDaysAgo(1))
+  notify('u-ref', 'You were appointed to officiate Faculty Basketball Showdown.', '/matches', notificationDaysAgo(3))
+  notify('u-lead', 'Your request to organize Campus Chess Ladder is with an admin.', '/t/t-chs', notificationDaysAgo(3), true)
+  notify('u-play', 'Circuit Breakers invited you to join the squad.', '/teams', notificationDaysAgo(1))
+  notify('u-admin', 'Campus Chess Ladder is waiting on your approval.', '/admin', notificationDaysAgo(3))
 
   /* ── Pick'em on what is still to play, MVP votes on what is done ── */
   S.matches.filter(m => m.tour === football.id && m.status === 'scheduled' && m.a && m.b).slice(0, 2)
