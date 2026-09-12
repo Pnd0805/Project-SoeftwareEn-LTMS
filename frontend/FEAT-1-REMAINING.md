@@ -105,6 +105,8 @@ Available routes:
 
 Add API/hook tests for:
 
+- [x] API error contract: `204` invitation decline, `422 HARD_FILTER_FAILED`,
+      and `403` team-members access denial.
 - [ ] `GET /me/teams`, team detail, members, and invitation actions.
 - [ ] Apply success plus `422 HARD_FILTER_FAILED`.
 - [ ] Application actions and organizer permission errors.
