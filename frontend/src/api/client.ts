@@ -18,11 +18,13 @@ export class ApiError extends Error {
   code: string;
   status: number;
   fields?: Record<string, string>;
+  details?: unknown;
   constructor(status: number, body: ApiErrorBody) {
     super(body.message);
     this.code = body.code;
     this.status = status;
     this.fields = body.fields;
+    this.details = body.details;
   }
 }
 

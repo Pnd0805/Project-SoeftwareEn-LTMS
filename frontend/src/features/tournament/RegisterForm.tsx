@@ -16,7 +16,7 @@ import { Banner, Field, TableWrap } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
 import { useApplyToTournament } from '../../hooks/useTournament'
-import { ApiError } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { applyToTournamentSchema, type ApplyToTournamentInput } from '../../schemas/tournament.schema'
 import { user } from '../../shared/selectors'
 import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
@@ -45,8 +45,11 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
   const s = useLtms()
   const [trId, setTrId] = useState(tournament.id)
   const [squad, setSquad] = useState<string[]>(tm.members)
+  const [serverError, setServerError] = useState<string | null>(null)
   const tr = s.tournaments.find(t => t.id === trId) ?? tournament
-  const fails = useMemo(() => hardFilter(s, tm, tr, squad), [s, tm, tr, squad])
+  // The live backend evaluates the complete team. Keep the prototype-only
+  // precheck solely for mock mode and surface the server decision otherwise.
+  const fails = useMemo(() => USE_MOCK ? hardFilter(s, tm, tr, squad) : [], [s, tm, tr, squad])
   const shut = regWindowClosed(tr)
   const locked = options.length < 2
   /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store — ส่งตัวที่หน้าถืออยู่ */
@@ -60,14 +63,15 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
     setSquad(cur => (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]))
 
   const submit = async (input: ApplyToTournamentInput) => {
+    setServerError(null)
     try {
-      /* ส่งรายชื่อที่เลือกไว้ไปด้วย hard filter ตรวจจากรายชื่อนี้ ไม่ใช่ทั้งทีม */
-      await apply.mutateAsync({ ...input, squad })
+      await apply.mutateAsync(input)
       onClose()
     } catch (error) {
       if (error instanceof ApiError && error.fields) {
         Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ApplyToTournamentInput, { type: 'server', message }))
       }
+      if (error instanceof ApiError) setServerError(error.message)
     }
   }
 
@@ -116,8 +120,9 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
 
       <EntryNotesBlock tr={tr} />
 
+      {serverError ? <Banner kind="crit"><b>Registration could not be submitted.</b><br />{serverError}</Banner> : null}
       {shut ? <Banner kind="crit"><b>{shut}</b></Banner>
-        : fails.length ? (
+        : USE_MOCK && fails.length ? (
           <Banner kind="crit">
             <b>The hard filter refuses this squad list.</b> Nobody can override it — leave the named players
             off, or enter a different tournament.
@@ -128,8 +133,9 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
           </Banner>
         ) : (
           <Banner kind="ok">
-            All {squad.length} entering players clear the entry conditions
-            {ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.
+            {USE_MOCK
+              ? `All ${squad.length} entering players clear the entry conditions${ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.`
+              : 'The server will verify team readiness and eligibility when you submit.'}
           </Banner>
         )}
 
