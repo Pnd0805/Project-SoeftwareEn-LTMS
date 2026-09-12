@@ -67,7 +67,7 @@ Implementation requirements:
    server; the frontend may provide guidance but must not require a duplicated
    client-side eligibility calculation.
 - [x] Migrate `RegistrationsPanel` to the organizer-application DTO.
-- [ ] Remove or disable any approve-all UI. It cannot work until a backend route
+- [x] Remove or disable any approve-all UI. It cannot work until a backend route
    exists.
 - [ ] Keep organizer and team-leader action permissions explicit in the UI.
 
