@@ -235,6 +235,12 @@ export async function inviteMember(
   return apiFetch(`/teams/${teamId}/invitations`, { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Cancel a pending outgoing invitation; only the team leader is authorized. */
+export async function cancelTeamInvitation(teamId: TeamRef, invitationId: number): Promise<void> {
+  if (USE_MOCK) return mockReject(501, { code: "NOT_IMPLEMENTED", message: "Invitation cancellation is unavailable in the legacy demo." });
+  return apiFetch(`/teams/${teamId}/invitations/${invitationId}`, { method: "DELETE" });
+}
+
 /**
  * T09/T12/T13 — ตอบรับหรือปฏิเสธ (FR-TM-03)
  * backend ต้องเช็คกฎจำนวนทีมสูงสุดต่อคน และคำเชิญหมดอายุ ก่อนรับเข้าเป็นสมาชิก

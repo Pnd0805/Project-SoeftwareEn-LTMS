@@ -174,6 +174,14 @@ export function useInviteMember(teamId: TeamRef) {
   });
 }
 
+export function useCancelTeamInvitation(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: number) => teamApi.cancelTeamInvitation(teamId, invitationId),
+    onSuccess: () => touchTeam(qc, teamId),
+  });
+}
+
 /** ตอบรับแล้วสมาชิกทีมเปลี่ยน — invalidate ทั้งคำเชิญและทีม */
 export function useAnswerInvitation() {
   const qc = useQueryClient();
