@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toMeDto, toUserRef, toPublicUserDto } from '../user.mapper.js';
+import { toMeDto, toUserRef, toPublicUserDto, toGetMyInvitation } from '../user.mapper.js';
 
 const baseUserRow = {
   user_id: 1,
@@ -112,5 +112,42 @@ describe('toPublicUserDto', () => {
   it('passes an empty teams array through unchanged', () => {
     const result = toPublicUserDto(baseUserRow as any, []);
     expect(result.teams).toEqual([]);
+  });
+});
+
+describe('toGetMyInvitation', () => {
+  it('maps the invitation row into nested team and invitedBy refs, with ISO expiresAt', () => {
+    const row = {
+      team_invitation_id: 1,
+      team_id: 10,
+      name: 'Dream Team',
+      sport_type_id: 1,
+      user_id: 9,
+      full_name: 'Inviter Name',
+      profile_image_key: 'avatar.png',
+      expires_at: new Date('2024-03-01T00:00:00Z'),
+    };
+
+    expect(toGetMyInvitation(row as any)).toEqual({
+      id: 1,
+      team: { id: 10, name: 'Dream Team', sportTypeId: 1 },
+      invitedBy: { id: 9, fullName: 'Inviter Name', avatarUrl: 'avatar.png' },
+      expiresAt: '2024-03-01T00:00:00.000Z',
+    });
+  });
+
+  it('maps a null inviter avatar through as null', () => {
+    const row = {
+      team_invitation_id: 1,
+      team_id: 10,
+      name: 'Dream Team',
+      sport_type_id: 1,
+      user_id: 9,
+      full_name: 'Inviter Name',
+      profile_image_key: null,
+      expires_at: new Date('2024-03-01T00:00:00Z'),
+    };
+
+    expect(toGetMyInvitation(row as any).invitedBy.avatarUrl).toBeNull();
   });
 });

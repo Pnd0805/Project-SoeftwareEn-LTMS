@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -146,7 +146,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -156,23 +156,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -202,8 +202,8 @@ export type UserStatsDto = {
     bySport : SportStatDto[]
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >toSportStatDto(r</span>ow : UserSportStatRow): SportStatDto{
-<span class="cstat-no" title="statement not covered" >    return {</span>
+export function toSportStatDto(row : UserSportStatRow): SportStatDto{
+    return {
         sportTypeId : row.sport_type_id,
         sportName : row.sport_name,
         matchesPlayed : row.matches_played,
@@ -212,24 +212,24 @@ export function <span class="fstat-no" title="function not covered" >toSportStat
     };
 };
 &nbsp;
-export  function <span class="fstat-no" title="function not covered" >toUserStatsDto(u</span>serId : number , rows: UserSportStatRow[]) : UserStatsDto{
-    let  matchesPlayed = <span class="cstat-no" title="statement not covered" >0, w</span>ins = <span class="cstat-no" title="statement not covered" >0, l</span>osses = <span class="cstat-no" title="statement not covered" >0, c</span>hampionCount = <span class="cstat-no" title="statement not covered" >0;</span>
-<span class="cstat-no" title="statement not covered" >    for(const r of rows){</span>
-<span class="cstat-no" title="statement not covered" >        matchesPlayed += r.matches_played</span>
-<span class="cstat-no" title="statement not covered" >        wins += r.wins;</span>
-<span class="cstat-no" title="statement not covered" >        losses += r.losses;</span>
-<span class="cstat-no" title="statement not covered" >        championCount += r.championships</span>
+export  function toUserStatsDto(userId : number , rows: UserSportStatRow[]) : UserStatsDto{
+    let  matchesPlayed = 0, wins = 0, losses = 0, championCount = 0;
+    for(const r of rows){
+        matchesPlayed += r.matches_played
+        wins += r.wins;
+        losses += r.losses;
+        championCount += r.championships
     }
-    const winRate = <span class="cstat-no" title="statement not covered" >matchesPlayed === 0 ? 0 : wins / matchesPlayed;</span>
+    const winRate = matchesPlayed === 0 ? 0 : wins / matchesPlayed;
 &nbsp;
-    const ov = <span class="cstat-no" title="statement not covered" >{ matchesPlayed : matchesPlayed,</span>
+    const ov = { matchesPlayed : matchesPlayed,
         wins : wins,
         losses : losses,
         winRate : winRate,
         championCount : championCount
     };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return {</span>
+    return {
         userId : userId,
         overall : ov,
         bySport : rows.map(toSportStatDto)
@@ -241,7 +241,7 @@ export  function <span class="fstat-no" title="function not covered" >toUserStat
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T02:44:29.146Z
+                at 2026-09-12T00:16:03.556Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

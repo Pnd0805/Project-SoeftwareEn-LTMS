@@ -1,11 +1,11 @@
 # Backend Test Suite — Complete Test List
 
 Extracted directly from the test files (not summarized from memory) — this is
-every single test case, exactly as written, grouped by file. **326 tests total.**
+every single test case, exactly as written, grouped by file. **496 tests total.**
 
 ---
 
-## Middleware (5 files, 27 tests)
+## Middleware (7 files, 49 tests)
 
 ### `requireAuth.test.ts` (7)
 1. calls next with NO_TOKEN when Authorization header is missing
@@ -43,9 +43,31 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 1. calls next with a 404 NOT_FOUND AppError for any unmatched route
 2. never touches res directly — it always defers to errorHandler via next()
 
+### `requireAdmin_U.test.ts` (4)
+1. calls next with INSUFFICIENT_ADMIN_SCOPE when the user has no admin record
+2. calls next with INSUFFICIENT_ADMIN_SCOPE when the admin scope is not university_wide
+3. attaches req.admin and calls next() with no error for a university-wide admin
+4. passes req.user.user_id (not the whole user object) to the repo lookup
+
+### `requireOrganizer.test.ts` (18)
+1. calls next with NO_TOKEN when req.user is missing (requireOrganizer)
+2. parses the tournament id from req.params using the Thai label
+3. calls next with TOURNAMENT_NOT_FOUND when the tournament does not exist
+4. calls next with NOT_ORGANIZER when the user did not request the tournament
+5–6. calls next with NOT_ORGANIZER when the tournament status is pending_approval / rejected, even for the owner (parameterized)
+7–10. attaches req.tournament and calls next() for the owning organizer when status is private / public / completed / auto_deleted (parameterized)
+11. rejects (does not call next) when parseId throws for a malformed id
+12. calls next with NO_TOKEN when req.user is missing (requireOrganizerOfMatch)
+13. parses the match id using the Thai label and looks up the match
+14. calls next with MATCH_NOT_FOUND when the match does not exist
+15. calls next with TOURNAMENT_NOT_FOUND when the match exists but its tournament does not
+16. calls next with NOT_ORGANIZER when the user is not the tournament organizer
+17. attaches req.match and req.tournament and calls next() for the owning organizer
+18. rejects (does not call next) when parseId throws for a malformed id
+
 ---
 
-## Services (4 files, 42 tests)
+## Services (8 files, 154 tests)
 
 ### `auth.service.test.ts` (8)
 1. registers a new user successfully
@@ -57,7 +79,7 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 7. throws INVALID_CREDENTIALS when the password is wrong
 8. throws ACCOUNT_SUSPENDED when the account is suspended
 
-### `team.service.test.ts` (14)
+### `team.service.test.ts` (31)
 1. creates a team when sport exists, name is free, and quota is not exceeded
 2. throws VALIDATION_FAILED when the sport type does not exist
 3. throws TEAM_NAME_TAKEN when a team with the same name/sport exists
@@ -72,8 +94,25 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 12. skips the name-uniqueness check entirely when name is not part of the update
 13. soft-deletes a team that is not already deleted
 14. throws TEAM_NOT_FOUND when the team is already soft-deleted
+15. returns mapped members when the requesting user belongs to the team (getTeamMemberById)
+16. throws FORBIDDEN when the requesting user is not a member of the team
+17. updates the member position and returns the refreshed member DTO (updateMember)
+18. throws USER_NOT_FOUND when the user is not on the team (updateMember)
+19. removes the member and leaves the status untouched when the team still meets the minimum (deleteMember)
+20. reverts the team to 'Forming' when the remaining members drop below the sport's minimum
+21. throws USER_NOT_FOUND when the target user is not on the team (deleteMember)
+22. creates and returns a mapped invitation when the invitee exists and is not already a member (createInvitation)
+23. throws ALREADY_MEMBER when the invitee is already on the team
+24. propagates the error from checkUser without checking membership (createInvitation)
+25. returns every invitation for the team mapped to a DTO (getAllInvitation)
+26. propagates the error from checkTeam without querying invitations (getAllInvitation)
+27. deletes a pending invitation (deletePendingInvite)
+28. throws INVITATION_NOT_FOUND when there is no matching invitation
+29. throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending
+30. creates and returns a mapped official request when supporting docs are attached (createOfficialRequest)
+31. throws OFFICIAL_DOCS_REQUIRED with a supportingDocs field when no docs are attached
 
-### `user.service.test.ts` (12)
+### `user.service.test.ts` (14)
 1. returns a public user DTO including mapped team refs
 2. propagates the error from checkUser without querying teams
 3. returns an empty team list when the user is on no teams
@@ -86,6 +125,8 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 10. accepts a query exactly 3 characters long (boundary case)
 11. updates the user then returns the refreshed "me" DTO
 12. calls update before re-fetching the user (correct ordering)
+13. returns every invitation for the user mapped to a DTO (getMyInvitation)
+14. returns an empty items array when the user has no invitations
 
 ### `reference.service.test.ts` (8)
 1. returns every faculty mapped to a DTO
@@ -96,6 +137,105 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 6. returns an empty items array when there are no sport types
 7. returns mapped stat definitions when the sport type exists
 8. throws SPORT_TYPE_NOT_FOUND when the sport type does not exist
+
+### `adminScope.service.test.ts` (12)
+1. maps every row and returns a pagination block built from totalItems (getAllOfficialRequest)
+2. returns an empty items array and totalPages 0 when there are no requests
+3. throws TEAM_REQUEST_NOT_FOUND when the request does not exist (approveTeamRequest)
+4. throws ALREADY_DECIDED when the request status is not "pending"
+5. throws MEMBER_CONFLICT with mapped conflicting members and never approves when a conflict exists
+6. checks conflicts using the sport_type_id of the team, not the request row
+7. approves the request and returns the refreshed team as a requestApproveDto when there is no conflict
+8. throws TEAM_REQUEST_NOT_FOUND when the request does not exist (rejectTeamOfficial)
+9. throws ALREADY_DECIDED when the request status is not "pending", even with a valid reason
+10. throws TEAM_REJECT_REASON_REQUIRED for an empty reason and never calls the repo
+11. accepts a whitespace-only reason (e.g. " ") since the check is a strict === "" comparison — documents current behavior, likely not the intended rule
+12. rejects the request and returns the refreshed request as a requestRejectDto
+
+### `application.service.test.ts` (45)
+1. returns every approved team mapped to a DTO (getApprovedTeams)
+2. returns an empty items array when there are no approved teams
+3. returns every application led by the user, mapped to a DTO (getMyappication)
+4. returns an empty items array when the user leads no applications
+5. returns every application for the tournament mapped to a DTO (getTournamentApplications)
+6. returns an empty items array when the tournament has no applications
+7. throws APPLICATION_NOT_FOUND when the application does not exist (getApplicationDetail)
+8. returns the detail DTO when the requester is the team leader
+9. returns the detail DTO when the requester is the organizer of a non-pending/rejected tournament
+10. throws APPLICATION_ACCESS_DENIED when the requester is neither the leader nor a valid organizer
+11–12. throws APPLICATION_ACCESS_DENIED when the requester owns the tournament but its status is pending_approval / rejected (parameterized)
+13. throws APPLICATION_NOT_FOUND when the application does not exist (cancelApplication)
+14. throws NOT_TEAM_LEADER when the requester is not the team leader
+15. throws ALREADY_DECIDED when the application is no longer pending
+16. cancels a pending application owned by the team leader
+17. throws APPLICATION_NOT_FOUND when the application does not exist (withdrawApplication)
+18. throws NOT_TEAM_LEADER when the requester is not the team leader
+19. throws APPLICATION_NOT_APPROVED when the application was never approved
+20. withdraws an approved application owned by the team leader
+21. throws APPLICATION_NOT_FOUND when the application does not exist (approveApplication)
+22. throws NOT_ORGANIZER when the requester did not request the tournament
+23–24. throws NOT_ORGANIZER when the requester owns the tournament but its status is pending_approval / rejected (parameterized)
+25. throws ALREADY_DECIDED when the application is no longer pending
+26. approves a pending application for the tournament organizer
+27. throws APPLICATION_NOT_FOUND when the application does not exist (rejectApplication)
+28. throws NOT_ORGANIZER when the requester did not request the tournament
+29. throws ALREADY_DECIDED when the application is no longer pending
+30. rejects a pending application with the given reason
+31. throws TEAM_NOT_FOUND when the team does not exist (applyTournament)
+32. throws NOT_TEAM_LEADER when the requester is not the team leader
+33. throws TEAM_NOT_READY when the team is not in Ready status
+34. throws TOURNAMENT_NOT_FOUND when the tournament does not exist
+35. throws REGISTRATION_CLOSED when the tournament is not accepting registrations
+36. throws ALREADY_APPLIED when the team already has an application for this tournament
+37. throws HARD_FILTER_FAILED with reason "gender" for a member of the wrong gender
+38. throws HARD_FILTER_FAILED with reason "age" for a member younger than the minimum age
+39. throws HARD_FILTER_FAILED with reason "age" for a member older than the maximum age
+40. throws HARD_FILTER_FAILED with reason "year" when a member's year is not in the allowed list
+41. throws HARD_FILTER_FAILED with reason "year" when a member has no year on file and a year rule exists
+42. throws HARD_FILTER_FAILED with reason "faculty" when a member's faculty is not in the allowed list
+43. collects a failure for every member that fails, not just the first
+44. creates the application when every member passes the hard filter
+45. skips the gender check entirely when the tournament has no gender requirement
+
+### `invitation.service.test.ts` (12)
+1. throws INVITATION_NOT_FOUND when the invitation does not exist (acceptInvitation)
+2. throws FORBIDDEN when the invitation belongs to a different user
+3. throws INVITATION_EXPIRED when the invitation has already expired
+4. throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending
+5. throws TEAM_QUOTA_EXCEEDED when the user already has 5 unofficial teams
+6. throws TEAM_NOT_FOUND when the team no longer exists after accepting
+7. accepts a valid pending invitation and returns the team status
+8. throws INVITATION_NOT_FOUND when the invitation does not exist (rejectInvitation)
+9. throws FORBIDDEN when the invitation belongs to a different user
+10. throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending
+11. does not check invitation expiry before rejecting — documents that, unlike acceptInvitation, there is no expiry gate here
+12. rejects a pending invitation
+
+### `referee.service.test.ts` (24)
+1. throws USER_NOT_FOUND when the invited user does not exist (inviteReferee)
+2. throws REFEREE_INVITATION_PENDING when an active pending invitation already exists
+3. throws REFEREE_ALREADY_ACCEPTED when the user is already an active referee
+4. allows re-inviting when the latest invitation was already removed
+5. allows re-inviting when the latest active invitation was rejected
+6. creates a new invitation with the correct payload when there is no prior invitation
+7. returns mapped referees along with a count of accepted ones (listTournamentReferees)
+8. returns acceptedCount 0 when none of the referees have accepted
+9. returns an empty items array and acceptedCount 0 when there are no referees
+10. returns every pending invitation for the user mapped to a DTO (listMyRefereeInvitations)
+11. returns an empty items array when the user has no pending invitations
+12. throws INVITATION_NOT_FOUND when the invitation does not exist (acceptRefereeInvitation)
+13. throws INVITATION_NOT_FOUND when the invitation has been removed
+14. throws INVITATION_NOT_FOUND when the invitation belongs to a different user
+15. throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending
+16. throws INVITATION_ALREADY_ANSWERED when accept() fails a race with a concurrent response
+17. accepts a pending invitation and flags admin approval for external referees
+18. accepts a pending invitation without admin approval for internal referees
+19. throws INVITATION_NOT_FOUND when the invitation does not exist (declineRefereeInvitation)
+20. throws INVITATION_NOT_FOUND when the invitation has been removed
+21. throws INVITATION_NOT_FOUND when the invitation belongs to a different user
+22. throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending
+23. throws INVITATION_ALREADY_ANSWERED when decline() fails a race with a concurrent response
+24. declines a pending invitation
 
 ---
 
@@ -202,7 +342,7 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 
 ---
 
-## Mappers (4 files, 28 tests)
+## Mappers (7 files, 64 tests)
 
 ### `reference.mapper.test.ts` (5)
 1. maps snake_case DB fields to camelCase DTO fields (toFacultyDto)
@@ -219,7 +359,7 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 5. avoids a divide-by-zero and reports winRate 0 when matchesPlayed is 0 across all rows
 6. keeps userId as passed in, independent of the row data
 
-### `team.mapper.test.ts` (10)
+### `team.mapper.test.ts` (23)
 1. maps team_id, name, and sport_type_id (toTeamRef)
 2. maps a freshly created team row, including leaderId and readinessStatus verbatim (toCreateTeam)
 3. marks the role as "leader" when the viewing user is the team leader (toMyTeam)
@@ -230,8 +370,19 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 8. maps a full team DTO including leader, memberCount, and ISO createdAt (toTeamDto)
 9. overrides readinessStatus to "Inactive" when the team is soft-deleted (toTeamDto)
 10. reports the real readiness status when the team is not deleted (toTeamDto)
+11. maps user fields and position, converting joined_at to an ISO string (toTeamMemberDto)
+12. maps a null avatar through as null
+13. maps user_id and position into a shorthand DTO (toUpdateMember)
+14. preserves the "substitute" position value
+15. maps the invitation row including status and ISO expiresAt (toCreateTeamInvitation)
+16. preserves a non-pending status value (e.g. "accepted")
+17. maps the invitation row plus a nested invited-user ref (toGetAllInvitation)
+18. maps a null invited-user avatar through as null
+19. maps team_admin_request_id and status (getTeamOfficialRequestDto)
+20–22. preserves the "pending" / "approved" / "rejected" status value (parameterized)
+23. maps user_id, full_name, and the pre-joined conflictingTeamName through unchanged (toOfficialMemberConflictDto)
 
-### `user.mapper.test.ts` (7)
+### `user.mapper.test.ts` (9)
 1. maps every field of a full user row, including nested notification prefs (toMeDto)
 2. passes through null values for optional fields rather than defaulting them
 3. maps only user_id, full_name, and profile_image_key (toUserRef)
@@ -239,6 +390,33 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 5. maps the public-facing subset of user fields plus the provided team refs (toPublicUserDto)
 6. does not leak private fields like email, contactInfo, or address
 7. passes an empty teams array through unchanged
+8. maps the invitation row into nested team and invitedBy refs, with ISO expiresAt (toGetMyInvitation)
+9. maps a null inviter avatar through as null
+
+### `application.mapper.test.ts` (7)
+1. maps a leader application row into nested tournament and team refs (toMyApplicationDto)
+2. passes through a non-null rejectionReason unchanged
+3. maps an organizer application row, including team ref and filter fields (toOrganizerApplicationDto)
+4. coerces a falsy hard_filter_passed (0) into boolean false
+5. coerces a truthy hard_filter_passed into boolean true even if not already 1
+6. maps the detail row including hardFilterDetails and softFilterDocuments (toApplicationDetailDto)
+7. passes an empty softFilterDocuments array through unchanged
+
+### `referee.mapper.test.ts` (5)
+1. maps a referee row into a nested user ref plus status/external fields (toTournamentRefereeDto)
+2. maps is_external 0 to boolean false
+3. maps a null avatar through the nested user ref as null
+4. maps the invitation row into a nested tournament ref, including ISO createdAt (toMyRefereeInvitationDto)
+5. maps is_external 0 to boolean false
+
+### `adminScope.mapper.test.ts` (9)
+1. maps the request row into nested team and requestedBy refs, with ISO createdAt (toGetOfficialRequest)
+2. maps a null requester avatar through as null
+3–5. preserves the "pending" / "approved" / "rejected" status value (parameterized)
+6. maps team_id and official_status (toRequestApproveDto)
+7. preserves the "Unofficial" status value
+8. maps status and a non-null rejection_reason (toRequestRejectDto)
+9. passes a null rejection_reason through as null
 
 ---
 
@@ -420,22 +598,41 @@ every single test case, exactly as written, grouped by file. **326 tests total.*
 
 | Layer | Files | Tests |
 |---|---|---|
-| Middleware | requireAuth, requireTeamLeader, validate, errorHandler, notFound | 27 |
-| Services | auth, team, user, reference | 42 |
+| Middleware | requireAuth, requireTeamLeader, validate, errorHandler, notFound, requireAdmin_U, requireOrganizer | 49 |
+| Services | auth, team, user, reference, adminScope, application, invitation, referee | 154 |
 | Controllers | auth, team, user, reference, adminScope, application, invitation, referee | 83 |
-| Mappers | reference, stat, team, user | 28 |
+| Mappers | reference, stat, team, user, application, referee, adminScope | 64 |
 | Schemas | application, auth, referee, team, user | 77 |
 | Utils | password, token, checkExist, parseId, pagination, AppError | 69 |
-| **Total** | **32 files** | **326** |
+| **Total** | **41 files** | **496** |
 
 Counts for the original 21 files were re-extracted directly from the test
 files with a script and cross-checked against the last full `vitest run`
-(164 passed). The 11 newly added files (pagination, AppError, the 5 schema
-files, and 4 new controller files: adminScope, application, invitation,
-referee) plus the extensions to `team.controller.test.ts` (+10) and
-`user.controller.test.ts` (+3) were counted directly from the test source
-as written in this session — run `vitest run` to reconfirm the full 326
-once they're in place alongside the rest of the suite.
+(164 passed). Everything added since then — pagination, AppError, the 5
+schema files, 4 new controller files (adminScope, application, invitation,
+referee), the extensions to `team.controller.test.ts` (+10) and
+`user.controller.test.ts` (+3), the extensions to `team.mapper.test.ts` (+13)
+and `user.mapper.test.ts` (+2), 3 new mapper files (application, referee,
+adminScope), and `adminScope.service.test.ts` (+12) — was counted directly
+from the test source as written across this session, not from a live run.
+
+Added in this pass: 2 new middleware files (`requireAdmin_U.test.ts`,
+`requireOrganizer.test.ts`, +22 tests), 3 new service files
+(`application.service.test.ts`, `invitation.service.test.ts`,
+`referee.service.test.ts`, +81 tests), and extensions to
+`team.service.test.ts` (+17, covering member and invitation management plus
+official-status requests) and `user.service.test.ts` (+2, `getMyInvitation`).
+These were counted directly from the test source as written, not from a live
+run. Two behavioral quirks were deliberately captured rather than "fixed" in
+the tests — worth a second look against intent, not necessarily bugs:
+`acceptInvitation` writes the accept record before re-checking that the team
+still exists, and `rejectInvitation` has no expiry check at all (an expired
+but still-pending invitation can still be rejected). Some row-shape fixtures
+in `referee.service.test.ts` (`InviteRefereeInput`) are still inferred from
+usage rather than the schema file itself.
+
+Run `vitest run` to reconfirm the full 496 once everything is in place
+alongside the rest of the suite.
 
 **Not covered by this suite (by design, different testing approach needed):**
 repositories (raw SQL — needs integration tests against a real/test DB) and

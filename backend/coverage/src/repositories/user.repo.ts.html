@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>0/26</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>0/26</span>
             </div>
         
             
@@ -134,10 +134,38 @@
 <a name='L69'></a><a href='#L69'>69</a>
 <a name='L70'></a><a href='#L70'>70</a>
 <a name='L71'></a><a href='#L71'>71</a>
-<a name='L72'></a><a href='#L72'>72</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -148,12 +176,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -202,14 +224,32 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import pool from "../config/db.js";
 import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 &nbsp;
-import type { UserRow } from "../types/db.js";
+import type { TeamInvitationRow, TeamRow, UserRow } from "../types/db.js";
 import type { UpdateMeInput } from "../schemas/user.schema.js";
+import type { UserRefDto } from "../mappers/user.mapper.js";
+import type { TeamRef } from "../mappers/team.mapper.js";
 &nbsp;
 export async function <span class="fstat-no" title="function not covered" >findByEmail(e</span>mail : string): Promise&lt;UserRow | null&gt;{
     const [rows] = <span class="cstat-no" title="statement not covered" >await pool.query&lt;(UserRow &amp; RowDataPacket)[]&gt;('SELECT * FROM users WHERE email = ?',[email]);</span>
@@ -224,6 +264,7 @@ export async function <span class="fstat-no" title="function not covered" >findB
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return user ?? null;</span>
 }
+&nbsp;
 &nbsp;
 type NewUser = {
   fullName: string;
@@ -276,6 +317,22 @@ export async function <span class="fstat-no" title="function not covered" >updat
                                                         ,[ ...values , userId]);
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return result.affectedRows;</span>
+}
+&nbsp;
+export type MyInvitationRow = Pick&lt;TeamInvitationRow , 'team_invitation_id' | 'expires_at'&gt; &amp;
+                              Pick&lt;UserRow , 'user_id' | 'full_name' | 'profile_image_key'&gt; &amp;
+                              Pick&lt;TeamRow , 'team_id' | 'name' | 'sport_type_id' &gt;;
+&nbsp;
+export async function <span class="fstat-no" title="function not covered" >getMyInvitation(i</span>nvitedUserId : number) : Promise&lt;MyInvitationRow[]&gt;{
+    const [ rows ] = <span class="cstat-no" title="statement not covered" >await pool.query&lt;(MyInvitationRow &amp; RowDataPacket)[]&gt;(`SELECT inv.team_invitation_id , inv.expires_at ,</span>
+                                                                            u.user_id , u.full_name , u.profile_image_key  ,
+                                                                            t.team_id , t.name , t.sport_type_id
+                                                                            FROM team_invitations inv JOIN teams t ON inv.team_id = t.team_id
+                                                                            JOIN users u ON u.user_id = inv.invited_by_user_id
+&nbsp;
+                                                                            WHERE inv.invited_user_id = ? AND inv.team_invitation_status = ? AND inv.expires_at &gt; NOW()`
+                                                                            ,[invitedUserId , 'pending']);
+<span class="cstat-no" title="statement not covered" >    return rows;</span>
 }</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -283,7 +340,7 @@ export async function <span class="fstat-no" title="function not covered" >updat
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-07T02:44:29.146Z
+                at 2026-09-12T00:16:03.556Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
