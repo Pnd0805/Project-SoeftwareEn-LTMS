@@ -48,7 +48,7 @@ its type, hook, and consuming screen are complete:
 - [x] Migrate the team selector in `RegisterForm` to `GET /me/teams`.
 - [x] Show an access message when team-members returns `403`; do not render this
    as a team with zero members.
-- [ ] Keep any string-ID prototype data isolated from numeric API data.
+- [x] Keep any string-ID prototype data isolated from numeric API data.
 
 ### 3. Tournament application flow
 
@@ -57,7 +57,7 @@ its type, hook, and consuming screen are complete:
 | [x] | Apply | `POST /tournaments/:id/applications` | Send `{ teamId: number }`. Success: `201 { id, status: 'pending', hardFilterPassed: true }`. |
 | [x] | My applications | `GET /me/applications` | Item: `id`, `tournament`, `team`, `status`, `rejectionReason`, `appliedAt`. |
 | [x] | Organizer applications | `GET /tournaments/:id/applications` | Organizer-only. Item: `id`, `team`, `status`, `hardFilterPassed`, `softFilterDocuments`, `appliedAt`. |
-| [ ] | Approved teams | `GET /tournaments/:id/teams` | `{ items: [{ id, name, sportTypeId }] }`. |
+| [x] | Approved teams | `GET /tournaments/:id/teams` | `{ items: [{ id, name, sportTypeId }] }`. |
 | [x] | Actions | `POST /applications/:id/cancel`, `/withdraw`, `/approve`, `/reject` | Reject body: `{ reason }`. There is no approve-all endpoint. |
 
 Implementation requirements:

@@ -10,7 +10,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
-import { useTournament } from '../../hooks/useTournament'
+import { useTournament, useTournamentTeams } from '../../hooks/useTournament'
+import { parseBackendId } from '../../api/ids'
 import { isOrg, matchesOf, regsOf, team, user, visibleTo } from '../../shared/selectors'
 import { routeTour } from '../../mocks/routeIds'
 import { formatName, ruleSummary } from '../../shared/rules'
@@ -29,8 +30,9 @@ export function TournamentPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id, tab: tabParam, sub } = useParams()
-  const tournamentId = id && Number.isInteger(Number(id)) ? Number(id) : undefined
+  const tournamentId = parseBackendId(id)
   const { data: tournamentData, isPending } = useTournament(tournamentId)
+  const approvedTeams = useTournamentTeams(tournamentId)
   const legacyTournament = routeTour(s, id)
   const t = tournamentData ? tournamentView(tournamentData) : legacyTournament
 
@@ -86,9 +88,9 @@ export function TournamentPage() {
 
   const tabs = [...PUBLIC_TABS, ...(org ? ['manage'] : [])]
   const tab = tabs.includes(tabParam ?? '') ? tabParam! : 'bracket'
-  const approved = tournamentData?.applications
-    ? tournamentData.applications.filter(application => application.status === 'approved')
-    : regsOf(s, t.id).filter(r => r.status === 'approved')
+  const approved = tournamentId === undefined
+    ? regsOf(s, t.id).filter(r => r.status === 'approved')
+    : approvedTeams.data?.items ?? []
   const champion = t.champion ? team(s, t.champion) : null
   const watchable = matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
 
@@ -147,10 +149,24 @@ export function TournamentPage() {
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],
               ['Played', t.channel],
               ['Entry', ruleSummary(t.rules) || 'open to everybody'],
-              ['Squads in', <><b className="num">{approved.length}</b> <span className="sub">of {t.cap}</span></>],
+              ['Squads in', approvedTeams.isPending
+                ? <span className="sub">Loadingâ€¦</span>
+                : approvedTeams.isError
+                  ? <span className="sub">Unavailable</span>
+                  : <><b className="num">{approved.length}</b> <span className="sub">of {t.cap}</span></>],
               ['Run by', user(s, t.organizer)?.name ?? '—'],
             ]} />
           </Panel>
+          {tournamentId !== undefined ? <Panel quiet>
+            <span className="tag"><em>//</em> Approved teams</span>
+            {approvedTeams.isPending ? <span className="sub">Loading approved teamsâ€¦</span> : null}
+            {approvedTeams.isError ? <span className="sub">Unable to load approved teams.</span> : null}
+            {approvedTeams.data?.items.length === 0 ? <span className="sub">No teams have been approved yet.</span> : null}
+            {approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>
+              <span>{approvedTeam.name}<br /><span className="sub">Sport #{approvedTeam.sportTypeId}</span></span>
+              <button className="btn ghost" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
+            </div>)}
+          </Panel> : null}
           <EntryPanel t={t} applications={tournamentData?.applications} />
           {t.entryNotes ? (
             <Panel quiet>

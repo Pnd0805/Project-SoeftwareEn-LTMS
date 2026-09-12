@@ -14,6 +14,7 @@
  * ตายพร้อมชั้น mock ตอน `VITE_USE_MOCK=false` เพราะตอนนั้นเหลือ id ระบบเดียว
  */
 import { numOf } from './storeBridge'
+import { parseBackendId } from '../api/ids'
 import type { State, Team, Tournament, User } from '../shared/types'
 
 const pick = <T extends { id: string }>(rows: T[], ref?: string | null): T | undefined => {
@@ -32,3 +33,11 @@ export const routeUser = (s: State, ref?: string | null): User | undefined =>
 
 export const routeTour = (s: State, ref?: string | null): Tournament | undefined =>
   pick(s.tournaments, ref)
+
+/**
+ * Compatibility boundary for prototype team links. It is intentionally kept
+ * in mocks: a real API route is parsed only by `parseBackendId` and never
+ * receives a hash of a string store ID.
+ */
+export const mockTeamApiIdFromRoute = (ref?: string | null): number | undefined =>
+  parseBackendId(ref) ?? (ref && /^t-[a-z0-9-]+$/i.test(ref) ? numOf(ref) : undefined)

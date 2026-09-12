@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { ApiError, USE_MOCK } from '../../api/client'
+import { parseBackendId } from '../../api/ids'
 import { useCancelTeamInvitation, useInviteMember, useTeamInvitations, useBackendTeam, useBackendTeamMembers } from '../../hooks/useTeam'
-import { numOf } from '../../mocks/storeBridge'
+import { mockTeamApiIdFromRoute } from '../../mocks/routeIds'
 import { useMe } from '../../hooks/useAuth'
 import { useSearchUsers } from '../../hooks/useUser'
 
@@ -13,9 +14,9 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 export function TeamPage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  // Search and legacy links still use store IDs in mock mode. The bridge is
-  // intentionally disabled against the real backend, which accepts numeric IDs.
-  const teamId = id && /^\d+$/.test(id) ? Number(id) : USE_MOCK && id ? numOf(id) : undefined
+  // String prototype links are resolved solely by the mock compatibility
+  // boundary. Real backend links accept strict numeric database IDs only.
+  const teamId = parseBackendId(id) ?? (USE_MOCK ? mockTeamApiIdFromRoute(id) : undefined)
   const team = useBackendTeam(teamId)
   const members = useBackendTeamMembers(teamId)
   const { data: currentUser } = useMe()

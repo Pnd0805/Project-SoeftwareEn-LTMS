@@ -96,6 +96,17 @@ export interface BackendTournamentApplicationsResponse {
   items: BackendTournamentApplicationDto[];
 }
 
+/** Public response from GET /tournaments/:id/teams on origin/backend. */
+export interface BackendTournamentTeamDto {
+  id: number;
+  name: string;
+  sportTypeId: number;
+}
+
+export interface BackendTournamentTeamsResponse {
+  items: BackendTournamentTeamDto[];
+}
+
 /** Team-leader response from GET /me/applications on origin/backend. */
 export interface BackendMyApplicationDto {
   id: number;

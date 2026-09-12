@@ -247,6 +247,15 @@ export async function getTournamentApplications(id: number): Promise<import('../
   return apiFetch(`/tournaments/${id}/applications`)
 }
 
+/** Public list of teams whose applications were approved for a tournament. */
+export async function getTournamentTeams(id: number): Promise<import('../types/tournament.dto').BackendTournamentTeamsResponse> {
+  if (!USE_MOCK) return apiFetch(`/tournaments/${id}/teams`);
+  const sportTypeId = findTournament(id)?.sportTypeId ?? 0;
+  return tournamentMockDelay({ items: mockTournamentApplications
+    .filter(item => item.tournamentId === id && item.status === "approved")
+    .map(item => ({ ...item.team, sportTypeId })) });
+}
+
 /** Current backend contract: applications led by the signed-in user. */
 export async function getMyApplications(): Promise<import('../types/tournament.dto').BackendMyApplicationsResponse> {
   if (!USE_MOCK) return apiFetch("/me/applications");

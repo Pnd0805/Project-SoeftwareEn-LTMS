@@ -44,6 +44,16 @@ export function useTournamentApplications(id: number | undefined) {
   });
 }
 
+/** Public approved-team list supported by GET /tournaments/:id/teams. */
+export function useTournamentTeams(id: number | undefined) {
+  return useQuery({
+    queryKey: ["tournament", id, "teams"],
+    queryFn: () => tournamentApi.getTournamentTeams(id as number),
+    enabled: id !== undefined,
+    retry: false,
+  });
+}
+
 export function useMyTournamentApplications() {
   return useQuery({ queryKey: ["me", "applications"], queryFn: tournamentApi.getMyApplications, retry: false });
 }
