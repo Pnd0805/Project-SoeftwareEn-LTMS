@@ -198,6 +198,22 @@ export async function applyToTournament(id: TournamentRef, input: ApplyToTournam
   return apiFetch(`/tournaments/${id}/applications`, { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Current backend contract: organizer-only registration list. */
+export async function getTournamentApplications(id: number): Promise<import('../types/tournament.dto').BackendTournamentApplicationsResponse> {
+  if (USE_MOCK) {
+    const tournament = findTournament(id)
+    return tournamentMockDelay({ items: tournament ? mockTournamentApplications.filter(item => item.tournamentId === id).map(item => ({
+      id: item.id,
+      team: item.team,
+      status: item.status,
+      hardFilterPassed: item.hardFilterPassed === true,
+      softFilterDocuments: item.softFilterDocuments,
+      appliedAt: item.appliedAt,
+    })) : [] })
+  }
+  return apiFetch(`/tournaments/${id}/applications`)
+}
+
 export async function reviewApplication(id: TournamentRef, applicationId: TournamentRef, input: ReviewTournamentApplicationRequest): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
     /* ทัวร์นาเมนต์จาก seed ตัดสินใบสมัครที่ store — ที่เดียวกับที่หน้าจัดการอ่าน */
@@ -218,7 +234,7 @@ export async function reviewApplication(id: TournamentRef, applicationId: Tourna
   }
   const action = input.status === "approved" ? "approve" : "reject";
   const body = input.status === "rejected"
-    ? JSON.stringify({ rejectionReason: input.rejectionReason ?? null })
+    ? JSON.stringify({ reason: input.rejectionReason ?? '' })
     : undefined;
   return apiFetch(`/applications/${applicationId}/${action}`, { method: "POST", body });
 }

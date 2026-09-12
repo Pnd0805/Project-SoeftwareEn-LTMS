@@ -82,6 +82,20 @@ export interface TournamentApplicationDto {
   appliedAt: string;
 }
 
+/** Organizer response from GET /tournaments/:id/applications on origin/backend. */
+export interface BackendTournamentApplicationDto {
+  id: number;
+  team: TeamRef;
+  status: TournamentApplicationStatus;
+  hardFilterPassed: boolean;
+  softFilterDocuments: unknown;
+  appliedAt: string;
+}
+
+export interface BackendTournamentApplicationsResponse {
+  items: BackendTournamentApplicationDto[];
+}
+
 export interface TournamentListResponse {
   items: TournamentDto[];
 }

@@ -34,6 +34,16 @@ export function useTournament(id: number | undefined) {
   });
 }
 
+/** Organizer-only application query supported by the current backend. */
+export function useTournamentApplications(id: number | undefined) {
+  return useQuery({
+    queryKey: ["tournament", id, "applications"],
+    queryFn: () => tournamentApi.getTournamentApplications(id as number),
+    enabled: id !== undefined,
+    retry: false,
+  });
+}
+
 export function useCreateTournament() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -26,14 +26,14 @@ import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import {
   useAllowWithdrawal, useApproveAllRegistrations, useApproveRegistration,
-  useRejectRegistration, useTournament,
+  useRejectRegistration, useTournamentApplications,
 } from '../../../hooks/useTournament'
-import { ApiError } from '../../../api/client'
+import { ApiError, USE_MOCK } from '../../../api/client'
 import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
 import { regsOf, team, user } from '../../../shared/selectors'
 import { fmtDate, hardFilter } from '../../../shared/rules'
 import type { State, Tournament } from '../../../shared/types'
-import type { TournamentApplicationDto } from '../../../types/tournament.dto'
+import type { BackendTournamentApplicationDto } from '../../../types/tournament.dto'
 
 /**
  * ใบสมัครหนึ่งใบ ไม่ว่าจะมาจาก API หรือ store
@@ -55,7 +55,7 @@ interface RegRow {
   at: number | null
 }
 
-function rowsFromApi(apps: TournamentApplicationDto[]): RegRow[] {
+function rowsFromApi(apps: BackendTournamentApplicationDto[]): RegRow[] {
   return apps.map(a => ({
     key: `api-${a.id}`,
     applicationId: a.id,
@@ -64,7 +64,7 @@ function rowsFromApi(apps: TournamentApplicationDto[]): RegRow[] {
     status: a.status,
     hardFilterPassed: a.hardFilterPassed,
     hardFilterFails: [],
-    reason: a.rejectionReason,
+    reason: null,
     /* DTO ยังไม่มีคอลัมน์นี้ — ดูหมายเหตุใต้ตารางถอนตัว */
     withdrawRequested: false,
     squad: [],
@@ -99,10 +99,10 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
 
   /* เดียวกับ TournamentPage — id ตัวเลขเท่านั้นที่ API รู้จัก */
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
-  const { data: detail } = useTournament(tournamentId)
-  const live = tournamentId !== undefined && !!detail
+  const applications = useTournamentApplications(tournamentId)
+  const live = tournamentId !== undefined && !!applications.data
 
-  const rows = live ? rowsFromApi(detail.applications) : rowsFromStore(s, t)
+  const rows = live ? rowsFromApi(applications.data?.items ?? []) : rowsFromStore(s, t)
   const pend = rows.filter(r => r.status === 'pending')
   const approved = rows.filter(r => r.status === 'approved')
   const rejected = rows.filter(r => r.status === 'rejected')
@@ -117,6 +117,9 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
 
   const { register, handleSubmit, setError, reset, formState: { errors } } =
     useForm<ReviewTournamentApplicationInput>({ resolver: zodResolver(reviewTournamentApplicationSchema) })
+
+  if (!USE_MOCK && applications.isPending) return <Panel><span className="sub">Loading registrations…</span></Panel>
+  if (!USE_MOCK && applications.isError) return <Panel><span className="sub">Unable to load registrations. {applications.error instanceof Error ? applications.error.message : ''}</span><button className="btn ghost" type="button" onClick={() => applications.refetch()}>Try again</button></Panel>
 
   /** ปุ่มสั่งงานได้ต่อเมื่อแถวนั้นมี applicationId จริง */
   const actionable = (r: RegRow) => r.applicationId !== null
