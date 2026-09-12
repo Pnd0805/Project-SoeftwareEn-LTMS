@@ -54,11 +54,11 @@ its type, hook, and consuming screen are complete:
 
 | Done | Need | Route | Contract |
 | --- | --- | --- | --- |
-| [ ] | Apply | `POST /tournaments/:id/applications` | Send `{ teamId: number }`. Success: `201 { id, status: 'pending', hardFilterPassed: true }`. |
+| [x] | Apply | `POST /tournaments/:id/applications` | Send `{ teamId: number }`. Success: `201 { id, status: 'pending', hardFilterPassed: true }`. |
 | [x] | My applications | `GET /me/applications` | Item: `id`, `tournament`, `team`, `status`, `rejectionReason`, `appliedAt`. |
 | [x] | Organizer applications | `GET /tournaments/:id/applications` | Organizer-only. Item: `id`, `team`, `status`, `hardFilterPassed`, `softFilterDocuments`, `appliedAt`. |
 | [ ] | Approved teams | `GET /tournaments/:id/teams` | `{ items: [{ id, name, sportTypeId }] }`. |
-| [ ] | Actions | `POST /applications/:id/cancel`, `/withdraw`, `/approve`, `/reject` | Reject body: `{ reason }`. There is no approve-all endpoint. |
+| [x] | Actions | `POST /applications/:id/cancel`, `/withdraw`, `/approve`, `/reject` | Reject body: `{ reason }`. There is no approve-all endpoint. |
 
 Implementation requirements:
 
@@ -69,7 +69,7 @@ Implementation requirements:
 - [x] Migrate `RegistrationsPanel` to the organizer-application DTO.
 - [x] Remove or disable any approve-all UI. It cannot work until a backend route
    exists.
-- [ ] Keep organizer and team-leader action permissions explicit in the UI.
+- [x] Keep organizer and team-leader action permissions explicit in the UI.
 
 ## Priority 2 — Referee and admin flows
 
