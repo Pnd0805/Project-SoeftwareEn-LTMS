@@ -82,6 +82,21 @@ export function useBackendTeamMembers(teamId: number | undefined) {
   });
 }
 
+export function useBackendMyInvitations() {
+  return useQuery({ queryKey: ["teams", "backend", "invitations"], queryFn: teamApi.getBackendMyInvitations, retry: retryPolicy });
+}
+
+export function useAnswerBackendInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (value: { invitationId: number; accept: boolean }) => teamApi.answerBackendInvitation(value.invitationId, value.accept),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["teams", "backend", "invitations"] });
+      qc.invalidateQueries({ queryKey: teamKeys.backendMine });
+    },
+  });
+}
+
 export function useTeam(teamId: TeamRef | undefined) {
   return useQuery({
     queryKey: teamKeys.detail(teamId as TeamRef),

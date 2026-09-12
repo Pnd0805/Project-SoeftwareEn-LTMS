@@ -237,3 +237,10 @@ export interface BackendTeamMemberDto {
 export interface BackendTeamListResponse<T> {
   items: T[];
 }
+
+export interface BackendMyInvitationDto {
+  id: number;
+  team: { id: number; name: string; sportTypeId: number };
+  invitedBy: UserRefDto;
+  expiresAt: string;
+}

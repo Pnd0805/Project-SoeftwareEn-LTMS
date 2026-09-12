@@ -28,6 +28,7 @@ import type {
   BackendTeamDto,
   BackendTeamMemberDto,
   BackendTeamListResponse,
+  BackendMyInvitationDto,
 } from "../types/team.dto";
 import {
   findStorePlayer, findStoreTeam, myStoreInvitations, myStoreTeams,
@@ -107,6 +108,22 @@ export async function getBackendTeamMembers(teamId: number): Promise<BackendTeam
       joinedAt: member.joinedAt,
     })),
   });
+}
+
+/** Current backend contract: GET /me/invitations. */
+export async function getBackendMyInvitations(): Promise<BackendTeamListResponse<BackendMyInvitationDto>> {
+  if (!USE_MOCK) return apiFetch("/me/invitations");
+  return mockDelay({ items: myStoreInvitations().filter(invitation => invitation.status === "pending").map(invitation => ({
+    id: invitation.id,
+    team: { id: invitation.team.id, name: invitation.team.name, sportTypeId: 0 },
+    invitedBy: invitation.invitedBy,
+    expiresAt: invitation.expiresAt ?? new Date(Date.now() + 7 * 86400000).toISOString(),
+  })) });
+}
+
+export async function answerBackendInvitation(invitationId: number, accept: boolean): Promise<void> {
+  if (!USE_MOCK) return apiFetch(`/invitations/${invitationId}/${accept ? "accept" : "decline"}`, { method: "POST" });
+  await answerInvitation(invitationId, accept);
 }
 
 /** TODO(guide): GET /teams/:id */

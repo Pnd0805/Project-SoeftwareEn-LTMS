@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Badge, Empty, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
-import { useBackendMyTeams } from '../../hooks/useTeam'
+import { useAnswerBackendInvitation, useBackendMyInvitations, useBackendMyTeams } from '../../hooks/useTeam'
 
 function teamErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unable to load your teams.'
@@ -14,6 +14,8 @@ function teamErrorMessage(error: unknown) {
 export function TeamsPage() {
   const navigate = useNavigate()
   const teams = useBackendMyTeams()
+  const invitations = useBackendMyInvitations()
+  const answerInvitation = useAnswerBackendInvitation()
 
   if (teams.isPending) {
     return <Panel><span className="sub">Loading your teams…</span></Panel>
@@ -43,6 +45,17 @@ export function TeamsPage() {
         <h1 className="disp" style={{ fontSize: 32 }}>Teams</h1>
         <span className="tag">{items.length} team{items.length === 1 ? '' : 's'}</span>
       </div>
+
+      {invitations.data?.items.length ? <Panel>
+        <span className="tag"><em>//</em> Team invitations</span>
+        {invitations.data.items.map((invitation) => <div className="spread" key={invitation.id}>
+          <span><b>{invitation.team.name}</b><br /><span className="sub">Invited by {invitation.invitedBy.fullName} · expires {new Date(invitation.expiresAt).toLocaleDateString()}</span></span>
+          <span className="hstack">
+            <button className="btn ghost" type="button" disabled={answerInvitation.isPending} onClick={() => answerInvitation.mutate({ invitationId: invitation.id, accept: false })}>Decline</button>
+            <button className="btn primary" type="button" disabled={answerInvitation.isPending} onClick={() => answerInvitation.mutate({ invitationId: invitation.id, accept: true })}>Accept</button>
+          </span>
+        </div>)}
+      </Panel> : null}
 
       {items.map((team) => (
         <Panel key={team.id}>
