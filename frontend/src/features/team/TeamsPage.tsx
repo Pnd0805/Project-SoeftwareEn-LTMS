@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Empty, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useAnswerBackendInvitation, useBackendMyInvitations, useBackendMyTeams } from '../../hooks/useTeam'
-import { useMyTournamentApplications } from '../../hooks/useTournament'
+import { useCancelMyApplication, useMyTournamentApplications, useWithdrawMyApplication } from '../../hooks/useTournament'
 
 function teamErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unable to load your teams.'
@@ -18,6 +18,8 @@ export function TeamsPage() {
   const invitations = useBackendMyInvitations()
   const answerInvitation = useAnswerBackendInvitation()
   const applications = useMyTournamentApplications()
+  const cancelApplication = useCancelMyApplication()
+  const withdrawApplication = useWithdrawMyApplication()
 
   if (teams.isPending) {
     return <Panel><span className="sub">Loading your teams…</span></Panel>
@@ -63,7 +65,10 @@ export function TeamsPage() {
         <span className="tag"><em>//</em> Your tournament applications</span>
         {applications.data.items.map(application => <div className="spread" key={application.id}>
           <span><b>{application.team.name}</b><br /><span className="sub">{application.tournament.name}</span>{application.rejectionReason ? <><br /><span className="sub">{application.rejectionReason}</span></> : null}</span>
-          <Badge kind={application.status === 'approved' ? 'ok' : application.status === 'pending' ? 'warn' : 'crit'}>{application.status}</Badge>
+          <span className="hstack"><Badge kind={application.status === 'approved' ? 'ok' : application.status === 'pending' ? 'warn' : 'crit'}>{application.status}</Badge>
+            {application.status === 'pending' ? <button className="btn ghost" type="button" disabled={cancelApplication.isPending} onClick={() => cancelApplication.mutate(application.id)}>Cancel</button> : null}
+            {application.status === 'approved' ? <button className="btn ghost" type="button" disabled={withdrawApplication.isPending} onClick={() => withdrawApplication.mutate(application.id)}>Withdraw</button> : null}
+          </span>
         </div>)}
       </Panel> : null}
 

@@ -48,6 +48,22 @@ export function useMyTournamentApplications() {
   return useQuery({ queryKey: ["me", "applications"], queryFn: tournamentApi.getMyApplications, retry: false });
 }
 
+export function useCancelMyApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: tournamentApi.cancelMyApplication,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me", "applications"] }),
+  });
+}
+
+export function useWithdrawMyApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: tournamentApi.withdrawMyApplication,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me", "applications"] }),
+  });
+}
+
 export function useCreateTournament() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -227,6 +227,22 @@ export async function getMyApplications(): Promise<import('../types/tournament.d
   })) });
 }
 
+export async function cancelMyApplication(applicationId: number): Promise<void> {
+  if (!USE_MOCK) return apiFetch(`/applications/${applicationId}/cancel`, { method: "POST" });
+  const application = mockTournamentApplications.find(item => item.id === applicationId);
+  if (!application) return notFound("Application");
+  application.status = "cancelled";
+  return tournamentMockDelay(undefined);
+}
+
+export async function withdrawMyApplication(applicationId: number): Promise<void> {
+  if (!USE_MOCK) return apiFetch(`/applications/${applicationId}/withdraw`, { method: "POST" });
+  const application = mockTournamentApplications.find(item => item.id === applicationId);
+  if (!application) return notFound("Application");
+  application.status = "withdrawn";
+  return tournamentMockDelay(undefined);
+}
+
 export async function reviewApplication(id: TournamentRef, applicationId: TournamentRef, input: ReviewTournamentApplicationRequest): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
     /* ทัวร์นาเมนต์จาก seed ตัดสินใบสมัครที่ store — ที่เดียวกับที่หน้าจัดการอ่าน */
