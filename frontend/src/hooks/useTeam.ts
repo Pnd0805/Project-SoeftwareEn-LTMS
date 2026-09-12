@@ -29,7 +29,10 @@ import type {
 export const teamKeys = {
   all: ["teams"] as const,
   mine: ["teams", "mine"] as const,
+  backendMine: ["teams", "backend", "mine"] as const,
   detail: (id: TeamRef) => ["team", id] as const,
+  backendDetail: (id: number) => ["teams", "detail", id] as const,
+  backendMembers: (id: number) => ["teams", "detail", id, "members"] as const,
   invitations: (id: TeamRef) => ["team", id, "invitations"] as const,
   myInvitations: ["teams", "invitations", "mine"] as const,
   adminRequests: ["admin", "teamRequests"] as const,
@@ -52,6 +55,31 @@ function touchTeam(qc: QueryClient, teamId?: TeamRef) {
 
 export function useMyTeams() {
   return useQuery({ queryKey: teamKeys.mine, queryFn: teamApi.getMyTeams, retry: retryPolicy });
+}
+
+/** `origin/backend` API — use for screens migrated away from the legacy store. */
+export function useBackendMyTeams() {
+  return useQuery({ queryKey: teamKeys.backendMine, queryFn: teamApi.getBackendMyTeams, retry: retryPolicy });
+}
+
+/** `origin/backend` API — team detail is public. */
+export function useBackendTeam(teamId: number | undefined) {
+  return useQuery({
+    queryKey: teamKeys.backendDetail(teamId ?? 0),
+    queryFn: () => teamApi.getBackendTeam(teamId as number),
+    enabled: teamId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+/** `origin/backend` API — returns 403 when the viewer is not a team member. */
+export function useBackendTeamMembers(teamId: number | undefined) {
+  return useQuery({
+    queryKey: teamKeys.backendMembers(teamId ?? 0),
+    queryFn: () => teamApi.getBackendTeamMembers(teamId as number),
+    enabled: teamId !== undefined,
+    retry: retryPolicy,
+  });
 }
 
 export function useTeam(teamId: TeamRef | undefined) {

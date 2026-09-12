@@ -199,3 +199,41 @@ export interface PlayerProfileDto {
     championships: number;
   }>;
 }
+
+/**
+ * DTOs returned by the currently supported `origin/backend` team endpoints.
+ * Keep these separate from the legacy prototype `TeamDto` above: the backend
+ * does not supply prototype-only fields such as code, colour, or viewer flags.
+ */
+export interface BackendMyTeamDto {
+  id: number;
+  name: string;
+  sportTypeId: number;
+  readinessStatus: "Forming" | "Ready" | "Inactive";
+  officialStatus: "Unofficial" | "Official";
+  memberCount: number;
+  role: "leader" | "member";
+}
+
+export interface BackendTeamDto {
+  id: number;
+  name: string;
+  sportTypeId: number;
+  readinessStatus: "Forming" | "Ready" | "Inactive";
+  officialStatus: "Unofficial" | "Official";
+  leader: UserRefDto;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface BackendTeamMemberDto {
+  userId: number;
+  fullName: string;
+  avatarUrl: string | null;
+  position: "starter" | "substitute";
+  joinedAt: string;
+}
+
+export interface BackendTeamListResponse<T> {
+  items: T[];
+}

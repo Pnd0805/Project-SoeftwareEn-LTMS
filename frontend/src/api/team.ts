@@ -24,6 +24,10 @@ import type {
   RequestOfficialStatusRequest,
   TransferLeaderRequest,
   ReviewTeamRequestRequest,
+  BackendMyTeamDto,
+  BackendTeamDto,
+  BackendTeamMemberDto,
+  BackendTeamListResponse,
 } from "../types/team.dto";
 import {
   findStorePlayer, findStoreTeam, myStoreInvitations, myStoreTeams,
@@ -51,6 +55,58 @@ const notFound = <T>(what: string): Promise<T> =>
 export async function getMyTeams(): Promise<{ items: TeamDto[] }> {
   if (USE_MOCK) return mockDelay({ items: myStoreTeams() });
   return apiFetch("/teams?mine=true");
+}
+
+/** Current backend contract: GET /me/teams. */
+export async function getBackendMyTeams(): Promise<BackendTeamListResponse<BackendMyTeamDto>> {
+  if (!USE_MOCK) return apiFetch("/me/teams");
+
+  return mockDelay({
+    items: myStoreTeams().map((team) => ({
+      id: team.id,
+      name: team.name,
+      sportTypeId: team.sportTypeId,
+      readinessStatus: team.readinessStatus,
+      officialStatus: team.officialStatus,
+      memberCount: team.members.length,
+      role: team.viewer.isLeader ? "leader" : "member",
+    })),
+  });
+}
+
+/** Current backend contract: GET /teams/:id. */
+export async function getBackendTeam(teamId: number): Promise<BackendTeamDto> {
+  if (!USE_MOCK) return apiFetch(`/teams/${teamId}`);
+
+  const team = teamDto(teamId);
+  if (!team) return notFound<BackendTeamDto>("team");
+  return mockDelay({
+    id: team.id,
+    name: team.name,
+    sportTypeId: team.sportTypeId,
+    readinessStatus: team.readinessStatus,
+    officialStatus: team.officialStatus,
+    leader: team.leader,
+    memberCount: team.members.length,
+    createdAt: team.createdAt,
+  });
+}
+
+/** Current backend contract: GET /teams/:id/members. */
+export async function getBackendTeamMembers(teamId: number): Promise<BackendTeamListResponse<BackendTeamMemberDto>> {
+  if (!USE_MOCK) return apiFetch(`/teams/${teamId}/members`);
+
+  const team = teamDto(teamId);
+  if (!team) return notFound<BackendTeamListResponse<BackendTeamMemberDto>>("team");
+  return mockDelay({
+    items: team.members.map((member) => ({
+      userId: member.user.id,
+      fullName: member.user.fullName,
+      avatarUrl: member.user.avatarUrl,
+      position: member.position,
+      joinedAt: member.joinedAt,
+    })),
+  });
 }
 
 /** TODO(guide): GET /teams/:id */
@@ -247,4 +303,3 @@ export async function reviewTeamRequest(
     : JSON.stringify({ reason: input.rejectionReason ?? "ปฏิเสธโดยผู้ดูแลระบบ" });
   return apiFetch(`/admin/team-requests/${requestId}/${action}`, { method: "POST", body });
 }
-
