@@ -8,12 +8,14 @@ import Application from './application.routes.js'
 import Team from './team.routes.js';
 import Invitation from './invitation.routes.js';
 import Match from './match.routes.js'
+import Upload from './upload.routes.js'
 
 const router = express.Router();
 
 router.use('/' , Reference);
 router.use('/' , Application);
 router.use('/' , Match);
+router.use('/' , Upload);
 
 router.use('/auth' , Auth);
 router.use('/me' , Me);
