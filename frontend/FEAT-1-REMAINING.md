@@ -45,7 +45,7 @@ its type, hook, and consuming screen are complete:
 
 - [x] Migrate `TeamsPage` to `GET /me/teams`.
 - [x] Migrate `TeamPage` to `GET /teams/:id` and `GET /teams/:id/members`.
-- [ ] Migrate the team selector in `RegisterForm` to `GET /me/teams`.
+- [x] Migrate the team selector in `RegisterForm` to `GET /me/teams`.
 - [ ] Show an access message when team-members returns `403`; do not render this
    as a team with zero members.
 - [ ] Keep any string-ID prototype data isolated from numeric API data.
@@ -66,7 +66,7 @@ Implementation requirements:
    `422 HARD_FILTER_FAILED`, show the failed member details returned by the
    server; the frontend may provide guidance but must not require a duplicated
    client-side eligibility calculation.
-- [ ] Migrate `RegistrationsPanel` to the organizer-application DTO.
+- [x] Migrate `RegistrationsPanel` to the organizer-application DTO.
 - [ ] Remove or disable any approve-all UI. It cannot work until a backend route
    exists.
 - [ ] Keep organizer and team-leader action permissions explicit in the UI.
