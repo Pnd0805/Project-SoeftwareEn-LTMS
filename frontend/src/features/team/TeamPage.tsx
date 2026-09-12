@@ -1,15 +1,18 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
-import { ApiError } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { useBackendTeam, useBackendTeamMembers } from '../../hooks/useTeam'
+import { numOf } from '../../mocks/storeBridge'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Unable to load this team.'
 
 export function TeamPage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const teamId = id && /^\d+$/.test(id) ? Number(id) : undefined
+  // Search and legacy links still use store IDs in mock mode. The bridge is
+  // intentionally disabled against the real backend, which accepts numeric IDs.
+  const teamId = id && /^\d+$/.test(id) ? Number(id) : USE_MOCK && id ? numOf(id) : undefined
   const team = useBackendTeam(teamId)
   const members = useBackendTeamMembers(teamId)
 
