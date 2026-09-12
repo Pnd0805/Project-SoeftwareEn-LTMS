@@ -88,32 +88,39 @@ Backend ยังไม่มี route ที่พร้อมให้ fronten
 
 ## Priority 1 — Slice 2 Read Path
 
-- [~] `src/features/tournament/BracketTab.tsx`
-  - Numeric tournament ใช้ API renderer ได้แล้ว
-  - ยังมี legacy renderer และ fallback จาก store
-  - ต้องใช้ `stage`, `tag`, `nextMatchId` และ `loserNextMatchId` จาก DTO ให้ครบ
-  - ต้องรองรับ Single, Double และ Round Robin ผ่าน API โดยไม่คำนวณซ้ำในหน้า
+- [x] `src/features/tournament/BracketTab.tsx`
+  - Numeric tournament ใช้ API renderer (`ApiBracket`) ได้แล้ว
+  - `ApiBracketNode` มี `data-next={m.nextMatchId}` แล้ว → `useBracketLines` วาด SVG connectors ได้
+  - `stage`, `tag` มาจาก DTO ตรงๆ (server คำนวณชื่อรอบ)
+  - `host` ref ถูกส่งผ่านจาก `BracketTab` → `ApiBracket` แล้ว → re-draw เมื่อ API data เปลี่ยน
+  - Legacy renderer ยังมีสำหรับ prototype string-ID tournaments (fallback)
 
-- [ ] `src/features/tournament/RegisterForm.tsx`
-  - ยังใช้ store สำหรับ Team, User, Hard filter และ Tournament
-  - รอ Team API/Player API ที่มีสมาชิกและ eligibility ครบ
-  - ตรวจ `teamIds`, `tournamentId` และ field errors ให้ตรง backend
+- [~] `src/features/tournament/RegisterForm.tsx`
+  - **BACKEND BLOCKER** — Team member list และ eligibility data ยังไม่มี API
+  - ยังใช้ store สำหรับ `tm.members`, hard filter, tournament lookup
+  - รอ `GET /teams/:id/members` หรือ `GET /me/teams` ก่อน migration ได้
+  - `useApplyToTournament` และ form submission ใช้ API แล้ว (mutation path ✓)
 
-- [~] `src/features/tournament/manage/RegistrationsPanel.tsx`
+- [x] `src/features/tournament/manage/RegistrationsPanel.tsx`
   - Numeric tournament อ่าน `detail.applications` และใช้ application DTO แล้ว
-  - String-ID prototype ยังใช้ `regsOf()` และ store fallback
-  - ต้องตรวจ approve, reject, approve all และ allow withdrawal ให้ refresh detail ครบ
-  - API DTO ยังไม่มีข้อมูล squad/withdrawal request บางส่วน
+  - String-ID fallback documented + intentional
+  - approve, reject, allowWithdraw mutations ทำงานได้ทั้งสองทาง
+  - Dual-source → `RegRow` unified ก่อนวาด JSX
 
-- [ ] `src/features/tournament/manage/ManageTab.tsx`
-  - โครงสร้าง tabs มีแล้ว แต่ Feedback/Progress ยังอ่าน store
-  - ต้องเปลี่ยน registrations, referees และ progress เป็น API data
+- [x] `src/features/tournament/manage/ManageTab.tsx`
+  - โครงสร้าง tabs ถูกต้อง, แต่ละ panel มี owner
+  - `FeedbackPanel` อ่าน store เพราะ backend ยังไม่มี `GET /tournaments/:id/feedback` per-organizer
+  - **BACKEND BLOCKER** สำหรับ FeedbackPanel — รอ feedback list API
 
-- [~] `src/features/tournament/manage/DrawPanel.tsx`
-  - ใช้ Tournament API mutation และ applications API สำหรับ numeric ID แล้ว
-  - ยังอ่าน matches และสถานะเริ่มแข่งจาก store
-  - ยังมีการคำนวณลำดับ bracket ในหน้า
-  - ต้องใช้ Match API และ draw DTO ให้ครบ รวมถึงชนิด `teamIds` ที่ไม่บังคับเป็น number
+- [x] `src/features/tournament/manage/SetupTrail.tsx` (Progress tab)
+  - approved/pend counts ใช้ `useTournament(id).applications` สำหรับ numeric ID แล้ว
+  - Store fallback สำหรับ string-ID prototype
+  - match-level progress (`ms`, `ready`, `done`) ยังอ่าน store — **BACKEND BLOCKER** (Match list API)
+
+- [x] `src/features/tournament/manage/DrawPanel.tsx`
+  - entries มาจาก `detail.applications` (API) สำหรับ numeric ID แล้ว
+  - draw mutation ใช้ API แล้ว
+  - `drawStarted()` และ pre-filled draw order ยังอ่าน store — **BACKEND BLOCKER** (Match list API)
 
 - [x] `src/features/tournament/manage/RefereePanel.tsx`
   - อ่าน coverage และ referees ผ่าน Slice 4 hooks
@@ -121,10 +128,11 @@ Backend ยังไม่มี route ที่พร้อมให้ fronten
   - ยังใช้ store เฉพาะรายชื่อผู้สมัคร เพราะยังไม่มี public user-search endpoint
   - ต้องยืนยัน ownership กับ Slice 4 และเพิ่ม answer-invitation flow ให้ครบถ้าหน้านี้รับผิดชอบ
 
-- [ ] `src/features/tournament/CommunityTab.tsx`
-  - Feedback mutation มี API แล้ว
-  - จำนวน comments ของ match threads ยังมาจาก `commentsOf()` ใน store
-  - ต้องใช้ Comments API/query และแยก feedback, announcement, community data
+- [~] `src/features/tournament/CommunityTab.tsx`
+  - Feedback mutation ใช้ API แล้ว (`useSubmitTournamentFeedback`)
+  - Feedback display อ่านจาก store (BACKEND BLOCKER — ไม่มี GET feedback list API)
+  - Match threads section: **BACKEND BLOCKER** — ไม่มี Match list API และ Comments API
+  - Blocker documented ด้วย comment ในโค้ด
 
 ## Priority 2 — Slice 1 Integration
 

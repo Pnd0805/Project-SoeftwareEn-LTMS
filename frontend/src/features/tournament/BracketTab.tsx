@@ -6,7 +6,7 @@
  * table lives on the leaderboard tab. Double elimination shows two trees and a
  * single grand final, with no bracket reset.
  */
-import { useLayoutEffect, useRef } from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Empty, MatchStateBadge, Panel, StatusBadge } from '../../components/kit/primitives'
 import { TeamLinkView } from '../../components/kit/chips'
@@ -29,7 +29,7 @@ function ApiBracketNode({ m }: { m: MatchDto }) {
 
   return (
     <button className={`bnode ${state === 'disputed' ? 'act' : ''}`} type="button"
-      data-mid={m.id} onClick={() => navigate(`/m/${m.id}`)}>
+      data-mid={m.id} data-next={m.nextMatchId ?? undefined} onClick={() => navigate(`/m/${m.id}`)}>
       <span className="bhead">
         <span className="tag"><em>//</em> {m.tag || m.stage}</span>
         <MatchStateBadge state={state} />
@@ -46,21 +46,23 @@ function ApiBracketNode({ m }: { m: MatchDto }) {
   )
 }
 
-function ApiBracket({ matches }: { matches: MatchDto[] }) {
+function ApiBracket({ matches, host }: { matches: MatchDto[]; host: React.RefObject<HTMLDivElement | null> }) {
   const rounds = [...new Set(matches.map(match => match.roundNumber ?? 0))].sort((a, b) => a - b)
   return (
-    <Panel quiet>
-      <div className="bracket">
-        {rounds.map(round => (
-          <div className="bcol" key={round}>
-            <div className="tag" style={{ textAlign: 'center' }}><em>//</em> Round {round + 1}</div>
-            {matches.filter(match => (match.roundNumber ?? 0) === round).map(match => (
-              <ApiBracketNode key={match.id} m={match} />
-            ))}
-          </div>
-        ))}
-      </div>
-    </Panel>
+    <div ref={host}>
+      <Panel quiet>
+        <div className="bracket">
+          {rounds.map(round => (
+            <div className="bcol" key={round}>
+              <div className="tag" style={{ textAlign: 'center' }}><em>//</em> Round {round + 1}</div>
+              {matches.filter(match => (match.roundNumber ?? 0) === round).map(match => (
+                <ApiBracketNode key={match.id} m={match} />
+              ))}
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
   )
 }
 
@@ -152,12 +154,13 @@ export function BracketTab({ t }: { t: Tournament }) {
   const ms = matchesOf(s, t.id)
   const apiTournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const apiMatches = useTournamentMatches(apiTournamentId)
-  const host = useBracketLines(ms.length)
+  /* useBracketLines ใช้ deps เพื่อ re-draw เมื่อข้อมูลเปลี่ยน — ใช้จำนวนแมตช์จาก API ถ้ามี */
+  const host = useBracketLines(apiMatches.data?.items.length ?? ms.length)
   const rr = formatOf(t) === 'roundrobin'
 
   if (apiTournamentId !== undefined) {
     if (apiMatches.isPending) return <Panel quiet><span className="sub">Loading the bracket…</span></Panel>
-    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} />
+    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} host={host} />
   }
 
   if (!t.drawn) {

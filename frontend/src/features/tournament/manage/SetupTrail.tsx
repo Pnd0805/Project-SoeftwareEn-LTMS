@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Panel, Trail } from '../../../components/kit/primitives'
 import type { TrailStep } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
-import { useDrawTournament, usePublishTournament } from '../../../hooks/useTournament'
+import { useDrawTournament, usePublishTournament, useTournament } from '../../../hooks/useTournament'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { formatName, refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
@@ -24,8 +24,18 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const publish = usePublishTournament(Number(t.id))
   const draw = useDrawTournament(Number(t.id))
   const need = refsNeeded(t)
-  const approved = regsOf(s, t.id).filter(r => r.status === 'approved')
-  const pend = regsOf(s, t.id).filter(r => r.status === 'pending')
+
+  /* id ตัวเลข → ใช้ applications จาก API · id string (prototype) → ใช้ store */
+  const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
+  const { data: detail } = useTournament(tournamentId)
+  const apiApps = detail?.applications
+  const approved = apiApps
+    ? apiApps.filter(a => a.status === 'approved')
+    : regsOf(s, t.id).filter(r => r.status === 'approved')
+  const pend = apiApps
+    ? apiApps.filter(a => a.status === 'pending')
+    : regsOf(s, t.id).filter(r => r.status === 'pending')
+
   const ms = t.drawn ? matchesOf(s, t.id).filter(m => m.note !== 'bye' && m.status !== 'void') : []
   const ready = ms.filter(m => m.venue && (m.refs || []).length >= need)
   const done = ms.filter(m => m.status === 'confirmed')

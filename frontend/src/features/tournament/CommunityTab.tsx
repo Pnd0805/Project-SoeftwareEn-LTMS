@@ -39,6 +39,14 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
     defaultValues: { rating: mine?.rating ?? 5, text: mine?.text ?? '' },
   })
 
+  /*
+   * ── BACKEND BLOCKER ─────────────────────────────────────────────────────────
+   * Match threads ยังอ่านจาก store เพราะ:
+   *   1. GET /tournaments/:id/matches ยังไม่มีใน backend branch นี้
+   *   2. GET /matches/:id/comments ยังไม่มี Comments API
+   * เมื่อ Match list API และ Comments API พร้อม ให้แทน matchesOf()/commentsOf()
+   * ด้วย useTournamentMatches(id) และ useMatchComments(matchId) ตามลำดับ
+   */
   const talked = matchesOf(s, t.id)
     .map(m => ({ m, n: commentsOf(s, m.id).length }))
     .filter(x => x.n)
