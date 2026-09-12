@@ -15,7 +15,7 @@ import { MOCK_NOW, numOf } from './storeBridge'
 import { asUser, unknownUser, type TeamRef } from './teamBridge'
 import type {
   TournamentRequestDto, TournamentRefereeDto, RefereeCoverageDto,
-  AdminScopeDto, UserAdminViewDto, AuditLogDto,
+  AdminScopeDto, UserAdminViewDto, AuditLogDto, MyRefereeInvitationDto,
 } from '../types/admin.dto'
 
 // ── แปลง id ตัวเลขกลับเป็น id ของ store ───────────────────────────────────
@@ -170,3 +170,27 @@ export function storeAdminScopes(): AdminScopeDto[] {
 export function storeAuditLogs(): AuditLogDto[] {
   return []
 }
+
+/** คำเชิญกรรมการของผู้ใช้ปัจจุบัน */
+export function storeMyRefereeInvitations(): MyRefereeInvitationDto[] {
+  const s = getState()
+  const u = s.session ? s.users.find(x => x.id === s.session) : null
+  if (!u) return []
+  return s.refInvites
+    .filter(i => i.user === u.id && i.status === 'pending')
+    .map(i => {
+      const t = s.tournaments.find(x => x.id === i.tour)
+      return {
+        id: numOf(i.id),
+        tournament: {
+          id: t ? numOf(t.id) : 0,
+          name: t ? t.name : '—',
+          sportTypeId: 1,
+          eventStartDate: t ? t.date : MOCK_NOW,
+        },
+        isExternal: false,
+        createdAt: MOCK_NOW,
+      }
+    })
+}
+

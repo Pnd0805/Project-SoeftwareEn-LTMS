@@ -177,3 +177,44 @@ export interface AuditLogQuery {
   userId?: number;
   limit?: number;
 }
+
+// ══════════════ คำร้องทีม Official — FR-TM-06, FR-TM-08 ══════════════
+
+export interface OfficialTeamRequestDto {
+  id: number;
+  team: {
+    id: number;
+    name: string;
+    sportTypeId?: number;
+  };
+  requestedBy: UserRefDto;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
+export interface ApproveTeamOfficialResponse {
+  teamId: number;
+  officialStatus: "Unofficial" | "Official";
+}
+
+export interface RejectTeamOfficialResponse {
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+}
+
+// ══════════════ คำเชิญกรรมการส่วนตัว — GET /me/referee-invitations ══════════════
+
+export interface TournamentRefSummaryDto {
+  id: number;
+  name: string;
+  sportTypeId: number;
+  eventStartDate: string;
+}
+
+export interface MyRefereeInvitationDto {
+  id: number;
+  tournament: TournamentRefSummaryDto;
+  isExternal: boolean;
+  createdAt: string;
+}
+

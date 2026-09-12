@@ -18,12 +18,19 @@ import type {
   SuspendUserRequest,
   AuditLogDto,
   AuditLogQuery,
+  OfficialTeamRequestDto,
+  ApproveTeamOfficialResponse,
+  RejectTeamOfficialResponse,
+  MyRefereeInvitationDto,
 } from "../types/admin.dto";
+import type { TeamAdminRequestDto } from "../types/team.dto";
 import {
   storeAdminScopes, storeAuditLogs, storeRefereeCoverage, storeRefInviteIdOf,
   storeTournamentIdOf, storeTournamentReferees, storeTournamentRequests,
-  storeUserIdOf, storeUsersForAdmin,
+  storeUserIdOf, storeUsersForAdmin, storeMyRefereeInvitations,
 } from "../mocks/adminBridge";
+import { storeTeamAdminRequests } from "../mocks/teamBridge";
+import { writeReviewTeamRequest } from "../mocks/teamWrites";
 import {
   getState,
   appointReferee as storeAppointReferee,
@@ -38,6 +45,58 @@ import type { TeamRef } from "../mocks/teamBridge";
 
 const notFound = <T>(what: string): Promise<T> =>
   mockReject<T>(404, { code: "NOT_FOUND", message: `ไม่พบ${what}ที่ต้องการ` });
+
+// ══════════════ คิวคำร้องทีม Official — FR-TM-06, FR-TM-08 ══════════════
+
+/** GET /admin/team-requests — รายการคำร้องขอเป็นทีม Official สำหรับ Admin */
+export async function getTeamRequests(): Promise<{ items: (OfficialTeamRequestDto | TeamAdminRequestDto)[] }> {
+  if (USE_MOCK) return mockDelay({ items: storeTeamAdminRequests() });
+  return apiFetch("/admin/team-requests");
+}
+
+/** alias สำหรับความสะดวกและ backward compatibility */
+export const getTeamAdminRequests = getTeamRequests;
+
+/** POST /admin/team-requests/:id/approve — อนุมัติทีม Official */
+export async function approveTeamRequest(
+  requestId: TeamRef,
+): Promise<ApproveTeamOfficialResponse | TeamAdminRequestDto> {
+  if (USE_MOCK) {
+    const id = writeReviewTeamRequest(requestId, true);
+    if (!id) return notFound<TeamAdminRequestDto>("คำร้อง");
+    const row = storeTeamAdminRequests().find((r) => r.id === Number(requestId));
+    return row ? mockDelay(row) : notFound<TeamAdminRequestDto>("คำร้องหลังตัดสิน");
+  }
+  return apiFetch(`/admin/team-requests/${requestId}/approve`, { method: "POST" });
+}
+
+/** POST /admin/team-requests/:id/reject — ปฏิเสธคำร้องทีม Official พร้อมระบุเหตุผล */
+export async function rejectTeamRequest(
+  requestId: TeamRef,
+  reason: string,
+): Promise<RejectTeamOfficialResponse | TeamAdminRequestDto> {
+  if (USE_MOCK) {
+    const id = writeReviewTeamRequest(requestId, false);
+    if (!id) return notFound<TeamAdminRequestDto>("คำร้อง");
+    const row = storeTeamAdminRequests().find((r) => r.id === Number(requestId));
+    return row ? mockDelay(row) : notFound<TeamAdminRequestDto>("คำร้องหลังตัดสิน");
+  }
+  return apiFetch(`/admin/team-requests/${requestId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/** Helper รองรับการตัดสินทั้ง approve / reject */
+export async function reviewTeamRequest(
+  requestId: TeamRef,
+  input: { approve: boolean; rejectionReason?: string; reason?: string },
+): Promise<unknown> {
+  if (input.approve) {
+    return approveTeamRequest(requestId);
+  }
+  return rejectTeamRequest(requestId, input.reason ?? input.rejectionReason ?? "ปฏิเสธโดยผู้ดูแลระบบ");
+}
 
 // ══════════════ คิวอนุมัติทัวร์นาเมนต์ — FR-TC-02 ══════════════
 
@@ -147,10 +206,10 @@ export async function appointReferee(
   });
 }
 
-/** SDS §S3: PATCH /referee-assignments/{id} — ตอบรับหรือปฏิเสธ (FR-RM-01) */
+/** F05/F06: POST /referee-invitations/:id/accept หรือ /decline (FR-RM-01) */
 export async function answerAppointment(
   appointmentId: TeamRef, input: AnswerAppointmentRequest,
-): Promise<TournamentRefereeDto> {
+): Promise<TournamentRefereeDto | { id: number | string; invitationStatus: string }> {
   if (USE_MOCK) {
     const inviteId = storeRefInviteIdOf(appointmentId);
     if (!inviteId) return notFound<TournamentRefereeDto>("คำเชิญเป็นกรรมการ");
@@ -161,10 +220,40 @@ export async function answerAppointment(
       : undefined;
     return row ? mockDelay(row) : notFound<TournamentRefereeDto>("กรรมการหลังตอบรับ");
   }
-  return apiFetch(`/referee-assignments/${appointmentId}`, {
-    method: "PATCH", body: JSON.stringify(input),
+  const action = input.accept ? "accept" : "decline";
+  return apiFetch(`/referee-invitations/${appointmentId}/${action}`, {
+    method: "POST",
   });
 }
+
+/** F04: GET /me/referee-invitations — รายการคำเชิญกรรมการของฉัน */
+export async function getMyRefereeInvitations(): Promise<{ items: MyRefereeInvitationDto[] }> {
+  if (USE_MOCK) return mockDelay({ items: storeMyRefereeInvitations() });
+  return apiFetch("/me/referee-invitations");
+}
+
+/** F05: POST /referee-invitations/:id/accept — ตอบรับคำเชิญเป็นกรรมการ */
+export async function acceptRefereeInvitation(
+  invitationId: TeamRef,
+): Promise<{ id: number | string; invitationStatus: string; requiresAdminApproval?: boolean }> {
+  if (USE_MOCK) {
+    await answerAppointment(invitationId, { accept: true });
+    return { id: invitationId, invitationStatus: "accepted" };
+  }
+  return apiFetch(`/referee-invitations/${invitationId}/accept`, { method: "POST" });
+}
+
+/** F06: POST /referee-invitations/:id/decline — ปฏิเสธคำเชิญเป็นกรรมการ */
+export async function declineRefereeInvitation(
+  invitationId: TeamRef,
+): Promise<void> {
+  if (USE_MOCK) {
+    await answerAppointment(invitationId, { accept: false });
+    return;
+  }
+  return apiFetch(`/referee-invitations/${invitationId}/decline`, { method: "POST" });
+}
+
 
 /** TODO(guide): DELETE /tournaments/:id/referees/:userId — ถอดออก (บันทึก removed_by) */
 export async function removeReferee(

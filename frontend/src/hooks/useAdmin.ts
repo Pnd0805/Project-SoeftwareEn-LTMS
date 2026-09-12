@@ -19,6 +19,8 @@ import type {
 
 export const adminKeys = {
   tournamentRequests: ["admin", "tournamentRequests"] as const,
+  teamRequests: ["admin", "teamRequests"] as const,
+  myRefereeInvitations: ["referees", "me"] as const,
   users: ["admin", "users"] as const,
   scopes: ["admin", "scopes"] as const,
   audit: (q: AuditLogQuery) => ["audit", q] as const,
@@ -27,6 +29,22 @@ export const adminKeys = {
 };
 
 // ══════════════ queries ══════════════
+
+export function useTeamRequests() {
+  return useQuery({
+    queryKey: adminKeys.teamRequests,
+    queryFn: adminApi.getTeamRequests,
+    retry: retryPolicy,
+  });
+}
+
+export function useMyRefereeInvitations() {
+  return useQuery({
+    queryKey: adminKeys.myRefereeInvitations,
+    queryFn: adminApi.getMyRefereeInvitations,
+    retry: retryPolicy,
+  });
+}
 
 export function useTournamentRequests() {
   return useQuery({
@@ -72,6 +90,53 @@ export function useAuditLogs(query: AuditLogQuery = {}) {
 }
 
 // ══════════════ mutations ══════════════
+
+export function useApproveTeamRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: TeamRef) => adminApi.approveTeamRequest(requestId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.teamRequests });
+      qc.invalidateQueries({ queryKey: ["teams"] });
+      qc.invalidateQueries({ queryKey: ["team"] });
+    },
+  });
+}
+
+export function useRejectTeamRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { requestId: TeamRef; reason: string }) =>
+      adminApi.rejectTeamRequest(v.requestId, v.reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.teamRequests });
+    },
+  });
+}
+
+export function useAcceptRefereeInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: TeamRef) => adminApi.acceptRefereeInvitation(invitationId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.myRefereeInvitations });
+      qc.invalidateQueries({ queryKey: ["referees"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useDeclineRefereeInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: TeamRef) => adminApi.declineRefereeInvitation(invitationId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.myRefereeInvitations });
+      qc.invalidateQueries({ queryKey: ["referees"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
 
 /** อนุมัติแล้วทัวร์นาเมนต์เกิดใหม่ — คิวสั้นลง และรายการทัวร์นาเมนต์ของสไลซ์ 2 เปลี่ยน */
 export function useReviewTournamentRequest() {

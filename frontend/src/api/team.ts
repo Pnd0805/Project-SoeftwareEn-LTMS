@@ -244,6 +244,7 @@ export async function reviewTeamRequest(
   const action = input.approve ? "approve" : "reject";
   const body = input.approve
     ? undefined
-    : JSON.stringify({ rejectionReason: input.rejectionReason ?? null });
+    : JSON.stringify({ reason: input.rejectionReason ?? "ปฏิเสธโดยผู้ดูแลระบบ" });
   return apiFetch(`/admin/team-requests/${requestId}/${action}`, { method: "POST", body });
 }
+

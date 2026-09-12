@@ -65,12 +65,12 @@ Backend ยังไม่มี route ที่พร้อมให้ fronten
   - invitation response ใช้ `POST /invitations/:id/accept` หรือ `/decline`
   - `GET /teams?mine=true` ยังไม่มี backend route ต้องขอ contract ใหม่หรือใช้ endpoint อื่น
 
-- [ ] แก้ `src/api/admin.ts` ให้ใช้ official team request routes
+- [x] แก้ `src/api/admin.ts` ให้ใช้ official team request routes
   - `GET /admin/team-requests`
   - `POST /admin/team-requests/:id/approve`
   - `POST /admin/team-requests/:id/reject`
 
-- [ ] เพิ่ม/แก้ referee invitation hooks
+- [x] เพิ่ม/แก้ referee invitation hooks
   - `GET /me/referee-invitations`
   - `POST /referee-invitations/:id/accept`
   - `POST /referee-invitations/:id/decline`
