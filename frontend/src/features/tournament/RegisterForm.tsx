@@ -9,13 +9,14 @@
  * The Squad list is picked here, and the Hard filter is checked against those
  * players only — a member left off cannot fail it, because they are not entering.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, TableWrap } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
 import { useApplyToTournament } from '../../hooks/useTournament'
+import { useBackendMyTeams } from '../../hooks/useTeam'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { applyToTournamentSchema, type ApplyToTournamentInput } from '../../schemas/tournament.schema'
 import { user } from '../../shared/selectors'
@@ -54,10 +55,19 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
   const locked = options.length < 2
   /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store — ส่งตัวที่หน้าถืออยู่ */
   const apply = useApplyToTournament(tr.id)
-  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
+  const backendTeams = useBackendMyTeams()
+  const { register, handleSubmit, setError, setValue, watch, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
     resolver: zodResolver(applyToTournamentSchema),
     defaultValues: { teamId: Number.isFinite(Number(tm.id)) ? Number(tm.id) : numOf(tm.id) },
   })
+  const selectedTeamId = watch('teamId')
+  const eligibleTeams = (backendTeams.data?.items ?? []).filter(team => team.role === 'leader' && team.readinessStatus === 'Ready')
+
+  useEffect(() => {
+    if (!USE_MOCK && eligibleTeams.length && !eligibleTeams.some(team => team.id === selectedTeamId)) {
+      setValue('teamId', eligibleTeams[0].id, { shouldValidate: true })
+    }
+  }, [eligibleTeams, selectedTeamId, setValue])
 
   const toggle = (id: string) =>
     setSquad(cur => (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]))
@@ -79,6 +89,17 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
     <Modal open={open} onClose={onClose} title={`Register ${tm.name}`}>
       <form onSubmit={handleSubmit(submit)}>
       <input type="hidden" {...register('teamId', { valueAsNumber: true })} />
+      {!USE_MOCK ? (
+        <Field label="Team" htmlFor="rg-team">
+          {backendTeams.isPending ? <div className="sub">Loading your eligible teams…</div>
+            : backendTeams.isError ? <div className="sub">Unable to load your teams. <button className="btn ghost" type="button" onClick={() => backendTeams.refetch()}>Try again</button></div>
+              : eligibleTeams.length ? (
+                <select id="rg-team" value={selectedTeamId} onChange={event => setValue('teamId', Number(event.target.value), { shouldValidate: true })}>
+                  {eligibleTeams.map(team => <option key={team.id} value={team.id}>{team.name} · {team.memberCount} members</option>)}
+                </select>
+              ) : <div className="sub">You need a team you lead with Ready status before registering.</div>}
+        </Field>
+      ) : null}
       {locked ? (
         <Field label="Tournament">
           <div className="sub">{tr.name} — {tr.sport} · {tr.channel}</div>
@@ -91,7 +112,7 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
         </Field>
       )}
 
-      <span className="tag">
+      {USE_MOCK ? <><span className="tag">
         <em>//</em> Who is entering — the entry rules are checked against these players only
       </span>
       <TableWrap>
@@ -116,7 +137,7 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
             })}
           </tbody>
         </table>
-      </TableWrap>
+      </TableWrap></> : <Banner kind="warn">The backend evaluates the current roster of the selected team when you submit.</Banner>}
 
       <EntryNotesBlock tr={tr} />
 
@@ -142,7 +163,7 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>Cancel</button>
         {errors.teamId?.message ? <span className="sub">{errors.teamId.message}</span> : null}
-        <button className="btn primary" type="submit" disabled={!!fails.length || !!shut || !squad.length || isSubmitting || apply.isPending}>
+        <button className="btn primary" type="submit" disabled={!!fails.length || !!shut || (USE_MOCK ? !squad.length : !eligibleTeams.length) || isSubmitting || apply.isPending}>
           Submit registration
         </button>
       </div>
