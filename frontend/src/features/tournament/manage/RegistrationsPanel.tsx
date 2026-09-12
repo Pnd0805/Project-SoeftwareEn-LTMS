@@ -24,10 +24,7 @@ import { TeamCrestView, TeamLink } from '../../../components/kit/chips'
 import { toTeamView } from '../../../components/kit/viewModels'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
-import {
-  useAllowWithdrawal, useApproveAllRegistrations, useApproveRegistration,
-  useRejectRegistration, useTournamentApplications,
-} from '../../../hooks/useTournament'
+import { useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
 import { ApiError, USE_MOCK } from '../../../api/client'
 import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
 import { regsOf, team, user } from '../../../shared/selectors'
@@ -106,14 +103,11 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const pend = rows.filter(r => r.status === 'pending')
   const approved = rows.filter(r => r.status === 'approved')
   const rejected = rows.filter(r => r.status === 'rejected')
-  const withdrawing = rows.filter(r => r.withdrawRequested)
 
   /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store จึงส่งตัวที่หน้าถืออยู่ไปตรงๆ */
   const apiId = tournamentId ?? t.id
   const approve = useApproveRegistration(apiId)
-  const approveAll = useApproveAllRegistrations(apiId)
   const reject = useRejectRegistration(apiId)
-  const allowWithdraw = useAllowWithdrawal(apiId)
 
   const { register, handleSubmit, setError, reset, formState: { errors } } =
     useForm<ReviewTournamentApplicationInput>({ resolver: zodResolver(reviewTournamentApplicationSchema) })
@@ -132,15 +126,6 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
           <span className="tag"><em>//</em> Registrations</span>
           <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} in · ${pend.length} waiting`}</Badge>
         </div>
-
-        {pend.length > 1 ? (
-          <div className="hstack" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn" type="button" disabled={approveAll.isPending}
-              onClick={() => approveAll.mutate()}>
-              Approve all {pend.length}
-            </button>
-          </div>
-        ) : null}
 
         {pend.length ? (
           <div className="vstack" style={{ gap: 8 }}>
@@ -174,35 +159,6 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
               )
             })}
           </div>
-        ) : null}
-
-        {withdrawing.length ? (
-          <>
-            <div className="tag" style={{ marginTop: 6 }}>
-              <em>//</em> Withdrawal requests — the bracket is live, so these are yours to allow
-            </div>
-            <TableWrap>
-              <table>
-                <thead><tr><th>Squad</th><th>Effect if allowed</th><th /></tr></thead>
-                <tbody>
-                  {withdrawing.map(r => (
-                    <tr key={r.key}>
-                      <td>{r.teamStoreId ? <TeamLink id={r.teamStoreId} /> : r.teamName}</td>
-                      <td className="sub">Every remaining opponent receives a walkover.</td>
-                      <td>
-                        <button className="btn danger" type="button"
-                          disabled={!actionable(r) || allowWithdraw.isPending}
-                          title={actionable(r) ? undefined : blockedHint}
-                          onClick={() => { if (r.applicationId !== null) allowWithdraw.mutate(r.applicationId) }}>
-                          Allow withdrawal
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableWrap>
-          </>
         ) : null}
 
         {approved.length ? (
