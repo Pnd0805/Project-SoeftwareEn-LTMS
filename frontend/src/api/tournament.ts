@@ -42,6 +42,39 @@ import { findStoreTeam } from "../mocks/teamBridge";
 const notFound = <T>(message: string): Promise<T> =>
   mockReject(404, { code: "NOT_FOUND", message });
 
+// The mock application array is recreated when Vite reloads this module. Keep
+// only status overrides separately so demo cancel/withdraw behaves like the
+// backend and survives a browser refresh.
+const MOCK_APPLICATION_STATUS_KEY = "ltms.mock-application-statuses.v1";
+type MockApplicationStatus = TournamentApplicationDto["status"];
+
+function readMockApplicationStatusOverrides(): Record<string, MockApplicationStatus> {
+  try {
+    const raw = localStorage.getItem(MOCK_APPLICATION_STATUS_KEY);
+    return raw ? JSON.parse(raw) as Record<string, MockApplicationStatus> : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistMockApplicationStatus(application: TournamentApplicationDto) {
+  try {
+    const overrides = readMockApplicationStatusOverrides();
+    overrides[String(application.id)] = application.status;
+    localStorage.setItem(MOCK_APPLICATION_STATUS_KEY, JSON.stringify(overrides));
+  } catch { /* storage can be unavailable in private browsing */ }
+}
+
+function restoreMockApplicationStatuses() {
+  const overrides = readMockApplicationStatusOverrides();
+  mockTournamentApplications.forEach((application) => {
+    const status = overrides[String(application.id)];
+    if (status) application.status = status;
+  });
+}
+
+if (USE_MOCK) restoreMockApplicationStatuses();
+
 function findTournament(id: number): TournamentDto | undefined {
   return mockTournaments.find((item) => item.id === id && item.deletedAt === null);
 }
@@ -232,6 +265,7 @@ export async function cancelMyApplication(applicationId: number): Promise<void> 
   const application = mockTournamentApplications.find(item => item.id === applicationId);
   if (!application) return notFound("Application");
   application.status = "cancelled";
+  persistMockApplicationStatus(application);
   return tournamentMockDelay(undefined);
 }
 
@@ -240,6 +274,7 @@ export async function withdrawMyApplication(applicationId: number): Promise<void
   const application = mockTournamentApplications.find(item => item.id === applicationId);
   if (!application) return notFound("Application");
   application.status = "withdrawn";
+  persistMockApplicationStatus(application);
   return tournamentMockDelay(undefined);
 }
 

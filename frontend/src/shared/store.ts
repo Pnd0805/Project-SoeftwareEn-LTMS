@@ -16,6 +16,7 @@ import { buildBracket } from '../features/tournament/bracketBuilders'
 import type { Match, State, Tournament } from './types'
 
 const KEY = 'ltms.v1'
+const MOCK_APPLICATION_STATUS_KEY = 'ltms.mock-application-statuses.v1'
 
 function load(): State {
   try {
@@ -73,6 +74,7 @@ export const getState = () => state
 
 export function resetDemo() {
   state = SEED()
+  try { localStorage.removeItem(MOCK_APPLICATION_STATUS_KEY) } catch { /* storage can be unavailable */ }
   commit()
   toast('Demo data reset', 'warn')
 }
