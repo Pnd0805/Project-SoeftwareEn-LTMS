@@ -96,6 +96,20 @@ export interface BackendTournamentApplicationsResponse {
   items: BackendTournamentApplicationDto[];
 }
 
+/** Team-leader response from GET /me/applications on origin/backend. */
+export interface BackendMyApplicationDto {
+  id: number;
+  tournament: { id: number; name: string };
+  team: TeamRef;
+  status: TournamentApplicationStatus;
+  rejectionReason: string | null;
+  appliedAt: string;
+}
+
+export interface BackendMyApplicationsResponse {
+  items: BackendMyApplicationDto[];
+}
+
 export interface TournamentListResponse {
   items: TournamentDto[];
 }

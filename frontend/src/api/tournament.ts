@@ -214,6 +214,19 @@ export async function getTournamentApplications(id: number): Promise<import('../
   return apiFetch(`/tournaments/${id}/applications`)
 }
 
+/** Current backend contract: applications led by the signed-in user. */
+export async function getMyApplications(): Promise<import('../types/tournament.dto').BackendMyApplicationsResponse> {
+  if (!USE_MOCK) return apiFetch("/me/applications");
+  return tournamentMockDelay({ items: mockTournamentApplications.map(item => ({
+    id: item.id,
+    tournament: { id: item.tournamentId, name: findTournament(item.tournamentId)?.name ?? "Tournament" },
+    team: item.team,
+    status: item.status,
+    rejectionReason: item.rejectionReason,
+    appliedAt: item.appliedAt,
+  })) });
+}
+
 export async function reviewApplication(id: TournamentRef, applicationId: TournamentRef, input: ReviewTournamentApplicationRequest): Promise<TournamentApplicationDto> {
   if (USE_MOCK) {
     /* ทัวร์นาเมนต์จาก seed ตัดสินใบสมัครที่ store — ที่เดียวกับที่หน้าจัดการอ่าน */

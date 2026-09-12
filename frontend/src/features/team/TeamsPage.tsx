@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Empty, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useAnswerBackendInvitation, useBackendMyInvitations, useBackendMyTeams } from '../../hooks/useTeam'
+import { useMyTournamentApplications } from '../../hooks/useTournament'
 
 function teamErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unable to load your teams.'
@@ -16,6 +17,7 @@ export function TeamsPage() {
   const teams = useBackendMyTeams()
   const invitations = useBackendMyInvitations()
   const answerInvitation = useAnswerBackendInvitation()
+  const applications = useMyTournamentApplications()
 
   if (teams.isPending) {
     return <Panel><span className="sub">Loading your teams…</span></Panel>
@@ -54,6 +56,14 @@ export function TeamsPage() {
             <button className="btn ghost" type="button" disabled={answerInvitation.isPending} onClick={() => answerInvitation.mutate({ invitationId: invitation.id, accept: false })}>Decline</button>
             <button className="btn primary" type="button" disabled={answerInvitation.isPending} onClick={() => answerInvitation.mutate({ invitationId: invitation.id, accept: true })}>Accept</button>
           </span>
+        </div>)}
+      </Panel> : null}
+
+      {applications.data?.items.length ? <Panel quiet>
+        <span className="tag"><em>//</em> Your tournament applications</span>
+        {applications.data.items.map(application => <div className="spread" key={application.id}>
+          <span><b>{application.team.name}</b><br /><span className="sub">{application.tournament.name}</span>{application.rejectionReason ? <><br /><span className="sub">{application.rejectionReason}</span></> : null}</span>
+          <Badge kind={application.status === 'approved' ? 'ok' : application.status === 'pending' ? 'warn' : 'crit'}>{application.status}</Badge>
         </div>)}
       </Panel> : null}
 

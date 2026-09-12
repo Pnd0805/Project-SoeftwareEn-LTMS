@@ -44,6 +44,10 @@ export function useTournamentApplications(id: number | undefined) {
   });
 }
 
+export function useMyTournamentApplications() {
+  return useQuery({ queryKey: ["me", "applications"], queryFn: tournamentApi.getMyApplications, retry: false });
+}
+
 export function useCreateTournament() {
   const queryClient = useQueryClient();
   return useMutation({
