@@ -15,10 +15,8 @@
  * `viewer.roles` มาจาก server: มันรู้อยู่แล้วว่าเราเกี่ยวข้องกับแมตช์นี้ในฐานะอะไร
  * ดีกว่าให้ frontend เดาเอาจาก roster ซึ่งต้องโหลดทีมทุกทีมมาไล่ดู
  *
- * กล่อง "คำเชิญเป็นกรรมการ" เป็นโดเมนของสไลซ์ 4 ที่มาแสดงบนหน้าของเรา
- * ตอบรับ/ปฏิเสธผ่าน `useAnswerAppointment` แล้ว เหลือแค่รายการคำเชิญที่ยังอ่าน
- * จาก store เพราะยังไม่มี endpoint "คำเชิญของฉัน" ในสัญญา (SDS มีแต่ฝั่ง
- * ทัวร์นาเมนต์: GET /tournaments/{id}/referees)
+ * กล่อง "คำเชิญเป็นกรรมการ" เชื่อมกับ GET /me/referee-invitations และมี fallback
+ * จาก store สำหรับข้อมูลเดิม
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -27,7 +25,9 @@ import { Icon } from '../../components/kit/Icon'
 import { Modal } from '../../components/kit/Modal'
 import { TeamChipView, TeamLinkView } from '../../components/kit/chips'
 import { useMyMatches } from '../../hooks/useMatch'
-import { useAnswerAppointment } from '../../hooks/useAdmin'
+import {
+  useAnswerAppointment, useMyRefereeInvitations, useAcceptRefereeInvitation, useDeclineRefereeInvitation,
+} from '../../hooks/useAdmin'
 import { numOf } from '../../mocks/storeBridge'
 import { useLtms } from '../../shared/store'
 import { me, tour, user } from '../../shared/selectors'
@@ -147,56 +147,92 @@ function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void
 }
 
 /**
- * คำเชิญหนึ่งใบ — แยกเป็น component เพราะ `useAnswerAppointment` ผูกกับ
- * ทัวร์นาเมนต์เดียว จะได้ invalidate เฉพาะรายการที่เปลี่ยนจริง
+ * คำเชิญหนึ่งใบ — รองรับทั้ง invitationId จาก API (/me/referee-invitations) และแบบ legacy store
  */
-function AppointmentRow({ inviteId, tourId }: { inviteId: string; tourId: string }) {
-  const answer = useAnswerAppointment(tourId)
-  const send = (accept: boolean) => answer.mutate({ appointmentId: numOf(inviteId), input: { accept } })
+function AppointmentRow({ inviteId, tourId }: { inviteId: number | string; tourId?: string }) {
+  const legacyAnswer = useAnswerAppointment(tourId ?? '')
+  const acceptMutation = useAcceptRefereeInvitation()
+  const declineMutation = useDeclineRefereeInvitation()
+
+  const isPending = tourId ? legacyAnswer.isPending : (acceptMutation.isPending || declineMutation.isPending)
+  const isError = tourId ? legacyAnswer.isError : (acceptMutation.isError || declineMutation.isError)
+  const errorObj = tourId ? legacyAnswer.error : (acceptMutation.error || declineMutation.error)
+
+  const send = (accept: boolean) => {
+    if (tourId) {
+      legacyAnswer.mutate({ appointmentId: typeof inviteId === 'number' ? inviteId : numOf(inviteId), input: { accept } })
+    } else {
+      if (accept) {
+        acceptMutation.mutate(inviteId)
+      } else {
+        declineMutation.mutate(inviteId)
+      }
+    }
+  }
+
   return (
     <>
-      {answer.isError ? (
-        <Banner kind="crit"><b>ตอบคำเชิญไม่สำเร็จ</b> {(answer.error as Error).message}</Banner>
+      {isError ? (
+        <Banner kind="crit"><b>ตอบคำเชิญไม่สำเร็จ</b> {(errorObj as Error)?.message || 'เกิดข้อผิดพลาด'}</Banner>
       ) : null}
       <div className="hstack">
-        <button className="btn" type="button" disabled={answer.isPending} onClick={() => send(false)}>Decline</button>
-        <button className="btn primary" type="button" disabled={answer.isPending} onClick={() => send(true)}>Accept appointment</button>
+        <button className="btn" type="button" disabled={isPending} onClick={() => send(false)}>Decline</button>
+        <button className="btn primary" type="button" disabled={isPending} onClick={() => send(true)}>Accept appointment</button>
       </div>
     </>
   )
 }
 
 /**
- * คำเชิญเป็นกรรมการ — โดเมนของสไลซ์ 4 ที่มาแสดงบนหน้าของเรา
- * ตอบรับผ่าน hook ของสไลซ์ 4 แล้ว ส่วนรายการยังอ่านจาก store เพราะสัญญายังไม่มี
- * endpoint "คำเชิญของฉัน"
+ * คำเชิญเป็นกรรมการ — เชื่อมกับ GET /me/referee-invitations และมี fallback จาก store
  */
 function RefereeInvites() {
   const s = useLtms()
   const u = me(s)
-  const invites = u ? s.refInvites.filter(i => i.user === u.id && i.status === 'pending') : []
-  if (!invites.length) return null
+  const { data: myInvitesData } = useMyRefereeInvitations()
+  const apiInvites = myInvitesData?.items ?? []
+  const storeInvites = u ? s.refInvites.filter(i => i.user === u.id && i.status === 'pending') : []
+
+  if (!apiInvites.length && !storeInvites.length) return null
+
   return (
     <Panel>
       <span className="tag"><em>//</em> Appointments waiting on your answer</span>
-      {invites.map(i => {
-        const tr = tour(s, i.tour)
-        if (!tr) return null
-        return (
-          <div className="vstack" style={{ gap: 9 }} key={i.id}>
+      {apiInvites.length > 0 ? (
+        apiInvites.map(inv => (
+          <div className="vstack" style={{ gap: 9 }} key={inv.id}>
             <div className="hstack">
-              <b>{tr.name}</b>
-              <Badge kind="neutral">{tr.channel}</Badge>
-              <span className="sub">{user(s, tr.organizer)?.name} invited you · {tr.venue} · {tr.date}</span>
+              <b>{inv.tournament.name}</b>
+              <Badge kind="neutral">{inv.isExternal ? 'External' : 'Referee'}</Badge>
+              <span className="sub">Invited · {fmtDate(inv.tournament.eventStartDate || inv.createdAt)}</span>
             </div>
             <div className="sub">
               Officiating is not a role and not a permission — accepting makes you eligible for this
               tournament only, and the organizer still assigns you match by match.
             </div>
-            <AppointmentRow inviteId={i.id} tourId={i.tour} />
+            <AppointmentRow inviteId={inv.id} />
           </div>
-        )
-      })}
+        ))
+      ) : (
+        storeInvites.map(i => {
+          const tr = tour(s, i.tour)
+          if (!tr) return null
+          return (
+            <div className="vstack" style={{ gap: 9 }} key={i.id}>
+              <div className="hstack">
+                <b>{tr.name}</b>
+                <Badge kind="neutral">{tr.channel}</Badge>
+                <span className="sub">{user(s, tr.organizer)?.name} invited you · {tr.venue} · {tr.date}</span>
+              </div>
+              <div className="sub">
+                Officiating is not a role and not a permission — accepting makes you eligible for this
+                tournament only, and the organizer still assigns you match by match.
+              </div>
+              <AppointmentRow inviteId={i.id} tourId={i.tour} />
+            </div>
+          )
+        })
+      )}
     </Panel>
   )
 }

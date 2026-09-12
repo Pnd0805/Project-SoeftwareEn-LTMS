@@ -7,10 +7,11 @@
  */
 import { Badge, Empty, Panel, TableWrap, Tabs } from '../../components/kit/primitives'
 import { useNavigate, useParams } from 'react-router-dom'
-import { TeamLink } from '../../components/kit/chips'
+import { TeamLink, TeamLinkView } from '../../components/kit/chips'
 import { decideFilterChange, decidePermanent, decideTournament, useLtms } from '../../shared/store'
 import { isAdmin, regsOf, user } from '../../shared/selectors'
 import { fmtDate, formatName, ruleSummary } from '../../shared/rules'
+import { useTeamRequests, useApproveTeamRequest, useRejectTeamRequest } from '../../hooks/useAdmin'
 
 const TABS = [
   { key: 'requests', label: 'Requests to organize' },
@@ -26,6 +27,10 @@ export function AdminPage() {
   const { tab: tabParam } = useParams()
   const tab = TABS.some(t => t.key === tabParam) ? tabParam! : 'requests'
 
+  const teamRequestsQuery = useTeamRequests()
+  const approveTeamReq = useApproveTeamRequest()
+  const rejectTeamReq = useRejectTeamRequest()
+
   if (!isAdmin(s)) {
     return (
       <Empty icon="shield" title="403 — admin only"
@@ -36,7 +41,42 @@ export function AdminPage() {
   }
 
   const requests = s.tournaments.filter(t => t.status === 'pending')
-  const permanent = s.permanentRequests.filter(r => r.status === 'pending')
+  const apiPermanent = (teamRequestsQuery.data?.items ?? []).filter(r => r.status === 'pending')
+  const storePermanent = s.permanentRequests.filter(r => r.status === 'pending')
+  const hasApi = (teamRequestsQuery.data?.items ?? []).length > 0
+
+  const permanentRows = hasApi
+    ? apiPermanent.map(r => ({
+        key: `api-${r.id}`,
+        id: r.id,
+        isApi: true,
+        team: { id: r.team.id, name: r.team.name },
+        askedBy: ('requestedBy' in r && r.requestedBy?.fullName) ? r.requestedBy.fullName : '—',
+        reason: ('rejectionReason' in r && r.rejectionReason) ? r.rejectionReason : 'Official squad status request',
+        when: ('createdAt' in r && r.createdAt) ? r.createdAt : ('requestedAt' in r && r.requestedAt) ? r.requestedAt : '',
+      }))
+    : storePermanent.map(r => ({
+        key: `store-${r.id}`,
+        id: r.id,
+        isApi: false,
+        team: r.team,
+        askedBy: user(s, r.by)?.name ?? '—',
+        reason: r.reason,
+        when: r.at,
+      }))
+
+  const handleDecidePermanent = (row: typeof permanentRows[number], approve: boolean) => {
+    if (row.isApi) {
+      if (approve) {
+        approveTeamReq.mutate(row.id as number)
+      } else {
+        rejectTeamReq.mutate({ requestId: row.id as number, reason: 'ปฏิเสธโดยผู้ดูแลระบบ' })
+      }
+    } else {
+      decidePermanent(String(row.id), approve)
+    }
+  }
+
   const filters = s.tournaments.filter(t => t.filterChangeRequest)
 
   return (
@@ -48,7 +88,7 @@ export function AdminPage() {
         </div>
         <div className="hstack">
           {requests.length ? <Badge kind="crit">{`${requests.length} to organize`}</Badge> : null}
-          {permanent.length ? <Badge kind="warn">{`${permanent.length} permanent`}</Badge> : null}
+          {permanentRows.length ? <Badge kind="warn">{`${permanentRows.length} permanent`}</Badge> : null}
           {filters.length ? <Badge kind="warn">{`${filters.length} filter change${filters.length === 1 ? '' : 's'}`}</Badge> : null}
         </div>
       </div>
@@ -87,26 +127,40 @@ export function AdminPage() {
 
       {tab === 'permanent' ? (
         <Panel>
-          <span className="tag"><em>//</em> Permanent-squad requests · {permanent.length}</span>
+          <span className="tag"><em>//</em> Permanent-squad requests · {permanentRows.length}</span>
           <div className="sub">
             For standing clubs, not for squads avoiding the deadline — exemption stays a judgement rather
             than a checkbox a squad ticks.
           </div>
-          {permanent.length ? (
+          {permanentRows.length ? (
             <TableWrap>
               <table>
                 <thead><tr><th>Squad</th><th>Asked by</th><th>Reason</th><th>When</th><th /></tr></thead>
                 <tbody>
-                  {permanent.map(r => (
-                    <tr key={r.id}>
-                      <td><TeamLink id={r.team} /></td>
-                      <td className="sub">{user(s, r.by)?.name ?? '—'}</td>
+                  {permanentRows.map(r => (
+                    <tr key={r.key}>
+                      <td>{typeof r.team === 'object' ? <TeamLinkView team={r.team} /> : <TeamLink id={r.team} />}</td>
+                      <td className="sub">{r.askedBy}</td>
                       <td className="sub">{r.reason}</td>
-                      <td className="tag">{fmtDate(r.at)}</td>
+                      <td className="tag">{fmtDate(r.when)}</td>
                       <td>
                         <span className="hstack" style={{ gap: 6 }}>
-                          <button className="btn ghost" type="button" onClick={() => decidePermanent(r.id, false)}>Decline</button>
-                          <button className="btn primary" type="button" onClick={() => decidePermanent(r.id, true)}>Approve</button>
+                          <button
+                            className="btn ghost"
+                            type="button"
+                            disabled={approveTeamReq.isPending || rejectTeamReq.isPending}
+                            onClick={() => handleDecidePermanent(r, false)}
+                          >
+                            Decline
+                          </button>
+                          <button
+                            className="btn primary"
+                            type="button"
+                            disabled={approveTeamReq.isPending || rejectTeamReq.isPending}
+                            onClick={() => handleDecidePermanent(r, true)}
+                          >
+                            Approve
+                          </button>
                         </span>
                       </td>
                     </tr>
