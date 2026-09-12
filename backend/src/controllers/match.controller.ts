@@ -83,3 +83,20 @@ export async function rejectCheckin(req: Request, res: Response){
     const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
     res.status(200).json(await MatchService.rejectCheckin(checkinId, matchId, req.user.user_id, req.body.reason));
 }
+
+export async function getCheckinQr(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.getCheckinQr(matchId, req.user.user_id));
+}
+
+export async function submitCheckin(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    const { isNew, data } = await MatchService.submitCheckin(matchId, req.user.user_id, req.body);
+    res.status(isNew ? 201 : 200).json(data);
+}

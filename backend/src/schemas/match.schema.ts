@@ -22,3 +22,17 @@ export const createBracketSchema = z.object({
 );
 
 export type CreateBracketInput = z.infer<typeof createBracketSchema>;
+
+export const submitCheckinSchema = z.discriminatedUnion('method', [
+    z.object({
+        method: z.literal('qr_onsite'),
+        qrPayload: z.string().min(1, 'กรุณาระบุ qrPayload'),
+    }),
+    z.object({
+        method: z.literal('photo_online'),
+        documentType: z.enum(['student_id', 'national_id']),
+        documentS3Key: z.string().min(1, 'กรุณาระบุ documentS3Key'),
+    }),
+]);
+
+export type SubmitCheckinInput = z.infer<typeof submitCheckinSchema>;

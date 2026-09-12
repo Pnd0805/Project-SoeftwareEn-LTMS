@@ -3,6 +3,16 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import { findLatestTournamentReferee } from '../repositories/referee.repo.js';
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
+import type { SubmitCheckinInput } from '../schemas/match.schema.js';
+
+// ยึดค่า DB (success/rejected/exception) เป็นหลักตามกฎ Part 0-1 §1.2 แต่ตอบ response เป็นคำที่สเปกเอกสารใช้
+// (B2 ที่ค้างอยู่ใน GUIDE/07: DB ไม่มีค่า 'pending_verification' เลยเดาว่า photo_online ที่รอตรวจ = 'exception')
+function toCheckinStatusApi(dbStatus: 'success' | 'rejected' | 'exception'): string {
+    if (dbStatus === 'success') return 'checked_in';
+    if (dbStatus === 'exception') return 'pending_verification';
+    return 'rejected';
+}
 
 export async function getTournamentMatches(tournamentId: number) {
     const rows = await MatchRepo.findMatchesByTournament(tournamentId);
@@ -141,4 +151,82 @@ export async function rejectCheckin(checkinId: number, matchId: number, userId: 
 
     await MatchRepo.rejectCheckin(checkinId, userId, reason);
     return { id: checkinId, status: 'rejected', reason };
+}
+
+export async function getCheckinQr(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    if (!tournament) {
+        throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
+    }
+    const isOrganizer = tournament.requested_by_user_id === userId
+        && tournament.tournament_status !== 'pending_approval'
+        && tournament.tournament_status !== 'rejected';
+
+    const referee = await findLatestTournamentReferee(match.tournament_id, userId);
+    const isReferee = referee !== null
+        && referee.invitation_status === 'accepted'
+        && (referee.is_external === 0 || referee.external_approval_status === 'approved');
+
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_ORGANIZER_OR_REFEREE", "คุณไม่มีสิทธิ์ขอ QR เช็คอินของแมตช์นี้");
+    }
+
+    const { qrPayload, expiresAt } = signCheckinQr(matchId);
+    return { qrPayload, expiresAt };
+}
+
+export async function submitCheckin(matchId: number, userId: number, input: SubmitCheckinInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
+    if (existing) {
+        return {
+            isNew: false,
+            data: {
+                id: existing.match_checkin_id,
+                status: toCheckinStatusApi(existing.match_checkin_status),
+                checkedInAt: existing.checked_in_at,
+            },
+        };
+    }
+
+    const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
+    const inRoster = await MatchRepo.isUserInTeams(userId, teamIds);
+    if (!inRoster) {
+        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อทีมที่ได้รับอนุมัติของแมตช์นี้");
+    }
+
+    let status: 'success' | 'exception';
+    let documentType: 'student_id' | 'national_id' | null = null;
+    let documentS3Key: string | null = null;
+
+    if (input.method === 'qr_onsite') {
+        verifyCheckinQr(input.qrPayload, matchId);
+        status = 'success';
+    } else {
+        documentType = input.documentType;
+        documentS3Key = input.documentS3Key;
+        status = 'exception'; // ยังไม่ได้ตรวจ รอกรรมการผ่าน M14/M15
+    }
+
+    const checkin = await MatchRepo.insertCheckin({
+        matchId, userId, method: input.method, status, documentType, documentS3Key,
+    });
+
+    return {
+        isNew: true,
+        data: {
+            id: checkin.match_checkin_id,
+            status: toCheckinStatusApi(checkin.match_checkin_status),
+            checkedInAt: checkin.checked_in_at,
+        },
+    };
 }

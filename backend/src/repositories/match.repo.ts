@@ -191,3 +191,45 @@ export async function updateMatchNextMatchIdTx(conn: PoolConnection, matchId: nu
         [nextMatchId, matchId]
     );
 }
+
+// ⚠️ ไม่มี UNIQUE(match_id, user_id) จริงใน schema.sql ทั้งที่ GUIDE อ้างว่ามี (เหมือนเคส C5 ของ tournament_referees)
+// เลยต้องเช็คซ้ำที่ฝั่ง service เอง (select ก่อน insert) — มีโอกาสชนกันได้ถ้ายิงพร้อมกันเป๊ะ แต่ยอมรับความเสี่ยงนี้ไปก่อน ต้องคุยทีม
+export async function findCheckinByMatchAndUser(matchId: number, userId: number): Promise<MatchCheckinRow | null> {
+    const [rows] = await pool.query<(MatchCheckinRow & RowDataPacket)[]>(
+        `SELECT * FROM match_checkins WHERE match_id = ? AND user_id = ? LIMIT 1`,
+        [matchId, userId]
+    );
+    return rows[0] ?? null;
+}
+
+export async function isUserInTeams(userId: number, teamIds: number[]): Promise<boolean> {
+    if (teamIds.length === 0) return false;
+    const placeholders = teamIds.map(() => '?').join(', ');
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM team_members WHERE user_id = ? AND team_id IN (${placeholders}) LIMIT 1`,
+        [userId, ...teamIds]
+    );
+    return rows.length > 0;
+}
+
+type InsertCheckinInput = {
+    matchId: number;
+    userId: number;
+    method: 'qr_onsite' | 'photo_online';
+    status: 'success' | 'exception';
+    documentType: 'student_id' | 'national_id' | null;
+    documentS3Key: string | null;
+};
+
+export async function insertCheckin(input: InsertCheckinInput): Promise<MatchCheckinRow> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `INSERT INTO match_checkins (match_id, user_id, method, match_checkin_status, document_type, document_s3_key)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [input.matchId, input.userId, input.method, input.status, input.documentType, input.documentS3Key]
+    );
+    const [rows] = await pool.query<(MatchCheckinRow & RowDataPacket)[]>(
+        `SELECT * FROM match_checkins WHERE match_checkin_id = ?`,
+        [result.insertId]
+    );
+    return rows[0]!;
+}
