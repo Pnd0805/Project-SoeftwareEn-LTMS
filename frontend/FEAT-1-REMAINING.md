@@ -36,15 +36,15 @@ its type, hook, and consuming screen are complete:
 
 | Done | Need | Route | Contract |
 | --- | --- | --- | --- |
-| [ ] | My teams | `GET /me/teams` | `{ items: MyTeam[] }`. `MyTeam` has `id`, `name`, `sportTypeId`, `readinessStatus`, `officialStatus`, `memberCount`, `role`. |
-| [ ] | Team detail | `GET /teams/:id` | Numeric `id`; includes `leader`, `memberCount`, `createdAt`, `readinessStatus`, `officialStatus`. |
-| [ ] | Team members | `GET /teams/:id/members` | Authenticated team members only. `{ items: TeamMember[] }`; a member has `userId`, `fullName`, `avatarUrl`, `position`, `joinedAt`. |
+| [x] | My teams | `GET /me/teams` | `{ items: MyTeam[] }`. `MyTeam` has `id`, `name`, `sportTypeId`, `readinessStatus`, `officialStatus`, `memberCount`, `role`. |
+| [x] | Team detail | `GET /teams/:id` | Numeric `id`; includes `leader`, `memberCount`, `createdAt`, `readinessStatus`, `officialStatus`. |
+| [x] | Team members | `GET /teams/:id/members` | Authenticated team members only. `{ items: TeamMember[] }`; a member has `userId`, `fullName`, `avatarUrl`, `position`, `joinedAt`. |
 | [ ] | Team invitations | `GET/POST /teams/:id/invitations` | Team-leader-only management. Accept/decline with `POST /invitations/:id/accept` or `/decline`. |
 
 ### 2. Connect screens
 
-- [ ] Migrate `TeamsPage` to `GET /me/teams`.
-- [ ] Migrate `TeamPage` to `GET /teams/:id` and `GET /teams/:id/members`.
+- [x] Migrate `TeamsPage` to `GET /me/teams`.
+- [x] Migrate `TeamPage` to `GET /teams/:id` and `GET /teams/:id/members`.
 - [ ] Migrate the team selector in `RegisterForm` to `GET /me/teams`.
 - [ ] Show an access message when team-members returns `403`; do not render this
    as a team with zero members.
@@ -158,6 +158,8 @@ delivers an agreed contract:
 - [ ] Team, application, referee, and admin screens above use API hooks and
       numeric DTO IDs.
 - [ ] No new mutations have been added to `shared/store.ts`.
+- [x] Team list/detail screens have loading, empty, error, and permission
+      states.
 - [ ] Every migrated screen has loading, empty, error, permission, and pending
       mutation states.
 - [ ] API/hook tests cover success, validation, and permission paths.
