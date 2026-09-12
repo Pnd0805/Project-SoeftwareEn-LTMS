@@ -39,7 +39,7 @@ its type, hook, and consuming screen are complete:
 | [x] | My teams | `GET /me/teams` | `{ items: MyTeam[] }`. `MyTeam` has `id`, `name`, `sportTypeId`, `readinessStatus`, `officialStatus`, `memberCount`, `role`. |
 | [x] | Team detail | `GET /teams/:id` | Numeric `id`; includes `leader`, `memberCount`, `createdAt`, `readinessStatus`, `officialStatus`. |
 | [x] | Team members | `GET /teams/:id/members` | Authenticated team members only. `{ items: TeamMember[] }`; a member has `userId`, `fullName`, `avatarUrl`, `position`, `joinedAt`. |
-| [ ] | Team invitations | `GET/POST /teams/:id/invitations` | Team-leader-only management. Accept/decline with `POST /invitations/:id/accept` or `/decline`. |
+| [x] | Team invitations | `GET/POST /teams/:id/invitations` | Team-leader-only management. Accept/decline with `POST /invitations/:id/accept` or `/decline`. |
 
 ### 2. Connect screens
 
