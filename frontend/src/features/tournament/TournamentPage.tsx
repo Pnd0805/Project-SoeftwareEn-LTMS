@@ -18,13 +18,14 @@ import { formatName, ruleSummary } from '../../shared/rules'
 import { BracketTab } from './BracketTab'
 import { ScheduleTab } from './ScheduleTab'
 import { LeaderboardTab } from './LeaderboardTab'
+import { DashboardTab } from './DashboardTab'
 import { AnnouncementsTab } from './AnnouncementsTab'
 import { CommunityTab } from './CommunityTab'
 import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
 
-const PUBLIC_TABS = ['bracket', 'schedule', 'leaderboard', 'announcements', 'community']
+const PUBLIC_TABS = ['bracket', 'dashboard', 'schedule', 'leaderboard', 'announcements', 'community']
 
 export function TournamentPage() {
   const s = useLtms()
@@ -132,6 +133,7 @@ export function TournamentPage() {
             onPick={k => navigate(`/t/${t.id}/${k}`)}
           />
           {tab === 'bracket' ? <BracketTab t={t} /> : null}
+          {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
           {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
           {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
           {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
@@ -149,9 +151,12 @@ export function TournamentPage() {
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],
               ['Played', t.channel],
               ['Entry', ruleSummary(t.rules) || 'open to everybody'],
-              ['Squads in', approvedTeams.isPending
-                ? <span className="sub">Loadingâ€¦</span>
-                : approvedTeams.isError
+              /* id ของ store ('t-fb') ไม่ยิง GET /tournaments/:id/teams — query ถูกปิดไว้และ
+                 TanStack v5 ถือว่า query ที่ปิดโดยยังไม่มีข้อมูลเป็น pending ตลอด ถ้าเช็ค
+                 isPending ก่อนจะค้างที่ Loading ทุกรายการใน seed จึงเช็คเฉพาะตอนมี id ตัวเลข */
+              ['Squads in', tournamentId !== undefined && approvedTeams.isPending
+                ? <span className="sub">Loading…</span>
+                : tournamentId !== undefined && approvedTeams.isError
                   ? <span className="sub">Unavailable</span>
                   : <><b className="num">{approved.length}</b> <span className="sub">of {t.cap}</span></>],
               ['Run by', user(s, t.organizer)?.name ?? '—'],
@@ -159,7 +164,7 @@ export function TournamentPage() {
           </Panel>
           {tournamentId !== undefined ? <Panel quiet>
             <span className="tag"><em>//</em> Approved teams</span>
-            {approvedTeams.isPending ? <span className="sub">Loading approved teamsâ€¦</span> : null}
+            {approvedTeams.isPending ? <span className="sub">Loading approved teams…</span> : null}
             {approvedTeams.isError ? <span className="sub">Unable to load approved teams.</span> : null}
             {approvedTeams.data?.items.length === 0 ? <span className="sub">No teams have been approved yet.</span> : null}
             {approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>

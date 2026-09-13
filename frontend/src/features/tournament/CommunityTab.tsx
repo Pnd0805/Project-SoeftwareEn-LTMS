@@ -4,6 +4,8 @@
  * Feedback is a review of how a Tournament was run: the rating is public in
  * aggregate, the note is read only by the Organizer. One per person, replaced
  * rather than stacked when sent again. Beside it, the match threads.
+ *
+ * ส่ง id ที่หน้าถืออยู่ตรงๆ — เดิม Number('t-fb') = NaN ความเห็นที่ส่งจึงไม่ถึง store
  */
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -33,7 +35,7 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
   const navigate = useNavigate()
   const f = feedbackOf(s, t.id)
   const mine = u ? f.rows.find(x => x.by === u.id) : null
-  const submit = useSubmitTournamentFeedback(Number(t.id))
+  const submit = useSubmitTournamentFeedback(t.id)
   const { register, handleSubmit, setError, reset, formState: { errors, isSubmitting } } = useForm<SubmitTournamentFeedbackInput>({
     resolver: zodResolver(submitTournamentFeedbackSchema),
     defaultValues: { rating: mine?.rating ?? 5, text: mine?.text ?? '' },
@@ -92,8 +94,11 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
               </Field>
               {errors.rating?.message ? <span className="sub">{errors.rating.message}</span> : null}
               {errors.text?.message ? <span className="sub">{errors.text.message}</span> : null}
+              {submit.isError && !errors.rating && !errors.text ? (
+                <span className="sub">{submit.error instanceof Error ? submit.error.message : 'Could not send it.'}</span>
+              ) : null}
               <button className="btn primary" type="submit" disabled={isSubmitting || submit.isPending} style={{ alignSelf: 'flex-start' }}>
-                {mine ? 'Update my feedback' : 'Send to the organizer'}
+                {submit.isPending ? 'Sending…' : mine ? 'Update my feedback' : 'Send to the organizer'}
               </button>
               </form>
             </>

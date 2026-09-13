@@ -104,7 +104,9 @@ export async function getTournamentMatches(tournamentId: MatchRef): Promise<{ it
       : numOf(String(tournamentId));
     const own = mockMatches.filter((m) => m.tournamentId === numeric);
     const s = storeState();
-    const seeded = findStoreTournamentMatches(tournamentId).map((m) => toMatchDto(s, m));
+    /* แนบสกอร์กับสถานะผลมาด้วย (MatchListItemDto เป็น superset ของ MatchDto) — แดชบอร์ด
+       ต้องแยก "รอยืนยันผล" ออกจาก "ยังไม่แข่ง" ซึ่ง MatchDto ของ store ยุบเป็น scheduled ทั้งคู่ */
+    const seeded = findStoreTournamentMatches(tournamentId).map((m) => toListItem(s, m));
     return mockDelay({ items: [...own, ...seeded] });
   }
   return apiFetch(`/tournaments/${tournamentId}/matches`);

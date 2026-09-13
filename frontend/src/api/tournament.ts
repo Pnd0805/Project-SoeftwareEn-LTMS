@@ -1,10 +1,12 @@
 import { apiFetch, mockReject, USE_MOCK } from "./client";
 import {
-  storeApplicationDto, whyApplyBlocked, writeAllowWithdrawal, writeApplyToTournament,
+  storeAnnouncementDtos, storeApplicationDto, whyApplyBlocked, writeAllowWithdrawal, writeApplyToTournament,
   writeApproveAllRegistrations,
-  writeApproveRegistration, writeDrawTournament, writeRejectRegistration,
-  type TournamentRef,
+  writeApproveRegistration, writeDrawTournament, writeEntryNotes, writePostAnnouncement,
+  writePublishTournament, writeRejectRegistration, writeRequestFilterChange, writeSendFeedback,
+  type TournamentRef, type TournamentWriteBlock,
 } from "../mocks/tournamentWrites";
+import type { Rules } from "../shared/types";
 import type {
   ApplyToTournamentRequest,
   CreateEligibilityRuleRequest,
@@ -41,6 +43,13 @@ import { findStoreTeam } from "../mocks/teamBridge";
 
 const notFound = <T>(message: string): Promise<T> =>
   mockReject(404, { code: "NOT_FOUND", message });
+
+/** ส่งเหตุผลที่ชั้น mock ปฏิเสธต่อเป็น error รูปเดียวกับ backend */
+const rejectWith = <T>(b: TournamentWriteBlock): Promise<T> =>
+  mockReject<T>(b.status, { code: b.code, message: b.message });
+
+/** ทัวร์นาเมนต์จาก seed หาไม่เจอ = ref เป็น id ของ fixture ให้ทางเดิมจัดการต่อ */
+const notInStore = (b: TournamentWriteBlock) => b.code === "TOURNAMENT_NOT_FOUND";
 
 // The mock application array is recreated when Vite reloads this module. Keep
 // only status overrides separately so demo cancel/withdraw behaves like the
@@ -360,9 +369,14 @@ export async function allowApplicationWithdrawal(id: TournamentRef, applicationI
   return apiFetch(`/applications/${applicationId}/withdraw`, { method: "POST" });
 }
 
-export async function publishTournament(id: number): Promise<TournamentDto> {
+/** POST /tournaments/:id/publish — BR-10 ต้องมีกรรมการที่มีสิทธิ์ครบก่อน */
+export async function publishTournament(id: TournamentRef): Promise<TournamentDto | void> {
   if (USE_MOCK) {
-    const tournament = findTournament(id);
+    /* ทัวร์นาเมนต์จาก seed เขียนลง store — เดิมหน้าจอส่ง Number('t-bkb') = NaN กดแล้วเงียบ */
+    const blocked = writePublishTournament(id);
+    if (!blocked) return tournamentMockDelay(undefined);
+    if (!notInStore(blocked)) return rejectWith<void>(blocked);
+    const tournament = findTournament(Number(id));
     if (!tournament) return notFound("ไม่พบการแข่งขัน");
     tournament.status = "public";
     tournament.registrationOpen = true;
@@ -390,33 +404,58 @@ export async function drawTournament(id: TournamentRef, input: DrawTournamentReq
   return apiFetch(`/tournaments/${id}/draw`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function createAnnouncement(id: number, input: CreateTournamentAnnouncementRequest): Promise<TournamentAnnouncementDto> {
+/** POST /tournaments/:id/announcements — ผู้จัดเท่านั้น · แจ้งหัวหน้าทีมที่ได้ที่นั่ง */
+export async function createAnnouncement(id: TournamentRef, input: CreateTournamentAnnouncementRequest): Promise<TournamentAnnouncementDto> {
   if (USE_MOCK) {
-    const announcement = { id: nextTournamentMockId(), tournamentId: id, authorId: 1, ...input, createdAt: isoNow() };
+    const created = writePostAnnouncement(id, input.title, input.body);
+    if (typeof created === "string") {
+      const dto = storeAnnouncementDtos(id)?.[0];
+      if (dto) return tournamentMockDelay(dto);
+    } else if (!notInStore(created)) {
+      return rejectWith<TournamentAnnouncementDto>(created);
+    }
+    const announcement = { id: nextTournamentMockId(), tournamentId: Number(id), authorId: 1, ...input, createdAt: isoNow() };
     mockTournamentAnnouncements.push(announcement);
     return tournamentMockDelay(announcement);
   }
   return apiFetch(`/tournaments/${id}/announcements`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function getAnnouncements(id: number): Promise<TournamentAnnouncementListResponse> {
+export async function getAnnouncements(id: TournamentRef): Promise<TournamentAnnouncementListResponse> {
   if (USE_MOCK) {
-    return tournamentMockDelay({ items: mockTournamentAnnouncements.filter(item => item.tournamentId === id) });
+    /* ประกาศของทัวร์นาเมนต์ใน seed อยู่ใน store — เดิมอ่านแต่อาร์เรย์ fixture จึงไม่เคยขึ้น */
+    const fromStore = storeAnnouncementDtos(id);
+    if (fromStore) return tournamentMockDelay({ items: fromStore });
+    return tournamentMockDelay({ items: mockTournamentAnnouncements.filter(item => item.tournamentId === Number(id)) });
   }
   return apiFetch(`/tournaments/${id}/announcements`);
 }
 
-export async function submitFeedback(id: number, input: SubmitTournamentFeedbackRequest): Promise<TournamentFeedbackDto> {
-  if (USE_MOCK) return tournamentMockDelay({ id: nextTournamentMockId(), tournamentId: id, userId: 1, ...input, createdAt: isoNow() });
+export async function submitFeedback(id: TournamentRef, input: SubmitTournamentFeedbackRequest): Promise<TournamentFeedbackDto> {
+  if (USE_MOCK) {
+    const blocked = writeSendFeedback(id, input.rating, input.text ?? "");
+    if (blocked && !notInStore(blocked)) return rejectWith<TournamentFeedbackDto>(blocked);
+    return tournamentMockDelay({ id: nextTournamentMockId(), tournamentId: Number(id), userId: 1, ...input, createdAt: isoNow() });
+  }
   return apiFetch(`/tournaments/${id}/feedback`, { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function saveEntryNotes(id: number, text: string): Promise<TournamentDto> {
-  if (USE_MOCK) return updateTournament(id, {});
+export async function saveEntryNotes(id: TournamentRef, text: string): Promise<TournamentDto | void> {
+  if (USE_MOCK) {
+    const blocked = writeEntryNotes(id, text);
+    if (!blocked) return tournamentMockDelay(undefined);
+    if (!notInStore(blocked)) return rejectWith<void>(blocked);
+    return updateTournament(Number(id), {});
+  }
   return apiFetch(`/tournaments/${id}/entry-notes`, { method: "PATCH", body: JSON.stringify({ text }) });
 }
 
-export async function requestFilterChange(id: number, input: { rules: unknown; reason: string }): Promise<TournamentDto> {
-  if (USE_MOCK) return updateTournament(id, {});
+export async function requestFilterChange(id: TournamentRef, input: { rules: unknown; reason: string }): Promise<TournamentDto | void> {
+  if (USE_MOCK) {
+    const blocked = writeRequestFilterChange(id, input.rules as Rules, input.reason);
+    if (!blocked) return tournamentMockDelay(undefined);
+    if (!notInStore(blocked)) return rejectWith<void>(blocked);
+    return updateTournament(Number(id), {});
+  }
   return apiFetch(`/tournaments/${id}/filter-change`, { method: "POST", body: JSON.stringify(input) });
 }

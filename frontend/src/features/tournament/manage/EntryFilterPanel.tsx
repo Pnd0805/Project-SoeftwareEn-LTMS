@@ -5,15 +5,20 @@
  * notes — free text the system never checks, editable whenever. The Hard filter
  * is the enforced conditions: set once at creation, with no override, so an
  * organizer who wants them changed asks an admin with a reason.
+ *
+ * ส่ง id ที่หน้าถืออยู่ตรงๆ — เดิม Number('t-fb') = NaN บันทึกแล้วไม่มีอะไรเปลี่ยน
+ * และหน้าต่างปิดทันทีโดยไม่รอผล จึงไม่มีทางรู้ว่าล้มเหลว
  */
 import { useState } from 'react'
-import { Badge, Field, Panel } from '../../../components/kit/primitives'
+import { Badge, Banner, Field, Panel } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import { useRequestFilterChange, useSaveEntryNotes } from '../../../hooks/useTournament'
 import { FACULTIES, MAJORS, ruleSummary } from '../../../shared/rules'
 import type { Rules, Tournament } from '../../../shared/types'
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 
 function RulesForm({ value, onChange }: { value: Rules; onChange: (r: Rules) => void }) {
   const set = (patch: Partial<Rules>) => onChange({ ...value, ...patch })
@@ -51,8 +56,8 @@ function RulesForm({ value, onChange }: { value: Rules; onChange: (r: Rules) => 
 
 export function EntryFilterPanel({ t }: { t: Tournament }) {
   useLtms()
-  const saveNotes = useSaveEntryNotes(Number(t.id))
-  const requestChange = useRequestFilterChange(Number(t.id))
+  const saveNotes = useSaveEntryNotes(t.id)
+  const requestChange = useRequestFilterChange(t.id)
   const [notesOpen, setNotesOpen] = useState(false)
   const [notes, setNotes] = useState(t.entryNotes ?? '')
   const [changeOpen, setChangeOpen] = useState(false)
@@ -68,7 +73,7 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
             <span className="meta"><b>Soft filter</b><span className="tag">Entry notes — the system shows them, it never checks them</span></span>
             {t.entryNotes ? <Badge kind="ok">Published</Badge> : null}
             <button className="btn ghost" type="button" aria-label="Edit soft filter"
-              onClick={() => { setNotes(t.entryNotes ?? ''); setNotesOpen(true) }}>
+              onClick={() => { saveNotes.reset(); setNotes(t.entryNotes ?? ''); setNotesOpen(true) }}>
               <Icon name="chev" size={14} />
             </button>
           </div>
@@ -91,7 +96,7 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
             </div>
           ) : (
             <button className="btn ghost" type="button" style={{ alignSelf: 'flex-start' }}
-              onClick={() => { setDraft(t.rules); setChangeOpen(true) }}>
+              onClick={() => { requestChange.reset(); setDraft(t.rules); setReason(''); setChangeOpen(true) }}>
               <Icon name="plus" size={14} /> Request a change
             </button>
           )}
@@ -102,9 +107,13 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
         <Field label="Soft filter" htmlFor="en-text">
           <textarea id="en-text" rows={5} value={notes} onChange={e => setNotes(e.target.value)} />
         </Field>
+        {saveNotes.isError ? <Banner kind="crit"><b>Couldn't save the notes.</b> {errorMessage(saveNotes.error)}</Banner> : null}
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setNotesOpen(false)}>Cancel</button>
-          <button className="btn primary" type="button" onClick={() => { saveNotes.mutate(notes); setNotesOpen(false) }}>Save</button>
+          <button className="btn primary" type="button" disabled={saveNotes.isPending}
+            onClick={() => saveNotes.mutate(notes, { onSuccess: () => setNotesOpen(false) })}>
+            {saveNotes.isPending ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </Modal>
 
@@ -117,11 +126,14 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
           <textarea id="fc-why" rows={3} value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Two faculties merged their intakes, so the year rule now excludes half the entrants." />
         </Field>
+        {requestChange.isError ? <Banner kind="crit"><b>Couldn't send the request.</b> {errorMessage(requestChange.error)}</Banner> : null}
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setChangeOpen(false)}>Cancel</button>
-          <button className="btn primary" type="button"
-            onClick={() => { requestChange.mutate({ rules: draft, reason }); setChangeOpen(false) }}>
-            Send to an admin
+          <button className="btn primary" type="button" disabled={!reason.trim() || requestChange.isPending}
+            onClick={() => requestChange.mutate({ rules: draft, reason }, {
+              onSuccess: () => { setChangeOpen(false); setReason('') },
+            })}>
+            {requestChange.isPending ? 'Sending…' : 'Send to an admin'}
           </button>
         </div>
       </Modal>

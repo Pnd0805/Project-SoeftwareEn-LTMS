@@ -13,6 +13,7 @@ import { Empty, Panel, Tabs } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
 import { useTournaments } from '../../hooks/useTournament'
+import { USE_MOCK } from '../../api/client'
 import { me, myTeams, regsOf, visibleTo } from '../../shared/selectors'
 import { tourLifecycle } from '../../shared/rules'
 import type { Registration, Tournament } from '../../shared/types'
@@ -55,7 +56,7 @@ function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries
 
 export function HomePage() {
   const s = useLtms()
-  const { data: tournamentData, isPending: tournamentsPending } = useTournaments()
+  const { data: tournamentData, isPending: apiPending } = useTournaments()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
   const u = me(s)
@@ -64,7 +65,11 @@ export function HomePage() {
   const [openKind, setOpenKind] = useState<WorkKind | null>(null)
 
   const q = useMemo(() => workQueue(s), [s])
-  const all = (tournamentData?.items ?? []).map(tournamentView).filter(t => visibleTo(s, t))
+  /* รายการทัวร์นาเมนต์ยังรอ backend (FEAT-1-REMAINING: backend blockers) — โหมด mock อ่าน seed
+     ใน store ที่หน้าอื่นทุกหน้าอ่านอยู่ ไม่ใช่ fixture ของ api/tournament.ts ซึ่งมีรายการเดียว */
+  const tournamentsPending = !USE_MOCK && apiPending
+  const all = (USE_MOCK ? s.tournaments : (tournamentData?.items ?? []).map(tournamentView))
+    .filter(t => visibleTo(s, t))
   const needle = query.trim().toLowerCase()
   const textFiltered = needle
     ? all.filter(t => `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))

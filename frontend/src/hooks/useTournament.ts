@@ -177,7 +177,9 @@ export function useAllowWithdrawal(tournamentId: TournamentRef) {
   return useMutation({ mutationFn: (applicationId: TournamentRef) => tournamentApi.allowApplicationWithdrawal(tournamentId, applicationId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function usePublishTournament(tournamentId: number) {
+/* ทุกตัวข้างล่างรับ id ได้ทั้งตัวเลขของ DTO และ string ของ store — เดิมรับแค่ number
+   หน้าจอจึงแปลงด้วย Number() แล้วได้ NaN กับทัวร์นาเมนต์ใน seed ปุ่มกดแล้วเงียบ */
+export function usePublishTournament(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: () => tournamentApi.publishTournament(tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
@@ -187,36 +189,38 @@ export function useDrawTournament(tournamentId: TournamentRef) {
   return useMutation({ mutationFn: tournamentApi.drawTournament.bind(null, tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useCreateTournamentAnnouncement(tournamentId: number) {
+export function useCreateTournamentAnnouncement(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTournamentAnnouncementRequest) => tournamentApi.createAnnouncement(tournamentId, input),
     onSuccess: () => {
       invalidateTournament(queryClient, tournamentId);
-      queryClient.invalidateQueries({ queryKey: ["announcements", tournamentId] });
+      /* แจ้งหัวหน้าทีมด้วย กระดิ่งจึงต้องอ่านใหม่ · ล้างทั้ง namespace เพราะ id มีได้สองแบบ */
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
 
-export function useTournamentAnnouncements(tournamentId: number | undefined) {
+export function useTournamentAnnouncements(tournamentId: TournamentRef | undefined) {
   return useQuery({
     queryKey: ["announcements", tournamentId],
-    queryFn: () => tournamentApi.getAnnouncements(tournamentId as number),
+    queryFn: () => tournamentApi.getAnnouncements(tournamentId as TournamentRef),
     enabled: tournamentId !== undefined,
   });
 }
 
-export function useSubmitTournamentFeedback(tournamentId: number) {
+export function useSubmitTournamentFeedback(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (input: SubmitTournamentFeedbackRequest) => tournamentApi.submitFeedback(tournamentId, input), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useSaveEntryNotes(tournamentId: number) {
+export function useSaveEntryNotes(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (text: string) => tournamentApi.saveEntryNotes(tournamentId, text), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
-export function useRequestFilterChange(tournamentId: number) {
+export function useRequestFilterChange(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (input: { rules: unknown; reason: string }) => tournamentApi.requestFilterChange(tournamentId, input), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }

@@ -15,11 +15,12 @@
  *
  * ทั้งไฟล์ตายตอน `VITE_USE_MOCK=false`
  */
-import { commitStore, drawBracket, getState } from '../shared/store'
-import { doubleEntered, hardFilter, regWindowClosed } from '../shared/rules'
+import { commitStore, drawBracket, getState, notifyStore, postAnnouncement, sendFeedback, toast } from '../shared/store'
+import { me } from '../shared/selectors'
+import { NOW, doubleEntered, hardFilter, refsNeeded, regWindowClosed } from '../shared/rules'
 import { numOf } from './storeBridge'
-import type { Registration, State, Tournament } from '../shared/types'
-import type { TournamentApplicationDto } from '../types/tournament.dto'
+import type { Registration, Rules, State, Tournament } from '../shared/types'
+import type { TournamentAnnouncementDto, TournamentApplicationDto } from '../types/tournament.dto'
 
 /** id ของทัวร์นาเมนต์/ใบสมัคร รับได้ทั้งตัวเลขของ DTO และ string ของ store */
 export type TournamentRef = number | string
@@ -191,4 +192,124 @@ export function writeApplyToTournament(
   })
   commitStore()
   return id
+}
+
+// ── เปิดสาธารณะ ประกาศ ความเห็น และเงื่อนไขรับสมัคร ─────────────────────────
+/*
+ * หน้าจัดการเคยส่ง `Number('t-bkb')` = NaN ให้ API ซึ่งหาได้แค่ fixture ตัวเลข
+ * ปุ่มพวกนี้จึงกดแล้วเงียบ — ทางเขียนชุดนี้ลง store ที่หน้าจออ่านอยู่ และตอบเหตุผล
+ * รูปเดียวกับ backend เมื่อทำไม่ได้ ให้หน้าจอแสดงได้
+ */
+
+/** เหตุผลที่ทำไม่ได้ — รูปเดียวกับ error ของ backend */
+export interface TournamentWriteBlock {
+  status: number
+  code: string
+  message: string
+}
+
+const refuse = (status: number, code: string, message: string): TournamentWriteBlock => ({ status, code, message })
+
+const isBlock = (x: Tournament | TournamentWriteBlock): x is TournamentWriteBlock => 'code' in x
+
+/** หน้าจัดการสั่งงานได้เฉพาะผู้จัดของรายการนั้น */
+function organizerOf(s: State, ref: TournamentRef): Tournament | TournamentWriteBlock {
+  const t = findTour(s, ref)
+  if (!t) return refuse(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบการแข่งขัน')
+  if (me(s)?.id !== t.organizer) return refuse(403, 'NOT_ORGANIZER', 'เฉพาะผู้จัดของรายการนี้')
+  return t
+}
+
+/**
+ * FR-OM-03 / BR-10 — เปิดให้สาธารณะเห็นและรับสมัคร
+ * ต้องมีกรรมการที่มีสิทธิ์ครบก่อน · `tr.referees` นับเฉพาะคนที่มีสิทธิ์จริง
+ * บุคคลภายนอกที่ Admin ยังไม่อนุมัติจึงไม่ถูกนับ
+ */
+export function writePublishTournament(ref: TournamentRef): TournamentWriteBlock | null {
+  const s = getState()
+  const t = organizerOf(s, ref)
+  if (isBlock(t)) return t
+  if (t.status === 'public') return refuse(409, 'ALREADY_PUBLIC', `${t.name} เปิดสาธารณะอยู่แล้ว`)
+  if (t.status !== 'private') return refuse(409, 'NOT_APPROVED', 'Admin ยังไม่อนุมัติคำขอจัดรายการนี้')
+  const need = refsNeeded(t)
+  const have = (t.referees ?? []).length
+  if (have < need) {
+    return refuse(409, 'REFEREES_NOT_READY', `ต้องมีกรรมการตอบรับครบ ${need} คนก่อน ตอนนี้มี ${have} คน`)
+  }
+  t.status = 'public'
+  commitStore()
+  toast(`${t.name} is public — squads can find it and enter`)
+  return null
+}
+
+/** FR-AN-01 — ผู้จัดประกาศ · `postAnnouncement` ของ store แจ้งหัวหน้าทีมที่ได้ที่นั่งให้เอง */
+export function writePostAnnouncement(ref: TournamentRef, title: string, body: string): string | TournamentWriteBlock {
+  const s = getState()
+  const t = organizerOf(s, ref)
+  if (isBlock(t)) return t
+  if (!title.trim()) return refuse(400, 'VALIDATION_FAILED', 'กรุณาใส่หัวข้อประกาศ')
+  const before = s.announcements.length
+  postAnnouncement(t.id, me(s)!.id, title, body)
+  const created = s.announcements[s.announcements.length - 1]
+  return s.announcements.length > before && created
+    ? created.id
+    : refuse(500, 'NOT_SAVED', 'บันทึกประกาศไม่สำเร็จ')
+}
+
+/** ความเห็นต่อการจัดการแข่ง — หนึ่งคนหนึ่งความเห็น ส่งซ้ำคือแก้ของเดิม (store จัดการให้) */
+export function writeSendFeedback(ref: TournamentRef, rating: number, text: string): TournamentWriteBlock | null {
+  const s = getState()
+  const t = findTour(s, ref)
+  if (!t) return refuse(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบการแข่งขัน')
+  const u = me(s)
+  if (!u) return refuse(401, 'UNAUTHORIZED', 'กรุณาเข้าสู่ระบบก่อน')
+  if (u.id === t.organizer) return refuse(403, 'ORGANIZER_CANNOT_RATE', 'ผู้จัดให้คะแนนรายการของตัวเองไม่ได้')
+  if (!(rating >= 1 && rating <= 5)) return refuse(400, 'VALIDATION_FAILED', 'คะแนนต้องอยู่ระหว่าง 1 ถึง 5')
+  sendFeedback(t.id, u.id, rating, text)
+  return null
+}
+
+/** Soft filter — ข้อความที่ระบบแสดงแต่ไม่ตรวจ ผู้จัดแก้ได้ทุกเมื่อ */
+export function writeEntryNotes(ref: TournamentRef, text: string): TournamentWriteBlock | null {
+  const s = getState()
+  const t = organizerOf(s, ref)
+  if (isBlock(t)) return t
+  t.entryNotes = text.trim() || undefined
+  commitStore()
+  toast('Entry notes saved')
+  return null
+}
+
+/** Hard filter — แก้เองไม่ได้ ต้องยื่นให้ Admin พร้อมเหตุผล · คิวในหน้า Admin อ่านจาก filterChangeRequest */
+export function writeRequestFilterChange(ref: TournamentRef, rules: Rules, reason: string): TournamentWriteBlock | null {
+  const s = getState()
+  const t = organizerOf(s, ref)
+  if (isBlock(t)) return t
+  if (!reason.trim()) return refuse(400, 'REASON_REQUIRED', 'กรุณาบอกเหตุผลที่ขอเปลี่ยนเงื่อนไข')
+  if (t.filterChangeRequest) return refuse(409, 'REQUEST_PENDING', 'มีคำขอเปลี่ยนเงื่อนไขค้างอยู่กับ Admin แล้ว')
+  t.filterChangeRequest = { rules, reason: reason.trim(), at: NOW() }
+  notifyStore(s.users.filter(u => u.role === 'Admin').map(u => u.id),
+    `${t.name} asked to change its entry conditions.`, '/admin/filters')
+  commitStore()
+  toast('Sent to an admin')
+  return null
+}
+
+/** ประกาศของรายการใน store เป็น DTO — ใหม่สุดก่อน ประกาศที่เวลาเท่ากันเอาที่โพสต์ทีหลังขึ้นก่อน */
+export function storeAnnouncementDtos(ref: TournamentRef): TournamentAnnouncementDto[] | null {
+  const s = getState()
+  const t = findTour(s, ref)
+  if (!t) return null
+  return s.announcements
+    .map((a, index) => ({ a, index }))
+    .filter(x => x.a.tour === t.id)
+    .sort((x, y) => y.a.at - x.a.at || y.index - x.index)
+    .map(({ a }) => ({
+      id: numOf(a.id),
+      tournamentId: numOf(t.id),
+      authorId: numOf(a.by),
+      title: a.title,
+      body: a.body,
+      createdAt: new Date(a.at).toISOString(),
+    }))
 }
