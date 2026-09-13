@@ -3,6 +3,7 @@ import type { TournamentRefereeRow } from '../types/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import type { UserRow } from '../types/db.js';
 import type { TournamentRow } from '../types/db.js';
+import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 
 /** แถวล่าสุดของ user คนนี้ในทัวร์นี้ — ★ ไม่กรอง removed_at ให้ service ตัดสินเอง */
 export async function findLatestByTournamentAndUser(tournamentId : number, userId : number)
@@ -19,14 +20,31 @@ type NewTournamentReferee = {
     userId : number;
     invitedBy : number;
     isExternal : boolean;
+    /** แมตช์ที่ ORG เสนอมาพร้อมคำเชิญ — ว่าง = เชิญเข้า pool */
+    matchIds : number[];
 };
 
+/** F01 — สร้างคำเชิญ + แนบแมตช์ในทรานแซกชันเดียว (แบบเดียวกับ team.repo createTeam) */
 export async function create(data : NewTournamentReferee): Promise<number>{
-    const [result] = await pool.query<ResultSetHeader>(
-        `INSERT INTO tournament_referees (tournament_id, user_id, invited_by, is_external)
-         VALUES (?, ?, ?, ?)`,
-        [data.tournamentId, data.userId, data.invitedBy, data.isExternal]);
-    return result.insertId;
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [result] = await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_referees (tournament_id, user_id, invited_by, is_external)
+             VALUES (?, ?, ?, ?)`,
+            [data.tournamentId, data.userId, data.invitedBy, data.isExternal]);
+
+        await MatchRefRepo.insertPending(conn, result.insertId, data.matchIds);
+
+        await conn.commit();
+        return result.insertId;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 }
 
 export type TournamentRefereeListRow =
@@ -81,23 +99,65 @@ export async function findById(tournamentRefereeId : number): Promise<Tournament
     return rows[0] ?? null;
 }
 
-/** ตอบรับ — คืน true ถ้าอัปเดตได้จริง (false = มีคนตอบไปก่อนแล้ว) */
-export async function accept(tournamentRefereeId : number): Promise<boolean>{
-    const [result] = await pool.query<ResultSetHeader>(
-        `UPDATE tournament_referees
-         SET invitation_status = 'accepted',
-             external_approval_status = CASE WHEN is_external = 1 THEN 'pending' ELSE 'not_required' END
-         WHERE tournament_referee_id = ? AND invitation_status = 'pending' AND removed_at IS NULL`,
-        [tournamentRefereeId]);
-    return result.affectedRows === 1;
+/**
+ * F05 — ตอบรับ + เลือกแมตช์ ในทรานแซกชันเดียว
+ * คืน true ถ้าอัปเดตได้จริง (false = มีคนตอบไปก่อนแล้ว → ไม่แตะ match_referees)
+ */
+export async function accept(tournamentRefereeId : number, acceptedMatchIds : number[]): Promise<boolean>{
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournament_referees
+             SET invitation_status = 'accepted',
+                 external_approval_status = CASE WHEN is_external = 1 THEN 'pending' ELSE 'not_required' END
+             WHERE tournament_referee_id = ? AND invitation_status = 'pending' AND removed_at IS NULL`,
+            [tournamentRefereeId]);
+
+        if(result.affectedRows !== 1){
+            await conn.rollback();
+            return false;
+        }
+
+        await MatchRefRepo.respond(conn, tournamentRefereeId, acceptedMatchIds);
+
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 }
 
+/** F06 — ปฏิเสธทั้งคำเชิญ → แมตช์ที่เสนอมาทั้งหมด declined ด้วย */
 export async function decline(tournamentRefereeId : number): Promise<boolean>{
-    const [result] = await pool.query<ResultSetHeader>(
-        `UPDATE tournament_referees SET invitation_status = 'rejected'
-         WHERE tournament_referee_id = ? AND invitation_status = 'pending' AND removed_at IS NULL`,
-        [tournamentRefereeId]);
-    return result.affectedRows === 1;
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournament_referees SET invitation_status = 'rejected'
+             WHERE tournament_referee_id = ? AND invitation_status = 'pending' AND removed_at IS NULL`,
+            [tournamentRefereeId]);
+
+        if(result.affectedRows !== 1){
+            await conn.rollback();
+            return false;
+        }
+
+        await MatchRefRepo.declineAll(conn, tournamentRefereeId);
+
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 }
 
 /** ถอดทุกแถวของ user คนนี้ในทัวร์นี้ — คืนจำนวนแถวที่ถูกถอด */

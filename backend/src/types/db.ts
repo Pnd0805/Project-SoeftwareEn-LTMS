@@ -130,6 +130,8 @@ export type MatchRefereeRow = {
     match_referee_id : number,
     match_id : number,
     tournament_referee_id : number,
+    assignment_status : 'pending' | 'accepted' | 'declined',
+    responded_at : Date | null,
     created_at : Date
 }
 

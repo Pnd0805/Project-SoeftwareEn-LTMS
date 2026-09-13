@@ -8,6 +8,15 @@ export async function findById(matchId : number): Promise<MatchRow | null>{
     return rows[0] ?? null;
 }
 
+/** แมตช์ตาม id ที่อยู่ในทัวร์นี้จริง — ใช้เช็คตอน F01 ว่า ORG แนบแมตช์ของทัวร์ตัวเองมา */
+export async function findByIdsInTournament(tournamentId : number, matchIds : number[]): Promise<MatchRow[]>{
+    if(matchIds.length === 0) return [];
+    const [rows] = await pool.query<(MatchRow & RowDataPacket)[]>(
+        'SELECT * FROM matches WHERE tournament_id = ? AND match_id IN (?) ORDER BY scheduled_time, match_id',
+        [tournamentId, matchIds]);
+    return rows;
+}
+
 /** กรรมการมากสุดที่ต้องใช้พร้อมกัน ณ ช่วงใดช่วงหนึ่งของตารางแข่ง */
 export async function findMaxConcurrentRefereeNeed(
         tournamentId : number, refereesPerOnsiteMatch : number): Promise<number>{

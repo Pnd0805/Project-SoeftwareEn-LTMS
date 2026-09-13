@@ -1,7 +1,7 @@
 import type { UserRefDto } from './user.mapper.js';
 import { toUserRef } from './user.mapper.js';
 import type { TournamentRefereeListRow , MyRefereeInvitationRow } from '../repositories/tournamentReferee.repo.js';
-import type { MatchRefereeListRow } from '../repositories/matchReferee.repo.js';
+import type { MatchRefereeListRow, InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import type { TournamentRefereeRow } from '../types/db.js';
 
 
@@ -61,14 +61,40 @@ export type TournamentRefDto = {
     eventStartDate : string
 };
 
+/** แมตช์ที่เสนอมากับคำเชิญ — ref ใช้ตัดสินใจว่าจะรับอันไหน */
+export type InvitedMatchDto = {
+    id : number,
+    roundNumber : number | null,
+    scheduledTime : string | null,
+    scheduledEndTime : string | null,
+    venue : string | null,
+    mode : 'onsite' | 'online',
+    matchStatus : InvitedMatchRow['match_status'],
+    assignmentStatus : InvitedMatchRow['assignment_status']
+};
+
+export function toInvitedMatchDto(row : InvitedMatchRow): InvitedMatchDto {
+    return {
+        id : row.match_id,
+        roundNumber : row.round_number,
+        scheduledTime : row.scheduled_time?.toISOString() ?? null,
+        scheduledEndTime : row.scheduled_end_time?.toISOString() ?? null,
+        venue : row.venue,
+        mode : row.mode,
+        matchStatus : row.match_status,
+        assignmentStatus : row.assignment_status
+    };
+}
+
 export type MyRefereeInvitationDto = {
     id : number,
     tournament : TournamentRefDto,
     isExternal : boolean,
+    matches : InvitedMatchDto[],
     createdAt : string
 };
 
-export function toMyRefereeInvitationDto(row : MyRefereeInvitationRow): MyRefereeInvitationDto {
+export function toMyRefereeInvitationDto(row : MyRefereeInvitationRow, matches : InvitedMatchRow[]): MyRefereeInvitationDto {
     return {
         id : row.tournament_referee_id,
         tournament : {
@@ -78,6 +104,7 @@ export function toMyRefereeInvitationDto(row : MyRefereeInvitationRow): MyRefere
             eventStartDate : row.event_start_date
         },
         isExternal : row.is_external === 1,
+        matches : matches.map(toInvitedMatchDto),
         createdAt : row.created_at.toISOString()
     };
 }

@@ -18,7 +18,7 @@ export async function listMyInvitations(req : Request, res : Response){
 
 export async function accept(req : Request, res : Response){
     const invitationId = parseId(req.params['id'], 'รหัสคำเชิญ');
-    res.status(200).json(await RefereeService.acceptRefereeInvitation(invitationId, req.user!.user_id));
+    res.status(200).json(await RefereeService.acceptRefereeInvitation(invitationId, req.user!.user_id, req.body));
 }
 
 export async function decline(req : Request, res : Response){

@@ -1,8 +1,9 @@
 import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { AppError } from '../utils/AppError.js';
-import type { InviteRefereeInput, AssignRefereeInput } from '../schemas/referee.schema.js';
+import type { InviteRefereeInput, AcceptInvitationInput, AssignRefereeInput } from '../schemas/referee.schema.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto } from '../mappers/referee.mapper.js';
+import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import type { TournamentRefereeRow, TournamentRow } from '../types/db.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import { toUserRef } from '../mappers/user.mapper.js';
@@ -31,12 +32,43 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
         }
     }
 
-    // 3. เขียน
+    // 3. แมตช์ที่แนบมา — ต้องเป็นของทัวร์นี้ มีเวลาแข่งครบ และไม่ซ้อนกันเอง
+    const matchIds = [...new Set(input.matchIds)];
+    if(matchIds.length > 0){
+        const matches = await MatchRepo.findByIdsInTournament(tournamentId, matchIds);
+        if(matches.length !== matchIds.length){
+            throw new AppError(404, 'MATCH_NOT_FOUND', 'บางแมตช์ไม่อยู่ในทัวร์นาเมนต์นี้');
+        }
+        assertSchedulable(matches);
+    }
+
+    // 4. เขียน (คำเชิญ + แมตช์ที่แนบ ในทรานแซกชันเดียว)
     const newId = await RefRepo.create({
-        tournamentId, userId : input.userId, invitedBy, isExternal : input.isExternal
+        tournamentId, userId : input.userId, invitedBy, isExternal : input.isExternal, matchIds
     });
 
-    return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal };
+    return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds };
+}
+
+type Schedulable = Pick<InvitedMatchRow, 'match_id' | 'scheduled_time' | 'scheduled_end_time'>;
+
+/** กรรมการ 1 คนคุมได้ทีละแมตช์ — ทุกแมตช์ต้องมีเวลาเริ่ม/จบ และห้ามซ้อนเวลากัน */
+function assertSchedulable(matches : Schedulable[]): void {
+    for(const m of matches){
+        if(!m.scheduled_time || !m.scheduled_end_time){
+            throw new AppError(409, 'MATCH_NOT_SCHEDULED',
+                `แมตช์ #${m.match_id} ยังไม่ได้กำหนดเวลาเริ่ม/จบ กรุณาจัดตารางแข่งก่อนมอบหมายกรรมการ`);
+        }
+    }
+    const sorted = [...matches].sort((a, b) => a.scheduled_time!.getTime() - b.scheduled_time!.getTime());
+    for(let i = 1; i < sorted.length; i++){
+        const prev = sorted[i - 1]!, cur = sorted[i]!;
+        if(cur.scheduled_time! < prev.scheduled_end_time!){
+            throw new AppError(409, 'REFEREE_TIME_CONFLICT',
+                `แมตช์ #${prev.match_id} กับ #${cur.match_id} เวลาซ้อนกัน กรรมการคนเดียวคุมพร้อมกันไม่ได้`,
+                { matchIds : [prev.match_id, cur.match_id] });
+        }
+    }
 }
 
 export async function listTournamentReferees(tournamentId : number){
@@ -57,10 +89,20 @@ export async function listTournamentReferees(tournamentId : number){
 
 export async function listMyRefereeInvitations(userId : number){
     const rows = await RefRepo.findPendingInvitationsByUser(userId);
-    return { items : rows.map(toMyRefereeInvitationDto) };
+
+    // แมตช์ที่เสนอมาของทุกคำเชิญ — query เดียวแล้วจับกลุ่มใน JS
+    const matches = await MatchRefRepo.findByTournamentReferees(rows.map(r => r.tournament_referee_id));
+    const byInvitation = new Map<number, InvitedMatchRow[]>();
+    for(const m of matches){
+        const list = byInvitation.get(m.tournament_referee_id) ?? [];
+        list.push(m);
+        byInvitation.set(m.tournament_referee_id, list);
+    }
+
+    return { items : rows.map(r => toMyRefereeInvitationDto(r, byInvitation.get(r.tournament_referee_id) ?? [])) };
 }
 
-export async function acceptRefereeInvitation(invitationId : number, userId : number){
+export async function acceptRefereeInvitation(invitationId : number, userId : number, input : AcceptInvitationInput){
     const invitation = await RefRepo.findById(invitationId);
 
     // ไม่มีจริง / ถูกถอดแล้ว / ไม่ใช่ของเรา → 404 เหมือนกันหมด
@@ -72,7 +114,18 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
     }
 
-    const updated = await RefRepo.accept(invitationId);
+    // เลือกได้เฉพาะแมตช์ที่ ORG เสนอมาเท่านั้น — [] = เข้าทัวร์แบบ pool
+    const offered = await MatchRefRepo.findByTournamentReferees([invitationId]);
+    const chosenIds = [...new Set(input.matchIds)];
+    const chosen = chosenIds.map(id => offered.find(m => m.match_id === id));
+    if(chosen.some(m => m === undefined)){
+        throw new AppError(400, 'MATCH_NOT_IN_INVITATION', 'เลือกได้เฉพาะแมตช์ที่อยู่ในคำเชิญนี้เท่านั้น');
+    }
+
+    // ORG อาจเลื่อนเวลาแมตช์ระหว่างรอตอบ → เช็คซ้อนเวลาอีกรอบตอนรับจริง
+    assertSchedulable(chosen as InvitedMatchRow[]);
+
+    const updated = await RefRepo.accept(invitationId, chosenIds);
     if(!updated){
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
     }
@@ -80,7 +133,9 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     return {
         id : invitationId,
         invitationStatus : 'accepted',
-        requiresAdminApproval : invitation.is_external === 1
+        requiresAdminApproval : invitation.is_external === 1,
+        acceptedMatchIds : chosenIds,
+        declinedMatchIds : offered.map(m => m.match_id).filter(id => !chosenIds.includes(id))
     };
 }
 
@@ -138,8 +193,9 @@ export async function assignRefereeToMatch(matchId : number, tournamentId : numb
 }
 
 export async function listMatchReferees(matchId : number){
+    // แถวใน match_referees = "จอง" — ใช้ได้จริงต่อเมื่อสถานะฝั่งทัวร์เป็น active (ตัด external ที่รอ admin)
     const rows = await MatchRefRepo.findByMatch(matchId);
-    return { items : rows.map(toMatchRefereeDto) };
+    return { items : rows.filter(isActiveReferee).map(toMatchRefereeDto) };
 }
 
 export async function unassignRefereeFromMatch(matchId : number, tournamentRefereeId : number){

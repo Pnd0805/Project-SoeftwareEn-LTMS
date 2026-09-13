@@ -2,7 +2,7 @@ import express from 'express';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { requireOrganizer } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
-import { inviteRefereeSchema } from '../schemas/referee.schema.js';
+import { inviteRefereeSchema, acceptInvitationSchema } from '../schemas/referee.schema.js';
 import * as Referee from '../controllers/referee.controller.js';
 
 export const tournamentRefereeRouter = express.Router();
@@ -21,7 +21,7 @@ tournamentRefereeRouter.get('/:id/referees', requireAuth, requireOrganizer, Refe
 meRefereeRouter.get('/referee-invitations', requireAuth, Referee.listMyInvitations);
 
 // F05 / F06
-refereeInvitationRouter.post('/:id/accept', requireAuth, Referee.accept);
+refereeInvitationRouter.post('/:id/accept', requireAuth, validate(acceptInvitationSchema), Referee.accept);
 refereeInvitationRouter.post('/:id/decline', requireAuth, Referee.decline);
 
 import { requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';

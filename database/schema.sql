@@ -378,6 +378,11 @@ CREATE TABLE match_referees (
   match_referee_id INT PRIMARY KEY AUTO_INCREMENT,
   match_id INT NOT NULL,
   tournament_referee_id INT NOT NULL,
+  -- pending  = ORG เสนอแมตช์นี้มาพร้อมคำเชิญ รอ ref เลือก
+  -- accepted = ref รับแมตช์นี้ (นับเป็นกรรมการของแมตช์ก็ต่อเมื่อ tournament_referees ยัง active ด้วย)
+  -- declined = ref ไม่รับแมตช์นี้ (เก็บไว้ให้ ORG เห็นว่าต้องหาคนแทน)
+  assignment_status ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending',
+  responded_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
   FOREIGN KEY (tournament_referee_id) REFERENCES tournament_referees(tournament_referee_id),
