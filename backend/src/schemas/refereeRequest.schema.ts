@@ -2,20 +2,20 @@ import * as z from 'zod';
 
 const id = (label : string) => z.int(`${label}ต้องเป็นจำนวนเต็ม`).positive(`กรุณาระบุ${label}`);
 
-/** R01 — REF ขอโอน (ไม่ส่ง theirMatchId) หรือแลก (ส่ง theirMatchId) แมตช์กับกรรมการอีกคน */
+/** FR01 — REF ขอโอน (ไม่ส่ง theirMatchId) หรือแลก (ส่ง theirMatchId) แมตช์กับกรรมการอีกคน */
 export const refRequestSchema = z.object({
     myMatchId : id('แมตช์ของคุณ'),
     toTournamentRefereeId : id('กรรมการที่ต้องการโอน/แลกด้วย'),
     theirMatchId : id('แมตช์ของอีกฝ่าย').optional()
 });
 
-/** R02 — ORG ขอให้กรรมการรับแมตช์เพิ่ม */
+/** FR02 — ORG ขอให้กรรมการรับแมตช์เพิ่ม */
 export const orgAddMatchSchema = z.object({
     tournamentRefereeId : id('รหัสกรรมการ'),
     matchId : id('รหัสแมตช์')
 });
 
-/** R03 — ORG ขอสลับแมตช์ระหว่างกรรมการ 2 คน */
+/** FR03 — ORG ขอสลับแมตช์ระหว่างกรรมการ 2 คน */
 export const orgSwapSchema = z.object({
     refereeAId : id('รหัสกรรมการ A'),
     matchAId : id('แมตช์ของ A'),

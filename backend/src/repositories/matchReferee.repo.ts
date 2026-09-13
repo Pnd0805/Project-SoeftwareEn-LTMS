@@ -74,7 +74,7 @@ export async function findByMatch(matchId : number): Promise<MatchRefereeListRow
 }
 
 /**
- * R02 apply — ใส่กรรมการเข้าแมตช์แบบ accepted
+ * FR02 apply — ใส่กรรมการเข้าแมตช์แบบ accepted
  * ถ้ามีแถว pending/declined เดิม (เคยถูกเสนอแล้วไม่รับ) จะพลิกเป็น accepted; ถ้า accepted อยู่แล้ว → false
  */
 export async function insertAccepted(db : Queryable, matchId : number, tournamentRefereeId : number): Promise<boolean>{
@@ -97,7 +97,7 @@ export async function insertAccepted(db : Queryable, matchId : number, tournamen
 }
 
 /**
- * R01/R03 apply — ย้ายแมตช์จากกรรมการ from → to (lock แถวก่อน)
+ * FR01/FR03 apply — ย้ายแมตช์จากกรรมการ from → to (lock แถวก่อน)
  * คืน false ถ้า from ไม่ได้รับแมตช์นี้อยู่แล้ว (มีคนเปลี่ยนไประหว่างรอตอบ)
  */
 export async function reassign(db : Queryable, matchId : number, fromId : number, toId : number): Promise<boolean>{

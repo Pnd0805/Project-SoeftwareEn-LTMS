@@ -167,14 +167,14 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 
 | # | Method | Path | ผู้ใช้ |
 |---|---|---|---|
-| R01 | POST | `/referee-requests/swap` | REF — ขอแลก/โอนกับ REF อื่น |
-| R02 | POST | `/tournaments/:id/referee-requests/add-match` | ORG — ขอเพิ่มแมตช์ให้ REF |
-| R03 | POST | `/tournaments/:id/referee-requests/swap` | ORG — ขอสลับ 2 REF |
-| R04 | GET | `/me/referee-requests` | REF — คำขอที่รอฉันตอบ |
-| R05 | GET | `/tournaments/:id/referee-requests` | ORG — คำขอทั้งหมดในทัวร์ |
-| R06 | POST | `/referee-requests/:id/accept` | REF |
-| R07 | POST | `/referee-requests/:id/decline` | REF |
-| R08 | DELETE | `/referee-requests/:id` | ผู้สร้าง — ยกเลิกคำขอ |
+| FR01 | POST | `/referee-requests/swap` | REF — ขอแลก/โอนกับ REF อื่น |
+| FR02 | POST | `/tournaments/:id/referee-requests/add-match` | ORG — ขอเพิ่มแมตช์ให้ REF |
+| FR03 | POST | `/tournaments/:id/referee-requests/swap` | ORG — ขอสลับ 2 REF |
+| FR04 | GET | `/me/referee-requests` | REF — คำขอที่รอฉันตอบ |
+| FR05 | GET | `/tournaments/:id/referee-requests` | ORG — คำขอทั้งหมดในทัวร์ |
+| FR06 | POST | `/referee-requests/:id/accept` | REF |
+| FR07 | POST | `/referee-requests/:id/decline` | REF |
+| FR08 | DELETE | `/referee-requests/:id` | ผู้สร้าง — ยกเลิกคำขอ |
 
 รวม ≈ 8 endpoint → **ใหญ่เท่า Step 6 ทั้งก้อน**
 
@@ -185,7 +185,7 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 ทำ `matchIds` เป็น **optional** ใน F01:
 
 - ส่ง `matchIds: [1, 2, 3]` → เชิญแบบเจาะจง accept แล้วลงแมตช์เลย
-- ส่ง `[]` หรือไม่ส่ง → เชิญเข้า pool เหมือนเดิม เป็นกรรมการสำรองที่ ORG ค่อยส่งคำขอเพิ่มแมตช์ให้ทีหลัง (R02)
+- ส่ง `[]` หรือไม่ส่ง → เชิญเข้า pool เหมือนเดิม เป็นกรรมการสำรองที่ ORG ค่อยส่งคำขอเพิ่มแมตช์ให้ทีหลัง (FR02)
 
 ได้ทั้งสองโลกด้วยโค้ดเพิ่มน้อยที่สุด และโฟลว์ "ORG เพิ่มแมตช์" ที่ทีมอยากได้อยู่แล้วก็รองรับ pool ไปในตัว
 
@@ -201,7 +201,7 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 | Q4 | ถอดกรรมการแล้วแมตช์ว่าง | **ยอมแต่เตือน** ปล่อยให้ ORG จัดการเอง | F03 ไม่ block อีกต่อไป → ดู §10.2 |
 | Q5 | external referee ลงแมตช์ | **ตอน accept + กรองด้วย `toRefereeStatus()` เดิม** | แถวใน `match_referees` = จอง, `active` = ใช้ได้จริง; admin ไม่ต้องแตะ `match_referees` |
 | Q6 | M06 เลื่อนเวลาแล้วกรรมการซ้อน | **เตือน** — แสดงสัญลักษณ์ที่แมตช์นั้นให้ ORG เห็นว่าเวลา REF ทับกัน | ไม่ block → ดู §10.3 |
-| Q7 | ระบบคำขอ R01–R08 | **Sprint นี้** | ขอบเขต Step 6 ขยายเป็น ~17 endpoint |
+| Q7 | ระบบคำขอ FR01–FR08 | **Sprint นี้** | ขอบเขต Step 6 ขยายเป็น ~17 endpoint |
 
 ---
 
@@ -212,22 +212,22 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 | ALTER `match_referees` + F01/F04/F05/F06/F12 | ✅ | `d8e77d5` |
 | ระบบ migration (`npm run migrate`) | ✅ | `f7218a2` |
 | F03 ยอมแต่เตือน + `GET /tournaments/:id/referees/coverage` (F14) + ตัด BR-10 เก่า | ✅ | `07c38e0` |
-| R01–R08 ระบบคำขอ (+ migration 003 `referee_change_requests`) + ตัด F11 | ✅ | — |
+| FR01–FR08 ระบบคำขอ (+ migration 003 `referee_change_requests`) + ตัด F11 | ✅ | — |
 | อัปเดต `06 - Endpoint Reference` + สไลด์หน้า 3 | ⏳ | |
 | ทีม Tournaments เรียก coverage ตอน publish (§10.2) | ⏳ ต้องคุย | |
 
-### R01–R08 · คำขอเปลี่ยนแปลงกรรมการ (ตามที่ implement จริง)
+### FR01–FR08 · คำขอเปลี่ยนแปลงกรรมการ (ตามที่ implement จริง)
 
 | # | Method | Path | ใคร | body |
 |---|---|---|---|---|
-| R01 | POST | `/referee-requests` | REF | `{ myMatchId, toTournamentRefereeId, theirMatchId? }` — มี `theirMatchId` = แลก ไม่มี = โอน |
-| R02 | POST | `/tournaments/:id/referee-requests/add-match` | ORG | `{ tournamentRefereeId, matchId }` |
-| R03 | POST | `/tournaments/:id/referee-requests/swap` | ORG | `{ refereeAId, matchAId, refereeBId, matchBId }` |
-| R04 | GET | `/me/referee-requests` | REF | → `{ incoming[], outgoing[] }` |
-| R05 | GET | `/tournaments/:id/referee-requests?status=` | ORG | `open / applied / declined / cancelled` |
-| R06 | POST | `/referee-requests/:id/accept` | REF | ฝั่งที่ตนต้องตอบ; ครบทุกฝ่าย → apply ทันที |
-| R07 | POST | `/referee-requests/:id/decline` | REF | ปิดคำขอเป็น `declined` |
-| R08 | DELETE | `/referee-requests/:id` | ผู้สร้าง | ยกเลิกคำขอที่ยัง open |
+| FR01 | POST | `/referee-requests` | REF | `{ myMatchId, toTournamentRefereeId, theirMatchId? }` — มี `theirMatchId` = แลก ไม่มี = โอน |
+| FR02 | POST | `/tournaments/:id/referee-requests/add-match` | ORG | `{ tournamentRefereeId, matchId }` |
+| FR03 | POST | `/tournaments/:id/referee-requests/swap` | ORG | `{ refereeAId, matchAId, refereeBId, matchBId }` |
+| FR04 | GET | `/me/referee-requests` | REF | → `{ incoming[], outgoing[] }` |
+| FR05 | GET | `/tournaments/:id/referee-requests?status=` | ORG | `open / applied / declined / cancelled` |
+| FR06 | POST | `/referee-requests/:id/accept` | REF | ฝั่งที่ตนต้องตอบ; ครบทุกฝ่าย → apply ทันที |
+| FR07 | POST | `/referee-requests/:id/decline` | REF | ปิดคำขอเป็น `declined` |
+| FR08 | DELETE | `/referee-requests/:id` | ผู้สร้าง | ยกเลิกคำขอที่ยัง open |
 
 กติกาที่ใช้ทุกคำขอ (`services/refereeRequest.service.ts`):
 - ทุกคนที่เกี่ยวข้องต้อง `active` (`REFEREE_NOT_ACTIVE`), แมตช์ต้อง `scheduled` และยังไม่ถึงเวลา (`MATCH_NOT_CHANGEABLE`)
@@ -235,8 +235,8 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 - คู่ (match_a, referee_a) มีคำขอ open ได้ทีละใบ (`REQUEST_ALREADY_OPEN`)
 - ตอน apply **เช็คทุกอย่างใหม่** กับข้อมูลปัจจุบัน ถ้าไม่ผ่านคำขอกลายเป็น `cancelled` + 409 `REQUEST_NO_LONGER_VALID` (§5.1)
 - apply เป็นทรานแซกชัน lock แถว `match_referees` (`FOR UPDATE`) และยกเลิกคำขอ open อื่นที่อ้างแมตช์เดียวกัน
-- ORG ไม่ต้องอนุมัติคำขอ REF↔REF (Q3) — เห็นผลผ่าน R05 / coverage; ยังไม่มี notification push
-- F11 ถูกตัดออก — ORG เพิ่มกรรมการเข้าแมตช์ต้องผ่าน R02 เท่านั้น; F13 (ถอดออกจากแมตช์) ยังทำได้ทันที
+- ORG ไม่ต้องอนุมัติคำขอ REF↔REF (Q3) — เห็นผลผ่าน FR05 / coverage; ยังไม่มี notification push
+- F11 ถูกตัดออก — ORG เพิ่มกรรมการเข้าแมตช์ต้องผ่าน FR02 เท่านั้น; F13 (ถอดออกจากแมตช์) ยังทำได้ทันที
 
 ### F14 · `GET /tournaments/:id/referees/coverage` (ORG)
 
@@ -274,7 +274,7 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 | `matchIds` ซ้อนเวลากันเอง | 409 `REFEREE_TIME_CONFLICT` (ตอนเชิญเช็คแล้ว แต่ ORG อาจเลื่อนเวลาระหว่างรอตอบ) |
 | `matchIds: []` หรือไม่ส่ง | = **รับเข้าทัวร์แบบ pool** ไม่รับแมตช์ใดเลย → `tournament_referees.accepted`, `match_referees` ทั้งหมด → `declined` |
 | แมตช์ที่ไม่ได้เลือก | `match_referees.assignment_status = 'declined'` (เก็บไว้ให้ ORG เห็นว่า REF ไม่รับอันไหน) |
-| ตอบแล้วเปลี่ยนใจ | ไม่มี "แก้คำตอบ" — ใช้ R01/R02 (ขอเพิ่ม/โอน) แทน |
+| ตอบแล้วเปลี่ยนใจ | ไม่มี "แก้คำตอบ" — ใช้ FR01/FR02 (ขอเพิ่ม/โอน) แทน |
 
 ผลข้างเคียง:
 

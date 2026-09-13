@@ -72,7 +72,7 @@ export async function findListRowById(requestId : number): Promise<RefereeReques
     return rows[0] ?? null;
 }
 
-/** R05 — คำขอทั้งหมดของทัวร์ (ORG) — ถ้าขอเฉพาะ open จะซ่อนคำขอที่แมตช์ผ่านไปแล้ว */
+/** FR05 — คำขอทั้งหมดของทัวร์ (ORG) — ถ้าขอเฉพาะ open จะซ่อนคำขอที่แมตช์ผ่านไปแล้ว */
 export async function findByTournament(tournamentId : number, status? : RefereeChangeRequestRow['request_status'])
         : Promise<RefereeRequestListRow[]>{
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(
@@ -85,7 +85,7 @@ export async function findByTournament(tournamentId : number, status? : RefereeC
     return rows;
 }
 
-/** R04 — คำขอ open ที่รอ user คนนี้ตอบ (ไม่ว่าจะอยู่ฝั่ง A หรือ B) */
+/** FR04 — คำขอ open ที่รอ user คนนี้ตอบ (ไม่ว่าจะอยู่ฝั่ง A หรือ B) */
 export async function findPendingForUser(userId : number): Promise<RefereeRequestListRow[]>{
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(
         `${LIST_SELECT}
@@ -97,7 +97,7 @@ export async function findPendingForUser(userId : number): Promise<RefereeReques
     return rows;
 }
 
-/** R04 — คำขอที่ user คนนี้เป็นคนส่ง (ทุกสถานะ ล่าสุดก่อน) */
+/** FR04 — คำขอที่ user คนนี้เป็นคนส่ง (ทุกสถานะ ล่าสุดก่อน) */
 export async function findCreatedByUser(userId : number): Promise<RefereeRequestListRow[]>{
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(
         `${LIST_SELECT}

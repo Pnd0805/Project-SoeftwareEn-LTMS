@@ -71,7 +71,7 @@ async function dtoOf(requestId : number){
     return toRefereeRequestDto(row);
 }
 
-// ───────────────────────────── R01 · REF โอน/แลก ─────────────────────────────
+// ───────────────────────────── FR01 · REF โอน/แลก ─────────────────────────────
 
 export async function createRefRequest(userId : number, input : RefRequestInput){
     const myMatch = await MatchRepo.findById(input.myMatchId);
@@ -120,7 +120,7 @@ export async function createRefRequest(userId : number, input : RefRequestInput)
     return dtoOf(id);
 }
 
-// ───────────────────────────── R02 · ORG ขอเพิ่มแมตช์ ─────────────────────────────
+// ───────────────────────────── FR02 · ORG ขอเพิ่มแมตช์ ─────────────────────────────
 
 export async function createOrgAddMatch(tournamentId : number, userId : number, input : OrgAddMatchInput){
     const a = await loadActiveReferee(input.tournamentRefereeId, tournamentId);
@@ -143,7 +143,7 @@ export async function createOrgAddMatch(tournamentId : number, userId : number, 
     return dtoOf(id);
 }
 
-// ───────────────────────────── R03 · ORG ขอสลับ 2 คน ─────────────────────────────
+// ───────────────────────────── FR03 · ORG ขอสลับ 2 คน ─────────────────────────────
 
 export async function createOrgSwap(tournamentId : number, userId : number, input : OrgSwapInput){
     if(input.refereeAId === input.refereeBId) throw new AppError(400, 'SAME_REFEREE', 'ต้องเป็นกรรมการคนละคน');
@@ -172,7 +172,7 @@ export async function createOrgSwap(tournamentId : number, userId : number, inpu
     return dtoOf(id);
 }
 
-// ───────────────────────────── R04 / R05 · list ─────────────────────────────
+// ───────────────────────────── FR04 / FR05 · list ─────────────────────────────
 
 export async function listMyRequests(userId : number){
     const [incoming, outgoing] = await Promise.all([
@@ -187,7 +187,7 @@ export async function listTournamentRequests(tournamentId : number, status? : Re
     return { items : rows.map(toRefereeRequestDto) };
 }
 
-// ───────────────────────────── R06 / R07 · ตอบ ─────────────────────────────
+// ───────────────────────────── FR06 / FR07 · ตอบ ─────────────────────────────
 
 /** ฝั่งไหนของคำขอที่ user คนนี้ต้องตอบ */
 async function sideOf(req : RefereeChangeRequestRow, userId : number): Promise<'a' | 'b'>{
@@ -270,7 +270,7 @@ async function revalidate(req : RefereeChangeRequestRow): Promise<void>{
     await assertNoConflictAfter(b.tournament_referee_id, [matchA], [matchB.match_id]);
 }
 
-// ───────────────────────────── R08 · ยกเลิก ─────────────────────────────
+// ───────────────────────────── FR08 · ยกเลิก ─────────────────────────────
 
 export async function cancelRequest(requestId : number, userId : number){
     const req = await loadOpenRequest(requestId);
