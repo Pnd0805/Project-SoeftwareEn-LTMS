@@ -63,18 +63,23 @@ const LIST_SELECT = `
     JOIN matches ma ON ma.match_id = r.match_a_id
     LEFT JOIN matches mb ON mb.match_id = r.match_b_id`;
 
+/** คำขอ open ที่แมตช์ผ่านไปแล้วใช้ไม่ได้อยู่ดี (จะโดน REQUEST_NO_LONGER_VALID) → ไม่ต้องโชว์ให้กดเสียเที่ยว */
+const NOT_EXPIRED = `ma.scheduled_time > NOW() AND (mb.scheduled_time IS NULL OR mb.scheduled_time > NOW())`;
+
 export async function findListRowById(requestId : number): Promise<RefereeRequestListRow | null>{
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(
         `${LIST_SELECT} WHERE r.request_id = ?`, [requestId]);
     return rows[0] ?? null;
 }
 
-/** R05 — คำขอทั้งหมดของทัวร์ (ORG) */
+/** R05 — คำขอทั้งหมดของทัวร์ (ORG) — ถ้าขอเฉพาะ open จะซ่อนคำขอที่แมตช์ผ่านไปแล้ว */
 export async function findByTournament(tournamentId : number, status? : RefereeChangeRequestRow['request_status'])
         : Promise<RefereeRequestListRow[]>{
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(
         `${LIST_SELECT}
-         WHERE r.tournament_id = ? ${status ? 'AND r.request_status = ?' : ''}
+         WHERE r.tournament_id = ?
+           ${status ? 'AND r.request_status = ?' : ''}
+           ${status === 'open' ? `AND ${NOT_EXPIRED}` : ''}
          ORDER BY r.request_id DESC`,
         status ? [tournamentId, status] : [tournamentId]);
     return rows;
@@ -85,6 +90,7 @@ export async function findPendingForUser(userId : number): Promise<RefereeReques
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(
         `${LIST_SELECT}
          WHERE r.request_status = 'open'
+           AND ${NOT_EXPIRED}
            AND (   (tra.user_id = ? AND r.a_status = 'pending')
                 OR (trb.user_id = ? AND r.b_status = 'pending') )
          ORDER BY r.request_id DESC`, [userId, userId]);
