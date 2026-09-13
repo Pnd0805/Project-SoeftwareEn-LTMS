@@ -4,15 +4,13 @@ import { AppError } from '../utils/AppError.js';
 import type { InviteRefereeInput, AcceptInvitationInput, AssignRefereeInput } from '../schemas/referee.schema.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto } from '../mappers/referee.mapper.js';
 import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
-import type { TournamentRefereeRow, TournamentRow } from '../types/db.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { toRefereeStatus } from '../mappers/referee.mapper.js';
 import type { RefereeStatusFields } from '../mappers/referee.mapper.js';
 import * as MatchRepo from '../repositories/match.repo.js';
+import type { MatchRefereeCoverageRow } from '../repositories/match.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
-import * as TournamentRepo from '../repositories/tournament.repo.js';
-import { env } from '../config/env.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -205,44 +203,106 @@ export async function unassignRefereeFromMatch(matchId : number, tournamentRefer
     }
 }
 
-/** กรรมการขั้นต่ำที่ทัวร์นี้ต้องมี — BR-10 คำนวณจากตารางแข่งจริง */
-async function requiredRefereeCount(tournamentId : number): Promise<number> {
-    const tournament = await TournamentRepo.findTournamentById(tournamentId);
-    if(!tournament) return env.REFEREE_MINIMUM;
+type MatchCoverage = {
+    matchId : number,
+    roundNumber : number | null,
+    scheduledTime : string | null,
+    needed : number,
+    assigned : number
+};
 
-    // BR-11: on-site ที่ต้องบันทึกสถิติ ใช้กรรมการ 2 คนต่อแมตช์
-    const statDefs = await SportTypeRepo.findStatDefinitionsBySportType(tournament.sport_type_id);
-    const perOnsiteMatch = statDefs.length > 0 ? 2 : 1;
+type RefereeConflict = {
+    tournamentRefereeId : number,
+    userId : number,
+    matchIds : [number, number]
+};
 
-    const need = await MatchRepo.findMaxConcurrentRefereeNeed(tournamentId, perOnsiteMatch);
-    return Math.max(need, env.REFEREE_MINIMUM);
+/** BR-11: on-site ที่ต้องบันทึกสถิติ ใช้กรรมการ 2 คน นอกนั้น 1 */
+async function refereesNeededPerMatch(sportTypeId : number): Promise<(mode : 'onsite' | 'online') => number> {
+    const statDefs = await SportTypeRepo.findStatDefinitionsBySportType(sportTypeId);
+    const onsiteNeed = statDefs.length > 0 ? 2 : 1;
+    return mode => mode === 'onsite' ? onsiteNeed : 1;
 }
 
+/**
+ * BR-10 แบบใหม่ (GUIDE/11 §4.2) — "ทุกแมตช์มีกรรมการครบ" ไม่ใช่นับหัวรวม
+ * คืนแมตช์ที่ยังขาด + กรรมการที่มีแมตช์ซ้อนเวลา (Q6: เตือน ไม่ block)
+ */
+export async function getRefereeCoverage(tournamentId : number, sportTypeId : number){
+    const rows = await MatchRepo.findRefereeCoverage(tournamentId);
+    const needed = await refereesNeededPerMatch(sportTypeId);
+    return summarizeCoverage(rows, needed);
+}
+
+function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'onsite' | 'online') => number){
+    // 1. จับกลุ่มตามแมตช์ นับเฉพาะกรรมการที่ active จริง
+    const matches = new Map<number, MatchCoverage & { row : MatchRefereeCoverageRow }>();
+    const byReferee = new Map<number, { userId : number, matches : MatchRefereeCoverageRow[] }>();
+
+    for(const r of rows){
+        if(!matches.has(r.match_id)){
+            matches.set(r.match_id, {
+                matchId : r.match_id, roundNumber : r.round_number,
+                scheduledTime : r.scheduled_time?.toISOString() ?? null,
+                needed : needed(r.mode), assigned : 0, row : r
+            });
+        }
+        if(r.tournament_referee_id === null || r.user_id === null) continue;
+        if(!isActiveReferee({
+            invitation_status : r.invitation_status!, is_external : r.is_external!,
+            external_approval_status : r.external_approval_status!, removed_at : r.removed_at
+        })) continue;
+
+        matches.get(r.match_id)!.assigned++;
+        const ref = byReferee.get(r.tournament_referee_id) ?? { userId : r.user_id, matches : [] };
+        ref.matches.push(r);
+        byReferee.set(r.tournament_referee_id, ref);
+    }
+
+    // 2. แมตช์ที่ยังขาด
+    const uncovered : MatchCoverage[] = [];
+    for(const { row : _row, ...m } of matches.values()){
+        if(m.assigned < m.needed) uncovered.push(m);
+    }
+
+    // 3. กรรมการที่รับแมตช์ซ้อนเวลา (เกิดได้เมื่อ ORG เลื่อนเวลาแมตช์ทีหลัง)
+    const conflicts : RefereeConflict[] = [];
+    for(const [tournamentRefereeId, ref] of byReferee){
+        const sorted = ref.matches
+            .filter(m => m.scheduled_time && m.scheduled_end_time)
+            .sort((a, b) => a.scheduled_time!.getTime() - b.scheduled_time!.getTime());
+        for(let i = 1; i < sorted.length; i++){
+            const prev = sorted[i - 1]!, cur = sorted[i]!;
+            if(cur.scheduled_time! < prev.scheduled_end_time!){
+                conflicts.push({ tournamentRefereeId, userId : ref.userId, matchIds : [prev.match_id, cur.match_id] });
+            }
+        }
+    }
+
+    return {
+        matchesTotal : matches.size,
+        matchesCovered : matches.size - uncovered.length,
+        uncovered,
+        conflicts
+    };
+}
+
+/**
+ * F03 — ถอดกรรมการออกจากทัวร์ (มติ Q4: ยอมเสมอ แต่บอกว่าแมตช์ไหนจะขาดคน)
+ * ถอดทุกแถวของ user คนนี้ แถวใน match_referees คงไว้ — F12/coverage กรองด้วย removed_at เอง
+ */
 export async function removeTournamentReferee(
-        tournamentId : number, tournamentRefereeId : number,
-        removedBy : number, tournamentStatus : TournamentRow['tournament_status']){
+        tournamentId : number, tournamentRefereeId : number, removedBy : number, sportTypeId : number){
 
     const target = await RefRepo.findById(tournamentRefereeId);
     if(!target || target.tournament_id !== tournamentId || target.removed_at !== null){
         throw new AppError(404, 'REFEREE_NOT_FOUND', 'ไม่พบกรรมการคนนี้ในทัวร์นาเมนต์นี้');
     }
 
-    // ★ เช็ค BR-10 เฉพาะทัวร์ที่เปิดสาธารณะแล้ว
-    if(tournamentStatus === 'public'){
-        const rows = await RefRepo.findLatestPerUserByTournament(tournamentId);
-        const remaining = rows
-            .filter(r => r.user_id !== target.user_id)
-            .filter(isActiveReferee)
-            .length;
-
-        const required = await requiredRefereeCount(tournamentId);
-        if(remaining < required){
-            throw new AppError(409, 'WOULD_BREAK_REFEREE_MINIMUM',
-                `ถอดไม่ได้ ทัวร์นาเมนต์ต้องมีกรรมการอย่างน้อย ${required} คนขณะเปิดสาธารณะ กรุณาปิดการเผยแพร่ก่อน`);
-        }
-    }
-
     await RefRepo.removeAllByUser(tournamentId, target.user_id, removedBy);
+
+    const coverage = await getRefereeCoverage(tournamentId, sportTypeId);
+    return { removed : true, uncoveredMatches : coverage.uncovered.map(m => m.matchId) };
 }
 
 /** กรรมการคนนี้ใช้งานได้จริงหรือยัง — นิยามอยู่ที่ toRefereeStatus() ที่เดียว */

@@ -205,13 +205,33 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 
 ---
 
-## 9. ขั้นตอนที่จะทำต่อ
+## 9. ความคืบหน้า
 
-1. เพิ่ม §9 ใน `GUIDE/10` อ้างอิงมาที่ไฟล์นี้
-2. ALTER `match_referees` + CREATE `referee_change_requests` (§3) → แจ้งทีมรันเหมือนตอน `scheduled_end_time`
-3. แก้ F01 / F02 / F04 / F05 / F06 / F12 / F13 ตาม §6 + §10, ตัด F11, เขียน coverage query แทน `requiredRefereeCount`
-4. เขียน R01–R08
-5. อัปเดต `06 - Endpoint Reference` และสไลด์หน้า 3
+| ขั้น | สถานะ | commit |
+|---|---|---|
+| ALTER `match_referees` + F01/F04/F05/F06/F12 | ✅ | `d8e77d5` |
+| ระบบ migration (`npm run migrate`) | ✅ | `f7218a2` |
+| F03 ยอมแต่เตือน + `GET /tournaments/:id/referees/coverage` (F14) + ตัด BR-10 เก่า | ✅ | — |
+| ตัด F11 (แทนด้วย R02) | ⏳ รอ R01–R08 | |
+| R01–R08 ระบบคำขอ (+ `referee_change_requests`) | ⏳ | |
+| อัปเดต `06 - Endpoint Reference` + สไลด์หน้า 3 | ⏳ | |
+| ทีม Tournaments เรียก coverage ตอน publish (§10.2) | ⏳ ต้องคุย | |
+
+### F14 · `GET /tournaments/:id/referees/coverage` (ORG)
+
+```json
+{
+  "matchesTotal": 3,
+  "matchesCovered": 2,
+  "uncovered": [{ "matchId": 1, "roundNumber": 1, "scheduledTime": "...", "needed": 2, "assigned": 1 }],
+  "conflicts": [{ "tournamentRefereeId": 18, "userId": 9003, "matchIds": [2, 3] }]
+}
+```
+
+- `needed` = 2 ถ้า on-site และกีฬามี stat definition (BR-11) นอกนั้น 1 — นับเฉพาะกรรมการ `active`
+- `conflicts` = กรรมการที่รับแมตช์ซ้อนเวลากัน (เกิดจาก ORG เลื่อนเวลาทีหลัง) — Q6: เตือน ไม่ block
+- F03 คืน `200 { removed: true, uncoveredMatches: [...] }` แทน 204 — Q4
+- ตัดออก: `requiredRefereeCount`, `findMaxConcurrentRefereeNeed`, `env.REFEREE_MINIMUM`, `WOULD_BREAK_REFEREE_MINIMUM`
 
 ---
 

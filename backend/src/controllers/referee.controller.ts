@@ -48,7 +48,11 @@ export async function unassignFromMatch(req : Request, res : Response){
 export async function removeFromTournament(req : Request, res : Response){
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     const tournamentRefereeId = parseId(req.params['rid'], 'รหัสกรรมการ', 'rid');
-    await RefereeService.removeTournamentReferee(
-        tournamentId, tournamentRefereeId, req.user!.user_id, req.tournament!.tournament_status);
-    res.status(204).send();
+    res.status(200).json(await RefereeService.removeTournamentReferee(
+        tournamentId, tournamentRefereeId, req.user!.user_id, req.tournament!.sport_type_id));
+}
+
+export async function coverage(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await RefereeService.getRefereeCoverage(tournamentId, req.tournament!.sport_type_id));
 }

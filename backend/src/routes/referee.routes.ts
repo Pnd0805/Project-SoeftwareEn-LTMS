@@ -38,5 +38,8 @@ matchRefereeRouter.get('/:id/referees', Referee.listByMatch);
 matchRefereeRouter.delete('/:id/referees/:rid',
     requireAuth, requireOrganizerOfMatch, Referee.unassignFromMatch);
 
+// F14 — แมตช์ที่ยังขาดกรรมการ / กรรมการที่เวลาซ้อน (สำหรับหน้า ORG + เช็คก่อน publish)
+tournamentRefereeRouter.get('/:id/referees/coverage', requireAuth, requireOrganizer, Referee.coverage);
+
 // F03
 tournamentRefereeRouter.delete('/:id/referees/:rid', requireAuth, requireOrganizer, Referee.removeFromTournament);
