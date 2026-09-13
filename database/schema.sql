@@ -661,3 +661,17 @@ CREATE TABLE audit_logs (
 
 ALTER TABLE bracket_nodes
   ADD FOREIGN KEY (match_id) REFERENCES matches(match_id);
+
+-- =====================================================================
+-- Migration tracking — schema.sql นี้รวม migration ถึงไฟล์ล่าสุดด้านล่างแล้ว
+-- เพิ่ม migration ใหม่ทุกครั้งต้องเติมชื่อไฟล์ที่นี่ด้วย (ดู database/migrations/README.md)
+-- =====================================================================
+
+CREATE TABLE schema_migrations (
+  name       VARCHAR(255) PRIMARY KEY,
+  applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT INTO schema_migrations (name) VALUES
+  ('001_matches_scheduled_end_time.sql'),
+  ('002_match_referees_assignment_status.sql');
