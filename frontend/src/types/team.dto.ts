@@ -169,8 +169,9 @@ export interface TeamAdminRequestDto {
   blockingMembers: UserRefDto[];
 }
 
+/** team.schema.ts requestSchema — เอกสารประกอบอย่างน้อยหนึ่งรายการ (400 OFFICIAL_DOCS_REQUIRED) */
 export interface RequestOfficialStatusRequest {
-  reason: string;
+  supportingDocs: string[];
 }
 
 export interface TransferLeaderRequest {

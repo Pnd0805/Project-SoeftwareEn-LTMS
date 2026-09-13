@@ -39,14 +39,16 @@ export const teamKeys = {
   player: (id: TeamRef) => ["team", "player", id] as const,
 };
 
-/** ทุกอย่างที่แตะสมาชิกทีมสะเทือนสามที่เสมอ */
-function touchTeam(qc: QueryClient, teamId?: TeamRef) {
-  if (teamId !== undefined) {
-    qc.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
-    qc.invalidateQueries({ queryKey: teamKeys.invitations(teamId) });
-  }
-  qc.invalidateQueries({ queryKey: teamKeys.mine });
-  qc.invalidateQueries({ queryKey: teamKeys.myInvitations });
+/**
+ * ทุกอย่างที่แตะสมาชิกทีมสะเทือนหลายหน้าพร้อมกัน
+ *
+ * หน้าทีมอ่านผ่าน key ของ backend (`["teams", "detail", id]`, `["teams", "backend", …]`)
+ * แต่เดิม invalidate แค่ `["team", id]` กับ `["teams", "mine"]` หน้าทีมจึงไม่อัปเดตหลังถอน
+ * หรือเชิญผู้เล่น — ล้างทั้งสอง namespace ไปเลย เพราะ id ของทีมในโหมด mock มีได้สองระบบ
+ */
+function touchTeam(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ["teams"] });
+  qc.invalidateQueries({ queryKey: ["team"] });
   /* การกระทำเหล่านี้แจ้งเตือนผู้ใช้ — กระดิ่งบน Shell ต้องอ่านใหม่ */
   qc.invalidateQueries({ queryKey: ["notifications"] });
 }
@@ -90,10 +92,8 @@ export function useAnswerBackendInvitation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (value: { invitationId: number; accept: boolean }) => teamApi.answerBackendInvitation(value.invitationId, value.accept),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["teams", "backend", "invitations"] });
-      qc.invalidateQueries({ queryKey: teamKeys.backendMine });
-    },
+    /* รับคำเชิญแล้วสมาชิกของทีมนั้นเปลี่ยนด้วย ไม่ใช่แค่รายการคำเชิญ */
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -146,7 +146,7 @@ export function useUpdateTeam(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateTeamRequest) => teamApi.updateTeam(teamId, input),
-    onSuccess: () => touchTeam(qc, teamId),
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -154,7 +154,7 @@ export function useSetMemberPosition(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SetMemberPositionRequest) => teamApi.setMemberPosition(teamId, input),
-    onSuccess: () => touchTeam(qc, teamId),
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -162,7 +162,7 @@ export function useKickMember(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (userId: number) => teamApi.kickMember(teamId, userId),
-    onSuccess: () => touchTeam(qc, teamId),
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -170,7 +170,7 @@ export function useInviteMember(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: InviteMemberRequest) => teamApi.inviteMember(teamId, input),
-    onSuccess: () => touchTeam(qc, teamId),
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -178,7 +178,7 @@ export function useCancelTeamInvitation(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (invitationId: number) => teamApi.cancelTeamInvitation(teamId, invitationId),
-    onSuccess: () => touchTeam(qc, teamId),
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -196,7 +196,7 @@ export function useDisbandTeam(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => teamApi.disbandTeam(teamId),
-    onSuccess: () => touchTeam(qc, teamId),
+    onSuccess: () => touchTeam(qc),
   });
 }
 
@@ -205,7 +205,7 @@ export function useRequestOfficialStatus(teamId: TeamRef) {
   return useMutation({
     mutationFn: (input: RequestOfficialStatusRequest) => teamApi.requestOfficialStatus(teamId, input),
     onSuccess: () => {
-      touchTeam(qc, teamId);
+      touchTeam(qc);
       qc.invalidateQueries({ queryKey: teamKeys.adminRequests });
     },
   });
@@ -216,7 +216,7 @@ export function useTransferLeader(teamId: TeamRef) {
   return useMutation({
     mutationFn: (input: TransferLeaderRequest) => teamApi.transferLeader(teamId, input),
     onSuccess: () => {
-      touchTeam(qc, teamId);
+      touchTeam(qc);
       qc.invalidateQueries({ queryKey: teamKeys.adminRequests });
     },
   });

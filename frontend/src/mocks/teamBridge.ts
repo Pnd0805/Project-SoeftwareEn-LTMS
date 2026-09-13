@@ -14,7 +14,7 @@
  */
 import { getState } from '../shared/store'
 import { me } from '../shared/selectors'
-import { minSquad, teamReady } from '../shared/rules'
+import { SPORTS, positionOf, rosterLockOf, teamReady } from '../shared/rules'
 import { MOCK_NOW, numOf } from './storeBridge'
 import type { State, Team as StoreTeam } from '../shared/types'
 import type {
@@ -45,12 +45,14 @@ export function toTeamDto(s: State, t: StoreTeam): TeamDto {
   const isLeader = !!u && t.leader === u.id
   const isMember = !!u && t.members.includes(u.id)
   const inPlay = competing(s, t)
+  /* เพิ่มหรือถอนผู้เล่นได้จนกว่ารายการที่ทีมได้ที่นั่งจะเริ่มแข่ง (shared/rules.ts rosterLockOf) */
+  const lock = rosterLockOf(s, t)
 
   const members: TeamMemberDto[] = t.members.map(id => ({
     user: asUser(s, id) ?? unknownUser,
-    /* store ไม่ได้เก็บ position รายคน — เอาลำดับในทีมมาแทนตามจำนวนขั้นต่ำของกีฬา
-       ของจริงอ่านจาก team_members.position (FR-TM-04) */
-    position: t.members.indexOf(id) < minSquad(t) ? 'starter' : 'substitute',
+    /* FR-TM-04 — ค่าที่หัวหน้าทีมตั้งไว้ ไม่ได้ตั้งใช้ลำดับในทีม (rules.ts positionOf)
+       ของจริงอ่านจาก team_members.position */
+    position: positionOf(t, id),
     joinedAt: new Date(t.created).toISOString(),
     isLeader: t.leader === id,
   }))
@@ -61,7 +63,8 @@ export function toTeamDto(s: State, t: StoreTeam): TeamDto {
     code: t.code,
     color: t.color,
     logoUrl: t.logo ?? null,
-    sportTypeId: 0,
+    /* 1..8 เรียงตาม SPORTS ตรงกับ mockSportTypes — เดิมเป็น 0 ทุกทีม หน้าจอจึงขึ้น "Sport #0" */
+    sportTypeId: t.sport ? SPORTS.indexOf(t.sport) + 1 : 0,
     sportName: t.sport ?? '—',
     leader: asUser(s, t.leader) ?? unknownUser,
     members,
@@ -76,12 +79,13 @@ export function toTeamDto(s: State, t: StoreTeam): TeamDto {
       isLeader,
       isMember,
       can: {
-        invite: isLeader && !t.disabled,
+        invite: isLeader && !t.disabled && !lock,
         edit: isLeader && !t.disabled,
         disband: isLeader && !inPlay && !t.disabled,
         transferLeader: isLeader && !t.disabled,
         requestOfficial: isLeader && !t.permanent && teamReady(t),
-        kickMember: isLeader && !inPlay,
+        /* เดิมใช้ inPlay ซึ่งนับรายการที่จบไปแล้วด้วย ทีมที่เคยแข่งจึงถอนใครไม่ได้อีกเลย */
+        kickMember: isLeader && !lock,
       },
       disbandBlockedReason: inPlay
         ? 'This squad is entered in a tournament. Withdraw the entry first.'

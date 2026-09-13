@@ -4,14 +4,22 @@
  * แพตเทิร์นเดียวกับ `api/match.ts` และ `api/auth.ts` — สลับ mock ↔ ของจริง
  * ข้างในฟังก์ชัน ตัวเรียกไม่รู้ว่ากำลังคุยกับใคร
  *
- * ── สถานะ endpoint ────────────────────────────────────────────────────────
- * [ยืนยันแล้ว] `T09/T12/T13` มีอ้างใน schema.sql:143 ว่าเป็นกลุ่มคำเชิญเข้าทีม
- *   แต่ไม่ได้ระบุ path — รู้แค่ว่ามีอยู่
- * [ตั้งไว้ก่อน] ที่เหลืออนุมานจากตารางใน schema.sql + คอนเวนชันของ A01-A03/R01-R03
- *   ทุกตัว mark ด้วย TODO(guide) · signature ตั้งตาม use case ไม่ใช่ตาม URL
- *   พอ GUIDE/06 ส่วน Team มาถึง แก้แค่บรรทัด path ตัวเรียกไม่ต้องแตะ
+ * ── สัญญากับ origin/backend (team.routes.ts · team.schema.ts) ─────────────
+ * POST   /teams                           { name, sportTypeId }
+ * GET    /teams/:id · PATCH { name } · DELETE
+ * GET    /teams/:id/members               403 เมื่อไม่ใช่สมาชิก
+ * PATCH  /teams/:id/members/:uid          { position }
+ * DELETE /teams/:id/members/:uid          204 · ถอนหัวหน้าทีมได้ 403
+ * POST   /teams/:id/invitations           { invitedUserId }
+ * GET    /teams/:id/invitations · DELETE /teams/:id/invitations/:iid → 204
+ * POST   /teams/:id/official-request      { supportingDocs: string[] }
+ * ไม่มีใน backend: โอนสิทธิ์หัวหน้าทีม (SDS FR-TM-08) — นอกโหมด mock ตอบ 501
+ *
+ * ── Roster lock ───────────────────────────────────────────────────────────
+ * backend ยังไม่ตรวจว่าทีมเริ่มแข่งแล้วหรือยังตอนถอน เชิญ หรือรับคำเชิญ
+ * โหมด mock บังคับใน mocks/teamWrites.ts (409 ROSTER_LOCKED)
  */
-import { apiFetch, mockDelay, mockReject, USE_MOCK } from "./client";
+import { ApiError, apiFetch, mockDelay, mockReject, USE_MOCK } from "./client";
 import type {
   TeamDto,
   TeamInvitationDto,
@@ -36,9 +44,9 @@ import {
 } from "../mocks/teamBridge";
 import { getState } from "../shared/store";
 import {
-  writeAnswerInvitation, writeCreateTeam, writeDisbandTeam, writeInviteMember,
+  writeAnswerInvitation, writeCancelInvitation, writeCreateTeam, writeDisbandTeam, writeInviteMember,
   writeKickMember, writeRequestOfficial, writeReviewTeamRequest, writeSetMemberPosition,
-  writeTransferLeader, writeUpdateTeam,
+  writeTransferLeader, writeUpdateTeam, type WriteBlock,
 } from "../mocks/teamWrites";
 
 /** สร้าง TeamDto กลับจาก store หลังเขียนเสร็จ */
@@ -49,6 +57,14 @@ const teamDto = (ref: TeamRef): TeamDto | null => {
 
 const notFound = <T>(what: string): Promise<T> =>
   mockReject<T>(404, { code: "NOT_FOUND", message: `ไม่พบ${what}ที่ต้องการ` });
+
+/** ส่งเหตุผลที่ชั้น mock ปฏิเสธต่อเป็น error รูปเดียวกับ backend */
+const rejectWith = <T>(b: WriteBlock): Promise<T> =>
+  mockReject<T>(b.status, { code: b.code, message: b.message, details: b.details });
+
+/** backend ยังไม่มี endpoint นี้ — ไม่ยิงไปเส้นทางที่ไม่มีอยู่ */
+const unavailable = <T>(what: string): Promise<T> =>
+  Promise.reject(new ApiError(501, { code: "ENDPOINT_UNAVAILABLE", message: `${what} ยังไม่มีใน backend` }));
 
 // ══════════════ อ่าน ══════════════
 
@@ -80,7 +96,7 @@ export async function getBackendTeam(teamId: number): Promise<BackendTeamDto> {
   if (!USE_MOCK) return apiFetch(`/teams/${teamId}`);
 
   const team = teamDto(teamId);
-  if (!team) return notFound<BackendTeamDto>("team");
+  if (!team) return notFound<BackendTeamDto>("ทีม");
   return mockDelay({
     id: team.id,
     name: team.name,
@@ -98,7 +114,7 @@ export async function getBackendTeamMembers(teamId: number): Promise<BackendTeam
   if (!USE_MOCK) return apiFetch(`/teams/${teamId}/members`);
 
   const team = teamDto(teamId);
-  if (!team) return notFound<BackendTeamListResponse<BackendTeamMemberDto>>("team");
+  if (!team) return notFound<BackendTeamListResponse<BackendTeamMemberDto>>("ทีม");
   return mockDelay({
     items: team.members.map((member) => ({
       userId: member.user.id,
@@ -141,7 +157,7 @@ export async function getMyInvitations(): Promise<{ items: TeamInvitationDto[] }
   return apiFetch("/me/team-invitations");
 }
 
-/** T09/T12/T13 — คำเชิญที่ทีมนี้ส่งออกไป พร้อมสถานะ (FR-TM-02) */
+/** GET /teams/:id/invitations — คำเชิญที่ทีมนี้ส่งออกไป พร้อมสถานะ (FR-TM-02) */
 export async function getTeamInvitations(teamId: TeamRef): Promise<{ items: TeamInvitationDto[] }> {
   if (USE_MOCK) return mockDelay({ items: teamStoreInvitations(teamId) });
   return apiFetch(`/teams/${teamId}/invitations`);
@@ -164,93 +180,100 @@ export async function getPlayerProfile(userId: TeamRef): Promise<PlayerProfileDt
 
 // ══════════════ เขียน ══════════════
 /*
- * โหมด mock ตอบ 501 ให้ทุกตัว ไม่ใช่แกล้งสำเร็จ
- *
- * สะพานอ่านจาก store ทางเดียว — ถ้าเขียนกลับด้วยจะได้ระบบที่มีสองแหล่งความจริง
- * และเดโมจะเพี้ยนเงียบๆ ตอบ 501 ให้ UI เจอ error state จริงระหว่างพัฒนา
- * ดีกว่าปล่อยให้ดูเหมือนทำงานแล้วมาพังตอนต่อ backend
+ * โหมด mock เขียนลง store ผ่าน mocks/teamWrites.ts ซึ่งอ่านจากที่เดียวกับสะพาน
+ * ทางที่ทำไม่ได้ได้ error code เดียวกับ backend จึงทดสอบ error state ของหน้าจอได้จริง
  */
 
-/** TODO(guide): POST /teams — FR-TM-01 (ชื่อซ้ำในกีฬาเดียวกันไม่ได้ · เกิน 5 ทีม Unofficial ไม่ได้) */
+/** POST /teams — FR-TM-01 (409 TEAM_NAME_TAKEN · 422 TEAM_QUOTA_EXCEEDED) */
 export async function createTeam(input: CreateTeamRequest): Promise<TeamDto> {
   if (USE_MOCK) {
     const id = writeCreateTeam(input);
-    const dto = id !== null ? teamDto(id) : null;
-    return dto ? mockDelay(dto) : notFound<TeamDto>("ผู้ใช้ที่ล็อกอินอยู่");
+    if (typeof id !== "number") return rejectWith<TeamDto>(id);
+    const dto = teamDto(id);
+    return dto ? mockDelay(dto) : notFound<TeamDto>("ทีมที่เพิ่งสร้าง");
   }
-  return apiFetch("/teams", { method: "POST", body: JSON.stringify(input) });
+  /* team.schema.ts รับแค่ name กับ sportTypeId — code/color เป็นของ prototype */
+  return apiFetch("/teams", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name, sportTypeId: input.sportTypeId }),
+  });
 }
 
-/** TODO(guide): PATCH /teams/:id — FR-TM-04 */
+/** PATCH /teams/:id — FR-TM-04 (backend รับแค่ name · โลโก้มีเฉพาะโหมด mock) */
 export async function updateTeam(teamId: TeamRef, input: UpdateTeamRequest): Promise<TeamDto> {
   if (USE_MOCK) {
-    if (!writeUpdateTeam(teamId, input)) return notFound<TeamDto>("ทีม");
+    const blocked = writeUpdateTeam(teamId, input);
+    if (blocked) return rejectWith<TeamDto>(blocked);
     const dto = teamDto(teamId);
     return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
   }
-  return apiFetch(`/teams/${teamId}`, { method: "PATCH", body: JSON.stringify(input) });
+  /* team.schema.ts updateTeamSchema รับแค่ name — รหัสทีมและโลโก้ยังไม่มีคอลัมน์ใน backend */
+  return apiFetch(`/teams/${teamId}`, { method: "PATCH", body: JSON.stringify({ name: input.name }) });
 }
 
-/** TODO(guide): PUT /teams/:id/members/:userId/position — FR-TM-04 ตัวจริง/ตัวสำรอง */
+/** PATCH /teams/:id/members/:uid { position } — FR-TM-04 ตัวจริง/ตัวสำรอง */
 export async function setMemberPosition(
   teamId: TeamRef, input: SetMemberPositionRequest,
 ): Promise<TeamDto> {
   if (USE_MOCK) {
-    if (!writeSetMemberPosition(teamId, input.userId, input.position)) {
-      return notFound<TeamDto>("ทีมหรือสมาชิก");
-    }
+    const blocked = writeSetMemberPosition(teamId, input.userId, input.position);
+    if (blocked) return rejectWith<TeamDto>(blocked);
     const dto = teamDto(teamId);
     return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
   }
-  return apiFetch(`/teams/${teamId}/members/${input.userId}/position`, {
-    method: "PUT", body: JSON.stringify({ position: input.position }),
+  return apiFetch(`/teams/${teamId}/members/${input.userId}`, {
+    method: "PATCH", body: JSON.stringify({ position: input.position }),
   });
 }
 
-/** TODO(guide): DELETE /teams/:id/members/:userId */
-export async function kickMember(teamId: TeamRef, userId: number): Promise<TeamDto> {
+/**
+ * DELETE /teams/:id/members/:uid → 204
+ * ถอนหัวหน้าทีมไม่ได้ (403) · โหมด mock ถอนไม่ได้เมื่อทีมเริ่มแข่งแล้ว (409 ROSTER_LOCKED)
+ */
+export async function kickMember(teamId: TeamRef, userId: number): Promise<void> {
   if (USE_MOCK) {
-    if (!writeKickMember(teamId, userId)) return notFound<TeamDto>("ทีมหรือสมาชิก");
-    const dto = teamDto(teamId);
-    return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
+    const blocked = writeKickMember(teamId, userId);
+    return blocked ? rejectWith<void>(blocked) : mockDelay(undefined);
   }
   return apiFetch(`/teams/${teamId}/members/${userId}`, { method: "DELETE" });
 }
 
-/** T09/T12/T13 — POST /teams/:id/invitations (FR-TM-02) */
+/** POST /teams/:id/invitations { invitedUserId } — FR-TM-02 */
 export async function inviteMember(
   teamId: TeamRef, input: InviteMemberRequest,
 ): Promise<TeamInvitationDto> {
   if (USE_MOCK) {
-    if (!writeInviteMember(teamId, input.userId)) return notFound<TeamInvitationDto>("ทีมหรือผู้ใช้");
-    /* store กันเชิญซ้ำและกันเชิญคนที่อยู่ในทีมแล้ว — ถ้าไม่มีแถวใหม่แปลว่าโดนกฎนั้น */
-    const row = teamStoreInvitations(teamId).find((i) => i.invitedUser.id === input.userId);
-    return row
-      ? mockDelay(row)
-      : mockReject<TeamInvitationDto>(409, {
-          code: "ALREADY_INVITED",
-          message: "คนนี้อยู่ในทีมแล้ว หรือมีคำเชิญค้างอยู่",
-        });
+    const blocked = writeInviteMember(teamId, input.userId);
+    if (blocked) return rejectWith<TeamInvitationDto>(blocked);
+    const row = teamStoreInvitations(teamId)
+      .find((i) => i.invitedUser.id === input.userId && i.status === "pending");
+    return row ? mockDelay(row) : notFound<TeamInvitationDto>("คำเชิญที่เพิ่งส่ง");
   }
-  return apiFetch(`/teams/${teamId}/invitations`, { method: "POST", body: JSON.stringify(input) });
+  /* team.schema.ts createTeamInvitedSchema ใช้ชื่อ invitedUserId ไม่ใช่ userId */
+  return apiFetch(`/teams/${teamId}/invitations`, {
+    method: "POST", body: JSON.stringify({ invitedUserId: input.userId }),
+  });
 }
 
-/** Cancel a pending outgoing invitation; only the team leader is authorized. */
+/** DELETE /teams/:id/invitations/:iid → 204 — ยกเลิกคำเชิญที่ยังไม่มีคนตอบ (หัวหน้าทีมเท่านั้น) */
 export async function cancelTeamInvitation(teamId: TeamRef, invitationId: number): Promise<void> {
-  if (USE_MOCK) return mockReject(501, { code: "NOT_IMPLEMENTED", message: "Invitation cancellation is unavailable in the legacy demo." });
+  if (USE_MOCK) {
+    const blocked = writeCancelInvitation(teamId, invitationId);
+    return blocked ? rejectWith<void>(blocked) : mockDelay(undefined);
+  }
   return apiFetch(`/teams/${teamId}/invitations/${invitationId}`, { method: "DELETE" });
 }
 
 /**
- * T09/T12/T13 — ตอบรับหรือปฏิเสธ (FR-TM-03)
- * backend ต้องเช็คกฎจำนวนทีมสูงสุดต่อคน และคำเชิญหมดอายุ ก่อนรับเข้าเป็นสมาชิก
+ * POST /invitations/:id/accept | /decline — FR-TM-03
+ * backend ตรวจโควตาทีมและคำเชิญหมดอายุ · โหมด mock ตรวจรายชื่อที่ถูกล็อกเพิ่มด้วย
  */
 export async function answerInvitation(
   invitationId: TeamRef, accept: boolean,
 ): Promise<TeamInvitationDto> {
   if (USE_MOCK) {
     const teamOfInvite = writeAnswerInvitation(invitationId, accept);
-    if (!teamOfInvite) return notFound<TeamInvitationDto>("คำเชิญ");
+    if (typeof teamOfInvite !== "string") return rejectWith<TeamInvitationDto>(teamOfInvite);
     const row = teamStoreInvitations(teamOfInvite).find((i) => i.id === Number(invitationId));
     return row ? mockDelay(row) : notFound<TeamInvitationDto>("คำเชิญหลังตอบ");
   }
@@ -259,31 +282,35 @@ export async function answerInvitation(
   });
 }
 
-/** TODO(guide): DELETE /teams/:id — FR-TM-05 ทีมที่กำลังแข่งต้องถูกปฏิเสธ */
+/** DELETE /teams/:id → 204 — FR-TM-05 ลบได้เฉพาะทีมที่ยังไม่เคยลงแข่ง */
 export async function disbandTeam(teamId: TeamRef): Promise<void> {
   if (USE_MOCK) {
-    if (!writeDisbandTeam(teamId)) return notFound<void>("ทีม");
-    return mockDelay(undefined);
+    const blocked = writeDisbandTeam(teamId);
+    return blocked ? rejectWith<void>(blocked) : mockDelay(undefined);
   }
   return apiFetch(`/teams/${teamId}`, { method: "DELETE" });
 }
 
-/** TODO(guide): POST /teams/:id/official-request — FR-TM-06 */
+/** POST /teams/:id/official-request { supportingDocs } — FR-TM-06 (400 OFFICIAL_DOCS_REQUIRED) */
 export async function requestOfficialStatus(
   teamId: TeamRef, input: RequestOfficialStatusRequest,
 ): Promise<TeamAdminRequestDto> {
   if (USE_MOCK) {
-    if (!writeRequestOfficial(teamId, input.reason)) return notFound<TeamAdminRequestDto>("ทีม");
+    const blocked = writeRequestOfficial(teamId, input.supportingDocs);
+    if (blocked) return rejectWith<TeamAdminRequestDto>(blocked);
     const rows = storeTeamAdminRequests();
     const row = rows[rows.length - 1];
     return row ? mockDelay(row) : notFound<TeamAdminRequestDto>("คำร้องที่เพิ่งยื่น");
   }
   return apiFetch(`/teams/${teamId}/official-request`, {
-    method: "POST", body: JSON.stringify(input),
+    method: "POST", body: JSON.stringify({ supportingDocs: input.supportingDocs }),
   });
 }
 
-/** TODO(guide): POST /teams/:id/leader-transfer — FR-TM-08 (ทีม Official ต้องผ่าน Admin) */
+/**
+ * โอนสิทธิ์หัวหน้าทีม — SDS POST /teams/{id}/transfer-leader (FR-TM-08)
+ * origin/backend ยังไม่มี route นี้ นอกโหมด mock จึงตอบ 501 แทนการยิงไปเส้นทางที่ไม่มี
+ */
 export async function transferLeader(
   teamId: TeamRef, input: TransferLeaderRequest,
 ): Promise<TeamAdminRequestDto> {
@@ -305,9 +332,7 @@ export async function transferLeader(
         })
       : notFound<TeamAdminRequestDto>("ทีม");
   }
-  return apiFetch(`/teams/${teamId}/leader-transfer`, {
-    method: "POST", body: JSON.stringify(input),
-  });
+  return unavailable<TeamAdminRequestDto>("การโอนสิทธิ์หัวหน้าทีม");
 }
 
 /** TODO(guide): POST /admin/team-requests/:id/review — Admin ตัดสิน */
