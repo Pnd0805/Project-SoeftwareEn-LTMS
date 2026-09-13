@@ -1,0 +1,223 @@
+<!doctype html>
+<!--
+  frontend/mobile.html — ดูแอปในขนาดจอมือถือระหว่างพัฒนา
+  เปิดที่ http://localhost:5173/mobile.html  หรือระบุหน้า: /mobile.html?path=/t/t-fb
+
+  ทำไมไม่เป็นปุ่มสลับแบบ dark/light
+    หน้าตามือถือมาจาก @media (max-width:820px) ใน src/styles/prototype.css ซึ่งวัดความกว้าง
+    ของหน้าต่างจริง ปุ่มหรือ class เปลี่ยนค่านั้นไม่ได้ หน้านี้จึงเปิดแอปตัวเดิมใน iframe ที่กว้าง
+    เท่ามือถือ media query ในกรอบวัดจากความกว้างของกรอบ ได้หน้ามือถือจริงโดยไม่แตะ component หรือ CSS
+
+  ทำไมไม่กระทบเวลาแก้โค้ด
+    โค้ดของแอปไม่อ้างถึงไฟล์นี้ และไฟล์นี้ไม่รู้จักหน้าไหนเป็นพิเศษ หน้าใหม่จึงขึ้นในกรอบเอง
+    Vite เสิร์ฟไฟล์ HTML ที่ root ให้ตอน dev ส่วน `vite build` ใช้แค่ index.html จึงไม่ติดไปกับ build
+
+  ข้อจำกัด: ไม่ใช่มือถือจริง — ไม่จำลองการสัมผัส user agent แถบเบราว์เซอร์ และคีย์บอร์ดบนจอ
+    ถ้าต้องตรวจเรื่องพวกนั้นใช้ DevTools device mode (Ctrl+Shift+M)
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>LTMS — mobile preview</title>
+    <script>
+      // ธีมเดียวกับแอป (คีย์เดียวกับ index.html) — ตั้งก่อนวาดหน้า กันจอกะพริบ
+      (function () {
+        try {
+          var saved = localStorage.getItem('ltms-theme');
+          var light = saved ? saved === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
+          document.documentElement.dataset.theme = light ? 'light' : 'dark';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+    <style>
+      :root { --bg: #111317; --panel: #1b1e24; --line: #2e333b; --ink: #e8e6df; --sub: #9aa0a8; --accent: #2fb59a; --bezel: #050607; }
+      :root[data-theme="light"] { --bg: #f1efe8; --panel: #ffffff; --line: #d9d5ca; --ink: #1d1f23; --sub: #5f646c; --accent: #1f8f78; --bezel: #1d1f23; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex; flex-direction: column; background: var(--bg); color: var(--ink);
+        font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .bar {
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px;
+        background: var(--panel); border-bottom: 1px solid var(--line);
+      }
+      .bar b { font-size: 14px; margin-right: 4px; }
+      .bar select, .bar input[type="text"], .bar button, .bar a {
+        height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px;
+        background: var(--bg); color: var(--ink); font: inherit;
+      }
+      .bar button, .bar a { display: inline-flex; align-items: center; cursor: pointer; text-decoration: none; }
+      .bar button:hover, .bar a:hover, .bar select:hover { border-color: var(--accent); }
+      .bar :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .bar input[type="text"] { flex: 1 1 220px; min-width: 160px; font-family: ui-monospace, Consolas, monospace; }
+      .bar label { display: inline-flex; gap: 6px; align-items: center; color: var(--sub); }
+      .size { min-width: 96px; color: var(--sub); font-family: ui-monospace, Consolas, monospace; }
+      .stage { flex: 1; min-height: 0; display: flex; align-items: flex-start; padding: 18px; overflow: auto; }
+      .holder { position: relative; flex: none; margin: 0 auto; }
+      .device {
+        position: absolute; top: 0; left: 0; padding: 12px; border-radius: 34px; transform-origin: top left;
+        background: var(--bezel); box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
+      }
+      .device iframe { display: block; border: 0; border-radius: 22px; background: var(--bg); }
+      .note { padding: 6px 14px 10px; color: var(--sub); text-align: center; }
+    </style>
+  </head>
+  <body>
+    <header class="bar">
+      <b>Mobile preview</b>
+      <select id="device" aria-label="Screen size"></select>
+      <button id="rotate" type="button">Rotate</button>
+      <label><input id="fit" type="checkbox" checked /> Fit to window</label>
+      <span id="size" class="size" aria-live="polite"></span>
+      <button id="back" type="button" aria-label="Back">←</button>
+      <button id="forward" type="button" aria-label="Forward">→</button>
+      <button id="reload" type="button" aria-label="Reload">↻</button>
+      <input id="address" type="text" aria-label="Page shown in the preview" spellcheck="false" autocomplete="off" />
+      <a id="full" href="/" target="_blank" rel="noopener">Open full size</a>
+    </header>
+
+    <main class="stage" id="stage">
+      <div class="holder" id="holder">
+        <div class="device" id="frame-box">
+          <iframe id="app" title="LTMS at phone size"></iframe>
+        </div>
+      </div>
+    </main>
+
+    <div class="note">
+      Dev only. The layout is what a phone gets; touch, the phone's browser bar and the on-screen keyboard
+      are not emulated — use DevTools device mode (Ctrl+Shift+M) for those.
+    </div>
+
+    <script>
+      (function () {
+        var DEVICES = [
+          { id: 'se', name: 'iPhone SE', w: 375, h: 667 },
+          { id: 'iphone', name: 'iPhone 15', w: 393, h: 852 },
+          { id: 'galaxy', name: 'Galaxy S23', w: 360, h: 780 },
+          { id: 'pixel', name: 'Pixel 8', w: 412, h: 915 },
+          { id: 'ipad', name: 'iPad mini', w: 768, h: 1024 }
+        ];
+        var BEZEL = 12;
+        var STAGE_PADDING = 36;
+        var SETTINGS_KEY = 'ltms-mobile-preview';
+
+        var $ = function (id) { return document.getElementById(id); };
+        var frame = $('app'), box = $('frame-box'), holder = $('holder'), stage = $('stage');
+        var select = $('device'), fit = $('fit'), address = $('address'), full = $('full');
+
+        var query = new URLSearchParams(location.search);
+        var saved = {};
+        try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch (e) { saved = {}; }
+
+        var state = {
+          device: query.get('device') || saved.device || 'iphone',
+          landscape: query.has('landscape') ? query.get('landscape') === '1' : saved.landscape === true,
+          fit: saved.fit !== false
+        };
+        if (!DEVICES.some(function (d) { return d.id === state.device; })) state.device = 'iphone';
+
+        /* เปิดหน้านี้ซ้อนในกรอบตัวเองจะวนไม่จบ และรับเฉพาะ path ภายในแอป */
+        function safePath(p) {
+          if (!p || p.charAt(0) !== '/' || p.indexOf('mobile.html') !== -1) return '/';
+          return p;
+        }
+
+        function writeUrl(mutate) {
+          var q = new URLSearchParams(location.search);
+          mutate(q);
+          history.replaceState(null, '', location.pathname + '?' + q.toString());
+        }
+
+        function save() {
+          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state)); } catch (e) { /* storage blocked */ }
+          writeUrl(function (q) {
+            q.set('device', state.device);
+            if (state.landscape) q.set('landscape', '1'); else q.delete('landscape');
+          });
+        }
+
+        /* ย่อด้วย transform ไม่ใช่ย่อกรอบ — ความกว้างที่ media query เห็นยังเท่ามือถือเสมอ */
+        function layout() {
+          var d = DEVICES.filter(function (x) { return x.id === state.device; })[0];
+          var w = state.landscape ? d.h : d.w;
+          var h = state.landscape ? d.w : d.h;
+          var outerW = w + BEZEL * 2;
+          var outerH = h + BEZEL * 2;
+          var scale = 1;
+          if (state.fit) {
+            scale = Math.min(1, (stage.clientWidth - STAGE_PADDING) / outerW, (stage.clientHeight - STAGE_PADDING) / outerH);
+            scale = Math.max(scale, 0.2);
+          }
+          frame.style.width = w + 'px';
+          frame.style.height = h + 'px';
+          box.style.transform = 'scale(' + scale + ')';
+          holder.style.width = Math.round(outerW * scale) + 'px';
+          holder.style.height = Math.round(outerH * scale) + 'px';
+          $('size').textContent = w + '×' + h + (scale < 1 ? ' · ' + Math.round(scale * 100) + '%' : '');
+        }
+
+        function go(path) {
+          frame.src = safePath(path);
+        }
+
+        DEVICES.forEach(function (d) {
+          var option = document.createElement('option');
+          option.value = d.id;
+          option.textContent = d.name + ' · ' + d.w + '×' + d.h;
+          select.appendChild(option);
+        });
+        select.value = state.device;
+        fit.checked = state.fit;
+
+        select.addEventListener('change', function () { state.device = select.value; save(); layout(); });
+        $('rotate').addEventListener('click', function () { state.landscape = !state.landscape; save(); layout(); });
+        fit.addEventListener('change', function () { state.fit = fit.checked; save(); layout(); });
+        window.addEventListener('resize', layout);
+
+        address.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter') return;
+          go(address.value.trim());
+          address.blur();
+        });
+        $('back').addEventListener('click', function () { try { frame.contentWindow.history.back(); } catch (e) { /* not loaded */ } });
+        $('forward').addEventListener('click', function () { try { frame.contentWindow.history.forward(); } catch (e) { /* not loaded */ } });
+        $('reload').addEventListener('click', function () {
+          try { frame.contentWindow.location.reload(); } catch (e) { go(address.value.trim()); }
+        });
+
+        /* แอปเปลี่ยนหน้าด้วย history API ซึ่งไม่ส่ง event ออกนอกกรอบ จึงอ่านที่อยู่ของกรอบเป็นระยะ
+           (origin เดียวกันจึงอ่านได้) แล้วเขียนลง URL ของหน้านี้ — รีเฟรชแล้วยังอยู่หน้าเดิม */
+        var lastPath = '';
+        setInterval(function () {
+          var loc;
+          try { loc = frame.contentWindow.location; } catch (e) { return; }
+          if (!loc || loc.href === 'about:blank') return;
+          var path = loc.pathname + loc.search + loc.hash;
+          if (path === lastPath) return;
+          lastPath = path;
+          if (document.activeElement !== address) address.value = path;
+          full.href = path;
+          writeUrl(function (q) { q.set('path', path); });
+        }, 400);
+
+        /* สลับธีมในกรอบแล้ว localStorage เปลี่ยน — หน้านี้เปลี่ยนตามให้กรอบกับแถบเครื่องมือเข้ากัน */
+        window.addEventListener('storage', function (e) {
+          if (e.key === 'ltms-theme' && (e.newValue === 'light' || e.newValue === 'dark')) {
+            document.documentElement.dataset.theme = e.newValue;
+          }
+        });
+
+        save();
+        layout();
+        go(query.get('path') || '/');
+      })();
+    </script>
+  </body>
+</html>
