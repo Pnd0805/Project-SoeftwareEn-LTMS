@@ -34,6 +34,11 @@ export interface User {
    */
   suspended?: boolean
   suspendedReason?: string | null
+  /**
+   * FR-RM-02 — บุคคลภายนอก (ไม่ใช่นิสิตหรือบุคลากร) ที่มาเป็นกรรมการ ต้องให้ Admin อนุมัติก่อนมีสิทธิ์
+   * backend แทนด้วย users.user_type = 'external'
+   */
+  external?: boolean
 }
 
 export interface Team {
@@ -48,6 +53,11 @@ export interface Team {
   permanent: boolean
   sport?: string
   logo?: string
+  /**
+   * FR-TM-04 — ตัวจริง/ตัวสำรองที่หัวหน้าทีมตั้งไว้ (team_members.position)
+   * ไม่มีค่า = ใช้ลำดับในทีม คนแรกๆ เท่าจำนวนตัวจริงของกีฬาเป็นตัวจริง — ดู rules.ts positionOf
+   */
+  positions?: Record<string, 'starter' | 'substitute'>
 }
 
 /** The Hard filter's conditions. `any` means the condition is not set — see CONTEXT.md. */
@@ -184,7 +194,14 @@ export interface Match {
 }
 
 export interface Invite { id: string; team: string; user: string; status: InviteStatus }
-export interface RefInvite { id: string; tour: string; user: string; status: InviteStatus }
+export interface RefInvite {
+  id: string; tour: string; user: string; status: InviteStatus
+  /** FR-RM-02 — ผู้ถูกเชิญเป็นบุคคลภายนอก ตอบรับแล้วยังต้องรอ Admin อนุมัติ */
+  external?: boolean
+  /** ผลการพิจารณาของ Admin — มีเฉพาะคำเชิญบุคคลภายนอกที่ตอบรับแล้ว */
+  approval?: 'pending' | 'approved' | 'rejected'
+  approvalReason?: string | null
+}
 export interface Announcement { id: string; tour: string; by: string; title: string; body: string; at: number }
 export interface Notification { id: string; to: string; text: string; href: string; at: number; read: boolean }
 export interface Pick { id: string; match: string; by: string; team: string }

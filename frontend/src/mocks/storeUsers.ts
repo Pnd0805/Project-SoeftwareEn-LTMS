@@ -29,7 +29,7 @@ const toRecord = (u: StoreUser): MockUserRecord => ({
   id: numOf(u.id),
   fullName: u.name,
   email: u.email,
-  userType: u.role === 'Admin' ? 'staff' : 'student',
+  userType: u.external ? 'external' : u.role === 'Admin' ? 'staff' : 'student',
   /* store ใช้ 'Male'/'Female' — DTO ใช้ตัวพิมพ์เล็กตาม enum ของ schema */
   gender: u.gender === 'Male' ? 'male' : 'female',
   birthDate: u.dob,
@@ -89,4 +89,28 @@ export function storeUserOptions(): StoreUserOption[] {
     if (u.role === 'Admin') can.push('ผู้ดูแลระบบ')
     return { email: u.email, name: u.name, role: u.role, can }
   })
+}
+
+/**
+ * ค้นคนใน seed ด้วยชื่อหรืออีเมล — ให้ช่องเชิญเข้าทีมหาเจอทุกคน (UC-02: email หรือ user_id)
+ *
+ * `mockUsers` มีแค่ห้าบัญชีที่เขียนมือ id 1–5 ซึ่งไม่ตรงกับ `numOf` ที่ทีมและคำเชิญใช้
+ * ค้นจากตรงนั้นจึงแทบหาใครไม่เจอ และเชิญไปก็ได้ 404 เพราะหาคนใน store ไม่พบ
+ */
+export function searchStoreUsers(q: string, limit = 20): { id: number; fullName: string; avatarUrl: string | null }[] {
+  const needle = q.trim().toLowerCase()
+  if (!needle) return []
+  return getState().users
+    .filter(u => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle))
+    .slice(0, limit)
+    .map(u => ({ id: numOf(u.id), fullName: u.name, avatarUrl: null }))
+}
+
+/**
+ * FR-UM-05 — บัญชีใน seed ที่ Admin ระงับไว้
+ * ใช้ตอนล็อกอินในโหมด mock ให้ตอบเหมือน auth.service ของ backend (403 ACCOUNT_SUSPENDED)
+ */
+export function isStoreUserSuspended(email: string): boolean {
+  const needle = normalize(email)
+  return !!getState().users.find(x => normalize(x.email) === needle)?.suspended
 }

@@ -10,7 +10,7 @@ import type {
   UserSearchResult,
 } from "../types/dto";
 import { mockUsers, type MockUserRecord } from "../mocks/user.mock";
-import { findStoreUserById } from "../mocks/storeUsers";
+import { findStoreUserById, searchStoreUsers } from "../mocks/storeUsers";
 
 // mock ไม่มี session ฝั่ง server จริง — เก็บ "ใครล็อกอินอยู่" ไว้ตรงนี้แทน
 // เรียก setMockCurrentUser() จาก onSuccess ของ useLogin/useLogout (ดู hooks/useAuth.ts)
@@ -83,11 +83,8 @@ export async function searchUsers(q: string): Promise<UserSearchResult> {
     return Promise.reject(new Error("QUERY_TOO_SHORT")); // ฝั่ง UI เช็คความยาวก่อนเรียกอยู่แล้ว กันไว้อีกชั้น
   }
   if (USE_MOCK) {
-    const items = mockUsers
-      .filter((u) => u.fullName.toLowerCase().includes(q.toLowerCase()))
-      .slice(0, 20)
-      .map((u) => ({ id: u.id, fullName: u.fullName, avatarUrl: u.avatarUrl }));
-    return mockDelay({ items });
+    /* ค้นจากคนใน seed ทั้งหมด ด้วย id ชุดเดียวกับทีมและคำเชิญ (ดู mocks/storeUsers.ts) */
+    return mockDelay({ items: searchStoreUsers(q) });
   }
   return apiFetch<UserSearchResult>(`/users/search?q=${encodeURIComponent(q)}`);
 }

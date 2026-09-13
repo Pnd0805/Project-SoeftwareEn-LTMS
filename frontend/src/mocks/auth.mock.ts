@@ -10,7 +10,7 @@
  * ⚠️ passwordForMock อยู่ใน user.mock.ts — auth.mock ใช้ read/write mockUsers ตรงนี้
  */
 import type { LoginResponse, RegisterResponse, RegisterRequest } from "../types/dto";
-import { findStoreUserByEmail } from "./storeUsers";
+import { findStoreUserByEmail, isStoreUserSuspended } from "./storeUsers";
 import { mockUsers, takeNextMockUserId } from "./user.mock";
 import { mockDelay, mockReject } from "../api/client";
 
@@ -32,6 +32,14 @@ export async function mockLogin(email: string, password: string): Promise<LoginR
     return mockReject(401, {
       code: "INVALID_CREDENTIALS",
       message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+    });
+  }
+  /* FR-UM-05 — บัญชีที่ถูกระงับเข้าสู่ระบบไม่ได้ ตรงกับ auth.service ของ backend
+     ตรวจหลังรหัสผ่านถูกแล้ว จะได้ไม่บอกคนที่ไม่รู้รหัสว่าบัญชีนี้มีอยู่และถูกระงับ */
+  if (isStoreUserSuspended(email)) {
+    return mockReject(403, {
+      code: "ACCOUNT_SUSPENDED",
+      message: "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
     });
   }
 

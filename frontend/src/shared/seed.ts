@@ -84,6 +84,10 @@ export function SEED(): State {
     officials.push(U('u-ref' + (i + 2), nm, `ref${i + 2}@ltms.test`, 'User', { faculty: FACS[i % FACS.length], year: 4 }))
   })
 
+  /* FR-RM-02 — กรรมการจากนอกมหาวิทยาลัย ตอบรับแล้วยังไม่นับจนกว่า Admin จะอนุมัติ */
+  U('u-ext', 'Prasert Wongsuwan', 'external@ltms.test', 'User', { faculty: 'External', major: '—', year: 0, dob: '1988-07-21', external: true })
+  U('u-ext2', 'Malee Srisuk', 'external2@ltms.test', 'User', { faculty: 'External', major: '—', year: 0, gender: 'Female', dob: '1991-11-05', external: true })
+
   /* a population, then squads carved from it so no roster ever overlaps */
   const pool: string[] = []
   for (let i = 0; i < 84; i++) {
@@ -138,6 +142,9 @@ export function SEED(): State {
   T('t-gho', 'Ghost Nine', 'GHO', '#78909C', pool[cursor], take(3), { created: daysAgo(40), sport: 'Futsal' })
   /* still Forming: below the minimum for its sport, so it cannot register */
   T('t-haf', 'Half Team', 'HAF', '#90A4AE', pool[cursor], take(2), { created: daysAgo(4), sport: 'Futsal' })
+  /* ทีมที่สองของหัวหน้าเดโม ยังไม่ได้ที่นั่งในรายการไหน รายชื่อจึงแก้ได้ — คู่กับ Byte Force
+     ที่เริ่มแข่ง ROV ไปแล้วและถูกล็อกรายชื่อ ใช้ลองกฎเดียวกันทั้งสองด้าน */
+  T('t-bfa', 'Byte Force Academy', 'BFA', '#FF8A65', 'u-lead', ['u-lead', ...bytMates.slice(0, 3)], { created: daysAgo(6), sport: 'Badminton' })
 
   const rules = (x: Partial<Rules> = {}): Rules =>
     ({ gender: 'any', ageMin: 17, ageMax: 28, faculty: 'any', major: 'any', year: 'any', ...x })
@@ -362,6 +369,10 @@ export function SEED(): State {
   S.refInvites.push({ id: nid('ri'), tour: basketball.id, user: 'u-ref', status: 'pending' })
   S.refInvites.push({ id: nid('ri'), tour: basketball.id, user: 'u-ref4', status: 'declined' })
   S.refInvites.push({ id: nid('ri'), tour: futsal.id, user: 'u-ref', status: 'accepted' })
+  /* บุคคลภายนอก: คนหนึ่งตอบรับแล้วรอ Admin อนุมัติ อีกคนยังไม่ได้ตอบ
+     id ตายตัว เพื่อไม่ให้ลำดับ nid ของข้อมูลที่สร้างต่อจากนี้เลื่อน */
+  S.refInvites.push({ id: 'ri-ext1', tour: basketball.id, user: 'u-ext', status: 'accepted', external: true, approval: 'pending' })
+  S.refInvites.push({ id: 'ri-ext2', tour: basketball.id, user: 'u-ext2', status: 'pending', external: true })
 
   /* ── announcements ── */
   S.announcements.push({
@@ -384,6 +395,7 @@ export function SEED(): State {
   notify('u-lead', 'Your request to organize Campus Chess Ladder is with an admin.', '/t/t-chs', notificationDaysAgo(3), true)
   notify('u-play', 'Circuit Breakers invited you to join the squad.', '/teams', notificationDaysAgo(1))
   notify('u-admin', 'Campus Chess Ladder is waiting on your approval.', '/admin', notificationDaysAgo(3))
+  notify('u-admin', 'Prasert Wongsuwan (external) accepted a referee appointment for Faculty Basketball Showdown and needs your approval.', '/admin/referees', notificationDaysAgo(1))
 
   /* ── Pick'em on what is still to play, MVP votes on what is done ── */
   S.matches.filter(m => m.tour === football.id && m.status === 'scheduled' && m.a && m.b).slice(0, 2)

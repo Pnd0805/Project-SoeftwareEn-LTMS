@@ -25,6 +25,16 @@ const SPORT_MIN: Record<string, number> = {
 export const minSquad = (t?: Team | null) => (t?.sport && SPORT_MIN[t.sport]) || MIN_SQUAD
 export const teamReady = (t: Team) => t.members.length >= minSquad(t)
 
+/**
+ * FR-TM-04 — ตัวจริงหรือตัวสำรองของสมาชิกหนึ่งคน
+ * หัวหน้าทีมตั้งไว้ใช้ค่านั้น ไม่ได้ตั้งใช้ลำดับในทีม คนแรกๆ เท่าจำนวนตัวจริงของกีฬาเป็นตัวจริง
+ */
+export const positionOf = (t: Team, userId: string): 'starter' | 'substitute' =>
+  t.positions?.[userId] ?? (t.members.indexOf(userId) < minSquad(t) ? 'starter' : 'substitute')
+
+/** ตัวจริงลงสนามได้กี่คน — เท่าจำนวนผู้เล่นขั้นต่ำของกีฬา (SDS Sport.validateRoster) */
+export const startersAllowed = (t: Team) => minSquad(t)
+
 export const FORMATS: Record<Format, string> = {
   single: 'Single elimination',
   double: 'Double elimination',
@@ -189,6 +199,8 @@ export function hardFilter(s: State, tm: Team, tr: Tournament, ids?: string[]): 
   for (const id of entering) {
     const u = s.users.find(x => x.id === id)
     if (!u) continue
+    /* FR-UM-05 — บัญชีที่ถูกระงับไม่นับเป็นสมาชิกที่ลงแข่งได้ */
+    if (u.suspended) fails.push({ user: u, rule: 'Suspended', need: 'an active account', got: 'suspended' })
     const r = tr.rules, age = ageOf(u.dob)
     const lo = ageLimit(r.ageMin), hi = ageLimit(r.ageMax)
     const band = `${lo === null ? 'any' : lo}–${hi === null ? 'any' : hi}`
@@ -274,6 +286,45 @@ export function drawStarted(s: State, tr: Tournament) {
     m.checkedIn.length
     || (m.status !== 'scheduled' && m.note !== 'bye' && m.note !== 'void')
     || (!!m.kickoff && new Date(m.kickoff).getTime() <= NOW()))
+}
+
+/**
+ * Roster lock — รายชื่อทีมแก้ไม่ได้เมื่อรายการที่ทีมได้ที่นั่งแล้ว "เริ่มแข่ง" และยังไม่จบ
+ *
+ * ก่อนเริ่ม หัวหน้าทีมเพิ่มหรือถอนผู้เล่นได้ หลังเริ่มทั้งสองอย่างล็อกจนรายการมีแชมป์
+ * SDS ให้ทีมเป็น COMPETING ตลอดช่วงนี้ และ MATCH_PARTICIPANT เก็บรายชื่อผู้ลงแต่ละนัด
+ * เป็นสแนปช็อต (FR-PV-03) เปลี่ยนตัวกลางรายการแล้วคนที่ผ่าน Hard filter ตอนสมัคร
+ * กับคนที่ลงแข่งจริงจะไม่ใช่ชุดเดียวกัน
+ *
+ * "เริ่ม" ใช้นิยามเดียวกับ `drawStarted` — มีเช็คอิน มีผล หรือถึงเวลาเตะนัดแรกแล้ว
+ * คืนรายการที่ล็อกไว้ หน้าจอจะได้บอกได้ว่าติดเพราะรายการไหน
+ */
+export function rosterLockOf(s: State, tm: Team): Tournament | null {
+  for (const r of s.registrations) {
+    if (r.team !== tm.id || r.status !== 'approved') continue
+    const tr = s.tournaments.find(t => t.id === r.tour)
+    if (tr && !tr.champion && drawStarted(s, tr)) return tr
+  }
+  return null
+}
+
+/**
+ * คนที่จะเข้าทีมก่อนรายการเริ่ม ต้องผ่านเงื่อนไขของทุกรายการที่ทีมได้ที่นั่งไว้แล้ว
+ *
+ * UC-03 รัน Hard filter กับสมาชิกทุกคนตอนสมัคร ถ้ารับคนใหม่หลังอนุมัติโดยไม่ตรวจ
+ * คนที่ไม่ผ่านเงื่อนไขจะเข้าไปลงแข่งได้ — ตรวจคนใหม่คนเดียวด้วยกติกาเดิม
+ */
+export function joinFails(s: State, tm: Team, userId: string): { tournament: Tournament; fails: Fail[] }[] {
+  const withNewcomer: Team = tm.members.includes(userId) ? tm : { ...tm, members: [...tm.members, userId] }
+  const out: { tournament: Tournament; fails: Fail[] }[] = []
+  s.registrations.forEach(r => {
+    if (r.team !== tm.id || r.status !== 'approved') return
+    const tr = s.tournaments.find(t => t.id === r.tour)
+    if (!tr || tr.champion) return
+    const fails = hardFilter(s, withNewcomer, tr, [userId])
+    if (fails.length) out.push({ tournament: tr, fails })
+  })
+  return out
 }
 
 
