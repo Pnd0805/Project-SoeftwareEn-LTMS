@@ -79,6 +79,9 @@ function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef)
      กระดิ่งบน Shell อ่านจาก ["notifications", userId] จึงต้องล้างด้วย ไม่งั้น
      เลขไม่ขยับจนกว่าจะเปลี่ยนหน้า */
   qc.invalidateQueries({ queryKey: ["notifications"] });
+  /* SDS §4.2.1 ขั้นที่ 12: ยืนยันผลแล้ว PickemService.settle() ให้คะแนนทายผลในทรานแซกชันเดียวกัน
+     ["picks"] เป็น key ของสไลซ์ 1 (SocialBar) — ล้างไว้ให้ +1 / 0 ขึ้นโดยไม่ต้องเปลี่ยนหน้า */
+  qc.invalidateQueries({ queryKey: ["picks"] });
   void tournamentId;
 }
 

@@ -25,10 +25,13 @@ import { ScorebugView } from '../../components/kit/Scorebug'
 import {
   useMatch, useResult, useVerifyResult, useDisputeResult, useResolveDispute, useSetLivestream,
 } from '../../hooks/useMatch'
-import { tournamentRouteId } from '../../mocks/storeBridge'
+import { USE_MOCK } from '../../api/client'
+import { useLtms } from '../../shared/store'
+import { findStoreMatch, tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
 import { ResultForm } from './ResultForm'
 import { ResultTrail } from './ResultTrail'
+import { SocialBar } from './SocialBar'
 import { StatSheet } from './StatSheet'
 import type { MatchDto, MatchResultDto } from '../../types/match.dto'
 
@@ -211,6 +214,29 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   )
 }
 
+/**
+ * Pick'em และความเห็นของแมตช์ — SocialBar เป็นงาน Engagement ของสไลซ์ 1 (FR-PK-01, FR-CM-01)
+ *
+ * SocialBar ยังรับ `Match` ของ store ไม่ใช่ `MatchDto` และ backend ยังไม่มี route
+ * (SDS `POST /matches/{id}/predictions`, `POST /tournaments/{id}/comments`)
+ * จึงแสดงได้เฉพาะโหมด mock กับแมตช์ที่อยู่ใน store — นอกนั้นบอกว่ายังใช้ไม่ได้ ไม่เรียก path ที่ไม่มี
+ */
+function MatchCommunity({ matchId }: { matchId: string }) {
+  /* หาแมตช์ใหม่ทุกครั้งที่ store commit ไม่งั้นถือ object เก่าไว้หลัง reset demo */
+  useLtms()
+  const stored = USE_MOCK ? findStoreMatch(matchId) : undefined
+  if (stored) return <SocialBar m={stored} />
+  return (
+    <Panel quiet>
+      <span className="tag"><em>//</em> Community</span>
+      <div className="sub">
+        Pick'em and comments aren't available for this match yet.
+        {USE_MOCK ? '' : ' The server doesn\'t offer them yet.'}
+      </div>
+    </Panel>
+  )
+}
+
 export function MatchPage() {
   const navigate = useNavigate()
   const { id, tab: tabParam } = useParams()
@@ -291,15 +317,7 @@ export function MatchPage() {
           {tab === 'stats' ? <StatSheet m={m} /> : null}
           {tab === 'progress' ? <ResultTrail m={m} result={result} /> : null}
 
-          {tab === 'community' ? (
-            <Panel quiet>
-              <span className="tag"><em>//</em> Community</span>
-              <div className="sub">
-                Comments and Pick'em are slice 1's Engagement work and arrive with it. SRS puts both
-                in Sprint #1.
-              </div>
-            </Panel>
-          ) : null}
+          {tab === 'community' ? <MatchCommunity matchId={matchId} /> : null}
         </div>
 
         <div className="rail">
