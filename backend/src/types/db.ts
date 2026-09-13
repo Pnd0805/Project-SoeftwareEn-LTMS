@@ -136,6 +136,25 @@ export type MatchRefereeRow = {
 }
 
 
+export type RefereeRequestType = 'org_add_match' | 'ref_transfer' | 'ref_swap' | 'org_swap';
+export type RefereeRequestSideStatus = 'not_required' | 'pending' | 'accepted' | 'declined';
+
+export type RefereeChangeRequestRow = {
+    request_id : number,
+    tournament_id : number,
+    request_type : RefereeRequestType,
+    requested_by : number,
+    referee_a_id : number,
+    referee_b_id : number | null,
+    match_a_id : number,
+    match_b_id : number | null,
+    a_status : RefereeRequestSideStatus,
+    b_status : RefereeRequestSideStatus,
+    request_status : 'open' | 'applied' | 'declined' | 'cancelled',
+    created_at : Date,
+    resolved_at : Date | null
+}
+
 export type MatchRow = {
     match_id : number,
     tournament_id : number,

@@ -27,12 +27,6 @@ export async function decline(req : Request, res : Response){
     res.status(204).send();
 }
 
-export async function assignToMatch(req : Request, res : Response){
-    const matchId = parseId(req.params['id'], 'รหัสแมตช์');
-    res.status(201).json(
-        await RefereeService.assignRefereeToMatch(matchId, req.tournament!.tournament_id, req.body));
-}
-
 export async function listByMatch(req : Request, res : Response){
     const matchId = parseId(req.params['id'], 'รหัสแมตช์');
     res.status(200).json(await RefereeService.listMatchReferees(matchId));

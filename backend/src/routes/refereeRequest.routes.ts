@@ -1,0 +1,33 @@
+import express from 'express';
+import { requireAuth } from '../middlewares/requireAuth.js';
+import { requireOrganizer } from '../middlewares/requireOrganizer.js';
+import { validate } from '../middlewares/validate.js';
+import { refRequestSchema, orgAddMatchSchema, orgSwapSchema } from '../schemas/refereeRequest.schema.js';
+import * as Req from '../controllers/refereeRequest.controller.js';
+
+/** /referee-requests */
+export const refereeRequestRouter = express.Router();
+/** /tournaments/:id/referee-requests (ORG) */
+export const tournamentRefereeRequestRouter = express.Router();
+/** /me/referee-requests */
+export const meRefereeRequestRouter = express.Router();
+
+// R01 — REF ขอโอน/แลกแมตช์กับกรรมการอีกคน
+refereeRequestRouter.post('/', requireAuth, validate(refRequestSchema), Req.createRefRequest);
+
+// R02 / R03 — ORG ขอเพิ่มแมตช์ / ขอสลับ 2 คน
+tournamentRefereeRequestRouter.post('/:id/referee-requests/add-match',
+    requireAuth, requireOrganizer, validate(orgAddMatchSchema), Req.createOrgAddMatch);
+tournamentRefereeRequestRouter.post('/:id/referee-requests/swap',
+    requireAuth, requireOrganizer, validate(orgSwapSchema), Req.createOrgSwap);
+
+// R04 — คำขอที่รอฉันตอบ + ที่ฉันส่ง
+meRefereeRequestRouter.get('/referee-requests', requireAuth, Req.listMine);
+
+// R05 — คำขอทั้งหมดของทัวร์ (?status=open|applied|declined|cancelled)
+tournamentRefereeRequestRouter.get('/:id/referee-requests', requireAuth, requireOrganizer, Req.listByTournament);
+
+// R06 / R07 / R08
+refereeRequestRouter.post('/:id/accept',  requireAuth, Req.accept);
+refereeRequestRouter.post('/:id/decline', requireAuth, Req.decline);
+refereeRequestRouter.delete('/:id',       requireAuth, Req.cancel);

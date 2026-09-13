@@ -15,15 +15,6 @@ export type InvitedMatchRow =
     Pick<MatchRefereeRow, 'match_referee_id' | 'tournament_referee_id' | 'assignment_status'> &
     Pick<MatchRow, 'match_id' | 'round_number' | 'scheduled_time' | 'scheduled_end_time' | 'venue' | 'mode' | 'match_status'>;
 
-/** F11 — ORG ใส่ตรง ๆ ถือว่ารับแล้ว (จะถูกแทนด้วยคำขอ R02 ในอนาคต) */
-export async function assign(matchId : number, tournamentRefereeId : number): Promise<number>{
-    const [result] = await pool.query<ResultSetHeader>(
-        `INSERT INTO match_referees (match_id, tournament_referee_id, assignment_status, responded_at)
-         VALUES (?, ?, 'accepted', NOW())`,
-        [matchId, tournamentRefereeId]);
-    return result.insertId;
-}
-
 /** F01 — แนบแมตช์มากับคำเชิญ (pending) — เรียกในทรานแซกชันเดียวกับการสร้าง tournament_referees */
 export async function insertPending(db : Queryable, tournamentRefereeId : number, matchIds : number[]): Promise<void>{
     if(matchIds.length === 0) return;
@@ -80,6 +71,49 @@ export async function findByMatch(matchId : number): Promise<MatchRefereeListRow
            AND mr.assignment_status = 'accepted'
          ORDER BY mr.match_referee_id`, [matchId]);
     return rows;
+}
+
+/**
+ * R02 apply — ใส่กรรมการเข้าแมตช์แบบ accepted
+ * ถ้ามีแถว pending/declined เดิม (เคยถูกเสนอแล้วไม่รับ) จะพลิกเป็น accepted; ถ้า accepted อยู่แล้ว → false
+ */
+export async function insertAccepted(db : Queryable, matchId : number, tournamentRefereeId : number): Promise<boolean>{
+    const [rows] = await db.query<(Pick<MatchRefereeRow, 'match_referee_id' | 'assignment_status'> & RowDataPacket)[]>(
+        `SELECT match_referee_id, assignment_status FROM match_referees
+         WHERE match_id = ? AND tournament_referee_id = ? FOR UPDATE`, [matchId, tournamentRefereeId]);
+    const existing = rows[0];
+    if(existing?.assignment_status === 'accepted') return false;
+
+    if(existing){
+        await db.query(
+            `UPDATE match_referees SET assignment_status = 'accepted', responded_at = NOW()
+             WHERE match_referee_id = ?`, [existing.match_referee_id]);
+    } else {
+        await db.query(
+            `INSERT INTO match_referees (match_id, tournament_referee_id, assignment_status, responded_at)
+             VALUES (?, ?, 'accepted', NOW())`, [matchId, tournamentRefereeId]);
+    }
+    return true;
+}
+
+/**
+ * R01/R03 apply — ย้ายแมตช์จากกรรมการ from → to (lock แถวก่อน)
+ * คืน false ถ้า from ไม่ได้รับแมตช์นี้อยู่แล้ว (มีคนเปลี่ยนไประหว่างรอตอบ)
+ */
+export async function reassign(db : Queryable, matchId : number, fromId : number, toId : number): Promise<boolean>{
+    const [rows] = await db.query<(Pick<MatchRefereeRow, 'match_referee_id'> & RowDataPacket)[]>(
+        `SELECT match_referee_id FROM match_referees
+         WHERE match_id = ? AND tournament_referee_id = ? AND assignment_status = 'accepted' FOR UPDATE`,
+        [matchId, fromId]);
+    const row = rows[0];
+    if(!row) return false;
+
+    // to อาจมีแถวเก่า (pending/declined) ในแมตช์นี้ → ลบก่อน ไม่งั้นชน UNIQUE(match_id, tournament_referee_id)
+    await db.query('DELETE FROM match_referees WHERE match_id = ? AND tournament_referee_id = ?', [matchId, toId]);
+    await db.query(
+        `UPDATE match_referees SET tournament_referee_id = ?, responded_at = NOW()
+         WHERE match_referee_id = ?`, [toId, row.match_referee_id]);
+    return true;
 }
 
 /** ถอดออกจากแมตช์ — hard delete (ตารางนี้ไม่มี removed_at) */

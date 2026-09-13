@@ -25,11 +25,8 @@ refereeInvitationRouter.post('/:id/accept', requireAuth, validate(acceptInvitati
 refereeInvitationRouter.post('/:id/decline', requireAuth, Referee.decline);
 
 import { requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
-import { assignRefereeSchema } from '../schemas/referee.schema.js';
 
-// F11
-matchRefereeRouter.post('/:id/referees',
-    requireAuth, requireOrganizerOfMatch, validate(assignRefereeSchema), Referee.assignToMatch);
+// F11 (ORG ใส่กรรมการเข้าแมตช์ตรง ๆ) ถูกแทนด้วย R02 — POST /tournaments/:id/referee-requests/add-match
 
 // F12 — สาธารณะ ไม่มี middleware
 matchRefereeRouter.get('/:id/referees', Referee.listByMatch);

@@ -14,10 +14,5 @@ export const acceptInvitationSchema = z.object({
     matchIds : matchIdList.default([])
 }).default({ matchIds : [] });
 
-export const assignRefereeSchema = z.object({
-    tournamentRefereeId : z.int('รหัสกรรมการต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกกรรมการ')
-});
-
 export type InviteRefereeInput = z.infer<typeof inviteRefereeSchema>;
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
-export type AssignRefereeInput = z.infer<typeof assignRefereeSchema>;

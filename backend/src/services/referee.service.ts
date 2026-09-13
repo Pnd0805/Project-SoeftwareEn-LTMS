@@ -1,11 +1,10 @@
 import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { AppError } from '../utils/AppError.js';
-import type { InviteRefereeInput, AcceptInvitationInput, AssignRefereeInput } from '../schemas/referee.schema.js';
+import type { InviteRefereeInput, AcceptInvitationInput } from '../schemas/referee.schema.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto } from '../mappers/referee.mapper.js';
 import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
-import { toUserRef } from '../mappers/user.mapper.js';
 import { toRefereeStatus } from '../mappers/referee.mapper.js';
 import type { RefereeStatusFields } from '../mappers/referee.mapper.js';
 import * as MatchRepo from '../repositories/match.repo.js';
@@ -48,10 +47,10 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
     return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds };
 }
 
-type Schedulable = Pick<InvitedMatchRow, 'match_id' | 'scheduled_time' | 'scheduled_end_time'>;
+export type Schedulable = Pick<InvitedMatchRow, 'match_id' | 'scheduled_time' | 'scheduled_end_time'>;
 
-/** กรรมการ 1 คนคุมได้ทีละแมตช์ — ทุกแมตช์ต้องมีเวลาเริ่ม/จบ และห้ามซ้อนเวลากัน */
-function assertSchedulable(matches : Schedulable[]): void {
+/** กรรมการ 1 คนคุมได้ทีละแมตช์ — ทุกแมตช์ต้องมีเวลาเริ่ม/จบ และห้ามซ้อนเวลากัน (ใช้ร่วมกับ refereeRequest.service) */
+export function assertSchedulable(matches : Schedulable[]): void {
     for(const m of matches){
         if(!m.scheduled_time || !m.scheduled_end_time){
             throw new AppError(409, 'MATCH_NOT_SCHEDULED',
@@ -155,40 +154,6 @@ export async function declineRefereeInvitation(invitationId : number, userId : n
 }   
 
 
-
-export async function assignRefereeToMatch(matchId : number, tournamentId : number, input : AssignRefereeInput){
-    const tr = await RefRepo.findById(input.tournamentRefereeId);
-
-    // ต้องเป็นกรรมการของ "ทัวร์เดียวกับแมตช์นี้" เท่านั้น
-    if(!tr || tr.tournament_id !== tournamentId){
-        throw new AppError(404, 'REFEREE_NOT_FOUND', 'ไม่พบกรรมการคนนี้ในทัวร์นาเมนต์นี้');
-    }
-
-    if(tr.invitation_status !== 'accepted' || tr.removed_at !== null){
-        throw new AppError(409, 'REFEREE_NOT_ACCEPTED', 'กรรมการยังไม่ได้ตอบรับคำเชิญ');
-    }
-
-    if(!isActiveReferee(tr)){
-        throw new AppError(409, 'REFEREE_EXTERNAL_APPROVAL_PENDING',
-            'กรรมการภายนอกคนนี้รอผู้ดูแลระบบอนุมัติอยู่ ยังมอบหมายเข้าแมตช์ไม่ได้');
-    }
-
-    try {
-        await MatchRefRepo.assign(matchId, input.tournamentRefereeId);
-    } catch (err : unknown) {
-        if(typeof err === 'object' && err !== null && (err as { code? : string }).code === 'ER_DUP_ENTRY'){
-            throw new AppError(409, 'REFEREE_ALREADY_ASSIGNED', 'กรรมการคนนี้ถูกมอบหมายให้แมตช์นี้อยู่แล้ว');
-        }
-        throw err;
-    }
-
-    const user = await UserRepo.findById(tr.user_id);
-    return {
-        matchId,
-        tournamentRefereeId : input.tournamentRefereeId,
-        referee : user ? toUserRef(user) : null
-    };
-}
 
 export async function listMatchReferees(matchId : number){
     // แถวใน match_referees = "จอง" — ใช้ได้จริงต่อเมื่อสถานะฝั่งทัวร์เป็น active (ตัด external ที่รอ admin)

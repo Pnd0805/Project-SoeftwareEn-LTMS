@@ -8,6 +8,7 @@ import Application from './application.routes.js'
 import Team from './team.routes.js';
 import Invitation from './invitation.routes.js';
 import { tournamentRefereeRouter, matchRefereeRouter, meRefereeRouter, refereeInvitationRouter } from './referee.routes.js';
+import { refereeRequestRouter, tournamentRefereeRequestRouter, meRefereeRequestRouter } from './refereeRequest.routes.js';
 
 const router = express.Router();
 
@@ -25,5 +26,9 @@ router.use('/tournaments' , tournamentRefereeRouter);
 router.use('/matches' , matchRefereeRouter);
 router.use('/me' , meRefereeRouter);
 router.use('/referee-invitations' , refereeInvitationRouter);
+
+router.use('/tournaments' , tournamentRefereeRequestRouter);
+router.use('/me' , meRefereeRequestRouter);
+router.use('/referee-requests' , refereeRequestRouter);
 
 export default router;

@@ -211,11 +211,32 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 |---|---|---|
 | ALTER `match_referees` + F01/F04/F05/F06/F12 | ✅ | `d8e77d5` |
 | ระบบ migration (`npm run migrate`) | ✅ | `f7218a2` |
-| F03 ยอมแต่เตือน + `GET /tournaments/:id/referees/coverage` (F14) + ตัด BR-10 เก่า | ✅ | — |
-| ตัด F11 (แทนด้วย R02) | ⏳ รอ R01–R08 | |
-| R01–R08 ระบบคำขอ (+ `referee_change_requests`) | ⏳ | |
+| F03 ยอมแต่เตือน + `GET /tournaments/:id/referees/coverage` (F14) + ตัด BR-10 เก่า | ✅ | `07c38e0` |
+| R01–R08 ระบบคำขอ (+ migration 003 `referee_change_requests`) + ตัด F11 | ✅ | — |
 | อัปเดต `06 - Endpoint Reference` + สไลด์หน้า 3 | ⏳ | |
 | ทีม Tournaments เรียก coverage ตอน publish (§10.2) | ⏳ ต้องคุย | |
+
+### R01–R08 · คำขอเปลี่ยนแปลงกรรมการ (ตามที่ implement จริง)
+
+| # | Method | Path | ใคร | body |
+|---|---|---|---|---|
+| R01 | POST | `/referee-requests` | REF | `{ myMatchId, toTournamentRefereeId, theirMatchId? }` — มี `theirMatchId` = แลก ไม่มี = โอน |
+| R02 | POST | `/tournaments/:id/referee-requests/add-match` | ORG | `{ tournamentRefereeId, matchId }` |
+| R03 | POST | `/tournaments/:id/referee-requests/swap` | ORG | `{ refereeAId, matchAId, refereeBId, matchBId }` |
+| R04 | GET | `/me/referee-requests` | REF | → `{ incoming[], outgoing[] }` |
+| R05 | GET | `/tournaments/:id/referee-requests?status=` | ORG | `open / applied / declined / cancelled` |
+| R06 | POST | `/referee-requests/:id/accept` | REF | ฝั่งที่ตนต้องตอบ; ครบทุกฝ่าย → apply ทันที |
+| R07 | POST | `/referee-requests/:id/decline` | REF | ปิดคำขอเป็น `declined` |
+| R08 | DELETE | `/referee-requests/:id` | ผู้สร้าง | ยกเลิกคำขอที่ยัง open |
+
+กติกาที่ใช้ทุกคำขอ (`services/refereeRequest.service.ts`):
+- ทุกคนที่เกี่ยวข้องต้อง `active` (`REFEREE_NOT_ACTIVE`), แมตช์ต้อง `scheduled` และยังไม่ถึงเวลา (`MATCH_NOT_CHANGEABLE`)
+- ตารางของแต่ละคน **หลังเปลี่ยน** ต้องไม่ซ้อนเวลา (`REFEREE_TIME_CONFLICT`) — ใช้ `assertSchedulable` ตัวเดียวกับ F01/F05
+- คู่ (match_a, referee_a) มีคำขอ open ได้ทีละใบ (`REQUEST_ALREADY_OPEN`)
+- ตอน apply **เช็คทุกอย่างใหม่** กับข้อมูลปัจจุบัน ถ้าไม่ผ่านคำขอกลายเป็น `cancelled` + 409 `REQUEST_NO_LONGER_VALID` (§5.1)
+- apply เป็นทรานแซกชัน lock แถว `match_referees` (`FOR UPDATE`) และยกเลิกคำขอ open อื่นที่อ้างแมตช์เดียวกัน
+- ORG ไม่ต้องอนุมัติคำขอ REF↔REF (Q3) — เห็นผลผ่าน R05 / coverage; ยังไม่มี notification push
+- F11 ถูกตัดออก — ORG เพิ่มกรรมการเข้าแมตช์ต้องผ่าน R02 เท่านั้น; F13 (ถอดออกจากแมตช์) ยังทำได้ทันที
 
 ### F14 · `GET /tournaments/:id/referees/coverage` (ORG)
 
