@@ -15,11 +15,13 @@ import type {
   GrantAdminScopeRequest,
   SuspendUserRequest,
   AuditLogQuery,
+  ReviewExternalRefereeRequest,
 } from "../types/admin.dto";
 
 export const adminKeys = {
   tournamentRequests: ["admin", "tournamentRequests"] as const,
   teamRequests: ["admin", "teamRequests"] as const,
+  externalReferees: ["admin", "externalReferees"] as const,
   myRefereeInvitations: ["referees", "me"] as const,
   users: ["admin", "users"] as const,
   scopes: ["admin", "scopes"] as const,
@@ -73,6 +75,15 @@ export function useRefereeCoverage(tournamentId: TeamRef | undefined) {
   });
 }
 
+/** FR-RM-02 — บุคคลภายนอกที่ตอบรับแล้วและรอ Admin อนุมัติ */
+export function useExternalRefereeRequests() {
+  return useQuery({
+    queryKey: adminKeys.externalReferees,
+    queryFn: adminApi.getExternalRefereeRequests,
+    retry: retryPolicy,
+  });
+}
+
 export function useUsersForAdmin() {
   return useQuery({ queryKey: adminKeys.users, queryFn: adminApi.getUsersForAdmin, retry: retryPolicy });
 }
@@ -114,15 +125,19 @@ export function useRejectTeamRequest() {
   });
 }
 
+/** ตอบรับแล้วรายชื่อกรรมการเปลี่ยน — และถ้าเป็นบุคคลภายนอก คิวของ Admin ยาวขึ้น */
+function touchRefereeAnswer(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: adminKeys.myRefereeInvitations });
+  qc.invalidateQueries({ queryKey: adminKeys.externalReferees });
+  qc.invalidateQueries({ queryKey: ["referees"] });
+  qc.invalidateQueries({ queryKey: ["notifications"] });
+}
+
 export function useAcceptRefereeInvitation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (invitationId: TeamRef) => adminApi.acceptRefereeInvitation(invitationId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: adminKeys.myRefereeInvitations });
-      qc.invalidateQueries({ queryKey: ["referees"] });
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: () => touchRefereeAnswer(qc),
   });
 }
 
@@ -130,11 +145,7 @@ export function useDeclineRefereeInvitation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (invitationId: TeamRef) => adminApi.declineRefereeInvitation(invitationId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: adminKeys.myRefereeInvitations });
-      qc.invalidateQueries({ queryKey: ["referees"] });
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: () => touchRefereeAnswer(qc),
   });
 }
 
@@ -178,20 +189,39 @@ export function useAnswerAppointment(tournamentId: TeamRef) {
   });
 }
 
+/**
+ * ถอดกรรมการ (ทำได้ทุกเมื่อ) — คนนั้นหลุดจากแมตช์ที่ยังไม่จบ และคำเชิญหายจากกล่องของเขา
+ * จึงล้าง match/matches ของสไลซ์ 3 และคิวกรรมการภายนอกของ Admin ด้วย ไม่งั้นหน้าแมตช์
+ * ยังให้คนที่ถูกถอดกดบันทึกผลได้จนกว่าจะเปลี่ยนหน้า
+ */
 export function useRemoveReferee(tournamentId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (userId: number) => adminApi.removeReferee(tournamentId, userId),
-    onSuccess: () => touchReferees(qc, tournamentId),
+    onSuccess: () => {
+      touchReferees(qc, tournamentId);
+      qc.invalidateQueries({ queryKey: ["referees"] });
+      qc.invalidateQueries({ queryKey: adminKeys.externalReferees });
+      qc.invalidateQueries({ queryKey: ["match"] });
+      qc.invalidateQueries({ queryKey: ["matches"] });
+    },
   });
 }
 
-export function useApproveExternalReferee(tournamentId: TeamRef) {
+/**
+ * FR-RM-02 — Admin ตัดสินกรรมการภายนอก
+ * อนุมัติแล้วคนนั้นนับเป็นกรรมการของรายการ จำนวนที่ RefereePanel/SetupTrail อ่านจึงเปลี่ยน
+ */
+export function useReviewExternalReferee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { refereeId: TeamRef; approve: boolean }) =>
-      adminApi.approveExternalReferee(v.refereeId, v.approve),
-    onSuccess: () => touchReferees(qc, tournamentId),
+    mutationFn: (v: { requestId: TeamRef; input: ReviewExternalRefereeRequest }) =>
+      adminApi.reviewExternalReferee(v.requestId, v.input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.externalReferees });
+      qc.invalidateQueries({ queryKey: ["referees"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
   });
 }
 
@@ -202,6 +232,7 @@ export function useGrantAdminScope() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: adminKeys.scopes });
       qc.invalidateQueries({ queryKey: adminKeys.users });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
@@ -230,6 +261,7 @@ export function useSuspendUser() {
       qc.invalidateQueries({ queryKey: adminKeys.users });
       qc.invalidateQueries({ queryKey: ["teams"] });
       qc.invalidateQueries({ queryKey: ["team"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }

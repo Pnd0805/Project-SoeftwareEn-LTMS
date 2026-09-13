@@ -4,10 +4,8 @@
  * แปลง entity ของ store เป็น DTO ฝั่ง Admin/Referee
  * ใช้ `numOf` และ `asUser` ร่วมกับ storeBridge/teamBridge — id ตรงกันทุกสไลซ์
  *
- * ⚠️ สองอย่างที่ store ไม่มีเลย จึงคืนว่างแทนที่จะกุขึ้นมา
- *      `admin_scopes`  prototype มีแค่ `user.role === 'Admin'` ไม่มีระดับคณะ
- *      `audit_logs`    ไม่มีการบันทึกประวัติในหน่วยความจำเลย
- *    ของว่างที่ตรงไปตรงมา ดีกว่าตารางปลอมที่ทำให้คิดว่าฟีเจอร์เสร็จแล้ว
+ * ⚠️ `audit_logs` ไม่มีการบันทึกประวัติในหน่วยความจำเลย จึงคืนว่างแทนที่จะกุขึ้นมา
+ *    `admin_scopes` prototype มีแค่ `user.role === 'Admin'` ไม่มีระดับคณะ
  */
 import { getState } from '../shared/store'
 import { refsNeeded } from '../shared/rules'
@@ -15,8 +13,9 @@ import { MOCK_NOW, numOf } from './storeBridge'
 import { asUser, unknownUser, type TeamRef } from './teamBridge'
 import type {
   TournamentRequestDto, TournamentRefereeDto, RefereeCoverageDto,
-  AdminScopeDto, UserAdminViewDto, AuditLogDto, MyRefereeInvitationDto,
+  AdminScopeDto, UserAdminViewDto, AuditLogDto, MyRefereeInvitationDto, ExternalRefereeRequestDto,
 } from '../types/admin.dto'
+import type { ExternalApprovalStatus } from '../types/enums'
 
 // ── แปลง id ตัวเลขกลับเป็น id ของ store ───────────────────────────────────
 /**
@@ -70,37 +69,52 @@ export function storeTournamentRequests(): TournamentRequestDto[] {
 
 // ── กรรมการ (FR-RM-01, FR-RM-02) ──────────────────────────────────────────
 
+interface RefereeRow {
+  uid: string
+  status: 'accepted' | 'pending'
+  inviteId: string
+  approval: ExternalApprovalStatus
+}
+
 export function storeTournamentReferees(ref: TeamRef): TournamentRefereeDto[] {
   const s = getState()
   const raw = String(ref)
   const t = s.tournaments.find(x => x.id === raw) ?? s.tournaments.find(x => numOf(x.id) === Number(ref))
   if (!t) return []
+  const referees = t.referees ?? []
+  const isExternalUser = (uid: string) => !!s.users.find(u => u.id === uid)?.external
 
-  /* คนที่ตอบรับแล้วอยู่ใน t.referees · คำเชิญที่ยังค้างอยู่ใน refInvites
-     store แยกสองที่ schema รวมเป็นแถวเดียวที่มี invitation_status */
-  const accepted = (t.referees ?? []).map(uid => ({
-    uid, status: 'accepted' as const, inviteId: `acc-${uid}`,
+  /* คนที่มีสิทธิ์แล้วอยู่ใน t.referees · คำเชิญที่ยังค้าง และบุคคลภายนอกที่ตอบรับแล้ว
+     แต่ยังไม่ผ่าน Admin อยู่ใน refInvites — schema รวมเป็นแถวเดียวที่มีทั้งสองสถานะ */
+  const active: RefereeRow[] = referees.map(uid => ({
+    uid, status: 'accepted', inviteId: `acc-${uid}`,
+    approval: isExternalUser(uid) ? 'approved' : 'not_required',
   }))
-  const pending = s.refInvites
-    .filter(i => i.tour === t.id && i.status === 'pending')
-    .map(i => ({ uid: i.user, status: 'pending' as const, inviteId: i.id }))
+  const waiting: RefereeRow[] = s.refInvites
+    .filter(i => i.tour === t.id && !referees.includes(i.user)
+      && (i.status === 'pending' || (i.status === 'accepted' && !!i.external && i.approval !== 'approved')))
+    .map(i => ({
+      uid: i.user,
+      status: i.status === 'pending' ? 'pending' : 'accepted',
+      inviteId: i.id,
+      approval: i.external || isExternalUser(i.user) ? (i.approval ?? 'pending') : 'not_required',
+    }))
 
-  return [...accepted, ...pending].map(r => ({
+  return [...active, ...waiting].map(r => ({
     id: numOf(r.inviteId),
     tournamentId: numOf(t.id),
     user: asUser(s, r.uid) ?? unknownUser,
     invitedBy: asUser(s, t.organizer) ?? unknownUser,
     invitationStatus: r.status,
-    /* prototype ไม่มีแนวคิดกรรมการภายนอก — ทุกคนเป็นนิสิตในระบบ */
-    isExternal: false,
-    externalApprovalStatus: 'not_required' as const,
+    isExternal: r.approval !== 'not_required',
+    externalApprovalStatus: r.approval,
     approvedBy: null,
     approvedAt: null,
     createdAt: MOCK_NOW,
     removedAt: null,
     removedBy: null,
     /* FR-RM-01 + FR-RM-02: ตอบรับแล้ว และถ้าเป็นคนนอกต้องอนุมัติแล้วด้วย */
-    isActive: r.status === 'accepted',
+    isActive: r.status === 'accepted' && (r.approval === 'not_required' || r.approval === 'approved'),
   }))
 }
 
@@ -125,6 +139,27 @@ export function storeRefereeCoverage(ref: TeamRef): RefereeCoverageDto | null {
   }
 }
 
+/**
+ * FR-RM-02 — บุคคลภายนอกที่ตอบรับแล้วและรอ Admin
+ * id ของคำขอคือ `numOf(refInvite.id)` · Admin ตัดสินผ่าน `writeReviewExternalReferee`
+ */
+export function storeExternalRefereeRequests(): ExternalRefereeRequestDto[] {
+  const s = getState()
+  return s.refInvites
+    .filter(i => i.external && i.status === 'accepted' && i.approval === 'pending')
+    .map(i => {
+      const t = s.tournaments.find(x => x.id === i.tour)
+      return {
+        id: numOf(i.id),
+        tournament: { id: t ? numOf(t.id) : 0, name: t?.name ?? '—' },
+        referee: asUser(s, i.user) ?? unknownUser,
+        invitedBy: t ? asUser(s, t.organizer) ?? unknownUser : unknownUser,
+        status: 'pending' as const,
+        createdAt: MOCK_NOW,
+      }
+    })
+}
+
 // ── ผู้ใช้ในมุมของ Admin (FR-UM-05) ───────────────────────────────────────
 
 export function storeUsersForAdmin(): UserAdminViewDto[] {
@@ -139,7 +174,7 @@ export function storeUsersForAdmin(): UserAdminViewDto[] {
   return s.users.map(u => ({
     user: { id: numOf(u.id), fullName: u.name, avatarUrl: null },
     email: u.email,
-    userType: u.role === 'Admin' ? 'staff' : 'student',
+    userType: u.external ? 'external' : u.role === 'Admin' ? 'staff' : 'student',
     facultyName: u.faculty || null,
     isSuspended: !!u.suspended,
     suspendedReason: u.suspendedReason ?? null,
@@ -188,9 +223,8 @@ export function storeMyRefereeInvitations(): MyRefereeInvitationDto[] {
           sportTypeId: 1,
           eventStartDate: t ? t.date : MOCK_NOW,
         },
-        isExternal: false,
+        isExternal: !!i.external,
         createdAt: MOCK_NOW,
       }
     })
 }
-

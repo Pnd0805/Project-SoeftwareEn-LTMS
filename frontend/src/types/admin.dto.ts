@@ -218,3 +218,24 @@ export interface MyRefereeInvitationDto {
   createdAt: string;
 }
 
+// ══════════════ คำขอกรรมการภายนอก — FR-RM-02 ══════════════
+
+/**
+ * บุคคลภายนอกที่ตอบรับการแต่งตั้งแล้ว รอ Admin อนุมัติก่อนนับเป็นกรรมการของรายการ
+ * SDS รวมไว้ในคิว GET /admin/requests — origin/backend ยังไม่มี route นี้
+ */
+export interface ExternalRefereeRequestDto {
+  id: number;
+  tournament: { id: number; name: string };
+  referee: UserRefDto;
+  invitedBy: UserRefDto;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
+/** ไม่อนุมัติต้องระบุเหตุผล (SDS 7.4 — ทุกการปฏิเสธต้องระบุเหตุผล) */
+export interface ReviewExternalRefereeRequest {
+  approve: boolean;
+  reason?: string;
+}
+

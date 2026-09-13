@@ -15,8 +15,8 @@
  * `viewer.roles` มาจาก server: มันรู้อยู่แล้วว่าเราเกี่ยวข้องกับแมตช์นี้ในฐานะอะไร
  * ดีกว่าให้ frontend เดาเอาจาก roster ซึ่งต้องโหลดทีมทุกทีมมาไล่ดู
  *
- * กล่อง "คำเชิญเป็นกรรมการ" เชื่อมกับ GET /me/referee-invitations และมี fallback
- * จาก store สำหรับข้อมูลเดิม
+ * กล่อง "คำเชิญเป็นกรรมการ" อ่านจาก GET /me/referee-invitations อย่างเดียว
+ * (route มีใน backend แล้ว จึงไม่มี fallback จาก store)
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -26,17 +26,15 @@ import { Modal } from '../../components/kit/Modal'
 import { TeamChipView, TeamLinkView } from '../../components/kit/chips'
 import { useMyMatches } from '../../hooks/useMatch'
 import {
-  useAnswerAppointment, useMyRefereeInvitations, useAcceptRefereeInvitation, useDeclineRefereeInvitation,
+  useMyRefereeInvitations, useAcceptRefereeInvitation, useDeclineRefereeInvitation,
 } from '../../hooks/useAdmin'
-import { numOf } from '../../mocks/storeBridge'
-import { useLtms } from '../../shared/store'
-import { me, tour, user } from '../../shared/selectors'
 import { fmtDate } from '../../shared/rules'
 import {
   REF_BUCKETS, isOpen, matchStateOf, refBucketOf, scoreText, toTeamView,
   type RefBucket,
 } from '../match/matchView'
 import type { MatchListItemDto } from '../../types/match.dto'
+import type { MyRefereeInvitationDto } from '../../types/admin.dto'
 
 function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
   return (
@@ -147,92 +145,99 @@ function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void
 }
 
 /**
- * คำเชิญหนึ่งใบ — รองรับทั้ง invitationId จาก API (/me/referee-invitations) และแบบ legacy store
+ * คำเชิญหนึ่งใบ — ตอบผ่าน POST /referee-invitations/:id/accept | /decline
+ * (decline ตอบ 204 ไม่มี body) · ผลลัพธ์ส่งกลับให้ผู้เรียกแสดง เพราะพอตอบแล้วแถวนี้
+ * หายจากรายการทันทีหลัง invalidate ข้อความสำเร็จจึงอยู่ในแถวไม่ได้
  */
-function AppointmentRow({ inviteId, tourId }: { inviteId: number | string; tourId?: string }) {
-  const legacyAnswer = useAnswerAppointment(tourId ?? '')
-  const acceptMutation = useAcceptRefereeInvitation()
-  const declineMutation = useDeclineRefereeInvitation()
-
-  const isPending = tourId ? legacyAnswer.isPending : (acceptMutation.isPending || declineMutation.isPending)
-  const isError = tourId ? legacyAnswer.isError : (acceptMutation.isError || declineMutation.isError)
-  const errorObj = tourId ? legacyAnswer.error : (acceptMutation.error || declineMutation.error)
-
-  const send = (accept: boolean) => {
-    if (tourId) {
-      legacyAnswer.mutate({ appointmentId: typeof inviteId === 'number' ? inviteId : numOf(inviteId), input: { accept } })
-    } else {
-      if (accept) {
-        acceptMutation.mutate(inviteId)
-      } else {
-        declineMutation.mutate(inviteId)
-      }
-    }
-  }
+function AppointmentRow({ invite, onDone }: {
+  invite: MyRefereeInvitationDto
+  onDone: (notice: { kind: 'ok' | 'warn'; text: string }) => void
+}) {
+  const accept = useAcceptRefereeInvitation()
+  const decline = useDeclineRefereeInvitation()
+  const pending = accept.isPending || decline.isPending
+  const failed = accept.error ?? decline.error
 
   return (
     <>
-      {isError ? (
-        <Banner kind="crit"><b>ตอบคำเชิญไม่สำเร็จ</b> {(errorObj as Error)?.message || 'เกิดข้อผิดพลาด'}</Banner>
+      {failed ? (
+        <Banner kind="crit"><b>ตอบคำเชิญไม่สำเร็จ</b> {(failed as Error).message}</Banner>
       ) : null}
       <div className="hstack">
-        <button className="btn" type="button" disabled={isPending} onClick={() => send(false)}>Decline</button>
-        <button className="btn primary" type="button" disabled={isPending} onClick={() => send(true)}>Accept appointment</button>
+        <button className="btn" type="button" disabled={pending}
+          onClick={() => decline.mutate(invite.id, {
+            onSuccess: () => onDone({ kind: 'warn', text: `Declined the appointment for ${invite.tournament.name}.` }),
+          })}>
+          {decline.isPending ? 'Declining…' : 'Decline'}
+        </button>
+        <button className="btn primary" type="button" disabled={pending}
+          onClick={() => accept.mutate(invite.id, {
+            onSuccess: res => onDone({
+              kind: 'ok',
+              text: res?.requiresAdminApproval
+                ? `Accepted — an admin still has to approve you as an external referee for ${invite.tournament.name}.`
+                : `Accepted — you can now officiate ${invite.tournament.name}.`,
+            }),
+          })}>
+          {accept.isPending ? 'Accepting…' : 'Accept appointment'}
+        </button>
       </div>
     </>
   )
 }
 
 /**
- * คำเชิญเป็นกรรมการ — เชื่อมกับ GET /me/referee-invitations และมี fallback จาก store
+ * คำเชิญเป็นกรรมการของฉัน — GET /me/referee-invitations
+ *
+ * route นี้มีใน backend แล้ว จึงไม่ถอยไปอ่าน store (โหมด mock ตัว API อ่าน store ให้เอง)
+ * 401/403 เป็นเรื่องสิทธิ์ ไม่ใช่ "ไม่มีคำเชิญ" · ถ้าไม่มีคำเชิญเลยจะไม่แสดงกล่อง เพราะ
+ * หน้านี้เปิดโดยทุกคน กล่องว่างจะรกหน้าคนที่ไม่เคยถูกเชิญ
  */
 function RefereeInvites() {
-  const s = useLtms()
-  const u = me(s)
-  const { data: myInvitesData } = useMyRefereeInvitations()
-  const apiInvites = myInvitesData?.items ?? []
-  const storeInvites = u ? s.refInvites.filter(i => i.user === u.id && i.status === 'pending') : []
+  const { data, isPending, isError, error, refetch } = useMyRefereeInvitations()
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
+  const invites = data?.items ?? []
+  const status = (error as { status?: number } | null)?.status
 
-  if (!apiInvites.length && !storeInvites.length) return null
+  if (isPending) return <div className="sub">Checking for referee appointments…</div>
+
+  if (isError) {
+    return status === 401 || status === 403 ? (
+      <Banner kind="warn">
+        <b>Referee appointments aren't available to this account.</b>{' '}
+        {status === 401 ? 'Sign in again to see them.' : 'Your account does not have access to them.'}
+      </Banner>
+    ) : (
+      <Banner kind="crit">
+        <span className="grow"><b>Couldn't load your referee appointments.</b> {(error as Error).message}</span>
+        <button className="btn" type="button" onClick={() => void refetch()}>Try again</button>
+      </Banner>
+    )
+  }
+
+  if (!invites.length && !notice) return null
 
   return (
     <Panel>
-      <span className="tag"><em>//</em> Appointments waiting on your answer</span>
-      {apiInvites.length > 0 ? (
-        apiInvites.map(inv => (
-          <div className="vstack" style={{ gap: 9 }} key={inv.id}>
-            <div className="hstack">
-              <b>{inv.tournament.name}</b>
-              <Badge kind="neutral">{inv.isExternal ? 'External' : 'Referee'}</Badge>
-              <span className="sub">Invited · {fmtDate(inv.tournament.eventStartDate || inv.createdAt)}</span>
-            </div>
-            <div className="sub">
-              Officiating is not a role and not a permission — accepting makes you eligible for this
-              tournament only, and the organizer still assigns you match by match.
-            </div>
-            <AppointmentRow inviteId={inv.id} />
+      <span className="tag"><em>//</em> Appointments waiting on your answer · {invites.length}</span>
+      {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+      {invites.map(inv => (
+        <div className="vstack" style={{ gap: 9 }} key={inv.id}>
+          <div className="hstack">
+            <b>{inv.tournament.name}</b>
+            {inv.isExternal
+              ? <Badge kind="warn">External — needs admin approval</Badge>
+              : <Badge kind="neutral">Referee</Badge>}
+            <span className="sub">Event {fmtDate(inv.tournament.eventStartDate || inv.createdAt)} · invited {fmtDate(inv.createdAt)}</span>
           </div>
-        ))
-      ) : (
-        storeInvites.map(i => {
-          const tr = tour(s, i.tour)
-          if (!tr) return null
-          return (
-            <div className="vstack" style={{ gap: 9 }} key={i.id}>
-              <div className="hstack">
-                <b>{tr.name}</b>
-                <Badge kind="neutral">{tr.channel}</Badge>
-                <span className="sub">{user(s, tr.organizer)?.name} invited you · {tr.venue} · {tr.date}</span>
-              </div>
-              <div className="sub">
-                Officiating is not a role and not a permission — accepting makes you eligible for this
-                tournament only, and the organizer still assigns you match by match.
-              </div>
-              <AppointmentRow inviteId={i.id} tourId={i.tour} />
-            </div>
-          )
-        })
-      )}
+          <div className="sub">
+            Officiating is not a role and not a permission — accepting makes you eligible for this
+            tournament only, and the organizer still assigns you match by match.
+          </div>
+          <AppointmentRow invite={inv} onDone={setNotice} />
+        </div>
+      ))}
+      {!invites.length ? <span className="sub">No appointments left to answer.</span> : null}
     </Panel>
   )
 }
