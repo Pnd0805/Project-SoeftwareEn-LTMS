@@ -213,7 +213,8 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 | ระบบ migration (`npm run migrate`) | ✅ | `f7218a2` |
 | F03 ยอมแต่เตือน + `GET /tournaments/:id/referees/coverage` (F14) + ตัด BR-10 เก่า | ✅ | `07c38e0` |
 | FR01–FR08 ระบบคำขอ (+ migration 003 `referee_change_requests`) + ตัด F11 | ✅ | — |
-| อัปเดต `06 - Endpoint Reference` + สไลด์หน้า 3 | ⏳ | |
+| อัปเดต `06 - Endpoint Reference` | ✅ | `1088d31` |
+| กรรมการภายนอก: migration 004 + ก็อป 1 ปี + F15 docs + AR01–AR03 (ปิด F-10/13/14/15 ใน GUIDE/10) | ✅ | — |
 | ทีม Tournaments เรียก coverage ตอน publish (§10.2) | ⏳ ต้องคุย | |
 
 ### FR01–FR08 · คำขอเปลี่ยนแปลงกรรมการ (ตามที่ implement จริง)

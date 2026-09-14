@@ -8,6 +8,16 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findById: vi.fn(),
   accept: vi.fn(),
   decline: vi.fn(),
+  findRecentApproval: vi.fn(),
+}));
+
+// F04/F05 ดึงแมตช์ที่แนบมากับคำเชิญ — เทสชุดนี้ไม่ได้แนบแมตช์ จึงคืนว่างเสมอ
+vi.mock('../../repositories/matchReferee.repo.js', () => ({
+  findByTournamentReferees: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../repositories/match.repo.js', () => ({
+  findByIdsInTournament: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../repositories/user.repo.js', () => ({
@@ -31,12 +41,13 @@ const mockedUserRepo = vi.mocked(UserRepo);
 const mockedToTournamentRefereeDto = vi.mocked(toTournamentRefereeDto);
 const mockedToMyRefereeInvitationDto = vi.mocked(toMyRefereeInvitationDto);
 
-// NOTE: InviteRefereeInput's exact shape lives in schemas/referee.schema.ts,
-// which wasn't provided. This fixture only includes the fields
-// referee.service.ts actually reads off it (userId, isExternal).
+// InviteRefereeInput = { userId, isExternal, matchIds } — matchIds ว่าง = เชิญเข้า pool
 function makeInviteInput(overrides: Record<string, unknown> = {}) {
-  return { userId: 8, isExternal: false, ...overrides };
+  return { userId: 8, isExternal: false, matchIds: [] as number[], ...overrides };
 }
+
+// AcceptInvitationInput = { matchIds, docs? }
+const acceptNone = { matchIds: [] as number[] };
 
 function makeUser(overrides: Partial<UserRow> = {}): UserRow {
   return {
@@ -73,8 +84,10 @@ function makeInvitation(overrides: Partial<TournamentRefereeRow> = {}): Tourname
     invitation_status: 'pending',
     is_external: 0,
     external_approval_status: 'not_required',
+    external_verification_docs: null,
     approved_by: null,
     approved_at: null,
+    external_rejection_reason: null,
     created_at: new Date(),
     removed_at: null,
     removed_by: null,
@@ -133,7 +146,7 @@ describe('inviteReferee', () => {
     const result = await refereeService.inviteReferee(20, 5, makeInviteInput());
 
     expect(mockedRefRepo.create).toHaveBeenCalled();
-    expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false });
+    expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false, matchIds: [] });
   });
 
   it('allows re-inviting when the latest active invitation was rejected', async () => {
@@ -159,8 +172,9 @@ describe('inviteReferee', () => {
       userId: 8,
       invitedBy: 5,
       isExternal: true,
+      matchIds: [],
     });
-    expect(result).toEqual({ id: 100, userId: 8, invitationStatus: 'pending', isExternal: true });
+    expect(result).toEqual({ id: 100, userId: 8, invitationStatus: 'pending', isExternal: true, matchIds: [] });
   });
 });
 
@@ -181,6 +195,7 @@ describe('listTournamentReferees', () => {
         { id: 2, invitationStatus: 'pending' },
       ],
       acceptedCount: 1,
+      effectiveCount: 1,
     });
   });
 
@@ -199,7 +214,7 @@ describe('listTournamentReferees', () => {
 
     const result = await refereeService.listTournamentReferees(20);
 
-    expect(result).toEqual({ items: [], acceptedCount: 0 });
+    expect(result).toEqual({ items: [], acceptedCount: 0, effectiveCount: 0 });
   });
 });
 
@@ -214,6 +229,7 @@ describe('listMyRefereeInvitations', () => {
     const result = await refereeService.listMyRefereeInvitations(8);
 
     expect(mockedRefRepo.findPendingInvitationsByUser).toHaveBeenCalledWith(8);
+    expect(mockedToMyRefereeInvitationDto).toHaveBeenCalledWith(rows[0], []);
     expect(result).toEqual({ items: [{ id: 1 }, { id: 2 }] });
   });
 
@@ -230,7 +246,7 @@ describe('acceptRefereeInvitation', () => {
   it('throws INVITATION_NOT_FOUND when the invitation does not exist', async () => {
     mockedRefRepo.findById.mockResolvedValue(null);
 
-    await expect(refereeService.acceptRefereeInvitation(1, 8)).rejects.toMatchObject({
+    await expect(refereeService.acceptRefereeInvitation(1, 8, acceptNone)).rejects.toMatchObject({
       status: 404,
       code: 'INVITATION_NOT_FOUND',
     });
@@ -239,7 +255,7 @@ describe('acceptRefereeInvitation', () => {
   it('throws INVITATION_NOT_FOUND when the invitation has been removed', async () => {
     mockedRefRepo.findById.mockResolvedValue(makeInvitation({ removed_at: new Date() }));
 
-    await expect(refereeService.acceptRefereeInvitation(1, 8)).rejects.toMatchObject({
+    await expect(refereeService.acceptRefereeInvitation(1, 8, acceptNone)).rejects.toMatchObject({
       status: 404,
       code: 'INVITATION_NOT_FOUND',
     });
@@ -248,7 +264,7 @@ describe('acceptRefereeInvitation', () => {
   it('throws INVITATION_NOT_FOUND when the invitation belongs to a different user', async () => {
     mockedRefRepo.findById.mockResolvedValue(makeInvitation({ user_id: 999 }));
 
-    await expect(refereeService.acceptRefereeInvitation(1, 8)).rejects.toMatchObject({
+    await expect(refereeService.acceptRefereeInvitation(1, 8, acceptNone)).rejects.toMatchObject({
       status: 404,
       code: 'INVITATION_NOT_FOUND',
     });
@@ -257,7 +273,7 @@ describe('acceptRefereeInvitation', () => {
   it('throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending', async () => {
     mockedRefRepo.findById.mockResolvedValue(makeInvitation({ invitation_status: 'accepted' }));
 
-    await expect(refereeService.acceptRefereeInvitation(1, 8)).rejects.toMatchObject({
+    await expect(refereeService.acceptRefereeInvitation(1, 8, acceptNone)).rejects.toMatchObject({
       status: 409,
       code: 'INVITATION_ALREADY_ANSWERED',
     });
@@ -268,7 +284,7 @@ describe('acceptRefereeInvitation', () => {
     mockedRefRepo.findById.mockResolvedValue(makeInvitation({ invitation_status: 'pending' }));
     mockedRefRepo.accept.mockResolvedValue(false as any);
 
-    await expect(refereeService.acceptRefereeInvitation(1, 8)).rejects.toMatchObject({
+    await expect(refereeService.acceptRefereeInvitation(1, 8, acceptNone)).rejects.toMatchObject({
       status: 409,
       code: 'INVITATION_ALREADY_ANSWERED',
     });
@@ -278,12 +294,34 @@ describe('acceptRefereeInvitation', () => {
     mockedRefRepo.findById.mockResolvedValue(
       makeInvitation({ invitation_status: 'pending', is_external: 1 }),
     );
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);
     mockedRefRepo.accept.mockResolvedValue(true as any);
 
-    const result = await refereeService.acceptRefereeInvitation(1, 8);
+    const result = await refereeService.acceptRefereeInvitation(1, 8, { matchIds: [], docs: ['id-card.jpg'] });
 
-    expect(mockedRefRepo.accept).toHaveBeenCalledWith(1);
-    expect(result).toEqual({ id: 1, invitationStatus: 'accepted', requiresAdminApproval: true });
+    expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
+      status: 'pending', approvedBy: null, approvedAt: null, docs: ['id-card.jpg'],
+    });
+    expect(result).toEqual({
+      id: 1, invitationStatus: 'accepted', requiresAdminApproval: true,
+      acceptedMatchIds: [], declinedMatchIds: [],
+    });
+  });
+
+  it('copies a prior approval (within 1 year) so the external referee skips admin review', async () => {
+    mockedRefRepo.findById.mockResolvedValue(
+      makeInvitation({ invitation_status: 'pending', is_external: 1 }),
+    );
+    const approvedAt = new Date('2026-01-01T00:00:00Z');
+    mockedRefRepo.findRecentApproval.mockResolvedValue({ tournament_referee_id: 7, approved_by: 3, approved_at: approvedAt });
+    mockedRefRepo.accept.mockResolvedValue(true as any);
+
+    const result = await refereeService.acceptRefereeInvitation(1, 8, acceptNone);
+
+    expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
+      status: 'approved', approvedBy: 3, approvedAt, docs: null,
+    });
+    expect(result.requiresAdminApproval).toBe(false);
   });
 
   it('accepts a pending invitation without admin approval for internal referees', async () => {
@@ -292,9 +330,16 @@ describe('acceptRefereeInvitation', () => {
     );
     mockedRefRepo.accept.mockResolvedValue(true as any);
 
-    const result = await refereeService.acceptRefereeInvitation(1, 8);
+    const result = await refereeService.acceptRefereeInvitation(1, 8, acceptNone);
 
-    expect(result).toEqual({ id: 1, invitationStatus: 'accepted', requiresAdminApproval: false });
+    expect(mockedRefRepo.findRecentApproval).not.toHaveBeenCalled();
+    expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
+      status: 'not_required', approvedBy: null, approvedAt: null, docs: null,
+    });
+    expect(result).toEqual({
+      id: 1, invitationStatus: 'accepted', requiresAdminApproval: false,
+      acceptedMatchIds: [], declinedMatchIds: [],
+    });
   });
 });
 

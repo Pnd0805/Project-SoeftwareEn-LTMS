@@ -1,4 +1,4 @@
-# 06 — Endpoint Reference (MVP 101 endpoint)
+# 06 — Endpoint Reference (MVP 105 endpoint)
 
 > **เปิดไฟล์นี้ค้างไว้ตอนเขียนโค้ด** — รวมทุกอย่างที่ต้องรู้ต่อ 1 endpoint ไว้ในบรรทัดเดียว
 > ทุก path ละ prefix `/api/v1` ไว้ → `POST /teams` = `POST /api/v1/teams`
@@ -121,7 +121,7 @@
 
 ---
 
-# 6. Referees — 17 endpoint
+# 6. Referees — 21 endpoint
 
 > ปรับตามมติทีม 2026-09-13 (`GUIDE/11`): เชิญพร้อมแมตช์ · ref เลือกรับบางแมตช์ · เปลี่ยนภายหลังผ่าน "คำขอ" (FR01–FR08)
 > BR-10 = **ทุกแมตช์มีกรรมการครบ** (ดู F14) ไม่ใช่นับหัวรวม · F11 ถูกตัดออก ใช้ FR02 แทน
@@ -138,8 +138,9 @@
 | F02 | `GET /tournaments/:id/referees` | ORG | กรรมการทั้งหมด (แถวล่าสุดต่อคน ยังไม่ถูกถอด) + `status` รวม | — | `{ items: [{id, user, invitationStatus, isExternal, externalApprovalStatus, status}], acceptedCount, effectiveCount }` |
 | F03 | `DELETE /tournaments/:id/referees/:rid` | ORG | ถอดกรรมการ · soft delete ทุกแถวของ user นั้น · **ถอดได้เสมอ** แต่บอกว่าแมตช์ไหนจะขาดคน (Q4) | — | **200** `{ removed:true, uncoveredMatches:[matchId] }` / **404** `REFEREE_NOT_FOUND` |
 | F04 | `GET /me/referee-invitations` | Auth | คำเชิญที่รอฉันตอบ พร้อมแมตช์ที่เสนอมา | — | `{ items: [{id, tournament, isExternal, matches:[{id, roundNumber, scheduledTime, scheduledEndTime, venue, mode, matchStatus, assignmentStatus}], createdAt}] }` |
-| F05 | `POST /referee-invitations/:id/accept` | Auth | ตอบรับ + **เลือกรับบางแมตช์ได้** (Q1) · เลือกได้เฉพาะที่เสนอมา · `[]`/ไม่ส่ง body = เข้าทัวร์แบบ pool · เช็คซ้อนเวลาอีกรอบ · คนนอก → `pending_admin` | `matchIds?` | `{ id, invitationStatus:'accepted', requiresAdminApproval, acceptedMatchIds, declinedMatchIds }` / **400** `MATCH_NOT_IN_INVITATION` / **409** `INVITATION_ALREADY_ANSWERED`, `REFEREE_TIME_CONFLICT` |
+| F05 | `POST /referee-invitations/:id/accept` | Auth | ตอบรับ + **เลือกรับบางแมตช์ได้** (Q1) · เลือกได้เฉพาะที่เสนอมา · `[]`/ไม่ส่ง body = เข้าทัวร์แบบ pool · เช็คซ้อนเวลาอีกรอบ · คนนอก → `pending_admin` **เว้นแต่เคยผ่าน admin ภายใน 1 ปี (ทัวร์ไหนก็ได้) → ก็อปผลมา active ทันที** | `matchIds?, docs?` | `{ id, invitationStatus:'accepted', requiresAdminApproval, acceptedMatchIds, declinedMatchIds }` / **400** `MATCH_NOT_IN_INVITATION` / **409** `INVITATION_ALREADY_ANSWERED`, `REFEREE_TIME_CONFLICT` |
 | F06 | `POST /referee-invitations/:id/decline` | Auth | ปฏิเสธทั้งคำเชิญ (แมตช์ที่เสนอมา → `declined`) | — | **204** |
+| F15 | `PUT /referee-invitations/:id/docs` | Auth | คนนอกส่ง/แก้เอกสารยืนยันตัวตนระหว่าง `pending_admin` (ลืมแนบตอน F05 หรือ admin ขอใหม่) | `docs: string[]` (S3 key 1–5) | `{ id, docsCount }` / **409** `DOCS_NOT_EXPECTED` |
 | F12 | `GET /matches/:id/referees` | — | กรรมการที่คุมแมตช์นี้ = รับแมตช์แล้ว **และ** `status === 'active'` (คนนอกที่ admin ยังไม่อนุมัติไม่โชว์) | — | `{ items: [{tournamentRefereeId, referee}] }` |
 | F13 | `DELETE /matches/:id/referees/:rid` | ORG | ถอดออกจากแมตช์นี้ทันที (ไม่ต้องขอ) · hard delete | — | **204** / **404** `REFEREE_NOT_ASSIGNED` |
 | F14 | `GET /tournaments/:id/referees/coverage` | ORG | **BR-10 ใหม่** — แมตช์ที่ยังขาดกรรมการ (`needed` = 2 ถ้า on-site + กีฬามี stat, อื่น 1) + กรรมการที่รับแมตช์ซ้อนเวลา (Q6 เตือน ไม่ block) · C13 publish ควรเรียกตัวนี้ | — | `{ matchesTotal, matchesCovered, uncovered:[{matchId, roundNumber, scheduledTime, needed, assigned}], conflicts:[{tournamentRefereeId, userId, matchIds:[a,b]}] }` |
@@ -160,6 +161,14 @@
 | FR06 | `POST /referee-requests/:id/accept` | Auth | ตอบรับฝั่งของตน · ครบทุกฝ่าย → apply ทันที (ทรานแซกชัน + ยกเลิกคำขอ open อื่นบนแมตช์เดียวกัน) | — | RequestDto (`status:'applied'` หรือยัง `open` ถ้ารออีกฝ่าย) / **403** `NOT_YOUR_REQUEST` / **409** `REQUEST_CLOSED`, `REQUEST_NO_LONGER_VALID` |
 | FR07 | `POST /referee-requests/:id/decline` | Auth | ปฏิเสธ → คำขอปิดเป็น `declined` | — | RequestDto |
 | FR08 | `DELETE /referee-requests/:id` | ผู้สร้าง | ยกเลิกคำขอที่ยัง open | — | **204** / **403** `NOT_YOUR_REQUEST` / **409** `REQUEST_CLOSED` |
+
+## 6.3 admin ตรวจตัวตนกรรมการภายนอก (`requireAdmin_U` — university-wide เหมือน T16–T18)
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| AR01 | `GET /admin/referee-requests` | ADM-u | คิวคนนอกที่ accept แล้วรอตรวจ พร้อม `docs` (S3 key) | — | `{ items:[{id, user:{…, email}, tournament:{id,name}, docs[], submittedAt}] }` |
+| AR02 | `POST /admin/referee-requests/:id/approve` | ADM-u | อนุมัติ · **ล้าง docs ทิ้งทันที (PDPA)** · ผลใช้ก็อปได้ 1 ปี | — | `{ id, externalApprovalStatus:'approved' }` / **409** `NOT_PENDING_REVIEW` |
+| AR03 | `POST /admin/referee-requests/:id/reject` | ADM-u | ปฏิเสธเอกสาร (`pending`) **หรือถอนอนุมัติ** (`approved` · F-10) · ถอน = ล้างทุกแถว approved ของคนนั้นทุกทัวร์ · แมตช์ที่รับไว้ยังอยู่แต่ไม่นับ → โผล่ใน F14 `uncovered` | `reason` (บังคับ) | `{ id, externalApprovalStatus:'rejected', reason, revokedRows }` |
 
 **RequestDto** = `{ id, tournamentId, type:'org_add_match'|'ref_transfer'|'ref_swap'|'org_swap', requestedBy, refereeA:{tournamentRefereeId, user, status}, refereeB|null, matchA:{id, roundNumber, scheduledTime, scheduledEndTime}, matchB|null, status:'open'|'applied'|'declined'|'cancelled', createdAt, resolvedAt }`
 — `refereeX.status` = `not_required` · `pending` · `accepted` · `declined` (ฝั่งนั้นต้องตอบไหม/ตอบว่าอะไร)

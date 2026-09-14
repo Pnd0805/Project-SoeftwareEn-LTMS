@@ -103,7 +103,7 @@ describe('referee.controller listMyInvitations()', () => {
 
 describe('referee.controller accept()', () => {
   it('parses the invitation id and accepts it, responds 200', async () => {
-    const req = { params: { id: '9' }, user: { user_id: 1 } } as unknown as Request;
+    const req = { params: { id: '9' }, user: { user_id: 1 }, body: { matchIds: [4] } } as unknown as Request;
     const res = makeRes();
     mockedParseId.mockReturnValue(9);
     const serviceResult = { id: 9, status: 'accepted' };
@@ -112,7 +112,7 @@ describe('referee.controller accept()', () => {
     await accept(req, res);
 
     expect(mockedParseId).toHaveBeenCalledWith('9', 'รหัสคำเชิญ');
-    expect(mockedRefereeService.acceptRefereeInvitation).toHaveBeenCalledWith(9, 1);
+    expect(mockedRefereeService.acceptRefereeInvitation).toHaveBeenCalledWith(9, 1, { matchIds: [4] });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(serviceResult);
   });

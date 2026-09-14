@@ -99,11 +99,19 @@ export async function findById(tournamentRefereeId : number): Promise<Tournament
     return rows[0] ?? null;
 }
 
+/** ผลการตรวจคนนอกที่จะเขียนลงแถวตอน accept — service ตัดสิน repo แค่เขียน */
+export type ExternalApproval = {
+    status : TournamentRefereeRow['external_approval_status'];
+    approvedBy : number | null;
+    approvedAt : Date | null;
+    docs : string[] | null;
+};
+
 /**
- * F05 — ตอบรับ + เลือกแมตช์ ในทรานแซกชันเดียว
+ * F05 — ตอบรับ + เลือกแมตช์ + บันทึกผลตรวจคนนอก ในทรานแซกชันเดียว
  * คืน true ถ้าอัปเดตได้จริง (false = มีคนตอบไปก่อนแล้ว → ไม่แตะ match_referees)
  */
-export async function accept(tournamentRefereeId : number, acceptedMatchIds : number[]): Promise<boolean>{
+export async function accept(tournamentRefereeId : number, acceptedMatchIds : number[], approval : ExternalApproval): Promise<boolean>{
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -111,9 +119,10 @@ export async function accept(tournamentRefereeId : number, acceptedMatchIds : nu
         const [result] = await conn.query<ResultSetHeader>(
             `UPDATE tournament_referees
              SET invitation_status = 'accepted',
-                 external_approval_status = CASE WHEN is_external = 1 THEN 'pending' ELSE 'not_required' END
+                 external_approval_status = ?, approved_by = ?, approved_at = ?, external_verification_docs = ?
              WHERE tournament_referee_id = ? AND invitation_status = 'pending' AND removed_at IS NULL`,
-            [tournamentRefereeId]);
+            [approval.status, approval.approvedBy, approval.approvedAt,
+             approval.docs ? JSON.stringify(approval.docs) : null, tournamentRefereeId]);
 
         if(result.affectedRows !== 1){
             await conn.rollback();
@@ -130,6 +139,82 @@ export async function accept(tournamentRefereeId : number, acceptedMatchIds : nu
     } finally {
         conn.release();
     }
+}
+
+/**
+ * ผล approve ล่าสุดของ user คนนี้จากทัวร์ไหนก็ได้ภายใน 1 ปี — ใช้ "ก็อป" มาแถวใหม่ ไม่ต้องส่งเอกสารซ้ำ
+ * (GUIDE/10 §8: เลือกแบบนี้แทนการย้ายไป users เพื่อไม่แตะ schema ข้ามทีม)
+ */
+export async function findRecentApproval(userId : number)
+        : Promise<Pick<TournamentRefereeRow, 'tournament_referee_id' | 'approved_by' | 'approved_at'> | null>{
+    const [rows] = await pool.query<(Pick<TournamentRefereeRow, 'tournament_referee_id' | 'approved_by' | 'approved_at'> & RowDataPacket)[]>(
+        `SELECT tournament_referee_id, approved_by, approved_at FROM tournament_referees
+         WHERE user_id = ? AND is_external = 1 AND external_approval_status = 'approved'
+           AND approved_at > DATE_SUB(NOW(), INTERVAL 1 YEAR)
+         ORDER BY approved_at DESC LIMIT 1`, [userId]);
+    return rows[0] ?? null;
+}
+
+/** F15 — ref ส่ง/แก้เอกสารระหว่างรอ admin (เฉพาะแถวที่ยัง pending) */
+export async function updateDocs(tournamentRefereeId : number, docs : string[]): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournament_referees SET external_verification_docs = ?
+         WHERE tournament_referee_id = ? AND external_approval_status = 'pending' AND removed_at IS NULL`,
+        [JSON.stringify(docs), tournamentRefereeId]);
+    return result.affectedRows === 1;
+}
+
+export type AdminReviewRow =
+    Pick<TournamentRefereeRow, 'tournament_referee_id' | 'user_id' | 'tournament_id' | 'external_verification_docs' | 'created_at'> &
+    { full_name : string, profile_image_key : string | null, email : string, tournament_name : string };
+
+/** AR01 — คิวกรรมการภายนอกที่รอ admin ตรวจ (เก่าสุดก่อน) */
+export async function findPendingAdminReview(): Promise<AdminReviewRow[]>{
+    const [rows] = await pool.query<(AdminReviewRow & RowDataPacket)[]>(
+        `SELECT tr.tournament_referee_id, tr.user_id, tr.tournament_id, tr.external_verification_docs, tr.created_at,
+                u.full_name, u.profile_image_key, u.email, t.name AS tournament_name
+         FROM tournament_referees tr
+         JOIN users u ON u.user_id = tr.user_id
+         JOIN tournaments t ON t.tournament_id = tr.tournament_id
+         WHERE tr.is_external = 1 AND tr.external_approval_status = 'pending'
+           AND tr.invitation_status = 'accepted' AND tr.removed_at IS NULL
+         ORDER BY tr.tournament_referee_id`);
+    return rows;
+}
+
+/** AR02 — อนุมัติ · ล้างเอกสารทิ้ง (PDPA) · เฉพาะที่ยัง pending */
+export async function approveExternal(tournamentRefereeId : number, adminUserId : number): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournament_referees
+         SET external_approval_status = 'approved', approved_by = ?, approved_at = NOW(),
+             external_verification_docs = NULL, external_rejection_reason = NULL
+         WHERE tournament_referee_id = ? AND external_approval_status = 'pending' AND removed_at IS NULL`,
+        [adminUserId, tournamentRefereeId]);
+    return result.affectedRows === 1;
+}
+
+/**
+ * AR03 — ปฏิเสธ (pending) หรือถอนอนุมัติ (approved, F-10)
+ * revokeAll = true → ถอนทุกแถว approved ที่ยังไม่ถูกถอดของ user นั้นด้วย (ผลก็อป 1 ปีต้องหายพร้อมกัน)
+ * ปฏิเสธเอกสารตอน pending ไม่กระทบทัวร์อื่นที่เคย approved ไปแล้ว
+ */
+export async function rejectExternal(
+        tournamentRefereeId : number, userId : number, adminUserId : number, reason : string, revokeAll : boolean): Promise<number>{
+    // ถอน = ล้างทุกแถว approved ของคนนั้น "รวมที่ถูกถอดจากทัวร์ไปแล้ว" — ไม่งั้น findRecentApproval ยังก็อปมาได้
+    const target = revokeAll
+        ? `(tournament_referee_id = ? OR (user_id = ? AND external_approval_status = 'approved'))`
+        : `tournament_referee_id = ? AND removed_at IS NULL`;
+    const params = revokeAll
+        ? [adminUserId, reason, tournamentRefereeId, userId]
+        : [adminUserId, reason, tournamentRefereeId];
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournament_referees
+         SET external_approval_status = 'rejected', approved_by = ?, approved_at = NOW(),
+             external_verification_docs = NULL, external_rejection_reason = ?
+         WHERE is_external = 1
+           AND external_approval_status IN ('pending', 'approved')
+           AND ${target}`, params);
+    return result.affectedRows;
 }
 
 /** F06 — ปฏิเสธทั้งคำเชิญ → แมตช์ที่เสนอมาทั้งหมด declined ด้วย */

@@ -1,7 +1,9 @@
 import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { AppError } from '../utils/AppError.js';
-import type { InviteRefereeInput, AcceptInvitationInput } from '../schemas/referee.schema.js';
+import type { InviteRefereeInput, AcceptInvitationInput, SubmitDocsInput } from '../schemas/referee.schema.js';
+import type { ExternalApproval } from '../repositories/tournamentReferee.repo.js';
+import type { TournamentRefereeRow } from '../types/db.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto } from '../mappers/referee.mapper.js';
 import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
@@ -122,7 +124,9 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     // ORG อาจเลื่อนเวลาแมตช์ระหว่างรอตอบ → เช็คซ้อนเวลาอีกรอบตอนรับจริง
     assertSchedulable(chosen as InvitedMatchRow[]);
 
-    const updated = await RefRepo.accept(invitationId, chosenIds);
+    const approval = await resolveExternalApproval(invitation, input.docs);
+
+    const updated = await RefRepo.accept(invitationId, chosenIds, approval);
     if(!updated){
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
     }
@@ -130,10 +134,40 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     return {
         id : invitationId,
         invitationStatus : 'accepted',
-        requiresAdminApproval : invitation.is_external === 1,
+        requiresAdminApproval : approval.status === 'pending',
         acceptedMatchIds : chosenIds,
         declinedMatchIds : offered.map(m => m.match_id).filter(id => !chosenIds.includes(id))
     };
+}
+
+/**
+ * คนนอกต้องผ่าน admin — แต่ถ้าเคยผ่านมาแล้วภายใน 1 ปี (ทัวร์ไหนก็ได้) ก็อปผลมาเลย ไม่ต้องส่งเอกสารซ้ำ
+ * (GUIDE/10 §8 F-6/F-10/F-13 — เลือกแบบก็อปแทนย้ายไป users เพื่อไม่แตะ schema ข้ามทีม)
+ */
+async function resolveExternalApproval(
+        invitation : Pick<TournamentRefereeRow, 'is_external' | 'user_id'>, docs : string[] | undefined): Promise<ExternalApproval>{
+    if(invitation.is_external !== 1){
+        return { status : 'not_required', approvedBy : null, approvedAt : null, docs : null };
+    }
+    const prior = await RefRepo.findRecentApproval(invitation.user_id);
+    if(prior){
+        return { status : 'approved', approvedBy : prior.approved_by, approvedAt : prior.approved_at, docs : null };
+    }
+    return { status : 'pending', approvedBy : null, approvedAt : null, docs : docs ?? null };
+}
+
+/** F15 — คนนอกส่ง/แก้เอกสารระหว่างรอ admin (ลืมแนบตอน accept หรือ admin ขอใหม่) */
+export async function submitVerificationDocs(invitationId : number, userId : number, input : SubmitDocsInput){
+    const invitation = await RefRepo.findById(invitationId);
+    if(!invitation || invitation.removed_at !== null || invitation.user_id !== userId){
+        throw new AppError(404, 'INVITATION_NOT_FOUND', 'ไม่พบคำเชิญนี้');
+    }
+    if(toRefereeStatus(invitation) !== 'pending_admin'){
+        throw new AppError(409, 'DOCS_NOT_EXPECTED', 'คำเชิญนี้ไม่ได้อยู่ระหว่างรอผู้ดูแลระบบตรวจเอกสาร');
+    }
+    const updated = await RefRepo.updateDocs(invitationId, input.docs);
+    if(!updated) throw new AppError(409, 'DOCS_NOT_EXPECTED', 'คำเชิญนี้ไม่ได้อยู่ระหว่างรอผู้ดูแลระบบตรวจเอกสาร');
+    return { id : invitationId, docsCount : input.docs.length };
 }
 
 export async function declineRefereeInvitation(invitationId : number, userId : number){

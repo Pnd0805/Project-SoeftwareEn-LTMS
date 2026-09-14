@@ -10,6 +10,7 @@ import Invitation from './invitation.routes.js';
 import Admin from './adminScope.routes.js';
 import { tournamentRefereeRouter, matchRefereeRouter, meRefereeRouter, refereeInvitationRouter } from './referee.routes.js';
 import { refereeRequestRouter, tournamentRefereeRequestRouter, meRefereeRequestRouter } from './refereeRequest.routes.js';
+import { refereeAdminRouter } from './refereeAdmin.routes.js';
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use('/referee-invitations' , refereeInvitationRouter);
 router.use('/tournaments' , tournamentRefereeRequestRouter);
 router.use('/me' , meRefereeRequestRouter);
 router.use('/referee-requests' , refereeRequestRouter);
+router.use('/admin' , refereeAdminRouter);
 
 export default router;

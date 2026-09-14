@@ -119,8 +119,10 @@ export type TournamentRefereeRow = {
     invitation_status : 'pending' | 'accepted' | 'rejected',
     is_external : number,                   
     external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
+    external_verification_docs : string[] | null,   // JSON array ของ S3 key
     approved_by : number | null,
     approved_at : Date | null,
+    external_rejection_reason : string | null,
     created_at : Date,
     removed_at : Date | null,
     removed_by : number | null

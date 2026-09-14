@@ -19,6 +19,7 @@ describe('toTournamentRefereeDto', () => {
       invitationStatus: 'accepted',
       isExternal: true,
       externalApprovalStatus: 'approved',
+      status: 'active',
     });
   });
 
@@ -63,7 +64,13 @@ describe('toMyRefereeInvitationDto', () => {
       created_at: new Date('2024-05-01T10:00:00Z'),
     };
 
-    expect(toMyRefereeInvitationDto(row as any)).toEqual({
+    const offered = [{
+      match_referee_id: 11, tournament_referee_id: 1, assignment_status: 'pending',
+      match_id: 4, round_number: 1, scheduled_time: new Date('2024-06-01T03:00:00Z'),
+      scheduled_end_time: new Date('2024-06-01T04:00:00Z'), venue: null, mode: 'online', match_status: 'scheduled',
+    }];
+
+    expect(toMyRefereeInvitationDto(row as any, offered as any)).toEqual({
       id: 1,
       tournament: {
         id: 3,
@@ -72,6 +79,11 @@ describe('toMyRefereeInvitationDto', () => {
         eventStartDate: '2024-06-01',
       },
       isExternal: true,
+      matches: [{
+        id: 4, roundNumber: 1,
+        scheduledTime: '2024-06-01T03:00:00.000Z', scheduledEndTime: '2024-06-01T04:00:00.000Z',
+        venue: null, mode: 'online', matchStatus: 'scheduled', assignmentStatus: 'pending',
+      }],
       createdAt: '2024-05-01T10:00:00.000Z',
     });
   });
@@ -87,6 +99,6 @@ describe('toMyRefereeInvitationDto', () => {
       created_at: new Date('2024-05-01T10:00:00Z'),
     };
 
-    expect(toMyRefereeInvitationDto(row as any).isExternal).toBe(false);
+    expect(toMyRefereeInvitationDto(row as any, []).isExternal).toBe(false);
   });
 });
