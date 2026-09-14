@@ -11,3 +11,4 @@ export const applyTournamentSchema = z.object({
 });
 
 export type ApplyTournamentInput = z.infer<typeof applyTournamentSchema>;
+

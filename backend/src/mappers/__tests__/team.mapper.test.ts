@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { toTeamRef, toCreateTeam, toMyTeam, toTeamDto } from '../team.mapper.js';
+import {
+  toTeamRef,
+  toCreateTeam,
+  toMyTeam,
+  toTeamDto,
+  toTeamMemberDto,
+  toUpdateMember,
+  toCreateTeamInvitation,
+  toGetAllInvitation,
+  getTeamOfficialRequestDto,
+  toOfficialMemberConflictDto,
+} from '../team.mapper.js';
 
 const baseTeamRow = {
   team_id: 10,
@@ -93,5 +104,139 @@ describe('toTeamDto', () => {
     const readyTeam = { ...baseTeamRow, readiness_status: 'Ready' as const };
     const result = toTeamDto(readyTeam as any, 4, leaderRef as any);
     expect(result.readinessStatus).toBe('Ready');
+  });
+});
+
+describe('toTeamMemberDto', () => {
+  it('maps user fields and position, converting joined_at to an ISO string', () => {
+    const row = {
+      user_id: 5,
+      full_name: 'สมชาย ใจดี',
+      profile_image_key: 'avatar.png',
+      position: 'starter' as const,
+      joined_at: new Date('2024-02-01T09:00:00Z'),
+    };
+
+    expect(toTeamMemberDto(row as any)).toEqual({
+      userId: 5,
+      fullName: 'สมชาย ใจดี',
+      avatarUrl: 'avatar.png',
+      position: 'starter',
+      joinedAt: '2024-02-01T09:00:00.000Z',
+    });
+  });
+
+  it('maps a null avatar through as null', () => {
+    const row = {
+      user_id: 5,
+      full_name: 'สมชาย ใจดี',
+      profile_image_key: null,
+      position: 'substitute' as const,
+      joined_at: new Date('2024-02-01T09:00:00Z'),
+    };
+
+    expect(toTeamMemberDto(row as any).avatarUrl).toBeNull();
+  });
+});
+
+describe('toUpdateMember', () => {
+  it('maps user_id and position into a shorthand DTO', () => {
+    const row = { user_id: 7, position: 'starter' as const };
+    expect(toUpdateMember(row)).toEqual({ userId: 7, position: 'starter' });
+  });
+
+  it('preserves the "substitute" position value', () => {
+    const row = { user_id: 7, position: 'substitute' as const };
+    expect(toUpdateMember(row).position).toBe('substitute');
+  });
+});
+
+describe('toCreateTeamInvitation', () => {
+  it('maps the invitation row including status and ISO expiresAt', () => {
+    const row = {
+      team_invitation_id: 1,
+      invited_user_id: 9,
+      team_invitation_status: 'pending' as const,
+      expires_at: new Date('2024-03-01T00:00:00Z'),
+    };
+
+    expect(toCreateTeamInvitation(row as any)).toEqual({
+      id: 1,
+      invitedUserId: 9,
+      status: 'pending',
+      expiresAt: '2024-03-01T00:00:00.000Z',
+    });
+  });
+
+  it('preserves a non-pending status value (e.g. "accepted")', () => {
+    const row = {
+      team_invitation_id: 1,
+      invited_user_id: 9,
+      team_invitation_status: 'accepted' as const,
+      expires_at: new Date('2024-03-01T00:00:00Z'),
+    };
+
+    expect(toCreateTeamInvitation(row as any).status).toBe('accepted');
+  });
+});
+
+describe('toGetAllInvitation', () => {
+  it('maps the invitation row plus a nested invited-user ref', () => {
+    const row = {
+      team_invitation_id: 1,
+      user_id: 9,
+      full_name: 'Invited User',
+      profile_image_key: 'avatar.png',
+      team_invitation_status: 'pending' as const,
+      created_at: new Date('2024-03-01T00:00:00Z'),
+    };
+
+    expect(toGetAllInvitation(row as any)).toEqual({
+      id: 1,
+      invitedUser: { id: 9, fullName: 'Invited User', avatarUrl: 'avatar.png' },
+      status: 'pending',
+      createdAt: '2024-03-01T00:00:00.000Z',
+    });
+  });
+
+  it('maps a null invited-user avatar through as null', () => {
+    const row = {
+      team_invitation_id: 1,
+      user_id: 9,
+      full_name: 'Invited User',
+      profile_image_key: null,
+      team_invitation_status: 'pending' as const,
+      created_at: new Date('2024-03-01T00:00:00Z'),
+    };
+
+    expect(toGetAllInvitation(row as any).invitedUser.avatarUrl).toBeNull();
+  });
+});
+
+describe('getTeamOfficialRequestDto', () => {
+  it('maps team_admin_request_id and status', () => {
+    const row = { team_admin_request_id: 1, team_admin_request_status: 'pending' as const };
+    expect(getTeamOfficialRequestDto(row as any)).toEqual({ id: 1, status: 'pending' });
+  });
+
+  it.each(['pending', 'approved', 'rejected'])('preserves the "%s" status value', (status) => {
+    const row = { team_admin_request_id: 1, team_admin_request_status: status as any };
+    expect(getTeamOfficialRequestDto(row as any).status).toBe(status);
+  });
+});
+
+describe('toOfficialMemberConflictDto', () => {
+  it('maps user_id, full_name, and the pre-joined conflictingTeamName through unchanged', () => {
+    const row = {
+      user_id: 5,
+      full_name: 'สมชาย ใจดี',
+      conflictingTeamName: 'Rival Team',
+    };
+
+    expect(toOfficialMemberConflictDto(row as any)).toEqual({
+      userId: 5,
+      fullName: 'สมชาย ใจดี',
+      conflictingTeamName: 'Rival Team',
+    });
   });
 });

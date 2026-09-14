@@ -75,3 +75,10 @@ export async function deletePendingInvite(req : Request , res : Response){
     await TeamService.deletePendingInvite(teamId , inviteId);
     return res.status(204).send();
 }
+
+
+//TeamRequest
+export async function createTeamOfficialRequest(req : Request , res: Response){
+    const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
+    return res.status(201).json(await TeamService.createOfficialRequest(req.user!.user_id , teamId , req.body.supportingDocs));
+}

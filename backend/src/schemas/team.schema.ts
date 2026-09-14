@@ -27,3 +27,15 @@ export const createTeamInvitedSchema = z.object({
 });
 
 export type createTeamInvited = z.infer<typeof createTeamInvitedSchema>;
+
+
+//Team request
+
+export const requestSchema = z.object({
+    supportingDocs : z.array(z.string())
+})
+
+
+export const rejectTeamOfficial = z.object({
+    reason : z.string("ใส่เหตุผลการปฎิเสธ คำขอเป็น Official Team")
+});

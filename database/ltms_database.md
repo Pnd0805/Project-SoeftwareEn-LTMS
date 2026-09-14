@@ -192,6 +192,7 @@ CREATE TABLE team_admin_requests (
   target_user_id INT NULL,
   team_admin_request_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',  -- ♻️ เปลี่ยนชื่อจาก status
   requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 🆕 ใหม่ — เดิมมีแค่ reviewed_at ไม่มีคู่นี้
+  supporting_docs JSON NULL,  -- 🆕 ใหม่ (7 ก.ย. 2569) — array ของ S3/MinIO key เอกสารแนบตอนขอ official_status (T15) เดิมไม่มีที่เก็บเลย ตาม pattern เดียวกับ tournament_applications.soft_filter_documents
   reviewed_by INT NULL,
   reviewed_at DATETIME NULL,
   rejection_reason TEXT NULL,
