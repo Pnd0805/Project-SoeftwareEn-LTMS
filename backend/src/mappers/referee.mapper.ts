@@ -28,7 +28,7 @@ export function toRefereeStatus(row : RefereeStatusFields): RefereeStatus {
     if(row.invitation_status === 'pending')  return 'pending';
 
     if(row.is_external === 1){
-        if(row.external_approval_status === 'pending')  return 'pending_admin';
+        if(row.external_approval_status === 'pending' || row.external_approval_status === 'needs_docs') return 'pending_admin';
         if(row.external_approval_status === 'rejected') return 'rejected_by_admin';
     }
     return 'active';
@@ -39,7 +39,7 @@ export type TournamentRefereeDto = {
     user : UserRefDto,
     invitationStatus : 'pending' | 'accepted' | 'rejected',
     isExternal : boolean,
-    externalApprovalStatus : 'not_required' | 'pending' | 'approved' | 'rejected',
+    externalApprovalStatus : TournamentRefereeRow['external_approval_status'],
     status : RefereeStatus
 };
 

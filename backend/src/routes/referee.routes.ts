@@ -3,6 +3,7 @@ import { requireAuth } from '../middlewares/requireAuth.js';
 import { requireOrganizer } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
 import { inviteRefereeSchema, acceptInvitationSchema, submitDocsSchema } from '../schemas/referee.schema.js';
+import * as Identity from '../controllers/refereeIdentity.controller.js';
 import * as Referee from '../controllers/referee.controller.js';
 
 export const tournamentRefereeRouter = express.Router();
@@ -24,8 +25,9 @@ meRefereeRouter.get('/referee-invitations', requireAuth, Referee.listMyInvitatio
 refereeInvitationRouter.post('/:id/accept', requireAuth, validate(acceptInvitationSchema), Referee.accept);
 refereeInvitationRouter.post('/:id/decline', requireAuth, Referee.decline);
 
-// F15 — คนนอกส่ง/แก้เอกสารยืนยันตัวตนระหว่างรอ admin
-refereeInvitationRouter.put('/:id/docs', requireAuth, validate(submitDocsSchema), Referee.submitDocs);
+// U11 / U12 — การยืนยันตัวตนกรรมการภายนอก (ต่อคน ไม่ผูกกับคำเชิญ)
+meRefereeRouter.get('/referee-identity', requireAuth, Identity.getMine);
+meRefereeRouter.put('/referee-identity/docs', requireAuth, validate(submitDocsSchema), Identity.submitDocs);
 
 import { requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 

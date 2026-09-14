@@ -9,6 +9,8 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   accept: vi.fn(),
   decline: vi.fn(),
   findRecentApproval: vi.fn(),
+  findOpenReview: vi.fn(),
+  submitDocsForUser: vi.fn(),
 }));
 
 // F04/F05 ดึงแมตช์ที่แนบมากับคำเชิญ — เทสชุดนี้ไม่ได้แนบแมตช์ จึงคืนว่างเสมอ
@@ -24,7 +26,8 @@ vi.mock('../../repositories/user.repo.js', () => ({
   findById: vi.fn(),
 }));
 
-vi.mock('../../mappers/referee.mapper.js', () => ({
+vi.mock('../../mappers/referee.mapper.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../mappers/referee.mapper.js')>()),   // toRefereeStatus ของจริง (กฎสถานะ)
   toTournamentRefereeDto: vi.fn(),
   toMyRefereeInvitationDto: vi.fn(),
 }));
@@ -147,6 +150,17 @@ describe('inviteReferee', () => {
 
     expect(mockedRefRepo.create).toHaveBeenCalled();
     expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false, matchIds: [] });
+  });
+
+  it('allows re-inviting when the latest accepted invitation was rejected by the admin (F-15)', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser());
+    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(
+      makeInvitation({ invitation_status: 'accepted', is_external: 1, external_approval_status: 'rejected' }),
+    );
+    mockedRefRepo.create.mockResolvedValue(99);
+
+    await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).resolves.toBeDefined();
+    expect(mockedRefRepo.create).toHaveBeenCalled();
   });
 
   it('allows re-inviting when the latest active invitation was rejected', async () => {
@@ -295,15 +309,16 @@ describe('acceptRefereeInvitation', () => {
       makeInvitation({ invitation_status: 'pending', is_external: 1 }),
     );
     mockedRefRepo.findRecentApproval.mockResolvedValue(null);
+    mockedRefRepo.findOpenReview.mockResolvedValue(null);
     mockedRefRepo.accept.mockResolvedValue(true as any);
 
     const result = await refereeService.acceptRefereeInvitation(1, 8, { matchIds: [], docs: ['id-card.jpg'] });
 
     expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
-      status: 'pending', approvedBy: null, approvedAt: null, docs: ['id-card.jpg'],
+      status: 'pending', approvedBy: null, approvedAt: null, docs: ['id-card.jpg'], reason: null,
     });
     expect(result).toEqual({
-      id: 1, invitationStatus: 'accepted', requiresAdminApproval: true,
+      id: 1, invitationStatus: 'accepted', requiresAdminApproval: true, docsRequired: false,
       acceptedMatchIds: [], declinedMatchIds: [],
     });
   });
@@ -319,9 +334,30 @@ describe('acceptRefereeInvitation', () => {
     const result = await refereeService.acceptRefereeInvitation(1, 8, acceptNone);
 
     expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
-      status: 'approved', approvedBy: 3, approvedAt, docs: null,
+      status: 'approved', approvedBy: 3, approvedAt, docs: null, reason: null,
     });
     expect(result.requiresAdminApproval).toBe(false);
+  });
+
+  it('joins an open review (pending in another tournament) without asking for docs again', async () => {
+    mockedRefRepo.findById.mockResolvedValue(
+      makeInvitation({ invitation_status: 'pending', is_external: 1 }),
+    );
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);
+    mockedRefRepo.findOpenReview.mockResolvedValue({
+      tournament_referee_id: 5, external_approval_status: 'pending',
+      external_verification_docs: ['id.jpg'], external_rejection_reason: null,
+    });
+    mockedRefRepo.accept.mockResolvedValue(true as any);
+
+    const result = await refereeService.acceptRefereeInvitation(1, 8, acceptNone);
+
+    expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
+      status: 'pending', approvedBy: null, approvedAt: null, docs: ['id.jpg'], reason: null,
+    });
+    expect(result.requiresAdminApproval).toBe(true);
+    expect(result.docsRequired).toBe(false);
+    expect(mockedRefRepo.submitDocsForUser).not.toHaveBeenCalled();
   });
 
   it('accepts a pending invitation without admin approval for internal referees', async () => {
@@ -334,10 +370,10 @@ describe('acceptRefereeInvitation', () => {
 
     expect(mockedRefRepo.findRecentApproval).not.toHaveBeenCalled();
     expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
-      status: 'not_required', approvedBy: null, approvedAt: null, docs: null,
+      status: 'not_required', approvedBy: null, approvedAt: null, docs: null, reason: null,
     });
     expect(result).toEqual({
-      id: 1, invitationStatus: 'accepted', requiresAdminApproval: false,
+      id: 1, invitationStatus: 'accepted', requiresAdminApproval: false, docsRequired: false,
       acceptedMatchIds: [], declinedMatchIds: [],
     });
   });

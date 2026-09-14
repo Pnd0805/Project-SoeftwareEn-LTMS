@@ -7,11 +7,16 @@ export async function listPending(_req : Request, res : Response){
 }
 
 export async function approve(req : Request, res : Response){
-    const id = parseId(req.params['id'], 'รหัสคำขอ');
-    res.status(200).json(await AdminService.approveExternalReferee(id, req.user!.user_id));
+    const userId = parseId(req.params['userId'], 'รหัสผู้ใช้', 'userId');
+    res.status(200).json(await AdminService.approveExternalReferee(userId, req.user!.user_id));
+}
+
+export async function requestDocs(req : Request, res : Response){
+    const userId = parseId(req.params['userId'], 'รหัสผู้ใช้', 'userId');
+    res.status(200).json(await AdminService.requestDocsFromExternalReferee(userId, req.user!.user_id, req.body));
 }
 
 export async function reject(req : Request, res : Response){
-    const id = parseId(req.params['id'], 'รหัสคำขอ');
-    res.status(200).json(await AdminService.rejectExternalReferee(id, req.user!.user_id, req.body));
+    const userId = parseId(req.params['userId'], 'รหัสผู้ใช้', 'userId');
+    res.status(200).json(await AdminService.rejectExternalReferee(userId, req.user!.user_id, req.body));
 }

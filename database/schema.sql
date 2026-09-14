@@ -280,7 +280,7 @@ CREATE TABLE tournament_referees (
   invited_by INT NOT NULL,
   invitation_status ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
   is_external BOOLEAN NOT NULL DEFAULT FALSE,
-  external_approval_status ENUM('not_required','pending','approved','rejected') NOT NULL DEFAULT 'not_required',
+  external_approval_status ENUM('not_required','pending','needs_docs','approved','rejected') NOT NULL DEFAULT 'not_required',
   external_verification_docs JSON NULL,   -- array ของ S3 key · ล้างเป็น NULL หลัง admin ตัดสิน (PDPA)
   approved_by INT NULL,
   approved_at DATETIME NULL,
@@ -708,4 +708,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('001_matches_scheduled_end_time.sql'),
   ('002_match_referees_assignment_status.sql'),
   ('003_referee_change_requests.sql'),
-  ('004_tournament_referees_external_docs.sql');
+  ('004_tournament_referees_external_docs.sql'),
+  ('005_external_approval_needs_docs.sql');

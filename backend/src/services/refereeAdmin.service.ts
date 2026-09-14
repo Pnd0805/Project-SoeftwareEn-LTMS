@@ -1,52 +1,71 @@
 import * as RefRepo from '../repositories/tournamentReferee.repo.js';
+import * as UserRepo from '../repositories/user.repo.js';
 import { AppError } from '../utils/AppError.js';
 import { toUserRef } from '../mappers/user.mapper.js';
+import { getIdentityState } from './refereeIdentity.service.js';
+import type { AdminReviewRow } from '../repositories/tournamentReferee.repo.js';
 import type { RejectExternalRefereeInput } from '../schemas/referee.schema.js';
 
-/** AR01 — คิวกรรมการภายนอกที่รอตรวจ */
+/** AR01 — คิวตรวจตัวตน จัดกลุ่ม "ต่อคน" (1 รายการ = 1 user แม้รออยู่หลายทัวร์) */
 export async function listPendingExternalReferees(){
     const rows = await RefRepo.findPendingAdminReview();
-    return {
-        items : rows.map(r => ({
-            id : r.tournament_referee_id,
-            user : { ...toUserRef(r), email : r.email },
-            tournament : { id : r.tournament_id, name : r.tournament_name },
-            docs : r.external_verification_docs ?? [],     // S3 key — FE ขอ presigned URL เองถ้าจะเปิดดู
-            submittedAt : r.created_at.toISOString()
-        }))
-    };
+    const byUser = new Map<number, AdminReviewRow[]>();
+    for(const r of rows){
+        const list = byUser.get(r.user_id) ?? [];
+        list.push(r);
+        byUser.set(r.user_id, list);
+    }
+    const items = [...byUser.values()].map(group => {
+        const first = group[0]!;
+        return {
+            userId : first.user_id,
+            user : { ...toUserRef(first), email : first.email },
+            docs : group.find(g => g.external_verification_docs)?.external_verification_docs ?? [],  // S3 key — FE ขอ presign เอง
+            tournaments : group.map(g => ({ id : g.tournament_id, name : g.tournament_name, tournamentRefereeId : g.tournament_referee_id })),
+            submittedAt : first.created_at.toISOString()
+        };
+    });
+    return { items };
 }
 
-async function loadExternal(tournamentRefereeId : number){
-    const tr = await RefRepo.findById(tournamentRefereeId);
-    if(!tr || tr.removed_at !== null || tr.is_external !== 1){
-        throw new AppError(404, 'REFEREE_NOT_FOUND', 'ไม่พบคำขอกรรมการภายนอกนี้');
-    }
-    return tr;
+async function assertUserExists(userId : number){
+    const user = await UserRepo.findById(userId);
+    if(!user) throw new AppError(404, 'USER_NOT_FOUND', 'ไม่พบผู้ใช้นี้ในระบบ');
 }
 
-/** AR02 — อนุมัติ (เฉพาะ pending) · เอกสารถูกล้างทิ้งใน repo */
-export async function approveExternalReferee(tournamentRefereeId : number, adminUserId : number){
-    const tr = await loadExternal(tournamentRefereeId);
-    if(tr.external_approval_status !== 'pending'){
-        throw new AppError(409, 'NOT_PENDING_REVIEW', 'คำขอนี้ไม่ได้อยู่ระหว่างรอตรวจ');
+/** AR02 — อนุมัติคน: ทุกทัวร์ที่รอ → approved · ใช้ได้ 1 ปี · เอกสารถูกล้าง */
+export async function approveExternalReferee(userId : number, adminUserId : number){
+    await assertUserExists(userId);
+    const state = await getIdentityState(userId);
+    if(state.status !== 'pending' && state.status !== 'needs_docs'){
+        throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
     }
-    const ok = await RefRepo.approveExternal(tournamentRefereeId, adminUserId);
-    if(!ok) throw new AppError(409, 'NOT_PENDING_REVIEW', 'คำขอนี้ถูกตัดสินไปแล้ว');
-    return { id : tournamentRefereeId, externalApprovalStatus : 'approved' as const };
+    const affected = await RefRepo.approveUser(userId, adminUserId);
+    return { userId, identityStatus : 'approved' as const, tournamentsUpdated : affected };
+}
+
+/** AR04 — ขอเอกสารใหม่ (ไม่ใช่ reject): ทัวร์ที่รอยังรอต่อ user เห็นข้อความแล้วส่งใหม่ผ่าน U12 */
+export async function requestDocsFromExternalReferee(userId : number, adminUserId : number, input : RejectExternalRefereeInput){
+    await assertUserExists(userId);
+    const state = await getIdentityState(userId);
+    if(state.status !== 'pending'){
+        throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
+    }
+    const affected = await RefRepo.requestDocsFromUser(userId, adminUserId, input.reason);
+    return { userId, identityStatus : 'needs_docs' as const, reason : input.reason, tournamentsUpdated : affected };
 }
 
 /**
- * AR03 — ปฏิเสธเอกสาร (pending) หรือถอนอนุมัติ (approved · F-10)
- * ถอน = ถอนทุกทัวร์ที่ approved อยู่ของคนนั้นพร้อมกัน; แมตช์ที่รับไว้ยังอยู่แต่ไม่นับ → ORG เห็นจาก coverage
+ * AR03 — ปฏิเสธคน (final) หรือถอนอนุมัติ (F-10)
+ * ทุกแถว pending/needs_docs/approved ของคนนั้น (รวมที่ถูกถอดจากทัวร์แล้ว) → rejected
+ * แมตช์ที่รับไว้ยังอยู่แต่ไม่นับ → ORG เห็นจาก F14 coverage
  */
-export async function rejectExternalReferee(tournamentRefereeId : number, adminUserId : number, input : RejectExternalRefereeInput){
-    const tr = await loadExternal(tournamentRefereeId);
-    if(tr.external_approval_status !== 'pending' && tr.external_approval_status !== 'approved'){
-        throw new AppError(409, 'NOT_PENDING_REVIEW', 'คำขอนี้ถูกปฏิเสธไปแล้ว');
+export async function rejectExternalReferee(userId : number, adminUserId : number, input : RejectExternalRefereeInput){
+    await assertUserExists(userId);
+    const state = await getIdentityState(userId);
+    if(state.status === 'none' || state.status === 'rejected'){
+        throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่มีการยืนยันตัวตนที่จะปฏิเสธ');
     }
-    const revokeAll = tr.external_approval_status === 'approved';
-    const affected = await RefRepo.rejectExternal(tournamentRefereeId, tr.user_id, adminUserId, input.reason, revokeAll);
-    if(affected === 0) throw new AppError(409, 'NOT_PENDING_REVIEW', 'คำขอนี้ถูกตัดสินไปแล้ว');
-    return { id : tournamentRefereeId, externalApprovalStatus : 'rejected' as const, reason : input.reason, revokedRows : affected };
+    const affected = await RefRepo.rejectUser(userId, adminUserId, input.reason);
+    return { userId, identityStatus : 'rejected' as const, reason : input.reason, tournamentsUpdated : affected };
 }

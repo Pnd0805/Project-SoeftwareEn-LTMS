@@ -1,9 +1,8 @@
 import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { AppError } from '../utils/AppError.js';
-import type { InviteRefereeInput, AcceptInvitationInput, SubmitDocsInput } from '../schemas/referee.schema.js';
-import type { ExternalApproval } from '../repositories/tournamentReferee.repo.js';
-import type { TournamentRefereeRow } from '../types/db.js';
+import type { InviteRefereeInput, AcceptInvitationInput } from '../schemas/referee.schema.js';
+import { resolveApprovalForAccept } from './refereeIdentity.service.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto } from '../mappers/referee.mapper.js';
 import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
@@ -26,7 +25,8 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
         if(latest.invitation_status === 'pending'){
             throw new AppError(409, 'REFEREE_INVITATION_PENDING', 'ผู้ใช้นี้มีคำเชิญที่ยังไม่ได้ตอบอยู่แล้ว');
         }
-        if(latest.invitation_status === 'accepted'){
+        // accepted แต่ถูก admin ปฏิเสธตัวตน (rejected_by_admin) → เชิญซ้ำได้ (F-15) แถวใหม่จะเริ่มตรวจใหม่
+        if(latest.invitation_status === 'accepted' && toRefereeStatus(latest) !== 'rejected_by_admin'){
             throw new AppError(409, 'REFEREE_ALREADY_ACCEPTED', 'ผู้ใช้นี้เป็นกรรมการของทัวร์นาเมนต์นี้อยู่แล้ว');
         }
     }
@@ -124,51 +124,29 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     // ORG อาจเลื่อนเวลาแมตช์ระหว่างรอตอบ → เช็คซ้อนเวลาอีกรอบตอนรับจริง
     assertSchedulable(chosen as InvitedMatchRow[]);
 
-    const approval = await resolveExternalApproval(invitation, input.docs);
+    const { joinsOpenReview, ...approval } = await resolveApprovalForAccept(invitation, input.docs);
 
     const updated = await RefRepo.accept(invitationId, chosenIds, approval);
     if(!updated){
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
     }
 
+    // ส่ง docs มาพร้อม accept ทั้งที่มีการตรวจค้างอยู่ = ส่งเอกสารใหม่ให้ทุกทัวร์ที่รอ
+    if(joinsOpenReview && input.docs){
+        await RefRepo.submitDocsForUser(userId, input.docs);
+    }
+
+    const requiresAdminApproval = approval.status === 'pending' || approval.status === 'needs_docs';
     return {
         id : invitationId,
         invitationStatus : 'accepted',
-        requiresAdminApproval : approval.status === 'pending',
+        requiresAdminApproval,
+        docsRequired : requiresAdminApproval && approval.docs === null,
         acceptedMatchIds : chosenIds,
         declinedMatchIds : offered.map(m => m.match_id).filter(id => !chosenIds.includes(id))
     };
 }
 
-/**
- * คนนอกต้องผ่าน admin — แต่ถ้าเคยผ่านมาแล้วภายใน 1 ปี (ทัวร์ไหนก็ได้) ก็อปผลมาเลย ไม่ต้องส่งเอกสารซ้ำ
- * (GUIDE/10 §8 F-6/F-10/F-13 — เลือกแบบก็อปแทนย้ายไป users เพื่อไม่แตะ schema ข้ามทีม)
- */
-async function resolveExternalApproval(
-        invitation : Pick<TournamentRefereeRow, 'is_external' | 'user_id'>, docs : string[] | undefined): Promise<ExternalApproval>{
-    if(invitation.is_external !== 1){
-        return { status : 'not_required', approvedBy : null, approvedAt : null, docs : null };
-    }
-    const prior = await RefRepo.findRecentApproval(invitation.user_id);
-    if(prior){
-        return { status : 'approved', approvedBy : prior.approved_by, approvedAt : prior.approved_at, docs : null };
-    }
-    return { status : 'pending', approvedBy : null, approvedAt : null, docs : docs ?? null };
-}
-
-/** F15 — คนนอกส่ง/แก้เอกสารระหว่างรอ admin (ลืมแนบตอน accept หรือ admin ขอใหม่) */
-export async function submitVerificationDocs(invitationId : number, userId : number, input : SubmitDocsInput){
-    const invitation = await RefRepo.findById(invitationId);
-    if(!invitation || invitation.removed_at !== null || invitation.user_id !== userId){
-        throw new AppError(404, 'INVITATION_NOT_FOUND', 'ไม่พบคำเชิญนี้');
-    }
-    if(toRefereeStatus(invitation) !== 'pending_admin'){
-        throw new AppError(409, 'DOCS_NOT_EXPECTED', 'คำเชิญนี้ไม่ได้อยู่ระหว่างรอผู้ดูแลระบบตรวจเอกสาร');
-    }
-    const updated = await RefRepo.updateDocs(invitationId, input.docs);
-    if(!updated) throw new AppError(409, 'DOCS_NOT_EXPECTED', 'คำเชิญนี้ไม่ได้อยู่ระหว่างรอผู้ดูแลระบบตรวจเอกสาร');
-    return { id : invitationId, docsCount : input.docs.length };
-}
 
 export async function declineRefereeInvitation(invitationId : number, userId : number){
     const invitation = await RefRepo.findById(invitationId);

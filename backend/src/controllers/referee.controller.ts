@@ -46,11 +46,6 @@ export async function removeFromTournament(req : Request, res : Response){
         tournamentId, tournamentRefereeId, req.user!.user_id, req.tournament!.sport_type_id));
 }
 
-export async function submitDocs(req : Request, res : Response){
-    const invitationId = parseId(req.params['id'], 'รหัสคำเชิญ');
-    res.status(200).json(await RefereeService.submitVerificationDocs(invitationId, req.user!.user_id, req.body));
-}
-
 export async function coverage(req : Request, res : Response){
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     res.status(200).json(await RefereeService.getRefereeCoverage(tournamentId, req.tournament!.sport_type_id));
