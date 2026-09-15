@@ -61,11 +61,20 @@ export function toMatchDetailDto(row: MatchDetailRow): MatchDetailItemDto {
     };
 }
 
+// ยึดค่า DB (success/rejected/exception) เป็นหลักตามกฎ Part 0-1 §1.2 แต่ตอบ response เป็นคำที่สเปกเอกสารใช้
+// (B2 ที่ค้างอยู่ใน GUIDE/07: DB ไม่มีค่า 'pending_verification' เลยเดาว่า photo_online ที่รอตรวจ = 'exception')
+// ใช้ร่วมกันทั้ง M12/M13/M14/M15 กันสถานะเดียวกันโชว์คำไม่ตรงกันตาม endpoint
+export function toCheckinStatusApi(dbStatus: 'success' | 'rejected' | 'exception'): string {
+    if (dbStatus === 'success') return 'checked_in';
+    if (dbStatus === 'exception') return 'pending_verification';
+    return 'rejected';
+}
+
 export type CheckinListItemDto = {
     userId: number;
     fullName: string;
     method: 'qr_onsite' | 'photo_online' | 'manual_by_referee';
-    status: 'success' | 'rejected' | 'exception';
+    status: string;
     checkedInAt: Date;
 };
 
@@ -74,7 +83,7 @@ export function toCheckinListItemDto(row: MatchCheckinListRow): CheckinListItemD
         userId: row.user_id,
         fullName: row.full_name,
         method: row.method,
-        status: row.match_checkin_status,
+        status: toCheckinStatusApi(row.match_checkin_status),
         checkedInAt: row.checked_in_at,
     };
 }

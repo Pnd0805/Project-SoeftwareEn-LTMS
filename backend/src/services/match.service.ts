@@ -1,18 +1,10 @@
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
-import { findLatestTournamentReferee } from '../repositories/referee.repo.js';
-import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto } from '../mappers/match.mapper.js';
+import { findLatestByTournamentAndUser } from '../repositories/tournamentReferee.repo.js';
+import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
 import type { SubmitCheckinInput } from '../schemas/match.schema.js';
-
-// ยึดค่า DB (success/rejected/exception) เป็นหลักตามกฎ Part 0-1 §1.2 แต่ตอบ response เป็นคำที่สเปกเอกสารใช้
-// (B2 ที่ค้างอยู่ใน GUIDE/07: DB ไม่มีค่า 'pending_verification' เลยเดาว่า photo_online ที่รอตรวจ = 'exception')
-function toCheckinStatusApi(dbStatus: 'success' | 'rejected' | 'exception'): string {
-    if (dbStatus === 'success') return 'checked_in';
-    if (dbStatus === 'exception') return 'pending_verification';
-    return 'rejected';
-}
 
 export async function getTournamentMatches(tournamentId: number) {
     const rows = await MatchRepo.findMatchesByTournament(tournamentId);
@@ -28,23 +20,13 @@ export async function getMatchDetail(match_id: number) {
     return toMatchDetailDto(match);
 }
 
-export async function scheduleMatch(matchId: number, userId: number, scheduledTimeInput: string, venue: string) {
+// requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
+export async function scheduleMatch(matchId: number, scheduledTimeInput: string, venue: string) {
     const scheduledTime = new Date(scheduledTimeInput);
 
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
-    }
-
-    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
-    if (!tournament) {
-        throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
-    }
-    const isOrganizer = tournament.requested_by_user_id === userId
-        && tournament.tournament_status !== 'pending_approval'
-        && tournament.tournament_status !== 'rejected';
-    if (!isOrganizer) {
-        throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
 
     const conflict = await MatchRepo.findConflictingMatch(matchId, scheduledTime, venue, match.team_a_id, match.team_b_id);
@@ -57,21 +39,11 @@ export async function scheduleMatch(matchId: number, userId: number, scheduledTi
     return toMatchDetailDto(updated!);
 }
 
-export async function openCheckinMatch(matchId: number, userId: number) {
+// requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
+export async function openCheckinMatch(matchId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
-    }
-
-    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
-    if (!tournament) {
-        throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
-    }
-    const isOrganizer = tournament.requested_by_user_id === userId
-        && tournament.tournament_status !== 'pending_approval'
-        && tournament.tournament_status !== 'rejected';
-    if (!isOrganizer) {
-        throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
 
     await MatchRepo.openMatchCheckin(matchId);
@@ -114,7 +86,7 @@ export async function getMatchCheckins(matchId: number, userId: number) {
         && tournament.tournament_status !== 'pending_approval'
         && tournament.tournament_status !== 'rejected';
 
-    const referee = await findLatestTournamentReferee(match.tournament_id, userId);
+    const referee = await findLatestByTournamentAndUser(match.tournament_id, userId);
     const isReferee = referee !== null
         && referee.invitation_status === 'accepted'
         && (referee.is_external === 0 || referee.external_approval_status === 'approved');
@@ -167,7 +139,7 @@ export async function getCheckinQr(matchId: number, userId: number) {
         && tournament.tournament_status !== 'pending_approval'
         && tournament.tournament_status !== 'rejected';
 
-    const referee = await findLatestTournamentReferee(match.tournament_id, userId);
+    const referee = await findLatestByTournamentAndUser(match.tournament_id, userId);
     const isReferee = referee !== null
         && referee.invitation_status === 'accepted'
         && (referee.is_external === 0 || referee.external_approval_status === 'approved');

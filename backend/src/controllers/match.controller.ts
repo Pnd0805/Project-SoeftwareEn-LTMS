@@ -34,20 +34,14 @@ export async function getMatchDetail(req: Request, res: Response) {
 }
 
 export async function scheduleMatch(req: Request, res: Response) {
-    if (!req.user) {
-        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
-    }
     const matchId = parseId(req.params['id'], 'รหัสการแข่งขัน');
-    const result = await MatchService.scheduleMatch(matchId, req.user.user_id, req.body.scheduledTime, req.body.venue);
+    const result = await MatchService.scheduleMatch(matchId, req.body.scheduledTime, req.body.venue);
     res.status(200).json(result);
 }
 
 export async function openCheckinMatch(req: Request, res: Response){
-    if(!req.user){
-        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
-    }
     const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
-    res.status(200).json(await MatchService.openCheckinMatch(matchId, req.user.user_id));
+    res.status(200).json(await MatchService.openCheckinMatch(matchId));
 }
 
 export async function startMatch(req: Request, res: Response){

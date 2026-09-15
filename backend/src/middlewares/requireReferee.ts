@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/AppError.js';
 import { findMatchById } from '../repositories/match.repo.js';
-import { findLatestTournamentReferee } from '../repositories/referee.repo.js';
+import { findLatestByTournamentAndUser } from '../repositories/tournamentReferee.repo.js';
 import { parseId } from '../utils/parseId.js';
 
 export async function requireReferee(req: Request, res: Response, next: NextFunction) {
@@ -16,7 +16,7 @@ export async function requireReferee(req: Request, res: Response, next: NextFunc
         return next(new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้"));
     }
 
-    const referee = await findLatestTournamentReferee(match.tournament_id, req.user.user_id);
+    const referee = await findLatestByTournamentAndUser(match.tournament_id, req.user.user_id);
 
     const isAccepted = referee !== null 
         && referee.invitation_status === 'accepted'

@@ -4,7 +4,7 @@ import { requireAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
 import { scheduleMatchSchema, rejectCheckinSchema, createBracketSchema, submitCheckinSchema } from '../schemas/match.schema.js';
 import { requireReferee } from '../middlewares/requireReferee.js';
-import { requireOrganizer } from '../middlewares/requireOrganizer.js';
+import { requireOrganizer, requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 
 const router = express.Router();
 
@@ -12,8 +12,8 @@ router.post('/tournaments/:id/bracket' , requireAuth , requireOrganizer , valida
 router.get('/tournaments/:id/bracket' , Match.getBracket);
 router.get('/tournaments/:id/matches' , Match.getTournamentMatches);
 router.get('/matches/:id' , Match.getMatchDetail);
-router.patch('/matches/:id/schedule' , requireAuth , validate(scheduleMatchSchema) , Match.scheduleMatch);
-router.post('/matches/:id/open-checkin'  , requireAuth , Match.openCheckinMatch);
+router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
+router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
 router.get('/matches/:id/checkins' , requireAuth , Match.getMatchCheckins);
 router.post('/matches/:id/checkins/:cid/verify' , requireAuth , requireReferee , Match.verifyCheckin);
