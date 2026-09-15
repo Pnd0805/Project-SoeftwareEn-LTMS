@@ -3,6 +3,7 @@ import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as BracketNodeRepo from '../repositories/bracketNode.repo.js';
+import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import { toBracketNodeDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 
@@ -265,17 +266,22 @@ export async function createBracket(
         throw new AppError(422, "TEAM_COUNT_MISMATCH", "จำนวนทีมไม่สอดคล้องกับรูปแบบการแข่งขันที่เลือก");
     }
 
+    // M01 ไม่มีช่องให้ organizer เลือก mode เอง (แก้ทีละแมตช์ทีหลังต้องรอ M08 ซึ่งเป็น Sprint #2)
+    // เลยใช้ default_mode ของประเภทกีฬานั้นแทนการ hardcode 'onsite' มั่วๆ
+    const sportType = await SportTypeRepo.findSportTypeById(tournament.sport_type_id);
+    const mode = sportType?.default_mode ?? 'onsite';
+
     const bracketFormat = tournament.bracket_format;
 
     if (bracketFormat === 'single_elimination') {
         const plan = planSingleElimination(teamIdsInOrder);
-        const { matchCount, nodeCount } = await persistSingleElimination(tournamentId, plan);
+        const { matchCount, nodeCount } = await persistSingleElimination(tournamentId, plan, mode);
         return { matchCount, bracketFormat, nodeCount };
     }
 
     if (bracketFormat === 'round_robin') {
         const pairs = planRoundRobin(teamIdsInOrder);
-        const matchCount = await persistRoundRobin(tournamentId, pairs);
+        const matchCount = await persistRoundRobin(tournamentId, pairs, mode);
         return { matchCount, bracketFormat, nodeCount: 0 };
     }
 
@@ -285,7 +291,7 @@ export async function createBracket(
             throw new AppError(422, "TEAM_COUNT_MISMATCH", "double_elimination รองรับเฉพาะจำนวนทีมที่เป็นเลขยกกำลัง 2 ตั้งแต่ 4 ทีมขึ้นไป (4, 8, 16, ...) ในตอนนี้");
         }
         const plan = planDoubleElimination(teamIdsInOrder);
-        const { matchCount, nodeCount } = await persistDoubleElimination(tournamentId, plan);
+        const { matchCount, nodeCount } = await persistDoubleElimination(tournamentId, plan, mode);
         return { matchCount, bracketFormat, nodeCount };
     }
 
@@ -316,7 +322,7 @@ function orderTeamIds(
     return seeds;
 }
 
-async function persistSingleElimination(tournamentId: number, plan: PlannedMatch[]) {
+async function persistSingleElimination(tournamentId: number, plan: PlannedMatch[], mode: 'onsite' | 'online') {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -340,6 +346,7 @@ async function persistSingleElimination(tournamentId: number, plan: PlannedMatch
                         roundNumber: m.round,
                         teamAId: m.teamAId,
                         teamBId: m.teamBId,
+                        mode,
                     });
                     matchCount++;
                     matchIdByPosition.set(`${round}:${m.matchNumber}`, matchId);
@@ -375,7 +382,7 @@ async function persistSingleElimination(tournamentId: number, plan: PlannedMatch
     }
 }
 
-async function persistDoubleElimination(tournamentId: number, plan: PlannedMatchNode[]) {
+async function persistDoubleElimination(tournamentId: number, plan: PlannedMatchNode[], mode: 'onsite' | 'online') {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -394,6 +401,7 @@ async function persistDoubleElimination(tournamentId: number, plan: PlannedMatch
                 roundNumber: m.round,
                 teamAId,
                 teamBId,
+                mode,
             });
             matchCount++;
             dbIdByKey.set(m.key, matchId);
@@ -434,7 +442,7 @@ async function persistDoubleElimination(tournamentId: number, plan: PlannedMatch
     }
 }
 
-async function persistRoundRobin(tournamentId: number, pairs: RoundRobinPair[]) {
+async function persistRoundRobin(tournamentId: number, pairs: RoundRobinPair[], mode: 'onsite' | 'online') {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -445,6 +453,7 @@ async function persistRoundRobin(tournamentId: number, pairs: RoundRobinPair[]) 
                 roundNumber: pair.round,
                 teamAId: pair.teamAId,
                 teamBId: pair.teamBId,
+                mode,
             });
         }
 

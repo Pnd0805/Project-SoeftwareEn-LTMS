@@ -210,14 +210,16 @@ type InsertMatchInput = {
     roundNumber: number | null;
     teamAId: number | null;
     teamBId: number | null;
+    mode: 'onsite' | 'online';
 };
 
-// mode ถูก hardcode เป็น 'onsite' ไปก่อน เพราะ M01 ไม่มีช่องให้ organizer เลือก mode ตอนสร้างสาย — ต้องคุยทีม
+// mode ดึงจาก sport_types.default_mode ของทัวร์นาเมนต์นั้น (M01 ไม่มีช่องให้ organizer เลือกเอง
+// การแก้ทีละแมตช์ทีหลังต้องรอ M08 ซึ่งเป็น Sprint #2 ยังไม่ได้ทำ — ต้องคุยทีม)
 export async function insertMatchTx(conn: PoolConnection, input: InsertMatchInput): Promise<number> {
     const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO matches (tournament_id, round_number, team_a_id, team_b_id, match_status, mode)
-         VALUES (?, ?, ?, ?, 'scheduled', 'onsite')`,
-        [input.tournamentId, input.roundNumber, input.teamAId, input.teamBId]
+         VALUES (?, ?, ?, ?, 'scheduled', ?)`,
+        [input.tournamentId, input.roundNumber, input.teamAId, input.teamBId, input.mode]
     );
     return result.insertId;
 }
