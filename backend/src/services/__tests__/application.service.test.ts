@@ -22,6 +22,10 @@ vi.mock('../../repositories/match.repo.js', () => ({
   countMatchesByTournament: vi.fn(),
 }));
 
+vi.mock('../../services/upload.service.js', () => ({
+  getPresignedDownloadUrl: vi.fn(),
+}));
+
 vi.mock('../../mappers/team.mapper.js', () => ({
   toTeamRef: vi.fn(),
 }));
@@ -36,6 +40,7 @@ import * as applicationService from '../application.service.js';
 import * as ApplicationRepo from '../../repositories/application.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
+import * as UploadService from '../../services/upload.service.js';
 import { toTeamRef } from '../../mappers/team.mapper.js';
 import {
   toApplicationDetailDto,
@@ -56,6 +61,7 @@ import type { TeamRow, TournamentRow } from '../../types/db.js';
 const mockedApplicationRepo = vi.mocked(ApplicationRepo);
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
 const mockedMatchRepo = vi.mocked(MatchRepo);
+const mockedUploadService = vi.mocked(UploadService);
 const mockedToTeamRef = vi.mocked(toTeamRef);
 const mockedToApplicationDetailDto = vi.mocked(toApplicationDetailDto);
 const mockedToMyApplicationDto = vi.mocked(toMyApplicationDto);
@@ -275,15 +281,38 @@ describe('getApplicationDetail', () => {
     });
   });
 
-  it('returns the detail DTO when the requester is the team leader', async () => {
+  it('returns the detail DTO when the requester is the team leader (no soft filter documents)', async () => {
     const app = makeApplicationDetail({ team_leader_id: 5, tournament_requested_by_user_id: 999 });
     mockedApplicationRepo.findApplicationById.mockResolvedValue(app);
     mockedToApplicationDetailDto.mockReturnValue({ id: 100 } as any);
 
     const result = await applicationService.getApplicationDetail(100, 5);
 
-    expect(mockedToApplicationDetailDto).toHaveBeenCalledWith(app);
+    expect(mockedToApplicationDetailDto).toHaveBeenCalledWith(app, []);
+    expect(mockedUploadService.getPresignedDownloadUrl).not.toHaveBeenCalled();
     expect(result).toEqual({ id: 100 });
+  });
+
+  it('presigns every soft filter document S3 key before mapping (P04 must return URLs, not raw keys)', async () => {
+    const app = makeApplicationDetail({
+      team_leader_id: 5,
+      tournament_requested_by_user_id: 999,
+      soft_filter_documents: ['docs/student-card.jpg', 'docs/national-id.jpg'],
+    });
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(app);
+    mockedUploadService.getPresignedDownloadUrl
+      .mockResolvedValueOnce('https://s3.example.com/student-card.jpg?sig=1')
+      .mockResolvedValueOnce('https://s3.example.com/national-id.jpg?sig=2');
+    mockedToApplicationDetailDto.mockReturnValue({ id: 100 } as any);
+
+    await applicationService.getApplicationDetail(100, 5);
+
+    expect(mockedUploadService.getPresignedDownloadUrl).toHaveBeenCalledWith('docs/student-card.jpg');
+    expect(mockedUploadService.getPresignedDownloadUrl).toHaveBeenCalledWith('docs/national-id.jpg');
+    expect(mockedToApplicationDetailDto).toHaveBeenCalledWith(app, [
+      'https://s3.example.com/student-card.jpg?sig=1',
+      'https://s3.example.com/national-id.jpg?sig=2',
+    ]);
   });
 
   it('returns the detail DTO when the requester is the organizer of a non-pending/rejected tournament', async () => {
@@ -770,10 +799,10 @@ describe('applyTournament', () => {
     expect(mockedApplicationRepo.insertApplication).toHaveBeenCalledWith(
       20,
       10,
-      expect.objectContaining({
-        checkedAt: expect.any(String),
-        memberIds: [1, 2],
-      }),
+      [
+        { userId: 1, fullName: 'Alice', passed: true },
+        { userId: 2, fullName: 'Bob', passed: true },
+      ],
     );
     expect(result).toEqual({ id: 500, status: 'pending', hardFilterPassed: true });
   });

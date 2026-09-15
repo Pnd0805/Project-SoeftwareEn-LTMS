@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import s3 from '../config/s3.js';
 import { env } from '../config/env.js';
@@ -49,4 +49,11 @@ export async function createPresignedUpload(input: PresignUploadInput) {
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
 
     return { uploadUrl, objectKey, expiresIn: EXPIRES_IN_SECONDS };
+}
+
+// ใช้แปลง S3 key ดิบที่เก็บใน DB ให้เป็น URL ชั่วคราวตอนส่งออกไปให้ frontend
+// (กฎรวม Part 3 ข้อ 11: "ทุก response ที่มีรูปต้องเป็น presigned URL ไม่ใช่ S3 key ดิบ")
+export async function getPresignedDownloadUrl(objectKey: string): Promise<string> {
+    const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey });
+    return getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
 }
