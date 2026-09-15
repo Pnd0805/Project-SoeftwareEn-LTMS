@@ -4,7 +4,7 @@ import { AppError } from '../utils/AppError.js';
 
 export async function requireTeamLeader(req : Request , res : Response , next : NextFunction){
     if(!req.user){
-        return next(new AppError(404 , "USER_NOT_FOUND" , "ไม่พบผู้ใช้นี้ในระบบ"));
+        return next(new AppError(401 , "NO_TOKEN" , "กรุณาเข้าสู่ระบบก่อนใช้งาน"));
     }
     const teamId = req.params['id'];
     const team = await TeamRepo.findById(Number(teamId));

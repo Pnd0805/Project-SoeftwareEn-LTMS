@@ -419,8 +419,9 @@ CREATE TABLE matches (
   scheduled_time DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
-  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed') NOT NULL DEFAULT 'scheduled',  -- ♻️ เปลี่ยนชื่อจาก status
+  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed','result_rejected') NOT NULL DEFAULT 'scheduled',  -- ♻️ เปลี่ยนชื่อจาก status · 🆕 'result_rejected' เพิ่ม 13 ก.ย. 2569 — S04 reject ต้องมีที่ลง (ดู GUIDE/07 A10)
   mode ENUM('onsite','online') NOT NULL,
+  livestream_url VARCHAR(500) NULL,                    -- 🆕 เพิ่ม 15 ก.ย. 2569 — E12 (ดู GUIDE/07 A3 — เลือกทางเก็บเป็น field ของแมตช์ ไม่ใช่ announcement)
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,                            -- 🆕 ใหม่ — แก้ผ่าน PATCH /matches/:id/schedule, /venue, /mode (Organizer เท่านั้น)
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
@@ -512,7 +513,8 @@ CREATE TABLE player_match_stats (
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
-  FOREIGN KEY (recorded_by_referee_id) REFERENCES users(user_id)
+  FOREIGN KEY (recorded_by_referee_id) REFERENCES users(user_id),
+  UNIQUE (match_id, user_id)   -- 🆕 เพิ่ม 14 ก.ย. 2569 — S06 ต้อง idempotent (ยิงซ้ำ = upsert ทับแถวเดิม ไม่สร้างซ้ำ) ไม่งั้น ON DUPLICATE KEY UPDATE ของ player_match_stat_values ไม่มีวันทำงาน เพราะ player_match_stat_id ใหม่ทุกครั้ง
 );
 
 -- 🆕 ตารางใหม่ — "ตัวเลขจริง" แต่ละสถิติ

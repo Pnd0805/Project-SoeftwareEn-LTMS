@@ -360,11 +360,11 @@ CREATE TABLE matches (
   scheduled_end_time  DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
-  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed') NOT NULL DEFAULT 'scheduled',
+  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed','result_rejected') NOT NULL DEFAULT 'scheduled',
   mode ENUM('onsite','online') NOT NULL,
+  livestream_url VARCHAR(500) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
-  -- ⚠️ ไม่มี livestream_url แต่ E12 (PUT /matches/:id/livestream) ต้องใช้ — ดู GUIDE/07
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
   FOREIGN KEY (bracket_node_id) REFERENCES bracket_nodes(bracket_node_id),
   FOREIGN KEY (team_a_id) REFERENCES teams(team_id),
@@ -464,7 +464,8 @@ CREATE TABLE player_match_stats (
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
-  FOREIGN KEY (recorded_by_referee_id) REFERENCES users(user_id)
+  FOREIGN KEY (recorded_by_referee_id) REFERENCES users(user_id),
+  UNIQUE (match_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- "ตัวเลขจริง" แต่ละสถิติ

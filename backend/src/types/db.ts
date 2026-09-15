@@ -148,8 +148,9 @@ export type MatchRow = {
     scheduled_end_time : Date | null,    
     venue : string | null,
     checkin_open_at : Date | null,
-    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed',
+    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed' | 'result_rejected',
     mode : 'onsite' | 'online',
+    livestream_url : string | null,
     created_at : Date,
     updated_at : Date | null
 }
@@ -196,4 +197,68 @@ export type AdminScopeRow = {
     faculty_id : number | null,
     created_at : Date,
     created_by : number | null
+}
+
+export type AnnouncementRow = {
+    announcement_id : number,
+    tournament_id : number,
+    match_id : number | null,
+    created_by : number,
+    announcement_type : 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream',
+    title : string,
+    content : string,
+    created_at : Date,
+    updated_at : Date | null,
+    updated_by : number | null,
+    deleted_at : Date | null,
+    deleted_by : number | null
+}
+
+export type MatchResultRow = {
+    match_result_id : number,
+    match_id : number,
+    winner_team_id : number | null,
+    score_data : Record<string , number> | null,
+    submitted_by_user_id : number,
+    submitted_role : 'team_leader' | 'referee',
+    match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected',
+    dispute_reason : string| null,
+    dispute_raised_by : number| null,
+    dispute_raised_at : Date| null,
+    dispute_resolved_by : number| null,
+    dispute_resolution : string| null,
+    dispute_resolved_at : Date| null,
+    verified_by_user_id : number| null,
+    verified_at : Date| null, 
+    amended_by_user_id : number| null,
+    amend_reason : string| null,
+    amended_at : Date| null,
+    created_at : Date
+}
+
+export type PlayerMatchStatRow = {
+    player_match_stat_id : number,
+    match_id : number,
+    user_id : number,
+    team_id : number,
+    recorded_by_referee_id : number,
+    created_at : Date
+}
+
+export type PlayerMatchStatValueRow = {
+    player_match_stat_value_id : number,
+    player_match_stat_id : number,
+    sport_stat_definition_id : number,
+    value_int : number | null
+}
+
+export type TournamentStandingRow = {
+    standing_id : number,
+    tournament_id : number,
+    team_id : number,
+    played : number,
+    won : number,
+    lost : number,
+    points : number,
+    updated_at : Date
 }

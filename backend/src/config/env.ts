@@ -25,5 +25,11 @@ export const env = {
 
     PORT : Number(requireEnv("PORT")),
 
-    REFEREE_MINIMUM : Number(optionalEnv("REFEREE_MINIMUM", "1"))
+    REFEREE_MINIMUM : Number(optionalEnv("REFEREE_MINIMUM", "1")),
+
+    S3_ENDPOINT : requireEnv("S3_ENDPOINT"),
+    S3_REGION : requireEnv("S3_REGION"),
+    S3_ACCESS_KEY : requireEnv("S3_ACCESS_KEY"),
+    S3_SECRET_KEY : requireEnv("S3_SECRET_KEY"),
+    S3_BUCKET : requireEnv("S3_BUCKET")
 };

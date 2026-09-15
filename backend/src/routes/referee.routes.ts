@@ -5,6 +5,11 @@ import { validate } from '../middlewares/validate.js';
 import { inviteRefereeSchema } from '../schemas/referee.schema.js';
 import * as Referee from '../controllers/referee.controller.js';
 
+import { requireCanSubmitResult , requireCanVerifyResult , requireCanDisputeResult , requireCanRecordStats} from '../middlewares/requireReferee.js';
+import { resolveSchema, statSchema } from '../schemas/matchResult.schema.js';
+import { livestreamSchema } from '../schemas/match.schema.js';
+import * as MatchResult from '../controllers/matchResult.controller.js'
+
 export const tournamentRefereeRouter = express.Router();
 export const matchRefereeRouter      = express.Router();
 export const meRefereeRouter         = express.Router();
@@ -26,6 +31,7 @@ refereeInvitationRouter.post('/:id/decline', requireAuth, Referee.decline);
 
 import { requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 import { assignRefereeSchema } from '../schemas/referee.schema.js';
+import { disputeSchema, submitResultSchema } from '../schemas/matchResult.schema.js';
 
 // F11
 matchRefereeRouter.post('/:id/referees',
@@ -40,3 +46,28 @@ matchRefereeRouter.delete('/:id/referees/:rid',
 
 // F03
 tournamentRefereeRouter.delete('/:id/referees/:rid', requireAuth, requireOrganizer, Referee.removeFromTournament);
+
+
+
+// MatchResult
+matchRefereeRouter.post('/:id/result' , requireAuth , requireCanSubmitResult , validate(submitResultSchema) , MatchResult.createSubmitMatchRes);
+matchRefereeRouter.post('/:id/result/verify' , requireAuth , requireCanVerifyResult , MatchResult.updateVerifyMatchResult);
+matchRefereeRouter.post('/:id/result/dispute' , requireAuth , requireCanDisputeResult , validate(disputeSchema) , MatchResult.updateDisputeMatchResult);
+matchRefereeRouter.post('/:id/result/resolve' , requireAuth , requireOrganizerOfMatch , validate(resolveSchema) , MatchResult.updateResolveMatchResult);
+
+matchRefereeRouter.get('/:id/result' , MatchResult.getVerifiedResult);
+matchRefereeRouter.post('/:id/stats' , requireAuth , requireCanRecordStats , validate(statSchema) , MatchResult.updatePlayerStat);
+matchRefereeRouter.get('/:id/stats' , MatchResult.getPlayerMatchStat);
+
+// S10 — สาธารณะ ไม่มี middleware
+tournamentRefereeRouter.get('/:id/winner' , MatchResult.getChampion);
+
+// S11 — สาธารณะ ไม่มี middleware
+tournamentRefereeRouter.get('/:id/dashboard' , MatchResult.getDashboard);
+
+// S12 — สาธารณะ ไม่มี middleware
+tournamentRefereeRouter.get('/:id/standings' , MatchResult.getStandings);
+
+// E12
+matchRefereeRouter.put('/:id/livestream' , requireAuth , requireOrganizerOfMatch , validate(livestreamSchema) , MatchResult.updateLivestream);
+

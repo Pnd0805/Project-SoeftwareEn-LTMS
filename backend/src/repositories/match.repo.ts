@@ -28,3 +28,10 @@ export async function findMaxConcurrentRefereeNeed(
         [refereesPerOnsiteMatch, tournamentId]);
     return Number(rows[0]?.need ?? 0);
 }
+
+export async function updateLivestreamUrl(matchId : number , youtubeUrl : string): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        'UPDATE matches SET livestream_url = ?, updated_at = NOW() WHERE match_id = ?',
+        [youtubeUrl, matchId]);
+    return result.affectedRows === 1;
+}

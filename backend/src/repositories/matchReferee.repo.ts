@@ -25,6 +25,17 @@ export async function findByMatch(matchId : number): Promise<MatchRefereeListRow
     return rows;
 }
 
+/** นับกรรมการที่ accepted แล้วและยังไม่ถูกถอดออกจากทัวร์นาเมนต์ — ใช้เช็ค BR-11 */
+export async function countAcceptedByMatch(matchId : number): Promise<number>{
+    const [rows] = await pool.query<(RowDataPacket & { cnt : number })[]>(
+        `SELECT COUNT(*) AS cnt
+         FROM match_referees mr
+         JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id
+         WHERE mr.match_id = ? AND tr.invitation_status = 'accepted' AND tr.removed_at IS NULL`,
+        [matchId]);
+    return rows[0]!.cnt;
+}
+
 /** ถอดออกจากแมตช์ — hard delete (ตารางนี้ไม่มี removed_at) */
 export async function unassign(matchId : number, tournamentRefereeId : number): Promise<boolean>{
     const [result] = await pool.query<ResultSetHeader>(

@@ -11,6 +11,7 @@ import Admin from './adminScope.routes.js';
 import { tournamentRefereeRouter, matchRefereeRouter, meRefereeRouter, refereeInvitationRouter } from './referee.routes.js';
 import Tournament from './tournament.routes.js';
 import Amendment from './amendment.routes.js';
+import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
 
 const router = express.Router();
 
@@ -31,5 +32,8 @@ router.use('/tournaments' , tournamentRefereeRouter);
 router.use('/matches' , matchRefereeRouter);
 router.use('/me' , meRefereeRouter);
 router.use('/referee-invitations' , refereeInvitationRouter);
+
+router.use('/tournaments' , tournamentAnnouncementRouter);
+router.use('/announcements' , announcementRouter);
 
 export default router;
