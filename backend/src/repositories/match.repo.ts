@@ -240,3 +240,12 @@ export async function insertCheckin(input: InsertCheckinInput): Promise<MatchChe
     );
     return rows[0]!;
 }
+
+// ฟังก์ชันของเพื่อน (origin/backend) — เก็บไว้เผื่อโค้ดอื่นเรียกชื่อนี้ (เช่น requireOrganizerOfMatch)
+// ต่างจาก findMatchById ของเราตรงที่คืนแถวดิบจาก matches ล้วนๆ ไม่ JOIN ชื่อทีม
+export async function findById(matchId: number): Promise<MatchRow | null> {
+    const [rows] = await pool.query<(MatchRow & RowDataPacket)[]>(
+        'SELECT * FROM matches WHERE match_id = ?', [matchId]
+    );
+    return rows[0] ?? null;
+}

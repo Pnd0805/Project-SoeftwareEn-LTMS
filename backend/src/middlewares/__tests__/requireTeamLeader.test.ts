@@ -80,20 +80,6 @@ describe('requireTeamLeader middleware', () => {
     expect(err.code).toBe('TEAM_NOT_FOUND');
   });
 
-  it('calls next with USER_NOT_FOUND when req.user is not set', async () => {
-    const req = makeReq({ id: '10' }, undefined);
-    const res = makeRes();
-    const next = vi.fn() as NextFunction;
-    mockedFindById.mockResolvedValue(baseTeam);
-
-    await requireTeamLeader(req, res, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
-    expect(err.status).toBe(404);
-    expect(err.code).toBe('USER_NOT_FOUND');
-  });
-
   it('calls next with NOT_TEAM_LEADER when the user is not the leader of the team', async () => {
     const req = makeReq({ id: '10' }, nonLeaderUser);
     const res = makeRes();

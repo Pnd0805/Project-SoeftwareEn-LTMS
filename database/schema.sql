@@ -155,6 +155,7 @@ CREATE TABLE team_admin_requests (
   target_user_id INT NULL,
   team_admin_request_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  supporting_docs JSON NULL,
   reviewed_by INT NULL,
   reviewed_at DATETIME NULL,
   rejection_reason TEXT NULL,

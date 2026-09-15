@@ -6,6 +6,7 @@ vi.mock('../../services/user.service.js', () => ({
   getUserStats: vi.fn(),
   searchUsers: vi.fn(),
   updateMe: vi.fn(),
+  getMyInvitation: vi.fn(),
 }));
 
 vi.mock('../../mappers/user.mapper.js', () => ({
@@ -16,7 +17,14 @@ vi.mock('../../utils/parseId.js', () => ({
   parseId: vi.fn(),
 }));
 
-import { getMe, getUserById, getUserStats, searchUser, patchMe } from '../user.controller.js';
+import {
+  getMe,
+  getUserById,
+  getUserStats,
+  searchUser,
+  patchMe,
+  getMyInvitation,
+} from '../user.controller.js';
 import * as UserService from '../../services/user.service.js';
 import { toMeDto } from '../../mappers/user.mapper.js';
 import { parseId } from '../../utils/parseId.js';
@@ -169,4 +177,41 @@ describe('user.controller patchMe()', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ id: 1, contactInfo: 'x' });
   });
+});
+
+describe('user.controller getMyInvitation()', () => {
+  it("fetches the authenticated user's invitations and responds 200", async () => {
+    const req = { user: { user_id: 1 } } as unknown as Request;
+    const res = makeRes();
+    const serviceResult = { items: [{ id: 1, teamId: 10 }] };
+    mockedUserService.getMyInvitation.mockResolvedValue(serviceResult as any);
+
+    await getMyInvitation(req, res);
+
+    expect(mockedUserService.getMyInvitation).toHaveBeenCalledWith(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(serviceResult);
+  });
+
+  it('propagates the error when the service throws', async () => {
+    const req = { user: { user_id: 1 } } as unknown as Request;
+    const res = makeRes();
+    const serviceError = new Error('DB_DOWN');
+    mockedUserService.getMyInvitation.mockRejectedValue(serviceError);
+
+    await expect(getMyInvitation(req, res)).rejects.toBe(serviceError);
+  });
+
+  it(
+    'rejects with a TypeError (not an AppError) when req.user is missing, unlike getMe()/patchMe() — ' +
+      'this endpoint reads req.user!.user_id directly with no guard, so it relies entirely on ' +
+      'auth middleware having already populated req.user',
+    async () => {
+      const req = { user: undefined } as Request;
+      const res = makeRes();
+
+      await expect(getMyInvitation(req, res)).rejects.toThrow();
+      expect(mockedUserService.getMyInvitation).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -111,6 +111,48 @@ export type PlayerProfileStatRow = {
     updated_at : Date
 }
 
+export type TournamentRefereeRow = {
+    tournament_referee_id : number,
+    tournament_id : number,
+    user_id : number,
+    invited_by : number,
+    invitation_status : 'pending' | 'accepted' | 'rejected',
+    is_external : number,                   
+    external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
+    approved_by : number | null,
+    approved_at : Date | null,
+    created_at : Date,
+    removed_at : Date | null,
+    removed_by : number | null
+}
+
+export type MatchRefereeRow = {
+    match_referee_id : number,
+    match_id : number,
+    tournament_referee_id : number,
+    created_at : Date
+}
+
+
+export type MatchRow = {
+    match_id : number,
+    tournament_id : number,
+    bracket_node_id : number | null,
+    next_match_id : number | null,
+    loser_next_match_id : number | null,
+    round_number : number | null,
+    team_a_id : number | null,
+    team_b_id : number | null,
+    scheduled_time : Date | null,
+    venue : string | null,
+    checkin_open_at : Date | null,
+    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed',
+    mode : 'onsite' | 'online',
+    created_at : Date,
+    updated_at : Date | null
+}
+
+
 export type TeamMemberRow = {
     team_member_id : number,
     team_id : number,
@@ -129,24 +171,6 @@ export type TeamInvitationRow = {
     created_at : Date,
     expires_at : Date,
     responded_at : Date | null
-};
-
-export type MatchRow = {
-    match_id : number,
-    tournament_id : number,
-    bracket_node_id : number | null,
-    next_match_id : number | null,
-    loser_next_match_id : number | null,
-    round_number : number | null,
-    team_a_id : number | null,
-    team_b_id : number | null,
-    scheduled_time : Date | null,
-    venue : string | null,
-    checkin_open_at : Date | null,
-    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed',
-    mode : 'onsite' | 'online',
-    created_at : Date,
-    updated_at : Date | null,
 };
 
 export type BracketNodeRow = {
@@ -177,24 +201,25 @@ export type MatchCheckinRow = {
     verified_at : Date | null,
 };
 
-export type TournamentRefereeRow = {
-    tournament_referee_id : number,
-    tournament_id : number,
-    user_id : number,
-    invited_by : number,
-    invitation_status : 'pending' | 'accepted' | 'rejected',
-    is_external : number,
-    external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
-    approved_by : number | null,
-    approved_at : Date | null,
-    created_at : Date,
-    removed_at : Date | null,
-    removed_by : number | null,
-};
+export type TeamAdminRequestRow = {
+    team_admin_request_id : number,
+    team_id : number,
+    request_type : 'official_status' | 'leader_transfer',
+    requested_by : number,
+    target_user_id : number | null,
+    team_admin_request_status : 'pending' | 'approved' | 'rejected',
+    requested_at : Date,
+    reviewed_by : number | null,
+    reviewed_at : Date | null,
+    rejection_reason : string | null,
+    supporting_docs : string[] | null;
+}
 
-export type MatchRefereeRow = {
-    match_referee_id : number,
-    match_id : number,
-    tournament_referee_id : number,
+export type AdminScopeRow = {
+    admin_scope_id : number,
+    user_id : number,
+    scope_type : 'faculty' | 'university_wide',
+    faculty_id : number | null,
     created_at : Date,
-};
+    created_by : number | null
+}
