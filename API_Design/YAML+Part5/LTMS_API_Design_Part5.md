@@ -91,4 +91,4 @@ npx openapi-typescript LTMS_OpenAPI_Sprint1-2.yaml -o src/types/api-sprint.d.ts
 | 4 | Error Catalog | `LTMS_API_Design_Part4.md` |
 | **5** | **OpenAPI 3.1 YAML** | `openapi/LTMS_OpenAPI_MVP.yaml`, `openapi/LTMS_OpenAPI_Sprint1-2.yaml` |
 
-**API Design เสร็จครบทุกขั้นแล้ว** ตั้งแต่ conventions จนถึงไฟล์ที่ deploy ใช้งานได้จริง สิ่งที่เหลือค้างจากทั้งกระบวนการมีแค่ 2 เรื่องที่ต้องผ่าน Change Management ก่อนใช้งานจริง (multi-faculty/external Organizer ในข้อ 4.3, และขอบเขตแก้ผลย้อนหลังในข้อ 12.2) และค่าตัวเลข `sport_types.min_members`/`max_members` ที่ต้องยืนยันกับทีม/อาจารย์ก่อน seed ข้อมูลจริง — ไม่มีข้อไหนบล็อกการเริ่มเขียนโค้ด backend ตาม MVP ได้ทันที
+**API Design เสร็จครบทุกขั้นแล้ว** ตั้งแต่ conventions จนถึงไฟล์ที่ deploy ใช้งานได้จริง สำหรับ Current MVP ตัดสินใจให้ Tournament creation เปิดเฉพาะ `department`/`faculty`; multi-faculty `university` ถูก deferred ไว้ก่อน ส่วน external Organizer และขอบเขตแก้ผลย้อนหลังยังต้องผ่าน Change Management ก่อนใช้งานจริง และค่าตัวเลข `sport_types.min_members`/`max_members` ยังต้องยืนยันกับทีม/อาจารย์ก่อน seed ข้อมูลจริง

@@ -118,7 +118,8 @@ type ErrorResponse = {
 |---|---|---|---|
 | `INVALID_DATE_RANGE` | 400 | วันแข่งขันต้องอยู่หลังวันปิดรับสมัคร | C01 (field: eventStartDate) |
 | `TOURNAMENT_REJECT_REASON_REQUIRED` | 400 | กรุณาระบุเหตุผลที่ไม่อนุมัติ | C05 (field: reason) |
-| `REFEREES_INCOMPLETE` | 409 | กรุณาแต่งตั้งกรรมการให้ครบก่อนเปิดเผยแพร่ | C13 (BR-10) — มากับ `refereesAccepted`/`refereesRequired` |
+| `SCHEDULE_INCOMPLETE` | 409 | กรุณากำหนดตารางเวลาเริ่มและสิ้นสุดของทุกแมตช์ให้ครบก่อนเผยแพร่ | C13 — มากับ `plannedMatches`/`matchesMissingSchedule` |
+| `REFEREES_INCOMPLETE` | 409 | กรุณาแต่งตั้งกรรมการให้เพียงพอกับตารางการแข่งขันก่อนเปิดเผยแพร่ | C13 (BR-10) — มากับ `refereesAccepted`/`refereesRequired` โดย `refereesRequired` = peak concurrent demand |
 | `AMENDMENT_FIELD_NOT_ALLOWED` | 400 | ฟิลด์นี้ต้องแก้ผ่านการขออนุมัติเปลี่ยนแปลง ไม่ใช่แก้ตรงนี้ | C08 (FR-OM-01) |
 
 ---

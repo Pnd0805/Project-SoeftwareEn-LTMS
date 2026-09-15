@@ -141,7 +141,7 @@ function makeTournament(overrides: Partial<TournamentRow> = {}): TournamentRow {
     tournament_status: 'public',
     registration_open: 1,
     registration_start: null,
-    registration_end: null,
+    registration_end: '2026-09-20',   // อายุคำนวณ ณ วันปิดรับสมัคร (ADR-0011) — null ทำให้ TOURNAMENT_CONFIGURATION_INVALID
     event_start_date: '2026-10-01',
     event_end_date: null,
     max_teams: 16,

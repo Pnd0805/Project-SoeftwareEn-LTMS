@@ -10,13 +10,13 @@ import { buildPagination } from '../utils/pagination.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
-function calculateAge(birthDate: string): number {
+function calculateAge(birthDate: string, asOfDate: Date | string): number {
     const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
+    const asOf = asOfDate instanceof Date ? asOfDate : new Date(asOfDate);
+    let age = asOf.getUTCFullYear() - birth.getUTCFullYear();
     const hasHadBirthdayThisYear =
-        today.getMonth() > birth.getMonth() ||
-        (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+        asOf.getUTCMonth() > birth.getUTCMonth() ||
+        (asOf.getUTCMonth() === birth.getUTCMonth() && asOf.getUTCDate() >= birth.getUTCDate());
     if (!hasHadBirthdayThisYear) age -= 1;
     return age;
 }
@@ -173,7 +173,10 @@ export async function applyTournament(tournamentId: number, teamId: number, user
             continue;
         }
 
-        const age = calculateAge(member.birth_date);
+        if (tournament.registration_end === null) {
+            throw new AppError(409, "TOURNAMENT_CONFIGURATION_INVALID", "ทัวร์นาเมนต์ยังไม่ได้กำหนดวันปิดรับสมัคร");
+        }
+        const age = calculateAge(member.birth_date, tournament.registration_end);
         if (tournament.min_age !== null && age < tournament.min_age) {
             failedMembers.push({ userId: member.user_id, fullName: member.full_name, reason: 'age' });
             continue;
