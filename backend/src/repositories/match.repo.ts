@@ -192,6 +192,13 @@ export async function updateMatchNextMatchIdTx(conn: PoolConnection, matchId: nu
     );
 }
 
+export async function updateMatchLoserNextMatchIdTx(conn: PoolConnection, matchId: number, loserNextMatchId: number): Promise<void> {
+    await conn.query(
+        `UPDATE matches SET loser_next_match_id = ? WHERE match_id = ?`,
+        [loserNextMatchId, matchId]
+    );
+}
+
 // ⚠️ ไม่มี UNIQUE(match_id, user_id) จริงใน schema.sql ทั้งที่ GUIDE อ้างว่ามี (เหมือนเคส C5 ของ tournament_referees)
 // เลยต้องเช็คซ้ำที่ฝั่ง service เอง (select ก่อน insert) — มีโอกาสชนกันได้ถ้ายิงพร้อมกันเป๊ะ แต่ยอมรับความเสี่ยงนี้ไปก่อน ต้องคุยทีม
 export async function findCheckinByMatchAndUser(matchId: number, userId: number): Promise<MatchCheckinRow | null> {

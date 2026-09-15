@@ -1,5 +1,6 @@
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as MatchRepo from '../repositories/match.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { toApplicationDetailDto, toMyApplicationDto } from '../mappers/application.mapper.js';
 import { toOrganizerApplicationDto } from '../mappers/application.mapper.js';
@@ -85,7 +86,8 @@ export async function withdrawApplication(applicationId: number, userId: number)
         throw new AppError(409, "APPLICATION_NOT_APPROVED", "ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้");
     }
     await ApplicationRepo.updateApplicationStatus(applicationId, "withdrawn");
-    return { id: applicationId, status: "withdrawn", bracketExists: false};
+    const matchCount = await MatchRepo.countMatchesByTournament(app.tournament_id);
+    return { id: applicationId, status: "withdrawn", bracketExists: matchCount > 0 };
 }
 
 export async function approveApplication(applicationId: number,userId: number) {
