@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import * as ApplicationService from '../services/application.service.js';
 import { parseId } from '../utils/parseId.js';
 import { AppError } from '../utils/AppError.js';
+import { parsePagination } from '../utils/pagination.js';
 
 export async function getTournamentTeams(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
@@ -12,12 +13,14 @@ export async function getMyappication(req: Request, res: Response) {
     if (!req.user) {
         throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
     }
-    res.status(200).json(await ApplicationService.getMyappication(req.user.user_id));
+    const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+    res.status(200).json(await ApplicationService.getMyappication(req.user.user_id, newpage, newpageSize, offset));
 }
 
 export async function getTournamentApplications(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
-    res.status(200).json(await ApplicationService.getTournamentApplications(tournamentId));
+    const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+    res.status(200).json(await ApplicationService.getTournamentApplications(tournamentId, newpage, newpageSize, offset));
 }
 
 export async function getApplicationDetail(req: Request, res: Response) {

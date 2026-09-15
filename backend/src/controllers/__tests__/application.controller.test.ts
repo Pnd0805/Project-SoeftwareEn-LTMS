@@ -89,14 +89,14 @@ describe('application.controller getMyappication()', () => {
   });
 
   it("fetches the authenticated user's applications and responds 200", async () => {
-    const req = { user: { user_id: 1 } } as unknown as Request;
+    const req = { user: { user_id: 1 }, query: {} } as unknown as Request;
     const res = makeRes();
     const serviceResult = { items: [{ id: 1 }] };
     mockedApplicationService.getMyappication.mockResolvedValue(serviceResult as any);
 
     await getMyappication(req, res);
 
-    expect(mockedApplicationService.getMyappication).toHaveBeenCalledWith(1);
+    expect(mockedApplicationService.getMyappication).toHaveBeenCalledWith(1, 1, 20, 0);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(serviceResult);
   });
@@ -104,7 +104,7 @@ describe('application.controller getMyappication()', () => {
 
 describe('application.controller getTournamentApplications()', () => {
   it('parses the tournament id and responds 200 with applications', async () => {
-    const req = { params: { id: '3' } } as unknown as Request;
+    const req = { params: { id: '3' }, query: {} } as unknown as Request;
     const res = makeRes();
     mockedParseId.mockReturnValue(3);
     const serviceResult = { items: [{ id: 1 }] };
@@ -113,7 +113,7 @@ describe('application.controller getTournamentApplications()', () => {
     await getTournamentApplications(req, res);
 
     expect(mockedParseId).toHaveBeenCalledWith('3', 'รหัสทัวร์นาเมนต์');
-    expect(mockedApplicationService.getTournamentApplications).toHaveBeenCalledWith(3);
+    expect(mockedApplicationService.getTournamentApplications).toHaveBeenCalledWith(3, 1, 20, 0);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(serviceResult);
   });

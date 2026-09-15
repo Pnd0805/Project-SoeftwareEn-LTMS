@@ -25,20 +25,35 @@ export type LeaderApplicationRow = {
     sport_type_id: number;
 };
 
-export async function findApplicationsByLeader(userId: number): Promise<Pick<LeaderApplicationRow    , "tournament_application_id" | "tournament_application_status" | "rejection_reason"
-| "applied_at" | "tournament_id" | "tournament_name" | "team_id" | "team_name" | "sport_type_id">[]> {
-    const [rows] = await pool.query<(LeaderApplicationRow    & RowDataPacket)[]>(
-        `SELECT 
+type LeaderApplicationListRow = Pick<LeaderApplicationRow, "tournament_application_id" | "tournament_application_status" | "rejection_reason"
+| "applied_at" | "tournament_id" | "tournament_name" | "team_id" | "team_name" | "sport_type_id">;
+
+export async function findApplicationsByLeader(
+    userId: number,
+    offset: number,
+    pageSize: number
+): Promise<{ rows: LeaderApplicationListRow[]; totalItems: number }> {
+    const [rows] = await pool.query<(LeaderApplicationListRow & RowDataPacket)[]>(
+        `SELECT
             ta.tournament_application_id, ta.tournament_application_status, ta.rejection_reason, ta.applied_at,
             t.tournament_id, t.name AS tournament_name,
             tm.team_id, tm.name AS team_name, tm.sport_type_id
          FROM tournament_applications ta
          JOIN tournaments t ON ta.tournament_id = t.tournament_id
          JOIN teams tm ON ta.team_id = tm.team_id
+         WHERE tm.leader_id = ?
+         ORDER BY ta.tournament_application_id
+         LIMIT ? OFFSET ?`,
+        [userId, pageSize, offset]
+    );
+    const [countRows] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems
+         FROM tournament_applications ta
+         JOIN teams tm ON ta.team_id = tm.team_id
          WHERE tm.leader_id = ?`,
         [userId]
     );
-    return rows;
+    return { rows, totalItems: countRows[0]?.totalItems ?? 0 };
 }
 
 export type OrganizerApplicationRow = {
@@ -52,18 +67,28 @@ export type OrganizerApplicationRow = {
     sport_type_id: number;
 };
 
-export async function findApplicationsByTournament(tournamentId: number): Promise<OrganizerApplicationRow[]> {
+export async function findApplicationsByTournament(
+    tournamentId: number,
+    offset: number,
+    pageSize: number
+): Promise<{ rows: OrganizerApplicationRow[]; totalItems: number }> {
     const [rows] = await pool.query<(OrganizerApplicationRow & RowDataPacket)[]>(
-        `SELECT 
-            ta.tournament_application_id, ta.tournament_application_status, ta.hard_filter_passed, 
+        `SELECT
+            ta.tournament_application_id, ta.tournament_application_status, ta.hard_filter_passed,
             ta.soft_filter_documents, ta.applied_at,
             tm.team_id, tm.name AS team_name, tm.sport_type_id
          FROM tournament_applications ta
          JOIN teams tm ON ta.team_id = tm.team_id
-         WHERE ta.tournament_id = ?`,
+         WHERE ta.tournament_id = ?
+         ORDER BY ta.tournament_application_id
+         LIMIT ? OFFSET ?`,
+        [tournamentId, pageSize, offset]
+    );
+    const [countRows] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM tournament_applications WHERE tournament_id = ?`,
         [tournamentId]
     );
-    return rows;
+    return { rows, totalItems: countRows[0]?.totalItems ?? 0 };
 }
 
 export type ApplicationDetailRow = {

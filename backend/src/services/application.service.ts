@@ -5,6 +5,7 @@ import { toTeamRef } from '../mappers/team.mapper.js';
 import { toApplicationDetailDto, toMyApplicationDto } from '../mappers/application.mapper.js';
 import { toOrganizerApplicationDto } from '../mappers/application.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import { buildPagination } from '../utils/pagination.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
@@ -26,16 +27,18 @@ export async function getApprovedTeams(tournamentId: number) {
     return { items: data };
 }
 
-export async function getMyappication(userId: number) {
-    const rows = await ApplicationRepo.findApplicationsByLeader(userId);
+export async function getMyappication(userId: number, page: number, pageSize: number, offset: number) {
+    const { rows, totalItems } = await ApplicationRepo.findApplicationsByLeader(userId, offset, pageSize);
     const data = rows.map(toMyApplicationDto);
-    return { items: data};
+    const pagination = buildPagination(page, pageSize, totalItems);
+    return { items: data, pagination };
 }
 
-export async function getTournamentApplications(tournamentId: number) {
-    const rows = await ApplicationRepo.findApplicationsByTournament(tournamentId);
+export async function getTournamentApplications(tournamentId: number, page: number, pageSize: number, offset: number) {
+    const { rows, totalItems } = await ApplicationRepo.findApplicationsByTournament(tournamentId, offset, pageSize);
     const data = rows.map(toOrganizerApplicationDto);
-    return { items: data};
+    const pagination = buildPagination(page, pageSize, totalItems);
+    return { items: data, pagination };
 }
 
 export async function getApplicationDetail(applicationId: number, userId: number) {

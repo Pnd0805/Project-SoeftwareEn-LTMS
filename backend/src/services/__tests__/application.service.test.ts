@@ -18,6 +18,10 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   findTournamentById: vi.fn(),
 }));
 
+vi.mock('../../repositories/match.repo.js', () => ({
+  countMatchesByTournament: vi.fn(),
+}));
+
 vi.mock('../../mappers/team.mapper.js', () => ({
   toTeamRef: vi.fn(),
 }));
@@ -31,6 +35,7 @@ vi.mock('../../mappers/application.mapper.js', () => ({
 import * as applicationService from '../application.service.js';
 import * as ApplicationRepo from '../../repositories/application.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import * as MatchRepo from '../../repositories/match.repo.js';
 import { toTeamRef } from '../../mappers/team.mapper.js';
 import {
   toApplicationDetailDto,
@@ -50,6 +55,7 @@ import type { TeamRow, TournamentRow } from '../../types/db.js';
 
 const mockedApplicationRepo = vi.mocked(ApplicationRepo);
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
+const mockedMatchRepo = vi.mocked(MatchRepo);
 const mockedToTeamRef = vi.mocked(toTeamRef);
 const mockedToApplicationDetailDto = vi.mocked(toApplicationDetailDto);
 const mockedToMyApplicationDto = vi.mocked(toMyApplicationDto);
@@ -197,53 +203,65 @@ describe('getApprovedTeams', () => {
 });
 
 describe('getMyappication', () => {
-  it('returns every application led by the user, mapped to a DTO', async () => {
+  it('returns every application led by the user, mapped to a DTO, with pagination', async () => {
     const rows = [
       makeLeaderApplication({ tournament_application_id: 1 }),
       makeLeaderApplication({ tournament_application_id: 2 }),
     ];
-    mockedApplicationRepo.findApplicationsByLeader.mockResolvedValue(rows);
+    mockedApplicationRepo.findApplicationsByLeader.mockResolvedValue({ rows, totalItems: 2 });
     mockedToMyApplicationDto
       .mockReturnValueOnce({ id: 1 } as any)
       .mockReturnValueOnce({ id: 2 } as any);
 
-    const result = await applicationService.getMyappication(5);
+    const result = await applicationService.getMyappication(5, 1, 20, 0);
 
-    expect(mockedApplicationRepo.findApplicationsByLeader).toHaveBeenCalledWith(5);
+    expect(mockedApplicationRepo.findApplicationsByLeader).toHaveBeenCalledWith(5, 0, 20);
     expect(mockedToMyApplicationDto.mock.calls[0]?.[0]).toEqual(rows[0]);
-    expect(result).toEqual({ items: [{ id: 1 }, { id: 2 }] });
+    expect(result).toEqual({
+      items: [{ id: 1 }, { id: 2 }],
+      pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 },
+    });
   });
 
   it('returns an empty items array when the user leads no applications', async () => {
-    mockedApplicationRepo.findApplicationsByLeader.mockResolvedValue([]);
+    mockedApplicationRepo.findApplicationsByLeader.mockResolvedValue({ rows: [], totalItems: 0 });
 
-    const result = await applicationService.getMyappication(5);
+    const result = await applicationService.getMyappication(5, 1, 20, 0);
 
-    expect(result).toEqual({ items: [] });
+    expect(result).toEqual({
+      items: [],
+      pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 },
+    });
   });
 });
 
 describe('getTournamentApplications', () => {
-  it('returns every application for the tournament mapped to a DTO', async () => {
+  it('returns every application for the tournament mapped to a DTO, with pagination', async () => {
     const rows = [makeOrganizerApplication({ tournament_application_id: 1 })];
-    mockedApplicationRepo.findApplicationsByTournament.mockResolvedValue(rows);
+    mockedApplicationRepo.findApplicationsByTournament.mockResolvedValue({ rows, totalItems: 1 });
     mockedToOrganizerApplicationDto.mockReturnValue({ id: 1 } as any);
 
-    const result = await applicationService.getTournamentApplications(20);
+    const result = await applicationService.getTournamentApplications(20, 1, 20, 0);
 
-    expect(mockedApplicationRepo.findApplicationsByTournament).toHaveBeenCalledWith(20);
+    expect(mockedApplicationRepo.findApplicationsByTournament).toHaveBeenCalledWith(20, 0, 20);
     // .map(toOrganizerApplicationDto) invokes the callback as (item, index,
     // array), so only assert on the first argument the call actually cares about.
     expect(mockedToOrganizerApplicationDto.mock.calls[0]?.[0]).toEqual(rows[0]);
-    expect(result).toEqual({ items: [{ id: 1 }] });
+    expect(result).toEqual({
+      items: [{ id: 1 }],
+      pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 },
+    });
   });
 
   it('returns an empty items array when the tournament has no applications', async () => {
-    mockedApplicationRepo.findApplicationsByTournament.mockResolvedValue([]);
+    mockedApplicationRepo.findApplicationsByTournament.mockResolvedValue({ rows: [], totalItems: 0 });
 
-    const result = await applicationService.getTournamentApplications(20);
+    const result = await applicationService.getTournamentApplications(20, 1, 20, 0);
 
-    expect(result).toEqual({ items: [] });
+    expect(result).toEqual({
+      items: [],
+      pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 },
+    });
   });
 });
 
@@ -389,15 +407,28 @@ describe('withdrawApplication', () => {
     expect(mockedApplicationRepo.updateApplicationStatus).not.toHaveBeenCalled();
   });
 
-  it('withdraws an approved application owned by the team leader', async () => {
+  it('withdraws an approved application owned by the team leader (no bracket yet)', async () => {
     mockedApplicationRepo.findApplicationById.mockResolvedValue(
       makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
     );
+    mockedMatchRepo.countMatchesByTournament.mockResolvedValue(0);
 
     const result = await applicationService.withdrawApplication(100, 5);
 
     expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'withdrawn');
+    expect(mockedMatchRepo.countMatchesByTournament).toHaveBeenCalledWith(20);
     expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: false });
+  });
+
+  it('reports bracketExists: true when the tournament already has matches', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    mockedMatchRepo.countMatchesByTournament.mockResolvedValue(8);
+
+    const result = await applicationService.withdrawApplication(100, 5);
+
+    expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: true });
   });
 });
 
