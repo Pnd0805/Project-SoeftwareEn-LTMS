@@ -1,4 +1,4 @@
-import type { AdminScopeRow , UserRow, TeamRow, TournamentRow, MatchRow } from './db.js';
+import type { AdminScopeRow , UserRow, TeamRow, TournamentRow, MatchRow, MatchResultRow, AnnouncementRow } from './db.js';
 
 declare global{
     namespace Express{
@@ -8,6 +8,10 @@ declare global{
             admin? : AdminScopeRow;
             tournament? : TournamentRow;
             match? : MatchRow;
+            matchResult? : MatchResultRow;
+            announcement? : AnnouncementRow;
+
+            submitrole? : 'team_leader' | 'referee';
         }
     }
 }

@@ -1,7 +1,7 @@
 import pool from "../config/db.js";
 import type { TeamDto, TeamMemberWithUserRef , OfficialMemberConflict } from "../mappers/team.mapper.js";
 import type { TeamInput , updateTeamInput} from "../schemas/team.schema.js";
-import type { TeamRow ,TeamMemberRow, TeamInvitationRow , UserRow, TeamAdminRequestRow} from "../types/db.js";
+import type { TeamRow ,TeamMemberRow, TeamInvitationRow , UserRow, TeamAdminRequestRow, MatchRow} from "../types/db.js";
 import type { RowDataPacket , ResultSetHeader } from "mysql2";
 
 
@@ -94,6 +94,15 @@ export async function findTeamMemberById(teamId : number) : Promise<TeamMemberWi
                                                                                 JOIN users u ON tm.user_id = u.user_id WHERE team_id = ?`,
                                                                                 [teamId]);
     return rows;
+}
+
+
+export async function findTeamIdOfUserInMatch(userId : number , matchId : number): Promise<{teamId : number}| null>{
+    const [ rows ] = await pool.query<({teamId : number} & RowDataPacket)[]>(`SELECT tm.team_id as teamId
+                                                                              FROM team_members tm JOIN matches m
+                                                                              ON m.team_a_id = tm.team_id OR m.team_b_id = tm.team_id
+                                                                              WHERE tm.user_id = ? AND m.match_id = ?`,[userId , matchId])
+    return rows[0] ?? null;
 }
 
 export async function updateMember(userId : number , teamId : number, position : 'starter' | 'substitute'): Promise<number>{

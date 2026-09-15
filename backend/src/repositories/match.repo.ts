@@ -1,6 +1,6 @@
 import pool from '../config/db.js';
 import type { MatchRow, TournamentRefereeRow } from '../types/db.js';
-import type { RowDataPacket } from 'mysql2';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export async function findById(matchId : number): Promise<MatchRow | null>{
     const [rows] = await pool.query<(MatchRow & RowDataPacket)[]>(
@@ -45,4 +45,11 @@ export async function findRefereeCoverage(tournamentId : number): Promise<MatchR
          WHERE m.tournament_id = ?
          ORDER BY m.scheduled_time, m.match_id, tr.tournament_referee_id`, [tournamentId]);
     return rows;
+}
+
+export async function updateLivestreamUrl(matchId : number , youtubeUrl : string): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        'UPDATE matches SET livestream_url = ?, updated_at = NOW() WHERE match_id = ?',
+        [youtubeUrl, matchId]);
+    return result.affectedRows === 1;
 }

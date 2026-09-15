@@ -116,6 +116,24 @@ export async function reassign(db : Queryable, matchId : number, fromId : number
     return true;
 }
 
+/**
+ * นับกรรมการที่ใช้งานได้จริงของแมตช์ — ใช้เช็ค BR-11 ตอนส่งผล (S01)
+ * ★ หลังเปลี่ยนโฟลว์ (GUIDE/11) ต้องกรอง assignment_status = 'accepted' ด้วย ไม่งั้นนับแถวที่ ref ยังไม่รับ/ปฏิเสธ
+ *   และคนนอกนับเฉพาะที่ admin อนุมัติแล้ว (gate เดียวกับ isActiveReferee)
+ */
+export async function countAcceptedByMatch(matchId : number): Promise<number>{
+    const [rows] = await pool.query<(RowDataPacket & { cnt : number })[]>(
+        `SELECT COUNT(*) AS cnt
+         FROM match_referees mr
+         JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id
+         WHERE mr.match_id = ?
+           AND mr.assignment_status = 'accepted'
+           AND tr.invitation_status = 'accepted' AND tr.removed_at IS NULL
+           AND (tr.is_external = 0 OR tr.external_approval_status = 'approved')`,
+        [matchId]);
+    return rows[0]!.cnt;
+}
+
 /** ถอดออกจากแมตช์ — hard delete (ตารางนี้ไม่มี removed_at) */
 export async function unassign(matchId : number, tournamentRefereeId : number): Promise<boolean>{
     const [result] = await pool.query<ResultSetHeader>(

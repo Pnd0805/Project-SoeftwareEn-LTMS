@@ -198,6 +198,7 @@ CREATE TABLE official_team_memberships (
 CREATE TABLE tournaments (
   tournament_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(200) NOT NULL,
+  description VARCHAR(255) NULL,
   sport_type_id INT NOT NULL,
   bracket_format ENUM('single_elimination','double_elimination','round_robin') NULL,
   scope_type ENUM('department','faculty','university') NOT NULL,  -- ⚠️ 'university' รอ Change Management
@@ -231,7 +232,6 @@ CREATE TABLE tournaments (
   deleted_at DATETIME NULL,
   deleted_by INT NULL,   -- NULL = auto_deleted (ระบบ) · มีค่า = Admin สั่งลบ
   -- Organizer ไม่มีสิทธิ์ลบทัวร์นาเมนต์เอง มีแค่ unpublish (private ↔ public)
-  -- ⚠️ ไม่มีคอลัมน์ description แต่ C08 (PATCH /tournaments/:id) รับ field นี้ — ดู GUIDE/07
   FOREIGN KEY (sport_type_id) REFERENCES sport_types(sport_type_id),
   FOREIGN KEY (organizing_faculty_id) REFERENCES faculties(faculty_id),
   FOREIGN KEY (organizing_department_id) REFERENCES departments(department_id),
@@ -362,11 +362,11 @@ CREATE TABLE matches (
   scheduled_end_time  DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
-  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed') NOT NULL DEFAULT 'scheduled',
+  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed','result_rejected') NOT NULL DEFAULT 'scheduled',
   mode ENUM('onsite','online') NOT NULL,
+  livestream_url VARCHAR(500) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
-  -- ⚠️ ไม่มี livestream_url แต่ E12 (PUT /matches/:id/livestream) ต้องใช้ — ดู GUIDE/07
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
   FOREIGN KEY (bracket_node_id) REFERENCES bracket_nodes(bracket_node_id),
   FOREIGN KEY (team_a_id) REFERENCES teams(team_id),
@@ -471,7 +471,8 @@ CREATE TABLE player_match_stats (
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
-  FOREIGN KEY (recorded_by_referee_id) REFERENCES users(user_id)
+  FOREIGN KEY (recorded_by_referee_id) REFERENCES users(user_id),
+  UNIQUE (match_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- "ตัวเลขจริง" แต่ละสถิติ
@@ -709,4 +710,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('002_match_referees_assignment_status.sql'),
   ('003_referee_change_requests.sql'),
   ('004_tournament_referees_external_docs.sql'),
-  ('005_external_approval_needs_docs.sql');
+  ('005_external_approval_needs_docs.sql'),
+  ('006_add_tournament_description.sql');
