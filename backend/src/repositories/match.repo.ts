@@ -95,9 +95,14 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
     return match ?? null;
 }
 
+/**
+ * แมตช์อื่นที่ "ซ้อนช่วงเวลา" [start, end) กับที่จะตั้ง และใช้ทีมเดียวกันหรือสนามเดียวกัน
+ * แมตช์เก่าที่ยังไม่มี end time ถือว่ายาว 1 วินาที (เช็คแค่เริ่มพร้อมกัน) · แมตช์ที่จบแล้วไม่นับ
+ */
 export async function findConflictingMatch(
     excludeMatchId: number,
     scheduledTime: Date,
+    scheduledEndTime: Date,
     venue: string,
     teamAId: number | null,
     teamBId: number | null
@@ -105,19 +110,31 @@ export async function findConflictingMatch(
     const [rows] = await pool.query<({ match_id: number } & RowDataPacket)[]>(
         `SELECT match_id FROM matches
          WHERE match_id != ?
-           AND scheduled_time = ?
+           AND match_status <> 'completed'
+           AND scheduled_time < ?
+           AND COALESCE(scheduled_end_time, scheduled_time + INTERVAL 1 SECOND) > ?
            AND (team_a_id IN (?, ?) OR team_b_id IN (?, ?) OR venue = ?)
          LIMIT 1`,
-        [excludeMatchId, scheduledTime, teamAId, teamBId, teamAId, teamBId, venue]
+        [excludeMatchId, scheduledEndTime, scheduledTime, teamAId, teamBId, teamAId, teamBId, venue]
     );
     const conflict = rows[0];
     return conflict ?? null;
 }
 
-export async function updateMatchSchedule(matchId: number, scheduledTime: Date, venue: string): Promise<void> {
+/** แมตช์ที่ต้องจบก่อนแมตช์นี้เริ่ม (ผู้ชนะ/ผู้แพ้ของมันจะมาเล่นแมตช์นี้) */
+export async function findPredecessors(matchId: number): Promise<Pick<MatchRow, 'match_id' | 'scheduled_time' | 'scheduled_end_time'>[]> {
+    const [rows] = await pool.query<(Pick<MatchRow, 'match_id' | 'scheduled_time' | 'scheduled_end_time'> & RowDataPacket)[]>(
+        `SELECT match_id, scheduled_time, scheduled_end_time FROM matches
+         WHERE next_match_id = ? OR loser_next_match_id = ?`,
+        [matchId, matchId]
+    );
+    return rows;
+}
+
+export async function updateMatchSchedule(matchId: number, scheduledTime: Date, scheduledEndTime: Date, venue: string): Promise<void> {
     await pool.query(
-        `UPDATE matches SET scheduled_time = ?, venue = ?, updated_at = NOW() WHERE match_id = ?`,
-        [scheduledTime, venue, matchId]
+        `UPDATE matches SET scheduled_time = ?, scheduled_end_time = ?, venue = ?, updated_at = NOW() WHERE match_id = ?`,
+        [scheduledTime, scheduledEndTime, venue, matchId]
     );
 }
 

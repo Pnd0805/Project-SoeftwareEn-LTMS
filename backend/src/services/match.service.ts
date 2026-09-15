@@ -4,6 +4,7 @@ import { findLatestByTournamentAndUser } from '../repositories/tournamentReferee
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
+import { isRefereeSufficient } from '../middlewares/requireReferee.js';
 import { buildPagination } from '../utils/pagination.js';
 import type { SubmitCheckinInput } from '../schemas/match.schema.js';
 import type { MatchListFilters } from '../repositories/match.repo.js';
@@ -29,21 +30,64 @@ export async function getMatchDetail(match_id: number) {
     return toMatchDetailDto(match);
 }
 
+/** วันที่ (ไทย UTC+7) ของ instant นี้ ในรูป YYYY-MM-DD — ไว้เทียบกับ DATE ของทัวร์ */
+function thaiDateOf(d: Date): string {
+    return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 // requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
-export async function scheduleMatch(matchId: number, scheduledTimeInput: string, venue: string) {
+// M06 — ตั้ง/เลื่อนเวลาแมตช์ · กฎ (GUIDE/11 §4.1, มติ 15 ก.ย.):
+//   1. เฉพาะแมตช์ที่ยังไม่เริ่ม     2. อยู่ในช่วงวันของทัวร์ (ขยายวันต้องผ่าน C09)
+//   3. ไม่ซ้อนช่วงเวลากับแมตช์อื่นของทีม/สนามเดียวกัน
+//   4. ไม่พังลำดับสาย: แมตช์ก่อนหน้าต้องจบก่อนเริ่ม และต้องจบก่อนแมตช์ถัดไปเริ่ม
+//   กรรมการซ้อนเวลา "ไม่" block ที่นี่ (มติ Q6) — ORG ดูจาก F14 coverage.conflicts
+export async function scheduleMatch(matchId: number, scheduledTimeInput: string, scheduledEndTimeInput: string, venue: string) {
     const scheduledTime = new Date(scheduledTimeInput);
+    const scheduledEndTime = new Date(scheduledEndTimeInput);
 
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
-
-    const conflict = await MatchRepo.findConflictingMatch(matchId, scheduledTime, venue, match.team_a_id, match.team_b_id);
-    if (conflict) {
-        throw new AppError(409, "SCHEDULE_CONFLICT", "ทีมหรือสนามนี้มีนัดแข่งในเวลาดังกล่าวแล้ว", { conflictingMatchId: conflict.match_id });
+    if (match.match_status !== 'scheduled') {
+        throw new AppError(409, "MATCH_ALREADY_STARTED", "แมตช์นี้เปิดเช็คอิน/เริ่มแข่งแล้ว เปลี่ยนเวลาไม่ได้");
     }
 
-    await MatchRepo.updateMatchSchedule(matchId, scheduledTime, venue);
+    // 2. ช่วงวันของทัวร์
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    if (tournament) {
+        const start = thaiDateOf(scheduledTime), end = thaiDateOf(scheduledEndTime);
+        const lastDay = tournament.event_end_date ?? tournament.event_start_date;
+        if (start < tournament.event_start_date || end > lastDay) {
+            throw new AppError(409, "OUTSIDE_TOURNAMENT_DATES",
+                `แมตช์ต้องอยู่ระหว่าง ${tournament.event_start_date} ถึง ${lastDay} — ต้องการวันเพิ่มให้ขอแก้ไขทัวร์นาเมนต์ (C09)`,
+                { eventStartDate: tournament.event_start_date, eventEndDate: lastDay });
+        }
+    }
+
+    // 3. ทีม/สนามซ้อน
+    const conflict = await MatchRepo.findConflictingMatch(matchId, scheduledTime, scheduledEndTime, venue, match.team_a_id, match.team_b_id);
+    if (conflict) {
+        throw new AppError(409, "SCHEDULE_CONFLICT", "ทีมหรือสนามนี้มีนัดแข่งซ้อนช่วงเวลาดังกล่าว", { conflictingMatchId: conflict.match_id });
+    }
+
+    // 4. ลำดับสาย
+    for (const prev of await MatchRepo.findPredecessors(matchId)) {
+        const prevEnd = prev.scheduled_end_time ?? prev.scheduled_time;
+        if (prevEnd && prevEnd > scheduledTime) {
+            throw new AppError(409, "SCHEDULE_BREAKS_BRACKET",
+                `แมตช์ #${prev.match_id} (รอบก่อนหน้า) จบหลังเวลาเริ่มที่ตั้ง`, { blockingMatchId: prev.match_id });
+        }
+    }
+    if (match.next_match_id !== null) {
+        const next = await MatchRepo.findById(match.next_match_id);
+        if (next?.scheduled_time && next.scheduled_time < scheduledEndTime) {
+            throw new AppError(409, "SCHEDULE_BREAKS_BRACKET",
+                `แมตช์ #${next.match_id} (รอบถัดไป) เริ่มก่อนเวลาจบที่ตั้ง`, { blockingMatchId: next.match_id });
+        }
+    }
+
+    await MatchRepo.updateMatchSchedule(matchId, scheduledTime, scheduledEndTime, venue);
     const updated = await MatchRepo.findMatchById(matchId);
     return toMatchDetailDto(updated!);
 }
@@ -75,6 +119,13 @@ export async function startMatch(matchId: number, userId: number){
 
     if (countA === 0 || countB === 0) {
         throw new AppError(409, "INSUFFICIENT_CHECKINS", "ยังมีผู้เล่นเช็คอินไม่ครบ");
+    }
+
+    // ด่าน 2 ของ BR-10 (GUIDE/11 §10.2): แมตช์นี้ต้องมีกรรมการ active ครบตามประเภท (on-site+stat = 2, อื่น = 1)
+    // ไม่ครบ → ORG ต้องหาคน (FR02) หรือเลื่อน (M06) — ระบบไม่ปล่อยให้แข่งโดยไม่มีกรรมการ
+    const fullMatch = await MatchRepo.findById(matchId);
+    if (!fullMatch || !(await isRefereeSufficient(fullMatch))) {
+        throw new AppError(409, "INSUFFICIENT_REFEREES", "กรรมการของแมตช์นี้ยังไม่ครบ ยังเริ่มแข่งไม่ได้");
     }
 
     await MatchRepo.updateMatchStatus(matchId, 'in_progress');

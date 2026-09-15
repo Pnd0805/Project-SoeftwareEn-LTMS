@@ -1,7 +1,8 @@
 import * as z from 'zod';
 
 export const presignUploadSchema = z.object({
-    purpose: z.enum(['checkin_document', 'soft_filter_document']),
+    // referee_identity = บัตรประชาชน/selfie ของกรรมการภายนอก (U12) — ผูกกับ user ไม่ต้องมี matchId/tournamentId
+    purpose: z.enum(['checkin_document', 'soft_filter_document', 'referee_identity']),
     contentType: z.enum(['image/jpeg', 'image/png']),
     matchId: z.number().optional(),
     tournamentId: z.number().optional(),

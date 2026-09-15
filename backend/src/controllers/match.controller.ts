@@ -52,7 +52,7 @@ export async function getMatchDetail(req: Request, res: Response) {
 
 export async function scheduleMatch(req: Request, res: Response) {
     const matchId = parseId(req.params['id'], 'รหัสการแข่งขัน');
-    const result = await MatchService.scheduleMatch(matchId, req.body.scheduledTime, req.body.venue);
+    const result = await MatchService.scheduleMatch(matchId, req.body.scheduledTime, req.body.scheduledEndTime, req.body.venue);
     res.status(200).json(result);
 }
 

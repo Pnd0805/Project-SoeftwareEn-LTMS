@@ -12,6 +12,7 @@ import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput } from '../schemas/tournament.schema.js';
+import { refereesNeededPerMatch } from './referee.service.js';
 
 const amendmentFieldSchema = z.object({
     registrationStart: z.iso.datetime({ offset: true }).optional(),
@@ -344,10 +345,16 @@ export async function rejectAmendment(amendmentId: number, userId: number, reaso
 }
 
 export async function publishTournament(tournament: TournamentRow, userId: number) {
-    const result = await TournamentRepo.publishTournament(tournament.tournament_id, userId);
+    // ด่าน 1 ของ BR-10 (GUIDE/11 §10.2): pool ต้องมีกรรมการ active อย่างน้อยเท่ากับที่ 1 แมตช์ต้องใช้
+    // (ตอน publish ยังไม่มีแมตช์ → ใช้ default_mode ของกีฬาแทน mode รายแมตช์) · ด่าน 2 เช็คตอน M10 start ทีละแมตช์
+    const sport = await SportTypeRepo.findSportTypeById(tournament.sport_type_id);
+    const refereesRequired = (await refereesNeededPerMatch(tournament.sport_type_id))(sport?.default_mode ?? 'onsite');
+
+    const result = await TournamentRepo.publishTournament(tournament.tournament_id, userId, refereesRequired);
     if (result.status === 'referees_incomplete') {
         const refereesAccepted = result.refereesAccepted;
-        throw new AppError(409, 'REFEREES_INCOMPLETE', 'กรุณาแต่งตั้งกรรมการให้ครบก่อนเปิดเผยแพร่', { refereesAccepted, refereesRequired: 1 });
+        throw new AppError(409, 'REFEREES_INCOMPLETE',
+            `ต้องมีกรรมการที่พร้อมใช้งานอย่างน้อย ${refereesRequired} คนก่อนเปิดเผยแพร่`, { refereesAccepted, refereesRequired });
     }
     if (result.status !== 'ok') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');

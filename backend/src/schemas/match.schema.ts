@@ -6,8 +6,13 @@ export const livestreamSchema = z.object({
 
 export const scheduleMatchSchema = z.object({
     scheduledTime: z.iso.datetime('รูปแบบวันเวลาไม่ถูกต้อง'),
+    // เวลาจบ — ใช้เช็คแมตช์ซ้อน (สนาม/ทีม/กรรมการ) และลำดับสาย (GUIDE/11 §4.1)
+    scheduledEndTime: z.iso.datetime('รูปแบบวันเวลาจบไม่ถูกต้อง'),
     venue: z.string().min(1, 'กรุณาระบุสนามแข่งขัน'),
-});
+}).refine(
+    (d) => new Date(d.scheduledEndTime) > new Date(d.scheduledTime),
+    { message: 'เวลาจบต้องหลังเวลาเริ่ม', path: ['scheduledEndTime'] }
+);
 
 export type ScheduleMatchInput = z.infer<typeof scheduleMatchSchema>;
 

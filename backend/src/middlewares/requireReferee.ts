@@ -7,7 +7,7 @@ import * as TourRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 
-import { isActiveReferee } from "../services/referee.service.js";
+import { isActiveReferee, refereesNeededPerMatch } from "../services/referee.service.js";
 
 import { checkMatch, checkMatchResult } from "../utils/checkExist.js";
 import { parseId } from "../utils/parseId.js";
@@ -53,18 +53,14 @@ export async function isDisputeWindow(tourId : number , matchRes : MatchResultRo
     return true;
 }
 
+/** แมตช์นี้มีกรรมการ active ครบตามประเภทไหม — on-site+stat = 2, อื่น (รวม online) = 1 · กฎอยู่ที่ refereesNeededPerMatch */
 export async function isRefereeSufficient(match : MatchRow) : Promise<boolean> {
-    if (match.mode !== 'onsite') return true;   // BR-11 เช็คเฉพาะ onsite — online ไม่มีข้อบังคับนี้
-
     const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
     if (!tournament) return false;
 
-    // เกณฑ์เดียวกับ requiredRefereeCount() ของ referee.service.ts — กีฬาไม่มีสถิติให้บันทึกเลย ใช้กรรมการคนเดียวพอ
-    const statDefs = await SportTypeRepo.findStatDefinitionsBySportType(tournament.sport_type_id);
-    const perOnsiteMatch = statDefs.length > 0 ? 2 : 1;
-
+    const needed = await refereesNeededPerMatch(tournament.sport_type_id);
     const acceptedCount = await MatchRefereeRepo.countAcceptedByMatch(match.match_id);
-    return acceptedCount >= perOnsiteMatch;
+    return acceptedCount >= needed(match.mode);
 }
 
 

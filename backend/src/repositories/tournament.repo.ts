@@ -442,7 +442,7 @@ export type PublishDecision =
     | { status: 'referees_incomplete'; refereesAccepted: number }
     | { status: 'ok' };
 
-export async function publishTournament(tournamentId: number, userId: number): Promise<PublishDecision> {
+export async function publishTournament(tournamentId: number, userId: number, refereesRequired: number): Promise<PublishDecision> {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -481,7 +481,7 @@ export async function publishTournament(tournamentId: number, userId: number): P
             [tournamentId]
         );
         const refereesAccepted = Number(referees[0]?.total ?? 0);
-        if (refereesAccepted < 1) {
+        if (refereesAccepted < refereesRequired) {
             await conn.rollback();
             return { status: 'referees_incomplete', refereesAccepted };
         }

@@ -6,6 +6,6 @@ export async function presignUpload(req: Request, res: Response) {
     if (!req.user) {
         throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
     }
-    const result = await UploadService.createPresignedUpload(req.body);
+    const result = await UploadService.createPresignedUpload(req.body, req.user.user_id);
     res.status(200).json(result);
 }

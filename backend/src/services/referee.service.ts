@@ -194,8 +194,8 @@ type RefereeConflict = {
     matchIds : [number, number]
 };
 
-/** BR-11: on-site ที่ต้องบันทึกสถิติ ใช้กรรมการ 2 คน นอกนั้น 1 */
-async function refereesNeededPerMatch(sportTypeId : number): Promise<(mode : 'onsite' | 'online') => number> {
+/** BR-11: on-site ที่ต้องบันทึกสถิติ ใช้กรรมการ 2 คน นอกนั้น 1 — ใช้ร่วมกับ C13 publish และ M10 start */
+export async function refereesNeededPerMatch(sportTypeId : number): Promise<(mode : 'onsite' | 'online') => number> {
     const statDefs = await SportTypeRepo.findStatDefinitionsBySportType(sportTypeId);
     const onsiteNeed = statDefs.length > 0 ? 2 : 1;
     return mode => mode === 'onsite' ? onsiteNeed : 1;

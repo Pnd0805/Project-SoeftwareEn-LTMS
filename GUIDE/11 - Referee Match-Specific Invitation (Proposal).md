@@ -284,16 +284,23 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 - **F04** ต้องส่งรายละเอียดแมตช์ (เวลา, สนาม, mode) ให้ REF ตัดสินใจได้
 - `acceptRefereeInvitation` ใน service ต้องใช้ **transaction** (update `tournament_referees` + N แถว `match_referees` ให้จบพร้อมกัน) — จุดแรกที่ referee code ใช้ transaction
 
-### 10.2 Q4 — F03 ไม่ block แล้ว → ต้องมีที่ให้ "เตือน"
+### 10.2 Q4 — F03 ไม่ block แล้ว → BR-10 กลายเป็น 2 ด่าน (แก้ 15 ก.ย.)
 
 - ตัด `WOULD_BREAK_REFEREE_MINIMUM` (409) ออกจาก F03 และตัด `requiredRefereeCount` / `findMaxConcurrentRefereeNeed` / `env.REFEREE_MINIMUM`
-- F03 response เปลี่ยนจาก 204 เป็น **200** พร้อม body บอกแมตช์ที่กลายเป็นว่าง:
+- F03 คืน **200** `{ removed: true, uncoveredMatches: [12, 15] }`
+- F14 `GET /tournaments/:id/referees/coverage` คืน `matchesTotal / matchesCovered / uncovered[] / conflicts[]` — **เตือน ไม่ block**
 
-  ```json
-  { "removed": true, "uncoveredMatches": [12, 15] }
-  ```
-- เพิ่ม `GET /tournaments/:id/referees/coverage` (หรือใส่ใน F02) คืน `matchesTotal / matchesCovered / uncovered: [...]` ให้หน้า ORG แสดงเตือน
-- **ตอน publish ทัวร์** (ทีม Tournaments) ยังต้องเช็ค coverage — มติคือ "ยอมแต่เตือน" ตอนถอด แต่ตอน publish ควร block ไหม? **ต้องถามทีม Tournaments** ถ้าไม่ block เลย BR-10 จะหายไปทั้งข้อ
+**"publish ต้องทุกแมตช์มีกรรมการครบ" ทำไม่ได้** — ตอน publish ยังไม่มีทีม/สาย/แมตช์ (จับสายหลังปิดรับสมัคร) → BR-10 แยกเป็น 2 ด่าน:
+
+| ด่าน | เมื่อไหร่ | กฎ | โค้ด |
+|---|---|---|---|
+| 1 | C13 publish | pool active ≥ กรรมการที่ 1 แมตช์ต้องใช้ (`refereesNeededPerMatch(sport)(default_mode)` = 1 หรือ 2) | `tournament.service.publishTournament` |
+| 2 | M10 start (รายแมตช์) | แมตช์นั้นมี active ≥ `needed(mode)` → 409 `INSUFFICIENT_REFEREES` | `match.service.startMatch` → `isRefereeSufficient` |
+
+ระหว่างด่าน: กรรมการ "ชุดแรก" เชิญแบบ pool (F01 ไม่แนบแมตช์) → หลัง M01+M06 ORG ใช้ FR02 / F01+matchIds · F14 เตือนตลอด
+ไม่ครบตอน start → ORG หาคน (FR02) หรือเลื่อน (M06) — **ไม่มี** emergency assign / ORG fallback ใน MVP (ออกแบบไว้แล้ว ค่อยเพิ่มถ้าเจอจริง)
+
+**เลื่อนแมตช์ (M06)** — validate: เฉพาะ `scheduled` · ในวันทัวร์ (`OUTSIDE_TOURNAMENT_DATES` → ขยายผ่าน C09) · ไม่ซ้อนช่วงเวลาทีม/สนาม · ลำดับสาย `next_match_id` สองทิศ (`SCHEDULE_BREAKS_BRACKET`) · กรรมการซ้อนไม่ block (Q6) · เลื่อนข้ามวัน = ORG วางใหม่ทีละแมตช์ ไม่มี auto/bulk ใน MVP
 
 ### 10.3 Q6 — สัญลักษณ์เตือนซ้อนเวลา ต้องมี field ให้ FE
 

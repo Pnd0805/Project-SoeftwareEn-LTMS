@@ -15,10 +15,12 @@ const CONTENT_TYPE_EXTENSION: Record<string, string> = {
 
 const EXPIRES_IN_SECONDS = 300; // 5 นาที
 
-export async function createPresignedUpload(input: PresignUploadInput) {
+export async function createPresignedUpload(input: PresignUploadInput, userId: number) {
     let entityId: number;
 
-    if (input.purpose === 'checkin_document') {
+    if (input.purpose === 'referee_identity') {
+        entityId = userId;
+    } else if (input.purpose === 'checkin_document') {
         if (input.matchId === undefined) {
             throw new AppError(400, "VALIDATION_FAILED", "ต้องระบุ matchId");
         }
