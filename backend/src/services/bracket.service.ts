@@ -242,9 +242,9 @@ function shuffle<T>(input: T[]): T[] {
 // ส่วนที่แตะ DB จริง — orchestration
 // ---------------------------------------------------------------
 
+// requireOrganizer (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
 export async function createBracket(
     tournamentId: number,
-    userId: number,
     seedingMethod: 'random' | 'manual',
     manualSeeds: number[] | undefined
 ) {
