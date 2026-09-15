@@ -345,9 +345,18 @@ export async function rejectAmendment(amendmentId: number, userId: number, reaso
 
 export async function publishTournament(tournament: TournamentRow, userId: number) {
     const result = await TournamentRepo.publishTournament(tournament.tournament_id, userId);
+    if (result.status === 'schedule_incomplete') {
+        throw new AppError(409, 'SCHEDULE_INCOMPLETE', 'กรุณากำหนดตารางเวลาเริ่มและสิ้นสุดของทุกแมตช์ให้ครบก่อนเผยแพร่', {
+            plannedMatches: result.plannedMatches,
+            matchesMissingSchedule: result.matchesMissingSchedule
+        });
+    }
     if (result.status === 'referees_incomplete') {
         const refereesAccepted = result.refereesAccepted;
-        throw new AppError(409, 'REFEREES_INCOMPLETE', 'กรุณาแต่งตั้งกรรมการให้ครบก่อนเปิดเผยแพร่', { refereesAccepted, refereesRequired: 1 });
+        throw new AppError(409, 'REFEREES_INCOMPLETE', 'กรุณาแต่งตั้งกรรมการให้เพียงพอกับตารางการแข่งขันก่อนเปิดเผยแพร่', {
+            refereesAccepted,
+            refereesRequired: result.refereesRequired
+        });
     }
     if (result.status !== 'ok') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');

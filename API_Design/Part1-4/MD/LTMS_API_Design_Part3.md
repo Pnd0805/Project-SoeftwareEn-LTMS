@@ -445,6 +445,8 @@ type ISODate     = string;  // "2026-08-02"
 
 // Error 409: { code: 'REFEREES_INCOMPLETE', message: 'กรุณาแต่งตั้งกรรมการให้ครบก่อนเปิดเผยแพร่',
 //              refereesAccepted: number; refereesRequired: number }  (BR-10)
+// Error 409: { code: 'SCHEDULE_INCOMPLETE', message: 'กรุณากำหนดตารางเวลาเริ่มและสิ้นสุดของทุกแมตช์ให้ครบก่อนเผยแพร่',
+//              plannedMatches: number; matchesMissingSchedule: number }
 ```
 
 ### C14 — `POST /tournaments/:id/unpublish`
@@ -672,7 +674,7 @@ type ISODate     = string;  // "2026-08-02"
 {
   items: Array<{
     id: number; round: number; teamA: TeamRef | null; teamB: TeamRef | null;
-    scheduledTime: ISODateTime | null; venue: string | null; status: string;
+    scheduledTime: ISODateTime | null; scheduledEndTime: ISODateTime | null; venue: string | null; status: string;
   }>,
   pagination
 }
@@ -684,7 +686,7 @@ type ISODate     = string;  // "2026-08-02"
 {
   id: number; tournamentId: number; round: number;
   teamA: TeamRef | null; teamB: TeamRef | null;
-  scheduledTime: ISODateTime | null; venue: string | null;
+  scheduledTime: ISODateTime | null; scheduledEndTime: ISODateTime | null; venue: string | null;
   checkinOpenAt: ISODateTime | null; status: string; mode: 'onsite' | 'online';
   nextMatchId: number | null;
 }
@@ -693,7 +695,7 @@ type ISODate     = string;  // "2026-08-02"
 ### M06 — `PATCH /matches/:id/schedule`
 ```ts
 // Request
-{ scheduledTime: ISODateTime; venue: string }
+{ scheduledTime: ISODateTime; scheduledEndTime: ISODateTime; venue: string }
 
 // Response 200: เหมือน M05
 // Error 409: { code: 'SCHEDULE_CONFLICT', message: 'ทีมหรือสนามนี้มีนัดแข่งในเวลาดังกล่าวแล้ว',

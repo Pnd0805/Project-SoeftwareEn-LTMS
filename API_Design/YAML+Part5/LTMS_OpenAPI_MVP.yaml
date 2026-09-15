@@ -221,7 +221,7 @@ components:
         name: { type: string }
         sportTypeId: { type: integer }
         bracketFormat: { type: string, enum: [single_elim, double_elim, round_robin] }
-        scopeType: { type: string, enum: [department, faculty, university], description: "⚠️ 'university' ต้องผ่าน Change Management ก่อน (ดูข้อ 4.3)" }
+        scopeType: { type: string, enum: [department, faculty], description: "Current MVP delivery; database/domain model reserves 'university' for a deferred release." }
         organizingFacultyId: { type: integer }
         organizingDepartmentId: { type: integer, nullable: true }
         registrationStart: { type: string, format: date-time }
@@ -275,6 +275,7 @@ components:
         teamA: { allOf: [{ $ref: '#/components/schemas/TeamRef' }], nullable: true }
         teamB: { allOf: [{ $ref: '#/components/schemas/TeamRef' }], nullable: true }
         scheduledTime: { type: string, format: date-time, nullable: true }
+        scheduledEndTime: { type: string, format: date-time, nullable: true }
         venue: { type: string, nullable: true }
         checkinOpenAt: { type: string, format: date-time, nullable: true }
         status: { type: string, enum: [scheduled, checkin_open, in_progress, completed, disputed] }
@@ -1053,7 +1054,7 @@ paths:
                 type: object
                 properties: { id: {type: integer}, status: {type: string, enum: [public]} }
         '409':
-          description: "REFEREES_INCOMPLETE (BR-10) — มากับ refereesAccepted/refereesRequired"
+          description: "SCHEDULE_INCOMPLETE หรือ REFEREES_INCOMPLETE (BR-10); referee requirement คำนวณจาก peak concurrent demand"
 
   /tournaments/{id}/unpublish:
     post:
@@ -1484,9 +1485,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [scheduledTime, venue]
+              required: [scheduledTime, scheduledEndTime, venue]
               properties:
                 scheduledTime: { type: string, format: date-time }
+                scheduledEndTime: { type: string, format: date-time }
                 venue: { type: string }
       responses:
         '200':

@@ -240,7 +240,7 @@ CREATE TABLE tournaments (
   description VARCHAR(255) NULL,
   sport_type_id INT NOT NULL,
   bracket_format ENUM('single_elimination','double_elimination','round_robin') NULL,
-  scope_type ENUM('department','faculty','university') NOT NULL,  -- ⚠️ 'university' รอ Change Management
+  scope_type ENUM('department','faculty','university') NOT NULL,  -- 'university' reserved in domain model; Current MVP API/UI deferred
   organizing_faculty_id INT NULL,
   organizing_department_id INT NULL,
   requested_by_user_id INT NOT NULL,
@@ -417,6 +417,7 @@ CREATE TABLE matches (
   team_a_id INT NULL,
   team_b_id INT NULL,
   scheduled_time DATETIME NULL,
+  scheduled_end_time DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
   match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed') NOT NULL DEFAULT 'scheduled',  -- ♻️ เปลี่ยนชื่อจาก status
@@ -769,7 +770,7 @@ ALTER TABLE matches ADD FOREIGN KEY (bracket_node_id) REFERENCES bracket_nodes(b
 ## 16. ประเด็นค้างที่ต้องผ่าน Change Management ก่อนใช้งานจริง
 
 1. **⚠️ ยุบ MongoDB Atlas ทั้งหมด** — ขัดกับ DC-04 ของ SRS
-2. **⚠️ Multi-faculty scope (`scope_type='university'`)** — ขัดกับขอบเขตเดิมของ SRS (ค้างมาตั้งแต่รอบก่อน)
+2. **✅ Multi-faculty scope (`scope_type='university'`)** — domain/database เก็บค่าไว้ แต่ Current MVP API/UI ตัดสินใจ deferred; เปิดใช้ภายหลังเมื่อ authorization/filter/UI พร้อม
 3. **⚠️ External Organizer** — ขัดกับ SRS ที่ระบุว่า external เป็นได้แค่ Referee (ค้างมาตั้งแต่รอบก่อน)
 4. **⚠️ ขอบเขตการแก้ผลย้อนหลัง (FR-RS-07)** — เงื่อนไข `CANNOT_AMEND_WINNER` เป็นกฎธุรกิจใหม่ที่ SRS ยังไม่ระบุ (ค้างมาตั้งแต่รอบก่อน)
 

@@ -439,8 +439,36 @@ export async function rejectAmendment(amendmentId: number, adminId: number, reas
 
 export type PublishDecision =
     | { status: 'not_found' | 'invalid_status' }
-    | { status: 'referees_incomplete'; refereesAccepted: number }
+    | { status: 'schedule_incomplete'; plannedMatches: number; matchesMissingSchedule: number }
+    | { status: 'referees_incomplete'; refereesAccepted: number; refereesRequired: number }
     | { status: 'ok' };
+
+type PlannedMatchReadinessRow = {
+    match_id: number;
+    scheduled_time: Date | null;
+    scheduled_end_time: Date | null;
+    mode: 'onsite' | 'online';
+};
+
+function calculatePeakRefereeDemand(matches: PlannedMatchReadinessRow[]): number {
+    const events: Array<{ at: number; delta: number }> = [];
+    for (const match of matches) {
+        const start = match.scheduled_time!.getTime();
+        const end = match.scheduled_end_time!.getTime();
+        const required = match.mode === 'onsite' ? 2 : 1;
+        events.push({ at: start, delta: required });
+        events.push({ at: end, delta: -required });
+    }
+
+    events.sort((a, b) => a.at - b.at || a.delta - b.delta);
+    let current = 0;
+    let peak = 0;
+    for (const event of events) {
+        current += event.delta;
+        if (current > peak) peak = current;
+    }
+    return peak;
+}
 
 export async function publishTournament(tournamentId: number, userId: number): Promise<PublishDecision> {
     const conn = await pool.getConnection();
@@ -463,6 +491,27 @@ export async function publishTournament(tournamentId: number, userId: number): P
             return { status: 'invalid_status' };
         }
 
+        const [plannedMatches] = await conn.query<(PlannedMatchReadinessRow & RowDataPacket)[]>(
+            `SELECT match_id, scheduled_time, scheduled_end_time, mode
+             FROM matches
+             WHERE tournament_id = ?
+             FOR UPDATE`,
+            [tournamentId]
+        );
+        const matchesMissingSchedule = plannedMatches.filter(match => {
+            if (match.scheduled_time === null || match.scheduled_end_time === null) return true;
+            return match.scheduled_end_time.getTime() <= match.scheduled_time.getTime();
+        }).length;
+        if (plannedMatches.length === 0 || matchesMissingSchedule > 0) {
+            await conn.rollback();
+            return {
+                status: 'schedule_incomplete',
+                plannedMatches: plannedMatches.length,
+                matchesMissingSchedule
+            };
+        }
+        const refereesRequired = calculatePeakRefereeDemand(plannedMatches);
+
         const [referees] = await conn.query<({ total: number } & RowDataPacket)[]>(
             `SELECT COUNT(*) AS total
              FROM (
@@ -481,9 +530,9 @@ export async function publishTournament(tournamentId: number, userId: number): P
             [tournamentId]
         );
         const refereesAccepted = Number(referees[0]?.total ?? 0);
-        if (refereesAccepted < 1) {
+        if (refereesAccepted < refereesRequired) {
             await conn.rollback();
-            return { status: 'referees_incomplete', refereesAccepted };
+            return { status: 'referees_incomplete', refereesAccepted, refereesRequired };
         }
 
         const [result] = await conn.query<ResultSetHeader>(

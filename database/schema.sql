@@ -201,7 +201,7 @@ CREATE TABLE tournaments (
   description VARCHAR(255) NULL,
   sport_type_id INT NOT NULL,
   bracket_format ENUM('single_elimination','double_elimination','round_robin') NULL,
-  scope_type ENUM('department','faculty','university') NOT NULL,  -- ⚠️ 'university' รอ Change Management
+  scope_type ENUM('department','faculty','university') NOT NULL,  -- 'university' reserved in domain model; Current MVP API/UI deferred
   organizing_faculty_id INT NULL,
   organizing_department_id INT NULL,
   requested_by_user_id INT NOT NULL,
@@ -357,6 +357,7 @@ CREATE TABLE matches (
   team_a_id INT NULL,
   team_b_id INT NULL,
   scheduled_time DATETIME NULL,
+  scheduled_end_time DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
   match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed') NOT NULL DEFAULT 'scheduled',
