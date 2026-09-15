@@ -324,6 +324,7 @@ export async function findRefereeCoverage(tournamentId : number): Promise<MatchR
          LEFT JOIN tournament_referees tr
            ON tr.tournament_referee_id = mr.tournament_referee_id
          WHERE m.tournament_id = ?
+           AND m.match_status <> 'completed'   -- แมตช์ที่จบแล้ว (รวม walkover จากทีมถอนตัว) ไม่ต้องมีกรรมการอีก
          ORDER BY m.scheduled_time, m.match_id, tr.tournament_referee_id`, [tournamentId]);
     return rows;
 }
