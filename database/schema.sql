@@ -711,4 +711,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('003_referee_change_requests.sql'),
   ('004_tournament_referees_external_docs.sql'),
   ('005_external_approval_needs_docs.sql'),
-  ('006_add_tournament_description.sql');
+  ('006_add_tournament_description.sql'),
+  ('007_match_results_livestream.sql');

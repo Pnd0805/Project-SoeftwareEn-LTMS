@@ -1,9 +1,12 @@
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as MatchRepo from '../repositories/match.repo.js';
+import * as UploadService from './upload.service.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { toApplicationDetailDto, toMyApplicationDto } from '../mappers/application.mapper.js';
 import { toOrganizerApplicationDto } from '../mappers/application.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import { buildPagination } from '../utils/pagination.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
@@ -25,16 +28,18 @@ export async function getApprovedTeams(tournamentId: number) {
     return { items: data };
 }
 
-export async function getMyappication(userId: number) {
-    const rows = await ApplicationRepo.findApplicationsByLeader(userId);
+export async function getMyappication(userId: number, page: number, pageSize: number, offset: number) {
+    const { rows, totalItems } = await ApplicationRepo.findApplicationsByLeader(userId, offset, pageSize);
     const data = rows.map(toMyApplicationDto);
-    return { items: data};
+    const pagination = buildPagination(page, pageSize, totalItems);
+    return { items: data, pagination };
 }
 
-export async function getTournamentApplications(tournamentId: number) {
-    const rows = await ApplicationRepo.findApplicationsByTournament(tournamentId);
+export async function getTournamentApplications(tournamentId: number, page: number, pageSize: number, offset: number) {
+    const { rows, totalItems } = await ApplicationRepo.findApplicationsByTournament(tournamentId, offset, pageSize);
     const data = rows.map(toOrganizerApplicationDto);
-    return { items: data};
+    const pagination = buildPagination(page, pageSize, totalItems);
+    return { items: data, pagination };
 }
 
 export async function getApplicationDetail(applicationId: number, userId: number) {
@@ -50,7 +55,11 @@ export async function getApplicationDetail(applicationId: number, userId: number
         throw new AppError(403, "APPLICATION_ACCESS_DENIED", "คุณไม่มีสิทธิ์ดูใบสมัครนี้");
     }
 
-    return toApplicationDetailDto(app) ; 
+    // P04 ต้องคืน presigned URL ไม่ใช่ S3 key ดิบ (ต่างจาก P03 ที่คืน key ดิบ) — ดู Part 3 ข้อ 11
+    const rawKeys = app.soft_filter_documents ?? [];
+    const softFilterDocumentUrls = await Promise.all(rawKeys.map(key => UploadService.getPresignedDownloadUrl(key)));
+
+    return toApplicationDetailDto(app, softFilterDocumentUrls);
 }
 
 export async function cancelApplication(applicationId: number, userId: number) {
@@ -85,7 +94,8 @@ export async function withdrawApplication(applicationId: number, userId: number)
         throw new AppError(409, "APPLICATION_NOT_APPROVED", "ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้");
     }
     await ApplicationRepo.updateApplicationStatus(applicationId, "withdrawn");
-    return { id: applicationId, status: "withdrawn", bracketExists: false};
+    const matchCount = await MatchRepo.countMatchesByTournament(app.tournament_id);
+    return { id: applicationId, status: "withdrawn", bracketExists: matchCount > 0 };
 }
 
 export async function approveApplication(applicationId: number,userId: number) {
@@ -115,7 +125,7 @@ export async function rejectApplication(applicationId: number, userId: number, r
         throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
     if (app.tournament_application_status !== "pending"){
-    throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว");
+        throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
     await ApplicationRepo.rejectApplicationInDb(applicationId, reason);
     return { id: applicationId, status:'rejected', reason }
@@ -131,7 +141,7 @@ export async function applyTournament(tournamentId: number, teamId: number, user
         throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
     }
     if (team.readiness_status !== 'Ready') {
-        throw new AppError(409, "TEAM_NOT_READY", "ทีมต้องมีสถานะ Ready ก่อนสมัคร");
+        throw new AppError(409, "TEAM_NOT_READY", "ทีมต้องมีสถานะ Ready ก่อนสมัครเข้าร่วม");
     }
 
     // 2. โหลดทัวร์นาเมนต์ + เช็คว่าเปิดรับสมัคร
@@ -188,11 +198,9 @@ export async function applyTournament(tournamentId: number, teamId: number, user
         throw new AppError(422, "HARD_FILTER_FAILED", "สมาชิกบางคนไม่ผ่านเงื่อนไขการสมัคร", { details: failedMembers });
     }
 
-    // 5. บันทึกใบสมัครใหม่ + เก็บผล Hard Filter ไว้ด้วย
-    const newId = await ApplicationRepo.insertApplication(tournamentId, teamId, {
-        checkedAt: new Date().toISOString(),
-        memberIds: members.map(m => m.user_id),
-    });
+    // 5. บันทึกใบสมัครใหม่ + เก็บผล Hard Filter ไว้ด้วย (ต้องเป็น array รายคน ไม่ใช่ object สรุป — P04 ดึงไปโชว์ตรงๆ)
+    const hardFilterDetails = members.map(m => ({ userId: m.user_id, fullName: m.full_name, passed: true }));
+    const newId = await ApplicationRepo.insertApplication(tournamentId, teamId, hardFilterDetails);
 
     return { id: newId, status: 'pending', hardFilterPassed: true };
 }

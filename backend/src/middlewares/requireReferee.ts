@@ -1,6 +1,7 @@
 import type { Request , Response , NextFunction } from "express";
 import * as RefereeRepo from '../repositories/tournamentReferee.repo.js';
 import * as MatchRefereeRepo from '../repositories/matchReferee.repo.js';
+import * as MatchRepo from '../repositories/match.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as TourRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
@@ -198,4 +199,29 @@ export async function requireCanRecordStats(req : Request , res : Response , nex
     }catch(err){
         next(err);
     }
+}
+
+/**
+ * กรรมการของแมตช์ (ใช้กับ start / verify / reject check-in ใน match.routes)
+ * ★ เดิม (backend_shokun) เขียนเงื่อนไข accepted + external approved ซ้ำเอง — เปลี่ยนมาใช้ isActiveReferee()
+ *   เพื่อให้กฎเดียวกับ F12/F14/FR* (รองรับ needs_docs, removed_at ด้วย)
+ */
+export async function requireReferee(req : Request, res : Response, next : NextFunction){
+    if(!req.user){
+        return next(new AppError(401, "NO_TOKEN", "กรุณาเข้าสู่ระบบก่อนใช้งาน"));
+    }
+
+    const matchId = parseId(req.params['id'], 'รหัสการแข่งขัน');
+    const match = await MatchRepo.findById(matchId);
+    if(!match){
+        return next(new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้"));
+    }
+
+    const referee = await RefereeRepo.findLatestByTournamentAndUser(match.tournament_id, req.user.user_id);
+    if(!referee || referee.removed_at !== null || !isActiveReferee(referee)){
+        return next(new AppError(403, "NOT_REFEREE", "คุณไม่ได้เป็นกรรมการของแมตช์นี้"));
+    }
+
+    req.match = match;
+    next();
 }

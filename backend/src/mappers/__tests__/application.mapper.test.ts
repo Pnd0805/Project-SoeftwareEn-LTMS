@@ -101,7 +101,7 @@ describe('toOrganizerApplicationDto', () => {
 });
 
 describe('toApplicationDetailDto', () => {
-  it('maps the detail row including hardFilterDetails and softFilterDocuments', () => {
+  it('maps the detail row including per-member hardFilterDetails, with presigned softFilterDocuments passed in separately', () => {
     const row = {
       tournament_application_id: 1,
       tournament_id: 5,
@@ -109,21 +109,22 @@ describe('toApplicationDetailDto', () => {
       team_name: 'Dream Team',
       sport_type_id: 2,
       tournament_application_status: 'approved',
-      hard_filter_details: { minMembers: true, maxMembers: true },
+      hard_filter_details: [{ userId: 1, fullName: 'Somchai', passed: true }],
       soft_filter_documents: ['doc1.pdf', 'doc2.pdf'],
     };
+    const presignedUrls = ['https://s3.example.com/doc1.pdf?sig=abc', 'https://s3.example.com/doc2.pdf?sig=def'];
 
-    expect(toApplicationDetailDto(row as any)).toEqual({
+    expect(toApplicationDetailDto(row as any, presignedUrls)).toEqual({
       id: 1,
       tournamentId: 5,
       team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
       status: 'approved',
-      hardFilterDetails: { minMembers: true, maxMembers: true },
-      softFilterDocuments: ['doc1.pdf', 'doc2.pdf'],
+      hardFilterDetails: [{ userId: 1, fullName: 'Somchai', passed: true }],
+      softFilterDocuments: presignedUrls,
     });
   });
 
-  it('passes an empty softFilterDocuments array through unchanged', () => {
+  it('defaults hardFilterDetails to an empty array when the DB value is null', () => {
     const row = {
       tournament_application_id: 1,
       tournament_id: 5,
@@ -131,10 +132,12 @@ describe('toApplicationDetailDto', () => {
       team_name: 'Dream Team',
       sport_type_id: 2,
       tournament_application_status: 'pending',
-      hard_filter_details: {},
-      soft_filter_documents: [],
+      hard_filter_details: null,
+      soft_filter_documents: null,
     };
 
-    expect(toApplicationDetailDto(row as any).softFilterDocuments).toEqual([]);
+    const result = toApplicationDetailDto(row as any, []);
+    expect(result.hardFilterDetails).toEqual([]);
+    expect(result.softFilterDocuments).toEqual([]);
   });
 });

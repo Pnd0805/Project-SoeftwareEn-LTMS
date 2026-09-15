@@ -284,6 +284,14 @@
 | `MATCH_NOT_FOUND` | 404 | ไม่พบแมตช์นี้ | service |
 | `APPLICATION_NOT_FOUND` | 404 | ไม่พบใบสมัครนี้ | service |
 | `INVITATION_NOT_FOUND` | 404 | ไม่พบคำเชิญนี้ | service |
+| `CHECKIN_NOT_FOUND` | 404 | ไม่พบรายการเช็คอินนี้ | service (M14, M15) |
+| `APPLICATION_ACCESS_DENIED` | 403 | คุณไม่มีสิทธิ์ดูใบสมัครนี้ | service (P04) |
+| `NOT_ORGANIZER_OR_REFEREE` | 403 | คุณไม่มีสิทธิ์ดู/ขอข้อมูลนี้ | service (M11, M13) — auth แบบ "ORG หรือ REF คนใดคนหนึ่งก็ได้" ไม่มี middleware สำเร็จรูปสำหรับ route ที่ระบุ matchId |
+| `APPLICATION_NOT_APPROVED` | 409 | ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้ | service (P08) |
+| `MATCH_NOT_CHECKIN_OPEN` | 409 | ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้ | service (M10) |
+| `BRACKET_ALREADY_EXISTS` | 409 | ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว | service (M01) |
+| `MANUAL_SEEDS_MISMATCH` | 422 | manualSeeds ต้องมีทีมครบทุกทีมที่ได้รับอนุมัติ ไม่ซ้ำและไม่ขาด | service (M01) |
+| `BRACKET_FORMAT_NOT_SUPPORTED` | 400 | ระบบยังไม่รองรับ double_elimination ในตอนนี้ | service (M01) — ดู [[07 - จุดที่ต้องยืนยันกับทีม]] |
 | `RATE_LIMITED` | 429 | ทำรายการถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ | `rateLimit` |
 | `INTERNAL_ERROR` | 500 | เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง | `errorHandler` (**ห้ามใส่ stack trace**) |
 
