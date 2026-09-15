@@ -4,12 +4,21 @@ import { findLatestByTournamentAndUser } from '../repositories/tournamentReferee
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
+import { buildPagination } from '../utils/pagination.js';
 import type { SubmitCheckinInput } from '../schemas/match.schema.js';
+import type { MatchListFilters } from '../repositories/match.repo.js';
 
-export async function getTournamentMatches(tournamentId: number) {
-    const rows = await MatchRepo.findMatchesByTournament(tournamentId);
+export async function getTournamentMatches(
+    tournamentId: number,
+    filters: MatchListFilters,
+    page: number,
+    pageSize: number,
+    offset: number
+) {
+    const { rows, totalItems } = await MatchRepo.findMatchesByTournament(tournamentId, filters, offset, pageSize);
     const data = rows.map(toMatchListItemDto);
-    return { items: data };
+    const pagination = buildPagination(page, pageSize, totalItems);
+    return { items: data, pagination };
 }
 
 export async function getMatchDetail(match_id: number) {

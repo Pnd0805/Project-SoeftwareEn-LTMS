@@ -17,19 +17,56 @@ export type MatchListRow = {
     team_b_sport_type_id: number | null;
 };
 
-export async function findMatchesByTournament(tournamentId: number): Promise<MatchListRow[]> {
+export type MatchListFilters = {
+    teamId?: number | undefined;
+    status?: string | undefined;
+    round?: number | undefined;
+};
+
+export async function findMatchesByTournament(
+    tournamentId: number,
+    filters: MatchListFilters,
+    offset: number,
+    pageSize: number
+): Promise<{ rows: MatchListRow[]; totalItems: number }> {
+    const conditions: string[] = ['m.tournament_id = ?'];
+    const params: unknown[] = [tournamentId];
+
+    if (filters.teamId !== undefined) {
+        conditions.push('(m.team_a_id = ? OR m.team_b_id = ?)');
+        params.push(filters.teamId, filters.teamId);
+    }
+    if (filters.status !== undefined) {
+        conditions.push('m.match_status = ?');
+        params.push(filters.status);
+    }
+    if (filters.round !== undefined) {
+        conditions.push('m.round_number = ?');
+        params.push(filters.round);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
     const [rows] = await pool.query<(MatchListRow & RowDataPacket)[]>(
-        `SELECT 
+        `SELECT
             m.match_id, m.round_number, m.scheduled_time, m.venue, m.match_status,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
             tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
          FROM matches m
          LEFT JOIN teams ta ON m.team_a_id = ta.team_id
          LEFT JOIN teams tb ON m.team_b_id = tb.team_id
-         WHERE m.tournament_id = ?`,
-        [tournamentId]
+         WHERE ${whereClause}
+         ORDER BY m.match_id
+         LIMIT ? OFFSET ?`,
+        [...params, pageSize, offset]
     );
-    return rows;
+
+    const [countRows] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM matches m WHERE ${whereClause}`,
+        params
+    );
+
+    return { rows, totalItems: countRows[0]?.totalItems ?? 0 };
 }
 
 export type MatchDetailRow = Pick<MatchRow, 

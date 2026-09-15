@@ -1,8 +1,20 @@
 import type { Request, Response } from 'express';
 import { parseId } from '../utils/parseId.js';
 import { AppError } from '../utils/AppError.js';
+import { parsePagination } from '../utils/pagination.js';
 import * as MatchService from '../services/match.service.js';
 import * as BracketService from '../services/bracket.service.js';
+
+function parseOptionalString(raw: unknown): string | undefined {
+    return typeof raw === 'string' && raw !== '' ? raw : undefined;
+}
+
+function parseOptionalNumber(raw: unknown): number | undefined {
+    const value = parseOptionalString(raw);
+    if (value === undefined) return undefined;
+    const num = Number(value);
+    return Number.isInteger(num) ? num : undefined;
+}
 
 export async function createBracket(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
@@ -21,7 +33,16 @@ export async function getBracket(req: Request, res: Response) {
 
 export async function getTournamentMatches(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
-    res.status(200).json(await MatchService.getTournamentMatches(tournamentId));
+    const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+
+    const filters = {
+        teamId: parseOptionalNumber(req.query['teamId']),
+        status: parseOptionalString(req.query['status']),
+        round: parseOptionalNumber(req.query['round']),
+    };
+
+    const result = await MatchService.getTournamentMatches(tournamentId, filters, newpage, newpageSize, offset);
+    res.status(200).json(result);
 }
 
 export async function getMatchDetail(req: Request, res: Response) {
