@@ -1,6 +1,7 @@
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
-import { findLatestByTournamentAndUser } from '../repositories/tournamentReferee.repo.js';
+import { isRefereeOfMatch } from '../middlewares/requireReferee.js';
+import { getPresignedDownloadUrl } from './upload.service.js';
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
@@ -30,20 +31,27 @@ export async function getMatchDetail(match_id: number) {
 }
 
 // requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
-export async function scheduleMatch(matchId: number, scheduledTimeInput: string, venue: string) {
+export async function scheduleMatch(matchId: number, scheduledTimeInput: string, scheduledEndTimeInput: string, venue: string) {
     const scheduledTime = new Date(scheduledTimeInput);
+    const scheduledEndTime = new Date(scheduledEndTimeInput);
 
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
 
-    const conflict = await MatchRepo.findConflictingMatch(matchId, scheduledTime, venue, match.team_a_id, match.team_b_id);
+    // แก้เวลา/สนามได้เฉพาะก่อนเปิดเช็คอิน — code เดียวกับที่ refereeRequest.service ใช้ตอนแมตช์เปลี่ยนไม่ได้
+    if (match.match_status !== 'scheduled') {
+        throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว แก้เวลาหรือสนามไม่ได้");
+    }
+
+    const conflict = await MatchRepo.findConflictingMatch(matchId, scheduledTime, scheduledEndTime, venue, match.team_a_id, match.team_b_id);
     if (conflict) {
         throw new AppError(409, "SCHEDULE_CONFLICT", "ทีมหรือสนามนี้มีนัดแข่งในเวลาดังกล่าวแล้ว", { conflictingMatchId: conflict.match_id });
     }
 
-    await MatchRepo.updateMatchSchedule(matchId, scheduledTime, venue);
+    // กรรมการที่รับแมตช์นี้อาจกลายเป็นเวลาทับกัน — ไม่ block ตามมติ GUIDE/11 Q6 (ORG เห็นจาก F12 / F14 coverage)
+    await MatchRepo.updateMatchSchedule(matchId, scheduledTime, scheduledEndTime, venue);
     const updated = await MatchRepo.findMatchById(matchId);
     return toMatchDetailDto(updated!);
 }
@@ -55,11 +63,17 @@ export async function openCheckinMatch(matchId: number) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
 
-    await MatchRepo.openMatchCheckin(matchId);
+    // UPDATE เฉพาะแถวที่ยัง scheduled — กันเปิดซ้ำตอนแข่งอยู่ (เดิมย้อนสถานะ in_progress กลับเป็น checkin_open ได้)
+    const opened = await MatchRepo.openMatchCheckin(matchId);
+    if (!opened) {
+        throw new AppError(409, "INVALID_STATUS_TRANSITION", "เปิดเช็คอินได้เฉพาะแมตช์ที่ยังไม่เริ่ม (สถานะ scheduled) เท่านั้น");
+    }
+
     const updated = await MatchRepo.findMatchById(matchId);
     return { id: matchId, status: 'checkin_open', checkinOpenAt: updated!.checkin_open_at };
 }
 
+// requireReferee (middleware) เช็คว่าเป็นกรรมการของแมตช์นี้ให้แล้วก่อนถึงตรงนี้
 export async function startMatch(matchId: number, userId: number){
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
@@ -67,9 +81,9 @@ export async function startMatch(matchId: number, userId: number){
     }
 
     if (match.match_status !== 'checkin_open') {
-        throw new AppError(409, "MATCH_NOT_CHECKIN_OPEN", "ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้");
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้");
     }
-    
+
     const countA = await MatchRepo.countSuccessfulCheckins(matchId, match.team_a_id);
     const countB = await MatchRepo.countSuccessfulCheckins(matchId, match.team_b_id);
 
@@ -81,34 +95,48 @@ export async function startMatch(matchId: number, userId: number){
     return { id: matchId, status:'in_progress' };
 }
 
-export async function getMatchCheckins(matchId: number, userId: number) {
-    const match = await MatchRepo.findMatchById(matchId);
-    if (!match) {
-        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
-    }
-
-    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+/** M11/M13 — ORG ของทัวร์ และ/หรือ กรรมการของแมตช์นี้ (active + รับมอบหมายแมตช์นี้แล้ว) */
+async function findMatchRoles(matchId: number, tournamentId: number, userId: number) {
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
     if (!tournament) {
         throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
     }
     const isOrganizer = tournament.requested_by_user_id === userId
         && tournament.tournament_status !== 'pending_approval'
         && tournament.tournament_status !== 'rejected';
+    const isReferee = await isRefereeOfMatch(matchId, userId, tournamentId);
 
-    const referee = await findLatestByTournamentAndUser(match.tournament_id, userId);
-    const isReferee = referee !== null
-        && referee.invitation_status === 'accepted'
-        && (referee.is_external === 0 || referee.external_approval_status === 'approved');
+    return { isOrganizer, isReferee };
+}
 
+export async function getMatchCheckins(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
     if (!isOrganizer && !isReferee) {
         throw new AppError(403, "NOT_ORGANIZER_OR_REFEREE", "คุณไม่มีสิทธิ์ดูรายการเช็คอินนี้");
     }
 
+    // PDPA (NF-SE-03) — รูปบัตรเปิดดูได้เฉพาะกรรมการของแมตช์นี้ ORG เห็นรายการแต่ documentUrl = null
     const rows = await MatchRepo.findCheckinsByMatch(matchId);
-    return { items: rows.map(toCheckinListItemDto) };
+    const items = await Promise.all(rows.map(async (row) => {
+        const documentUrl = isReferee && row.document_s3_key
+            ? await getPresignedDownloadUrl(row.document_s3_key)
+            : null;
+        return toCheckinListItemDto(row, documentUrl);
+    }));
+    return { items };
 }
 
-export async function verifyCheckin(checkinId: number , matchId: number, userId: number){
+// M14/M15 ตัดสินได้ครั้งเดียว และเฉพาะเช็คอินแบบรูปที่รอตรวจ (pending) — QR ผ่านอัตโนมัติไม่ต้องตรวจ
+function checkinAlreadyDecided() {
+    return new AppError(409, "ALREADY_DECIDED", "รายการเช็คอินนี้ไม่ได้รอกรรมการตรวจ (ตรวจไปแล้ว หรือเป็นการเช็คอินด้วย QR) เปลี่ยนผลไม่ได้");
+}
+
+async function findPendingCheckinOfMatch(checkinId: number, matchId: number) {
     const checkin = await MatchRepo.findCheckinById(checkinId);
     if (!checkin) {
         throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้");
@@ -117,20 +145,34 @@ export async function verifyCheckin(checkinId: number , matchId: number, userId:
         throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้ในแมตช์นี้");
     }
 
-    await MatchRepo.verifyCheckin(checkinId, userId);
+    // ตรวจได้ช่วงเปิดเช็คอินและระหว่างแข่ง (เผื่อคนมาช้า) — ก่อนเปิดหรือหลังจบแล้วตัดสินไม่ได้
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match || (match.match_status !== 'checkin_open' && match.match_status !== 'in_progress')) {
+        throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้ยังไม่เปิดเช็คอินหรือจบไปแล้ว ตรวจเช็คอินไม่ได้");
+    }
+
+    if (checkin.match_checkin_status !== 'pending') {
+        throw checkinAlreadyDecided();
+    }
+    return checkin;
+}
+
+export async function verifyCheckin(checkinId: number , matchId: number, userId: number){
+    await findPendingCheckinOfMatch(checkinId, matchId);
+
+    // repo UPDATE เฉพาะแถวที่ยัง pending — กรรมการ 2 คนกดพร้อมกัน คนที่สองได้ 409
+    if (!(await MatchRepo.verifyCheckin(checkinId, userId))) {
+        throw checkinAlreadyDecided();
+    }
     return { id: checkinId, status:'verified' }
 }
 
 export async function rejectCheckin(checkinId: number, matchId: number, userId: number, reason: string){
-    const checkin = await MatchRepo.findCheckinById(checkinId);
-    if (!checkin) {
-        throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้");
-    }
-    if(checkin.match_id !== matchId){
-        throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้ในแมตช์นี้");
-    }
+    await findPendingCheckinOfMatch(checkinId, matchId);
 
-    await MatchRepo.rejectCheckin(checkinId, userId, reason);
+    if (!(await MatchRepo.rejectCheckin(checkinId, userId, reason))) {
+        throw checkinAlreadyDecided();
+    }
     return { id: checkinId, status: 'rejected', reason };
 }
 
@@ -140,21 +182,14 @@ export async function getCheckinQr(matchId: number, userId: number) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
 
-    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
-    if (!tournament) {
-        throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
-    }
-    const isOrganizer = tournament.requested_by_user_id === userId
-        && tournament.tournament_status !== 'pending_approval'
-        && tournament.tournament_status !== 'rejected';
-
-    const referee = await findLatestByTournamentAndUser(match.tournament_id, userId);
-    const isReferee = referee !== null
-        && referee.invitation_status === 'accepted'
-        && (referee.is_external === 0 || referee.external_approval_status === 'approved');
-
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
     if (!isOrganizer && !isReferee) {
         throw new AppError(403, "NOT_ORGANIZER_OR_REFEREE", "คุณไม่มีสิทธิ์ขอ QR เช็คอินของแมตช์นี้");
+    }
+
+    // QR ใช้เช็คอินได้เฉพาะตอนเปิดเช็คอิน — ออกให้ก่อนหรือหลังช่วงนั้นก็ใช้ไม่ได้อยู่ดี
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
     }
 
     const { qrPayload, expiresAt } = signCheckinQr(matchId);
@@ -167,6 +202,7 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
 
+    // กดซ้ำ = 200 ข้อมูลเดิมเสมอ แม้แมตช์จะเริ่มแข่งไปแล้ว (idempotent ตาม spec M12)
     const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
     if (existing) {
         return {
@@ -179,13 +215,18 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
         };
     }
 
+    // เช็คอินใหม่ได้เฉพาะตอนเปิดเช็คอิน (M09) — ก่อนเปิดหรือหลังเริ่มแข่ง/จบแล้วไม่ได้
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
+    }
+
     const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
     const inRoster = await MatchRepo.isUserInTeams(userId, teamIds);
     if (!inRoster) {
         throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อทีมที่ได้รับอนุมัติของแมตช์นี้");
     }
 
-    let status: 'success' | 'exception';
+    let status: 'success' | 'pending';
     let documentType: 'student_id' | 'national_id' | null = null;
     let documentS3Key: string | null = null;
 
@@ -195,19 +236,21 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
     } else {
         documentType = input.documentType;
         documentS3Key = input.documentS3Key;
-        status = 'exception'; // ยังไม่ได้ตรวจ รอกรรมการผ่าน M14/M15
+        status = 'pending'; // ยังไม่ได้ตรวจ รอกรรมการผ่าน M14/M15
     }
 
-    const checkin = await MatchRepo.insertCheckin({
+    const inserted = await MatchRepo.insertCheckin({
         matchId, userId, method: input.method, status, documentType, documentS3Key,
     });
+    // null = ชน UNIQUE(match_id, user_id) เพราะอีก request ที่ยิงพร้อมกัน insert ไปก่อน → คืนแถวนั้นแบบ idempotent
+    const checkin = inserted ?? await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
 
     return {
-        isNew: true,
+        isNew: inserted !== null,
         data: {
-            id: checkin.match_checkin_id,
-            status: toCheckinStatusApi(checkin.match_checkin_status),
-            checkedInAt: checkin.checked_in_at,
+            id: checkin!.match_checkin_id,
+            status: toCheckinStatusApi(checkin!.match_checkin_status),
+            checkedInAt: checkin!.checked_in_at,
         },
     };
 }

@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import type { PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import type { MatchRow } from '../types/db.js';
 
 type InsertBracketNodeInput = {
     tournamentId: number;
@@ -34,7 +35,7 @@ export type BracketNodeListRow = {
     team_b_name: string | null;
     team_b_sport_type_id: number | null;
     match_id: number | null;
-    match_status: 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed' | null;
+    match_status: MatchRow['match_status'] | null;   // null = node ของ bye (ไม่มีแมตช์จริง)
     advances_to_node_id: number | null;
 };
 

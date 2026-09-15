@@ -29,6 +29,20 @@ services:
     volumes:
       - minio_data:/data
 
+  # สร้าง bucket ให้อัตโนมัติตอน docker compose up (รันครั้งเดียวแล้วจบ) — มีอยู่แล้วก็ข้าม
+  # ไม่มี bucket = M16/P05 ที่แตะไฟล์พังทันที · production (AWS S3 จริง) สร้าง bucket เองครั้งเดียวตอน deploy
+  minio-init:
+    image: quay.io/minio/mc
+    container_name: ltms-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin secret123; do echo 'waiting for minio...'; sleep 1; done;
+      mc mb --ignore-existing local/${S3_BUCKET:-ltms-uploads};
+      "
+    restart: "no"
+
 volumes:
   mysql_data:
   minio_data:

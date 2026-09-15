@@ -13,9 +13,11 @@ const CONTENT_TYPE_EXTENSION: Record<string, string> = {
     'image/png': 'png',
 };
 
-const EXPIRES_IN_SECONDS = 300; // 5 นาที
+// 20 นาที (ตกลงกับทีม 15 ก.ย.) — เน็ตหน้าสนามช้า (AS-02) อัปโหลดไม่ทันใน 5 นาที
+// ใช้ทั้งลิงก์อัปโหลด (M16) และลิงก์ดูเอกสาร soft filter (P05)
+const EXPIRES_IN_SECONDS = 1200;
 
-export async function createPresignedUpload(input: PresignUploadInput) {
+export async function createPresignedUpload(input: PresignUploadInput, userId: number) {
     let entityId: number;
 
     if (input.purpose === 'checkin_document') {
@@ -25,6 +27,15 @@ export async function createPresignedUpload(input: PresignUploadInput) {
         const match = await MatchRepo.findMatchById(input.matchId);
         if (!match) {
             throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+        }
+
+        // กฎเดียวกับ M12 — ขอลิงก์อัปรูปเช็คอินได้เฉพาะผู้เล่นในทีมของแมตช์ และตอนเปิดเช็คอินเท่านั้น
+        if (match.match_status !== 'checkin_open') {
+            throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
+        }
+        const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
+        if (!(await MatchRepo.isUserInTeams(userId, teamIds))) {
+            throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อทีมที่ได้รับอนุมัติของแมตช์นี้");
         }
         entityId = input.matchId;
     } else {

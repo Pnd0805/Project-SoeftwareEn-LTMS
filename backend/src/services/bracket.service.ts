@@ -19,10 +19,44 @@ export type PlannedMatch = {
     isBye: boolean;                         // true = ไม่มีแมตช์จริงเกิดขึ้น (ทีมเดียวเดินผ่านเข้ารอบ)
 };
 
-function nextPowerOfTwo(n: number): number {
+export function nextPowerOfTwo(n: number): number {
     let p = 1;
     while (p < n) p *= 2;
     return p;
+}
+
+/** ช่องรอบแรกของสาย — ตัวเลข = team_id, null = bye */
+export type FirstRoundSlot = number | null;
+
+/**
+ * วางทีมลงช่องรอบแรกของสายขนาด bracketSize แล้วเติม bye ให้ครบ
+ * - bye จับคู่กับทีมจริงเสมอ (ไม่มีคู่ bye เจอ bye → ไม่มีทีมไหนข้าม 2 รอบโดยไม่ได้แข่ง)
+ * - random: สุ่มว่าคู่ไหนได้ bye (ลำดับทีมถูกสุ่มมาแล้วใน orderTeamIds)
+ * - manual: ทีมลำดับต้น (seed 1, 2, ...) ได้ bye ก่อนตามมาตรฐาน
+ * จำนวน bye ไม่เกินจำนวนคู่เสมอ เพราะ bracketSize < 2 × จำนวนทีม (ยกเว้น double 2 ทีมในสาย 4 ที่ bye = คู่พอดี)
+ */
+export function placeTeamsInSlots(
+    orderedTeamIds: number[],
+    bracketSize: number,
+    seedingMethod: 'random' | 'manual'
+): FirstRoundSlot[] {
+    const pairCount = bracketSize / 2;
+    const byeCount = bracketSize - orderedTeamIds.length;
+    const pairIndexes = Array.from({ length: pairCount }, (_, i) => i);
+    const byePairs = new Set(
+        (seedingMethod === 'random' ? shuffle(pairIndexes) : pairIndexes).slice(0, byeCount)
+    );
+
+    const slots: FirstRoundSlot[] = [];
+    let next = 0;
+    for (let pair = 0; pair < pairCount; pair++) {
+        if (byePairs.has(pair)) {
+            slots.push(orderedTeamIds[next++]!, null);
+        } else {
+            slots.push(orderedTeamIds[next++]!, orderedTeamIds[next++]!);
+        }
+    }
+    return slots;
 }
 
 type Slot =
@@ -30,12 +64,10 @@ type Slot =
     | { kind: 'bye' }     // ช่องว่าง — เกิดได้แค่ตอน "เติม" รอบ 1 ให้ครบเลขยกกำลัง 2 เท่านั้น
     | { kind: 'tbd' };    // ยังไม่รู้ว่าใคร ต้องรอผลแมตช์จริงของรอบก่อนหน้า
 
-export function planSingleElimination(teamIds: number[]): PlannedMatch[] {
-    const bracketSize = nextPowerOfTwo(teamIds.length);
-    const totalRounds = Math.log2(bracketSize);
+export function planSingleElimination(firstRound: FirstRoundSlot[]): PlannedMatch[] {
+    const totalRounds = Math.log2(firstRound.length);
 
-    let slots: Slot[] = teamIds.map((id) => ({ kind: 'team', teamId: id }));
-    while (slots.length < bracketSize) slots.push({ kind: 'bye' });
+    let slots: Slot[] = firstRound.map((id): Slot => id === null ? { kind: 'bye' } : { kind: 'team', teamId: id });
 
     const planned: PlannedMatch[] = [];
 
@@ -107,15 +139,17 @@ export function planRoundRobin(teamIds: number[]): RoundRobinPair[] {
 }
 
 // ---------------------------------------------------------------
-// Double elimination — ต้องการจำนวนทีมเป็นเลขยกกำลัง 2 พอดี (ไม่รองรับ bye)
-// เหตุผล: bye ผสมกับสาย losers ทำให้จังหวะ "ใครแพ้ตอนไหนไปลงช่องไหน" ไม่สม่ำเสมอ
-// ซับซ้อนเกินขอบเขตเวลาที่มี ต้องคุยทีมถ้าอยากรองรับจำนวนทีมที่ไม่ใช่เลขยกกำลัง 2
+// Double elimination
+// 1) สร้างโครงสายเต็มขนาดเลขยกกำลัง 2 (ช่องที่ไม่มีทีม = bye)
+// 2) ตัดแมตช์ที่มี bye ทิ้ง แล้วต่อเส้นทางใหม่: ฝั่งที่ไม่ใช่ bye เดินผ่านไปแมตช์ถัดไปเลย ผู้แพ้ของแมตช์นั้นกลายเป็น bye
+// นัดชิง (GF) = แชมป์สายบนเจอแชมป์สายล่าง นัดเดียวจบ ใครชนะเป็นแชมป์ (ไม่มี bracket reset — ตกลงกับทีมแล้ว)
 // ---------------------------------------------------------------
 
 type MatchKey = string; // เช่น "WB-1-1", "LB-2-1", "GF"
 
 type InputSource =
     | { kind: 'team'; teamId: number }
+    | { kind: 'bye' }                          // ช่องว่าง — resolveDoubleEliminationByes จะตัดออกหมด
     | { kind: 'winner'; matchKey: MatchKey }   // ยังไม่รู้ว่าใคร ต้องรอ "ผู้ชนะ" ของแมตช์ที่ระบุ
     | { kind: 'loser'; matchKey: MatchKey };    // ยังไม่รู้ว่าใคร ต้องรอ "ผู้แพ้" ของแมตช์ที่ระบุ (มีแค่ใน winners bracket)
 
@@ -128,20 +162,15 @@ export type PlannedMatchNode = {
     teamB: InputSource;
 };
 
-// ต้อง >= 4 ทีม (ไม่ใช่แค่ >= 2) เพราะ LB รอบแรกต้องจับคู่ผู้แพ้ของ WB รอบ 1 กันเอง
-// ถ้ามีแค่ 2 ทีม WB รอบ 1 จะมีผู้แพ้แค่ 1 คน จับคู่ไม่ได้เลย (0.5 แมตช์)
-function isPowerOfTwoAtLeastFour(n: number): boolean {
-    return n >= 4 && Math.log2(n) % 1 === 0;
-}
-
-export function planDoubleElimination(teamIds: number[]): PlannedMatchNode[] {
-    const n = teamIds.length;
-    const k = Math.log2(n); // จำนวนรอบของ winners bracket
+/** firstRound ต้องยาวเป็นเลขยกกำลัง 2 ตั้งแต่ 4 ช่อง (LB รอบแรกต้องจับคู่ผู้แพ้ของ WB รอบ 1 ได้) */
+export function planDoubleElimination(firstRound: FirstRoundSlot[]): PlannedMatchNode[] {
+    const k = Math.log2(firstRound.length); // จำนวนรอบของ winners bracket
 
     const matches: PlannedMatchNode[] = [];
 
     // ---- Winners bracket ----
-    let currentWbSources: InputSource[] = teamIds.map((id): InputSource => ({ kind: 'team', teamId: id }));
+    let currentWbSources: InputSource[] = firstRound.map((id): InputSource =>
+        id === null ? { kind: 'bye' } : { kind: 'team', teamId: id });
     const wbLosersByRound: InputSource[][] = []; // wbLosersByRound[r-1] = ผู้แพ้ที่เกิดจาก WB รอบ r
 
     for (let round = 1; round <= k; round++) {
@@ -221,13 +250,40 @@ export function planDoubleElimination(teamIds: number[]): PlannedMatchNode[] {
     const lbChampionSource = lbSurvivors[0]!; // เหลือ 1 เสมอตอนจบ loop
 
     // ---- Grand Final ----
-    // ★ ไม่ทำ "bracket reset" (นัดที่ 2 ถ้าฝั่ง LB ชนะนัดแรก) — ตัดสินใจง่ายกว่าเวลาที่มี ต้องคุยทีมถ้าอยากได้ครบสูตร
     matches.push({
         key: 'GF', bracketType: 'grand_final', round: null, matchNumber: 1,
         teamA: wbChampionSource, teamB: lbChampionSource,
     });
 
-    return matches;
+    return resolveDoubleEliminationByes(matches);
+}
+
+/**
+ * ตัดแมตช์ที่มี bye ออก (plan เรียงตามลำดับ topological อยู่แล้ว เลยไล่ทีละแมตช์ได้เลย)
+ * แมตช์ที่ถูกตัด: ผู้ชนะ = ฝั่งที่ไม่ใช่ bye, ผู้แพ้ = bye → แมตช์ที่รอผลจากมันจะได้ค่านี้แทน
+ * round/matchNumber คงตำแหน่งเดิมในสายไว้ (อาจมีเลขข้ามได้) เพื่อให้ frontend วางคอลัมน์ถูก
+ */
+function resolveDoubleEliminationByes(plan: PlannedMatchNode[]): PlannedMatchNode[] {
+    const removed = new Map<MatchKey, { winner: InputSource; loser: InputSource }>();
+
+    const resolve = (source: InputSource): InputSource => {
+        if (source.kind === 'winner' && removed.has(source.matchKey)) return removed.get(source.matchKey)!.winner;
+        if (source.kind === 'loser' && removed.has(source.matchKey)) return removed.get(source.matchKey)!.loser;
+        return source;
+    };
+
+    const result: PlannedMatchNode[] = [];
+    for (const m of plan) {
+        const teamA = resolve(m.teamA);
+        const teamB = resolve(m.teamB);
+
+        if (teamA.kind === 'bye' || teamB.kind === 'bye') {
+            removed.set(m.key, { winner: teamA.kind === 'bye' ? teamB : teamA, loser: { kind: 'bye' } });
+            continue;
+        }
+        result.push({ ...m, teamA, teamB });
+    }
+    return result;
 }
 
 function shuffle<T>(input: T[]): T[] {
@@ -274,7 +330,8 @@ export async function createBracket(
     const bracketFormat = tournament.bracket_format;
 
     if (bracketFormat === 'single_elimination') {
-        const plan = planSingleElimination(teamIdsInOrder);
+        const slots = placeTeamsInSlots(teamIdsInOrder, nextPowerOfTwo(teamIdsInOrder.length), seedingMethod);
+        const plan = planSingleElimination(slots);
         const { matchCount, nodeCount } = await persistSingleElimination(tournamentId, plan, mode);
         return { matchCount, bracketFormat, nodeCount };
     }
@@ -286,16 +343,14 @@ export async function createBracket(
     }
 
     if (bracketFormat === 'double_elimination') {
-        // จำกัดไว้ก่อนว่าต้องเป็นเลขยกกำลัง 2 พอดี ไม่รองรับ bye ผสมสาย losers (ดู comment ตรง planDoubleElimination)
-        if (!isPowerOfTwoAtLeastFour(teamIdsInOrder.length)) {
-            throw new AppError(422, "TEAM_COUNT_MISMATCH", "double_elimination รองรับเฉพาะจำนวนทีมที่เป็นเลขยกกำลัง 2 ตั้งแต่ 4 ทีมขึ้นไป (4, 8, 16, ...) ในตอนนี้");
-        }
-        const plan = planDoubleElimination(teamIdsInOrder);
+        // สายเล็กสุด 4 ช่อง — 2 ทีมก็เล่นได้ (แพ้นัดแรก ไปเจอผู้ชนะอีกครั้งในนัดชิง)
+        const slots = placeTeamsInSlots(teamIdsInOrder, Math.max(4, nextPowerOfTwo(teamIdsInOrder.length)), seedingMethod);
+        const plan = planDoubleElimination(slots);
         const { matchCount, nodeCount } = await persistDoubleElimination(tournamentId, plan, mode);
         return { matchCount, bracketFormat, nodeCount };
     }
 
-    throw new AppError(400, "BRACKET_FORMAT_NOT_SUPPORTED", "ทัวร์นาเมนต์นี้ยังไม่ได้ตั้งรูปแบบการแข่งขัน (bracket_format)");
+    throw new AppError(422, "BRACKET_FORMAT_NOT_SET", "ทัวร์นาเมนต์นี้ยังไม่ได้ตั้งรูปแบบการแข่งขัน กรุณาตั้งรูปแบบการแข่งขันก่อนสร้างสาย");
 }
 
 function orderTeamIds(
@@ -392,6 +447,7 @@ async function persistDoubleElimination(tournamentId: number, plan: PlannedMatch
         let matchCount = 0;
         let nodeCount = 0;
 
+        // plan ผ่าน resolveDoubleEliminationByes แล้ว — มีแต่แมตช์จริง (แมตช์ bye ไม่สร้างแถว/node)
         for (const m of plan) {
             const teamAId = m.teamA.kind === 'team' ? m.teamA.teamId : null;
             const teamBId = m.teamB.kind === 'team' ? m.teamB.teamId : null;

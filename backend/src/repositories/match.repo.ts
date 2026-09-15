@@ -7,8 +7,9 @@ export type MatchListRow = {
     match_id: number;
     round_number: number | null;
     scheduled_time: Date | null;
+    scheduled_end_time: Date | null;
     venue: string | null;
-    match_status: 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed';
+    match_status: MatchRow['match_status'];   // อ้าง types/db.ts — สถานะใหม่ใน DB (เช่น result_rejected) ตามมาเอง
     team_a_id: number | null;
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
@@ -49,7 +50,7 @@ export async function findMatchesByTournament(
 
     const [rows] = await pool.query<(MatchListRow & RowDataPacket)[]>(
         `SELECT
-            m.match_id, m.round_number, m.scheduled_time, m.venue, m.match_status,
+            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
             tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
          FROM matches m
@@ -71,7 +72,7 @@ export async function findMatchesByTournament(
 
 export type MatchDetailRow = Pick<MatchRow, 
     'match_id' | 'tournament_id' | 'round_number' | 'team_a_id' | 'team_b_id' | 
-    'scheduled_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode' | 'next_match_id'
+    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode' | 'next_match_id'
 > & {
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
@@ -82,7 +83,7 @@ export type MatchDetailRow = Pick<MatchRow,
 export async function findMatchById(Id: number): Promise<MatchDetailRow | null> {
     const [rows] = await pool.query<(MatchDetailRow & RowDataPacket)[]>(
         `SELECT 
-            m.match_id, m.round_number, m.scheduled_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.next_match_id ,
+            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.next_match_id ,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
             tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
          FROM matches m
@@ -95,9 +96,12 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
     return match ?? null;
 }
 
+// FR-MM-02: ทีมเดียวกัน/สนามเดียวกันห้ามมีช่วงเวลาทับกัน — ช่วง [เริ่ม, จบ) ชนกันเมื่อ เริ่มเรา < จบเขา และ เริ่มเขา < จบเรา
+// แมตช์เก่าที่ยังไม่มี scheduled_end_time ถือเป็นจุดเวลา — ชนเมื่อเวลาเริ่มของมันอยู่ในช่วงของเรา
 export async function findConflictingMatch(
     excludeMatchId: number,
     scheduledTime: Date,
+    scheduledEndTime: Date,
     venue: string,
     teamAId: number | null,
     teamBId: number | null
@@ -105,34 +109,41 @@ export async function findConflictingMatch(
     const [rows] = await pool.query<({ match_id: number } & RowDataPacket)[]>(
         `SELECT match_id FROM matches
          WHERE match_id != ?
-           AND scheduled_time = ?
+           AND scheduled_time IS NOT NULL
+           AND (
+                (scheduled_end_time IS NOT NULL AND scheduled_time < ? AND ? < scheduled_end_time)
+             OR (scheduled_end_time IS NULL AND scheduled_time >= ? AND scheduled_time < ?)
+           )
            AND (team_a_id IN (?, ?) OR team_b_id IN (?, ?) OR venue = ?)
          LIMIT 1`,
-        [excludeMatchId, scheduledTime, teamAId, teamBId, teamAId, teamBId, venue]
+        [excludeMatchId, scheduledEndTime, scheduledTime, scheduledTime, scheduledEndTime,
+         teamAId, teamBId, teamAId, teamBId, venue]
     );
     const conflict = rows[0];
     return conflict ?? null;
 }
 
-export async function updateMatchSchedule(matchId: number, scheduledTime: Date, venue: string): Promise<void> {
+export async function updateMatchSchedule(matchId: number, scheduledTime: Date, scheduledEndTime: Date, venue: string): Promise<void> {
     await pool.query(
-        `UPDATE matches SET scheduled_time = ?, venue = ?, updated_at = NOW() WHERE match_id = ?`,
-        [scheduledTime, venue, matchId]
+        `UPDATE matches SET scheduled_time = ?, scheduled_end_time = ?, venue = ?, updated_at = NOW() WHERE match_id = ?`,
+        [scheduledTime, scheduledEndTime, venue, matchId]
     );
 }
 
-export async function  updateMatchStatus(matchId: number, status: 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed' ): Promise<void> {
+export async function  updateMatchStatus(matchId: number, status: MatchRow['match_status']): Promise<void> {
     await pool.query(
         "UPDATE matches SET match_status = ? , updated_at = NOW() WHERE match_id = ?",
         [status, matchId]
     );
 }
 
-export async function openMatchCheckin(matchId: number): Promise<void> {
-    await pool.query(
-        "UPDATE matches SET match_status = 'checkin_open', checkin_open_at = NOW(), updated_at = NOW() WHERE match_id = ?",
+/** M09 — เปลี่ยนได้เฉพาะแถวที่ยัง scheduled (คืน false = สถานะอื่นไปแล้ว ไม่แตะแถวนั้น) */
+export async function openMatchCheckin(matchId: number): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        "UPDATE matches SET match_status = 'checkin_open', checkin_open_at = NOW(), updated_at = NOW() WHERE match_id = ? AND match_status = 'scheduled'",
         [matchId]
     );
+    return result.affectedRows === 1;
 }
 
 export async function countSuccessfulCheckins(matchId: number, teamId: number | null): Promise<number> {
@@ -140,23 +151,27 @@ export async function countSuccessfulCheckins(matchId: number, teamId: number | 
     const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
         `SELECT COUNT(*) AS cnt FROM match_checkins mc
          JOIN team_members tm ON mc.user_id = tm.user_id
-         WHERE mc.match_id = ? AND tm.team_id = ? AND mc.match_checkin_status = 'success'`,
+         WHERE mc.match_id = ? AND tm.team_id = ? AND mc.match_checkin_status IN ('success', 'exception')`,
         [matchId, teamId]
     );
     return rows[0]?.cnt ?? 0;
 }
 
 export type MatchCheckinListRow = {
+    match_checkin_id: number;
     user_id: number;
     full_name: string;
     method: 'qr_onsite' | 'photo_online' | 'manual_by_referee';
-    match_checkin_status: 'success' | 'rejected' | 'exception';
+    match_checkin_status: 'success' | 'rejected' | 'exception' | 'pending';
+    document_type: 'student_id' | 'national_id' | null;
+    document_s3_key: string | null;   // service แปลงเป็น presigned URL ให้เฉพาะกรรมการของแมตช์ (PDPA)
     checked_in_at: Date;
 };
 
 export async function findCheckinsByMatch(matchId: number): Promise<MatchCheckinListRow[]> {
     const [rows] = await pool.query<(MatchCheckinListRow & RowDataPacket)[]>(
-        `SELECT mc.user_id, u.full_name, mc.method, mc.match_checkin_status, mc.checked_in_at
+        `SELECT mc.match_checkin_id, mc.user_id, u.full_name, mc.method, mc.match_checkin_status,
+                mc.document_type, mc.document_s3_key, mc.checked_in_at
          FROM match_checkins mc
          JOIN users u ON mc.user_id = u.user_id
          WHERE mc.match_id = ?`,
@@ -179,22 +194,25 @@ export async function findCheckinById(checkinId: number): Promise<MatchCheckinDe
     return rows[0] ?? null;
 }
 
-export async function verifyCheckin(checkinId: number, refereeUserId: number): Promise<void> {
-    await pool.query(
+// M14/M15 — แตะเฉพาะแถวที่ยัง pending (คืน false = ถูกตัดสินไปแล้ว หรือไม่ใช่เช็คอินที่รอตรวจ)
+export async function verifyCheckin(checkinId: number, refereeUserId: number): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
         `UPDATE match_checkins
          SET match_checkin_status = 'success', verified_by_referee_id = ?, verified_at = NOW()
-         WHERE match_checkin_id = ?`,
+         WHERE match_checkin_id = ? AND match_checkin_status = 'pending'`,
         [refereeUserId, checkinId]
     );
+    return result.affectedRows === 1;
 }
 
-export async function rejectCheckin(checkinId: number, refereeUserId: number, reason: string): Promise<void> {
-    await pool.query(
+export async function rejectCheckin(checkinId: number, refereeUserId: number, reason: string): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
         `UPDATE match_checkins
          SET match_checkin_status = 'rejected', rejection_reason = ?, verified_by_referee_id = ?, verified_at = NOW()
-         WHERE match_checkin_id = ?`,
+         WHERE match_checkin_id = ? AND match_checkin_status = 'pending'`,
         [reason, refereeUserId, checkinId]
     );
+    return result.affectedRows === 1;
 }
 
 export async function countMatchesByTournament(tournamentId: number): Promise<number> {
@@ -238,8 +256,8 @@ export async function updateMatchLoserNextMatchIdTx(conn: PoolConnection, matchI
     );
 }
 
-// ⚠️ ไม่มี UNIQUE(match_id, user_id) จริงใน schema.sql ทั้งที่ GUIDE อ้างว่ามี (เหมือนเคส C5 ของ tournament_referees)
-// เลยต้องเช็คซ้ำที่ฝั่ง service เอง (select ก่อน insert) — มีโอกาสชนกันได้ถ้ายิงพร้อมกันเป๊ะ แต่ยอมรับความเสี่ยงนี้ไปก่อน ต้องคุยทีม
+// M12 เช็คก่อน insert ว่าเคยเช็คอินแล้วหรือยัง (ตอบ 200 พร้อมแถวเดิม)
+// กรณียิงพร้อมกันเป๊ะ UNIQUE(match_id, user_id) จาก migration 008 กันไว้ที่ DB อีกชั้น (insertCheckin คืน null)
 export async function findCheckinByMatchAndUser(matchId: number, userId: number): Promise<MatchCheckinRow | null> {
     const [rows] = await pool.query<(MatchCheckinRow & RowDataPacket)[]>(
         `SELECT * FROM match_checkins WHERE match_id = ? AND user_id = ? LIMIT 1`,
@@ -262,17 +280,24 @@ type InsertCheckinInput = {
     matchId: number;
     userId: number;
     method: 'qr_onsite' | 'photo_online';
-    status: 'success' | 'exception';
+    status: 'success' | 'pending';
     documentType: 'student_id' | 'national_id' | null;
     documentS3Key: string | null;
 };
 
-export async function insertCheckin(input: InsertCheckinInput): Promise<MatchCheckinRow> {
-    const [result] = await pool.query<ResultSetHeader>(
-        `INSERT INTO match_checkins (match_id, user_id, method, match_checkin_status, document_type, document_s3_key)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [input.matchId, input.userId, input.method, input.status, input.documentType, input.documentS3Key]
-    );
+/** คืน null ถ้าชน UNIQUE(match_id, user_id) — คนเดียวกันเช็คอินแมตช์นี้ไปแล้ว (service จะดึงแถวเดิมมาตอบแทน) */
+export async function insertCheckin(input: InsertCheckinInput): Promise<MatchCheckinRow | null> {
+    let result: ResultSetHeader;
+    try {
+        [result] = await pool.query<ResultSetHeader>(
+            `INSERT INTO match_checkins (match_id, user_id, method, match_checkin_status, document_type, document_s3_key)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [input.matchId, input.userId, input.method, input.status, input.documentType, input.documentS3Key]
+        );
+    } catch (err) {
+        if ((err as { code?: string }).code === 'ER_DUP_ENTRY') return null;
+        throw err;
+    }
     const [rows] = await pool.query<(MatchCheckinRow & RowDataPacket)[]>(
         `SELECT * FROM match_checkins WHERE match_checkin_id = ?`,
         [result.insertId]
