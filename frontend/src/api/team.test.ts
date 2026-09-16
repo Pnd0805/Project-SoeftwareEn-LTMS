@@ -27,7 +27,7 @@ afterEach(() => vi.unstubAllGlobals());
 const lastRequest = () => {
   const [url, init] = fetchMock.mock.calls.at(-1)!;
   return {
-    path: new URL(String(url)).pathname.replace(/^\/api\/v1/, ""),
+    path: new URL(String(url), "http://localhost").pathname.replace(/^\/api\/v1/, ""),
     method: init?.method ?? "GET",
     body: init?.body ? JSON.parse(String(init.body)) : undefined,
   };
