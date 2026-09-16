@@ -32,7 +32,7 @@ export function useLogin() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: LoginRequest) => authApi.login(input),
-    onSuccess: (data, input) => {
+    onSuccess: async (data, input) => {
       if (USE_MOCK) {
         userApi.setMockCurrentUser(data.user.id);
         // Temporary bridge: legacy screens still read the prototype session.
@@ -56,8 +56,15 @@ export function useLogin() {
           legacyUser = newUser;
         }
         setLegacySession(legacyUser.id);
+      } else {
+        // The legacy prototype can still contain a persisted "guest" session.
+        // Real authentication is owned by /me, so do not let that stale marker
+        // keep the shell in guest mode after the backend accepted the login.
+        clearLegacySession();
       }
-      qc.invalidateQueries({ queryKey: ["me"] });
+      // Wait until the authenticated profile is in the cache before LoginPage
+      // navigates. This avoids rendering the destination with the old 401 state.
+      await qc.fetchQuery({ queryKey: ["me"], queryFn: userApi.getMe });
     },
   });
 }

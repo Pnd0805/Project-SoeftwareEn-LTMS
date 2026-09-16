@@ -16,18 +16,19 @@ import { Icon } from '../kit/Icon'
 import type { IconName } from '../kit/Icon'
 import { signout, useLtms } from '../../shared/store'
 import { me } from '../../shared/selectors'
-import { useMe } from '../../hooks/useAuth'
+import { useLogout, useMe } from '../../hooks/useAuth'
 import { useNotifications } from '../../hooks/useNotifications'
+import type { MeDto } from '../../types/dto'
 
 interface NavItem { to: string; icon: IconName; label: string; pill?: number }
 
-function useNav(unreadCount: number): NavItem[] {
+function useNav(unreadCount: number, currentUser?: MeDto): NavItem[] {
   const s = useLtms()
   const u = me(s)
-  if (!u) return []
-  const invites = s.invites.filter(i => i.user === u.id && i.status === 'pending').length
+  if (!u && !currentUser) return []
+  const invites = u ? s.invites.filter(i => i.user === u.id && i.status === 'pending').length : 0
   const items: NavItem[] = [{ to: '/', icon: 'trophy', label: 'Tournaments' }]
-  if (u.role === 'Admin') {
+  if (currentUser?.userType === 'staff' || u?.role === 'Admin') {
     items.push({ to: '/admin', icon: 'shield', label: 'Admin', pill: s.tournaments.filter(t => t.status === 'pending').length })
   }
   items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: invites })
@@ -89,12 +90,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const s = useLtms()
   const u = me(s)
   const { data: currentUser } = useMe()
+  const logout = useLogout()
   const { data: notificationData } = useNotifications(currentUser?.id)
   const unreadCount = notificationData?.items.filter(notification => !notification.read).length ?? 0
-  const nav = useNav(unreadCount)
+  const nav = useNav(unreadCount, currentUser)
   const location = useLocation()
   const navigate = useNavigate()
   const n = unreadCount
+  const displayName = currentUser?.fullName ?? u?.name ?? ''
 
   /* the first tab stop — standard on GitHub, Wikipedia, gov.uk */
   const skip = (
@@ -103,7 +106,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     </button>
   )
 
-  if (!u) {
+  if (!currentUser && !u) {
     return (
       <>
         {skip}
@@ -147,9 +150,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
           <div className="foot">
             <div className="tag"><em>//</em> Signed in as</div>
-            <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{u.name}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{displayName}</div>
             <button className="btn ghost" type="button" style={{ width: '100%' }}
-              onClick={() => { signout(); navigate('/login') }}>
+              onClick={() => { void logout.mutateAsync().finally(() => navigate('/login')) }}>
               <Icon name="out" size={13} /> Switch role
             </button>
           </div>
@@ -163,7 +166,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 aria-label={`Notifications, ${n} unread`}>
                 <Icon name="bell" size={17} />{n ? <i>{n}</i> : null}
               </button>
-              <span className="avatar">{u.name.slice(0, 1)}</span>
+              <span className="avatar">{displayName.slice(0, 1)}</span>
             </span>
           </div></div>
           <main className="main" id="main" tabIndex={-1}>{children}</main>
