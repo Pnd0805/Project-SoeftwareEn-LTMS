@@ -65,17 +65,19 @@ Topology pre-created ก่อน public แต่ต้องล็อกว่
 - manual/random draw สามารถ re-run ได้ถึงจุดใด
 - withdrawal หลัง placement ต้อง shift seeds หรือเปลี่ยน slot เป็น BYE เท่านั้น
 
-## OD-08 — Schedule Edit Conflict Policy
+## OD-08 — Schedule Edit Conflict Policy — ✅ Resolved 2026-09-17
 
-Direction ล่าสุดสำหรับ **Referee overlap ที่เกิดจาก M06 reschedule** คือ allow + warning ให้ Organizer แก้
+M06 `PATCH /matches/:id/schedule` (implemented in `match.service.scheduleMatch`):
 
-ยังต้องแยก policy ของ:
+| กรณี | policy | error |
+|---|---|---|
+| Match ไม่ใช่ `scheduled` (เปิดเช็คอิน/เริ่ม/จบแล้ว) | **block** | 409 `MATCH_NOT_CHANGEABLE` |
+| ช่วงเวลาอยู่นอก `event_start_date`–`event_end_date` | **block** — ขยายวันผ่าน C09 amendment | 409 `OUTSIDE_TOURNAMENT_DATES` |
+| Team overlap / venue overlap (ช่วง `[start, end)` ซ้อน, ไม่นับ match `completed`) | **block** | 409 `SCHEDULE_CONFLICT` + `conflictingMatchId` |
+| ผิดลำดับสาย (match รอบก่อนจบหลังเราเริ่ม / match รอบถัดไปเริ่มก่อนเราจบ) | **block** | 409 `SCHEDULE_BREAKS_BRACKET` + `blockingMatchId` |
+| Referee overlap | **allow + warning** — ORG เห็นจาก F14 `coverage.conflicts` / F12 `conflictsWith` | — |
 
-- Team overlap
-- venue overlap
-- Match ที่ใกล้/เริ่มไปแล้ว
-
-แต่ละประเภทจะ block หรือ warning ต้องระบุชัด
+เลื่อนวันแข่ง = M06 ทีละ match + C09 ขยายวัน เท่านั้น (ไม่มี bulk shift / re-pack — มติ 2026-09-17)
 
 ## OD-09 — Missing Referee After Publication
 
@@ -115,7 +117,7 @@ SRS/SDS กำหนด Tournament/Match/Result retention 4 ปีและ priv
 Current code/schema/API มี known gaps เมื่อเทียบ Current Spec เช่น:
 
 - bracket generation API ยังอิง approved Team count/old lifecycle
-- current referee API/schema ยังไม่มี partial assignment response/change requests
+- ~~current referee API/schema ยังไม่มี partial assignment response/change requests~~ → มีแล้ว (F05 `matchIds`, FR01–FR08, migration 003) 2026-09-15
 - legacy `docs/spec/LTMS_Database_ERD_TH.md` และ legacy course Markdown มี MongoDB/30-table assumptions ที่ไม่ตรง RDS-only current architecture
 
 รายการนี้ใช้วาง migration/gap-analysis รอบถัดไป ไม่ใช่คำสั่งให้แก้ code ใน PR เอกสารนี้

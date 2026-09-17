@@ -215,7 +215,8 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 | FR01–FR08 ระบบคำขอ (+ migration 003 `referee_change_requests`) + ตัด F11 | ✅ | — |
 | อัปเดต `06 - Endpoint Reference` | ✅ | `1088d31` |
 | กรรมการภายนอก: migration 004 + ก็อป 1 ปี + F15 docs + AR01–AR03 (ปิด F-10/13/14/15 ใน GUIDE/10) | ✅ | — |
-| ทีม Tournaments เรียก coverage ตอน publish (§10.2) | ⏳ ต้องคุย | |
+| ทีม Tournaments เรียก coverage ตอน publish (§10.2) | ✅ เปลี่ยนเป็นกฎ pool (BR-10 ด่าน 1) ใน `publishTournament` — ไม่ใช้ coverage ตอน publish | `f1deb2e` |
+| merge ทุก branch เข้า BE_KN + M06 guards + M10 gate + referee_identity presign | ✅ | `98aa300` |
 
 ### FR01–FR08 · คำขอเปลี่ยนแปลงกรรมการ (ตามที่ implement จริง)
 
