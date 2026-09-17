@@ -716,4 +716,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('006_add_tournament_description.sql'),
   ('007_match_results_livestream.sql'),
   ('008_match_checkins_unique_match_user.sql'),
-  ('009_match_checkins_pending_status.sql');
+  ('009_match_checkins_pending_status.sql'),
+  ('010_sport_types_renumber.sql');
