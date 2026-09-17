@@ -5,7 +5,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Icon } from '../../components/kit/Icon'
@@ -33,7 +33,7 @@ export function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues,
   })
-  const facultyId = form.watch('facultyId')
+  const facultyId = useWatch({ control: form.control, name: 'facultyId' })
   const departments = useDepartments(facultyId)
 
   useEffect(() => {

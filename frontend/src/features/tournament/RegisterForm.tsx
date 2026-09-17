@@ -10,7 +10,7 @@
  * players only — a member left off cannot fail it, because they are not entering.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, TableWrap } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
@@ -56,11 +56,11 @@ export function RegisterForm({ team: tm, options, tournament, open, onClose }: {
   /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store — ส่งตัวที่หน้าถืออยู่ */
   const apply = useApplyToTournament(tr.id)
   const backendTeams = useBackendMyTeams()
-  const { register, handleSubmit, setError, setValue, watch, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
+  const { control, register, handleSubmit, setError, setValue, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
     resolver: zodResolver(applyToTournamentSchema),
     defaultValues: { teamId: Number.isFinite(Number(tm.id)) ? Number(tm.id) : numOf(tm.id) },
   })
-  const selectedTeamId = watch('teamId')
+  const selectedTeamId = useWatch({ control, name: 'teamId' })
   const eligibleTeams = (backendTeams.data?.items ?? []).filter(team => team.role === 'leader' && team.readinessStatus === 'Ready')
 
   useEffect(() => {
