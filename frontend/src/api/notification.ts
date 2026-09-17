@@ -1,4 +1,4 @@
-import { mockDelay, apiFetch, USE_MOCK } from "./client";
+import { ApiError, mockDelay, USE_MOCK } from "./client";
 import type { NotificationListResponse } from "../types/notification.dto";
 import {
   getMockNotifications,
@@ -18,8 +18,10 @@ export async function getNotifications(userId: number): Promise<NotificationList
     if (own) return mockDelay({ items: own });
     return mockDelay(getMockNotifications(userId));
   }
-  // TODO(guide): confirm the notification list path in the Backend Design.
-  return apiFetch<NotificationListResponse>("/me/notifications");
+  throw new ApiError(501, {
+    code: "ENDPOINT_UNAVAILABLE",
+    message: "The server does not provide a notification inbox yet.",
+  });
 }
 
 export async function markNotificationRead(userId: number, notificationId: number): Promise<void> {
@@ -27,8 +29,10 @@ export async function markNotificationRead(userId: number, notificationId: numbe
     if (markStoreNotificationRead(notificationId)) return mockDelay(undefined);
     return mockDelay(markMockNotificationRead(userId, notificationId));
   }
-  // TODO(guide): confirm the notification read action path in the Backend Design.
-  return apiFetch<void>(`/notifications/${notificationId}/read`, { method: "POST" });
+  throw new ApiError(501, {
+    code: "ENDPOINT_UNAVAILABLE",
+    message: "The server does not provide notification read actions yet.",
+  });
 }
 
 export async function markNotificationsRead(userId: number): Promise<void> {
@@ -36,6 +40,8 @@ export async function markNotificationsRead(userId: number): Promise<void> {
     markStoreNotificationsRead(userId);
     return mockDelay(markMockNotificationsRead(userId));
   }
-  // TODO(guide): confirm the mark-all-read action path in the Backend Design.
-  return apiFetch<void>("/notifications/read-all", { method: "POST" });
+  throw new ApiError(501, {
+    code: "ENDPOINT_UNAVAILABLE",
+    message: "The server does not provide notification read actions yet.",
+  });
 }

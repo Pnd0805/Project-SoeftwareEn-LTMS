@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as notificationApi from "../api/notification";
+import { retryPolicy } from "../api/client";
 
-export function useNotifications(userId: number | undefined) {
+export function useNotifications(userId: number | undefined, enabled = true) {
   return useQuery({
     queryKey: ["notifications", userId],
     queryFn: () => notificationApi.getNotifications(userId as number),
-    enabled: userId !== undefined,
+    enabled: enabled && userId !== undefined,
+    retry: retryPolicy,
   });
 }
 

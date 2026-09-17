@@ -8,6 +8,7 @@
  * rel: "run" — yours to manage · "playing" — a squad of yours is in it · null — everyone else's
  */
 import { useNavigate } from 'react-router-dom'
+import { USE_MOCK } from '../../api/client'
 import { Badge } from '../../components/kit/primitives'
 import { useLtms } from '../../shared/store'
 import { regsOf, team, user } from '../../shared/selectors'
@@ -18,11 +19,11 @@ export type Rel = 'run' | 'playing' | null
 export function TournamentCard({ t, rel, entry }: { t: Tournament; rel: Rel; entry?: Registration }) {
   const s = useLtms()
   const navigate = useNavigate()
-  const n = regsOf(s, t.id).filter(r => r.status === 'approved').length
-  const org = user(s, t.organizer)
-  const mine = entry ? team(s, entry.team) : null
+  const n = USE_MOCK ? regsOf(s, t.id).filter(r => r.status === 'approved').length : null
+  const org = USE_MOCK ? user(s, t.organizer) : undefined
+  const mine = USE_MOCK && entry ? team(s, entry.team) : null
   const edge = rel === 'run' ? 'var(--red)' : rel === 'playing' ? 'var(--teal)' : null
-  const champion = t.champion ? team(s, t.champion) : null
+  const champion = USE_MOCK && t.champion ? team(s, t.champion) : null
 
   const status = t.status === 'public' ? <Badge kind="ok">Public</Badge>
     : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
@@ -52,9 +53,11 @@ export function TournamentCard({ t, rel, entry }: { t: Tournament; rel: Rel; ent
                 : <Badge kind="warn">Waiting on the organizer</Badge>}
             </span>
           )
-          : <span className="tag">Run by {org?.name ?? '—'}</span>}
+          : USE_MOCK
+            ? <span className="tag">Run by {org?.name ?? '—'}</span>
+            : <span className="tag">{t.venue || 'Venue to be announced'}</span>}
       <span className="spread" style={{ borderTop: '1px solid var(--line)', paddingTop: 11, width: '100%' }}>
-        <span className="tag">{n} / {t.cap} teams</span>
+        <span className="tag">{n === null ? `Capacity ${t.cap} teams` : `${n} / ${t.cap} teams`}</span>
         <span className="tag">
           {champion ? `Champion: ${champion.code}` : t.drawn ? 'In progress' : 'Registration open'}
         </span>

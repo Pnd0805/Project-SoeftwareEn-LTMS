@@ -15,22 +15,37 @@ function notificationAge(at: string): string {
  * Approvals, results and announcements land here.
  */
 import { useNavigate } from 'react-router-dom'
-import { Empty } from '../../components/kit/primitives'
+import { Empty, Panel } from '../../components/kit/primitives'
 import { useMe } from '../../hooks/useAuth'
 import {
   useMarkNotificationRead,
   useMarkNotificationsRead,
   useNotifications,
 } from '../../hooks/useNotifications'
+import { USE_MOCK } from '../../api/client'
 
 export function InboxPage() {
   const navigate = useNavigate()
   const { data: currentUser, isLoading: userLoading } = useMe()
   const userId = currentUser?.id
-  const { data, isLoading: notificationsLoading, isError } = useNotifications(userId)
+  const { data, isLoading: notificationsLoading, isError } = useNotifications(userId, USE_MOCK)
   const markRead = useMarkNotificationRead(userId)
   const markAllRead = useMarkNotificationsRead(userId)
-  if (userLoading || notificationsLoading || !currentUser) return null
+  if (userLoading || (USE_MOCK && notificationsLoading)) {
+    return <Panel quiet><span className="sub">Loading inbox…</span></Panel>
+  }
+  if (!currentUser) {
+    return <Empty icon="bell" title="Sign in to open Inbox" />
+  }
+  if (!USE_MOCK) {
+    return (
+      <Empty
+        icon="bell"
+        title="Inbox is not available on the server yet"
+        sub="Team invitations are under Teams. Referee invitations are under Matches."
+      />
+    )
+  }
   if (isError || !data) {
     return <Empty icon="bell" title="Unable to load inbox" sub="Please try again later." />
   }

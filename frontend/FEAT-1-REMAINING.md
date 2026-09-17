@@ -1,6 +1,8 @@
 # `feat/1` — Current Frontend Integration Plan
 
-Last verified: 2026-09-12
+Merged-contract baseline verified: 2026-09-12
+Unmerged backend branch review: 2026-09-15 (see below)
+Real-mode migration audit: 2026-09-17 (`origin/backend` `6313a07`)
 
 Frontend branch: `feat/1`
 
@@ -16,12 +18,62 @@ contract changes.
 > treated as unavailable until they are merged into `origin/backend` and the
 > deployed backend is confirmed to include them.
 
+## Unmerged backend update — reviewed 2026-09-15
+
+Remote branches were fetched and their routes, schemas, and mappers inspected.
+No backend branch was merged into this frontend checkout. Runtime behavior and
+deployment have not been verified by this review.
+
+| Branch | Reviewed commit | Meaning for frontend planning |
+| --- | --- | --- |
+| `origin/backend` | `6313a07` | Shared integration baseline; changes since `35ce621` are tests/coverage, not new runtime endpoints. |
+| `origin/backend_step9-10` | `052cb24` | Implements match results/statistics, winner, dashboard, standings, announcements and livestream (S01–S12, E08–E12). |
+| `origin/backend_shokun` | `f222b12` | Bracket, matches, scheduling, check-in, uploads; also application pagination and validation/document-contract updates. |
+| `origin/BE_KN` | `5b36e0f` | Includes Step 9–10 and the match/check-in branch, plus match-specific referee invitations, coverage and change requests. Candidate for integration review, not evidence of deployment. |
+| `origin/feature/tournaments-step-5` | `d90893c` | Tournament lifecycle, eligibility and admin queues, with further publication-readiness and age-validation changes to reconcile with the integration candidate. |
+
+**Read the historical blocker list below as unavailable on the shared baseline,
+not as absent from every backend branch.** Tournament, bracket/match/check-in,
+results/statistics, announcements/livestream, dashboard/standings, and referee
+removal/coverage now have unmerged implementations available for preparation.
+Do not check their frontend migration boxes merely because backend routes exist.
+
+### Next work and owners
+
+1. **Head Dev + backend owners:** agree the candidate commit and deployment,
+   reconcile the latest Tournament branch with `BE_KN`, and verify database
+   migrations. Keep the existing baseline policy until the team changes it.
+2. **Slice 3:** reconcile match/result/statistics DTOs and methods before wiring
+   screens. Frontend writes stats with `PUT /matches/:id/stats`; the reviewed
+   backend uses `POST` with `{ playerStats: [{ userId, values }] }`. Frontend
+   livestream sends `{ url }`; the backend expects `youtubeUrl`. Backend result
+   reads return verified results only, so pending/disputed UI needs an agreed
+   read contract. Standings currently return `team`, `wins`, `losses`, `rank`,
+   not the full round-robin totals expected by the frontend specification.
+3. **Slice 2:** prepare Tournament and announcements integration. Dashboard now
+   has `GET /tournaments/:id/dashboard` returning `teamCount`, `playerCount`,
+   `matchCount`, `matchesCompleted`; map these explicitly into the existing view.
+4. **Slices 3 + 4:** prepare match-specific referee invitation UI and DTOs.
+   Accepting with no `matchIds` accepts pool membership only. Coverage is now
+   per match (`matchesTotal`, `matchesCovered`, `uncovered`, `conflicts`), unlike
+   the existing frontend `required/accepted/shortfall` DTO. Add the FR01–FR08
+   transfer/swap/add-match request workflow; direct F11 assignment was removed.
+5. **All slice owners:** add contract-focused tests for these changes, then run
+   the real-backend smoke flows against the agreed candidate. Existing frontend
+   test success does not verify these unmerged contracts.
+
+`GUIDE/06`, `GUIDE/10`, and `GUIDE/11` are available in `origin/BE_KN`; older
+statements that the guides are missing from the repository are stale for that
+branch. Do not copy older prototype contracts over the reviewed backend shapes.
+
 ## Rules for implementation
 
 - Use backend DTOs and numeric IDs as the source of truth for every route that
   is available.
-- Keep a legacy/mock fallback only where the backend route is missing. Mark the
-  fallback in code with a short comment explaining the missing endpoint.
+- Keep a legacy/mock implementation only behind `VITE_USE_MOCK=true`. When
+  `VITE_USE_MOCK=false`, a missing backend route must produce an explicit
+  unavailable state or hide the unsupported feature; it must never render
+  prototype/store data as though it came from the server.
 - Do not add new mutations to `src/shared/store.ts`.
 - Every API-backed screen needs loading, empty, error, and mutation-pending
   states. Treat `401` and `403` as access errors, not empty data.
@@ -163,11 +215,114 @@ $env:VITE_USE_MOCK = 'false'
 npm.cmd run dev
 ```
 
-- [ ] Smoke-test login.
+- [x] Smoke-test login.
 - [ ] Smoke-test listing own teams and viewing team members.
 - [ ] Smoke-test applying to a tournament.
 - [ ] Smoke-test approving/rejecting an application as organizer.
 - [ ] Smoke-test accepting/declining a referee invitation.
+- [ ] Backend test-data prerequisite: provision a known Admin account before
+      testing `GET /admin/team-requests` and approve/reject actions. The current
+      backend data has no Admin account; frontend demo credentials must not be
+      treated as backend seed data.
+- [ ] Backend fix prerequisite: add and run the migration for
+      `team_invitations.expires_at`, then verify `GET /me/invitations` and the
+      invitation lifecycle. Keep invitation smoke tests pending while the
+      backend returns `ER_BAD_FIELD_ERROR` for the missing column.
+- [x] Hide demo-role sign-in controls, browser-only data text, Reset demo data,
+      and demo credential defaults when `VITE_USE_MOCK=false`.
+- [ ] Verify the real-mode Login page in a real browser. Source checks, lint,
+      build, tests, and HTTP reachability pass, but browser automation was not
+      available in the verification environment on 2026-09-17.
+
+## Priority 4 — Complete the `VITE_USE_MOCK=false` migration
+
+This is the cross-screen completion gate owned by the Head Frontend Dev. The
+earlier priorities prove individual API slices; this section prevents an
+API-backed page from silently mixing server data with the prototype seed.
+
+### 1. Real-mode data-source boundary
+
+- [ ] **Head Frontend Dev:** inventory every routed page and record each source
+      it reads: backend API, UI-only local state, or prototype/mock store.
+- [ ] **All slice owners:** when `VITE_USE_MOCK=false`, do not use
+      `shared/store.ts`, `shared/seed.ts`, or `src/mocks/*` as entity data for
+      tournaments, teams, users, matches, invitations, notifications, results,
+      permissions, or counters.
+- [ ] **All slice owners:** UI preferences such as theme may remain in
+      localStorage, but persisted prototype data under `ltms.v1` must not affect
+      real-mode rendering, authorization, badges, links, or work queues.
+- [ ] **All slice owners:** unsupported real-mode features must be hidden,
+      disabled with a reason, or show a named unavailable state. Do not fall
+      back to demo data after `404`, `403`, `501`, network failure, or an empty
+      backend response.
+- [ ] **Head Frontend Dev:** require numeric backend IDs in real-mode routes and
+      links. Keep string IDs such as `t-vlr` and `t-fb` inside mock mode only.
+
+### 2. Screen migration matrix
+
+| Done | Owner | Screen/domain | Real-mode acceptance criteria |
+| --- | --- | --- | --- |
+| [ ] | Slice 1 | Search — tournaments | Search and Home use the same backend tournament collection after `GET /tournaments` is merged and deployed. Until then Search shows no `s.tournaments`; `VALORANT Campus League 2025` and other seed records must not appear. |
+| [x] | Slice 4 | Search — teams | Do not search `s.teams` in real mode. Keep the section unavailable until a public/global team-list or team-search route is agreed and deployed. |
+| [x] | Slice 1 | Search — users | Use the available authenticated `GET /users/search?q=...` contract with loading, no-results, `401`/`403`, and retryable-error states. |
+| [x] | Slice 1 | Profile — identity | Render the signed-in user's name and registry fields from `GET /me` without requiring a matching legacy-store user. The page must never return a blank screen because `legacyUser` is absent. |
+| [x] | Slice 1 | Profile — statistics | Use `GET /users/:id/stats`; show loading, empty, and error states without hiding the `/me` identity section. |
+| [x] | Slice 4 | Profile — squads | Use `GET /me/teams` for the signed-in user's squads; do not derive membership from `s.teams`. |
+| [x] | Slice 1 | Profile — unsupported panels | Hide or label Career-by-tournament, Pick'em tokens, follows, and MVP totals unavailable until their backend read contracts are deployed. Do not calculate them from the seed. |
+| [x] | Slice 1 | Inbox — notifications | Do not call speculative `/me/notifications` or notification read routes against the baseline. Show a deliberate unavailable state or hide the Inbox navigation until a notification contract is agreed and deployed. |
+| [ ] | Slice 4 | Inbox — team invitations | Keep team invitations on the API-backed flow using `GET /me/invitations` and invitation accept/decline routes; do not substitute general notifications for this flow. |
+| [ ] | Slices 3 + 4 | Inbox — referee invitations | Keep referee invitations on `GET /me/referee-invitations` in `MatchesPage`; document the navigation until a unified Inbox contract exists. |
+| [x] | Slice 1 | Shell and badges | Derive identity, permissions, Inbox count, and navigation badges only from backend-backed queries in real mode. No badge may count prototype tournaments, invites, or notifications. |
+| [x] | Slice 1 | Home and work queue | Home cards and `Needs you` entries must use backend-backed collections only. If a required route is absent, omit that queue rather than reading `workQueue(s)`. |
+| [ ] | Slice 2 | Tournament detail | A numeric tournament route must not combine a backend DTO with store registrations, teams, brackets, announcements, or permissions. Each tab must be API-backed or explicitly unavailable. |
+| [ ] | Slice 3 | Match, bracket, check-in and watch | Remove real-mode reads of store matches/results/check-ins. Each reachable view must be API-backed or explicitly unavailable. |
+| [ ] | Slice 4 | Team detail and management | Logo, record, transfer, roster-lock and other mock-only sections must remain isolated from API-backed team identity/membership and be unavailable when their routes are missing. |
+| [ ] | Slice 4 | Admin | Only Permanent squads may use the current baseline API. External referees, Users, and other unsupported tabs must not show store records in real mode. |
+
+### 3. Backend contract gates for remaining screens
+
+- [ ] **Head Dev + backend owner:** merge/deploy and freeze the public
+      tournament list/detail contract before Search, Home, and Tournament detail
+      are marked migrated. A route on an unmerged candidate is not sufficient.
+- [ ] **Backend owner:** define a notification list/read/read-all contract,
+      authorization, DTO, event producers, pagination, and retention before the
+      general Inbox is migrated.
+- [ ] **Backend owner:** define global team search/list authorization and DTO
+      before the Search team section is enabled in real mode.
+- [ ] **Backend owner:** define follows and any missing Profile career/Pick'em/
+      MVP read contracts before those panels are enabled in real mode.
+- [ ] **Head Frontend Dev:** update this file with each confirmed route, request,
+      response, errors, permission, reviewed backend commit, and deployment
+      evidence before assigning its frontend migration.
+
+### 4. Verification for the real-mode boundary
+
+- [x] Add tests proving Search cannot render `shared/seed.ts` tournaments or
+      teams when `VITE_USE_MOCK=false`.
+- [x] Add tests proving Profile renders `/me` identity when no legacy-store user
+      matches and displays independent stats/error states.
+- [ ] Add tests proving Inbox displays empty only for `200 { items: [] }`, not
+      for `401`, `403`, `404`, `501`, malformed responses, or network errors.
+- [ ] Add tests proving unsupported panels never issue speculative API calls and
+      never fall back to store data in real mode.
+- [ ] Run `rg` over routed feature components for `useLtms`, `shared/store`,
+      `shared/selectors`, `shared/seed`, and `src/mocks`; review and document
+      every remaining real-mode-reachable use.
+- [ ] Smoke-test a clean browser profile with `VITE_USE_MOCK=false` and stale
+      `ltms.v1` data present; no demo user, team, tournament, match, invitation,
+      notification, badge, or permission may appear.
+- [ ] Smoke-test direct navigation and reload for `/`, `/search`, `/me`,
+      `/inbox`, `/teams`, `/matches`, one numeric team, and one numeric
+      tournament route.
+- [ ] Record Network evidence for every migrated screen and confirm each entity
+      shown can be traced to a successful backend response in that session.
+- [x] Run `npm.cmd test`, `npm.cmd run lint`, and `npm.cmd run build` after each
+      migration slice; record exact failures and do not let passing unit tests
+      override a red typecheck, build, or browser smoke test.
+
+Developer verification (2026-09-17): `npm.cmd test` passed 110 tests in 14
+files, `npm.cmd run lint` passed, and `npm.cmd run build` passed. Browser and
+Network-panel smoke checks remain pending and are intentionally unchecked.
 
 ## Backend blockers — do not schedule as API migration yet
 
@@ -188,6 +343,14 @@ delivers an agreed contract:
 - [ ] Backend delivery required: public/global team list or team search.
       `GET /me/teams` is only for the
   signed-in user's teams and does not support SearchPage's global search.
+- [ ] Backend delivery required: notification list, mark-one-read, and
+      mark-all-read routes. `src/api/notification.ts` currently contains
+      local `501 ENDPOINT_UNAVAILABLE` guards; the general Inbox must not call
+      or simulate unconfirmed paths in real mode until the contract is agreed
+      and deployed.
+- [ ] Backend delivery required: follows plus any Profile career-by-tournament,
+      Pick'em total, and MVP-total reads that remain part of the approved UI.
+      `GET /me` and `GET /users/:id/stats` do not supply those sections.
 - [ ] Backend delivery required: roster lock. `DELETE /teams/:id/members/:uid`,
       `POST /teams/:id/invitations` and invitation accept don't check whether
       a tournament the team is approved for has started. Only the frontend's mock
@@ -305,6 +468,12 @@ the owner decides the fix.
 
 - [ ] Team, application, referee, and admin screens above use API hooks and
       numeric DTO IDs.
+- [ ] Every route reachable with `VITE_USE_MOCK=false` satisfies the Priority 4
+      data-source boundary: backend data, an explicit unavailable state, or
+      UI-only local state—never silent prototype/mock entity fallback.
+- [ ] Search, Home, Profile, Inbox, Shell badges, and direct numeric detail
+      routes have passed the Priority 4 clean-browser and stale-`ltms.v1`
+      checks.
 - [ ] No new mutations have been added to `shared/store.ts`.
 - [x] Team list/detail screens have loading, empty, error, and permission
       states.

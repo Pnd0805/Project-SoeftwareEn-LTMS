@@ -22,6 +22,7 @@ import type { Rel } from './TournamentCard'
 import { workQueue } from './workQueue'
 import type { WorkEntry, WorkKind } from './workQueue'
 import { tournamentView } from '../tournament/tournamentView'
+import { useMe } from '../../hooks/useAuth'
 
 const KIND_COLS: [WorkKind, string][] = [['crit', 'Urgent'], ['warn', 'Waiting'], ['ok', 'Ready']]
 const STAGES: [string, string][] = [['', 'All'], ['open', 'Open for entry'], ['competing', 'In progress'], ['finished', 'Finished']]
@@ -56,48 +57,56 @@ function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries
 
 export function HomePage() {
   const s = useLtms()
-  const { data: tournamentData, isPending: apiPending } = useTournaments()
+  const { data: tournamentData, isPending: apiPending, isError: apiError } = useTournaments()
+  const { data: currentUser } = useMe()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
-  const u = me(s)
+  const u = USE_MOCK ? me(s) : undefined
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [openKind, setOpenKind] = useState<WorkKind | null>(null)
 
-  const q = useMemo(() => workQueue(s), [s])
+  const q = useMemo(() => USE_MOCK ? workQueue(s) : [], [s])
   /* รายการทัวร์นาเมนต์ยังรอ backend (FEAT-1-REMAINING: backend blockers) — โหมด mock อ่าน seed
      ใน store ที่หน้าอื่นทุกหน้าอ่านอยู่ ไม่ใช่ fixture ของ api/tournament.ts ซึ่งมีรายการเดียว */
   const tournamentsPending = !USE_MOCK && apiPending
-  const all = (USE_MOCK ? s.tournaments : (tournamentData?.items ?? []).map(tournamentView))
-    .filter(t => visibleTo(s, t))
+  const source = USE_MOCK ? s.tournaments : (tournamentData?.items ?? []).map(tournamentView)
+  const all = USE_MOCK ? source.filter(t => visibleTo(s, t)) : source
   const needle = query.trim().toLowerCase()
   const textFiltered = needle
     ? all.filter(t => `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
     : all
   const visible = status ? textFiltered.filter(t => tourLifecycle(t) === status) : textFiltered
 
-  /* one tournament sits in one place: running it outranks playing in it */
-  const mine = u ? visible.filter(t => t.organizer === u.id) : []
-  const squads = myTeams(s).map(x => x.id)
+  /* Relationship buckets depend on prototype-only registrations. In real mode
+     the list is server-owned, so never infer them from stale `ltms.v1` data. */
   const entries = new Map<string, Registration>()
-  if (u) {
-    s.registrations
-      .filter(r => squads.includes(r.team) && (r.status === 'approved' || r.status === 'pending'))
-      .forEach(r => { if (!entries.has(r.tour)) entries.set(r.tour, r) })
+  let cats: { key: string; label: string; items: Tournament[]; rel: Rel }[]
+  if (USE_MOCK) {
+    const mine = u ? visible.filter(t => t.organizer === u.id) : []
+    const squads = myTeams(s).map(x => x.id)
+    if (u) {
+      s.registrations
+        .filter(r => squads.includes(r.team) && (r.status === 'approved' || r.status === 'pending'))
+        .forEach(r => { if (!entries.has(r.tour)) entries.set(r.tour, r) })
+    }
+    const playing = visible.filter(t => !mine.includes(t) && entries.has(t.id))
+    const open = visible.filter(t => !mine.includes(t) && !playing.includes(t)
+      && t.status === 'public' && !t.drawn
+      && regsOf(s, t.id).filter(r => r.status === 'approved').length < t.cap)
+    const rest = visible.filter(t => !mine.includes(t) && !playing.includes(t) && !open.includes(t)
+      && (status || needle || tourLifecycle(t) !== 'finished'))
+    cats = [
+      { key: 'mine', label: `Yours to run · ${mine.length}`, items: mine, rel: 'run' as Rel },
+      { key: 'playing', label: `You're competing in · ${playing.length}`, items: playing, rel: 'playing' as Rel },
+      { key: 'open', label: `Open for entry · ${open.length}`, items: open, rel: null },
+      { key: 'rest', label: `Other tournaments · ${rest.length}`, items: rest, rel: null },
+    ].filter(c => c.items.length)
+  } else {
+    cats = visible.length
+      ? [{ key: 'all', label: `All tournaments · ${visible.length}`, items: visible, rel: null }]
+      : []
   }
-  const playing = visible.filter(t => !mine.includes(t) && entries.has(t.id))
-  const open = visible.filter(t => !mine.includes(t) && !playing.includes(t)
-    && t.status === 'public' && !t.drawn
-    && regsOf(s, t.id).filter(r => r.status === 'approved').length < t.cap)
-  const rest = visible.filter(t => !mine.includes(t) && !playing.includes(t) && !open.includes(t)
-    && (status || needle || tourLifecycle(t) !== 'finished'))
-
-  const cats: { key: string; label: string; items: Tournament[]; rel: Rel }[] = [
-    { key: 'mine', label: `Yours to run · ${mine.length}`, items: mine, rel: 'run' as Rel },
-    { key: 'playing', label: `You're competing in · ${playing.length}`, items: playing, rel: 'playing' as Rel },
-    { key: 'open', label: `Open for entry · ${open.length}`, items: open, rel: null },
-    { key: 'rest', label: `Other tournaments · ${rest.length}`, items: rest, rel: null },
-  ].filter(c => c.items.length)
   const tab = cats.find(c => c.key === tabParam) ? tabParam! : cats[0]?.key
 
   const sports = [...new Set(all.map(t => t.sport))].sort()
@@ -105,12 +114,13 @@ export function HomePage() {
   return (
     <>
       {tournamentsPending ? <Panel quiet><span className="sub">Loading tournaments…</span></Panel> : null}
+      {!USE_MOCK && apiError ? <Empty title="Unable to load tournaments" sub="The server did not return the tournament list. Retry when the backend is available." /> : null}
       <div className="spread">
         <div>
           <div className="tag"><em>//</em> University Sports Council · Season 2026</div>
           <h1 className="disp" style={{ fontSize: 36, marginTop: 6 }}>Tournaments</h1>
         </div>
-        {u ? (
+        {(USE_MOCK ? !!u : !!currentUser) ? (
           <button className="btn primary" type="button" onClick={() => navigate('/request')}>
             <Icon name="plus" size={13} /> Request a tournament
           </button>
@@ -178,7 +188,7 @@ export function HomePage() {
             ))}
           </div>
         </>
-      ) : visible.length ? null : (
+      ) : visible.length || (!USE_MOCK && apiError) ? null : (
         <Empty title="No tournaments yet" sub="Request one to get started." />
       )}
 

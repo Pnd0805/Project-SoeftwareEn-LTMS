@@ -15,22 +15,34 @@ import { toTeamView } from '../../components/kit/viewModels'
 import { formatName, teamReady } from '../../shared/rules'
 import { useMe } from '../../hooks/useAuth'
 import { useSearchUsers } from '../../hooks/useUser'
+import { useTournaments } from '../../hooks/useTournament'
+import { USE_MOCK } from '../../api/client'
+import { tournamentView } from '../tournament/tournamentView'
 
 export function SearchPage() {
   const s = useLtms()
   const { data: currentUser } = useMe()
+  const tournamentQuery = useTournaments()
   const navigate = useNavigate()
   const { q: qParam } = useParams()
   const [q, setQ] = useState(decodeURIComponent(qParam ?? ''))
   const needle = q.trim().toLowerCase()
 
+  const tournamentSource = USE_MOCK
+    ? s.tournaments.filter(t => visibleTo(s, t))
+    : (tournamentQuery.data?.items ?? []).map(tournamentView)
   const tournaments = needle
-    ? s.tournaments.filter(t => visibleTo(s, t) && `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
+    ? tournamentSource.filter(t => `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
     : []
-  const teams = needle ? s.teams.filter(t => `${t.name} ${t.code}`.toLowerCase().includes(needle)) : []
+  const teams = USE_MOCK && needle
+    ? s.teams.filter(t => `${t.name} ${t.code}`.toLowerCase().includes(needle))
+    : []
   const userSearch = useSearchUsers(q, !!currentUser)
   const players = userSearch.data?.items ?? []
   const total = tournaments.length + teams.length + players.length
+  const userErrorStatus = typeof userSearch.error === 'object' && userSearch.error !== null && 'status' in userSearch.error
+    ? (userSearch.error as { status?: number }).status
+    : undefined
 
   return (
     <>
@@ -52,8 +64,26 @@ export function SearchPage() {
       {!needle ? (
         <Empty icon="search" title="Type to search"
           sub="A private draft or a request still under review is not searchable — it is not a tournament yet." />
-      ) : !total ? (
+      ) : needle.length < 3 ? (
+        <Empty icon="search" title="Keep typing" sub="Enter at least 3 characters to search for players." />
+      ) : !total && !tournamentQuery.isPending && !userSearch.isPending && !tournamentQuery.isError && !userSearch.isError ? (
         <Empty icon="search" title={`Nothing matched “${q}”`} sub="Try a sport, a faculty, or part of a name." />
+      ) : null}
+
+      {!USE_MOCK && tournamentQuery.isPending ? (
+        <Panel quiet><span className="sub">Loading tournaments…</span></Panel>
+      ) : null}
+
+      {!USE_MOCK && tournamentQuery.isError ? (
+        <Panel quiet>
+          <span className="error">Tournament search is unavailable because the server list could not be loaded.</span>
+        </Panel>
+      ) : null}
+
+      {!USE_MOCK && needle ? (
+        <Panel quiet>
+          <span className="sub">Squad search is not available on the server yet.</span>
+        </Panel>
       ) : null}
 
       {tournaments.length ? (
@@ -85,9 +115,15 @@ export function SearchPage() {
         </Panel>
       ) : null}
 
-      {userSearch.isError ? (
+      {needle.length >= 3 && !!currentUser && userSearch.isPending ? (
+        <Panel quiet><span className="sub">Searching players…</span></Panel>
+      ) : userSearch.isError ? (
         <Panel quiet>
-          <span className="error">Unable to search players right now.</span>
+          <span className="error">
+            {userErrorStatus === 401 ? 'Sign in again to search players.'
+              : userErrorStatus === 403 ? 'Your account is not allowed to search players.'
+                : 'Unable to search players right now. Please retry.'}
+          </span>
         </Panel>
       ) : players.length ? (
         <Panel quiet>

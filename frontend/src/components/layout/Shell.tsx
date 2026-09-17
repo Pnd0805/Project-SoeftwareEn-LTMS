@@ -19,21 +19,27 @@ import { me } from '../../shared/selectors'
 import { useLogout, useMe } from '../../hooks/useAuth'
 import { useNotifications } from '../../hooks/useNotifications'
 import type { MeDto } from '../../types/dto'
+import { USE_MOCK } from '../../api/client'
 
 interface NavItem { to: string; icon: IconName; label: string; pill?: number }
 
 function useNav(unreadCount: number, currentUser?: MeDto): NavItem[] {
   const s = useLtms()
-  const u = me(s)
+  const u = USE_MOCK ? me(s) : undefined
   if (!u && !currentUser) return []
   const invites = u ? s.invites.filter(i => i.user === u.id && i.status === 'pending').length : 0
   const items: NavItem[] = [{ to: '/', icon: 'trophy', label: 'Tournaments' }]
   if (currentUser?.userType === 'staff' || u?.role === 'Admin') {
-    items.push({ to: '/admin', icon: 'shield', label: 'Admin', pill: s.tournaments.filter(t => t.status === 'pending').length })
+    items.push({
+      to: '/admin',
+      icon: 'shield',
+      label: 'Admin',
+      pill: USE_MOCK ? s.tournaments.filter(t => t.status === 'pending').length : undefined,
+    })
   }
-  items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: invites })
+  items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: USE_MOCK ? invites : undefined })
   items.push({ to: '/matches', icon: 'match', label: 'Matches' })
-  items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unreadCount })
+  if (USE_MOCK) items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unreadCount })
   items.push({ to: '/me', icon: 'user', label: 'Profile' })
   return items
 }
@@ -88,16 +94,16 @@ function SearchBox() {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const s = useLtms()
-  const u = me(s)
+  const u = USE_MOCK ? me(s) : undefined
   const { data: currentUser } = useMe()
   const logout = useLogout()
-  const { data: notificationData } = useNotifications(currentUser?.id)
+  const { data: notificationData } = useNotifications(currentUser?.id, USE_MOCK)
   const unreadCount = notificationData?.items.filter(notification => !notification.read).length ?? 0
   const nav = useNav(unreadCount, currentUser)
   const location = useLocation()
   const navigate = useNavigate()
   const n = unreadCount
-  const displayName = currentUser?.fullName ?? u?.name ?? ''
+  const displayName = currentUser?.fullName ?? (USE_MOCK ? u?.name : '') ?? ''
 
   /* the first tab stop — standard on GitHub, Wikipedia, gov.uk */
   const skip = (
@@ -162,10 +168,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <SearchBox />
             <span className="right">
               <ThemeButton />
-              <button className="bell" type="button" onClick={() => navigate('/inbox')}
-                aria-label={`Notifications, ${n} unread`}>
-                <Icon name="bell" size={17} />{n ? <i>{n}</i> : null}
-              </button>
+              {USE_MOCK ? (
+                <button className="bell" type="button" onClick={() => navigate('/inbox')}
+                  aria-label={`Notifications, ${n} unread`}>
+                  <Icon name="bell" size={17} />{n ? <i>{n}</i> : null}
+                </button>
+              ) : null}
               <span className="avatar">{displayName.slice(0, 1)}</span>
             </span>
           </div></div>

@@ -7,7 +7,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
-import { ApiError } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { Icon } from '../../components/kit/Icon'
 import { useLogin } from '../../hooks/useAuth'
 import { loginSchema, type LoginInput } from '../../schemas/auth.schema'
@@ -27,7 +27,9 @@ export function LoginPage() {
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'player@ltms.test', password: 'password123' },
+    defaultValues: USE_MOCK
+      ? { email: 'player@ltms.test', password: 'password123' }
+      : { email: '', password: '' },
   })
 
   const redirectAfterLogin = (userType: string) => {
@@ -74,7 +76,9 @@ export function LoginPage() {
       </div>
 
       <div className="sub">
-        Local Tournament Management System — sign in using your real auth flow or pick a demo role.
+        {USE_MOCK
+          ? 'Local Tournament Management System — sign in or pick a demo role.'
+          : 'Local Tournament Management System — sign in with your account.'}
       </div>
 
       <form className="vstack" style={{ gap: 12 }} onSubmit={form.handleSubmit(submit)}>
@@ -102,23 +106,27 @@ export function LoginPage() {
         <Link className="btn ghost" to="/register">สมัครสมาชิก</Link>
       </div>
 
-      <div className="vstack" style={{ gap: 9 }}>
-        {DEMO.map(({ email, password, label, note }) => (
-          <button className="who" type="button" key={email} onClick={() => void quickLogin(email, password)}>
-            <span className="avatar">{label.slice(0, 1)}</span>
-            <span className="meta"><b>{label}</b><span className="tag">{note}</span></span>
-            <Icon name="chev" size={13} />
-          </button>
-        ))}
-      </div>
+      {USE_MOCK ? (
+        <div className="vstack" style={{ gap: 9 }}>
+          {DEMO.map(({ email, password, label, note }) => (
+            <button className="who" type="button" key={email} onClick={() => void quickLogin(email, password)}>
+              <span className="avatar">{label.slice(0, 1)}</span>
+              <span className="meta"><b>{label}</b><span className="tag">{note}</span></span>
+              <Icon name="chev" size={13} />
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <button className="btn ghost" type="button" onClick={() => { continueAsGuest(); navigate('/') }}>
         Continue as guest — browse without signing in
       </button>
-      <div className="hstack" style={{ justifyContent: 'space-between' }}>
-        <span className="tag"><em>//</em> Data lives in this browser only</span>
-        <button className="btn ghost" type="button" onClick={resetDemo}>Reset demo data</button>
-      </div>
+      {USE_MOCK ? (
+        <div className="hstack" style={{ justifyContent: 'space-between' }}>
+          <span className="tag"><em>//</em> Data lives in this browser only</span>
+          <button className="btn ghost" type="button" onClick={resetDemo}>Reset demo data</button>
+        </div>
+      ) : null}
     </div></div>
   )
 }

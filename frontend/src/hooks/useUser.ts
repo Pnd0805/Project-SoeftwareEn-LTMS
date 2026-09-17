@@ -4,6 +4,7 @@
  * hook owns public profiles, stats, and authenticated user search.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { retryPolicy } from "../api/client";
 import * as userApi from "../api/user";
 import * as engagementApi from "../api/engagement";
 
@@ -29,14 +30,15 @@ export function useSearchUsers(query: string, enabled = true) {
     queryKey: ["users", "search", normalizedQuery],
     queryFn: () => userApi.searchUsers(normalizedQuery),
     enabled: enabled && normalizedQuery.length >= 3,
+    retry: retryPolicy,
   });
 }
 
-export function useFollows(userId: number | undefined) {
+export function useFollows(userId: number | undefined, enabled = true) {
   return useQuery({
     queryKey: ["follows", userId],
     queryFn: () => engagementApi.getFollows(userId as number),
-    enabled: userId !== undefined,
+    enabled: enabled && userId !== undefined,
   });
 }
 
