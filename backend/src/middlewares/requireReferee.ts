@@ -156,6 +156,10 @@ export async function requireCanDisputeResult(req : Request , res : Response , n
         if(matchRes.match_result_status === 'disputed'){
             return next(new AppError(409 , "DISPUTE_ALREADY_ACTIVE" , "มีข้อโต้แย้งที่ยังไม่ได้ข้อยุติอยู่แล้ว"));
         }
+        // ผลบาย (ทีมถอน/ไม่มาแข่ง) ไม่มีสกอร์จริงให้เถียง — GUIDE/11 §10.4
+        if(matchRes.match_result_status === 'walkover'){
+            return next(new AppError(409 , "RESULT_IS_WALKOVER" , "ผลนี้เป็นการชนะบาย ไม่สามารถโต้แย้งได้"));
+        }
 
         if(!(await isDisputeWindow(match!.tournament_id , matchRes))){
             return next(new AppError(409 , "DISPUTE_WINDOW_CLOSED" , "พ้นระยะเวลาที่เปิดให้โต้แย้งผลแล้ว"));

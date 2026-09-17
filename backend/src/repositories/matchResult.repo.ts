@@ -172,8 +172,8 @@ export async function resolveMatchResult(matchResId : number , matchId : number 
 //matchId, winnerTeamId, scoreData, isAmended, amendedAt, amendReason, verifiedAt }`
 
 export async function findVerifiedResultByMatchId(matchId : number): Promise<MatchResultRow | null>{
-    const [ rows ] = await pool.query<(MatchResultRow & RowDataPacket)[]>(`SELECT match_id , winner_team_id , score_data , amend_reason , amended_at , verified_at
-                                                                           FROM match_results WHERE match_id = ? AND match_result_status = ?`, [matchId , 'verified']);
+    const [ rows ] = await pool.query<(MatchResultRow & RowDataPacket)[]>(`SELECT match_id , winner_team_id , score_data , amend_reason , amended_at , verified_at , match_result_status
+                                                                           FROM match_results WHERE match_id = ? AND match_result_status IN ('verified', 'walkover')`, [matchId]);
     return rows[0] ?? null                                                       
 }
 

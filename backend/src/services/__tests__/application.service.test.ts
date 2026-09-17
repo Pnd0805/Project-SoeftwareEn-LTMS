@@ -26,6 +26,14 @@ vi.mock('../../services/upload.service.js', () => ({
   getPresignedDownloadUrl: vi.fn(),
 }));
 
+vi.mock('../../repositories/walkover.repo.js', () => ({
+  hasInProgressMatch: vi.fn(() => Promise.resolve(false)),
+}));
+
+vi.mock('../../services/walkover.service.js', () => ({
+  processTeamWithdrawal: vi.fn(() => Promise.resolve([])),
+}));
+
 vi.mock('../../mappers/team.mapper.js', () => ({
   toTeamRef: vi.fn(),
 }));
@@ -57,6 +65,8 @@ import type {
   EligibilityRuleRow,
 } from '../../repositories/application.repo.js';
 import type { TeamRow, TournamentRow } from '../../types/db.js';
+import * as WalkoverRepo from '../../repositories/walkover.repo.js';
+import * as Walkover from '../../services/walkover.service.js';
 
 const mockedApplicationRepo = vi.mocked(ApplicationRepo);
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
@@ -446,7 +456,8 @@ describe('withdrawApplication', () => {
 
     expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'withdrawn');
     expect(mockedMatchRepo.countMatchesByTournament).toHaveBeenCalledWith(20);
-    expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: false });
+    expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: false, walkovers: [] });
+    expect(Walkover.processTeamWithdrawal).not.toHaveBeenCalled();
   });
 
   it('reports bracketExists: true when the tournament already has matches', async () => {
@@ -454,10 +465,23 @@ describe('withdrawApplication', () => {
       makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
     );
     mockedMatchRepo.countMatchesByTournament.mockResolvedValue(8);
+    vi.mocked(Walkover.processTeamWithdrawal).mockResolvedValue([{ matchId: 3, winnerTeamId: 11, loserTeamId: 10 }]);
 
     const result = await applicationService.withdrawApplication(100, 5);
 
-    expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: true });
+    // มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย (GUIDE/11 §10.4)
+    expect(Walkover.processTeamWithdrawal).toHaveBeenCalledWith(20, 10, 5);
+    expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: true, walkovers: [{ matchId: 3, winnerTeamId: 11, loserTeamId: 10 }] });
+  });
+
+  it('refuses to withdraw while the team has a match in progress (MATCH_IN_PROGRESS)', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    vi.mocked(WalkoverRepo.hasInProgressMatch).mockResolvedValueOnce(true);
+
+    await expect(applicationService.withdrawApplication(100, 5)).rejects.toMatchObject({ status: 409, code: 'MATCH_IN_PROGRESS' });
+    expect(mockedApplicationRepo.updateApplicationStatus).not.toHaveBeenCalled();
   });
 });
 

@@ -10,6 +10,8 @@ import { checkMatch, checkTournament, checkTeam } from '../utils/checkExist.js';
 import { AppError } from '../utils/AppError.js';
 import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
+import { WIN_POINTS } from '../config/scoring.js';
+import * as Walkover from './walkover.service.js';
 
 export async function createSubmitMatchRes(matchId : number , winnerId : number , scoreData : Record<string , number> , submitById : number , role : 'team_leader' | 'referee'){
     const match = await checkMatch(matchId);
@@ -22,11 +24,13 @@ export async function createSubmitMatchRes(matchId : number , winnerId : number 
 export async function verifyMatchResult(matchId : number , userid : number){
     const matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
 
-    const point = 3;
-
-    await MatchResRepo.verifyMatchResult(matchRes!.match_result_id , matchId , userid , point);
+    await MatchResRepo.verifyMatchResult(matchRes!.match_result_id , matchId , userid , WIN_POINTS);
     const ver_matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
     const match = await MatchRepo.findById(matchId);
+
+    // ทีมที่เพิ่งถูกวางลงแมตช์ถัดไป อาจเจอคู่ที่ถอนตัวไปแล้ว → แมตช์นั้นจบด้วย walkover ทันที (GUIDE/11 §10.4, มติ Q1-A)
+    await Walkover.resolveIfOpponentWithdrawn(match!.next_match_id);
+    await Walkover.resolveIfOpponentWithdrawn(match!.loser_next_match_id);
     return toVerifiedResultDto(ver_matchRes! , match!);
 }
 

@@ -57,13 +57,13 @@ Single Elimination: empty slot → opponent advances โดยไม่สร้
 - Double Elimination เมื่อ initial/loser bracket มี empty slots
 - Round Robin fixture ที่ opponent slot ว่าง: skip fixture, walkover, หรือ no contest และมีผลต่อ standing อย่างไร
 
-## OD-07 — Seeding Timing and Withdrawal
+## OD-07 — Seeding Timing and Withdrawal — ✅ Resolved 2026-09-17 (withdrawal part)
 
-Topology pre-created ก่อน public แต่ต้องล็อกว่า:
-
-- seed/Team placement ทำเมื่อ application approved ทีละทีม หรือหลัง registration close
-- manual/random draw สามารถ re-run ได้ถึงจุดใด
-- withdrawal หลัง placement ต้อง shift seeds หรือเปลี่ยน slot เป็น BYE เท่านั้น
+- Withdrawal หลังมีสาย = **walkover** ไม่ shift seed / ไม่แก้ topology: แมตช์ที่ยังไม่เริ่มของทีมนั้น อีกฝั่งชนะบาย (ลูกโซ่ถึง loser bracket) · คู่ที่ยังไม่มาจะบายเมื่อคู่มาถึง · ถอนกลางแมตช์ `in_progress` ไม่ได้ (409 `MATCH_IN_PROGRESS`)
+- ทีมเช็คอินไม่ถึง `sport_types.min_members` ตอน M10 start → แพ้บายเช่นกัน
+- บันทึกเป็น `match_results.match_result_status='walkover'` + `score_data` จาก `sport_types.walkover_score` · standings นับ · player stats ไม่นับ
+- รายละเอียด `GUIDE/11 §10.5` · migration 011 · `backend/src/services/walkover.service.ts`
+- ส่วน seed timing / re-run draw ยังเป็นของทีม Bracket (shokun) — bracket preview ยังไม่ทำ
 
 ## OD-08 — Schedule Edit Conflict Policy — ✅ Resolved 2026-09-17
 

@@ -37,7 +37,8 @@ export type SportTypeRow = {
     name : string,
     min_members : number,
     max_members : number,
-    default_mode : 'onsite' | 'online'
+    default_mode : 'onsite' | 'online',
+    walkover_score : { winner : number, loser : number } | null   // สกอร์ชนะบาย (migration 011)
 }
 
 export type SportStatDefinitionRow = {
@@ -272,7 +273,7 @@ export type MatchResultRow = {
     score_data : Record<string , number> | null,
     submitted_by_user_id : number,
     submitted_role : 'team_leader' | 'referee',
-    match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected',
+    match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected' | 'walkover',
     dispute_reason : string| null,
     dispute_raised_by : number| null,
     dispute_raised_at : Date| null,

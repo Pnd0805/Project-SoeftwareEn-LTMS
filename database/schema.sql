@@ -43,7 +43,8 @@ CREATE TABLE sport_types (
   name VARCHAR(100) NOT NULL,
   min_members INT NOT NULL,
   max_members INT NOT NULL,
-  default_mode ENUM('onsite','online') NOT NULL DEFAULT 'onsite'
+  default_mode ENUM('onsite','online') NOT NULL DEFAULT 'onsite',
+  walkover_score JSON NULL               -- {"winner": n, "loser": n} สกอร์ที่บันทึกเมื่อชนะบาย (migration 011)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================================
@@ -420,7 +421,7 @@ CREATE TABLE match_results (
   score_data JSON NULL,              -- โครงสร้างคงที่ ไม่แตกตารางเหมือน player_match_stats
   submitted_by_user_id INT NOT NULL,
   submitted_role ENUM('team_leader','referee') NOT NULL,
-  match_result_status ENUM('submitted','verified','disputed','rejected') NOT NULL DEFAULT 'submitted',
+  match_result_status ENUM('submitted','verified','disputed','rejected','walkover') NOT NULL DEFAULT 'submitted',  -- walkover = ชนะบาย ไม่ต้อง verify (migration 011)
   dispute_reason TEXT NULL,
   dispute_raised_by INT NULL,
   dispute_raised_at DATETIME NULL,   -- ใช้เช็ค dispute_window_hours (BR-14)
@@ -717,4 +718,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('007_match_results_livestream.sql'),
   ('008_match_checkins_unique_match_user.sql'),
   ('009_match_checkins_pending_status.sql'),
-  ('010_sport_types_renumber.sql');
+  ('010_sport_types_renumber.sql'),
+  ('011_walkover.sql');

@@ -311,6 +311,25 @@ external accept → `pending_admin` → ยังลงแมตช์ไม่�
 - ทางที่ไม่ต้องแตะโค้ดทีม Matches: ใส่ใน F12 (`GET /matches/:id/referees`) แต่ละ item มี `conflictsWith: [matchId]` และใน coverage endpoint (§10.2) มี `conflicts: [...]` รวมทั้งทัวร์ → FE แสดงไอคอนจากตรงนี้ **แนะนำทางนี้**
 - query ใช้ SQL self-join เดียวกับ §4.1 แต่ไม่มีเงื่อนไข `t.match_id = ?` → หา REF ที่มี 2 แมตช์ทับกันทั้งทัวร์
 
+### 10.5 walkover (ชนะบาย) — มติ 17 ก.ย. 2569 · `walkover.service` / migration 011
+
+ทำไมอยู่ในเรื่องกรรมการ: แมตช์ที่ไม่ได้แข่งต้องไม่ค้าง `scheduled` (coverage/F14 นับ, กรรมการถูกล็อกไว้เปล่า ๆ) และคำขอ FR ที่อ้างแมตช์นั้นต้องถูกยกเลิก
+
+| เหตุ | ใคร/เมื่อไหร่ | ผล |
+|---|---|---|
+| **ทีมถอนตัว** (P08) หลังมีสาย | หัวหน้าทีมกด · ทำได้เมื่อไม่มีแมตช์ `in_progress` (409 `MATCH_IN_PROGRESS`) — `checkin_open` ถอนได้ | ทุกแมตช์ `scheduled`/`checkin_open` ของทีมที่**รู้คู่แล้ว** → อีกฝั่งชนะบายทันที · คู่ยังไม่มา (รอผลรอบก่อน) → ตอนผลรอบก่อน verify แล้ววางทีมลงช่อง ระบบเช็คว่าอีกฝั่งถอนไปแล้ว → บายทันที (hook ใน `matchResult.service.verifyMatchResult`) |
+| **double elimination** | — | ทีมที่ถอน "แพ้บาย" ถูกวางลงสายล่างตามปกติ → แมตช์สายล่างนั้นบายต่อให้อีกฝั่ง ไล่เป็นลูกโซ่จนไม่เจอทีมนี้ · ถ้าคู่ในสายล่างถอนทั้งสองทีม = ไม่มีใครให้ชนะ ปล่อยค้างให้ ORG (เคสหายาก) |
+| **ไม่มาแข่ง / มาไม่ครบ** (M10) | กรรมการกด start · ทีมที่เช็คอิน < `sport_types.min_members` (ฟุตบอลมา 10 จาก 11) | ฝั่งที่ครบชนะบาย · ไม่ครบทั้งคู่ → 409 `INSUFFICIENT_CHECKINS` (ORG เลื่อน M06) · เช็ค**หลัง**กรรมการครบ — กรรมการไม่ครบต้องไม่ทำให้ทีมแพ้ |
+
+**ที่ระบบบันทึก (ทรานแซกชันเดียว `walkover.repo.applyWalkover`)**
+- `match_results` แถวใหม่ `match_result_status='walkover'`, `winner_team_id`, `score_data` = สกอร์บายของกีฬา (`sport_types.walkover_score` เช่น ฟุตบอล `{"<ชนะ>":3,"<แพ้>":0}` บาส 20–0 แบด/RoV/VALORANT 2–0), `submitted_by` = คนที่ทำให้เกิด (หัวหน้าทีมที่ถอน / กรรมการที่กด start), `verified_at=NOW()` — ไม่ต้อง verify, S03 dispute ไม่ได้ (`RESULT_IS_WALKOVER`), S05 คืนพร้อม `isWalkover: true`
+- `matches.completed` → ผู้ชนะไป `next_match_id`, ผู้แพ้ไป `loser_next_match_id` (ลำดับ a→b เหมือน verify)
+- `tournament_standings` นับเท่าชนะปกติ (`WIN_POINTS = 3` ใน `config/scoring.ts` ใช้ร่วมกับ verify) · **`player_profile_stats` ไม่แตะ** — ไม่มีใครลงสนาม (Q3) · แชมป์นับตามเดิมจากรอบชิงที่ `completed`
+- `referee_change_requests` ที่ `open` และอ้างแมตช์นี้ → `cancelled` · `match_referees` ปล่อยไว้ (coverage ไม่นับ `completed` อยู่แล้ว)
+- `audit_logs` `match_walkover` + reason `team_withdrawn` / `insufficient_checkins`
+
+**ไม่ทำ**: ORG กด walkover เอง (ใช้ M10 ของกรรมการแทน) · ยกเลิกแมตช์ทั้งคู่ไม่มา (ค้างให้ ORG เลื่อน)
+
 ### 10.4 Q2/Q3 — กติกาคำขอ REF ↔ REF ที่ต้อง lock
 
 - REF B ต้อง `toRefereeStatus() === 'active'` (external ที่ยัง `pending_admin` รับโอนไม่ได้)

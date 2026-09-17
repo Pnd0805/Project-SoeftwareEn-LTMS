@@ -95,23 +95,25 @@ ON DUPLICATE KEY UPDATE name = new.name, faculty_id = new.faculty_id;
 --   - BR-11 / BR-13  ตัดสินว่าใครส่งผลได้ + ต้องมีกรรมการกี่คน
 --     onsite = แข่งในสนามจริง · online = แข่งออนไลน์ (e-sport)
 --
+-- walkover_score = สกอร์ที่บันทึกเมื่อชนะบาย (migration 011) — ใช้ตอนทีมถอนตัว / เช็คอินไม่ถึง min_members
 -- ⚠️⚠️ ตัวเลข min/max ทั้งหมดเป็นค่าสมมติ — GUIDE/07 ข้อ E1 ยังไม่มีคำตอบจริง
 --      (min = ผู้เล่นในสนาม · max = รวมตัวสำรองแล้ว)
 -- ---------------------------------------------------------------------
 -- มติทีม 17 ก.ย. 2569: เหลือ 5 กีฬา id 1–5 (ฟุตบอล, บาสเกตบอล, แบดมินตัน, RoV, VALORANT)
 -- ⚠️ เครื่องที่ seed เวอร์ชันเก่า (9 กีฬา id 1–9) ต้อง remap ก่อน — ดู database/migrations/010_sport_types_renumber.sql
-INSERT INTO sport_types (sport_type_id, name, min_members, max_members, default_mode) VALUES
-  (1, 'ฟุตบอล',           11, 18, 'onsite'),
-  (2, 'บาสเกตบอล',         5, 12, 'onsite'),
-  (3, 'แบดมินตัน',         2,  4, 'onsite'),
-  (4, 'E-Sport: RoV',      5,  7, 'online'),
-  (5, 'E-Sport: VALORANT', 5,  7, 'online')
+INSERT INTO sport_types (sport_type_id, name, min_members, max_members, default_mode, walkover_score) VALUES
+  (1, 'ฟุตบอล',           11, 18, 'onsite', JSON_OBJECT('winner', 3,  'loser', 0)),   -- FIFA 3–0
+  (2, 'บาสเกตบอล',         5, 12, 'onsite', JSON_OBJECT('winner', 20, 'loser', 0)),   -- FIBA 20–0
+  (3, 'แบดมินตัน',         2,  4, 'onsite', JSON_OBJECT('winner', 2,  'loser', 0)),   -- 2–0 เกม
+  (4, 'E-Sport: RoV',      5,  7, 'online', JSON_OBJECT('winner', 2,  'loser', 0)),   -- BO3 2–0
+  (5, 'E-Sport: VALORANT', 5,  7, 'online', JSON_OBJECT('winner', 2,  'loser', 0))    -- BO3 2–0 แมพ
 AS new
 ON DUPLICATE KEY UPDATE
   name = new.name,
   min_members = new.min_members,
   max_members = new.max_members,
-  default_mode = new.default_mode;
+  default_mode = new.default_mode,
+  walkover_score = new.walkover_score;
 
 
 -- ---------------------------------------------------------------------

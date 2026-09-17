@@ -7,7 +7,7 @@ import type { TeamRef } from "./team.mapper.js";
 export type submittedResultDto = {
     id : number,
     matchId : number,
-    status : 'submitted' | 'verified' | 'disputed' | 'rejected',
+    status : MatchResultRow['match_result_status'],
     submittedBy : number
 };
 
@@ -22,7 +22,7 @@ export function toSubmittedResultDto(rows : MatchResultRow) : submittedResultDto
 
 export type verifiedResultDto = {
     matchId : number,
-    status : 'submitted' | 'verified' | 'disputed' | 'rejected',
+    status : MatchResultRow['match_result_status'],
     winnerTeamId : number | null,
     nextMatchId : number | null
 }
@@ -39,7 +39,7 @@ export function toVerifiedResultDto(matchRes: Pick<MatchResultRow , 'match_id' |
 
 export type disputeResultDto = {
     matchId : number,
-    status : 'submitted' | 'verified' | 'disputed' | 'rejected'
+    status : MatchResultRow['match_result_status']
 }
 
 export function toDisputeResultDto(rows : MatchResultRow): disputeResultDto{
@@ -68,6 +68,7 @@ export type verifiedResult = {
     isAmended : boolean | null,
     amendedAt : string | null,
     amendReason : string | null,
+    isWalkover : boolean,   // ชนะบาย (ทีมถอน/ไม่มาแข่ง) — ไม่มีสกอร์จริง (GUIDE/11 §10.4)
     verifiedAt : string | null
 }
 
@@ -84,6 +85,7 @@ export function toVerifiedResult(rows : MatchResultRow): verifiedResult{
         isAmended : isAmended,
         amendedAt : rows.amended_at?.toISOString() ?? null,
         amendReason : rows.amend_reason,
+        isWalkover : rows.match_result_status === 'walkover',
         verifiedAt : rows.verified_at?.toISOString() ?? null
     }
 }

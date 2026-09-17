@@ -7,6 +7,8 @@ import { toApplicationDetailDto, toMyApplicationDto } from '../mappers/applicati
 import { toOrganizerApplicationDto } from '../mappers/application.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
+import * as WalkoverRepo from '../repositories/walkover.repo.js';
+import * as Walkover from './walkover.service.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
@@ -93,9 +95,19 @@ export async function withdrawApplication(applicationId: number, userId: number)
     if (app.tournament_application_status !== "approved"){
         throw new AppError(409, "APPLICATION_NOT_APPROVED", "ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้");
     }
+    // ถอนกลางแมตช์ไม่ได้ — ให้กรรมการส่งผลตามจริง (GUIDE/11 §10.4, มติ Q2-A)
+    if (await WalkoverRepo.hasInProgressMatch(app.tournament_id, app.team_id)){
+        throw new AppError(409, "MATCH_IN_PROGRESS", "ทีมมีแมตช์ที่กำลังแข่งอยู่ ถอนตัวได้หลังแมตช์จบ");
+    }
+
     await ApplicationRepo.updateApplicationStatus(applicationId, "withdrawn");
     const matchCount = await MatchRepo.countMatchesByTournament(app.tournament_id);
-    return { id: applicationId, status: "withdrawn", bracketExists: matchCount > 0 };
+
+    // มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย (คู่ที่ยังไม่มาจะบายตอนคู่มาถึง)
+    const walkovers = matchCount > 0
+        ? await Walkover.processTeamWithdrawal(app.tournament_id, app.team_id, userId)
+        : [];
+    return { id: applicationId, status: "withdrawn", bracketExists: matchCount > 0, walkovers };
 }
 
 export async function approveApplication(applicationId: number,userId: number) {

@@ -1,0 +1,143 @@
+import pool from '../config/db.js';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2';
+import type { PoolConnection } from 'mysql2/promise';
+import type { MatchRow, SportTypeRow } from '../types/db.js';
+
+/**
+ * walkover (ชนะบาย) — GUIDE/11 §10.4
+ * แถวผลถูกเขียนลง match_results เหมือนแมตช์ปกติแต่ status = 'walkover' และไม่แตะ player_profile_stats
+ */
+
+/** แมตช์ของทีมในทัวร์ที่ยังไม่เริ่ม (scheduled / checkin_open) — คู่แข่งอาจยังไม่มา (NULL) */
+export async function findOpenMatchesOfTeam(tournamentId : number, teamId : number): Promise<MatchRow[]>{
+    const [rows] = await pool.query<(MatchRow & RowDataPacket)[]>(
+        `SELECT * FROM matches
+         WHERE tournament_id = ? AND (team_a_id = ? OR team_b_id = ?)
+           AND match_status IN ('scheduled', 'checkin_open')
+         ORDER BY round_number, match_id`,
+        [tournamentId, teamId, teamId]);
+    return rows;
+}
+
+export async function hasInProgressMatch(tournamentId : number, teamId : number): Promise<boolean>{
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM matches
+         WHERE tournament_id = ? AND (team_a_id = ? OR team_b_id = ?) AND match_status = 'in_progress' LIMIT 1`,
+        [tournamentId, teamId, teamId]);
+    return rows.length > 0;
+}
+
+/** ทีมนี้ถอนตัวจากทัวร์แล้วหรือยัง (tournament_applications.withdrawn) */
+export async function isTeamWithdrawn(tournamentId : number, teamId : number): Promise<boolean>{
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM tournament_applications
+         WHERE tournament_id = ? AND team_id = ? AND tournament_application_status = 'withdrawn' LIMIT 1`,
+        [tournamentId, teamId]);
+    return rows.length > 0;
+}
+
+export async function findTeamLeaderId(teamId : number): Promise<number | null>{
+    const [rows] = await pool.query<(RowDataPacket & { leader_id : number })[]>(
+        'SELECT leader_id FROM teams WHERE team_id = ?', [teamId]);
+    return rows[0]?.leader_id ?? null;
+}
+
+export async function findSportOfTournament(tournamentId : number): Promise<SportTypeRow | null>{
+    const [rows] = await pool.query<(SportTypeRow & RowDataPacket)[]>(
+        `SELECT st.* FROM sport_types st
+         JOIN tournaments t ON t.sport_type_id = st.sport_type_id
+         WHERE t.tournament_id = ?`, [tournamentId]);
+    return rows[0] ?? null;
+}
+
+export type ApplyWalkoverInput = {
+    match : MatchRow;
+    winnerTeamId : number;
+    loserTeamId : number;
+    actorUserId : number;                       // คนที่ทำให้เกิดผลนี้ — หัวหน้าทีมที่ถอน หรือกรรมการที่กด start
+    actorRole : 'team_leader' | 'referee';
+    scoreData : Record<string, number> | null;  // {"<winnerTeamId>": n, "<loserTeamId>": n}
+    winPoints : number;
+    reason : 'team_withdrawn' | 'insufficient_checkins';
+};
+
+/**
+ * ทรานแซกชันเดียว: ใบผล walkover → แมตช์ completed → ผู้ชนะ/ผู้แพ้เดินสาย → standings → ยกเลิกคำขอกรรมการที่ค้าง → audit
+ * ★ ผู้แพ้ถูกใส่ลง loser_next_match_id ตามปกติ — ถ้าเป็นทีมที่ถอนตัว walkover.service จะไล่ walkover แมตช์นั้นต่อเอง (ลูกโซ่ double elim)
+ * ★ ไม่แตะ player_profile_stats — ไม่มีใครลงสนาม (มติ Q3)
+ */
+export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
+    const { match, winnerTeamId, loserTeamId } = input;
+    const conn = await pool.getConnection();
+    try{
+        await conn.beginTransaction();
+
+        // แมตช์ต้องยังไม่เริ่ม ณ ตอน commit จริง (กันสองคำสั่งแข่งกัน)
+        const [locked] = await conn.query<(MatchRow & RowDataPacket)[]>(
+            `SELECT * FROM matches WHERE match_id = ? AND match_status IN ('scheduled', 'checkin_open') FOR UPDATE`,
+            [match.match_id]);
+        if(!locked[0]){
+            await conn.rollback();
+            return;
+        }
+
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO match_results
+                (match_id, winner_team_id, score_data, submitted_by_user_id, submitted_role, match_result_status, verified_at)
+             VALUES (?, ?, ?, ?, ?, 'walkover', NOW())`,
+            [match.match_id, winnerTeamId, input.scoreData ? JSON.stringify(input.scoreData) : null,
+             input.actorUserId, input.actorRole]);
+
+        await conn.query<ResultSetHeader>(
+            `UPDATE matches SET match_status = 'completed', updated_at = NOW() WHERE match_id = ?`, [match.match_id]);
+
+        if(match.next_match_id !== null){
+            await placeTeam(conn, match.next_match_id, match.tournament_id, winnerTeamId);
+        }
+        if(match.loser_next_match_id !== null){
+            await placeTeam(conn, match.loser_next_match_id, match.tournament_id, loserTeamId);
+        }
+
+        // standings — SQL เดียวกับ verifyMatchResult (matchResult.repo) เพื่อให้ตารางคะแนนนับ walkover เท่าชนะปกติ
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+             VALUES (?, ?, 1, 1, 0, ?)
+             ON DUPLICATE KEY UPDATE played = played + 1, won = won + 1, points = points + ?, updated_at = NOW()`,
+            [match.tournament_id, winnerTeamId, input.winPoints, input.winPoints]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+             VALUES (?, ?, 1, 0, 1, 0)
+             ON DUPLICATE KEY UPDATE played = played + 1, lost = lost + 1, updated_at = NOW()`,
+            [match.tournament_id, loserTeamId]);
+
+        // คำขอโอน/สลับกรรมการที่อ้างแมตช์นี้ไม่มีความหมายแล้ว (GUIDE/11 §5.1)
+        await conn.query<ResultSetHeader>(
+            `UPDATE referee_change_requests SET request_status = 'cancelled', resolved_at = NOW()
+             WHERE request_status = 'open' AND (match_a_id = ? OR match_b_id = ?)`,
+            [match.match_id, match.match_id]);
+
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'match_walkover', 'match', ?, ?)`,
+            [input.actorUserId, match.match_id,
+             JSON.stringify({ winnerTeamId, loserTeamId, reason : input.reason, actorRole : input.actorRole })]);
+
+        await conn.commit();
+    }catch(err){
+        await conn.rollback();
+        throw err;
+    }finally{
+        conn.release();
+    }
+}
+
+/** ใส่ทีมลงช่องว่างช่องแรกของแมตช์ถัดไป — ลำดับเดียวกับ verifyMatchResult (a ก่อน b) */
+async function placeTeam(conn : PoolConnection, matchId : number, tournamentId : number, teamId : number): Promise<void>{
+    const [a] = await conn.query<ResultSetHeader>(
+        `UPDATE matches SET team_a_id = ? WHERE match_id = ? AND tournament_id = ? AND team_a_id IS NULL`,
+        [teamId, matchId, tournamentId]);
+    if(a.affectedRows === 0){
+        await conn.query<ResultSetHeader>(
+            `UPDATE matches SET team_b_id = ? WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`,
+            [teamId, matchId, tournamentId]);
+    }
+}

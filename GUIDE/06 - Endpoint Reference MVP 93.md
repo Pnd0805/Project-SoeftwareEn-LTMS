@@ -194,7 +194,7 @@
 | P05 | `POST /applications/:id/approve` | ORG | อนุมัติ (Soft Filter ดุลพินิจ) | — | `{ id, status:'approved' }` |
 | P06 | `POST /applications/:id/reject` | ORG | ปฏิเสธ · `reason` บังคับ | `reason` | `{ id, status:'rejected', reason }` |
 | P07 | `POST /applications/:id/cancel` | TL | **ยกเลิกก่อนอนุมัติ** (ต้องเป็น `pending`) | — | `{ id, status:'cancelled' }` / **409** `ALREADY_DECIDED` |
-| P08 | `POST /applications/:id/withdraw` | TL | **ถอนตัวหลังอนุมัติ** · คืนช่องว่าง + แจ้ง ORG | — | `{ id, status:'withdrawn', bracketExists }` |
+| P08 | `POST /applications/:id/withdraw` | TL | **ถอนตัวหลังอนุมัติ** · คืนช่องว่าง + แจ้ง ORG · **มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย** (walkover, ลูกโซ่ถึงสายล่าง; คู่ที่ยังไม่มาจะบายตอนคู่มาถึง) · ถอนกลางแมตช์ไม่ได้ | — | `{ id, status:'withdrawn', bracketExists, walkovers: [{matchId, winnerTeamId, loserTeamId}] }` / **409** `MATCH_IN_PROGRESS` |
 | P09 | `GET /tournaments/:id/teams` | — | ทีมที่อนุมัติแล้ว (สาธารณะ) | — | `{ items: TeamRef[] }` |
 
 ---
@@ -211,7 +211,7 @@
 | M05 | `GET /matches/:id` | — | รายละเอียดแมตช์ | — | `{ id, tournamentId, round, teamA, teamB, scheduledTime, scheduledEndTime, venue, checkinOpenAt, status, mode, nextMatchId }` |
 | M06 | `PATCH /matches/:id/schedule` | ORG | ตั้ง/เลื่อนเวลา+สนาม · เฉพาะ `scheduled` · อยู่ในวันทัวร์ (ขยายวันผ่าน C09) · **ตรวจทับซ้อนเป็นช่วงเวลา** ทีม/สนาม (แมตช์ที่จบแล้วไม่นับ) · ไม่พังลำดับสาย (`next_match_id` สองทิศ) · กรรมการซ้อน**ไม่ block** ดู F14 (GUIDE/11 Q6) | `scheduledTime, scheduledEndTime, venue` (จบ > เริ่ม) | เหมือน M05 / **409** `MATCH_NOT_CHANGEABLE`, `OUTSIDE_TOURNAMENT_DATES`, `SCHEDULE_CONFLICT` + `conflictingMatchId`, `SCHEDULE_BREAKS_BRACKET` + `blockingMatchId` |
 | M09 | `POST /matches/:id/open-checkin` | ORG | `scheduled → checkin_open` (สถานะอื่นเปิดไม่ได้) | — | `{ id, status:'checkin_open', checkinOpenAt }` / **409** `INVALID_STATUS_TRANSITION` |
-| M10 | `POST /matches/:id/start` | REF ของแมตช์ | `checkin_open → in_progress` · **BR-10 ด่าน 2: กรรมการ active ครบ (on-site+stat 2 / อื่น 1) → 409 `INSUFFICIENT_REFEREES`** · ต้องมีคนเช็คอินขั้นต่ำ | — | `{ id, status:'in_progress' }` / **409** `CHECKIN_NOT_OPEN` \| `INSUFFICIENT_REFEREES` \| `INSUFFICIENT_CHECKINS` |
+| M10 | `POST /matches/:id/start` | REF ของแมตช์ | `checkin_open → in_progress` · **BR-10 ด่าน 2: กรรมการ active ครบ (on-site+stat 2 / อื่น 1) → 409 `INSUFFICIENT_REFEREES`** · **ทีมต้องเช็คอิน ≥ `sport_types.min_members`** — ฝั่งที่ไม่ถึงแพ้บาย (walkover) ทันที · ไม่ถึงทั้งคู่ → 409 ให้ ORG เลื่อน | — | `{ id, status:'in_progress' }` **หรือ** `{ id, status:'completed', walkover:{ matchId, winnerTeamId, loserTeamId, reason:'insufficient_checkins', minMembers, checkedIn } }` / **409** `CHECKIN_NOT_OPEN` \| `MATCH_TEAMS_INCOMPLETE` \| `INSUFFICIENT_REFEREES` \| `INSUFFICIENT_CHECKINS` (+`minMembers, checkedIn`) |
 | M11 | `GET /matches/:id/checkin-qr` | ORG / REF ของแมตช์ | QR สำหรับ on-site · ขอได้เฉพาะแมตช์ `checkin_open` | — | `{ qrPayload, expiresAt }` / **409** `CHECKIN_NOT_OPEN` |
 | M12 | `POST /matches/:id/checkins` | Auth | เช็คอิน · **idempotent (กดซ้ำ = 200 แม้แมตช์เริ่มแล้ว)** · เช็คอินใหม่ได้เฉพาะแมตช์ `checkin_open` (ไม่งั้น **409** `CHECKIN_NOT_OPEN`) | on-site: `method:'qr_onsite', qrPayload` · online: `method:'photo_online', documentType, documentS3Key` ⚠️ | **201/200** `{ id, status, checkedInAt }` / **403** `NOT_IN_APPROVED_ROSTER` |
 | M13 | `GET /matches/:id/checkins` | ORG / REF ของแมตช์ | รายชื่อผู้เช็คอิน · `id` ใช้เป็น `:cid` ของ M14/M15 · **`documentUrl` (presigned 20 นาที) ให้เฉพาะกรรมการของแมตช์** ORG ได้ `null` (PDPA NF-SE-03) | — | `{ items: [{id, userId, fullName, method, status, documentType, documentUrl, checkedInAt}] }` |
@@ -255,9 +255,9 @@
 |---|---|---|---|---|---|
 | S01 | `POST /matches/:id/result` | TL/REF ตาม **BR-13** | ส่งผล → `submitted` · idempotent (ส่งซ้ำ = UPDATE) | `winnerTeamId, scoreData` | **201** `{ id, matchId, status:'submitted', submittedBy }` / **403** `WRONG_SUBMITTER_ROLE` / **409** `INSUFFICIENT_REFEREES` |
 | S02 | `POST /matches/:id/result/verify` | อีกฝ่ายตาม **BR-13** | ⭐ **transaction 9 ขั้น** — verified + เลื่อนสาย + standings + stats + แต้ม + แจ้งเตือน + audit | — | `{ matchId, status:'verified', winnerTeamId, nextMatchId }` / **403** `SAME_PERSON_CANNOT_VERIFY` |
-| S03 | `POST /matches/:id/result/dispute` | TL/REF | โต้แย้งผล · **BR-14** ภายใน `dispute_window_hours` · active ได้ครั้งละ 1 | `reason` | `{ matchId, status:'disputed' }` / **409** `DISPUTE_WINDOW_CLOSED` \| `DISPUTE_ALREADY_ACTIVE` |
+| S03 | `POST /matches/:id/result/dispute` | TL/REF | โต้แย้งผล · **BR-14** ภายใน `dispute_window_hours` · active ได้ครั้งละ 1 | `reason` | `{ matchId, status:'disputed' }` / **409** `DISPUTE_WINDOW_CLOSED` \| `DISPUTE_ALREADY_ACTIVE` \| `RESULT_IS_WALKOVER` |
 | S04 | `POST /matches/:id/result/resolve` | ORG | ตัดสินข้อโต้แย้ง | `resolution:'uphold'\|'reject', resolutionNote` | `{ matchId, status:'verified'\|'rejected' }` |
-| S05 | `GET /matches/:id/result` | — | ผลแข่ง (คืนเฉพาะ `verified` ไม่งั้น 404) | — | `{ matchId, winnerTeamId, scoreData, isAmended, amendedAt, amendReason, verifiedAt }` |
+| S05 | `GET /matches/:id/result` | — | ผลแข่ง (คืนเฉพาะ `verified` หรือ `walkover` ไม่งั้น 404) | — | `{ matchId, winnerTeamId, scoreData, isAmended, amendedAt, amendReason, isWalkover, verifiedAt }` |
 | S06 | `POST /matches/:id/stats` | REF | บันทึกสถิติรายบุคคล · **BR-11** | `playerStats: [{userId, values:[{statDefinitionId, value}]}]` | **201** `{ matchId, recordedCount }` / **400** `UNKNOWN_STAT_DEFINITION` |
 | S07 | `GET /matches/:id/stats` | — | สถิติพร้อม label ไทย | — | `{ items: [{userId, fullName, stats:[{statKey, statLabelTh, value}]}] }` |
 | S10 | `GET /tournaments/:id/winner` | — | ผู้ชนะ (เฉพาะทัวร์ที่ `completed`) | — | `{ championTeam, runnerUpTeam, summary }` |

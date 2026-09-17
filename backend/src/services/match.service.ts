@@ -2,6 +2,8 @@ import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
+import * as WalkoverRepo from '../repositories/walkover.repo.js';
+import * as Walkover from './walkover.service.js';
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
@@ -121,18 +123,33 @@ export async function startMatch(matchId: number, userId: number){
         throw new AppError(409, "CHECKIN_NOT_OPEN", "ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้");
     }
 
-    const countA = await MatchRepo.countSuccessfulCheckins(matchId, match.team_a_id);
-    const countB = await MatchRepo.countSuccessfulCheckins(matchId, match.team_b_id);
-
-    if (countA === 0 || countB === 0) {
-        throw new AppError(409, "INSUFFICIENT_CHECKINS", "ยังมีผู้เล่นเช็คอินไม่ครบ");
+    if (match.team_a_id === null || match.team_b_id === null) {
+        throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง");
     }
 
     // ด่าน 2 ของ BR-10 (GUIDE/11 §10.2): แมตช์นี้ต้องมีกรรมการ active ครบตามประเภท (on-site+stat = 2, อื่น = 1)
     // ไม่ครบ → ORG ต้องหาคน (FR02) หรือเลื่อน (M06) — ระบบไม่ปล่อยให้แข่งโดยไม่มีกรรมการ
+    // เช็คก่อนนับเช็คอิน: กรรมการไม่ครบต้องไม่ทำให้ทีมไหนแพ้บาย
     const fullMatch = await MatchRepo.findById(matchId);
     if (!fullMatch || !(await isRefereeSufficient(fullMatch))) {
         throw new AppError(409, "INSUFFICIENT_REFEREES", "กรรมการของแมตช์นี้ยังไม่ครบ ยังเริ่มแข่งไม่ได้");
+    }
+
+    // ทีมต้องมีผู้เล่นเช็คอิน >= sport_types.min_members — ฝั่งที่ไม่ถึงแพ้บาย (GUIDE/11 §10.4, มติ 17 ก.ย.)
+    const sport = await WalkoverRepo.findSportOfTournament(match.tournament_id);
+    const minMembers = sport?.min_members ?? 1;
+    const countA = await MatchRepo.countSuccessfulCheckins(matchId, match.team_a_id);
+    const countB = await MatchRepo.countSuccessfulCheckins(matchId, match.team_b_id);
+    const decision = Walkover.decideNoShow(fullMatch, countA, countB, minMembers);
+    if (decision === 'both_short') {
+        // ไม่มีฝ่ายไหนพร้อม — ไม่มีใครควรได้บาย ให้ ORG เลื่อน (M06) หรือรอ
+        throw new AppError(409, "INSUFFICIENT_CHECKINS", `ทั้งสองทีมมีผู้เล่นเช็คอินไม่ถึงขั้นต่ำ ${minMembers} คน`,
+            { minMembers, checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } });
+    }
+    if (decision !== null) {
+        const wo = await Walkover.applyNoShowWalkover(fullMatch, decision.winnerTeamId, decision.loserTeamId, userId);
+        return { id: matchId, status: 'completed', walkover: { ...wo, reason: 'insufficient_checkins', minMembers,
+                 checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } } };
     }
 
     await MatchRepo.updateMatchStatus(matchId, 'in_progress');
