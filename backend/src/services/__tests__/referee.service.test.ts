@@ -195,7 +195,7 @@ describe('inviteReferee', () => {
 describe('listTournamentReferees', () => {
   it('returns mapped referees along with a count of accepted ones', async () => {
     const rows = [makeInvitation({ tournament_referee_id: 1 }), makeInvitation({ tournament_referee_id: 2 })];
-    mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(rows);
+    mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(rows as never);
     mockedToTournamentRefereeDto
       .mockReturnValueOnce({ id: 1, invitationStatus: 'accepted' } as any)
       .mockReturnValueOnce({ id: 2, invitationStatus: 'pending' } as any);
@@ -215,7 +215,7 @@ describe('listTournamentReferees', () => {
 
   it('returns acceptedCount 0 when none of the referees have accepted', async () => {
     const rows = [makeInvitation({ tournament_referee_id: 1 })];
-    mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(rows);
+    mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(rows as never);
     mockedToTournamentRefereeDto.mockReturnValue({ id: 1, invitationStatus: 'pending' } as any);
 
     const result = await refereeService.listTournamentReferees(20);
@@ -235,7 +235,7 @@ describe('listTournamentReferees', () => {
 describe('listMyRefereeInvitations', () => {
   it('returns every pending invitation for the user mapped to a DTO', async () => {
     const rows = [makeInvitation({ tournament_referee_id: 1 }), makeInvitation({ tournament_referee_id: 2 })];
-    mockedRefRepo.findPendingInvitationsByUser.mockResolvedValue(rows);
+    mockedRefRepo.findPendingInvitationsByUser.mockResolvedValue(rows as never);
     mockedToMyRefereeInvitationDto
       .mockReturnValueOnce({ id: 1 } as any)
       .mockReturnValueOnce({ id: 2 } as any);
