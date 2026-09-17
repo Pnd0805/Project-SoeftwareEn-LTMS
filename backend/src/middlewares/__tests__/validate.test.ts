@@ -86,4 +86,43 @@ describe('validate middleware', () => {
 
     expect(req.body).toBe(originalBody);
   });
+
+  describe('fieldCodes (code เฉพาะต่อ field ตาม Part 4)', () => {
+    const reasonSchema = z.object({ reason: z.string().min(1), note: z.string().optional() });
+    const codes = { reason: { code: 'CHECKIN_REJECT_REASON_REQUIRED', message: 'กรุณาระบุเหตุผล' } };
+
+    it('uses the field-specific code and message when that field fails', () => {
+      const req = makeReq({ reason: '' });
+      const next = vi.fn() as NextFunction;
+
+      validate(reasonSchema, codes)(req, makeRes(), next);
+
+      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+      expect(err.status).toBe(400);
+      expect(err.code).toBe('CHECKIN_REJECT_REASON_REQUIRED');
+      expect(err.message).toBe('กรุณาระบุเหตุผล');
+      expect(err.extra?.fields).toHaveProperty('reason');
+    });
+
+    it('falls back to VALIDATION_FAILED when the failing field has no specific code', () => {
+      const req = makeReq({ reason: 'ok', note: 5 });
+      const next = vi.fn() as NextFunction;
+
+      validate(reasonSchema, codes)(req, makeRes(), next);
+
+      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+      expect(err.code).toBe('VALIDATION_FAILED');
+      expect(err.extra?.fields).toHaveProperty('note');
+    });
+
+    it('passes a valid body through unchanged', () => {
+      const req = makeReq({ reason: 'เอกสารไม่ชัด' });
+      const next = vi.fn() as NextFunction;
+
+      validate(reasonSchema, codes)(req, makeRes(), next);
+
+      expect(next).toHaveBeenCalledWith();
+      expect(req.body).toEqual({ reason: 'เอกสารไม่ชัด' });
+    });
+  });
 });

@@ -18,6 +18,8 @@ export const env = {
 
     JWT_SECRET : requireEnv("JWT_SECRET"),
     JWT_EXPIRES_IN : requireEnv("JWT_EXPIRES_IN"),
+    // secret เซ็น QR เช็คอิน (M11) แยกจาก login — ไม่ require เพื่อไม่ให้เครื่องที่ยังไม่ตั้งพัง ไม่ใส่ = ใช้ JWT_SECRET
+    CHECKIN_QR_SECRET : process.env["CHECKIN_QR_SECRET"] || requireEnv("JWT_SECRET"),
 
     PORT : Number(requireEnv("PORT")),
 

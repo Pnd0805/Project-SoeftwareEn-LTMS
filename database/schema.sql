@@ -397,13 +397,15 @@ CREATE TABLE match_checkins (
   match_id INT NOT NULL,
   user_id INT NOT NULL,
   method ENUM('qr_onsite','photo_online','manual_by_referee') NOT NULL,
-  match_checkin_status ENUM('success','rejected','exception') NOT NULL,
+  -- pending = photo_online รอกรรมการตรวจ · exception = กรรมการอนุโลมเช็คอินให้ (manual_by_referee)
+  match_checkin_status ENUM('success','rejected','exception','pending') NOT NULL,
   rejection_reason VARCHAR(255) NULL,
   document_type ENUM('student_id','national_id') NULL,
   document_s3_key VARCHAR(255) NULL,
   verified_by_referee_id INT NULL,   -- ★ ชี้ไป users ไม่ใช่ tournament_referees
   checked_in_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   verified_at DATETIME NULL,         -- เวลาที่กรรมการตรวจ (โหมด photo_online)
+  UNIQUE KEY uq_match_checkins_match_user (match_id, user_id),   -- M12 idempotent
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (verified_by_referee_id) REFERENCES users(user_id)
@@ -712,4 +714,6 @@ INSERT INTO schema_migrations (name) VALUES
   ('004_tournament_referees_external_docs.sql'),
   ('005_external_approval_needs_docs.sql'),
   ('006_add_tournament_description.sql'),
-  ('007_match_results_livestream.sql');
+  ('007_match_results_livestream.sql'),
+  ('008_match_checkins_unique_match_user.sql'),
+  ('009_match_checkins_pending_status.sql');

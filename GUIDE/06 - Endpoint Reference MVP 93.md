@@ -207,21 +207,40 @@
 |---|---|---|---|---|---|
 | M01 | `POST /tournaments/:id/bracket` | ORG | **สร้างสายทั้งทัวร์** · INSERT matches หลายสิบแถว + bracket_nodes · transaction | `seedingMethod:'random'\|'manual', manualSeeds?` | **201** `{ matchCount, bracketFormat, nodeCount }` / **422** `TEAM_COUNT_MISMATCH` |
 | M02 | `GET /tournaments/:id/bracket` | — | ผังสาย (round robin คืน `nodes: []`) | — | `{ bracketFormat, nodes: [{nodeId, bracketType, round, matchNumber, teamA, teamB, matchId, matchStatus, advancesToNodeId}] }` |
-| M04 | `GET /tournaments/:id/matches` | — | ตารางแข่ง | `?teamId&status&round&page&pageSize` | `{ items: [{id, round, teamA, teamB, scheduledTime, venue, status}], pagination }` |
+| M04 | `GET /tournaments/:id/matches` | — | ตารางแข่ง | `?teamId&status&round&page&pageSize` | `{ items: [{id, round, teamA, teamB, scheduledTime, scheduledEndTime, venue, status}], pagination }` |
 | M05 | `GET /matches/:id` | — | รายละเอียดแมตช์ | — | `{ id, tournamentId, round, teamA, teamB, scheduledTime, scheduledEndTime, venue, checkinOpenAt, status, mode, nextMatchId }` |
-| M06 | `PATCH /matches/:id/schedule` | ORG | ตั้ง/เลื่อนเวลา+สนาม · เฉพาะ `scheduled` · อยู่ในวันทัวร์ (ขยายวันผ่าน C09) · ไม่ซ้อน**ช่วงเวลา** ทีม/สนาม · ไม่พังลำดับสาย (`next_match_id` สองทิศ) · กรรมการซ้อน**ไม่ block** ดู F14 | `scheduledTime, scheduledEndTime, venue` | เหมือน M05 / **409** `MATCH_ALREADY_STARTED`, `OUTSIDE_TOURNAMENT_DATES`, `SCHEDULE_CONFLICT` + `conflictingMatchId`, `SCHEDULE_BREAKS_BRACKET` + `blockingMatchId` |
-| M09 | `POST /matches/:id/open-checkin` | ORG | `scheduled → checkin_open` | — | `{ id, status:'checkin_open', checkinOpenAt }` |
-| M10 | `POST /matches/:id/start` | REF | `checkin_open → in_progress` · **BR-10 ด่าน 2: กรรมการ active ครบ (on-site+stat 2 / อื่น 1) → 409 `INSUFFICIENT_REFEREES`** · ต้องมีคนเช็คอินขั้นต่ำ | — | `{ id, status:'in_progress' }` / **409** `INSUFFICIENT_CHECKINS` |
-| M11 | `GET /matches/:id/checkin-qr` | ORG/REF | QR สำหรับ on-site | — | `{ qrPayload, expiresAt }` |
-| M12 | `POST /matches/:id/checkins` | Auth | เช็คอิน · **idempotent (กดซ้ำ = 200)** | on-site: `method:'qr_onsite', qrPayload` · online: `method:'photo_online', documentType, documentS3Key` ⚠️ | **201/200** `{ id, status, checkedInAt }` / **403** `NOT_IN_APPROVED_ROSTER` |
-| M13 | `GET /matches/:id/checkins` | REF/ORG | รายชื่อผู้เช็คอิน | — | `{ items: [{userId, fullName, method, status, checkedInAt}] }` |
-| M14 | `POST /matches/:id/checkins/:cid/verify` | REF | ตรวจเอกสารผ่าน (online) | — | `{ id, status:'verified' }` |
-| M15 | `POST /matches/:id/checkins/:cid/reject` | REF | ตรวจไม่ผ่าน · `reason` บังคับ | `reason` | `{ id, status:'rejected', reason }` |
-| M16 | `POST /uploads/presign` | Auth | ขอ URL อัปโหลดไฟล์ขึ้น S3 โดยตรง · `purpose`: `checkin_document` (+matchId) · `soft_filter_document` (+tournamentId) · `referee_identity` (ผูก user เอง) | `purpose, contentType, matchId?, tournamentId?` | `{ uploadUrl, objectKey, expiresIn }` |
+| M06 | `PATCH /matches/:id/schedule` | ORG | ตั้ง/เลื่อนเวลา+สนาม · เฉพาะ `scheduled` · อยู่ในวันทัวร์ (ขยายวันผ่าน C09) · **ตรวจทับซ้อนเป็นช่วงเวลา** ทีม/สนาม (แมตช์ที่จบแล้วไม่นับ) · ไม่พังลำดับสาย (`next_match_id` สองทิศ) · กรรมการซ้อน**ไม่ block** ดู F14 (GUIDE/11 Q6) | `scheduledTime, scheduledEndTime, venue` (จบ > เริ่ม) | เหมือน M05 / **409** `MATCH_NOT_CHANGEABLE`, `OUTSIDE_TOURNAMENT_DATES`, `SCHEDULE_CONFLICT` + `conflictingMatchId`, `SCHEDULE_BREAKS_BRACKET` + `blockingMatchId` |
+| M09 | `POST /matches/:id/open-checkin` | ORG | `scheduled → checkin_open` (สถานะอื่นเปิดไม่ได้) | — | `{ id, status:'checkin_open', checkinOpenAt }` / **409** `INVALID_STATUS_TRANSITION` |
+| M10 | `POST /matches/:id/start` | REF ของแมตช์ | `checkin_open → in_progress` · **BR-10 ด่าน 2: กรรมการ active ครบ (on-site+stat 2 / อื่น 1) → 409 `INSUFFICIENT_REFEREES`** · ต้องมีคนเช็คอินขั้นต่ำ | — | `{ id, status:'in_progress' }` / **409** `CHECKIN_NOT_OPEN` \| `INSUFFICIENT_REFEREES` \| `INSUFFICIENT_CHECKINS` |
+| M11 | `GET /matches/:id/checkin-qr` | ORG / REF ของแมตช์ | QR สำหรับ on-site · ขอได้เฉพาะแมตช์ `checkin_open` | — | `{ qrPayload, expiresAt }` / **409** `CHECKIN_NOT_OPEN` |
+| M12 | `POST /matches/:id/checkins` | Auth | เช็คอิน · **idempotent (กดซ้ำ = 200 แม้แมตช์เริ่มแล้ว)** · เช็คอินใหม่ได้เฉพาะแมตช์ `checkin_open` (ไม่งั้น **409** `CHECKIN_NOT_OPEN`) | on-site: `method:'qr_onsite', qrPayload` · online: `method:'photo_online', documentType, documentS3Key` ⚠️ | **201/200** `{ id, status, checkedInAt }` / **403** `NOT_IN_APPROVED_ROSTER` |
+| M13 | `GET /matches/:id/checkins` | ORG / REF ของแมตช์ | รายชื่อผู้เช็คอิน · `id` ใช้เป็น `:cid` ของ M14/M15 · **`documentUrl` (presigned 20 นาที) ให้เฉพาะกรรมการของแมตช์** ORG ได้ `null` (PDPA NF-SE-03) | — | `{ items: [{id, userId, fullName, method, status, documentType, documentUrl, checkedInAt}] }` |
+| M14 | `POST /matches/:id/checkins/:cid/verify` | REF ของแมตช์ | ตรวจเอกสารผ่าน (online) · เฉพาะเช็คอินที่ `pending` · ตัดสินได้ครั้งเดียว · แมตช์ต้อง `checkin_open` หรือ `in_progress` | — | `{ id, status:'verified' }` / **409** `ALREADY_DECIDED` \| `MATCH_NOT_CHANGEABLE` |
+| M15 | `POST /matches/:id/checkins/:cid/reject` | REF ของแมตช์ | ตรวจไม่ผ่าน · `reason` บังคับ · เฉพาะเช็คอินที่ `pending` · ตัดสินได้ครั้งเดียว · แมตช์ต้อง `checkin_open` หรือ `in_progress` | `reason` | `{ id, status:'rejected', reason }` / **409** `ALREADY_DECIDED` \| `MATCH_NOT_CHANGEABLE` |
+| M16 | `POST /uploads/presign` | Auth | ขอ URL อัปโหลดไฟล์ขึ้น S3 โดยตรง · `purpose`: `checkin_document` (+matchId · ต้องอยู่ในทีมของแมตช์ + แมตช์ `checkin_open` กฎเดียวกับ M12) · `soft_filter_document` (+tournamentId · แค่ทัวร์ต้องมีจริง) · `referee_identity` (ผูก user เอง) | `purpose, contentType, matchId?, tournamentId?` | `{ uploadUrl, objectKey, expiresIn }` / **403** `NOT_IN_APPROVED_ROSTER` / **409** `CHECKIN_NOT_OPEN` |
+
+> **"REF ของแมตช์"** (M10, M11, M13, M14, M15) = กรรมการที่ active ในทัวร์ **และ** รับมอบหมายแมตช์นั้นแล้ว (`match_referees.assignment_status='accepted'`)
+> ผ่าน `isRefereeOfMatch` — กฎเดียวกับ F12 / S01–S03 · กรรมการของทัวร์ที่ไม่ได้รับแมตช์นั้นได้ 403
 
 > ⚠️ **M12 ค่า enum ใน Part 3 ไม่ตรงกับ DB** — DB ใช้ `method`: `qr_onsite`/`photo_online`/`manual_by_referee`
-> และ `match_checkin_status`: `success`/`rejected`/`exception` (ไม่ใช่ `checked_in`/`pending_verification`)
-> ยึดค่า DB ตามกฎ Part 0-1 §1.2 — ดู [[07 - จุดที่ต้องยืนยันกับทีม]] ข้อ B1/B2
+> และ `match_checkin_status`: `success`/`rejected`/`exception`/`pending` — ยึดค่า DB ตามกฎ Part 0-1 §1.2 แล้วแปลงเป็นคำของ Part 3 ตอนตอบ
+> (B2 ตัดสินแล้ว 15 ก.ย. — migration 009):
+> `pending` (photo_online รอกรรมการตรวจ) → `pending_verification` · `success` (QR ผ่าน/กรรมการตรวจผ่าน) → `checked_in` ·
+> `exception` (กรรมการอนุโลมเช็คอินให้ แบบ `manual_by_referee`) → `checked_in` · `rejected` → `rejected`
+>
+> **M12 idempotent** — มี `UNIQUE(match_id, user_id)` จริงแล้ว (migration 008) กดซ้ำ/ยิงพร้อมกันได้ 200 พร้อมแถวเดิม
+>
+> **M01 สายแพ้คัดออก** — จำนวนทีมไม่ต้องเป็นเลขยกกำลัง 2 · ช่องที่ขาดเติมเป็น bye โดย bye จับคู่กับทีมจริงเสมอ
+> (random = สุ่มคู่ที่ได้ bye · manual = seed ลำดับต้นได้ bye ก่อน) · double elimination เริ่มได้ตั้งแต่ 2 ทีม ·
+> นัดชิง double elimination = แชมป์สายบนเจอแชมป์สายล่าง **นัดเดียวจบ** (ไม่มี bracket reset)
+>
+> **M01 `TEAM_COUNT_MISMATCH`** — ทีมที่ approved **น้อยกว่า 2** หรือ **น้อยกว่า `min_teams`** ของทัวร์ (ใช้กฎเดียวกันทุก format · ตกลงกับทีม 15 ก.ย.)
+> — เช็ค < 2 ไว้ด้วยเพราะ DB ไม่ได้บังคับ `min_teams ≥ 2` ถ้ามีทัวร์ตั้ง 0/1 ไว้ก็ยังสร้างสาย 1 ทีมไม่ได้
+>
+> **อายุลิงก์/QR** — M11 QR หมดอายุ **20 นาที** (response มี `expiresAt` ให้หน้าจอกรรมการขอใหม่ก่อนหมด) ·
+> M16 ลิงก์อัปโหลด และลิงก์ดูเอกสาร soft filter ใน P04 หมดอายุ **20 นาที** (`expiresIn` = 1200)
+>
+> **M11 QR เซ็นด้วย `CHECKIN_QR_SECRET`** — ไม่ใส่ใน `.env` = ใช้ `JWT_SECRET` แทน (มี `type:'checkin_qr'` ในตัว QR กันเอาไปใช้แทน token login อยู่แล้ว) · production ควรตั้งแยก
 
 > **M16 คือทางเดียวที่ระบบรับไฟล์** — ห้ามส่งไฟล์ผ่าน API server (CO-02 งบจำกัด)
 > Flow: client ขอ presign → PUT ไฟล์ขึ้น S3 เอง → ส่งแค่ `objectKey` กลับมาที่ endpoint จริง
@@ -286,12 +305,17 @@
 | `INVITATION_NOT_FOUND` | 404 | ไม่พบคำเชิญนี้ | service |
 | `CHECKIN_NOT_FOUND` | 404 | ไม่พบรายการเช็คอินนี้ | service (M14, M15) |
 | `APPLICATION_ACCESS_DENIED` | 403 | คุณไม่มีสิทธิ์ดูใบสมัครนี้ | service (P04) |
-| `NOT_ORGANIZER_OR_REFEREE` | 403 | คุณไม่มีสิทธิ์ดู/ขอข้อมูลนี้ | service (M11, M13) — auth แบบ "ORG หรือ REF คนใดคนหนึ่งก็ได้" ไม่มี middleware สำเร็จรูปสำหรับ route ที่ระบุ matchId |
+| `NOT_ORGANIZER_OR_REFEREE` | 403 | M11: คุณไม่มีสิทธิ์ขอ QR เช็คอินของแมตช์นี้ · M13: คุณไม่มีสิทธิ์ดูรายการเช็คอินนี้ | service (M11, M13) — auth แบบ "ORG หรือ REF คนใดคนหนึ่งก็ได้" ไม่มี middleware สำเร็จรูปสำหรับ route ที่ระบุ matchId |
 | `APPLICATION_NOT_APPROVED` | 409 | ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้ | service (P08) |
-| `MATCH_NOT_CHECKIN_OPEN` | 409 | ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้ | service (M10) |
-| `BRACKET_ALREADY_EXISTS` | 409 | ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว | service (M01) |
-| `MANUAL_SEEDS_MISMATCH` | 422 | manualSeeds ต้องมีทีมครบทุกทีมที่ได้รับอนุมัติ ไม่ซ้ำและไม่ขาด | service (M01) |
-| `BRACKET_FORMAT_NOT_SUPPORTED` | 400 | ระบบยังไม่รองรับ double_elimination ในตอนนี้ | service (M01) — ดู [[07 - จุดที่ต้องยืนยันกับทีม]] |
+| `CHECKIN_NOT_OPEN` | 409 | ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้ | service (M10) — ตั้งตาม pattern `VOTING_NOT_OPEN` (E20) · เดิมชื่อ `MATCH_NOT_CHECKIN_OPEN` |
+| `BRACKET_ALREADY_EXISTS` | 409 | ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว | service (M01) — คู่กับ `BRACKET_ALREADY_STARTED` (M03) |
+| `MANUAL_SEEDS_MISMATCH` | 422 | manualSeeds ต้องมีทีมครบทุกทีมที่ได้รับอนุมัติ ไม่ซ้ำและไม่ขาด | service (M01) — คู่กับ `TEAM_COUNT_MISMATCH` |
+| `BRACKET_FORMAT_NOT_SET` | 422 | ทัวร์นาเมนต์นี้ยังไม่ได้ตั้งรูปแบบการแข่งขัน กรุณาตั้งรูปแบบการแข่งขันก่อนสร้างสาย | service (M01) — `bracket_format` เป็น NULL · เดิมชื่อ `BRACKET_FORMAT_NOT_SUPPORTED` 400 (ชื่อเดิมไม่บอกสาเหตุจริงแล้ว เพราะรองรับครบ 3 รูปแบบ) |
+| `APPLICATION_REJECT_REASON_REQUIRED` | 400 | กรุณาระบุเหตุผลที่ปฏิเสธใบสมัคร | `validate(schema, rejectApplicationErrorCodes)` (P06) มากับ `fields` |
+| `CHECKIN_REJECT_REASON_REQUIRED` | 400 | กรุณาระบุเหตุผลที่ปฏิเสธการยืนยันตัวตน | `validate(schema, rejectCheckinErrorCodes)` (M15) มากับ `fields` |
+
+> **code เฉพาะต่อ field:** `validate(schema, { field: { code, message } })` — ถ้า field นั้นไม่ผ่านจะตอบ code ที่ระบุแทน `VALIDATION_FAILED` (ยังมี `fields` ครบ)
+> ไม่ส่งอาร์กิวเมนต์ที่ 2 = ทำงานเหมือนเดิมทุกอย่าง · endpoint อื่นที่ Part 4 มี `*_REASON_REQUIRED` (U10, T18, C05, S03, S08) ใช้วิธีเดียวกันได้
 | `RATE_LIMITED` | 429 | ทำรายการถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ | `rateLimit` |
 | `INTERNAL_ERROR` | 500 | เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง | `errorHandler` (**ห้ามใส่ stack trace**) |
 

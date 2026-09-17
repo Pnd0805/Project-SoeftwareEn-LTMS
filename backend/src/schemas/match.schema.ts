@@ -4,6 +4,7 @@ export const livestreamSchema = z.object({
     youtubeUrl : z.string()
 });
 
+// scheduledEndTime บังคับ — กรรมการ (F01/F05/FR) และการเช็คทับซ้อนต้องใช้ช่วงเวลา [เริ่ม, จบ)
 export const scheduleMatchSchema = z.object({
     scheduledTime: z.iso.datetime('รูปแบบวันเวลาไม่ถูกต้อง'),
     // เวลาจบ — ใช้เช็คแมตช์ซ้อน (สนาม/ทีม/กรรมการ) และลำดับสาย (GUIDE/11 §4.1)
@@ -21,6 +22,11 @@ export const rejectCheckinSchema = z.object({
 });
 
 export type RejectCheckinInput = z.infer<typeof rejectCheckinSchema>;
+
+// Part 4 — ลืมใส่ reason ตอบ code เฉพาะแทน VALIDATION_FAILED (ส่งเป็นอาร์กิวเมนต์ที่ 2 ของ validate())
+export const rejectCheckinErrorCodes = {
+    reason: { code: 'CHECKIN_REJECT_REASON_REQUIRED', message: 'กรุณาระบุเหตุผลที่ปฏิเสธการยืนยันตัวตน' },
+};
 
 export const createBracketSchema = z.object({
     seedingMethod: z.enum(['random', 'manual']),

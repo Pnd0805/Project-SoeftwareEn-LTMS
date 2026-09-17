@@ -199,8 +199,8 @@ export async function requireCanRecordStats(req : Request , res : Response , nex
 
 /**
  * กรรมการของแมตช์ (ใช้กับ start / verify / reject check-in ใน match.routes)
- * ★ เดิม (backend_shokun) เขียนเงื่อนไข accepted + external approved ซ้ำเอง — เปลี่ยนมาใช้ isActiveReferee()
- *   เพื่อให้กฎเดียวกับ F12/F14/FR* (รองรับ needs_docs, removed_at ด้วย)
+ * = active ในทัวร์ (isActiveReferee) + รับมอบหมายแมตช์นี้แล้ว (match_referees accepted) — ผ่าน isRefereeOfMatch
+ * ★ กฎเดียวกับ F12/S01-S03 (GUIDE/11) — กรรมการของทัวร์ที่ไม่ได้รับแมตช์นี้ ทำไม่ได้
  */
 export async function requireReferee(req : Request, res : Response, next : NextFunction){
     if(!req.user){
@@ -213,8 +213,7 @@ export async function requireReferee(req : Request, res : Response, next : NextF
         return next(new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้"));
     }
 
-    const referee = await RefereeRepo.findLatestByTournamentAndUser(match.tournament_id, req.user.user_id);
-    if(!referee || referee.removed_at !== null || !isActiveReferee(referee)){
+    if(!(await isRefereeOfMatch(matchId, req.user.user_id, match.tournament_id))){
         return next(new AppError(403, "NOT_REFEREE", "คุณไม่ได้เป็นกรรมการของแมตช์นี้"));
     }
 

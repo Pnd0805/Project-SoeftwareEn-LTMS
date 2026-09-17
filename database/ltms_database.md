@@ -441,7 +441,7 @@ CREATE TABLE match_checkins (
   match_id INT NOT NULL,
   user_id INT NOT NULL,
   method ENUM('qr_onsite','photo_online','manual_by_referee') NOT NULL,
-  match_checkin_status ENUM('success','rejected','exception') NOT NULL,  -- ♻️ เปลี่ยนชื่อจาก status
+  match_checkin_status ENUM('success','rejected','exception','pending') NOT NULL,  -- ♻️ เปลี่ยนชื่อจาก status · 🆕 15 ก.ย. 2569 เพิ่ม pending (photo_online รอตรวจ) — exception = กรรมการอนุโลมเช็คอินให้
   rejection_reason VARCHAR(255) NULL,
   document_type ENUM('student_id','national_id') NULL,
   document_s3_key VARCHAR(255) NULL,

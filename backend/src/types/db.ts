@@ -218,7 +218,7 @@ export type MatchCheckinRow = {
     match_id : number,
     user_id : number,
     method : 'qr_onsite' | 'photo_online' | 'manual_by_referee',
-    match_checkin_status : 'success' | 'rejected' | 'exception',
+    match_checkin_status : 'success' | 'rejected' | 'exception' | 'pending',
     rejection_reason : string | null,
     document_type : 'student_id' | 'national_id' | null,
     document_s3_key : string | null,
