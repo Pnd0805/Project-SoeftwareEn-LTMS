@@ -98,14 +98,12 @@ ON DUPLICATE KEY UPDATE name = new.name, faculty_id = new.faculty_id;
 -- ⚠️⚠️ ตัวเลข min/max ทั้งหมดเป็นค่าสมมติ — GUIDE/07 ข้อ E1 ยังไม่มีคำตอบจริง
 --      (min = ผู้เล่นในสนาม · max = รวมตัวสำรองแล้ว)
 -- ---------------------------------------------------------------------
+-- มติทีม 17 ก.ย. 2569: เหลือ 5 กีฬา (ฟุตบอล, บาสเกตบอล, แบดมินตัน, RoV, VALORANT)
+-- id คงเดิมเพื่อไม่ให้ข้อมูล/เทสที่อ้าง id พัง — id 2,4,5,7 (ฟุตซอล วอลเลย์บอล ตะกร้อ เทเบิลเทนนิส) ถูกลบด้านล่าง
 INSERT INTO sport_types (sport_type_id, name, min_members, max_members, default_mode) VALUES
   (1, 'ฟุตบอล',        11, 18, 'onsite'),
-  (2, 'ฟุตซอล',         5, 12, 'onsite'),
   (3, 'บาสเกตบอล',      5, 12, 'onsite'),
-  (4, 'วอลเลย์บอล',     6, 12, 'onsite'),
-  (5, 'เซปักตะกร้อ',    3,  5, 'onsite'),
   (6, 'แบดมินตัน',      2,  4, 'onsite'),
-  (7, 'เทเบิลเทนนิส',   2,  4, 'onsite'),
   (8, 'E-Sport: RoV',   5,  7, 'online'),
   (9, 'E-Sport: VALORANT', 5, 7, 'online')
 AS new
@@ -114,6 +112,14 @@ ON DUPLICATE KEY UPDATE
   min_members = new.min_members,
   max_members = new.max_members,
   default_mode = new.default_mode;
+
+-- ลบกีฬาที่ตัดออก (เครื่องที่ seed เวอร์ชันเก่าไว้) — ลบได้เฉพาะที่ไม่มีทีม/ทัวร์อ้างถึง ไม่งั้น FK จะกัน
+DELETE FROM sport_stat_definitions WHERE sport_type_id IN (2, 4, 5, 7);
+DELETE st FROM sport_types st
+ WHERE st.sport_type_id IN (2, 4, 5, 7)
+   AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.sport_type_id = st.sport_type_id)
+   AND NOT EXISTS (SELECT 1 FROM tournaments tr WHERE tr.sport_type_id = st.sport_type_id)
+   AND NOT EXISTS (SELECT 1 FROM player_profile_stats ps WHERE ps.sport_type_id = st.sport_type_id);
 
 
 -- ---------------------------------------------------------------------
@@ -132,25 +138,13 @@ INSERT INTO sport_stat_definitions
   (2,  1, 'assists',      'แอสซิสต์',     'integer', 2),
   (3,  1, 'yellow_cards', 'ใบเหลือง',     'integer', 3),
   (4,  1, 'red_cards',    'ใบแดง',        'integer', 4),
-  -- ฟุตซอล (2)
-  (5,  2, 'goals',        'ประตู',        'integer', 1),
-  (6,  2, 'assists',      'แอสซิสต์',     'integer', 2),
-  (7,  2, 'yellow_cards', 'ใบเหลือง',     'integer', 3),
   -- บาสเกตบอล (3)
   (8,  3, 'points',       'แต้ม',         'integer', 1),
   (9,  3, 'rebounds',     'รีบาวด์',      'integer', 2),
   (10, 3, 'assists',      'แอสซิสต์',     'integer', 3),
   (11, 3, 'fouls',        'ฟาวล์',        'integer', 4),
-  -- วอลเลย์บอล (4)
-  (12, 4, 'points',       'แต้ม',         'integer', 1),
-  (13, 4, 'blocks',       'บล็อก',        'integer', 2),
-  (14, 4, 'aces',         'เสิร์ฟได้แต้ม', 'integer', 3),
-  -- เซปักตะกร้อ (5)
-  (15, 5, 'points',       'แต้ม',         'integer', 1),
   -- แบดมินตัน (6)
   (16, 6, 'points',       'แต้ม',         'integer', 1),
-  -- เทเบิลเทนนิส (7)
-  (17, 7, 'points',       'แต้ม',         'integer', 1),
   -- E-Sport: RoV (8)
   (18, 8, 'kills',        'สังหาร',       'integer', 1),
   (19, 8, 'deaths',       'ตาย',          'integer', 2),

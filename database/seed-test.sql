@@ -39,8 +39,8 @@ INSERT INTO teams (team_id, name, sport_type_id, leader_id, readiness_status, de
 VALUES
   (9001, 'ทีมวิศวะ FC',     1, 9001, 'Ready',   NULL, NULL),
   (9002, 'ทีมบาสวิศวะ',      3, 9001, 'Forming', NULL, NULL),
-  (9003, 'ทีมเก่าที่ถูกลบ',   2, 9001, 'Forming', NOW(), 'leader_deleted'),
-  (9004, 'ทีมวอลเลย์วิทยา',  4, 9002, 'Ready',   NULL, NULL)
+  (9003, 'ทีมเก่าที่ถูกลบ',   1, 9001, 'Forming', NOW(), 'leader_deleted'),
+  (9004, 'ทีมแบดวิทยา',      6, 9002, 'Ready',   NULL, NULL)
 AS new
 ON DUPLICATE KEY UPDATE name = new.name, deleted_at = new.deleted_at, deleted_reason = new.deleted_reason;
 
@@ -73,7 +73,7 @@ INSERT INTO player_profile_stats
 VALUES
   (9001, 9001, 1, 10, 7, 3, 1),
   (9002, 9001, 3,  4, 1, 3, 0),
-  (9003, 9002, 4,  0, 0, 0, 0)
+  (9003, 9002, 6,  0, 0, 0, 0)
 AS new
 ON DUPLICATE KEY UPDATE
   matches_played = new.matches_played, wins = new.wins,
