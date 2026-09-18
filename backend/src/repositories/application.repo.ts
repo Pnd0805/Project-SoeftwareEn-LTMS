@@ -139,12 +139,13 @@ export async function rejectApplicationInDb(id: number, reason: string): Promise
 export type TeamForApplyRow = {
     team_id: number;
     leader_id: number;
+    sport_type_id: number;
     readiness_status: 'Forming' | 'Ready';
 };
 
 export async function findTeamForApply(teamId: number): Promise<TeamForApplyRow | null> {
     const [rows] = await pool.query<(TeamForApplyRow & RowDataPacket)[]>(
-        "SELECT team_id, leader_id, readiness_status FROM teams WHERE team_id = ? AND deleted_at IS NULL",
+        "SELECT team_id, leader_id, sport_type_id, readiness_status FROM teams WHERE team_id = ? AND deleted_at IS NULL",
         [teamId]
     );
     const team = rows[0];
@@ -169,6 +170,25 @@ export async function findTeamMembersForFilter(teamId: number): Promise<TeamMemb
         [teamId]
     );
     return rows;
+}
+
+/**
+ * Conflict of interest (มติ 18 ก.ย. 2569): สมาชิกทีมที่จะสมัคร ห้ามเป็นกรรมการของทัวร์นี้ (คำเชิญ pending/accepted ที่ยังไม่ถูกถอด)
+ * — ORG เช็คแยกใน service จาก tournament.requested_by_user_id
+ */
+export async function findRefereesAmongUsers(tournamentId: number, userIds: number[]): Promise<number[]> {
+    if (userIds.length === 0) return [];
+    const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT tr.user_id
+         FROM tournament_referees tr
+         WHERE tr.tournament_id = ? AND tr.user_id IN (?) AND tr.removed_at IS NULL
+           AND tr.invitation_status IN ('pending', 'accepted')
+           AND tr.tournament_referee_id = (
+               SELECT MAX(t2.tournament_referee_id) FROM tournament_referees t2
+               WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)`,
+        [tournamentId, userIds]
+    );
+    return rows.map(r => r.user_id);
 }
 
 export type EligibilityRuleRow = {

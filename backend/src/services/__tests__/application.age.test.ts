@@ -4,6 +4,7 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findTeamForApply: vi.fn(),
   findExistingApplication: vi.fn(),
   findTeamMembersForFilter: vi.fn(),
+  findRefereesAmongUsers: vi.fn(() => Promise.resolve([])),
   findEligibilityRules: vi.fn(),
   insertApplication: vi.fn(),
 }));
@@ -41,10 +42,13 @@ describe('application age eligibility', () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue({
       team_id: 20,
       leader_id: 7,
+      sport_type_id: 1,
       readiness_status: 'Ready',
     } as any);
     mockedTournamentRepo.findTournamentById.mockResolvedValue({
       tournament_id: 30,
+      sport_type_id: 1,
+      requested_by_user_id: 999,
       registration_open: 1,
       registration_end: new Date('2027-01-02T00:00:00Z'),
       gender_requirement: 'any',

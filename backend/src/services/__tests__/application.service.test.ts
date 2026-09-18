@@ -10,6 +10,7 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findTeamForApply: vi.fn(),
   findExistingApplication: vi.fn(),
   findTeamMembersForFilter: vi.fn(),
+  findRefereesAmongUsers: vi.fn(() => Promise.resolve([])),
   findEligibilityRules: vi.fn(),
   insertApplication: vi.fn(),
 }));
@@ -130,7 +131,7 @@ function makeApplicationDetail(overrides: Partial<ApplicationDetailRow> = {}): A
 }
 
 function makeTeamForApply(overrides: Partial<TeamForApplyRow> = {}): TeamForApplyRow {
-  return { team_id: 10, leader_id: 5, readiness_status: 'Ready', ...overrides };
+  return { team_id: 10, leader_id: 5, sport_type_id: 1, readiness_status: 'Ready', ...overrides };
 }
 
 function makeTournament(overrides: Partial<TournamentRow> = {}): TournamentRow {
@@ -148,6 +149,7 @@ function makeTournament(overrides: Partial<TournamentRow> = {}): TournamentRow {
     organizer_external_reviewed_at: null,
     organizer_external_rejection_reason: null,
     organizer_external_verification_docs: null,
+    sport_type_id: 1,
     tournament_status: 'public',
     registration_open: 1,
     registration_start: null,
@@ -664,6 +666,31 @@ describe('applyTournament', () => {
       status: 409,
       code: 'REGISTRATION_CLOSED',
     });
+  });
+
+  // ข้อ 6 — ทีมคนละกีฬากับทัวร์
+  it('throws SPORT_TYPE_MISMATCH when the team plays a different sport than the tournament', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5, sport_type_id: 3 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({ sport_type_id: 1 }));
+
+    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({ status: 409, code: 'SPORT_TYPE_MISMATCH' });
+    expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
+  });
+
+  // ข้อ 7 — สมาชิกทีมเป็น ORG หรือกรรมการของทัวร์นี้
+  it('throws TEAM_CONFLICT_OF_INTEREST when a member is the organizer or a referee of this tournament', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({ requested_by_user_id: 77 }));
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([
+      makeMember({ user_id: 5 }), makeMember({ user_id: 77 }), makeMember({ user_id: 88 }),
+    ] as never);
+    vi.mocked(mockedApplicationRepo.findRefereesAmongUsers).mockResolvedValueOnce([88]);   // Once — clearAllMocks ไม่ล้าง mockResolvedValue
+
+    const err = await applicationService.applyTournament(20, 10, 5).catch((e: unknown) => e as { code: string; extra: unknown });
+    expect(err).toMatchObject({ status: 409, code: 'TEAM_CONFLICT_OF_INTEREST' });
+    expect(err.extra).toEqual({ conflicts: [{ userId: 77, role: 'organizer' }, { userId: 88, role: 'referee' }] });
+    expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
   });
 
   // Part2 P01 "อยู่ในช่วงรับสมัคร" — ธงเปิดอยู่แต่วันที่ไม่ตรง ก็สมัครไม่ได้

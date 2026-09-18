@@ -149,8 +149,35 @@ async function getDetail(tournament: TournamentRow): Promise<ReturnType<typeof t
     return toTournamentDetailDto(tournament, toUserRef(organizer), approvedTeamCount);
 }
 
+/** ข้อ 9 (รายงาน FE 18 ก.ย.): สร้างใหม่ต้องไม่ใช่อดีต — ปิดรับสมัครยังไม่ผ่าน และวันแข่งไม่ก่อนวันนี้ (เวลาไทย) · ไม่ใช้กับ amendment */
+function ensureNotInPast(input: CreateTournamentInput): void {
+    const now = Date.now();
+    const todayThai = new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    if (new Date(input.registrationEnd).getTime() <= now) {
+        throw new AppError(400, 'TOURNAMENT_DATES_IN_PAST', 'วันปิดรับสมัครต้องอยู่ในอนาคต', { fields: { registrationEnd: 'ผ่านไปแล้ว' } });
+    }
+    if (input.eventStartDate < todayThai) {
+        throw new AppError(400, 'TOURNAMENT_DATES_IN_PAST', 'วันแข่งขันต้องไม่ก่อนวันนี้', { fields: { eventStartDate: 'ผ่านไปแล้ว' } });
+    }
+}
+
+/**
+ * ข้อ 8 (มติ 18 ก.ย. 2569): admin สร้างทัวร์ในขอบเขตตัวเองได้เลยไม่ต้องรออนุมัติ
+ *   university_wide → ทุกทัวร์ · faculty admin → ทัวร์ที่ organizing_faculty_id = คณะตัวเอง (scope department/faculty ของคณะนั้น)
+ *   นอกขอบเขต (หรือไม่ใช่ admin) → pending_approval ตามเดิม
+ */
+async function autoApproveIfOwnScope(tournamentId: number, userId: number, organizingFacultyId: number): Promise<boolean> {
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    if (!admin) return false;
+    const covers = admin.scope_type === 'university_wide'
+        || (admin.scope_type === 'faculty' && admin.faculty_id !== null && admin.faculty_id === organizingFacultyId);
+    if (!covers) return false;
+    return TournamentRepo.approveTournament(tournamentId, userId);
+}
+
 export async function createTournament(input: CreateTournamentInput, userId: number) {
     ensureSchedule(input);
+    ensureNotInPast(input);
     ensureAges(input.minAge, input.maxAge);
     await ensureCreateReferences(input);
 
@@ -173,7 +200,9 @@ export async function createTournament(input: CreateTournamentInput, userId: num
         minAge: input.minAge ?? null,
         maxAge: input.maxAge ?? null
     });
-    return { id, status: 'pending_approval' as const, name: input.name };
+
+    const autoApproved = await autoApproveIfOwnScope(id, userId, input.organizingFacultyId as number);
+    return { id, status: autoApproved ? 'private' as const : 'pending_approval' as const, name: input.name, autoApproved };
 }
 
 export async function getMyTournamentRequests(userId: number, offset: number, page: number, pageSize: number) {

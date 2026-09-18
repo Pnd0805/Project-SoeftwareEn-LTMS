@@ -19,6 +19,18 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
         throw new AppError(404, 'USER_NOT_FOUND', 'ไม่พบผู้ใช้นี้ในระบบ');
     }
 
+    // 1.1 Conflict of interest (มติ 18 ก.ย. 2569) — ORG ของทัวร์ และคนที่มีชื่อในทีมที่สมัครทัวร์นี้ (แม้ไม่ได้ลงแข่ง) เป็นกรรมการไม่ได้
+    //     requireOrganizer ยืนยันแล้วว่า invitedBy = ORG ของทัวร์นี้
+    if(input.userId === invitedBy){
+        throw new AppError(409, 'ORGANIZER_CANNOT_BE_REFEREE', 'ผู้จัดการแข่งขันเป็นกรรมการของทัวร์นาเมนต์ตัวเองไม่ได้');
+    }
+    const applyingTeam = await RefRepo.findApplyingTeamOfUser(tournamentId, input.userId);
+    if(applyingTeam){
+        throw new AppError(409, 'REFEREE_CONFLICT_OF_INTEREST',
+            `ผู้ใช้นี้มีชื่อในทีม "${applyingTeam.name}" ที่สมัครทัวร์นาเมนต์นี้ เป็นกรรมการไม่ได้`,
+            { teamId : applyingTeam.team_id });
+    }
+
     // 2. กันเชิญทับสถานะเดิม 
     const latest = await RefRepo.findLatestByTournamentAndUser(tournamentId, input.userId);
     if(latest && latest.removed_at === null){

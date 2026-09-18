@@ -178,6 +178,12 @@ export async function applyTournament(tournamentId: number, teamId: number, user
             { registrationStart: tournament.registration_start, registrationEnd: tournament.registration_end });
     }
 
+    // 2.1 ทีมต้องเป็นกีฬาเดียวกับทัวร์ (ข้อ 6 รายงาน FE 18 ก.ย.) — ทีมวอลเลย์ลงทัวร์ฟุตบอลไม่ได้
+    if (team.sport_type_id !== tournament.sport_type_id) {
+        throw new AppError(409, "SPORT_TYPE_MISMATCH", "ทีมนี้เป็นกีฬาคนละประเภทกับทัวร์นาเมนต์",
+            { teamSportTypeId: team.sport_type_id, tournamentSportTypeId: tournament.sport_type_id });
+    }
+
     // 3. เช็คว่าเคยสมัครไปแล้วหรือยัง
     const existing = await ApplicationRepo.findExistingApplication(tournamentId, teamId);
     if (existing) {
@@ -186,6 +192,21 @@ export async function applyTournament(tournamentId: number, teamId: number, user
 
     // 4. Hard Filter — วนเช็คสมาชิกทุกคนในทีมทีละคน
     const members = await ApplicationRepo.findTeamMembersForFilter(teamId);
+
+    // 3.1 Conflict of interest (มติ 18 ก.ย. 2569): ORG หรือกรรมการของทัวร์นี้ มีชื่อในทีมไม่ได้ แม้ไม่ได้ลงแข่ง
+    //     (F01 กันฝั่งเชิญกรรมการอยู่แล้ว — ตรงนี้กันการสมัคร "หลัง" ถูกเชิญเป็นกรรมการ)
+    const memberIds = members.map(m => m.user_id);
+    const conflicts: { userId: number; role: 'organizer' | 'referee' }[] = [];
+    if (memberIds.includes(tournament.requested_by_user_id)) {
+        conflicts.push({ userId: tournament.requested_by_user_id, role: 'organizer' });
+    }
+    for (const refereeId of await ApplicationRepo.findRefereesAmongUsers(tournamentId, memberIds)) {
+        conflicts.push({ userId: refereeId, role: 'referee' });
+    }
+    if (conflicts.length > 0) {
+        throw new AppError(409, "TEAM_CONFLICT_OF_INTEREST",
+            "สมาชิกในทีมเป็นผู้จัดหรือกรรมการของทัวร์นาเมนต์นี้ สมัครไม่ได้", { conflicts });
+    }
     const rules = await ApplicationRepo.findEligibilityRules(tournamentId);
     const yearRules = rules.filter(r => r.rule_type === 'year').map(r => r.rule_value);
     const facultyRules = rules.filter(r => r.rule_type === 'faculty').map(r => r.rule_value);

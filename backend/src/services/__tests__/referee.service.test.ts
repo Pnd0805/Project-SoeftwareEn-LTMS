@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findLatestByTournamentAndUser: vi.fn(),
+  findApplyingTeamOfUser: vi.fn(() => Promise.resolve(null)),
   create: vi.fn(),
   findLatestPerUserByTournament: vi.fn(),
   findPendingInvitationsByUser: vi.fn(),
@@ -111,6 +112,26 @@ describe('inviteReferee', () => {
       code: 'USER_NOT_FOUND',
     });
     expect(mockedRefRepo.findLatestByTournamentAndUser).not.toHaveBeenCalled();
+  });
+
+  // Conflict of interest (มติ 18 ก.ย. 2569)
+  it('throws ORGANIZER_CANNOT_BE_REFEREE when the organizer invites themself', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser());
+
+    await expect(refereeService.inviteReferee(20, 5, makeInviteInput({ userId: 5 }))).rejects.toMatchObject({
+      status: 409, code: 'ORGANIZER_CANNOT_BE_REFEREE',
+    });
+    expect(mockedRefRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('throws REFEREE_CONFLICT_OF_INTEREST when the user is on a team that applied to this tournament', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser());
+    vi.mocked(mockedRefRepo.findApplyingTeamOfUser).mockResolvedValueOnce({ team_id: 33, name: 'ทีมวิศวะ' });
+
+    await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).rejects.toMatchObject({
+      status: 409, code: 'REFEREE_CONFLICT_OF_INTEREST', extra: { teamId: 33 },
+    });
+    expect(mockedRefRepo.create).not.toHaveBeenCalled();
   });
 
   it('throws REFEREE_INVITATION_PENDING when an active pending invitation already exists', async () => {

@@ -6,6 +6,22 @@ import type { TournamentRow } from '../types/db.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 
 /** แถวล่าสุดของ user คนนี้ในทัวร์นี้ — ★ ไม่กรอง removed_at ให้ service ตัดสินเอง */
+/**
+ * Conflict of interest (มติ 18 ก.ย. 2569): คนที่มีชื่อในทีมที่สมัครทัวร์นี้ (pending/approved) เป็นกรรมการไม่ได้ แม้ไม่ได้ลงแข่ง
+ * คืน team_id ที่ชนกัน (null = ไม่มี)
+ */
+export async function findApplyingTeamOfUser(tournamentId : number, userId : number): Promise<{ team_id : number; name : string } | null>{
+    const [rows] = await pool.query<(RowDataPacket & { team_id : number; name : string })[]>(
+        `SELECT t.team_id, t.name
+         FROM tournament_applications a
+         JOIN teams t ON t.team_id = a.team_id
+         JOIN team_members tm ON tm.team_id = t.team_id
+         WHERE a.tournament_id = ? AND tm.user_id = ?
+           AND a.tournament_application_status IN ('pending', 'approved')
+         LIMIT 1`, [tournamentId, userId]);
+    return rows[0] ?? null;
+}
+
 export async function findLatestByTournamentAndUser(tournamentId : number, userId : number)
         : Promise<TournamentRefereeRow | null>{
     const [rows] = await pool.query<(TournamentRefereeRow & RowDataPacket)[]>(
