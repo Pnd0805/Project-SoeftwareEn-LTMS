@@ -52,13 +52,15 @@ export async function findSportOfTournament(tournamentId : number): Promise<Spor
 
 export type ApplyWalkoverInput = {
     match : MatchRow;
-    winnerTeamId : number;
-    loserTeamId : number;
-    actorUserId : number;                       // คนที่ทำให้เกิดผลนี้ — หัวหน้าทีมที่ถอน หรือกรรมการที่กด start
-    actorRole : 'team_leader' | 'referee';
+    winnerTeamId : number | null;               // NULL = แพ้ทั้งคู่ (ORG forfeit) — ไม่มีใครเดินสาย
+    loserTeamId : number | null;                // NULL = ไม่มีผู้แพ้ (ช่องคู่แข่งว่างถาวร — dead slot)
+    actorUserId : number;                       // คนที่ทำให้เกิดผลนี้ — หัวหน้าทีมที่ถอน / กรรมการที่กด start / ORG
+    actorRole : 'team_leader' | 'referee' | 'organizer';
     scoreData : Record<string, number> | null;  // {"<winnerTeamId>": n, "<loserTeamId>": n}
     winPoints : number;
-    reason : 'team_withdrawn' | 'insufficient_checkins';
+    reason : 'team_withdrawn' | 'insufficient_checkins' | 'double_forfeit' | 'dead_slot';
+    /** แพ้ทั้งคู่: ทั้งสองทีมได้ lost — ส่งมาแทน loserTeamId */
+    forfeitedTeamIds? : number[];
 };
 
 /**
@@ -91,24 +93,29 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
         await conn.query<ResultSetHeader>(
             `UPDATE matches SET match_status = 'completed', updated_at = NOW() WHERE match_id = ?`, [match.match_id]);
 
-        if(match.next_match_id !== null){
+        // เดินสาย — ช่องที่ไม่มีใครไป (winner/loser เป็น NULL) ปล่อยว่าง → resolveDeadSlot จะให้บายทีมที่รออยู่ตรงนั้น
+        if(match.next_match_id !== null && winnerTeamId !== null){
             await placeTeam(conn, match.next_match_id, match.tournament_id, winnerTeamId);
         }
-        if(match.loser_next_match_id !== null){
+        if(match.loser_next_match_id !== null && loserTeamId !== null){
             await placeTeam(conn, match.loser_next_match_id, match.tournament_id, loserTeamId);
         }
 
         // standings — SQL เดียวกับ verifyMatchResult (matchResult.repo) เพื่อให้ตารางคะแนนนับ walkover เท่าชนะปกติ
-        await conn.query<ResultSetHeader>(
-            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-             VALUES (?, ?, 1, 1, 0, ?)
-             ON DUPLICATE KEY UPDATE played = played + 1, won = won + 1, points = points + ?, updated_at = NOW()`,
-            [match.tournament_id, winnerTeamId, input.winPoints, input.winPoints]);
-        await conn.query<ResultSetHeader>(
-            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-             VALUES (?, ?, 1, 0, 1, 0)
-             ON DUPLICATE KEY UPDATE played = played + 1, lost = lost + 1, updated_at = NOW()`,
-            [match.tournament_id, loserTeamId]);
+        if(winnerTeamId !== null){
+            await conn.query<ResultSetHeader>(
+                `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+                 VALUES (?, ?, 1, 1, 0, ?)
+                 ON DUPLICATE KEY UPDATE played = played + 1, won = won + 1, points = points + ?, updated_at = NOW()`,
+                [match.tournament_id, winnerTeamId, input.winPoints, input.winPoints]);
+        }
+        for(const loser of input.forfeitedTeamIds ?? (loserTeamId !== null ? [loserTeamId] : [])){
+            await conn.query<ResultSetHeader>(
+                `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+                 VALUES (?, ?, 1, 0, 1, 0)
+                 ON DUPLICATE KEY UPDATE played = played + 1, lost = lost + 1, updated_at = NOW()`,
+                [match.tournament_id, loser]);
+        }
 
         // คำขอโอน/สลับกรรมการที่อ้างแมตช์นี้ไม่มีความหมายแล้ว (GUIDE/11 §5.1)
         await conn.query<ResultSetHeader>(
@@ -119,7 +126,7 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
         await conn.query<ResultSetHeader>(
             `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'match_walkover', 'match', ?, ?)`,
             [input.actorUserId, match.match_id,
-             JSON.stringify({ winnerTeamId, loserTeamId, reason : input.reason, actorRole : input.actorRole })]);
+             JSON.stringify({ winnerTeamId, loserTeamId, forfeitedTeamIds : input.forfeitedTeamIds ?? null, reason : input.reason, actorRole : input.actorRole })]);
 
         await conn.commit();
     }catch(err){
@@ -128,6 +135,38 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
     }finally{
         conn.release();
     }
+}
+
+/** M18 ปิดเช็คอิน: checkin_open → scheduled และล้างเช็คอินรอบนี้ (ผู้เล่นต้องยืนยันตัวใหม่วันแข่งจริง) — คืน false ถ้าไม่ได้อยู่ checkin_open */
+export async function closeCheckin(matchId : number): Promise<boolean>{
+    const conn = await pool.getConnection();
+    try{
+        await conn.beginTransaction();
+        const [res] = await conn.query<ResultSetHeader>(
+            `UPDATE matches SET match_status = 'scheduled', checkin_open_at = NULL, updated_at = NOW()
+             WHERE match_id = ? AND match_status = 'checkin_open'`, [matchId]);
+        if(res.affectedRows === 0){
+            await conn.rollback();
+            return false;
+        }
+        await conn.query<ResultSetHeader>('DELETE FROM match_checkins WHERE match_id = ?', [matchId]);
+        await conn.commit();
+        return true;
+    }catch(err){
+        await conn.rollback();
+        throw err;
+    }finally{
+        conn.release();
+    }
+}
+
+/** แมตช์ต้นทางที่ส่งทีมมาแมตช์นี้ (next_match_id หรือ loser_next_match_id ชี้มา) ยังมีที่ไม่จบไหม */
+export async function hasUnfinishedPredecessor(matchId : number): Promise<boolean>{
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM matches
+         WHERE (next_match_id = ? OR loser_next_match_id = ?) AND match_status <> 'completed' LIMIT 1`,
+        [matchId, matchId]);
+    return rows.length > 0;
 }
 
 /** ใส่ทีมลงช่องว่างช่องแรกของแมตช์ถัดไป — ลำดับเดียวกับ verifyMatchResult (a ก่อน b) */

@@ -7,6 +7,8 @@ vi.mock('../../repositories/walkover.repo.js', () => ({
   findTeamLeaderId: vi.fn(() => Promise.resolve(7)),
   findSportOfTournament: vi.fn(() => Promise.resolve({ sport_type_id: 1, min_members: 11, walkover_score: { winner: 3, loser: 0 } })),
   applyWalkover: vi.fn(() => Promise.resolve()),
+  hasUnfinishedPredecessor: vi.fn(() => Promise.resolve(true)),
+  closeCheckin: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('../../repositories/match.repo.js', () => ({
@@ -29,6 +31,7 @@ function match(overrides: Partial<MatchRow> = {}): MatchRow {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(WalkoverRepo.isTeamWithdrawn).mockResolvedValue(false);
+  vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(true);
 });
 
 describe('processTeamWithdrawal (P08 after bracket)', () => {
@@ -80,8 +83,10 @@ describe('processTeamWithdrawal (P08 after bracket)', () => {
 
 describe('resolveIfOpponentWithdrawn (hook after verify places teams)', () => {
   it('does nothing when the match is not full or already started', async () => {
+    // ทีมเดียวแต่แมตช์ต้นทางยังไม่จบ → คู่ยังมาได้ ไม่ใช่ dead slot
     vi.mocked(MatchRepo.findById).mockResolvedValue(match({ team_b_id: null }));
     expect(await Walkover.resolveIfOpponentWithdrawn(1)).toEqual([]);
+    expect(WalkoverRepo.applyWalkover).not.toHaveBeenCalled();
 
     vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_status: 'in_progress' }));
     expect(await Walkover.resolveIfOpponentWithdrawn(1)).toEqual([]);
@@ -116,5 +121,48 @@ describe('decideNoShow (M10)', () => {
 
   it('reports both_short when neither team is ready', () => {
     expect(Walkover.decideNoShow(m, 10, 3, 11)).toBe('both_short');
+  });
+});
+
+describe('dead slot / double forfeit (M17)', () => {
+  it('advances the waiting team when every source match is finished and the other slot is still empty', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_id: 20, team_a_id: 10, team_b_id: null, next_match_id: null }));
+    vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(false);
+
+    const result = await Walkover.resolveIfOpponentWithdrawn(20);
+
+    expect(result).toEqual([{ matchId: 20, winnerTeamId: 10, loserTeamId: null }]);
+    expect(WalkoverRepo.applyWalkover).toHaveBeenCalledWith(expect.objectContaining({ winnerTeamId: 10, loserTeamId: null, reason: 'dead_slot', scoreData: null }));
+  });
+
+  it('applyOrganizerForfeit: one side short → walkover by organizer', async () => {
+    const m = match({ team_a_id: 10, team_b_id: 11 });
+    const out = await Walkover.applyOrganizerForfeit(m, 11, 4, 11, 99);
+
+    expect(out?.kind).toBe('walkover');
+    expect(WalkoverRepo.applyWalkover).toHaveBeenCalledWith(expect.objectContaining({ winnerTeamId: 10, loserTeamId: 11, actorUserId: 99, actorRole: 'organizer' }));
+  });
+
+  it('applyOrganizerForfeit: both short → double forfeit, nobody advances, both get a loss, next match gets a dead-slot bye', async () => {
+    const m = match({ match_id: 1, team_a_id: 10, team_b_id: 11, next_match_id: 5 });
+    // แมตช์ 5 มีทีม 12 รออยู่ และแมตช์ 1 (ต้นทาง) จบแล้ว → 12 บายผ่าน
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_id: 5, team_a_id: 12, team_b_id: null, next_match_id: null }));
+    vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(false);
+
+    const out = await Walkover.applyOrganizerForfeit(m, 3, 0, 11, 99);
+
+    expect(out?.kind).toBe('double_forfeit');
+    expect(WalkoverRepo.applyWalkover).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      winnerTeamId: null, loserTeamId: null, forfeitedTeamIds: [10, 11], reason: 'double_forfeit', actorRole: 'organizer',
+    }));
+    expect(out?.results).toEqual([
+      { matchId: 1, winnerTeamId: null, loserTeamId: null },
+      { matchId: 5, winnerTeamId: 12, loserTeamId: null },
+    ]);
+  });
+
+  it('applyOrganizerForfeit: both teams present → null (referee should start the match instead)', async () => {
+    expect(await Walkover.applyOrganizerForfeit(match(), 11, 11, 11, 99)).toBeNull();
+    expect(WalkoverRepo.applyWalkover).not.toHaveBeenCalled();
   });
 });

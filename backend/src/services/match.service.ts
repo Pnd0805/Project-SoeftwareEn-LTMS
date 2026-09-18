@@ -112,6 +112,49 @@ export async function openCheckinMatch(matchId: number) {
     return { id: matchId, status: 'checkin_open', checkinOpenAt: updated!.checkin_open_at };
 }
 
+/** M18 — ORG ปิดเช็คอิน (checkin_open → scheduled, ล้างเช็คอิน) เพื่อไปเลื่อนด้วย M06 — requireOrganizerOfMatch เช็คสิทธิ์แล้ว */
+export async function closeCheckinMatch(matchId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (!(await Walkover.closeCheckin(matchId))) {
+        throw new AppError(409, "INVALID_STATUS_TRANSITION", "ปิดเช็คอินได้เฉพาะแมตช์ที่กำลังเปิดเช็คอิน (สถานะ checkin_open) เท่านั้น");
+    }
+    return { id: matchId, status: 'scheduled' as const, checkinOpenAt: null };
+}
+
+/**
+ * M17 — ORG ตัดสินแมตช์ที่ทีมไม่มาตามนัด (GUIDE/11 §10.5): ฝั่งที่เช็คอินไม่ถึง min_members แพ้บาย · ไม่ถึงทั้งคู่ = แพ้ทั้งคู่
+ * ต่างจาก M10: ไม่ต้องรอกรรมการ (ไม่มีการแข่ง) และตัดสินแพ้ทั้งคู่ได้ — requireOrganizerOfMatch เช็คสิทธิ์แล้ว
+ */
+export async function forfeitMatch(matchId: number, orgUserId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "ตัดสินไม่มาตามนัดได้เฉพาะแมตช์ที่เปิดเช็คอินอยู่ — ทีมต้องมีโอกาสเช็คอินก่อน");
+    }
+    if (match.team_a_id === null || match.team_b_id === null) {
+        throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง");
+    }
+
+    const sport = await WalkoverRepo.findSportOfTournament(match.tournament_id);
+    const minMembers = sport?.min_members ?? 1;
+    const countA = await MatchRepo.countSuccessfulCheckins(matchId, match.team_a_id);
+    const countB = await MatchRepo.countSuccessfulCheckins(matchId, match.team_b_id);
+    const fullMatch = (await MatchRepo.findById(matchId))!;
+
+    const outcome = await Walkover.applyOrganizerForfeit(fullMatch, countA, countB, minMembers, orgUserId);
+    if (outcome === null) {
+        throw new AppError(409, "TEAMS_PRESENT", "ทั้งสองทีมเช็คอินครบขั้นต่ำแล้ว ให้กรรมการเริ่มแข่ง (M10) แทน",
+            { minMembers, checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } });
+    }
+    return { id: matchId, status: 'completed' as const, kind: outcome.kind, minMembers,
+             checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB }, walkovers: outcome.results };
+}
+
 // requireReferee (middleware) เช็คว่าเป็นกรรมการของแมตช์นี้ให้แล้วก่อนถึงตรงนี้
 export async function startMatch(matchId: number, userId: number){
     const match = await MatchRepo.findMatchById(matchId);

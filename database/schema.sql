@@ -420,7 +420,7 @@ CREATE TABLE match_results (
   winner_team_id INT NULL,
   score_data JSON NULL,              -- โครงสร้างคงที่ ไม่แตกตารางเหมือน player_match_stats
   submitted_by_user_id INT NOT NULL,
-  submitted_role ENUM('team_leader','referee') NOT NULL,
+  submitted_role ENUM('team_leader','referee','organizer') NOT NULL,   -- organizer = ตัดสินแพ้ทั้งคู่ (M17, migration 012)
   match_result_status ENUM('submitted','verified','disputed','rejected','walkover') NOT NULL DEFAULT 'submitted',  -- walkover = ชนะบาย ไม่ต้อง verify (migration 011)
   dispute_reason TEXT NULL,
   dispute_raised_by INT NULL,
@@ -719,4 +719,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('008_match_checkins_unique_match_user.sql'),
   ('009_match_checkins_pending_status.sql'),
   ('010_sport_types_renumber.sql'),
-  ('011_walkover.sql');
+  ('011_walkover.sql'),
+  ('012_forfeit_organizer_role.sql');

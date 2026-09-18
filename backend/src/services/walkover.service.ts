@@ -10,7 +10,7 @@ import type { MatchRow, SportTypeRow } from '../types/db.js';
  * standings นับเท่าชนะปกติ + score_data ตาม sport_types.walkover_score · player stats ไม่แตะ
  */
 
-export type WalkoverResult = { matchId : number; winnerTeamId : number; loserTeamId : number };
+export type WalkoverResult = { matchId : number; winnerTeamId : number | null; loserTeamId : number | null };
 
 function scoreDataFor(sport : SportTypeRow | null, winnerTeamId : number, loserTeamId : number): Record<string, number> | null{
     if(!sport?.walkover_score) return null;
@@ -44,27 +44,49 @@ export async function processTeamWithdrawal(tournamentId : number, teamId : numb
             scoreData : scoreDataFor(sport, opponent, teamId), winPoints : WIN_POINTS, reason : 'team_withdrawn'
         });
         done.push({ matchId : next.match_id, winnerTeamId : opponent, loserTeamId : teamId });
+        // ผู้ชนะไปถึงแมตช์ถัดไปที่ช่องอีกฝั่งอาจว่างถาวรแล้ว (แพ้ทั้งคู่ก่อนหน้า) → บายผ่านต่อ
+        done.push(...await resolveIfOpponentWithdrawn(next.next_match_id));
     }
     return done;
 }
 
 /**
- * เรียกหลังผลแมตช์ก่อนหน้าถูก verify และวางทีมลงแมตช์นี้แล้ว (matchResult.service) —
- * ถ้าฝั่งใดฝั่งหนึ่งถอนตัวไปก่อนแล้ว แมตช์นี้จบด้วย walkover ทันที (และไล่ลูกโซ่ต่อถ้าทีมที่ถอนตกสายล่าง)
+ * เรียกหลังแมตช์ต้นทางจบ (verify ปกติ หรือ walkover) และวางทีมลงแมตช์นี้แล้ว —
+ *   1. ฝั่งใดฝั่งหนึ่งถอนตัวไปก่อนแล้ว → walkover ทันที (และไล่ลูกโซ่ต่อถ้าทีมที่ถอนตกสายล่าง)
+ *   2. ช่องคู่แข่งว่างและแมตช์ต้นทางจบหมดแล้ว (แพ้ทั้งคู่ที่รอบก่อน) → ไม่มีใครจะมาอีก ทีมที่รออยู่ได้บาย (dead slot)
  */
 export async function resolveIfOpponentWithdrawn(matchId : number | null): Promise<WalkoverResult[]>{
     if(matchId === null) return [];
     const match = await MatchRepo.findById(matchId);
-    if(!match || match.team_a_id === null || match.team_b_id === null) return [];
+    if(!match) return [];
     if(match.match_status !== 'scheduled' && match.match_status !== 'checkin_open') return [];
 
-    for(const teamId of [match.team_a_id, match.team_b_id]){
+    const present = [match.team_a_id, match.team_b_id].filter((t): t is number => t !== null);
+    if(present.length === 1){
+        return resolveDeadSlot(match, present[0]!);
+    }
+    if(present.length < 2) return [];
+
+    for(const teamId of present){
         if(await WalkoverRepo.isTeamWithdrawn(match.tournament_id, teamId)){
             const leader = await WalkoverRepo.findTeamLeaderId(teamId);
             return processTeamWithdrawal(match.tournament_id, teamId, leader ?? 0);
         }
     }
     return [];
+}
+
+/** ทีมเดียวในแมตช์ + ไม่มีแมตช์ต้นทางที่ยังไม่จบ = ช่องอีกฝั่งจะว่างตลอดไป → ทีมนั้นผ่านรอบ (บาย ไม่มีผู้แพ้) */
+async function resolveDeadSlot(match : MatchRow, teamId : number): Promise<WalkoverResult[]>{
+    if(await WalkoverRepo.hasUnfinishedPredecessor(match.match_id)) return [];
+    await WalkoverRepo.applyWalkover({
+        match, winnerTeamId : teamId, loserTeamId : null,
+        actorUserId : (await WalkoverRepo.findTeamLeaderId(teamId)) ?? 0, actorRole : 'organizer',
+        scoreData : null, winPoints : WIN_POINTS, reason : 'dead_slot'
+    });
+    const done : WalkoverResult[] = [{ matchId : match.match_id, winnerTeamId : teamId, loserTeamId : null }];
+    // ทีมที่ผ่านไปอาจไปเจอช่องตายอีก (ต้นทางอีกฝั่งแพ้ทั้งคู่เหมือนกัน) → ไล่ต่อ
+    return done.concat(await resolveIfOpponentWithdrawn(match.next_match_id));
 }
 
 /**
@@ -81,14 +103,47 @@ export function decideNoShow(match : MatchRow, countA : number, countB : number,
         : { winnerTeamId : match.team_b_id!, loserTeamId : match.team_a_id! };
 }
 
-export async function applyNoShowWalkover(match : MatchRow, winnerTeamId : number, loserTeamId : number, refereeUserId : number): Promise<WalkoverResult>{
+export async function applyNoShowWalkover(match : MatchRow, winnerTeamId : number, loserTeamId : number,
+                                          actorUserId : number, actorRole : 'referee' | 'organizer' = 'referee'): Promise<WalkoverResult>{
     const sport = await WalkoverRepo.findSportOfTournament(match.tournament_id);
     await WalkoverRepo.applyWalkover({
         match, winnerTeamId, loserTeamId,
-        actorUserId : refereeUserId, actorRole : 'referee',
+        actorUserId, actorRole,
         scoreData : scoreDataFor(sport, winnerTeamId, loserTeamId), winPoints : WIN_POINTS, reason : 'insufficient_checkins'
     });
     return { matchId : match.match_id, winnerTeamId, loserTeamId };
+}
+
+/**
+ * M17 — ORG ตัดสินแมตช์ที่ทีมไม่มาตามนัด (แมตช์ checkin_open):
+ *   ฝั่งเดียวไม่ถึง min_members → อีกฝั่งชนะบาย (เหมือน M10 แต่ ORG กด ไม่ต้องรอกรรมการ)
+ *   ไม่ถึงทั้งคู่ → แพ้ทั้งคู่: ไม่มีใครเดินสาย ทั้งสองได้ lost · ช่องที่ว่างในรอบถัดไปให้ทีมที่รออยู่บายผ่าน (dead slot)
+ *   ครบทั้งคู่ → null (ให้กรรมการกด start ตามปกติ)
+ */
+export async function applyOrganizerForfeit(match : MatchRow, countA : number, countB : number, minMembers : number, orgUserId : number)
+    : Promise<{ kind : 'walkover' | 'double_forfeit'; results : WalkoverResult[] } | null>{
+    const decision = decideNoShow(match, countA, countB, minMembers);
+    if(decision === null) return null;
+
+    if(decision !== 'both_short'){
+        const wo = await applyNoShowWalkover(match, decision.winnerTeamId, decision.loserTeamId, orgUserId, 'organizer');
+        return { kind : 'walkover', results : [wo] };
+    }
+
+    await WalkoverRepo.applyWalkover({
+        match, winnerTeamId : null, loserTeamId : null, forfeitedTeamIds : [match.team_a_id!, match.team_b_id!],
+        actorUserId : orgUserId, actorRole : 'organizer', scoreData : null, winPoints : WIN_POINTS, reason : 'double_forfeit'
+    });
+    const results : WalkoverResult[] = [{ matchId : match.match_id, winnerTeamId : null, loserTeamId : null }];
+    // รอบถัดไปมีทีมรออยู่แล้วและไม่มีใครจะมาอีก → บายผ่าน
+    results.push(...await resolveIfOpponentWithdrawn(match.next_match_id));
+    results.push(...await resolveIfOpponentWithdrawn(match.loser_next_match_id));
+    return { kind : 'double_forfeit', results };
+}
+
+/** M18 — ORG ปิดเช็คอินกลับเป็น scheduled (เช่น ฝนตก) เพื่อไปเลื่อนด้วย M06 · เช็คอินรอบนี้ถูกล้าง */
+export async function closeCheckin(matchId : number): Promise<boolean>{
+    return WalkoverRepo.closeCheckin(matchId);
 }
 
 function opponentOf(match : MatchRow, teamId : number): number | null{

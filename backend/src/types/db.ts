@@ -272,7 +272,7 @@ export type MatchResultRow = {
     winner_team_id : number | null,
     score_data : Record<string , number> | null,
     submitted_by_user_id : number,
-    submitted_role : 'team_leader' | 'referee',
+    submitted_role : 'team_leader' | 'referee' | 'organizer',
     match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected' | 'walkover',
     dispute_reason : string| null,
     dispute_raised_by : number| null,
