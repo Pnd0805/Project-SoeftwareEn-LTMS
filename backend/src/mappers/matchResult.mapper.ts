@@ -95,22 +95,24 @@ export function toPlayerMatchStat(userInfo: {userId: number, fullName: string}, 
 }
 
 export type tournamentWinnerDto = {
-    championTeam : TeamRef,
+    championTeam : TeamRef | null,    // null = รอบชิงแพ้ทั้งคู่ (ไม่มาตามนัด) — ไม่มีแชมป์
     runnerUpTeam : TeamRef | null,
     summary : Record<string , unknown>
 }
 
 export function toTournamentWinnerDto(
-    championTeam : TeamRef ,
+    championTeam : TeamRef | null ,
     runnerUpTeam : TeamRef | null ,
     scoreData : Record<string , number> | null ,
-    completedAt : string | null
+    completedAt : string | null ,
+    isWalkover : boolean = false
 ) : tournamentWinnerDto{
     return {
         championTeam : championTeam,
         runnerUpTeam : runnerUpTeam,
         summary : {
             finalScore : scoreData,
+            isWalkover : isWalkover,   // รอบชิงจบด้วยบาย (ทีมถอน/ไม่มา) — GUIDE/11 §10.5
             completedAt : completedAt
         }
     };

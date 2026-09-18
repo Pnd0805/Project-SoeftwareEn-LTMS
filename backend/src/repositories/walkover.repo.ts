@@ -160,6 +160,25 @@ export async function closeCheckin(matchId : number): Promise<boolean>{
     }
 }
 
+/**
+ * แมตช์ตาย: ว่างทั้งสองช่องและไม่มีทีมจะมาอีก (ต้นทางแพ้ทั้งคู่ทั้งสองฝั่ง) → ปิดเป็น completed โดยไม่มีใบผล/standings
+ * เพื่อให้แมตช์ถัดไปมองว่าต้นทางจบแล้วและปล่อยทีมที่รออยู่ผ่าน · คืน false ถ้าไม่ได้อยู่ในสถานะที่ปิดได้
+ */
+export async function closeDeadMatch(matchId : number, actorUserId : number): Promise<boolean>{
+    const [res] = await pool.query<ResultSetHeader>(
+        `UPDATE matches SET match_status = 'completed', updated_at = NOW()
+         WHERE match_id = ? AND team_a_id IS NULL AND team_b_id IS NULL AND match_status IN ('scheduled', 'checkin_open')`,
+        [matchId]);
+    if(res.affectedRows === 0) return false;
+    await pool.query<ResultSetHeader>(
+        `UPDATE referee_change_requests SET request_status = 'cancelled', resolved_at = NOW()
+         WHERE request_status = 'open' AND (match_a_id = ? OR match_b_id = ?)`, [matchId, matchId]);
+    await pool.query<ResultSetHeader>(
+        `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'match_walkover', 'match', ?, ?)`,
+        [actorUserId, matchId, JSON.stringify({ winnerTeamId : null, loserTeamId : null, reason : 'dead_match' })]);
+    return true;
+}
+
 /** แมตช์ต้นทางที่ส่งทีมมาแมตช์นี้ (next_match_id หรือ loser_next_match_id ชี้มา) ยังมีที่ไม่จบไหม */
 export async function hasUnfinishedPredecessor(matchId : number): Promise<boolean>{
     const [rows] = await pool.query<RowDataPacket[]>(

@@ -234,7 +234,8 @@ export async function showPlayerStat(matchId : number , userId : number) : Promi
 }
 
 export type FinalMatchResult = {
-    winner_team_id : number,
+    winner_team_id : number | null,   // NULL = รอบชิงแพ้ทั้งคู่ (M17 double forfeit) — ไม่มีแชมป์
+    match_result_status : MatchResultRow['match_result_status'],
     team_a_id : number,
     team_b_id : number,
     score_data : Record<string , number> | null
@@ -243,7 +244,7 @@ export type FinalMatchResult = {
 /** แมตช์สุดท้ายของบราเคต = แมตช์ที่ next_match_id เป็น NULL (ชนะแล้วไม่มีที่ให้ไปต่อ) และต้อง verified/completed แล้ว */
 export async function findFinalMatchResult(tourId : number) : Promise<FinalMatchResult | null>{
     const [rows] = await pool.query<(FinalMatchResult & RowDataPacket)[]>(
-        `SELECT mr.winner_team_id, m.team_a_id, m.team_b_id, mr.score_data
+        `SELECT mr.winner_team_id, mr.match_result_status, m.team_a_id, m.team_b_id, mr.score_data
          FROM matches m JOIN match_results mr ON mr.match_id = m.match_id
          WHERE m.next_match_id IS NULL AND m.match_status = 'completed' AND m.tournament_id = ?`,
         [tourId]);

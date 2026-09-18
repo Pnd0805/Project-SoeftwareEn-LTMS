@@ -126,18 +126,27 @@ export async function getChampion(tourId : number){
         throw new AppError(404 , "NOT_FOUND" , "ไม่พบแมตช์สุดท้ายของทัวร์นาเมนต์นี้");
     }
 
+    const isWalkover = finalResult.match_result_status === 'walkover';
+
+    // รอบชิงแพ้ทั้งคู่ (M17 ไม่มาตามนัดทั้งสองทีม) → ไม่มีแชมป์/รองแชมป์ (GUIDE/11 §10.5)
+    if(finalResult.winner_team_id === null){
+        return toTournamentWinnerDto(null, null, null, tour.event_end_date, isWalkover);
+    }
+
     const runnerUpTeamId = finalResult.team_a_id === finalResult.winner_team_id
         ? finalResult.team_b_id
         : finalResult.team_a_id;
 
     const championRow = await checkTeam(finalResult.winner_team_id);
-    const runnerUpRow = await TeamRepo.findById(runnerUpTeamId);
+    // รอบชิงที่คู่แข่งว่างถาวร (dead slot) ไม่มีรองแชมป์
+    const runnerUpRow = runnerUpTeamId === null ? null : await TeamRepo.findById(runnerUpTeamId);
 
     return toTournamentWinnerDto(
         toTeamRef(championRow),
         runnerUpRow ? toTeamRef(runnerUpRow) : null,
         finalResult.score_data,
-        tour.event_end_date
+        tour.event_end_date,
+        isWalkover
     );
 }
 

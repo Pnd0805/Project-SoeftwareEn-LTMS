@@ -65,7 +65,9 @@ export async function resolveIfOpponentWithdrawn(matchId : number | null): Promi
     if(present.length === 1){
         return resolveDeadSlot(match, present[0]!);
     }
-    if(present.length < 2) return [];
+    if(present.length === 0){
+        return closeDeadMatch(match);
+    }
 
     for(const teamId of present){
         if(await WalkoverRepo.isTeamWithdrawn(match.tournament_id, teamId)){
@@ -74,6 +76,19 @@ export async function resolveIfOpponentWithdrawn(matchId : number | null): Promi
         }
     }
     return [];
+}
+
+/**
+ * ว่างทั้งสองช่อง + ต้นทางจบหมด (แพ้ทั้งคู่ป้อนเข้ามาทั้งสองฝั่ง) = แมตช์ตาย → ปิดเป็น completed ไม่มีผล
+ * แล้วไล่ต่อ: แมตช์ถัดไปที่รอผลจากแมตช์นี้จะเห็นว่าต้นทางจบแล้ว → ทีมที่รออยู่ผ่าน (dead slot) หรือเป็นแมตช์ตายต่อ
+ */
+async function closeDeadMatch(match : MatchRow): Promise<WalkoverResult[]>{
+    if(await WalkoverRepo.hasUnfinishedPredecessor(match.match_id)) return [];
+    if(!(await WalkoverRepo.closeDeadMatch(match.match_id, 0))) return [];
+    const done : WalkoverResult[] = [{ matchId : match.match_id, winnerTeamId : null, loserTeamId : null }];
+    done.push(...await resolveIfOpponentWithdrawn(match.next_match_id));
+    done.push(...await resolveIfOpponentWithdrawn(match.loser_next_match_id));
+    return done;
 }
 
 /** ทีมเดียวในแมตช์ + ไม่มีแมตช์ต้นทางที่ยังไม่จบ = ช่องอีกฝั่งจะว่างตลอดไป → ทีมนั้นผ่านรอบ (บาย ไม่มีผู้แพ้) */

@@ -9,6 +9,7 @@ vi.mock('../../repositories/walkover.repo.js', () => ({
   applyWalkover: vi.fn(() => Promise.resolve()),
   hasUnfinishedPredecessor: vi.fn(() => Promise.resolve(true)),
   closeCheckin: vi.fn(() => Promise.resolve(true)),
+  closeDeadMatch: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('../../repositories/match.repo.js', () => ({
@@ -164,5 +165,30 @@ describe('dead slot / double forfeit (M17)', () => {
   it('applyOrganizerForfeit: both teams present → null (referee should start the match instead)', async () => {
     expect(await Walkover.applyOrganizerForfeit(match(), 11, 11, 11, 99)).toBeNull();
     expect(WalkoverRepo.applyWalkover).not.toHaveBeenCalled();
+  });
+});
+
+describe('dead match (both slots permanently empty)', () => {
+  it('closes the match as completed without a result and lets the next round through', async () => {
+    // แมตช์ 30 ว่างทั้งสองช่อง ต้นทางจบหมด → ปิด · แมตช์ 31 (ถัดไป) มีทีม 15 รออยู่ → บายผ่าน
+    vi.mocked(MatchRepo.findById)
+      .mockResolvedValueOnce(match({ match_id: 30, team_a_id: null, team_b_id: null, next_match_id: 31 }))
+      .mockResolvedValueOnce(match({ match_id: 31, team_a_id: 15, team_b_id: null, next_match_id: null }));
+    vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(false);
+
+    const result = await Walkover.resolveIfOpponentWithdrawn(30);
+
+    expect(WalkoverRepo.closeDeadMatch).toHaveBeenCalledWith(30, 0);
+    expect(result).toEqual([
+      { matchId: 30, winnerTeamId: null, loserTeamId: null },
+      { matchId: 31, winnerTeamId: 15, loserTeamId: null },
+    ]);
+  });
+
+  it('leaves an empty match alone while a source match is still unfinished', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_id: 30, team_a_id: null, team_b_id: null }));
+
+    expect(await Walkover.resolveIfOpponentWithdrawn(30)).toEqual([]);
+    expect(WalkoverRepo.closeDeadMatch).not.toHaveBeenCalled();
   });
 });

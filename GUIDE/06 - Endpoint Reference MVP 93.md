@@ -262,7 +262,7 @@
 | S05 | `GET /matches/:id/result` | — | ผลแข่ง (คืนเฉพาะ `verified` หรือ `walkover` ไม่งั้น 404) | — | `{ matchId, winnerTeamId, scoreData, isAmended, amendedAt, amendReason, isWalkover, verifiedAt }` |
 | S06 | `POST /matches/:id/stats` | REF | บันทึกสถิติรายบุคคล · **BR-11** | `playerStats: [{userId, values:[{statDefinitionId, value}]}]` | **201** `{ matchId, recordedCount }` / **400** `UNKNOWN_STAT_DEFINITION` |
 | S07 | `GET /matches/:id/stats` | — | สถิติพร้อม label ไทย | — | `{ items: [{userId, fullName, stats:[{statKey, statLabelTh, value}]}] }` |
-| S10 | `GET /tournaments/:id/winner` | — | ผู้ชนะ (เฉพาะทัวร์ที่ `completed`) | — | `{ championTeam, runnerUpTeam, summary }` |
+| S10 | `GET /tournaments/:id/winner` | — | ผู้ชนะ (เฉพาะทัวร์ที่ `completed`) · รอบชิงแพ้ทั้งคู่ (M17) → `championTeam: null` · รอบชิงบาย → `summary.isWalkover` | — | `{ championTeam \| null, runnerUpTeam \| null, summary:{ finalScore, isWalkover, completedAt } }` |
 | S11 | `GET /tournaments/:id/dashboard` | — | ภาพรวมตัวเลข | — | `{ teamCount, playerCount, matchCount, matchesCompleted }` |
 | S12 | `GET /tournaments/:id/standings` | — | ตารางคะแนน (**read-only** ระบบคำนวณ) | — | `{ items: [{team, wins, losses, pointsFor, pointsAgainst, rank}] }` |
 
