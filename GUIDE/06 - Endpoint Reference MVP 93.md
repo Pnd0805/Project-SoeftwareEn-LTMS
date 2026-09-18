@@ -42,7 +42,7 @@
 | U02  | `PATCH /me`            | Auth | แก้โปรไฟล์ · **allowlist 3 field เท่านั้น**       | `avatarUrl?, contactInfo?, address?` | เหมือน U01                                                                                                                                              |
 | U03  | `GET /users/:id`       | —    | โปรไฟล์สาธารณะ · **ไม่มี email/contact/address**  | —                                    | `{ id, fullName, avatarUrl, facultyId, departmentId, teams[] }`                                                                                         |
 | U04  | `GET /users/:id/stats` | —    | สถิตินักกีฬา (read-only)                          | —                                    | `{ userId, overall{matchesPlayed,wins,losses,winRate,championCount}, bySport[] }`                                                                       |
-| U06  | `GET /users/search?q=` | Auth | ค้นคนเพื่อเชิญเข้าทีม · `q` ≥3 ตัว · **LIMIT 20** | `?q=`                                | `{ items: [{id, fullName, avatarUrl}] }`                                                                                                                |
+| U06  | `GET /users/search?q=` | Auth | ค้นคนเพื่อเชิญเข้าทีม · ชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · `q` ≥3 ตัว · **LIMIT 20** | `?q=`                                | `{ items: [{id, fullName, avatarUrl}] }`                                                                                                                |
 
 > **U01 กับ U03 ห้ามใช้ mapper ตัวเดียวกัน** — พลาดครั้งเดียวอีเมลรั่วทั้งระบบ
 > **U06** ถ้า `q` สั้นกว่า 3 → **400** `QUERY_TOO_SHORT`
@@ -187,7 +187,7 @@
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
-| P01 | `POST /tournaments/:id/applications` | TL | สมัครแข่ง · **Hard Filter อัตโนมัติ** · BR-04/08/09 | `teamId` | **201** `{ id, status:'pending', hardFilterPassed:true }` / **422** `HARD_FILTER_FAILED` + `details[]` |
+| P01 | `POST /tournaments/:id/applications` | TL | สมัครแข่ง · **Hard Filter อัตโนมัติ** · BR-04/08/09 · ต้อง ORG เปิดรับสมัคร (C15) **และ** อยู่ใน `registrationStart–registrationEnd` | `teamId` | **201** `{ id, status:'pending', hardFilterPassed:true }` / **409** `REGISTRATION_CLOSED` (ข้อความบอกว่ายังไม่เปิด / ยังไม่ถึง / หมดช่วง) / **422** `HARD_FILTER_FAILED` + `details[]` |
 | P02 | `GET /me/applications` | Auth | ใบสมัครของฉัน + เหตุผลถ้าถูกปฏิเสธ | `?page&pageSize` | `{ items: [{id, tournament, team, status, rejectionReason, appliedAt}], pagination }` |
 | P03 | `GET /tournaments/:id/applications` | ORG | ใบสมัครทั้งหมด · `softFilterDocuments` = **S3 key ดิบ** | `?page&pageSize` | `{ items: [{id, team, status, hardFilterPassed, softFilterDocuments, appliedAt}], pagination }` |
 | P04 | `GET /applications/:id` | ORG/TL | รายละเอียด · `softFilterDocuments` = **presigned URL** | — | `{ id, tournamentId, team, status, hardFilterDetails[], softFilterDocuments[] }` |
@@ -219,7 +219,7 @@
 | M15 | `POST /matches/:id/checkins/:cid/reject` | REF ของแมตช์ | ตรวจไม่ผ่าน · `reason` บังคับ · เฉพาะเช็คอินที่ `pending` · ตัดสินได้ครั้งเดียว · แมตช์ต้อง `checkin_open` หรือ `in_progress` | `reason` | `{ id, status:'rejected', reason }` / **409** `ALREADY_DECIDED` \| `MATCH_NOT_CHANGEABLE` |
 | M17 | `POST /matches/:id/forfeit` | ORG | **ตัดสินทีมไม่มาตามนัด** · เฉพาะ `checkin_open` · ฝั่งที่เช็คอิน < `min_members` แพ้บาย · ไม่ถึงทั้งคู่ = **แพ้ทั้งคู่** (ไม่มีใครเดินสาย ช่องว่างรอบถัดไปให้ทีมที่รอบายผ่าน) · ครบทั้งคู่ → 409 ให้กรรมการ M10 | — | `{ id, status:'completed', kind:'walkover'\|'double_forfeit', minMembers, checkedIn, walkovers:[{matchId, winnerTeamId, loserTeamId}] }` / **409** `CHECKIN_NOT_OPEN` \| `MATCH_TEAMS_INCOMPLETE` \| `TEAMS_PRESENT` |
 | M18 | `POST /matches/:id/close-checkin` | ORG | **ปิดเช็คอินกลับเป็น `scheduled`** (เหตุสุดวิสัย เช่น ฝนตก) · ล้าง `match_checkins` ของรอบนี้ · แล้วไปเลื่อนด้วย M06 | — | `{ id, status:'scheduled', checkinOpenAt:null }` / **409** `INVALID_STATUS_TRANSITION` |
-| M16 | `POST /uploads/presign` | Auth | ขอ URL อัปโหลดไฟล์ขึ้น S3 โดยตรง · `purpose`: `checkin_document` (+matchId · ต้องอยู่ในทีมของแมตช์ + แมตช์ `checkin_open` กฎเดียวกับ M12) · `soft_filter_document` (+tournamentId · แค่ทัวร์ต้องมีจริง) · `referee_identity` (ผูก user เอง) | `purpose, contentType, matchId?, tournamentId?` | `{ uploadUrl, objectKey, expiresIn }` / **403** `NOT_IN_APPROVED_ROSTER` / **409** `CHECKIN_NOT_OPEN` |
+| M16 | `POST /uploads/presign` | Auth | ขอ URL อัปโหลดไฟล์ขึ้น S3 โดยตรง · `purpose`: `checkin_document` (+matchId · ต้องอยู่ในทีมของแมตช์ + แมตช์ `checkin_open` กฎเดียวกับ M12) · `soft_filter_document` (+tournamentId · แค่ทัวร์ต้องมีจริง) · `referee_identity` (ผูก user เอง) | `purpose, contentType, matchId?, tournamentId?` | `{ uploadUrl, objectKey, expiresIn }` / **400** `UNSUPPORTED_FILE_TYPE` / **403** `NOT_IN_APPROVED_ROSTER` / **409** `CHECKIN_NOT_OPEN` |
 
 > **"REF ของแมตช์"** (M10, M11, M13, M14, M15) = กรรมการที่ active ในทัวร์ **และ** รับมอบหมายแมตช์นั้นแล้ว (`match_referees.assignment_status='accepted'`)
 > ผ่าน `isRefereeOfMatch` — กฎเดียวกับ F12 / S01–S03 · กรรมการของทัวร์ที่ไม่ได้รับแมตช์นั้นได้ 403

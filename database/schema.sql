@@ -139,10 +139,9 @@ CREATE TABLE team_invitations (
   invited_user_id INT NOT NULL,
   invited_by_user_id INT NOT NULL,
   team_invitation_status ENUM('pending','accepted','rejected','expired') NOT NULL DEFAULT 'pending',
+  expires_at DATETIME NOT NULL,      -- อายุ 7 วัน (GUIDE/07 A1 ทางเลือก A, migration 013) — T13 ตอบ 410 INVITATION_EXPIRED เมื่อเลย
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   responded_at DATETIME NULL,
-  -- ⚠️ ไม่มี expires_at ทั้งในต้นฉบับและ ERD แต่ API (T09/T12/T13) ต้องใช้
-  --    ดู GUIDE/07 ข้อ 1.3 — ต้องถามทีมก่อนเพิ่ม
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
   FOREIGN KEY (invited_user_id) REFERENCES users(user_id),
   FOREIGN KEY (invited_by_user_id) REFERENCES users(user_id)
@@ -720,4 +719,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('009_match_checkins_pending_status.sql'),
   ('010_sport_types_renumber.sql'),
   ('011_walkover.sql'),
-  ('012_forfeit_organizer_role.sql');
+  ('012_forfeit_organizer_role.sql'),
+  ('013_team_invitations_expires_at.sql');

@@ -15,3 +15,8 @@ export const presignUploadSchema = z.object({
 );
 
 export type PresignUploadInput = z.infer<typeof presignUploadSchema>;
+
+// Part 4: ไฟล์ที่ไม่รองรับตอบ code เฉพาะ ไม่ใช่ VALIDATION_FAILED (ส่งเป็นอาร์กิวเมนต์ที่ 2 ของ validate())
+export const presignUploadErrorCodes = {
+    contentType: { code: 'UNSUPPORTED_FILE_TYPE', message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น' },
+};

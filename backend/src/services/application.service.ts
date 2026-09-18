@@ -161,8 +161,21 @@ export async function applyTournament(tournamentId: number, teamId: number, user
     if (!tournament) {
         throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
     }
+    // Part2 P01: ต้อง "อยู่ในช่วงรับสมัคร" = ORG กดเปิด (C15) และเวลาปัจจุบันอยู่ใน [registration_start, registration_end]
+    // แยกข้อความตามสาเหตุ — ธงยังไม่เคยเปิด ≠ ปิดแล้ว
+    const now = new Date();
     if (!tournament.registration_open) {
-        throw new AppError(409, "REGISTRATION_CLOSED", "ทัวร์นาเมนต์นี้ปิดรับสมัครแล้ว");
+        const ended = tournament.registration_end !== null && tournament.registration_end < now;
+        throw new AppError(409, "REGISTRATION_CLOSED",
+            ended ? "ทัวร์นาเมนต์นี้ปิดรับสมัครแล้ว" : "ทัวร์นาเมนต์นี้ยังไม่เปิดรับสมัคร");
+    }
+    if (tournament.registration_start !== null && now < tournament.registration_start) {
+        throw new AppError(409, "REGISTRATION_CLOSED", "ยังไม่ถึงช่วงรับสมัคร",
+            { registrationStart: tournament.registration_start, registrationEnd: tournament.registration_end });
+    }
+    if (tournament.registration_end !== null && now > tournament.registration_end) {
+        throw new AppError(409, "REGISTRATION_CLOSED", "หมดช่วงรับสมัครแล้ว",
+            { registrationStart: tournament.registration_start, registrationEnd: tournament.registration_end });
     }
 
     // 3. เช็คว่าเคยสมัครไปแล้วหรือยัง

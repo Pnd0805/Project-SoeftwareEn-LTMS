@@ -666,6 +666,30 @@ describe('applyTournament', () => {
     });
   });
 
+  // Part2 P01 "อยู่ในช่วงรับสมัคร" — ธงเปิดอยู่แต่วันที่ไม่ตรง ก็สมัครไม่ได้
+  it('throws REGISTRATION_CLOSED when the registration window has already ended even if the flag is still open', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({
+      registration_open: 1, registration_start: new Date('2026-05-01'), registration_end: new Date('2026-06-01'),   // ระบบเวลา = 2026-06-15
+    }));
+
+    const err = await applicationService.applyTournament(20, 10, 5).catch((e: unknown) => e as { code: string; message: string });
+    expect(err).toMatchObject({ status: 409, code: 'REGISTRATION_CLOSED' });
+    expect(err.message).toBe('หมดช่วงรับสมัครแล้ว');
+    expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
+  });
+
+  it('throws REGISTRATION_CLOSED when the registration window has not started yet', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({
+      registration_open: 1, registration_start: new Date('2099-01-01'), registration_end: new Date('2099-02-01'),
+    }));
+
+    const err = await applicationService.applyTournament(20, 10, 5).catch((e: unknown) => e as { code: string; message: string });
+    expect(err).toMatchObject({ status: 409, code: 'REGISTRATION_CLOSED' });
+    expect(err.message).toBe('ยังไม่ถึงช่วงรับสมัคร');
+  });
+
   it('throws ALREADY_APPLIED when the team already has an application for this tournament', async () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
     mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());

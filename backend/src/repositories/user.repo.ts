@@ -40,10 +40,11 @@ export async function create(data: NewUser): Promise<number>{
     return result.insertId;
 }
 
+/** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · ไม่คืนอีเมลใน response จึงเดาอีเมลคนอื่นจากผลลัพธ์ไม่ได้ */
 export async function searchByName(userName : string) : Promise<Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'>[]>{
     const [ rows ] = await pool.query<(UserRow & RowDataPacket)[]>(`SELECT user_id , full_name , profile_image_key FROM users
-                                                                    WHERE full_name LIKE ? AND is_suspended = 0
-                                                                    ORDER BY full_name LIMIT 20` , [`%${userName}%`]);
+                                                                    WHERE (full_name LIKE ? OR email LIKE ?) AND is_suspended = 0
+                                                                    ORDER BY full_name LIMIT 20` , [`%${userName}%`, `${userName}%`]);
     return rows;
 }; 
 
