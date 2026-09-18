@@ -1,6 +1,7 @@
 import * as InviteRepo from '../repositories/invitation.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
+import * as ApplicationRepo from '../repositories/application.repo.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
@@ -28,6 +29,15 @@ export async function acceptInvitation(invitedId : number , userId : number){
         throw new AppError(422 , "TEAM_QUOTA_EXCEEDED" , "คุณมีทีม Unofficial ครบ 5 ทีมแล้ว");
     }
 
+
+    // Conflict of interest (มติ 18 ก.ย. 2569, GUIDE/10 F-19): ระหว่างเชิญ→กดรับ ทีมอาจสมัครทัวร์ที่คนนี้เป็น ORG/กรรมการไปแล้ว
+    // คำเชิญคงเป็น pending ไว้ (ไม่ลบ) — รับไม่ได้จนกว่าจะพ้นบทบาทหรือทีมถอนจากทัวร์นั้น
+    const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(invitation['team_id'] , userId);
+    if(conflict){
+        throw new AppError(409 , "TEAM_CONFLICT_OF_INTEREST" ,
+            `คุณเป็น${conflict.role === 'organizer' ? 'ผู้จัด' : 'กรรมการ'}ของทัวร์นาเมนต์ "${conflict.name}" ที่ทีมนี้สมัครอยู่ เข้าร่วมทีมไม่ได้` ,
+            { tournamentId : conflict.tournament_id , role : conflict.role });
+    }
 
     await InviteRepo.createAcceptInvite(invitedId, invitation['team_id'], userId)
 

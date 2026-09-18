@@ -79,11 +79,11 @@
 | T06 | `GET /teams/:id/members` | Auth | รายชื่อสมาชิก (ไม่มี contactInfo) | — | `{ items: [{userId, fullName, avatarUrl, position, joinedAt}] }` |
 | T07 | `PATCH /teams/:id/members/:uid` | TL | ตั้งตัวจริง/ตัวสำรอง | `position:'starter'\|'substitute'` | `{ userId, position }` |
 | T08 | `DELETE /teams/:id/members/:uid` | TL | ถอดสมาชิก · **คำนวณ Ready→Forming ใหม่** | — | **204** |
-| T09 | `POST /teams/:id/invitations` | TL | เชิญเข้าทีม → `pending` | `invitedUserId` | **201** `{ id, invitedUserId, status:'pending', expiresAt }` |
+| T09 | `POST /teams/:id/invitations` | TL | เชิญเข้าทีม → `pending` · **CoI**: ORG/กรรมการของทัวร์ที่ทีมสมัครอยู่ เข้าทีมไม่ได้ (409 `TEAM_CONFLICT_OF_INTEREST`) | `invitedUserId` | **201** `{ id, invitedUserId, status:'pending', expiresAt }` |
 | T10 | `GET /teams/:id/invitations` | TL | ดูคำเชิญทั้งหมดของทีม | — | `{ items: [{id, invitedUser, status, createdAt}] }` |
 | T11 | `DELETE /teams/:id/invitations/:iid` | TL | ยกเลิกคำเชิญที่ยังไม่ตอบ | — | **204** / **409** `INVITATION_ALREADY_ANSWERED` |
 | T12 | `GET /me/invitations` | Auth | คำเชิญที่รอฉันตอบ | — | `{ items: [{id, team, invitedBy, expiresAt}] }` |
-| T13 | `POST /invitations/:id/accept` | Auth | รับคำเชิญ · **BR-05** · **อาจ Forming→Ready** · transaction | — | `{ teamId, teamReadinessStatus }` |
+| T13 | `POST /invitations/:id/accept` | Auth | รับคำเชิญ · **BR-05** · **อาจ Forming→Ready** · transaction · **CoI**: ORG/กรรมการของทัวร์ที่ทีมสมัครอยู่ เข้าทีมไม่ได้ (409 `TEAM_CONFLICT_OF_INTEREST`) | — | `{ teamId, teamReadinessStatus }` |
 | T14 | `POST /invitations/:id/decline` | Auth | ปฏิเสธคำเชิญ | — | **204** |
 | T15 | `POST /teams/:id/official-request` | TL | ขอเป็นทีม Official → `pending` | `supportingDocs: string[]` (S3 key) | **201** `{ id, status:'pending' }` |
 | T16 | `GET /admin/team-requests` | ADM-u | คิวคำร้องรออนุมัติ | `?page&pageSize` | `{ items: [{id, team, requestedBy, status, createdAt}], pagination }` |

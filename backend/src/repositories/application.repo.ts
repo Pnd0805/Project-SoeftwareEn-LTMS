@@ -191,6 +191,31 @@ export async function findRefereesAmongUsers(tournamentId: number, userIds: numb
     return rows.map(r => r.user_id);
 }
 
+/**
+ * ประตูที่ 3 ของ CoI (T09/T13): คนนี้จะเข้าทีมที่สมัครทัวร์ (pending/approved) ที่ตัวเองเป็น ORG หรือกรรมการ (pending/accepted) อยู่ไหม
+ * คืนทัวร์แรกที่ชน (null = เข้าได้)
+ */
+export async function findTeamTournamentConflictForUser(teamId: number, userId: number)
+    : Promise<{ tournament_id: number; name: string; role: 'organizer' | 'referee' } | null> {
+    const [rows] = await pool.query<({ tournament_id: number; name: string; role: 'organizer' | 'referee' } & RowDataPacket)[]>(
+        `SELECT t.tournament_id, t.name,
+                CASE WHEN t.requested_by_user_id = ? THEN 'organizer' ELSE 'referee' END AS role
+         FROM tournament_applications a
+         JOIN tournaments t ON t.tournament_id = a.tournament_id
+         WHERE a.team_id = ? AND a.tournament_application_status IN ('pending', 'approved')
+           AND (t.requested_by_user_id = ?
+                OR EXISTS (SELECT 1 FROM tournament_referees tr
+                           WHERE tr.tournament_id = t.tournament_id AND tr.user_id = ? AND tr.removed_at IS NULL
+                             AND tr.invitation_status IN ('pending', 'accepted')
+                             AND tr.tournament_referee_id = (
+                                 SELECT MAX(t2.tournament_referee_id) FROM tournament_referees t2
+                                 WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)))
+         LIMIT 1`,
+        [userId, teamId, userId, userId]
+    );
+    return rows[0] ?? null;
+}
+
 export type EligibilityRuleRow = {
     rule_type: 'year' | 'faculty';
     rule_value: number;

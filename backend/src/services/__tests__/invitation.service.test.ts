@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('../../repositories/application.repo.js', () => ({
+  findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
+}));
+
 vi.mock('../../repositories/invitation.repo.js', () => ({
   createAcceptInvite: vi.fn(),
   createRejectInvite: vi.fn(),
@@ -25,6 +29,7 @@ import * as InviteRepo from '../../repositories/invitation.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import { AppError } from '../../utils/AppError.js';
 import type { TeamInvitationRow, TeamRow } from '../../types/db.js';
+import * as ApplicationRepo from '../../repositories/application.repo.js';
 
 const mockedInviteRepo = vi.mocked(InviteRepo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
@@ -152,6 +157,18 @@ describe('acceptInvitation', () => {
     expect(mockedInviteRepo.createAcceptInvite).toHaveBeenCalledWith(55, 10, 8);
     expect(mockedTeamRepo.findById).toHaveBeenCalledWith(10);
     expect(result).toEqual({ teamId: 10, teamReadinessStatus: 'Forming' });
+  });
+
+  // CoI ประตูที่ 3 (GUIDE/10 F-19): ทีมสมัครทัวร์ที่คนนี้เป็น ORG/กรรมการไปแล้วระหว่างรอกดรับ
+  it('throws TEAM_CONFLICT_OF_INTEREST when the invitee is a referee of a tournament the team applied to', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
+    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'referee' });
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST', extra: { tournamentId: 30, role: 'referee' },
+    });
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
   });
 });
 

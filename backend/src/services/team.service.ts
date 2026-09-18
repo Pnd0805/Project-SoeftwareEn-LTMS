@@ -1,6 +1,7 @@
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
+import * as ApplicationRepo from '../repositories/application.repo.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
@@ -135,6 +136,14 @@ export async function createInvitation(teamId : number , invitedUserId : number 
     const member = await TeamRepo.isMemberOf(teamId , invitedUserId);
     if(member){
         throw new AppError(409 , "ALREADY_MEMBER" , " ผู้ใช้นี้อยู่ในทีมแล้ว");
+    }
+
+    // Conflict of interest (มติ 18 ก.ย. 2569, GUIDE/10 F-19): ORG/กรรมการของทัวร์ที่ทีมนี้สมัครอยู่ เข้าทีมไม่ได้ — เช็คซ้ำอีกครั้งตอนกดรับ (T13)
+    const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(teamId , invitedUserId);
+    if(conflict){
+        throw new AppError(409 , "TEAM_CONFLICT_OF_INTEREST" ,
+            `ผู้ใช้นี้เป็น${conflict.role === 'organizer' ? 'ผู้จัด' : 'กรรมการ'}ของทัวร์นาเมนต์ "${conflict.name}" ที่ทีมนี้สมัครอยู่ เชิญเข้าทีมไม่ได้` ,
+            { tournamentId : conflict.tournament_id , role : conflict.role });
     }
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); 

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../../repositories/application.repo.js', () => ({
+  findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
+}));
+
 vi.mock('../../repositories/team.repo.js', () => ({
   findById: vi.fn(),
   findTeamsByUser: vi.fn(),
@@ -68,6 +72,7 @@ import {
 import { toUserRef } from '../../mappers/user.mapper.js';
 import { checkTeam, checkUser } from '../../utils/checkExist.js';
 import { AppError } from '../../utils/AppError.js';
+import * as ApplicationRepo from '../../repositories/application.repo.js';
 import type {
   TeamRow,
   SportTypeRow,
@@ -467,6 +472,17 @@ describe('createInvitation', () => {
     expect(mockedTeamRepo.isMemberOf).toHaveBeenCalledWith(10, 8);
     expect(mockedTeamRepo.createInvitation).toHaveBeenCalledWith(10, 8, 5, expect.any(Date));
     expect(result).toEqual({ id: 55 });
+  });
+
+  it('throws TEAM_CONFLICT_OF_INTEREST when the invitee organizes a tournament the team applied to', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 8 }));
+    mockedTeamRepo.isMemberOf.mockResolvedValue(null);
+    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'organizer' });
+
+    await expect(teamService.createInvitation(10, 8, 5)).rejects.toMatchObject({
+      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST', extra: { tournamentId: 30, role: 'organizer' },
+    });
+    expect(mockedTeamRepo.createInvitation).not.toHaveBeenCalled();
   });
 
   it('throws ALREADY_MEMBER when the invitee is already on the team', async () => {
