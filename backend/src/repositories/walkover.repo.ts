@@ -59,7 +59,7 @@ export type ApplyWalkoverInput = {
     actorRole : 'team_leader' | 'referee' | 'organizer';
     scoreData : Record<string, number> | null;  // {"<winnerTeamId>": n, "<loserTeamId>": n}
     winPoints : number;
-    reason : 'team_withdrawn' | 'insufficient_checkins' | 'double_forfeit' | 'dead_slot';
+    reason : 'team_withdrawn' | 'both_withdrawn' | 'insufficient_checkins' | 'double_forfeit' | 'dead_slot';
     /** แพ้ทั้งคู่: ทั้งสองทีมได้ lost — ส่งมาแทน loserTeamId */
     forfeitedTeamIds? : number[];
 };

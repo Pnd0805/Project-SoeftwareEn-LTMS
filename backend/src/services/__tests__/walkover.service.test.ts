@@ -71,14 +71,25 @@ describe('processTeamWithdrawal (P08 after bracket)', () => {
     expect(result.map(r => [r.matchId, r.winnerTeamId])).toEqual([[1, 11], [9, 12]]);
   });
 
-  it('skips a match whose opponent has also withdrawn (nobody to award) and does not loop forever', async () => {
-    vi.mocked(WalkoverRepo.findOpenMatchesOfTeam).mockResolvedValue([match({ match_id: 4, team_a_id: 10, team_b_id: 13 })]);
+  it('both teams withdrawn → double forfeit (nobody advances, both lose) and the next match gets a dead-slot bye', async () => {
+    vi.mocked(WalkoverRepo.findOpenMatchesOfTeam).mockResolvedValue([match({ match_id: 4, team_a_id: 10, team_b_id: 13, next_match_id: 9 })]);
     vi.mocked(WalkoverRepo.isTeamWithdrawn).mockResolvedValue(true);
+    vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(false);
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_id: 9, team_a_id: 20, team_b_id: null }));
 
     const result = await Walkover.processTeamWithdrawal(50, 10, 7);
 
-    expect(WalkoverRepo.applyWalkover).not.toHaveBeenCalled();
-    expect(result).toEqual([]);
+    expect(WalkoverRepo.applyWalkover).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      winnerTeamId: null, loserTeamId: null, forfeitedTeamIds: [10, 13], actorRole: 'team_leader', reason: 'both_withdrawn',
+    }));
+    expect(WalkoverRepo.applyWalkover).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      winnerTeamId: 20, loserTeamId: null, reason: 'dead_slot',
+    }));
+    expect(WalkoverRepo.applyWalkover).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([
+      { matchId: 4, winnerTeamId: null, loserTeamId: null },
+      { matchId: 9, winnerTeamId: 20, loserTeamId: null },
+    ]);
   });
 });
 

@@ -35,8 +35,19 @@ export async function processTeamWithdrawal(tournamentId : number, teamId : numb
         seen.add(next.match_id);
 
         const opponent = opponentOf(next, teamId)!;
-        // คู่แข่งก็ถอนไปแล้วเหมือนกัน (เกิดได้ในสายล่าง double elim) — ไม่มีใครให้ชนะ ปล่อยแมตช์ค้างให้ ORG ตัดสิน
-        if(await WalkoverRepo.isTeamWithdrawn(tournamentId, opponent)) continue;
+        // คู่แข่งก็ถอนไปแล้วเหมือนกัน (สายล่าง double elim / คู่ที่มาทีหลัง) — ไม่มีใครให้ชนะ → แพ้ทั้งคู่เหมือน M17
+        // ไม่มีใครเดินสาย ช่องรอบถัดไปว่างถาวร → ทีมที่รออยู่บายผ่าน (dead slot) ไม่ต้องให้ ORG มาเปิดเช็คอินแล้ว forfeit เอง
+        if(await WalkoverRepo.isTeamWithdrawn(tournamentId, opponent)){
+            await WalkoverRepo.applyWalkover({
+                match : next, winnerTeamId : null, loserTeamId : null, forfeitedTeamIds : [teamId, opponent],
+                actorUserId : leaderUserId, actorRole : 'team_leader',
+                scoreData : null, winPoints : WIN_POINTS, reason : 'both_withdrawn'
+            });
+            done.push({ matchId : next.match_id, winnerTeamId : null, loserTeamId : null });
+            done.push(...await resolveIfOpponentWithdrawn(next.next_match_id));
+            done.push(...await resolveIfOpponentWithdrawn(next.loser_next_match_id));
+            continue;
+        }
 
         await WalkoverRepo.applyWalkover({
             match : next, winnerTeamId : opponent, loserTeamId : teamId,
