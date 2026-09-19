@@ -1,9 +1,18 @@
 import pool from '../config/db.js';
-import type { MatchRow, MatchCheckinRow, TournamentRefereeRow } from '../types/db.js';
+import type { MatchRow, MatchCheckinRow, MatchResultRow, TournamentRefereeRow } from '../types/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
-export type MatchListRow = {
+/** B5 (รายงาน FE 19 ก.ย.): ใบผล "แถวล่าสุด" ของแมตช์ + เส้นทางสาย — ให้ M04/M05 ตอบผลได้โดย FE ไม่ต้องยิง S05 ทีละแมตช์ */
+export type MatchResultSummaryCols = {
+    next_match_id: number | null;
+    loser_next_match_id: number | null;
+    result_status: MatchResultRow['match_result_status'] | null;   // null = ยังไม่มีใบผล
+    result_winner_team_id: number | null;
+    result_score: Record<string, number> | null;
+};
+
+export type MatchListRow = MatchResultSummaryCols & {
     match_id: number;
     round_number: number | null;
     scheduled_time: Date | null;
@@ -51,11 +60,15 @@ export async function findMatchesByTournament(
     const [rows] = await pool.query<(MatchListRow & RowDataPacket)[]>(
         `SELECT
             m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status,
+            m.next_match_id, m.loser_next_match_id,
+            r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
             tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
          FROM matches m
          LEFT JOIN teams ta ON m.team_a_id = ta.team_id
          LEFT JOIN teams tb ON m.team_b_id = tb.team_id
+         LEFT JOIN match_results r ON r.match_result_id = (
+             SELECT MAX(r2.match_result_id) FROM match_results r2 WHERE r2.match_id = m.match_id)
          WHERE ${whereClause}
          ORDER BY m.match_id
          LIMIT ? OFFSET ?`,
@@ -72,8 +85,8 @@ export async function findMatchesByTournament(
 
 export type MatchDetailRow = Pick<MatchRow, 
     'match_id' | 'tournament_id' | 'round_number' | 'team_a_id' | 'team_b_id' | 
-    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode' | 'next_match_id'
-> & {
+    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode'
+> & MatchResultSummaryCols & {
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
     team_b_name: string | null;
@@ -83,12 +96,16 @@ export type MatchDetailRow = Pick<MatchRow,
 export async function findMatchById(Id: number): Promise<MatchDetailRow | null> {
     const [rows] = await pool.query<(MatchDetailRow & RowDataPacket)[]>(
         `SELECT 
-            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.next_match_id ,
+            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode ,
+            m.next_match_id, m.loser_next_match_id,
+            r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
             tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
          FROM matches m
          LEFT JOIN teams ta ON m.team_a_id = ta.team_id
          LEFT JOIN teams tb ON m.team_b_id = tb.team_id
+         LEFT JOIN match_results r ON r.match_result_id = (
+             SELECT MAX(r2.match_result_id) FROM match_results r2 WHERE r2.match_id = m.match_id)
          WHERE m.match_id = ?`,
         [Id]
     );

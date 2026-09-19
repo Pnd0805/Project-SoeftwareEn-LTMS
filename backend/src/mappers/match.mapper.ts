@@ -1,7 +1,46 @@
-import type { MatchDetailRow, MatchListRow, MatchCheckinListRow } from '../repositories/match.repo.js';
+import type { MatchDetailRow, MatchListRow, MatchCheckinListRow, MatchResultSummaryCols } from '../repositories/match.repo.js';
 import type { BracketNodeListRow } from '../repositories/bracketNode.repo.js';
+import type { MatchRow } from '../types/db.js';
 
-export type MatchListItemDto = {
+/**
+ * B5 + outcome (รายงาน FE 19 ก.ย.) — สรุปผลบนแถวแมตช์ เพื่อให้ตาราง/สาย/แดชบอร์ดวาดได้จาก M04 อย่างเดียว
+ *   resultStatus : สถานะใบผลล่าสุด (null = ยังไม่ส่ง) — ให้ FE แยก "รอยืนยัน" กับ "ยืนยันแล้ว"
+ *   score        : score_data เฉพาะเมื่อ verified/walkover (ใบผลที่ยังไม่ยืนยันเห็นได้เฉพาะคนเกี่ยวข้องผ่าน S05 — กฎเดิม)
+ *   outcome      : ความหมายของแมตช์ที่จบแล้ว ให้หน้าสายวาดช่องว่างถูก:
+ *                    played   = แข่งจริง · walkover = คู่ถอน/ไม่มา (W/O)
+ *                    bye      = ช่องอีกฝั่งว่างถาวร ทีมเดียวผ่าน (dead slot) — FE แสดง "BYE" แทนช่องว่าง
+ *                    void     = ไม่มีใครผ่าน (แพ้ทั้งคู่ / ถอนทั้งคู่ / แมตช์ตาย) — FE แสดง "ไม่มีการแข่ง"
+ */
+export type MatchOutcomeKind = 'played' | 'walkover' | 'bye' | 'void';
+export type MatchResultSummaryDto = {
+    nextMatchId: number | null;
+    loserNextMatchId: number | null;
+    resultStatus: MatchResultSummaryCols['result_status'];
+    score: Record<string, number> | null;
+    outcome: { kind: MatchOutcomeKind; winnerTeamId: number | null; loserTeamId: number | null } | null;
+};
+
+export function toMatchResultSummary(row: MatchResultSummaryCols & { match_status: MatchRow['match_status']; team_a_id: number | null; team_b_id: number | null }): MatchResultSummaryDto {
+    const settled = row.result_status === 'verified' || row.result_status === 'walkover';
+    const base = {
+        nextMatchId: row.next_match_id,
+        loserNextMatchId: row.loser_next_match_id,
+        resultStatus: row.result_status,
+        score: settled ? row.result_score : null,
+    };
+    if (row.match_status !== 'completed') return { ...base, outcome: null };
+
+    const winner = settled ? row.result_winner_team_id : null;
+    const other = winner === null ? null : (row.team_a_id === winner ? row.team_b_id : row.team_a_id);
+    let kind: MatchOutcomeKind;
+    if (row.result_status === 'verified') kind = 'played';
+    else if (winner === null) kind = 'void';                 // double forfeit / both withdrawn / dead match (ไม่มีใบผล)
+    else if (other === null) kind = 'bye';                   // dead slot
+    else kind = 'walkover';
+    return { ...base, outcome: { kind, winnerTeamId: winner, loserTeamId: kind === 'played' || kind === 'walkover' ? other : null } };
+}
+
+export type MatchListItemDto = MatchResultSummaryDto & {
     id: number;
     round: number | null;
     teamA: { id: number; name: string; sportTypeId: number } | null;
@@ -26,10 +65,11 @@ export function toMatchListItemDto(row: MatchListRow): MatchListItemDto {
         scheduledEndTime: row.scheduled_end_time,
         venue: row.venue,
         status: row.match_status,
+        ...toMatchResultSummary(row),
     };
 }
 
-export type MatchDetailItemDto = { 
+export type MatchDetailItemDto = MatchResultSummaryDto & {
     id: number;
     tournamentId: number;
     round: number | null;
@@ -41,7 +81,6 @@ export type MatchDetailItemDto = {
     checkinOpenAt: Date | null; 
     status: string; 
     mode : 'onsite' | 'online',
-    nextMatchId: number | null;
 }
 
 export function toMatchDetailDto(row: MatchDetailRow): MatchDetailItemDto {
@@ -61,7 +100,7 @@ export function toMatchDetailDto(row: MatchDetailRow): MatchDetailItemDto {
         checkinOpenAt: row.checkin_open_at,
         status: row.match_status,
         mode: row.mode,
-        nextMatchId: row.next_match_id
+        ...toMatchResultSummary(row),
     };
 }
 
