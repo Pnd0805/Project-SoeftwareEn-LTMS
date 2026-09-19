@@ -2,7 +2,7 @@ import express from 'express';
 import * as Match from '../controllers/match.controller.js';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
-import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema } from '../schemas/match.schema.js';
+import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema } from '../schemas/match.schema.js';
 import { requireReferee } from '../middlewares/requireReferee.js';
 import { requireOrganizer, requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 
@@ -23,4 +23,7 @@ router.post('/matches/:id/checkins/:cid/verify' , requireAuth , requireReferee ,
 router.post('/matches/:id/checkins/:cid/reject' , requireAuth , requireReferee , validate(rejectCheckinSchema, rejectCheckinErrorCodes) , Match.rejectCheckin);
 router.get('/matches/:id/checkin-qr' , requireAuth , Match.getCheckinQr);
 router.post('/matches/:id/checkins' , requireAuth , validate(submitCheckinSchema) , Match.submitCheckin);
+// M20 ผู้เล่นดูเช็คอินตัวเอง · M19 กรรมการเช็คอินแทน (manual_by_referee) — FE gaps 19 ก.ย.
+router.get('/matches/:id/checkins/me' , requireAuth , Match.getMyCheckin);
+router.post('/matches/:id/checkins/manual' , requireAuth , requireReferee , validate(manualCheckinSchema) , Match.manualCheckin);
 export default router;

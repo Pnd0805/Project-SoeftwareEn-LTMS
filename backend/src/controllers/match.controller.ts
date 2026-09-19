@@ -71,6 +71,16 @@ export async function forfeitMatch(req: Request, res: Response){
     res.status(200).json(await MatchService.forfeitMatch(matchId, req.user!.user_id));
 }
 
+export async function getMyCheckin(req: Request, res: Response){
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.getMyCheckin(matchId, req.user!.user_id));
+}
+
+export async function manualCheckin(req: Request, res: Response){
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(201).json(await MatchService.manualCheckin(matchId, req.user!.user_id, req.body));
+}
+
 export async function startMatch(req: Request, res: Response){
     if(!req.user){
         throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");

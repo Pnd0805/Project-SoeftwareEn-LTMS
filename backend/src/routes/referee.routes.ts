@@ -1,5 +1,5 @@
 import express from 'express';
-import { requireAuth } from '../middlewares/requireAuth.js';
+import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
 import { requireOrganizer } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
 import { inviteRefereeSchema, acceptInvitationSchema, submitDocsSchema } from '../schemas/referee.schema.js';
@@ -61,7 +61,7 @@ matchRefereeRouter.post('/:id/result/verify' , requireAuth , requireCanVerifyRes
 matchRefereeRouter.post('/:id/result/dispute' , requireAuth , requireCanDisputeResult , validate(disputeSchema) , MatchResult.updateDisputeMatchResult);
 matchRefereeRouter.post('/:id/result/resolve' , requireAuth , requireOrganizerOfMatch , validate(resolveSchema) , MatchResult.updateResolveMatchResult);
 
-matchRefereeRouter.get('/:id/result' , MatchResult.getVerifiedResult);
+matchRefereeRouter.get('/:id/result' , optionalAuth , MatchResult.getVerifiedResult);   // มี token = เห็นผลที่ยังไม่ verify ถ้าเกี่ยวข้อง
 matchRefereeRouter.post('/:id/stats' , requireAuth , requireCanRecordStats , validate(statSchema) , MatchResult.updatePlayerStat);
 matchRefereeRouter.get('/:id/stats' , MatchResult.getPlayerMatchStat);
 

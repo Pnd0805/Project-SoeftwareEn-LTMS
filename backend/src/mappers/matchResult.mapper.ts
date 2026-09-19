@@ -69,6 +69,7 @@ export type verifiedResult = {
     amendedAt : string | null,
     amendReason : string | null,
     isWalkover : boolean,   // ชนะบาย (ทีมถอน/ไม่มาแข่ง) — ไม่มีสกอร์จริง (GUIDE/11 §10.4)
+    status : MatchResultRow['match_result_status'],   // submitted/disputed/rejected เห็นได้เฉพาะผู้เกี่ยวข้อง (S05)
     verifiedAt : string | null
 }
 
@@ -86,6 +87,7 @@ export function toVerifiedResult(rows : MatchResultRow): verifiedResult{
         amendedAt : rows.amended_at?.toISOString() ?? null,
         amendReason : rows.amend_reason,
         isWalkover : rows.match_result_status === 'walkover',
+        status : rows.match_result_status,
         verifiedAt : rows.verified_at?.toISOString() ?? null
     }
 }

@@ -91,8 +91,9 @@ export async function deleteTeam(teamId : number){
 export async function getTeamMemberById(teamId :number , userId : number){
     const team = await checkTeam(teamId);
 
+    // สมาชิกทีม หรือ ORG/กรรมการของทัวร์ที่ทีมนี้สมัคร (เช็คอินด้วยมือ M19 ต้องเห็นรายชื่อ — FE gaps 19 ก.ย.)
     const user = await TeamRepo.isMemberOf(team['team_id'] , userId);
-    if(!user){
+    if(!user && !(await ApplicationRepo.isTournamentStaffOfTeam(team['team_id'] , userId))){
         throw new AppError(403 , "FORBIDDEN" , "คุณไม่มีสิทธิ์ทํารายการนี้ ");
     }
     const members = await TeamRepo.findTeamMemberById(team['team_id']);

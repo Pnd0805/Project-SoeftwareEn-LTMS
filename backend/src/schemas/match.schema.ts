@@ -1,14 +1,15 @@
 import * as z from 'zod';
 
 export const livestreamSchema = z.object({
-    youtubeUrl : z.string()
+    youtubeUrl : z.string().nullable()   // null = ล้างลิงก์ (FE gaps 19 ก.ย.)
 });
 
 // scheduledEndTime บังคับ — กรรมการ (F01/F05/FR) และการเช็คทับซ้อนต้องใช้ช่วงเวลา [เริ่ม, จบ)
 export const scheduleMatchSchema = z.object({
-    scheduledTime: z.iso.datetime('รูปแบบวันเวลาไม่ถูกต้อง'),
+    // รับทั้ง Z และ +07:00 ให้ตรงกับ C01 (FE gaps 19 ก.ย.)
+    scheduledTime: z.iso.datetime({ offset: true, message: 'รูปแบบวันเวลาไม่ถูกต้อง' }),
     // เวลาจบ — ใช้เช็คแมตช์ซ้อน (สนาม/ทีม/กรรมการ) และลำดับสาย (GUIDE/11 §4.1)
-    scheduledEndTime: z.iso.datetime('รูปแบบวันเวลาจบไม่ถูกต้อง'),
+    scheduledEndTime: z.iso.datetime({ offset: true, message: 'รูปแบบวันเวลาจบไม่ถูกต้อง' }),
     venue: z.string().min(1, 'กรุณาระบุสนามแข่งขัน'),
 }).refine(
     (d) => new Date(d.scheduledEndTime) > new Date(d.scheduledTime),
@@ -51,3 +52,11 @@ export const submitCheckinSchema = z.discriminatedUnion('method', [
 ]);
 
 export type SubmitCheckinInput = z.infer<typeof submitCheckinSchema>;
+
+// M19 — กรรมการเช็คอินแทนผู้เล่น (กล้อง/เน็ตพัง, UC-04 E2b) → status 'exception' นับว่าเช็คอินแล้ว
+export const manualCheckinSchema = z.object({
+    userId: z.int().positive(),
+    note: z.string().trim().max(255).optional(),
+});
+
+export type ManualCheckinInput = z.infer<typeof manualCheckinSchema>;

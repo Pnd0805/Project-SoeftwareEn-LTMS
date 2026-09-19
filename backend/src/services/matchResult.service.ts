@@ -12,6 +12,7 @@ import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { WIN_POINTS } from '../config/scoring.js';
 import * as Walkover from './walkover.service.js';
+import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 
 export async function createSubmitMatchRes(matchId : number , winnerId : number , scoreData : Record<string , number> , submitById : number , role : 'team_leader' | 'referee'){
     const match = await checkMatch(matchId);
@@ -51,13 +52,32 @@ export async function resolveMatchResult( matchId: number, resolution: 'uphold' 
     return toResolveResultDto({ match_id: matchId, match_result_status: status });
 }
 
-export async function getVerifiedResult(matchId : number){
-    const matchRes = await MatchResRepo.findVerifiedResultByMatchId(matchId);
+/**
+ * S05 — ผลที่ verified/walkover ใครก็อ่านได้ · ผลที่ยัง submitted/disputed/rejected อ่านได้เฉพาะ ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม
+ * (ORG ตัดสิน dispute ต้องเห็นสกอร์ที่ถูกโต้แย้ง — FE gaps 19 ก.ย.) · คนอื่นได้ 404 เหมือนเดิม ไม่เผยว่ามีผลค้าง
+ */
+export async function getVerifiedResult(matchId : number , userId? : number){
+    const matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
     if(!matchRes){
         throw new AppError(404 , "NOT_FOUND" , "ไม่พบข้อมูลที่ต้องการ");
     }
 
+    const isFinal = matchRes.match_result_status === 'verified' || matchRes.match_result_status === 'walkover';
+    if(!isFinal){
+        if(userId === undefined || !(await canSeeUnfinishedResult(matchId , userId))){
+            throw new AppError(404 , "NOT_FOUND" , "ไม่พบข้อมูลที่ต้องการ");
+        }
+    }
+
     return toVerifiedResult(matchRes)
+}
+
+async function canSeeUnfinishedResult(matchId : number , userId : number): Promise<boolean>{
+    const match = await checkMatch(matchId);
+    const tour = await findTournamentById(match.tournament_id);
+    if(tour?.requested_by_user_id === userId) return true;
+    if(await isRefereeOfMatch(matchId , userId , match.tournament_id)) return true;
+    return isTeamLeaderOfMatch(matchId , userId);
 }
 
 export type recordStat = {userId : number,
@@ -171,10 +191,10 @@ export async function getStandings(tourId : number){
 
 const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/;
 
-export async function updateLivestream(matchId : number , youtubeUrl : string){
+export async function updateLivestream(matchId : number , youtubeUrl : string | null){
     await checkMatch(matchId);
 
-    if(!YOUTUBE_URL_REGEX.test(youtubeUrl)){
+    if(youtubeUrl !== null && !YOUTUBE_URL_REGEX.test(youtubeUrl)){
         throw new AppError(400 , "INVALID_YOUTUBE_URL" , "ลิงก์ YouTube ไม่ถูกต้อง");
     }
 

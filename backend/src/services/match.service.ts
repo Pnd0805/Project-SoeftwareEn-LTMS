@@ -8,7 +8,7 @@ import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinSt
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
 import { buildPagination } from '../utils/pagination.js';
-import type { SubmitCheckinInput } from '../schemas/match.schema.js';
+import type { SubmitCheckinInput, ManualCheckinInput } from '../schemas/match.schema.js';
 import type { MatchListFilters } from '../repositories/match.repo.js';
 
 export async function getTournamentMatches(
@@ -233,6 +233,47 @@ export async function getMatchCheckins(matchId: number, userId: number) {
         return toCheckinListItemDto(row, documentUrl);
     }));
     return { items };
+}
+
+/** M20 — ผู้เล่นดูสถานะเช็คอินของตัวเองในแมตช์นี้ (null = ยังไม่ได้เช็คอิน) */
+export async function getMyCheckin(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    const row = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
+    if (!row) return { checkin: null };
+    return { checkin: { id: row.match_checkin_id, method: row.method, status: toCheckinStatusApi(row.match_checkin_status),
+                        rejectionReason: row.rejection_reason, checkedInAt: row.checked_in_at, verifiedAt: row.verified_at } };
+}
+
+/**
+ * M19 — กรรมการของแมตช์เช็คอินแทนผู้เล่น (กล้อง/เน็ต/QR ใช้ไม่ได้, UC-04 E2b) → method manual_by_referee, status exception (นับว่าเช็คอินแล้ว)
+ * ผู้เล่นต้องอยู่ใน roster และแมตช์ต้อง checkin_open · เคยเช็คอินแล้ว → 409
+ */
+export async function manualCheckin(matchId: number, refereeUserId: number, input: ManualCheckinInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
+    }
+    const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
+    if (!(await MatchRepo.isUserInTeams(input.userId, teamIds))) {
+        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "ผู้เล่นคนนี้ไม่อยู่ในรายชื่อทีมของแมตช์นี้");
+    }
+    const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId);
+    if (existing) {
+        throw new AppError(409, "ALREADY_CHECKED_IN", "ผู้เล่นคนนี้เช็คอินไปแล้ว", { status: toCheckinStatusApi(existing.match_checkin_status) });
+    }
+    const inserted = await MatchRepo.insertCheckin({
+        matchId, userId: input.userId, method: 'manual_by_referee', status: 'exception',
+        documentType: null, documentS3Key: null, verifiedByRefereeId: refereeUserId, note: input.note ?? null,
+    });
+    const checkin = inserted ?? (await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId))!;
+    return { id: checkin.match_checkin_id, userId: input.userId, method: 'manual_by_referee' as const,
+             status: toCheckinStatusApi(checkin.match_checkin_status), checkedInAt: checkin.checked_in_at };
 }
 
 // M14/M15 ตัดสินได้ครั้งเดียว และเฉพาะเช็คอินแบบรูปที่รอตรวจ (pending) — QR ผ่านอัตโนมัติไม่ต้องตรวจ

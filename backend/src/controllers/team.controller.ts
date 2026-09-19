@@ -12,7 +12,7 @@ export async function getMyTeam(req : Request , res : Response){
 }
 
 export async function getTeamById(req : Request , res : Response){
-    res.status(200).json(await TeamService.getTeamById(Number(req.params['id'])));
+    res.status(200).json(await TeamService.getTeamById(parseId(req.params['id'], 'รหัสทีม')));
 }
 
 export async function updateTeamById(req : Request , res : Response){
@@ -32,7 +32,7 @@ export async function deleteTeamById(req : Request , res : Response){
 
 //-- Member
 export  async function getTeamMember(req : Request , res : Response){
-    return res.status(200).json(await TeamService.getTeamMemberById(Number(req.params['id']) , req.user!.user_id));
+    return res.status(200).json(await TeamService.getTeamMemberById(parseId(req.params['id'], 'รหัสทีม') , req.user!.user_id));
 }
 
 export async function updateTeamMember(req : Request , res : Response){

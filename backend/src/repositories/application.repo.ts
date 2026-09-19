@@ -216,6 +216,23 @@ export async function findTeamTournamentConflictForUser(teamId: number, userId: 
     return rows[0] ?? null;
 }
 
+/** A8: ORG หรือกรรมการ active ของทัวร์ที่ทีมนี้สมัคร (pending/approved) ดู roster ได้ — เช็คอินด้วยมือต้องมีรายชื่อ */
+export async function isTournamentStaffOfTeam(teamId: number, userId: number): Promise<boolean> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1
+         FROM tournament_applications a
+         JOIN tournaments t ON t.tournament_id = a.tournament_id
+         WHERE a.team_id = ? AND a.tournament_application_status IN ('pending', 'approved')
+           AND (t.requested_by_user_id = ?
+                OR EXISTS (SELECT 1 FROM tournament_referees tr
+                           WHERE tr.tournament_id = t.tournament_id AND tr.user_id = ?
+                             AND tr.invitation_status = 'accepted' AND tr.removed_at IS NULL))
+         LIMIT 1`,
+        [teamId, userId, userId]
+    );
+    return rows.length > 0;
+}
+
 export type EligibilityRuleRow = {
     rule_type: 'year' | 'faculty';
     rule_value: number;
@@ -231,7 +248,8 @@ export async function findEligibilityRules(tournamentId: number): Promise<Eligib
 
 export async function findExistingApplication(tournamentId: number, teamId: number): Promise<{ tournament_application_id: number } | null> {
     const [rows] = await pool.query<({ tournament_application_id: number } & RowDataPacket)[]>(
-        "SELECT tournament_application_id FROM tournament_applications WHERE tournament_id = ? AND team_id = ?",
+        // นับเฉพาะใบที่ยังมีผล — cancel/withdraw/reject แล้วสมัครใหม่ได้ (FE gaps 19 ก.ย.)
+        "SELECT tournament_application_id FROM tournament_applications WHERE tournament_id = ? AND team_id = ? AND tournament_application_status IN ('pending', 'approved')",
         [tournamentId, teamId]
     );
     const app = rows[0];

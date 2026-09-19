@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
+  isTournamentStaffOfTeam: vi.fn(() => Promise.resolve(false)),
 }));
 
 vi.mock('../../repositories/team.repo.js', () => ({

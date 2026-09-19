@@ -41,7 +41,7 @@ export async function updateResolveMatchResult(req : Request , res : Response){
 
 export async function getVerifiedResult(req : Request , res : Response){
     const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
-    return res.status(200).json(await MatchResService.getVerifiedResult(matchId));
+    return res.status(200).json(await MatchResService.getVerifiedResult(matchId , req.user?.user_id));
 }
 
 export async function updatePlayerStat(req : Request , res : Response){

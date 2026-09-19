@@ -99,9 +99,11 @@ describe('team.controller getTeamById()', () => {
     const res = makeRes();
     const serviceResult = { id: 42, name: 'Team A' };
     mockedTeamService.getTeamById.mockResolvedValue(serviceResult as any);
+    mockedParseId.mockReturnValueOnce(42);   // A2: ใช้ parseId แทน Number() → id ไม่ใช่ตัวเลขได้ 400 ไม่ใช่ 500
 
     await getTeamById(req, res);
 
+    expect(mockedParseId).toHaveBeenCalledWith('42', 'รหัสทีม');
     expect(mockedTeamService.getTeamById).toHaveBeenCalledWith(42);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(serviceResult);
@@ -180,6 +182,7 @@ describe('team.controller getTeamMember()', () => {
     const res = makeRes();
     const serviceResult = { user_id: 5, position: 'starter' };
     mockedTeamService.getTeamMemberById.mockResolvedValue(serviceResult as any);
+    mockedParseId.mockReturnValueOnce(10);
 
     await getTeamMember(req, res);
 

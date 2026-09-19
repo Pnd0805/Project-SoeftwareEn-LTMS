@@ -293,10 +293,12 @@ export async function isUserInTeams(userId: number, teamIds: number[]): Promise<
 type InsertCheckinInput = {
     matchId: number;
     userId: number;
-    method: 'qr_onsite' | 'photo_online';
-    status: 'success' | 'pending';
+    method: 'qr_onsite' | 'photo_online' | 'manual_by_referee';
+    status: 'success' | 'pending' | 'exception';
     documentType: 'student_id' | 'national_id' | null;
     documentS3Key: string | null;
+    verifiedByRefereeId?: number;   // manual_by_referee: กรรมการที่กดให้ + verified_at = NOW()
+    note?: string | null;           // เหตุผลที่อนุโลม เก็บใน rejection_reason (คอลัมน์ข้อความเดียวที่มี)
 };
 
 /** คืน null ถ้าชน UNIQUE(match_id, user_id) — คนเดียวกันเช็คอินแมตช์นี้ไปแล้ว (service จะดึงแถวเดิมมาตอบแทน) */
@@ -304,9 +306,11 @@ export async function insertCheckin(input: InsertCheckinInput): Promise<MatchChe
     let result: ResultSetHeader;
     try {
         [result] = await pool.query<ResultSetHeader>(
-            `INSERT INTO match_checkins (match_id, user_id, method, match_checkin_status, document_type, document_s3_key)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [input.matchId, input.userId, input.method, input.status, input.documentType, input.documentS3Key]
+            `INSERT INTO match_checkins (match_id, user_id, method, match_checkin_status, document_type, document_s3_key,
+                                         verified_by_referee_id, verified_at, rejection_reason)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ${input.verifiedByRefereeId ? 'NOW()' : 'NULL'}, ?)`,
+            [input.matchId, input.userId, input.method, input.status, input.documentType, input.documentS3Key,
+             input.verifiedByRefereeId ?? null, input.note ?? null]
         );
     } catch (err) {
         if ((err as { code?: string }).code === 'ER_DUP_ENTRY') return null;
@@ -368,7 +372,7 @@ export async function findRefereeCoverage(tournamentId : number): Promise<MatchR
     return rows;
 }
 
-export async function updateLivestreamUrl(matchId : number , youtubeUrl : string): Promise<boolean>{
+export async function updateLivestreamUrl(matchId : number , youtubeUrl : string | null): Promise<boolean>{
     const [result] = await pool.query<ResultSetHeader>(
         'UPDATE matches SET livestream_url = ?, updated_at = NOW() WHERE match_id = ?',
         [youtubeUrl, matchId]);

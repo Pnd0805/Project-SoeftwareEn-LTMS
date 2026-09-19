@@ -86,16 +86,12 @@ export async function listTournamentReferees(tournamentId : number){
     const rows = await RefRepo.findLatestPerUserByTournament(tournamentId);
     const items = rows.map(toTournamentRefereeDto);
 
-    // ตอบรับแล้วกี่คน — ตัวเลขที่แสดงบนหน้าจอ
-    const acceptedCount = items.filter(i => i.invitationStatus === 'accepted').length;
+    // acceptedCount = พร้อมปฏิบัติงานจริง (active) — คนนอกที่ admin ยังไม่อนุมัติไม่นับ (FE gaps 19 ก.ย. / FR-RM-02)
+    // effectiveCount คงไว้เป็นชื่อเดิมค่าเดียวกัน · awaitingAdminCount = ตอบรับแล้วแต่รอ admin
+    const accepted = items.filter(i => i.invitationStatus === 'accepted');
+    const activeCount = accepted.filter(i => !i.isExternal || i.externalApprovalStatus === 'approved').length;
 
-    // พร้อมปฏิบัติงานจริงกี่คน — กรรมการภายนอกที่ admin ยังไม่อนุมัติ ยังคุมแมตช์ไม่ได้
-    //  BR-10 (C13 publish) ต้องเช็คตัวนี้ ไม่ใช่ acceptedCount 
-    const effectiveCount = items.filter(i =>
-        i.invitationStatus === 'accepted'
-        && (!i.isExternal || i.externalApprovalStatus === 'approved')).length;
-
-    return { items, acceptedCount, effectiveCount };
+    return { items, acceptedCount : activeCount, effectiveCount : activeCount, awaitingAdminCount : accepted.length - activeCount };
 }
 
 export async function listMyRefereeInvitations(userId : number){
