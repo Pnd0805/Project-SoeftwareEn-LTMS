@@ -230,7 +230,6 @@ describe('listTournamentReferees', () => {
         { id: 2, invitationStatus: 'pending' },
       ],
       acceptedCount: 1,
-      effectiveCount: 1,
       awaitingAdminCount: 0,
     });
   });
@@ -250,7 +249,7 @@ describe('listTournamentReferees', () => {
 
     const result = await refereeService.listTournamentReferees(20);
 
-    expect(result).toEqual({ items: [], acceptedCount: 0, effectiveCount: 0, awaitingAdminCount: 0 });
+    expect(result).toEqual({ items: [], acceptedCount: 0, awaitingAdminCount: 0 });
   });
 });
 

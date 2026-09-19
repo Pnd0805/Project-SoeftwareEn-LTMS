@@ -87,11 +87,11 @@ export async function listTournamentReferees(tournamentId : number){
     const items = rows.map(toTournamentRefereeDto);
 
     // acceptedCount = พร้อมปฏิบัติงานจริง (active) — คนนอกที่ admin ยังไม่อนุมัติไม่นับ (FE gaps 19 ก.ย. / FR-RM-02)
-    // effectiveCount คงไว้เป็นชื่อเดิมค่าเดียวกัน · awaitingAdminCount = ตอบรับแล้วแต่รอ admin
+    // awaitingAdminCount = ตอบรับแล้วแต่รอ admin · (effectiveCount เดิมถูกตัด — ค่าเดียวกับ acceptedCount)
     const accepted = items.filter(i => i.invitationStatus === 'accepted');
     const activeCount = accepted.filter(i => !i.isExternal || i.externalApprovalStatus === 'approved').length;
 
-    return { items, acceptedCount : activeCount, effectiveCount : activeCount, awaitingAdminCount : accepted.length - activeCount };
+    return { items, acceptedCount : activeCount, awaitingAdminCount : accepted.length - activeCount };
 }
 
 export async function listMyRefereeInvitations(userId : number){

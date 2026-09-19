@@ -27,13 +27,14 @@ export async function hasInProgressMatch(tournamentId : number, teamId : number)
     return rows.length > 0;
 }
 
-/** ทีมนี้ถอนตัวจากทัวร์แล้วหรือยัง (tournament_applications.withdrawn) */
+/** ทีมนี้ถอนตัวจากทัวร์แล้วหรือยัง — ดูใบสมัคร "ล่าสุด" เพราะถอนแล้วสมัครใหม่ได้ (A1) ใบเก่า withdrawn ยังอยู่เป็นประวัติ */
 export async function isTeamWithdrawn(tournamentId : number, teamId : number): Promise<boolean>{
-    const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT 1 FROM tournament_applications
-         WHERE tournament_id = ? AND team_id = ? AND tournament_application_status = 'withdrawn' LIMIT 1`,
+    const [rows] = await pool.query<(RowDataPacket & { st : string })[]>(
+        `SELECT tournament_application_status AS st FROM tournament_applications
+         WHERE tournament_id = ? AND team_id = ?
+         ORDER BY tournament_application_id DESC LIMIT 1`,
         [tournamentId, teamId]);
-    return rows.length > 0;
+    return rows[0]?.st === 'withdrawn';
 }
 
 export async function findTeamLeaderId(teamId : number): Promise<number | null>{

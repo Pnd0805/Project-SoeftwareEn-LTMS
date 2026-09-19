@@ -109,7 +109,7 @@ WHERE mr.tournament_referee_id = ?
 - `requiredRefereeCount` / `findMaxConcurrentRefereeNeed` (commit `f7017d9`) **กลายเป็นของเก่า** → เปลี่ยนเป็น query หา "แมตช์ที่ยังขาด"
 - **F03 ถอดกรรมการ**: จาก "ถอดแล้วต่ำกว่าขั้นต่ำไหม" เป็น "ถอดแล้วแมตช์ X, Y จะไม่มีคน" — ต้องตัดสินใจว่า **ห้าม** หรือ **ยอมแต่แจ้ง**
 - จุด publish / เปิดทัวร์ของทีม Tournaments ต้องเรียก coverage check ตัวใหม่
-- `acceptedCount` / `effectiveCount` ใน F02 มีความหมายน้อยลง ควรเปลี่ยนเป็น `matchesCovered / matchesTotal`
+- `acceptedCount` (active) / `awaitingAdminCount` ใน F02 มีความหมายน้อยลง ควรเปลี่ยนเป็น `matchesCovered / matchesTotal`
 - สไลด์หน้า 3 (BR-10 formula) ต้องแก้ตาม
 
 ### 4.3 กรรมการภายนอกชนกับ "accept แล้วลงแมตช์เลย"
