@@ -160,13 +160,21 @@ export async function openMatchCheckin(matchId: number): Promise<boolean> {
     return result.affectedRows === 1;
 }
 
+/**
+ * นับเฉพาะ "คนที่ทีมส่งลงแข่งในทัวร์นี้" (application_players ของใบสมัครที่อนุมัติแล้ว)
+ * ★ เดิมนับสมาชิกทีมคนไหนก็ได้ — คนที่ไม่ได้ถูกส่งลงแข่งจึงทำให้ครบ min_members ได้ (มติ 19 ก.ย. 2569)
+ */
 export async function countSuccessfulCheckins(matchId: number, teamId: number | null): Promise<number> {
     if (teamId === null) return 0;
     const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
         `SELECT COUNT(*) AS cnt FROM match_checkins mc
-         JOIN team_members tm ON mc.user_id = tm.user_id
-         WHERE mc.match_id = ? AND tm.team_id = ? AND mc.match_checkin_status IN ('success', 'exception')`,
-        [matchId, teamId]
+         JOIN matches m ON m.match_id = mc.match_id
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id AND ta.team_id = ?
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+              AND ap.user_id = mc.user_id
+         WHERE mc.match_id = ? AND mc.match_checkin_status IN ('success', 'exception')`,
+        [teamId, matchId]
     );
     return rows[0]?.cnt ?? 0;
 }
@@ -280,14 +288,52 @@ export async function findCheckinByMatchAndUser(matchId: number, userId: number)
     return rows[0] ?? null;
 }
 
-export async function isUserInTeams(userId: number, teamIds: number[]): Promise<boolean> {
-    if (teamIds.length === 0) return false;
-    const placeholders = teamIds.map(() => '?').join(', ');
+/**
+ * คนนี้ถูกทีมส่งลงแข่งในแมตช์นี้ไหม (ใช้กับ M12 เช็คอิน และ M16 ขอลิงก์อัปรูป)
+ * ★ เดิมถามแค่ "อยู่ในทีมไหม" — สมาชิกที่ไม่ได้ถูกส่งลงแข่งจึงเช็คอินได้ (มติ 19 ก.ย. 2569)
+ */
+export async function isRegisteredPlayerOfMatch(userId: number, matchId: number): Promise<boolean> {
     const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT 1 FROM team_members WHERE user_id = ? AND team_id IN (${placeholders}) LIMIT 1`,
-        [userId, ...teamIds]
+        `SELECT 1
+         FROM matches m
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+              AND ta.team_id IN (m.team_a_id, m.team_b_id)
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+              AND ap.user_id = ?
+         WHERE m.match_id = ?
+         LIMIT 1`,
+        [userId, matchId]
     );
     return rows.length > 0;
+}
+
+export type MatchLineupRow = {
+    team_id: number;
+    user_id: number;
+    full_name: string;
+    profile_image_key: string | null;
+    match_checkin_status: 'success' | 'rejected' | 'exception' | 'pending' | null;
+    checked_in_at: Date | null;
+};
+
+/** M19 — รายชื่อผู้เล่นที่ลงแข่งของทั้งสองทีม พร้อมสถานะเช็คอินของแมตช์นี้ */
+export async function findLineupsByMatch(matchId: number): Promise<MatchLineupRow[]> {
+    const [rows] = await pool.query<(MatchLineupRow & RowDataPacket)[]>(
+        `SELECT ta.team_id, u.user_id, u.full_name, u.profile_image_key,
+                mc.match_checkin_status, mc.checked_in_at
+         FROM matches m
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+              AND ta.team_id IN (m.team_a_id, m.team_b_id)
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+         JOIN users u ON u.user_id = ap.user_id
+         LEFT JOIN match_checkins mc ON mc.match_id = m.match_id AND mc.user_id = u.user_id
+         WHERE m.match_id = ?
+         ORDER BY ta.team_id, u.full_name`,
+        [matchId]
+    );
+    return rows;
 }
 
 type InsertCheckinInput = {

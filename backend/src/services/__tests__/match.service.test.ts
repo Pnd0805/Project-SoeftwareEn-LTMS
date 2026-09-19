@@ -12,8 +12,9 @@ vi.mock('../../repositories/match.repo.js', () => ({
   rejectCheckin: vi.fn(),
   findCheckinsByMatch: vi.fn(),
   findCheckinByMatchAndUser: vi.fn(),
-  isUserInTeams: vi.fn(),
+  isRegisteredPlayerOfMatch: vi.fn(),
   insertCheckin: vi.fn(),
+  findLineupsByMatch: vi.fn(),
 }));
 
 vi.mock('../../repositories/tournament.repo.js', () => ({
@@ -33,6 +34,7 @@ vi.mock('../../mappers/match.mapper.js', () => ({
   toMatchListItemDto: vi.fn(),
   toCheckinListItemDto: vi.fn((row: Record<string, unknown>, documentUrl: string | null) => ({ id: row['match_checkin_id'], documentUrl })),
   toCheckinStatusApi: vi.fn((s: string) => s),
+  toLineupPlayerDto: vi.fn((row: Record<string, unknown>) => ({ userId: row['user_id'], checkinStatus: row['match_checkin_status'] })),
 }));
 
 vi.mock('../../utils/checkinQr.js', () => ({
@@ -218,6 +220,42 @@ describe('getCheckinQr (M11)', () => {
   });
 });
 
+describe('getMatchLineups (M19) — รายชื่อผู้เล่นที่ลงแข่งของทั้งสองทีม', () => {
+  it('splits the registered players by team and keeps their check-in status', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue({ match_id: 1, team_a_id: 11, team_b_id: 12, tournament_id: 20 } as never);
+    vi.mocked(MatchRepo.findLineupsByMatch).mockResolvedValue([
+      { team_id: 11, user_id: 101, match_checkin_status: 'success' },
+      { team_id: 11, user_id: 102, match_checkin_status: null },
+      { team_id: 12, user_id: 201, match_checkin_status: 'pending' },
+    ] as never);
+
+    const result = await matchService.getMatchLineups(1);
+
+    expect(result).toEqual({
+      matchId: 1,
+      teamA: { teamId: 11, players: [{ userId: 101, checkinStatus: 'success' }, { userId: 102, checkinStatus: null }] },
+      teamB: { teamId: 12, players: [{ userId: 201, checkinStatus: 'pending' }] },
+    });
+  });
+
+  it('returns null for a side that has no team yet (waiting for the previous round)', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue({ match_id: 2, team_a_id: 11, team_b_id: null, tournament_id: 20 } as never);
+    vi.mocked(MatchRepo.findLineupsByMatch).mockResolvedValue([] as never);
+
+    const result = await matchService.getMatchLineups(2);
+
+    expect(result.teamA).toEqual({ teamId: 11, players: [] });
+    expect(result.teamB).toBeNull();
+  });
+
+  it('returns MATCH_NOT_FOUND for an unknown match', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(null);
+
+    await expect(matchService.getMatchLineups(999)).rejects.toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+    expect(MatchRepo.findLineupsByMatch).not.toHaveBeenCalled();
+  });
+});
+
 describe('getMatchCheckins (M13) — document photos for the match referee only', () => {
   const rows = [
     { match_checkin_id: 1, method: 'qr_onsite', document_s3_key: null },
@@ -281,7 +319,7 @@ describe('submitCheckin (M12)', () => {
   it('creates a check-in while check-in is open and the user is in the roster', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open' }));
     vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValue(null);
-    vi.mocked(MatchRepo.isUserInTeams).mockResolvedValue(true);
+    vi.mocked(MatchRepo.isRegisteredPlayerOfMatch).mockResolvedValue(true);
     vi.mocked(MatchRepo.insertCheckin).mockResolvedValue({ match_checkin_id: 6, match_checkin_status: 'success', checked_in_at: new Date(0) } as never);
 
     await expect(matchService.submitCheckin(1, 9001, qrInput)).resolves.toMatchObject({ isNew: true, data: { id: 6 } });

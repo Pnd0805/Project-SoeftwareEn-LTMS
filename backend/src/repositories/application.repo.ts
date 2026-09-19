@@ -251,3 +251,92 @@ export async function insertApplication(
     );
     return result.insertId;
 }
+
+// ---- รายชื่อผู้เล่นที่ส่งลงแข่ง (application_players, migration 014) ----
+
+export type PlayerConflictRow = {
+    user_id: number;
+    full_name: string;
+    team_id: number;
+    team_name: string;
+};
+
+/** คนที่มีชื่อลงแข่งทัวร์นี้กับทีมอื่นอยู่แล้ว (ใบสมัครที่ยังมีชีวิต — ใบที่ตายแล้วถูกลบแถวทิ้ง) */
+export async function findPlayerConflicts(tournamentId: number, userIds: number[]): Promise<PlayerConflictRow[]> {
+    if (userIds.length === 0) return [];
+    const [rows] = await pool.query<(PlayerConflictRow & RowDataPacket)[]>(
+        `SELECT ap.user_id, u.full_name, tm.team_id, tm.name AS team_name
+         FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         JOIN teams tm ON tm.team_id = ta.team_id
+         JOIN users u ON u.user_id = ap.user_id
+         WHERE ap.tournament_id = ? AND ap.user_id IN (?)`,
+        [tournamentId, userIds]
+    );
+    return rows;
+}
+
+/**
+ * P01 — ใบสมัคร + รายชื่อผู้เล่น ต้องเกิดพร้อมกันหรือไม่เกิดเลย
+ * คืน null = ชน uq_tournament_player (มีคนถูกส่งลงทัวร์นี้กับทีมอื่นไปแล้ว) → service ไปหาว่าใครชนด้วย findPlayerConflicts
+ */
+export async function insertApplicationWithPlayers(
+    tournamentId: number,
+    teamId: number,
+    hardFilterDetails: unknown,
+    playerIds: number[]
+): Promise<number | null> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [result] = await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_applications
+                (tournament_id, team_id, tournament_application_status, hard_filter_passed, hard_filter_details)
+             VALUES (?, ?, 'pending', TRUE, ?)`,
+            [tournamentId, teamId, JSON.stringify(hardFilterDetails)]
+        );
+        const applicationId = result.insertId;
+
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO application_players (tournament_application_id, tournament_id, user_id) VALUES ?`,
+            [playerIds.map(userId => [applicationId, tournamentId, userId])]
+        );
+
+        await conn.commit();
+        return applicationId;
+    } catch (err) {
+        await conn.rollback();
+        if ((err as { code?: string }).code === 'ER_DUP_ENTRY') return null;
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+export type ApplicationPlayerRow = {
+    user_id: number;
+    full_name: string;
+    profile_image_key: string | null;
+};
+
+export async function findPlayersByApplication(applicationId: number): Promise<ApplicationPlayerRow[]> {
+    const [rows] = await pool.query<(ApplicationPlayerRow & RowDataPacket)[]>(
+        `SELECT u.user_id, u.full_name, u.profile_image_key
+         FROM application_players ap
+         JOIN users u ON u.user_id = ap.user_id
+         WHERE ap.tournament_application_id = ?
+         ORDER BY u.full_name`,
+        [applicationId]
+    );
+    return rows;
+}
+
+/** ใบสมัครตาย (cancel/reject/withdraw) → ปลดล็อกผู้เล่นให้ไปอยู่ทีมอื่นในทัวร์เดียวกันได้ */
+export async function deletePlayersByApplication(applicationId: number): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE FROM application_players WHERE tournament_application_id = ?`,
+        [applicationId]
+    );
+    return result.affectedRows;
+}

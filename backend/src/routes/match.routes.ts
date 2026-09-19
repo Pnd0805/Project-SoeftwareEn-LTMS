@@ -12,6 +12,8 @@ router.post('/tournaments/:id/bracket' , requireAuth , requireOrganizer , valida
 router.get('/tournaments/:id/bracket' , Match.getBracket);
 router.get('/tournaments/:id/matches' , Match.getTournamentMatches);
 router.get('/matches/:id' , Match.getMatchDetail);
+// M19 รายชื่อผู้เล่นที่ทีมส่งลงแข่ง + สถานะเช็คอิน — เปิดสาธารณะเหมือน M03/M04 (มติ 19 ก.ย. 2569)
+router.get('/matches/:id/lineups' , Match.getMatchLineups);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
 router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);

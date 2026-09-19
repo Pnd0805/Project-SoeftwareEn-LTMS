@@ -1,4 +1,4 @@
-import type { MatchDetailRow, MatchListRow, MatchCheckinListRow } from '../repositories/match.repo.js';
+import type { MatchDetailRow, MatchListRow, MatchCheckinListRow, MatchLineupRow } from '../repositories/match.repo.js';
 import type { BracketNodeListRow } from '../repositories/bracketNode.repo.js';
 
 export type MatchListItemDto = {
@@ -96,6 +96,24 @@ export function toCheckinListItemDto(row: MatchCheckinListRow, documentUrl: stri
         status: toCheckinStatusApi(row.match_checkin_status),
         documentType: row.document_type,
         documentUrl,
+        checkedInAt: row.checked_in_at,
+    };
+}
+
+export type LineupPlayerDto = {
+    userId: number;
+    fullName: string;
+    avatarUrl: string | null;
+    checkinStatus: string | null;      // null = ยังไม่ได้เช็คอิน
+    checkedInAt: Date | null;
+};
+
+export function toLineupPlayerDto(row: MatchLineupRow): LineupPlayerDto {
+    return {
+        userId: row.user_id,
+        fullName: row.full_name,
+        avatarUrl: row.profile_image_key,
+        checkinStatus: row.match_checkin_status === null ? null : toCheckinStatusApi(row.match_checkin_status),
         checkedInAt: row.checked_in_at,
     };
 }

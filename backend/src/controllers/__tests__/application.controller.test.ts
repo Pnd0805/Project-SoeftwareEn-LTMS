@@ -276,7 +276,7 @@ describe('application.controller applyTournament()', () => {
     const req = {
       user: { user_id: 1 },
       params: { id: '3' },
-      body: { teamId: 9 },
+      body: { teamId: 9, playerIds: [11, 12] },
     } as unknown as Request;
     const res = makeRes();
     mockedParseId.mockReturnValue(3);
@@ -286,7 +286,7 @@ describe('application.controller applyTournament()', () => {
     await applyTournament(req, res);
 
     expect(mockedParseId).toHaveBeenCalledWith('3', 'รหัสทัวร์นาเมนต์');
-    expect(mockedApplicationService.applyTournament).toHaveBeenCalledWith(3, 9, 1);
+    expect(mockedApplicationService.applyTournament).toHaveBeenCalledWith(3, 9, 1, [11, 12]);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(serviceResult);
   });
@@ -295,7 +295,7 @@ describe('application.controller applyTournament()', () => {
     const req = {
       user: { user_id: 1 },
       params: { id: '3' },
-      body: { teamId: 9 },
+      body: { teamId: 9, playerIds: [11, 12] },
     } as unknown as Request;
     const res = makeRes();
     mockedParseId.mockReturnValue(3);

@@ -25,22 +25,22 @@ describe('rejectApplicationSchema', () => {
 
 describe('applyTournamentSchema', () => {
   it('accepts a positive integer teamId', () => {
-    const result = applyTournamentSchema.safeParse({ teamId: 5 });
+    const result = applyTournamentSchema.safeParse({ teamId: 5, playerIds: [1, 2] });
     expect(result.success).toBe(true);
   });
 
   it('rejects teamId 0', () => {
-    const result = applyTournamentSchema.safeParse({ teamId: 0 });
+    const result = applyTournamentSchema.safeParse({ teamId: 0, playerIds: [1] });
     expect(result.success).toBe(false);
   });
 
   it('rejects a negative teamId', () => {
-    const result = applyTournamentSchema.safeParse({ teamId: -1 });
+    const result = applyTournamentSchema.safeParse({ teamId: -1, playerIds: [1] });
     expect(result.success).toBe(false);
   });
 
   it('rejects a decimal teamId', () => {
-    const result = applyTournamentSchema.safeParse({ teamId: 1.5 });
+    const result = applyTournamentSchema.safeParse({ teamId: 1.5, playerIds: [1] });
     expect(result.success).toBe(false);
   });
 
@@ -50,7 +50,28 @@ describe('applyTournamentSchema', () => {
   });
 
   it('rejects a string teamId', () => {
-    const result = applyTournamentSchema.safeParse({ teamId: '5' });
+    const result = applyTournamentSchema.safeParse({ teamId: '5', playerIds: [1] });
+    expect(result.success).toBe(false);
+  });
+
+  // รายชื่อผู้เล่นที่ลงแข่ง (มติ 19 ก.ย. 2569) — จำนวนเทียบ min/max ของกีฬาทำใน service
+  it('rejects a missing playerIds', () => {
+    const result = applyTournamentSchema.safeParse({ teamId: 5 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty playerIds', () => {
+    const result = applyTournamentSchema.safeParse({ teamId: 5, playerIds: [] });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects duplicated playerIds', () => {
+    const result = applyTournamentSchema.safeParse({ teamId: 5, playerIds: [1, 1, 2] });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-integer playerId', () => {
+    const result = applyTournamentSchema.safeParse({ teamId: 5, playerIds: [1, 2.5] });
     expect(result.success).toBe(false);
   });
 });
