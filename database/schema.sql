@@ -720,4 +720,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('010_sport_types_renumber.sql'),
   ('011_walkover.sql'),
   ('012_forfeit_organizer_role.sql'),
-  ('013_team_invitations_expires_at.sql');
+  ('013_team_invitations_expires_at.sql'),
+  ('014_bracket_nodes_backfill_teams.sql');

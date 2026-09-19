@@ -3,6 +3,7 @@ import pool from '../config/db.js';
 import type { MatchResultRow, MatchRow, UserRow } from '../types/db.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as BracketNodeRepo from '../repositories/bracketNode.repo.js';
 
 import type { SportStatDefinitionRow , PlayerMatchStatValueRow , TournamentStandingRow , TeamRow} from '../types/db.js';
 
@@ -60,6 +61,7 @@ export async function verifyMatchResult(matchResId : number, matchId : number , 
                                                 WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`
                                                 ,[ matchRes!.winner_team_id , match!.next_match_id , match!.tournament_id]);
             }
+            await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, match!.next_match_id);   // B2: หน้าสายเห็นผู้ชนะในรอบถัดไป
         }
 
         if(match!.loser_next_match_id !== null){
@@ -71,6 +73,7 @@ export async function verifyMatchResult(matchResId : number, matchId : number , 
                                                 WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`
                                                 ,[ loser_id , match!.loser_next_match_id , match!.tournament_id]);
             }
+            await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, match!.loser_next_match_id);
         }
 
         const tour = await TournamentRepo.findTournamentById(match!.tournament_id);

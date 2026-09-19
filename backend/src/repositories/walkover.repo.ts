@@ -2,6 +2,7 @@ import pool from '../config/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 import type { MatchRow, SportTypeRow } from '../types/db.js';
+import * as BracketNodeRepo from './bracketNode.repo.js';
 
 /**
  * walkover (ชนะบาย) — GUIDE/11 §10.4
@@ -199,4 +200,5 @@ async function placeTeam(conn : PoolConnection, matchId : number, tournamentId :
             `UPDATE matches SET team_b_id = ? WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`,
             [teamId, matchId, tournamentId]);
     }
+    await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, matchId);   // B2: bracket_nodes ตามช่องของ matches เสมอ
 }

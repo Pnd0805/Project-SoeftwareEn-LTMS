@@ -23,6 +23,20 @@ export async function insertBracketNodeTx(conn: PoolConnection, input: InsertBra
     return result.insertId;
 }
 
+/**
+ * B2 (รายงาน FE 19 ก.ย.): matches คือแหล่งความจริงของ "ใครอยู่ช่องไหน" — ทุกครั้งที่วางทีมลงแมตช์ (verify / walkover / bye)
+ * ให้คัดลอกช่อง a/b ของแมตช์นั้นลง bracket_nodes ที่ชี้มา เพื่อให้ M02 (อ่านจาก bracket_nodes) ไม่ว่างในรอบถัดไป
+ * ทัวร์ที่ไม่มี node (สายที่สร้างนอก C10) → แตะ 0 แถว ไม่ error · migration 014 backfill ข้อมูลเก่า
+ */
+export async function syncNodeTeamsFromMatchTx(conn: PoolConnection, matchId: number): Promise<void> {
+    await conn.query<ResultSetHeader>(
+        `UPDATE bracket_nodes n JOIN matches m ON n.match_id = m.match_id
+         SET n.team_a_id = m.team_a_id, n.team_b_id = m.team_b_id
+         WHERE m.match_id = ?`,
+        [matchId]
+    );
+}
+
 export type BracketNodeListRow = {
     bracket_node_id: number;
     bracket_type: 'winners' | 'losers' | 'grand_final';
