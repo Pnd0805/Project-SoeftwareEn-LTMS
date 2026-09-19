@@ -35,11 +35,6 @@ export  async function getTeamMember(req : Request , res : Response){
     return res.status(200).json(await TeamService.getTeamMemberById(Number(req.params['id']) , req.user!.user_id));
 }
 
-export async function updateTeamMember(req : Request , res : Response){
-    const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
-    const userId = parseId(req.params['uid'], 'รหัสผู้ใช้' , 'uid');
-    return res.status(200).json(await TeamService.updateMember(userId , teamId , req.body['position']));
-}
 
 export async function deleteMember(req : Request , res : Response){
     const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');

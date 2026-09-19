@@ -126,7 +126,7 @@ CREATE TABLE team_members (
   team_member_id INT PRIMARY KEY AUTO_INCREMENT,
   team_id INT NOT NULL,
   user_id INT NOT NULL,
-  position ENUM('starter','substitute') NOT NULL DEFAULT 'starter',
+  -- ไม่มี position: ทีม = คลังผู้เล่น ใครลงแข่งดูที่ application_players (มติ 19 ก.ย. 2569, migration 015)
   joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),

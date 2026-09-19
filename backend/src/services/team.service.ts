@@ -2,10 +2,11 @@ import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
+import * as NotificationRepo from '../repositories/notification.repo.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
-import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toUpdateMember, toGetAllInvitation, getTeamOfficialRequestDto } from '../mappers/team.mapper.js';
+import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toGetAllInvitation, getTeamOfficialRequestDto } from '../mappers/team.mapper.js';
 import { toTeamMemberDto, type MyTeam } from '../mappers/team.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 
@@ -81,6 +82,17 @@ export async function deleteTeam(teamId : number){
         throw new AppError(404 , "TEAM_NOT_FOUND" , "ไม่พบทีมนี้ในระบบ");
     }
 
+    // ★ มติ 19 ก.ย. 2569 — ลบทีมหนีกลางทัวร์ไม่ได้ ไม่งั้นสายพังเพราะแมตช์ยังชี้มาที่ทีมนี้
+    //   ต้องถอนทีมออกจากทัวร์ที่สร้างสายแล้วก่อน (P08) ระบบจะจัดการชนะบายให้เอง
+    const locked = (await ApplicationRepo.findLiveSquadsOfTeam(teamId)).filter(s => s.match_count > 0);
+    if(locked.length > 0){
+        throw new AppError(409 , "TEAM_LOCKED_IN_TOURNAMENT" ,
+            "ทีมนี้อยู่ในทัวร์นาเมนต์ที่สร้างสายแล้ว ต้องถอนทีมออกจากทัวร์นั้นก่อนถึงจะลบทีมได้" ,
+            { tournaments : locked.map(s => ({ tournamentId : s.tournament_id , name : s.tournament_name })) });
+    }
+
+    // ยังไม่สร้างสาย → ปลดล็อกผู้เล่นทุกคน ไปอยู่ทีมอื่นในทัวร์เดียวกันได้
+    await ApplicationRepo.deleteAllPlayersOfTeamSquads(teamId);
 
     return await TeamRepo.deleteTeam(teamId);
 }
@@ -100,27 +112,44 @@ export async function getTeamMemberById(teamId :number , userId : number){
     return { items : data };
 }
 
-export async function updateMember(userId : number , teamId : number , position : 'starter' | 'substitute'){
-    const user = await TeamRepo.isMemberOf(teamId, userId);
-    if(!user){
-        throw new AppError(404 , "USER_NOT_FOUND" , "ผู้ใช้ไม่อยู่ในทีมนี้");
-    }
-    await TeamRepo.updateMember(userId , teamId , position);
-
-    const member = await TeamRepo.isMemberOf(teamId , userId);
-
-    return toUpdateMember(member!);   
-}
-
 export async function deleteMember(userId : number , teamId : number , sportId : number){
     const user = await TeamRepo.isMemberOf(teamId, userId);
     if(!user){
         throw new AppError(404 , "USER_NOT_FOUND" , "ผู้ใช้ไม่อยู่ในทีมนี้");
     }
 
+    // ★ มติ 19 ก.ย. 2569 — คนที่ถูกส่งลงแข่งในทัวร์ที่สร้างสายแล้ว เอาออกจากทีมไม่ได้
+    //   ต้องถอนทีมออกจากทัวร์นั้นก่อน (P08) เพื่อให้ระบบจัดการชนะบายให้ถูกต้อง
+    const squads = await ApplicationRepo.findLiveSquadsOfTeam(teamId , userId);
+    const locked = squads.filter(s => s.match_count > 0);
+    if(locked.length > 0){
+        throw new AppError(409 , "MEMBER_LOCKED_IN_TOURNAMENT" ,
+            "ผู้เล่นคนนี้ถูกส่งลงแข่งในทัวร์นาเมนต์ที่สร้างสายแล้ว ต้องถอนทีมออกจากทัวร์นั้นก่อน" ,
+            { tournaments : locked.map(s => ({ tournamentId : s.tournament_id , name : s.tournament_name })) });
+    }
+
     await TeamRepo.deleteMember(userId , teamId);
-    const memberCount = await TeamRepo.countMemberByTeamId(teamId);
+    // ยังไม่สร้างสาย → ตัดชื่อออกจากรายชื่อที่ส่งลงแข่งด้วย ผู้เล่นจะไปอยู่ทีมอื่นในทัวร์เดียวกันได้
+    await ApplicationRepo.deletePlayerFromLiveSquads(teamId , userId);
+
     const sport_rule = await SportRepo.findSportTypeById(sportId);
+
+    // ทัวร์ไหนที่รายชื่อเหลือไม่ถึงขั้นต่ำ ต้องแจ้งหัวหน้าทีม ไม่งั้นจะไปรู้ตัวเอาวันแข่ง
+    const team = await TeamRepo.findById(teamId);
+    for(const squad of squads){
+        if(squad.squad_size - 1 >= sport_rule!.min_members) continue;
+        await NotificationRepo.insertNotification({
+            userId : team!.leader_id,
+            type : 'squad_below_minimum',
+            title : 'รายชื่อผู้เล่นไม่ครบขั้นต่ำ',
+            message : `ทัวร์นาเมนต์ "${squad.tournament_name}" เหลือผู้เล่นที่ส่งลงแข่ง ${squad.squad_size - 1} คน ` +
+                      `ต่ำกว่าขั้นต่ำ ${sport_rule!.min_members} คน — ถ้ายังอยู่ในช่วงรับสมัคร ให้ยกเลิกใบสมัครแล้วสมัครใหม่`,
+            relatedEntityType : 'tournament',
+            relatedEntityId : squad.tournament_id,
+        });
+    }
+
+    const memberCount = await TeamRepo.countMemberByTeamId(teamId);
     if(memberCount < sport_rule!.min_members){
         await TeamRepo.updateStatus(teamId , 'Forming');
     }

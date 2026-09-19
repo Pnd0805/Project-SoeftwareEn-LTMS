@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
+  findLiveSquadsOfTeam: vi.fn(() => Promise.resolve([])),
+  deletePlayerFromLiveSquads: vi.fn(),
+  deleteAllPlayersOfTeamSquads: vi.fn(),
+}));
+
+vi.mock('../../repositories/notification.repo.js', () => ({
+  insertNotification: vi.fn(),
 }));
 
 vi.mock('../../repositories/team.repo.js', () => ({
@@ -41,7 +48,6 @@ vi.mock('../../mappers/team.mapper.js', () => ({
   toTeamDto: vi.fn(),
   toTeamMemberDto: vi.fn(),
   toCreateTeamInvitation: vi.fn(),
-  toUpdateMember: vi.fn(),
   toGetAllInvitation: vi.fn(),
   getTeamOfficialRequestDto: vi.fn(),
 }));
@@ -56,6 +62,7 @@ vi.mock('../../utils/checkExist.js', () => ({
 }));
 
 import * as teamService from '../team.service.js';
+import * as NotificationRepo from '../../repositories/notification.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import * as SportRepo from '../../repositories/sportType.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
@@ -65,7 +72,6 @@ import {
   toTeamDto,
   toTeamMemberDto,
   toCreateTeamInvitation,
-  toUpdateMember,
   toGetAllInvitation,
   getTeamOfficialRequestDto,
 } from '../../mappers/team.mapper.js';
@@ -90,7 +96,6 @@ const mockedToMyTeam = vi.mocked(toMyTeam);
 const mockedToTeamDto = vi.mocked(toTeamDto);
 const mockedToTeamMemberDto = vi.mocked(toTeamMemberDto);
 const mockedToCreateTeamInvitation = vi.mocked(toCreateTeamInvitation);
-const mockedToUpdateMember = vi.mocked(toUpdateMember);
 const mockedToGetAllInvitation = vi.mocked(toGetAllInvitation);
 const mockedGetTeamOfficialRequestDto = vi.mocked(getTeamOfficialRequestDto);
 const mockedToUserRef = vi.mocked(toUserRef);
@@ -150,7 +155,6 @@ function makeTeamMember(overrides: Partial<TeamMemberRow> = {}): TeamMemberRow {
     team_member_id: 1,
     team_id: 10,
     user_id: 5,
-    position: 'starter',
     joined_at: new Date(),
     ...overrides,
   };
@@ -357,6 +361,29 @@ describe('deleteTeam', () => {
     expect(result).toBe(1);
   });
 
+  // มติ 19 ก.ย. 2569 — ลบทีมหนีกลางทัวร์ไม่ได้ ต้องถอนทีมออกจากทัวร์ที่สร้างสายแล้วก่อน
+  it('throws TEAM_LOCKED_IN_TOURNAMENT when the team is in a tournament that already has a bracket', async () => {
+    mockedCheckTeam.mockResolvedValue(baseTeamRow);
+    vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 8, squad_size: 11 },
+    ]);
+
+    await expect(teamService.deleteTeam(10)).rejects.toMatchObject({ status: 409, code: 'TEAM_LOCKED_IN_TOURNAMENT' });
+    expect(mockedTeamRepo.deleteTeam).not.toHaveBeenCalled();
+  });
+
+  it('frees the registered players when the team is deleted before any bracket exists', async () => {
+    mockedCheckTeam.mockResolvedValue(baseTeamRow);
+    mockedTeamRepo.deleteTeam.mockResolvedValue(1);
+    vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 11 },
+    ]);
+
+    await teamService.deleteTeam(10);
+
+    expect(ApplicationRepo.deleteAllPlayersOfTeamSquads).toHaveBeenCalledWith(10);
+  });
+
   it('throws TEAM_NOT_FOUND when the team is already soft-deleted', async () => {
     mockedCheckTeam.mockResolvedValue({ ...baseTeamRow, deleted_at: new Date() });
 
@@ -397,36 +424,11 @@ describe('getTeamMemberById', () => {
   });
 });
 
-describe('updateMember', () => {
-  it('updates the member position and returns the refreshed member DTO', async () => {
-    mockedTeamRepo.isMemberOf
-      .mockResolvedValueOnce(makeTeamMember({ position: 'substitute' }))
-      .mockResolvedValueOnce(makeTeamMember({ position: 'starter' }));
-    mockedTeamRepo.updateMember.mockResolvedValue(1);
-    mockedToUpdateMember.mockReturnValue({ userId: 5, position: 'starter' } as any);
-
-    const result = await teamService.updateMember(5, 10, 'starter');
-
-    expect(mockedTeamRepo.updateMember).toHaveBeenCalledWith(5, 10, 'starter');
-    expect(mockedTeamRepo.isMemberOf).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({ userId: 5, position: 'starter' });
-  });
-
-  it('throws USER_NOT_FOUND when the user is not on the team', async () => {
-    mockedTeamRepo.isMemberOf.mockResolvedValue(null);
-
-    await expect(teamService.updateMember(5, 10, 'starter')).rejects.toMatchObject({
-      status: 404,
-      code: 'USER_NOT_FOUND',
-    });
-    expect(mockedTeamRepo.updateMember).not.toHaveBeenCalled();
-  });
-});
-
 describe('deleteMember', () => {
   it('removes the member and leaves the status untouched when the team still meets the minimum', async () => {
     mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
     mockedTeamRepo.deleteMember.mockResolvedValue(1);
+    mockedTeamRepo.findById.mockResolvedValue(baseTeamRow);
     mockedTeamRepo.countMemberByTeamId.mockResolvedValue(5);
     mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, min_members: 3 });
 
@@ -439,6 +441,7 @@ describe('deleteMember', () => {
   it("reverts the team to 'Forming' when the remaining members drop below the sport's minimum", async () => {
     mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
     mockedTeamRepo.deleteMember.mockResolvedValue(1);
+    mockedTeamRepo.findById.mockResolvedValue(baseTeamRow);
     mockedTeamRepo.countMemberByTeamId.mockResolvedValue(2);
     mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, min_members: 3 });
 
@@ -455,6 +458,53 @@ describe('deleteMember', () => {
       code: 'USER_NOT_FOUND',
     });
     expect(mockedTeamRepo.deleteMember).not.toHaveBeenCalled();
+  });
+
+  // มติ 19 ก.ย. 2569 — คนที่ถูกส่งลงแข่งในทัวร์ที่สร้างสายแล้ว เอาออกไม่ได้ ต้องถอนทีมก่อน
+  it('throws MEMBER_LOCKED_IN_TOURNAMENT when the player is registered in a tournament that already has a bracket', async () => {
+    mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
+    vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 8, squad_size: 11 },
+    ]);
+
+    const err: any = await teamService.deleteMember(5, 10, 1).catch((e) => e);
+
+    expect(err).toMatchObject({ status: 409, code: 'MEMBER_LOCKED_IN_TOURNAMENT' });
+    expect(err.extra).toEqual({ tournaments: [{ tournamentId: 20, name: 'Cup' }] });
+    expect(mockedTeamRepo.deleteMember).not.toHaveBeenCalled();
+  });
+
+  it('removes the player from live squads and warns the leader when the squad drops below the minimum', async () => {
+    mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
+    mockedTeamRepo.findById.mockResolvedValue({ ...baseTeamRow, leader_id: 99 });
+    mockedTeamRepo.deleteMember.mockResolvedValue(1);
+    mockedTeamRepo.countMemberByTeamId.mockResolvedValue(5);
+    mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, min_members: 5 });
+    vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 5 },
+    ]);
+
+    await teamService.deleteMember(5, 10, 1);
+
+    expect(ApplicationRepo.deletePlayerFromLiveSquads).toHaveBeenCalledWith(10, 5);
+    expect(NotificationRepo.insertNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 99, type: 'squad_below_minimum', relatedEntityId: 20 }),
+    );
+  });
+
+  it('does not warn when the squad still meets the minimum after the removal', async () => {
+    mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
+    mockedTeamRepo.findById.mockResolvedValue(baseTeamRow);
+    mockedTeamRepo.deleteMember.mockResolvedValue(1);
+    mockedTeamRepo.countMemberByTeamId.mockResolvedValue(8);
+    mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, min_members: 5 });
+    vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 7 },
+    ]);
+
+    await teamService.deleteMember(5, 10, 1);
+
+    expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
   });
 });
 

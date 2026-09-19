@@ -340,3 +340,54 @@ export async function deletePlayersByApplication(applicationId: number): Promise
     );
     return result.affectedRows;
 }
+
+export type LiveSquadRow = {
+    tournament_application_id: number;
+    tournament_id: number;
+    tournament_name: string;
+    match_count: number;      // > 0 = สร้างสายแล้ว → ล็อกรายชื่อ ถอนทีมก่อนถึงจะเอาคนออกได้
+    squad_size: number;
+};
+
+/**
+ * ทัวร์ที่ "ยังมีชีวิต" (pending/approved) ซึ่งทีมนี้ส่งคนนี้ลงแข่งไว้
+ * ใช้ตอนหัวหน้าทีมจะเอาคนออกจากทีม (มติ 19 ก.ย. 2569) — userId = undefined คือดูทั้งทีม (ตอนลบทีม)
+ */
+export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Promise<LiveSquadRow[]> {
+    const [rows] = await pool.query<(LiveSquadRow & RowDataPacket)[]>(
+        `SELECT ta.tournament_application_id, ta.tournament_id, t.name AS tournament_name,
+                (SELECT COUNT(*) FROM matches m WHERE m.tournament_id = ta.tournament_id) AS match_count,
+                (SELECT COUNT(*) FROM application_players p
+                  WHERE p.tournament_application_id = ta.tournament_application_id) AS squad_size
+         FROM tournament_applications ta
+         JOIN tournaments t ON t.tournament_id = ta.tournament_id
+         WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')
+           AND (? IS NULL OR EXISTS (SELECT 1 FROM application_players ap
+                                      WHERE ap.tournament_application_id = ta.tournament_application_id
+                                        AND ap.user_id = ?))`,
+        [teamId, userId ?? null, userId ?? null]
+    );
+    return rows;
+}
+
+/** คนออกจากทีม → ตัดชื่อออกจากรายชื่อที่ส่งลงแข่งของใบสมัครที่ยังมีชีวิต */
+export async function deletePlayerFromLiveSquads(teamId: number, userId: number): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE ap FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         WHERE ta.team_id = ? AND ap.user_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+        [teamId, userId]
+    );
+    return result.affectedRows;
+}
+
+/** ลบทีม → ปลดล็อกผู้เล่นทุกคนของทีมนั้นในทุกใบสมัครที่ยังมีชีวิต */
+export async function deleteAllPlayersOfTeamSquads(teamId: number): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE ap FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+        [teamId]
+    );
+    return result.affectedRows;
+}

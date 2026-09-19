@@ -90,11 +90,10 @@ export type TeamMemberDto = {
     userId : number,
     fullName : string,
     avatarUrl : string | null,
-    position : 'starter' | 'substitute',
     joinedAt : string
 }
 
-export type TeamMemberWithUserRef = Pick<TeamMemberRow , 'position' | 'joined_at'> 
+export type TeamMemberWithUserRef = Pick<TeamMemberRow , 'joined_at'> 
                                    & Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'>;
 
 export function toTeamMemberDto(rows : TeamMemberWithUserRef ) : TeamMemberDto{
@@ -102,15 +101,7 @@ export function toTeamMemberDto(rows : TeamMemberWithUserRef ) : TeamMemberDto{
         userId : rows.user_id,
         fullName : rows.full_name,
         avatarUrl : rows.profile_image_key,
-        position : rows.position,
         joinedAt : rows.joined_at.toISOString()
-    }
-}
-
-export function toUpdateMember(rows : Pick<TeamMemberRow , 'user_id' | 'position'>) : { userId : number , position : 'starter' | 'substitute'}{
-    return {
-        userId : rows.user_id,
-        position : rows.position
     }
 }
 
