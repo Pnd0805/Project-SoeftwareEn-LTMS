@@ -57,7 +57,7 @@ export async function setRoomCode(req: Request, res: Response) {
 
 export async function listMyMatches(req: Request, res: Response) {
     const role = req.query['role'] === 'player' || req.query['role'] === 'referee' ? req.query['role'] : undefined;
-    res.status(200).json(await MatchService.listMyMatches(req.user!.user_id, { upcoming: req.query['upcoming'] === 'true', role }));
+    res.status(200).json(await MatchService.listMyMatches(req.user!.user_id, { role }));
 }
 
 export async function scheduleMatch(req: Request, res: Response) {

@@ -338,7 +338,7 @@ describe('room code (B8)', () => {
 });
 
 describe('listMyMatches (/me/matches)', () => {
-  it('merges player and referee matches, sorted by time, with role on each row', async () => {
+  it('merges unfinished player and referee matches, sorted by time, with role on each row', async () => {
     vi.mocked(MatchRepo.findMatchesOfPlayer).mockResolvedValue([
       { match_id: 5, round_number: 1, scheduled_time: new Date('2026-10-02T10:00:00Z'), scheduled_end_time: null, venue: null, mode: 'onsite', match_status: 'scheduled',
         tournament_id: 50, tournament_name: 'T', sport_type_id: 1, team_a_id: 11, team_a_name: 'A', team_b_id: 12, team_b_name: 'B', my_team_id: 11 },
@@ -348,9 +348,8 @@ describe('listMyMatches (/me/matches)', () => {
       { id: 6, tournament: { id: 51, name: 'U', sportTypeId: 2 }, round: 1, teamA: null, teamB: null, scheduledTime: new Date('2026-10-01T10:00:00Z'), scheduledEndTime: null, venue: null, mode: 'online', status: 'completed' },
     ] });
     const out = await matchService.listMyMatches(7, {});
-    expect(out.items.map(m => [m.id, m.role])).toEqual([[6, 'referee'], [5, 'player']]);
-    expect(out.items[1]).toMatchObject({ myTeamId: 11 });
-    expect((await matchService.listMyMatches(7, { upcoming: true })).items.map(m => m.id)).toEqual([5]);
-    expect((await matchService.listMyMatches(7, { role: 'referee' })).items.map(m => m.id)).toEqual([6]);
+    expect(out.items.map(m => [m.id, m.role])).toEqual([[5, 'player']]);   // completed referee match 6 is history, not "my matches"
+    expect(out.items[0]).toMatchObject({ myTeamId: 11 });
+    expect((await matchService.listMyMatches(7, { role: 'referee' })).items).toEqual([]);
   });
 });

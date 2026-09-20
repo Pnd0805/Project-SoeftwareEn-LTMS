@@ -66,9 +66,10 @@ export async function setRoomCode(matchId: number, userId: number, roomCode: str
 
 /**
  * /me/matches (20 ก.ย.) — แมตช์ของฉันทั้ง 2 บทบาท: ผู้เล่น (ทีมที่ฉันเป็นสมาชิกอยู่ในแมตช์) + กรรมการ (รับแมตช์แล้ว, B7)
- * เรียงตามเวลาแข่ง · ?upcoming=true ตัดที่ completed · ?role=player|referee
+ * **เฉพาะแมตช์ที่ยังไม่จบ** (มติ 20 ก.ย.): "แมตช์ของฉัน" = ที่มีชื่อฉันลงแข่งตอนนี้ถึงอนาคต · ประวัติดูจากหน้าทัวร์/ทีม (M04 ?teamId=)
+ * ทำให้ใช้ roster ปัจจุบันได้ถูกต้องเสมอ (B6 ห้ามเปลี่ยนคนระหว่างทัวร์) · ?role=player|referee
  */
-export async function listMyMatches(userId: number, filters: { upcoming?: boolean | undefined; role?: 'player' | 'referee' | undefined }) {
+export async function listMyMatches(userId: number, filters: { role?: 'player' | 'referee' | undefined }) {
     const player = (await MatchRepo.findMatchesOfPlayer(userId)).map(r => ({
         id: r.match_id, role: 'player' as const, myTeamId: r.my_team_id,
         tournament: { id: r.tournament_id, name: r.tournament_name, sportTypeId: r.sport_type_id },
@@ -80,7 +81,7 @@ export async function listMyMatches(userId: number, filters: { upcoming?: boolea
     const referee = (await RefereeService.listMyRefereeMatches(userId, {})).items.map(m => ({ ...m, role: 'referee' as const, myTeamId: null }));
     const items = [...player, ...referee]
         .filter(m => filters.role === undefined || m.role === filters.role)
-        .filter(m => !filters.upcoming || m.status !== 'completed')
+        .filter(m => m.status !== 'completed')
         .sort((a, b) => {
             const ta = a.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER, tb = b.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
             return ta !== tb ? ta - tb : a.id - b.id;
