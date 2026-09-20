@@ -61,15 +61,16 @@ export function TeamPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const s = useLtms()
+  const { data: currentUser } = useMe()
+  const canReadPrivateTeamData = USE_MOCK || !!currentUser
   // String prototype links are resolved solely by the mock compatibility
   // boundary. Real backend links accept strict numeric database IDs only.
   const teamId = parseBackendId(id) ?? (USE_MOCK ? mockTeamApiIdFromRoute(id) : undefined)
   const team = useBackendTeam(teamId)
-  const members = useBackendTeamMembers(teamId)
-  const myTeams = useBackendMyTeams()
-  const myApplications = useMyTournamentApplications()
+  const members = useBackendTeamMembers(teamId, canReadPrivateTeamData)
+  const myTeams = useBackendMyTeams(canReadPrivateTeamData)
+  const myApplications = useMyTournamentApplications(canReadPrivateTeamData)
   const sportTypes = useSportTypes()
-  const { data: currentUser } = useMe()
   const follow = useFollow(currentUser?.id, `team:${id ?? ''}`)
   /* B6 ล็อกรายชื่อเฉพาะทัวร์ที่ "ยังไม่จบ" — ต้องรู้สถานะของทัวร์ที่ทีมนี้ได้ที่นั่ง
      เรียกตรงนี้เพราะ hook ต้องถูกเรียกทุกรอบ ก่อนทางออกก่อนกำหนดข้างล่าง */
@@ -119,7 +120,7 @@ export function TeamPage() {
 
   return (
     <>
-      <Crumb back={{ label: 'Teams', onClick: () => navigate('/teams') }}>{data.name}</Crumb>
+      <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{data.name}</Crumb>
 
       <div className="spread">
         <span className="hstack" style={{ gap: 16 }}>
@@ -174,7 +175,8 @@ export function TeamPage() {
       ) : null}
 
       <RosterPanel data={data} members={members} isLeader={isLeader}
-        lockName={lock?.name ?? committedTo?.tournament.name ?? null} minPlayers={minPlayers} />
+        lockName={lock?.name ?? committedTo?.tournament.name ?? null} minPlayers={minPlayers}
+        canViewMembers={canReadPrivateTeamData} />
 
       {isLeader ? (
         <InvitePanel data={data} lockName={lock?.name ?? committedTo?.tournament.name ?? null}
@@ -192,12 +194,13 @@ export function TeamPage() {
  * รายชื่อสมาชิก — หัวหน้าทีมตั้งตัวจริง/ตัวสำรอง ถอนผู้เล่น และโอนสิทธิ์หัวหน้าได้จากตรงนี้
  * ถอนได้จนกว่ารายการที่ทีมได้ที่นั่งจะเริ่มแข่ง
  */
-function RosterPanel({ data, members, isLeader, lockName, minPlayers }: {
+function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMembers }: {
   data: BackendTeamDto
   members: ReturnType<typeof useBackendTeamMembers>
   isLeader: boolean
   lockName: string | null
   minPlayers: number | undefined
+  canViewMembers: boolean
 }) {
   const navigate = useNavigate()
   const kick = useKickMember(data.id)
@@ -239,6 +242,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers }: {
       {position.isError ? <Banner kind="crit"><b>Couldn't change the position.</b> {errorMessage(position.error)}</Banner> : null}
 
       {members.isPending ? <span className="sub">Loading members…</span> : null}
+      {!canViewMembers ? <span className="sub">Sign in to view this squad&apos;s roster.</span> : null}
       {forbidden ? <span className="sub">Only team members can view this roster.</span> : null}
       {members.isError && !forbidden ? (
         <div className="hstack">

@@ -60,8 +60,13 @@ export function useMyTeams() {
 }
 
 /** `origin/backend` API — use for screens migrated away from the legacy store. */
-export function useBackendMyTeams() {
-  return useQuery({ queryKey: teamKeys.backendMine, queryFn: teamApi.getBackendMyTeams, retry: retryPolicy });
+export function useBackendMyTeams(enabled = true) {
+  return useQuery({
+    queryKey: teamKeys.backendMine,
+    queryFn: teamApi.getBackendMyTeams,
+    enabled,
+    retry: retryPolicy,
+  });
 }
 
 /** `origin/backend` API — team detail is public. */
@@ -75,11 +80,11 @@ export function useBackendTeam(teamId: number | undefined) {
 }
 
 /** `origin/backend` API — returns 403 when the viewer is not a team member. */
-export function useBackendTeamMembers(teamId: number | undefined) {
+export function useBackendTeamMembers(teamId: number | undefined, enabled = true) {
   return useQuery({
     queryKey: teamKeys.backendMembers(teamId ?? 0),
     queryFn: () => teamApi.getBackendTeamMembers(teamId as number),
-    enabled: teamId !== undefined,
+    enabled: teamId !== undefined && enabled,
     retry: retryPolicy,
   });
 }

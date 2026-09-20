@@ -101,8 +101,13 @@ export function useTournamentTeams(id: number | undefined) {
   });
 }
 
-export function useMyTournamentApplications() {
-  return useQuery({ queryKey: ["me", "applications"], queryFn: tournamentApi.getMyApplications, retry: false });
+export function useMyTournamentApplications(enabled = true) {
+  return useQuery({
+    queryKey: ["me", "applications"],
+    queryFn: tournamentApi.getMyApplications,
+    enabled,
+    retry: false,
+  });
 }
 
 export function useCancelMyApplication() {

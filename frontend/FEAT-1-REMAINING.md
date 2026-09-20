@@ -921,6 +921,20 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       of partial draw/assignment failure and redraw. Split any unsupported
       contract into a backend blocker after verification.
 
+- [x] **R08 · Guest access · Slices 1/2/4:** a guest can inspect teams entered
+      in a public tournament, but cannot vote for MVP or submit Pick'em.
+      Delivered 2026-09-20. The approved-team collection and `GET /teams/:id`
+      remain public, and the team page returns guests to Tournaments. It no
+      longer calls authenticated `/me/teams`, `/me/applications`, or
+      `/teams/:id/members` for a guest; public name, sport, readiness, official
+      status, captain and member count still render, while the private roster
+      asks the visitor to sign in. MVP standings remain readable in mock mode,
+      but Vote is absent without a signed-in user. Pick'em likewise shows its
+      public summary with no Call action for a guest. Real-mode MVP and Pick'em
+      remain explicitly unavailable because their backend contracts are still
+      missing. Developer regression coverage verifies all three boundaries.
+      Real-browser/backend retest remains pending below.
+
 ### Regression completion gate
 
 - [ ] Head Frontend Dev: attach reproduction evidence and confirmed ownership
