@@ -1,8 +1,9 @@
 import * as z from 'zod';
 
+// FE-nothing-validates-keys-scoredata (19 ก.ย.): คะแนนต้องไม่ติดลบ (b) · key/ผู้ชนะเช็คใน service (ต้องรู้ทีมของแมตช์) — ดู ensureScoreData
 export const submitResultSchema = z.object({
     winnerTeamId : z.int(),
-    scoreData : z.record(z.string() , z.int())
+    scoreData : z.record(z.string() , z.int().nonnegative('คะแนนต้องไม่ติดลบ'))
 });
 
 export const disputeSchema = z.object({
@@ -14,7 +15,7 @@ export const resolveSchema = z.object({
     resolution : z.enum(['uphold' , 'reject' , 'amend']),
     resolutionNote : z.string(),
     winnerTeamId : z.int().optional(),
-    scoreData : z.record(z.string() , z.int()).optional()
+    scoreData : z.record(z.string() , z.int().nonnegative('คะแนนต้องไม่ติดลบ')).optional()
 }).refine(d => d.resolution !== 'amend' || (d.winnerTeamId !== undefined && d.scoreData !== undefined),
           { message : 'amend ต้องระบุ winnerTeamId และ scoreData' , path : ['winnerTeamId'] });
 

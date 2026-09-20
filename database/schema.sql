@@ -399,7 +399,8 @@ CREATE TABLE match_checkins (
   method ENUM('qr_onsite','photo_online','manual_by_referee') NOT NULL,
   -- pending = photo_online รอกรรมการตรวจ · exception = กรรมการอนุโลมเช็คอินให้ (manual_by_referee)
   match_checkin_status ENUM('success','rejected','exception','pending') NOT NULL,
-  rejection_reason VARCHAR(255) NULL,
+  rejection_reason VARCHAR(255) NULL,   -- เฉพาะ status = rejected
+  note VARCHAR(255) NULL,               -- M19 เหตุผลที่กรรมการอนุโลมเช็คอินให้ (migration 015)
   document_type ENUM('student_id','national_id') NULL,
   document_s3_key VARCHAR(255) NULL,
   verified_by_referee_id INT NULL,   -- ★ ชี้ไป users ไม่ใช่ tournament_referees
@@ -721,4 +722,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('011_walkover.sql'),
   ('012_forfeit_organizer_role.sql'),
   ('013_team_invitations_expires_at.sql'),
-  ('014_bracket_nodes_backfill_teams.sql');
+  ('014_bracket_nodes_backfill_teams.sql'),
+  ('015_match_checkins_note.sql');

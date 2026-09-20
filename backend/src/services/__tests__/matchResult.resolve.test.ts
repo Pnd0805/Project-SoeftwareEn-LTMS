@@ -74,3 +74,23 @@ describe('resolveMatchResult (S04, B4)', () => {
     expect(Repo.amendMatchResult).not.toHaveBeenCalled();
   });
 });
+
+describe('ensureScoreData (FE-nothing-validates-keys-scoredata)', () => {
+  const m = match({ team_a_id: 10, team_b_id: 11 });
+  it.each([
+    ['prototype a/b keys', 10, { a: 1, b: 0 }],
+    ['empty', 10, {}],
+    ['one team missing', 10, { '10': 2 }],
+    ['foreign team id', 10, { '10': 2, '999999': 0 }],
+    ['extra key', 10, { '10': 2, '11': 0, '12': 0 }],
+    ['winner not in match', 99, { '10': 2, '11': 0 }],
+    ['winner has lower score', 11, { '10': 2, '11': 0 }],
+    ['draw (not supported yet)', 10, { '10': 2, '11': 2 }],
+  ])('rejects %s with 400', (_n, winner, score) => {
+    expect(() => Service.ensureScoreData(m, winner, score as Record<string, number>)).toThrowError(expect.objectContaining({ status: 400, code: 'VALIDATION_FAILED' }));
+  });
+
+  it('accepts exactly the two team ids with the winner ahead', () => {
+    expect(() => Service.ensureScoreData(m, 11, { '10': 1, '11': 3 })).not.toThrow();
+  });
+});

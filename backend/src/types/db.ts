@@ -221,6 +221,7 @@ export type MatchCheckinRow = {
     method : 'qr_onsite' | 'photo_online' | 'manual_by_referee',
     match_checkin_status : 'success' | 'rejected' | 'exception' | 'pending',
     rejection_reason : string | null,
+    note : string | null,               // M19 เหตุผลที่กรรมการอนุโลม (migration 015)
     document_type : 'student_id' | 'national_id' | null,
     document_s3_key : string | null,
     verified_by_referee_id : number | null,

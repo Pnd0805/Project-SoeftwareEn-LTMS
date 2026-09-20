@@ -123,6 +123,7 @@ export type CheckinListItemDto = {
     status: string;
     documentType: 'student_id' | 'national_id' | null;
     documentUrl: string | null;                   // presigned URL — มีเฉพาะเช็คอินแบบรูป และคนดูเป็นกรรมการของแมตช์
+    note: string | null;                          // M19 เหตุผลที่กรรมการอนุโลมเช็คอินให้
     checkedInAt: Date;
 };
 
@@ -135,6 +136,7 @@ export function toCheckinListItemDto(row: MatchCheckinListRow, documentUrl: stri
         status: toCheckinStatusApi(row.match_checkin_status),
         documentType: row.document_type,
         documentUrl,
+        note: row.note,
         checkedInAt: row.checked_in_at,
     };
 }

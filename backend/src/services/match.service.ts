@@ -257,7 +257,7 @@ export async function getMyCheckin(matchId: number, userId: number) {
     const row = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
     if (!row) return { checkin: null };
     return { checkin: { id: row.match_checkin_id, method: row.method, status: toCheckinStatusApi(row.match_checkin_status),
-                        rejectionReason: row.rejection_reason, checkedInAt: row.checked_in_at, verifiedAt: row.verified_at } };
+                        rejectionReason: row.rejection_reason, note: row.note, checkedInAt: row.checked_in_at, verifiedAt: row.verified_at } };
 }
 
 /**
@@ -286,7 +286,7 @@ export async function manualCheckin(matchId: number, refereeUserId: number, inpu
     });
     const checkin = inserted ?? (await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId))!;
     return { id: checkin.match_checkin_id, userId: input.userId, method: 'manual_by_referee' as const,
-             status: toCheckinStatusApi(checkin.match_checkin_status), checkedInAt: checkin.checked_in_at };
+             status: toCheckinStatusApi(checkin.match_checkin_status), note: checkin.note, checkedInAt: checkin.checked_in_at };
 }
 
 // M14/M15 ตัดสินได้ครั้งเดียว และเฉพาะเช็คอินแบบรูปที่รอตรวจ (pending) — QR ผ่านอัตโนมัติไม่ต้องตรวจ

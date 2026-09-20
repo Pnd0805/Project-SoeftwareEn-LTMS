@@ -196,13 +196,14 @@ export type MatchCheckinListRow = {
     match_checkin_status: 'success' | 'rejected' | 'exception' | 'pending';
     document_type: 'student_id' | 'national_id' | null;
     document_s3_key: string | null;   // service แปลงเป็น presigned URL ให้เฉพาะกรรมการของแมตช์ (PDPA)
+    note: string | null;              // M19 เหตุผลที่กรรมการอนุโลม — ให้กรรมการคนถัดไป/ORG เห็น
     checked_in_at: Date;
 };
 
 export async function findCheckinsByMatch(matchId: number): Promise<MatchCheckinListRow[]> {
     const [rows] = await pool.query<(MatchCheckinListRow & RowDataPacket)[]>(
         `SELECT mc.match_checkin_id, mc.user_id, u.full_name, mc.method, mc.match_checkin_status,
-                mc.document_type, mc.document_s3_key, mc.checked_in_at
+                mc.document_type, mc.document_s3_key, mc.note, mc.checked_in_at
          FROM match_checkins mc
          JOIN users u ON mc.user_id = u.user_id
          WHERE mc.match_id = ?`,
@@ -315,7 +316,7 @@ type InsertCheckinInput = {
     documentType: 'student_id' | 'national_id' | null;
     documentS3Key: string | null;
     verifiedByRefereeId?: number;   // manual_by_referee: กรรมการที่กดให้ + verified_at = NOW()
-    note?: string | null;           // เหตุผลที่อนุโลม เก็บใน rejection_reason (คอลัมน์ข้อความเดียวที่มี)
+    note?: string | null;           // M19 เหตุผลที่อนุโลม — คอลัมน์ note (migration 015) ไม่ใช่ rejection_reason
 };
 
 /** คืน null ถ้าชน UNIQUE(match_id, user_id) — คนเดียวกันเช็คอินแมตช์นี้ไปแล้ว (service จะดึงแถวเดิมมาตอบแทน) */
@@ -324,7 +325,7 @@ export async function insertCheckin(input: InsertCheckinInput): Promise<MatchChe
     try {
         [result] = await pool.query<ResultSetHeader>(
             `INSERT INTO match_checkins (match_id, user_id, method, match_checkin_status, document_type, document_s3_key,
-                                         verified_by_referee_id, verified_at, rejection_reason)
+                                         verified_by_referee_id, verified_at, note)
              VALUES (?, ?, ?, ?, ?, ?, ?, ${input.verifiedByRefereeId ? 'NOW()' : 'NULL'}, ?)`,
             [input.matchId, input.userId, input.method, input.status, input.documentType, input.documentS3Key,
              input.verifiedByRefereeId ?? null, input.note ?? null]

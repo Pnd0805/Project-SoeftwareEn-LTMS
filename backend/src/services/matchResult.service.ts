@@ -12,11 +12,36 @@ import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { WIN_POINTS } from '../config/scoring.js';
 import type { ResolveInput } from '../schemas/matchResult.schema.js';
+import type { MatchRow } from '../types/db.js';
 import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 
+/**
+ * FE-nothing-validates-keys-scoredata (19 ก.ย.) — ใช้ทั้ง S01 ส่งผล และ S04 amend
+ *   a. key ของ scoreData ต้องเป็น id ของ 2 ทีมในแมตช์ครบทั้งคู่ ไม่มีอย่างอื่น
+ *   b. คะแนนไม่ติดลบ (schema กันแล้ว)
+ *   c. winnerTeamId ต้องเป็นฝ่ายที่คะแนนมากกว่า — กีฬาทั้ง 5 ของเราคะแนนมากกว่าชนะเสมอ · เสมอกันยังไม่รองรับ (B3)
+ */
+export function ensureScoreData(match : MatchRow , winnerId : number , scoreData : Record<string , number>): void{
+    const teamIds = [match.team_a_id , match.team_b_id].map(String);
+    const keys = Object.keys(scoreData);
+    if(keys.length !== 2 || !teamIds.every(id => keys.includes(id))){
+        throw new AppError(400 , "VALIDATION_FAILED" , `scoreData ต้องมี key เป็นรหัสทีมทั้งสองของแมตช์นี้ (${teamIds.join(', ')}) เท่านั้น` ,
+            { fields : { scoreData : `key ต้องเป็น ${teamIds.join(' และ ')}` } , expectedKeys : teamIds });
+    }
+    if(winnerId !== match.team_a_id && winnerId !== match.team_b_id){
+        throw new AppError(400 , "VALIDATION_FAILED" , "winnerTeamId ต้องเป็นทีมใดทีมหนึ่งในแมตช์นี้" , { fields : { winnerTeamId : 'ไม่ใช่ทีมในแมตช์' } });
+    }
+    const loserId = match.team_a_id === winnerId ? match.team_b_id! : match.team_a_id!;
+    if(scoreData[String(winnerId)]! <= scoreData[String(loserId)]!){
+        throw new AppError(400 , "VALIDATION_FAILED" , "ทีมที่ชนะต้องมีคะแนนมากกว่าอีกฝ่าย (ระบบยังไม่รองรับผลเสมอ)" ,
+            { fields : { winnerTeamId : 'คะแนนไม่มากกว่าอีกฝ่าย' } });
+    }
+}
+
 export async function createSubmitMatchRes(matchId : number , winnerId : number , scoreData : Record<string , number> , submitById : number , role : 'team_leader' | 'referee'){
     const match = await checkMatch(matchId);
+    ensureScoreData(match , winnerId , scoreData);
     const matchResId = await MatchResRepo.submitMatchResult(matchId , winnerId , scoreData , submitById , role);
 
     const matchRes = await MatchResRepo.findById(matchResId);
@@ -82,11 +107,9 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
         return toResolveResultDto({ match_id : matchId, match_result_status : 'rejected' });
     }
 
-    // amend — schema รับประกันว่ามี winnerTeamId/scoreData
+    // amend — schema รับประกันว่ามี winnerTeamId/scoreData · กฎ key/ผู้ชนะ/คะแนนเดียวกับ S01
     const newWinnerId = input.winnerTeamId!;
-    if(newWinnerId !== match.team_a_id && newWinnerId !== match.team_b_id){
-        throw new AppError(400 , "VALIDATION_FAILED" , "winnerTeamId ต้องเป็นทีมใดทีมหนึ่งในแมตช์นี้" , { fields : { winnerTeamId : 'ไม่ใช่ทีมในแมตช์' } });
-    }
+    ensureScoreData(match , newWinnerId , input.scoreData!);
     await MatchResRepo.amendMatchResult(matchRes.match_result_id, match, oldWinnerId, newWinnerId, input.scoreData!, tour.sport_type_id, WIN_POINTS, userId, resolutionNote);
     if(oldWinnerId !== newWinnerId){
         // ทีมที่เพิ่งถูกวางใหม่อาจเจอคู่ที่ถอนไปแล้ว — เหมือนหลัง verify
