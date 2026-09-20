@@ -33,11 +33,25 @@ const lastRequest = () => {
 };
 
 describe("apply to a tournament", () => {
-  it("POST /tournaments/:id/applications sends { teamId } and returns 201 pending", async () => {
+  it("POST /tournaments/:id/applications sends the entered players and returns 201 pending", async () => {
     fetchMock.mockResolvedValueOnce(json({ id: 11, status: "pending", hardFilterPassed: true }, 201));
 
-    await expect(applyToTournament(5, { teamId: 3 })).resolves.toEqual({ id: 11, status: "pending", hardFilterPassed: true });
-    expect(lastRequest()).toEqual({ path: "/tournaments/5/applications", method: "POST", body: { teamId: 3 } });
+    await expect(applyToTournament(5, { teamId: 3, playerIds: [9201, 9202] }))
+      .resolves.toEqual({ id: 11, status: "pending", hardFilterPassed: true });
+    expect(lastRequest()).toEqual({
+      path: "/tournaments/5/applications", method: "POST", body: { teamId: 3, playerIds: [9201, 9202] },
+    });
+  });
+
+  /* `squad` เป็น id ของ store ของโหมด prototype — หลุดไปกับ body ของจริงไม่ได้
+     และ playerIds ต้องมีเสมอ เพราะ applyTournamentSchema บังคับ (P01) */
+  it("never sends the prototype squad list, and always sends playerIds", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 12, status: "pending" }, 201));
+
+    await applyToTournament(5, { teamId: 3, squad: ["u-1", "u-2"] });
+    expect(lastRequest()).toEqual({
+      path: "/tournaments/5/applications", method: "POST", body: { teamId: 3, playerIds: [] },
+    });
   });
 
   it("keeps the failed-member details from 422 HARD_FILTER_FAILED", async () => {

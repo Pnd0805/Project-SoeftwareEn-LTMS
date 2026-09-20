@@ -16,7 +16,8 @@ import { Banner, Field, TableWrap } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
 import { useApplyToTournament } from '../../hooks/useTournament'
-import { useBackendMyTeams } from '../../hooks/useTeam'
+import { useBackendMyTeams, useBackendTeamMembers } from '../../hooks/useTeam'
+import { useSportTypes } from '../../hooks/useReference'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { applyToTournamentSchema, type ApplyToTournamentInput } from '../../schemas/tournament.schema'
 import { user } from '../../shared/selectors'
@@ -26,6 +27,8 @@ import { numOf } from '../../mocks/storeBridge'
 
 /** รายชื่อผู้ที่ไม่ผ่านเงื่อนไขรับสมัคร ตามที่ backend ส่งกลับมากับ 422 */
 type HardFilterFail = { userId: number; fullName: string; reason: string }
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 
 const REASON_LABEL: Record<string, string> = {
   gender: 'เงื่อนไขเพศ',
@@ -105,11 +108,34 @@ export function RegisterForm({
   const toggle = (id: string) =>
     setSquad(cur => (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]))
 
+  /**
+   * ── รายชื่อที่ลงแข่ง (P01 · migration 018) ────────────────────────────────
+   * ทีมกลายเป็นคลังผู้เล่น ใบสมัครถึงต้องระบุว่าใครลงแข่งจริง เดิมตรงนี้เขียนว่า
+   * "backend จะตรวจทั้งทีมให้ตอนกดส่ง" ซึ่งใช้ไม่ได้แล้ว — ไม่ส่ง playerIds มา
+   * ใบสมัครเด้ง VALIDATION_FAILED ทุกใบ
+   * จำนวนต้องอยู่ในช่วงของกีฬานั้น และส่งแล้วแก้ไม่ได้ จึงต้องเห็นช่วงก่อนกดส่ง
+   */
+  const teamMembers = useBackendTeamMembers(USE_MOCK ? undefined : selectedTeamId || undefined)
+  const sports = useSportTypes()
+  const sport = (sports.data?.items ?? []).find(x => x.id === sportTypeId)
+  const memberRows = teamMembers.data?.items ?? []
+  /* ผูกรายชื่อที่ติ๊กไว้กับทีมที่ติ๊กมัน — เปลี่ยนทีมแล้วรายชื่อเดิมเป็นของอีกทีม
+     เก็บคู่กันไว้แล้วอ่านเทียบ จะได้ไม่ต้องล้างด้วย effect และไม่มีทางส่งข้ามทีม */
+  const [picked, setPicked] = useState<{ teamId: number; ids: number[] }>({ teamId: 0, ids: [] })
+  const playerIds = picked.teamId === selectedTeamId ? picked.ids : []
+  const togglePlayer = (id: number) => setPicked(() => ({
+    teamId: selectedTeamId,
+    ids: playerIds.includes(id) ? playerIds.filter(x => x !== id) : [...playerIds, id],
+  }))
+  const tooFew = sport !== undefined && playerIds.length < sport.minMembers
+  const tooMany = sport !== undefined && playerIds.length > sport.maxMembers
+  const squadReady = !USE_MOCK && playerIds.length > 0 && !tooFew && !tooMany
+
   const submit = async (input: ApplyToTournamentInput) => {
     setServerError(null)
     setBlockedMembers([])
     try {
-      await apply.mutateAsync(input)
+      await apply.mutateAsync(USE_MOCK ? input : { ...input, playerIds })
       onClose()
     } catch (error) {
       if (error instanceof ApiError && error.fields) {
@@ -182,7 +208,51 @@ export function RegisterForm({
             })}
           </tbody>
         </table>
-      </TableWrap></> : <Banner kind="warn">The backend evaluates the current roster of the selected team when you submit.</Banner>}
+      </TableWrap></> : (
+        <>
+          <span className="tag">
+            <em>//</em> Who is entering{sport ? ` — ${sport.minMembers} to ${sport.maxMembers} players` : ''}
+          </span>
+          <div className="sub">
+            The squad is fixed once you send it, and a player entered here cannot enter this tournament
+            with another squad. Everyone left off stays on the team; they are simply not in this one.
+          </div>
+          {!selectedTeamId ? <div className="sub">Choose a team first.</div>
+            : teamMembers.isPending ? <div className="sub">Loading the team…</div>
+              : teamMembers.isError ? (
+                <div className="hstack">
+                  <span className="sub">{errorMessage(teamMembers.error)}</span>
+                  <button className="btn ghost" type="button" onClick={() => void teamMembers.refetch()}>Try again</button>
+                </div>
+              ) : !memberRows.length ? <div className="sub">This team has no members yet.</div> : (
+                <TableWrap>
+                  <table>
+                    <thead><tr><th>In</th><th>Player</th><th>Joined</th></tr></thead>
+                    <tbody>
+                      {memberRows.map(member => (
+                        <tr key={member.userId}>
+                          <td>
+                            <input type="checkbox" checked={playerIds.includes(member.userId)}
+                              onChange={() => togglePlayer(member.userId)}
+                              aria-label={`Enter ${member.fullName}`} />
+                          </td>
+                          <td>{member.fullName}</td>
+                          <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableWrap>
+              )}
+          {/* บอกก่อนกดส่ง ดีกว่าปล่อยให้ไปเจอ 400 จาก service ที่เทียบ min/max ให้ */}
+          {memberRows.length && sport && (tooFew || tooMany) ? (
+            <Banner kind="warn">
+              <b>{playerIds.length} selected.</b> {sport.name} takes {sport.minMembers} to {sport.maxMembers}
+              {tooFew ? ` — ${sport.minMembers - playerIds.length} more to go.` : ' — too many.'}
+            </Banner>
+          ) : null}
+        </>
+      )}
 
       <EntryNotesBlock tr={tr} />
 
@@ -199,7 +269,8 @@ export function RegisterForm({
                   {fail.fullName} — {REASON_LABEL[fail.reason] ?? fail.reason}<br />
                 </span>
               ))}
-              Everyone on the roster is checked, so the squad either changes or enters a different tournament.
+              Only the players you entered are checked — leave the named ones off and the rest can still
+              enter, or take the squad to a different tournament.
             </>
           ) : null}
         </Banner>
@@ -218,7 +289,7 @@ export function RegisterForm({
           <Banner kind="ok">
             {USE_MOCK
               ? `All ${squad.length} entering players clear the entry conditions${ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.`
-              : `Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks every player on the roster when you submit.`}
+              : `Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks the ${playerIds.length} player${playerIds.length === 1 ? '' : 's'} you entered, not the whole team.`}
           </Banner>
         )}
 
@@ -227,7 +298,7 @@ export function RegisterForm({
         {errors.teamId?.message ? <span className="sub">{errors.teamId.message}</span> : null}
         <button className="btn primary" type="submit"
           disabled={!!fails.length || !!shut
-            || (USE_MOCK ? !squad.length : !(backendTeam || eligibleTeams.length))
+            || (USE_MOCK ? !squad.length : !squadReady)
             || isSubmitting || apply.isPending}>
           Submit registration
         </button>

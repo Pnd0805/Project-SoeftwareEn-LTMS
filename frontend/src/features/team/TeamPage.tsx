@@ -211,7 +211,9 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
   const [notice, setNotice] = useState<Notice>(null)
   const forbidden = statusOf(members.error) === 403
   const rows = members.data?.items ?? []
-  const starters = rows.filter(m => m.position === 'starter').length
+  /* เดิมนับเฉพาะตัวจริง — migration 019 ตัดตัวจริง/ตัวสำรองระดับทีมออกแล้ว เหลือ
+     คำถามเดียวที่ยังมีความหมาย: คนในคลังพอจะส่งลงแข่งตามขั้นต่ำของกีฬาไหม */
+  const squadSize = rows.length
   const dropsToForming = minPlayers !== undefined && data.memberCount - 1 < minPlayers
 
   return (
@@ -223,9 +225,9 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
               พอครบแล้วบอกว่าครบ ไม่ต้องโชว์เศษส่วนที่เกินตัวหารของตัวเอง */}
           {rows.length ? (
             <span className="sub">
-              {minPlayers === undefined ? `Starters ${starters}`
-                : starters >= minPlayers ? `Starters ${starters} · ${minPlayers} needed`
-                  : `Starters ${starters} of ${minPlayers} needed`}
+              {minPlayers === undefined ? `Players ${squadSize}`
+                : squadSize >= minPlayers ? `Players ${squadSize} · ${minPlayers} needed to enter`
+                  : `Players ${squadSize} of the ${minPlayers} needed to enter`}
             </span>
           ) : null}
           {isLeader ? (
@@ -255,7 +257,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
       {rows.length ? (
         <TableWrap>
           <table>
-            <thead><tr><th>Player</th><th>Position</th><th>Joined</th><th /></tr></thead>
+            <thead><tr><th>Player</th><th>Joined</th><th /></tr></thead>
             <tbody>
               {rows.map(member => {
                 const captain = member.userId === data.leader.id
@@ -270,26 +272,8 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                         {captain ? <span className="tag"> · captain</span> : null}
                       </span>
                     </td>
-                    <td>
-                      {isLeader ? (
-                        /* ตัวจริง/ตัวสำรองคือ T07 เส้นเดียวกับที่ roster lock บล็อก — ปุ่มถอน
-                           ข้างๆ ปิดตาม lockName อยู่แล้ว ช่องนี้ก็ต้องปิดด้วย ไม่งั้นเลือกได้
-                           แต่เด้ง 409 ROSTER_LOCKED ทุกครั้ง */
-                        <select value={member.position} aria-label={`Position of ${member.fullName}`}
-                          disabled={!!lockName || position.isPending} style={{ width: 'auto' }}
-                          title={lockName ? `Locked while ${lockName} is under way` : undefined}
-                          onChange={e => {
-                            setNotice(null)
-                            position.mutate({
-                              userId: member.userId,
-                              position: e.target.value === 'starter' ? 'starter' : 'substitute',
-                            })
-                          }}>
-                          <option value="starter">Starter</option>
-                          <option value="substitute">Substitute</option>
-                        </select>
-                      ) : <span className="sub">{member.position === 'starter' ? 'Starter' : 'Substitute'}</span>}
-                    </td>
+                    {/* ช่องตัวจริง/ตัวสำรองหายไปพร้อม migration 019 — ทีมเป็นคลังผู้เล่น
+                        ใครลงแข่งเลือกตอนสมัครแต่ละทัวร์แทน (application_players) */}
                     <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
                     <td>
                       <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>

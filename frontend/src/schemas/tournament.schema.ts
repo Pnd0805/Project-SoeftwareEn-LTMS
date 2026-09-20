@@ -115,8 +115,13 @@ export const inviteTournamentRefereeSchema = z.object({
   isExternal: z.boolean().optional(),
 });
 
+/* P01: ของจริงบังคับ playerIds ส่วนโหมด prototype เลือกผู้เล่นด้วย id ของ store จึง
+   ปล่อยเป็น optional ตรงนี้ แล้วให้ฟอร์มเป็นคนบังคับตามโหมด (ดู RegisterForm) */
 export const applyToTournamentSchema = z.object({
   teamId: z.number().int().positive(),
+  playerIds: z.array(z.number().int().positive())
+    .refine((ids) => new Set(ids).size === ids.length, "มีรายชื่อผู้เล่นซ้ำกัน")
+    .optional(),
 });
 
 export const reviewTournamentApplicationSchema = z.object({

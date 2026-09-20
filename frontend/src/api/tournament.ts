@@ -259,7 +259,12 @@ export async function applyToTournament(id: TournamentRef, input: ApplyToTournam
     mockTournamentApplications.push(application);
     return tournamentMockDelay(application);
   }
-  return apiFetch(`/tournaments/${id}/applications`, { method: "POST", body: JSON.stringify(input) });
+  /* `squad` เป็น id ของ store ส่งไปก็ไม่มีความหมาย — ประกอบ body เองให้เหลือเฉพาะ
+     ช่องที่ applyTournamentSchema รับ */
+  return apiFetch(`/tournaments/${id}/applications`, {
+    method: "POST",
+    body: JSON.stringify({ teamId: input.teamId, playerIds: input.playerIds ?? [] }),
+  });
 }
 
 /** Current backend contract: organizer-only registration list. */

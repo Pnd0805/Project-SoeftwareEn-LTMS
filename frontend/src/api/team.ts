@@ -124,7 +124,6 @@ export async function getBackendTeamMembers(teamId: number): Promise<BackendTeam
       userId: member.user.id,
       fullName: member.user.fullName,
       avatarUrl: member.user.avatarUrl,
-      position: member.position,
       joinedAt: member.joinedAt,
     })),
   });
@@ -222,19 +221,19 @@ export async function updateTeam(teamId: TeamRef, input: UpdateTeamRequest): Pro
   return apiFetch(`/teams/${teamId}`, { method: "PATCH", body: JSON.stringify({ name: input.name }) });
 }
 
-/** PATCH /teams/:id/members/:uid { position } — FR-TM-04 ตัวจริง/ตัวสำรอง */
+/**
+ * FR-TM-04 ตัวจริง/ตัวสำรอง — prototype เท่านั้น
+ * `PATCH /teams/:id/members/:uid` ถูกถอดออกพร้อม migration 019 ยิงไปได้ 404 อย่างเดียว
+ * จึงตัดที่ต้นทาง หน้าจอโหมดจริงไม่แสดงช่องนี้แล้ว
+ */
 export async function setMemberPosition(
   teamId: TeamRef, input: SetMemberPositionRequest,
 ): Promise<TeamDto> {
-  if (USE_MOCK) {
-    const blocked = writeSetMemberPosition(teamId, input.userId, input.position);
-    if (blocked) return rejectWith<TeamDto>(blocked);
-    const dto = teamDto(teamId);
-    return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
-  }
-  return apiFetch(`/teams/${teamId}/members/${input.userId}`, {
-    method: "PATCH", body: JSON.stringify({ position: input.position }),
-  });
+  if (!USE_MOCK) return unavailable<TeamDto>("การกำหนดตัวจริง/ตัวสำรองระดับทีม");
+  const blocked = writeSetMemberPosition(teamId, input.userId, input.position);
+  if (blocked) return rejectWith<TeamDto>(blocked);
+  const dto = teamDto(teamId);
+  return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
 }
 
 /**

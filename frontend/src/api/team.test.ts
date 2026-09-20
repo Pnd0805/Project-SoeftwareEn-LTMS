@@ -115,11 +115,12 @@ describe("team writes", () => {
 });
 
 describe("members and invitations", () => {
-  it("PATCH /teams/:id/members/:uid sends the position", async () => {
-    fetchMock.mockResolvedValueOnce(json({ userId: 42, position: "substitute" }));
-
-    await setMemberPosition(3, { userId: 42, position: "substitute" });
-    expect(lastRequest()).toEqual({ path: "/teams/3/members/42", method: "PATCH", body: { position: "substitute" } });
+  /* migration 019 ตัดตัวจริง/ตัวสำรองระดับทีม และถอด PATCH ตัวนี้ออกพร้อมกัน —
+     ต้องไม่ยิงไปหา route ที่ไม่มีแล้ว ไม่งั้นได้ 404 แทนข้อความที่อ่านรู้เรื่อง */
+  it("setting a member position never reaches the network", async () => {
+    await expect(setMemberPosition(3, { userId: 42, position: "substitute" }))
+      .rejects.toMatchObject({ status: 501, code: "ENDPOINT_UNAVAILABLE" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("DELETE /teams/:id/members/:uid resolves on 204", async () => {

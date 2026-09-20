@@ -24,11 +24,15 @@ export interface UserRefDto {
   avatarUrl: string | null;
 }
 
-/** สมาชิกในทีม — `position` มาจาก team_members ซึ่งเป็น **ระดับทีม** ไม่ใช่ระดับแมตช์ */
+/**
+ * สมาชิกในทีม — โหมด prototype ยังมี `position` เพราะ store ของมันเก็บตัวจริง/ตัวสำรอง
+ * ไว้ที่ทีม ส่วนของจริงไม่มีแล้วตั้งแต่ migration 019 (มติทีม 19 ก.ย.) mapper โหมดจริง
+ * จึงเติม null มา — อย่าอ่านช่องนี้โดยไม่เช็ค ไม่งั้นทุกคนจะกลายเป็นตัวสำรองเงียบๆ
+ */
 export interface TeamMemberDto {
   user: UserRefDto;
-  /** ตัวจริง / ตัวสำรอง — FR-TM-04 ให้หัวหน้าทีมเป็นคนกำหนด */
-  position: "starter" | "substitute";
+  /** ตัวจริง / ตัวสำรอง — prototype เท่านั้น · null = backend ไม่มีแนวคิดนี้แล้ว */
+  position: "starter" | "substitute" | null;
   joinedAt: string;
   /** หัวหน้าทีมคือ teams.leader_id ไม่ได้เก็บเป็น flag ในตารางสมาชิก */
   isLeader: boolean;
@@ -227,11 +231,12 @@ export interface BackendTeamDto {
   createdAt: string;
 }
 
+/* migration 019 ตัด `team_members.position` ทิ้ง — ทีมเป็นคลังผู้เล่น ไม่มีตัวจริง/สำรอง
+   ระดับทีมอีกแล้ว ใครลงแข่งดูจาก `application_players` ของใบสมัครแต่ละทัวร์ (018) */
 export interface BackendTeamMemberDto {
   userId: number;
   fullName: string;
   avatarUrl: string | null;
-  position: "starter" | "substitute";
   joinedAt: string;
 }
 

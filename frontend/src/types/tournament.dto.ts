@@ -213,8 +213,15 @@ export interface ApplyToTournamentRequest {
   /**
    * รายชื่อผู้ลงแข่งของนัดนี้ — ไม่ส่งมาก็ถือว่าทั้งทีม
    * Hard filter ตรวจรายคนจากรายชื่อนี้ ไม่ใช่จากสมาชิกทั้งทีม (FR-PV-01)
+   * โหมด prototype เท่านั้น เพราะเป็น id ของ store
    */
   squad?: string[];
+  /**
+   * ของจริง (P01 · migration 018): ต้องส่งรายชื่อที่ลงแข่งมาเสมอ ห้ามว่างและห้ามซ้ำ
+   * จำนวนต้องอยู่ใน [sportType.minMembers, maxMembers] และหนึ่งคนมีชื่อได้ทีมเดียว
+   * ต่อหนึ่งทัวร์ — ไม่ส่งมาแล้ว backend ตอบ VALIDATION_FAILED ไม่ใช่เอาทั้งทีมให้
+   */
+  playerIds?: number[];
 }
 
 export interface ReviewTournamentApplicationRequest {
