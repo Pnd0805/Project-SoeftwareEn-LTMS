@@ -1,4 +1,4 @@
-import { apiFetch, mockReject, USE_MOCK } from "./client";
+import { ApiError, apiFetch, mockReject, USE_MOCK } from "./client";
 import {
   storeAnnouncementDtos, storeApplicationDto, whyApplyBlocked, writeAllowWithdrawal, writeApplyToTournament,
   writeApproveAllRegistrations,
@@ -10,6 +10,7 @@ import type { Rules } from "../shared/types";
 import type {
   ApplyToTournamentRequest,
   CreateEligibilityRuleRequest,
+  AmendmentRequestPayload,
   CreateTournamentRequest,
   EligibilityRuleDto,
   InviteTournamentRefereeRequest,
@@ -44,9 +45,17 @@ import { findStoreTeam } from "../mocks/teamBridge";
 const notFound = <T>(message: string): Promise<T> =>
   mockReject(404, { code: "NOT_FOUND", message });
 
+/** backend ยังไม่มี endpoint นี้ — ตอบ 501 แทนการยิงไปเส้นทางที่ไม่มีอยู่ */
+const unavailable = <T>(what: string): Promise<T> =>
+  Promise.reject(new ApiError(501, { code: "ENDPOINT_UNAVAILABLE", message: `${what} ยังไม่มีใน backend` }));
+
 /** ส่งเหตุผลที่ชั้น mock ปฏิเสธต่อเป็น error รูปเดียวกับ backend */
 const rejectWith = <T>(b: TournamentWriteBlock): Promise<T> =>
   mockReject<T>(b.status, { code: b.code, message: b.message });
+
+/** คำขอที่ยังกรอกไม่ครบ — บอกที่ชั้นนี้ ดีกว่ายิงไปให้ backend ตอบ 400 */
+const blockedRequest = <T>(message: string): Promise<T> =>
+  Promise.reject(new ApiError(400, { code: "VALIDATION_FAILED", message }));
 
 /** ทัวร์นาเมนต์จาก seed หาไม่เจอ = ref เป็น id ของ fixture ให้ทางเดิมจัดการต่อ */
 const notInStore = (b: TournamentWriteBlock) => b.code === "TOURNAMENT_NOT_FOUND";
@@ -88,7 +97,7 @@ function findTournament(id: number): TournamentDto | undefined {
   return mockTournaments.find((item) => item.id === id && item.deletedAt === null);
 }
 
-export async function getTournaments(params: { status?: TournamentDto["status"]; sportTypeId?: number } = {}): Promise<TournamentListResponse> {
+export async function getTournaments(params: { status?: TournamentDto["status"]; sportTypeId?: number; facultyId?: number; q?: string } = {}): Promise<TournamentListResponse> {
   if (USE_MOCK) {
     const items = mockTournaments.filter((item) =>
       item.deletedAt === null &&
@@ -97,9 +106,12 @@ export async function getTournaments(params: { status?: TournamentDto["status"];
     );
     return tournamentMockDelay({ items });
   }
+  /* GET /tournaments คืนเฉพาะรายการที่เป็น public อยู่แล้ว และรับ filter แค่
+     sportTypeId / facultyId / q — ไม่มี status ให้กรอง (ส่งไปก็ถูกมองข้าม) */
   const query = new URLSearchParams();
-  if (params.status) query.set("status", params.status);
   if (params.sportTypeId !== undefined) query.set("sportTypeId", String(params.sportTypeId));
+  if (params.facultyId !== undefined) query.set("facultyId", String(params.facultyId));
+  if (params.q) query.set("q", params.q);
   return apiFetch(`/tournaments${query.size ? `?${query}` : ""}`);
 }
 
@@ -130,13 +142,13 @@ export async function createTournament(input: CreateTournamentRequest): Promise<
       requestedByUserId: 1,
       status: "pending_approval",
       registrationOpen: false,
-      registrationStart: null,
-      registrationEnd: null,
+      registrationStart: input.registrationStart,
+      registrationEnd: input.registrationEnd,
       eventStartDate: input.eventStartDate,
-      eventEndDate: input.eventEndDate ?? null,
+      eventEndDate: input.eventEndDate,
       maxTeams: input.maxTeams,
       minTeams: input.minTeams,
-      venue: input.venue ?? null,
+      venue: input.venue,
       disputeWindowHours: input.disputeWindowHours ?? 24,
       genderRequirement: input.genderRequirement ?? "any",
       minAge: input.minAge ?? null,
@@ -170,7 +182,7 @@ export async function deleteTournament(id: number): Promise<void> {
     tournament.deletedAt = isoNow();
     return tournamentMockDelay(undefined);
   }
-  return apiFetch(`/tournaments/${id}`, { method: "DELETE" });
+  return unavailable<void>("การลบทัวร์นาเมนต์");
 }
 
 export async function addEligibilityRule(id: number, input: CreateEligibilityRuleRequest): Promise<EligibilityRuleDto> {
@@ -180,7 +192,7 @@ export async function addEligibilityRule(id: number, input: CreateEligibilityRul
     mockEligibilityRules.push(rule);
     return tournamentMockDelay(rule);
   }
-  return apiFetch(`/tournaments/${id}/eligibility-rules`, { method: "POST", body: JSON.stringify(input) });
+  return unavailable<EligibilityRuleDto>("การเพิ่มกฎคุณสมบัติ (backend มีแค่ GET /tournaments/:id/eligibility-rules)");
 }
 
 export async function removeEligibilityRule(id: number, ruleId: number): Promise<void> {
@@ -190,7 +202,8 @@ export async function removeEligibilityRule(id: number, ruleId: number): Promise
     mockEligibilityRules.splice(index, 1);
     return tournamentMockDelay(undefined);
   }
-  return apiFetch(`/tournaments/${id}/eligibility-rules/${ruleId}`, { method: "DELETE" });
+  void ruleId;
+  return unavailable<void>("การลบกฎคุณสมบัติ");
 }
 
 export async function inviteReferee(id: number, input: InviteTournamentRefereeRequest): Promise<TournamentRefereeDto> {
@@ -208,7 +221,16 @@ export async function inviteReferee(id: number, input: InviteTournamentRefereeRe
     mockTournamentReferees.push(referee);
     return tournamentMockDelay(referee);
   }
-  return apiFetch(`/tournaments/${id}/referees`, { method: "POST", body: JSON.stringify(input) });
+  /* inviteRefereeSchema บังคับ isExternal (ไม่ใช่ optional) และรับ matchIds
+     ไม่ส่ง matchIds = เชิญเข้า pool เฉยๆ ยังคุมแมตช์ไหนไม่ได้จนกว่าจะมอบหมาย */
+  return apiFetch(`/tournaments/${id}/referees`, {
+    method: "POST",
+    body: JSON.stringify({
+      userId: input.userId,
+      isExternal: input.isExternal ?? false,
+      matchIds: input.matchIds ?? [],
+    }),
+  });
 }
 
 export async function applyToTournament(id: TournamentRef, input: ApplyToTournamentRequest): Promise<TournamentApplicationDto> {
@@ -401,7 +423,16 @@ export async function drawTournament(id: TournamentRef, input: DrawTournamentReq
        แต่ต้องไม่ทำลายสถานะที่ถูกอยู่แล้ว */
     return tournamentMockDelay(tournament);
   }
-  return apiFetch(`/tournaments/${id}/draw`, { method: "POST", body: JSON.stringify(input) });
+  /* เส้นจริงคือ POST /tournaments/:id/bracket และรับ seedingMethod ไม่ใช่รายชื่อทีม
+     (manual ต้องส่ง manualSeeds — ดู createBracket() ใน api/match.ts) */
+  await apiFetch(`/tournaments/${id}/bracket`, {
+    method: "POST",
+    body: JSON.stringify({
+      seedingMethod: input.teamIds?.length ? "manual" : "random",
+      ...(input.teamIds?.length ? { manualSeeds: input.teamIds } : {}),
+    }),
+  });
+  return apiFetch(`/tournaments/${id}`);
 }
 
 /** POST /tournaments/:id/announcements — ผู้จัดเท่านั้น · แจ้งหัวหน้าทีมที่ได้ที่นั่ง */
@@ -437,7 +468,7 @@ export async function submitFeedback(id: TournamentRef, input: SubmitTournamentF
     if (blocked && !notInStore(blocked)) return rejectWith<TournamentFeedbackDto>(blocked);
     return tournamentMockDelay({ id: nextTournamentMockId(), tournamentId: Number(id), userId: 1, ...input, createdAt: isoNow() });
   }
-  return apiFetch(`/tournaments/${id}/feedback`, { method: "POST", body: JSON.stringify(input) });
+  return unavailable<TournamentFeedbackDto>("การให้คะแนนและรีวิวทัวร์นาเมนต์ (FR-CM-02)");
 }
 
 export async function saveEntryNotes(id: TournamentRef, text: string): Promise<TournamentDto | void> {
@@ -447,15 +478,110 @@ export async function saveEntryNotes(id: TournamentRef, text: string): Promise<T
     if (!notInStore(blocked)) return rejectWith<void>(blocked);
     return updateTournament(Number(id), {});
   }
-  return apiFetch(`/tournaments/${id}/entry-notes`, { method: "PATCH", body: JSON.stringify({ text }) });
+  void text;
+  return unavailable<TournamentDto>("บันทึกหมายเหตุการรับสมัคร");
 }
 
-export async function requestFilterChange(id: TournamentRef, input: { rules: unknown; reason: string }): Promise<TournamentDto | void> {
+/**
+ * C09 — ขอแก้เงื่อนไขการเข้าร่วมของทัวร์ที่อนุมัติไปแล้ว
+ *
+ * ผู้เรียกส่งมาทั้งสองรูป เพราะสองโหมดเก็บคนละอย่าง: mock เก็บ `Rules` ของ prototype
+ * ทั้งก้อนพร้อมเหตุผล · ของจริงส่งเฉพาะช่องที่ `allowedAmendmentFields` รับ
+ *
+ * เดิมส่ง `{ rules, reason }` เข้าไปตรงๆ ซึ่ง backend ตอบ
+ * `400 AMENDMENT_FIELD_NOT_ALLOWED` ทุกครั้ง — ไม่มีช่องชื่อ `rules` หรือ `reason`
+ * ในรายการที่รับ (เหตุผลไม่มีที่เก็บเลย ดู BACKEND-GAPS)
+ */
+export async function requestFilterChange(
+  id: TournamentRef,
+  input: { rules: unknown; reason: string; changes?: AmendmentRequestPayload },
+): Promise<TournamentDto | void> {
   if (USE_MOCK) {
     const blocked = writeRequestFilterChange(id, input.rules as Rules, input.reason);
     if (!blocked) return tournamentMockDelay(undefined);
     if (!notInStore(blocked)) return rejectWith<void>(blocked);
     return updateTournament(Number(id), {});
   }
-  return apiFetch(`/tournaments/${id}/filter-change`, { method: "POST", body: JSON.stringify(input) });
+  const changes = input.changes ?? {};
+  if (Object.keys(changes).length === 0) {
+    return blockedRequest<void>("ยังไม่ได้เปลี่ยนเงื่อนไขไหนเลย");
+  }
+  return apiFetch(`/tournaments/${id}/amendment-requests`, {
+    method: "POST",
+    body: JSON.stringify({ requestedChanges: changes }),
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// เส้นของ backend ที่ frontend ยังไม่เคยมีฟังก์ชันเรียก (BE_KN 98aa300)
+// ══════════════════════════════════════════════════════════════════════════
+
+/** POST /tournaments/:id/unpublish — ผู้จัด · ซ่อนรายการกลับเป็น private */
+export function unpublishTournament(id: number): Promise<{ id: number; status: string }> {
+  return apiFetch(`/tournaments/${id}/unpublish`, { method: "POST" });
+}
+
+/** POST /tournaments/:id/open-registration — ผู้จัด */
+export function openRegistration(id: number): Promise<{ id: number; registrationOpen: boolean }> {
+  return apiFetch(`/tournaments/${id}/open-registration`, { method: "POST" });
+}
+
+/** POST /tournaments/:id/close-registration — ผู้จัด · ต้องปิดก่อนจับสาย */
+export function closeRegistration(id: number): Promise<{ id: number; registrationOpen: boolean }> {
+  return apiFetch(`/tournaments/${id}/close-registration`, { method: "POST" });
+}
+
+/** POST /tournaments/:id/approve — Admin ที่มีขอบเขตครอบคลุมรายการนี้ */
+export function approveTournament(id: number): Promise<{ id: number; status: string; organizerId: number }> {
+  return apiFetch(`/tournaments/${id}/approve`, { method: "POST" });
+}
+
+/** POST /tournaments/:id/reject — ต้องมีเหตุผล (400 TOURNAMENT_REJECT_REASON_REQUIRED) */
+export function rejectTournament(id: number, reason: string): Promise<{ id: number; status: string }> {
+  return apiFetch(`/tournaments/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
+}
+
+/** GET /me/tournament-requests — คำขอจัดทัวร์นาเมนต์ของฉันและสถานะล่าสุด */
+export function getMyTournamentRequests(): Promise<{
+  items: import("../types/tournament.dto").BackendMyTournamentRequestDto[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}> {
+  return apiFetch("/me/tournament-requests");
+}
+
+/**
+ * GET /tournaments/:id/eligibility-rules — เงื่อนไขคณะ/ชั้นปีของรายการ (อ่านอย่างเดียว)
+ * ⚠️ backend ยังไม่มีเส้นสำหรับ "เพิ่ม/ลบ" กฎ — ตอนนี้ต้องใส่แถวใน DB เอง
+ */
+export function getEligibilityRules(
+  id: number,
+): Promise<{ items: import("../types/tournament.dto").BackendEligibilityRuleDto[] }> {
+  return apiFetch(`/tournaments/${id}/eligibility-rules`);
+}
+
+/** GET /applications/:id — ผู้จัดหรือหัวหน้าทีมของใบสมัครนั้น */
+export function getApplicationDetail(
+  applicationId: number,
+): Promise<import("../types/tournament.dto").BackendApplicationDetailDto> {
+  return apiFetch(`/applications/${applicationId}`);
+}
+
+/** PATCH /announcements/:id — ผู้จัดแก้ประกาศ */
+export function updateAnnouncement(
+  announcementId: number,
+  input: { title?: string; body?: string },
+): Promise<TournamentAnnouncementDto> {
+  return apiFetch(`/announcements/${announcementId}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+/** DELETE /announcements/:id — ผู้จัดลบประกาศ */
+export function deleteAnnouncement(announcementId: number): Promise<void> {
+  return apiFetch(`/announcements/${announcementId}`, { method: "DELETE" });
+}
+
+/** POST /uploads/presign — ขอลิงก์อัปโหลดรูป (รับเฉพาะ image/jpeg กับ image/png) */
+export function presignUpload(
+  input: import("../types/tournament.dto").PresignUploadRequest,
+): Promise<import("../types/tournament.dto").PresignUploadResponse> {
+  return apiFetch("/uploads/presign", { method: "POST", body: JSON.stringify(input) });
 }

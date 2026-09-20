@@ -79,10 +79,31 @@ describe("tournament referees", () => {
     await expect(getTournamentReferees(5)).rejects.toMatchObject({ status: 403 });
   });
 
-  it("removal and coverage have no backend route, so they fail without calling fetch", async () => {
-    await expect(removeReferee(5, 9)).rejects.toMatchObject({ status: 501, code: "ENDPOINT_UNAVAILABLE" });
-    await expect(getRefereeCoverage(5)).rejects.toMatchObject({ status: 501, code: "ENDPOINT_UNAVAILABLE" });
-    expect(fetchMock).not.toHaveBeenCalled();
+  it("F03 removal looks up the tournamentRefereeId of the user first", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [{ id: 11, user: { id: 9 } }], acceptedCount: 1, effectiveCount: 1 }));
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await removeReferee(5, 9);
+    expect(lastRequest()).toEqual({ path: "/tournaments/5/referees/11", method: "DELETE", body: undefined });
+  });
+
+  it("F03 removal is 404 when that user is not a referee of the tournament", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [], acceptedCount: 0, effectiveCount: 0 }));
+
+    await expect(removeReferee(5, 9)).rejects.toMatchObject({ status: 404, code: "NOT_FOUND" });
+  });
+
+  it("F14 coverage sums the per-match numbers the backend returns", async () => {
+    fetchMock.mockResolvedValueOnce(json({
+      matchesTotal: 3, matchesCovered: 2,
+      uncovered: [{ matchId: 7, roundNumber: 1, scheduledTime: null, needed: 2, assigned: 1 }],
+      conflicts: [],
+    }));
+
+    await expect(getRefereeCoverage(5)).resolves.toEqual({
+      tournamentId: 5, required: 2, accepted: 1, shortfall: 1, blocksStatRecording: true,
+    });
+    expect(lastRequest().path).toBe("/tournaments/5/referees/coverage");
   });
 });
 
@@ -127,12 +148,34 @@ describe("routes the backend does not have yet", () => {
     fetchMock.mockResolvedValueOnce(json({ id: 7, userId: 42, invitationStatus: "pending", isExternal: true }, 201));
 
     await appointReferee(5, { userId: 42, isExternal: true });
-    expect(lastRequest()).toEqual({ path: "/tournaments/5/referees", method: "POST", body: { userId: 42, isExternal: true } });
+    expect(lastRequest()).toEqual({
+      path: "/tournaments/5/referees", method: "POST", body: { userId: 42, isExternal: true, matchIds: [] },
+    });
   });
 
-  it("external-referee review, user management and admin rights fail without calling fetch", async () => {
-    await expect(getExternalRefereeRequests()).rejects.toMatchObject({ status: 501, code: "ENDPOINT_UNAVAILABLE" });
-    await expect(reviewExternalReferee(4, { approve: true })).rejects.toMatchObject({ status: 501 });
+  it("AR01 flattens the per-person queue into one row per tournament", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [{
+      userId: 42,
+      user: { id: 42, fullName: "External Ref", avatarUrl: null, email: "ref@ku.th" },
+      docs: ["referee/42.jpg"],
+      tournaments: [{ id: 5, name: "Spring Cup", tournamentRefereeId: 11 }],
+      submittedAt: "2026-09-10T00:00:00.000Z",
+    }] }));
+
+    const { items } = await getExternalRefereeRequests();
+    expect(lastRequest().path).toBe("/admin/referee-requests");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ id: 42, tournament: { id: 5 }, invitedBy: null, status: "pending" });
+  });
+
+  it("AR02 approves per person, not per request row", async () => {
+    fetchMock.mockResolvedValueOnce(json({ userId: 42, identityStatus: "approved", tournamentsUpdated: 2 }));
+
+    await expect(reviewExternalReferee(42, { approve: true })).rejects.toMatchObject({ status: 404 });
+    expect(lastRequest()).toEqual({ path: "/admin/referee-requests/42/approve", method: "POST", body: undefined });
+  });
+
+  it("user management and admin rights fail without calling fetch", async () => {
     await expect(getUsersForAdmin()).rejects.toMatchObject({ status: 501 });
     await expect(suspendUser(9, { suspend: true, reason: "spam" })).rejects.toMatchObject({ status: 501 });
     await expect(grantAdminScope({ userId: 9, scopeType: "university_wide" })).rejects.toMatchObject({ status: 501 });

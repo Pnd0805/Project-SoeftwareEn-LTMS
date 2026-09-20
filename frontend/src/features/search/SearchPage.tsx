@@ -18,11 +18,13 @@ import { useSearchUsers } from '../../hooks/useUser'
 import { useTournaments } from '../../hooks/useTournament'
 import { USE_MOCK } from '../../api/client'
 import { tournamentView } from '../tournament/tournamentView'
+import { useSportTypes } from '../../hooks/useReference'
 
 export function SearchPage() {
   const s = useLtms()
   const { data: currentUser } = useMe()
   const tournamentQuery = useTournaments()
+  const sportTypes = useSportTypes()
   const navigate = useNavigate()
   const { q: qParam } = useParams()
   const [q, setQ] = useState(decodeURIComponent(qParam ?? ''))
@@ -30,7 +32,7 @@ export function SearchPage() {
 
   const tournamentSource = USE_MOCK
     ? s.tournaments.filter(t => visibleTo(s, t))
-    : (tournamentQuery.data?.items ?? []).map(tournamentView)
+    : (tournamentQuery.data?.items ?? []).map(dto => tournamentView(dto, [], [], sportTypes.data?.items ?? []))
   const tournaments = needle
     ? tournamentSource.filter(t => `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
     : []

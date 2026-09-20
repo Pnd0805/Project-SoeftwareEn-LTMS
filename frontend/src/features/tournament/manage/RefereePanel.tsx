@@ -15,14 +15,16 @@
  *
  * ── เพิ่มและถอดได้ทุกเมื่อ ────────────────────────────────────────────────
  * ผู้จัดแต่งตั้งและถอดกรรมการได้ตลอด ทั้งก่อนเปิดรับและระหว่างแข่ง (ทีมกำหนด 13 ก.ย. 2026)
- * backend ยังไม่มี route ถอด ทั้งที่ schema มี removed_at / removed_by รออยู่ ปุ่มถอดจึงมีเฉพาะ
- * โหมด mock นอกนั้นบอกตรงๆ ว่ายังใช้ไม่ได้ ไม่ทำปุ่มหลอก
+ * ถอดด้วย DELETE /tournaments/:id/referees/:rid (api/admin.ts หา rid จากรายชื่อให้ก่อน)
  *
  * ── บุคคลภายนอก (FR-RM-02) ────────────────────────────────────────────────
  * ตอบรับแล้วยังไม่นับจนกว่า Admin จะอนุมัติ แถวจึงมีสถานะแยกให้ผู้จัดเห็นว่ารออะไรอยู่
  *
- * รายชื่อผู้สมัครยังค้นจาก store เพราะยังไม่มี endpoint ค้นหาผู้ใช้ทั่วไป
- * (SDS มีแค่ GET /users/{id} กับ GET /admin/users ซึ่งเป็นของ Admin)
+ * ── ค้นรายชื่อ ────────────────────────────────────────────────────────────
+ * โหมดจริงค้นจาก GET /users/search (ชื่อไทย ชื่ออังกฤษ หรือชื่อหน้าอีเมลก็ได้)
+ * ⚠️ เดิมค้นจาก `s.users` ของ store ทั้งสองโหมด ซึ่งโหมดจริงไม่มีใครอยู่ในนั้นเลย
+ *    ผู้จัดพิมพ์ชื่อคนที่มีตัวตนจริงแล้วขึ้น "ไม่มีชื่อในระบบ" ตลอด เชิญกรรมการไม่ได้
+ *    (คอมเมนต์เดิมบอกว่ายังไม่มี endpoint ค้นหา — ไม่จริงแล้ว มีและใช้ได้)
  */
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../../components/kit/primitives'
@@ -31,6 +33,7 @@ import { USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
 import { numOf } from '../../../mocks/storeBridge'
 import { useAppointReferee, useRemoveReferee, useTournamentReferees } from '../../../hooks/useAdmin'
+import { useSearchUsers } from '../../../hooks/useUser'
 import { refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import type { TournamentRefereeDto } from '../../../types/admin.dto'
@@ -57,6 +60,9 @@ const removeError = (error: unknown) => {
 export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boolean; onClose: () => void }) {
   const s = useLtms()
   const [q, setQ] = useState('')
+  /* คนนอกมหาวิทยาลัยต้องให้ผู้จัดติ๊กเอง — /users/search ไม่ได้บอกมา และ
+     `is_external` เป็นของ "คำเชิญใบนี้" ไม่ใช่คุณสมบัติติดตัวคน */
+  const [external, setExternal] = useState(false)
   const needle = q.trim().toLowerCase()
   const { data: current } = useTournamentReferees(open ? t.id : undefined)
   const appoint = useAppointReferee(t.id)
@@ -64,20 +70,50 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
   /* คนที่อยู่ในทัวร์นาเมนต์แล้ว (ทั้งตอบรับและรอตอบ) ไม่ควรโผล่ให้เชิญซ้ำ
      บัญชีที่ถูกระงับแต่งตั้งไม่ได้ (FR-UM-05) จึงไม่แสดงเลย */
   const taken = new Set((current?.items ?? []).map(r => r.user.id))
-  const cands = s.users
-    .filter(x => x.role !== 'Admin' && !x.suspended && !taken.has(numOf(x.id)))
-    .filter(x => needle.length > 1 && x.name.toLowerCase().includes(needle))
-    .slice(0, 12)
+  const found = useSearchUsers(q.trim(), open && !USE_MOCK)
+  const storeCands = USE_MOCK
+    ? s.users
+      .filter(x => x.role !== 'Admin' && !x.suspended && !taken.has(numOf(x.id)))
+      .filter(x => needle.length > 1 && x.name.toLowerCase().includes(needle))
+      .slice(0, 12)
+    : []
+  const apiCands = USE_MOCK
+    ? []
+    : (found.data?.items ?? []).filter(x => !taken.has(x.id)).slice(0, 12)
+  const cands: Array<{ key: string; userId: number; name: string; sub: string; external: boolean }> =
+    USE_MOCK
+      ? storeCands.map(x => ({
+        key: x.id, userId: numOf(x.id), name: x.name,
+        sub: x.external ? 'Outside the university' : `${x.faculty} · Year ${x.year}`,
+        external: !!x.external,
+      }))
+      : apiCands.map(x => ({
+        key: String(x.id), userId: x.id, name: x.fullName,
+        sub: `Account #${x.id}`, external,
+      }))
+  /* backend เริ่มค้นที่ 3 ตัวอักษร ส่วน store ใช้ 2 — บอกผู้ใช้ตามของจริง */
+  const minChars = USE_MOCK ? 2 : 3
 
   return (
     <Modal open={open} onClose={onClose}
       label={`Appoint a referee — an ${t.channel} match needs ${t.channel === 'onsite' ? 2 : 1}`}
       title={t.name}>
-      <Field label="Search the roll by name" htmlFor="ref-find">
+      <Field label={USE_MOCK ? 'Search the roll by name' : 'Search by name or email'} htmlFor="ref-find">
         <input id="ref-find" autoComplete="off" value={q} onChange={e => setQ(e.target.value)}
-          placeholder="Start typing a name…" />
+          placeholder={USE_MOCK ? 'Start typing a name…' : 'Name in Thai or English, or the start of an email…'} />
       </Field>
-      <div className="sub">People from outside the university are marked External — an admin has to approve them after they accept.</div>
+      {USE_MOCK ? (
+        <div className="sub">People from outside the university are marked External — an admin has to approve them after they accept.</div>
+      ) : (
+        <label className="hstack" style={{ gap: 8, fontSize: 14 }}>
+          <input type="checkbox" checked={external} onChange={e => setExternal(e.target.checked)} />
+          <span>They are from outside the university — an admin has to approve them after they accept.</span>
+        </label>
+      )}
+      {!USE_MOCK && found.isFetching ? <div className="sub">Searching…</div> : null}
+      {!USE_MOCK && found.isError ? (
+        <Banner kind="crit"><b>Search failed.</b> {(found.error as Error).message}</Banner>
+      ) : null}
       {appoint.isError ? (
         <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {(appoint.error as Error).message}</Banner>
       ) : null}
@@ -86,17 +122,17 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
           <table>
             <tbody>
               {cands.map(x => (
-                <tr key={x.id}>
+                <tr key={x.key}>
                   <td>
                     <span className="hstack">
                       <span className="avatar">{x.name.slice(0, 1)}</span>{x.name}
                       {x.external ? <Badge kind="warn">External</Badge> : null}
                     </span>
                   </td>
-                  <td className="sub">{x.external ? 'Outside the university' : `${x.faculty} · Year ${x.year}`}</td>
+                  <td className="sub">{x.sub}</td>
                   <td style={{ textAlign: 'right' }}>
                     <button className="btn primary" type="button" disabled={appoint.isPending}
-                      onClick={() => appoint.mutate({ userId: numOf(x.id), isExternal: !!x.external })}>
+                      onClick={() => appoint.mutate({ userId: x.userId, isExternal: x.external })}>
                       Invite to officiate
                     </button>
                   </td>
@@ -107,7 +143,9 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
         </TableWrap>
       ) : (
         <div className="sub">
-          {needle.length > 1 ? 'Nobody on the roll matches that.' : 'Type at least two letters — the roll is the whole university.'}
+          {needle.length >= minChars
+            ? (!USE_MOCK && found.isFetching ? 'Searching…' : 'Nobody matches that.')
+            : `Type at least ${minChars} letters — anybody with an account can be asked to officiate.`}
         </div>
       )}
       <div className="hstack"><button className="btn ghost" type="button" onClick={onClose}>Done</button></div>
@@ -128,7 +166,8 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
   const accepted = referees?.acceptedCount ?? 0
   const short = Math.max(0, required - accepted)
   const status = (error as { status?: number } | null)?.status
-  const awaitingAdmin = rows.filter(r => r.isExternal && r.invitationStatus === 'accepted' && r.externalApprovalStatus === 'pending').length
+  /* เลิกกรองแถวเอง — A3 ให้ backend นับมาแล้ว และการนับเองพังทันทีที่รายการยาวจนแบ่งหน้า */
+  const awaitingAdmin = referees?.awaitingAdminCount ?? 0
   const leaves = removing?.isActive ? accepted - 1 : accepted
 
   const confirmRemove = () => {
@@ -201,12 +240,10 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
                       </td>
                       <td><RefereeState r={r} /></td>
                       <td style={{ textAlign: 'right' }}>
-                        {USE_MOCK ? (
-                          <button className="btn ghost" type="button" disabled={busy}
-                            onClick={() => { setNotice(null); setRemoving(r) }}>
-                            {busy ? 'Removing…' : removeLabel(r)}
-                          </button>
-                        ) : null}
+                        <button className="btn ghost" type="button" disabled={busy}
+                          onClick={() => { setNotice(null); setRemoving(r) }}>
+                          {busy ? 'Removing…' : removeLabel(r)}
+                        </button>
                       </td>
                     </tr>
                   )
@@ -214,8 +251,6 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
               </tbody>
             </table>
           </TableWrap>
-          {/* backend ยังไม่มี route ถอดกรรมการ — นอกโหมด mock บอกตรงๆ */}
-          {USE_MOCK ? null : <span className="sub">Removing a referee isn't available on the server yet.</span>}
         </>
       ) : null}
 

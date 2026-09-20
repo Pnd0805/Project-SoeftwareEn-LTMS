@@ -13,11 +13,16 @@
  * ส่ง id ที่หน้าถืออยู่ตรงๆ — เดิมแปลงด้วย Number() ซึ่งได้ NaN กับ id ของ store
  * ('t-bkb') ปุ่ม Open to public กับ Generate bracket จึงกดแล้วเงียบ ไม่มีอะไรเกิดขึ้น
  */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Panel, Trail } from '../../../components/kit/primitives'
+import { ConfirmCard, Modal } from '../../../components/kit/Modal'
 import type { TrailStep } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
-import { useDrawTournament, usePublishTournament, useTournament } from '../../../hooks/useTournament'
+import {
+  useDrawTournament, usePublishTournament, useTournamentApplications, useTournamentTeams,
+} from '../../../hooks/useTournament'
+import { useTournamentMatches } from '../../../hooks/useMatch'
 import { useTournamentReferees } from '../../../hooks/useAdmin'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { formatName, refsNeeded } from '../../../shared/rules'
@@ -31,22 +36,41 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const publish = usePublishTournament(t.id)
   const draw = useDrawTournament(t.id)
   const need = refsNeeded(t)
+  /* สองขั้นนี้ย้อนกลับไม่ได้ — เปิดสาธารณะแล้วคนเห็นทันที จับสายแล้วปิดรับสมัครถาวร
+     เดิมกดปุ๊บทำปุ๊บ ไม่ถามอะไรเลย */
+  const [confirming, setConfirming] = useState<'publish' | 'draw' | null>(null)
   const { data: referees, isError: refereesError } = useTournamentReferees(t.id)
 
-  /* id ตัวเลข → ใช้ applications จาก API · id string (prototype) → ใช้ store */
+  /* id ตัวเลข → อ่านจาก backend · id string (prototype) → อ่านจาก store
+     ⚠️ เดิมอ่าน useTournament(id).applications ซึ่ง backend ไม่เคยส่งมาเลย
+        ทุกอย่างจึงตกไป regsOf(store) ที่ว่างเปล่าในโหมดจริง แถบนี้เลยค้างอยู่ที่
+        "0 approved · 0 waiting on you" ตลอด ทั้งที่อนุมัติทีมครบและแข่งจบไปแล้ว */
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
-  const { data: detail } = useTournament(tournamentId)
-  const apiApps = detail?.applications
-  const approved = apiApps
-    ? apiApps.filter(a => a.status === 'approved')
-    : regsOf(s, t.id).filter(r => r.status === 'approved')
-  const pend = apiApps
-    ? apiApps.filter(a => a.status === 'pending')
-    : regsOf(s, t.id).filter(r => r.status === 'pending')
+  const real = tournamentId !== undefined
+  const approvedTeams = useTournamentTeams(tournamentId)
+  const applications = useTournamentApplications(tournamentId)
+  const backendMatches = useTournamentMatches(tournamentId)
 
-  const ms = t.drawn ? matchesOf(s, t.id).filter(m => m.note !== 'bye' && m.status !== 'void') : []
-  const ready = ms.filter(m => m.venue && (m.refs || []).length >= need)
-  const done = ms.filter(m => m.status === 'confirmed')
+  const approvedCount = real
+    ? approvedTeams.data?.items.length ?? 0
+    : regsOf(s, t.id).filter(r => r.status === 'approved').length
+  const pendingCount = real
+    ? (applications.data?.items ?? []).filter(a => a.status === 'pending').length
+    : regsOf(s, t.id).filter(r => r.status === 'pending').length
+
+  /* บายไม่ใช่แมตช์ที่ต้องจัดสนามหรือหากรรมการ — ฝั่ง backend คือนัดที่มีทีมเดียว */
+  const apiMatches = (backendMatches.data?.items ?? []).filter(m => m.teamA && m.teamB)
+  const ms = real ? apiMatches
+    : t.drawn ? matchesOf(s, t.id).filter(m => m.note !== 'bye' && m.status !== 'void') : []
+  const ready = real
+    ? apiMatches.filter(m => m.venue && m.scheduledTime)
+    : (ms as ReturnType<typeof matchesOf>).filter(m => m.venue && (m.refs || []).length >= need)
+  const done = real
+    ? apiMatches.filter(m => m.status === 'completed')
+    : (ms as ReturnType<typeof matchesOf>).filter(m => m.status === 'confirmed')
+  /* backend ไม่มีทางปิดรายการ (ดู FEAT-1-REMAINING) — "จบแล้ว" คือทุกนัดยืนยันผลครบ
+     ไม่ใช่ t.champion ที่ tournamentView เดาจากวันแข่งที่ผ่านไปแล้ว */
+  const allPlayed = real ? ms.length > 0 && done.length === ms.length : !!t.champion
 
   /* ยอดตอบรับมาจาก acceptedCount ของ GET /tournaments/:id/referees (FEAT-1-REMAINING)
      ระหว่างโหลดยังไม่รู้ จึงบอกว่ากำลังตรวจ ไม่เดาจาก store */
@@ -68,16 +92,17 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
           : 'Nobody can register while it is private, and LTMS deletes a private tournament on its match date.',
       cta: t.status === 'private'
         ? (
-          <button className="btn primary" type="button" disabled={publish.isPending} onClick={() => publish.mutate()}>
+          <button className="btn primary" type="button" disabled={publish.isPending}
+            onClick={() => setConfirming('publish')}>
             {publish.isPending ? 'Opening…' : 'Open to public'}
           </button>
         )
         : undefined,
     },
     {
-      state: approved.length >= 2 ? 'done' : 'idle',
+      state: approvedCount >= 2 ? 'done' : 'idle',
       title: 'Approve the squads',
-      note: `${approved.length} approved · ${pend.length} waiting on you · cap ${t.cap}. The hard filter has already refused anybody ineligible.`,
+      note: `${approvedCount} approved · ${pendingCount} waiting on you · cap ${t.cap}. The hard filter has already refused anybody ineligible.`,
     },
     {
       state: t.drawn ? 'done' : 'idle',
@@ -86,7 +111,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         ? `${formatName(t)} — drawn, so entry is closed.`
         : `${formatName(t)} — needs two approved squads, and closes entry for good.`,
       cta: (
-        <button className="btn primary" type="button" disabled={draw.isPending} onClick={() => draw.mutate({})}>
+        <button className="btn primary" type="button" disabled={draw.isPending}
+          onClick={() => setConfirming('draw')}>
           {draw.isPending ? 'Drawing…' : 'Generate bracket · random draw'}
         </button>
       ),
@@ -95,15 +121,16 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       state: ms.length > 0 && ready.length === ms.length ? 'done' : 'idle',
       title: 'Set every fixture',
       note: ms.length
-        ? `${ready.length} of ${ms.length} have a venue and their officials on them.`
+        ? `${ready.length} of ${ms.length} have a kick-off and a venue on them.`
         : 'Kick-off, venue and the officials, one match at a time.',
       cta: <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/schedule`)}>Open the schedule</button>,
     },
     {
-      state: t.champion ? 'done' : 'idle',
+      state: allPlayed ? 'done' : 'idle',
       title: 'Results come in',
-      note: t.champion ? `${team(s, t.champion)?.name ?? 'Somebody'} won it.`
-        : ms.length ? `${done.length} of ${ms.length} confirmed. A dispute lands back with you.`
+      note: ms.length
+        ? `${done.length} of ${ms.length} confirmed. A dispute lands back with you.`
+        : !real && t.champion ? `${team(s, t.champion)?.name ?? 'Somebody'} won it.`
           : 'Referees record, leaders confirm, and a dispute lands back with you.',
     },
   ]
@@ -120,6 +147,25 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         <span className="tag"><em>//</em> Running this tournament — where you are</span>
         {now < 0 ? <Badge kind="ok">Every step done</Badge> : <Badge kind="warn">{`Step ${now + 1} of ${steps.length}`}</Badge>}
       </div>
+      <Modal open={confirming !== null} onClose={() => setConfirming(null)}
+        label={confirming === 'draw' ? 'Draw the bracket' : 'Open to the public'} title={t.name}>
+        {confirming === 'draw' ? (
+          <ConfirmCard danger ok="Draw it" onCancel={() => setConfirming(null)}
+            onConfirm={() => { setConfirming(null); draw.mutate({}) }}
+            body={<>
+              <b>Entry closes for good.</b> {formatName(t)} is drawn from the {approvedCount} squads
+              approved so far, and no further squad can enter afterwards. There is no way to undraw it.
+            </>} />
+        ) : (
+          <ConfirmCard ok="Open it" onCancel={() => setConfirming(null)}
+            onConfirm={() => { setConfirming(null); publish.mutate() }}
+            body={<>
+              Everybody will be able to find <b>{t.name}</b> and enter a squad. Check the entry rules
+              and the dates first — squads apply against whatever is set now.
+            </>} />
+        )}
+      </Modal>
+
       {publish.isError ? <Banner kind="crit"><b>Couldn't open it to the public.</b> {errorMessage(publish.error)}</Banner> : null}
       {draw.isError ? <Banner kind="crit"><b>Couldn't draw the bracket.</b> {errorMessage(draw.error)}</Banner> : null}
       <Trail steps={steps} />

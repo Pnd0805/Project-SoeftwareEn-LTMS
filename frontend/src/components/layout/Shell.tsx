@@ -39,7 +39,9 @@ function useNav(unreadCount: number, currentUser?: MeDto): NavItem[] {
   }
   items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: USE_MOCK ? invites : undefined })
   items.push({ to: '/matches', icon: 'match', label: 'Matches' })
-  if (USE_MOCK) items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unreadCount })
+  /* โหมดจริงไม่มีการแจ้งเตือนของระบบ แต่กล่องข้อความยังมีของจริงให้ตอบ
+     (คำเชิญเข้าทีม คำเชิญเป็นกรรมการ คำขอรับแมตช์) จึงไม่ซ่อนแถบนี้อีกต่อไป */
+  items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: USE_MOCK ? unreadCount : undefined })
   items.push({ to: '/me', icon: 'user', label: 'Profile' })
   return items
 }

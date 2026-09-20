@@ -87,7 +87,10 @@ export interface TournamentRefereeDto {
 
 export interface AppointRefereeRequest {
   userId: number;
+  /** backend บังคับช่องนี้ — ไม่ส่งถือว่า false ที่ชั้น api */
   isExternal?: boolean;
+  /** แมตช์ที่เสนอให้คุมพร้อมคำเชิญ — ว่าง = เชิญเข้า pool เฉยๆ */
+  matchIds?: number[];
 }
 
 export interface AnswerAppointmentRequest {
@@ -222,13 +225,15 @@ export interface MyRefereeInvitationDto {
 
 /**
  * บุคคลภายนอกที่ตอบรับการแต่งตั้งแล้ว รอ Admin อนุมัติก่อนนับเป็นกรรมการของรายการ
- * SDS รวมไว้ในคิว GET /admin/requests — origin/backend ยังไม่มี route นี้
+ * เส้นจริงคือ GET /admin/referee-requests ซึ่งจัดกลุ่ม "ต่อคน" (ดู BackendExternalRefereeQueueItem)
+ * api/admin.ts คลี่ให้เป็นแถวละ (คน × รายการ) และให้ id = userId ที่ใช้อนุมัติ/ปฏิเสธ
  */
 export interface ExternalRefereeRequestDto {
   id: number;
   tournament: { id: number; name: string };
   referee: UserRefDto;
-  invitedBy: UserRefDto;
+  /** null ในโหมดจริง — คิว AR01 ของ backend ไม่ได้บอกว่าใครเป็นผู้เชิญ */
+  invitedBy: UserRefDto | null;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
 }
@@ -239,3 +244,98 @@ export interface ReviewExternalRefereeRequest {
   reason?: string;
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════
+// รูปที่ backend ตอบจริง (BE_KN 98aa300) — กรรมการ / คิว Admin
+// ══════════════════════════════════════════════════════════════════════════
+
+/** GET /tournaments/:id/referees/coverage — F14 */
+export interface BackendRefereeCoverageDto {
+  matchesTotal: number;
+  matchesCovered: number;
+  uncovered: Array<{
+    matchId: number;
+    roundNumber: number | null;
+    scheduledTime: string | null;
+    /** ต้องมีกี่คน — on-site ที่เก็บสถิติ = 2 · อื่นๆ = 1 */
+    needed: number;
+    assigned: number;
+  }>;
+  /** กรรมการที่มีแมตช์เวลาซ้อนกัน — เตือนเฉยๆ ไม่บล็อก */
+  conflicts: Array<{ userId: number; matchIds: number[] }>;
+}
+
+/** GET /tournaments/:id/referees — F02 */
+export interface BackendTournamentRefereeDto {
+  id: number;
+  user: UserRefDto;
+  invitationStatus: "pending" | "accepted" | "rejected";
+  isExternal: boolean;
+  externalApprovalStatus: "not_required" | "pending" | "needs_docs" | "approved" | "rejected";
+  status: "pending" | "pending_admin" | "active" | "declined" | "rejected_by_admin" | "removed";
+}
+
+export interface BackendTournamentRefereeListDto {
+  items: BackendTournamentRefereeDto[];
+  acceptedCount: number;
+  effectiveCount: number;
+}
+
+/** GET /me/referee-invitations — F04 */
+export interface BackendMyRefereeInvitationDto {
+  id: number;
+  tournament: { id: number; name: string; sportTypeId: number; eventStartDate: string };
+  isExternal: boolean;
+  matches: Array<{
+    id: number;
+    roundNumber: number | null;
+    scheduledTime: string | null;
+    scheduledEndTime: string | null;
+    venue: string | null;
+    mode: "onsite" | "online";
+    matchStatus: string;
+    assignmentStatus: string;
+  }>;
+  createdAt: string;
+}
+
+/** GET /admin/referee-requests — AR01 (จัดกลุ่มต่อคน) */
+export interface BackendExternalRefereeQueueItem {
+  userId: number;
+  user: UserRefDto & { email: string };
+  /** S3 key ดิบ — ต้องขอ presign เองก่อนเปิดดู */
+  docs: string[];
+  tournaments: Array<{ id: number; name: string; tournamentRefereeId: number }>;
+  submittedAt: string;
+}
+
+/** GET /me/referee-identity — U11 */
+export interface BackendRefereeIdentityDto {
+  status: "none" | "pending" | "needs_docs" | "approved" | "rejected";
+  approvedAt: string | null;
+  expiresAt: string | null;
+  adminMessage: string | null;
+  docsSubmitted: boolean;
+  docsRequired: boolean;
+  tournaments: Array<{
+    id: number;
+    name: string;
+    tournamentRefereeId: number;
+    externalApprovalStatus: string;
+  }>;
+}
+
+/** คำขอย้าย/แลก/เพิ่มแมตช์ของกรรมการ — FR01–FR03 */
+export interface BackendRefereeRequestDto {
+  id: number;
+  tournamentId: number;
+  type: "ref_transfer" | "ref_swap" | "org_add_match" | "org_swap";
+  requestedBy: number;
+  refereeA: { tournamentRefereeId: number; user: UserRefDto; status: string };
+  refereeB: { tournamentRefereeId: number; user: UserRefDto; status: string } | null;
+  matchA: { id: number; roundNumber: number | null; scheduledTime: string | null; scheduledEndTime: string | null };
+  matchB: { id: number; roundNumber: number | null; scheduledTime: string | null; scheduledEndTime: string | null } | null;
+  status: "open" | "applied" | "declined" | "cancelled";
+  createdAt: string;
+  resolvedAt: string | null;
+}

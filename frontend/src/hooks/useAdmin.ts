@@ -5,7 +5,7 @@
  * (`team`/`teams` อยู่ใน useTeam.ts)
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { retryPolicy } from "../api/client";
+import { USE_MOCK, retryPolicy } from "../api/client";
 import * as adminApi from "../api/admin";
 import type { TeamRef } from "../mocks/teamBridge";
 import type {
@@ -22,6 +22,7 @@ export const adminKeys = {
   tournamentRequests: ["admin", "tournamentRequests"] as const,
   teamRequests: ["admin", "teamRequests"] as const,
   externalReferees: ["admin", "externalReferees"] as const,
+  amendments: ["admin", "amendments"] as const,
   myRefereeInvitations: ["referees", "me"] as const,
   users: ["admin", "users"] as const,
   scopes: ["admin", "scopes"] as const,
@@ -31,6 +32,25 @@ export const adminKeys = {
 };
 
 // ══════════════ queries ══════════════
+
+/**
+ * "คนที่ล็อกอินอยู่เป็นแอดมินไหม" — backend ไม่มี endpoint ตอบตรงๆ
+ * จึงถามด้วยการลองเปิดคิวที่ต้องเป็นแอดมินถึงจะดูได้ (403 INSUFFICIENT_ADMIN_SCOPE = ไม่ใช่)
+ * ใช้คิวคำขอจัดทัวร์นาเมนต์เพราะรับทั้งแอดมินระดับคณะและระดับมหาวิทยาลัย
+ * โหมด mock ไม่ต้องถาม — หน้าจออ่าน role จาก store เอง
+ */
+export function useAdminAccess() {
+  return useQuery({
+    queryKey: ["admin", "access"] as const,
+    queryFn: async () => {
+      await adminApi.getTournamentRequests();
+      return true;
+    },
+    enabled: !USE_MOCK,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export function useTeamRequests() {
   return useQuery({
@@ -52,6 +72,81 @@ export function useTournamentRequests() {
   return useQuery({
     queryKey: adminKeys.tournamentRequests,
     queryFn: adminApi.getTournamentRequests,
+    retry: retryPolicy,
+  });
+}
+
+/** GET /me/referee-requests — คำขอเปลี่ยน/เพิ่มแมตช์ที่รอเราตอบ (incoming) และที่เรายื่นไว้ (outgoing) */
+export function useMyRefereeRequests() {
+  return useQuery({
+    queryKey: ["referees", "me", "requests"] as const,
+    queryFn: adminApi.getMyRefereeRequests,
+    enabled: !USE_MOCK,
+    retry: retryPolicy,
+  });
+}
+
+function touchRefereeRequests(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["referees", "me", "requests"] });
+  qc.invalidateQueries({ queryKey: ["matches"] });
+}
+
+export function useAcceptRefereeRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => adminApi.acceptRefereeRequest(requestId),
+    onSuccess: () => touchRefereeRequests(qc),
+  });
+}
+
+export function useDeclineRefereeRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => adminApi.declineRefereeRequest(requestId),
+    onSuccess: () => touchRefereeRequests(qc),
+  });
+}
+
+/** GET /admin/amendment-requests — คำขอแก้ไขรายการที่รอแอดมิน (C09) */
+export function useAmendmentRequests() {
+  return useQuery({
+    queryKey: adminKeys.amendments,
+    queryFn: adminApi.getAmendmentRequests,
+    enabled: !USE_MOCK,
+    retry: retryPolicy,
+  });
+}
+
+/** อนุมัติแล้ว backend เขียนค่าที่ขอลงทัวร์นาเมนต์ให้เลย — รายการนั้นจึงต้องอ่านใหม่ด้วย */
+function touchAmendments(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: adminKeys.amendments });
+  qc.invalidateQueries({ queryKey: ["tournaments"] });
+  qc.invalidateQueries({ queryKey: ["tournament"] });
+}
+
+export function useApproveAmendment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (amendmentId: number) => adminApi.approveAmendmentRequest(amendmentId),
+    onSuccess: () => touchAmendments(qc),
+  });
+}
+
+export function useRejectAmendment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { amendmentId: number; reason: string }) =>
+      adminApi.rejectAmendmentRequest(v.amendmentId, v.reason),
+    onSuccess: () => touchAmendments(qc),
+  });
+}
+
+/** คิวคำขอจัดทัวร์นาเมนต์ตามรูปที่ backend ตอบจริง — ใช้กับหน้า Admin ในโหมดจริง */
+export function usePendingTournamentRequests() {
+  return useQuery({
+    queryKey: adminKeys.tournamentRequests,
+    queryFn: adminApi.getPendingTournamentRequests,
+    enabled: !USE_MOCK,
     retry: retryPolicy,
   });
 }

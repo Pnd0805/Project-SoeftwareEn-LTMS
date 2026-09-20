@@ -9,13 +9,13 @@
  */
 import type { MatchState } from '../../components/kit/viewModels'
 import type { MatchDto, MatchListItemDto, StandingRowDto, StandingsFormat } from '../../types/match.dto'
-import { matchStateOf } from '../match/matchView'
+import { matchStateOf, scoreText } from '../match/matchView'
 
 /**
  * แถวของรายการแมตช์ในทัวร์นาเมนต์ — GET /tournaments/:id/matches คืน MatchDto
  * โหมด mock แนบสกอร์กับสถานะผลมาด้วย ส่วน backend อาจไม่มี จึงเป็นทางเลือก
  */
-export type DashboardMatch = MatchDto & Partial<Pick<MatchListItemDto, 'score' | 'resultStatus'>>
+export type DashboardMatch = MatchDto & Partial<Pick<MatchListItemDto, 'score' | 'resultStatus' | 'outcome'>>
 
 /** ลำดับที่แสดงสถานะ — สิ่งที่ต้องมีคนทำก่อนขึ้นก่อน */
 export const STATE_ORDER: MatchState[] = ['live', 'checkin', 'disputed', 'pending', 'scheduled', 'waiting', 'confirmed']
@@ -29,9 +29,11 @@ export const stateOf = (m: DashboardMatch): MatchState => matchStateOf({
   resultStatus: m.resultStatus !== undefined ? m.resultStatus : m.status === 'completed' ? 'verified' : null,
 })
 
-/** สกอร์เป็นข้อความ — `—` เมื่อยังไม่มีผล ไม่ใช่ `0` */
-export const scoreOf = (m: DashboardMatch): string =>
-  m.score ? `${m.score.a ?? '—'} – ${m.score.b ?? '—'}` : '— – —'
+/**
+ * สกอร์เป็นข้อความ — ใช้กติกาเดียวกับตาราง /matches
+ * ของเดิมเขียนเองอีกชุด แดชบอร์ดเลยขึ้น "— – —" ให้แมตช์บาย ขณะที่หน้ารายการขึ้น "Bye"
+ */
+export const scoreOf = (m: DashboardMatch): string => scoreText(m)
 
 export interface DashboardSummary {
   /** แมตช์ที่ต้องแข่งจริง ไม่นับบาย */

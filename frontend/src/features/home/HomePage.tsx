@@ -12,7 +12,9 @@ import { Icon } from '../../components/kit/Icon'
 import { Empty, Panel, Tabs } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
-import { useTournaments } from '../../hooks/useTournament'
+import {
+  useMyTournamentApplications, useMyTournamentRequests, useTournaments, useTournamentsByIds,
+} from '../../hooks/useTournament'
 import { USE_MOCK } from '../../api/client'
 import { me, myTeams, regsOf, visibleTo } from '../../shared/selectors'
 import { tourLifecycle } from '../../shared/rules'
@@ -22,6 +24,7 @@ import type { Rel } from './TournamentCard'
 import { workQueue } from './workQueue'
 import type { WorkEntry, WorkKind } from './workQueue'
 import { tournamentView } from '../tournament/tournamentView'
+import { useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
 
 const KIND_COLS: [WorkKind, string][] = [['crit', 'Urgent'], ['warn', 'Waiting'], ['ok', 'Ready']]
@@ -58,6 +61,8 @@ function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries
 export function HomePage() {
   const s = useLtms()
   const { data: tournamentData, isPending: apiPending, isError: apiError } = useTournaments()
+  const myRequests = useMyTournamentRequests()
+  const myApplications = useMyTournamentApplications()
   const { data: currentUser } = useMe()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
@@ -70,7 +75,21 @@ export function HomePage() {
   /* รายการทัวร์นาเมนต์ยังรอ backend (FEAT-1-REMAINING: backend blockers) — โหมด mock อ่าน seed
      ใน store ที่หน้าอื่นทุกหน้าอ่านอยู่ ไม่ใช่ fixture ของ api/tournament.ts ซึ่งมีรายการเดียว */
   const tournamentsPending = !USE_MOCK && apiPending
-  const source = USE_MOCK ? s.tournaments : (tournamentData?.items ?? []).map(tournamentView)
+  /* ชื่อกีฬามาจาก backend — id ของกีฬาเคยถูก renumber มาแล้ว (migration 010) */
+  const sportTypes = useSportTypes()
+  /* รายการของเราที่ไม่ได้อยู่ในลิสต์สาธารณะ (private หลังเพิ่งผ่าน admin หรือจบไปแล้ว)
+     ต้องตามไปขอ detail มาเอง ไม่งั้น "Yours to run" กรองจาก visible แล้วไม่เหลืออะไร
+     เพราะของเราไม่เคยอยู่ใน visible ตั้งแต่แรก */
+  const publicIds = new Set((tournamentData?.items ?? []).map(dto => dto.id))
+  const missingMineIds = (myRequests.data?.items ?? [])
+    .map(r => r.id)
+    .filter(id => !publicIds.has(id))
+  const missingMine = useTournamentsByIds(missingMineIds)
+  const extraDtos = missingMine.flatMap(q => q.data ? [q.data] : [])
+
+  const source = USE_MOCK ? s.tournaments
+    : [...(tournamentData?.items ?? []), ...extraDtos]
+      .map(dto => tournamentView(dto, [], [], sportTypes.data?.items ?? []))
   const all = USE_MOCK ? source.filter(t => visibleTo(s, t)) : source
   const needle = query.trim().toLowerCase()
   const textFiltered = needle
@@ -103,9 +122,28 @@ export function HomePage() {
       { key: 'rest', label: `Other tournaments · ${rest.length}`, items: rest, rel: null },
     ].filter(c => c.items.length)
   } else {
-    cats = visible.length
-      ? [{ key: 'all', label: `All tournaments · ${visible.length}`, items: visible, rel: null }]
-      : []
+    /* โหมดจริง — รายการสาธารณะไม่ได้บอกว่าใครเป็นผู้จัดหรือทีมเราสมัครไว้ไหม
+       จึงถามจากฝั่งตัวเอง: /me/tournament-requests (ของที่เราขอจัด) และ /me/applications
+       แล้วค่อยจับคู่ด้วย id — ไม่ได้เดาจาก store ที่ค้างอยู่ในเครื่อง */
+    const mineIds = new Set((myRequests.data?.items ?? []).map(r => String(r.id)))
+    const playingIds = new Set(
+      (myApplications.data?.items ?? [])
+        .filter(a => a.status === 'approved' || a.status === 'pending')
+        .map(a => String(a.tournament.id)),
+    )
+    const openIds = new Set(
+      (tournamentData?.items ?? []).filter(dto => dto.registrationOpen).map(dto => String(dto.id)),
+    )
+    const mine = visible.filter(t => mineIds.has(t.id))
+    const playing = visible.filter(t => !mineIds.has(t.id) && playingIds.has(t.id))
+    const open = visible.filter(t => !mineIds.has(t.id) && !playingIds.has(t.id) && openIds.has(t.id))
+    const rest = visible.filter(t => !mineIds.has(t.id) && !playingIds.has(t.id) && !openIds.has(t.id))
+    cats = [
+      { key: 'mine', label: `Yours to run · ${mine.length}`, items: mine, rel: 'run' as Rel },
+      { key: 'playing', label: `You're competing in · ${playing.length}`, items: playing, rel: 'playing' as Rel },
+      { key: 'open', label: `Open for entry · ${open.length}`, items: open, rel: null },
+      { key: 'rest', label: `Other tournaments · ${rest.length}`, items: rest, rel: null },
+    ].filter(c => c.items.length)
   }
   const tab = cats.find(c => c.key === tabParam) ? tabParam! : cats[0]?.key
 

@@ -14,6 +14,8 @@ import { Badge, Banner, Field, Panel } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
+import { USE_MOCK } from '../../../api/client'
+import { EntryRulesPanel } from './EntryRulesPanel'
 import { useRequestFilterChange, useSaveEntryNotes } from '../../../hooks/useTournament'
 import { FACULTIES, MAJORS, ruleSummary } from '../../../shared/rules'
 import type { Rules, Tournament } from '../../../shared/types'
@@ -55,6 +57,14 @@ function RulesForm({ value, onChange }: { value: Rules; onChange: (r: Rules) => 
 }
 
 export function EntryFilterPanel({ t }: { t: Tournament }) {
+  /* โหมดจริงเป็นคนละเรื่องกันเกือบทั้งแผง: กฎมาจาก eligibility_rules ซึ่งเก็บได้หลายคณะ
+     และหลายชั้นปี (`Rules` ของ prototype มีช่องละค่าเดียว จึงยุบของจริงทิ้ง) การแก้ก็
+     ต้องผ่านคำขอที่แอดมินอนุมัติ ไม่ใช่เขียนทับ — แยกไฟล์ดีกว่าใส่ if ทั้งแผง */
+  if (!USE_MOCK) return <EntryRulesPanel t={t} />
+  return <StoreEntryFilterPanel t={t} />
+}
+
+function StoreEntryFilterPanel({ t }: { t: Tournament }) {
   useLtms()
   const saveNotes = useSaveEntryNotes(t.id)
   const requestChange = useRequestFilterChange(t.id)

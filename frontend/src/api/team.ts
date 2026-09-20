@@ -68,10 +68,14 @@ const unavailable = <T>(what: string): Promise<T> =>
 
 // ══════════════ อ่าน ══════════════
 
-/** TODO(guide): GET /teams?mine=true — หน้า /teams */
+/**
+ * ทีมของฉัน — เส้นจริงคือ GET /me/teams (ไม่ใช่ /teams?mine=true)
+ * ⚠️ backend คืนรูปย่อ (id, name, sportTypeId, readinessStatus, officialStatus, memberCount, role)
+ * ไม่ใช่ TeamDto เต็มของ prototype — หน้าจอโหมดจริงให้ใช้ getBackendMyTeams()
+ */
 export async function getMyTeams(): Promise<{ items: TeamDto[] }> {
   if (USE_MOCK) return mockDelay({ items: myStoreTeams() });
-  return apiFetch("/teams?mine=true");
+  return apiFetch("/me/teams");
 }
 
 /** Current backend contract: GET /me/teams. */
@@ -151,10 +155,13 @@ export async function getTeam(teamId: TeamRef): Promise<TeamDto> {
   return apiFetch(`/teams/${teamId}`);
 }
 
-/** T09/T12/T13 — คำเชิญที่รอเราตอบ (FR-TM-03) */
+/**
+ * T09/T12/T13 — คำเชิญที่รอเราตอบ (FR-TM-03)
+ * เส้นจริงคือ GET /me/invitations และคืนเฉพาะคำเชิญที่ยัง pending
+ */
 export async function getMyInvitations(): Promise<{ items: TeamInvitationDto[] }> {
   if (USE_MOCK) return mockDelay({ items: myStoreInvitations() });
-  return apiFetch("/me/team-invitations");
+  return apiFetch("/me/invitations");
 }
 
 /** GET /teams/:id/invitations — คำเชิญที่ทีมนี้ส่งออกไป พร้อมสถานะ (FR-TM-02) */
@@ -169,13 +176,17 @@ export async function getTeamAdminRequests(): Promise<{ items: TeamAdminRequestD
   return apiFetch("/admin/team-requests");
 }
 
-/** TODO(guide): GET /users/:id/profile — U03 ฝั่งสาธารณะ + player_profile_stats */
+/**
+ * U03 โปรไฟล์สาธารณะ — เส้นจริงคือ GET /users/:id (ไม่มี /profile ต่อท้าย)
+ * backend คืน { id, fullName, avatarUrl, facultyId, departmentId, teams }
+ * สถิติผู้เล่นอยู่คนละเส้น: GET /users/:id/stats (ดู api/user.ts)
+ */
 export async function getPlayerProfile(userId: TeamRef): Promise<PlayerProfileDto> {
   if (USE_MOCK) {
     const p = findStorePlayer(userId);
     return p ? mockDelay(p) : notFound<PlayerProfileDto>("ผู้เล่น");
   }
-  return apiFetch(`/users/${userId}/profile`);
+  return apiFetch(`/users/${userId}`);
 }
 
 // ══════════════ เขียน ══════════════

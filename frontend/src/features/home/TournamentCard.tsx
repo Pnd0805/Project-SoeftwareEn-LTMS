@@ -57,9 +57,14 @@ export function TournamentCard({ t, rel, entry }: { t: Tournament; rel: Rel; ent
             ? <span className="tag">Run by {org?.name ?? '—'}</span>
             : <span className="tag">{t.venue || 'Venue to be announced'}</span>}
       <span className="spread" style={{ borderTop: '1px solid var(--line)', paddingTop: 11, width: '100%' }}>
-        <span className="tag">{n === null ? `Capacity ${t.cap} teams` : `${n} / ${t.cap} teams`}</span>
+        {/* รายการจาก GET /tournaments ไม่ส่งจำนวนทีมสูงสุดมาด้วย — ไม่รู้ก็ไม่ต้องเขียน */}
         <span className="tag">
-          {champion ? `Champion: ${champion.code}` : t.drawn ? 'In progress' : 'Registration open'}
+          {t.cap === undefined ? '' : n === null ? `Capacity ${t.cap} teams` : `${n} / ${t.cap} teams`}
+        </span>
+        <span className="tag">
+          {champion ? `Champion: ${champion.code}`
+            : t.champion ? 'Finished'
+              : t.drawn ? 'In progress' : 'Registration open'}
         </span>
       </span>
     </button>

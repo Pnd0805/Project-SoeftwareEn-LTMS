@@ -96,7 +96,7 @@ export function AdminRefereesTab() {
                       {r.tournament.name}
                     </button>
                   </td>
-                  <td className="sub">{r.invitedBy.fullName}</td>
+                  <td className="sub">{r.invitedBy?.fullName ?? '—'}</td>
                   <td>
                     <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                       <button className="btn ghost" type="button" disabled={busyId !== undefined}

@@ -147,6 +147,7 @@ function viewerOf(s: State, m: StoreMatch): MatchViewerContext {
       editFixture: org && m.status === 'scheduled' && !m.checkedIn.length,
       recordStats: isReferee,
       manageCheckin: isReferee,
+      verifyCheckin: isReferee,
     },
   }
 }
@@ -194,6 +195,11 @@ export function toMatchDto(s: State, m: StoreMatch): MatchDto {
     replayUrl: m.replay ?? null,
     checkedIn: m.checkedIn.length,
     lineupSize: lineup,
+    /* store เก็บสถานะแมตช์กับสถานะใบผลไว้ช่องเดียว — แยกกลับให้ตรงกับของ backend
+       'pending' ของ store = ส่งผลแล้วรออีกฝ่ายยืนยัน = submitted */
+    resultStatus: m.status === 'confirmed' ? 'verified'
+      : m.status === 'disputed' ? 'disputed'
+        : m.status === 'pending' ? 'submitted' : null,
     viewer: viewerOf(s, m),
   }
 }
@@ -291,6 +297,8 @@ export function storeCheckinDtos(ref: MatchRef): MatchCheckinDto[] {
       method: rec?.method ?? (online ? ('photo_online' as const) : ('qr_onsite' as const)),
       status: rec?.status ?? ('success' as const),
       rejectionReason: rec?.rejectionReason ?? null,
+      /* store ไม่มีช่องเหตุผลที่กรรมการอนุโลมให้ — โหมด mock จึงว่างเสมอ */
+      note: null,
       documentType: rec?.documentType ?? null,
       /* mock เก็บรูปเป็น data URL ตรงๆ — ของจริงช่องนี้เป็น S3 key ที่ต้องขอ
          presigned URL ก่อนแสดง (NF-SE-03) ผู้เรียกจึงไม่ควรถือว่าเปิดได้เสมอ */

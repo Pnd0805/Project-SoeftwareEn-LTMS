@@ -6,6 +6,7 @@
  * `MatchState` เป็นภาษากลางของ kit ที่ไม่ผูกกับฝั่งไหน (ดู components/kit/viewModels.ts)
  * ไฟล์นี้คือ "ขอบ" ของโดเมนเรา ที่ map จาก schema มาเข้าภาษากลางนั้น
  */
+import { USE_MOCK } from '../../api/client'
 import type { MatchState, TeamView } from '../../components/kit/viewModels'
 import type { MatchListItemDto, MatchTeamRef } from '../../types/match.dto'
 
@@ -22,10 +23,15 @@ export const toTeamView = (t: MatchTeamRef | null): TeamView | null =>
  *
  * ผลชนะสถานะแมตช์เสมอ: ถ้ามีผลยืนยันแล้ว แมตช์จบแล้วไม่ว่า `match_status` จะเป็นอะไร
  */
-export function matchStateOf(m: Pick<MatchListItemDto, 'status' | 'resultStatus' | 'teamA' | 'teamB'>): MatchState {
+export function matchStateOf(
+  m: Pick<MatchListItemDto, 'status' | 'resultStatus' | 'teamA' | 'teamB' | 'outcome'>,
+): MatchState {
+  /* จบโดยไม่ได้แข่ง — บายผ่าน / แพ้ทั้งคู่ / แมตช์ตาย (B5 `outcome`) ไม่มีใบผลให้ดู
+     ต้องตัดสินก่อนบรรทัดถัดไป ไม่งั้นแมตช์บายที่มีทีมเดียวจะค้างเป็น "รอคู่แข่ง" ตลอดไป */
+  if (m.status === 'completed' && m.outcome && m.outcome.kind !== 'played') return 'confirmed'
   if (!m.teamA || !m.teamB) return 'waiting'
   if (m.status === 'disputed' || m.resultStatus === 'disputed') return 'disputed'
-  if (m.resultStatus === 'verified') return 'confirmed'
+  if (m.resultStatus === 'verified' || m.resultStatus === 'walkover') return 'confirmed'
   if (m.resultStatus === 'submitted') return 'pending'
   if (m.status === 'completed') return 'pending'   // จบแล้วแต่ยังไม่มีผล = รอคนกรอก
   if (m.status === 'in_progress') return 'live'
@@ -33,9 +39,27 @@ export function matchStateOf(m: Pick<MatchListItemDto, 'status' | 'resultStatus'
   return 'scheduled'
 }
 
+/**
+ * แมตช์ที่จบโดยไม่ได้แข่งจริง เขียนว่าเกิดอะไรขึ้นแทนที่จะปล่อยช่องว่างไว้ให้เดา
+ * null = ไม่มีอะไรพิเศษ ให้วาดสกอร์ตามปกติ (โหมด mock ไม่มี `outcome` จึงได้ null เสมอ)
+ */
+export function outcomeNote(m: Pick<MatchListItemDto, 'outcome'>): string | null {
+  switch (m.outcome?.kind) {
+    case 'walkover': return 'W/O'
+    case 'bye': return 'Bye'
+    case 'void': return 'No contest'
+    default: return null
+  }
+}
+
 /** สกอร์เป็นข้อความ — `—` เมื่อยังไม่มีผล ไม่ใช่ `0` */
-export const scoreText = (m: MatchListItemDto): string =>
-  m.score ? `${m.score.a ?? '—'} – ${m.score.b ?? '—'}` : '— – —'
+export const scoreText = (m: Partial<Pick<MatchListItemDto, 'score' | 'outcome'>>): string => {
+  const note = outcomeNote(m)
+  if (!m.score) return note ?? '— – —'
+  /* บายมีสกอร์ประจำกีฬาติดมา เลขอย่างเดียวจึงอ่านเหมือนแข่งจริง — ต่อท้ายว่ามันคืออะไร */
+  const text = `${m.score.a ?? '—'} – ${m.score.b ?? '—'}`
+  return note ? `${text} · ${note}` : text
+}
 
 // ── ถังงานของกรรมการ ────────────────────────────────────────────────────
 /**
@@ -63,12 +87,21 @@ export type RefBucket = keyof typeof REF_BUCKETS
  */
 export function refBucketOf(m: MatchListItemDto): RefBucket {
   const done = m.status === 'completed'
-  if (m.mode === 'online' && !done && m.resultStatus === null && !m.roomCode) return 'room'
+  /* คิว "ประกาศรหัสห้อง" มีความหมายเฉพาะตอนที่ระบบเก็บรหัสห้องได้ — backend ยังไม่มีคอลัมน์นั้น
+     ถ้าไม่กันไว้ แมตช์ออนไลน์ทุกนัดจะค้างอยู่ในคิวนี้ตลอดไปเพราะ roomCode เป็น null เสมอ */
+  if (USE_MOCK && m.mode === 'online' && !done && m.resultStatus === null && !m.roomCode) return 'room'
   if (m.mode === 'onsite' && m.resultStatus === null && !done) return 'score'
   if (m.mode === 'online' && m.resultStatus === 'submitted') return 'confirm'
   return 'waiting'
 }
 
-/** แมตช์ที่ยังไม่จบ — ตัวที่กรรมการต้องเห็นในคิว */
+/**
+ * แมตช์ที่ยังไม่จบ — ตัวที่กรรมการต้องเห็นในคิว
+ *
+ * เดิมเช็คแค่ `resultStatus !== 'verified'` ซึ่งแปลว่าแมตช์ที่ชนะบายไม่มีวันหลุดออกจากคิว
+ * (ใบผลของมันเป็น `walkover` ไม่ใช่ `verified`) และแมตช์ที่จบแบบไม่มีใบผลเลยก็เหมือนกัน
+ * ตั้งแต่ `3b6ee3d` บายเกิดเองเป็นลูกโซ่ เรื่องนี้เลยกลายเป็นของที่เจอทุกวัน
+ * ใช้ `matchStateOf` ตัวเดียวกับที่ป้ายสถานะใช้ จะได้ไม่มีนิยาม "จบแล้ว" สองชุดในแอป
+ */
 export const isOpen = (m: MatchListItemDto) =>
-  !!m.teamA && !!m.teamB && m.resultStatus !== 'verified'
+  !!m.teamA && !!m.teamB && matchStateOf(m) !== 'confirmed'

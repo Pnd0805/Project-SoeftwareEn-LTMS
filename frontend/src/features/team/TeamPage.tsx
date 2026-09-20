@@ -37,6 +37,8 @@ import {
 import { useMe } from '../../hooks/useAuth'
 import { useFollow, useSearchUsers } from '../../hooks/useUser'
 import { useSportTypes } from '../../hooks/useReference'
+import { EnterTournamentButton } from '../tournament/EnterTournamentButton'
+import { useMyTournamentApplications, useTournamentsByIds } from '../../hooks/useTournament'
 import { mockTeamApiIdFromRoute } from '../../mocks/routeIds'
 import { findStoreTeam } from '../../mocks/teamBridge'
 import { useLtms } from '../../shared/store'
@@ -46,6 +48,9 @@ import { TeamManage } from './TeamManage'
 import { TeamRecord } from './TeamRecord'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
+
+/** ทัวร์ที่ไม่ล็อกรายชื่อแล้ว — ชุดเดียวกับ findLockingTournamentOfTeam ของ backend (B6) */
+const ROSTER_FREE = new Set<string>(['completed', 'auto_deleted', 'rejected'])
 
 const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
@@ -62,9 +67,15 @@ export function TeamPage() {
   const team = useBackendTeam(teamId)
   const members = useBackendTeamMembers(teamId)
   const myTeams = useBackendMyTeams()
+  const myApplications = useMyTournamentApplications()
   const sportTypes = useSportTypes()
   const { data: currentUser } = useMe()
   const follow = useFollow(currentUser?.id, `team:${id ?? ''}`)
+  /* B6 ล็อกรายชื่อเฉพาะทัวร์ที่ "ยังไม่จบ" — ต้องรู้สถานะของทัวร์ที่ทีมนี้ได้ที่นั่ง
+     เรียกตรงนี้เพราะ hook ต้องถูกเรียกทุกรอบ ก่อนทางออกก่อนกำหนดข้างล่าง */
+  const approvedIn = (myApplications.data?.items ?? [])
+    .filter(application => application.team.id === team.data?.id && application.status === 'approved')
+  const approvedTournaments = useTournamentsByIds(approvedIn.map(application => application.tournament.id))
 
   if (teamId === undefined) {
     return <Empty icon="team" title="Invalid team link"><button className="btn" type="button" onClick={() => navigate('/teams')}>Back to teams</button></Empty>
@@ -84,6 +95,24 @@ export function TeamPage() {
   /* ของที่ backend ยังไม่มีให้ — อ่านจาก store เฉพาะโหมด mock */
   const storeTeam = USE_MOCK ? findStoreTeam(data.id) : undefined
   const lock = storeTeam ? rosterLockOf(s, storeTeam) : null
+  /**
+   * ล็อกรายชื่อเมื่อทีมได้ที่นั่งในรายการแล้ว (FR-TM-04)
+   *
+   * ใบสมัครถูกตรวจ hard filter ณ ตอนยื่น — ถ้าเปลี่ยนตัวผู้เล่นหลังผู้จัดรับเข้าแล้ว
+   * ทีมที่ลงแข่งจริงจะไม่ใช่ทีมที่ผ่านการตรวจ
+   *
+   * ตั้งแต่ B6 (`c43f497`) backend บังคับเองแล้ว (T07/T08/T09/T13 ตอบ 409 ROSTER_LOCKED)
+   * และปลดล็อกเมื่อทัวร์จบ ถูกปัดตก หรือถูกลบ — ถ้าเราไม่เช็คสถานะด้วย ทีมที่เคยเข้าทัวร์
+   * ที่จบไปนานแล้วจะถูกล็อกค้างตลอดกาลทั้งที่ server ยอมให้แก้
+   */
+  const stillRunning = new Set(
+    approvedTournaments.flatMap(q => (q.data && !ROSTER_FREE.has(q.data.status) ? [q.data.id] : [])),
+  )
+  /* โหมด mock ไม่มีสถานะทัวร์จาก API (useTournamentsByIds ปิดอยู่) — ตัวล็อกหลักคือ
+     rosterLockOf ของ store อยู่แล้ว ตรงนี้จึงคงพฤติกรรมเดิมไว้ */
+  const committedTo = USE_MOCK ? approvedIn[0] : approvedIn.find(a => stillRunning.has(a.tournament.id))
+  const pendingIn = (myApplications.data?.items ?? [])
+    .find(application => application.team.id === team.data?.id && application.status === 'pending')
   const sport = sportTypes.data?.items.find(x => x.id === data.sportTypeId)
   const minPlayers = storeTeam ? minSquad(storeTeam) : sport?.minMembers
   const short = minPlayers !== undefined ? Math.max(0, minPlayers - data.memberCount) : 0
@@ -107,12 +136,18 @@ export function TeamPage() {
             </span>
           </span>
         </span>
-        {currentUser ? (
-          <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
-            onClick={() => follow.toggle.mutate()} disabled={follow.toggle.isPending}>
-            {follow.isFollowing ? 'Following' : 'Follow this squad'}
-          </button>
-        ) : null}
+        <span className="hstack">
+          {/* ประตูที่สองของการสมัครแข่ง — เริ่มจากทีม เลือกรายการทีหลัง */}
+          {!USE_MOCK && isLeader && data.readinessStatus === 'Ready' ? (
+            <EnterTournamentButton team={data} variant="primary" />
+          ) : null}
+          {currentUser ? (
+            <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
+              onClick={() => follow.toggle.mutate()} disabled={follow.toggle.isPending}>
+              {follow.isFollowing ? 'Following' : 'Follow this squad'}
+            </button>
+          ) : null}
+        </span>
       </div>
 
       {data.readinessStatus === 'Forming' && short > 0 ? (
@@ -122,18 +157,27 @@ export function TeamPage() {
         </Banner>
       ) : null}
 
-      {isLeader && lock ? (
+      {isLeader && (lock || committedTo) ? (
         <Banner kind="warn">
-          <b>The roster is locked while {lock.name} is under way.</b>{' '}
-          Players can't be added or removed until that tournament names a champion.
+          <b>The roster is locked while {lock?.name ?? committedTo?.tournament.name} is under way.</b>{' '}
+          Players can't be added or removed — the squad that plays has to be the squad the entry
+          rules were checked against.
+        </Banner>
+      ) : null}
+
+      {isLeader && !committedTo && pendingIn ? (
+        <Banner kind="warn">
+          <b>{pendingIn.tournament.name} has not decided on this squad yet.</b>{' '}
+          Changing the roster now means the organizer approves a squad that is not the one the entry
+          rules were checked against.
         </Banner>
       ) : null}
 
       <RosterPanel data={data} members={members} isLeader={isLeader}
-        lockName={lock?.name ?? null} minPlayers={minPlayers} />
+        lockName={lock?.name ?? committedTo?.tournament.name ?? null} minPlayers={minPlayers} />
 
       {isLeader ? (
-        <InvitePanel data={data} lockName={lock?.name ?? null}
+        <InvitePanel data={data} lockName={lock?.name ?? committedTo?.tournament.name ?? null}
           memberIds={(members.data?.items ?? []).map(m => m.userId)} />
       ) : null}
 
@@ -172,8 +216,14 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers }: {
       <div className="spread">
         <span className="tag"><em>//</em> Squad · {data.memberCount}</span>
         <span className="hstack" style={{ gap: 10 }}>
+          {/* "12 of 11" อ่านเหมือนตัวเลขพัง — ตัวหารคือ "ขั้นต่ำที่ต้องมี" ไม่ใช่โควตา
+              พอครบแล้วบอกว่าครบ ไม่ต้องโชว์เศษส่วนที่เกินตัวหารของตัวเอง */}
           {rows.length ? (
-            <span className="sub">Starters {starters}{minPlayers !== undefined ? ` of ${minPlayers}` : ''}</span>
+            <span className="sub">
+              {minPlayers === undefined ? `Starters ${starters}`
+                : starters >= minPlayers ? `Starters ${starters} · ${minPlayers} needed`
+                  : `Starters ${starters} of ${minPlayers} needed`}
+            </span>
           ) : null}
           {isLeader ? (
             <span className="sub">
@@ -209,14 +259,21 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers }: {
                   <tr key={member.userId}>
                     <td>
                       <span className="hstack">
-                        <span className="avatar">{member.fullName.slice(0, 1)}</span>{member.fullName}
+                        <span className="avatar">{member.fullName.slice(0, 1)}</span>
+                        {/* กดชื่อเพื่อเปิดโปรไฟล์สาธารณะ (GET /users/:id) */}
+                        <button className="tchip link" type="button"
+                          onClick={() => navigate(`/player/${member.userId}`)}>{member.fullName}</button>
                         {captain ? <span className="tag"> · captain</span> : null}
                       </span>
                     </td>
                     <td>
                       {isLeader ? (
+                        /* ตัวจริง/ตัวสำรองคือ T07 เส้นเดียวกับที่ roster lock บล็อก — ปุ่มถอน
+                           ข้างๆ ปิดตาม lockName อยู่แล้ว ช่องนี้ก็ต้องปิดด้วย ไม่งั้นเลือกได้
+                           แต่เด้ง 409 ROSTER_LOCKED ทุกครั้ง */
                         <select value={member.position} aria-label={`Position of ${member.fullName}`}
-                          disabled={position.isPending} style={{ width: 'auto' }}
+                          disabled={!!lockName || position.isPending} style={{ width: 'auto' }}
+                          title={lockName ? `Locked while ${lockName} is under way` : undefined}
                           onChange={e => {
                             setNotice(null)
                             position.mutate({

@@ -22,7 +22,8 @@
 import { useState } from 'react'
 import { Badge, Banner, Panel } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
-import { useDrawTournament, useTournament } from '../../../hooks/useTournament'
+import { useDrawTournament, useTournamentTeams } from '../../../hooks/useTournament'
+import { useTournamentMatches } from '../../../hooks/useMatch'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
@@ -34,15 +35,21 @@ interface Entry { id: string; name: string; ref: number | string }
 export function DrawPanel({ t }: { t: Tournament }) {
   const s = useLtms()
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
-  const { data: detail } = useTournament(tournamentId)
-  const live = tournamentId !== undefined && !!detail
+  /**
+   * ทีมที่ได้ที่นั่งมาจาก GET /tournaments/:id/teams
+   *
+   * ⚠️ เดิมอ่านจาก `detail.applications` ของ GET /tournaments/:id ซึ่ง **backend ไม่ได้ส่งมา**
+   *    (detail มีแค่ organizer กับ approvedTeamCount) — ค่าเป็น undefined แล้ว .filter พังทั้งหน้า
+   */
+  const approvedTeams = useTournamentTeams(tournamentId)
+  const tournamentMatches = useTournamentMatches(tournamentId)
+  const live = tournamentId !== undefined
   /* ชั้น API รับได้ทั้งสอง ref จึงส่งตัวที่หน้าถืออยู่ */
   const draw = useDrawTournament(tournamentId ?? t.id)
 
   const entries: Entry[] = live
-    ? detail.applications
-        .filter(a => a.status === 'approved')
-        .map(a => ({ id: String(a.teamId), name: a.team.name, ref: a.teamId }))
+    ? (approvedTeams.data?.items ?? [])
+        .map(team => ({ id: String(team.id), name: team.name, ref: team.id }))
     : regsOf(s, t.id)
         .filter(r => r.status === 'approved')
         .map(r => ({ id: r.team, name: team(s, r.team)?.name ?? r.team, ref: r.team }))
@@ -51,12 +58,26 @@ export function DrawPanel({ t }: { t: Tournament }) {
   const need = formatOf(t) === 'double' ? 4 : 2
 
   /* สายที่จับไว้แล้ว — รอบแรกเรียงตามช่อง เพื่อให้ค่าเริ่มต้นคือของเดิม ไม่ใช่ของใหม่ */
-  const first = t.drawn ? matchesOf(s, t.id).filter(m => m.round === 0).sort((a, b) => a.slot - b.slot) : []
   const order: (string | null)[] = []
-  first.forEach(m => { order[m.slot * 2] = m.a; order[m.slot * 2 + 1] = m.b })
+  if (live) {
+    const drawnFirstRound = (tournamentMatches.data?.items ?? [])
+      .filter(m => m.roundNumber === 1)
+      .sort((a, b) => a.id - b.id)
+    drawnFirstRound.forEach((m, i) => {
+      order[i * 2] = m.teamA ? String(m.teamA.id) : null
+      order[i * 2 + 1] = m.teamB ? String(m.teamB.id) : null
+    })
+  } else {
+    const first = t.drawn ? matchesOf(s, t.id).filter(m => m.round === 0).sort((a, b) => a.slot - b.slot) : []
+    first.forEach(m => { order[m.slot * 2] = m.a; order[m.slot * 2 + 1] = m.b })
+  }
   const [positions, setPositions] = useState<string[]>(() => ids.map((_, i) => order[i] || ids[i]))
 
   if (formatOf(t) === 'roundrobin') return null
+
+  if (live && approvedTeams.isPending) {
+    return <Panel quiet><span className="sub">Loading the squads that got in…</span></Panel>
+  }
 
   if (ids.length < need) {
     return (
@@ -71,7 +92,11 @@ export function DrawPanel({ t }: { t: Tournament }) {
     )
   }
 
-  const started = t.drawn && drawStarted(s, t)
+  /* ล็อกเมื่อแมตช์แรกเริ่มเดินแล้ว — โหมดจริงดูจากสถานะแมตช์ ไม่ใช่ store */
+  const liveStarted = live && (tournamentMatches.data?.items ?? [])
+    .some(m => m.status !== 'scheduled')
+  const started = live ? liveStarted : (t.drawn && drawStarted(s, t))
+  const alreadyDrawn = live ? (tournamentMatches.data?.items.length ?? 0) > 0 : t.drawn
   const size = 1 << Math.ceil(Math.log2(Math.max(2, positions.length)))
   const byId = new Map(entries.map(e => [e.id, e]))
 
@@ -106,7 +131,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
       <div className="spread">
         <span className="tag"><em>//</em> Arrange the draw by hand</span>
         {started ? <Badge kind="neutral">Locked — the tournament has started</Badge>
-          : t.drawn ? <Badge kind="warn">Open until the first match starts</Badge>
+          : alreadyDrawn ? <Badge kind="warn">Open until the first match starts</Badge>
             : <Badge kind="neutral">Not drawn yet</Badge>}
       </div>
 

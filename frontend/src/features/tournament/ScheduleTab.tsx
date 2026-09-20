@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { Empty, MatchStateBadge, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamLinkView } from '../../components/kit/chips'
 import { useTournamentMatches } from '../../hooks/useMatch'
-import { matchStateOf, toTeamView } from '../match/matchView'
+import { matchStateOf, scoreText, toTeamView } from '../match/matchView'
 
 export function ScheduleTab({ tournamentId }: { tournamentId: number | string }) {
   const navigate = useNavigate()
@@ -34,7 +34,7 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
       <table>
         <thead>
           <tr>
-            <th>Kick-off</th><th>Round</th><th>Home</th><th /><th>Away</th><th>State</th><th />
+            <th>Kick-off</th><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>State</th><th />
           </tr>
         </thead>
         <tbody>
@@ -45,7 +45,10 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
               <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
               <td className="tag">vs</td>
               <td><TeamLinkView team={toTeamView(m.teamB)} /></td>
-              <td><MatchStateBadge state={matchStateOf({ ...m, resultStatus: null })} /></td>
+              <td className="num">{scoreText(m)}</td>
+              {/* รายการแมตช์แนบ resultStatus มาแล้ว — เดิมบังคับเป็น null ทุกแถว
+                  นัดที่ยืนยันผลไปแล้วเลยขึ้น "Awaiting confirmation" ค้างตลอด */}
+              <td><MatchStateBadge state={matchStateOf(m)} /></td>
               <td>
                 <span className="hstack" style={{ gap: 8 }}>
                   <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>

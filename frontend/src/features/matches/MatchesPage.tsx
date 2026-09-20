@@ -64,8 +64,10 @@ function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
         </div>
         <div>
           <span className="tag">Checked in</span>
+          {/* ยอดเช็คอินอ่านได้เฉพาะผู้จัดกับกรรมการ — ผู้เล่นไม่รู้ทั้งตัวตั้งและตัวหาร
+              เขียน "0 / 0" ให้เขาอ่านก็เท่ากับบอกว่ายังไม่มีใครมา */}
           <span className="v" style={{ fontSize: 16, fontFamily: 'var(--f-mono)' }}>
-            {m.checkedIn} / {m.lineupSize}
+            {m.lineupSize ? `${m.checkedIn} / ${m.lineupSize}` : '—'}
           </span>
         </div>
       </div>

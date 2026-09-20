@@ -15,7 +15,7 @@
  * ไม่งั้น UI จะค้างโชว์สถานะแมตช์เก่า — ทำเป็น helper `touchMatch` ไว้ข้างล่าง
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { retryPolicy } from "../api/client";
+import { USE_MOCK, retryPolicy } from "../api/client";
 import type { QueryClient } from "@tanstack/react-query";
 import * as matchApi from "../api/match";
 import type {
@@ -37,6 +37,8 @@ export const matchKeys = {
   detail: (id: MatchRef) => ["match", id] as const,
   result: (id: MatchRef) => ["match", id, "result"] as const,
   checkins: (id: MatchRef) => ["match", id, "checkins"] as const,
+  /* ลูกของ checkins โดยตั้งใจ — touchCheckin ล้างทั้งกิ่งอยู่แล้ว ไม่ต้องจำเพิ่ม */
+  myCheckin: (id: MatchRef) => ["match", id, "checkins", "me"] as const,
   stats: (id: MatchRef) => ["match", id, "stats"] as const,
   byTournament: (tid: MatchRef) => ["matches", "tournament", tid] as const,
   mine: ["matches", "mine"] as const,
@@ -141,6 +143,16 @@ export function useMatchStats(matchId: MatchRef | undefined) {
   });
 }
 
+/** GET /tournaments/:id/winner — ใช้ได้เฉพาะรายการที่ปิดแล้ว (นอกนั้น backend ตอบ 404) */
+export function useTournamentWinner(tournamentId: MatchRef | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["tournaments", tournamentId, "winner"],
+    queryFn: () => matchApi.getTournamentWinner(Number(tournamentId)),
+    enabled: enabled && tournamentId !== undefined && !USE_MOCK,
+    retry: false,
+  });
+}
+
 export function useStandings(tournamentId: MatchRef | undefined) {
   return useQuery({
     queryKey: matchKeys.standings(tournamentId as MatchRef),
@@ -224,6 +236,19 @@ function touchCheckin(qc: QueryClient, matchId: MatchRef) {
   qc.invalidateQueries({ queryKey: ["matches"] });
 }
 
+/**
+ * แถวเช็คอินของตัวเอง (A9) — ผู้เล่นอ่านรายการทั้งแมตช์ไม่ได้
+ * 404 แปลว่าไม่มีแมตช์ ไม่ใช่ยังไม่เช็คอิน (ยังไม่เช็คอินคือ `null`) จึงไม่ต้อง retry
+ */
+export function useMyCheckin(matchId: MatchRef | undefined) {
+  return useQuery({
+    queryKey: matchKeys.myCheckin(matchId as MatchRef),
+    queryFn: () => matchApi.getMyCheckin(matchId as MatchRef),
+    enabled: matchId !== undefined,
+    retry: false,
+  });
+}
+
 export function useCheckin(matchId: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
@@ -261,6 +286,52 @@ export function useSetLivestream(matchId: MatchRef) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matchKeys.all });
       qc.invalidateQueries({ queryKey: ["matches"] });
+    },
+  });
+}
+
+/* ── วงจรชีวิตของแมตช์ (M09/M10/M17/M18) ────────────────────────────────────
+   สี่เส้นนี้มีใน backend มานานแต่ไม่เคยมีปุ่มเรียก แมตช์จึงออกจาก scheduled
+   ไม่ได้เลยถ้าไม่ไปยิง SQL เอง — ทั้งสี่เปลี่ยนสถานะแมตช์ จึงล้าง cache ชุดเดียวกัน */
+
+export function useOpenMatchCheckin(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchApi.openMatchCheckin(Number(matchId)),
+    onSuccess: () => {
+      touchMatch(qc, matchId, tournamentId);
+      touchCheckin(qc, matchId);
+    },
+  });
+}
+
+export function useCloseMatchCheckin(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchApi.closeMatchCheckin(matchId),
+    onSuccess: () => {
+      touchMatch(qc, matchId, tournamentId);
+      touchCheckin(qc, matchId);
+    },
+  });
+}
+
+export function useStartMatch(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchApi.startMatch(Number(matchId)),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+export function useForfeitMatch(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchApi.forfeitMatch(matchId),
+    /* ตัดสินแล้วแมตช์จบทันที สายกับตารางอันดับขยับตาม */
+    onSuccess: () => {
+      touchMatch(qc, matchId, tournamentId);
+      touchCheckin(qc, matchId);
     },
   });
 }

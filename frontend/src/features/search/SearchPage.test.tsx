@@ -22,6 +22,13 @@ vi.mock('../../hooks/useUser', () => ({
   useSearchUsers: () => ({ data: { items: [] }, isPending: false, isError: false, error: null }),
 }))
 
+/* ชื่อกีฬามาจาก GET /sport-types — id 3 คือแบดมินตันหลัง backend renumber (migration 010) */
+vi.mock('../../hooks/useReference', () => ({
+  useSportTypes: () => ({
+    data: { items: [{ id: 3, name: 'Badminton', minMembers: 2, maxMembers: 4, defaultMode: 'onsite' }] },
+  }),
+}))
+
 vi.mock('../../hooks/useTournament', () => ({
   useTournaments: () => ({
     data: { items: [{

@@ -3,40 +3,92 @@ import {
   BracketFormatEnum,
   EligibilityRuleTypeEnum,
   GenderRequirementEnum,
-  TournamentScopeTypeEnum,
   TournamentStatusEnum,
 } from "../types/enums";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)");
-const dateTimeSchema = z.string().datetime({ offset: true, message: "รูปแบบวันเวลาไม่ถูกต้อง" });
+
+/**
+ * ช่อง datetime-local ของเบราว์เซอร์ให้ค่ามาแบบ "2026-09-18T21:00" ซึ่งไม่มีโซนเวลา
+ * เติมโซนเวลาของเครื่องให้ก่อนตรวจ จะได้ส่ง "+07:00" ไป ไม่ใช่รูปแบบ Z
+ * (backend เอาค่าไปใส่ MySQL ตรงๆ แล้วพังเป็น 500 ถ้าเป็น Z — แจ้งทีม backend ไว้แล้ว)
+ */
+const pad2 = (n: number) => String(Math.trunc(n)).padStart(2, "0");
+const localDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const isoWithOffset = z.string().datetime({ offset: true });
+const withLocalOffset = (value: string) => {
+  const minutes = -new Date(value).getTimezoneOffset();
+  const sign = minutes >= 0 ? "+" : "-";
+  return `${value}:00${sign}${pad2(Math.abs(minutes) / 60)}:${pad2(Math.abs(minutes) % 60)}`;
+};
+const dateTimeSchema = z.string()
+  .refine((value) => localDateTimePattern.test(value) || isoWithOffset.safeParse(value).success, {
+    message: "รูปแบบวันเวลาไม่ถูกต้อง",
+  })
+  .transform((value) => (localDateTimePattern.test(value) ? withLocalOffset(value) : value));
 
 const tournamentFieldsSchema = z.object({
   name: z.string().trim().min(1, "กรุณาระบุชื่อการแข่งขัน").max(200, "ชื่อการแข่งขันต้องไม่เกิน 200 ตัวอักษร"),
   sportTypeId: z.number().int().positive(),
   bracketFormat: BracketFormatEnum.nullable().optional(),
-  scopeType: TournamentScopeTypeEnum,
+  /* MVP รับแค่ระดับภาควิชากับคณะ — 'university' มีในฐานข้อมูลแต่ยังรอ Change Management
+     (API Design Part 3 · OpenAPI ของ POST /tournaments รับแค่สองค่านี้) */
+  scopeType: z.enum(["department", "faculty"], { message: "เลือกได้เฉพาะระดับภาควิชาหรือคณะ" }),
   organizingFacultyId: z.number().int().positive().nullable().optional(),
   organizingDepartmentId: z.number().int().positive().nullable().optional(),
+  /* backend บังคับครบทั้งสี่วัน และต้องเรียงกัน (tournament.service ensureSchedule) */
+  registrationStart: dateTimeSchema,
+  registrationEnd: dateTimeSchema,
   eventStartDate: dateSchema,
-  eventEndDate: dateSchema.nullable().optional(),
+  eventEndDate: dateSchema,
   maxTeams: z.number().int().positive("จำนวนทีมต้องมากกว่า 0"),
   minTeams: z.number().int().positive("จำนวนทีมต้องมากกว่า 0"),
-  venue: z.string().trim().max(255).nullable().optional(),
+  venue: z.string().trim().min(1, "กรุณาระบุสนามแข่งขัน").max(255),
   disputeWindowHours: z.number().int().nonnegative().optional(),
   genderRequirement: GenderRequirementEnum.optional(),
   minAge: z.number().int().nonnegative().nullable().optional(),
   maxAge: z.number().int().nonnegative().nullable().optional(),
+  /* คณะและชั้นปีที่เปิดรับ — ฟอร์มเก็บเป็นสองลิสต์เพราะกรอกเป็นติ๊กถูก ส่วน backend
+     รับเป็นลิสต์เดียว [{type,value}] แปลงกันตอนส่ง (ดู toEligibilityRules)
+     ว่างทั้งคู่ = ไม่จำกัด · ชั้นปี backend รับ 1–8 (normalizeEligibilityRules) */
+  eligibilityFacultyIds: z.array(z.number().int().positive()).max(50).optional(),
+  eligibilityYears: z.array(z.number().int().min(1).max(8)).max(8).optional(),
 });
+
+/** สองลิสต์ของฟอร์ม → รูปที่ C01/C09 รับ · ไม่มีอะไรเลยคืน `[]` = ไม่จำกัด */
+export const toEligibilityRules = (
+  facultyIds: number[] = [],
+  years: number[] = [],
+): Array<{ type: "faculty" | "year"; value: number }> => [
+  ...facultyIds.map((value) => ({ type: "faculty" as const, value })),
+  ...years.map((value) => ({ type: "year" as const, value })),
+];
 
 export const createTournamentSchema = tournamentFieldsSchema.refine((value) => value.minTeams <= value.maxTeams, {
   message: "จำนวนทีมขั้นต่ำต้องไม่มากกว่าจำนวนทีมสูงสุด",
   path: ["minTeams"],
-}).refine((value) => !value.eventEndDate || value.eventEndDate >= value.eventStartDate, {
+}).refine((value) => new Date(value.registrationStart) < new Date(value.registrationEnd), {
+  message: "วันปิดรับสมัครต้องอยู่หลังวันเปิดรับสมัคร",
+  path: ["registrationEnd"],
+}).refine((value) => new Date(value.registrationEnd) < new Date(`${value.eventStartDate}T23:59:59`), {
+  message: "วันแข่งวันแรกต้องอยู่หลังวันปิดรับสมัคร",
+  path: ["eventStartDate"],
+}).refine((value) => value.eventEndDate >= value.eventStartDate, {
   message: "วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่มต้น",
   path: ["eventEndDate"],
 }).refine((value) => value.minAge == null || value.maxAge == null || value.minAge <= value.maxAge, {
   message: "อายุขั้นต่ำต้องไม่มากกว่าอายุสูงสุด",
   path: ["minAge"],
+/* ระดับการแข่งขันผูกกับหน่วยงานที่จัด — backend เช็คคู่นี้ใน ensureCreateReferences */
+}).refine((value) => value.organizingFacultyId != null, {
+  message: "กรุณาเลือกคณะที่จัดการแข่งขัน",
+  path: ["organizingFacultyId"],
+}).refine((value) => value.scopeType !== "department" || value.organizingDepartmentId != null, {
+  message: "ระดับภาควิชาต้องเลือกภาควิชาที่จัด",
+  path: ["organizingDepartmentId"],
+}).refine((value) => value.scopeType !== "faculty" || value.organizingDepartmentId == null, {
+  message: "ระดับคณะต้องไม่ระบุภาควิชา",
+  path: ["organizingDepartmentId"],
 });
 
 export const updateTournamentSchema = tournamentFieldsSchema.partial().extend({

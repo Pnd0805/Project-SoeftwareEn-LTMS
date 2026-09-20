@@ -97,9 +97,11 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
   const [bad, setBad] = useState<string | null>(null)
 
   const submit = (token: string) => {
-    const clean = token.trim().toUpperCase()
+    /* ห้าม .toUpperCase() กับค่าที่ส่งจริง — โค้ดของ backend เป็นโทเคนที่ตัวพิมพ์มีความหมาย
+       (เทียบแบบไม่สนตัวพิมพ์ได้ เพราะรหัสสั้นของ prototype เป็นตัวพิมพ์ใหญ่ล้วน) */
+    const clean = token.trim()
     if (!clean) { setBad('ยังไม่ได้กรอกรหัส'); return }
-    if (expectedToken && clean !== expectedToken.toUpperCase()) {
+    if (expectedToken && clean.toUpperCase() !== expectedToken.toUpperCase()) {
       setBad('รหัสไม่ตรงกับที่กรรมการแสดงอยู่ — รหัสหมุนทุกนาที ลองอ่านใหม่')
       return
     }

@@ -11,21 +11,33 @@ import { useNavigate } from 'react-router-dom'
 import { Empty, MatchStateBadge, Panel, StatusBadge } from '../../components/kit/primitives'
 import { TeamLinkView } from '../../components/kit/chips'
 import { useTournamentMatches } from '../../hooks/useMatch'
-import { toTeamView } from '../match/matchView'
+import { matchStateOf, outcomeNote, toTeamView } from '../match/matchView'
 import { useLtms } from '../../shared/store'
 import { matchesOf, isOrg, regsOf, team } from '../../shared/selectors'
 import { TeamMarkView } from '../../components/kit/chips'
 import { formatName, formatOf, matchStage, matchTag, nextOf, roundName } from '../../shared/rules'
 import type { Match, Tournament } from '../../shared/types'
-import type { MatchDto } from '../../types/match.dto'
+import type { MatchListItemDto } from '../../types/match.dto'
 
-function ApiBracketNode({ m }: { m: MatchDto }) {
+function ApiBracketNode({ m }: { m: MatchListItemDto }) {
   const navigate = useNavigate()
-  const state = m.teamA && m.teamB
-    ? m.status === 'disputed' ? 'disputed'
-      : m.status === 'completed' ? 'confirmed'
-        : m.status === 'in_progress' ? 'live' : 'scheduled'
-    : 'waiting'
+  const score = m.score
+  /* ใครชนะให้ backend บอก (B5 `outcome.winnerTeamId`) — เทียบสกอร์เองไม่พอ:
+     คู่ถอน/ไม่มาไม่มีสกอร์ และกีฬาที่แต้มน้อยกว่าชนะก็มี */
+  const winnerId = m.outcome?.winnerTeamId ?? null
+  const winner = winnerId !== null
+    ? (m.teamA?.id === winnerId ? 'a' : m.teamB?.id === winnerId ? 'b' : null)
+    : score && score.a !== null && score.b !== null && score.a !== score.b
+      ? (score.a > score.b ? 'a' : 'b')
+      : null
+  const state = matchStateOf(m)
+  const note = outcomeNote(m)
+
+  /* ช่องที่ว่างถาวรเพราะอีกฝั่งบายผ่าน ไม่ใช่ "ยังไม่รู้ว่าใคร" — TBD จึงผิด */
+  const slot = (t: MatchListItemDto['teamA']) =>
+    t === null && m.outcome?.kind === 'bye'
+      ? <span className="sub">BYE</span>
+      : <TeamLinkView team={toTeamView(t)} />
 
   return (
     <button className={`bnode ${state === 'disputed' ? 'act' : ''}`} type="button"
@@ -34,19 +46,22 @@ function ApiBracketNode({ m }: { m: MatchDto }) {
         <span className="tag"><em>//</em> {m.tag || m.stage}</span>
         <MatchStateBadge state={state} />
       </span>
-      <span className="brow">
-        <TeamLinkView team={toTeamView(m.teamA)} />
-        <span className="sc">—</span>
+      {/* บายมีสกอร์ประจำกีฬาติดมาด้วย (บาส 20-0 แบด 2-0) ถ้าไม่บอกก็ดูเหมือนแข่งจริง */}
+      {note ? <span className="sub" style={{ padding: '0 8px' }}>{note}</span> : null}
+      {/* สกอร์มาจากผลของแต่ละนัด — ขีดกลางแปลว่ายังไม่มีผล ไม่ใช่ศูนย์ */}
+      <span className={`brow ${winner === 'a' ? 'win' : winner === 'b' ? 'lose' : ''}`}>
+        {slot(m.teamA)}
+        <span className="sc">{m.score?.a ?? '—'}</span>
       </span>
-      <span className="brow">
-        <TeamLinkView team={toTeamView(m.teamB)} />
-        <span className="sc">—</span>
+      <span className={`brow ${winner === 'b' ? 'win' : winner === 'a' ? 'lose' : ''}`}>
+        {slot(m.teamB)}
+        <span className="sc">{m.score?.b ?? '—'}</span>
       </span>
     </button>
   )
 }
 
-function ApiBracket({ matches, host }: { matches: MatchDto[]; host: React.RefObject<HTMLDivElement | null> }) {
+function ApiBracket({ matches, host }: { matches: MatchListItemDto[]; host: React.RefObject<HTMLDivElement | null> }) {
   const rounds = [...new Set(matches.map(match => match.roundNumber ?? 0))].sort((a, b) => a - b)
   return (
     <div ref={host}>
@@ -54,7 +69,9 @@ function ApiBracket({ matches, host }: { matches: MatchDto[]; host: React.RefObj
         <div className="bracket">
           {rounds.map(round => (
             <div className="bcol" key={round}>
-              <div className="tag" style={{ textAlign: 'center' }}><em>//</em> Round {round + 1}</div>
+              {/* roundNumber ของ backend เริ่มที่ 1 อยู่แล้ว — เดิม +1 ทำให้หัวคอลัมน์
+                  เป็น "Round 2" ขณะที่การ์ดข้างในเขียนว่า "Round 1" */}
+              <div className="tag" style={{ textAlign: 'center' }}><em>//</em> Round {round}</div>
               {matches.filter(match => (match.roundNumber ?? 0) === round).map(match => (
                 <ApiBracketNode key={match.id} m={match} />
               ))}

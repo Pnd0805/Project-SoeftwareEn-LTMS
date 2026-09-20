@@ -8,6 +8,7 @@
  */
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Shell } from './components/layout/Shell'
+import { ErrorBoundary } from './components/layout/ErrorBoundary'
 import { Toasts } from './components/kit/Toasts'
 import { useLtms } from './shared/store'
 import { isGuest } from './shared/selectors'
@@ -70,6 +71,9 @@ export default function App() {
   return (
     <Guard currentUser={currentUser} isLoading={isLoading}>
       <Shell>
+        {/* กันหน้าจอดับทั้งหน้าเมื่อ component ใด component หนึ่ง render พัง
+            (เมนู แถบบน และการนำทางยังอยู่ ผู้ใช้ไม่ต้องเดาว่าเกิดอะไรขึ้น) */}
+        <ErrorBoundary label="This page">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/home/:tab" element={<HomePage />} />
@@ -98,6 +102,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ErrorBoundary>
       </Shell>
       <Toasts />
     </Guard>

@@ -43,6 +43,9 @@ export interface TournamentDetailDto extends TournamentDto {
   eligibilityRules: EligibilityRuleDto[];
   referees: TournamentRefereeDto[];
   applications: TournamentApplicationDto[];
+  /** มากับ GET /tournaments/:id ของ backend — โหมด mock ไม่มีให้ */
+  organizer?: UserRef;
+  approvedTeamCount?: number;
 }
 
 export interface EligibilityRuleDto {
@@ -129,18 +132,39 @@ export interface CreateTournamentRequest {
   name: string;
   sportTypeId: number;
   bracketFormat?: BracketFormat | null;
-  scopeType: TournamentScopeType;
+  /** MVP รับแค่สองค่านี้ — 'university' ยังรอ Change Management */
+  scopeType: Exclude<TournamentScopeType, "university">;
   organizingFacultyId?: number | null;
   organizingDepartmentId?: number | null;
+  /** ISO 8601 พร้อมโซนเวลา — backend บังคับ และต้องเรียง เปิด < ปิด < วันแข่งวันแรก */
+  registrationStart: string;
+  registrationEnd: string;
   eventStartDate: string;
-  eventEndDate?: string | null;
+  eventEndDate: string;
   maxTeams: number;
   minTeams: number;
-  venue?: string | null;
+  venue: string;
   disputeWindowHours?: number;
   genderRequirement?: GenderRequirement;
   minAge?: number | null;
   maxAge?: number | null;
+  /**
+   * คณะและชั้นปีที่เปิดรับ (C01 · `66d5cfc`) — ไม่ส่งหรือส่งลิสต์ว่าง = ไม่จำกัด
+   *
+   * หนึ่งทัวร์ระบุได้หลายคณะ และเป็นตัวตัดสินว่าใครอนุมัติคำขอนี้: จำกัดเฉพาะคณะของ
+   * แอดมินคณะคนนั้น → เขาอนุมัติเอง · นอกนั้น (หลายคณะ หรือไม่จำกัด) ต้องแอดมิน
+   * ระดับมหาวิทยาลัย ไม่งั้น `403 ELIGIBILITY_OUT_OF_SCOPE` (OD-15 Q2-ข)
+   */
+  eligibilityRules?: BackendEligibilityRuleInput[];
+}
+
+/**
+ * รูปที่ "เขียน" กฎคุณสมบัติ — คนละชื่อช่องกับตอนอ่าน (`BackendEligibilityRuleDto`
+ * ใช้ `ruleType`/`ruleValue`) ต้องแปลงกันทุกครั้ง ไม่ใช่ส่งของที่อ่านมากลับไปตรงๆ
+ */
+export interface BackendEligibilityRuleInput {
+  type: EligibilityRuleType;
+  value: number;
 }
 
 export type UpdateTournamentRequest = Partial<CreateTournamentRequest> & {
@@ -154,9 +178,34 @@ export interface CreateEligibilityRuleRequest {
   ruleValue: number;
 }
 
+/**
+ * POST /tournaments/:id/amendment-requests (C09) — ขอแก้ทัวร์ที่อนุมัติไปแล้ว
+ *
+ * รับเฉพาะช่องใน `allowedAmendmentFields` ของ backend · ช่องอื่นตอบ
+ * `400 AMENDMENT_FIELD_NOT_ALLOWED` พร้อมชื่อช่องที่ไม่รับ
+ * ⚠️ ไม่มีที่ให้ผู้จัดเขียนเหตุผล — ตาราง `tournament_amendment_requests` มีแต่
+ *    `rejection_reason` ซึ่งเป็นของแอดมิน แอดมินจึงเห็นแค่ "ขอเปลี่ยนเป็นอะไร"
+ */
+export interface AmendmentRequestPayload {
+  name?: string;
+  registrationStart?: string;
+  registrationEnd?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
+  minTeams?: number;
+  maxTeams?: number;
+  genderRequirement?: GenderRequirement;
+  minAge?: number | null;
+  maxAge?: number | null;
+  eligibilityRules?: BackendEligibilityRuleInput[];
+}
+
 export interface InviteTournamentRefereeRequest {
   userId: number;
+  /** backend บังคับช่องนี้ — ไม่ส่งถือว่า false ที่ชั้น api */
   isExternal?: boolean;
+  /** แมตช์ที่เสนอให้คุมพร้อมคำเชิญ — ว่าง = เชิญเข้า pool เฉยๆ */
+  matchIds?: number[];
 }
 
 export interface ApplyToTournamentRequest {
@@ -207,4 +256,74 @@ export interface SubmitTournamentFeedbackRequest {
 
 export interface DrawTournamentRequest {
   teamIds?: number[];
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// รูปที่ backend ตอบจริง (BE_KN 98aa300) สำหรับเส้นที่ frontend เพิ่งต่อเพิ่ม
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /tournaments/:id/eligibility-rules — backend ส่งมาแค่สองช่องนี้
+ * (ไม่มี id / tournamentId เหมือน EligibilityRuleDto ของ prototype)
+ */
+export interface BackendEligibilityRuleDto {
+  ruleType: EligibilityRuleType;
+  ruleValue: number;
+}
+
+/** GET /me/tournament-requests — คำขอจัดทัวร์นาเมนต์ของฉัน */
+export interface BackendMyTournamentRequestDto {
+  id: number;
+  name: string;
+  status: TournamentStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+/** GET /admin/tournament-requests — คิวที่รอ Admin อนุมัติ */
+export interface BackendPendingTournamentRequestDto {
+  id: number;
+  name: string;
+  requestedBy: UserRef;
+  sportTypeId: number;
+  eventStartDate: string;
+  createdAt: string;
+}
+
+/** GET /admin/amendment-requests — คำขอแก้ไขทัวร์นาเมนต์ที่รอ Admin */
+export interface BackendAmendmentRequestDto {
+  id: number;
+  tournamentId: number;
+  tournamentName: string;
+  requestedBy: UserRef;
+  requestedChanges: Record<string, unknown>;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+}
+
+/** GET /applications/:id — ผู้จัดหรือหัวหน้าทีมของใบสมัครนั้นเท่านั้น */
+export interface BackendApplicationDetailDto {
+  id: number;
+  tournamentId: number;
+  team: { id: number; name: string; sportTypeId: number };
+  status: TournamentApplicationStatus;
+  /** ผลตรวจ hard filter รายคน */
+  hardFilterDetails: unknown[];
+  /** presigned URL ไม่ใช่ S3 key ดิบ */
+  softFilterDocuments: string[];
+}
+
+/** POST /uploads/presign — ขอที่อัปโหลดรูป (JPEG/PNG เท่านั้น) */
+export interface PresignUploadRequest {
+  purpose: "checkin_document" | "soft_filter_document" | "referee_identity";
+  contentType: "image/jpeg" | "image/png";
+  matchId?: number;
+  tournamentId?: number;
+}
+
+export interface PresignUploadResponse {
+  uploadUrl: string;
+  /** ชื่อช่องของ backend คือ objectKey — เอาค่านี้ไปส่งต่อเป็น documentS3Key */
+  objectKey: string;
+  expiresIn: number;
 }

@@ -15,6 +15,9 @@ import { ageOf, statLabels, teamReady } from '../../shared/rules'
 import { careerBySport, careerByTournament } from '../../shared/career'
 import { useMe } from '../../hooks/useAuth'
 import { useFollow } from '../../hooks/useUser'
+import { parseBackendId } from '../../api/ids'
+import { USE_MOCK } from '../../api/client'
+import { BackendPlayerProfile } from './BackendPlayerProfile'
 
 export function CareerPanel({ pid }: { pid: string }) {
   const s = useLtms()
@@ -77,9 +80,16 @@ export function PlayerPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()
-  const p = routeUser(s, id)
+  /* โหมดจริงอ่านจาก GET /users/:id + /users/:id/stats — ข้อมูลผู้เล่นของ prototype
+     อยู่ใน store คนละชุดกับ backend ลิงก์จากรายชื่อสมาชิกทีมจึงเคยตายที่ "No such player" */
+  const backendUserId = USE_MOCK ? undefined : parseBackendId(id)
+  const p = USE_MOCK ? routeUser(s, id) : null
   const { data: currentUser } = useMe()
   const follow = useFollow(currentUser?.id, `player:${id ?? ''}`)
+
+  if (!USE_MOCK) {
+    return <BackendPlayerProfile userId={backendUserId} />
+  }
 
   if (!p) {
     return (

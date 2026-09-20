@@ -25,7 +25,17 @@ import type {
   MyRefereeInvitationDto,
   ExternalRefereeRequestDto,
   ReviewExternalRefereeRequest,
+  BackendExternalRefereeQueueItem,
+  BackendMyRefereeInvitationDto,
+  BackendRefereeCoverageDto,
+  BackendRefereeIdentityDto,
+  BackendRefereeRequestDto,
+  BackendTournamentRefereeListDto,
 } from "../types/admin.dto";
+import type {
+  BackendAmendmentRequestDto,
+  BackendPendingTournamentRequestDto,
+} from "../types/tournament.dto";
 import {
   storeAdminScopes, storeAuditLogs, storeExternalRefereeRequests, storeRefereeCoverage,
   storeRefInviteIdOf, storeTournamentIdOf, storeTournamentReferees, storeTournamentRequests,
@@ -58,6 +68,10 @@ const rejectWith = <T>(b: WriteBlock): Promise<T> =>
  */
 const unavailable = <T>(what: string): Promise<T> =>
   Promise.reject(new ApiError(501, { code: "ENDPOINT_UNAVAILABLE", message: `${what} ยังไม่มีใน backend` }));
+
+/** 404 ของเส้นจริง — ต่างจาก notFound() ที่เป็นของโหมด mock */
+const notFoundLive = <T>(what: string): Promise<T> =>
+  Promise.reject(new ApiError(404, { code: "NOT_FOUND", message: `ไม่พบ${what}` }));
 
 // ══════════════ คิวคำร้องทีม Official — FR-TM-06, FR-TM-08 ══════════════
 
@@ -169,8 +183,14 @@ export async function reviewTournamentRequest(
       rejectionReason: input.approve ? null : (input.rejectionReason ?? null),
     });
   }
-  return apiFetch(`/admin/tournament-requests/${requestId}/review`, {
-    method: "POST", body: JSON.stringify(input),
+  /* เส้นจริงคือ POST /tournaments/:id/approve | /reject — id ของคำขอคือ id ของทัวร์นาเมนต์เอง
+     ปฏิเสธต้องมีเหตุผล ไม่งั้น backend ตอบ 400 TOURNAMENT_REJECT_REASON_REQUIRED */
+  if (input.approve) {
+    return apiFetch(`/tournaments/${requestId}/approve`, { method: "POST" });
+  }
+  return apiFetch(`/tournaments/${requestId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason: input.rejectionReason ?? "ไม่อนุมัติโดยผู้ดูแลระบบ" }),
   });
 }
 
@@ -178,30 +198,47 @@ export async function reviewTournamentRequest(
 
 /**
  * F02: GET /tournaments/:id/referees — organizer only
- * backend คืน `{ items, acceptedCount }` หน้าจอใช้ acceptedCount ตรงๆ ไม่นับเอง
+ *
+ * backend คืน `{ items, acceptedCount, awaitingAdminCount }` — ใช้ทั้งสองยอดตรงๆ ไม่นับเอง
+ * `acceptedCount` นับเฉพาะคนที่มีสิทธิ์จริง ส่วนบุคคลภายนอกที่ตอบรับแล้วแต่ Admin ยังไม่อนุมัติ
+ * (FR-RM-02) แยกไปอยู่ `awaitingAdminCount` — ก่อน A3 ยอดแรกนับรวมคนกลุ่มหลังด้วย
  */
 export async function getTournamentReferees(
   tournamentId: TeamRef,
-): Promise<{ items: TournamentRefereeDto[]; acceptedCount: number }> {
+): Promise<{ items: TournamentRefereeDto[]; acceptedCount: number; awaitingAdminCount: number }> {
   if (USE_MOCK) {
     const items = storeTournamentReferees(tournamentId);
-    /* นับเฉพาะคนที่มีสิทธิ์จริง — บุคคลภายนอกที่ตอบรับแล้วแต่ Admin ยังไม่อนุมัติไม่นับ (FR-RM-02)
-       ⚠️ referee.service ของ backend ตอนนี้นับทุกแถวที่ invitationStatus เป็น accepted */
-    return mockDelay({ items, acceptedCount: items.filter((r) => r.isActive).length });
+    return mockDelay({
+      items,
+      acceptedCount: items.filter((r) => r.isActive).length,
+      awaitingAdminCount: items.filter(
+        (r) => r.isExternal && r.invitationStatus === "accepted" && r.externalApprovalStatus === "pending",
+      ).length,
+    });
   }
   return apiFetch(`/tournaments/${tournamentId}/referees`);
 }
 
 /**
- * TODO(guide): GET /tournaments/:id/referee-coverage
- * FR-RM-03 — ครบ 2 คนหรือยัง กระทบทั้งหน้ากรรมการและ `can.recordStats` ของสไลซ์ 3
+ * F14 GET /tournaments/:id/referees/coverage — ผู้จัดเท่านั้น
+ * backend ตอบเป็นราย "แมตช์ที่ยังขาดกรรมการ" (needed/assigned ต่อแมตช์) ไม่ใช่ยอดรวมของรายการ
+ * ตรงนี้ยุบเป็นยอดรวมตามรูปที่หน้าจอใช้ — ของดิบอยู่ที่ getBackendRefereeCoverage()
  */
 export async function getRefereeCoverage(tournamentId: TeamRef): Promise<RefereeCoverageDto> {
   if (USE_MOCK) {
     const c = storeRefereeCoverage(tournamentId);
     return c ? mockDelay(c) : notFound<RefereeCoverageDto>("ทัวร์นาเมนต์");
   }
-  return unavailable<RefereeCoverageDto>("การตรวจจำนวนกรรมการ (referee coverage)");
+  const raw = await getBackendRefereeCoverage(Number(tournamentId));
+  const required = raw.uncovered.reduce((sum, m) => sum + m.needed, 0);
+  const accepted = raw.uncovered.reduce((sum, m) => sum + m.assigned, 0);
+  return {
+    tournamentId: Number(tournamentId),
+    required,
+    accepted,
+    shortfall: Math.max(required - accepted, 0),
+    blocksStatRecording: raw.uncovered.length > 0,
+  };
 }
 
 /**
@@ -269,8 +306,14 @@ export async function appointReferee(
       .find((r) => r.user.id === input.userId && r.invitationStatus === "pending");
     return row ? mockDelay(row) : notFound<TournamentRefereeDto>("คำเชิญที่เพิ่งสร้าง");
   }
+  /* inviteRefereeSchema บังคับ isExternal และรับ matchIds (ว่าง = เข้า pool เฉยๆ) */
   return apiFetch(`/tournaments/${tournamentId}/referees`, {
-    method: "POST", body: JSON.stringify(input),
+    method: "POST",
+    body: JSON.stringify({
+      userId: input.userId,
+      isExternal: input.isExternal ?? false,
+      matchIds: input.matchIds ?? [],
+    }),
   });
 }
 
@@ -334,10 +377,8 @@ export async function declineRefereeInvitation(
 }
 
 /**
- * TODO(guide): DELETE /tournaments/:id/referees/:userId — ถอดออก (บันทึก removed_at, removed_by)
- *
- * ผู้จัดถอดได้ทุกเมื่อ รวมถึงถอนคำเชิญที่ยังไม่ตอบ · referee.service ของ backend ข้ามแถวที่
- * removed_at มีค่าแล้วตอนเชิญซ้ำ แต่ยังไม่มี route ให้ถอด นอกโหมด mock จึงตอบ 501
+ * F03 DELETE /tournaments/:id/referees/:rid — ผู้จัดถอดกรรมการออกจากรายการได้ทุกเมื่อ
+ * ⚠️ :rid คือ tournamentRefereeId ไม่ใช่รหัสผู้ใช้ — ชั้นนี้แปลงให้จากรายชื่อกรรมการของรายการ
  */
 export async function removeReferee(
   tournamentId: TeamRef, userId: number,
@@ -346,18 +387,37 @@ export async function removeReferee(
     const blocked = writeRemoveReferee(tournamentId, userId);
     return blocked ? rejectWith<void>(blocked) : mockDelay(undefined);
   }
-  return unavailable<void>("การถอดกรรมการ");
+  const pool = await apiFetch<{ items: Array<{ id: number; user: { id: number } }> }>(
+    `/tournaments/${tournamentId}/referees`,
+  );
+  const row = pool.items.find((r) => r.user.id === userId);
+  if (!row) return notFoundLive<void>("กรรมการคนนี้ในรายการ");
+  return apiFetch(`/tournaments/${tournamentId}/referees/${row.id}`, { method: "DELETE" });
 }
 
 // ══════════════ กรรมการภายนอก — FR-RM-02 ══════════════
 
 /**
- * คำขอกรรมการภายนอกที่รอ Admin — SDS รวมไว้ในคิว GET /admin/requests
- * origin/backend รับ isExternal ตอนแต่งตั้งแล้ว แต่ยังไม่มี route ให้ Admin อนุมัติ
+ * AR01 GET /admin/referee-requests — คิวตรวจตัวตนกรรมการภายนอก (university-wide เท่านั้น)
+ * backend จัดกลุ่ม "ต่อคน" และการอนุมัติก็เป็นรายคน (ทุกรายการที่คนนั้นรออยู่เปลี่ยนพร้อมกัน)
+ * ตรงนี้คลี่เป็นแถวละ (คน × รายการ) ให้ตรงกับตารางบนหน้าจอ และให้ id = userId ที่ใช้ตัดสิน
+ * ⚠️ backend ไม่ได้บอกว่าใครเป็นผู้เชิญ — invitedBy จึงเป็น null ในโหมดจริง
  */
 export async function getExternalRefereeRequests(): Promise<{ items: ExternalRefereeRequestDto[] }> {
   if (USE_MOCK) return mockDelay({ items: storeExternalRefereeRequests() });
-  return unavailable<{ items: ExternalRefereeRequestDto[] }>("คิวอนุมัติกรรมการภายนอก");
+  const raw = await getPendingExternalReferees();
+  return {
+    items: raw.items.flatMap((row) =>
+      row.tournaments.map((t) => ({
+        id: row.userId,
+        tournament: { id: t.id, name: t.name },
+        referee: row.user,
+        invitedBy: null,
+        status: "pending" as const,
+        createdAt: row.submittedAt,
+      })),
+    ),
+  };
 }
 
 /** SDS PATCH /admin/requests/{id} — อนุมัติหรือไม่อนุมัติ (ไม่อนุมัติต้องมีเหตุผล) */
@@ -373,7 +433,15 @@ export async function reviewExternalReferee(
       ? mockDelay({ ...before, status: input.approve ? "approved" as const : "rejected" as const })
       : notFound<ExternalRefereeRequestDto>("คำขอกรรมการภายนอก");
   }
-  return unavailable<ExternalRefereeRequestDto>("การอนุมัติกรรมการภายนอก");
+  /* AR02/AR03 — ตัดสินเป็นรายคน requestId ที่ส่งมาจึงเป็น userId ตามที่คลี่ไว้ข้างบน
+     backend ตอบแค่สถานะใหม่ ไม่ได้ส่งรายละเอียดคำขอกลับมา ผู้เรียกต้อง invalidate แล้วอ่านคิวใหม่ */
+  const userId = Number(requestId);
+  if (input.approve) {
+    await approveExternalRefereeIdentity(userId);
+  } else {
+    await rejectExternalRefereeIdentity(userId, input.reason ?? "ไม่อนุมัติโดยผู้ดูแลระบบ");
+  }
+  return notFoundLive<ExternalRefereeRequestDto>("รายละเอียดคำขอหลังตัดสิน (backend ไม่ได้ส่งกลับมา)");
 }
 
 // ══════════════ ผู้ใช้และสิทธิ์ — FR-UM-05 ══════════════
@@ -384,10 +452,10 @@ export async function getUsersForAdmin(): Promise<{ items: UserAdminViewDto[] }>
   return unavailable<{ items: UserAdminViewDto[] }>("รายชื่อผู้ใช้สำหรับ Admin");
 }
 
-/** TODO(guide): GET /admin/scopes */
+/** GET /admin/scopes — ยังไม่มีใน backend (แถวใน admin_scopes ต้องเพิ่มด้วยมือใน DB) */
 export async function getAdminScopes(): Promise<{ items: AdminScopeDto[] }> {
   if (USE_MOCK) return mockDelay({ items: storeAdminScopes() });
-  return apiFetch("/admin/scopes");
+  return unavailable<{ items: AdminScopeDto[] }>("รายการสิทธิ์ผู้ดูแล (/admin/scopes)");
 }
 
 /** ให้สิทธิ์ผู้ดูแล — ยังไม่มีใน origin/backend */
@@ -429,11 +497,212 @@ export async function suspendUser(
 
 // ══════════════ Audit — FR-TC-05 ══════════════
 
-/** TODO(guide): GET /admin/audit-logs */
+/** GET /admin/audit-logs — ยังไม่มีใน backend (FR-TC-05) */
 export async function getAuditLogs(query: AuditLogQuery = {}): Promise<{ items: AuditLogDto[] }> {
   if (USE_MOCK) return mockDelay({ items: storeAuditLogs() });
-  const qs = new URLSearchParams(
-    Object.entries(query).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]),
-  );
-  return apiFetch(`/admin/audit-logs?${qs}`);
+  void query;
+  return unavailable<{ items: AuditLogDto[] }>("บันทึกการตรวจสอบย้อนหลัง (/admin/audit-logs)");
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// เส้นจริงของ BE_KN 98aa300 — คืนรูปที่ backend ตอบ ไม่ใช่รูป prototype
+// ══════════════════════════════════════════════════════════════════════════
+
+/** F02 GET /tournaments/:id/referees — ผู้จัดเท่านั้น */
+export function getBackendTournamentReferees(
+  tournamentId: number,
+): Promise<BackendTournamentRefereeListDto> {
+  return apiFetch(`/tournaments/${tournamentId}/referees`);
+}
+
+/** F14 GET /tournaments/:id/referees/coverage — แมตช์ที่ยังขาดกรรมการ + คนที่เวลาซ้อน */
+export function getBackendRefereeCoverage(
+  tournamentId: number,
+): Promise<BackendRefereeCoverageDto> {
+  return apiFetch(`/tournaments/${tournamentId}/referees/coverage`);
+}
+
+/** F01 POST /tournaments/:id/referees — เชิญกรรมการ (ส่ง matchIds ไปพร้อมกันได้) */
+export function inviteBackendReferee(
+  tournamentId: number,
+  input: { userId: number; isExternal?: boolean; matchIds?: number[] },
+): Promise<{ id: number; userId: number; invitationStatus: string; isExternal: boolean; matchIds: number[] }> {
+  return apiFetch(`/tournaments/${tournamentId}/referees`, {
+    method: "POST",
+    body: JSON.stringify({
+      userId: input.userId,
+      isExternal: input.isExternal ?? false,
+      matchIds: input.matchIds ?? [],
+    }),
+  });
+}
+
+/** F04 GET /me/referee-invitations */
+export function getBackendMyRefereeInvitations(): Promise<{ items: BackendMyRefereeInvitationDto[] }> {
+  return apiFetch("/me/referee-invitations");
+}
+
+/**
+ * F05 POST /referee-invitations/:id/accept
+ * รับแมตช์ไปพร้อมกันได้ — ไม่ส่ง matchIds = เข้า pool เฉยๆ (ยังคุมแมตช์ไหนไม่ได้)
+ * docs = S3 key จาก presign สำหรับกรรมการภายนอกที่ยังไม่เคยผ่านการตรวจ
+ */
+export function acceptBackendRefereeInvitation(
+  invitationId: number,
+  input: { matchIds?: number[]; docs?: string[] } = {},
+): Promise<{ id: number; invitationStatus: string; requiresAdminApproval: boolean; acceptedMatchIds: number[] }> {
+  return apiFetch(`/referee-invitations/${invitationId}/accept`, {
+    method: "POST",
+    body: JSON.stringify({ matchIds: input.matchIds ?? [], ...(input.docs ? { docs: input.docs } : {}) }),
+  });
+}
+
+// ── คำขอย้าย/แลก/เพิ่มแมตช์ของกรรมการ (FR01–FR03) ────────────────────────
+
+/**
+ * FR02 POST /tournaments/:id/referee-requests/add-match — ผู้จัดขอให้กรรมการรับแมตช์เพิ่ม
+ * ⚠️ ทำได้เฉพาะตอนแมตช์ยังเป็น scheduled และต้องยื่นทีละคน:
+ *    พอคนแรกกดรับ คำขอที่ค้างอยู่ของแมตช์เดียวกันจะถูกยกเลิกทั้งหมด
+ */
+export function requestMatchReferee(
+  tournamentId: number,
+  tournamentRefereeId: number,
+  matchId: number,
+): Promise<BackendRefereeRequestDto> {
+  return apiFetch(`/tournaments/${tournamentId}/referee-requests/add-match`, {
+    method: "POST",
+    body: JSON.stringify({ tournamentRefereeId, matchId }),
+  });
+}
+
+/** FR03 POST /tournaments/:id/referee-requests/swap — ผู้จัดขอสลับแมตช์ระหว่างกรรมการสองคน */
+export function requestRefereeSwap(
+  tournamentId: number,
+  input: { refereeAId: number; matchAId: number; refereeBId: number; matchBId: number },
+): Promise<BackendRefereeRequestDto> {
+  return apiFetch(`/tournaments/${tournamentId}/referee-requests/swap`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/** FR01 POST /referee-requests — กรรมการขอโอน (ไม่ส่ง theirMatchId) หรือแลกแมตช์ */
+export function requestRefereeTransfer(input: {
+  myMatchId: number;
+  toTournamentRefereeId: number;
+  theirMatchId?: number;
+}): Promise<BackendRefereeRequestDto> {
+  return apiFetch("/referee-requests", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** GET /tournaments/:id/referee-requests — ผู้จัดดูคำขอทั้งหมดของรายการ */
+export function getTournamentRefereeRequests(
+  tournamentId: number,
+): Promise<{ items: BackendRefereeRequestDto[] }> {
+  return apiFetch(`/tournaments/${tournamentId}/referee-requests`);
+}
+
+/** GET /me/referee-requests — คำขอที่รอเราตอบ (incoming) และที่เรายื่นไว้ (outgoing) */
+export function getMyRefereeRequests(): Promise<{
+  incoming: BackendRefereeRequestDto[];
+  outgoing: BackendRefereeRequestDto[];
+}> {
+  return apiFetch("/me/referee-requests");
+}
+
+/** POST /referee-requests/:id/accept */
+export function acceptRefereeRequest(requestId: number): Promise<BackendRefereeRequestDto> {
+  return apiFetch(`/referee-requests/${requestId}/accept`, { method: "POST" });
+}
+
+/** POST /referee-requests/:id/decline */
+export function declineRefereeRequest(requestId: number): Promise<BackendRefereeRequestDto> {
+  return apiFetch(`/referee-requests/${requestId}/decline`, { method: "POST" });
+}
+
+/** DELETE /referee-requests/:id — ผู้ยื่นถอนคำขอของตัวเอง */
+export function cancelRefereeRequest(requestId: number): Promise<void> {
+  return apiFetch(`/referee-requests/${requestId}`, { method: "DELETE" });
+}
+
+// ── ตัวตนกรรมการภายนอก (U11/U12 ฝั่งกรรมการ · AR01–AR04 ฝั่ง Admin) ──────
+
+/** U11 GET /me/referee-identity — สถานะการตรวจตัวตนของฉัน */
+export function getMyRefereeIdentity(): Promise<BackendRefereeIdentityDto> {
+  return apiFetch("/me/referee-identity");
+}
+
+/** U12 PUT /me/referee-identity/docs — ส่งเอกสาร 1–5 ไฟล์ (S3 key จาก presign) */
+export function submitRefereeIdentityDocs(
+  docs: string[],
+): Promise<{ status: string; docsCount: number; tournamentsUpdated: number }> {
+  return apiFetch("/me/referee-identity/docs", { method: "PUT", body: JSON.stringify({ docs }) });
+}
+
+/** AR01 GET /admin/referee-requests — คิวตรวจตัวตน จัดกลุ่มต่อคน */
+export function getPendingExternalReferees(): Promise<{ items: BackendExternalRefereeQueueItem[] }> {
+  return apiFetch("/admin/referee-requests");
+}
+
+/** AR02 POST /admin/referee-requests/:userId/approve — อนุมัติทุกรายการที่คนนั้นรออยู่ (ใช้ได้ 1 ปี) */
+export function approveExternalRefereeIdentity(
+  userId: number,
+): Promise<{ userId: number; identityStatus: string; tournamentsUpdated: number }> {
+  return apiFetch(`/admin/referee-requests/${userId}/approve`, { method: "POST" });
+}
+
+/** AR04 POST /admin/referee-requests/:userId/request-docs — ขอเอกสารใหม่ (ยังไม่ปฏิเสธ) */
+export function requestExternalRefereeDocs(
+  userId: number,
+  reason: string,
+): Promise<{ userId: number; identityStatus: string; reason: string; tournamentsUpdated: number }> {
+  return apiFetch(`/admin/referee-requests/${userId}/request-docs`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/** AR03 POST /admin/referee-requests/:userId/reject — ปฏิเสธหรือถอนอนุมัติ ต้องมีเหตุผล */
+export function rejectExternalRefereeIdentity(
+  userId: number,
+  reason: string,
+): Promise<{ userId: number; identityStatus: string; tournamentsUpdated: number }> {
+  return apiFetch(`/admin/referee-requests/${userId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// ── คิวคำขอแก้ไขทัวร์นาเมนต์ (C09) ───────────────────────────────────────
+
+/** GET /admin/tournament-requests — คิวคำขอจัดทัวร์นาเมนต์ที่รอ Admin (รูปของ backend) */
+export function getPendingTournamentRequests(): Promise<{
+  items: BackendPendingTournamentRequestDto[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}> {
+  return apiFetch("/admin/tournament-requests");
+}
+
+/** GET /admin/amendment-requests — คำขอแก้ไขที่รอ Admin */
+export function getAmendmentRequests(): Promise<{
+  items: BackendAmendmentRequestDto[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}> {
+  return apiFetch("/admin/amendment-requests");
+}
+
+/** POST /amendment-requests/:id/approve — อนุมัติแล้ว backend เขียนค่าใหม่ลงทัวร์นาเมนต์ให้เลย */
+export function approveAmendmentRequest(amendmentId: number): Promise<{ id: number; status: string }> {
+  return apiFetch(`/amendment-requests/${amendmentId}/approve`, { method: "POST" });
+}
+
+/** POST /amendment-requests/:id/reject — ต้องมีเหตุผล */
+export function rejectAmendmentRequest(
+  amendmentId: number,
+  reason: string,
+): Promise<{ id: number; status: string }> {
+  return apiFetch(`/amendment-requests/${amendmentId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
 }

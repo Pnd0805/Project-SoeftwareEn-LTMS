@@ -20,6 +20,8 @@ import {
 } from '../../hooks/useTeam'
 import { useCancelMyApplication, useMyTournamentApplications, useWithdrawMyApplication } from '../../hooks/useTournament'
 import { useSportTypes } from '../../hooks/useReference'
+import { USE_MOCK } from '../../api/client'
+import { EnterTournamentButton } from '../tournament/EnterTournamentButton'
 
 const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
@@ -217,7 +219,11 @@ export function TeamsPage() {
               {team.role === 'leader' ? 'Manage the squad' : 'Open'} <Icon name="chev" size={11} />
             </button>
             {team.role === 'leader' && team.readinessStatus === 'Ready' ? (
-              <button className="btn ghost" type="button" onClick={() => navigate('/')}>Find a tournament to enter</button>
+              USE_MOCK ? (
+                <button className="btn ghost" type="button" onClick={() => navigate('/')}>Find a tournament to enter</button>
+              ) : (
+                <EnterTournamentButton team={team} />
+              )
             ) : null}
           </div>
         </Panel>

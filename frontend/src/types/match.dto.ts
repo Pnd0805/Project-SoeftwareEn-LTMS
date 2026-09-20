@@ -127,6 +127,14 @@ export interface MatchDto {
   replayUrl: string | null;
   checkedIn: number;
   lineupSize: number;
+  /**
+   * สถานะใบผลเท่าที่ M05 บอกทุกคน (B5) — ไม่ใช่ตัวใบผลเอง
+   *
+   * ใบผลจริง (S05) เปิดให้เฉพาะผู้จัด กรรมการของแมตช์ และหัวหน้าสองทีม คนอื่นได้ 404
+   * ป้ายสถานะจึงต้องอ่านจากช่องนี้ ไม่งั้นผู้เล่นธรรมดาเห็นแมตช์ที่รอยืนยันผลอยู่
+   * เป็นแค่ "เปิดเช็คอิน"
+   */
+  resultStatus: MatchResultStatus | null;
   /** สิ่งที่คนที่กำลังดูอยู่ทำได้ */
   viewer: MatchViewerContext;
 }
@@ -182,6 +190,11 @@ export interface MatchViewerContext {
     recordStats: boolean;
     /** เปิดคอนโซลเช็คอิน */
     manageCheckin: boolean;
+    /**
+     * ตัดสินการเช็คอินของคนอื่น — ยืนยัน/ปฏิเสธรูปบัตร (M14/M15) และเช็คอินแทนผู้เล่น (M19)
+     * กรรมการ "ของแมตช์นี้" เท่านั้น (`requireReferee`) · ผู้จัดเปิด/ปิดเช็คอินได้แต่ตัดสินไม่ได้
+     */
+    verifyCheckin: boolean;
   };
 }
 
@@ -196,11 +209,21 @@ export interface MatchListItemDto extends MatchDto {
    */
   score: { a: number | null; b: number | null } | null;
   resultStatus: MatchResultStatus | null;
+  /**
+   * แมตช์ที่จบแล้วจบแบบไหน — มีเฉพาะโหมดจริง (backend B5) โหมด mock ไม่ได้ตั้ง
+   * ถ้าไม่มีก็ตีความเหมือนเดิมทุกอย่าง จึงเป็น optional ไม่ใช่ null
+   */
+  outcome?: MatchOutcome | null;
 }
 
-/** PATCH /matches/:id — จัดตาราง/สนาม/เวลาเปิดเช็คอิน */
+/**
+ * PATCH /matches/:id/schedule — จัดตาราง/สนาม
+ * backend บังคับครบสามช่อง (เวลาเริ่ม เวลาจบ สนาม) และแก้ได้เฉพาะแมตช์ที่ยัง scheduled
+ * checkinOpenAt/roomCode ไม่มีในสัญญาของ backend — มีผลเฉพาะโหมด mock
+ */
 export interface UpdateMatchRequest {
   scheduledTime?: string | null;
+  scheduledEndTime?: string | null;
   venue?: string | null;
   checkinOpenAt?: string | null;
   /** โหมด online — เลขห้องจาก game client ที่กรรมการกรอกให้ทั้งสองทีมเห็น */
@@ -259,9 +282,15 @@ export interface DisputeResultRequest {
 }
 
 export interface ResolveDisputeRequest {
+  /** ข้อความอธิบายคำตัดสิน — ส่งเป็น resolutionNote ของ backend */
   resolution: string;
-  /** แก้สกอร์ตอนตัดสินข้อพิพาทได้ — ถ้าไม่ส่ง = ยืนหยัดผลเดิม */
+  /**
+   * ยืนผลเดิม (uphold) · ถอนผลทิ้งให้ส่งใหม่ (reject) · เขียนผลที่ถูกต้องเอง (amend)
+   * ไม่ระบุ = uphold · `amend` ต้องมาคู่กับ winnerTeamId และ scoreData เสมอ (B4)
+   */
+  decision?: "uphold" | "reject" | "amend";
   winnerTeamId?: number | null;
+  /** key เป็น a/b ตามภาษา prototype — ชั้น api แปลงเป็น teamId ให้ก่อนส่ง */
   scoreData?: Record<string, unknown> | null;
 }
 
@@ -274,6 +303,13 @@ export interface MatchCheckinDto {
   method: CheckinMethod;
   status: MatchCheckinStatus;
   rejectionReason: string | null;
+  /**
+   * เหตุผลที่กรรมการอนุโลมเช็คอินให้ด้วยมือ (M19) — คนละเรื่องกับ `rejectionReason`
+   *
+   * เดิม backend เก็บสองอย่างนี้ในคอลัมน์เดียวกัน แถวที่เช็คอินสำเร็จจึงมีข้อความอยู่ใน
+   * ช่อง "เหตุผลที่ถูกปฏิเสธ" · แยกคอลัมน์แล้วตั้งแต่ `75ffb0a` (migration 015)
+   */
+  note: string | null;
   documentType: CheckinDocumentType | null;
   /** S3 key — ไม่ใช่ URL ตรง ต้องขอ presigned ก่อนแสดง */
   documentS3Key: string | null;
@@ -292,6 +328,8 @@ export interface CheckinRequest {
   documentS3Key?: string;
   /** manual_by_referee เท่านั้น — กรรมการเช็คอินแทนผู้เล่น */
   userId?: number;
+  /** manual_by_referee เท่านั้น — เหตุผลที่ต้องยืนยันด้วยมือ เก็บเป็นหลักฐานแทนรูป */
+  note?: string;
 }
 
 export interface VerifyCheckinRequest {
@@ -396,4 +434,305 @@ export interface StandingsDto {
   scoreUnit: string;
   updatedAt: string;
   rows: StandingRowDto[];
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// รูปที่ backend ตอบจริง (BE_KN 98aa300)
+//
+// ของเดิมข้างบนเป็น DTO ของ prototype ซึ่ง "รวยกว่า" ที่ backend มีจริงมาก
+// (viewer context, stage/tag, รายชื่อผู้เล่น, checkinToken ฯลฯ ยังไม่มีในฝั่ง server)
+// ชุดข้างล่างนี้ถอดจาก mappers ของ backend ตรงๆ — ฟังก์ชันที่ลงท้ายด้วย Backend
+// ใน api/match.ts คืนรูปนี้ ไม่ใช่รูป prototype
+// ══════════════════════════════════════════════════════════════════════════
+
+export interface BackendTeamRef {
+  id: number;
+  name: string;
+  sportTypeId: number;
+}
+
+export interface BackendPagination {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface BackendPaged<T> {
+  items: T[];
+  pagination: BackendPagination;
+}
+
+/** GET /tournaments/:id/matches */
+/**
+ * แมตช์ที่ `completed` จบลงได้สี่แบบ ซึ่งวาดไม่เหมือนกัน (B5, `7d25994`)
+ *
+ *   played   แข่งจริงและยืนยันผลแล้ว        → โชว์สกอร์
+ *   walkover คู่ถอนหรือไม่มา (ยังมีสองทีม)   → โชว์ W/O
+ *   bye      ช่องอีกฝั่งว่างถาวร ทีมเดียวผ่าน → เขียน "BYE" ตรงช่องว่าง ไม่ใช่ "TBD"
+ *   void     ไม่มีใครผ่าน (แพ้ทั้งคู่ / ถอนทั้งคู่ / แมตช์ตาย) → "No contest"
+ *
+ * `outcome: null` บนแมตช์ที่ยังไม่จบ = ยังรอผลรอบก่อน ช่องว่างคือ "TBD" ตามเดิม
+ */
+export type MatchOutcomeKind = "played" | "walkover" | "bye" | "void";
+
+export interface MatchOutcome {
+  kind: MatchOutcomeKind;
+  winnerTeamId: number | null;
+  loserTeamId: number | null;
+}
+
+/**
+ * ผลสรุปที่ backend แนบมาทุกแถวของ M04/M05 ตั้งแต่ `7d25994`
+ *
+ * ⚠️ `score` มาเฉพาะผลที่ `verified` หรือ `walkover` เท่านั้น — ใบผลที่ยังไม่ยืนยัน
+ *    (submitted/disputed/rejected) ยังต้องอ่านผ่าน S05 ตามสิทธิ์เดิม ดู `fillScores()`
+ */
+export interface BackendMatchResultSummary {
+  nextMatchId: number | null;
+  loserNextMatchId: number | null;
+  /** สถานะใบผล "ล่าสุด" ของแมตช์ · null = ยังไม่มีใครส่งผล */
+  resultStatus: MatchResultStatus | null;
+  /** key เป็น teamId (สตริง) เหมือน S05 */
+  score: Record<string, number> | null;
+  outcome: MatchOutcome | null;
+}
+
+export interface BackendMatchListItemDto extends BackendMatchResultSummary {
+  id: number;
+  round: number | null;
+  teamA: BackendTeamRef | null;
+  teamB: BackendTeamRef | null;
+  scheduledTime: string | null;
+  scheduledEndTime: string | null;
+  venue: string | null;
+  status: MatchStatus;
+}
+
+/**
+ * GET /me/referee-matches (B7) — แมตช์ที่เรารับเป็นกรรมการ ครบทุกทัวร์ในคำขอเดียว
+ *
+ * `?upcoming=true` ตัดแมตช์ที่จบแล้วออก · ไม่มี pagination
+ * ⚠️ แถวนี้ไม่มีผลสรุปแบบ M04 (`resultStatus`/`score`/`outcome`) และทีมไม่มี `sportTypeId`
+ *    ชนิดกีฬาอยู่ที่ `tournament.sportTypeId` แทน
+ */
+export interface BackendRefereeMatchDto {
+  id: number;
+  tournament: { id: number; name: string; sportTypeId: number };
+  round: number | null;
+  teamA: { id: number; name: string } | null;
+  teamB: { id: number; name: string } | null;
+  scheduledTime: string | null;
+  scheduledEndTime: string | null;
+  venue: string | null;
+  mode: Mode;
+  status: MatchStatus;
+}
+
+/** GET /matches/:id — ฟิลด์ผลสรุปชุดเดียวกับ M04 */
+export interface BackendMatchDetailDto extends BackendMatchListItemDto {
+  tournamentId: number;
+  checkinOpenAt: string | null;
+  mode: Mode;
+}
+
+/** PATCH /matches/:id/schedule — ⚠️ backend รับเฉพาะรูปแบบ Z (z.iso.datetime ไม่มี offset) */
+export interface ScheduleMatchRequest {
+  scheduledTime: string;
+  scheduledEndTime: string;
+  venue: string;
+}
+
+/** GET /matches/:id/checkins — id ของแถวนี้คือ :cid ที่ใช้ verify/reject */
+export interface BackendCheckinDto {
+  id: number;
+  userId: number;
+  fullName: string;
+  method: CheckinMethod;
+  /** คำที่ backend ใช้ตอบ ไม่ตรงกับ MatchCheckinStatus ของ prototype */
+  status: "checked_in" | "pending_verification" | "rejected";
+  documentType: CheckinDocumentType | null;
+  /** presigned URL — กรรมการของแมตช์เท่านั้นที่เห็น (ผู้จัดได้ null ตาม PDPA) */
+  documentUrl: string | null;
+  /** เหตุผลที่กรรมการอนุโลมเช็คอินให้ด้วยมือ (M19) — มาเป็นฟิลด์ของตัวเองตั้งแต่ `75ffb0a` */
+  note: string | null;
+  checkedInAt: string;
+}
+
+/** GET /matches/:id/checkin-qr — ผู้จัดหรือกรรมการของแมตช์ และต้องเปิดเช็คอินแล้ว */
+export interface BackendCheckinQrDto {
+  qrPayload: string;
+  expiresAt: string;
+}
+
+/** POST /matches/:id/checkins */
+export type BackendCheckinRequest =
+  | { method: "qr_onsite"; qrPayload: string }
+  | { method: "photo_online"; documentType: CheckinDocumentType; documentS3Key: string };
+
+export interface BackendSubmittedCheckinDto {
+  id: number;
+  status: BackendCheckinDto["status"];
+  checkedInAt: string;
+}
+
+/**
+ * POST /matches/:id/checkins/manual (M19) — กรรมการของแมตช์เช็คอินแทนผู้เล่น
+ * เมื่อกล้อง/เน็ต/QR ใช้ไม่ได้ (UC-04 E2b) ได้สถานะ `exception` ซึ่งนับว่าเช็คอินแล้ว
+ */
+export interface BackendManualCheckinRequest {
+  userId: number;
+  note?: string;
+}
+
+export interface BackendManualCheckinDto {
+  id: number;
+  userId: number;
+  method: "manual_by_referee";
+  status: BackendCheckinDto["status"];
+  checkedInAt: string;
+}
+
+/**
+ * GET /matches/:id/checkins/me — แถวของตัวเอง
+ * รายการทั้งแมตช์เปิดให้เฉพาะกรรมการกับผู้จัด เส้นนี้จึงเป็นทางเดียวที่ผู้เล่นรู้ว่าตัวเองผ่านหรือยัง
+ */
+export interface BackendMyCheckinDto {
+  checkin: {
+    id: number;
+    method: CheckinMethod;
+    status: BackendCheckinDto["status"];
+    rejectionReason: string | null;
+    /** เหตุผลที่กรรมการอนุโลมให้ (M19) — แยกคอลัมน์แล้วตั้งแต่ migration 015 */
+    note: string | null;
+    checkedInAt: string;
+    verifiedAt: string | null;
+  } | null;
+}
+
+/** POST /matches/:id/result */
+export interface BackendSubmitResultRequest {
+  winnerTeamId: number;
+  /** key เป็น teamId (สตริง) ไม่ใช่ "a"/"b" แบบ prototype */
+  scoreData: Record<string, number>;
+}
+
+export interface BackendSubmittedResultDto {
+  id: number;
+  matchId: number;
+  status: MatchResultStatus;
+  submittedBy: number;
+}
+
+export interface BackendVerifiedResultDto {
+  matchId: number;
+  status: MatchResultStatus;
+  winnerTeamId: number | null;
+  nextMatchId: number | null;
+}
+
+/** GET /matches/:id/result — 404 ระหว่างที่ผลถูกโต้แย้ง */
+export interface BackendResultDto {
+  matchId: number;
+  winnerTeamId: number | null;
+  scoreData: Record<string, number> | null;
+  isAmended: boolean | null;
+  amendedAt: string | null;
+  amendReason: string | null;
+  verifiedAt: string | null;
+  /** A7 — สถานะจริงของผล ไม่ใช่เดาว่า verified เสมอ (submitted/disputed ก็อ่านได้แล้ว) */
+  status: MatchResultStatus;
+  isWalkover: boolean;
+}
+
+export interface BackendDisputeRequest {
+  reason: string;
+}
+
+/** POST /matches/:id/result/resolve — ผู้จัดเท่านั้น */
+export interface BackendResolveRequest {
+  resolution: "uphold" | "reject";
+  resolutionNote: string;
+}
+
+/** POST /matches/:id/stats — อ้างด้วย statDefinitionId ไม่ใช่ statKey */
+export interface RecordMatchStatsRequest {
+  playerStats: Array<{
+    userId: number;
+    values: Array<{ statDefinitionId: number; value: number }>;
+  }>;
+}
+
+export interface BackendPlayerStatDto {
+  userId: number;
+  fullName: string;
+  stats: Array<{ statKey: string; statLabelTh: string; value: number }>;
+}
+
+/** POST /tournaments/:id/bracket */
+export interface CreateBracketRequest {
+  seedingMethod: "random" | "manual";
+  manualSeeds?: number[];
+}
+
+export interface BackendBracketNodeDto {
+  nodeId: number;
+  bracketType: "winners" | "losers" | "grand_final";
+  round: number | null;
+  matchNumber: number;
+  /** ⚠️ backend ยังไม่เขียนทีมที่เลื่อนสายลง bracket_nodes — รอบหลังจึงเป็น null เสมอ */
+  teamA: BackendTeamRef | null;
+  teamB: BackendTeamRef | null;
+  matchId: number | null;
+  matchStatus: MatchStatus | null;
+  advancesToNodeId: number | null;
+}
+
+export interface BackendBracketDto {
+  bracketFormat: string;
+  nodes: BackendBracketNodeDto[];
+}
+
+/** GET /tournaments/:id/standings */
+export interface BackendStandingDto {
+  team: BackendTeamRef;
+  wins: number;
+  losses: number;
+  rank: number;
+}
+
+/** GET /tournaments/:id/dashboard */
+export interface BackendTournamentDashboardDto {
+  teamCount: number;
+  playerCount: number;
+  matchCount: number;
+  matchesCompleted: number;
+}
+
+/** GET /tournaments/:id/winner — 404 จนกว่าทัวร์นาเมนต์จะมีสถานะ completed */
+export interface BackendTournamentWinnerDto {
+  championTeam: BackendTeamRef;
+  runnerUpTeam: BackendTeamRef | null;
+  summary: Record<string, unknown>;
+}
+
+/** GET /matches/:id/referees — สาธารณะ */
+export interface BackendMatchRefereeDto {
+  tournamentRefereeId: number;
+  referee: { id: number; fullName: string; avatarUrl: string | null };
+}
+
+/**
+ * POST /matches/:id/forfeit (M17) — ผลการตัดสินทีมไม่มาตามนัด
+ *
+ * `kind` บอกว่าลงเอยแบบไหน: ฝั่งเดียวไม่มา (อีกฝั่งชนะบาย) หรือไม่มาทั้งคู่
+ * `checkedIn` คีย์ด้วย teamId เป็นสตริง — ใช้บอกผู้จัดว่าตอนตัดสินแต่ละทีมมากี่คน
+ */
+export interface BackendForfeitResultDto {
+  id: number;
+  status: "completed";
+  kind: string;
+  minMembers: number;
+  checkedIn: Record<string, number>;
+  walkovers: unknown;
 }

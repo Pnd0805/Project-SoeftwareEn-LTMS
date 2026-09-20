@@ -17,11 +17,36 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../components/kit/primitives'
-import { useMatch, useCheckins, useCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
+import { useMatch, useCheckins, useCheckin, useMyCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
+import { USE_MOCK } from '../../api/client'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
 import { TeamMarkView } from '../../components/kit/chips'
 import { IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
+
+/**
+ * ถอนการเช็คอินที่ผ่านไปแล้วได้ไหม
+ *
+ * ดีไซน์ของหน้านี้ให้กรรมการมีคันโยกเดียวคือค้านย้อนหลัง (ดูหัวไฟล์) — QR ผ่านเองโดย
+ * ไม่มีใครดูหน้าคนสแกน ถ้าเพื่อนสแกนแทนกัน ทางแก้เดียวคือกรรมการถอนทีหลัง
+ * แต่ M15 ของ backend `UPDATE ... WHERE match_checkin_status = 'pending'` และ
+ * `findPendingCheckinOfMatch` โยน ALREADY_DECIDED ให้ทุกสถานะที่ไม่ใช่ pending
+ * แถวที่ success/exception (QR ผ่าน · ตรวจรูปผ่านแล้ว · กรรมการเช็คอินให้ด้วยมือ)
+ * จึงตอบ 409 ทุกครั้ง — ยืนยันกับ c43f497: POST /matches/12/checkins/20/reject → 409
+ * โหมดจริงเลยไม่โชว์ปุ่มที่กดแล้วพังแน่ๆ · mock ยังทำได้ตามดีไซน์เดิม
+ * (BACKEND-GAPS: "a check-in that has gone through cannot be undone")
+ */
+const canRevoke = (c: MatchCheckinDto) => USE_MOCK && c.status === 'success'
+
+/** บอกกรรมการว่าทำไมแถวที่เช็คอินแล้วถึงไม่มีปุ่มถอน แทนที่จะปล่อยช่องว่างเปล่า */
+function RevokeNote({ show }: { show: boolean }) {
+  return show ? (
+    <span className="sub">
+      A check-in that has gone through cannot be undone on this backend — only a photo still
+      waiting for review can be turned down.
+    </span>
+  ) : null
+}
 
 /** A stable-ish seed so the drawn code looks like the token it stands for. */
 const hashCode = (str: string) => {
@@ -36,6 +61,8 @@ function SquadPanel({ m, team, checkins }: {
   const checkin = useCheckin(m.id)
   const verify = useVerifyCheckin(m.id)
   const isRef = m.viewer.can.manageCheckin
+  /* ตัดสินการเช็คอินของคนอื่นได้ไหม — คนละเรื่องกับการดูคอนโซล ดู can.verifyCheckin */
+  const canJudge = m.viewer.can.verifyCheckin
   const inCount = team.players.filter(p => checkins.some(c => c.user.id === p.id && c.status === 'success')).length
 
   /** ผู้เล่นที่กำลังยืนยันตัวตนอยู่ · null = ไม่ได้เปิดโมดัล */
@@ -51,8 +78,22 @@ function SquadPanel({ m, team, checkins }: {
     <Panel quiet>
       <div className="spread">
         <span className="tchip"><TeamMarkView team={toTeamView(team)} /><b>{team.name}</b></span>
-        <span className="tag">{inCount} of {team.players.length} in</span>
+        {/* ผู้เล่นเห็นแค่แถวของตัวเอง เขียน "1 of 12 in" ก็เท่ากับโกหกว่าที่เหลือยังไม่มา */}
+        <span className="tag">
+          {isRef ? `${inCount} of ${team.players.length} in` : `${team.players.length} on the sheet`}
+        </span>
       </div>
+      {/* ผู้เล่นอ่านรายการเช็คอินไม่ได้ (403) — คำตอบของการส่งจึงเป็นที่เดียวที่เจ้าตัวเห็นผล */}
+      {checkin.isSuccess ? (
+        <Banner kind={checkin.data.status === 'success' ? 'ok' : 'warn'} icon="check">
+          {checkin.data.status === 'success'
+            ? <><b>เช็คอินเรียบร้อย</b> กรรมการเห็นชื่อคุณในรายการแล้ว</>
+            : <><b>ส่งรูปบัตรแล้ว</b> รอกรรมการตรวจ — สถานะจะเปลี่ยนเมื่อกรรมการกดผ่าน</>}
+        </Banner>
+      ) : null}
+      {checkin.isError ? (
+        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {(checkin.error as Error).message}</Banner>
+      ) : null}
       <TableWrap>
         <table>
           <thead><tr><th>Player</th><th>How</th><th>State</th><th /></tr></thead>
@@ -82,7 +123,13 @@ function SquadPanel({ m, team, checkins }: {
                       : c.status === 'success' ? <Badge kind="ok">Checked in</Badge>
                         : c.status === 'rejected' ? <Badge kind="crit">Rejected</Badge>
                           : <Badge kind="warn">Needs a look</Badge>}
-                    {c?.rejectionReason ? <span className="sub"> {c.rejectionReason}</span> : null}
+                    {/* เหตุผลที่ถูกปฏิเสธ กับเหตุผลที่กรรมการอนุโลมให้ เป็นคนละช่องแล้ว
+                        ตั้งแต่ migration 015 — เลิกเดาจากสถานะ */}
+                    {c?.status === 'rejected' && c.rejectionReason
+                      ? <span className="sub"> {c.rejectionReason}</span>
+                      : c?.note
+                        ? <span className="sub"> — {c.note}</span>
+                        : null}
                   </td>
                   <td>
                     {(!c || c.status === 'rejected') && isMe ? (
@@ -91,20 +138,20 @@ function SquadPanel({ m, team, checkins }: {
                         onClick={() => setCapture(p.id)}>
                         {m.mode === 'onsite' ? 'Scan the QR' : 'Take the photo'}
                       </button>
-                    ) : c && c.status === 'exception' && isRef ? (
+                    ) : c && c.status === 'exception' && canJudge ? (
                       /* รูปที่รอตรวจ — กรรมการเปิดดูแล้วตัดสิน (FR-PV-04) */
                       <button className="btn primary" type="button"
                         onClick={() => setReview({ userId: p.id, name: p.fullName, photo: c.documentS3Key })}>
                         Review photo
                       </button>
-                    ) : !c && isRef ? (
+                    ) : !c && canJudge ? (
                       /* UC-04 E2b — ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันเองแล้ว
                          บันทึกเป็นข้อยกเว้นพร้อมเหตุผล */
                       <button className="btn ghost" type="button"
                         onClick={() => setManual({ userId: p.id, name: p.fullName })}>
                         Verify by hand
                       </button>
-                    ) : c && c.status === 'success' && isRef ? (
+                    ) : c && canJudge && canRevoke(c) ? (
                       <button className="btn danger" type="button" disabled={verify.isPending}
                         onClick={() => verify.mutate({
                           userId: p.id,
@@ -120,6 +167,7 @@ function SquadPanel({ m, team, checkins }: {
           </tbody>
         </table>
       </TableWrap>
+      <RevokeNote show={canJudge && !USE_MOCK && checkins.some(c => c.status === 'success')} />
       {/* TODO(schema): starter / substitute อยู่ที่ team_members.position (ระดับทีม,
           FR-TM-04, สไลซ์ 4) ไม่ใช่ระดับแมตช์ — คอลัมน์นั้นจึงยังไม่มีที่นี่ */}
 
@@ -157,9 +205,9 @@ function SquadPanel({ m, team, checkins }: {
         pending={checkin.isPending}
         onConfirm={(reason: string) => {
           if (!manual) return
-          /* เหตุผลถูกเก็บเป็นหลักฐานแทนภาพ — ช่องเดียวกับที่ปกติเก็บรูป */
+          /* เหตุผลถูกเก็บเป็นหลักฐานแทนภาพ — M19 มีช่อง note ของมันเอง ไม่ใช่ช่องรูป */
           checkin.mutate(
-            { method: 'manual_by_referee', userId: manual.userId, documentS3Key: reason },
+            { method: 'manual_by_referee', userId: manual.userId, note: reason },
             { onSuccess: () => setManual(null) },
           )
         }}
@@ -188,24 +236,182 @@ function SquadPanel({ m, team, checkins }: {
   )
 }
 
+
+/**
+ * คอนโซลเช็คอินแบบไม่มีรายชื่อทีม
+ *
+ * backend เปิด GET /teams/:id/members ให้เฉพาะสมาชิกของทีมนั้น — กรรมการกับผู้จัด
+ * ได้ 403 จึงไม่มีทางรู้ว่า "ใครยังไม่มา" ได้เลย หน้านี้เลยแสดงเท่าที่ระบบบอกได้จริง
+ * คือรายการเช็คอินที่เกิดขึ้นแล้ว และให้ผู้เล่นที่ล็อกอินอยู่เช็คอินตัวเองได้
+ */
+function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDto[] }) {
+  const checkin = useCheckin(m.id)
+  const verify = useVerifyCheckin(m.id)
+  const isRef = m.viewer.can.manageCheckin
+  const canJudge = m.viewer.can.verifyCheckin
+  const myId = m.viewer.myUserId
+  const mine = myId === null ? undefined : checkins.find(c => c.user.id === myId)
+  const canCheckIn = myId !== null && m.viewer.myTeamId !== null && (!mine || mine.status === 'rejected')
+  const [capture, setCapture] = useState(false)
+  const [review, setReview] = useState<{ userId: number; name: string; photo: string | null } | null>(null)
+
+  return (
+    <Panel quiet>
+      <div className="spread">
+        <span className="tag"><em>//</em> Check-in</span>
+        {/* ยอดรวมเป็นความจริงเฉพาะกับคนที่อ่านรายการทั้งแมตช์ได้ — ผู้เล่นได้ 403
+            จะเขียน "0 verified" ให้เขาอ่านก็เท่ากับบอกว่าไม่มีใครมา */}
+        {isRef ? (
+          <span className="tag">
+            {checkins.length} · {checkins.filter(c => c.status === 'success').length} verified
+          </span>
+        ) : null}
+      </div>
+
+      {isRef ? (
+        <span className="sub">
+          The squad list is not readable by a referee on this backend, so this shows the check-ins
+          that have happened rather than everyone who is expected.
+        </span>
+      ) : null}
+
+      {canCheckIn ? (
+        <div className="hstack">
+          <button className="btn primary" type="button" disabled={checkin.isPending}
+            onClick={() => setCapture(true)}>
+            {m.mode === 'onsite' ? 'Scan the QR to check in' : 'Take the photo to check in'}
+          </button>
+          {mine?.status === 'rejected' ? <span className="sub">Your last attempt was rejected — try again.</span> : null}
+        </div>
+      ) : null}
+
+      {/* ผู้เล่นอ่านรายการเช็คอินไม่ได้ (403) — คำตอบของการส่งจึงเป็นที่เดียวที่เจ้าตัวเห็นผล */}
+      {checkin.isSuccess ? (
+        <Banner kind={checkin.data.status === 'success' ? 'ok' : 'warn'} icon="check">
+          {checkin.data.status === 'success'
+            ? <><b>เช็คอินเรียบร้อย</b> กรรมการเห็นชื่อคุณในรายการแล้ว</>
+            : <><b>ส่งรูปบัตรแล้ว</b> รอกรรมการตรวจ — สถานะจะเปลี่ยนเมื่อกรรมการกดผ่าน</>}
+        </Banner>
+      ) : null}
+      {checkin.isError ? (
+        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {(checkin.error as Error).message}</Banner>
+      ) : null}
+      {checkins.length ? (
+        <TableWrap>
+          <table>
+            <thead><tr><th>Player</th><th>How</th><th>State</th><th /></tr></thead>
+            <tbody>
+              {checkins.map(c => (
+                <tr key={c.id}>
+                  <td>
+                    <span className="hstack">
+                      <span className="avatar">{c.user.fullName.slice(0, 1)}</span>{c.user.fullName}
+                      {c.user.id === myId ? <span className="tag"> · you</span> : null}
+                    </span>
+                  </td>
+                  <td className="sub">{c.method.replace(/_/g, ' ')}</td>
+                  <td>
+                    {c.status === 'success' ? <Badge kind="ok">Checked in</Badge>
+                      : c.status === 'rejected' ? <Badge kind="crit">Rejected</Badge>
+                        : <Badge kind="warn">Needs a look</Badge>}
+                    {/* M13 ส่ง note มาแล้ว (`75ffb0a`) — "ทำไมคนนี้ถึงถูกอนุโลมเข้ามา"
+                        เป็นร่องรอยเดียวที่กรรมการคนถัดไปกับผู้จัดมี ต้องเห็นตรงนี้ */}
+                    {c.note ? <span className="sub"> — {c.note}</span> : null}
+                  </td>
+                  <td>
+                    {canJudge && c.status === 'exception' ? (
+                      <button className="btn primary" type="button"
+                        onClick={() => setReview({ userId: c.user.id, name: c.user.fullName, photo: c.documentS3Key })}>
+                        Review photo
+                      </button>
+                    ) : canJudge && canRevoke(c) ? (
+                      <button className="btn danger" type="button" disabled={verify.isPending}
+                        onClick={() => verify.mutate({
+                          userId: c.user.id,
+                          input: { status: 'rejected', rejectionReason: 'Rejected by the referee' },
+                        })}>
+                        Reject
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableWrap>
+      ) : isRef ? <span className="sub">Nobody has checked in yet.</span> : null}
+      <RevokeNote show={canJudge && !USE_MOCK && checkins.some(c => c.status === 'success')} />
+
+      <QrScanModal
+        open={capture && m.mode === 'onsite'}
+        onClose={() => setCapture(false)}
+        expectedToken={null}
+        pending={checkin.isPending}
+        onScanned={token => checkin.mutate(
+          { method: 'qr_onsite', qrToken: token },
+          { onSuccess: () => setCapture(false) },
+        )}
+      />
+
+      <IdPhotoModal
+        open={capture && m.mode === 'online'}
+        onClose={() => setCapture(false)}
+        pending={checkin.isPending}
+        onSubmit={({ photo, documentType }) => checkin.mutate(
+          { method: 'photo_online', documentType, documentS3Key: photo },
+          { onSuccess: () => setCapture(false) },
+        )}
+      />
+
+      <ReviewPhotoModal
+        open={!!review}
+        onClose={() => setReview(null)}
+        playerName={review?.name ?? ''}
+        photo={review?.photo ?? null}
+        pending={verify.isPending}
+        onDecide={(approve, reason) => {
+          if (!review) return
+          verify.mutate(
+            {
+              userId: review.userId,
+              input: approve ? { status: 'success' } : { status: 'rejected', rejectionReason: reason ?? 'ไม่ผ่านการตรวจ' },
+            },
+            { onSuccess: () => setReview(null) },
+          )
+        }}
+      />
+    </Panel>
+  )
+}
+
 export function CheckinPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const matchId = id
   const { data: m, isPending, isError } = useMatch(matchId)
   const { data: checkinData } = useCheckins(matchId)
+  const { data: mine } = useMyCheckin(matchId)
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const [room, setRoom] = useState('')
 
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading check-in…</span></Panel>
 
-  const checkins = checkinData?.items ?? []
+  /* กรรมการกับผู้จัดได้รายการเต็ม · ผู้เล่นได้ 403 แล้วเหลือลิสต์ว่าง จึงเคยเห็นตัวเอง
+     เป็น "ยังไม่เช็คอิน" ตลอดแม้เพิ่งกดไป — A9 คืนแถวของตัวเองมาเติมตรงนี้
+     (เส้นนั้นไม่ส่งชื่อกลับ เพราะเป็นของคนที่ถามเอง ต้องติด id ตัวเองก่อนจับคู่กับรายชื่อทีม) */
+  const listed = checkinData?.items ?? []
+  const myUserId = m.viewer.myUserId
+  const checkins = listed.length || !mine || myUserId === null
+    ? listed
+    : [{ ...mine, user: { ...mine.user, id: myUserId } }]
   const squads = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const total = squads.reduce((n, t) => n + t.players.length, 0)
   const done = checkins.filter(c => c.status === 'success').length
   const isRef = m.viewer.can.manageCheckin
+  const canJudge = m.viewer.can.verifyCheckin
   const everyoneIn = total > 0 && done >= total
+  const knownPlayerIds = new Set(squads.flatMap(t => t.players.map(p => p.id)))
 
   return (
     <>
@@ -224,7 +430,11 @@ export function CheckinPage() {
               <div className="statline">
                 <div>
                   <span className="tag">Code</span>
-                  <span className="v" style={{ fontFamily: 'var(--f-mono)', fontSize: 24, letterSpacing: '.09em' }}>
+                  {/* โค้ดของ backend เป็นโทเคนยาว — ต้องตัดบรรทัดได้ ไม่งั้นล้นกล่อง */}
+                  <span className="v" style={{
+                    fontFamily: 'var(--f-mono)', fontSize: m.checkinToken.length > 24 ? 12 : 24,
+                    letterSpacing: '.06em', wordBreak: 'break-all', lineHeight: 1.4,
+                  }}>
                     {m.checkinToken}
                   </span>
                 </div>
@@ -245,18 +455,28 @@ export function CheckinPage() {
             <span className="tag"><em>//</em> Verified</span>
             <span className="v" style={{ fontFamily: 'var(--f-mono)', fontSize: 24 }}>{done} / {total}</span>
           </div>
-          <Field
-            label="Room code — from the game client, once the lobby exists. Optional; shown to both squads once saved."
-            htmlFor={`rc-${m.id}`}>
-            <div className="hstack">
-              <input id={`rc-${m.id}`} value={room || m.roomCode || ''} onChange={e => setRoom(e.target.value)}
-                placeholder="e.g. a ROV custom-room number" style={{ flex: 1 }} />
-              <button className="btn" type="button" disabled={update.isPending}
-                onClick={() => update.mutate({ roomCode: room })}>
-                {update.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </Field>
+          {/* รหัสห้องเป็นของ prototype ล้วน — ตาราง matches ของ backend ไม่มีคอลัมน์นี้
+              และไม่มี endpoint ไหนรับค่า จึงไม่เปิดช่องให้กรอกในโหมดจริง ไม่งั้นกดบันทึกแล้วหาย */}
+          {USE_MOCK ? (
+            <Field
+              label="Room code — from the game client, once the lobby exists. Optional; shown to both squads once saved."
+              htmlFor={`rc-${m.id}`}>
+              <div className="hstack">
+                <input id={`rc-${m.id}`} value={room || m.roomCode || ''} onChange={e => setRoom(e.target.value)}
+                  placeholder="e.g. a ROV custom-room number" style={{ flex: 1 }} />
+                <button className="btn" type="button" disabled={update.isPending}
+                  onClick={() => update.mutate({ roomCode: room })}>
+                  {update.isPending ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </Field>
+          ) : (
+            <Banner kind="warn">
+              <b>Room code is not on the server yet.</b>{' '}
+              An online match has no field to publish the lobby code in, so agree it with both squads
+              another way until the backend adds one.
+            </Banner>
+          )}
         </Panel>
       ) : null}
 
@@ -267,7 +487,29 @@ export function CheckinPage() {
         </Banner>
       ) : null}
 
-      {squads.map(t => <SquadPanel key={t.id} m={m} team={t} checkins={checkins} />)}
+      {isRef && !canJudge ? (
+        <Banner kind="warn">
+          <b>You can open and close check-in, but not judge it.</b> Confirming a photo, rejecting a
+          check-in and checking a player in by hand belong to this match&apos;s referees.
+        </Banner>
+      ) : null}
+
+      {!isRef && !USE_MOCK ? (
+        <Banner kind="warn">
+          <b>You can only see your own check-in here.</b> The full sheet belongs to the referee, so
+          a blank row next to a teammate means &ldquo;not visible to you&rdquo;, not &ldquo;not
+          checked in&rdquo;.
+        </Banner>
+      ) : null}
+
+      {/* ทีมที่เรารู้รายชื่อ (ทีมของเราเอง) แสดงเต็มทีม — ทีมที่ไม่รู้ (backend เปิดให้เฉพาะ
+          สมาชิกของทีมนั้น) แสดงเท่าที่เช็คอินเข้ามาแล้วในคอนโซลด้านล่าง ไม่ให้ซ้ำกัน */}
+      {squads.filter(t => t.players.length).map(t => (
+        <SquadPanel key={t.id} m={m} team={t} checkins={checkins} />
+      ))}
+      {squads.some(t => !t.players.length) ? (
+        <CheckinConsole m={m} checkins={checkins.filter(c => !knownPlayerIds.has(c.user.id))} />
+      ) : null}
 
       {everyoneIn ? (
         <Panel>

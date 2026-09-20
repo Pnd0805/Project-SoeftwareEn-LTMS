@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamChipView } from '../../components/kit/chips'
 import { useStatDefinitions, useSubmitResult, useSaveMatchStats } from '../../hooks/useMatch'
+import { USE_MOCK } from '../../api/client'
 import { toTeamView } from './matchView'
 import { checkResult } from './resultRules'
 import type { MatchDto, MatchTeamRef } from '../../types/match.dto'
@@ -54,7 +55,18 @@ export function ResultForm({ m }: { m: MatchDto }) {
     return Number(da) > Number(db) ? m.teamA?.id ?? null : m.teamB?.id ?? null
   }
 
+  /* สกอร์กับสถิติเป็นคนละ request และไม่ใช่ธุรกรรมเดียวกัน — ถ้าอันหลังพัง (เช่น
+     กรรมการถูกถอนหลังเริ่มแมตช์ → 409 INSUFFICIENT_REFEREES) สกอร์เข้าไปแล้วแต่ตัวเลข
+     ที่พิมพ์ไว้หายหมด ต้อง catch ไว้เอง ไม่งั้น mutateAsync reject ลอยและหน้าจอเงียบสนิท */
   const onSubmit = async () => {
+    try {
+      await onSubmitUnsafe()
+    } catch {
+      /* สถานะข้อผิดพลาดอยู่ที่ตัว mutation แล้ว แบนเนอร์ข้างล่างอ่านจากตรงนั้น */
+    }
+  }
+
+  const onSubmitUnsafe = async () => {
     await submit.mutateAsync({
       winnerTeamId: winnerTeamId(),
       scoreData: {
@@ -75,9 +87,11 @@ export function ResultForm({ m }: { m: MatchDto }) {
     }
   }
 
-  /* ผลเสมอที่ไม่มีตัวตัดสิน = ไม่มีผู้ชนะ ซึ่ง bracket เดินต่อไม่ได้
-     Round Robin เสมอได้ แต่สายแพ้คัดออกไม่ได้ — กันไว้ตรงที่คนกรอกเห็น */
-  const blocked = level && !deciderGiven && !!m.nextMatchId
+  /* โหมดจริงส่งผลเสมอไม่ได้เลย: `winnerTeamId` เป็น int บังคับ และตั้งแต่ `75ffb0a`
+     `ensureScoreData` ยังบังคับว่าคะแนนของผู้ชนะต้องมากกว่าอีกฝ่าย (400 "ระบบยังไม่รองรับผลเสมอ")
+     ส่วนตัวตัดสินก็ถูกทิ้งก่อนส่ง เพราะ scoreData มีได้แค่ 2 key = รหัสทีมทั้งสอง
+     ปล่อยให้กดส่ง = 400 ทุกครั้ง กันไว้ตรงที่คนกรอกเห็น (FE-match-end-level-submitresultschema) */
+  const blocked = USE_MOCK ? level && !deciderGiven && !!m.nextMatchId : level
 
   /* สถิติที่ขัดกับสกอร์ — เช่นฟุตบอลที่มีแอสซิสต์ทั้งที่ไม่มีประตู
      ตรวจสดขณะกรอก คนกรอกจะได้เห็นก่อนกดส่ง ไม่ใช่โดนปฏิเสธทีหลัง */
@@ -113,20 +127,30 @@ export function ResultForm({ m }: { m: MatchDto }) {
         </Field>
       </div>
 
-      <span className="tag"><em>//</em> Decider — only if the score finishes level</span>
-      <div className="grid2" style={{ maxWidth: 420 }}>
-        <Field label={m.teamA?.name ?? 'Home'} htmlFor="dc-a">
-          <input id="dc-a" type="number" min={0} max={99} placeholder="—" value={da} onChange={e => setDa(e.target.value)} />
-        </Field>
-        <Field label={m.teamB?.name ?? 'Away'} htmlFor="dc-b">
-          <input id="dc-b" type="number" min={0} max={99} placeholder="—" value={db} onChange={e => setDb(e.target.value)} />
-        </Field>
-      </div>
+      {/* ช่องตัวตัดสินมีที่เก็บเฉพาะในโหมด mock — `scoreData` ของจริงรับได้แค่สอง key
+          ที่เป็นรหัสทีม ค่าที่กรอกจะถูกทิ้งก่อนส่ง เปิดช่องให้กรอกก็เท่ากับหลอกคนกรอก */}
+      {USE_MOCK ? (
+        <>
+          <span className="tag"><em>//</em> Decider — only if the score finishes level</span>
+          <div className="grid2" style={{ maxWidth: 420 }}>
+            <Field label={m.teamA?.name ?? 'Home'} htmlFor="dc-a">
+              <input id="dc-a" type="number" min={0} max={99} placeholder="—" value={da} onChange={e => setDa(e.target.value)} />
+            </Field>
+            <Field label={m.teamB?.name ?? 'Away'} htmlFor="dc-b">
+              <input id="dc-b" type="number" min={0} max={99} placeholder="—" value={db} onChange={e => setDb(e.target.value)} />
+            </Field>
+          </div>
+        </>
+      ) : null}
 
       {blocked ? (
         <Banner kind="warn">
-          <b>Level, and this match feeds another one.</b> Record the decider so the bracket knows who
-          advances.
+          {USE_MOCK
+            ? <><b>Level, and this match feeds another one.</b> Record the decider so the bracket
+              knows who advances.</>
+            : <><b>A level score cannot be recorded yet.</b> The server takes one winner and has
+              nowhere to keep a tiebreak, so it turns a level score down. Separate the two scores, or
+              leave this result until a draw can be stored.</>}
         </Banner>
       ) : null}
 
@@ -170,6 +194,15 @@ export function ResultForm({ m }: { m: MatchDto }) {
         <Banner kind="crit">
           Could not save the result.{' '}
           {submit.error instanceof Error ? submit.error.message : 'Try again.'}
+        </Banner>
+      ) : null}
+
+      {/* สกอร์ผ่านแล้วแต่สถิติไม่ผ่าน — ต้องบอก ไม่งั้นกรรมการปิดหน้าไปโดยคิดว่าบันทึกครบ */}
+      {saveStats.isError ? (
+        <Banner kind="crit">
+          <b>The score is in, but the player stats were not saved.</b>{' '}
+          {saveStats.error instanceof Error ? saveStats.error.message : ''} The numbers above are
+          still here — press Submit again to send them.
         </Banner>
       ) : null}
 

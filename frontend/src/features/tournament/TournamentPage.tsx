@@ -7,10 +7,14 @@
  * organizer), the entry panel, and the organizer's entry notes.
  */
 import { useNavigate, useParams } from 'react-router-dom'
-import { Badge, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
+import { Badge, Banner, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
-import { useTournament, useTournamentTeams } from '../../hooks/useTournament'
+import { USE_MOCK } from '../../api/client'
+import { useEligibilityRules, useTournament, useTournamentTeams } from '../../hooks/useTournament'
+import { useStandings, useTournamentMatches, useTournamentWinner } from '../../hooks/useMatch'
+import { useFaculties, useSportTypes } from '../../hooks/useReference'
+import { useMe } from '../../hooks/useAuth'
 import { parseBackendId } from '../../api/ids'
 import { isOrg, matchesOf, regsOf, team, user, visibleTo } from '../../shared/selectors'
 import { routeTour } from '../../mocks/routeIds'
@@ -34,23 +38,67 @@ export function TournamentPage() {
   const tournamentId = parseBackendId(id)
   const { data: tournamentData, isPending } = useTournament(tournamentId)
   const approvedTeams = useTournamentTeams(tournamentId)
-  const legacyTournament = routeTour(s, id)
-  const t = tournamentData ? tournamentView(tournamentData) : legacyTournament
+  const eligibility = useEligibilityRules(tournamentId)
+  const faculties = useFaculties()
+  const sportTypes = useSportTypes()
+  const { data: currentUser } = useMe()
+  /* ชื่อแชมป์จริงอยู่คนละเส้น และขอได้เฉพาะรายการที่ปิดแล้ว */
+  const winner = useTournamentWinner(tournamentId, tournamentData?.status === 'completed')
+  /**
+   * "แข่งครบทุกนัดแล้วหรือยัง" — ต้องคิดเองจากรายการแมตช์
+   *
+   * ⚠️ backend ไม่มีทางปิดรายการ (ไม่มี endpoint ตั้ง tournament_status = 'completed')
+   *    รายการที่แข่งจบแล้วจึงค้างเป็น public ตลอดไป และ GET /tournaments/:id/winner
+   *    ก็ตอบ 404 เพราะมันยอมตอบเฉพาะรายการที่ปิดแล้ว
+   *    ระหว่างรอ backend หน้านี้สรุปเองจากแมตช์ + ตารางอันดับ
+   */
+  const allMatches = useTournamentMatches(tournamentId)
+  const standings = useStandings(tournamentId)
+  const playedAll = (allMatches.data?.items.length ?? 0) > 0
+    && (allMatches.data?.items ?? []).every(match => match.status === 'completed')
+  const derivedChampion = playedAll ? standings.data?.rows[0]?.team : undefined
+  /* โหมดจริงอ่านจาก backend เท่านั้น — ทัวร์นาเมนต์ของ prototype (id แบบ 't-fb')
+     ไม่มีตัวตนใน backend พอ id ไม่ใช่ตัวเลข ทุกแท็บที่ยิง API จะได้ 400 VALIDATION_FAILED
+     กลับมา หน้าจึงดูเหมือนเปิดได้แต่พังทีละแท็บ — กันตั้งแต่ตรงนี้ชัดกว่า */
+  const legacyTournament = USE_MOCK ? routeTour(s, id) : null
+  const t = tournamentData
+    ? tournamentView(tournamentData, eligibility.data?.items ?? [], faculties.data?.items ?? [],
+      sportTypes.data?.items ?? [])
+    : legacyTournament
+  /* ชื่อผู้จัดมากับ GET /tournaments/:id อยู่แล้ว — store ไม่มีผู้ใช้คนนี้ในโหมดจริง */
+  const organizerName = tournamentData?.organizer?.fullName
 
-  if (isPending && !legacyTournament) {
+  /* query ที่ถูก disable (id ไม่ใช่ตัวเลข) ก็รายงาน isPending เหมือนกัน — ถ้าไม่กัน
+     ลิงก์ของ prototype จะค้างที่ "Loading tournament" ตลอดกาลแทนที่จะบอกว่าไม่มี */
+  if (tournamentId !== undefined && isPending && !legacyTournament) {
     return <Empty title="Loading tournament" />
   }
 
   if (!t) {
+    const prototypeLink = !USE_MOCK && tournamentId === undefined
     return (
-      <Empty icon="warn" title="That tournament doesn't exist">
+      <Empty icon="warn" title="That tournament doesn't exist"
+        sub={prototypeLink
+          ? 'That link points at prototype data, which only exists in mock mode.'
+          : undefined}>
         <button className="btn" type="button" onClick={() => navigate('/')}>Go back</button>
       </Empty>
     )
   }
 
-  /* the list and the search already filter these out; this stops a guessed URL too */
-  if (!visibleTo(s, t)) {
+  /**
+   * the list and the search already filter these out; this stops a guessed URL too
+   *
+   * ⚠️ โหมด mock เท่านั้น — `visibleTo` อ่าน session จาก store ซึ่งโหมดจริงไม่มี
+   *    (`me(s)` เป็น null เสมอ) รายการที่ยังไม่ public จึงตกเงื่อนไขทั้งหมด
+   *    เจ้าของเปิดรายการของตัวเองที่เพิ่งผ่าน admin แล้วเจอ "Not published yet"
+   *    ทั้งที่เป็นคนสร้างเอง
+   *
+   *    โหมดจริงไม่ต้องเดา — `getVisibleTournament` ของ backend ตัดสินให้แล้ว
+   *    ใครไม่มีสิทธิ์ได้ 404 (ซึ่งหน้านี้จับเป็น "ไม่มีรายการนี้" ไปก่อนถึงตรงนี้)
+   *    ได้ข้อมูลกลับมา = ดูได้ จะเอากติกาของ store มาทับคำตอบของ server ไม่ได้
+   */
+  if (USE_MOCK && !visibleTo(s, t)) {
     return (
       <Empty icon="warn" title="Not published yet"
         sub={t.status === 'pending'
@@ -61,7 +109,14 @@ export function TournamentPage() {
     )
   }
 
-  const org = isOrg(s, t)
+  /**
+   * "ฉันเป็นผู้จัดของรายการนี้ไหม" — โหมด mock เทียบกับ session ของ store
+   * โหมดจริงเทียบ id ของผู้จัดที่มากับ GET /tournaments/:id กับ /me
+   * เดิมเช็คแต่ store ผู้จัดตัวจริงจึงไม่เห็นแท็บ Manage เลย ใบสมัครที่รออนุมัติก็ไม่มีที่ให้กด
+   */
+  const org = USE_MOCK
+    ? isOrg(s, t)
+    : !!currentUser && tournamentData?.organizer?.id === currentUser.id
 
   /**
    * Organizer is scoped per tournament and several people hold it at once.
@@ -75,7 +130,7 @@ export function TournamentPage() {
         <Crumb back={{ label: t.name, onClick: () => navigate(`/t/${t.id}`) }} />
         <Empty icon="warn" title="403 — not yours to manage"
           sub={<>
-            {t.name} is run by <b style={{ color: 'var(--bone)' }}>{who?.name ?? 'another organizer'}</b>.
+            {t.name} is run by <b style={{ color: 'var(--bone)' }}>{organizerName ?? who?.name ?? 'another organizer'}</b>.
             {' '}Organizer is granted per tournament, so it does not carry across to this one.
           </>}>
           <span className="hstack">
@@ -92,19 +147,29 @@ export function TournamentPage() {
   const approved = tournamentId === undefined
     ? regsOf(s, t.id).filter(r => r.status === 'approved')
     : approvedTeams.data?.items ?? []
-  const champion = t.champion ? team(s, t.champion) : null
+  const champion = winner.data?.championTeam
+    ?? derivedChampion
+    ?? (t.champion ? team(s, t.champion) : null)
   const watchable = matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
 
   return (
     <>
       <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{t.name}</Crumb>
 
+      {playedAll && tournamentData?.status !== 'completed' ? (
+        <Banner kind="ok" icon="check">
+          <b>Every match is played.</b>{' '}
+          {champion ? `${champion.name} won it. ` : ''}
+          The tournament stays open until the server has a way to close it — the results below are final.
+        </Banner>
+      ) : null}
+
       <div className="spread">
         <div>
           <div className="tag"><em>//</em> {t.sport} · {formatName(t)} · {t.channel}</div>
           <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>{t.name}</h1>
           <div className="tag" style={{ marginTop: 6 }}>
-            {org ? <><em>//</em> You run this tournament</> : `Run by ${user(s, t.organizer)?.name ?? '—'}`}
+            {org ? <><em>//</em> You run this tournament</> : `Run by ${organizerName ?? user(s, t.organizer)?.name ?? '—'}`}
           </div>
         </div>
         <div className="hstack">
@@ -159,7 +224,7 @@ export function TournamentPage() {
                 : tournamentId !== undefined && approvedTeams.isError
                   ? <span className="sub">Unavailable</span>
                   : <><b className="num">{approved.length}</b> <span className="sub">of {t.cap}</span></>],
-              ['Run by', user(s, t.organizer)?.name ?? '—'],
+              ['Run by', organizerName ?? user(s, t.organizer)?.name ?? '—'],
             ]} />
           </Panel>
           {tournamentId !== undefined ? <Panel quiet>
@@ -168,11 +233,20 @@ export function TournamentPage() {
             {approvedTeams.isError ? <span className="sub">Unable to load approved teams.</span> : null}
             {approvedTeams.data?.items.length === 0 ? <span className="sub">No teams have been approved yet.</span> : null}
             {approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>
-              <span>{approvedTeam.name}<br /><span className="sub">Sport #{approvedTeam.sportTypeId}</span></span>
+              {/* ชื่อกีฬาอยู่ใน sportTypes ที่หน้านี้ดึงมาอยู่แล้ว — เขียน "Sport #3" ทิ้งไว้
+                  เป็นรหัสภายในที่ไม่มีความหมายกับคนอ่าน */}
+              <span>{approvedTeam.name}<br /><span className="sub">
+                {sportTypes.data?.items.find(sport => sport.id === approvedTeam.sportTypeId)?.name
+                  ?? `Sport #${approvedTeam.sportTypeId}`}
+              </span></span>
               <button className="btn ghost" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
             </div>)}
           </Panel> : null}
-          <EntryPanel t={t} applications={tournamentData?.applications} />
+          {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
+              แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
+          <EntryPanel t={t} applications={tournamentData?.applications}
+            approvedCount={tournamentId === undefined ? undefined : approved.length}
+            sportTypeId={tournamentData?.sportTypeId} />
           {t.entryNotes ? (
             <Panel quiet>
               <span className="tag"><em>//</em> Soft filter from the organizer</span>

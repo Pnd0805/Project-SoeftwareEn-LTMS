@@ -292,7 +292,8 @@ export const ResultSubmittedRoleLabel: Record<ResultSubmittedRole, string> = {
 };
 
 // match_results.match_result_status
-export const MatchResultStatusEnum = z.enum(["submitted", "verified", "disputed", "rejected"]);
+/* walkover = ชนะบาย (migration 011) — ไม่ต้องยืนยันและโต้แย้งไม่ได้ ถือว่าจบแล้ว */
+export const MatchResultStatusEnum = z.enum(["submitted", "verified", "disputed", "rejected", "walkover"]);
 export type MatchResultStatus = z.infer<typeof MatchResultStatusEnum>;
 export const MatchResultStatusOptions = MatchResultStatusEnum.options;
 export const MatchResultStatusLabel: Record<MatchResultStatus, string> = {
@@ -300,6 +301,7 @@ export const MatchResultStatusLabel: Record<MatchResultStatus, string> = {
   "verified": "Verified",
   "disputed": "Disputed",
   "rejected": "Rejected",
+  "walkover": "Walkover",
 };
 
 // sport_stat_definitions.data_type

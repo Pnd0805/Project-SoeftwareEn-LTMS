@@ -23,7 +23,8 @@ import {
 import { Icon } from '../../components/kit/Icon'
 import { ScorebugView } from '../../components/kit/Scorebug'
 import {
-  useMatch, useResult, useVerifyResult, useDisputeResult, useResolveDispute, useSetLivestream,
+  useCloseMatchCheckin, useDisputeResult, useForfeitMatch, useMatch, useOpenMatchCheckin,
+  useResolveDispute, useResult, useSetLivestream, useStartMatch, useVerifyResult,
 } from '../../hooks/useMatch'
 import { USE_MOCK } from '../../api/client'
 import { useLtms } from '../../shared/store'
@@ -33,25 +34,155 @@ import { ResultForm } from './ResultForm'
 import { ResultTrail } from './ResultTrail'
 import { SocialBar } from './SocialBar'
 import { StatSheet } from './StatSheet'
-import type { MatchDto, MatchResultDto } from '../../types/match.dto'
+import type { MatchDto, MatchResultDto, MatchTeamRef } from '../../types/match.dto'
 
 const TABS = ['overview', 'lineup', 'stats', 'progress', 'community']
 
-/** สกอร์ที่จะโชว์บน scorebug — อ่านจากผล ไม่ใช่จากแมตช์ */
-function scoreOf(r?: MatchResultDto) {
-  const sd = r?.scoreData as { a?: number; b?: number; decider?: { a: number; b: number; kind: string } } | undefined
+/**
+ * จบแล้วหรือยัง — `walkover` จบพอๆ กับ `verified` (ไม่มีใครต้องยืนยันอีก
+ * และ S03 โต้แย้งไม่ได้ ตอบ `RESULT_IS_WALKOVER`) ต่างกันแค่ไม่ได้ลงแข่งจริง
+ */
+const isSettled = (r?: MatchResultDto) => r?.status === 'verified' || r?.status === 'walkover'
+
+/**
+ * สกอร์ที่จะโชว์บน scorebug — อ่านจากผล ไม่ใช่จากแมตช์
+ *
+ * `score_data` ของ backend เป็น map teamId → แต้ม ส่วน prototype เก็บเป็น a/b
+ * อ่านทั้งสองแบบเพราะแถวผลที่กรอกไว้ก่อนแก้เรื่องคีย์ยังเป็น a/b อยู่
+ */
+function scoreOf(r?: MatchResultDto, m?: MatchDto) {
+  const sd = r?.scoreData as Record<string, unknown> | undefined
+  const num = (v: unknown) => (typeof v === 'number' ? v : null)
+  const side = (t: MatchTeamRef | null | undefined, legacy: unknown) =>
+    (t ? num(sd?.[String(t.id)]) : null) ?? num(legacy)
   return {
-    a: sd?.a ?? null,
-    b: sd?.b ?? null,
-    decider: sd?.decider ?? null,
+    a: side(m?.teamA, sd?.a),
+    b: side(m?.teamB, sd?.b),
+    decider: (sd?.decider as { a: number; b: number; kind: string } | undefined) ?? null,
   }
+}
+
+/**
+ * วงจรชีวิตของแมตช์ — เปิด/ปิดเช็คอิน เริ่มแข่ง และตัดสินทีมไม่มาตามนัด
+ *
+ * ทั้งสี่เส้นมีใน backend มาตลอด (M09/M10/M17/M18) แต่ไม่เคยมีปุ่มไหนเรียกเลย
+ * แมตช์จึงออกจาก `scheduled` ไม่ได้ถ้าไม่ไปยิง SQL เอง — นี่คือเหตุผลที่ข้อมูล
+ * ทดสอบต้องสร้างด้วยสคริปต์
+ *
+ * ใครกดอะไรได้ backend เป็นคนตัดสินเสมอ (requireOrganizerOfMatch /
+ * requireReferee) ตรงนี้แค่ไม่โชว์ปุ่มที่รู้อยู่แล้วว่าจะเด้ง
+ */
+function MatchLifecycle({ m }: { m: MatchDto }) {
+  const isOrganizer = m.viewer.roles.includes('organizer')
+  const isReferee = m.viewer.roles.includes('referee')
+  const openCheckin = useOpenMatchCheckin(m.id, m.tournamentId)
+  const closeCheckin = useCloseMatchCheckin(m.id, m.tournamentId)
+  const start = useStartMatch(m.id, m.tournamentId)
+  const forfeit = useForfeitMatch(m.id, m.tournamentId)
+  /* ตัดสินไม่มาตามนัดแล้วแมตช์จบทันที ย้อนไม่ได้ — ต้องกดยืนยันอีกชั้น */
+  const [confirmForfeit, setConfirmForfeit] = useState(false)
+
+  if (!isOrganizer && !isReferee) return null
+  if (m.status !== 'scheduled' && m.status !== 'checkin_open') return null
+  /* นัดที่ยังรอผู้ชนะจากรอบก่อนยังไม่มีคู่แข่ง — เปิดเช็คอินให้ใครไม่ได้
+     (start กับ forfeit ฝั่ง backend ก็ตอบ 409 MATCH_TEAMS_INCOMPLETE อยู่แล้ว) */
+  if (!m.teamA || !m.teamB) return null
+
+  const busy = openCheckin.isPending || closeCheckin.isPending || start.isPending || forfeit.isPending
+  const failed = [openCheckin, closeCheckin, start, forfeit].find(x => x.isError)
+
+  return (
+    <Panel quiet>
+      <span className="tag"><em>//</em> Match control — {isOrganizer ? 'organizer' : 'referee'}</span>
+
+      {m.status === 'scheduled' && isOrganizer ? (
+        <>
+          <div className="sub">
+            Opening check-in lets both squads confirm they are here. Appoint every referee first —
+            the server refuses a new appointment once check-in is open.
+          </div>
+          <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
+            disabled={busy} onClick={() => openCheckin.mutate()}>
+            {openCheckin.isPending ? 'Opening…' : 'Open check-in'}
+          </button>
+        </>
+      ) : null}
+
+      {m.status === 'checkin_open' ? (
+        <>
+          {isReferee ? (
+            <>
+              <div className="sub">
+                Starting the match needs every referee in place and each squad at its sport&apos;s
+                minimum. A squad short of it loses by walkover.
+              </div>
+              <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
+                disabled={busy} onClick={() => start.mutate()}>
+                {start.isPending ? 'Starting…' : 'Start the match'}
+              </button>
+            </>
+          ) : null}
+
+          {isOrganizer ? (
+            <>
+              <div className="sub">
+                Opened the wrong match, or the fixture moved? Closing check-in puts it back to
+                scheduled and keeps the check-ins already taken.
+              </div>
+              <span className="hstack">
+                <button className="btn" type="button" disabled={busy}
+                  onClick={() => closeCheckin.mutate()}>
+                  {closeCheckin.isPending ? 'Closing…' : 'Close check-in'}
+                </button>
+                {confirmForfeit ? (
+                  <>
+                    <button className="btn crit" type="button" disabled={busy}
+                      onClick={() => { setConfirmForfeit(false); forfeit.mutate() }}>
+                      {forfeit.isPending ? 'Settling…' : 'Yes — settle it as a no-show'}
+                    </button>
+                    <button className="btn ghost" type="button" disabled={busy}
+                      onClick={() => setConfirmForfeit(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <button className="btn" type="button" disabled={busy}
+                    onClick={() => setConfirmForfeit(true)}>A squad did not show up</button>
+                )}
+              </span>
+              {confirmForfeit ? (
+                <Banner kind="warn">
+                  <b>This ends the match.</b> Whichever squad is short of its sport&apos;s minimum
+                  loses by walkover — both, if neither turned up. It cannot be undone from here.
+                </Banner>
+              ) : null}
+            </>
+          ) : null}
+        </>
+      ) : null}
+
+      {forfeit.isSuccess ? (
+        <Banner kind="ok" icon="check">
+          <b>Settled.</b>{' '}
+          {forfeit.data.kind === 'double_forfeit'
+            ? 'Neither squad had enough players checked in, so both forfeited.'
+            : `Recorded as a walkover — ${forfeit.data.minMembers} players were needed.`}
+        </Banner>
+      ) : null}
+
+      {failed ? (
+        <Banner kind="crit">
+          <b>That did not go through.</b>{' '}
+          {failed.error instanceof Error ? failed.error.message : 'Something went wrong.'}
+        </Banner>
+      ) : null}
+    </Panel>
+  )
 }
 
 /** Organizer only: reopen a signed-off result, and the replay link once it is done. */
 function OrganizerTools({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   const [replay, setReplay] = useState(m.replayUrl ?? '')
   const setLivestream = useSetLivestream(m.id)
-  const settled = result?.status === 'verified'
+  const settled = isSettled(result)
 
   if (!settled) return null
   return (
@@ -72,37 +203,106 @@ function OrganizerTools({ m, result }: { m: MatchDto; result?: MatchResultDto })
   )
 }
 
-/** The organizer settles it, and recording a new score closes the dispute (FR-RS-04). */
+/**
+ * ผู้จัดเป็นคนชี้ขาด (FR-RS-04)
+ *
+ * B4 (`c43f497`) เปิดทางที่สามให้แล้ว — เดิมมีแค่ยืนผลเดิมกับยกผลทิ้ง ซึ่งไม่ตอบโจทย์
+ * เหตุผลที่คนค้านกันจริงๆ คือ "สกอร์ผิด" · ตอนนี้ผู้จัดเขียนผลที่ถูกต้องลงไปได้เลย
+ * (amend → verified ทันที ติดธง isAmended) และ reject ก็ถอนผลออกจริง ทั้งสาย ตาราง
+ * และสถิติที่ผลนั้นเคยเดินไปแล้ว
+ */
 function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
-  const s = scoreOf(result)
+  const s = scoreOf(result, m)
   const [sa, setSa] = useState(s.a ?? 0)
   const [sb, setSb] = useState(s.b ?? 0)
+  const [note, setNote] = useState('')
   const resolve = useResolveDispute(m.id, m.tournamentId)
+  const disputedBy = result.disputeRaisedBy?.fullName ?? 'A team'
+  /* คำตัดสินทุกแบบต้องมีเหตุผล ทั้งสองทีมอ่าน · เสมอไม่มีผู้ชนะให้บันทึก (backend บังคับ
+     winnerTeamId เป็น int) จึงแก้เป็นสกอร์เสมอไม่ได้ ต้องเลือกทางอื่นแทน */
+  const blocked = resolve.isPending || !note.trim()
+  const level = sa === sb
+
   return (
     <Panel>
       <span className="tag"><em>//</em> Resolve the dispute — your decision is final</span>
       <Banner kind="crit">
-        <b>{result.disputeRaisedBy?.fullName ?? 'A team'}</b> disputed this result
-        {result.disputeReason ? <> — “{result.disputeReason}”</> : null}. Recording a new score closes
-        the dispute and advances the bracket.
+        <b>{disputedBy}</b> disputed this result
+        {result.disputeReason ? <> — “{result.disputeReason}”</> : null}.
+        {USE_MOCK
+          ? ' Recording a new score closes the dispute and advances the bracket.'
+          : ` The score on record is ${s.a ?? '—'}–${s.b ?? '—'}.`}
       </Banner>
-      <div className="grid2" style={{ maxWidth: 420 }}>
-        <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
-          <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
-        </Field>
-        <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
-          <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
-        </Field>
-      </div>
-      <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-        disabled={resolve.isPending}
-        onClick={() => resolve.mutate({
-          resolution: `Organizer recorded ${sa}–${sb}`,
-          winnerTeamId: sa === sb ? null : sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
-          scoreData: { a: sa, b: sb },
-        })}>
-        {resolve.isPending ? 'Recording…' : 'Record the final score'}
-      </button>
+
+      {USE_MOCK ? (
+        <>
+          <div className="grid2" style={{ maxWidth: 420 }}>
+            <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
+              <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
+            </Field>
+            <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
+              <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
+            </Field>
+          </div>
+          <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
+            disabled={resolve.isPending}
+            onClick={() => resolve.mutate({
+              resolution: `Organizer recorded ${sa}–${sb}`,
+              winnerTeamId: sa === sb ? null : sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
+              scoreData: { a: sa, b: sb },
+            })}>
+            {resolve.isPending ? 'Recording…' : 'Record the final score'}
+          </button>
+        </>
+      ) : (
+        <>
+          <Field label="Why — both squads see this" htmlFor="rs-note">
+            <textarea id="rs-note" rows={2} maxLength={500} value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="What you checked and what you decided." />
+          </Field>
+          <div className="grid2" style={{ maxWidth: 420 }}>
+            <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
+              <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
+            </Field>
+            <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
+              <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
+            </Field>
+          </div>
+          <span className="hstack">
+            <button className="btn primary" type="button" disabled={blocked || level}
+              title={level ? 'A corrected score still needs a winner' : undefined}
+              onClick={() => resolve.mutate({
+                decision: 'amend',
+                resolution: note.trim(),
+                winnerTeamId: sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
+                scoreData: { a: sa, b: sb },
+              })}>
+              Record this score as final
+            </button>
+            <button className="btn" type="button" disabled={blocked}
+              onClick={() => resolve.mutate({ decision: 'uphold', resolution: note.trim() })}>
+              Keep the recorded score
+            </button>
+            <button className="btn crit" type="button" disabled={blocked}
+              onClick={() => resolve.mutate({ decision: 'reject', resolution: note.trim() })}>
+              Throw the result out
+            </button>
+          </span>
+          <div className="sub">
+            {level
+              ? 'A level score has no winner, and the server has no way to record a draw — separate them, keep the recorded score, or throw the result out.'
+              : 'Throwing it out undoes what the result already did — the bracket, the table and the player stats — and leaves the match open for a fresh one.'}
+          </div>
+        </>
+      )}
+
+      {resolve.isError ? (
+        <Banner kind="crit">
+          <b>That did not go through.</b>{' '}
+          {resolve.error instanceof Error ? resolve.error.message : 'Something went wrong.'}
+        </Banner>
+      ) : null}
     </Panel>
   )
 }
@@ -132,6 +332,25 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
     )
   }
 
+  /* ชนะบาย — ไม่มีใครลงแข่ง จึงไม่มีอะไรให้ยืนยันหรือโต้แย้ง สกอร์ที่เห็นคือสกอร์บาย
+     ประจำกีฬา (`sport_types.walkover_score`) ไม่ใช่ผลการแข่ง · ถอน/ไม่มาทั้งคู่ =
+     ไม่มีผู้ชนะ ไม่มีใครเดินสาย ช่องรอบถัดไปว่างถาวร (GUIDE/11 §10.5) */
+  if (result?.status === 'walkover') {
+    const winner = result.winnerTeamId === m.teamA.id ? m.teamA
+      : result.winnerTeamId === m.teamB.id ? m.teamB : null
+    return winner ? (
+      <Banner kind="ok" icon="check">
+        <b>{winner.name} won by walkover.</b> The other squad withdrew or could not field enough
+        players. The score on record is this sport&apos;s walkover score, not a played result.
+      </Banner>
+    ) : (
+      <Banner kind="warn" icon="clock">
+        <b>No contest.</b> Both squads forfeited, so nobody advances. The place this match fed
+        stays empty and whoever was waiting there goes through.
+      </Banner>
+    )
+  }
+
   if (result?.status === 'verified') {
     const winner = result.winnerTeamId === m.teamA.id ? m.teamA
       : result.winnerTeamId === m.teamB.id ? m.teamB : null
@@ -146,7 +365,13 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
 
   /* A result is in and waiting on the other side to sign it (SRS FR-RS-02/03). */
   if (result?.status === 'submitted') {
-    if (can.verifyResult) {
+    /* on-site ผู้ยืนยันคือหัวหน้า "ทีมที่ชนะ" เท่านั้น (BR-13 · backend ใช้
+       isLeaderOfTeam(winner_team_id)) — เดิมโชว์แผงนี้ให้หัวหน้าทั้งสองฝั่ง ฝั่งที่แพ้จึง
+       อ่านว่า "You won, so you confirm" แล้วกดไปเจอ 403 WRONG_SUBMITTER_ROLE
+       ฝั่งที่แพ้ต้องตกไปแผง Waiting ข้างล่าง ซึ่งมีช่องโต้แย้งให้ตามดีไซน์ */
+    const iConfirm = can.verifyResult
+      && (m.mode !== 'onsite' || result.winnerTeamId === m.viewer.myTeamId)
+    if (iConfirm) {
       return (
         <Panel>
           <span className="tag"><em>//</em> Your confirmation</span>
@@ -204,6 +429,36 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   /* No result yet. Whoever records first depends on the mode. */
   if (can.submitResult) return <ResultForm m={m} />
 
+  /* แมตช์ที่โต้แย้งอยู่แต่คนดูไม่มีสิทธิ์เห็นผล (A7 เปิดให้เฉพาะผู้จัด กรรมการของแมตช์
+     และหัวหน้าทีมสองฝั่ง) — คนอื่นได้ 404 จึงมาถึงตรงนี้โดยไม่มี result */
+  if (m.status === 'disputed') {
+    return (
+      <Panel quiet>
+        <span className="tag"><em>//</em> Disputed</span>
+        <div className="sub">
+          A result was recorded and one of the squads is disputing it. Only the organizer, this
+          match&apos;s referees and the two squad leaders can see the score while that is settled.
+        </div>
+      </Panel>
+    )
+  }
+
+  /* ใบผลอ่านได้เฉพาะผู้จัด กรรมการของแมตช์ และหัวหน้าสองทีม (S05) — ผู้เล่นธรรมดาได้ 404
+     จึงมาถึงตรงนี้ทั้งที่ผลส่งไปแล้ว เขียนว่า "ยังไม่มีใครกรอก" ก็ผิด และขัดกับป้ายสถานะ
+     ข้างบนที่อ่าน resultStatus จาก M05 ซึ่งเป็นข้อมูลสาธารณะ */
+  if (m.resultStatus === 'submitted') {
+    return (
+      <Panel quiet>
+        <span className="tag"><em>//</em> Waiting</span>
+        <div className="sub">
+          A result is in, waiting on the {m.mode === 'onsite' ? 'winning team leader' : 'referee'} to
+          confirm it. The score stays with the organizer, this match&apos;s referees and the two
+          squad leaders until then.
+        </div>
+      </Panel>
+    )
+  }
+
   return (
     <Panel quiet>
       <span className="tag"><em>//</em> Waiting</span>
@@ -251,9 +506,12 @@ export function MatchPage() {
   if (isPending) return <Panel quiet><span className="sub">Loading the match…</span></Panel>
 
   const tab = TABS.includes(tabParam ?? '') ? tabParam! : 'overview'
-  const state = matchStateOf({ ...m, resultStatus: result?.status ?? null })
-  const sc = scoreOf(result)
-  const settled = result?.status === 'verified'
+  /* ใบผล (S05) เปิดให้เฉพาะผู้จัด กรรมการของแมตช์ และหัวหน้าสองทีม คนอื่นได้ 404
+     เดิมเขียน `?? null` ทับ ผู้เล่นธรรมดาจึงเห็นป้ายเป็น "Check-in open" ขณะที่หัวหน้าทีม
+     เห็น "Awaiting confirmation" ทั้งที่ M05 ส่ง resultStatus มาให้ทุกคนอยู่แล้ว (B5) */
+  const state = matchStateOf({ ...m, resultStatus: result?.status ?? m.resultStatus })
+  const sc = scoreOf(result, m)
+  const settled = isSettled(result)
   const winnerId = settled ? result?.winnerTeamId ?? null : null
 
   return (
@@ -278,6 +536,7 @@ export function MatchPage() {
 
           {tab === 'overview' ? (
             <>
+              <MatchLifecycle m={m} />
               <ActionPanel m={m} result={result} />
               {m.viewer.roles.includes('organizer') ? <OrganizerTools m={m} result={result} /> : null}
               {m.replayUrl ? (
@@ -295,7 +554,11 @@ export function MatchPage() {
                     <button className="btn" type="button" onClick={() => navigate(`/checkin/${m.id}`)}>
                       {m.viewer.can.manageCheckin ? 'Check-in console' : 'Go to check-in'}
                     </button>
-                    <span className="sub">{m.checkedIn} of {m.lineupSize} checked in.</span>
+                    {/* ผู้เล่นอ่าน GET /matches/:id/checkins ไม่ได้ (403) — ไม่รู้ตัวหาร
+                        ก็อย่าเขียน "0 of 0" ให้เข้าใจผิดว่ายังไม่มีใครเช็คอิน */}
+                    {m.lineupSize > 0
+                      ? <span className="sub">{m.checkedIn} of {m.lineupSize} checked in.</span>
+                      : null}
                   </div>
                 </Panel>
               ) : null}

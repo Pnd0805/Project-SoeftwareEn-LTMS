@@ -56,9 +56,35 @@ function statusOf(error: unknown): number | null {
   return typeof status === "number" ? status : null;
 }
 
-let accessToken: string | null = null;
+/**
+ * โทเคนอยู่ใน sessionStorage ไม่ใช่แค่ในหน่วยความจำ
+ *
+ * เดิมเก็บไว้ในตัวแปรเฉยๆ พอกด refresh หน้าไหนก็ตาม โทเคนหาย → คำขอที่ต้องมีสิทธิ์
+ * กลายเป็นคำขอแบบไม่ล็อกอิน แล้วได้ 401/403 กลับมาทั้งหน้า (เจอบ่อยที่หน้า Manage,
+ * คอนโซลเช็คอิน และคิวของแอดมิน)
+ *
+ * เลือก sessionStorage ไม่ใช่ localStorage — ปิดแท็บแล้วจบ ไม่ค้างในเครื่องข้ามวัน
+ * (backend ออกเป็น access token ล้วน ไม่มี refresh token/คุกกี้ให้ใช้)
+ */
+const TOKEN_KEY = "ltms.access-token";
+
+const readStoredToken = (): string | null => {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null; // โหมดส่วนตัวหรือ storage ถูกปิด — ถือว่ายังไม่ล็อกอิน
+  }
+};
+
+let accessToken: string | null = readStoredToken();
 export function setAccessToken(token: string | null): void {
   accessToken = token;
+  try {
+    if (token === null) sessionStorage.removeItem(TOKEN_KEY);
+    else sessionStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    /* เก็บไม่ได้ก็ยังใช้ต่อได้ในแท็บนี้ แค่รีเฟรชแล้วต้องล็อกอินใหม่ */
+  }
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {

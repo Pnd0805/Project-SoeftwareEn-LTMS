@@ -1,4 +1,12 @@
-import { apiFetch, mockDelay, USE_MOCK } from "./client"
+import { ApiError, mockDelay, USE_MOCK } from "./client"
+
+/**
+ * ทั้งไฟล์นี้เป็นฟีเจอร์โซเชียล (ติดตาม · โหวต MVP · คอมเมนต์ · ทายผล)
+ * ซึ่ง backend ยังไม่มี endpoint ให้เลยสักตัว — โหมดจริงจึงตอบ 501 ทุกเส้น
+ * แทนที่จะยิงไปพาธที่เดาไว้แล้วได้ 404 (ดู FEAT-1-REMAINING)
+ */
+const unavailable = <T>(what: string): Promise<T> =>
+  Promise.reject(new ApiError(501, { code: "ENDPOINT_UNAVAILABLE", message: `${what} ยังไม่มีใน backend` }));
 import type {
   CommentListDto,
   FollowListDto,
@@ -21,8 +29,7 @@ import { getMockPicks, mockPlacePick } from "../mocks/pick.mock"
 export async function getFollows(userId: number): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(getMockFollows(userId))
 
-  // TODO(guide): confirm the follows endpoint path.
-  return apiFetch<FollowListDto>("/me/follows")
+  return unavailable<FollowListDto>("รายการติดตาม (/me/follows)")
 }
 
 export async function follow(
@@ -31,11 +38,8 @@ export async function follow(
 ): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(mockFollow(userId, target))
 
-  // TODO(guide): confirm the follow action endpoint.
-  return apiFetch<FollowListDto>("/me/follows", {
-    method: "POST",
-    body: JSON.stringify({ target }),
-  })
+  void target;
+  return unavailable<FollowListDto>("การกดติดตาม")
 }
 
 export async function unfollow(
@@ -44,11 +48,8 @@ export async function unfollow(
 ): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(mockUnfollow(userId, target))
 
-  // TODO(guide): confirm the unfollow action endpoint.
-  return apiFetch<FollowListDto>(
-    `/me/follows/${encodeURIComponent(target)}`,
-    { method: "DELETE" },
-  )
+  void target;
+  return unavailable<FollowListDto>("การเลิกติดตาม")
 }
 
 export async function getMvpVotes(
@@ -57,10 +58,7 @@ export async function getMvpVotes(
 ): Promise<MvpVoteListDto> {
   if (USE_MOCK) return mockDelay(getMockMvpVotes(tournamentId, userId))
 
-  // TODO(guide): confirm the MVP vote list endpoint path.
-  return apiFetch<MvpVoteListDto>(
-    `/tournaments/${encodeURIComponent(tournamentId)}/mvp-votes`,
-  )
+  return unavailable<MvpVoteListDto>("การโหวต MVP")
 }
 
 export async function castMvpVote(
@@ -70,21 +68,14 @@ export async function castMvpVote(
 ): Promise<MvpVoteListDto> {
   if (USE_MOCK) return mockDelay(mockCastMvpVote(tournamentId, userId, playerId))
 
-  // TODO(guide): confirm the MVP vote action endpoint path.
-  return apiFetch<MvpVoteListDto>(
-    `/tournaments/${encodeURIComponent(tournamentId)}/mvp-votes`,
-    {
-      method: "POST",
-      body: JSON.stringify({ playerId }),
-    },
-  )
+  void playerId;
+  return unavailable<MvpVoteListDto>("การโหวต MVP")
 }
 
 export async function getComments(matchId: string): Promise<CommentListDto> {
   if (USE_MOCK) return mockDelay(getMockComments(matchId))
 
-  // TODO(guide): confirm the match comments endpoint path.
-  return apiFetch<CommentListDto>(`/matches/${encodeURIComponent(matchId)}/comments`)
+  return unavailable<CommentListDto>("คอมเมนต์ใต้แมตช์ (FR-CM-01)")
 }
 
 export async function postComment(
@@ -95,11 +86,8 @@ export async function postComment(
 ): Promise<CommentListDto> {
   if (USE_MOCK) return mockDelay(mockPostComment(matchId, userId, userName, text))
 
-  // TODO(guide): confirm the match comment action endpoint path.
-  return apiFetch<CommentListDto>(`/matches/${encodeURIComponent(matchId)}/comments`, {
-    method: "POST",
-    body: JSON.stringify({ text }),
-  })
+  void text;
+  return unavailable<CommentListDto>("การโพสต์คอมเมนต์ (FR-CM-01)")
 }
 
 export async function removeComment(
@@ -108,18 +96,14 @@ export async function removeComment(
 ): Promise<CommentListDto> {
   if (USE_MOCK) return mockDelay(mockRemoveComment(matchId, commentId))
 
-  // TODO(guide): confirm the comment delete endpoint path.
-  return apiFetch<CommentListDto>(
-    `/matches/${encodeURIComponent(matchId)}/comments/${encodeURIComponent(commentId)}`,
-    { method: "DELETE" },
-  )
+  void commentId;
+  return unavailable<CommentListDto>("การลบคอมเมนต์")
 }
 
 export async function getPicks(matchId: string, userId: string): Promise<PickListDto> {
   if (USE_MOCK) return mockDelay(getMockPicks(matchId, userId))
 
-  // TODO(guide): confirm the match Pick'em list endpoint path.
-  return apiFetch<PickListDto>(`/matches/${encodeURIComponent(matchId)}/picks`)
+  return unavailable<PickListDto>("Pick'em ทายผล (FR-PK-01)")
 }
 
 export async function placePick(
@@ -129,9 +113,6 @@ export async function placePick(
 ): Promise<PickListDto> {
   if (USE_MOCK) return mockDelay(mockPlacePick(matchId, userId, teamId))
 
-  // TODO(guide): confirm the Pick'em action endpoint path.
-  return apiFetch<PickListDto>(`/matches/${encodeURIComponent(matchId)}/picks`, {
-    method: "POST",
-    body: JSON.stringify({ teamId }),
-  })
+  void teamId;
+  return unavailable<PickListDto>("การทายผล (FR-PK-01)")
 }

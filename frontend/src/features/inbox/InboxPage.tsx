@@ -23,6 +23,7 @@ import {
   useNotifications,
 } from '../../hooks/useNotifications'
 import { USE_MOCK } from '../../api/client'
+import { BackendInbox } from './BackendInbox'
 
 export function InboxPage() {
   const navigate = useNavigate()
@@ -37,15 +38,8 @@ export function InboxPage() {
   if (!currentUser) {
     return <Empty icon="bell" title="Sign in to open Inbox" />
   }
-  if (!USE_MOCK) {
-    return (
-      <Empty
-        icon="bell"
-        title="Inbox is not available on the server yet"
-        sub="Team invitations are under Teams. Referee invitations are under Matches."
-      />
-    )
-  }
+  /* โหมดจริงประกอบ "สิ่งที่รอให้เราตอบ" จากเส้นที่ backend มี (ดู BackendInbox) */
+  if (!USE_MOCK) return <BackendInbox />
   if (isError || !data) {
     return <Empty icon="bell" title="Unable to load inbox" sub="Please try again later." />
   }

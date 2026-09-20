@@ -81,7 +81,7 @@ export const mockStatDefinitions: Record<number, StatDefinition[]> = {
 /** ไม่มีสิทธิ์อะไรเลย — จุดตั้งต้นที่ทุกแมตช์เปิดจากตรงนี้แล้วเปิดเฉพาะที่ควรได้ */
 const noPowers: MatchViewerContext["can"] = {
   submitResult: false, verifyResult: false, disputeResult: false, resolveDispute: false,
-  editFixture: false, recordStats: false, manageCheckin: false,
+  editFixture: false, recordStats: false, manageCheckin: false, verifyCheckin: false,
 };
 
 const viewer = (
@@ -122,6 +122,8 @@ const mk = (seed: MatchSeed): MatchDto => ({
   checkedIn: 0,
   lineupSize: 10,
   ...seed,
+  /* Partial<MatchDto> ที่ไม่ได้ระบุช่องนี้ spread ค่า undefined ออกมา ไม่ใช่ไม่มีช่อง */
+  resultStatus: seed.resultStatus ?? null,
 });
 
 // ── Matches ────────────────────────────────────────────────────────────────
@@ -168,7 +170,7 @@ export const mockMatches: MatchDto[] = [
     checkinToken: "K7M-2Q9",
     // onsite: กรรมการกรอกผล และคุมเช็คอิน · เราลงเล่นด้วยและเป็นหัวหน้าทีม
     viewer: viewer(["referee", "player"],
-      { submitResult: true, manageCheckin: true, recordStats: true },
+      { submitResult: true, manageCheckin: true, verifyCheckin: true, recordStats: true },
       { myTeamId: 11, isTeamLeader: true }),
   }),
   mk({
@@ -238,6 +240,7 @@ export const mockCheckins: MatchCheckinDto[] = [
     method: "qr_onsite",
     status: "success",
     rejectionReason: null,
+    note: null,
     documentType: null,
     documentS3Key: null,
     verifiedByReferee: null,
@@ -251,6 +254,7 @@ export const mockCheckins: MatchCheckinDto[] = [
     method: "photo_online",
     status: "exception",
     rejectionReason: null,
+    note: null,
     documentType: "student_id",
     documentS3Key: "checkins/303/2/student_id.jpg",
     verifiedByReferee: null,
