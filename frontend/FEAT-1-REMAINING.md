@@ -935,6 +935,21 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       missing. Developer regression coverage verifies all three boundaries.
       Real-browser/backend retest remains pending below.
 
+- [x] **R09 · Admin navigation · Slice 1:** never treat `userType: "staff"` as
+      admin authorization. `organizer@ku.th` is staff but has no `admin_scopes`;
+      both `/admin/team-requests` and `/admin/tournament-requests` return
+      `403 INSUFFICIENT_ADMIN_SCOPE`, so showing Admin from `userType` was a
+      false permission hint. Delivered 2026-09-20: real-mode Shell uses the
+      existing `useAdminAccess` backend capability check and shows Admin only
+      after the scope-guarded tournament-request queue succeeds. The check is
+      disabled for guests and cached for five minutes. Mock mode continues to
+      use its isolated Admin role. Direct `/admin` navigation still renders the
+      page's 401/403 access state; hiding a menu is not authorization.
+      Regression coverage includes staff without scope plus faculty and
+      university-wide capability outcomes. Prefer `adminScopes` on `GET /me` or
+      a dedicated current-user capability endpoint when backend adds one; then
+      replace the queue probe without changing Shell policy.
+
 ### Regression completion gate
 
 - [ ] Head Frontend Dev: attach reproduction evidence and confirmed ownership

@@ -20,16 +20,18 @@ import { useLogout, useMe } from '../../hooks/useAuth'
 import { useNotifications } from '../../hooks/useNotifications'
 import type { MeDto } from '../../types/dto'
 import { USE_MOCK } from '../../api/client'
+import { useAdminAccess } from '../../hooks/useAdmin'
+import { canShowAdminNav } from './adminNav'
 
 interface NavItem { to: string; icon: IconName; label: string; pill?: number }
 
-function useNav(unreadCount: number, currentUser?: MeDto): NavItem[] {
+function useNav(unreadCount: number, currentUser: MeDto | undefined, backendHasAdminAccess: boolean): NavItem[] {
   const s = useLtms()
   const u = USE_MOCK ? me(s) : undefined
   if (!u && !currentUser) return []
   const invites = u ? s.invites.filter(i => i.user === u.id && i.status === 'pending').length : 0
   const items: NavItem[] = [{ to: '/', icon: 'trophy', label: 'Tournaments' }]
-  if (currentUser?.userType === 'staff' || u?.role === 'Admin') {
+  if (canShowAdminNav(USE_MOCK, u?.role, backendHasAdminAccess)) {
     items.push({
       to: '/admin',
       icon: 'shield',
@@ -98,10 +100,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const s = useLtms()
   const u = USE_MOCK ? me(s) : undefined
   const { data: currentUser } = useMe()
+  /* `userType: staff` describes employment, not admin authorization. The
+     backend queue is guarded by admin_scopes and is the current capability
+     check until GET /me exposes scopes directly. */
+  const adminAccess = useAdminAccess(!!currentUser)
   const logout = useLogout()
   const { data: notificationData } = useNotifications(currentUser?.id, USE_MOCK)
   const unreadCount = notificationData?.items.filter(notification => !notification.read).length ?? 0
-  const nav = useNav(unreadCount, currentUser)
+  const nav = useNav(unreadCount, currentUser, adminAccess.data === true)
   const location = useLocation()
   const navigate = useNavigate()
   const n = unreadCount

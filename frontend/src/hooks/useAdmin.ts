@@ -39,14 +39,14 @@ export const adminKeys = {
  * ใช้คิวคำขอจัดทัวร์นาเมนต์เพราะรับทั้งแอดมินระดับคณะและระดับมหาวิทยาลัย
  * โหมด mock ไม่ต้องถาม — หน้าจออ่าน role จาก store เอง
  */
-export function useAdminAccess() {
+export function useAdminAccess(enabled = true) {
   return useQuery({
     queryKey: ["admin", "access"] as const,
     queryFn: async () => {
       await adminApi.getTournamentRequests();
       return true;
     },
-    enabled: !USE_MOCK,
+    enabled: !USE_MOCK && enabled,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
