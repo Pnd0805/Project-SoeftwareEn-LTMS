@@ -51,13 +51,15 @@ export function toDisputeResultDto(rows : MatchResultRow): disputeResultDto{
 
 export type resolveResultDto = {
     matchId : number,
-    status : 'verified' | 'rejected'
+    status : 'verified' | 'rejected',
+    isAmended : boolean   // B4: true = ORG แก้ผู้ชนะ/สกอร์เองในคำตัดสิน
 }
 
-export function toResolveResultDto(rows: { match_id: number; match_result_status: 'verified' | 'rejected' }): resolveResultDto {
+export function toResolveResultDto(rows: { match_id: number; match_result_status: 'verified' | 'rejected'; amended?: boolean }): resolveResultDto {
     return {
         matchId: rows.match_id,
-        status: rows.match_result_status
+        status: rows.match_result_status,
+        isAmended: rows.amended ?? false
     }
 }
 

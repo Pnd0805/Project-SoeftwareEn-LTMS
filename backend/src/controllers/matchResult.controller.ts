@@ -34,9 +34,7 @@ export async function updateDisputeMatchResult(req : Request , res : Response){
 export async function updateResolveMatchResult(req : Request , res : Response){
     const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
     const userId = req.user!.user_id
-    const resolution = req.body['resolution'];
-    const resolutionNote = req.body['resolutionNote'];
-    return res.status(200).json(await MatchResService.resolveMatchResult(matchId , resolution , userId , resolutionNote));
+    return res.status(200).json(await MatchResService.resolveMatchResult(matchId , req.body , userId));
 }
 
 export async function getVerifiedResult(req : Request , res : Response){

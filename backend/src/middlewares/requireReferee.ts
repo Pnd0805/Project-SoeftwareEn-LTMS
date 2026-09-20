@@ -1,3 +1,4 @@
+import * as MatchResRepo from '../repositories/matchResult.repo.js';
 import type { Request , Response , NextFunction } from "express";
 import * as RefereeRepo from '../repositories/tournamentReferee.repo.js';
 import * as MatchRefereeRepo from '../repositories/matchReferee.repo.js';
@@ -77,6 +78,12 @@ export async function requireCanSubmitResult(req : Request , res : Response , ne
 
         if(match.team_a_id === null || match.team_b_id === null){
             return next(new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง ยังไม่สามารถส่งผลการแข่งขันได้"));
+        }
+
+        // B4: ส่งซ้ำได้เฉพาะตอนยังไม่ถูก verify หรือถูก reject แล้ว — ผลที่ verified/disputed/walkover แก้ผ่าน S04 เท่านั้น
+        const existing = await MatchResRepo.findmatchResultByMatchId(matchId);
+        if(existing && existing.match_result_status !== 'submitted' && existing.match_result_status !== 'rejected'){
+            return next(new AppError(409, "MATCH_RESULT_ALREADY_VERIFIED", "ผลแมตช์นี้ถูกยืนยันแล้ว แก้ไขได้ผ่านการโต้แย้ง (S03) เท่านั้น"));
         }
 
         if (match.mode === 'onsite') {

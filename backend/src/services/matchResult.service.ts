@@ -11,6 +11,7 @@ import { AppError } from '../utils/AppError.js';
 import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { WIN_POINTS } from '../config/scoring.js';
+import type { ResolveInput } from '../schemas/matchResult.schema.js';
 import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 
@@ -44,12 +45,55 @@ export async function disputeMatchResult(matchId : number , userId : number , re
 }
 
 
-export async function resolveMatchResult( matchId: number, resolution: 'uphold' | 'reject', userId: number, resolutionNote: string) {
+/**
+ * S04 — ORG ตัดสินข้อโต้แย้ง (B4, 19 ก.ย.)
+ *   uphold : ผลเดิมถูก ปิดเรื่อง
+ *   reject : ถอนผลที่ verify ไปแล้ว (สาย/standings/stats) → แมตช์ result_rejected รอส่งใหม่ S01→S02
+ *   amend  : ถอนผลเดิม + ใส่ผู้ชนะ/สกอร์ที่ ORG แก้ → verified ทันที (isAmended)
+ * reject/amend ทำได้เฉพาะเมื่อแมตช์ถัดไป (next/loser_next) ยัง scheduled — ไม่งั้นทีมที่ต้องถอนออกอาจแข่ง/บายไปแล้ว
+ */
+export async function resolveMatchResult(matchId : number, input : ResolveInput, userId : number){
     const matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
+    if(!matchRes || matchRes.match_result_status !== 'disputed'){
+        throw new AppError(409 , "NO_ACTIVE_DISPUTE" , "แมตช์นี้ไม่มีข้อโต้แย้งที่รอตัดสิน");
+    }
+    const { resolution, resolutionNote } = input;
 
-    await MatchResRepo.resolveMatchResult(matchRes!.match_result_id, matchId, resolution, userId, resolutionNote);
-    const status: 'verified' | 'rejected' = resolution === 'uphold' ? 'verified' : 'rejected';
-    return toResolveResultDto({ match_id: matchId, match_result_status: status });
+    if(resolution === 'uphold'){
+        await MatchResRepo.upholdMatchResult(matchRes.match_result_id, matchId, userId, resolutionNote);
+        return toResolveResultDto({ match_id : matchId, match_result_status : 'verified' });
+    }
+
+    const match = (await MatchRepo.findById(matchId))!;
+    const tour = (await findTournamentById(match.tournament_id))!;
+    const oldWinnerId = matchRes.winner_team_id!;
+
+    for(const nextId of [match.next_match_id, match.loser_next_match_id]){
+        if(nextId === null) continue;
+        const next = await MatchRepo.findById(nextId);
+        if(next && next.match_status !== 'scheduled'){
+            throw new AppError(409 , "NEXT_MATCH_STARTED" ,
+                `แมตช์ถัดไป #${nextId} เปิดเช็คอิน/เริ่ม/จบไปแล้ว ถอนหรือแก้ผลแมตช์นี้ไม่ได้อีก` , { nextMatchId : nextId });
+        }
+    }
+
+    if(resolution === 'reject'){
+        await MatchResRepo.rejectMatchResult(matchRes.match_result_id, match, oldWinnerId, tour.sport_type_id, WIN_POINTS, userId, resolutionNote);
+        return toResolveResultDto({ match_id : matchId, match_result_status : 'rejected' });
+    }
+
+    // amend — schema รับประกันว่ามี winnerTeamId/scoreData
+    const newWinnerId = input.winnerTeamId!;
+    if(newWinnerId !== match.team_a_id && newWinnerId !== match.team_b_id){
+        throw new AppError(400 , "VALIDATION_FAILED" , "winnerTeamId ต้องเป็นทีมใดทีมหนึ่งในแมตช์นี้" , { fields : { winnerTeamId : 'ไม่ใช่ทีมในแมตช์' } });
+    }
+    await MatchResRepo.amendMatchResult(matchRes.match_result_id, match, oldWinnerId, newWinnerId, input.scoreData!, tour.sport_type_id, WIN_POINTS, userId, resolutionNote);
+    if(oldWinnerId !== newWinnerId){
+        // ทีมที่เพิ่งถูกวางใหม่อาจเจอคู่ที่ถอนไปแล้ว — เหมือนหลัง verify
+        await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
+        await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);
+    }
+    return toResolveResultDto({ match_id : matchId, match_result_status : 'verified', amended : true });
 }
 
 /**

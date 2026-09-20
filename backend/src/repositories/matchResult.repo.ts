@@ -1,4 +1,5 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { PoolConnection } from 'mysql2/promise';
 import pool from '../config/db.js';
 import type { MatchResultRow, MatchRow, UserRow } from '../types/db.js';
 import * as MatchRepo from '../repositories/match.repo.js';
@@ -30,149 +31,175 @@ export async function submitMatchResult(matchId : number , winnerId : number , s
                                                                 winner_team_id = VALUES(winner_team_id),
                                                                 score_data = VALUES(score_data),
                                                                 submitted_by_user_id = VALUES(submitted_by_user_id),
-                                                                submitted_role = VALUES(submitted_role)`,
+                                                                submitted_role = VALUES(submitted_role),
+                                                                match_result_status = 'submitted',
+                                                                verified_by_user_id = NULL, verified_at = NULL`,   // B4: ส่งใหม่หลัง reject เริ่มวงจร verify ใหม่
                                                             [matchId , winnerId , JSON.stringify(score) , userId , role , 'submitted']);
     
     return results.insertId
 }
 
 
-export async function verifyMatchResult(matchResId : number, matchId : number , userId : number , point : number ){
+/**
+ * ผลของ "ทีมนี้ชนะ" ที่ต้องเกิดพร้อมกันเสมอ — ใช้ทั้ง S02 verify และ S04 amend (B4)
+ *   เดินสาย (ผู้ชนะ→next, ผู้แพ้→loser_next + sync bracket_nodes) · standings · player_profile_stats
+ */
+async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number){
+    for(const [teamId, nextId] of [[winnerId, match.next_match_id], [loserId, match.loser_next_match_id]] as const){
+        if(nextId === null) continue;
+        const [a] = await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = ? WHERE match_id = ? AND tournament_id = ? AND team_a_id IS NULL`,
+                                                      [teamId, nextId, match.tournament_id]);
+        if(a.affectedRows === 0){
+            await conn.query<ResultSetHeader>(`UPDATE matches SET team_b_id = ? WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`,
+                                              [teamId, nextId, match.tournament_id]);
+        }
+        await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, nextId);   // B2: หน้าสายเห็นผู้ชนะในรอบถัดไป
+    }
+
+    await conn.query<ResultSetHeader>(
+        `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+        VALUES (?, ?, 1, 1, 0, ?)
+        ON DUPLICATE KEY UPDATE played=played+1, won=won+1, points=points+?, updated_at=NOW()`,
+        [match.tournament_id, winnerId, point, point]);
+    await conn.query<ResultSetHeader>(
+        `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+        VALUES (?, ?, 1, 0, 1, 0)
+        ON DUPLICATE KEY UPDATE played=played+1, lost=lost+1, updated_at=NOW()`,
+        [match.tournament_id, loserId]);
+
+    await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
+                                       SELECT user_id, ?, 1, 1, 0, 0 FROM team_members WHERE team_id = ?
+                                       ON DUPLICATE KEY UPDATE
+                                       matches_played = matches_played + 1, wins = wins + 1 , updated_at = NOW()`, [sportId , winnerId]);
+    await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
+                                       SELECT user_id, ?, 1, 0, 1, 0 FROM team_members WHERE team_id = ?
+                                       ON DUPLICATE KEY UPDATE
+                                       matches_played = matches_played + 1, losses = losses + 1 , updated_at = NOW()`, [sportId , loserId]);
+}
+
+/**
+ * B4 — ถอนผลที่ verify ไปแล้ว (กลับด้าน applyOutcomeTx) ก่อน reject/amend
+ * service ต้องเช็คก่อนว่าแมตช์ถัดไปยัง scheduled (ไม่งั้นทีมที่ถูกเอาออกอาจแข่ง/บายไปแล้ว)
+ * player stats ถอนตาม roster ปัจจุบัน — ตรงกับตอนบวกเพราะ B6 roster lock ห้ามเปลี่ยนคนระหว่างทัวร์ · GREATEST(0) กันติดลบ
+ */
+async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number){
+    for(const [teamId, nextId] of [[winnerId, match.next_match_id], [loserId, match.loser_next_match_id]] as const){
+        if(nextId === null) continue;
+        await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = NULL WHERE match_id = ? AND team_a_id = ?`, [nextId, teamId]);
+        await conn.query<ResultSetHeader>(`UPDATE matches SET team_b_id = NULL WHERE match_id = ? AND team_b_id = ?`, [nextId, teamId]);
+        await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, nextId);
+    }
+
+    await conn.query<ResultSetHeader>(
+        `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), won = GREATEST(won - 1, 0), points = GREATEST(points - ?, 0), updated_at = NOW()
+         WHERE tournament_id = ? AND team_id = ?`, [point, match.tournament_id, winnerId]);
+    await conn.query<ResultSetHeader>(
+        `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), lost = GREATEST(lost - 1, 0), updated_at = NOW()
+         WHERE tournament_id = ? AND team_id = ?`, [match.tournament_id, loserId]);
+
+    await conn.query<ResultSetHeader>(
+        `UPDATE player_profile_stats ps JOIN team_members tm ON tm.user_id = ps.user_id
+         SET ps.matches_played = GREATEST(ps.matches_played - 1, 0), ps.wins = GREATEST(ps.wins - 1, 0), ps.updated_at = NOW()
+         WHERE tm.team_id = ? AND ps.sport_type_id = ?`, [winnerId, sportId]);
+    await conn.query<ResultSetHeader>(
+        `UPDATE player_profile_stats ps JOIN team_members tm ON tm.user_id = ps.user_id
+         SET ps.matches_played = GREATEST(ps.matches_played - 1, 0), ps.losses = GREATEST(ps.losses - 1, 0), ps.updated_at = NOW()
+         WHERE tm.team_id = ? AND ps.sport_type_id = ?`, [loserId, sportId]);
+}
+
+function loserOf(match : MatchRow, winnerId : number): number{
+    return match.team_a_id === winnerId ? match.team_b_id! : match.team_a_id!;
+}
+
+async function inTx<T>(fn : (conn : PoolConnection) => Promise<T>): Promise<T>{
     const conn = await pool.getConnection();
     try{
-        await conn.beginTransaction()
+        await conn.beginTransaction();
+        const out = await fn(conn);
+        await conn.commit();
+        return out;
+    }catch(err){
+        await conn.rollback();
+        throw err;
+    }finally{
+        conn.release();
+    }
+}
 
+export async function verifyMatchResult(matchResId : number, matchId : number , userId : number , point : number ){
+    const matchRes = (await findById(matchResId))!;
+    const match = (await MatchRepo.findById(matchId))!;
+    const tour = (await TournamentRepo.findTournamentById(match.tournament_id))!;
+    const winnerId = matchRes.winner_team_id!;
+
+    await inTx(async conn => {
         await conn.query<ResultSetHeader>(`UPDATE match_results SET match_result_status = ? , verified_by_user_id = ? , verified_at = NOW()
                                            WHERE match_result_id = ?`, ['verified' , userId , matchResId]);
         await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = ? , updated_at = NOW()
                                            WHERE match_id = ?` , ['completed' ,matchId ]);
-
-        const matchRes = await findById(matchResId);
-        const match = await MatchRepo.findById(matchId);
-
-        const loser_id = match!.team_a_id === matchRes!.winner_team_id ? match!.team_b_id : match!.team_a_id;
-
-        if(match!.next_match_id !== null){
-            const [res1] = await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = ?
-                                                            WHERE match_id = ? AND tournament_id = ? AND team_a_id IS NULL`
-                                                            ,[ matchRes!.winner_team_id , match!.next_match_id , match!.tournament_id]);
-            if(res1.affectedRows === 0){
-                await conn.query<ResultSetHeader>(`UPDATE matches SET team_b_id = ?
-                                                WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`
-                                                ,[ matchRes!.winner_team_id , match!.next_match_id , match!.tournament_id]);
-            }
-            await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, match!.next_match_id);   // B2: หน้าสายเห็นผู้ชนะในรอบถัดไป
-        }
-
-        if(match!.loser_next_match_id !== null){
-            const [res2] = await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = ?
-                                                            WHERE match_id = ? AND tournament_id = ? AND team_a_id IS NULL`
-                                                            ,[ loser_id , match!.loser_next_match_id , match!.tournament_id]);
-            if(res2.affectedRows === 0){
-                await conn.query<ResultSetHeader>(`UPDATE matches SET team_b_id = ?
-                                                WHERE match_id = ? AND tournament_id = ? AND team_b_id IS NULL`
-                                                ,[ loser_id , match!.loser_next_match_id , match!.tournament_id]);
-            }
-            await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, match!.loser_next_match_id);
-        }
-
-        const tour = await TournamentRepo.findTournamentById(match!.tournament_id);
-        const sportId = tour!.sport_type_id;
-
-        await conn.query<ResultSetHeader>(
-            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-            VALUES (?, ?, 1, 1, 0, ?)
-            ON DUPLICATE KEY UPDATE played=played+1, won=won+1, points=points+?, updated_at=NOW()`,
-            [match!.tournament_id, matchRes!.winner_team_id, point, point]);
-
-        await conn.query<ResultSetHeader>(
-            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-            VALUES (?, ?, 1, 0, 1, 0)
-            ON DUPLICATE KEY UPDATE played=played+1, lost=lost+1, updated_at=NOW()`,
-            [match!.tournament_id, loser_id]);
-
-        await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
-                                           SELECT user_id, ?, 1, 1, 0, 0 FROM team_members WHERE team_id = ?
-                                           ON DUPLICATE KEY UPDATE 
-                                           matches_played = matches_played + 1, wins = wins + 1 , updated_at = NOW()`, [sportId , matchRes!.winner_team_id ]);
-        
-        await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
-                                           SELECT user_id, ?, 1, 0, 1, 0 FROM team_members WHERE team_id = ?
-                                           ON DUPLICATE KEY UPDATE
-                                           matches_played = matches_played + 1, losses = losses + 1 , updated_at = NOW()`, [sportId , loser_id]);
-        
+        await applyOutcomeTx(conn, match, winnerId, loserOf(match, winnerId), tour.sport_type_id, point);
         await conn.query<ResultSetHeader>(
             `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details)
             VALUES(?, ?, ?, ?, ?)`,
-            [userId, 'match_result_verified', 'match', matchId, JSON.stringify({ winnerId: matchRes!.winner_team_id, verifiedBy: userId })]
+            [userId, 'match_result_verified', 'match', matchId, JSON.stringify({ winnerId, verifiedBy: userId })]
         );
-
-        await conn.commit();
-        return;
-
-    }catch(err){
-        await conn.rollback();
-        throw err
-
-    }finally{
-        conn.release();
-    }
-
+    });
 }
 
 
 export async function disputeMatchResult(matchResId : number, matchId : number , userId : number , reason : string){
-    const conn = await pool.getConnection();
-    try{
-        await conn.beginTransaction();
-
+    await inTx(async conn => {
         await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_reason = ? , dispute_raised_by = ? , dispute_raised_at = NOW() , match_result_status = ?
                                         WHERE match_result_id = ? AND match_id = ?` , [reason , userId , 'disputed' , matchResId , matchId]);
         await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = ? WHERE match_id = ?`,['disputed' , matchId]);
-
-        await conn.commit();
-
-    }catch(err){
-        await conn.rollback();
-        throw err;
-    }finally{
-        await conn.release();
-    }
+    });
 }
 
 
-export async function resolveMatchResult(matchResId : number , matchId : number , resolution : 'uphold' | 'reject' , userId : number , resolutionNote : string){
-    let matchResStatus: string = "";
-    let matchStatus: string = "";
-    if(resolution === 'uphold'){
-        matchResStatus = 'verified';
-        matchStatus = 'completed'
-
-    }else if (resolution === 'reject'){
-        matchResStatus = 'rejected';
-        matchStatus = 'result_rejected';
-    }
-
-    const conn = await pool.getConnection();
-    try{
-        await conn.beginTransaction();
-
-        await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = ? , dispute_resolved_at = NOW()
-                                        WHERE match_result_id = ?`,[userId , resolutionNote , matchResStatus , matchResId]);
-
-        await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = ? , updated_at = NOW() WHERE match_id = ?`,[matchStatus , matchId]);
-
-        await conn.commit();
-    }catch(err){
-        await conn.rollback();
-        throw err;
-    }finally{
-        await conn.release();
-    }
+/** S04 uphold — ผลเดิมถูกต้อง แค่ปิดข้อโต้แย้ง */
+export async function upholdMatchResult(matchResId : number , matchId : number , userId : number , resolutionNote : string){
+    await inTx(async conn => {
+        await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'verified' , dispute_resolved_at = NOW()
+                                        WHERE match_result_id = ?`,[userId , resolutionNote , matchResId]);
+        await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = 'completed' , updated_at = NOW() WHERE match_id = ?`,[matchId]);
+    });
 }
 
+/** S04 reject (B4) — ถอนผลที่ verify ไปแล้วทั้งหมด แล้วรอผู้ส่งส่งใหม่ (S01 → S02) · แมตช์ → result_rejected */
+export async function rejectMatchResult(matchResId : number , match : MatchRow , oldWinnerId : number , sportId : number , point : number ,
+                                        userId : number , resolutionNote : string){
+    await inTx(async conn => {
+        await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
+        await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'rejected' , dispute_resolved_at = NOW() ,
+                                                                    verified_by_user_id = NULL , verified_at = NULL
+                                        WHERE match_result_id = ?`,[userId , resolutionNote , matchResId]);
+        await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = 'result_rejected' , updated_at = NOW() WHERE match_id = ?`,[match.match_id]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details) VALUES(?, 'match_result_rejected', 'match', ?, ?)`,
+            [userId, match.match_id, JSON.stringify({ oldWinnerId, resolutionNote })]);
+    });
+}
 
-//matchId, winnerTeamId, scoreData, isAmended, amendedAt, amendReason, verifiedAt }`
+/** S04 amend (B4) — ORG แก้ผู้ชนะ/สกอร์เอง: ถอนผลเดิม → ใส่ผลใหม่ → verified ทันที (ไม่ต้อง S01/S02 ใหม่) */
+export async function amendMatchResult(matchResId : number , match : MatchRow , oldWinnerId : number , newWinnerId : number ,
+                                       newScore : Record<string , number> , sportId : number , point : number , userId : number , resolutionNote : string){
+    await inTx(async conn => {
+        if(oldWinnerId !== newWinnerId){
+            await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
+            await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point);
+        }
+        await conn.query<ResultSetHeader>(`UPDATE match_results SET winner_team_id = ? , score_data = ? ,
+                                                                    dispute_resolved_by = ? , dispute_resolution = ? , dispute_resolved_at = NOW() ,
+                                                                    amended_by_user_id = ? , amend_reason = ? , amended_at = NOW() ,
+                                                                    match_result_status = 'verified' , verified_by_user_id = ? , verified_at = NOW()
+                                        WHERE match_result_id = ?`,
+                                        [newWinnerId , JSON.stringify(newScore) , userId , resolutionNote , userId , resolutionNote , userId , matchResId]);
+        await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = 'completed' , updated_at = NOW() WHERE match_id = ?`,[match.match_id]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details) VALUES(?, 'match_result_amended', 'match', ?, ?)`,
+            [userId, match.match_id, JSON.stringify({ oldWinnerId, newWinnerId, newScore, resolutionNote })]);
+    });
+}
 
 export async function findVerifiedResultByMatchId(matchId : number): Promise<MatchResultRow | null>{
     const [ rows ] = await pool.query<(MatchResultRow & RowDataPacket)[]>(`SELECT match_id , winner_team_id , score_data , amend_reason , amended_at , verified_at , match_result_status
