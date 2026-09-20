@@ -231,9 +231,11 @@ export function useResolveDispute(matchId: MatchRef, tournamentId?: MatchRef) {
  * แมตช์ (`checkin_open`) อยู่บน detail คนละ key กัน ล้างแค่ checkins ยอดจะค้าง
  */
 function touchCheckin(qc: QueryClient, matchId: MatchRef) {
-  qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) });
-  qc.invalidateQueries({ queryKey: matchKeys.all });
-  qc.invalidateQueries({ queryKey: ["matches"] });
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: matchKeys.checkins(matchId) }),
+    qc.invalidateQueries({ queryKey: matchKeys.all }),
+    qc.invalidateQueries({ queryKey: ["matches"] }),
+  ]);
 }
 
 /**

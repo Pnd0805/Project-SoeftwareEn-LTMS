@@ -3,10 +3,10 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Backend reference: `origin/BE_KN` at `6ebda2e`, pulled and run locally on
-2026-09-19.** Every claim in the "Backend blockers" section below was re-checked
-against that build by calling it, not by reading the source — a route is listed
-as missing only when the running server answers `404 NOT_FOUND` for it.
+**Current backend reference: `origin/BE_KN` at `ff701e6`, checked locally for
+R06 on 2026-09-21.** Individual entries in the "Backend blockers" section retain
+the exact commit and date against which they were verified; older hashes there
+are historical evidence, not the current backend reference.
 
 Earlier revisions of this file tracked `origin/backend` `35ce621` (2026-09-11)
 and treated anything that existed only on `BE_KN` as unavailable. That policy is
@@ -857,7 +857,7 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       Existing Vite bundle-size warning remains. Ready for Frontend Tester.
       Real-backend browser retest remains in the regression completion gate.
 
-- [ ] **R06 · P1 · Slice 3 + backend check-in owner:** referee "Verify by hand"
+- [x] **R06 · P1 · Slice 3 + backend check-in owner:** referee "Verify by hand"
       returns `ผู้เล่นคนนี้เช็คอินไปแล้ว` while the roster says `Not yet`.
       Compare `GET /matches/:id/checkins` with
       `POST /matches/:id/checkins/manual` for the same match/user. Check user-ID
@@ -867,6 +867,18 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       check-ins display their real state; manual success refreshes the roster;
       an already-checked-in response reconciles with a fresh read and does not
       invite repeated writes. Verify after reload and from a second session.
+      Delivered 2026-09-21. Missing rows now say `Checking...`,
+      `Status unavailable`, or `Not visible` until an authoritative read proves
+      `Not yet`; manual actions stay hidden during those uncertain states.
+      Successful writes keep the mutation pending through cache refresh, and a
+      `409 ALREADY_CHECKED_IN` performs a fresh `GET /matches/:id/checkins` and
+      reconciles only the row with the same numeric `userId`. Developer
+      verification passed: 7 focused regressions, full 24 files / 156 tests,
+      lint, production build, dev startup, and `git diff --check`. Live BE_KN
+      `ff701e6` reload and a fresh login session both returned match 12 check-in
+      user 9103. That fixture currently has empty M21 lineups, so M19 rejects
+      the same user as `NOT_IN_APPROVED_ROSTER`; a real-browser manual-success
+      retest needs a match with an approved lineup.
 
 - [ ] **R07 · P1 · Slice 3 + backend check-in owner:** participant check-in
       reports `เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง`.

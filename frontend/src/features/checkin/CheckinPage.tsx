@@ -55,8 +55,14 @@ const hashCode = (str: string) => {
   return h
 }
 
-function SquadPanel({ m, team, checkins }: {
-  m: MatchDto; team: MatchTeamRef; checkins: MatchCheckinDto[]
+type CheckinReadState = 'loading' | 'ready' | 'error' | 'private'
+
+function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: {
+  m: MatchDto
+  team: MatchTeamRef
+  checkins: MatchCheckinDto[]
+  rosterReadState: CheckinReadState
+  myCheckinReadState: Exclude<CheckinReadState, 'private'>
 }) {
   const checkin = useCheckin(m.id)
   const verify = useVerifyCheckin(m.id)
@@ -107,6 +113,18 @@ function SquadPanel({ m, team, checkins }: {
                  ใช้ `viewer.myUserId` ที่ server บอกมา ไม่ใช่ id จาก useMe() เพราะ
                  บัญชีเดโมกับรายชื่อผู้เล่นมาคนละชุด id */
               const isMe = m.viewer.myUserId !== null && p.id === m.viewer.myUserId
+              const missingState = rosterReadState === 'ready'
+                ? 'ready'
+                : isMe
+                  ? myCheckinReadState
+                  : rosterReadState
+              const missingLabel = missingState === 'ready'
+                ? 'Not yet'
+                : missingState === 'loading'
+                  ? 'Checking...'
+                  : missingState === 'error'
+                    ? 'Status unavailable'
+                    : 'Not visible'
               return (
                 <tr key={p.id}>
                   <td>
@@ -119,7 +137,7 @@ function SquadPanel({ m, team, checkins }: {
                     {c?.verifiedByReferee ? <> · checked by {c.verifiedByReferee.fullName}</> : null}
                   </td>
                   <td>
-                    {!c ? <Badge kind="warn">Not yet</Badge>
+                    {!c ? <Badge kind="warn">{missingLabel}</Badge>
                       : c.status === 'success' ? <Badge kind="ok">Checked in</Badge>
                         : c.status === 'rejected' ? <Badge kind="crit">Rejected</Badge>
                           : <Badge kind="warn">Needs a look</Badge>}
@@ -132,7 +150,7 @@ function SquadPanel({ m, team, checkins }: {
                         : null}
                   </td>
                   <td>
-                    {(!c || c.status === 'rejected') && isMe ? (
+                    {((!c && missingState === 'ready') || c?.status === 'rejected') && isMe ? (
                       /* ยืนยันตัวตนก่อนเสมอ — on-site สแกน QR · online ถ่ายรูปคู่บัตร */
                       <button className="btn primary" type="button" disabled={checkin.isPending}
                         onClick={() => setCapture(p.id)}>
@@ -144,7 +162,7 @@ function SquadPanel({ m, team, checkins }: {
                         onClick={() => setReview({ userId: p.id, name: p.fullName, photo: c.documentS3Key })}>
                         Review photo
                       </button>
-                    ) : !c && canJudge ? (
+                    ) : !c && canJudge && missingState === 'ready' ? (
                       /* UC-04 E2b — ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันเองแล้ว
                          บันทึกเป็นข้อยกเว้นพร้อมเหตุผล */
                       <button className="btn ghost" type="button"
@@ -389,8 +407,10 @@ export function CheckinPage() {
   const { id } = useParams()
   const matchId = id
   const { data: m, isPending, isError } = useMatch(matchId)
-  const { data: checkinData } = useCheckins(matchId)
-  const { data: mine } = useMyCheckin(matchId)
+  const checkinsQuery = useCheckins(matchId)
+  const myCheckinQuery = useMyCheckin(matchId)
+  const checkinData = checkinsQuery.data
+  const mine = myCheckinQuery.data
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const [room, setRoom] = useState('')
 
@@ -410,6 +430,18 @@ export function CheckinPage() {
   const done = checkins.filter(c => c.status === 'success').length
   const isRef = m.viewer.can.manageCheckin
   const canJudge = m.viewer.can.verifyCheckin
+  const rosterReadState: CheckinReadState = !isRef
+    ? 'private'
+    : checkinsQuery.isError
+      ? 'error'
+      : checkinsQuery.isPending || checkinsQuery.isFetching
+        ? 'loading'
+        : 'ready'
+  const myCheckinReadState: Exclude<CheckinReadState, 'private'> = myCheckinQuery.isError
+    ? 'error'
+    : myCheckinQuery.isPending || myCheckinQuery.isFetching
+      ? 'loading'
+      : 'ready'
   const everyoneIn = total > 0 && done >= total
   const knownPlayerIds = new Set(squads.flatMap(t => t.players.map(p => p.id)))
 
@@ -494,6 +526,18 @@ export function CheckinPage() {
         </Banner>
       ) : null}
 
+      {isRef && rosterReadState === 'loading' ? (
+        <Banner kind="warn"><b>Refreshing check-in status...</b> Missing rows are not treated as unchecked yet.</Banner>
+      ) : null}
+
+      {isRef && rosterReadState === 'error' ? (
+        <Banner kind="crit">
+          <b>Check-in status is unavailable.</b>{' '}
+          The roster cannot safely say who has not checked in.
+          <button className="btn ghost" type="button" onClick={() => { void checkinsQuery.refetch() }}>Try again</button>
+        </Banner>
+      ) : null}
+
       {!isRef && !USE_MOCK ? (
         <Banner kind="warn">
           <b>You can only see your own check-in here.</b> The full sheet belongs to the referee, so
@@ -505,7 +549,14 @@ export function CheckinPage() {
       {/* ทีมที่เรารู้รายชื่อ (ทีมของเราเอง) แสดงเต็มทีม — ทีมที่ไม่รู้ (backend เปิดให้เฉพาะ
           สมาชิกของทีมนั้น) แสดงเท่าที่เช็คอินเข้ามาแล้วในคอนโซลด้านล่าง ไม่ให้ซ้ำกัน */}
       {squads.filter(t => t.players.length).map(t => (
-        <SquadPanel key={t.id} m={m} team={t} checkins={checkins} />
+        <SquadPanel
+          key={t.id}
+          m={m}
+          team={t}
+          checkins={checkins}
+          rosterReadState={rosterReadState}
+          myCheckinReadState={myCheckinReadState}
+        />
       ))}
       {squads.some(t => !t.players.length) ? (
         <CheckinConsole m={m} checkins={checkins.filter(c => !knownPlayerIds.has(c.user.id))} />

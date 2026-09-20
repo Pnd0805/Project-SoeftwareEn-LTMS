@@ -1048,13 +1048,32 @@ export async function checkin(matchId: MatchRef, input: CheckinRequest): Promise
     if (input.userId === undefined) {
       return blocked<MatchCheckinDto>("ต้องระบุว่าจะเช็คอินแทนผู้เล่นคนไหน");
     }
-    const manual = await apiFetch<BackendManualCheckinDto>(`/matches/${matchId}/checkins/manual`, {
-      method: "POST",
-      body: JSON.stringify({
-        userId: input.userId,
-        ...(input.note?.trim() ? { note: input.note.trim() } : {}),
-      } satisfies BackendManualCheckinRequest),
-    });
+    let manual: BackendManualCheckinDto;
+    try {
+      manual = await apiFetch<BackendManualCheckinDto>(`/matches/${matchId}/checkins/manual`, {
+        method: "POST",
+        body: JSON.stringify({
+          userId: input.userId,
+          ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+        } satisfies BackendManualCheckinRequest),
+      });
+    } catch (error) {
+      /* A duplicate response means the write already exists, while the roster query may still
+         contain an older empty snapshot. Re-read the authoritative collection and return that
+         row as the mutation result only when the same numeric user id is present. */
+      const code = typeof error === "object" && error !== null
+        ? (error as { code?: unknown }).code
+        : undefined;
+      if (code !== "ALREADY_CHECKED_IN") throw error;
+      try {
+        const current = await getCheckins(matchId);
+        const existing = current.items.find((row) => row.user.id === input.userId);
+        if (existing) return existing;
+      } catch {
+        // Preserve the useful duplicate response when reconciliation itself cannot be read.
+      }
+      throw error;
+    }
     return {
       id: manual.id,
       matchId: Number(matchId),
