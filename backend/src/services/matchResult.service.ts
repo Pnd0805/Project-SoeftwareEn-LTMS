@@ -83,35 +83,43 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
         throw new AppError(409 , "NO_ACTIVE_DISPUTE" , "แมตช์นี้ไม่มีข้อโต้แย้งที่รอตัดสิน");
     }
     const { resolution, resolutionNote } = input;
-
-    if(resolution === 'uphold'){
-        await MatchResRepo.upholdMatchResult(matchRes.match_result_id, matchId, userId, resolutionNote);
-        return toResolveResultDto({ match_id : matchId, match_result_status : 'verified' });
-    }
-
     const match = (await MatchRepo.findById(matchId))!;
     const tour = (await findTournamentById(match.tournament_id))!;
     const oldWinnerId = matchRes.winner_team_id!;
+    // โต้แย้ง "ก่อน verify" (BR-14 จังหวะแรก) → ยังไม่มีอะไรในสาย/standings ให้ถอน · uphold ในเคสนี้ = verify แทน
+    const wasVerified = matchRes.verified_at !== null;
 
-    for(const nextId of [match.next_match_id, match.loser_next_match_id]){
-        if(nextId === null) continue;
-        const next = await MatchRepo.findById(nextId);
-        if(next && next.match_status !== 'scheduled'){
-            throw new AppError(409 , "NEXT_MATCH_STARTED" ,
-                `แมตช์ถัดไป #${nextId} เปิดเช็คอิน/เริ่ม/จบไปแล้ว ถอนหรือแก้ผลแมตช์นี้ไม่ได้อีก` , { nextMatchId : nextId });
+    if(resolution === 'uphold'){
+        await MatchResRepo.upholdMatchResult(matchRes.match_result_id, match, userId, resolutionNote,
+            wasVerified ? null : { winnerId : oldWinnerId, sportId : tour.sport_type_id, point : WIN_POINTS });
+        if(!wasVerified){
+            await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
+            await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);
+        }
+        return toResolveResultDto({ match_id : matchId, match_result_status : 'verified' });
+    }
+
+    if(wasVerified){
+        for(const nextId of [match.next_match_id, match.loser_next_match_id]){
+            if(nextId === null) continue;
+            const next = await MatchRepo.findById(nextId);
+            if(next && next.match_status !== 'scheduled'){
+                throw new AppError(409 , "NEXT_MATCH_STARTED" ,
+                    `แมตช์ถัดไป #${nextId} เปิดเช็คอิน/เริ่ม/จบไปแล้ว ถอนหรือแก้ผลแมตช์นี้ไม่ได้อีก` , { nextMatchId : nextId });
+            }
         }
     }
 
     if(resolution === 'reject'){
-        await MatchResRepo.rejectMatchResult(matchRes.match_result_id, match, oldWinnerId, tour.sport_type_id, WIN_POINTS, userId, resolutionNote);
+        await MatchResRepo.rejectMatchResult(matchRes.match_result_id, match, oldWinnerId, tour.sport_type_id, WIN_POINTS, userId, resolutionNote, wasVerified);
         return toResolveResultDto({ match_id : matchId, match_result_status : 'rejected' });
     }
 
     // amend — schema รับประกันว่ามี winnerTeamId/scoreData · กฎ key/ผู้ชนะ/คะแนนเดียวกับ S01
     const newWinnerId = input.winnerTeamId!;
     ensureScoreData(match , newWinnerId , input.scoreData!);
-    await MatchResRepo.amendMatchResult(matchRes.match_result_id, match, oldWinnerId, newWinnerId, input.scoreData!, tour.sport_type_id, WIN_POINTS, userId, resolutionNote);
-    if(oldWinnerId !== newWinnerId){
+    await MatchResRepo.amendMatchResult(matchRes.match_result_id, match, oldWinnerId, newWinnerId, input.scoreData!, tour.sport_type_id, WIN_POINTS, userId, resolutionNote, wasVerified);
+    if(!wasVerified || oldWinnerId !== newWinnerId){
         // ทีมที่เพิ่งถูกวางใหม่อาจเจอคู่ที่ถอนไปแล้ว — เหมือนหลัง verify
         await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
         await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);

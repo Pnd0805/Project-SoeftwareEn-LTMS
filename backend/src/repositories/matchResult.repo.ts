@@ -156,20 +156,32 @@ export async function disputeMatchResult(matchResId : number, matchId : number ,
 }
 
 
-/** S04 uphold — ผลเดิมถูกต้อง แค่ปิดข้อโต้แย้ง */
-export async function upholdMatchResult(matchResId : number , matchId : number , userId : number , resolutionNote : string){
+/**
+ * S04 uphold — ผลเดิมถูกต้อง
+ *   โต้แย้งหลัง verify: แค่ปิดข้อโต้แย้ง (สาย/standings ถูกอยู่แล้ว)
+ *   โต้แย้งก่อน verify (verified_at NULL): uphold = verify แทนฝ่ายที่ไม่ยอมยืนยัน → ต้อง applyOutcome ด้วย ไม่งั้นแมตช์ completed แต่สายไม่เดิน
+ */
+export async function upholdMatchResult(matchResId : number , match : MatchRow , userId : number , resolutionNote : string ,
+                                        applyOutcome : { winnerId : number; sportId : number; point : number } | null){
     await inTx(async conn => {
-        await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'verified' , dispute_resolved_at = NOW()
-                                        WHERE match_result_id = ?`,[userId , resolutionNote , matchResId]);
-        await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = 'completed' , updated_at = NOW() WHERE match_id = ?`,[matchId]);
+        await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'verified' , dispute_resolved_at = NOW() ,
+                                                                    verified_by_user_id = COALESCE(verified_by_user_id, ?) , verified_at = COALESCE(verified_at, NOW())
+                                        WHERE match_result_id = ?`,[userId , resolutionNote , userId , matchResId]);
+        await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = 'completed' , updated_at = NOW() WHERE match_id = ?`,[match.match_id]);
+        if(applyOutcome){
+            await applyOutcomeTx(conn, match, applyOutcome.winnerId, loserOf(match, applyOutcome.winnerId), applyOutcome.sportId, applyOutcome.point);
+            await conn.query<ResultSetHeader>(
+                `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details) VALUES(?, 'match_result_verified', 'match', ?, ?)`,
+                [userId, match.match_id, JSON.stringify({ winnerId : applyOutcome.winnerId, verifiedBy : userId, viaDispute : true })]);
+        }
     });
 }
 
-/** S04 reject (B4) — ถอนผลที่ verify ไปแล้วทั้งหมด แล้วรอผู้ส่งส่งใหม่ (S01 → S02) · แมตช์ → result_rejected */
+/** S04 reject (B4) — ถอนผลที่ verify ไปแล้ว (ถ้าเคย verify) แล้วรอผู้ส่งส่งใหม่ (S01 → S02) · แมตช์ → result_rejected */
 export async function rejectMatchResult(matchResId : number , match : MatchRow , oldWinnerId : number , sportId : number , point : number ,
-                                        userId : number , resolutionNote : string){
+                                        userId : number , resolutionNote : string , wasVerified : boolean){
     await inTx(async conn => {
-        await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
+        if(wasVerified) await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
         await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'rejected' , dispute_resolved_at = NOW() ,
                                                                     verified_by_user_id = NULL , verified_at = NULL
                                         WHERE match_result_id = ?`,[userId , resolutionNote , matchResId]);
@@ -182,10 +194,14 @@ export async function rejectMatchResult(matchResId : number , match : MatchRow ,
 
 /** S04 amend (B4) — ORG แก้ผู้ชนะ/สกอร์เอง: ถอนผลเดิม → ใส่ผลใหม่ → verified ทันที (ไม่ต้อง S01/S02 ใหม่) */
 export async function amendMatchResult(matchResId : number , match : MatchRow , oldWinnerId : number , newWinnerId : number ,
-                                       newScore : Record<string , number> , sportId : number , point : number , userId : number , resolutionNote : string){
+                                       newScore : Record<string , number> , sportId : number , point : number , userId : number , resolutionNote : string ,
+                                       wasVerified : boolean){
     await inTx(async conn => {
-        if(oldWinnerId !== newWinnerId){
+        // เคย verify แล้วและผู้ชนะเปลี่ยน → ถอนของเดิมก่อน · ยังไม่เคย verify → ใส่ผลใหม่เลย (เท่ากับ verify ด้วยค่าที่ ORG แก้)
+        if(wasVerified && oldWinnerId !== newWinnerId){
             await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
+            await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point);
+        }else if(!wasVerified){
             await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point);
         }
         await conn.query<ResultSetHeader>(`UPDATE match_results SET winner_team_id = ? , score_data = ? ,

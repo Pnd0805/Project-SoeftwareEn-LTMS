@@ -22,7 +22,8 @@ import type { MatchRow } from '../../types/db.js';
 const match = (o: Partial<MatchRow> = {}) => ({
   match_id: 1, tournament_id: 50, team_a_id: 10, team_b_id: 11, next_match_id: 9, loser_next_match_id: null, match_status: 'disputed', ...o,
 }) as MatchRow;
-const disputed = { match_result_id: 100, match_id: 1, winner_team_id: 10, match_result_status: 'disputed' } as never;
+const disputed = { match_result_id: 100, match_id: 1, winner_team_id: 10, match_result_status: 'disputed', verified_at: new Date('2026-09-20T00:00:00Z') } as never;
+const disputedBeforeVerify = { ...(disputed as object), verified_at: null } as never;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,13 +40,13 @@ describe('resolveMatchResult (S04, B4)', () => {
 
   it('uphold closes the dispute without touching bracket/standings', async () => {
     const out = await Service.resolveMatchResult(1, { resolution: 'uphold', resolutionNote: 'ok' }, 7);
-    expect(Repo.upholdMatchResult).toHaveBeenCalledWith(100, 1, 7, 'ok');
+    expect(Repo.upholdMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 7, 'ok', null);
     expect(out).toEqual({ matchId: 1, status: 'verified', isAmended: false });
   });
 
   it('reject rolls the verified outcome back and leaves the match result_rejected', async () => {
     const out = await Service.resolveMatchResult(1, { resolution: 'reject', resolutionNote: 'wrong' }, 7);
-    expect(Repo.rejectMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 10, 1, 3, 7, 'wrong');
+    expect(Repo.rejectMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 10, 1, 3, 7, 'wrong', true);
     expect(out).toEqual({ matchId: 1, status: 'rejected', isAmended: false });
   });
 
@@ -58,7 +59,7 @@ describe('resolveMatchResult (S04, B4)', () => {
 
   it('amend with a new winner rewrites the result and re-checks withdrawn opponents in the next round', async () => {
     const out = await Service.resolveMatchResult(1, { resolution: 'amend', resolutionNote: 'swap', winnerTeamId: 11, scoreData: { '11': 2, '10': 1 } }, 7);
-    expect(Repo.amendMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 10, 11, { '11': 2, '10': 1 }, 1, 3, 7, 'swap');
+    expect(Repo.amendMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 10, 11, { '11': 2, '10': 1 }, 1, 3, 7, 'swap', true);
     expect(Walkover.resolveIfOpponentWithdrawn).toHaveBeenCalledWith(9);
     expect(out).toEqual({ matchId: 1, status: 'verified', isAmended: true });
   });
@@ -72,6 +73,28 @@ describe('resolveMatchResult (S04, B4)', () => {
     await expect(Service.resolveMatchResult(1, { resolution: 'amend', resolutionNote: 'x', winnerTeamId: 99, scoreData: {} }, 7))
       .rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
     expect(Repo.amendMatchResult).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveMatchResult — dispute raised BEFORE verify (BR-14 first window)', () => {
+  beforeEach(() => vi.mocked(Repo.findmatchResultByMatchId).mockResolvedValue(disputedBeforeVerify));
+
+  it('uphold applies the outcome (acts as the missing verify) and runs the withdrawn-opponent hook', async () => {
+    await Service.resolveMatchResult(1, { resolution: 'uphold', resolutionNote: 'ok' }, 7);
+    expect(Repo.upholdMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 7, 'ok', { winnerId: 10, sportId: 1, point: 3 });
+    expect(Walkover.resolveIfOpponentWithdrawn).toHaveBeenCalledWith(9);
+  });
+
+  it('reject does not try to undo anything and skips the next-match check', async () => {
+    vi.mocked(MatchRepo.findById).mockImplementation(async id => id === 1 ? match() : match({ match_id: 9, match_status: 'in_progress' }));
+    await Service.resolveMatchResult(1, { resolution: 'reject', resolutionNote: 'x' }, 7);
+    expect(Repo.rejectMatchResult).toHaveBeenCalledWith(100, expect.anything(), 10, 1, 3, 7, 'x', false);
+  });
+
+  it('amend with the same winner still applies the outcome (nothing was applied yet)', async () => {
+    await Service.resolveMatchResult(1, { resolution: 'amend', resolutionNote: 'fix', winnerTeamId: 10, scoreData: { '10': 2, '11': 1 } }, 7);
+    expect(Repo.amendMatchResult).toHaveBeenCalledWith(100, expect.anything(), 10, 10, { '10': 2, '11': 1 }, 1, 3, 7, 'fix', false);
+    expect(Walkover.resolveIfOpponentWithdrawn).toHaveBeenCalledWith(9);
   });
 });
 

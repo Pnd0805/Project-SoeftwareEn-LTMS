@@ -44,9 +44,14 @@ export async function isLeaderOfTeam(winnerTeamId : number , userId : number): P
     return team!.leader_id === userId ? true : false;
 }
 
+/**
+ * BR-14 — โต้แย้งได้ 2 จังหวะ (spec 07 §6/§8): ก่อน verify (ฝ่ายที่ต้องยืนยันเลือกโต้แย้งแทน — ไม่มีกำหนดเวลา)
+ * และหลัง verify ภายใน dispute_window_hours นับจาก verified_at · FE-disputing-result-yet-verified (20 ก.ย.): เดิมอ่าน verified_at ที่ NULL → 500
+ */
 export async function isDisputeWindow(tourId : number , matchRes : MatchResultRow): Promise<boolean>{
+    if(matchRes.verified_at === null) return true;
     const tour = await TourRepo.findTournamentById(tourId);
-    const deadline = new Date(matchRes!.verified_at!.getTime() + tour!.dispute_window_hours * 3600 * 1000)
+    const deadline = new Date(matchRes.verified_at.getTime() + tour!.dispute_window_hours * 3600 * 1000)
 
     if( new Date() > deadline){
         return false
@@ -166,6 +171,10 @@ export async function requireCanDisputeResult(req : Request , res : Response , n
         // ผลบาย (ทีมถอน/ไม่มาแข่ง) ไม่มีสกอร์จริงให้เถียง — GUIDE/11 §10.4
         if(matchRes.match_result_status === 'walkover'){
             return next(new AppError(409 , "RESULT_IS_WALKOVER" , "ผลนี้เป็นการชนะบาย ไม่สามารถโต้แย้งได้"));
+        }
+        // ผลที่ถูก reject ไปแล้วไม่มีอะไรให้โต้แย้ง — รอผู้ส่งส่งใหม่ (S01)
+        if(matchRes.match_result_status === 'rejected'){
+            return next(new AppError(409 , "RESULT_REJECTED" , "ผลนี้ถูกปฏิเสธไปแล้ว รอการส่งผลใหม่"));
         }
 
         if(!(await isDisputeWindow(match!.tournament_id , matchRes))){
