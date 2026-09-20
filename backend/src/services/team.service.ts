@@ -101,7 +101,18 @@ export async function getTeamMemberById(teamId :number , userId : number){
     return { items : data };
 }
 
+/** B6: ทีมที่อยู่ในทัวร์ (approved, ทัวร์ยังไม่จบ) แก้สมาชิกไม่ได้ — T07/T08/T09 และ T13 (invitation.service) เรียกตัวนี้ */
+export async function ensureRosterUnlocked(teamId : number): Promise<void>{
+    const locked = await ApplicationRepo.findLockingTournamentOfTeam(teamId);
+    if(locked){
+        throw new AppError(409 , "ROSTER_LOCKED" ,
+            `ทีมนี้อยู่ในทัวร์นาเมนต์ "${locked.name}" แก้ไขสมาชิกไม่ได้ — ต้องถอนตัวจากทัวร์นาเมนต์ก่อน` ,
+            { tournamentId : locked.tournament_id });
+    }
+}
+
 export async function updateMember(userId : number , teamId : number , position : 'starter' | 'substitute'){
+    await ensureRosterUnlocked(teamId);
     const user = await TeamRepo.isMemberOf(teamId, userId);
     if(!user){
         throw new AppError(404 , "USER_NOT_FOUND" , "ผู้ใช้ไม่อยู่ในทีมนี้");
@@ -114,6 +125,7 @@ export async function updateMember(userId : number , teamId : number , position 
 }
 
 export async function deleteMember(userId : number , teamId : number , sportId : number){
+    await ensureRosterUnlocked(teamId);
     const user = await TeamRepo.isMemberOf(teamId, userId);
     if(!user){
         throw new AppError(404 , "USER_NOT_FOUND" , "ผู้ใช้ไม่อยู่ในทีมนี้");
@@ -133,6 +145,7 @@ export async function deleteMember(userId : number , teamId : number , sportId :
 //Invitation
 export async function createInvitation(teamId : number , invitedUserId : number , invitedByUserId : number){
     await checkUser(invitedUserId);
+    await ensureRosterUnlocked(teamId);
 
     const member = await TeamRepo.isMemberOf(teamId , invitedUserId);
     if(member){

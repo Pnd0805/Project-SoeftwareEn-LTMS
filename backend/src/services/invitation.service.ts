@@ -2,6 +2,7 @@ import * as InviteRepo from '../repositories/invitation.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
+import { ensureRosterUnlocked } from './team.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
@@ -29,6 +30,9 @@ export async function acceptInvitation(invitedId : number , userId : number){
         throw new AppError(422 , "TEAM_QUOTA_EXCEEDED" , "คุณมีทีม Unofficial ครบ 5 ทีมแล้ว");
     }
 
+
+    // B6: ระหว่างเชิญ→กดรับ ทีมอาจถูกรับเข้าทัวร์ไปแล้ว → roster ล็อก คำเชิญคง pending ไว้ รับได้เมื่อทีมถอนหรือทัวร์จบ
+    await ensureRosterUnlocked(invitation['team_id']);
 
     // Conflict of interest (มติ 18 ก.ย. 2569, GUIDE/10 F-19): ระหว่างเชิญ→กดรับ ทีมอาจสมัครทัวร์ที่คนนี้เป็น ORG/กรรมการไปแล้ว
     // คำเชิญคงเป็น pending ไว้ (ไม่ลบ) — รับไม่ได้จนกว่าจะพ้นบทบาทหรือทีมถอนจากทัวร์นั้น

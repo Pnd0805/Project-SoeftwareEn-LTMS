@@ -216,6 +216,25 @@ export async function findTeamTournamentConflictForUser(teamId: number, userId: 
     return rows[0] ?? null;
 }
 
+/**
+ * B6 roster lock (รายงาน FE 19 ก.ย.): ทีมที่มีใบสมัคร approved ในทัวร์ที่ยังไม่จบ แก้สมาชิกไม่ได้ — ต้องถอนตัว (P08) ก่อน
+ * เหตุผล: roster ตอน verify ผล = roster ตอนถอนผล (B4) และทีมที่ผ่าน hard filter แล้วต้องไม่เปลี่ยนคน
+ * คืนทัวร์ที่ล็อกอยู่ (null = อิสระ) · pending ยังไม่นับ — ORG ยังไม่รับ
+ */
+export async function findLockingTournamentOfTeam(teamId: number): Promise<{ tournament_id: number; name: string } | null> {
+    const [rows] = await pool.query<({ tournament_id: number; name: string } & RowDataPacket)[]>(
+        `SELECT t.tournament_id, t.name
+         FROM tournament_applications a
+         JOIN tournaments t ON t.tournament_id = a.tournament_id
+         WHERE a.team_id = ? AND a.tournament_application_status = 'approved'
+           AND t.tournament_status NOT IN ('completed', 'auto_deleted', 'rejected')
+         ORDER BY t.event_start_date
+         LIMIT 1`,
+        [teamId]
+    );
+    return rows[0] ?? null;
+}
+
 /** A8: ORG หรือกรรมการ active ของทัวร์ที่ทีมนี้สมัคร (pending/approved) ดู roster ได้ — เช็คอินด้วยมือต้องมีรายชื่อ */
 export async function isTournamentStaffOfTeam(teamId: number, userId: number): Promise<boolean> {
     const [rows] = await pool.query<RowDataPacket[]>(

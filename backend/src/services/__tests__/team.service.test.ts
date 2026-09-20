@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
   isTournamentStaffOfTeam: vi.fn(() => Promise.resolve(false)),
+  findLockingTournamentOfTeam: vi.fn(() => Promise.resolve(null)),
 }));
 
 vi.mock('../../repositories/team.repo.js', () => ({
@@ -421,6 +422,22 @@ describe('updateMember', () => {
       code: 'USER_NOT_FOUND',
     });
     expect(mockedTeamRepo.updateMember).not.toHaveBeenCalled();
+  });
+});
+
+describe('roster lock (B6)', () => {
+  it.each([
+    ['updateMember (T07)', () => teamService.updateMember(5, 10, 'starter')],
+    ['deleteMember (T08)', () => teamService.deleteMember(5, 10, 1)],
+    ['createInvitation (T09)', () => teamService.createInvitation(10, 8, 5)],
+  ])('%s → 409 ROSTER_LOCKED while the team is approved in an unfinished tournament', async (_n, call) => {
+    vi.mocked(ApplicationRepo.findLockingTournamentOfTeam).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ' });
+    mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
+
+    await expect(call()).rejects.toMatchObject({ status: 409, code: 'ROSTER_LOCKED', extra: { tournamentId: 30 } });
+    expect(mockedTeamRepo.updateMember).not.toHaveBeenCalled();
+    expect(mockedTeamRepo.deleteMember).not.toHaveBeenCalled();
+    expect(mockedTeamRepo.createInvitation).not.toHaveBeenCalled();
   });
 });
 

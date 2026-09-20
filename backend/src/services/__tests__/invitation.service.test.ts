@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
+  findLockingTournamentOfTeam: vi.fn(() => Promise.resolve(null)),
 }));
 
 vi.mock('../../repositories/invitation.repo.js', () => ({
@@ -223,5 +224,16 @@ describe('rejectInvitation', () => {
 
     expect(mockedInviteRepo.createRejectInvite).toHaveBeenCalledWith(55, 8);
     expect(result).toBeUndefined();
+  });
+});
+
+describe('acceptInvitation — roster lock (B6)', () => {
+  it('refuses with 409 ROSTER_LOCKED when the team got approved into a tournament after the invite was sent', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation({ invited_user_id: 8, team_id: 10 }));
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(0);
+    vi.mocked(ApplicationRepo.findLockingTournamentOfTeam).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ' });
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({ status: 409, code: 'ROSTER_LOCKED', extra: { tournamentId: 30 } });
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
   });
 });
