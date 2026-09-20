@@ -3,7 +3,7 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend reference: `origin/BE_KN` at `ff701e6`, checked locally for
+**Current backend reference: `origin/BE_KN` at `3ec530d`, checked locally for
 R06 on 2026-09-21.** Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
@@ -875,10 +875,14 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       reconciles only the row with the same numeric `userId`. Developer
       verification passed: 7 focused regressions, full 24 files / 156 tests,
       lint, production build, dev startup, and `git diff --check`. Live BE_KN
-      `ff701e6` reload and a fresh login session both returned match 12 check-in
-      user 9103. That fixture currently has empty M21 lineups, so M19 rejects
-      the same user as `NOT_IN_APPROVED_ROSTER`; a real-browser manual-success
-      retest needs a match with an approved lineup.
+      `3ec530d` retest passed after the QA baseline restored `application_players`:
+      match 7 exposed user 9102 as the one missing member of a four-player
+      approved lineup; M19 returned `201 checked_in` with check-in id 51, and
+      both a reload and a fresh login session returned that same
+      `manual_by_referee` row. A repeated write returned the expected
+      `409 ALREADY_CHECKED_IN`, while the fresh list continued to report the
+      persisted row. The Vite `/api/v1` proxy returned it too. Real-browser UI
+      observation remains pending because this run had no browser surface.
 
 - [ ] **R07 · P1 · Slice 3 + backend check-in owner:** participant check-in
       reports `เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง`.
