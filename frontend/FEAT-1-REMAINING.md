@@ -888,17 +888,33 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       applications/appointments even if submitted outside the UI. Do not apply
       this restriction to unrelated tournaments or rely on a hidden button.
 
-- [ ] **R02 · P1 · Slices 2/3 + backend bracket owner:** clarify and enforce
-      draw/redraw timing. Report: an organizer can recreate an existing bracket
-      before team registration closes. Confirm whether this describes the bug
-      to prohibit or the intended redraw permission before changing the rule.
-      Current DrawPanel locks on match state (first non-scheduled match), not
-      the registration deadline; SetupTrail says drawing closes entry for good.
-      Reconcile deadline versus explicit registration closure and initial draw
-      versus replacement with the actual `POST /tournaments/:id/bracket` contract.
-      Accept: agreed timing/state rules are enforced by UI and API; repeated
-      clicks do not duplicate matches; permitted redraw requires confirmation
-      and defines what happens to schedules, referee assignments and results.
+- [ ] **R02 · P1 · Slices 2/3 + backend bracket owner:** support replacing an
+      existing bracket while team registration is still open. Requirement
+      clarified 2026-09-20: an organizer may draw early, approve additional
+      teams later, then redraw so the new bracket contains every team currently
+      approved. The new bracket replaces the old bracket; it must never append
+      duplicate matches. Drawing does not close registration by itself.
+      Current backend blocks this flow: `createBracket()` checks
+      `countMatchesByTournament()` and returns `409 BRACKET_ALREADY_EXISTS` for
+      every second draw. It has no delete/replace transaction. Current frontend
+      therefore must not describe its Save/Generate action as working redraw.
+      Backend delivery required: make replacement atomic and organizer-only;
+      permit it only while registration is open and every old match is still
+      `scheduled`, with no check-ins or results. Delete old bracket nodes,
+      matches and match-specific schedules/referee assignments in FK-safe order,
+      while preserving the tournament referee pool and approved applications;
+      then build from the complete current approved-team set. Any failure must
+      roll back to the intact old bracket. Return an explicit replacement result
+      or error code rather than partially deleting data.
+      Frontend after that delivery: include newly approved teams when query data
+      refreshes, require a confirmation that old fixture times and match referee
+      assignments will be discarded, show pending/error states, invalidate the
+      match/bracket/progress queries, and render the replacement after reload.
+      Initial draw may still occur after registration closes if no bracket exists;
+      replacement is the operation limited to the open-registration window.
+      Add API/service tests for initial draw, successful replacement, duplicate
+      prevention, rollback, closed-registration rejection, started-match/check-in/
+      result rejection, and preservation of applications/tournament referee pool.
 
 - [ ] **R05 · P2 · Slices 2/3:** draw progress does not update. Reproduce both
       random draw in SetupTrail and manual draw in DrawPanel; distinguish request
