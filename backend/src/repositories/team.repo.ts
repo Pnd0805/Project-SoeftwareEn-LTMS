@@ -126,11 +126,17 @@ export async function findTeamMemberById(teamId : number) : Promise<TeamMemberWi
 }
 
 
+/** ทีมของผู้เล่นในแมตช์ — ดูจากรายชื่อลงแข่ง (application_players ของใบสมัคร approved) ไม่ใช่คลังทีม — OD-17 (แก้ 20 ก.ย.) */
 export async function findTeamIdOfUserInMatch(userId : number , matchId : number): Promise<{teamId : number}| null>{
-    const [ rows ] = await pool.query<({teamId : number} & RowDataPacket)[]>(`SELECT tm.team_id as teamId
-                                                                              FROM team_members tm JOIN matches m
-                                                                              ON m.team_a_id = tm.team_id OR m.team_b_id = tm.team_id
-                                                                              WHERE tm.user_id = ? AND m.match_id = ?`,[userId , matchId])
+    const [ rows ] = await pool.query<({teamId : number} & RowDataPacket)[]>(`SELECT ta.team_id as teamId
+                                                                              FROM matches m
+                                                                              JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+                                                                                   AND ta.team_id IN (m.team_a_id, m.team_b_id)
+                                                                                   AND ta.tournament_application_status = 'approved'
+                                                                              JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+                                                                                   AND ap.user_id = ?
+                                                                              WHERE m.match_id = ?
+                                                                              LIMIT 1`,[userId , matchId])
     return rows[0] ?? null;
 }
 

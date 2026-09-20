@@ -46,7 +46,7 @@ export type SportStatDefinitionRow = {
     sport_type_id : number,
     stat_key : string,
     stat_label_th : string,
-    data_type : 'integer' | 'decimal' | 'boolean',
+    data_type : 'integer'   // decimal/boolean ถอดออก 20 ก.ย. (migration 020, OD-18),
     display_order : number
 }
 

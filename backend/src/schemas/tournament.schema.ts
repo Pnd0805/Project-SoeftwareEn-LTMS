@@ -41,7 +41,9 @@ export const updateTournamentSchema = z.object({
 export const amendmentRequestSchema = z.object({
     requestedChanges: z.record(z.string(), z.unknown()).refine(value => Object.keys(value).length > 0, {
         message: 'กรุณาระบุข้อมูลที่ต้องการขอแก้ไข'
-    })
+    }),
+    // เหตุผลของผู้ขอ — บังคับ (มติ 20 ก.ย. FE-change-request-has-nowhere) ให้แอดมินมีเรื่องประกอบการพิจารณา
+    reason: z.string().trim().min(1, 'กรุณาระบุเหตุผลที่ขอแก้ไข').max(1000)
 });
 
 export const rejectTournamentSchema = z.object({

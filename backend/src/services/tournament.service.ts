@@ -407,7 +407,7 @@ export async function requestAmendment(tournamentId: number, userId: number, inp
         await ensureEligibilityEditable(tournament);
         changes['eligibilityRules'] = await normalizeEligibilityRules(changes['eligibilityRules'] as EligibilityRuleInput[]);
     }
-    const id = await TournamentRepo.insertAmendmentRequest(tournamentId, userId, changes);
+    const id = await TournamentRepo.insertAmendmentRequest(tournamentId, userId, changes, input.reason);
     return { id, status: 'pending' as const };
 }
 
@@ -422,6 +422,7 @@ export async function getPendingAmendments(userId: number, offset: number, page:
             tournamentName: row.tournament_name,
             requestedBy: toUserRef(row),
             requestedChanges: normalizeChanges(row.requested_changes),
+            reason: row.request_reason,
             status: row.tournament_amendment_request_status,
             requestedAt: row.requested_at.toISOString()
         })),

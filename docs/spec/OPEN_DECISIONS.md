@@ -142,3 +142,13 @@ Current code/schema/API มี known gaps เมื่อเทียบ Current
 - **Q4**: `player_profile_stats` บวก/ถอน (verify · B4 reject/amend) ให้เฉพาะ `application_players` ของทีมในทัวร์นั้น
 - **Q5-ก**: `/me/matches` ผู้เล่น = แมตช์ที่ฉันมีชื่อลงแข่ง
 - migration ของ shokun renumber 014→**018**, 015→**019** (ชนกับ 014/015 ของ BE_KN ที่ FE รันไปแล้ว)
+
+## OD-18 — Player stat data types (decimal / boolean) — ⏸ Deferred 2026-09-20
+
+`sport_stat_definitions.data_type` เคยประกาศ `integer|decimal|boolean` แต่ `player_match_stat_values` มีแค่ `value_int` และ S06 **บวกสะสม** (`value_int = VALUES(value_int) + value_int`) ซึ่งผิดความหมายสำหรับเวลา (decimal) และ true/false (boolean) — FE-s06-accepts-whole-numbers
+
+**มติ 20 ก.ย. (ทาง ค)**: MVP 93 รองรับเฉพาะ `integer` — migration 020 ตัด enum เหลือ `('integer')` ให้ schema/DB/API ตรงกัน · statSchema `value: z.int()` คงเดิม · กีฬา 5 ชนิดที่มีใช้ integer ทั้งหมด
+
+**จะเปิด decimal/boolean ต้องตัดสินก่อน**: (1) S06 เป็น "ตั้งค่าทับ" หรือ "บวกสะสม" หรือแยกตามชนิด (2) คอลัมน์ `value_decimal`/`value_bool` + mapper S07 คืน `number|boolean` (3) FE ฟอร์มกรรมการส่ง "ยอดรวม" หรือ "ส่วนเพิ่ม"
+
+แก้พ่วงในรอบเดียวกัน: S06 `findTeamIdOfUserInMatch` และ S07 `allPlayerInMatch` ย้ายจาก `team_members` ไป `application_players` ตาม OD-17 (เดิมคนในคลังที่ไม่ได้ลงแข่งบันทึกสถิติได้และโผล่ใน S07)

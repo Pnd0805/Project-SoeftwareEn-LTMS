@@ -263,12 +263,16 @@ export type playerStat = {
     value: PlayerMatchStatValueRow['value_int']
 }
 
+/** S07 — ผู้เล่นที่ทีมส่งลงแข่งในแมตช์ (application_players) ไม่ใช่ทุกคนในคลังทีม — OD-17 (แก้ 20 ก.ย.) */
 export async function allPlayerInMatch(matchId : number) : Promise<{userId : number , fullName : string}[]>{
     const [rows] = await pool.query<({userId : number , fullName : string} & RowDataPacket)[]>(`
-                                        SELECT u.user_id as userId , u.full_name as fullName
-                                        FROM users u JOIN team_members tm
-                                        ON u.user_id = tm.user_id
-                                        JOIN matches m ON tm.team_id = m.team_a_id OR tm.team_id = m.team_b_id
+                                        SELECT DISTINCT u.user_id as userId , u.full_name as fullName
+                                        FROM matches m
+                                        JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+                                             AND ta.team_id IN (m.team_a_id, m.team_b_id)
+                                             AND ta.tournament_application_status = 'approved'
+                                        JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+                                        JOIN users u ON u.user_id = ap.user_id
                                         WHERE m.match_id = ?`,[matchId]);
     return rows
 

@@ -70,6 +70,7 @@ export type AmendmentRow = {
     tournament_id: number;
     requested_by: number;
     requested_changes: unknown;
+    request_reason: string | null;   // NULL = คำขอก่อน migration 020
     tournament_amendment_request_status: 'pending' | 'approved' | 'rejected';
     requested_at: Date;
     reviewed_by: number | null;
@@ -90,7 +91,7 @@ export type AmendmentRow = {
     tournament_max_age: number | null;
 };
 
-export type AdminAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'tournament_id' | 'requested_changes' | 'tournament_amendment_request_status' | 'requested_at' | 'tournament_name'> &
+export type AdminAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'tournament_id' | 'requested_changes' | 'request_reason' | 'tournament_amendment_request_status' | 'requested_at' | 'tournament_name'> &
     Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
 
 export async function findTournamentById(id: number): Promise<TournamentRow | null> {
@@ -286,12 +287,12 @@ export async function updateTournamentGeneral(tournamentId: number, userId: numb
     return result.affectedRows === 1;
 }
 
-export async function insertAmendmentRequest(tournamentId: number, userId: number, changes: Record<string, unknown>): Promise<number> {
+export async function insertAmendmentRequest(tournamentId: number, userId: number, changes: Record<string, unknown>, reason: string): Promise<number> {
     const [result] = await pool.query<ResultSetHeader>(
         `INSERT INTO tournament_amendment_requests
-            (tournament_id, requested_by, requested_changes)
-         VALUES (?, ?, ?)`,
-        [tournamentId, userId, JSON.stringify(changes)]
+            (tournament_id, requested_by, requested_changes, request_reason)
+         VALUES (?, ?, ?, ?)`,
+        [tournamentId, userId, JSON.stringify(changes), reason]
     );
     return result.insertId;
 }
@@ -299,7 +300,7 @@ export async function insertAmendmentRequest(tournamentId: number, userId: numbe
 export async function findAmendmentById(id: number): Promise<AmendmentRow | null> {
     const [rows] = await pool.query<(AmendmentRow & RowDataPacket)[]>(
         `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_by,
-                ar.requested_changes, ar.tournament_amendment_request_status,
+                ar.requested_changes, ar.request_reason, ar.tournament_amendment_request_status,
                 ar.requested_at, ar.reviewed_by, ar.reviewed_at, ar.rejection_reason,
                 t.name AS tournament_name, t.tournament_status,
                 t.requested_by_user_id AS tournament_requested_by_user_id,
@@ -322,7 +323,7 @@ export async function findAmendmentById(id: number): Promise<AmendmentRow | null
 export async function findPendingAmendments(admin: AdminScopeRow, offset: number, pageSize: number): Promise<{ rows: AdminAmendmentRow[]; totalItems: number }> {
     const scope = adminScopeWhere(admin);
     const [rows] = await pool.query<(AdminAmendmentRow & RowDataPacket)[]>(
-        `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_changes,
+        `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_changes, ar.request_reason,
                 ar.tournament_amendment_request_status, ar.requested_at,
                 t.name AS tournament_name,
                 u.user_id, u.full_name, u.profile_image_key

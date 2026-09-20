@@ -32,6 +32,11 @@ describe('tournament schemas', () => {
     it('keeps unsupported PATCH fields available to the service allowlist', () => {
         const result = updateTournamentSchema.parse({ eventStartDate: '2026-11-01' });
         expect(result).toMatchObject({ eventStartDate: '2026-11-01' });
-        expect(amendmentRequestSchema.safeParse({ requestedChanges: { eventStartDate: '2026-11-01' } }).success).toBe(true);
+        expect(amendmentRequestSchema.safeParse({ requestedChanges: { eventStartDate: '2026-11-01' }, reason: 'สนามซ่อม' }).success).toBe(true);
+    });
+
+    it('amendment request requires a non-empty reason (FE-change-request-has-nowhere)', () => {
+        expect(amendmentRequestSchema.safeParse({ requestedChanges: { eventStartDate: '2026-11-01' } }).success).toBe(false);
+        expect(amendmentRequestSchema.safeParse({ requestedChanges: { eventStartDate: '2026-11-01' }, reason: '   ' }).success).toBe(false);
     });
 });

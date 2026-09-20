@@ -65,15 +65,16 @@ ON DUPLICATE KEY UPDATE name = new.name, deleted_at = new.deleted_at, deleted_re
 --   สมหญิง(9002) อยู่ 2 ทีม (ทีมของตัวเอง + ทีมบาสของสมชาย)
 --   มานะ(9003)  ไม่อยู่ทีมไหนเลย → U03 ต้องคืน teams: []
 -- ---------------------------------------------------------------------
-INSERT INTO team_members (team_member_id, team_id, user_id, position)
+--   (คอลัมน์ position ถูกถอดใน migration 019 — ทีม = คลังผู้เล่น ไม่มีตัวจริง/สำรอง)
+INSERT INTO team_members (team_member_id, team_id, user_id)
 VALUES
-  (9001, 9001, 9001, 'starter'),
-  (9002, 9002, 9001, 'starter'),
-  (9003, 9003, 9001, 'starter'),
-  (9004, 9004, 9002, 'starter'),
-  (9005, 9002, 9002, 'substitute')
+  (9001, 9001, 9001),
+  (9002, 9002, 9001),
+  (9003, 9003, 9001),
+  (9004, 9004, 9002),
+  (9005, 9002, 9002)
 AS new
-ON DUPLICATE KEY UPDATE position = new.position;
+ON DUPLICATE KEY UPDATE user_id = new.user_id;
 
 
 -- ---------------------------------------------------------------------

@@ -275,6 +275,7 @@ CREATE TABLE tournament_amendment_requests (
   tournament_id INT NOT NULL,
   requested_by INT NOT NULL,
   requested_changes JSON NOT NULL,
+  request_reason TEXT NULL,          -- เหตุผลของผู้ขอ (บังคับที่ API ตั้งแต่ 20 ก.ย. · NULL = แถวก่อน migration 020)
   tournament_amendment_request_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   reviewed_by INT NULL,
@@ -491,9 +492,8 @@ CREATE TABLE sport_stat_definitions (
   sport_type_id INT NOT NULL,
   stat_key VARCHAR(50) NOT NULL,        -- 'goals', 'assists', 'yellow_cards'
   stat_label_th VARCHAR(100) NOT NULL,  -- 'ประตู', 'แอสซิสต์', 'ใบเหลือง'
-  data_type ENUM('integer','decimal','boolean') NOT NULL DEFAULT 'integer',
+  data_type ENUM('integer') NOT NULL DEFAULT 'integer',   -- decimal/boolean ถอดออก 20 ก.ย. (migration 020, OD-18) จนกว่าจะตัดสิน semantics
   display_order INT NOT NULL DEFAULT 0,
-  -- ⚠️ player_match_stat_values มีแค่ value_int → decimal/boolean ยังเก็บไม่ได้จริง
   FOREIGN KEY (sport_type_id) REFERENCES sport_types(sport_type_id),
   UNIQUE (sport_type_id, stat_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -763,4 +763,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('016_matches_room_code.sql'),
   ('017_team_visibility_join_requests.sql'),
   ('018_application_players.sql'),   -- เดิมชื่อ 014 บน backend_shokun_2 — renumber ตอน merge 20 ก.ย. (ชนกับ 014 ของ BE_KN)
-  ('019_drop_team_member_position.sql');   -- เดิม 015
+  ('019_drop_team_member_position.sql'),   -- เดิม 015
+  ('020_amendment_reason_stat_integer_only.sql');

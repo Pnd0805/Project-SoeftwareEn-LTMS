@@ -119,9 +119,8 @@ ON DUPLICATE KEY UPDATE
 -- ---------------------------------------------------------------------
 -- 4. sport_stat_definitions — สถิติที่แต่ละกีฬาต้องกรอก (R05 / S06)
 --
--- ⚠️ data_type ต้องเป็น 'integer' ทุกแถวเท่านั้น
---    เพราะ player_match_stat_values มีแค่คอลัมน์ value_int
---    → decimal/boolean ยังเก็บไม่ได้จริง (GUIDE/07 ข้อ A4)
+-- data_type มีแค่ 'integer' (migration 020 ตัด decimal/boolean ออก — OD-18)
+--    เพราะ player_match_stat_values มีแค่คอลัมน์ value_int และ S06 บวกสะสม
 --
 -- display_order = ลำดับที่ frontend เรียงฟอร์มให้กรรมการกรอก
 -- ---------------------------------------------------------------------
