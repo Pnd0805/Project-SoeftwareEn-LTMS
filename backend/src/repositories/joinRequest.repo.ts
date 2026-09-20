@@ -4,8 +4,7 @@ import type { TeamJoinRequestRow, UserRow } from '../types/db.js';
 
 /** คำขอเข้าร่วมทีมสาธารณะ (migration 017) — มติ 20 ก.ย. 2569 */
 
-/** หัวหน้าทีมเห็นโปรไฟล์ที่ผู้ขอกรอกไว้ (มติ 20 ก.ย.) — ไม่รวม email/contact/address ตามกฎ U03 */
-export type JoinRequestWithUser = TeamJoinRequestRow & Pick<UserRow, 'full_name' | 'profile_image_key' | 'faculty_id' | 'department_id' | 'year' | 'gender' | 'user_type'>;
+export type JoinRequestWithUser = TeamJoinRequestRow & Pick<UserRow, 'full_name' | 'profile_image_key'>;
 export type JoinRequestWithTeam = TeamJoinRequestRow & { team_name : string; sport_type_id : number };
 
 export async function findById(requestId : number): Promise<TeamJoinRequestRow | null>{
@@ -30,7 +29,7 @@ export async function create(teamId : number , userId : number , message : strin
 /** T21 — คำขอที่รอหัวหน้าทีมตอบ พร้อมชื่อผู้ขอ */
 export async function findPendingByTeam(teamId : number): Promise<JoinRequestWithUser[]>{
     const [rows] = await pool.query<(JoinRequestWithUser & RowDataPacket)[]>(
-        `SELECT r.*, u.full_name, u.profile_image_key, u.faculty_id, u.department_id, u.year, u.gender, u.user_type
+        `SELECT r.*, u.full_name, u.profile_image_key
          FROM team_join_requests r JOIN users u ON u.user_id = r.user_id
          WHERE r.team_id = ? AND r.team_join_request_status = 'pending'
          ORDER BY r.created_at`, [teamId]);
