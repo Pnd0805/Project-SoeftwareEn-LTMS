@@ -18,6 +18,7 @@ import { TeamMarkView } from '../../components/kit/chips'
 import { formatName, formatOf, matchStage, matchTag, nextOf, roundName } from '../../shared/rules'
 import type { Match, Tournament } from '../../shared/types'
 import type { MatchListItemDto } from '../../types/match.dto'
+import { USE_MOCK } from '../../api/client'
 
 function ApiBracketNode({ m }: { m: MatchListItemDto }) {
   const navigate = useNavigate()
@@ -166,6 +167,27 @@ function Column({ label, list }: { label: string; list: Match[] }) {
 }
 
 export function BracketTab({ t }: { t: Tournament }) {
+  return USE_MOCK ? <MockBracketTab t={t} /> : <RealBracketTab t={t} />
+}
+
+function RealBracketTab({ t }: { t: Tournament }) {
+  const id = Number(t.id)
+  const validId = Number.isSafeInteger(id) && id > 0
+  const matches = useTournamentMatches(validId ? id : undefined)
+  const host = useBracketLines(matches.data?.items.length ?? 0)
+  if (!validId) return <Empty title="Invalid tournament ID" />
+  if (matches.isPending) return <Panel quiet><span className="sub">Loading the bracket…</span></Panel>
+  if (matches.isError) {
+    const status = (matches.error as { status?: number } | null)?.status
+    return <Empty title={status === 401 ? 'Sign in to view the bracket' : status === 403 ? 'You do not have access to this bracket' : 'Could not load the bracket'}>
+      <button className="btn" type="button" onClick={() => void matches.refetch()}>Retry</button>
+    </Empty>
+  }
+  if (!matches.data?.items.length) return <Empty title="No matches yet" sub="Matches will appear here once the fixtures are drawn." />
+  return <ApiBracket matches={matches.data.items} host={host} />
+}
+
+function MockBracketTab({ t }: { t: Tournament }) {
   const s = useLtms()
   const navigate = useNavigate()
   const ms = matchesOf(s, t.id)

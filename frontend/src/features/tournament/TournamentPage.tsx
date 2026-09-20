@@ -149,8 +149,8 @@ export function TournamentPage() {
     : approvedTeams.data?.items ?? []
   const champion = winner.data?.championTeam
     ?? derivedChampion
-    ?? (t.champion ? team(s, t.champion) : null)
-  const watchable = matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
+    ?? (USE_MOCK && t.champion ? team(s, t.champion) : null)
+  const watchable = USE_MOCK && matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
 
   return (
     <>
@@ -177,7 +177,7 @@ export function TournamentPage() {
             : t.status === 'public' ? <Badge kind="ok">Public</Badge>
               : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
                 : <Badge kind="warn">Pending review</Badge>}
-          {champion ? (
+          {USE_MOCK && champion ? (
             <button className="btn primary" type="button" onClick={() => navigate(`/mvp/${t.id}`)}>
               <Icon name="star" size={12} /> Vote MVP
             </button>

@@ -15,8 +15,13 @@ import { useLtms } from '../../shared/store'
 import { matchesOf, user } from '../../shared/selectors'
 import { routeTour } from '../../mocks/routeIds'
 import { matchStage, matchTag } from '../../shared/rules'
+import { USE_MOCK } from '../../api/client'
 
 export function WatchPage() {
+  return USE_MOCK ? <MockWatchPage /> : <Empty icon="match" title="Watch is unavailable" sub="The tournament watch view is not available yet. Open a match from the tournament bracket to see its details." />
+}
+
+function MockWatchPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()

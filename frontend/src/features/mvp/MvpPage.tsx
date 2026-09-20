@@ -12,8 +12,13 @@ import { useLtms } from '../../shared/store'
 import { matchesOf, me, team, user } from '../../shared/selectors'
 import { routeTour } from '../../mocks/routeIds'
 import { useMvpVotes } from '../../hooks/useUser'
+import { USE_MOCK } from '../../api/client'
 
 export function MvpPage() {
+  return USE_MOCK ? <MockMvpPage /> : <Empty icon="star" title="MVP voting is unavailable" sub="Tournament MVP candidates and voting are not available in this view yet." />
+}
+
+function MockMvpPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { id } = useParams()
