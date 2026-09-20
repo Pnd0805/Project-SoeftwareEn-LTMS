@@ -20,7 +20,45 @@ export type CreateTournamentRecord = {
     genderRequirement: TournamentRow['gender_requirement'];
     minAge: number | null;
     maxAge: number | null;
+    eligibilityRules: EligibilityRule[];
 };
+
+export type EligibilityRule = { type: 'faculty' | 'year'; value: number };
+
+/** แทนที่กฎคุณสมบัติทั้งชุดของทัวร์ (ลบเก่า ใส่ใหม่) — ใช้ใน create / PUT ตรง / approve amendment */
+export async function replaceEligibilityRulesTx(conn: PoolConnection, tournamentId: number, rules: EligibilityRule[]): Promise<void> {
+    await conn.query('DELETE FROM tournament_eligibility_rules WHERE tournament_id = ?', [tournamentId]);
+    if (rules.length === 0) return;
+    await conn.query(
+        'INSERT INTO tournament_eligibility_rules (tournament_id, rule_type, rule_value) VALUES ?',
+        [rules.map(r => [tournamentId, r.type, r.value])]
+    );
+}
+
+export async function replaceEligibilityRules(tournamentId: number, userId: number, rules: EligibilityRule[]): Promise<void> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await replaceEligibilityRulesTx(conn, tournamentId, rules);
+        await insertAuditLog(conn, userId, 'tournament_eligibility_updated', 'tournament', tournamentId, { rules });
+        await conn.commit();
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+/** มีใบสมัครที่ยังมีผล (pending/approved) แล้วหรือยัง — ใช้ล็อกการแก้กฎคุณสมบัติ */
+export async function hasLiveApplications(tournamentId: number): Promise<boolean> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM tournament_applications
+         WHERE tournament_id = ? AND tournament_application_status IN ('pending', 'approved') LIMIT 1`,
+        [tournamentId]
+    );
+    return rows.length > 0;
+}
 
 export type TournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'tournament_status' | 'rejection_reason' | 'created_at'>;
 
@@ -64,7 +102,10 @@ export async function findTournamentById(id: number): Promise<TournamentRow | nu
 }
 
 export async function insertTournament(data: CreateTournamentRecord): Promise<number> {
-    const [result] = await pool.query<ResultSetHeader>(
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO tournaments
             (name, description, sport_type_id, bracket_format, scope_type,
              organizing_faculty_id, organizing_department_id, requested_by_user_id,
@@ -81,8 +122,8 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
             data.organizingFacultyId,
             data.organizingDepartmentId,
             data.requestedByUserId,
-            data.registrationStart,
-            data.registrationEnd,
+            new Date(data.registrationStart),   // ISO 'Z' ผ่าน MySQL strict ไม่ได้ — ให้ mysql2 แปลง Date เอง
+            new Date(data.registrationEnd),
             data.eventStartDate,
             data.eventEndDate,
             data.maxTeams,
@@ -92,8 +133,16 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
             data.minAge,
             data.maxAge
         ]
-    );
-    return result.insertId;
+        );
+        await replaceEligibilityRulesTx(conn, result.insertId, data.eligibilityRules);
+        await conn.commit();
+        return result.insertId;
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
 }
 
 export async function findMyTournamentRequests(userId: number, offset: number, pageSize: number): Promise<{ rows: TournamentRequestRow[]; totalItems: number }> {
@@ -384,12 +433,16 @@ export async function approveAmendment(amendmentId: number, adminId: number, cha
         for (const [key, column] of Object.entries(amendmentColumns)) {
             if (Object.prototype.hasOwnProperty.call(changes, key)) {
                 assignments.push(`${column} = ?`);
-                values.push(changes[key]);
+                const v = changes[key];
+                values.push((key === 'registrationStart' || key === 'registrationEnd') && typeof v === 'string' ? new Date(v) : v);
             }
         }
         assignments.push('updated_at = NOW()', 'updated_by = ?');
         values.push(adminId, amendment.tournament_id);
         await conn.query(`UPDATE tournaments SET ${assignments.join(', ')} WHERE tournament_id = ?`, values);
+        if (Array.isArray(changes['eligibilityRules'])) {
+            await replaceEligibilityRulesTx(conn, amendment.tournament_id, changes['eligibilityRules'] as EligibilityRule[]);
+        }
         await conn.query(
             `UPDATE tournament_amendment_requests
              SET tournament_amendment_request_status = 'approved', reviewed_by = ?, reviewed_at = NOW()

@@ -5,13 +5,15 @@ import * as DepartmentRepo from '../repositories/department.repo.js';
 import * as FacultyRepo from '../repositories/faculty.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import type { EligibilityRule } from '../repositories/tournament.repo.js';
+import { eligibilityRulesSchema } from '../schemas/tournament.schema.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { toTournamentDetailDto, toTournamentListDto } from '../mappers/tournament.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
-import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput } from '../schemas/tournament.schema.js';
+import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
 
 const amendmentFieldSchema = z.object({
@@ -23,13 +25,56 @@ const amendmentFieldSchema = z.object({
     maxTeams: z.int().min(2).optional(),
     genderRequirement: z.enum(['any', 'male', 'female']).optional(),
     minAge: z.int().min(0).max(120).nullable().optional(),
-    maxAge: z.int().min(0).max(120).nullable().optional()
+    maxAge: z.int().min(0).max(120).nullable().optional(),
+    eligibilityRules: eligibilityRulesSchema.optional()
 }).catchall(z.unknown());
 
 const allowedAmendmentFields = new Set([
     'registrationStart', 'registrationEnd', 'eventStartDate', 'eventEndDate',
-    'minTeams', 'maxTeams', 'genderRequirement', 'minAge', 'maxAge'
+    'minTeams', 'maxTeams', 'genderRequirement', 'minAge', 'maxAge', 'eligibilityRules'
 ]);
+
+/**
+ * กฎคุณสมบัติ (มติ 20 ก.ย. 2569 Q1-ค) — ตรวจแล้วคืนชุดที่สะอาด: คณะต้องมีจริง · ชั้นปี 1–8 · ตัดซ้ำ
+ */
+export async function normalizeEligibilityRules(rules: EligibilityRuleInput[] | undefined): Promise<EligibilityRule[]> {
+    if (!rules || rules.length === 0) return [];
+    const seen = new Set<string>();
+    const out: EligibilityRule[] = [];
+    for (const rule of rules) {
+        const key = `${rule.type}:${rule.value}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (rule.type === 'year' && rule.value > 8) {
+            validationError('ชั้นปีต้องอยู่ระหว่าง 1–8', { eligibilityRules: `ชั้นปี ${rule.value} ไม่ถูกต้อง` });
+        }
+        if (rule.type === 'faculty' && !(await FacultyRepo.findFacultyById(rule.value))) {
+            validationError('ไม่พบคณะในกฎคุณสมบัติ', { eligibilityRules: `ไม่พบคณะ ${rule.value}` });
+        }
+        out.push({ type: rule.type, value: rule.value });
+    }
+    return out;
+}
+
+/**
+ * มติ 20 ก.ย. 2569 Q2-ข: แอดมินคณะ "รับผิดชอบ" ทัวร์ก็ต่อเมื่อคณะตัวเองเป็นผู้จัด **และ** กฎคณะจำกัดเฉพาะคณะตัวเอง
+ * ทัวร์ที่เปิดรับคณะอื่น/ไม่จำกัดคณะ → ต้องเป็น university_wide · ใช้ทั้ง auto-approve (C01), C04 approve, C11 approve amendment
+ */
+export function adminCoversEligibility(admin: AdminScopeRow, organizingFacultyId: number | null, rules: EligibilityRule[]): boolean {
+    if (admin.scope_type === 'university_wide') return true;
+    if (admin.scope_type !== 'faculty' || admin.faculty_id === null || admin.faculty_id !== organizingFacultyId) return false;
+    const facultyRules = rules.filter(r => r.type === 'faculty');
+    return facultyRules.length > 0 && facultyRules.every(r => r.value === admin.faculty_id);
+}
+
+function eligibilityOutOfScope(): never {
+    throw new AppError(403, 'ELIGIBILITY_OUT_OF_SCOPE',
+        'ทัวร์นาเมนต์นี้เปิดรับนอกคณะของคุณ (หรือไม่จำกัดคณะ) ต้องให้แอดมินระดับมหาวิทยาลัยพิจารณา');
+}
+
+async function currentRules(tournamentId: number): Promise<EligibilityRule[]> {
+    return (await ApplicationRepo.findEligibilityRules(tournamentId)).map(r => ({ type: r.rule_type, value: r.rule_value }));
+}
 
 type AmendmentChanges = Record<string, unknown>;
 
@@ -166,12 +211,10 @@ function ensureNotInPast(input: CreateTournamentInput): void {
  *   university_wide → ทุกทัวร์ · faculty admin → ทัวร์ที่ organizing_faculty_id = คณะตัวเอง (scope department/faculty ของคณะนั้น)
  *   นอกขอบเขต (หรือไม่ใช่ admin) → pending_approval ตามเดิม
  */
-async function autoApproveIfOwnScope(tournamentId: number, userId: number, organizingFacultyId: number): Promise<boolean> {
+async function autoApproveIfOwnScope(tournamentId: number, userId: number, organizingFacultyId: number, rules: EligibilityRule[]): Promise<boolean> {
     const admin = await AdminScopeRepo.findAdminByUserId(userId);
     if (!admin) return false;
-    const covers = admin.scope_type === 'university_wide'
-        || (admin.scope_type === 'faculty' && admin.faculty_id !== null && admin.faculty_id === organizingFacultyId);
-    if (!covers) return false;
+    if (!adminCoversEligibility(admin, organizingFacultyId, rules)) return false;   // Q2-ข
     return TournamentRepo.approveTournament(tournamentId, userId);
 }
 
@@ -180,6 +223,7 @@ export async function createTournament(input: CreateTournamentInput, userId: num
     ensureNotInPast(input);
     ensureAges(input.minAge, input.maxAge);
     await ensureCreateReferences(input);
+    const eligibilityRules = await normalizeEligibilityRules(input.eligibilityRules);
 
     const id = await TournamentRepo.insertTournament({
         name: input.name,
@@ -198,10 +242,11 @@ export async function createTournament(input: CreateTournamentInput, userId: num
         venue: input.venue,
         genderRequirement: input.genderRequirement,
         minAge: input.minAge ?? null,
-        maxAge: input.maxAge ?? null
+        maxAge: input.maxAge ?? null,
+        eligibilityRules
     });
 
-    const autoApproved = await autoApproveIfOwnScope(id, userId, input.organizingFacultyId as number);
+    const autoApproved = await autoApproveIfOwnScope(id, userId, input.organizingFacultyId as number, eligibilityRules);
     return { id, status: autoApproved ? 'private' as const : 'pending_approval' as const, name: input.name, autoApproved };
 }
 
@@ -238,7 +283,8 @@ export async function getPendingTournamentRequests(userId: number, offset: numbe
 
 export async function approveTournament(tournamentId: number, userId: number) {
     const tournament = await getTournamentOr404(tournamentId);
-    await getTournamentAdmin(userId, tournament);
+    const admin = await getTournamentAdmin(userId, tournament);
+    if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournamentId))) eligibilityOutOfScope();
     if (tournament.tournament_status !== 'pending_approval') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ');
     }
@@ -320,10 +366,33 @@ function validateAmendmentAgainstTournament(tournament: TournamentRow, changes: 
     );
 }
 
+async function ensureEligibilityEditable(tournament: TournamentRow): Promise<void> {
+    if (tournament.registration_open || await TournamentRepo.hasLiveApplications(tournament.tournament_id)) {
+        throw new AppError(409, 'ELIGIBILITY_LOCKED',
+            'แก้กฎคุณสมบัติไม่ได้แล้ว — เปิดรับสมัครหรือมีทีมสมัครแล้ว (ทีมที่ผ่านตัวกรองไปแล้วจะผิดกฎย้อนหลัง)');
+    }
+}
+
+/** PUT /tournaments/:id/eligibility-rules — แก้ตรงได้เฉพาะระหว่างรออนุมัติ · ผ่านอนุมัติแล้วต้องไป C09 amendment */
+export async function setEligibilityRules(tournament: TournamentRow, userId: number, input: SetEligibilityRulesInput) {
+    if (tournament.tournament_status !== 'pending_approval') {
+        throw new AppError(409, 'USE_AMENDMENT_REQUEST',
+            'ทัวร์นาเมนต์ผ่านการพิจารณาแล้ว การแก้กฎคุณสมบัติต้องยื่นคำขอแก้ไข (amendment) ให้แอดมินอนุมัติ');
+    }
+    await ensureEligibilityEditable(tournament);
+    const rules = await normalizeEligibilityRules(input.rules);
+    await TournamentRepo.replaceEligibilityRules(tournament.tournament_id, userId, rules);
+    return { items: rules.map(r => ({ ruleType: r.type, ruleValue: r.value })) };
+}
+
 export async function requestAmendment(tournamentId: number, userId: number, input: AmendmentRequestInput) {
     const tournament = await getTournamentOr404(tournamentId);
     const changes = validateAmendmentChanges(input.requestedChanges);
     validateAmendmentAgainstTournament(tournament, changes);
+    if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
+        await ensureEligibilityEditable(tournament);
+        changes['eligibilityRules'] = await normalizeEligibilityRules(changes['eligibilityRules'] as EligibilityRuleInput[]);
+    }
     const id = await TournamentRepo.insertAmendmentRequest(tournamentId, userId, changes);
     return { id, status: 'pending' as const };
 }
@@ -350,14 +419,20 @@ async function getAmendmentForAdmin(amendmentId: number, userId: number) {
     const amendment = await TournamentRepo.findAmendmentById(amendmentId);
     if (!amendment) throw new AppError(404, 'AMENDMENT_NOT_FOUND', 'ไม่พบคำขอแก้ไขทัวร์นาเมนต์นี้');
     const tournament = await getTournamentOr404(amendment.tournament_id);
-    await getTournamentAdmin(userId, tournament);
-    return { amendment, tournament };
+    const admin = await getTournamentAdmin(userId, tournament);
+    return { amendment, tournament, admin };
 }
 
 export async function approveAmendment(amendmentId: number, userId: number) {
-    const { amendment, tournament } = await getAmendmentForAdmin(amendmentId, userId);
+    const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
     const changes = validateAmendmentChanges(amendment.requested_changes);
     validateAmendmentAgainstTournament(tournament, changes);
+    if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
+        await ensureEligibilityEditable(tournament);
+        if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, changes['eligibilityRules'] as EligibilityRule[])) eligibilityOutOfScope();
+    } else if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournament.tournament_id))) {
+        eligibilityOutOfScope();
+    }
     const result = await TournamentRepo.approveAmendment(amendmentId, userId, changes);
     if (result === 'not_found') throw new AppError(404, 'AMENDMENT_NOT_FOUND', 'ไม่พบคำขอแก้ไขทัวร์นาเมนต์นี้');
     if (result === 'already_decided') throw new AppError(409, 'ALREADY_DECIDED', 'คำขอนี้ถูกพิจารณาไปแล้ว');

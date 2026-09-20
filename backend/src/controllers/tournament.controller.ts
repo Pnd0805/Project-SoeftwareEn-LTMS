@@ -93,6 +93,10 @@ export async function closeRegistration(req: Request, res: Response) {
     res.status(200).json(await TournamentService.closeRegistration(req.tournament!, userId(req)));
 }
 
+export async function setEligibilityRules(req: Request, res: Response) {
+    res.status(200).json(await TournamentService.setEligibilityRules(req.tournament!, userId(req), req.body));
+}
+
 export async function getEligibilityRules(req: Request, res: Response) {
     const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     res.status(200).json(await TournamentService.getEligibilityRules(id, req.user?.user_id));

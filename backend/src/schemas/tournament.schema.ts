@@ -5,6 +5,14 @@ const dateTime = z.iso.datetime({ offset: true });
 const optionalId = z.int().positive().nullable().optional();
 const optionalAge = z.int().min(0).max(120).nullable().optional();
 
+// กฎคุณสมบัติ (มติ 20 ก.ย. 2569 Q1-ค): faculty = รหัสคณะที่รับ · year = ชั้นปีที่รับ (1–8) · ไม่ส่ง/ว่าง = ไม่จำกัด
+export const eligibilityRuleSchema = z.object({
+    type: z.enum(['faculty', 'year']),
+    value: z.int().positive()
+});
+export const eligibilityRulesSchema = z.array(eligibilityRuleSchema).max(50);
+export const setEligibilityRulesSchema = z.object({ rules: eligibilityRulesSchema });
+
 export const createTournamentSchema = z.object({
     name: z.string().trim().min(1).max(200),
     sportTypeId: z.int().positive(),
@@ -21,7 +29,8 @@ export const createTournamentSchema = z.object({
     venue: z.string().trim().min(1).max(255),
     genderRequirement: z.enum(['any', 'male', 'female']),
     minAge: optionalAge,
-    maxAge: optionalAge
+    maxAge: optionalAge,
+    eligibilityRules: eligibilityRulesSchema.optional()
 });
 
 export const updateTournamentSchema = z.object({
@@ -44,3 +53,5 @@ export const amendmentRejectSchema = rejectTournamentSchema;
 export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentSchema>;
 export type AmendmentRequestInput = z.infer<typeof amendmentRequestSchema>;
+export type EligibilityRuleInput = z.infer<typeof eligibilityRuleSchema>;
+export type SetEligibilityRulesInput = z.infer<typeof setEligibilityRulesSchema>;
