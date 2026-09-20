@@ -88,3 +88,19 @@ describe('setEligibilityRules (PUT, C17b)', () => {
       .rejects.toMatchObject({ status: 409, code: 'ELIGIBILITY_LOCKED' });
   });
 });
+
+describe('getEligibilityRules (C17) — requester sees their own pending/rejected tournament', () => {
+  it.each(['pending_approval', 'rejected', 'completed'] as const)('owner reads rules while %s; stranger gets 404', async (status) => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: status, requested_by_user_id: 9 } as never));
+    vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(null);
+    vi.mocked(ApplicationRepo.findEligibilityRules).mockResolvedValue([]);
+    await expect(Service.getEligibilityRules(50, 9)).resolves.toEqual({ items: [] });
+    await expect(Service.getEligibilityRules(50, 10)).rejects.toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
+    await expect(Service.getEligibilityRules(50)).rejects.toMatchObject({ status: 404 });
+  });
+  it('auto_deleted stays hidden even from the owner', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'auto_deleted', requested_by_user_id: 9 } as never));
+    vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(null);
+    await expect(Service.getEligibilityRules(50, 9)).rejects.toMatchObject({ status: 404 });
+  });
+});

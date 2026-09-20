@@ -1,7 +1,7 @@
 import express from 'express';
 import * as TournamentController from '../controllers/tournament.controller.js';
 import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
-import { requireOrganizer } from '../middlewares/requireOrganizer.js';
+import { requireOrganizer, requireRequester } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
 import {
     amendmentRequestSchema,
@@ -24,6 +24,6 @@ router.post('/:id/open-registration', requireAuth, requireOrganizer, TournamentC
 router.post('/:id/close-registration', requireAuth, requireOrganizer, TournamentController.closeRegistration);
 router.get('/:id/eligibility-rules', optionalAuth, TournamentController.getEligibilityRules);
 // C17b — ORG แทนที่กฎคุณสมบัติทั้งชุด (เฉพาะ pending_approval · ผ่านแล้วใช้ C09 amendment)
-router.put('/:id/eligibility-rules', requireAuth, requireOrganizer, validate(setEligibilityRulesSchema), TournamentController.setEligibilityRules);
+router.put('/:id/eligibility-rules', requireAuth, requireRequester, validate(setEligibilityRulesSchema), TournamentController.setEligibilityRules);
 
 export default router;

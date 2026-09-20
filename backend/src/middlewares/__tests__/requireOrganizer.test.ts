@@ -13,7 +13,7 @@ vi.mock('../../repositories/match.repo.js', () => ({
   findById: vi.fn(),
 }));
 
-import { requireOrganizer, requireOrganizerOfMatch } from '../requireOrganizer.js';
+import { requireOrganizer, requireOrganizerOfMatch, requireRequester, isRequesterOf } from '../requireOrganizer.js';
 import { parseId } from '../../utils/parseId.js';
 import { findTournamentById } from '../../repositories/tournament.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
@@ -340,5 +340,39 @@ describe('requireOrganizerOfMatch middleware', () => {
     await expect(requireOrganizerOfMatch(req, res, next)).rejects.toBe(parseError);
     expect(next).not.toHaveBeenCalled();
     expect(mockedFindMatchById).not.toHaveBeenCalled();
+  });
+});
+
+describe('requireRequester middleware (C17b — FE-c17b 20 ก.ย.)', () => {
+  it.each(['pending_approval', 'private', 'public', 'rejected', 'completed'] as const)(
+    'lets the requester through while the tournament is %s', async (status) => {
+      mockedParseId.mockReturnValue(20);
+      mockedFindTournamentById.mockResolvedValue({ ...baseTournament, tournament_status: status });
+      const req = makeReq({ id: '20' }, organizerUser);
+      const next = vi.fn();
+      await requireRequester(req, makeRes(), next as NextFunction);
+      expect(next).toHaveBeenCalledWith();
+      expect(req.tournament).toEqual({ ...baseTournament, tournament_status: status });
+    });
+
+  it('403 NOT_ORGANIZER for anyone else, and for an auto_deleted tournament', async () => {
+    mockedParseId.mockReturnValue(20);
+    mockedFindTournamentById.mockResolvedValue({ ...baseTournament, tournament_status: 'pending_approval' });
+    const next = vi.fn();
+    await requireRequester(makeReq({ id: '20' }, otherUser), makeRes(), next as NextFunction);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 403, code: 'NOT_ORGANIZER' });
+    expect(isRequesterOf({ ...baseTournament, tournament_status: 'auto_deleted' }, organizerUser.user_id)).toBe(false);
+  });
+
+  it('401 without a user, 404 when the tournament does not exist', async () => {
+    const next = vi.fn();
+    await requireRequester(makeReq({ id: '20' }), makeRes(), next as NextFunction);
+    expect(next.mock.calls[0]![0]).toBeInstanceOf(AppError);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 401 });
+    mockedParseId.mockReturnValue(20);
+    mockedFindTournamentById.mockResolvedValue(null);
+    const next2 = vi.fn();
+    await requireRequester(makeReq({ id: '20' }, organizerUser), makeRes(), next2 as NextFunction);
+    expect(next2.mock.calls[0]![0]).toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
   });
 });

@@ -124,7 +124,7 @@ Current code/schema/API มี known gaps เมื่อเทียบ Current
 
 ## OD-15 — Eligibility Rules & Faculty-Admin Scope — ✅ Resolved 2026-09-20
 
-- **Q1 (ใครใส่กฎคณะ/ชั้นปี, ตอนไหน) → ค**: ใส่ตอนสร้าง (C01 `eligibilityRules`) · แก้ตรงได้เฉพาะ `pending_approval` (C17b PUT) · ผ่านอนุมัติแล้วต้องผ่าน amendment (C09/C11) · ล็อกเมื่อเปิดรับสมัครหรือมีใบสมัคร (`ELIGIBILITY_LOCKED`)
+- **Q1 (ใครใส่กฎคณะ/ชั้นปี, ตอนไหน) → ค**: ใส่ตอนสร้าง (C01 `eligibilityRules`) · แก้ตรงได้เฉพาะ `pending_approval` (C17b PUT — guard คือ **ผู้ยื่นคำขอ** `requireRequester` เพราะ `isOrganizerOf` ยังเป็น false ตอน pending; FE-c17b พบว่าเวอร์ชันแรกเรียกไม่ได้เลย แก้ 20 ก.ย. พร้อมให้ผู้ยื่นคำขอเห็น C07/C17 ของตัวเองทุกสถานะยกเว้น `auto_deleted`) · ผ่านอนุมัติแล้วต้องผ่าน amendment (C09/C11) · ล็อกเมื่อเปิดรับสมัครหรือมีใบสมัคร (`ELIGIBILITY_LOCKED`)
 - **Q2 (แอดมินคณะ "รับผิดชอบ" ทัวร์ไหน) → ข**: คณะตัวเองเป็นผู้จัด **และ** กฎคณะจำกัดเฉพาะคณะตัวเอง · ทัวร์ข้ามคณะหรือไม่จำกัดคณะ → university_wide เท่านั้น (`ELIGIBILITY_OUT_OF_SCOPE`) · ทางเลือก ข′ (มีคณะตัวเองอยู่ในกฎก็พอ) ถูกปฏิเสธ
 - **Q3 (`scopeType: 'university'`) → ไม่เปิด** ยืนตาม OD-11 · `university` = มหาวิทยาลัยเป็นผู้จัด ไม่ใช่ "เปิดรับทุกคณะ" — เปิดรับทุกคณะ = ไม่ใส่กฎ `faculty` · จะเปิดได้ต้องกำหนดก่อนว่าใครมีสิทธิ์สร้าง
 

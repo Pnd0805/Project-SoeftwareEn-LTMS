@@ -15,6 +15,7 @@ import { AppError } from '../utils/AppError.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
+import { isRequesterOf } from '../middlewares/requireOrganizer.js';
 
 const amendmentFieldSchema = z.object({
     registrationStart: z.iso.datetime({ offset: true }).optional(),
@@ -175,7 +176,8 @@ async function getVisibleTournament(tournamentId: number, userId?: number): Prom
     const tournament = await getTournamentOr404(tournamentId);
     if (tournament.tournament_status === 'public') return tournament;
 
-    if (userId !== undefined && tournament.requested_by_user_id === userId && tournament.tournament_status === 'private') {
+    // ผู้ยื่นคำขอเห็นทัวร์ของตัวเองทุกสถานะ (รวม pending_approval/rejected/completed) ยกเว้นถูกลบอัตโนมัติ — FE-c17b 20 ก.ย.
+    if (userId !== undefined && isRequesterOf(tournament, userId)) {
         return tournament;
     }
 
