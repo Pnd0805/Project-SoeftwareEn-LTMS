@@ -20,13 +20,21 @@ import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
 import { useEligibilityRules, useRequestFilterChange, useTournament } from '../../../hooks/useTournament'
 import { useFaculties } from '../../../hooks/useReference'
-import { toEligibilityRules } from '../../../schemas/tournament.schema'
+import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
 import type { GenderRequirement } from '../../../types/enums'
 import type { Tournament } from '../../../shared/types'
 
 const YEARS = [1, 2, 3, 4, 5, 6, 7, 8]
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
+const amendmentErrorMessage = (error: unknown) => {
+  const value = error as { code?: unknown; message?: unknown } | null
+  if (value?.code === 'INVALID_DATE_RANGE') {
+    return `${typeof value.message === 'string' ? value.message : 'The tournament schedule is invalid.'} `
+      + 'The server checks the existing schedule with every amendment. Correct the first match date below and send both changes together.'
+  }
+  return errorMessage(error)
+}
 const toggle = (list: number[], value: number) =>
   list.includes(value) ? list.filter(x => x !== value) : [...list, value].sort((a, b) => a - b)
 
@@ -49,9 +57,15 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const [gender, setGender] = useState<GenderRequirement>('any')
   const [minAge, setMinAge] = useState('')
   const [maxAge, setMaxAge] = useState('')
+  const [eventStartDate, setEventStartDate] = useState('')
 
   const registrationOpen = detail.data?.registrationOpen ?? false
   const organizingFacultyId = detail.data?.organizingFacultyId ?? null
+  const registrationEnd = detail.data?.registrationEnd ?? null
+  const currentEventStartDate = detail.data?.eventStartDate ?? ''
+  const scheduleNeedsFix = !!detail.data
+    && !registrationClosesBeforeEvent(registrationEnd, currentEventStartDate)
+  const correctedScheduleIsValid = registrationClosesBeforeEvent(registrationEnd, eventStartDate)
 
   const startEditing = () => {
     requestChange.reset()
@@ -60,6 +74,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     setGender(detail.data?.genderRequirement ?? 'any')
     setMinAge(detail.data?.minAge == null ? '' : String(detail.data.minAge))
     setMaxAge(detail.data?.maxAge == null ? '' : String(detail.data.maxAge))
+    setEventStartDate(currentEventStartDate)
     setOpen(true)
   }
 
@@ -68,8 +83,9 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     && organizingFacultyId != null
     && draftFaculties[0] === organizingFacultyId
 
-  const send = () => requestChange.mutate(
-    {
+  const send = () => {
+    if (requestChange.isPending || (scheduleNeedsFix && !correctedScheduleIsValid)) return
+    requestChange.mutate({
       rules: null,
       reason: '',
       changes: {
@@ -77,10 +93,12 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         genderRequirement: gender,
         minAge: minAge === '' ? null : Number(minAge),
         maxAge: maxAge === '' ? null : Number(maxAge),
+        ...(scheduleNeedsFix ? { eventStartDate } : {}),
       },
     },
     { onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString()) } },
-  )
+    )
+  }
 
   return (
     <>
@@ -161,6 +179,22 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           ))}
         </div>
 
+        {scheduleNeedsFix ? (
+          <Banner kind="crit" icon="warn">
+            <b>The saved schedule prevents every amendment.</b> Registration closes at{' '}
+            {registrationEnd ?? 'an unknown time'}, but the first match date is {currentEventStartDate || 'missing'}.
+            The backend requires the first match date to begin after registration closes. Choose a valid date;
+            it will be listed in this same request for the admin to approve.
+            <Field label="Correct first match date" htmlFor="er-event-start">
+              <input id="er-event-start" type="date" value={eventStartDate}
+                onChange={e => setEventStartDate(e.target.value)} />
+            </Field>
+            {eventStartDate && !correctedScheduleIsValid ? (
+              <span className="sub">Choose a date whose start is after the registration closing time.</span>
+            ) : null}
+          </Banner>
+        ) : null}
+
         <span className="tag"><em>//</em> Years of study — tick none to accept every year</span>
         <div className="hstack" style={{ flexWrap: 'wrap', gap: 14 }}>
           {YEARS.map(y => (
@@ -204,12 +238,13 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         </div>
 
         {requestChange.isError ? (
-          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {errorMessage(requestChange.error)}</Banner>
+          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}</Banner>
         ) : null}
 
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="btn primary" type="button" disabled={requestChange.isPending} onClick={send}>
+          <button className="btn primary" type="button"
+            disabled={requestChange.isPending || (scheduleNeedsFix && !correctedScheduleIsValid)} onClick={send}>
             {requestChange.isPending ? 'Sending…' : 'Send to an admin'}
           </button>
         </div>

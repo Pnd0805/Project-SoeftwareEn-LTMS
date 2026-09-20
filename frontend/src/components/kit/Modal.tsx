@@ -19,14 +19,19 @@ interface ModalProps {
 
 export function Modal({ open, onClose, label, title, children }: ModalProps) {
   const box = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  /* Inline callbacks are common at call sites. Keep Escape wired to the latest
+     callback without treating every parent render as a newly opened dialog. */
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
     document.addEventListener('keydown', onKey)
     box.current?.querySelector<HTMLElement>('button, input, select, textarea')?.focus()
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (

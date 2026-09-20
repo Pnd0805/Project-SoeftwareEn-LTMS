@@ -812,6 +812,126 @@ delivers an agreed contract:
       correctly refused a match whose squads were short of the minimum.
       Nothing else is unwired: 109 backend routes, every one now reachable.
 
+## User-reported regressions and requirements — 2026-09-20
+
+Owner for triage: Head Frontend Dev. The seven reports below are open acceptance
+gates, not reproduced/verified fixes. Source inspection supplies leads only;
+capture the current frontend/backend commits, tournament/match/user IDs, role,
+request body, HTTP status/error code and relevant read responses before assigning
+a backend root cause. Do not capture access tokens or other credentials.
+
+Earlier checked implementation entries (C09, manual check-in, match lifecycle)
+remain historical delivery records; they do not mean these reported flows pass.
+Real-backend smoke and overall QA remain pending until these regressions pass.
+
+### Fix order and acceptance
+
+- [x] **R01 · P1 · Slice 2 + shared UI; backend validation owner:** hard-filter
+      amendment modal jumps repeatedly, and submit reports
+      `Couldn't send the request. วันแข่งขันต้องอยู่หลังวันปิดรับสมัคร`.
+      Inspect `EntryRulesPanel.tsx`, `components/kit/Modal.tsx`, and C09
+      `POST /tournaments/:id/amendment-requests`.
+      Source lead: Modal's effect depends on `onClose` and focuses the first
+      input every run; this panel supplies a new inline callback on renders.
+      Reproduce typing, checkbox changes, scrolling and query refresh before
+      attributing the jump to this effect. Keep focus/draft stable while open.
+      The inspected payload changes eligibility/gender/age only, not dates.
+      Compare stored registration end and event start, timezone/date-only
+      handling, and the backend's merged amendment validation. Do not silently
+      alter tournament dates to make a hard-filter request pass. If the stored
+      schedule is invalid, show an actionable explanation and correction path.
+      Delivered 2026-09-20. Root cause confirmed from the frontend and BE_KN
+      source: Modal treated each new inline `onClose` callback as a reopen and
+      focused its first control again; create validation allowed registration to
+      close during the first event day (`23:59:59`) while backend `ensureSchedule`
+      treats the date-only event start as midnight. Modal now focuses only when
+      `open` changes and keeps the latest Escape callback in a ref. Frontend
+      schedule validation mirrors `ensureSchedule`. For an existing conflicting
+      schedule, Entry & filter explains why every amendment is rejected, requires
+      an explicit corrected first-match date, and includes that visible change in
+      the same C09 request; it never changes dates silently. The send button is
+      disabled until valid and while pending. Error code `INVALID_DATE_RANGE`
+      receives an actionable explanation if the server still rejects it.
+      Developer verification passed: focused modal/schema/payload regressions,
+      full 19 files / 142 tests, lint, production build and `git diff --check`.
+      Existing Vite bundle-size warning remains. Ready for Frontend Tester.
+      Real-backend browser retest remains in the regression completion gate.
+
+- [ ] **R06 · P1 · Slice 3 + backend check-in owner:** referee "Verify by hand"
+      returns `ผู้เล่นคนนี้เช็คอินไปแล้ว` while the roster says `Not yet`.
+      Compare `GET /matches/:id/checkins` with
+      `POST /matches/:id/checkins/manual` for the same match/user. Check user-ID
+      mapping, status mapping, pagination, read failures and cache refresh;
+      do not infer that a missing visible row proves no check-in exists.
+      Accept: read errors/loading never show a definitive Not yet; existing
+      check-ins display their real state; manual success refreshes the roster;
+      an already-checked-in response reconciles with a fresh read and does not
+      invite repeated writes. Verify after reload and from a second session.
+
+- [ ] **R07 · P1 · Slice 3 + backend check-in owner:** participant check-in
+      reports `เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง`.
+      Capture whether the failing path is QR/on-site or photo/online, then
+      inspect its actual request/response and server log. Check match state,
+      approved roster, authenticated identity, QR validity or upload result as
+      applicable; the generic message alone does not prove a backend 500.
+      Accept: valid participant check-in succeeds and survives reload in both
+      participant and referee views; invalid/expired/duplicate submissions have
+      specific feedback. Verify each supported check-in method separately.
+
+- [ ] **R03 · P1 · Slices 2/4 + backend application/referee owners:** enforce
+      the stated rule that an organizer or referee cannot compete in their own
+      tournament. Confirm whether referee membership means invited, accepted,
+      or active, and whether the conflict rejects the entire team roster.
+      Cover both entry points (tournament and team), all relevant team members,
+      and the reverse order (already competing, then appointed referee).
+      Accept: frontend explains the conflict; the backend rejects conflicting
+      applications/appointments even if submitted outside the UI. Do not apply
+      this restriction to unrelated tournaments or rely on a hidden button.
+
+- [ ] **R02 · P1 · Slices 2/3 + backend bracket owner:** clarify and enforce
+      draw/redraw timing. Report: an organizer can recreate an existing bracket
+      before team registration closes. Confirm whether this describes the bug
+      to prohibit or the intended redraw permission before changing the rule.
+      Current DrawPanel locks on match state (first non-scheduled match), not
+      the registration deadline; SetupTrail says drawing closes entry for good.
+      Reconcile deadline versus explicit registration closure and initial draw
+      versus replacement with the actual `POST /tournaments/:id/bracket` contract.
+      Accept: agreed timing/state rules are enforced by UI and API; repeated
+      clicks do not duplicate matches; permitted redraw requires confirmation
+      and defines what happens to schedules, referee assignments and results.
+
+- [ ] **R05 · P2 · Slices 2/3:** draw progress does not update. Reproduce both
+      random draw in SetupTrail and manual draw in DrawPanel; distinguish request
+      pending feedback from the persistent setup-completion indicator.
+      Source leads: SetupTrail uses `t.drawn` for completion despite querying
+      backend matches; DrawPanel disables pending submit but keeps its normal
+      label. Accept: visible pending feedback, refreshed API-derived completion
+      after success and reload, and failure feedback that never marks draw done.
+
+- [ ] **R04 · P2 · Slices 2/3/4 + backend referee owner:** select match referees
+      in the draw workflow from the tournament referee pool, including future
+      rounds whose teams are still TBD. This is a requested UI/workflow addition,
+      not evidence that existing appointment APIs are absent.
+      Recheck current match-specific invitation/change-request contracts; do not
+      restore the removed direct-assignment endpoint. Establish when match IDs
+      exist, how consent/acceptance works, and whether future-round appointments
+      are supported. Accept: eligible pool selection per match, pending versus
+      accepted shown separately, future-round slots, capacity/time-conflict and
+      permission feedback, persisted assignments after reload, and safe handling
+      of partial draw/assignment failure and redraw. Split any unsupported
+      contract into a backend blocker after verification.
+
+### Regression completion gate
+
+- [ ] Head Frontend Dev: attach reproduction evidence and confirmed ownership
+      to R01–R07; settle R02 timing and R03 role-conflict scope.
+- [ ] Add targeted regression tests for confirmed causes; run tests/lint/build
+      for implementation changes. This entry itself is documentation only.
+- [ ] Frontend Tester: retest the affected flows with real backend data as
+      organizer, match referee and participant, recording Network evidence.
+- [ ] Reconcile results with Priority 3 smoke tests, Priority 4 migration matrix
+      and Definition of done; do not mark overall QA passed from unit tests.
+
 ## Open issues found 2026-09-13 — not backend blockers
 
 Found while checking team links, the mobile preview (`mobile.html`) and the

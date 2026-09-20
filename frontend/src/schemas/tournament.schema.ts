@@ -64,13 +64,21 @@ export const toEligibilityRules = (
   ...years.map((value) => ({ type: "year" as const, value })),
 ];
 
+/** Mirrors backend `ensureSchedule`: a date-only event starts at 00:00 UTC. */
+export const registrationClosesBeforeEvent = (registrationEnd: string | null, eventStartDate: string): boolean => {
+  if (!registrationEnd || !eventStartDate) return false;
+  const registrationEndMs = new Date(registrationEnd).getTime();
+  const eventStartMs = new Date(eventStartDate).getTime();
+  return Number.isFinite(registrationEndMs) && Number.isFinite(eventStartMs) && registrationEndMs < eventStartMs;
+};
+
 export const createTournamentSchema = tournamentFieldsSchema.refine((value) => value.minTeams <= value.maxTeams, {
   message: "จำนวนทีมขั้นต่ำต้องไม่มากกว่าจำนวนทีมสูงสุด",
   path: ["minTeams"],
 }).refine((value) => new Date(value.registrationStart) < new Date(value.registrationEnd), {
   message: "วันปิดรับสมัครต้องอยู่หลังวันเปิดรับสมัคร",
   path: ["registrationEnd"],
-}).refine((value) => new Date(value.registrationEnd) < new Date(`${value.eventStartDate}T23:59:59`), {
+}).refine((value) => registrationClosesBeforeEvent(value.registrationEnd, value.eventStartDate), {
   message: "วันแข่งวันแรกต้องอยู่หลังวันปิดรับสมัคร",
   path: ["eventStartDate"],
 }).refine((value) => value.eventEndDate >= value.eventStartDate, {
