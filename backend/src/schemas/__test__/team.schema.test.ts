@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   teamSchema,
   updateTeamSchema,
-  updateMemberschema,
   createTeamInvitedSchema,
   requestSchema,
   rejectTeamOfficial,
@@ -53,23 +52,6 @@ describe('updateTeamSchema', () => {
 
   it('rejects an empty string name when the field is provided', () => {
     const result = updateTeamSchema.safeParse({ name: '' });
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('updateMemberschema', () => {
-  it.each(['starter', 'substitute'])('accepts position "%s"', (position) => {
-    const result = updateMemberschema.safeParse({ position });
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects a position outside the allowed enum', () => {
-    const result = updateMemberschema.safeParse({ position: 'benched' });
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a missing position field', () => {
-    const result = updateMemberschema.safeParse({});
     expect(result.success).toBe(false);
   });
 });

@@ -177,13 +177,21 @@ export async function openMatchCheckin(matchId: number): Promise<boolean> {
     return result.affectedRows === 1;
 }
 
+/**
+ * นับเฉพาะ "คนที่ทีมส่งลงแข่งในทัวร์นี้" (application_players ของใบสมัครที่อนุมัติแล้ว)
+ * ★ เดิมนับสมาชิกทีมคนไหนก็ได้ — คนที่ไม่ได้ถูกส่งลงแข่งจึงทำให้ครบ min_members ได้ (มติ 19 ก.ย. 2569)
+ */
 export async function countSuccessfulCheckins(matchId: number, teamId: number | null): Promise<number> {
     if (teamId === null) return 0;
     const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
         `SELECT COUNT(*) AS cnt FROM match_checkins mc
-         JOIN team_members tm ON mc.user_id = tm.user_id
-         WHERE mc.match_id = ? AND tm.team_id = ? AND mc.match_checkin_status IN ('success', 'exception')`,
-        [matchId, teamId]
+         JOIN matches m ON m.match_id = mc.match_id
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id AND ta.team_id = ?
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+              AND ap.user_id = mc.user_id
+         WHERE mc.match_id = ? AND mc.match_checkin_status IN ('success', 'exception')`,
+        [teamId, matchId]
     );
     return rows[0]?.cnt ?? 0;
 }
@@ -298,14 +306,52 @@ export async function findCheckinByMatchAndUser(matchId: number, userId: number)
     return rows[0] ?? null;
 }
 
-export async function isUserInTeams(userId: number, teamIds: number[]): Promise<boolean> {
-    if (teamIds.length === 0) return false;
-    const placeholders = teamIds.map(() => '?').join(', ');
+/**
+ * คนนี้ถูกทีมส่งลงแข่งในแมตช์นี้ไหม (ใช้กับ M12 เช็คอิน และ M16 ขอลิงก์อัปรูป)
+ * ★ เดิมถามแค่ "อยู่ในทีมไหม" — สมาชิกที่ไม่ได้ถูกส่งลงแข่งจึงเช็คอินได้ (มติ 19 ก.ย. 2569)
+ */
+export async function isRegisteredPlayerOfMatch(userId: number, matchId: number): Promise<boolean> {
     const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT 1 FROM team_members WHERE user_id = ? AND team_id IN (${placeholders}) LIMIT 1`,
-        [userId, ...teamIds]
+        `SELECT 1
+         FROM matches m
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+              AND ta.team_id IN (m.team_a_id, m.team_b_id)
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+              AND ap.user_id = ?
+         WHERE m.match_id = ?
+         LIMIT 1`,
+        [userId, matchId]
     );
     return rows.length > 0;
+}
+
+export type MatchLineupRow = {
+    team_id: number;
+    user_id: number;
+    full_name: string;
+    profile_image_key: string | null;
+    match_checkin_status: 'success' | 'rejected' | 'exception' | 'pending' | null;
+    checked_in_at: Date | null;
+};
+
+/** M19 — รายชื่อผู้เล่นที่ลงแข่งของทั้งสองทีม พร้อมสถานะเช็คอินของแมตช์นี้ */
+export async function findLineupsByMatch(matchId: number): Promise<MatchLineupRow[]> {
+    const [rows] = await pool.query<(MatchLineupRow & RowDataPacket)[]>(
+        `SELECT ta.team_id, u.user_id, u.full_name, u.profile_image_key,
+                mc.match_checkin_status, mc.checked_in_at
+         FROM matches m
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+              AND ta.team_id IN (m.team_a_id, m.team_b_id)
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+         JOIN users u ON u.user_id = ap.user_id
+         LEFT JOIN match_checkins mc ON mc.match_id = m.match_id AND mc.user_id = u.user_id
+         WHERE m.match_id = ?
+         ORDER BY ta.team_id, u.full_name`,
+        [matchId]
+    );
+    return rows;
 }
 
 type InsertCheckinInput = {
@@ -319,7 +365,7 @@ type InsertCheckinInput = {
     note?: string | null;           // M19 เหตุผลที่อนุโลม — คอลัมน์ note (migration 015) ไม่ใช่ rejection_reason
 };
 
-/** /me/matches (20 ก.ย.) — แมตช์ที่ทีมของ user อยู่ (team_a/b เป็นทีมที่ user เป็นสมาชิก) ทุกทัวร์ */
+/** /me/matches (20 ก.ย.) — แมตช์ที่ user มีชื่อลงแข่ง (application_players) ทุกทัวร์ */
 export type MyPlayerMatchRow = {
     match_id: number; round_number: number | null; scheduled_time: Date | null; scheduled_end_time: Date | null;
     venue: string | null; mode: MatchRow['mode']; match_status: MatchRow['match_status'];
@@ -329,19 +375,22 @@ export type MyPlayerMatchRow = {
 };
 
 export async function findMatchesOfPlayer(userId: number): Promise<MyPlayerMatchRow[]> {
+    // มีชื่อในรายชื่อลงแข่ง (application_players ของใบสมัคร approved) ของทีมที่อยู่ในแมตช์ — Q5-ก
     const [rows] = await pool.query<(MyPlayerMatchRow & RowDataPacket)[]>(
         `SELECT m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
                 t.tournament_id, t.name AS tournament_name, t.sport_type_id,
-                ta.team_id AS team_a_id, ta.name AS team_a_name, tb.team_id AS team_b_id, tb.name AS team_b_name,
-                MIN(tm.team_id) AS my_team_id
-         FROM team_members tm
-         JOIN matches m ON m.team_a_id = tm.team_id OR m.team_b_id = tm.team_id
+                ta_team.team_id AS team_a_id, ta_team.name AS team_a_name, tb.team_id AS team_b_id, tb.name AS team_b_name,
+                MIN(ta.team_id) AS my_team_id
+         FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+              AND ta.tournament_application_status = 'approved'
+         JOIN matches m ON m.tournament_id = ta.tournament_id AND (m.team_a_id = ta.team_id OR m.team_b_id = ta.team_id)
          JOIN tournaments t ON t.tournament_id = m.tournament_id
-         LEFT JOIN teams ta ON ta.team_id = m.team_a_id
+         LEFT JOIN teams ta_team ON ta_team.team_id = m.team_a_id
          LEFT JOIN teams tb ON tb.team_id = m.team_b_id
-         WHERE tm.user_id = ?
+         WHERE ap.user_id = ?
          GROUP BY m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
-                  t.tournament_id, t.name, t.sport_type_id, ta.team_id, ta.name, tb.team_id, tb.name
+                  t.tournament_id, t.name, t.sport_type_id, ta_team.team_id, ta_team.name, tb.team_id, tb.name
          ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`,
         [userId]
     );

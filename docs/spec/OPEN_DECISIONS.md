@@ -131,3 +131,14 @@ Current code/schema/API มี known gaps เมื่อเทียบ Current
 ## OD-16 — Public visibility of `resultStatus` on M04/M05 — ✅ Resolved 2026-09-20
 
 `resultStatus` (submitted/disputed/rejected/verified/walkover) เป็นข้อมูลสาธารณะบนรายการ/รายละเอียดแมตช์ **โดยตั้งใจ** — ตรง spec 07 §8 ที่ให้ UI แยก provisional/disputed ออกจาก verified · สิ่งที่ซ่อนจากคนนอกคือ **สกอร์และเหตุผล** ของผลที่ยังไม่ยืนยัน (`score` null จนกว่า verified/walkover, S05 ตอบ 404) — ไม่ใช่การมีอยู่ของผล
+
+## OD-17 — Team = Player Pool, Application = Squad — ✅ Resolved 2026-09-19/20
+
+มติ 19 ก.ย. (shokun, migration 018/019): ทีมเป็น **คลังผู้เล่น** ไม่มีตัวจริง/สำรอง · ใบสมัคร P01 ส่ง `playerIds` = **รายชื่อลงแข่ง** (`application_players`, จำนวนใน [min,max] ของกีฬา, คนเดียวหนึ่งทีมต่อทัวร์, ส่งแล้วล็อก) · เช็คอิน/นับขั้นต่ำ/สถิตินักกีฬา/`/me/matches` ใช้รายชื่อนี้ ไม่ใช่สมาชิกทีม
+
+ที่ตัดสินเพิ่ม 20 ก.ย. ตอน merge เข้า BE_KN:
+- **Q2-ค**: ล็อกเฉพาะ**คนในรายชื่อลงแข่ง**ของใบสมัคร `approved` (ไม่ต้องรอสร้างสาย) — `MEMBER_LOCKED_IN_TOURNAMENT` · คนอื่นในคลังเข้า/ออกอิสระ · แทน B6 roster lock ทั้งทีม (`ROSTER_LOCKED` ถอดออก)
+- **Q3-ก**: คลังไม่มีเพดาน — `TEAM_FULL` ถอดออกทุกทาง (T09/T13/T20/T22) · เพดานจริงคือขนาดรายชื่อตอน P01
+- **Q4**: `player_profile_stats` บวก/ถอน (verify · B4 reject/amend) ให้เฉพาะ `application_players` ของทีมในทัวร์นั้น
+- **Q5-ก**: `/me/matches` ผู้เล่น = แมตช์ที่ฉันมีชื่อลงแข่ง
+- migration ของ shokun renumber 014→**018**, 015→**019** (ชนกับ 014/015 ของ BE_KN ที่ FE รันไปแล้ว)

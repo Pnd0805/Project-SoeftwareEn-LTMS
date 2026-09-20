@@ -1,7 +1,6 @@
 import * as JoinRepo from '../repositories/joinRequest.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
-import { ensureRosterUnlocked, ensureTeamNotFull } from './team.service.js';
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
 import { toJoinRequestDto, toMyJoinRequestDto } from '../mappers/team.mapper.js';
@@ -9,8 +8,8 @@ import type { TeamRow } from '../types/db.js';
 
 /**
  * ขอเข้าร่วมทีมสาธารณะ — มติ 20 ก.ย. 2569 (ทางเลือก ข: หัวหน้าทีมอนุมัติ)
- * กฎการเข้าทีมชุดเดียวกับรับคำเชิญ (T13): roster lock (B6) · CoI · โควตา 5 ทีม Unofficial · ยังไม่เป็นสมาชิก
- * + ทีมต้อง public และไม่เต็ม (sport_types.max_members) — เช็คทั้งตอนขอ (T20) และตอนอนุมัติ (T22) เพราะเวลาผ่านไปสถานะเปลี่ยนได้
+ * กฎการเข้าทีมชุดเดียวกับรับคำเชิญ (T13): CoI · โควตา 5 ทีม Unofficial · ยังไม่เป็นสมาชิก · ทีมต้อง public
+ * ทีม = คลังผู้เล่น (มติ 19 ก.ย.) — ไม่มีเพดานคลัง (Q3-ก) · เช็คซ้ำตอนอนุมัติ (T22) เพราะเวลาผ่านไปสถานะเปลี่ยนได้
  */
 async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
     if(team.deleted_at !== null){
@@ -19,7 +18,6 @@ async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
     if(await TeamRepo.isMemberOf(team.team_id , userId)){
         throw new AppError(409 , 'ALREADY_MEMBER' , 'คุณอยู่ในทีมนี้แล้ว');
     }
-    await ensureRosterUnlocked(team.team_id);
 
     const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(team.team_id , userId);
     if(conflict){
@@ -30,7 +28,6 @@ async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
     if(await TeamRepo.countUnofficialTeamsByUser(userId) >= 5){
         throw new AppError(422 , 'TEAM_QUOTA_EXCEEDED' , 'คุณมีทีม Unofficial ครบ 5 ทีมแล้ว');
     }
-    await ensureTeamNotFull(team.team_id , team.sport_type_id);
 }
 
 /** T20 — POST /teams/:id/join-requests */

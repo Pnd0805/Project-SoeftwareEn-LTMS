@@ -13,6 +13,14 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findRefereesAmongUsers: vi.fn(() => Promise.resolve([])),
   findEligibilityRules: vi.fn(),
   insertApplication: vi.fn(),
+  insertApplicationWithPlayers: vi.fn(),
+  findPlayerConflicts: vi.fn(() => Promise.resolve([])),
+  findPlayersByApplication: vi.fn(() => Promise.resolve([])),
+  deletePlayersByApplication: vi.fn(),
+}));
+
+vi.mock('../../repositories/sportType.repo.js', () => ({
+  findSportTypeById: vi.fn(),
 }));
 
 vi.mock('../../repositories/tournament.repo.js', () => ({
@@ -48,6 +56,7 @@ vi.mock('../../mappers/application.mapper.js', () => ({
 import * as applicationService from '../application.service.js';
 import * as ApplicationRepo from '../../repositories/application.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import * as SportTypeRepo from '../../repositories/sportType.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as UploadService from '../../services/upload.service.js';
 import { toTeamRef } from '../../mappers/team.mapper.js';
@@ -71,6 +80,7 @@ import * as Walkover from '../../services/walkover.service.js';
 
 const mockedApplicationRepo = vi.mocked(ApplicationRepo);
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
+const mockedSportTypeRepo = vi.mocked(SportTypeRepo);
 const mockedMatchRepo = vi.mocked(MatchRepo);
 const mockedUploadService = vi.mocked(UploadService);
 const mockedToTeamRef = vi.mocked(toTeamRef);
@@ -300,7 +310,7 @@ describe('getApplicationDetail', () => {
 
     const result = await applicationService.getApplicationDetail(100, 5);
 
-    expect(mockedToApplicationDetailDto).toHaveBeenCalledWith(app, []);
+    expect(mockedToApplicationDetailDto).toHaveBeenCalledWith(app, [], []);
     expect(mockedUploadService.getPresignedDownloadUrl).not.toHaveBeenCalled();
     expect(result).toEqual({ id: 100 });
   });
@@ -324,7 +334,7 @@ describe('getApplicationDetail', () => {
     expect(mockedToApplicationDetailDto).toHaveBeenCalledWith(app, [
       'https://s3.example.com/student-card.jpg?sig=1',
       'https://s3.example.com/national-id.jpg?sig=2',
-    ]);
+    ], []);
   });
 
   it('returns the detail DTO when the requester is the organizer of a non-pending/rejected tournament', async () => {
@@ -411,6 +421,8 @@ describe('cancelApplication', () => {
     const result = await applicationService.cancelApplication(100, 5);
 
     expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'cancelled');
+    // ใบสมัครตาย → ปลดล็อกผู้เล่นให้ไปทีมอื่นในทัวร์เดียวกันได้ (มติ 19 ก.ย. 2569)
+    expect(mockedApplicationRepo.deletePlayersByApplication).toHaveBeenCalledWith(100);
     expect(result).toEqual({ id: 100, status: 'cancelled' });
   });
 });
@@ -457,6 +469,7 @@ describe('withdrawApplication', () => {
     const result = await applicationService.withdrawApplication(100, 5);
 
     expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'withdrawn');
+    expect(mockedApplicationRepo.deletePlayersByApplication).toHaveBeenCalledWith(100);
     expect(mockedMatchRepo.countMatchesByTournament).toHaveBeenCalledWith(20);
     expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: false, walkovers: [] });
     expect(Walkover.processTeamWithdrawal).not.toHaveBeenCalled();
@@ -603,6 +616,7 @@ describe('rejectApplication', () => {
     const result = await applicationService.rejectApplication(100, 7, 'not eligible');
 
     expect(mockedApplicationRepo.rejectApplicationInDb).toHaveBeenCalledWith(100, 'not eligible');
+    expect(mockedApplicationRepo.deletePlayersByApplication).toHaveBeenCalledWith(100);
     expect(result).toEqual({ id: 100, status: 'rejected', reason: 'not eligible' });
   });
 });
@@ -612,6 +626,8 @@ describe('applyTournament', () => {
     vi.useFakeTimers();
     // Fixed "today" so calculateAge() is deterministic across every test below.
     vi.setSystemTime(new Date('2026-06-15T00:00:00.000Z'));
+    // กีฬาเริ่มต้นของเทสต์กลุ่มนี้: 1–20 คน — เทสต์ที่สนใจขนาดทีมจะ override เอง
+    mockedSportTypeRepo.findSportTypeById.mockResolvedValue({ min_members: 1, max_members: 20 } as never);
   });
 
   afterEach(() => {
@@ -621,7 +637,7 @@ describe('applyTournament', () => {
   it('throws TEAM_NOT_FOUND when the team does not exist', async () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(null);
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({
       status: 404,
       code: 'TEAM_NOT_FOUND',
     });
@@ -631,7 +647,7 @@ describe('applyTournament', () => {
   it('throws NOT_TEAM_LEADER when the requester is not the team leader', async () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 999 }));
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({
       status: 403,
       code: 'NOT_TEAM_LEADER',
     });
@@ -642,7 +658,7 @@ describe('applyTournament', () => {
       makeTeamForApply({ leader_id: 5, readiness_status: 'Forming' }),
     );
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({
       status: 409,
       code: 'TEAM_NOT_READY',
     });
@@ -652,7 +668,7 @@ describe('applyTournament', () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
     mockedTournamentRepo.findTournamentById.mockResolvedValue(null);
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({
       status: 404,
       code: 'TOURNAMENT_NOT_FOUND',
     });
@@ -662,7 +678,7 @@ describe('applyTournament', () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
     mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({ registration_open: 0 }));
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({
       status: 409,
       code: 'REGISTRATION_CLOSED',
     });
@@ -673,7 +689,7 @@ describe('applyTournament', () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5, sport_type_id: 3 }));
     mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({ sport_type_id: 1 }));
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({ status: 409, code: 'SPORT_TYPE_MISMATCH' });
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({ status: 409, code: 'SPORT_TYPE_MISMATCH' });
     expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
   });
 
@@ -687,7 +703,7 @@ describe('applyTournament', () => {
     ] as never);
     vi.mocked(mockedApplicationRepo.findRefereesAmongUsers).mockResolvedValueOnce([88]);   // Once — clearAllMocks ไม่ล้าง mockResolvedValue
 
-    const err = await applicationService.applyTournament(20, 10, 5).catch((e: unknown) => e as { code: string; extra: unknown });
+    const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88]).catch((e: unknown) => e as { code: string; extra: unknown });
     expect(err).toMatchObject({ status: 409, code: 'TEAM_CONFLICT_OF_INTEREST' });
     expect(err.extra).toEqual({ conflicts: [{ userId: 77, role: 'organizer' }, { userId: 88, role: 'referee' }] });
     expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
@@ -700,7 +716,7 @@ describe('applyTournament', () => {
       registration_open: 1, registration_start: new Date('2026-05-01'), registration_end: new Date('2026-06-01'),   // ระบบเวลา = 2026-06-15
     }));
 
-    const err = await applicationService.applyTournament(20, 10, 5).catch((e: unknown) => e as { code: string; message: string });
+    const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88]).catch((e: unknown) => e as { code: string; message: string });
     expect(err).toMatchObject({ status: 409, code: 'REGISTRATION_CLOSED' });
     expect(err.message).toBe('หมดช่วงรับสมัครแล้ว');
     expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
@@ -712,7 +728,7 @@ describe('applyTournament', () => {
       registration_open: 1, registration_start: new Date('2099-01-01'), registration_end: new Date('2099-02-01'),
     }));
 
-    const err = await applicationService.applyTournament(20, 10, 5).catch((e: unknown) => e as { code: string; message: string });
+    const err = await applicationService.applyTournament(20, 10, 5, [1]).catch((e: unknown) => e as { code: string; message: string });
     expect(err).toMatchObject({ status: 409, code: 'REGISTRATION_CLOSED' });
     expect(err.message).toBe('ยังไม่ถึงช่วงรับสมัคร');
   });
@@ -722,7 +738,7 @@ describe('applyTournament', () => {
     mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
     mockedApplicationRepo.findExistingApplication.mockResolvedValue({ tournament_application_id: 999 });
 
-    await expect(applicationService.applyTournament(20, 10, 5)).rejects.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).rejects.toMatchObject({
       status: 409,
       code: 'ALREADY_APPLIED',
     });
@@ -740,7 +756,7 @@ describe('applyTournament', () => {
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [1]).catch((e) => e);
 
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(422);
@@ -760,7 +776,7 @@ describe('applyTournament', () => {
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [2]).catch((e) => e);
 
     expect(err.code).toBe('HARD_FILTER_FAILED');
     expect(err.extra?.details).toEqual([{ userId: 2, fullName: 'Young Person', reason: 'age' }]);
@@ -775,7 +791,7 @@ describe('applyTournament', () => {
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [3]).catch((e) => e);
 
     expect(err.code).toBe('HARD_FILTER_FAILED');
     expect(err.extra?.details).toEqual([{ userId: 3, fullName: 'Older Person', reason: 'age' }]);
@@ -793,7 +809,7 @@ describe('applyTournament', () => {
       makeRule({ rule_type: 'year', rule_value: 4 }),
     ]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [4]).catch((e) => e);
 
     expect(err.code).toBe('HARD_FILTER_FAILED');
     expect(err.extra?.details).toEqual([{ userId: 4, fullName: 'Wrong Year', reason: 'year' }]);
@@ -810,7 +826,7 @@ describe('applyTournament', () => {
       makeRule({ rule_type: 'year', rule_value: 3 }),
     ]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [6]).catch((e) => e);
 
     expect(err.code).toBe('HARD_FILTER_FAILED');
     expect(err.extra?.details).toEqual([{ userId: 6, fullName: 'No Year', reason: 'year' }]);
@@ -828,7 +844,7 @@ describe('applyTournament', () => {
       makeRule({ rule_type: 'faculty', rule_value: 2 }),
     ]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [5]).catch((e) => e);
 
     expect(err.code).toBe('HARD_FILTER_FAILED');
     expect(err.extra?.details).toEqual([{ userId: 5, fullName: 'Wrong Faculty', reason: 'faculty' }]);
@@ -847,7 +863,7 @@ describe('applyTournament', () => {
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
 
-    const err: any = await applicationService.applyTournament(20, 10, 5).catch((e) => e);
+    const err: any = await applicationService.applyTournament(20, 10, 5, [1, 2, 3]).catch((e) => e);
 
     expect(err.code).toBe('HARD_FILTER_FAILED');
     expect(err.extra?.details).toEqual([
@@ -867,19 +883,91 @@ describe('applyTournament', () => {
     ];
     mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue(members);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplication.mockResolvedValue(500);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(500);
 
-    const result = await applicationService.applyTournament(20, 10, 5);
+    const result = await applicationService.applyTournament(20, 10, 5, [1, 2]);
 
-    expect(mockedApplicationRepo.insertApplication).toHaveBeenCalledWith(
+    expect(mockedApplicationRepo.insertApplicationWithPlayers).toHaveBeenCalledWith(
       20,
       10,
       [
         { userId: 1, fullName: 'Alice', passed: true },
         { userId: 2, fullName: 'Bob', passed: true },
       ],
+      [1, 2],
     );
-    expect(result).toEqual({ id: 500, status: 'pending', hardFilterPassed: true });
+    expect(result).toEqual({ id: 500, status: 'pending', hardFilterPassed: true, playerIds: [1, 2] });
+  });
+
+  // รายชื่อที่ส่งลงแข่ง (มติ 19 ก.ย. 2569)
+  it('throws SQUAD_SIZE_INVALID when the squad is smaller than the sport minimum', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([makeMember({ user_id: 1 }), makeMember({ user_id: 2 })]);
+    mockedSportTypeRepo.findSportTypeById.mockResolvedValue({ min_members: 5, max_members: 7 } as never);
+
+    const err: any = await applicationService.applyTournament(20, 10, 5, [1, 2]).catch((e) => e);
+
+    expect(err).toMatchObject({ status: 422, code: 'SQUAD_SIZE_INVALID' });
+    expect(err.extra).toEqual({ minMembers: 5, maxMembers: 7, submitted: 2 });
+    expect(mockedApplicationRepo.insertApplicationWithPlayers).not.toHaveBeenCalled();
+  });
+
+  it('throws SQUAD_SIZE_INVALID when the squad is larger than the sport maximum', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([makeMember({ user_id: 1 })]);
+    mockedSportTypeRepo.findSportTypeById.mockResolvedValue({ min_members: 1, max_members: 2 } as never);
+
+    await expect(applicationService.applyTournament(20, 10, 5, [1, 2, 3])).rejects.toMatchObject({
+      status: 422, code: 'SQUAD_SIZE_INVALID',
+    });
+  });
+
+  it('throws PLAYER_NOT_IN_TEAM when a submitted player is not a member of the team', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([makeMember({ user_id: 1 })]);
+
+    const err: any = await applicationService.applyTournament(20, 10, 5, [1, 99]).catch((e) => e);
+
+    expect(err).toMatchObject({ status: 422, code: 'PLAYER_NOT_IN_TEAM' });
+    expect(err.extra).toEqual({ userIds: [99] });
+    expect(mockedApplicationRepo.insertApplicationWithPlayers).not.toHaveBeenCalled();
+  });
+
+  it('checks the hard filter only for the submitted players, not the whole team', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({ gender_requirement: 'male' }));
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([
+      makeMember({ user_id: 1, full_name: 'Alice', gender: 'female' }),   // อยู่ในทีมแต่ไม่ได้ลงแข่ง
+      makeMember({ user_id: 2, full_name: 'Bob' }),
+    ]);
+    mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(501);
+
+    await expect(applicationService.applyTournament(20, 10, 5, [2])).resolves.toMatchObject({ id: 501 });
+  });
+
+  it('throws PLAYER_ALREADY_REGISTERED when a player is already registered with another team', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([makeMember({ user_id: 1, full_name: 'Alice' })]);
+    mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(null);   // ชน uq_tournament_player
+    mockedApplicationRepo.findPlayerConflicts.mockResolvedValue([
+      { user_id: 1, full_name: 'Alice', team_id: 11, team_name: 'Other Team' },
+    ]);
+
+    const err: any = await applicationService.applyTournament(20, 10, 5, [1]).catch((e) => e);
+
+    expect(err).toMatchObject({ status: 409, code: 'PLAYER_ALREADY_REGISTERED' });
+    expect(err.extra).toEqual({ players: [{ userId: 1, fullName: 'Alice', teamId: 11, teamName: 'Other Team' }] });
   });
 
   it('skips the gender check entirely when the tournament has no gender requirement', async () => {
@@ -890,9 +978,9 @@ describe('applyTournament', () => {
       makeMember({ user_id: 1, gender: 'female' }),
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplication.mockResolvedValue(500);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(500);
 
-    await expect(applicationService.applyTournament(20, 10, 5)).resolves.toMatchObject({
+    await expect(applicationService.applyTournament(20, 10, 5, [1])).resolves.toMatchObject({
       hardFilterPassed: true,
     });
   });

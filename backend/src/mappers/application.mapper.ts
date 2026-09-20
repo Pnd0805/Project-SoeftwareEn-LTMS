@@ -1,6 +1,7 @@
 import type { LeaderApplicationRow } from '../repositories/application.repo.js';
 import type { OrganizerApplicationRow } from '../repositories/application.repo.js';
 import type { ApplicationDetailRow } from '../repositories/application.repo.js';
+import type { ApplicationPlayerRow } from '../repositories/application.repo.js';
 
 export function toMyApplicationDto(row: LeaderApplicationRow) {
     return {
@@ -31,7 +32,17 @@ export type HardFilterDetailItem = {
     reason?: 'gender' | 'age' | 'year' | 'faculty';
 };
 
-export function toApplicationDetailDto(row: ApplicationDetailRow, softFilterDocumentUrls: string[]) {
+export type ApplicationPlayerDto = {
+    userId: number;
+    fullName: string;
+    avatarUrl: string | null;
+};
+
+export function toApplicationPlayerDto(row: ApplicationPlayerRow): ApplicationPlayerDto {
+    return { userId: row.user_id, fullName: row.full_name, avatarUrl: row.profile_image_key };
+}
+
+export function toApplicationDetailDto(row: ApplicationDetailRow, softFilterDocumentUrls: string[], players: ApplicationPlayerRow[]) {
     return {
         id: row.tournament_application_id,
         tournamentId: row.tournament_id,
@@ -39,5 +50,7 @@ export function toApplicationDetailDto(row: ApplicationDetailRow, softFilterDocu
         status: row.tournament_application_status,
         hardFilterDetails: (row.hard_filter_details ?? []) as HardFilterDetailItem[],
         softFilterDocuments: softFilterDocumentUrls,
+        // รายชื่อผู้เล่นที่ทีมส่งลงแข่ง (ว่างได้ถ้าใบสมัครตายแล้ว — ปลดล็อกผู้เล่นไปทีมอื่น)
+        players: players.map(toApplicationPlayerDto),
     };
 }

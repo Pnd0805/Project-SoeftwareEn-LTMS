@@ -119,7 +119,7 @@ export async function isMemberOf(teamId : number , userId : number) :Promise<Tea
 
 export async function findTeamMemberById(teamId : number) : Promise<TeamMemberWithUserRef[]>{
     const [ rows ] = await pool.query<(TeamMemberWithUserRef & RowDataPacket)[]>(`SELECT u.user_id , u.full_name , u.profile_image_key ,
-                                                                                tm.position , tm.joined_at FROM team_members tm 
+                                                                                tm.joined_at FROM team_members tm 
                                                                                 JOIN users u ON tm.user_id = u.user_id WHERE team_id = ?`,
                                                                                 [teamId]);
     return rows;
@@ -132,11 +132,6 @@ export async function findTeamIdOfUserInMatch(userId : number , matchId : number
                                                                               ON m.team_a_id = tm.team_id OR m.team_b_id = tm.team_id
                                                                               WHERE tm.user_id = ? AND m.match_id = ?`,[userId , matchId])
     return rows[0] ?? null;
-}
-
-export async function updateMember(userId : number , teamId : number, position : 'starter' | 'substitute'): Promise<number>{
-    const [ result ] = await pool.query<ResultSetHeader>('UPDATE team_members SET position = ? WHERE user_id = ? AND team_id = ?' ,[position , userId , teamId]);
-    return result.affectedRows;
 }
 
 export async function deleteMember(userId : number , teamId : number): Promise<number>{

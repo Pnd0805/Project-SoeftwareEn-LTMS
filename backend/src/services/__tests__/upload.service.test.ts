@@ -8,7 +8,7 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
 
 vi.mock('../../repositories/match.repo.js', () => ({
   findMatchById: vi.fn(),
-  isUserInTeams: vi.fn(),
+  isRegisteredPlayerOfMatch: vi.fn(),
 }));
 
 vi.mock('../../repositories/tournament.repo.js', () => ({
@@ -40,19 +40,19 @@ beforeEach(() => {
 describe('createPresignedUpload — checkin_document', () => {
   it('gives an upload URL to a player of the match while check-in is open', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
-    vi.mocked(MatchRepo.isUserInTeams).mockResolvedValue(true);
+    vi.mocked(MatchRepo.isRegisteredPlayerOfMatch).mockResolvedValue(true);
 
     const result = await uploadService.createPresignedUpload(checkinInput, 9001);
 
-    expect(MatchRepo.isUserInTeams).toHaveBeenCalledWith(9001, [11, 12]);
+    expect(MatchRepo.isRegisteredPlayerOfMatch).toHaveBeenCalledWith(9001, 1);
     expect(result.uploadUrl).toBe('https://s3/signed');
     expect(result.objectKey).toMatch(/^checkin_document\/1\/.+\.jpg$/);
     expect(result.expiresIn).toBe(1200);
   });
 
-  it('refuses a user who is not in either team with NOT_IN_APPROVED_ROSTER', async () => {
+  it('refuses a user the team did not register for this match with NOT_IN_APPROVED_ROSTER', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
-    vi.mocked(MatchRepo.isUserInTeams).mockResolvedValue(false);
+    vi.mocked(MatchRepo.isRegisteredPlayerOfMatch).mockResolvedValue(false);
 
     await expectAppError(uploadService.createPresignedUpload(checkinInput, 9999), 403, 'NOT_IN_APPROVED_ROSTER');
   });
@@ -61,7 +61,7 @@ describe('createPresignedUpload — checkin_document', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: status }));
 
     await expectAppError(uploadService.createPresignedUpload(checkinInput, 9001), 409, 'CHECKIN_NOT_OPEN');
-    expect(MatchRepo.isUserInTeams).not.toHaveBeenCalled();
+    expect(MatchRepo.isRegisteredPlayerOfMatch).not.toHaveBeenCalled();
   });
 
   it('returns MATCH_NOT_FOUND for an unknown match', async () => {

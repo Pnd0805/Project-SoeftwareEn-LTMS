@@ -198,7 +198,6 @@ export type TeamMemberRow = {
     team_member_id : number,
     team_id : number,
     user_id : number,
-    position : 'starter' | 'substitute';
     joined_at : Date
 };
 

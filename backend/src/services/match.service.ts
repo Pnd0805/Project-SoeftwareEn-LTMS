@@ -5,7 +5,7 @@ import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireRef
 import { getPresignedDownloadUrl } from './upload.service.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
-import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi } from '../mappers/match.mapper.js';
+import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi, toLineupPlayerDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
 import { buildPagination } from '../utils/pagination.js';
@@ -34,10 +34,9 @@ export async function getMatchDetail(match_id: number, userId?: number) {
     return toMatchDetailDto(match, canSeeRoomCode);
 }
 
-/** B8 — คนที่เกี่ยวกับแมตช์โดยตรง: สมาชิกทีมในแมตช์ / กรรมการของแมตช์ / ORG ของทัวร์ */
+/** B8 — คนที่เกี่ยวกับแมตช์โดยตรง: ผู้เล่นในรายชื่อลงแข่ง (application_players — มติ 19 ก.ย.) / กรรมการของแมตช์ / ORG ของทัวร์ */
 async function isMatchStaffOrPlayer(match: { match_id: number; tournament_id: number; team_a_id: number | null; team_b_id: number | null }, userId: number): Promise<boolean> {
-    const teamIds = [match.team_a_id, match.team_b_id].filter((t): t is number => t !== null);
-    if (teamIds.length > 0 && await MatchRepo.isUserInTeams(userId, teamIds)) return true;
+    if (await MatchRepo.isRegisteredPlayerOfMatch(userId, match.match_id)) return true;
     if (await isRefereeOfMatch(match.match_id, userId, match.tournament_id)) return true;
     const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
     return tournament !== null && tournament.requested_by_user_id === userId;
@@ -70,6 +69,7 @@ export async function setRoomCode(matchId: number, userId: number, roomCode: str
  * ทำให้ใช้ roster ปัจจุบันได้ถูกต้องเสมอ (B6 ห้ามเปลี่ยนคนระหว่างทัวร์) · ?role=player|referee
  */
 export async function listMyMatches(userId: number, filters: { role?: 'player' | 'referee' | undefined }) {
+    // ผู้เล่น = คนที่มีชื่อในรายชื่อลงแข่ง (application_players) ของทีมในแมตช์ — Q5-ก (20 ก.ย.) ไม่ใช่ทุกคนในคลังทีม
     const player = (await MatchRepo.findMatchesOfPlayer(userId)).map(r => ({
         id: r.match_id, role: 'player' as const, myTeamId: r.my_team_id,
         tournament: { id: r.tournament_id, name: r.tournament_name, sportTypeId: r.sport_type_id },
@@ -283,6 +283,24 @@ async function findMatchRoles(matchId: number, tournamentId: number, userId: num
     return { isOrganizer, isReferee };
 }
 
+/**
+ * M19 — รายชื่อผู้เล่นที่ลงแข่งของทั้งสองทีม พร้อมสถานะเช็คอิน (มติ 19 ก.ย. 2569)
+ * เปิดสาธารณะเหมือน M03/M04 — เป็นข้อมูลการแข่งขัน ไม่ใช่รายชื่อสมาชิกภายในทีม
+ */
+export async function getMatchLineups(matchId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const rows = await MatchRepo.findLineupsByMatch(matchId);
+    const forTeam = (teamId: number | null) => teamId === null
+        ? null
+        : { teamId, players: rows.filter(r => r.team_id === teamId).map(toLineupPlayerDto) };
+
+    return { matchId, teamA: forTeam(match.team_a_id), teamB: forTeam(match.team_b_id) };
+}
+
 export async function getMatchCheckins(matchId: number, userId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
@@ -329,9 +347,9 @@ export async function manualCheckin(matchId: number, refereeUserId: number, inpu
     if (match.match_status !== 'checkin_open') {
         throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
     }
-    const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
-    if (!(await MatchRepo.isUserInTeams(input.userId, teamIds))) {
-        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "ผู้เล่นคนนี้ไม่อยู่ในรายชื่อทีมของแมตช์นี้");
+    // ต้องเป็นคนที่ทีมส่งลงแข่ง (application_players) ไม่ใช่แค่อยู่ในคลังทีม — มติ 19 ก.ย. 2569
+    if (!(await MatchRepo.isRegisteredPlayerOfMatch(input.userId, matchId))) {
+        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "ผู้เล่นคนนี้ไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
     }
     const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId);
     if (existing) {
@@ -435,10 +453,9 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
         throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
     }
 
-    const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
-    const inRoster = await MatchRepo.isUserInTeams(userId, teamIds);
-    if (!inRoster) {
-        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อทีมที่ได้รับอนุมัติของแมตช์นี้");
+    // ต้องเป็นคนที่ทีมส่งลงแข่งในทัวร์นี้ (ไม่ใช่แค่เป็นสมาชิกทีม — มติ 19 ก.ย. 2569)
+    if (!(await MatchRepo.isRegisteredPlayerOfMatch(userId, matchId))) {
+        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
     }
 
     let status: 'success' | 'pending';

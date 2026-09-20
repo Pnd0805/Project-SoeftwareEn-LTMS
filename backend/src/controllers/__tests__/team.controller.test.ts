@@ -8,7 +8,6 @@ vi.mock('../../services/team.service.js', () => ({
   updateTeam: vi.fn(),
   deleteTeam: vi.fn(),
   getTeamMemberById: vi.fn(),
-  updateMember: vi.fn(),
   deleteMember: vi.fn(),
   createInvitation: vi.fn(),
   getAllInvitation: vi.fn(),
@@ -27,7 +26,6 @@ import {
   updateTeamById,
   deleteTeamById,
   getTeamMember,
-  updateTeamMember,
   deleteMember,
   createTeamInvitation,
   getAllInvitation,
@@ -198,39 +196,6 @@ describe('team.controller getTeamMember()', () => {
     mockedTeamService.getTeamMemberById.mockRejectedValue(serviceError);
 
     await expect(getTeamMember(req, res)).rejects.toBe(serviceError);
-  });
-});
-
-describe('team.controller updateTeamMember()', () => {
-  it('parses team id and user id from the route and responds 200 with the update result', async () => {
-    const req = {
-      params: { id: '10', uid: '5' },
-      body: { position: 'starter' },
-    } as unknown as Request;
-    const res = makeRes();
-    mockedParseId.mockReturnValueOnce(10).mockReturnValueOnce(5);
-    const serviceResult = { user_id: 5, position: 'starter' };
-    mockedTeamService.updateMember.mockResolvedValue(serviceResult as any);
-
-    await updateTeamMember(req, res);
-
-    expect(mockedParseId).toHaveBeenNthCalledWith(1, '10', 'รหัสทีม', 'id');
-    expect(mockedParseId).toHaveBeenNthCalledWith(2, '5', 'รหัสผู้ใช้', 'uid');
-    expect(mockedTeamService.updateMember).toHaveBeenCalledWith(5, 10, 'starter');
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(serviceResult);
-  });
-
-  it('propagates the error and never calls the service when parseId fails on the team id', async () => {
-    const req = { params: { id: 'bad', uid: '5' }, body: {} } as unknown as Request;
-    const res = makeRes();
-    const parseError = new AppError(400, 'VALIDATION_FAILED', 'x');
-    mockedParseId.mockImplementation(() => {
-      throw parseError;
-    });
-
-    await expect(updateTeamMember(req, res)).rejects.toBe(parseError);
-    expect(mockedTeamService.updateMember).not.toHaveBeenCalled();
   });
 });
 

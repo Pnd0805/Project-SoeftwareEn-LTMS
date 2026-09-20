@@ -114,13 +114,16 @@ describe('toApplicationDetailDto', () => {
     };
     const presignedUrls = ['https://s3.example.com/doc1.pdf?sig=abc', 'https://s3.example.com/doc2.pdf?sig=def'];
 
-    expect(toApplicationDetailDto(row as any, presignedUrls)).toEqual({
+    const players = [{ user_id: 1, full_name: 'Somchai', profile_image_key: 'avatar/1.jpg' }];
+
+    expect(toApplicationDetailDto(row as any, presignedUrls, players)).toEqual({
       id: 1,
       tournamentId: 5,
       team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
       status: 'approved',
       hardFilterDetails: [{ userId: 1, fullName: 'Somchai', passed: true }],
       softFilterDocuments: presignedUrls,
+      players: [{ userId: 1, fullName: 'Somchai', avatarUrl: 'avatar/1.jpg' }],
     });
   });
 
@@ -136,8 +139,9 @@ describe('toApplicationDetailDto', () => {
       soft_filter_documents: null,
     };
 
-    const result = toApplicationDetailDto(row as any, []);
+    const result = toApplicationDetailDto(row as any, [], []);
     expect(result.hardFilterDetails).toEqual([]);
     expect(result.softFilterDocuments).toEqual([]);
+    expect(result.players).toEqual([]);
   });
 });

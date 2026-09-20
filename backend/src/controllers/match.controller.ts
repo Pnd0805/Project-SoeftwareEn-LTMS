@@ -99,6 +99,11 @@ export async function startMatch(req: Request, res: Response){
     res.status(200).json(await MatchService.startMatch(matchId, req.user.user_id));
 }
 
+export async function getMatchLineups(req: Request, res: Response){
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.getMatchLineups(matchId));
+}
+
 export async function getMatchCheckins(req: Request, res: Response){
     if(!req.user){
         throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");

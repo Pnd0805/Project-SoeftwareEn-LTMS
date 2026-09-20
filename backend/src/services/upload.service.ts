@@ -35,9 +35,8 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
         if (match.match_status !== 'checkin_open') {
             throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
         }
-        const teamIds = [match.team_a_id, match.team_b_id].filter((id): id is number => id !== null);
-        if (!(await MatchRepo.isUserInTeams(userId, teamIds))) {
-            throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อทีมที่ได้รับอนุมัติของแมตช์นี้");
+        if (!(await MatchRepo.isRegisteredPlayerOfMatch(userId, input.matchId))) {
+            throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
         }
         entityId = input.matchId;
     } else {

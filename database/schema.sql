@@ -127,7 +127,7 @@ CREATE TABLE team_members (
   team_member_id INT PRIMARY KEY AUTO_INCREMENT,
   team_id INT NOT NULL,
   user_id INT NOT NULL,
-  position ENUM('starter','substitute') NOT NULL DEFAULT 'starter',
+  -- ไม่มี position: ทีม = คลังผู้เล่น ใครลงแข่งดูที่ application_players (มติ 19 ก.ย. 2569, migration 019)
   joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
@@ -335,6 +335,22 @@ CREATE TABLE tournament_applications (
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
   FOREIGN KEY (reviewed_by) REFERENCES users(user_id),
   UNIQUE (tournament_id, team_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- รายชื่อผู้เล่นที่ทีมส่งลงแข่งในทัวร์นั้น (มติทีม 19 ก.ย. 2569, migration 018)
+--   ทีม = คลังผู้เล่น · ใบสมัคร = รายชื่อที่ส่งลงแข่ง จำนวนอยู่ใน [min_members, max_members] ของกีฬา
+--   ส่งแล้วล็อก แก้ไม่ได้ · ใบสมัครตาย → ลบแถวทิ้ง ผู้เล่นไปทีมอื่นในทัวร์เดียวกันได้
+CREATE TABLE application_players (
+  application_player_id INT PRIMARY KEY AUTO_INCREMENT,
+  tournament_application_id INT NOT NULL,
+  tournament_id INT NOT NULL,             -- ซ้ำกับใบสมัคร แต่ต้องมีเพื่อทำ UNIQUE ระดับทัวร์
+  user_id INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (tournament_application_id) REFERENCES tournament_applications(tournament_application_id) ON DELETE CASCADE,
+  FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  UNIQUE KEY uq_tournament_player (tournament_id, user_id),   -- คนเดียว ทีมเดียว ต่อหนึ่งทัวร์
+  UNIQUE KEY uq_application_player (tournament_application_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================================
@@ -745,4 +761,6 @@ INSERT INTO schema_migrations (name) VALUES
   ('014_bracket_nodes_backfill_teams.sql'),
   ('015_match_checkins_note.sql'),
   ('016_matches_room_code.sql'),
-  ('017_team_visibility_join_requests.sql');
+  ('017_team_visibility_join_requests.sql'),
+  ('018_application_players.sql'),   -- เดิมชื่อ 014 บน backend_shokun_2 — renumber ตอน merge 20 ก.ย. (ชนกับ 014 ของ BE_KN)
+  ('019_drop_team_member_position.sql');   -- เดิม 015

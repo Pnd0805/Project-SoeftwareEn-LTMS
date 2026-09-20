@@ -11,8 +11,12 @@ export const rejectApplicationErrorCodes = {
     reason: { code: 'APPLICATION_REJECT_REASON_REQUIRED', message: 'กรุณาระบุเหตุผลที่ปฏิเสธใบสมัคร' },
 };
 
+// P01 (มติทีม 19 ก.ย. 2569): ต้องส่งรายชื่อผู้เล่นที่ลงแข่งมาด้วย — จำนวนเทียบ min/max ของกีฬาใน service
 export const applyTournamentSchema = z.object({
-    teamId: z.int('รหัสทีมต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกทีม')
+    teamId: z.int('รหัสทีมต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกทีม'),
+    playerIds: z.array(z.int('รหัสผู้เล่นต้องเป็นจำนวนเต็ม').positive('รหัสผู้เล่นไม่ถูกต้อง'), 'กรุณาเลือกผู้เล่นที่ลงแข่ง')
+        .min(1, 'กรุณาเลือกผู้เล่นที่ลงแข่งอย่างน้อย 1 คน')
+        .refine(ids => new Set(ids).size === ids.length, 'มีรายชื่อผู้เล่นซ้ำกัน')
 });
 
 export type ApplyTournamentInput = z.infer<typeof applyTournamentSchema>;

@@ -9,7 +9,7 @@ vi.mock('../../repositories/team.repo.js', () => ({
   findById: vi.fn(), isMemberOf: vi.fn(async () => null), countUnofficialTeamsByUser: vi.fn(async () => 0), countMemberByTeamId: vi.fn(async () => 3),
 }));
 vi.mock('../../repositories/sportType.repo.js', () => ({ findSportTypeById: vi.fn(async () => ({ sport_type_id: 1, min_members: 5, max_members: 11 })) }));
-vi.mock('../../repositories/application.repo.js', () => ({ findTeamTournamentConflictForUser: vi.fn(async () => null), findLockingTournamentOfTeam: vi.fn(async () => null) }));
+vi.mock('../../repositories/application.repo.js', () => ({ findTeamTournamentConflictForUser: vi.fn(async () => null) }));
 vi.mock('../../utils/checkExist.js', () => ({ checkTeam: vi.fn() }));
 
 import * as Service from '../joinRequest.service.js';
@@ -39,10 +39,8 @@ describe('createJoinRequest (T20)', () => {
   });
   it.each([
     ['ALREADY_MEMBER', () => vi.mocked(TeamRepo.isMemberOf).mockResolvedValueOnce({} as never), 409],
-    ['ROSTER_LOCKED', () => vi.mocked(ApplicationRepo.findLockingTournamentOfTeam).mockResolvedValueOnce({ tournament_id: 3, name: 'T' }), 409],
     ['TEAM_CONFLICT_OF_INTEREST', () => vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 3, name: 'T', role: 'referee' }), 409],
     ['TEAM_QUOTA_EXCEEDED', () => vi.mocked(TeamRepo.countUnofficialTeamsByUser).mockResolvedValueOnce(5), 422],
-    ['TEAM_FULL', () => vi.mocked(TeamRepo.countMemberByTeamId).mockResolvedValueOnce(11), 409],
     ['JOIN_REQUEST_PENDING', () => vi.mocked(JoinRepo.findPendingByTeamAndUser).mockResolvedValueOnce(request()), 409],
   ])('%s blocks the request', async (code, arrange, status) => {
     arrange();
@@ -56,12 +54,6 @@ describe('approve / reject / cancel (T22 T23 T25)', () => {
     vi.mocked(JoinRepo.findById).mockResolvedValue(request());
     await expect(Service.approveJoinRequest(10, 77, 1)).resolves.toEqual({ id: 77, userId: 8, status: 'approved', teamReadinessStatus: 'Ready' });
     expect(JoinRepo.approve).toHaveBeenCalledWith(77, 10, 8, 1);
-  });
-  it('approve refuses once the team filled up in the meantime', async () => {
-    vi.mocked(JoinRepo.findById).mockResolvedValue(request());
-    vi.mocked(TeamRepo.countMemberByTeamId).mockResolvedValueOnce(11);
-    await expect(Service.approveJoinRequest(10, 77, 1)).rejects.toMatchObject({ code: 'TEAM_FULL' });
-    expect(JoinRepo.approve).not.toHaveBeenCalled();
   });
   it('request of another team → 404; already answered → 409', async () => {
     vi.mocked(JoinRepo.findById).mockResolvedValueOnce(request({ team_id: 99 }));

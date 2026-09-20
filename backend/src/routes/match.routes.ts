@@ -16,6 +16,8 @@ router.get('/matches/:id' , optionalAuth , Match.getMatchDetail);   // optionalA
 router.put('/matches/:id/room-code' , requireAuth , validate(roomCodeSchema) , Match.setRoomCode);
 // /me/matches — แมตช์ของฉันทั้งผู้เล่นและกรรมการ
 router.get('/me/matches' , requireAuth , Match.listMyMatches);
+// M21 รายชื่อผู้เล่นที่ทีมส่งลงแข่ง + สถานะเช็คอิน — เปิดสาธารณะเหมือน M03/M04 (มติ 19 ก.ย. 2569)
+router.get('/matches/:id/lineups' , Match.getMatchLineups);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
 router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);

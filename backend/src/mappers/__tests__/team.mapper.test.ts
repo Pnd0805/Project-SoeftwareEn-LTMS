@@ -5,7 +5,6 @@ import {
   toMyTeam,
   toTeamDto,
   toTeamMemberDto,
-  toUpdateMember,
   toCreateTeamInvitation,
   toGetAllInvitation,
   getTeamOfficialRequestDto,
@@ -109,12 +108,11 @@ describe('toTeamDto', () => {
 });
 
 describe('toTeamMemberDto', () => {
-  it('maps user fields and position, converting joined_at to an ISO string', () => {
+  it('maps user fields, converting joined_at to an ISO string', () => {
     const row = {
       user_id: 5,
       full_name: 'สมชาย ใจดี',
       profile_image_key: 'avatar.png',
-      position: 'starter' as const,
       joined_at: new Date('2024-02-01T09:00:00Z'),
     };
 
@@ -122,7 +120,6 @@ describe('toTeamMemberDto', () => {
       userId: 5,
       fullName: 'สมชาย ใจดี',
       avatarUrl: 'avatar.png',
-      position: 'starter',
       joinedAt: '2024-02-01T09:00:00.000Z',
     });
   });
@@ -132,23 +129,10 @@ describe('toTeamMemberDto', () => {
       user_id: 5,
       full_name: 'สมชาย ใจดี',
       profile_image_key: null,
-      position: 'substitute' as const,
       joined_at: new Date('2024-02-01T09:00:00Z'),
     };
 
     expect(toTeamMemberDto(row as any).avatarUrl).toBeNull();
-  });
-});
-
-describe('toUpdateMember', () => {
-  it('maps user_id and position into a shorthand DTO', () => {
-    const row = { user_id: 7, position: 'starter' as const };
-    expect(toUpdateMember(row)).toEqual({ userId: 7, position: 'starter' });
-  });
-
-  it('preserves the "substitute" position value', () => {
-    const row = { user_id: 7, position: 'substitute' as const };
-    expect(toUpdateMember(row).position).toBe('substitute');
   });
 });
 

@@ -7,6 +7,13 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findRefereesAmongUsers: vi.fn(() => Promise.resolve([])),
   findEligibilityRules: vi.fn(),
   insertApplication: vi.fn(),
+  insertApplicationWithPlayers: vi.fn(),
+  findPlayerConflicts: vi.fn(() => Promise.resolve([])),
+  deletePlayersByApplication: vi.fn(),
+}));
+
+vi.mock('../../repositories/sportType.repo.js', () => ({
+  findSportTypeById: vi.fn(() => Promise.resolve({ min_members: 1, max_members: 20 })),
 }));
 
 vi.mock('../../repositories/tournament.repo.js', () => ({
@@ -67,9 +74,9 @@ describe('application age eligibility', () => {
       },
     ] as any);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplication.mockResolvedValue(123);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(123);
 
-    await expect(ApplicationService.applyTournament(30, 20, 7)).resolves.toMatchObject({
+    await expect(ApplicationService.applyTournament(30, 20, 7, [7])).resolves.toMatchObject({
       id: 123,
       status: 'pending',
       hardFilterPassed: true,

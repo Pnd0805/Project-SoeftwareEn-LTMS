@@ -1,5 +1,6 @@
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as UploadService from './upload.service.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
@@ -60,8 +61,9 @@ export async function getApplicationDetail(applicationId: number, userId: number
     // P04 ต้องคืน presigned URL ไม่ใช่ S3 key ดิบ (ต่างจาก P03 ที่คืน key ดิบ) — ดู Part 3 ข้อ 11
     const rawKeys = app.soft_filter_documents ?? [];
     const softFilterDocumentUrls = await Promise.all(rawKeys.map(key => UploadService.getPresignedDownloadUrl(key)));
+    const players = await ApplicationRepo.findPlayersByApplication(applicationId);
 
-    return toApplicationDetailDto(app, softFilterDocumentUrls);
+    return toApplicationDetailDto(app, softFilterDocumentUrls, players);
 }
 
 export async function cancelApplication(applicationId: number, userId: number) {
@@ -79,6 +81,8 @@ export async function cancelApplication(applicationId: number, userId: number) {
     }
 
     await ApplicationRepo.updateApplicationStatus(applicationId, "cancelled");
+    // ใบสมัครตาย → ปลดล็อกผู้เล่น ไปอยู่ทีมอื่นในทัวร์เดียวกันได้ (มติ 19 ก.ย. 2569)
+    await ApplicationRepo.deletePlayersByApplication(applicationId);
     return { id: applicationId, status: 'cancelled' };
 }
 
@@ -101,6 +105,7 @@ export async function withdrawApplication(applicationId: number, userId: number)
     }
 
     await ApplicationRepo.updateApplicationStatus(applicationId, "withdrawn");
+    await ApplicationRepo.deletePlayersByApplication(applicationId);
     const matchCount = await MatchRepo.countMatchesByTournament(app.tournament_id);
 
     // มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย (คู่ที่ยังไม่มาจะบายตอนคู่มาถึง)
@@ -140,10 +145,11 @@ export async function rejectApplication(applicationId: number, userId: number, r
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
     await ApplicationRepo.rejectApplicationInDb(applicationId, reason);
+    await ApplicationRepo.deletePlayersByApplication(applicationId);
     return { id: applicationId, status:'rejected', reason }
 }
 
-export async function applyTournament(tournamentId: number, teamId: number, userId: number) {
+export async function applyTournament(tournamentId: number, teamId: number, userId: number, playerIds: number[]) {
     // 1. โหลดทีม + เช็คว่าเป็นหัวหน้าทีม + เช็คว่า Ready
     const team = await ApplicationRepo.findTeamForApply(teamId);
     if (!team) {
@@ -190,7 +196,6 @@ export async function applyTournament(tournamentId: number, teamId: number, user
         throw new AppError(409, "ALREADY_APPLIED", "ทีมนี้สมัครทัวร์นาเมนต์นี้ไปแล้ว");
     }
 
-    // 4. Hard Filter — วนเช็คสมาชิกทุกคนในทีมทีละคน
     const members = await ApplicationRepo.findTeamMembersForFilter(teamId);
 
     // 3.1 Conflict of interest (มติ 18 ก.ย. 2569): ORG หรือกรรมการของทัวร์นี้ มีชื่อในทีมไม่ได้ แม้ไม่ได้ลงแข่ง
@@ -207,13 +212,33 @@ export async function applyTournament(tournamentId: number, teamId: number, user
         throw new AppError(409, "TEAM_CONFLICT_OF_INTEREST",
             "สมาชิกในทีมเป็นผู้จัดหรือกรรมการของทัวร์นาเมนต์นี้ สมัครไม่ได้", { conflicts });
     }
+    // 4. รายชื่อผู้เล่นที่ลงแข่ง (มติ 19 ก.ย. 2569) — ทีม = คลังผู้เล่น, ใบสมัคร = รายชื่อที่ส่งลงแข่ง
+    //    จำนวนต้องอยู่ใน [min_members, max_members] ของกีฬา · ส่งแล้วล็อก แก้ไม่ได้ · ทุกคนต้องเป็นสมาชิกทีมนี้จริง
+    const sport = await SportTypeRepo.findSportTypeById(tournament.sport_type_id);
+    if (!sport) {
+        throw new AppError(409, "TOURNAMENT_CONFIGURATION_INVALID", "ทัวร์นาเมนต์นี้ยังไม่ได้กำหนดประเภทกีฬาที่ถูกต้อง");
+    }
+    if (playerIds.length < sport.min_members || playerIds.length > sport.max_members) {
+        throw new AppError(422, "SQUAD_SIZE_INVALID",
+            `กีฬานี้ต้องส่งผู้เล่น ${sport.min_members}–${sport.max_members} คน (ส่งมา ${playerIds.length} คน)`,
+            { minMembers: sport.min_members, maxMembers: sport.max_members, submitted: playerIds.length });
+    }
+
+    const memberById = new Map(members.map(m => [m.user_id, m]));
+    const notInTeam = playerIds.filter(id => !memberById.has(id));
+    if (notInTeam.length > 0) {
+        throw new AppError(422, "PLAYER_NOT_IN_TEAM", "มีผู้เล่นที่ไม่ได้อยู่ในทีมนี้", { userIds: notInTeam });
+    }
+    const squad = playerIds.map(id => memberById.get(id)!);
+
+    // 5. Hard Filter — เช็คเฉพาะคนที่ลงแข่ง (เดิมเช็คทั้งทีม คนเดียวไม่ผ่านแล้วทั้งทีมสมัครไม่ได้)
     const rules = await ApplicationRepo.findEligibilityRules(tournamentId);
     const yearRules = rules.filter(r => r.rule_type === 'year').map(r => r.rule_value);
     const facultyRules = rules.filter(r => r.rule_type === 'faculty').map(r => r.rule_value);
 
     const failedMembers: HardFilterFail[] = [];
 
-    for (const member of members) {
+    for (const member of squad) {
         if (tournament.gender_requirement !== 'any' && member.gender !== tournament.gender_requirement) {
             failedMembers.push({ userId: member.user_id, fullName: member.full_name, reason: 'gender' });
             continue;
@@ -244,12 +269,21 @@ export async function applyTournament(tournamentId: number, teamId: number, user
     }
 
     if (failedMembers.length > 0) {
-        throw new AppError(422, "HARD_FILTER_FAILED", "สมาชิกบางคนไม่ผ่านเงื่อนไขการสมัคร", { details: failedMembers });
+        throw new AppError(422, "HARD_FILTER_FAILED", "ผู้เล่นบางคนไม่ผ่านเงื่อนไขการสมัคร", { details: failedMembers });
     }
 
-    // 5. บันทึกใบสมัครใหม่ + เก็บผล Hard Filter ไว้ด้วย (ต้องเป็น array รายคน ไม่ใช่ object สรุป — P04 ดึงไปโชว์ตรงๆ)
-    const hardFilterDetails = members.map(m => ({ userId: m.user_id, fullName: m.full_name, passed: true }));
-    const newId = await ApplicationRepo.insertApplication(tournamentId, teamId, hardFilterDetails);
+    // 6. บันทึกใบสมัคร + รายชื่อผู้เล่นในทรานแซกชันเดียว (ต้องเกิดพร้อมกันหรือไม่เกิดเลย)
+    //    hard_filter_details ต้องเป็น array รายคน ไม่ใช่ object สรุป — P04 ดึงไปโชว์ตรงๆ
+    const hardFilterDetails = squad.map(m => ({ userId: m.user_id, fullName: m.full_name, passed: true }));
+    const newId = await ApplicationRepo.insertApplicationWithPlayers(tournamentId, teamId, hardFilterDetails, playerIds);
 
-    return { id: newId, status: 'pending', hardFilterPassed: true };
+    // null = ชน uq_tournament_player — คนเดียวลงได้ทีมเดียวต่อหนึ่งทัวร์ (กันไว้ที่ DB เผื่อสองทีมสมัครพร้อมกัน)
+    if (newId === null) {
+        const taken = await ApplicationRepo.findPlayerConflicts(tournamentId, playerIds);
+        throw new AppError(409, "PLAYER_ALREADY_REGISTERED",
+            "มีผู้เล่นที่ถูกส่งลงแข่งทัวร์นาเมนต์นี้กับทีมอื่นไปแล้ว",
+            { players: taken.map(p => ({ userId: p.user_id, fullName: p.full_name, teamId: p.team_id, teamName: p.team_name })) });
+    }
+
+    return { id: newId, status: 'pending', hardFilterPassed: true, playerIds };
 }

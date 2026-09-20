@@ -216,25 +216,6 @@ export async function findTeamTournamentConflictForUser(teamId: number, userId: 
     return rows[0] ?? null;
 }
 
-/**
- * B6 roster lock (รายงาน FE 19 ก.ย.): ทีมที่มีใบสมัคร approved ในทัวร์ที่ยังไม่จบ แก้สมาชิกไม่ได้ — ต้องถอนตัว (P08) ก่อน
- * เหตุผล: roster ตอน verify ผล = roster ตอนถอนผล (B4) และทีมที่ผ่าน hard filter แล้วต้องไม่เปลี่ยนคน
- * คืนทัวร์ที่ล็อกอยู่ (null = อิสระ) · pending ยังไม่นับ — ORG ยังไม่รับ
- */
-export async function findLockingTournamentOfTeam(teamId: number): Promise<{ tournament_id: number; name: string } | null> {
-    const [rows] = await pool.query<({ tournament_id: number; name: string } & RowDataPacket)[]>(
-        `SELECT t.tournament_id, t.name
-         FROM tournament_applications a
-         JOIN tournaments t ON t.tournament_id = a.tournament_id
-         WHERE a.team_id = ? AND a.tournament_application_status = 'approved'
-           AND t.tournament_status NOT IN ('completed', 'auto_deleted', 'rejected')
-         ORDER BY t.event_start_date
-         LIMIT 1`,
-        [teamId]
-    );
-    return rows[0] ?? null;
-}
-
 /** A8: ORG หรือกรรมการ active ของทัวร์ที่ทีมนี้สมัคร (pending/approved) ดู roster ได้ — เช็คอินด้วยมือต้องมีรายชื่อ */
 export async function isTournamentStaffOfTeam(teamId: number, userId: number): Promise<boolean> {
     const [rows] = await pool.query<RowDataPacket[]>(
@@ -287,4 +268,145 @@ export async function insertApplication(
         [tournamentId, teamId, JSON.stringify(hardFilterDetails)]
     );
     return result.insertId;
+}
+
+// ---- รายชื่อผู้เล่นที่ส่งลงแข่ง (application_players, migration 018) ----
+
+export type PlayerConflictRow = {
+    user_id: number;
+    full_name: string;
+    team_id: number;
+    team_name: string;
+};
+
+/** คนที่มีชื่อลงแข่งทัวร์นี้กับทีมอื่นอยู่แล้ว (ใบสมัครที่ยังมีชีวิต — ใบที่ตายแล้วถูกลบแถวทิ้ง) */
+export async function findPlayerConflicts(tournamentId: number, userIds: number[]): Promise<PlayerConflictRow[]> {
+    if (userIds.length === 0) return [];
+    const [rows] = await pool.query<(PlayerConflictRow & RowDataPacket)[]>(
+        `SELECT ap.user_id, u.full_name, tm.team_id, tm.name AS team_name
+         FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         JOIN teams tm ON tm.team_id = ta.team_id
+         JOIN users u ON u.user_id = ap.user_id
+         WHERE ap.tournament_id = ? AND ap.user_id IN (?)`,
+        [tournamentId, userIds]
+    );
+    return rows;
+}
+
+/**
+ * P01 — ใบสมัคร + รายชื่อผู้เล่น ต้องเกิดพร้อมกันหรือไม่เกิดเลย
+ * คืน null = ชน uq_tournament_player (มีคนถูกส่งลงทัวร์นี้กับทีมอื่นไปแล้ว) → service ไปหาว่าใครชนด้วย findPlayerConflicts
+ */
+export async function insertApplicationWithPlayers(
+    tournamentId: number,
+    teamId: number,
+    hardFilterDetails: unknown,
+    playerIds: number[]
+): Promise<number | null> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [result] = await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_applications
+                (tournament_id, team_id, tournament_application_status, hard_filter_passed, hard_filter_details)
+             VALUES (?, ?, 'pending', TRUE, ?)`,
+            [tournamentId, teamId, JSON.stringify(hardFilterDetails)]
+        );
+        const applicationId = result.insertId;
+
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO application_players (tournament_application_id, tournament_id, user_id) VALUES ?`,
+            [playerIds.map(userId => [applicationId, tournamentId, userId])]
+        );
+
+        await conn.commit();
+        return applicationId;
+    } catch (err) {
+        await conn.rollback();
+        if ((err as { code?: string }).code === 'ER_DUP_ENTRY') return null;
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+export type ApplicationPlayerRow = {
+    user_id: number;
+    full_name: string;
+    profile_image_key: string | null;
+};
+
+export async function findPlayersByApplication(applicationId: number): Promise<ApplicationPlayerRow[]> {
+    const [rows] = await pool.query<(ApplicationPlayerRow & RowDataPacket)[]>(
+        `SELECT u.user_id, u.full_name, u.profile_image_key
+         FROM application_players ap
+         JOIN users u ON u.user_id = ap.user_id
+         WHERE ap.tournament_application_id = ?
+         ORDER BY u.full_name`,
+        [applicationId]
+    );
+    return rows;
+}
+
+/** ใบสมัครตาย (cancel/reject/withdraw) → ปลดล็อกผู้เล่นให้ไปอยู่ทีมอื่นในทัวร์เดียวกันได้ */
+export async function deletePlayersByApplication(applicationId: number): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE FROM application_players WHERE tournament_application_id = ?`,
+        [applicationId]
+    );
+    return result.affectedRows;
+}
+
+export type LiveSquadRow = {
+    tournament_application_id: number;
+    tournament_id: number;
+    tournament_name: string;
+    match_count: number;      // > 0 = สร้างสายแล้ว → ล็อกรายชื่อ ถอนทีมก่อนถึงจะเอาคนออกได้
+    squad_size: number;
+    status: 'pending' | 'approved';   // Q2-ค (20 ก.ย.): approved ก็ล็อกแล้ว ไม่ต้องรอสร้างสาย
+};
+
+/**
+ * ทัวร์ที่ "ยังมีชีวิต" (pending/approved) ซึ่งทีมนี้ส่งคนนี้ลงแข่งไว้
+ * ใช้ตอนหัวหน้าทีมจะเอาคนออกจากทีม (มติ 19 ก.ย. 2569) — userId = undefined คือดูทั้งทีม (ตอนลบทีม)
+ */
+export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Promise<LiveSquadRow[]> {
+    const [rows] = await pool.query<(LiveSquadRow & RowDataPacket)[]>(
+        `SELECT ta.tournament_application_id, ta.tournament_id, t.name AS tournament_name, ta.tournament_application_status AS status,
+                (SELECT COUNT(*) FROM matches m WHERE m.tournament_id = ta.tournament_id) AS match_count,
+                (SELECT COUNT(*) FROM application_players p
+                  WHERE p.tournament_application_id = ta.tournament_application_id) AS squad_size
+         FROM tournament_applications ta
+         JOIN tournaments t ON t.tournament_id = ta.tournament_id
+         WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')
+           AND (? IS NULL OR EXISTS (SELECT 1 FROM application_players ap
+                                      WHERE ap.tournament_application_id = ta.tournament_application_id
+                                        AND ap.user_id = ?))`,
+        [teamId, userId ?? null, userId ?? null]
+    );
+    return rows;
+}
+
+/** คนออกจากทีม → ตัดชื่อออกจากรายชื่อที่ส่งลงแข่งของใบสมัครที่ยังมีชีวิต */
+export async function deletePlayerFromLiveSquads(teamId: number, userId: number): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE ap FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         WHERE ta.team_id = ? AND ap.user_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+        [teamId, userId]
+    );
+    return result.affectedRows;
+}
+
+/** ลบทีม → ปลดล็อกผู้เล่นทุกคนของทีมนั้นในทุกใบสมัครที่ยังมีชีวิต */
+export async function deleteAllPlayersOfTeamSquads(teamId: number): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE ap FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+        [teamId]
+    );
+    return result.affectedRows;
 }

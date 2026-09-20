@@ -67,20 +67,22 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
         ON DUPLICATE KEY UPDATE played=played+1, lost=lost+1, updated_at=NOW()`,
         [match.tournament_id, loserId]);
 
-    await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
-                                       SELECT user_id, ?, 1, 1, 0, 0 FROM team_members WHERE team_id = ?
-                                       ON DUPLICATE KEY UPDATE
-                                       matches_played = matches_played + 1, wins = wins + 1 , updated_at = NOW()`, [sportId , winnerId]);
-    await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
-                                       SELECT user_id, ?, 1, 0, 1, 0 FROM team_members WHERE team_id = ?
-                                       ON DUPLICATE KEY UPDATE
-                                       matches_played = matches_played + 1, losses = losses + 1 , updated_at = NOW()`, [sportId , loserId]);
+    // player stats ให้เฉพาะคนที่ทีมส่งลงแข่งในทัวร์นี้ (application_players — มติ 19 ก.ย.) ไม่ใช่ทุกคนในคลังทีม
+    for(const [teamId, won] of [[winnerId, 1], [loserId, 0]] as const){
+        await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
+                                           SELECT ap.user_id, ?, 1, ?, ?, 0 FROM application_players ap
+                                           JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+                                           WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved'
+                                           ON DUPLICATE KEY UPDATE
+                                           matches_played = matches_played + 1, wins = wins + ?, losses = losses + ?, updated_at = NOW()`,
+                                           [sportId, won, 1 - won, match.tournament_id, teamId, won, 1 - won]);
+    }
 }
 
 /**
  * B4 — ถอนผลที่ verify ไปแล้ว (กลับด้าน applyOutcomeTx) ก่อน reject/amend
  * service ต้องเช็คก่อนว่าแมตช์ถัดไปยัง scheduled (ไม่งั้นทีมที่ถูกเอาออกอาจแข่ง/บายไปแล้ว)
- * player stats ถอนตาม roster ปัจจุบัน — ตรงกับตอนบวกเพราะ B6 roster lock ห้ามเปลี่ยนคนระหว่างทัวร์ · GREATEST(0) กันติดลบ
+ * player stats ถอนตามรายชื่อลงแข่ง (application_players) ซึ่งล็อกหลัง approved · GREATEST(0) กันติดลบ
  */
 async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number){
     for(const [teamId, nextId] of [[winnerId, match.next_match_id], [loserId, match.loser_next_match_id]] as const){
@@ -97,14 +99,16 @@ async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId :
         `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), lost = GREATEST(lost - 1, 0), updated_at = NOW()
          WHERE tournament_id = ? AND team_id = ?`, [match.tournament_id, loserId]);
 
-    await conn.query<ResultSetHeader>(
-        `UPDATE player_profile_stats ps JOIN team_members tm ON tm.user_id = ps.user_id
-         SET ps.matches_played = GREATEST(ps.matches_played - 1, 0), ps.wins = GREATEST(ps.wins - 1, 0), ps.updated_at = NOW()
-         WHERE tm.team_id = ? AND ps.sport_type_id = ?`, [winnerId, sportId]);
-    await conn.query<ResultSetHeader>(
-        `UPDATE player_profile_stats ps JOIN team_members tm ON tm.user_id = ps.user_id
-         SET ps.matches_played = GREATEST(ps.matches_played - 1, 0), ps.losses = GREATEST(ps.losses - 1, 0), ps.updated_at = NOW()
-         WHERE tm.team_id = ? AND ps.sport_type_id = ?`, [loserId, sportId]);
+    // ถอนจากรายชื่อลงแข่งชุดเดียวกับที่บวก (application_players ล็อกหลัง approved — Q2-ค) จึงตรงกันเสมอ
+    for(const [teamId, won] of [[winnerId, 1], [loserId, 0]] as const){
+        await conn.query<ResultSetHeader>(
+            `UPDATE player_profile_stats ps
+             JOIN application_players ap ON ap.user_id = ps.user_id
+             JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+             SET ps.matches_played = GREATEST(ps.matches_played - 1, 0), ps.wins = GREATEST(ps.wins - ?, 0), ps.losses = GREATEST(ps.losses - ?, 0), ps.updated_at = NOW()
+             WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved' AND ps.sport_type_id = ?`,
+            [won, 1 - won, match.tournament_id, teamId, sportId]);
+    }
 }
 
 function loserOf(match : MatchRow, winnerId : number): number{
