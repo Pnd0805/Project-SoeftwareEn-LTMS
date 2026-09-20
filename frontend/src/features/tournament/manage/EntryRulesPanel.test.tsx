@@ -41,6 +41,9 @@ describe('EntryRulesPanel amendment schedule', () => {
     const send = screen.getByRole('button', { name: 'Send to an admin' })
     expect(send).toBeDisabled()
 
+    /* เหตุผลเป็นช่องบังคับของ amendmentRequestSchema (migration 020) — กรอกให้ครบ
+       ก่อน ไม่งั้นปุ่มยังปิดอยู่ด้วยเหตุผลคนละข้อกับที่เทสต์นี้ตั้งใจวัด */
+    fireEvent.change(screen.getByLabelText(/Why the change is needed/), { target: { value: 'ปีนี้จัดร่วมสองคณะ' } })
     fireEvent.change(screen.getByLabelText('Correct first match date'), { target: { value: '2026-10-06' } })
     expect(send).toBeEnabled()
     fireEvent.click(send)
@@ -57,9 +60,12 @@ describe('EntryRulesPanel amendment schedule', () => {
     detail.current = { ...detail.current, eventStartDate: '2026-10-06' }
     render(<EntryRulesPanel t={tournament} />)
     fireEvent.click(screen.getByRole('button', { name: 'Request a change' }))
+    fireEvent.change(screen.getByLabelText(/Why the change is needed/), { target: { value: 'ปีนี้จัดร่วมสองคณะ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send to an admin' }))
 
     expect(mutate).toHaveBeenCalledOnce()
     expect(mutate.mock.calls[0][0].changes).not.toHaveProperty('eventStartDate')
+    /* เหตุผลต้องไปกับคำขอด้วย ไม่ใช่แค่ปลดล็อกปุ่มแล้วหายไป */
+    expect(mutate.mock.calls[0][0].reason).toBe('ปีนี้จัดร่วมสองคณะ')
   })
 })

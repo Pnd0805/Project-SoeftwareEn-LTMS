@@ -57,6 +57,10 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const [gender, setGender] = useState<GenderRequirement>('any')
   const [minAge, setMinAge] = useState('')
   const [maxAge, setMaxAge] = useState('')
+  /* ช่องเหตุผลกลับมาแล้วตั้งแต่ migration 020 — รอบก่อนเราถอดทิ้งเพราะ
+     `tournament_amendment_requests` มีแต่ `rejection_reason` ของแอดมิน ตอนนี้มี
+     `request_reason` ของผู้ขอ และ schema บังคับ ไม่กรอกคือ 400 */
+  const [reason, setReason] = useState('')
   const [eventStartDate, setEventStartDate] = useState('')
 
   const registrationOpen = detail.data?.registrationOpen ?? false
@@ -69,6 +73,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
 
   const startEditing = () => {
     requestChange.reset()
+    setReason('')
     setDraftFaculties(currentFaculties)
     setDraftYears(currentYears)
     setGender(detail.data?.genderRequirement ?? 'any')
@@ -84,10 +89,10 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     && draftFaculties[0] === organizingFacultyId
 
   const send = () => {
-    if (requestChange.isPending || (scheduleNeedsFix && !correctedScheduleIsValid)) return
+    if (requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)) return
     requestChange.mutate({
       rules: null,
-      reason: '',
+      reason,
       changes: {
         eligibilityRules: toEligibilityRules(draftFaculties, draftYears),
         genderRequirement: gender,
@@ -231,11 +236,11 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                 : 'The faculty admitted is not the one running the tournament.'}</>}
         </Banner>
 
-        {/* คำขอแก้ไขไม่มีช่องเหตุผลให้ผู้จัดเขียน — บอกไว้ ดีกว่าให้พิมพ์ลงช่องที่ไม่ถูกส่ง */}
-        <div className="sub">
-          The admin sees the conditions you are asking for, not a reason for them — the request has no
-          field for one. Say why in an announcement or a message if it needs saying.
-        </div>
+        {/* บังคับกรอก เพราะ amendmentRequestSchema บังคับ — ปล่อยว่างแล้วเด้ง 400 ทั้งใบ */}
+        <Field label="Why the change is needed — the admin reads this" htmlFor="er-why">
+          <textarea id="er-why" rows={3} value={reason} onChange={e => setReason(e.target.value)}
+            placeholder="Two faculties merged their intakes, so the year rule now excludes half the entrants." />
+        </Field>
 
         {requestChange.isError ? (
           <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}</Banner>
@@ -244,7 +249,8 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setOpen(false)}>Cancel</button>
           <button className="btn primary" type="button"
-            disabled={requestChange.isPending || (scheduleNeedsFix && !correctedScheduleIsValid)} onClick={send}>
+            disabled={requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)}
+            onClick={send}>
             {requestChange.isPending ? 'Sending…' : 'Send to an admin'}
           </button>
         </div>

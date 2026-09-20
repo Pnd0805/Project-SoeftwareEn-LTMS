@@ -511,9 +511,13 @@ export async function requestFilterChange(
   if (Object.keys(changes).length === 0) {
     return blockedRequest<void>("ยังไม่ได้เปลี่ยนเงื่อนไขไหนเลย");
   }
+  /* เหตุผลเป็นช่องบังคับตั้งแต่ migration 020 (มติ 20 ก.ย.) — เคยไม่มีที่เก็บ เราจึง
+     ถอดช่องกรอกออกไปรอบหนึ่ง ตอนนี้กลับมาแล้ว ไม่ส่งมาคือ 400 ทุกใบ */
+  const reason = input.reason.trim();
+  if (!reason) return blockedRequest<void>("กรุณาระบุเหตุผลที่ขอแก้ไข");
   return apiFetch(`/tournaments/${id}/amendment-requests`, {
     method: "POST",
-    body: JSON.stringify({ requestedChanges: changes }),
+    body: JSON.stringify({ requestedChanges: changes, reason }),
   });
 }
 
