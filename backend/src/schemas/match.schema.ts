@@ -1,5 +1,10 @@
 import * as z from 'zod';
 
+// B8 — รหัสห้องเกมของแมตช์ออนไลน์ · null = ล้าง
+export const roomCodeSchema = z.object({
+    roomCode : z.string().trim().min(1).max(50).nullable()
+});
+
 export const livestreamSchema = z.object({
     youtubeUrl : z.string().nullable()   // null = ล้างลิงก์ (FE gaps 19 ก.ย.)
 });

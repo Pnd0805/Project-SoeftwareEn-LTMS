@@ -85,7 +85,7 @@ export async function findMatchesByTournament(
 
 export type MatchDetailRow = Pick<MatchRow, 
     'match_id' | 'tournament_id' | 'round_number' | 'team_a_id' | 'team_b_id' | 
-    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode'
+    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode' | 'room_code'
 > & MatchResultSummaryCols & {
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
@@ -96,7 +96,7 @@ export type MatchDetailRow = Pick<MatchRow,
 export async function findMatchById(Id: number): Promise<MatchDetailRow | null> {
     const [rows] = await pool.query<(MatchDetailRow & RowDataPacket)[]>(
         `SELECT 
-            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode ,
+            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.room_code ,
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
@@ -319,6 +319,35 @@ type InsertCheckinInput = {
     note?: string | null;           // M19 เหตุผลที่อนุโลม — คอลัมน์ note (migration 015) ไม่ใช่ rejection_reason
 };
 
+/** /me/matches (20 ก.ย.) — แมตช์ที่ทีมของ user อยู่ (team_a/b เป็นทีมที่ user เป็นสมาชิก) ทุกทัวร์ */
+export type MyPlayerMatchRow = {
+    match_id: number; round_number: number | null; scheduled_time: Date | null; scheduled_end_time: Date | null;
+    venue: string | null; mode: MatchRow['mode']; match_status: MatchRow['match_status'];
+    tournament_id: number; tournament_name: string; sport_type_id: number;
+    team_a_id: number | null; team_a_name: string | null; team_b_id: number | null; team_b_name: string | null;
+    my_team_id: number;
+};
+
+export async function findMatchesOfPlayer(userId: number): Promise<MyPlayerMatchRow[]> {
+    const [rows] = await pool.query<(MyPlayerMatchRow & RowDataPacket)[]>(
+        `SELECT m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
+                t.tournament_id, t.name AS tournament_name, t.sport_type_id,
+                ta.team_id AS team_a_id, ta.name AS team_a_name, tb.team_id AS team_b_id, tb.name AS team_b_name,
+                MIN(tm.team_id) AS my_team_id
+         FROM team_members tm
+         JOIN matches m ON m.team_a_id = tm.team_id OR m.team_b_id = tm.team_id
+         JOIN tournaments t ON t.tournament_id = m.tournament_id
+         LEFT JOIN teams ta ON ta.team_id = m.team_a_id
+         LEFT JOIN teams tb ON tb.team_id = m.team_b_id
+         WHERE tm.user_id = ?
+         GROUP BY m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
+                  t.tournament_id, t.name, t.sport_type_id, ta.team_id, ta.name, tb.team_id, tb.name
+         ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`,
+        [userId]
+    );
+    return rows;
+}
+
 /** คืน null ถ้าชน UNIQUE(match_id, user_id) — คนเดียวกันเช็คอินแมตช์นี้ไปแล้ว (service จะดึงแถวเดิมมาตอบแทน) */
 export async function insertCheckin(input: InsertCheckinInput): Promise<MatchCheckinRow | null> {
     let result: ResultSetHeader;
@@ -388,6 +417,13 @@ export async function findRefereeCoverage(tournamentId : number): Promise<MatchR
            AND m.match_status <> 'completed'   -- แมตช์ที่จบแล้ว (รวม walkover จากทีมถอนตัว) ไม่ต้องมีกรรมการอีก
          ORDER BY m.scheduled_time, m.match_id, tr.tournament_referee_id`, [tournamentId]);
     return rows;
+}
+
+export async function updateRoomCode(matchId : number , roomCode : string | null): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        'UPDATE matches SET room_code = ?, updated_at = NOW() WHERE match_id = ?',
+        [roomCode, matchId]);
+    return result.affectedRows === 1;
 }
 
 export async function updateLivestreamUrl(matchId : number , youtubeUrl : string | null): Promise<boolean>{

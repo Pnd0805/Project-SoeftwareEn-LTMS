@@ -365,6 +365,7 @@ CREATE TABLE matches (
   match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed','result_rejected') NOT NULL DEFAULT 'scheduled',
   mode ENUM('onsite','online') NOT NULL,
   livestream_url VARCHAR(500) NULL,
+  room_code VARCHAR(50) NULL,        -- แมตช์ online: รหัสห้องเกม (migration 016) ตั้งโดยกรรมการ/ORG
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
@@ -723,4 +724,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('012_forfeit_organizer_role.sql'),
   ('013_team_invitations_expires_at.sql'),
   ('014_bracket_nodes_backfill_teams.sql'),
-  ('015_match_checkins_note.sql');
+  ('015_match_checkins_note.sql'),
+  ('016_matches_room_code.sql');

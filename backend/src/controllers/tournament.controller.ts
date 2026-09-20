@@ -30,6 +30,12 @@ export async function getMyTournamentRequests(req: Request, res: Response) {
     res.status(200).json(await TournamentService.getMyTournamentRequests(userId(req), offset, newpage, newpageSize));
 }
 
+export async function getMyTournaments(req: Request, res: Response) {
+    const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+    const status = typeof req.query['status'] === 'string' ? req.query['status'] : undefined;
+    res.status(200).json(await TournamentService.getMyTournaments(userId(req), status, offset, newpage, newpageSize));
+}
+
 export async function getPendingTournamentRequests(req: Request, res: Response) {
     const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
     res.status(200).json(await TournamentService.getPendingTournamentRequests(userId(req), offset, newpage, newpageSize));

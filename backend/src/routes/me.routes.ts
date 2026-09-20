@@ -14,4 +14,6 @@ router.get('/teams' , requireAuth , TeamController.getMyTeam);
 
 router.get('/invitations' , requireAuth , getMyInvitation);
 router.get('/tournament-requests', requireAuth, TournamentController.getMyTournamentRequests);
+// FE-get-me-tournaments-full (20 ก.ย.) — การ์ดเต็มทุกสถานะ ?status=&page=
+router.get('/tournaments', requireAuth, TournamentController.getMyTournaments);
 export default router;

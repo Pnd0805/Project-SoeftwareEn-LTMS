@@ -1,5 +1,6 @@
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as RefereeService from './referee.service.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
@@ -24,12 +25,67 @@ export async function getTournamentMatches(
     return { items: data, pagination };
 }
 
-export async function getMatchDetail(match_id: number) {
+export async function getMatchDetail(match_id: number, userId?: number) {
     const match = await MatchRepo.findMatchById(match_id);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
-    return toMatchDetailDto(match);
+    const canSeeRoomCode = userId !== undefined && match.room_code !== null && await isMatchStaffOrPlayer(match, userId);
+    return toMatchDetailDto(match, canSeeRoomCode);
+}
+
+/** B8 — คนที่เกี่ยวกับแมตช์โดยตรง: สมาชิกทีมในแมตช์ / กรรมการของแมตช์ / ORG ของทัวร์ */
+async function isMatchStaffOrPlayer(match: { match_id: number; tournament_id: number; team_a_id: number | null; team_b_id: number | null }, userId: number): Promise<boolean> {
+    const teamIds = [match.team_a_id, match.team_b_id].filter((t): t is number => t !== null);
+    if (teamIds.length > 0 && await MatchRepo.isUserInTeams(userId, teamIds)) return true;
+    if (await isRefereeOfMatch(match.match_id, userId, match.tournament_id)) return true;
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    return tournament !== null && tournament.requested_by_user_id === userId;
+}
+
+/** B8 — PUT /matches/:id/room-code: กรรมการของแมตช์หรือ ORG ตั้งรหัสห้องของแมตช์ online · null = ล้าง */
+export async function setRoomCode(matchId: number, userId: number, roomCode: string | null) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.mode !== 'online') {
+        throw new AppError(409, "MATCH_NOT_ONLINE", "รหัสห้องใช้ได้เฉพาะแมตช์ออนไลน์");
+    }
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    const isOrg = tournament !== null && tournament.requested_by_user_id === userId;
+    if (!isOrg && !(await isRefereeOfMatch(matchId, userId, match.tournament_id))) {
+        throw new AppError(403, "NOT_MATCH_STAFF", "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ตั้งรหัสห้องได้");
+    }
+    if (match.match_status === 'completed') {
+        throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้จบแล้ว");
+    }
+    await MatchRepo.updateRoomCode(matchId, roomCode);
+    return { matchId, roomCode };
+}
+
+/**
+ * /me/matches (20 ก.ย.) — แมตช์ของฉันทั้ง 2 บทบาท: ผู้เล่น (ทีมที่ฉันเป็นสมาชิกอยู่ในแมตช์) + กรรมการ (รับแมตช์แล้ว, B7)
+ * เรียงตามเวลาแข่ง · ?upcoming=true ตัดที่ completed · ?role=player|referee
+ */
+export async function listMyMatches(userId: number, filters: { upcoming?: boolean | undefined; role?: 'player' | 'referee' | undefined }) {
+    const player = (await MatchRepo.findMatchesOfPlayer(userId)).map(r => ({
+        id: r.match_id, role: 'player' as const, myTeamId: r.my_team_id,
+        tournament: { id: r.tournament_id, name: r.tournament_name, sportTypeId: r.sport_type_id },
+        round: r.round_number,
+        teamA: r.team_a_id !== null ? { id: r.team_a_id, name: r.team_a_name! } : null,
+        teamB: r.team_b_id !== null ? { id: r.team_b_id, name: r.team_b_name! } : null,
+        scheduledTime: r.scheduled_time, scheduledEndTime: r.scheduled_end_time, venue: r.venue, mode: r.mode, status: r.match_status,
+    }));
+    const referee = (await RefereeService.listMyRefereeMatches(userId, {})).items.map(m => ({ ...m, role: 'referee' as const, myTeamId: null }));
+    const items = [...player, ...referee]
+        .filter(m => filters.role === undefined || m.role === filters.role)
+        .filter(m => !filters.upcoming || m.status !== 'completed')
+        .sort((a, b) => {
+            const ta = a.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER, tb = b.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
+            return ta !== tb ? ta - tb : a.id - b.id;
+        });
+    return { items };
 }
 
 /** วันที่ (ไทย UTC+7) ของ instant นี้ ในรูป YYYY-MM-DD — ไว้เทียบกับ DATE ของทัวร์ */

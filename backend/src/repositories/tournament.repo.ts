@@ -191,6 +191,22 @@ export type PublicTournamentFilters = {
     query?: string | undefined;
 };
 
+/** /me/tournaments (20 ก.ย.) — ทัวร์ที่ฉันเป็น ORG ทุกสถานะ (ยกเว้นที่ลบ) — การ์ดเต็มไม่ต้อง N+1 */
+export async function findTournamentsByOrganizer(userId: number, status: TournamentRow['tournament_status'] | undefined, offset: number, pageSize: number): Promise<{ rows: TournamentRow[]; totalItems: number }> {
+    const where = ['t.requested_by_user_id = ?', 't.deleted_at IS NULL'];
+    const params: Array<number | string> = [userId];
+    if (status !== undefined) { where.push('t.tournament_status = ?'); params.push(status); }
+    const whereSql = where.join(' AND ');
+    const [rows] = await pool.query<(TournamentRow & RowDataPacket)[]>(
+        `SELECT t.* FROM tournaments t WHERE ${whereSql} ORDER BY t.event_start_date DESC, t.tournament_id DESC LIMIT ? OFFSET ?`,
+        [...params, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM tournaments t WHERE ${whereSql}`, params
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
 export async function findPublicTournaments(filters: PublicTournamentFilters, offset: number, pageSize: number): Promise<{ rows: TournamentRow[]; totalItems: number }> {
     const where = ["t.tournament_status = 'public'", 't.deleted_at IS NULL'];
     const params: Array<number | string> = [];

@@ -81,9 +81,10 @@ export type MatchDetailItemDto = MatchResultSummaryDto & {
     checkinOpenAt: Date | null; 
     status: string; 
     mode : 'onsite' | 'online',
+    roomCode : string | null;   // B8 — เฉพาะแมตช์ online และคนดูเป็นสมาชิกทีมในแมตช์/กรรมการ/ORG (ไม่งั้น null)
 }
 
-export function toMatchDetailDto(row: MatchDetailRow): MatchDetailItemDto {
+export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): MatchDetailItemDto {
     return {
         id: row.match_id,
         tournamentId: row.tournament_id,
@@ -100,6 +101,7 @@ export function toMatchDetailDto(row: MatchDetailRow): MatchDetailItemDto {
         checkinOpenAt: row.checkin_open_at,
         status: row.match_status,
         mode: row.mode,
+        roomCode: canSeeRoomCode ? row.room_code : null,
         ...toMatchResultSummary(row),
     };
 }

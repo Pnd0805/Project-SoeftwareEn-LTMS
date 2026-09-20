@@ -306,6 +306,18 @@ export async function rejectTournament(tournamentId: number, userId: number, rea
     return { id: tournamentId, status: 'rejected' as const, reason };
 }
 
+const tournamentStatuses = new Set(['pending_approval', 'rejected', 'private', 'public', 'completed', 'auto_deleted']);
+
+/** GET /me/tournaments — การ์ดเต็มของทัวร์ที่ฉันจัด ทุกสถานะ (+ status, rejectionReason) */
+export async function getMyTournaments(userId: number, status: string | undefined, offset: number, page: number, pageSize: number) {
+    if (status !== undefined && !tournamentStatuses.has(status)) validationError('status ไม่ถูกต้อง', { status: 'ค่าที่ไม่รู้จัก' });
+    const { rows, totalItems } = await TournamentRepo.findTournamentsByOrganizer(userId, status as TournamentRow['tournament_status'] | undefined, offset, pageSize);
+    return {
+        items: rows.map(row => ({ ...toTournamentListDto(row), status: row.tournament_status, rejectionReason: row.rejection_reason, createdAt: row.created_at })),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
 export async function getPublicTournaments(filters: TournamentRepo.PublicTournamentFilters, offset: number, page: number, pageSize: number) {
     const { rows, totalItems } = await TournamentRepo.findPublicTournaments(filters, offset, pageSize);
     return {

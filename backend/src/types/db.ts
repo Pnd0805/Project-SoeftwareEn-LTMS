@@ -175,6 +175,7 @@ export type MatchRow = {
     match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed' | 'result_rejected',
     mode : 'onsite' | 'online',
     livestream_url : string | null,
+    room_code : string | null,          // แมตช์ online (migration 016)
     created_at : Date,
     updated_at : Date | null
 }

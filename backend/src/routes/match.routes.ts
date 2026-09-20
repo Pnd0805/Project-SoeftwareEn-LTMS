@@ -1,8 +1,8 @@
 import express from 'express';
 import * as Match from '../controllers/match.controller.js';
-import { requireAuth } from '../middlewares/requireAuth.js';
+import { requireAuth , optionalAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
-import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema } from '../schemas/match.schema.js';
+import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema, roomCodeSchema } from '../schemas/match.schema.js';
 import { requireReferee } from '../middlewares/requireReferee.js';
 import { requireOrganizer, requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 
@@ -11,7 +11,11 @@ const router = express.Router();
 router.post('/tournaments/:id/bracket' , requireAuth , requireOrganizer , validate(createBracketSchema) , Match.createBracket);
 router.get('/tournaments/:id/bracket' , Match.getBracket);
 router.get('/tournaments/:id/matches' , Match.getTournamentMatches);
-router.get('/matches/:id' , Match.getMatchDetail);
+router.get('/matches/:id' , optionalAuth , Match.getMatchDetail);   // optionalAuth: roomCode เห็นเฉพาะคนในแมตช์
+// B8 — รหัสห้องแมตช์ออนไลน์ (กรรมการของแมตช์/ORG — เช็คใน service)
+router.put('/matches/:id/room-code' , requireAuth , validate(roomCodeSchema) , Match.setRoomCode);
+// /me/matches — แมตช์ของฉันทั้งผู้เล่นและกรรมการ
+router.get('/me/matches' , requireAuth , Match.listMyMatches);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
 router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
