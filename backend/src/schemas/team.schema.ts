@@ -6,8 +6,25 @@ export const teamSchema = z.object({
 });
 
 export const updateTeamSchema = z.object({
-    name : z.string().min(1 , 'กรุณาใส่ชื่อทีม').optional()
+    name : z.string().min(1 , 'กรุณาใส่ชื่อทีม').optional(),
+    visibility : z.enum(['private' , 'public'] , 'visibility ต้องเป็น private หรือ public').optional()   // มติ 20 ก.ย.
 });
+
+// ค้นหาทีม (T19)
+export const searchTeamsQuerySchema = z.object({
+    q : z.string().trim().max(150).optional(),
+    sportTypeId : z.coerce.number().int().positive().optional(),
+    visibility : z.enum(['private' , 'public']).optional()
+});
+
+// ขอเข้าร่วมทีมสาธารณะ (T20) / ปฏิเสธ (T23)
+export const joinRequestSchema = z.object({
+    message : z.string().trim().max(255).optional()
+});
+export const rejectJoinRequestSchema = z.object({
+    reason : z.string().trim().max(255).optional()
+});
+export type JoinRequestInput = z.infer<typeof joinRequestSchema>;
 
 export type updateTeamInput = z.infer<typeof updateTeamSchema>;
 export type TeamInput = z.infer<typeof teamSchema>;

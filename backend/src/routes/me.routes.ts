@@ -11,6 +11,9 @@ const router = express.Router();
 router.get('/' , requireAuth , getMe)
 router.patch('/' , requireAuth , validate(updateMeSchema) , patchMe);
 router.get('/teams' , requireAuth , TeamController.getMyTeam);
+// T24/T25 — คำขอเข้าร่วมทีมที่ฉันส่ง / ยกเลิก
+router.get('/join-requests' , requireAuth , TeamController.listMyJoinRequests);
+router.delete('/join-requests/:rid' , requireAuth , TeamController.cancelJoinRequest);
 
 router.get('/invitations' , requireAuth , getMyInvitation);
 router.get('/tournament-requests', requireAuth, TournamentController.getMyTournamentRequests);

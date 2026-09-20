@@ -73,8 +73,8 @@
 |---|---|---|---|---|---|
 | T01 | `POST /teams` | Auth | สร้างทีม → `Forming` · **transaction** (teams + team_members) · BR-05 | `name, sportTypeId` | **201** `{ id, name, sportTypeId, readinessStatus:'Forming', leaderId }` |
 | T02 | `GET /me/teams` | Auth | ทีมของฉัน (ไม่ paginate) | — | `{ items: [{id, name, sportTypeId, readinessStatus, officialStatus, memberCount, role}] }` |
-| T03 | `GET /teams/:id` | — | ข้อมูลทีมสาธารณะ | — | `{ id, name, sportTypeId, readinessStatus, officialStatus, leader, memberCount, createdAt }` |
-| T04 | `PATCH /teams/:id` | TL | เปลี่ยนชื่อทีม · ถ้า official แล้วต้องบันทึกประวัติ + แจ้ง ORG | `name?` | เหมือน T03 |
+| T03 | `GET /teams/:id` | — | **20 ก.ย.**: มี `visibility` (private/public) · ข้อมูลทีมสาธารณะ | — | `{ id, name, sportTypeId, readinessStatus, officialStatus, leader, memberCount, createdAt }` |
+| T04 | `PATCH /teams/:id` | TL | เปลี่ยนชื่อทีม · **20 ก.ย.**: `visibility:'private'\|'public'` (default private = เข้าได้ทางคำเชิญเท่านั้น · public = ใครก็ขอเข้าได้ T20) · ถ้า official แล้วต้องบันทึกประวัติ + แจ้ง ORG | `name?` | เหมือน T03 |
 | T05 | `DELETE /teams/:id` | TL | **soft delete** · ปฏิเสธถ้ากำลังแข่ง | — | **204** / **409** `TEAM_IN_COMPETITION` |
 | T06 | `GET /teams/:id/members` | Auth | รายชื่อสมาชิก (ไม่มี contactInfo) · **ORG/กรรมการของทัวร์ที่ทีมสมัคร**ดูได้ด้วย (เช็คอินด้วยมือ) | — | `{ items: [{userId, fullName, avatarUrl, position, joinedAt}] }` |
 | T07 | `PATCH /teams/:id/members/:uid` | TL | ตั้งตัวจริง/ตัวสำรอง · **B6 roster lock (19 ก.ย.)**: ทีมที่มีใบสมัคร `approved` ในทัวร์ที่ยังไม่จบ → **409** `ROSTER_LOCKED` + `tournamentId` ต้องถอนตัว (P08) ก่อน | `position:'starter'\|'substitute'` | `{ userId, position }` |
@@ -89,6 +89,13 @@
 | T16 | `GET /admin/team-requests` | ADM-u | คิวคำร้องรออนุมัติ | `?page&pageSize` | `{ items: [{id, team, requestedBy, status, createdAt}], pagination }` |
 | T17 | `POST /admin/team-requests/:id/approve` | ADM-u | อนุมัติ Official · **เช็ค BR-05 ทุกสมาชิก** · transaction + audit | — | `{ teamId, officialStatus:'official' }` / **422** `MEMBER_CONFLICT` |
 | T18 | `POST /admin/team-requests/:id/reject` | ADM-u | ปฏิเสธ · **`reason` บังคับ** | `reason` | `{ status:'rejected', reason }` |
+| T19 | `GET /teams` | — | **ค้นหาทีม (20 ก.ย.)** · ทีมที่ลบ/Inactive ไม่โชว์ (ดูผ่านทัวร์เก่าเท่านั้น) · ไม่คืน roster | `?q=&sportTypeId=&visibility=private\|public&page&pageSize` | `{ items: [TeamDto เหมือน T03], pagination }` |
+| T20 | `POST /teams/:id/join-requests` | Auth | **ขอเข้าร่วมทีม public** → `pending` รอหัวหน้าทีม · กฎเดียวกับ T13: roster lock, CoI, โควตา 5 ทีม, ยังไม่เป็นสมาชิก + ทีมไม่เต็ม (`max_members`) | `{ message? }` | **201** `{ id, teamId, status:'pending' }` / **409** `TEAM_PRIVATE`, `ALREADY_MEMBER`, `JOIN_REQUEST_PENDING`, `TEAM_FULL`, `ROSTER_LOCKED`, `TEAM_CONFLICT_OF_INTEREST` · **422** `TEAM_QUOTA_EXCEEDED` |
+| T21 | `GET /teams/:id/join-requests` | TL | คำขอที่รอตอบ | — | `{ items: [{id, user, message, status, createdAt}] }` |
+| T22 | `POST /teams/:id/join-requests/:rid/approve` | TL | อนุมัติ → เป็นสมาชิก (+อาจ Forming→Ready) · **เช็คกฎ T20 ซ้ำ ณ ตอนอนุมัติ** | — | `{ id, userId, status:'approved', teamReadinessStatus }` / **404** `JOIN_REQUEST_NOT_FOUND` · **409** `JOIN_REQUEST_ALREADY_ANSWERED`, `TEAM_FULL`, … |
+| T23 | `POST /teams/:id/join-requests/:rid/reject` | TL | ปฏิเสธ | `{ reason? }` | `{ id, status:'rejected' }` |
+| T24 | `GET /me/join-requests` | Auth | คำขอที่ฉันส่ง ทุกสถานะ ล่าสุดก่อน | — | `{ items: [{id, team:{id,name,sportTypeId}, message, status, rejectReason, createdAt, respondedAt}] }` |
+| T25 | `DELETE /me/join-requests/:rid` | Auth | ยกเลิกคำขอของตัวเอง (เฉพาะ pending) | — | **204** / **409** `JOIN_REQUEST_ALREADY_ANSWERED` |
 
 **ไม่มี endpoint (ระบบทำเอง):** `Forming → Ready` (เกิดใน T13) · soft delete จากไม่ใช้งาน (scheduled job, BR-06)
 

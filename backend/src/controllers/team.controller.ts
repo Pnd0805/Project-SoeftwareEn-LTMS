@@ -1,5 +1,8 @@
 import type { Request , Response } from 'express';
 import * as TeamService from '../services/team.service.js';
+import * as JoinRequestService from '../services/joinRequest.service.js';
+import { searchTeamsQuerySchema } from '../schemas/team.schema.js';
+import { parsePagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import { parseId } from '../utils/parseId.js';
 
@@ -9,6 +12,36 @@ export async function createTeam(req : Request , res : Response){
 
 export async function getMyTeam(req : Request , res : Response){
     res.status(200).json(await TeamService.getMyTeam(req.user!.user_id));
+}
+
+export async function searchTeams(req : Request , res : Response){
+    const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+    const parsed = searchTeamsQuerySchema.safeParse(req.query);
+    if(!parsed.success){
+        throw new AppError(400 , 'VALIDATION_FAILED' , 'พารามิเตอร์ค้นหาไม่ถูกต้อง');
+    }
+    res.status(200).json(await TeamService.searchTeams(parsed.data , offset , newpage , newpageSize));
+}
+
+// ---- Join requests (T20–T25)
+export async function createJoinRequest(req : Request , res : Response){
+    res.status(201).json(await JoinRequestService.createJoinRequest(parseId(req.params['id'], 'รหัสทีม') , req.user!.user_id , req.body.message));
+}
+export async function listJoinRequests(req : Request , res : Response){
+    res.status(200).json(await JoinRequestService.listJoinRequests(parseId(req.params['id'], 'รหัสทีม')));
+}
+export async function approveJoinRequest(req : Request , res : Response){
+    res.status(200).json(await JoinRequestService.approveJoinRequest(parseId(req.params['id'], 'รหัสทีม') , parseId(req.params['rid'], 'รหัสคำขอ') , req.user!.user_id));
+}
+export async function rejectJoinRequest(req : Request , res : Response){
+    res.status(200).json(await JoinRequestService.rejectJoinRequest(parseId(req.params['id'], 'รหัสทีม') , parseId(req.params['rid'], 'รหัสคำขอ') , req.user!.user_id , req.body.reason));
+}
+export async function listMyJoinRequests(req : Request , res : Response){
+    res.status(200).json(await JoinRequestService.listMyJoinRequests(req.user!.user_id));
+}
+export async function cancelJoinRequest(req : Request , res : Response){
+    await JoinRequestService.cancelJoinRequest(parseId(req.params['rid'], 'รหัสคำขอ') , req.user!.user_id);
+    res.status(204).send();
 }
 
 export async function getTeamById(req : Request , res : Response){

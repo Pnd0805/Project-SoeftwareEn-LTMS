@@ -60,6 +60,10 @@ export async function update(teamId : number , newTeam : updateTeamInput){
         sets.push('name = ?');
         values.push(newTeam.name);
     }
+    if(newTeam.visibility !== undefined){
+        sets.push('visibility = ?');
+        values.push(newTeam.visibility);
+    }
 
     sets.push('updated_at = NOW()');
 
@@ -76,6 +80,31 @@ export async function deleteTeam(teamId : number){
 
 
 //--- Member
+/**
+ * T19 — ค้นหาทีมสาธารณะ (มติ 20 ก.ย. 2569): เฉพาะทีมที่ยังอยู่ (deleted_at IS NULL — ทีม Inactive/ถูกลบไม่โชว์ ดูได้ผ่านทัวร์เก่าเท่านั้น)
+ * คืนพร้อม member_count และหัวหน้า — ไม่คืน roster
+ */
+export type TeamSearchRow = TeamRow & { member_count : number; leader_full_name : string; leader_profile_image_key : string | null };
+
+export async function searchTeams(filters : { q? : string | undefined; sportTypeId? : number | undefined; visibility? : 'private' | 'public' | undefined },
+                                  offset : number , pageSize : number): Promise<{ rows : TeamSearchRow[]; totalItems : number }>{
+    const where = ['t.deleted_at IS NULL'];
+    const params : unknown[] = [];
+    if(filters.q){ where.push('t.name LIKE ?'); params.push(`%${filters.q}%`); }
+    if(filters.sportTypeId !== undefined){ where.push('t.sport_type_id = ?'); params.push(filters.sportTypeId); }
+    if(filters.visibility !== undefined){ where.push('t.visibility = ?'); params.push(filters.visibility); }
+    const whereSql = where.join(' AND ');
+    const [rows] = await pool.query<(TeamSearchRow & RowDataPacket)[]>(
+        `SELECT t.*, u.full_name AS leader_full_name, u.profile_image_key AS leader_profile_image_key,
+                (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = t.team_id) AS member_count
+         FROM teams t JOIN users u ON u.user_id = t.leader_id
+         WHERE ${whereSql}
+         ORDER BY t.name, t.team_id LIMIT ? OFFSET ?`, [...params, pageSize, offset]);
+    const [count] = await pool.query<({ totalItems : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM teams t WHERE ${whereSql}`, params);
+    return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
+}
+
 export async function countMemberByTeamId(teamId : number) : Promise<number>{
     const [ rows ] = await pool.query<({ TeamMember : number } & RowDataPacket)[]>(`SELECT count(tm.user_id) AS TeamMember
                                                                                     FROM team_members tm WHERE tm.team_id = ?` , teamId);

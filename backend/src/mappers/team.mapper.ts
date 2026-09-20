@@ -1,3 +1,6 @@
+import { toUserRef } from './user.mapper.js';
+import type { TeamJoinRequestRow } from '../types/db.js';
+import type { JoinRequestWithUser, JoinRequestWithTeam } from '../repositories/joinRequest.repo.js';
 import type { TeamRow , TeamMemberRow, TeamInvitationRow, TeamAdminRequestRow } from "../types/db.js";
 import type { UserRefDto } from "./user.mapper.js";
 import type { UserRow } from "../types/db.js";
@@ -64,12 +67,13 @@ export type TeamDto = {
     sportTypeId : number,
     readinessStatus : 'Forming' | 'Ready' | 'Inactive',
     officialStatus : 'Unofficial' | 'Official',
+    visibility : 'private' | 'public',   // public = ขอเข้าร่วมได้ (T20) · มติ 20 ก.ย.
     leader : UserRefDto,
     memberCount : number,
     createdAt : string
 }
 
-export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'created_at' | 'deleted_at'>
+export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'visibility' | 'created_at' | 'deleted_at'>
                         , member : number , leader : UserRefDto) : TeamDto {
 
     const status = row.deleted_at !== null ? 'Inactive' : row.readiness_status;
@@ -79,9 +83,51 @@ export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_
         sportTypeId : row.sport_type_id,
         readinessStatus : status,
         officialStatus : row.official_status,
+        visibility : row.visibility,
         leader : leader,
         memberCount : member,
         createdAt : row.created_at.toISOString()
+    }
+}
+
+// ---- Join requests (T20–T25, migration 017)
+export type JoinRequestDto = {
+    id : number,
+    user : UserRefDto,
+    message : string | null,
+    status : TeamJoinRequestRow['team_join_request_status'],
+    createdAt : string
+}
+
+export function toJoinRequestDto(row : JoinRequestWithUser) : JoinRequestDto {
+    return {
+        id : row.team_join_request_id,
+        user : toUserRef(row),
+        message : row.message,
+        status : row.team_join_request_status,
+        createdAt : row.created_at.toISOString()
+    }
+}
+
+export type MyJoinRequestDto = {
+    id : number,
+    team : { id : number, name : string, sportTypeId : number },
+    message : string | null,
+    status : TeamJoinRequestRow['team_join_request_status'],
+    rejectReason : string | null,
+    createdAt : string,
+    respondedAt : string | null
+}
+
+export function toMyJoinRequestDto(row : JoinRequestWithTeam) : MyJoinRequestDto {
+    return {
+        id : row.team_join_request_id,
+        team : { id : row.team_id, name : row.team_name, sportTypeId : row.sport_type_id },
+        message : row.message,
+        status : row.team_join_request_status,
+        rejectReason : row.reject_reason,
+        createdAt : row.created_at.toISOString(),
+        respondedAt : row.responded_at?.toISOString() ?? null
     }
 }
 

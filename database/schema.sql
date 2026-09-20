@@ -110,6 +110,7 @@ CREATE TABLE teams (
   leader_id INT NOT NULL,
   readiness_status ENUM('Forming','Ready') NOT NULL DEFAULT 'Forming',
   official_status ENUM('Unofficial','Official') NOT NULL DEFAULT 'Unofficial',
+  visibility ENUM('private','public') NOT NULL DEFAULT 'private',   -- public = ขอเข้าร่วมได้ (T20) · migration 017
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
   last_competed_at DATETIME NULL,
@@ -145,6 +146,24 @@ CREATE TABLE team_invitations (
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
   FOREIGN KEY (invited_user_id) REFERENCES users(user_id),
   FOREIGN KEY (invited_by_user_id) REFERENCES users(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- คำขอเข้าร่วมทีมสาธารณะ (migration 017, มติ 20 ก.ย. 2569) — หัวหน้าทีมอนุมัติ/ปฏิเสธ
+CREATE TABLE team_join_requests (
+  team_join_request_id INT PRIMARY KEY AUTO_INCREMENT,
+  team_id INT NOT NULL,
+  user_id INT NOT NULL,
+  message VARCHAR(255) NULL,
+  team_join_request_status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
+  reject_reason VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  responded_at DATETIME NULL,
+  responded_by INT NULL,
+  FOREIGN KEY (team_id) REFERENCES teams(team_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (responded_by) REFERENCES users(user_id),
+  INDEX idx_join_req_team_status (team_id, team_join_request_status),
+  INDEX idx_join_req_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE team_admin_requests (
@@ -725,4 +744,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('013_team_invitations_expires_at.sql'),
   ('014_bracket_nodes_backfill_teams.sql'),
   ('015_match_checkins_note.sql'),
-  ('016_matches_room_code.sql');
+  ('016_matches_room_code.sql'),
+  ('017_team_visibility_join_requests.sql');

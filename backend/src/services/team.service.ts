@@ -8,6 +8,7 @@ import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toUpdateMember, toGetAllInvitation, getTeamOfficialRequestDto } from '../mappers/team.mapper.js';
 import { toTeamMemberDto, type MyTeam } from '../mappers/team.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
+import { buildPagination } from '../utils/pagination.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
@@ -48,6 +49,16 @@ export async function getMyTeam(userId : number){
     return { items : data };
 }
 
+
+/** T19 — GET /teams?q=&sportTypeId=&visibility= ค้นหาทีม (มติ 20 ก.ย.) — ทีมที่ลบ/Inactive ไม่โชว์ */
+export async function searchTeams(filters : { q? : string | undefined; sportTypeId? : number | undefined; visibility? : 'private' | 'public' | undefined },
+                                  offset : number , page : number , pageSize : number){
+    const { rows , totalItems } = await TeamRepo.searchTeams(filters , offset , pageSize);
+    return {
+        items : rows.map(r => toTeamDto(r , r.member_count , toUserRef({ user_id : r.leader_id , full_name : r.leader_full_name , profile_image_key : r.leader_profile_image_key }))),
+        pagination : buildPagination(page , pageSize , totalItems)
+    };
+}
 
 export async function getTeamById(teamId : number){
     const team = await checkTeam(teamId);

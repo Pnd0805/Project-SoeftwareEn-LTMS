@@ -57,11 +57,24 @@ export type TeamRow = {
     leader_id : number,
     readiness_status : 'Forming' | 'Ready',
     official_status : 'Unofficial' | 'Official',
+    visibility : 'private' | 'public',   // migration 017 — public = ขอเข้าร่วมได้
     created_at : Date,
     updated_at : Date | null,
     last_competed_at : Date | null,
     deleted_at : Date | null,
     deleted_reason : 'no_registration' | 'leader_deleted' | 'inactive_6_months' | null
+}
+
+export type TeamJoinRequestRow = {
+    team_join_request_id : number,
+    team_id : number,
+    user_id : number,
+    message : string | null,
+    team_join_request_status : 'pending' | 'approved' | 'rejected' | 'cancelled',
+    reject_reason : string | null,
+    created_at : Date,
+    responded_at : Date | null,
+    responded_by : number | null
 }
 
 export type TournamentRow = {
