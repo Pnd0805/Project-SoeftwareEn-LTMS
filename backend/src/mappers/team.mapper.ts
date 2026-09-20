@@ -93,7 +93,7 @@ export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_
 // ---- Join requests (T20–T25, migration 017)
 export type JoinRequestDto = {
     id : number,
-    user : UserRefDto,
+    user : UserRefDto & { facultyId : number | null, departmentId : number | null, year : number | null, gender : UserRow['gender'], userType : UserRow['user_type'] },
     message : string | null,
     status : TeamJoinRequestRow['team_join_request_status'],
     createdAt : string
@@ -102,7 +102,7 @@ export type JoinRequestDto = {
 export function toJoinRequestDto(row : JoinRequestWithUser) : JoinRequestDto {
     return {
         id : row.team_join_request_id,
-        user : toUserRef(row),
+        user : { ...toUserRef(row), facultyId : row.faculty_id, departmentId : row.department_id, year : row.year, gender : row.gender, userType : row.user_type },
         message : row.message,
         status : row.team_join_request_status,
         createdAt : row.created_at.toISOString()
