@@ -2,9 +2,10 @@
 
 Frontend branch `feat/1` · API base path `/api/v1`
 
-**Checked against `origin/BE_KN` at `c43f497`, pulled, migrated to 014 and run
-locally on 2026-09-20.** Every item below was verified by calling the running
-server, not by reading source: a route is reported missing only when it answers
+**Checked against `origin/BE_KN` at `df506ea`, pulled, migrated to 015 and run
+locally on 2026-09-20** (the round before it, `c43f497`, is named in the items
+it closed). Every item below was verified by calling the running server, not by
+reading source: a route is reported missing only when it answers
 `404 NOT_FOUND`, and anything that answered otherwise was struck from this list
 before sending.
 

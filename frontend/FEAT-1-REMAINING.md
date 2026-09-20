@@ -279,14 +279,14 @@ API-backed page from silently mixing server data with the prototype seed.
 | [x] | Slice 4 | Profile — squads | Use `GET /me/teams` for the signed-in user's squads; do not derive membership from `s.teams`. |
 | [x] | Slice 1 | Profile — unsupported panels | Hide or label Career-by-tournament, Pick'em tokens, follows, and MVP totals unavailable until their backend read contracts are deployed. Do not calculate them from the seed. |
 | [x] | Slice 1 | Inbox — notifications | Do not call speculative `/me/notifications` or notification read routes against the baseline. Show a deliberate unavailable state or hide the Inbox navigation until a notification contract is agreed and deployed. |
-| [ ] | Slice 4 | Inbox — team invitations | Keep team invitations on the API-backed flow using `GET /me/invitations` and invitation accept/decline routes; do not substitute general notifications for this flow. |
-| [ ] | Slices 3 + 4 | Inbox — referee invitations | Keep referee invitations on `GET /me/referee-invitations` in `MatchesPage`; document the navigation until a unified Inbox contract exists. |
+| [x] | Slice 4 | Inbox — team invitations | Keep team invitations on the API-backed flow using `GET /me/invitations` and invitation accept/decline routes; do not substitute general notifications for this flow. |
+| [x] | Slices 3 + 4 | Inbox — referee invitations | Keep referee invitations on `GET /me/referee-invitations` in `MatchesPage`; document the navigation until a unified Inbox contract exists. |
 | [x] | Slice 1 | Shell and badges | Derive identity, permissions, Inbox count, and navigation badges only from backend-backed queries in real mode. No badge may count prototype tournaments, invites, or notifications. |
 | [x] | Slice 1 | Home and work queue | Home cards and `Needs you` entries must use backend-backed collections only. If a required route is absent, omit that queue rather than reading `workQueue(s)`. |
 | [ ] | Slice 2 | Tournament detail | A numeric tournament route must not combine a backend DTO with store registrations, teams, brackets, announcements, or permissions. Each tab must be API-backed or explicitly unavailable. |
 | [ ] | Slice 3 | Match, bracket, check-in and watch | Remove real-mode reads of store matches/results/check-ins. Each reachable view must be API-backed or explicitly unavailable. |
-| [ ] | Slice 4 | Team detail and management | Logo, record, transfer, roster-lock and other mock-only sections must remain isolated from API-backed team identity/membership and be unavailable when their routes are missing. |
-| [ ] | Slice 4 | Admin | Only Permanent squads may use the current baseline API. External referees, Users, and other unsupported tabs must not show store records in real mode. |
+| [x] | Slice 4 | Team detail and management | Logo, record, transfer, roster-lock and other mock-only sections must remain isolated from API-backed team identity/membership and be unavailable when their routes are missing. |
+| [x] | Slice 4 | Admin | Only Permanent squads may use the current baseline API. External referees, Users, and other unsupported tabs must not show store records in real mode. |
 
 ### 3. Backend contract gates for remaining screens
 
@@ -859,6 +859,35 @@ the owner decides the fix.
       none. Comments posted on the match page aren't counted there, and picks
       made in `SocialBar` don't count as Tokens (`pickScore`,
       `src/shared/career.ts:93`).
+
+### Slice 3 — what is left of the real-mode boundary (found 2026-09-20)
+
+Match, results, check-in and the fixture page are API-backed. These three views
+are what keeps the Slice 3 row in the migration matrix unticked. None of them is
+waiting on the backend; each is our own work.
+
+- [ ] The bracket falls back to the store when the tournament has no matches
+      yet. `BracketTab.tsx:180` renders the API bracket only when
+      `apiMatches.data.items.length` is non-zero; an empty list falls through to
+      the prototype branch, and the "not drawn" empty state then counts
+      `regsOf(s, t.id)` — a store lookup that a numeric tournament id never
+      matches. Seen on tournament 2: it reads "0 squads approved so far" while
+      the server has 1 approved application and 0 matches. The count, and the
+      "Go to manage" button beside it (gated on `isOrg(s, t)`, also store-only),
+      both need the API or need to go.
+- [ ] `/watch/:id` is store-only (`WatchPage.tsx:22`, `routeTour`). In real mode
+      it answers "No such tournament" for every id — verified on `/watch/2`.
+      Nothing links to it any more, because `watchable`
+      (`TournamentPage.tsx:153`) is a store query that is always false in real
+      mode, so the Watch button never renders. Either wire it to
+      `GET /tournaments/:id/matches` or drop the route.
+- [ ] `/mvp/:id` is store-only (`MvpPage.tsx:20`) and this one is reachable:
+      `champion` comes from the API first (`TournamentPage.tsx:150`), so a
+      finished tournament shows "Vote MVP", and the page it opens answers "No
+      such tournament" — verified on `/mvp/2`. The vote itself already has a
+      hook (`useMvpVotes`); what is missing is the candidate list, which the
+      page tallies from `m.stats` in the store. Hide the button in real mode
+      until the tally can be read from the server.
 
 ### Slice 2 — tournament page
 
