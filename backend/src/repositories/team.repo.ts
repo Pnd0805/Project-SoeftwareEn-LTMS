@@ -84,7 +84,7 @@ export async function deleteTeam(teamId : number){
  * T19 — ค้นหาทีมสาธารณะ (มติ 20 ก.ย. 2569): เฉพาะทีมที่ยังอยู่ (deleted_at IS NULL — ทีม Inactive/ถูกลบไม่โชว์ ดูได้ผ่านทัวร์เก่าเท่านั้น)
  * คืนพร้อม member_count และหัวหน้า — ไม่คืน roster
  */
-export type TeamSearchRow = TeamRow & { member_count : number; leader_full_name : string; leader_profile_image_key : string | null };
+export type TeamSearchRow = TeamRow & { member_count : number; max_members : number; leader_full_name : string; leader_profile_image_key : string | null };
 
 export async function searchTeams(filters : { q? : string | undefined; sportTypeId? : number | undefined; visibility? : 'private' | 'public' | undefined },
                                   offset : number , pageSize : number): Promise<{ rows : TeamSearchRow[]; totalItems : number }>{
@@ -95,9 +95,9 @@ export async function searchTeams(filters : { q? : string | undefined; sportType
     if(filters.visibility !== undefined){ where.push('t.visibility = ?'); params.push(filters.visibility); }
     const whereSql = where.join(' AND ');
     const [rows] = await pool.query<(TeamSearchRow & RowDataPacket)[]>(
-        `SELECT t.*, u.full_name AS leader_full_name, u.profile_image_key AS leader_profile_image_key,
+        `SELECT t.*, u.full_name AS leader_full_name, u.profile_image_key AS leader_profile_image_key, s.max_members,
                 (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = t.team_id) AS member_count
-         FROM teams t JOIN users u ON u.user_id = t.leader_id
+         FROM teams t JOIN users u ON u.user_id = t.leader_id JOIN sport_types s ON s.sport_type_id = t.sport_type_id
          WHERE ${whereSql}
          ORDER BY t.name, t.team_id LIMIT ? OFFSET ?`, [...params, pageSize, offset]);
     const [count] = await pool.query<({ totalItems : number } & RowDataPacket)[]>(

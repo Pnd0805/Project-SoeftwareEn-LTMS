@@ -1,8 +1,7 @@
 import * as JoinRepo from '../repositories/joinRequest.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
-import * as SportRepo from '../repositories/sportType.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
-import { ensureRosterUnlocked } from './team.service.js';
+import { ensureRosterUnlocked, ensureTeamNotFull } from './team.service.js';
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
 import { toJoinRequestDto, toMyJoinRequestDto } from '../mappers/team.mapper.js';
@@ -31,11 +30,7 @@ async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
     if(await TeamRepo.countUnofficialTeamsByUser(userId) >= 5){
         throw new AppError(422 , 'TEAM_QUOTA_EXCEEDED' , 'คุณมีทีม Unofficial ครบ 5 ทีมแล้ว');
     }
-    const sport = await SportRepo.findSportTypeById(team.sport_type_id);
-    const members = await TeamRepo.countMemberByTeamId(team.team_id);
-    if(sport && members >= sport.max_members){
-        throw new AppError(409 , 'TEAM_FULL' , `ทีมนี้มีสมาชิกครบ ${sport.max_members} คนแล้ว` , { maxMembers : sport.max_members });
-    }
+    await ensureTeamNotFull(team.team_id , team.sport_type_id);
 }
 
 /** T20 — POST /teams/:id/join-requests */

@@ -70,11 +70,12 @@ export type TeamDto = {
     visibility : 'private' | 'public',   // public = ขอเข้าร่วมได้ (T20) · มติ 20 ก.ย.
     leader : UserRefDto,
     memberCount : number,
+    maxMembers : number | null,          // sport_types.max_members — หน้าค้นหาแสดง "X/max" (มติ 20 ก.ย.)
     createdAt : string
 }
 
 export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'visibility' | 'created_at' | 'deleted_at'>
-                        , member : number , leader : UserRefDto) : TeamDto {
+                        , member : number , leader : UserRefDto , maxMembers : number | null = null) : TeamDto {
 
     const status = row.deleted_at !== null ? 'Inactive' : row.readiness_status;
     return {
@@ -86,6 +87,7 @@ export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_
         visibility : row.visibility,
         leader : leader,
         memberCount : member,
+        maxMembers,
         createdAt : row.created_at.toISOString()
     }
 }

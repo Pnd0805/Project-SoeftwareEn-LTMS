@@ -55,7 +55,7 @@ export async function searchTeams(filters : { q? : string | undefined; sportType
                                   offset : number , page : number , pageSize : number){
     const { rows , totalItems } = await TeamRepo.searchTeams(filters , offset , pageSize);
     return {
-        items : rows.map(r => toTeamDto(r , r.member_count , toUserRef({ user_id : r.leader_id , full_name : r.leader_full_name , profile_image_key : r.leader_profile_image_key }))),
+        items : rows.map(r => toTeamDto(r , r.member_count , toUserRef({ user_id : r.leader_id , full_name : r.leader_full_name , profile_image_key : r.leader_profile_image_key }) , r.max_members)),
         pagination : buildPagination(page , pageSize , totalItems)
     };
 }
@@ -70,7 +70,21 @@ export async function getTeamById(teamId : number){
         throw new AppError(404 , 'USER_NOT_FOUND' , 'ไม่พบผู้ใช้ในระบบ');
     }
 
-    return toTeamDto(team, memberCount , toUserRef(leaderRef));
+    const sport = await SportRepo.findSportTypeById(team.sport_type_id);
+    return toTeamDto(team, memberCount , toUserRef(leaderRef) , sport?.max_members ?? null);
+}
+
+/**
+ * เพดานสมาชิก = sport_types.max_members (มติ 20 ก.ย.) — ใช้ทั้งเชิญ (T09) รับคำเชิญ (T13) ขอเข้า (T20) อนุมัติ (T22)
+ * เช็คซ้ำตอน "เข้าจริง" (T13/T22) เพราะระหว่างรอ ทีมอาจเต็มจากทางอื่นก่อน
+ */
+export async function ensureTeamNotFull(teamId : number , sportTypeId : number): Promise<void>{
+    const sport = await SportRepo.findSportTypeById(sportTypeId);
+    if(!sport) return;
+    const members = await TeamRepo.countMemberByTeamId(teamId);
+    if(members >= sport.max_members){
+        throw new AppError(409 , 'TEAM_FULL' , `ทีมนี้มีสมาชิกครบ ${sport.max_members} คนแล้ว` , { memberCount : members , maxMembers : sport.max_members });
+    }
 }
 
 export async function updateTeam(teamId : number , sportType:number , newTeam : updateTeamInput){
@@ -157,6 +171,8 @@ export async function deleteMember(userId : number , teamId : number , sportId :
 export async function createInvitation(teamId : number , invitedUserId : number , invitedByUserId : number){
     await checkUser(invitedUserId);
     await ensureRosterUnlocked(teamId);
+    const team = await checkTeam(teamId);
+    await ensureTeamNotFull(teamId , team.sport_type_id);
 
     const member = await TeamRepo.isMemberOf(teamId , invitedUserId);
     if(member){

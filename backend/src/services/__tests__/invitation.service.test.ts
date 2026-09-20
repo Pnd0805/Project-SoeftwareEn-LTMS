@@ -14,15 +14,15 @@ vi.mock('../../repositories/team.repo.js', () => ({
   findInvitationsById: vi.fn(),
   countUnofficialTeamsByUser: vi.fn(),
   findById: vi.fn(),
+  countMemberByTeamId: vi.fn(),
 }));
 
 vi.mock('../../repositories/sportType.repo.js', () => ({
-  // Imported by invitation.service.ts but not currently used by either
-  // exported function; mocked for isolation only.
+  findSportTypeById: vi.fn(async () => ({ sport_type_id: 1, min_members: 5, max_members: 11 })),
 }));
 
 vi.mock('../../utils/checkExist.js', () => ({
-  checkTeam: vi.fn(),
+  checkTeam: vi.fn(async () => ({ team_id: 10, sport_type_id: 1 })),   // ใช้โดย ensureTeamNotFull (เพดานสมาชิก)
 }));
 
 import * as invitationService from '../invitation.service.js';
@@ -31,6 +31,7 @@ import * as TeamRepo from '../../repositories/team.repo.js';
 import { AppError } from '../../utils/AppError.js';
 import type { TeamInvitationRow, TeamRow } from '../../types/db.js';
 import * as ApplicationRepo from '../../repositories/application.repo.js';
+import { checkTeam } from '../../utils/checkExist.js';
 
 const mockedInviteRepo = vi.mocked(InviteRepo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
@@ -69,6 +70,8 @@ function makeTeam(overrides: Partial<TeamRow> = {}): TeamRow {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(checkTeam).mockResolvedValue({ team_id: 10, sport_type_id: 1 } as never);
+  mockedTeamRepo.countMemberByTeamId.mockResolvedValue(3);
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 });
@@ -234,6 +237,16 @@ describe('acceptInvitation — roster lock (B6)', () => {
     vi.mocked(ApplicationRepo.findLockingTournamentOfTeam).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ' });
 
     await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({ status: 409, code: 'ROSTER_LOCKED', extra: { tournamentId: 30 } });
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
+  });
+});
+
+describe('acceptInvitation — team cap (TEAM_FULL, 20 ก.ย.)', () => {
+  it('refuses when the team filled up between invite and accept', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation({ invited_user_id: 8, team_id: 10 }));
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(0);
+    mockedTeamRepo.countMemberByTeamId.mockResolvedValueOnce(11);
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({ status: 409, code: 'TEAM_FULL', extra: { memberCount: 11, maxMembers: 11 } });
     expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
   });
 });

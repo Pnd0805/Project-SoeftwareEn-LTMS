@@ -90,6 +90,7 @@ describe('toTeamDto', () => {
       officialStatus: 'Unofficial',
       leader: leaderRef,
       memberCount: 4,
+      maxMembers: null,
       createdAt: '2024-01-15T08:30:00.000Z',
     });
   });

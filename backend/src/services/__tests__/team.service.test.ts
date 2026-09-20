@@ -272,6 +272,7 @@ describe('getTeamById', () => {
   it('returns a team DTO when the team and its leader both exist', async () => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
     mockedTeamRepo.countMemberByTeamId.mockResolvedValue(4);
+    mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, max_members: 11 });
     mockedUserRepo.findById.mockResolvedValue(makeUser());
     mockedToUserRef.mockReturnValue({ id: 5, fullName: 'Leader User' } as any);
     mockedToTeamDto.mockReturnValue({ id: 10 } as any);
@@ -279,7 +280,7 @@ describe('getTeamById', () => {
     const result = await teamService.getTeamById(10);
 
     expect(mockedUserRepo.findById).toHaveBeenCalledWith(5);
-    expect(mockedToTeamDto).toHaveBeenCalledWith(baseTeamRow, 4, { id: 5, fullName: 'Leader User' });
+    expect(mockedToTeamDto).toHaveBeenCalledWith(baseTeamRow, 4, { id: 5, fullName: 'Leader User' }, 11);
     expect(result).toEqual({ id: 10 });
   });
 
@@ -610,5 +611,17 @@ describe('createOfficialRequest', () => {
     expect(err.code).toBe('OFFICIAL_DOCS_REQUIRED');
     expect(err.extra?.fields).toHaveProperty('supportingDocs');
     expect(mockedTeamRepo.createOfficialRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe('createInvitation — team cap (TEAM_FULL, 20 ก.ย.)', () => {
+  it('leader cannot invite once the team reached sport max_members', async () => {
+    mockedCheckTeam.mockResolvedValue(baseTeamRow);
+    vi.mocked(checkUser).mockResolvedValue(makeUser());
+    mockedTeamRepo.isMemberOf.mockResolvedValue(null);
+    mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, max_members: 4 });
+    mockedTeamRepo.countMemberByTeamId.mockResolvedValue(4);
+    await expect(teamService.createInvitation(10, 8, 5)).rejects.toMatchObject({ status: 409, code: 'TEAM_FULL' });
+    expect(mockedTeamRepo.createInvitation).not.toHaveBeenCalled();
   });
 });
