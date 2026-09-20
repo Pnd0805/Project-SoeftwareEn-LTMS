@@ -863,10 +863,10 @@ the owner decides the fix.
 ### Slice 3 — what is left of the real-mode boundary (found 2026-09-20)
 
 Match, results, check-in and the fixture page are API-backed. These three views
-are what keeps the Slice 3 row in the migration matrix unticked. None of them is
-waiting on the backend; each is our own work.
+were the remaining implementation gaps in the Slice 3 row. The fixes below
+close those gaps; the matrix stays unticked until real-browser verification.
 
-- [ ] The bracket falls back to the store when the tournament has no matches
+- [x] The bracket falls back to the store when the tournament has no matches
       yet. `BracketTab.tsx:180` renders the API bracket only when
       `apiMatches.data.items.length` is non-zero; an empty list falls through to
       the prototype branch, and the "not drawn" empty state then counts
@@ -875,19 +875,39 @@ waiting on the backend; each is our own work.
       the server has 1 approved application and 0 matches. The count, and the
       "Go to manage" button beside it (gated on `isOrg(s, t)`, also store-only),
       both need the API or need to go.
-- [ ] `/watch/:id` is store-only (`WatchPage.tsx:22`, `routeTour`). In real mode
+      Fixed 2026-09-20: real mode mounts a separate API-only bracket component.
+      Loading, empty, 401/403 and retryable error states never reach the mock
+      branch. Omitted the unsupported count and store-derived manage button.
+- [x] `/watch/:id` is store-only (`WatchPage.tsx:22`, `routeTour`). In real mode
       it answers "No such tournament" for every id — verified on `/watch/2`.
       Nothing links to it any more, because `watchable`
       (`TournamentPage.tsx:153`) is a store query that is always false in real
       mode, so the Watch button never renders. Either wire it to
       `GET /tournaments/:id/matches` or drop the route.
-- [ ] `/mvp/:id` is store-only (`MvpPage.tsx:20`) and this one is reachable:
+      Fixed 2026-09-20: the real-mode route now shows an explicit unavailable
+      state without mounting prototype hooks. Watch navigation is mock-only;
+      users can open the existing API-backed match pages from the bracket.
+- [x] `/mvp/:id` is store-only (`MvpPage.tsx:20`) and this one is reachable:
       `champion` comes from the API first (`TournamentPage.tsx:150`), so a
       finished tournament shows "Vote MVP", and the page it opens answers "No
       such tournament" — verified on `/mvp/2`. The vote itself already has a
       hook (`useMvpVotes`); what is missing is the candidate list, which the
       page tallies from `m.stats` in the store. Hide the button in real mode
       until the tally can be read from the server.
+      Fixed 2026-09-20: Vote MVP is mock-only; direct real-mode navigation shows
+      an unavailable state before any prototype hooks mount. Champion fallback
+      also no longer reads a store team in real mode.
+
+### Verification of the 2026-09-20 boundary fixes
+
+- [x] Added regression coverage for empty/error/loading bracket states, invalid
+      IDs, stale prototype storage and unavailable MVP/Watch direct routes.
+- [x] Developer verification passed (Node 24.21.0): 16 test files / 136 tests,
+      lint, production build and `git diff --check`. The existing Vite bundle
+      size warning remains. Ready for Frontend Tester.
+- [ ] Frontend Tester: real-browser checks against a populated backend, including
+      a tournament with approved teams but no matches and stale `ltms.v1` data.
+      Component tests do not constitute real-backend/browser QA.
 
 ### Slice 2 — tournament page
 
@@ -910,13 +930,16 @@ waiting on the backend; each is our own work.
 
 ### Repository and process
 
-- [ ] Nothing checks a push to `feat/1`. `.github/workflows/frontend-ci.yml`
+- [x] Nothing checks a push to `feat/1`. `.github/workflows/frontend-ci.yml`
       runs only on pushes and pull requests to `frontend` and `main`, and
       `frontend` no longer exists on `origin` (gone by 2026-09-13). Work
       reaches `feat/1` by direct push, so no check runs and no slice owner sees
-      changes to their files. Suggested: add `feat/**` to the trigger, and
-      merge into `feat/1` through pull requests reviewed by the slice owner
-      (a CODEOWNERS file can follow the table in `PLAN.md`).
+      changes to their files. Fixed 2026-09-20: added `feat/**` to push and PR
+      triggers. Updated `.nvmrc` to 24.15.0, satisfying jsdom 30's Node engine
+      requirement instead of the old 22.12.0 pin used by CI.
+- [ ] Verify a hosted CI run after these workflow changes are pushed.
+- [ ] Agree PR reviews by the slice owner and CODEOWNERS; workflow triggers
+      alone do not enforce review or branch protection.
 - [ ] The items in this plan have no owner. `PLAN.md` gives `features/team` to
       slice 4, but Priority 1 here assigns the team screens without naming
       one. Suggested: name the owner on each item.

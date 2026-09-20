@@ -7,10 +7,10 @@ name: frontend
 
 on:
   pull_request:
-    branches: [frontend, main]
+    branches: [frontend, main, 'feat/**']
     paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
   push:
-    branches: [frontend, main]
+    branches: [frontend, main, 'feat/**']
     paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
 
 # push ซ้ำเข้า PR เดิม ให้ยกเลิกรอบเก่าทิ้ง ไม่ต้องรันค้างสองรอบ
