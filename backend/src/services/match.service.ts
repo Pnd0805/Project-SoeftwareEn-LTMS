@@ -8,7 +8,7 @@ import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinSt
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
 import { buildPagination } from '../utils/pagination.js';
-import type { SubmitCheckinInput, ManualCheckinInput } from '../schemas/match.schema.js';
+import type { SubmitCheckinInput, ManualCheckinInput, ScheduleMatchInput } from '../schemas/match.schema.js';
 import type { MatchListFilters } from '../repositories/match.repo.js';
 
 export async function getTournamentMatches(
@@ -43,10 +43,7 @@ function thaiDateOf(d: Date): string {
 //   3. ไม่ซ้อนช่วงเวลากับแมตช์อื่นของทีม/สนามเดียวกัน
 //   4. ไม่พังลำดับสาย: แมตช์ก่อนหน้าต้องจบก่อนเริ่ม และต้องจบก่อนแมตช์ถัดไปเริ่ม
 //   กรรมการซ้อนเวลา "ไม่" block ที่นี่ (มติ Q6) — ORG ดูจาก F14 coverage.conflicts
-export async function scheduleMatch(matchId: number, scheduledTimeInput: string, scheduledEndTimeInput: string, venue: string) {
-    const scheduledTime = new Date(scheduledTimeInput);
-    const scheduledEndTime = new Date(scheduledEndTimeInput);
-
+export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
@@ -54,6 +51,22 @@ export async function scheduleMatch(matchId: number, scheduledTimeInput: string,
     if (match.match_status !== 'scheduled') {
         // code เดียวกับที่ refereeRequest.service ใช้ตอนแมตช์เปลี่ยนไม่ได้
         throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว แก้เวลาหรือสนามไม่ได้");
+    }
+
+    // B9: ฟิลด์ที่ไม่ส่งมา = คงค่าเดิม · ครั้งแรก (ยังไม่เคยตั้ง) ต้องส่งครบ
+    const scheduledTime = input.scheduledTime !== undefined ? new Date(input.scheduledTime) : match.scheduled_time;
+    const scheduledEndTime = input.scheduledEndTime !== undefined ? new Date(input.scheduledEndTime) : match.scheduled_end_time;
+    const venue = input.venue ?? match.venue;
+    const missing = [
+        ...(scheduledTime === null ? ['scheduledTime'] : []),
+        ...(scheduledEndTime === null ? ['scheduledEndTime'] : []),
+        ...(venue === null ? ['venue'] : []),
+    ];
+    if (scheduledTime === null || scheduledEndTime === null || venue === null) {
+        throw new AppError(400, "SCHEDULE_INCOMPLETE", "แมตช์นี้ยังไม่เคยตั้งเวลา ต้องระบุเวลาเริ่ม เวลาจบ และสนามให้ครบ", { missing });
+    }
+    if (scheduledEndTime <= scheduledTime) {
+        throw new AppError(400, "VALIDATION_FAILED", "เวลาจบต้องหลังเวลาเริ่ม", { fields: { scheduledEndTime: 'เวลาจบต้องหลังเวลาเริ่ม' } });
     }
 
     // 2. ช่วงวันของทัวร์

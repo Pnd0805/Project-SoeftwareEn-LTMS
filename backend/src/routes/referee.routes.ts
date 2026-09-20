@@ -25,6 +25,8 @@ tournamentRefereeRouter.get('/:id/referees', requireAuth, requireOrganizer, Refe
 
 // F04
 meRefereeRouter.get('/referee-invitations', requireAuth, Referee.listMyInvitations);
+// B7 — แมตช์ที่ฉันเป็นกรรมการ (รับแล้ว + active) ทุกทัวร์
+meRefereeRouter.get('/referee-matches', requireAuth, Referee.listMyMatches);
 
 // F05 / F06
 refereeInvitationRouter.post('/:id/accept', requireAuth, validate(acceptInvitationSchema), Referee.accept);

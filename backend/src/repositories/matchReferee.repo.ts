@@ -15,6 +15,35 @@ export type InvitedMatchRow =
     Pick<MatchRefereeRow, 'match_referee_id' | 'tournament_referee_id' | 'assignment_status'> &
     Pick<MatchRow, 'match_id' | 'round_number' | 'scheduled_time' | 'scheduled_end_time' | 'venue' | 'mode' | 'match_status'>;
 
+/** B7 — แมตช์ที่ user รับเป็นกรรมการแล้ว (accepted) ข้ามทุกทัวร์ · ★ ไม่กรอง active ที่นี่ — service ใช้ isActiveReferee() */
+export type MyRefereeMatchRow =
+    Pick<MatchRefereeRow, 'match_referee_id' | 'tournament_referee_id'> &
+    Pick<TournamentRefereeRow, 'invitation_status' | 'is_external' | 'external_approval_status' | 'removed_at'> &
+    Pick<MatchRow, 'match_id' | 'round_number' | 'scheduled_time' | 'scheduled_end_time' | 'venue' | 'mode' | 'match_status'> & {
+        tournament_id : number; tournament_name : string; sport_type_id : number;
+        team_a_id : number | null; team_a_name : string | null;
+        team_b_id : number | null; team_b_name : string | null;
+    };
+
+export async function findAcceptedByUser(userId : number): Promise<MyRefereeMatchRow[]>{
+    const [rows] = await pool.query<(MyRefereeMatchRow & RowDataPacket)[]>(
+        `SELECT mr.match_referee_id, mr.tournament_referee_id,
+                tr.invitation_status, tr.is_external, tr.external_approval_status, tr.removed_at,
+                m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
+                t.tournament_id, t.name AS tournament_name, t.sport_type_id,
+                ta.team_id AS team_a_id, ta.name AS team_a_name,
+                tb.team_id AS team_b_id, tb.name AS team_b_name
+         FROM match_referees mr
+         JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id
+         JOIN matches m ON m.match_id = mr.match_id
+         JOIN tournaments t ON t.tournament_id = m.tournament_id
+         LEFT JOIN teams ta ON ta.team_id = m.team_a_id
+         LEFT JOIN teams tb ON tb.team_id = m.team_b_id
+         WHERE tr.user_id = ? AND mr.assignment_status = 'accepted'
+         ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`, [userId]);
+    return rows;
+}
+
 /** F01 — แนบแมตช์มากับคำเชิญ (pending) — เรียกในทรานแซกชันเดียวกับการสร้าง tournament_referees */
 export async function insertPending(db : Queryable, tournamentRefereeId : number, matchIds : number[]): Promise<void>{
     if(matchIds.length === 0) return;

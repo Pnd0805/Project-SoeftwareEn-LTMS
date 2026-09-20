@@ -3,7 +3,7 @@ import * as UserRepo from '../repositories/user.repo.js';
 import { AppError } from '../utils/AppError.js';
 import type { InviteRefereeInput, AcceptInvitationInput } from '../schemas/referee.schema.js';
 import { resolveApprovalForAccept } from './refereeIdentity.service.js';
-import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto } from '../mappers/referee.mapper.js';
+import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto, toMyRefereeMatchDto } from '../mappers/referee.mapper.js';
 import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import { toRefereeStatus } from '../mappers/referee.mapper.js';
@@ -107,6 +107,19 @@ export async function listMyRefereeInvitations(userId : number){
     }
 
     return { items : rows.map(r => toMyRefereeInvitationDto(r, byInvitation.get(r.tournament_referee_id) ?? [])) };
+}
+
+/**
+ * B7 (รายงาน FE 19 ก.ย.) — แมตช์ที่ฉันเป็นกรรมการ (รับแมตช์แล้ว + ยัง active ในทัวร์นั้น) ข้ามทุกทัวร์
+ * ?status= กรองสถานะแมตช์ · ?upcoming=true เฉพาะที่ยังไม่จบ (scheduled/checkin_open/in_progress)
+ */
+export async function listMyRefereeMatches(userId : number, filters : { status? : string | undefined; upcoming? : boolean | undefined }){
+    const rows = (await MatchRefRepo.findAcceptedByUser(userId)).filter(r => isActiveReferee(r));
+    const items = rows
+        .filter(r => filters.status === undefined || r.match_status === filters.status)
+        .filter(r => !filters.upcoming || r.match_status !== 'completed')
+        .map(toMyRefereeMatchDto);
+    return { items };
 }
 
 export async function acceptRefereeInvitation(invitationId : number, userId : number, input : AcceptInvitationInput){

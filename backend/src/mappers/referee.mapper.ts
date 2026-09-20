@@ -1,7 +1,7 @@
 import type { UserRefDto } from './user.mapper.js';
 import { toUserRef } from './user.mapper.js';
 import type { TournamentRefereeListRow , MyRefereeInvitationRow } from '../repositories/tournamentReferee.repo.js';
-import type { MatchRefereeListRow, InvitedMatchRow } from '../repositories/matchReferee.repo.js';
+import type { MatchRefereeListRow, InvitedMatchRow, MyRefereeMatchRow } from '../repositories/matchReferee.repo.js';
 import type { TournamentRefereeRow } from '../types/db.js';
 
 
@@ -106,6 +106,35 @@ export function toMyRefereeInvitationDto(row : MyRefereeInvitationRow, matches :
         isExternal : row.is_external === 1,
         matches : matches.map(toInvitedMatchDto),
         createdAt : row.created_at.toISOString()
+    };
+}
+
+/** B7 — แถวใน GET /me/referee-matches */
+export type MyRefereeMatchDto = {
+    id : number,
+    tournament : { id : number, name : string, sportTypeId : number },
+    round : number | null,
+    teamA : { id : number, name : string } | null,
+    teamB : { id : number, name : string } | null,
+    scheduledTime : Date | null,
+    scheduledEndTime : Date | null,
+    venue : string | null,
+    mode : 'onsite' | 'online',
+    status : string
+};
+
+export function toMyRefereeMatchDto(row : MyRefereeMatchRow): MyRefereeMatchDto {
+    return {
+        id : row.match_id,
+        tournament : { id : row.tournament_id, name : row.tournament_name, sportTypeId : row.sport_type_id },
+        round : row.round_number,
+        teamA : row.team_a_id !== null ? { id : row.team_a_id, name : row.team_a_name! } : null,
+        teamB : row.team_b_id !== null ? { id : row.team_b_id, name : row.team_b_name! } : null,
+        scheduledTime : row.scheduled_time,
+        scheduledEndTime : row.scheduled_end_time,
+        venue : row.venue,
+        mode : row.mode,
+        status : row.match_status
     };
 }
 

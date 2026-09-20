@@ -17,6 +17,7 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
 // F04/F05 ดึงแมตช์ที่แนบมากับคำเชิญ — เทสชุดนี้ไม่ได้แนบแมตช์ จึงคืนว่างเสมอ
 vi.mock('../../repositories/matchReferee.repo.js', () => ({
   findByTournamentReferees: vi.fn().mockResolvedValue([]),
+  findAcceptedByUser: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../repositories/match.repo.js', () => ({
@@ -35,6 +36,7 @@ vi.mock('../../mappers/referee.mapper.js', async (importOriginal) => ({
 
 import * as refereeService from '../referee.service.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
+import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto } from '../../mappers/referee.mapper.js';
 import { AppError } from '../../utils/AppError.js';
@@ -456,5 +458,33 @@ describe('declineRefereeInvitation', () => {
 
     expect(mockedRefRepo.decline).toHaveBeenCalledWith(1);
     expect(result).toBeUndefined();
+  });
+});
+
+describe('listMyRefereeMatches (B7)', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    match_referee_id: 1, tournament_referee_id: 5,
+    invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+    match_id: 10, round_number: 1, scheduled_time: null, scheduled_end_time: null, venue: null, mode: 'onsite', match_status: 'scheduled',
+    tournament_id: 50, tournament_name: 'T', sport_type_id: 1,
+    team_a_id: 11, team_a_name: 'A', team_b_id: null, team_b_name: null,
+    ...over,
+  }) as never;
+
+  it('returns only matches where the referee is still active in that tournament', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValueOnce([
+      row(),
+      row({ match_id: 11, removed_at: new Date() }),                                   // removed from tournament
+      row({ match_id: 12, is_external: 1, external_approval_status: 'pending' }),      // external, admin not yet approved
+    ]);
+    const out = await refereeService.listMyRefereeMatches(7, {});
+    expect(out.items.map(i => i.id)).toEqual([10]);
+    expect(out.items[0]).toMatchObject({ tournament: { id: 50, name: 'T', sportTypeId: 1 }, teamA: { id: 11, name: 'A' }, teamB: null, status: 'scheduled' });
+  });
+
+  it('upcoming=true drops completed matches; status= filters exactly', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([row(), row({ match_id: 13, match_status: 'completed' })]);
+    expect((await refereeService.listMyRefereeMatches(7, { upcoming: true })).items.map(i => i.id)).toEqual([10]);
+    expect((await refereeService.listMyRefereeMatches(7, { status: 'completed' })).items.map(i => i.id)).toEqual([13]);
   });
 });

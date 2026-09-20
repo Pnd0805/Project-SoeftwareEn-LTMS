@@ -16,6 +16,12 @@ export async function listMyInvitations(req : Request, res : Response){
     res.status(200).json(await RefereeService.listMyRefereeInvitations(req.user!.user_id));
 }
 
+export async function listMyMatches(req : Request, res : Response){
+    const status = typeof req.query['status'] === 'string' ? req.query['status'] : undefined;
+    const upcoming = req.query['upcoming'] === 'true';
+    res.status(200).json(await RefereeService.listMyRefereeMatches(req.user!.user_id, { status, upcoming }));
+}
+
 export async function accept(req : Request, res : Response){
     const invitationId = parseId(req.params['id'], 'รหัสคำเชิญ');
     res.status(200).json(await RefereeService.acceptRefereeInvitation(invitationId, req.user!.user_id, req.body));

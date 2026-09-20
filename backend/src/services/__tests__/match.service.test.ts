@@ -79,7 +79,7 @@ describe('scheduleMatch (M06)', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
 
-    await matchService.scheduleMatch(1, START, END, 'สนาม A');
+    await matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' });
 
     expect(MatchRepo.findConflictingMatch).toHaveBeenCalledWith(1, new Date(START), new Date(END), 'สนาม A', 11, 12);
     expect(MatchRepo.updateMatchSchedule).toHaveBeenCalledWith(1, new Date(START), new Date(END), 'สนาม A');
@@ -89,15 +89,38 @@ describe('scheduleMatch (M06)', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue({ match_id: 99 });
 
-    const err = await expectAppError(matchService.scheduleMatch(1, START, END, 'สนาม A'), 409, 'SCHEDULE_CONFLICT');
+    const err = await expectAppError(matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' }), 409, 'SCHEDULE_CONFLICT');
     expect(err.extra).toEqual({ conflictingMatchId: 99 });
     expect(MatchRepo.updateMatchSchedule).not.toHaveBeenCalled();
+  });
+
+  it('B9: venue-only update keeps the existing start/end', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A' }));
+    vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
+
+    await matchService.scheduleMatch(1, { venue: 'สนาม B' });
+
+    expect(MatchRepo.updateMatchSchedule).toHaveBeenCalledWith(1, new Date(START), new Date(END), 'สนาม B');
+  });
+
+  it('B9: first-time schedule with only a venue → 400 SCHEDULE_INCOMPLETE listing the missing fields', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: null, scheduled_end_time: null, venue: null }));
+
+    const err = await expectAppError(matchService.scheduleMatch(1, { venue: 'สนาม B' }), 400, 'SCHEDULE_INCOMPLETE');
+    expect(err.extra).toEqual({ missing: ['scheduledTime', 'scheduledEndTime'] });
+    expect(MatchRepo.updateMatchSchedule).not.toHaveBeenCalled();
+  });
+
+  it('B9: moving only the start past the stored end → 400', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A' }));
+
+    await expectAppError(matchService.scheduleMatch(1, { scheduledTime: '2026-10-01T23:00:00.000Z' }), 400, 'VALIDATION_FAILED');
   });
 
   it.each(['checkin_open', 'in_progress', 'completed'])('refuses to reschedule a %s match with MATCH_NOT_CHANGEABLE', async (status) => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: status }));
 
-    await expectAppError(matchService.scheduleMatch(1, START, END, 'สนาม A'), 409, 'MATCH_NOT_CHANGEABLE');
+    await expectAppError(matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' }), 409, 'MATCH_NOT_CHANGEABLE');
     expect(MatchRepo.findConflictingMatch).not.toHaveBeenCalled();
     expect(MatchRepo.updateMatchSchedule).not.toHaveBeenCalled();
   });
@@ -107,7 +130,7 @@ describe('scheduleMatch (M06)', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ event_start_date: '2026-10-03', event_end_date: '2026-10-04' } as never);
 
-    const err = await expectAppError(matchService.scheduleMatch(1, START, END, 'สนาม A'), 409, 'OUTSIDE_TOURNAMENT_DATES');
+    const err = await expectAppError(matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' }), 409, 'OUTSIDE_TOURNAMENT_DATES');
     expect(err.extra).toEqual({ eventStartDate: '2026-10-03', eventEndDate: '2026-10-04' });
     expect(MatchRepo.updateMatchSchedule).not.toHaveBeenCalled();
   });
@@ -119,7 +142,7 @@ describe('scheduleMatch (M06)', () => {
       { match_id: 3, scheduled_time: new Date('2026-10-01T09:00:00.000Z'), scheduled_end_time: new Date('2026-10-01T10:30:00.000Z') },
     ]);
 
-    const err = await expectAppError(matchService.scheduleMatch(1, START, END, 'สนาม A'), 409, 'SCHEDULE_BREAKS_BRACKET');
+    const err = await expectAppError(matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' }), 409, 'SCHEDULE_BREAKS_BRACKET');
     expect(err.extra).toEqual({ blockingMatchId: 3 });
   });
 
@@ -128,7 +151,7 @@ describe('scheduleMatch (M06)', () => {
     vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
     vi.mocked(MatchRepo.findById).mockResolvedValue({ match_id: 8, scheduled_time: new Date('2026-10-01T11:00:00.000Z') } as never);
 
-    const err = await expectAppError(matchService.scheduleMatch(1, START, END, 'สนาม A'), 409, 'SCHEDULE_BREAKS_BRACKET');
+    const err = await expectAppError(matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' }), 409, 'SCHEDULE_BREAKS_BRACKET');
     expect(err.extra).toEqual({ blockingMatchId: 8 });
   });
 });
