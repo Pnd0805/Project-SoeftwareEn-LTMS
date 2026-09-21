@@ -5,7 +5,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins } from "./match";
+import { checkin, getCheckins, getMatchLineups } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -33,6 +33,21 @@ describe("match check-in contract", () => {
     await expect(getCheckins(12)).resolves.toMatchObject({
       items: [{ id: 41, user: { id: 9201, fullName: "Checked Player" }, status: "success" }],
     });
+  });
+
+  it("reads the public approved lineup and preserves check-in states", async () => {
+    const lineups = {
+      matchId: 12,
+      teamA: { teamId: 3, players: [{
+        userId: 9201, fullName: "Checked Player", avatarUrl: null,
+        checkinStatus: "checked_in", checkedInAt: "2026-09-21T10:00:00.000Z",
+      }] },
+      teamB: null,
+    };
+    fetchMock.mockResolvedValueOnce(json(lineups));
+
+    await expect(getMatchLineups(12)).resolves.toEqual(lineups);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/matches/12/lineups");
   });
 
   it("reconciles ALREADY_CHECKED_IN with a fresh list read for the same user", async () => {

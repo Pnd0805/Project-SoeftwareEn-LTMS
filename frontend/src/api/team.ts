@@ -109,6 +109,7 @@ export async function getBackendTeam(teamId: number): Promise<BackendTeamDto> {
     officialStatus: team.officialStatus,
     leader: team.leader,
     memberCount: team.members.length,
+    maxMembers: null,
     createdAt: team.createdAt,
   });
 }

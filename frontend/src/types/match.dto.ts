@@ -59,6 +59,29 @@ export interface PlayerRef {
   id: number;
   fullName: string;
   avatarUrl: string | null;
+  checkinStatus?: MatchLineupCheckinStatus;
+  checkedInAt?: string | null;
+}
+
+export type MatchLineupCheckinStatus = "checked_in" | "pending_verification" | "rejected" | null;
+
+export interface BackendMatchLineupPlayerDto {
+  userId: number;
+  fullName: string;
+  avatarUrl: string | null;
+  checkinStatus: MatchLineupCheckinStatus;
+  checkedInAt: string | null;
+}
+
+export interface BackendMatchLineupTeamDto {
+  teamId: number;
+  players: BackendMatchLineupPlayerDto[];
+}
+
+export interface BackendMatchLineupsDto {
+  matchId: number;
+  teamA: BackendMatchLineupTeamDto | null;
+  teamB: BackendMatchLineupTeamDto | null;
 }
 
 // ══════════════ Match — ตาราง `matches` ══════════════

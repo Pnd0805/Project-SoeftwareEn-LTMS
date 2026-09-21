@@ -318,6 +318,12 @@ export interface BackendApplicationDetailDto {
   hardFilterDetails: unknown[];
   /** presigned URL ไม่ใช่ S3 key ดิบ */
   softFilterDocuments: string[];
+  /** รายชื่อที่ใบสมัครส่งลงแข่ง; ว่างเมื่อใบสมัครถูกยกเลิก/ปฏิเสธ/ถอนแล้ว */
+  players: Array<{
+    userId: number;
+    fullName: string;
+    avatarUrl: string | null;
+  }>;
 }
 
 /** POST /uploads/presign — ขอที่อัปโหลดรูป (JPEG/PNG เท่านั้น) */

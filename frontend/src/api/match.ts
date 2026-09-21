@@ -44,6 +44,7 @@ import type {
   BackendCheckinQrDto,
   BackendMatchDetailDto,
   BackendMatchListItemDto,
+  BackendMatchLineupsDto,
   BackendMatchRefereeDto,
   BackendPaged,
   BackendPlayerStatDto,
@@ -501,17 +502,30 @@ function checkinFromBackend(matchId: number, row: BackendCheckinDto): MatchCheck
   };
 }
 
-/** รายชื่อผู้เล่นของทีม — match DTO ของ backend ไม่มีมาให้ ต้องขอจากทีมเอง */
-async function rosterOf(teamId: number | undefined): Promise<PlayerRef[]> {
-  if (teamId === undefined) return [];
-  try {
-    const members = await apiFetch<{ items: Array<{ userId: number; fullName: string; avatarUrl: string | null }> }>(
-      `/teams/${teamId}/members`,
-    );
-    return members.items.map((m) => ({ id: m.userId, fullName: m.fullName, avatarUrl: m.avatarUrl }));
-  } catch {
-    return [];
-  }
+const lineupPlayers = (side: BackendMatchLineupsDto["teamA"]): PlayerRef[] =>
+  side?.players.map((player) => ({
+    id: player.userId,
+    fullName: player.fullName,
+    avatarUrl: player.avatarUrl,
+    checkinStatus: player.checkinStatus,
+    checkedInAt: player.checkedInAt,
+  })) ?? [];
+
+/** M21 — submitted tournament players and their public check-in state. */
+export async function getMatchLineups(matchId: MatchRef): Promise<BackendMatchLineupsDto> {
+  if (!USE_MOCK) return apiFetch(`/matches/${matchId}/lineups`);
+  const match = await getMatch(matchId);
+  const side = (team: MatchTeamRef | null) => team ? {
+    teamId: team.id,
+    players: team.players.map((player) => ({
+      userId: player.id,
+      fullName: player.fullName,
+      avatarUrl: player.avatarUrl,
+      checkinStatus: player.checkinStatus ?? null,
+      checkedInAt: player.checkedInAt ?? null,
+    })),
+  } : null;
+  return mockDelay({ matchId: match.id, teamA: side(match.teamA), teamB: side(match.teamB) });
 }
 
 // ══════════════ Match ══════════════
@@ -557,8 +571,8 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
   const dto = matchFromBackend(raw);
 
   /* ของที่หน้าแมตช์และหน้าเช็คอินต้องใช้ แต่ backend แยกไว้คนละเส้น:
-     กรรมการของแมตช์ (F12) · รายชื่อผู้เล่นของทั้งสองทีม · ผู้จัดของรายการ · ตัวเราเอง */
-  const [refs, me, tournament, playersA, playersB, myTeams] = await Promise.all([
+     กรรมการของแมตช์ (F12) · รายชื่อที่อนุมัติของสองทีม · ผู้จัดของรายการ · ตัวเราเอง */
+  const [refs, me, tournament, lineups, myTeams] = await Promise.all([
     apiFetch<{ items: BackendMatchRefereeDto[] }>(`/matches/${matchId}/referees`)
       .catch(() => ({ items: [] as BackendMatchRefereeDto[] })),
     apiFetch<{ id: number }>("/me").catch(() => null),
@@ -566,16 +580,14 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
       ? apiFetch<{ name: string; sportTypeId: number; organizer?: { id: number } }>(`/tournaments/${raw.tournamentId}`)
         .catch(() => null)
       : Promise.resolve(null),
-    rosterOf(raw.teamA?.id),
-    rosterOf(raw.teamB?.id),
-    /* ⚠️ GET /teams/:id/members เปิดให้เฉพาะสมาชิกของทีม กรรมการกับผู้จัดได้ 403
-       "ทีมของฉัน" จึงต้องถามจาก /me/teams แทนการหาชื่อตัวเองในรายชื่อผู้เล่น */
+    apiFetch<BackendMatchLineupsDto>(`/matches/${matchId}/lineups`),
+    /* บทบาทหัวหน้าทีมยังมาจาก /me/teams; สิทธิ์เช็คอินมาจาก lineups เท่านั้น */
     apiFetch<{ items: Array<{ id: number; role: string }> }>("/me/teams").catch(() => ({ items: [] })),
   ]);
 
   dto.referees = refs.items.map((r) => r.referee);
-  if (dto.teamA) dto.teamA.players = playersA;
-  if (dto.teamB) dto.teamB.players = playersB;
+  if (dto.teamA) dto.teamA.players = lineupPlayers(lineups.teamA);
+  if (dto.teamB) dto.teamB.players = lineupPlayers(lineups.teamB);
   if (tournament) {
     dto.tournament = {
       ...dto.tournament,
@@ -591,6 +603,8 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
   const myTeam = myTeamRow
     ? [dto.teamA, dto.teamB].find((t) => t?.id === myTeamRow.id) ?? null
     : null;
+  const myLineupTeam = myId === null ? null
+    : [dto.teamA, dto.teamB].find((team) => team?.players.some((player) => player.id === myId)) ?? null;
   const isTeamLeader = myTeamRow?.role === "leader";
   const onsite = dto.mode === "onsite";
   const playable = dto.status === "checkin_open" || dto.status === "in_progress";
@@ -600,11 +614,11 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
   dto.viewer = {
     roles: [
       ...(isReferee ? (["referee"] as const) : []),
-      ...(myTeam ? (["player"] as const) : []),
+      ...(myLineupTeam ? (["player"] as const) : []),
       ...(isOrganizer ? (["organizer"] as const) : []),
     ],
     myUserId: myId,
-    myTeamId: myTeam?.id ?? null,
+    myTeamId: myTeam?.id ?? myLineupTeam?.id ?? null,
     isTeamLeader,
     can: {
       /* BR-13 — ผู้ส่งกับผู้ยืนยันสลับข้างกันตามโหมด และทั้งคู่ต้องเป็น "หัวหน้าทีม"
@@ -626,14 +640,16 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
     },
   };
 
-  /* ยอดเช็คอิน — อ่านได้เฉพาะผู้จัด/กรรมการของแมตช์ (ผู้เล่นได้ 403)
-     lineupSize เอาจากรายชื่อทีมที่อ่านได้ ถ้าอ่านไม่ได้ปล่อย 0 แล้วหน้าจอจะไม่แสดงตัวหาร */
+  const approvedPlayers = [dto.teamA, dto.teamB].flatMap((team) => team?.players ?? []);
+  dto.lineupSize = approvedPlayers.length;
+  dto.checkedIn = approvedPlayers.filter((player) => player.checkinStatus === "checked_in").length;
+
+  /* รายละเอียดวิธี/หลักฐานเช็คอินยังอ่านได้เฉพาะผู้จัด/กรรมการของแมตช์ */
   if (isReferee || isOrganizer) {
     const checkins = await apiFetch<{ items: BackendCheckinDto[] }>(`/matches/${matchId}/checkins`)
       .catch(() => null);
     if (checkins) {
       dto.checkedIn = checkins.items.filter((c) => c.status === "checked_in").length;
-      dto.lineupSize = playersA.length + playersB.length || checkins.items.length;
     }
   }
   /* เดิมเติม lineupSize = จำนวนผู้เล่นในทีมตัวเองให้ผู้เล่นด้วย แต่ตัวเศษยังเป็น 0 เพราะ
@@ -1205,12 +1221,13 @@ export async function getMatchStats(matchId: MatchRef): Promise<{ items: PlayerM
   }
   /* backend ตอบเป็น { userId, fullName, stats:[{statKey, value}] } — หน้าจอต้องการ
      { player, teamId, values } · ทีมกับผู้บันทึกไม่ได้ส่งมา จึงเติมจากรายชื่อผู้เล่นของแมตช์ */
-  const [raw, match] = await Promise.all([
+  const [raw, match, lineups] = await Promise.all([
     apiFetch<{ items: BackendPlayerStatDto[] }>(`/matches/${matchId}/stats`),
     apiFetch<BackendMatchDetailDto>(`/matches/${matchId}`).catch(() => null),
+    apiFetch<BackendMatchLineupsDto>(`/matches/${matchId}/lineups`),
   ]);
-  const rosterA = await rosterOf(match?.teamA?.id);
-  const rosterB = await rosterOf(match?.teamB?.id);
+  const rosterA = lineupPlayers(lineups.teamA);
+  const rosterB = lineupPlayers(lineups.teamB);
   const teamOf = (userId: number) =>
     rosterA.some((p) => p.id === userId) ? match?.teamA?.id ?? 0
       : rosterB.some((p) => p.id === userId) ? match?.teamB?.id ?? 0

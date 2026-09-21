@@ -3,8 +3,8 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend reference: `origin/BE_KN` at `3ec530d`, checked locally for
-R06 on 2026-09-21.** Individual entries in the "Backend blockers" section retain
+**Current backend reference and primary backend branch: `origin/BE_KN` at
+`ff701e6`, inspected locally on 2026-09-21.** Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
 
@@ -88,6 +88,36 @@ branch. Do not copy older prototype contracts over the reviewed backend shapes.
   states. Treat `401` and `403` as access errors, not empty data.
 - Backend collection responses in this plan use `{ items: [...] }`.
 
+## Squad roster contract follow-up (`BE_KN` migrations 018–019)
+
+- [x] Treat `origin/BE_KN` as the primary backend contract and inspect its current
+  routes, schemas, services and mappers before changing Frontend DTOs.
+- [x] Registration loads `GET /teams/:id/members`, lets the leader select players,
+  sends `playerIds`, shows the sport min/max and blocks an invalid squad size.
+- [x] Registration renders structured feedback for `SQUAD_SIZE_INVALID`,
+  `PLAYER_NOT_IN_TEAM` and `PLAYER_ALREADY_REGISTERED`.
+- [x] Organizer application detail loads `GET /applications/:id` and displays its
+  `players` with loading, empty and error states.
+- [x] Match and check-in screens use public `GET /matches/:id/lineups`, not the
+  whole team membership, for the submitted players and their check-in statuses.
+- [x] Participant check-in is offered only to a user in the approved lineup and
+  `NOT_IN_APPROVED_ROSTER` has actionable copy.
+- [x] Real-mode team roster no longer exposes starter/substitute controls or calls
+  the removed `PATCH /teams/:id/members/:uid` route.
+- [x] Team detail consumes `maxMembers` and presents the pool as `X / max`.
+- [x] Member/team deletion renders `MEMBER_LOCKED_IN_TOURNAMENT` and
+  `TEAM_LOCKED_IN_TOURNAMENT`, including affected tournaments and a withdrawal path.
+- [x] Add focused contract/UI regressions, then run full tests, lint, production
+  build and `git diff --check`.
+- [ ] Real-browser/backend QA against `BE_KN`; keep pending until independently
+  observed even after developer verification passes.
+
+Developer verification passed on 2026-09-21: focused roster/check-in contract
+tests passed (4 files / 26 tests), the full suite passed (24 files / 159 tests),
+lint passed, TypeScript and the production build passed, and `git diff --check`
+passed. The existing Vite chunk-size warning remains. A live Backend/browser
+retest is still pending because `127.0.0.1:8000` was not running in this session.
+
 ## Priority 1 — Teams and registration (start here)
 
 ### 1. Team API types and hooks
@@ -99,13 +129,13 @@ its type, hook, and consuming screen are complete:
 | --- | --- | --- | --- |
 | [x] | My teams | `GET /me/teams` | `{ items: MyTeam[] }`. `MyTeam` has `id`, `name`, `sportTypeId`, `readinessStatus`, `officialStatus`, `memberCount`, `role`. |
 | [x] | Team detail | `GET /teams/:id` | Numeric `id`; includes `leader`, `memberCount`, `createdAt`, `readinessStatus`, `officialStatus`. |
-| [x] | Team members | `GET /teams/:id/members` | Authenticated team members only. `{ items: TeamMember[] }`; a member has `userId`, `fullName`, `avatarUrl`, `position`, `joinedAt`. |
+| [x] | Team members | `GET /teams/:id/members` | Authenticated team members or tournament staff. `{ items: TeamMember[] }`; a member has `userId`, `fullName`, `avatarUrl`, `joinedAt`. |
 | [x] | Team invitations | `GET/POST /teams/:id/invitations` | Team-leader-only management. Accept/decline with `POST /invitations/:id/accept` or `/decline`. |
 
-These request bodies were confirmed against `origin/backend` `team.schema.ts` on
-2026-09-12:
+These historical request bodies were confirmed against `origin/backend` on
+2026-09-12; the position route below was removed by `BE_KN` migration 019:
 - An invitation sends `{ invitedUserId }`.
-- A member position change is `PATCH /teams/:id/members/:uid { position }`.
+- ~~A member position change is `PATCH /teams/:id/members/:uid { position }`.~~
 - An official request sends `{ supportingDocs: string[] }`.
 
 ### 2. Connect screens
@@ -121,7 +151,7 @@ These request bodies were confirmed against `origin/backend` `team.schema.ts` on
 
 | Done | Need | Route | Contract |
 | --- | --- | --- | --- |
-| [x] | Apply | `POST /tournaments/:id/applications` | Send `{ teamId: number }`. Success: `201 { id, status: 'pending', hardFilterPassed: true }`. |
+| [x] | Apply | `POST /tournaments/:id/applications` | Send `{ teamId: number, playerIds: number[] }`. Success includes the accepted `playerIds`. |
 | [x] | My applications | `GET /me/applications` | Item: `id`, `tournament`, `team`, `status`, `rejectionReason`, `appliedAt`. |
 | [x] | Organizer applications | `GET /tournaments/:id/applications` | Organizer-only. Item: `id`, `team`, `status`, `hardFilterPassed`, `softFilterDocuments`, `appliedAt`. |
 | [x] | Approved teams | `GET /tournaments/:id/teams` | `{ items: [{ id, name, sportTypeId }] }`. |

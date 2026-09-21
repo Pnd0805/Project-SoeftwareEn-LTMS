@@ -24,7 +24,7 @@ import { TeamCrestView, TeamLink } from '../../../components/kit/chips'
 import { toTeamView } from '../../../components/kit/viewModels'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
-import { useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
+import { useApplicationDetail, useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
 import { ApiError, USE_MOCK } from '../../../api/client'
 import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
 import { regsOf, team, user } from '../../../shared/selectors'
@@ -93,6 +93,8 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const s = useLtms()
   const navigate = useNavigate()
   const [review, setReview] = useState<RegRow | null>(null)
+  const reviewApplicationId = typeof review?.applicationId === 'number' ? review.applicationId : undefined
+  const applicationDetail = useApplicationDetail(reviewApplicationId, !!review)
 
   /* เดียวกับ TournamentPage — id ตัวเลขเท่านั้นที่ API รู้จัก */
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
@@ -218,7 +220,31 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
             <div style={{ fontSize: 15, lineHeight: 1.55 }}>{t.entryNotes}</div>
           </div>
         ) : null}
-        {review?.squad.length ? (
+        {!USE_MOCK && applicationDetail.isPending ? <div className="sub">Loading submitted players…</div> : null}
+        {!USE_MOCK && applicationDetail.isError ? (
+          <div className="hstack">
+            <span className="sub">Unable to load the submitted players. {applicationDetail.error instanceof Error ? applicationDetail.error.message : ''}</span>
+            <button className="btn ghost" type="button" onClick={() => void applicationDetail.refetch()}>Try again</button>
+          </div>
+        ) : null}
+        {!USE_MOCK && applicationDetail.isSuccess && applicationDetail.data.players.length ? (
+          <TableWrap>
+            <table>
+              <thead><tr><th>Player</th></tr></thead>
+              <tbody>
+                {applicationDetail.data.players.map(player => (
+                  <tr key={player.userId}>
+                    <td><span className="hstack"><span className="avatar">{player.fullName.slice(0, 1)}</span>{player.fullName}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        ) : null}
+        {!USE_MOCK && applicationDetail.isSuccess && !applicationDetail.data.players.length ? (
+          <div className="sub">This application no longer has a locked player list.</div>
+        ) : null}
+        {USE_MOCK && review?.squad.length ? (
           <TableWrap>
             <table>
               <thead><tr><th>Player</th><th>Faculty</th><th>Year</th></tr></thead>
@@ -230,10 +256,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
               </tbody>
             </table>
           </TableWrap>
-        ) : (
-          /* API ยังไม่ส่งรายชื่อผู้เล่นในใบสมัคร — ไม่วาดตารางเปล่าให้เข้าใจผิดว่าไม่มีคน */
-          <div className="sub">รายชื่อผู้เล่นในใบสมัครยังไม่มีใน API — ดูได้จากหน้าทีม</div>
-        )}
+        ) : null}
         {review?.hardFilterFails.length ? (
           <div className="banner crit">
             <span className="grow">

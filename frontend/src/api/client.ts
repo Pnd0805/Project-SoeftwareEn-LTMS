@@ -19,12 +19,15 @@ export class ApiError extends Error {
   status: number;
   fields?: Record<string, string>;
   details?: unknown;
+  extra: Record<string, unknown>;
   constructor(status: number, body: ApiErrorBody) {
     super(body.message);
     this.code = body.code;
     this.status = status;
     this.fields = body.fields;
     this.details = body.details;
+    this.extra = Object.fromEntries(Object.entries(body).filter(([key]) =>
+      key !== "code" && key !== "message" && key !== "fields" && key !== "details"));
   }
 }
 

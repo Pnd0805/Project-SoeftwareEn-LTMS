@@ -31,6 +31,22 @@ describe("apiFetch", () => {
     });
   });
 
+  it("preserves endpoint-specific error metadata from the backend envelope", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({
+      error: {
+        code: "PLAYER_ALREADY_REGISTERED",
+        message: "Player is already registered",
+        players: [{ userId: 7, fullName: "Seven", teamId: 3, teamName: "Blue" }],
+      },
+    }, 409)));
+
+    await expect(apiFetch("/tournaments/1/applications", { method: "POST" })).rejects.toMatchObject({
+      status: 409,
+      code: "PLAYER_ALREADY_REGISTERED",
+      extra: { players: [{ userId: 7, fullName: "Seven", teamId: 3, teamName: "Blue" }] },
+    });
+  });
+
   it("exposes forbidden team-member reads as a 403 API error", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ error: { code: "FORBIDDEN", message: "Not a team member" } }, 403)));
 

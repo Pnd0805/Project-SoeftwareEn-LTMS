@@ -27,6 +27,7 @@ import { numOf } from '../../mocks/storeBridge'
 
 /** รายชื่อผู้ที่ไม่ผ่านเงื่อนไขรับสมัคร ตามที่ backend ส่งกลับมากับ 422 */
 type HardFilterFail = { userId: number; fullName: string; reason: string }
+type PlayerConflict = { userId: number; fullName: string; teamId: number; teamName: string }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 
@@ -70,6 +71,7 @@ export function RegisterForm({
   const [trId, setTrId] = useState(tournament.id)
   const [squad, setSquad] = useState<string[]>(tm?.members ?? [])
   const [serverError, setServerError] = useState<string | null>(null)
+  const [serverDetails, setServerDetails] = useState<string[]>([])
   /* 422 HARD_FILTER_FAILED ส่งรายชื่อคนที่ไม่ผ่านมาให้ด้วย — ต้องบอกว่าใครและเพราะอะไร
      ไม่งั้นหัวหน้าทีมเห็นแค่ "สมาชิกบางคนไม่ผ่านเงื่อนไข" แล้วแก้อะไรไม่ถูก */
   const [blockedMembers, setBlockedMembers] = useState<HardFilterFail[]>([])
@@ -133,6 +135,7 @@ export function RegisterForm({
 
   const submit = async (input: ApplyToTournamentInput) => {
     setServerError(null)
+    setServerDetails([])
     setBlockedMembers([])
     try {
       await apply.mutateAsync(USE_MOCK ? input : { ...input, playerIds })
@@ -145,6 +148,16 @@ export function RegisterForm({
         setServerError(error.message)
         if (error.code === 'HARD_FILTER_FAILED' && Array.isArray(error.details)) {
           setBlockedMembers(error.details as HardFilterFail[])
+        } else if (error.code === 'SQUAD_SIZE_INVALID') {
+          setServerDetails([
+            `Selected ${String(error.extra.submitted ?? playerIds.length)} players; this sport requires ${String(error.extra.minMembers ?? '?')}–${String(error.extra.maxMembers ?? '?')}.`,
+          ])
+        } else if (error.code === 'PLAYER_NOT_IN_TEAM' && Array.isArray(error.extra.userIds)) {
+          const names = (error.extra.userIds as number[]).map(id => memberRows.find(m => m.userId === id)?.fullName ?? `User ${id}`)
+          setServerDetails(names.map(name => `${name} is no longer a member of this team. Refresh the roster and choose again.`))
+        } else if (error.code === 'PLAYER_ALREADY_REGISTERED' && Array.isArray(error.extra.players)) {
+          setServerDetails((error.extra.players as PlayerConflict[]).map(player =>
+            `${player.fullName} is already registered for this tournament with ${player.teamName}.`))
         }
       }
     }
@@ -271,6 +284,12 @@ export function RegisterForm({
               ))}
               Only the players you entered are checked — leave the named ones off and the rest can still
               enter, or take the squad to a different tournament.
+            </>
+          ) : null}
+          {serverDetails.length ? (
+            <>
+              <br /><br />
+              {serverDetails.map(detail => <span key={detail}>{detail}<br /></span>)}
             </>
           ) : null}
         </Banner>

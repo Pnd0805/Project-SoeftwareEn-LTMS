@@ -18,7 +18,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../components/kit/primitives'
 import { useMatch, useCheckins, useCheckin, useMyCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
-import { USE_MOCK } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
 import { TeamMarkView } from '../../components/kit/chips'
 import { IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
@@ -37,6 +37,10 @@ import { toTeamView } from '../match/matchView'
  * (BACKEND-GAPS: "a check-in that has gone through cannot be undone")
  */
 const canRevoke = (c: MatchCheckinDto) => USE_MOCK && c.status === 'success'
+
+const checkinErrorMessage = (error: unknown) => error instanceof ApiError && error.code === 'NOT_IN_APPROVED_ROSTER'
+  ? 'You are not on the approved player list for this match. Contact your team captain.'
+  : error instanceof Error ? error.message : 'Check-in failed.'
 
 /** บอกกรรมการว่าทำไมแถวที่เช็คอินแล้วถึงไม่มีปุ่มถอน แทนที่จะปล่อยช่องว่างเปล่า */
 function RevokeNote({ show }: { show: boolean }) {
@@ -69,7 +73,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
   const isRef = m.viewer.can.manageCheckin
   /* ตัดสินการเช็คอินของคนอื่นได้ไหม — คนละเรื่องกับการดูคอนโซล ดู can.verifyCheckin */
   const canJudge = m.viewer.can.verifyCheckin
-  const inCount = team.players.filter(p => checkins.some(c => c.user.id === p.id && c.status === 'success')).length
+  const inCount = team.players.filter(p => p.checkinStatus === 'checked_in').length
 
   /** ผู้เล่นที่กำลังยืนยันตัวตนอยู่ · null = ไม่ได้เปิดโมดัล */
   const [capture, setCapture] = useState<number | null>(null)
@@ -98,7 +102,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
         </Banner>
       ) : null}
       {checkin.isError ? (
-        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {(checkin.error as Error).message}</Banner>
+        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {checkinErrorMessage(checkin.error)}</Banner>
       ) : null}
       <TableWrap>
         <table>
@@ -113,6 +117,10 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                  ใช้ `viewer.myUserId` ที่ server บอกมา ไม่ใช่ id จาก useMe() เพราะ
                  บัญชีเดโมกับรายชื่อผู้เล่นมาคนละชุด id */
               const isMe = m.viewer.myUserId !== null && p.id === m.viewer.myUserId
+              const checkedIn = c?.status === 'success' || p.checkinStatus === 'checked_in'
+              const pending = c?.status === 'exception' || p.checkinStatus === 'pending_verification'
+              const rejected = c?.status === 'rejected' || p.checkinStatus === 'rejected'
+              const notYet = !checkedIn && !pending && !rejected
               const missingState = rosterReadState === 'ready'
                 ? 'ready'
                 : isMe
@@ -137,10 +145,10 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                     {c?.verifiedByReferee ? <> · checked by {c.verifiedByReferee.fullName}</> : null}
                   </td>
                   <td>
-                    {!c ? <Badge kind="warn">{missingLabel}</Badge>
-                      : c.status === 'success' ? <Badge kind="ok">Checked in</Badge>
-                        : c.status === 'rejected' ? <Badge kind="crit">Rejected</Badge>
-                          : <Badge kind="warn">Needs a look</Badge>}
+                    {checkedIn ? <Badge kind="ok">Checked in</Badge>
+                      : rejected ? <Badge kind="crit">Rejected</Badge>
+                        : pending ? <Badge kind="warn">Needs a look</Badge>
+                          : <Badge kind="warn">{missingLabel}</Badge>}
                     {/* เหตุผลที่ถูกปฏิเสธ กับเหตุผลที่กรรมการอนุโลมให้ เป็นคนละช่องแล้ว
                         ตั้งแต่ migration 015 — เลิกเดาจากสถานะ */}
                     {c?.status === 'rejected' && c.rejectionReason
@@ -150,7 +158,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                         : null}
                   </td>
                   <td>
-                    {((!c && missingState === 'ready') || c?.status === 'rejected') && isMe ? (
+                    {((notYet && missingState === 'ready') || rejected) && isMe ? (
                       /* ยืนยันตัวตนก่อนเสมอ — on-site สแกน QR · online ถ่ายรูปคู่บัตร */
                       <button className="btn primary" type="button" disabled={checkin.isPending}
                         onClick={() => setCapture(p.id)}>
@@ -162,7 +170,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                         onClick={() => setReview({ userId: p.id, name: p.fullName, photo: c.documentS3Key })}>
                         Review photo
                       </button>
-                    ) : !c && canJudge && missingState === 'ready' ? (
+                    ) : notYet && canJudge && missingState === 'ready' ? (
                       /* UC-04 E2b — ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันเองแล้ว
                          บันทึกเป็นข้อยกเว้นพร้อมเหตุผล */
                       <button className="btn ghost" type="button"
@@ -186,8 +194,6 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
         </table>
       </TableWrap>
       <RevokeNote show={canJudge && !USE_MOCK && checkins.some(c => c.status === 'success')} />
-      {/* TODO(schema): starter / substitute อยู่ที่ team_members.position (ระดับทีม,
-          FR-TM-04, สไลซ์ 4) ไม่ใช่ระดับแมตช์ — คอลัมน์นั้นจึงยังไม่มีที่นี่ */}
 
       <QrScanModal
         open={capture !== null && m.mode === 'onsite'}
@@ -269,7 +275,9 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
   const canJudge = m.viewer.can.verifyCheckin
   const myId = m.viewer.myUserId
   const mine = myId === null ? undefined : checkins.find(c => c.user.id === myId)
-  const canCheckIn = myId !== null && m.viewer.myTeamId !== null && (!mine || mine.status === 'rejected')
+  const canCheckIn = myId !== null
+    && [m.teamA, m.teamB].some(team => team?.players.some(player => player.id === myId))
+    && (!mine || mine.status === 'rejected')
   const [capture, setCapture] = useState(false)
   const [review, setReview] = useState<{ userId: number; name: string; photo: string | null } | null>(null)
 
@@ -312,7 +320,7 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
         </Banner>
       ) : null}
       {checkin.isError ? (
-        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {(checkin.error as Error).message}</Banner>
+        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {checkinErrorMessage(checkin.error)}</Banner>
       ) : null}
       {checkins.length ? (
         <TableWrap>

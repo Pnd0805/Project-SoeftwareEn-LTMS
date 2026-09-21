@@ -11,7 +11,7 @@ vi.mock("./client", async (importOriginal) => ({
 
 import {
   applyToTournament, approveAllApplications, approveApplication, cancelMyApplication,
-  getMyApplications, getTournamentApplications, rejectApplication, withdrawMyApplication,
+  getApplicationDetail, getMyApplications, getTournamentApplications, rejectApplication, withdrawMyApplication,
 } from "./tournament";
 
 const json = (body: unknown, status = 200) =>
@@ -81,6 +81,18 @@ describe("application lists", () => {
 
     await expect(getTournamentApplications(5)).rejects.toMatchObject({ status: 403, code: "NOT_ORGANIZER" });
     expect(lastRequest().path).toBe("/tournaments/5/applications");
+  });
+
+  it("GET /applications/:id keeps the submitted player list", async () => {
+    const detail = {
+      id: 7, tournamentId: 5, team: { id: 3, name: "Blue", sportTypeId: 2 }, status: "pending",
+      hardFilterDetails: [], softFilterDocuments: [],
+      players: [{ userId: 9201, fullName: "Player One", avatarUrl: null }],
+    };
+    fetchMock.mockResolvedValueOnce(json(detail));
+
+    await expect(getApplicationDetail(7)).resolves.toEqual(detail);
+    expect(lastRequest().path).toBe("/applications/7");
   });
 });
 

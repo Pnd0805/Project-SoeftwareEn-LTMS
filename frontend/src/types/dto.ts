@@ -139,6 +139,8 @@ export interface ApiErrorBody {
   message: string;
   fields?: Record<string, string>;
   details?: unknown;
+  /** Endpoint-specific metadata เช่น players, tournaments หรือ min/max ของ squad */
+  [key: string]: unknown;
 }
 
 export interface ApiErrorResponse {

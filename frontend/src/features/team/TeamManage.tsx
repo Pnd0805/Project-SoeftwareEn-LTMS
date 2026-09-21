@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { ConfirmCard, Modal } from '../../components/kit/Modal'
-import { USE_MOCK } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { useDisbandTeam, useRequestOfficialStatus, useUpdateTeam } from '../../hooks/useTeam'
 import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
 import { useLtms } from '../../shared/store'
@@ -22,6 +22,9 @@ import type { Team } from '../../shared/types'
 import type { BackendTeamDto } from '../../types/team.dto'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
+const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Array.isArray(error.extra.tournaments)
+  ? error.extra.tournaments as Array<{ tournamentId: number; name: string }>
+  : []
 
 /** รหัสทีมสั้นๆ ที่ใช้บนชิปและตราทีม — ตัวอักษรหรือตัวเลข 2–3 ตัว */
 const CODE_PATTERN = /^[A-Za-z0-9]{2,3}$/
@@ -73,6 +76,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
+  const disbandLocks = lockedTournamentsOf(disband.error)
 
   /* backend ไม่มีทางอ่านคำร้องของทีมตัวเอง — โหมด mock ดูจาก store ว่ามีค้างอยู่ไหม */
   const officialPending = !!storeTeam
@@ -107,7 +111,13 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
     <Panel quiet>
       <span className="tag"><em>//</em> Run the squad</span>
       {notice ? <Banner kind="ok">{notice}</Banner> : null}
-      {disband.isError ? <Banner kind="crit"><b>Couldn't disband the squad.</b> {errorMessage(disband.error)}</Banner> : null}
+      {disband.isError ? (
+        <Banner kind="crit">
+          <b>Couldn't disband the squad.</b> {errorMessage(disband.error)}
+          {disbandLocks.length ? <><br />Withdraw from {disbandLocks.map(item => item.name).join(', ')} first.
+            <br /><button className="btn ghost" type="button" onClick={() => navigate('/teams')}>Manage tournament applications</button></> : null}
+        </Banner>
+      ) : null}
 
       <div className="hstack" style={{ flexWrap: 'wrap' }}>
         <button className="btn ghost" type="button" onClick={openEdit}>

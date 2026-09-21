@@ -2,12 +2,12 @@
  * src/features/team/TeamPage.tsx
  *
  * The squad page. Anyone can open it; its leader also runs the squad from here —
- * the roster, starters and substitutes, the invitations, and the decisions that
+ * the player pool, invitations, and the decisions that
  * belong to a leader.
  *
  * ── แหล่งข้อมูล ────────────────────────────────────────────────────────────
  * backend: GET /teams/:id · GET /teams/:id/members (403 = ไม่ใช่สมาชิก) ·
- *   PATCH /teams/:id/members/:uid { position } · DELETE /teams/:id/members/:uid ·
+ *   DELETE /teams/:id/members/:uid ·
  *   GET/POST/DELETE /teams/:id/invitations · บทบาทของคนที่ดูอยู่ = role จาก GET /me/teams
  * โหมด mock เท่านั้น (backend ยังไม่มี route): โลโก้ · โอนสิทธิ์หัวหน้า ·
  *   ผลแข่ง/เกียรติประวัติ (TeamRecord) · สถานะล็อกรายชื่อ
@@ -28,11 +28,11 @@ import { Icon } from '../../components/kit/Icon'
 import { ConfirmCard, Modal } from '../../components/kit/Modal'
 import { TeamCrestView } from '../../components/kit/chips'
 import { toTeamView } from '../../components/kit/viewModels'
-import { USE_MOCK } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { parseBackendId } from '../../api/ids'
 import {
   useBackendMyTeams, useBackendTeam, useBackendTeamMembers, useCancelTeamInvitation,
-  useInviteMember, useKickMember, useSetMemberPosition, useTeamInvitations, useTransferLeader,
+  useInviteMember, useKickMember, useTeamInvitations, useTransferLeader,
 } from '../../hooks/useTeam'
 import { useMe } from '../../hooks/useAuth'
 import { useFollow, useSearchUsers } from '../../hooks/useUser'
@@ -56,6 +56,9 @@ const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
 
 const statusOf = (error: unknown) => (error as { status?: number } | null)?.status
+const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Array.isArray(error.extra.tournaments)
+  ? error.extra.tournaments as Array<{ tournamentId: number; name: string }>
+  : []
 
 export function TeamPage() {
   const navigate = useNavigate()
@@ -191,7 +194,7 @@ export function TeamPage() {
 }
 
 /**
- * รายชื่อสมาชิก — หัวหน้าทีมตั้งตัวจริง/ตัวสำรอง ถอนผู้เล่น และโอนสิทธิ์หัวหน้าได้จากตรงนี้
+ * คลังผู้เล่น — หัวหน้าทีมถอนผู้เล่นและโอนสิทธิ์หัวหน้าได้จากตรงนี้
  * ถอนได้จนกว่ารายการที่ทีมได้ที่นั่งจะเริ่มแข่ง
  */
 function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMembers }: {
@@ -205,12 +208,12 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
   const navigate = useNavigate()
   const kick = useKickMember(data.id)
   const transfer = useTransferLeader(data.id)
-  const position = useSetMemberPosition(data.id)
   const [removing, setRemoving] = useState<BackendTeamMemberDto | null>(null)
   const [handing, setHanding] = useState<BackendTeamMemberDto | null>(null)
   const [notice, setNotice] = useState<Notice>(null)
   const forbidden = statusOf(members.error) === 403
   const rows = members.data?.items ?? []
+  const removalLocks = lockedTournamentsOf(kick.error)
   /* เดิมนับเฉพาะตัวจริง — migration 019 ตัดตัวจริง/ตัวสำรองระดับทีมออกแล้ว เหลือ
      คำถามเดียวที่ยังมีความหมาย: คนในคลังพอจะส่งลงแข่งตามขั้นต่ำของกีฬาไหม */
   const squadSize = rows.length
@@ -221,13 +224,12 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
       <div className="spread">
         <span className="tag"><em>//</em> Squad · {data.memberCount}</span>
         <span className="hstack" style={{ gap: 10 }}>
-          {/* "12 of 11" อ่านเหมือนตัวเลขพัง — ตัวหารคือ "ขั้นต่ำที่ต้องมี" ไม่ใช่โควตา
-              พอครบแล้วบอกว่าครบ ไม่ต้องโชว์เศษส่วนที่เกินตัวหารของตัวเอง */}
           {rows.length ? (
             <span className="sub">
-              {minPlayers === undefined ? `Players ${squadSize}`
-                : squadSize >= minPlayers ? `Players ${squadSize} · ${minPlayers} needed to enter`
-                  : `Players ${squadSize} of the ${minPlayers} needed to enter`}
+              {data.maxMembers !== null ? `Players ${squadSize} / ${data.maxMembers}`
+                : minPlayers === undefined ? `Players ${squadSize}`
+                  : squadSize >= minPlayers ? `Players ${squadSize} · ${minPlayers} needed to enter`
+                    : `Players ${squadSize} of the ${minPlayers} needed to enter`}
             </span>
           ) : null}
           {isLeader ? (
@@ -239,9 +241,14 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
       </div>
 
       {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
-      {kick.isError ? <Banner kind="crit"><b>Couldn't remove the player.</b> {errorMessage(kick.error)}</Banner> : null}
+      {kick.isError ? (
+        <Banner kind="crit">
+          <b>Couldn't remove the player.</b> {errorMessage(kick.error)}
+          {removalLocks.length ? <><br />Withdraw the squad from {removalLocks.map(item => item.name).join(', ')} first.
+            <br /><button className="btn ghost" type="button" onClick={() => navigate('/teams')}>Manage tournament applications</button></> : null}
+        </Banner>
+      ) : null}
       {transfer.isError ? <Banner kind="crit"><b>Couldn't hand over the captaincy.</b> {errorMessage(transfer.error)}</Banner> : null}
-      {position.isError ? <Banner kind="crit"><b>Couldn't change the position.</b> {errorMessage(position.error)}</Banner> : null}
 
       {members.isPending ? <span className="sub">Loading members…</span> : null}
       {!canViewMembers ? <span className="sub">Sign in to view this squad&apos;s roster.</span> : null}

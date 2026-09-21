@@ -18,6 +18,7 @@ export const tournamentKeys = {
   all: ["tournaments"] as const,
   list: (filters: { status?: string; sportTypeId?: number } = {}) => ["tournaments", "list", filters] as const,
   detail: (id: number) => ["tournament", id] as const,
+  application: (id: number) => ["application", id] as const,
 };
 
 export function useTournaments(filters: { status?: TournamentStatus; sportTypeId?: number } = {}) {
@@ -42,6 +43,16 @@ export function useTournamentApplications(id: number | undefined) {
     queryKey: ["tournament", id, "applications"],
     queryFn: () => tournamentApi.getTournamentApplications(id as number),
     enabled: id !== undefined,
+    retry: false,
+  });
+}
+
+/** Organizer/team-leader detail, including the submitted player list. */
+export function useApplicationDetail(id: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: tournamentKeys.application(id as number),
+    queryFn: () => tournamentApi.getApplicationDetail(id as number),
+    enabled: id !== undefined && enabled && !USE_MOCK,
     retry: false,
   });
 }

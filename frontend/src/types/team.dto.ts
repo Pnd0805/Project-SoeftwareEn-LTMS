@@ -228,6 +228,7 @@ export interface BackendTeamDto {
   officialStatus: "Unofficial" | "Official";
   leader: UserRefDto;
   memberCount: number;
+  maxMembers: number | null;
   createdAt: string;
 }
 

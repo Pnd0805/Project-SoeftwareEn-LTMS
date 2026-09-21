@@ -18,7 +18,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  Banner, Crumb, Empty, Facts, Field, MatchStateBadge, Panel, Tabs,
+  Badge, Banner, Crumb, Empty, Facts, Field, MatchStateBadge, Panel, TableWrap, Tabs,
 } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { ScorebugView } from '../../components/kit/Scorebug'
@@ -513,6 +513,8 @@ export function MatchPage() {
   const sc = scoreOf(result, m)
   const settled = isSettled(result)
   const winnerId = settled ? result?.winnerTeamId ?? null : null
+  const isInLineup = m.viewer.myUserId !== null
+    && [m.teamA, m.teamB].some(team => team?.players.some(player => player.id === m.viewer.myUserId))
 
   return (
     <>
@@ -547,7 +549,7 @@ export function MatchPage() {
                   </a>
                 </Panel>
               ) : null}
-              {m.viewer.can.manageCheckin || m.viewer.myTeamId ? (
+              {m.viewer.can.manageCheckin || isInLineup ? (
                 <Panel quiet>
                   <span className="tag"><em>//</em> Check-in</span>
                   <div className="hstack">
@@ -568,12 +570,29 @@ export function MatchPage() {
           {tab === 'lineup' ? (
             <Panel quiet>
               <span className="tag"><em>//</em> Lineup</span>
-              <div className="sub">
-                Naming starters and substitutes is <b>FR-TM-04, team management</b> — the schema keeps
-                it on <code>team_members.position</code>, per team, not per match. The per-match Lineup
-                the prototype drew has no requirement behind it and no table to store it. Needs a
-                decision before it is rebuilt; see PLAN.md.
-              </div>
+              {[m.teamA, m.teamB].map((team, index) => team ? (
+                <div className="vstack" key={team.id} style={{ gap: 8 }}>
+                  <b>{team.name}</b>
+                  {team.players.length ? (
+                    <TableWrap>
+                      <table>
+                        <thead><tr><th>Player</th><th>Check-in</th></tr></thead>
+                        <tbody>
+                          {team.players.map(player => (
+                            <tr key={player.id}>
+                              <td><span className="hstack"><span className="avatar">{player.fullName.slice(0, 1)}</span>{player.fullName}</span></td>
+                              <td>{player.checkinStatus === 'checked_in' ? <Badge kind="ok">Checked in</Badge>
+                                : player.checkinStatus === 'pending_verification' ? <Badge kind="warn">Pending verification</Badge>
+                                  : player.checkinStatus === 'rejected' ? <Badge kind="crit">Rejected</Badge>
+                                    : <Badge kind="neutral">Not yet</Badge>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </TableWrap>
+                  ) : <div className="sub">No approved players are attached to this side.</div>}
+                </div>
+              ) : <div className="sub" key={`empty-${index}`}>This side is waiting for a team.</div>)}
             </Panel>
           ) : null}
 
