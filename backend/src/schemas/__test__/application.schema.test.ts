@@ -74,4 +74,25 @@ describe('applyTournamentSchema', () => {
     const result = applyTournamentSchema.safeParse({ teamId: 5, playerIds: [1, 2.5] });
     expect(result.success).toBe(false);
   });
+
+  it('accepts optional softFilterDocuments', () => {
+    const result = applyTournamentSchema.safeParse({
+      teamId: 5,
+      playerIds: [1, 2],
+      softFilterDocuments: [
+        'soft_filter_document/20/5/11111111-1111-4111-8111-111111111111.jpg',
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects duplicated or excessive softFilterDocuments', () => {
+    const key = 'soft_filter_document/20/5/11111111-1111-4111-8111-111111111111.jpg';
+    expect(applyTournamentSchema.safeParse({ teamId: 5, playerIds: [1], softFilterDocuments: [key, key] }).success).toBe(false);
+    expect(applyTournamentSchema.safeParse({
+      teamId: 5,
+      playerIds: [1],
+      softFilterDocuments: Array.from({ length: 11 }, (_, i) => `soft_filter_document/20/5/${i}.jpg`),
+    }).success).toBe(false);
+  });
 });

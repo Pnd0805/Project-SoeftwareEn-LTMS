@@ -34,6 +34,20 @@ describe('lockCompletedTournament', () => {
     expect(next.mock.calls[0]![0]).toMatchObject({ code: 'TOURNAMENT_COMPLETED' });
   });
 
+  it('hides subresources of a soft-deleted tournament behind 404', async () => {
+    vi.mocked(findTournamentById).mockResolvedValueOnce(null);
+    const next = vi.fn();
+    await lockCompletedTournament(req('GET', '/api/v1/tournaments/50', '50', '/matches'), res, next as NextFunction);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
+  });
+
+  it('hides matches whose parent tournament was soft-deleted', async () => {
+    vi.mocked(findTournamentById).mockResolvedValueOnce(null);
+    const next = vi.fn();
+    await lockCompletedTournament(req('GET', '/api/v1/matches/7', '7', '/'), res, next as NextFunction);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+  });
+
   it('lets reads, announcements, other statuses and unknown ids through', async () => {
     for (const r of [
       req('GET', '/api/v1/tournaments/50', '50'),

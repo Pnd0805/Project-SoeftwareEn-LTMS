@@ -68,6 +68,12 @@ export async function applyTournament(req: Request, res: Response) {
         throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
     }
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
-    const result = await ApplicationService.applyTournament(tournamentId, req.body.teamId, req.user.user_id, req.body.playerIds);
+    const result = await ApplicationService.applyTournament(
+        tournamentId,
+        req.body.teamId,
+        req.user.user_id,
+        req.body.playerIds,
+        req.body.softFilterDocuments ?? []
+    );
     res.status(201).json(result);
 }

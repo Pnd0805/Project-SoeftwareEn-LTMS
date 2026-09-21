@@ -245,6 +245,7 @@ export async function createTournament(input: CreateTournamentInput, userId: num
         maxTeams: input.maxTeams,
         minTeams: input.minTeams,
         venue: input.venue,
+        entryNotes: input.entryNotes ?? null,
         genderRequirement: input.genderRequirement,
         minAge: input.minAge ?? null,
         maxAge: input.maxAge ?? null,
@@ -528,6 +529,36 @@ export async function completeTournament(tournament: TournamentRow, userId: numb
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
     }
     return { id: tournament.tournament_id, status: 'completed' as const, championTeamId };
+}
+
+
+export async function deleteTournament(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status === 'public') {
+        throw new AppError(409, 'TOURNAMENT_MUST_BE_UNPUBLISHED', 'ต้อง unpublish ทัวร์นาเมนต์ก่อนลบ');
+    }
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์ที่ปิดการแข่งขันแล้วลบไม่ได้');
+    }
+    if (!['pending_approval', 'rejected', 'private'].includes(tournament.tournament_status)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์นี้ไม่สามารถลบได้');
+    }
+
+    const [applicationCount, matchCount] = await Promise.all([
+        TournamentRepo.countApplicationsByTournament(tournament.tournament_id),
+        MatchRepo.countMatchesByTournament(tournament.tournament_id)
+    ]);
+    if (applicationCount > 0 || matchCount > 0) {
+        throw new AppError(
+            409,
+            'TOURNAMENT_HAS_ACTIVITY',
+            'ลบทัวร์นาเมนต์ไม่ได้เพราะมีใบสมัครหรือแมตช์แล้ว',
+            { applications: applicationCount, matches: matchCount }
+        );
+    }
+
+    if (!await TournamentRepo.softDeleteTournament(tournament.tournament_id, userId)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว กรุณาลองใหม่');
+    }
 }
 
 export async function unpublishTournament(tournament: TournamentRow, userId: number) {

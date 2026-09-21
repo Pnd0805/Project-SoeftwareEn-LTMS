@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../config/s3.js', () => ({ default: {} }));
+const s3Send = vi.hoisted(() => vi.fn());
+vi.mock('../../config/s3.js', () => ({ default: { send: s3Send } }));
 vi.mock('../../config/env.js', () => ({ env: { S3_BUCKET: 'ltms-test' } }));
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn(() => Promise.resolve('https://s3/signed')),
@@ -71,13 +72,49 @@ describe('createPresignedUpload — checkin_document', () => {
   });
 });
 
-describe('createPresignedUpload — soft_filter_document (unchanged: no roster rule)', () => {
-  it('only requires the tournament to exist', async () => {
+describe('createPresignedUpload — soft_filter_document', () => {
+  it('binds the generated object key to both tournament and uploader', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20 } as never);
 
     const result = await uploadService.createPresignedUpload(
       { purpose: 'soft_filter_document', contentType: 'image/png', tournamentId: 20 } as never, 9001);
 
-    expect(result.objectKey).toMatch(/^soft_filter_document\/20\/.+\.png$/);
+    expect(result.objectKey).toMatch(/^soft_filter_document\/20\/9001\/.+\.png$/);
+  });
+});
+
+describe('validateSoftFilterDocuments', () => {
+  const ownKey = 'soft_filter_document/20/9001/11111111-1111-4111-8111-111111111111.jpg';
+
+  it('accepts uploaded objects owned by this user for this tournament', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'image/jpeg' });
+
+    await expect(uploadService.validateSoftFilterDocuments([ownKey], 20, 9001)).resolves.toBeUndefined();
+    expect(s3Send).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a key from another user or tournament without touching storage', async () => {
+    await expectAppError(
+      uploadService.validateSoftFilterDocuments(
+        ['soft_filter_document/20/9999/11111111-1111-4111-8111-111111111111.jpg'],
+        20,
+        9001,
+      ),
+      422,
+      'SOFT_FILTER_DOCUMENT_INVALID',
+    );
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('rejects a key when the object was never uploaded', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'NotFound', $metadata: { httpStatusCode: 404 } });
+
+    await expectAppError(uploadService.validateSoftFilterDocuments([ownKey], 20, 9001), 422, 'SOFT_FILTER_DOCUMENT_NOT_FOUND');
+  });
+
+  it('rejects an object with an unsupported stored content type', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'application/pdf' });
+
+    await expectAppError(uploadService.validateSoftFilterDocuments([ownKey], 20, 9001), 422, 'SOFT_FILTER_DOCUMENT_INVALID');
   });
 });

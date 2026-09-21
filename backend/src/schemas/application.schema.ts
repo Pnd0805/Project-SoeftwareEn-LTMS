@@ -16,7 +16,11 @@ export const applyTournamentSchema = z.object({
     teamId: z.int('รหัสทีมต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกทีม'),
     playerIds: z.array(z.int('รหัสผู้เล่นต้องเป็นจำนวนเต็ม').positive('รหัสผู้เล่นไม่ถูกต้อง'), 'กรุณาเลือกผู้เล่นที่ลงแข่ง')
         .min(1, 'กรุณาเลือกผู้เล่นที่ลงแข่งอย่างน้อย 1 คน')
-        .refine(ids => new Set(ids).size === ids.length, 'มีรายชื่อผู้เล่นซ้ำกัน')
+        .refine(ids => new Set(ids).size === ids.length, 'มีรายชื่อผู้เล่นซ้ำกัน'),
+    softFilterDocuments: z.array(z.string().trim().min(1).max(512), 'รายการเอกสาร soft filter ไม่ถูกต้อง')
+        .max(10, 'แนบเอกสาร soft filter ได้สูงสุด 10 ไฟล์')
+        .refine(keys => new Set(keys).size === keys.length, 'มีเอกสาร soft filter ซ้ำกัน')
+        .optional()
 });
 
 export type ApplyTournamentInput = z.infer<typeof applyTournamentSchema>;

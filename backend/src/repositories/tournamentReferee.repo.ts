@@ -111,7 +111,11 @@ export async function findPendingInvitationsByUser(userId : number)
 
 export async function findById(tournamentRefereeId : number): Promise<TournamentRefereeRow | null>{
     const [rows] = await pool.query<(TournamentRefereeRow & RowDataPacket)[]>(
-        'SELECT * FROM tournament_referees WHERE tournament_referee_id = ?', [tournamentRefereeId]);
+        `SELECT tr.*
+         FROM tournament_referees tr
+         JOIN tournaments t ON t.tournament_id = tr.tournament_id
+         WHERE tr.tournament_referee_id = ? AND t.deleted_at IS NULL`,
+        [tournamentRefereeId]);
     return rows[0] ?? null;
 }
 
@@ -207,6 +211,7 @@ export async function findLiveExternalRows(userId : number): Promise<IdentityTou
         `SELECT tr.tournament_referee_id, tr.tournament_id, tr.external_approval_status, t.name AS tournament_name
          FROM tournament_referees tr JOIN tournaments t ON t.tournament_id = tr.tournament_id
          WHERE tr.user_id = ? AND tr.is_external = 1 AND tr.removed_at IS NULL AND tr.invitation_status = 'accepted'
+           AND t.deleted_at IS NULL
          ORDER BY tr.tournament_referee_id`, [userId]);
     return rows;
 }
@@ -236,6 +241,7 @@ export async function findPendingAdminReview(): Promise<AdminReviewRow[]>{
          JOIN tournaments t ON t.tournament_id = tr.tournament_id
          WHERE tr.is_external = 1 AND tr.external_approval_status = 'pending'
            AND tr.invitation_status = 'accepted' AND tr.removed_at IS NULL
+           AND t.deleted_at IS NULL
          ORDER BY tr.tournament_referee_id`);
     return rows;
 }

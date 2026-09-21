@@ -14,6 +14,7 @@ const validTournament = {
     maxTeams: 8,
     minTeams: 2,
     venue: 'สนามกีฬา',
+    entryNotes: 'กรุณานำบัตรนิสิตมาแสดงในวันแข่งขัน',
     genderRequirement: 'any' as const
 };
 
@@ -27,6 +28,13 @@ describe('tournament schemas', () => {
     it('rejects university scope and missing venue at the request boundary', () => {
         expect(createTournamentSchema.safeParse({ ...validTournament, scopeType: 'university' }).success).toBe(false);
         expect(createTournamentSchema.safeParse({ ...validTournament, venue: '' }).success).toBe(false);
+    });
+
+    it('accepts entryNotes as optional informational text and enforces the 2000 character limit', () => {
+        expect(createTournamentSchema.safeParse({ ...validTournament, entryNotes: 'x'.repeat(2000) }).success).toBe(true);
+        expect(createTournamentSchema.safeParse({ ...validTournament, entryNotes: 'x'.repeat(2001) }).success).toBe(false);
+        expect(updateTournamentSchema.safeParse({ entryNotes: null }).success).toBe(true);
+        expect(updateTournamentSchema.safeParse({ entryNotes: 'กรุณาแนบเอกสารตามที่ผู้จัดแจ้ง' }).success).toBe(true);
     });
 
     it('keeps unsupported PATCH fields available to the service allowlist', () => {

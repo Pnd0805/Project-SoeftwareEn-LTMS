@@ -33,6 +33,7 @@ vi.mock('../../repositories/match.repo.js', () => ({
 
 vi.mock('../../services/upload.service.js', () => ({
   getPresignedDownloadUrl: vi.fn(),
+  validateSoftFilterDocuments: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../../repositories/walkover.repo.js', () => ({
@@ -895,8 +896,59 @@ describe('applyTournament', () => {
         { userId: 2, fullName: 'Bob', passed: true },
       ],
       [1, 2],
+      [],
     );
     expect(result).toEqual({ id: 500, status: 'pending', hardFilterPassed: true, playerIds: [1, 2] });
+  });
+
+  it('validates and persists soft-filter document keys with the application', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([
+      makeMember({ user_id: 1, full_name: 'Alice' }),
+      makeMember({ user_id: 2, full_name: 'Bob' }),
+    ]);
+    mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(501);
+    const docs = [
+      'soft_filter_document/20/5/11111111-1111-4111-8111-111111111111.jpg',
+      'soft_filter_document/20/5/22222222-2222-4222-8222-222222222222.png',
+    ];
+
+    await expect(applicationService.applyTournament(20, 10, 5, [1, 2], docs)).resolves.toMatchObject({ id: 501 });
+
+    expect(mockedUploadService.validateSoftFilterDocuments).toHaveBeenCalledWith(docs, 20, 5);
+    expect(mockedApplicationRepo.insertApplicationWithPlayers).toHaveBeenCalledWith(
+      20,
+      10,
+      expect.any(Array),
+      [1, 2],
+      docs,
+    );
+  });
+
+  it('does not persist an application when a soft-filter document fails validation', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([
+      makeMember({ user_id: 1, full_name: 'Alice' }),
+    ]);
+    mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
+    mockedUploadService.validateSoftFilterDocuments.mockRejectedValueOnce(
+      new AppError(422, 'SOFT_FILTER_DOCUMENT_INVALID', 'เอกสารไม่ถูกต้อง'),
+    );
+
+    await expect(applicationService.applyTournament(
+      20,
+      10,
+      5,
+      [1],
+      ['soft_filter_document/20/99/not-mine.jpg'],
+    )).rejects.toMatchObject({ status: 422, code: 'SOFT_FILTER_DOCUMENT_INVALID' });
+
+    expect(mockedApplicationRepo.insertApplicationWithPlayers).not.toHaveBeenCalled();
   });
 
   // รายชื่อที่ส่งลงแข่ง (มติ 19 ก.ย. 2569)

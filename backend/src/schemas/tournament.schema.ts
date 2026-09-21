@@ -27,6 +27,7 @@ export const createTournamentSchema = z.object({
     maxTeams: z.int().min(2),
     minTeams: z.int().min(2),
     venue: z.string().trim().min(1).max(255),
+    entryNotes: z.string().trim().max(2000).nullable().optional(),
     genderRequirement: z.enum(['any', 'male', 'female']),
     minAge: optionalAge,
     maxAge: optionalAge,
@@ -35,7 +36,8 @@ export const createTournamentSchema = z.object({
 
 export const updateTournamentSchema = z.object({
     venue: z.string().trim().min(1).max(255).optional(),
-    description: z.string().trim().max(255).nullable().optional()
+    description: z.string().trim().max(255).nullable().optional(),
+    entryNotes: z.string().trim().max(2000).nullable().optional()
 }).passthrough();
 
 export const amendmentRequestSchema = z.object({
