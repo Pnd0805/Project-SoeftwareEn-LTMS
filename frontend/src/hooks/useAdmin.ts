@@ -29,6 +29,7 @@ export const adminKeys = {
   audit: (q: AuditLogQuery) => ["audit", q] as const,
   referees: (tid: TeamRef) => ["referees", tid] as const,
   coverage: (tid: TeamRef) => ["referees", tid, "coverage"] as const,
+  requests: (tid: TeamRef) => ["referees", tid, "requests"] as const,
 };
 
 // ══════════════ queries ══════════════
@@ -157,6 +158,42 @@ export function useTournamentReferees(tournamentId: TeamRef | undefined) {
     queryFn: () => adminApi.getTournamentReferees(tournamentId as TeamRef),
     enabled: tournamentId !== undefined,
     retry: retryPolicy,
+  });
+}
+
+/** FR05 — organizer-visible assignment requests, including open and resolved rows. */
+export function useTournamentRefereeRequests(tournamentId: TeamRef | undefined) {
+  return useQuery({
+    queryKey: adminKeys.requests(tournamentId as TeamRef),
+    queryFn: () => adminApi.getTournamentRefereeRequests(Number(tournamentId)),
+    enabled: !USE_MOCK && tournamentId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+/** FR02 — request one active tournament referee for one scheduled match. */
+export function useRequestMatchReferee(tournamentId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { tournamentRefereeId: number; matchId: number }) =>
+      adminApi.requestMatchReferee(Number(tournamentId), input.tournamentRefereeId, input.matchId),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: adminKeys.requests(tournamentId) }),
+        qc.invalidateQueries({ queryKey: ["match"] }),
+        qc.invalidateQueries({ queryKey: ["matches"] }),
+      ]);
+    },
+  });
+}
+
+export function useCancelTournamentRefereeRequest(tournamentId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.cancelRefereeRequest,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: adminKeys.requests(tournamentId) });
+    },
   });
 }
 

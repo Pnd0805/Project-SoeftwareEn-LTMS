@@ -29,7 +29,7 @@
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { ConfirmCard, Modal } from '../../../components/kit/Modal'
-import { USE_MOCK } from '../../../api/client'
+import { ApiError, USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
 import { numOf } from '../../../mocks/storeBridge'
 import { useAppointReferee, useRemoveReferee, useTournamentReferees } from '../../../hooks/useAdmin'
@@ -55,6 +55,14 @@ const removeError = (error: unknown) => {
   if (status === 403) return "Only this tournament's organizer can remove its referees."
   if (status === 501) return "Removing a referee isn't available on the server yet."
   return error instanceof Error ? error.message : 'Could not remove this referee.'
+}
+
+const appointError = (error: unknown) => {
+  if (error instanceof ApiError && error.code === 'REFEREE_CONFLICT_OF_INTEREST') {
+    const teamId = typeof error.extra.teamId === 'number' ? ` (team #${error.extra.teamId})` : ''
+    return `This person is already competing in the tournament${teamId}, so they cannot officiate it.`
+  }
+  return error instanceof Error ? error.message : 'Could not invite this referee.'
 }
 
 export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boolean; onClose: () => void }) {
@@ -115,7 +123,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
         <Banner kind="crit"><b>Search failed.</b> {(found.error as Error).message}</Banner>
       ) : null}
       {appoint.isError ? (
-        <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {(appoint.error as Error).message}</Banner>
+        <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {appointError(appoint.error)}</Banner>
       ) : null}
       {cands.length ? (
         <TableWrap>

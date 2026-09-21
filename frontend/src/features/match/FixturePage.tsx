@@ -16,8 +16,16 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Field, Panel, TableWrap } from '../../components/kit/primitives'
-import { useMatch, useUpdateMatch, useAssignReferees } from '../../hooks/useMatch'
+import {
+  useAssignReferees, useMatch, useMatchReferees, useUnassignMatchReferee, useUpdateMatch,
+} from '../../hooks/useMatch'
+import {
+  useCancelTournamentRefereeRequest, useRequestMatchReferee, useTournamentRefereeRequests,
+  useTournamentReferees,
+} from '../../hooks/useAdmin'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
+import type { MatchDto } from '../../types/match.dto'
 
 /** datetime-local wants a local wall clock, not an ISO instant. */
 const toLocal = (iso: string | null) => {
@@ -26,6 +34,97 @@ const toLocal = (iso: string | null) => {
   if (isNaN(d.getTime())) return ''
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const refereeRequestError = (error: unknown) => {
+  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Could not request this referee.'
+  if (error.code === 'REFEREE_SCHEDULE_CONFLICT') return 'This referee already has a match that overlaps this time.'
+  if (error.code === 'REQUEST_ALREADY_OPEN') return 'A request to this referee is already waiting for an answer.'
+  if (error.code === 'REFEREE_NOT_ACTIVE') return 'This referee is not active in the tournament yet.'
+  if (error.code === 'MATCH_NOT_CHANGEABLE') return 'Set a future start and end time before requesting a referee.'
+  return error.message
+}
+
+/** Real mode uses the consent-based FR02 flow; it never calls the removed bulk assignment route. */
+function RealRefereeAssignments({ match }: { match: MatchDto }) {
+  const pool = useTournamentReferees(match.tournamentId)
+  const assigned = useMatchReferees(match.id)
+  const requests = useTournamentRefereeRequests(match.tournamentId)
+  const request = useRequestMatchReferee(match.tournamentId)
+  const cancel = useCancelTournamentRefereeRequest(match.tournamentId)
+  const unassign = useUnassignMatchReferee(match.id, match.tournamentId)
+  const needed = match.mode === 'onsite' ? 2 : 1
+  const acceptedIds = new Set((assigned.data?.items ?? []).map(row => row.tournamentRefereeId))
+  const openRequests = (requests.data?.items ?? []).filter(row =>
+    row.type === 'org_add_match' && row.matchA.id === match.id && row.status === 'open')
+  const pendingByReferee = new Map(openRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
+  const activePool = (pool.data?.items ?? []).filter(row => row.isActive)
+  const capacityFull = acceptedIds.size + pendingByReferee.size >= needed
+  const scheduled = !!match.scheduledTime && !!match.scheduledEndTime
+  const loading = pool.isPending || assigned.isPending || requests.isPending
+  const readError = pool.isError || assigned.isError || requests.isError
+
+  return (
+    <Field label={`Referees — ${needed} accepted ${needed === 1 ? 'referee' : 'referees'} required`}>
+      {!scheduled ? (
+        <Banner kind="warn"><b>Schedule this match first.</b> Referee requests require a future start and end time.</Banner>
+      ) : null}
+      {loading ? <div className="sub">Loading referee assignments…</div> : null}
+      {readError ? (
+        <Banner kind="crit"><b>Could not load referee assignments.</b> Retry by reopening this fixture.</Banner>
+      ) : null}
+      {request.isError ? <Banner kind="crit"><b>Request not sent.</b> {refereeRequestError(request.error)}</Banner> : null}
+      {cancel.isError || unassign.isError ? (
+        <Banner kind="crit"><b>Could not update this assignment.</b>{' '}
+          {refereeRequestError(cancel.error ?? unassign.error)}</Banner>
+      ) : null}
+      {!loading && !readError && !activePool.length ? (
+        <div className="sub">No active referee is available. Invite one in the tournament Referees tab first.</div>
+      ) : null}
+      {activePool.length ? (
+        <TableWrap>
+          <table>
+            <thead><tr><th>Referee</th><th>State</th><th /></tr></thead>
+            <tbody>
+              {activePool.map(referee => {
+                const isAccepted = acceptedIds.has(referee.id)
+                const pending = pendingByReferee.get(referee.id)
+                const busy = request.isPending || cancel.isPending || unassign.isPending
+                return (
+                  <tr key={referee.id}>
+                    <td>{referee.user.fullName}</td>
+                    <td>{isAccepted
+                      ? <Badge kind="ok">Accepted</Badge>
+                      : pending ? <Badge kind="warn">Waiting for acceptance</Badge>
+                        : <Badge kind="neutral">Available</Badge>}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {isAccepted ? (
+                        <button className="btn ghost" type="button" disabled={busy}
+                          onClick={() => unassign.mutate(referee.id)}>Remove</button>
+                      ) : pending ? (
+                        <button className="btn ghost" type="button" disabled={busy}
+                          onClick={() => cancel.mutate(pending.id)}>Cancel request</button>
+                      ) : (
+                        <button className="btn primary" type="button"
+                          disabled={busy || !scheduled || capacityFull}
+                          onClick={() => request.mutate({ tournamentRefereeId: referee.id, matchId: match.id })}>
+                          Request this match
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </TableWrap>
+      ) : null}
+      <div className="sub">
+        {acceptedIds.size} accepted · {pendingByReferee.size} waiting · {needed} required.
+        Requests are confirmed only after the referee accepts; time conflicts are checked by the server.
+      </div>
+    </Field>
+  )
 }
 
 export function FixturePage() {
@@ -37,6 +136,7 @@ export function FixturePage() {
   const assign = useAssignReferees(matchId ?? 0, m?.tournamentId)
 
   const [kickoff, setKickoff] = useState<string | null>(null)
+  const [finish, setFinish] = useState<string | null>(null)
   const [venue, setVenue] = useState<string | null>(null)
   const [refs, setRefs] = useState<number[] | null>(null)
 
@@ -45,6 +145,7 @@ export function FixturePage() {
 
   /* ค่าที่แก้อยู่ยังไม่ commit — ยังไม่แตะช่องไหนก็ใช้ค่าจาก server */
   const kickoffVal = kickoff ?? toLocal(m.scheduledTime)
+  const finishVal = finish ?? toLocal(m.scheduledEndTime ?? null)
   const venueVal = venue ?? (m.venue ?? '')
   const refsVal = refs ?? m.referees.map(r => r.id)
 
@@ -68,10 +169,13 @@ export function FixturePage() {
   const save = async () => {
     await update.mutateAsync({
       scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
+      scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
       venue: venueVal || null,
     })
-    await assign.mutateAsync(refsVal)
-    navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
+    if (USE_MOCK) {
+      await assign.mutateAsync(refsVal)
+      navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
+    }
   }
 
   const saving = update.isPending || assign.isPending
@@ -101,6 +205,10 @@ export function FixturePage() {
                 <input id={`as-k-${m.id}`} type="datetime-local" value={kickoffVal}
                   onChange={e => setKickoff(e.target.value)} />
               </Field>
+              <Field label="End" htmlFor={`as-e-${m.id}`}>
+                <input id={`as-e-${m.id}`} type="datetime-local" value={finishVal}
+                  onChange={e => setFinish(e.target.value)} />
+              </Field>
               <Field label="Venue" htmlFor={`as-v-${m.id}`}>
                 <input id={`as-v-${m.id}`} value={venueVal} onChange={e => setVenue(e.target.value)}
                   placeholder="Court 9" />
@@ -110,7 +218,7 @@ export function FixturePage() {
             {/* TODO(schema): FR-MM-05 อยากให้ผู้เล่นหาสนามเจอ แต่ `matches` ไม่มีคอลัมน์พิกัด
                 ช่อง Map pin ของ prototype จึงยังไม่มีที่เก็บ */}
 
-            <Field label="Referees — appointment makes them eligible, this makes them responsible">
+            {USE_MOCK ? <Field label="Referees — appointment makes them eligible, this makes them responsible">
               <TableWrap>
                 <table>
                   <thead><tr><th>On</th><th>Referee</th></tr></thead>
@@ -133,7 +241,7 @@ export function FixturePage() {
                   Referees tab first.
                 </div>
               ) : null}
-            </Field>
+            </Field> : <RealRefereeAssignments match={m} />}
 
             {update.isError || assign.isError ? (
               <Banner kind="crit">Could not save the fixture. Nothing was changed.</Banner>
@@ -141,12 +249,14 @@ export function FixturePage() {
 
             <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
               disabled={saving} onClick={save}>
-              {saving ? 'Saving…' : 'Save this fixture'}
+              {saving ? 'Saving…' : USE_MOCK ? 'Save this fixture' : 'Save schedule'}
             </button>
+            {!USE_MOCK && update.isSuccess ? <Banner kind="ok">Schedule saved. Referee requests can now be sent separately.</Banner> : null}
           </>
         ) : (
           <Facts rows={[
             ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'],
+            ['End', m.scheduledEndTime ? new Date(m.scheduledEndTime).toLocaleString() : '—'],
             ['Venue', m.venue || '—'],
             ['Referees', m.referees.map(r => r.fullName).join(', ') || 'nobody named'],
           ]} />

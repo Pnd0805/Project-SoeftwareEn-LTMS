@@ -29,6 +29,7 @@ import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import { checkDraw } from '../../match/resultRules'
+import { randomizeDraw } from './drawRandom'
 
 /** ทีมหนึ่งทีมในสายจับ — id เก็บเป็น string เสมอเพื่อให้ <select> เทียบค่าได้ */
 interface Entry { id: string; name: string; ref: number | string }
@@ -48,6 +49,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
   /* ชั้น API รับได้ทั้งสอง ref จึงส่งตัวที่หน้าถืออยู่ */
   const draw = useDrawTournament(tournamentId ?? t.id)
   const [confirmReplace, setConfirmReplace] = useState(false)
+  const [replaceKind, setReplaceKind] = useState<'manual' | 'random'>('manual')
 
   const entries: Entry[] = live
     ? (approvedTeams.data?.items ?? [])
@@ -145,6 +147,23 @@ export function DrawPanel({ t }: { t: Tournament }) {
       .filter((n): n is number | string => n !== undefined)
     if (!teamIds.length) return
     if (live && alreadyDrawn) {
+      setReplaceKind('manual')
+      setConfirmReplace(true)
+      return
+    }
+    draw.mutate({ teamIds: teamIds as number[] })
+  }
+
+  const randomDraw = () => {
+    if (draw.isPending || replacementUnavailable) return
+    const randomized = randomizeDraw(ids, positions)
+    setPositions(randomized)
+    const teamIds = randomized
+      .map(id => byId.get(id)?.ref)
+      .filter((n): n is number | string => n !== undefined)
+    if (!teamIds.length) return
+    if (live && alreadyDrawn) {
+      setReplaceKind('random')
       setConfirmReplace(true)
       return
     }
@@ -171,13 +190,14 @@ export function DrawPanel({ t }: { t: Tournament }) {
   return (
     <Panel quiet>
       <Modal open={confirmReplace} onClose={() => setConfirmReplace(false)}
-        label="Redraw the bracket" title={t.name}>
-        <ConfirmCard danger ok="Redraw now" onCancel={() => setConfirmReplace(false)} onConfirm={replace}
+        label={replaceKind === 'random' ? 'Random redraw' : 'Redraw the bracket'} title={t.name}>
+        <ConfirmCard danger ok={replaceKind === 'random' ? 'Random redraw now' : 'Redraw now'}
+          onCancel={() => setConfirmReplace(false)} onConfirm={replace}
           body={<>
             <b>This replaces every existing match atomically.</b> Schedules, match-specific referees,
             referee transfer requests and standings will be removed and rebuilt from the currently
-            approved squads. Tournament-level referee pool members stay, but you must assign referees
-            to the new matches again.
+            approved squads{replaceKind === 'random' ? ' in the randomized order previewed behind this dialog' : ''}.
+            Tournament-level referee pool members stay, but you must assign referees to the new matches again.
           </>} />
       </Modal>
       <div className="spread">
@@ -243,11 +263,18 @@ export function DrawPanel({ t }: { t: Tournament }) {
             </div>
           </div>
           {replacementUnavailable ? null : (
-            <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-              disabled={draw.isPending || drawProblems.length > 0}
-              onClick={submit}>
-              {draw.isPending ? 'Drawing…' : alreadyDrawn ? 'Redraw bracket' : 'Draw this way'}
-            </button>
+            <div className="hstack" style={{ alignSelf: 'flex-start' }}>
+              <button className="btn primary" type="button"
+                disabled={draw.isPending || drawProblems.length > 0}
+                onClick={randomDraw}>
+                {draw.isPending ? 'Drawing…' : alreadyDrawn ? 'Random redraw bracket' : 'Draw random bracket'}
+              </button>
+              <button className="btn" type="button"
+                disabled={draw.isPending || drawProblems.length > 0}
+                onClick={submit}>
+                {alreadyDrawn ? 'Redraw bracket' : 'Draw this way'}
+              </button>
+            </div>
           )}
         </>
       )}

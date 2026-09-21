@@ -18,18 +18,15 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../components/kit/primitives'
 import { useMatch, useCheckins, useCheckin, useMyCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
-import { ApiError, USE_MOCK } from '../../api/client'
+import { USE_MOCK } from '../../api/client'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
 import { TeamMarkView } from '../../components/kit/chips'
 import { IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
+import { checkinErrorMessage } from './checkinErrors'
 
 /** M15 revokes accepted QR/manual check-ins as well as pending photo checks. */
 const canRevoke = (c: MatchCheckinDto) => c.status === 'success'
-
-const checkinErrorMessage = (error: unknown) => error instanceof ApiError && error.code === 'NOT_IN_APPROVED_ROSTER'
-  ? 'You are not on the approved player list for this match. Contact your team captain.'
-  : error instanceof Error ? error.message : 'Check-in failed.'
 
 /** A stable-ish seed so the drawn code looks like the token it stands for. */
 const hashCode = (str: string) => {

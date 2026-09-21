@@ -166,6 +166,7 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
     teamA: teamFromBackend(m.teamA),
     teamB: teamFromBackend(m.teamB),
     scheduledTime: m.scheduledTime,
+    scheduledEndTime: m.scheduledEndTime ?? null,
     venue: m.venue,
     checkinOpenAt: m.checkinOpenAt ?? null,
     status: m.status,

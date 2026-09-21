@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
@@ -79,8 +79,23 @@ describe('draw progress in real mode', () => {
     render(<DrawPanel t={tournament} />)
 
     expect(screen.getByText('Open until the first match starts')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Random redraw bracket' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redraw bracket' })).toBeInTheDocument()
     expect(screen.queryByText('BRACKET_ALREADY_EXISTS')).not.toBeInTheDocument()
+  })
+
+  it('confirms a random redraw and sends replace=true with every approved team', () => {
+    matchState.current = {
+      data: { items: [{ id: 71, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 12 }, status: 'scheduled' }] },
+      isPending: false, isError: false,
+    }
+    render(<DrawPanel t={tournament} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Random redraw bracket' }))
+    expect(screen.getByText(/randomized order previewed/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Random redraw now' }))
+
+    expect(mutate).toHaveBeenCalledWith({ teamIds: expect.arrayContaining([11, 12]), replace: true })
   })
 
   it('makes manual-draw pending state visible in both the action and status banner', () => {

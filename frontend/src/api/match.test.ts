@@ -78,6 +78,35 @@ describe("match check-in contract", () => {
       method: "manual_by_referee", userId: 9201,
     })).rejects.toMatchObject({ status: 409, code: "ALREADY_CHECKED_IN" });
   });
+
+  it("submits an on-site participant check-in with the backend qrPayload field", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 52, status: "checked_in", checkedInAt: "2026-09-21T11:00:00.000Z" }, 201));
+
+    await expect(checkin(12, { method: "qr_onsite", qrToken: "signed-qr" }))
+      .resolves.toMatchObject({ id: 52, method: "qr_onsite", status: "success" });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      method: "qr_onsite", qrPayload: "signed-qr",
+    });
+  });
+
+  it("presigns and uploads an online photo before submitting its object key", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ uploadUrl: "https://upload.test/checkin", objectKey: "checkins/12/id.jpg" }))
+      .mockResolvedValueOnce(new Response(new Blob(["photo"], { type: "image/jpeg" })))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(json({ id: 53, status: "pending", checkedInAt: "2026-09-21T11:01:00.000Z" }, 201));
+
+    await expect(checkin(12, {
+      method: "photo_online", documentType: "student_id",
+      documentS3Key: "data:image/jpeg;base64,cGhvdG8=",
+    })).resolves.toMatchObject({ id: 53, method: "photo_online", status: "exception" });
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/uploads/presign");
+    expect(fetchMock.mock.calls[2]?.[0]).toBe("https://upload.test/checkin");
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+      method: "photo_online", documentType: "student_id", documentS3Key: "checkins/12/id.jpg",
+    });
+  });
 });
 
 describe("S12 standings contract", () => {

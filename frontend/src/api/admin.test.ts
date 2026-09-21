@@ -13,7 +13,7 @@ import {
   acceptRefereeInvitation, appointReferee, approveTeamRequest, declineRefereeInvitation,
   getExternalRefereeRequests, getMyRefereeInvitations, getRefereeCoverage, getTeamRequests,
   getTournamentReferees, getUsersForAdmin, grantAdminScope, rejectTeamRequest, removeReferee,
-  reviewExternalReferee, revokeAdminScope, suspendUser,
+  requestMatchReferee, reviewExternalReferee, revokeAdminScope, suspendUser,
 } from "./admin";
 
 const json = (body: unknown, status = 200) =>
@@ -66,11 +66,24 @@ describe("referee invitations", () => {
 
 describe("tournament referees", () => {
   it("GET /tournaments/:id/referees returns items and acceptedCount", async () => {
-    const body = { items: [{ id: 1, user: { id: 9, fullName: "Kittipong", avatarUrl: null }, invitationStatus: "accepted", isExternal: false, externalApprovalStatus: "not_required" }], acceptedCount: 1 };
+    const body = { items: [{ id: 1, user: { id: 9, fullName: "Kittipong", avatarUrl: null }, invitationStatus: "accepted", isExternal: false, externalApprovalStatus: "not_required", status: "active" }], acceptedCount: 1, awaitingAdminCount: 0 };
     fetchMock.mockResolvedValueOnce(json(body));
 
-    await expect(getTournamentReferees(5)).resolves.toEqual(body);
+    await expect(getTournamentReferees(5)).resolves.toMatchObject({
+      acceptedCount: 1, awaitingAdminCount: 0,
+      items: [{ id: 1, tournamentId: 5, isActive: true, user: { id: 9, fullName: "Kittipong" } }],
+    });
     expect(lastRequest().path).toBe("/tournaments/5/referees");
+  });
+
+  it("FR02 requests one active tournament referee for one match", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 81, status: "open" }, 201));
+
+    await requestMatchReferee(5, 17, 23);
+    expect(lastRequest()).toEqual({
+      path: "/tournaments/5/referee-requests/add-match", method: "POST",
+      body: { tournamentRefereeId: 17, matchId: 23 },
+    });
   });
 
   it("the referee list is organizer-only", async () => {

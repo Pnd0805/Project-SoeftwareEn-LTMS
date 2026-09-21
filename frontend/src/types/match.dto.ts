@@ -99,6 +99,7 @@ export interface MatchDto {
   teamB: MatchTeamRef | null;
   /** ISO 8601 พร้อม timezone — DATETIME ใน DB ไม่มี tz, backend ต้อง normalize เป็น +07:00 */
   scheduledTime: string | null;
+  scheduledEndTime?: string | null;
   venue: string | null;
   checkinOpenAt: string | null;
   status: MatchStatus;

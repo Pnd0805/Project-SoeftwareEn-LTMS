@@ -990,6 +990,16 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       Accept: valid participant check-in succeeds and survives reload in both
       participant and referee views; invalid/expired/duplicate submissions have
       specific feedback. Verify each supported check-in method separately.
+      - [x] **Frontend Dev delivery (2026-09-21):** confirmed the real API path
+        sends `qrPayload` for on-site check-in and, for online check-in, obtains
+        an upload presign, uploads the captured JPEG/PNG, then submits the returned
+        `objectKey`. Focused contract tests cover both methods. The UI now gives
+        specific recovery copy for closed check-in, wrong method, invalid/expired
+        QR, non-approved roster, duplicate, missing match and upload failure.
+      - [ ] **Frontend Tester + backend owner acceptance:** reproduce the original
+        report against current BE_KN, capture its method/status/error/server log,
+        then verify valid on-site and online submissions survive reload in both
+        participant and referee sessions.
 
 - [ ] **R03 · P1 · Slices 2/4 + backend application/referee owners:** enforce
       the stated rule that an organizer or referee cannot compete in their own
@@ -1000,13 +1010,26 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       Accept: frontend explains the conflict; the backend rejects conflicting
       applications/appointments even if submitted outside the UI. Do not apply
       this restriction to unrelated tournaments or rely on a hidden button.
+      - [x] **Frontend Dev delivery (2026-09-21):** registration now explains the
+        conflicting organizer/referee role and recovery path from
+        `TEAM_CONFLICT_OF_INTEREST`; referee appointment names an existing team
+        conflict from `REFEREE_CONFLICT_OF_INTEREST`. Both entry points preserve
+        the server decision instead of relying on hidden controls. Focused FE
+        regression coverage verifies the application message.
+      - [ ] **Backend owner + Frontend Tester acceptance:** run the current backend
+        conflict tests and real-browser/API checks for organizer/referee membership,
+        every submitted player, and the reverse order before marking R03 complete.
 
 - [x] **R02 · P1 · Slices 2/3 + backend bracket owner:** atomic bracket
       replacement delivered by BE_KN `a88f7ad` and wired in Manage. M01 sends
       `replace: true` only after confirmation, exposes `replaced`, preserves the
       existing bracket on `BRACKET_IN_USE`, renders the blocking match metadata,
       refreshes tournament/match/standings queries, and tells the organizer to
-      assign match-specific referees again.
+      assign match-specific referees again. Frontend Dev added a dedicated
+      `Random redraw bracket` action on 2026-09-21: it Fisher-Yates shuffles every
+      approved team exactly once, avoids an unchanged redraw, previews the random
+      order, and requires a second confirmation before the same atomic
+      `replace: true` request. Focused random/UI/contract regressions pass.
 
 - [x] **R05 · P2 · Slices 2/3:** draw progress does not update. Reproduce both
       random draw in SetupTrail and manual draw in DrawPanel; distinguish request
@@ -1037,6 +1060,19 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       permission feedback, persisted assignments after reload, and safe handling
       of partial draw/assignment failure and redraw. Split any unsupported
       contract into a backend blocker after verification.
+      - [x] **Frontend Dev delivery (2026-09-21):** real-mode Fixture no longer
+        calls the removed bulk assignment adapter. It saves start/end/venue as a
+        separate operation, then uses FR02 to request one active tournament
+        referee per match. Available, waiting-for-acceptance and accepted states
+        are distinct; an organizer can cancel an open request or remove an accepted
+        assignment. Capacity, missing schedule, read/mutation, permission and
+        server time-conflict feedback remain visible. The same page works for
+        future-round match IDs whose teams are still TBD, and reload/redraw reads
+        the authoritative request and match-referee collections. Focused UI/API
+        tests prove the consent route is used and bulk assignment is not called.
+      - [ ] **Frontend Tester + backend referee owner acceptance:** exercise
+        accept/decline, overlapping schedules, reload, redraw and partial request
+        failure against populated BE_KN data before marking R04 complete.
 
 - [x] **R08 · Guest access · Slices 1/2/4:** a guest can inspect teams entered
       in a public tournament, but cannot vote for MVP or submit Pick'em.
@@ -1067,15 +1103,111 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       a dedicated current-user capability endpoint when backend adds one; then
       replace the queue probe without changing Shell policy.
 
+### New regression intake — 2026-09-21
+
+The checked delivery records above remain historical implementation evidence,
+not acceptance evidence for these newly reported regressions. Keep every item
+below open until its own API and real-browser criteria pass against the current
+backend baseline.
+
+- [ ] **R10 · P1 · Draw referee planning · Slices 2/3/4 + Backend:** on the draw
+      page, let the organizer select referees from the tournament referee pool
+      for every known match, including future match slots whose teams are not
+      resolved yet. Show assigned, pending, accepted, and declined/cancelled
+      states without presenting a request as a confirmed assignment.
+  - Reproduce/evidence: record the tournament referee pool, draw/bracket payload,
+    match IDs (including future slots), assignment request/response, and state
+    after reload and redraw. Reconcile this with R04 instead of treating R04's
+    earlier frontend delivery as acceptance.
+  - Accept: an authorized organizer can select, replace/cancel, and review each
+    match referee from the draw workflow; assignments persist after reload,
+    future-slot assignments remain attached to the intended match, consent
+    status is truthful, and unauthorized roles cannot mutate them.
+
+- [ ] **R11 · P1 · Check-in reject then re-verify · Slice 3 + Backend:** fix the
+      referee flow where rejecting a check-in prevents a later verification for
+      the same approved player in both `online` and `on_site` modes. Add a
+      required reject-reason field and display the recorded reason where the
+      affected user/referee needs it.
+  - Reproduce/evidence: capture mode, player/application ID, check-in/photo ID,
+    status before and after reject, reject request/response, the subsequent
+    re-check-in attempt, refreshed list payload, and second verification
+    attempt. Distinguish photo review from modes whose check-in succeeds
+    immediately rather than assuming they share one state transition.
+  - Accept: reject requires a non-blank reason; the reason persists after
+    reload; the rejected attempt remains auditable; the player can create the
+    next valid attempt; and the referee can approve/reject that new attempt
+    without stale-row or disabled-action errors in both modes.
+
+- [ ] **R12 · P1 · Fixture editor scope · Slices 2/4 + Backend:** make Fixture
+      the match-management page for editing the scheduled start date/time and
+      the referees assigned/requested for that match. Preserve the distinction
+      between a pending invitation and an accepted assignment.
+  - Reproduce/evidence: capture current match schedule/referee payloads,
+    organizer permissions, each update request/response, validation/conflict
+    errors, and refreshed match/fixture data.
+  - Accept: the organizer can update a future match's start date/time and
+    add/replace/cancel eligible referee requests; current and pending referees
+    render correctly after reload; invalid/past/conflicting values produce an
+    actionable error; read-only roles cannot edit.
+
+- [ ] **R13 · P1 · Double forfeit lifecycle · Slices 2/4 + Backend:** when both
+      teams lose by forfeit, advance/recompute the bracket immediately from the
+      terminal `double_forfeit`/void outcome instead of leaving the match at the
+      stage that waits for team-leader result confirmation.
+  - Reproduce/evidence: capture both forfeit operations, returned match/result
+    status, subsequent match and bracket reads, and the downstream slot state.
+  - Accept: the match reaches the backend-defined terminal double-forfeit
+    state, no team-leader confirmation action is required or shown, bracket
+    progress is recomputed once, downstream placement is correct, and reload
+    does not restore the waiting-confirmation stage.
+
+- [ ] **R14 · P2 · Completed-match YouTube replay · Slices 2/4 + Backend:** a
+      replay URL saved after a match ends must render on that match page. Keep
+      replay media separate from the pre-match/live-stream URL and state.
+  - Reproduce/evidence: capture the actual write endpoint/body/response, the
+    persisted field returned by the match read endpoint, completed-match state,
+    and the match page after reload.
+  - Accept: a valid YouTube replay URL can be added or updated by an authorized
+    role, persists after reload, and appears as a usable link/embed for the
+    intended viewers; invalid URLs and failed saves are surfaced rather than
+    showing false success.
+
+- [ ] **R15 · P1 · Winning team-leader confirmation · Slices 2/4 + Backend:**
+      restore the winner's team leader ability to confirm a submitted result;
+      the currently working dispute action must not mask or replace confirm.
+  - Reproduce/evidence: capture match/result IDs and state, winner team ID,
+    current user/team/role membership, result read payload, visible actions,
+    confirmation request/response, and refreshed state.
+  - Accept: the winning team's authorized leader sees an enabled Confirm action
+    and can complete it once; dispute remains available only where allowed;
+    losing leaders/plain members cannot confirm; duplicate confirmation is
+    idempotent or returns a clear terminal-state response.
+
+- [ ] **R16 · P1 · Organizer dispute resolution · Slices 2/4 + Backend:** after
+      a result is disputed, let the organizer resolve it by amending the score
+      and winner, upholding it, or throwing out/rejecting the record without
+      leaving all controls disabled or creating an unconfirmable result.
+  - Reproduce/evidence: for each resolution path capture result/dispute state,
+    available actions, request/body/response, the refreshed result, and the
+    permissions/actions visible to both organizer and team leaders.
+  - Accept: amend persists the corrected score/winner and moves to the intended
+    confirmation stage; uphold reaches its intended terminal/confirmation
+    state; throw-out removes/rejects the disputed record and permits a fresh
+    valid result submission; the correct role can then confirm it, controls
+    recover after errors, and bracket progression occurs exactly once.
+
 ### Regression completion gate
 
 - [ ] Head Frontend Dev: attach reproduction evidence and confirmed ownership
-      to R01–R07; settle R02 timing and R03 role-conflict scope.
+      to every open item in R01–R16; settle R02 timing, R03 role-conflict scope,
+      and the frontend/backend boundary for R10–R16.
 - [x] Add targeted regression tests for confirmed causes; run tests/lint/build
       for implementation changes. This entry itself is documentation only.
-      Developer verification 2026-09-21: 28 files / 185 tests, lint, production
-      build and `git diff --check` pass. The existing 500 kB Vite chunk warning
-      remains; real-backend/browser retest remains assigned below.
+      Latest Developer verification 2026-09-21: 32 files / 198 tests, lint,
+      production build, Vite dev startup on `127.0.0.1:5173`, and
+      `git diff --check` pass. The existing 500 kB Vite chunk warning remains;
+      real-backend/browser retest remains assigned below.
 - [ ] Frontend Tester: retest the affected flows with real backend data as
       organizer, match referee and participant, recording Network evidence.
 - [x] Reconcile results with Priority 3 smoke tests, Priority 4 migration matrix

@@ -154,12 +154,13 @@ export const TournamentScopeTypeLabel: Record<TournamentScopeType, string> = {
 };
 
 // tournaments.organizer_external_approval_status, tournament_referees.external_approval_status  ⚠️ ⚠️ external Organizer รอ Change Management
-export const ExternalApprovalStatusEnum = z.enum(["not_required", "pending", "approved", "rejected"]);
+export const ExternalApprovalStatusEnum = z.enum(["not_required", "pending", "needs_docs", "approved", "rejected"]);
 export type ExternalApprovalStatus = z.infer<typeof ExternalApprovalStatusEnum>;
 export const ExternalApprovalStatusOptions = ExternalApprovalStatusEnum.options;
 export const ExternalApprovalStatusLabel: Record<ExternalApprovalStatus, string> = {
   "not_required": "Not required",
   "pending": "Pending review",
+  "needs_docs": "More documents required",
   "approved": "Approved",
   "rejected": "Rejected",
 };
@@ -358,4 +359,3 @@ export const PointTransactionSourceLabel: Record<PointTransactionSource, string>
   "admin_adjustment": "Admin adjustment",
   "other": "Other",
 };
-

@@ -44,6 +44,7 @@ export const matchKeys = {
   mine: ["matches", "mine"] as const,
   standings: (tid: MatchRef) => ["standings", tid] as const,
   statDefs: (sportTypeId: number) => ["match", "statDefinitions", sportTypeId] as const,
+  referees: (id: MatchRef) => ["match", id, "referees"] as const,
 };
 
 /**
@@ -181,6 +182,29 @@ export function useUpdateMatch(matchId: MatchRef, tournamentId?: MatchRef) {
   return useMutation({
     mutationFn: (input: UpdateMatchRequest) => matchApi.updateMatch(matchId, input),
     onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+export function useMatchReferees(matchId: MatchRef | undefined) {
+  return useQuery({
+    queryKey: matchKeys.referees(matchId as MatchRef),
+    queryFn: () => matchApi.getMatchReferees(Number(matchId)),
+    enabled: !USE_MOCK && matchId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+export function useUnassignMatchReferee(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tournamentRefereeId: number) =>
+      matchApi.unassignMatchReferee(Number(matchId), tournamentRefereeId),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: matchKeys.referees(matchId) }),
+        touchMatch(qc, matchId, tournamentId),
+      ]);
+    },
   });
 }
 

@@ -216,7 +216,26 @@ export async function getTournamentReferees(
       ).length,
     });
   }
-  return apiFetch(`/tournaments/${tournamentId}/referees`);
+  const raw = await getBackendTournamentReferees(Number(tournamentId));
+  return {
+    items: raw.items.map((row) => ({
+      id: row.id,
+      tournamentId: Number(tournamentId),
+      user: row.user,
+      invitedBy: row.user,
+      invitationStatus: row.invitationStatus,
+      isExternal: row.isExternal,
+      externalApprovalStatus: row.externalApprovalStatus,
+      approvedBy: null,
+      approvedAt: null,
+      createdAt: "",
+      removedAt: row.status === "removed" ? "removed" : null,
+      removedBy: null,
+      isActive: row.status === "active",
+    })),
+    acceptedCount: raw.acceptedCount,
+    awaitingAdminCount: raw.awaitingAdminCount,
+  };
 }
 
 /**

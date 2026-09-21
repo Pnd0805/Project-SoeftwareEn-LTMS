@@ -278,7 +278,7 @@ export interface BackendTournamentRefereeDto {
 export interface BackendTournamentRefereeListDto {
   items: BackendTournamentRefereeDto[];
   acceptedCount: number;
-  effectiveCount: number;
+  awaitingAdminCount: number;
 }
 
 /** GET /me/referee-invitations — F04 */

@@ -24,6 +24,7 @@ import { user } from '../../shared/selectors'
 import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
 import type { Team, Tournament } from '../../shared/types'
 import { numOf } from '../../mocks/storeBridge'
+import { conflictOfInterestDetails } from './registrationErrors'
 
 /** รายชื่อผู้ที่ไม่ผ่านเงื่อนไขรับสมัคร ตามที่ backend ส่งกลับมากับ 422 */
 type HardFilterFail = { userId: number; fullName: string; reason: string }
@@ -158,6 +159,8 @@ export function RegisterForm({
         } else if (error.code === 'PLAYER_ALREADY_REGISTERED' && Array.isArray(error.extra.players)) {
           setServerDetails((error.extra.players as PlayerConflict[]).map(player =>
             `${player.fullName} is already registered for this tournament with ${player.teamName}.`))
+        } else if (error.code === 'TEAM_CONFLICT_OF_INTEREST') {
+          setServerDetails(conflictOfInterestDetails(error))
         }
       }
     }
