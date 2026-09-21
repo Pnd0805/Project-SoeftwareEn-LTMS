@@ -38,7 +38,7 @@ import { useMe } from '../../hooks/useAuth'
 import { useFollow, useSearchUsers } from '../../hooks/useUser'
 import { useSportTypes } from '../../hooks/useReference'
 import { EnterTournamentButton } from '../tournament/EnterTournamentButton'
-import { useMyTournamentApplications, useTournamentsByIds } from '../../hooks/useTournament'
+import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { mockTeamApiIdFromRoute } from '../../mocks/routeIds'
 import { findStoreTeam } from '../../mocks/teamBridge'
 import { useLtms } from '../../shared/store'
@@ -48,9 +48,6 @@ import { TeamManage } from './TeamManage'
 import { TeamRecord } from './TeamRecord'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
-
-/** ทัวร์ที่ไม่ล็อกรายชื่อแล้ว — ชุดเดียวกับ findLockingTournamentOfTeam ของ backend (B6) */
-const ROSTER_FREE = new Set<string>(['completed', 'auto_deleted', 'rejected'])
 
 const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
@@ -75,11 +72,8 @@ export function TeamPage() {
   const myApplications = useMyTournamentApplications(canReadPrivateTeamData)
   const sportTypes = useSportTypes()
   const follow = useFollow(currentUser?.id, `team:${id ?? ''}`)
-  /* B6 ล็อกรายชื่อเฉพาะทัวร์ที่ "ยังไม่จบ" — ต้องรู้สถานะของทัวร์ที่ทีมนี้ได้ที่นั่ง
-     เรียกตรงนี้เพราะ hook ต้องถูกเรียกทุกรอบ ก่อนทางออกก่อนกำหนดข้างล่าง */
   const approvedIn = (myApplications.data?.items ?? [])
     .filter(application => application.team.id === team.data?.id && application.status === 'approved')
-  const approvedTournaments = useTournamentsByIds(approvedIn.map(application => application.tournament.id))
 
   if (teamId === undefined) {
     return <Empty icon="team" title="Invalid team link"><button className="btn" type="button" onClick={() => navigate('/teams')}>Back to teams</button></Empty>
@@ -105,16 +99,10 @@ export function TeamPage() {
    * ใบสมัครถูกตรวจ hard filter ณ ตอนยื่น — ถ้าเปลี่ยนตัวผู้เล่นหลังผู้จัดรับเข้าแล้ว
    * ทีมที่ลงแข่งจริงจะไม่ใช่ทีมที่ผ่านการตรวจ
    *
-   * ตั้งแต่ B6 (`c43f497`) backend บังคับเองแล้ว (T07/T08/T09/T13 ตอบ 409 ROSTER_LOCKED)
-   * และปลดล็อกเมื่อทัวร์จบ ถูกปัดตก หรือถูกลบ — ถ้าเราไม่เช็คสถานะด้วย ทีมที่เคยเข้าทัวร์
-   * ที่จบไปนานแล้วจะถูกล็อกค้างตลอดกาลทั้งที่ server ยอมให้แก้
+   * หลัง application-squad merge (`43bacda`) ล็อกผูกกับใบสมัคร `approved`
+   * ไม่ใช่สถานะทัวร์ ดังนั้น `completed` ก็ยังล็อกอยู่ตามกฎ Q2-ค
    */
-  const stillRunning = new Set(
-    approvedTournaments.flatMap(q => (q.data && !ROSTER_FREE.has(q.data.status) ? [q.data.id] : [])),
-  )
-  /* โหมด mock ไม่มีสถานะทัวร์จาก API (useTournamentsByIds ปิดอยู่) — ตัวล็อกหลักคือ
-     rosterLockOf ของ store อยู่แล้ว ตรงนี้จึงคงพฤติกรรมเดิมไว้ */
-  const committedTo = USE_MOCK ? approvedIn[0] : approvedIn.find(a => stillRunning.has(a.tournament.id))
+  const committedTo = approvedIn[0]
   const pendingIn = (myApplications.data?.items ?? [])
     .find(application => application.team.id === team.data?.id && application.status === 'pending')
   const sport = sportTypes.data?.items.find(x => x.id === data.sportTypeId)
@@ -163,7 +151,7 @@ export function TeamPage() {
 
       {isLeader && (lock || committedTo) ? (
         <Banner kind="warn">
-          <b>The roster is locked while {lock?.name ?? committedTo?.tournament.name} is under way.</b>{' '}
+          <b>The roster is locked by the approved entry in {lock?.name ?? committedTo?.tournament.name}.</b>{' '}
           Players can't be added or removed — the squad that plays has to be the squad the entry
           rules were checked against.
         </Banner>
@@ -379,7 +367,7 @@ function InvitePanel({ data, lockName, memberIds }: {
 
       {lockName ? (
         <Banner kind="warn">
-          <b>Adding players is locked.</b> {data.name} is playing {lockName}; invitations reopen when it names a champion.
+          <b>Adding players is locked.</b> {data.name} has an approved entry in {lockName}; the lock follows that application, even after the tournament closes.
         </Banner>
       ) : (
         <>

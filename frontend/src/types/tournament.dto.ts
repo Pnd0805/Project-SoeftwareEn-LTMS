@@ -46,6 +46,9 @@ export interface TournamentDetailDto extends TournamentDto {
   /** มากับ GET /tournaments/:id ของ backend — โหมด mock ไม่มีให้ */
   organizer?: UserRef;
   approvedTeamCount?: number;
+  /** C14b: populated when the organizer explicitly closes the tournament. */
+  championTeamId: number | null;
+  completedAt: string | null;
 }
 
 export interface EligibilityRuleDto {
@@ -263,6 +266,33 @@ export interface SubmitTournamentFeedbackRequest {
 
 export interface DrawTournamentRequest {
   teamIds?: number[];
+  /** M01/OD-22: atomically replace an unused bracket. */
+  replace?: boolean;
+}
+
+export interface DrawTournamentResponse {
+  matchCount: number;
+  bracketFormat: string;
+  nodeCount: number;
+  replaced: boolean;
+}
+
+export interface CompleteTournamentResponse {
+  id: number;
+  status: "completed";
+  championTeamId: number | null;
+}
+
+/** C09b — organizer-visible amendment history, newest first. */
+export interface TournamentAmendmentHistoryItemDto {
+  id: number;
+  requestedChanges: Record<string, unknown>;
+  reason: string | null;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: UserRef | null;
+  rejectionReason: string | null;
 }
 
 // ══════════════════════════════════════════════════════════════════════════

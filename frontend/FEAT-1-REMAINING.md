@@ -3,10 +3,25 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend reference and primary backend branch: `origin/BE_KN` at
-`ff701e6`, inspected locally on 2026-09-21.** Individual entries in the "Backend blockers" section retain
+**Current backend contract reference: FE notices `a14d44c` and `a88f7ad`,
+received on 2026-09-21.** Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
+
+## FE delivery for BE_KN `a14d44c` + `a88f7ad` — 2026-09-21
+
+- [x] Result and dispute-amend forms require a winning aggregate score; Draw / Decider input is removed.
+- [x] S12 maps `played`, `points`, `goalsFor`, `goalsAgainst`, `goalDiff` and duplicate `rank` directly, without FE sorting or `wins * 3`.
+- [x] C14b close action is available in Manage and renders `MATCHES_UNFINISHED.matches`, `NO_MATCHES` and already-completed feedback.
+- [x] Tournament completion is based on C07 `status === 'completed'`; the match/standings workaround is removed and S10 supplies the winner.
+- [x] Completed tournaments hide Manage and registration/write controls while announcements remain available; stale 409 `TOURNAMENT_COMPLETED` responses stay visible as API errors.
+- [x] Search forwards `GET /tournaments?status=completed` through the Completed filter.
+- [x] C09b amendment history shows every status plus `rejectionReason`, `reviewedBy` and review time.
+- [x] DTOs include standings totals, C07 `championTeamId` / `completedAt`, C09b history and C14b response.
+- [x] M01 supports `replace?: true` and the response field `replaced: boolean`.
+- [x] Manage Draw confirms bracket replacement, renders `BRACKET_IN_USE.matches`, and warns that match-specific referees must be assigned again.
+- [x] Team roster locking follows approved applications and is not released merely because a tournament is completed/rejected/auto-deleted.
+- [x] Contract regression tests, full Vitest suite, production build and `git diff --check` are part of this handoff.
 
 Earlier revisions of this file tracked `origin/backend` `35ce621` (2026-09-11)
 and treated anything that existed only on `BE_KN` as unavailable. That policy is
@@ -393,7 +408,7 @@ delivers an agreed contract:
       organizer and 404 to everyone else. The match page shows the score and the
       resolve panel again; `getResult` stopped hard-coding `status: "verified"`.
 
-- [ ] Backend delivery required: a match cannot end level. `submitResultSchema`
+- [x] ~~Backend delivery required: a match cannot end level.~~ Delivered by OD-20 / `92857f1`; historical context follows. `submitResultSchema`
       requires `winnerTeamId: z.int()`, so a draw cannot be recorded at all.
       Round robin is the format that needs it, and SRS lists `round_robin` as a
       bracket format. `submitResult()` answers 501 rather than inventing a
@@ -407,7 +422,7 @@ delivers an agreed contract:
       `scoreData` takes exactly two keys — the two team ids — and has nowhere to
       carry a tiebreak. The ask is unchanged and now blocking: somewhere to
       record the tiebreak, or a way to record a draw.
-- [ ] Backend delivery required: standings carry no points and no draws.
+- [x] ~~Backend delivery required: standings carry no points and no score totals.~~ Delivered by `92857f1`; historical context follows.
       `GET /tournaments/:id/standings` returns `{team, wins, losses, rank}` and
       nothing else — no drawn count, no points, no goals for/against. The
       leaderboard needs all of them to rank a round robin and to state its own
@@ -505,7 +520,7 @@ delivers an agreed contract:
       capped at 12: an N+1 that a single richer endpoint would remove. Reported
       by the backend side on 2026-09-19 and fixed on the frontend the same day;
       the request here is only to make it one round trip.
-- [ ] Backend delivery required: closing a tournament. Nothing sets
+- [x] ~~Backend delivery required: closing a tournament.~~ Delivered by C14b in `92857f1`; historical context follows. Nothing previously set
       `tournament_status = 'completed'`, so a tournament whose matches are all
       confirmed stays `public` forever, `GET /tournaments/:id/winner` answers 404
       (it only serves completed tournaments) and `championCount` in
@@ -593,8 +608,8 @@ delivers an agreed contract:
       which works. If the intent is that a pending request can still be
       corrected, `isOrganizerOf` needs to let the requester through for this
       route (and for reading their own pending tournament).
-- [ ] Backend delivery required: an organizer cannot see their own pending
-      amendment. `GET /admin/amendment-requests` is the only list, and it is
+- [x] ~~Backend delivery required: an organizer cannot see their own pending amendment.~~
+      Delivered by C09b in `a14d44c`; the historical limitation was that `GET /admin/amendment-requests` was the only list, and it is
       `requireAdmin_U`. After sending a change request the organizer has no way
       to ask "is it still pending?" — our panel can only show a note that lasts
       until the page is reloaded, which is not a status.
@@ -942,37 +957,12 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       applications/appointments even if submitted outside the UI. Do not apply
       this restriction to unrelated tournaments or rely on a hidden button.
 
-- [ ] **R02 · P1 · Slices 2/3 + backend bracket owner:** support replacing an
-      existing bracket while team registration is still open. Requirement
-      clarified 2026-09-20: an organizer may draw early, approve additional
-      teams later, then redraw so the new bracket contains every team currently
-      approved. The new bracket replaces the old bracket; it must never append
-      duplicate matches. Drawing does not close registration by itself.
-      Current backend blocks this flow: `createBracket()` checks
-      `countMatchesByTournament()` and returns `409 BRACKET_ALREADY_EXISTS` for
-      every second draw. It has no delete/replace transaction. Current frontend
-      therefore must not describe its Save/Generate action as working redraw.
-      Reconfirmed against `BE_KN` `88765c5` on 2026-09-21. Frontend now detects
-      an existing bracket from the match query, disables the manual seed fields,
-      removes the misleading Save action and explains the backend blocker without
-      mutating the existing matches.
-      Backend delivery required: make replacement atomic and organizer-only;
-      permit it only while registration is open and every old match is still
-      `scheduled`, with no check-ins or results. Delete old bracket nodes,
-      matches and match-specific schedules/referee assignments in FK-safe order,
-      while preserving the tournament referee pool and approved applications;
-      then build from the complete current approved-team set. Any failure must
-      roll back to the intact old bracket. Return an explicit replacement result
-      or error code rather than partially deleting data.
-      Frontend after that delivery: include newly approved teams when query data
-      refreshes, require a confirmation that old fixture times and match referee
-      assignments will be discarded, show pending/error states, invalidate the
-      match/bracket/progress queries, and render the replacement after reload.
-      Initial draw may still occur after registration closes if no bracket exists;
-      replacement is the operation limited to the open-registration window.
-      Add API/service tests for initial draw, successful replacement, duplicate
-      prevention, rollback, closed-registration rejection, started-match/check-in/
-      result rejection, and preservation of applications/tournament referee pool.
+- [x] **R02 · P1 · Slices 2/3 + backend bracket owner:** atomic bracket
+      replacement delivered by BE_KN `a88f7ad` and wired in Manage. M01 sends
+      `replace: true` only after confirmation, exposes `replaced`, preserves the
+      existing bracket on `BRACKET_IN_USE`, renders the blocking match metadata,
+      refreshes tournament/match/standings queries, and tells the organizer to
+      assign match-specific referees again.
 
 - [x] **R05 · P2 · Slices 2/3:** draw progress does not update. Reproduce both
       random draw in SetupTrail and manual draw in DrawPanel; distinguish request

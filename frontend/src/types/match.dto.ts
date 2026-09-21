@@ -696,6 +696,14 @@ export interface BackendPlayerStatDto {
 export interface CreateBracketRequest {
   seedingMethod: "random" | "manual";
   manualSeeds?: number[];
+  replace?: boolean;
+}
+
+export interface CreateBracketResponse {
+  matchCount: number;
+  bracketFormat: string;
+  nodeCount: number;
+  replaced: boolean;
 }
 
 export interface BackendBracketNodeDto {
@@ -719,8 +727,13 @@ export interface BackendBracketDto {
 /** GET /tournaments/:id/standings */
 export interface BackendStandingDto {
   team: BackendTeamRef;
+  played: number;
   wins: number;
   losses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
   rank: number;
 }
 

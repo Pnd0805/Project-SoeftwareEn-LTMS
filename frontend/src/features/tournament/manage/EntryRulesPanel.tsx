@@ -15,10 +15,10 @@
  *    ผ่านตัวกรองไปแล้วจะกลายเป็นผิดกฎย้อนหลัง
  */
 import { useState } from 'react'
-import { Badge, Banner, Facts, Field, Panel } from '../../../components/kit/primitives'
+import { Badge, Banner, Facts, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
-import { useEligibilityRules, useRequestFilterChange, useTournament } from '../../../hooks/useTournament'
+import { useEligibilityRules, useRequestFilterChange, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
 import { useFaculties } from '../../../hooks/useReference'
 import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
@@ -45,6 +45,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const rules = useEligibilityRules(tournamentId)
   const faculties = useFaculties()
   const requestChange = useRequestFilterChange(tournamentId)
+  const amendmentHistory = useTournamentAmendmentRequests(tournamentId)
 
   const currentFaculties = (rules.data?.items ?? []).filter(r => r.ruleType === 'faculty').map(r => r.ruleValue)
   const currentYears = (rules.data?.items ?? []).filter(r => r.ruleType === 'year').map(r => r.ruleValue)
@@ -149,8 +150,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           {sentAt ? (
             <Banner kind="ok" icon="check">
               <b>Sent to an admin on {sentAt}.</b> The conditions above stay as they are until the
-              request is approved. There is no queue you can watch — the admin&apos;s decision arrives
-              as a change to this tournament.
+              request is approved. Its current decision appears in the history below.
             </Banner>
           ) : null}
 
@@ -164,6 +164,39 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
               <Icon name="plus" size={14} /> Request a change
             </button>
           )}
+        </Panel>
+
+        <Panel quiet>
+          <span className="tag"><em>//</em> Amendment history</span>
+          {amendmentHistory.isPending ? <span className="sub">Loading requests…</span> : null}
+          {amendmentHistory.isError ? (
+            <Banner kind="crit"><b>Couldn&apos;t load amendment history.</b> {errorMessage(amendmentHistory.error)}</Banner>
+          ) : null}
+          {amendmentHistory.data?.items.length === 0 ? <span className="sub">No amendment requests yet.</span> : null}
+          {amendmentHistory.data?.items.length ? (
+            <TableWrap>
+              <table>
+                <thead><tr><th>Requested</th><th>Changes</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead>
+                <tbody>
+                  {amendmentHistory.data.items.map(item => (
+                    <tr key={item.id}>
+                      <td>{new Date(item.requestedAt).toLocaleString()}</td>
+                      <td><code>{JSON.stringify(item.requestedChanges)}</code></td>
+                      <td>{item.reason ?? '—'}</td>
+                      <td><Badge kind={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'crit' : 'warn'}>{item.status}</Badge></td>
+                      <td>
+                        {item.rejectionReason ? <><b>{item.rejectionReason}</b><br /></> : null}
+                        <span className="sub">
+                          {item.reviewedBy ? `By ${item.reviewedBy.fullName}` : 'Not reviewed yet'}
+                          {item.reviewedAt ? ` · ${new Date(item.reviewedAt).toLocaleString()}` : ''}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          ) : null}
         </Panel>
       </div>
 

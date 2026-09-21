@@ -20,7 +20,7 @@ import { ConfirmCard, Modal } from '../../../components/kit/Modal'
 import type { TrailStep } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
 import {
-  useDrawTournament, usePublishTournament, useTournamentApplications, useTournamentTeams,
+  useCompleteTournament, useDrawTournament, usePublishTournament, useTournamentApplications, useTournamentTeams,
 } from '../../../hooks/useTournament'
 import { useTournamentMatches } from '../../../hooks/useMatch'
 import { useTournamentReferees } from '../../../hooks/useAdmin'
@@ -29,6 +29,19 @@ import { formatName, refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
+const errorCode = (error: unknown) => typeof error === 'object' && error !== null && 'code' in error
+  ? String((error as { code?: unknown }).code ?? '') : ''
+const unfinishedMatches = (error: unknown): Array<{ id: number; status: string }> => {
+  if (typeof error !== 'object' || error === null || !('extra' in error)) return []
+  const matches = (error as { extra?: { matches?: unknown } }).extra?.matches
+  return Array.isArray(matches)
+    ? matches.filter((match): match is { id: number; status: string } => (
+        typeof match === 'object' && match !== null
+        && typeof (match as { id?: unknown }).id === 'number'
+        && typeof (match as { status?: unknown }).status === 'string'
+      ))
+    : []
+}
 
 export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
   const s = useLtms()
@@ -47,6 +60,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         "0 approved · 0 waiting on you" ตลอด ทั้งที่อนุมัติทีมครบและแข่งจบไปแล้ว */
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const real = tournamentId !== undefined
+  const complete = useCompleteTournament(tournamentId ?? 0)
   const approvedTeams = useTournamentTeams(tournamentId)
   const applications = useTournamentApplications(tournamentId)
   const backendMatches = useTournamentMatches(tournamentId)
@@ -139,6 +153,19 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         : !real && t.champion ? `${team(s, t.champion)?.name ?? 'Somebody'} won it.`
           : 'Referees record, leaders confirm, and a dispute lands back with you.',
     },
+    ...(real ? [{
+      state: 'idle' as const,
+      title: 'Close the tournament',
+      note: allPlayed
+        ? 'Close explicitly to publish the final winner and lock every write except announcements.'
+        : 'Every match must be completed before the tournament can be closed.',
+      cta: allPlayed ? (
+        <button className="btn primary" type="button" disabled={complete.isPending}
+          onClick={() => complete.mutate()}>
+          {complete.isPending ? 'Closing…' : 'Close tournament'}
+        </button>
+      ) : undefined,
+    }] : []),
   ]
 
   const now = steps.findIndex(x => x.state !== 'done')
@@ -160,7 +187,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
             onConfirm={() => { setConfirming(null); draw.mutate({}) }}
             body={<>
               <b>This creates the tournament matches.</b> {formatName(t)} is drawn from the {approvedCount} squads
-              approved so far. The current backend cannot replace an existing bracket, so check the approved squads first.
+              approved so far. If the approved field changes before play starts, the bracket can be replaced atomically
+              from the Draw tab.
             </>} />
         ) : (
           <ConfirmCard ok="Open it" onCancel={() => setConfirming(null)}
@@ -175,6 +203,18 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       {publish.isError ? <Banner kind="crit"><b>Couldn't open it to the public.</b> {errorMessage(publish.error)}</Banner> : null}
       {draw.isPending ? <Banner kind="neutral"><b>Drawing the bracket…</b> Refreshing the saved matches before progress advances.</Banner> : null}
       {draw.isError ? <Banner kind="crit"><b>Couldn't draw the bracket.</b> {errorMessage(draw.error)}</Banner> : null}
+      {complete.isError ? (
+        <Banner kind="crit">
+          <b>Couldn't close the tournament.</b>{' '}
+          {errorCode(complete.error) === 'MATCHES_UNFINISHED'
+            ? <>Finish these matches first: {unfinishedMatches(complete.error).map(match => `#${match.id} (${match.status})`).join(', ') || 'the server did not provide the list'}.</>
+            : errorCode(complete.error) === 'NO_MATCHES'
+              ? 'Draw the bracket before closing the tournament.'
+              : errorCode(complete.error) === 'TOURNAMENT_COMPLETED'
+                ? 'This tournament has already been closed. Refresh to see the final state.'
+                : errorMessage(complete.error)}
+        </Banner>
+      ) : null}
       <Trail steps={steps} />
     </Panel>
   )

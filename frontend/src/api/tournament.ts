@@ -97,7 +97,7 @@ function findTournament(id: number): TournamentDto | undefined {
   return mockTournaments.find((item) => item.id === id && item.deletedAt === null);
 }
 
-export async function getTournaments(params: { status?: TournamentDto["status"]; sportTypeId?: number; facultyId?: number; q?: string } = {}): Promise<TournamentListResponse> {
+export async function getTournaments(params: { status?: "public" | "completed"; sportTypeId?: number; facultyId?: number; q?: string } = {}): Promise<TournamentListResponse> {
   if (USE_MOCK) {
     const items = mockTournaments.filter((item) =>
       item.deletedAt === null &&
@@ -106,9 +106,9 @@ export async function getTournaments(params: { status?: TournamentDto["status"];
     );
     return tournamentMockDelay({ items });
   }
-  /* GET /tournaments คืนเฉพาะรายการที่เป็น public อยู่แล้ว และรับ filter แค่
-     sportTypeId / facultyId / q — ไม่มี status ให้กรอง (ส่งไปก็ถูกมองข้าม) */
+  /* C06 รองรับรายการสาธารณะที่กำลังแข่ง (public) และจบแล้ว (completed). */
   const query = new URLSearchParams();
+  if (params.status !== undefined) query.set("status", params.status);
   if (params.sportTypeId !== undefined) query.set("sportTypeId", String(params.sportTypeId));
   if (params.facultyId !== undefined) query.set("facultyId", String(params.facultyId));
   if (params.q) query.set("q", params.q);
@@ -121,6 +121,8 @@ export async function getTournament(id: number): Promise<TournamentDetailDto> {
     if (!tournament) return notFound("ไม่พบการแข่งขัน");
     return tournamentMockDelay({
       ...tournament,
+      championTeamId: null,
+      completedAt: null,
       eligibilityRules: mockEligibilityRules.filter((item) => item.tournamentId === id),
       referees: mockTournamentReferees.filter((item) => item.tournamentId === id),
       applications: mockTournamentApplications.filter((item) => item.tournamentId === id),
@@ -412,13 +414,16 @@ export async function publishTournament(id: TournamentRef): Promise<TournamentDt
   return apiFetch(`/tournaments/${id}/publish`, { method: "POST" });
 }
 
-export async function drawTournament(id: TournamentRef, input: DrawTournamentRequest = {}): Promise<TournamentDto> {
+export async function drawTournament(
+  id: TournamentRef,
+  input: DrawTournamentRequest = {},
+): Promise<{ tournament: TournamentDto; bracket: import('../types/tournament.dto').DrawTournamentResponse | null }> {
   if (USE_MOCK) {
     if (writeDrawTournament(id, input.teamIds)) {
       /* สายถูกสร้างใน store แล้ว — ไม่มี TournamentDto ให้คืน จึงคืนตัวที่มีอยู่
          ผู้เรียกใช้แค่รู้ว่าสำเร็จ แล้ว invalidate ให้หน้าอ่านใหม่เอง */
       const first = mockTournaments[0];
-      if (first) return tournamentMockDelay(first);
+      if (first) return tournamentMockDelay({ tournament: first, bracket: null });
     }
     const tournament = findTournament(Number(id));
     if (!tournament) return notFound("ไม่พบการแข่งขัน");
@@ -426,18 +431,25 @@ export async function drawTournament(id: TournamentRef, input: DrawTournamentReq
        ซึ่งกลับหัวกลับหางกับความหมายของมัน การสร้างแมตช์จริงเป็นของ Match API
        (SDS §S5: POST /tournaments/{id}/brackets) mock จึงยังไม่สร้างสายให้
        แต่ต้องไม่ทำลายสถานะที่ถูกอยู่แล้ว */
-    return tournamentMockDelay(tournament);
+    return tournamentMockDelay({ tournament, bracket: null });
   }
   /* เส้นจริงคือ POST /tournaments/:id/bracket และรับ seedingMethod ไม่ใช่รายชื่อทีม
      (manual ต้องส่ง manualSeeds — ดู createBracket() ใน api/match.ts) */
-  await apiFetch(`/tournaments/${id}/bracket`, {
+  const bracket = await apiFetch<import('../types/tournament.dto').DrawTournamentResponse>(`/tournaments/${id}/bracket`, {
     method: "POST",
     body: JSON.stringify({
       seedingMethod: input.teamIds?.length ? "manual" : "random",
       ...(input.teamIds?.length ? { manualSeeds: input.teamIds } : {}),
+      ...(input.replace ? { replace: true } : {}),
     }),
   });
-  return apiFetch(`/tournaments/${id}`);
+  const tournament = await apiFetch<TournamentDto>(`/tournaments/${id}`);
+  return { tournament, bracket };
+}
+
+/** C14b — organizer explicitly closes a tournament after every match is completed. */
+export function completeTournament(id: number): Promise<import('../types/tournament.dto').CompleteTournamentResponse> {
+  return apiFetch(`/tournaments/${id}/complete`, { method: "POST" });
 }
 
 /** POST /tournaments/:id/announcements — ผู้จัดเท่านั้น · แจ้งหัวหน้าทีมที่ได้ที่นั่ง */
@@ -519,6 +531,13 @@ export async function requestFilterChange(
     method: "POST",
     body: JSON.stringify({ requestedChanges: changes, reason }),
   });
+}
+
+/** C09b — every amendment submitted by this tournament's organizer, newest first. */
+export function getTournamentAmendmentRequests(
+  id: number,
+): Promise<{ items: import('../types/tournament.dto').TournamentAmendmentHistoryItemDto[] }> {
+  return apiFetch(`/tournaments/${id}/amendment-requests`);
 }
 
 // ══════════════════════════════════════════════════════════════════════════

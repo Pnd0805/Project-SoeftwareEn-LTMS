@@ -2,22 +2,25 @@
 
 Frontend branch `feat/1` · API base path `/api/v1`
 
-**Checked against `origin/BE_KN` at `df506ea`, pulled, migrated to 015 and run
-locally on 2026-09-20** (the round before it, `c43f497`, is named in the items
-it closed). Every item below was verified by calling the running server, not by
-reading source: a route is reported missing only when it answers
-`404 NOT_FOUND`, and anything that answered otherwise was struck from this list
-before sending.
+**Current backend reference: FE notice for `BE_KN` at `a88f7ad`, received on
+2026-09-21.** The original gaps were verified against the running server at
+`df506ea` on 2026-09-20. Deliveries after that point were checked against their
+routes, schemas, services, migrations and focused frontend/live verification
+where recorded. A missing route is not claimed from an old branch snapshot.
 
-**Since the last file.** A1–A9, B2, B5, B4, B6, B7 and B9 are all verified
-delivered and wired, and the workarounds they replace are deleted. Four of them
-landed in this round:
+**Since the last file.** A1–A9, B2, B4–B9, public team search,
+`GET /me/tournaments`, C17b access, amendment reasons and the integer-only stat
+contract are delivered. Check-in revocation, match-mode validation, no-draw
+result validation, full standings, explicit tournament completion, organizer
+amendment history and atomic bracket replacement are also delivered; their
+frontend wiring is complete in this branch.
 
 - **B4** — the resolve panel offers the three real outcomes again. Match 9 was
   corrected from 3–2 to 3–1 through the UI and came back `verified` with
   `amended_by_user_id` set.
-- **B6** — our own roster lock now matches yours, including releasing when the
-  tournament is `completed`, `rejected` or `auto_deleted`, which it did not before.
+- **B6** — removed. Teams are reusable player pools; roster mutation remains
+  blocked while any application is `approved`, including after its tournament
+  completes. The frontend no longer infers release from tournament status.
 - **B7** — the per-match referee probing is gone. It was not only slow, it was
   wrong: `somying@ku.th` used to see 2 of her matches and now sees all 10.
 - **B9** — a venue-only edit works and leaves the times alone.
@@ -49,37 +52,8 @@ data in.
   live in `FEAT-1-REMAINING.md` in the same folder; nothing there is needed to
   act on anything here.
 
-## Delivery required — 15 items
+## Delivery required — 8 items
 
-- [ ] **FE-match-end-level-submitresultschema** — A match cannot end level. `submitResultSchema`
-      requires `winnerTeamId: z.int()`, so a draw cannot be recorded at all.
-      Round robin is the format that needs it, and SRS lists `round_robin` as a
-      bracket format. `submitResult()` answers 501 rather than inventing a
-      winner.
-      **Escalated by `75ffb0a` (2026-09-20).** `ensureScoreData()` now also
-      rejects a score where the winner does not have more points than the loser,
-      so a level match is not merely stored without its tiebreak — it cannot be
-      submitted at all. The result form used to accept 1–1 with a decider of
-      4–2 and drop the decider quietly; in real mode it now refuses to send a
-      level score and says why, and the Decider fields are hidden there because
-      `scoreData` takes exactly two keys — the two team ids — and has nowhere to
-      carry a tiebreak. The ask is unchanged and now blocking: somewhere to
-      record the tiebreak, or a way to record a draw.
-- [ ] **FE-standings-carry-points-draws** — Standings carry no points and no draws.
-      `GET /tournaments/:id/standings` returns `{team, wins, losses, rank}` and
-      nothing else — no drawn count, no points, no goals for/against. The
-      leaderboard needs all of them to rank a round robin and to state its own
-      tie-break ("level on points is separated by difference, then scored"), so
-      `src/api/match.ts` currently fills `points` with `wins * 3` and leaves the
-      score columns at 0. That constant is a guess the frontend has no business
-      making: points per win differ by sport, and a draw is worth 1. Return the
-      real figures and delete the guess.
-- [ ] **FE-public-team-list-team** — Public team list or team search.
-      `GET /me/teams` only returns the signed-in user's own teams, so the search
-      page cannot look up anybody else's squad.
-      (The 500 this used to throw on a non-numeric team id was fixed as A2 in
-      `c9773ca` — `/teams/:id` answers 400 now. The search route itself is still
-      the open part.)
 - [ ] **FE-notification-list-mark-one** — Notification list, mark-one-read, and
       mark-all-read routes. `src/api/notification.ts` currently contains
       local `501 ENDPOINT_UNAVAILABLE` guards; the general Inbox must not call
@@ -99,45 +73,6 @@ data in.
       the rule exists with no way for an admin to apply it. The Admin page's
       Users and Audit tabs work in mock mode only; in real mode they say the
       routes do not exist.
-- [ ] **FE-room-code-online-match** — Room code for an online match. `matches` has no
-      `room_code` column and no route accepts one — the field exists only in the
-      prototype (`MatchDto.roomCode`), so a referee has nowhere to publish the
-      lobby code that both squads need before an online match starts. Suggested:
-      `ALTER TABLE matches ADD COLUMN room_code VARCHAR(50) NULL AFTER venue;`
-      plus a write for the match referee or organizer, returned by
-      `GET /matches/:id`. The check-in page states it is unavailable in real mode
-      and the referee queue no longer keeps online matches in the "announce the
-      room" bucket, which they could never leave while the field is always null.
-- [ ] **FE-get-me-tournaments-full** — `GET /me/tournaments` with the full card DTO.
-      `GET /tournaments` is a public list, so an organizer's own tournament
-      disappears from the home page the moment it is anything other than
-      `public` — which includes the state it lands in right after an admin
-      approves it (`private`), and every tournament that has finished. On the QA
-      bench that hid 6 of one organizer's 18 tournaments.
-      `GET /me/tournament-requests` knows which ones are ours but returns only
-      `{id, name, status, rejectionReason, createdAt}` — not the sport, date,
-      venue or cap a card needs. The home page therefore takes the ids that are
-      missing from the public list and fetches `GET /tournaments/:id` for each,
-      capped at 12: an N+1 that a single richer endpoint would remove. Reported
-      by the backend side on 2026-09-19 and fixed on the frontend the same day;
-      the request here is only to make it one round trip.
-- [ ] **FE-closing-tournament-nothing-sets** — Closing a tournament. Nothing sets
-      `tournament_status = 'completed'`, so a tournament whose matches are all
-      confirmed stays `public` forever, `GET /tournaments/:id/winner` answers 404
-      (it only serves completed tournaments) and `championCount` in
-      `GET /users/:id/stats` stays 0. Worse, a tournament that *is* completed
-      disappears for everyone except an admin: `findPublicTournaments` filters to
-      `public` and `getVisibleTournament` refuses anything else, so finished
-      results cannot be browsed at all. The tournament page works around the
-      first half by declaring the tournament finished once every match is
-      confirmed and naming the champion from the standings.
-- [ ] **FE-organizer-see-their-own** — An organizer cannot see their own pending
-      amendment. `GET /admin/amendment-requests` is the only list, and it is
-      `requireAdmin_U`. After sending a change request the organizer has no way
-      to ask "is it still pending?" — our panel can only show a note that lasts
-      until the page is reloaded, which is not a status.
-      A `GET /tournaments/:id/amendment-requests` for the organizer, or the
-      pending request inlined on `GET /tournaments/:id`, would close it.
 - [ ] **FE-tournament-feedback** — Tournament feedback — both writing it and
       reading it back (SDS `POST /tournaments/{id}/feedback`, FR-CM-02).
       `schema.sql` already has the whole table: `tournament_feedback` with
@@ -158,49 +93,13 @@ data in.
 - [ ] **FE-delete-tournaments-id-organizer** — `DELETE /tournaments/:id`. An organizer can
       unpublish but never delete, so a tournament created by mistake is
       permanent. `deleteTournament()` answers 501.
+## Fix required — 0 open items
 
-## Fix required — 4 items
+No independently confirmed behavior fix remains open at `a88f7ad`. Missing
+capabilities are tracked under Delivery required above.
 
-- [ ] **FE-c17b-be-reached-by** — C17b cannot be reached by anyone. The route and
-      the service disagree about who the organizer is.
-      `PUT /tournaments/:id/eligibility-rules` is guarded by `requireOrganizer`,
-      and `isOrganizerOf()` returns false while the tournament is
-      `pending_approval` ("ทัวร์ที่ยังไม่ถูกอนุมัติ ยังไม่มีผู้จัดการแข่งขันที่ทำอะไรได้").
-      `setEligibilityRules()` then refuses unless the status **is**
-      `pending_approval` (`409 USE_AMENDMENT_REQUEST`). The two conditions
-      cannot both hold, so the endpoint answers 403 to the person who created
-      the tournament and 409 to everybody else.
-      Verified on `df506ea` end to end: created tournament 26 as
-      `p9201@ku.th`, then `PUT /tournaments/26/eligibility-rules` →
-      `403 NOT_ORGANIZER`; after an admin approved it the same call →
-      `409 USE_AMENDMENT_REQUEST`.
-      The same guard hides the tournament from its own requester —
-      `GET /tournaments/26` and `GET /tournaments/26/eligibility-rules` both
-      answer 404 until approval — so even a read-only "check what I asked for"
-      screen has nothing to read.
-      Until this is settled the frontend does not offer a C17b screen: the
-      conditions are set on the create form and changed afterwards through C09,
-      which works. If the intent is that a pending request can still be
-      corrected, `isOrganizerOf` needs to let the requester through for this
-      route (and for reading their own pending tournament).
-- [ ] **FE-change-request-has-nowhere** — A change request has nowhere to say why.
-      `amendmentRequestSchema` takes `requestedChanges` only, and
-      `tournament_amendment_requests` has `rejection_reason` (the admin's) but
-      no column for the requester's. The admin sees new values with no case for
-      them, and FR-OM-01 asks for a reason on every rejection, which reads odd
-      when the request itself cannot carry one. We removed the "Why" box rather
-      than collect text that is thrown away.
-- [ ] **FE-s06-accepts-whole-numbers** — S06 accepts whole numbers only, but the stat table
-      says a stat can be a decimal or a boolean.
-      `sport_stat_definitions.data_type` is `enum('integer','decimal','boolean')`
-      and `GET /sport-types/:id/stat-definitions` hands that field to us, so the
-      form builds its inputs from it. `statSchema` then takes
-      `value: z.int()`, so a `decimal` stat (a time, an average) or a `boolean`
-      one would be rejected with `VALIDATION_FAILED` at the moment somebody
-      seeds it. Latent today — all 15 seeded definitions are `integer` — which
-      is why this is a small ask now rather than a bug later: either widen the
-      value to match the column, or drop the two values the API cannot carry.
-- [ ] **FE-check-has-gone-through** — A check-in that has gone through cannot be undone,
+<!-- Historical FE-check-has-gone-through evidence retained for traceability:
+      Previously, a check-in that had gone through could not be undone,
       so a referee cannot reject the one thing they are there to catch.
       M15 `POST /matches/:id/checkins/:cid/reject` only touches rows that are
       still `pending`: `match.repo.rejectCheckin` ends
@@ -221,17 +120,76 @@ data in.
       hole is under `manual_by_referee`: a referee who waves the wrong player
       through by hand cannot take it back, and the false row is what decides the
       lineup count and the forfeit call.
-      Until then the Reject button is hidden in real mode rather than left
-      there to answer 409 on every press.
+      The frontend can now expose the action after its contract wiring and
+      real-browser regression check are complete. -->
 
 ## Already delivered
 
 Kept so the same gaps are not reported twice.
 
+- [x] ~~Backend delivery required: a match cannot end level~~ — settled by
+      OD-20/`92857f1`. Every result names a winner and the winning aggregate
+      score must be greater. The frontend removed Draw/Decider inputs.
+- [x] ~~Backend delivery required: standings lacked real points and score
+      totals~~ — delivered by `92857f1`. S12 now supplies `played`, `points`,
+      `goalsFor`, `goalsAgainst`, `goalDiff` and duplicate-capable `rank`; the
+      frontend uses them without sorting or deriving `wins * 3`.
+- [x] ~~Backend delivery required: close a tournament~~ — delivered by
+      `92857f1` as C14b plus completed public reads. The frontend exposes the
+      explicit organizer close action and removes the all-matches workaround.
+- [x] ~~Backend delivery required: organizer amendment history~~ — delivered by
+      `a14d44c` as C09b and rendered with reviewer and rejection reason.
+- [x] ~~Backend delivery required: atomically replace an unused bracket~~ —
+      delivered by `a88f7ad` as M01 `replace: true`. The frontend confirms the
+      destructive redraw, reports `BRACKET_IN_USE.matches`, and reminds the
+      organizer to reassign match referees.
+
+- [x] ~~Backend fix required: a check-in that has gone through cannot be undone~~
+      — delivered by `dd70376`. M15 can revoke `success` and `exception`
+      check-ins during the allowed review window, and a rejected participant
+      can check in again. Service tests cover the wider reject path and retry
+      behavior; frontend wiring and browser regression remain separate work.
+- [x] ~~Backend fix required: participant check-in did not enforce the match
+      mode~~ — delivered at the current remote head `88765c5`. M12 requires
+      `qr_onsite` for on-site matches and `photo_online` for online matches,
+      returning a specific validation error for a mismatched method. The
+      endpoint guide and service regression tests were updated with it.
+- [x] ~~Backend delivery required: public team list or team search~~ — delivered
+      by `c11954c` as public/private team visibility, team search and join
+      requests. The real-mode Search page can now be wired to it instead of
+      `GET /me/teams` or prototype data.
+- [x] ~~Backend delivery required: room code for an online match~~ — delivered
+      as B8 by `2512e04` with migration 016 and
+      `PUT /matches/:id/room-code`. `GET /matches/:id` returns the room code only
+      to the organizer, assigned referee and members of the two participating
+      teams.
+- [x] ~~Backend delivery required: `GET /me/tournaments` with the full card DTO~~
+      — delivered by `2512e04`. Backend work is complete; the frontend still
+      uses the capped N+1 composition from public tournaments plus
+      tournament-request ids and should migrate to this route separately.
+- [x] ~~Backend fix required: C17b cannot be reached by anyone~~ — delivered by
+      `c285918`. The requester can read their own non-public pending tournament
+      and use `PUT /tournaments/:id/eligibility-rules` while it is pending.
+- [x] ~~Backend fix required: a change request has nowhere to say why~~ —
+      delivered by `d97db59` with migration 020. The amendment contract and
+      storage now carry the requester's reason.
+- [x] ~~Backend fix required: S06 accepts whole numbers only while definitions
+      advertise decimal and boolean~~ — resolved by `d97db59` and migration 020:
+      the backend chose the integer-only contract and normalized the schema,
+      seed and stat reads to match it. The frontend must not offer unsupported
+      decimal or boolean inputs.
+- [x] ~~Backend delivery required: prevent an organizer or referee from competing
+      in their own tournament~~ — delivered by the application-squad merge
+      `43bacda`. Application submission returns `TEAM_CONFLICT_OF_INTEREST` for
+      organizers/referees in the submitted squad, while referee invitation
+      returns `ORGANIZER_CANNOT_BE_REFEREE` or
+      `REFEREE_CONFLICT_OF_INTEREST` for the reverse order. The valid-squad and
+      conflict flows were verified against the real backend on 2026-09-21.
 - [x] ~~Backend delivery required: tournament list, detail, create, update,
       eligibility rules, announcements~~ — all delivered and wired, except the
-      four listed separately (delete, eligibility-rule writes, entry notes,
-      feedback). Route inventory re-checked against BE_KN `6ebda2e` on 2026-09-19.
+      three listed separately (delete, entry notes and feedback). Route inventory
+      re-checked against BE_KN `6ebda2e` on 2026-09-19; eligibility-rule writes
+      were subsequently fixed by `c285918`.
 - [x] ~~Backend delivery required: match list/detail, draw, result, standings,
       real bracket~~ — delivered and wired. Comments are still missing and are
       listed on their own. What the delivered result routes will not
@@ -270,11 +228,9 @@ Kept so the same gaps are not reported twice.
       the Admin page's External referees tab now works against the backend.
       The queue does not say who invited the referee, so that column is blank.
 - [x] ~~Backend delivery required: roster lock (FR-TM-04)~~ — delivered as B6
-      (`c43f497`), verified 2026-09-20. `ensureRosterUnlocked` guards T07/T08/T09
-      and T13; `PATCH /teams/9031/members/9201` answers `409 ROSTER_LOCKED` and
-      names the tournament to withdraw from. The team page's own lock now matches
-      the server's rule — it releases when the tournament is `completed`,
-      `rejected` or `auto_deleted`, which it did not before.
+      (`c43f497`), then superseded by the application-squad model in `43bacda`.
+      `MEMBER_LOCKED_IN_TOURNAMENT` / `TEAM_LOCKED_IN_TOURNAMENT` remain while an
+      application is approved; tournament completion does not release that lock.
 - [x] ~~Backend delivery required: "my matches" for a referee~~ — delivered as
       B7 (`c43f497`) at `GET /me/referee-matches`, verified 2026-09-20. The
       per-match `/matches/:id/referees` probing is gone. It was not only slow, it

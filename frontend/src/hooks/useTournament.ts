@@ -21,7 +21,7 @@ export const tournamentKeys = {
   application: (id: number) => ["application", id] as const,
 };
 
-export function useTournaments(filters: { status?: TournamentStatus; sportTypeId?: number } = {}) {
+export function useTournaments(filters: { status?: Extract<TournamentStatus, "public" | "completed">; sportTypeId?: number } = {}) {
   return useQuery({
     queryKey: tournamentKeys.list(filters),
     queryFn: () => tournamentApi.getTournaments(filters),
@@ -251,6 +251,23 @@ export function usePublishTournament(tournamentId: TournamentRef) {
 export function useDrawTournament(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: tournamentApi.drawTournament.bind(null, tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
+}
+
+export function useCompleteTournament(tournamentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => tournamentApi.completeTournament(tournamentId),
+    onSuccess: () => invalidateTournament(queryClient, tournamentId),
+  });
+}
+
+export function useTournamentAmendmentRequests(tournamentId: number | undefined) {
+  return useQuery({
+    queryKey: ["tournament", tournamentId, "amendment-requests"],
+    queryFn: () => tournamentApi.getTournamentAmendmentRequests(tournamentId as number),
+    enabled: tournamentId !== undefined && !USE_MOCK,
+    retry: false,
+  });
 }
 
 export function useCreateTournamentAnnouncement(tournamentId: TournamentRef) {

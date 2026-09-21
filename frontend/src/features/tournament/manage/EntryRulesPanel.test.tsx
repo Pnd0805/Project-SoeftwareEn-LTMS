@@ -12,6 +12,7 @@ vi.mock('../../../hooks/useTournament', () => ({
   useTournament: () => ({ data: detail.current }),
   useEligibilityRules: () => ({ data: { items: [] }, isError: false }),
   useRequestFilterChange: () => ({ mutate, reset, isPending: false, isError: false }),
+  useTournamentAmendmentRequests: () => ({ data: { items: [] }, isPending: false, isError: false }),
 }))
 vi.mock('../../../hooks/useReference', () => ({
   useFaculties: () => ({ data: { items: [{ id: 1, name: 'Engineering' }] } }),

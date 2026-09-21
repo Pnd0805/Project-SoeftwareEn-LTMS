@@ -21,6 +21,7 @@
  */
 import { useState } from 'react'
 import { Badge, Banner, Panel } from '../../../components/kit/primitives'
+import { ConfirmCard, Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import { useDrawTournament, useTournamentTeams } from '../../../hooks/useTournament'
 import { useTournamentMatches } from '../../../hooks/useMatch'
@@ -46,6 +47,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
   const live = tournamentId !== undefined
   /* ชั้น API รับได้ทั้งสอง ref จึงส่งตัวที่หน้าถืออยู่ */
   const draw = useDrawTournament(tournamentId ?? t.id)
+  const [confirmReplace, setConfirmReplace] = useState(false)
 
   const entries: Entry[] = live
     ? (approvedTeams.data?.items ?? [])
@@ -113,7 +115,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
     .some(m => m.status !== 'scheduled')
   const started = live ? liveStarted : (t.drawn && drawStarted(s, t))
   const alreadyDrawn = live ? (tournamentMatches.data?.items.length ?? 0) > 0 : t.drawn
-  const replacementUnavailable = live && alreadyDrawn
+  const replacementUnavailable = live && alreadyDrawn && started
   const size = 1 << Math.ceil(Math.log2(Math.max(2, positions.length)))
   const byId = new Map(entries.map(e => [e.id, e]))
 
@@ -141,11 +143,43 @@ export function DrawPanel({ t }: { t: Tournament }) {
     const teamIds = positions
       .map(id => byId.get(id)?.ref)
       .filter((n): n is number | string => n !== undefined)
-    if (teamIds.length) draw.mutate({ teamIds: teamIds as number[] })
+    if (!teamIds.length) return
+    if (live && alreadyDrawn) {
+      setConfirmReplace(true)
+      return
+    }
+    draw.mutate({ teamIds: teamIds as number[] })
   }
+
+  const replace = () => {
+    const teamIds = positions
+      .map(id => byId.get(id)?.ref)
+      .filter((n): n is number => typeof n === 'number')
+    if (!teamIds.length) return
+    setConfirmReplace(false)
+    draw.mutate({ teamIds, replace: true })
+  }
+
+  const bracketInUseMatches = (() => {
+    if (!draw.isError || typeof draw.error !== 'object' || draw.error === null || !('extra' in draw.error)) return []
+    const matches = (draw.error as { extra?: { matches?: unknown } }).extra?.matches
+    return Array.isArray(matches) ? matches as Array<{ id?: number; status?: string; checkins?: number; results?: number }> : []
+  })()
+  const errorCode = draw.isError && typeof draw.error === 'object' && draw.error !== null && 'code' in draw.error
+    ? String((draw.error as { code?: unknown }).code ?? '') : ''
 
   return (
     <Panel quiet>
+      <Modal open={confirmReplace} onClose={() => setConfirmReplace(false)}
+        label="Redraw the bracket" title={t.name}>
+        <ConfirmCard danger ok="Redraw now" onCancel={() => setConfirmReplace(false)} onConfirm={replace}
+          body={<>
+            <b>This replaces every existing match atomically.</b> Schedules, match-specific referees,
+            referee transfer requests and standings will be removed and rebuilt from the currently
+            approved squads. Tournament-level referee pool members stay, but you must assign referees
+            to the new matches again.
+          </>} />
+      </Modal>
       <div className="spread">
         <span className="tag"><em>//</em> Arrange the draw by hand</span>
         {started ? <Badge kind="neutral">Locked — the tournament has started</Badge>
@@ -156,9 +190,8 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
       {replacementUnavailable ? (
         <Banner kind="warn">
-          <b>This bracket is already saved.</b> BE_KN currently rejects a second draw with
-          {' '}<code>BRACKET_ALREADY_EXISTS</code>. Existing matches are left untouched; bracket replacement
-          needs an atomic backend endpoint before this editor can save a redraw.
+          <b>This bracket is already in use.</b> A redraw is available only while every match is still scheduled
+          and has no check-ins or results.
         </Banner>
       ) : null}
 
@@ -172,7 +205,24 @@ export function DrawPanel({ t }: { t: Tournament }) {
       ) : null}
 
       {draw.isError ? (
-        <Banner kind="crit"><b>จับสายไม่สำเร็จ</b> {(draw.error as Error).message}</Banner>
+        <Banner kind="crit">
+          <b>จับสายไม่สำเร็จ</b> {(draw.error as Error).message}
+          {errorCode === 'BRACKET_IN_USE' ? (
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+              {bracketInUseMatches.map((match, index) => (
+                <li key={match.id ?? index}>
+                  Match #{match.id ?? '?'} · {match.status ?? 'unknown status'} · {match.checkins ?? 0} check-ins · {match.results ?? 0} results
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Banner>
+      ) : null}
+
+      {draw.isSuccess && draw.data.bracket?.replaced ? (
+        <Banner kind="ok" icon="check">
+          <b>The bracket was redrawn.</b> Assign referees to every new match before play starts.
+        </Banner>
       ) : null}
 
       {draw.isPending ? (
@@ -196,7 +246,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
             <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
               disabled={draw.isPending || drawProblems.length > 0}
               onClick={submit}>
-              {draw.isPending ? 'Drawing…' : alreadyDrawn ? 'Save this draw' : 'Draw this way'}
+              {draw.isPending ? 'Drawing…' : alreadyDrawn ? 'Redraw bracket' : 'Draw this way'}
             </button>
           )}
         </>

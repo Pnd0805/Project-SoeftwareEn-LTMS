@@ -12,7 +12,7 @@ import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { USE_MOCK } from '../../api/client'
 import { useEligibilityRules, useTournament, useTournamentTeams } from '../../hooks/useTournament'
-import { useStandings, useTournamentMatches, useTournamentWinner } from '../../hooks/useMatch'
+import { useTournamentWinner } from '../../hooks/useMatch'
 import { useFaculties, useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
 import { parseBackendId } from '../../api/ids'
@@ -44,19 +44,6 @@ export function TournamentPage() {
   const { data: currentUser } = useMe()
   /* ชื่อแชมป์จริงอยู่คนละเส้น และขอได้เฉพาะรายการที่ปิดแล้ว */
   const winner = useTournamentWinner(tournamentId, tournamentData?.status === 'completed')
-  /**
-   * "แข่งครบทุกนัดแล้วหรือยัง" — ต้องคิดเองจากรายการแมตช์
-   *
-   * ⚠️ backend ไม่มีทางปิดรายการ (ไม่มี endpoint ตั้ง tournament_status = 'completed')
-   *    รายการที่แข่งจบแล้วจึงค้างเป็น public ตลอดไป และ GET /tournaments/:id/winner
-   *    ก็ตอบ 404 เพราะมันยอมตอบเฉพาะรายการที่ปิดแล้ว
-   *    ระหว่างรอ backend หน้านี้สรุปเองจากแมตช์ + ตารางอันดับ
-   */
-  const allMatches = useTournamentMatches(tournamentId)
-  const standings = useStandings(tournamentId)
-  const playedAll = (allMatches.data?.items.length ?? 0) > 0
-    && (allMatches.data?.items ?? []).every(match => match.status === 'completed')
-  const derivedChampion = playedAll ? standings.data?.rows[0]?.team : undefined
   /* โหมดจริงอ่านจาก backend เท่านั้น — ทัวร์นาเมนต์ของ prototype (id แบบ 't-fb')
      ไม่มีตัวตนใน backend พอ id ไม่ใช่ตัวเลข ทุกแท็บที่ยิง API จะได้ 400 VALIDATION_FAILED
      กลับมา หน้าจึงดูเหมือนเปิดได้แต่พังทีละแท็บ — กันตั้งแต่ตรงนี้ชัดกว่า */
@@ -117,6 +104,7 @@ export function TournamentPage() {
   const org = USE_MOCK
     ? isOrg(s, t)
     : !!currentUser && tournamentData?.organizer?.id === currentUser.id
+  const completed = tournamentData?.status === 'completed'
 
   /**
    * Organizer is scoped per tournament and several people hold it at once.
@@ -142,13 +130,29 @@ export function TournamentPage() {
     )
   }
 
-  const tabs = [...PUBLIC_TABS, ...(org ? ['manage'] : [])]
+  if (tabParam === 'manage' && completed) {
+    return (
+      <>
+        <Crumb back={{ label: t.name, onClick: () => navigate(`/t/${t.id}`) }} />
+        <Empty icon="trophy" title="This tournament is closed"
+          sub="Results are final and editing is locked. You can still publish a closing announcement.">
+          <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/announcements`)}>
+            Open announcements
+          </button>
+        </Empty>
+      </>
+    )
+  }
+
+  const tabs = [...PUBLIC_TABS, ...(org && !completed ? ['manage'] : [])]
   const tab = tabs.includes(tabParam ?? '') ? tabParam! : 'bracket'
   const approved = tournamentId === undefined
     ? regsOf(s, t.id).filter(r => r.status === 'approved')
     : approvedTeams.data?.items ?? []
   const champion = winner.data?.championTeam
-    ?? derivedChampion
+    ?? (tournamentData?.championTeamId == null
+      ? null
+      : approvedTeams.data?.items.find(candidate => candidate.id === tournamentData.championTeamId))
     ?? (USE_MOCK && t.champion ? team(s, t.champion) : null)
   const watchable = USE_MOCK && matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
 
@@ -156,11 +160,11 @@ export function TournamentPage() {
     <>
       <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{t.name}</Crumb>
 
-      {playedAll && tournamentData?.status !== 'completed' ? (
+      {completed ? (
         <Banner kind="ok" icon="check">
-          <b>Every match is played.</b>{' '}
-          {champion ? `${champion.name} won it. ` : ''}
-          The tournament stays open until the server has a way to close it — the results below are final.
+          <b>This tournament is closed.</b>{' '}
+          {champion ? `${champion.name} won it. ` : tournamentData?.championTeamId === null ? 'No champion was assigned. ' : ''}
+          {tournamentData?.completedAt ? `Closed ${new Date(tournamentData.completedAt).toLocaleString()}.` : 'Results are final.'}
         </Banner>
       ) : null}
 
@@ -174,6 +178,7 @@ export function TournamentPage() {
         </div>
         <div className="hstack">
           {champion ? <Badge kind="ok">{`Champion · ${champion.name}`}</Badge>
+            : completed ? <Badge kind="ok">Completed</Badge>
             : t.status === 'public' ? <Badge kind="ok">Public</Badge>
               : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
                 : <Badge kind="warn">Pending review</Badge>}
@@ -244,9 +249,11 @@ export function TournamentPage() {
           </Panel> : null}
           {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
               แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
-          <EntryPanel t={t} applications={tournamentData?.applications}
-            approvedCount={tournamentId === undefined ? undefined : approved.length}
-            sportTypeId={tournamentData?.sportTypeId} />
+          {completed ? null : (
+            <EntryPanel t={t} applications={tournamentData?.applications}
+              approvedCount={tournamentId === undefined ? undefined : approved.length}
+              sportTypeId={tournamentData?.sportTypeId} />
+          )}
           {t.entryNotes ? (
             <Panel quiet>
               <span className="tag"><em>//</em> Soft filter from the organizer</span>

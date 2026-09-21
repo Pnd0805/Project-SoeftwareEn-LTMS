@@ -1,9 +1,9 @@
 /**
  * src/features/match/ResultForm.tsx
  *
- * The scoresheet a sport actually asks for. The Decider sits beside the score,
- * never instead of it — 1–1 (4–2 Penalties) is the record, because 2–1 never
- * happened.
+ * Every submitted score is final and must identify a winner. If regulation
+ * play is level, officials finish the tiebreak on the field and enter the
+ * resulting aggregate score here.
  *
  * SRS FR-RS-01: บันทึกคะแนน ผู้ชนะ และสถิติรายบุคคลตามประเภทกีฬา
  *
@@ -19,7 +19,6 @@ import { useState } from 'react'
 import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamChipView } from '../../components/kit/chips'
 import { useStatDefinitions, useSubmitResult, useSaveMatchStats } from '../../hooks/useMatch'
-import { USE_MOCK } from '../../api/client'
 import { toTeamView } from './matchView'
 import { checkResult } from './resultRules'
 import type { MatchDto, MatchTeamRef } from '../../types/match.dto'
@@ -33,14 +32,11 @@ export function ResultForm({ m }: { m: MatchDto }) {
 
   const [sa, setSa] = useState(0)
   const [sb, setSb] = useState(0)
-  const [da, setDa] = useState('')
-  const [db, setDb] = useState('')
   const [stat, setStat] = useState<Nums>({})
 
   const sides = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const statDefs = defs?.items ?? []
   const level = sa === sb
-  const deciderGiven = da !== '' && db !== ''
 
   const key = (playerId: number, statKey: string) => `${playerId}:${statKey}`
   const num = (playerId: number, statKey: string) => (
@@ -49,11 +45,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
       onChange={e => setStat(p => ({ ...p, [key(playerId, statKey)]: Number(e.target.value) }))} />
   )
 
-  const winnerTeamId = () => {
-    if (!level) return sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null
-    if (!deciderGiven) return null
-    return Number(da) > Number(db) ? m.teamA?.id ?? null : m.teamB?.id ?? null
-  }
+  const winnerTeamId = () => sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null
 
   /* สกอร์กับสถิติเป็นคนละ request และไม่ใช่ธุรกรรมเดียวกัน — ถ้าอันหลังพัง (เช่น
      กรรมการถูกถอนหลังเริ่มแมตช์ → 409 INSUFFICIENT_REFEREES) สกอร์เข้าไปแล้วแต่ตัวเลข
@@ -72,7 +64,6 @@ export function ResultForm({ m }: { m: MatchDto }) {
       scoreData: {
         a: sa,
         b: sb,
-        ...(deciderGiven ? { decider: { a: Number(da), b: Number(db), kind: 'Decider' } } : {}),
       },
     })
     /* สถิติเป็นคนละตาราง (player_match_stats) จึงเป็นคนละ request
@@ -87,11 +78,9 @@ export function ResultForm({ m }: { m: MatchDto }) {
     }
   }
 
-  /* โหมดจริงส่งผลเสมอไม่ได้เลย: `winnerTeamId` เป็น int บังคับ และตั้งแต่ `75ffb0a`
-     `ensureScoreData` ยังบังคับว่าคะแนนของผู้ชนะต้องมากกว่าอีกฝ่าย (400 "ระบบยังไม่รองรับผลเสมอ")
-     ส่วนตัวตัดสินก็ถูกทิ้งก่อนส่ง เพราะ scoreData มีได้แค่ 2 key = รหัสทีมทั้งสอง
-     ปล่อยให้กดส่ง = 400 ทุกครั้ง กันไว้ตรงที่คนกรอกเห็น (FE-match-end-level-submitresultschema) */
-  const blocked = USE_MOCK ? level && !deciderGiven && !!m.nextMatchId : level
+  /* OD-20: no match can finish level in any format. The on-field tiebreak is
+     reflected in the aggregate score; Draw/Decider are not separate inputs. */
+  const blocked = level
 
   /* สถิติที่ขัดกับสกอร์ — เช่นฟุตบอลที่มีแอสซิสต์ทั้งที่ไม่มีประตู
      ตรวจสดขณะกรอก คนกรอกจะได้เห็นก่อนกดส่ง ไม่ใช่โดนปฏิเสธทีหลัง */
@@ -102,7 +91,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
         teamB: m.teamB ? { id: m.teamB.id, name: m.teamB.name } : null,
         scoreA: sa,
         scoreB: sb,
-        deciderGiven,
+        deciderGiven: false,
         statKeys: statDefs.map(d => d.statKey),
         entries: sides.flatMap(t => t.players.map(p => ({
           userId: p.id,
@@ -127,30 +116,10 @@ export function ResultForm({ m }: { m: MatchDto }) {
         </Field>
       </div>
 
-      {/* ช่องตัวตัดสินมีที่เก็บเฉพาะในโหมด mock — `scoreData` ของจริงรับได้แค่สอง key
-          ที่เป็นรหัสทีม ค่าที่กรอกจะถูกทิ้งก่อนส่ง เปิดช่องให้กรอกก็เท่ากับหลอกคนกรอก */}
-      {USE_MOCK ? (
-        <>
-          <span className="tag"><em>//</em> Decider — only if the score finishes level</span>
-          <div className="grid2" style={{ maxWidth: 420 }}>
-            <Field label={m.teamA?.name ?? 'Home'} htmlFor="dc-a">
-              <input id="dc-a" type="number" min={0} max={99} placeholder="—" value={da} onChange={e => setDa(e.target.value)} />
-            </Field>
-            <Field label={m.teamB?.name ?? 'Away'} htmlFor="dc-b">
-              <input id="dc-b" type="number" min={0} max={99} placeholder="—" value={db} onChange={e => setDb(e.target.value)} />
-            </Field>
-          </div>
-        </>
-      ) : null}
-
       {blocked ? (
         <Banner kind="warn">
-          {USE_MOCK
-            ? <><b>Level, and this match feeds another one.</b> Record the decider so the bracket
-              knows who advances.</>
-            : <><b>A level score cannot be recorded yet.</b> The server takes one winner and has
-              nowhere to keep a tiebreak, so it turns a level score down. Separate the two scores, or
-              leave this result until a draw can be stored.</>}
+          <b>Every match needs a winner.</b> Finish the tiebreak on the field, then enter the aggregate
+          score with the winning side ahead.
         </Banner>
       ) : null}
 

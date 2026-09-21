@@ -5,7 +5,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatchLineups } from "./match";
+import { checkin, getCheckins, getMatchLineups, getStandings } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -77,5 +77,27 @@ describe("match check-in contract", () => {
     await expect(checkin(12, {
       method: "manual_by_referee", userId: 9201,
     })).rejects.toMatchObject({ status: 409, code: "ALREADY_CHECKED_IN" });
+  });
+});
+
+describe("S12 standings contract", () => {
+  it("uses backend points, goals and duplicate ranks without deriving or sorting", async () => {
+    const items = [
+      { team: { id: 11, name: "Zulu", sportTypeId: 1 }, played: 2, wins: 1, losses: 1, points: 8, goalsFor: 5, goalsAgainst: 4, goalDiff: 1, rank: 1 },
+      { team: { id: 12, name: "Alpha", sportTypeId: 1 }, played: 2, wins: 1, losses: 1, points: 8, goalsFor: 5, goalsAgainst: 4, goalDiff: 1, rank: 1 },
+    ];
+    fetchMock
+      .mockResolvedValueOnce(json({ items }))
+      .mockResolvedValueOnce(json({ bracketFormat: "round_robin" }));
+
+    const result = await getStandings(5);
+
+    expect(result?.rows.map(row => ({
+      id: row.team.id, rank: row.rank, played: row.played, points: row.points,
+      for: row.scoredFor, against: row.scoredAgainst, diff: row.scoreDifference,
+    }))).toEqual([
+      { id: 11, rank: 1, played: 2, points: 8, for: 5, against: 4, diff: 1 },
+      { id: 12, rank: 1, played: 2, points: 8, for: 5, against: 4, diff: 1 },
+    ]);
   });
 });

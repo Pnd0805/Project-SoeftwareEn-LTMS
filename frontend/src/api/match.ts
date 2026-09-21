@@ -57,6 +57,7 @@ import type {
   BackendTournamentWinnerDto,
   BackendVerifiedResultDto,
   CreateBracketRequest,
+  CreateBracketResponse,
   RecordMatchStatsRequest,
   ScheduleMatchRequest,
 } from "../types/match.dto";
@@ -1316,8 +1317,8 @@ export async function getStatDefinitions(sportTypeId: number): Promise<{ items: 
 /** TODO(guide): GET /tournaments/:id/standings */
 export async function getStandings(tournamentId: MatchRef): Promise<StandingsDto | null> {
   if (USE_MOCK) return mockDelay(findStoreStandings(tournamentId));
-  /* backend ตอบ { items: [{ team, wins, losses, rank }] } ส่วนหน้าจอต้องการ { format, rows: [...] }
-     ช่องที่ backend ยังไม่มี (คะแนน ฟอร์ม 5 นัดหลัง ได้/เสีย ป้ายรอบที่ตกรอบ) เติมเป็นค่าว่าง
+  /* S12 คืนคะแนน/ประตูได้เสีย/อันดับที่คำนวณและเรียงจาก backend แล้ว
+     FE ต้องคงลำดับและ rank ซ้ำตามที่ได้รับ ไม่คิด wins*3 หรือ sort ซ้ำ
      ถ้าไม่แปลง หน้า Leaderboard กับ Dashboard จะอ่าน data.rows ไม่เจอแล้วจอดับ */
   /* รูปแบบการแข่งเป็นตัวเลือกว่าจะวาดตารางแบบไหน (LeaderboardTab แยก round robin ออกจาก
      แพ้คัดออก และ topOfTable ก็ใช้) ของเดิมฮาร์ดโค้ดไว้ว่าแพ้คัดออกเสมอ — พอมีทัวร์แบบ
@@ -1335,14 +1336,14 @@ export async function getStandings(tournamentId: MatchRef): Promise<StandingsDto
     rows: raw.items.map((row) => ({
       team: teamFromBackend(row.team)!,
       rank: row.rank,
-      played: row.wins + row.losses,
+      played: row.played,
       won: row.wins,
       lost: row.losses,
-      points: row.wins * 3,
+      points: row.points,
       level: 0,
-      scoredFor: 0,
-      scoredAgainst: 0,
-      scoreDifference: 0,
+      scoredFor: row.goalsFor,
+      scoredAgainst: row.goalsAgainst,
+      scoreDifference: row.goalDiff,
       form: [],
       outLabel: "",
     })),
@@ -1539,7 +1540,7 @@ export function unassignMatchReferee(matchId: number, tournamentRefereeId: numbe
 export function createBracket(
   tournamentId: number,
   input: CreateBracketRequest,
-): Promise<{ matchCount: number; bracketFormat: string; nodeCount: number }> {
+): Promise<CreateBracketResponse> {
   return apiFetch(`/tournaments/${tournamentId}/bracket`, {
     method: "POST",
     body: JSON.stringify(input),

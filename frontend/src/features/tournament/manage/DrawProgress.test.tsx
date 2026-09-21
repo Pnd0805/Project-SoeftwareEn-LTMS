@@ -17,6 +17,7 @@ vi.mock('../../../hooks/useMatch', () => ({
   useTournamentMatches: () => matchState.current,
 }))
 vi.mock('../../../hooks/useTournament', () => ({
+  useCompleteTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useDrawTournament: () => drawState.current,
   usePublishTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useTournamentApplications: () => ({ data: { items: [] } }),
@@ -46,7 +47,7 @@ describe('draw progress in real mode', () => {
 
   it('advances from draw to fixture setup from API matches, not the legacy drawn flag', () => {
     const view = render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
-    expect(screen.getByText('Step 4 of 6')).toBeInTheDocument()
+    expect(screen.getByText('Step 4 of 7')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Generate bracket/ })).toBeInTheDocument()
 
     matchState.current = {
@@ -56,7 +57,7 @@ describe('draw progress in real mode', () => {
     }
     view.rerender(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
 
-    expect(screen.getByText('Step 5 of 6')).toBeInTheDocument()
+    expect(screen.getByText('Step 5 of 7')).toBeInTheDocument()
     expect(screen.getByText(/saved matches confirm that the bracket is drawn/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Generate bracket/ })).not.toBeInTheDocument()
   })
@@ -69,7 +70,7 @@ describe('draw progress in real mode', () => {
     expect(screen.getByText(/Refreshing the saved matches before progress advances/)).toBeInTheDocument()
   })
 
-  it('does not offer a redraw that BE_KN will reject', () => {
+  it('offers an atomic redraw while every existing match is still scheduled', () => {
     matchState.current = {
       data: { items: [{ id: 71, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 12 }, status: 'scheduled' }] },
       isPending: false,
@@ -77,9 +78,9 @@ describe('draw progress in real mode', () => {
     }
     render(<DrawPanel t={tournament} />)
 
-    expect(screen.getByText('Redraw unavailable')).toBeInTheDocument()
-    expect(screen.getByText('BRACKET_ALREADY_EXISTS')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Draw this way|Save this draw/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Open until the first match starts')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Redraw bracket' })).toBeInTheDocument()
+    expect(screen.queryByText('BRACKET_ALREADY_EXISTS')).not.toBeInTheDocument()
   })
 
   it('makes manual-draw pending state visible in both the action and status banner', () => {

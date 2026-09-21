@@ -245,10 +245,11 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
             </Field>
           </div>
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={resolve.isPending}
+            disabled={resolve.isPending || level}
+            title={level ? 'A corrected score still needs a winner' : undefined}
             onClick={() => resolve.mutate({
               resolution: `Organizer recorded ${sa}–${sb}`,
-              winnerTeamId: sa === sb ? null : sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
+              winnerTeamId: sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
               scoreData: { a: sa, b: sb },
             })}>
             {resolve.isPending ? 'Recording…' : 'Record the final score'}
@@ -291,7 +292,7 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
           </span>
           <div className="sub">
             {level
-              ? 'A level score has no winner, and the server has no way to record a draw — separate them, keep the recorded score, or throw the result out.'
+              ? 'Every match needs a winner. Finish the tiebreak on the field and record an aggregate score with one side ahead.'
               : 'Throwing it out undoes what the result already did — the bracket, the table and the player stats — and leaves the match open for a fresh one.'}
           </div>
         </>

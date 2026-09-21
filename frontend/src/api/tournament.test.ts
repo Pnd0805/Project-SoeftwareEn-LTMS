@@ -11,7 +11,8 @@ vi.mock("./client", async (importOriginal) => ({
 
 import {
   applyToTournament, approveAllApplications, approveApplication, cancelMyApplication,
-  getApplicationDetail, getMyApplications, getTournamentApplications, rejectApplication, withdrawMyApplication,
+  completeTournament, drawTournament, getApplicationDetail, getMyApplications, getTournamentAmendmentRequests,
+  getTournamentApplications, getTournaments, rejectApplication, withdrawMyApplication,
 } from "./tournament";
 
 const json = (body: unknown, status = 200) =>
@@ -140,5 +141,45 @@ describe("application actions", () => {
   it("approve-all has no backend route, so it fails without calling fetch", async () => {
     await expect(approveAllApplications(5)).rejects.toMatchObject({ status: 501 });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("BE_KN a14d44c/a88f7ad tournament contracts", () => {
+  it("GET /tournaments forwards status=completed", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [] }));
+
+    await getTournaments({ status: "completed" });
+
+    expect(String(fetchMock.mock.calls[0]![0])).toContain("/tournaments?status=completed");
+  });
+
+  it("POST /tournaments/:id/complete keeps MATCHES_UNFINISHED metadata", async () => {
+    const matches = [{ id: 41, status: "scheduled" }];
+    fetchMock.mockResolvedValueOnce(json({ error: { code: "MATCHES_UNFINISHED", message: "unfinished", matches } }, 409));
+
+    await expect(completeTournament(5)).rejects.toMatchObject({
+      status: 409, code: "MATCHES_UNFINISHED", extra: { matches },
+    });
+    expect(lastRequest()).toMatchObject({ path: "/tournaments/5/complete", method: "POST" });
+  });
+
+  it("M01 sends replace=true and returns the replaced response", async () => {
+    const bracket = { matchCount: 3, bracketFormat: "single_elimination", nodeCount: 3, replaced: true };
+    fetchMock
+      .mockResolvedValueOnce(json(bracket, 201))
+      .mockResolvedValueOnce(json({ id: 5, name: "Cup" }));
+
+    await expect(drawTournament(5, { teamIds: [11, 12], replace: true }))
+      .resolves.toMatchObject({ bracket });
+    expect(fetchMock.mock.calls[0]![1]?.body).toBe(JSON.stringify({
+      seedingMethod: "manual", manualSeeds: [11, 12], replace: true,
+    }));
+  });
+
+  it("C09b reads the organizer amendment history", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [] }));
+
+    await expect(getTournamentAmendmentRequests(5)).resolves.toEqual({ items: [] });
+    expect(lastRequest().path).toBe("/tournaments/5/amendment-requests");
   });
 });

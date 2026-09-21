@@ -23,7 +23,8 @@ import { useSportTypes } from '../../hooks/useReference'
 export function SearchPage() {
   const s = useLtms()
   const { data: currentUser } = useMe()
-  const tournamentQuery = useTournaments()
+  const [tournamentStatus, setTournamentStatus] = useState<'public' | 'completed'>('public')
+  const tournamentQuery = useTournaments({ status: tournamentStatus })
   const sportTypes = useSportTypes()
   const navigate = useNavigate()
   const { q: qParam } = useParams()
@@ -56,6 +57,13 @@ export function SearchPage() {
       </div>
 
       <Panel>
+        <Field label="Tournament status" htmlFor="se-status">
+          <select id="se-status" value={tournamentStatus}
+            onChange={e => setTournamentStatus(e.target.value as 'public' | 'completed')}>
+            <option value="public">Open and active</option>
+            <option value="completed">Completed</option>
+          </select>
+        </Field>
         <Field label={needle ? `${total} result${total === 1 ? '' : 's'}` : 'Squads, players, tournaments'} htmlFor="se-q">
           <input id="se-q" autoFocus autoComplete="off" value={q}
             onChange={e => { setQ(e.target.value); navigate(`/search/${encodeURIComponent(e.target.value)}`, { replace: true }) }}
