@@ -208,16 +208,17 @@ export function useReviewTournamentApplication(tournamentId: number) {
   });
 }
 
-function invalidateTournament(queryClient: ReturnType<typeof useQueryClient>, id: TournamentRef) {
+async function invalidateTournament(queryClient: ReturnType<typeof useQueryClient>, id: TournamentRef) {
   /* id สองระบบอีกเช่นเคย — ล้างทั้ง namespace ให้หน้าที่ถือ id คนละแบบอัปเดตด้วย
      รวมถึงตารางแมตช์กับตารางคะแนน เพราะการจับสายสร้างแมตช์ใหม่ทั้งชุด */
-  queryClient.invalidateQueries({ queryKey: ["tournament"] });
-  queryClient.invalidateQueries({ queryKey: ["tournaments"] });
-  queryClient.invalidateQueries({ queryKey: ["match"] });
-  queryClient.invalidateQueries({ queryKey: ["matches"] });
-  queryClient.invalidateQueries({ queryKey: ["standings"] });
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["tournament"] }),
+    queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+    queryClient.invalidateQueries({ queryKey: ["match"] }),
+    queryClient.invalidateQueries({ queryKey: ["matches"] }),
+    queryClient.invalidateQueries({ queryKey: ["standings"] }),
+  ]);
   void id;
-  return Promise.resolve();
 }
 
 export function useApproveRegistration(tournamentId: TournamentRef) {

@@ -60,6 +60,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
 
   /* บายไม่ใช่แมตช์ที่ต้องจัดสนามหรือหากรรมการ — ฝั่ง backend คือนัดที่มีทีมเดียว */
   const apiMatches = (backendMatches.data?.items ?? []).filter(m => m.teamA && m.teamB)
+  const bracketDrawn = real ? (backendMatches.data?.items.length ?? 0) > 0 : t.drawn
   const ms = real ? apiMatches
     : t.drawn ? matchesOf(s, t.id).filter(m => m.note !== 'bye' && m.status !== 'void') : []
   const ready = real
@@ -105,13 +106,18 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       note: `${approvedCount} approved · ${pendingCount} waiting on you · cap ${t.cap}. The hard filter has already refused anybody ineligible.`,
     },
     {
-      state: t.drawn ? 'done' : 'idle',
+      state: bracketDrawn ? 'done' : 'idle',
       title: 'Draw the bracket',
-      note: t.drawn
-        ? `${formatName(t)} — drawn, so entry is closed.`
-        : `${formatName(t)} — needs two approved squads, and closes entry for good.`,
+      note: real && backendMatches.isPending
+        ? 'Checking the saved bracket…'
+        : real && backendMatches.isError
+          ? 'The saved bracket could not be checked. Try again before drawing.'
+          : bracketDrawn
+            ? `${formatName(t)} — the saved matches confirm that the bracket is drawn.`
+            : `${formatName(t)} — needs two approved squads.`,
       cta: (
-        <button className="btn primary" type="button" disabled={draw.isPending}
+        <button className="btn primary" type="button"
+          disabled={draw.isPending || (real && (backendMatches.isPending || backendMatches.isError))}
           onClick={() => setConfirming('draw')}>
           {draw.isPending ? 'Drawing…' : 'Generate bracket · random draw'}
         </button>
@@ -153,8 +159,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
           <ConfirmCard danger ok="Draw it" onCancel={() => setConfirming(null)}
             onConfirm={() => { setConfirming(null); draw.mutate({}) }}
             body={<>
-              <b>Entry closes for good.</b> {formatName(t)} is drawn from the {approvedCount} squads
-              approved so far, and no further squad can enter afterwards. There is no way to undraw it.
+              <b>This creates the tournament matches.</b> {formatName(t)} is drawn from the {approvedCount} squads
+              approved so far. The current backend cannot replace an existing bracket, so check the approved squads first.
             </>} />
         ) : (
           <ConfirmCard ok="Open it" onCancel={() => setConfirming(null)}
@@ -167,6 +173,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       </Modal>
 
       {publish.isError ? <Banner kind="crit"><b>Couldn't open it to the public.</b> {errorMessage(publish.error)}</Banner> : null}
+      {draw.isPending ? <Banner kind="neutral"><b>Drawing the bracket…</b> Refreshing the saved matches before progress advances.</Banner> : null}
       {draw.isError ? <Banner kind="crit"><b>Couldn't draw the bracket.</b> {errorMessage(draw.error)}</Banner> : null}
       <Trail steps={steps} />
     </Panel>

@@ -72,6 +72,22 @@ export function DrawPanel({ t }: { t: Tournament }) {
     first.forEach(m => { order[m.slot * 2] = m.a; order[m.slot * 2 + 1] = m.b })
   }
   const [positions, setPositions] = useState<string[]>(() => ids.map((_, i) => order[i] || ids[i]))
+  const entryKey = ids.join('|')
+  const orderKey = order.map(id => id ?? '').join('|')
+  const sourceKey = `${entryKey}::${orderKey}`
+  const [positionSource, setPositionSource] = useState(sourceKey)
+
+  /* Queries are empty on the first render. Reconcile during render when their
+     source changes so the editor never opens with the stale empty snapshot. */
+  if (positionSource !== sourceKey) {
+    const valid = new Set(ids)
+    const preferred = order.filter((id): id is string => !!id && valid.has(id))
+    const retained = positions.filter((id, index) => valid.has(id) && positions.indexOf(id) === index)
+    const next = [...(preferred.length ? preferred : retained)]
+    ids.forEach(id => { if (!next.includes(id)) next.push(id) })
+    setPositionSource(sourceKey)
+    setPositions(next)
+  }
 
   if (formatOf(t) === 'roundrobin') return null
 
@@ -97,6 +113,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
     .some(m => m.status !== 'scheduled')
   const started = live ? liveStarted : (t.drawn && drawStarted(s, t))
   const alreadyDrawn = live ? (tournamentMatches.data?.items.length ?? 0) > 0 : t.drawn
+  const replacementUnavailable = live && alreadyDrawn
   const size = 1 << Math.ceil(Math.log2(Math.max(2, positions.length)))
   const byId = new Map(entries.map(e => [e.id, e]))
 
@@ -107,6 +124,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
         <select
           value={positions[i]}
           aria-label={`Starting position ${i + 1}`}
+          disabled={replacementUnavailable || draw.isPending}
           style={{ width: '100%', background: 'transparent', border: 0, color: 'inherit', font: 'inherit', fontSize: 15 }}
           onChange={e => setPositions(p => p.map((x, j) => (j === i ? e.target.value : x)))}
         >
@@ -131,9 +149,18 @@ export function DrawPanel({ t }: { t: Tournament }) {
       <div className="spread">
         <span className="tag"><em>//</em> Arrange the draw by hand</span>
         {started ? <Badge kind="neutral">Locked — the tournament has started</Badge>
-          : alreadyDrawn ? <Badge kind="warn">Open until the first match starts</Badge>
+          : replacementUnavailable ? <Badge kind="warn">Redraw unavailable</Badge>
+            : alreadyDrawn ? <Badge kind="warn">Open until the first match starts</Badge>
             : <Badge kind="neutral">Not drawn yet</Badge>}
       </div>
+
+      {replacementUnavailable ? (
+        <Banner kind="warn">
+          <b>This bracket is already saved.</b> BE_KN currently rejects a second draw with
+          {' '}<code>BRACKET_ALREADY_EXISTS</code>. Existing matches are left untouched; bracket replacement
+          needs an atomic backend endpoint before this editor can save a redraw.
+        </Banner>
+      ) : null}
 
       {drawProblems.length ? (
         <Banner kind="crit">
@@ -146,6 +173,10 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
       {draw.isError ? (
         <Banner kind="crit"><b>จับสายไม่สำเร็จ</b> {(draw.error as Error).message}</Banner>
+      ) : null}
+
+      {draw.isPending ? (
+        <Banner kind="neutral"><b>Drawing the bracket…</b> Waiting for the saved matches to refresh.</Banner>
       ) : null}
 
       {started ? null : (
@@ -161,11 +192,13 @@ export function DrawPanel({ t }: { t: Tournament }) {
               ))}
             </div>
           </div>
-          <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={draw.isPending || drawProblems.length > 0}
-            onClick={submit}>
-            {t.drawn ? 'Save this draw' : 'Draw this way'}
-          </button>
+          {replacementUnavailable ? null : (
+            <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
+              disabled={draw.isPending || drawProblems.length > 0}
+              onClick={submit}>
+              {draw.isPending ? 'Drawing…' : alreadyDrawn ? 'Save this draw' : 'Draw this way'}
+            </button>
+          )}
         </>
       )}
     </Panel>

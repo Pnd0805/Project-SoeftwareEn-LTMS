@@ -952,6 +952,10 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       `countMatchesByTournament()` and returns `409 BRACKET_ALREADY_EXISTS` for
       every second draw. It has no delete/replace transaction. Current frontend
       therefore must not describe its Save/Generate action as working redraw.
+      Reconfirmed against `BE_KN` `88765c5` on 2026-09-21. Frontend now detects
+      an existing bracket from the match query, disables the manual seed fields,
+      removes the misleading Save action and explains the backend blocker without
+      mutating the existing matches.
       Backend delivery required: make replacement atomic and organizer-only;
       permit it only while registration is open and every old match is still
       `scheduled`, with no check-ins or results. Delete old bracket nodes,
@@ -970,13 +974,22 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
       prevention, rollback, closed-registration rejection, started-match/check-in/
       result rejection, and preservation of applications/tournament referee pool.
 
-- [ ] **R05 · P2 · Slices 2/3:** draw progress does not update. Reproduce both
+- [x] **R05 · P2 · Slices 2/3:** draw progress does not update. Reproduce both
       random draw in SetupTrail and manual draw in DrawPanel; distinguish request
       pending feedback from the persistent setup-completion indicator.
       Source leads: SetupTrail uses `t.drawn` for completion despite querying
       backend matches; DrawPanel disables pending submit but keeps its normal
       label. Accept: visible pending feedback, refreshed API-derived completion
       after success and reload, and failure feedback that never marks draw done.
+      Delivered 2026-09-21. Real-mode progress now derives draw completion from
+      `GET /tournaments/:id/matches`, and the draw mutation remains pending until
+      the tournament/match invalidations finish refetching. Both random and manual
+      draw surfaces show explicit Drawing feedback; failure stays incomplete.
+      The manual editor also reconciles its positions after approved-team data
+      loads instead of retaining its first empty render. Regression coverage: 4
+      focused tests; full suite 25 files / 163 tests, lint, production build and
+      `git diff --check` passed. Existing Vite chunk-size warning remains.
+      Real-browser/backend retest is still pending.
 
 - [ ] **R04 · P2 · Slices 2/3/4 + backend referee owner:** select match referees
       in the draw workflow from the tournament referee pool, including future
