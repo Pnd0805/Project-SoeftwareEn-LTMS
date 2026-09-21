@@ -74,9 +74,19 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
     expect(result.isNew).toBe(false);
   });
 
-  it('409 TOURNAMENT_NOT_COMPLETED before the tournament is closed', async () => {
+  // มติแก้ 21 ก.ย. — ให้คะแนนได้ตลอด ไม่ต้องรอปิดทัวร์
+  it('a participant can rate while the tournament is still running', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null }));
-    expect(await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 5 }))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_COMPLETED' });
+    vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+    vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(null).mockResolvedValueOnce(feedbackRow());
+    await expect(Service.submitOrganizerFeedback(20, 5, { rating: 5 })).resolves.toMatchObject({ isNew: true });
+  });
+
+  it('409 FEEDBACK_CLOSED 7 days after the tournament closed (same time as MVP)', async () => {
+    vi.setSystemTime(new Date('2026-09-27T00:00:01Z'));
+    vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+    expect(await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 5 }))).toMatchObject({ status: 409, code: 'FEEDBACK_CLOSED' });
+    expect(FeedbackRepo.upsertOrganizerFeedback).not.toHaveBeenCalled();
   });
 
   it('403 ORGANIZER_CANNOT_REVIEW_OWN for the organizer', async () => {

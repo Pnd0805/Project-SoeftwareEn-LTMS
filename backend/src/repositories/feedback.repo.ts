@@ -26,7 +26,8 @@ const FEEDBACK_COLS = `f.tournament_feedback_id, f.tournament_id, f.user_id, f.f
 // ---- ใครเป็นใครในทัวร์นี้ ----
 
 /**
- * "คนที่เกี่ยวข้อง" (มติ C6 ข้อ 1): ผู้เล่นในรายชื่อลงแข่งของใบสมัครที่อนุมัติแล้ว · หัวหน้าทีมที่อนุมัติแล้ว · กรรมการที่ตอบรับแล้ว
+ * "คนที่เกี่ยวข้อง" (มติ C6 ข้อ 1 แก้ 21 ก.ย.): ผู้เล่นในรายชื่อลงแข่งของใบสมัครที่อนุมัติแล้ว · หัวหน้าทีมที่อนุมัติแล้ว
+ * ไม่รวมกรรมการ — กรรมการอาจเป็นคนฝั่งผู้จัด คะแนนจะไม่เป็นกลาง
  */
 export async function isTournamentParticipant(tournamentId: number, userId: number): Promise<boolean> {
     const [rows] = await pool.query<RowDataPacket[]>(
@@ -36,11 +37,8 @@ export async function isTournamentParticipant(tournamentId: number, userId: numb
          UNION ALL
          SELECT 1 FROM tournament_applications ta JOIN teams t ON t.team_id = ta.team_id
          WHERE ta.tournament_id = ? AND t.leader_id = ? AND ta.tournament_application_status = 'approved'
-         UNION ALL
-         SELECT 1 FROM tournament_referees tr
-         WHERE tr.tournament_id = ? AND tr.user_id = ? AND tr.invitation_status = 'accepted' AND tr.removed_at IS NULL
          LIMIT 1`,
-        [tournamentId, userId, tournamentId, userId, tournamentId, userId]
+        [tournamentId, userId, tournamentId, userId]
     );
     return rows.length > 0;
 }

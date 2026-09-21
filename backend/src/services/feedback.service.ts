@@ -7,9 +7,9 @@ import { toFeedbackItemDto, toFeedbackSummaryDto, toMvpCandidateDto, toMyFeedbac
 import { AppError } from '../utils/AppError.js';
 
 /**
- * C6 — Tournament feedback / rating / MVP vote (spec 08 §4–5) · มติทีม 21 ก.ย. 2569
- *   1. ให้คะแนนได้เฉพาะคนที่เกี่ยวข้อง (ผู้เล่นในรายชื่อ · หัวหน้าทีม · กรรมการ) — ORG ให้คะแนนตัวเองไม่ได้
- *   2. เปิดหลังทัวร์ completed · MVP โหวตได้ 7 วันหลังปิดทัวร์
+ * C6 — Tournament feedback / rating / MVP vote (spec 08 §4–5) · มติทีม 21 ก.ย. 2569 (แก้ข้อ 1–2 วันเดียวกัน)
+ *   1. ให้คะแนนได้เฉพาะคนที่เกี่ยวข้อง (ผู้เล่นในรายชื่อ · หัวหน้าทีม) — ไม่รวมกรรมการ · ORG ให้คะแนนตัวเองไม่ได้
+ *   2. ให้คะแนนได้ตลอด จนครบ 7 วันหลังปิดทัวร์ (ปิดพร้อม MVP) · MVP เริ่มโหวตหลังปิดทัวร์ โหวตได้ 7 วัน
  *   3. ส่งซ้ำ = เขียนทับ (feedback และ MVP)
  *   4. โหวต MVP ได้เฉพาะคนที่ไม่ได้ลงแข่ง (ไม่ใช่ผู้เล่น/สมาชิกทีมที่ผ่าน/กรรมการ/ORG) · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่ง
  */
@@ -23,9 +23,21 @@ async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> 
     return tournament;
 }
 
+/** ให้คะแนนได้ตลอด แต่ถ้าปิดทัวร์แล้ว ปิดรับพร้อม MVP (ครบ 7 วันหลังปิดทัวร์) */
+export function feedbackClosesAt(tournament: TournamentRow): Date | null {
+    return mvpWindow(tournament).closesAt;
+}
+
+function assertFeedbackOpen(tournament: TournamentRow, now = new Date()): void {
+    const closesAt = feedbackClosesAt(tournament);
+    if (closesAt !== null && now >= closesAt) {
+        throw new AppError(409, 'FEEDBACK_CLOSED', `ปิดรับความเห็นแล้ว (ให้คะแนนได้ถึง ${MVP_VOTING_DAYS} วันหลังปิดทัวร์)`, { closesAt });
+    }
+}
+
 function assertCompleted(tournament: TournamentRow): void {
     if (tournament.tournament_status !== 'completed') {
-        throw new AppError(409, 'TOURNAMENT_NOT_COMPLETED', 'ให้คะแนนและโหวต MVP ได้หลังทัวร์นาเมนต์ปิดการแข่งขันแล้วเท่านั้น');
+        throw new AppError(409, 'TOURNAMENT_NOT_COMPLETED', 'โหวต MVP ได้หลังทัวร์นาเมนต์ปิดการแข่งขันแล้วเท่านั้น');
     }
 }
 
@@ -45,7 +57,7 @@ async function feedbackBlocker(tournament: TournamentRow, userId: number): Promi
         return new AppError(403, 'ORGANIZER_CANNOT_REVIEW_OWN', 'ผู้จัดให้คะแนนทัวร์นาเมนต์ของตัวเองไม่ได้');
     }
     if (!(await FeedbackRepo.isTournamentParticipant(tournament.tournament_id, userId))) {
-        return new AppError(403, 'FEEDBACK_NOT_ALLOWED', 'ให้คะแนนได้เฉพาะผู้เล่น หัวหน้าทีม และกรรมการของทัวร์นาเมนต์นี้');
+        return new AppError(403, 'FEEDBACK_NOT_ALLOWED', 'ให้คะแนนได้เฉพาะผู้เล่นและหัวหน้าทีมที่ลงแข่งในทัวร์นาเมนต์นี้');
     }
     return null;
 }
@@ -68,7 +80,7 @@ async function isUniversityAdmin(userId: number): Promise<boolean> {
 
 export async function submitOrganizerFeedback(tournamentId: number, userId: number, input: OrganizerFeedbackInput) {
     const tournament = await getTournamentOr404(tournamentId);
-    assertCompleted(tournament);
+    assertFeedbackOpen(tournament);
     const blocker = await feedbackBlocker(tournament, userId);
     if (blocker) throw blocker;
 
@@ -90,13 +102,14 @@ export async function submitOrganizerFeedback(tournamentId: number, userId: numb
 export async function getOrganizerFeedback(tournamentId: number, userId?: number) {
     const tournament = await getTournamentOr404(tournamentId);
     const summary = toFeedbackSummaryDto(await FeedbackRepo.summarizeOrganizerFeedback(tournamentId));
+    const closesAt = feedbackClosesAt(tournament);
     if (userId === undefined) {
-        return { summary, mine: null, canSubmit: false, items: null };
+        return { summary, closesAt, mine: null, canSubmit: false, items: null };
     }
 
     const mineRow = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
     const mine = mineRow && !mineRow.removed_at ? toMyFeedbackDto(mineRow) : null;
-    const canSubmit = tournament.tournament_status === 'completed'
+    const canSubmit = (closesAt === null || new Date() < closesAt)
         && !mineRow?.removed_at
         && (await feedbackBlocker(tournament, userId)) === null;
 
@@ -106,7 +119,7 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
         ? (await FeedbackRepo.listOrganizerFeedback(tournamentId)).map(row => toFeedbackItemDto(row, isAdmin))
         : null;
 
-    return { summary, mine, canSubmit, items };
+    return { summary, closesAt, mine, canSubmit, items };
 }
 
 // ───────────────────────── MVP vote ─────────────────────────

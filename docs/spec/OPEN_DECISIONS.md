@@ -193,8 +193,8 @@ FE-replace-existing-bracket-atomic: M01 เคยตอบ `BRACKET_ALREADY_EXIS
 
 FE-tournament-feedback: Community tab (ให้คะแนนการจัดทัวร์) และหน้าโหวต MVP ทำงานเฉพาะ mock · ใช้ตาราง `tournament_feedback` เดิม ไม่มี migration
 
-- **1 ใครให้คะแนน**: เฉพาะคนที่เกี่ยวข้อง — ผู้เล่นในรายชื่อลงแข่ง (`application_players` ของใบสมัคร approved) · หัวหน้าทีม approved · กรรมการที่ตอบรับแล้ว · ORG ให้คะแนนตัวเองไม่ได้ (`ORGANIZER_CANNOT_REVIEW_OWN`) · คนอื่น → 403 `FEEDBACK_NOT_ALLOWED`
-- **2 เมื่อไร**: หลังทัวร์ `completed` เท่านั้น (ก่อนหน้า → 409 `TOURNAMENT_NOT_COMPLETED`) · MVP โหวตได้ 7 วันหลัง `completed_at` (พ้น → 409 `MVP_VOTING_CLOSED`) · ปิดโหวตแล้วค่อยประกาศ `winners` (เสมอได้หลายคน) · `lockCompletedTournament` ยกเว้น `/feedback` และ `/mvp-votes`
+- **1 ใครให้คะแนน**: เฉพาะคนที่เกี่ยวข้อง — ผู้เล่นในรายชื่อลงแข่ง (`application_players` ของใบสมัคร approved) · หัวหน้าทีม approved · **ไม่รวมกรรมการ** (แก้ 21 ก.ย. — กรรมการอาจเป็นคนฝั่งผู้จัด) · ORG ให้คะแนนตัวเองไม่ได้ (`ORGANIZER_CANNOT_REVIEW_OWN`) · คนอื่น → 403 `FEEDBACK_NOT_ALLOWED`
+- **2 เมื่อไร** (แก้ 21 ก.ย.): **ให้คะแนนได้ตลอด** ไม่ต้องรอปิดทัวร์ แต่ **ปิดรับพร้อม MVP** = 7 วันหลัง `completed_at` (พ้น → 409 `FEEDBACK_CLOSED`) · MVP เริ่มโหวตหลังทัวร์ `completed` เท่านั้น (ก่อนหน้า → 409 `TOURNAMENT_NOT_COMPLETED`) โหวตได้ 7 วัน (พ้น → 409 `MVP_VOTING_CLOSED`) · ปิดโหวตแล้วค่อยประกาศ `winners` (เสมอได้หลายคน) · `lockCompletedTournament` ยกเว้น `/feedback` และ `/mvp-votes`
 - **3 ส่งซ้ำ**: เขียนทับของเดิม (คนละ 1 อันต่อทัวร์ ใช้ UNIQUE เดิมของตาราง) ทั้ง feedback และโหวต MVP · แก้ข้อความแล้วล้างธง report
 - **4 ใครโหวต MVP**: เฉพาะคนที่ไม่ได้ลงแข่ง (spec 08 §5) — ห้ามผู้เล่นในรายชื่อ, สมาชิกทีม approved, กรรมการ (pending/accepted), ORG → 403 `MVP_VOTER_NOT_ELIGIBLE` · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่งเท่านั้น · ไม่ใช่ → 422 `MVP_CANDIDATE_NOT_ELIGIBLE`
 - **การมองเห็น** (ตามข้อเสนอในเอกสารแบ่งงาน): ค่าเฉลี่ย/จำนวน/การกระจายเป็นสาธารณะ · ORG เห็นข้อความแต่ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ (ใช้ตรวจ report)
