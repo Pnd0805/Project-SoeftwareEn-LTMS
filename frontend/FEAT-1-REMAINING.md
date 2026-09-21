@@ -109,14 +109,22 @@ branch. Do not copy older prototype contracts over the reviewed backend shapes.
   `TEAM_LOCKED_IN_TOURNAMENT`, including affected tournaments and a withdrawal path.
 - [x] Add focused contract/UI regressions, then run full tests, lint, production
   build and `git diff --check`.
-- [ ] Real-browser/backend QA against `BE_KN`; keep pending until independently
-  observed even after developer verification passes.
+- [x] Frontend Tester verified the real-browser registration flow against
+  `BE_KN`: the conflict team is rejected with `TEAM_CONFLICT_OF_INTEREST`, and
+  team `9025` can submit a valid 5-player squad to QA Age Cup.
+- [ ] Frontend Tester verifies organizer application detail and its submitted
+  player list against `BE_KN`.
+- [ ] Frontend Tester verifies match lineup display and participant check-in
+  eligibility against `BE_KN`.
+- [ ] Frontend Tester verifies team capacity plus locked member/team deletion
+  feedback against `BE_KN`.
 
 Developer verification passed on 2026-09-21: focused roster/check-in contract
 tests passed (4 files / 26 tests), the full suite passed (24 files / 159 tests),
 lint passed, TypeScript and the production build passed, and `git diff --check`
 passed. The existing Vite chunk-size warning remains. A live Backend/browser
-retest is still pending because `127.0.0.1:8000` was not running in this session.
+registration retest was independently confirmed on 2026-09-21. Organizer,
+match/check-in and locked-deletion browser checks remain pending.
 
 ## Priority 1 — Teams and registration (start here)
 
