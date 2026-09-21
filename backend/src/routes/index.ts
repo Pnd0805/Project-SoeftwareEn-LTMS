@@ -16,6 +16,7 @@ import { refereeAdminRouter } from './refereeAdmin.routes.js';
 import Tournament from './tournament.routes.js';
 import Amendment from './amendment.routes.js';
 import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
+import { meNotificationRouter } from './notification.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
@@ -50,5 +51,8 @@ router.use('/admin' , refereeAdminRouter);
 
 router.use('/tournaments' , tournamentAnnouncementRouter);
 router.use('/announcements' , announcementRouter);
+
+// C1 Inbox — GET/PATCH/POST /me/notifications
+router.use('/me' , meNotificationRouter);
 
 export default router;

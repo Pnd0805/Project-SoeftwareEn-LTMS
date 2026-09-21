@@ -1,0 +1,65 @@
+import * as NotificationRepo from '../repositories/notification.repo.js';
+import type { NotificationInput } from '../repositories/notification.repo.js';
+import { toNotificationDto } from '../mappers/notification.mapper.js';
+import { AppError } from '../utils/AppError.js';
+import { buildPagination } from '../utils/pagination.js';
+
+// ---- C1-ก Inbox ของตัวเอง ----
+
+export async function listMyNotifications(userId: number, unreadOnly: boolean, page: number, pageSize: number, offset: number) {
+    const { rows, totalItems } = await NotificationRepo.findByUser(userId, unreadOnly, offset, pageSize);
+    const unreadCount = await NotificationRepo.countUnread(userId);
+    return {
+        items: rows.map(toNotificationDto),
+        unreadCount,                                   // badge กระดิ่ง — นับทั้งหมด ไม่ขึ้นกับหน้าที่ขอ
+        pagination: buildPagination(page, pageSize, totalItems),
+    };
+}
+
+/** ของคนอื่น = 404 (ไม่บอกว่ามีอยู่จริง) · อ่านแล้วกดซ้ำ = 200 ผลเดิม */
+export async function markMyNotificationRead(notificationId: number, userId: number) {
+    const notification = await NotificationRepo.findOwned(notificationId, userId);
+    if (!notification) {
+        throw new AppError(404, "NOTIFICATION_NOT_FOUND", "ไม่พบการแจ้งเตือนนี้");
+    }
+    if (!notification.is_read) {
+        await NotificationRepo.markRead(notificationId, userId);
+    }
+    return toNotificationDto({ ...notification, is_read: 1 });
+}
+
+export async function markAllMyNotificationsRead(userId: number) {
+    const updated = await NotificationRepo.markAllRead(userId);
+    return { updated, unreadCount: 0 };
+}
+
+// ---- C1-ข เขียน event จาก service อื่น ----
+
+/**
+ * ส่งแจ้งเตือน — เรียก "หลัง" action สำเร็จแล้ว (ข้อเสนอในเอกสารแบ่งงาน ข้อตัดสินที่ 3)
+ * แจ้งเตือนพังต้องไม่ทำให้ action ที่สำเร็จไปแล้วกลายเป็น error → กลืน error แล้ว log ไว้
+ */
+export async function notify(inputs: NotificationInput | NotificationInput[]): Promise<void> {
+    const list = Array.isArray(inputs) ? inputs : [inputs];
+    for (const input of list) {
+        try {
+            await NotificationRepo.insertNotification(input);
+        } catch (err) {
+            console.error(`[notify] ส่งแจ้งเตือน ${input.type} ให้ user ${input.userId} ไม่สำเร็จ`, err);
+        }
+    }
+}
+
+/** ส่งเรื่องเดียวกันให้หลายคน (ตัดคนซ้ำ) */
+export async function notifyUsers(userIds: number[], content: Omit<NotificationInput, 'userId'>): Promise<void> {
+    await notify([...new Set(userIds)].map(userId => ({ ...content, userId })));
+}
+
+/** ผู้เล่นในรายชื่อลงแข่งของทั้งสองทีม + กรรมการที่รับแมตช์นี้ */
+export async function notifyMatchAudience(matchId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
+    try {
+        await notifyUsers(await NotificationRepo.findMatchAudience(matchId), content);
+    } catch (err) {
+        console.error(`[notify] หาผู้รับของแมตช์ ${matchId} ไม่สำเร็จ`, err);
+    }
+}

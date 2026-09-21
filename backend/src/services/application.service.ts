@@ -10,6 +10,7 @@ import { AppError } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
+import * as NotificationService from './notification.service.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
@@ -115,6 +116,13 @@ export async function withdrawApplication(applicationId: number, userId: number)
     const walkovers = matchCount > 0
         ? await Walkover.processTeamWithdrawal(app.tournament_id, app.team_id, userId)
         : [];
+    await NotificationService.notify({
+        userId: app.tournament_requested_by_user_id, type: 'application_withdrawn',
+        title: 'ทีมถอนตัวจากทัวร์นาเมนต์',
+        message: `ทีม "${app.team_name}" ถอนตัวจากทัวร์นาเมนต์` +
+                 (walkovers.length > 0 ? ` — ตัดสินชนะบายให้คู่แข่งแล้ว ${walkovers.length} แมตช์` : ''),
+        relatedEntityType: 'tournament', relatedEntityId: app.tournament_id,
+    });
     return { id: applicationId, status: "withdrawn", bracketExists: matchCount > 0, walkovers };
 }
 
@@ -131,6 +139,12 @@ export async function approveApplication(applicationId: number,userId: number) {
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
     await ApplicationRepo.updateApplicationStatus(applicationId, "approved");
+    await NotificationService.notify({
+        userId: app.team_leader_id, type: 'application_decided',
+        title: 'ใบสมัครได้รับการอนุมัติ',
+        message: `ใบสมัครของทีม "${app.team_name}" ได้รับการอนุมัติแล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: app.tournament_id,
+    });
     return { id: applicationId, status: "approved"};
 }
 
@@ -149,6 +163,12 @@ export async function rejectApplication(applicationId: number, userId: number, r
     }
     await ApplicationRepo.rejectApplicationInDb(applicationId, reason);
     await ApplicationRepo.deletePlayersByApplication(applicationId);
+    await NotificationService.notify({
+        userId: app.team_leader_id, type: 'application_decided',
+        title: 'ใบสมัครถูกปฏิเสธ',
+        message: `ใบสมัครของทีม "${app.team_name}" ถูกปฏิเสธ — เหตุผล: ${reason}`,
+        relatedEntityType: 'tournament', relatedEntityId: app.tournament_id,
+    });
     return { id: applicationId, status:'rejected', reason }
 }
 

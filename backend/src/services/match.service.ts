@@ -5,6 +5,12 @@ import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireRef
 import { getPresignedDownloadUrl } from './upload.service.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
+import * as NotificationService from './notification.service.js';
+
+/** ข้อความแจ้งเตือนต้องเป็นเวลาไทยเสมอ ไม่ว่า server จะตั้ง timezone อะไร */
+function formatThaiDateTime(date: Date): string {
+    return new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(date);
+}
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi, toLineupPlayerDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
@@ -161,6 +167,12 @@ export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) 
     }
 
     await MatchRepo.updateMatchSchedule(matchId, scheduledTime, scheduledEndTime, venue);
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'match_scheduled',
+        title: match.scheduled_time ? 'แมตช์ถูกเลื่อนเวลา' : 'นัดเวลาแข่งแล้ว',
+        message: `แมตช์ #${matchId} แข่ง ${formatThaiDateTime(scheduledTime)} ที่ ${venue}`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
     const updated = await MatchRepo.findMatchById(matchId);
     return toMatchDetailDto(updated!);
 }
@@ -178,6 +190,12 @@ export async function openCheckinMatch(matchId: number) {
         throw new AppError(409, "INVALID_STATUS_TRANSITION", "เปิดเช็คอินได้เฉพาะแมตช์ที่ยังไม่เริ่ม (สถานะ scheduled) เท่านั้น");
     }
 
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'checkin_opened',
+        title: 'เปิดเช็คอินแล้ว',
+        message: `แมตช์ #${matchId} เปิดเช็คอินแล้ว เช็คอินก่อนเริ่มแข่งด้วย`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
     const updated = await MatchRepo.findMatchById(matchId);
     return { id: matchId, status: 'checkin_open', checkinOpenAt: updated!.checkin_open_at };
 }
