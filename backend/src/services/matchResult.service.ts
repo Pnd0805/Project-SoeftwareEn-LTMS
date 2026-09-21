@@ -15,6 +15,7 @@ import type { ResolveInput } from '../schemas/matchResult.schema.js';
 import type { MatchRow , TournamentRow } from '../types/db.js';
 import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
+import * as NotificationService from './notification.service.js';
 
 /**
  * FE-nothing-validates-keys-scoredata (19 ก.ย.) — ใช้ทั้ง S01 ส่งผล และ S04 amend
@@ -45,6 +46,12 @@ export async function createSubmitMatchRes(matchId : number , winnerId : number 
     const matchResId = await MatchResRepo.submitMatchResult(matchId , winnerId , scoreData , submitById , role);
 
     const matchRes = await MatchResRepo.findById(matchResId);
+    await NotificationService.notifyMatchResultParties(matchId, {
+        type : 'result_submitted',
+        title : 'มีการส่งผลการแข่งขัน',
+        message : `ผลการแข่งขันแมตช์ #${matchId} ถูกส่งแล้ว รอการยืนยัน`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    }, { exceptUserId : submitById });
     return toSubmittedResultDto(matchRes!);
 }
 
@@ -58,6 +65,12 @@ export async function verifyMatchResult(matchId : number , userid : number){
     // ทีมที่เพิ่งถูกวางลงแมตช์ถัดไป อาจเจอคู่ที่ถอนตัวไปแล้ว → แมตช์นั้นจบด้วย walkover ทันที (GUIDE/11 §10.4, มติ Q1-A)
     await Walkover.resolveIfOpponentWithdrawn(match!.next_match_id);
     await Walkover.resolveIfOpponentWithdrawn(match!.loser_next_match_id);
+    await NotificationService.notifyMatchResultParties(matchId, {
+        type : 'result_verified',
+        title : 'ผลการแข่งขันยืนยันแล้ว',
+        message : `ผลการแข่งขันแมตช์ #${matchId} ได้รับการยืนยันแล้ว`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    }, { exceptUserId : userid });
     return toVerifiedResultDto(ver_matchRes! , match!);
 }
 
@@ -66,6 +79,12 @@ export async function disputeMatchResult(matchId : number , userId : number , re
     await MatchResRepo.disputeMatchResult(matchRes!.match_result_id , matchId , userId , reason);
 
     const disputeMatchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
+    await NotificationService.notifyMatchResultParties(matchId, {
+        type : 'result_disputed',
+        title : 'มีการโต้แย้งผลการแข่งขัน',
+        message : `ผลการแข่งขันแมตช์ #${matchId} ถูกโต้แย้ง — เหตุผล: ${reason}`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    }, { exceptUserId : userId, includeOrganizer : true });
     return toDisputeResultDto(disputeMatchRes!);
 }
 
@@ -96,6 +115,11 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
             await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
             await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);
         }
+        await NotificationService.notifyMatchResultParties(matchId, {
+            type : 'result_resolved', title : 'ผู้จัดยืนยันผลเดิม',
+            message : `ผู้จัดตัดสินข้อโต้แย้งแมตช์ #${matchId} แล้ว — ยืนยันผลเดิม`,
+            relatedEntityType : 'match', relatedEntityId : matchId,
+        }, { exceptUserId : userId });
         return toResolveResultDto({ match_id : matchId, match_result_status : 'verified' });
     }
 
@@ -112,6 +136,11 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
 
     if(resolution === 'reject'){
         await MatchResRepo.rejectMatchResult(matchRes.match_result_id, match, oldWinnerId, tour.sport_type_id, WIN_POINTS, userId, resolutionNote, wasVerified);
+        await NotificationService.notifyMatchResultParties(matchId, {
+            type : 'result_resolved', title : 'ผู้จัดยกเลิกผลการแข่งขัน',
+            message : `ผู้จัดตัดสินข้อโต้แย้งแมตช์ #${matchId} แล้ว — ยกเลิกผลเดิม ต้องส่งผลใหม่`,
+            relatedEntityType : 'match', relatedEntityId : matchId,
+        }, { exceptUserId : userId });
         return toResolveResultDto({ match_id : matchId, match_result_status : 'rejected' });
     }
 
@@ -124,6 +153,11 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
         await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
         await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);
     }
+    await NotificationService.notifyMatchResultParties(matchId, {
+        type : 'result_resolved', title : 'ผู้จัดแก้ผลการแข่งขัน',
+        message : `ผู้จัดตัดสินข้อโต้แย้งแมตช์ #${matchId} แล้ว — แก้ผลการแข่งขันใหม่`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    }, { exceptUserId : userId });
     return toResolveResultDto({ match_id : matchId, match_result_status : 'verified', amended : true });
 }
 

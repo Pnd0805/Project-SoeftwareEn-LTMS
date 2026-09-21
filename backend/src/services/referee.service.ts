@@ -11,6 +11,8 @@ import type { RefereeStatusFields } from '../mappers/referee.mapper.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import type { MatchRefereeCoverageRow } from '../repositories/match.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as NotificationService from './notification.service.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -56,6 +58,15 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
     // 4. เขียน (คำเชิญ + แมตช์ที่แนบ ในทรานแซกชันเดียว)
     const newId = await RefRepo.create({
         tournamentId, userId : input.userId, invitedBy, isExternal : input.isExternal, matchIds
+    });
+
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    await NotificationService.notify({
+        userId : input.userId, type : 'referee_invited',
+        title : 'คุณได้รับเชิญเป็นกรรมการ',
+        message : `คุณได้รับเชิญเป็นกรรมการทัวร์นาเมนต์ "${tournament?.name ?? ''}"` +
+                  (matchIds.length > 0 ? ` (${matchIds.length} แมตช์)` : ''),
+        relatedEntityType : 'tournament', relatedEntityId : tournamentId,
     });
 
     return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds };
@@ -158,6 +169,14 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     }
 
     const requiresAdminApproval = approval.status === 'pending' || approval.status === 'needs_docs';
+    const referee = await UserRepo.findById(userId);
+    await NotificationService.notify({
+        userId : invitation.invited_by, type : 'referee_invite_answered',
+        title : 'กรรมการตอบรับคำเชิญแล้ว',
+        message : `${referee?.full_name ?? 'กรรมการ'} ตอบรับเป็นกรรมการ รับ ${chosenIds.length} แมตช์` +
+                  (requiresAdminApproval ? ' — รอแอดมินตรวจตัวตนก่อนนับเป็นกรรมการ' : ''),
+        relatedEntityType : 'tournament', relatedEntityId : invitation.tournament_id,
+    });
     return {
         id : invitationId,
         invitationStatus : 'accepted',
@@ -184,6 +203,13 @@ export async function declineRefereeInvitation(invitationId : number, userId : n
     if(!updated){
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
     }
+    const referee = await UserRepo.findById(userId);
+    await NotificationService.notify({
+        userId : invitation.invited_by, type : 'referee_invite_answered',
+        title : 'กรรมการปฏิเสธคำเชิญ',
+        message : `${referee?.full_name ?? 'กรรมการ'} ปฏิเสธคำเชิญเป็นกรรมการ`,
+        relatedEntityType : 'tournament', relatedEntityId : invitation.tournament_id,
+    });
 }   
 
 

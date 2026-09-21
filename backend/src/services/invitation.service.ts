@@ -2,6 +2,8 @@ import * as InviteRepo from '../repositories/invitation.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
+import * as UserRepo from '../repositories/user.repo.js';
+import * as NotificationService from './notification.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
@@ -47,6 +49,13 @@ export async function acceptInvitation(invitedId : number , userId : number){
     if(!team){
         throw new AppError(404 , "TEAM_NOT_FOUND" , 'ไม่พบทีมนี้');
     }
+    const invitee = await UserRepo.findById(userId);
+    await NotificationService.notify({
+        userId : team.leader_id , type : 'team_invite_answered' ,
+        title : 'มีคนตอบรับคำเชิญเข้าทีม' ,
+        message : `${invitee?.full_name ?? 'ผู้ใช้'} ตอบรับคำเชิญเข้าทีม "${team.name}" แล้ว` ,
+        relatedEntityType : 'team' , relatedEntityId : team.team_id ,
+    });
     return { teamId : team['team_id'] , teamReadinessStatus : team['readiness_status']};
 }
 
@@ -63,5 +72,15 @@ export async function rejectInvitation(invitedId : number , userId : number){
         throw new AppError(409 , 'INVITATION_ALREADY_ANSWERED' , 'คําเชิญนี้ถูกตอบรับ/ปฏิเสธไปแล้ว ยกเลิกไม่ได้');
     }
     await InviteRepo.createRejectInvite(invitedId , userId);
+    const team = await TeamRepo.findById(invitation['team_id']);
+    if(team){
+        const invitee = await UserRepo.findById(userId);
+        await NotificationService.notify({
+            userId : team.leader_id , type : 'team_invite_answered' ,
+            title : 'คำเชิญเข้าทีมถูกปฏิเสธ' ,
+            message : `${invitee?.full_name ?? 'ผู้ใช้'} ปฏิเสธคำเชิญเข้าทีม "${team.name}"` ,
+            relatedEntityType : 'team' , relatedEntityId : team.team_id ,
+        });
+    }
     return;
 }

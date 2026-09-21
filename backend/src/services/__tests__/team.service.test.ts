@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
   isTournamentStaffOfTeam: vi.fn(() => Promise.resolve(false)),
@@ -534,7 +543,9 @@ describe('deleteMember', () => {
 
     await teamService.deleteMember(5, 10, 1);
 
-    expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
+    expect(NotificationRepo.insertNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'squad_below_minimum' }),
+    );
   });
 });
 

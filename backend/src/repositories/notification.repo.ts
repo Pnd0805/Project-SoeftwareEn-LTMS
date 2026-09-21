@@ -114,3 +114,54 @@ export async function findMatchAudience(matchId: number): Promise<number[]> {
     );
     return rows.map(r => r.user_id);
 }
+
+// ---- C1-ข ผู้รับของ event ระดับทัวร์ ----
+
+/** หัวหน้าทีมที่ใบสมัครยังมีชีวิต (pending/approved) ในทัวร์นี้ */
+export async function findTournamentTeamLeaders(tournamentId: number): Promise<number[]> {
+    const [rows] = await pool.query<({ leader_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT t.leader_id
+         FROM tournament_applications ta
+         JOIN teams t ON t.team_id = ta.team_id
+         WHERE ta.tournament_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+        [tournamentId]
+    );
+    return rows.map(r => r.leader_id);
+}
+
+/** กรรมการที่ตอบรับเป็นกรรมการของทัวร์นี้แล้ว และยังไม่ถูกถอดออก */
+export async function findTournamentReferees(tournamentId: number): Promise<number[]> {
+    const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT user_id FROM tournament_referees
+         WHERE tournament_id = ? AND invitation_status = 'accepted' AND removed_at IS NULL`,
+        [tournamentId]
+    );
+    return rows.map(r => r.user_id);
+}
+
+// ---- C1-ข ผู้รับของ event ผลการแข่ง ----
+
+/** หัวหน้า 2 ทีมในแมตช์ + กรรมการที่รับแมตช์นี้ + ORG ของทัวร์ (แยกกลุ่ม ให้ service เลือกเองว่าจะส่งใคร) */
+export async function findMatchResultParties(matchId: number): Promise<{ leaderIds: number[]; refereeIds: number[]; organizerId: number | null }> {
+    const [leaders] = await pool.query<({ leader_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT t.leader_id
+         FROM matches m JOIN teams t ON t.team_id IN (m.team_a_id, m.team_b_id)
+         WHERE m.match_id = ?`,
+        [matchId]
+    );
+    const [referees] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT tr.user_id
+         FROM match_referees mr JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id
+         WHERE mr.match_id = ? AND mr.assignment_status = 'accepted' AND tr.removed_at IS NULL`,
+        [matchId]
+    );
+    const [org] = await pool.query<({ requested_by_user_id: number } & RowDataPacket)[]>(
+        `SELECT t.requested_by_user_id FROM matches m JOIN tournaments t ON t.tournament_id = m.tournament_id WHERE m.match_id = ?`,
+        [matchId]
+    );
+    return {
+        leaderIds: leaders.map(r => r.leader_id),
+        refereeIds: referees.map(r => r.user_id),
+        organizerId: org[0]?.requested_by_user_id ?? null,
+    };
+}

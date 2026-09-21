@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
 vi.mock('../../repositories/matchResult.repo.js', () => ({
   findmatchResultByMatchId: vi.fn(),
   upholdMatchResult: vi.fn(() => Promise.resolve()),
@@ -18,6 +27,7 @@ import * as Repo from '../../repositories/matchResult.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as Walkover from '../walkover.service.js';
 import type { MatchRow } from '../../types/db.js';
+import * as NotificationService from '../notification.service.js';
 
 const match = (o: Partial<MatchRow> = {}) => ({
   match_id: 1, tournament_id: 50, team_a_id: 10, team_b_id: 11, next_match_id: 9, loser_next_match_id: null, match_status: 'disputed', ...o,
@@ -42,6 +52,9 @@ describe('resolveMatchResult (S04, B4)', () => {
     const out = await Service.resolveMatchResult(1, { resolution: 'uphold', resolutionNote: 'ok' }, 7);
     expect(Repo.upholdMatchResult).toHaveBeenCalledWith(100, expect.objectContaining({ match_id: 1 }), 7, 'ok', null);
     expect(out).toEqual({ matchId: 1, status: 'verified', isAmended: false });
+    // C1-ข — หัวหน้า 2 ทีม + กรรมการ รู้ผลการตัดสิน (ไม่รวมคน ORG ที่กดเอง)
+    expect(NotificationService.notifyMatchResultParties).toHaveBeenCalledWith(
+      1, expect.objectContaining({ type: 'result_resolved' }), expect.objectContaining({ exceptUserId: expect.any(Number) }));
   });
 
   it('reject rolls the verified outcome back and leaves the match result_rejected', async () => {

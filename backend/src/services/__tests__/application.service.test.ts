@@ -4,6 +4,9 @@ vi.mock('../../services/notification.service.js', () => ({
   notify: vi.fn(),
   notifyUsers: vi.fn(),
   notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
 }));
 
 vi.mock('../../repositories/application.repo.js', () => ({

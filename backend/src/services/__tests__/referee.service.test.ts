@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
+vi.mock('../../repositories/tournament.repo.js', () => ({
+  findTournamentById: vi.fn(() => Promise.resolve({ tournament_id: 20, name: 'Cup' })),
+}));
+
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findLatestByTournamentAndUser: vi.fn(),
   findApplyingTeamOfUser: vi.fn(() => Promise.resolve(null)),

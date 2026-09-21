@@ -63,3 +63,40 @@ export async function notifyMatchAudience(matchId: number, content: Omit<Notific
         console.error(`[notify] หาผู้รับของแมตช์ ${matchId} ไม่สำเร็จ`, err);
     }
 }
+
+/** หัวหน้าทีมทุกทีมที่ยังสมัครอยู่ในทัวร์นี้ (pending/approved) */
+export async function notifyTournamentTeamLeaders(tournamentId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
+    try {
+        await notifyUsers(await NotificationRepo.findTournamentTeamLeaders(tournamentId), content);
+    } catch (err) {
+        console.error(`[notify] หาหัวหน้าทีมของทัวร์ ${tournamentId} ไม่สำเร็จ`, err);
+    }
+}
+
+/** กรรมการที่ตอบรับแล้วของทัวร์นี้ */
+export async function notifyTournamentReferees(tournamentId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
+    try {
+        await notifyUsers(await NotificationRepo.findTournamentReferees(tournamentId), content);
+    } catch (err) {
+        console.error(`[notify] หากรรมการของทัวร์ ${tournamentId} ไม่สำเร็จ`, err);
+    }
+}
+
+/**
+ * ผลการแข่ง: หัวหน้า 2 ทีม + กรรมการของแมตช์ (+ ORG ถ้า includeOrganizer)
+ * ไม่ส่งหาคนที่เป็นคนกดเอง (exceptUserId) — เขารู้อยู่แล้ว
+ */
+export async function notifyMatchResultParties(
+    matchId: number,
+    content: Omit<NotificationInput, 'userId'>,
+    options: { exceptUserId?: number; includeOrganizer?: boolean } = {}
+): Promise<void> {
+    try {
+        const { leaderIds, refereeIds, organizerId } = await NotificationRepo.findMatchResultParties(matchId);
+        const recipients = [...leaderIds, ...refereeIds, ...(options.includeOrganizer && organizerId !== null ? [organizerId] : [])]
+            .filter(id => id !== options.exceptUserId);
+        await notifyUsers(recipients, content);
+    } catch (err) {
+        console.error(`[notify] หาผู้เกี่ยวข้องกับผลแมตช์ ${matchId} ไม่สำเร็จ`, err);
+    }
+}

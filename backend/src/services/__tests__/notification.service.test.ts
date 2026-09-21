@@ -8,6 +8,9 @@ vi.mock('../../repositories/notification.repo.js', () => ({
   markRead: vi.fn(),
   markAllRead: vi.fn(),
   findMatchAudience: vi.fn(),
+  findTournamentTeamLeaders: vi.fn(),
+  findTournamentReferees: vi.fn(),
+  findMatchResultParties: vi.fn(),
 }));
 
 import * as NotificationService from '../notification.service.js';
@@ -140,6 +143,39 @@ describe('notify helpers (C1-ข)', () => {
     await NotificationService.notifyMatchAudience(42, content);
 
     expect(NotificationRepo.findMatchAudience).toHaveBeenCalledWith(42);
+    expect(NotificationRepo.insertNotification).toHaveBeenCalledTimes(3);
+  });
+
+  it('notifyMatchResultParties sends to both leaders and referees but skips the person who acted', async () => {
+    vi.mocked(NotificationRepo.findMatchResultParties).mockResolvedValue({ leaderIds: [10, 20], refereeIds: [30], organizerId: 99 });
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyMatchResultParties(42, content, { exceptUserId: 10 });
+
+    const sentTo = vi.mocked(NotificationRepo.insertNotification).mock.calls.map(c => c[0].userId);
+    expect(sentTo.sort()).toEqual([20, 30]);
+  });
+
+  it('notifyMatchResultParties includes the organizer only when asked (dispute)', async () => {
+    vi.mocked(NotificationRepo.findMatchResultParties).mockResolvedValue({ leaderIds: [10, 20], refereeIds: [], organizerId: 99 });
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyMatchResultParties(42, content, { exceptUserId: 10, includeOrganizer: true });
+
+    const sentTo = vi.mocked(NotificationRepo.insertNotification).mock.calls.map(c => c[0].userId);
+    expect(sentTo.sort()).toEqual([20, 99]);
+  });
+
+  it('tournament helpers send to the team leaders / referees of that tournament', async () => {
+    vi.mocked(NotificationRepo.findTournamentTeamLeaders).mockResolvedValue([1, 2]);
+    vi.mocked(NotificationRepo.findTournamentReferees).mockResolvedValue([3]);
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyTournamentTeamLeaders(20, content);
+    await NotificationService.notifyTournamentReferees(20, content);
+
+    expect(NotificationRepo.findTournamentTeamLeaders).toHaveBeenCalledWith(20);
+    expect(NotificationRepo.findTournamentReferees).toHaveBeenCalledWith(20);
     expect(NotificationRepo.insertNotification).toHaveBeenCalledTimes(3);
   });
 });

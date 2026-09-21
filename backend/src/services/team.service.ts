@@ -3,6 +3,7 @@ import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as NotificationRepo from '../repositories/notification.repo.js';
+import * as NotificationService from './notification.service.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
@@ -166,6 +167,13 @@ export async function deleteMember(userId : number , teamId : number , sportId :
         });
     }
 
+    await NotificationService.notify({
+        userId , type : 'team_member_removed' ,
+        title : 'คุณถูกนำออกจากทีม' ,
+        message : `หัวหน้าทีมนำคุณออกจากทีม "${team?.name ?? ''}"` ,
+        relatedEntityType : 'team' , relatedEntityId : teamId ,
+    });
+
     const memberCount = await TeamRepo.countMemberByTeamId(teamId);
     if(memberCount < sport_rule!.min_members){
         await TeamRepo.updateStatus(teamId , 'Forming');
@@ -197,6 +205,13 @@ export async function createInvitation(teamId : number , invitedUserId : number 
     const invitedId = await TeamRepo.createInvitation(teamId , invitedUserId , invitedByUserId , expiresAt);
 
     const invitation = await TeamRepo.findInvitationsById(invitedId);
+    const team = await TeamRepo.findById(teamId);
+    await NotificationService.notify({
+        userId : invitedUserId , type : 'team_invited' ,
+        title : 'คุณได้รับคำเชิญเข้าทีม' ,
+        message : `คุณได้รับคำเชิญเข้าทีม "${team?.name ?? ''}" — ตอบรับได้ภายใน 7 วัน` ,
+        relatedEntityType : 'team' , relatedEntityId : teamId ,
+    });
     return toCreateTeamInvitation(invitation!);
 }
 
