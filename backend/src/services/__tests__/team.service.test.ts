@@ -363,22 +363,25 @@ describe('deleteTeam', () => {
     expect(result).toBe(1);
   });
 
-  // มติ 19 ก.ย. 2569 — ลบทีมหนีกลางทัวร์ไม่ได้ ต้องถอนทีมออกจากทัวร์ที่สร้างสายแล้วก่อน
-  it('throws TEAM_LOCKED_IN_TOURNAMENT when the team is in a tournament that already has a bracket', async () => {
+  // มติ 19 ก.ย. 2569 + Q2-ค (20 ก.ย.) — ล็อกตั้งแต่ใบสมัคร approved เหมือน T08 (แก้ 21 ก.ย.)
+  it.each([
+    ['a bracket already exists', { match_count: 8, status: 'approved' }],
+    ['the application is approved but no bracket yet', { match_count: 0, status: 'approved' }],
+  ])('throws TEAM_LOCKED_IN_TOURNAMENT when %s', async (_label, squad) => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
     vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
-      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 8, squad_size: 11 },
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', squad_size: 11, ...squad } as never,
     ]);
 
-    await expect(teamService.deleteTeam(10)).rejects.toMatchObject({ status: 409, code: 'TEAM_LOCKED_IN_TOURNAMENT' });
+    await expect(teamService.deleteTeam(10)).rejects.toMatchObject({ status: 409, code: 'TEAM_LOCKED_IN_TOURNAMENT', extra: { tournaments: [{ tournamentId: 20, name: 'Cup' }] } });
     expect(mockedTeamRepo.deleteTeam).not.toHaveBeenCalled();
   });
 
-  it('frees the registered players when the team is deleted before any bracket exists', async () => {
+  it('frees the registered players when the team only has pending applications', async () => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
     mockedTeamRepo.deleteTeam.mockResolvedValue(1);
     vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
-      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 11 },
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 11, status: 'pending' } as never,
     ]);
 
     await teamService.deleteTeam(10);

@@ -96,15 +96,17 @@ export async function deleteTeam(teamId : number){
     }
 
     // ★ มติ 19 ก.ย. 2569 — ลบทีมหนีกลางทัวร์ไม่ได้ ไม่งั้นสายพังเพราะแมตช์ยังชี้มาที่ทีมนี้
-    //   ต้องถอนทีมออกจากทัวร์ที่สร้างสายแล้วก่อน (P08) ระบบจะจัดการชนะบายให้เอง
-    const locked = (await ApplicationRepo.findLiveSquadsOfTeam(teamId)).filter(s => s.match_count > 0);
+    //   เงื่อนไขเดียวกับลบลูกทีม (T08, Q2-ค 20 ก.ย.): ล็อกตั้งแต่ใบสมัคร approved ไม่ต้องรอสร้างสาย
+    //   (แก้ 21 ก.ย. — เดิมล็อกเฉพาะ match_count > 0 ทำให้ลบทั้งทีมได้ตอนที่ลบคนเดียวไม่ได้ และทีม approved หายไปจากทัวร์ทั้งที่ ORG นับไว้แล้ว)
+    //   ต้องถอนทีมออกจากทัวร์นั้นก่อน (P08) ระบบจะจัดการชนะบายให้เองถ้าสร้างสายแล้ว
+    const locked = (await ApplicationRepo.findLiveSquadsOfTeam(teamId)).filter(s => s.match_count > 0 || s.status === 'approved');
     if(locked.length > 0){
         throw new AppError(409 , "TEAM_LOCKED_IN_TOURNAMENT" ,
-            "ทีมนี้อยู่ในทัวร์นาเมนต์ที่สร้างสายแล้ว ต้องถอนทีมออกจากทัวร์นั้นก่อนถึงจะลบทีมได้" ,
+            "ทีมนี้อยู่ในทัวร์นาเมนต์ที่ผ่านการอนุมัติแล้ว ต้องถอนทีมออกจากทัวร์นั้นก่อนถึงจะลบทีมได้" ,
             { tournaments : locked.map(s => ({ tournamentId : s.tournament_id , name : s.tournament_name })) });
     }
 
-    // ยังไม่สร้างสาย → ปลดล็อกผู้เล่นทุกคน ไปอยู่ทีมอื่นในทัวร์เดียวกันได้
+    // เหลือแต่ใบสมัครที่ยัง pending → ปลดล็อกผู้เล่นทุกคน ไปอยู่ทีมอื่นในทัวร์เดียวกันได้
     await ApplicationRepo.deleteAllPlayersOfTeamSquads(teamId);
 
     return await TeamRepo.deleteTeam(teamId);
