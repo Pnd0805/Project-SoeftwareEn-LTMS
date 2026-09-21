@@ -188,3 +188,14 @@ FE-replace-existing-bracket-atomic: M01 เคยตอบ `BRACKET_ALREADY_EXIS
 - **1-ข เงื่อนไข**: ทุกแมตช์ยัง `scheduled` และไม่มีเช็คอิน/ผล — **ไม่สน `registration_open`** (กรณีจริงคือปิดรับสมัครแล้วค่อยมีทีมถอน/อนุมัติค้าง) · ไม่ผ่าน → 409 `BRACKET_IN_USE {matches}`
 - **2-ก รูปแบบ**: M01 เดิม + `replace: true` (ไม่ส่ง = 409 เดิม กันกดพลาด) — ไม่แยก DELETE endpoint เพราะ 2 ขั้นไม่ atomic
 - ลบใน tx: referee_change_requests, match_referees, (checkins/results/stats/pickem ที่ควรว่าง), announcements/feedback `match_id → NULL`, matches (ตัด self-FK ก่อน), bracket_nodes, tournament_standings · คงไว้: tournament_applications, tournament_referees (pool) · persist* รับ connection ร่วม → ลบ+สร้างเป็นก้อนเดียว พังตรงไหน rollback สายเดิมยังอยู่
+
+## OD-23 — Tournament feedback / rating / MVP vote (C6) — ✅ Resolved 2026-09-21
+
+FE-tournament-feedback: Community tab (ให้คะแนนการจัดทัวร์) และหน้าโหวต MVP ทำงานเฉพาะ mock · ใช้ตาราง `tournament_feedback` เดิม ไม่มี migration
+
+- **1 ใครให้คะแนน**: เฉพาะคนที่เกี่ยวข้อง — ผู้เล่นในรายชื่อลงแข่ง (`application_players` ของใบสมัคร approved) · หัวหน้าทีม approved · กรรมการที่ตอบรับแล้ว · ORG ให้คะแนนตัวเองไม่ได้ (`ORGANIZER_CANNOT_REVIEW_OWN`) · คนอื่น → 403 `FEEDBACK_NOT_ALLOWED`
+- **2 เมื่อไร**: หลังทัวร์ `completed` เท่านั้น (ก่อนหน้า → 409 `TOURNAMENT_NOT_COMPLETED`) · MVP โหวตได้ 7 วันหลัง `completed_at` (พ้น → 409 `MVP_VOTING_CLOSED`) · ปิดโหวตแล้วค่อยประกาศ `winners` (เสมอได้หลายคน) · `lockCompletedTournament` ยกเว้น `/feedback` และ `/mvp-votes`
+- **3 ส่งซ้ำ**: เขียนทับของเดิม (คนละ 1 อันต่อทัวร์ ใช้ UNIQUE เดิมของตาราง) ทั้ง feedback และโหวต MVP · แก้ข้อความแล้วล้างธง report
+- **4 ใครโหวต MVP**: เฉพาะคนที่ไม่ได้ลงแข่ง (spec 08 §5) — ห้ามผู้เล่นในรายชื่อ, สมาชิกทีม approved, กรรมการ (pending/accepted), ORG → 403 `MVP_VOTER_NOT_ELIGIBLE` · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่งเท่านั้น → ไม่ใช่ 422 `MVP_CANDIDATE_NOT_ELIGIBLE`
+- **การมองเห็น** (ตามข้อเสนอในเอกสารแบ่งงาน): ค่าเฉลี่ย/จำนวน/การกระจายเป็นสาธารณะ · ORG เห็นข้อความแต่ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ (ใช้ตรวจ report)
+- **report / ลบ**: `POST /feedback/:id/report` — organizer_feedback report ได้เฉพาะ ORG ของทัวร์ (คนที่มองเห็น) · โหวต MVP report ไม่ได้ · `DELETE /admin/feedback/:id` soft delete + audit `feedback_removed` · คนที่ถูกลบส่งใหม่ไม่ได้ (409 `FEEDBACK_REMOVED`) · ค่าเฉลี่ย/คะแนนโหวตไม่นับแถวที่ถูกลบ
