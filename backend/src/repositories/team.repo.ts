@@ -220,6 +220,19 @@ export async function createOfficialRequest(teamId : number , userId : number , 
 }
 
 
+// C3 — โอนหัวหน้าทีม (T19/T20)
+export async function findTransferRequestById(requestId : number) : Promise<TeamAdminRequestRow | null>{
+    const [ rows ] = await pool.query<(TeamAdminRequestRow & RowDataPacket)[]>(`SELECT * FROM team_admin_requests WHERE team_admin_request_id = ? AND request_type = ?`,
+                                                                                [requestId , 'leader_transfer']);
+    return rows[0] ?? null;
+}
+
+export async function createTransferRequest(teamId : number , requestedBy : number , targetUserId : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(`INSERT INTO team_admin_requests(team_id , request_type , requested_by , target_user_id , team_admin_request_status)
+                                                          VALUES(? , ? , ? , ? , ?)`,[teamId , 'leader_transfer' , requestedBy , targetUserId , 'pending']);
+    return result.insertId;
+}
+
 export async function findOfficialMemberConflict(teamId : number , sportId : number) : Promise<OfficialMemberConflict[]>{
     const [ rows ] = await pool.query<(OfficialMemberConflict & RowDataPacket)[]>(`SELECT u.user_id , u.full_name , t2.name as conflictingTeamName
                                                           FROM team_members tm1 JOIN team_members tm2 ON tm1.user_id = tm2.user_id

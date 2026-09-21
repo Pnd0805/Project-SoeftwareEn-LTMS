@@ -1,10 +1,11 @@
-import { toGetOfficialRequest, toRequestApproveDto, toRequestRejectDto } from '../mappers/adminScope.mapper.js';
+import { toGetOfficialRequest, toRequestApproveDto, toRequestRejectDto, toGetTransferRequest } from '../mappers/adminScope.mapper.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import { toOfficialMemberConflictDto } from '../mappers/team.mapper.js';
 
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
+import { checkTeam } from '../utils/checkExist.js';
 
 export async function getAllOfficialRequest(offset : number , page : number , pageSize : number){
     const { rows , totalItems } = await AdminRepo.findAllOfficialRequests(offset , pageSize);
@@ -61,4 +62,65 @@ export async function rejectTeamOfficial(adminId : number , teamReqId : number ,
     const reject_request = await TeamRepo.findOfficialRequestById(teamReqId);
 
     return toRequestRejectDto(reject_request!);
+}
+
+// C3 — ลิสต์คำขอโอนหัวหน้าทีมที่รออนุมัติ
+export async function getAllTransferRequest(offset : number , page : number , pageSize : number){
+    const { rows , totalItems } = await AdminRepo.findAllTransferRequests(offset , pageSize);
+
+    const pagination = buildPagination(page , pageSize , totalItems)
+    const data = rows.map(toGetTransferRequest);
+    return { items : data , pagination}
+}
+
+// C3 — โอนหัวหน้าทีม (T20)
+export async function approveTransferRequest(adminId : number , teamReqId : number){
+    const teamReq = await TeamRepo.findTransferRequestById(teamReqId);
+    if(!teamReq){
+        throw new AppError(404 , "TEAM_REQUEST_NOT_FOUND", "ไม่พบคำร้องขอโอนหัวหน้าทีม");
+    }
+
+    if(teamReq.team_admin_request_status !== 'pending'){
+        throw new AppError(409 , "ALREADY_DECIDED" , "คําขอนี้ถูกพิจารณาไปแล้ว");
+    }
+
+    const teamId = teamReq.team_id;
+    const newLeaderId = teamReq.target_user_id!;
+
+    await AdminRepo.approveTransferRequest(adminId , teamReqId , teamId , newLeaderId);
+    return { teamId , newLeaderId };
+}
+
+// C3 — ปฏิเสธคำขอโอนหัวหน้าทีม (ใช้ AdminRepo.rejectTeamOfficial ร่วมกับ T18 ได้เลย — repo ฝั่งนั้นเป็น UPDATE ทั่วไป ไม่กรอง request_type)
+export async function rejectTransferRequest(adminId : number , teamReqId : number , reason : string){
+    const teamReq = await TeamRepo.findTransferRequestById(teamReqId);
+    if(!teamReq){
+        throw new AppError(404 , "TEAM_REQUEST_NOT_FOUND", "ไม่พบคำร้องขอโอนหัวหน้าทีม");
+    }
+
+    if(teamReq.team_admin_request_status !== 'pending'){
+        throw new AppError(409 , "ALREADY_DECIDED" , "คําขอนี้ถูกพิจารณาไปแล้ว");
+    }
+
+    if(reason === ""){
+        throw new AppError(400 , 'TEAM_REJECT_REASON_REQUIRED' , "กรุณาระบุเหตุผลที่ปฏิเสธคำร้อง");
+    }
+
+    await AdminRepo.rejectTeamOfficial(adminId , teamReqId , reason);
+    const reject_request = await TeamRepo.findTransferRequestById(teamReqId);
+
+    return toRequestRejectDto(reject_request!);
+}
+
+// C3 — แอดมินโอนหัวหน้าทีมแทนตอนหัวหน้าเดิมหายไป (ไม่ผ่านคิว — ไม่เช็ค official_status เพราะใช้ได้ทั้ง Official/Unofficial)
+export async function transferLeaderByAdmin(adminId : number , teamId : number , newLeaderId : number){
+    await checkTeam(teamId);
+
+    const member = await TeamRepo.isMemberOf(teamId , newLeaderId);
+    if(!member){
+        throw new AppError(422 , "NOT_A_TEAM_MEMBER" , "ผู้ใช้ที่เลือกต้องเป็นสมาชิกของทีมนี้อยู่แล้ว");
+    }
+
+    await AdminRepo.transferLeaderByAdmin(adminId , teamId , newLeaderId);
+    return { teamId , newLeaderId };
 }

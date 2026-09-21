@@ -202,6 +202,23 @@ export function getTeamOfficialRequestDto(rows : TeamAdminRequestRow): getTeamOf
     }
 }
 
+// C3 — โอนหัวหน้าทีม (T19)
+export type transferRequestDto = {
+    id : number,
+    status : 'pending' | 'approved' | 'rejected',
+    currentLeaderId : number,
+    proposedLeaderId : number
+};
+
+export function toTransferRequestDto(row : TeamAdminRequestRow , currentLeaderId : number) : transferRequestDto{
+    return {
+        id : row.team_admin_request_id,
+        status : row.team_admin_request_status,
+        currentLeaderId : currentLeaderId,
+        proposedLeaderId : row.target_user_id!
+    }
+}
+
 export type OfficialMemberConflict = Pick<UserRow , 'user_id' | 'full_name' > & { conflictingTeamName : string }
 
 export type OfficialMemberConflictDto = {
