@@ -1,4 +1,4 @@
-import type { UserSportStatRow } from "../repositories/playerStat.repo.js";
+import type { UserProfileTotalsRow, UserSportStatRow } from "../repositories/playerStat.repo.js";
 
 export type SportStatDto = {
     sportTypeId : number,
@@ -19,8 +19,11 @@ export type OverAllStat = {
 
 export type UserStatsDto = {
     userId : number,
-    overall : OverAllStat, 
-    bySport : SportStatDto[]
+    overall : OverAllStat,
+    bySport : SportStatDto[],
+    mvpVotes: number,
+    pickemPoints: number,
+    followerCount: number
 }
 
 export function toSportStatDto(row : UserSportStatRow): SportStatDto{
@@ -33,26 +36,32 @@ export function toSportStatDto(row : UserSportStatRow): SportStatDto{
     };
 };
 
-export  function toUserStatsDto(userId : number , rows: UserSportStatRow[]) : UserStatsDto{
-    let  matchesPlayed = 0, wins = 0, losses = 0, championCount = 0;
-    for(const r of rows){
-        matchesPlayed += r.matches_played
+export function toUserStatsDto(
+    userId: number,
+    rows: UserSportStatRow[],
+    totals: UserProfileTotalsRow = { mvp_votes: 0, pickem_points: 0, follower_count: 0 }
+): UserStatsDto {
+    let matchesPlayed = 0, wins = 0, losses = 0, championCount = 0;
+    for (const r of rows) {
+        matchesPlayed += r.matches_played;
         wins += r.wins;
         losses += r.losses;
-        championCount += r.championships
+        championCount += r.championships;
     }
     const winRate = matchesPlayed === 0 ? 0 : wins / matchesPlayed;
 
-    const ov = { matchesPlayed : matchesPlayed,
-        wins : wins,
-        losses : losses,
-        winRate : winRate,
-        championCount : championCount
-    };
-
     return {
-        userId : userId,
-        overall : ov,
-        bySport : rows.map(toSportStatDto)
-    }
+        userId,
+        overall: {
+            matchesPlayed,
+            wins,
+            losses,
+            winRate,
+            championCount,
+        },
+        bySport: rows.map(toSportStatDto),
+        mvpVotes: Number(totals.mvp_votes),
+        pickemPoints: Number(totals.pickem_points),
+        followerCount: Number(totals.follower_count),
+    };
 }

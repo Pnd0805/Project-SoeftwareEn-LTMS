@@ -32,7 +32,9 @@ export type PublicUserDto = {
   avatarUrl : string | null,
   facultyId : number | null,
   departmentId : number | null,
-  teams: TeamRef[]
+  teams: TeamRef[],
+  followerCount: number,
+  isFollowing: boolean
 }
 
 export function toMeDto(row: UserRow): MeDto {
@@ -64,15 +66,22 @@ export function toUserRef(row: Pick<UserRow , 'user_id' | 'full_name' | 'profile
 }
 
 
-export function toPublicUserDto(row :UserRow , team: TeamRef[]) : PublicUserDto{
+export function toPublicUserDto(
+  row: UserRow,
+  team: TeamRef[],
+  followerCount = 0,
+  isFollowing = false
+): PublicUserDto {
   return {
-    id : row.user_id,
-    fullName : row.full_name,
-    avatarUrl : row.profile_image_key,
-    facultyId : row.faculty_id,
-    departmentId : row.department_id,
-    teams : team
-  }
+    id: row.user_id,
+    fullName: row.full_name,
+    avatarUrl: row.profile_image_key,
+    facultyId: row.faculty_id,
+    departmentId: row.department_id,
+    teams: team,
+    followerCount,
+    isFollowing,
+  };
 }
 
 export type getMyInvitationDto = {

@@ -28,6 +28,9 @@ describe('toUserStatsDto', () => {
       userId: 1,
       overall: { matchesPlayed: 0, wins: 0, losses: 0, winRate: 0, championCount: 0 },
       bySport: [],
+      mvpVotes: 0,
+      pickemPoints: 0,
+      followerCount: 0,
     });
   });
 
@@ -79,5 +82,10 @@ describe('toUserStatsDto', () => {
   it('keeps userId as passed in, independent of the row data', () => {
     const result = toUserStatsDto(42, []);
     expect(result.userId).toBe(42);
+  });
+
+  it('maps C8 engagement totals onto the stats response', () => {
+    const result = toUserStatsDto(1, [], { mvp_votes: 6, pickem_points: 120, follower_count: 9 });
+    expect(result).toMatchObject({ mvpVotes: 6, pickemPoints: 120, followerCount: 9 });
   });
 });

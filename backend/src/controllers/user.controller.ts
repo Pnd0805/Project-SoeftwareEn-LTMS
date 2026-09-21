@@ -15,14 +15,44 @@ export async function getMe(req : Request , res : Response){
     res.status(200).json(data);
 }
 
-export async function getUserById(req : Request , res : Response){
+export async function getUserById(req: Request, res: Response) {
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
-    res.status(200).json(await UserService.getUserById(userId));
+    res.status(200).json(await UserService.getUserById(userId, req.user?.user_id));
 };
 
 export async function getUserStats(req : Request , res : Response){
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
     res.status(200).json(await UserService.getUserStats(userId));
+}
+
+
+export async function followUser(req: Request, res: Response) {
+    const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
+    res.status(200).json(await UserService.followUser(req.user!.user_id, userId));
+}
+
+export async function unfollowUser(req: Request, res: Response) {
+    const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
+    res.status(200).json(await UserService.unfollowUser(req.user!.user_id, userId));
+}
+
+export async function getFollowers(req: Request, res: Response) {
+    const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
+    res.status(200).json(await UserService.getFollowers(userId));
+}
+
+export async function getFollowing(req: Request, res: Response) {
+    const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
+    res.status(200).json(await UserService.getFollowing(userId));
+}
+
+export async function getMyFollowing(req: Request, res: Response) {
+    res.status(200).json(await UserService.getFollowing(req.user!.user_id));
+}
+
+export async function getCareer(req: Request, res: Response) {
+    const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
+    res.status(200).json(await UserService.getCareer(userId));
 }
 
 export async function searchUser(req : Request , res : Response){
