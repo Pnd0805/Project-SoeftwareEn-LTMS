@@ -152,3 +152,12 @@ Current code/schema/API มี known gaps เมื่อเทียบ Current
 **จะเปิด decimal/boolean ต้องตัดสินก่อน**: (1) S06 เป็น "ตั้งค่าทับ" หรือ "บวกสะสม" หรือแยกตามชนิด (2) คอลัมน์ `value_decimal`/`value_bool` + mapper S07 คืน `number|boolean` (3) FE ฟอร์มกรรมการส่ง "ยอดรวม" หรือ "ส่วนเพิ่ม"
 
 แก้พ่วงในรอบเดียวกัน: S06 `findTeamIdOfUserInMatch` และ S07 `allPlayerInMatch` ย้ายจาก `team_members` ไป `application_players` ตาม OD-17 (เดิมคนในคลังที่ไม่ได้ลงแข่งบันทึกสถิติได้และโผล่ใน S07)
+
+## OD-19 — Revoking a check-in that already went through — ✅ Resolved 2026-09-21
+
+FE-check-has-gone-through: `qr_onsite` ผ่านทันทีตอนสแกน และ `manual_by_referee` ผ่านทันทีตอนกรรมการกด — ไม่มีใครตรวจก่อน แต่ M15 รับเฉพาะ `pending` → เพื่อนสแกนแทนคนที่ไม่มา / กรรมการกดผิดคน แก้ไม่ได้ และแถวนั้นนับเข้า `min_members` ตัดสินแพ้บาย
+
+- **1 → ได้**: M15 reject รับ `pending` / `success` / `exception` ขณะ `checkin_open` หรือ `in_progress` · M14 verify ยังรับ `pending` เท่านั้น
+- **2 → ข**: ถูก reject แล้ว ผู้เล่นเช็คอินใหม่ได้ (M12) หรือกรรมการกดให้ใหม่ได้ (M19) — UPDATE ทับแถวเดิม (UNIQUE match+user) ล้าง `rejection_reason`/`verified_*` · ต้อง `checkin_open` เหมือนครั้งแรก
+- **3 → ไม่กระทบผล**: ถอนระหว่าง `in_progress` ไม่ย้อนคำตัดสิน M10 (ทีมไม่แพ้บายย้อนหลัง) แค่บันทึกว่าคนนี้ไม่ได้มา
+- error ใหม่ `ALREADY_REJECTED` (409) แยกจาก `ALREADY_DECIDED` เพื่อให้ FE รู้ว่าเช็คอินใหม่ได้

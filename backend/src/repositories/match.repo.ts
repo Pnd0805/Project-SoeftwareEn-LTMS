@@ -245,12 +245,34 @@ export async function verifyCheckin(checkinId: number, refereeUserId: number): P
     return result.affectedRows === 1;
 }
 
+/**
+ * M15 — ปฏิเสธได้ทั้งที่รอตรวจ (pending) และที่ผ่านไปแล้ว (success จาก QR/รูป · exception จาก manual)
+ * มติ 21 ก.ย. (FE-check-has-gone-through): QR และ manual ไม่มีใครตรวจก่อน กรรมการจึงต้องเพิกถอนทีหลังได้
+ * คืน false = ถูก reject ไปแล้ว
+ */
 export async function rejectCheckin(checkinId: number, refereeUserId: number, reason: string): Promise<boolean> {
     const [result] = await pool.query<ResultSetHeader>(
         `UPDATE match_checkins
          SET match_checkin_status = 'rejected', rejection_reason = ?, verified_by_referee_id = ?, verified_at = NOW()
-         WHERE match_checkin_id = ? AND match_checkin_status = 'pending'`,
+         WHERE match_checkin_id = ? AND match_checkin_status IN ('pending', 'success', 'exception')`,
         [reason, refereeUserId, checkinId]
+    );
+    return result.affectedRows === 1;
+}
+
+/**
+ * เช็คอินใหม่ทับแถวที่ถูก reject (มติ 21 ก.ย. ข้อ 2-ข) — UNIQUE(match_id,user_id) มีแถวเดียวต่อคน จึง UPDATE แทน INSERT
+ * ล้างผลตัดสินเก่าทั้งหมด · คืน false = แถวไม่ได้อยู่ในสถานะ rejected แล้ว (มีคนเช็คอินทับไปก่อน)
+ */
+export async function reCheckin(checkinId: number, input: Omit<InsertCheckinInput, 'matchId' | 'userId'>): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE match_checkins
+         SET method = ?, match_checkin_status = ?, document_type = ?, document_s3_key = ?,
+             verified_by_referee_id = ?, verified_at = ${input.verifiedByRefereeId ? 'NOW()' : 'NULL'},
+             note = ?, rejection_reason = NULL, checked_in_at = NOW()
+         WHERE match_checkin_id = ? AND match_checkin_status = 'rejected'`,
+        [input.method, input.status, input.documentType, input.documentS3Key,
+         input.verifiedByRefereeId ?? null, input.note ?? null, checkinId]
     );
     return result.affectedRows === 1;
 }

@@ -14,6 +14,7 @@ vi.mock('../../repositories/match.repo.js', () => ({
   findCheckinByMatchAndUser: vi.fn(),
   isRegisteredPlayerOfMatch: vi.fn(),
   insertCheckin: vi.fn(),
+  reCheckin: vi.fn(),
   updateRoomCode: vi.fn(() => Promise.resolve(true)),
   findMatchesOfPlayer: vi.fn(() => Promise.resolve([])),
   findLineupsByMatch: vi.fn(),
@@ -198,7 +199,7 @@ describe('verifyCheckin / rejectCheckin (M14/M15)', () => {
     expect(MatchRepo.rejectCheckin).not.toHaveBeenCalled();
   });
 
-  it.each(['success', 'rejected', 'exception'])('refuses to verify a %s check-in with ALREADY_DECIDED', async (status) => {
+  it.each(['success', 'exception'])('refuses to verify a %s check-in with ALREADY_DECIDED', async (status) => {
     vi.mocked(MatchRepo.findCheckinById).mockResolvedValue(checkin({ match_checkin_status: status }));
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open' }));
 
@@ -206,12 +207,33 @@ describe('verifyCheckin / rejectCheckin (M14/M15)', () => {
     expect(MatchRepo.verifyCheckin).not.toHaveBeenCalled();
   });
 
-  it('returns ALREADY_DECIDED when another referee decided in the meantime', async () => {
+  it('verify / reject of a rejected check-in → ALREADY_REJECTED', async () => {
+    vi.mocked(MatchRepo.findCheckinById).mockResolvedValue(checkin({ match_checkin_status: 'rejected' }));
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open' }));
+
+    await expectAppError(matchService.verifyCheckin(7, 1, 9002), 409, 'ALREADY_REJECTED');
+    await expectAppError(matchService.rejectCheckin(7, 1, 9002, 'x'), 409, 'ALREADY_REJECTED');
+    expect(MatchRepo.rejectCheckin).not.toHaveBeenCalled();
+  });
+
+  // มติ 21 ก.ย. (FE-check-has-gone-through): QR/manual ไม่มีใครตรวจก่อน กรรมการเพิกถอนทีหลังได้
+  it.each([
+    ['success', 'checkin_open'], ['exception', 'checkin_open'], ['success', 'in_progress'], ['exception', 'in_progress'],
+  ])('revokes a %s check-in while the match is %s', async (status, matchStatus) => {
+    vi.mocked(MatchRepo.findCheckinById).mockResolvedValue(checkin({ match_checkin_status: status }));
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: matchStatus }));
+    vi.mocked(MatchRepo.rejectCheckin).mockResolvedValue(true);
+
+    await expect(matchService.rejectCheckin(7, 1, 9002, 'คนสแกนไม่ใช่เจ้าของบัญชี')).resolves.toEqual({ id: 7, status: 'rejected', reason: 'คนสแกนไม่ใช่เจ้าของบัญชี' });
+    expect(MatchRepo.rejectCheckin).toHaveBeenCalledWith(7, 9002, 'คนสแกนไม่ใช่เจ้าของบัญชี');
+  });
+
+  it('returns ALREADY_REJECTED when another referee rejected in the meantime', async () => {
     vi.mocked(MatchRepo.findCheckinById).mockResolvedValue(checkin());
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open' }));
     vi.mocked(MatchRepo.rejectCheckin).mockResolvedValue(false);
 
-    await expectAppError(matchService.rejectCheckin(7, 1, 9002, 'รูปไม่ชัด'), 409, 'ALREADY_DECIDED');
+    await expectAppError(matchService.rejectCheckin(7, 1, 9002, 'รูปไม่ชัด'), 409, 'ALREADY_REJECTED');
   });
 
   it('returns CHECKIN_NOT_FOUND when the check-in belongs to another match', async () => {
@@ -346,11 +368,34 @@ describe('submitCheckin (M12)', () => {
 
   it('creates a check-in while check-in is open and the user is in the roster', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open' }));
-    vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValue(null);
+    vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ match_checkin_id: 6, match_checkin_status: 'success', checked_in_at: new Date(0) } as never);
     vi.mocked(MatchRepo.isRegisteredPlayerOfMatch).mockResolvedValue(true);
     vi.mocked(MatchRepo.insertCheckin).mockResolvedValue({ match_checkin_id: 6, match_checkin_status: 'success', checked_in_at: new Date(0) } as never);
 
     await expect(matchService.submitCheckin(1, 9001, qrInput)).resolves.toMatchObject({ isNew: true, data: { id: 6 } });
+    expect(MatchRepo.reCheckin).not.toHaveBeenCalled();
+  });
+
+  // มติ 21 ก.ย. 2-ข: ถูก reject แล้วเช็คอินใหม่ได้ (ทับแถวเดิม) — ต้องผ่านเงื่อนไข checkin_open + roster เหมือนเช็คอินครั้งแรก
+  it('a rejected check-in is replaced by a fresh one while check-in is open', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open' }));
+    vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValueOnce({ match_checkin_id: 5, match_checkin_status: 'rejected' } as never)
+      .mockResolvedValueOnce({ match_checkin_id: 5, match_checkin_status: 'success', checked_in_at: new Date(1) } as never);
+    vi.mocked(MatchRepo.isRegisteredPlayerOfMatch).mockResolvedValue(true);
+    vi.mocked(MatchRepo.reCheckin).mockResolvedValue(true);
+
+    await expect(matchService.submitCheckin(1, 9001, qrInput)).resolves.toMatchObject({ isNew: true, data: { id: 5 } });
+    expect(MatchRepo.reCheckin).toHaveBeenCalledWith(5, expect.objectContaining({ method: 'qr_onsite', status: 'success' }));
+    expect(MatchRepo.insertCheckin).not.toHaveBeenCalled();
+  });
+
+  it('a rejected check-in cannot be redone once the match has started', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'in_progress' }));
+    vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValue({ match_checkin_id: 5, match_checkin_status: 'rejected' } as never);
+
+    await expectAppError(matchService.submitCheckin(1, 9001, qrInput), 409, 'CHECKIN_NOT_OPEN');
+    expect(MatchRepo.reCheckin).not.toHaveBeenCalled();
   });
 });
 

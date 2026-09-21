@@ -352,24 +352,31 @@ export async function manualCheckin(matchId: number, refereeUserId: number, inpu
         throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "ผู้เล่นคนนี้ไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
     }
     const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId);
-    if (existing) {
+    if (existing && existing.match_checkin_status !== 'rejected') {
         throw new AppError(409, "ALREADY_CHECKED_IN", "ผู้เล่นคนนี้เช็คอินไปแล้ว", { status: toCheckinStatusApi(existing.match_checkin_status) });
     }
-    const inserted = await MatchRepo.insertCheckin({
-        matchId, userId: input.userId, method: 'manual_by_referee', status: 'exception',
-        documentType: null, documentS3Key: null, verifiedByRefereeId: refereeUserId, note: input.note ?? null,
-    });
-    const checkin = inserted ?? (await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId))!;
+    const payload = { method: 'manual_by_referee' as const, status: 'exception' as const,
+                      documentType: null, documentS3Key: null, verifiedByRefereeId: refereeUserId, note: input.note ?? null };
+    // ถูก reject ไปแล้ว → เช็คอินใหม่ทับแถวเดิม (มติ 21 ก.ย. 2-ข) — ถ้าทับไม่ได้แปลว่ามีคนเช็คอินทับไปก่อน → 409 เหมือนเดิม
+    if (existing) {
+        if (!(await MatchRepo.reCheckin(existing.match_checkin_id, payload))) {
+            throw new AppError(409, "ALREADY_CHECKED_IN", "ผู้เล่นคนนี้เช็คอินไปแล้ว");
+        }
+    } else {
+        await MatchRepo.insertCheckin({ matchId, userId: input.userId, ...payload });
+    }
+    const checkin = (await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId))!;
     return { id: checkin.match_checkin_id, userId: input.userId, method: 'manual_by_referee' as const,
              status: toCheckinStatusApi(checkin.match_checkin_status), note: checkin.note, checkedInAt: checkin.checked_in_at };
 }
 
-// M14/M15 ตัดสินได้ครั้งเดียว และเฉพาะเช็คอินแบบรูปที่รอตรวจ (pending) — QR ผ่านอัตโนมัติไม่ต้องตรวจ
+// M14 ยืนยันได้เฉพาะรูปที่รอตรวจ (pending) · M15 ปฏิเสธได้ทั้ง pending/success/exception (มติ 21 ก.ย. — เพิกถอน QR/manual ทีหลังได้)
 function checkinAlreadyDecided() {
     return new AppError(409, "ALREADY_DECIDED", "รายการเช็คอินนี้ไม่ได้รอกรรมการตรวจ (ตรวจไปแล้ว หรือเป็นการเช็คอินด้วย QR) เปลี่ยนผลไม่ได้");
 }
 
-async function findPendingCheckinOfMatch(checkinId: number, matchId: number) {
+type DecidableStatus = 'pending' | 'success' | 'exception';
+async function findDecidableCheckinOfMatch(checkinId: number, matchId: number, allowed: readonly DecidableStatus[]) {
     const checkin = await MatchRepo.findCheckinById(checkinId);
     if (!checkin) {
         throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้");
@@ -384,14 +391,16 @@ async function findPendingCheckinOfMatch(checkinId: number, matchId: number) {
         throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้ยังไม่เปิดเช็คอินหรือจบไปแล้ว ตรวจเช็คอินไม่ได้");
     }
 
-    if (checkin.match_checkin_status !== 'pending') {
-        throw checkinAlreadyDecided();
+    if (!(allowed as readonly string[]).includes(checkin.match_checkin_status)) {
+        throw checkin.match_checkin_status === 'rejected'
+            ? new AppError(409, "ALREADY_REJECTED", "รายการเช็คอินนี้ถูกปฏิเสธไปแล้ว")
+            : checkinAlreadyDecided();
     }
     return checkin;
 }
 
 export async function verifyCheckin(checkinId: number , matchId: number, userId: number){
-    await findPendingCheckinOfMatch(checkinId, matchId);
+    await findDecidableCheckinOfMatch(checkinId, matchId, ['pending']);
 
     // repo UPDATE เฉพาะแถวที่ยัง pending — กรรมการ 2 คนกดพร้อมกัน คนที่สองได้ 409
     if (!(await MatchRepo.verifyCheckin(checkinId, userId))) {
@@ -400,11 +409,15 @@ export async function verifyCheckin(checkinId: number , matchId: number, userId:
     return { id: checkinId, status:'verified' }
 }
 
+/**
+ * M15 — ปฏิเสธได้ทั้งที่รอตรวจและที่ผ่านไปแล้ว (QR/manual ไม่มีใครตรวจก่อน กรรมการต้องถอนทีหลังได้ — มติ 21 ก.ย.)
+ * ถอนระหว่าง in_progress ไม่ย้อนผล M10 (ทีมไม่แพ้บายย้อนหลัง) แค่บันทึกว่าคนนี้ไม่ได้มา — มติ 21 ก.ย. ข้อ 3
+ */
 export async function rejectCheckin(checkinId: number, matchId: number, userId: number, reason: string){
-    await findPendingCheckinOfMatch(checkinId, matchId);
+    await findDecidableCheckinOfMatch(checkinId, matchId, ['pending', 'success', 'exception']);
 
     if (!(await MatchRepo.rejectCheckin(checkinId, userId, reason))) {
-        throw checkinAlreadyDecided();
+        throw new AppError(409, "ALREADY_REJECTED", "รายการเช็คอินนี้ถูกปฏิเสธไปแล้ว");
     }
     return { id: checkinId, status: 'rejected', reason };
 }
@@ -436,8 +449,9 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
     }
 
     // กดซ้ำ = 200 ข้อมูลเดิมเสมอ แม้แมตช์จะเริ่มแข่งไปแล้ว (idempotent ตาม spec M12)
+    // ยกเว้นถูกกรรมการ reject ไปแล้ว → นับเป็นเช็คอินใหม่ทับแถวเดิม (มติ 21 ก.ย. 2-ข) ซึ่งต้องผ่านเงื่อนไขข้างล่างทั้งหมด
     const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
-    if (existing) {
+    if (existing && existing.match_checkin_status !== 'rejected') {
         return {
             isNew: false,
             data: {
@@ -471,14 +485,19 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
         status = 'pending'; // ยังไม่ได้ตรวจ รอกรรมการผ่าน M14/M15
     }
 
-    const inserted = await MatchRepo.insertCheckin({
-        matchId, userId, method: input.method, status, documentType, documentS3Key,
-    });
-    // null = ชน UNIQUE(match_id, user_id) เพราะอีก request ที่ยิงพร้อมกัน insert ไปก่อน → คืนแถวนั้นแบบ idempotent
-    const checkin = inserted ?? await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
+    let isNew: boolean;
+    if (existing) {
+        // แถว rejected → ทับ · false = มีคนเช็คอินทับไปก่อนแล้ว → คืนแถวปัจจุบันแบบ idempotent
+        isNew = await MatchRepo.reCheckin(existing.match_checkin_id, { method: input.method, status, documentType, documentS3Key });
+    } else {
+        const inserted = await MatchRepo.insertCheckin({ matchId, userId, method: input.method, status, documentType, documentS3Key });
+        // null = ชน UNIQUE(match_id, user_id) เพราะอีก request ที่ยิงพร้อมกัน insert ไปก่อน → คืนแถวนั้นแบบ idempotent
+        isNew = inserted !== null;
+    }
+    const checkin = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
 
     return {
-        isNew: inserted !== null,
+        isNew,
         data: {
             id: checkin!.match_checkin_id,
             status: toCheckinStatusApi(checkin!.match_checkin_status),
