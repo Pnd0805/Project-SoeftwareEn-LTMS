@@ -414,6 +414,23 @@ export async function requestAmendment(tournamentId: number, userId: number, inp
     return { id, status: 'pending' as const };
 }
 
+/** C09b — GET /tournaments/:id/amendment-requests (ผู้ยื่นคำขอ) — ทุกสถานะ เห็น reason ของตัวเองและ rejectionReason ของแอดมิน */
+export async function getTournamentAmendments(tournamentId: number) {
+    const rows = await TournamentRepo.findAmendmentsByTournament(tournamentId);
+    return {
+        items: rows.map(row => ({
+            id: row.tournament_amendment_request_id,
+            requestedChanges: normalizeChanges(row.requested_changes),
+            reason: row.request_reason,
+            status: row.tournament_amendment_request_status,
+            requestedAt: row.requested_at.toISOString(),
+            reviewedAt: row.reviewed_at ? row.reviewed_at.toISOString() : null,
+            reviewedBy: row.reviewed_by === null ? null : { id: row.reviewed_by, name: row.reviewer_name },
+            rejectionReason: row.rejection_reason
+        }))
+    };
+}
+
 export async function getPendingAmendments(userId: number, offset: number, page: number, pageSize: number) {
     const admin = await AdminScopeRepo.findAdminByUserId(userId);
     if (!admin) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิว amendment');

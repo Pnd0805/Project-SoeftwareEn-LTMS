@@ -15,6 +15,8 @@ router.get('/', TournamentController.getPublicTournaments);
 router.get('/:id', optionalAuth, TournamentController.getTournament);
 router.patch('/:id', requireAuth, requireOrganizer, validate(updateTournamentSchema), TournamentController.updateTournament);
 router.post('/:id/amendment-requests', requireAuth, requireOrganizer, validate(amendmentRequestSchema), TournamentController.requestAmendment);
+// C09b — ผู้ยื่นคำขอดูคำขอแก้ไขของทัวร์ตัวเอง (FE-organizer-see-their-own 21 ก.ย.)
+router.get('/:id/amendment-requests', requireAuth, requireRequester, TournamentController.getTournamentAmendments);
 
 router.post('/:id/approve', requireAuth, TournamentController.approveTournament);
 router.post('/:id/reject', requireAuth, TournamentController.rejectTournament);

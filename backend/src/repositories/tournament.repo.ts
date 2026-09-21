@@ -647,3 +647,19 @@ export async function completeTournament(tournamentId: number, userId: number, c
         conn.release();
     }
 }
+
+/** C09b — คำขอแก้ไขทั้งหมดของทัวร์ (ผู้ยื่นคำขอดูสถานะ/เหตุผลที่ถูกปฏิเสธ) ล่าสุดก่อน — FE-organizer-see-their-own 21 ก.ย. */
+export type TournamentAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'requested_changes' | 'request_reason' |
+    'tournament_amendment_request_status' | 'requested_at' | 'reviewed_by' | 'reviewed_at' | 'rejection_reason'> & { reviewer_name: string | null };
+
+export async function findAmendmentsByTournament(tournamentId: number): Promise<TournamentAmendmentRow[]> {
+    const [rows] = await pool.query<(TournamentAmendmentRow & RowDataPacket)[]>(
+        `SELECT ar.tournament_amendment_request_id, ar.requested_changes, ar.request_reason, ar.tournament_amendment_request_status,
+                ar.requested_at, ar.reviewed_by, ar.reviewed_at, ar.rejection_reason, u.full_name AS reviewer_name
+         FROM tournament_amendment_requests ar
+         LEFT JOIN users u ON u.user_id = ar.reviewed_by
+         WHERE ar.tournament_id = ?
+         ORDER BY ar.requested_at DESC, ar.tournament_amendment_request_id DESC`,
+        [tournamentId]);
+    return rows;
+}

@@ -83,6 +83,10 @@ export async function updateTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.updateTournament(id, userId(req), req.body));
 }
 
+export async function getTournamentAmendments(req: Request, res: Response) {
+    res.status(200).json(await TournamentService.getTournamentAmendments(req.tournament!.tournament_id));
+}
+
 export async function requestAmendment(req: Request, res: Response) {
     const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     res.status(201).json(await TournamentService.requestAmendment(id, userId(req), req.body));
