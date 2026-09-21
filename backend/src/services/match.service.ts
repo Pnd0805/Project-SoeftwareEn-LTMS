@@ -467,6 +467,16 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
         throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
     }
 
+    // วิธีเช็คอินต้องตรงโหมดแมตช์ (QA 21 ก.ย.): onsite = สแกน QR ที่สนาม · online = ส่งรูปบัตรให้กรรมการตรวจ
+    // ไม่งั้นคนที่ไม่ได้มาสนามส่งรูปแทน QR ได้ / คนแข่งออนไลน์ใช้ QR ที่ถูกแชร์ข้ามขั้นตรวจตัวตนได้
+    const expectedMethod = match.mode === 'online' ? 'photo_online' : 'qr_onsite';
+    if (input.method !== expectedMethod) {
+        throw new AppError(400, "CHECKIN_METHOD_MISMATCH",
+            match.mode === 'online' ? "แมตช์นี้แข่งออนไลน์ ต้องเช็คอินด้วยรูปบัตร (photo_online)"
+                                    : "แมตช์นี้แข่งที่สนาม ต้องเช็คอินด้วยการสแกน QR (qr_onsite)",
+            { mode: match.mode, expectedMethod });
+    }
+
     // ต้องเป็นคนที่ทีมส่งลงแข่งในทัวร์นี้ (ไม่ใช่แค่เป็นสมาชิกทีม — มติ 19 ก.ย. 2569)
     if (!(await MatchRepo.isRegisteredPlayerOfMatch(userId, matchId))) {
         throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");

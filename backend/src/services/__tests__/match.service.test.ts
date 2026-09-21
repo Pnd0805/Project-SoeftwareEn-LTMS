@@ -59,7 +59,7 @@ const START = '2026-10-01T10:00:00.000Z';
 const END = '2026-10-01T11:30:00.000Z';
 
 function match(overrides: Record<string, unknown> = {}) {
-  return { match_id: 1, tournament_id: 50, team_a_id: 11, team_b_id: 12, match_status: 'scheduled', checkin_open_at: null, next_match_id: null, ...overrides } as never;
+  return { match_id: 1, tournament_id: 50, team_a_id: 11, team_b_id: 12, match_status: 'scheduled', mode: 'onsite', checkin_open_at: null, next_match_id: null, ...overrides } as never;
 }
 
 function checkin(overrides: Record<string, unknown> = {}) {
@@ -388,6 +388,30 @@ describe('submitCheckin (M12)', () => {
     await expect(matchService.submitCheckin(1, 9001, qrInput)).resolves.toMatchObject({ isNew: true, data: { id: 5 } });
     expect(MatchRepo.reCheckin).toHaveBeenCalledWith(5, expect.objectContaining({ method: 'qr_onsite', status: 'success' }));
     expect(MatchRepo.insertCheckin).not.toHaveBeenCalled();
+  });
+
+  // QA 21 ก.ย.: วิธีเช็คอินต้องตรงโหมดแมตช์
+  it.each([
+    ['onsite', { method: 'photo_online', documentType: 'student_id', documentS3Key: 'k' }, 'qr_onsite'],
+    ['online', { method: 'qr_onsite', qrPayload: 'qr' }, 'photo_online'],
+  ])('%s match refuses the other mode\'s method with CHECKIN_METHOD_MISMATCH', async (mode, input, expectedMethod) => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open', mode }));
+    vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValue(null);
+
+    await expect(matchService.submitCheckin(1, 9001, input as never)).rejects.toMatchObject({ status: 400, code: 'CHECKIN_METHOD_MISMATCH', extra: { mode, expectedMethod } });
+    expect(MatchRepo.isRegisteredPlayerOfMatch).not.toHaveBeenCalled();
+    expect(MatchRepo.insertCheckin).not.toHaveBeenCalled();
+  });
+
+  it('online match accepts a photo check-in as pending', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'checkin_open', mode: 'online' }));
+    vi.mocked(MatchRepo.findCheckinByMatchAndUser).mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ match_checkin_id: 8, match_checkin_status: 'pending', checked_in_at: new Date(0) } as never);
+    vi.mocked(MatchRepo.isRegisteredPlayerOfMatch).mockResolvedValue(true);
+    vi.mocked(MatchRepo.insertCheckin).mockResolvedValue({ match_checkin_id: 8 } as never);
+
+    await expect(matchService.submitCheckin(1, 9001, { method: 'photo_online', documentType: 'student_id', documentS3Key: 'k' } as never)).resolves.toMatchObject({ isNew: true, data: { id: 8 } });
+    expect(MatchRepo.insertCheckin).toHaveBeenCalledWith(expect.objectContaining({ method: 'photo_online', status: 'pending', documentS3Key: 'k' }));
   });
 
   it('a rejected check-in cannot be redone once the match has started', async () => {
