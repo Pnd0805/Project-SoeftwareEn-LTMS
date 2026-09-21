@@ -99,6 +99,13 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
     expect(FeedbackRepo.upsertOrganizerFeedback).not.toHaveBeenCalled();
   });
 
+  it('a tournament closed before completed_at existed counts as closed (legacy data)', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ completed_at: null }));
+    vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+    expect(await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 5 }))).toMatchObject({ status: 409, code: 'FEEDBACK_CLOSED' });
+    expect(await errOf(Service.castMvpVote(20, 50, 101))).toMatchObject({ status: 409, code: 'MVP_VOTING_CLOSED' });
+  });
+
   it('409 FEEDBACK_REMOVED when an admin removed their earlier feedback', async () => {
     vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
     vi.mocked(FeedbackRepo.findOwn).mockResolvedValue(feedbackRow({ removed_at: new Date() }));

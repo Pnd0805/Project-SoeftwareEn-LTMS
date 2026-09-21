@@ -28,9 +28,23 @@ export function feedbackClosesAt(tournament: TournamentRow): Date | null {
     return mvpWindow(tournament).closesAt;
 }
 
+/**
+ * ทัวร์ที่ completed ก่อนมี migration 022 ไม่มี completed_at (ข้อมูลเก่าเท่านั้น — ระบบจริงใส่ให้ตอนกด B1 เสมอ)
+ * ถือว่าเลย 7 วันไปแล้วแน่นอน → ปิดทั้งให้คะแนนและ MVP
+ */
+function isLegacyCompleted(tournament: TournamentRow): boolean {
+    return tournament.tournament_status === 'completed' && !tournament.completed_at;
+}
+
+function isFeedbackOpen(tournament: TournamentRow, now = new Date()): boolean {
+    if (isLegacyCompleted(tournament)) return false;
+    const closesAt = feedbackClosesAt(tournament);
+    return closesAt === null || now < closesAt;
+}
+
 function assertFeedbackOpen(tournament: TournamentRow, now = new Date()): void {
     const closesAt = feedbackClosesAt(tournament);
-    if (closesAt !== null && now >= closesAt) {
+    if (!isFeedbackOpen(tournament, now)) {
         throw new AppError(409, 'FEEDBACK_CLOSED', `ปิดรับความเห็นแล้ว (ให้คะแนนได้ถึง ${MVP_VOTING_DAYS} วันหลังปิดทัวร์)`, { closesAt });
     }
 }
@@ -109,7 +123,7 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
 
     const mineRow = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
     const mine = mineRow && !mineRow.removed_at ? toMyFeedbackDto(mineRow) : null;
-    const canSubmit = (closesAt === null || new Date() < closesAt)
+    const canSubmit = isFeedbackOpen(tournament)
         && !mineRow?.removed_at
         && (await feedbackBlocker(tournament, userId)) === null;
 
