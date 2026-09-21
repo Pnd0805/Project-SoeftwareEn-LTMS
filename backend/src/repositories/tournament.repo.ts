@@ -190,6 +190,7 @@ export type PublicTournamentFilters = {
     sportTypeId?: number | undefined;
     facultyId?: number | undefined;
     query?: string | undefined;
+    status?: 'public' | 'completed' | undefined;   // B1: default public · completed = ทัวร์ที่จบแล้ว (ผลย้อนหลัง)
 };
 
 /** /me/tournaments (20 ก.ย.) — ทัวร์ที่ฉันเป็น ORG ทุกสถานะ (ยกเว้นที่ลบ) — การ์ดเต็มไม่ต้อง N+1 */
@@ -209,8 +210,8 @@ export async function findTournamentsByOrganizer(userId: number, status: Tournam
 }
 
 export async function findPublicTournaments(filters: PublicTournamentFilters, offset: number, pageSize: number): Promise<{ rows: TournamentRow[]; totalItems: number }> {
-    const where = ["t.tournament_status = 'public'", 't.deleted_at IS NULL'];
-    const params: Array<number | string> = [];
+    const where = ['t.tournament_status = ?', 't.deleted_at IS NULL'];
+    const params: Array<number | string> = [filters.status ?? 'public'];
     if (filters.sportTypeId !== undefined) {
         where.push('t.sport_type_id = ?');
         params.push(filters.sportTypeId);
@@ -595,4 +596,54 @@ export async function changeRegistrationState(tournamentId: number, userId: numb
         [open, userId, tournamentId, !open]
     );
     return result.affectedRows === 1;
+}
+
+/** B1 — แมตช์ที่ยังไม่จบของทัวร์ (ทุกสถานะที่ไม่ใช่ completed) ใช้ตัดสินว่าปิดทัวร์ได้หรือยัง */
+export async function findUnfinishedMatchIds(tournamentId: number): Promise<{ match_id: number; match_status: string }[]> {
+    const [rows] = await pool.query<({ match_id: number; match_status: string } & RowDataPacket)[]>(
+        `SELECT match_id, match_status FROM matches WHERE tournament_id = ? AND match_status <> 'completed' ORDER BY match_id`,
+        [tournamentId]);
+    return rows;
+}
+
+/**
+ * B1 (มติ 21 ก.ย. 2-ง) — ปิดทัวร์ในทรานแซกชันเดียว:
+ *   status → completed + แชมป์ · championships +1 ให้รายชื่อลงแข่งของทีมแชมป์ · last_competed_at ของทุกทีม approved · audit
+ * คืน false ถ้าสถานะเปลี่ยนไปแล้ว (กดพร้อมกัน)
+ */
+export async function completeTournament(tournamentId: number, userId: number, championTeamId: number | null, sportTypeId: number): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [upd] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments SET tournament_status = 'completed', champion_team_id = ?, completed_at = NOW(), completed_by = ?, updated_at = NOW(), updated_by = ?
+             WHERE tournament_id = ? AND tournament_status IN ('public', 'private') AND deleted_at IS NULL`,
+            [championTeamId, userId, userId, tournamentId]);
+        if (upd.affectedRows === 0) { await conn.rollback(); return false; }
+
+        if (championTeamId !== null) {
+            await conn.query<ResultSetHeader>(
+                `INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
+                 SELECT ap.user_id, ?, 0, 0, 0, 1 FROM application_players ap
+                 JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+                 WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved'
+                 ON DUPLICATE KEY UPDATE championships = championships + 1, updated_at = NOW()`,
+                [sportTypeId, tournamentId, championTeamId]);
+        }
+        await conn.query<ResultSetHeader>(
+            `UPDATE teams t JOIN tournament_applications ta ON ta.team_id = t.team_id
+             SET t.last_competed_at = NOW()
+             WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'`,
+            [tournamentId]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'tournament_completed', 'tournament', ?, ?)`,
+            [userId, tournamentId, JSON.stringify({ championTeamId })]);
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 }

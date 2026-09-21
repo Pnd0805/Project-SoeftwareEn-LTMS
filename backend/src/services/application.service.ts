@@ -96,6 +96,9 @@ export async function withdrawApplication(applicationId: number, userId: number)
     if (!isTeamLeader){
         throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
     }
+    if (app.tournament_status === 'completed'){
+        throw new AppError(409, "TOURNAMENT_COMPLETED", "ทัวร์นาเมนต์นี้ปิดการแข่งขันแล้ว ถอนตัวไม่ได้");
+    }
     if (app.tournament_application_status !== "approved"){
         throw new AppError(409, "APPLICATION_NOT_APPROVED", "ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้");
     }

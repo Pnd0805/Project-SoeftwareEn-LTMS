@@ -15,6 +15,8 @@ import { AppError } from '../utils/AppError.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
+import * as MatchRepo from '../repositories/match.repo.js';
+import * as MatchResultService from './matchResult.service.js';
 import { isRequesterOf } from '../middlewares/requireOrganizer.js';
 
 const amendmentFieldSchema = z.object({
@@ -174,7 +176,8 @@ async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> 
 
 async function getVisibleTournament(tournamentId: number, userId?: number): Promise<TournamentRow> {
     const tournament = await getTournamentOr404(tournamentId);
-    if (tournament.tournament_status === 'public') return tournament;
+    // completed = ผลย้อนหลังเป็นสาธารณะเหมือน public (B1 3-ก, 21 ก.ย.)
+    if (tournament.tournament_status === 'public' || tournament.tournament_status === 'completed') return tournament;
 
     // ผู้ยื่นคำขอเห็นทัวร์ของตัวเองทุกสถานะ (รวม pending_approval/rejected/completed) ยกเว้นถูกลบอัตโนมัติ — FE-c17b 20 ก.ย.
     if (userId !== undefined && isRequesterOf(tournament, userId)) {
@@ -479,6 +482,35 @@ export async function publishTournament(tournament: TournamentRow, userId: numbe
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
     }
     return { id: tournament.tournament_id, status: 'public' as const };
+}
+
+/**
+ * B1 — POST /tournaments/:id/complete (มติ 21 ก.ย. 1-ข: ORG กดปิดเอง)
+ *   ต้องมีแมตช์และทุกแมตช์ completed (ไม่มี scheduled/disputed/result_rejected ค้าง)
+ *   แชมป์: elimination = ผู้ชนะแมตช์ที่ไม่มี next_match_id · round_robin = อันดับ 1 ของตาราง (เสมออันดับ 1 → ไม่มีแชมป์)
+ *   รอบชิงแพ้ทั้งคู่ → ปิดได้ แชมป์ null ไม่บวก championships (4-ก)
+ */
+export async function completeTournament(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้ปิดการแข่งขันไปแล้ว');
+    }
+    if (tournament.tournament_status !== 'public' && tournament.tournament_status !== 'private') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ปิดได้เฉพาะทัวร์ที่ผ่านการอนุมัติแล้ว');
+    }
+    const unfinished = await TournamentRepo.findUnfinishedMatchIds(tournament.tournament_id);
+    if (unfinished.length > 0) {
+        throw new AppError(409, 'MATCHES_UNFINISHED', `ยังมีแมตช์ที่ไม่จบ ${unfinished.length} แมตช์ ปิดทัวร์ไม่ได้`,
+            { matches: unfinished.map(m => ({ id: m.match_id, status: m.match_status })) });
+    }
+    if (await MatchRepo.countMatchesByTournament(tournament.tournament_id) === 0) {
+        throw new AppError(409, 'NO_MATCHES', 'ทัวร์นี้ยังไม่ได้สร้างสาย/ตารางแข่ง ปิดไม่ได้');
+    }
+
+    const championTeamId = await MatchResultService.resolveChampionTeamId(tournament);
+    if (!(await TournamentRepo.completeTournament(tournament.tournament_id, userId, championTeamId, tournament.sport_type_id))) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
+    }
+    return { id: tournament.tournament_id, status: 'completed' as const, championTeamId };
 }
 
 export async function unpublishTournament(tournament: TournamentRow, userId: number) {

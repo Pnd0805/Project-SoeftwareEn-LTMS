@@ -108,6 +108,9 @@ export type TournamentRow = {
     rejection_reason : string | null,
     approved_by : number | null,
     approved_at : Date | null,
+    champion_team_id : number | null,   // B1 (migration 022)
+    completed_at : Date | null,
+    completed_by : number | null,
     created_at : Date,
     updated_at : Date | null,
     updated_by : number | null,
@@ -326,5 +329,7 @@ export type TournamentStandingRow = {
     won : number,
     lost : number,
     points : number,
+    goals_for : number,       // B3 tie-break (migration 021)
+    goals_against : number,
     updated_at : Date
 }

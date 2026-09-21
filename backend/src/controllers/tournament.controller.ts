@@ -60,10 +60,15 @@ export async function rejectTournament(req: Request, res: Response) {
 
 export async function getPublicTournaments(req: Request, res: Response) {
     const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+    const status = req.query['status'];
+    if (status !== undefined && status !== 'public' && status !== 'completed') {
+        throw new AppError(400, 'VALIDATION_FAILED', 'status ต้องเป็น public หรือ completed', { fields: { status: 'public | completed' } });
+    }
     const filters = {
         sportTypeId: optionalPositiveInt(req.query['sportTypeId'], 'sportTypeId'),
         facultyId: optionalPositiveInt(req.query['facultyId'], 'facultyId'),
-        query: optionalQuery(req.query['q'])
+        query: optionalQuery(req.query['q']),
+        status: status as 'public' | 'completed' | undefined
     };
     res.status(200).json(await TournamentService.getPublicTournaments(filters, offset, newpage, newpageSize));
 }
@@ -85,6 +90,10 @@ export async function requestAmendment(req: Request, res: Response) {
 
 export async function publishTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.publishTournament(req.tournament!, userId(req)));
+}
+
+export async function completeTournament(req: Request, res: Response) {
+    res.status(200).json(await TournamentService.completeTournament(req.tournament!, userId(req)));
 }
 
 export async function unpublishTournament(req: Request, res: Response) {

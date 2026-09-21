@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { standingsTx } from './matchResult.repo.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 import type { MatchRow, SportTypeRow } from '../types/db.js';
@@ -103,20 +104,18 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
             await placeTeam(conn, match.loser_next_match_id, match.tournament_id, loserTeamId);
         }
 
-        // standings — SQL เดียวกับ verifyMatchResult (matchResult.repo) เพื่อให้ตารางคะแนนนับ walkover เท่าชนะปกติ
-        if(winnerTeamId !== null){
-            await conn.query<ResultSetHeader>(
-                `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-                 VALUES (?, ?, 1, 1, 0, ?)
-                 ON DUPLICATE KEY UPDATE played = played + 1, won = won + 1, points = points + ?, updated_at = NOW()`,
-                [match.tournament_id, winnerTeamId, input.winPoints, input.winPoints]);
-        }
-        for(const loser of input.forfeitedTeamIds ?? (loserTeamId !== null ? [loserTeamId] : [])){
-            await conn.query<ResultSetHeader>(
-                `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-                 VALUES (?, ?, 1, 0, 1, 0)
-                 ON DUPLICATE KEY UPDATE played = played + 1, lost = lost + 1, updated_at = NOW()`,
-                [match.tournament_id, loser]);
+        // standings — ตัวเดียวกับ verify (standingsTx) เพื่อให้ตารางคะแนนนับ walkover เท่าชนะปกติ + ประตูตาม walkover_score (B3)
+        if(winnerTeamId !== null && loserTeamId !== null){
+            await standingsTx(conn, match.tournament_id, winnerTeamId, loserTeamId, input.winPoints, input.scoreData, 1);
+        }else{
+            // double forfeit / dead slot: ไม่มีผู้ชนะ — ฝ่ายที่สละสิทธิ์นับแพ้ 1 แมตช์ ไม่มีประตู
+            for(const loser of input.forfeitedTeamIds ?? (loserTeamId !== null ? [loserTeamId] : [])){
+                await conn.query<ResultSetHeader>(
+                    `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+                     VALUES (?, ?, 1, 0, 1, 0)
+                     ON DUPLICATE KEY UPDATE played = played + 1, lost = lost + 1, updated_at = NOW()`,
+                    [match.tournament_id, loser]);
+            }
         }
 
         // คำขอโอน/สลับกรรมการที่อ้างแมตช์นี้ไม่มีความหมายแล้ว (GUIDE/11 §5.1)

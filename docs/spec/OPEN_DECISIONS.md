@@ -161,3 +161,22 @@ FE-check-has-gone-through: `qr_onsite` ผ่านทันทีตอนส�
 - **2 → ข**: ถูก reject แล้ว ผู้เล่นเช็คอินใหม่ได้ (M12) หรือกรรมการกดให้ใหม่ได้ (M19) — UPDATE ทับแถวเดิม (UNIQUE match+user) ล้าง `rejection_reason`/`verified_*` · ต้อง `checkin_open` เหมือนครั้งแรก
 - **3 → ไม่กระทบผล**: ถอนระหว่าง `in_progress` ไม่ย้อนคำตัดสิน M10 (ทีมไม่แพ้บายย้อนหลัง) แค่บันทึกว่าคนนี้ไม่ได้มา
 - error ใหม่ `ALREADY_REJECTED` (409) แยกจาก `ALREADY_DECIDED` เพื่อให้ FE รู้ว่าเช็คอินใหม่ได้
+
+## OD-20 — No draws; standings tie-break — ✅ Resolved 2026-09-21
+
+FE-match-end-level / FE-standings-carry-points-draws (B3)
+
+- **ไม่มีผลเสมอ** ทุกรูปแบบสาย: S01 บังคับ `winnerTeamId` และสกอร์ผู้ชนะ > ผู้แพ้ (`ensureScoreData` คงเดิม) · กติกา = เสมอต้องตัดสินให้จบในสนาม (ต่อเวลา/จุดโทษ/เซตตัดสิน) แล้วส่งสกอร์รวมที่มีผู้ชนะ · กีฬาทั้ง 5 ใน MVP 93 จบด้วยผู้ชนะได้ · แต้ม = ชนะ × `WIN_POINTS` (3)
+- **tie-break ก**: แต้ม → ผลต่างประตู → ประตูได้ → ชนะ → ชื่อทีม (ให้ลำดับนิ่ง ไม่ถือว่าต่างอันดับ) · migration 021 เพิ่ม `goals_for/goals_against` ใน `tournament_standings` + backfill จาก `score_data` ของผล verified/walkover · บวก/ถอนพร้อม standings ใน verify/reject/amend/walkover (`standingsTx`) · amend ที่ผู้ชนะเดิมแต่สกอร์เปลี่ยน → แก้เฉพาะประตู
+- S12 คืน `played, points, goalsFor, goalsAgainst, goalDiff` · `rank` เท่ากันได้ (1,1,3) → FE เลิกเดา `wins*3`
+- ทางเลือกที่ปฏิเสธ: เสมอเฉพาะ round robin (ต้องมี draw_points ต่อกีฬา + tiebreak JSON + draws ใน player stats — ใหญ่กว่ามาก) · head-to-head (ตัด 3 ทีมวนกันไม่ได้)
+
+## OD-21 — Closing a tournament — ✅ Resolved 2026-09-21
+
+FE-closing-tournament-nothing-sets (B1): เดิมไม่มีอะไร set `tournament_status = 'completed'` → S10 winner 404 ตลอด, `championships` ไม่เคยบวก, `last_competed_at` ไม่เคยอัปเดต, ทัวร์ completed (ถ้ามี) หายจากทุกคนยกเว้นเจ้าของ
+
+- **1-ข ORG กดเอง** `POST /tournaments/:id/complete` (C14b) — ต้องมีแมตช์และทุกแมตช์ `completed` (`MATCHES_UNFINISHED` / `NO_MATCHES`) · ไม่มี scheduler จึงไม่ auto (ทางเลือก ก/ค ปฏิเสธ)
+- **2-ง ปิดแล้วทำครบ** ในทรานแซกชัน: `champion_team_id` + `completed_at/by` (migration 022) · `championships +1` ให้ `application_players` ของทีมแชมป์ · `teams.last_competed_at = NOW()` ทุกทีม approved · audit `tournament_completed` · **ล็อกทุก write** ใต้ `/tournaments/:id/*`, `/matches/:id/*` (middleware `lockCompletedTournament` ใน routes/index — ยกเว้น announcements) และ P08 ถอนตัว → 409 `TOURNAMENT_COMPLETED`
+- **3-ก ทัวร์จบเป็นสาธารณะ**: C07/C17/S10/S12 เห็นได้ทุกคนเหมือน `public` · C06 `?status=completed` (default `public` — ทัวร์ที่จบไม่ปนกับที่กำลังรับสมัคร)
+- **4-ก รอบชิงแพ้ทั้งคู่ปิดได้** แชมป์ `null` ไม่บวกแชมป์ให้ใคร · round robin เสมออันดับ 1 ทุกเกณฑ์ → แชมป์ `null` เช่นกัน (ระบบไม่ตัดสินแทน ORG — ตัดสินเอง 21 ก.ย.)
+- แชมป์ round robin = อันดับ 1 ของ S12 (ก่อนหน้านี้ S10 ใช้ `next_match_id IS NULL` ซึ่งเป็นทุกแมตช์ของ RR — ผิด)

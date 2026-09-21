@@ -16,8 +16,12 @@ import { refereeAdminRouter } from './refereeAdmin.routes.js';
 import Tournament from './tournament.routes.js';
 import Amendment from './amendment.routes.js';
 import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
+import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
+
+// B1 — ทัวร์ที่ completed แล้ว ปฏิเสธทุก write ใต้ /tournaments/:id และ /matches/:id (ยกเว้น announcements)
+router.use(['/tournaments/:id', '/matches/:id'], lockCompletedTournament);
 
 
 router.use('/' , Reference);

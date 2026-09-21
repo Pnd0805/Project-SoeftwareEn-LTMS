@@ -245,6 +245,9 @@ CREATE TABLE tournaments (
   rejection_reason TEXT NULL,
   approved_by INT NULL,
   approved_at DATETIME NULL,
+  champion_team_id INT NULL,       -- B1 (migration 022) ตั้งตอน ORG ปิดทัวร์ · NULL = ไม่มีแชมป์ (รอบชิงแพ้ทั้งคู่ / RR เสมออันดับ 1)
+  completed_at DATETIME NULL,      -- B1 เวลาที่ปิดทัวร์ (tournament_status = 'completed')
+  completed_by INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
   updated_by INT NULL,
@@ -537,6 +540,8 @@ CREATE TABLE tournament_standings (
   won INT NOT NULL DEFAULT 0,
   lost INT NOT NULL DEFAULT 0,
   points INT NOT NULL DEFAULT 0,
+  goals_for INT NOT NULL DEFAULT 0,       -- B3 (migration 021) tie-break: แต้ม → ผลต่าง → ประตูได้ → ชนะ
+  goals_against INT NOT NULL DEFAULT 0,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
   FOREIGN KEY (team_id) REFERENCES teams(team_id),
@@ -764,4 +769,6 @@ INSERT INTO schema_migrations (name) VALUES
   ('017_team_visibility_join_requests.sql'),
   ('018_application_players.sql'),   -- เดิมชื่อ 014 บน backend_shokun_2 — renumber ตอน merge 20 ก.ย. (ชนกับ 014 ของ BE_KN)
   ('019_drop_team_member_position.sql'),   -- เดิม 015
-  ('020_amendment_reason_stat_integer_only.sql');
+  ('020_amendment_reason_stat_integer_only.sql'),
+  ('021_standings_goals.sql'),
+  ('022_tournament_completion.sql');

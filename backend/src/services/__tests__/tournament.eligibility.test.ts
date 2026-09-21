@@ -90,7 +90,12 @@ describe('setEligibilityRules (PUT, C17b)', () => {
 });
 
 describe('getEligibilityRules (C17) — requester sees their own pending/rejected tournament', () => {
-  it.each(['pending_approval', 'rejected', 'completed'] as const)('owner reads rules while %s; stranger gets 404', async (status) => {
+  it('completed is public (B1 3-ก): everyone reads it', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'completed', requested_by_user_id: 9 } as never));
+    vi.mocked(ApplicationRepo.findEligibilityRules).mockResolvedValue([]);
+    await expect(Service.getEligibilityRules(50)).resolves.toEqual({ items: [] });
+  });
+  it.each(['pending_approval', 'rejected'] as const)('owner reads rules while %s; stranger gets 404', async (status) => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: status, requested_by_user_id: 9 } as never));
     vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(null);
     vi.mocked(ApplicationRepo.findEligibilityRules).mockResolvedValue([]);

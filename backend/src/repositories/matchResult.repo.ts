@@ -40,11 +40,48 @@ export async function submitMatchResult(matchId : number , winnerId : number , s
 }
 
 
+/** ประตูของทีมจาก score_data ({"<teamId>": n}) — ไม่มี/ไม่ใช่ตัวเลข = 0 */
+function goalsOf(score : Record<string, number> | null | undefined, teamId : number): number{
+    const v = score?.[String(teamId)];
+    return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * standings ± 1 แมตช์ (sign = +1 บวก / -1 ถอน) — B3: เก็บประตูได้/เสียไว้ tie-break (migration 021)
+ * ใช้ร่วมกันโดย verify/amend/uphold (บวก) และ reject/amend (ถอน) ให้ตรงกันเสมอ
+ */
+export async function standingsTx(conn : PoolConnection, tournamentId : number, winnerId : number, loserId : number, point : number,
+                                  score : Record<string, number> | null, sign : 1 | -1){
+    const gw = goalsOf(score, winnerId), gl = goalsOf(score, loserId);
+    if(sign === 1){
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points, goals_for, goals_against)
+             VALUES (?, ?, 1, 1, 0, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE played=played+1, won=won+1, points=points+?, goals_for=goals_for+?, goals_against=goals_against+?, updated_at=NOW()`,
+            [tournamentId, winnerId, point, gw, gl, point, gw, gl]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points, goals_for, goals_against)
+             VALUES (?, ?, 1, 0, 1, 0, ?, ?)
+             ON DUPLICATE KEY UPDATE played=played+1, lost=lost+1, goals_for=goals_for+?, goals_against=goals_against+?, updated_at=NOW()`,
+            [tournamentId, loserId, gl, gw, gl, gw]);
+    }else{
+        await conn.query<ResultSetHeader>(
+            `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), won = GREATEST(won - 1, 0), points = GREATEST(points - ?, 0),
+                    goals_for = GREATEST(goals_for - ?, 0), goals_against = GREATEST(goals_against - ?, 0), updated_at = NOW()
+             WHERE tournament_id = ? AND team_id = ?`, [point, gw, gl, tournamentId, winnerId]);
+        await conn.query<ResultSetHeader>(
+            `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), lost = GREATEST(lost - 1, 0),
+                    goals_for = GREATEST(goals_for - ?, 0), goals_against = GREATEST(goals_against - ?, 0), updated_at = NOW()
+             WHERE tournament_id = ? AND team_id = ?`, [gl, gw, tournamentId, loserId]);
+    }
+}
+
 /**
  * ผลของ "ทีมนี้ชนะ" ที่ต้องเกิดพร้อมกันเสมอ — ใช้ทั้ง S02 verify และ S04 amend (B4)
- *   เดินสาย (ผู้ชนะ→next, ผู้แพ้→loser_next + sync bracket_nodes) · standings · player_profile_stats
+ *   เดินสาย (ผู้ชนะ→next, ผู้แพ้→loser_next + sync bracket_nodes) · standings (+ประตู B3) · player_profile_stats
  */
-async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number){
+async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number,
+                              score : Record<string, number> | null){
     for(const [teamId, nextId] of [[winnerId, match.next_match_id], [loserId, match.loser_next_match_id]] as const){
         if(nextId === null) continue;
         const [a] = await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = ? WHERE match_id = ? AND tournament_id = ? AND team_a_id IS NULL`,
@@ -56,16 +93,7 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
         await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, nextId);   // B2: หน้าสายเห็นผู้ชนะในรอบถัดไป
     }
 
-    await conn.query<ResultSetHeader>(
-        `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-        VALUES (?, ?, 1, 1, 0, ?)
-        ON DUPLICATE KEY UPDATE played=played+1, won=won+1, points=points+?, updated_at=NOW()`,
-        [match.tournament_id, winnerId, point, point]);
-    await conn.query<ResultSetHeader>(
-        `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
-        VALUES (?, ?, 1, 0, 1, 0)
-        ON DUPLICATE KEY UPDATE played=played+1, lost=lost+1, updated_at=NOW()`,
-        [match.tournament_id, loserId]);
+    await standingsTx(conn, match.tournament_id, winnerId, loserId, point, score, 1);
 
     // player stats ให้เฉพาะคนที่ทีมส่งลงแข่งในทัวร์นี้ (application_players — มติ 19 ก.ย.) ไม่ใช่ทุกคนในคลังทีม
     for(const [teamId, won] of [[winnerId, 1], [loserId, 0]] as const){
@@ -84,7 +112,8 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
  * service ต้องเช็คก่อนว่าแมตช์ถัดไปยัง scheduled (ไม่งั้นทีมที่ถูกเอาออกอาจแข่ง/บายไปแล้ว)
  * player stats ถอนตามรายชื่อลงแข่ง (application_players) ซึ่งล็อกหลัง approved · GREATEST(0) กันติดลบ
  */
-async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number){
+async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number,
+                             score : Record<string, number> | null){
     for(const [teamId, nextId] of [[winnerId, match.next_match_id], [loserId, match.loser_next_match_id]] as const){
         if(nextId === null) continue;
         await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = NULL WHERE match_id = ? AND team_a_id = ?`, [nextId, teamId]);
@@ -92,12 +121,7 @@ async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId :
         await BracketNodeRepo.syncNodeTeamsFromMatchTx(conn, nextId);
     }
 
-    await conn.query<ResultSetHeader>(
-        `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), won = GREATEST(won - 1, 0), points = GREATEST(points - ?, 0), updated_at = NOW()
-         WHERE tournament_id = ? AND team_id = ?`, [point, match.tournament_id, winnerId]);
-    await conn.query<ResultSetHeader>(
-        `UPDATE tournament_standings SET played = GREATEST(played - 1, 0), lost = GREATEST(lost - 1, 0), updated_at = NOW()
-         WHERE tournament_id = ? AND team_id = ?`, [match.tournament_id, loserId]);
+    await standingsTx(conn, match.tournament_id, winnerId, loserId, point, score, -1);
 
     // ถอนจากรายชื่อลงแข่งชุดเดียวกับที่บวก (application_players ล็อกหลัง approved — Q2-ค) จึงตรงกันเสมอ
     for(const [teamId, won] of [[winnerId, 1], [loserId, 0]] as const){
@@ -141,7 +165,7 @@ export async function verifyMatchResult(matchResId : number, matchId : number , 
                                            WHERE match_result_id = ?`, ['verified' , userId , matchResId]);
         await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = ? , updated_at = NOW()
                                            WHERE match_id = ?` , ['completed' ,matchId ]);
-        await applyOutcomeTx(conn, match, winnerId, loserOf(match, winnerId), tour.sport_type_id, point);
+        await applyOutcomeTx(conn, match, winnerId, loserOf(match, winnerId), tour.sport_type_id, point, matchRes.score_data);
         await conn.query<ResultSetHeader>(
             `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details)
             VALUES(?, ?, ?, ?, ?)`,
@@ -167,13 +191,14 @@ export async function disputeMatchResult(matchResId : number, matchId : number ,
  */
 export async function upholdMatchResult(matchResId : number , match : MatchRow , userId : number , resolutionNote : string ,
                                         applyOutcome : { winnerId : number; sportId : number; point : number } | null){
+    const score = applyOutcome ? (await findById(matchResId))?.score_data ?? null : null;
     await inTx(async conn => {
         await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'verified' , dispute_resolved_at = NOW() ,
                                                                     verified_by_user_id = COALESCE(verified_by_user_id, ?) , verified_at = COALESCE(verified_at, NOW())
                                         WHERE match_result_id = ?`,[userId , resolutionNote , userId , matchResId]);
         await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = 'completed' , updated_at = NOW() WHERE match_id = ?`,[match.match_id]);
         if(applyOutcome){
-            await applyOutcomeTx(conn, match, applyOutcome.winnerId, loserOf(match, applyOutcome.winnerId), applyOutcome.sportId, applyOutcome.point);
+            await applyOutcomeTx(conn, match, applyOutcome.winnerId, loserOf(match, applyOutcome.winnerId), applyOutcome.sportId, applyOutcome.point, score);
             await conn.query<ResultSetHeader>(
                 `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details) VALUES(?, 'match_result_verified', 'match', ?, ?)`,
                 [userId, match.match_id, JSON.stringify({ winnerId : applyOutcome.winnerId, verifiedBy : userId, viaDispute : true })]);
@@ -184,8 +209,9 @@ export async function upholdMatchResult(matchResId : number , match : MatchRow ,
 /** S04 reject (B4) — ถอนผลที่ verify ไปแล้ว (ถ้าเคย verify) แล้วรอผู้ส่งส่งใหม่ (S01 → S02) · แมตช์ → result_rejected */
 export async function rejectMatchResult(matchResId : number , match : MatchRow , oldWinnerId : number , sportId : number , point : number ,
                                         userId : number , resolutionNote : string , wasVerified : boolean){
+    const oldScore = wasVerified ? (await findById(matchResId))?.score_data ?? null : null;
     await inTx(async conn => {
-        if(wasVerified) await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
+        if(wasVerified) await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point, oldScore);
         await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_resolved_by = ? , dispute_resolution = ? , match_result_status = 'rejected' , dispute_resolved_at = NOW() ,
                                                                     verified_by_user_id = NULL , verified_at = NULL
                                         WHERE match_result_id = ?`,[userId , resolutionNote , matchResId]);
@@ -200,13 +226,18 @@ export async function rejectMatchResult(matchResId : number , match : MatchRow ,
 export async function amendMatchResult(matchResId : number , match : MatchRow , oldWinnerId : number , newWinnerId : number ,
                                        newScore : Record<string , number> , sportId : number , point : number , userId : number , resolutionNote : string ,
                                        wasVerified : boolean){
+    const oldScore = wasVerified ? (await findById(matchResId))?.score_data ?? null : null;
     await inTx(async conn => {
         // เคย verify แล้วและผู้ชนะเปลี่ยน → ถอนของเดิมก่อน · ยังไม่เคย verify → ใส่ผลใหม่เลย (เท่ากับ verify ด้วยค่าที่ ORG แก้)
+        // ผู้ชนะเดิมแต่สกอร์เปลี่ยน → สาย/stats ไม่ขยับ แก้เฉพาะประตูในตาราง (B3)
         if(wasVerified && oldWinnerId !== newWinnerId){
-            await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point);
-            await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point);
-        }else if(!wasVerified){
-            await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point);
+            await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point, oldScore);
+            await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point, newScore);
+        }else if(wasVerified){
+            await standingsTx(conn, match.tournament_id, newWinnerId, loserOf(match, newWinnerId), point, oldScore, -1);
+            await standingsTx(conn, match.tournament_id, newWinnerId, loserOf(match, newWinnerId), point, newScore, 1);
+        }else{
+            await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point, newScore);
         }
         await conn.query<ResultSetHeader>(`UPDATE match_results SET winner_team_id = ? , score_data = ? ,
                                                                     dispute_resolved_by = ? , dispute_resolution = ? , dispute_resolved_at = NOW() ,
@@ -333,16 +364,16 @@ export async function countMatches(tourId : number) : Promise<{ matchCount : num
     return { matchCount : rows[0]!.matchCount , matchesCompleted : Number(rows[0]!.matchesCompleted ?? 0) };
 }
 
-export type StandingRow = Pick<TournamentStandingRow , 'won' | 'lost'> & Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id'>;
+export type StandingRow = Pick<TournamentStandingRow , 'played' | 'won' | 'lost' | 'points' | 'goals_for' | 'goals_against'> & Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id'>;
 
-/** S12 — เรียงตามแต้มมาก่อน แล้วค่อยชนะมาก (ไม่มี pointsFor/pointsAgainst — ดู GUIDE/07 A11) */
+/** S12 — tie-break ก (มติ 21 ก.ย.): แต้ม → ผลต่างประตู → ประตูได้ → ชนะ → ชื่อทีม */
 export async function findStandings(tourId : number) : Promise<StandingRow[]>{
     const [rows] = await pool.query<(StandingRow & RowDataPacket)[]>(
-        `SELECT t.team_id, t.name, t.sport_type_id, ts.won, ts.lost
+        `SELECT t.team_id, t.name, t.sport_type_id, ts.played, ts.won, ts.lost, ts.points, ts.goals_for, ts.goals_against
          FROM tournament_standings ts
          JOIN teams t ON t.team_id = ts.team_id
          WHERE ts.tournament_id = ?
-         ORDER BY ts.points DESC, ts.won DESC`,
+         ORDER BY ts.points DESC, (ts.goals_for - ts.goals_against) DESC, ts.goals_for DESC, ts.won DESC, t.name ASC`,
         [tourId]);
     return rows;
 }

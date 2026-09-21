@@ -20,6 +20,8 @@ router.post('/:id/approve', requireAuth, TournamentController.approveTournament)
 router.post('/:id/reject', requireAuth, TournamentController.rejectTournament);
 router.post('/:id/publish', requireAuth, requireOrganizer, TournamentController.publishTournament);
 router.post('/:id/unpublish', requireAuth, requireOrganizer, TournamentController.unpublishTournament);
+// B1 — ORG ปิดทัวร์ (มติ 21 ก.ย. 1-ข)
+router.post('/:id/complete', requireAuth, requireOrganizer, TournamentController.completeTournament);
 router.post('/:id/open-registration', requireAuth, requireOrganizer, TournamentController.openRegistration);
 router.post('/:id/close-registration', requireAuth, requireOrganizer, TournamentController.closeRegistration);
 router.get('/:id/eligibility-rules', optionalAuth, TournamentController.getEligibilityRules);

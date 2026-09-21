@@ -53,6 +53,8 @@ export type TournamentDetailDto = {
     maxAge: number | null;
     organizer: UserRefDto;
     approvedTeamCount: number;
+    championTeamId: number | null;   // B1 — มีค่าเมื่อ status = completed และมีแชมป์
+    completedAt: string | null;
 };
 
 export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto, approvedTeamCount: number): TournamentDetailDto {
@@ -77,6 +79,8 @@ export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto,
         genderRequirement: row.gender_requirement,
         minAge: row.min_age,
         maxAge: row.max_age,
+        championTeamId: row.champion_team_id ?? null,
+        completedAt: toIso(row.completed_at ?? null),
         organizer,
         approvedTeamCount
     };

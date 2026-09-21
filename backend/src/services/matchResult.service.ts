@@ -5,14 +5,14 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 
 
-import { toDisputeResultDto, toSubmittedResultDto, toVerifiedResultDto , toResolveResultDto, toVerifiedResult , toPlayerMatchStat, toTournamentWinnerDto, toStandingDto} from '../mappers/matchResult.mapper.js';
+import { toDisputeResultDto, toSubmittedResultDto, toVerifiedResultDto , toResolveResultDto, toVerifiedResult , toPlayerMatchStat, toTournamentWinnerDto, toStandingDto , rankStandings } from '../mappers/matchResult.mapper.js';
 import { checkMatch, checkTournament, checkTeam } from '../utils/checkExist.js';
 import { AppError } from '../utils/AppError.js';
 import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { WIN_POINTS } from '../config/scoring.js';
 import type { ResolveInput } from '../schemas/matchResult.schema.js';
-import type { MatchRow } from '../types/db.js';
+import type { MatchRow , TournamentRow } from '../types/db.js';
 import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 
@@ -210,10 +210,35 @@ export async function getPlayerMatchStat(matchId : number){
     return { items : items};
 }
 
+/**
+ * B1 — หาแชมป์ตอน ORG ปิดทัวร์ (ทุกแมตช์ completed แล้ว)
+ *   round_robin: อันดับ 1 ของตาราง · เสมออันดับ 1 ทุกเกณฑ์ → null (ไม่ตัดสินแทน ORG)
+ *   elimination: ผู้ชนะแมตช์ที่ไม่มี next_match_id · รอบชิงแพ้ทั้งคู่ → null
+ */
+export async function resolveChampionTeamId(tour : TournamentRow) : Promise<number | null>{
+    if(tour.bracket_format === 'round_robin'){
+        const items = rankStandings(await MatchResRepo.findStandings(tour.tournament_id));
+        if(items.length === 0) return null;
+        if(items.length > 1 && items[1]!.rank === 1) return null;
+        return items[0]!.team.id;
+    }
+    const finalResult = await MatchResRepo.findFinalMatchResult(tour.tournament_id);
+    return finalResult?.winner_team_id ?? null;
+}
+
 export async function getChampion(tourId : number){
     const tour = await checkTournament(tourId);
     if(tour.tournament_status !== 'completed'){
         throw new AppError(404 , "NOT_FOUND" , "ทัวร์นาเมนต์นี้ยังไม่จบการแข่งขัน");
+    }
+    const completedAt = tour.completed_at ? tour.completed_at.toISOString() : tour.event_end_date;
+
+    // round robin — แชมป์/รองแชมป์จากตาราง ไม่มี "รอบชิง"
+    if(tour.bracket_format === 'round_robin'){
+        const items = rankStandings(await MatchResRepo.findStandings(tourId));
+        const champion = tour.champion_team_id === null ? null : items.find(i => i.team.id === tour.champion_team_id) ?? null;
+        const runnerUp = champion ? items.find(i => i.team.id !== champion.team.id) ?? null : null;
+        return toTournamentWinnerDto(champion?.team ?? null, runnerUp?.team ?? null, null, completedAt, false);
     }
 
     const finalResult = await MatchResRepo.findFinalMatchResult(tourId);
@@ -223,16 +248,17 @@ export async function getChampion(tourId : number){
 
     const isWalkover = finalResult.match_result_status === 'walkover';
 
-    // รอบชิงแพ้ทั้งคู่ (M17 ไม่มาตามนัดทั้งสองทีม) → ไม่มีแชมป์/รองแชมป์ (GUIDE/11 §10.5)
-    if(finalResult.winner_team_id === null){
-        return toTournamentWinnerDto(null, null, null, tour.event_end_date, isWalkover);
+    // รอบชิงแพ้ทั้งคู่ (M17 ไม่มาตามนัดทั้งสองทีม) → ไม่มีแชมป์/รองแชมป์ (GUIDE/11 §10.5) · แชมป์ที่เก็บไว้ตอนปิดทัวร์เป็นหลัก
+    const championTeamId = tour.champion_team_id ?? finalResult.winner_team_id;
+    if(championTeamId === null){
+        return toTournamentWinnerDto(null, null, null, completedAt, isWalkover);
     }
 
-    const runnerUpTeamId = finalResult.team_a_id === finalResult.winner_team_id
+    const runnerUpTeamId = finalResult.team_a_id === championTeamId
         ? finalResult.team_b_id
         : finalResult.team_a_id;
 
-    const championRow = await checkTeam(finalResult.winner_team_id);
+    const championRow = await checkTeam(championTeamId);
     // รอบชิงที่คู่แข่งว่างถาวร (dead slot) ไม่มีรองแชมป์
     const runnerUpRow = runnerUpTeamId === null ? null : await TeamRepo.findById(runnerUpTeamId);
 
@@ -240,7 +266,7 @@ export async function getChampion(tourId : number){
         toTeamRef(championRow),
         runnerUpRow ? toTeamRef(runnerUpRow) : null,
         finalResult.score_data,
-        tour.event_end_date,
+        completedAt,
         isWalkover
     );
 }
@@ -259,7 +285,7 @@ export async function getStandings(tourId : number){
     await checkTournament(tourId);
 
     const rows = await MatchResRepo.findStandings(tourId);
-    const items = rows.map((row , index) => toStandingDto(row , index + 1));
+    const items = rankStandings(rows);
 
     return { items };
 }

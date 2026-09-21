@@ -124,16 +124,39 @@ export function toTournamentWinnerDto(
 
 export type standingDto = {
     team : TeamRef,
+    played : number,
     wins : number,
     losses : number,
-    rank : number
+    points : number,
+    goalsFor : number,
+    goalsAgainst : number,
+    goalDiff : number,
+    rank : number      // ทีมที่เสมอกันทุกเกณฑ์ได้อันดับเท่ากัน (1,1,3) — B3
 }
 
-export function toStandingDto(row : { team_id : number , name : string , sport_type_id : number , won : number , lost : number } , rank : number) : standingDto{
+export type StandingSource = { team_id : number , name : string , sport_type_id : number , played : number , won : number , lost : number , points : number , goals_for : number , goals_against : number };
+
+export function toStandingDto(row : StandingSource , rank : number) : standingDto{
     return {
         team : { id : row.team_id , name : row.name , sportTypeId : row.sport_type_id },
+        played : row.played,
         wins : row.won,
         losses : row.lost,
+        points : row.points,
+        goalsFor : row.goals_for,
+        goalsAgainst : row.goals_against,
+        goalDiff : row.goals_for - row.goals_against,
         rank : rank
     };
+}
+
+/** อันดับแบบ "เท่ากันได้" — เกณฑ์เดียวกับ ORDER BY ใน findStandings (แต้ม, ผลต่าง, ประตูได้, ชนะ) · ชื่อทีมใช้แค่ให้ลำดับนิ่ง ไม่ถือว่าต่างอันดับ */
+export function rankStandings(rows : StandingSource[]) : standingDto[]{
+    const key = (r : StandingSource) => `${r.points}|${r.goals_for - r.goals_against}|${r.goals_for}|${r.won}`;
+    let rank = 0, prevKey = '';
+    return rows.map((row , i) => {
+        const k = key(row);
+        if(k !== prevKey){ rank = i + 1; prevKey = k; }
+        return toStandingDto(row , rank);
+    });
 }
