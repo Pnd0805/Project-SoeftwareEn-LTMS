@@ -552,14 +552,19 @@ CREATE TABLE tournament_standings (
 -- กลุ่ม 11 — การมีส่วนร่วม  (§11)
 -- =====================================================================
 
+-- ติดตามได้ทั้งผู้เล่นและทีม (C8, migration 024) — แถวหนึ่งชี้อย่างใดอย่างหนึ่งพอดี
 CREATE TABLE follows (
   follow_id INT PRIMARY KEY AUTO_INCREMENT,
   follower_user_id INT NOT NULL,
-  followed_user_id INT NOT NULL,
+  followed_user_id INT NULL,
+  followed_team_id INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (follower_user_id) REFERENCES users(user_id),
   FOREIGN KEY (followed_user_id) REFERENCES users(user_id),
-  UNIQUE (follower_user_id, followed_user_id)
+  CONSTRAINT fk_follows_team FOREIGN KEY (followed_team_id) REFERENCES teams(team_id),
+  UNIQUE (follower_user_id, followed_user_id),
+  CONSTRAINT uq_follow_team UNIQUE (follower_user_id, followed_team_id),
+  CONSTRAINT chk_follow_one_target CHECK ((followed_user_id IS NULL) <> (followed_team_id IS NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE notifications (

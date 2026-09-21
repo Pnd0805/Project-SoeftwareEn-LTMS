@@ -18,6 +18,7 @@ import Amendment from './amendment.routes.js';
 import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
 import { meNotificationRouter } from './notification.routes.js';
 import { tournamentFeedbackRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
+import { userFollowRouter, teamFollowRouter, meFollowRouter } from './follow.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
@@ -60,5 +61,10 @@ router.use('/me' , meNotificationRouter);
 router.use('/tournaments' , tournamentFeedbackRouter);
 router.use('/feedback' , feedbackRouter);
 router.use('/admin' , adminFeedbackRouter);
+
+// C8 follows + career
+router.use('/users' , userFollowRouter);
+router.use('/teams' , teamFollowRouter);
+router.use('/me' , meFollowRouter);
 
 export default router;

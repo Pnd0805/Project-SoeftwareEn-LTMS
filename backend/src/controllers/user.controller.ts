@@ -17,7 +17,7 @@ export async function getMe(req : Request , res : Response){
 
 export async function getUserById(req : Request , res : Response){
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
-    res.status(200).json(await UserService.getUserById(userId));
+    res.status(200).json(await UserService.getUserById(userId, req.user?.user_id));
 };
 
 export async function getUserStats(req : Request , res : Response){

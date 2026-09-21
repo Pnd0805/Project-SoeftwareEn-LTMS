@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../follow.service.js', () => ({
+  getProfileCounts: vi.fn(() => Promise.resolve({ followerCount: 4, followingCount: 2, isFollowing: true })),
+  getMvpVotesReceived: vi.fn(() => Promise.resolve(7)),
+}));
+
 vi.mock('../../repositories/user.repo.js', () => ({
   searchByName: vi.fn(),
   update: vi.fn(),
@@ -138,7 +143,8 @@ describe('getUserById', () => {
       { id: 1, name: 'Team A' },
       { id: 2, name: 'Team B' },
     ]);
-    expect(result).toEqual({ id: 1, teams: [] });
+    // C8 — ต่อท้ายด้วยตัวเลขผู้ติดตาม
+    expect(result).toEqual({ id: 1, teams: [], followerCount: 4, followingCount: 2, isFollowing: true });
   });
 
   it('propagates the error from checkUser without querying teams', async () => {
@@ -173,7 +179,8 @@ describe('getUserStats', () => {
     expect(mockedCheckUser).toHaveBeenCalledWith(1);
     expect(mockedStatRepo.findStatsByUser).toHaveBeenCalledWith(1);
     expect(mockedToUserStatsDto).toHaveBeenCalledWith(1, [{ sport_type_id: 1, wins: 3 }]);
-    expect(result).toEqual({ userId: 1, stats: [] });
+    // C8 — MVP รวม · แต้ม Pick'em (users.total_points) · ผู้ติดตาม
+    expect(result).toEqual({ userId: 1, stats: [], mvpVotes: 7, pickemPoints: 0, followerCount: 4 });
   });
 
   it('propagates the error from checkUser without querying stats', async () => {

@@ -1,6 +1,7 @@
 import * as UserRepo from '../repositories/user.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as StatRepo from '../repositories/playerStat.repo.js';
+import * as FollowService from './follow.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkUser } from '../utils/checkExist.js';
@@ -11,18 +12,26 @@ import { toUserStatsDto } from '../mappers/stat.mapper.js';
 
 import type { UpdateMeInput } from '../schemas/user.schema.js';
 
-export async function getUserById(userId : number){
+export async function getUserById(userId : number , viewerId? : number){
     const user = await checkUser(userId);
     const TeamRows = await TeamRepo.findTeamsByUser(userId);  
     const TeamRefs = TeamRows.map(toTeamRef);
-    return toPublicUserDto(user , TeamRefs);
+    // C8 — followerCount / followingCount / isFollowing (ของคนที่ดูอยู่ · ไม่ล็อกอินหรือดูตัวเอง = false)
+    return { ...toPublicUserDto(user , TeamRefs) , ...(await FollowService.getProfileCounts(userId , viewerId)) };
 };
 
 
 export async function getUserStats(userId : number){
     const user = await checkUser(userId)
     const userStat = await StatRepo.findStatsByUser(userId);
-    return toUserStatsDto(userId , userStat);
+    // C8 — MVP รวม (จำนวนโหวตที่ได้จาก C6) · แต้ม Pick'em (users.total_points — 0 จนกว่า C7 จะทำ) · ผู้ติดตาม
+    const { followerCount } = await FollowService.getProfileCounts(userId);
+    return {
+        ...toUserStatsDto(userId , userStat),
+        mvpVotes : await FollowService.getMvpVotesReceived(userId),
+        pickemPoints : user.total_points,
+        followerCount,
+    };
 }
 
 export async function searchUsers(userName : string){
