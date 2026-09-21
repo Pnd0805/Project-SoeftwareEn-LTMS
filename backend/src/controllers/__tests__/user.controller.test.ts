@@ -83,7 +83,7 @@ describe('user.controller getUserById()', () => {
     await getUserById(req, res);
 
     expect(mockedParseId).toHaveBeenCalledWith('42', 'รหัสผู้ใช้');
-    expect(mockedUserService.getUserById).toHaveBeenCalledWith(42, undefined);
+    expect(mockedUserService.getUserById).toHaveBeenCalledWith(42);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ id: 42 });
   });
