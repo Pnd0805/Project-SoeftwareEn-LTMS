@@ -8,7 +8,7 @@ export async function requireTeamLeader(req : Request , res : Response , next : 
     }
     const teamId = req.params['id'];
     const team = await TeamRepo.findById(Number(teamId));
-    if(!team){
+    if(!team || team.deleted_at){
         return next(new AppError(404 , "TEAM_NOT_FOUND" , "ไม่พบทีมนี้" ));
     }
 

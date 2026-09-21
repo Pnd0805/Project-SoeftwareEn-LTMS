@@ -77,6 +77,34 @@ export async function deleteTeam(teamId : number){
     return result.affectedRows;
 }
 
+// TM-07 / BR-06 — กวาดทีมไม่ใช้งานแบบ lazy (ไม่มี cron) เรียกก่อน query จริงใน T02/T03 (GUIDE/12)
+// เปลี่ยนชื่อทีมตอนลบด้วย เพื่อปล่อย UNIQUE(name, sport_type_id) ให้ตั้งชื่อซ้ำได้ (มติ GUIDE/12 ข้อ "ฟื้นทีมที่ถูกปิดได้ไหม")
+// เช็ค "เคยแข่ง" ผ่าน MAX(matches.updated_at) แทนการเขียน teams.last_competed_at ตรงๆ — เลี่ยงไม่ต้องแก้โค้ดฝั่ง Matches/Results
+export async function sweepInactiveTeams() : Promise<{ noRegistration : number , inactive6Months : number }>{
+    const [ noReg ] = await pool.query<ResultSetHeader>(
+        `UPDATE teams t
+            SET deleted_at = NOW(), deleted_reason = 'no_registration', name = CONCAT(t.name, ' (deleted #', t.team_id, ')')
+          WHERE t.deleted_at IS NULL
+            AND t.created_at < NOW() - INTERVAL 14 DAY
+            AND NOT EXISTS (SELECT 1 FROM tournament_applications a WHERE a.team_id = t.team_id)`
+    );
+
+    const [ inactive6mo ] = await pool.query<ResultSetHeader>(
+        `UPDATE teams t
+            SET deleted_at = NOW(), deleted_reason = 'inactive_6_months', name = CONCAT(t.name, ' (deleted #', t.team_id, ')')
+          WHERE t.deleted_at IS NULL
+            AND (SELECT MAX(m.updated_at) FROM matches m
+                  WHERE (m.team_a_id = t.team_id OR m.team_b_id = t.team_id) AND m.match_status = 'completed'
+                ) < NOW() - INTERVAL 6 MONTH
+            AND NOT EXISTS (SELECT 1 FROM tournament_applications a
+                             WHERE a.team_id = t.team_id
+                               AND a.tournament_application_status IN ('pending','approved')
+                               AND a.applied_at > NOW() - INTERVAL 6 MONTH)`
+    );
+
+    return { noRegistration : noReg.affectedRows , inactive6Months : inactive6mo.affectedRows };
+}
+
 
 
 //--- Member

@@ -33,6 +33,7 @@ vi.mock('../../repositories/team.repo.js', () => ({
   deletePendingInvite: vi.fn(),
   createOfficialRequest: vi.fn(),
   findOfficialRequestById: vi.fn(),
+  sweepInactiveTeams: vi.fn(),
 }));
 
 vi.mock('../../repositories/sportType.repo.js', () => ({

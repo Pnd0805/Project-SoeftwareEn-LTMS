@@ -1,7 +1,7 @@
 # 12 · Team Lifecycle Aging — ทีมที่ไม่ใช้งานต้องถูกปิดเอง (งานฝั่ง Teams)
 
 > ถึง: คนทำ Teams (T01–T18) · จาก: ฝั่ง Referees (BE_KN) · 18 ก.ย. 2569
-> สถานะ: **ยังไม่มีโค้ดบังคับกฎนี้เลย** — schema รองรับไว้แล้ว เหลือ logic
+> สถานะ: ✅ **ทำแล้ว (21 ก.ย. 2569)** — `TeamRepo.sweepInactiveTeams()` ตาม proposal ข้อ 3 เป๊ะ เรียกจาก `getMyTeam`/`getTeamById` (T02/T03) ก่อน query จริง ทดสอบ HTTP จริงครบทั้ง 2 กฎ (no_registration/inactive_6_months) + เคส "ยังไม่ครบ/มีใบสมัครแล้ว/ยังแอคทีฟ" ที่ต้องไม่โดนกวาด ผ่านหมด · `requireTeamLeader` เพิ่มเช็ค `deleted_at IS NULL` แล้ว (404 TEAM_NOT_FOUND) ตามข้อเสนอ
 
 ## 1. กฎที่ SRS กำหนด (`docs/spec/04-teams-applications.md` §3)
 
@@ -17,11 +17,11 @@
 | | สถานะ |
 |---|---|
 | `teams.deleted_at`, `deleted_reason ENUM('no_registration','leader_deleted','inactive_6_months')` | ✅ schema |
-| `teams.last_competed_at` (ไว้นับ 6 เดือน) | ✅ schema · ❌ **ไม่มีใครเขียนค่านี้** — ต้องอัปเดตตอนแมตช์ของทีมจบ (verify / walkover) หรือใช้ `MAX(matches.updated_at)` แทน |
+| `teams.last_competed_at` (ไว้นับ 6 เดือน) | ✅ schema · ยังไม่มีใครเขียนค่านี้ — **แก้โดยไม่แตะเลย** ใช้ `MAX(matches.updated_at) WHERE match_status='completed'` ในตัว sweep query แทนตามที่เสนอไว้ในข้อ 4 |
 | mapper คืน `Inactive` เมื่อ `deleted_at` ไม่ว่าง | ✅ |
 | T05 soft delete โดยหัวหน้า (`leader_deleted`) | ✅ |
-| โค้ดที่ตั้ง `no_registration` / `inactive_6_months` | ❌ **ไม่มี** |
-| GUIDE/07 **B4** "soft delete เลย หรือมี `Inactive` ก่อน" | ❌ ยังเปิด — ต้องตัดสิน |
+| โค้ดที่ตั้ง `no_registration` / `inactive_6_months` | ✅ `TeamRepo.sweepInactiveTeams()` (`team.repo.ts`) |
+| GUIDE/07 **B4** "soft delete เลย หรือมี `Inactive` ก่อน" | ✅ ตัดสินแล้วตามที่เสนอ — soft delete ตรงๆ ไม่มี `Inactive` แยก |
 
 ## 3. ข้อเสนอ (ทำแบบ lazy — โปรเจกต์ไม่มี cron)
 

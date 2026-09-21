@@ -39,6 +39,7 @@ export async function createTeam(input : TeamInput , leaderId : number){
 }
 
 export async function getMyTeam(userId : number){
+    await TeamRepo.sweepInactiveTeams();
     const data : MyTeam[] = [];
     const teams = await TeamRepo.findTeamsByUser(userId); //return TeamRow[]
     for(const team of teams){
@@ -62,6 +63,7 @@ export async function searchTeams(filters : { q? : string | undefined; sportType
 }
 
 export async function getTeamById(teamId : number){
+    await TeamRepo.sweepInactiveTeams();
     const team = await checkTeam(teamId);
 
     const memberCount = await TeamRepo.countMemberByTeamId(teamId);
