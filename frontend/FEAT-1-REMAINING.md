@@ -1047,12 +1047,11 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
 ## Open issues found 2026-09-13 — not backend blockers
 
 Found while checking team links, the mobile preview (`mobile.html`) and the
-home page. None is fixed yet. Each item names its owner from `PLAN.md`, and
-the owner decides the fix.
+home page. Each item keeps its own implementation and verification status.
 
 ### Slice 1 / Person 1 — home page, kit and CSS
 
-- [ ] The home filter bar covers the list on phones. Deferred on 2026-09-13.
+- [x] The home filter bar covers the list on phones. Deferred on 2026-09-13.
       `.toolbar` is sticky (`src/styles/prototype.css:500`). At 393×852 the
       sport chips wrap to three rows, so the bar is 276px tall and the first
       card starts at 1176px. While scrolling, the bar covers 336px of the
@@ -1062,7 +1061,7 @@ the owner decides the fix.
       `.toolbar .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;}`,
       `.toolbar .chips .btn{flex:none;}`. With it the bar is 170px, the chips
       sit in one row, and nothing overflows sideways.
-- [ ] Home "All" looks smaller than a stage filter. The grid shows only the
+- [x] Home "All" looks smaller than a stage filter. The grid shows only the
       selected tab, and the page selects the first non-empty tab
       (`src/features/home/HomePage.tsx:101`). Signed in as Sirawit, All opens
       "Yours to run · 1" with one card, and In progress opens "You're
@@ -1071,10 +1070,20 @@ the owner decides the fix.
       section headings. Options: add an "All" tab or show every group, keep
       the chosen tab when the stage changes, and scroll the tabs sideways on
       phones.
-- [ ] Under All, "Other tournaments" leaves out finished tournaments
+- [x] Under All, "Other tournaments" leaves out finished tournaments
       (`HomePage.tsx:92`). They appear only under Finished.
-- [ ] "Needs you" is fixed at three columns (`HomePage.tsx:123`, inline
+- [x] "Needs you" is fixed at three columns (`HomePage.tsx:123`, inline
       `repeat(3,1fr)`). Seen in the code, not measured on a phone.
+      Delivered 2026-09-21. Home now has an explicit All relationship tab whose
+      contents match the active search/stage filters, including finished events.
+      Relationship badges remain correct on the combined grid. Home category and
+      stage tabs scroll horizontally on narrow screens, sport chips stay in one
+      row, the filter bar is non-sticky below 820px, and Needs you collapses to a
+      single column. Pure category regressions cover All, finished Other events
+      and the zero-result empty state. Developer verification passed: focused 3
+      tests, full suite 26 files / 166 tests, lint, production build and
+      `git diff --check`. The existing Vite chunk-size warning remains.
+      Real-phone visual QA remains pending.
 - [ ] Team names link to pages that don't exist for fixture teams.
       `ScorebugView` (`src/components/kit/Scorebug.tsx:28`) and `TeamLinkView`
       (`src/components/kit/chips.tsx:63`) always link to `/team/:id`. The

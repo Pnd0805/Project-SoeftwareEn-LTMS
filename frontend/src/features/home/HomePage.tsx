@@ -23,6 +23,7 @@ import { TournamentCard } from './TournamentCard'
 import type { Rel } from './TournamentCard'
 import { workQueue } from './workQueue'
 import type { WorkEntry, WorkKind } from './workQueue'
+import { buildHomeCategories } from './homeView'
 import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
@@ -145,7 +146,10 @@ export function HomePage() {
       { key: 'rest', label: `Other tournaments · ${rest.length}`, items: rest, rel: null },
     ].filter(c => c.items.length)
   }
-  const tab = cats.find(c => c.key === tabParam) ? tabParam! : cats[0]?.key
+  const idsIn = (key: string) => new Set(cats.find(category => category.key === key)?.items.map(t => t.id) ?? [])
+  const categorized = buildHomeCategories(visible, idsIn('mine'), idsIn('playing'), idsIn('open'))
+  cats = categorized.categories
+  const tab = cats.find(c => c.key === tabParam) ? tabParam! : 'all'
 
   const sports = [...new Set(all.map(t => t.sport))].sort()
 
@@ -168,7 +172,7 @@ export function HomePage() {
       {q.length ? (
         <Panel>
           <div className="spread"><span className="tag"><em>//</em> Needs you · {q.length}</span></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+          <div className="workgrid">
             {KIND_COLS.map(([kind, label]) => {
               const n = q.filter(x => x.kind === kind).length
               return (
@@ -183,7 +187,7 @@ export function HomePage() {
         </Panel>
       ) : null}
 
-      <div className="toolbar">
+      <div className="toolbar home-toolbar">
         <span className="field">
           <label htmlFor="home-find" className="tag">Find one · {visible.length} of {all.length}</label>
           <input id="home-find" autoComplete="off" value={query} onChange={e => setQuery(e.target.value)}
@@ -199,7 +203,7 @@ export function HomePage() {
         </span>
       </div>
 
-      <div className="toolbar" style={{ position: 'static', marginTop: 8 }}>
+      <div className="toolbar home-toolbar home-stage" style={{ position: 'static', marginTop: 8 }}>
         <span className="tag">Stage</span>
         <span className="segmented" role="tablist" aria-label="Filter by stage">
           {STAGES.map(([v, lab]) => (
@@ -218,11 +222,15 @@ export function HomePage() {
 
       {cats.length ? (
         <>
-          <Tabs tabs={cats.map(c => ({ key: c.key, label: c.label }))} active={tab!}
-            onPick={k => navigate(k === cats[0].key ? '/' : `/home/${k}`)} />
+          <div className="home-category-tabs">
+            <Tabs tabs={cats.map(c => ({ key: c.key, label: c.label }))} active={tab!}
+              onPick={k => navigate(k === 'all' ? '/' : `/home/${k}`)} />
+          </div>
           <div className="grid3">
             {cats.find(c => c.key === tab)!.items.map(t => (
-              <TournamentCard key={t.id} t={t} rel={cats.find(c => c.key === tab)!.rel} entry={entries.get(t.id)} />
+              <TournamentCard key={t.id} t={t}
+                rel={tab === 'all' ? categorized.relations.get(t.id) ?? null : cats.find(c => c.key === tab)!.rel}
+                entry={entries.get(t.id)} />
             ))}
           </div>
         </>

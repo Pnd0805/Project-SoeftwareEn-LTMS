@@ -550,6 +550,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .workrow .wk.crit{background:var(--red);} .workrow .wk.warn{background:var(--amber);} .workrow .wk.ok{background:var(--teal);}
 .workrow .txt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
 .workrow .txt b{font-size:15px;}
+.workgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;}
 .qr{background:var(--qr-bg);padding:8px;display:inline-block;line-height:0;border:2px solid var(--ink);}
 .qr svg{fill:var(--qr-ink);}
 /* an empty state is still a pasted-up poster, not a framework default —
@@ -567,5 +568,13 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
   .sb .item{width:auto;border-left:0;border-bottom:4px solid transparent;padding:8px 12px;}
   .sb .item.on{border-left:0;border-bottom-color:var(--ink);}
   .sb .foot{margin:0;border:0;padding:0 8px;}
+  .home-toolbar{position:static;}
+  .home-toolbar .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;width:100%;}
+  .home-toolbar .chips .btn{flex:none;}
+  .home-stage .segmented{max-width:100%;overflow-x:auto;}
+  .home-stage .segmented button{flex:none;}
+  .home-category-tabs .tabs{flex-wrap:nowrap;overflow-x:auto;}
+  .home-category-tabs .tab{flex:none;}
+  .workgrid{grid-template-columns:1fr;}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
