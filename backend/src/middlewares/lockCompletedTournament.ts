@@ -4,8 +4,8 @@ import { findTournamentById } from '../repositories/tournament.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 
 const WRITE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-/** เส้นทางที่ยังใช้ได้หลังปิดทัวร์ (ประกาศปิดงาน · C6 ให้คะแนน/โหวต MVP ซึ่งเปิดหลังปิดทัวร์เท่านั้น) */
-const ALLOWED_AFTER_COMPLETE = [/^\/announcements/, /^\/feedback\/?$/, /^\/mvp-votes\/?$/];   // Express ไม่ strict — '/feedback/' ก็เข้า route เดียวกัน
+/** เส้นทางที่ยังใช้ได้หลังปิดทัวร์ (ประกาศปิดงาน · C6 ให้คะแนน/โหวต MVP ซึ่งเปิดหลังปิดทัวร์เท่านั้น · C7 คอมเมนต์ใต้แมตช์) */
+const ALLOWED_AFTER_COMPLETE = [/^\/announcements/, /^\/feedback\/?$/, /^\/mvp-votes\/?$/, /^\/comments\/?$/];   // Express ไม่ strict — '/feedback/' ก็เข้า route เดียวกัน
 
 /**
  * B1 (มติ 21 ก.ย. 2-ค) — ทัวร์ที่ `completed` แล้วห้ามเขียนอะไรอีก (นัดหมาย/ผล/โต้แย้ง/เช็คอิน/กรรมการ/สมัคร)

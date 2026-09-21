@@ -531,6 +531,8 @@ export async function clearBracketTx(conn: PoolConnection, tournamentId: number)
     await q(`DELETE c FROM match_checkins c JOIN matches m ON m.match_id = c.match_id WHERE m.tournament_id = ?`);
     await q(`DELETE r FROM match_results r JOIN matches m ON m.match_id = r.match_id WHERE m.tournament_id = ?`);
     await q(`DELETE p FROM pickem_predictions p JOIN matches m ON m.match_id = p.match_id WHERE m.tournament_id = ?`);
+    // C7 (migration 024) — คอมเมนต์ผูกกับแมตช์ (match_id NOT NULL) แมตช์ถูกลบก็ต้องลบตาม ไม่งั้น FK กันการจับสายใหม่
+    await q(`DELETE mc FROM match_comments mc JOIN matches m ON m.match_id = mc.match_id WHERE m.tournament_id = ?`);
     await q(`UPDATE announcements a JOIN matches m ON m.match_id = a.match_id SET a.match_id = NULL WHERE m.tournament_id = ?`);
     await q(`UPDATE tournament_feedback f JOIN matches m ON m.match_id = f.match_id SET f.match_id = NULL WHERE m.tournament_id = ?`);
     await q(`UPDATE matches SET next_match_id = NULL, loser_next_match_id = NULL, bracket_node_id = NULL WHERE tournament_id = ?`);

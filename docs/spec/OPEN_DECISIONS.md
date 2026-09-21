@@ -202,3 +202,20 @@ FE-tournament-feedback: Community tab (ให้คะแนนการจั�
 - **4 ใครโหวต MVP**: เฉพาะคนที่ไม่ได้ลงแข่ง (spec 08 §5) — ห้ามผู้เล่นในรายชื่อ, สมาชิกทีม approved, กรรมการ (pending/accepted), ORG → 403 `MVP_VOTER_NOT_ELIGIBLE` · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่งเท่านั้น · ไม่ใช่ → 422 `MVP_CANDIDATE_NOT_ELIGIBLE`
 - **การมองเห็น** (ตามข้อเสนอในเอกสารแบ่งงาน): ค่าเฉลี่ย/จำนวน/การกระจายเป็นสาธารณะ · ORG เห็นข้อความแต่ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ (ใช้ตรวจ report)
 - **report / ลบ**: `POST /feedback/:id/report` — organizer_feedback report ได้เฉพาะ ORG ของทัวร์ (คนที่มองเห็น) · โหวต MVP report ไม่ได้ · `DELETE /admin/feedback/:id` soft delete + audit `feedback_removed` · คนที่ถูกลบส่งใหม่ไม่ได้ (409 `FEEDBACK_REMOVED`) · ค่าเฉลี่ย/คะแนนโหวตไม่นับแถวที่ถูกลบ
+
+## OD-24 — Match comments + Pick'em (C7) — ✅ Resolved 2026-09-22
+
+FE-match-comments-pick-em: SocialBar ในหน้าแมตช์ (คอมเมนต์ + ทายผล) ทำงานเฉพาะ mock
+
+**คอมเมนต์**
+- **โพสต์ได้หลายอันต่อคน** → ตารางใหม่ `match_comments` (migration **024** · 023 เว้นไว้ให้ C5) แยกจาก `tournament_feedback` เพราะตารางนั้น UNIQUE คนละ 1 อันต่อแมตช์
+- ใครที่ล็อกอินก็คอมเมนต์ได้ (เป็นแค่การพูดคุย ไม่มีกฎผลประโยชน์ทับซ้อน) · ≤ 500 ตัวอักษร · อ่านเป็นสาธารณะ · ห้ามแก้
+- เจ้าของลบเองได้ · คนอื่น report ได้ (ของตัวเองไม่ได้) · แอดมิน `university_wide` ลบได้ + audit `comment_removed`
+- คอมเมนต์ได้แม้ทัวร์ปิดแล้ว (`lockCompletedTournament` ยกเว้น `/comments`) · จับสายใหม่ (OD-22) ลบคอมเมนต์ของแมตช์เดิมตามไปด้วย (ไม่งั้น FK กัน)
+
+**Pick'em**
+- **cutoff**: แมตช์ออกจาก `scheduled` (เปิดเช็คอิน) **หรือ** ถึง `scheduled_time` อย่างไหนถึงก่อน → 409 `PICKEM_CLOSED {reason}` · ยังไม่รู้คู่ → 409 `PICKEM_TEAMS_NOT_SET` · ผู้จัดปิดเช็คอิน (M18) แมตช์กลับเป็น scheduled → ทายได้อีก
+- **แต้ม**: ถูก 10 · ผิด 0 · ให้แต้มเฉพาะผลที่ยืนยันแล้ว (spec 08 §6) — settle ใน `applyOutcomeTx` / คืนแต้มใน `undoOutcomeTx` (ทรานแซกชันเดียวกับผล) จึงถูกต้องทั้ง S02 verify, S04 uphold/reject/amend, ส่งผลใหม่หลัง reject · ชนะบาย/ปรับแพ้/แมตช์ตาย = **void** (ไม่ได้ไม่เสีย)
+- **ห้ามทาย**: คนในทัวร์ทั้งหมด (ผู้เล่นในรายชื่อ · สมาชิกทีมที่ผ่าน · กรรมการ · ผู้จัด) → 403 `PICKEM_CONFLICT` — กฎเดียวกับโหวต MVP
+- ทาย/เปลี่ยน/ยกเลิกได้จนถึง cutoff (คนละ 1 การทายต่อแมตช์) · แต้มรวมเก็บที่ `users.total_points` · อันดับในทัวร์เสมอได้ (1,1,3)
+- ไม่แตะตาราง `rewards` (ยังไม่มี spec)
