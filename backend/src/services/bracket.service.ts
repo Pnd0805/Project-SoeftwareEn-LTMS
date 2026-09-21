@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import type { PoolConnection } from 'mysql2/promise';
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
@@ -300,10 +301,16 @@ function shuffle<T>(input: T[]): T[] {
 // ---------------------------------------------------------------
 
 // requireOrganizer (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
+/**
+ * M01 — สร้างสาย · `replace: true` (FE-replace-existing-bracket-atomic, มติ 21 ก.ย. 1-ข/2-ก):
+ *   ลบสายเดิมแล้วจับใหม่จากทีม approved ปัจจุบันในทรานแซกชันเดียว — ได้เฉพาะเมื่อทุกแมตช์ยัง scheduled
+ *   และไม่มีเช็คอิน/ผลใด ๆ (ไม่สน registration_open) · ไม่ส่ง replace แล้วมีสายอยู่ → 409 เหมือนเดิม กันกดพลาด
+ */
 export async function createBracket(
     tournamentId: number,
     seedingMethod: 'random' | 'manual',
-    manualSeeds: number[] | undefined
+    manualSeeds: number[] | undefined,
+    replace: boolean = false
 ) {
     const tournament = await TournamentRepo.findTournamentById(tournamentId);
     if (!tournament) {
@@ -311,9 +318,18 @@ export async function createBracket(
     }
 
     const existingCount = await MatchRepo.countMatchesByTournament(tournamentId);
-    if (existingCount > 0) {
-        throw new AppError(409, "BRACKET_ALREADY_EXISTS", "ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว");
+    if (existingCount > 0 && !replace) {
+        throw new AppError(409, "BRACKET_ALREADY_EXISTS", "ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว — ส่ง replace: true เพื่อจับฉลากใหม่",
+            { matchCount: existingCount });
     }
+    if (existingCount > 0) {
+        const used = await MatchRepo.findBracketUsage(tournamentId);
+        if (used.length > 0) {
+            throw new AppError(409, "BRACKET_IN_USE", "สายเดิมถูกใช้งานแล้ว (มีแมตช์ที่เริ่ม/เช็คอิน/มีผล) จับฉลากใหม่ไม่ได้",
+                { matches: used.map(u => ({ id: u.match_id, status: u.match_status, checkins: u.checkins, results: u.results })) });
+        }
+    }
+    const replacing = existingCount > 0;
 
     const approvedTeams = await ApplicationRepo.findApprovedTeamsByTournament(tournamentId);
     const teamIdsInOrder = orderTeamIds(approvedTeams.map(t => t.team_id), seedingMethod, manualSeeds);
@@ -329,16 +345,42 @@ export async function createBracket(
 
     const bracketFormat = tournament.bracket_format;
 
+    // replace: ลบเก่า + สร้างใหม่บน connection เดียว — พังตรงไหน rollback ทั้งก้อน สายเดิมยังอยู่ครบ
+    const conn = replacing ? await pool.getConnection() : undefined;
+    try {
+        if (conn) {
+            await conn.beginTransaction();
+            await MatchRepo.clearBracketTx(conn, tournamentId);
+        }
+        const built = await buildBracket(tournamentId, bracketFormat, teamIdsInOrder, seedingMethod, mode, conn);
+        if (conn) await conn.commit();
+        return { ...built, replaced: replacing };
+    } catch (err) {
+        if (conn) await conn.rollback();
+        throw err;
+    } finally {
+        conn?.release();
+    }
+}
+
+async function buildBracket(
+    tournamentId: number,
+    bracketFormat: string | null,
+    teamIdsInOrder: number[],
+    seedingMethod: 'random' | 'manual',
+    mode: 'onsite' | 'online',
+    conn: PoolConnection | undefined
+) {
     if (bracketFormat === 'single_elimination') {
         const slots = placeTeamsInSlots(teamIdsInOrder, nextPowerOfTwo(teamIdsInOrder.length), seedingMethod);
         const plan = planSingleElimination(slots);
-        const { matchCount, nodeCount } = await persistSingleElimination(tournamentId, plan, mode);
+        const { matchCount, nodeCount } = await persistSingleElimination(tournamentId, plan, mode, conn);
         return { matchCount, bracketFormat, nodeCount };
     }
 
     if (bracketFormat === 'round_robin') {
         const pairs = planRoundRobin(teamIdsInOrder);
-        const matchCount = await persistRoundRobin(tournamentId, pairs, mode);
+        const matchCount = await persistRoundRobin(tournamentId, pairs, mode, conn);
         return { matchCount, bracketFormat, nodeCount: 0 };
     }
 
@@ -346,7 +388,7 @@ export async function createBracket(
         // สายเล็กสุด 4 ช่อง — 2 ทีมก็เล่นได้ (แพ้นัดแรก ไปเจอผู้ชนะอีกครั้งในนัดชิง)
         const slots = placeTeamsInSlots(teamIdsInOrder, Math.max(4, nextPowerOfTwo(teamIdsInOrder.length)), seedingMethod);
         const plan = planDoubleElimination(slots);
-        const { matchCount, nodeCount } = await persistDoubleElimination(tournamentId, plan, mode);
+        const { matchCount, nodeCount } = await persistDoubleElimination(tournamentId, plan, mode, conn);
         return { matchCount, bracketFormat, nodeCount };
     }
 
@@ -377,10 +419,10 @@ function orderTeamIds(
     return seeds;
 }
 
-async function persistSingleElimination(tournamentId: number, plan: PlannedMatch[], mode: 'onsite' | 'online') {
-    const conn = await pool.getConnection();
+async function persistSingleElimination(tournamentId: number, plan: PlannedMatch[], mode: 'onsite' | 'online', shared?: PoolConnection) {
+    const conn = shared ?? await pool.getConnection();
     try {
-        await conn.beginTransaction();
+        if (!shared) await conn.beginTransaction();
 
         // เก็บ match_id จริงที่เพิ่ง insert ไป โดย key เป็น "round:matchNumber" ไว้เชื่อม next_match_id ทีหลัง
         const matchIdByPosition = new Map<string, number>();
@@ -427,20 +469,20 @@ async function persistSingleElimination(tournamentId: number, plan: PlannedMatch
             }
         }
 
-        await conn.commit();
+        if (!shared) await conn.commit();
         return { matchCount, nodeCount };
     } catch (err) {
-        await conn.rollback();
+        if (!shared) await conn.rollback();
         throw err;
     } finally {
-        conn.release();
+        if (!shared) conn.release();
     }
 }
 
-async function persistDoubleElimination(tournamentId: number, plan: PlannedMatchNode[], mode: 'onsite' | 'online') {
-    const conn = await pool.getConnection();
+async function persistDoubleElimination(tournamentId: number, plan: PlannedMatchNode[], mode: 'onsite' | 'online', shared?: PoolConnection) {
+    const conn = shared ?? await pool.getConnection();
     try {
-        await conn.beginTransaction();
+        if (!shared) await conn.beginTransaction();
 
         // key แผนผัง (เช่น "WB-1-1") -> match_id จริงใน DB หลัง insert แล้ว
         const dbIdByKey = new Map<MatchKey, number>();
@@ -488,20 +530,20 @@ async function persistDoubleElimination(tournamentId: number, plan: PlannedMatch
             nodeCount++;
         }
 
-        await conn.commit();
+        if (!shared) await conn.commit();
         return { matchCount, nodeCount };
     } catch (err) {
-        await conn.rollback();
+        if (!shared) await conn.rollback();
         throw err;
     } finally {
-        conn.release();
+        if (!shared) conn.release();
     }
 }
 
-async function persistRoundRobin(tournamentId: number, pairs: RoundRobinPair[], mode: 'onsite' | 'online') {
-    const conn = await pool.getConnection();
+async function persistRoundRobin(tournamentId: number, pairs: RoundRobinPair[], mode: 'onsite' | 'online', shared?: PoolConnection) {
+    const conn = shared ?? await pool.getConnection();
     try {
-        await conn.beginTransaction();
+        if (!shared) await conn.beginTransaction();
 
         for (const pair of pairs) {
             await MatchRepo.insertMatchTx(conn, {
@@ -513,13 +555,13 @@ async function persistRoundRobin(tournamentId: number, pairs: RoundRobinPair[], 
             });
         }
 
-        await conn.commit();
+        if (!shared) await conn.commit();
         return pairs.length;
     } catch (err) {
-        await conn.rollback();
+        if (!shared) await conn.rollback();
         throw err;
     } finally {
-        conn.release();
+        if (!shared) conn.release();
     }
 }
 

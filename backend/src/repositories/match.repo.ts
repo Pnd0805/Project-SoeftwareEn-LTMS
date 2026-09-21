@@ -503,3 +503,40 @@ export async function updateLivestreamUrl(matchId : number , youtubeUrl : string
         [youtubeUrl, matchId]);
     return result.affectedRows === 1;
 }
+
+/** FE-replace-existing-bracket-atomic — แมตช์ของทัวร์ที่ "ใช้งานไปแล้ว": ไม่ใช่ scheduled หรือมีเช็คอิน/ผล → ห้ามจับฉลากซ้ำ */
+export async function findBracketUsage(tournamentId: number): Promise<{ match_id: number; match_status: string; checkins: number; results: number }[]> {
+    const [rows] = await pool.query<({ match_id: number; match_status: string; checkins: number; results: number } & RowDataPacket)[]>(
+        `SELECT m.match_id, m.match_status,
+                (SELECT COUNT(*) FROM match_checkins c WHERE c.match_id = m.match_id) AS checkins,
+                (SELECT COUNT(*) FROM match_results r WHERE r.match_id = m.match_id) AS results
+         FROM matches m WHERE m.tournament_id = ?
+         HAVING m.match_status <> 'scheduled' OR checkins > 0 OR results > 0
+         ORDER BY m.match_id`,
+        [tournamentId]);
+    return rows;
+}
+
+/**
+ * ลบสายทั้งทัวร์ในทรานแซกชันที่ส่งเข้ามา (ลำดับตาม FK): คำขอโอนกรรมการ → กรรมการรายแมตช์ → เช็คอิน/ผล/สถิติ (ควรว่างอยู่แล้ว — guard เช็คก่อน)
+ *   → ตัด self-FK next/loser_next และ bracket_nodes.match_id → matches → bracket_nodes → standings
+ * ไม่แตะ tournament_applications / tournament_referees (pool กรรมการ) / announcements (match_id → NULL)
+ */
+export async function clearBracketTx(conn: PoolConnection, tournamentId: number): Promise<{ matchesDeleted: number; nodesDeleted: number }> {
+    const q = (sql: string) => conn.query<ResultSetHeader>(sql, [tournamentId]);
+    await q(`DELETE rcr FROM referee_change_requests rcr JOIN matches m ON m.match_id IN (rcr.match_a_id, rcr.match_b_id) WHERE m.tournament_id = ?`);
+    await q(`DELETE mr FROM match_referees mr JOIN matches m ON m.match_id = mr.match_id WHERE m.tournament_id = ?`);
+    await q(`DELETE pv FROM player_match_stat_values pv JOIN player_match_stats ps ON ps.player_match_stat_id = pv.player_match_stat_id JOIN matches m ON m.match_id = ps.match_id WHERE m.tournament_id = ?`);
+    await q(`DELETE ps FROM player_match_stats ps JOIN matches m ON m.match_id = ps.match_id WHERE m.tournament_id = ?`);
+    await q(`DELETE c FROM match_checkins c JOIN matches m ON m.match_id = c.match_id WHERE m.tournament_id = ?`);
+    await q(`DELETE r FROM match_results r JOIN matches m ON m.match_id = r.match_id WHERE m.tournament_id = ?`);
+    await q(`DELETE p FROM pickem_predictions p JOIN matches m ON m.match_id = p.match_id WHERE m.tournament_id = ?`);
+    await q(`UPDATE announcements a JOIN matches m ON m.match_id = a.match_id SET a.match_id = NULL WHERE m.tournament_id = ?`);
+    await q(`UPDATE tournament_feedback f JOIN matches m ON m.match_id = f.match_id SET f.match_id = NULL WHERE m.tournament_id = ?`);
+    await q(`UPDATE matches SET next_match_id = NULL, loser_next_match_id = NULL, bracket_node_id = NULL WHERE tournament_id = ?`);
+    await q(`UPDATE bracket_nodes SET match_id = NULL WHERE tournament_id = ?`);
+    const [m] = await q(`DELETE FROM matches WHERE tournament_id = ?`);
+    const [n] = await q(`DELETE FROM bracket_nodes WHERE tournament_id = ?`);
+    await q(`DELETE FROM tournament_standings WHERE tournament_id = ?`);
+    return { matchesDeleted: m.affectedRows, nodesDeleted: n.affectedRows };
+}

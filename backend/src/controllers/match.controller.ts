@@ -21,7 +21,8 @@ export async function createBracket(req: Request, res: Response) {
     const result = await BracketService.createBracket(
         tournamentId,
         req.body.seedingMethod,
-        req.body.manualSeeds
+        req.body.manualSeeds,
+        req.body.replace === true
     );
     res.status(201).json(result);
 }

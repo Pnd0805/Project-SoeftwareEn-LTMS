@@ -43,6 +43,8 @@ export const rejectCheckinErrorCodes = {
 export const createBracketSchema = z.object({
     seedingMethod: z.enum(['random', 'manual']),
     manualSeeds: z.array(z.number()).optional(),
+    // FE-replace-existing-bracket-atomic (21 ก.ย.): true = ลบสายเดิมแล้วจับใหม่จากทีม approved ปัจจุบัน ในทรานแซกชันเดียว
+    replace: z.boolean().optional(),
 }).refine(
     (data) => data.seedingMethod !== 'manual' || (data.manualSeeds !== undefined && data.manualSeeds.length > 0),
     { message: 'ต้องระบุ manualSeeds เมื่อเลือก seedingMethod เป็น manual', path: ['manualSeeds'] }

@@ -180,3 +180,11 @@ FE-closing-tournament-nothing-sets (B1): เดิมไม่มีอะไร
 - **3-ก ทัวร์จบเป็นสาธารณะ**: C07/C17/S10/S12 เห็นได้ทุกคนเหมือน `public` · C06 `?status=completed` (default `public` — ทัวร์ที่จบไม่ปนกับที่กำลังรับสมัคร)
 - **4-ก รอบชิงแพ้ทั้งคู่ปิดได้** แชมป์ `null` ไม่บวกแชมป์ให้ใคร · round robin เสมออันดับ 1 ทุกเกณฑ์ → แชมป์ `null` เช่นกัน (ระบบไม่ตัดสินแทน ORG — ตัดสินเอง 21 ก.ย.)
 - แชมป์ round robin = อันดับ 1 ของ S12 (ก่อนหน้านี้ S10 ใช้ `next_match_id IS NULL` ซึ่งเป็นทุกแมตช์ของ RR — ผิด)
+
+## OD-22 — Redrawing an existing bracket — ✅ Resolved 2026-09-21
+
+FE-replace-existing-bracket-atomic: M01 เคยตอบ `BRACKET_ALREADY_EXISTS` ทุกครั้งที่มีแมตช์ → ORG ที่จับฉลากแล้วแต่มีทีมอนุมัติเพิ่ม/ถอนตัว ก่อนเริ่มแข่ง เอาทีมเข้าสายไม่ได้
+
+- **1-ข เงื่อนไข**: ทุกแมตช์ยัง `scheduled` และไม่มีเช็คอิน/ผล — **ไม่สน `registration_open`** (กรณีจริงคือปิดรับสมัครแล้วค่อยมีทีมถอน/อนุมัติค้าง) · ไม่ผ่าน → 409 `BRACKET_IN_USE {matches}`
+- **2-ก รูปแบบ**: M01 เดิม + `replace: true` (ไม่ส่ง = 409 เดิม กันกดพลาด) — ไม่แยก DELETE endpoint เพราะ 2 ขั้นไม่ atomic
+- ลบใน tx: referee_change_requests, match_referees, (checkins/results/stats/pickem ที่ควรว่าง), announcements/feedback `match_id → NULL`, matches (ตัด self-FK ก่อน), bracket_nodes, tournament_standings · คงไว้: tournament_applications, tournament_referees (pool) · persist* รับ connection ร่วม → ลบ+สร้างเป็นก้อนเดียว พังตรงไหน rollback สายเดิมยังอยู่
