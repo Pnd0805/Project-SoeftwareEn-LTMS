@@ -10,7 +10,7 @@
  * ⚠️ seed.ts ไม่ได้สร้างแมตช์ที่มี decider เลยสักนัด เส้นทางนี้จึงกดดูในแอปไม่ได้
  *    เทสต์นี้คือที่เดียวที่กันการถอยกลับไปคำนวณจากสกอร์อีก
  */
-import { render } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 import { ScorebugView } from "./Scorebug"
@@ -59,5 +59,11 @@ describe("ScorebugView", () => {
   it("ยังไม่รู้คู่แข่ง แสดง To be decided ไม่ระเบิด", () => {
     const { container } = draw({ away: null, scoreB: null })
     expect(container.textContent).toContain("To be decided")
+  })
+
+  it("renders fixture team names as plain text when their detail pages do not exist", () => {
+    draw({ linkTeams: false })
+    expect(screen.getByText("Science")).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /Science/ })).not.toBeInTheDocument()
   })
 })

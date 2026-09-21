@@ -2,9 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
 
-const { mutate, reset, detail } = vi.hoisted(() => ({
+const { mutate, reset, setRules, detail } = vi.hoisted(() => ({
   mutate: vi.fn(),
   reset: vi.fn(),
+  setRules: vi.fn(),
   detail: { current: {} as Record<string, unknown> },
 }))
 
@@ -12,6 +13,7 @@ vi.mock('../../../hooks/useTournament', () => ({
   useTournament: () => ({ data: detail.current }),
   useEligibilityRules: () => ({ data: { items: [] }, isError: false }),
   useRequestFilterChange: () => ({ mutate, reset, isPending: false, isError: false }),
+  useSetEligibilityRules: () => ({ mutate: setRules, reset, isPending: false, isError: false }),
   useTournamentAmendmentRequests: () => ({ data: { items: [] }, isPending: false, isError: false }),
 }))
 vi.mock('../../../hooks/useReference', () => ({
@@ -68,5 +70,16 @@ describe('EntryRulesPanel amendment schedule', () => {
     expect(mutate.mock.calls[0][0].changes).not.toHaveProperty('eventStartDate')
     /* เหตุผลต้องไปกับคำขอด้วย ไม่ใช่แค่ปลดล็อกปุ่มแล้วหายไป */
     expect(mutate.mock.calls[0][0].reason).toBe('ปีนี้จัดร่วมสองคณะ')
+  })
+
+  it('saves faculty/year conditions directly while the tournament is pending approval', () => {
+    detail.current = { ...detail.current, status: 'pending_approval' }
+    render(<EntryRulesPanel t={tournament} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Correct conditions' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Engineering' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save conditions' }))
+
+    expect(setRules).toHaveBeenCalledWith([{ type: 'faculty', value: 1 }], expect.any(Object))
+    expect(mutate).not.toHaveBeenCalled()
   })
 })

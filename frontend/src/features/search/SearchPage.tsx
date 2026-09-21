@@ -19,6 +19,7 @@ import { useTournaments } from '../../hooks/useTournament'
 import { USE_MOCK } from '../../api/client'
 import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
+import { useSearchTeams } from '../../hooks/useTeam'
 
 export function SearchPage() {
   const s = useLtms()
@@ -30,6 +31,7 @@ export function SearchPage() {
   const { q: qParam } = useParams()
   const [q, setQ] = useState(decodeURIComponent(qParam ?? ''))
   const needle = q.trim().toLowerCase()
+  const teamSearch = useSearchTeams(q, !USE_MOCK)
 
   const tournamentSource = USE_MOCK
     ? s.tournaments.filter(t => visibleTo(s, t))
@@ -40,9 +42,12 @@ export function SearchPage() {
   const teams = USE_MOCK && needle
     ? s.teams.filter(t => `${t.name} ${t.code}`.toLowerCase().includes(needle))
     : []
+  const backendTeams = !USE_MOCK && needle ? (teamSearch.data?.items ?? []) : []
   const userSearch = useSearchUsers(q, !!currentUser)
   const players = userSearch.data?.items ?? []
-  const total = tournaments.length + teams.length + players.length
+  const total = tournaments.length + teams.length + backendTeams.length + players.length
+  const teamsPending = !USE_MOCK && teamSearch.isPending
+  const teamsError = !USE_MOCK && teamSearch.isError
   const userErrorStatus = typeof userSearch.error === 'object' && userSearch.error !== null && 'status' in userSearch.error
     ? (userSearch.error as { status?: number }).status
     : undefined
@@ -76,7 +81,8 @@ export function SearchPage() {
           sub="A private draft or a request still under review is not searchable — it is not a tournament yet." />
       ) : needle.length < 3 ? (
         <Empty icon="search" title="Keep typing" sub="Enter at least 3 characters to search for players." />
-      ) : !total && !tournamentQuery.isPending && !userSearch.isPending && !tournamentQuery.isError && !userSearch.isError ? (
+      ) : !total && !tournamentQuery.isPending && !userSearch.isPending && !teamsPending
+        && !tournamentQuery.isError && !userSearch.isError && !teamsError ? (
         <Empty icon="search" title={`Nothing matched “${q}”`} sub="Try a sport, a faculty, or part of a name." />
       ) : null}
 
@@ -90,10 +96,10 @@ export function SearchPage() {
         </Panel>
       ) : null}
 
-      {!USE_MOCK && needle ? (
-        <Panel quiet>
-          <span className="sub">Squad search is not available on the server yet.</span>
-        </Panel>
+      {needle && teamsPending ? (
+        <Panel quiet><span className="sub">Searching squads…</span></Panel>
+      ) : teamsError ? (
+        <Panel quiet><span className="error">Unable to search squads right now. Please retry.</span></Panel>
       ) : null}
 
       {tournaments.length ? (
@@ -118,6 +124,22 @@ export function SearchPage() {
               <span className="meta">
                 <b>{t.name}</b>
                 <span className="tag">{t.sport ?? 'no sport named'} · {teamReady(t) ? 'Ready' : 'Forming'} · {t.members.length} players</span>
+              </span>
+              <Icon name="chev" size={13} />
+            </button>
+          ))}
+        </Panel>
+      ) : null}
+
+      {backendTeams.length ? (
+        <Panel quiet>
+          <span className="tag"><em>//</em> Squads · {backendTeams.length}</span>
+          {backendTeams.map(t => (
+            <button className="who" type="button" key={t.id} onClick={() => navigate(`/team/${t.id}`)}>
+              <TeamCrestView team={{ id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} size={24} />
+              <span className="meta">
+                <b>{t.name}</b>
+                <span className="tag">Sport #{t.sportTypeId} · {t.readinessStatus} · {t.memberCount} players</span>
               </span>
               <Icon name="chev" size={13} />
             </button>

@@ -1,5 +1,5 @@
 import type { PickDto, PickListDto } from "../types/engagement.dto"
-import { getState } from "../shared/store"
+import { commitStore, getState } from "../shared/store"
 
 /**
  * FR-PK-01 — ทายผลต้องปิดก่อนแมตช์เริ่ม
@@ -22,19 +22,10 @@ function inMatch(matchId: string, teamId: string): boolean {
   return !!m && (m.a === teamId || m.b === teamId)
 }
 
-function key(matchId: string) {
-  return `ltms-picks-${matchId}`
-}
-
 function read(matchId: string): PickDto[] {
-  const saved = localStorage.getItem(key(matchId))
-  if (!saved) return []
-
-  try {
-    return JSON.parse(saved) as PickDto[]
-  } catch {
-    return []
-  }
+  return getState().picks
+    .filter(pick => pick.match === matchId)
+    .map(pick => ({ id: pick.id, matchId: pick.match, userId: pick.by, teamId: pick.team }))
 }
 
 function result(items: PickDto[], userId: string): PickListDto {
@@ -57,20 +48,20 @@ export function mockPlacePick(
   if (closed) throw new Error(closed)
   if (!inMatch(matchId, teamId)) throw new Error("PICK_TEAM_NOT_IN_MATCH")
 
-  const items = read(matchId)
-  const existing = items.find(pick => pick.userId === userId)
+  const state = getState()
+  const existing = state.picks.find(pick => pick.match === matchId && pick.by === userId)
 
   if (existing) {
-    existing.teamId = teamId
+    existing.team = teamId
   } else {
-    items.push({
+    state.picks.push({
       id: `${matchId}-${userId}`,
-      matchId,
-      userId,
-      teamId,
+      match: matchId,
+      by: userId,
+      team: teamId,
     })
   }
 
-  localStorage.setItem(key(matchId), JSON.stringify(items))
-  return result(items, userId)
+  commitStore()
+  return getMockPicks(matchId, userId)
 }

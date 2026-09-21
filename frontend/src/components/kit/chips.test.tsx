@@ -39,6 +39,12 @@ describe("TeamLinkView", () => {
     render(<MemoryRouter><TeamLinkView team={byteForce} /></MemoryRouter>)
     expect(screen.getByRole("link", { name: /Byte Force/ })).toHaveAttribute("href", "/team/11")
   })
+
+  it("renders a display-only fixture team without a dead detail link", () => {
+    render(<MemoryRouter><TeamLinkView team={byteForce} link={false} /></MemoryRouter>)
+    expect(screen.getByText("Byte Force")).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /Byte Force/ })).not.toBeInTheDocument()
+  })
 })
 
 describe("toTeamView", () => {

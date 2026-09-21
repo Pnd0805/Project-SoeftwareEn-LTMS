@@ -95,6 +95,32 @@ export async function getBackendMyTeams(): Promise<BackendTeamListResponse<Backe
   });
 }
 
+/** T19 — public team directory/search. */
+export async function searchBackendTeams(params: { q?: string; sportTypeId?: number; visibility?: "private" | "public" } = {}): Promise<BackendTeamListResponse<BackendTeamDto>> {
+  const query = new URLSearchParams();
+  if (params.q?.trim()) query.set("q", params.q.trim());
+  if (params.sportTypeId !== undefined) query.set("sportTypeId", String(params.sportTypeId));
+  if (params.visibility !== undefined) query.set("visibility", params.visibility);
+  if (!USE_MOCK) return apiFetch(`/teams${query.size ? `?${query}` : ""}`);
+
+  const needle = params.q?.trim().toLowerCase() ?? "";
+  const items = myStoreTeams()
+    .filter(team => !needle || team.name.toLowerCase().includes(needle))
+    .map(team => ({
+      id: team.id,
+      name: team.name,
+      sportTypeId: team.sportTypeId,
+      readinessStatus: team.readinessStatus,
+      officialStatus: team.officialStatus,
+      visibility: "public" as const,
+      leader: team.leader,
+      memberCount: team.members.length,
+      maxMembers: null,
+      createdAt: team.createdAt,
+    }));
+  return mockDelay({ items });
+}
+
 /** Current backend contract: GET /teams/:id. */
 export async function getBackendTeam(teamId: number): Promise<BackendTeamDto> {
   if (!USE_MOCK) return apiFetch(`/teams/${teamId}`);
@@ -107,6 +133,7 @@ export async function getBackendTeam(teamId: number): Promise<BackendTeamDto> {
     sportTypeId: team.sportTypeId,
     readinessStatus: team.readinessStatus,
     officialStatus: team.officialStatus,
+    visibility: "private",
     leader: team.leader,
     memberCount: team.members.length,
     maxMembers: null,

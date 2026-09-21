@@ -226,6 +226,7 @@ export interface BackendTeamDto {
   sportTypeId: number;
   readinessStatus: "Forming" | "Ready" | "Inactive";
   officialStatus: "Unofficial" | "Official";
+  visibility: "private" | "public";
   leader: UserRefDto;
   memberCount: number;
   maxMembers: number | null;
@@ -243,6 +244,7 @@ export interface BackendTeamMemberDto {
 
 export interface BackendTeamListResponse<T> {
   items: T[];
+  pagination?: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }
 
 export interface BackendMyInvitationDto {

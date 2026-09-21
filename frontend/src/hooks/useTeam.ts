@@ -33,6 +33,7 @@ export const teamKeys = {
   detail: (id: TeamRef) => ["team", id] as const,
   backendDetail: (id: number) => ["teams", "detail", id] as const,
   backendMembers: (id: number) => ["teams", "detail", id, "members"] as const,
+  search: (q: string) => ["teams", "search", q] as const,
   invitations: (id: TeamRef) => ["team", id, "invitations"] as const,
   myInvitations: ["teams", "invitations", "mine"] as const,
   adminRequests: ["admin", "teamRequests"] as const,
@@ -75,6 +76,15 @@ export function useBackendTeam(teamId: number | undefined) {
     queryKey: teamKeys.backendDetail(teamId ?? 0),
     queryFn: () => teamApi.getBackendTeam(teamId as number),
     enabled: teamId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+export function useSearchTeams(q: string, enabled = true) {
+  return useQuery({
+    queryKey: teamKeys.search(q.trim()),
+    queryFn: () => teamApi.searchBackendTeams({ q, visibility: "public" }),
+    enabled: enabled && q.trim().length > 0,
     retry: retryPolicy,
   });
 }

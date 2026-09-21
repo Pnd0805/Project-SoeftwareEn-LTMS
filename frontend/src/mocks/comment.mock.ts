@@ -1,18 +1,18 @@
 import type { CommentDto, CommentListDto } from "../types/engagement.dto"
-
-function key(matchId: string) {
-  return `ltms-comments-${matchId}`
-}
+import { commitStore, getState } from "../shared/store"
 
 function read(matchId: string): CommentDto[] {
-  const saved = localStorage.getItem(key(matchId))
-  if (!saved) return []
-
-  try {
-    return JSON.parse(saved) as CommentDto[]
-  } catch {
-    return []
-  }
+  const state = getState()
+  return state.comments
+    .filter(comment => comment.match === matchId)
+    .map(comment => ({
+      id: comment.id,
+      matchId: comment.match,
+      userId: comment.by,
+      userName: state.users.find(user => user.id === comment.by)?.name ?? "Unknown user",
+      text: comment.text,
+      createdAt: new Date(comment.at).toISOString(),
+    }))
 }
 
 export function getMockComments(matchId: string): CommentListDto {
@@ -25,21 +25,24 @@ export function mockPostComment(
   userName: string,
   text: string,
 ): CommentListDto {
-  const items = read(matchId)
-  items.push({
+  const state = getState()
+  state.comments.push({
     id: `${matchId}-${Date.now()}`,
-    matchId,
-    userId,
-    userName,
+    match: matchId,
+    by: userId,
     text: text.trim(),
-    createdAt: new Date().toISOString(),
+    at: Date.now(),
   })
-  localStorage.setItem(key(matchId), JSON.stringify(items))
-  return { items }
+  // Keep the argument in the mock API contract while deriving the display name
+  // from the shared entity source used by the rest of the mock application.
+  void userName
+  commitStore()
+  return getMockComments(matchId)
 }
 
 export function mockRemoveComment(matchId: string, commentId: string): CommentListDto {
-  const items = read(matchId).filter(comment => comment.id !== commentId)
-  localStorage.setItem(key(matchId), JSON.stringify(items))
-  return { items }
+  const state = getState()
+  state.comments = state.comments.filter(comment => comment.id !== commentId)
+  commitStore()
+  return getMockComments(matchId)
 }

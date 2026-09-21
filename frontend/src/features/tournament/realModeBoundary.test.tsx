@@ -1,20 +1,30 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../shared/types'
 
-const { query, storeRead } = vi.hoisted(() => ({
+const { query, storeRead, notifications } = vi.hoisted(() => ({
   query: vi.fn(),
   storeRead: vi.fn(() => { throw new Error('Real mode read the prototype store') }),
+  notifications: vi.fn(() => ({ isLoading: false })),
 }))
 vi.mock('../../api/client', async original => ({
   ...await original<typeof import('../../api/client')>(), USE_MOCK: false,
 }))
 vi.mock('../../shared/store', () => ({ useLtms: storeRead, getState: storeRead }))
 vi.mock('../../hooks/useMatch', () => ({ useTournamentMatches: query }))
+vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 7 }, isLoading: false }) }))
+vi.mock('../../hooks/useNotifications', () => ({
+  useNotifications: notifications,
+  useMarkNotificationRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useMarkNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+vi.mock('../inbox/BackendInbox', () => ({ BackendInbox: () => <div>Backend action inbox</div> }))
 
 import { BracketTab } from './BracketTab'
 import { MvpPage } from '../mvp/MvpPage'
 import { WatchPage } from '../watch/WatchPage'
+import { InboxPage } from '../inbox/InboxPage'
 
 const tournament = { id: '2', drawn: false } as Tournament
 
@@ -70,5 +80,12 @@ describe('real tournament view boundaries', () => {
     expect(screen.getByText(title)).toBeInTheDocument()
     expect(storeRead).not.toHaveBeenCalled()
     expect(query).not.toHaveBeenCalled()
+  })
+
+  it('does not enable the unsupported notification query in real mode', () => {
+    render(<MemoryRouter><InboxPage /></MemoryRouter>)
+    expect(screen.getByText('Backend action inbox')).toBeInTheDocument()
+    expect(notifications).toHaveBeenCalledWith(7, false)
+    expect(storeRead).not.toHaveBeenCalled()
   })
 })

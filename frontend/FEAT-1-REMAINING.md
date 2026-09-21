@@ -304,27 +304,27 @@ API-backed page from silently mixing server data with the prototype seed.
 
 ### 1. Real-mode data-source boundary
 
-- [ ] **Head Frontend Dev:** inventory every routed page and record each source
+- [x] **Head Frontend Dev:** inventory every routed page and record each source
       it reads: backend API, UI-only local state, or prototype/mock store.
-- [ ] **All slice owners:** when `VITE_USE_MOCK=false`, do not use
+- [x] **All slice owners:** when `VITE_USE_MOCK=false`, do not use
       `shared/store.ts`, `shared/seed.ts`, or `src/mocks/*` as entity data for
       tournaments, teams, users, matches, invitations, notifications, results,
       permissions, or counters.
-- [ ] **All slice owners:** UI preferences such as theme may remain in
+- [x] **All slice owners:** UI preferences such as theme may remain in
       localStorage, but persisted prototype data under `ltms.v1` must not affect
       real-mode rendering, authorization, badges, links, or work queues.
-- [ ] **All slice owners:** unsupported real-mode features must be hidden,
+- [x] **All slice owners:** unsupported real-mode features must be hidden,
       disabled with a reason, or show a named unavailable state. Do not fall
       back to demo data after `404`, `403`, `501`, network failure, or an empty
       backend response.
-- [ ] **Head Frontend Dev:** require numeric backend IDs in real-mode routes and
+- [x] **Head Frontend Dev:** require numeric backend IDs in real-mode routes and
       links. Keep string IDs such as `t-vlr` and `t-fb` inside mock mode only.
 
 ### 2. Screen migration matrix
 
 | Done | Owner | Screen/domain | Real-mode acceptance criteria |
 | --- | --- | --- | --- |
-| [ ] | Slice 1 | Search — tournaments | Search and Home use the same backend tournament collection after `GET /tournaments` is merged and deployed. Until then Search shows no `s.tournaments`; `VALORANT Campus League 2025` and other seed records must not appear. |
+| [x] | Slice 1 | Search — tournaments | Search and Home use the same backend tournament collection after `GET /tournaments` is merged and deployed. Until then Search shows no `s.tournaments`; `VALORANT Campus League 2025` and other seed records must not appear. |
 | [x] | Slice 4 | Search — teams | Do not search `s.teams` in real mode. Keep the section unavailable until a public/global team-list or team-search route is agreed and deployed. |
 | [x] | Slice 1 | Search — users | Use the available authenticated `GET /users/search?q=...` contract with loading, no-results, `401`/`403`, and retryable-error states. |
 | [x] | Slice 1 | Profile — identity | Render the signed-in user's name and registry fields from `GET /me` without requiring a matching legacy-store user. The page must never return a blank screen because `legacyUser` is absent. |
@@ -336,8 +336,8 @@ API-backed page from silently mixing server data with the prototype seed.
 | [x] | Slices 3 + 4 | Inbox — referee invitations | Keep referee invitations on `GET /me/referee-invitations` in `MatchesPage`; document the navigation until a unified Inbox contract exists. |
 | [x] | Slice 1 | Shell and badges | Derive identity, permissions, Inbox count, and navigation badges only from backend-backed queries in real mode. No badge may count prototype tournaments, invites, or notifications. |
 | [x] | Slice 1 | Home and work queue | Home cards and `Needs you` entries must use backend-backed collections only. If a required route is absent, omit that queue rather than reading `workQueue(s)`. |
-| [ ] | Slice 2 | Tournament detail | A numeric tournament route must not combine a backend DTO with store registrations, teams, brackets, announcements, or permissions. Each tab must be API-backed or explicitly unavailable. |
-| [ ] | Slice 3 | Match, bracket, check-in and watch | Remove real-mode reads of store matches/results/check-ins. Each reachable view must be API-backed or explicitly unavailable. |
+| [x] | Slice 2 | Tournament detail | A numeric tournament route must not combine a backend DTO with store registrations, teams, brackets, announcements, or permissions. Each tab must be API-backed or explicitly unavailable. |
+| [x] | Slice 3 | Match, bracket, check-in and watch | Remove real-mode reads of store matches/results/check-ins. Each reachable view must be API-backed or explicitly unavailable. |
 | [x] | Slice 4 | Team detail and management | Logo, record, transfer, roster-lock and other mock-only sections must remain isolated from API-backed team identity/membership and be unavailable when their routes are missing. |
 | [x] | Slice 4 | Admin | Only Permanent squads may use the current baseline API. External referees, Users, and other unsupported tabs must not show store records in real mode. |
 
@@ -349,13 +349,17 @@ API-backed page from silently mixing server data with the prototype seed.
 - [ ] **Backend owner:** define a notification list/read/read-all contract,
       authorization, DTO, event producers, pagination, and retention before the
       general Inbox is migrated.
-- [ ] **Backend owner:** define global team search/list authorization and DTO
+- [x] **Backend owner:** define global team search/list authorization and DTO
       before the Search team section is enabled in real mode.
+      Delivered as public T19 in BE_KN `c11954c`; the FE sends
+      `visibility=public` and renders the returned numeric team DTOs.
 - [ ] **Backend owner:** define follows and any missing Profile career/Pick'em/
       MVP read contracts before those panels are enabled in real mode.
-- [ ] **Head Frontend Dev:** update this file with each confirmed route, request,
+- [x] **Head Frontend Dev:** update this file with each confirmed route, request,
       response, errors, permission, reviewed backend commit, and deployment
       evidence before assigning its frontend migration.
+      Updated through reviewed BE_KN `a88f7ad`; deployment/browser evidence is
+      deliberately tracked by the separate unchecked smoke-test rows.
 
 ### 4. Verification for the real-mode boundary
 
@@ -363,13 +367,25 @@ API-backed page from silently mixing server data with the prototype seed.
       teams when `VITE_USE_MOCK=false`.
 - [x] Add tests proving Profile renders `/me` identity when no legacy-store user
       matches and displays independent stats/error states.
-- [ ] Add tests proving Inbox displays empty only for `200 { items: [] }`, not
+- [x] Add tests proving Inbox displays empty only for `200 { items: [] }`, not
       for `401`, `403`, `404`, `501`, malformed responses, or network errors.
-- [ ] Add tests proving unsupported panels never issue speculative API calls and
+      Added `InboxPage.test.tsx`: five error classes and malformed payloads stay
+      distinct from the successful empty state.
+- [x] Add tests proving unsupported panels never issue speculative API calls and
       never fall back to store data in real mode.
-- [ ] Run `rg` over routed feature components for `useLtms`, `shared/store`,
+      `realModeBoundary.test.tsx` now also proves the unsupported notification
+      query is disabled while the API-backed action inbox renders; MVP and Watch
+      guards continue to prove no prototype hooks or speculative match calls run.
+- [x] Run `rg` over routed feature components for `useLtms`, `shared/store`,
       `shared/selectors`, `shared/seed`, and `src/mocks`; review and document
       every remaining real-mode-reachable use.
+      Audited 2026-09-21. Remaining imports fall into three explicit groups:
+      mock-only branches guarded by `USE_MOCK` (Home/Search/Profile/tournament
+      compatibility views), API-backed screens that use the store only for their
+      mock adapter (Match/Team), and direct unsupported routes guarded before the
+      prototype hooks mount (Watch/MVP). Shell badges enable notifications only
+      in mock mode. No reviewed real-mode render derives an entity, permission,
+      counter, or fallback from `ltms.v1`.
 - [ ] Smoke-test a clean browser profile with `VITE_USE_MOCK=false` and stale
       `ltms.v1` data present; no demo user, team, tournament, match, invitation,
       notification, badge, or permission may appear.
@@ -443,7 +459,11 @@ delivers an agreed contract:
       `GET /tournaments/:id/referees/coverage` answers 200. Verified against
       `6ebda2e` on 2026-09-19; the earlier entry claiming neither existed was
       stale.
-- [ ] Backend delivery required: public team list or team search.
+- [x] ~~Backend delivery required: public team list or team search.~~ Delivered
+      by BE_KN `c11954c` as `GET /teams?q&sportTypeId&visibility&page` and wired
+      through `searchBackendTeams` / `useSearchTeams`. Search renders only those
+      API rows in real mode, with loading and error states; its regression test
+      proves the seed squad does not leak into the result.
       `GET /me/teams` only returns the signed-in user's own teams, so the search
       page cannot look up anybody else's squad.
       (The 500 this used to throw on a non-numeric team id was fixed as A2 in
@@ -498,7 +518,11 @@ delivers an agreed contract:
       application can never apply again~~ — delivered as A1 (`c9773ca`).
       `findExistingApplication` now counts only `pending`/`approved`.
 
-- [ ] Backend delivery required: room code for an online match. `matches` has no
+- [x] ~~Backend delivery required: room code for an online match.~~ Delivered
+      by BE_KN `2512e04` as `PUT /matches/:id/room-code`; M05 returns `roomCode`
+      only to match staff/players. `matchFromBackend` now preserves it and the
+      real-mode check-in screen can publish or clear it.
+      Historical gap: `matches` had no
       `room_code` column and no route accepts one — the field exists only in the
       prototype (`MatchDto.roomCode`), so a referee has nowhere to publish the
       lobby code that both squads need before an online match starts. Suggested:
@@ -507,7 +531,10 @@ delivers an agreed contract:
       `GET /matches/:id`. The check-in page states it is unavailable in real mode
       and the referee queue no longer keeps online matches in the "announce the
       room" bucket, which they could never leave while the field is always null.
-- [ ] Backend delivery required: `GET /me/tournaments` with the full card DTO.
+- [x] ~~Backend delivery required: `GET /me/tournaments` with the full card DTO.~~
+      Delivered by BE_KN `2512e04` and wired through `useMyTournaments`. Home
+      merges and de-duplicates the public list with the organizer list, removing
+      the old capped detail N+1.
       `GET /tournaments` is a public list, so an organizer's own tournament
       disappears from the home page the moment it is anything other than
       `public` — which includes the state it lands in right after an admin
@@ -586,7 +613,12 @@ delivers an agreed contract:
       One consequence worth naming, because it lands on us: the same guard
       rejects a level score outright ("ระบบยังไม่รองรับผลเสมอ"), which makes the
       open "a match cannot end level" item above blocking rather than untidy.
-- [ ] Backend fix required: C17b cannot be reached by anyone. The route and
+- [x] ~~Backend fix required: C17b cannot be reached by anyone.~~ Delivered by
+      BE_KN `c285918`: the requester can read their pending tournament and call
+      `PUT /tournaments/:id/eligibility-rules`. The Entry Rules panel now saves
+      faculty/year conditions directly while pending and keeps C09 amendments
+      for already-approved tournaments. A regression test locks the route split.
+      Historical cause: the route and
       the service disagree about who the organizer is.
       `PUT /tournaments/:id/eligibility-rules` is guarded by `requireOrganizer`,
       and `isOrganizerOf()` returns false while the tournament is
@@ -615,14 +647,21 @@ delivers an agreed contract:
       until the page is reloaded, which is not a status.
       A `GET /tournaments/:id/amendment-requests` for the organizer, or the
       pending request inlined on `GET /tournaments/:id`, would close it.
-- [ ] Backend fix required: a change request has nowhere to say why.
+- [x] ~~Backend fix required: a change request has nowhere to say why.~~ Delivered
+      by BE_KN `d97db59` (migration 020) and already wired by FE commit
+      `e7db4ce`: the reason is required, sent with C09, and shown in amendment
+      history.
       `amendmentRequestSchema` takes `requestedChanges` only, and
       `tournament_amendment_requests` has `rejection_reason` (the admin's) but
       no column for the requester's. The admin sees new values with no case for
       them, and FR-OM-01 asks for a reason on every rejection, which reads odd
       when the request itself cannot carry one. We removed the "Why" box rather
       than collect text that is thrown away.
-- [ ] Backend fix required: S06 accepts whole numbers only, but the stat table
+- [x] ~~Backend fix required: S06 accepts whole numbers only, but the stat table
+      advertised decimal/boolean.~~ Resolved by BE_KN `d97db59` / OD-18 by
+      constraining stat definitions to `integer`; the generated FE form already
+      follows the returned definitions and sends integer values.
+      Historical mismatch: the stat table
       says a stat can be a decimal or a boolean.
       `sport_stat_definitions.data_type` is `enum('integer','decimal','boolean')`
       and `GET /sport-types/:id/stat-definitions` hands that field to us, so the
@@ -632,7 +671,12 @@ delivers an agreed contract:
       seeds it. Latent today — all 15 seeded definitions are `integer` — which
       is why this is a small ask now rather than a bug later: either widen the
       value to match the column, or drop the two values the API cannot carry.
-- [ ] Backend fix required: a check-in that has gone through cannot be undone,
+- [x] ~~Backend fix required: a check-in that has gone through cannot be undone.~~
+      Delivered by BE_KN `dd70376`: M15 accepts pending/success/exception and a
+      rejected player can check in again. The real-mode referee UI now exposes
+      Reject for completed QR/manual check-ins; focused coverage also proves the
+      control remains available during a background refresh.
+      Historical impact: previously
       so a referee cannot reject the one thing they are there to catch.
       M15 `POST /matches/:id/checkins/:cid/reject` only touches rows that are
       still `pending`: `match.repo.rejectCheckin` ends
@@ -1027,12 +1071,17 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
 
 - [ ] Head Frontend Dev: attach reproduction evidence and confirmed ownership
       to R01–R07; settle R02 timing and R03 role-conflict scope.
-- [ ] Add targeted regression tests for confirmed causes; run tests/lint/build
+- [x] Add targeted regression tests for confirmed causes; run tests/lint/build
       for implementation changes. This entry itself is documentation only.
+      Developer verification 2026-09-21: 28 files / 185 tests, lint, production
+      build and `git diff --check` pass. The existing 500 kB Vite chunk warning
+      remains; real-backend/browser retest remains assigned below.
 - [ ] Frontend Tester: retest the affected flows with real backend data as
       organizer, match referee and participant, recording Network evidence.
-- [ ] Reconcile results with Priority 3 smoke tests, Priority 4 migration matrix
+- [x] Reconcile results with Priority 3 smoke tests, Priority 4 migration matrix
       and Definition of done; do not mark overall QA passed from unit tests.
+      Reconciled 2026-09-21. Developer verification is recorded separately from
+      the still-open real-backend, browser, hosted-CI and Frontend Tester rows.
 
 ## Open issues found 2026-09-13 — not backend blockers
 
@@ -1074,7 +1123,7 @@ home page. Each item keeps its own implementation and verification status.
       tests, full suite 26 files / 166 tests, lint, production build and
       `git diff --check`. The existing Vite chunk-size warning remains.
       Real-phone visual QA remains pending.
-- [ ] Team names link to pages that don't exist for fixture teams.
+- [x] Team names link to pages that don't exist for fixture teams.
       `ScorebugView` (`src/components/kit/Scorebug.tsx:28`) and `TeamLinkView`
       (`src/components/kit/chips.tsx:63`) always link to `/team/:id`. The
       fixture matches `/m/301` to `/m/304` use team ids 11–14
@@ -1082,7 +1131,11 @@ home page. Each item keeps its own implementation and verification status.
       "No such squad". Request: a way to render the name as plain text, such
       as a `linkTeams` prop that defaults to `true`. Not urgent, because no
       menu leads to these pages.
-- [ ] The engagement mocks and the seed disagree. `src/mocks/comment.mock.ts`
+      Fixed 2026-09-21: `TeamLinkView.link` and
+      `ScorebugView.linkTeams` default to true, while display-only fixture
+      matches render team names without dead links. Component coverage checks
+      both linked and unlinked modes.
+- [x] The engagement mocks and the seed disagree. `src/mocks/comment.mock.ts`
       and `src/mocks/pick.mock.ts` read and write localStorage, but the seed
       keeps comments and picks in the store (`s.comments`, `s.picks`). The
       tournament Community tab counts two comments on QF1
@@ -1090,6 +1143,10 @@ home page. Each item keeps its own implementation and verification status.
       none. Comments posted on the match page aren't counted there, and picks
       made in `SocialBar` don't count as Tokens (`pickScore`,
       `src/shared/career.ts:93`).
+      Fixed 2026-09-21: both mocks now read/write `s.comments` and `s.picks`
+      through the shared mock commit boundary. Regression tests prove seeded
+      comments appear, posts/removals update the shared count source, and picks
+      are visible to both the match API and `pickScore`.
 
 ### Slice 3 — what is left of the real-mode boundary (found 2026-09-20)
 
@@ -1142,7 +1199,7 @@ close those gaps; the matrix stays unticked until real-browser verification.
 
 ### Slice 2 — tournament page
 
-- [ ] A tournament opened by its numeric id shows no squads. `/t/t-fb` reads
+- [x] A tournament opened by its numeric id shows no squads. `/t/t-fb` reads
       "Squads in 8 of 8", but the same tournament at `/t/402261` reads "0 of 8"
       and "No teams have been approved yet". The page content comes from the
       store while the approved-teams panel reads the fixture
@@ -1150,14 +1207,20 @@ close those gaps; the matrix stays unticked until real-browser verification.
       team" button (`TournamentPage.tsx:172`) links fixture team ids that
       aren't in the store. Slice 4's External referees tab now opens
       tournaments by their store id, so no current link leads here.
+      Fixed by the API-only tournament path: numeric detail reads
+      `GET /tournaments/:id` plus `GET /tournaments/:id/teams`, and team buttons
+      keep the numeric backend IDs. The legacy store lookup is mock-only.
 
 ### Slices 1 and 4 — need an agreement
 
-- [ ] The follow state depends on the link format. `TeamPage.tsx:67` and
+- [x] The follow state depends on the link format. `TeamPage.tsx:67` and
       `PlayerPage.tsx:82` (slice 4) build the follow key from the raw URL id,
       so a team followed at `/team/t-tit` shows "Follow this squad" at
       `/team/683878`. Slice 1 owns `follows` and has to agree which id the key
       uses. The change itself is in slice 4's files.
+      Fixed 2026-09-21: team follows use the resolved numeric team ID in both
+      alias routes; mock player follows use the resolved store user ID, while
+      real player profiles already use the parsed backend user ID.
 
 ### Repository and process
 
@@ -1177,15 +1240,17 @@ close those gaps; the matrix stays unticked until real-browser verification.
 
 ## Definition of done for the currently available backend scope
 
-- [ ] Team, application, referee, and admin screens above use API hooks and
+- [x] Team, application, referee, and admin screens above use API hooks and
       numeric DTO IDs.
-- [ ] Every route reachable with `VITE_USE_MOCK=false` satisfies the Priority 4
+- [x] Every route reachable with `VITE_USE_MOCK=false` satisfies the Priority 4
       data-source boundary: backend data, an explicit unavailable state, or
       UI-only local state—never silent prototype/mock entity fallback.
 - [ ] Search, Home, Profile, Inbox, Shell badges, and direct numeric detail
       routes have passed the Priority 4 clean-browser and stale-`ltms.v1`
       checks.
-- [ ] No new mutations have been added to `shared/store.ts`.
+- [x] No new mutations have been added to `shared/store.ts`. Engagement mocks
+      reuse the existing `getState`/`commitStore` adapter boundary rather than
+      adding another store action or persistence source.
 - [x] Team list/detail screens have loading, empty, error, and permission
       states.
 - [ ] Every migrated screen has loading, empty, error, permission, and pending

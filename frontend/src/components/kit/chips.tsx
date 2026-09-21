@@ -57,8 +57,9 @@ export function TeamChipView({ team: t }: { team?: TeamView | null }) {
   return <span className="tchip"><TeamMarkView team={t} />{t.name}</span>
 }
 
-export function TeamLinkView({ team: t }: { team?: TeamView | null }) {
+export function TeamLinkView({ team: t, link = true }: { team?: TeamView | null; link?: boolean }) {
   if (!t) return <span className="sub">TBD</span>
+  if (!link) return <TeamChipView team={t} />
   return (
     <Link className="tchip link" to={`/team/${t.id}`} title={`Open ${t.name}`}>
       <TeamMarkView team={t} /><span>{t.name}</span>

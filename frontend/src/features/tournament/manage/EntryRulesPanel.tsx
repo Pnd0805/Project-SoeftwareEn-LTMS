@@ -18,7 +18,7 @@ import { useState } from 'react'
 import { Badge, Banner, Facts, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
-import { useEligibilityRules, useRequestFilterChange, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
+import { useEligibilityRules, useRequestFilterChange, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
 import { useFaculties } from '../../../hooks/useReference'
 import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
@@ -45,6 +45,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const rules = useEligibilityRules(tournamentId)
   const faculties = useFaculties()
   const requestChange = useRequestFilterChange(tournamentId)
+  const setPendingRules = useSetEligibilityRules(tournamentId)
   const amendmentHistory = useTournamentAmendmentRequests(tournamentId)
 
   const currentFaculties = (rules.data?.items ?? []).filter(r => r.ruleType === 'faculty').map(r => r.ruleValue)
@@ -71,9 +72,11 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const scheduleNeedsFix = !!detail.data
     && !registrationClosesBeforeEvent(registrationEnd, currentEventStartDate)
   const correctedScheduleIsValid = registrationClosesBeforeEvent(registrationEnd, eventStartDate)
+  const pendingApproval = detail.data?.status === 'pending_approval'
 
   const startEditing = () => {
     requestChange.reset()
+    setPendingRules.reset()
     setReason('')
     setDraftFaculties(currentFaculties)
     setDraftYears(currentYears)
@@ -90,6 +93,13 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     && draftFaculties[0] === organizingFacultyId
 
   const send = () => {
+    if (pendingApproval) {
+      if (setPendingRules.isPending) return
+      setPendingRules.mutate(toEligibilityRules(draftFaculties, draftYears), {
+        onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString()) },
+      })
+      return
+    }
     if (requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)) return
     requestChange.mutate({
       rules: null,
@@ -149,8 +159,10 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
 
           {sentAt ? (
             <Banner kind="ok" icon="check">
-              <b>Sent to an admin on {sentAt}.</b> The conditions above stay as they are until the
-              request is approved. Its current decision appears in the history below.
+              {pendingApproval
+                ? <><b>Saved on {sentAt}.</b> The pending tournament now carries these conditions.</>
+                : <><b>Sent to an admin on {sentAt}.</b> The conditions above stay as they are until the
+                  request is approved. Its current decision appears in the history below.</>}
             </Banner>
           ) : null}
 
@@ -161,7 +173,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
             </Banner>
           ) : (
             <button className="btn ghost" type="button" style={{ alignSelf: 'flex-start' }} onClick={startEditing}>
-              <Icon name="plus" size={14} /> Request a change
+              <Icon name="plus" size={14} /> {pendingApproval ? 'Correct conditions' : 'Request a change'}
             </button>
           )}
         </Panel>
@@ -202,8 +214,9 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
 
       <Modal open={open} onClose={() => setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
         <div className="sub">
-          These were approved with the tournament, so an admin has to approve the change too. Nothing
-          moves until they do.
+          {pendingApproval
+            ? 'This request is still awaiting approval, so faculty and year rules can be corrected directly.'
+            : 'These were approved with the tournament, so an admin has to approve the change too. Nothing moves until they do.'}
         </div>
 
         <span className="tag"><em>//</em> Faculties — tick none to open it to every faculty</span>
@@ -217,7 +230,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           ))}
         </div>
 
-        {scheduleNeedsFix ? (
+        {!pendingApproval && scheduleNeedsFix ? (
           <Banner kind="crit" icon="warn">
             <b>The saved schedule prevents every amendment.</b> Registration closes at{' '}
             {registrationEnd ?? 'an unknown time'}, but the first match date is {currentEventStartDate || 'missing'}.
@@ -244,7 +257,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           ))}
         </div>
 
-        <div className="grid2">
+        {!pendingApproval ? <div className="grid2">
           <Field label="Gender" htmlFor="er-gender">
             <select id="er-gender" value={gender} onChange={e => setGender(e.target.value as GenderRequirement)}>
               {GenderRequirementOptions.map(x => <option key={x} value={x}>{GenderRequirementLabel[x]}</option>)}
@@ -256,9 +269,9 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           <Field label="Maximum age" htmlFor="er-hi">
             <input id="er-hi" type="number" min={0} max={120} value={maxAge} onChange={e => setMaxAge(e.target.value)} />
           </Field>
-        </div>
+        </div> : null}
 
-        <Banner kind={goesToFacultyAdmin ? 'ok' : 'warn'} icon={goesToFacultyAdmin ? 'check' : 'clock'}>
+        {!pendingApproval ? <Banner kind={goesToFacultyAdmin ? 'ok' : 'warn'} icon={goesToFacultyAdmin ? 'check' : 'clock'}>
           {goesToFacultyAdmin
             ? <><b>{facultyName(draftFaculties[0]!)}&apos;s admin can decide this.</b> It stays inside the
               faculty running the tournament.</>
@@ -267,24 +280,30 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
               : draftFaculties.length > 1
                 ? `Admitting ${draftFaculties.length} faculties is above a faculty admin’s scope.`
                 : 'The faculty admitted is not the one running the tournament.'}</>}
-        </Banner>
+        </Banner> : null}
 
         {/* บังคับกรอก เพราะ amendmentRequestSchema บังคับ — ปล่อยว่างแล้วเด้ง 400 ทั้งใบ */}
-        <Field label="Why the change is needed — the admin reads this" htmlFor="er-why">
+        {!pendingApproval ? <Field label="Why the change is needed — the admin reads this" htmlFor="er-why">
           <textarea id="er-why" rows={3} value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Two faculties merged their intakes, so the year rule now excludes half the entrants." />
-        </Field>
+        </Field> : null}
 
         {requestChange.isError ? (
           <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}</Banner>
+        ) : null}
+        {setPendingRules.isError ? (
+          <Banner kind="crit"><b>Couldn&apos;t save the conditions.</b> {errorMessage(setPendingRules.error)}</Banner>
         ) : null}
 
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setOpen(false)}>Cancel</button>
           <button className="btn primary" type="button"
-            disabled={requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)}
+            disabled={pendingApproval ? setPendingRules.isPending
+              : requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)}
             onClick={send}>
-            {requestChange.isPending ? 'Sending…' : 'Send to an admin'}
+            {pendingApproval
+              ? setPendingRules.isPending ? 'Saving…' : 'Save conditions'
+              : requestChange.isPending ? 'Sending…' : 'Send to an admin'}
           </button>
         </div>
       </Modal>

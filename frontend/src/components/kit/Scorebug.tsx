@@ -17,19 +17,21 @@ import { bracketFrontier, matchTag, wonBy } from '../../shared/rules'
 import { toTeamView, type TeamView } from './viewModels'
 import type { Match } from '../../shared/types'
 
-function Side({ t, score, lost, away, vt }: {
-  t?: TeamView | null; score: number | null; lost: boolean; away: boolean; vt: boolean
+function Side({ t, score, lost, away, vt, link }: {
+  t?: TeamView | null; score: number | null; lost: boolean; away: boolean; vt: boolean; link: boolean
 }) {
   return (
     <div className={`sb-side ${away ? 'away' : ''}`} style={vt && t ? { viewTransitionName: `vt-team-${t.id}` } : undefined}>
       <span className="sb-flag" style={{ background: t?.color ?? 'var(--hairline)' }} />
-      {t
+      {t && link
         ? (
           <Link className="sb-name link" to={`/team/${t.id}`} title={`Open ${t.name}`}>
             <span className="sb-abbr">{t.code ?? '—'}</span><span className="sb-full">{t.name}</span>
           </Link>
         )
-        : <span className="sb-name"><span className="sb-abbr">—</span><span className="sb-full">To be decided</span></span>}
+        : t
+          ? <span className="sb-name"><span className="sb-abbr">{t.code ?? '—'}</span><span className="sb-full">{t.name}</span></span>
+          : <span className="sb-name"><span className="sb-abbr">—</span><span className="sb-full">To be decided</span></span>}
       <span className={`sb-score ${lost ? 'lost' : ''}`}>{score ?? '—'}</span>
     </div>
   )
@@ -38,7 +40,7 @@ function Side({ t, score, lost, away, vt }: {
 export interface ScorebugDecider { a: number; b: number; kind: string }
 
 /** ชั้นล่าง — ไม่แตะ store เลย ใครมีข้อมูลก็วาดได้ */
-export function ScorebugView({ home, away, scoreA, scoreB, tag, decided, decider, homeLost, awayLost, vtHome, vtAway }: {
+export function ScorebugView({ home, away, scoreA, scoreB, tag, decided, decider, homeLost, awayLost, vtHome, vtAway, linkTeams = true }: {
   home?: TeamView | null
   away?: TeamView | null
   scoreA: number | null
@@ -57,10 +59,12 @@ export function ScorebugView({ home, away, scoreA, scoreB, tag, decided, decider
   /** ผู้ชนะฝั่งนี้ต่อ view-transition เข้าช่อง bracket หรือไม่ */
   vtHome?: boolean
   vtAway?: boolean
+  /** Disable links when a fixture supplies display-only teams without team detail routes. */
+  linkTeams?: boolean
 }) {
   return (
     <div className="scorebug">
-      <Side t={home} score={scoreA} lost={!!homeLost} away={false} vt={!!vtHome} />
+      <Side t={home} score={scoreA} lost={!!homeLost} away={false} vt={!!vtHome} link={linkTeams} />
       <div className="sb-mid">
         <span className="tag">{tag}</span>
         <span className="sb-clock">{decided ? (decider ? 'AET' : 'FT') : 'vs'}</span>
@@ -68,7 +72,7 @@ export function ScorebugView({ home, away, scoreA, scoreB, tag, decided, decider
           ? <span className="tag" style={{ textAlign: 'center' }}>{decider.a}–{decider.b}<br />{decider.kind}</span>
           : null}
       </div>
-      <Side t={away} score={scoreB} lost={!!awayLost} away vt={!!vtAway} />
+      <Side t={away} score={scoreB} lost={!!awayLost} away vt={!!vtAway} link={linkTeams} />
     </div>
   )
 }

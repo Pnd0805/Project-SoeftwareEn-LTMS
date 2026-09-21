@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as tournamentApi from "../api/tournament";
 import { USE_MOCK } from "../api/client";
 import type { TournamentRef } from "../mocks/tournamentWrites";
@@ -58,28 +58,6 @@ export function useApplicationDetail(id: number | undefined, enabled = true) {
 }
 
 /**
- * รายละเอียดของหลายรายการพร้อมกัน — ใช้เติมรายการที่ GET /tournaments ไม่คืนมา
- *
- * ⚠️ GET /tournaments คืนเฉพาะรายการที่ public เท่านั้น รายการของเราเองที่ยัง
- *    private (เพิ่งผ่าน admin ยังไม่กดเปิด) หรือที่ completed แล้ว จึงไม่อยู่ในนั้น
- *    เจ้าของหาของตัวเองไม่เจอในหน้าแรกทั้งที่เพิ่งสร้างไปเอง
- *    GET /me/tournament-requests บอกแค่ id/ชื่อ/สถานะ ไม่พอวาดการ์ด จึงต้องตาม
- *    ขอ detail เป็นรายอัน — N+1 ที่หลีกไม่ได้จนกว่าจะมี /me/tournaments ที่ข้อมูลครบ
- *    (ดู BACKEND-GAPS) จำกัดจำนวนไว้กันคนที่จัดรายการเยอะยิงรัว
- */
-export function useTournamentsByIds(ids: number[], limit = 12) {
-  const wanted = ids.slice(0, limit);
-  return useQueries({
-    queries: wanted.map((id) => ({
-      queryKey: tournamentKeys.detail(id),
-      queryFn: () => tournamentApi.getTournament(id),
-      enabled: !USE_MOCK,
-      retry: false,
-    })),
-  });
-}
-
-/**
  * GET /me/tournament-requests — รายการที่เรายื่นขอจัด (รวมที่อนุมัติแล้ว)
  * ใช้ตอบคำถาม "รายการไหนเป็นของฉัน" ซึ่งรายการสาธารณะไม่ได้บอกมาด้วย
  */
@@ -92,6 +70,15 @@ export function useMyTournamentRequests() {
   });
 }
 
+export function useMyTournaments(enabled = true) {
+  return useQuery({
+    queryKey: ["me", "tournaments"],
+    queryFn: tournamentApi.getMyTournaments,
+    enabled: !USE_MOCK && enabled,
+    retry: false,
+  });
+}
+
 /** GET /tournaments/:id/eligibility-rules — เงื่อนไขคณะ/ชั้นปีของรายการ (อ่านอย่างเดียว) */
 export function useEligibilityRules(id: number | undefined) {
   return useQuery({
@@ -99,6 +86,18 @@ export function useEligibilityRules(id: number | undefined) {
     queryFn: () => tournamentApi.getEligibilityRules(id as number),
     enabled: id !== undefined,
     retry: false,
+  });
+}
+
+export function useSetEligibilityRules(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rules: import("../types/tournament.dto").BackendEligibilityRuleInput[]) =>
+      tournamentApi.setEligibilityRules(id, rules),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tournament", id, "eligibility-rules"] });
+      queryClient.invalidateQueries({ queryKey: tournamentKeys.detail(id) });
+    },
   });
 }
 

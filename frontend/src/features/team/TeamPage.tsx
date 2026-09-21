@@ -71,7 +71,7 @@ export function TeamPage() {
   const myTeams = useBackendMyTeams(canReadPrivateTeamData)
   const myApplications = useMyTournamentApplications(canReadPrivateTeamData)
   const sportTypes = useSportTypes()
-  const follow = useFollow(currentUser?.id, `team:${id ?? ''}`)
+  const follow = useFollow(currentUser?.id, `team:${teamId ?? ''}`)
   const approvedIn = (myApplications.data?.items ?? [])
     .filter(application => application.team.id === team.data?.id && application.status === 'approved')
 

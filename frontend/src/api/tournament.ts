@@ -577,6 +577,11 @@ export function getMyTournamentRequests(): Promise<{
   return apiFetch("/me/tournament-requests");
 }
 
+/** Full card rows for every tournament organized by the signed-in user. */
+export function getMyTournaments(): Promise<TournamentListResponse> {
+  return apiFetch("/me/tournaments");
+}
+
 /**
  * GET /tournaments/:id/eligibility-rules — เงื่อนไขคณะ/ชั้นปีของรายการ (อ่านอย่างเดียว)
  * ⚠️ backend ยังไม่มีเส้นสำหรับ "เพิ่ม/ลบ" กฎ — ตอนนี้ต้องใส่แถวใน DB เอง
@@ -585,6 +590,17 @@ export function getEligibilityRules(
   id: number,
 ): Promise<{ items: import("../types/tournament.dto").BackendEligibilityRuleDto[] }> {
   return apiFetch(`/tournaments/${id}/eligibility-rules`);
+}
+
+/** C17b — requester edits faculty/year rules directly while approval is pending. */
+export function setEligibilityRules(
+  id: number,
+  rules: import("../types/tournament.dto").BackendEligibilityRuleInput[],
+): Promise<{ items: import("../types/tournament.dto").BackendEligibilityRuleDto[] }> {
+  return apiFetch(`/tournaments/${id}/eligibility-rules`, {
+    method: "PUT",
+    body: JSON.stringify({ rules }),
+  });
 }
 
 /** GET /applications/:id — ผู้จัดหรือหัวหน้าทีมของใบสมัครนั้น */

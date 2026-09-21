@@ -40,7 +40,7 @@ export function InboxPage() {
   }
   /* โหมดจริงประกอบ "สิ่งที่รอให้เราตอบ" จากเส้นที่ backend มี (ดู BackendInbox) */
   if (!USE_MOCK) return <BackendInbox />
-  if (isError || !data) {
+  if (isError || !data || !Array.isArray(data.items)) {
     return <Empty icon="bell" title="Unable to load inbox" sub="Please try again later." />
   }
   const list = data.items

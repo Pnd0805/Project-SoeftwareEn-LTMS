@@ -178,7 +178,7 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
     tag: roundLabel(m.round),
     referees: [],
     availableReferees: [],
-    roomCode: null,
+    roomCode: m.roomCode ?? null,
     checkinToken: null,
     replayUrl: null,
     checkedIn: 0,
@@ -715,6 +715,13 @@ export async function updateMatch(matchId: MatchRef, input: UpdateMatchRequest):
     if (!m) return notFound<MatchDto>("แมตช์");
     Object.assign(m, input, { updatedAt: new Date().toISOString() });
     return mockDelay(m);
+  }
+  if (input.roomCode !== undefined) {
+    await apiFetch(`/matches/${matchId}/room-code`, {
+      method: "PUT",
+      body: JSON.stringify({ roomCode: input.roomCode?.trim() || null }),
+    });
+    return getMatch(matchId);
   }
   /* B9 (`c43f497`): ส่งเฉพาะช่องที่แก้ได้แล้ว — เลื่อนเวลาอย่างเดียวหรือย้ายสนามอย่างเดียว
      ไม่ต้องกรอกอีกสองช่องซ้ำ · ครั้งแรกที่แมตช์ยังไม่เคยมีตาราง backend ยังบังคับครบสามช่อง

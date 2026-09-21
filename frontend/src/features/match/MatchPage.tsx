@@ -533,6 +533,7 @@ export function MatchPage() {
             tag={m.tag} decided={settled} decider={sc.decider}
             homeLost={settled && !!m.teamA && winnerId !== m.teamA.id}
             awayLost={settled && !!m.teamB && winnerId !== m.teamB.id}
+            linkTeams={!USE_MOCK || !!findStoreMatch(matchId)}
           />
           <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'community' ? 'Community' : x }))} active={tab}
             onPick={k => navigate(`/m/${m.id}/${k}`)} />

@@ -13,7 +13,7 @@ import { Empty, Panel, Tabs } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
 import {
-  useMyTournamentApplications, useMyTournamentRequests, useTournaments, useTournamentsByIds,
+  useMyTournamentApplications, useMyTournaments, useTournaments,
 } from '../../hooks/useTournament'
 import { USE_MOCK } from '../../api/client'
 import { me, myTeams, regsOf, visibleTo } from '../../shared/selectors'
@@ -61,10 +61,10 @@ function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries
 
 export function HomePage() {
   const s = useLtms()
-  const { data: tournamentData, isPending: apiPending, isError: apiError } = useTournaments()
-  const myRequests = useMyTournamentRequests()
-  const myApplications = useMyTournamentApplications()
   const { data: currentUser } = useMe()
+  const { data: tournamentData, isPending: apiPending, isError: apiError } = useTournaments()
+  const myTournaments = useMyTournaments(!!currentUser)
+  const myApplications = useMyTournamentApplications(!!currentUser)
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
   const u = USE_MOCK ? me(s) : undefined
@@ -81,15 +81,9 @@ export function HomePage() {
   /* รายการของเราที่ไม่ได้อยู่ในลิสต์สาธารณะ (private หลังเพิ่งผ่าน admin หรือจบไปแล้ว)
      ต้องตามไปขอ detail มาเอง ไม่งั้น "Yours to run" กรองจาก visible แล้วไม่เหลืออะไร
      เพราะของเราไม่เคยอยู่ใน visible ตั้งแต่แรก */
-  const publicIds = new Set((tournamentData?.items ?? []).map(dto => dto.id))
-  const missingMineIds = (myRequests.data?.items ?? [])
-    .map(r => r.id)
-    .filter(id => !publicIds.has(id))
-  const missingMine = useTournamentsByIds(missingMineIds)
-  const extraDtos = missingMine.flatMap(q => q.data ? [q.data] : [])
-
   const source = USE_MOCK ? s.tournaments
-    : [...(tournamentData?.items ?? []), ...extraDtos]
+    : [...(tournamentData?.items ?? []), ...(myTournaments.data?.items ?? [])]
+      .filter((dto, index, allDtos) => allDtos.findIndex(candidate => candidate.id === dto.id) === index)
       .map(dto => tournamentView(dto, [], [], sportTypes.data?.items ?? []))
   const all = USE_MOCK ? source.filter(t => visibleTo(s, t)) : source
   const needle = query.trim().toLowerCase()
@@ -126,7 +120,7 @@ export function HomePage() {
     /* โหมดจริง — รายการสาธารณะไม่ได้บอกว่าใครเป็นผู้จัดหรือทีมเราสมัครไว้ไหม
        จึงถามจากฝั่งตัวเอง: /me/tournament-requests (ของที่เราขอจัด) และ /me/applications
        แล้วค่อยจับคู่ด้วย id — ไม่ได้เดาจาก store ที่ค้างอยู่ในเครื่อง */
-    const mineIds = new Set((myRequests.data?.items ?? []).map(r => String(r.id)))
+    const mineIds = new Set((myTournaments.data?.items ?? []).map(r => String(r.id)))
     const playingIds = new Set(
       (myApplications.data?.items ?? [])
         .filter(a => a.status === 'approved' || a.status === 'pending')

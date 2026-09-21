@@ -242,7 +242,7 @@ export interface MatchListItemDto extends MatchDto {
 /**
  * PATCH /matches/:id/schedule — จัดตาราง/สนาม
  * backend บังคับครบสามช่อง (เวลาเริ่ม เวลาจบ สนาม) และแก้ได้เฉพาะแมตช์ที่ยัง scheduled
- * checkinOpenAt/roomCode ไม่มีในสัญญาของ backend — มีผลเฉพาะโหมด mock
+ * Room code is written separately through PUT /matches/:id/room-code.
  */
 export interface UpdateMatchRequest {
   scheduledTime?: string | null;
@@ -557,6 +557,7 @@ export interface BackendMatchDetailDto extends BackendMatchListItemDto {
   tournamentId: number;
   checkinOpenAt: string | null;
   mode: Mode;
+  roomCode: string | null;
 }
 
 /** PATCH /matches/:id/schedule — ⚠️ backend รับเฉพาะรูปแบบ Z (z.iso.datetime ไม่มี offset) */

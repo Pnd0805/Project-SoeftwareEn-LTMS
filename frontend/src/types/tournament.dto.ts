@@ -186,8 +186,8 @@ export interface CreateEligibilityRuleRequest {
  *
  * รับเฉพาะช่องใน `allowedAmendmentFields` ของ backend · ช่องอื่นตอบ
  * `400 AMENDMENT_FIELD_NOT_ALLOWED` พร้อมชื่อช่องที่ไม่รับ
- * ⚠️ ไม่มีที่ให้ผู้จัดเขียนเหตุผล — ตาราง `tournament_amendment_requests` มีแต่
- *    `rejection_reason` ซึ่งเป็นของแอดมิน แอดมินจึงเห็นแค่ "ขอเปลี่ยนเป็นอะไร"
+ * The request reason is required by C09 and is distinct from the admin's
+ * rejection reason.
  */
 export interface AmendmentRequestPayload {
   name?: string;

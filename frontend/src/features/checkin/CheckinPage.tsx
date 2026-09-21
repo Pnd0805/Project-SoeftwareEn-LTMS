@@ -24,33 +24,12 @@ import { TeamMarkView } from '../../components/kit/chips'
 import { IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
 
-/**
- * ถอนการเช็คอินที่ผ่านไปแล้วได้ไหม
- *
- * ดีไซน์ของหน้านี้ให้กรรมการมีคันโยกเดียวคือค้านย้อนหลัง (ดูหัวไฟล์) — QR ผ่านเองโดย
- * ไม่มีใครดูหน้าคนสแกน ถ้าเพื่อนสแกนแทนกัน ทางแก้เดียวคือกรรมการถอนทีหลัง
- * แต่ M15 ของ backend `UPDATE ... WHERE match_checkin_status = 'pending'` และ
- * `findPendingCheckinOfMatch` โยน ALREADY_DECIDED ให้ทุกสถานะที่ไม่ใช่ pending
- * แถวที่ success/exception (QR ผ่าน · ตรวจรูปผ่านแล้ว · กรรมการเช็คอินให้ด้วยมือ)
- * จึงตอบ 409 ทุกครั้ง — ยืนยันกับ c43f497: POST /matches/12/checkins/20/reject → 409
- * โหมดจริงเลยไม่โชว์ปุ่มที่กดแล้วพังแน่ๆ · mock ยังทำได้ตามดีไซน์เดิม
- * (BACKEND-GAPS: "a check-in that has gone through cannot be undone")
- */
-const canRevoke = (c: MatchCheckinDto) => USE_MOCK && c.status === 'success'
+/** M15 revokes accepted QR/manual check-ins as well as pending photo checks. */
+const canRevoke = (c: MatchCheckinDto) => c.status === 'success'
 
 const checkinErrorMessage = (error: unknown) => error instanceof ApiError && error.code === 'NOT_IN_APPROVED_ROSTER'
   ? 'You are not on the approved player list for this match. Contact your team captain.'
   : error instanceof Error ? error.message : 'Check-in failed.'
-
-/** บอกกรรมการว่าทำไมแถวที่เช็คอินแล้วถึงไม่มีปุ่มถอน แทนที่จะปล่อยช่องว่างเปล่า */
-function RevokeNote({ show }: { show: boolean }) {
-  return show ? (
-    <span className="sub">
-      A check-in that has gone through cannot be undone on this backend — only a photo still
-      waiting for review can be turned down.
-    </span>
-  ) : null
-}
 
 /** A stable-ish seed so the drawn code looks like the token it stands for. */
 const hashCode = (str: string) => {
@@ -193,7 +172,6 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
           </tbody>
         </table>
       </TableWrap>
-      <RevokeNote show={canJudge && !USE_MOCK && checkins.some(c => c.status === 'success')} />
 
       <QrScanModal
         open={capture !== null && m.mode === 'onsite'}
@@ -366,7 +344,6 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
           </table>
         </TableWrap>
       ) : isRef ? <span className="sub">Nobody has checked in yet.</span> : null}
-      <RevokeNote show={canJudge && !USE_MOCK && checkins.some(c => c.status === 'success')} />
 
       <QrScanModal
         open={capture && m.mode === 'onsite'}
@@ -420,7 +397,7 @@ export function CheckinPage() {
   const checkinData = checkinsQuery.data
   const mine = myCheckinQuery.data
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
-  const [room, setRoom] = useState('')
+  const [room, setRoom] = useState<string | null>(null)
 
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading check-in…</span></Panel>
@@ -495,27 +472,20 @@ export function CheckinPage() {
             <span className="tag"><em>//</em> Verified</span>
             <span className="v" style={{ fontFamily: 'var(--f-mono)', fontSize: 24 }}>{done} / {total}</span>
           </div>
-          {/* รหัสห้องเป็นของ prototype ล้วน — ตาราง matches ของ backend ไม่มีคอลัมน์นี้
-              และไม่มี endpoint ไหนรับค่า จึงไม่เปิดช่องให้กรอกในโหมดจริง ไม่งั้นกดบันทึกแล้วหาย */}
-          {USE_MOCK ? (
+          {/* A null draft means untouched; an empty string remains a deliberate clear. */}
+          {(
             <Field
               label="Room code — from the game client, once the lobby exists. Optional; shown to both squads once saved."
               htmlFor={`rc-${m.id}`}>
               <div className="hstack">
-                <input id={`rc-${m.id}`} value={room || m.roomCode || ''} onChange={e => setRoom(e.target.value)}
+                <input id={`rc-${m.id}`} value={room ?? m.roomCode ?? ''} onChange={e => setRoom(e.target.value)}
                   placeholder="e.g. a ROV custom-room number" style={{ flex: 1 }} />
                 <button className="btn" type="button" disabled={update.isPending}
-                  onClick={() => update.mutate({ roomCode: room })}>
+                  onClick={() => update.mutate({ roomCode: room ?? m.roomCode ?? '' })}>
                   {update.isPending ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </Field>
-          ) : (
-            <Banner kind="warn">
-              <b>Room code is not on the server yet.</b>{' '}
-              An online match has no field to publish the lobby code in, so agree it with both squads
-              another way until the backend adds one.
-            </Banner>
           )}
         </Panel>
       ) : null}

@@ -85,7 +85,7 @@ export function PlayerPage() {
   const backendUserId = USE_MOCK ? undefined : parseBackendId(id)
   const p = USE_MOCK ? routeUser(s, id) : null
   const { data: currentUser } = useMe()
-  const follow = useFollow(currentUser?.id, `player:${id ?? ''}`)
+  const follow = useFollow(currentUser?.id, `player:${p?.id ?? id ?? ''}`)
 
   if (!USE_MOCK) {
     return <BackendPlayerProfile userId={backendUserId} />

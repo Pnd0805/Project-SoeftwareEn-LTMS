@@ -44,6 +44,13 @@ vi.mock('../../hooks/useTournament', () => ({
     isError: false,
   }),
 }))
+vi.mock('../../hooks/useTeam', () => ({
+  useSearchTeams: () => ({
+    data: { items: [{ id: 77, name: 'Campus API Squad', sportTypeId: 3, readinessStatus: 'Ready', memberCount: 4 }] },
+    isPending: false,
+    isError: false,
+  }),
+}))
 
 import { SearchPage } from './SearchPage'
 
@@ -58,6 +65,6 @@ describe('SearchPage real-mode boundary', () => {
     expect(screen.getByText('Campus Cup from API')).toBeInTheDocument()
     expect(screen.queryByText('VALORANT Campus League 2025')).not.toBeInTheDocument()
     expect(screen.queryByText('Campus Seed Squad')).not.toBeInTheDocument()
-    expect(screen.getByText('Squad search is not available on the server yet.')).toBeInTheDocument()
+    expect(screen.getByText('Campus API Squad')).toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MatchCheckinDto, MatchDto } from '../../types/match.dto'
@@ -53,6 +53,9 @@ function renderPage() {
 
 beforeEach(() => {
   refetch.mockReset()
+  mutation.mutate.mockReset()
+  match.mode = 'onsite'
+  match.roomCode = null
   checkinsQuery = {
     data: undefined, isPending: true, isFetching: true, isError: false, refetch,
   }
@@ -103,5 +106,18 @@ describe('referee check-in roster state', () => {
 
     expect(screen.getByText('Checked in')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Verify by hand' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument()
+  })
+
+  it('lets match staff publish a room code for a real-mode online match', () => {
+    match.mode = 'online'
+    checkinsQuery = {
+      data: { items: [] }, isPending: false, isFetching: false, isError: false, refetch,
+    }
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText(/Room code/), { target: { value: 'LTMS-8842' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(mutation.mutate).toHaveBeenCalledWith({ roomCode: 'LTMS-8842' })
   })
 })
