@@ -46,6 +46,29 @@ const refereeRequestError = (error: unknown) => {
   return error.message
 }
 
+const errorDetailId = (error: ApiError, key: string) => {
+  if (typeof error.details !== 'object' || error.details === null) return null
+  const value = (error.details as Record<string, unknown>)[key]
+  return typeof value === 'number' || typeof value === 'string' ? String(value) : null
+}
+
+/** Keep the server's scheduling decision visible instead of collapsing every rejection into one banner. */
+const scheduleError = (error: unknown) => {
+  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Please try again.'
+  if (error.code === 'MATCH_NOT_CHANGEABLE') return 'Check-in has opened or the match has already started, so its schedule is locked.'
+  if (error.code === 'SCHEDULE_INCOMPLETE') return error.message
+  if (error.code === 'OUTSIDE_TOURNAMENT_DATES') return 'The match must start and finish within the tournament dates.'
+  if (error.code === 'SCHEDULE_CONFLICT') {
+    const id = errorDetailId(error, 'conflictingMatchId')
+    return `A squad or this venue already has an overlapping fixture${id ? ` (match #${id})` : ''}.`
+  }
+  if (error.code === 'SCHEDULE_BREAKS_BRACKET') {
+    const id = errorDetailId(error, 'blockingMatchId')
+    return `This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}.`
+  }
+  return error.message
+}
+
 /** Real mode uses the consent-based FR02 flow; it never calls the removed bulk assignment route. */
 function RealRefereeAssignments({ match }: { match: MatchDto }) {
   const pool = useTournamentReferees(match.tournamentId)
@@ -261,7 +284,9 @@ export function FixturePage() {
             </Field> : <RealRefereeAssignments match={m} />}
 
             {update.isError || assign.isError ? (
-              <Banner kind="crit">Could not save the fixture. Nothing was changed.</Banner>
+              <Banner kind="crit">
+                <b>Could not save the fixture.</b> {scheduleError(update.error ?? assign.error)} Nothing was changed.
+              </Banner>
             ) : null}
 
             <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}

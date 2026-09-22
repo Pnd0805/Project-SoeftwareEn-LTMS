@@ -88,6 +88,13 @@ function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef)
   void tournamentId;
 }
 
+/** Schedule/check-in-state writes change match views, never results or standings. */
+function touchMatchSchedule(qc: QueryClient) {
+  /* Invalidate both numeric and legacy route-id variants until every screen uses one id system. */
+  qc.invalidateQueries({ queryKey: matchKeys.all });
+  qc.invalidateQueries({ queryKey: ["matches"] });
+}
+
 // ══════════════ queries ══════════════
 
 export function useMatch(matchId: MatchRef | undefined) {
@@ -181,7 +188,10 @@ export function useUpdateMatch(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateMatchRequest) => matchApi.updateMatch(matchId, input),
-    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+    onSuccess: () => {
+      touchMatchSchedule(qc);
+      void tournamentId;
+    },
   });
 }
 

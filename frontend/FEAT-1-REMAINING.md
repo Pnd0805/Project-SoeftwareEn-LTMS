@@ -54,6 +54,40 @@ passed (3 files / 29 tests), the full suite passed (36 files / 226 tests), lint
 passed, TypeScript and the production build passed. The existing Vite chunk-size
 warning remains; real-backend/browser acceptance stays open above.
 
+## Fixture and standings failure states — fixed 2026-09-22
+
+- [x] Show the actual scheduling rejection on Fixture instead of collapsing
+      every `PATCH /matches/:id/schedule` failure into “Could not save the
+      fixture.” Named feedback covers an incomplete first schedule, a locked
+      match, tournament date bounds, team/venue overlap (including
+      `conflictingMatchId`) and bracket order (including `blockingMatchId`).
+- [x] Keep a schedule/check-in-state mutation scoped to match caches. It no
+      longer invalidates result, statistics, Pick'em or standings queries as if
+      a score had changed, so saving Fixture cannot cause an unrelated standings
+      retry storm.
+- [x] Treat a failed standings request as an error on Leaderboard, with the
+      server message and a retry action. A backend failure is no longer rendered
+      as the successful empty state “No table yet”. Dashboard already keeps its
+      match summary available while labelling only the table unavailable.
+- [x] Add focused regressions for schedule-conflict detail and for distinct
+      Leaderboard error/empty states.
+- [ ] Backend runtime prerequisite: apply
+      `database/migrations/021_standings_goals.sql` to every database used with
+      BE_KN `92857f1` or newer. `ER_BAD_FIELD_ERROR: ts.goals_for` proves that
+      the running code and database schema are out of sync; switching to
+      `backend_shokun_2` or `backend_step9-10` does not fix that because both
+      carry the same query and migration.
+- [ ] Frontend Tester verifies in a real browser that each schedule rejection
+      shows its actionable reason, a successful save survives reload, and
+      Dashboard/Leaderboard load after migration 021, recording the schedule
+      and standings responses from Network.
+
+Developer verification passed on 2026-09-22: focused Fixture/Leaderboard
+coverage passed (2 files / 7 tests), the full suite passed (37 files / 229
+tests), lint passed, TypeScript and the production build passed. The existing
+Vite chunk-size warning remains; database migration and real-browser acceptance
+stay open above.
+
 Earlier revisions of this file tracked `origin/backend` `35ce621` (2026-09-11)
 and treated anything that existed only on `BE_KN` as unavailable. That policy is
 no longer what the frontend does: `feat/1` is wired against `BE_KN` directly,

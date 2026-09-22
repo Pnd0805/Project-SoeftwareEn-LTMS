@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MatchDto } from '../../types/match.dto'
+import { ApiError } from '../../api/client'
 
 vi.mock('../../api/client', async importOriginal => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
@@ -11,6 +12,7 @@ vi.mock('../../api/client', async importOriginal => ({
 const updateAsync = vi.fn()
 const bulkAssignAsync = vi.fn()
 const requestReferee = vi.fn()
+let updateError: unknown = null
 const match = {
   id: 23, tournamentId: 5, bracketNodeId: 1, nextMatchId: null, loserNextMatchId: null,
   roundNumber: 2, teamA: null, teamB: null,
@@ -33,7 +35,9 @@ const idleMutation = { isPending: false, isError: false, isSuccess: false, error
 
 vi.mock('../../hooks/useMatch', () => ({
   useMatch: () => ({ data: match, isPending: false, isError: false }),
-  useUpdateMatch: () => ({ ...idleMutation, mutateAsync: updateAsync }),
+  useUpdateMatch: () => ({
+    ...idleMutation, mutateAsync: updateAsync, isError: updateError !== null, error: updateError,
+  }),
   useAssignReferees: () => ({ ...idleMutation, mutateAsync: bulkAssignAsync }),
   useMatchReferees: () => ({ data: { items: [] }, isPending: false, isError: false }),
   useUnassignMatchReferee: () => idleMutation,
@@ -61,6 +65,7 @@ beforeEach(() => {
   updateAsync.mockReset().mockResolvedValue(match)
   bulkAssignAsync.mockReset().mockResolvedValue(match)
   requestReferee.mockReset()
+  updateError = null
 })
 
 describe('real-mode fixture referee consent flow', () => {
@@ -80,6 +85,16 @@ describe('real-mode fixture referee consent flow', () => {
       scheduledTime: expect.any(String), scheduledEndTime: expect.any(String), venue: 'Court 1',
     })))
     expect(bulkAssignAsync).not.toHaveBeenCalled()
+  })
+
+  it('shows the backend scheduling reason and conflicting match instead of a generic failure', () => {
+    updateError = new ApiError(409, {
+      code: 'SCHEDULE_CONFLICT', message: 'schedule conflict', details: { conflictingMatchId: 91 },
+    })
+
+    renderPage()
+
+    expect(screen.getByText(/overlapping fixture \(match #91\)/)).toBeInTheDocument()
   })
 
   /* R12 — หน้านี้ต้องแก้เวลาและกรรมการได้ตราบที่ M06/FR02 ยังยอม ซึ่งคือแมตช์ที่ยัง

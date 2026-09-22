@@ -15,7 +15,7 @@
  * so this reads and never derives. Deriving it here as well would put the
  * ranking rules in two places.
  */
-import { Empty, FormGuide, Panel, TableWrap } from '../../components/kit/primitives'
+import { Banner, Empty, FormGuide, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamLinkView } from '../../components/kit/chips'
 import { useStandings } from '../../hooks/useMatch'
 import type { StandingRowDto, StandingsDto } from '../../types/match.dto'
@@ -95,9 +95,18 @@ function EliminationTable({ rows }: { rows: StandingRowDto[] }) {
 }
 
 export function LeaderboardTab({ tournamentId }: { tournamentId: number | string }) {
-  const { data, isPending } = useStandings(tournamentId)
+  const { data, isPending, isError, error, refetch } = useStandings(tournamentId)
 
   if (isPending) return <Panel quiet><span className="sub">Loading the table…</span></Panel>
+  if (isError) {
+    return (
+      <Banner kind="crit">
+        <b>Couldn't load the leaderboard.</b>{' '}
+        {error instanceof Error ? error.message : 'The standings service is unavailable.'}{' '}
+        <button className="btn ghost" type="button" onClick={() => void refetch()}>Try again</button>
+      </Banner>
+    )
+  }
   if (!data || !data.rows.length) {
     return <Empty icon="trophy" title="No table yet" sub="Positions appear once a result is confirmed." />
   }
