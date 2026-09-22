@@ -1,4 +1,4 @@
-import type { MyInvitationRow } from '../repositories/user.repo.js';
+import type { MyInvitationRow, AdminUserRow } from '../repositories/user.repo.js';
 import type { UserRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
 
@@ -25,6 +25,42 @@ export type UserRefDto = {
   fullName: string;
   avatarUrl: string | null;
 };
+
+// C2 — GET /admin/users
+export type AdminScopeRefDto = {
+  id : number,
+  scopeType : 'faculty' | 'university_wide' | 'root',
+  facultyId : number | null
+};
+
+export type AdminUserDto = {
+  id : number,
+  fullName : string,
+  email : string,
+  userType : 'student' | 'staff' | 'external',
+  facultyId : number | null,
+  isSuspended : boolean,
+  suspendedReason : string | null,
+  adminScope : AdminScopeRefDto | null
+};
+
+export function toAdminUserDto(row : AdminUserRow) : AdminUserDto{
+  const adminScope : AdminScopeRefDto | null = row.admin_scope_id === null ? null : {
+    id : row.admin_scope_id,
+    scopeType : row.admin_scope_type!,
+    facultyId : row.admin_scope_faculty_id
+  };
+  return {
+    id : row.user_id,
+    fullName : row.full_name,
+    email : row.email,
+    userType : row.user_type,
+    facultyId : row.faculty_id,
+    isSuspended : row.is_suspended === 1,
+    suspendedReason : row.suspended_reason,
+    adminScope : adminScope
+  };
+}
 
 export type PublicUserDto = {
   id : number,

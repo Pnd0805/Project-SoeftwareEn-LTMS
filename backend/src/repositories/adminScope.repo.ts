@@ -10,6 +10,61 @@ export async function findAdminByUserId(userId : number): Promise<AdminScopeRow 
     return rows[0] ?? null;
 }
 
+// C2 — GET /admin/scopes
+export type getAdminScope = Pick<AdminScopeRow , 'admin_scope_id' | 'scope_type' | 'faculty_id' | 'created_at'> &
+                             { user_id : number , full_name : string , profile_image_key : string | null };
+
+export async function findAllAdminScopes(filters : { facultyId? : number | undefined } , offset : number , pageSize : number)
+    : Promise<{ rows : getAdminScope[]; totalItems : number }>{
+    const where : string[] = [];
+    const params : unknown[] = [];
+    if(filters.facultyId !== undefined){ where.push('s.faculty_id = ?'); params.push(filters.facultyId); }
+    const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [ rows ] = await pool.query<(getAdminScope & RowDataPacket)[]>(
+        `SELECT s.admin_scope_id , s.scope_type , s.faculty_id , s.created_at ,
+                u.user_id , u.full_name , u.profile_image_key
+           FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
+          ${whereSql}
+          ORDER BY s.admin_scope_id LIMIT ? OFFSET ?`, [...params , pageSize , offset]);
+    const [ count ] = await pool.query<({ totalItems : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM admin_scopes s ${whereSql}`, params);
+
+    return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
+}
+
+export async function findAdminScopeById(id : number) : Promise<AdminScopeRow | null>{
+    const [ rows ] = await pool.query<(AdminScopeRow & RowDataPacket)[]>(`SELECT * FROM admin_scopes WHERE admin_scope_id = ?`,[id]);
+    return rows[0] ?? null;
+}
+
+export async function createAdminScope(userId : number , scopeType : 'faculty' | 'university_wide' , facultyId : number | null , createdBy : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `INSERT INTO admin_scopes(user_id , scope_type , faculty_id , created_by) VALUES(? , ? , ? , ?)`,
+        [userId , scopeType , facultyId , createdBy]);
+    return result.insertId;
+}
+
+export async function deleteAdminScope(id : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(`DELETE FROM admin_scopes WHERE admin_scope_id = ?`,[id]);
+    return result.affectedRows;
+}
+
+// "active" = ตัด user ที่ถูก suspend ออก เพราะระงับแล้วก็ใช้อำนาจแอดมินจริงไม่ได้อยู่ดี (requireAuth เตะออกทุก request)
+export async function countActiveUniversityWideAdmins() : Promise<number>{
+    const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
+          WHERE s.scope_type = 'university_wide' AND u.is_suspended = 0`);
+    return rows[0]!.cnt;
+}
+
+export async function countActiveFacultyAdmins(facultyId : number) : Promise<number>{
+    const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
+          WHERE s.scope_type = 'faculty' AND s.faculty_id = ? AND u.is_suspended = 0`,[facultyId]);
+    return rows[0]!.cnt;
+}
+
 export async function findAllOfficialRequests(offset: number, pageSize: number): Promise<{ rows: getOfficialRequest[], totalItems: number }> {
     const [ rows ] = await pool.query<(getOfficialRequest & RowDataPacket)[]>(`SELECT req.team_admin_request_id , req.team_admin_request_status , req.requested_at,
                                                                                 t.team_id , t.name , t.sport_type_id,

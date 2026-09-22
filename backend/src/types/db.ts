@@ -262,10 +262,33 @@ export type TeamAdminRequestRow = {
 export type AdminScopeRow = {
     admin_scope_id : number,
     user_id : number,
-    scope_type : 'faculty' | 'university_wide',
+    scope_type : 'faculty' | 'university_wide' | 'root',
     faculty_id : number | null,
     created_at : Date,
     created_by : number | null
+}
+
+export type UserReportRow = {
+    user_report_id : number,
+    reported_by : number,
+    target_user_id : number,
+    reason : string,
+    evidence : string[] | null,
+    user_report_status : 'pending' | 'approved' | 'rejected',
+    reviewed_by : number | null,
+    reviewed_at : Date | null,
+    rejection_reason : string | null,
+    created_at : Date
+}
+
+export type AuditLogRow = {
+    audit_log_id : number,
+    user_id : number,
+    action_type : string,
+    entity_type : string,
+    entity_id : number,
+    details : unknown,
+    created_at : Date
 }
 
 export type AnnouncementRow = {

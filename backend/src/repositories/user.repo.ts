@@ -75,6 +75,57 @@ export async function update(userId : number , input : UpdateMeInput) : Promise<
     return result.affectedRows;
 }
 
+// C2 — GET /admin/users · LEFT JOIN admin_scopes เพื่อคืน adminScope ติดมาด้วย (ไม่ SELECT * เพราะ users/admin_scopes มี faculty_id ชื่อชนกัน)
+export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason'> & {
+    admin_scope_id : number | null , admin_scope_type : 'faculty' | 'university_wide' | 'root' | null , admin_scope_faculty_id : number | null
+};
+
+export async function searchUsersAdmin(filters : { q? : string | undefined; facultyId? : number | undefined; suspended? : boolean | undefined },
+                                        offset : number , pageSize : number) : Promise<{ rows : AdminUserRow[]; totalItems : number }>{
+    const where : string[] = [];
+    const params : unknown[] = [];
+    if(filters.q){ where.push('(u.full_name LIKE ? OR u.email LIKE ?)'); params.push(`%${filters.q}%` , `%${filters.q}%`); }
+    if(filters.facultyId !== undefined){ where.push('u.faculty_id = ?'); params.push(filters.facultyId); }
+    if(filters.suspended !== undefined){ where.push('u.is_suspended = ?'); params.push(filters.suspended ? 1 : 0); }
+    const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [ rows ] = await pool.query<(AdminUserRow & RowDataPacket)[]>(
+        `SELECT u.user_id , u.full_name , u.email , u.user_type , u.faculty_id , u.is_suspended , u.suspended_reason,
+                s.admin_scope_id , s.scope_type AS admin_scope_type , s.faculty_id AS admin_scope_faculty_id
+           FROM users u LEFT JOIN admin_scopes s ON s.user_id = u.user_id
+          ${whereSql}
+          ORDER BY u.user_id LIMIT ? OFFSET ?` , [...params , pageSize , offset]);
+    const [ count ] = await pool.query<({ totalItems : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM users u ${whereSql}` , params);
+
+    return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
+}
+
+export async function suspendUser(userId : number , suspended : boolean , reason : string | null) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET is_suspended = ? , suspended_reason = ? WHERE user_id = ?`,
+        [suspended ? 1 : 0 , reason , userId]);
+    return result.affectedRows;
+}
+
+// C2 ข้อ 3 — ห้ามระงับ ORG ที่มีทัวร์ public ค้างอยู่
+export async function hasActivePublicTournamentAsOrganizer(userId : number) : Promise<boolean>{
+    const [ rows ] = await pool.query<(RowDataPacket)[]>(
+        `SELECT 1 FROM tournaments WHERE requested_by_user_id = ? AND tournament_status = 'public' LIMIT 1`,[userId]);
+    return rows.length > 0;
+}
+
+// C2 ข้อ 3 — ห้ามระงับหัวหน้าทีมที่มีใบสมัคร approved ค้างอยู่ในทัวร์ public
+export async function hasApprovedApplicationAsLeader(userId : number) : Promise<boolean>{
+    const [ rows ] = await pool.query<(RowDataPacket)[]>(
+        `SELECT 1 FROM teams t
+           JOIN tournament_applications a ON a.team_id = t.team_id
+           JOIN tournaments tour ON tour.tournament_id = a.tournament_id
+          WHERE t.leader_id = ? AND a.tournament_application_status = 'approved' AND tour.tournament_status = 'public'
+          LIMIT 1`,[userId]);
+    return rows.length > 0;
+}
+
 export type MyInvitationRow = Pick<TeamInvitationRow , 'team_invitation_id' | 'expires_at'> &
                               Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'> &
                               Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' >;

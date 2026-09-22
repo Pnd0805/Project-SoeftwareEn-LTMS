@@ -1,6 +1,26 @@
 import type { TeamAdminRequestRow , TeamRow , UserRow } from "../types/db.js";
 import type { TeamRef } from "./team.mapper.js";
 import type { UserRefDto } from "./user.mapper.js";
+import type { getAdminScope } from "../repositories/adminScope.repo.js";
+
+// C2 — GET /admin/scopes
+export type getAdminScopeDto = {
+    id : number,
+    user : UserRefDto,
+    scopeType : 'faculty' | 'university_wide' | 'root',
+    facultyId : number | null,
+    createdAt : string
+};
+
+export function toAdminScopeDto(row : getAdminScope) : getAdminScopeDto{
+    return {
+        id : row.admin_scope_id,
+        user : { id : row.user_id , fullName : row.full_name , avatarUrl : row.profile_image_key },
+        scopeType : row.scope_type,
+        facultyId : row.faculty_id,
+        createdAt : row.created_at.toISOString()
+    };
+}
 
 
 export type getOfficialRequest = Pick<TeamAdminRequestRow, 'team_admin_request_id' | 'team_admin_request_status' | 'requested_at'> &

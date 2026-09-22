@@ -43,3 +43,9 @@ export async function patchMe(req : Request , res : Response){
 export async function getMyInvitation(req : Request , res : Response){
     res.status(200).json(await UserService.getMyInvitation(req.user!.user_id));
 }
+
+// C2 — POST /users/:id/report
+export async function fileReport(req : Request , res : Response){
+    const targetUserId = parseId(req.params['id'] , 'รหัสผู้ใช้');
+    res.status(201).json(await UserService.fileUserReport(req.user!.user_id , targetUserId , req.body.reason , req.body.evidence ?? []));
+}
