@@ -313,7 +313,7 @@ describe('tournament comments (C7)', () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
     vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(null).mockResolvedValueOnce(commentRow());
     const out = await Service.postTournamentComment(20, 50, 'เชียร์');
-    expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'เชียร์');
+    expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'เชียร์', false);
     expect(out).toMatchObject({ isNew: true, content: 'เชียร์', isMine: true, author: { id: 50, fullName: 'สมชาย' }, tournamentId: 20 });
   });
 
@@ -336,8 +336,27 @@ describe('tournament comments (C7)', () => {
 
   it('409 COMMENT_REMOVED after an admin removed it', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
-    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow({ removed_at: new Date() }));
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow({ removed_at: new Date(), removed_by: 9001 }));
     expect(await errOf(Service.postTournamentComment(20, 50, 'x'))).toMatchObject({ status: 409, code: 'COMMENT_REMOVED' });
+    expect(FeedbackRepo.upsertComment).not.toHaveBeenCalled();
+  });
+
+  // มติ 23 ก.ย. ข้อ 6.6 ทาง ก — ผู้จัดลบไม่ใช่การแบนถาวร ไม่งั้นกดปุ่มเดียวปิดปากคนนั้นในทัวร์นั้นตลอดไป
+  it('writing again is allowed after the ORGANIZER removed it — the row is revived', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment)
+      .mockResolvedValueOnce(commentRow({ removed_at: new Date(), removed_by: ORG }))
+      .mockResolvedValueOnce(commentRow({ content: 'เขียนใหม่' }));
+    await expect(Service.postTournamentComment(20, 50, 'เขียนใหม่')).resolves.toMatchObject({ isNew: false, content: 'เขียนใหม่' });
+    expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'เขียนใหม่', true);
+  });
+
+  it('canComment stays true for a comment the organizer removed, false for one an admin removed', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow({ removed_at: new Date(), removed_by: ORG }));
+    await expect(Service.listTournamentComments(20, 50, 1, 20, 0)).resolves.toMatchObject({ mine: null, canComment: true });
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow({ removed_at: new Date(), removed_by: 9001 }));
+    await expect(Service.listTournamentComments(20, 50, 1, 20, 0)).resolves.toMatchObject({ mine: null, canComment: false });
   });
 
   it('list: public · mine + canComment for a logged-in viewer · isMine per item', async () => {

@@ -606,6 +606,8 @@ CREATE TABLE announcements (
 --   comment            = ความเห็นต่อทัวร์ : content · ใครที่ล็อกอินก็เขียนได้ · ทุกคนเห็น · ผู้จัดลบของคนอื่นได้เฉพาะประเภทนี้ (audit comment_removed_by_organizer)
 -- UNIQUE (tournament_id, match_key, user_id, feedback_type) = ที่มาของกฎ "คนละ 1 อันต่อทัวร์ต่อประเภท" → ส่งซ้ำคือแก้ของเดิม (ON DUPLICATE KEY UPDATE)
 -- ลบ = soft delete (removed_at/removed_by) ทั้งแอดมินและผู้จัด · แอดมินคืนได้ (POST /admin/feedback/:id/restore)
+-- removed_by ไม่ได้เก็บไว้เฉย ๆ: ถ้าเท่ากับ tournaments.requested_by_user_id แปลว่า "ผู้จัดลบ" → เจ้าของเขียนใหม่ได้ (คืนแถวเดิม)
+-- ถ้าเป็นคนอื่น (แอดมิน) → เจ้าของเขียนใหม่ในทัวร์นั้นไม่ได้อีก (409 COMMENT_REMOVED) — มติ 23 ก.ย. ข้อ 6.6 ทาง ก
 CREATE TABLE tournament_feedback (
   tournament_feedback_id INT PRIMARY KEY AUTO_INCREMENT,
   tournament_id INT NOT NULL,

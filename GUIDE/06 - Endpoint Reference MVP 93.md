@@ -338,10 +338,10 @@
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
-| E13 | `POST /tournaments/:id/comments` | Auth | เขียน/แก้ความเห็นของตัวเอง · ≤ 500 ตัวอักษร · **ไม่มี rate limit** (1 อันต่อคน) | `content` | **201** ครั้งแรก / **200** แก้ · `{ id, tournamentId, author, content, createdAt, isMine }` |
+| E13 | `POST /tournaments/:id/comments` | Auth | เขียน/แก้ความเห็นของตัวเอง · ≤ 500 ตัวอักษร · **ไม่มี rate limit** (1 อันต่อคน) · ถูก**ผู้จัด**ลบไปแล้วเขียนใหม่ได้ (ใช้แถวเดิม) · ถูก**แอดมิน**ลบ → 409 `COMMENT_REMOVED` | `content` | **201** ครั้งแรก / **200** แก้ · `{ id, tournamentId, author, content, createdAt, isMine }` |
 | E14 | `GET /tournaments/:id/comments` | — (ล็อกอินได้ `mine`/`canComment`) | รายการความเห็น ใหม่สุดก่อน · ไม่โชว์ที่ถูกลบ · ทัวร์ private คนนอกได้ 404 | `?page&pageSize` | `{ items, mine, canComment, pagination }` |
 | E14b | `DELETE /tournaments/:id/comments/me` | Auth | เจ้าของลบของตัวเอง (ลบจริง → เขียนใหม่ได้) | `—` | **204** |
-| E17c | `DELETE /tournaments/:id/comments/:cid` | ORG ของทัวร์นั้น | **ผู้จัดลบความเห็นของคนอื่น** (มติ 23 ก.ย. ข้อ 6) · ได้เฉพาะ `comment` · `reason` **บังคับ** 1–255 · audit `comment_removed_by_organizer` (`details: reason, tournamentId, authorUserId`) · แจ้งเจ้าของ (`comment_removed`) | `reason` | **204** |
+| E17c | `DELETE /tournaments/:id/comments/:cid` | ORG ของทัวร์นั้น | **ผู้จัดลบความเห็นของคนอื่น** (มติ 23 ก.ย. ข้อ 6) · ได้เฉพาะ `comment` · `reason` **บังคับ** 1–255 · audit `comment_removed_by_organizer` (`details: reason, tournamentId, authorUserId`) · แจ้งเจ้าของ (`comment_removed`) · **ไม่ใช่การแบน** — เจ้าของเขียนใหม่ได้ (ต่างจากแอดมินลบ) | `reason` | **204** |
 
 ## 10.4 Pick'em ทายผล (C7 · OD-24) — 6 endpoint
 

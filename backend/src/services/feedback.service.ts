@@ -247,10 +247,11 @@ export async function postTournamentComment(tournamentId: number, userId: number
         throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ คอมเมนต์ไม่ได้');
     }
     const existing = await FeedbackRepo.findOwnComment(tournamentId, userId);
-    if (existing?.removed_at) {
+    const removedByOrganizer = removedByOrganizerOf(existing, tournament);
+    if (existing?.removed_at && !removedByOrganizer) {
         throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว ส่งใหม่ไม่ได้');
     }
-    await FeedbackRepo.upsertComment(tournamentId, userId, content);
+    await FeedbackRepo.upsertComment(tournamentId, userId, content, removedByOrganizer);
     const saved = await FeedbackRepo.findOwnComment(tournamentId, userId);
     return { ...toCommentDto(saved!, userId), isNew: existing === null };
 }
@@ -265,7 +266,7 @@ export async function listTournamentComments(tournamentId: number, viewerId: num
     if (viewerId !== undefined) {
         const own = await FeedbackRepo.findOwnComment(tournamentId, viewerId);
         mine = own && !own.removed_at ? toCommentDto(own, viewerId) : null;
-        canComment = isOpenToPublic(tournament) && !own?.removed_at;
+        canComment = isOpenToPublic(tournament) && (!own?.removed_at || removedByOrganizerOf(own, tournament));
     }
     return {
         items: rows.map(r => toCommentDto(r, viewerId)),
@@ -306,7 +307,17 @@ export async function removeCommentByOrganizer(tournamentId: number, feedbackId:
     }
 }
 
-/** เจ้าของลบของตัวเอง → โพสต์ใหม่ได้ · ไม่มีให้ลบ → 404 · ถูกแอดมินลบไปแล้ว → 409 (ลบเพื่อโพสต์ใหม่ไม่ได้) */
+/**
+ * ผู้จัดลบ vs แอดมินลบ — แยกด้วย `removed_by` (มติ 23 ก.ย. ข้อ 6.6 ทาง ก)
+ *   ผู้จัดลบ  → เจ้าของเขียนใหม่ได้ (กันการปิดปากถาวรด้วยการกดปุ่มเดียว) — ผู้จัดลบซ้ำได้ถ้ายังไม่เหมาะสม
+ *   แอดมินลบ → ห้ามเขียนใหม่ในทัวร์นั้นอีก (บทลงโทษของระบบ ตาม OD-23/24 เดิม)
+ * ผู้จัดที่เป็นแอดมินด้วยแล้วลบผ่านเส้นแอดมิน = นับเป็นผู้จัดลบ (removed_by ตรงกัน) — ผ่อนปรนฝั่งผู้ใช้ไว้ก่อน
+ */
+function removedByOrganizerOf(own: { removed_at: Date | null; removed_by: number | null } | null, tournament: TournamentRow): boolean {
+    return own?.removed_at !== null && own?.removed_at !== undefined && own.removed_by === tournament.requested_by_user_id;
+}
+
+/** เจ้าของลบของตัวเอง → โพสต์ใหม่ได้ · ไม่มีให้ลบ → 404 · ถูกลบไปแล้ว → 409 (ลบเพื่อโพสต์ใหม่ไม่ได้) */
 export async function deleteOwnTournamentComment(tournamentId: number, userId: number): Promise<void> {
     await getTournamentOr404(tournamentId);
     const own = await FeedbackRepo.findOwnComment(tournamentId, userId);
@@ -314,7 +325,7 @@ export async function deleteOwnTournamentComment(tournamentId: number, userId: n
         throw new AppError(404, 'COMMENT_NOT_FOUND', 'คุณยังไม่มีคอมเมนต์ในทัวร์นาเมนต์นี้');
     }
     if (own.removed_at) {
-        throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว');
+        throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกลบไปแล้ว');
     }
     await FeedbackRepo.deleteOwnComment(tournamentId, userId);
 }

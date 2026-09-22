@@ -17,11 +17,12 @@ export type FeedbackRow = {
     match_id: number | null;
     is_reported: number;
     removed_at: Date | null;
+    removed_by: number | null;   // คนที่ลบ — ใช้แยก "ผู้จัดลบ" (เขียนใหม่ได้) ออกจาก "แอดมินลบ" (ห้ามเขียนใหม่)
     created_at: Date;
 };
 
 const FEEDBACK_COLS = `f.tournament_feedback_id, f.tournament_id, f.user_id, f.feedback_type, f.content, f.rating,
-                       f.voted_for_user_id, f.match_id, f.is_reported, f.removed_at, f.created_at`;
+                       f.voted_for_user_id, f.match_id, f.is_reported, f.removed_at, f.removed_by, f.created_at`;
 
 // ---- ทัวร์เริ่มแล้วหรือยัง ----
 
@@ -183,12 +184,16 @@ export type CommentListRow = FeedbackRow & { author_name: string; author_avatar:
 const COMMENT_SELECT = `SELECT ${FEEDBACK_COLS}, u.full_name AS author_name, u.profile_image_key AS author_avatar
                         FROM tournament_feedback f JOIN users u ON u.user_id = f.user_id`;
 
-/** คนละ 1 อันต่อทัวร์ (UNIQUE เดิม) — ส่งซ้ำ = แก้ข้อความ · ★ ธง report ไม่หาย (มติ 23 ก.ย. ข้อ 5-ก) */
-export async function upsertComment(tournamentId: number, userId: number, content: string): Promise<void> {
+/**
+ * คนละ 1 อันต่อทัวร์ (UNIQUE เดิม) — ส่งซ้ำ = แก้ข้อความ · ★ ธง report ไม่หาย (มติ 23 ก.ย. ข้อ 5-ก)
+ * `revive` = แถวเดิมถูก "ผู้จัด" ลบไว้ แล้วเจ้าของเขียนใหม่ (มติ 23 ก.ย. ข้อ 6.6 ทาง ก) → คืนแถวเดิมให้มองเห็นอีกครั้ง
+ * ธง is_reported ไม่ถูกล้างตรงนี้เหมือนกัน — คนตรวจยังเห็นว่าข้อความนี้เคยถูกรายงาน
+ */
+export async function upsertComment(tournamentId: number, userId: number, content: string, revive = false): Promise<void> {
     await pool.query(
         `INSERT INTO tournament_feedback (tournament_id, user_id, feedback_type, content)
          VALUES (?, ?, 'comment', ?)
-         ON DUPLICATE KEY UPDATE content = VALUES(content)`,
+         ON DUPLICATE KEY UPDATE content = VALUES(content)${revive ? ', removed_at = NULL, removed_by = NULL' : ''}`,
         [tournamentId, userId, content]
     );
 }
