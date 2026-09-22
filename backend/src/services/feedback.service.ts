@@ -222,7 +222,7 @@ function isOpenToPublic(tournament: TournamentRow): boolean {
     return tournament.tournament_status === 'public' || tournament.tournament_status === 'completed';
 }
 
-function toCommentDto(row: CommentListRow, viewerId?: number) {
+function toCommentDto(row: CommentListRow, viewerId?: number, withReportFlag = false) {
     return {
         id: row.tournament_feedback_id,
         tournamentId: row.tournament_id,
@@ -230,6 +230,9 @@ function toCommentDto(row: CommentListRow, viewerId?: number) {
         content: row.content,
         createdAt: row.created_at,
         isMine: viewerId !== undefined && viewerId === row.user_id,
+        // ธง report เห็นได้เฉพาะคนที่ลบได้ (ผู้จัดของทัวร์ / แอดมินทั้งมหาวิทยาลัย) — มติ 23 ก.ย. ข้อ 6.4
+        // คนทั่วไปเห็นไม่ได้ ไม่งั้นกลายเป็นตราประจานที่ใครก็ตั้งให้คนอื่นได้ด้วยการกด report
+        ...(withReportFlag ? { isReported: Boolean(row.is_reported) } : {}),
     };
 }
 
@@ -256,10 +259,17 @@ export async function postTournamentComment(tournamentId: number, userId: number
     return { ...toCommentDto(saved!, userId), isNew: existing === null };
 }
 
-export async function listTournamentComments(tournamentId: number, viewerId: number | undefined, page: number, pageSize: number, offset: number) {
+/** `reportedOnly` (?reported=true) — คิวตรวจของผู้จัด/แอดมิน ปลายทางของแจ้งเตือน `comment_reported` */
+export async function listTournamentComments(tournamentId: number, viewerId: number | undefined, page: number, pageSize: number, offset: number,
+                                             reportedOnly = false) {
     const tournament = await getTournamentOr404(tournamentId);
     await assertCommentsVisible(tournament, viewerId);
-    const { rows, totalItems } = await FeedbackRepo.listComments(tournamentId, offset, pageSize);
+    const canModerate = viewerId !== undefined
+        && (tournament.requested_by_user_id === viewerId || await isUniversityAdmin(viewerId));
+    if (reportedOnly && !canModerate) {
+        throw new AppError(403, 'NOT_ORGANIZER', 'เฉพาะผู้จัดทัวร์นาเมนต์นี้และแอดมินเท่านั้นที่ดูรายการที่ถูกรายงานได้');
+    }
+    const { rows, totalItems } = await FeedbackRepo.listComments(tournamentId, offset, pageSize, reportedOnly);
 
     let mine = null;
     let canComment = false;
@@ -269,8 +279,8 @@ export async function listTournamentComments(tournamentId: number, viewerId: num
         canComment = isOpenToPublic(tournament) && (!own?.removed_at || removedByOrganizerOf(own, tournament));
     }
     return {
-        items: rows.map(r => toCommentDto(r, viewerId)),
-        mine, canComment,
+        items: rows.map(r => toCommentDto(r, viewerId, canModerate)),
+        mine, canComment, canModerate,
         pagination: buildPagination(page, pageSize, totalItems),
     };
 }
@@ -361,7 +371,7 @@ export async function reportFeedback(feedbackId: number, userId: number) {
             await NotificationService.notify({
                 userId: tournament.requested_by_user_id, type: 'comment_reported',
                 title: 'มีคนรายงานความเห็นในทัวร์ของคุณ',
-                message: `มีผู้รายงานความเห็นในทัวร์นาเมนต์ "${tournament.name}" — เข้าไปตรวจและลบได้ถ้าไม่เหมาะสม`,
+                message: `มีผู้รายงานความเห็นในทัวร์นาเมนต์ "${tournament.name}" — เปิดรายการที่ถูกรายงาน (?reported=true) เพื่อตรวจและลบถ้าไม่เหมาะสม`,
                 relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
             });
         }

@@ -40,7 +40,8 @@ export async function getMvpVotes(req: Request, res: Response) {
 export async function listTournamentComments(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
-    res.status(200).json(await FeedbackService.listTournamentComments(tournamentId, req.user?.user_id, newpage, newpageSize, offset));
+    const reportedOnly = req.query['reported'] === 'true';   // คิวตรวจของผู้จัด/แอดมิน — ค่าอื่น (ไม่ส่ง/false) = รายการปกติ
+    res.status(200).json(await FeedbackService.listTournamentComments(tournamentId, req.user?.user_id, newpage, newpageSize, offset, reportedOnly));
 }
 
 export async function postTournamentComment(req: Request, res: Response) {

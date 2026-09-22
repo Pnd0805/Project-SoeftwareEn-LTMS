@@ -351,6 +351,26 @@ describe('tournament comments (C7)', () => {
     expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'เขียนใหม่', true);
   });
 
+  // มติ 23 ก.ย. ข้อ 6.4 — ธง report เห็นได้เฉพาะคนที่ลบได้ ไม่งั้นกลายเป็นตราประจานที่ใครก็ตั้งให้คนอื่นได้
+  it('hides isReported from an ordinary viewer and shows it to the organizer', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.listComments).mockResolvedValue({ rows: [commentRow({ is_reported: 1 })], totalItems: 1 });
+    const seen = await Service.listTournamentComments(20, 50, 1, 20, 0);
+    expect(seen.items[0]).not.toHaveProperty('isReported');
+    expect(seen.canModerate).toBe(false);
+    const org = await Service.listTournamentComments(20, ORG, 1, 20, 0);
+    expect(org.items[0]).toMatchObject({ isReported: true });
+    expect(org.canModerate).toBe(true);
+  });
+
+  it('?reported=true is the moderation queue — organizer only, filtered in the query', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    await Service.listTournamentComments(20, ORG, 1, 20, 0, true);
+    expect(FeedbackRepo.listComments).toHaveBeenCalledWith(20, 0, 20, true);
+    expect(await errOf(Service.listTournamentComments(20, 50, 1, 20, 0, true))).toMatchObject({ status: 403, code: 'NOT_ORGANIZER' });
+    expect(await errOf(Service.listTournamentComments(20, undefined, 1, 20, 0, true))).toMatchObject({ status: 403, code: 'NOT_ORGANIZER' });
+  });
+
   it('canComment stays true for a comment the organizer removed, false for one an admin removed', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
     vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow({ removed_at: new Date(), removed_by: ORG }));

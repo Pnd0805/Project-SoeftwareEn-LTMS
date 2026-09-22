@@ -207,17 +207,19 @@ export async function findOwnComment(tournamentId: number, userId: number): Prom
     return rows[0] ?? null;
 }
 
-/** คอมเมนต์ที่ยังไม่ถูกลบ ใหม่สุดก่อน */
-export async function listComments(tournamentId: number, offset: number, pageSize: number): Promise<{ rows: CommentListRow[]; totalItems: number }> {
+/** คอมเมนต์ที่ยังไม่ถูกลบ ใหม่สุดก่อน · `reportedOnly` = คิวที่ผู้จัด/แอดมินต้องตรวจ (มติ 23 ก.ย. ข้อ 6.4) */
+export async function listComments(tournamentId: number, offset: number, pageSize: number, reportedOnly = false): Promise<{ rows: CommentListRow[]; totalItems: number }> {
+    const reported = reportedOnly ? ' AND f.is_reported = TRUE' : '';
     const [rows] = await pool.query<(CommentListRow & RowDataPacket)[]>(
         `${COMMENT_SELECT}
-         WHERE f.tournament_id = ? AND f.feedback_type = 'comment' AND f.removed_at IS NULL
+         WHERE f.tournament_id = ? AND f.feedback_type = 'comment' AND f.removed_at IS NULL${reported}
          ORDER BY f.created_at DESC, f.tournament_feedback_id DESC
          LIMIT ? OFFSET ?`,
         [tournamentId, pageSize, offset]
     );
     const [count] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
-        `SELECT COUNT(*) AS cnt FROM tournament_feedback WHERE tournament_id = ? AND feedback_type = 'comment' AND removed_at IS NULL`,
+        `SELECT COUNT(*) AS cnt FROM tournament_feedback
+         WHERE tournament_id = ? AND feedback_type = 'comment' AND removed_at IS NULL${reportedOnly ? ' AND is_reported = TRUE' : ''}`,
         [tournamentId]
     );
     return { rows, totalItems: Number(count[0]?.cnt ?? 0) };
