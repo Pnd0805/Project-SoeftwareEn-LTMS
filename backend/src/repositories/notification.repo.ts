@@ -139,6 +139,18 @@ export async function findTournamentReferees(tournamentId: number): Promise<numb
     return rows.map(r => r.user_id);
 }
 
+/** สมาชิกทุกคนของทีม (team_members + หัวหน้า) — เรื่องที่ทั้งทีมต้องรู้ ไม่ใช่แค่ผู้เล่นในรายชื่อลงแข่ง เช่น ชนะบาย */
+export async function findTeamMemberIds(teamIds: number[]): Promise<number[]> {
+    if (teamIds.length === 0) return [];
+    const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT user_id FROM team_members WHERE team_id IN (?)
+         UNION
+         SELECT leader_id AS user_id FROM teams WHERE team_id IN (?)`,
+        [teamIds, teamIds]
+    );
+    return rows.map(r => r.user_id);
+}
+
 // ---- C1-ข ผู้รับของ event ผลการแข่ง ----
 
 /** หัวหน้า 2 ทีมในแมตช์ + กรรมการที่รับแมตช์นี้ + ORG ของทัวร์ (แยกกลุ่ม ให้ service เลือกเองว่าจะส่งใคร) */

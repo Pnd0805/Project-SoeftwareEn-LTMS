@@ -15,6 +15,15 @@ export type PredictionRow = {
     created_at: Date;
 };
 
+/** คนที่ทายแมตช์ในทัวร์นี้ไว้ — อ่านก่อนจับสายใหม่ (การทายถูกลบไปพร้อมแมตช์) เพื่อแจ้งให้ทายใหม่ */
+export async function findPickerIdsTx(conn: PoolConnection, tournamentId: number): Promise<number[]> {
+    const [rows] = await conn.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT p.user_id FROM pickem_predictions p JOIN matches m ON m.match_id = p.match_id WHERE m.tournament_id = ?`,
+        [tournamentId]
+    );
+    return rows.map(r => r.user_id);
+}
+
 /** ทาย/เปลี่ยนการทาย (ก่อน cutoff เท่านั้น — service ตรวจแล้ว) · กันเขียนทับแถวที่ตัดสินแล้ว */
 export async function upsert(userId: number, matchId: number, teamId: number): Promise<void> {
     await pool.query(

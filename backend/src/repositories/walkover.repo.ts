@@ -70,8 +70,9 @@ export type ApplyWalkoverInput = {
  * ทรานแซกชันเดียว: ใบผล walkover → แมตช์ completed → ผู้ชนะ/ผู้แพ้เดินสาย → standings → ยกเลิกคำขอกรรมการที่ค้าง → audit
  * ★ ผู้แพ้ถูกใส่ลง loser_next_match_id ตามปกติ — ถ้าเป็นทีมที่ถอนตัว walkover.service จะไล่ walkover แมตช์นั้นต่อเอง (ลูกโซ่ double elim)
  * ★ ไม่แตะ player_profile_stats — ไม่มีใครลงสนาม (มติ Q3)
+ * คืน false = แมตช์เริ่ม/จบไปก่อนแล้ว ไม่ได้เขียนอะไร (service ใช้ตัดสินว่าจะแจ้งเตือนไหม)
  */
-export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
+export async function applyWalkover(input : ApplyWalkoverInput): Promise<boolean>{
     const { match, winnerTeamId, loserTeamId } = input;
     const conn = await pool.getConnection();
     try{
@@ -83,7 +84,7 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
             [match.match_id]);
         if(!locked[0]){
             await conn.rollback();
-            return;
+            return false;
         }
 
         await conn.query<ResultSetHeader>(
@@ -130,6 +131,7 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<void>{
              JSON.stringify({ winnerTeamId, loserTeamId, forfeitedTeamIds : input.forfeitedTeamIds ?? null, reason : input.reason, actorRole : input.actorRole })]);
 
         await conn.commit();
+        return true;
     }catch(err){
         await conn.rollback();
         throw err;

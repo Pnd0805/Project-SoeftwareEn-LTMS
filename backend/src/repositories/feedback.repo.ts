@@ -23,6 +23,25 @@ export type FeedbackRow = {
 const FEEDBACK_COLS = `f.tournament_feedback_id, f.tournament_id, f.user_id, f.feedback_type, f.content, f.rating,
                        f.voted_for_user_id, f.match_id, f.is_reported, f.removed_at, f.created_at`;
 
+// ---- ทัวร์เริ่มแล้วหรือยัง ----
+
+/**
+ * มีแมตช์ที่ "แข่งจริง" แล้ว — กำลังแข่ง / รอผล / ผลถูกโต้แย้ง / จบด้วยผลจริง
+ * ชนะบายไม่นับ (ทีมถอนตัวก่อนวันแข่งก็เกิดชนะบายได้ ยังไม่ใช่ทัวร์เริ่ม)
+ */
+export async function hasPlayedMatch(tournamentId: number): Promise<boolean> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM matches m
+         WHERE m.tournament_id = ?
+           AND (m.match_status IN ('in_progress', 'disputed', 'result_rejected')
+                OR (m.match_status = 'completed' AND EXISTS (
+                        SELECT 1 FROM match_results r WHERE r.match_id = m.match_id AND r.match_result_status <> 'walkover')))
+         LIMIT 1`,
+        [tournamentId]
+    );
+    return rows.length > 0;
+}
+
 // ---- ใครเป็นใครในทัวร์นี้ ----
 
 /**

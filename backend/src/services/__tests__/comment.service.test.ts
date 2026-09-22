@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../repositories/comment.repo.js', () => ({
   insert: vi.fn(() => Promise.resolve(5)),
+  countRecentByUser: vi.fn(() => Promise.resolve({ count: 0, retryAfterSeconds: 1 })),
   findById: vi.fn(),
   findByMatch: vi.fn(() => Promise.resolve({ rows: [], totalItems: 0 })),
   markReported: vi.fn(),
@@ -27,6 +28,28 @@ beforeEach(() => {
   vi.mocked(MatchRepo.findMatchById).mockResolvedValue({ match_id: 1 } as never);
   vi.mocked(CommentRepo.findById).mockResolvedValue(row());
   vi.mocked(CommentRepo.remove).mockResolvedValue(true);
+  vi.mocked(CommentRepo.countRecentByUser).mockResolvedValue({ count: 0, retryAfterSeconds: 1 });
+});
+
+describe('spam guard — มติ 22 ก.ย.: ไม่เกิน 5 คอมเมนต์ต่อนาที', () => {
+  it('the 5th comment inside a minute is still allowed (4 before it)', async () => {
+    vi.mocked(CommentRepo.countRecentByUser).mockResolvedValue({ count: 4, retryAfterSeconds: 30 });
+    await expect(Service.postComment(1, 50, 'x')).resolves.toMatchObject({ id: 5 });
+    expect(CommentRepo.countRecentByUser).toHaveBeenCalledWith(50, 60);
+  });
+
+  it('the 6th → 429 COMMENT_RATE_LIMITED with retryAfterSeconds, nothing saved', async () => {
+    vi.mocked(CommentRepo.countRecentByUser).mockResolvedValue({ count: 5, retryAfterSeconds: 42 });
+    const err = await errOf(Service.postComment(1, 50, 'x'));
+    expect(err).toMatchObject({ status: 429, code: 'COMMENT_RATE_LIMITED', extra: { retryAfterSeconds: 42 } });
+    expect(CommentRepo.insert).not.toHaveBeenCalled();
+  });
+
+  it('an unknown match is still 404 (checked before the limit)', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(null);
+    vi.mocked(CommentRepo.countRecentByUser).mockResolvedValue({ count: 9, retryAfterSeconds: 10 });
+    expect(await errOf(Service.postComment(999, 50, 'x'))).toMatchObject({ status: 404 });
+  });
 });
 
 describe('comments', () => {

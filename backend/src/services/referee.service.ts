@@ -221,9 +221,24 @@ export async function listMatchReferees(matchId : number){
 }
 
 export async function unassignRefereeFromMatch(matchId : number, tournamentRefereeId : number){
+    // อ่านก่อนลบ — ต้องรู้ว่าเป็นใครและรับแมตช์ไว้แล้วหรือแค่ถูกเสนอ (declined = เขาไม่รับเองอยู่แล้ว ไม่ต้องแจ้ง)
+    const row = (await MatchRefRepo.findByTournamentReferees([tournamentRefereeId])).find(r => r.match_id === matchId);
+    const referee = await RefRepo.findById(tournamentRefereeId);
+
     const removed = await MatchRefRepo.unassign(matchId, tournamentRefereeId);
     if(!removed){
         throw new AppError(404, 'REFEREE_NOT_ASSIGNED', 'กรรมการคนนี้ไม่ได้ถูกมอบหมายให้แมตช์นี้');
+    }
+
+    if(referee && row && row.assignment_status !== 'declined'){
+        await NotificationService.notify({
+            userId : referee.user_id, type : 'referee_removed',
+            title : row.assignment_status === 'accepted' ? 'คุณถูกถอดจากกรรมการแมตช์' : 'ผู้จัดถอนแมตช์ออกจากคำเชิญ',
+            message : row.assignment_status === 'accepted'
+                ? `ผู้จัดถอดคุณออกจากการเป็นกรรมการแมตช์ #${matchId} — ไม่ต้องไปคุมแมตช์นี้แล้ว`
+                : `ผู้จัดถอนแมตช์ #${matchId} ออกจากคำเชิญเป็นกรรมการของคุณ`,
+            relatedEntityType : 'match', relatedEntityId : matchId,
+        });
     }
 }
 
@@ -324,6 +339,19 @@ export async function removeTournamentReferee(
     }
 
     await RefRepo.removeAllByUser(tournamentId, target.user_id, removedBy);
+
+    // ปฏิเสธคำเชิญไปเองแล้ว = ไม่มีอะไรเปลี่ยนสำหรับเขา ไม่ต้องแจ้ง
+    if(target.invitation_status !== 'rejected'){
+        const tournament = await TournamentRepo.findTournamentById(tournamentId);
+        await NotificationService.notify({
+            userId : target.user_id, type : 'referee_removed',
+            title : target.invitation_status === 'accepted' ? 'คุณถูกถอดจากกรรมการทัวร์นาเมนต์' : 'คำเชิญเป็นกรรมการถูกยกเลิก',
+            message : target.invitation_status === 'accepted'
+                ? `ผู้จัดถอดคุณออกจากการเป็นกรรมการทัวร์นาเมนต์ "${tournament?.name ?? ''}" — แมตช์ที่เคยรับไว้ไม่ต้องไปคุมแล้ว`
+                : `ผู้จัดยกเลิกคำเชิญเป็นกรรมการทัวร์นาเมนต์ "${tournament?.name ?? ''}"`,
+            relatedEntityType : 'tournament', relatedEntityId : tournamentId,
+        });
+    }
 
     const coverage = await getRefereeCoverage(tournamentId, sportTypeId);
     return { removed : true, uncoveredMatches : coverage.uncovered.map(m => m.matchId) };

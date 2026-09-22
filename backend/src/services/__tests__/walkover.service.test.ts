@@ -16,9 +16,18 @@ vi.mock('../../repositories/match.repo.js', () => ({
   findById: vi.fn(),
 }));
 
+vi.mock('../../repositories/team.repo.js', () => ({
+  findById: vi.fn((id: number) => Promise.resolve({ team_id: id, name: `ทีม${id}` })),
+}));
+
+vi.mock('../notification.service.js', () => ({
+  notifyMatchDecidedWithoutPlay: vi.fn(),
+}));
+
 import * as Walkover from '../walkover.service.js';
 import * as WalkoverRepo from '../../repositories/walkover.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
+import * as NotificationService from '../notification.service.js';
 import type { MatchRow } from '../../types/db.js';
 
 function match(overrides: Partial<MatchRow> = {}): MatchRow {
@@ -201,5 +210,98 @@ describe('dead match (both slots permanently empty)', () => {
 
     expect(await Walkover.resolveIfOpponentWithdrawn(30)).toEqual([]);
     expect(WalkoverRepo.closeDeadMatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('แจ้งเตือนแมตช์ที่จบโดยไม่มีการแข่ง (มติ 22 ก.ย. 2569)', () => {
+  const notified = () => vi.mocked(NotificationService.notifyMatchDecidedWithoutPlay).mock.calls;
+
+  beforeEach(() => {
+    vi.mocked(WalkoverRepo.applyWalkover).mockResolvedValue(true);
+  });
+
+  it('withdrawal → both teams (all members) + ORG + referees, message names both teams', async () => {
+    vi.mocked(WalkoverRepo.findOpenMatchesOfTeam)
+      .mockResolvedValueOnce([match({ match_id: 1, team_a_id: 10, team_b_id: 11 })])
+      .mockResolvedValueOnce([]);
+
+    await Walkover.processTeamWithdrawal(50, 10, 7);
+
+    expect(notified()).toHaveLength(1);
+    const [matchId, teamIds, content, options] = notified()[0]!;
+    expect(matchId).toBe(1);
+    expect(teamIds).toEqual([11, 10]);
+    expect(content).toMatchObject({ type: 'match_walkover', title: 'แมตช์ตัดสินชนะบาย', relatedEntityType: 'match', relatedEntityId: 1 });
+    expect(content.message).toContain('ทีม "ทีม11" ชนะบาย');
+    expect(content.message).toContain('ทีม "ทีม10" ถอนตัว');
+    expect(options).toEqual({});
+  });
+
+  it('does not notify when the match had already started (applyWalkover wrote nothing)', async () => {
+    vi.mocked(WalkoverRepo.applyWalkover).mockResolvedValue(false);
+    vi.mocked(WalkoverRepo.findOpenMatchesOfTeam)
+      .mockResolvedValueOnce([match({ match_id: 1, team_a_id: 10, team_b_id: 11 })])
+      .mockResolvedValueOnce([]);
+
+    await Walkover.processTeamWithdrawal(50, 10, 7);
+
+    expect(notified()).toHaveLength(0);
+  });
+
+  it('M10 no-show → skips the referee who pressed start', async () => {
+    await Walkover.applyNoShowWalkover(match({ match_id: 3 }), 10, 11, 55);
+    const [, teamIds, content, options] = notified()[0]!;
+    expect(teamIds).toEqual([10, 11]);
+    expect(content.message).toContain('เช็คอินไม่ครบ');
+    expect(options).toEqual({ exceptUserId: 55 });
+  });
+
+  it('M17 double forfeit → both teams, ORG who pressed is skipped; the dead-slot bye that follows is announced too', async () => {
+    const m = match({ match_id: 1, team_a_id: 10, team_b_id: 11, next_match_id: 5 });
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_id: 5, team_a_id: 12, team_b_id: null, next_match_id: null }));
+    vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(false);
+
+    await Walkover.applyOrganizerForfeit(m, 3, 0, 11, 99);
+
+    expect(notified()).toHaveLength(2);
+    expect(notified()[0]![1]).toEqual([10, 11]);
+    expect(notified()[0]![2]).toMatchObject({ title: 'แมตช์ตัดสินแพ้ทั้งคู่' });
+    expect(notified()[0]![3]).toEqual({ exceptUserId: 99 });
+    // บายต่อเนื่อง: ORG ไม่ได้กดเอง → ได้รับด้วย
+    expect(notified()[1]![0]).toBe(5);
+    expect(notified()[1]![1]).toEqual([12]);
+    expect(notified()[1]![2]).toMatchObject({ title: 'ผ่านรอบโดยไม่ต้องแข่ง' });
+    expect(notified()[1]![3]).toEqual({});
+  });
+
+  it('dead match → no teams, still tells ORG/referees (empty team list)', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValueOnce(match({ match_id: 30, team_a_id: null, team_b_id: null, next_match_id: null }));
+    vi.mocked(WalkoverRepo.hasUnfinishedPredecessor).mockResolvedValue(false);
+
+    await Walkover.resolveIfOpponentWithdrawn(30);
+
+    expect(notified()).toHaveLength(1);
+    expect(notified()[0]![1]).toEqual([]);
+    expect(notified()[0]![2]).toMatchObject({ title: 'แมตช์ถูกปิดอัตโนมัติ' });
+  });
+
+  it('both withdrawn in the chain → both teams named, lost for both', async () => {
+    vi.mocked(WalkoverRepo.findOpenMatchesOfTeam)
+      .mockResolvedValueOnce([match({ match_id: 8, team_a_id: 10, team_b_id: 13 })])
+      .mockResolvedValueOnce([]);
+    vi.mocked(WalkoverRepo.isTeamWithdrawn).mockResolvedValue(true);
+
+    await Walkover.processTeamWithdrawal(50, 10, 7);
+
+    expect(notified()[0]![1]).toEqual([10, 13]);
+    expect(notified()[0]![2].message).toContain('ถอนตัวทั้งคู่');
+  });
+
+  it('a failing notification never breaks the walkover', async () => {
+    vi.mocked(NotificationService.notifyMatchDecidedWithoutPlay).mockRejectedValueOnce(new Error('db down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(Walkover.applyNoShowWalkover(match({ match_id: 3 }), 10, 11, 55)).resolves.toEqual({ matchId: 3, winnerTeamId: 10, loserTeamId: 11 });
+    spy.mockRestore();
   });
 });

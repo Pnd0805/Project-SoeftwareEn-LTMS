@@ -129,6 +129,11 @@ describe('getSummary', () => {
       mine: { teamId: 11, pointsEarned: null, status: 'pending' }, canPredict: true,
     });
   });
+  it('percentages always add up to 100 (5:3 would round to 63+38)', async () => {
+    vi.mocked(PickemRepo.countByTeam).mockResolvedValue([{ team_id: 11, picks: 5 }, { team_id: 12, picks: 3 }]);
+    const { teams } = await Service.getSummary(1);
+    expect(teams[0]!.percent + teams[1]!.percent).toBe(100);
+  });
   it('insiders see canPredict false', async () => {
     vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(true);
     expect((await Service.getSummary(1, 50)).canPredict).toBe(false);

@@ -1,5 +1,8 @@
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
+import * as TeamRepo from '../repositories/team.repo.js';
+import type { ApplyWalkoverInput } from '../repositories/walkover.repo.js';
+import * as NotificationService from './notification.service.js';
 import { WIN_POINTS } from '../config/scoring.js';
 import type { MatchRow, SportTypeRow } from '../types/db.js';
 
@@ -8,6 +11,7 @@ import type { MatchRow, SportTypeRow } from '../types/db.js';
  *   ถอนตัว (P08)  : แมตช์ที่ยังไม่เริ่มของทีมนั้น → อีกฝั่งชนะบาย · คู่ที่ยังไม่มา → รอจนคู่มาถึงแล้วค่อยบาย (resolveIfOpponentWithdrawn)
  *   ไม่มาแข่ง (M10): ทีมที่เช็คอินไม่ถึง sport_types.min_members ตอนกรรมการกด start → แพ้บาย (decideNoShow)
  * standings นับเท่าชนะปกติ + score_data ตาม sport_types.walkover_score · player stats ไม่แตะ
+ * แจ้งเตือน (มติ 22 ก.ย. 2569): ทุกแมตช์ที่จบโดยไม่มีการแข่ง รวมลูกโซ่ → สมาชิกทุกคนของทีมในแมตช์ + กรรมการของแมตช์ + ORG
  */
 
 export type WalkoverResult = { matchId : number; winnerTeamId : number | null; loserTeamId : number | null };
@@ -38,22 +42,26 @@ export async function processTeamWithdrawal(tournamentId : number, teamId : numb
         // คู่แข่งก็ถอนไปแล้วเหมือนกัน (สายล่าง double elim / คู่ที่มาทีหลัง) — ไม่มีใครให้ชนะ → แพ้ทั้งคู่เหมือน M17
         // ไม่มีใครเดินสาย ช่องรอบถัดไปว่างถาวร → ทีมที่รออยู่บายผ่าน (dead slot) ไม่ต้องให้ ORG มาเปิดเช็คอินแล้ว forfeit เอง
         if(await WalkoverRepo.isTeamWithdrawn(tournamentId, opponent)){
-            await WalkoverRepo.applyWalkover({
+            if(await WalkoverRepo.applyWalkover({
                 match : next, winnerTeamId : null, loserTeamId : null, forfeitedTeamIds : [teamId, opponent],
                 actorUserId : leaderUserId, actorRole : 'team_leader',
                 scoreData : null, winPoints : WIN_POINTS, reason : 'both_withdrawn'
-            });
+            })){
+                await announce(next, { winnerTeamId : null, loserTeamId : null, forfeitedTeamIds : [teamId, opponent], reason : 'both_withdrawn' });
+            }
             done.push({ matchId : next.match_id, winnerTeamId : null, loserTeamId : null });
             done.push(...await resolveIfOpponentWithdrawn(next.next_match_id));
             done.push(...await resolveIfOpponentWithdrawn(next.loser_next_match_id));
             continue;
         }
 
-        await WalkoverRepo.applyWalkover({
+        if(await WalkoverRepo.applyWalkover({
             match : next, winnerTeamId : opponent, loserTeamId : teamId,
             actorUserId : leaderUserId, actorRole : 'team_leader',
             scoreData : scoreDataFor(sport, opponent, teamId), winPoints : WIN_POINTS, reason : 'team_withdrawn'
-        });
+        })){
+            await announce(next, { winnerTeamId : opponent, loserTeamId : teamId, reason : 'team_withdrawn' });
+        }
         done.push({ matchId : next.match_id, winnerTeamId : opponent, loserTeamId : teamId });
         // ผู้ชนะไปถึงแมตช์ถัดไปที่ช่องอีกฝั่งอาจว่างถาวรแล้ว (แพ้ทั้งคู่ก่อนหน้า) → บายผ่านต่อ
         done.push(...await resolveIfOpponentWithdrawn(next.next_match_id));
@@ -96,6 +104,7 @@ export async function resolveIfOpponentWithdrawn(matchId : number | null): Promi
 async function closeDeadMatch(match : MatchRow): Promise<WalkoverResult[]>{
     if(await WalkoverRepo.hasUnfinishedPredecessor(match.match_id)) return [];
     if(!(await WalkoverRepo.closeDeadMatch(match.match_id, 0))) return [];
+    await announce(match, { winnerTeamId : null, loserTeamId : null, reason : 'dead_match' });
     const done : WalkoverResult[] = [{ matchId : match.match_id, winnerTeamId : null, loserTeamId : null }];
     done.push(...await resolveIfOpponentWithdrawn(match.next_match_id));
     done.push(...await resolveIfOpponentWithdrawn(match.loser_next_match_id));
@@ -105,11 +114,13 @@ async function closeDeadMatch(match : MatchRow): Promise<WalkoverResult[]>{
 /** ทีมเดียวในแมตช์ + ไม่มีแมตช์ต้นทางที่ยังไม่จบ = ช่องอีกฝั่งจะว่างตลอดไป → ทีมนั้นผ่านรอบ (บาย ไม่มีผู้แพ้) */
 async function resolveDeadSlot(match : MatchRow, teamId : number): Promise<WalkoverResult[]>{
     if(await WalkoverRepo.hasUnfinishedPredecessor(match.match_id)) return [];
-    await WalkoverRepo.applyWalkover({
+    if(await WalkoverRepo.applyWalkover({
         match, winnerTeamId : teamId, loserTeamId : null,
         actorUserId : (await WalkoverRepo.findTeamLeaderId(teamId)) ?? 0, actorRole : 'organizer',
         scoreData : null, winPoints : WIN_POINTS, reason : 'dead_slot'
-    });
+    })){
+        await announce(match, { winnerTeamId : teamId, loserTeamId : null, reason : 'dead_slot' });
+    }
     const done : WalkoverResult[] = [{ matchId : match.match_id, winnerTeamId : teamId, loserTeamId : null }];
     // ทีมที่ผ่านไปอาจไปเจอช่องตายอีก (ต้นทางอีกฝั่งแพ้ทั้งคู่เหมือนกัน) → ไล่ต่อ
     return done.concat(await resolveIfOpponentWithdrawn(match.next_match_id));
@@ -132,11 +143,14 @@ export function decideNoShow(match : MatchRow, countA : number, countB : number,
 export async function applyNoShowWalkover(match : MatchRow, winnerTeamId : number, loserTeamId : number,
                                           actorUserId : number, actorRole : 'referee' | 'organizer' = 'referee'): Promise<WalkoverResult>{
     const sport = await WalkoverRepo.findSportOfTournament(match.tournament_id);
-    await WalkoverRepo.applyWalkover({
+    if(await WalkoverRepo.applyWalkover({
         match, winnerTeamId, loserTeamId,
         actorUserId, actorRole,
         scoreData : scoreDataFor(sport, winnerTeamId, loserTeamId), winPoints : WIN_POINTS, reason : 'insufficient_checkins'
-    });
+    })){
+        // คนที่กด (กรรมการ M10 / ORG M17) รู้อยู่แล้ว ไม่ต้องแจ้งตัวเอง
+        await announce(match, { winnerTeamId, loserTeamId, reason : 'insufficient_checkins' }, actorUserId);
+    }
     return { matchId : match.match_id, winnerTeamId, loserTeamId };
 }
 
@@ -156,10 +170,12 @@ export async function applyOrganizerForfeit(match : MatchRow, countA : number, c
         return { kind : 'walkover', results : [wo] };
     }
 
-    await WalkoverRepo.applyWalkover({
+    if(await WalkoverRepo.applyWalkover({
         match, winnerTeamId : null, loserTeamId : null, forfeitedTeamIds : [match.team_a_id!, match.team_b_id!],
         actorUserId : orgUserId, actorRole : 'organizer', scoreData : null, winPoints : WIN_POINTS, reason : 'double_forfeit'
-    });
+    })){
+        await announce(match, { winnerTeamId : null, loserTeamId : null, forfeitedTeamIds : [match.team_a_id!, match.team_b_id!], reason : 'double_forfeit' }, orgUserId);
+    }
     const results : WalkoverResult[] = [{ matchId : match.match_id, winnerTeamId : null, loserTeamId : null }];
     // รอบถัดไปมีทีมรออยู่แล้วและไม่มีใครจะมาอีก → บายผ่าน
     results.push(...await resolveIfOpponentWithdrawn(match.next_match_id));
@@ -174,4 +190,55 @@ export async function closeCheckin(matchId : number): Promise<boolean>{
 
 function opponentOf(match : MatchRow, teamId : number): number | null{
     return match.team_a_id === teamId ? match.team_b_id : match.team_a_id;
+}
+
+type Announcement = {
+    winnerTeamId : number | null;
+    loserTeamId : number | null;
+    forfeitedTeamIds? : number[];
+    reason : ApplyWalkoverInput['reason'] | 'dead_match';
+};
+
+/** ข้อความแจ้งเตือนตามเหตุผล — ใช้ชื่อทีมแทน id ให้คนอ่านรู้เรื่อง */
+function walkoverMessage(matchId : number, a : Announcement, name : (teamId : number | null | undefined) => string)
+    : { title : string; message : string }{
+    const [x, y] = a.forfeitedTeamIds ?? [];
+    switch(a.reason){
+        case 'team_withdrawn':
+            return { title : 'แมตช์ตัดสินชนะบาย',
+                     message : `แมตช์ #${matchId}: ทีม "${name(a.winnerTeamId)}" ชนะบาย เพราะทีม "${name(a.loserTeamId)}" ถอนตัวจากทัวร์นาเมนต์` };
+        case 'insufficient_checkins':
+            return { title : 'แมตช์ตัดสินชนะบาย',
+                     message : `แมตช์ #${matchId}: ทีม "${name(a.winnerTeamId)}" ชนะบาย เพราะทีม "${name(a.loserTeamId)}" เช็คอินไม่ครบจำนวนขั้นต่ำ` };
+        case 'both_withdrawn':
+            return { title : 'แมตช์ตัดสินแพ้ทั้งคู่',
+                     message : `แมตช์ #${matchId}: ทีม "${name(x)}" และทีม "${name(y)}" ถอนตัวทั้งคู่ — นับแพ้ทั้งสองทีม ไม่มีใครผ่านรอบ` };
+        case 'double_forfeit':
+            return { title : 'แมตช์ตัดสินแพ้ทั้งคู่',
+                     message : `แมตช์ #${matchId}: ทีม "${name(x)}" และทีม "${name(y)}" เช็คอินไม่ครบจำนวนขั้นต่ำทั้งคู่ — นับแพ้ทั้งสองทีม ไม่มีใครผ่านรอบ` };
+        case 'dead_slot':
+            return { title : 'ผ่านรอบโดยไม่ต้องแข่ง',
+                     message : `แมตช์ #${matchId}: ทีม "${name(a.winnerTeamId)}" ผ่านรอบโดยไม่ต้องแข่ง เพราะไม่มีคู่แข่งเหลือในสายนี้` };
+        case 'dead_match':
+            return { title : 'แมตช์ถูกปิดอัตโนมัติ',
+                     message : `แมตช์ #${matchId} ถูกปิดโดยไม่มีการแข่ง เพราะไม่มีทีมเหลือในสายนี้` };
+    }
+}
+
+/** แจ้งทุกคนที่เกี่ยวกับแมตช์ที่จบโดยไม่มีการแข่ง — ห้ามทำให้ flow walkover พัง (แมตช์ถูกบันทึกไปแล้ว) */
+async function announce(match : MatchRow, a : Announcement, exceptUserId? : number): Promise<void>{
+    try{
+        const teamIds = [...new Set([a.winnerTeamId, a.loserTeamId, ...(a.forfeitedTeamIds ?? [])]
+            .filter((t): t is number => t !== null))];
+        const names = new Map<number, string>();
+        for(const id of teamIds){
+            names.set(id, (await TeamRepo.findById(id))?.name ?? `#${id}`);
+        }
+        const { title, message } = walkoverMessage(match.match_id, a, id => (id == null ? '-' : names.get(id) ?? `#${id}`));
+        await NotificationService.notifyMatchDecidedWithoutPlay(match.match_id, teamIds, {
+            type : 'match_walkover', title, message, relatedEntityType : 'match', relatedEntityId : match.match_id,
+        }, exceptUserId === undefined ? {} : { exceptUserId });
+    }catch(err){
+        console.error(`[walkover] แจ้งเตือนแมตช์ ${match.match_id} ไม่สำเร็จ`, err);
+    }
 }

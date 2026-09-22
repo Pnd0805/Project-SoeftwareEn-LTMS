@@ -9,7 +9,10 @@ import { buildPagination } from '../utils/pagination.js';
  *   ใครที่ล็อกอินก็คอมเมนต์ได้ (ไม่มีกฎผลประโยชน์ทับซ้อน — เป็นแค่การพูดคุย) · โพสต์ได้หลายอัน ≤ 500 ตัวอักษร
  *   อ่านเป็นสาธารณะ · ห้ามแก้ · เจ้าของลบเองได้ · ใครล็อกอินก็ report ได้ · แอดมินลบได้ (audit)
  *   คอมเมนต์ได้ตลอด แม้ทัวร์ปิดแล้ว (lockCompletedTournament ยกเว้น /comments)
+ *   กันสแปม (มติ 22 ก.ย.): คนละไม่เกิน 5 คอมเมนต์ต่อ 60 วินาที รวมทุกแมตช์ → 429 COMMENT_RATE_LIMITED
  */
+
+export const COMMENT_RATE_LIMIT = { max: 5, windowSeconds: 60 } as const;
 
 function toCommentDto(row: CommentRow, viewerId?: number) {
     return {
@@ -30,6 +33,12 @@ async function assertMatchExists(matchId: number): Promise<void> {
 
 export async function postComment(matchId: number, userId: number, content: string) {
     await assertMatchExists(matchId);
+    const recent = await CommentRepo.countRecentByUser(userId, COMMENT_RATE_LIMIT.windowSeconds);
+    if (recent.count >= COMMENT_RATE_LIMIT.max) {
+        throw new AppError(429, 'COMMENT_RATE_LIMITED',
+            `คอมเมนต์ได้ไม่เกิน ${COMMENT_RATE_LIMIT.max} ครั้งต่อนาที ลองใหม่ในอีก ${recent.retryAfterSeconds} วินาที`,
+            { retryAfterSeconds: recent.retryAfterSeconds });
+    }
     const id = await CommentRepo.insert(matchId, userId, content);
     return toCommentDto((await CommentRepo.findById(id))!, userId);
 }

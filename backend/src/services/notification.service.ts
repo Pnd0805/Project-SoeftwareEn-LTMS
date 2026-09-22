@@ -100,3 +100,24 @@ export async function notifyMatchResultParties(
         console.error(`[notify] หาผู้เกี่ยวข้องกับผลแมตช์ ${matchId} ไม่สำเร็จ`, err);
     }
 }
+
+/**
+ * แมตช์จบโดยไม่มีการแข่ง (ชนะบาย / แพ้ทั้งคู่ / ผ่านรอบ / แมตช์ตาย) — มติ 22 ก.ย. 2569
+ * สมาชิก "ทุกคน" ของทีมที่เกี่ยว + กรรมการที่รับแมตช์นี้ (ไม่ต้องมาแล้ว) + ORG · ไม่ส่งหาคนที่กดเอง (exceptUserId)
+ */
+export async function notifyMatchDecidedWithoutPlay(
+    matchId: number,
+    teamIds: number[],
+    content: Omit<NotificationInput, 'userId'>,
+    options: { exceptUserId?: number } = {}
+): Promise<void> {
+    try {
+        const memberIds = await NotificationRepo.findTeamMemberIds(teamIds);
+        const { refereeIds, organizerId } = await NotificationRepo.findMatchResultParties(matchId);
+        const recipients = [...memberIds, ...refereeIds, ...(organizerId !== null ? [organizerId] : [])]
+            .filter(id => id !== options.exceptUserId);
+        await notifyUsers(recipients, content);
+    } catch (err) {
+        console.error(`[notify] หาผู้รับของแมตช์ที่จบโดยไม่มีการแข่ง ${matchId} ไม่สำเร็จ`, err);
+    }
+}

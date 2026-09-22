@@ -167,12 +167,21 @@ export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) 
     }
 
     await MatchRepo.updateMatchSchedule(matchId, scheduledTime, scheduledEndTime, venue);
-    await NotificationService.notifyMatchAudience(matchId, {
-        type: 'match_scheduled',
-        title: match.scheduled_time ? 'แมตช์ถูกเลื่อนเวลา' : 'นัดเวลาแข่งแล้ว',
-        message: `แมตช์ #${matchId} แข่ง ${formatThaiDateTime(scheduledTime)} ที่ ${venue}`,
-        relatedEntityType: 'match', relatedEntityId: matchId,
-    });
+    // แจ้งเฉพาะเมื่อมีอะไรเปลี่ยนจริง (กดบันทึกค่าเดิมซ้ำ ไม่ต้องรบกวนใคร) และบอกให้ตรงว่าเปลี่ยนอะไร
+    const timeChanged = match.scheduled_time === null || new Date(match.scheduled_time).getTime() !== scheduledTime.getTime()
+                     || match.scheduled_end_time === null || new Date(match.scheduled_end_time).getTime() !== scheduledEndTime.getTime();
+    const venueChanged = match.venue !== venue;
+    if (timeChanged || venueChanged) {
+        const title = match.scheduled_time === null ? 'นัดเวลาแข่งแล้ว'
+                    : timeChanged && venueChanged ? 'แมตช์เปลี่ยนเวลาและสนาม'
+                    : timeChanged ? 'แมตช์เปลี่ยนเวลา' : 'แมตช์เปลี่ยนสนาม';
+        await NotificationService.notifyMatchAudience(matchId, {
+            type: 'match_scheduled',
+            title,
+            message: `แมตช์ #${matchId} แข่ง ${formatThaiDateTime(scheduledTime)} ที่ ${venue}`,
+            relatedEntityType: 'match', relatedEntityId: matchId,
+        });
+    }
     const updated = await MatchRepo.findMatchById(matchId);
     return toMatchDetailDto(updated!);
 }

@@ -2,7 +2,6 @@ import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
-import * as NotificationRepo from '../repositories/notification.repo.js';
 import * as NotificationService from './notification.service.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
@@ -156,7 +155,7 @@ export async function deleteMember(userId : number , teamId : number , sportId :
     const team = await TeamRepo.findById(teamId);
     for(const squad of squads){
         if(squad.squad_size - 1 >= sport_rule!.min_members) continue;
-        await NotificationRepo.insertNotification({
+        await NotificationService.notify({
             userId : team!.leader_id,
             type : 'squad_below_minimum',
             title : 'รายชื่อผู้เล่นไม่ครบขั้นต่ำ',

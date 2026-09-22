@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../repositories/feedback.repo.js', () => ({
+  hasPlayedMatch: vi.fn(() => Promise.resolve(false)),
   isTournamentParticipant: vi.fn(),
   isTournamentInsider: vi.fn(),
   findMvpCandidates: vi.fn(() => Promise.resolve([])),
@@ -26,7 +27,8 @@ const COMPLETED_AT = new Date('2026-09-20T00:00:00Z');
 const ORG = 7;
 
 function tournament(overrides: Record<string, unknown> = {}) {
-  return { tournament_id: 20, requested_by_user_id: ORG, tournament_status: 'completed', completed_at: COMPLETED_AT, ...overrides } as never;
+  return { tournament_id: 20, requested_by_user_id: ORG, tournament_status: 'completed', completed_at: COMPLETED_AT,
+           event_start_date: '2026-09-01', ...overrides } as never;
 }
 function feedbackRow(overrides: Partial<FeedbackRow> = {}): FeedbackRow {
   return {
@@ -46,7 +48,8 @@ beforeEach(() => {
   vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament());
   // clearAllMocks ไม่ล้าง mockResolvedValue ของเทสต์ก่อน → ตั้งค่าเริ่มต้นใหม่ทุกครั้ง
   vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue(null as never);
-  vi.mocked(FeedbackRepo.findOwn).mockResolvedValue(null);
+  vi.mocked(FeedbackRepo.findOwn).mockReset().mockResolvedValue(null);   // reset = ล้าง mockResolvedValueOnce ที่ค้างจากเทสต์ที่ throw ก่อนใช้
+  vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(false);
   vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue([]);
   vi.mocked(FeedbackRepo.listOrganizerFeedback).mockResolvedValue([]);
   vi.mocked(FeedbackRepo.summarizeOrganizerFeedback).mockResolvedValue({ average: null, count: 0, r1: 0, r2: 0, r3: 0, r4: 0, r5: 0 });
@@ -76,7 +79,7 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
 
   // มติแก้ 21 ก.ย. — ให้คะแนนได้ตลอด ไม่ต้องรอปิดทัวร์
   it('a participant can rate while the tournament is still running', async () => {
-    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null }));
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null }));   // เริ่ม 1 ก.ย. แล้ว
     vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
     vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(null).mockResolvedValueOnce(feedbackRow());
     await expect(Service.submitOrganizerFeedback(20, 5, { rating: 5 })).resolves.toMatchObject({ isNew: true });
@@ -104,6 +107,57 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
     vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
     expect(await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 5 }))).toMatchObject({ status: 409, code: 'FEEDBACK_CLOSED' });
     expect(await errOf(Service.castMvpVote(20, 50, 101))).toMatchObject({ status: 409, code: 'MVP_VOTING_CLOSED' });
+  });
+
+  // มติ 22 ก.ย. — เปิดตั้งแต่ทัวร์เริ่ม: ถึงวันเริ่มทัวร์ (เวลาไทย) หรือมีแมตช์ที่แข่งจริงแล้ว
+  describe('opens when the tournament starts', () => {
+    const upcoming = () => tournament({ tournament_status: 'public', completed_at: null, event_start_date: '2026-10-01' });
+
+    it('409 TOURNAMENT_NOT_STARTED before the start date with no played match — opensAt = start date 00:00 Bangkok', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(upcoming());
+      vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+      const err = await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 5 }));
+      expect(err).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_STARTED' });
+      expect((err as unknown as { extra: { opensAt: Date } }).extra.opensAt.toISOString()).toBe('2026-09-30T17:00:00.000Z');
+      expect(FeedbackRepo.upsertOrganizerFeedback).not.toHaveBeenCalled();
+    });
+
+    it('open from 00:00 Bangkok time on the start date', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(upcoming());
+      vi.setSystemTime(new Date('2026-09-30T16:59:59Z'));
+      expect(await Service.feedbackStatus(upcoming())).toBe('not_started');
+      vi.setSystemTime(new Date('2026-09-30T17:00:00Z'));
+      expect(await Service.feedbackStatus(upcoming())).toBe('open');
+    });
+
+    it('open before the start date once a match has really been played (organizer started early)', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(upcoming());
+      vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(true);
+      vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+      vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(null).mockResolvedValueOnce(feedbackRow());
+      await expect(Service.submitOrganizerFeedback(20, 5, { rating: 5 })).resolves.toMatchObject({ isNew: true });
+    });
+
+    it('GET shows status not_started, opensAt, and canSubmit false for a participant', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(upcoming());
+      vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+      const result = await Service.getOrganizerFeedback(20, 5);
+      expect(result).toMatchObject({ status: 'not_started', canSubmit: false, closesAt: null });
+      expect(result.opensAt.toISOString()).toBe('2026-09-30T17:00:00.000Z');
+    });
+
+    it('status closed 7 days after completion; open for a completed tournament inside the window', async () => {
+      expect(await Service.feedbackStatus(tournament())).toBe('open');
+      vi.setSystemTime(new Date('2026-09-27T00:00:01Z'));
+      expect(await Service.feedbackStatus(tournament())).toBe('closed');
+    });
+
+    it('editing = sending again while open overwrites the rating', async () => {
+      vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+      vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(feedbackRow({ rating: 1 })).mockResolvedValueOnce(feedbackRow({ rating: 4 }));
+      await expect(Service.submitOrganizerFeedback(20, 5, { rating: 4, content: 'แก้ใหม่' })).resolves.toMatchObject({ rating: 4, isNew: false });
+      expect(FeedbackRepo.upsertOrganizerFeedback).toHaveBeenCalledWith(20, 5, 4, 'แก้ใหม่');
+    });
   });
 
   it('409 FEEDBACK_REMOVED when an admin removed their earlier feedback', async () => {

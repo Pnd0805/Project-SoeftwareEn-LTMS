@@ -98,6 +98,8 @@ export async function getSummary(matchId: number, viewerId?: number) {
         const picks = counts.find(c => c.team_id === teamId)?.picks ?? 0;
         return { teamId, picks, percent: total === 0 ? 0 : Math.round((picks / total) * 100) };
     });
+    // ปัดเศษแยกกันอาจรวมได้ 101 (เช่น 5:3 → 63+38) → ให้ทีมสุดท้ายเป็นส่วนที่เหลือ
+    if (total > 0 && teams.length === 2) teams[1]!.percent = 100 - teams[0]!.percent;
     const reason = cutoffReason(match);
 
     let mine = null;

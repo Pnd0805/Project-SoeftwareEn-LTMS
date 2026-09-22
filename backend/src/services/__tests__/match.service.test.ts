@@ -108,6 +108,20 @@ describe('scheduleMatch (M06)', () => {
     }));
   });
 
+  it('re-saving the same time and venue does not notify anyone', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A' }));
+    vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
+    await matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' });
+    expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
+  });
+
+  it('venue-only change is announced as a venue change, not a reschedule', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A' }));
+    vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
+    await matchService.scheduleMatch(1, { venue: 'สนาม B' });
+    expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({ title: 'แมตช์เปลี่ยนสนาม' }));
+  });
+
   it('does not notify anyone when the schedule is refused', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue({ match_id: 99 });

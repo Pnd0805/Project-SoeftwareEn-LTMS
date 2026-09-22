@@ -26,6 +26,21 @@ export async function insert(matchId: number, userId: number, content: string): 
     return result.insertId;
 }
 
+/**
+ * กันสแปม: จำนวนคอมเมนต์ของคนนี้ในช่วง windowSeconds ล่าสุด (ทุกแมตช์ · นับที่ลบไปแล้วด้วย — ลบแล้วไม่ได้โควตาคืน)
+ * + อีกกี่วินาทีอันเก่าสุดในช่วงจะหลุดออก · คิดเวลาใน DB ทั้งหมด (created_at ใช้นาฬิกา DB)
+ */
+export async function countRecentByUser(userId: number, windowSeconds: number): Promise<{ count: number; retryAfterSeconds: number }> {
+    const [rows] = await pool.query<({ cnt: number; wait: number | null } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt,
+                GREATEST(1, TIMESTAMPDIFF(SECOND, NOW(), MIN(created_at) + INTERVAL ? SECOND)) AS wait
+         FROM match_comments
+         WHERE user_id = ? AND created_at > NOW() - INTERVAL ? SECOND`,
+        [windowSeconds, userId, windowSeconds]
+    );
+    return { count: Number(rows[0]?.cnt ?? 0), retryAfterSeconds: Number(rows[0]?.wait ?? 1) };
+}
+
 export async function findById(commentId: number): Promise<CommentRow | null> {
     const [rows] = await pool.query<(CommentRow & RowDataPacket)[]>(
         `SELECT ${COLS} FROM match_comments c JOIN users u ON u.user_id = c.user_id WHERE c.match_comment_id = ?`,
