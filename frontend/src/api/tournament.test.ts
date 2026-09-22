@@ -12,7 +12,7 @@ vi.mock("./client", async (importOriginal) => ({
 import {
   applyToTournament, approveAllApplications, approveApplication, cancelMyApplication,
   completeTournament, drawTournament, getApplicationDetail, getMyApplications, getTournamentAmendmentRequests,
-  getTournamentApplications, getTournaments, rejectApplication, withdrawMyApplication,
+  getTournamentApplications, getTournaments, openRegistration, closeRegistration, rejectApplication, withdrawMyApplication,
 } from "./tournament";
 
 const json = (body: unknown, status = 200) =>
@@ -141,6 +141,22 @@ describe("application actions", () => {
   it("approve-all has no backend route, so it fails without calling fetch", async () => {
     await expect(approveAllApplications(5)).rejects.toMatchObject({ status: 501 });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("registration lifecycle", () => {
+  it("opens registration through the dedicated organizer route", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 5, registrationOpen: true }));
+
+    await expect(openRegistration(5)).resolves.toEqual({ id: 5, registrationOpen: true });
+    expect(lastRequest()).toEqual({ path: "/tournaments/5/open-registration", method: "POST", body: undefined });
+  });
+
+  it("closes registration before the bracket is drawn", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 5, registrationOpen: false }));
+
+    await expect(closeRegistration(5)).resolves.toEqual({ id: 5, registrationOpen: false });
+    expect(lastRequest()).toEqual({ path: "/tournaments/5/close-registration", method: "POST", body: undefined });
   });
 });
 

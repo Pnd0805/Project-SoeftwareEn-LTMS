@@ -83,6 +83,10 @@ export interface Tournament {
   format: Format
   channel: Channel
   status: TourStatus
+  /** Backend lifecycle flag; omitted by legacy/mock tournament records. */
+  registrationOpen?: boolean
+  registrationStart?: string | null
+  registrationEnd?: string | null
   date: string
   venue: string
   pin: Pin | null

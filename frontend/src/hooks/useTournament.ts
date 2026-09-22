@@ -247,6 +247,22 @@ export function usePublishTournament(tournamentId: TournamentRef) {
   return useMutation({ mutationFn: () => tournamentApi.publishTournament(tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
+export function useOpenTournamentRegistration(tournamentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => tournamentApi.openRegistration(tournamentId),
+    onSuccess: () => invalidateTournament(queryClient, tournamentId),
+  });
+}
+
+export function useCloseTournamentRegistration(tournamentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => tournamentApi.closeRegistration(tournamentId),
+    onSuccess: () => invalidateTournament(queryClient, tournamentId),
+  });
+}
+
 export function useDrawTournament(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: tournamentApi.drawTournament.bind(null, tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });

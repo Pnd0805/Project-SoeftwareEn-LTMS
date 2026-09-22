@@ -23,6 +23,32 @@ are historical evidence, not the current backend reference.
 - [x] Team roster locking follows approved applications and is not released merely because a tournament is completed/rejected/auto-deleted.
 - [x] Contract regression tests, full Vitest suite, production build and `git diff --check` are part of this handoff.
 
+## Registration open/close lifecycle — fixed 2026-09-22
+
+- [x] Preserve `registrationOpen`, `registrationStart` and `registrationEnd` from
+      the backend tournament DTO in the shared tournament view.
+- [x] Separate publication from registration in Manage progress. A public
+      tournament now exposes an explicit **Open registration** action backed by
+      `POST /tournaments/:id/open-registration`; it no longer advances directly
+      to **Approve the squads** while the backend still rejects applications.
+- [x] Add the matching **Close registration** step after at least two squads are
+      approved and before bracket draw, backed by
+      `POST /tournaments/:id/close-registration`.
+- [x] Keep the entry form closed in real mode unless the authoritative
+      `registrationOpen` flag is true; public visibility alone is not treated as
+      permission to submit an application.
+- [x] Add API and progress/view regressions for the dedicated open/close routes,
+      the blocked public-but-closed state, lifecycle ordering and DTO mapping.
+- [ ] Frontend Tester verifies in a real browser that an organizer can publish,
+      open registration, receive a squad application, approve at least two
+      squads, close registration and then draw the bracket against current
+      `BE_KN`, recording Network evidence for both lifecycle writes.
+
+Developer verification passed on 2026-09-22: focused registration coverage
+passed (3 files / 29 tests), the full suite passed (36 files / 226 tests), lint
+passed, TypeScript and the production build passed. The existing Vite chunk-size
+warning remains; real-backend/browser acceptance stays open above.
+
 Earlier revisions of this file tracked `origin/backend` `35ce621` (2026-09-11)
 and treated anything that existed only on `BE_KN` as unavailable. That policy is
 no longer what the frontend does: `feat/1` is wired against `BE_KN` directly,

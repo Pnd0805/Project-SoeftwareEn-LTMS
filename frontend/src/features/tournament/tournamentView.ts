@@ -1,6 +1,7 @@
 import type { BackendEligibilityRuleDto, TournamentDto, TournamentDetailDto } from '../../types/tournament.dto'
 import type { Rules, Tournament } from '../../shared/types'
 import type { SportType } from '../../types/dto'
+import { regWindowClosed } from '../../shared/rules'
 
 /**
  * ชื่อกีฬาสำรอง — ใช้เฉพาะตอนที่ GET /sport-types ยังโหลดไม่เสร็จ
@@ -49,6 +50,15 @@ const rulesFromDto = (
  */
 export const CHAMPION_UNKNOWN = "finished"
 
+/** Keep the entry form aligned with the backend's explicit registration lifecycle. */
+export function registrationClosedReason(t: Tournament, approved: number, realMode: boolean): string {
+  if (t.drawn) return 'The bracket is drawn — entries are closed.'
+  if (t.status !== 'public') return 'Not open for registration yet.'
+  if (realMode && t.registrationOpen !== true) return 'Registration has not been opened by the organizer yet.'
+  if (approved >= t.cap) return `Full at ${t.cap} squads.`
+  return regWindowClosed(t)
+}
+
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
 export function tournamentView(
@@ -81,6 +91,9 @@ export function tournamentView(
     format,
     channel: sport?.defaultMode === 'online' ? 'online' : 'onsite',
     status,
+    registrationOpen: dto.registrationOpen,
+    registrationStart: dto.registrationStart,
+    registrationEnd: dto.registrationEnd,
     date: dto.eventStartDate,
     venue: dto.venue ?? '',
     pin: null,

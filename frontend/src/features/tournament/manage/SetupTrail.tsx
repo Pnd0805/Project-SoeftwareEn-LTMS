@@ -20,7 +20,8 @@ import { ConfirmCard, Modal } from '../../../components/kit/Modal'
 import type { TrailStep } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
 import {
-  useCompleteTournament, useDrawTournament, usePublishTournament, useTournamentApplications, useTournamentTeams,
+  useCloseTournamentRegistration, useCompleteTournament, useDrawTournament, useOpenTournamentRegistration,
+  usePublishTournament, useTournamentApplications, useTournamentTeams,
 } from '../../../hooks/useTournament'
 import { useTournamentMatches } from '../../../hooks/useMatch'
 import { useTournamentReferees } from '../../../hooks/useAdmin'
@@ -61,6 +62,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const real = tournamentId !== undefined
   const complete = useCompleteTournament(tournamentId ?? 0)
+  const openRegistration = useOpenTournamentRegistration(tournamentId ?? 0)
+  const closeRegistration = useCloseTournamentRegistration(tournamentId ?? 0)
   const approvedTeams = useTournamentTeams(tournamentId)
   const applications = useTournamentApplications(tournamentId)
   const backendMatches = useTournamentMatches(tournamentId)
@@ -71,6 +74,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const pendingCount = real
     ? (applications.data?.items ?? []).filter(a => a.status === 'pending').length
     : regsOf(s, t.id).filter(r => r.status === 'pending').length
+  const applicationCount = real ? applications.data?.items.length ?? 0 : regsOf(s, t.id).length
 
   /* บายไม่ใช่แมตช์ที่ต้องจัดสนามหรือหากรรมการ — ฝั่ง backend คือนัดที่มีทีมเดียว */
   const apiMatches = (backendMatches.data?.items ?? []).filter(m => m.teamA && m.teamB)
@@ -102,7 +106,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
     {
       state: t.status === 'public' ? 'done' : 'idle',
       title: 'Open it to the public',
-      note: t.status === 'public' ? 'Squads can find it and enter.'
+      note: t.status === 'public' ? 'Squads can find it. Registration is controlled separately.'
         : t.status === 'pending' ? 'An admin has the request. Nothing to do until they answer it.'
           : 'Nobody can register while it is private, and LTMS deletes a private tournament on its match date.',
       cta: t.status === 'private'
@@ -114,11 +118,41 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         )
         : undefined,
     },
+    ...(real ? [{
+      state: (t.registrationOpen || applicationCount > 0 || approvedCount > 0 || bracketDrawn) ? 'done' as const : 'idle' as const,
+      title: 'Open registration',
+      note: t.registrationOpen
+        ? 'Squads can submit applications now.'
+        : applicationCount > 0 || approvedCount > 0 || bracketDrawn
+          ? 'Registration was opened and is now closed.'
+          : 'Publishing makes the tournament visible, but does not let squads apply until registration is opened.',
+      cta: t.status === 'public' && !t.registrationOpen ? (
+        <button className="btn primary" type="button" disabled={openRegistration.isPending}
+          onClick={() => openRegistration.mutate()}>
+          {openRegistration.isPending ? 'Opening registration…' : 'Open registration'}
+        </button>
+      ) : undefined,
+    }] : []),
     {
       state: approvedCount >= 2 ? 'done' : 'idle',
       title: 'Approve the squads',
       note: `${approvedCount} approved · ${pendingCount} waiting on you · cap ${t.cap}. The hard filter has already refused anybody ineligible.`,
     },
+    ...(real ? [{
+      state: approvedCount >= 2 && !t.registrationOpen ? 'done' as const : 'idle' as const,
+      title: 'Close registration',
+      note: approvedCount < 2
+        ? 'Approve at least two squads before closing registration.'
+        : t.registrationOpen
+          ? `${approvedCount} squads are approved. Close registration before drawing the bracket.`
+          : 'Registration is closed. The approved field is ready to draw.',
+      cta: approvedCount >= 2 && t.registrationOpen ? (
+        <button className="btn primary" type="button" disabled={closeRegistration.isPending}
+          onClick={() => closeRegistration.mutate()}>
+          {closeRegistration.isPending ? 'Closing registration…' : 'Close registration'}
+        </button>
+      ) : undefined,
+    }] : []),
     {
       state: bracketDrawn ? 'done' : 'idle',
       title: 'Draw the bracket',
@@ -201,6 +235,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       </Modal>
 
       {publish.isError ? <Banner kind="crit"><b>Couldn't open it to the public.</b> {errorMessage(publish.error)}</Banner> : null}
+      {openRegistration.isError ? <Banner kind="crit"><b>Couldn't open registration.</b> {errorMessage(openRegistration.error)}</Banner> : null}
+      {closeRegistration.isError ? <Banner kind="crit"><b>Couldn't close registration.</b> {errorMessage(closeRegistration.error)}</Banner> : null}
       {draw.isPending ? <Banner kind="neutral"><b>Drawing the bracket…</b> Refreshing the saved matches before progress advances.</Banner> : null}
       {draw.isError ? <Banner kind="crit"><b>Couldn't draw the bracket.</b> {errorMessage(draw.error)}</Banner> : null}
       {complete.isError ? (

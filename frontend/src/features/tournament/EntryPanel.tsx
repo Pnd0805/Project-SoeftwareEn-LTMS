@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Facts, Panel } from '../../components/kit/primitives'
 import { useLtms } from '../../shared/store'
 import { me, regsOf, squadsFor, team } from '../../shared/selectors'
-import { minSquad, regWindowClosed, ruleSummary, teamReady } from '../../shared/rules'
+import { minSquad, ruleSummary, teamReady } from '../../shared/rules'
 import type { Tournament } from '../../shared/types'
 import type { TournamentApplicationDto } from '../../types/tournament.dto'
 import { USE_MOCK } from '../../api/client'
@@ -18,6 +18,7 @@ import { useMe } from '../../hooks/useAuth'
 import { useBackendMyTeams } from '../../hooks/useTeam'
 import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { RegisterForm } from './RegisterForm'
+import { registrationClosedReason } from './tournamentView'
 
 /**
  * ใครสมัครได้: โหมด mock อ่านจาก store · โหมดจริงอ่านจาก backend
@@ -49,10 +50,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
     ?? (applications
       ? applications.filter(application => application.status === 'approved').length
       : regsOf(s, t.id).filter(r => r.status === 'approved').length)
-  const closed = t.drawn ? 'The bracket is drawn — entries are closed.'
-    : t.status !== 'public' ? 'Not open for registration yet.'
-      : approved >= t.cap ? `Full at ${t.cap} squads.`
-        : regWindowClosed(t)
+  const closed = registrationClosedReason(t, approved, !USE_MOCK)
 
   /* every squad of mine already in this one, whatever the organizer decided */
   const mineIn = USE_MOCK && u
