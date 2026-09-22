@@ -8,6 +8,119 @@ received on 2026-09-21.** Individual entries in the "Backend blockers" section r
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
 
+## Newly reported match and profile gaps — triaged 2026-09-22
+
+Triaged against frontend `f0a5538` and the verified remote head of `BE_KN`
+`a88f7ad`. These are acceptance items, not claims that the corresponding fix has
+already been delivered.
+
+- [ ] **R17 · Referee-request rejection feedback and match identity · FE first,
+      then BE if the payload is wrong:** when a referee declines an
+      `org_add_match` request, keep the resolved request visible to the organizer
+      on Draw/Fixture with a **Declined** state instead of silently removing it.
+      The displayed match number, round, kick-off and end time must come from the
+      same `matchA` returned for that request.
+  - Current evidence: `MatchRefereePlanner` and `FixturePage` filter tournament
+    requests to `status === 'open'`, so a declined request disappears. The BE
+    mapper does return `matchA.id`, `scheduledTime` and `scheduledEndTime`; the
+    reported mismatched match/time still needs a Network capture. If those fields
+    are already wrong in `GET /tournaments/:id/referee-requests` or
+    `GET /me/referee-requests`, fix the BE query/mapper; otherwise fix the FE row
+    association/formatting.
+  - Accept: decline one of several requests, reload as organizer, and still see
+    which referee declined which exact match and fixture time without confusing
+    it with another request.
+
+- [ ] **R18 · Multiple referees can accept the same match · Backend + FE
+      refresh:** two independent `org_add_match` requests for the same match must
+      both remain valid so two referees can accept in either order without a
+      second invitation.
+  - Backend fix required: `refereeChangeRequest.repo.apply()` currently marks
+    every other open request touching the accepted match as `cancelled`. Keep
+    independent `org_add_match` requests for other referees open; cancel only
+    requests whose transfer/swap assumptions were actually invalidated. Apply
+    and revalidation must remain transactional and reject real time conflicts.
+  - Frontend follow-up: refresh the request and assignment queries after each
+    answer and render both accepted referees. A terminal cancellation/error must
+    say why instead of looking like a successful Accept.
+  - Accept: invite two eligible referees to one future on-site match, accept in
+    both orders, reload organizer/referee views, and see both accepted assignments.
+
+- [ ] **R19 · A complete fixture gates the next match stage · Backend + FE:** a
+      match must have a valid future `scheduledTime`, `scheduledEndTime` and
+      non-blank venue before it can move from `scheduled` to `checkin_open`.
+  - Backend fix required: `POST /matches/:id/open-checkin` currently checks only
+    `match_status === 'scheduled'`; enforce the saved fixture fields and return a
+    named error with missing/invalid fields so direct API calls cannot bypass the
+    workflow.
+  - Frontend fix required: `SetupTrail` currently counts a real fixture ready
+    from only venue + start time. Include end time, keep later CTAs gated, disable
+    Open check-in for an incomplete fixture, and show the backend reason.
+  - Accept: an incomplete fixture cannot advance from either UI or direct API;
+    after saving all three fields, the authorized role can open check-in.
+
+- [ ] **R20 · Assigned referee may open check-in · Backend + FE:** allow an
+      active referee who has accepted that match assignment to open check-in;
+      retain organizer access and do not grant this to an unrelated tournament
+      referee.
+  - Backend fix required: the route currently uses `requireOrganizerOfMatch`.
+    Add an organizer-or-assigned-referee authorization boundary while preserving
+    the fixture gate in R19 and the atomic `scheduled -> checkin_open` transition.
+  - Frontend fix required: `MatchLifecycle` currently renders **Open check-in**
+    only for the organizer even though the viewer model already identifies an
+    assigned referee. Expose the action for either authorized role and display
+    403/409 feedback.
+  - Accept: organizer and assigned referee can each open a fully scheduled match;
+    an unassigned referee and ordinary participant receive 403 and see no action.
+
+- [ ] **R21 · Organizer sees the dispute reason · Backend + FE mapping:** the
+      organizer's disputed-result panel must show the exact reason, who raised
+      it and when.
+  - Backend fix required: the DB stores `dispute_reason`,
+    `dispute_raised_by` and `dispute_raised_at`, but the current S05 result DTO
+    omits them. Return the fields to authorized match participants/organizer.
+  - Frontend fix required: `getResult()` currently hardcodes all dispute fields
+    to `null`. Map the delivered fields. `ResolvePanel` and `ResultTrail` already
+    have a rendering location for `disputeReason`.
+  - Accept: submit a dispute with a distinctive reason, reload as organizer, and
+    see the same reason/actor/time before choosing uphold, amend or reject.
+
+- [ ] **R22 / existing R14 · Completed-match YouTube replay persists · Backend
+      blocker + FE contract sync:** a link saved after completion must survive a
+      reload and render on that match page, distinct from any pre-match/live URL.
+  - Backend fix required: `PUT /matches/:id/livestream` writes
+    `matches.livestream_url` and returns `{ matchId, youtubeUrl }`, but M05
+    `GET /matches/:id` does not return it and there is no explicit replay field.
+    Deliver the agreed replay read/write contract (and migration if replay and
+    livestream are separate fields).
+  - Frontend state: the mutation response can show the link temporarily, but the
+    backend match mapper is the source of truth after reload. Map the delivered
+    replay field and retain the current YouTube validation/error states.
+  - Accept: save/update a valid YouTube replay on a completed match, reload/open
+    from another account, and see the persisted replay without showing it as a
+    live broadcast. Keep the older R14 row open until this passes.
+
+- [ ] **R23 · Account avatar, team logo and profile shortcut · FE + Backend:**
+      users can upload/remove their own avatar, team leaders can upload/remove a
+      team logo, and clicking the signed-in avatar in the shell navigates to
+      `/me`.
+  - [ ] **Account avatar · Backend + FE:** `PATCH /me { avatarUrl }` and
+    `users.profile_image_key` exist, but `/uploads/presign` has no avatar purpose
+    and user mappers currently expose the raw key rather than a downloadable URL.
+    Add the authorized upload/read contract, then add Profile controls, preview,
+    pending/error states and render the saved avatar throughout the FE.
+  - [ ] **Team logo · Backend + FE:** `teams` has no logo column and
+    `PATCH /teams/:id` accepts only name/visibility. Add a migration, leader-only
+    upload/update/removal contract and mapped read field; then connect Team
+    manage/detail/list views. Do not use the prototype-only `logoUrl` as a real
+    backend fallback.
+  - [ ] **Shell avatar link · FE:** replace the non-interactive initial in
+    `Shell` with the current avatar/initial fallback in an accessible link or
+    button to `/me`.
+  - Accept: avatar and team logo persist across reload/login, unauthorized users
+    cannot modify them, broken/expired image URLs recover visibly, removal works,
+    and the shell avatar opens the signed-in profile on desktop and mobile.
+
 ## FE delivery for BE_KN `a14d44c` + `a88f7ad` — 2026-09-21
 
 - [x] Result and dispute-amend forms require a winning aggregate score; Draw / Decider input is removed.
