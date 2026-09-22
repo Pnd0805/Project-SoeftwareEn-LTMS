@@ -99,6 +99,8 @@ describe('toPublicUserDto', () => {
       facultyId: 2,
       departmentId: 3,
       teams,
+      followerCount: 0,
+      isFollowing: false,
     });
   });
 
@@ -112,6 +114,11 @@ describe('toPublicUserDto', () => {
   it('passes an empty teams array through unchanged', () => {
     const result = toPublicUserDto(baseUserRow as any, []);
     expect(result.teams).toEqual([]);
+  });
+
+  it('includes followerCount and isFollowing when supplied', () => {
+    const result = toPublicUserDto(baseUserRow as any, [], 12, true);
+    expect(result).toMatchObject({ followerCount: 12, isFollowing: true });
   });
 });
 

@@ -12,6 +12,20 @@ vi.mock('../../repositories/team.repo.js', () => ({
 
 vi.mock('../../repositories/playerStat.repo.js', () => ({
   findStatsByUser: vi.fn(),
+  findProfileTotals: vi.fn(),
+}));
+
+vi.mock('../../repositories/follow.repo.js', () => ({
+  followUser: vi.fn(),
+  unfollowUser: vi.fn(),
+  isFollowing: vi.fn(),
+  countFollowers: vi.fn(),
+  findFollowers: vi.fn(),
+  findFollowing: vi.fn(),
+}));
+
+vi.mock('../../repositories/career.repo.js', () => ({
+  findCareerByUser: vi.fn(),
 }));
 
 vi.mock('../../utils/checkExist.js', () => ({
@@ -33,20 +47,29 @@ vi.mock('../../mappers/stat.mapper.js', () => ({
   toUserStatsDto: vi.fn(),
 }));
 
+vi.mock('../../mappers/career.mapper.js', () => ({
+  toCareerTournamentDto: vi.fn(),
+}));
+
 import * as userService from '../user.service.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import * as StatRepo from '../../repositories/playerStat.repo.js';
+import * as FollowRepo from '../../repositories/follow.repo.js';
+import * as CareerRepo from '../../repositories/career.repo.js';
 import { checkUser } from '../../utils/checkExist.js';
 import { toPublicUserDto, toUserRef, toMeDto, toGetMyInvitation } from '../../mappers/user.mapper.js';
 import { toTeamRef } from '../../mappers/team.mapper.js';
 import { toUserStatsDto } from '../../mappers/stat.mapper.js';
+import { toCareerTournamentDto } from '../../mappers/career.mapper.js';
 import { AppError } from '../../utils/AppError.js';
 import type { UserRow, TeamRow, TeamInvitationRow } from '../../types/db.js';
 
 const mockedUserRepo = vi.mocked(UserRepo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
 const mockedStatRepo = vi.mocked(StatRepo);
+const mockedFollowRepo = vi.mocked(FollowRepo);
+const mockedCareerRepo = vi.mocked(CareerRepo);
 const mockedCheckUser = vi.mocked(checkUser);
 const mockedToPublicUserDto = vi.mocked(toPublicUserDto);
 const mockedToUserRef = vi.mocked(toUserRef);
@@ -54,6 +77,7 @@ const mockedToMeDto = vi.mocked(toMeDto);
 const mockedToGetMyInvitation = vi.mocked(toGetMyInvitation);
 const mockedToTeamRef = vi.mocked(toTeamRef);
 const mockedToUserStatsDto = vi.mocked(toUserStatsDto);
+const mockedToCareerTournamentDto = vi.mocked(toCareerTournamentDto);
 
 function makeUser(overrides: Partial<UserRow> = {}): UserRow {
   return {
@@ -115,6 +139,12 @@ const baseInvitation: TeamInvitationRow = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockedFollowRepo.countFollowers.mockResolvedValue(0);
+  mockedFollowRepo.isFollowing.mockResolvedValue(false);
+  mockedFollowRepo.findFollowers.mockResolvedValue([]);
+  mockedFollowRepo.findFollowing.mockResolvedValue([]);
+  mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
+  mockedStatRepo.findProfileTotals.mockResolvedValue({ mvp_votes: 0, pickem_points: 0, follower_count: 0 });
 });
 
 describe('getUserById', () => {
@@ -137,7 +167,7 @@ describe('getUserById', () => {
     expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [
       { id: 1, name: 'Team A' },
       { id: 2, name: 'Team B' },
-    ]);
+    ], 0, false);
     expect(result).toEqual({ id: 1, teams: [] });
   });
 
@@ -158,7 +188,7 @@ describe('getUserById', () => {
     await userService.getUserById(1);
 
     expect(mockedToTeamRef).not.toHaveBeenCalled();
-    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, []);
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, false);
   });
 });
 
@@ -172,7 +202,11 @@ describe('getUserStats', () => {
 
     expect(mockedCheckUser).toHaveBeenCalledWith(1);
     expect(mockedStatRepo.findStatsByUser).toHaveBeenCalledWith(1);
-    expect(mockedToUserStatsDto).toHaveBeenCalledWith(1, [{ sport_type_id: 1, wins: 3 }]);
+    expect(mockedToUserStatsDto).toHaveBeenCalledWith(
+      1,
+      [{ sport_type_id: 1, wins: 3 }],
+      { mvp_votes: 0, pickem_points: 0, follower_count: 0 },
+    );
     expect(result).toEqual({ userId: 1, stats: [] });
   });
 
@@ -182,6 +216,124 @@ describe('getUserStats', () => {
 
     await expect(userService.getUserStats(999)).rejects.toBe(notFoundError);
     expect(mockedStatRepo.findStatsByUser).not.toHaveBeenCalled();
+  });
+});
+
+describe('C8 profile engagement', () => {
+  it('adds followerCount and viewer-specific isFollowing to a public profile', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
+    mockedFollowRepo.countFollowers.mockResolvedValue(12);
+    mockedFollowRepo.isFollowing.mockResolvedValue(true);
+    mockedToPublicUserDto.mockReturnValue({ id: 1, followerCount: 12, isFollowing: true } as any);
+
+    await userService.getUserById(1, 99);
+
+    expect(mockedFollowRepo.isFollowing).toHaveBeenCalledWith(99, 1);
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 12, true);
+  });
+
+  it('returns MVP, Pickem and follower totals through stats', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+    mockedStatRepo.findStatsByUser.mockResolvedValue([]);
+    mockedStatRepo.findProfileTotals.mockResolvedValue({
+      mvp_votes: 7,
+      pickem_points: 40,
+      follower_count: 5,
+    });
+    mockedToUserStatsDto.mockReturnValue({ userId: 1 } as any);
+
+    await userService.getUserStats(1);
+
+    expect(mockedToUserStatsDto).toHaveBeenCalledWith(
+      1,
+      [],
+      { mvp_votes: 7, pickem_points: 40, follower_count: 5 },
+    );
+  });
+
+  it('follows another user idempotently and returns the new follower count', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+    mockedFollowRepo.countFollowers.mockResolvedValue(4);
+
+    await expect(userService.followUser(1, 2)).resolves.toEqual({
+      userId: 2,
+      isFollowing: true,
+      followerCount: 4,
+    });
+
+    expect(mockedFollowRepo.followUser).toHaveBeenCalledWith(1, 2);
+  });
+
+  it('blocks following yourself', async () => {
+    await expect(userService.followUser(1, 1)).rejects.toMatchObject({
+      status: 409,
+      code: 'CANNOT_FOLLOW_SELF',
+    });
+    expect(mockedFollowRepo.followUser).not.toHaveBeenCalled();
+  });
+
+  it('unfollows another user idempotently', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+    mockedFollowRepo.countFollowers.mockResolvedValue(3);
+
+    await expect(userService.unfollowUser(1, 2)).resolves.toEqual({
+      userId: 2,
+      isFollowing: false,
+      followerCount: 3,
+    });
+    expect(mockedFollowRepo.unfollowUser).toHaveBeenCalledWith(1, 2);
+  });
+
+  it('maps follower and following lists to public user refs', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+    const row = {
+      user_id: 2,
+      full_name: 'Alice',
+      profile_image_key: null,
+      followed_at: new Date(),
+    };
+    mockedFollowRepo.findFollowers.mockResolvedValue([row]);
+    mockedFollowRepo.findFollowing.mockResolvedValue([row]);
+    mockedToUserRef.mockReturnValue({ id: 2, fullName: 'Alice', avatarUrl: null });
+
+    await expect(userService.getFollowers(1)).resolves.toEqual({
+      items: [{ id: 2, fullName: 'Alice', avatarUrl: null }],
+      count: 1,
+    });
+    await expect(userService.getFollowing(1)).resolves.toEqual({
+      items: [{ id: 2, fullName: 'Alice', avatarUrl: null }],
+      count: 1,
+    });
+  });
+
+  it('returns career by tournament from approved application history', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+    const row = {
+      tournament_id: 10,
+      tournament_name: 'KU Cup',
+      sport_type_id: 1,
+      tournament_status: 'completed' as const,
+      team_id: 5,
+      team_name: 'Blue',
+      played: 3,
+      wins: 2,
+      losses: 1,
+      champion: 1,
+    };
+    mockedCareerRepo.findCareerByUser.mockResolvedValue([row]);
+    mockedToCareerTournamentDto.mockReturnValue({
+      tournament: { id: 10, name: 'KU Cup', sportTypeId: 1, status: 'completed' },
+      team: { id: 5, name: 'Blue' },
+      played: 3,
+      wins: 2,
+      losses: 1,
+      champion: true,
+    });
+
+    await expect(userService.getCareer(1)).resolves.toMatchObject({
+      items: [{ played: 3, wins: 2, losses: 1, champion: true }],
+    });
   });
 });
 

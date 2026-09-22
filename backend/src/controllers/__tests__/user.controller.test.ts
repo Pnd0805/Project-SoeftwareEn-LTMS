@@ -7,6 +7,11 @@ vi.mock('../../services/user.service.js', () => ({
   searchUsers: vi.fn(),
   updateMe: vi.fn(),
   getMyInvitation: vi.fn(),
+  followUser: vi.fn(),
+  unfollowUser: vi.fn(),
+  getFollowers: vi.fn(),
+  getFollowing: vi.fn(),
+  getCareer: vi.fn(),
 }));
 
 vi.mock('../../mappers/user.mapper.js', () => ({
@@ -24,6 +29,12 @@ import {
   searchUser,
   patchMe,
   getMyInvitation,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
+  getMyFollowing,
+  getCareer,
 } from '../user.controller.js';
 import * as UserService from '../../services/user.service.js';
 import { toMeDto } from '../../mappers/user.mapper.js';
@@ -83,7 +94,7 @@ describe('user.controller getUserById()', () => {
     await getUserById(req, res);
 
     expect(mockedParseId).toHaveBeenCalledWith('42', 'รหัสผู้ใช้');
-    expect(mockedUserService.getUserById).toHaveBeenCalledWith(42);
+    expect(mockedUserService.getUserById).toHaveBeenCalledWith(42, undefined);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ id: 42 });
   });
@@ -115,6 +126,63 @@ describe('user.controller getUserStats()', () => {
     expect(mockedUserService.getUserStats).toHaveBeenCalledWith(7);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ userId: 7, stats: [] });
+  });
+});
+
+describe('user.controller C8 follow/career endpoints', () => {
+  it('passes optional viewer id when loading a public profile', async () => {
+    const req = { params: { id: '42' }, user: { user_id: 9 } } as unknown as Request;
+    const res = makeRes();
+    mockedParseId.mockReturnValue(42);
+    mockedUserService.getUserById.mockResolvedValue({ id: 42, isFollowing: true } as any);
+
+    await getUserById(req, res);
+
+    expect(mockedUserService.getUserById).toHaveBeenCalledWith(42, 9);
+  });
+
+  it('follows and unfollows the path user as the authenticated user', async () => {
+    mockedParseId.mockReturnValue(2);
+    mockedUserService.followUser.mockResolvedValue({ userId: 2, isFollowing: true, followerCount: 1 } as any);
+    mockedUserService.unfollowUser.mockResolvedValue({ userId: 2, isFollowing: false, followerCount: 0 } as any);
+    const req = { params: { id: '2' }, user: { user_id: 1 } } as unknown as Request;
+
+    const followRes = makeRes();
+    await followUser(req, followRes);
+    expect(mockedUserService.followUser).toHaveBeenCalledWith(1, 2);
+    expect(followRes.status).toHaveBeenCalledWith(200);
+
+    const unfollowRes = makeRes();
+    await unfollowUser(req, unfollowRes);
+    expect(mockedUserService.unfollowUser).toHaveBeenCalledWith(1, 2);
+    expect(unfollowRes.status).toHaveBeenCalledWith(200);
+  });
+
+  it('loads followers, following and career for the path user', async () => {
+    mockedParseId.mockReturnValue(7);
+    mockedUserService.getFollowers.mockResolvedValue({ items: [], count: 0 } as any);
+    mockedUserService.getFollowing.mockResolvedValue({ items: [], count: 0 } as any);
+    mockedUserService.getCareer.mockResolvedValue({ items: [] } as any);
+    const req = { params: { id: '7' } } as unknown as Request;
+
+    await getFollowers(req, makeRes());
+    await getFollowing(req, makeRes());
+    await getCareer(req, makeRes());
+
+    expect(mockedUserService.getFollowers).toHaveBeenCalledWith(7);
+    expect(mockedUserService.getFollowing).toHaveBeenCalledWith(7);
+    expect(mockedUserService.getCareer).toHaveBeenCalledWith(7);
+  });
+
+  it('loads /me/following from the authenticated user id', async () => {
+    mockedUserService.getFollowing.mockResolvedValue({ items: [], count: 0 } as any);
+    const req = { user: { user_id: 11 } } as unknown as Request;
+    const res = makeRes();
+
+    await getMyFollowing(req, res);
+
+    expect(mockedUserService.getFollowing).toHaveBeenCalledWith(11);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });
 

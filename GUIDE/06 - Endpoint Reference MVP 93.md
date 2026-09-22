@@ -32,17 +32,23 @@
 
 ---
 
-# 2. Users & Profile — 5 endpoint
+# 2. Users & Profile — 11 endpoint
 
-**ไฟล์:** `routes/user.routes.ts` · `user.controller.ts` · `user.service.ts` · `user.repo.ts` · `user.mapper.ts`
+**ไฟล์:** `routes/users.routes.ts` · `routes/me.routes.ts` · `user.controller.ts` · `user.service.ts` · `user.repo.ts` · `follow.repo.ts` · `career.repo.ts` · `playerStat.repo.ts` · mappers
 
 | รหัส | Method + Path          | Auth | ทำอะไร                                            | รับ                                  | คืน                                                                                                                                                     |
 | ---- | ---------------------- | ---- | ------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | U01  | `GET /me`              | Auth | โปรไฟล์ตัวเอง (มีข้อมูลส่วนตัว)                   | —                                    | `{ id, fullName, email, gender, birthDate, facultyId, departmentId, year, avatarUrl, contactInfo, address, totalPoints, notificationPrefs, createdAt }` |
 | U02  | `PATCH /me`            | Auth | แก้โปรไฟล์ · **allowlist 3 field เท่านั้น**       | `avatarUrl?, contactInfo?, address?` | เหมือน U01                                                                                                                                              |
-| U03  | `GET /users/:id`       | —    | โปรไฟล์สาธารณะ · **ไม่มี email/contact/address**  | —                                    | `{ id, fullName, avatarUrl, facultyId, departmentId, teams[] }`                                                                                         |
-| U04  | `GET /users/:id/stats` | —    | สถิตินักกีฬา (read-only)                          | —                                    | `{ userId, overall{matchesPlayed,wins,losses,winRate,championCount}, bySport[] }`                                                                       |
-| U06  | `GET /users/search?q=` | Auth | ค้นคนเพื่อเชิญเข้าทีม · ชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · `q` ≥3 ตัว · **LIMIT 20** | `?q=`                                | `{ items: [{id, fullName, avatarUrl}] }`                                                                                                                |
+| U03  | `GET /users/:id`       | Optional | โปรไฟล์สาธารณะ · **ไม่มี email/contact/address** · ถ้ามี token จะคืนสถานะ follow ของ viewer | — | `{ id, fullName, avatarUrl, facultyId, departmentId, teams[], followerCount, isFollowing }` |
+| U04  | `GET /users/:id/stats` | —    | สถิตินักกีฬา + totals ของหน้า profile | — | `{ userId, overall{matchesPlayed,wins,losses,winRate,championCount}, bySport[], mvpVotes, pickemPoints, followerCount }` |
+| U06  | `GET /users/search?q=` | Auth | ค้นคนเพื่อเชิญเข้าทีม · ชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · `q` ≥3 ตัว · **LIMIT 20** | `?q=` | `{ items: [{id, fullName, avatarUrl}] }` |
+| U07  | `POST /users/:id/follow` | Auth | ติดตามผู้ใช้แบบ idempotent · ห้าม follow ตัวเอง | — | `{ userId, isFollowing:true, followerCount }` / **409** `CANNOT_FOLLOW_SELF` |
+| U08  | `DELETE /users/:id/follow` | Auth | เลิกติดตามแบบ idempotent · ห้าม target ตัวเอง | — | `{ userId, isFollowing:false, followerCount }` / **409** `CANNOT_FOLLOW_SELF` |
+| U09  | `GET /users/:id/followers` | — | รายชื่อผู้ติดตามโปรไฟล์นี้ | — | `{ items:[{id,fullName,avatarUrl}], count }` |
+| U10  | `GET /users/:id/following` | — | รายชื่อผู้ใช้ที่โปรไฟล์นี้ติดตาม | — | `{ items:[{id,fullName,avatarUrl}], count }` |
+| U13  | `GET /me/following` | Auth | รายชื่อผู้ใช้ที่ฉันติดตาม · C8 ยังไม่ทำ feed/notification | — | เหมือน U10 |
+| U14  | `GET /users/:id/career` | — | ประวัติแยก Tournament จาก **approved application** · played/win/loss นับเฉพาะผล `verified` (walkover ไม่ถือว่าลงสนาม) | — | `{ items:[{tournament:{id,name,sportTypeId,status}, team:{id,name}, played,wins,losses,champion}] }` |
 
 > **U01 กับ U03 ห้ามใช้ mapper ตัวเดียวกัน** — พลาดครั้งเดียวอีเมลรั่วทั้งระบบ
 > **U06** ถ้า `q` สั้นกว่า 3 → **400** `QUERY_TOO_SHORT`
@@ -326,6 +332,7 @@
 | `CHECKIN_NOT_FOUND` | 404 | ไม่พบรายการเช็คอินนี้ | service (M14, M15) |
 | `APPLICATION_ACCESS_DENIED` | 403 | คุณไม่มีสิทธิ์ดูใบสมัครนี้ | service (P04) |
 | `NOT_ORGANIZER_OR_REFEREE` | 403 | M11: คุณไม่มีสิทธิ์ขอ QR เช็คอินของแมตช์นี้ · M13: คุณไม่มีสิทธิ์ดูรายการเช็คอินนี้ | service (M11, M13) — auth แบบ "ORG หรือ REF คนใดคนหนึ่งก็ได้" ไม่มี middleware สำเร็จรูปสำหรับ route ที่ระบุ matchId |
+| `CANNOT_FOLLOW_SELF` | 409 | ไม่สามารถติดตามหรือเลิกติดตามตัวเองได้ | service (U07/U08) |
 | `APPLICATION_NOT_APPROVED` | 409 | ใบสมัครนี้ยังไม่ได้รับการอนุมัติ จึงไม่สามารถถอนตัวได้ | service (P08) |
 | `CHECKIN_NOT_OPEN` | 409 | ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้ | service (M10) — ตั้งตาม pattern `VOTING_NOT_OPEN` (E20) · เดิมชื่อ `MATCH_NOT_CHECKIN_OPEN` |
 | `BRACKET_ALREADY_EXISTS` | 409 | ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว | service (M01) — คู่กับ `BRACKET_ALREADY_STARTED` (M03) |
