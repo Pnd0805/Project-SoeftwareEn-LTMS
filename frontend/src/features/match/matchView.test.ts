@@ -4,7 +4,10 @@
  * เน้นกรณีที่ backend เพิ่งเปิดทางให้เกิดบ่อยขึ้น: แมตช์ที่จบโดยไม่ได้แข่ง
  * (บาย / แพ้ทั้งคู่ / แมตช์ตาย) และโหมดออนไลน์ที่คนกรอกผลคนแรกไม่ใช่กรรมการ
  */
+import { createElement } from "react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { MatchStateBadge } from "../../components/kit/primitives";
 import type { MatchListItemDto } from "../../types/match.dto";
 import { isOpen, matchStateOf, outcomeNote, refBucketOf, scoreText } from "./matchView";
 
@@ -32,8 +35,13 @@ describe("matchStateOf", () => {
      ซึ่งอ่านว่ายังไม่เคยมีอะไรเกิดขึ้น ทั้งที่แข่งไปแล้วและผลเพิ่งถูกเพิกถอน */
   it("does not read a thrown-out result as a match that has not happened", () => {
     const thrown = match({ status: "result_rejected", resultStatus: "rejected" });
-    expect(matchStateOf(thrown)).not.toBe("scheduled");
-    expect(matchStateOf(thrown)).toBe("disputed");
+    const state = matchStateOf(thrown);
+    expect(state).not.toBe("scheduled");
+    expect(state).toBe("rejected");
+
+    const { unmount } = render(createElement(MatchStateBadge, { state }));
+    expect(screen.getByText("Result thrown out")).toBeInTheDocument();
+    unmount();
   });
 
   it("reads a bye as decided even though the other slot is empty", () => {

@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { StandingRowDto } from "../../types/match.dto";
-import { stateOf, summarizeMatches, topOfTable, type DashboardMatch } from "./dashboardView";
+import { STATE_ORDER, stateOf, summarizeMatches, topOfTable, type DashboardMatch } from "./dashboardView";
 
 const team = (id: number) => ({ id, name: `Team ${id}`, code: `T${id}`, color: null, logoUrl: null, players: [] });
 
@@ -61,9 +61,18 @@ describe("summarizeMatches", () => {
   it("limits the lists", () => {
     expect(summarizeMatches(items, 1).upNext).toHaveLength(1);
   });
+
+  it("counts a rejected match in byState.rejected", () => {
+    const withRejected = summarizeMatches([...items, match(11, { status: "result_rejected", resultStatus: "rejected" })]);
+    expect(withRejected.byState.rejected).toBe(1);
+  });
 });
 
 describe("stateOf", () => {
+  it("includes rejected state in STATE_ORDER", () => {
+    expect(STATE_ORDER).toContain("rejected");
+  });
+
   it("treats a completed match with no result status as confirmed, the way the backend reports it", () => {
     const fromBackend = match(11, { status: "completed" });
     delete (fromBackend as Partial<DashboardMatch>).resultStatus;
@@ -73,6 +82,10 @@ describe("stateOf", () => {
 
   it("keeps a submitted result as awaiting confirmation", () => {
     expect(stateOf(match(12, { resultStatus: "submitted" }))).toBe("pending");
+  });
+
+  it("identifies a thrown-out result as rejected", () => {
+    expect(stateOf(match(13, { status: "result_rejected", resultStatus: "rejected" }))).toBe("rejected");
   });
 });
 

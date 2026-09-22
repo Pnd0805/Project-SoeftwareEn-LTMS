@@ -93,6 +93,7 @@ describe('a result the organizer threw out', () => {
   it('says what happened instead of claiming nothing was ever recorded', () => {
     renderPage()
     expect(screen.getByText(/The organizer threw this result out/)).toBeInTheDocument()
+    expect(screen.getByText('Result thrown out')).toBeInTheDocument()
     expect(screen.queryByText(/No result recorded yet/)).not.toBeInTheDocument()
   })
 

@@ -159,6 +159,7 @@ const MATCH_STATE: Record<MatchState, { kind: Kind; label: string }> = {
   live: { kind: 'warn', label: 'In progress' },
   scheduled: { kind: 'neutral', label: 'Scheduled' },
   waiting: { kind: 'neutral', label: 'Waiting on teams' },
+  rejected: { kind: 'crit', label: 'Result thrown out' },
 }
 
 /** ชั้นล่าง — รับสถานะที่ตัดสินมาแล้ว ไม่รู้จัก store และไม่รู้จัก DTO */
