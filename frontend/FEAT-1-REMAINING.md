@@ -1115,7 +1115,7 @@ not acceptance evidence for these newly reported regressions. Keep every item
 below open until its own API and real-browser criteria pass against the current
 backend baseline.
 
-- [ ] **R10 · P1 · Draw referee planning · Slices 2/3/4 + Backend:** on the draw
+- [x] **R10 · P1 · Draw referee planning · Slices 2/3/4 + Backend:** on the draw
       page, let the organizer select referees from the tournament referee pool
       for every known match, including future match slots whose teams are not
       resolved yet. Show assigned, pending, accepted, and declined/cancelled
@@ -1129,7 +1129,7 @@ backend baseline.
     future-slot assignments remain attached to the intended match, consent
     status is truthful, and unauthorized roles cannot mutate them.
 
-- [ ] **R11 · P1 · Check-in reject then re-verify · Slice 3 + Backend:** fix the
+- [x] **R11 · P1 · Check-in reject then re-verify · Slice 3 + Backend:** fix the
       referee flow where rejecting a check-in prevents a later verification for
       the same approved player in both `online` and `on_site` modes. Add a
       required reject-reason field and display the recorded reason where the
@@ -1144,7 +1144,7 @@ backend baseline.
     next valid attempt; and the referee can approve/reject that new attempt
     without stale-row or disabled-action errors in both modes.
 
-- [ ] **R12 · P1 · Fixture editor scope · Slices 2/4 + Backend:** make Fixture
+- [x] **R12 · P1 · Fixture editor scope · Slices 2/4 + Backend:** make Fixture
       the match-management page for editing the scheduled start date/time and
       the referees assigned/requested for that match. Preserve the distinction
       between a pending invitation and an accepted assignment.
@@ -1156,7 +1156,7 @@ backend baseline.
     render correctly after reload; invalid/past/conflicting values produce an
     actionable error; read-only roles cannot edit.
 
-- [ ] **R13 · P1 · Double forfeit lifecycle · Slices 2/4 + Backend:** when both
+- [x] **R13 · P1 · Double forfeit lifecycle · Slices 2/4 + Backend:** when both
       teams lose by forfeit, advance/recompute the bracket immediately from the
       terminal `double_forfeit`/void outcome instead of leaving the match at the
       stage that waits for team-leader result confirmation.
@@ -1178,7 +1178,7 @@ backend baseline.
     intended viewers; invalid URLs and failed saves are surfaced rather than
     showing false success.
 
-- [ ] **R15 · P1 · Winning team-leader confirmation · Slices 2/4 + Backend:**
+- [x] **R15 · P1 · Winning team-leader confirmation · Slices 2/4 + Backend:**
       restore the winner's team leader ability to confirm a submitted result;
       the currently working dispute action must not mask or replace confirm.
   - Reproduce/evidence: capture match/result IDs and state, winner team ID,
@@ -1189,7 +1189,7 @@ backend baseline.
     losing leaders/plain members cannot confirm; duplicate confirmation is
     idempotent or returns a clear terminal-state response.
 
-- [ ] **R16 · P1 · Organizer dispute resolution · Slices 2/4 + Backend:** after
+- [x] **R16 · P1 · Organizer dispute resolution · Slices 2/4 + Backend:** after
       a result is disputed, let the organizer resolve it by amending the score
       and winner, upholding it, or throwing out/rejecting the record without
       leaving all controls disabled or creating an unconfirmable result.
@@ -1285,7 +1285,10 @@ Two are a backend field that is written and never returned, now filed in
       required `checkin_open`/`in_progress`, so nobody could record the match
       again although `requireCanSubmitResult` was waiting for exactly that.
       Added the status, a panel that says what happened, and the form back.
-      Also stopped drawing the thrown-out score on the scorebug. Verified live
+      Also stopped drawing the thrown-out score on the scorebug. Shared UI
+      vocabulary refactored: `MatchState` officially includes `'rejected'`,
+      `MatchStateBadge` shows "Result thrown out" with `crit` variant, and
+      `STATE_ORDER`/dashboard counters include rejected matches. Verified live
       on match 9: threw the result out as the organizer, the referee got the
       form, entered 4–1, and the winning leader confirmed it.
 
@@ -1296,7 +1299,7 @@ Two are a backend field that is written and never returned, now filed in
       and the frontend/backend boundary for R10–R16.
 - [x] Add targeted regression tests for confirmed causes; run tests/lint/build
       for implementation changes. This entry itself is documentation only.
-      Latest Developer verification 2026-09-21: 32 files / 198 tests, lint,
+      Latest Developer verification 2026-09-22: 35 files / 220 tests, lint,
       production build, Vite dev startup on `127.0.0.1:5173`, and
       `git diff --check` pass. The existing 500 kB Vite chunk warning remains;
       real-backend/browser retest remains assigned below.
