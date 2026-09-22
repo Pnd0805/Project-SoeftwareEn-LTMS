@@ -100,6 +100,12 @@ export async function completeTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.completeTournament(req.tournament!, userId(req)));
 }
 
+
+export async function deleteTournament(req: Request, res: Response) {
+    await TournamentService.deleteTournament(req.tournament!, userId(req));
+    res.status(204).send();
+}
+
 export async function unpublishTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.unpublishTournament(req.tournament!, userId(req)));
 }

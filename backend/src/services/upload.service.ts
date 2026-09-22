@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import s3 from '../config/s3.js';
 import { env } from '../config/env.js';
@@ -12,6 +12,8 @@ const CONTENT_TYPE_EXTENSION: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
 };
+
+const SOFT_FILTER_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
 
 // 20 นาที (ตกลงกับทีม 15 ก.ย.) — เน็ตหน้าสนามช้า (AS-02) อัปโหลดไม่ทันใน 5 นาที
 // ใช้ทั้งลิงก์อัปโหลด (M16) และลิงก์ดูเอกสาร soft filter (P05)
@@ -51,7 +53,9 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
     }
 
     const extension = CONTENT_TYPE_EXTENSION[input.contentType];
-    const objectKey = `${input.purpose}/${entityId}/${randomUUID()}.${extension}`;
+    const objectKey = input.purpose === 'soft_filter_document'
+        ? `${input.purpose}/${entityId}/${userId}/${randomUUID()}.${extension}`
+        : `${input.purpose}/${entityId}/${randomUUID()}.${extension}`;
 
     const command = new PutObjectCommand({
         Bucket: env.S3_BUCKET,
@@ -61,6 +65,60 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
 
     return { uploadUrl, objectKey, expiresIn: EXPIRES_IN_SECONDS };
+}
+
+
+function isObjectNotFound(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const e = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+    return e.name === 'NotFound' || e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404;
+}
+
+export async function validateSoftFilterDocuments(objectKeys: string[], tournamentId: number, userId: number): Promise<void> {
+    const expectedKey = new RegExp(
+        `^soft_filter_document/${tournamentId}/${userId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`,
+        'i'
+    );
+
+    for (const objectKey of objectKeys) {
+        if (!expectedKey.test(objectKey)) {
+            throw new AppError(
+                422,
+                'SOFT_FILTER_DOCUMENT_INVALID',
+                'เอกสาร soft filter ไม่ได้ถูกอัปโหลดโดยผู้ใช้นี้สำหรับทัวร์นาเมนต์นี้',
+                { objectKey }
+            );
+        }
+    }
+
+    await Promise.all(objectKeys.map(async (objectKey) => {
+        try {
+            const metadata = await s3.send(new HeadObjectCommand({
+                Bucket: env.S3_BUCKET,
+                Key: objectKey,
+            }));
+
+            if (!metadata.ContentType || !SOFT_FILTER_CONTENT_TYPES.has(metadata.ContentType)) {
+                throw new AppError(
+                    422,
+                    'SOFT_FILTER_DOCUMENT_INVALID',
+                    'ชนิดไฟล์ soft filter ไม่ถูกต้อง',
+                    { objectKey, contentType: metadata.ContentType ?? null }
+                );
+            }
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            if (isObjectNotFound(error)) {
+                throw new AppError(
+                    422,
+                    'SOFT_FILTER_DOCUMENT_NOT_FOUND',
+                    'ไม่พบเอกสาร soft filter ที่อัปโหลดไว้ กรุณาอัปโหลดใหม่',
+                    { objectKey }
+                );
+            }
+            throw new AppError(503, 'STORAGE_UNAVAILABLE', 'ไม่สามารถตรวจสอบเอกสารที่อัปโหลดได้ในขณะนี้');
+        }
+    }));
 }
 
 // ใช้แปลง S3 key ดิบที่เก็บใน DB ให้เป็น URL ชั่วคราวตอนส่งออกไปให้ frontend

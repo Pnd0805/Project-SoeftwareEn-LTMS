@@ -172,7 +172,13 @@ export async function rejectApplication(applicationId: number, userId: number, r
     return { id: applicationId, status:'rejected', reason }
 }
 
-export async function applyTournament(tournamentId: number, teamId: number, userId: number, playerIds: number[]) {
+export async function applyTournament(
+    tournamentId: number,
+    teamId: number,
+    userId: number,
+    playerIds: number[],
+    softFilterDocuments: string[] = []
+) {
     // 1. โหลดทีม + เช็คว่าเป็นหัวหน้าทีม + เช็คว่า Ready
     const team = await ApplicationRepo.findTeamForApply(teamId);
     if (!team) {
@@ -295,10 +301,21 @@ export async function applyTournament(tournamentId: number, teamId: number, user
         throw new AppError(422, "HARD_FILTER_FAILED", "ผู้เล่นบางคนไม่ผ่านเงื่อนไขการสมัคร", { details: failedMembers });
     }
 
-    // 6. บันทึกใบสมัคร + รายชื่อผู้เล่นในทรานแซกชันเดียว (ต้องเกิดพร้อมกันหรือไม่เกิดเลย)
+    // 6. Soft Filter documents — key ต้องถูกสร้างจาก presign ของ user คนนี้สำหรับทัวร์นี้ และ object ต้องอัปโหลดสำเร็จแล้ว
+    if (softFilterDocuments.length > 0) {
+        await UploadService.validateSoftFilterDocuments(softFilterDocuments, tournamentId, userId);
+    }
+
+    // 7. บันทึกใบสมัคร + รายชื่อผู้เล่น + document keys ในทรานแซกชันเดียว (ต้องเกิดพร้อมกันหรือไม่เกิดเลย)
     //    hard_filter_details ต้องเป็น array รายคน ไม่ใช่ object สรุป — P04 ดึงไปโชว์ตรงๆ
     const hardFilterDetails = squad.map(m => ({ userId: m.user_id, fullName: m.full_name, passed: true }));
-    const newId = await ApplicationRepo.insertApplicationWithPlayers(tournamentId, teamId, hardFilterDetails, playerIds);
+    const newId = await ApplicationRepo.insertApplicationWithPlayers(
+        tournamentId,
+        teamId,
+        hardFilterDetails,
+        playerIds,
+        softFilterDocuments
+    );
 
     // null = ชน uq_tournament_player — คนเดียวลงได้ทีมเดียวต่อหนึ่งทัวร์ (กันไว้ที่ DB เผื่อสองทีมสมัครพร้อมกัน)
     if (newId === null) {

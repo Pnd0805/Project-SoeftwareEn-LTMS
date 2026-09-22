@@ -218,6 +218,7 @@ CREATE TABLE tournaments (
   tournament_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(200) NOT NULL,
   description VARCHAR(255) NULL,
+  entry_notes TEXT NULL,             -- C5A free-text note for applicants; informational only, not an eligibility rule
   sport_type_id INT NOT NULL,
   bracket_format ENUM('single_elimination','double_elimination','round_robin') NULL,
   scope_type ENUM('department','faculty','university') NOT NULL,  -- ⚠️ 'university' รอ Change Management
@@ -252,8 +253,8 @@ CREATE TABLE tournaments (
   updated_at DATETIME NULL,
   updated_by INT NULL,
   deleted_at DATETIME NULL,
-  deleted_by INT NULL,   -- NULL = auto_deleted (ระบบ) · มีค่า = Admin สั่งลบ
-  -- Organizer ไม่มีสิทธิ์ลบทัวร์นาเมนต์เอง มีแค่ unpublish (private ↔ public)
+  deleted_by INT NULL,   -- NULL = auto/system deletion · มีค่า = actor ที่สั่ง soft-delete ผ่านระบบ
+  -- ผู้ยื่นคำขอสามารถ soft-delete ได้เฉพาะ pending/rejected หรือ private ที่ยังไม่มี application/match; public ต้อง unpublish ก่อน
   FOREIGN KEY (sport_type_id) REFERENCES sport_types(sport_type_id),
   FOREIGN KEY (organizing_faculty_id) REFERENCES faculties(faculty_id),
   FOREIGN KEY (organizing_department_id) REFERENCES departments(department_id),
@@ -328,7 +329,7 @@ CREATE TABLE tournament_applications (
   team_id INT NOT NULL,
   hard_filter_passed BOOLEAN NULL,
   hard_filter_details JSON NULL,
-  soft_filter_documents JSON NULL,   -- array ของ S3 key (รูปบัตรนิสิต/บัตรประชาชนเท่านั้น)
+  soft_filter_documents JSON NULL,   -- array ของ S3 keys; soft filter upload key ผูก tournament + uploader และตรวจ object ก่อน persist
   tournament_application_status ENUM('pending','approved','rejected','cancelled','withdrawn') NOT NULL DEFAULT 'pending',
   reviewed_by INT NULL,
   reviewed_at DATETIME NULL,
@@ -771,4 +772,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('019_drop_team_member_position.sql'),   -- เดิม 015
   ('020_amendment_reason_stat_integer_only.sql'),
   ('021_standings_goals.sql'),
-  ('022_tournament_completion.sql');
+  ('022_tournament_completion.sql'),
+  ('023_tournament_entry_notes.sql');

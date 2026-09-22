@@ -17,6 +17,7 @@ export type CreateTournamentRecord = {
     maxTeams: number;
     minTeams: number;
     venue: string;
+    entryNotes: string | null;
     genderRequirement: TournamentRow['gender_requirement'];
     minAge: number | null;
     maxAge: number | null;
@@ -58,6 +59,15 @@ export async function hasLiveApplications(tournamentId: number): Promise<boolean
         [tournamentId]
     );
     return rows.length > 0;
+}
+
+
+export async function countApplicationsByTournament(tournamentId: number): Promise<number> {
+    const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        'SELECT COUNT(*) AS cnt FROM tournament_applications WHERE tournament_id = ?',
+        [tournamentId]
+    );
+    return Number(rows[0]?.cnt ?? 0);
 }
 
 export type TournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'tournament_status' | 'rejection_reason' | 'created_at'>;
@@ -108,15 +118,16 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
         await conn.beginTransaction();
         const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO tournaments
-            (name, description, sport_type_id, bracket_format, scope_type,
+            (name, description, entry_notes, sport_type_id, bracket_format, scope_type,
              organizing_faculty_id, organizing_department_id, requested_by_user_id,
              registration_start, registration_end, event_start_date, event_end_date,
              max_teams, min_teams, venue, gender_requirement, min_age, max_age,
              tournament_status, registration_open)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval', FALSE)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval', FALSE)`,
         [
             data.name,
             null,
+            data.entryNotes,
             data.sportTypeId,
             data.bracketFormat,
             data.scopeType,
@@ -267,7 +278,7 @@ export async function findTournamentOrganizer(tournamentId: number): Promise<Pic
     return rows[0] ?? null;
 }
 
-export async function updateTournamentGeneral(tournamentId: number, userId: number, changes: { venue?: string | undefined; description?: string | null | undefined }): Promise<boolean> {
+export async function updateTournamentGeneral(tournamentId: number, userId: number, changes: { venue?: string | undefined; description?: string | null | undefined; entryNotes?: string | null | undefined }): Promise<boolean> {
     const fields: string[] = [];
     const values: Array<string | number | null> = [];
     if (changes.venue !== undefined) {
@@ -277,6 +288,10 @@ export async function updateTournamentGeneral(tournamentId: number, userId: numb
     if (changes.description !== undefined) {
         fields.push('description = ?');
         values.push(changes.description);
+    }
+    if (changes.entryNotes !== undefined) {
+        fields.push('entry_notes = ?');
+        values.push(changes.entryNotes);
     }
     if (fields.length === 0) return false;
     fields.push('updated_at = NOW()', 'updated_by = ?');
@@ -643,6 +658,34 @@ export async function completeTournament(tournamentId: number, userId: number, c
     } catch (err) {
         await conn.rollback();
         throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+
+export async function softDeleteTournament(tournamentId: number, userId: number): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+             SET deleted_at = NOW(), deleted_by = ?, updated_at = NOW(), updated_by = ?, registration_open = FALSE
+             WHERE tournament_id = ?
+               AND deleted_at IS NULL
+               AND tournament_status IN ('pending_approval', 'rejected', 'private')`,
+            [userId, userId, tournamentId]
+        );
+        if (result.affectedRows === 0) {
+            await conn.rollback();
+            return false;
+        }
+        await insertAuditLog(conn, userId, 'tournament_deleted', 'tournament', tournamentId);
+        await conn.commit();
+        return true;
+    } catch (error) {
+        await conn.rollback();
+        throw error;
     } finally {
         conn.release();
     }

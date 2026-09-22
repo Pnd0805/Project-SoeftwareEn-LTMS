@@ -302,7 +302,8 @@ export async function insertApplicationWithPlayers(
     tournamentId: number,
     teamId: number,
     hardFilterDetails: unknown,
-    playerIds: number[]
+    playerIds: number[],
+    softFilterDocuments: string[] = []
 ): Promise<number | null> {
     const conn = await pool.getConnection();
     try {
@@ -310,9 +311,14 @@ export async function insertApplicationWithPlayers(
 
         const [result] = await conn.query<ResultSetHeader>(
             `INSERT INTO tournament_applications
-                (tournament_id, team_id, tournament_application_status, hard_filter_passed, hard_filter_details)
-             VALUES (?, ?, 'pending', TRUE, ?)`,
-            [tournamentId, teamId, JSON.stringify(hardFilterDetails)]
+                (tournament_id, team_id, tournament_application_status, hard_filter_passed, hard_filter_details, soft_filter_documents)
+             VALUES (?, ?, 'pending', TRUE, ?, ?)`,
+            [
+                tournamentId,
+                teamId,
+                JSON.stringify(hardFilterDetails),
+                JSON.stringify(softFilterDocuments)
+            ]
         );
         const applicationId = result.insertId;
 

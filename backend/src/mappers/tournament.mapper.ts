@@ -34,6 +34,7 @@ export type TournamentDetailDto = {
     id: number;
     name: string;
     description: string | null;
+    entryNotes: string | null;
     sportTypeId: number;
     bracketFormat: TournamentRow['bracket_format'];
     scopeType: TournamentRow['scope_type'];
@@ -62,6 +63,7 @@ export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto,
         id: row.tournament_id,
         name: row.name,
         description: row.description,
+        entryNotes: row.entry_notes,
         sportTypeId: row.sport_type_id,
         bracketFormat: row.bracket_format,
         scopeType: row.scope_type,
