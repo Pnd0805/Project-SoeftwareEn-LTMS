@@ -5,7 +5,7 @@ import * as MatchRepo from '../repositories/match.repo.js';
 
 const WRITE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 /** เส้นทางที่ยังใช้ได้หลังปิดทัวร์ (ประกาศปิดงาน · C6 ให้คะแนน/โหวต MVP ซึ่งเปิดหลังปิดทัวร์เท่านั้น · C7 คอมเมนต์ทัวร์) */
-const ALLOWED_AFTER_COMPLETE = [/^\/announcements/, /^\/feedback\/?$/, /^\/mvp-votes\/?$/, /^\/comments(\/me)?\/?$/];   // Express ไม่ strict — '/feedback/' ก็เข้า route เดียวกัน
+const ALLOWED_AFTER_COMPLETE = [/^\/announcements/, /^\/feedback\/?$/, /^\/mvp-votes\/?$/, /^\/comments(\/(me|\d+))?\/?$/];   // Express ไม่ strict — '/feedback/' ก็เข้า route เดียวกัน
 
 /**
  * Tournament lifecycle guard mounted before child routers.

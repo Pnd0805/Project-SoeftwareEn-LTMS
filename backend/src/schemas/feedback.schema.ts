@@ -19,6 +19,12 @@ export const tournamentCommentSchema = z.object({
 });
 export type TournamentCommentInput = z.infer<typeof tournamentCommentSchema>;
 
+// ผู้จัดลบความเห็นต่อทัวร์ — เหตุผล "บังคับ" (มติ 23 ก.ย. ข้อ 6.3): ลบคำวิจารณ์เงียบ ๆ ไม่ได้
+export const removeCommentByOrganizerSchema = z.object({
+    reason: z.string('กรุณาระบุเหตุผลที่ลบ').trim().min(1, 'กรุณาระบุเหตุผลที่ลบ').max(255, 'เหตุผลยาวได้ไม่เกิน 255 ตัวอักษร'),
+});
+export type RemoveCommentByOrganizerInput = z.infer<typeof removeCommentByOrganizerSchema>;
+
 // แอดมินลบ — เหตุผลไม่บังคับ แต่เก็บลง audit ถ้ามี
 export const removeFeedbackSchema = z.object({
     reason: z.string().trim().max(500, 'เหตุผลยาวได้ไม่เกิน 500 ตัวอักษร').optional(),

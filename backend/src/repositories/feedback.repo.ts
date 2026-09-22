@@ -124,13 +124,14 @@ export async function findOwn(tournamentId: number, userId: number, type: Feedba
 
 /**
  * มติ C6 ข้อ 3 — ส่งซ้ำ = เขียนทับของเดิม (คนละ 1 อัน) ใช้ UNIQUE เดิมของตาราง
- * แก้เนื้อหาแล้วล้างธง report เพราะข้อความที่ถูก report ไม่ใช่ข้อความนี้แล้ว
+ * ★ ไม่ล้าง is_reported (มติ 23 ก.ย. ข้อ 5-ก): แก้ข้อความแล้วธงต้องคงอยู่ ไม่งั้นเขียนดี → ถูก report → แก้เป็นข้อความแย่ = ธงหายเงียบ ๆ
+ *   ผู้ตรวจ (แอดมิน/ผู้จัด) ตัดสินจากข้อความล่าสุดที่เห็นอยู่แล้ว
  */
 export async function upsertOrganizerFeedback(tournamentId: number, userId: number, rating: number, content: string | null): Promise<void> {
     await pool.query(
         `INSERT INTO tournament_feedback (tournament_id, user_id, feedback_type, rating, content)
          VALUES (?, ?, 'organizer_feedback', ?, ?)
-         ON DUPLICATE KEY UPDATE rating = VALUES(rating), content = VALUES(content), is_reported = FALSE`,
+         ON DUPLICATE KEY UPDATE rating = VALUES(rating), content = VALUES(content)`,
         [tournamentId, userId, rating, content]
     );
 }
@@ -182,12 +183,12 @@ export type CommentListRow = FeedbackRow & { author_name: string; author_avatar:
 const COMMENT_SELECT = `SELECT ${FEEDBACK_COLS}, u.full_name AS author_name, u.profile_image_key AS author_avatar
                         FROM tournament_feedback f JOIN users u ON u.user_id = f.user_id`;
 
-/** คนละ 1 อันต่อทัวร์ (UNIQUE เดิม) — ส่งซ้ำ = แก้ข้อความ + ล้างธง report (ข้อความที่ถูก report ไม่ใช่อันนี้แล้ว) */
+/** คนละ 1 อันต่อทัวร์ (UNIQUE เดิม) — ส่งซ้ำ = แก้ข้อความ · ★ ธง report ไม่หาย (มติ 23 ก.ย. ข้อ 5-ก) */
 export async function upsertComment(tournamentId: number, userId: number, content: string): Promise<void> {
     await pool.query(
         `INSERT INTO tournament_feedback (tournament_id, user_id, feedback_type, content)
          VALUES (?, ?, 'comment', ?)
-         ON DUPLICATE KEY UPDATE content = VALUES(content), is_reported = FALSE`,
+         ON DUPLICATE KEY UPDATE content = VALUES(content)`,
         [tournamentId, userId, content]
     );
 }
@@ -241,23 +242,60 @@ export async function markReported(feedbackId: number): Promise<void> {
     await pool.query(`UPDATE tournament_feedback SET is_reported = TRUE WHERE tournament_feedback_id = ?`, [feedbackId]);
 }
 
-/** แอดมินลบ (soft delete) + audit ในทรานแซกชันเดียว — คืน false ถ้าถูกลบไปแล้ว */
-export async function removeByAdmin(feedbackId: number, adminUserId: number, reason: string | null): Promise<boolean> {
+/**
+ * ลบ (soft delete) + audit ในทรานแซกชันเดียว — คืน false ถ้าถูกลบไปแล้ว
+ * ใช้ทั้งแอดมิน (`feedback_removed`) และผู้จัดที่ลบความเห็นในทัวร์ตัวเอง (`comment_removed_by_organizer`, มติ 23 ก.ย. ข้อ 6)
+ */
+export async function softRemove(
+    feedbackId: number, byUserId: number, reason: string | null,
+    audit: { actionType: string; details?: Record<string, unknown> } = { actionType: 'feedback_removed' }
+): Promise<boolean> {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
         const [result] = await conn.query<ResultSetHeader>(
             `UPDATE tournament_feedback SET removed_at = NOW(), removed_by = ?
              WHERE tournament_feedback_id = ? AND removed_at IS NULL`,
-            [adminUserId, feedbackId]
+            [byUserId, feedbackId]
         );
         if (result.affectedRows === 0) {
             await conn.rollback();
             return false;
         }
         await conn.query(
-            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'feedback_removed', 'tournament_feedback', ?, ?)`,
-            [adminUserId, feedbackId, JSON.stringify({ reason })]
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, ?, 'tournament_feedback', ?, ?)`,
+            [byUserId, audit.actionType, feedbackId, JSON.stringify({ reason, ...(audit.details ?? {}) })]
+        );
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+/**
+ * แอดมินคืนความเห็นที่ถูกลบ (มติ 23 ก.ย. ข้อ 6.3.3) — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์
+ * ล้างธง report ด้วย: แอดมินตรวจแล้วว่าคืนได้ = เคลียร์เรื่องแล้ว (ไม่งั้นธงค้างให้ผู้จัดมาลบซ้ำ)
+ */
+export async function restore(feedbackId: number, adminUserId: number): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournament_feedback SET removed_at = NULL, removed_by = NULL, is_reported = FALSE
+             WHERE tournament_feedback_id = ? AND removed_at IS NOT NULL`,
+            [feedbackId]
+        );
+        if (result.affectedRows === 0) {
+            await conn.rollback();
+            return false;
+        }
+        await conn.query(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'feedback_restored', 'tournament_feedback', ?, ?)`,
+            [adminUserId, feedbackId, JSON.stringify({})]
         );
         await conn.commit();
         return true;

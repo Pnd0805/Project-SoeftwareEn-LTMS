@@ -3,7 +3,7 @@ import { parseId } from '../utils/parseId.js';
 import { AppError } from '../utils/AppError.js';
 import { parsePagination } from '../utils/pagination.js';
 import * as FeedbackService from '../services/feedback.service.js';
-import { removeFeedbackSchema } from '../schemas/feedback.schema.js';
+import { removeFeedbackSchema, removeCommentByOrganizerSchema } from '../schemas/feedback.schema.js';
 
 function requireUserId(req: Request): number {
     if (!req.user) {
@@ -54,6 +54,24 @@ export async function deleteOwnTournamentComment(req: Request, res: Response) {
     const userId = requireUserId(req);
     await FeedbackService.deleteOwnTournamentComment(parseId(req.params['id'], 'รหัสทัวร์นาเมนต์'), userId);
     res.status(204).send();
+}
+
+/** ผู้จัดลบความเห็นในทัวร์ตัวเอง · reason บังคับ — DELETE มี body ได้แต่ไม่ผ่าน validate middleware จึงตรวจที่นี่ */
+export async function removeCommentByOrganizer(req: Request, res: Response) {
+    const userId = requireUserId(req);
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    const feedbackId = parseId(req.params['cid'], 'รหัสความเห็น', 'cid');
+    const parsed = removeCommentByOrganizerSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+        throw new AppError(400, "VALIDATION_FAILED", "ข้อมูลบางช่องไม่ถูกต้อง", { fields: { reason: parsed.error.issues[0]?.message ?? 'ไม่ถูกต้อง' } });
+    }
+    await FeedbackService.removeCommentByOrganizer(tournamentId, feedbackId, userId, parsed.data.reason);
+    res.status(204).send();
+}
+
+export async function restoreFeedback(req: Request, res: Response) {
+    const userId = requireUserId(req);
+    res.status(200).json(await FeedbackService.restoreFeedback(parseId(req.params['id'], 'รหัสความเห็น'), userId));
 }
 
 export async function reportFeedback(req: Request, res: Response) {

@@ -295,7 +295,9 @@
 
 ---
 
-# 10. Engagement (MVP) — 5 endpoint
+# 10. Engagement — ประกาศ · รีวิว/โหวต MVP · ความเห็นต่อทัวร์ · Pick'em
+
+## 10.1 ประกาศ + ถ่ายทอดสด (MVP) — 5 endpoint
 
 **ไฟล์:** `routes/announcement.routes.ts` · `announcement.controller.ts` · `announcement.service.ts` · `announcement.repo.ts`
 
@@ -308,6 +310,53 @@
 | E12 | `PUT /matches/:id/livestream` | ORG | ตั้งลิงก์ถ่ายทอดสด · validate YouTube URL · `youtubeUrl: null` = ล้างลิงก์ | `youtubeUrl` | `{ matchId, youtubeUrl }` / **400** `INVALID_YOUTUBE_URL` |
 
 > ⚠️ E12 — ต้นฉบับ DB ออกแบบให้ลิงก์ถ่ายทอดสดเป็นประกาศ (`announcement_type='livestream'`) ไม่ใช่ field ของแมตช์ ต้องเลือกทางก่อนเขียน ดู [[07 - จุดที่ต้องยืนยันกับทีม]] ข้อ A3
+
+---
+
+## 10.2 รีวิวจากผู้ลงแข่ง + โหวต MVP (C6 · OD-23) — 7 endpoint
+
+**ไฟล์:** `routes/feedback.routes.ts` · `feedback.controller.ts` · `feedback.service.ts` · `feedback.repo.ts` · ตาราง `tournament_feedback` (ไม่มี migration)
+
+> **ชื่อเรียก (ตกลง 23 ก.ย.)** — ตารางเดียวเก็บ 3 เรื่อง อย่าเรียกปนกัน
+> `organizer_feedback` = **รีวิวจากผู้ลงแข่ง** (คนลงแข่งให้คะแนนการจัดงาน · ข้อความเห็นแค่ผู้จัด) ·
+> `mvp_vote` = **โหวต MVP** (เฉพาะคนที่ไม่ได้ลงแข่ง) ·
+> `comment` = **ความเห็นต่อทัวร์** (ใครก็เขียนได้ ทุกคนเห็น — อยู่ข้อ 10.3)
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| E18 | `POST /tournaments/:id/feedback` | ผู้เล่นในรายชื่อ / หัวหน้าทีมที่ approved | ให้คะแนนการจัดงาน · **ส่งซ้ำ = แก้** · เปิดตั้งแต่ทัวร์เริ่มถึง 7 วันหลังปิดทัวร์ | `rating 1–5, content?` | **201** ครั้งแรก / **200** แก้ · `{ id, rating, content, createdAt }` |
+| E19 | `GET /tournaments/:id/feedback` | — (ล็อกอินได้ข้อมูลตัวเองเพิ่ม) | ค่าเฉลี่ย/การกระจาย + `status` (`not_started`/`open`/`closed`) + `opensAt`/`closesAt` · ผู้จัดเห็น `items` ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ | `—` | `{ summary, status, opensAt, closesAt, mine, canSubmit, items }` |
+| E20 | `POST /tournaments/:id/mvp-votes` | คนที่**ไม่ได้**ลงแข่ง | โหวต MVP · ส่งซ้ำ = เปลี่ยนคนที่โหวต · เปิดหลังปิดทัวร์ 7 วัน | `userId` | **200** `{ tournamentId, votedForUserId, changed }` |
+| E22 | `GET /tournaments/:id/mvp-votes` | — | ผู้ถูกโหวตทั้งหมด + คะแนน · `winners` โชว์หลังปิดโหวต | `—` | `{ window, candidates, totalVotes, winners, mine, canVote }` |
+| E15 | `POST /feedback/:id/report` | Auth | รายงานข้อความ (กดซ้ำได้ผลเดิม) · รีวิว report ได้เฉพาะผู้จัด · ความเห็นต่อทัวร์ report ได้ทุกคนยกเว้นเจ้าของ · **ความเห็นต่อทัวร์ → แจ้งเตือนผู้จัด** (`comment_reported`, ครั้งแรกครั้งเดียว) | `—` | `{ id, isReported: true }` |
+| E17 | `DELETE /admin/feedback/:id` | ADM-u | ลบ (soft delete) + audit `feedback_removed` | `reason?` | **204** |
+| E17b | `POST /admin/feedback/:id/restore` | ADM-u | **คืนของที่ถูกลบ** + audit `feedback_restored` · ล้างธง report ด้วย (มติ 23 ก.ย. 6.3.3 — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์) | `—` | **200** `{ id, restored: true }` |
+
+## 10.3 ความเห็นต่อทัวร์ (C7 · OD-24) — 4 endpoint
+
+> ย้ายจาก "คอมเมนต์ใต้แมตช์" มาเป็นระดับทัวร์ (มติ 22 ก.ย.) · **คนละ 1 อันต่อทัวร์ ส่งซ้ำ = แก้** · ทุกคนอ่านได้ · ทัวร์ต้อง `public`/`completed`
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| E13 | `POST /tournaments/:id/comments` | Auth | เขียน/แก้ความเห็นของตัวเอง · ≤ 500 ตัวอักษร · **ไม่มี rate limit** (1 อันต่อคน) | `content` | **201** ครั้งแรก / **200** แก้ · `{ id, tournamentId, author, content, createdAt, isMine }` |
+| E14 | `GET /tournaments/:id/comments` | — (ล็อกอินได้ `mine`/`canComment`) | รายการความเห็น ใหม่สุดก่อน · ไม่โชว์ที่ถูกลบ · ทัวร์ private คนนอกได้ 404 | `?page&pageSize` | `{ items, mine, canComment, pagination }` |
+| E14b | `DELETE /tournaments/:id/comments/me` | Auth | เจ้าของลบของตัวเอง (ลบจริง → เขียนใหม่ได้) | `—` | **204** |
+| E17c | `DELETE /tournaments/:id/comments/:cid` | ORG ของทัวร์นั้น | **ผู้จัดลบความเห็นของคนอื่น** (มติ 23 ก.ย. ข้อ 6) · ได้เฉพาะ `comment` · `reason` **บังคับ** 1–255 · audit `comment_removed_by_organizer` (`details: reason, tournamentId, authorUserId`) · แจ้งเจ้าของ (`comment_removed`) | `reason` | **204** |
+
+## 10.4 Pick'em ทายผล (C7 · OD-24) — 6 endpoint
+
+**ไฟล์:** `routes/engagement.routes.ts` · `engagement.controller.ts` · `pickem.service.ts` · `pickem.repo.ts` · ตาราง `pickem_predictions` (มีอยู่แล้ว)
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| E26 | `POST /matches/:id/predictions` | Auth (**คนนอกทัวร์เท่านั้น**) | ทาย/เปลี่ยนทีมที่คิดว่าชนะ · ปิดเมื่อเปิดเช็คอินหรือถึงเวลาแข่ง | `teamId` | **201** ครั้งแรก / **200** เปลี่ยน · `{ matchId, teamId, changed }` |
+| E26b | `DELETE /matches/:id/predictions/me` | Auth | ยกเลิกการทาย (ก่อนปิด) | `—` | **204** |
+| E26c | `GET /matches/:id/predictions/summary` | — (ล็อกอินได้ `mine`/`canPredict`) | สรุป % ของสองทีม + สถานะเปิด/ปิด | `—` | `{ matchId, isOpen, closedReason, closesAt, total, teams, mine, canPredict }` |
+| E26d | `GET /matches/:id/predictions/me` | Auth | การทายของตัวเองในแมตช์นี้ | `—` | `{ matchId, teamId, pointsEarned, status }` / `null` |
+| E27 | `GET /me/pickem` | Auth | ประวัติการทาย + แต้มรวม (`users.total_points`) | `—` | `{ totalPoints, correct, settled, items }` |
+| E28 | `GET /tournaments/:id/pickem-leaderboard` | — | อันดับในทัวร์ · แต้มเท่ากันได้อันดับเดียวกัน (1,1,3) | `—` | `{ items: [{ rank, user, points, correct, settled }] }` |
+
+> **แต้ม**: ทายถูก 10 · ผิด 0 · ชนะบาย/ปรับแพ้/ไม่มีการแข่ง = void (ไม่ได้ไม่เสีย) · ให้/คืนแต้มในทรานแซกชันเดียวกับผลแมตช์ จึงถูกต้องทั้งตอน verify, โต้แย้ง, แก้ผล · **ไม่มีแจ้งเตือนผลทาย** (ดูที่ E27)
 
 ---
 
@@ -350,6 +399,8 @@
 | `NO_MATCHES` | 409 | C14b: ยังไม่สร้างสาย ปิดไม่ได้ |
 | `ALREADY_REJECTED` | 409 | M14/M15: รายการนี้ถูกปฏิเสธไปแล้ว — ให้ผู้เล่นเช็คอินใหม่ (M12) หรือกรรมการกดให้ (M19) |
 | `ALREADY_DECIDED` | 409 | M14: รายการนี้ผ่านไปแล้ว (success/exception) ยืนยันซ้ำไม่ได้ — ถอนได้ทาง M15 |
+| `FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER` | 403 | E17c: ผู้จัดลบได้เฉพาะ "ความเห็นต่อทัวร์" — รีวิวจากผู้ลงแข่ง/โหวต MVP ลบไม่ได้ (เป็นการประเมินตัวผู้จัดเอง) |
+| `FEEDBACK_NOT_REMOVED` | 409 | E17b: กด restore ทั้งที่ความเห็นนี้ไม่ได้ถูกลบอยู่ |
 
 > **code เฉพาะต่อ field:** `validate(schema, { field: { code, message } })` — ถ้า field นั้นไม่ผ่านจะตอบ code ที่ระบุแทน `VALIDATION_FAILED` (ยังมี `fields` ครบ)
 > ไม่ส่งอาร์กิวเมนต์ที่ 2 = ทำงานเหมือนเดิมทุกอย่าง · endpoint อื่นที่ Part 4 มี `*_REASON_REQUIRED` (U10, T18, C05, S03, S08) ใช้วิธีเดียวกันได้
@@ -373,7 +424,8 @@
 | `POST /auth/login` | 10 ครั้ง / 15 นาที ต่อ IP |
 | `POST /auth/register` | 5 ครั้ง / ชั่วโมง ต่อ IP |
 | `POST /auth/forgot-password` | 3 ครั้ง / ชั่วโมง ต่ออีเมล (Sprint #1) |
-| `POST /tournaments/:id/comments` | 10 ครั้ง / นาที ต่อผู้ใช้ (Sprint #1) |
+
+> **ความเห็นต่อทัวร์ (E13) ไม่มี rate limit** — OD-24 (22 ก.ย.) กำหนดให้เขียนได้คนละ 1 อันต่อทัวร์ ส่งซ้ำคือแก้ของเดิม ไม่เพิ่มแถว จึงถล่มรายการไม่ได้อยู่แล้ว (เดิมกำหนดไว้ 10 ครั้ง/นาที ตอนที่ออกแบบให้โพสต์ได้หลายอัน)
 
 # ภาคผนวก — Endpoint ที่ต้อง Idempotent (Part 0-1 §1.11)
 

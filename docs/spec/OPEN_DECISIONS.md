@@ -189,32 +189,42 @@ FE-replace-existing-bracket-atomic: M01 เคยตอบ `BRACKET_ALREADY_EXIS
 - **2-ก รูปแบบ**: M01 เดิม + `replace: true` (ไม่ส่ง = 409 เดิม กันกดพลาด) — ไม่แยก DELETE endpoint เพราะ 2 ขั้นไม่ atomic
 - ลบใน tx: referee_change_requests, match_referees, (checkins/results/stats/pickem ที่ควรว่าง), announcements/feedback `match_id → NULL`, matches (ตัด self-FK ก่อน), bracket_nodes, tournament_standings · คงไว้: tournament_applications, tournament_referees (pool) · persist* รับ connection ร่วม → ลบ+สร้างเป็นก้อนเดียว พังตรงไหน rollback สายเดิมยังอยู่
 
-## OD-23 — Tournament feedback / rating / MVP vote (C6) — ✅ Resolved 2026-09-21
+## OD-23 — รีวิวจากผู้ลงแข่ง + โหวต MVP (C6) — ✅ Resolved 2026-09-21
 
 FE-tournament-feedback: Community tab (ให้คะแนนการจัดทัวร์) และหน้าโหวต MVP ทำงานเฉพาะ mock · ใช้ตาราง `tournament_feedback` เดิม ไม่มี migration
+
+> **ชื่อเรียกที่ทีมตกลง 23 ก.ย.** — ตาราง `tournament_feedback` เก็บ 3 เรื่อง (ตัดสินแล้วว่า**ไม่แยกตาราง** เพราะกฎสิทธิ์บังคับที่ service และค่าเปลี่ยนสูง) จึงต้องเรียกให้ขาดจากกัน:
+> `organizer_feedback` = **รีวิวจากผู้ลงแข่ง** (OD นี้) · `mvp_vote` = **โหวต MVP** (OD นี้) · `comment` = **ความเห็นต่อทัวร์** (OD-24)
 
 - **1 ใครให้คะแนน**: เฉพาะคนที่เกี่ยวข้อง — ผู้เล่นในรายชื่อลงแข่ง (`application_players` ของใบสมัคร approved) · หัวหน้าทีม approved · **ไม่รวมกรรมการ** (แก้ 21 ก.ย. — กรรมการอาจเป็นคนฝั่งผู้จัด) · ORG ให้คะแนนตัวเองไม่ได้ (`ORGANIZER_CANNOT_REVIEW_OWN`) · คนอื่น → 403 `FEEDBACK_NOT_ALLOWED`
 - **2 เมื่อไร** (แก้ 21 ก.ย. · แก้อีกครั้ง 22 ก.ย.): **เปิดตั้งแต่ทัวร์เริ่ม** = ถึง `event_start_date` 00:00 เวลาไทย **หรือ** มีแมตช์ที่แข่งจริงแล้ว (in_progress / disputed / result_rejected / completed ที่มีผลไม่ใช่ walkover) อย่างไหนถึงก่อน — ชนะบายไม่นับว่าเริ่ม (ทีมถอนก่อนวันแข่งก็เกิดได้) · ก่อนหน้า → 409 `TOURNAMENT_NOT_STARTED {opensAt}` · **ปิดรับพร้อม MVP** = 7 วันหลัง `completed_at` (พ้น → 409 `FEEDBACK_CLOSED`) · GET คืน `status` (`not_started` / `open` / `closed`) + `opensAt` + `closesAt` · **แก้คะแนน** = ส่งซ้ำระหว่างเปิด (เขียนทับ ข้อ 3) · MVP เริ่มโหวตหลังทัวร์ `completed` เท่านั้น (ก่อนหน้า → 409 `TOURNAMENT_NOT_COMPLETED`) โหวตได้ 7 วัน (พ้น → 409 `MVP_VOTING_CLOSED`) · ปิดโหวตแล้วค่อยประกาศ `winners` (เสมอได้หลายคน) · `lockCompletedTournament` ยกเว้น `/feedback` และ `/mvp-votes`
 - **ทีมถอนตัว** (ตัดสิน 21 ก.ย.): หัวหน้า/ผู้เล่นทีมที่ถอนให้คะแนนไม่ได้อีกหลังถอน (FE ถามให้คะแนนก่อนยืนยันถอนตัว — **เฉพาะเมื่อทัวร์เริ่มแล้ว** `status: open` · ความเห็นที่ให้ไว้แล้วยังนับ) · โหวต MVP ได้เหมือนคนนอก · ผู้เล่นทีมที่ถอนไม่เป็นผู้ถูกโหวต
 - **กรรมการที่ถูกถอด** (ตัดสิน 21 ก.ย.): โหวต MVP ได้ · กรรมการที่ยังรอตอบ/ตอบรับแล้วโหวตไม่ได้
 - **ทัวร์ที่ completed ก่อนมี `completed_at`** (ข้อมูลเก่าก่อน migration 022 เท่านั้น — ระบบจริงใส่ให้ตอนกด B1 เสมอ): ถือว่าปิดทั้งให้คะแนนและ MVP
-- **3 ส่งซ้ำ**: เขียนทับของเดิม (คนละ 1 อันต่อทัวร์ ใช้ UNIQUE เดิมของตาราง) ทั้ง feedback และโหวต MVP · แก้ข้อความแล้วล้างธง report
+- **3 ส่งซ้ำ**: เขียนทับของเดิม (คนละ 1 อันต่อทัวร์ ใช้ UNIQUE เดิมของตาราง) ทั้งรีวิวและโหวต MVP · **แก้ข้อความแล้วธง `is_reported` คงเดิม** (มติ 23 ก.ย. ข้อ 5 ทาง **ก** — เดิมล้างธงทิ้ง ทำให้ "เขียนดี → ถูก report → แก้เป็นข้อความแย่" ธงหายเงียบ ๆ · ไม่เลือกทาง ข (ล้าง + audit) เพราะเพิ่ม action ที่ต้องมีคนไปเปิด audit ดู ทั้งที่ผู้ตรวจอ่านข้อความล่าสุดอยู่แล้ว) · ธงถูกล้างเฉพาะตอนแอดมินกด restore
 - **4 ใครโหวต MVP**: เฉพาะคนที่ไม่ได้ลงแข่ง (spec 08 §5) — ห้ามผู้เล่นในรายชื่อ, สมาชิกทีม approved, กรรมการ (pending/accepted), ORG → 403 `MVP_VOTER_NOT_ELIGIBLE` · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่งเท่านั้น · ไม่ใช่ → 422 `MVP_CANDIDATE_NOT_ELIGIBLE`
 - **การมองเห็น** (ตามข้อเสนอในเอกสารแบ่งงาน): ค่าเฉลี่ย/จำนวน/การกระจายเป็นสาธารณะ · ORG เห็นข้อความแต่ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ (ใช้ตรวจ report)
 - **report / ลบ**: `POST /feedback/:id/report` — organizer_feedback report ได้เฉพาะ ORG ของทัวร์ (คนที่มองเห็น) · โหวต MVP report ไม่ได้ · `DELETE /admin/feedback/:id` soft delete + audit `feedback_removed` · คนที่ถูกลบส่งใหม่ไม่ได้ (409 `FEEDBACK_REMOVED`) · ค่าเฉลี่ย/คะแนนโหวตไม่นับแถวที่ถูกลบ
 
-## OD-24 — Tournament comments + Pick'em (C7) — ✅ Resolved 2026-09-22
+## OD-24 — ความเห็นต่อทัวร์ + Pick'em (C7) — ✅ Resolved 2026-09-22
 
 FE-match-comments-pick-em: SocialBar ในหน้าแมตช์ (คอมเมนต์ + ทายผล) ทำงานเฉพาะ mock
 
-**คอมเมนต์ — ระดับทัวร์** (แก้ 22 ก.ย.: เดิมทำเป็นรายแมตช์ หลายอันต่อคน ในตาราง `match_comments` migration 024 → **เอาออกทั้งหมด** · migration 024 ถูกลบ ไม่เคยเข้า BE_KN)
+**ความเห็นต่อทัวร์ (`comment`) — ระดับทัวร์** (แก้ 22 ก.ย.: เดิมทำเป็นรายแมตช์ หลายอันต่อคน ในตาราง `match_comments` migration 024 → **เอาออกทั้งหมด** · migration 024 ถูกลบ ไม่เคยเข้า BE_KN)
 - อยู่ใน `tournament_feedback` แบบ `feedback_type = 'comment'` (enum มีอยู่แล้ว · **ไม่มี migration**) · เหมือน feedback แต่ **ทุกคนเห็น** (feedback ให้ ORG เห็นคนเดียว)
 - **คนละ 1 อันต่อทัวร์** (UNIQUE เดิม) · **ส่งซ้ำ = แก้** (201 ครั้งแรก / 200 แก้ · แก้แล้วล้างธง report) · ≤ 500 ตัวอักษร
 - **ใครก็ได้ที่ล็อกอิน** (รวมผู้เล่น/ORG — เป็นแค่การพูดคุย) · อ่านเป็นสาธารณะ พร้อม `mine` + `canComment`
 - ทัวร์ต้อง `public` หรือ `completed` — อื่น ๆ (private / รออนุมัติ / ถูกปฏิเสธ / ถูกลบ) → 409 `TOURNAMENT_NOT_PUBLIC` · อ่าน: คนนอกได้ 404 เหมือนหน้าทัวร์ (ORG กับแอดมินทั้งมหาวิทยาลัยยังอ่านได้)
 - เจ้าของลบเอง (`DELETE /tournaments/:id/comments/me`) = ลบจริง โพสต์ใหม่ได้ · report ใครก็ได้ยกเว้นของตัวเอง (`POST /feedback/:id/report` → 400 `CANNOT_REPORT_OWN_COMMENT`) · **ลบของคนอื่นได้เฉพาะแอดมิน** `university_wide` (`DELETE /admin/feedback/:id` + audit `feedback_removed`) — ORG ลบไม่ได้ กันลบคำติ · ถูกแอดมินลบแล้วโพสต์/ลบเองไม่ได้อีก (409 `COMMENT_REMOVED`)
 - คอมเมนต์ได้แม้ทัวร์ปิดแล้ว (`lockCompletedTournament` ยกเว้น `/comments` และ `/comments/me`) · จับสายใหม่ไม่กระทบคอมเมนต์ (ไม่ผูกแมตช์)
-- **กันสแปม 5 ครั้ง/นาที ถูกเอาออก** — คนละ 1 อัน ส่งซ้ำเป็นการแก้ ไม่เพิ่มแถว จึงท่วมรายการไม่ได้อยู่แล้ว
+- **กันสแปม 5 ครั้ง/นาที ถูกเอาออก** — คนละ 1 อัน ส่งซ้ำเป็นการแก้ ไม่เพิ่มแถว จึงท่วมรายการไม่ได้อยู่แล้ว (GUIDE/06 ภาคผนวก Rate Limiting ลบแถวนี้แล้ว)
+
+**การกำกับดูแลความเห็น** (มติ 23 ก.ย. ข้อ 6 — เดิมลบได้แต่แอดมินระบบ ซึ่งไม่มีใครเฝ้าคิว ทำให้ปุ่ม report แทบไม่มีความหมาย)
+- **ผู้จัดลบความเห็นในทัวร์ตัวเองได้**: `DELETE /tournaments/:id/comments/:cid` (guard `requireOrganizer`) → 204
+  - แตะได้เฉพาะ `comment` · รีวิวจากผู้ลงแข่ง / โหวต MVP → 403 `FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER` (ลบการประเมินตัวเองไม่ได้ ไม่งั้นค่าเฉลี่ยเชื่อถือไม่ได้) · ไม่ใช่ของทัวร์นี้/ไม่มี → 404 `FEEDBACK_NOT_FOUND` · ลบซ้ำ → 409 `FEEDBACK_ALREADY_REMOVED`
+- **กันลบคำวิจารณ์เงียบ ๆ 3 ชั้น**: `reason` บังคับ 1–255 ตัวอักษร · audit แยก action `comment_removed_by_organizer` (`details: {reason, tournamentId, authorUserId}` — แอดมินไล่ดูได้ว่าผู้จัดลบอะไรไปบ้าง) · **แจ้งเจ้าของความเห็น** (C1 type `comment_removed` พร้อมเหตุผล · ผู้จัดลบของตัวเองไม่ต้องแจ้งตัวเอง)
+- **แอดมินคืนได้**: `POST /admin/feedback/:id/restore` → 200 `{id, restored}` · audit `feedback_restored` · ล้าง `is_reported` ด้วย (แอดมินตรวจแล้ว = เคลียร์เรื่อง ไม่งั้นธงค้างให้ผู้จัดมาลบซ้ำ) · ไม่ได้ถูกลบอยู่ → 409 `FEEDBACK_NOT_REMOVED`
+- **report แล้วแจ้งผู้จัด**: `POST /feedback/:id/report` ของ `comment` → แจ้ง ORG ของทัวร์ (C1 type `comment_reported`) **เฉพาะครั้งแรกที่ธงถูกตั้ง** (คนที่ 2, 3 กดซ้ำไม่แจ้งอีก) · ผู้จัดกด report เอง ไม่แจ้งกลับหาตัวเอง · ธง `is_reported` ยังเก็บไว้ให้แอดมินเหมือนเดิม
 
 **Pick'em**
 - **cutoff**: แมตช์ออกจาก `scheduled` (เปิดเช็คอิน) **หรือ** ถึง `scheduled_time` อย่างไหนถึงก่อน → 409 `PICKEM_CLOSED {reason}` · ยังไม่รู้คู่ → 409 `PICKEM_TEAMS_NOT_SET` · ผู้จัดปิดเช็คอิน (M18) แมตช์กลับเป็น scheduled → ทายได้อีก

@@ -12,7 +12,8 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
   listOrganizerFeedback: vi.fn(() => Promise.resolve([])),
   findById: vi.fn(),
   markReported: vi.fn(),
-  removeByAdmin: vi.fn(),
+  softRemove: vi.fn(),
+  restore: vi.fn(),
   upsertComment: vi.fn(),
   findOwnComment: vi.fn(() => Promise.resolve(null)),
   listComments: vi.fn(() => Promise.resolve({ rows: [], totalItems: 0 })),
@@ -20,11 +21,13 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
 }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn() }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(() => Promise.resolve(null)) }));
+vi.mock('../notification.service.js', () => ({ notify: vi.fn() }));
 
 import * as Service from '../feedback.service.js';
 import * as FeedbackRepo from '../../repositories/feedback.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import * as AdminRepo from '../../repositories/adminScope.repo.js';
+import * as NotificationService from '../notification.service.js';
 import type { FeedbackRow } from '../../repositories/feedback.repo.js';
 
 const COMPLETED_AT = new Date('2026-09-20T00:00:00Z');
@@ -290,9 +293,9 @@ describe('report / remove', () => {
 
   it('admin removes once; a second time is 409', async () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow());
-    vi.mocked(FeedbackRepo.removeByAdmin).mockResolvedValue(true);
+    vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
     await expect(Service.removeFeedback(1, 3, 'หยาบคาย')).resolves.toBeUndefined();
-    expect(FeedbackRepo.removeByAdmin).toHaveBeenCalledWith(1, 3, 'หยาบคาย');
+    expect(FeedbackRepo.softRemove).toHaveBeenCalledWith(1, 3, 'หยาบคาย');
 
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ removed_at: new Date() }));
     expect(await errOf(Service.removeFeedback(1, 3))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
@@ -370,5 +373,98 @@ describe('tournament comments (C7)', () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ feedback_type: 'comment', user_id: 50 }));
     await expect(Service.reportFeedback(1, 60)).resolves.toEqual({ id: 1, isReported: true });
     expect(await errOf(Service.reportFeedback(1, 50))).toMatchObject({ status: 400, code: 'CANNOT_REPORT_OWN_COMMENT' });
+  });
+});
+
+// มติ 23 ก.ย. ข้อ 5-ก — แก้ข้อความแล้วธง report ต้องไม่หาย (SQL ไม่มี is_reported = FALSE แล้ว)
+describe('editing keeps the report flag', () => {
+  it('re-sending a review does not clear is_reported', async () => {
+    vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+    vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(feedbackRow({ is_reported: 1 })).mockResolvedValueOnce(feedbackRow({ is_reported: 1, content: 'แก้แล้ว' }));
+    await Service.submitOrganizerFeedback(20, 5, { rating: 5, content: 'แก้แล้ว' });
+    // service ไม่ได้สั่งล้างธงที่ไหน — repo ก็ไม่ล้าง (ดู upsertOrganizerFeedback)
+    expect(FeedbackRepo.upsertOrganizerFeedback).toHaveBeenCalledWith(20, 5, 5, 'แก้แล้ว');
+    expect(FeedbackRepo.markReported).not.toHaveBeenCalled();
+  });
+});
+
+// มติ 23 ก.ย. ข้อ 6 — ผู้จัดลบความเห็นต่อทัวร์ในทัวร์ตัวเองได้ (เฉพาะ comment) · ข้อ 6.4 report แล้วแจ้งผู้จัด
+describe('organizer moderation of tournament comments', () => {
+  const commentRow = (overrides: Record<string, unknown> = {}) =>
+    feedbackRow({ feedback_type: 'comment', content: 'ไม่สุภาพ', rating: null, user_id: 50, ...overrides });
+
+  beforeEach(() => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null, name: 'Cup' }));
+    vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
+    vi.mocked(FeedbackRepo.restore).mockResolvedValue(true);
+  });
+
+  it('removes with an audit action of its own and tells the author with the reason', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow());
+
+    await expect(Service.removeCommentByOrganizer(20, 1, ORG, 'คำหยาบ')).resolves.toBeUndefined();
+
+    expect(FeedbackRepo.softRemove).toHaveBeenCalledWith(1, ORG, 'คำหยาบ',
+      { actionType: 'comment_removed_by_organizer', details: { tournamentId: 20, authorUserId: 50 } });
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 50, type: 'comment_removed', relatedEntityType: 'tournament', relatedEntityId: 20,
+      message: expect.stringContaining('คำหยาบ'),
+    }));
+  });
+
+  it('403 for a review or an MVP vote — the organizer cannot delete their own report card', async () => {
+    for (const type of ['organizer_feedback', 'mvp_vote'] as const) {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ feedback_type: type }));
+      expect(await errOf(Service.removeCommentByOrganizer(20, 1, ORG, 'x')))
+        .toMatchObject({ status: 403, code: 'FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER' });
+    }
+    expect(FeedbackRepo.softRemove).not.toHaveBeenCalled();
+  });
+
+  it('404 when the comment belongs to another tournament or does not exist', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ tournament_id: 99 }));
+    expect(await errOf(Service.removeCommentByOrganizer(20, 1, ORG, 'x'))).toMatchObject({ status: 404, code: 'FEEDBACK_NOT_FOUND' });
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(null);
+    expect(await errOf(Service.removeCommentByOrganizer(20, 1, ORG, 'x'))).toMatchObject({ status: 404, code: 'FEEDBACK_NOT_FOUND' });
+  });
+
+  it('409 when it was already removed · no notification', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ removed_at: new Date() }));
+    expect(await errOf(Service.removeCommentByOrganizer(20, 1, ORG, 'x'))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('the organizer deleting their own comment is not notified', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ user_id: ORG }));
+    await Service.removeCommentByOrganizer(20, 1, ORG, 'เปลี่ยนใจ');
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('admin restore brings it back (409 if it is not removed)', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ removed_at: new Date() }));
+    await expect(Service.restoreFeedback(1, 3)).resolves.toEqual({ id: 1, restored: true });
+    expect(FeedbackRepo.restore).toHaveBeenCalledWith(1, 3);
+
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow());
+    expect(await errOf(Service.restoreFeedback(1, 3))).toMatchObject({ status: 409, code: 'FEEDBACK_NOT_REMOVED' });
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(null);
+    expect(await errOf(Service.restoreFeedback(1, 3))).toMatchObject({ status: 404, code: 'FEEDBACK_NOT_FOUND' });
+  });
+
+  it('reporting a comment also pings the organizer — once, and never the organizer themselves', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow());
+    await Service.reportFeedback(1, 60);
+    expect(FeedbackRepo.markReported).toHaveBeenCalledWith(1);
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: ORG, type: 'comment_reported', relatedEntityType: 'tournament', relatedEntityId: 20,
+    }));
+
+    vi.mocked(NotificationService.notify).mockClear();
+    await Service.reportFeedback(1, ORG);                                     // ผู้จัดกดเอง → ไม่แจ้งตัวเอง
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
+    await Service.reportFeedback(1, 61);                                      // คนที่ 2 กดซ้ำ → ไม่แจ้งซ้ำ
+    expect(NotificationService.notify).not.toHaveBeenCalled();
   });
 });

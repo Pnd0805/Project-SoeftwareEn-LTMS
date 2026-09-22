@@ -599,11 +599,18 @@ CREATE TABLE announcements (
 
 -- match_key เป็น generated column — แก้ปัญหา MySQL ที่ถือว่า NULL แต่ละแถวต่างกัน
 -- ทำให้ UNIQUE กันโหวตซ้ำระดับทัวร์นาเมนต์ (match_id IS NULL) ได้จริง
+-- ตารางรวมของ "3 เรื่องที่ผูกกับทัวร์" (ทีมตัดสิน 23 ก.ย. 2569: ไม่แยกเป็น 3 ตาราง — กฎสิทธิ์บังคับที่ service อยู่แล้ว)
+--   organizer_feedback = รีวิวจากผู้ลงแข่ง : rating 1–5 (+content) · เขียนได้เฉพาะผู้เล่นในรายชื่อลงแข่ง/หัวหน้าทีมที่ approved
+--                        ค่าเฉลี่ย+จำนวนสาธารณะ · ข้อความเห็นเฉพาะผู้จัด (ไม่เห็นชื่อ) และแอดมินทั้งมหาวิทยาลัย
+--   mvp_vote           = โหวต MVP        : voted_for_user_id · โหวตได้เฉพาะคนที่ "ไม่ได้" ลงแข่ง · ผลนับสาธารณะ
+--   comment            = ความเห็นต่อทัวร์ : content · ใครที่ล็อกอินก็เขียนได้ · ทุกคนเห็น · ผู้จัดลบของคนอื่นได้เฉพาะประเภทนี้ (audit comment_removed_by_organizer)
+-- UNIQUE (tournament_id, match_key, user_id, feedback_type) = ที่มาของกฎ "คนละ 1 อันต่อทัวร์ต่อประเภท" → ส่งซ้ำคือแก้ของเดิม (ON DUPLICATE KEY UPDATE)
+-- ลบ = soft delete (removed_at/removed_by) ทั้งแอดมินและผู้จัด · แอดมินคืนได้ (POST /admin/feedback/:id/restore)
 CREATE TABLE tournament_feedback (
   tournament_feedback_id INT PRIMARY KEY AUTO_INCREMENT,
   tournament_id INT NOT NULL,
   user_id INT NOT NULL,
-  feedback_type ENUM('comment','organizer_feedback','mvp_vote') NOT NULL,   -- comment = C7 คอมเมนต์ทัวร์ (ทุกคนเห็น · คนละ 1 อัน · มติ 22 ก.ย.)
+  feedback_type ENUM('comment','organizer_feedback','mvp_vote') NOT NULL,   -- ดูคำอธิบายแต่ละประเภทเหนือ CREATE TABLE
   content TEXT NULL,
   rating INT NULL,
   voted_for_user_id INT NULL,
@@ -612,8 +619,9 @@ CREATE TABLE tournament_feedback (
   is_reported BOOLEAN NOT NULL DEFAULT FALSE,
   removed_at DATETIME NULL,
   removed_by INT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- ไม่มี updated_at: ห้ามแก้เนื้อหา เขียนครั้งเดียวจบเหมือน ledger
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,   -- เวลาที่เขียนครั้งแรก · แก้แล้วไม่ขยับ (ใช้เรียงลำดับ)
+  -- ตั้งใจไม่มี updated_at: ส่งซ้ำ = แก้ทับของเดิม และเราไม่ต้องโชว์ว่า "แก้เมื่อไร/กี่ครั้ง"
+  -- ร่องรอยที่ต้องใช้จริงเก็บที่อื่นแล้ว — การลบ/คืนอยู่ใน audit_logs · ธง is_reported ไม่ถูกล้างตอนแก้ (มติ 23 ก.ย. ข้อ 5-ก)
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (voted_for_user_id) REFERENCES users(user_id),

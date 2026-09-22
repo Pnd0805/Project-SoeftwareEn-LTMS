@@ -4,12 +4,15 @@ import * as AdminRepo from '../repositories/adminScope.repo.js';
 import type { TournamentRow } from '../types/db.js';
 import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
 import type { CommentListRow } from '../repositories/feedback.repo.js';
-import { toFeedbackItemDto, toFeedbackSummaryDto, toMvpCandidateDto, toMyFeedbackDto } from '../mappers/feedback.mapper.js';
+import { toReviewItemDto, toReviewSummaryDto, toMvpCandidateDto, toMyReviewDto } from '../mappers/feedback.mapper.js';
+import * as NotificationService from './notification.service.js';
 import { AppError } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
 
 /**
- * C6 — Tournament feedback / rating / MVP vote (spec 08 §4–5) · มติทีม 21 ก.ย. 2569 (แก้ข้อ 1–2 วันเดียวกัน)
+ * C6 — "รีวิวจากผู้ลงแข่ง" (organizer_feedback) + "โหวต MVP" (mvp_vote) · spec 08 §4–5 · มติทีม 21 ก.ย. 2569 (แก้ข้อ 1–2 วันเดียวกัน)
+ * ★ ชื่อเรียก (ตกลง 23 ก.ย.): รีวิวจากผู้ลงแข่ง = ให้คะแนนการจัดงาน เฉพาะคนที่ลงแข่ง ข้อความเห็นแค่ผู้จัด
+ *   ต่างจาก "ความเห็นต่อทัวร์" (comment, C7 ในไฟล์เดียวกันนี้) ที่ใครก็เขียนได้และทุกคนเห็น
  *   1. ให้คะแนนได้เฉพาะคนที่เกี่ยวข้อง (ผู้เล่นในรายชื่อ · หัวหน้าทีม) — ไม่รวมกรรมการ · ORG ให้คะแนนตัวเองไม่ได้
  *   2. ให้คะแนนได้ตั้งแต่ทัวร์เริ่ม (มติ 22 ก.ย.) จนครบ 7 วันหลังปิดทัวร์ (ปิดพร้อม MVP) · MVP เริ่มโหวตหลังปิดทัวร์ โหวตได้ 7 วัน
  *      ทัวร์เริ่ม = ถึงวันเริ่มทัวร์ (event_start_date เวลาไทย) หรือมีแมตช์ที่แข่งจริงแล้ว อย่างไหนถึงก่อน
@@ -129,7 +132,7 @@ export async function submitOrganizerFeedback(tournamentId: number, userId: numb
     const content = input.content ? input.content : null;   // ข้อความว่าง = ไม่มีข้อความ
     await FeedbackRepo.upsertOrganizerFeedback(tournamentId, userId, input.rating, content);
     const saved = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
-    return { ...toMyFeedbackDto(saved!), isNew: existing === null };
+    return { ...toMyReviewDto(saved!), isNew: existing === null };
 }
 
 /**
@@ -138,7 +141,7 @@ export async function submitOrganizerFeedback(tournamentId: number, userId: numb
  */
 export async function getOrganizerFeedback(tournamentId: number, userId?: number) {
     const tournament = await getTournamentOr404(tournamentId);
-    const summary = toFeedbackSummaryDto(await FeedbackRepo.summarizeOrganizerFeedback(tournamentId));
+    const summary = toReviewSummaryDto(await FeedbackRepo.summarizeOrganizerFeedback(tournamentId));
     const status = await feedbackStatus(tournament);
     const opensAt = feedbackOpensAt(tournament);
     const closesAt = feedbackClosesAt(tournament);
@@ -147,7 +150,7 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
     }
 
     const mineRow = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
-    const mine = mineRow && !mineRow.removed_at ? toMyFeedbackDto(mineRow) : null;
+    const mine = mineRow && !mineRow.removed_at ? toMyReviewDto(mineRow) : null;
     const canSubmit = status === 'open'
         && !mineRow?.removed_at
         && (await feedbackBlocker(tournament, userId)) === null;
@@ -155,7 +158,7 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
     const isOrganizer = tournament.requested_by_user_id === userId;
     const isAdmin = !isOrganizer && await isUniversityAdmin(userId);
     const items = isOrganizer || isAdmin
-        ? (await FeedbackRepo.listOrganizerFeedback(tournamentId)).map(row => toFeedbackItemDto(row, isAdmin))
+        ? (await FeedbackRepo.listOrganizerFeedback(tournamentId)).map(row => toReviewItemDto(row, isAdmin))
         : null;
 
     return { summary, status, opensAt, closesAt, mine, canSubmit, items };
@@ -271,6 +274,38 @@ export async function listTournamentComments(tournamentId: number, viewerId: num
     };
 }
 
+/**
+ * ผู้จัดลบความเห็นในทัวร์ของตัวเอง (มติ 23 ก.ย. ข้อ 6) — ดูแลหน้างานตัวเองได้ ไม่ต้องรอแอดมิน
+ * แตะได้เฉพาะ `comment` · รีวิวจากผู้ลงแข่ง/โหวต MVP ลบไม่ได้ (เป็นการประเมินตัวผู้จัดเอง)
+ * กันลบคำวิจารณ์เงียบ ๆ: reason บังคับ · เขียน audit `comment_removed_by_organizer` พร้อมคนเขียน · แจ้งเจ้าของความเห็น · แอดมินคืนได้
+ */
+export async function removeCommentByOrganizer(tournamentId: number, feedbackId: number, orgUserId: number, reason: string) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback || feedback.tournament_id !== tournamentId) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้ในทัวร์นาเมนต์นี้');
+    }
+    if (feedback.feedback_type !== 'comment') {
+        throw new AppError(403, 'FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER',
+            'ผู้จัดลบได้เฉพาะความเห็นต่อทัวร์ — รีวิวจากผู้ลงแข่งและโหวต MVP ลบไม่ได้');
+    }
+    if (feedback.removed_at || !(await FeedbackRepo.softRemove(feedbackId, orgUserId, reason, {
+        actionType: 'comment_removed_by_organizer',
+        details: { tournamentId, authorUserId: feedback.user_id },
+    }))) {
+        throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
+    }
+
+    if (feedback.user_id !== orgUserId) {
+        await NotificationService.notify({
+            userId: feedback.user_id, type: 'comment_removed',
+            title: 'ความเห็นของคุณถูกลบ',
+            message: `ผู้จัดลบความเห็นของคุณในทัวร์นาเมนต์ "${tournament.name}" — เหตุผล: ${reason}`,
+            relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+        });
+    }
+}
+
 /** เจ้าของลบของตัวเอง → โพสต์ใหม่ได้ · ไม่มีให้ลบ → 404 · ถูกแอดมินลบไปแล้ว → 409 (ลบเพื่อโพสต์ใหม่ไม่ได้) */
 export async function deleteOwnTournamentComment(tournamentId: number, userId: number): Promise<void> {
     await getTournamentOr404(tournamentId);
@@ -309,6 +344,16 @@ export async function reportFeedback(feedbackId: number, userId: number) {
     }
     if (!feedback.is_reported) {
         await FeedbackRepo.markReported(feedbackId);
+        // ความเห็นต่อทัวร์เป็นของสาธารณะบนหน้าผู้จัด — คนดูแลคือผู้จัด (มติ 23 ก.ย. ข้อ 6.4) · แจ้งครั้งแรกครั้งเดียว ไม่ใช่ทุกคนที่กด
+        const tournament = feedback.feedback_type === 'comment' ? await TournamentRepo.findTournamentById(feedback.tournament_id) : null;
+        if (tournament && tournament.requested_by_user_id !== userId) {
+            await NotificationService.notify({
+                userId: tournament.requested_by_user_id, type: 'comment_reported',
+                title: 'มีคนรายงานความเห็นในทัวร์ของคุณ',
+                message: `มีผู้รายงานความเห็นในทัวร์นาเมนต์ "${tournament.name}" — เข้าไปตรวจและลบได้ถ้าไม่เหมาะสม`,
+                relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+            });
+        }
     }
     return { id: feedbackId, isReported: true };
 }
@@ -318,7 +363,19 @@ export async function removeFeedback(feedbackId: number, adminUserId: number, re
     if (!feedback) {
         throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');
     }
-    if (feedback.removed_at || !(await FeedbackRepo.removeByAdmin(feedbackId, adminUserId, reason ?? null))) {
+    if (feedback.removed_at || !(await FeedbackRepo.softRemove(feedbackId, adminUserId, reason ?? null))) {
         throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
     }
+}
+
+/** แอดมินคืนความเห็นที่ถูกลบ (มติ 23 ก.ย. ข้อ 6.3.3) — ใช้ตอนเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์ */
+export async function restoreFeedback(feedbackId: number, adminUserId: number) {
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');
+    }
+    if (!feedback.removed_at || !(await FeedbackRepo.restore(feedbackId, adminUserId))) {
+        throw new AppError(409, 'FEEDBACK_NOT_REMOVED', 'ความเห็นนี้ไม่ได้ถูกลบอยู่');
+    }
+    return { id: feedbackId, restored: true };
 }
