@@ -1070,6 +1070,11 @@ Real-backend smoke and overall QA remain pending until these regressions pass.
         future-round match IDs whose teams are still TBD, and reload/redraw reads
         the authoritative request and match-referee collections. Focused UI/API
         tests prove the consent route is used and bulk assignment is not called.
+      - [x] **Frontend Dev delivery (2026-09-22):** the part of R04 that was
+        still missing — doing this *from the draw workflow* rather than one
+        Fixture page at a time — is now `MatchRefereePlanner` under the Draw
+        subtab. See the R10 entry below; R04 and R10 are the same request and
+        share that component, so do not schedule them separately.
       - [ ] **Frontend Tester + backend referee owner acceptance:** exercise
         accept/decline, overlapping schedules, reload, redraw and partial request
         failure against populated BE_KN data before marking R04 complete.
@@ -1196,6 +1201,93 @@ backend baseline.
     state; throw-out removes/rejects the disputed record and permits a fresh
     valid result submission; the correct role can then confirm it, controls
     recover after errors, and bracket progression occurs exactly once.
+
+### R10–R16 — what the causes turned out to be (2026-09-22)
+
+> Short version for both teams, including the backend half:
+> `HANDOVER-2026-09-22.md`.
+
+
+Each one was reproduced against the running backend at `a88f7ad` before
+anything was changed, and re-checked in the browser afterwards. Five were ours.
+Two are a backend field that is written and never returned, now filed in
+`BACKEND-GAPS.md`. The Frontend Tester rows below stay open regardless.
+
+- [x] **R10** — the draw page had no referee UI at all; the only way in was the
+      per-match Fixture page. Added `MatchRefereePlanner`, mounted under the
+      Draw subtab, listing every match of the tournament with its accepted and
+      pending referees and a picker per row. Later rounds staff fine before
+      anyone knows who plays in them — FR02 `assertMatchChangeable` wants
+      `scheduled` plus a future start/end and says nothing about teams — so a
+      slot with no teams gets the picker and a slot with no kick-off gets told
+      to set one. A request is never drawn as an assignment. Verified live on
+      tournament 22: requested มานะ for match 14, row read "Waiting for their
+      answer", cancelled it, row went back to Available.
+- [x] **R11** — two separate causes. `SquadPanel` and `CheckinConsole` both
+      offered a referee no action at all on a row whose status was `rejected`,
+      so a referee who rejected the wrong person had no way back even though
+      M19 has overwritten a rejected row since OD-19. And the Reject button
+      posted a hardcoded `'Rejected by the referee'`, so the mandatory M15
+      reason was never the referee's words. Added `RevokeCheckinModal` (reason
+      required), gave a rejected row the M19 path with a banner saying what it
+      is for, and put the referee's own decision errors on screen — they were
+      silent before. Verified live on match 7: rejected ผู้เล่น เอหนึ่ง with a
+      typed reason, row went Rejected, verified by hand, row came back Checked
+      in with the note showing. The first attempt correctly failed 403
+      `NOT_IN_APPROVED_ROSTER` and, for the first time, said so.
+- [x] **R12** — the page already edited the schedule and the referees; the gate
+      was wrong. `open = m.checkedIn === 0` let a `checkin_open` match with
+      nobody checked in show an editable form that M06 then refused, and the
+      locked branch hid the referees entirely. Gate is now
+      `m.status === 'scheduled'`, matching M06 and FR02; the locked view states
+      which status it is in and still lists the officials. Also split
+      `can.editFixture` into "not the organizer" (403) and "too late to change"
+      — the organizer of a finished match used to be told the fixture was not
+      theirs. Dropped the `capacityFull` block: BR-10's count is a minimum, not
+      a cap, and it silently disabled the button past it.
+- [x] **R13** — `ResultTrail` counted only `verified` as settled, so every
+      walkover and double forfeit parked at "Waiting on the winning team's
+      leader. Until then nothing moves." and never ticked Bracket updated,
+      although M17 writes the result and advances the bracket in one
+      transaction. A forfeit now reads as settled without play, says no
+      confirmation is needed, and — when there is no winner — says nobody
+      advances. Verified live: forfeited match 7 with both squads short, the
+      Progress tab reads correctly end to end.
+- [ ] **R14** — ours is done, the cause is backend. The organizer's panel never
+      showed a saved link because `matchFromBackend` hardcoded
+      `replayUrl: null` — correctly, since M05 does not send the field.
+      `setLivestream` also claimed to return a `MatchDto` when E12 answers
+      `{matchId, youtubeUrl}`. Both fixed: the link now renders from the E12
+      response and the page says plainly that it will not survive a reload.
+      Stays open until `FE-replay-link-write-only` lands, then it works with no
+      further change.
+- [x] **R15** — could not be reproduced as a blocked confirmation. Tried the
+      winning leader on an onsite match twice (match 12 as `playerA1@ku.th`,
+      match 9 as `p9225@ku.th`) and the Confirm button was present, enabled, and
+      the confirmation went through and advanced the bracket; the backend
+      accepted `POST /matches/:id/result/verify` from the winner's leader every
+      time. What was certainly broken is that **neither Confirm nor Dispute had
+      anywhere to show an error** — a refused request left the screen completely
+      unchanged, which is indistinguishable from a dead button. Added
+      `SignOffError`, with named handling for `SAME_PERSON_CANNOT_VERIFY` (the
+      one a combined referee-and-team-leader account hits), plus
+      `WRONG_SUBMITTER_ROLE` and `MATCH_RESULT_ALREADY_VERIFIED`. If the
+      original report was an online match, the referee is the confirmer there by
+      BR-13 and that is the design, not a defect — worth settling with the
+      reporter.
+- [x] **R16** — two causes, both confirmed in the browser. All three resolve
+      buttons were disabled until the Why box had text, with no hint, no title
+      and no asterisk, so the panel looked dead; the requirement is now stated
+      and the disabled buttons carry a title. Then the real dead end: after a
+      throw-out the match goes to `result_rejected`, a value **missing from
+      `MatchStatusEnum`** — `matchStateOf` fell through to "Scheduled",
+      `ActionPanel` had no branch for a `rejected` result, and `can.submitResult`
+      required `checkin_open`/`in_progress`, so nobody could record the match
+      again although `requireCanSubmitResult` was waiting for exactly that.
+      Added the status, a panel that says what happened, and the form back.
+      Also stopped drawing the thrown-out score on the scorebug. Verified live
+      on match 9: threw the result out as the organizer, the referee got the
+      form, entered 4–1, and the winning leader confirmed it.
 
 ### Regression completion gate
 

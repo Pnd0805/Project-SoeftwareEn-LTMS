@@ -28,6 +28,14 @@ describe("matchStateOf", () => {
     expect(matchStateOf(match({ status: "completed", resultStatus: "walkover" }))).toBe("confirmed");
   });
 
+  /* R16 — ผู้จัดยกผลทิ้งแล้วแมตช์ไป `result_rejected` เดิมตกลงมาเป็น "Scheduled"
+     ซึ่งอ่านว่ายังไม่เคยมีอะไรเกิดขึ้น ทั้งที่แข่งไปแล้วและผลเพิ่งถูกเพิกถอน */
+  it("does not read a thrown-out result as a match that has not happened", () => {
+    const thrown = match({ status: "result_rejected", resultStatus: "rejected" });
+    expect(matchStateOf(thrown)).not.toBe("scheduled");
+    expect(matchStateOf(thrown)).toBe("disputed");
+  });
+
   it("reads a bye as decided even though the other slot is empty", () => {
     const bye = match({
       status: "completed", teamB: null, resultStatus: "walkover",

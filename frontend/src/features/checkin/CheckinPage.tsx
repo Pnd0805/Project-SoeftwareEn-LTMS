@@ -21,7 +21,9 @@ import { useMatch, useCheckins, useCheckin, useMyCheckin, useVerifyCheckin, useU
 import { USE_MOCK } from '../../api/client'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
 import { TeamMarkView } from '../../components/kit/chips'
-import { IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal } from './CaptureModals'
+import {
+  IdPhotoModal, ManualVerifyModal, QrScanModal, ReviewPhotoModal, RevokeCheckinModal,
+} from './CaptureModals'
 import { toTeamView } from '../match/matchView'
 import { checkinErrorMessage } from './checkinErrors'
 
@@ -55,8 +57,10 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
   const [capture, setCapture] = useState<number | null>(null)
   /** รูปที่กรรมการกำลังตรวจ */
   const [review, setReview] = useState<{ userId: number; name: string; photo: string | null } | null>(null)
-  /** UC-04 E2b — กรรมการยืนยันแทนเมื่อกล้องใช้ไม่ได้ */
-  const [manual, setManual] = useState<{ userId: number; name: string } | null>(null)
+  /** UC-04 E2b — กรรมการยืนยันแทนเมื่อกล้องใช้ไม่ได้ · `afterReject` = กดให้ใหม่หลังถูกปฏิเสธ */
+  const [manual, setManual] = useState<{ userId: number; name: string; afterReject?: string } | null>(null)
+  /** M15 — เช็คอินที่ผ่านไปแล้วและกรรมการกำลังจะถอน (ต้องมีเหตุผล) */
+  const [revoke, setRevoke] = useState<{ userId: number; name: string; method: string } | null>(null)
 
   const closeCapture = () => setCapture(null)
 
@@ -79,6 +83,11 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
       ) : null}
       {checkin.isError ? (
         <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {checkinErrorMessage(checkin.error)}</Banner>
+      ) : null}
+      {/* คำตัดสินของกรรมการก็เด้งได้ (`ALREADY_REJECTED` · `ALREADY_DECIDED` ·
+          `MATCH_NOT_CHANGEABLE`) เดิมไม่มีที่แสดง กดแล้วเงียบเหมือนไม่มีอะไรเกิดขึ้น */}
+      {verify.isError ? (
+        <Banner kind="crit"><b>บันทึกคำตัดสินไม่สำเร็จ</b> {checkinErrorMessage(verify.error)}</Banner>
       ) : null}
       <TableWrap>
         <table>
@@ -135,16 +144,30 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                   </td>
                   <td>
                     {((notYet && missingState === 'ready') || rejected) && isMe ? (
-                      /* ยืนยันตัวตนก่อนเสมอ — on-site สแกน QR · online ถ่ายรูปคู่บัตร */
+                      /* ยืนยันตัวตนก่อนเสมอ — on-site สแกน QR · online ถ่ายรูปคู่บัตร
+                         ถูกปฏิเสธแล้วก็เช็คอินใหม่ได้ (M12 · OD-19 ข้อ 2) */
                       <button className="btn primary" type="button" disabled={checkin.isPending}
                         onClick={() => setCapture(p.id)}>
-                        {m.mode === 'onsite' ? 'Scan the QR' : 'Take the photo'}
+                        {rejected
+                          ? m.mode === 'onsite' ? 'Scan again' : 'Take a new photo'
+                          : m.mode === 'onsite' ? 'Scan the QR' : 'Take the photo'}
                       </button>
                     ) : c && c.status === 'exception' && canJudge ? (
                       /* รูปที่รอตรวจ — กรรมการเปิดดูแล้วตัดสิน (FR-PV-04) */
                       <button className="btn primary" type="button"
                         onClick={() => setReview({ userId: p.id, name: p.fullName, photo: c.documentS3Key })}>
                         Review photo
+                      </button>
+                    ) : rejected && canJudge ? (
+                      /* ⚠️ ทางกลับหลังกดปฏิเสธ — เดิมไม่มีเลย แถวที่ถูก reject ไม่มีปุ่มอะไร
+                         ให้กรรมการกดอีกทั้งช่อง กรรมการที่กดผิดคน (หรือผู้เล่นที่แก้ปัญหา
+                         เรียบร้อยแล้ว) จึงไปต่อไม่ได้ ทั้งที่ M19 เขียนทับแถวเดิมได้ตั้งแต่
+                         มติ 21 ก.ย. (OD-19) · ใช้เส้นเดียวกับ "Verify by hand" */
+                      <button className="btn" type="button" disabled={checkin.isPending}
+                        onClick={() => setManual({
+                          userId: p.id, name: p.fullName, afterReject: c?.rejectionReason ?? '',
+                        })}>
+                        Verify by hand
                       </button>
                     ) : notYet && canJudge && missingState === 'ready' ? (
                       /* UC-04 E2b — ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันเองแล้ว
@@ -154,10 +177,10 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                         Verify by hand
                       </button>
                     ) : c && canJudge && canRevoke(c) ? (
+                      /* เหตุผลเป็นช่องบังคับของ M15 — เปิดโมดัลถาม ไม่ยัดค่าคงที่ให้เอง */
                       <button className="btn danger" type="button" disabled={verify.isPending}
-                        onClick={() => verify.mutate({
-                          userId: p.id,
-                          input: { status: 'rejected', rejectionReason: 'Rejected by the referee' },
+                        onClick={() => setRevoke({
+                          userId: p.id, name: p.fullName, method: c.method.replace(/_/g, ' '),
                         })}>
                         Reject
                       </button>
@@ -202,12 +225,28 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
         onClose={() => setManual(null)}
         playerName={manual?.name ?? ''}
         pending={checkin.isPending}
+        afterReject={manual?.afterReject ?? null}
         onConfirm={(reason: string) => {
           if (!manual) return
           /* เหตุผลถูกเก็บเป็นหลักฐานแทนภาพ — M19 มีช่อง note ของมันเอง ไม่ใช่ช่องรูป */
           checkin.mutate(
             { method: 'manual_by_referee', userId: manual.userId, note: reason },
             { onSuccess: () => setManual(null) },
+          )
+        }}
+      />
+
+      <RevokeCheckinModal
+        open={!!revoke}
+        onClose={() => setRevoke(null)}
+        playerName={revoke?.name ?? ''}
+        method={revoke?.method ?? ''}
+        pending={verify.isPending}
+        onConfirm={(reason: string) => {
+          if (!revoke) return
+          verify.mutate(
+            { userId: revoke.userId, input: { status: 'rejected', rejectionReason: reason } },
+            { onSuccess: () => setRevoke(null) },
           )
         }}
       />
@@ -255,6 +294,8 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
     && (!mine || mine.status === 'rejected')
   const [capture, setCapture] = useState(false)
   const [review, setReview] = useState<{ userId: number; name: string; photo: string | null } | null>(null)
+  const [manual, setManual] = useState<{ userId: number; name: string; afterReject?: string } | null>(null)
+  const [revoke, setRevoke] = useState<{ userId: number; name: string; method: string } | null>(null)
 
   return (
     <Panel quiet>
@@ -297,6 +338,9 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
       {checkin.isError ? (
         <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {checkinErrorMessage(checkin.error)}</Banner>
       ) : null}
+      {verify.isError ? (
+        <Banner kind="crit"><b>บันทึกคำตัดสินไม่สำเร็จ</b> {checkinErrorMessage(verify.error)}</Banner>
+      ) : null}
       {checkins.length ? (
         <TableWrap>
           <table>
@@ -325,11 +369,18 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
                         onClick={() => setReview({ userId: c.user.id, name: c.user.fullName, photo: c.documentS3Key })}>
                         Review photo
                       </button>
+                    ) : canJudge && c.status === 'rejected' ? (
+                      /* ทางกลับหลังปฏิเสธ — M19 ทับแถวเดิมได้ (OD-19) เดิมช่องนี้ว่างเปล่า */
+                      <button className="btn" type="button" disabled={checkin.isPending}
+                        onClick={() => setManual({
+                          userId: c.user.id, name: c.user.fullName, afterReject: c.rejectionReason ?? '',
+                        })}>
+                        Verify by hand
+                      </button>
                     ) : canJudge && canRevoke(c) ? (
                       <button className="btn danger" type="button" disabled={verify.isPending}
-                        onClick={() => verify.mutate({
-                          userId: c.user.id,
-                          input: { status: 'rejected', rejectionReason: 'Rejected by the referee' },
+                        onClick={() => setRevoke({
+                          userId: c.user.id, name: c.user.fullName, method: c.method.replace(/_/g, ' '),
                         })}>
                         Reject
                       </button>
@@ -380,6 +431,36 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
           )
         }}
       />
+
+      <ManualVerifyModal
+        open={!!manual}
+        onClose={() => setManual(null)}
+        playerName={manual?.name ?? ''}
+        pending={checkin.isPending}
+        afterReject={manual?.afterReject ?? null}
+        onConfirm={(reason: string) => {
+          if (!manual) return
+          checkin.mutate(
+            { method: 'manual_by_referee', userId: manual.userId, note: reason },
+            { onSuccess: () => setManual(null) },
+          )
+        }}
+      />
+
+      <RevokeCheckinModal
+        open={!!revoke}
+        onClose={() => setRevoke(null)}
+        playerName={revoke?.name ?? ''}
+        method={revoke?.method ?? ''}
+        pending={verify.isPending}
+        onConfirm={(reason: string) => {
+          if (!revoke) return
+          verify.mutate(
+            { userId: revoke.userId, input: { status: 'rejected', rejectionReason: reason } },
+            { onSuccess: () => setRevoke(null) },
+          )
+        }}
+      />
     </Panel>
   )
 }
@@ -404,9 +485,16 @@ export function CheckinPage() {
      (เส้นนั้นไม่ส่งชื่อกลับ เพราะเป็นของคนที่ถามเอง ต้องติด id ตัวเองก่อนจับคู่กับรายชื่อทีม) */
   const listed = checkinData?.items ?? []
   const myUserId = m.viewer.myUserId
-  const checkins = listed.length || !mine || myUserId === null
+  const myRow = mine && myUserId !== null ? { ...mine, user: { ...mine.user, id: myUserId } } : null
+  /* ⚠️ M13 ไม่ส่ง `rejectionReason` มาเลย (คอลัมน์มีจริงและ M15 เขียนลงไป แต่
+     `toCheckinListItemDto` ไม่ได้ใส่ในรูปที่ตอบ) — แถวของคนอื่นจึงบอกไม่ได้ว่าถูกปฏิเสธ
+     เพราะอะไร แต่ M20 ส่งของตัวเองมาให้ ทับแถวของเราเองด้วยตัวที่มีเหตุผลติดมา
+     อย่างน้อยคนที่โดนก็อ่านออกว่าเพราะอะไร (ดู FE-checkin-reject-reason-not-listed) */
+  const checkins = !myRow
     ? listed
-    : [{ ...mine, user: { ...mine.user, id: myUserId } }]
+    : listed.length
+      ? listed.map(row => (row.user.id === myUserId ? { ...row, rejectionReason: myRow.rejectionReason } : row))
+      : [myRow]
   const squads = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const total = squads.reduce((n, t) => n + t.players.length, 0)
   const done = checkins.filter(c => c.status === 'success').length

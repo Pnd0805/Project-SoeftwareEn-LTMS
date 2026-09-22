@@ -81,4 +81,24 @@ describe('real-mode fixture referee consent flow', () => {
     })))
     expect(bulkAssignAsync).not.toHaveBeenCalled()
   })
+
+  /* R12 — หน้านี้ต้องแก้เวลาและกรรมการได้ตราบที่ M06/FR02 ยังยอม ซึ่งคือแมตช์ที่ยัง
+     `scheduled` · เดิมใช้ "ยังไม่มีใครเช็คอิน" ซึ่งเปิดฟอร์มให้แมตช์ที่ปิดไปแล้วด้วย */
+  it('locks the form on a match the server will no longer change, and says which state it is in', () => {
+    match.status = 'checkin_open'
+    try {
+      renderPage()
+      expect(screen.queryByRole('button', { name: 'Save schedule' })).not.toBeInTheDocument()
+      expect(screen.getByText(/only lets the kick-off, venue and match/)).toBeInTheDocument()
+      expect(screen.getByText(/Locked — Check-in open/)).toBeInTheDocument()
+    } finally {
+      match.status = 'scheduled'
+    }
+  })
+
+  it('does not stop the organizer adding a referee beyond the BR-10 minimum', () => {
+    renderPage()
+    /* `needed` เป็นขั้นต่ำ ไม่ใช่เพดาน — ปุ่มต้องกดได้เสมอเมื่อแมตช์มีเวลาแล้ว */
+    expect(screen.getByRole('button', { name: 'Request this match' })).toBeEnabled()
+  })
 })

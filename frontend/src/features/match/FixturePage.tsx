@@ -25,6 +25,7 @@ import {
 } from '../../hooks/useAdmin'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
+import { MatchStatusLabel } from '../../types/enums'
 import type { MatchDto } from '../../types/match.dto'
 
 /** datetime-local wants a local wall clock, not an ISO instant. */
@@ -53,13 +54,14 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
   const request = useRequestMatchReferee(match.tournamentId)
   const cancel = useCancelTournamentRefereeRequest(match.tournamentId)
   const unassign = useUnassignMatchReferee(match.id, match.tournamentId)
+  /* BR-10: on-site + กีฬาที่มีสถิติ = 2 · อื่น = 1 · เราไม่รู้ว่ากีฬานี้มีสถิติไหมตรงนี้
+     จึงใช้ค่าสูงของโหมดไปก่อน — เป็น "อย่างน้อย" ไม่ใช่เพดาน */
   const needed = match.mode === 'onsite' ? 2 : 1
   const acceptedIds = new Set((assigned.data?.items ?? []).map(row => row.tournamentRefereeId))
   const openRequests = (requests.data?.items ?? []).filter(row =>
     row.type === 'org_add_match' && row.matchA.id === match.id && row.status === 'open')
   const pendingByReferee = new Map(openRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
   const activePool = (pool.data?.items ?? []).filter(row => row.isActive)
-  const capacityFull = acceptedIds.size + pendingByReferee.size >= needed
   const scheduled = !!match.scheduledTime && !!match.scheduledEndTime
   const loading = pool.isPending || assigned.isPending || requests.isPending
   const readError = pool.isError || assigned.isError || requests.isError
@@ -105,8 +107,12 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
                         <button className="btn ghost" type="button" disabled={busy}
                           onClick={() => cancel.mutate(pending.id)}>Cancel request</button>
                       ) : (
+                        /* เดิมปิดปุ่มทันทีที่ครบ `needed` — แต่ `needed` เป็นขั้นต่ำของ BR-10
+                           ไม่ใช่เพดาน ผู้จัดที่อยากมีกรรมการสำรองอีกคนจึงกดไม่ได้เฉยๆ
+                           โดยไม่มีอะไรบอก · ที่ block จริงคือเวลาซ้อน ซึ่ง server ตรวจให้ */
                         <button className="btn primary" type="button"
-                          disabled={busy || !scheduled || capacityFull}
+                          disabled={busy || !scheduled}
+                          title={scheduled ? undefined : 'Set a start and end time first'}
                           onClick={() => request.mutate({ tournamentRefereeId: referee.id, matchId: match.id })}>
                           Request this match
                         </button>
@@ -149,7 +155,11 @@ export function FixturePage() {
   const venueVal = venue ?? (m.venue ?? '')
   const refsVal = refs ?? m.referees.map(r => r.id)
 
-  if (!m.viewer.can.editFixture) {
+  /* `can.editFixture` รวมสองเรื่องไว้ด้วยกัน: เป็นผู้จัดไหม และแมตช์ยังแก้ได้ไหม
+     เขียน "403 — not yours to set" ให้ผู้จัดตัวจริงที่มาช้าไปคือบอกผิดเรื่อง เขามีสิทธิ์
+     แต่หมดเวลาแล้ว — แยกสองกรณีออกจากกัน แล้วกรณีหลังปล่อยให้ไหลลงไปหน้าอ่านอย่างเดียว */
+  const isOrganizer = m.viewer.roles.includes('organizer')
+  if (!isOrganizer) {
     return (
       <>
         <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}`) }}>Fixture</Crumb>
@@ -159,7 +169,14 @@ export function FixturePage() {
     )
   }
 
-  const open = m.checkedIn === 0
+  /**
+   * เปิดให้แก้ได้ตอนไหน — ตามกฎจริงของ M06 คือแมตช์ต้องยัง `scheduled` เท่านั้น
+   *
+   * เดิมดูที่ "ยังไม่มีใครเช็คอิน" ซึ่งเป็นคนละเรื่อง: แมตช์ที่เปิดเช็คอินแล้วแต่ยังไม่มีใครมา
+   * `checkedIn` ยังเป็น 0 หน้าจึงโชว์ฟอร์มให้แก้ แล้วกด Save ไปเจอ 409 MATCH_NOT_CHANGEABLE
+   * ส่วนคำขอกรรมการ (FR02) ก็ใช้เงื่อนไขเดียวกันนี้ที่ `assertMatchChangeable`
+   */
+  const open = m.status === 'scheduled'
   const toggle = (uid: number) =>
     setRefs(cur => {
       const now = cur ?? m.referees.map(r => r.id)
@@ -187,7 +204,7 @@ export function FixturePage() {
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
         {open
           ? <Badge kind="warn">Open until check-in starts</Badge>
-          : <Badge kind="neutral">Locked — check-in has begun</Badge>}
+          : <Badge kind="neutral">Locked — {MatchStatusLabel[m.status]}</Badge>}
       </div>
 
       <Panel quiet>
@@ -254,12 +271,22 @@ export function FixturePage() {
             {!USE_MOCK && update.isSuccess ? <Banner kind="ok">Schedule saved. Referee requests can now be sent separately.</Banner> : null}
           </>
         ) : (
-          <Facts rows={[
-            ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'],
-            ['End', m.scheduledEndTime ? new Date(m.scheduledEndTime).toLocaleString() : '—'],
-            ['Venue', m.venue || '—'],
-            ['Referees', m.referees.map(r => r.fullName).join(', ') || 'nobody named'],
-          ]} />
+          <>
+            <Banner kind="neutral">
+              <b>This fixture is set.</b> The server only lets the kick-off, venue and match
+              referees change while the match is still scheduled — this one is{' '}
+              {MatchStatusLabel[m.status].toLowerCase()}.{' '}
+              {m.status === 'checkin_open'
+                ? 'Close check-in from the match page first if it needs to move.'
+                : 'It cannot be moved any more.'}
+            </Banner>
+            <Facts rows={[
+              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'],
+              ['End', m.scheduledEndTime ? new Date(m.scheduledEndTime).toLocaleString() : '—'],
+              ['Venue', m.venue || '—'],
+              ['Referees', m.referees.map(r => r.fullName).join(', ') || 'nobody named'],
+            ]} />
+          </>
         )}
       </Panel>
     </>

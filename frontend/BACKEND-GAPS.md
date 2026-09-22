@@ -25,9 +25,22 @@ frontend wiring is complete in this branch.
   wrong: `somying@ku.th` used to see 2 of her matches and now sees all 10.
 - **B9** — a venue-only edit works and leaves the times alone.
 
-While building a test case for B4 we hit a new one, `FE-disputing-result-yet-verified`:
-disputing a result that is still `submitted` answers 500 every time. It is the
-ordinary FR-RS-03 path, and it is one null check.
+`FE-disputing-result-yet-verified` — the report that disputing a still-`submitted`
+result answered 500 every time — **is closed.** Retested 2026-09-22 against
+`a88f7ad`: `POST /matches/12/result/dispute` as the losing team's leader, on a
+result with `status: submitted` and `verifiedAt: null`, answered
+`200 {matchId: 12, status: "disputed"}`. The BR-14 first-moment path works. This
+paragraph is kept because the previous revision of this file still called it
+open.
+
+**Added 2026-09-22.** Chasing seven user-reported regressions through the
+running server at `a88f7ad` turned up three fields that are written and never
+read back — `FE-replay-link-write-only`, `FE-checkin-reject-reason-not-listed`
+and `FE-dispute-resolution-not-returned`. All three are the same shape: the
+column exists, a write route fills it, the read route omits it from the response
+shape, so a feature looks broken from the outside while the data is sitting in
+the database. Each one is a line in a mapper. They are the last remaining cause
+of two of the seven reports; the other five were ours and are fixed.
 
 The other open items are unchanged. `FE-way-say-which-faculties` was rewritten
 after the team asked whether a tournament can admit more than one faculty —
@@ -51,8 +64,11 @@ data in.
 - This file is an extract and stands on its own. The frontend's planning notes
   live in `FEAT-1-REMAINING.md` in the same folder; nothing there is needed to
   act on anything here.
+- `HANDOVER-2026-09-22.md` is the short version written for both teams: what the
+  seven regressions of 21 September turned out to be, and which of them are
+  waiting on the three write-only fields listed below.
 
-## Delivery required — 8 items
+## Delivery required — 11 items
 
 - [ ] **FE-notification-list-mark-one** — Notification list, mark-one-read, and
       mark-all-read routes. `src/api/notification.ts` currently contains
@@ -93,6 +109,43 @@ data in.
 - [ ] **FE-delete-tournaments-id-organizer** — `DELETE /tournaments/:id`. An organizer can
       unpublish but never delete, so a tournament created by mistake is
       permanent. `deleteTournament()` answers 501.
+- [ ] **FE-replay-link-write-only** — `livestreamUrl` on M04/M05. E12
+      `PUT /matches/:id/livestream` writes `matches.livestream_url` and the
+      column has existed since the first schema, but **no route reads it back**
+      — `grep livestream_url backend/src` returns exactly two hits, the E12
+      `UPDATE` in `match.repo.ts:502` and the row type in `types/db.ts:193`;
+      `toMatchDetailDto` does not include the field. Verified on match 7 at
+      `a88f7ad`: saving `https://www.youtube.com/watch?v=…` returns 200 and the
+      value is in the database, then `GET /matches/7` comes back without it, so
+      the replay link vanishes from the match page on reload. This is the whole
+      of the user-reported "replay link saves but never appears". The frontend
+      now shows the link from the E12 response for the rest of the session and
+      says out loud that it will not survive a reload;
+      `BackendMatchDetailDto.livestreamUrl` is already declared optional, so the
+      page starts working the moment the field is sent. One line in
+      `toMatchDetailDto`.
+- [ ] **FE-checkin-reject-reason-not-listed** — `rejectionReason` on M13
+      `GET /matches/:id/checkins`. M15 requires a reason and stores it in
+      `match_checkins.rejection_reason`, and M20 `/checkins/me` returns it to
+      the player it is about — but `toCheckinListItemDto`
+      (`mappers/match.mapper.ts:132`) leaves it out, so the referee console can
+      never show why any row was rejected, including a reason the referee typed
+      themselves a moment earlier. With OD-19 making revocation routine this is
+      now the normal case, not an edge one. The frontend patches its own row
+      from M20 as a partial stand-in; every other player's reason is blank.
+- [ ] **FE-dispute-resolution-not-returned** — `disputeResolution` /
+      `disputeResolvedBy` / `disputeResolvedAt` on S05
+      `GET /matches/:id/result`. `resolveMatchResult` stores all three, and
+      migration 020 made the organizer's note mandatory precisely so both
+      squads learn why a result was upheld, amended or thrown out. S05 returns
+      `winnerTeamId, scoreData, isAmended, amendedAt, amendReason, isWalkover,
+      status, verifiedAt` and none of the dispute-resolution fields, so the
+      mandatory note reaches nobody. Verified on match 9 at `a88f7ad`: a
+      `reject` with the note "ยกผลทิ้งเพื่อตรวจสอบสถานะ" resolved fine and the
+      note is in the row, but the two team leaders see a thrown-out result with
+      no stated reason. The frontend renders `result.disputeResolution` already
+      and gets `null` in real mode.
+
 ## Fix required — 0 open items
 
 No independently confirmed behavior fix remains open at `a88f7ad`. Missing

@@ -26,7 +26,7 @@ import {
   useCloseMatchCheckin, useDisputeResult, useForfeitMatch, useMatch, useOpenMatchCheckin,
   useResolveDispute, useResult, useSetLivestream, useStartMatch, useVerifyResult,
 } from '../../hooks/useMatch'
-import { USE_MOCK } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
 import { useLtms } from '../../shared/store'
 import { findStoreMatch, tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
@@ -178,11 +178,21 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
   )
 }
 
-/** Organizer only: reopen a signed-off result, and the replay link once it is done. */
+/**
+ * Organizer only: the replay link once the match is done.
+ *
+ * ลิงก์ที่บันทึกแล้วไม่ขึ้นที่หน้าแมตช์ เพราะ E12 เขียนลง `matches.livestream_url` ได้ แต่
+ * ไม่มี endpoint ไหนอ่านคืน — M05 ไม่ได้ส่งช่องนี้มา (ยืนยันจาก source: `livestream_url`
+ * ที่ backend โผล่แค่ใน UPDATE ของ E12) ทำเท่าที่ทำได้: ค่าที่เพิ่งกดบันทึกมาจากคำตอบของ
+ * E12 เอง หน้าจอจึงขึ้นลิงก์ให้เห็นทันทีในรอบนี้ และบอกตรงๆ ว่ารีเฟรชแล้วจะหาย
+ * ของจริงต้องรอ backend ส่ง `livestreamUrl` มากับ M04/M05 (FE-replay-link-write-only)
+ */
 function OrganizerTools({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   const [replay, setReplay] = useState(m.replayUrl ?? '')
   const setLivestream = useSetLivestream(m.id)
   const settled = isSettled(result)
+  /* ค่าที่ server ยืนยันแล้วในรอบนี้ — ไม่ใช่สิ่งที่ยังพิมพ์อยู่ในช่อง */
+  const saved = setLivestream.data?.youtubeUrl ?? m.replayUrl ?? null
 
   if (!settled) return null
   return (
@@ -196,8 +206,23 @@ function OrganizerTools({ m, result }: { m: MatchDto; result?: MatchResultDto })
         onClick={() => setLivestream.mutate(replay || null)}>
         {setLivestream.isPending ? 'Saving…' : 'Save replay link'}
       </button>
+      {setLivestream.isSuccess && saved ? (
+        <Banner kind="ok" icon="check">
+          <b>Saved.</b> <a href={saved} target="_blank" rel="noopener">{saved}</a>{' '}
+          — it is stored on the match, but the server does not send it back yet, so it disappears
+          from this page on reload. Reported to the backend team.
+        </Banner>
+      ) : null}
+      {setLivestream.isSuccess && !saved ? (
+        <Banner kind="ok" icon="check"><b>The replay link was cleared.</b></Banner>
+      ) : null}
       {setLivestream.isError ? (
-        <Banner kind="crit">Could not save the link. It is not stored yet — see TODO(schema) on livestreamUrl.</Banner>
+        <Banner kind="crit">
+          <b>Could not save the link.</b>{' '}
+          {setLivestream.error instanceof ApiError && setLivestream.error.code === 'INVALID_YOUTUBE_URL'
+            ? 'The server takes YouTube links only.'
+            : setLivestream.error instanceof Error ? setLivestream.error.message : 'Something went wrong.'}
+        </Banner>
       ) : null}
     </Panel>
   )
@@ -220,7 +245,8 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
   const disputedBy = result.disputeRaisedBy?.fullName ?? 'A team'
   /* คำตัดสินทุกแบบต้องมีเหตุผล ทั้งสองทีมอ่าน · เสมอไม่มีผู้ชนะให้บันทึก (backend บังคับ
      winnerTeamId เป็น int) จึงแก้เป็นสกอร์เสมอไม่ได้ ต้องเลือกทางอื่นแทน */
-  const blocked = resolve.isPending || !note.trim()
+  const noteMissing = !note.trim()
+  const blocked = resolve.isPending || noteMissing
   const level = sa === sb
 
   return (
@@ -257,11 +283,24 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
         </>
       ) : (
         <>
-          <Field label="Why — both squads see this" htmlFor="rs-note">
-            <textarea id="rs-note" rows={2} maxLength={500} value={note}
+          <Field label="Why — both squads see this. Required before any of the three decisions."
+            htmlFor="rs-note">
+            <textarea id="rs-note" rows={2} maxLength={500} value={note} required
+              aria-describedby="rs-gate"
               onChange={e => setNote(e.target.value)}
               placeholder="What you checked and what you decided." />
           </Field>
+          {/* เดิมปุ่มทั้งสามถูก disable เงียบๆ เพราะ `blocked` รวมเงื่อนไข "ยังไม่กรอกเหตุผล"
+              ไว้ด้วย ผู้จัดจึงเห็นแผงที่กดอะไรไม่ได้เลยและไม่มีอะไรบอกว่าเพราะอะไร —
+              บอกให้ชัดตรงนี้ แล้วปุ่มที่ปิดอยู่จะอ่านออกว่ารออะไร */}
+          {noteMissing ? (
+            <div id="rs-gate">
+              <Banner kind="warn">
+                <b>Write the reason first.</b> All three decisions stay closed until this box has
+                something in it — whichever way you decide, both squads are told why.
+              </Banner>
+            </div>
+          ) : null}
           <div className="grid2" style={{ maxWidth: 420 }}>
             <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
               <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
@@ -272,7 +311,8 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
           </div>
           <span className="hstack">
             <button className="btn primary" type="button" disabled={blocked || level}
-              title={level ? 'A corrected score still needs a winner' : undefined}
+              title={noteMissing ? 'Write the reason first'
+                : level ? 'A corrected score still needs a winner' : undefined}
               onClick={() => resolve.mutate({
                 decision: 'amend',
                 resolution: note.trim(),
@@ -282,10 +322,12 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
               Record this score as final
             </button>
             <button className="btn" type="button" disabled={blocked}
+              title={noteMissing ? 'Write the reason first' : undefined}
               onClick={() => resolve.mutate({ decision: 'uphold', resolution: note.trim() })}>
               Keep the recorded score
             </button>
             <button className="btn crit" type="button" disabled={blocked}
+              title={noteMissing ? 'Write the reason first' : undefined}
               onClick={() => resolve.mutate({ decision: 'reject', resolution: note.trim() })}>
               Throw the result out
             </button>
@@ -305,6 +347,41 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
         </Banner>
       ) : null}
     </Panel>
+  )
+}
+
+/**
+ * คำตอบของการเซ็นผล — ทั้งฝั่งยืนยันและฝั่งโต้แย้ง
+ *
+ * เดิมสองปุ่มนี้ไม่มีที่แสดง error เลย กดแล้วคำขอเด้ง หน้าจอก็เงียบสนิท ไม่มีอะไรขยับ
+ * ผู้ใช้จึงเห็นเป็น "กดยืนยันผลไม่ได้" ซึ่งอ่านไม่ออกว่าเพราะอะไร ทั้งที่ backend บอกมาแล้ว
+ * เคสที่เกิดได้จริง: `SAME_PERSON_CANNOT_VERIFY` (คนส่งผลกับคนยืนยันต้องไม่ใช่คนเดียวกัน —
+ * บัญชีที่เป็นทั้งกรรมการและหัวหน้าทีมชนเรื่องนี้เสมอ) · `WRONG_SUBMITTER_ROLE` ·
+ * `MATCH_RESULT_ALREADY_VERIFIED` (มีคนเซ็นไปแล้วระหว่างที่เราเปิดหน้าอยู่) ·
+ * `DISPUTE_WINDOW_CLOSED` · `DISPUTE_ALREADY_ACTIVE`
+ */
+function SignOffError({ verify, dispute, mode }: {
+  verify: { isError: boolean; error: unknown }
+  dispute: { isError: boolean; error: unknown }
+  mode: MatchDto['mode']
+}) {
+  const failed = verify.isError ? verify.error : dispute.isError ? dispute.error : null
+  if (failed === null) return null
+  const code = failed instanceof ApiError ? failed.code : ''
+  const hint = code === 'SAME_PERSON_CANNOT_VERIFY'
+    ? `The same person cannot both record and confirm a result. ${
+      mode === 'onsite' ? "The winning team's leader" : 'The match referee'} has to confirm this one.`
+    : code === 'WRONG_SUBMITTER_ROLE'
+      ? `On a ${mode} match this is not yours to sign. ${
+        mode === 'onsite' ? "The winning team's leader confirms" : 'The match referee confirms'}.`
+      : code === 'MATCH_RESULT_ALREADY_VERIFIED'
+        ? 'Somebody signed this off while the page was open. Reload to see where it stands.'
+        : failed instanceof Error ? failed.message : 'Something went wrong.'
+  return (
+    <Banner kind="crit">
+      <b>{verify.isError ? 'That confirmation did not go through.' : 'That dispute did not go through.'}</b>{' '}
+      {hint}
+    </Banner>
   )
 }
 
@@ -330,6 +407,41 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
         <b>Under dispute.</b> {result.disputeRaisedBy?.fullName ?? 'A team'} contested this result.
         The organizer decides.
       </Banner>
+    )
+  }
+
+  /**
+   * ผู้จัดยกผลทิ้งไปแล้ว (S04 `reject` · แมตช์ → `result_rejected`)
+   *
+   * เดิมไม่มีสาขานี้เลย แถว `rejected` จึงไหลลงไปจนสุดแล้วขึ้นว่า "No result recorded yet"
+   * โดยไม่มีปุ่มอะไรให้กด — ผู้จัดกดยกผลทิ้งแล้วแมตช์ตันถาวร ทั้งที่ backend รอ S01 ใบใหม่
+   * อยู่ (`requireCanSubmitResult` ยอมให้ส่งทับเมื่อใบเดิมเป็น `rejected`)
+   */
+  if (result?.status === 'rejected') {
+    return (
+      <Panel>
+        <span className="tag"><em>//</em> The result was thrown out</span>
+        <Banner kind="crit">
+          <b>The organizer threw this result out.</b> It no longer counts — the bracket, the table
+          and the player stats it moved have all been put back.
+          {result.disputeResolution ? <> Reason given: “{result.disputeResolution}”</> : null}
+        </Banner>
+        {can.submitResult ? (
+          <>
+            <div className="sub">
+              Record the match again. The same two signatures as the first time —{' '}
+              {m.mode === 'onsite' ? 'the referee enters it and the winning team leader confirms'
+                : 'the winning team leader enters it and the referee confirms'}.
+            </div>
+            <ResultForm m={m} />
+          </>
+        ) : (
+          <div className="sub">
+            Waiting on {m.mode === 'onsite' ? 'the referee' : "the winning team's leader"} to record
+            it again.
+          </div>
+        )}
+      </Panel>
     )
   }
 
@@ -400,6 +512,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               {verify.isPending ? 'Confirming…' : 'Confirm result'}
             </button>
           </div>
+          <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
         </Panel>
       )
     }
@@ -421,6 +534,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               onClick={() => dispute.mutate({ reason: reason.trim(), teamId: m.viewer.myTeamId ?? 0 })}>
               Dispute this result
             </button>
+            <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
           </>
         ) : null}
       </Panel>
@@ -511,7 +625,9 @@ export function MatchPage() {
      เดิมเขียน `?? null` ทับ ผู้เล่นธรรมดาจึงเห็นป้ายเป็น "Check-in open" ขณะที่หัวหน้าทีม
      เห็น "Awaiting confirmation" ทั้งที่ M05 ส่ง resultStatus มาให้ทุกคนอยู่แล้ว (B5) */
   const state = matchStateOf({ ...m, resultStatus: result?.status ?? m.resultStatus })
-  const sc = scoreOf(result, m)
+  /* ผลที่ผู้จัดยกทิ้งยังมีสกอร์เดิมติดมาในใบ แต่มันไม่นับแล้ว — วาดขึ้น scorebug ต่อเท่ากับ
+     ประกาศสกอร์ที่เพิ่งถูกยกเลิกว่าเป็นผลของแมตช์ */
+  const sc = result?.status === 'rejected' ? { a: null, b: null, decider: null } : scoreOf(result, m)
   const settled = isSettled(result)
   const winnerId = settled ? result?.winnerTeamId ?? null : null
   const isInLineup = m.viewer.myUserId !== null

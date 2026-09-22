@@ -33,6 +33,11 @@ export function matchStateOf(
   if (m.status === 'disputed' || m.resultStatus === 'disputed') return 'disputed'
   if (m.resultStatus === 'verified' || m.resultStatus === 'walkover') return 'confirmed'
   if (m.resultStatus === 'submitted') return 'pending'
+  /* ผู้จัดยกผลทิ้ง (S04 reject) — ใบผลเดิมไม่นับแล้ว รอคนส่งใหม่ · คำว่า `disputed` ของ
+     kit ไม่ตรงเป๊ะ (เรื่องตัดสินจบไปแล้ว) แต่ MatchState เป็นคำศัพท์ของสไลซ์ 1 เพิ่มเองไม่ได้
+     และที่เหลือผิดกว่านี้ — `scheduled` อ่านว่ายังไม่เคยมีอะไรเกิดขึ้น ทั้งที่แข่งไปแล้ว
+     รายละเอียดจริงเขียนไว้ที่แผง Action ของหน้าแมตช์ ซึ่งเป็นข้อความของเราเอง */
+  if (m.status === 'result_rejected' || m.resultStatus === 'rejected') return 'disputed'
   if (m.status === 'completed') return 'pending'   // จบแล้วแต่ยังไม่มีผล = รอคนกรอก
   if (m.status === 'in_progress') return 'live'
   if (m.status === 'checkin_open') return 'checkin'

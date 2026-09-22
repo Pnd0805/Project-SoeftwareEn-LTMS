@@ -42,6 +42,7 @@ import type {
   BackendBracketDto,
   BackendCheckinDto,
   BackendCheckinQrDto,
+  BackendLivestreamDto,
   BackendMatchDetailDto,
   BackendMatchListItemDto,
   BackendMatchLineupsDto,
@@ -173,7 +174,9 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
     mode: m.mode ?? "onsite",
     createdAt: m.scheduledTime ?? new Date().toISOString(),
     updatedAt: null,
-    livestreamUrl: null,
+    /* M05 ยังไม่ส่งลิงก์ย้อนหลังกลับมา (เขียนได้แต่อ่านไม่ได้ — ดู BackendMatchDetailDto)
+       อ่านไว้เผื่อวันที่ backend เติม จะได้ขึ้นเองไม่ต้องตามแก้ */
+    livestreamUrl: m.livestreamUrl ?? null,
     tournament: { id: m.tournamentId ?? 0, name: "", championTeamId: null, sportTypeId, sportName: "" },
     stage: roundLabel(m.round),
     tag: roundLabel(m.round),
@@ -181,7 +184,7 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
     availableReferees: [],
     roomCode: m.roomCode ?? null,
     checkinToken: null,
-    replayUrl: null,
+    replayUrl: m.livestreamUrl ?? null,
     checkedIn: 0,
     lineupSize: 0,
     viewer: {
@@ -609,7 +612,16 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
     : [dto.teamA, dto.teamB].find((team) => team?.players.some((player) => player.id === myId)) ?? null;
   const isTeamLeader = myTeamRow?.role === "leader";
   const onsite = dto.mode === "onsite";
-  const playable = dto.status === "checkin_open" || dto.status === "in_progress";
+  /**
+   * ส่งผลได้ตอนไหน
+   *
+   * `requireCanSubmitResult` ของ backend ไม่ดูสถานะแมตช์เลย ดูแค่ว่าใบผลเดิม (ถ้ามี) ยัง
+   * เป็น `submitted` หรือ `rejected` อยู่ไหม — ตรงนี้จึงเป็นแค่เรื่อง "ควรโชว์ฟอร์มตอนไหน"
+   * ⚠️ ต้องนับ `result_rejected` ด้วย ไม่งั้นแมตช์ที่ผู้จัดยกผลทิ้งจะตัน: ไม่มีใครเห็นฟอร์ม
+   *    ส่งผลใหม่อีกเลย ทั้งที่ backend รออยู่ว่าจะมี S01 ใบใหม่เข้ามา (S04 reject)
+   */
+  const playable = dto.status === "checkin_open" || dto.status === "in_progress"
+    || dto.status === "result_rejected";
 
   /* backend ไม่ได้บอกว่าคนที่กำลังดูทำอะไรได้บ้าง — ประกอบจากบทบาทที่รู้
      (กฎจริงยังอยู่ที่ backend เสมอ ตรงนี้แค่ตัดสินว่าจะโชว์ปุ่มไหม) */
@@ -745,19 +757,25 @@ export async function updateMatch(matchId: MatchRef, input: UpdateMatchRequest):
  * backend ใช้ชื่อช่อง `youtubeUrl` (ไม่ใช่ `url`) และตรวจว่าเป็นลิงก์ YouTube จริง
  * ลบลิงก์ไม่ได้ — livestreamSchema บังคับให้เป็นสตริง
  */
-export async function setLivestream(matchId: MatchRef, url: string | null): Promise<MatchDto> {
+export async function setLivestream(
+  matchId: MatchRef,
+  url: string | null,
+): Promise<{ matchId: number; youtubeUrl: string | null }> {
   if (USE_MOCK) {
     if (writeLivestream(matchId, url)) {
       const d = storeMatchDto(matchId);
-      if (d) return mockDelay(d);
+      if (d) return mockDelay({ matchId: d.id, youtubeUrl: d.livestreamUrl ?? null });
     }
     const m = mockMatches.find((x) => x.id === Number(matchId));
-    if (!m) return notFound<MatchDto>("แมตช์");
+    if (!m) return notFound<{ matchId: number; youtubeUrl: string | null }>("แมตช์");
     m.livestreamUrl = url;
-    return mockDelay(m);
+    return mockDelay({ matchId: m.id, youtubeUrl: url });
   }
-  /* A6 — ส่ง null เพื่อล้างลิงก์ได้แล้ว (เดิม backend ไม่รับ null จึงตอบ 501 ไปก่อน) */
-  return apiFetch(`/matches/${matchId}/livestream`, {
+  /* A6 — ส่ง null เพื่อล้างลิงก์ได้แล้ว (เดิม backend ไม่รับ null จึงตอบ 501 ไปก่อน)
+     ⚠️ E12 คืน `{ matchId, youtubeUrl }` ไม่ใช่แมตช์ทั้งใบ — เดิมประกาศเป็น MatchDto
+     หน้าจอจึงอ่าน `.replayUrl` จากคำตอบไม่เจอ และลิงก์ที่เพิ่งบันทึกก็หายไปทันที
+     เพราะ M05 ไม่ได้ส่งคืนมาให้ด้วย (อ่านไม่ได้ทั้งสองทาง) */
+  return apiFetch<BackendLivestreamDto>(`/matches/${matchId}/livestream`, {
     method: "PUT",
     body: JSON.stringify({ youtubeUrl: url }),
   });

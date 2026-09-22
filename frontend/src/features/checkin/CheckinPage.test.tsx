@@ -109,6 +109,63 @@ describe('referee check-in roster state', () => {
     expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument()
   })
 
+  /* R11 — กด reject แล้วต้องมีทางกลับ และต้องระบุเหตุผลได้ (OD-19 · 21 ก.ย.) */
+  it('asks for a reason instead of rejecting with a canned one', () => {
+    checkinsQuery = {
+      data: {
+        items: [{
+          id: 41, matchId: 12,
+          user: { id: 9201, fullName: 'Checked Player', avatarUrl: null },
+          method: 'qr_onsite', status: 'success', rejectionReason: null, note: null,
+          documentType: null, documentS3Key: null, verifiedByReferee: null,
+          checkedInAt: '2026-09-21T10:00:00.000Z', verifiedAt: null,
+        } satisfies MatchCheckinDto],
+      },
+      isPending: false, isFetching: false, isError: false, refetch,
+    }
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+    expect(mutation.mutate).not.toHaveBeenCalled()
+
+    const why = screen.getByLabelText(/เหตุผล/)
+    fireEvent.change(why, { target: { value: 'สแกนแทนกัน' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ถอนการเช็คอิน' }))
+
+    expect(mutation.mutate).toHaveBeenCalledWith(
+      { userId: 9201, input: { status: 'rejected', rejectionReason: 'สแกนแทนกัน' } },
+      expect.anything(),
+    )
+  })
+
+  it('still lets a referee verify a player whose check-in was rejected', () => {
+    checkinsQuery = {
+      data: {
+        items: [{
+          id: 41, matchId: 12,
+          user: { id: 9201, fullName: 'Checked Player', avatarUrl: null },
+          method: 'qr_onsite', status: 'rejected', rejectionReason: 'สแกนแทนกัน', note: null,
+          documentType: null, documentS3Key: null, verifiedByReferee: null,
+          checkedInAt: '2026-09-21T10:00:00.000Z', verifiedAt: null,
+        } satisfies MatchCheckinDto],
+      },
+      isPending: false, isFetching: false, isError: false, refetch,
+    }
+    renderPage()
+
+    expect(screen.getByText('Rejected')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Verify by hand' }))
+    /* โมดัลต้องบอกด้วยว่ากำลังกดให้ใหม่หลังถูกปฏิเสธ ไม่ใช่เคสกล้องเสียธรรมดา */
+    expect(screen.getByText(/เช็คอินของคนนี้ถูกปฏิเสธไว้/)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('เหตุผล'), { target: { value: 'ตรวจบัตรแล้ว ตัวจริง' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ยืนยันว่าตรวจแล้ว' }))
+    expect(mutation.mutate).toHaveBeenCalledWith(
+      { method: 'manual_by_referee', userId: 9201, note: 'ตรวจบัตรแล้ว ตัวจริง' },
+      expect.anything(),
+    )
+  })
+
   it('lets match staff publish a room code for a real-mode online match', () => {
     match.mode = 'online'
     checkinsQuery = {

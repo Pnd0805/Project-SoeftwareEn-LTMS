@@ -559,6 +559,19 @@ export interface BackendMatchDetailDto extends BackendMatchListItemDto {
   checkinOpenAt: string | null;
   mode: Mode;
   roomCode: string | null;
+  /**
+   * ⚠️ M05 **ยังไม่ส่งช่องนี้** — คอลัมน์ `matches.livestream_url` มีอยู่จริงและ E12 เขียนลง
+   * ไปได้ แต่ไม่มี endpoint ไหนอ่านคืนมา (`grep livestream_url` ที่ backend เจอแค่ UPDATE
+   * ของ E12) ผู้จัดจึงบันทึกลิงก์ย้อนหลังได้แต่ไม่มีใครเห็นลิงก์นั้นอีก · ประกาศไว้ optional
+   * เพื่อให้หน้าจอขึ้นเองทันทีที่ backend เติมมา (ดู FE-replay-link-write-only)
+   */
+  livestreamUrl?: string | null;
+}
+
+/** PUT /matches/:id/livestream (E12) — คืนแค่สองช่องนี้ ไม่ใช่แมตช์ทั้งใบ */
+export interface BackendLivestreamDto {
+  matchId: number;
+  youtubeUrl: string | null;
 }
 
 /** PATCH /matches/:id/schedule — ⚠️ backend รับเฉพาะรูปแบบ Z (z.iso.datetime ไม่มี offset) */

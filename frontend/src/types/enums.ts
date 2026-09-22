@@ -242,8 +242,16 @@ export const BracketTypeLabel: Record<BracketType, string> = {
   "grand_final": "Grand final",
 };
 
-// matches.match_status
-export const MatchStatusEnum = z.enum(["scheduled", "checkin_open", "in_progress", "completed", "disputed"]);
+/**
+ * matches.match_status
+ *
+ * `result_rejected` มีใน schema มาตลอด (schema.sql:404) แต่ขาดไปจากรายการนี้ ทั้งที่
+ * S04 `reject` พาแมตช์มาลงสถานะนี้ทุกครั้งที่ผู้จัดยกผลทิ้ง — ผลคือหน้าแมตช์อ่านว่า
+ * "Scheduled" เหมือนยังไม่เคยมีอะไรเกิดขึ้น และไม่มีใครส่งผลใหม่ได้ (ดู can.submitResult)
+ */
+export const MatchStatusEnum = z.enum([
+  "scheduled", "checkin_open", "in_progress", "completed", "disputed", "result_rejected",
+]);
 export type MatchStatus = z.infer<typeof MatchStatusEnum>;
 export const MatchStatusOptions = MatchStatusEnum.options;
 export const MatchStatusLabel: Record<MatchStatus, string> = {
@@ -252,6 +260,7 @@ export const MatchStatusLabel: Record<MatchStatus, string> = {
   "in_progress": "In progress",
   "completed": "Completed",
   "disputed": "Disputed",
+  "result_rejected": "Result thrown out",
 };
 
 // match_checkins.method

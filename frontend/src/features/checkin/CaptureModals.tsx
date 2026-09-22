@@ -315,6 +315,60 @@ function ReviewPhotoBody({ onClose, playerName, photo, onDecide, pending }: Revi
   )
 }
 
+// ══════════════ M15 — เพิกถอนเช็คอินที่ผ่านไปแล้ว ══════════════
+
+/**
+ * OD-19 (มติ 21 ก.ย.) — `qr_onsite` กับ `manual_by_referee` ผ่านทันทีตอนกด ไม่มีใครตรวจก่อน
+ * เพื่อนสแกนแทนคนที่ไม่มา หรือกรรมการกดผิดคน จึงต้องถอนได้ และแถวนั้นนับเข้า
+ * `min_members` ที่ใช้ตัดสินแพ้บาย — ปล่อยไว้ไม่ได้
+ *
+ * `reason` เป็นช่องบังคับของ M15 มาตั้งแต่ต้น แต่หน้าจอเคยยัดค่าคงที่
+ * "Rejected by the referee" ไปให้เอง ผู้เล่นจึงอ่านไม่ออกว่าถูกถอนเพราะอะไร
+ */
+interface RevokeProps {
+  open: boolean
+  onClose: () => void
+  playerName: string
+  /** วิธีที่เช็คอินนั้นผ่านมา — เขียนให้ตรงว่ากำลังถอนอะไร */
+  method: string
+  onConfirm: (reason: string) => void
+  pending: boolean
+}
+
+export function RevokeCheckinModal(props: RevokeProps) {
+  return (
+    <Modal open={props.open} onClose={props.onClose} label="ถอนการเช็คอิน"
+      title={props.playerName}>
+      {props.open ? <RevokeCheckinBody {...props} /> : null}
+    </Modal>
+  )
+}
+
+function RevokeCheckinBody({ onClose, method, onConfirm, pending }: RevokeProps) {
+  const [reason, setReason] = useState('')
+  return (
+    <>
+      <Banner kind="warn">
+        <b>เช็คอินนี้ผ่านไปแล้ว ({method})</b>{' '}
+        ถอนแล้วผู้เล่นคนนี้จะไม่ถูกนับในยอดที่ใช้ตัดสินแพ้บาย และเจ้าตัวเช็คอินใหม่ได้
+        (หรือคุณกดยืนยันให้ใหม่ได้) — ถ้าแมตช์เริ่มไปแล้ว การถอนไม่ย้อนคำตัดสินที่ออกไปแล้ว
+      </Banner>
+      <Field label="เหตุผล — ผู้เล่นคนนี้เห็นข้อความนี้" htmlFor="revoke-why">
+        <input id="revoke-why" value={reason} onChange={e => setReason(e.target.value)}
+          placeholder="เช่น สแกนแทนกัน ตัวจริงไม่ได้มาที่สนาม" />
+      </Field>
+      <div className="hstack">
+        <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
+        <button className="btn danger" type="button" disabled={pending || !reason.trim()}
+          title={reason.trim() ? undefined : 'ต้องระบุเหตุผลก่อนถอน'}
+          onClick={() => onConfirm(reason.trim())}>
+          {pending ? 'กำลังถอน…' : 'ถอนการเช็คอิน'}
+        </button>
+      </div>
+    </>
+  )
+}
+
 // ══════════════ UC-04 E2b — กรรมการยืนยันด้วยตนเอง ══════════════
 
 /**
@@ -327,6 +381,11 @@ interface ManualProps {
   playerName: string
   onConfirm: (reason: string) => void
   pending: boolean
+  /**
+   * เหตุผลที่แถวนี้ถูกปฏิเสธไว้ก่อนหน้า — มีค่า = กำลังกดให้ใหม่หลังถูก reject
+   * M19 เขียนทับแถวเดิมได้ตั้งแต่ 21 ก.ย. (OD-19 ข้อ 2) จึงเป็นทางกลับของ M15
+   */
+  afterReject?: string | null
 }
 
 export function ManualVerifyModal(props: ManualProps) {
@@ -338,15 +397,24 @@ export function ManualVerifyModal(props: ManualProps) {
   )
 }
 
-function ManualVerifyBody({ onClose, onConfirm, pending }: ManualProps) {
+function ManualVerifyBody({ onClose, onConfirm, pending, afterReject }: ManualProps) {
   const [reason, setReason] = useState('')
   return (
     <>
-      <Banner kind="warn">
-        <b>ใช้เมื่อกล้องหรือสัญญาณใช้ไม่ได้เท่านั้น</b>{' '}
-        คุณกำลังรับรองว่าตรวจบัตรของผู้เล่นคนนี้ด้วยตาที่หน้างานแล้ว — บันทึกนี้ตรวจสอบ
-        ย้อนหลังได้ จึงต้องระบุเหตุผล
-      </Banner>
+      {afterReject != null ? (
+        <Banner kind="warn">
+          <b>เช็คอินของคนนี้ถูกปฏิเสธไว้</b>
+          {afterReject ? <> — “{afterReject}”</> : null}{' '}
+          กดยืนยันให้ใหม่ได้ ระบบจะเขียนทับแถวเดิมและล้างเหตุผลที่ปฏิเสธไว้ออก
+          (M19 · มติ 21 ก.ย.) — ต้องบอกด้วยว่ารอบนี้ตรวจอะไรจนยอมให้ผ่าน
+        </Banner>
+      ) : (
+        <Banner kind="warn">
+          <b>ใช้เมื่อกล้องหรือสัญญาณใช้ไม่ได้เท่านั้น</b>{' '}
+          คุณกำลังรับรองว่าตรวจบัตรของผู้เล่นคนนี้ด้วยตาที่หน้างานแล้ว — บันทึกนี้ตรวจสอบ
+          ย้อนหลังได้ จึงต้องระบุเหตุผล
+        </Banner>
+      )}
       <Field label="เหตุผล" htmlFor="manual-why">
         <input id="manual-why" value={reason} onChange={e => setReason(e.target.value)}
           placeholder="เช่น กล้องของผู้เล่นเสีย ตรวจบัตรนักศึกษาที่หน้างานแล้ว" />

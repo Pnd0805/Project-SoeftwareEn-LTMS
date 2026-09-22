@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Panel, TableWrap, Tabs } from '../../../components/kit/primitives'
+import { USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
 import { user } from '../../../shared/selectors'
 import { fmtDate, formatOf } from '../../../shared/rules'
@@ -15,6 +16,7 @@ import type { Tournament } from '../../../shared/types'
 import { feedbackOf } from '../CommunityTab'
 import { DrawPanel } from './DrawPanel'
 import { EntryFilterPanel } from './EntryFilterPanel'
+import { MatchRefereePlanner } from './MatchRefereePlanner'
 import { RefereeFinder, RefereePanel } from './RefereePanel'
 import { RegistrationsPanel } from './RegistrationsPanel'
 import { SetupTrail } from './SetupTrail'
@@ -60,6 +62,8 @@ const LABELS: Record<string, string> = {
 export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
   const navigate = useNavigate()
   const [finder, setFinder] = useState(false)
+  /* id ของ store เป็น string — แผงที่คุยกับ API ต้องได้เลขเท่านั้น */
+  const liveTournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const showDraw = formatOf(t) !== 'roundrobin'
   const subtabs = ['progress', 'registrations', 'entry', ...(showDraw ? ['draw'] : []), 'referees', 'feedback']
   const active = subtabs.includes(sub ?? '') ? sub! : 'registrations'
@@ -74,7 +78,11 @@ export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
       {active === 'progress' ? <SetupTrail t={t} onAppoint={() => setFinder(true)} /> : null}
       {active === 'registrations' ? <RegistrationsPanel t={t} /> : null}
       {active === 'entry' ? <EntryFilterPanel t={t} /> : null}
+      {/* จับสายเสร็จแล้วงานถัดไปคือหาคนคุมทุกนัด — R10: ต้องทำได้ตรงนี้เลย รวมถึงนัด
+          รอบหลังที่ยังไม่รู้คู่ ไม่ใช่ไล่เปิดหน้า Fixture ทีละแมตช์ (โหมด mock ไม่มีเส้น
+          FR02 ให้เรียก แผงนี้จึงขึ้นเฉพาะทัวร์ที่มาจาก API) */}
       {active === 'draw' ? <DrawPanel t={t} /> : null}
+      {active === 'draw' && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
       {active === 'referees' ? <RefereePanel t={t} onAppoint={() => setFinder(true)} /> : null}
       {active === 'feedback' ? <FeedbackPanel t={t} /> : null}
       <RefereeFinder t={t} open={finder} onClose={() => setFinder(false)} />

@@ -23,7 +23,16 @@ export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDt
 
   const recorded = !!result
   const disputed = result?.status === 'disputed'
-  const settled = result?.status === 'verified'
+  /* ใบผลแบบ `walkover` จบพอๆ กับ `verified` — ไม่มีใครต้องเซ็นอีก และสายเดินไปแล้ว
+     ตั้งแต่ตอนที่ M17 เขียนแถวนั้น เดิมนับเฉพาะ `verified` รางจึงค้างที่ "รอหัวหน้า
+     ทีมที่ชนะยืนยัน" ตลอดไปสำหรับแมตช์ที่แพ้บาย/แพ้ทั้งคู่ ซึ่งไม่มีหัวหน้าทีมคนไหน
+     ต้องกดอะไรเลย (R13) */
+  const walkover = result?.status === 'walkover'
+  /* แพ้ทั้งคู่ — ไม่มีผู้ชนะ ไม่มีใครเดินสาย ช่องรอบถัดไปว่างถาวร (GUIDE/11 §10.5) */
+  const noContest = walkover && result?.winnerTeamId === null
+  const settled = result?.status === 'verified' || walkover
+  /* ไม่ได้ลงแข่ง จึงไม่มี "ผู้บันทึก" กับ "ผู้เซ็น" ให้ไล่ — ผู้จัดตัดสินไปในขั้นเดียว */
+  const byForfeit = walkover
   const everyoneIn = m.lineupSize > 0 && m.checkedIn >= m.lineupSize
 
   const steps: TrailStep[] = [
@@ -36,10 +45,14 @@ export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDt
     },
     {
       state: recorded ? 'done' : 'now',
-      title: `Result recorded by ${recorder}`,
-      note: recorded
-        ? <>Entered by {result!.submittedBy.fullName} · {when(result!.createdAt)}</>
-        : <>Nothing recorded yet. {m.mode === 'onsite' ? 'The referee' : "The winning team's leader"} goes first.</>,
+      title: byForfeit ? 'Settled without play' : `Result recorded by ${recorder}`,
+      note: byForfeit
+        ? noContest
+          ? <>Neither squad fielded enough players, so both forfeited · {when(result!.createdAt)}</>
+          : <>A squad did not field enough players, so the other won by walkover · {when(result!.createdAt)}</>
+        : recorded
+          ? <>Entered by {result!.submittedBy.fullName} · {when(result!.createdAt)}</>
+          : <>Nothing recorded yet. {m.mode === 'onsite' ? 'The referee' : "The winning team's leader"} goes first.</>,
     },
     disputed
       ? {
@@ -54,23 +67,33 @@ export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDt
           </>
         ),
       }
-      : {
-        state: settled ? 'done' : recorded ? 'now' : 'idle',
-        title: `Confirmed by ${signer}`,
-        note: settled
-          ? <>Signed off by {result!.verifiedBy?.fullName ?? '—'} · {when(result!.verifiedAt)}</>
-          : recorded
-            ? <>Waiting on {signer}. Until then nothing moves.</>
-            : <>Comes after the result is recorded.</>,
-      },
+      : byForfeit
+        ? {
+          state: 'done',
+          title: 'No confirmation needed',
+          note: <>A forfeit is the organizer&apos;s ruling, not a played result — neither
+            {' '}{signer} nor the other squad signs it off.</>,
+        }
+        : {
+          state: settled ? 'done' : recorded ? 'now' : 'idle',
+          title: `Confirmed by ${signer}`,
+          note: settled
+            ? <>Signed off by {result!.verifiedBy?.fullName ?? '—'} · {when(result!.verifiedAt)}</>
+            : recorded
+              ? <>Waiting on {signer}. Until then nothing moves.</>
+              : <>Comes after the result is recorded.</>,
+        },
     {
       state: settled ? 'done' : 'idle',
       title: 'Bracket updated',
-      note: settled
-        ? m.nextMatchId
-          ? <>The winner moves on to the next match.</>
-          : <>Final match — no further round.</>
-        : <>Runs automatically once both signatures are in (FR-RS-05).</>,
+      note: noContest
+        ? <>Nobody advances. The place this match fed stays empty and whoever was waiting there
+          goes through.</>
+        : settled
+          ? m.nextMatchId
+            ? <>The winner moves on to the next match.</>
+            : <>Final match — no further round.</>
+          : <>Runs automatically once both signatures are in (FR-RS-05).</>,
     },
   ]
 
