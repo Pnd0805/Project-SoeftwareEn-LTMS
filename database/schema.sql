@@ -602,7 +602,7 @@ CREATE TABLE tournament_feedback (
   tournament_feedback_id INT PRIMARY KEY AUTO_INCREMENT,
   tournament_id INT NOT NULL,
   user_id INT NOT NULL,
-  feedback_type ENUM('comment','organizer_feedback','mvp_vote') NOT NULL,
+  feedback_type ENUM('comment','organizer_feedback','mvp_vote') NOT NULL,   -- comment = C7 คอมเมนต์ทัวร์ (ทุกคนเห็น · คนละ 1 อัน · มติ 22 ก.ย.)
   content TEXT NULL,
   rating INT NULL,
   voted_for_user_id INT NULL,
@@ -638,23 +638,6 @@ CREATE TABLE tournament_questions (
 -- =====================================================================
 -- กลุ่ม 12 — Pick'em และรางวัล  (§12)
 -- =====================================================================
-
--- คอมเมนต์ใต้แมตช์ (C7, migration 024) — แยกจาก tournament_feedback เพราะต้องโพสต์ได้หลายอันต่อคน
-CREATE TABLE match_comments (
-  match_comment_id INT PRIMARY KEY AUTO_INCREMENT,
-  match_id INT NOT NULL,
-  user_id INT NOT NULL,
-  content VARCHAR(500) NOT NULL,
-  is_reported BOOLEAN NOT NULL DEFAULT FALSE,
-  removed_at DATETIME NULL,          -- เจ้าของลบเอง / แอดมินลบ (soft delete)
-  removed_by INT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- ไม่มี updated_at: ห้ามแก้เนื้อหา
-  FOREIGN KEY (match_id) REFERENCES matches(match_id),
-  FOREIGN KEY (user_id) REFERENCES users(user_id),
-  FOREIGN KEY (removed_by) REFERENCES users(user_id),
-  INDEX idx_match_comments_match (match_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE pickem_predictions (
   pickem_prediction_id INT PRIMARY KEY AUTO_INCREMENT,

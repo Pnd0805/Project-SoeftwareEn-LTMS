@@ -3,8 +3,10 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
 import type { TournamentRow } from '../types/db.js';
 import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
+import type { CommentListRow } from '../repositories/feedback.repo.js';
 import { toFeedbackItemDto, toFeedbackSummaryDto, toMvpCandidateDto, toMyFeedbackDto } from '../mappers/feedback.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import { buildPagination } from '../utils/pagination.js';
 
 /**
  * C6 — Tournament feedback / rating / MVP vote (spec 08 §4–5) · มติทีม 21 ก.ย. 2569 (แก้ข้อ 1–2 วันเดียวกัน)
@@ -13,6 +15,7 @@ import { AppError } from '../utils/AppError.js';
  *      ทัวร์เริ่ม = ถึงวันเริ่มทัวร์ (event_start_date เวลาไทย) หรือมีแมตช์ที่แข่งจริงแล้ว อย่างไหนถึงก่อน
  *   3. ส่งซ้ำ = เขียนทับ (feedback และ MVP)
  *   4. โหวต MVP ได้เฉพาะคนที่ไม่ได้ลงแข่ง (ไม่ใช่ผู้เล่น/สมาชิกทีมที่ผ่าน/กรรมการ/ORG) · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่ง
+ * + C7 คอมเมนต์ทัวร์ (มติ 22 ก.ย. — ย้ายจากรายแมตช์) อยู่ตารางเดียวกัน type 'comment' · ดูหัวข้อ "คอมเมนต์ทัวร์" ด้านล่าง
  */
 export const MVP_VOTING_DAYS = 7;
 
@@ -207,11 +210,85 @@ export async function getMvpVotes(tournamentId: number, userId?: number) {
     return { window, candidates, totalVotes, winners, mine, canVote };
 }
 
+// ───────────────────────── คอมเมนต์ทัวร์ (C7 · มติ 22 ก.ย. 2569) ─────────────────────────
+//   ทุกคนที่ล็อกอินคอมเมนต์ได้ (รวมคนในทัวร์) · ทุกคนอ่านได้ · คนละ 1 อันต่อทัวร์ ส่งซ้ำ = แก้ · เจ้าของลบเองได้
+//   ทัวร์ต้อง public หรือ completed — private / รออนุมัติ ฯลฯ เขียนไม่ได้ และคนนอกอ่านไม่ได้ (เหมือนหน้าทัวร์)
+//   report: ใครล็อกอินก็ได้ ยกเว้นของตัวเอง (POST /feedback/:id/report) · ลบของคนอื่น: แอดมินเท่านั้น (DELETE /admin/feedback/:id)
+
+function isOpenToPublic(tournament: TournamentRow): boolean {
+    return tournament.tournament_status === 'public' || tournament.tournament_status === 'completed';
+}
+
+function toCommentDto(row: CommentListRow, viewerId?: number) {
+    return {
+        id: row.tournament_feedback_id,
+        tournamentId: row.tournament_id,
+        author: { id: row.user_id, fullName: row.author_name, avatarUrl: row.author_avatar },
+        content: row.content,
+        createdAt: row.created_at,
+        isMine: viewerId !== undefined && viewerId === row.user_id,
+    };
+}
+
+/** ทัวร์ที่ไม่ได้เปิดเผยแพร่: เห็นเฉพาะผู้จัดกับแอดมินทั้งมหาวิทยาลัย — คนอื่น 404 เหมือนหน้าทัวร์ */
+async function assertCommentsVisible(tournament: TournamentRow, viewerId?: number): Promise<void> {
+    if (isOpenToPublic(tournament)) return;
+    if (viewerId !== undefined && (tournament.requested_by_user_id === viewerId || await isUniversityAdmin(viewerId))) return;
+    throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+}
+
+/** 201 ครั้งแรก · 200 แก้ของเดิม (isNew ให้ controller เลือก status) */
+export async function postTournamentComment(tournamentId: number, userId: number, content: string) {
+    const tournament = await getTournamentOr404(tournamentId);
+    if (!isOpenToPublic(tournament)) {
+        throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ คอมเมนต์ไม่ได้');
+    }
+    const existing = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    if (existing?.removed_at) {
+        throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว ส่งใหม่ไม่ได้');
+    }
+    await FeedbackRepo.upsertComment(tournamentId, userId, content);
+    const saved = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    return { ...toCommentDto(saved!, userId), isNew: existing === null };
+}
+
+export async function listTournamentComments(tournamentId: number, viewerId: number | undefined, page: number, pageSize: number, offset: number) {
+    const tournament = await getTournamentOr404(tournamentId);
+    await assertCommentsVisible(tournament, viewerId);
+    const { rows, totalItems } = await FeedbackRepo.listComments(tournamentId, offset, pageSize);
+
+    let mine = null;
+    let canComment = false;
+    if (viewerId !== undefined) {
+        const own = await FeedbackRepo.findOwnComment(tournamentId, viewerId);
+        mine = own && !own.removed_at ? toCommentDto(own, viewerId) : null;
+        canComment = isOpenToPublic(tournament) && !own?.removed_at;
+    }
+    return {
+        items: rows.map(r => toCommentDto(r, viewerId)),
+        mine, canComment,
+        pagination: buildPagination(page, pageSize, totalItems),
+    };
+}
+
+/** เจ้าของลบของตัวเอง → โพสต์ใหม่ได้ · ไม่มีให้ลบ → 404 · ถูกแอดมินลบไปแล้ว → 409 (ลบเพื่อโพสต์ใหม่ไม่ได้) */
+export async function deleteOwnTournamentComment(tournamentId: number, userId: number): Promise<void> {
+    await getTournamentOr404(tournamentId);
+    const own = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    if (!own) {
+        throw new AppError(404, 'COMMENT_NOT_FOUND', 'คุณยังไม่มีคอมเมนต์ในทัวร์นาเมนต์นี้');
+    }
+    if (own.removed_at) {
+        throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว');
+    }
+    await FeedbackRepo.deleteOwnComment(tournamentId, userId);
+}
+
 // ───────────────────────── report / ลบ ─────────────────────────
 
 /**
  * report ได้เฉพาะคนที่มองเห็นข้อความนั้น — organizer_feedback เห็นแค่ ORG ของทัวร์ · โหวต MVP ไม่มีข้อความให้ report
- * (comment ของ C7 ใช้ endpoint นี้ร่วมได้ ใครที่ล็อกอินก็ report ได้)
+ * comment (C7 คอมเมนต์ทัวร์) ใครที่ล็อกอินก็ report ได้ ยกเว้นของตัวเอง
  */
 export async function reportFeedback(feedbackId: number, userId: number) {
     const feedback = await FeedbackRepo.findById(feedbackId);
@@ -220,6 +297,9 @@ export async function reportFeedback(feedbackId: number, userId: number) {
     }
     if (feedback.feedback_type === 'mvp_vote') {
         throw new AppError(400, 'FEEDBACK_NOT_REPORTABLE', 'โหวต MVP ไม่มีข้อความให้รายงาน');
+    }
+    if (feedback.feedback_type === 'comment' && feedback.user_id === userId) {
+        throw new AppError(400, 'CANNOT_REPORT_OWN_COMMENT', 'รายงานคอมเมนต์ของตัวเองไม่ได้');
     }
     if (feedback.feedback_type === 'organizer_feedback') {
         const tournament = await getTournamentOr404(feedback.tournament_id);

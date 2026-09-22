@@ -41,7 +41,8 @@ describe('lockCompletedTournament', () => {
       req('POST', '/api/v1/tournaments/50', '50', '/feedback'),     // C6 ให้คะแนนหลังปิดทัวร์
       req('POST', '/api/v1/tournaments/50', '50', '/mvp-votes'),    // C6 โหวต MVP หลังปิดทัวร์
       req('POST', '/api/v1/tournaments/50', '50', '/feedback/'),    // มี / ท้ายก็ต้องผ่าน (Express ไม่ strict)
-      req('POST', '/api/v1/matches/50', '50', '/comments'),         // C7 คอมเมนต์ใต้แมตช์หลังปิดทัวร์
+      req('POST', '/api/v1/tournaments/50', '50', '/comments'),     // C7 คอมเมนต์ทัวร์หลังปิดทัวร์ (มติ 22 ก.ย.)
+      req('DELETE', '/api/v1/tournaments/50', '50', '/comments/me'),// เจ้าของลบคอมเมนต์ตัวเองหลังปิดทัวร์
       req('POST', '/api/v1/tournaments/abc', 'abc'),
     ]) {
       const next = vi.fn();

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { parseId } from '../utils/parseId.js';
 import { AppError } from '../utils/AppError.js';
+import { parsePagination } from '../utils/pagination.js';
 import * as FeedbackService from '../services/feedback.service.js';
 import { removeFeedbackSchema } from '../schemas/feedback.schema.js';
 
@@ -32,6 +33,27 @@ export async function castMvpVote(req: Request, res: Response) {
 export async function getMvpVotes(req: Request, res: Response) {
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     res.status(200).json(await FeedbackService.getMvpVotes(tournamentId, req.user?.user_id));
+}
+
+// ───────── C7 คอมเมนต์ทัวร์ ─────────
+
+export async function listTournamentComments(req: Request, res: Response) {
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
+    res.status(200).json(await FeedbackService.listTournamentComments(tournamentId, req.user?.user_id, newpage, newpageSize, offset));
+}
+
+export async function postTournamentComment(req: Request, res: Response) {
+    const userId = requireUserId(req);
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    const { isNew, ...comment } = await FeedbackService.postTournamentComment(tournamentId, userId, req.body.content);
+    res.status(isNew ? 201 : 200).json(comment);
+}
+
+export async function deleteOwnTournamentComment(req: Request, res: Response) {
+    const userId = requireUserId(req);
+    await FeedbackService.deleteOwnTournamentComment(parseId(req.params['id'], 'รหัสทัวร์นาเมนต์'), userId);
+    res.status(204).send();
 }
 
 export async function reportFeedback(req: Request, res: Response) {

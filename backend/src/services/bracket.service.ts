@@ -365,6 +365,7 @@ export async function createBracket(
             await conn.commit();
             await notifyRedraw(tournamentId, tournament.name, pickerIds, refereeIds);
         }
+        await notifyTeamsOfBracket(tournament, replacing);
         return { ...built, replaced: replacing };
     } catch (err) {
         if (conn) await conn.rollback();
@@ -372,6 +373,21 @@ export async function createBracket(
     } finally {
         conn?.release();
     }
+}
+
+/**
+ * มติ 22 ก.ย. — ทีมต้องรู้ทั้งตอนสายออกครั้งแรก และตอนจับใหม่ (คู่แข่งเปลี่ยน · เวลาที่นัดไว้เดิมหายหมด)
+ * ผู้รับ: ผู้เล่นในรายชื่อลงแข่ง + หัวหน้าทีม ของทุกทีมที่ผ่าน · ORG เป็นคนกดเอง ไม่ต้องแจ้ง
+ */
+async function notifyTeamsOfBracket(tournament: { tournament_id: number; name: string; requested_by_user_id: number }, replaced: boolean): Promise<void> {
+    await NotificationService.notifyTournamentSquads(tournament.tournament_id, replaced
+        ? { type: 'bracket_redrawn', title: 'ผู้จัดจับสายการแข่งขันใหม่',
+            message: `ทัวร์นาเมนต์ "${tournament.name}" จับสายการแข่งขันใหม่ — คู่แข่งและเวลาที่เคยนัดไว้ถูกยกเลิก ตรวจสายใหม่อีกครั้ง`,
+            relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id }
+        : { type: 'bracket_created', title: 'สายการแข่งขันออกแล้ว',
+            message: `ทัวร์นาเมนต์ "${tournament.name}" จัดสายการแข่งขันแล้ว — ดูคู่แข่งและรอบของทีมคุณได้เลย`,
+            relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id },
+        { exceptUserId: tournament.requested_by_user_id });
 }
 
 /** จับสายใหม่แล้ว: คนที่ทายไว้ → การทายถูกยกเลิก ทายใหม่ได้ · กรรมการที่ผูกแมตช์เดิม → แมตช์ถูกยกเลิก รอมอบหมายใหม่ */

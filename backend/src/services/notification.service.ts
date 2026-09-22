@@ -73,6 +73,20 @@ export async function notifyTournamentTeamLeaders(tournamentId: number, content:
     }
 }
 
+/** ผู้เล่นในรายชื่อลงแข่ง + หัวหน้าทีม ของทุกทีมที่ผ่านในทัวร์นี้ · ไม่ส่งหาคนที่กดเอง */
+export async function notifyTournamentSquads(
+    tournamentId: number,
+    content: Omit<NotificationInput, 'userId'>,
+    options: { exceptUserId?: number } = {}
+): Promise<void> {
+    try {
+        const recipients = (await NotificationRepo.findTournamentSquadsAndLeaders(tournamentId)).filter(id => id !== options.exceptUserId);
+        await notifyUsers(recipients, content);
+    } catch (err) {
+        console.error(`[notify] หาผู้เล่นของทัวร์ ${tournamentId} ไม่สำเร็จ`, err);
+    }
+}
+
 /** กรรมการที่ตอบรับแล้วของทัวร์นี้ */
 export async function notifyTournamentReferees(tournamentId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
     try {

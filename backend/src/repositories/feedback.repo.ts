@@ -175,6 +175,58 @@ export async function listOrganizerFeedback(tournamentId: number): Promise<Feedb
     return rows;
 }
 
+// ---- C7 คอมเมนต์ทัวร์ (feedback_type 'comment' · มติ 22 ก.ย. — ย้ายจากรายแมตช์) ----
+
+export type CommentListRow = FeedbackRow & { author_name: string; author_avatar: string | null };
+
+const COMMENT_SELECT = `SELECT ${FEEDBACK_COLS}, u.full_name AS author_name, u.profile_image_key AS author_avatar
+                        FROM tournament_feedback f JOIN users u ON u.user_id = f.user_id`;
+
+/** คนละ 1 อันต่อทัวร์ (UNIQUE เดิม) — ส่งซ้ำ = แก้ข้อความ + ล้างธง report (ข้อความที่ถูก report ไม่ใช่อันนี้แล้ว) */
+export async function upsertComment(tournamentId: number, userId: number, content: string): Promise<void> {
+    await pool.query(
+        `INSERT INTO tournament_feedback (tournament_id, user_id, feedback_type, content)
+         VALUES (?, ?, 'comment', ?)
+         ON DUPLICATE KEY UPDATE content = VALUES(content), is_reported = FALSE`,
+        [tournamentId, userId, content]
+    );
+}
+
+/** คอมเมนต์ของคนนี้ในทัวร์นี้ — รวมที่แอดมินลบแล้ว (บอกได้ว่า "ถูกลบ") */
+export async function findOwnComment(tournamentId: number, userId: number): Promise<CommentListRow | null> {
+    const [rows] = await pool.query<(CommentListRow & RowDataPacket)[]>(
+        `${COMMENT_SELECT} WHERE f.tournament_id = ? AND f.user_id = ? AND f.feedback_type = 'comment' AND f.match_id IS NULL`,
+        [tournamentId, userId]
+    );
+    return rows[0] ?? null;
+}
+
+/** คอมเมนต์ที่ยังไม่ถูกลบ ใหม่สุดก่อน */
+export async function listComments(tournamentId: number, offset: number, pageSize: number): Promise<{ rows: CommentListRow[]; totalItems: number }> {
+    const [rows] = await pool.query<(CommentListRow & RowDataPacket)[]>(
+        `${COMMENT_SELECT}
+         WHERE f.tournament_id = ? AND f.feedback_type = 'comment' AND f.removed_at IS NULL
+         ORDER BY f.created_at DESC, f.tournament_feedback_id DESC
+         LIMIT ? OFFSET ?`,
+        [tournamentId, pageSize, offset]
+    );
+    const [count] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM tournament_feedback WHERE tournament_id = ? AND feedback_type = 'comment' AND removed_at IS NULL`,
+        [tournamentId]
+    );
+    return { rows, totalItems: Number(count[0]?.cnt ?? 0) };
+}
+
+/** เจ้าของลบเอง = ลบจริง (โพสต์ใหม่ได้) · แถวที่แอดมินลบแล้วไม่แตะ (กันลบเพื่อโพสต์ใหม่หลบการลงโทษ) */
+export async function deleteOwnComment(tournamentId: number, userId: number): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `DELETE FROM tournament_feedback
+         WHERE tournament_id = ? AND user_id = ? AND feedback_type = 'comment' AND match_id IS NULL AND removed_at IS NULL`,
+        [tournamentId, userId]
+    );
+    return result.affectedRows > 0;
+}
+
 // ---- report / ลบ ----
 
 export async function findById(feedbackId: number): Promise<FeedbackRow | null> {

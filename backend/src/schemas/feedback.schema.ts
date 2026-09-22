@@ -13,6 +13,12 @@ export const mvpVoteSchema = z.object({
 });
 export type MvpVoteInput = z.infer<typeof mvpVoteSchema>;
 
+// C7 — คอมเมนต์ทัวร์ (ทุกคนเห็น · คนละ 1 อัน ส่งซ้ำ = แก้)
+export const tournamentCommentSchema = z.object({
+    content: z.string('กรุณาพิมพ์ข้อความ').trim().min(1, 'กรุณาพิมพ์ข้อความ').max(500, 'ข้อความยาวได้ไม่เกิน 500 ตัวอักษร'),
+});
+export type TournamentCommentInput = z.infer<typeof tournamentCommentSchema>;
+
 // แอดมินลบ — เหตุผลไม่บังคับ แต่เก็บลง audit ถ้ามี
 export const removeFeedbackSchema = z.object({
     reason: z.string().trim().max(500, 'เหตุผลยาวได้ไม่เกิน 500 ตัวอักษร').optional(),

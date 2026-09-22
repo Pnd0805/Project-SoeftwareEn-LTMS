@@ -34,7 +34,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
   vi.mocked(MatchRepo.findById).mockResolvedValue(match());
-  vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, requested_by_user_id: 7 } as never);
+  vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, requested_by_user_id: 7, tournament_status: 'public' } as never);
   vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(false);
   vi.mocked(PickemRepo.findMine).mockResolvedValue(null);
   vi.mocked(PickemRepo.countByTeam).mockResolvedValue([]);
@@ -93,6 +93,25 @@ describe('predict', () => {
   it('404 MATCH_NOT_FOUND', async () => {
     vi.mocked(MatchRepo.findById).mockResolvedValue(null);
     expect(await errOf(Service.predict(1, 50, 11))).toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+  });
+});
+
+describe('ทัวร์ที่ไม่ได้เปิดเผยแพร่ (มติ 22 ก.ย.)', () => {
+  it.each(['private', 'pending_approval', 'rejected', 'auto_deleted'])('%s tournament → 409 TOURNAMENT_NOT_PUBLIC on predict and cancel', async (status) => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, requested_by_user_id: 7, tournament_status: status } as never);
+    expect(await errOf(Service.predict(1, 50, 11))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
+    expect(await errOf(Service.cancelPrediction(1, 50))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
+    expect(PickemRepo.upsert).not.toHaveBeenCalled();
+    expect(PickemRepo.remove).not.toHaveBeenCalled();
+  });
+  it('summary: closedReason tournament_not_public · canPredict false', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, requested_by_user_id: 7, tournament_status: 'private' } as never);
+    expect(await Service.getSummary(1, 50)).toMatchObject({ isOpen: false, closedReason: 'tournament_not_public', canPredict: false });
+  });
+  it('the match reason wins when the match itself is already closed', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, requested_by_user_id: 7, tournament_status: 'completed' } as never);
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_status: 'completed' }));
+    expect((await Service.getSummary(1)).closedReason).toBe('match_started');
   });
 });
 

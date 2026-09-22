@@ -129,6 +129,22 @@ export async function findTournamentTeamLeaders(tournamentId: number): Promise<n
     return rows.map(r => r.leader_id);
 }
 
+/** ผู้เล่นในรายชื่อลงแข่ง + หัวหน้าทีม ของทุกใบสมัครที่อนุมัติแล้วในทัวร์นี้ — คนที่สายการแข่งขันมีผลกับเขา */
+export async function findTournamentSquadsAndLeaders(tournamentId: number): Promise<number[]> {
+    const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT ap.user_id
+         FROM application_players ap
+         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+         WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'
+         UNION
+         SELECT t.leader_id
+         FROM tournament_applications ta JOIN teams t ON t.team_id = ta.team_id
+         WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'`,
+        [tournamentId, tournamentId]
+    );
+    return rows.map(r => r.user_id);
+}
+
 /** กรรมการที่ตอบรับเป็นกรรมการของทัวร์นี้แล้ว และยังไม่ถูกถอดออก */
 export async function findTournamentReferees(tournamentId: number): Promise<number[]> {
     const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(

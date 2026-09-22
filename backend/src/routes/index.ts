@@ -18,7 +18,7 @@ import Amendment from './amendment.routes.js';
 import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
 import { meNotificationRouter } from './notification.routes.js';
 import { tournamentFeedbackRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
-import { matchEngagementRouter, commentRouter, adminCommentRouter, mePickemRouter, tournamentPickemRouter } from './engagement.routes.js';
+import { matchEngagementRouter, mePickemRouter, tournamentPickemRouter } from './engagement.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
@@ -62,10 +62,8 @@ router.use('/tournaments' , tournamentFeedbackRouter);
 router.use('/feedback' , feedbackRouter);
 router.use('/admin' , adminFeedbackRouter);
 
-// C7 match comments + Pick'em
+// C7 Pick'em (คอมเมนต์ทัวร์อยู่กับ C6 ที่ tournamentFeedbackRouter)
 router.use('/matches' , matchEngagementRouter);
-router.use('/comments' , commentRouter);
-router.use('/admin' , adminCommentRouter);
 router.use('/me' , mePickemRouter);
 router.use('/tournaments' , tournamentPickemRouter);
 

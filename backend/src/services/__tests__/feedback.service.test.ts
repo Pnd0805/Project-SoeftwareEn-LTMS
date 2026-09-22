@@ -13,6 +13,10 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
   findById: vi.fn(),
   markReported: vi.fn(),
   removeByAdmin: vi.fn(),
+  upsertComment: vi.fn(),
+  findOwnComment: vi.fn(() => Promise.resolve(null)),
+  listComments: vi.fn(() => Promise.resolve({ rows: [], totalItems: 0 })),
+  deleteOwnComment: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn() }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(() => Promise.resolve(null)) }));
@@ -50,6 +54,8 @@ beforeEach(() => {
   vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue(null as never);
   vi.mocked(FeedbackRepo.findOwn).mockReset().mockResolvedValue(null);   // reset = ล้าง mockResolvedValueOnce ที่ค้างจากเทสต์ที่ throw ก่อนใช้
   vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(false);
+  vi.mocked(FeedbackRepo.findOwnComment).mockReset().mockResolvedValue(null);
+  vi.mocked(FeedbackRepo.listComments).mockResolvedValue({ rows: [], totalItems: 0 });
   vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue([]);
   vi.mocked(FeedbackRepo.listOrganizerFeedback).mockResolvedValue([]);
   vi.mocked(FeedbackRepo.summarizeOrganizerFeedback).mockResolvedValue({ average: null, count: 0, r1: 0, r2: 0, r3: 0, r4: 0, r5: 0 });
@@ -290,5 +296,79 @@ describe('report / remove', () => {
 
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ removed_at: new Date() }));
     expect(await errOf(Service.removeFeedback(1, 3))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
+  });
+});
+
+// มติ 22 ก.ย. — คอมเมนต์ย้ายจากรายแมตช์มาเป็นระดับทัวร์ · ทุกคนเห็น · คนละ 1 อัน ส่งซ้ำ = แก้ · แอดมินเท่านั้นลบของคนอื่น
+describe('tournament comments (C7)', () => {
+  const commentRow = (overrides: Record<string, unknown> = {}) => ({
+    ...feedbackRow({ feedback_type: 'comment', content: 'เชียร์', rating: null, user_id: 50 }), author_name: 'สมชาย', author_avatar: null, ...overrides,
+  }) as never;
+  const publicT = () => tournament({ tournament_status: 'public', completed_at: null });
+
+  it('anyone logged in (even a player or the organizer) posts → isNew, author + isMine', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(null).mockResolvedValueOnce(commentRow());
+    const out = await Service.postTournamentComment(20, 50, 'เชียร์');
+    expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'เชียร์');
+    expect(out).toMatchObject({ isNew: true, content: 'เชียร์', isMine: true, author: { id: 50, fullName: 'สมชาย' }, tournamentId: 20 });
+  });
+
+  it('sending again edits the one comment (isNew false)', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(commentRow()).mockResolvedValueOnce(commentRow({ content: 'แก้แล้ว' }));
+    await expect(Service.postTournamentComment(20, 50, 'แก้แล้ว')).resolves.toMatchObject({ isNew: false, content: 'แก้แล้ว' });
+  });
+
+  it('allowed after the tournament is completed', async () => {
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(null).mockResolvedValueOnce(commentRow());
+    await expect(Service.postTournamentComment(20, 50, 'x')).resolves.toMatchObject({ isNew: true });
+  });
+
+  it.each(['private', 'pending_approval', 'rejected', 'auto_deleted'])('%s tournament → 409 TOURNAMENT_NOT_PUBLIC', async (status) => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: status }));
+    expect(await errOf(Service.postTournamentComment(20, 50, 'x'))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
+    expect(FeedbackRepo.upsertComment).not.toHaveBeenCalled();
+  });
+
+  it('409 COMMENT_REMOVED after an admin removed it', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow({ removed_at: new Date() }));
+    expect(await errOf(Service.postTournamentComment(20, 50, 'x'))).toMatchObject({ status: 409, code: 'COMMENT_REMOVED' });
+  });
+
+  it('list: public · mine + canComment for a logged-in viewer · isMine per item', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.listComments).mockResolvedValue({ rows: [commentRow(), commentRow({ tournament_feedback_id: 2, user_id: 60 })], totalItems: 2 });
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValue(commentRow());
+    const out = await Service.listTournamentComments(20, 50, 1, 20, 0);
+    expect(out.items.map(i => i.isMine)).toEqual([true, false]);
+    expect(out).toMatchObject({ canComment: true, mine: { id: 1 }, pagination: { totalItems: 2 } });
+    const anon = await Service.listTournamentComments(20, undefined, 1, 20, 0);
+    expect(anon).toMatchObject({ mine: null, canComment: false });
+  });
+
+  it('list of a private tournament: 404 for outsiders · organizer and university admin can read', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'private' }));
+    expect(await errOf(Service.listTournamentComments(20, 50, 1, 20, 0))).toMatchObject({ status: 404 });
+    expect(await errOf(Service.listTournamentComments(20, undefined, 1, 20, 0))).toMatchObject({ status: 404 });
+    await expect(Service.listTournamentComments(20, ORG, 1, 20, 0)).resolves.toMatchObject({ canComment: false });
+    vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'university_wide' } as never);
+    await expect(Service.listTournamentComments(20, 1, 1, 20, 0)).resolves.toBeDefined();
+  });
+
+  it('owner deletes their own (then can post again) · none → 404 · admin-removed → 409', async () => {
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(commentRow());
+    await Service.deleteOwnTournamentComment(20, 50);
+    expect(FeedbackRepo.deleteOwnComment).toHaveBeenCalledWith(20, 50);
+    expect(await errOf(Service.deleteOwnTournamentComment(20, 50))).toMatchObject({ status: 404, code: 'COMMENT_NOT_FOUND' });
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(commentRow({ removed_at: new Date() }));
+    expect(await errOf(Service.deleteOwnTournamentComment(20, 50))).toMatchObject({ status: 409, code: 'COMMENT_REMOVED' });
+  });
+
+  it('report: anyone but the author · 400 CANNOT_REPORT_OWN_COMMENT for your own', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ feedback_type: 'comment', user_id: 50 }));
+    await expect(Service.reportFeedback(1, 60)).resolves.toEqual({ id: 1, isReported: true });
+    expect(await errOf(Service.reportFeedback(1, 50))).toMatchObject({ status: 400, code: 'CANNOT_REPORT_OWN_COMMENT' });
   });
 });

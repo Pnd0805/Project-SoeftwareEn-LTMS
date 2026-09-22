@@ -3,7 +3,7 @@ import type { MyPickRow, PredictionRow } from '../repositories/pickem.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as FeedbackRepo from '../repositories/feedback.repo.js';
-import type { MatchRow } from '../types/db.js';
+import type { MatchRow, TournamentRow } from '../types/db.js';
 import { AppError } from '../utils/AppError.js';
 
 /**
@@ -12,9 +12,11 @@ import { AppError } from '../utils/AppError.js';
  *   ทายถูก 10 แต้ม · ผิด 0 · ให้แต้มเฉพาะผลที่ยืนยันแล้ว — ชนะบาย/ปรับแพ้/แมตช์ที่ไม่มีการแข่ง = void (ไม่ได้ไม่เสีย)
  *   ห้ามทาย: คนในทัวร์ทั้งหมด (ผู้เล่นในรายชื่อ · สมาชิกทีมที่ผ่าน · กรรมการ · ผู้จัด) — กฎเดียวกับโหวต MVP
  *   ทาย/เปลี่ยน/ยกเลิก ได้จนถึง cutoff · ทายได้เมื่อรู้ทั้งสองทีมแล้ว
+ *   ทัวร์ต้อง public (มติ 22 ก.ย.) — ORG unpublish กลับเป็น private แล้วทาย/ยกเลิกไม่ได้ (อ่านสรุปได้เหมือนหน้าแมตช์)
  */
 
 type CutoffReason = 'teams_not_set' | 'checkin_open' | 'match_started' | 'time_passed';
+type ClosedReason = CutoffReason | 'tournament_not_public';
 
 /** เหตุผลที่ทายไม่ได้ตอนนี้ (null = ยังทายได้) */
 export function cutoffReason(match: MatchRow, now = new Date()): CutoffReason | null {
@@ -26,7 +28,8 @@ export function cutoffReason(match: MatchRow, now = new Date()): CutoffReason | 
     return null;
 }
 
-const CLOSED_MESSAGE: Record<CutoffReason, string> = {
+const CLOSED_MESSAGE: Record<ClosedReason, string> = {
+    tournament_not_public: 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ ทายผลไม่ได้',
     teams_not_set: 'แมตช์นี้ยังไม่รู้ทั้งสองทีม (รอผลรอบก่อน) ยังทายไม่ได้',
     checkin_open: 'ปิดทายผลแล้ว — แมตช์เปิดเช็คอินแล้ว',
     match_started: 'ปิดทายผลแล้ว — แมตช์เริ่มหรือจบไปแล้ว',
@@ -39,15 +42,20 @@ async function getMatchOr404(matchId: number): Promise<MatchRow> {
     return match;
 }
 
-function assertOpen(match: MatchRow): void {
-    const reason = cutoffReason(match);
+/** เหตุผลของแมตช์มาก่อน (แมตช์จบแล้วบอกว่าจบ) แล้วค่อยดูว่าทัวร์ยังเปิดเผยแพร่อยู่ไหม */
+function closedReason(match: MatchRow, tournament: TournamentRow | null): ClosedReason | null {
+    return cutoffReason(match) ?? (tournament?.tournament_status === 'public' ? null : 'tournament_not_public');
+}
+
+function assertOpen(match: MatchRow, tournament: TournamentRow | null): void {
+    const reason = closedReason(match, tournament);
     if (reason === 'teams_not_set') throw new AppError(409, 'PICKEM_TEAMS_NOT_SET', CLOSED_MESSAGE[reason]);
+    if (reason === 'tournament_not_public') throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', CLOSED_MESSAGE[reason]);
     if (reason) throw new AppError(409, 'PICKEM_CLOSED', CLOSED_MESSAGE[reason], { reason });
 }
 
 /** คนในทัวร์ทายไม่ได้ — เช็คจากทัวร์ของแมตช์ */
-async function conflictOf(match: MatchRow, userId: number): Promise<AppError | null> {
-    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+async function conflictOf(match: MatchRow, tournament: TournamentRow | null, userId: number): Promise<AppError | null> {
     if (tournament?.requested_by_user_id === userId || await FeedbackRepo.isTournamentInsider(match.tournament_id, userId)) {
         return new AppError(403, 'PICKEM_CONFLICT', 'ผู้เล่น สมาชิกทีม กรรมการ และผู้จัดของทัวร์นาเมนต์นี้ทายผลไม่ได้');
     }
@@ -64,11 +72,12 @@ export function pickStatus(pick: Pick<PredictionRow, 'points_earned'>, matchStat
 
 export async function predict(matchId: number, userId: number, teamId: number) {
     const match = await getMatchOr404(matchId);
-    assertOpen(match);
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    assertOpen(match, tournament);
     if (teamId !== match.team_a_id && teamId !== match.team_b_id) {
         throw new AppError(422, 'PICK_TEAM_NOT_IN_MATCH', 'ทายได้เฉพาะสองทีมที่ลงแมตช์นี้');
     }
-    const conflict = await conflictOf(match, userId);
+    const conflict = await conflictOf(match, tournament, userId);
     if (conflict) throw conflict;
 
     const before = await PickemRepo.findMine(userId, matchId);
@@ -83,7 +92,7 @@ export async function predict(matchId: number, userId: number, teamId: number) {
 /** ยกเลิกการทาย (ก่อน cutoff) — ไม่ได้ทายไว้ก็ไม่ error */
 export async function cancelPrediction(matchId: number, userId: number): Promise<void> {
     const match = await getMatchOr404(matchId);
-    assertOpen(match);
+    assertOpen(match, await TournamentRepo.findTournamentById(match.tournament_id));
     await PickemRepo.remove(userId, matchId);
 }
 
@@ -100,14 +109,15 @@ export async function getSummary(matchId: number, viewerId?: number) {
     });
     // ปัดเศษแยกกันอาจรวมได้ 101 (เช่น 5:3 → 63+38) → ให้ทีมสุดท้ายเป็นส่วนที่เหลือ
     if (total > 0 && teams.length === 2) teams[1]!.percent = 100 - teams[0]!.percent;
-    const reason = cutoffReason(match);
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    const reason = closedReason(match, tournament);
 
     let mine = null;
     let canPredict = false;
     if (viewerId !== undefined) {
         const own = await PickemRepo.findMine(viewerId, matchId);
         mine = own ? { teamId: own.predicted_winner_team_id, pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
-        canPredict = reason === null && (await conflictOf(match, viewerId)) === null;
+        canPredict = reason === null && (await conflictOf(match, tournament, viewerId)) === null;
     }
 
     return { matchId, isOpen: reason === null, closedReason: reason, closesAt: match.scheduled_time, total, teams, mine, canPredict };
