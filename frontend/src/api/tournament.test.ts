@@ -152,7 +152,7 @@ describe("registration lifecycle", () => {
     expect(lastRequest()).toEqual({ path: "/tournaments/5/open-registration", method: "POST", body: undefined });
   });
 
-  it("closes registration before the bracket is drawn", async () => {
+  it("closes registration explicitly without coupling the route to bracket creation", async () => {
     fetchMock.mockResolvedValueOnce(json({ id: 5, registrationOpen: false }));
 
     await expect(closeRegistration(5)).resolves.toEqual({ id: 5, registrationOpen: false });

@@ -3,8 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
 
-const { closeRegistration, drawState, matchState, mutate, openRegistration, teamState } = vi.hoisted(() => ({
-  closeRegistration: vi.fn(),
+const { drawState, matchState, mutate, openRegistration, teamState } = vi.hoisted(() => ({
   drawState: { current: {} as Record<string, unknown> },
   matchState: { current: {} as Record<string, unknown> },
   mutate: vi.fn(),
@@ -21,7 +20,6 @@ vi.mock('../../../hooks/useMatch', () => ({
 }))
 vi.mock('../../../hooks/useTournament', () => ({
   useCompleteTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
-  useCloseTournamentRegistration: () => ({ mutate: closeRegistration, isPending: false, isError: false }),
   useDrawTournament: () => drawState.current,
   useOpenTournamentRegistration: () => ({ mutate: openRegistration, isPending: false, isError: false }),
   usePublishTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
@@ -38,7 +36,7 @@ import { SetupTrail } from './SetupTrail'
 const tournament: Tournament = {
   id: '4', name: 'QA Age Cup', sport: 'Basketball', format: 'single', channel: 'onsite',
   status: 'public', date: '2026-10-01', venue: 'Main court', pin: null, cap: 8,
-  registrationOpen: false,
+  registrationOpen: true,
   organizer: '9001', referees: [],
   rules: { gender: 'any', ageMin: 'any', ageMax: 'any', faculty: 'any', major: 'any', year: 'any' },
   drawn: false, rounds: 1, champion: null,
@@ -56,24 +54,23 @@ describe('draw progress in real mode', () => {
     teamState.current = { items: [] }
     render(<MemoryRouter><SetupTrail t={{ ...tournament, registrationOpen: false }} onAppoint={vi.fn()} /></MemoryRouter>)
 
-    expect(screen.getByText('Step 3 of 9')).toBeInTheDocument()
+    expect(screen.getByText('Step 3 of 8')).toBeInTheDocument()
     expect(screen.getByText(/Publishing makes the tournament visible/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open registration' }))
     expect(openRegistration).toHaveBeenCalledTimes(1)
   })
 
-  it('requires registration to close after squads are approved and before drawing', () => {
+  it('allows drawing while registration remains open so later approved squads can trigger a redraw', () => {
     render(<MemoryRouter><SetupTrail t={{ ...tournament, registrationOpen: true }} onAppoint={vi.fn()} /></MemoryRouter>)
 
-    expect(screen.getByText('Step 5 of 9')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Close registration' }))
-    expect(closeRegistration).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: /Generate bracket/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Step 5 of 8')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Generate bracket/ })).toBeInTheDocument()
+    expect(screen.getByText(/Registration may remain open/)).toBeInTheDocument()
   })
 
   it('advances from draw to fixture setup from API matches, not the legacy drawn flag', () => {
     const view = render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
-    expect(screen.getByText('Step 6 of 9')).toBeInTheDocument()
+    expect(screen.getByText('Step 5 of 8')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Generate bracket/ })).toBeInTheDocument()
 
     matchState.current = {
@@ -83,7 +80,7 @@ describe('draw progress in real mode', () => {
     }
     view.rerender(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
 
-    expect(screen.getByText('Step 7 of 9')).toBeInTheDocument()
+    expect(screen.getByText('Step 6 of 8')).toBeInTheDocument()
     expect(screen.getByText(/saved matches confirm that the bracket is drawn/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Generate bracket/ })).not.toBeInTheDocument()
   })

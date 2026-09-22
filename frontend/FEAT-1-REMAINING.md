@@ -31,18 +31,23 @@ are historical evidence, not the current backend reference.
       tournament now exposes an explicit **Open registration** action backed by
       `POST /tournaments/:id/open-registration`; it no longer advances directly
       to **Approve the squads** while the backend still rejects applications.
-- [x] Add the matching **Close registration** step after at least two squads are
-      approved and before bracket draw, backed by
-      `POST /tournaments/:id/close-registration`.
+- [x] Keep registration open while squads apply and the organizer approves them.
+      Draw and atomic redraw do not require registration to close: M01 uses the
+      currently approved squads and `replace: true` remains available while all
+      matches are still `scheduled` with no check-ins or results. This follows
+      `BE_KN` `a88f7ad`, whose bracket service deliberately ignores
+      `registration_open`.
 - [x] Keep the entry form closed in real mode unless the authoritative
       `registrationOpen` flag is true; public visibility alone is not treated as
       permission to submit an application.
-- [x] Add API and progress/view regressions for the dedicated open/close routes,
-      the blocked public-but-closed state, lifecycle ordering and DTO mapping.
+- [x] Add API and progress/view regressions for the dedicated registration
+      routes, the blocked public-but-closed state, drawing while registration is
+      open, lifecycle ordering and DTO mapping.
 - [ ] Frontend Tester verifies in a real browser that an organizer can publish,
       open registration, receive a squad application, approve at least two
-      squads, close registration and then draw the bracket against current
-      `BE_KN`, recording Network evidence for both lifecycle writes.
+      squads, draw while registration remains open, approve another squad and
+      redraw with `replace: true` against current `BE_KN`, recording Network
+      evidence for the lifecycle and bracket writes.
 
 Developer verification passed on 2026-09-22: focused registration coverage
 passed (3 files / 29 tests), the full suite passed (36 files / 226 tests), lint

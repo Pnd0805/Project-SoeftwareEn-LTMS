@@ -554,7 +554,7 @@ export function openRegistration(id: number): Promise<{ id: number; registration
   return apiFetch(`/tournaments/${id}/open-registration`, { method: "POST" });
 }
 
-/** POST /tournaments/:id/close-registration — ผู้จัด · ต้องปิดก่อนจับสาย */
+/** POST /tournaments/:id/close-registration — ผู้จัด · หยุดรับใบสมัครใหม่; ไม่ใช่ prerequisite ของ draw/redraw */
 export function closeRegistration(id: number): Promise<{ id: number; registrationOpen: boolean }> {
   return apiFetch(`/tournaments/${id}/close-registration`, { method: "POST" });
 }

@@ -255,14 +255,6 @@ export function useOpenTournamentRegistration(tournamentId: number) {
   });
 }
 
-export function useCloseTournamentRegistration(tournamentId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => tournamentApi.closeRegistration(tournamentId),
-    onSuccess: () => invalidateTournament(queryClient, tournamentId),
-  });
-}
-
 export function useDrawTournament(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: tournamentApi.drawTournament.bind(null, tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });

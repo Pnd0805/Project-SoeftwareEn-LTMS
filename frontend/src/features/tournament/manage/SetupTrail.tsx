@@ -2,8 +2,8 @@
  * src/features/tournament/manage/SetupTrail.tsx
  *
  * The organizer's job is a sequence and the manage tab states it, drawn with the
- * same trail a match result uses: appoint the referees → open it to the public →
- * approve the squads → draw the bracket → set every fixture → results come in.
+ * same trail a match result uses: appoint the referees → publish → open registration →
+ * approve the squads → draw/redraw → set every fixture → results come in.
  *
  * Each step carries its own count, exactly one is lit, and only the lit step
  * carries a button. A step whose action would be refused says so instead of
@@ -20,8 +20,8 @@ import { ConfirmCard, Modal } from '../../../components/kit/Modal'
 import type { TrailStep } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
 import {
-  useCloseTournamentRegistration, useCompleteTournament, useDrawTournament, useOpenTournamentRegistration,
-  usePublishTournament, useTournamentApplications, useTournamentTeams,
+  useCompleteTournament, useDrawTournament, useOpenTournamentRegistration, usePublishTournament,
+  useTournamentApplications, useTournamentTeams,
 } from '../../../hooks/useTournament'
 import { useTournamentMatches } from '../../../hooks/useMatch'
 import { useTournamentReferees } from '../../../hooks/useAdmin'
@@ -63,7 +63,6 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const real = tournamentId !== undefined
   const complete = useCompleteTournament(tournamentId ?? 0)
   const openRegistration = useOpenTournamentRegistration(tournamentId ?? 0)
-  const closeRegistration = useCloseTournamentRegistration(tournamentId ?? 0)
   const approvedTeams = useTournamentTeams(tournamentId)
   const applications = useTournamentApplications(tournamentId)
   const backendMatches = useTournamentMatches(tournamentId)
@@ -136,23 +135,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
     {
       state: approvedCount >= 2 ? 'done' : 'idle',
       title: 'Approve the squads',
-      note: `${approvedCount} approved · ${pendingCount} waiting on you · cap ${t.cap}. The hard filter has already refused anybody ineligible.`,
+      note: `${approvedCount} approved · ${pendingCount} waiting on you · cap ${t.cap}. Registration may remain open; redraw uses the currently approved squads until matches are in use.`,
     },
-    ...(real ? [{
-      state: approvedCount >= 2 && !t.registrationOpen ? 'done' as const : 'idle' as const,
-      title: 'Close registration',
-      note: approvedCount < 2
-        ? 'Approve at least two squads before closing registration.'
-        : t.registrationOpen
-          ? `${approvedCount} squads are approved. Close registration before drawing the bracket.`
-          : 'Registration is closed. The approved field is ready to draw.',
-      cta: approvedCount >= 2 && t.registrationOpen ? (
-        <button className="btn primary" type="button" disabled={closeRegistration.isPending}
-          onClick={() => closeRegistration.mutate()}>
-          {closeRegistration.isPending ? 'Closing registration…' : 'Close registration'}
-        </button>
-      ) : undefined,
-    }] : []),
     {
       state: bracketDrawn ? 'done' : 'idle',
       title: 'Draw the bracket',
@@ -228,15 +212,14 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
           <ConfirmCard ok="Open it" onCancel={() => setConfirming(null)}
             onConfirm={() => { setConfirming(null); publish.mutate() }}
             body={<>
-              Everybody will be able to find <b>{t.name}</b> and enter a squad. Check the entry rules
-              and the dates first — squads apply against whatever is set now.
+              Everybody will be able to find <b>{t.name}</b>. Registration stays closed until the
+              separate Open registration step, so check the entry rules and dates before opening it.
             </>} />
         )}
       </Modal>
 
       {publish.isError ? <Banner kind="crit"><b>Couldn't open it to the public.</b> {errorMessage(publish.error)}</Banner> : null}
       {openRegistration.isError ? <Banner kind="crit"><b>Couldn't open registration.</b> {errorMessage(openRegistration.error)}</Banner> : null}
-      {closeRegistration.isError ? <Banner kind="crit"><b>Couldn't close registration.</b> {errorMessage(closeRegistration.error)}</Banner> : null}
       {draw.isPending ? <Banner kind="neutral"><b>Drawing the bracket…</b> Refreshing the saved matches before progress advances.</Banner> : null}
       {draw.isError ? <Banner kind="crit"><b>Couldn't draw the bracket.</b> {errorMessage(draw.error)}</Banner> : null}
       {complete.isError ? (
