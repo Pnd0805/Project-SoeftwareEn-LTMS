@@ -2,7 +2,7 @@ import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
-import * as NotificationRepo from '../repositories/notification.repo.js';
+import * as NotificationService from './notification.service.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
@@ -155,7 +155,7 @@ export async function deleteMember(userId : number , teamId : number , sportId :
     const team = await TeamRepo.findById(teamId);
     for(const squad of squads){
         if(squad.squad_size - 1 >= sport_rule!.min_members) continue;
-        await NotificationRepo.insertNotification({
+        await NotificationService.notify({
             userId : team!.leader_id,
             type : 'squad_below_minimum',
             title : 'รายชื่อผู้เล่นไม่ครบขั้นต่ำ',
@@ -165,6 +165,13 @@ export async function deleteMember(userId : number , teamId : number , sportId :
             relatedEntityId : squad.tournament_id,
         });
     }
+
+    await NotificationService.notify({
+        userId , type : 'team_member_removed' ,
+        title : 'คุณถูกนำออกจากทีม' ,
+        message : `หัวหน้าทีมนำคุณออกจากทีม "${team?.name ?? ''}"` ,
+        relatedEntityType : 'team' , relatedEntityId : teamId ,
+    });
 
     const memberCount = await TeamRepo.countMemberByTeamId(teamId);
     if(memberCount < sport_rule!.min_members){
@@ -197,6 +204,13 @@ export async function createInvitation(teamId : number , invitedUserId : number 
     const invitedId = await TeamRepo.createInvitation(teamId , invitedUserId , invitedByUserId , expiresAt);
 
     const invitation = await TeamRepo.findInvitationsById(invitedId);
+    const team = await TeamRepo.findById(teamId);
+    await NotificationService.notify({
+        userId : invitedUserId , type : 'team_invited' ,
+        title : 'คุณได้รับคำเชิญเข้าทีม' ,
+        message : `คุณได้รับคำเชิญเข้าทีม "${team?.name ?? ''}" — ตอบรับได้ภายใน 7 วัน` ,
+        relatedEntityType : 'team' , relatedEntityId : teamId ,
+    });
     return toCreateTeamInvitation(invitation!);
 }
 

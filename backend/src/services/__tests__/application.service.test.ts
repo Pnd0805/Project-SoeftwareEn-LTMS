@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('../../services/notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
 vi.mock('../../repositories/application.repo.js', () => ({
   findApprovedTeamsByTournament: vi.fn(),
   findApplicationsByLeader: vi.fn(),
@@ -77,6 +86,7 @@ import type {
 import type { TeamRow, TournamentRow } from '../../types/db.js';
 import * as WalkoverRepo from '../../repositories/walkover.repo.js';
 import * as Walkover from '../../services/walkover.service.js';
+import * as NotificationService from '../../services/notification.service.js';
 
 const mockedApplicationRepo = vi.mocked(ApplicationRepo);
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
@@ -472,6 +482,10 @@ describe('withdrawApplication', () => {
     expect(mockedApplicationRepo.deletePlayersByApplication).toHaveBeenCalledWith(100);
     expect(mockedMatchRepo.countMatchesByTournament).toHaveBeenCalledWith(20);
     expect(result).toEqual({ id: 100, status: 'withdrawn', bracketExists: false, walkovers: [] });
+    // C1-ข — แจ้งผู้จัดว่ามีทีมถอนตัว
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 7, type: 'application_withdrawn', relatedEntityId: 20,
+    }));
     expect(Walkover.processTeamWithdrawal).not.toHaveBeenCalled();
   });
 
@@ -563,6 +577,10 @@ describe('approveApplication', () => {
     const result = await applicationService.approveApplication(100, 7);
 
     expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'approved');
+    // C1-ข — แจ้งหัวหน้าทีมว่าผ่านแล้ว
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 5, type: 'application_decided', relatedEntityType: 'tournament', relatedEntityId: 20,
+    }));
     expect(result).toEqual({ id: 100, status: 'approved' });
   });
 });
@@ -617,6 +635,10 @@ describe('rejectApplication', () => {
 
     expect(mockedApplicationRepo.rejectApplicationInDb).toHaveBeenCalledWith(100, 'not eligible');
     expect(mockedApplicationRepo.deletePlayersByApplication).toHaveBeenCalledWith(100);
+    // C1-ข — แจ้งหัวหน้าทีมพร้อมเหตุผล
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 5, type: 'application_decided', message: expect.stringContaining('not eligible'),
+    }));
     expect(result).toEqual({ id: 100, status: 'rejected', reason: 'not eligible' });
   });
 });

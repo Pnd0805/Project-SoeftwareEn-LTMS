@@ -5,6 +5,7 @@ import { toUserRef } from '../mappers/user.mapper.js';
 import { getIdentityState } from './refereeIdentity.service.js';
 import type { AdminReviewRow } from '../repositories/tournamentReferee.repo.js';
 import type { RejectExternalRefereeInput } from '../schemas/referee.schema.js';
+import * as NotificationService from './notification.service.js';
 
 /** AR01 — คิวตรวจตัวตน จัดกลุ่ม "ต่อคน" (1 รายการ = 1 user แม้รออยู่หลายทัวร์) */
 export async function listPendingExternalReferees(){
@@ -41,6 +42,11 @@ export async function approveExternalReferee(userId : number, adminUserId : numb
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
     }
     const affected = await RefRepo.approveUser(userId, adminUserId);
+    await NotificationService.notify({
+        userId, type : 'referee_external_decided',
+        title : 'ยืนยันตัวตนกรรมการผ่านแล้ว',
+        message : 'แอดมินยืนยันตัวตนของคุณแล้ว คุณทำหน้าที่กรรมการได้ทันที',
+    });
     return { userId, identityStatus : 'approved' as const, tournamentsUpdated : affected };
 }
 
@@ -52,6 +58,11 @@ export async function requestDocsFromExternalReferee(userId : number, adminUserI
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
     }
     const affected = await RefRepo.requestDocsFromUser(userId, adminUserId, input.reason);
+    await NotificationService.notify({
+        userId, type : 'referee_external_decided',
+        title : 'แอดมินขอเอกสารยืนยันตัวตนเพิ่ม',
+        message : `กรุณาส่งเอกสารยืนยันตัวตนใหม่ — ${input.reason}`,
+    });
     return { userId, identityStatus : 'needs_docs' as const, reason : input.reason, tournamentsUpdated : affected };
 }
 
@@ -67,5 +78,10 @@ export async function rejectExternalReferee(userId : number, adminUserId : numbe
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่มีการยืนยันตัวตนที่จะปฏิเสธ');
     }
     const affected = await RefRepo.rejectUser(userId, adminUserId, input.reason);
+    await NotificationService.notify({
+        userId, type : 'referee_external_decided',
+        title : 'ยืนยันตัวตนกรรมการไม่ผ่าน',
+        message : `แอดมินไม่อนุมัติตัวตนกรรมการของคุณ — เหตุผล: ${input.reason}`,
+    });
     return { userId, identityStatus : 'rejected' as const, reason : input.reason, tournamentsUpdated : affected };
 }

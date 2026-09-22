@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
+vi.mock('../../repositories/user.repo.js', () => ({
+  findById: vi.fn(() => Promise.resolve({ user_id: 8, full_name: 'สมชาย ใจดี' })),
+}));
+
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
 }));
@@ -31,6 +44,7 @@ import { AppError } from '../../utils/AppError.js';
 import type { TeamInvitationRow, TeamRow } from '../../types/db.js';
 import * as ApplicationRepo from '../../repositories/application.repo.js';
 import { checkTeam } from '../../utils/checkExist.js';
+import * as NotificationService from '../notification.service.js';
 
 const mockedInviteRepo = vi.mocked(InviteRepo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
@@ -160,6 +174,11 @@ describe('acceptInvitation', () => {
     expect(mockedInviteRepo.createAcceptInvite).toHaveBeenCalledWith(55, 10, 8);
     expect(mockedTeamRepo.findById).toHaveBeenCalledWith(10);
     expect(result).toEqual({ teamId: 10, teamReadinessStatus: 'Forming' });
+    // C1-ข — แจ้งหัวหน้าทีมว่ามีคนตอบรับ
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'team_invite_answered', relatedEntityType: 'team', relatedEntityId: 10,
+      message: expect.stringContaining('สมชาย ใจดี'),
+    }));
   });
 
   // CoI ประตูที่ 3 (GUIDE/10 F-19): ทีมสมัครทัวร์ที่คนนี้เป็น ORG/กรรมการไปแล้วระหว่างรอกดรับ
@@ -226,6 +245,7 @@ describe('rejectInvitation', () => {
 
     expect(mockedInviteRepo.createRejectInvite).toHaveBeenCalledWith(55, 8);
     expect(result).toBeUndefined();
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'team_invite_answered' }));
   });
 });
 

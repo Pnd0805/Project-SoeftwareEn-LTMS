@@ -5,6 +5,9 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as BracketNodeRepo from '../repositories/bracketNode.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as PickemRepo from '../repositories/pickem.repo.js';
+import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
+import * as NotificationService from './notification.service.js';
 import { toBracketNodeDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
 
@@ -348,12 +351,21 @@ export async function createBracket(
     // replace: ลบเก่า + สร้างใหม่บน connection เดียว — พังตรงไหน rollback ทั้งก้อน สายเดิมยังอยู่ครบ
     const conn = replacing ? await pool.getConnection() : undefined;
     try {
+        // คนที่จะเสียของไปกับแมตช์เก่า — อ่านก่อนลบ ไว้แจ้งหลัง commit (มติ 22 ก.ย.)
+        let pickerIds: number[] = [];
+        let refereeIds: number[] = [];
         if (conn) {
             await conn.beginTransaction();
+            pickerIds = await PickemRepo.findPickerIdsTx(conn, tournamentId);
+            refereeIds = await MatchRefRepo.findAssignedUserIdsInTournament(conn, tournamentId);
             await MatchRepo.clearBracketTx(conn, tournamentId);
         }
         const built = await buildBracket(tournamentId, bracketFormat, teamIdsInOrder, seedingMethod, mode, conn);
-        if (conn) await conn.commit();
+        if (conn) {
+            await conn.commit();
+            await notifyRedraw(tournamentId, tournament.name, pickerIds, refereeIds);
+        }
+        await notifyTeamsOfBracket(tournament, replacing);
         return { ...built, replaced: replacing };
     } catch (err) {
         if (conn) await conn.rollback();
@@ -361,6 +373,35 @@ export async function createBracket(
     } finally {
         conn?.release();
     }
+}
+
+/**
+ * มติ 22 ก.ย. — ทีมต้องรู้ทั้งตอนสายออกครั้งแรก และตอนจับใหม่ (คู่แข่งเปลี่ยน · เวลาที่นัดไว้เดิมหายหมด)
+ * ผู้รับ: ผู้เล่นในรายชื่อลงแข่ง + หัวหน้าทีม ของทุกทีมที่ผ่าน · ORG เป็นคนกดเอง ไม่ต้องแจ้ง
+ */
+async function notifyTeamsOfBracket(tournament: { tournament_id: number; name: string; requested_by_user_id: number }, replaced: boolean): Promise<void> {
+    await NotificationService.notifyTournamentSquads(tournament.tournament_id, replaced
+        ? { type: 'bracket_redrawn', title: 'ผู้จัดจับสายการแข่งขันใหม่',
+            message: `ทัวร์นาเมนต์ "${tournament.name}" จับสายการแข่งขันใหม่ — คู่แข่งและเวลาที่เคยนัดไว้ถูกยกเลิก ตรวจสายใหม่อีกครั้ง`,
+            relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id }
+        : { type: 'bracket_created', title: 'สายการแข่งขันออกแล้ว',
+            message: `ทัวร์นาเมนต์ "${tournament.name}" จัดสายการแข่งขันแล้ว — ดูคู่แข่งและรอบของทีมคุณได้เลย`,
+            relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id },
+        { exceptUserId: tournament.requested_by_user_id });
+}
+
+/** จับสายใหม่แล้ว: คนที่ทายไว้ → การทายถูกยกเลิก ทายใหม่ได้ · กรรมการที่ผูกแมตช์เดิม → แมตช์ถูกยกเลิก รอมอบหมายใหม่ */
+async function notifyRedraw(tournamentId: number, tournamentName: string, pickerIds: number[], refereeIds: number[]): Promise<void> {
+    await NotificationService.notifyUsers(pickerIds, {
+        type: 'pickem_cancelled', title: 'การทายผลถูกยกเลิก',
+        message: `ผู้จัดจับสายทัวร์นาเมนต์ "${tournamentName}" ใหม่ — การทายผลของคุณในทัวร์นี้ถูกยกเลิก ทายใหม่ได้ในสายใหม่`,
+        relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+    });
+    await NotificationService.notifyUsers(refereeIds, {
+        type: 'bracket_redrawn', title: 'แมตช์ที่คุมถูกยกเลิก (จับสายใหม่)',
+        message: `ผู้จัดจับสายทัวร์นาเมนต์ "${tournamentName}" ใหม่ — แมตช์ที่คุณรับหรือถูกเสนอไว้ถูกยกเลิกทั้งหมด รอผู้จัดมอบหมายแมตช์ใหม่`,
+        relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+    });
 }
 
 async function buildBracket(

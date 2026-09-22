@@ -16,6 +16,9 @@ import { refereeAdminRouter } from './refereeAdmin.routes.js';
 import Tournament from './tournament.routes.js';
 import Amendment from './amendment.routes.js';
 import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
+import { meNotificationRouter } from './notification.routes.js';
+import { tournamentFeedbackRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
+import { matchEngagementRouter, mePickemRouter, tournamentPickemRouter } from './engagement.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
@@ -50,5 +53,18 @@ router.use('/admin' , refereeAdminRouter);
 
 router.use('/tournaments' , tournamentAnnouncementRouter);
 router.use('/announcements' , announcementRouter);
+
+// C1 Inbox — GET/PATCH/POST /me/notifications
+router.use('/me' , meNotificationRouter);
+
+// C6 feedback / rating / MVP vote
+router.use('/tournaments' , tournamentFeedbackRouter);
+router.use('/feedback' , feedbackRouter);
+router.use('/admin' , adminFeedbackRouter);
+
+// C7 Pick'em (คอมเมนต์ทัวร์อยู่กับ C6 ที่ tournamentFeedbackRouter)
+router.use('/matches' , matchEngagementRouter);
+router.use('/me' , mePickemRouter);
+router.use('/tournaments' , tournamentPickemRouter);
 
 export default router;

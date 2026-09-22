@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
+vi.mock('../../repositories/tournament.repo.js', () => ({
+  findTournamentById: vi.fn(() => Promise.resolve({ tournament_id: 20, name: 'Cup' })),
+}));
+
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findLatestByTournamentAndUser: vi.fn(),
   findApplyingTeamOfUser: vi.fn(() => Promise.resolve(null)),
@@ -12,16 +25,23 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findRecentApproval: vi.fn(),
   findOpenReview: vi.fn(),
   submitDocsForUser: vi.fn(),
+  removeAllByUser: vi.fn(),
 }));
 
 // F04/F05 ดึงแมตช์ที่แนบมากับคำเชิญ — เทสชุดนี้ไม่ได้แนบแมตช์ จึงคืนว่างเสมอ
 vi.mock('../../repositories/matchReferee.repo.js', () => ({
   findByTournamentReferees: vi.fn().mockResolvedValue([]),
   findAcceptedByUser: vi.fn().mockResolvedValue([]),
+  unassign: vi.fn(),
 }));
 
 vi.mock('../../repositories/match.repo.js', () => ({
   findByIdsInTournament: vi.fn().mockResolvedValue([]),
+  findRefereeCoverage: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../repositories/sportType.repo.js', () => ({
+  findStatDefinitionsBySportType: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../repositories/user.repo.js', () => ({
@@ -38,6 +58,7 @@ import * as refereeService from '../referee.service.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
+import * as NotificationService from '../notification.service.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto } from '../../mappers/referee.mapper.js';
 import { AppError } from '../../utils/AppError.js';
 import type { TournamentRefereeRow, UserRow } from '../../types/db.js';
@@ -486,5 +507,77 @@ describe('listMyRefereeMatches (B7)', () => {
     vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([row(), row({ match_id: 13, match_status: 'completed' })]);
     expect((await refereeService.listMyRefereeMatches(7, { upcoming: true })).items.map(i => i.id)).toEqual([10]);
     expect((await refereeService.listMyRefereeMatches(7, { status: 'completed' })).items.map(i => i.id)).toEqual([13]);
+  });
+});
+
+describe('แจ้งเตือนกรรมการถูกถอด (มติ 22 ก.ย. 2569)', () => {
+  const tr = (over: Record<string, unknown> = {}) => ({
+    tournament_referee_id: 5, tournament_id: 20, user_id: 70, invitation_status: 'accepted', removed_at: null, ...over,
+  }) as never;
+  const mr = (over: Record<string, unknown> = {}) => ({ match_referee_id: 1, tournament_referee_id: 5, assignment_status: 'accepted', match_id: 10, ...over }) as never;
+
+  beforeEach(() => {
+    vi.mocked(NotificationService.notify).mockClear();
+    vi.mocked(MatchRefRepo.unassign).mockResolvedValue(true);
+  });
+
+  it('unassign from a match the referee accepted → tells that referee', async () => {
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([mr()]);
+    mockedRefRepo.findById.mockResolvedValueOnce(tr());
+
+    await refereeService.unassignRefereeFromMatch(10, 5);
+
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 70, type: 'referee_removed', title: 'คุณถูกถอดจากกรรมการแมตช์', relatedEntityType: 'match', relatedEntityId: 10,
+    }));
+  });
+
+  it('unassign a match that was only offered (pending) → different wording', async () => {
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([mr({ assignment_status: 'pending' })]);
+    mockedRefRepo.findById.mockResolvedValueOnce(tr({ invitation_status: 'pending' }));
+
+    await refereeService.unassignRefereeFromMatch(10, 5);
+
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({ title: 'ผู้จัดถอนแมตช์ออกจากคำเชิญ' }));
+  });
+
+  it('unassign a match the referee declined → no notification', async () => {
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([mr({ assignment_status: 'declined' })]);
+    mockedRefRepo.findById.mockResolvedValueOnce(tr());
+
+    await refereeService.unassignRefereeFromMatch(10, 5);
+
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('unassign a pair that does not exist → 404 and no notification', async () => {
+    vi.mocked(MatchRefRepo.unassign).mockResolvedValueOnce(false);
+    mockedRefRepo.findById.mockResolvedValueOnce(tr());
+
+    await expect(refereeService.unassignRefereeFromMatch(10, 5)).rejects.toMatchObject({ status: 404, code: 'REFEREE_NOT_ASSIGNED' });
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it('remove an accepted referee from the tournament → tells them with the tournament name', async () => {
+    mockedRefRepo.findById.mockResolvedValueOnce(tr());
+
+    await refereeService.removeTournamentReferee(20, 5, 7, 1);
+
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 70, type: 'referee_removed', title: 'คุณถูกถอดจากกรรมการทัวร์นาเมนต์', relatedEntityType: 'tournament', relatedEntityId: 20,
+    }));
+    expect(vi.mocked(NotificationService.notify).mock.calls[0]![0]).toMatchObject({ message: expect.stringContaining('"Cup"') });
+  });
+
+  it('cancel a pending invitation → "invitation cancelled" wording', async () => {
+    mockedRefRepo.findById.mockResolvedValueOnce(tr({ invitation_status: 'pending' }));
+    await refereeService.removeTournamentReferee(20, 5, 7, 1);
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({ title: 'คำเชิญเป็นกรรมการถูกยกเลิก' }));
+  });
+
+  it('remove someone who already rejected → no notification', async () => {
+    mockedRefRepo.findById.mockResolvedValueOnce(tr({ invitation_status: 'rejected' }));
+    await refereeService.removeTournamentReferee(20, 5, 7, 1);
+    expect(NotificationService.notify).not.toHaveBeenCalled();
   });
 });

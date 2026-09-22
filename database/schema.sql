@@ -602,7 +602,7 @@ CREATE TABLE tournament_feedback (
   tournament_feedback_id INT PRIMARY KEY AUTO_INCREMENT,
   tournament_id INT NOT NULL,
   user_id INT NOT NULL,
-  feedback_type ENUM('comment','organizer_feedback','mvp_vote') NOT NULL,
+  feedback_type ENUM('comment','organizer_feedback','mvp_vote') NOT NULL,   -- comment = C7 คอมเมนต์ทัวร์ (ทุกคนเห็น · คนละ 1 อัน · มติ 22 ก.ย.)
   content TEXT NULL,
   rating INT NULL,
   voted_for_user_id INT NULL,

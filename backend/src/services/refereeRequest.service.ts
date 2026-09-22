@@ -8,6 +8,7 @@ import type { Schedulable } from './referee.service.js';
 import { toRefereeRequestDto } from '../mappers/refereeRequest.mapper.js';
 import type { RefRequestInput, OrgAddMatchInput, OrgSwapInput } from '../schemas/refereeRequest.schema.js';
 import type { MatchRow, RefereeChangeRequestRow, TournamentRefereeRow } from '../types/db.js';
+import * as NotificationService from './notification.service.js';
 
 // ───────────────────────────── helpers ─────────────────────────────
 
@@ -117,6 +118,14 @@ export async function createRefRequest(userId : number, input : RefRequestInput)
         aStatus : 'accepted',      // คนขอถือว่าตกลงแล้ว
         bStatus : 'pending'
     });
+    await NotificationService.notify({
+        userId : b.user_id, type : 'referee_change_request',
+        title : theirMatch ? 'มีคำขอแลกแมตช์กรรมการ' : 'มีคำขอโอนแมตช์กรรมการ',
+        message : theirMatch
+            ? `กรรมการอีกคนขอแลกแมตช์ #${myMatch.match_id} กับแมตช์ #${theirMatch.match_id} ของคุณ`
+            : `กรรมการอีกคนขอโอนแมตช์ #${myMatch.match_id} ให้คุณ`,
+        relatedEntityType : 'match', relatedEntityId : myMatch.match_id,
+    });
     return dtoOf(id);
 }
 
@@ -139,6 +148,12 @@ export async function createOrgAddMatch(tournamentId : number, userId : number, 
         refereeAId : a.tournament_referee_id, refereeBId : null,
         matchAId : match.match_id, matchBId : null,
         aStatus : 'pending', bStatus : 'not_required'
+    });
+    await NotificationService.notify({
+        userId : a.user_id, type : 'referee_change_request',
+        title : 'ผู้จัดขอให้คุณคุมแมตช์เพิ่ม',
+        message : `ผู้จัดขอให้คุณเป็นกรรมการแมตช์ #${match.match_id} เพิ่ม`,
+        relatedEntityType : 'match', relatedEntityId : match.match_id,
     });
     return dtoOf(id);
 }
@@ -168,6 +183,12 @@ export async function createOrgSwap(tournamentId : number, userId : number, inpu
         refereeAId : a.tournament_referee_id, refereeBId : b.tournament_referee_id,
         matchAId : matchA.match_id, matchBId : matchB.match_id,
         aStatus : 'pending', bStatus : 'pending'
+    });
+    await NotificationService.notifyUsers([a.user_id, b.user_id], {
+        type : 'referee_change_request',
+        title : 'ผู้จัดขอสลับแมตช์กรรมการ',
+        message : `ผู้จัดขอสลับกรรมการระหว่างแมตช์ #${matchA.match_id} กับแมตช์ #${matchB.match_id}`,
+        relatedEntityType : 'match', relatedEntityId : matchA.match_id,
     });
     return dtoOf(id);
 }
@@ -218,6 +239,12 @@ export async function respondToRequest(requestId : number, userId : number, answ
 
     if(answer === 'declined'){
         await ReqRepo.close(requestId, 'declined');
+        await NotificationService.notify({
+            userId : req.requested_by, type : 'referee_change_request',
+            title : 'คำขอเปลี่ยนกรรมการถูกปฏิเสธ',
+            message : `คำขอเปลี่ยนกรรมการของแมตช์ #${req.match_a_id} ถูกปฏิเสธ`,
+            relatedEntityType : 'match', relatedEntityId : req.match_a_id,
+        });
         return dtoOf(requestId);
     }
 
@@ -226,6 +253,13 @@ export async function respondToRequest(requestId : number, userId : number, answ
     const done = (s : RefereeChangeRequestRow['a_status']) => s === 'accepted' || s === 'not_required';
     if(done(fresh.a_status) && done(fresh.b_status)){
         await applyOrCancel(fresh);
+        await NotificationService.notify({
+            userId : fresh.requested_by, type : 'referee_assigned',
+            title : 'เปลี่ยนกรรมการสำเร็จ',
+            message : `ทุกฝ่ายตกลงแล้ว กรรมการของแมตช์ #${fresh.match_a_id}` +
+                      (fresh.match_b_id ? ` และ #${fresh.match_b_id}` : '') + ' ถูกเปลี่ยนตามคำขอ',
+            relatedEntityType : 'match', relatedEntityId : fresh.match_a_id,
+        });
     }
     return dtoOf(requestId);
 }

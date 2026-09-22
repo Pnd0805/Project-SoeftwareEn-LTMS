@@ -18,6 +18,7 @@ import { refereesNeededPerMatch } from './referee.service.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as MatchResultService from './matchResult.service.js';
 import { isRequesterOf } from '../middlewares/requireOrganizer.js';
+import * as NotificationService from './notification.service.js';
 
 const amendmentFieldSchema = z.object({
     registrationStart: z.iso.datetime({ offset: true }).optional(),
@@ -296,6 +297,12 @@ export async function approveTournament(tournamentId: number, userId: number) {
     if (!await TournamentRepo.approveTournament(tournamentId, userId)) {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
     }
+    await NotificationService.notify({
+        userId: tournament.requested_by_user_id, type: 'tournament_decided',
+        title: 'คำขอจัดทัวร์นาเมนต์ได้รับการอนุมัติ',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ได้รับการอนุมัติแล้ว — ตั้งค่าและเปิดเผยแพร่ได้เลย`,
+        relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+    });
     return { id: tournamentId, status: 'private' as const, organizerId: tournament.requested_by_user_id };
 }
 
@@ -308,6 +315,12 @@ export async function rejectTournament(tournamentId: number, userId: number, rea
     if (!await TournamentRepo.rejectTournament(tournamentId, userId, reason)) {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
     }
+    await NotificationService.notify({
+        userId: tournament.requested_by_user_id, type: 'tournament_decided',
+        title: 'คำขอจัดทัวร์นาเมนต์ถูกปฏิเสธ',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ไม่ได้รับการอนุมัติ — เหตุผล: ${reason}`,
+        relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+    });
     return { id: tournamentId, status: 'rejected' as const, reason };
 }
 
@@ -498,6 +511,12 @@ export async function publishTournament(tournament: TournamentRow, userId: numbe
     if (result.status !== 'ok') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
     }
+    await NotificationService.notifyTournamentReferees(tournament.tournament_id, {
+        type: 'tournament_published',
+        title: 'ทัวร์นาเมนต์เปิดเผยแพร่แล้ว',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ที่คุณเป็นกรรมการ เปิดเผยแพร่แล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
     return { id: tournament.tournament_id, status: 'public' as const };
 }
 
@@ -550,6 +569,12 @@ export async function openRegistration(tournament: TournamentRow, userId: number
     if (!await TournamentRepo.changeRegistrationState(tournament.tournament_id, userId, true)) {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะรับสมัครเปลี่ยนไปแล้ว');
     }
+    await NotificationService.notifyTournamentTeamLeaders(tournament.tournament_id, {
+        type: 'registration_toggled',
+        title: 'เปิดรับสมัครแล้ว',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" เปิดรับสมัครแล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
     return { id: tournament.tournament_id, registrationOpen: true as const };
 }
 
@@ -560,6 +585,12 @@ export async function closeRegistration(tournament: TournamentRow, userId: numbe
     if (!await TournamentRepo.changeRegistrationState(tournament.tournament_id, userId, false)) {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะรับสมัครเปลี่ยนไปแล้ว');
     }
+    await NotificationService.notifyTournamentTeamLeaders(tournament.tournament_id, {
+        type: 'registration_toggled',
+        title: 'ปิดรับสมัครแล้ว',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ปิดรับสมัครแล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
     return { id: tournament.tournament_id, registrationOpen: false as const };
 }
 

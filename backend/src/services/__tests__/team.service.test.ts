@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
 vi.mock('../../repositories/application.repo.js', () => ({
   findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
   isTournamentStaffOfTeam: vi.fn(() => Promise.resolve(false)),
@@ -64,6 +73,7 @@ vi.mock('../../utils/checkExist.js', () => ({
 
 import * as teamService from '../team.service.js';
 import * as NotificationRepo from '../../repositories/notification.repo.js';
+import * as NotificationService from '../notification.service.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import * as SportRepo from '../../repositories/sportType.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
@@ -517,7 +527,7 @@ describe('deleteMember', () => {
     await teamService.deleteMember(5, 10, 1);
 
     expect(ApplicationRepo.deletePlayerFromLiveSquads).toHaveBeenCalledWith(10, 5);
-    expect(NotificationRepo.insertNotification).toHaveBeenCalledWith(
+    expect(NotificationService.notify).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 99, type: 'squad_below_minimum', relatedEntityId: 20 }),
     );
   });
@@ -534,7 +544,9 @@ describe('deleteMember', () => {
 
     await teamService.deleteMember(5, 10, 1);
 
-    expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
+    expect(NotificationService.notify).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'squad_below_minimum' }),
+    );
   });
 });
 

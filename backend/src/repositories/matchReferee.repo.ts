@@ -164,6 +164,18 @@ export async function countAcceptedByMatch(matchId : number): Promise<number>{
 }
 
 /** ถอดออกจากแมตช์ — hard delete (ตารางนี้ไม่มี removed_at) */
+/** กรรมการ (ยังไม่ถูกถอด) ที่รับแมตช์หรือถูกเสนอแมตช์ในทัวร์นี้ — อ่านก่อนจับสายใหม่ (แถวถูกลบไปพร้อมแมตช์) เพื่อแจ้งเขา */
+export async function findAssignedUserIdsInTournament(db : Queryable, tournamentId : number): Promise<number[]>{
+    const [rows] = await db.query<({ user_id : number } & RowDataPacket)[]>(
+        `SELECT DISTINCT tr.user_id
+         FROM match_referees mr
+         JOIN matches m ON m.match_id = mr.match_id
+         JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id
+         WHERE m.tournament_id = ? AND mr.assignment_status IN ('pending', 'accepted') AND tr.removed_at IS NULL`,
+        [tournamentId]);
+    return rows.map(r => r.user_id);
+}
+
 export async function unassign(matchId : number, tournamentRefereeId : number): Promise<boolean>{
     const [result] = await pool.query<ResultSetHeader>(
         'DELETE FROM match_referees WHERE match_id = ? AND tournament_referee_id = ?',

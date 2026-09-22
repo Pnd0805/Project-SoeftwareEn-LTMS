@@ -11,6 +11,8 @@ import type { RefereeStatusFields } from '../mappers/referee.mapper.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import type { MatchRefereeCoverageRow } from '../repositories/match.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as NotificationService from './notification.service.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -56,6 +58,15 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
     // 4. เขียน (คำเชิญ + แมตช์ที่แนบ ในทรานแซกชันเดียว)
     const newId = await RefRepo.create({
         tournamentId, userId : input.userId, invitedBy, isExternal : input.isExternal, matchIds
+    });
+
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    await NotificationService.notify({
+        userId : input.userId, type : 'referee_invited',
+        title : 'คุณได้รับเชิญเป็นกรรมการ',
+        message : `คุณได้รับเชิญเป็นกรรมการทัวร์นาเมนต์ "${tournament?.name ?? ''}"` +
+                  (matchIds.length > 0 ? ` (${matchIds.length} แมตช์)` : ''),
+        relatedEntityType : 'tournament', relatedEntityId : tournamentId,
     });
 
     return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds };
@@ -158,6 +169,14 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     }
 
     const requiresAdminApproval = approval.status === 'pending' || approval.status === 'needs_docs';
+    const referee = await UserRepo.findById(userId);
+    await NotificationService.notify({
+        userId : invitation.invited_by, type : 'referee_invite_answered',
+        title : 'กรรมการตอบรับคำเชิญแล้ว',
+        message : `${referee?.full_name ?? 'กรรมการ'} ตอบรับเป็นกรรมการ รับ ${chosenIds.length} แมตช์` +
+                  (requiresAdminApproval ? ' — รอแอดมินตรวจตัวตนก่อนนับเป็นกรรมการ' : ''),
+        relatedEntityType : 'tournament', relatedEntityId : invitation.tournament_id,
+    });
     return {
         id : invitationId,
         invitationStatus : 'accepted',
@@ -184,6 +203,13 @@ export async function declineRefereeInvitation(invitationId : number, userId : n
     if(!updated){
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
     }
+    const referee = await UserRepo.findById(userId);
+    await NotificationService.notify({
+        userId : invitation.invited_by, type : 'referee_invite_answered',
+        title : 'กรรมการปฏิเสธคำเชิญ',
+        message : `${referee?.full_name ?? 'กรรมการ'} ปฏิเสธคำเชิญเป็นกรรมการ`,
+        relatedEntityType : 'tournament', relatedEntityId : invitation.tournament_id,
+    });
 }   
 
 
@@ -195,9 +221,24 @@ export async function listMatchReferees(matchId : number){
 }
 
 export async function unassignRefereeFromMatch(matchId : number, tournamentRefereeId : number){
+    // อ่านก่อนลบ — ต้องรู้ว่าเป็นใครและรับแมตช์ไว้แล้วหรือแค่ถูกเสนอ (declined = เขาไม่รับเองอยู่แล้ว ไม่ต้องแจ้ง)
+    const row = (await MatchRefRepo.findByTournamentReferees([tournamentRefereeId])).find(r => r.match_id === matchId);
+    const referee = await RefRepo.findById(tournamentRefereeId);
+
     const removed = await MatchRefRepo.unassign(matchId, tournamentRefereeId);
     if(!removed){
         throw new AppError(404, 'REFEREE_NOT_ASSIGNED', 'กรรมการคนนี้ไม่ได้ถูกมอบหมายให้แมตช์นี้');
+    }
+
+    if(referee && row && row.assignment_status !== 'declined'){
+        await NotificationService.notify({
+            userId : referee.user_id, type : 'referee_removed',
+            title : row.assignment_status === 'accepted' ? 'คุณถูกถอดจากกรรมการแมตช์' : 'ผู้จัดถอนแมตช์ออกจากคำเชิญ',
+            message : row.assignment_status === 'accepted'
+                ? `ผู้จัดถอดคุณออกจากการเป็นกรรมการแมตช์ #${matchId} — ไม่ต้องไปคุมแมตช์นี้แล้ว`
+                : `ผู้จัดถอนแมตช์ #${matchId} ออกจากคำเชิญเป็นกรรมการของคุณ`,
+            relatedEntityType : 'match', relatedEntityId : matchId,
+        });
     }
 }
 
@@ -298,6 +339,19 @@ export async function removeTournamentReferee(
     }
 
     await RefRepo.removeAllByUser(tournamentId, target.user_id, removedBy);
+
+    // ปฏิเสธคำเชิญไปเองแล้ว = ไม่มีอะไรเปลี่ยนสำหรับเขา ไม่ต้องแจ้ง
+    if(target.invitation_status !== 'rejected'){
+        const tournament = await TournamentRepo.findTournamentById(tournamentId);
+        await NotificationService.notify({
+            userId : target.user_id, type : 'referee_removed',
+            title : target.invitation_status === 'accepted' ? 'คุณถูกถอดจากกรรมการทัวร์นาเมนต์' : 'คำเชิญเป็นกรรมการถูกยกเลิก',
+            message : target.invitation_status === 'accepted'
+                ? `ผู้จัดถอดคุณออกจากการเป็นกรรมการทัวร์นาเมนต์ "${tournament?.name ?? ''}" — แมตช์ที่เคยรับไว้ไม่ต้องไปคุมแล้ว`
+                : `ผู้จัดยกเลิกคำเชิญเป็นกรรมการทัวร์นาเมนต์ "${tournament?.name ?? ''}"`,
+            relatedEntityType : 'tournament', relatedEntityId : tournamentId,
+        });
+    }
 
     const coverage = await getRefereeCoverage(tournamentId, sportTypeId);
     return { removed : true, uncoveredMatches : coverage.uncovered.map(m => m.matchId) };

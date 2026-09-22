@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
 vi.mock('../../repositories/tournament.repo.js', () => ({
   publishTournament: vi.fn(),
 }));
@@ -24,6 +33,7 @@ vi.mock('../../mappers/user.mapper.js', () => ({ toUserRef: vi.fn() }));
 
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import * as TournamentService from '../tournament.service.js';
+import * as NotificationService from '../notification.service.js';
 
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
 
@@ -58,5 +68,8 @@ describe('publishTournament', () => {
       id: privateTournament.tournament_id,
       status: 'public',
     });
+    // C1-ข — กรรมการที่ตอบรับแล้วรู้ว่าทัวร์เปิดเผยแพร่
+    expect(NotificationService.notifyTournamentReferees).toHaveBeenCalledWith(
+      privateTournament.tournament_id, expect.objectContaining({ type: 'tournament_published' }));
   });
 });

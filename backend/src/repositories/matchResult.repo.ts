@@ -7,6 +7,7 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as BracketNodeRepo from '../repositories/bracketNode.repo.js';
 
 import type { SportStatDefinitionRow , PlayerMatchStatValueRow , TournamentStandingRow , TeamRow} from '../types/db.js';
+import * as PickemRepo from './pickem.repo.js';
 
 
 
@@ -105,6 +106,9 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
                                            matches_played = matches_played + 1, wins = wins + ?, losses = losses + ?, updated_at = NOW()`,
                                            [sportId, won, 1 - won, match.tournament_id, teamId, won, 1 - won]);
     }
+
+    // C7 Pick'em — ผลยืนยันแล้วเท่านั้นที่ให้แต้ม (spec 08 §6) · ทรานแซกชันเดียวกับผล พังพร้อมกัน
+    await PickemRepo.settleTx(conn, match.match_id, winnerId);
 }
 
 /**
@@ -133,6 +137,9 @@ async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId :
              WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved' AND ps.sport_type_id = ?`,
             [won, 1 - won, match.tournament_id, teamId, sportId]);
     }
+
+    // C7 Pick'em — ถอนผล = คืนแต้มที่ให้ไปทั้งหมด (amend ที่เปลี่ยนผู้ชนะจะ settle ใหม่ใน applyOutcomeTx ต่อทันที)
+    await PickemRepo.unsettleTx(conn, match.match_id);
 }
 
 function loserOf(match : MatchRow, winnerId : number): number{

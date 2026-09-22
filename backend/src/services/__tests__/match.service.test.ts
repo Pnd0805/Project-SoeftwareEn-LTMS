@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
 vi.mock('../../repositories/match.repo.js', () => ({
   findMatchById: vi.fn(),
   findById: vi.fn(),
@@ -54,6 +63,7 @@ import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import { isRefereeOfMatch } from '../../middlewares/requireReferee.js';
 import { getPresignedDownloadUrl } from '../upload.service.js';
 import { AppError } from '../../utils/AppError.js';
+import * as NotificationService from '../notification.service.js';
 
 const START = '2026-10-01T10:00:00.000Z';
 const END = '2026-10-01T11:30:00.000Z';
@@ -91,6 +101,34 @@ describe('scheduleMatch (M06)', () => {
 
     expect(MatchRepo.findConflictingMatch).toHaveBeenCalledWith(1, new Date(START), new Date(END), 'สนาม A', 11, 12);
     expect(MatchRepo.updateMatchSchedule).toHaveBeenCalledWith(1, new Date(START), new Date(END), 'สนาม A');
+    // C1-ข — แจ้งผู้เล่นในรายชื่อ + กรรมการ
+    expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({
+      type: 'match_scheduled', relatedEntityType: 'match', relatedEntityId: 1,
+      message: expect.stringContaining('สนาม A'),
+    }));
+  });
+
+  it('re-saving the same time and venue does not notify anyone', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A' }));
+    vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
+    await matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' });
+    expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
+  });
+
+  it('venue-only change is announced as a venue change, not a reschedule', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A' }));
+    vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue(null);
+    await matchService.scheduleMatch(1, { venue: 'สนาม B' });
+    expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({ title: 'แมตช์เปลี่ยนสนาม' }));
+  });
+
+  it('does not notify anyone when the schedule is refused', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
+    vi.mocked(MatchRepo.findConflictingMatch).mockResolvedValue({ match_id: 99 });
+
+    await matchService.scheduleMatch(1, { scheduledTime: START, scheduledEndTime: END, venue: 'สนาม A' }).catch(() => undefined);
+
+    expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
   });
 
   it('returns 409 SCHEDULE_CONFLICT with conflictingMatchId when a team or venue overlaps', async () => {
@@ -177,6 +215,7 @@ describe('openCheckinMatch (M09)', () => {
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
 
     await expect(matchService.openCheckinMatch(1)).resolves.toMatchObject({ id: 1, status: 'checkin_open' });
+    expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({ type: 'checkin_opened' }));
   });
 });
 
