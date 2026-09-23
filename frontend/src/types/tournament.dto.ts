@@ -162,6 +162,21 @@ export interface CreateTournamentRequest {
 }
 
 /**
+ * คำตอบของ `POST /tournaments` — ไม่ใช่ `TournamentDto` เต็มใบ
+ *
+ * ⚠️ `autoApproved` คือคำตอบของคำถาม "ต้องรอแอดมินไหม" ซึ่งแล้วแต่คนสร้าง:
+ * แอดมินที่สร้างทัวร์ในขอบเขตตัวเอง (`autoApproveIfOwnScope` · มติ 18 ก.ย. ข้อ 8)
+ * ได้ `private` มาเลย ส่วนคนอื่นได้ `pending_approval` ตามเดิม เดาเอาข้างเดียว
+ * ไม่ได้ — หน้าจอเคยเขียน "รอแอดมินพิจารณา" ให้ทุกคน แอดมินจึงนั่งรอตัวเอง
+ */
+export interface TournamentCreatedDto {
+  id: number;
+  name: string;
+  status: TournamentStatus;
+  autoApproved: boolean;
+}
+
+/**
  * รูปที่ "เขียน" กฎคุณสมบัติ — คนละชื่อช่องกับตอนอ่าน (`BackendEligibilityRuleDto`
  * ใช้ `ruleType`/`ruleValue`) ต้องแปลงกันทุกครั้ง ไม่ใช่ส่งของที่อ่านมากลับไปตรงๆ
  */

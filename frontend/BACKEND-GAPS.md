@@ -54,6 +54,22 @@ and MVP, C7 comments and Pick'em, C8 follows and career. They are struck through
 at the end of the list rather than deleted, so nobody re-reports them. That took
 the list from 15 to 9.
 
+**Added 2026-09-23 (second pass).** `FE-referee-cannot-read-invited-tournament`,
+found chasing a report that the referee invitation in the inbox would not open.
+It is the same shape as the three read-route gaps above — the data is there, the
+route will not show it to the one person who needs it — except here the missing
+reader is a role, not a column. Back to 10.
+
+**Added 2026-09-23 (third pass).** `FE-viewer-admin-scope-unknown`, from a
+report that a faculty admin "does not seem to get auto-approved". The backend
+rule is working exactly as written; what is missing is that no route tells the
+frontend who the viewer is, so the form cannot say which side of the rule they
+are standing on. Chasing the same rule into the admin queue then turned up
+`FE-admin-queue-shows-undecidable-rows` (the queue and the approve guard filter
+by different predicates, so every row a faculty admin sees currently refuses)
+and `FE-reject-skips-eligibility-scope` (a faculty admin cannot approve those
+requests but *can* decline them). 13 items.
+
 ## How to read it
 
 - Each item has a stable code (`FE-…`). It is derived from the item's own
@@ -74,8 +90,11 @@ the list from 15 to 9.
 - `HANDOVER-2026-09-22.md` is the short version written for both teams: what the
   seven regressions of 21 September turned out to be, and which of them are
   waiting on the three write-only fields listed below.
+- `HANDOVER-2026-09-23.md` is the same for the seven reports of 23 September,
+  and is where to start if you only read one file: it opens with the four new
+  backend items, ranked, and says what we would like each one to return.
 
-## Delivery required — 9 items
+## Delivery required — 13 items
 
 - [ ] **FE-team-leader-transfer-sds** — Team leader transfer (SDS
       `POST /teams/{id}/transfer-leader`, FR-TM-08). Outside mock mode the UI
@@ -169,6 +188,77 @@ the list from 15 to 9.
       and `PATCH /teams/:id` takes only name and visibility. Wanted: an avatar
       purpose plus a mapped readable URL, and a migration with a leader-only
       logo contract. Nothing on the frontend can start until these exist.
+- [ ] **FE-referee-cannot-read-invited-tournament** — `getVisibleTournament`
+      (`tournament.service.ts:178`). A tournament that is not `public` or
+      `completed` is readable only by its requester and by an admin whose scope
+      covers it. Referees are not on that list — not while invited, and not
+      after accepting. But the order the product itself prescribes is *approve →
+      appoint referees → publish*, so a referee invitation almost always arrives
+      while the tournament is still `private`. Reproduced on 2026-09-23:
+      invited 9003 to tournament 28 (`private`), then `GET /tournaments/28` as
+      9003 → **404 TOURNAMENT_NOT_FOUND**, and the C1 notification
+      "คุณได้รับเชิญเป็นกรรมการ" linked straight to that page, so the screen read
+      *"That tournament doesn't exist"* about a tournament the letter in their
+      hand had just named. Wanted: let a user with a row in `tournament_referees`
+      for that tournament read it, at whatever status. Meanwhile the frontend
+      drops the Open button on `referee_invited` notifications — the accept and
+      decline the referee actually needs are in the same inbox page — so nobody
+      is sent to a dead end, but a referee still cannot see what they are being
+      asked to officiate before they answer.
+
+- [ ] **FE-viewer-admin-scope-unknown** — nothing tells the frontend whether the
+      signed-in user is an admin, or of what scope. `GET /me` returns
+      `facultyId` (which faculty they *belong to*, unrelated) and no admin
+      fields; `GET /admin/scopes` is still 404, as
+      `FE-whole-admin-user-surface` already records. The consequence showed up
+      on the tournament request form: `autoApproveIfOwnScope` approves on
+      creation for an admin inside their own scope, so what happens when you
+      press Send differs per viewer — and the one screen that has to set
+      expectations cannot read the one fact that decides it. The default entry
+      setting is "Every faculty", which is above a faculty admin's scope, so a
+      faculty admin who fills the form the obvious way is queued every time and
+      has no way to tell whether that is the rule or a fault. Verified
+      2026-09-23 against `e5ea50d`: as `admin.eng@ku.th` (faculty 1),
+      `POST /tournaments` with `organizingFacultyId: 1` and
+      `eligibilityRules: [{faculty, 1}]` → `private, autoApproved: true`; the
+      same request with no rules → `pending_approval`. Wanted: the viewer's own
+      admin scope on `GET /me` (`adminScope: {scopeType, facultyId} | null`) —
+      a read of one row the login already has the user id for. Meanwhile the
+      form states the rule conditionally ("if that admin is you") instead of
+      telling the viewer which side of it they are on.
+
+- [ ] **FE-admin-queue-shows-undecidable-rows** — `GET /admin/tournament-requests`
+      lists requests the caller is then refused permission to approve. The queue
+      filters with `adminScopeWhere` (`tournament.repo.ts:175`), which for a
+      faculty admin is only `t.organizing_faculty_id = ?`. Approving checks
+      `adminCoversEligibility` as well, which additionally requires at least one
+      faculty eligibility rule and every one of them to name that faculty. Two
+      different rules, so the queue and the guard disagree by construction.
+      Verified 2026-09-23 as `admin.eng@ku.th` (faculty 1): the queue returned
+      three pending requests, all organised by faculty 1, **all three with no
+      eligibility rules at all**, and `POST /tournaments/:id/approve` answered
+      `403 ELIGIBILITY_OUT_OF_SCOPE` on every one. A queue where every row
+      refuses is not a queue. Wanted: filter the list with the same predicate
+      the guard uses — or, better, keep returning the row and mark it, e.g.
+      `canDecide: boolean` plus a reason, so a faculty admin can still see that
+      their own faculty has a request pending even when a university admin has
+      to sign it. The frontend cannot filter these out on its own: the list
+      carries no eligibility rules and nothing tells it the viewer's own scope
+      (`FE-viewer-admin-scope-unknown`). Meanwhile it marks a row *after* the
+      server refuses it and disables that row's Approve.
+- [ ] **FE-reject-skips-eligibility-scope** — `rejectTournament`
+      (`tournament.service.ts:310`) checks `getTournamentAdmin` but **not**
+      `adminCoversEligibility`, while `approveTournament` checks both. So a
+      faculty admin can decline a request they are explicitly not allowed to
+      approve. Verified 2026-09-23 on a throwaway pending tournament organised
+      by faculty 1 with no eligibility rules: as `admin.eng@ku.th`,
+      `POST /tournaments/:id/approve` → `403 ELIGIBILITY_OUT_OF_SCOPE`, then
+      `POST /tournaments/:id/reject` → `200 {status: "rejected"}`. Killing a
+      request is at least as consequential as granting it, so if the eligibility
+      scope is the right gate for one it is the right gate for the other. The
+      frontend deliberately leaves Decline enabled, because the server does
+      allow it and hiding a working control would be its own lie, but it warns
+      on the row. Decide which way this should go — we will follow it.
 
 ### Delivered in the 2026-09-23 pull
 

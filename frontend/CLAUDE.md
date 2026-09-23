@@ -46,7 +46,13 @@ MySQL the server exits 4 on boot.
 Test accounts all use password `abcd1234`:
 
 - `p9201@ku.th` — player, team leader, organizer and referee in one account
-- `somchai@ku.th` — admin
+- `somchai@ku.th` — admin, **university-wide** (`admin_scopes.scope_type`)
+- `admin.eng@ku.th` — admin, **faculty 1 only**. `seed-test.sql` has always
+  defined this account but `qa-baseline.sql` does not ship it, so a restored
+  database has one admin and no way to test faculty scope — which is where
+  auto-approval and `ELIGIBILITY_OUT_OF_SCOPE` actually differ. Re-add after a
+  restore with the two inserts in `seed-test.sql` (user 9004 + its
+  `admin_scopes` row).
 
 Roll test data back without shifting a single id (replaces the prototype's "reset mock"):
 

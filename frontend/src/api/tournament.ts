@@ -16,6 +16,7 @@ import type {
   InviteTournamentRefereeRequest,
   ReviewTournamentApplicationRequest,
   TournamentApplicationDto,
+  TournamentCreatedDto,
   TournamentDetailDto,
   TournamentDto,
   TournamentRefereeDto,
@@ -131,7 +132,14 @@ export async function getTournament(id: number): Promise<TournamentDetailDto> {
   return apiFetch(`/tournaments/${id}`);
 }
 
-export async function createTournament(input: CreateTournamentRequest): Promise<TournamentDto> {
+/**
+ * C01 POST /tournaments — คืนใบรับเรื่องสั้นๆ ไม่ใช่ทัวร์นาเมนต์เต็มใบ
+ *
+ * `{ id, status, name, autoApproved }` — และ `status` เป็นได้ทั้ง `pending_approval`
+ * กับ `private` เดิมประกาศชนิดเป็น `TournamentDto` ทั้งที่ของจริงมีสี่ช่อง คนเรียกจึง
+ * มองไม่เห็น `autoApproved` และหน้าจอเขียน "รอแอดมิน" ให้ทุกคนแม้คนที่ผ่านแล้ว
+ */
+export async function createTournament(input: CreateTournamentRequest): Promise<TournamentCreatedDto> {
   if (USE_MOCK) {
     const tournament: TournamentDto = {
       id: nextTournamentMockId(),
@@ -162,7 +170,10 @@ export async function createTournament(input: CreateTournamentRequest): Promise<
       deletedAt: null,
     };
     mockTournaments.push(tournament);
-    return tournamentMockDelay(tournament);
+    /* โหมดจำลองไม่มีตาราง admin_scopes จึงเดินทางเดียว: เข้าคิวรอแอดมินเสมอ */
+    return tournamentMockDelay({
+      id: tournament.id, name: tournament.name, status: tournament.status, autoApproved: false,
+    });
   }
   return apiFetch("/tournaments", { method: "POST", body: JSON.stringify(input) });
 }

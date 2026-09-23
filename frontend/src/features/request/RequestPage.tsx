@@ -12,7 +12,8 @@
  *
  * ── ระดับการแข่งขันกับหน่วยงานที่จัด (ensureCreateReferences) ───────────────
  * ระดับคณะ: ต้องมีคณะ และห้ามส่งภาควิชา · ระดับภาควิชา: ต้องมีทั้งคณะและภาควิชาในคณะนั้น
- * 'university' มีในฐานข้อมูลแต่ยังไม่เปิดใช้ใน MVP จึงไม่ให้เลือก
+ * กฎคู่นี้ทำให้ `scopeType` ไม่ใช่คำถาม — ฟอร์มถามแค่คณะกับภาควิชา แล้วคิดระดับเอง
+ * 'university' มีในฐานข้อมูลแต่ยังไม่เปิดใช้ใน MVP จึงไม่มีทางไปถึง
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -24,9 +25,9 @@ import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useRefe
 import { useMe } from '../../hooks/useAuth'
 import { ApiError } from '../../api/client'
 import { createTournamentSchema, toEligibilityRules, type CreateTournamentInput } from '../../schemas/tournament.schema'
-import { BracketFormatOptions, BracketFormatLabel, GenderRequirementOptions, GenderRequirementLabel, TournamentScopeTypeLabel } from '../../types/enums'
+import type { TournamentCreatedDto } from '../../types/tournament.dto'
+import { BracketFormatOptions, BracketFormatLabel, GenderRequirementOptions, GenderRequirementLabel } from '../../types/enums'
 
-const SCOPES = ['faculty', 'department'] as const
 const ADMIT = [
   ['all', 'Every faculty'],
   ['own', 'Only the faculty running it'],
@@ -50,7 +51,7 @@ export function RequestPage() {
   const { data: sports } = useSportTypes()
   const { data: faculties } = useFaculties()
   const create = useCreateTournament()
-  const [sent, setSent] = useState<{ id: number; name: string } | null>(null)
+  const [sent, setSent] = useState<TournamentCreatedDto | null>(null)
   const { register, handleSubmit, setError, control, reset, setValue, formState: { errors, isSubmitting } } = useForm<CreateTournamentInput>({
     resolver: zodResolver(createTournamentSchema),
     defaultValues: {
@@ -71,12 +72,31 @@ export function RequestPage() {
       eligibilityYears: [],
     },
   })
-  /* ระดับการแข่งขันตัดสินว่าต้องเลือกภาควิชาด้วยไหม และภาควิชาต้องอยู่ในคณะที่เลือก */
-  const scopeType = useWatch({ control, name: 'scopeType' })
+  /**
+   * "ระดับการแข่งขัน" ไม่ได้ถามแยกอีกแล้ว — มันคือคำตอบของช่องภาควิชา
+   *
+   * ensureCreateReferences ของ backend บังคับไว้แน่นจนไม่มีทางเลือกที่สี่: ระดับคณะ
+   * = มีคณะ ห้ามมีภาควิชา · ระดับภาควิชา = มีทั้งคู่และภาควิชาต้องอยู่ในคณะนั้น
+   * สองคำถามจึงมีคำตอบที่ถูกต้องอยู่ชุดเดียว ถามซ้ำได้แต่ผิดคู่กันเอง (เลือกระดับคณะ
+   * แล้วทิ้งภาควิชาค้างไว้ = 400) `scopeType` ยังเป็นช่องของ backend อยู่ จึงเก็บไว้
+   * ในฟอร์มแล้วตั้งค่าให้ตรงกับภาควิชาทุกครั้งที่ภาควิชาเปลี่ยน
+   */
   const organizingFacultyId = useWatch({ control, name: 'organizingFacultyId' })
-  const { data: departments } = useDepartments(
-    scopeType === 'department' ? organizingFacultyId ?? undefined : undefined,
-  )
+  const organizingDepartmentId = useWatch({ control, name: 'organizingDepartmentId' })
+  const { data: departments } = useDepartments(organizingFacultyId ?? undefined)
+  /* สองช่องนี้คุมค่าเอง ไม่ได้ผ่าน register — setValue เฉยๆ จะไม่ตรวจซ้ำให้ ข้อความ
+     "กรุณาเลือกคณะที่จัดการแข่งขัน" จึงค้างอยู่ต่อหน้าช่องที่เพิ่งเลือกไปแล้ว และอ่านเหมือน
+     ระบบไม่ยอมให้สร้าง ต้องสั่ง shouldValidate เองแทนสิ่งที่ register เคยทำให้ */
+  const pickDepartment = (value: string) => {
+    const id = asIdOrNull(value)
+    setValue('organizingDepartmentId', id, { shouldValidate: true })
+    setValue('scopeType', id === null ? 'faculty' : 'department', { shouldValidate: true })
+  }
+  /* เปลี่ยนคณะแล้วภาควิชาเดิมอยู่คนละคณะ — backend ตอบ 400 ถ้าปล่อยค้างไว้ */
+  const pickFaculty = (value: string) => {
+    setValue('organizingFacultyId', asIdOrNull(value), { shouldValidate: true })
+    pickDepartment('')
+  }
   /**
    * คณะถูกถามสองครั้งในฟอร์มเดียว และคนละความหมายกัน: ด้านบนคือ "คณะไหนเป็นผู้จัด"
    * ตรงนี้คือ "คณะไหนสมัครได้" กางรายชื่อคณะทิ้งไว้ทั้งสองที่แล้วอ่านเหมือนถามซ้ำ
@@ -116,10 +136,9 @@ export function RequestPage() {
         admittedOf(admit, base.organizingFacultyId, eligibilityFacultyIds ?? []),
         eligibilityYears,
       )
-      const result = await create.mutateAsync(rules.length ? { ...rest, eligibilityRules: rules } : rest)
-      /* คำขอที่ยังรออนุมัติเปิดหน้าทัวร์นาเมนต์ไม่ได้ — GET /tournaments/:id ตอบ 404 ให้เจ้าของ
-         จนกว่าแอดมินจะอนุมัติ จึงจบที่หน้ายืนยัน ไม่พาไปหน้าที่เปิดไม่ได้ */
-      setSent({ id: result.id, name: result.name })
+      /* จบที่หน้ายืนยัน ไม่เด้งไปหน้าทัวร์นาเมนต์เอง เพราะสองทางนี้มีขั้นถัดไปคนละอย่าง
+         — ใบที่ผ่านแล้วต้องไปตั้งกรรมการ ส่วนใบที่เข้าคิวยังทำอะไรไม่ได้ */
+      setSent(await create.mutateAsync(rules.length ? { ...rest, eligibilityRules: rules } : rest))
     } catch (error) {
       if (error instanceof ApiError && error.fields) {
         Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof CreateTournamentInput, { type: 'server', message }))
@@ -138,19 +157,46 @@ export function RequestPage() {
       <>
         <div className="spread">
           <div>
-            <div className="tag"><em>//</em> An admin decides</div>
-            <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>Request sent</h1>
+            <div className="tag"><em>//</em> {sent.autoApproved ? 'Approved on the spot' : 'An admin decides'}</div>
+            <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>
+              {sent.autoApproved ? 'Tournament created' : 'Request sent'}
+            </h1>
           </div>
         </div>
         <Panel>
-          <Banner kind="ok"><b>{sent.name} is with an admin.</b> Nothing else is needed from you right now.</Banner>
-          <div className="sub">
-            Approved, it arrives as your Private draft under Tournaments: appoint the referees, then open it
-            to the public. Until an admin decides, the tournament page stays closed — even to you.
-          </div>
+          {/* แอดมินที่จัดในขอบเขตตัวเองไม่ต้องรอใคร (autoApproveIfOwnScope · มติ 18 ก.ย. ข้อ 8)
+              หน้านี้เคยเขียน "อยู่กับแอดมินแล้ว" ให้ทุกคน คนที่ระบบอนุมัติให้ไปแล้วจึงนั่งรอ
+              ตัวเองอยู่ตรงนี้ ทั้งที่ทัวร์พร้อมให้ตั้งกรรมการตั้งแต่วินาทีที่กดส่ง */}
+          {sent.autoApproved ? (
+            <>
+              <Banner kind="ok">
+                <b>{sent.name} is yours to run.</b> You are an admin for this one, so it skipped the
+                approval queue and is already a Private draft.
+              </Banner>
+              <div className="sub">
+                Next: appoint the referees, then open it to the public. It stays private — and invisible
+                to entrants — until you publish it.
+              </div>
+            </>
+          ) : (
+            <>
+              <Banner kind="ok"><b>{sent.name} is with an admin.</b> Nothing else is needed from you right now.</Banner>
+              <div className="sub">
+                Approved, it becomes your Private draft under Tournaments: appoint the referees, then open it
+                to the public. Until then the page is visible to you and the admin only.
+              </div>
+            </>
+          )}
           <div className="hstack">
             <button className="btn" type="button" onClick={() => navigate('/')}>Back to tournaments</button>
-            <button className="btn primary" type="button" onClick={() => { setSent(null); reset() }}>Request another</button>
+            {/* C06 ให้ผู้ยื่นคำขออ่านทัวร์ของตัวเองได้ทุกสถานะ (FE-c17b 20 ก.ย.) ทั้งใบที่รอคิว
+                และใบที่ผ่านแล้ว จึงพาไปดูได้จริงทั้งสองทาง */}
+            <button className="btn" type="button" onClick={() => navigate(`/t/${sent.id}`)}>
+              Open the tournament
+            </button>
+            <button className="btn primary" type="button" onClick={() => { setSent(null); reset() }}>
+              {sent.autoApproved ? 'Create another' : 'Request another'}
+            </button>
           </div>
         </Panel>
       </>
@@ -187,28 +233,30 @@ export function RequestPage() {
                   {BracketFormatOptions.map(f => <option key={f} value={f}>{BracketFormatLabel[f]}</option>)}
                 </select>
               </Field>
-              <Field label="Scope" htmlFor="rq-scope">
-                <select id="rq-scope" {...register('scopeType')}>
-                  {SCOPES.map(x => <option key={x} value={x}>{TournamentScopeTypeLabel[x]}</option>)}
-                </select>
-                {fieldError('scopeType') ? <span className="sub">{fieldError('scopeType')}</span> : null}
-              </Field>
+              {/* ช่องล่างรับค่าว่างได้จริง ช่องบนรับไม่ได้ — สองช่องติดกันที่หน้าตาเหมือนกัน
+                  แต่กฎคนละอย่าง ต้องบอกตั้งแต่ก่อนกดส่ง ไม่ใช่รอให้กดแล้วค่อยขึ้นสีแดง */}
               <Field label="Organising faculty — who puts it on" htmlFor="rq-fac">
-                <select id="rq-fac" {...register('organizingFacultyId', { setValueAs: asIdOrNull })}>
-                  <option value="">Choose a faculty</option>
+                <select id="rq-fac" value={organizingFacultyId ?? ''} aria-invalid={!!errors.organizingFacultyId}
+                  onChange={e => pickFaculty(e.target.value)}>
+                  <option value="">Choose a faculty — required</option>
                   {(faculties?.items ?? []).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
-                {fieldError('organizingFacultyId') ? <span className="sub">{fieldError('organizingFacultyId')}</span> : null}
+                {fieldError('organizingFacultyId') ? <span className="sub">{fieldError('organizingFacultyId')}</span>
+                  : organizingFacultyId == null
+                    ? <span className="sub">Every tournament is run by one faculty. LTMS has no university-wide
+                      level yet, so this cannot be left blank.</span>
+                    : null}
               </Field>
-              {scopeType === 'department' ? (
-                <Field label="Organising department" htmlFor="rq-dept">
-                  <select id="rq-dept" {...register('organizingDepartmentId', { setValueAs: asIdOrNull })}>
-                    <option value="">Choose a department</option>
-                    {(departments?.items ?? []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                  {fieldError('organizingDepartmentId') ? <span className="sub">{fieldError('organizingDepartmentId')}</span> : null}
-                </Field>
-              ) : null}
+              <Field label="Organising department — optional" htmlFor="rq-dept">
+                <select id="rq-dept" value={organizingDepartmentId ?? ''} disabled={organizingFacultyId == null}
+                  aria-invalid={!!errors.organizingDepartmentId}
+                  onChange={e => pickDepartment(e.target.value)}>
+                  <option value="">The whole faculty</option>
+                  {(departments?.items ?? []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                {fieldError('organizingDepartmentId') ? <span className="sub">{fieldError('organizingDepartmentId')}</span> : null}
+                {fieldError('scopeType') ? <span className="sub">{fieldError('scopeType')}</span> : null}
+              </Field>
               <Field label="Squad cap" htmlFor="rq-cap">
                 <input id="rq-cap" type="number" min={2} max={64} {...register('maxTeams', { valueAsNumber: true })} />
                 {fieldError('maxTeams') ? <span className="sub">{fieldError('maxTeams')}</span> : null}
@@ -312,20 +360,28 @@ export function RequestPage() {
             </div>
 
             {/* ใครตัดสินคำขอนี้เปลี่ยนตามจำนวนคณะที่ติ๊ก — บอกก่อนกดส่ง ไม่ใช่ให้ไปรู้
-                ตอนคำขอค้างอยู่ในคิวที่ผิดคน */}
+                ตอนคำขอค้างอยู่ในคิวที่ผิดคน
+                ⚠️ ค่าตั้งต้นคือ "ทุกคณะ" ซึ่งเกินขอบเขตแอดมินคณะเสมอ แอดมินคณะที่กรอก
+                ฟอร์มตามค่าตั้งต้นจึงเข้าคิวทุกครั้ง แล้วอ่านว่าระบบไม่ยอม auto-approve
+                ให้ตัวเอง — ประโยคที่สองของแต่ละกรณีมีไว้ผูกเรื่องนี้เข้าด้วยกัน
+                เราไม่รู้ว่าคนกรอกเป็นแอดมินระดับไหน `/me` ไม่บอก และไม่มีเส้นให้ถาม
+                (ดู BACKEND-GAPS `FE-viewer-admin-scope-unknown`) จึงเขียนเป็นเงื่อนไข
+                "ถ้าคนนั้นคือคุณ" แทนการทึกทักว่าใช่หรือไม่ใช่ */}
             <Banner kind={ownFacultyOnly ? 'ok' : 'warn'} icon={ownFacultyOnly ? 'check' : 'clock'}>
               {admit === 'own' && organizingFacultyId == null ? (
                 <><b>Choose the organising faculty above first.</b> Entry is set to follow it, and while
                   that is blank the tournament admits every faculty.</>
               ) : ownFacultyOnly ? (
                 <><b>{facultyName(admittedFaculties[0]!)}&apos;s admin decides this one.</b> It admits only
-                  the faculty running it, so it stays inside that faculty.</>
+                  the faculty running it, so it stays inside that faculty. If that admin is you, it skips
+                  the queue and is approved the moment you send it.</>
               ) : admittedFaculties.length === 0 ? (
                 <><b>A university admin decides this one.</b> It is open to every faculty, which is above
-                  a faculty admin&apos;s scope.</>
+                  a faculty admin&apos;s scope — so a faculty admin sending this one still waits in the
+                  queue. Set entry to <em>Only the faculty running it</em> to decide it yourself.</>
               ) : admittedFaculties.length > 1 ? (
                 <><b>A university admin decides this one.</b> It admits {admittedFaculties.length} faculties,
-                  so no single faculty&apos;s admin can approve it.</>
+                  so no single faculty&apos;s admin can approve it — including their own faculty&apos;s.</>
               ) : (
                 <><b>A university admin decides this one.</b> It admits {facultyName(admittedFaculties[0]!)},
                   which is not the faculty running it.</>

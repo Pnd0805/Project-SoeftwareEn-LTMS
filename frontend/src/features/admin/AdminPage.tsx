@@ -33,6 +33,15 @@ import { AdminRefereesTab } from './AdminRefereesTab'
 import { AdminUsersTab } from './AdminUsersTab'
 import { AdminFeedbackTab } from './AdminFeedbackTab'
 
+/** คำตอบที่ C02/C03 ปฏิเสธมา — อ่านเป็นภาษาของหน้านี้ ไม่ใช่ข้อความดิบของ backend */
+const tournamentDecisionError = (error: unknown) => {
+  const code = (error as { code?: string } | null)?.code
+  if (code === 'INSUFFICIENT_ADMIN_SCOPE') return 'This request belongs to another faculty’s admin.'
+  if (code === 'INVALID_STATUS_TRANSITION') return 'Somebody already decided this one. Reload the queue.'
+  if (code === 'TOURNAMENT_NOT_FOUND') return 'That request is no longer in the queue.'
+  return error instanceof Error ? error.message : 'Try again.'
+}
+
 const TABS = [
   { key: 'requests', label: 'Requests to organize' },
   { key: 'permanent', label: 'Permanent squads' },
@@ -57,6 +66,9 @@ export function AdminPage() {
   const reviewTournamentReq = useReviewTournamentRequest()
   const [rejectingTournament, setRejectingTournament] = useState<{ id: number; name: string } | null>(null)
   const [tournamentReason, setTournamentReason] = useState('')
+  /* คำขอที่ server บอกแล้วว่าเกินขอบเขตของเรา — เก็บไว้ต่อแถว ไม่ใช่แถบรวมที่บอกไม่ได้
+     ว่าแถวไหนเพิ่งพัง */
+  const [aboveScope, setAboveScope] = useState<number[]>([])
   const externalQuery = useExternalRefereeRequests()
   /* รายการทัวร์นาเมนต์ของ backend — GET /tournaments คืนเฉพาะที่เป็น public
      (ยังไม่มีเส้นที่ให้แอดมินเห็นทุกสถานะ ดู FEAT-1-REMAINING) */
@@ -107,6 +119,19 @@ export function AdminPage() {
         onSuccess: () => {
           setRejectingTournament(null)
           setTournamentReason('')
+          setAboveScope(current => current.filter(x => x !== id))
+        },
+        /* C02 ตอบ 403 ELIGIBILITY_OUT_OF_SCOPE เมื่อแอดมินคณะกดอนุมัติทัวร์ที่เปิดรับ
+           นอกคณะตัวเอง — แต่คิวส่งแถวพวกนี้มาให้อยู่ดี (findPendingTournamentRequests
+           กรองแค่ organizing_faculty_id ส่วน adminCoversEligibility ยังเช็คกฎคณะต่ออีกชั้น
+           สองที่นี้ใช้กฎคนละชุดกัน) เราอ่านขอบเขตของคนที่ล็อกอินเองไม่ได้ จึงกรองล่วงหน้า
+           ไม่ได้ — แต่พอ server ตอบมาแล้วก็ไม่มีเหตุให้ลืม: จำแถวนั้นไว้ ปิดปุ่ม Approve
+           แล้วบอกว่าต้องให้ใครตัดสิน ดีกว่าปล่อยให้กดซ้ำแล้วได้คำตอบเดิมทุกครั้ง
+           (ดู BACKEND-GAPS `FE-admin-queue-shows-undecidable-rows`) */
+        onError: error => {
+          if ((error as { code?: string }).code === 'ELIGIBILITY_OUT_OF_SCOPE') {
+            setAboveScope(current => current.includes(id) ? current : [...current, id])
+          }
         },
       },
     )
@@ -180,28 +205,47 @@ export function AdminPage() {
               <button className="btn" type="button" onClick={() => void tournamentRequestsQuery.refetch()}>Try again</button>
             </Banner>
           ) : null}
-          {reviewTournamentReq.isError ? (
-            <Banner kind="crit"><b>The decision did not go through.</b> {(reviewTournamentReq.error as Error).message}</Banner>
-          ) : null}
-          {backendRequests.map(r => (
-            <div className="vstack" style={{ gap: 9 }} key={r.id}>
-              <div className="spread">
-                <span className="hstack"><b>{r.name}</b><Badge kind="neutral">{sportName(r.sportTypeId)}</Badge></span>
-                <span className="tag">{fmtDate(r.eventStartDate)}</span>
+          {reviewTournamentReq.isError && !reviewTournamentReq.isPending
+            && (reviewTournamentReq.error as { code?: string }).code !== 'ELIGIBILITY_OUT_OF_SCOPE' ? (
+              <Banner kind="crit">
+                <b>The decision did not go through.</b> {tournamentDecisionError(reviewTournamentReq.error)}
+              </Banner>
+            ) : null}
+          {backendRequests.map(r => {
+            const outOfScope = aboveScope.includes(r.id)
+            return (
+              <div className="vstack" style={{ gap: 9 }} key={r.id}>
+                <div className="spread">
+                  <span className="hstack">
+                    <b>{r.name}</b><Badge kind="neutral">{sportName(r.sportTypeId)}</Badge>
+                    {outOfScope ? <Badge kind="warn">Above your scope</Badge> : null}
+                  </span>
+                  <span className="tag">{fmtDate(r.eventStartDate)}</span>
+                </div>
+                <div className="sub">Requested by {r.requestedBy.fullName} · asked on {fmtDate(r.createdAt)}</div>
+                {outOfScope ? (
+                  <Banner kind="warn" icon="clock">
+                    <b>This one is not yours to approve.</b> It admits entrants from outside your faculty, or
+                    from every faculty, which is above a faculty admin&apos;s scope — a university admin has to
+                    approve it. Declining it is still permitted, so think twice before you do.
+                  </Banner>
+                ) : (
+                  <div className="sub">
+                    Approving grants Organizer over this tournament only, and it lands in their drafts as Private —
+                    they still have to appoint referees before it can go public.
+                  </div>
+                )}
+                <div className="hstack">
+                  <button className="btn danger" type="button" disabled={reviewTournamentReq.isPending}
+                    onClick={() => { setTournamentReason(''); setRejectingTournament({ id: r.id, name: r.name }) }}>Decline</button>
+                  {/* ปุ่มที่รู้อยู่แล้วว่าจะได้ 403 เดิมกลับมา ไม่ควรยังกดได้ */}
+                  <button className="btn primary" type="button" disabled={reviewTournamentReq.isPending || outOfScope}
+                    title={outOfScope ? 'A university admin has to approve this one' : undefined}
+                    onClick={() => decideTournamentRequest(r.id, true)}>Approve</button>
+                </div>
               </div>
-              <div className="sub">Requested by {r.requestedBy.fullName} · asked on {fmtDate(r.createdAt)}</div>
-              <div className="sub">
-                Approving grants Organizer over this tournament only, and it lands in their drafts as Private —
-                they still have to appoint referees before it can go public.
-              </div>
-              <div className="hstack">
-                <button className="btn danger" type="button" disabled={reviewTournamentReq.isPending}
-                  onClick={() => { setTournamentReason(''); setRejectingTournament({ id: r.id, name: r.name }) }}>Decline</button>
-                <button className="btn primary" type="button" disabled={reviewTournamentReq.isPending}
-                  onClick={() => decideTournamentRequest(r.id, true)}>Approve</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
           {tournamentRequestsQuery.isSuccess && !backendRequests.length ? <div className="sub">Nothing waiting.</div> : null}
         </Panel>
       ) : null}

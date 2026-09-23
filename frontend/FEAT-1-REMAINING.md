@@ -251,6 +251,159 @@ Developer verification: 41 test files / 243 tests, lint, TypeScript.
     cannot modify them, broken/expired image URLs recover visibly, removal works,
     and the shell avatar opens the signed-in profile on desktop and mobile.
 
+### R24–R27 — four questions from 2026-09-23
+
+Two turned out to be bugs, one was a deliberate rule nobody had told the screen
+about, and one was a design question with a real answer. All four were checked
+against the running backend at `e5ea50d` before anything changed.
+
+- [x] **R24 — the referee invitation in the inbox opened onto a dead end.**
+      Reported as a 403; the actual status is **404**, and the screen it
+      produced said *"That tournament doesn't exist"*, which is worse than a
+      permission message. Cause: the C1 notification `referee_invited` carries
+      `relatedEntityType: 'tournament'`, so `notificationHref` sent the referee
+      to `/t/:id` — but `getVisibleTournament` admits only the requester and a
+      covering admin to a non-`public` tournament, and a referee invitation
+      almost always arrives while the tournament is still `private`, because
+      *approve → appoint referees → publish* is the order the product itself
+      prescribes. Reproduced end to end: invited 9003 to tournament 28
+      (`private`), `GET /tournaments/28` as 9003 → 404, inbox Open → "That
+      tournament doesn't exist". The frontend now renders no Open button for
+      `referee_invited`; Accept and Decline are in the Referee appointments
+      panel of the same page, which is what the referee actually needs. Filed
+      the other half as `FE-referee-cannot-read-invited-tournament` — a referee
+      still cannot look at what they are being asked to officiate before
+      answering, and that is a backend visibility rule, not a link.
+- [x] **R25 — "does an admin not have to approve a new tournament any more?"**
+      Deliberate, not a regression. `autoApproveIfOwnScope`
+      (`tournament.service.ts:220`, decision of 18 ก.ย. item 8) approves on
+      creation when the creator is an admin whose scope covers the tournament:
+      university-wide covers everything, a faculty admin covers only a
+      tournament their own faculty organises **and** whose faculty eligibility
+      rules name that one faculty. Everyone else still goes to
+      `pending_approval`. Verified all four branches against the live server —
+      university admin → `{status: "private", autoApproved: true}`; faculty
+      admin, own faculty, own-faculty-only rule → `private`; same admin, open to
+      every faculty → `pending_approval`; same admin, another faculty →
+      `pending_approval`; non-admin organiser → `pending_approval`.
+      **Our bug was the screen.** `POST /tournaments` returns
+      `{id, status, name, autoApproved}`, but `api/tournament.ts` declared the
+      return type as a full `TournamentDto`, so the extra fields were invisible
+      to every caller and the confirmation panel told *everyone* "is with an
+      admin. Nothing else is needed from you right now" — an admin whose
+      tournament was already approved sat waiting for themselves. Typed the
+      response as `TournamentCreatedDto` and branched the panel. While there:
+      the panel also claimed "the tournament page stays closed — even to you",
+      which stopped being true when C17b opened own-request visibility on
+      20 ก.ย.; both branches now offer **Open the tournament**, and both were
+      confirmed to load in the browser (`private` with the Manage tab,
+      `pending_approval` reading "Pending review").
+- [x] **R26 — "is สมชาย a faculty admin or a university admin, and is there a
+      test account for the other one?"** สมชาย ใจดี (`somchai@ku.th`, 9001) is
+      **university-wide** — `admin_scopes` row 1, `scope_type` =
+      `university_wide`, `faculty_id` NULL. The faculty admin was not missing
+      from the design, it was missing from the *data*: `seed-test.sql` has
+      defined อาจารย์วิศวะ (`admin.eng@ku.th`, 9004, faculty 1) as a faculty
+      admin all along, but `qa-baseline.sql` ships only the university-wide row,
+      so the QA database everybody tests against had exactly one admin and the
+      entire faculty-scope half of R25 was untestable. Loaded 9004 into the
+      running database (password `abcd1234` like every test account) and used it
+      to verify the matrix above. Not a backend defect — worth folding into the
+      baseline so it survives `qa-baseline.py restore`.
+- [x] **R27 — "can the faculty/department dropdowns and the all/one/several
+      faculty tick-list be merged?"** Two different questions are being asked in
+      that form and only one pair could be merged, so that is the pair that was
+      merged.
+      - *Who organises it* (`scopeType` + `organizingFacultyId` +
+        `organizingDepartmentId`) and *who may enter* (`eligibilityRules` of type
+        `faculty`) are genuinely independent — tournament 27 is organised by
+        Engineering and open to everybody, which no single control can express.
+        They stay separate. The entry side was already reduced to a three-way
+        choice with the faculty checklist appearing only under "Choose
+        faculties", so the part that reads as a duplicate list is already gone.
+      - *Scope* and *organising department* **were** one question asked twice.
+        `ensureCreateReferences` allows exactly two combinations: faculty scope
+        = a faculty and no department; department scope = both, with the
+        department inside that faculty. Asking separately only created a way to
+        answer inconsistently and collect a 400. The Scope dropdown is gone; the
+        form asks for a faculty, then a department whose blank option reads
+        "The whole faculty", and derives `scopeType` from it. Changing the
+        faculty clears a department that no longer belongs to it — the other
+        400 the old form allowed. `scopeType` is still sent, unchanged, so the
+        backend contract is untouched.
+- [x] **R27a — the merge shipped with a regression of its own, reported the same
+      day and fixed here.** Leaving the organising faculty blank looked like it
+      had broken tournament creation outright. Two causes, both ours:
+      - Making the two selects controlled took them off `register`, and a plain
+        `setValue` does not re-validate. So the submit-time message
+        "กรุณาเลือกคณะที่จัดการแข่งขัน" stayed on screen after the user picked a
+        faculty, which reads as *the form will not let me through at all*.
+        Pressing send again did work — but nothing on screen said so. Both
+        pickers now pass `shouldValidate: true`, restoring what `register` used
+        to do. Covered by a test that fails without the flag.
+      - The two controls sit side by side and look identical, but only the lower
+        one may be left blank — and after the merge its blank option reads "The
+        whole faculty", which makes blank look like a legitimate answer in that
+        whole row. The faculty placeholder now reads "Choose a faculty —
+        required", there is a standing hint underneath explaining that LTMS has
+        no university-wide level yet, and the department is labelled "optional".
+        Both selects carry `aria-invalid`.
+      Worth saying plainly: there is **no way to create a tournament without an
+      organising faculty**, and that is the backend's rule, not a UI choice —
+      `ensureCreateReferences` requires `organizingFacultyId` for both scope
+      types, and `tournaments.scope_type` has a `university` value that the MVP
+      does not accept. If university-wide tournaments are wanted, that is a
+      backend change first.
+- [x] **R27b — "the faculty admin does not seem to get auto-approved."** The
+      rule works; the form does not explain it. Re-verified against `e5ea50d`
+      through both the API and the browser as `admin.eng@ku.th` (faculty 1):
+      organising faculty 1 with entry set to *Only the faculty running it* →
+      `private, autoApproved: true`, and the confirmation reads "Approved on the
+      spot". Adding a year rule alongside it still auto-approves. What does
+      **not** auto-approve is the form's own default, *Every faculty*, which
+      sends no faculty rule at all — and `adminCoversEligibility` requires at
+      least one faculty rule, all naming the admin's faculty. So a faculty admin
+      who fills the form the obvious way is queued every single time, which is
+      exactly what "seems not to auto-approve" looks like from the outside.
+      The frontend cannot say "this one will skip the queue for *you*", because
+      `GET /me` does not carry the viewer's admin scope and `GET /admin/scopes`
+      is 404 — filed as `FE-viewer-admin-scope-unknown`. Until that lands the
+      banner states the rule conditionally: the own-faculty case now adds "If
+      that admin is you, it skips the queue and is approved the moment you send
+      it", and the default case says a faculty admin sending it still waits, and
+      points at the setting that changes the answer. Nothing about the payload
+      changed.
+- [x] **R27c — the admin queue lists requests the faculty admin is then refused
+      permission to approve.** Asked as "should we just hide them?" — our answer
+      is *mark, do not hide*, and the filtering itself has to move to the
+      backend.
+      - Cause, verified 2026-09-23 as `admin.eng@ku.th`: the queue filters on
+        `organizing_faculty_id` alone (`adminScopeWhere`) while approving also
+        runs `adminCoversEligibility`, which wants at least one faculty rule and
+        all of them naming that faculty. All three pending requests in the QA
+        database are organised by faculty 1 with **no eligibility rules**, so
+        the queue showed three rows and all three answered
+        `403 ELIGIBILITY_OUT_OF_SCOPE`.
+      - We cannot filter it here. The list response carries no eligibility
+        rules, and nothing tells the frontend the viewer's own admin scope. Any
+        client-side filter would be a guess, and a wrong guess hides a real
+        request from the person who is allowed to decide it.
+      - Why not hide even once we can: a faculty admin has a legitimate interest
+        in knowing their own faculty has a request pending, even when a
+        university admin signs it. Filed as
+        `FE-admin-queue-shows-undecidable-rows` asking for `canDecide` plus a
+        reason on the row, rather than for the row to disappear.
+      - What ships now: the row is marked **Above your scope** once the server
+        has actually said so, its Approve is disabled with a title saying who
+        must decide it, and the refusal is explained in this page's own words
+        instead of echoing the backend's Thai string into an English screen.
+        Other refusal codes still show in the banner, now readable.
+      - Found on the way, and worth a decision: **`reject` does not check
+        eligibility scope at all.** The same admin who gets 403 on approve gets
+        `200 {status: "rejected"}` on decline. Filed as
+        `FE-reject-skips-eligibility-scope`. Decline is deliberately left
+        enabled — the server really does allow it — but the row now says so.
+
 ## FE delivery for BE_KN `a14d44c` + `a88f7ad` — 2026-09-21
 
 - [x] Result and dispute-amend forms require a winning aggregate score; Draw / Decider input is removed.

@@ -22,6 +22,16 @@ function notificationHref(n: NotificationDto): string | null {
   if (USE_MOCK) return n.href ?? null
   const id = n.relatedEntityId
   if (!Number.isSafeInteger(id) || !id || id < 1) return null
+  /**
+   * คำเชิญเป็นกรรมการมาถึงก่อนทัวร์นาเมนต์เปิดเผยแพร่เกือบทุกครั้ง — ลำดับที่ระบบ
+   * บอกผู้จัดเองคือ "อนุมัติแล้วได้ฉบับร่าง → ตั้งกรรมการ → ค่อยเปิดเผยแพร่"
+   * และ `getVisibleTournament` ให้ผ่านเฉพาะผู้ยื่นคำขอกับแอดมินที่ดูแลคณะนั้น
+   * กรรมการที่เพิ่งถูกเชิญจึงได้ 404 แล้วหน้าจออ่านว่า "ทัวร์นาเมนต์นี้ไม่มีอยู่"
+   * ทั้งที่จดหมายในมือเพิ่งบอกชื่อมันไป — ปุ่มที่พาไปทางตันแย่กว่าไม่มีปุ่ม
+   * สิ่งที่กรรมการต้องทำจริงคือรับหรือปฏิเสธ ซึ่งอยู่ใน Referee appointments หน้าเดียวกันนี้
+   * (ดู BACKEND-GAPS `FE-referee-cannot-read-invited-tournament`)
+   */
+  if (n.type === 'referee_invited') return null
   if (n.relatedEntityType === 'tournament') {
     return n.type === 'comment_reported'
       ? `/t/${id}/community?reported=true`
