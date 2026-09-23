@@ -20,6 +20,7 @@ import { MatchRefereePlanner } from './MatchRefereePlanner'
 import { RefereeFinder, RefereePanel } from './RefereePanel'
 import { RegistrationsPanel } from './RegistrationsPanel'
 import { SetupTrail } from './SetupTrail'
+import { LiveFeedbackPanel } from './LiveFeedbackPanel'
 
 /** Written to the organizer, not published — the aggregate rating is the public half. */
 function FeedbackPanel({ t }: { t: Tournament }) {
@@ -84,7 +85,7 @@ export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
       {active === 'draw' ? <DrawPanel t={t} /> : null}
       {active === 'draw' && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
       {active === 'referees' ? <RefereePanel t={t} onAppoint={() => setFinder(true)} /> : null}
-      {active === 'feedback' ? <FeedbackPanel t={t} /> : null}
+      {active === 'feedback' ? USE_MOCK ? <FeedbackPanel t={t} /> : <LiveFeedbackPanel tournamentId={liveTournamentId!} /> : null}
       <RefereeFinder t={t} open={finder} onClose={() => setFinder(false)} />
     </>
   )

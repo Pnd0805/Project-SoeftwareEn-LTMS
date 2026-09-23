@@ -12,10 +12,46 @@ import { useLtms } from '../../shared/store'
 import { matchesOf, me, team, user } from '../../shared/selectors'
 import { routeTour } from '../../mocks/routeIds'
 import { useMvpVotes } from '../../hooks/useUser'
-import { USE_MOCK } from '../../api/client'
+import { ApiError, USE_MOCK } from '../../api/client'
+import { parseBackendId } from '../../api/ids'
+import { useMvpLive } from '../../hooks/useLiveEngagement'
+import { useMe } from '../../hooks/useAuth'
 
 export function MvpPage() {
-  return USE_MOCK ? <MockMvpPage /> : <Empty icon="star" title="MVP voting is unavailable" sub="Tournament MVP candidates and voting are not available in this view yet." />
+  return USE_MOCK ? <MockMvpPage /> : <LiveMvpPage />
+}
+
+function LiveMvpPage() {
+  const navigate = useNavigate()
+  const { id: rawId } = useParams()
+  const id = parseBackendId(rawId)
+  const meQuery = useMe()
+  const mvp = useMvpLive(id)
+  if (!id) return <Empty icon="warn" title="No such tournament" />
+  if (mvp.query.isPending) return <Panel quiet><span className="sub">Loading MVP votes…</span></Panel>
+  if (mvp.query.isError) return <Empty icon="warn" title="Unable to load MVP voting" sub={mvp.query.error instanceof Error ? mvp.query.error.message : undefined} />
+  const data = mvp.query.data
+  return <>
+    <Crumb back={{ label: 'Tournament', onClick: () => navigate(`/t/${id}`) }}>MVP</Crumb>
+    <h1 className="disp" style={{ fontSize: 30 }}>Tournament MVP</h1>
+    <Banner kind={data.window.isOpen ? 'ok' : 'warn'} icon="star">
+      {data.window.isOpen ? `Voting closes ${new Date(data.window.closesAt!).toLocaleString()}.`
+        : data.window.opensAt ? `Voting closed ${data.window.closesAt ? new Date(data.window.closesAt).toLocaleString() : ''}.`
+          : 'Voting opens when the organizer closes the tournament.'}
+    </Banner>
+    {mvp.vote.isError ? <p className="sub" role="alert">{mvp.vote.error instanceof ApiError ? mvp.vote.error.message : 'Could not save your vote.'}</p> : null}
+    {data.candidates.length === 0 ? <Empty icon="star" title="No MVP candidates yet" /> : null}
+    <Panel quiet>{data.candidates.map(candidate => <div className="spread" key={candidate.userId}>
+      <span><b>{candidate.fullName}</b><br /><span className="sub">{candidate.team.name}</span></span>
+      <span className="hstack"><span className="num">{candidate.votes} votes</span>
+        {data.winners.includes(candidate.userId) ? <Badge kind="ok">Winner</Badge> : null}
+        {data.mine?.votedForUserId === candidate.userId ? <Badge kind="ok">Your vote</Badge> : null}
+        {data.canVote ? <button className="btn primary" type="button" disabled={mvp.vote.isPending}
+          onClick={() => mvp.vote.mutate(candidate.userId)}>{data.mine ? 'Change vote' : 'Vote'}</button> : null}
+      </span>
+    </div>)}</Panel>
+    {!meQuery.data ? <p className="sub">Sign in to vote. Results are public.</p> : null}
+  </>
 }
 
 function MockMvpPage() {

@@ -8,6 +8,8 @@ const tournament = { id: 't-public', name: 'Public Cup', champion: 'team-a' } as
 vi.mock('../../api/client', async original => ({
   ...await original<typeof import('../../api/client')>(), USE_MOCK: true,
 }))
+vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: undefined }) }))
+vi.mock('../../hooks/useLiveEngagement', () => ({ useMvpLive: () => ({ query: {}, vote: {} }) }))
 vi.mock('../../shared/store', () => ({
   useLtms: () => ({ session: 'guest', tournaments: [tournament] }),
 }))

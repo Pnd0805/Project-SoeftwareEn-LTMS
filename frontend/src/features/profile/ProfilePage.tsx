@@ -10,6 +10,7 @@ import { useMe } from '../../hooks/useAuth'
 import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useReference'
 import { useBackendMyTeams } from '../../hooks/useTeam'
 import { useFollows, useUserStats } from '../../hooks/useUser'
+import { usePickemHistory } from '../../hooks/useLiveEngagement'
 import { careerByTournament, pickScore } from '../../shared/career'
 import { ageOf } from '../../shared/rules'
 import { tour } from '../../shared/selectors'
@@ -26,6 +27,7 @@ export function ProfilePage() {
   const facultiesQuery = useFaculties()
   const departmentsQuery = useDepartments(currentUser?.facultyId)
   const sportsQuery = useSportTypes()
+  const pickem = usePickemHistory(!USE_MOCK && !!currentUser)
 
   if (meQuery.isPending) {
     return <Panel quiet><span className="sub">Loading your profile…</span></Panel>
@@ -144,9 +146,20 @@ export function ProfilePage() {
             ) : null}
           </Panel>
           <Panel quiet>
-            <span className="tag"><em>//</em> Career, Pick'em and MVP</span>
-            <Empty title="Not available on the server yet" sub="These prototype panels will return when their backend endpoints are deployed." />
+            <span className="tag"><em>//</em> Pick'em history</span>
+            {pickem.isPending ? <span className="sub">Loading predictions…</span> : null}
+            {pickem.isError ? <Empty title="Pick'em history is unavailable" sub="Please try again later." /> : null}
+            {pickem.data ? <>
+              <div className="statline"><Stat label="Points" value={pickem.data.totalPoints} />
+                <Stat label="Correct" value={pickem.data.correct} /><Stat label="Settled" value={pickem.data.settled} /></div>
+              {pickem.data.items.length ? pickem.data.items.map(item => <div className="spread" key={item.matchId}>
+                <Link to={`/m/${item.matchId}`}>{item.tournament.name} · {item.teamA?.name ?? 'TBD'} vs {item.teamB?.name ?? 'TBD'}</Link>
+                <span>{item.status} · {item.pointsEarned ?? '—'} points</span>
+              </div>) : <p className="sub">No predictions yet.</p>}
+            </> : null}
           </Panel>
+          <Panel quiet><span className="tag"><em>//</em> Career and MVP totals</span>
+            <p className="sub">Tournament career and received-vote totals are not available from the server yet.</p></Panel>
         </div>
 
         <div className="rail">

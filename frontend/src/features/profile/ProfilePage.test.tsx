@@ -35,6 +35,9 @@ vi.mock('../../hooks/useReference', () => ({
   useDepartments: () => ({ data: { items: [{ id: 8, name: 'Software Engineering' }] } }),
   useSportTypes: () => ({ data: { items: [] } }),
 }))
+vi.mock('../../hooks/useLiveEngagement', () => ({
+  usePickemHistory: () => ({ data: { totalPoints: 0, correct: 0, settled: 0, items: [] }, isPending: false, isError: false }),
+}))
 
 vi.mock('../player/PlayerPage', () => ({ CareerPanel: () => null }))
 
@@ -48,6 +51,6 @@ describe('ProfilePage real-mode boundary', () => {
     expect(screen.getByText('profile@example.test')).toBeInTheDocument()
     expect(screen.getByText('Engineering')).toBeInTheDocument()
     expect(screen.getByText('Statistics are unavailable')).toBeInTheDocument()
-    expect(screen.getByText('Career, Pick\'em and MVP')).toBeInTheDocument()
+    expect(screen.getByText('Pick\'em history')).toBeInTheDocument()
   })
 })

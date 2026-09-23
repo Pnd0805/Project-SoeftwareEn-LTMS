@@ -17,10 +17,17 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('notification API in real mode', () => {
-  it('fails locally instead of calling speculative notification routes', async () => {
-    await expect(getNotifications(7)).rejects.toMatchObject({ status: 501, code: 'ENDPOINT_UNAVAILABLE' })
-    await expect(markNotificationRead(7, 4)).rejects.toMatchObject({ status: 501, code: 'ENDPOINT_UNAVAILABLE' })
-    await expect(markNotificationsRead(7)).rejects.toMatchObject({ status: 501, code: 'ENDPOINT_UNAVAILABLE' })
-    expect(fetchMock).not.toHaveBeenCalled()
+  it('reads the C1 page and updates only this account through C1 routes', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ items: [], unreadCount: 0, pagination: { page: 2, pageSize: 20, totalItems: 0, totalPages: 0 } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 4, isRead: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ updated: 1, unreadCount: 0 }), { status: 200 }))
+    expect((await getNotifications(7, 2, true)).pagination?.page).toBe(2)
+    await markNotificationRead(7, 4)
+    await markNotificationsRead(7)
+    expect(fetchMock.mock.calls.map(call => [String(call[0]), (call[1] as RequestInit).method])).toEqual([
+      ['/api/v1/me/notifications?page=2&pageSize=20&unread=true', undefined],
+      ['/api/v1/me/notifications/4/read', 'PATCH'],
+      ['/api/v1/me/notifications/read-all', 'POST'],
+    ])
   })
 })

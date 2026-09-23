@@ -19,6 +19,9 @@ vi.mock('../../hooks/useNotifications', () => ({
   useMarkNotificationRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }))
+vi.mock('../../hooks/useLiveEngagement', () => ({
+  useMvpLive: () => ({ query: { isPending: false, isError: false }, vote: {} }),
+}))
 vi.mock('../inbox/BackendInbox', () => ({ BackendInbox: () => <div>Backend action inbox</div> }))
 
 import { BracketTab } from './BracketTab'
@@ -73,19 +76,19 @@ describe('real tournament view boundaries', () => {
   })
 
   it.each([
-    [MvpPage, 'MVP voting is unavailable'],
+    [MvpPage, 'No such tournament'],
     [WatchPage, 'Watch is unavailable'],
   ])('guards unsupported direct routes before mounting prototype hooks', (Page, title) => {
-    render(<Page />)
+    render(<MemoryRouter><Page /></MemoryRouter>)
     expect(screen.getByText(title)).toBeInTheDocument()
     expect(storeRead).not.toHaveBeenCalled()
     expect(query).not.toHaveBeenCalled()
   })
 
-  it('does not enable the unsupported notification query in real mode', () => {
+  it('enables C1 notifications without reading the prototype store', () => {
     render(<MemoryRouter><InboxPage /></MemoryRouter>)
     expect(screen.getByText('Backend action inbox')).toBeInTheDocument()
-    expect(notifications).toHaveBeenCalledWith(7, false)
+    expect(notifications).toHaveBeenCalledWith(7, true, 1, false)
     expect(storeRead).not.toHaveBeenCalled()
   })
 })

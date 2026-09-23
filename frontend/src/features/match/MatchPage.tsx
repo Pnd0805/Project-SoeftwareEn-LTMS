@@ -33,6 +33,7 @@ import { matchStateOf, toTeamView } from './matchView'
 import { ResultForm } from './ResultForm'
 import { ResultTrail } from './ResultTrail'
 import { SocialBar } from './SocialBar'
+import { LivePickem } from './LivePickem'
 import { StatSheet } from './StatSheet'
 import type { MatchDto, MatchResultDto, MatchTeamRef } from '../../types/match.dto'
 
@@ -591,20 +592,16 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
  * (SDS `POST /matches/{id}/predictions`, `POST /tournaments/{id}/comments`)
  * จึงแสดงได้เฉพาะโหมด mock กับแมตช์ที่อยู่ใน store — นอกนั้นบอกว่ายังใช้ไม่ได้ ไม่เรียก path ที่ไม่มี
  */
-function MatchCommunity({ matchId }: { matchId: string }) {
+function MatchCommunity({ matchId, match }: { matchId: string; match: MatchDto }) {
+  return USE_MOCK ? <MockMatchCommunity matchId={matchId} /> : <LivePickem match={match} />
+}
+
+function MockMatchCommunity({ matchId }: { matchId: string }) {
   /* หาแมตช์ใหม่ทุกครั้งที่ store commit ไม่งั้นถือ object เก่าไว้หลัง reset demo */
   useLtms()
-  const stored = USE_MOCK ? findStoreMatch(matchId) : undefined
+  const stored = findStoreMatch(matchId)
   if (stored) return <SocialBar m={stored} />
-  return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Community</span>
-      <div className="sub">
-        Pick'em and comments aren't available for this match yet.
-        {USE_MOCK ? '' : ' The server doesn\'t offer them yet.'}
-      </div>
-    </Panel>
-  )
+  return <Panel quiet><span className="sub">Pick'em is unavailable for this prototype match.</span></Panel>
 }
 
 export function MatchPage() {
@@ -717,7 +714,7 @@ export function MatchPage() {
           {tab === 'stats' ? <StatSheet m={m} /> : null}
           {tab === 'progress' ? <ResultTrail m={m} result={result} /> : null}
 
-          {tab === 'community' ? <MatchCommunity matchId={matchId} /> : null}
+          {tab === 'community' ? <MatchCommunity matchId={matchId} match={m} /> : null}
         </div>
 
         <div className="rail">

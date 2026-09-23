@@ -3,10 +3,66 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend contract reference: FE notices `a14d44c` and `a88f7ad`,
-received on 2026-09-21.** Individual entries in the "Backend blockers" section retain
+**Current backend contract reference: remote `BE_KN@e5ea50d` and the
+2026-09-23 C1/C6/C7 and BE_KN FE notices.** Verified with `git ls-remote` and
+`git fetch origin BE_KN` on 2026-09-23. Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
+
+## C1/C6/C7 engagement integration — checked 2026-09-23
+
+The routes below are present in `BE_KN@e5ea50d`. This is source-contract
+evidence, not a deployed API or browser pass. `backend_shokun_2` now points to
+`79754dc`; use the fetched `BE_KN` head for frontend integration. Real-mode
+engagement now uses `src/api/liveEngagement.ts`; the older mock adapters remain
+isolated from backend entity data.
+
+- [x] **Backend C1 delivered in source:** `GET /me/notifications` with
+      `items`, `unreadCount`, and `pagination`; `PATCH /me/notifications/:id/read`;
+      `POST /me/notifications/read-all`. Authenticated, own notifications only.
+- [x] **Frontend C1:** replace the `src/api/notification.ts` 501 guards and
+      mock DTO (`read`, `href`, `userId`) with `isRead`, `type`, `title`,
+      `relatedEntityType`/`relatedEntityId`, `unreadCount`, and pagination.
+      Wire Inbox unread filter, read actions, Shell badge, entity links, and a
+      neutral fallback for unknown types. Include `comment_removed` (show the
+      reason already in `message`) and `comment_reported` (open the tournament's
+      reported-comments view), plus the other C1 event types. Wired in Inbox,
+      Shell and notification hooks; unknown types retain the server title/message
+      with a neutral bell icon.
+- [x] **Backend C6 delivered in source:** tournament review submit/read,
+      MVP vote submit/read, feedback report/admin removal and admin restore.
+- [x] **Frontend C6, real mode:** replace mock Community rating and MVP flows with C6
+      DTOs and numeric IDs. Use review `status`, `opensAt`, `canSubmit`, `mine`,
+      summary/distribution and the organizer-only anonymous `items`; use MVP
+      `window`, `candidates`, `winners`, and `canVote`. Handle eligibility,
+      closed-window and validation errors, reported feedback, admin restore,
+      and the optional review prompt before an open-window team withdrawal.
+      Do not offer organizer deletion of participant reviews or MVP votes.
+      Wired in the tournament Community/Manage tabs, MVP page, admin moderation
+      tab and team withdrawal prompt. The prototype's mock flows stay separate.
+- [x] **Backend C7 delivered in source:** tournament comments, match Pick'em,
+      personal Pick'em history and tournament leaderboard. The old match-comment
+      routes are gone. `e5ea50d` also adds organizer comment removal with a
+      required reason, admin restore, moderator fields/filter, and two comment
+      notification types; no new migration is required by this notice.
+- [x] **Frontend C7, real mode:** move comments from match `SocialBar` to the tournament
+      Community tab. Use `mine`/`canComment`, one comment per person, own
+      deletion, reporting, `canModerate`, `isReported`, and `?reported=true`.
+      Require and explain the organizer's removal reason; give admin a restore
+      action. If pinning `mine`, remove its duplicate from `items`. Preserve the
+      report badge after edits. Keep match `SocialBar` for Pick'em using the
+      summary's `isOpen`, `canPredict`, percentages, `mine.status`, and cutoff
+      reason; add `/me/pickem` and the tournament leaderboard. Legacy mock mode
+      retains its match-thread prototype for demo data; real mode never mounts it.
+- [x] **Developer verification:** 40 test files / 233 tests, lint, TypeScript,
+      production build and Vite startup at `127.0.0.1:5173` pass on 2026-09-23.
+      The existing >500 kB bundle warning remains. Contract/UI tests cover C1
+      routing and C7 moderation reason/duplicate handling.
+- [ ] **Real-backend/browser verification:** check as guest, participant, organizer, referee
+      and university-wide admin. Capture API responses and verify permission,
+      empty, pending, error, reload and notification navigation states. The
+      local Vite proxy returned 502 because nothing is listening on backend
+      port 8000; no live API or browser pass is claimed.
 
 ## Newly reported match and profile gaps — triaged 2026-09-22
 
@@ -508,8 +564,8 @@ API-backed page from silently mixing server data with the prototype seed.
 | [x] | Slice 1 | Profile — identity | Render the signed-in user's name and registry fields from `GET /me` without requiring a matching legacy-store user. The page must never return a blank screen because `legacyUser` is absent. |
 | [x] | Slice 1 | Profile — statistics | Use `GET /users/:id/stats`; show loading, empty, and error states without hiding the `/me` identity section. |
 | [x] | Slice 4 | Profile — squads | Use `GET /me/teams` for the signed-in user's squads; do not derive membership from `s.teams`. |
-| [x] | Slice 1 | Profile — unsupported panels | Hide or label Career-by-tournament, Pick'em tokens, follows, and MVP totals unavailable until their backend read contracts are deployed. Do not calculate them from the seed. |
-| [x] | Slice 1 | Inbox — notifications | Do not call speculative `/me/notifications` or notification read routes against the baseline. Show a deliberate unavailable state or hide the Inbox navigation until a notification contract is agreed and deployed. |
+| [x] | Slice 1 | Profile — unsupported panels (earlier boundary) | Hide or label these panels instead of calculating them from the seed. C6/C7 now supply tournament MVP and personal Pick'em reads, and the latter is wired; follows, career and received-MVP totals still need read contracts. |
+| [x] | Slice 1 | Inbox — notifications | C1 is wired in real mode against `BE_KN@e5ea50d`; the older local 501 state applied to the previous baseline. Deployment/browser verification remains open above. |
 | [x] | Slice 4 | Inbox — team invitations | Keep team invitations on the API-backed flow using `GET /me/invitations` and invitation accept/decline routes; do not substitute general notifications for this flow. |
 | [x] | Slices 3 + 4 | Inbox — referee invitations | Keep referee invitations on `GET /me/referee-invitations` in `MatchesPage`; document the navigation until a unified Inbox contract exists. |
 | [x] | Slice 1 | Shell and badges | Derive identity, permissions, Inbox count, and navigation badges only from backend-backed queries in real mode. No badge may count prototype tournaments, invites, or notifications. |
@@ -524,19 +580,21 @@ API-backed page from silently mixing server data with the prototype seed.
 - [ ] **Head Dev + backend owner:** merge/deploy and freeze the public
       tournament list/detail contract before Search, Home, and Tournament detail
       are marked migrated. A route on an unmerged candidate is not sufficient.
-- [ ] **Backend owner:** define a notification list/read/read-all contract,
-      authorization, DTO, event producers, pagination, and retention before the
-      general Inbox is migrated.
+- [x] **Backend owner:** define a notification list/read/read-all contract,
+      authorization, DTO, event producers, and pagination. C1 is present in
+      `BE_KN@e5ea50d`; frontend wiring is complete and deployment/browser
+      verification remains open.
 - [x] **Backend owner:** define global team search/list authorization and DTO
       before the Search team section is enabled in real mode.
       Delivered as public T19 in BE_KN `c11954c`; the FE sends
       `visibility=public` and renders the returned numeric team DTOs.
-- [ ] **Backend owner:** define follows and any missing Profile career/Pick'em/
-      MVP read contracts before those panels are enabled in real mode.
+- [ ] **Backend owner:** define follows and any missing Profile career reads.
+      Pick'em history (`GET /me/pickem`) and tournament MVP vote reads are now
+      in `BE_KN@e5ea50d` and wired in real mode.
 - [x] **Head Frontend Dev:** update this file with each confirmed route, request,
       response, errors, permission, reviewed backend commit, and deployment
       evidence before assigning its frontend migration.
-      Updated through reviewed BE_KN `a88f7ad`; deployment/browser evidence is
+      Updated through reviewed BE_KN `e5ea50d`; deployment/browser evidence is
       deliberately tracked by the separate unchecked smoke-test rows.
 
 ### 4. Verification for the real-mode boundary
@@ -550,10 +608,10 @@ API-backed page from silently mixing server data with the prototype seed.
       Added `InboxPage.test.tsx`: five error classes and malformed payloads stay
       distinct from the successful empty state.
 - [x] Add tests proving unsupported panels never issue speculative API calls and
-      never fall back to store data in real mode.
-      `realModeBoundary.test.tsx` now also proves the unsupported notification
-      query is disabled while the API-backed action inbox renders; MVP and Watch
-      guards continue to prove no prototype hooks or speculative match calls run.
+      never fall back to store data in real mode. The earlier boundary test
+      guarded notifications and MVP before C1/C6 existed. It now checks C1 is
+      enabled without a prototype-store read and that MVP rejects invalid IDs;
+      Watch remains an explicit unavailable route.
 - [x] Run `rg` over routed feature components for `useLtms`, `shared/store`,
       `shared/selectors`, `shared/seed`, and `src/mocks`; review and document
       every remaining real-mode-reachable use.
@@ -561,8 +619,8 @@ API-backed page from silently mixing server data with the prototype seed.
       mock-only branches guarded by `USE_MOCK` (Home/Search/Profile/tournament
       compatibility views), API-backed screens that use the store only for their
       mock adapter (Match/Team), and direct unsupported routes guarded before the
-      prototype hooks mount (Watch/MVP). Shell badges enable notifications only
-      in mock mode. No reviewed real-mode render derives an entity, permission,
+      prototype hooks mount (Watch). Shell badges now use C1 `unreadCount` in
+      real mode. No reviewed real-mode render derives an entity, permission,
       counter, or fallback from `ltms.v1`.
 - [ ] Smoke-test a clean browser profile with `VITE_USE_MOCK=false` and stale
       `ltms.v1` data present; no demo user, team, tournament, match, invitation,
@@ -590,8 +648,8 @@ delivers an agreed contract:
       four listed separately (delete, eligibility-rule writes, entry notes,
       feedback). Route inventory re-checked against BE_KN `6ebda2e` on 2026-09-19.
 - [x] ~~Backend delivery required: match list/detail, draw, result, standings,
-      real bracket~~ — delivered and wired. Comments are still missing and are
-      listed on their own. What the delivered result routes will not
+      real bracket~~ — delivered and wired. Tournament comments were delivered
+      later in C7 and are tracked separately above. What the delivered result routes will not
       do is listed under its own entries: unverified results, draws, and
       correcting a score when resolving a dispute.
 - [x] ~~Backend delivery required: a result that is not yet verified cannot be
@@ -647,14 +705,12 @@ delivers an agreed contract:
       (The 500 this used to throw on a non-numeric team id was fixed as A2 in
       `c9773ca` — `/teams/:id` answers 400 now. The search route itself is still
       the open part.)
-- [ ] Backend delivery required: notification list, mark-one-read, and
-      mark-all-read routes. `src/api/notification.ts` currently contains
-      local `501 ENDPOINT_UNAVAILABLE` guards; the general Inbox must not call
-      or simulate unconfirmed paths in real mode until the contract is agreed
-      and deployed.
-- [ ] Backend delivery required: follows plus any Profile career-by-tournament,
-      Pick'em total, and MVP-total reads that remain part of the approved UI.
-      `GET /me` and `GET /users/:id/stats` do not supply those sections.
+- [x] ~~Backend delivery required: notification list, mark-one-read, and
+      mark-all-read routes.~~ Delivered in `BE_KN@e5ea50d` (C1) and wired to
+      Inbox/Shell. Live browser verification remains open.
+- [ ] Backend delivery required: follows plus any Profile career-by-tournament
+      and received-MVP-total reads that remain part of the approved UI. Pick'em
+      history and tournament MVP vote reads are delivered and wired in C7/C6.
 - [ ] Backend delivery required: team leader transfer (SDS
       `POST /teams/{id}/transfer-leader`, FR-TM-08). Outside mock mode the UI
       labels it unavailable.
@@ -903,20 +959,16 @@ delivers an agreed contract:
       also what lets a plain player see that a result is in — without it the
       match page told them "no result recorded yet" while the two leaders saw
       the opposite.
-- [ ] Backend delivery required: tournament feedback — both writing it and
-      reading it back (SDS `POST /tournaments/{id}/feedback`, FR-CM-02).
-      `schema.sql` already has the whole table: `tournament_feedback` with
-      `feedback_type ENUM('comment','organizer_feedback','mvp_vote')`, a
-      `rating` column and a unique key that enforces one per person. No route
-      touches any of it, verified 404 on `6ebda2e`. The Community tab's rating
-      form and the organizer's Feedback panel work in mock mode only.
-- [ ] Backend delivery required: match comments and Pick'em (SDS
-      `POST /tournaments/{id}/comments` FR-CM-01,
-      `POST /matches/{id}/predictions` FR-PK-01, settled inside the result
-      transaction). `src/api/engagement.ts` calls `/matches/:id/comments` and
-      `/matches/:id/picks`, which match neither the SDS nor a backend route.
-      The match page's Community tab shows `SocialBar` in mock mode only,
-      because `SocialBar` takes a store `Match`, not a `MatchDto`.
+- [x] ~~Backend delivery required: tournament feedback writing and reading.~~
+      C6 is present in `BE_KN@e5ea50d`: review submit/read, MVP vote
+      submit/read, reporting, admin removal and restore. The 404 at `6ebda2e`
+      is historical. Real-mode Community rating and organizer feedback now use
+      the C6 API; browser acceptance is tracked above.
+- [x] ~~Backend delivery required: comments and Pick'em.~~ C7 is present in
+      `BE_KN@e5ea50d`. Comments now belong to tournaments, one per person;
+      Pick'em remains per match. Real mode uses the C7 API-backed tournament
+      Community and match Pick'em components. `src/api/engagement.ts` and the
+      mock match `SocialBar` remain prototype-only.
 - [x] ~~Backend fix required: `acceptedCount` counted unapproved external
       referees~~ — delivered as A3 (`c9773ca` + `50cc899`). The response is now
       `{acceptedCount, awaitingAdminCount}`; `effectiveCount` was dropped as a

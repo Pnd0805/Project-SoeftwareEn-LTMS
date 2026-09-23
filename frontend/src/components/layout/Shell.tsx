@@ -41,9 +41,7 @@ function useNav(unreadCount: number, currentUser: MeDto | undefined, backendHasA
   }
   items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: USE_MOCK ? invites : undefined })
   items.push({ to: '/matches', icon: 'match', label: 'Matches' })
-  /* โหมดจริงไม่มีการแจ้งเตือนของระบบ แต่กล่องข้อความยังมีของจริงให้ตอบ
-     (คำเชิญเข้าทีม คำเชิญเป็นกรรมการ คำขอรับแมตช์) จึงไม่ซ่อนแถบนี้อีกต่อไป */
-  items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: USE_MOCK ? unreadCount : undefined })
+  items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unreadCount })
   items.push({ to: '/me', icon: 'user', label: 'Profile' })
   return items
 }
@@ -105,8 +103,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
      check until GET /me exposes scopes directly. */
   const adminAccess = useAdminAccess(!!currentUser)
   const logout = useLogout()
-  const { data: notificationData } = useNotifications(currentUser?.id, USE_MOCK)
-  const unreadCount = notificationData?.items.filter(notification => !notification.read).length ?? 0
+  const { data: notificationData } = useNotifications(currentUser?.id)
+  const unreadCount = notificationData?.unreadCount
+    ?? notificationData?.items?.filter(notification => !(notification.isRead ?? notification.read)).length ?? 0
   const nav = useNav(unreadCount, currentUser, adminAccess.data === true)
   const location = useLocation()
   const navigate = useNavigate()
@@ -176,12 +175,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <SearchBox />
             <span className="right">
               <ThemeButton />
-              {USE_MOCK ? (
-                <button className="bell" type="button" onClick={() => navigate('/inbox')}
-                  aria-label={`Notifications, ${n} unread`}>
-                  <Icon name="bell" size={17} />{n ? <i>{n}</i> : null}
-                </button>
-              ) : null}
+              <button className="bell" type="button" onClick={() => navigate('/inbox')}
+                aria-label={`Notifications, ${n} unread`}>
+                <Icon name="bell" size={17} />{n ? <i>{n}</i> : null}
+              </button>
               <span className="avatar">{displayName.slice(0, 1)}</span>
             </span>
           </div></div>

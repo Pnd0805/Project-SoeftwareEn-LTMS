@@ -25,6 +25,7 @@ import { LeaderboardTab } from './LeaderboardTab'
 import { DashboardTab } from './DashboardTab'
 import { AnnouncementsTab } from './AnnouncementsTab'
 import { CommunityTab } from './CommunityTab'
+import { LiveCommunityTab } from './LiveCommunityTab'
 import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
@@ -182,7 +183,7 @@ export function TournamentPage() {
             : t.status === 'public' ? <Badge kind="ok">Public</Badge>
               : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
                 : <Badge kind="warn">Pending review</Badge>}
-          {USE_MOCK && champion ? (
+          {(USE_MOCK ? !!champion : completed) ? (
             <button className="btn primary" type="button" onClick={() => navigate(`/mvp/${t.id}`)}>
               <Icon name="star" size={12} /> Vote MVP
             </button>
@@ -207,7 +208,7 @@ export function TournamentPage() {
           {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
           {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
           {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
-          {tab === 'community' ? <CommunityTab t={t} org={org} /> : null}
+          {tab === 'community' ? USE_MOCK ? <CommunityTab t={t} org={org} /> : <LiveCommunityTab tournamentId={tournamentId!} organizer={org} /> : null}
           {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}
         </div>
 

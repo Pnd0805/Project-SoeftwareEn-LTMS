@@ -22,6 +22,7 @@ import { useCancelMyApplication, useMyTournamentApplications, useWithdrawMyAppli
 import { useSportTypes } from '../../hooks/useReference'
 import { USE_MOCK } from '../../api/client'
 import { EnterTournamentButton } from '../tournament/EnterTournamentButton'
+import { useReviews } from '../../hooks/useLiveEngagement'
 
 const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
@@ -92,6 +93,15 @@ export function TeamsPage() {
   const sportTypes = useSportTypes()
   const [creating, setCreating] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [withdrawPrompt, setWithdrawPrompt] = useState<{ applicationId: number; tournamentId: number; name: string } | null>(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewText, setReviewText] = useState('')
+  const reviewBeforeWithdraw = useReviews(withdrawPrompt?.tournamentId)
+  const finishWithdrawal = async () => {
+    if (!withdrawPrompt) return
+    await withdrawApplication.mutateAsync(withdrawPrompt.applicationId)
+    setWithdrawPrompt(null)
+  }
 
   if (teams.isPending) {
     return <Panel><span className="sub">Loading your teams…</span></Panel>
@@ -188,13 +198,35 @@ export function TeamsPage() {
                 ) : null}
                 {application.status === 'approved' ? (
                   <button className="btn ghost" type="button" disabled={withdrawApplication.isPending}
-                    onClick={() => withdrawApplication.mutate(application.id)}>Withdraw</button>
+                    onClick={() => USE_MOCK ? withdrawApplication.mutate(application.id)
+                      : setWithdrawPrompt({ applicationId: application.id, tournamentId: application.tournament.id, name: application.tournament.name })}>Withdraw</button>
                 ) : null}
               </span>
             </div>
           ))}
         </Panel>
       ) : null}
+
+      <Modal open={!!withdrawPrompt} onClose={() => setWithdrawPrompt(null)} label="Withdraw from tournament" title={withdrawPrompt?.name}>
+        {reviewBeforeWithdraw.query.isPending ? <p className="sub">Checking the review window…</p> : null}
+        {reviewBeforeWithdraw.query.data?.status === 'open' && reviewBeforeWithdraw.query.data.canSubmit ? <>
+          <p className="sub">After withdrawal your team may no longer be eligible to review this tournament. You can review it now, or skip.</p>
+          <Field label="Rating" htmlFor="withdraw-rating"><select id="withdraw-rating" value={reviewRating} onChange={event => setReviewRating(Number(event.target.value))}>
+            {[5, 4, 3, 2, 1].map(value => <option key={value} value={value}>{value}/5</option>)}
+          </select></Field>
+          <Field label="Review (optional)" htmlFor="withdraw-review"><textarea id="withdraw-review" maxLength={1000} value={reviewText} onChange={event => setReviewText(event.target.value)} /></Field>
+          {reviewBeforeWithdraw.submit.isError ? <p className="sub" role="alert">{errorMessage(reviewBeforeWithdraw.submit.error)}</p> : null}
+          <button className="btn primary" type="button" disabled={reviewBeforeWithdraw.submit.isPending || withdrawApplication.isPending}
+            onClick={async () => { try { await reviewBeforeWithdraw.submit.mutateAsync({ rating: reviewRating, content: reviewText }); await finishWithdrawal() } catch { /* errors appear above */ } }}>
+            Save review and withdraw
+          </button>
+        </> : null}
+        {reviewBeforeWithdraw.query.isError ? <p className="sub">Could not check review eligibility. You can still withdraw.</p> : null}
+        {withdrawApplication.isError ? <p className="sub" role="alert">{errorMessage(withdrawApplication.error)}</p> : null}
+        <div className="hstack"><button className="btn ghost" type="button" onClick={() => setWithdrawPrompt(null)}>Cancel</button>
+          <button className="btn" type="button" disabled={withdrawApplication.isPending || reviewBeforeWithdraw.query.isPending}
+            onClick={() => void finishWithdrawal().catch(() => {})}>{reviewBeforeWithdraw.query.data?.status === 'open' ? 'Skip review and withdraw' : 'Withdraw'}</button></div>
+      </Modal>
 
       {items.map(team => (
         <Panel key={team.id}>

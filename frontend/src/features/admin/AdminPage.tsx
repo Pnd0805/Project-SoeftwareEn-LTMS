@@ -31,6 +31,7 @@ import { useSportTypes } from '../../hooks/useReference'
 import type { OfficialTeamRequestDto } from '../../types/admin.dto'
 import { AdminRefereesTab } from './AdminRefereesTab'
 import { AdminUsersTab } from './AdminUsersTab'
+import { AdminFeedbackTab } from './AdminFeedbackTab'
 
 const TABS = [
   { key: 'requests', label: 'Requests to organize' },
@@ -39,6 +40,7 @@ const TABS = [
   { key: 'filters', label: 'Hard-filter changes' },
   { key: 'tournaments', label: 'All tournaments' },
   { key: 'users', label: 'Users' },
+  { key: 'feedback', label: 'Feedback' },
 ]
 
 export function AdminPage() {
@@ -498,6 +500,7 @@ export function AdminPage() {
       ) : null}
 
       {tab === 'users' ? <AdminUsersTab /> : null}
+      {tab === 'feedback' ? USE_MOCK ? <Panel quiet><span className="sub">Feedback moderation uses the real backend.</span></Panel> : <AdminFeedbackTab /> : null}
     </>
   )
 }

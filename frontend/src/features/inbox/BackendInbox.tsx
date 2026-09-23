@@ -3,15 +3,13 @@
  *
  * กล่องข้อความในโหมดที่ต่อ backend จริง
  *
- * backend ยังไม่มีตาราง/เส้นของ "การแจ้งเตือน" (GET /me/notifications) — แต่สิ่งที่คน
- * เข้ามาดูกล่องนี้จริงๆ คือ "มีอะไรรอให้ฉันตอบบ้าง" ซึ่งอ่านได้จากเส้นที่มีอยู่แล้ว:
+ * คำขอที่ต้องตอบอ่านจาก endpoint ของแต่ละงาน ส่วนประวัติแจ้งเตือนอ่านจาก C1:
  *
  *   GET /me/invitations         คำเชิญเข้าทีม            → ตอบรับ/ปฏิเสธได้ที่นี่
  *   GET /me/referee-invitations คำเชิญเป็นกรรมการ        → ตอบรับ/ปฏิเสธได้ที่นี่
  *   GET /me/referee-requests    คำขอเปลี่ยน/เพิ่มแมตช์    → ตอบรับ/ปฏิเสธได้ที่นี่
  *   GET /me/applications        ผลการพิจารณาใบสมัครทีม   → อ่านอย่างเดียว
  *
- * พอ backend มี /me/notifications จริงเมื่อไร ค่อยเอามารวมเป็นรายการเดียว
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -53,13 +51,8 @@ export function BackendInbox() {
   return (
     <>
       <div className="spread">
-        <h1 className="disp" style={{ fontSize: 32 }}>Inbox</h1>
+        <h2 className="disp" style={{ fontSize: 24 }}>Action requests</h2>
       </div>
-
-      <Banner kind="warn">
-        <b>System notifications are not on the server yet.</b>{' '}
-        This is everything waiting on your answer, read from the endpoints that do exist.
-      </Banner>
 
       {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
 
