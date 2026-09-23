@@ -70,7 +70,7 @@ Triaged against frontend `f0a5538` and the verified remote head of `BE_KN`
 `a88f7ad`. These are acceptance items, not claims that the corresponding fix has
 already been delivered.
 
-- [ ] **R17 · Referee-request rejection feedback and match identity · FE first,
+- [x] **R17 · Referee-request rejection feedback and match identity · FE first,
       then BE if the payload is wrong:** when a referee declines an
       `org_add_match` request, keep the resolved request visible to the organizer
       on Draw/Fixture with a **Declined** state instead of silently removing it.
@@ -101,6 +101,21 @@ already been delivered.
     say why instead of looking like a successful Accept.
   - Accept: invite two eligible referees to one future on-site match, accept in
     both orders, reload organizer/referee views, and see both accepted assignments.
+  - FE scope: the response-state feedback and query refresh are implemented.
+    The backend still cancels the second independent request, so accepting both
+    invitations without reinviting remains blocked on the backend. Keep this
+    item unticked until the backend contract and two-account acceptance pass.
+
+- [ ] **R18a · Double elimination requires four teams before a draw · FE scope:**
+      a new double-elimination tournament has no bracket until the organizer
+      draws with at least four approved teams. Progress must not count an older
+      two-team bracket as a valid draw.
+  - Frontend Progress requires four approved teams, identifies an undersized
+    saved bracket and routes to the confirmed redraw; the public bracket hides
+    that invalid saved draw. The mock draw also enforces four teams. Frontend
+    43 files / 261 tests, lint and build pass. Backend M01 still accepts a
+    direct draw with two approved teams when tournament `minTeams` is two;
+    enforcement at the API boundary and real backend/browser QA remain open.
 
 - [ ] **R19 · A complete fixture gates the next match stage · Backend + FE:** a
       match must have a valid future `scheduledTime`, `scheduledEndTime` and
@@ -193,20 +208,19 @@ Developer verification: 41 test files / 243 tests, lint, TypeScript.
       the row reads `Declined · มานะ ไร้ทีม · 9/23/2026, 6:05:23 PM` against
       Match 14's own kick-off. If the reporter still sees a mismatch we need
       their Network capture, because this path now reads only from the request.
-- [ ] **R18 — frontend half done, backend half still required.** The real
+- [ ] **R18 — frontend half done, backend fix required.** The real
       frontend defect was that Accept announced "You are officiating match #N"
       whenever the call did not throw. FR06 answers 200 with the request and its
-      `status`, and that status can be `cancelled` — which is exactly what
-      `refereeChangeRequest.repo.apply()` produces for the second referee today.
+      `status`, and that status can be `cancelled` when the first referee accepts.
       A referee was being told they had a match they did not have. Accept now
       believes the returned status, says plainly when the request closed without
       reaching them, and names the reason on a refusal
       (`REQUEST_CLOSED`, `REFEREE_TIME_CONFLICT`, `MATCH_NOT_CHANGEABLE`,
       `REFEREE_NOT_ACTIVE`). Answering also invalidates the whole `referees` and
       `match` key space, so an organizer holding the Draw tab open sees the
-      change. **Still blocked:** until `apply()` stops cancelling independent
-      `org_add_match` rows, two referees cannot hold one match, so the honest
-      screen is the one that says the second request was cancelled.
+      change. The current backend cancels another referee's open
+      `org_add_match` request for the same match. The FE cannot make both
+      acceptances persist until the backend changes that transaction.
 - [x] **R19 — frontend half done.** `SetupTrail` counted a fixture ready from
       venue + start time only; end time is just as mandatory, because M06's first
       write refuses with `SCHEDULE_INCOMPLETE` without all three and FR02

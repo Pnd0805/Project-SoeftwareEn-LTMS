@@ -19,6 +19,7 @@ import { formatName, formatOf, matchStage, matchTag, nextOf, roundName } from '.
 import type { Match, Tournament } from '../../shared/types'
 import type { MatchListItemDto } from '../../types/match.dto'
 import { USE_MOCK } from '../../api/client'
+import { hasValidBracket } from './hasValidBracket'
 
 function ApiBracketNode({ m }: { m: MatchListItemDto }) {
   const navigate = useNavigate()
@@ -184,6 +185,7 @@ function RealBracketTab({ t }: { t: Tournament }) {
     </Empty>
   }
   if (!matches.data?.items.length) return <Empty title="No matches yet" sub="Matches will appear here once the fixtures are drawn." />
+  if (!hasValidBracket(t, matches.data.items)) return <Empty title="No valid bracket yet" sub="Double elimination needs at least four approved squads before the bracket can be drawn." />
   return <ApiBracket matches={matches.data.items} host={host} />
 }
 

@@ -68,6 +68,30 @@ describe('draw progress in real mode', () => {
     expect(screen.getByText(/Registration may remain open/)).toBeInTheDocument()
   })
 
+  it('requires four approved squads and a four-team saved bracket for double elimination', () => {
+    const double = { ...tournament, format: 'double' as const }
+    const view = render(<MemoryRouter><SetupTrail t={double} onAppoint={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByText('Step 4 of 8')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Generate bracket/ })).not.toBeInTheDocument()
+
+    teamState.current = { items: [
+      { id: 11, name: 'Alpha' }, { id: 12, name: 'Beta' },
+      { id: 13, name: 'Gamma' }, { id: 14, name: 'Delta' },
+    ] }
+    matchState.current = { data: { items: [{ id: 71, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 12 }, status: 'scheduled' }] }, isPending: false, isError: false }
+    view.rerender(<MemoryRouter><SetupTrail t={double} onAppoint={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByText('Step 5 of 8')).toBeInTheDocument()
+    expect(screen.getByText(/saved bracket has fewer than 4 teams/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Redraw the bracket' })).toBeInTheDocument()
+
+    matchState.current = { data: { items: [
+      { id: 71, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 14 }, status: 'scheduled' },
+      { id: 72, roundNumber: 1, teamA: { id: 12 }, teamB: { id: 13 }, status: 'scheduled' },
+    ] }, isPending: false, isError: false }
+    view.rerender(<MemoryRouter><SetupTrail t={double} onAppoint={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByText('Step 6 of 8')).toBeInTheDocument()
+  })
+
   it('advances from draw to fixture setup from API matches, not the legacy drawn flag', () => {
     const view = render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
     expect(screen.getByText('Step 5 of 8')).toBeInTheDocument()

@@ -26,7 +26,8 @@ import {
 import { useTournamentMatches } from '../../../hooks/useMatch'
 import { useTournamentReferees } from '../../../hooks/useAdmin'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
-import { formatName, refsNeeded } from '../../../shared/rules'
+import { formatName, formatOf, refsNeeded } from '../../../shared/rules'
+import { hasValidBracket } from '../hasValidBracket'
 import type { Tournament } from '../../../shared/types'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
@@ -74,10 +75,12 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
     ? (applications.data?.items ?? []).filter(a => a.status === 'pending').length
     : regsOf(s, t.id).filter(r => r.status === 'pending').length
   const applicationCount = real ? applications.data?.items.length ?? 0 : regsOf(s, t.id).length
+  const minimumTeams = formatOf(t) === 'double' ? 4 : 2
 
   /* บายไม่ใช่แมตช์ที่ต้องจัดสนามหรือหากรรมการ — ฝั่ง backend คือนัดที่มีทีมเดียว */
   const apiMatches = (backendMatches.data?.items ?? []).filter(m => m.teamA && m.teamB)
-  const bracketDrawn = real ? (backendMatches.data?.items.length ?? 0) > 0 : t.drawn
+  const bracketDrawn = real ? hasValidBracket(t, backendMatches.data?.items ?? []) : t.drawn
+  const undersizedSavedBracket = real && !bracketDrawn && (backendMatches.data?.items.length ?? 0) > 0
   const ms = real ? apiMatches
     : t.drawn ? matchesOf(s, t.id).filter(m => m.note !== 'bye' && m.status !== 'void') : []
   /**
@@ -141,9 +144,9 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       ) : undefined,
     }] : []),
     {
-      state: approvedCount >= 2 ? 'done' : 'idle',
+      state: approvedCount >= minimumTeams ? 'done' : 'idle',
       title: 'Approve the squads',
-      note: `${approvedCount} approved · ${pendingCount} waiting on you · cap ${t.cap}. Registration may remain open; redraw uses the currently approved squads until matches are in use.`,
+      note: `${approvedCount} approved · ${pendingCount} waiting on you · need ${minimumTeams} · cap ${t.cap}. Registration may remain open; redraw uses the currently approved squads until matches are in use.`,
     },
     {
       state: bracketDrawn ? 'done' : 'idle',
@@ -154,12 +157,14 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
           ? 'The saved bracket could not be checked. Try again before drawing.'
           : bracketDrawn
             ? `${formatName(t)} — the saved matches confirm that the bracket is drawn.`
-            : `${formatName(t)} — needs two approved squads.`,
+            : undersizedSavedBracket
+              ? `${formatName(t)} — the saved bracket has fewer than ${minimumTeams} teams. Redraw it once enough squads are approved.`
+              : `${formatName(t)} — needs ${minimumTeams} approved squads.`,
       cta: (
         <button className="btn primary" type="button"
-          disabled={draw.isPending || (real && (backendMatches.isPending || backendMatches.isError))}
-          onClick={() => setConfirming('draw')}>
-          {draw.isPending ? 'Drawing…' : 'Generate bracket · random draw'}
+          disabled={draw.isPending || approvedCount < minimumTeams || (real && (backendMatches.isPending || backendMatches.isError))}
+          onClick={() => undersizedSavedBracket ? navigate(`/t/${t.id}/manage/draw`) : setConfirming('draw')}>
+          {draw.isPending ? 'Drawing…' : undersizedSavedBracket ? 'Redraw the bracket' : 'Generate bracket · random draw'}
         </button>
       ),
     },

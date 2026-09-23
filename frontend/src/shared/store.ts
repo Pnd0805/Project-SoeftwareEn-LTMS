@@ -304,7 +304,8 @@ export function drawBracket(trId: string, order?: string[]) {
   const approved = state.registrations.filter(r => r.tour === trId && r.status === 'approved').map(r => r.team)
   const ids = order?.length ? order.slice() : approved.slice()
   if (!order) for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]] }
-  if (ids.length < 2) { toast('It needs two approved squads', 'crit'); return }
+  const minimumTeams = tr.format === 'double' ? 4 : 2
+  if (ids.length < minimumTeams) { toast(`It needs ${minimumTeams} approved squads`, 'crit'); return }
   state.matches = state.matches.filter(m => m.tour !== trId)
   const made = buildBracket(tr, ids, () => uid('m'))
   made.forEach(m => { m.venue = tr.venue; m.pin = tr.pin })
