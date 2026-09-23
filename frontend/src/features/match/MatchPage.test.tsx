@@ -115,6 +115,48 @@ describe('a result the organizer threw out', () => {
   })
 })
 
+/* R19 — เปิดเช็คอินก่อนจัดนัดครบไม่ได้: พอเปิดแล้วแก้นัดไม่ได้อีก และกรรมการก็ขอไม่ได้ */
+describe('opening check-in', () => {
+  const asOrganizerOfScheduledMatch = (over: Partial<MatchDto> = {}) => {
+    match = baseMatch()
+    match.status = 'scheduled'
+    match.resultStatus = null
+    match.viewer.roles = ['organizer']
+    match.viewer.can.openCheckin = true
+    Object.assign(match, over)
+    result = undefined
+  }
+
+  it('will not open check-in while the fixture is incomplete, and names what is missing', () => {
+    asOrganizerOfScheduledMatch({ scheduledEndTime: null, venue: null })
+    renderPage()
+
+    expect(screen.getByRole('button', { name: 'Open check-in' })).toBeDisabled()
+    expect(screen.getByText(/Finish the fixture first/)).toBeInTheDocument()
+    expect(screen.getByText(/an end time, a venue/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Set the fixture' })).toBeInTheDocument()
+  })
+
+  it('opens check-in once kick-off, end time and venue are all set', () => {
+    asOrganizerOfScheduledMatch()
+    renderPage()
+
+    expect(screen.getByRole('button', { name: 'Open check-in' })).toBeEnabled()
+    expect(screen.queryByText(/Finish the fixture first/)).not.toBeInTheDocument()
+  })
+
+  /* R20 — ปุ่มอ่านจาก can.openCheckin ที่เดียว วันที่ backend เปิดให้กรรมการกดได้
+     จะแก้ที่ mapper บรรทัดเดียว ไม่ต้องตามแก้หน้าจอ */
+  it('hides the action from anyone the server would refuse', () => {
+    asOrganizerOfScheduledMatch()
+    match.viewer.can.openCheckin = false
+    match.viewer.roles = ['referee']
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: 'Open check-in' })).not.toBeInTheDocument()
+  })
+})
+
 describe('signing a result off', () => {
   it('shows why a confirmation was refused instead of doing nothing', () => {
     match.status = 'in_progress'

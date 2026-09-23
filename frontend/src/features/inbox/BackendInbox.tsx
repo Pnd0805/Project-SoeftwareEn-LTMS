@@ -21,8 +21,19 @@ import {
   useDeclineRefereeRequest, useMyRefereeInvitations, useMyRefereeRequests,
 } from '../../hooks/useAdmin'
 import { useMyTournamentApplications } from '../../hooks/useTournament'
+import { ApiError } from '../../api/client'
 
 type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string } | null
+
+/** ตอบคำขอแล้วเด้ง — บอกให้ตรงว่าเพราะอะไร ไม่ใช่ปล่อยเงียบ (R18) */
+const answerError = (error: unknown) => {
+  const code = error instanceof ApiError ? error.code : null
+  if (code === 'REQUEST_CLOSED') return 'That request has already been answered or withdrawn.'
+  if (code === 'REFEREE_TIME_CONFLICT') return 'You already have a match that overlaps this one.'
+  if (code === 'MATCH_NOT_CHANGEABLE') return 'That match has started, so its referees are fixed now.'
+  if (code === 'REFEREE_NOT_ACTIVE') return 'You are not active in that tournament yet.'
+  return error instanceof Error ? error.message : 'That did not go through. Try again.'
+}
 
 export function BackendInbox() {
   const navigate = useNavigate()
@@ -129,10 +140,24 @@ export function BackendInbox() {
                 <button className="btn" type="button" disabled={declineRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined match #${request.matchA.id}.` }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
                   })}>Decline</button>
+                {/* R18 — เดิมขึ้น "You are officiating" ทุกครั้งที่คำขอตอบกลับมา 200 แต่ FR06
+                    คืนใบคำขอพร้อม `status` ซึ่งเป็น `cancelled` ได้ เมื่อมีใบอื่นบนแมตช์
+                    เดียวกันถูก apply ไปก่อน (`refereeChangeRequest.repo.apply` ปิดใบที่
+                    แตะแมตช์เดียวกันทั้งหมด) กรรมการจึงอ่านว่าได้คุมแล้วทั้งที่ไม่ได้คุม
+                    — เชื่อสถานะที่ตอบกลับมา ไม่ใช่เชื่อว่าไม่ throw = สำเร็จ */}
                 <button className="btn primary" type="button" disabled={acceptRequest.isPending}
                   onClick={() => acceptRequest.mutate(request.id, {
-                    onSuccess: () => setNotice({ kind: 'ok', text: `You are officiating match #${request.matchA.id}.` }),
+                    onSuccess: answered => setNotice(answered.status === 'applied'
+                      ? { kind: 'ok', text: `You are officiating match #${answered.matchA.id}.` }
+                      : {
+                        kind: 'warn',
+                        text: `Match #${answered.matchA.id} did not come to you — that request is now `
+                          + `${answered.status}. Somebody else may have taken it, or the organizer `
+                          + `withdrew it. Ask them to send a new one.`,
+                      }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
                   })}>Accept</button>
               </div>
             </div>

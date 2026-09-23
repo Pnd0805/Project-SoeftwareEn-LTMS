@@ -195,6 +195,7 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
       can: {
         submitResult: false, verifyResult: false, disputeResult: false, resolveDispute: false,
         editFixture: false, recordStats: false, manageCheckin: false, verifyCheckin: false,
+        openCheckin: false,
       },
     },
     score: scoreFor(m.teamA, m.teamB, m.score),
@@ -648,6 +649,8 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
       editFixture: isOrganizer && dto.status === "scheduled",
       recordStats: isReferee,
       manageCheckin: isReferee || isOrganizer,
+      /* R20 — เปลี่ยนเป็น `isOrganizer || isReferee` ทันทีที่ M09 เลิกใช้ requireOrganizerOfMatch */
+      openCheckin: isOrganizer,
       /* ผู้จัดเปิด/ปิดเช็คอินและดูคอนโซลได้ แต่ทั้งสามเส้นที่ตัดสินการเช็คอินของคนอื่น
          เป็น requireReferee — ถ้าโชว์ปุ่มให้ผู้จัดด้วย กดแล้วได้ 403 NOT_REFEREE ทุกครั้ง */
       verifyCheckin: isReferee,
@@ -835,12 +838,16 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
        walkover ก็ส่งต่อตามจริง: จบแล้วเหมือนกันแต่ไม่ได้ลงแข่ง หน้าจอต้องพูดคนละแบบ
        และแบบแพ้ทั้งคู่ไม่มีผู้ชนะให้ประกาศ (GUIDE/11 §10.5) */
     status: raw.status ?? "verified",
-    disputeReason: null,
-    disputeRaisedBy: null,
-    disputeRaisedAt: null,
-    disputeResolvedBy: null,
-    disputeResolution: null,
-    disputeResolvedAt: null,
+    /* R21 — S05 ยังไม่ส่งหกช่องนี้มา (ตารางเก็บครบ แต่ mapper ไม่ได้ใส่ในรูปที่ตอบ)
+       อ่านแบบ optional ไว้ ผู้จัดจะเห็นเหตุผลที่ถูกโต้แย้งและเหตุผลที่ผลถูกยก
+       ทันทีที่ backend เติม โดยไม่ต้องกลับมาแก้ตรงนี้อีก — ที่แสดงมีอยู่แล้วทั้ง
+       `ResolvePanel` และ `ResultTrail` */
+    disputeReason: raw.disputeReason ?? null,
+    disputeRaisedBy: raw.disputeRaisedBy ?? null,
+    disputeRaisedAt: raw.disputeRaisedAt ?? null,
+    disputeResolvedBy: raw.disputeResolvedBy ?? null,
+    disputeResolution: raw.disputeResolution ?? null,
+    disputeResolvedAt: raw.disputeResolvedAt ?? null,
     verifiedBy: unknownPerson,
     verifiedAt: raw.verifiedAt,
     amendedBy: null,

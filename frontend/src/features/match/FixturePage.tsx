@@ -37,6 +37,8 @@ const toLocal = (iso: string | null) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+const toLocalReadable = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
+
 const refereeRequestError = (error: unknown) => {
   if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Could not request this referee.'
   if (error.code === 'REFEREE_SCHEDULE_CONFLICT') return 'This referee already has a match that overlaps this time.'
@@ -81,9 +83,14 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
      จึงใช้ค่าสูงของโหมดไปก่อน — เป็น "อย่างน้อย" ไม่ใช่เพดาน */
   const needed = match.mode === 'onsite' ? 2 : 1
   const acceptedIds = new Set((assigned.data?.items ?? []).map(row => row.tournamentRefereeId))
-  const openRequests = (requests.data?.items ?? []).filter(row =>
-    row.type === 'org_add_match' && row.matchA.id === match.id && row.status === 'open')
+  /* จับคำขอเข้ากับแมตช์ด้วย `matchA.id` ของคำขอนั้นเสมอ ไม่ใช่เดาจากลำดับ (R17) */
+  const ofThisMatch = (status: 'open' | 'declined') => (requests.data?.items ?? []).filter(row =>
+    row.type === 'org_add_match' && row.matchA.id === match.id && row.status === status)
+  const openRequests = ofThisMatch('open')
   const pendingByReferee = new Map(openRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
+  /* R17 — คำขอที่ถูกปฏิเสธเคยหายไปทั้งแถว ผู้จัดจึงไม่รู้ว่าใครไม่รับ และเผลอขอคนเดิมซ้ำ */
+  const declinedByReferee = new Map(ofThisMatch('declined')
+    .map(row => [row.refereeA.tournamentRefereeId, row]))
   const activePool = (pool.data?.items ?? []).filter(row => row.isActive)
   const scheduled = !!match.scheduledTime && !!match.scheduledEndTime
   const loading = pool.isPending || assigned.isPending || requests.isPending
@@ -114,6 +121,7 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
               {activePool.map(referee => {
                 const isAccepted = acceptedIds.has(referee.id)
                 const pending = pendingByReferee.get(referee.id)
+                const refused = declinedByReferee.get(referee.id)
                 const busy = request.isPending || cancel.isPending || unassign.isPending
                 return (
                   <tr key={referee.id}>
@@ -121,7 +129,12 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
                     <td>{isAccepted
                       ? <Badge kind="ok">Accepted</Badge>
                       : pending ? <Badge kind="warn">Waiting for acceptance</Badge>
-                        : <Badge kind="neutral">Available</Badge>}</td>
+                        : refused ? (
+                          <>
+                            <Badge kind="crit">Declined</Badge>
+                            <span className="sub"> {toLocalReadable(refused.resolvedAt)}</span>
+                          </>
+                        ) : <Badge kind="neutral">Available</Badge>}</td>
                     <td style={{ textAlign: 'right' }}>
                       {isAccepted ? (
                         <button className="btn ghost" type="button" disabled={busy}

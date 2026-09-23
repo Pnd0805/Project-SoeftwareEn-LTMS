@@ -107,4 +107,54 @@ describe('planning referees from the draw', () => {
     render(<MatchRefereePlanner tournamentId={23} />)
     expect(screen.getByText(/Draw the bracket first/)).toBeInTheDocument()
   })
+
+  /* R17 — คำขอที่ถูกปฏิเสธเคยหายไปทั้งแถว ผู้จัดจึงไม่รู้ว่าใครไม่รับนัดไหน */
+  it('keeps a declined request visible against the match it was for', () => {
+    openRequests = [
+      {
+        id: 91, tournamentId: 23, type: 'org_add_match', requestedBy: 9201,
+        refereeA: { tournamentRefereeId: 34, user: { id: 9002, fullName: 'Somying', avatarUrl: null }, status: 'declined' },
+        refereeB: null,
+        matchA: { id: 30, roundNumber: 1, scheduledTime: null, scheduledEndTime: null },
+        matchB: null, status: 'declined',
+        createdAt: '2026-09-22T00:00:00.000Z', resolvedAt: '2026-09-22T02:00:00.000Z',
+      },
+      /* คนละนัด — ต้องไม่ไปโผล่ในแถวของ match 30 */
+      {
+        id: 92, tournamentId: 23, type: 'org_add_match', requestedBy: 9201,
+        refereeA: { tournamentRefereeId: 35, user: { id: 9003, fullName: 'Mana', avatarUrl: null }, status: 'declined' },
+        refereeB: null,
+        matchA: { id: 31, roundNumber: 2, scheduledTime: null, scheduledEndTime: null },
+        matchB: null, status: 'declined',
+        createdAt: '2026-09-22T00:00:00.000Z', resolvedAt: '2026-09-22T03:00:00.000Z',
+      },
+    ]
+    render(<MatchRefereePlanner tournamentId={23} />)
+
+    /* ช่องกลางคือสถานะ — ช่องขวาเป็น <select> ซึ่งมีชื่อทุกคนอยู่แล้วโดยตั้งใจ
+       (ปฏิเสธแล้วยังขอใหม่ได้) จึงต้องเจาะไปที่ช่องสถานะ ไม่ใช่ทั้งแถว */
+    const stateCell = (matchId: number) =>
+      within(screen.getByText(`Match ${matchId}`).closest('tr')!.querySelectorAll('td')[1] as HTMLElement)
+
+    expect(stateCell(30).getByText('Declined')).toBeInTheDocument()
+    expect(stateCell(30).getByText('Somying')).toBeInTheDocument()
+    expect(stateCell(30).queryByText('Mana')).not.toBeInTheDocument()
+    expect(stateCell(31).getByText('Mana')).toBeInTheDocument()
+  })
+
+  it('still lets the organizer ask a referee who declined once', () => {
+    openRequests = [{
+      id: 91, tournamentId: 23, type: 'org_add_match', requestedBy: 9201,
+      refereeA: { tournamentRefereeId: 34, user: { id: 9002, fullName: 'Somying', avatarUrl: null }, status: 'declined' },
+      refereeB: null,
+      matchA: { id: 31, roundNumber: 2, scheduledTime: null, scheduledEndTime: null },
+      matchB: null, status: 'declined',
+      createdAt: '2026-09-22T00:00:00.000Z', resolvedAt: '2026-09-22T02:00:00.000Z',
+    }]
+    render(<MatchRefereePlanner tournamentId={23} />)
+
+    const row = screen.getByText('Match 31').closest('tr')!
+    fireEvent.change(within(row).getByLabelText('Ask a referee to take match 31'), { target: { value: '34' } })
+    expect(requestReferee).toHaveBeenCalledWith({ tournamentRefereeId: 34, matchId: 31 })
+  })
 })

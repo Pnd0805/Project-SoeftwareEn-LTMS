@@ -73,9 +73,25 @@ function scoreOf(r?: MatchResultDto, m?: MatchDto) {
  * ใครกดอะไรได้ backend เป็นคนตัดสินเสมอ (requireOrganizerOfMatch /
  * requireReferee) ตรงนี้แค่ไม่โชว์ปุ่มที่รู้อยู่แล้วว่าจะเด้ง
  */
+/** วงจรชีวิตแมตช์เด้งได้หลายเหตุ — บอกให้ตรงว่าเหตุไหน (R19/R20) */
+const lifecycleError = (error: unknown) => {
+  const code = error instanceof ApiError ? error.code : null
+  if (code === 'NOT_ORGANIZER') return 'Only the organizer of this tournament can do that.'
+  if (code === 'NOT_REFEREE') return 'Only a referee assigned to this match can do that.'
+  if (code === 'INVALID_STATUS_TRANSITION') return 'This match has already moved past that step. Reload to see where it stands.'
+  if (code === 'INSUFFICIENT_REFEREES') return 'This match still needs its referees in place before it can start.'
+  if (code === 'CHECKIN_NOT_OPEN') return 'Check-in is not open for this match.'
+  if (code === 'MATCH_TEAMS_INCOMPLETE') return 'This match is still waiting on an earlier round for one of its places.'
+  if (code === 'TEAMS_PRESENT') return 'Both squads met the minimum, so this is not a no-show — a referee starts it.'
+  return error instanceof Error ? error.message : 'Something went wrong.'
+}
+
 function MatchLifecycle({ m }: { m: MatchDto }) {
+  const navigate = useNavigate()
   const isOrganizer = m.viewer.roles.includes('organizer')
   const isReferee = m.viewer.roles.includes('referee')
+  /* ครบสามช่องหรือยัง — กฎเดียวกับที่ M06 บังคับตอนตั้งนัดครั้งแรก (SCHEDULE_INCOMPLETE) */
+  const fixtureComplete = !!m.scheduledTime && !!m.scheduledEndTime && !!m.venue
   const openCheckin = useOpenMatchCheckin(m.id, m.tournamentId)
   const closeCheckin = useCloseMatchCheckin(m.id, m.tournamentId)
   const start = useStartMatch(m.id, m.tournamentId)
@@ -96,16 +112,36 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
     <Panel quiet>
       <span className="tag"><em>//</em> Match control — {isOrganizer ? 'organizer' : 'referee'}</span>
 
-      {m.status === 'scheduled' && isOrganizer ? (
+      {m.status === 'scheduled' && m.viewer.can.openCheckin ? (
         <>
           <div className="sub">
             Opening check-in lets both squads confirm they are here. Appoint every referee first —
             the server refuses a new appointment once check-in is open.
           </div>
+          {/* R19 — เปิดเช็คอินก่อนจัดนัดให้ครบไม่ได้: กรรมการยังขอไม่ได้เลยถ้าไม่มีเวลาจบ
+              (FR02 `assertMatchChangeable`) และพอเปิดเช็คอินไปแล้วก็แก้นัดไม่ได้อีก M06
+              รับเฉพาะแมตช์ `scheduled` — กดตอนนี้คือขังตัวเองไว้กับนัดที่ยังไม่เสร็จ
+              ⚠️ ด่านนี้อยู่ที่หน้าจอฝ่ายเดียว `POST /matches/:id/open-checkin` ยังดูแค่
+                 `match_status` จึงยิงตรงข้ามได้อยู่ — ดู R19 ฝั่ง backend */}
+          {!fixtureComplete ? (
+            <Banner kind="warn">
+              <b>Finish the fixture first.</b> This match still needs{' '}
+              {[!m.scheduledTime ? 'a kick-off time' : null,
+                !m.scheduledEndTime ? 'an end time' : null,
+                !m.venue ? 'a venue' : null].filter(Boolean).join(', ')}.
+              Once check-in opens the fixture can no longer be changed.
+            </Banner>
+          ) : null}
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={busy} onClick={() => openCheckin.mutate()}>
+            disabled={busy || !fixtureComplete}
+            title={fixtureComplete ? undefined : 'Set the kick-off, end time and venue first'}
+            onClick={() => openCheckin.mutate()}>
             {openCheckin.isPending ? 'Opening…' : 'Open check-in'}
           </button>
+          {!fixtureComplete ? (
+            <button className="btn" type="button" style={{ alignSelf: 'flex-start' }}
+              onClick={() => navigate(`/m/${m.id}/fixture`)}>Set the fixture</button>
+          ) : null}
         </>
       ) : null}
 
@@ -172,7 +208,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
       {failed ? (
         <Banner kind="crit">
           <b>That did not go through.</b>{' '}
-          {failed.error instanceof Error ? failed.error.message : 'Something went wrong.'}
+          {lifecycleError(failed.error)}
         </Banner>
       ) : null}
     </Panel>

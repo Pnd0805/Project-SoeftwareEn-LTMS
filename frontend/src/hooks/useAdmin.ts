@@ -87,8 +87,17 @@ export function useMyRefereeRequests() {
   });
 }
 
+/**
+ * ตอบคำขอหนึ่งใบแล้วอะไรเปลี่ยนบ้าง (R18)
+ *
+ * เดิมล้างแค่คิวของตัวเองกับรายการแมตช์ แต่การตอบรับหนึ่งใบไปแตะของอีกสามอย่าง:
+ * `match_referees` ของแมตช์นั้น (คนคุมเพิ่มมาหนึ่ง) · คำขอทั้งก้อนของทัวร์ที่ผู้จัดดูอยู่
+ * (ใบอื่นบนแมตช์เดียวกันอาจถูกปิดไปด้วย) · และรายละเอียดแมตช์เอง
+ * ไม่ล้างให้ครบแล้วผู้จัดที่เปิดหน้า Draw ค้างไว้จะเห็นของเก่าจนกว่าจะรีเฟรชเอง
+ */
 function touchRefereeRequests(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: ["referees", "me", "requests"] });
+  qc.invalidateQueries({ queryKey: ["referees"] });
+  qc.invalidateQueries({ queryKey: ["match"] });
   qc.invalidateQueries({ queryKey: ["matches"] });
 }
 

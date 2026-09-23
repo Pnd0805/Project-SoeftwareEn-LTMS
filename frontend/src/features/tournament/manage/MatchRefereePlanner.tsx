@@ -45,11 +45,13 @@ const pairing = (m: MatchListItemDto) =>
       : m.teamB ? `winner of an earlier match v ${m.teamB.name}`
         : 'both places still to be filled'
 
-function MatchRow({ tournamentId, match, pool, openRequests, busy }: {
+function MatchRow({ tournamentId, match, pool, openRequests, declinedRequests, busy }: {
   tournamentId: number
   match: MatchListItemDto
   pool: TournamentRefereeDto[]
   openRequests: BackendRefereeRequestDto[]
+  /** R17 — คำขอที่กรรมการปฏิเสธไปแล้ว ต้องยังเห็นอยู่ ไม่ใช่หายไปเฉยๆ */
+  declinedRequests: BackendRefereeRequestDto[]
   busy: boolean
 }) {
   const assigned = useMatchReferees(match.id)
@@ -59,6 +61,8 @@ function MatchRow({ tournamentId, match, pool, openRequests, busy }: {
 
   const acceptedIds = new Set((assigned.data?.items ?? []).map(row => row.tournamentRefereeId))
   const waiting = new Map(openRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
+  /* คนที่ปฏิเสธไปแล้วและยังไม่ได้ถูกขอใหม่ — ถ้าเขาตอบรับทีหลังหรือถูกขอใหม่ สองแถวบนชนะ */
+  const declined = new Map(declinedRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
   const scheduled = !!match.scheduledTime && !!match.scheduledEndTime
   /* กฎเดียวกับ assertMatchChangeable — เปลี่ยนคนคุมได้เฉพาะนัดที่ยังไม่เริ่ม */
   const changeable = match.status === 'scheduled' && scheduled
@@ -92,7 +96,15 @@ function MatchRow({ tournamentId, match, pool, openRequests, busy }: {
                 onClick={() => cancel.mutate(waiting.get(r.id)!.id)}>Cancel</button>
             </span>
           ))}
-          {!acceptedIds.size && !waiting.size && !assigned.isPending
+          {/* ปฏิเสธแล้วก็ยังต้องเห็น — ผู้จัดที่ขอไปหลายคนต้องรู้ว่าใครไม่รับนัดไหน
+              ไม่ใช่แค่เห็นช่องว่างแล้วเดาเอง · ขอใหม่ได้จากช่องเลือกด้านขวาตามปกติ */}
+          {pool.filter(r => declined.has(r.id) && !acceptedIds.has(r.id) && !waiting.has(r.id)).map(r => (
+            <span key={`d-${r.id}`} className="hstack" style={{ gap: 6 }}>
+              <Badge kind="crit">Declined</Badge>{r.user.fullName}
+              <span className="sub">{when(declined.get(r.id)!.resolvedAt) ?? ''}</span>
+            </span>
+          ))}
+          {!acceptedIds.size && !waiting.size && !declined.size && !assigned.isPending
             ? <span className="sub">Nobody yet.</span> : null}
         </span>
         {failed ? <Banner kind="crit">{requestError(failed)}</Banner> : null}
@@ -135,8 +147,15 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
   const rows = (matches.data?.items ?? []).slice()
     .sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0) || a.id - b.id)
   const activePool = (pool.data?.items ?? []).filter(r => r.isActive)
-  const openOf = (matchId: number) => (requests.data?.items ?? []).filter(row =>
-    row.type === 'org_add_match' && row.matchA.id === matchId && row.status === 'open')
+  /**
+   * จับคำขอเข้ากับแมตช์ด้วย `matchA.id` ที่ backend ส่งมากับคำขอนั้นเสมอ (R17)
+   *
+   * ห้ามเดาจากลำดับหรือจากรอบ — ผู้จัดที่ขอกรรมการหลายคนในรอบเดียวกันจะอ่านสลับนัดกันได้
+   * `?status=open` ของ FR05 ซ่อนคำขอที่แมตช์ผ่านไปแล้วด้วย จึงอ่านทั้งก้อนแล้วแยกเองตรงนี้
+   */
+  const forMatch = (matchId: number, status: BackendRefereeRequestDto['status']) =>
+    (requests.data?.items ?? []).filter(row =>
+      row.type === 'org_add_match' && row.matchA.id === matchId && row.status === status)
   const busy = matches.isPending || pool.isPending || requests.isPending
 
   return (
@@ -178,7 +197,8 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
               <tbody>
                 {rows.map(match => (
                   <MatchRow key={match.id} tournamentId={tournamentId} match={match}
-                    pool={activePool} openRequests={openOf(match.id)} busy={busy} />
+                    pool={activePool} openRequests={forMatch(match.id, 'open')}
+                    declinedRequests={forMatch(match.id, 'declined')} busy={busy} />
                 ))}
               </tbody>
             </table>

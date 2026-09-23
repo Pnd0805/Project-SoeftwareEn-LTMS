@@ -2,11 +2,12 @@
 
 Frontend branch `feat/1` · API base path `/api/v1`
 
-**Current backend reference: FE notice for `BE_KN` at `a88f7ad`, received on
-2026-09-21.** The original gaps were verified against the running server at
-`df506ea` on 2026-09-20. Deliveries after that point were checked against their
-routes, schemas, services, migrations and focused frontend/live verification
-where recorded. A missing route is not claimed from an old branch snapshot.
+**Current backend reference: `BE_KN` at `e5ea50d`, read on 2026-09-23.**
+The bulk of this file was verified against the running server at `a88f7ad` on
+2026-09-22, and the oldest items against `df506ea` on 2026-09-20. Every claim
+names the route, schema, service or migration it was checked against, plus live
+verification where recorded. A missing route is not claimed from an old branch
+snapshot.
 
 **Since the last file.** A1–A9, B2, B4–B9, public team search,
 `GET /me/tournaments`, C17b access, amendment reasons and the integer-only stat
@@ -42,10 +43,16 @@ shape, so a feature looks broken from the outside while the data is sitting in
 the database. Each one is a line in a mapper. They are the last remaining cause
 of two of the seven reports; the other five were ours and are fixed.
 
-The other open items are unchanged. `FE-way-say-which-faculties` was rewritten
-after the team asked whether a tournament can admit more than one faculty —
-the short answer is that the enforcement is all there and nothing can put the
-data in.
+**Added 2026-09-23.** Four more from the R17–R23 triage: two authorization and
+gating gaps on `POST /matches/:id/open-checkin`, the request-cancellation rule
+that stops two referees holding one match, and the missing upload contracts for
+avatars and team logos. Details at the end of the list.
+
+**Retired 2026-09-23.** Six items this file still listed as owed arrived in the
+same pull — C1 notifications, C4 tournament delete, C5 entry notes, C6 feedback
+and MVP, C7 comments and Pick'em, C8 follows and career. They are struck through
+at the end of the list rather than deleted, so nobody re-reports them. That took
+the list from 15 to 9.
 
 ## How to read it
 
@@ -68,16 +75,8 @@ data in.
   seven regressions of 21 September turned out to be, and which of them are
   waiting on the three write-only fields listed below.
 
-## Delivery required — 11 items
+## Delivery required — 9 items
 
-- [ ] **FE-notification-list-mark-one** — Notification list, mark-one-read, and
-      mark-all-read routes. `src/api/notification.ts` currently contains
-      local `501 ENDPOINT_UNAVAILABLE` guards; the general Inbox must not call
-      or simulate unconfirmed paths in real mode until the contract is agreed
-      and deployed.
-- [ ] **FE-follows-plus-any-profile** — Follows plus any Profile career-by-tournament,
-      Pick'em total, and MVP-total reads that remain part of the approved UI.
-      `GET /me` and `GET /users/:id/stats` do not supply those sections.
 - [ ] **FE-team-leader-transfer-sds** — Team leader transfer (SDS
       `POST /teams/{id}/transfer-leader`, FR-TM-08). Outside mock mode the UI
       labels it unavailable.
@@ -89,26 +88,6 @@ data in.
       the rule exists with no way for an admin to apply it. The Admin page's
       Users and Audit tabs work in mock mode only; in real mode they say the
       routes do not exist.
-- [ ] **FE-tournament-feedback** — Tournament feedback — both writing it and
-      reading it back (SDS `POST /tournaments/{id}/feedback`, FR-CM-02).
-      `schema.sql` already has the whole table: `tournament_feedback` with
-      `feedback_type ENUM('comment','organizer_feedback','mvp_vote')`, a
-      `rating` column and a unique key that enforces one per person. No route
-      touches any of it, verified 404 on `6ebda2e`. The Community tab's rating
-      form and the organizer's Feedback panel work in mock mode only.
-- [ ] **FE-match-comments-pick-em** — Match comments and Pick'em (SDS
-      `POST /tournaments/{id}/comments` FR-CM-01,
-      `POST /matches/{id}/predictions` FR-PK-01, settled inside the result
-      transaction). `src/api/engagement.ts` calls `/matches/:id/comments` and
-      `/matches/:id/picks`, which match neither the SDS nor a backend route.
-      The match page's Community tab shows `SocialBar` in mock mode only,
-      because `SocialBar` takes a store `Match`, not a `MatchDto`.
-- [ ] **FE-entry-notes-soft-filter** — Entry notes, the soft filter (FR-TN-03). There
-      is no column and no route, so the free-text note an organizer writes for
-      applicants has nowhere to live. `saveEntryNotes()` answers 501.
-- [ ] **FE-delete-tournaments-id-organizer** — `DELETE /tournaments/:id`. An organizer can
-      unpublish but never delete, so a tournament created by mistake is
-      permanent. `deleteTournament()` answers 501.
 - [ ] **FE-replay-link-write-only** — `livestreamUrl` on M04/M05. E12
       `PUT /matches/:id/livestream` writes `matches.livestream_url` and the
       column has existed since the first schema, but **no route reads it back**
@@ -145,11 +124,82 @@ data in.
       note is in the row, but the two team leaders see a thrown-out result with
       no stated reason. The frontend renders `result.disputeResolution` already
       and gets `null` in real mode.
+      **Extended 2026-09-23 (R21):** the same omission covers the *other* three
+      dispute fields — `disputeReason`, `disputeRaisedBy`, `disputeRaisedAt`. An
+      organizer opening the resolve panel is told a result is disputed without
+      being told what the objection was, which is the one fact they need before
+      choosing uphold, amend or reject. All six are now read optionally in
+      `getResult()` with contract tests both ways, so sending them is the only
+      remaining step.
+- [ ] **FE-open-checkin-has-no-fixture-gate** — `POST /matches/:id/open-checkin`
+      (R19). The service checks `match_status === 'scheduled'` and nothing else,
+      so a match with no end time and no venue can be moved to `checkin_open` by
+      a direct API call. That is a one-way door: M06 only edits a `scheduled`
+      match, and FR02 `assertMatchChangeable` refuses a referee request without
+      `scheduled_end_time`, so the match is then stuck with no fixture and no way
+      to staff it. Enforce the three saved fields and answer with a named error
+      listing what is missing. The frontend now disables the action and says
+      which fields are absent, but that is a screen-side gate only.
+- [ ] **FE-open-checkin-organizer-only** — `POST /matches/:id/open-checkin`
+      (R20). Still `requireOrganizerOfMatch`. An active referee who has accepted
+      that match cannot open its check-in, which is the person actually standing
+      at the table. Wanted: organizer **or** the referee assigned to that match,
+      keeping the fixture gate above and the atomic `scheduled → checkin_open`
+      transition. The frontend seam is in place — `viewer.can.openCheckin` flips
+      from `isOrganizer` to `isOrganizer || isReferee` in one line once this
+      lands.
+- [ ] **FE-second-referee-request-cancelled** — `refereeChangeRequest.repo.apply()`
+      (R18). Applying one request runs
+      `UPDATE referee_change_requests SET request_status = 'cancelled' … WHERE
+      match_a_id IN (?) OR match_b_id IN (?)`, which closes **every** other open
+      request touching that match — including an independent `org_add_match` for
+      a different referee. An on-site match needs two accepted officials
+      (BR-10), so the organizer invites two and the second one's Accept silently
+      becomes a cancellation. Keep independent `org_add_match` rows open and
+      cancel only the transfer/swap rows whose assumptions the apply actually
+      invalidated. The frontend no longer reports a cancelled request as a
+      successful Accept, so the symptom is now visible rather than silent, but
+      two referees still cannot both accept one match.
+- [ ] **FE-avatar-and-team-logo-uploads** — image uploads for people and teams
+      (R23). `/uploads/presign` accepts only `checkin_document`,
+      `soft_filter_document` and `referee_identity`, so there is no authorized
+      way to upload a profile picture even though `users.profile_image_key`
+      exists and `PATCH /me` takes `avatarUrl`; user mappers also hand back the
+      raw S3 key rather than a readable URL. `teams` has no logo column at all
+      and `PATCH /teams/:id` takes only name and visibility. Wanted: an avatar
+      purpose plus a mapped readable URL, and a migration with a leader-only
+      logo contract. Nothing on the frontend can start until these exist.
+
+### Delivered in the 2026-09-23 pull
+
+- [x] ~~**FE-notification-list-mark-one**~~ — **delivered (C1).**
+      `GET /me/notifications`, `PATCH /me/notifications/:id/read` and
+      `POST /me/notifications/read-all` exist at `e5ea50d`; the real Inbox is
+      wired to them.
+- [x] ~~**FE-follows-plus-any-profile**~~ — **delivered (C8).**
+      `GET /users/:id/followers`, `/following`, `/career`, `POST|DELETE
+      /users/:id/follow` and `GET /me/following` exist at `e5ea50d`.
+- [x] ~~**FE-tournament-feedback**~~ — **delivered (C6).**
+      `POST|GET /tournaments/:id/feedback` and `/mvp-votes`, plus report,
+      admin remove and restore.
+- [x] ~~**FE-match-comments-pick-em**~~ — **delivered (C7), at tournament level.**
+      Comments are `GET|POST /tournaments/:id/comments` with own-delete and
+      organizer moderation, not the per-match path the SDS sketched (OD-24/25).
+      Pick'em is `POST /matches/:id/predictions` with `/summary`, `/me`,
+      `GET /me/pickem` and `GET /tournaments/:id/pickem-leaderboard`.
+- [x] ~~**FE-entry-notes-soft-filter**~~ — **delivered (C5).** `entryNotes` is in
+      the create and update schemas; migration `023_tournament_entry_notes.sql`.
+- [x] ~~**FE-delete-tournaments-id-organizer**~~ — **delivered (C4).**
+      `DELETE /tournaments/:id` exists at `e5ea50d`.
 
 ## Fix required — 0 open items
 
-No independently confirmed behavior fix remains open at `a88f7ad`. Missing
-capabilities are tracked under Delivery required above.
+No independently confirmed behavior fix remains open. The four items added on
+2026-09-23 (`FE-open-checkin-has-no-fixture-gate`,
+`FE-open-checkin-organizer-only`, `FE-second-referee-request-cancelled`,
+`FE-avatar-and-team-logo-uploads`) are capability gaps, filed under Delivery
+required above; `FE-second-referee-request-cancelled` is the closest to a
+behaviour fix, but what it needs is a narrower rule rather than a repair.
 
 <!-- Historical FE-check-has-gone-through evidence retained for traceability:
       Previously, a check-in that had gone through could not be undone,

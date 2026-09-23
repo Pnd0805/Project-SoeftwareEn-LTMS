@@ -5,7 +5,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatchLineups, getStandings } from "./match";
+import { checkin, getCheckins, getMatchLineups, getResult, getStandings } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -128,5 +128,48 @@ describe("S12 standings contract", () => {
       { id: 11, rank: 1, played: 2, points: 8, for: 5, against: 4, diff: 1 },
       { id: 12, rank: 1, played: 2, points: 8, for: 5, against: 4, diff: 1 },
     ]);
+  });
+});
+
+/**
+ * R21 — เหตุผลที่โต้แย้งและเหตุผลที่ผลถูกยก ต้องไหลถึงหน้าจอเมื่อ backend ส่งมา
+ *
+ * ตอนนี้ S05 ยังไม่ส่งหกช่องนี้ ชั้น api จึงต้องอ่านแบบ optional: ไม่มี = null เหมือนเดิม
+ * มี = ส่งต่อตามจริง จะได้ไม่ต้องกลับมาแก้ mapper อีกรอบวันที่ backend เติม
+ */
+describe("dispute detail contract (S05)", () => {
+  const base = {
+    matchId: 9, winnerTeamId: 9027, scoreData: { "9027": 3, "9028": 2 },
+    isAmended: false, amendedAt: null, amendReason: null, verifiedAt: null,
+    status: "disputed", isWalkover: false,
+  };
+
+  it("carries the dispute reason, who raised it and when, once they are sent", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({
+        ...base,
+        disputeReason: "สกอร์เซตสามไม่ตรงใบบันทึก",
+        disputeRaisedBy: { id: 9213, fullName: "หัวหน้าทีม ข", avatarUrl: null },
+        disputeRaisedAt: "2026-09-22T04:00:00.000Z",
+      }))
+      .mockResolvedValueOnce(json({ id: 9, teamA: { id: 9027 }, teamB: { id: 9028 } }));
+
+    await expect(getResult(9)).resolves.toMatchObject({
+      status: "disputed",
+      disputeReason: "สกอร์เซตสามไม่ตรงใบบันทึก",
+      disputeRaisedBy: { id: 9213, fullName: "หัวหน้าทีม ข" },
+      disputeRaisedAt: "2026-09-22T04:00:00.000Z",
+    });
+  });
+
+  it("still answers null for each of them while the backend omits the fields", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json(base))
+      .mockResolvedValueOnce(json({ id: 9, teamA: { id: 9027 }, teamB: { id: 9028 } }));
+
+    await expect(getResult(9)).resolves.toMatchObject({
+      disputeReason: null, disputeRaisedBy: null, disputeRaisedAt: null,
+      disputeResolution: null, disputeResolvedBy: null, disputeResolvedAt: null,
+    });
   });
 });

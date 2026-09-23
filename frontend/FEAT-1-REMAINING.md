@@ -173,6 +173,80 @@ already been delivered.
   - [ ] **Shell avatar link · FE:** replace the non-interactive initial in
     `Shell` with the current avatar/initial fallback in an accessible link or
     button to `/me`.
+
+### R17–R23 — frontend pass, 2026-09-23
+
+Worked against `BE_KN` at `e5ea50d`, not the `a88f7ad` the triage above was
+written on. Re-checked each "Backend fix required" line against that head first:
+**none of them has landed**, so every backend half named below is still owed.
+Developer verification: 41 test files / 243 tests, lint, TypeScript.
+
+- [x] **R17 — done, and the payload was not the problem.** Both
+      `MatchRefereePlanner` and `FixturePage` filtered requests to
+      `status === 'open'`, so a decline erased the row and the organizer was left
+      guessing. Declined requests now stay on the match they were for, with who
+      declined and when, and the referee stays selectable so they can be asked
+      again. The reported match/time mix-up did not reproduce: requests are keyed
+      off `matchA.id` from the request itself — never position or round — and the
+      live payload carries the right `matchA.id`, `scheduledTime` and
+      `scheduledEndTime`. Verified on tournament 22: มานะ declined match 14 and
+      the row reads `Declined · มานะ ไร้ทีม · 9/23/2026, 6:05:23 PM` against
+      Match 14's own kick-off. If the reporter still sees a mismatch we need
+      their Network capture, because this path now reads only from the request.
+- [ ] **R18 — frontend half done, backend half still required.** The real
+      frontend defect was that Accept announced "You are officiating match #N"
+      whenever the call did not throw. FR06 answers 200 with the request and its
+      `status`, and that status can be `cancelled` — which is exactly what
+      `refereeChangeRequest.repo.apply()` produces for the second referee today.
+      A referee was being told they had a match they did not have. Accept now
+      believes the returned status, says plainly when the request closed without
+      reaching them, and names the reason on a refusal
+      (`REQUEST_CLOSED`, `REFEREE_TIME_CONFLICT`, `MATCH_NOT_CHANGEABLE`,
+      `REFEREE_NOT_ACTIVE`). Answering also invalidates the whole `referees` and
+      `match` key space, so an organizer holding the Draw tab open sees the
+      change. **Still blocked:** until `apply()` stops cancelling independent
+      `org_add_match` rows, two referees cannot hold one match, so the honest
+      screen is the one that says the second request was cancelled.
+- [x] **R19 — frontend half done.** `SetupTrail` counted a fixture ready from
+      venue + start time only; end time is just as mandatory, because M06's first
+      write refuses with `SCHEDULE_INCOMPLETE` without all three and FR02
+      (`assertMatchChangeable`) will not take a referee request while
+      `scheduled_end_time` is null. The trail said "set" on matches that could
+      not be staffed at all. Open check-in is now disabled until all three are
+      saved, names which are missing, and offers a shortcut to the fixture page.
+      Verified live on match 13: with no end time and no venue the button is
+      disabled reading "Set the kick-off, end time and venue first".
+      **Still owed:** `POST /matches/:id/open-checkin` checks only
+      `match_status`, so a direct API call still bypasses this.
+- [ ] **R20 — frontend seam ready, deliberately not exposed yet.** The route is
+      still `requireOrganizerOfMatch`, so showing the action to an assigned
+      referee today guarantees a 403 on every press, which is the one thing the
+      api-layer convention forbids. Added `viewer.can.openCheckin` as its own
+      capability and routed the button through it; the mapper line reads
+      `openCheckin: isOrganizer` and becomes `isOrganizer || isReferee` the day
+      the middleware changes — one line, nothing else to touch. The 403/409
+      surface asked for is in place now (`lifecycleError` names `NOT_ORGANIZER`,
+      `NOT_REFEREE`, `INVALID_STATUS_TRANSITION`, `INSUFFICIENT_REFEREES`,
+      `CHECKIN_NOT_OPEN`, `MATCH_TEAMS_INCOMPLETE`, `TEAMS_PRESENT`).
+- [ ] **R21 — frontend half done, backend half still required.** `getResult()`
+      no longer hardcodes the six dispute fields to `null`; it reads them when
+      present, and `BackendResultDto` declares them optional. Contract tests
+      cover both directions — present and absent. `ResolvePanel` and
+      `ResultTrail` already render them, so the organizer starts seeing the
+      dispute reason the moment S05 sends it, with no further frontend change.
+      Tracked for the backend as `FE-dispute-resolution-not-returned`.
+- [ ] **R22 / R14 — unchanged, still the backend read.** The frontend half was
+      delivered on 2026-09-22 and re-checked here. `BackendMatchDetailDto`
+      already declares `livestreamUrl` optional and the mapper reads it, so the
+      link renders as soon as M05 returns it. Tracked as
+      `FE-replay-link-write-only`.
+- [ ] **R23 — not started here, and not ours to start.** Two of the three parts
+      have no backend to build against: `/uploads/presign` has no avatar purpose
+      (`purpose` is still `checkin_document | soft_filter_document |
+      referee_identity`) and `teams` has no logo column, so neither upload
+      contract exists. The third part, the Shell avatar link, is in
+      `src/components/layout/Shell.tsx`, which `PLAN.md` assigns to Person 1 —
+      it needs their change, not ours.
   - Accept: avatar and team logo persist across reload/login, unauthorized users
     cannot modify them, broken/expired image URLs recover visibly, removal works,
     and the shell avatar opens the signed-in profile on desktop and mobile.

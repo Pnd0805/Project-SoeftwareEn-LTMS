@@ -80,8 +80,16 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const bracketDrawn = real ? (backendMatches.data?.items.length ?? 0) > 0 : t.drawn
   const ms = real ? apiMatches
     : t.drawn ? matchesOf(s, t.id).filter(m => m.note !== 'bye' && m.status !== 'void') : []
+  /**
+   * นัดที่ "จัดครบ" แล้ว — ต้องมีครบสามอย่าง (R19)
+   *
+   * เดิมนับแค่สนามกับเวลาเริ่ม แต่เวลาจบเป็นช่องบังคับพอกัน: M06 ครั้งแรกที่ยังไม่เคยตั้ง
+   * ต้องส่งครบสามไม่งั้น `400 SCHEDULE_INCOMPLETE` และ FR02 (`assertMatchChangeable`)
+   * ไม่ยอมให้ขอกรรมการเลยถ้า `scheduled_end_time` ว่าง — รางจึงเคยขึ้นว่าจัดเสร็จแล้ว
+   * ทั้งที่ยังขอกรรมการไม่ได้สักคน
+   */
   const ready = real
-    ? apiMatches.filter(m => m.venue && m.scheduledTime)
+    ? apiMatches.filter(m => m.venue && m.scheduledTime && m.scheduledEndTime)
     : (ms as ReturnType<typeof matchesOf>).filter(m => m.venue && (m.refs || []).length >= need)
   const done = real
     ? apiMatches.filter(m => m.status === 'completed')
@@ -159,8 +167,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       state: ms.length > 0 && ready.length === ms.length ? 'done' : 'idle',
       title: 'Set every fixture',
       note: ms.length
-        ? `${ready.length} of ${ms.length} have a kick-off and a venue on them.`
-        : 'Kick-off, venue and the officials, one match at a time.',
+        ? `${ready.length} of ${ms.length} have a kick-off, an end time and a venue on them.`
+        : 'Kick-off, end time, venue and the officials, one match at a time.',
       cta: <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/schedule`)}>Open the schedule</button>,
     },
     {

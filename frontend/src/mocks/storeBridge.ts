@@ -145,6 +145,8 @@ function viewerOf(s: State, m: StoreMatch): MatchViewerContext {
       disputeResult: m.status === 'pending' && onsite && anyLeader,
       resolveDispute: m.status === 'disputed' && org,
       editFixture: org && m.status === 'scheduled' && !m.checkedIn.length,
+      /* โหมด prototype ไม่มี middleware ให้ติด — ผู้จัดเปิดเช็คอินได้เหมือนของจริง */
+      openCheckin: org && m.status === 'scheduled',
       recordStats: isReferee,
       manageCheckin: isReferee,
       verifyCheckin: isReferee,

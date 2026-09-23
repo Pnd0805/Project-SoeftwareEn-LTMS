@@ -215,6 +215,16 @@ export interface MatchViewerContext {
     /** เปิดคอนโซลเช็คอิน */
     manageCheckin: boolean;
     /**
+     * เปิดเช็คอินของแมตช์ (M09 · `scheduled → checkin_open`)
+     *
+     * R20 ขอให้กรรมการที่รับแมตช์นั้นแล้วกดได้ด้วย แต่ `POST /matches/:id/open-checkin`
+     * ยังเป็น `requireOrganizerOfMatch` อยู่ — โชว์ปุ่มให้กรรมการตอนนี้คือการันตี 403
+     * ทุกครั้ง ซึ่งผิดคอนเวนชันของ api layer (ไม่โชว์สิ่งที่รู้อยู่แล้วว่าจะเด้ง)
+     * แยกออกมาเป็นช่องของตัวเองเพื่อให้วันที่ backend เปลี่ยน middleware แก้ที่เดียว
+     * บรรทัดเดียว: `isOrganizer` → `isOrganizer || isReferee`
+     */
+    openCheckin: boolean;
+    /**
      * ตัดสินการเช็คอินของคนอื่น — ยืนยัน/ปฏิเสธรูปบัตร (M14/M15) และเช็คอินแทนผู้เล่น (M19)
      * กรรมการ "ของแมตช์นี้" เท่านั้น (`requireReferee`) · ผู้จัดเปิด/ปิดเช็คอินได้แต่ตัดสินไม่ได้
      */
@@ -681,6 +691,22 @@ export interface BackendResultDto {
   /** A7 — สถานะจริงของผล ไม่ใช่เดาว่า verified เสมอ (submitted/disputed ก็อ่านได้แล้ว) */
   status: MatchResultStatus;
   isWalkover: boolean;
+  /**
+   * ⚠️ หกช่องนี้ **S05 ยังไม่ส่งมา** — ตารางเก็บครบ (`dispute_reason`,
+   * `dispute_raised_by/_at`, `dispute_resolution`, `dispute_resolved_by/_at`) และ
+   * migration 020 บังคับให้ผู้จัดเขียนเหตุผลตอนตัดสินด้วยซ้ำ แต่ `toVerifiedResultDto`
+   * ไม่ได้ใส่ในรูปที่ตอบ ผู้จัดจึงเห็นคำว่า "โดนโต้แย้ง" โดยไม่รู้ว่าโต้แย้งเรื่องอะไร
+   * และสองทีมไม่เคยได้อ่านเหตุผลที่ผลถูกยก (R21 · FE-dispute-resolution-not-returned)
+   *
+   * ประกาศไว้ optional เพื่อให้หน้าจอขึ้นเองทันทีที่ backend เติมมา — ที่แสดงผลมีอยู่แล้ว
+   * ทั้งใน `ResolvePanel` และ `ResultTrail`
+   */
+  disputeReason?: string | null;
+  disputeRaisedBy?: PlayerRef | null;
+  disputeRaisedAt?: string | null;
+  disputeResolution?: string | null;
+  disputeResolvedBy?: PlayerRef | null;
+  disputeResolvedAt?: string | null;
 }
 
 export interface BackendDisputeRequest {
