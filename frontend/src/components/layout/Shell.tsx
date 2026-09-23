@@ -94,6 +94,23 @@ function SearchBox() {
   )
 }
 
+function ProfileAvatarLink({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  const [imageFailed, setImageFailed] = useState(false)
+  // /me can currently contain a storage key rather than a downloadable URL.
+  const imageUrl = avatarUrl && (/^https?:\/\//i.test(avatarUrl) || (avatarUrl.startsWith('/') && !avatarUrl.startsWith('//')))
+    ? avatarUrl : null
+
+  return (
+    <Link className="avatar" to="/me" aria-label="Open my profile"
+      style={{ textDecoration: 'none', overflow: 'hidden' }}>
+      {imageUrl && !imageFailed
+        ? <img src={imageUrl} alt="" onError={() => setImageFailed(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : (name.trim().slice(0, 1) || '?')}
+    </Link>
+  )
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const s = useLtms()
   const u = USE_MOCK ? me(s) : undefined
@@ -179,7 +196,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 aria-label={`Notifications, ${n} unread`}>
                 <Icon name="bell" size={17} />{n ? <i>{n}</i> : null}
               </button>
-              <span className="avatar">{displayName.slice(0, 1)}</span>
+              <ProfileAvatarLink key={currentUser?.avatarUrl ?? ''} name={displayName} avatarUrl={currentUser?.avatarUrl} />
             </span>
           </div></div>
           <main className="main" id="main" tabIndex={-1}>{children}</main>

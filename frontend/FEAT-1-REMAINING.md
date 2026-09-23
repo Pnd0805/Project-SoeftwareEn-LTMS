@@ -185,9 +185,11 @@ already been delivered.
     upload/update/removal contract and mapped read field; then connect Team
     manage/detail/list views. Do not use the prototype-only `logoUrl` as a real
     backend fallback.
-  - [ ] **Shell avatar link · FE:** replace the non-interactive initial in
+  - [x] **Shell avatar link · FE:** replace the non-interactive initial in
     `Shell` with the current avatar/initial fallback in an accessible link or
-    button to `/me`.
+    button to `/me`. Done 2026-09-23: the signed-in avatar links to `/me`, shows
+    an image for a usable URL and falls back to the initial for a storage key or
+    failed image. Focused tests cover navigation, image failure and guest state.
 
 ### R17–R23 — frontend pass, 2026-09-23
 
@@ -254,13 +256,13 @@ Developer verification: 41 test files / 243 tests, lint, TypeScript.
       already declares `livestreamUrl` optional and the mapper reads it, so the
       link renders as soon as M05 returns it. Tracked as
       `FE-replay-link-write-only`.
-- [ ] **R23 — not started here, and not ours to start.** Two of the three parts
-      have no backend to build against: `/uploads/presign` has no avatar purpose
+- [ ] **R23 — profile shortcut done; uploads still need backend contracts.**
+      Two of the three parts have no backend to build against:
+      `/uploads/presign` has no avatar purpose
       (`purpose` is still `checkin_document | soft_filter_document |
       referee_identity`) and `teams` has no logo column, so neither upload
-      contract exists. The third part, the Shell avatar link, is in
-      `src/components/layout/Shell.tsx`, which `PLAN.md` assigns to Person 1 —
-      it needs their change, not ours.
+      contract exists. The Shell avatar now opens `/me` for signed-in users and
+      uses the avatar URL when available, with an initial fallback.
   - Accept: avatar and team logo persist across reload/login, unauthorized users
     cannot modify them, broken/expired image URLs recover visibly, removal works,
     and the shell avatar opens the signed-in profile on desktop and mobile.
