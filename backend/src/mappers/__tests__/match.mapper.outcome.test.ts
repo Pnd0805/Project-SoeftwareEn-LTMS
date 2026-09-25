@@ -43,4 +43,72 @@ describe('toMatchResultSummary', () => {
     expect(s.resultStatus).toBeNull();
     expect(s.outcome).toEqual({ kind: 'void', winnerTeamId: null, loserTeamId: null });
   });
+
+  // --- added cases ---
+
+  it('unsettled result_status (submitted/disputed/rejected) hides the score even when a winner is already recorded', () => {
+    for (const status of ['submitted', 'disputed', 'rejected'] as const) {
+      const s = toMatchResultSummary(row({ result_status: status, result_winner_team_id: 10 }));
+      expect(s.score).toBeNull();
+    }
+  });
+
+  it('completed with an unsettled result_status → outcome is void, not played (not yet verified)', () => {
+    const s = toMatchResultSummary(row({ result_status: 'disputed', result_winner_team_id: 10 }));
+    expect(s.outcome).toEqual({ kind: 'void', winnerTeamId: null, loserTeamId: null });
+  });
+
+  it('walkover where team_a is the empty slot (bye for team B)', () => {
+    const s = toMatchResultSummary(row({ team_a_id: null, result_status: 'walkover', result_winner_team_id: 11, result_score: null }));
+    expect(s.outcome).toEqual({ kind: 'bye', winnerTeamId: 11, loserTeamId: null });
+  });
+
+  it('verified with a winner not matching either team_a_id or team_b_id → loser resolves to team_a_id (only branch tested against the winner)', () => {
+    // The mapper compares only against team_a_id; any winner other than team_a_id treats team_a_id as "the other side".
+    const s = toMatchResultSummary(row({ team_a_id: 10, team_b_id: 11, result_winner_team_id: 99 }));
+    expect(s.outcome).toEqual({ kind: 'played', winnerTeamId: 99, loserTeamId: 10 });
+  });
+
+  it('always passes nextMatchId and loserNextMatchId through, regardless of match_status', () => {
+    const scheduled = toMatchResultSummary(row({ match_status: 'scheduled', next_match_id: 7, loser_next_match_id: 8 }));
+    const completed = toMatchResultSummary(row({ match_status: 'completed', next_match_id: 7, loser_next_match_id: 8 }));
+
+    expect(scheduled.nextMatchId).toBe(7);
+    expect(scheduled.loserNextMatchId).toBe(8);
+    expect(completed.nextMatchId).toBe(7);
+    expect(completed.loserNextMatchId).toBe(8);
+  });
+
+  it('keeps nextMatchId and loserNextMatchId null for a final-round match', () => {
+    const s = toMatchResultSummary(row({ next_match_id: null, loser_next_match_id: null }));
+    expect(s.nextMatchId).toBeNull();
+    expect(s.loserNextMatchId).toBeNull();
+  });
+
+  it.each(['scheduled', 'checkin_open', 'in_progress', 'disputed', 'result_rejected'] as const)(
+    "outcome is null for any non-completed match_status ('%s')",
+    (status) => {
+      const s = toMatchResultSummary(row({ match_status: status }));
+      expect(s.outcome).toBeNull();
+    },
+  );
+
+  it('returns exactly the documented keys', () => {
+    expect(Object.keys(toMatchResultSummary(row())).sort()).toEqual([
+      'loserNextMatchId',
+      'nextMatchId',
+      'outcome',
+      'resultStatus',
+      'score',
+    ]);
+  });
+
+  it('does not mutate the input row', () => {
+    const input = row();
+    const snapshot = structuredClone(input);
+
+    toMatchResultSummary(input);
+
+    expect(input).toEqual(snapshot);
+  });
 });

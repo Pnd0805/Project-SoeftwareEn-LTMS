@@ -9,7 +9,7 @@ vi.mock('../../repositories/user.repo.js', () => ({
   findById: vi.fn(),
 }));
 
-import { requireAuth } from '../requireAuth.js';
+import { requireAuth, optionalAuth } from '../requireAuth.js';
 import { verifyToken } from '../../utils/token.js';
 import { findById } from '../../repositories/user.repo.js';
 import { AppError } from '../../utils/AppError.js';
@@ -151,6 +151,111 @@ describe('requireAuth middleware', () => {
     mockedFindById.mockResolvedValue(activeUser);
 
     await requireAuth(req, res, next);
+
+    expect(req.user).toEqual(activeUser);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith();
+  });
+});
+
+describe('optionalAuth middleware', () => {
+  it('calls next() with no error when there is no Authorization header', async () => {
+    const req = makeReq(undefined);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+
+    await optionalAuth(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith();
+    expect(mockedVerifyToken).not.toHaveBeenCalled();
+    expect(req.user).toBeUndefined();
+  });
+
+  it('calls next with NO_TOKEN when the scheme is not "Bearer"', async () => {
+    const req = makeReq('Basic abc123');
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+
+    await optionalAuth(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    expect(err).toBeInstanceOf(AppError);
+    expect(err.status).toBe(401);
+    expect(err.code).toBe('NO_TOKEN');
+    expect(mockedVerifyToken).not.toHaveBeenCalled();
+  });
+
+  it('calls next with NO_TOKEN when "Bearer" has no token after it', async () => {
+    const req = makeReq('Bearer');
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+
+    await optionalAuth(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    expect(err.code).toBe('NO_TOKEN');
+    expect(mockedVerifyToken).not.toHaveBeenCalled();
+  });
+
+  it('calls next with the error when verifyToken throws for an invalid/expired token', async () => {
+    const req = makeReq('Bearer bad.token.here');
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    const tokenError = new AppError(401, 'TOKEN_EXPIRED', 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+    mockedVerifyToken.mockImplementation(() => {
+      throw tokenError;
+    });
+
+    await optionalAuth(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(tokenError);
+    expect(mockedFindById).not.toHaveBeenCalled();
+  });
+
+  it('calls next with USER_NOT_FOUND when the token is valid but the user no longer exists', async () => {
+    const req = makeReq('Bearer valid.token');
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedFindById.mockResolvedValue(null);
+
+    await optionalAuth(req, res, next);
+
+    expect(mockedFindById).toHaveBeenCalledWith(7);
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    expect(err.status).toBe(401);
+    expect(err.code).toBe('USER_NOT_FOUND');
+  });
+
+  it('calls next with ACCOUNT_SUSPENDED when the user is suspended', async () => {
+    const req = makeReq('Bearer valid.token');
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1 });
+
+    await optionalAuth(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    expect(err.status).toBe(403);
+    expect(err.code).toBe('ACCOUNT_SUSPENDED');
+    expect(req.user).toBeUndefined();
+  });
+
+  it('attaches req.user and calls next() with no error for a valid, active user', async () => {
+    const req = makeReq('Bearer valid.token');
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedFindById.mockResolvedValue(activeUser);
+
+    await optionalAuth(req, res, next);
 
     expect(req.user).toEqual(activeUser);
     expect(next).toHaveBeenCalledTimes(1);
