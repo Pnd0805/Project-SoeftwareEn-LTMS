@@ -124,13 +124,10 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
     }
 
     if(wasVerified){
-        for(const nextId of [match.next_match_id, match.loser_next_match_id]){
-            if(nextId === null) continue;
-            const next = await MatchRepo.findById(nextId);
-            if(next && next.match_status !== 'scheduled'){
-                throw new AppError(409 , "NEXT_MATCH_STARTED" ,
-                    `แมตช์ถัดไป #${nextId} เปิดเช็คอิน/เริ่ม/จบไปแล้ว ถอนหรือแก้ผลแมตช์นี้ไม่ได้อีก` , { nextMatchId : nextId });
-            }
+        const startedId = await findStartedNextMatchId(match);
+        if(startedId !== null){
+            throw new AppError(409 , "NEXT_MATCH_STARTED" ,
+                `แมตช์ถัดไป #${startedId} เปิดเช็คอิน/เริ่ม/จบไปแล้ว ถอนหรือแก้ผลแมตช์นี้ไม่ได้อีก` , { nextMatchId : startedId });
         }
     }
 
@@ -165,6 +162,20 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
  * S05 — ผลที่ verified/walkover ใครก็อ่านได้ · ผลที่ยัง submitted/disputed/rejected อ่านได้เฉพาะ ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม
  * (ORG ตัดสิน dispute ต้องเห็นสกอร์ที่ถูกโต้แย้ง — FE gaps 19 ก.ย.) · คนอื่นได้ 404 เหมือนเดิม ไม่เผยว่ามีผลค้าง
  */
+/**
+ * แมตช์ถัดไปที่ขยับพ้น `scheduled` ไปแล้ว (แค่เปิดเช็คอินก็นับ) — คืน id แรกที่เจอ ไม่มี = null
+ * ผลของมันคือ "ถอน/แก้ผลแมตช์นี้ไม่ได้อีก" เพราะทีมที่ต้องเอาออกอาจลงแข่งหรือได้บายไปแล้ว
+ * ใช้ทั้งตอน S04 กันการแก้ผล และตอน S05 บอก FE ว่าเส้นตายจริงของการค้านคือเมื่อไร (มติ 25 ก.ย. ข้อ 3)
+ */
+async function findStartedNextMatchId(match : MatchRow): Promise<number | null>{
+    for(const nextId of [match.next_match_id, match.loser_next_match_id]){
+        if(nextId === null) continue;
+        const next = await MatchRepo.findById(nextId);
+        if(next && next.match_status !== 'scheduled') return nextId;
+    }
+    return null;
+}
+
 export async function getVerifiedResult(matchId : number , userId? : number){
     const matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
     if(!matchRes){
@@ -178,7 +189,27 @@ export async function getVerifiedResult(matchId : number , userId? : number){
         }
     }
 
-    return toVerifiedResult(matchRes)
+    return { ...toVerifiedResult(matchRes), ...await disputeWindowOf(matchRes) };
+}
+
+/**
+ * ข้อ 3 (มติ 25 ก.ย.) — บอกเส้นตายการค้านที่ "เป็นความจริง" ไม่ใช่ 24 ชม.ลอย ๆ
+ *   disputeClosesAt   เวลาที่พ้นแล้วกดค้านไม่ได้อีก · null = ยังไม่ verify (ค้านได้ไม่จำกัดเวลา) หรือค้านไม่ได้เลย (บาย/ถูกปฏิเสธ)
+ *   resultChangeable  ตอนนี้ค้านแล้ว "แก้ผลได้จริง" ไหม — false เมื่อแมตช์ถัดไปขยับไปแล้ว
+ *                     ยังยื่นเรื่องได้ แต่กลายเป็นการร้องเรียนที่ไม่เปลี่ยนผล (มติ 26 ก.ย. ข้อ 8) FE ต้องเปลี่ยนคำบนปุ่มตามค่านี้
+ */
+async function disputeWindowOf(matchRes : { match_id : number; match_result_status : string; verified_at : Date | null }){
+    if(matchRes.match_result_status === 'walkover' || matchRes.match_result_status === 'rejected'){
+        return { disputeClosesAt : null , resultChangeable : false };
+    }
+    const match = await MatchRepo.findById(matchRes.match_id);
+    const resultChangeable = match !== null && (await findStartedNextMatchId(match)) === null;
+    if(matchRes.verified_at === null){
+        return { disputeClosesAt : null , resultChangeable };
+    }
+    const tour = match === null ? null : await findTournamentById(match.tournament_id);
+    const hours = tour?.dispute_window_hours ?? 24;
+    return { disputeClosesAt : new Date(matchRes.verified_at.getTime() + hours * 3600 * 1000).toISOString() , resultChangeable };
 }
 
 async function canSeeUnfinishedResult(matchId : number , userId : number): Promise<boolean>{
@@ -315,13 +346,23 @@ export async function getDashboard(tourId : number){
     return { teamCount, playerCount, matchCount, matchesCompleted };
 }
 
+/**
+ * ข้อ 1 (มติ 26 ก.ย.) — ตารางคะแนนต้องบอกด้วยว่าตัวเลขนี้ยังเปลี่ยนได้ไหม
+ * round robin ทุกแมตช์ป้อนตารางเดียวกัน แมตช์เดียวที่ถูกค้างไว้จึงสลับอันดับได้ทั้งตาราง
+ * isProvisional = false เมื่อไม่มีแมตช์ค้างแล้ว (ซึ่งคือเงื่อนไขเดียวกับที่ปิดทัวร์ได้) จึงใช้เป็นสัญญาณ "อันดับเป็นทางการ" ได้เลย
+ */
 export async function getStandings(tourId : number){
     await checkTournament(tourId);
 
     const rows = await MatchResRepo.findStandings(tourId);
     const items = rankStandings(rows);
+    const pending = await TournamentRepo.findUnfinishedMatchIds(tourId);
 
-    return { items };
+    return {
+        items,
+        isProvisional : pending.length > 0,
+        pendingMatches : pending.map(m => ({ id : m.match_id , status : m.match_status })),
+    };
 }
 
 const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=[\w-]+|youtu\.be\/[\w-]+)/;

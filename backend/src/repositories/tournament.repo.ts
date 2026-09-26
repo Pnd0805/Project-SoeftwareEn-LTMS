@@ -21,6 +21,7 @@ export type CreateTournamentRecord = {
     genderRequirement: TournamentRow['gender_requirement'];
     minAge: number | null;
     maxAge: number | null;
+    disputeWindowHours: number | null;   // null = ใช้ค่าตั้งต้นของคอลัมน์ (24 ชม.)
     eligibilityRules: EligibilityRule[];
 };
 
@@ -121,9 +122,9 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
             (name, description, entry_notes, sport_type_id, bracket_format, scope_type,
              organizing_faculty_id, organizing_department_id, requested_by_user_id,
              registration_start, registration_end, event_start_date, event_end_date,
-             max_teams, min_teams, venue, gender_requirement, min_age, max_age,
+             max_teams, min_teams, venue, gender_requirement, min_age, max_age, dispute_window_hours,
              tournament_status, registration_open)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval', FALSE)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IFNULL(?, DEFAULT(dispute_window_hours)), 'pending_approval', FALSE)`,
         [
             data.name,
             null,
@@ -143,7 +144,8 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
             data.venue,
             data.genderRequirement,
             data.minAge,
-            data.maxAge
+            data.maxAge,
+            data.disputeWindowHours
         ]
         );
         await replaceEligibilityRulesTx(conn, result.insertId, data.eligibilityRules);

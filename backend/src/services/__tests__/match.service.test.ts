@@ -14,6 +14,7 @@ vi.mock('../../repositories/match.repo.js', () => ({
   findById: vi.fn(),
   findConflictingMatch: vi.fn(),
   findPredecessors: vi.fn(() => Promise.resolve([])),
+  findUnresolvedPredecessors: vi.fn(() => Promise.resolve([])),
   updateMatchSchedule: vi.fn(),
   openMatchCheckin: vi.fn(),
   findCheckinById: vi.fn(),
@@ -216,6 +217,38 @@ describe('openCheckinMatch (M09)', () => {
 
     await expect(matchService.openCheckinMatch(1)).resolves.toMatchObject({ id: 1, status: 'checkin_open' });
     expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({ type: 'checkin_opened' }));
+  });
+
+  // ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเปิดเช็คอินทับแมตช์ต้นทางที่ยังไม่สรุป และต้องบอกว่าติดแมตช์ไหน
+  it('409 MATCH_TEAMS_INCOMPLETE naming the upstream matches that are still open', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ team_b_id: null }));
+    vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([
+      { match_id: 12, match_status: 'in_progress' }, { match_id: 13, match_status: 'result_rejected' },
+    ] as never);
+
+    const err = await expectAppError(matchService.openCheckinMatch(1), 409, 'MATCH_TEAMS_INCOMPLETE');
+    expect(err.extra).toEqual({ blockedBy: [
+      { matchId: 12, status: 'in_progress', reason: 'กำลังแข่งอยู่ ยังไม่มีการส่งผล' },
+      { matchId: 13, status: 'result_rejected', reason: 'ผลถูกยกเลิก รอส่งผลใหม่' },
+    ] });
+    expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
+  });
+
+  it('409 PREDECESSOR_DISPUTED when both teams are in but an upstream match is disputed', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
+    vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([{ match_id: 12, match_status: 'disputed' }] as never);
+
+    const err = await expectAppError(matchService.openCheckinMatch(1), 409, 'PREDECESSOR_DISPUTED');
+    expect(err.extra).toEqual({ blockedBy: [{ matchId: 12, status: 'disputed', reason: 'มีข้อโต้แย้งรอผู้จัดตัดสิน' }] });
+    expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
+  });
+
+  it('an upstream match that is merely unfinished does not block a match whose teams are already set', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
+    vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([{ match_id: 12, match_status: 'in_progress' }] as never);
+    vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
+
+    await expect(matchService.openCheckinMatch(1)).resolves.toMatchObject({ status: 'checkin_open' });
   });
 });
 

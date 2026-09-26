@@ -250,6 +250,7 @@ export async function createTournament(input: CreateTournamentInput, userId: num
         genderRequirement: input.genderRequirement,
         minAge: input.minAge ?? null,
         maxAge: input.maxAge ?? null,
+        disputeWindowHours: input.disputeWindowHours ?? null,
         eligibilityRules
     });
 

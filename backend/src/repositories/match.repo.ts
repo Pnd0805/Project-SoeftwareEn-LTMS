@@ -154,6 +154,20 @@ export async function findPredecessors(matchId: number): Promise<Pick<MatchRow, 
     return rows;
 }
 
+/**
+ * แมตช์ต้นทางที่ยังไม่จบ (ผู้ชนะ/ผู้แพ้ของมันต้องมาเล่นแมตช์นี้) — ข้อ 1 (มติ 25-26 ก.ย.)
+ * ใช้บอก FE ว่า "เปิดเช็คอินไม่ได้เพราะติดแมตช์ไหน" แทนที่จะโยน 409 เปล่า ๆ ให้ไปเดาเอง
+ */
+export async function findUnresolvedPredecessors(matchId: number): Promise<Pick<MatchRow, 'match_id' | 'match_status'>[]> {
+    const [rows] = await pool.query<(Pick<MatchRow, 'match_id' | 'match_status'> & RowDataPacket)[]>(
+        `SELECT match_id, match_status FROM matches
+         WHERE (next_match_id = ? OR loser_next_match_id = ?) AND match_status <> 'completed'
+         ORDER BY match_id`,
+        [matchId, matchId]
+    );
+    return rows;
+}
+
 export async function updateMatchSchedule(matchId: number, scheduledTime: Date, scheduledEndTime: Date, venue: string): Promise<void> {
     await pool.query(
         `UPDATE matches SET scheduled_time = ?, scheduled_end_time = ?, venue = ?, updated_at = NOW() WHERE match_id = ?`,

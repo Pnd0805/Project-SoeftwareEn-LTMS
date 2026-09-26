@@ -25,6 +25,17 @@ describe('tournament schemas', () => {
         expect(updateTournamentSchema.safeParse({ description: 'การแข่งขันประจำปี' }).success).toBe(true);
     });
 
+    // ข้อ 9 (มติ 25 ก.ย.) — ผู้จัดตั้งระยะเวลาโต้แย้งเองได้ แต่ต้องอยู่ในกรอบที่ใช้งานได้จริง
+    it('accepts disputeWindowHours only within 6-72 hours, and treats it as optional', () => {
+        expect(createTournamentSchema.safeParse(validTournament).success).toBe(true);                              // ไม่ส่ง = ใช้ค่าตั้งต้น 24 ชม.
+        for (const hours of [6, 24, 72]) {
+            expect(createTournamentSchema.safeParse({ ...validTournament, disputeWindowHours: hours }).success).toBe(true);
+        }
+        for (const hours of [0, 5, 73, 1.5, -24]) {
+            expect(createTournamentSchema.safeParse({ ...validTournament, disputeWindowHours: hours }).success).toBe(false);
+        }
+    });
+
     it('rejects university scope and missing venue at the request boundary', () => {
         expect(createTournamentSchema.safeParse({ ...validTournament, scopeType: 'university' }).success).toBe(false);
         expect(createTournamentSchema.safeParse({ ...validTournament, venue: '' }).success).toBe(false);

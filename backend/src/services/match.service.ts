@@ -186,11 +186,37 @@ export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) 
     return toMatchDetailDto(updated!);
 }
 
+/** ข้อความอธิบายว่าแมตช์ต้นทางค้างอยู่ด้วยเหตุอะไร — ให้ ORG อ่านแล้วรู้ว่าต้องไปทำอะไรต่อ */
+const BLOCK_REASON: Record<string, string> = {
+    scheduled       : 'ยังไม่เริ่มแข่ง',
+    checkin_open    : 'เปิดเช็คอินแล้ว แต่ยังไม่เริ่มแข่ง',
+    in_progress     : 'กำลังแข่งอยู่ ยังไม่มีการส่งผล',
+    disputed        : 'มีข้อโต้แย้งรอผู้จัดตัดสิน',
+    result_rejected : 'ผลถูกยกเลิก รอส่งผลใหม่',
+};
+
 // requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
 export async function openCheckinMatch(matchId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    /**
+     * ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเดินหน้าทับแมตช์ต้นทางที่ยังไม่สรุป
+     *   ทีมไม่ครบ  : เปิดเช็คอินไปก็ไปตายตอนกด start และผู้เล่นได้แจ้งเตือนทั้งที่ยังไม่รู้ว่าใครแข่ง
+     *   ต้นทาง disputed : ทีมครบก็จริง (ผลเคย verified) แต่ถ้าปล่อยให้เปิดเช็คอิน ผู้จัดจะเสียสิทธิ์แก้ผล
+     *                     แมตช์ต้นทางทันที (NEXT_MATCH_STARTED) ทั้งที่ยังตัดสินข้อโต้แย้งไม่เสร็จ
+     * ทั้งสองกรณีคืน blockedBy เพื่อให้ FE ลิงก์ไปแมตช์ที่ติดได้เลย
+     */
+    const blockers = await MatchRepo.findUnresolvedPredecessors(matchId);
+    const blockedBy = blockers.map(b => ({ matchId: b.match_id, status: b.match_status, reason: BLOCK_REASON[b.match_status] ?? 'ยังไม่จบ' }));
+    if (match.team_a_id === null || match.team_b_id === null) {
+        throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง ยังเปิดเช็คอินไม่ได้", { blockedBy });
+    }
+    if (blockers.some(b => b.match_status === 'disputed')) {
+        throw new AppError(409, "PREDECESSOR_DISPUTED",
+            "แมตช์ต้นทางยังมีข้อโต้แย้งที่ยังไม่ตัดสิน เปิดเช็คอินแมตช์นี้ไม่ได้", { blockedBy });
     }
 
     // UPDATE เฉพาะแถวที่ยัง scheduled — กันเปิดซ้ำตอนแข่งอยู่ (เดิมย้อนสถานะ in_progress กลับเป็น checkin_open ได้)

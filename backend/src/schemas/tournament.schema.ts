@@ -31,6 +31,9 @@ export const createTournamentSchema = z.object({
     genderRequirement: z.enum(['any', 'male', 'female']),
     minAge: optionalAge,
     maxAge: optionalAge,
+    // ระยะเวลาที่ยังโต้แย้งผลได้หลังผลถูกยืนยัน (BR-14) — มติ 25 ก.ย. ข้อ 9: ให้ผู้จัดตั้งเองได้ในกรอบ 6-72 ชม.
+    // ไม่ส่ง = 24 ชม. ตามค่าตั้งต้นของคอลัมน์ · ต่ำกว่า 6 ชม. สั้นเกินกว่าที่คนจะทันเห็น สูงกว่า 72 ชม. ทำให้สายค้างนานเกินไป
+    disputeWindowHours: z.int().min(6, 'ระยะเวลาโต้แย้งต้องไม่ต่ำกว่า 6 ชั่วโมง').max(72, 'ระยะเวลาโต้แย้งต้องไม่เกิน 72 ชั่วโมง').optional(),
     eligibilityRules: eligibilityRulesSchema.optional()
 });
 
