@@ -57,9 +57,24 @@ describe('disputeSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts an empty string reason (no min-length constraint here)', () => {
-    const result = disputeSchema.safeParse({ reason: '' });
-    expect(result.success).toBe(true);
+  // มติ 26 ก.ย. — เดิมค้านด้วยสตริงว่างได้ ผู้จัดเปิดเรื่องมาแล้วตัดสินไม่ได้
+  it('rejects an empty or whitespace-only reason', () => {
+    expect(disputeSchema.safeParse({ reason: '' }).success).toBe(false);
+    expect(disputeSchema.safeParse({ reason: '   ' }).success).toBe(false);
+    expect(disputeSchema.safeParse({ reason: 'x'.repeat(1001) }).success).toBe(false);
+  });
+
+  // เสนอผลที่ถูกต้องมาด้วยได้ แต่ต้องมาคู่กัน ไม่งั้นผู้จัดกด amend ต่อไม่ได้
+  it('takes a proposed correct result only when both the winner and the score are given', () => {
+    expect(disputeSchema.safeParse({ reason: 'ล้ำหน้า', claimedWinnerTeamId: 12, claimedScoreData: { 11: 1, 12: 3 } }).success).toBe(true);
+    expect(disputeSchema.safeParse({ reason: 'ล้ำหน้า', claimedWinnerTeamId: 12 }).success).toBe(false);
+    expect(disputeSchema.safeParse({ reason: 'ล้ำหน้า', claimedScoreData: { 11: 1, 12: 3 } }).success).toBe(false);
+  });
+
+  it('caps the attached evidence at 5 files', () => {
+    const keys = (n: number) => Array.from({ length: n }, (_, i) => `dispute_evidence/7/${i}.jpg`);
+    expect(disputeSchema.safeParse({ reason: 'x', evidenceKeys: keys(5) }).success).toBe(true);
+    expect(disputeSchema.safeParse({ reason: 'x', evidenceKeys: keys(6) }).success).toBe(false);
   });
 
   it('rejects a missing reason', () => {

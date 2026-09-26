@@ -10,6 +10,6 @@ import type { MatchRow } from '../types/db.js';
  * ยังไม่ได้กดจบการแข่งขัน = ยังไม่มีเวลาจบจริง = นาฬิกายังไม่เริ่มเดิน
  */
 export function isSubmitEscalationOpen(match: Pick<MatchRow, 'actual_end_time'>): boolean {
-    if (match.actual_end_time === null) return false;
+    if (!match.actual_end_time) return false;   // ยังไม่กดจบการแข่งขัน = นาฬิกายังไม่เริ่มเดิน
     return Date.now() >= match.actual_end_time.getTime() + SUBMIT_ESCALATION_HOURS * 3600 * 1000;
 }

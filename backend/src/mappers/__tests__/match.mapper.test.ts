@@ -308,6 +308,8 @@ describe('toMatchDetailDto', () => {
         'scheduledEndTime',
         'venue',
         'checkinOpenAt',
+        'startedAt',        // migration 026 — เวลาเริ่มแข่งจริง
+        'actualEndTime',    // migration 026 — เวลาจบแข่งจริง (ต่างจาก scheduledEndTime ที่เป็นเวลาตามตาราง)
         'status',
         'mode',
         'roomCode',

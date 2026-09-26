@@ -18,7 +18,7 @@ describe('presignUploadSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      const issue = result.error.issues.find((i) => i.message === 'ต้องระบุ matchId เมื่อ purpose เป็น checkin_document');
+      const issue = result.error.issues.find((i) => i.message === 'ต้องระบุ matchId เมื่อ purpose เป็น checkin_document หรือ dispute_evidence');
       expect(issue).toBeDefined();
       expect(issue?.path).toEqual(['matchId']);
     }
@@ -118,4 +118,11 @@ describe('presignUploadErrorCodes', () => {
       message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น',
     });
   });
+
+  // มติ 26 ก.ย. — หลักฐานประกอบการโต้แย้งผล ใช้กลไกอัปโหลดเดิม ผูกกับแมตช์เหมือนรูปเช็คอิน
+  it('accepts dispute_evidence with a matchId and rejects it without one', () => {
+    expect(presignUploadSchema.safeParse({ purpose: 'dispute_evidence', contentType: 'image/jpeg', matchId: 7 }).success).toBe(true);
+    expect(presignUploadSchema.safeParse({ purpose: 'dispute_evidence', contentType: 'image/jpeg' }).success).toBe(false);
+  });
 });
+

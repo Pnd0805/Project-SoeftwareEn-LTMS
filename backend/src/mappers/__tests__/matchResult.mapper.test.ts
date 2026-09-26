@@ -183,6 +183,7 @@ describe('toVerifiedResult', () => {
             makeResultRow({
                 match_result_status: 'verified',
                 verified_at: VERIFIED_AT,
+                verified_by_user_id: 9,   // มีคนกดยืนยัน — ต่างจาก auto-verify ที่คอลัมน์นี้เป็น NULL
             }),
         );
 
@@ -195,6 +196,8 @@ describe('toVerifiedResult', () => {
             amendReason: null,
             isWalkover: false,
             status: 'verified',
+            submittedRole: makeResultRow().submitted_role,   // OD-26 ข้อ 6 — 'organizer' คือป้าย "ผู้จัดกรอกผลเอง"
+            isAutoVerified: false,                           // OD-26 ข้อ 7 — verified_by_user_id ไม่ใช่ NULL = คนกดยืนยัน
             verifiedAt: '2026-05-10T11:00:00.000Z',
         });
     });
@@ -261,9 +264,18 @@ describe('toVerifiedResult', () => {
                 'amendReason',
                 'isWalkover',
                 'status',
+                'submittedRole',
+                'isAutoVerified',
                 'verifiedAt',
             ].sort(),
         );
+    });
+
+    // OD-26 ข้อ 7 — ผลที่ verified แต่ไม่มีคนยืนยัน แปลว่าระบบยืนยันให้เองเพราะไม่มีผู้โต้แย้ง
+    it('flags isAutoVerified when a result was verified with nobody recorded as the verifier', () => {
+        expect(toVerifiedResult(makeResultRow({ match_result_status: 'verified', verified_at: VERIFIED_AT, verified_by_user_id: null })).isAutoVerified).toBe(true);
+        expect(toVerifiedResult(makeResultRow({ match_result_status: 'verified', verified_at: VERIFIED_AT, verified_by_user_id: 9 })).isAutoVerified).toBe(false);
+        expect(toVerifiedResult(makeResultRow({ verified_at: null })).isAutoVerified).toBe(false);
     });
 
     it('throws a RangeError when verified_at is an invalid Date', () => {

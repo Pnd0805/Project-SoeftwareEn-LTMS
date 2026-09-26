@@ -180,29 +180,31 @@ describe("updateVerifyMatchResult", () => {
 });
 
 describe("updateDisputeMatchResult", () => {
-    it("forwards matchId, userId, and reason, responds 200", async () => {
+    // มติ 26 ก.ย. — การค้านไม่ได้มีแค่เหตุผลแล้ว จึงส่งทั้ง body ต่อไปให้ service (schema ตรวจมาก่อนที่ route)
+    it("forwards matchId, userId, and the whole validated body, responds 200", async () => {
         const payload = { status: "DISPUTED" };
         svc.disputeMatchResult.mockResolvedValue(payload as any);
 
+        const body = { reason: "คะแนนผิด", claimedWinnerTeamId: 12, claimedScoreData: { 11: 1, 12: 3 } };
         const req = makeReq({
             params: { id: "9" } as any,
             user: { user_id: 7 } as any,
-            body: { reason: "คะแนนผิด" },
+            body,
         });
         const res = makeRes();
         await updateDisputeMatchResult(req, res);
 
-        expect(svc.disputeMatchResult).toHaveBeenCalledWith(9, 7, "คะแนนผิด");
+        expect(svc.disputeMatchResult).toHaveBeenCalledWith(9, 7, body);
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(payload);
     });
 
-    it("passes reason through as undefined when the body omits it", async () => {
+    it("passes an empty body straight through (the schema is what rejects it)", async () => {
         svc.disputeMatchResult.mockResolvedValue({} as any);
 
         await updateDisputeMatchResult(makeReq({ body: {} }), makeRes());
 
-        expect(svc.disputeMatchResult).toHaveBeenCalledWith(42, 7, undefined);
+        expect(svc.disputeMatchResult).toHaveBeenCalledWith(42, 7, {});
     });
 
     it("rejects with VALIDATION_FAILED for a bad id", async () => {

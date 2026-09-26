@@ -172,6 +172,8 @@ const baseMatch: MatchRow = {
   scheduled_end_time: null,
   venue: null,
   checkin_open_at: null,
+  started_at: null,
+  actual_end_time: null,
   match_status: 'scheduled',
   mode: 'onsite',
   livestream_url: null,
@@ -390,6 +392,10 @@ describe('isRefereeSufficient', () => {
 });
 
 describe('requireCanSubmitResult middleware', () => {
+  // OD-26 ข้อ 2+4 (มติ 26 ก.ย.) — ต้องกด "จบการแข่งขัน" ก่อนถึงส่งผลได้
+  // เทสในบล็อกนี้จึงต้องเริ่มจากแมตช์ที่ finished ไม่งั้นติดด่านสถานะก่อนถึงด่านบทบาทที่กำลังทดสอบ
+  const finishedMatch: MatchRow = { ...baseMatch, match_status: 'finished' };
+
   it('calls next with NO_TOKEN when req.user is missing', async () => {
     const req = makeReq({ id: '30' }, undefined);
     const next = vi.fn() as NextFunction;
@@ -404,7 +410,7 @@ describe('requireCanSubmitResult middleware', () => {
 
   it('parses the id with the 3-arg field-aware signature', async () => {
     mockedParseId.mockReturnValue(30);
-    mockedCheckMatch.mockResolvedValue(baseMatch);
+    mockedCheckMatch.mockResolvedValue(finishedMatch);
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
     mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
     mockedIsActiveReferee.mockReturnValue(true);
@@ -430,7 +436,7 @@ describe('requireCanSubmitResult middleware', () => {
 
   it('calls next with MATCH_RESULT_ALREADY_VERIFIED when an existing result is not submitted/rejected', async () => {
     mockedParseId.mockReturnValue(30);
-    mockedCheckMatch.mockResolvedValue(baseMatch);
+    mockedCheckMatch.mockResolvedValue(finishedMatch);
     mockedFindmatchResultByMatchId.mockResolvedValue({ ...baseMatchResult, match_result_status: 'verified' });
     const next = vi.fn() as NextFunction;
 
@@ -445,7 +451,7 @@ describe('requireCanSubmitResult middleware', () => {
     'allows resubmission when the existing result status is %s',
     async (status) => {
       mockedParseId.mockReturnValue(30);
-      mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'onsite' });
+      mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'onsite' });
       mockedFindmatchResultByMatchId.mockResolvedValue({ ...baseMatchResult, match_result_status: status });
       mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
       mockedIsActiveReferee.mockReturnValue(true);
@@ -460,7 +466,7 @@ describe('requireCanSubmitResult middleware', () => {
 
   it('onsite: calls next with WRONG_SUBMITTER_ROLE when the caller is not the assigned referee', async () => {
     mockedParseId.mockReturnValue(30);
-    mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'onsite' });
+    mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'onsite' });
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
     mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
     mockedIsActiveReferee.mockReturnValue(false);
@@ -477,7 +483,7 @@ describe('requireCanSubmitResult middleware', () => {
 
   it('onsite: sets req.submitrole to "referee" and calls next() on success', async () => {
     mockedParseId.mockReturnValue(30);
-    mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'onsite' });
+    mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'onsite' });
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
     mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
     mockedIsActiveReferee.mockReturnValue(true);
@@ -493,7 +499,7 @@ describe('requireCanSubmitResult middleware', () => {
 
   it('online: calls next with WRONG_SUBMITTER_ROLE when the caller is not a team leader', async () => {
     mockedParseId.mockReturnValue(30);
-    mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online' });
+    mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'online' });
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
     mockedTeamFindById.mockImplementation(async (id: number) => (id === 10 ? teamA : teamB));
     const next = vi.fn() as NextFunction;
@@ -507,7 +513,7 @@ describe('requireCanSubmitResult middleware', () => {
 
   it('online: sets req.submitrole to "team_leader" and calls next() on success', async () => {
     mockedParseId.mockReturnValue(30);
-    mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online' });
+    mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'online' });
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
     mockedTeamFindById.mockImplementation(async (id: number) => (id === 10 ? teamA : teamB));
     const req = makeReq({ id: '30' }, makeUser({ user_id: 100 }));
