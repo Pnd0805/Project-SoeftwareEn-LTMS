@@ -118,7 +118,7 @@ export async function fileComplaint(matchId : number , userId : number , input :
         relatedEntityType : 'match', relatedEntityId : matchId,
     } , { exceptUserId : userId , includeOrganizer : true });
 
-    return toComplaintDto((await ComplaintRepo.findById(complaintId))! , { canAmend : false , blockedBy : null } , false);
+    return withDetail(complaintId);
 }
 
 /** ผู้จัดแนบความเห็น — ทำได้แม้ทัวร์ปิดแล้ว (route อยู่นอก prefix ที่ lockCompletedTournament คุม) */
