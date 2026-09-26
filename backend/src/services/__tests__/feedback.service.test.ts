@@ -353,6 +353,46 @@ describe('getMvpVotes (รายแมตช์)', () => {
     expect((await Service.getMvpVotes(7, 9)).canVote).toBe(false);
   });
 
+  it('exact boundaries: open at the second the match ends, closed at the 24-hour mark', async () => {
+    const ended = new Date('2026-09-21T18:00:00Z');
+    vi.setSystemTime(ended);                                                    // วินาทีที่แมตช์จบพอดี
+    expect((await Service.getMvpVotes(7)).window.isOpen).toBe(true);
+    vi.setSystemTime(new Date(ended.getTime() + 24 * 60 * 60 * 1000 - 1));      // ก่อนครบ 24 ชม. 1 มิลลิวินาที
+    expect((await Service.getMvpVotes(7)).window.isOpen).toBe(true);
+    vi.setSystemTime(new Date(ended.getTime() + 24 * 60 * 60 * 1000));          // ครบ 24 ชม. พอดี = ปิด
+    const closed = await Service.getMvpVotes(7);
+    expect(closed.window.isOpen).toBe(false);
+    expect(closed).toHaveProperty('totalVotes');
+  });
+
+  it('a candidate whose team withdrew later still shows up (teamId null) — the result must not vanish', async () => {
+    vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue([
+      { user_id: 101, full_name: 'ก', profile_image_key: null, team_id: null, votes: 2 },
+    ]);
+    vi.setSystemTime(new Date('2026-09-23T18:00:01Z'));
+    const result = await Service.getMvpVotes(7);
+    expect(result.candidates).toEqual([expect.objectContaining({ userId: 101, teamId: null, votes: 2 })]);
+    expect(result.winners).toEqual([101]);
+  });
+
+  it('several stats per player keep the order they came in; stats of non-candidates are dropped', async () => {
+    vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue([candidates[0]!]);
+    vi.mocked(FeedbackRepo.findMatchPlayerStats).mockResolvedValue([
+      { user_id: 101, stat_key: 'goals', stat_label_th: 'ประตู', value: 2 },
+      { user_id: 101, stat_key: 'assists', stat_label_th: 'แอสซิสต์', value: 1 },
+      { user_id: 999, stat_key: 'goals', stat_label_th: 'ประตู', value: 9 },      // คนที่ไม่ได้อยู่ในรายชื่อผู้ถูกโหวต
+    ]);
+    const { candidates: dto } = await Service.getMvpVotes(7);
+    expect(dto).toHaveLength(1);
+    expect(dto[0]!.stats.map(s => s.statKey)).toEqual(['goals', 'assists']);
+  });
+
+  it('a vote the admin removed: mine is null and the voter cannot vote again', async () => {
+    vi.mocked(FeedbackRepo.findOwnMatchVote).mockResolvedValue(feedbackRow({ feedback_type: 'mvp_vote', voted_for_user_id: 101, removed_at: new Date() }));
+    expect(await Service.getMvpVotes(7, 50)).toMatchObject({ mine: null, canVote: false });
+    expect(await errOf(Service.castMvpVote(7, 50, 101))).toMatchObject({ status: 409, code: 'FEEDBACK_REMOVED' });
+  });
+
   it('the match has not finished yet → empty window, nothing to vote on', async () => {
     vi.mocked(MatchRepo.findById).mockResolvedValue(match({ actual_end_time: null }));
     const result = await Service.getMvpVotes(7, 50);

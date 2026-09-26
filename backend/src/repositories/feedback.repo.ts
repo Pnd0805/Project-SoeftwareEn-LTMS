@@ -90,30 +90,32 @@ export type MvpCandidateRow = {
     user_id: number;
     full_name: string;
     profile_image_key: string | null;
-    team_id: number;
+    team_id: number | null;    // NULL ได้ในกรณีหายาก — ทีมถอนตัวหลังแมตช์จบ (รายชื่อลงแข่งถูกลบ) และกรรมการไม่ได้กรอกสถิติ
     votes: number;
 };
 
 /**
  * ผู้มีสิทธิ์ถูกโหวตของแมตช์ = คนที่ "เช็คอินสำเร็จ" ในแมตช์นั้น (ข้อ 5 — คนที่ลงเล่นจริง ไม่ใช่ทุกคนในใบสมัคร)
+ * ★ ยึด match_checkins เป็นหลัก แล้ว LEFT JOIN หาทีมเอา — ถ้าไปผูกกับ application_players แบบบังคับ
+ *   ทีมที่ "ถอนตัวหลังแมตช์นี้แข่งจบ" จะทำให้ผู้เล่นหายจากรายการ (P08 ลบรายชื่อลงแข่งทิ้ง) = ผล MVP ของแมตช์ที่แข่งจริงหายตามไปด้วย
  * ★ เรียงตามทีม/ชื่อ ไม่ใช่ตามคะแนน — ลำดับตามคะแนนจะบอกใบ้ผลระหว่างเปิดโหวต (ข้อ 10) · service เรียงใหม่เองหลังปิดโหวต
  */
 export async function findMvpCandidatesOfMatch(matchId: number): Promise<MvpCandidateRow[]> {
     const [rows] = await pool.query<(MvpCandidateRow & RowDataPacket)[]>(
-        `SELECT u.user_id, u.full_name, u.profile_image_key, ta.team_id,
+        `SELECT DISTINCT u.user_id, u.full_name, u.profile_image_key,
+                COALESCE(ta.team_id, ps.team_id) AS team_id,
                 (SELECT COUNT(*) FROM tournament_feedback f
                   WHERE f.match_id = c.match_id AND f.feedback_type = 'mvp_vote'
                     AND f.voted_for_user_id = u.user_id AND f.removed_at IS NULL) AS votes
          FROM match_checkins c
          JOIN matches m ON m.match_id = c.match_id
          JOIN users u ON u.user_id = c.user_id
-         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
-              AND ta.team_id IN (m.team_a_id, m.team_b_id)
-              AND ta.tournament_application_status = 'approved'
-         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
-              AND ap.user_id = c.user_id
+         LEFT JOIN player_match_stats ps ON ps.match_id = c.match_id AND ps.user_id = c.user_id
+         LEFT JOIN (tournament_applications ta
+                    JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id)
+                ON ta.tournament_id = m.tournament_id AND ta.team_id IN (m.team_a_id, m.team_b_id) AND ap.user_id = c.user_id
          WHERE c.match_id = ? AND c.match_checkin_status = 'success'
-         ORDER BY ta.team_id, u.full_name`,
+         ORDER BY team_id, u.full_name`,
         [matchId]
     );
     return rows;
