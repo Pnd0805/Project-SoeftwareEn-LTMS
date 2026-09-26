@@ -19,6 +19,7 @@ import { tournamentAnnouncementRouter, announcementRouter } from './announcement
 import { meNotificationRouter } from './notification.routes.js';
 import { tournamentFeedbackRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
 import { matchEngagementRouter, mePickemRouter, tournamentPickemRouter } from './engagement.routes.js';
+import { matchComplaintRouter, complaintRouter } from './matchResultComplaint.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
@@ -61,6 +62,11 @@ router.use('/me' , meNotificationRouter);
 router.use('/tournaments' , tournamentFeedbackRouter);
 router.use('/feedback' , feedbackRouter);
 router.use('/admin' , adminFeedbackRouter);
+
+// OD-26 ข้อ 8 — ยื่นเรื่องอยู่ใต้ /matches/:id (ปิดทัวร์แล้วยื่นไม่ได้เอง)
+//                ความเห็น ORG/คำวินิจฉัยแอดมินอยู่นอก prefix นั้น (ทำได้แม้ทัวร์ปิดแล้ว)
+router.use('/matches' , matchComplaintRouter);
+router.use('/match-result-complaints' , complaintRouter);
 
 // C7 Pick'em (คอมเมนต์ทัวร์อยู่กับ C6 ที่ tournamentFeedbackRouter)
 router.use('/matches' , matchEngagementRouter);

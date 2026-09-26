@@ -313,7 +313,7 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
  * ผลของมันคือ "ถอน/แก้ผลแมตช์นี้ไม่ได้อีก" เพราะทีมที่ต้องเอาออกอาจลงแข่งหรือได้บายไปแล้ว
  * ใช้ทั้งตอน S04 กันการแก้ผล และตอน S05 บอก FE ว่าเส้นตายจริงของการค้านคือเมื่อไร (มติ 25 ก.ย. ข้อ 3)
  */
-async function findStartedNextMatchId(match : MatchRow): Promise<number | null>{
+export async function findStartedNextMatchId(match : MatchRow): Promise<number | null>{
     for(const nextId of [match.next_match_id, match.loser_next_match_id]){
         if(nextId === null) continue;
         const next = await MatchRepo.findById(nextId);

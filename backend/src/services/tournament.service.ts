@@ -9,6 +9,7 @@ import type { EligibilityRule } from '../repositories/tournament.repo.js';
 import { eligibilityRulesSchema } from '../schemas/tournament.schema.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { toTournamentDetailDto, toTournamentListDto } from '../mappers/tournament.mapper.js';
+import * as ComplaintRepo from '../repositories/matchResultComplaint.repo.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
@@ -197,7 +198,8 @@ async function getDetail(tournament: TournamentRow): Promise<ReturnType<typeof t
     const organizer = await TournamentRepo.findTournamentOrganizer(tournament.tournament_id);
     if (!organizer) throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
     const approvedTeamCount = await TournamentRepo.countApprovedTeams(tournament.tournament_id);
-    return toTournamentDetailDto(tournament, toUserRef(organizer), approvedTeamCount);
+    const openComplaints = await ComplaintRepo.countOpenByTournament(tournament.tournament_id);
+    return toTournamentDetailDto(tournament, toUserRef(organizer), approvedTeamCount, openComplaints > 0);
 }
 
 /** ข้อ 9 (รายงาน FE 18 ก.ย.): สร้างใหม่ต้องไม่ใช่อดีต — ปิดรับสมัครยังไม่ผ่าน และวันแข่งไม่ก่อนวันนี้ (เวลาไทย) · ไม่ใช้กับ amendment */

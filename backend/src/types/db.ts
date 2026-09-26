@@ -312,6 +312,29 @@ export type MatchResultRow = {
     created_at : Date
 }
 
+/** เรื่องร้องเรียนผลแมตช์ (migration 028 · OD-26 ข้อ 8) — คนละเส้นกับ dispute_* ใน match_results ไม่แตะ match_status */
+export type MatchResultComplaintRow = {
+    match_result_complaint_id : number,
+    match_id : number,
+    match_result_id : number,
+    filed_by : number,
+    reason : string,
+    claimed_winner_team_id : number | null,
+    claimed_score : Record<string , number> | null,
+    evidence : string[] | null,               // S3 object key — ส่งออกเป็น presigned URL เสมอ
+    complaint_status : 'open' | 'upheld' | 'no_merit',
+    organizer_statement : string | null,
+    organizer_statement_by : number | null,
+    organizer_statement_at : Date | null,
+    remedy : 'record_only' | 'amend_result' | null,
+    decided_by : number | null,
+    decision_note : string | null,
+    decided_at : Date | null,
+    filer_flagged : boolean,
+    created_at : Date,
+    updated_at : Date | null
+}
+
 export type PlayerMatchStatRow = {
     player_match_stat_id : number,
     match_id : number,

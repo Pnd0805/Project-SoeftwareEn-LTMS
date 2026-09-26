@@ -157,6 +157,7 @@ describe('toTournamentDetailDto', () => {
             approvedTeamCount: 12,
             championTeamId: null,
             completedAt: null,
+            hasOpenComplaints: false,
         });
     });
 
@@ -407,6 +408,7 @@ describe('toTournamentDetailDto', () => {
                 'eventEndDate',
                 'eventStartDate',
                 'genderRequirement',
+                'hasOpenComplaints',
                 'id',
                 'maxAge',
                 'maxTeams',
@@ -425,6 +427,13 @@ describe('toTournamentDetailDto', () => {
                 'venue',
             ].sort(),
         );
+    });
+
+    // OD-26 ข้อ 8 — เรื่องร้องเรียนไม่บล็อกการปิดทัวร์ แต่ต้องมองเห็นได้
+    it('flags a tournament that still has open match-result complaints', () => {
+        expect(toTournamentDetailDto(makeRow(), ORGANIZER, 0, true).hasOpenComplaints).toBe(true);
+        expect(toTournamentDetailDto(makeRow(), ORGANIZER, 0, false).hasOpenComplaints).toBe(false);
+        expect(toTournamentDetailDto(makeRow(), ORGANIZER, 0).hasOpenComplaints).toBe(false);
     });
 
     it('does not mutate the input row or the organizer', () => {

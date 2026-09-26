@@ -54,11 +54,16 @@ export type TournamentDetailDto = {
     maxAge: number | null;
     organizer: UserRefDto;
     approvedTeamCount: number;
+    hasOpenComplaints: boolean;
     championTeamId: number | null;   // B1 — มีค่าเมื่อ status = completed และมีแชมป์
     completedAt: string | null;
 };
 
-export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto, approvedTeamCount: number): TournamentDetailDto {
+/**
+ * `hasOpenComplaints` — OD-26 ข้อ 8 (มติ 27 ก.ย.): เรื่องร้องเรียนผลแมตช์ไม่บล็อกการปิดทัวร์
+ * แต่ต้องมองเห็นได้ ไม่งั้นทัวร์ที่ยังมีเรื่องค้างดูเหมือนจบเรียบร้อยทั้งที่ยังไม่เรียบร้อย
+ */
+export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto, approvedTeamCount: number, hasOpenComplaints = false): TournamentDetailDto {
     return {
         id: row.tournament_id,
         name: row.name,
@@ -84,6 +89,7 @@ export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto,
         championTeamId: row.champion_team_id ?? null,
         completedAt: toIso(row.completed_at ?? null),
         organizer,
-        approvedTeamCount
+        approvedTeamCount,
+        hasOpenComplaints
     };
 }
