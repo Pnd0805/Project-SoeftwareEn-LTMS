@@ -318,8 +318,46 @@ export async function startMatch(matchId: number, userId: number){
                  checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } } };
     }
 
-    await MatchRepo.updateMatchStatus(matchId, 'in_progress');
+    if(!(await MatchRepo.markMatchStarted(matchId))){
+        throw new AppError(409, "INVALID_STATUS_TRANSITION", "แมตช์นี้ถูกเริ่มไปแล้ว");
+    }
     return { id: matchId, status:'in_progress' };
+}
+
+/**
+ * OD-26 ข้อ 4 (มติ 26 ก.ย.) — กด "จบการแข่งขัน" · `in_progress → finished` พร้อมบันทึกเวลาจบจริง
+ * ทำไมต้องมีขั้นนี้: ตารางแข่งบอกได้แค่เวลาที่ "วางแผนไว้" กีฬาจบเร็วหรือช้ากว่าก็ได้ ระบบจึงไม่เคยรู้เวลาจบจริง
+ * และทุกกฎที่นับเวลาหลังแมตช์จบ (เส้นตายส่งผล · auto-verify · โหวต MVP รายแมตช์) เขียนไม่ได้เลยถ้าไม่มีค่านี้
+ * ใครกดได้: กรรมการของแมตช์ **หรือ** ผู้จัด (มติ Q4b) — ผู้จัดกดแทนได้คือสิ่งที่ทำให้การบังคับกดไม่กลายเป็นจุดค้างใหม่
+ */
+export async function finishMatch(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT", "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่กดจบการแข่งขันได้");
+    }
+
+    if (match.match_status !== 'in_progress') {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "กดจบการแข่งขันได้เฉพาะแมตช์ที่กำลังแข่งอยู่", { status: match.match_status });
+    }
+
+    if (!(await MatchRepo.markMatchFinished(matchId))) {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "สถานะแมตช์เปลี่ยนไปแล้ว");
+    }
+
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'match_finished',
+        title: 'แมตช์จบการแข่งขันแล้ว',
+        message: `แมตช์ #${matchId} จบการแข่งขันแล้ว รอการส่งผล`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
+
+    const updated = await MatchRepo.findMatchById(matchId);
+    return { id: matchId, status: 'finished' as const, actualEndTime: updated!.actual_end_time?.toISOString() ?? null };
 }
 
 /** M11/M13 — ORG ของทัวร์ และ/หรือ กรรมการของแมตช์นี้ (active + รับมอบหมายแมตช์นี้แล้ว) */

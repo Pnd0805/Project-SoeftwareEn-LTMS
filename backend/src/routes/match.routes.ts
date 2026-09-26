@@ -21,6 +21,8 @@ router.get('/matches/:id/lineups' , Match.getMatchLineups);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
 router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
+// จบการแข่งขัน — กรรมการของแมตช์ "หรือ" ผู้จัด (มติ Q4b) จึงตรวจสิทธิ์ใน service ไม่ใช้ middleware ที่รับบทบาทเดียว
+router.post('/matches/:id/finish' , requireAuth , Match.finishMatch);
 // M18 ปิดเช็คอินกลับเป็น scheduled (ฝนตก → ไปเลื่อนด้วย M06) · M17 ORG ตัดสินทีมไม่มาตามนัด — GUIDE/11 §10.5
 router.post('/matches/:id/close-checkin' , requireAuth , requireOrganizerOfMatch , Match.closeCheckinMatch);
 router.post('/matches/:id/forfeit' , requireAuth , requireOrganizerOfMatch , Match.forfeitMatch);

@@ -23,8 +23,9 @@ export async function findOpenMatchesOfTeam(tournamentId : number, teamId : numb
 
 export async function hasInProgressMatch(tournamentId : number, teamId : number): Promise<boolean>{
     const [rows] = await pool.query<RowDataPacket[]>(
+        // finished = แข่งจบแล้วแต่ยังไม่ส่งผล — ถอนตัวตอนนี้ไม่ได้เหมือนกัน ผลของแมตช์ที่แข่งไปแล้วต้องถูกบันทึก (migration 026)
         `SELECT 1 FROM matches
-         WHERE tournament_id = ? AND (team_a_id = ? OR team_b_id = ?) AND match_status = 'in_progress' LIMIT 1`,
+         WHERE tournament_id = ? AND (team_a_id = ? OR team_b_id = ?) AND match_status IN ('in_progress', 'finished') LIMIT 1`,
         [tournamentId, teamId, teamId]);
     return rows.length > 0;
 }

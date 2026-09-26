@@ -34,7 +34,7 @@ export async function hasPlayedMatch(tournamentId: number): Promise<boolean> {
     const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT 1 FROM matches m
          WHERE m.tournament_id = ?
-           AND (m.match_status IN ('in_progress', 'disputed', 'result_rejected')
+           AND (m.match_status IN ('in_progress', 'finished', 'disputed', 'result_rejected')
                 OR (m.match_status = 'completed' AND EXISTS (
                         SELECT 1 FROM match_results r WHERE r.match_id = m.match_id AND r.match_result_status <> 'walkover')))
          LIMIT 1`,

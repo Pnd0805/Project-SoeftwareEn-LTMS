@@ -26,14 +26,15 @@ export async function findmatchResultByMatchId(matchId : number): Promise<MatchR
 
 
 export async function submitMatchResult(matchId : number , winnerId : number , score : Record<string , number> , userId:number , role : 'team_leader' | 'referee'): Promise<number>{
-    const [ results ] = await pool.query<ResultSetHeader>(`INSERT INTO match_results(match_id,winner_team_id,score_data,submitted_by_user_id,submitted_role,match_result_status)
-                                                           VALUES(? , ? , ? , ? ,? ,?)
+    const [ results ] = await pool.query<ResultSetHeader>(`INSERT INTO match_results(match_id,winner_team_id,score_data,submitted_by_user_id,submitted_role,match_result_status,submitted_at)
+                                                           VALUES(? , ? , ? , ? ,? ,? , NOW())
                                                            ON DUPLICATE KEY UPDATE
                                                                 winner_team_id = VALUES(winner_team_id),
                                                                 score_data = VALUES(score_data),
                                                                 submitted_by_user_id = VALUES(submitted_by_user_id),
                                                                 submitted_role = VALUES(submitted_role),
                                                                 match_result_status = 'submitted',
+                                                                submitted_at = NOW(),   -- ส่งใหม่ = นาฬิกาเริ่มใหม่ (created_at ยังเป็นครั้งแรก)
                                                                 verified_by_user_id = NULL, verified_at = NULL`,   // B4: ส่งใหม่หลัง reject เริ่มวงจร verify ใหม่
                                                             [matchId , winnerId , JSON.stringify(score) , userId , role , 'submitted']);
     

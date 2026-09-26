@@ -122,7 +122,7 @@ export async function listMyRefereeInvitations(userId : number){
 
 /**
  * B7 (รายงาน FE 19 ก.ย.) — แมตช์ที่ฉันเป็นกรรมการ (รับแมตช์แล้ว + ยัง active ในทัวร์นั้น) ข้ามทุกทัวร์
- * ?status= กรองสถานะแมตช์ · ?upcoming=true เฉพาะที่ยังไม่จบ (scheduled/checkin_open/in_progress)
+ * ?status= กรองสถานะแมตช์ · ?upcoming=true เฉพาะที่ยังไม่จบ (ทุกสถานะที่ยังไม่ completed)
  */
 export async function listMyRefereeMatches(userId : number, filters : { status? : string | undefined; upcoming? : boolean | undefined }){
     const rows = (await MatchRefRepo.findAcceptedByUser(userId)).filter(r => isActiveReferee(r));

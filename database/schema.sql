@@ -402,7 +402,10 @@ CREATE TABLE matches (
   scheduled_end_time  DATETIME NULL,
   venue VARCHAR(255) NULL,
   checkin_open_at DATETIME NULL,
-  match_status ENUM('scheduled','checkin_open','in_progress','completed','disputed','result_rejected') NOT NULL DEFAULT 'scheduled',
+  started_at DATETIME NULL,          -- เวลาที่กรรมการกดเริ่มแข่งจริง (migration 026)
+  actual_end_time DATETIME NULL,     -- เวลาที่กดจบการแข่งขันจริง — ต่างจาก scheduled_end_time ที่เป็นเวลาตามตาราง
+  -- finished = แข่งจบแล้วรอส่งผล · ต้องผ่านสถานะนี้ก่อนถึงส่งผลได้ (OD-26 ข้อ 2+4)
+  match_status ENUM('scheduled','checkin_open','in_progress','finished','completed','disputed','result_rejected') NOT NULL DEFAULT 'scheduled',
   mode ENUM('onsite','online') NOT NULL,
   livestream_url VARCHAR(500) NULL,
   room_code VARCHAR(50) NULL,        -- แมตช์ online: รหัสห้องเกม (migration 016) ตั้งโดยกรรมการ/ORG
@@ -462,6 +465,7 @@ CREATE TABLE match_results (
   score_data JSON NULL,              -- โครงสร้างคงที่ ไม่แตกตารางเหมือน player_match_stats
   submitted_by_user_id INT NOT NULL,
   submitted_role ENUM('team_leader','referee','organizer') NOT NULL,   -- organizer = ตัดสินแพ้ทั้งคู่ (M17, migration 012)
+  submitted_at DATETIME NULL,        -- เวลาที่ส่งผลครั้งล่าสุด — created_at ไม่ขยับตอนส่งซ้ำหลัง reject (migration 026)
   match_result_status ENUM('submitted','verified','disputed','rejected','walkover') NOT NULL DEFAULT 'submitted',  -- walkover = ชนะบาย ไม่ต้อง verify (migration 011)
   dispute_reason TEXT NULL,
   dispute_raised_by INT NULL,
@@ -783,4 +787,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('020_amendment_reason_stat_integer_only.sql'),
   ('021_standings_goals.sql'),
   ('022_tournament_completion.sql'),
-  ('023_tournament_entry_notes.sql');
+  ('023_tournament_entry_notes.sql'),
+  ('026_match_finish_timestamps.sql');   -- เว้น 024/025 ไว้ให้ backend_step9-10 (user_reports / admin_scopes_root)

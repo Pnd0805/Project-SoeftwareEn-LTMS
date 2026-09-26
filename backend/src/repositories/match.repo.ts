@@ -85,7 +85,7 @@ export async function findMatchesByTournament(
 
 export type MatchDetailRow = Pick<MatchRow, 
     'match_id' | 'tournament_id' | 'round_number' | 'team_a_id' | 'team_b_id' | 
-    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'match_status' | 'mode' | 'room_code'
+    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'started_at' | 'actual_end_time' | 'match_status' | 'mode' | 'room_code'
 > & MatchResultSummaryCols & {
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
@@ -97,6 +97,7 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
     const [rows] = await pool.query<(MatchDetailRow & RowDataPacket)[]>(
         `SELECT 
             m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.room_code ,
+            m.started_at, m.actual_end_time,
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
@@ -180,6 +181,32 @@ export async function  updateMatchStatus(matchId: number, status: MatchRow['matc
         "UPDATE matches SET match_status = ? , updated_at = NOW() WHERE match_id = ?",
         [status, matchId]
     );
+}
+
+/**
+ * M10 — เริ่มแข่ง: `checkin_open → in_progress` พร้อมบันทึกเวลาเริ่มจริง (migration 026)
+ * เงื่อนไขอยู่ใน WHERE เพื่อกันกดพร้อมกันสองคนแล้ว started_at ถูกเขียนทับ
+ */
+export async function markMatchStarted(matchId: number): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE matches SET match_status = 'in_progress', started_at = NOW(), updated_at = NOW()
+         WHERE match_id = ? AND match_status = 'checkin_open'`,
+        [matchId]
+    );
+    return result.affectedRows === 1;
+}
+
+/**
+ * OD-26 ข้อ 4 — จบการแข่งขัน: `in_progress → finished` พร้อมเวลาจบจริง
+ * ต่างจาก scheduled_end_time ที่เป็นเวลาตามตาราง — ค่านี้คือเวลาที่คนหน้างานกดจริง
+ */
+export async function markMatchFinished(matchId: number): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE matches SET match_status = 'finished', actual_end_time = NOW(), updated_at = NOW()
+         WHERE match_id = ? AND match_status = 'in_progress'`,
+        [matchId]
+    );
+    return result.affectedRows === 1;
 }
 
 /** M09 — เปลี่ยนได้เฉพาะแถวที่ยัง scheduled (คืน false = สถานะอื่นไปแล้ว ไม่แตะแถวนั้น) */

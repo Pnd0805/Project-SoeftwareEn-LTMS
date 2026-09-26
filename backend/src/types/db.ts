@@ -189,7 +189,9 @@ export type MatchRow = {
     scheduled_end_time : Date | null,    
     venue : string | null,
     checkin_open_at : Date | null,
-    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'completed' | 'disputed' | 'result_rejected',
+    started_at : Date | null,          // เวลาเริ่มแข่งจริง (migration 026)
+    actual_end_time : Date | null,     // เวลาจบแข่งจริง — ฐานของนาฬิกาทุกกฎที่นับหลังแมตช์จบ
+    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'finished' | 'completed' | 'disputed' | 'result_rejected',
     mode : 'onsite' | 'online',
     livestream_url : string | null,
     room_code : string | null,          // แมตช์ online (migration 016)
@@ -291,6 +293,7 @@ export type MatchResultRow = {
     score_data : Record<string , number> | null,
     submitted_by_user_id : number,
     submitted_role : 'team_leader' | 'referee' | 'organizer',
+    submitted_at : Date | null,        // เวลาส่งผลครั้งล่าสุด (migration 026) — created_at ไม่ขยับตอนส่งซ้ำ
     match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected' | 'walkover',
     dispute_reason : string| null,
     dispute_raised_by : number| null,

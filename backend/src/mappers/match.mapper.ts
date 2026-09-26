@@ -78,7 +78,9 @@ export type MatchDetailItemDto = MatchResultSummaryDto & {
     scheduledTime: Date | null;
     scheduledEndTime: Date | null;
     venue: string | null;
-    checkinOpenAt: Date | null; 
+    checkinOpenAt: Date | null;
+    startedAt: Date | null;        // เวลาเริ่มแข่งจริง (migration 026)
+    actualEndTime: Date | null;    // เวลาจบแข่งจริง — ต่างจาก scheduledEndTime ที่เป็นเวลาตามตาราง 
     status: string; 
     mode : 'onsite' | 'online',
     roomCode : string | null;   // B8 — เฉพาะแมตช์ online และคนดูเป็นสมาชิกทีมในแมตช์/กรรมการ/ORG (ไม่งั้น null)
@@ -99,6 +101,8 @@ export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): M
         scheduledEndTime: row.scheduled_end_time,
         venue: row.venue,
         checkinOpenAt: row.checkin_open_at,
+        startedAt: row.started_at,
+        actualEndTime: row.actual_end_time,
         status: row.match_status,
         mode: row.mode,
         roomCode: canSeeRoomCode ? row.room_code : null,

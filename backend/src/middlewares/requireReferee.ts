@@ -85,6 +85,14 @@ export async function requireCanSubmitResult(req : Request , res : Response , ne
             return next(new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง ยังไม่สามารถส่งผลการแข่งขันได้"));
         }
 
+        // OD-26 ข้อ 2+4 (มติ 26 ก.ย.) — ต้องกด "จบการแข่งขัน" ก่อนถึงส่งผลได้
+        // เดิมด่านนี้ไม่เช็ค match_status เลย ส่งผลแมตช์ที่ยัง scheduled (ยังไม่เปิดเช็คอินด้วยซ้ำ) ก็ยังได้
+        // result_rejected = ผลถูก ORG ถอน แมตช์แข่งจบไปแล้วจริง จึงส่งใหม่ได้โดยไม่ต้องกดจบซ้ำ
+        if(match.match_status !== 'finished' && match.match_status !== 'result_rejected'){
+            return next(new AppError(409, "MATCH_NOT_FINISHED",
+                "ต้องกดจบการแข่งขันก่อนถึงจะส่งผลได้", { status : match.match_status }));
+        }
+
         // B4: ส่งซ้ำได้เฉพาะตอนยังไม่ถูก verify หรือถูก reject แล้ว — ผลที่ verified/disputed/walkover แก้ผ่าน S04 เท่านั้น
         const existing = await MatchResRepo.findmatchResultByMatchId(matchId);
         if(existing && existing.match_result_status !== 'submitted' && existing.match_result_status !== 'rejected'){
