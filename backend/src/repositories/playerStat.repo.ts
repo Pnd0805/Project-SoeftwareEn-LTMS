@@ -2,6 +2,7 @@ import pool from '../config/db.js';
 import type { RowDataPacket } from 'mysql2';
 
 import type { PlayerMatchStatRow, PlayerProfileStatRow , SportTypeRow } from '../types/db.js';
+import { MVP_VOTING_HOURS } from '../config/scoring.js';
 
 export type UserSportStatRow =
     Pick<PlayerProfileStatRow , 'sport_type_id' | 'matches_played' | 'wins' | 'losses' | 'championships'> 
@@ -25,19 +26,33 @@ export type UserProfileTotalsRow = {
     follower_count: number;
 };
 
+/**
+ * ★ `mvp_votes` นับได้เฉพาะโหวตของแมตช์ที่ **ปิดโหวตแล้ว** (OD-23 ข้อ 10)
+ *
+ * `GET /users/:id/stats` เป็น endpoint สาธารณะไม่มี middleware เลย ถ้านับโหวตทุกแถวแบบไม่ดูเวลา
+ * ใครก็ poll โปรไฟล์ของผู้เล่นทุก 10 วินาทีระหว่างหน้าต่างโหวต 24 ชม.แล้วเห็นเลขวิ่งได้ ทั้งที่
+ * `GET /matches/:id/mvp-votes` ตั้งใจไม่ส่งจำนวนโหวตออกไปเลยเพื่อกันคนแห่โหวตตามคนที่นำอยู่ —
+ * ปิดประตูหน้าแต่เปิดหลังบ้านไว้ กฎข้อนั้นก็ไม่มีผลอะไร
+ *
+ * `tf.match_id IS NULL` = โหวตระดับทัวร์ของเก่า (ก่อน 26 ก.ย.) ไม่มีหน้าต่างเวลา จึงนับได้ตามเดิม
+ */
 export async function findProfileTotals(userId: number): Promise<UserProfileTotalsRow> {
     const [rows] = await pool.query<(UserProfileTotalsRow & RowDataPacket)[]>(
         `SELECT
             u.total_points AS pickem_points,
             (SELECT COUNT(*) FROM tournament_feedback tf
+               LEFT JOIN matches m ON m.match_id = tf.match_id
              WHERE tf.voted_for_user_id = u.user_id
                AND tf.feedback_type = 'mvp_vote'
-               AND tf.removed_at IS NULL) AS mvp_votes,
+               AND tf.removed_at IS NULL
+               AND (tf.match_id IS NULL
+                    OR (m.actual_end_time IS NOT NULL
+                        AND m.actual_end_time <= DATE_SUB(NOW(), INTERVAL ? HOUR)))) AS mvp_votes,
             (SELECT COUNT(*) FROM follows f
              WHERE f.followed_user_id = u.user_id) AS follower_count
          FROM users u
          WHERE u.user_id = ?`,
-        [userId]
+        [MVP_VOTING_HOURS, userId]
     );
     return rows[0] ?? { mvp_votes: 0, pickem_points: 0, follower_count: 0 };
 }
