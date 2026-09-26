@@ -238,6 +238,24 @@ describe('castMvpVote (รายแมตช์)', () => {
     vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
     vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue(candidates);
     vi.mocked(FeedbackRepo.findOwnMatchVote).mockReset().mockResolvedValue(null);
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null }));
+  });
+
+  // มติ 26 ก.ย. — กฎเดียวกับความเห็นต่อทัวร์/Pick'em: ทัวร์ที่ไม่ได้เปิดเผยแพร่ เขียนอะไรไม่ได้
+  it.each(['private', 'pending_approval', 'rejected', 'auto_deleted'])('409 TOURNAMENT_NOT_PUBLIC when the tournament is %s', async (status) => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: status }));
+    expect(await errOf(Service.castMvpVote(7, 50, 101))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
+    expect(FeedbackRepo.upsertMvpVote).not.toHaveBeenCalled();
+  });
+
+  it('409 TOURNAMENT_NOT_PUBLIC when the tournament was deleted', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(null);
+    expect(await errOf(Service.castMvpVote(7, 50, 101))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
+  });
+
+  it('a completed tournament can still be voted on (within 24 h of the match)', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament());   // completed
+    await expect(Service.castMvpVote(7, 50, 101)).resolves.toMatchObject({ isNew: true });
   });
 
   it('an outsider votes for someone who checked in → isNew · saved with the match id', async () => {
@@ -303,6 +321,14 @@ describe('getMvpVotes (รายแมตช์)', () => {
       { user_id: 102, stat_key: 'goals', stat_label_th: 'ประตู', value: 1 },
     ]);
     vi.mocked(FeedbackRepo.findOwnMatchVote).mockReset().mockResolvedValue(null);
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null }));
+  });
+
+  it('an unpublished tournament: results still readable but canVote is false', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'private' }));
+    const result = await Service.getMvpVotes(7, 50);
+    expect(result.canVote).toBe(false);
+    expect(result.candidates).toHaveLength(3);
   });
 
   it('★ ข้อ 10 — while voting is open no vote count leaves the service at all', async () => {

@@ -149,6 +149,8 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
 //   2  โหวตได้ทุกคนที่ล็อกอิน ยกเว้น "สมาชิกของสองทีมในแมตช์นั้น" (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม)
 //   3+4 เปิดทันทีที่แมตช์จบ (actual_end_time) · ปิดหลังจากนั้น MVP_VOTING_HOURS ชั่วโมง — ไม่เกี่ยวกับเวลาปิดทัวร์
 //   5  ผู้ถูกโหวต = คนที่เช็คอินสำเร็จในแมตช์นั้น · 6 แมตช์ที่ไม่ได้แข่งจริง (ชนะบาย/ปรับแพ้) ไม่มีโหวต
+//   +  ทัวร์ต้อง public หรือ completed (มติ 26 ก.ย. — กฎเดียวกับความเห็นต่อทัวร์และ Pick'em):
+//      ผู้จัด unpublish กลับเป็น private หรือทัวร์ถูกลบ → โหวตไม่ได้ (อ่านผลได้เหมือนหน้าแมตช์อื่น)
 //   7  ผลแมตช์ถูกแก้ย้อนหลัง โหวตยังอยู่ (MVP คือผลงานในสนาม ไม่ใช่ผลแพ้ชนะ) · 13 ส่งซ้ำ = เปลี่ยนคนที่โหวต
 //   ★ 10 ระหว่างเปิดโหวต ห้ามส่งจำนวนโหวตออกไปเลย (ทั้งรายคนและยอดรวม) — กันคนแห่โหวตตามคนที่นำอยู่
 
@@ -193,6 +195,11 @@ export async function castMvpVote(matchId: number, userId: number, candidateId: 
     const match = await getMatchOr404(matchId);
     await assertVotable(match);
 
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    if (!tournament || !isOpenToPublic(tournament)) {
+        throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ โหวต MVP ไม่ได้');
+    }
+
     if (await FeedbackRepo.isMemberOfMatchTeams(matchId, userId)) {
         throw new AppError(403, 'MVP_VOTER_NOT_ELIGIBLE', 'สมาชิกของทีมที่ลงแข่งแมตช์นี้โหวต MVP ของแมตช์นี้ไม่ได้');
     }
@@ -233,8 +240,11 @@ export async function getMvpVotes(matchId: number, userId?: number) {
     let canVote = false;
     if (userId !== undefined) {
         const own = await FeedbackRepo.findOwnMatchVote(matchId, userId);
+        const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
         mine = own && !own.removed_at ? { votedForUserId: own.voted_for_user_id! } : null;
-        canVote = window.isOpen && available && !own?.removed_at && !(await FeedbackRepo.isMemberOfMatchTeams(matchId, userId));
+        canVote = window.isOpen && available && !own?.removed_at
+            && !!tournament && isOpenToPublic(tournament)
+            && !(await FeedbackRepo.isMemberOfMatchTeams(matchId, userId));
     }
 
     return {
@@ -249,6 +259,7 @@ export async function getMvpVotes(matchId: number, userId?: number) {
 //   ทัวร์ต้อง public หรือ completed — private / รออนุมัติ ฯลฯ เขียนไม่ได้ และคนนอกอ่านไม่ได้ (เหมือนหน้าทัวร์)
 //   report: ใครล็อกอินก็ได้ ยกเว้นของตัวเอง (POST /feedback/:id/report) · ลบของคนอื่น: แอดมินเท่านั้น (DELETE /admin/feedback/:id)
 
+/** ทัวร์ที่คนนอกเข้าถึงได้ — ใช้ร่วมกันทั้งความเห็นต่อทัวร์ (ด้านล่าง) และโหวต MVP (ด้านบน) */
 function isOpenToPublic(tournament: TournamentRow): boolean {
     return tournament.tournament_status === 'public' || tournament.tournament_status === 'completed';
 }

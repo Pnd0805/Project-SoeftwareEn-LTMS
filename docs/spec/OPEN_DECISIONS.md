@@ -219,6 +219,7 @@ MVP ระดับทัวร์ตอบคำถาม "ใครเก่�
 | 4 | ปิดเมื่อไร | **24 ชม. หลัง `actual_end_time`** (`MVP_VOTING_HOURS` ใน `config/scoring.ts`) → 409 `MVP_VOTING_CLOSED {closesAt}` · ไม่ผูกกับเวลาปิดทัวร์หรือการ verify ผล |
 | 5 | ใครถูกโหวตได้ | เฉพาะผู้เล่นที่ `match_checkins.match_checkin_status = 'success'` ในแมตช์นั้น — คนที่ลงเล่นจริง ไม่ใช่ทุกคนในใบสมัคร → ไม่ใช่ = 422 `MVP_CANDIDATE_NOT_ELIGIBLE` |
 | 6 | ไม่ได้แข่งจริง | ผลเป็น `walkover` (ชนะบาย/ปรับแพ้/แมตช์ตาย) → ไม่มีโหวต 409 `MVP_NOT_AVAILABLE` · GET คืน `candidates: []` |
+| 6b | ทัวร์ต้องเปิดเผยแพร่ | ทัวร์ต้อง `public` หรือ `completed` — unpublish กลับเป็น private / ถูกลบ → 409 `TOURNAMENT_NOT_PUBLIC` · `canVote` เป็น false · อ่านผลได้ตามปกติ (กฎเดียวกับความเห็นต่อทัวร์และ Pick'em ใน OD-24) |
 | 7 | ผลถูกแก้ย้อนหลัง | โหวตที่ลงไปแล้วคงอยู่ — MVP คือผลงานในสนาม ไม่ใช่ผลแพ้ชนะ |
 | 8 | แมตช์ไหนมี | ทุกแมตช์ที่แข่งจริง |
 | 9 | วิธีตัดสิน | โหวต + แสดงสถิติรายคนของแมตช์นั้นประกอบ (`player_match_stats`) |
