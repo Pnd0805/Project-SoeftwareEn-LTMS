@@ -317,7 +317,7 @@
 
 ---
 
-## 10.2 รีวิวจากผู้ลงแข่ง + โหวต MVP (C6 · OD-23) — 7 endpoint
+## 10.2 รีวิวจากผู้ลงแข่ง + โหวต MVP รายแมตช์ (C6 · OD-23) — 7 endpoint
 
 **ไฟล์:** `routes/feedback.routes.ts` · `feedback.controller.ts` · `feedback.service.ts` · `feedback.repo.ts` · ตาราง `tournament_feedback` (ไม่มี migration)
 
@@ -330,8 +330,8 @@
 |---|---|---|---|---|---|
 | E18 | `POST /tournaments/:id/feedback` | ผู้เล่นในรายชื่อ / หัวหน้าทีมที่ approved | ให้คะแนนการจัดงาน · **ส่งซ้ำ = แก้** · เปิดตั้งแต่ทัวร์เริ่มถึง 7 วันหลังปิดทัวร์ | `rating 1–5, content?` | **201** ครั้งแรก / **200** แก้ · `{ id, rating, content, createdAt }` |
 | E19 | `GET /tournaments/:id/feedback` | — (ล็อกอินได้ข้อมูลตัวเองเพิ่ม) | ค่าเฉลี่ย/การกระจาย + `status` (`not_started`/`open`/`closed`) + `opensAt`/`closesAt` · ผู้จัดเห็น `items` ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ | `—` | `{ summary, status, opensAt, closesAt, mine, canSubmit, items }` |
-| E20 | `POST /tournaments/:id/mvp-votes` | คนที่**ไม่ได้**ลงแข่ง | โหวต MVP · ส่งซ้ำ = เปลี่ยนคนที่โหวต · เปิดหลังปิดทัวร์ 7 วัน | `userId` | **200** `{ tournamentId, votedForUserId, changed }` |
-| E22 | `GET /tournaments/:id/mvp-votes` | — | ผู้ถูกโหวตทั้งหมด + คะแนน · `winners` โชว์หลังปิดโหวต | `—` | `{ window, candidates, totalVotes, winners, mine, canVote }` |
+| E20 | `POST /matches/:id/mvp-votes` | Auth · **ไม่ใช่สมาชิกของสองทีมในแมตช์** | โหวต MVP ของแมตช์ (มติ 26 ก.ย. — ย้ายจากระดับทัวร์) · เปิดทันทีที่แมตช์จบ (`actual_end_time`) ปิด +24 ชม. (`MVP_VOTING_HOURS`) · ส่งซ้ำ = เปลี่ยนคนที่โหวต | `userId` | **201** ครั้งแรก / **200** เปลี่ยน · `{ matchId, votedForUserId, changed }` |
+| E22 | `GET /matches/:id/mvp-votes` | — (ล็อกอินได้ `mine`/`canVote`) | ผู้ถูกโหวต (คนที่เช็คอินสำเร็จ) + สถิติของเขาในแมตช์นั้น · **★ ระหว่างเปิดโหวตไม่มีจำนวนโหวตในคำตอบเลย** ทั้ง `candidates[].votes` และ `totalVotes` (OD-23 ข้อ 10) · ปิดโหวตแล้วจึงมีคะแนน + `winners` | `—` | `{ matchId, window, candidates, winners, (totalVotes หลังปิดโหวต), mine, canVote }` |
 | E15 | `POST /feedback/:id/report` | Auth | รายงานข้อความ (กดซ้ำได้ผลเดิม) · รีวิว report ได้เฉพาะผู้จัด · ความเห็นต่อทัวร์ report ได้ทุกคนยกเว้นเจ้าของ · **ความเห็นต่อทัวร์ → แจ้งเตือนผู้จัด** (`comment_reported`, ครั้งแรกครั้งเดียว) | `—` | `{ id, isReported: true }` |
 | E17 | `DELETE /admin/feedback/:id` | ADM-u | ลบ (soft delete) + audit `feedback_removed` | `reason?` | **204** |
 | E17b | `POST /admin/feedback/:id/restore` | ADM-u | **คืนของที่ถูกลบ** + audit `feedback_restored` · ล้างธง report ด้วย (มติ 23 ก.ย. 6.3.3 — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์) | `—` | **200** `{ id, restored: true }` |
@@ -405,6 +405,11 @@
 | `ALREADY_DECIDED` | 409 | M14: รายการนี้ผ่านไปแล้ว (success/exception) ยืนยันซ้ำไม่ได้ — ถอนได้ทาง M15 |
 | `FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER` | 403 | E17c: ผู้จัดลบได้เฉพาะ "ความเห็นต่อทัวร์" — รีวิวจากผู้ลงแข่ง/โหวต MVP ลบไม่ได้ (เป็นการประเมินตัวผู้จัดเอง) |
 | `FEEDBACK_NOT_REMOVED` | 409 | E17b: กด restore ทั้งที่ความเห็นนี้ไม่ได้ถูกลบอยู่ |
+| `MVP_VOTING_NOT_OPEN` | 409 | E20: แมตช์ยังไม่จบ (`actual_end_time` ยังว่าง) ยังโหวตไม่ได้ |
+| `MVP_VOTING_CLOSED` | 409 | E20: พ้น 24 ชม. หลังแมตช์จบ — extra `{closesAt}` |
+| `MVP_NOT_AVAILABLE` | 409 | E20: แมตช์ตัดสินโดยไม่มีการแข่งจริง (ชนะบาย/ปรับแพ้) จึงไม่มีการโหวต |
+| `MVP_VOTER_NOT_ELIGIBLE` | 403 | E20: ผู้โหวตเป็นสมาชิกของทีมใดทีมหนึ่งในแมตช์นั้น (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม) |
+| `MVP_CANDIDATE_NOT_ELIGIBLE` | 422 | E20: คนที่โหวตให้ไม่ได้เช็คอินสำเร็จในแมตช์นี้ |
 | `PREDECESSOR_DISPUTED` | 409 | M09: แมตช์ต้นทางยังมีข้อโต้แย้งที่ยังไม่ตัดสิน เปิดเช็คอินแมตช์ถัดไปไม่ได้ (`extra.blockedBy`) |
 | `MATCH_NOT_FINISHED` | 409 | S01: ยังไม่กดจบการแข่งขัน ส่งผลไม่ได้ (`extra.status`) |
 | `MATCH_NOT_IN_PROGRESS` | 409 | M10b: กดจบได้เฉพาะแมตช์ที่กำลังแข่งอยู่ (`extra.status`) |

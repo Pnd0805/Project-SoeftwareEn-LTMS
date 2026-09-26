@@ -17,7 +17,7 @@ import Tournament from './tournament.routes.js';
 import Amendment from './amendment.routes.js';
 import { tournamentAnnouncementRouter, announcementRouter } from './announcement.routes.js';
 import { meNotificationRouter } from './notification.routes.js';
-import { tournamentFeedbackRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
+import { tournamentFeedbackRouter, matchMvpRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
 import { matchEngagementRouter, mePickemRouter, tournamentPickemRouter } from './engagement.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
@@ -59,6 +59,7 @@ router.use('/me' , meNotificationRouter);
 
 // C6 feedback / rating / MVP vote
 router.use('/tournaments' , tournamentFeedbackRouter);
+router.use('/matches' , matchMvpRouter);
 router.use('/feedback' , feedbackRouter);
 router.use('/admin' , adminFeedbackRouter);
 

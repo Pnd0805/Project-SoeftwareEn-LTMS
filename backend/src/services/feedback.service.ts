@@ -1,7 +1,10 @@
 import * as FeedbackRepo from '../repositories/feedback.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
-import type { TournamentRow } from '../types/db.js';
+import * as MatchRepo from '../repositories/match.repo.js';
+import * as MatchResultRepo from '../repositories/matchResult.repo.js';
+import { MVP_VOTING_HOURS } from '../config/scoring.js';
+import type { MatchRow, TournamentRow } from '../types/db.js';
 import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
 import type { CommentListRow } from '../repositories/feedback.repo.js';
 import { toReviewItemDto, toReviewSummaryDto, toMvpCandidateDto, toMyReviewDto } from '../mappers/feedback.mapper.js';
@@ -14,13 +17,14 @@ import { buildPagination } from '../utils/pagination.js';
  * ★ ชื่อเรียก (ตกลง 23 ก.ย.): รีวิวจากผู้ลงแข่ง = ให้คะแนนการจัดงาน เฉพาะคนที่ลงแข่ง ข้อความเห็นแค่ผู้จัด
  *   ต่างจาก "ความเห็นต่อทัวร์" (comment, C7 ในไฟล์เดียวกันนี้) ที่ใครก็เขียนได้และทุกคนเห็น
  *   1. ให้คะแนนได้เฉพาะคนที่เกี่ยวข้อง (ผู้เล่นในรายชื่อ · หัวหน้าทีม) — ไม่รวมกรรมการ · ORG ให้คะแนนตัวเองไม่ได้
- *   2. ให้คะแนนได้ตั้งแต่ทัวร์เริ่ม (มติ 22 ก.ย.) จนครบ 7 วันหลังปิดทัวร์ (ปิดพร้อม MVP) · MVP เริ่มโหวตหลังปิดทัวร์ โหวตได้ 7 วัน
+ *   2. ให้คะแนนได้ตั้งแต่ทัวร์เริ่ม (มติ 22 ก.ย.) จนครบ 7 วันหลังปิดทัวร์
  *      ทัวร์เริ่ม = ถึงวันเริ่มทัวร์ (event_start_date เวลาไทย) หรือมีแมตช์ที่แข่งจริงแล้ว อย่างไหนถึงก่อน
- *   3. ส่งซ้ำ = เขียนทับ (feedback และ MVP)
- *   4. โหวต MVP ได้เฉพาะคนที่ไม่ได้ลงแข่ง (ไม่ใช่ผู้เล่น/สมาชิกทีมที่ผ่าน/กรรมการ/ORG) · ผู้ถูกโหวต = ผู้เล่นในรายชื่อลงแข่ง
+ *   3. ส่งซ้ำ = เขียนทับ (รีวิวและโหวต MVP)
+ *   4. โหวต MVP ย้ายเป็น "รายแมตช์" (มติ 26 ก.ย.) — ดูหัวข้อ MVP ด้านล่าง ไม่ผูกกับเวลาปิดทัวร์อีกต่อไป
  * + C7 คอมเมนต์ทัวร์ (มติ 22 ก.ย. — ย้ายจากรายแมตช์) อยู่ตารางเดียวกัน type 'comment' · ดูหัวข้อ "คอมเมนต์ทัวร์" ด้านล่าง
  */
-export const MVP_VOTING_DAYS = 7;
+/** รีวิวผู้จัดปิดรับกี่วันหลังทัวร์ปิด (OD-23 ข้อ 2) — เดิมผูกกับหน้าต่างโหวต MVP ตอนที่ MVP ยังเป็นระดับทัวร์ */
+export const REVIEW_CLOSING_DAYS = 7;
 
 async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> {
     const tournament = await TournamentRepo.findTournamentById(tournamentId);
@@ -30,9 +34,10 @@ async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> 
     return tournament;
 }
 
-/** ให้คะแนนได้ตลอด แต่ถ้าปิดทัวร์แล้ว ปิดรับพร้อม MVP (ครบ 7 วันหลังปิดทัวร์) */
+/** ให้คะแนนได้ตลอด แต่ถ้าปิดทัวร์แล้ว ปิดรับเมื่อครบ 7 วันหลังปิดทัวร์ */
 export function feedbackClosesAt(tournament: TournamentRow): Date | null {
-    return mvpWindow(tournament).closesAt;
+    if (tournament.tournament_status !== 'completed' || !tournament.completed_at) return null;
+    return new Date(new Date(tournament.completed_at).getTime() + REVIEW_CLOSING_DAYS * 24 * 60 * 60 * 1000);
 }
 
 /** วันเริ่มทัวร์ 00:00 เวลาไทย — event_start_date เป็น DATE (pool ตั้ง dateStrings จึงได้ 'YYYY-MM-DD') */
@@ -66,29 +71,13 @@ function isFeedbackOpen(tournament: TournamentRow, now = new Date()): boolean {
 async function assertFeedbackOpen(tournament: TournamentRow, now = new Date()): Promise<void> {
     const status = await feedbackStatus(tournament, now);
     if (status === 'closed') {
-        throw new AppError(409, 'FEEDBACK_CLOSED', `ปิดรับความเห็นแล้ว (ให้คะแนนได้ถึง ${MVP_VOTING_DAYS} วันหลังปิดทัวร์)`,
+        throw new AppError(409, 'FEEDBACK_CLOSED', `ปิดรับความเห็นแล้ว (ให้คะแนนได้ถึง ${REVIEW_CLOSING_DAYS} วันหลังปิดทัวร์)`,
             { closesAt: feedbackClosesAt(tournament) });
     }
     if (status === 'not_started') {
         throw new AppError(409, 'TOURNAMENT_NOT_STARTED', 'ให้คะแนนได้ตั้งแต่ทัวร์นาเมนต์เริ่มแข่ง',
             { opensAt: feedbackOpensAt(tournament) });
     }
-}
-
-function assertCompleted(tournament: TournamentRow): void {
-    if (tournament.tournament_status !== 'completed') {
-        throw new AppError(409, 'TOURNAMENT_NOT_COMPLETED', 'โหวต MVP ได้หลังทัวร์นาเมนต์ปิดการแข่งขันแล้วเท่านั้น');
-    }
-}
-
-/** ช่วงโหวต MVP = ตั้งแต่ปิดทัวร์ ถึง +7 วัน */
-export function mvpWindow(tournament: TournamentRow, now = new Date()) {
-    if (tournament.tournament_status !== 'completed' || !tournament.completed_at) {
-        return { opensAt: null, closesAt: null, isOpen: false };
-    }
-    const opensAt = new Date(tournament.completed_at);
-    const closesAt = new Date(opensAt.getTime() + MVP_VOTING_DAYS * 24 * 60 * 60 * 1000);
-    return { opensAt, closesAt, isOpen: now >= opensAt && now < closesAt };
 }
 
 /** ใครให้คะแนนทัวร์นี้ได้ — คืนเหตุผลที่ไม่ได้ ไว้ให้ FE ซ่อนฟอร์มได้ถูก */
@@ -98,15 +87,6 @@ async function feedbackBlocker(tournament: TournamentRow, userId: number): Promi
     }
     if (!(await FeedbackRepo.isTournamentParticipant(tournament.tournament_id, userId))) {
         return new AppError(403, 'FEEDBACK_NOT_ALLOWED', 'ให้คะแนนได้เฉพาะผู้เล่นและหัวหน้าทีมที่ลงแข่งในทัวร์นาเมนต์นี้');
-    }
-    return null;
-}
-
-async function mvpVoterBlocker(tournament: TournamentRow, userId: number): Promise<AppError | null> {
-    if (tournament.requested_by_user_id === userId
-        || await FeedbackRepo.isTournamentInsider(tournament.tournament_id, userId)) {
-        return new AppError(403, 'MVP_VOTER_NOT_ELIGIBLE',
-            'ผู้เล่น สมาชิกทีมที่ลงแข่ง กรรมการ และผู้จัดของทัวร์นาเมนต์นี้โหวต MVP ไม่ได้');
     }
     return null;
 }
@@ -164,53 +144,104 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
     return { summary, status, opensAt, closesAt, mine, canSubmit, items };
 }
 
-// ───────────────────────── MVP vote ─────────────────────────
+// ───────────────────────── โหวต MVP รายแมตช์ (มติ 26 ก.ย. 2569 · OD-23 แก้) ─────────────────────────
+//   1  แทนที่ MVP ระดับทัวร์ทั้งหมด — ไม่มี /tournaments/:id/mvp-votes อีกแล้ว
+//   2  โหวตได้ทุกคนที่ล็อกอิน ยกเว้น "สมาชิกของสองทีมในแมตช์นั้น" (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม)
+//   3+4 เปิดทันทีที่แมตช์จบ (actual_end_time) · ปิดหลังจากนั้น MVP_VOTING_HOURS ชั่วโมง — ไม่เกี่ยวกับเวลาปิดทัวร์
+//   5  ผู้ถูกโหวต = คนที่เช็คอินสำเร็จในแมตช์นั้น · 6 แมตช์ที่ไม่ได้แข่งจริง (ชนะบาย/ปรับแพ้) ไม่มีโหวต
+//   7  ผลแมตช์ถูกแก้ย้อนหลัง โหวตยังอยู่ (MVP คือผลงานในสนาม ไม่ใช่ผลแพ้ชนะ) · 13 ส่งซ้ำ = เปลี่ยนคนที่โหวต
+//   ★ 10 ระหว่างเปิดโหวต ห้ามส่งจำนวนโหวตออกไปเลย (ทั้งรายคนและยอดรวม) — กันคนแห่โหวตตามคนที่นำอยู่
 
-export async function castMvpVote(tournamentId: number, userId: number, candidateId: number) {
-    const tournament = await getTournamentOr404(tournamentId);
-    assertCompleted(tournament);
-    const window = mvpWindow(tournament);
-    if (!window.isOpen) {
-        throw new AppError(409, 'MVP_VOTING_CLOSED', `ปิดโหวต MVP แล้ว (โหวตได้ ${MVP_VOTING_DAYS} วันหลังปิดทัวร์)`,
-            { closesAt: window.closesAt });
+async function getMatchOr404(matchId: number): Promise<MatchRow> {
+    const match = await MatchRepo.findById(matchId);
+    if (!match) {
+        throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้');
     }
-    const blocker = await mvpVoterBlocker(tournament, userId);
-    if (blocker) throw blocker;
-
-    const candidates = await FeedbackRepo.findMvpCandidates(tournamentId);
-    if (!candidates.some(c => c.user_id === candidateId)) {
-        throw new AppError(422, 'MVP_CANDIDATE_NOT_ELIGIBLE', 'โหวตได้เฉพาะผู้เล่นที่ลงแข่งในทัวร์นาเมนต์นี้');
-    }
-
-    const existing = await FeedbackRepo.findOwn(tournamentId, userId, 'mvp_vote');
-    if (existing?.removed_at) {
-        throw new AppError(409, 'FEEDBACK_REMOVED', 'โหวตของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว โหวตใหม่ไม่ได้');
-    }
-    await FeedbackRepo.upsertMvpVote(tournamentId, userId, candidateId);
-    return { tournamentId, votedForUserId: candidateId, changed: existing !== null && existing.voted_for_user_id !== candidateId };
+    return match;
 }
 
-export async function getMvpVotes(tournamentId: number, userId?: number) {
-    const tournament = await getTournamentOr404(tournamentId);
-    const window = mvpWindow(tournament);
-    const candidates = (await FeedbackRepo.findMvpCandidates(tournamentId)).map(toMvpCandidateDto);
-    const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+/** ช่วงโหวตของแมตช์ = ตั้งแต่เวลาที่แมตช์จบจริง ถึง +24 ชม. · ยังไม่จบ = ยังไม่เปิด */
+export function mvpWindow(match: Pick<MatchRow, 'actual_end_time'>, now = new Date()) {
+    if (!match.actual_end_time) return { opensAt: null, closesAt: null, isOpen: false };
+    const opensAt = new Date(match.actual_end_time);
+    const closesAt = new Date(opensAt.getTime() + MVP_VOTING_HOURS * 60 * 60 * 1000);
+    return { opensAt, closesAt, isOpen: now >= opensAt && now < closesAt };
+}
 
-    // ปิดโหวตแล้วถึงประกาศผล · คะแนนเท่ากันได้หลายคน
-    const top = candidates[0]?.votes ?? 0;
-    const winners = !window.isOpen && window.closesAt !== null && top > 0
-        ? candidates.filter(c => c.votes === top).map(c => c.userId)
-        : [];
+/** จบโดยไม่มีการแข่งจริง (ชนะบาย/ปรับแพ้) → ไม่มี MVP (ข้อ 6) · ยังไม่ส่งผลไม่นับ — โหวตเปิดตั้งแต่แมตช์จบ ไม่ต้องรอผล */
+async function isDecidedWithoutPlay(matchId: number): Promise<boolean> {
+    const result = await MatchResultRepo.findVerifiedResultByMatchId(matchId);
+    return result?.match_result_status === 'walkover';
+}
+
+/** ลำดับการตรวจตามที่ตกลงไว้: จบหรือยัง → แข่งจริงไหม → ยังไม่หมดเวลา → คนโหวตมีสิทธิ์ไหม */
+async function assertVotable(match: MatchRow): Promise<void> {
+    const window = mvpWindow(match);
+    if (window.opensAt === null) {
+        throw new AppError(409, 'MVP_VOTING_NOT_OPEN', 'แมตช์นี้ยังไม่จบ โหวต MVP ไม่ได้');
+    }
+    if (await isDecidedWithoutPlay(match.match_id)) {
+        throw new AppError(409, 'MVP_NOT_AVAILABLE', 'แมตช์นี้ตัดสินโดยไม่มีการแข่งจริง จึงไม่มีการโหวต MVP');
+    }
+    if (!window.isOpen) {
+        throw new AppError(409, 'MVP_VOTING_CLOSED', `ปิดโหวต MVP แล้ว (โหวตได้ ${MVP_VOTING_HOURS} ชั่วโมงหลังแมตช์จบ)`,
+            { closesAt: window.closesAt });
+    }
+}
+
+export async function castMvpVote(matchId: number, userId: number, candidateId: number) {
+    const match = await getMatchOr404(matchId);
+    await assertVotable(match);
+
+    if (await FeedbackRepo.isMemberOfMatchTeams(matchId, userId)) {
+        throw new AppError(403, 'MVP_VOTER_NOT_ELIGIBLE', 'สมาชิกของทีมที่ลงแข่งแมตช์นี้โหวต MVP ของแมตช์นี้ไม่ได้');
+    }
+
+    const candidates = await FeedbackRepo.findMvpCandidatesOfMatch(matchId);
+    if (!candidates.some(c => c.user_id === candidateId)) {
+        throw new AppError(422, 'MVP_CANDIDATE_NOT_ELIGIBLE', 'โหวตได้เฉพาะผู้เล่นที่เช็คอินลงแข่งในแมตช์นี้');
+    }
+
+    const existing = await FeedbackRepo.findOwnMatchVote(matchId, userId);
+    if (existing?.removed_at) {
+        throw new AppError(409, 'FEEDBACK_REMOVED', 'โหวตของคุณในแมตช์นี้ถูกผู้ดูแลระบบลบแล้ว โหวตใหม่ไม่ได้');
+    }
+    await FeedbackRepo.upsertMvpVote(match.tournament_id, matchId, userId, candidateId);
+    return {
+        isNew: existing === null,
+        matchId, votedForUserId: candidateId,
+        changed: existing !== null && existing.voted_for_user_id !== candidateId,
+    };
+}
+
+export async function getMvpVotes(matchId: number, userId?: number) {
+    const match = await getMatchOr404(matchId);
+    const window = mvpWindow(match);
+    const available = window.opensAt !== null && !(await isDecidedWithoutPlay(matchId));
+    // ประกาศผลได้ต่อเมื่อปิดโหวตแล้วเท่านั้น — ก่อนหน้านั้นห้ามให้ตัวเลขใด ๆ ออกไป (ข้อ 10)
+    const ended = available && window.closesAt !== null && !window.isOpen;
+
+    const rows = available ? await FeedbackRepo.findMvpCandidatesOfMatch(matchId) : [];
+    const stats = available && rows.length > 0 ? await FeedbackRepo.findMatchPlayerStats(matchId) : [];
+    const candidates = rows.map(r => toMvpCandidateDto(r, stats.filter(s => s.user_id === r.user_id), ended));
+    if (ended) candidates.sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0) || a.fullName.localeCompare(b.fullName, 'th'));
+
+    const top = ended ? Math.max(0, ...rows.map(r => Number(r.votes))) : 0;
+    const winners = ended && top > 0 ? candidates.filter(c => c.votes === top).map(c => c.userId) : [];
 
     let mine: { votedForUserId: number } | null = null;
     let canVote = false;
     if (userId !== undefined) {
-        const own = await FeedbackRepo.findOwn(tournamentId, userId, 'mvp_vote');
+        const own = await FeedbackRepo.findOwnMatchVote(matchId, userId);
         mine = own && !own.removed_at ? { votedForUserId: own.voted_for_user_id! } : null;
-        canVote = window.isOpen && !own?.removed_at && (await mvpVoterBlocker(tournament, userId)) === null;
+        canVote = window.isOpen && available && !own?.removed_at && !(await FeedbackRepo.isMemberOfMatchTeams(matchId, userId));
     }
 
-    return { window, candidates, totalVotes, winners, mine, canVote };
+    return {
+        matchId, window, candidates, winners,
+        ...(ended ? { totalVotes: rows.reduce((sum, r) => sum + Number(r.votes), 0) } : {}),
+        mine, canVote,
+    };
 }
 
 // ───────────────────────── คอมเมนต์ทัวร์ (C7 · มติ 22 ก.ย. 2569) ─────────────────────────

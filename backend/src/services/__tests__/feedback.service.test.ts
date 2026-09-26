@@ -4,7 +4,10 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
   hasPlayedMatch: vi.fn(() => Promise.resolve(false)),
   isTournamentParticipant: vi.fn(),
   isTournamentInsider: vi.fn(),
-  findMvpCandidates: vi.fn(() => Promise.resolve([])),
+  findMvpCandidatesOfMatch: vi.fn(() => Promise.resolve([])),
+  findMatchPlayerStats: vi.fn(() => Promise.resolve([])),
+  isMemberOfMatchTeams: vi.fn(() => Promise.resolve(false)),
+  findOwnMatchVote: vi.fn(() => Promise.resolve(null)),
   findOwn: vi.fn(() => Promise.resolve(null)),
   upsertOrganizerFeedback: vi.fn(),
   upsertMvpVote: vi.fn(),
@@ -21,12 +24,16 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
 }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn() }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(() => Promise.resolve(null)) }));
+vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
+vi.mock('../../repositories/matchResult.repo.js', () => ({ findVerifiedResultByMatchId: vi.fn(() => Promise.resolve(null)) }));
 vi.mock('../notification.service.js', () => ({ notify: vi.fn() }));
 
 import * as Service from '../feedback.service.js';
 import * as FeedbackRepo from '../../repositories/feedback.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import * as AdminRepo from '../../repositories/adminScope.repo.js';
+import * as MatchRepo from '../../repositories/match.repo.js';
+import * as MatchResultRepo from '../../repositories/matchResult.repo.js';
 import * as NotificationService from '../notification.service.js';
 import type { FeedbackRow } from '../../repositories/feedback.repo.js';
 
@@ -36,6 +43,11 @@ const ORG = 7;
 function tournament(overrides: Record<string, unknown> = {}) {
   return { tournament_id: 20, requested_by_user_id: ORG, tournament_status: 'completed', completed_at: COMPLETED_AT,
            event_start_date: '2026-09-01', ...overrides } as never;
+}
+/** แมตช์ที่จบแล้วเมื่อ 6 ชม. ก่อน NOW ของไฟล์นี้ (22 ก.ย. 00:00Z) → อยู่ในหน้าต่างโหวต 24 ชม. */
+function match(overrides: Record<string, unknown> = {}) {
+  return { match_id: 7, tournament_id: 20, match_status: 'finished', team_a_id: 1, team_b_id: 2,
+           actual_end_time: new Date('2026-09-21T18:00:00Z'), ...overrides } as never;
 }
 function feedbackRow(overrides: Partial<FeedbackRow> = {}): FeedbackRow {
   return {
@@ -59,7 +71,12 @@ beforeEach(() => {
   vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(false);
   vi.mocked(FeedbackRepo.findOwnComment).mockReset().mockResolvedValue(null);
   vi.mocked(FeedbackRepo.listComments).mockResolvedValue({ rows: [], totalItems: 0 });
-  vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue([]);
+  vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue([]);
+  vi.mocked(FeedbackRepo.findMatchPlayerStats).mockResolvedValue([]);
+  vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
+  vi.mocked(FeedbackRepo.findOwnMatchVote).mockResolvedValue(null);
+  vi.mocked(MatchRepo.findById).mockResolvedValue(match());
+  vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue(null);
   vi.mocked(FeedbackRepo.listOrganizerFeedback).mockResolvedValue([]);
   vi.mocked(FeedbackRepo.summarizeOrganizerFeedback).mockResolvedValue({ average: null, count: 0, r1: 0, r2: 0, r3: 0, r4: 0, r5: 0 });
 });
@@ -115,7 +132,7 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ completed_at: null }));
     vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
     expect(await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 5 }))).toMatchObject({ status: 409, code: 'FEEDBACK_CLOSED' });
-    expect(await errOf(Service.castMvpVote(20, 50, 101))).toMatchObject({ status: 409, code: 'MVP_VOTING_CLOSED' });
+    // โหวต MVP ไม่เกี่ยวกับเวลาปิดทัวร์แล้ว (มติ 26 ก.ย. — ย้ายไปผูกกับเวลาจบของแต่ละแมตช์)
   });
 
   // มติ 22 ก.ย. — เปิดตั้งแต่ทัวร์เริ่ม: ถึงวันเริ่มทัวร์ (เวลาไทย) หรือมีแมตช์ที่แข่งจริงแล้ว
@@ -210,67 +227,138 @@ describe('getOrganizerFeedback — ใครเห็นอะไร', () => {
   });
 });
 
-describe('castMvpVote — มติ C6 ข้อ 2 และ 4', () => {
-  const candidates = [{ user_id: 101, full_name: 'ก', profile_image_key: null, team_id: 1, team_name: 'A', votes: 3 }];
+// มติ 26 ก.ย. — MVP ย้ายมาเป็นรายแมตช์ · เปิดตอนแมตช์จบ ปิด +24 ชม. · ห้ามโชว์คะแนนระหว่างเปิดโหวต
+describe('castMvpVote (รายแมตช์)', () => {
+  const ENDED = new Date('2026-09-21T18:00:00Z');                    // แมตช์จบ · NOW ของไฟล์นี้คือ 22 ก.ย. 00:00Z (6 ชม. ต่อมา)
+  const candidates = [{ user_id: 101, full_name: 'ก', profile_image_key: null, team_id: 1, votes: 3 }];
 
-  it('an outsider votes for a registered player', async () => {
-    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(false);
-    vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue(candidates);
-
-    await expect(Service.castMvpVote(20, 50, 101)).resolves.toMatchObject({ votedForUserId: 101, changed: false });
-    expect(FeedbackRepo.upsertMvpVote).toHaveBeenCalledWith(20, 50, 101);
+  beforeEach(() => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match());
+    vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue(null);
+    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
+    vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue(candidates);
+    vi.mocked(FeedbackRepo.findOwnMatchVote).mockReset().mockResolvedValue(null);
   });
 
-  it('403 MVP_VOTER_NOT_ELIGIBLE for players / team members / referees', async () => {
-    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(true);
-    expect(await errOf(Service.castMvpVote(20, 101, 101))).toMatchObject({ status: 403, code: 'MVP_VOTER_NOT_ELIGIBLE' });
+  it('an outsider votes for someone who checked in → isNew · saved with the match id', async () => {
+    await expect(Service.castMvpVote(7, 50, 101)).resolves.toMatchObject({ isNew: true, matchId: 7, votedForUserId: 101, changed: false });
+    expect(FeedbackRepo.upsertMvpVote).toHaveBeenCalledWith(20, 7, 50, 101);
   });
 
-  it('403 MVP_VOTER_NOT_ELIGIBLE for the organizer', async () => {
-    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(false);
-    expect(await errOf(Service.castMvpVote(20, ORG, 101))).toMatchObject({ status: 403, code: 'MVP_VOTER_NOT_ELIGIBLE' });
+  it('voting again for someone else replaces the vote (isNew false, changed true)', async () => {
+    vi.mocked(FeedbackRepo.findOwnMatchVote).mockResolvedValue(feedbackRow({ feedback_type: 'mvp_vote', voted_for_user_id: 202 }));
+    await expect(Service.castMvpVote(7, 50, 101)).resolves.toMatchObject({ isNew: false, changed: true });
   });
 
-  it('422 MVP_CANDIDATE_NOT_ELIGIBLE for someone who did not play', async () => {
-    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(false);
-    vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue(candidates);
-    expect(await errOf(Service.castMvpVote(20, 50, 999))).toMatchObject({ status: 422, code: 'MVP_CANDIDATE_NOT_ELIGIBLE' });
+  it('403 for a member of either team — even one who did not play', async () => {
+    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(true);
+    expect(await errOf(Service.castMvpVote(7, 9, 101))).toMatchObject({ status: 403, code: 'MVP_VOTER_NOT_ELIGIBLE' });
+    expect(FeedbackRepo.upsertMvpVote).not.toHaveBeenCalled();
   });
 
-  it('409 MVP_VOTING_CLOSED after 7 days', async () => {
-    vi.setSystemTime(new Date('2026-09-27T00:00:01Z'));
-    expect(await errOf(Service.castMvpVote(20, 50, 101))).toMatchObject({ status: 409, code: 'MVP_VOTING_CLOSED' });
+  it('409 MVP_VOTING_NOT_OPEN before the match is finished', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ actual_end_time: null, match_status: 'in_progress' }));
+    expect(await errOf(Service.castMvpVote(7, 50, 101))).toMatchObject({ status: 409, code: 'MVP_VOTING_NOT_OPEN' });
   });
 
-  it('changing the vote inside the window is allowed (replace)', async () => {
-    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(false);
-    vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue(candidates);
-    vi.mocked(FeedbackRepo.findOwn).mockResolvedValue(feedbackRow({ feedback_type: 'mvp_vote', voted_for_user_id: 202 }));
-    await expect(Service.castMvpVote(20, 50, 101)).resolves.toMatchObject({ changed: true });
+  it('409 MVP_VOTING_CLOSED once 24 hours have passed', async () => {
+    vi.setSystemTime(new Date(ENDED.getTime() + 24 * 60 * 60 * 1000 + 1000));
+    expect(await errOf(Service.castMvpVote(7, 50, 101))).toMatchObject({ status: 409, code: 'MVP_VOTING_CLOSED' });
+  });
+
+  it('409 MVP_NOT_AVAILABLE when the match was a walkover', async () => {
+    vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue({ match_result_status: 'walkover' } as never);
+    expect(await errOf(Service.castMvpVote(7, 50, 101))).toMatchObject({ status: 409, code: 'MVP_NOT_AVAILABLE' });
+  });
+
+  it('422 for someone who did not check in', async () => {
+    expect(await errOf(Service.castMvpVote(7, 50, 999))).toMatchObject({ status: 422, code: 'MVP_CANDIDATE_NOT_ELIGIBLE' });
+  });
+
+  it('404 for an unknown match', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(null);
+    expect(await errOf(Service.castMvpVote(999, 50, 101))).toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+  });
+
+  it('a result amended later does not touch the votes already cast', async () => {
+    vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue({ match_result_status: 'verified' } as never);
+    await expect(Service.castMvpVote(7, 50, 101)).resolves.toMatchObject({ votedForUserId: 101 });
   });
 });
 
-describe('getMvpVotes', () => {
+describe('getMvpVotes (รายแมตช์)', () => {
   const candidates = [
-    { user_id: 101, full_name: 'ก', profile_image_key: null, team_id: 1, team_name: 'A', votes: 3 },
-    { user_id: 102, full_name: 'ข', profile_image_key: null, team_id: 2, team_name: 'B', votes: 3 },
-    { user_id: 103, full_name: 'ค', profile_image_key: null, team_id: 2, team_name: 'B', votes: 1 },
+    { user_id: 101, full_name: 'ก', profile_image_key: null, team_id: 1, votes: 3 },
+    { user_id: 102, full_name: 'ข', profile_image_key: null, team_id: 2, votes: 3 },
+    { user_id: 103, full_name: 'ค', profile_image_key: null, team_id: 2, votes: 1 },
   ];
 
-  it('shows the window and no winner while voting is open', async () => {
-    vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue(candidates);
-    const result = await Service.getMvpVotes(20);
-    expect(result.window.isOpen).toBe(true);
-    expect(result.totalVotes).toBe(7);
-    expect(result.winners).toEqual([]);
+  beforeEach(() => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match());
+    vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue(null);
+    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
+    vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue(candidates);
+    vi.mocked(FeedbackRepo.findMatchPlayerStats).mockResolvedValue([
+      { user_id: 101, stat_key: 'goals', stat_label_th: 'ประตู', value: 2 },
+      { user_id: 102, stat_key: 'goals', stat_label_th: 'ประตู', value: 1 },
+    ]);
+    vi.mocked(FeedbackRepo.findOwnMatchVote).mockReset().mockResolvedValue(null);
   });
 
-  it('announces the winners (ties allowed) once voting closes', async () => {
-    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'));
-    vi.mocked(FeedbackRepo.findMvpCandidates).mockResolvedValue(candidates);
-    const result = await Service.getMvpVotes(20);
+  it('★ ข้อ 10 — while voting is open no vote count leaves the service at all', async () => {
+    const result = await Service.getMvpVotes(7, 50);
+    expect(result.window.isOpen).toBe(true);
+    expect(result).not.toHaveProperty('totalVotes');                       // ไม่ใช่ 0 — ต้องไม่มีคีย์เลย
+    expect(result.candidates.every(c => !('votes' in c))).toBe(true);
+    expect(result.winners).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain('votes');
+  });
+
+  it('shows the stats of each candidate so voters can judge', async () => {
+    const { candidates: dto } = await Service.getMvpVotes(7);
+    expect(dto[0]).toMatchObject({ userId: 101, teamId: 1, stats: [{ statKey: 'goals', statLabelTh: 'ประตู', value: 2 }] });
+    expect(dto[2]!.stats).toEqual([]);                                     // คนที่ไม่มีสถิติได้ array ว่าง
+  });
+
+  it('after it closes: counts appear, ties share the win, sorted by votes', async () => {
+    vi.setSystemTime(new Date('2026-09-23T18:00:01Z'));
+    const result = await Service.getMvpVotes(7);
     expect(result.window.isOpen).toBe(false);
+    expect(result.totalVotes).toBe(7);
     expect(result.winners).toEqual([101, 102]);
+    expect(result.candidates.map(c => c.votes)).toEqual([3, 3, 1]);
+  });
+
+  it('nobody voted → winners stays empty after closing', async () => {
+    vi.setSystemTime(new Date('2026-09-23T18:00:01Z'));
+    vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue(candidates.map(c => ({ ...c, votes: 0 })));
+    const result = await Service.getMvpVotes(7);
+    expect(result.winners).toEqual([]);
+    expect(result.totalVotes).toBe(0);
+  });
+
+  it('a walkover match has no vote at all', async () => {
+    vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue({ match_result_status: 'walkover' } as never);
+    const result = await Service.getMvpVotes(7, 50);
+    expect(result.candidates).toEqual([]);
+    expect(result.canVote).toBe(false);
+    expect(FeedbackRepo.findMvpCandidatesOfMatch).not.toHaveBeenCalled();
+  });
+
+  it('mine + canVote need a logged-in viewer · a team member sees canVote false', async () => {
+    vi.mocked(FeedbackRepo.findOwnMatchVote).mockResolvedValue(feedbackRow({ feedback_type: 'mvp_vote', voted_for_user_id: 102 }));
+    expect(await Service.getMvpVotes(7, 50)).toMatchObject({ mine: { votedForUserId: 102 }, canVote: true });
+    expect(await Service.getMvpVotes(7)).toMatchObject({ mine: null, canVote: false });
+    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(true);
+    expect((await Service.getMvpVotes(7, 9)).canVote).toBe(false);
+  });
+
+  it('the match has not finished yet → empty window, nothing to vote on', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ actual_end_time: null }));
+    const result = await Service.getMvpVotes(7, 50);
+    expect(result.window).toEqual({ opensAt: null, closesAt: null, isOpen: false });
+    expect(result.candidates).toEqual([]);
+    expect(result.canVote).toBe(false);
   });
 });
 

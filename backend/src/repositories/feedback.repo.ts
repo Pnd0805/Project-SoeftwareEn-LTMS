@@ -84,31 +84,79 @@ export async function isTournamentInsider(tournamentId: number, userId: number):
     return rows.length > 0;
 }
 
+// ---- MVP รายแมตช์ (มติ 26 ก.ย. — ย้ายจากระดับทัวร์) ----
+
 export type MvpCandidateRow = {
     user_id: number;
     full_name: string;
     profile_image_key: string | null;
     team_id: number;
-    team_name: string;
     votes: number;
 };
 
-/** ผู้มีสิทธิ์ถูกโหวต = ผู้เล่นในรายชื่อลงแข่งของใบสมัครที่อนุมัติแล้ว + นับคะแนนที่ยังไม่ถูกลบ · มากสุดก่อน */
-export async function findMvpCandidates(tournamentId: number): Promise<MvpCandidateRow[]> {
+/**
+ * ผู้มีสิทธิ์ถูกโหวตของแมตช์ = คนที่ "เช็คอินสำเร็จ" ในแมตช์นั้น (ข้อ 5 — คนที่ลงเล่นจริง ไม่ใช่ทุกคนในใบสมัคร)
+ * ★ เรียงตามทีม/ชื่อ ไม่ใช่ตามคะแนน — ลำดับตามคะแนนจะบอกใบ้ผลระหว่างเปิดโหวต (ข้อ 10) · service เรียงใหม่เองหลังปิดโหวต
+ */
+export async function findMvpCandidatesOfMatch(matchId: number): Promise<MvpCandidateRow[]> {
     const [rows] = await pool.query<(MvpCandidateRow & RowDataPacket)[]>(
-        `SELECT u.user_id, u.full_name, u.profile_image_key, t.team_id, t.name AS team_name,
+        `SELECT u.user_id, u.full_name, u.profile_image_key, ta.team_id,
                 (SELECT COUNT(*) FROM tournament_feedback f
-                  WHERE f.tournament_id = ap.tournament_id AND f.feedback_type = 'mvp_vote'
+                  WHERE f.match_id = c.match_id AND f.feedback_type = 'mvp_vote'
                     AND f.voted_for_user_id = u.user_id AND f.removed_at IS NULL) AS votes
-         FROM application_players ap
-         JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
-         JOIN teams t ON t.team_id = ta.team_id
-         JOIN users u ON u.user_id = ap.user_id
-         WHERE ap.tournament_id = ? AND ta.tournament_application_status = 'approved'
-         ORDER BY votes DESC, u.full_name`,
-        [tournamentId]
+         FROM match_checkins c
+         JOIN matches m ON m.match_id = c.match_id
+         JOIN users u ON u.user_id = c.user_id
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+              AND ta.team_id IN (m.team_a_id, m.team_b_id)
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+              AND ap.user_id = c.user_id
+         WHERE c.match_id = ? AND c.match_checkin_status = 'success'
+         ORDER BY ta.team_id, u.full_name`,
+        [matchId]
     );
     return rows;
+}
+
+export type MatchPlayerStatRow = { user_id: number; stat_key: string; stat_label_th: string; value: number };
+
+/** สถิติรายคนของแมตช์นี้ — แสดงประกอบให้คนโหวตดู (ข้อ 9) · แมตช์ที่กรรมการยังไม่กรอกก็คืนว่าง */
+export async function findMatchPlayerStats(matchId: number): Promise<MatchPlayerStatRow[]> {
+    const [rows] = await pool.query<(MatchPlayerStatRow & RowDataPacket)[]>(
+        `SELECT ps.user_id, s.stat_key, s.stat_label_th, pv.value_int AS value
+         FROM player_match_stats ps
+         JOIN player_match_stat_values pv ON pv.player_match_stat_id = ps.player_match_stat_id
+         JOIN sport_stat_definitions s ON s.sport_stat_definition_id = pv.sport_stat_definition_id
+         WHERE ps.match_id = ?
+         ORDER BY ps.user_id, s.display_order, s.sport_stat_definition_id`,
+        [matchId]
+    );
+    return rows;
+}
+
+/** โหวตไม่ได้ถ้าอยู่ในทีมใดทีมหนึ่งของแมตช์ (ข้อ 2 — กันทั้งทีม ไม่ใช่แค่รายชื่อที่ลงแข่ง · หัวหน้าทีมนับด้วย) */
+export async function isMemberOfMatchTeams(matchId: number, userId: number): Promise<boolean> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM matches m JOIN team_members tm ON tm.team_id IN (m.team_a_id, m.team_b_id)
+         WHERE m.match_id = ? AND tm.user_id = ?
+         UNION ALL
+         SELECT 1 FROM matches m JOIN teams t ON t.team_id IN (m.team_a_id, m.team_b_id)
+         WHERE m.match_id = ? AND t.leader_id = ?
+         LIMIT 1`,
+        [matchId, userId, matchId, userId]
+    );
+    return rows.length > 0;
+}
+
+/** โหวตของคนนี้ในแมตช์นี้ (รวมที่แอดมินลบแล้ว) */
+export async function findOwnMatchVote(matchId: number, userId: number): Promise<FeedbackRow | null> {
+    const [rows] = await pool.query<(FeedbackRow & RowDataPacket)[]>(
+        `SELECT ${FEEDBACK_COLS} FROM tournament_feedback f
+         WHERE f.match_id = ? AND f.user_id = ? AND f.feedback_type = 'mvp_vote'`,
+        [matchId, userId]
+    );
+    return rows[0] ?? null;
 }
 
 // ---- อ่าน/เขียน feedback ----
@@ -137,12 +185,16 @@ export async function upsertOrganizerFeedback(tournamentId: number, userId: numb
     );
 }
 
-export async function upsertMvpVote(tournamentId: number, userId: number, votedForUserId: number): Promise<void> {
+/**
+ * 1 คน 1 เสียงต่อแมตช์ — UNIQUE (tournament_id, match_key, user_id, feedback_type) บังคับให้เอง
+ * (`match_key` = IFNULL(match_id, 0) เป็น generated column ที่มีอยู่แล้ว จึงไม่ต้อง migration) · ส่งซ้ำ = เปลี่ยนคนที่โหวต (ข้อ 13)
+ */
+export async function upsertMvpVote(tournamentId: number, matchId: number, userId: number, votedForUserId: number): Promise<void> {
     await pool.query(
-        `INSERT INTO tournament_feedback (tournament_id, user_id, feedback_type, voted_for_user_id)
-         VALUES (?, ?, 'mvp_vote', ?)
+        `INSERT INTO tournament_feedback (tournament_id, match_id, user_id, feedback_type, voted_for_user_id)
+         VALUES (?, ?, ?, 'mvp_vote', ?)
          ON DUPLICATE KEY UPDATE voted_for_user_id = VALUES(voted_for_user_id)`,
-        [tournamentId, userId, votedForUserId]
+        [tournamentId, matchId, userId, votedForUserId]
     );
 }
 
