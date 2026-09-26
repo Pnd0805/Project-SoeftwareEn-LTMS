@@ -73,3 +73,13 @@ export const manualCheckinSchema = z.object({
 });
 
 export type ManualCheckinInput = z.infer<typeof manualCheckinSchema>;
+
+/**
+ * M10c — ยกเลิกแมตช์กลางคัน (ฝนตก ไฟดับ คนเจ็บหนัก) · มติ 27 ก.ย.
+ * เหตุผลบังคับ เพราะการยกเลิกทำให้ทั้งสองทีมต้องกลับมาแข่งใหม่ ต้องตรวจย้อนได้ว่าสั่งเพราะอะไร
+ */
+export const abandonMatchSchema = z.object({
+    reason: z.string().trim().min(1, 'กรุณาระบุเหตุผลที่ยกเลิกการแข่งขัน').max(500, 'เหตุผลยาวได้ไม่เกิน 500 ตัวอักษร'),
+});
+export type AbandonMatchInput = z.infer<typeof abandonMatchSchema>;
+

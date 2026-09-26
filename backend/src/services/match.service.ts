@@ -365,6 +365,44 @@ export async function finishMatch(matchId: number, userId: number) {
     return { id: matchId, status: 'finished' as const, actualEndTime: updated!.actual_end_time?.toISOString() ?? null };
 }
 
+/**
+ * M10c (มติ 27 ก.ย.) — ยกเลิกแมตช์กลางคัน แล้วกลับไปตั้งเวลาใหม่
+ *
+ * เดิม `in_progress` มีทางออกทางเดียวคือ "มีคนส่งผล" แต่เคสฝนตก/ไฟดับ **ไม่มีผลให้ส่ง**
+ * เพราะการแข่งขันไม่ได้เกิดจนจบ · เลื่อน (M06) ปิดเช็คอิน (M18) ปรับแพ้ (M17) ก็รับเฉพาะสถานะอื่น
+ * แมตช์จึงค้างถาวร — และไม่ควรไปใช้ทางของ OD-26 ข้อ 6 (ผู้จัดกรอกผลหลัง 24 ชม.)
+ * เพราะนั่นแปลว่า "แข่งจบแล้วไม่มีใครรายงาน" ซึ่งคนละเรื่องกัน
+ *
+ * ถ้าแข่งไปเกือบจบแล้วทั้งสองฝ่ายพอใจผลที่เป็นอยู่ ไม่ต้องใช้ทางนี้ — กดจบ (M10b) แล้วส่งผลตามปกติ
+ * ทางนี้มีไว้สำหรับกรณีที่ผลยังไม่ควรนับเท่านั้น
+ */
+export async function abandonMatch(matchId: number, userId: number, reason: string) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT", "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ยกเลิกการแข่งขันได้");
+    }
+    if (match.match_status !== 'in_progress') {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "ยกเลิกกลางคันได้เฉพาะแมตช์ที่กำลังแข่งอยู่", { status: match.match_status });
+    }
+    if (!(await MatchRepo.abandonMatch(matchId, userId, reason))) {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "สถานะแมตช์เปลี่ยนไปแล้ว");
+    }
+
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'match_abandoned',
+        title: 'แมตช์ถูกยกเลิกกลางคัน',
+        message: `แมตช์ #${matchId} ยกเลิกกลางคัน — เหตุผล: ${reason} · รอผู้จัดนัดเวลาใหม่ แล้วต้องเช็คอินใหม่ในวันแข่งจริง`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
+
+    return { id: matchId, status: 'scheduled' as const, checkinOpenAt: null };
+}
+
 /** M11/M13 — ORG ของทัวร์ และ/หรือ กรรมการของแมตช์นี้ (active + รับมอบหมายแมตช์นี้แล้ว) */
 async function findMatchRoles(matchId: number, tournamentId: number, userId: number) {
     const tournament = await TournamentRepo.findTournamentById(tournamentId);

@@ -2,7 +2,7 @@ import express from 'express';
 import * as Match from '../controllers/match.controller.js';
 import { requireAuth , optionalAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
-import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema, roomCodeSchema } from '../schemas/match.schema.js';
+import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema, roomCodeSchema, abandonMatchSchema } from '../schemas/match.schema.js';
 import { requireReferee } from '../middlewares/requireReferee.js';
 import { requireOrganizer, requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 
@@ -23,6 +23,8 @@ router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
 // จบการแข่งขัน — กรรมการของแมตช์ "หรือ" ผู้จัด (มติ Q4b) จึงตรวจสิทธิ์ใน service ไม่ใช้ middleware ที่รับบทบาทเดียว
 router.post('/matches/:id/finish' , requireAuth , Match.finishMatch);
+// ยกเลิกกลางคัน (ฝนตก/ไฟดับ) → กลับเป็น scheduled ให้ ORG ตั้งเวลาใหม่ด้วย M06 — กรรมการของแมตช์หรือ ORG
+router.post('/matches/:id/abandon' , requireAuth , validate(abandonMatchSchema) , Match.abandonMatch);
 // M18 ปิดเช็คอินกลับเป็น scheduled (ฝนตก → ไปเลื่อนด้วย M06) · M17 ORG ตัดสินทีมไม่มาตามนัด — GUIDE/11 §10.5
 router.post('/matches/:id/close-checkin' , requireAuth , requireOrganizerOfMatch , Match.closeCheckinMatch);
 router.post('/matches/:id/forfeit' , requireAuth , requireOrganizerOfMatch , Match.forfeitMatch);

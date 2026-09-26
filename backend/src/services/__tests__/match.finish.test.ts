@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../repositories/match.repo.js', () => ({
   findMatchById: vi.fn(),
   markMatchFinished: vi.fn(() => Promise.resolve(true)),
+  abandonMatch: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn() }));
 vi.mock('../../middlewares/requireReferee.js', () => ({ isRefereeOfMatch: vi.fn(() => Promise.resolve(false)) }));
@@ -93,3 +94,42 @@ describe('finishMatch (in_progress → finished)', () => {
     expect(await errOf(MatchService.finishMatch(1, REFEREE))).toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
   });
 });
+
+/**
+ * M10c (มติ 27 ก.ย.) — ฝนตกกลางแมตช์ ไฟดับ คนเจ็บหนัก
+ * เดิม in_progress ออกได้ทางเดียวคือ "มีคนส่งผล" แต่เคสนี้ไม่มีผลให้ส่ง แมตช์จึงค้างถาวร
+ */
+describe('abandonMatch (in_progress → scheduled)', () => {
+  it('sends the match back to scheduled so the organizer can re-date it, and tells everyone why', async () => {
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
+
+    await expect(MatchService.abandonMatch(1, REFEREE, 'ฝนตกหนัก สนามใช้ไม่ได้')).resolves.toEqual({
+      id: 1, status: 'scheduled', checkinOpenAt: null,
+    });
+    expect(MatchRepo.abandonMatch).toHaveBeenCalledWith(1, REFEREE, 'ฝนตกหนัก สนามใช้ไม่ได้');
+    expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({ type: 'match_abandoned' }));
+  });
+
+  it('the organizer can call it off too', async () => {
+    await expect(MatchService.abandonMatch(1, ORG, 'ไฟดับทั้งอาคาร')).resolves.toMatchObject({ status: 'scheduled' });
+  });
+
+  it('403 for anyone else', async () => {
+    expect(await errOf(MatchService.abandonMatch(1, 12345, 'x'))).toMatchObject({ status: 403, code: 'NOT_MATCH_PARTICIPANT' });
+    expect(MatchRepo.abandonMatch).not.toHaveBeenCalled();
+  });
+
+  it.each(['scheduled', 'checkin_open', 'finished', 'completed'])('409 when the match is %s', async (status) => {
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: status }));
+    expect(await errOf(MatchService.abandonMatch(1, REFEREE, 'x'))).toMatchObject({ status: 409, code: 'MATCH_NOT_IN_PROGRESS' });
+  });
+
+  it('409 when someone else got there first', async () => {
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
+    vi.mocked(MatchRepo.abandonMatch).mockResolvedValue(false);
+    expect(await errOf(MatchService.abandonMatch(1, REFEREE, 'x'))).toMatchObject({ status: 409, code: 'MATCH_NOT_IN_PROGRESS' });
+    expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
+  });
+});
+

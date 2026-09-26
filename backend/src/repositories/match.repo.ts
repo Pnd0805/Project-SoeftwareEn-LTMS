@@ -209,6 +209,45 @@ export async function markMatchFinished(matchId: number): Promise<boolean> {
     return result.affectedRows === 1;
 }
 
+/**
+ * M10c (มติ 27 ก.ย.) — แมตช์เริ่มแล้วแต่แข่งไม่จบ (ฝนตก ไฟดับ คนเจ็บหนัก สนามถูกยึด)
+ * ถอยกลับไป `scheduled` เพื่อให้ผู้จัดนัดเวลาใหม่ด้วย M06 ได้ตามปกติ — ความพยายามครั้งก่อนไม่นับ
+ *   ล้างเช็คอิน  : ผู้เล่นต้องยืนยันตัวใหม่ในวันแข่งจริง (เหตุผลเดียวกับ M18)
+ *   ล้างเวลาจริง : started_at/actual_end_time ต้องเป็นของรอบที่แข่งจริงเท่านั้น
+ *   ล้างสถิติ    : กรรมการกรอกสถิติระหว่างแมตช์ได้ ถ้าไม่ล้างจะถูกนับซ้ำตอนแข่งรอบใหม่
+ * ประวัติเก็บที่ audit_logs — ไม่เพิ่มคอลัมน์ในตาราง matches
+ */
+export async function abandonMatch(matchId: number, userId: number, reason: string): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [res] = await conn.query<ResultSetHeader>(
+            `UPDATE matches SET match_status = 'scheduled', checkin_open_at = NULL, started_at = NULL, actual_end_time = NULL, updated_at = NOW()
+             WHERE match_id = ? AND match_status = 'in_progress'`, [matchId]);
+        if (res.affectedRows === 0) {
+            await conn.rollback();
+            return false;
+        }
+        await conn.query<ResultSetHeader>('DELETE FROM match_checkins WHERE match_id = ?', [matchId]);
+        await conn.query<ResultSetHeader>(
+            `DELETE pv FROM player_match_stat_values pv
+             JOIN player_match_stats ps ON ps.player_match_stat_id = pv.player_match_stat_id
+             WHERE ps.match_id = ?`, [matchId]);
+        await conn.query<ResultSetHeader>('DELETE FROM player_match_stats WHERE match_id = ?', [matchId]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details)
+             VALUES (?, 'match_abandoned', 'match', ?, ?)`,
+            [userId, matchId, JSON.stringify({ reason })]);
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
 /** M09 — เปลี่ยนได้เฉพาะแถวที่ยัง scheduled (คืน false = สถานะอื่นไปแล้ว ไม่แตะแถวนั้น) */
 export async function openMatchCheckin(matchId: number): Promise<boolean> {
     const [result] = await pool.query<ResultSetHeader>(

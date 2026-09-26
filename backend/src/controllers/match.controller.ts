@@ -109,6 +109,15 @@ export async function finishMatch(req: Request, res: Response){
     res.status(200).json(await MatchService.finishMatch(matchId, req.user.user_id));
 }
 
+/** M10c — ยกเลิกแมตช์กลางคัน (สิทธิ์ตรวจใน service เพราะรับได้ทั้งกรรมการและผู้จัด) */
+export async function abandonMatch(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
+    res.status(200).json(await MatchService.abandonMatch(matchId, req.user.user_id, req.body.reason));
+}
+
 export async function getMatchLineups(req: Request, res: Response){
     const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
     res.status(200).json(await MatchService.getMatchLineups(matchId));
