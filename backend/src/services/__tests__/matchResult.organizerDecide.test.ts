@@ -29,7 +29,7 @@ const NOW = new Date('2026-09-27T12:00:00Z');
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600 * 1000);
 const match = (o: Record<string, unknown> = {}) => ({
   match_id: 7, tournament_id: 50, team_a_id: 11, team_b_id: 12,
-  match_status: 'finished', actual_end_time: hoursAgo(25), next_match_id: null, loser_next_match_id: null, ...o,
+  match_status: 'finished', mode: 'online', actual_end_time: hoursAgo(25), next_match_id: null, loser_next_match_id: null, ...o,
 }) as never;
 
 async function errOf(p: Promise<unknown>) {
@@ -91,6 +91,25 @@ describe('organizerDecideMatch', () => {
   it('allows deciding when the previous result was rejected', async () => {
     vi.mocked(ResRepo.findmatchResultByMatchId).mockResolvedValue({ match_result_status: 'rejected' } as never);
     await expect(Service.organizerDecideMatch(7, ORG, { outcome: 'double_forfeit', reason: 'x' })).resolves.toBeTruthy();
+  });
+
+  /**
+   * มติ 27 ก.ย. — โทษต้องตกที่ฝ่ายที่บกพร่อง
+   * onsite มีกรรมการที่ผู้จัดแต่งตั้งอยู่หน้างาน ไม่มีผลส่ง = ฝั่งผู้จัดบกพร่อง ไม่ใช่ทีม
+   */
+  it('refuses a double forfeit on an onsite match — the teams are not the ones who failed', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ mode: 'onsite' }));
+    const err = await errOf(Service.organizerDecideMatch(7, ORG, { outcome: 'double_forfeit', reason: 'กรรมการหาย' }));
+    expect(err).toMatchObject({ status: 409, code: 'FORFEIT_NOT_ALLOWED_ONSITE' });
+    expect(err!.extra).toEqual({ mode: 'onsite' });
+    expect(ResRepo.organizerDecideMatch).not.toHaveBeenCalled();
+  });
+
+  it('still lets the organizer enter the score on an onsite match', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ mode: 'onsite' }));
+    await expect(Service.organizerDecideMatch(7, ORG, {
+      outcome: 'result', reason: 'ใช้ใบบันทึกคะแนนของกรรมการ', winnerTeamId: 11, scoreData: { 11: 2, 12: 0 },
+    })).resolves.toMatchObject({ outcome: 'result' });
   });
 
   it('rejects a score that does not match the two teams', async () => {
