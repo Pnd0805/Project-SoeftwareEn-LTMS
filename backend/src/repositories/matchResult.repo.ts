@@ -25,6 +25,17 @@ export async function findmatchResultByMatchId(matchId : number): Promise<MatchR
 
 
 
+export type DisputeDetailRow = MatchResultRow & { raised_by_name : string | null };
+
+/** S03b — รายละเอียดข้อโต้แย้งพร้อมชื่อผู้ค้าน (ผู้จัดต้องใช้ตัดสิน) */
+export async function findDisputeByMatchId(matchId : number): Promise<DisputeDetailRow | null>{
+    const [ rows ] = await pool.query<(DisputeDetailRow & RowDataPacket)[]>(
+        `SELECT r.* , u.full_name AS raised_by_name
+         FROM match_results r LEFT JOIN users u ON u.user_id = r.dispute_raised_by
+         WHERE r.match_id = ?`, [matchId]);
+    return rows[0] ?? null;
+}
+
 export async function submitMatchResult(matchId : number , winnerId : number , score : Record<string , number> , userId:number , role : 'team_leader' | 'referee'): Promise<number>{
     const [ results ] = await pool.query<ResultSetHeader>(`INSERT INTO match_results(match_id,winner_team_id,score_data,submitted_by_user_id,submitted_role,match_result_status,submitted_at)
                                                            VALUES(? , ? , ? , ? ,? ,? , NOW())
@@ -162,7 +173,8 @@ async function inTx<T>(fn : (conn : PoolConnection) => Promise<T>): Promise<T>{
     }
 }
 
-export async function verifyMatchResult(matchResId : number, matchId : number , userId : number , point : number ){
+/** userId = null แปลว่าระบบยืนยันให้เอง (auto-verify) — คอลัมน์ verified_by_user_id ยอม NULL */
+export async function verifyMatchResult(matchResId : number, matchId : number , userId : number | null , point : number ){
     const matchRes = (await findById(matchResId))!;
     const match = (await MatchRepo.findById(matchId))!;
     const tour = (await TournamentRepo.findTournamentById(match.tournament_id))!;
@@ -174,19 +186,90 @@ export async function verifyMatchResult(matchResId : number, matchId : number , 
         await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = ? , updated_at = NOW()
                                            WHERE match_id = ?` , ['completed' ,matchId ]);
         await applyOutcomeTx(conn, match, winnerId, loserOf(match, winnerId), tour.sport_type_id, point, matchRes.score_data);
-        await conn.query<ResultSetHeader>(
-            `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details)
-            VALUES(?, ?, ?, ?, ?)`,
-            [userId, 'match_result_verified', 'match', matchId, JSON.stringify({ winnerId, verifiedBy: userId })]
-        );
+        // auto-verify ไม่เขียน audit_logs เพราะ user_id ของตารางนั้นเป็น NOT NULL + FK ไป users (ไม่มีผู้ใช้ "ระบบ")
+        // ร่องรอยอยู่ที่แถวผลอยู่แล้ว: verified_at มีค่า แต่ verified_by_user_id เป็น NULL = ระบบยืนยันให้
+        if(userId !== null){
+            await conn.query<ResultSetHeader>(
+                `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details)
+                VALUES(?, 'match_result_verified', 'match', ?, ?)`,
+                [userId, matchId, JSON.stringify({ winnerId, verifiedBy: userId })]
+            );
+        }
     });
 }
 
 
-export async function disputeMatchResult(matchResId : number, matchId : number , userId : number , reason : string){
+export type DisputeRecord = {
+    reason : string;
+    claimedWinnerTeamId : number | null;
+    claimedScore : Record<string, number> | null;
+    evidenceKeys : string[] | null;
+};
+
+/**
+ * OD-26 ข้อ 6 ขั้นสุดท้าย (มติ 26 ก.ย.) — ผู้จัดตัดสินแมตช์ที่แข่งไปแล้วแต่ไม่มีใครส่งผลเลย
+ *   'result'         ผู้จัดกรอกผลตามหลักฐาน → verified ทันที · submitted_role = 'organizer' คือ "ป้าย" ที่ทุกคนเห็น
+ *   'double_forfeit' แพ้ทั้งคู่ ไม่มีใครผ่านรอบ — ช่องว่างในสายปล่อยให้ dead_slot/dead_match จัดการต่อ
+ * เหตุผลบังคับกรอกเสมอ เก็บลง audit_logs ให้ตรวจย้อนได้ว่าผู้จัดตัดสินอะไรเพราะอะไร
+ */
+export async function organizerDecideMatch(
+    match : MatchRow , orgUserId : number , reason : string , point : number,
+    outcome : { kind : 'result'; winnerId : number; score : Record<string, number> } | { kind : 'double_forfeit' }
+): Promise<boolean>{
+    return inTx(async conn => {
+        const [locked] = await conn.query<(MatchRow & RowDataPacket)[]>(
+            `SELECT * FROM matches WHERE match_id = ? AND match_status = 'finished' FOR UPDATE`, [match.match_id]);
+        if(!locked[0]) return false;
+
+        const isResult = outcome.kind === 'result';
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO match_results (match_id, winner_team_id, score_data, submitted_by_user_id, submitted_role, submitted_at,
+                                        match_result_status, verified_by_user_id, verified_at)
+             VALUES (?, ?, ?, ?, 'organizer', NOW(), ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE winner_team_id = VALUES(winner_team_id), score_data = VALUES(score_data),
+                                     submitted_by_user_id = VALUES(submitted_by_user_id), submitted_role = 'organizer',
+                                     submitted_at = NOW(), match_result_status = VALUES(match_result_status),
+                                     verified_by_user_id = VALUES(verified_by_user_id), verified_at = NOW()`,
+            [match.match_id, isResult ? outcome.winnerId : null, isResult ? JSON.stringify(outcome.score) : null,
+             orgUserId, isResult ? 'verified' : 'walkover', orgUserId]);
+
+        await conn.query<ResultSetHeader>(
+            `UPDATE matches SET match_status = 'completed', updated_at = NOW() WHERE match_id = ?`, [match.match_id]);
+
+        if(isResult){
+            const tour = (await TournamentRepo.findTournamentById(match.tournament_id))!;
+            await applyOutcomeTx(conn, match, outcome.winnerId, loserOf(match, outcome.winnerId), tour.sport_type_id, point, outcome.score);
+        }else{
+            // แพ้ทั้งคู่: ไม่มีใครเดินสาย ทั้งสองทีมนับแพ้ 1 แมตช์ ไม่มีแต้ม ไม่มีประตู (เหมือน double_forfeit เดิม)
+            for(const teamId of [match.team_a_id, match.team_b_id]){
+                if(teamId === null) continue;
+                await conn.query<ResultSetHeader>(
+                    `INSERT INTO tournament_standings (tournament_id, team_id, played, won, lost, points)
+                     VALUES (?, ?, 1, 0, 1, 0)
+                     ON DUPLICATE KEY UPDATE played = played + 1, lost = lost + 1, updated_at = NOW()`,
+                    [match.tournament_id, teamId]);
+            }
+        }
+
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details)
+             VALUES (?, 'match_decided_by_organizer', 'match', ?, ?)`,
+            [orgUserId, match.match_id, JSON.stringify({ outcome : outcome.kind, reason,
+                winnerTeamId : isResult ? outcome.winnerId : null })]);
+        return true;
+    });
+}
+
+export async function disputeMatchResult(matchResId : number, matchId : number , userId : number , input : DisputeRecord){
     await inTx(async conn => {
-        await conn.query<ResultSetHeader>(`UPDATE match_results SET dispute_reason = ? , dispute_raised_by = ? , dispute_raised_at = NOW() , match_result_status = ?
-                                        WHERE match_result_id = ? AND match_id = ?` , [reason , userId , 'disputed' , matchResId , matchId]);
+        await conn.query<ResultSetHeader>(`UPDATE match_results
+                                           SET dispute_reason = ? , dispute_raised_by = ? , dispute_raised_at = NOW() , match_result_status = ? ,
+                                               dispute_claimed_winner_team_id = ? , dispute_claimed_score = ? , dispute_evidence = ?
+                                        WHERE match_result_id = ? AND match_id = ?` ,
+                                        [input.reason , userId , 'disputed' , input.claimedWinnerTeamId ,
+                                         input.claimedScore === null ? null : JSON.stringify(input.claimedScore),
+                                         input.evidenceKeys === null ? null : JSON.stringify(input.evidenceKeys),
+                                         matchResId , matchId]);
         await conn.query<ResultSetHeader>(`UPDATE matches SET match_status = ? WHERE match_id = ?`,['disputed' , matchId]);
     });
 }

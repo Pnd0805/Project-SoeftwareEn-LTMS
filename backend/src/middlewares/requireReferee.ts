@@ -10,6 +10,7 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 
 import { isActiveReferee, refereesNeededPerMatch } from "../services/referee.service.js";
 
+import { isSubmitEscalationOpen } from "../utils/escalation.js";
 import { checkMatch, checkMatchResult } from "../utils/checkExist.js";
 import { parseId } from "../utils/parseId.js";
 import { AppError } from "../utils/AppError.js";
@@ -106,10 +107,16 @@ export async function requireCanSubmitResult(req : Request , res : Response , ne
             req.submitrole = 'referee';
 
         } else if(match.mode === 'online') {
-            if (!(await isTeamLeaderOfMatch(matchId, req.user.user_id))) {
+            if (await isTeamLeaderOfMatch(matchId, req.user.user_id)) {
+                req.submitrole = 'team_leader';
+            } else if (isSubmitEscalationOpen(match) && await isRefereeOfMatch(matchId, req.user.user_id, match.tournament_id)) {
+                // OD-26 ข้อ 6 ขั้นแรก (มติ 26 ก.ย.) — โหมด online ปกติมีแต่หัวหน้าทีมที่ส่งผลได้
+                // ถ้าทั้งสองฝ่ายเงียบจนพ้นกำหนด ให้กรรมการของแมตช์ (คนกลางที่ดูเกมอยู่) ส่งแทนได้
+                // ยังเป็นกรรมการส่ง–อีกฝ่ายยืนยัน จึงไม่เสียหลัก "คนส่ง ≠ คนยืนยัน"
+                req.submitrole = 'referee';
+            } else {
                 return next(new AppError(403, "WRONG_SUBMITTER_ROLE", "ตามโหมดการแข่งขันนี้ คุณไม่ใช่ผู้ที่ส่งผลได้"));
             }
-            req.submitrole = 'team_leader';
         }
 
         next();

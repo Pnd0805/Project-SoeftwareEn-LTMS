@@ -15,7 +15,7 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   completeTournament: vi.fn(async () => true),
 }));
 vi.mock('../../repositories/match.repo.js', () => ({ countMatchesByTournament: vi.fn(async () => 7) }));
-vi.mock('../matchResult.service.js', () => ({ resolveChampionTeamId: vi.fn(async () => 11) }));
+vi.mock('../matchResult.service.js', () => ({ resolveChampionTeamId: vi.fn(async () => 11), autoVerifyDue: vi.fn(async () => []) }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({}));
 vi.mock('../../repositories/application.repo.js', () => ({}));
 vi.mock('../../repositories/department.repo.js', () => ({}));

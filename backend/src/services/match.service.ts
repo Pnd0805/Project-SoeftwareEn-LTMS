@@ -5,6 +5,7 @@ import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireRef
 import { getPresignedDownloadUrl } from './upload.service.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
+import * as MatchResultService from './matchResult.service.js';
 import * as NotificationService from './notification.service.js';
 
 /** ข้อความแจ้งเตือนต้องเป็นเวลาไทยเสมอ ไม่ว่า server จะตั้ง timezone อะไร */
@@ -209,6 +210,10 @@ export async function openCheckinMatch(matchId: number) {
      *                     แมตช์ต้นทางทันที (NEXT_MATCH_STARTED) ทั้งที่ยังตัดสินข้อโต้แย้งไม่เสร็จ
      * ทั้งสองกรณีคืน blockedBy เพื่อให้ FE ลิงก์ไปแมตช์ที่ติดได้เลย
      */
+    // ข้อ 7 — ไม่มี scheduler จึงเช็ค auto-verify ตรงจังหวะที่มีคนมาเดินสายต่ออยู่แล้ว
+    // ผลที่กรรมการส่งไว้แต่ไม่มีใครยืนยันจะถูกยืนยันที่นี่ ทีมจึงไหลลงแมตช์นี้ทันก่อนโดนบล็อก
+    await MatchResultService.autoVerifyDue((await MatchRepo.findUnresolvedPredecessors(matchId)).map(b => b.match_id));
+
     const blockers = await MatchRepo.findUnresolvedPredecessors(matchId);
     const blockedBy = blockers.map(b => ({ matchId: b.match_id, status: b.match_status, reason: BLOCK_REASON[b.match_status] ?? 'ยังไม่จบ' }));
     if (match.team_a_id === null || match.team_b_id === null) {
@@ -385,9 +390,12 @@ export async function getMatchLineups(matchId: number) {
     }
 
     const rows = await MatchRepo.findLineupsByMatch(matchId);
-    const forTeam = (teamId: number | null) => teamId === null
-        ? null
-        : { teamId, players: rows.filter(r => r.team_id === teamId).map(toLineupPlayerDto) };
+    const forTeam = (teamId: number | null) => {
+        if (teamId === null) return null;
+        const players = rows.filter(r => r.team_id === teamId);
+        // ทีมที่ถอนตัวหลังแมตช์นี้แข่งไปแล้ว — รายชื่อยังอยู่ ติดป้ายให้ FE แสดงว่าถอนตัวแล้ว
+        return { teamId, withdrawn: players[0]?.application_status === 'withdrawn', players: players.map(toLineupPlayerDto) };
+    };
 
     return { matchId, teamA: forTeam(match.team_a_id), teamB: forTeam(match.team_b_id) };
 }

@@ -391,6 +391,7 @@ export async function isRegisteredPlayerOfMatch(userId: number, matchId: number)
 
 export type MatchLineupRow = {
     team_id: number;
+    application_status: 'approved' | 'withdrawn';   // ทีมที่ถอนตัวหลังแข่งไปแล้วยังต้องเห็นรายชื่อ (มติ 26 ก.ย.)
     user_id: number;
     full_name: string;
     profile_image_key: string | null;
@@ -401,12 +402,14 @@ export type MatchLineupRow = {
 /** M19 — รายชื่อผู้เล่นที่ลงแข่งของทั้งสองทีม พร้อมสถานะเช็คอินของแมตช์นี้ */
 export async function findLineupsByMatch(matchId: number): Promise<MatchLineupRow[]> {
     const [rows] = await pool.query<(MatchLineupRow & RowDataPacket)[]>(
-        `SELECT ta.team_id, u.user_id, u.full_name, u.profile_image_key,
+        // รวมใบที่ถอนตัวด้วย — แมตช์ที่แข่งไปแล้วต้องบอกได้เสมอว่าใครลงสนาม แม้ทีมจะถอนตัวทีหลัง
+        // (ใบเก่าที่ถูก "ปฏิเสธ" ไม่นับ เพราะไม่เคยได้ลงแข่ง)
+        `SELECT ta.team_id, ta.tournament_application_status AS application_status, u.user_id, u.full_name, u.profile_image_key,
                 mc.match_checkin_status, mc.checked_in_at
          FROM matches m
          JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
               AND ta.team_id IN (m.team_a_id, m.team_b_id)
-              AND ta.tournament_application_status = 'approved'
+              AND ta.tournament_application_status IN ('approved', 'withdrawn')
          JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
          JOIN users u ON u.user_id = ap.user_id
          LEFT JOIN match_checkins mc ON mc.match_id = m.match_id AND mc.user_id = u.user_id

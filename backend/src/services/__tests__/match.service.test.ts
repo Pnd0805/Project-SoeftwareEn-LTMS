@@ -29,6 +29,8 @@ vi.mock('../../repositories/match.repo.js', () => ({
   findMatchesOfPlayer: vi.fn(() => Promise.resolve([])),
   findLineupsByMatch: vi.fn(),
 }));
+// autoVerifyDue แตะฐานข้อมูลจริง — mock ไว้ให้เทสนี้เป็น unit test ล้วน (มีเทสของมันเองแยกต่างหาก)
+vi.mock('../matchResult.service.js', () => ({ autoVerifyDue: vi.fn(() => Promise.resolve([])) }));
 vi.mock('../referee.service.js', () => ({
   listMyRefereeMatches: vi.fn(() => Promise.resolve({ items: [] })),
 }));
@@ -355,9 +357,24 @@ describe('getMatchLineups (M19) — รายชื่อผู้เล่น�
 
     expect(result).toEqual({
       matchId: 1,
-      teamA: { teamId: 11, players: [{ userId: 101, checkinStatus: 'success' }, { userId: 102, checkinStatus: null }] },
-      teamB: { teamId: 12, players: [{ userId: 201, checkinStatus: 'pending' }] },
+      teamA: { teamId: 11, withdrawn: false, players: [{ userId: 101, checkinStatus: 'success' }, { userId: 102, checkinStatus: null }] },
+      teamB: { teamId: 12, withdrawn: false, players: [{ userId: 201, checkinStatus: 'pending' }] },
     });
+  });
+
+  // มติ 26 ก.ย. — ทีมที่ถอนตัวหลังแมตช์นี้แข่งไปแล้ว รายชื่อต้องไม่หาย แค่ติดป้ายบอก
+  it('keeps the roster of a team that withdrew after this match was played, flagged as withdrawn', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue({ match_id: 1, team_a_id: 11, team_b_id: 12, tournament_id: 20 } as never);
+    vi.mocked(MatchRepo.findLineupsByMatch).mockResolvedValue([
+      { team_id: 11, user_id: 101, match_checkin_status: 'success', application_status: 'withdrawn' },
+      { team_id: 12, user_id: 201, match_checkin_status: 'success', application_status: 'approved' },
+    ] as never);
+
+    const result = await matchService.getMatchLineups(1);
+
+    expect(result.teamA).toMatchObject({ teamId: 11, withdrawn: true });
+    expect(result.teamA!.players).toHaveLength(1);
+    expect(result.teamB).toMatchObject({ teamId: 12, withdrawn: false });
   });
 
   it('returns null for a side that has no team yet (waiting for the previous round)', async () => {
@@ -366,7 +383,7 @@ describe('getMatchLineups (M19) — รายชื่อผู้เล่น�
 
     const result = await matchService.getMatchLineups(2);
 
-    expect(result.teamA).toEqual({ teamId: 11, players: [] });
+    expect(result.teamA).toEqual({ teamId: 11, withdrawn: false, players: [] });
     expect(result.teamB).toBeNull();
   });
 

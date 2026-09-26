@@ -2,6 +2,7 @@ import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
+import * as FeedbackRepo from '../repositories/feedback.repo.js';   // hasPlayedMatch — นิยาม "ทัวร์เริ่มแล้ว" ตัวเดียวของระบบ
 import * as UploadService from './upload.service.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { toApplicationDetailDto, toMyApplicationDto } from '../mappers/application.mapper.js';
@@ -109,7 +110,19 @@ export async function withdrawApplication(applicationId: number, userId: number)
     }
 
     await ApplicationRepo.updateApplicationStatus(applicationId, "withdrawn");
-    await ApplicationRepo.deletePlayersByApplication(applicationId);
+
+    /**
+     * มติ 26 ก.ย. — ลบรายชื่อผู้เล่นเฉพาะตอนทัวร์ยังไม่เริ่มแข่ง
+     *   ยังไม่เริ่ม : ต้องลบ เพื่อปลด UNIQUE (tournament_id, user_id) ให้ทีมสมัครใหม่ได้ (A1)
+     *                 และให้ผู้เล่นไปอยู่ทีมอื่นในทัวร์เดียวกันได้
+     *   เริ่มแล้ว   : เก็บไว้ — มีประวัติเกิดขึ้นแล้ว ต้องบอกได้ว่าใครลงแมตช์ไหน และกรรมการยังต้อง
+     *                 ส่งผล/กรอกสถิติย้อนหลังได้ · UNIQUE ที่ค้างอยู่ไม่ทำร้ายใครเพราะตอนนั้นสมัครใหม่ไม่ได้อยู่แล้ว
+     *                 และคนที่ลงแข่งให้ทีมหนึ่งไปแล้วก็ไม่ควรไปเล่นให้อีกทีมในทัวร์เดียวกัน
+     * ใช้ตัวตัดสิน "ทัวร์เริ่มแล้วหรือยัง" ตัวเดียวกับ C6 (hasPlayedMatch) — ชนะบายไม่นับว่าเริ่ม
+     */
+    if (!(await FeedbackRepo.hasPlayedMatch(app.tournament_id))) {
+        await ApplicationRepo.deletePlayersByApplication(applicationId);
+    }
     const matchCount = await MatchRepo.countMatchesByTournament(app.tournament_id);
 
     // มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย (คู่ที่ยังไม่มาจะบายตอนคู่มาถึง)

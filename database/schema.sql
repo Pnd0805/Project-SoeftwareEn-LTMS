@@ -470,6 +470,11 @@ CREATE TABLE match_results (
   dispute_reason TEXT NULL,
   dispute_raised_by INT NULL,
   dispute_raised_at DATETIME NULL,   -- ใช้เช็ค dispute_window_hours (BR-14)
+  -- สิ่งที่ผู้ค้าน "เสนอว่าผลที่ถูกควรเป็นอะไร" — ไม่บังคับ เพราะบางเรื่องไม่ได้เถียงสกอร์
+  -- (migration 027) ถ้ามี ผู้จัดกด amend ได้เลยโดยไม่ต้องพิมพ์ใหม่
+  dispute_claimed_winner_team_id INT NULL,
+  dispute_claimed_score JSON NULL,
+  dispute_evidence JSON NULL,        -- อาร์เรย์ของ S3 object key — ส่งออกเป็น presigned URL เสมอ ไม่ส่ง key ดิบ
   dispute_resolved_by INT NULL,
   dispute_resolution TEXT NULL,
   dispute_resolved_at DATETIME NULL,
@@ -482,6 +487,7 @@ CREATE TABLE match_results (
   -- กฎระดับ application: เมื่อ status เป็น 'disputed' ต้อง
   -- UPDATE matches SET match_status='disputed' ในทรานแซกชันเดียวกันเสมอ
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
+  FOREIGN KEY (dispute_claimed_winner_team_id) REFERENCES teams(team_id),
   FOREIGN KEY (winner_team_id) REFERENCES teams(team_id),
   FOREIGN KEY (submitted_by_user_id) REFERENCES users(user_id),
   FOREIGN KEY (dispute_raised_by) REFERENCES users(user_id),
@@ -788,4 +794,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('021_standings_goals.sql'),
   ('022_tournament_completion.sql'),
   ('023_tournament_entry_notes.sql'),
-  ('026_match_finish_timestamps.sql');   -- เว้น 024/025 ไว้ให้ backend_step9-10 (user_reports / admin_scopes_root)
+  ('026_match_finish_timestamps.sql'),
+  ('027_dispute_claim_and_evidence.sql');   -- เว้น 024/025 ไว้ให้ backend_step9-10 (user_reports / admin_scopes_root)

@@ -7,7 +7,7 @@ import * as Identity from '../controllers/refereeIdentity.controller.js';
 import * as Referee from '../controllers/referee.controller.js';
 
 import { requireCanSubmitResult , requireCanVerifyResult , requireCanDisputeResult , requireCanRecordStats} from '../middlewares/requireReferee.js';
-import { resolveSchema, statSchema } from '../schemas/matchResult.schema.js';
+import { resolveSchema, statSchema, organizerDecideSchema } from '../schemas/matchResult.schema.js';
 import { livestreamSchema } from '../schemas/match.schema.js';
 import * as MatchResult from '../controllers/matchResult.controller.js'
 
@@ -38,7 +38,7 @@ meRefereeRouter.put('/referee-identity/docs', requireAuth, validate(submitDocsSc
 
 import { disputeSchema, submitResultSchema } from '../schemas/matchResult.schema.js';
 
-import { requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
+import { requireOrganizerOfMatch, requireCanResolveDispute } from '../middlewares/requireOrganizer.js';
 
 // F11 (ORG ใส่กรรมการเข้าแมตช์ตรง ๆ) ถูกแทนด้วย FR02 — POST /tournaments/:id/referee-requests/add-match
 
@@ -61,7 +61,11 @@ tournamentRefereeRouter.delete('/:id/referees/:rid', requireAuth, requireOrganiz
 matchRefereeRouter.post('/:id/result' , requireAuth , requireCanSubmitResult , validate(submitResultSchema) , MatchResult.createSubmitMatchRes);
 matchRefereeRouter.post('/:id/result/verify' , requireAuth , requireCanVerifyResult , MatchResult.updateVerifyMatchResult);
 matchRefereeRouter.post('/:id/result/dispute' , requireAuth , requireCanDisputeResult , validate(disputeSchema) , MatchResult.updateDisputeMatchResult);
-matchRefereeRouter.post('/:id/result/resolve' , requireAuth , requireOrganizerOfMatch , validate(resolveSchema) , MatchResult.updateResolveMatchResult);
+matchRefereeRouter.get('/:id/result/dispute' , requireAuth , MatchResult.getDispute);   // ผู้จัดต้องอ่านเรื่องได้ก่อนตัดสิน
+// ผู้จัดตัดสินแมตช์ที่แข่งแล้วแต่ไม่มีใครส่งผล — ทางออกสุดท้ายของข้อ 6 (มติ 26 ก.ย.)
+matchRefereeRouter.post('/:id/result/organizer' , requireAuth , requireOrganizerOfMatch , validate(organizerDecideSchema) , MatchResult.organizerDecideMatch);
+// ข้อ 10 — ผู้จัดตัดสินได้เสมอ · แอดมินมหาวิทยาลัยตัดสินแทนได้เมื่อผู้จัดเงียบเกิน 48 ชม.
+matchRefereeRouter.post('/:id/result/resolve' , requireAuth , requireCanResolveDispute , validate(resolveSchema) , MatchResult.updateResolveMatchResult);
 
 matchRefereeRouter.get('/:id/result' , optionalAuth , MatchResult.getVerifiedResult);   // มี token = เห็นผลที่ยังไม่ verify ถ้าเกี่ยวข้อง
 matchRefereeRouter.post('/:id/stats' , requireAuth , requireCanRecordStats , validate(statSchema) , MatchResult.updatePlayerStat);

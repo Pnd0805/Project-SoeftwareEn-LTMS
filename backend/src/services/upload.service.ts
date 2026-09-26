@@ -5,6 +5,7 @@ import s3 from '../config/s3.js';
 import { env } from '../config/env.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 import { AppError } from '../utils/AppError.js';
 import type { PresignUploadInput } from '../schemas/upload.schema.js';
 
@@ -24,6 +25,22 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
 
     if (input.purpose === 'referee_identity') {
         entityId = userId;
+    } else if (input.purpose === 'dispute_evidence') {
+        // หลักฐานประกอบการโต้แย้งผล (มติ 26 ก.ย.) — ขอลิงก์ได้เฉพาะคนที่ค้านผลแมตช์นั้นได้จริง
+        // ไม่ผูกกับสถานะแมตช์เหมือนรูปเช็คอิน เพราะค้านได้ทั้งก่อนและหลัง verify
+        if (input.matchId === undefined) {
+            throw new AppError(400, "VALIDATION_FAILED", "ต้องระบุ matchId");
+        }
+        const match = await MatchRepo.findMatchById(input.matchId);
+        if (!match) {
+            throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+        }
+        const canDispute = await isRefereeOfMatch(input.matchId, userId, match.tournament_id)
+                        || await isTeamLeaderOfMatch(input.matchId, userId);
+        if (!canDispute) {
+            throw new AppError(403, "WRONG_SUBMITTER_ROLE", "คุณไม่ใช่ผู้ที่โต้แย้งผลแมตช์นี้ได้");
+        }
+        entityId = input.matchId;
     } else if (input.purpose === 'checkin_document') {
         if (input.matchId === undefined) {
             throw new AppError(400, "VALIDATION_FAILED", "ต้องระบุ matchId");

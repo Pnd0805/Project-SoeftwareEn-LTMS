@@ -45,6 +45,7 @@ vi.mock('../../services/upload.service.js', () => ({
   validateSoftFilterDocuments: vi.fn(() => Promise.resolve()),
 }));
 
+vi.mock('../../repositories/feedback.repo.js', () => ({ hasPlayedMatch: vi.fn(() => Promise.resolve(false)) }));
 vi.mock('../../repositories/walkover.repo.js', () => ({
   hasInProgressMatch: vi.fn(() => Promise.resolve(false)),
 }));
@@ -88,6 +89,8 @@ import type { TeamRow, TournamentRow } from '../../types/db.js';
 import * as WalkoverRepo from '../../repositories/walkover.repo.js';
 import * as Walkover from '../../services/walkover.service.js';
 import * as NotificationService from '../../services/notification.service.js';
+
+import * as FeedbackRepo from '../../repositories/feedback.repo.js';
 
 const mockedApplicationRepo = vi.mocked(ApplicationRepo);
 const mockedTournamentRepo = vi.mocked(TournamentRepo);
@@ -488,6 +491,24 @@ describe('withdrawApplication', () => {
       userId: 7, type: 'application_withdrawn', relatedEntityId: 20,
     }));
     expect(Walkover.processTeamWithdrawal).not.toHaveBeenCalled();
+  });
+
+  /**
+   * มติ 26 ก.ย. — ลบรายชื่อเฉพาะตอนทัวร์ยังไม่เริ่มแข่ง
+   * ถ้าเริ่มแล้วต้องเก็บไว้ ไม่งั้นแมตช์ที่แข่งไปแล้วจะไม่เหลือรายชื่อว่าใครลงสนาม
+   * และกรรมการส่งผล/กรอกสถิติย้อนหลังไม่ได้
+   */
+  it('keeps the roster when the tournament has already been played', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    mockedMatchRepo.countMatchesByTournament.mockResolvedValue(8);
+    vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(true);
+
+    await applicationService.withdrawApplication(100, 5);
+
+    expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'withdrawn');
+    expect(mockedApplicationRepo.deletePlayersByApplication).not.toHaveBeenCalled();
   });
 
   it('reports bracketExists: true when the tournament already has matches', async () => {

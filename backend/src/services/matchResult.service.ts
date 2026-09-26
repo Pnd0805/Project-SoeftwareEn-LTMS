@@ -10,12 +10,14 @@ import { checkMatch, checkTournament, checkTeam } from '../utils/checkExist.js';
 import { AppError } from '../utils/AppError.js';
 import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
-import { WIN_POINTS } from '../config/scoring.js';
-import type { ResolveInput } from '../schemas/matchResult.schema.js';
+import { WIN_POINTS, AUTO_VERIFY_HOURS, AUTO_VERIFY_LEAD_MINUTES, SUBMIT_ESCALATION_HOURS } from '../config/scoring.js';
+import type { DisputeInput, OrganizerDecideInput, ResolveInput } from '../schemas/matchResult.schema.js';
 import type { MatchRow , TournamentRow } from '../types/db.js';
 import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 import * as NotificationService from './notification.service.js';
+import { isSubmitEscalationOpen } from '../utils/escalation.js';
+import { getPresignedDownloadUrl } from './upload.service.js';
 
 /**
  * FE-nothing-validates-keys-scoredata (19 ก.ย.) — ใช้ทั้ง S01 ส่งผล และ S04 amend
@@ -74,15 +76,144 @@ export async function verifyMatchResult(matchId : number , userid : number){
     return toVerifiedResultDto(ver_matchRes! , match!);
 }
 
-export async function disputeMatchResult(matchId : number , userId : number , reason : string){
+/**
+ * S03 โต้แย้งผล (มติ 26 ก.ย.) — เดิมรับแค่ข้อความ ผู้จัดเปิดเรื่องมาแล้วตัดสินไม่ได้
+ * ตอนนี้ผู้ค้านเสนอ "ผลที่ควรจะเป็น" มาพร้อมกันได้ ตรวจด้วยกฎเดียวกับตอนส่งผล (ensureScoreData)
+ * และแนบหลักฐานได้ โดย key ต้องเป็นของแมตช์นี้จริง — กันแนบ key ของแมตช์อื่นมาให้ผู้จัดเปิดดู
+ */
+/**
+ * OD-26 ข้อ 6 ขั้นสุดท้าย (มติ 26 ก.ย.) — ผู้จัดตัดสินแมตช์ที่ไม่มีใครส่งผลเลย
+ *
+ * วันนี้แมตช์แบบนี้ไม่มีทางออกใด ๆ ในระบบ แม้แต่แอดมิน: forfeit ใช้ได้เฉพาะตอน checkin_open
+ * ปิดเช็คอินก็ย้อนไม่ได้ จับสายใหม่ก็ติด BRACKET_IN_USE → ทัวร์นั้นปิดไม่ได้ตลอดกาล
+ *
+ * ใช้ได้ต่อเมื่อ: แมตช์อยู่ที่ `finished` · พ้นกำหนดแล้ว · ยังไม่มีผลที่ใช้ได้
+ * (มีผลค้างอยู่ = ไปใช้ทางอื่น — ยืนยัน/โต้แย้ง/auto-verify)
+ * "แพ้ทั้งคู่" เป็นทางเลือกที่สมมาตร ไม่มีใครได้ประโยชน์ จึงไม่มีประเด็นความโปร่งใส
+ * ส่วน "กรอกผล" ติดป้ายถาวรผ่าน submitted_role = 'organizer' และบังคับเหตุผลลง audit
+ */
+export async function organizerDecideMatch(matchId : number , orgUserId : number , input : OrganizerDecideInput){
+    const match = await MatchRepo.findById(matchId);
+    if(!match){
+        throw new AppError(404 , "MATCH_NOT_FOUND" , "ไม่พบแมตช์นี้");
+    }
+    if(match.match_status !== 'finished'){
+        throw new AppError(409 , "MATCH_NOT_FINISHED" ,
+            "ผู้จัดตัดสินผลได้เฉพาะแมตช์ที่แข่งจบแล้วและยังไม่มีผล" , { status : match.match_status });
+    }
+    if(!isSubmitEscalationOpen(match)){
+        throw new AppError(409 , "ESCALATION_NOT_OPEN" ,
+            `ยังไม่ถึงกำหนด — ผู้จัดตัดสินเองได้เมื่อพ้น ${SUBMIT_ESCALATION_HOURS} ชั่วโมงหลังแมตช์จบและยังไม่มีใครส่งผล` ,
+            { availableAt : new Date(match.actual_end_time!.getTime() + SUBMIT_ESCALATION_HOURS * 3600 * 1000).toISOString() });
+    }
+    const existing = await MatchResRepo.findmatchResultByMatchId(matchId);
+    if(existing && existing.match_result_status !== 'rejected'){
+        throw new AppError(409 , "MATCH_RESULT_EXISTS" ,
+            "แมตช์นี้มีผลอยู่แล้ว ให้ใช้การยืนยันหรือการโต้แย้งแทน" , { status : existing.match_result_status });
+    }
+
+    if(input.outcome === 'result'){
+        ensureScoreData(match , input.winnerTeamId! , input.scoreData!);
+    }
+    const ok = await MatchResRepo.organizerDecideMatch(match , orgUserId , input.reason , WIN_POINTS,
+        input.outcome === 'result'
+            ? { kind : 'result' , winnerId : input.winnerTeamId! , score : input.scoreData! }
+            : { kind : 'double_forfeit' });
+    if(!ok){
+        throw new AppError(409 , "MATCH_NOT_FINISHED" , "สถานะแมตช์เปลี่ยนไปแล้ว");
+    }
+
+    // ช่องว่างในสายที่เกิดจากการแพ้ทั้งคู่ — ทีมที่รออยู่ผ่านรอบ หรือแมตช์นั้นกลายเป็นแมตช์ตาย
+    await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
+    await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);
+
+    await NotificationService.notifyMatchResultParties(matchId, {
+        type : 'result_decided_by_organizer',
+        title : input.outcome === 'result' ? 'ผู้จัดบันทึกผลการแข่งขันให้' : 'ผู้จัดตัดสินให้แพ้ทั้งสองทีม',
+        message : `แมตช์ #${matchId}: ผู้จัดตัดสินเพราะไม่มีการส่งผลภายในกำหนด — เหตุผล: ${input.reason}`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    }, { includeOrganizer : false });
+
+    return { matchId , outcome : input.outcome , decidedBy : 'organizer' as const };
+}
+
+/**
+ * OD-26 ข้อ 7 (มติ 26 ก.ย.) — ผลที่ส่งแล้วไม่มีใครค้าน ระบบยืนยันให้เอง
+ *
+ * ทำไมต้องมี: คนที่ต้องกด verify ในโหมด onsite คือหัวหน้าทีมที่ "ชนะ" ซึ่งรู้อยู่แล้วว่าชนะ
+ * กดหรือไม่กดก็ไม่ได้อะไรเพิ่ม สายจึงค้างที่ขั้นที่ไม่มีใครเดือดร้อน · กฎนี้พลิกจาก
+ * "ทีมแพ้ต้องกดยอมรับ" เป็น "ทีมแพ้ต้องกดค้าน" — ช่องทางค้านเปิดไม่จำกัดเวลาตั้งแต่วินาทีที่ส่งผล
+ * และมีแจ้งเตือนไปหาทุกฝ่ายแล้ว การเงียบจึงถือเป็นการยอมรับได้
+ *
+ * ★ ใช้เฉพาะแมตช์ที่ "กรรมการ" เป็นคนส่งผล (onsite) — โหมด online คนส่งคือหัวหน้าทีมซึ่งเป็นคู่กรณี
+ *   ถ้า auto-verify ให้ด้วยจะเท่ากับรับรองคำอ้างของฝ่ายหนึ่งโดยไม่เคยมีคนกลางรับรองเลย
+ *   โหมด online ให้ไปใช้บันไดของข้อ 6 (กรรมการ → ผู้จัด) แทน
+ *
+ * ไม่มี scheduler ในระบบ จึงเช็คแบบ lazy ตอนมีคนมาเคาะประตูอยู่แล้ว (เปิดเช็คอิน/เริ่มแมตช์ถัดไป · ปิดทัวร์)
+ */
+export async function autoVerifyDue(matchIds : number[]): Promise<number[]>{
+    const verified : number[] = [];
+    for(const matchId of matchIds){
+        const res = await MatchResRepo.findmatchResultByMatchId(matchId);
+        if(!res || res.match_result_status !== 'submitted' || res.submitted_role !== 'referee' || res.submitted_at === null) continue;
+
+        const match = await MatchRepo.findById(matchId);
+        if(!match) continue;
+        if(Date.now() < (await autoVerifyDeadline(match, res.submitted_at)).getTime()) continue;
+
+        await MatchResRepo.verifyMatchResult(res.match_result_id , matchId , null , WIN_POINTS);
+        await Walkover.resolveIfOpponentWithdrawn(match.next_match_id);
+        await Walkover.resolveIfOpponentWithdrawn(match.loser_next_match_id);
+        await NotificationService.notifyMatchResultParties(matchId, {
+            type : 'result_auto_verified',
+            title : 'ผลการแข่งขันถูกยืนยันอัตโนมัติ',
+            message : `ไม่มีผู้โต้แย้งผลแมตช์ #${matchId} ระบบจึงยืนยันผลให้แล้ว หากไม่ถูกต้องยังโต้แย้งได้ตามกำหนดของทัวร์นาเมนต์`,
+            relatedEntityType : 'match', relatedEntityId : matchId,
+        });
+        verified.push(matchId);
+    }
+    return verified;
+}
+
+/** เส้นตาย = อันไหนถึงก่อนระหว่าง "ก่อนแมตช์ถัดไปเริ่ม 15 นาที" กับ "X ชม.หลังส่งผล" */
+async function autoVerifyDeadline(match : MatchRow , submittedAt : Date): Promise<Date>{
+    const cap = new Date(submittedAt.getTime() + AUTO_VERIFY_HOURS * 3600 * 1000);
+    let earliest = cap;
+    for(const nextId of [match.next_match_id, match.loser_next_match_id]){
+        if(nextId === null) continue;
+        const next = await MatchRepo.findById(nextId);
+        if(!next?.scheduled_time) continue;
+        const lead = new Date(next.scheduled_time.getTime() - AUTO_VERIFY_LEAD_MINUTES * 60 * 1000);
+        if(lead < earliest) earliest = lead;
+    }
+    return earliest;
+}
+
+export async function disputeMatchResult(matchId : number , userId : number , input : DisputeInput){
     const matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
-    await MatchResRepo.disputeMatchResult(matchRes!.match_result_id , matchId , userId , reason);
+    const match = (await MatchRepo.findById(matchId))!;
+
+    if(input.claimedWinnerTeamId !== undefined && input.claimedScoreData !== undefined){
+        ensureScoreData(match , input.claimedWinnerTeamId , input.claimedScoreData);
+    }
+    const evidenceKeys = input.evidenceKeys ?? null;
+    if(evidenceKeys !== null && evidenceKeys.some(k => !k.startsWith(`dispute_evidence/${matchId}/`))){
+        throw new AppError(400 , "VALIDATION_FAILED" , "ไฟล์หลักฐานไม่ใช่ของแมตช์นี้" ,
+            { fields : { evidenceKeys : 'ต้องเป็นไฟล์ที่อัปโหลดไว้สำหรับแมตช์นี้' } });
+    }
+
+    await MatchResRepo.disputeMatchResult(matchRes!.match_result_id , matchId , userId , {
+        reason : input.reason,
+        claimedWinnerTeamId : input.claimedWinnerTeamId ?? null,
+        claimedScore : input.claimedScoreData ?? null,
+        evidenceKeys,
+    });
 
     const disputeMatchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
     await NotificationService.notifyMatchResultParties(matchId, {
         type : 'result_disputed',
         title : 'มีการโต้แย้งผลการแข่งขัน',
-        message : `ผลการแข่งขันแมตช์ #${matchId} ถูกโต้แย้ง — เหตุผล: ${reason}`,
+        message : `ผลการแข่งขันแมตช์ #${matchId} ถูกโต้แย้ง — เหตุผล: ${input.reason}`,
         relatedEntityType : 'match', relatedEntityId : matchId,
     }, { exceptUserId : userId, includeOrganizer : true });
     return toDisputeResultDto(disputeMatchRes!);
@@ -210,6 +341,35 @@ async function disputeWindowOf(matchRes : { match_id : number; match_result_stat
     const tour = match === null ? null : await findTournamentById(match.tournament_id);
     const hours = tour?.dispute_window_hours ?? 24;
     return { disputeClosesAt : new Date(matchRes.verified_at.getTime() + hours * 3600 * 1000).toISOString() , resultChangeable };
+}
+
+/**
+ * S03b (มติ 26 ก.ย.) — ผู้จัดต้องอ่านเรื่องที่ถูกค้านได้ก่อนตัดสิน
+ * เดิมข้อมูลนี้ถูกเก็บลงฐานข้อมูลแต่ไม่มี endpoint ไหนคืนออกมาเลย ผู้จัดเห็นแค่ข้อความในแจ้งเตือน
+ * หลักฐานคืนเป็น presigned URL เสมอ ไม่ส่ง S3 key ดิบ (กฎรวม Part 3 ข้อ 11)
+ */
+export async function getDispute(matchId : number , userId : number){
+    const row = await MatchResRepo.findDisputeByMatchId(matchId);
+    if(!row || row.dispute_raised_at === null){
+        throw new AppError(404 , "NO_ACTIVE_DISPUTE" , "แมตช์นี้ไม่มีข้อโต้แย้ง");
+    }
+    if(!(await canSeeUnfinishedResult(matchId , userId))){
+        throw new AppError(403 , "WRONG_SUBMITTER_ROLE" , "คุณไม่มีสิทธิ์ดูข้อโต้แย้งของแมตช์นี้");
+    }
+
+    const evidence = await Promise.all((row.dispute_evidence ?? []).map(key => getPresignedDownloadUrl(key)));
+    return {
+        matchId,
+        status : row.match_result_status,
+        reason : row.dispute_reason,
+        raisedBy : row.dispute_raised_by === null ? null : { id : row.dispute_raised_by , fullName : row.raised_by_name },
+        raisedAt : row.dispute_raised_at.toISOString(),
+        claimedWinnerTeamId : row.dispute_claimed_winner_team_id,
+        claimedScoreData : row.dispute_claimed_score,
+        evidence,
+        resolution : row.dispute_resolution,
+        resolvedAt : row.dispute_resolved_at?.toISOString() ?? null,
+    };
 }
 
 async function canSeeUnfinishedResult(matchId : number , userId : number): Promise<boolean>{

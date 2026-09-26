@@ -535,7 +535,12 @@ export async function completeTournament(tournament: TournamentRow, userId: numb
     if (tournament.tournament_status !== 'public' && tournament.tournament_status !== 'private') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ปิดได้เฉพาะทัวร์ที่ผ่านการอนุมัติแล้ว');
     }
-    const unfinished = await TournamentRepo.findUnfinishedMatchIds(tournament.tournament_id);
+    // ข้อ 7 — จังหวะสุดท้ายที่มีคนมาเคาะประตู: รอบชิงและ round robin ไม่มีแมตช์ถัดไปมากระตุ้น
+    // ผลที่กรรมการส่งไว้แต่ไม่มีใครยืนยันจะถูกยืนยันตรงนี้ ปิดทัวร์จึงไม่ค้างเพราะคนลืมกดปุ่มเดียว
+    let unfinished = await TournamentRepo.findUnfinishedMatchIds(tournament.tournament_id);
+    if((await MatchResultService.autoVerifyDue(unfinished.map(m => m.match_id))).length > 0){
+        unfinished = await TournamentRepo.findUnfinishedMatchIds(tournament.tournament_id);
+    }
     if (unfinished.length > 0) {
         throw new AppError(409, 'MATCHES_UNFINISHED', `ยังมีแมตช์ที่ไม่จบ ${unfinished.length} แมตช์ ปิดทัวร์ไม่ได้`,
             { matches: unfinished.map(m => ({ id: m.match_id, status: m.match_status })) });

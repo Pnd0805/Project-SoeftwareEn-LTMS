@@ -27,8 +27,19 @@ export async function updateVerifyMatchResult(req : Request , res : Response){
 export async function updateDisputeMatchResult(req : Request , res : Response){
     const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
     const userId = req.user!.user_id
-    const reason = req.body['reason'];
-    return res.status(200).json(await MatchResService.disputeMatchResult(matchId , userId , reason));
+    return res.status(200).json(await MatchResService.disputeMatchResult(matchId , userId , req.body));
+}
+
+/** S06b — ผู้จัดตัดสินแมตช์ที่ไม่มีใครส่งผล (บันไดขั้นสุดท้ายของข้อ 6) */
+export async function organizerDecideMatch(req : Request , res : Response){
+    const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
+    return res.status(200).json(await MatchResService.organizerDecideMatch(matchId , req.user!.user_id , req.body));
+}
+
+/** S03b — ผู้จัด/กรรมการ/หัวหน้าทีม อ่านรายละเอียดข้อโต้แย้งก่อนตัดสิน */
+export async function getDispute(req : Request , res : Response){
+    const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
+    return res.status(200).json(await MatchResService.getDispute(matchId , req.user!.user_id));
 }
 
 export async function updateResolveMatchResult(req : Request , res : Response){

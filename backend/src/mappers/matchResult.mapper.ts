@@ -72,6 +72,8 @@ export type verifiedResult = {
     amendReason : string | null,
     isWalkover : boolean,   // ชนะบาย (ทีมถอน/ไม่มาแข่ง) — ไม่มีสกอร์จริง (GUIDE/11 §10.4)
     status : MatchResultRow['match_result_status'],   // submitted/disputed/rejected เห็นได้เฉพาะผู้เกี่ยวข้อง (S05)
+    submittedRole : MatchResultRow['submitted_role'],
+    isAutoVerified : boolean,
     verifiedAt : string | null
 }
 
@@ -90,6 +92,10 @@ export function toVerifiedResult(rows : MatchResultRow): verifiedResult{
         amendReason : rows.amend_reason,
         isWalkover : rows.match_result_status === 'walkover',
         status : rows.match_result_status,
+        // ป้ายที่ทุกคนเห็น — 'organizer' คือผู้จัดกรอกผลเองเพราะไม่มีใครส่งผลภายในกำหนด (OD-26 ข้อ 6)
+        submittedRole : rows.submitted_role,
+        // ระบบยืนยันให้เองเพราะไม่มีผู้โต้แย้ง (OD-26 ข้อ 7) — ต่างจากคนกดยืนยัน
+        isAutoVerified : rows.verified_at !== null && rows.verified_by_user_id === null,
         verifiedAt : rows.verified_at?.toISOString() ?? null
     }
 }

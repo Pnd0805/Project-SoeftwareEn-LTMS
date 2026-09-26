@@ -296,6 +296,9 @@ export type MatchResultRow = {
     submitted_at : Date | null,        // เวลาส่งผลครั้งล่าสุด (migration 026) — created_at ไม่ขยับตอนส่งซ้ำ
     match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected' | 'walkover',
     dispute_reason : string| null,
+    dispute_claimed_winner_team_id : number | null,          // ผลที่ผู้ค้านเสนอว่าถูกต้อง (migration 027) — ไม่บังคับกรอก
+    dispute_claimed_score : Record<string, number> | null,
+    dispute_evidence : string[] | null,                      // S3 object key — ส่งออกเป็น presigned URL เสมอ
     dispute_raised_by : number| null,
     dispute_raised_at : Date| null,
     dispute_resolved_by : number| null,
