@@ -76,9 +76,13 @@ export async function openCheckinMatch(req: Request, res: Response){
     res.status(200).json(await MatchService.openCheckinMatch(matchId, req.user.user_id));
 }
 
+/** M18 — สิทธิ์ตรวจใน service: กรรมการของแมตช์ปิดได้เฉพาะตอนยังไม่มีใครเช็คอิน (มติ 27 ก.ย.) */
 export async function closeCheckinMatch(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
     const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
-    res.status(200).json(await MatchService.closeCheckinMatch(matchId));
+    res.status(200).json(await MatchService.closeCheckinMatch(matchId, req.user.user_id));
 }
 
 export async function forfeitMatch(req: Request, res: Response){

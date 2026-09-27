@@ -261,6 +261,16 @@ export async function openMatchCheckin(matchId: number): Promise<boolean> {
  * นับเฉพาะ "คนที่ทีมส่งลงแข่งในทัวร์นี้" (application_players ของใบสมัครที่อนุมัติแล้ว)
  * ★ เดิมนับสมาชิกทีมคนไหนก็ได้ — คนที่ไม่ได้ถูกส่งลงแข่งจึงทำให้ครบ min_members ได้ (มติ 19 ก.ย. 2569)
  */
+/**
+ * เช็คอินทุกแถวของแมตช์ ไม่สนสถานะและไม่สนทีม — ใช้ตอบว่า "ปิดเช็คอินแล้วจะมีอะไรถูกลบไหม"
+ * ปิดเช็คอินลบทุกแถวทิ้ง (walkover.repo.closeCheckin) จำนวนนี้จึงเท่ากับความเสียหายถ้ากดพลาด
+ */
+export async function countCheckins(matchId: number): Promise<number> {
+    const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        'SELECT COUNT(*) AS cnt FROM match_checkins WHERE match_id = ?', [matchId]);
+    return Number(rows[0]?.cnt ?? 0);
+}
+
 export async function countSuccessfulCheckins(matchId: number, teamId: number | null): Promise<number> {
     if (teamId === null) return 0;
     const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(

@@ -184,8 +184,8 @@ export async function applyOrganizerForfeit(match : MatchRow, countA : number, c
 }
 
 /** M18 — ORG ปิดเช็คอินกลับเป็น scheduled (เช่น ฝนตก) เพื่อไปเลื่อนด้วย M06 · เช็คอินรอบนี้ถูกล้าง */
-export async function closeCheckin(matchId : number): Promise<boolean>{
-    return WalkoverRepo.closeCheckin(matchId);
+export async function closeCheckin(matchId : number, userId : number): Promise<boolean>{
+    return WalkoverRepo.closeCheckin(matchId, userId);
 }
 
 function opponentOf(match : MatchRow, teamId : number): number | null{

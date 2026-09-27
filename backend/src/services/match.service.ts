@@ -258,12 +258,38 @@ export async function openCheckinMatch(matchId: number, userId: number) {
 }
 
 /** M18 — ORG ปิดเช็คอิน (checkin_open → scheduled, ล้างเช็คอิน) เพื่อไปเลื่อนด้วย M06 — requireOrganizerOfMatch เช็คสิทธิ์แล้ว */
-export async function closeCheckinMatch(matchId: number) {
+/**
+ * M18 ปิดเช็คอิน — เป็นการ "ถอน M09 กลับ" ไม่ใช่ขั้นถัดไป (ขั้นถัดไปคือ M10 เริ่มแมตช์)
+ * และมันลบ `match_checkins` ทุกแถวทิ้ง ผู้เล่นที่เช็คอินแล้วต้องทำใหม่หมด
+ *
+ * มติ 27 ก.ย. — กรรมการของแมตช์ปิดได้ **เฉพาะตอนที่ยังไม่มีใครเช็คอิน**
+ *   เหตุผลที่ต้องให้ปิดได้เลย : ตั้งแต่กรรมการเปิดเช็คอินเองได้ (M09) ก็ต้องถอนความพลาดของตัวเองได้
+ *                              เช่น เปิดผิดแมตช์ตอนคอร์ตติดกัน ไม่งั้นจุดค้างแค่ย้ายที่
+ *   เหตุผลที่ต้องจำกัด       : ปุ่มนี้ทำลายงานของคนอื่น การให้อำนาจล้างเช็คอิน 10 แถวโดยไม่มี
+ *                              ขั้นยืนยันใด ๆ ไม่สมกับ "ถอนความพลาดของตัวเอง" — มีคนเช็คอินแล้ว
+ *                              ให้เป็นเรื่องของผู้จัด ซึ่งรับผิดชอบตารางทั้งทัวร์อยู่แล้ว
+ */
+export async function closeCheckinMatch(matchId: number, userId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
-    if (!(await Walkover.closeCheckin(matchId))) {
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT",
+            "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ปิดเช็คอินได้");
+    }
+    if (!isOrganizer) {
+        const checkins = await MatchRepo.countCheckins(matchId);
+        if (checkins > 0) {
+            throw new AppError(409, "CHECKIN_NOT_EMPTY",
+                "มีผู้เล่นเช็คอินเข้ามาแล้ว การปิดเช็คอินจะลบรายการทั้งหมด ต้องให้ผู้จัดการแข่งขันเป็นผู้ปิด",
+                { checkins });
+        }
+    }
+
+    if (!(await Walkover.closeCheckin(matchId, userId))) {
         throw new AppError(409, "INVALID_STATUS_TRANSITION", "ปิดเช็คอินได้เฉพาะแมตช์ที่กำลังเปิดเช็คอิน (สถานะ checkin_open) เท่านั้น");
     }
     return { id: matchId, status: 'scheduled' as const, checkinOpenAt: null };
