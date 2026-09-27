@@ -208,20 +208,47 @@ describe('scheduleMatch (M06)', () => {
 describe('openCheckinMatch (M09)', () => {
   const ORG = 9003;         // = organizerTournament.requested_by_user_id
   const REF = 9002;
+  // แมตช์ที่ตารางครบ — ด่าน fixture (มติ 27 ก.ย.) กันแมตช์ที่ยังไม่มีเวลา/สนามไว้ก่อนทุกด่านอื่น
+  const scheduled = (o: Record<string, unknown> = {}) =>
+    match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A', ...o });
   beforeEach(() => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(organizerTournament);
     vi.mocked(isRefereeOfMatch).mockReset().mockResolvedValue(false);
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled());
+  });
+
+  /**
+   * FE-open-checkin-has-no-fixture-gate — แมตช์ที่ `createBracket` สร้างมาไม่มีเวลาและสนาม
+   * และไม่มีจุดไหนบังคับให้ผู้จัดกรอก · เดิมเปิดเช็คอินได้เลย แล้วพอพ้น `scheduled` ก็แก้ย้อนไม่ได้อีก
+   * เกิดขึ้นจริงในฐาน dev: แมตช์ 10/11/12 `completed` โดยเวลาและสนามเป็น NULL
+   */
+  it('409 SCHEDULE_INCOMPLETE listing exactly what is missing, before anything else happens', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: null, scheduled_end_time: null, venue: null }));
+
+    const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'SCHEDULE_INCOMPLETE');
+    expect(err.extra).toEqual({ missing: ['scheduledTime', 'scheduledEndTime', 'venue'] });
+    expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
+    // แจ้งเตือนเรียกคืนไม่ได้ — ผู้เล่นต้องไม่ได้ "เปิดเช็คอินแล้ว" ของแมตช์ที่ไม่มีเวลา
+    expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
+  });
+
+  // ด่านนี้ใช้กับกรรมการด้วย ไม่ใช่แค่ผู้จัด (สิทธิ์ตรวจก่อน ตารางตรวจหลัง)
+  it('409 SCHEDULE_INCOMPLETE naming only the one field that is missing', async () => {
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled({ venue: null }));
+
+    const err = await expectAppError(matchService.openCheckinMatch(1, REF), 409, 'SCHEDULE_INCOMPLETE');
+    expect(err.extra).toEqual({ missing: ['venue'] });
   });
 
   it('returns INVALID_STATUS_TRANSITION when the match is no longer scheduled', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'in_progress' }));
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled({ match_status: 'in_progress' }));
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(false);
 
     await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'INVALID_STATUS_TRANSITION');
   });
 
   it('opens check-in for a scheduled match', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
 
     await expect(matchService.openCheckinMatch(1, ORG)).resolves.toMatchObject({ id: 1, status: 'checkin_open' });
@@ -234,7 +261,6 @@ describe('openCheckinMatch (M09)', () => {
    * ทั้งที่กรรมการยืนอยู่หน้าโต๊ะและคุมทุกอย่างข้างในหน้าต่างนี้อยู่แล้ว
    */
   it('lets the referee of this match open it too', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
     vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
 
@@ -243,8 +269,6 @@ describe('openCheckinMatch (M09)', () => {
   });
 
   it('403 for a referee of the tournament who is not on this match, and for anyone else', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
-
     await expectAppError(matchService.openCheckinMatch(1, REF), 403, 'NOT_MATCH_PARTICIPANT');
     await expectAppError(matchService.openCheckinMatch(1, 12345), 403, 'NOT_MATCH_PARTICIPANT');
     expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
@@ -252,7 +276,7 @@ describe('openCheckinMatch (M09)', () => {
 
   // ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเปิดเช็คอินทับแมตช์ต้นทางที่ยังไม่สรุป และต้องบอกว่าติดแมตช์ไหน
   it('409 MATCH_TEAMS_INCOMPLETE naming the upstream matches that are still open', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ team_b_id: null }));
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled({ team_b_id: null }));
     vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([
       { match_id: 12, match_status: 'in_progress' }, { match_id: 13, match_status: 'result_rejected' },
     ] as never);
@@ -266,7 +290,6 @@ describe('openCheckinMatch (M09)', () => {
   });
 
   it('409 PREDECESSOR_DISPUTED when both teams are in but an upstream match is disputed', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([{ match_id: 12, match_status: 'disputed' }] as never);
 
     const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'PREDECESSOR_DISPUTED');
@@ -275,7 +298,6 @@ describe('openCheckinMatch (M09)', () => {
   });
 
   it('an upstream match that is merely unfinished does not block a match whose teams are already set', async () => {
-    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([{ match_id: 12, match_status: 'in_progress' }] as never);
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
 
