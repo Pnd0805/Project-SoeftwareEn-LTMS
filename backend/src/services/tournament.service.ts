@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import * as AdminScopeRepo from '../repositories/adminScope.repo.js';
+import * as TournamentRefereeRepo from '../repositories/tournamentReferee.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as DepartmentRepo from '../repositories/department.repo.js';
 import * as FacultyRepo from '../repositories/faculty.repo.js';
@@ -189,6 +190,26 @@ async function getVisibleTournament(tournamentId: number, userId?: number): Prom
     if (userId !== undefined) {
         const admin = await AdminScopeRepo.findAdminByUserId(userId);
         if (admin && canManageTournament(admin, tournament)) return tournament;
+    }
+
+    /**
+     * FE-referee-cannot-read-invited-tournament (มติ 27 ก.ย. ทางเลือก ก) — กรรมการที่ถูกเชิญอ่านได้
+     *
+     * ลำดับที่ตัวสินค้ากำหนดเองคือ approve → แต่งตั้งกรรมการ → publish คำเชิญจึงมาถึงตอนทัวร์ยังเป็น
+     * `private` เกือบทุกครั้ง · เดิมกรรมการไม่อยู่ในรายชื่อผู้อ่าน หน้าที่แจ้งเตือน C1 ลิงก์ไปให้จึงตอบ 404
+     * จอบอกว่า "ไม่มีทัวร์นี้" ทั้งที่จดหมายในมือเพิ่งเอ่ยชื่อทัวร์นั้น — และกรรมการต้องตัดสินใจรับ/ไม่รับ
+     * โดยไม่เห็นว่าจะไปตัดสินอะไร ไม่รู้กีฬา วันแข่ง หรือสนาม
+     *
+     * เอาแถวล่าสุดเพราะคนหนึ่งอาจถูกเชิญ–ถอด–เชิญใหม่ · `removed_at` แล้วหมดสิทธิ์อ่าน
+     * ไม่กรอง `invitation_status` — คนที่ยัง `pending` คือคนที่ต้องเห็นที่สุด และคนที่ปฏิเสธไปแล้วก็ไม่เสียหาย
+     * เช็คท้ายสุดเพราะเป็นคิวรีเพิ่ม และเส้นทางที่พบบ่อยกว่า (ผู้ยื่นคำขอ/แอดมิน) จบไปก่อนแล้ว
+     *
+     * ★ ตัวนี้กั้น 2 เส้น: `GET /tournaments/:id` (C07) และ `GET /tournaments/:id/eligibility-rules` (C17)
+     *   เปิดทั้งคู่โดยเจตนา — กฎว่าใครลงแข่งได้เป็นข้อมูลที่กรรมการควรรู้ก่อนรับงาน
+     */
+    if (userId !== undefined && tournament.tournament_status !== 'auto_deleted') {
+        const refereeRow = await TournamentRefereeRepo.findLatestByTournamentAndUser(tournament.tournament_id, userId);
+        if (refereeRow && refereeRow.removed_at === null) return tournament;
     }
 
     throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');

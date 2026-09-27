@@ -17,6 +17,9 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   findTournamentById: vi.fn(),
 }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn() }));
+vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
+  findLatestByTournamentAndUser: vi.fn(async () => null),
+}));
 vi.mock('../../repositories/application.repo.js', () => ({ findEligibilityRules: vi.fn(async () => []) }));
 vi.mock('../../repositories/department.repo.js', () => ({}));
 vi.mock('../../repositories/faculty.repo.js', () => ({ findFacultyById: vi.fn(async (id: number) => id < 100 ? { faculty_id: id, name: 'F' } : null) }));
@@ -30,6 +33,7 @@ import * as Service from '../tournament.service.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import * as AdminScopeRepo from '../../repositories/adminScope.repo.js';
 import * as ApplicationRepo from '../../repositories/application.repo.js';
+import * as TournamentRefereeRepo from '../../repositories/tournamentReferee.repo.js';
 import type { AdminScopeRow, TournamentRow } from '../../types/db.js';
 
 const facultyAdmin = { scope_type: 'faculty', faculty_id: 3 } as AdminScopeRow;
@@ -153,6 +157,75 @@ describe('getEligibilityRules (C17) — requester sees their own pending/rejecte
     await expect(Service.getEligibilityRules(50, 10)).rejects.toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
     await expect(Service.getEligibilityRules(50)).rejects.toMatchObject({ status: 404 });
   });
+  /**
+   * FE-referee-cannot-read-invited-tournament (มติ 27 ก.ย. ทางเลือก ก)
+   * ลำดับของสินค้าคือ approve → แต่งตั้งกรรมการ → publish คำเชิญจึงมาถึงตอนทัวร์ยัง `private` เกือบทุกครั้ง
+   * เดิมกรรมการได้ 404 จากหน้าที่แจ้งเตือนลิงก์ไปให้เอง และต้องตัดสินใจรับงานโดยไม่เห็นว่าจะไปตัดสินอะไร
+   */
+  describe('กรรมการที่ถูกเชิญ', () => {
+    const REF = 9002;
+    const refereeRow = (o: Record<string, unknown> = {}) =>
+      ({ tournament_referee_id: 1, tournament_id: 50, user_id: REF, invitation_status: 'pending', removed_at: null, ...o }) as never;
+
+    beforeEach(() => {
+      vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(null);
+      vi.mocked(ApplicationRepo.findEligibilityRules).mockResolvedValue([]);
+      vi.mocked(TournamentRefereeRepo.findLatestByTournamentAndUser).mockReset().mockResolvedValue(null);
+    });
+
+    it.each(['private', 'pending_approval', 'rejected'] as const)('อ่านทัวร์ %s ที่ตัวเองถูกเชิญได้', async (status) => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: status, requested_by_user_id: 9 } as never));
+      vi.mocked(TournamentRefereeRepo.findLatestByTournamentAndUser).mockResolvedValue(refereeRow());
+
+      await expect(Service.getEligibilityRules(50, REF)).resolves.toEqual({ items: [] });
+      expect(TournamentRefereeRepo.findLatestByTournamentAndUser).toHaveBeenCalledWith(50, REF);
+    });
+
+    // คนที่ยัง pending คือคนที่ต้องเห็นที่สุด — เขายังไม่ได้ตัดสินใจ
+    it.each(['pending', 'accepted', 'rejected'] as const)('อ่านได้ทุกสถานะคำเชิญ (%s)', async (invitation) => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'private', requested_by_user_id: 9 } as never));
+      vi.mocked(TournamentRefereeRepo.findLatestByTournamentAndUser).mockResolvedValue(refereeRow({ invitation_status: invitation }));
+
+      await expect(Service.getEligibilityRules(50, REF)).resolves.toEqual({ items: [] });
+    });
+
+    it('ถูกถอดแล้ว (removed_at) อ่านไม่ได้', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'private', requested_by_user_id: 9 } as never));
+      vi.mocked(TournamentRefereeRepo.findLatestByTournamentAndUser).mockResolvedValue(refereeRow({ removed_at: new Date() }));
+
+      await expect(Service.getEligibilityRules(50, REF)).rejects.toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
+    });
+
+    it('คนที่ไม่มีแถวกรรมการเลยยังได้ 404 เหมือนเดิม', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'private', requested_by_user_id: 9 } as never));
+
+      await expect(Service.getEligibilityRules(50, 12345)).rejects.toMatchObject({ status: 404 });
+    });
+
+    // ทัวร์ที่ถูกลบอัตโนมัติต้องซ่อนจากทุกคน แม้ผู้ยื่นคำขอเองก็ไม่เห็น — กรรมการก็ต้องไม่เห็น
+    it('ทัวร์ auto_deleted ซ่อนจากกรรมการด้วย และไม่เสียคิวรีไปถามแถวกรรมการ', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'auto_deleted', requested_by_user_id: 9 } as never));
+      vi.mocked(TournamentRefereeRepo.findLatestByTournamentAndUser).mockResolvedValue(refereeRow());
+
+      await expect(Service.getEligibilityRules(50, REF)).rejects.toMatchObject({ status: 404 });
+      expect(TournamentRefereeRepo.findLatestByTournamentAndUser).not.toHaveBeenCalled();
+    });
+
+    it('ทัวร์ public ไม่ต้องถามแถวกรรมการเลย — จบที่ด่านแรก', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public' } as never));
+
+      await expect(Service.getEligibilityRules(50, REF)).resolves.toEqual({ items: [] });
+      expect(TournamentRefereeRepo.findLatestByTournamentAndUser).not.toHaveBeenCalled();
+    });
+
+    it('ผู้ยื่นคำขอจบที่ด่านของตัวเอง ไม่เสียคิวรีเพิ่ม', async () => {
+      vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'private', requested_by_user_id: 9 } as never));
+
+      await expect(Service.getEligibilityRules(50, 9)).resolves.toEqual({ items: [] });
+      expect(TournamentRefereeRepo.findLatestByTournamentAndUser).not.toHaveBeenCalled();
+    });
+  });
+
   it('auto_deleted stays hidden even from the owner', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'auto_deleted', requested_by_user_id: 9 } as never));
     vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(null);
