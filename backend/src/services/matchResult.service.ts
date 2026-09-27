@@ -335,7 +335,10 @@ export async function getVerifiedResult(matchId : number , userId? : number){
         }
     }
 
-    return { ...toVerifiedResult(matchRes), ...await disputeWindowOf(matchRes) };
+    // 6 ฟิลด์ข้อโต้แย้งเปิดให้คนกลุ่มเดียวกับ S03b เท่านั้น (ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม)
+    // ผลที่ยังไม่ final ผ่านด่านบนมาแล้วว่าเป็นผู้เกี่ยวข้อง จึงไม่ต้องถามซ้ำ
+    const canSeeDispute = !isFinal || (userId !== undefined && await canSeeUnfinishedResult(matchId , userId));
+    return { ...toVerifiedResult(matchRes , canSeeDispute) , ...await disputeWindowOf(matchRes) };
 }
 
 /**

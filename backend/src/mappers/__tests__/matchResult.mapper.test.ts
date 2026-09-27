@@ -38,6 +38,10 @@ function makeResultRow(overrides: Partial<MatchResultRow> = {}): MatchResultRow 
         amend_reason: null,
         amended_at: null,
         created_at: new Date('2026-05-10T10:30:00.000Z'),
+        submitted_at: null,
+        dispute_claimed_winner_team_id: null,
+        dispute_claimed_score: null,
+        dispute_evidence: null,
         ...overrides,
     };
 }
@@ -199,6 +203,56 @@ describe('toVerifiedResult', () => {
             submittedRole: makeResultRow().submitted_role,   // OD-26 ข้อ 6 — 'organizer' คือป้าย "ผู้จัดกรอกผลเอง"
             isAutoVerified: false,                           // OD-26 ข้อ 7 — verified_by_user_id ไม่ใช่ NULL = คนกดยืนยัน
             verifiedAt: '2026-05-10T11:00:00.000Z',
+        });
+    });
+
+    /**
+     * FE-dispute-resolution-not-returned (มติ 27 ก.ย.) — ทั้ง 6 ฟิลด์เก็บลงฐานแล้วแต่ไม่มีใครอ่านกลับ
+     * ★ ส่งเฉพาะคนกลุ่มเดียวกับ S03b — S05 เป็น endpoint สาธารณะ ถ้าใส่ทุกคนก็เท่ากับเปิดหลังบ้าน
+     *   ให้เหตุผลการค้าน (ซึ่งอาจกล่าวหาผู้เล่นตรง ๆ) และชื่อคนค้าน กลายเป็นข้อมูลสาธารณะ
+     */
+    describe('6 ฟิลด์ข้อโต้แย้ง', () => {
+        const disputed = () => makeResultRow({
+            match_result_status: 'verified',
+            verified_at: VERIFIED_AT,
+            dispute_reason: 'กรรมการนับคะแนนผิดเซ็ตสาม',
+            dispute_raised_by: 4001,
+            dispute_raised_at: new Date('2026-05-10T12:00:00Z'),
+            dispute_resolution: 'ตรวจคลิปแล้วผลเดิมถูกต้อง',
+            dispute_resolved_by: 9003,
+            dispute_resolved_at: new Date('2026-05-11T09:00:00Z'),
+        });
+
+        const KEYS = ['disputeReason', 'disputeRaisedBy', 'disputeRaisedAt',
+                      'disputeResolution', 'disputeResolvedBy', 'disputeResolvedAt'];
+
+        it('ไม่มีคีย์เลยเมื่อคนดูไม่มีสิทธิ์ — ไม่ใช่คืน null (null แปลว่า "ไม่มีข้อโต้แย้ง" คนละความหมาย)', () => {
+            const dto = toVerifiedResult(disputed(), false);
+            for (const key of KEYS) expect(dto).not.toHaveProperty(key);
+            expect(JSON.stringify(dto)).not.toContain('กรรมการนับคะแนนผิด');
+            expect(JSON.stringify(dto)).not.toContain('4001');
+        });
+
+        it('ค่าเริ่มต้นคือไม่ส่ง — ลืมส่งพารามิเตอร์ต้องไม่กลายเป็นการเปิดเผย', () => {
+            const dto = toVerifiedResult(disputed());
+            for (const key of KEYS) expect(dto).not.toHaveProperty(key);
+        });
+
+        it('ส่งครบทั้ง 6 ฟิลด์เมื่อคนดูเป็นผู้เกี่ยวข้อง และแปลงเวลาเป็น ISO', () => {
+            const dto = toVerifiedResult(disputed(), true);
+            expect(dto).toMatchObject({
+                disputeReason: 'กรรมการนับคะแนนผิดเซ็ตสาม',
+                disputeRaisedBy: 4001,
+                disputeRaisedAt: '2026-05-10T12:00:00.000Z',
+                disputeResolution: 'ตรวจคลิปแล้วผลเดิมถูกต้อง',
+                disputeResolvedBy: 9003,
+                disputeResolvedAt: '2026-05-11T09:00:00.000Z',
+            });
+        });
+
+        it('ผลที่ไม่เคยถูกค้าน: ผู้เกี่ยวข้องได้คีย์ครบแต่เป็น null ทั้งหมด', () => {
+            const dto = toVerifiedResult(makeResultRow({ match_result_status: 'verified', verified_at: VERIFIED_AT }), true);
+            for (const key of KEYS) expect(dto).toHaveProperty(key, null);
         });
     });
 

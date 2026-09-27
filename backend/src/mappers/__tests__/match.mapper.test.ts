@@ -32,6 +32,7 @@ function makeListRow(overrides: Partial<MatchListRow> = {}): MatchListRow {
     scheduled_end_time: END,
     venue: 'Hall A',
     match_status: 'scheduled',
+    livestream_url: null,
     team_a_id: 11,
     team_a_name: 'Lions',
     team_a_sport_type_id: 3,
@@ -58,9 +59,12 @@ function makeDetailRow(overrides: Partial<MatchDetailRow> = {}): MatchDetailRow 
     scheduled_end_time: END,
     venue: 'Hall A',
     checkin_open_at: CHECKIN_OPEN,
+    started_at: null,
+    actual_end_time: null,
     match_status: 'checkin_open',
     mode: 'online',
     room_code: 'ZOOM-4821',
+    livestream_url: null,
     team_a_name: 'Lions',
     team_a_sport_type_id: 3,
     team_b_name: 'Tigers',
@@ -84,6 +88,7 @@ function makeCheckinRow(overrides: Partial<MatchCheckinListRow> = {}): MatchChec
     document_type: null,
     document_s3_key: null,
     note: null,
+    rejection_reason: null,
     checked_in_at: CHECKED_IN,
     ...overrides,
   };
@@ -193,6 +198,7 @@ describe('toMatchListItemDto', () => {
         'scheduledEndTime',
         'venue',
         'status',
+        'livestreamUrl',
         'nextMatchId',
         'loserNextMatchId',
         'resultStatus',
@@ -213,6 +219,31 @@ describe('toMatchListItemDto', () => {
 });
 
 // ---------- toMatchDetailDto ----------
+
+/**
+ * FE-replay-link-write-only — E12 เขียน `matches.livestream_url` ตั้งแต่ schema แรก
+ * แต่ไม่มี route ไหนอ่านกลับ ลิงก์จึงหายทุกครั้งที่โหลดหน้าใหม่ · สาธารณะ ต่างจาก roomCode ที่จำกัดผู้ดู
+ */
+describe('livestreamUrl (M04 + M05)', () => {
+  const URL = 'https://www.youtube.com/watch?v=abc123';
+
+  it('the match list carries it', () => {
+    expect(toMatchListItemDto(makeListRow({ livestream_url: URL })).livestreamUrl).toBe(URL);
+    expect(toMatchListItemDto(makeListRow()).livestreamUrl).toBeNull();
+  });
+
+  it('the match detail carries it', () => {
+    expect(toMatchDetailDto(makeDetailRow({ livestream_url: URL })).livestreamUrl).toBe(URL);
+    expect(toMatchDetailDto(makeDetailRow()).livestreamUrl).toBeNull();
+  });
+
+  // ★ ไม่ผูกกับ canSeeRoomCode — ลิงก์ถ่ายทอด/รีเพลย์มีไว้ให้คนดู ต่างจากรหัสห้องที่ปิดไว้
+  it('is not gated like the room code: a viewer with no room-code access still gets the link', () => {
+    const dto = toMatchDetailDto(makeDetailRow({ livestream_url: URL, room_code: 'ZOOM-1' }), false);
+    expect(dto.livestreamUrl).toBe(URL);
+    expect(dto.roomCode).toBeNull();
+  });
+});
 
 describe('toMatchDetailDto', () => {
   it('maps DB columns to DTO fields', () => {
@@ -313,6 +344,7 @@ describe('toMatchDetailDto', () => {
         'status',
         'mode',
         'roomCode',
+        'livestreamUrl',
         'nextMatchId',
         'loserNextMatchId',
         'resultStatus',
@@ -365,8 +397,24 @@ describe('toCheckinListItemDto', () => {
       documentType: null,
       documentUrl: null,
       note: null,
+      rejectionReason: null,
       checkedInAt: CHECKED_IN,
     });
+  });
+
+  /**
+   * FE-checkin-reject-reason-not-listed — M15 บังคับให้กรอกเหตุผลและ M20 คืนให้เจ้าตัวอยู่แล้ว
+   * แต่ M13 ไม่เคยคืน กรรมการจึงไม่เห็นเหตุผลของแถวไหนเลย รวมถึงเหตุผลที่ตัวเองเพิ่งพิมพ์
+   * (คนละคอลัมน์กับ `note` ที่เป็นเหตุผลการ "อนุโลมให้ผ่าน" — ต้องไม่ปนกัน)
+   */
+  it('carries the rejection reason, separately from the manual-check-in note', () => {
+    const dto = toCheckinListItemDto(makeCheckinRow({
+      match_checkin_status: 'rejected',
+      rejection_reason: 'รูปบัตรไม่ตรงกับผู้เล่น',
+      note: 'กรรมการอนุโลมรอบก่อน',
+    }));
+    expect(dto.rejectionReason).toBe('รูปบัตรไม่ตรงกับผู้เล่น');
+    expect(dto.note).toBe('กรรมการอนุโลมรอบก่อน');
   });
 
   it('defaults documentUrl to null when no URL is passed', () => {
@@ -455,6 +503,7 @@ describe('toCheckinListItemDto', () => {
         'documentType',
         'documentUrl',
         'note',
+        'rejectionReason',
         'checkedInAt',
       ].sort(),
     );
