@@ -238,6 +238,23 @@ export type EligibilityRuleRow = {
     rule_value: number;
 };
 
+/**
+ * กฎของหลายทัวร์ในคิวรีเดียว — คิวของแอดมินต้องคิด `canDecide` ต่อแถว
+ * ถ้าเรียก findEligibilityRules ต่อแถวจะเป็น N+1 ทันที
+ */
+export async function findEligibilityRulesOfMany(tournamentIds: number[]): Promise<Map<number, EligibilityRuleRow[]>> {
+    const out = new Map<number, EligibilityRuleRow[]>(tournamentIds.map(id => [id, []]));
+    if (tournamentIds.length === 0) return out;
+    const [rows] = await pool.query<((EligibilityRuleRow & { tournament_id: number }) & RowDataPacket)[]>(
+        "SELECT tournament_id, rule_type, rule_value FROM tournament_eligibility_rules WHERE tournament_id IN (?)",
+        [tournamentIds]
+    );
+    for (const row of rows) {
+        out.get(row.tournament_id)?.push({ rule_type: row.rule_type, rule_value: row.rule_value });
+    }
+    return out;
+}
+
 export async function findEligibilityRules(tournamentId: number): Promise<EligibilityRuleRow[]> {
     const [rows] = await pool.query<(EligibilityRuleRow & RowDataPacket)[]>(
         "SELECT rule_type, rule_value FROM tournament_eligibility_rules WHERE tournament_id = ?",

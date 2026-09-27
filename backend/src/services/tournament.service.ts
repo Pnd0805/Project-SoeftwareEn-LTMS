@@ -274,19 +274,46 @@ export async function getMyTournamentRequests(userId: number, offset: number, pa
     };
 }
 
+/**
+ * FE-admin-queue-shows-undecidable-rows (มติ 27 ก.ย. ทางเลือก ข) — คืนแถวเดิม แต่ติดป้ายว่ากดได้ไหม
+ *
+ * คิวกรองด้วย `organizing_faculty_id = ?` เงื่อนไขเดียว แต่ด่านอนุมัติเช็ค `adminCoversEligibility` เพิ่ม
+ * (ต้องมีกฎคณะและทุกข้อชี้มาคณะตัวเอง) สองกฎนี้ไม่ตรงกันโดยโครงสร้าง · และค่า default ของฟอร์มคือ
+ * "ทุกคณะ" = ไม่มีกฎคณะ ⇒ **คำขอที่กรอกตามปกติที่สุดจะโผล่ในคิวของแอดมินคณะแล้วกดไม่ได้ทุกแถว**
+ *
+ * เลือก "คืนแถวพร้อมเหตุผล" แทน "กรองออก" เพราะถ้ากรองออก แอดมินคณะจะไม่รู้เลยว่าคณะตัวเอง
+ * มีคำขอค้างอยู่ ไปตามแอดมินมหาวิทยาลัยก็ไม่ได้ — หลักเดียวกับทั้ง OD-26/28:
+ * ซ่อนแถวทำให้ปัญหามองไม่เห็น โชว์พร้อมเหตุผลทำให้มีคนรับผิดชอบ
+ *
+ * ผลพลอยได้: FE ไม่ต้องรู้ scope ของตัวเองอีก (`adminScope` บน GET /me ยังอยู่อีก branch)
+ */
 export async function getPendingTournamentRequests(userId: number, offset: number, page: number, pageSize: number) {
     const admin = await AdminScopeRepo.findAdminByUserId(userId);
     if (!admin) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิวคำขอทัวร์นาเมนต์');
     const { rows, totalItems } = await TournamentRepo.findPendingTournamentRequests(admin, offset, pageSize);
+
+    // university_wide ตัดสินได้ทุกแถวอยู่แล้ว ไม่ต้องยิงหากฎเลย — และเป็นคนที่คิวยาวที่สุด
+    const rulesOf = admin.scope_type === 'university_wide'
+        ? null
+        : await ApplicationRepo.findEligibilityRulesOfMany(rows.map(r => r.tournament_id));
+
     return {
-        items: rows.map(row => ({
-            id: row.tournament_id,
-            name: row.name,
-            requestedBy: toUserRef(row),
-            sportTypeId: row.sport_type_id,
-            eventStartDate: row.event_start_date,
-            createdAt: row.created_at.toISOString()
-        })),
+        items: rows.map(row => {
+            const canDecide = rulesOf === null || adminCoversEligibility(
+                admin, row.organizing_faculty_id,
+                (rulesOf.get(row.tournament_id) ?? []).map(r => ({ type: r.rule_type, value: r.rule_value })));
+            return {
+                id: row.tournament_id,
+                name: row.name,
+                requestedBy: toUserRef(row),
+                sportTypeId: row.sport_type_id,
+                eventStartDate: row.event_start_date,
+                createdAt: row.created_at.toISOString(),
+                canDecide,
+                // code เดียวกับที่ด่านโยน FE จึงใช้ข้อความเดิมที่ render อยู่แล้วได้
+                cannotDecideReason: canDecide ? null : 'ELIGIBILITY_OUT_OF_SCOPE' as const
+            };
+        }),
         pagination: buildPagination(page, pageSize, totalItems)
     };
 }
@@ -310,9 +337,21 @@ export async function approveTournament(tournamentId: number, userId: number) {
     return { id: tournamentId, status: 'private' as const, organizerId: tournament.requested_by_user_id };
 }
 
+/**
+ * FE-reject-skips-eligibility-scope (มติ 27 ก.ย. ทางเลือก ก) — ด่านเดียวกับ approve
+ *
+ * เดิม approve เช็ค `adminCoversEligibility` แต่ reject ไม่เช็ค แอดมินคณะจึง "ปฏิเสธ" คำขอที่ตัวเอง
+ * "อนุมัติ" ไม่ได้ (403 ELIGIBILITY_OUT_OF_SCOPE) — คือคำขอที่ OD-15 Q2-ข ตั้งใจส่งให้แอดมินมหาวิทยาลัย
+ *
+ * ที่ทำให้ต้องแก้ไม่ใช่ความไม่สมมาตรเปล่า ๆ แต่เพราะ `rejected` เป็นปลายทางถาวร:
+ * ไม่มี route ไหนตั้งสถานะกลับเป็น `pending_approval` ได้ ทางออกเดียวของผู้จัดคือลบทิ้งแล้วกรอกใหม่ทั้งใบ
+ * หลักที่ยึดตลอด OD-26 คือ "การนิ่งเฉยต้องไม่มีอำนาจยับยั้ง" — ข้อนี้คืออีกด้านของเหรียญเดียวกัน
+ * คนที่ไม่มีอำนาจพูดว่า "ใช่" ต้องไม่มีอำนาจพูดว่า "ไม่" ที่ย้อนไม่ได้
+ */
 export async function rejectTournament(tournamentId: number, userId: number, reason: string) {
     const tournament = await getTournamentOr404(tournamentId);
-    await getTournamentAdmin(userId, tournament);
+    const admin = await getTournamentAdmin(userId, tournament);
+    if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournamentId))) eligibilityOutOfScope();
     if (tournament.tournament_status !== 'pending_approval') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ');
     }
