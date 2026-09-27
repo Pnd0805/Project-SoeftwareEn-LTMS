@@ -49,6 +49,12 @@ export type MatchListItemDto = MatchResultSummaryDto & {
     scheduledEndTime: Date | null;
     venue: string | null;
     status: string;
+    /**
+     * E12 เขียน `matches.livestream_url` มาตั้งแต่ schema แรกแต่ไม่มี route ไหนอ่านกลับ
+     * ลิงก์จึงหายไปทุกครั้งที่โหลดหน้าใหม่ (FE-replay-link-write-only) · **สาธารณะ**
+     * ต่างจาก `roomCode` ที่อยู่ข้าง ๆ กันแต่จำกัดผู้ดู — ลิงก์ถ่ายทอด/รีเพลย์มีไว้ให้คนดู
+     */
+    livestreamUrl: string | null;
 };
 
 export function toMatchListItemDto(row: MatchListRow): MatchListItemDto {
@@ -65,6 +71,7 @@ export function toMatchListItemDto(row: MatchListRow): MatchListItemDto {
         scheduledEndTime: row.scheduled_end_time,
         venue: row.venue,
         status: row.match_status,
+        livestreamUrl: row.livestream_url,
         ...toMatchResultSummary(row),
     };
 }
@@ -84,6 +91,12 @@ export type MatchDetailItemDto = MatchResultSummaryDto & {
     status: string; 
     mode : 'onsite' | 'online',
     roomCode : string | null;   // B8 — เฉพาะแมตช์ online และคนดูเป็นสมาชิกทีมในแมตช์/กรรมการ/ORG (ไม่งั้น null)
+    /**
+     * E12 เขียน `matches.livestream_url` มาตั้งแต่ schema แรกแต่ไม่มี route ไหนอ่านกลับ
+     * ลิงก์จึงหายไปทุกครั้งที่โหลดหน้าใหม่ (FE-replay-link-write-only) · **สาธารณะ**
+     * ต่างจาก `roomCode` ที่อยู่ข้าง ๆ กันแต่จำกัดผู้ดู — ลิงก์ถ่ายทอด/รีเพลย์มีไว้ให้คนดู
+     */
+    livestreamUrl: string | null;
 }
 
 export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): MatchDetailItemDto {
@@ -106,6 +119,7 @@ export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): M
         status: row.match_status,
         mode: row.mode,
         roomCode: canSeeRoomCode ? row.room_code : null,
+        livestreamUrl: row.livestream_url,
         ...toMatchResultSummary(row),
     };
 }
@@ -130,6 +144,13 @@ export type CheckinListItemDto = {
     documentType: 'student_id' | 'national_id' | null;
     documentUrl: string | null;                   // presigned URL — มีเฉพาะเช็คอินแบบรูป และคนดูเป็นกรรมการของแมตช์
     note: string | null;                          // M19 เหตุผลที่กรรมการอนุโลมเช็คอินให้
+    /**
+     * M15 เหตุผลที่ปฏิเสธ/ถอนเช็คอิน — คนละคอลัมน์กับ `note` (migration 015)
+     * M15 บังคับให้กรอก และ M20 คืนให้เจ้าตัวอยู่แล้ว แต่ M13 ไม่เคยคืน กรรมการจึงไม่เห็นเหตุผล
+     * ของแถวไหนเลย รวมถึงเหตุผลที่ตัวเองเพิ่งพิมพ์ (FE-checkin-reject-reason-not-listed)
+     * ปลอดภัยเพราะ M13 เปิดให้เฉพาะ ORG/กรรมการของแมตช์อยู่แล้ว (403 NOT_ORGANIZER_OR_REFEREE)
+     */
+    rejectionReason: string | null;
     checkedInAt: Date;
 };
 
@@ -143,6 +164,7 @@ export function toCheckinListItemDto(row: MatchCheckinListRow, documentUrl: stri
         documentType: row.document_type,
         documentUrl,
         note: row.note,
+        rejectionReason: row.rejection_reason,
         checkedInAt: row.checked_in_at,
     };
 }

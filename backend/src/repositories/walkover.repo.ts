@@ -142,7 +142,13 @@ export async function applyWalkover(input : ApplyWalkoverInput): Promise<boolean
 }
 
 /** M18 ปิดเช็คอิน: checkin_open → scheduled และล้างเช็คอินรอบนี้ (ผู้เล่นต้องยืนยันตัวใหม่วันแข่งจริง) — คืน false ถ้าไม่ได้อยู่ checkin_open */
-export async function closeCheckin(matchId : number): Promise<boolean>{
+/**
+ * ปิดเช็คอิน = ถอน `open-checkin` กลับ ไม่ใช่ขั้นถัดไป (ขั้นถัดไปคือ `start`)
+ * ★ ลบ `match_checkins` ทุกแถวทิ้ง — ผู้เล่นที่เช็คอินแล้วต้องเช็คอินใหม่ทั้งหมด
+ *   จึงต้องเขียน audit ว่าใครกดและลบไปกี่แถว (มติ 27 ก.ย.) เดิมเป็นช่องเดียวในวงจรแมตช์
+ *   ที่ลบข้อมูลของผู้ใช้แล้วไม่บันทึกอะไรเลย ผู้เล่นมาบอกว่า "เช็คอินแล้วหาย" ก็ไล่ไม่ได้
+ */
+export async function closeCheckin(matchId : number, userId : number): Promise<boolean>{
     const conn = await pool.getConnection();
     try{
         await conn.beginTransaction();
@@ -153,7 +159,11 @@ export async function closeCheckin(matchId : number): Promise<boolean>{
             await conn.rollback();
             return false;
         }
-        await conn.query<ResultSetHeader>('DELETE FROM match_checkins WHERE match_id = ?', [matchId]);
+        const [del] = await conn.query<ResultSetHeader>('DELETE FROM match_checkins WHERE match_id = ?', [matchId]);
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details)
+             VALUES (?, 'match_checkin_closed', 'match', ?, ?)`,
+            [userId, matchId, JSON.stringify({ deletedCheckins : del.affectedRows })]);
         await conn.commit();
         return true;
     }catch(err){

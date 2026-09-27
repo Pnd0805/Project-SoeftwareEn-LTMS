@@ -19,14 +19,16 @@ router.get('/me/matches' , requireAuth , Match.listMyMatches);
 // M21 รายชื่อผู้เล่นที่ทีมส่งลงแข่ง + สถานะเช็คอิน — เปิดสาธารณะเหมือน M03/M04 (มติ 19 ก.ย. 2569)
 router.get('/matches/:id/lineups' , Match.getMatchLineups);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
-router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
+// M09 — กรรมการของแมตช์ หรือ ผู้จัด (มติ 27 ก.ย.) · สิทธิ์ตรวจใน service เหมือน M10b/M10c
+router.post('/matches/:id/open-checkin'  , requireAuth , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
 // จบการแข่งขัน — กรรมการของแมตช์ "หรือ" ผู้จัด (มติ Q4b) จึงตรวจสิทธิ์ใน service ไม่ใช้ middleware ที่รับบทบาทเดียว
 router.post('/matches/:id/finish' , requireAuth , Match.finishMatch);
 // ยกเลิกกลางคัน (ฝนตก/ไฟดับ) → กลับเป็น scheduled ให้ ORG ตั้งเวลาใหม่ด้วย M06 — กรรมการของแมตช์หรือ ORG
 router.post('/matches/:id/abandon' , requireAuth , validate(abandonMatchSchema) , Match.abandonMatch);
 // M18 ปิดเช็คอินกลับเป็น scheduled (ฝนตก → ไปเลื่อนด้วย M06) · M17 ORG ตัดสินทีมไม่มาตามนัด — GUIDE/11 §10.5
-router.post('/matches/:id/close-checkin' , requireAuth , requireOrganizerOfMatch , Match.closeCheckinMatch);
+// M18 — กรรมการของแมตช์ (เฉพาะตอนยังไม่มีใครเช็คอิน) หรือ ผู้จัด · สิทธิ์ตรวจใน service
+router.post('/matches/:id/close-checkin' , requireAuth , Match.closeCheckinMatch);
 router.post('/matches/:id/forfeit' , requireAuth , requireOrganizerOfMatch , Match.forfeitMatch);
 router.get('/matches/:id/checkins' , requireAuth , Match.getMatchCheckins);
 router.post('/matches/:id/checkins/:cid/verify' , requireAuth , requireReferee , Match.verifyCheckin);

@@ -18,6 +18,7 @@ import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
 import { buildPagination } from '../utils/pagination.js';
 import type { SubmitCheckinInput, ManualCheckinInput, ScheduleMatchInput } from '../schemas/match.schema.js';
 import type { MatchListFilters } from '../repositories/match.repo.js';
+import type { MatchRow } from '../types/db.js';
 
 export async function getTournamentMatches(
     tournamentId: number,
@@ -197,11 +198,32 @@ const BLOCK_REASON: Record<string, string> = {
 };
 
 // requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
-export async function openCheckinMatch(matchId: number) {
+/**
+ * FE-open-checkin-organizer-only (มติ 27 ก.ย.) — กรรมการของแมตช์เปิดเช็คอินได้ด้วย
+ *
+ * `checkin_open` เป็นทางออกทางเดียวของ `scheduled` ทั้งวงจรแมตช์จึงเริ่มที่นี่เท่านั้น
+ * เดิมเปิดได้แค่ผู้จัด แต่คนที่ยืนอยู่หน้าโต๊ะคือกรรมการ — และกรรมการคุมทุกอย่าง
+ * ที่เกิดขึ้น "ข้างใน" หน้าต่างนี้อยู่แล้ว (เช็คอินด้วยมือ · อนุมัติ · ปฏิเสธ · กดเริ่มแข่ง)
+ * มีเครื่องมือครบมือแต่ไขประตูเองไม่ได้ ผู้จัดที่ติดอยู่อีกสนามจึงกลายเป็นจุดค้าง
+ * ของขั้นแรกสุด — ตระกูลเดียวกับ OD-26 และหนักกว่าเพราะไม่มีอะไรเกิดขึ้นได้เลยถ้าค้างตรงนี้
+ *
+ * ใช้กฎเดียวกับ `finishMatch` / `abandonMatch` / `startMatch` ที่กรรมการกดได้อยู่แล้ว
+ */
+export async function openCheckinMatch(matchId: number, userId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT",
+            "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่เปิดเช็คอินได้");
+    }
+
+    // เช็คก่อนทุกด่านที่ต้องยิงฐานข้อมูล และก่อนยิงแจ้งเตือน — ผู้เล่นต้องไม่ได้แจ้งเตือน
+    // "เปิดเช็คอินแล้ว" สำหรับแมตช์ที่ไม่มีเวลาไม่มีสนาม เพราะแจ้งเตือนเรียกคืนไม่ได้
+    assertFixtureComplete(match);
 
     /**
      * ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเดินหน้าทับแมตช์ต้นทางที่ยังไม่สรุป
@@ -241,12 +263,38 @@ export async function openCheckinMatch(matchId: number) {
 }
 
 /** M18 — ORG ปิดเช็คอิน (checkin_open → scheduled, ล้างเช็คอิน) เพื่อไปเลื่อนด้วย M06 — requireOrganizerOfMatch เช็คสิทธิ์แล้ว */
-export async function closeCheckinMatch(matchId: number) {
+/**
+ * M18 ปิดเช็คอิน — เป็นการ "ถอน M09 กลับ" ไม่ใช่ขั้นถัดไป (ขั้นถัดไปคือ M10 เริ่มแมตช์)
+ * และมันลบ `match_checkins` ทุกแถวทิ้ง ผู้เล่นที่เช็คอินแล้วต้องทำใหม่หมด
+ *
+ * มติ 27 ก.ย. — กรรมการของแมตช์ปิดได้ **เฉพาะตอนที่ยังไม่มีใครเช็คอิน**
+ *   เหตุผลที่ต้องให้ปิดได้เลย : ตั้งแต่กรรมการเปิดเช็คอินเองได้ (M09) ก็ต้องถอนความพลาดของตัวเองได้
+ *                              เช่น เปิดผิดแมตช์ตอนคอร์ตติดกัน ไม่งั้นจุดค้างแค่ย้ายที่
+ *   เหตุผลที่ต้องจำกัด       : ปุ่มนี้ทำลายงานของคนอื่น การให้อำนาจล้างเช็คอิน 10 แถวโดยไม่มี
+ *                              ขั้นยืนยันใด ๆ ไม่สมกับ "ถอนความพลาดของตัวเอง" — มีคนเช็คอินแล้ว
+ *                              ให้เป็นเรื่องของผู้จัด ซึ่งรับผิดชอบตารางทั้งทัวร์อยู่แล้ว
+ */
+export async function closeCheckinMatch(matchId: number, userId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
     }
-    if (!(await Walkover.closeCheckin(matchId))) {
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT",
+            "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ปิดเช็คอินได้");
+    }
+    if (!isOrganizer) {
+        const checkins = await MatchRepo.countCheckins(matchId);
+        if (checkins > 0) {
+            throw new AppError(409, "CHECKIN_NOT_EMPTY",
+                "มีผู้เล่นเช็คอินเข้ามาแล้ว การปิดเช็คอินจะลบรายการทั้งหมด ต้องให้ผู้จัดการแข่งขันเป็นผู้ปิด",
+                { checkins });
+        }
+    }
+
+    if (!(await Walkover.closeCheckin(matchId, userId))) {
         throw new AppError(409, "INVALID_STATUS_TRANSITION", "ปิดเช็คอินได้เฉพาะแมตช์ที่กำลังเปิดเช็คอิน (สถานะ checkin_open) เท่านั้น");
     }
     return { id: matchId, status: 'scheduled' as const, checkinOpenAt: null };
@@ -293,6 +341,10 @@ export async function startMatch(matchId: number, userId: number){
     if (match.match_status !== 'checkin_open') {
         throw new AppError(409, "CHECKIN_NOT_OPEN", "ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้");
     }
+
+    // ตะแกรงกันแมตช์ที่เลยด่าน M09 มาก่อนกฎนี้มีผล (เปิดเช็คอินค้างไว้ตั้งแต่ก่อน 27 ก.ย.)
+    // ★ ต้องอยู่ก่อนการตัดสินไม่มาตามนัดด้านล่าง — ไม่งั้นทีมอาจถูกปรับแพ้บายในแมตช์ที่ไม่ควรเริ่มตั้งแต่ต้น
+    assertFixtureComplete(match);
 
     if (match.team_a_id === null || match.team_b_id === null) {
         throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง");
@@ -404,6 +456,30 @@ export async function abandonMatch(matchId: number, userId: number, reason: stri
 }
 
 /** M11/M13 — ORG ของทัวร์ และ/หรือ กรรมการของแมตช์นี้ (active + รับมอบหมายแมตช์นี้แล้ว) */
+/**
+ * FE-open-checkin-has-no-fixture-gate (มติ 27 ก.ย.) — แมตช์ต้องมีเวลาและสนามก่อนเข้าสู่วงจร
+ *
+ * แมตช์ที่ `createBracket` สร้างมาเกิดมาว่างทั้งสามช่อง และไม่มีจุดไหนในระบบบังคับให้ผู้จัดกรอก
+ * (`publishTournament` ก็ไม่บังคับ เพราะตอน publish ยังไม่มีแมตช์) · เดิม M09 กับ M10 ไม่เคยดูสามช่องนี้
+ * แมตช์จึงเดินได้ตลอดสาย `checkin_open → in_progress → finished → completed` โดยไม่มีบันทึกว่า
+ * แข่งเมื่อไรที่ไหน และพอพ้น `scheduled` แล้ว M06 ก็แก้ย้อนไม่ได้อีก — เสียถาวร
+ * (เกิดขึ้นจริงแล้วในฐานข้อมูล dev: แมตช์ 10/11/12 `completed` โดยทั้งสามช่องเป็น NULL)
+ *
+ * ใช้ code กับรูปร่าง `extra.missing` เดียวกับ M06 เพื่อให้ FE ใช้ตัวแสดงข้อความเดิมได้
+ * แต่เป็น 409 ไม่ใช่ 400 — M06 เป็นปัญหาของ payload ที่ส่งมา ส่วนตรงนี้ไม่มี payload เลย เป็นปัญหาสถานะ
+ */
+function assertFixtureComplete(match : Pick<MatchRow, 'scheduled_time' | 'scheduled_end_time' | 'venue'>): void {
+    const missing = [
+        ...(!match.scheduled_time ? ['scheduledTime'] : []),
+        ...(!match.scheduled_end_time ? ['scheduledEndTime'] : []),
+        ...(!match.venue ? ['venue'] : []),
+    ];
+    if (missing.length > 0) {
+        throw new AppError(409, "SCHEDULE_INCOMPLETE",
+            "แมตช์นี้ยังไม่ได้กำหนดเวลาแข่งและสนาม ต้องตั้งให้ครบก่อน (M06)", { missing });
+    }
+}
+
 async function findMatchRoles(matchId: number, tournamentId: number, userId: number) {
     const tournament = await TournamentRepo.findTournamentById(tournamentId);
     if (!tournament) {

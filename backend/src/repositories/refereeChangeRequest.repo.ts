@@ -160,11 +160,28 @@ export async function apply(req : RefereeChangeRequestRow): Promise<boolean>{
             `UPDATE referee_change_requests SET request_status = 'applied', resolved_at = NOW()
              WHERE request_id = ?`, [req.request_id]);
 
-        // คำขอ open อื่นที่อ้างแมตช์ที่เพิ่งเปลี่ยนคน → ข้อมูลเก่าแล้ว ยกเลิกทิ้ง
+        /**
+         * คำขอ open อื่นที่อ้างแมตช์ที่เพิ่งเปลี่ยนคน → ข้อมูลเก่าแล้ว ยกเลิกทิ้ง (§5.1)
+         *
+         * ★ แก้ 27 ก.ย. — ยกเลิกเฉพาะชนิดที่ "ย้ายคน" เท่านั้น
+         * เหตุผลของการยกเลิกคือสมมติฐาน "กรรมการ X ถือแมตช์ M อยู่" กลายเป็นเท็จ ซึ่งจริงกับ
+         * ref_transfer/ref_swap/org_swap · แต่ `org_add_match` ไม่มีสมมติฐานนั้นเลย มันแค่ INSERT
+         * แถวของกรรมการคนเดียวเข้าไป (insertAccepted) การเพิ่มคน B เข้าแมตช์ M จึงไม่ทำให้
+         * การเพิ่มคน C เข้าแมตช์ M เป็นโมฆะ — สองเรื่องนี้เป็นอิสระต่อกัน
+         *
+         * เดิมยกเลิกเหวี่ยงแหทุกชนิด ทำให้ **แมตช์ onsite ที่ต้องมีกรรมการ 2 คนตาม BR-10 หากรรมการ
+         * คนที่สองไม่ได้เลย**: ORG เชิญสองคนพร้อมกัน คนแรกกดรับ → ใบของคนที่สองกลายเป็น cancelled
+         * → คนที่สองกดรับแล้วไม่มีอะไรเกิดขึ้น (answer ต้องการ request_status = 'open')
+         * → startMatch ตอบ INSUFFICIENT_REFEREES ตลอดกาล และ F11 ที่เคยใส่กรรมการตรง ๆ ถูกถอดไปแล้ว
+         *
+         * ใบซ้ำของกรรมการคนเดิมบนแมตช์เดิมไม่ต้องพึ่งการยกเลิกนี้ — insertAccepted คืน false เมื่อ
+         * แถวนั้น accepted อยู่แล้ว apply() จึงคืน false และ service เป็นฝ่าย cancel ให้เอง
+         */
         const touched = [req.match_a_id, req.match_b_id].filter((m) : m is number => m !== null);
         await conn.query(
             `UPDATE referee_change_requests SET request_status = 'cancelled', resolved_at = NOW()
              WHERE request_status = 'open' AND request_id <> ?
+               AND request_type IN ('ref_transfer', 'ref_swap', 'org_swap')
                AND (match_a_id IN (?) OR match_b_id IN (?))`,
             [req.request_id, touched, touched]);
 

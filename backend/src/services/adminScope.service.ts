@@ -5,12 +5,15 @@ import { toOfficialMemberConflictDto } from '../mappers/team.mapper.js';
 
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
+import { getPresignedDownloadUrl } from './upload.service.js';
 
 export async function getAllOfficialRequest(offset : number , page : number , pageSize : number){
     const { rows , totalItems } = await AdminRepo.findAllOfficialRequests(offset , pageSize);
 
     const pagination = buildPagination(page , pageSize , totalItems)
-    const data = rows.map(toGetOfficialRequest);
+    // เอกสารออกเป็น presigned URL เสมอ ไม่ส่ง S3 key ดิบ — เหมือนหลักฐานการค้านผลและรูปบัตรเช็คอิน
+    const data = await Promise.all(rows.map(async row =>
+        toGetOfficialRequest(row , await Promise.all((row.supporting_docs ?? []).map(key => getPresignedDownloadUrl(key))))));
     return { items : data , pagination}
 }
 

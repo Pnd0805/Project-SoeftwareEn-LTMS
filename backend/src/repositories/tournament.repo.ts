@@ -73,7 +73,8 @@ export async function countApplicationsByTournament(tournamentId: number): Promi
 
 export type TournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'tournament_status' | 'rejection_reason' | 'created_at'>;
 
-export type AdminTournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'sport_type_id' | 'event_start_date' | 'created_at'> &
+// `organizing_faculty_id` ต้องมี เพราะ service ใช้คิด canDecide ต่อแถว (adminCoversEligibility)
+export type AdminTournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'sport_type_id' | 'event_start_date' | 'created_at' | 'organizing_faculty_id'> &
     Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
 
 export type AmendmentRow = {
@@ -182,7 +183,7 @@ function adminScopeWhere(admin: AdminScopeRow): { clause: string; params: number
 export async function findPendingTournamentRequests(admin: AdminScopeRow, offset: number, pageSize: number): Promise<{ rows: AdminTournamentRequestRow[]; totalItems: number }> {
     const scope = adminScopeWhere(admin);
     const [rows] = await pool.query<(AdminTournamentRequestRow & RowDataPacket)[]>(
-        `SELECT t.tournament_id, t.name, t.sport_type_id, t.event_start_date, t.created_at,
+        `SELECT t.tournament_id, t.name, t.sport_type_id, t.event_start_date, t.created_at, t.organizing_faculty_id,
                 u.user_id, u.full_name, u.profile_image_key
          FROM tournaments t
          JOIN users u ON u.user_id = t.requested_by_user_id

@@ -19,6 +19,7 @@ export type MatchListRow = MatchResultSummaryCols & {
     scheduled_end_time: Date | null;
     venue: string | null;
     match_status: MatchRow['match_status'];   // อ้าง types/db.ts — สถานะใหม่ใน DB (เช่น result_rejected) ตามมาเอง
+    livestream_url: string | null;           // E12 เขียนไว้ — สาธารณะ ต่างจาก room_code ที่จำกัดผู้ดู
     team_a_id: number | null;
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
@@ -59,7 +60,7 @@ export async function findMatchesByTournament(
 
     const [rows] = await pool.query<(MatchListRow & RowDataPacket)[]>(
         `SELECT
-            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status,
+            m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.livestream_url,
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
@@ -85,7 +86,7 @@ export async function findMatchesByTournament(
 
 export type MatchDetailRow = Pick<MatchRow, 
     'match_id' | 'tournament_id' | 'round_number' | 'team_a_id' | 'team_b_id' | 
-    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'started_at' | 'actual_end_time' | 'match_status' | 'mode' | 'room_code'
+    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'started_at' | 'actual_end_time' | 'match_status' | 'mode' | 'room_code' | 'livestream_url'
 > & MatchResultSummaryCols & {
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
@@ -97,7 +98,7 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
     const [rows] = await pool.query<(MatchDetailRow & RowDataPacket)[]>(
         `SELECT 
             m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.room_code ,
-            m.started_at, m.actual_end_time,
+            m.started_at, m.actual_end_time, m.livestream_url,
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
@@ -261,6 +262,16 @@ export async function openMatchCheckin(matchId: number): Promise<boolean> {
  * นับเฉพาะ "คนที่ทีมส่งลงแข่งในทัวร์นี้" (application_players ของใบสมัครที่อนุมัติแล้ว)
  * ★ เดิมนับสมาชิกทีมคนไหนก็ได้ — คนที่ไม่ได้ถูกส่งลงแข่งจึงทำให้ครบ min_members ได้ (มติ 19 ก.ย. 2569)
  */
+/**
+ * เช็คอินทุกแถวของแมตช์ ไม่สนสถานะและไม่สนทีม — ใช้ตอบว่า "ปิดเช็คอินแล้วจะมีอะไรถูกลบไหม"
+ * ปิดเช็คอินลบทุกแถวทิ้ง (walkover.repo.closeCheckin) จำนวนนี้จึงเท่ากับความเสียหายถ้ากดพลาด
+ */
+export async function countCheckins(matchId: number): Promise<number> {
+    const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        'SELECT COUNT(*) AS cnt FROM match_checkins WHERE match_id = ?', [matchId]);
+    return Number(rows[0]?.cnt ?? 0);
+}
+
 export async function countSuccessfulCheckins(matchId: number, teamId: number | null): Promise<number> {
     if (teamId === null) return 0;
     const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
@@ -285,13 +296,14 @@ export type MatchCheckinListRow = {
     document_type: 'student_id' | 'national_id' | null;
     document_s3_key: string | null;   // service แปลงเป็น presigned URL ให้เฉพาะกรรมการของแมตช์ (PDPA)
     note: string | null;              // M19 เหตุผลที่กรรมการอนุโลม — ให้กรรมการคนถัดไป/ORG เห็น
+    rejection_reason: string | null;  // M15 เหตุผลที่ปฏิเสธ/ถอนเช็คอิน — คนละคอลัมน์กับ note (migration 015)
     checked_in_at: Date;
 };
 
 export async function findCheckinsByMatch(matchId: number): Promise<MatchCheckinListRow[]> {
     const [rows] = await pool.query<(MatchCheckinListRow & RowDataPacket)[]>(
         `SELECT mc.match_checkin_id, mc.user_id, u.full_name, mc.method, mc.match_checkin_status,
-                mc.document_type, mc.document_s3_key, mc.note, mc.checked_in_at
+                mc.document_type, mc.document_s3_key, mc.note, mc.rejection_reason, mc.checked_in_at
          FROM match_checkins mc
          JOIN users u ON mc.user_id = u.user_id
          WHERE mc.match_id = ?`,

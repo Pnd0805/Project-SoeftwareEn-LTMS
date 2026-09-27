@@ -313,7 +313,7 @@ export async function resolveMatchResult(matchId : number, input : ResolveInput,
  * ผลของมันคือ "ถอน/แก้ผลแมตช์นี้ไม่ได้อีก" เพราะทีมที่ต้องเอาออกอาจลงแข่งหรือได้บายไปแล้ว
  * ใช้ทั้งตอน S04 กันการแก้ผล และตอน S05 บอก FE ว่าเส้นตายจริงของการค้านคือเมื่อไร (มติ 25 ก.ย. ข้อ 3)
  */
-async function findStartedNextMatchId(match : MatchRow): Promise<number | null>{
+export async function findStartedNextMatchId(match : MatchRow): Promise<number | null>{
     for(const nextId of [match.next_match_id, match.loser_next_match_id]){
         if(nextId === null) continue;
         const next = await MatchRepo.findById(nextId);
@@ -335,7 +335,10 @@ export async function getVerifiedResult(matchId : number , userId? : number){
         }
     }
 
-    return { ...toVerifiedResult(matchRes), ...await disputeWindowOf(matchRes) };
+    // 6 ฟิลด์ข้อโต้แย้งเปิดให้คนกลุ่มเดียวกับ S03b เท่านั้น (ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม)
+    // ผลที่ยังไม่ final ผ่านด่านบนมาแล้วว่าเป็นผู้เกี่ยวข้อง จึงไม่ต้องถามซ้ำ
+    const canSeeDispute = !isFinal || (userId !== undefined && await canSeeUnfinishedResult(matchId , userId));
+    return { ...toVerifiedResult(matchRes , canSeeDispute) , ...await disputeWindowOf(matchRes) };
 }
 
 /**

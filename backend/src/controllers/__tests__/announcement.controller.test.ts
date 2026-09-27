@@ -62,7 +62,7 @@ describe("createAnnouncement", () => {
         const req = makeReq({
             params: { id: "5" } as any,
             user: { user_id: 7 } as any,
-            body: { title: "ปิดสนาม", body: "งดแข่งวันนี้" },
+            body: { title: "ปิดสนาม", body: "งดแข่งวันนี้", type: "venue_change" },
         });
 
         await createAnnouncement(req, makeRes());
@@ -72,6 +72,7 @@ describe("createAnnouncement", () => {
             "ปิดสนาม",
             "งดแข่งวันนี้",
             7,
+            "venue_change",
         );
     });
 

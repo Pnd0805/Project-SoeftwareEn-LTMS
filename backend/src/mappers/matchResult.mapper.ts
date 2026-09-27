@@ -74,10 +74,27 @@ export type verifiedResult = {
     status : MatchResultRow['match_result_status'],   // submitted/disputed/rejected เห็นได้เฉพาะผู้เกี่ยวข้อง (S05)
     submittedRole : MatchResultRow['submitted_role'],
     isAutoVerified : boolean,
-    verifiedAt : string | null
+    verifiedAt : string | null,
+    /**
+     * FE-dispute-resolution-not-returned — ทั้ง 6 ฟิลด์ถูกเก็บลงฐานแล้วแต่ไม่มี response ไหนคืนออกมา
+     * migration 020 บังคับให้ผู้จัดเขียนคำวินิจฉัยก็เพื่อให้ทั้งสองทีมรู้ว่าทำไมผลถูกยืนยัน/แก้/ยกทิ้ง
+     * แต่คำวินิจฉัยนั้นไม่เคยไปถึงใครเลย · และผู้จัดที่เปิดหน้าตัดสินก็ไม่เห็นว่าเรื่องที่ค้านคืออะไร
+     *
+     * ★ ส่งแบบมีเงื่อนไข (มติ 27 ก.ย.) — S05 เป็น endpoint สาธารณะเมื่อผลเป็น verified/walkover
+     *   แต่ `GET /matches/:id/result/dispute` (S03b) กันข้อมูลชุดเดียวกันไว้ที่
+     *   ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม · ถ้าใส่ลง S05 แบบไม่มีเงื่อนไขก็เท่ากับเปิดหลังบ้าน:
+     *   `disputeReason` เป็นข้อความที่คู่กรณีเขียน อาจระบุชื่อและกล่าวหาผู้เล่นตรง ๆ และ
+     *   `disputeRaisedBy` บอกว่าหัวหน้าทีมคนไหนเป็นคนค้าน · คนนอกได้ผลแข่งครบเหมือนเดิม แค่ไม่มี 6 ฟิลด์นี้
+     */
+    disputeReason? : string | null,
+    disputeRaisedBy? : number | null,
+    disputeRaisedAt? : string | null,
+    disputeResolution? : string | null,
+    disputeResolvedBy? : number | null,
+    disputeResolvedAt? : string | null
 }
 
-export function toVerifiedResult(rows : MatchResultRow): verifiedResult{
+export function toVerifiedResult(rows : MatchResultRow , canSeeDispute = false): verifiedResult{
     let isAmended: boolean;
     if(rows.amended_at === null)
         isAmended = false;
@@ -96,7 +113,16 @@ export function toVerifiedResult(rows : MatchResultRow): verifiedResult{
         submittedRole : rows.submitted_role,
         // ระบบยืนยันให้เองเพราะไม่มีผู้โต้แย้ง (OD-26 ข้อ 7) — ต่างจากคนกดยืนยัน
         isAutoVerified : rows.verified_at !== null && rows.verified_by_user_id === null,
-        verifiedAt : rows.verified_at?.toISOString() ?? null
+        verifiedAt : rows.verified_at?.toISOString() ?? null,
+        // คนที่ไม่มีสิทธิ์ต้องไม่มีคีย์เหล่านี้เลย ไม่ใช่ได้ null — null แปลว่า "ไม่มีข้อโต้แย้ง" คนละความหมาย
+        ...(canSeeDispute ? {
+            disputeReason : rows.dispute_reason,
+            disputeRaisedBy : rows.dispute_raised_by,
+            disputeRaisedAt : rows.dispute_raised_at?.toISOString() ?? null,
+            disputeResolution : rows.dispute_resolution,
+            disputeResolvedBy : rows.dispute_resolved_by,
+            disputeResolvedAt : rows.dispute_resolved_at?.toISOString() ?? null,
+        } : {}),
     }
 }
 

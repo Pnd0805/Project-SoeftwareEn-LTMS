@@ -3,7 +3,7 @@ import type { TeamRef } from "./team.mapper.js";
 import type { UserRefDto } from "./user.mapper.js";
 
 
-export type getOfficialRequest = Pick<TeamAdminRequestRow, 'team_admin_request_id' | 'team_admin_request_status' | 'requested_at'> &
+export type getOfficialRequest = Pick<TeamAdminRequestRow, 'team_admin_request_id' | 'team_admin_request_status' | 'requested_at' | 'supporting_docs'> &
                                   Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id'> &
                                   Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
 
@@ -12,11 +12,18 @@ export type getOfficialRequestDto = {
     team : TeamRef,
     requestedBy : UserRefDto,
     status : 'pending' | 'approved' | 'rejected',
+    /**
+     * เอกสารประกอบที่หัวหน้าทีมยื่นมา — presigned URL เสมอ ไม่ส่ง S3 key ดิบ (pattern เดียวกับหลักฐานการค้านผล)
+     *
+     * เดิมคอลัมน์นี้ถูกเขียนลงฐานตอนยื่น (บังคับกรอกด้วย) แต่คิวของแอดมินไม่เคย SELECT มาเลย
+     * แอดมินจึงกดอนุมัติ/ปฏิเสธ "ทีม Official" โดยไม่มีทางเห็นเอกสารที่เป็นเหตุผลทั้งหมดของคำขอ (แก้ 27 ก.ย.)
+     */
+    supportingDocs : string[],
     createdAt : string
 }                                
 
 
-export function toGetOfficialRequest(rows : getOfficialRequest):getOfficialRequestDto{
+export function toGetOfficialRequest(rows : getOfficialRequest , supportingDocs : string[] = []):getOfficialRequestDto{
     const team: TeamRef = { id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
     const user: UserRefDto = { id : rows.user_id , fullName : rows.full_name , avatarUrl : rows.profile_image_key};
     return{
@@ -24,6 +31,7 @@ export function toGetOfficialRequest(rows : getOfficialRequest):getOfficialReque
         team : team,
         requestedBy : user,
         status : rows.team_admin_request_status,
+        supportingDocs,
         createdAt : rows.requested_at.toISOString()
     };
 };

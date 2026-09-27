@@ -7,8 +7,25 @@ describe('createAnnouncementSchema', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toEqual({ title: 'Schedule update', body: 'The match moved to 10:00.' });
+      // ไม่ส่ง type มา = 'general' เหมือนพฤติกรรมเดิมก่อน 27 ก.ย. ของเก่าจึงไม่พัง
+      expect(result.data).toEqual({ title: 'Schedule update', body: 'The match moved to 10:00.', type: 'general' });
     }
+  });
+
+  /**
+   * `announcement_type` มีในตารางพร้อม 5 ค่ามาตั้งแต่ schema แรก แต่เดิม INSERT ฮาร์ดโค้ด 'general'
+   * ผู้จัดเลือกชนิดไม่ได้เลย และ FE ติดป้าย "เปลี่ยนเวลา"/"ผลการแข่งขัน" ไม่ได้ (แก้ 27 ก.ย.)
+   */
+  it('accepts each of the five announcement types', () => {
+    for (const type of ['general', 'schedule_change', 'venue_change', 'result', 'livestream'] as const) {
+      const r = createAnnouncementSchema.safeParse({ title: 'a', body: 'b', type });
+      expect(r.success).toBe(true);
+      expect(r.data?.type).toBe(type);
+    }
+  });
+
+  it('rejects a type that is not one of the five', () => {
+    expect(createAnnouncementSchema.safeParse({ title: 'a', body: 'b', type: 'urgent' }).success).toBe(false);
   });
 
   it('accepts empty strings for title and body (no min-length constraint)', () => {
