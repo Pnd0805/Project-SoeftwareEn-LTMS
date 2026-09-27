@@ -19,7 +19,8 @@ router.get('/me/matches' , requireAuth , Match.listMyMatches);
 // M21 รายชื่อผู้เล่นที่ทีมส่งลงแข่ง + สถานะเช็คอิน — เปิดสาธารณะเหมือน M03/M04 (มติ 19 ก.ย. 2569)
 router.get('/matches/:id/lineups' , Match.getMatchLineups);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
-router.post('/matches/:id/open-checkin'  , requireAuth , requireOrganizerOfMatch , Match.openCheckinMatch);
+// M09 — กรรมการของแมตช์ หรือ ผู้จัด (มติ 27 ก.ย.) · สิทธิ์ตรวจใน service เหมือน M10b/M10c
+router.post('/matches/:id/open-checkin'  , requireAuth , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
 // จบการแข่งขัน — กรรมการของแมตช์ "หรือ" ผู้จัด (มติ Q4b) จึงตรวจสิทธิ์ใน service ไม่ใช้ middleware ที่รับบทบาทเดียว
 router.post('/matches/:id/finish' , requireAuth , Match.finishMatch);

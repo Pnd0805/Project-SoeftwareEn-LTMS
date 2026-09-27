@@ -373,7 +373,7 @@ describe("openCheckinMatch / closeCheckinMatch", () => {
         const res = makeRes();
         await openCheckinMatch(makeReq(), res);
 
-        expect(svc.openCheckinMatch).toHaveBeenCalledWith(42);
+        expect(svc.openCheckinMatch).toHaveBeenCalledWith(42, 7);
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(payload);
     });

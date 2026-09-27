@@ -197,10 +197,27 @@ const BLOCK_REASON: Record<string, string> = {
 };
 
 // requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
-export async function openCheckinMatch(matchId: number) {
+/**
+ * FE-open-checkin-organizer-only (มติ 27 ก.ย.) — กรรมการของแมตช์เปิดเช็คอินได้ด้วย
+ *
+ * `checkin_open` เป็นทางออกทางเดียวของ `scheduled` ทั้งวงจรแมตช์จึงเริ่มที่นี่เท่านั้น
+ * เดิมเปิดได้แค่ผู้จัด แต่คนที่ยืนอยู่หน้าโต๊ะคือกรรมการ — และกรรมการคุมทุกอย่าง
+ * ที่เกิดขึ้น "ข้างใน" หน้าต่างนี้อยู่แล้ว (เช็คอินด้วยมือ · อนุมัติ · ปฏิเสธ · กดเริ่มแข่ง)
+ * มีเครื่องมือครบมือแต่ไขประตูเองไม่ได้ ผู้จัดที่ติดอยู่อีกสนามจึงกลายเป็นจุดค้าง
+ * ของขั้นแรกสุด — ตระกูลเดียวกับ OD-26 และหนักกว่าเพราะไม่มีอะไรเกิดขึ้นได้เลยถ้าค้างตรงนี้
+ *
+ * ใช้กฎเดียวกับ `finishMatch` / `abandonMatch` / `startMatch` ที่กรรมการกดได้อยู่แล้ว
+ */
+export async function openCheckinMatch(matchId: number, userId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
         throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT",
+            "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่เปิดเช็คอินได้");
     }
 
     /**

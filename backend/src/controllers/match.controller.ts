@@ -67,9 +67,13 @@ export async function scheduleMatch(req: Request, res: Response) {
     res.status(200).json(result);
 }
 
+/** M09 — สิทธิ์ตรวจใน service เพราะรับได้ทั้งกรรมการของแมตช์และผู้จัด (มติ 27 ก.ย.) */
 export async function openCheckinMatch(req: Request, res: Response){
+    if(!req.user){
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
     const matchId = parseId(req.params['id'], 'รหัสการเเข่งขัน');
-    res.status(200).json(await MatchService.openCheckinMatch(matchId));
+    res.status(200).json(await MatchService.openCheckinMatch(matchId, req.user.user_id));
 }
 
 export async function closeCheckinMatch(req: Request, res: Response){

@@ -206,19 +206,48 @@ describe('scheduleMatch (M06)', () => {
 });
 
 describe('openCheckinMatch (M09)', () => {
+  const ORG = 9003;         // = organizerTournament.requested_by_user_id
+  const REF = 9002;
+  beforeEach(() => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(organizerTournament);
+    vi.mocked(isRefereeOfMatch).mockReset().mockResolvedValue(false);
+  });
+
   it('returns INVALID_STATUS_TRANSITION when the match is no longer scheduled', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ match_status: 'in_progress' }));
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(false);
 
-    await expectAppError(matchService.openCheckinMatch(1), 409, 'INVALID_STATUS_TRANSITION');
+    await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'INVALID_STATUS_TRANSITION');
   });
 
   it('opens check-in for a scheduled match', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
 
-    await expect(matchService.openCheckinMatch(1)).resolves.toMatchObject({ id: 1, status: 'checkin_open' });
+    await expect(matchService.openCheckinMatch(1, ORG)).resolves.toMatchObject({ id: 1, status: 'checkin_open' });
     expect(NotificationService.notifyMatchAudience).toHaveBeenCalledWith(1, expect.objectContaining({ type: 'checkin_opened' }));
+  });
+
+  /**
+   * มติ 27 ก.ย. — กรรมการของแมตช์เปิดเช็คอินได้ด้วย
+   * `checkin_open` เป็นทางออกทางเดียวของ `scheduled` ถ้าผู้จัดติดอยู่อีกสนามก็ไม่มีอะไรเกิดขึ้นได้เลย
+   * ทั้งที่กรรมการยืนอยู่หน้าโต๊ะและคุมทุกอย่างข้างในหน้าต่างนี้อยู่แล้ว
+   */
+  it('lets the referee of this match open it too', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
+    vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
+
+    await expect(matchService.openCheckinMatch(1, REF)).resolves.toMatchObject({ status: 'checkin_open' });
+    expect(isRefereeOfMatch).toHaveBeenCalledWith(1, REF, 50);
+  });
+
+  it('403 for a referee of the tournament who is not on this match, and for anyone else', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
+
+    await expectAppError(matchService.openCheckinMatch(1, REF), 403, 'NOT_MATCH_PARTICIPANT');
+    await expectAppError(matchService.openCheckinMatch(1, 12345), 403, 'NOT_MATCH_PARTICIPANT');
+    expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
   });
 
   // ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเปิดเช็คอินทับแมตช์ต้นทางที่ยังไม่สรุป และต้องบอกว่าติดแมตช์ไหน
@@ -228,7 +257,7 @@ describe('openCheckinMatch (M09)', () => {
       { match_id: 12, match_status: 'in_progress' }, { match_id: 13, match_status: 'result_rejected' },
     ] as never);
 
-    const err = await expectAppError(matchService.openCheckinMatch(1), 409, 'MATCH_TEAMS_INCOMPLETE');
+    const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'MATCH_TEAMS_INCOMPLETE');
     expect(err.extra).toEqual({ blockedBy: [
       { matchId: 12, status: 'in_progress', reason: 'กำลังแข่งอยู่ ยังไม่มีการส่งผล' },
       { matchId: 13, status: 'result_rejected', reason: 'ผลถูกยกเลิก รอส่งผลใหม่' },
@@ -240,7 +269,7 @@ describe('openCheckinMatch (M09)', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match());
     vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([{ match_id: 12, match_status: 'disputed' }] as never);
 
-    const err = await expectAppError(matchService.openCheckinMatch(1), 409, 'PREDECESSOR_DISPUTED');
+    const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'PREDECESSOR_DISPUTED');
     expect(err.extra).toEqual({ blockedBy: [{ matchId: 12, status: 'disputed', reason: 'มีข้อโต้แย้งรอผู้จัดตัดสิน' }] });
     expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
   });
@@ -250,7 +279,7 @@ describe('openCheckinMatch (M09)', () => {
     vi.mocked(MatchRepo.findUnresolvedPredecessors).mockResolvedValue([{ match_id: 12, match_status: 'in_progress' }] as never);
     vi.mocked(MatchRepo.openMatchCheckin).mockResolvedValue(true);
 
-    await expect(matchService.openCheckinMatch(1)).resolves.toMatchObject({ status: 'checkin_open' });
+    await expect(matchService.openCheckinMatch(1, ORG)).resolves.toMatchObject({ status: 'checkin_open' });
   });
 });
 
