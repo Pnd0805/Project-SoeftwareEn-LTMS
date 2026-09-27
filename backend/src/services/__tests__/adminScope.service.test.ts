@@ -9,6 +9,9 @@ vi.mock('../notification.service.js', () => ({
   notifyMatchResultParties: vi.fn(),
 }));
 
+vi.mock('../upload.service.js', () => ({
+  getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),
+}));
 vi.mock('../../repositories/adminScope.repo.js', () => ({
   findAllOfficialRequests: vi.fn(),
   approveTeamOfficial: vi.fn(),
@@ -84,6 +87,7 @@ describe('adminScope.service getAllOfficialRequest()', () => {
         team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
         requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'avatar.png' },
         status: 'pending',
+        supportingDocs: [],
         createdAt: '2024-04-01T00:00:00.000Z',
       },
     ]);
@@ -93,6 +97,25 @@ describe('adminScope.service getAllOfficialRequest()', () => {
       totalItems: 1,
       totalPages: 1,
     });
+  });
+
+  /**
+   * เอกสารประกอบเป็นเหตุผลทั้งหมดของคำขอ "ทีม Official" และบังคับให้ยื่น แต่คิวไม่เคย SELECT มา
+   * แอดมินจึงตัดสินโดยไม่เห็นเอกสารเลย (แก้ 27 ก.ย.) · ออกเป็น presigned URL เสมอ ไม่ส่ง S3 key ดิบ
+   */
+  it('turns the submitted documents into presigned URLs and never returns the raw key', async () => {
+    mockedAdminRepo.findAllOfficialRequests.mockResolvedValue({
+      rows: [{ ...officialRequestRow, supporting_docs: ['team_docs/10/cert.png', 'team_docs/10/letter.png'] }],
+      totalItems: 1,
+    } as any);
+
+    const result = await getAllOfficialRequest(0, 1, 20);
+
+    expect(result.items[0]!.supportingDocs).toEqual([
+      'https://s3/team_docs/10/cert.png?signed',
+      'https://s3/team_docs/10/letter.png?signed',
+    ]);
+    expect(JSON.stringify(result.items)).not.toContain('"team_docs/10/cert.png"');
   });
 
   it('returns an empty items array and totalPages 0 when there are no requests', async () => {

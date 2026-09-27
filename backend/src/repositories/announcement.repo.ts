@@ -2,11 +2,12 @@ import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { AnnouncementRow } from '../types/db.js';
 
-export async function create(tournamentId : number , title : string , content : string , createdBy : number): Promise<number>{
+export async function create(tournamentId : number , title : string , content : string , createdBy : number ,
+                             type : AnnouncementRow['announcement_type'] = 'general'): Promise<number>{
     const [result] = await pool.query<ResultSetHeader>(
         `INSERT INTO announcements (tournament_id, created_by, announcement_type, title, content)
-         VALUES (?, ?, 'general', ?, ?)`,
-        [tournamentId, createdBy, title, content]);
+         VALUES (?, ?, ?, ?, ?)`,
+        [tournamentId, createdBy, type, title, content]);
     return result.insertId;
 }
 
@@ -30,7 +31,9 @@ export async function findByTournament(tournamentId : number , offset : number ,
     return { rows, totalItems : Number(count[0]?.totalItems ?? 0) };
 }
 
-export async function update(announcementId : number , changes : { title? : string , content? : string } , updatedBy : number): Promise<boolean>{
+export async function update(announcementId : number ,
+                             changes : { title? : string , content? : string , type? : AnnouncementRow['announcement_type'] } ,
+                             updatedBy : number): Promise<boolean>{
     const fields : string[] = [];
     const values : (string | number)[] = [];
 
@@ -41,6 +44,10 @@ export async function update(announcementId : number , changes : { title? : stri
     if(changes.content !== undefined){
         fields.push('content = ?');
         values.push(changes.content);
+    }
+    if(changes.type !== undefined){
+        fields.push('announcement_type = ?');
+        values.push(changes.type);
     }
     if(fields.length === 0) return false;
 

@@ -12,6 +12,7 @@ export async function findAdminByUserId(userId : number): Promise<AdminScopeRow 
 
 export async function findAllOfficialRequests(offset: number, pageSize: number): Promise<{ rows: getOfficialRequest[], totalItems: number }> {
     const [ rows ] = await pool.query<(getOfficialRequest & RowDataPacket)[]>(`SELECT req.team_admin_request_id , req.team_admin_request_status , req.requested_at,
+                                                                                req.supporting_docs,
                                                                                 t.team_id , t.name , t.sport_type_id,
                                                                                 u.user_id , u.full_name , u.profile_image_key
                                                                                 FROM team_admin_requests req JOIN teams t ON req.team_id = t.team_id

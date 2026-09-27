@@ -842,4 +842,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('023_tournament_entry_notes.sql'),
   ('026_match_finish_timestamps.sql'),
   ('027_dispute_claim_and_evidence.sql'),   -- เว้น 024/025 ไว้ให้ backend_step9-10 (user_reports / admin_scopes_root)
-  ('028_match_result_complaints.sql');
+  ('028_match_result_complaints.sql'),
+  ('029_team_admin_requests_supporting_docs.sql');   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration

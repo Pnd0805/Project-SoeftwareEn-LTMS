@@ -24,8 +24,27 @@ describe('toGetOfficialRequest', () => {
       team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
       requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'avatar.png' },
       status: 'pending',
+      supportingDocs: [],
       createdAt: '2024-04-01T00:00:00.000Z',
     });
+  });
+
+  /**
+   * เอกสารประกอบเป็นเหตุผลทั้งหมดของคำขอ "ทีม Official" และบังคับให้ยื่น
+   * แต่คิวของแอดมินไม่เคย SELECT มา แอดมินจึงตัดสินโดยไม่มีทางเห็นเอกสาร (แก้ 27 ก.ย.)
+   * ★ รับมาเป็น presigned URL ที่ service แปลงแล้ว — mapper ไม่เคยเห็น S3 key ดิบ
+   */
+  it('carries the presigned document URLs the service resolved', () => {
+    const row = {
+      team_admin_request_id: 1, team_admin_request_status: 'pending' as const,
+      requested_at: new Date('2024-04-01T00:00:00Z'), supporting_docs: ['raw/key/1.png'],
+      team_id: 10, name: 'Dream Team', sport_type_id: 2,
+      user_id: 5, full_name: 'สมชาย ใจดี', profile_image_key: null,
+    };
+    const dto = toGetOfficialRequest(row as any, ['https://s3/signed-1', 'https://s3/signed-2']);
+    expect(dto.supportingDocs).toEqual(['https://s3/signed-1', 'https://s3/signed-2']);
+    // key ดิบต้องไม่หลุดออกไปแม้จะอยู่ในแถวที่ส่งเข้ามา
+    expect(JSON.stringify(dto)).not.toContain('raw/key');
   });
 
   it('maps a null requester avatar through as null', () => {

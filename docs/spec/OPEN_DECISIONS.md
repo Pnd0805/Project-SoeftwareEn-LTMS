@@ -294,6 +294,40 @@ FE-match-comments-pick-em: SocialBar ในหน้าแมตช์ (คอ�
 - **บันทึกเฉพาะคนยื่น** — `filer_flagged` ติดเฉพาะเมื่อแอดมินวินิจฉัยว่า `no_merit` · ไม่ติดผู้จัดและไม่ติดกรรมการ เพราะเรื่องผูกกับ**ผลแมตช์** ไม่ใช่ตัวบุคคล · schema กันไว้ว่าเรื่องที่ไม่มีมูลจะแก้ผลไปด้วยไม่ได้ (ขัดกันเอง)
 - **ไม่ใช้ `user_reports`** — ถามแล้ว (27 ก.ย.): ตารางนั้นทำไว้สำหรับรายงาน**ผู้ใช้**อย่างเดียว `target_user_id` เป็น NOT NULL + FK ไป `users` ถ้ายัดลงไปต้องใส่ user ของผู้จัดเป็นเป้า = ขัดมติ "เรื่องผูกกับผลแมตช์" ตรง ๆ และไม่มีที่เก็บผลที่เสนอ/ความเห็นผู้จัด
 
+## OD-30 — กวาดทั้งระบบหาคอลัมน์ที่เขียนแล้วไม่มีใครอ่านกลับ — ✅ Resolved 2026-09-27
+
+เจอรูปแบบนี้มา 3 รอบ (`removed_by` · `is_reported` · 3 ฟิลด์ใน OD-29) จึงกวาดทั้ง 41 ตาราง / 394 คอลัมน์
+เทียบ "เขียนลงฐาน" กับ "ไปถึง mapper/service/controller" · ตัวสคริปต์เก็บไว้ที่ scratchpad ไม่ commit
+
+**บทเรียนเรื่องวิธีตรวจ:** รอบแรกเขียนเงื่อนไข "ถูกอ่าน" กว้างเกินไป (นับการปรากฏใน `types/db.ts` ด้วย)
+ผลคือ **มันจะไม่เจอ `livestream_url` ซึ่งเป็นตัวที่เพิ่งแก้ไปเอง** — ต้องนับเฉพาะการอ่านใน mappers/services/controllers
+ซึ่งเป็นจุดที่ค่าจะกลายเป็น response จริง
+
+### เจอของจริง 2 เรื่อง
+
+- **`announcements.announcement_type`** — หนักกว่า "เขียนแล้วไม่มีใครอ่าน" คือ **ไม่ได้ทำอะไรเลย**: คอลัมน์มี 5 ค่าและ
+  NOT NULL มาตั้งแต่ schema แรก แต่ `createAnnouncementSchema` ไม่มีฟิลด์นี้ · INSERT ฮาร์ดโค้ด `'general'` ทุกครั้ง ·
+  `toAnnouncementDto` ไม่คืนออกมา → ผู้จัดเลือกชนิดไม่ได้ และ FE ติดป้าย "เปลี่ยนเวลา"/"เปลี่ยนสนาม"/"ผลการแข่งขัน" ไม่ได้
+  แก้ครบเส้น (schema → controller → service → repo → mapper) และแก้ผ่าน E10 ได้ด้วย · ไม่ส่ง `type` = `general` เหมือนเดิม ของเก่าไม่พัง
+- **`team_admin_requests.supporting_docs`** — คิวของแอดมินไม่เคย SELECT มา แอดมินจึงอนุมัติ/ปฏิเสธ "ทีม Official"
+  โดยไม่มีทางเห็นเอกสารที่เป็นเหตุผลทั้งหมดของคำขอ (และเป็นเอกสารที่ระบบบังคับให้ยื่น) · คืนเป็น presigned URL เสมอ
+  ★ **แต่ของจริงหนักกว่านั้น — เป็น schema drift:** คอลัมน์อยู่ใน `schema.sql` แต่**ไม่มี migration ไหนเพิ่มให้**
+  ฐานที่เดินด้วย `npm run migrate` จึงไม่มีคอลัมน์นี้ และ `createOfficialRequest` ที่ INSERT ลงไปตรง ๆ **ล้มทั้งฟีเจอร์**
+  ด้วย ER_BAD_FIELD_ERROR (ยืนยันกับฐาน dev แล้ว) → เพิ่ม **migration 029** · ฐานที่สร้างจาก schema.sql ข้ามเอง
+  เพราะ schema.sql ลงชื่อ migration ทั้งหมดไว้ที่ท้ายไฟล์
+
+### ที่เหลือไม่ใช่ปัญหา (บันทึกไว้ไม่ให้ไล่ซ้ำ)
+
+- `audit_logs.*` — ยังไม่มีใครอ่านโดยเจตนา · endpoint `/admin/audit-logs` อยู่บน `backend_step9-10`
+- `rewards` · `user_rewards` · `point_transactions` · `tournament_questions` · `password_reset_tokens` — **ฟีเจอร์ที่ยังไม่ได้ทำ** ไม่มี spec
+- `tournament_feedback.match_key` — generated column มีไว้ให้ UNIQUE ใช้ ไม่ต้องอ่าน
+- `bracket_nodes.node_code` — ป้ายภายใน · DTO มี `round` + `matchNumber` + `nodeId` พอวาดสายแล้ว
+- `teams.last_competed_at` — input ของ sweep TM-07 ไม่ใช่ข้อมูลที่ใครต้องอ่าน
+- `player_match_stat_values.value_int` — false positive ของสคริปต์ (คิวรี alias เป็น `value`)
+- `tournaments.organizer_external_*` (5 คอลัมน์) — SELECT มาแต่ไม่มีใครเขียนและไม่มีใครอ่าน **ฟีเจอร์ที่ออกแบบไว้แล้วไม่ได้ทำ** — ควรตัดสินว่าจะทำหรือลบทิ้ง
+- `users.suspended_reason` — ผู้ใช้ที่ถูกระงับได้ข้อความกลาง ๆ ไม่มีเหตุผล · แต่ปุ่มระงับอยู่บน `backend_step9-10` ให้ไปพร้อมกัน
+- `teams.deleted_reason` — เขียน `'leader_deleted'` / `'inactive_6_months'` แต่ไม่มีใครอ่าน · ทีมที่ถูกลบอัตโนมัติเพราะไม่ใช้งาน หัวหน้าทีมจึงไม่เคยรู้เหตุผล — เป็นงานของ TM-07 บน `backend_step9-10`
+
 ## OD-29 — สามฟิลด์ที่เขียนลงฐานแล้วไม่มีใครอ่านกลับ (จาก BACKEND-GAPS ของ FE) — ✅ Resolved 2026-09-27
 
 รูปแบบเดียวกันทั้งสามข้อ: คอลัมน์มีอยู่ · route เขียนค่าลงไปจริง · แต่ read route ไม่เคยคืนออกมา

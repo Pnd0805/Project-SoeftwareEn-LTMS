@@ -67,13 +67,21 @@ describe("toAnnouncementDto", () => {
 
         const dto = toAnnouncementDto(row);
 
-        expect(Object.keys(dto).sort()).toEqual(["body", "createdAt", "id", "title"]);
+        expect(Object.keys(dto).sort()).toEqual(["body", "createdAt", "id", "title", "type"]);
         expect(dto).toEqual({
             id: 1,
+            type: "schedule_change",
             title: "Match schedule updated",
             body: "The semi-final has moved to 15:00.",
             createdAt: "2026-03-01T08:30:00.000Z",
         });
+    });
+
+    // คอลัมน์นี้เคยถูกเขียนลงฐานแล้วไม่มีใครอ่านกลับ — ป้ายบนหน้าประกาศจึงไม่มีทางแสดงถูก
+    it("carries every announcement type through", () => {
+        for (const type of ["general", "schedule_change", "venue_change", "result", "livestream"] as const) {
+            expect(toAnnouncementDto(makeRow({ announcement_type: type })).type).toBe(type);
+        }
     });
 
     it("does not depend on nullable/optional columns being null or set", () => {

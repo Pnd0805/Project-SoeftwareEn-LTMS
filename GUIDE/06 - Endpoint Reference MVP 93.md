@@ -92,7 +92,7 @@
 | T13 | `POST /invitations/:id/accept` | Auth | รับคำเชิญ · **ทีม = คลังผู้เล่น**: เข้าคลังได้เสมอ ไม่ล็อก ไม่มีเพดาน (Q2-ค/Q3-ก) | — | `{ teamId, teamReadinessStatus }` |
 | T14 | `POST /invitations/:id/decline` | Auth | ปฏิเสธคำเชิญ | — | **204** |
 | T15 | `POST /teams/:id/official-request` | TL | ขอเป็นทีม Official → `pending` | `supportingDocs: string[]` (S3 key) | **201** `{ id, status:'pending' }` |
-| T16 | `GET /admin/team-requests` | ADM-u | คิวคำร้องรออนุมัติ | `?page&pageSize` | `{ items: [{id, team, requestedBy, status, createdAt}], pagination }` |
+| T16 | `GET /admin/team-requests` | ADM-u | คิวคำร้องรออนุมัติ · **แก้ 27 ก.ย.** เพิ่ม `supportingDocs` — เอกสารที่หัวหน้าทีมยื่น (บังคับกรอก) ไม่เคยถูก SELECT มา แอดมินจึงตัดสินโดยไม่เห็นเอกสารที่เป็นเหตุผลทั้งหมดของคำขอ · คืนเป็น **presigned URL** เสมอ ไม่ส่ง S3 key ดิบ · ต้องรัน **migration 029** ก่อน (คอลัมน์อยู่ใน schema.sql แต่ไม่เคยมี migration — ฐานที่เดินด้วย migrate ไม่มีคอลัมน์นี้ และการยื่นคำขอล้มทั้งฟีเจอร์) | `?page&pageSize` | `{ items: [{id, team, requestedBy, status, supportingDocs, createdAt}], pagination }` |
 | T17 | `POST /admin/team-requests/:id/approve` | ADM-u | อนุมัติ Official · **เช็ค BR-05 ทุกสมาชิก** · transaction + audit | — | `{ teamId, officialStatus:'official' }` / **422** `MEMBER_CONFLICT` |
 | T18 | `POST /admin/team-requests/:id/reject` | ADM-u | ปฏิเสธ · **`reason` บังคับ** | `reason` | `{ status:'rejected', reason }` |
 | T19 | `GET /teams` | — | **ค้นหาทีม (20 ก.ย.)** · ทีมที่ลบ/Inactive ไม่โชว์ (ดูผ่านทัวร์เก่าเท่านั้น) · ไม่คืน roster · ทุกแถวมี `memberCount` + `maxMembers` (= ขนาดรายชื่อลงแข่งสูงสุดของกีฬา — คลังใหญ่กว่านี้ได้) | `?q=&sportTypeId=&visibility=private\|public&page&pageSize` | `{ items: [TeamDto เหมือน T03], pagination }` |
@@ -313,9 +313,9 @@
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
-| E08 | `POST /tournaments/:id/announcements` | ORG | ประกาศ + แจ้งเตือนผู้เกี่ยวข้อง | `title, body` | **201** `{ id, title, body, createdAt }` |
-| E09 | `GET /tournaments/:id/announcements` | — | รายการประกาศ | `?page&pageSize` | `{ items, pagination }` |
-| E10 | `PATCH /announcements/:id` | ORG | แก้ประกาศ | `title?, body?` | `{ id, title, body, createdAt }` |
+| E08 | `POST /tournaments/:id/announcements` | ORG | **แก้ 27 ก.ย.** เพิ่ม `type` — `announcements.announcement_type` มี 5 ค่า NOT NULL มาตั้งแต่ schema แรก แต่ INSERT ฮาร์ดโค้ด `'general'` และไม่มี response ไหนคืนออกมา คอลัมน์จึงไม่ได้ทำอะไรเลย · ค่า: `general` \| `schedule_change` \| `venue_change` \| `result` \| `livestream` · ไม่ส่งมา = `general` (ของเก่าไม่พัง) · ประกาศ + แจ้งเตือนผู้เกี่ยวข้อง | `title, body, type?` | **201** `{ id, type, title, body, createdAt }` |
+| E09 | `GET /tournaments/:id/announcements` | — | รายการประกาศ · ทุกแถวมี `type` แล้ว (แก้ 27 ก.ย.) FE ติดป้ายชนิดประกาศได้ | `?page&pageSize` | `{ items: [{id, type, title, body, createdAt}], pagination }` |
+| E10 | `PATCH /announcements/:id` | ORG | แก้ประกาศ · แก้ `type` ได้ด้วย (แก้ 27 ก.ย.) | `title?, body?, type?` | `{ id, type, title, body, createdAt }` |
 | E11 | `DELETE /announcements/:id` | ORG | **soft delete** | — | **204** |
 | E12 | `PUT /matches/:id/livestream` | ORG | ตั้งลิงก์ถ่ายทอดสด · validate YouTube URL · `youtubeUrl: null` = ล้างลิงก์ | `youtubeUrl` | `{ matchId, youtubeUrl }` / **400** `INVALID_YOUTUBE_URL` |
 
