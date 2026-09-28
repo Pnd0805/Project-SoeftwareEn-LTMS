@@ -90,7 +90,7 @@ CREATE TABLE password_reset_tokens (
 CREATE TABLE admin_scopes (
   admin_scope_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
-  scope_type ENUM('faculty','university_wide') NOT NULL,
+  scope_type ENUM('faculty','university_wide','root') NOT NULL,   -- 🆕 'root' (migration 025) — System Owner คนเดียว ตั้งผ่าน seed เท่านั้น
   faculty_id INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by INT NULL,
@@ -770,6 +770,23 @@ CREATE TABLE audit_logs (
   FOREIGN KEY (user_id) REFERENCES users(user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- C2 (migration 023) — แจ้งเรื่องขอระงับผู้ใช้/แอดมิน — user ธรรมดายื่นได้ ไม่ใช่แค่แอดมิน
+CREATE TABLE user_reports (
+  user_report_id INT PRIMARY KEY AUTO_INCREMENT,
+  reported_by INT NOT NULL,
+  target_user_id INT NOT NULL,
+  reason TEXT NOT NULL,
+  evidence JSON NULL,
+  user_report_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  reviewed_by INT NULL,
+  reviewed_at DATETIME NULL,
+  rejection_reason TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reported_by) REFERENCES users(user_id),
+  FOREIGN KEY (target_user_id) REFERENCES users(user_id),
+  FOREIGN KEY (reviewed_by) REFERENCES users(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =====================================================================
 -- FK ที่ต้องเติมท้ายสุด — bracket_nodes กับ matches อ้างถึงกันและกัน
 -- =====================================================================
@@ -840,7 +857,9 @@ INSERT INTO schema_migrations (name) VALUES
   ('021_standings_goals.sql'),
   ('022_tournament_completion.sql'),
   ('023_tournament_entry_notes.sql'),
+  ('024_user_reports.sql'),          -- เดิมชื่อ 023 บน backend_step9-10 · เปลี่ยนเลขตอน merge เพราะ 023 ถูกใช้แล้ว
+  ('025_admin_scopes_root.sql'),     -- เดิมชื่อ 024 บน backend_step9-10 · เลื่อนตามกัน
   ('026_match_finish_timestamps.sql'),
-  ('027_dispute_claim_and_evidence.sql'),   -- เว้น 024/025 ไว้ให้ backend_step9-10 (user_reports / admin_scopes_root)
+  ('027_dispute_claim_and_evidence.sql'),
   ('028_match_result_complaints.sql'),
   ('029_team_admin_requests_supporting_docs.sql');   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration

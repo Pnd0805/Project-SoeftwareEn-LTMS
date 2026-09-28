@@ -48,3 +48,8 @@ export const requestSchema = z.object({
 export const rejectTeamOfficial = z.object({
     reason : z.string("ใส่เหตุผลการปฎิเสธ คำขอเป็น Official Team")
 });
+
+// C3 — โอนหัวหน้าทีม (T19)
+export const transferLeaderSchema = z.object({
+    newLeaderId : z.int('รหัสผู้ใช้ต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกผู้รับตำแหน่ง')
+});

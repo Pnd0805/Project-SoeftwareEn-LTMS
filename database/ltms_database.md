@@ -126,7 +126,7 @@ CREATE TABLE password_reset_tokens (
 CREATE TABLE admin_scopes (
   admin_scope_id INT PRIMARY KEY AUTO_INCREMENT,      -- ♻️ เปลี่ยนชื่อจาก id
   user_id INT NOT NULL,
-  scope_type ENUM('faculty','university_wide') NOT NULL,
+  scope_type ENUM('faculty','university_wide','root') NOT NULL,  -- 🆕 'root' (22 ก.ย. 2569, migration 024)
   faculty_id INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 🆕 ใหม่ — ตารางความปลอดภัยสูง ต้องรู้ว่าตั้งเมื่อไหร่
   created_by INT NULL,                                     -- 🆕 ใหม่ — Admin คนไหนเป็นคนแต่งตั้ง Admin คนนี้
@@ -135,6 +135,9 @@ CREATE TABLE admin_scopes (
   FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 ```
+> **`root` มีได้แค่คนเดียวในระบบเสมอ** — `faculty_id`/`created_by` เป็น `NULL` เหมือน `university_wide` แต่ห้ามตั้งผ่าน API ใดๆ เด็ดขาด (`POST /admin/scopes` รับแค่ `'faculty'`/`'university_wide'` เป็น input โดยโครงสร้าง) ต้อง `INSERT` ตรงผ่าน seed/DB bootstrap/deployment config เท่านั้น — กันไม่ให้ใคร promote ตัวเองเป็น Root ได้เลย
+> **ลำดับชั้น**: `root` แต่งตั้ง/ถอน `university_wide` ได้เท่านั้น (ไม่แตะ `faculty` ตรงๆ) · `university_wide` แต่งตั้ง/ถอน `faculty` ได้เท่านั้น (แต่งตั้ง `university_wide` คนอื่นไม่ได้) · `faculty` แต่งตั้ง/ถอนสิทธิ์แอดมินคนอื่นไม่ได้เลย — ทำหน้าที่ระงับ user ธรรมดาในคณะตัวเองอย่างเดียว
+> **`root` ไม่ทำ suspend/approve/reject ใดๆ ทั้งสิ้น** — ขอบเขตงานมีแค่ แต่งตั้ง/ถอน `university_wide`, ดู `admin_scopes`/`audit_logs` ทั้งหมด, และเป็นกลไก recovery เวลา hierarchy มีปัญหา (เช่น `university_wide` เหลือ 0 คนเพราะระงับกันเอง — `root` แต่งตั้งใหม่ได้เสมอ)
 
 ---
 
@@ -711,9 +714,32 @@ CREATE TABLE audit_logs (
 ```
 > ตัวมันเองคือ audit ไม่ต้องมี audit ซ้อน audit
 
+```sql
+-- 🆕 ใหม่ (21 ก.ย. 2569, migration 023) — C2: user ธรรมดายื่นคำร้องขอระงับ user/admin คนอื่นได้ ไม่ใช่แค่แอดมินสั่งระงับตรงๆ
+-- เป้าหมายเป็น user ธรรมดา → ไปเข้าคิวของแอดมินคณะที่ target สังกัด (หรือ university_wide เห็นหมดอยู่แล้ว)
+-- เป้าหมายเป็นแอดมิน (ทุกระดับ) → ไปเข้าคิว university_wide เท่านั้น เพราะมีแค่ university_wide ที่ระงับแอดมินได้ (C2 ข้อ 1)
+CREATE TABLE user_reports (
+  user_report_id INT PRIMARY KEY AUTO_INCREMENT,
+  reported_by INT NOT NULL,       -- ผู้แจ้ง
+  target_user_id INT NOT NULL,    -- ผู้ถูกแจ้ง (user หรือ admin ก็ได้)
+  reason TEXT NOT NULL,           -- บังคับเสมอ ไม่ว่าจะมีหลักฐานแนบหรือไม่
+  evidence JSON NULL,             -- array ของ S3/MinIO key รูป/ไฟล์หลักฐาน (ไม่บังคับ)
+  user_report_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  reviewed_by INT NULL,
+  reviewed_at DATETIME NULL,
+  rejection_reason TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reported_by) REFERENCES users(user_id),
+  FOREIGN KEY (target_user_id) REFERENCES users(user_id),
+  FOREIGN KEY (reviewed_by) REFERENCES users(user_id)
+);
+```
+> **approve** = เรียกกลไกระงับตัวเดียวกับที่แอดมินระงับตรงๆ (เช็คภาระค้าง/กันแอดมิน university_wide เหลือ 0 คนเหมือนกันทุกอย่าง) ไม่ใช่ path แยก
+> **ห้ามแอดมินที่ถูกแจ้งเป็นคนอนุมัติ/ปฏิเสธคำร้องของตัวเอง** — เช็คจาก `target_user_id === ผู้อนุมัติ` ตรงๆ
+
 ---
 
-## 14. สรุปจำนวนตาราง — 36 ตาราง
+## 14. สรุปจำนวนตาราง — 37 ตาราง
 
 ```
 33 ตารางเดิม

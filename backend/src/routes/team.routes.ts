@@ -2,7 +2,7 @@ import express from 'express';
 import * as Team from '../controllers/team.controller.js';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
-import { teamSchema , updateTeamSchema , createTeamInvitedSchema, requestSchema, joinRequestSchema, rejectJoinRequestSchema } from '../schemas/team.schema.js';
+import { teamSchema , updateTeamSchema , createTeamInvitedSchema, requestSchema, joinRequestSchema, rejectJoinRequestSchema, transferLeaderSchema } from '../schemas/team.schema.js';
 import { requireTeamLeader } from '../middlewares/requireTeamLeader.js';
 
 const router = express.Router();
@@ -30,4 +30,7 @@ router.delete('/:id/invitations/:iid' , requireAuth , requireTeamLeader , Team.d
 
 //Team Request
 router.post('/:id/official-request' , requireAuth , requireTeamLeader , validate(requestSchema) , Team.createTeamOfficialRequest);
+
+// C3 — โอนหัวหน้าทีม (T19)
+router.post('/:id/transfer-leader' , requireAuth , requireTeamLeader , validate(transferLeaderSchema) , Team.transferLeader);
 export default router;

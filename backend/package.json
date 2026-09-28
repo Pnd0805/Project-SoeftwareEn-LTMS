@@ -8,7 +8,7 @@
   "main": "app.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit --skipLibCheck false",
     "migrate": "tsx src/scripts/migrate.ts",

@@ -29,19 +29,22 @@ VALUES
   (9001, 'สมชาย ใจดี',    'somchai@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male',   '2004-05-01', 'student', 1, 1, 3, 'avatars/9001.jpg'),
   (9002, 'สมหญิง รักเรียน','somying@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '2005-02-14', 'student', 2, 6, 2, NULL),
   (9003, 'มานะ ไร้ทีม',    'mana@ku.th',    '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male',   '2003-11-30', 'student', 8, 30, 4, NULL),
-  (9004, 'อาจารย์วิศวะ',   'admin.eng@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '1985-01-01', 'staff',   1, NULL, NULL, NULL)
+  (9004, 'อาจารย์วิศวะ',   'admin.eng@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '1985-01-01', 'staff',   1, NULL, NULL, NULL),
+  (9099, 'Root ระบบ',     'root@ku.th',    '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'other',  '1980-01-01', 'staff',   NULL, NULL, NULL, NULL)
 AS new
 ON DUPLICATE KEY UPDATE full_name = new.full_name;
 
 -- ---------------------------------------------------------------------
--- แอดมิน 2 ระดับ (item 14 / มติ 20 ก.ย. 2569 OD-15)
---   9001 สมชาย       = university_wide  → อนุมัติได้ทุกทัวร์
---   9004 อาจารย์วิศวะ = faculty (คณะ 1) → auto-approve/อนุมัติได้เฉพาะทัวร์ที่วิศวะจัดและกฎคณะ = วิศวะเท่านั้น
+-- แอดมิน 3 ระดับ (item 14 / มติ 20 ก.ย. 2569 OD-15 + แก้ 22 ก.ย. 2569 เพิ่ม root)
+--   9099 Root ระบบ    = root            → แต่งตั้ง/ถอน university_wide เท่านั้น ไม่ทำ suspend/approve/reject ใดๆ
+--   9001 สมชาย       = university_wide  → อนุมัติได้ทุกทัวร์ · แต่งตั้ง/ถอน faculty ได้ (ไม่ใช่ university_wide คนอื่น)
+--   9004 อาจารย์วิศวะ = faculty (คณะ 1) → auto-approve/อนุมัติได้เฉพาะทัวร์ที่วิศวะจัดและกฎคณะ = วิศวะเท่านั้น · แต่งตั้งใครไม่ได้เลย
 -- ---------------------------------------------------------------------
 INSERT INTO admin_scopes (admin_scope_id, user_id, scope_type, faculty_id)
 VALUES
   (9001, 9001, 'university_wide', NULL),
-  (9002, 9004, 'faculty',         1)
+  (9002, 9004, 'faculty',         1),
+  (9003, 9099, 'root',            NULL)
 AS new
 ON DUPLICATE KEY UPDATE scope_type = new.scope_type, faculty_id = new.faculty_id;
 

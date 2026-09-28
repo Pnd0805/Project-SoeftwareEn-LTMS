@@ -2,12 +2,67 @@ import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 import pool from '../config/db.js';
 
 import type { AdminScopeRow, TeamAdminRequestRow } from '../types/db.js';
-import type { getOfficialRequest } from '../mappers/adminScope.mapper.js';
+import type { getOfficialRequest, getTransferRequest } from '../mappers/adminScope.mapper.js';
 
 
 export async function findAdminByUserId(userId : number): Promise<AdminScopeRow | null>{
     const [ rows ] = await pool.query<(AdminScopeRow & RowDataPacket)[]>(`SELECT * FROM admin_scopes WHERE user_id = ?`,[userId]);
     return rows[0] ?? null;
+}
+
+// C2 — GET /admin/scopes
+export type getAdminScope = Pick<AdminScopeRow , 'admin_scope_id' | 'scope_type' | 'faculty_id' | 'created_at'> &
+                             { user_id : number , full_name : string , profile_image_key : string | null };
+
+export async function findAllAdminScopes(filters : { facultyId? : number | undefined } , offset : number , pageSize : number)
+    : Promise<{ rows : getAdminScope[]; totalItems : number }>{
+    const where : string[] = [];
+    const params : unknown[] = [];
+    if(filters.facultyId !== undefined){ where.push('s.faculty_id = ?'); params.push(filters.facultyId); }
+    const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [ rows ] = await pool.query<(getAdminScope & RowDataPacket)[]>(
+        `SELECT s.admin_scope_id , s.scope_type , s.faculty_id , s.created_at ,
+                u.user_id , u.full_name , u.profile_image_key
+           FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
+          ${whereSql}
+          ORDER BY s.admin_scope_id LIMIT ? OFFSET ?`, [...params , pageSize , offset]);
+    const [ count ] = await pool.query<({ totalItems : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM admin_scopes s ${whereSql}`, params);
+
+    return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
+}
+
+export async function findAdminScopeById(id : number) : Promise<AdminScopeRow | null>{
+    const [ rows ] = await pool.query<(AdminScopeRow & RowDataPacket)[]>(`SELECT * FROM admin_scopes WHERE admin_scope_id = ?`,[id]);
+    return rows[0] ?? null;
+}
+
+export async function createAdminScope(userId : number , scopeType : 'faculty' | 'university_wide' , facultyId : number | null , createdBy : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `INSERT INTO admin_scopes(user_id , scope_type , faculty_id , created_by) VALUES(? , ? , ? , ?)`,
+        [userId , scopeType , facultyId , createdBy]);
+    return result.insertId;
+}
+
+export async function deleteAdminScope(id : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(`DELETE FROM admin_scopes WHERE admin_scope_id = ?`,[id]);
+    return result.affectedRows;
+}
+
+// "active" = ตัด user ที่ถูก suspend ออก เพราะระงับแล้วก็ใช้อำนาจแอดมินจริงไม่ได้อยู่ดี (requireAuth เตะออกทุก request)
+export async function countActiveUniversityWideAdmins() : Promise<number>{
+    const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
+          WHERE s.scope_type = 'university_wide' AND u.is_suspended = 0`);
+    return rows[0]!.cnt;
+}
+
+export async function countActiveFacultyAdmins(facultyId : number) : Promise<number>{
+    const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
+          WHERE s.scope_type = 'faculty' AND s.faculty_id = ? AND u.is_suspended = 0`,[facultyId]);
+    return rows[0]!.cnt;
 }
 
 export async function findAllOfficialRequests(offset: number, pageSize: number): Promise<{ rows: getOfficialRequest[], totalItems: number }> {
@@ -26,6 +81,25 @@ export async function findAllOfficialRequests(offset: number, pageSize: number):
     
     return { rows , totalItems : count[0]!.totalItems};
 
+}
+
+// C3 — ลิสต์คำขอโอนหัวหน้าทีมที่รออนุมัติ (คู่กับ findAllOfficialRequests — กรอง request_type ต่างกัน)
+export async function findAllTransferRequests(offset: number, pageSize: number): Promise<{ rows: getTransferRequest[], totalItems: number }> {
+    const [ rows ] = await pool.query<(getTransferRequest & RowDataPacket)[]>(`SELECT req.team_admin_request_id , req.team_admin_request_status , req.requested_at,
+                                                                                t.team_id , t.name , t.sport_type_id,
+                                                                                cur.user_id AS current_leader_id , cur.full_name AS current_leader_full_name , cur.profile_image_key AS current_leader_profile_image_key,
+                                                                                tgt.user_id AS proposed_leader_id , tgt.full_name AS proposed_leader_full_name , tgt.profile_image_key AS proposed_leader_profile_image_key
+                                                                                FROM team_admin_requests req JOIN teams t ON req.team_id = t.team_id
+                                                                                JOIN users cur ON req.requested_by = cur.user_id
+                                                                                JOIN users tgt ON req.target_user_id = tgt.user_id
+                                                                                WHERE req.request_type = ?
+                                                                                LIMIT ? OFFSET ? `,
+                                                                                ['leader_transfer' , pageSize , offset]);
+
+    const [ count ] = await pool.query<({totalItems : number} & RowDataPacket)[]>(`SELECT count(*) as totalItems
+                                                                                FROM team_admin_requests req WHERE request_type = ?`,['leader_transfer']);
+
+    return { rows , totalItems : count[0]!.totalItems};
 }
 
 export async function approveTeamOfficial(adminId : number , teamRequestId : number , teamId : number) : Promise<number>{
@@ -51,4 +125,44 @@ export async function rejectTeamOfficial(adminId : number , teamReqId : number ,
     const [ result ] = await pool.query<ResultSetHeader>(`UPDATE team_admin_requests SET team_admin_request_status = ? , rejection_reason = ? , reviewed_by = ?, reviewed_at = NOW()
                                                           WHERE team_admin_request_id = ?` ,['rejected' , reason , adminId, teamReqId]);
     return result.affectedRows;
+}
+
+// C3 — แอดมินโอนหัวหน้าทีมแทนตอนหัวหน้าเดิมหายไป (ไม่ผ่านคิว T19 — แอดมินคือผู้อนุมัติเองอยู่แล้ว)
+// ใช้ได้ทั้งทีม Official/Unofficial — Unofficial ไม่มีทางโอนหัวหน้าได้ทางอื่นเลย
+// ยัง INSERT ลง team_admin_requests ด้วย (สถานะ 'approved' ทันที) เพื่อให้มี audit trail เดียวกับ T19/T20
+export async function transferLeaderByAdmin(adminId : number , teamId : number , newLeaderId : number) : Promise<number>{
+    const conn = await pool.getConnection();
+    try{
+        await conn.beginTransaction();
+        const [ result ] = await conn.query<ResultSetHeader>(`UPDATE teams SET leader_id = ? WHERE team_id = ?`,[newLeaderId , teamId]);
+        await conn.query<ResultSetHeader>(`INSERT INTO team_admin_requests(team_id , request_type , requested_by , target_user_id , team_admin_request_status , reviewed_by , reviewed_at)
+                                            VALUES(? , ? , ? , ? , ? , ? , NOW())`,
+                                            [teamId , 'leader_transfer' , adminId , newLeaderId , 'approved' , adminId]);
+        await conn.commit();
+        return result.affectedRows;
+    }catch(err){
+        await conn.rollback();
+        throw err;
+    }finally{
+        conn.release();
+    }
+}
+
+// C3 — โอนหัวหน้าทีม (T20) — endpoint นี้เท่านั้นที่ UPDATE teams SET leader_id จริง
+export async function approveTransferRequest(adminId : number , teamRequestId : number , teamId : number , newLeaderId : number) : Promise<number>{
+    const conn = await pool.getConnection();
+    try{
+        await conn.beginTransaction();
+        const [ result ] = await conn.query<ResultSetHeader>(`UPDATE teams SET leader_id = ? WHERE team_id = ?`,[newLeaderId , teamId]);
+        await conn.query<ResultSetHeader>(`UPDATE team_admin_requests SET team_admin_request_status = ? , reviewed_by = ? , reviewed_at = NOW()
+                                            WHERE team_admin_request_id = ?`,
+                                            ['approved' , adminId , teamRequestId]);
+        await conn.commit();
+        return result.affectedRows;
+    }catch(err){
+        await conn.rollback();
+        throw err;
+    }finally{
+        conn.release();
+    }
 }

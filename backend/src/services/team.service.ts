@@ -6,7 +6,7 @@ import * as NotificationService from './notification.service.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
-import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toGetAllInvitation, getTeamOfficialRequestDto } from '../mappers/team.mapper.js';
+import { toCreateTeam , toMyTeam, toTeamDto, toCreateTeamInvitation, toGetAllInvitation, getTeamOfficialRequestDto, toTransferRequestDto } from '../mappers/team.mapper.js';
 import { toTeamMemberDto, type MyTeam } from '../mappers/team.mapper.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
@@ -39,6 +39,7 @@ export async function createTeam(input : TeamInput , leaderId : number){
 }
 
 export async function getMyTeam(userId : number){
+    await TeamRepo.sweepInactiveTeams();
     const data : MyTeam[] = [];
     const teams = await TeamRepo.findTeamsByUser(userId); //return TeamRow[]
     for(const team of teams){
@@ -62,6 +63,7 @@ export async function searchTeams(filters : { q? : string | undefined; sportType
 }
 
 export async function getTeamById(teamId : number){
+    await TeamRepo.sweepInactiveTeams();
     const team = await checkTeam(teamId);
 
     const memberCount = await TeamRepo.countMemberByTeamId(teamId);
@@ -246,4 +248,22 @@ export async function createOfficialRequest(userId : number , teamId : number , 
     const requestId = await TeamRepo.createOfficialRequest(teamId ,userId ,docs);
     const OfficialReq = await TeamRepo.findOfficialRequestById(requestId);
     return getTeamOfficialRequestDto(OfficialReq!);
+}
+
+// C3 — โอนหัวหน้าทีม (T19)
+export async function transferLeader(requesterId : number , teamId : number , newLeaderId : number){
+    const team = await checkTeam(teamId);
+
+    if(team.official_status !== 'Official'){
+        throw new AppError(403 , "NOT_OFFICIAL_TEAM" , "การโอนย้ายสิทธิ์หัวหน้าทีมใช้ได้เฉพาะทีม Official");
+    }
+
+    const member = await TeamRepo.isMemberOf(teamId , newLeaderId);
+    if(!member){
+        throw new AppError(422 , "NOT_A_TEAM_MEMBER" , "ผู้ใช้ที่เลือกต้องเป็นสมาชิกของทีมนี้อยู่แล้ว");
+    }
+
+    const requestId = await TeamRepo.createTransferRequest(teamId , requesterId , newLeaderId);
+    const transferReq = await TeamRepo.findTransferRequestById(requestId);
+    return toTransferRequestDto(transferReq! , team.leader_id);
 }
