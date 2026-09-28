@@ -1,5 +1,5 @@
 import type { MyInvitationRow, AdminUserRow } from '../repositories/user.repo.js';
-import type { UserRow } from '../types/db.js';
+import type { UserRow, AdminScopeRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
 
 export type MeDto = {
@@ -17,7 +17,15 @@ export type MeDto = {
   address : string | null,
   totalPoints : number,
   notificationPrefs : Record<string , boolean> | null,
-  createdAt : string
+  createdAt : string,
+  /**
+   * FE-viewer-admin-scope-unknown — สิทธิ์แอดมินของ *ตัวผู้เรียกเอง* · null = ไม่ใช่แอดมิน
+   *
+   * `facultyId` ข้างบนคือคณะที่ผู้ใช้ **สังกัด** ซึ่งไม่เกี่ยวกับขอบเขตที่ดูแล — คนละเรื่องกัน
+   * ฟอร์มสร้างทัวร์ต้องรู้ข้อนี้เพราะ `autoApproveIfOwnScope` ทำให้ผลของการกด Send
+   * ต่างกันตามคนกด · ถ้าจอไม่รู้ ก็บอกผู้ใช้ล่วงหน้าไม่ได้ว่าจะได้ `private` หรือเข้าคิว
+   */
+  adminScope : AdminScopeRefDto | null
 };
 
 export type UserRefDto = {
@@ -73,8 +81,10 @@ export type PublicUserDto = {
   isFollowing: boolean
 }
 
-export function toMeDto(row: UserRow): MeDto {
+export function toMeDto(row: UserRow , admin : AdminScopeRow | null = null): MeDto {
   return {
+    adminScope : admin === null ? null
+               : { id : admin.admin_scope_id , scopeType : admin.scope_type , facultyId : admin.faculty_id },
     id: row.user_id,
     fullName: row.full_name,
     email: row.email,

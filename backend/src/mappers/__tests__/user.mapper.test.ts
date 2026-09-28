@@ -44,7 +44,34 @@ describe('toMeDto', () => {
       totalPoints: 150,
       notificationPrefs: { email: true, push: false },
       createdAt: '2023-09-01T12:00:00.000Z',
+      adminScope: null,
     });
+  });
+
+  /**
+   * FE-viewer-admin-scope-unknown — /me ต้องบอกสิทธิ์แอดมินของตัวผู้เรียกเอง
+   * `facultyId` ข้างบนคือคณะที่ **สังกัด** ไม่ใช่ขอบเขตที่ดูแล — ฟอร์มสร้างทัวร์ใช้แทนกันไม่ได้
+   */
+  it('คนทั่วไปได้ adminScope เป็น null ไม่ใช่ไม่มีคีย์ — FE จะได้ไม่ต้องเช็ค undefined', () => {
+    expect(toMeDto(baseUserRow as any)).toHaveProperty('adminScope', null);
+  });
+
+  it('แอดมินคณะได้ scope ของตัวเอง ไม่ใช่คณะที่สังกัด', () => {
+    const admin = { admin_scope_id: 7, user_id: 1, scope_type: 'faculty' as const,
+                    faculty_id: 9, created_at: new Date(), created_by: null };
+
+    const out = toMeDto({ ...baseUserRow, faculty_id: 2 } as any, admin);
+
+    expect(out.adminScope).toEqual({ id: 7, scopeType: 'faculty', facultyId: 9 });
+    expect(out.facultyId).toBe(2);   // คนละค่า คนละความหมาย
+  });
+
+  it('university_wide และ root ได้ facultyId เป็น null', () => {
+    for (const scope_type of ['university_wide', 'root'] as const) {
+      const admin = { admin_scope_id: 1, user_id: 1, scope_type,
+                      faculty_id: null, created_at: new Date(), created_by: null };
+      expect(toMeDto(baseUserRow as any, admin).adminScope).toEqual({ id: 1, scopeType: scope_type, facultyId: null });
+    }
   });
 
   it('passes through null values for optional fields rather than defaulting them', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 
 vi.mock('../../services/user.service.js', () => ({
+  getMe: vi.fn(),
   getUserById: vi.fn(),
   getUserStats: vi.fn(),
   searchUsers: vi.fn(),
@@ -12,10 +13,6 @@ vi.mock('../../services/user.service.js', () => ({
   getFollowers: vi.fn(),
   getFollowing: vi.fn(),
   getCareer: vi.fn(),
-}));
-
-vi.mock('../../mappers/user.mapper.js', () => ({
-  toMeDto: vi.fn(),
 }));
 
 vi.mock('../../utils/parseId.js', () => ({
@@ -37,12 +34,10 @@ import {
   getCareer,
 } from '../user.controller.js';
 import * as UserService from '../../services/user.service.js';
-import { toMeDto } from '../../mappers/user.mapper.js';
 import { parseId } from '../../utils/parseId.js';
 import { AppError } from '../../utils/AppError.js';
 
 const mockedUserService = vi.mocked(UserService);
-const mockedToMeDto = vi.mocked(toMeDto);
 const mockedParseId = vi.mocked(parseId);
 
 function makeRes(): Response {
@@ -67,20 +62,21 @@ describe('user.controller getMe()', () => {
       code: 'USER_NOT_FOUND',
     });
     expect(res.status).not.toHaveBeenCalled();
-    expect(mockedToMeDto).not.toHaveBeenCalled();
+    expect(mockedUserService.getMe).not.toHaveBeenCalled();
   });
 
-  it('maps req.user with toMeDto and responds 200', async () => {
+  // FE-viewer-admin-scope-unknown — /me ต้องอ่าน admin_scopes เพิ่ม การประกอบ DTO จึงย้ายไป service
+  it('hands req.user to the service and responds 200 with what it returns', async () => {
     const user = { user_id: 1, full_name: 'Test' };
     const req = { user } as unknown as Request;
     const res = makeRes();
-    mockedToMeDto.mockReturnValue({ id: 1, fullName: 'Test' } as any);
+    mockedUserService.getMe.mockResolvedValue({ id: 1, fullName: 'Test', adminScope: null } as any);
 
     await getMe(req, res);
 
-    expect(mockedToMeDto).toHaveBeenCalledWith(user);
+    expect(mockedUserService.getMe).toHaveBeenCalledWith(user);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ id: 1, fullName: 'Test' });
+    expect(res.json).toHaveBeenCalledWith({ id: 1, fullName: 'Test', adminScope: null });
   });
 });
 

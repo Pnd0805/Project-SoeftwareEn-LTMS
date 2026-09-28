@@ -4,6 +4,7 @@ import * as StatRepo from '../repositories/playerStat.repo.js';
 import * as FollowRepo from '../repositories/follow.repo.js';
 import * as CareerRepo from '../repositories/career.repo.js';
 import * as UserReportRepo from '../repositories/userReport.repo.js';
+import * as AdminRepo from '../repositories/adminScope.repo.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkUser } from '../utils/checkExist.js';
@@ -15,6 +16,7 @@ import { toCareerTournamentDto } from '../mappers/career.mapper.js';
 import { toUserReportDto } from '../mappers/userReport.mapper.js';
 
 import type { UpdateMeInput } from '../schemas/user.schema.js';
+import type { UserRow } from '../types/db.js';
 
 export async function getUserById(userId: number, viewerUserId?: number) {
     const user = await checkUser(userId);
@@ -92,10 +94,18 @@ export async function searchUsers(userName : string){
     return { items : data};
 }
 
+/**
+ * FE-viewer-admin-scope-unknown — `GET /me` ต้องบอกสิทธิ์แอดมินของตัวผู้เรียกเอง
+ * เป็นการอ่านเพิ่มหนึ่งแถวจากคีย์ที่มีอยู่แล้ว · คนทั่วไปได้ `adminScope: null`
+ */
+export async function getMe(user : UserRow){
+    return toMeDto(user , await AdminRepo.findAdminByUserId(user.user_id));
+}
+
 export async function updateMe(userId : number , input : UpdateMeInput){
     await UserRepo.update(userId , input); //update users
     const user = await checkUser(userId);
-    return toMeDto(user);
+    return toMeDto(user , await AdminRepo.findAdminByUserId(userId));
 }
 
 export async function getMyInvitation(userId : number){

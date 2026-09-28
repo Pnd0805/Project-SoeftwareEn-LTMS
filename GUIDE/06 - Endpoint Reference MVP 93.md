@@ -38,7 +38,7 @@
 
 | รหัส | Method + Path          | Auth | ทำอะไร                                            | รับ                                  | คืน                                                                                                                                                     |
 | ---- | ---------------------- | ---- | ------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| U01  | `GET /me`              | Auth | โปรไฟล์ตัวเอง (มีข้อมูลส่วนตัว)                   | —                                    | `{ id, fullName, email, gender, birthDate, facultyId, departmentId, year, avatarUrl, contactInfo, address, totalPoints, notificationPrefs, createdAt }` |
+| U01  | `GET /me`              | Auth | โปรไฟล์ตัวเอง (มีข้อมูลส่วนตัว)                   | —                                    | `{ id, fullName, email, gender, birthDate, facultyId, departmentId, year, avatarUrl, contactInfo, address, totalPoints, notificationPrefs, createdAt, adminScope }` |
 | U02  | `PATCH /me`            | Auth | แก้โปรไฟล์ · **allowlist 3 field เท่านั้น**       | `avatarUrl?, contactInfo?, address?` | เหมือน U01                                                                                                                                              |
 | U03  | `GET /users/:id`       | Optional | โปรไฟล์สาธารณะ · **ไม่มี email/contact/address** · ถ้ามี token จะคืนสถานะ follow ของ viewer | — | `{ id, fullName, avatarUrl, facultyId, departmentId, teams[], followerCount, isFollowing }` |
 | U04  | `GET /users/:id/stats` | —    | สถิตินักกีฬา + totals ของหน้า profile | — | `{ userId, overall{matchesPlayed,wins,losses,winRate,championCount}, bySport[], mvpVotes, pickemPoints, followerCount }` |
@@ -52,6 +52,14 @@
 
 > **U01 กับ U03 ห้ามใช้ mapper ตัวเดียวกัน** — พลาดครั้งเดียวอีเมลรั่วทั้งระบบ
 > **U06** ถ้า `q` สั้นกว่า 3 → **400** `QUERY_TOO_SHORT`
+
+> **U01 `adminScope`** (FE-viewer-admin-scope-unknown) — สิทธิ์แอดมินของ *ตัวผู้เรียกเอง*
+> `{ id, scopeType: 'faculty'|'university_wide'|'root', facultyId }` · **คนทั่วไปได้ `null` ไม่ใช่คีย์หาย**
+>
+> ⚠️ **`adminScope.facultyId` ≠ `facultyId`** — ตัวบนคือคณะที่ **ดูแล** ตัวล่างคือคณะที่ **สังกัด**
+> เป็นคนละค่ากันได้ (แอดมินคณะวิศวะที่สังกัดคณะวิทย์) · ฟอร์มสร้างทัวร์ต้องใช้ตัวบน
+> เพราะ `autoApproveIfOwnScope` ทำให้ผลของการกด Send ต่างกันตามคนกด — จอต้องบอกล่วงหน้าได้ว่า
+> จะได้ `private` ทันทีหรือเข้าคิวรออนุมัติ · `root` ได้ `facultyId: null` และ **ไม่ได้อนุมัติอะไรเอง** (OD-34)
 
 ---
 
