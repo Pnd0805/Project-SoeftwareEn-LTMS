@@ -3,6 +3,7 @@ import * as Admin from '../controllers/adminScope.controller.js';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { requireAdmin_U } from '../middlewares/requireAdmin_U.js';
 import { requireAdmin } from '../middlewares/requireAdmin.js';
+import { requireAdminOversight } from '../middlewares/requireAdminOversight.js';
 import { validate } from '../middlewares/validate.js';
 import { rejectTeamOfficial, transferLeaderSchema } from '../schemas/team.schema.js';
 import { suspendUserSchema, grantScopeSchema } from '../schemas/admin.schema.js';
@@ -28,6 +29,10 @@ router.get('/scopes' , requireAuth , requireAdmin , Admin.listScopes);
 router.post('/scopes' , requireAuth , requireAdmin , validate(grantScopeSchema) , Admin.grantScope);
 router.delete('/scopes/:id' , requireAuth , requireAdmin , Admin.revokeScope);
 router.get('/audit-logs' , requireAuth , requireAdmin , Admin.listAuditLogs);
+
+// OD-34 — root + university_wide อ่านได้ · faculty ไม่ได้ · อ่านอย่างเดียว ไม่มีปุ่มกดอะไรทั้งสิ้น
+// ใช้ requireAdminOversight ไม่ใช่ requireAdmin_U เพราะตัวนั้นเป็นด่าน "กดได้" — ดูคอมเมนต์ในไฟล์ middleware
+router.get('/oversight/stalled' , requireAuth , requireAdminOversight , Admin.getStalledWork);
 
 // C2 — user_reports
 router.get('/user-reports' , requireAuth , requireAdmin , Admin.listUserReports);

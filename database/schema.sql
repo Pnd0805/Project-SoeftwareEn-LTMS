@@ -94,6 +94,9 @@ CREATE TABLE admin_scopes (
   faculty_id INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by INT NULL,
+  -- 🆕 migration 030 — บังคับ root คนเดียวที่ระดับฐาน · NULL สำหรับแถวที่ไม่ใช่ root และ UNIQUE ยอมให้ NULL ซ้ำได้
+  root_singleton TINYINT AS (IF(scope_type = 'root', 1, NULL)) STORED,
+  UNIQUE KEY uq_admin_scopes_single_root (root_singleton),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (faculty_id) REFERENCES faculties(faculty_id),
   FOREIGN KEY (created_by) REFERENCES users(user_id)
@@ -862,4 +865,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('026_match_finish_timestamps.sql'),
   ('027_dispute_claim_and_evidence.sql'),
   ('028_match_result_complaints.sql'),
-  ('029_team_admin_requests_supporting_docs.sql');   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration
+  ('029_team_admin_requests_supporting_docs.sql'),   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration
+  ('030_admin_scopes_single_root.sql');              -- OD-34: บังคับ root คนเดียวที่ระดับฐาน ไม่ใช่แค่ทาง API

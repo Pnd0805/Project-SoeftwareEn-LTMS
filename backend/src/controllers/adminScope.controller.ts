@@ -1,4 +1,5 @@
 import * as AdminService from '../services/adminScope.service.js';
+import * as OversightService from '../services/oversight.service.js';
 import { parsePagination } from '../utils/pagination.js';
 import type { Request , Response} from 'express';
 import { parseId } from '../utils/parseId.js';
@@ -100,4 +101,9 @@ export async function approveUserReport(req : Request , res : Response){
 export async function rejectUserReport(req : Request , res : Response){
     const reportId = parseId(req.params['id'] , 'รหัสคำร้อง' , 'id');
     res.status(200).json(await AdminService.rejectUserReport(req.admin! , reportId , req.body.reason));
+}
+
+// OD-34 — อ่านอย่างเดียว ไม่รับพารามิเตอร์อะไรเลย · สิทธิ์คุมที่ requireAdminOversight
+export async function getStalledWork(_req : Request , res : Response){
+    res.status(200).json(await OversightService.getStalledWork());
 }

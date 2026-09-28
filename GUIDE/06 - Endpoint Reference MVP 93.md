@@ -370,6 +370,40 @@
 
 ---
 
+# 11. Admin — กำกับดูแล (C2)
+
+> ⚠️ **หมวดนี้ยังไม่ครบ** — ชุด endpoint ของ C2 ที่มากับ `backend_step9-10` (`/admin/users`,
+> `/admin/scopes`, `/admin/audit-logs`, `/admin/user-reports`) **ยังไม่ถูกบันทึกในเอกสารนี้**
+> เป็นหนี้ของเจ้าของโมดูล · ตารางข้างล่างมีเฉพาะ endpoint ที่ OD-34 เพิ่มเข้ามา
+
+**ไฟล์:** `routes/adminScope.routes.ts` · `adminScope.controller.ts` · `oversight.service.ts` · `oversight.repo.ts`
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| A01 | `GET /admin/oversight/stalled` | Auth + **root หรือ university_wide** (faculty → 403) | มีอะไรค้างจนต้องมีคนเข้ามาปลดล็อกไหม · **อ่านอย่างเดียว** | `—` | `{ thresholdHours, disputesPastDeadline, complaintsAwaitingAdmin, universityAdmins, needsAttention }` |
+
+```jsonc
+{
+  "thresholdHours": 48,                                        // = ORG_RESOLVE_HOURS
+  "disputesPastDeadline":    { "count": 3, "matchIds": [88, 91, 102] },
+  "complaintsAwaitingAdmin": { "count": 1, "complaintIds": [7] },
+  "universityAdmins":        { "total": 2, "active": 0 },
+  "needsAttention": true                                       // มีของค้าง + ไม่มีแอดมินที่ใช้งานได้เลย
+}
+```
+
+> **คืนแค่ตัวเลขกับ id โดยเจตนา** — ไม่มีเหตุผลของข้อโต้แย้ง ไม่มีหลักฐาน ไม่มีชื่อคู่กรณี (OD-34)
+> root เป็นคนตรวจไม่ใช่คนตัดสิน · ต้องรู้แค่ว่า "มีของค้าง เท่าไร ที่ไหน" พอให้ตัดสินใจว่าต้องแต่งตั้ง
+> University Admin คนใหม่ไหม · ใครจะ **กด** ต้องผ่าน `requireAdmin_U` / `requireCanResolveDispute` ตามเดิม
+> ซึ่ง **root ไม่ผ่านทั้งคู่** — เป็นด่านคนละตัวกัน ไม่ใช่ความซ้ำซ้อน
+
+> **`needsAttention` คืออะไร** — `LAST_UNIVERSITY_ADMIN` รับประกันว่า *มี* แอดมินมหาวิทยาลัยเหลือ
+> แต่ไม่ได้รับประกันว่าคนนั้น *ใช้งานได้* · `active: 0` ทั้งที่มีของค้าง = ไม่มีใครกดได้เลย
+> **ทางแก้คือ root แต่งตั้งคนใหม่ ไม่ใช่ root กดแทน** · และต้องตั้งคนใหม่ *ก่อน* ถอนคนเดิม
+> เพราะ `LAST_UNIVERSITY_ADMIN` ไม่ยกเว้น root
+
+---
+
 # ภาคผนวก — Error code ที่ใช้ได้ทุก endpoint
 
 | code | HTTP | message ไทย | โยนจากไหน |
