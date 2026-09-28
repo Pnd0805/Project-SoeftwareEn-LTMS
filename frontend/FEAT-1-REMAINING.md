@@ -3,9 +3,11 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend contract reference: remote `BE_KN@e5ea50d` and the
-2026-09-23 C1/C6/C7 and BE_KN FE notices.** Verified with `git ls-remote` and
-`git fetch origin BE_KN` on 2026-09-23. Individual entries in the "Backend blockers" section retain
+**Current backend contract reference: remote `BE_KN@7a4499c` and its
+2026-09-28 FE notice** (answered in `FE-REPLY-BE_KN-2026-09-29.md`; this
+round is R28–R34). Verified with `git fetch origin BE_KN` on 2026-09-29.
+Before that: `BE_KN@e5ea50d` and the 2026-09-23 C1/C6/C7 and BE_KN FE
+notices, verified on 2026-09-23. Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
 
@@ -419,6 +421,106 @@ against the running backend at `e5ea50d` before anything changed.
         `200 {status: "rejected"}` on decline. Filed as
         `FE-reject-skips-eligibility-scope`. Decline is deliberately left
         enabled — the server really does allow it — but the row now says so.
+
+### R28–R34 — the 2026-09-28 backend notice, and five reports from 2026-09-29
+
+Checked against `BE_KN@7a4499c`, after `npm run migrate` and a clean role audit.
+The backend-facing half is in `FE-REPLY-BE_KN-2026-09-29.md` (Thai) and
+`BACKEND-GAPS.md`; the short version for both teams is `HANDOVER-2026-09-29.md`.
+
+- [x] **R28 — the notice of 2026-09-28, item by item.** Of 15 items, 12 fixed
+      what we asked for, 2 came back narrower (dispute fields reach only
+      organizer/referees/leaders; root gets an empty queue instead of a refusal —
+      both decided on 2026-09-29 and re-filed), and 1 is still open as the notice
+      said (avatar and logo uploads). Four things the notice did not say: MVP
+      moved per-match (`1cbe7bf`), OD-26 made *finish* mandatory, migration 029
+      fails on the QA baseline, and `/me/teams` keeps deleted teams. Backend
+      tests 112 files / 2216 pass; production build clean.
+      Engagement features doc: 9 of 10 rows work; the MVP row is broken by the
+      per-match move.
+- [x] **R29 — "always run `npm run migrate`", and a role audit after it.** Both
+      are in `frontend/CLAUDE.md`. `frontend/scripts/audit-roles.py` checks six
+      rules from the spec (organizer competing in their own tournament; referee
+      on a team entered in the same tournament; organizer refereeing their own
+      tournament; referee on either team of the match; a match past `scheduled`
+      without enough referees; a check-in decided by someone who is not that
+      match's referee). Exit 1 = cases found, 0 = clean, 2 = database
+      unreachable. First run found 12 cases, all shipped by `qa-baseline.sql`;
+      filed as `FE-qa-baseline-role-conflicts`.
+- [x] **R30 — three rule questions, answered from the documents.**
+      - *May a referee or organizer compete in a match of their own
+        tournament?* **No** — decision of 18 September, spec 02 §7; the API
+        refuses with `TEAM_CONFLICT_OF_INTEREST`,
+        `REFEREE_CONFLICT_OF_INTEREST` and `ORGANIZER_CANNOT_BE_REFEREE`.
+        `OPEN_DECISIONS.md` still lists OD-10 as open, which is stale.
+      - *May the organizer verify a check-in by hand instead of the referee?*
+        **No** — SDS week 12 p.44 puts verify/reject behind `requireReferee`,
+        and the organizer receives `documentUrl: null` (NF-SE-03); spec 07 §1
+        makes manual verification a referee exception and OD-09 rules out an
+        organizer fallback in the MVP.
+      - *May a match skip referee assignment?* **No** — SRS BR-10/BR-11:
+        referees before Public, at least two on site when the sport has stats;
+        starting without them is `409 INSUFFICIENT_REFEREES`.
+- [x] **R31 — matches without referees, and ปกรณ์ competing in t23, which he
+      organized.** Matches #1, #13 and #14 were given referees directly in the
+      database and #15 through the normal FR02 flow. #1 and #14 still have no
+      match time, and #1 has had check-in open since 17 September — both need an
+      organizer, not a data fix. For t22/t23 the organizer was handed over to
+      9001 and for t14 to 9201; nine conflicting referee rows were removed
+      through F03. The audit is clean.
+      Frontend change: the referee picker (`RefereePanel.tsx`) no longer offers
+      the signed-in organizer as a candidate for their own tournament, and
+      explains `ORGANIZER_CANNOT_BE_REFEREE` in words
+      (`RefereeFinder.test.tsx`, 2 tests).
+- [x] **R32 — "Could not save the result. ต้องกดจบการแข่งขันก่อนถึงจะส่งผลได้"**
+      (สมหญิง, match 13). OD-26 (26–27 September, not in the notice) added the
+      `finished` status and `POST /matches/:id/finish`, and S01 now answers
+      `409 MATCH_NOT_FINISHED` unless the match is `finished` or
+      `result_rejected`. The frontend had no such status, offered the result
+      form during `in_progress`, and removed Match control once the match
+      started — so there was no Finish button anywhere.
+      - Match control now shows **Finish the match** to the match's referees
+        and the organizer during `in_progress`, with a confirm step because it
+        cannot be undone.
+      - The result form opens only on `finished` or `result_rejected`; during
+        play the page says why it is not there yet.
+      - `finished` is mapped in `enums.ts` and `matchView.ts`, and
+        `MATCH_NOT_FINISHED` plus the lifecycle errors read in words.
+      - `viewer.can.openCheckin` is now `isOrganizer || isReferee`, since
+        `FE-open-checkin-organizer-only` was delivered.
+      - Tests: 10 new (contract, page, view); the contract test fails with the
+        old rule. Live: finished match 13 as สมหญิง, saved 52–47, server
+        accepted it; the match was then restored to `in_progress` for the user
+        to repeat.
+      - [ ] Kit label for `finished`: the badge currently reads "Awaiting
+            confirmation". A closer label belongs in `components/kit`, which is
+            Person 1's.
+      - [ ] Rest of OD-26 has no screens: `abandon`, the organizer-result
+            ladder, admin dispute resolution after 48 hours, disputes with a
+            proposed result and evidence, and `match_result_complaints`.
+- [x] **R33 — "ขอ account ของ กันตพงศ์ อินทรีย์".** Two accounts share the name:
+      `p9213@ku.th` (Science, four teams) and `p9250@ku.th` (Engineering, one
+      team). Neither referees or is suspended.
+- [x] **R34 — "Report · organizer deletes · reported queue" could not be
+      found.** Two causes. Tournament 19 had no comments at all, so no Report
+      button could appear. And our own directions were wrong: the queue is not
+      Manage → Feedback (that one is for *reviews*), it is the **Reported
+      only** button in the Tournament comments panel of the Community page,
+      shown to the organizer and university-wide admins. Checked end to end in
+      the browser: report as `playerA1@ku.th` → the comment shows under
+      Reported only for `somchai@ku.th` → Remove asks for a reason. One test
+      comment by มานะ is left on t19, unreported.
+      - Follow-up question: "if the organizer presses Report by mistake, can it
+        be undone?" No document covers it, and there is no route. Recommended a
+        reviewer-side **dismiss** rather than an undo for the reporter, because
+        `is_reported` is one boolean and does not record who reported.
+      - [ ] Backend delivery required: `FE-comment-report-cannot-be-dismissed`
+            — a dismiss route for organizer and university-wide admin. Until
+            then a groundless report stays in Reported only for good.
+      - [ ] Slice 2 (owner of `LiveCommunityTab.tsx`): hide **Report** when
+            `canModerate` is true — the organizer can Remove directly, so the
+            button only creates this mistake — and add **Dismiss** in the
+            Reported only view once the route exists.
 
 ## FE delivery for BE_KN `a14d44c` + `a88f7ad` — 2026-09-21
 

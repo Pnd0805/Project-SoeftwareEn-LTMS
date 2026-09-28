@@ -43,9 +43,41 @@ Conventions the api layer holds to:
 Docker containers `ltms-mysql` (root/secret, db `ltms`) and `ltms-minio` must be up first — without
 MySQL the server exits 4 on boot.
 
+**Always run `npm run migrate` before using the backend — every time, no exceptions.** Every pull
+of `BE_KN`, every restart, every `qa-baseline.py restore`, before any live test. It is idempotent,
+so running it when nothing is pending costs nothing; skipping it after a pull that added a migration
+produces errors that look like backend bugs (missing columns, a `scope_type` value the table will
+not take) and wastes a round of reporting. The order is always:
+
+```bash
+docker start ltms-mysql ltms-minio
+cd C:/Users/DELL/Projects/ltms-backend-shokun2/backend && npm run migrate && npm run dev
+```
+
+**Then run the role audit, every time, and tell the user what it found before doing anything else:**
+
+```bash
+python C:/Users/DELL/Projects/Project-SoeftwareEn-LTMS/frontend/scripts/audit-roles.py
+```
+
+The backend blocks new rule-breaking cases through its API, but rows written straight into the
+database never meet those checks — and `qa-baseline.sql` itself ships twelve of them (found
+2026-09-29: ปกรณ์ competing in t22/t23, which he organizes; สมหญิง and มานะ refereeing tournaments
+their team entered; สมชาย refereeing his own t2/t4). Every restore brings them back. The script
+checks six rules, each cited from the spec: organizer competing in their own tournament · referee
+on a team entered in the same tournament · organizer refereeing their own tournament · referee on
+either team of the match they officiate · a match past `scheduled` without enough referees ·
+a check-in decided by someone who is not that match's referee. Exit code 1 = cases found (listed
+with ids), 0 = clean, 2 = database unreachable. Never "fix" a case by guessing which role to drop —
+report it and ask.
+
 Test accounts all use password `abcd1234`:
 
-- `p9201@ku.th` — player, team leader, organizer and referee in one account
+- `p9201@ku.th` — player, team leader, organizer and referee in one account, but **never two of
+  those in the same tournament**: organizes t14, referees t19/t21, plays in t18/t22/t23/t28.
+  (Until 2026-09-29 he organized t22/t23 while his team played in them — a conflict of interest
+  the API refuses. t22/t23 now belong to `somchai@ku.th`. A baseline restore undoes this; the
+  audit below will say so.)
 - `somchai@ku.th` — admin, **university-wide** (`admin_scopes.scope_type`)
 - `admin.eng@ku.th` — admin, **faculty 1 only**. `seed-test.sql` has always
   defined this account but `qa-baseline.sql` does not ship it, so a restored

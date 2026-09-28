@@ -2,7 +2,7 @@
 
 Frontend branch `feat/1` · API base path `/api/v1`
 
-**Current backend reference: `BE_KN` at `e5ea50d`, read on 2026-09-23.**
+**Current backend reference: `BE_KN` at `7a4499c`, read on 2026-09-29.**
 The bulk of this file was verified against the running server at `a88f7ad` on
 2026-09-22, and the oldest items against `df506ea` on 2026-09-20. Every claim
 names the route, schema, service or migration it was checked against, plus live
@@ -70,6 +70,14 @@ by different predicates, so every row a faculty admin sees currently refuses)
 and `FE-reject-skips-eligibility-scope` (a faculty admin cannot approve those
 requests but *can* decline them). 13 items.
 
+**Updated 2026-09-29 against `7a4499c`.** The backend's notice of 28 September
+answered all thirteen. Twelve are delivered and struck through below; two of
+those came back narrower than asked and continue as new items
+(`FE-dispute-ruling-hidden-from-players`, `FE-root-queue-empty-not-refused`),
+and avatar uploads remain open as the notice said. Checking them turned up
+three problems in the test data and migrations, and a user question the same
+day turned up `FE-comment-report-cannot-be-dismissed`. 7 items.
+
 ## How to read it
 
 - Each item has a stable code (`FE-…`). It is derived from the item's own
@@ -90,175 +98,137 @@ requests but *can* decline them). 13 items.
 - `HANDOVER-2026-09-22.md` is the short version written for both teams: what the
   seven regressions of 21 September turned out to be, and which of them are
   waiting on the three write-only fields listed below.
-- `HANDOVER-2026-09-23.md` is the same for the seven reports of 23 September,
-  and is where to start if you only read one file: it opens with the four new
-  backend items, ranked, and says what we would like each one to return.
+- `HANDOVER-2026-09-23.md` is the same for the seven reports of 23 September.
+- `HANDOVER-2026-09-29.md` is the current one, and is where to start if you only
+  read one file. `FE-REPLY-BE_KN-2026-09-29.md` is the item-by-item answer to
+  the backend notice of 28 September, in Thai.
 
-## Delivery required — 13 items
+## Delivery required — 7 items
 
-- [ ] **FE-team-leader-transfer-sds** — Team leader transfer (SDS
-      `POST /teams/{id}/transfer-leader`, FR-TM-08). Outside mock mode the UI
-      labels it unavailable.
-- [ ] **FE-whole-admin-user-surface** — The whole admin-user surface (FR-UM-05) —
-      `GET /admin/users`, `PATCH /admin/users/{id}/suspend`, `GET /admin/scopes`
-      for granting and revoking admin rights, and `GET /admin/audit-logs`. All
-      four answer 404 on `6ebda2e`. Login already refuses a suspended account
-      (`403 ACCOUNT_SUSPENDED`) and the test database has one to prove it, so
-      the rule exists with no way for an admin to apply it. The Admin page's
-      Users and Audit tabs work in mock mode only; in real mode they say the
-      routes do not exist.
-- [ ] **FE-replay-link-write-only** — `livestreamUrl` on M04/M05. E12
-      `PUT /matches/:id/livestream` writes `matches.livestream_url` and the
-      column has existed since the first schema, but **no route reads it back**
-      — `grep livestream_url backend/src` returns exactly two hits, the E12
-      `UPDATE` in `match.repo.ts:502` and the row type in `types/db.ts:193`;
-      `toMatchDetailDto` does not include the field. Verified on match 7 at
-      `a88f7ad`: saving `https://www.youtube.com/watch?v=…` returns 200 and the
-      value is in the database, then `GET /matches/7` comes back without it, so
-      the replay link vanishes from the match page on reload. This is the whole
-      of the user-reported "replay link saves but never appears". The frontend
-      now shows the link from the E12 response for the rest of the session and
-      says out loud that it will not survive a reload;
-      `BackendMatchDetailDto.livestreamUrl` is already declared optional, so the
-      page starts working the moment the field is sent. One line in
-      `toMatchDetailDto`.
-- [ ] **FE-checkin-reject-reason-not-listed** — `rejectionReason` on M13
-      `GET /matches/:id/checkins`. M15 requires a reason and stores it in
-      `match_checkins.rejection_reason`, and M20 `/checkins/me` returns it to
-      the player it is about — but `toCheckinListItemDto`
-      (`mappers/match.mapper.ts:132`) leaves it out, so the referee console can
-      never show why any row was rejected, including a reason the referee typed
-      themselves a moment earlier. With OD-19 making revocation routine this is
-      now the normal case, not an edge one. The frontend patches its own row
-      from M20 as a partial stand-in; every other player's reason is blank.
-- [ ] **FE-dispute-resolution-not-returned** — `disputeResolution` /
-      `disputeResolvedBy` / `disputeResolvedAt` on S05
-      `GET /matches/:id/result`. `resolveMatchResult` stores all three, and
-      migration 020 made the organizer's note mandatory precisely so both
-      squads learn why a result was upheld, amended or thrown out. S05 returns
-      `winnerTeamId, scoreData, isAmended, amendedAt, amendReason, isWalkover,
-      status, verifiedAt` and none of the dispute-resolution fields, so the
-      mandatory note reaches nobody. Verified on match 9 at `a88f7ad`: a
-      `reject` with the note "ยกผลทิ้งเพื่อตรวจสอบสถานะ" resolved fine and the
-      note is in the row, but the two team leaders see a thrown-out result with
-      no stated reason. The frontend renders `result.disputeResolution` already
-      and gets `null` in real mode.
-      **Extended 2026-09-23 (R21):** the same omission covers the *other* three
-      dispute fields — `disputeReason`, `disputeRaisedBy`, `disputeRaisedAt`. An
-      organizer opening the resolve panel is told a result is disputed without
-      being told what the objection was, which is the one fact they need before
-      choosing uphold, amend or reject. All six are now read optionally in
-      `getResult()` with contract tests both ways, so sending them is the only
-      remaining step.
-- [ ] **FE-open-checkin-has-no-fixture-gate** — `POST /matches/:id/open-checkin`
-      (R19). The service checks `match_status === 'scheduled'` and nothing else,
-      so a match with no end time and no venue can be moved to `checkin_open` by
-      a direct API call. That is a one-way door: M06 only edits a `scheduled`
-      match, and FR02 `assertMatchChangeable` refuses a referee request without
-      `scheduled_end_time`, so the match is then stuck with no fixture and no way
-      to staff it. Enforce the three saved fields and answer with a named error
-      listing what is missing. The frontend now disables the action and says
-      which fields are absent, but that is a screen-side gate only.
-- [ ] **FE-open-checkin-organizer-only** — `POST /matches/:id/open-checkin`
-      (R20). Still `requireOrganizerOfMatch`. An active referee who has accepted
-      that match cannot open its check-in, which is the person actually standing
-      at the table. Wanted: organizer **or** the referee assigned to that match,
-      keeping the fixture gate above and the atomic `scheduled → checkin_open`
-      transition. The frontend seam is in place — `viewer.can.openCheckin` flips
-      from `isOrganizer` to `isOrganizer || isReferee` in one line once this
-      lands.
-- [ ] **FE-second-referee-request-cancelled** — `refereeChangeRequest.repo.apply()`
-      (R18). Applying one request runs
-      `UPDATE referee_change_requests SET request_status = 'cancelled' … WHERE
-      match_a_id IN (?) OR match_b_id IN (?)`, which closes **every** other open
-      request touching that match — including an independent `org_add_match` for
-      a different referee. An on-site match needs two accepted officials
-      (BR-10), so the organizer invites two and the second one's Accept silently
-      becomes a cancellation. Keep independent `org_add_match` rows open and
-      cancel only the transfer/swap rows whose assumptions the apply actually
-      invalidated. The frontend no longer reports a cancelled request as a
-      successful Accept, so the symptom is now visible rather than silent, but
-      two referees still cannot both accept one match.
+Ranked by urgency. `FE-REPLY-BE_KN-2026-09-29.md` has the same items in Thai,
+item by item against the 2026-09-28 notice, with the live runs behind each one.
+
+- [ ] **FE-me-teams-lists-deleted-teams** — **due before 1 October.**
+      `findTeamsByUser` has no `deleted_at IS NULL`, so a team removed by the
+      TM-07 sweep stays in `GET /me/teams`, with no deleted flag — only
+      `readinessStatus: "Inactive"` and a name ending in `(deleted #id)` — and
+      every write to it answers 404. Confirmed on existing data: team 9003,
+      deleted 17 September, is still in สมชาย's list. Eight QA baseline teams,
+      including Official team 9020, reach the sweep on 1–2 October, and every
+      baseline restore after that brings them back with their old `created_at`
+      and sweeps them again. Wanted: filter them out, the way the 2026-09-28
+      notice says already happens.
+- [ ] **FE-migration-029-fails-on-baseline** — `qa-baseline.sql` (21 September)
+      already has `supporting_docs`, but its `schema_migrations` stops at 020, so
+      029's unconditional `ADD COLUMN` stops `npm run migrate` with
+      `ER_DUP_FIELDNAME` — and **030, the one-root rule, is never created** on
+      the database the test team uses. Wanted: make 029 check for the column
+      first, or record 021–029 in the baseline's `schema_migrations`.
+- [ ] **FE-qa-baseline-role-conflicts** — the baseline ships twelve cases the API
+      now refuses (decision of 18 September, spec 02 §7): an organizer competing
+      in their own tournament ×3 (9201 in t22/t23, 9001 in t14), a referee on a
+      team entered in the same tournament ×7 (สมหญิง and มานะ in t2/t6/t16,
+      มานะ in t14), and an organizer refereeing their own tournament ×2 (สมชาย
+      in t2/t4). Checked all three API paths refuse new ones. Our dev database
+      is cleaned (organizers of t22/t23 → 9001 and t14 → 9201, nine referee rows
+      removed through F03), but every `qa-baseline.py restore` brings all twelve
+      back. `frontend/scripts/audit-roles.py` checks six rules and should exit
+      0 on a fixed baseline. Also: `OPEN_DECISIONS.md` still lists **OD-10 as
+      open** although the decision was taken and the code enforces it.
+- [ ] **FE-dispute-ruling-hidden-from-players** — *follow-up to
+      `FE-dispute-resolution-not-returned`, decided 2026-09-29.* All six dispute
+      fields now arrive on S05, but once the result is final only the organizer,
+      the match's referees and the two leaders see them. Split them:
+      `disputeResolution` / `disputeResolvedBy` / `disputeResolvedAt` to **every
+      player on both squads** (migration 020 made the note mandatory so both
+      teams learn why), while `disputeReason` / `disputeRaisedBy` /
+      `disputeRaisedAt` — the complainant's own words, which may accuse a player
+      — stay with organizer, referees and leaders.
+- [ ] **FE-root-queue-empty-not-refused** — *follow-up to
+      `FE-admin-queue-shows-undecidable-rows`, decided 2026-09-29.* Root opening
+      `GET /admin/tournament-requests` gets **200 and an empty list** while two
+      requests are pending — a side effect of `adminScopeWhere` sending
+      `organizing_faculty_id = NULL`, not a refusal. Wanted:
+      `403 ROOT_NO_DAILY_OPERATIONS` on the queue, approve and reject, like
+      `/admin/users`, and the queue added to the OD-34 table. **Wait for us
+      first:** the Admin page currently uses this queue to decide whether the
+      viewer is an admin, so changing it before we move that check to
+      `adminScope` on `GET /me` locks root out of the whole page. We will say
+      when.
+- [ ] **FE-comment-report-cannot-be-dismissed** — a reported tournament comment
+      stays in the organizer's `?reported=true` queue for good. Nothing in the
+      SRS or `OPEN_DECISIONS.md` covers clearing a report: FR-CM-01 asks only for
+      report-and-admin-removes, and the 23 September moderation decision clears
+      `is_reported` **only when an admin restores a removed comment**. So an
+      organizer who presses Report by mistake — or who receives a groundless
+      report — can clear it only by deleting a comment that did nothing wrong,
+      which notifies its author and writes a removal to the audit log. The
+      whole flow is otherwise working, checked end to end on t19 on 2026-09-29.
+      Wanted: a **dismiss** for the reviewer, not an undo for the reporter —
+      e.g. `POST /tournaments/:id/comments/:cid/dismiss-report` behind the same
+      guard as organizer removal, open to university-wide admins too, clearing
+      the flag with an audit row and no notification. An undo-my-report cannot
+      be built on the current column: `is_reported` is one boolean per comment
+      and does not record who reported, so one reporter withdrawing would erase
+      everyone else's report.
 - [ ] **FE-avatar-and-team-logo-uploads** — image uploads for people and teams
-      (R23). `/uploads/presign` accepts only `checkin_document`,
-      `soft_filter_document` and `referee_identity`, so there is no authorized
-      way to upload a profile picture even though `users.profile_image_key`
-      exists and `PATCH /me` takes `avatarUrl`; user mappers also hand back the
-      raw S3 key rather than a readable URL. `teams` has no logo column at all
-      and `PATCH /teams/:id` takes only name and visibility. Wanted: an avatar
-      purpose plus a mapped readable URL, and a migration with a leader-only
-      logo contract. Nothing on the frontend can start until these exist.
-- [ ] **FE-referee-cannot-read-invited-tournament** — `getVisibleTournament`
-      (`tournament.service.ts:178`). A tournament that is not `public` or
-      `completed` is readable only by its requester and by an admin whose scope
-      covers it. Referees are not on that list — not while invited, and not
-      after accepting. But the order the product itself prescribes is *approve →
-      appoint referees → publish*, so a referee invitation almost always arrives
-      while the tournament is still `private`. Reproduced on 2026-09-23:
-      invited 9003 to tournament 28 (`private`), then `GET /tournaments/28` as
-      9003 → **404 TOURNAMENT_NOT_FOUND**, and the C1 notification
-      "คุณได้รับเชิญเป็นกรรมการ" linked straight to that page, so the screen read
-      *"That tournament doesn't exist"* about a tournament the letter in their
-      hand had just named. Wanted: let a user with a row in `tournament_referees`
-      for that tournament read it, at whatever status. Meanwhile the frontend
-      drops the Open button on `referee_invited` notifications — the accept and
-      decline the referee actually needs are in the same inbox page — so nobody
-      is sent to a dead end, but a referee still cannot see what they are being
-      asked to officiate before they answer.
+      (R23). Confirmed still open at `7a4499c`, as the notice says.
+      `/uploads/presign` accepts four purposes, none of them a profile picture
+      or logo, although `users.profile_image_key` exists and `PATCH /me` takes
+      `avatarUrl`; `teams` has no logo column and `PATCH /teams/:id` takes only
+      name and visibility. User mappers hand back the raw S3 key as `avatarUrl`
+      in **14 places** (not 9 — the admin mappers merged on 2026-09-28 added
+      four). Wanted: an avatar purpose plus a mapped readable URL, and a
+      migration with a leader-only logo contract. Nothing on the frontend can
+      start until these exist.
 
-- [ ] **FE-viewer-admin-scope-unknown** — nothing tells the frontend whether the
-      signed-in user is an admin, or of what scope. `GET /me` returns
-      `facultyId` (which faculty they *belong to*, unrelated) and no admin
-      fields; `GET /admin/scopes` is still 404, as
-      `FE-whole-admin-user-surface` already records. The consequence showed up
-      on the tournament request form: `autoApproveIfOwnScope` approves on
-      creation for an admin inside their own scope, so what happens when you
-      press Send differs per viewer — and the one screen that has to set
-      expectations cannot read the one fact that decides it. The default entry
-      setting is "Every faculty", which is above a faculty admin's scope, so a
-      faculty admin who fills the form the obvious way is queued every time and
-      has no way to tell whether that is the rule or a fault. Verified
-      2026-09-23 against `e5ea50d`: as `admin.eng@ku.th` (faculty 1),
-      `POST /tournaments` with `organizingFacultyId: 1` and
-      `eligibilityRules: [{faculty, 1}]` → `private, autoApproved: true`; the
-      same request with no rules → `pending_approval`. Wanted: the viewer's own
-      admin scope on `GET /me` (`adminScope: {scopeType, facultyId} | null`) —
-      a read of one row the login already has the user id for. Meanwhile the
-      form states the rule conditionally ("if that admin is you") instead of
-      telling the viewer which side of it they are on.
+Not an item, but asked for: **put breaking changes in the notice.** Two landed
+unannounced in the 2026-09-28 merge — MVP moving to per-match
+(`1cbe7bf`, OD-23), which 404s the MVP page on every tournament, and OD-26's
+mandatory finish step, which a user hit on 2026-09-29 as *"ต้องกดจบการแข่งขันก่อน"*
+on a screen that had no Finish button. The second is now fixed on our side.
 
-- [ ] **FE-admin-queue-shows-undecidable-rows** — `GET /admin/tournament-requests`
-      lists requests the caller is then refused permission to approve. The queue
-      filters with `adminScopeWhere` (`tournament.repo.ts:175`), which for a
-      faculty admin is only `t.organizing_faculty_id = ?`. Approving checks
-      `adminCoversEligibility` as well, which additionally requires at least one
-      faculty eligibility rule and every one of them to name that faculty. Two
-      different rules, so the queue and the guard disagree by construction.
-      Verified 2026-09-23 as `admin.eng@ku.th` (faculty 1): the queue returned
-      three pending requests, all organised by faculty 1, **all three with no
-      eligibility rules at all**, and `POST /tournaments/:id/approve` answered
-      `403 ELIGIBILITY_OUT_OF_SCOPE` on every one. A queue where every row
-      refuses is not a queue. Wanted: filter the list with the same predicate
-      the guard uses — or, better, keep returning the row and mark it, e.g.
-      `canDecide: boolean` plus a reason, so a faculty admin can still see that
-      their own faculty has a request pending even when a university admin has
-      to sign it. The frontend cannot filter these out on its own: the list
-      carries no eligibility rules and nothing tells it the viewer's own scope
-      (`FE-viewer-admin-scope-unknown`). Meanwhile it marks a row *after* the
-      server refuses it and disables that row's Approve.
-- [ ] **FE-reject-skips-eligibility-scope** — `rejectTournament`
-      (`tournament.service.ts:310`) checks `getTournamentAdmin` but **not**
-      `adminCoversEligibility`, while `approveTournament` checks both. So a
-      faculty admin can decline a request they are explicitly not allowed to
-      approve. Verified 2026-09-23 on a throwaway pending tournament organised
-      by faculty 1 with no eligibility rules: as `admin.eng@ku.th`,
-      `POST /tournaments/:id/approve` → `403 ELIGIBILITY_OUT_OF_SCOPE`, then
-      `POST /tournaments/:id/reject` → `200 {status: "rejected"}`. Killing a
-      request is at least as consequential as granting it, so if the eligibility
-      scope is the right gate for one it is the right gate for the other. The
-      frontend deliberately leaves Decline enabled, because the server does
-      allow it and hiding a working control would be its own lie, but it warns
-      on the row. Decide which way this should go — we will follow it.
+### Delivered in the 2026-09-29 pull (`7a4499c`)
+
+Each was checked against what we originally asked for, live, on all three admin
+levels — not only that the route answers 200.
+
+- [x] ~~**FE-team-leader-transfer-sds**~~ — **delivered.** All five routes; a
+      full cycle of request → queue → reject-with-reason → approve → direct
+      admin transfer works. Official teams only (`403 NOT_OFFICIAL_TEAM`), as
+      API Design T19 says. `POST /teams/:id/transfer-leader` answers a short
+      form `{id, status, currentLeaderId, proposedLeaderId}`, not the full DTO
+      the notice shows.
+- [x] ~~**FE-whole-admin-user-surface**~~ — **delivered.** Users, suspend,
+      scopes and audit logs; a faculty admin is held to their faculty by the
+      server; suspending cuts off a signed-in session immediately. Docs only:
+      `GET /admin/scopes` gives a faculty admin 200 on their own faculty, not the
+      403 in the OD-34 table; `USER_HAS_ACTIVE_OBLIGATIONS`,
+      `SUSPEND_REASON_REQUIRED` and `CANNOT_REVIEW_OWN_REPORT` are not in the
+      notice.
+- [x] ~~**FE-viewer-admin-scope-unknown**~~ — **delivered exactly as asked.**
+      `adminScope` on `GET /me`, `null` for everyone else, on `PATCH /me` too.
+- [x] ~~**FE-replay-link-write-only**~~ — **delivered** on M04 and M05, readable
+      signed out, clearable with `null`.
+- [x] ~~**FE-checkin-reject-reason-not-listed**~~ — **delivered.**
+- [x] ~~**FE-dispute-resolution-not-returned**~~ — **delivered, narrower than
+      asked.** The rest is `FE-dispute-ruling-hidden-from-players` above.
+- [x] ~~**FE-open-checkin-has-no-fixture-gate**~~ — **delivered.**
+      `409 SCHEDULE_INCOMPLETE` with `missing`, before any write and before any
+      notification.
+- [x] ~~**FE-open-checkin-organizer-only**~~ — **delivered.** The match's
+      referee can open check-in; the frontend now offers it to them.
+- [x] ~~**FE-second-referee-request-cancelled**~~ — **delivered.** Two
+      referees can both accept one match. Minor leftover: applying an
+      `org_add_match` still cancels open transfer/swap rows on that match.
+- [x] ~~**FE-referee-cannot-read-invited-tournament**~~ — **delivered.** Any
+      status, removed referees lose it.
+- [x] ~~**FE-admin-queue-shows-undecidable-rows**~~ — **delivered** as
+      `canDecide` + `cannotDecideReason`, and all five places now call one
+      `adminCoversEligibility`. The root half is
+      `FE-root-queue-empty-not-refused` above.
+- [x] ~~**FE-reject-skips-eligibility-scope**~~ — **delivered.** Reject answers
+      `403 ELIGIBILITY_OUT_OF_SCOPE` like approve.
 
 ### Delivered in the 2026-09-23 pull
 
@@ -284,7 +254,9 @@ requests but *can* decline them). 13 items.
 
 ## Fix required — 0 open items
 
-No independently confirmed behavior fix remains open. The four items added on
+No independently confirmed behavior fix remains open — the 2026-09-29 items
+that are strictly fixes are listed with the rest above, ranked by urgency.
+Historical note: the four items added on
 2026-09-23 (`FE-open-checkin-has-no-fixture-gate`,
 `FE-open-checkin-organizer-only`, `FE-second-referee-request-cancelled`,
 `FE-avatar-and-team-logo-uploads`) are capability gaps, filed under Delivery
