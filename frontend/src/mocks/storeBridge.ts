@@ -147,6 +147,8 @@ function viewerOf(s: State, m: StoreMatch): MatchViewerContext {
       editFixture: org && m.status === 'scheduled' && !m.checkedIn.length,
       /* โหมด prototype ไม่มี middleware ให้ติด — ผู้จัดเปิดเช็คอินได้เหมือนของจริง */
       openCheckin: org && m.status === 'scheduled',
+      /* โหมดจำลองไม่มีสถานะ finished และ finishMatch() ตอบ 501 — ไม่โชว์ปุ่มที่รู้ว่าพัง */
+      finishMatch: false,
       recordStats: isReferee,
       manageCheckin: isReferee,
       verifyCheckin: isReferee,

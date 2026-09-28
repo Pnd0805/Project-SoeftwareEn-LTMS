@@ -24,7 +24,7 @@ import { Icon } from '../../components/kit/Icon'
 import { ScorebugView } from '../../components/kit/Scorebug'
 import {
   useCloseMatchCheckin, useDisputeResult, useForfeitMatch, useMatch, useOpenMatchCheckin,
-  useResolveDispute, useResult, useSetLivestream, useStartMatch, useVerifyResult,
+  useResolveDispute, useResult, useSetLivestream, useStartMatch, useVerifyResult, useFinishMatch,
 } from '../../hooks/useMatch'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { useLtms } from '../../shared/store'
@@ -83,6 +83,10 @@ const lifecycleError = (error: unknown) => {
   if (code === 'CHECKIN_NOT_OPEN') return 'Check-in is not open for this match.'
   if (code === 'MATCH_TEAMS_INCOMPLETE') return 'This match is still waiting on an earlier round for one of its places.'
   if (code === 'TEAMS_PRESENT') return 'Both squads met the minimum, so this is not a no-show — a referee starts it.'
+  if (code === 'NOT_MATCH_PARTICIPANT') return 'Only this match’s referees or the organizer can do that.'
+  if (code === 'MATCH_NOT_IN_PROGRESS') return 'This match is not being played right now. Reload to see where it stands.'
+  if (code === 'SCHEDULE_INCOMPLETE') return 'The fixture is not complete yet — set the kick-off, end time and venue first.'
+  if (code === 'PREDECESSOR_DISPUTED') return 'An earlier match that feeds this one is still disputed. It has to be settled first.'
   return error instanceof Error ? error.message : 'Something went wrong.'
 }
 
@@ -96,17 +100,23 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
   const closeCheckin = useCloseMatchCheckin(m.id, m.tournamentId)
   const start = useStartMatch(m.id, m.tournamentId)
   const forfeit = useForfeitMatch(m.id, m.tournamentId)
+  const finish = useFinishMatch(m.id, m.tournamentId)
   /* ตัดสินไม่มาตามนัดแล้วแมตช์จบทันที ย้อนไม่ได้ — ต้องกดยืนยันอีกชั้น */
   const [confirmForfeit, setConfirmForfeit] = useState(false)
+  /* กดจบก็ย้อนไม่ได้เหมือนกัน (ไม่มีเส้นพากลับไป in_progress) — ยืนยันอีกชั้น */
+  const [confirmFinish, setConfirmFinish] = useState(false)
 
   if (!isOrganizer && !isReferee) return null
-  if (m.status !== 'scheduled' && m.status !== 'checkin_open') return null
+  /* OD-26 — `in_progress` ต้องมีแผงนี้ด้วย เพราะปุ่ม "จบการแข่งขัน" อยู่ที่นี่ เดิมแผงหายทันที
+     ที่เริ่มแข่ง กรรมการจึงไม่มีทางไปถึงฟอร์มผลเลย (S01 ต้องการ `finished`) */
+  if (m.status !== 'scheduled' && m.status !== 'checkin_open' && m.status !== 'in_progress') return null
   /* นัดที่ยังรอผู้ชนะจากรอบก่อนยังไม่มีคู่แข่ง — เปิดเช็คอินให้ใครไม่ได้
      (start กับ forfeit ฝั่ง backend ก็ตอบ 409 MATCH_TEAMS_INCOMPLETE อยู่แล้ว) */
   if (!m.teamA || !m.teamB) return null
 
   const busy = openCheckin.isPending || closeCheckin.isPending || start.isPending || forfeit.isPending
-  const failed = [openCheckin, closeCheckin, start, forfeit].find(x => x.isError)
+    || finish.isPending
+  const failed = [openCheckin, closeCheckin, start, forfeit, finish].find(x => x.isError)
 
   return (
     <Panel quiet>
@@ -121,8 +131,8 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
           {/* R19 — เปิดเช็คอินก่อนจัดนัดให้ครบไม่ได้: กรรมการยังขอไม่ได้เลยถ้าไม่มีเวลาจบ
               (FR02 `assertMatchChangeable`) และพอเปิดเช็คอินไปแล้วก็แก้นัดไม่ได้อีก M06
               รับเฉพาะแมตช์ `scheduled` — กดตอนนี้คือขังตัวเองไว้กับนัดที่ยังไม่เสร็จ
-              ⚠️ ด่านนี้อยู่ที่หน้าจอฝ่ายเดียว `POST /matches/:id/open-checkin` ยังดูแค่
-                 `match_status` จึงยิงตรงข้ามได้อยู่ — ดู R19 ฝั่ง backend */}
+              ฝั่ง backend มีด่านเดียวกันแล้ว (`409 SCHEDULE_INCOMPLETE` + `missing[]` ตั้งแต่ 7a4499c)
+              ปุ่มที่ปิดไว้ตรงนี้จึงแค่บอกล่วงหน้า ไม่ใช่ด่านเดียวที่มี */}
           {!fixtureComplete ? (
             <Banner kind="warn">
               <b>Finish the fixture first.</b> This match still needs{' '}
@@ -193,6 +203,37 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
               ) : null}
             </>
           ) : null}
+        </>
+      ) : null}
+
+      {m.status === 'in_progress' && m.viewer.can.finishMatch ? (
+        <>
+          <div className="sub">
+            When the final whistle goes, finish the match. That records the end time and opens the
+            result form — the result cannot be sent before this step.
+            {isOrganizer && !isReferee ? ' You can do this for the referees if none of them can.' : ''}
+          </div>
+          {confirmFinish ? (
+            <>
+              <Banner kind="warn">
+                <b>Finishing cannot be undone.</b> The match stops being live and check-in decisions
+                close with it. Only press this once play has actually ended.
+              </Banner>
+              <span className="hstack">
+                <button className="btn primary" type="button" disabled={busy}
+                  onClick={() => { setConfirmFinish(false); finish.mutate() }}>
+                  {finish.isPending ? 'Finishing…' : 'Yes — the match is over'}
+                </button>
+                <button className="btn ghost" type="button" disabled={busy}
+                  onClick={() => setConfirmFinish(false)}>Not yet</button>
+              </span>
+            </>
+          ) : (
+            <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
+              disabled={busy} onClick={() => setConfirmFinish(true)}>
+              Finish the match
+            </button>
+          )}
         </>
       ) : null}
 
@@ -574,6 +615,22 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
             <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
           </>
         ) : null}
+      </Panel>
+    )
+  }
+
+  /* กำลังแข่ง — ยังส่งผลไม่ได้จนกว่าจะกดจบ (OD-26 · S01 ตอบ MATCH_NOT_FINISHED)
+     เดิมฟอร์มผลเปิดตรงนี้ให้กรรมการกรอกครบทุกช่องแล้วค่อยเด้ง พร้อมข้อความว่า "ต้องกดจบ
+     การแข่งขันก่อน" ทั้งที่ไม่มีปุ่มจบให้กดที่ไหนเลย — บอกลำดับให้ถูกตั้งแต่ก่อนเริ่มกรอก */
+  if (m.status === 'in_progress') {
+    return (
+      <Panel quiet>
+        <span className="tag"><em>//</em> Being played</span>
+        <div className="sub">
+          {can.finishMatch
+            ? 'The result form opens once the match is finished — use Finish the match above when play ends.'
+            : `The result is recorded after the ${m.mode === 'onsite' ? 'referee' : 'referee or organizer'} finishes the match.`}
+        </div>
       </Panel>
     )
   }

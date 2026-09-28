@@ -196,6 +196,7 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
         submitResult: false, verifyResult: false, disputeResult: false, resolveDispute: false,
         editFixture: false, recordStats: false, manageCheckin: false, verifyCheckin: false,
         openCheckin: false,
+        finishMatch: false,
       },
     },
     score: scoreFor(m.teamA, m.teamB, m.score),
@@ -614,15 +615,16 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
   const isTeamLeader = myTeamRow?.role === "leader";
   const onsite = dto.mode === "onsite";
   /**
-   * ส่งผลได้ตอนไหน
+   * ส่งผลได้ตอนไหน — ตรงกับด่าน `requireCanSubmitResult` ของ backend ทุกตัวอักษร
    *
-   * `requireCanSubmitResult` ของ backend ไม่ดูสถานะแมตช์เลย ดูแค่ว่าใบผลเดิม (ถ้ามี) ยัง
-   * เป็น `submitted` หรือ `rejected` อยู่ไหม — ตรงนี้จึงเป็นแค่เรื่อง "ควรโชว์ฟอร์มตอนไหน"
-   * ⚠️ ต้องนับ `result_rejected` ด้วย ไม่งั้นแมตช์ที่ผู้จัดยกผลทิ้งจะตัน: ไม่มีใครเห็นฟอร์ม
-   *    ส่งผลใหม่อีกเลย ทั้งที่ backend รออยู่ว่าจะมี S01 ใบใหม่เข้ามา (S04 reject)
+   * ตั้งแต่ OD-26 (26 ก.ย.) S01 รับผลเฉพาะแมตช์ที่ **`finished`** (กด "จบการแข่งขัน" แล้ว)
+   * หรือ `result_rejected` (ผู้จัดยกผลทิ้ง แมตช์แข่งจบไปแล้วจริง) นอกนั้นตอบ
+   * `409 MATCH_NOT_FINISHED` · เดิมตรงนี้เปิดฟอร์มตั้งแต่ `checkin_open`/`in_progress` ตาม
+   * backend รุ่นเก่าที่ไม่ดูสถานะเลย กรรมการจึงกรอกสกอร์ครบแล้วเจอ "Could not save the result"
+   * โดยไม่มีปุ่มจบการแข่งขันให้กดสักที่ (รายงาน 29 ก.ย. แมตช์ 13)
+   * ⚠️ ยังต้องนับ `result_rejected` ไม่งั้นแมตช์ที่ผู้จัดยกผลทิ้งจะตัน (S04 reject)
    */
-  const playable = dto.status === "checkin_open" || dto.status === "in_progress"
-    || dto.status === "result_rejected";
+  const playable = dto.status === "finished" || dto.status === "result_rejected";
 
   /* backend ไม่ได้บอกว่าคนที่กำลังดูทำอะไรได้บ้าง — ประกอบจากบทบาทที่รู้
      (กฎจริงยังอยู่ที่ backend เสมอ ตรงนี้แค่ตัดสินว่าจะโชว์ปุ่มไหม) */
@@ -649,8 +651,12 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
       editFixture: isOrganizer && dto.status === "scheduled",
       recordStats: isReferee,
       manageCheckin: isReferee || isOrganizer,
-      /* R20 — เปลี่ยนเป็น `isOrganizer || isReferee` ทันทีที่ M09 เลิกใช้ requireOrganizerOfMatch */
-      openCheckin: isOrganizer,
+      /* R20 — M09 เลิกใช้ requireOrganizerOfMatch แล้ว (BE_KN 7a4499c) กรรมการของแมตช์เปิดได้
+         ยืนยันสด 29 ก.ย.: สมหญิงเปิดแมตช์ 13 ได้ 200 · คนนอกได้ 403 NOT_MATCH_PARTICIPANT */
+      openCheckin: isOrganizer || isReferee,
+      /* OD-26 ข้อ 4 — กดได้ทั้งกรรมการของแมตช์และผู้จัด (Q4b: ผู้จัดกดแทนได้เพื่อไม่ให้การบังคับ
+         กลายเป็นจุดค้างใหม่เมื่อกรรมการหายไป) · เฉพาะ `in_progress` ไม่งั้น 409 MATCH_NOT_IN_PROGRESS */
+      finishMatch: (isOrganizer || isReferee) && dto.status === "in_progress",
       /* ผู้จัดเปิด/ปิดเช็คอินและดูคอนโซลได้ แต่ทั้งสามเส้นที่ตัดสินการเช็คอินของคนอื่น
          เป็น requireReferee — ถ้าโชว์ปุ่มให้ผู้จัดด้วย กดแล้วได้ 403 NOT_REFEREE ทุกครั้ง */
       verifyCheckin: isReferee,
@@ -1459,6 +1465,18 @@ export function forfeitMatch(matchId: MatchRef): Promise<BackendForfeitResultDto
 /** POST /matches/:id/start — กรรมการของแมตช์เท่านั้น · ต้องมีคนเช็คอินแล้วฝั่งละ 1 คน */
 export function startMatch(matchId: number): Promise<{ id: number; status: string }> {
   return apiFetch(`/matches/${matchId}/start`, { method: "POST" });
+}
+
+/**
+ * POST /matches/:id/finish — "จบการแข่งขัน" (OD-26 ข้อ 4 · BE_KN 26 ก.ย.)
+ *
+ * `in_progress` → `finished` และบันทึก `actual_end_time` · กรรมการของแมตช์หรือผู้จัดกดได้
+ * ต้องกดก่อนส่งผลเสมอ — S01 ตอบ `409 MATCH_NOT_FINISHED` กับแมตช์ที่ยังแข่งอยู่
+ * 409 `MATCH_NOT_IN_PROGRESS` · 403 `NOT_MATCH_PARTICIPANT`
+ */
+export function finishMatch(matchId: number): Promise<{ id: number; status: "finished"; actualEndTime: string | null }> {
+  if (USE_MOCK) return unavailable("การกดจบการแข่งขัน (OD-26)");
+  return apiFetch(`/matches/${matchId}/finish`, { method: "POST" });
 }
 
 /** GET /matches/:id/checkin-qr — ผู้จัดหรือกรรมการของแมตช์ · ต้องเปิดเช็คอินแล้ว */

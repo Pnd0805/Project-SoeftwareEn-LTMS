@@ -360,6 +360,15 @@ export function useStartMatch(matchId: MatchRef, tournamentId?: MatchRef) {
   });
 }
 
+/** OD-26 — กดจบการแข่งขัน · หน้าแมตช์ต้องโหลดใหม่ให้ฟอร์มผลเปิด (playable อ่านจาก status) */
+export function useFinishMatch(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchApi.finishMatch(Number(matchId)),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
 export function useForfeitMatch(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({

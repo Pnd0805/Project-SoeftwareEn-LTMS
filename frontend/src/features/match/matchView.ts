@@ -37,6 +37,9 @@ export function matchStateOf(
      คืน 'rejected' เพื่อแสดงสถานะโดยตรง และระบบเปิดให้ส่งผลใหม่ได้ */
   if (m.status === 'result_rejected' || m.resultStatus === 'rejected') return 'rejected'
   if (m.status === 'completed') return 'pending'   // จบแล้วแต่ยังไม่มีผล = รอคนกรอก
+  /* กดจบแล้ว รอคนกรอกผล (OD-26) — ความหมายเดียวกับบรรทัดบน ถ้าไม่ดักตรงนี้จะหล่นไปถึง
+     'scheduled' ท้ายฟังก์ชัน แมตช์ที่เพิ่งแข่งจบจะขึ้นป้ายว่ายังไม่เริ่ม */
+  if (m.status === 'finished') return 'pending'
   if (m.status === 'in_progress') return 'live'
   if (m.status === 'checkin_open') return 'checkin'
   return 'scheduled'

@@ -162,7 +162,10 @@ export function ResultForm({ m }: { m: MatchDto }) {
       {submit.isError ? (
         <Banner kind="crit">
           Could not save the result.{' '}
-          {submit.error instanceof Error ? submit.error.message : 'Try again.'}
+          {/* ฟอร์มเปิดเฉพาะแมตช์ที่ finished แล้ว — เหลือไว้เผื่อสถานะเปลี่ยนระหว่างที่ฟอร์มค้างอยู่ */}
+          {(submit.error as { code?: string } | null)?.code === 'MATCH_NOT_FINISHED'
+            ? 'The match has to be finished before its result can be sent. Reload the page — Finish the match is in Match control.'
+            : submit.error instanceof Error ? submit.error.message : 'Try again.'}
         </Banner>
       ) : null}
 

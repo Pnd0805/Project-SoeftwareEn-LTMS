@@ -249,8 +249,13 @@ export const BracketTypeLabel: Record<BracketType, string> = {
  * S04 `reject` พาแมตช์มาลงสถานะนี้ทุกครั้งที่ผู้จัดยกผลทิ้ง — ผลคือหน้าแมตช์อ่านว่า
  * "Scheduled" เหมือนยังไม่เคยมีอะไรเกิดขึ้น และไม่มีใครส่งผลใหม่ได้ (ดู can.submitResult)
  */
+/*
+ * `finished` (OD-26 ข้อ 4 · migration 026 · 26 ก.ย.) — ขั้นบังคับระหว่าง "แข่งอยู่" กับ "มีผล"
+ * S01 รับผลเฉพาะแมตช์ `finished`/`result_rejected` (MATCH_NOT_FINISHED) เพราะ MVP รายแมตช์และ
+ * นาฬิกา auto-verify ต้องมีเวลาจบจริงเสมอ · ไม่มีในรายการนี้ = หน้าแมตช์อ่านว่า "Scheduled"
+ */
 export const MatchStatusEnum = z.enum([
-  "scheduled", "checkin_open", "in_progress", "completed", "disputed", "result_rejected",
+  "scheduled", "checkin_open", "in_progress", "finished", "completed", "disputed", "result_rejected",
 ]);
 export type MatchStatus = z.infer<typeof MatchStatusEnum>;
 export const MatchStatusOptions = MatchStatusEnum.options;
@@ -258,6 +263,7 @@ export const MatchStatusLabel: Record<MatchStatus, string> = {
   "scheduled": "Scheduled",
   "checkin_open": "Check-in open",
   "in_progress": "In progress",
+  "finished": "Finished — awaiting the result",
   "completed": "Completed",
   "disputed": "Disputed",
   "result_rejected": "Result thrown out",

@@ -5,7 +5,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatchLineups, getResult, getStandings } from "./match";
+import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -171,5 +171,76 @@ describe("dispute detail contract (S05)", () => {
       disputeReason: null, disputeRaisedBy: null, disputeRaisedAt: null,
       disputeResolution: null, disputeResolvedBy: null, disputeResolvedAt: null,
     });
+  });
+});
+
+/**
+ * OD-26 (BE_KN 26 ก.ย.) — ต้องกด "จบการแข่งขัน" ก่อนส่งผล
+ * S01 ตอบ `409 MATCH_NOT_FINISHED` กับทุกสถานะยกเว้น `finished`/`result_rejected`
+ * เดิม FE เปิดฟอร์มผลตั้งแต่ `checkin_open`/`in_progress` และไม่มีปุ่มจบเลย (รายงาน 29 ก.ย. แมตช์ 13)
+ */
+describe("finish-then-submit contract (OD-26)", () => {
+  const REFEREE = 9002;
+  const ORGANIZER = 9001;
+  const routeAs = (me: number, status: string) => (input: RequestInfo | URL) => {
+    const url = String(input);
+    const path = url.slice(url.indexOf("/api/v1") + "/api/v1".length).split("?")[0];
+    if (path === "/matches/13") {
+      return Promise.resolve(json({
+        id: 13, tournamentId: 23, round: 1,
+        teamA: { id: 9024, name: "A", sportTypeId: 2 }, teamB: { id: 9023, name: "B", sportTypeId: 2 },
+        scheduledTime: "2026-11-20T03:00:00.000Z", scheduledEndTime: "2026-11-20T05:00:00.000Z",
+        venue: "Court 1", checkinOpenAt: null, status, mode: "onsite", roomCode: null,
+        nextMatchId: null, loserNextMatchId: null, resultStatus: null, score: null, outcome: null,
+      }));
+    }
+    if (path === "/matches/13/referees") {
+      return Promise.resolve(json({ items: [{ referee: { id: REFEREE, fullName: "Ref", avatarUrl: null } }] }));
+    }
+    if (path === "/me") return Promise.resolve(json({ id: me }));
+    if (path === "/tournaments/23") {
+      return Promise.resolve(json({ name: "Cup", sportTypeId: 2, organizer: { id: ORGANIZER } }));
+    }
+    if (path === "/matches/13/lineups") {
+      return Promise.resolve(json({ matchId: 13, teamA: { teamId: 9024, players: [] }, teamB: { teamId: 9023, players: [] } }));
+    }
+    if (path === "/me/teams") return Promise.resolve(json({ items: [] }));
+    if (path === "/matches/13/checkins") return Promise.resolve(json({ items: [] }));
+    return Promise.resolve(json({ error: { code: "NOT_FOUND", message: path } }, 404));
+  };
+
+  it("keeps the result form closed while the match is being played, and offers Finish instead", async () => {
+    fetchMock.mockImplementation(routeAs(REFEREE, "in_progress"));
+    const m = await getMatch(13);
+    expect(m.viewer.can.submitResult).toBe(false);
+    expect(m.viewer.can.finishMatch).toBe(true);
+  });
+
+  it("opens the result form once the match is finished, and stops offering Finish", async () => {
+    fetchMock.mockImplementation(routeAs(REFEREE, "finished"));
+    const m = await getMatch(13);
+    expect(m.viewer.can.submitResult).toBe(true);
+    expect(m.viewer.can.finishMatch).toBe(false);
+  });
+
+  it("does not open the form at check-in either — the old rule the backend dropped", async () => {
+    fetchMock.mockImplementation(routeAs(REFEREE, "checkin_open"));
+    expect((await getMatch(13)).viewer.can.submitResult).toBe(false);
+  });
+
+  /* Q4b — ผู้จัดกดจบแทนได้ เพื่อไม่ให้ขั้นบังคับกลายเป็นจุดค้างเมื่อกรรมการหายไป
+     แต่ on-site ผู้จัดไม่ใช่คนส่งผล (BR-13) */
+  it("lets the organizer finish the match but not record an on-site result", async () => {
+    fetchMock.mockImplementation(routeAs(ORGANIZER, "in_progress"));
+    const playing = await getMatch(13);
+    expect(playing.viewer.can.finishMatch).toBe(true);
+    fetchMock.mockImplementation(routeAs(ORGANIZER, "finished"));
+    expect((await getMatch(13)).viewer.can.submitResult).toBe(false);
+  });
+
+  /* R20 — M09 เปิดให้กรรมการของแมตช์แล้ว (ยืนยันสด 29 ก.ย.) */
+  it("lets the match referee open check-in", async () => {
+    fetchMock.mockImplementation(routeAs(REFEREE, "scheduled"));
+    expect((await getMatch(13)).viewer.can.openCheckin).toBe(true);
   });
 });

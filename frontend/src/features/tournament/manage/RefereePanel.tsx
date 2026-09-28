@@ -34,6 +34,7 @@ import { useLtms } from '../../../shared/store'
 import { numOf } from '../../../mocks/storeBridge'
 import { useAppointReferee, useRemoveReferee, useTournamentReferees } from '../../../hooks/useAdmin'
 import { useSearchUsers } from '../../../hooks/useUser'
+import { useMe } from '../../../hooks/useAuth'
 import { refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import type { TournamentRefereeDto } from '../../../types/admin.dto'
@@ -58,6 +59,10 @@ const removeError = (error: unknown) => {
 }
 
 const appointError = (error: unknown) => {
+  /* ปกติไม่ควรมาถึงตรงนี้ เพราะรายชื่อตัดตัวผู้จัดออกแล้ว — เหลือไว้เผื่อบัญชีเดียวกันในอีกแท็บ */
+  if (error instanceof ApiError && error.code === 'ORGANIZER_CANNOT_BE_REFEREE') {
+    return 'You organize this tournament, so you cannot also officiate it.'
+  }
   if (error instanceof ApiError && error.code === 'REFEREE_CONFLICT_OF_INTEREST') {
     const teamId = typeof error.extra.teamId === 'number' ? ` (team #${error.extra.teamId})` : ''
     return `This person is already competing in the tournament${teamId}, so they cannot officiate it.`
@@ -78,6 +83,14 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
   /* คนที่อยู่ในทัวร์นาเมนต์แล้ว (ทั้งตอบรับและรอตอบ) ไม่ควรโผล่ให้เชิญซ้ำ
      บัญชีที่ถูกระงับแต่งตั้งไม่ได้ (FR-UM-05) จึงไม่แสดงเลย */
   const taken = new Set((current?.items ?? []).map(r => r.user.id))
+  /**
+   * ผู้จัดเป็นกรรมการทัวร์ของตัวเองไม่ได้ — spec `02-roles-permissions.md` §7 (ห้ามใช้สิทธิ์
+   * ปฏิบัติงานกับเรื่องของตัวเอง) และมติ 18 ก.ย. ที่ F01 บังคับไว้ด้วย `invitee ≠ inviter`
+   * (`409 ORGANIZER_CANNOT_BE_REFEREE`) · เดิมผู้จัดค้นเจอชื่อตัวเองแล้วกดเชิญได้ ได้ 409 ดิบกลับมา
+   * ซึ่งคือปุ่มที่รู้อยู่แล้วว่าพัง — ตัดออกตั้งแต่รายชื่อ ส่วนคนที่อยู่ในทีมที่สมัครทัวร์นี้ รายชื่อ
+   * ค้นหาไม่บอกเรา จึงปล่อยให้ backend ปฏิเสธแล้วอธิบายด้วย `appointError`
+   */
+  const { data: me } = useMe()
   const found = useSearchUsers(q.trim(), open && !USE_MOCK)
   const storeCands = USE_MOCK
     ? s.users
@@ -87,7 +100,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
     : []
   const apiCands = USE_MOCK
     ? []
-    : (found.data?.items ?? []).filter(x => !taken.has(x.id)).slice(0, 12)
+    : (found.data?.items ?? []).filter(x => !taken.has(x.id) && x.id !== me?.id).slice(0, 12)
   const cands: Array<{ key: string; userId: number; name: string; sub: string; external: boolean }> =
     USE_MOCK
       ? storeCands.map(x => ({

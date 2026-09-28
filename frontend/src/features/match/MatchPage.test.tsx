@@ -21,6 +21,7 @@ const idle = { isPending: false, isError: false, isSuccess: false, data: undefin
 const verifyState = { ...idle, mutate: vi.fn() }
 const disputeState = { ...idle, mutate: vi.fn() }
 const resolveState = { ...idle, mutate: vi.fn() }
+const finishState = { ...idle, mutate: vi.fn() }
 const submitResult = vi.fn()
 
 let match: MatchDto
@@ -69,6 +70,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useOpenMatchCheckin: () => ({ ...idle, mutate: vi.fn() }),
   useCloseMatchCheckin: () => ({ ...idle, mutate: vi.fn() }),
   useStartMatch: () => ({ ...idle, mutate: vi.fn() }),
+  useFinishMatch: () => finishState,
   useForfeitMatch: () => ({ ...idle, mutate: vi.fn() }),
   useMatchStats: () => ({ data: { items: [] }, isPending: false, isError: false }),
   useSaveMatchStats: () => ({ ...idle, mutate: vi.fn() }),
@@ -206,5 +208,55 @@ describe('resolving a dispute', () => {
     expect(resolveState.mutate).toHaveBeenCalledWith({
       decision: 'reject', resolution: 'Checked the score sheet',
     })
+  })
+})
+
+/**
+ * OD-26 — "จบการแข่งขัน" เป็นขั้นบังคับก่อนส่งผล (รายงาน 29 ก.ย.: สมหญิงกรอกสกอร์แมตช์ 13
+ * แล้วได้ "Could not save the result. ต้องกดจบการแข่งขันก่อน" โดยไม่มีปุ่มจบให้กดที่ไหนเลย)
+ */
+describe('finishing a match', () => {
+  const asRefereeOf = (status: 'in_progress' | 'finished') => {
+    match = baseMatch()
+    match.status = status
+    match.resultStatus = null
+    match.viewer.roles = ['referee']
+    match.viewer.can.finishMatch = status === 'in_progress'
+    match.viewer.can.submitResult = status === 'finished'
+    result = undefined
+  }
+
+  it('does not hand the referee a result form while the match is still being played', () => {
+    asRefereeOf('in_progress')
+    renderPage()
+    expect(screen.queryByText(/enter the result/)).not.toBeInTheDocument()
+    expect(screen.getByText(/result form opens once the match is finished/)).toBeInTheDocument()
+  })
+
+  it('finishes only after the referee confirms play has ended', () => {
+    asRefereeOf('in_progress')
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Finish the match' }))
+    expect(finishState.mutate).not.toHaveBeenCalled()
+    expect(screen.getByText(/Finishing cannot be undone/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes — the match is over' }))
+    expect(finishState.mutate).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the result form once the match is finished', () => {
+    asRefereeOf('finished')
+    renderPage()
+    expect(screen.getByText(/enter the result/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
+  })
+
+  it('says the match is being played to someone who cannot finish it', () => {
+    asRefereeOf('in_progress')
+    match.viewer.roles = ['player']
+    match.viewer.can.finishMatch = false
+    renderPage()
+    expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
+    expect(screen.getByText(/recorded after the referee finishes the match/)).toBeInTheDocument()
   })
 })

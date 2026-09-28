@@ -83,6 +83,7 @@ const noPowers: MatchViewerContext["can"] = {
   submitResult: false, verifyResult: false, disputeResult: false, resolveDispute: false,
   editFixture: false, recordStats: false, manageCheckin: false, verifyCheckin: false,
   openCheckin: false,
+  finishMatch: false,
 };
 
 const viewer = (

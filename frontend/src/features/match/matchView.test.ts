@@ -31,6 +31,12 @@ describe("matchStateOf", () => {
     expect(matchStateOf(match({ status: "completed", resultStatus: "walkover" }))).toBe("confirmed");
   });
 
+  /* OD-26 — สถานะใหม่ `finished` เคยหล่นไปถึงบรรทัดสุดท้าย แมตช์ที่เพิ่งแข่งจบขึ้นป้าย "Scheduled" */
+  it("reads a finished match with no result yet as waiting for its result, not as scheduled", () => {
+    expect(matchStateOf(match({ status: "finished", resultStatus: null }))).toBe("pending");
+    expect(isOpen(match({ status: "finished", resultStatus: null }))).toBe(true);
+  });
+
   /* R16 — ผู้จัดยกผลทิ้งแล้วแมตช์ไป `result_rejected` เดิมตกลงมาเป็น "Scheduled"
      ซึ่งอ่านว่ายังไม่เคยมีอะไรเกิดขึ้น ทั้งที่แข่งไปแล้วและผลเพิ่งถูกเพิกถอน */
   it("does not read a thrown-out result as a match that has not happened", () => {

@@ -28,6 +28,7 @@ const match = {
       submitResult: false, verifyResult: false, disputeResult: false, resolveDispute: true,
       editFixture: true, recordStats: false, manageCheckin: true, verifyCheckin: false,
       openCheckin: true,
+      finishMatch: false,
     },
   },
 } as MatchDto
