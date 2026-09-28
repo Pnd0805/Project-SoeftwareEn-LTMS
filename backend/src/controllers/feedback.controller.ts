@@ -24,15 +24,17 @@ export async function getOrganizerFeedback(req: Request, res: Response) {
     res.status(200).json(await FeedbackService.getOrganizerFeedback(tournamentId, req.user?.user_id));
 }
 
+/** MVP รายแมตช์ (มติ 26 ก.ย.) — :id คือรหัสแมตช์ · 201 ครั้งแรก / 200 เปลี่ยนคนที่โหวต */
 export async function castMvpVote(req: Request, res: Response) {
     const userId = requireUserId(req);
-    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
-    res.status(200).json(await FeedbackService.castMvpVote(tournamentId, userId, req.body.userId));
+    const matchId = parseId(req.params['id'], 'รหัสแมตช์');
+    const { isNew, ...vote } = await FeedbackService.castMvpVote(matchId, userId, req.body.userId);
+    res.status(isNew ? 201 : 200).json(vote);
 }
 
 export async function getMvpVotes(req: Request, res: Response) {
-    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
-    res.status(200).json(await FeedbackService.getMvpVotes(tournamentId, req.user?.user_id));
+    const matchId = parseId(req.params['id'], 'รหัสแมตช์');
+    res.status(200).json(await FeedbackService.getMvpVotes(matchId, req.user?.user_id));
 }
 
 // ───────── C7 คอมเมนต์ทัวร์ ─────────

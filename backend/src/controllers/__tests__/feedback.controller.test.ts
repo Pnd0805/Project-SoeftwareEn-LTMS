@@ -180,7 +180,27 @@ describe("getOrganizerFeedback", () => {
 });
 
 describe("castMvpVote", () => {
-    it("parses the tournament id and forwards the voter's userId and the voted-for body.userId", async () => {
+    // มติ 26 ก.ย. — :id คือรหัสแมตช์แล้ว (MVP รายแมตช์) · 201 ครั้งแรก / 200 เปลี่ยนคนที่โหวต
+    it("responds 201 on a first vote and strips isNew from the body", async () => {
+        svc.castMvpVote.mockResolvedValue({ isNew: true, matchId: 5, votedForUserId: 12, changed: false } as any);
+
+        const res = makeRes();
+        await castMvpVote(makeReq({ params: { id: "5" } as any, body: { userId: 12 } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(res.json).toHaveBeenCalledWith({ matchId: 5, votedForUserId: 12, changed: false });
+    });
+
+    it("responds 200 when the vote replaced an earlier one", async () => {
+        svc.castMvpVote.mockResolvedValue({ isNew: false, matchId: 5, votedForUserId: 12, changed: true } as any);
+
+        const res = makeRes();
+        await castMvpVote(makeReq({ body: { userId: 12 } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("parses the match id and forwards the voter's userId and the voted-for body.userId", async () => {
         svc.castMvpVote.mockResolvedValue({ ok: true } as any);
 
         const req = makeReq({
@@ -214,7 +234,7 @@ describe("castMvpVote", () => {
         expect(svc.castMvpVote).not.toHaveBeenCalled();
     });
 
-    it("rejects with VALIDATION_FAILED for a bad tournament id", async () => {
+    it("rejects with VALIDATION_FAILED for a bad match id", async () => {
         const req = makeReq({ params: { id: "abc" } as any });
 
         await expect(castMvpVote(req, makeRes())).rejects.toMatchObject({

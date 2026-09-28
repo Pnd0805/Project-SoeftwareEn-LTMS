@@ -13,9 +13,11 @@ const findAdmin = vi.mocked(AdminRepo.findAdminByUserId);
 
 const req = () => ({ user: { user_id: 42 } } as unknown as Request);
 const res = () => ({} as Response);
+// เวลาคงที่ — ถ้าเรียก new Date() ทุกครั้ง แถวที่ส่งเข้ากับแถวที่เทียบจะต่างกันหนึ่งมิลลิวินาทีเป็นครั้งคราว
+const AT = new Date('2026-09-28T00:00:00Z');
 const scope = (scope_type: AdminScopeRow['scope_type']): AdminScopeRow =>
   ({ admin_scope_id: 1, user_id: 42, scope_type, faculty_id: scope_type === 'faculty' ? 3 : null,
-     created_at: new Date(), created_by: null });
+     created_at: AT, created_by: null });
 
 const errorOf = (next: NextFunction) => (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
 

@@ -10,6 +10,7 @@ import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import * as NotificationService from './notification.service.js';
 import { toBracketNodeDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import type { TournamentRow } from '../types/db.js';
 
 // ---------------------------------------------------------------
 // ส่วนคำนวณล้วนๆ (pure function) — ไม่แตะ DB เลย ทดสอบแยกได้ง่าย
@@ -299,6 +300,24 @@ function shuffle<T>(input: T[]): T[] {
     return arr;
 }
 
+/**
+ * จำนวนทีมที่ approved ขั้นต่ำก่อนจับสายได้ (OD-33 · FE-double-elimination-four-team-minimum)
+ *   double_elimination → 4 ทีม — น้อยกว่านี้สายแพ้ไม่มีของจริงให้เดิน รูปแบบจึงไม่เกิดขึ้นจริง
+ *   รูปแบบอื่น → 2 ทีม (พฤติกรรมเดิม) · bracket_format เป็น null ก็นับเป็น "อื่น"
+ *   ทัวร์ที่ตั้ง min_teams สูงกว่านั้นใช้ค่าของทัวร์ — เป็น max ไม่ใช่ 4 ตายตัว
+ */
+export function minTeamsToDraw(tournament: Pick<TournamentRow, 'bracket_format' | 'min_teams'>): number {
+    const formatFloor = tournament.bracket_format === 'double_elimination' ? 4 : 2;
+    return Math.max(formatFloor, tournament.min_teams);
+}
+
+/** ข้อความของ TEAM_COUNT_MISMATCH — double elimination บอกเหตุเฉพาะ ส่วนรูปแบบอื่นคงข้อความเดิม */
+function teamCountMessage(bracketFormat: TournamentRow['bracket_format'], required: number): string {
+    return bracketFormat === 'double_elimination'
+        ? `รูปแบบ double elimination ต้องมีทีมที่อนุมัติแล้วอย่างน้อย ${required} ทีม`
+        : 'จำนวนทีมไม่สอดคล้องกับรูปแบบการแข่งขันที่เลือก';
+}
+
 // ---------------------------------------------------------------
 // ส่วนที่แตะ DB จริง — orchestration
 // ---------------------------------------------------------------
@@ -337,8 +356,10 @@ export async function createBracket(
     const approvedTeams = await ApplicationRepo.findApprovedTeamsByTournament(tournamentId);
     const teamIdsInOrder = orderTeamIds(approvedTeams.map(t => t.team_id), seedingMethod, manualSeeds);
 
-    if (teamIdsInOrder.length < 2 || teamIdsInOrder.length < tournament.min_teams) {
-        throw new AppError(422, "TEAM_COUNT_MISMATCH", "จำนวนทีมไม่สอดคล้องกับรูปแบบการแข่งขันที่เลือก");
+    const requiredTeams = minTeamsToDraw(tournament);
+    if (teamIdsInOrder.length < requiredTeams) {
+        throw new AppError(422, "TEAM_COUNT_MISMATCH", teamCountMessage(tournament.bracket_format, requiredTeams),
+            { bracketFormat: tournament.bracket_format, required: requiredTeams, approved: teamIdsInOrder.length });
     }
 
     // M01 ไม่มีช่องให้ organizer เลือก mode เอง (แก้ทีละแมตช์ทีหลังต้องรอ M08 ซึ่งเป็น Sprint #2)

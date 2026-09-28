@@ -224,7 +224,7 @@
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
-| M01 | `POST /tournaments/:id/bracket` | ORG | **สร้างสายทั้งทัวร์** · INSERT matches หลายสิบแถว + bracket_nodes · transaction · **`replace: true` (21 ก.ย.)** = ลบสายเดิม (matches/nodes/นัดหมาย/กรรมการรายแมตช์/standings — คงใบสมัครและ pool กรรมการ) แล้วจับใหม่จากทีม approved ปัจจุบันในทรานแซกชันเดียว · ได้เฉพาะทุกแมตช์ยัง `scheduled` และไม่มีเช็คอิน/ผล ไม่งั้น **409** `BRACKET_IN_USE` `{matches:[{id,status,checkins,results}]}` · ไม่ส่ง replace แต่มีสาย → **409** `BRACKET_ALREADY_EXISTS` · ตอบ `replaced: true\|false` | `seedingMethod:'random'\|'manual', manualSeeds?, replace?` | **201** `{ matchCount, bracketFormat, nodeCount }` / **422** `TEAM_COUNT_MISMATCH` |
+| M01 | `POST /tournaments/:id/bracket` | ORG | **สร้างสายทั้งทัวร์** · INSERT matches หลายสิบแถว + bracket_nodes · transaction · **`replace: true` (21 ก.ย.)** = ลบสายเดิม (matches/nodes/นัดหมาย/กรรมการรายแมตช์/standings — คงใบสมัครและ pool กรรมการ) แล้วจับใหม่จากทีม approved ปัจจุบันในทรานแซกชันเดียว · ได้เฉพาะทุกแมตช์ยัง `scheduled` และไม่มีเช็คอิน/ผล ไม่งั้น **409** `BRACKET_IN_USE` `{matches:[{id,status,checkins,results}]}` · ไม่ส่ง replace แต่มีสาย → **409** `BRACKET_ALREADY_EXISTS` · ตอบ `replaced: true\|false` · **ด่านจำนวนทีม (แก้ 27 ก.ย. · OD-33)** ทีม approved ต้องถึง `max(4, min_teams)` เมื่อ `bracket_format = 'double_elimination'` และ `max(2, min_teams)` รูปแบบอื่น ไม่งั้น **422** `TEAM_COUNT_MISMATCH` + `extra {bracketFormat, required, approved}` · ใช้กับทั้ง `random`/`manual` และ `replace: true` · ★ ด่านนี้อยู่**ก่อน**เปิดทรานแซกชัน ปฏิเสธแล้วสายเดิมยังอยู่ครบ | `seedingMethod:'random'\|'manual', manualSeeds?, replace?` | **201** `{ matchCount, bracketFormat, nodeCount }` / **422** `TEAM_COUNT_MISMATCH` |
 | M02 | `GET /tournaments/:id/bracket` | — | ผังสาย (round robin คืน `nodes: []`) · **19 ก.ย.**: `teamA/teamB` ของรอบถัดไปถูกเติมทันทีที่ผลออก (verify / walkover / bye ทุกแบบ sync `bracket_nodes` จาก `matches` — migration 014 backfill ของเก่า) FE ไม่ต้องเอา M01 มาซ้อนแล้ว | — | `{ bracketFormat, nodes: [{nodeId, bracketType, round, matchNumber, teamA, teamB, matchId, matchStatus, advancesToNodeId}] }` |
 | M04 | `GET /tournaments/:id/matches` | — | ตารางแข่ง · **19 ก.ย. (B5)**: ทุกแถวมีผลสรุปในตัว FE ไม่ต้องยิง S05/M02 ซ้ำ — `resultStatus` = สถานะใบผลล่าสุด (null ยังไม่ส่ง / submitted / disputed / rejected / verified / walkover) · `score` เฉพาะ verified/walkover (ใบผลที่ยังไม่ยืนยันดูผ่าน S05 ตามสิทธิ์เดิม) · `outcome` เฉพาะแมตช์ `completed`: `played` แข่งจริง · `walkover` คู่ถอน/ไม่มา (แสดง W/O) · `bye` ช่องอีกฝั่งว่างถาวร ทีมเดียวผ่าน (แสดง "BYE" แทนช่องว่าง) · `void` ไม่มีใครผ่าน — แพ้ทั้งคู่/ถอนทั้งคู่/แมตช์ตาย (แสดง "ไม่มีการแข่ง") · ช่องว่างที่ `outcome=null` = ยังรอผลรอบก่อน · **แก้ 27 ก.ย.** เพิ่ม `livestreamUrl` — E12 เขียนคอลัมน์นี้ตั้งแต่ schema แรกแต่ไม่มี route ไหนอ่านกลับ ลิงก์จึงหายทุกครั้งที่โหลดหน้าใหม่ (FE-replay-link-write-only) · **สาธารณะ** ต่างจาก `roomCode` ที่จำกัดผู้ดู | `?teamId&status&round&page&pageSize` | `{ items: [{id, round, teamA, teamB, scheduledTime, scheduledEndTime, venue, status, nextMatchId, loserNextMatchId, resultStatus, score, outcome: {kind, winnerTeamId, loserTeamId}\|null}], pagination }` |
 | M05 | `GET /matches/:id` | — | รายละเอียดแมตช์ · ฟิลด์ผลสรุปชุดเดียวกับ M04 · **B8**: `roomCode` (แมตช์ online) เห็นเฉพาะผู้เล่นในรายชื่อลงแข่ง/กรรมการของแมตช์/ORG (ส่ง token) ไม่งั้น null · **แก้ 27 ก.ย.** เพิ่ม `livestreamUrl` — E12 เขียนคอลัมน์นี้ตั้งแต่ schema แรกแต่ไม่มี route ไหนอ่านกลับ ลิงก์จึงหายทุกครั้งที่โหลดหน้าใหม่ (FE-replay-link-write-only) · **สาธารณะ** ต่างจาก `roomCode` ที่จำกัดผู้ดู | — | `{ id, tournamentId, round, teamA, teamB, scheduledTime, scheduledEndTime, venue, checkinOpenAt, status, mode, nextMatchId, loserNextMatchId, resultStatus, score, outcome, roomCode }` |
@@ -262,8 +262,10 @@
 > (random = สุ่มคู่ที่ได้ bye · manual = seed ลำดับต้นได้ bye ก่อน) · double elimination เริ่มได้ตั้งแต่ 2 ทีม ·
 > นัดชิง double elimination = แชมป์สายบนเจอแชมป์สายล่าง **นัดเดียวจบ** (ไม่มี bracket reset)
 >
-> **M01 `TEAM_COUNT_MISMATCH`** — ทีมที่ approved **น้อยกว่า 2** หรือ **น้อยกว่า `min_teams`** ของทัวร์ (ใช้กฎเดียวกันทุก format · ตกลงกับทีม 15 ก.ย.)
+> **M01 `TEAM_COUNT_MISMATCH`** — ทีมที่ approved น้อยกว่า `max(ขั้นต่ำของรูปแบบ, min_teams)` ของทัวร์ (**แก้ 27 ก.ย. · OD-33** — เดิมใช้กฎเดียวกันทุก format ตามที่ตกลงกับทีม 15 ก.ย.)
+> — ขั้นต่ำของรูปแบบ: `double_elimination` = **4** (น้อยกว่านี้สายแพ้ไม่มีของจริงให้เดิน) · `single_elimination` / `round_robin` / ยังไม่ตั้ง = **2** เหมือนเดิม
 > — เช็ค < 2 ไว้ด้วยเพราะ DB ไม่ได้บังคับ `min_teams ≥ 2` ถ้ามีทัวร์ตั้ง 0/1 ไว้ก็ยังสร้างสาย 1 ทีมไม่ได้
+> — ตอบ `extra {bracketFormat, required, approved}` ทุกกรณี (ทั้งเคสรูปแบบและเคส `min_teams` เดิม) FE จึงบอกได้ว่าขาดอีกกี่ทีม
 >
 > **อายุลิงก์/QR** — M11 QR หมดอายุ **20 นาที** (response มี `expiresAt` ให้หน้าจอกรรมการขอใหม่ก่อนหมด) ·
 > M16 ลิงก์อัปโหลด และลิงก์ดูเอกสาร soft filter ใน P04 หมดอายุ **20 นาที** (`expiresIn` = 1200)
@@ -323,7 +325,7 @@
 
 ---
 
-## 10.2 รีวิวจากผู้ลงแข่ง + โหวต MVP (C6 · OD-23) — 7 endpoint
+## 10.2 รีวิวจากผู้ลงแข่ง + โหวต MVP รายแมตช์ (C6 · OD-23) — 7 endpoint
 
 **ไฟล์:** `routes/feedback.routes.ts` · `feedback.controller.ts` · `feedback.service.ts` · `feedback.repo.ts` · ตาราง `tournament_feedback` (ไม่มี migration)
 
@@ -336,8 +338,8 @@
 |---|---|---|---|---|---|
 | E18 | `POST /tournaments/:id/feedback` | ผู้เล่นในรายชื่อ / หัวหน้าทีมที่ approved | ให้คะแนนการจัดงาน · **ส่งซ้ำ = แก้** · เปิดตั้งแต่ทัวร์เริ่มถึง 7 วันหลังปิดทัวร์ | `rating 1–5, content?` | **201** ครั้งแรก / **200** แก้ · `{ id, rating, content, createdAt }` |
 | E19 | `GET /tournaments/:id/feedback` | — (ล็อกอินได้ข้อมูลตัวเองเพิ่ม) | ค่าเฉลี่ย/การกระจาย + `status` (`not_started`/`open`/`closed`) + `opensAt`/`closesAt` · ผู้จัดเห็น `items` ไม่เห็นชื่อ · แอดมิน `university_wide` เห็นชื่อ | `—` | `{ summary, status, opensAt, closesAt, mine, canSubmit, items }` |
-| E20 | `POST /tournaments/:id/mvp-votes` | คนที่**ไม่ได้**ลงแข่ง | โหวต MVP · ส่งซ้ำ = เปลี่ยนคนที่โหวต · เปิดหลังปิดทัวร์ 7 วัน | `userId` | **200** `{ tournamentId, votedForUserId, changed }` |
-| E22 | `GET /tournaments/:id/mvp-votes` | — | ผู้ถูกโหวตทั้งหมด + คะแนน · `winners` โชว์หลังปิดโหวต | `—` | `{ window, candidates, totalVotes, winners, mine, canVote }` |
+| E20 | `POST /matches/:id/mvp-votes` | Auth · **ไม่ใช่สมาชิกของสองทีมในแมตช์** | โหวต MVP ของแมตช์ (มติ 26 ก.ย. — ย้ายจากระดับทัวร์) · เปิดทันทีที่แมตช์จบ (`actual_end_time`) ปิด +24 ชม. (`MVP_VOTING_HOURS`) · ส่งซ้ำ = เปลี่ยนคนที่โหวต | `userId` | **201** ครั้งแรก / **200** เปลี่ยน · `{ matchId, votedForUserId, changed }` |
+| E22 | `GET /matches/:id/mvp-votes` | — (ล็อกอินได้ `mine`/`canVote`) | ผู้ถูกโหวต (คนที่เช็คอินสำเร็จ) + สถิติของเขาในแมตช์นั้น · **★ ระหว่างเปิดโหวตไม่มีจำนวนโหวตในคำตอบเลย** ทั้ง `candidates[].votes` และ `totalVotes` (OD-23 ข้อ 10) · ปิดโหวตแล้วจึงมีคะแนน + `winners` | `—` | `{ matchId, window, candidates, winners, (totalVotes หลังปิดโหวต), mine, canVote }` |
 | E15 | `POST /feedback/:id/report` | Auth | รายงานข้อความ (กดซ้ำได้ผลเดิม) · รีวิว report ได้เฉพาะผู้จัด · ความเห็นต่อทัวร์ report ได้ทุกคนยกเว้นเจ้าของ · **ความเห็นต่อทัวร์ → แจ้งเตือนผู้จัด** (`comment_reported`, ครั้งแรกครั้งเดียว) | `—` | `{ id, isReported: true }` |
 | E17 | `DELETE /admin/feedback/:id` | ADM-u | ลบ (soft delete) + audit `feedback_removed` | `reason?` | **204** |
 | E17b | `POST /admin/feedback/:id/restore` | ADM-u | **คืนของที่ถูกลบ** + audit `feedback_restored` · ล้างธง report ด้วย (มติ 23 ก.ย. 6.3.3 — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์) | `—` | **200** `{ id, restored: true }` |
@@ -430,6 +432,7 @@
 | `CHECKIN_NOT_OPEN` | 409 | ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้ | service (M10) — ตั้งตาม pattern `VOTING_NOT_OPEN` (E20) · เดิมชื่อ `MATCH_NOT_CHECKIN_OPEN` |
 | `BRACKET_ALREADY_EXISTS` | 409 | ทัวร์นาเมนต์นี้สร้างสายการแข่งขันไปแล้ว | service (M01) — คู่กับ `BRACKET_ALREADY_STARTED` (M03) |
 | `MANUAL_SEEDS_MISMATCH` | 422 | manualSeeds ต้องมีทีมครบทุกทีมที่ได้รับอนุมัติ ไม่ซ้ำและไม่ขาด | service (M01) — คู่กับ `TEAM_COUNT_MISMATCH` |
+| `TEAM_COUNT_MISMATCH` | 422 | ทีมที่อนุมัติแล้วไม่ถึงขั้นต่ำของรูปแบบสาย — extra `{bracketFormat, required, approved}` | service (M01) — `required` = `max(4, min_teams)` สำหรับ `double_elimination` · `max(2, min_teams)` รูปแบบอื่น (OD-33) |
 | `BRACKET_FORMAT_NOT_SET` | 422 | ทัวร์นาเมนต์นี้ยังไม่ได้ตั้งรูปแบบการแข่งขัน กรุณาตั้งรูปแบบการแข่งขันก่อนสร้างสาย | service (M01) — `bracket_format` เป็น NULL · เดิมชื่อ `BRACKET_FORMAT_NOT_SUPPORTED` 400 (ชื่อเดิมไม่บอกสาเหตุจริงแล้ว เพราะรองรับครบ 3 รูปแบบ) |
 | `SOFT_FILTER_DOCUMENT_INVALID` | 422 | key ของเอกสารไม่ได้เป็นของ user/tournament นี้ หรือชนิดไฟล์ที่เก็บไม่ใช่ JPEG/PNG | service (P01) |
 | `SOFT_FILTER_DOCUMENT_NOT_FOUND` | 422 | key ถูกต้องแต่ object ยังไม่มีใน storage (เช่น upload ไม่สำเร็จ/หมด flow) | service (P01) |
@@ -445,6 +448,12 @@
 | `ALREADY_DECIDED` | 409 | M14: รายการนี้ผ่านไปแล้ว (success/exception) ยืนยันซ้ำไม่ได้ — ถอนได้ทาง M15 |
 | `FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER` | 403 | E17c: ผู้จัดลบได้เฉพาะ "ความเห็นต่อทัวร์" — รีวิวจากผู้ลงแข่ง/โหวต MVP ลบไม่ได้ (เป็นการประเมินตัวผู้จัดเอง) |
 | `FEEDBACK_NOT_REMOVED` | 409 | E17b: กด restore ทั้งที่ความเห็นนี้ไม่ได้ถูกลบอยู่ |
+| `MVP_VOTING_NOT_OPEN` | 409 | E20: แมตช์ยังไม่จบ (`actual_end_time` ยังว่าง) ยังโหวตไม่ได้ |
+| `MVP_VOTING_CLOSED` | 409 | E20: พ้น 24 ชม. หลังแมตช์จบ — extra `{closesAt}` |
+| `MVP_NOT_AVAILABLE` | 409 | E20: แมตช์ตัดสินโดยไม่มีการแข่งจริง (ชนะบาย/ปรับแพ้) จึงไม่มีการโหวต |
+| `TOURNAMENT_NOT_PUBLIC` | 409 | E20: ทัวร์ไม่ได้เปิดเผยแพร่ (private / ถูกลบ) — ใช้ร่วมกับความเห็นต่อทัวร์และ Pick'em |
+| `MVP_VOTER_NOT_ELIGIBLE` | 403 | E20: ผู้โหวตเป็นสมาชิกของทีมใดทีมหนึ่งในแมตช์นั้น (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม) |
+| `MVP_CANDIDATE_NOT_ELIGIBLE` | 422 | E20: คนที่โหวตให้ไม่ได้เช็คอินสำเร็จในแมตช์นี้ |
 | `PREDECESSOR_DISPUTED` | 409 | M09: แมตช์ต้นทางยังมีข้อโต้แย้งที่ยังไม่ตัดสิน เปิดเช็คอินแมตช์ถัดไปไม่ได้ (`extra.blockedBy`) |
 | `MATCH_NOT_FINISHED` | 409 | S01: ยังไม่กดจบการแข่งขัน ส่งผลไม่ได้ (`extra.status`) |
 | `MATCH_NOT_IN_PROGRESS` | 409 | M10b: กดจบได้เฉพาะแมตช์ที่กำลังแข่งอยู่ (`extra.status`) |

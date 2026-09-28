@@ -1,9 +1,9 @@
-import type { FeedbackListRow, FeedbackRow, FeedbackSummaryRow, MvpCandidateRow } from '../repositories/feedback.repo.js';
+import type { FeedbackListRow, FeedbackRow, FeedbackSummaryRow, MvpCandidateRow, MatchPlayerStatRow } from '../repositories/feedback.repo.js';
 
 /**
  * ตาราง tournament_feedback เก็บ 3 เรื่องที่ผูกกับทัวร์ — ชื่อเรียกที่ทีมตกลง 23 ก.ย. 2569 (อย่าปนกัน):
  *   organizer_feedback = "รีวิวจากผู้ลงแข่ง"   ให้คะแนน 1–5 + ข้อความ · เฉพาะผู้เล่น/หัวหน้าทีมที่ลงแข่ง · ข้อความเห็นแค่ผู้จัด (ไม่เห็นชื่อ)
- *   mvp_vote           = "โหวต MVP"           เฉพาะคนที่ไม่ได้ลงแข่ง · ผลนับเป็นสาธารณะ
+ *   mvp_vote           = "โหวต MVP"           รายแมตช์ (มติ 26 ก.ย.) · ทุกคนโหวตได้ยกเว้นสมาชิกสองทีมในแมตช์ · ผลประกาศหลังปิดโหวต
  *   comment            = "ความเห็นต่อทัวร์"    ใครที่ล็อกอินก็เขียนได้ · ทุกคนเห็น (mapper ของ comment อยู่ใน feedback.service)
  * ฟังก์ชันในไฟล์นี้เป็นของ "รีวิว" และ "โหวต MVP" เท่านั้น
  */
@@ -36,12 +36,17 @@ export function toReviewItemDto(row: FeedbackListRow, withAuthor: boolean) {
     };
 }
 
-export function toMvpCandidateDto(row: MvpCandidateRow) {
+/**
+ * ผู้ถูกโหวตของแมตช์ + สถิติของเขาในแมตช์นั้น (ข้อ 9)
+ * ★ `withVotes` = false ระหว่างเปิดโหวต → **ไม่มีคีย์ `votes` เลย** ไม่ใช่ส่ง 0 (ข้อ 10 — กันแห่ตามคนนำ)
+ */
+export function toMvpCandidateDto(row: MvpCandidateRow, stats: MatchPlayerStatRow[], withVotes: boolean) {
     return {
         userId: row.user_id,
         fullName: row.full_name,
         avatarUrl: row.profile_image_key,
-        team: { id: row.team_id, name: row.team_name },
-        votes: Number(row.votes),
+        teamId: row.team_id,
+        stats: stats.map(s => ({ statKey: s.stat_key, statLabelTh: s.stat_label_th, value: Number(s.value) })),
+        ...(withVotes ? { votes: Number(row.votes) } : {}),
     };
 }
