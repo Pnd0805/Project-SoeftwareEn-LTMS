@@ -64,6 +64,10 @@ export async function update(teamId : number , newTeam : updateTeamInput){
         sets.push('visibility = ?');
         values.push(newTeam.visibility);
     }
+    if(newTeam.logoKey !== undefined){   // null ผ่านเข้ามาได้ (ล้างโลโก้) — เช็ค !== undefined ไม่ใช่ truthy
+        sets.push('logo_key = ?');
+        values.push(newTeam.logoKey);
+    }
 
     sets.push('updated_at = NOW()');
 

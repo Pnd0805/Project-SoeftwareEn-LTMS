@@ -2,6 +2,7 @@ import type { LeaderApplicationRow } from '../repositories/application.repo.js';
 import type { OrganizerApplicationRow } from '../repositories/application.repo.js';
 import type { ApplicationDetailRow } from '../repositories/application.repo.js';
 import type { ApplicationPlayerRow } from '../repositories/application.repo.js';
+import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 export function toMyApplicationDto(row: LeaderApplicationRow) {
     return {
@@ -39,7 +40,7 @@ export type ApplicationPlayerDto = {
 };
 
 export function toApplicationPlayerDto(row: ApplicationPlayerRow): ApplicationPlayerDto {
-    return { userId: row.user_id, fullName: row.full_name, avatarUrl: row.profile_image_key };
+    return { userId: row.user_id, fullName: row.full_name, avatarUrl: toPublicImageUrl(row.profile_image_key) };
 }
 
 export function toApplicationDetailDto(row: ApplicationDetailRow, softFilterDocumentUrls: string[], players: ApplicationPlayerRow[]) {

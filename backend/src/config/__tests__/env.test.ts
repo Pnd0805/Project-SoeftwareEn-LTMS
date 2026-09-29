@@ -83,6 +83,7 @@ describe("env - happy path", () => {
             S3_SECRET_ACCESS_KEY: "minioadmin",
             S3_BUCKET: "uploads",
             S3_FORCE_PATH_STYLE: true,
+            S3_PUBLIC_BASE: "http://localhost:9000/uploads",
         });
     });
 

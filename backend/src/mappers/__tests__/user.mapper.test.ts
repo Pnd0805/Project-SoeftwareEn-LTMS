@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import { toMeDto, toUserRef, toPublicUserDto, toGetMyInvitation } from '../user.mapper.js';
 
 const baseUserRow = {
@@ -38,7 +43,7 @@ describe('toMeDto', () => {
       facultyId: 2,
       departmentId: 3,
       year: 2,
-      avatarUrl: 'avatar.png',
+      avatarUrl: 'https://cdn.test/avatar.png',
       contactInfo: '0812345678',
       address: '123 Main St',
       totalPoints: 150,
@@ -104,7 +109,7 @@ describe('toUserRef', () => {
     expect(toUserRef(row as any)).toEqual({
       id: 1,
       fullName: 'Test User',
-      avatarUrl: 'avatar.png',
+      avatarUrl: 'https://cdn.test/avatar.png',
     });
   });
 
@@ -122,7 +127,7 @@ describe('toPublicUserDto', () => {
     expect(result).toEqual({
       id: 1,
       fullName: 'Test User',
-      avatarUrl: 'avatar.png',
+      avatarUrl: 'https://cdn.test/avatar.png',
       facultyId: 2,
       departmentId: 3,
       teams,
@@ -165,7 +170,7 @@ describe('toGetMyInvitation', () => {
     expect(toGetMyInvitation(row as any)).toEqual({
       id: 1,
       team: { id: 10, name: 'Dream Team', sportTypeId: 1 },
-      invitedBy: { id: 9, fullName: 'Inviter Name', avatarUrl: 'avatar.png' },
+      invitedBy: { id: 9, fullName: 'Inviter Name', avatarUrl: 'https://cdn.test/avatar.png' },
       expiresAt: '2024-03-01T00:00:00.000Z',
     });
   });

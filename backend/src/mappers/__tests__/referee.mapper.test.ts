@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import {
   toRefereeStatus,
   toTournamentRefereeDto,
@@ -199,7 +204,7 @@ describe('toTournamentRefereeDto', () => {
 
     expect(toTournamentRefereeDto(row)).toEqual({
       id: 1,
-      user: { id: 5, fullName: 'กรรมการ A', avatarUrl: 'avatars/5.png' },
+      user: { id: 5, fullName: 'กรรมการ A', avatarUrl: 'https://cdn.test/avatars/5.png' },
       invitationStatus: 'accepted',
       isExternal: true,
       externalApprovalStatus: 'approved',
@@ -551,7 +556,7 @@ describe('toMatchRefereeDto', () => {
   it('maps the tournament referee id and a nested referee user ref', () => {
     expect(toMatchRefereeDto(makeMatchRefereeRow())).toEqual({
       tournamentRefereeId: 1,
-      referee: { id: 5, fullName: 'กรรมการ A', avatarUrl: 'avatars/5.png' },
+      referee: { id: 5, fullName: 'กรรมการ A', avatarUrl: 'https://cdn.test/avatars/5.png' },
     });
   });
 

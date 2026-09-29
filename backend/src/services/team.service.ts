@@ -3,6 +3,7 @@ import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
 import * as NotificationService from './notification.service.js';
+import * as UploadService from './upload.service.js';
 
 import type { TeamInput, updateTeamInput } from '../schemas/team.schema.js';
 
@@ -86,7 +87,18 @@ export async function updateTeam(teamId : number , sportType:number , newTeam : 
         }
     }
 
+    // null = ล้างโลโก้ ไม่ต้องตรวจ · string = ต้องเป็น key ที่อัปโหลดไว้สำหรับทีมนี้จริง (FE-avatar-and-team-logo-uploads)
+    const previous = newTeam.logoKey !== undefined ? await checkTeam(teamId) : null;
+    if(newTeam.logoKey !== undefined && newTeam.logoKey !== null){
+        await UploadService.validateTeamLogoKey(newTeam.logoKey , teamId);
+    }
+
     await TeamRepo.update(teamId , newTeam);
+
+    // ลบโลโก้เก่าแบบ best-effort หลัง save สำเร็จ (มติข้อ 6)
+    if(previous?.logo_key && previous.logo_key !== newTeam.logoKey){
+        await UploadService.deleteObjectBestEffort(previous.logo_key);
+    }
     return await getTeamById(teamId);
 };
 

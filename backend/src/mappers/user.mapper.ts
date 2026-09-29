@@ -1,6 +1,7 @@
 import type { MyInvitationRow, AdminUserRow } from '../repositories/user.repo.js';
 import type { UserRow, AdminScopeRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
+import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 export type MeDto = {
   id: number;
@@ -94,7 +95,7 @@ export function toMeDto(row: UserRow , admin : AdminScopeRow | null = null): MeD
     facultyId: row.faculty_id,
     departmentId: row.department_id,
     year: row.year,
-    avatarUrl: row.profile_image_key,
+    avatarUrl: toPublicImageUrl(row.profile_image_key),
     contactInfo: row.contact_info,
     address: row.address,
     totalPoints: row.total_points,
@@ -107,7 +108,7 @@ export function toUserRef(row: Pick<UserRow , 'user_id' | 'full_name' | 'profile
   return{
     id : row.user_id,
     fullName : row.full_name,
-    avatarUrl : row.profile_image_key
+    avatarUrl : toPublicImageUrl(row.profile_image_key)
   };
 }
 
@@ -121,7 +122,7 @@ export function toPublicUserDto(
   return {
     id: row.user_id,
     fullName: row.full_name,
-    avatarUrl: row.profile_image_key,
+    avatarUrl: toPublicImageUrl(row.profile_image_key),
     facultyId: row.faculty_id,
     departmentId: row.department_id,
     teams: team,
@@ -139,7 +140,7 @@ export type getMyInvitationDto = {
 
 export function toGetMyInvitation(rows : MyInvitationRow) : getMyInvitationDto{
   const team:TeamRef = {id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
-  const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : rows.profile_image_key,}
+  const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : toPublicImageUrl(rows.profile_image_key),}
 
   return{
     id : rows.team_invitation_id,

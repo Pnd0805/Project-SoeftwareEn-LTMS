@@ -5,6 +5,7 @@ import * as FollowRepo from '../repositories/follow.repo.js';
 import * as CareerRepo from '../repositories/career.repo.js';
 import * as UserReportRepo from '../repositories/userReport.repo.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
+import * as UploadService from './upload.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkUser } from '../utils/checkExist.js';
@@ -103,7 +104,19 @@ export async function getMe(user : UserRow){
 }
 
 export async function updateMe(userId : number , input : UpdateMeInput){
+    // null = ล้างรูป ไม่ต้องตรวจ · string = ต้องเป็น key ที่ user นี้อัปโหลดเองจริง ไม่งั้นใครก็ใส่ key ของคนอื่นมาได้ (FE-avatar-and-team-logo-uploads)
+    const previous = input.avatarUrl !== undefined ? await checkUser(userId) : null;
+    if(input.avatarUrl !== undefined && input.avatarUrl !== null){
+        await UploadService.validateAvatarKey(input.avatarUrl , userId);
+    }
+
     await UserRepo.update(userId , input); //update users
+
+    // ลบรูปเก่าแบบ best-effort หลัง save สำเร็จเท่านั้น (มติข้อ 6) — ไม่ลบถ้าไม่ได้เปลี่ยนรูป หรือรูปเดิม/ใหม่เป็น key เดียวกัน
+    if(previous?.profile_image_key && previous.profile_image_key !== input.avatarUrl){
+        await UploadService.deleteObjectBestEffort(previous.profile_image_key);
+    }
+
     const user = await checkUser(userId);
     return toMeDto(user , await AdminRepo.findAdminByUserId(userId));
 }

@@ -5,6 +5,7 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as FeedbackRepo from '../repositories/feedback.repo.js';
 import type { MatchRow, TournamentRow } from '../types/db.js';
 import { AppError } from '../utils/AppError.js';
+import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 /**
  * C7 — Pick'em (FR-PK-01 · spec 08 §6 · OD-24 มติ 22 ก.ย. 2569)
@@ -164,7 +165,7 @@ export async function getLeaderboard(tournamentId: number) {
     return {
         items: rows.map((r, i) => {
             if (i === 0 || r.points !== rows[i - 1]!.points || r.correct !== rows[i - 1]!.correct) rank = i + 1;
-            return { rank, user: { id: r.user_id, fullName: r.full_name, avatarUrl: r.profile_image_key },
+            return { rank, user: { id: r.user_id, fullName: r.full_name, avatarUrl: toPublicImageUrl(r.profile_image_key) },
                      points: r.points, correct: r.correct, settled: r.settled };
         }),
     };

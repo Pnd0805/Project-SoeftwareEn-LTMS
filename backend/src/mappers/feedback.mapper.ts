@@ -1,4 +1,5 @@
 import type { FeedbackListRow, FeedbackRow, FeedbackSummaryRow, MvpCandidateRow, MatchPlayerStatRow } from '../repositories/feedback.repo.js';
+import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 /**
  * ตาราง tournament_feedback เก็บ 3 เรื่องที่ผูกกับทัวร์ — ชื่อเรียกที่ทีมตกลง 23 ก.ย. 2569 (อย่าปนกัน):
@@ -44,7 +45,7 @@ export function toMvpCandidateDto(row: MvpCandidateRow, stats: MatchPlayerStatRo
     return {
         userId: row.user_id,
         fullName: row.full_name,
-        avatarUrl: row.profile_image_key,
+        avatarUrl: toPublicImageUrl(row.profile_image_key),
         teamId: row.team_id,
         stats: stats.map(s => ({ statKey: s.stat_key, statLabelTh: s.stat_label_th, value: Number(s.value) })),
         ...(withVotes ? { votes: Number(row.votes) } : {}),

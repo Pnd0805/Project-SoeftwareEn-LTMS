@@ -53,6 +53,7 @@ export type SportStatDefinitionRow = {
 export type TeamRow = {
     team_id : number,
     name : string,
+    logo_key : string | null,   // migration 031
     sport_type_id : number,
     leader_id : number,
     readiness_status : 'Forming' | 'Ready',

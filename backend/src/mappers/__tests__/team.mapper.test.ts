@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import {
   toTeamRef,
   toCreateTeam,
@@ -24,6 +29,7 @@ function makeTeamRow(overrides: Partial<TeamRow> = {}): TeamRow {
   return {
     team_id: 10,
     name: 'Dream Team',
+    logo_key: null,
     sport_type_id: 1,
     leader_id: 5,
     readiness_status: 'Forming',
@@ -235,6 +241,7 @@ describe('toTeamDto', () => {
     expect(toTeamDto(makeTeamRow({ visibility: 'public' }), 4, LEADER, 12)).toEqual({
       id: 10,
       name: 'Dream Team',
+      logoUrl: null,
       sportTypeId: 1,
       readinessStatus: 'Forming',
       officialStatus: 'Unofficial',
@@ -291,6 +298,7 @@ describe('toTeamDto', () => {
       {
         team_id: 1,
         name: 'Mini',
+        logo_key: null,
         sport_type_id: 2,
         readiness_status: 'Ready',
         official_status: 'Official',
@@ -314,7 +322,7 @@ describe('toTeamDto', () => {
     });
 
     expect(Object.keys(toTeamDto(team, 4, LEADER)).sort()).toEqual(
-      ['createdAt', 'id', 'leader', 'maxMembers', 'memberCount', 'name', 'officialStatus', 'readinessStatus', 'sportTypeId', 'visibility'].sort(),
+      ['createdAt', 'id', 'leader', 'logoUrl', 'maxMembers', 'memberCount', 'name', 'officialStatus', 'readinessStatus', 'sportTypeId', 'visibility'].sort(),
     );
   });
 
@@ -329,7 +337,7 @@ describe('toJoinRequestDto', () => {
   it('maps the request row with a nested applicant user ref', () => {
     expect(toJoinRequestDto(makeJoinRequestUserRow())).toEqual({
       id: 30,
-      user: { id: 9, fullName: 'Applicant Name', avatarUrl: 'avatars/9.png' },
+      user: { id: 9, fullName: 'Applicant Name', avatarUrl: 'https://cdn.test/avatars/9.png' },
       message: 'อยากเข้าร่วมทีมค่ะ',
       status: 'pending',
       createdAt: '2024-04-05T00:00:00.000Z',
@@ -450,14 +458,14 @@ describe('toTeamMemberDto', () => {
     expect(toTeamMemberDto(makeMemberRow())).toEqual({
       userId: 5,
       fullName: 'สมชาย ใจดี',
-      avatarUrl: 'avatars/5.png',
+      avatarUrl: 'https://cdn.test/avatars/5.png',
       joinedAt: '2024-02-01T09:00:00.000Z',
     });
   });
 
-  it('passes profile_image_key through as avatarUrl without transforming it (a key, not a URL)', () => {
+  it('turns profile_image_key into a displayable URL via toPublicImageUrl (not a raw key)', () => {
     expect(toTeamMemberDto(makeMemberRow({ profile_image_key: 'avatars/raw-key-123.png' })).avatarUrl).toBe(
-      'avatars/raw-key-123.png',
+      'https://cdn.test/avatars/raw-key-123.png',
     );
   });
 
@@ -511,7 +519,7 @@ describe('toGetAllInvitation', () => {
   it('maps the invitation row with a nested invited-user ref', () => {
     expect(toGetAllInvitation(makeInvitationListRow())).toEqual({
       id: 1,
-      invitedUser: { id: 9, fullName: 'Invited User', avatarUrl: 'avatars/9.png' },
+      invitedUser: { id: 9, fullName: 'Invited User', avatarUrl: 'https://cdn.test/avatars/9.png' },
       status: 'pending',
       createdAt: '2024-03-01T00:00:00.000Z',
     });

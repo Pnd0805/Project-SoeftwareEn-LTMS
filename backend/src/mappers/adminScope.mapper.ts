@@ -2,6 +2,7 @@ import type { TeamAdminRequestRow , TeamRow , UserRow } from "../types/db.js";
 import type { TeamRef } from "./team.mapper.js";
 import type { UserRefDto } from "./user.mapper.js";
 import type { getAdminScope } from "../repositories/adminScope.repo.js";
+import { toPublicImageUrl } from "../utils/imageUrl.js";
 
 // C2 — GET /admin/scopes
 export type getAdminScopeDto = {
@@ -15,7 +16,7 @@ export type getAdminScopeDto = {
 export function toAdminScopeDto(row : getAdminScope) : getAdminScopeDto{
     return {
         id : row.admin_scope_id,
-        user : { id : row.user_id , fullName : row.full_name , avatarUrl : row.profile_image_key },
+        user : { id : row.user_id , fullName : row.full_name , avatarUrl : toPublicImageUrl(row.profile_image_key) },
         scopeType : row.scope_type,
         facultyId : row.faculty_id,
         createdAt : row.created_at.toISOString()
@@ -45,7 +46,7 @@ export type getOfficialRequestDto = {
 
 export function toGetOfficialRequest(rows : getOfficialRequest , supportingDocs : string[] = []):getOfficialRequestDto{
     const team: TeamRef = { id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
-    const user: UserRefDto = { id : rows.user_id , fullName : rows.full_name , avatarUrl : rows.profile_image_key};
+    const user: UserRefDto = { id : rows.user_id , fullName : rows.full_name , avatarUrl : toPublicImageUrl(rows.profile_image_key)};
     return{
         id : rows.team_admin_request_id,
         team : team,
@@ -89,8 +90,8 @@ export type getTransferRequestDto = {
 
 export function toGetTransferRequest(rows : getTransferRequest) : getTransferRequestDto{
     const team: TeamRef = { id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
-    const currentLeader: UserRefDto = { id : rows.current_leader_id , fullName : rows.current_leader_full_name , avatarUrl : rows.current_leader_profile_image_key};
-    const proposedLeader: UserRefDto = { id : rows.proposed_leader_id , fullName : rows.proposed_leader_full_name , avatarUrl : rows.proposed_leader_profile_image_key};
+    const currentLeader: UserRefDto = { id : rows.current_leader_id , fullName : rows.current_leader_full_name , avatarUrl : toPublicImageUrl(rows.current_leader_profile_image_key)};
+    const proposedLeader: UserRefDto = { id : rows.proposed_leader_id , fullName : rows.proposed_leader_full_name , avatarUrl : toPublicImageUrl(rows.proposed_leader_profile_image_key)};
     return {
         id : rows.team_admin_request_id,
         team : team,

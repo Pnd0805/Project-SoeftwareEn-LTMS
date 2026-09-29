@@ -4,3 +4,6 @@ dist/
 coverage/
 src/playground/
 compose.bak
+docker-compose.override.yml
+*.tar
+TASK-*.md

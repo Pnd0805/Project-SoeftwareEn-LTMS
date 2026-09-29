@@ -109,6 +109,7 @@ CREATE TABLE admin_scopes (
 CREATE TABLE teams (
   team_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(150) NOT NULL,
+  logo_key VARCHAR(512) NULL,   -- 🆕 migration 031 — FE-avatar-and-team-logo-uploads
   sport_type_id INT NOT NULL,
   leader_id INT NOT NULL,
   readiness_status ENUM('Forming','Ready') NOT NULL DEFAULT 'Forming',
@@ -870,4 +871,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('027_dispute_claim_and_evidence.sql'),
   ('028_match_result_complaints.sql'),
   ('029_team_admin_requests_supporting_docs.sql'),   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration
-  ('030_admin_scopes_single_root.sql');              -- OD-34: บังคับ root คนเดียวที่ระดับฐาน ไม่ใช่แค่ทาง API
+  ('030_admin_scopes_single_root.sql'),              -- OD-34: บังคับ root คนเดียวที่ระดับฐาน ไม่ใช่แค่ทาง API
+  ('031_team_logo_key.sql');

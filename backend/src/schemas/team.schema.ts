@@ -7,7 +7,8 @@ export const teamSchema = z.object({
 
 export const updateTeamSchema = z.object({
     name : z.string().min(1 , 'กรุณาใส่ชื่อทีม').optional(),
-    visibility : z.enum(['private' , 'public'] , 'visibility ต้องเป็น private หรือ public').optional()   // มติ 20 ก.ย.
+    visibility : z.enum(['private' , 'public'] , 'visibility ต้องเป็น private หรือ public').optional(),   // มติ 20 ก.ย.
+    logoKey : z.string().max(512).nullable().optional()   // ส่ง null = ล้างโลโก้ (FE-avatar-and-team-logo-uploads)
 });
 
 // ค้นหาทีม (T19)
