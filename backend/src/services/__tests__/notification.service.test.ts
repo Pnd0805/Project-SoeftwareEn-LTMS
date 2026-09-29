@@ -11,6 +11,8 @@ vi.mock('../../repositories/notification.repo.js', () => ({
   findTournamentTeamLeaders: vi.fn(),
   findTournamentReferees: vi.fn(),
   findMatchResultParties: vi.fn(),
+  findTournamentSquadsAndLeaders: vi.fn(),
+  findTeamMemberIds: vi.fn(),
 }));
 
 import * as NotificationService from '../notification.service.js';
@@ -177,5 +179,67 @@ describe('notify helpers (C1-ข)', () => {
     expect(NotificationRepo.findTournamentTeamLeaders).toHaveBeenCalledWith(20);
     expect(NotificationRepo.findTournamentReferees).toHaveBeenCalledWith(20);
     expect(NotificationRepo.insertNotification).toHaveBeenCalledTimes(3);
+  });
+
+  it('notifyTournamentSquads sends to players + leaders of the tournament, skipping the acting user', async () => {
+    vi.mocked(NotificationRepo.findTournamentSquadsAndLeaders).mockResolvedValue([10, 20, 30]);
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyTournamentSquads(20, content, { exceptUserId: 20 });
+
+    expect(NotificationRepo.findTournamentSquadsAndLeaders).toHaveBeenCalledWith(20);
+    const sentTo = vi.mocked(NotificationRepo.insertNotification).mock.calls.map(c => c[0].userId);
+    expect(sentTo.sort()).toEqual([10, 30]);
+  });
+
+  it('notifyTournamentSquads sends to everyone when no exceptUserId is given', async () => {
+    vi.mocked(NotificationRepo.findTournamentSquadsAndLeaders).mockResolvedValue([10, 20]);
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyTournamentSquads(20, content);
+
+    expect(NotificationRepo.insertNotification).toHaveBeenCalledTimes(2);
+  });
+
+  it('notifyTournamentSquads swallows a lookup failure instead of throwing', async () => {
+    vi.mocked(NotificationRepo.findTournamentSquadsAndLeaders).mockRejectedValue(new Error('db down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(NotificationService.notifyTournamentSquads(20, content)).resolves.toBeUndefined();
+    expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('notifyMatchDecidedWithoutPlay sends to every member of the involved teams, the match referees, and the organizer', async () => {
+    vi.mocked(NotificationRepo.findTeamMemberIds).mockResolvedValue([1, 2, 3]);
+    vi.mocked(NotificationRepo.findMatchResultParties).mockResolvedValue({ leaderIds: [1], refereeIds: [30], organizerId: 99 });
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyMatchDecidedWithoutPlay(42, [11, 12], content);
+
+    expect(NotificationRepo.findTeamMemberIds).toHaveBeenCalledWith([11, 12]);
+    expect(NotificationRepo.findMatchResultParties).toHaveBeenCalledWith(42);
+    const sentTo = vi.mocked(NotificationRepo.insertNotification).mock.calls.map(c => c[0].userId);
+    expect(sentTo.sort()).toEqual([1, 2, 3, 30, 99]);
+  });
+
+  it('notifyMatchDecidedWithoutPlay omits the organizer when there is none, and skips the acting user', async () => {
+    vi.mocked(NotificationRepo.findTeamMemberIds).mockResolvedValue([1, 2]);
+    vi.mocked(NotificationRepo.findMatchResultParties).mockResolvedValue({ leaderIds: [], refereeIds: [30], organizerId: null });
+    vi.mocked(NotificationRepo.insertNotification).mockResolvedValue(1);
+
+    await NotificationService.notifyMatchDecidedWithoutPlay(42, [11, 12], content, { exceptUserId: 2 });
+
+    const sentTo = vi.mocked(NotificationRepo.insertNotification).mock.calls.map(c => c[0].userId);
+    expect(sentTo.sort()).toEqual([1, 30]);
+  });
+
+  it('notifyMatchDecidedWithoutPlay swallows a lookup failure instead of throwing', async () => {
+    vi.mocked(NotificationRepo.findTeamMemberIds).mockRejectedValue(new Error('db down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(NotificationService.notifyMatchDecidedWithoutPlay(42, [11], content)).resolves.toBeUndefined();
+    expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

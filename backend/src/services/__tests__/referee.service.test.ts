@@ -32,6 +32,7 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
 vi.mock('../../repositories/matchReferee.repo.js', () => ({
   findByTournamentReferees: vi.fn().mockResolvedValue([]),
   findAcceptedByUser: vi.fn().mockResolvedValue([]),
+  findByMatch: vi.fn(),
   unassign: vi.fn(),
 }));
 
@@ -49,7 +50,7 @@ vi.mock('../../repositories/user.repo.js', () => ({
 }));
 
 vi.mock('../../mappers/referee.mapper.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../mappers/referee.mapper.js')>()),   // toRefereeStatus ของจริง (กฎสถานะ)
+  ...(await importOriginal<typeof import('../../mappers/referee.mapper.js')>()),   // toRefereeStatus / toMatchRefereeDto / toMyRefereeMatchDto ของจริง (กฎสถานะ)
   toTournamentRefereeDto: vi.fn(),
   toMyRefereeInvitationDto: vi.fn(),
 }));
@@ -57,13 +58,18 @@ vi.mock('../../mappers/referee.mapper.js', async (importOriginal) => ({
 import * as refereeService from '../referee.service.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
+import * as MatchRepo from '../../repositories/match.repo.js';
+import * as SportTypeRepo from '../../repositories/sportType.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import * as NotificationService from '../notification.service.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto } from '../../mappers/referee.mapper.js';
 import { AppError } from '../../utils/AppError.js';
 import type { TournamentRefereeRow, UserRow } from '../../types/db.js';
+import type { Schedulable } from '../referee.service.js';
 
 const mockedRefRepo = vi.mocked(RefRepo);
+const mockedMatchRepo = vi.mocked(MatchRepo);
+const mockedSportTypeRepo = vi.mocked(SportTypeRepo);
 const mockedUserRepo = vi.mocked(UserRepo);
 const mockedToTournamentRefereeDto = vi.mocked(toTournamentRefereeDto);
 const mockedToMyRefereeInvitationDto = vi.mocked(toMyRefereeInvitationDto);
@@ -122,8 +128,63 @@ function makeInvitation(overrides: Partial<TournamentRefereeRow> = {}): Tourname
   };
 }
 
+// InvitedMatchRow-ish fixture for match-attachment tests
+function offeredMatch(overrides: Record<string, unknown> = {}) {
+  return {
+    match_referee_id: 1, tournament_referee_id: 1, assignment_status: 'pending',
+    match_id: 1, round_number: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'),
+    scheduled_end_time: new Date('2026-10-01T11:00:00Z'), venue: 'A', mode: 'onsite', match_status: 'scheduled',
+    ...overrides,
+  } as never;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('assertSchedulable', () => {
+  const s = (matchId: number, start: string, end: string): Schedulable =>
+    ({ match_id: matchId, scheduled_time: new Date(start), scheduled_end_time: new Date(end) });
+
+  it('does nothing when the matches are empty or all non-overlapping', () => {
+    expect(() => refereeService.assertSchedulable([])).not.toThrow();
+    expect(() => refereeService.assertSchedulable([
+      s(1, '2026-10-01T10:00:00Z', '2026-10-01T11:00:00Z'),
+      s(2, '2026-10-01T11:00:00Z', '2026-10-01T12:00:00Z'), // starts exactly when #1 ends — not a conflict
+    ])).not.toThrow();
+  });
+
+  it('throws MATCH_NOT_SCHEDULED when any match is missing a start or end time', () => {
+    expect(() => refereeService.assertSchedulable([
+      { match_id: 1, scheduled_time: null, scheduled_end_time: new Date() },
+    ])).toThrowError(expect.objectContaining({ status: 409, code: 'MATCH_NOT_SCHEDULED' }));
+    expect(() => refereeService.assertSchedulable([
+      { match_id: 1, scheduled_time: new Date(), scheduled_end_time: null },
+    ])).toThrowError(expect.objectContaining({ status: 409, code: 'MATCH_NOT_SCHEDULED' }));
+  });
+
+  it('throws REFEREE_TIME_CONFLICT with both match ids when two matches overlap', () => {
+    let err: AppError | undefined;
+    try {
+      refereeService.assertSchedulable([
+        s(1, '2026-10-01T10:00:00Z', '2026-10-01T11:30:00Z'),
+        s(2, '2026-10-01T11:00:00Z', '2026-10-01T12:00:00Z'), // starts before #1 ends
+      ]);
+    } catch (e) { err = e as AppError; }
+    expect(err).toMatchObject({ status: 409, code: 'REFEREE_TIME_CONFLICT', extra: { matchIds: [1, 2] } });
+  });
+
+  it('sorts by time internally, so input order does not change which pair is reported', () => {
+    let err: AppError | undefined;
+    try {
+      // given out of chronological order — match 2 first in the array, but it starts later
+      refereeService.assertSchedulable([
+        s(2, '2026-10-01T11:00:00Z', '2026-10-01T12:00:00Z'),
+        s(1, '2026-10-01T10:00:00Z', '2026-10-01T11:30:00Z'),
+      ]);
+    } catch (e) { err = e as AppError; }
+    expect(err?.extra).toEqual({ matchIds: [1, 2] }); // reported in chronological order, not input order
+  });
 });
 
 describe('inviteReferee', () => {
@@ -234,6 +295,50 @@ describe('inviteReferee', () => {
     });
     expect(result).toEqual({ id: 100, userId: 8, invitationStatus: 'pending', isExternal: true, matchIds: [] });
   });
+
+  describe('with matches attached', () => {
+    it('throws MATCH_NOT_FOUND when a matchId is not in this tournament', async () => {
+      mockedUserRepo.findById.mockResolvedValue(makeUser());
+      mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+      mockedMatchRepo.findByIdsInTournament.mockResolvedValue([{ match_id: 1, scheduled_time: new Date(), scheduled_end_time: new Date() }] as never);
+
+      await expect(refereeService.inviteReferee(20, 5, makeInviteInput({ matchIds: [1, 2] }))).rejects.toMatchObject({
+        status: 404, code: 'MATCH_NOT_FOUND',
+      });
+      expect(mockedRefRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('propagates a schedule conflict between the attached matches', async () => {
+      mockedUserRepo.findById.mockResolvedValue(makeUser());
+      mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+      mockedMatchRepo.findByIdsInTournament.mockResolvedValue([
+        { match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z') },
+        { match_id: 2, scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z') },
+      ] as never);
+
+      await expect(refereeService.inviteReferee(20, 5, makeInviteInput({ matchIds: [1, 2] }))).rejects.toMatchObject({
+        status: 409, code: 'REFEREE_TIME_CONFLICT',
+      });
+      expect(mockedRefRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('dedupes matchIds, creates the invitation with them attached, and mentions the count in the notification', async () => {
+      mockedUserRepo.findById.mockResolvedValue(makeUser());
+      mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+      mockedMatchRepo.findByIdsInTournament.mockResolvedValue([
+        { match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:00:00Z') },
+        { match_id: 2, scheduled_time: new Date('2026-10-01T12:00:00Z'), scheduled_end_time: new Date('2026-10-01T13:00:00Z') },
+      ] as never);
+      mockedRefRepo.create.mockResolvedValue(100);
+
+      const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ matchIds: [1, 2, 1] }));
+
+      expect(mockedMatchRepo.findByIdsInTournament).toHaveBeenCalledWith(20, [1, 2]);
+      expect(mockedRefRepo.create).toHaveBeenCalledWith(expect.objectContaining({ matchIds: [1, 2] }));
+      expect(result.matchIds).toEqual([1, 2]);
+      expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('(2 แมตช์)') }));
+    });
+  });
 });
 
 describe('listTournamentReferees', () => {
@@ -336,6 +441,45 @@ describe('acceptRefereeInvitation', () => {
       code: 'INVITATION_ALREADY_ANSWERED',
     });
     expect(mockedRefRepo.accept).not.toHaveBeenCalled();
+  });
+
+  it('throws MATCH_NOT_IN_INVITATION when a chosen matchId was not offered', async () => {
+    mockedRefRepo.findById.mockResolvedValue(makeInvitation({ invitation_status: 'pending' }));
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([offeredMatch({ match_id: 1 })]);
+
+    await expect(refereeService.acceptRefereeInvitation(1, 8, { matchIds: [1, 99] })).rejects.toMatchObject({
+      status: 400, code: 'MATCH_NOT_IN_INVITATION',
+    });
+    expect(mockedRefRepo.accept).not.toHaveBeenCalled();
+  });
+
+  it('propagates a schedule conflict when the chosen matches overlap', async () => {
+    mockedRefRepo.findById.mockResolvedValue(makeInvitation({ invitation_status: 'pending' }));
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([
+      offeredMatch({ match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z') }),
+      offeredMatch({ match_id: 2, scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z') }),
+    ]);
+
+    await expect(refereeService.acceptRefereeInvitation(1, 8, { matchIds: [1, 2] })).rejects.toMatchObject({
+      status: 409, code: 'REFEREE_TIME_CONFLICT',
+    });
+    expect(mockedRefRepo.accept).not.toHaveBeenCalled();
+  });
+
+  it('accepting only some of the offered matches reports the rest as declined', async () => {
+    mockedRefRepo.findById.mockResolvedValue(makeInvitation({ invitation_status: 'pending', is_external: 0 }));
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([
+      offeredMatch({ match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:00:00Z') }),
+      offeredMatch({ match_id: 2, scheduled_time: new Date('2026-10-01T12:00:00Z'), scheduled_end_time: new Date('2026-10-01T13:00:00Z') }),
+      offeredMatch({ match_id: 3, scheduled_time: new Date('2026-10-01T14:00:00Z'), scheduled_end_time: new Date('2026-10-01T15:00:00Z') }),
+    ]);
+    mockedRefRepo.accept.mockResolvedValue(true as any);
+
+    const result = await refereeService.acceptRefereeInvitation(1, 8, { matchIds: [2] });
+
+    expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [2], expect.objectContaining({ status: 'not_required' }));
+    expect(result.acceptedMatchIds).toEqual([2]);
+    expect(result.declinedMatchIds).toEqual([1, 3]);
   });
 
   it('throws INVITATION_ALREADY_ANSWERED when accept() fails a race with a concurrent response', async () => {
@@ -510,6 +654,129 @@ describe('listMyRefereeMatches (B7)', () => {
   });
 });
 
+describe('listMatchReferees (F12)', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    match_referee_id: 1, tournament_referee_id: 5, assignment_status: 'accepted',
+    invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+    user_id: 70, full_name: 'สมชาย', profile_image_key: null,
+    ...over,
+  }) as never;
+
+  it('maps only the active referees of the match', async () => {
+    vi.mocked(MatchRefRepo.findByMatch).mockResolvedValue([
+      row(),
+      row({ tournament_referee_id: 6, user_id: 71, is_external: 1, external_approval_status: 'pending' }), // not yet admin-approved
+      row({ tournament_referee_id: 7, user_id: 72, removed_at: new Date() }),                               // removed
+    ]);
+
+    const result = await refereeService.listMatchReferees(10);
+
+    expect(result.items).toEqual([{ tournamentRefereeId: 5, referee: { id: 70, fullName: 'สมชาย', avatarUrl: null } }]);
+  });
+
+  it('returns an empty items array when nobody is assigned', async () => {
+    vi.mocked(MatchRefRepo.findByMatch).mockResolvedValue([]);
+    await expect(refereeService.listMatchReferees(10)).resolves.toEqual({ items: [] });
+  });
+});
+
+describe('refereesNeededPerMatch (BR-11)', () => {
+  it('on-site needs 2 when the sport records stats; online always needs 1', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([{ sport_stat_definition_id: 1 } as never]);
+    const needed = await refereeService.refereesNeededPerMatch(1);
+    expect(needed('onsite')).toBe(2);
+    expect(needed('online')).toBe(1);
+  });
+
+  it('on-site needs only 1 when the sport records no stats', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    const needed = await refereeService.refereesNeededPerMatch(1);
+    expect(needed('onsite')).toBe(1);
+    expect(needed('online')).toBe(1);
+  });
+});
+
+describe('getRefereeCoverage (BR-10)', () => {
+  const coverageRow = (over: Record<string, unknown> = {}) => ({
+    match_id: 1, round_number: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:00:00Z'),
+    mode: 'onsite',
+    tournament_referee_id: 5, user_id: 70,
+    invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+    ...over,
+  }) as never;
+
+  it('a match with enough active referees is covered', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]); // onsite need = 1
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([coverageRow()]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result).toMatchObject({ matchesTotal: 1, matchesCovered: 1, uncovered: [] });
+  });
+
+  it('a match with nobody assigned at all is uncovered with assigned:0', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      coverageRow({ tournament_referee_id: null, user_id: null, invitation_status: null, is_external: null, external_approval_status: null }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.uncovered).toEqual([{ matchId: 1, roundNumber: 1, scheduledTime: '2026-10-01T10:00:00.000Z', needed: 1, assigned: 0 }]);
+  });
+
+  it('a referee who is not yet admin-approved does not count toward "assigned"', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      coverageRow({ is_external: 1, external_approval_status: 'pending' }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.uncovered).toEqual([expect.objectContaining({ matchId: 1, assigned: 0 })]);
+  });
+
+  it('a match needing 2 (stat-tracking on-site) with only 1 active referee is uncovered', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([{ sport_stat_definition_id: 1 } as never]); // onsite need = 2
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([coverageRow()]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.uncovered).toEqual([{ matchId: 1, roundNumber: 1, scheduledTime: '2026-10-01T10:00:00.000Z', needed: 2, assigned: 1 }]);
+  });
+
+  it('flags a referee assigned to two overlapping matches as a conflict', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      coverageRow({ match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z') }),
+      coverageRow({ match_id: 2, scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z') }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.conflicts).toEqual([{ tournamentRefereeId: 5, userId: 70, matchIds: [1, 2] }]);
+  });
+
+  it('does not report a conflict for two matches that do not overlap', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      coverageRow({ match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:00:00Z') }),
+      coverageRow({ match_id: 2, scheduled_time: new Date('2026-10-01T12:00:00Z'), scheduled_end_time: new Date('2026-10-01T13:00:00Z') }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.conflicts).toEqual([]);
+  });
+
+  it('returns matchesTotal 0 and no uncovered/conflicts when the tournament has no matches', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([]);
+    await expect(refereeService.getRefereeCoverage(20, 1)).resolves.toEqual({
+      matchesTotal: 0, matchesCovered: 0, uncovered: [], conflicts: [],
+    });
+  });
+});
+
 describe('แจ้งเตือนกรรมการถูกถอด (มติ 22 ก.ย. 2569)', () => {
   const tr = (over: Record<string, unknown> = {}) => ({
     tournament_referee_id: 5, tournament_id: 20, user_id: 70, invitation_status: 'accepted', removed_at: null, ...over,
@@ -579,5 +846,29 @@ describe('แจ้งเตือนกรรมการถูกถอด (�
     mockedRefRepo.findById.mockResolvedValueOnce(tr({ invitation_status: 'rejected' }));
     await refereeService.removeTournamentReferee(20, 5, 7, 1);
     expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['does not exist', null],
+    ['belongs to a different tournament', { tournament_referee_id: 5, tournament_id: 999, user_id: 70, invitation_status: 'accepted', removed_at: null }],
+    ['was already removed', { tournament_referee_id: 5, tournament_id: 20, user_id: 70, invitation_status: 'accepted', removed_at: new Date() }],
+  ])('404 REFEREE_NOT_FOUND when the target %s', async (_label, target) => {
+    mockedRefRepo.findById.mockResolvedValueOnce(target as never);
+
+    await expect(refereeService.removeTournamentReferee(20, 5, 7, 1)).rejects.toMatchObject({ status: 404, code: 'REFEREE_NOT_FOUND' });
+    expect(mockedRefRepo.removeAllByUser).not.toHaveBeenCalled();
+  });
+
+  it('reports uncoveredMatches from the post-removal coverage check', async () => {
+    mockedRefRepo.findById.mockResolvedValueOnce(tr());
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      { match_id: 30, round_number: 2, scheduled_time: null, scheduled_end_time: null, mode: 'onsite',
+        tournament_referee_id: null, user_id: null, invitation_status: null, is_external: null, external_approval_status: null, removed_at: null } as never,
+    ]);
+
+    const result = await refereeService.removeTournamentReferee(20, 5, 7, 1);
+
+    expect(result).toEqual({ removed: true, uncoveredMatches: [30] });
   });
 });

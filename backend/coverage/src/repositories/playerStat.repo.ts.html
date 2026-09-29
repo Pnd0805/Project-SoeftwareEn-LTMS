@@ -111,7 +111,23 @@
 <a name='L46'></a><a href='#L46'>46</a>
 <a name='L47'></a><a href='#L47'>47</a>
 <a name='L48'></a><a href='#L48'>48</a>
-<a name='L49'></a><a href='#L49'>49</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -139,7 +155,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -152,7 +178,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -163,6 +193,7 @@
 import type { RowDataPacket } from 'mysql2';
 &nbsp;
 import type { PlayerMatchStatRow, PlayerProfileStatRow , SportTypeRow } from '../types/db.js';
+import { MVP_VOTING_HOURS } from '../config/scoring.js';
 &nbsp;
 export type UserSportStatRow =
     Pick&lt;PlayerProfileStatRow , 'sport_type_id' | 'matches_played' | 'wins' | 'losses' | 'championships'&gt; 
@@ -186,19 +217,33 @@ export type UserProfileTotalsRow = {
     follower_count: number;
 };
 &nbsp;
+/**
+ * ★ `mvp_votes` นับได้เฉพาะโหวตของแมตช์ที่ **ปิดโหวตแล้ว** (OD-23 ข้อ 10)
+ *
+ * `GET /users/:id/stats` เป็น endpoint สาธารณะไม่มี middleware เลย ถ้านับโหวตทุกแถวแบบไม่ดูเวลา
+ * ใครก็ poll โปรไฟล์ของผู้เล่นทุก 10 วินาทีระหว่างหน้าต่างโหวต 24 ชม.แล้วเห็นเลขวิ่งได้ ทั้งที่
+ * `GET /matches/:id/mvp-votes` ตั้งใจไม่ส่งจำนวนโหวตออกไปเลยเพื่อกันคนแห่โหวตตามคนที่นำอยู่ —
+ * ปิดประตูหน้าแต่เปิดหลังบ้านไว้ กฎข้อนั้นก็ไม่มีผลอะไร
+ *
+ * `tf.match_id IS NULL` = โหวตระดับทัวร์ของเก่า (ก่อน 26 ก.ย.) ไม่มีหน้าต่างเวลา จึงนับได้ตามเดิม
+ */
 export async function findProfileTotals(userId: number): Promise&lt;UserProfileTotalsRow&gt; {
     const [rows] = await pool.query&lt;(UserProfileTotalsRow &amp; RowDataPacket)[]&gt;(
         `SELECT
             u.total_points AS pickem_points,
             (SELECT COUNT(*) FROM tournament_feedback tf
+               LEFT JOIN matches m ON m.match_id = tf.match_id
              WHERE tf.voted_for_user_id = u.user_id
                AND tf.feedback_type = 'mvp_vote'
-               AND tf.removed_at IS NULL) AS mvp_votes,
+               AND tf.removed_at IS NULL
+               AND (tf.match_id IS NULL
+                    OR (m.actual_end_time IS NOT NULL
+                        AND m.actual_end_time &lt;= DATE_SUB(NOW(), INTERVAL ? HOUR)))) AS mvp_votes,
             (SELECT COUNT(*) FROM follows f
              WHERE f.followed_user_id = u.user_id) AS follower_count
          FROM users u
          WHERE u.user_id = ?`,
-        [userId]
+        [MVP_VOTING_HOURS, userId]
     );
     return rows[0] ?? <span class="branch-1 cbranch-no" title="branch not covered" >{ mvp_votes: 0, pickem_points: 0, follower_count: 0 };</span>
 }
@@ -214,7 +259,7 @@ export async function <span class="fstat-no" title="function not covered" >findP
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-25T09:03:20.095Z
+                at 2026-09-29T14:32:00.776Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

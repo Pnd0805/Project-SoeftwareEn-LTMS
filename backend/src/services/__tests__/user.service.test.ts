@@ -28,6 +28,15 @@ vi.mock('../../repositories/career.repo.js', () => ({
   findCareerByUser: vi.fn(),
 }));
 
+vi.mock('../../repositories/adminScope.repo.js', () => ({
+  findAdminByUserId: vi.fn(),
+}));
+
+vi.mock('../../repositories/userReport.repo.js', () => ({
+  create: vi.fn(),
+  findByIdJoined: vi.fn(),
+}));
+
 vi.mock('../../utils/checkExist.js', () => ({
   checkUser: vi.fn(),
 }));
@@ -51,17 +60,24 @@ vi.mock('../../mappers/career.mapper.js', () => ({
   toCareerTournamentDto: vi.fn(),
 }));
 
+vi.mock('../../mappers/userReport.mapper.js', () => ({
+  toUserReportDto: vi.fn(),
+}));
+
 import * as userService from '../user.service.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import * as StatRepo from '../../repositories/playerStat.repo.js';
 import * as FollowRepo from '../../repositories/follow.repo.js';
 import * as CareerRepo from '../../repositories/career.repo.js';
+import * as AdminRepo from '../../repositories/adminScope.repo.js';
+import * as UserReportRepo from '../../repositories/userReport.repo.js';
 import { checkUser } from '../../utils/checkExist.js';
 import { toPublicUserDto, toUserRef, toMeDto, toGetMyInvitation } from '../../mappers/user.mapper.js';
 import { toTeamRef } from '../../mappers/team.mapper.js';
 import { toUserStatsDto } from '../../mappers/stat.mapper.js';
 import { toCareerTournamentDto } from '../../mappers/career.mapper.js';
+import { toUserReportDto } from '../../mappers/userReport.mapper.js';
 import { AppError } from '../../utils/AppError.js';
 import type { UserRow, TeamRow, TeamInvitationRow } from '../../types/db.js';
 
@@ -70,6 +86,8 @@ const mockedTeamRepo = vi.mocked(TeamRepo);
 const mockedStatRepo = vi.mocked(StatRepo);
 const mockedFollowRepo = vi.mocked(FollowRepo);
 const mockedCareerRepo = vi.mocked(CareerRepo);
+const mockedAdminRepo = vi.mocked(AdminRepo);
+const mockedUserReportRepo = vi.mocked(UserReportRepo);
 const mockedCheckUser = vi.mocked(checkUser);
 const mockedToPublicUserDto = vi.mocked(toPublicUserDto);
 const mockedToUserRef = vi.mocked(toUserRef);
@@ -78,6 +96,7 @@ const mockedToGetMyInvitation = vi.mocked(toGetMyInvitation);
 const mockedToTeamRef = vi.mocked(toTeamRef);
 const mockedToUserStatsDto = vi.mocked(toUserStatsDto);
 const mockedToCareerTournamentDto = vi.mocked(toCareerTournamentDto);
+const mockedToUserReportDto = vi.mocked(toUserReportDto);
 
 function makeUser(overrides: Partial<UserRow> = {}): UserRow {
   return {
@@ -144,6 +163,7 @@ beforeEach(() => {
   mockedFollowRepo.findFollowers.mockResolvedValue([]);
   mockedFollowRepo.findFollowing.mockResolvedValue([]);
   mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
+  mockedAdminRepo.findAdminByUserId.mockResolvedValue(null as any);
   mockedStatRepo.findProfileTotals.mockResolvedValue({ mvp_votes: 0, pickem_points: 0, follower_count: 0 });
 });
 
@@ -395,6 +415,8 @@ describe('updateMe', () => {
 
     expect(mockedUserRepo.update).toHaveBeenCalledWith(1, input);
     expect(mockedCheckUser).toHaveBeenCalledWith(1);
+    expect(mockedAdminRepo.findAdminByUserId).toHaveBeenCalledWith(1);
+    expect(mockedToMeDto).toHaveBeenCalledWith(baseUser, null);
     expect(result).toEqual({ id: 1, fullName: 'Test User' });
   });
 
@@ -439,5 +461,61 @@ describe('getMyInvitation', () => {
 
     expect(result).toEqual({ items: [] });
     expect(mockedToGetMyInvitation).not.toHaveBeenCalled();
+  });
+});
+
+describe('getMe', () => {
+  it('passes the admin scope row into the me DTO', async () => {
+    const scope = { user_id: 1, scope: 'faculty' } as any;
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(scope);
+    mockedToMeDto.mockReturnValue({ id: 1 } as any);
+
+    const result = await userService.getMe(baseUser);
+
+    expect(mockedAdminRepo.findAdminByUserId).toHaveBeenCalledWith(baseUser.user_id);
+    expect(mockedToMeDto).toHaveBeenCalledWith(baseUser, scope);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it('passes null for non-admin users', async () => {
+    mockedToMeDto.mockReturnValue({ id: 1 } as any);
+
+    await userService.getMe(baseUser);
+
+    expect(mockedToMeDto).toHaveBeenCalledWith(baseUser, null);
+  });
+});
+
+describe('fileUserReport', () => {
+  it('creates a report and returns the mapped DTO', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+    mockedUserReportRepo.create.mockResolvedValue(10 as any);
+    mockedUserReportRepo.findByIdJoined.mockResolvedValue({ id: 10 } as any);
+    mockedToUserReportDto.mockReturnValue({ id: 10 } as any);
+
+    const result = await userService.fileUserReport(1, 2, 'spam', ['a.png']);
+
+    expect(mockedCheckUser).toHaveBeenCalledWith(2);
+    expect(mockedUserReportRepo.create).toHaveBeenCalledWith(1, 2, 'spam', ['a.png']);
+    expect(mockedUserReportRepo.findByIdJoined).toHaveBeenCalledWith(10);
+    expect(result).toEqual({ id: 10 });
+  });
+
+  it('blocks reporting yourself without creating a report', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+
+    await expect(userService.fileUserReport(1, 1, 'x', [])).rejects.toMatchObject({
+      status: 400,
+      code: 'CANNOT_REPORT_SELF',
+    });
+    expect(mockedUserReportRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('propagates the error from checkUser without creating a report', async () => {
+    const notFoundError = new AppError(404, 'USER_NOT_FOUND', 'x');
+    mockedCheckUser.mockRejectedValue(notFoundError);
+
+    await expect(userService.fileUserReport(1, 999, 'x', [])).rejects.toBe(notFoundError);
+    expect(mockedUserReportRepo.create).not.toHaveBeenCalled();
   });
 });
