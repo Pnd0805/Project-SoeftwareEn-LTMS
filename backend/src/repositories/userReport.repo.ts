@@ -16,8 +16,10 @@ export async function create(reportedBy : number , targetUserId : number , reaso
 
 export type getUserReport = {
     user_report_id : number , reason : string , evidence : string[] | null , user_report_status : 'pending' | 'approved' | 'rejected' , created_at : Date,
-    reporter_id : number , reporter_name : string,
-    target_id : number , target_name : string , target_faculty_id : number | null , target_is_admin : number
+    reporter_id : number , reporter_name : string , reporter_avatar_key : string | null,
+    target_id : number , target_name : string , target_faculty_id : number | null , target_is_admin : number , target_avatar_key : string | null,
+    // ผลการพิจารณา — เดิมเขียนลงฐานแต่ไม่มี endpoint ไหนคืนออกมาเลย (แก้ 30 ก.ย. 2569)
+    reviewed_by : number | null , reviewed_by_name : string | null , reviewed_at : Date | null , rejection_reason : string | null
 };
 
 // university_wide (facultyOnly = undefined) เห็นทุกคำร้อง · faculty admin (facultyOnly = faculty_id) เห็นแค่คำร้องที่ target ไม่ใช่แอดมิน และอยู่คณะตัวเอง
@@ -33,12 +35,14 @@ export async function findAllUserReports(facultyOnly : number | undefined , offs
 
     const [ rows ] = await pool.query<(getUserReport & RowDataPacket)[]>(
         `SELECT r.user_report_id , r.reason , r.evidence , r.user_report_status , r.created_at,
-                reporter.user_id AS reporter_id , reporter.full_name AS reporter_name,
-                target.user_id AS target_id , target.full_name AS target_name , target.faculty_id AS target_faculty_id,
+                r.reviewed_by , r.reviewed_at , r.rejection_reason , reviewer.full_name AS reviewed_by_name,
+                reporter.user_id AS reporter_id , reporter.full_name AS reporter_name , reporter.profile_image_key AS reporter_avatar_key,
+                target.user_id AS target_id , target.full_name AS target_name , target.faculty_id AS target_faculty_id , target.profile_image_key AS target_avatar_key,
                 (ts.admin_scope_id IS NOT NULL) AS target_is_admin
            FROM user_reports r
            JOIN users reporter ON reporter.user_id = r.reported_by
            JOIN users target ON target.user_id = r.target_user_id
+           LEFT JOIN users reviewer ON reviewer.user_id = r.reviewed_by
            LEFT JOIN admin_scopes ts ON ts.user_id = r.target_user_id
           ${whereSql}
           ORDER BY r.user_report_id DESC LIMIT ? OFFSET ?`, [...params , pageSize , offset]);
@@ -54,12 +58,14 @@ export async function findAllUserReports(facultyOnly : number | undefined , offs
 export async function findByIdJoined(id : number) : Promise<getUserReport | null>{
     const [ rows ] = await pool.query<(getUserReport & RowDataPacket)[]>(
         `SELECT r.user_report_id , r.reason , r.evidence , r.user_report_status , r.created_at,
-                reporter.user_id AS reporter_id , reporter.full_name AS reporter_name,
-                target.user_id AS target_id , target.full_name AS target_name , target.faculty_id AS target_faculty_id,
+                r.reviewed_by , r.reviewed_at , r.rejection_reason , reviewer.full_name AS reviewed_by_name,
+                reporter.user_id AS reporter_id , reporter.full_name AS reporter_name , reporter.profile_image_key AS reporter_avatar_key,
+                target.user_id AS target_id , target.full_name AS target_name , target.faculty_id AS target_faculty_id , target.profile_image_key AS target_avatar_key,
                 (ts.admin_scope_id IS NOT NULL) AS target_is_admin
            FROM user_reports r
            JOIN users reporter ON reporter.user_id = r.reported_by
            JOIN users target ON target.user_id = r.target_user_id
+           LEFT JOIN users reviewer ON reviewer.user_id = r.reviewed_by
            LEFT JOIN admin_scopes ts ON ts.user_id = r.target_user_id
           WHERE r.user_report_id = ?`,[id]);
     return rows[0] ?? null;
