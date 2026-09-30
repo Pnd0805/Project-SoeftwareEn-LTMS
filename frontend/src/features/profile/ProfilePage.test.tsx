@@ -19,6 +19,7 @@ vi.mock('../../hooks/useAuth', () => ({
     isPending: false,
     isError: false,
   }),
+  useUpdateMe: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false, isError: false }),
 }))
 
 vi.mock('../../hooks/useUser', () => ({

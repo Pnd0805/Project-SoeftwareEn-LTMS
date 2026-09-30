@@ -138,6 +138,7 @@ export async function getBackendTeam(teamId: number): Promise<BackendTeamDto> {
     memberCount: team.members.length,
     maxMembers: null,
     createdAt: team.createdAt,
+    logoUrl: team.logoUrl ?? null,
   });
 }
 
@@ -245,8 +246,11 @@ export async function updateTeam(teamId: TeamRef, input: UpdateTeamRequest): Pro
     const dto = teamDto(teamId);
     return dto ? mockDelay(dto) : notFound<TeamDto>("ทีม");
   }
-  /* team.schema.ts updateTeamSchema รับแค่ name — รหัสทีมและโลโก้ยังไม่มีคอลัมน์ใน backend */
-  return apiFetch(`/teams/${teamId}`, { method: "PATCH", body: JSON.stringify({ name: input.name }) });
+  const body: Record<string, unknown> = {};
+  if (input.name !== undefined) body.name = input.name;
+  if (input.logoKey !== undefined) body.logoKey = input.logoKey;
+  else if (input.logoUrl !== undefined) body.logoKey = input.logoUrl;
+  return apiFetch(`/teams/${teamId}`, { method: "PATCH", body: JSON.stringify(body) });
 }
 
 /**

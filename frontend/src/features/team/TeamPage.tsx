@@ -115,9 +115,15 @@ export function TeamPage() {
 
       <div className="spread">
         <span className="hstack" style={{ gap: 16 }}>
-          {storeTeam
-            ? <TeamCrestView team={toTeamView(storeTeam)} size={64} />
-            : <span className="avatar" style={{ width: 64, height: 64, fontSize: 26 }}>{data.name.slice(0, 1)}</span>}
+          {storeTeam?.logo ? (
+            <img src={storeTeam.logo} alt={data.name} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--line)' }} />
+          ) : data.logoUrl ? (
+            <img src={data.logoUrl} alt={data.name} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--line)' }} />
+          ) : storeTeam ? (
+            <TeamCrestView team={toTeamView(storeTeam)} size={64} />
+          ) : (
+            <span className="avatar" style={{ width: 64, height: 64, fontSize: 26 }}>{data.name.slice(0, 1)}</span>
+          )}
           <span className="vstack" style={{ gap: 5 }}>
             <span className="disp" style={{ fontSize: 32 }}>{data.name}</span>
             <span className="hstack">

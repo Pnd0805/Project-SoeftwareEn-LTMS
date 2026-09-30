@@ -36,7 +36,9 @@ import urllib.request
 # line_buffering: audit-roles.py เป็นโปรเซสลูกที่เขียน stdout เดียวกัน — ไม่ flush แล้วผลของมันขึ้นก่อนหัวข้อ
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
-BACKEND_DIR = os.environ.get("LTMS_BACKEND_DIR", r"C:\Users\DELL\Projects\ltms-backend-shokun2")
+HERE = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_BACKEND = os.path.abspath(os.path.join(HERE, "..", "..", "Project-SoeftwareEn-LTMS"))
+BACKEND_DIR = os.environ.get("LTMS_BACKEND_DIR", DEFAULT_BACKEND)
 API = os.environ.get("LTMS_API_BASE", "http://localhost:8000/api/v1")
 CONTAINER = os.environ.get("LTMS_MYSQL_CONTAINER", "ltms-mysql")
 PASSWORD = os.environ.get("LTMS_MYSQL_PASSWORD", "secret")

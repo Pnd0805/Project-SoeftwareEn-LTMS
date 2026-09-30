@@ -364,9 +364,15 @@ export function postAnnouncement(trId: string, by: string, title: string, body: 
   const tr = state.tournaments.find(t => t.id === trId)
   if (!tr || !title.trim()) return
   state.announcements.push({ id: uid('a'), tour: trId, by, title: title.trim(), body: body.trim(), at: NOW() })
+  const approvedTeams = state.registrations
+    .filter(r => r.tour === trId && r.status === 'approved')
+    .map(r => state.teams.find(t => t.id === r.team))
+    .filter(Boolean)
+  const recipientIds = Array.from(new Set(
+    approvedTeams.flatMap(t => [t?.leader, ...(t?.members ?? [])]).filter(Boolean) as string[]
+  ))
   notifyAll(
-    state.registrations.filter(r => r.tour === trId && r.status === 'approved')
-      .map(r => state.teams.find(t => t.id === r.team)?.leader),
+    recipientIds,
     `${tr.name}: ${title.trim()}`, `/t/${trId}/announcements`)
   commit()
   toast('Posted — announcements cannot be unsent')

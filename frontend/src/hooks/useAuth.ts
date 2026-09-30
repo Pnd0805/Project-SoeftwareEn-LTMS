@@ -88,3 +88,15 @@ export function useLogout() {
     },
   });
 }
+
+export function useUpdateMe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: import("../types/dto").UpdateMeRequest) => userApi.updateMe(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["users"] });
+      qc.invalidateQueries({ queryKey: ["teams"] });
+    },
+  });
+}

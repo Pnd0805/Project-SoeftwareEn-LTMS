@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { Badge, Empty, Field, Panel } from '../../components/kit/primitives'
+import { Icon } from '../../components/kit/Icon'
+import { Modal } from '../../components/kit/Modal'
 import { ApiError } from '../../api/client'
 import { removeFeedbackByAdmin, restoreFeedbackByAdmin } from '../../api/liveEngagement'
 import { useMe } from '../../hooks/useAuth'
@@ -9,6 +11,14 @@ import { useCommentsLive, usePickemLeaderboard, useReviews } from '../../hooks/u
 import type { TournamentComment } from '../../types/liveEngagement.dto'
 
 const messageOf = (error: unknown) => error instanceof ApiError ? error.message : 'Request failed. Please try again.'
+
+const REPORT_REASONS = [
+  { id: 'harassment', label: 'คำพูดรุนแรงหรือไม่เหมาะสม (Harassment / Hate speech)' },
+  { id: 'spam', label: 'สแปมหรือโฆษณา (Spam / Commercial)' },
+  { id: 'misinformation', label: 'ข้อมูลเท็จหรือหลอกลวง (Misinformation)' },
+  { id: 'inappropriate', label: 'เนื้อหาก่อกวนหรือไม่พึงประสงค์ (Inappropriate content)' },
+  { id: 'other', label: 'อื่นๆ (Other - โปรดระบุเหตุผล)' },
+]
 
 export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: number; organizer: boolean }) {
   const me = useMe()
@@ -30,6 +40,9 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
   const [reviewText, setReviewText] = useState('')
   const [commentText, setCommentText] = useState('')
   const [removing, setRemoving] = useState<TournamentComment | null>(null)
+  const [reportingComment, setReportingComment] = useState<TournamentComment | null>(null)
+  const [reportReasonCategory, setReportReasonCategory] = useState<string>('harassment')
+  const [reportOtherDetail, setReportOtherDetail] = useState<string>('')
   const [reason, setReason] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -97,23 +110,153 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
       {comments.query.isPending ? <p className="sub">Loading comments…</p> : null}
       {comments.query.isError ? <Empty icon="warn" title="Unable to load comments" sub={messageOf(comments.query.error)} /> : null}
       {thread && entries.length === 0 ? <p className="sub">No comments here yet.</p> : null}
-      {entries.map(item => <div className="notif" key={item.id}>
+      {entries.map(item => <div className="notif" key={item.id} style={{ alignItems: 'flex-start' }}>
         <span className="avatar">{item.author.fullName.slice(0, 1)}</span>
-        <span className="txt"><b>{item.author.fullName}</b> {thread?.canModerate ? <span className="tag">#{item.id}</span> : null} {item.isMine ? <Badge kind="neutral">Yours</Badge> : null}
-          {thread?.canModerate && item.isReported ? <Badge kind="warn">Reported</Badge> : null}<br />{item.content}<br />
-          <span className="tag">{new Date(item.createdAt).toLocaleString()}</span></span>
-        {item.isMine ? <button className="btn ghost" type="button" disabled={busy} onClick={async () => {
-          try { await comments.removeMine.mutateAsync(); setNotice('Your comment was removed.') } catch (error) { setNotice(messageOf(error)) }
-        }}>Delete mine</button> : <>
-          {me.data ? <button className="btn ghost" type="button" disabled={busy} onClick={async () => {
-            try { await comments.report.mutateAsync(item.id); setNotice('Comment reported.') } catch (error) { setNotice(messageOf(error)) }
-          }}>Report</button> : null}
-          {thread?.canModerate ? <button className="btn ghost" type="button" onClick={() => {
-            if (organizer) { setRemoving(item); setReason('') }
-            else adminRemove.mutate(item.id)
-          }}>Remove</button> : null}
-        </>}
+        <div className="txt" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div className="hstack" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <b>{item.author.fullName}</b>
+            {thread?.canModerate ? <span className="tag">#{item.id}</span> : null}
+            {item.isMine ? <Badge kind="neutral">Yours</Badge> : null}
+            {thread?.canModerate && item.isReported ? <Badge kind="warn">Reported</Badge> : null}
+            <span className="tag">{new Date(item.createdAt).toLocaleString()}</span>
+          </div>
+
+          <div style={{ fontSize: 15, lineHeight: 1.5, wordBreak: 'break-word', margin: '2px 0' }}>
+            {item.content}
+          </div>
+
+          <div className="hstack" style={{ gap: 8, marginTop: 4 }}>
+            {item.isMine ? (
+              <button className="btn ghost" type="button" disabled={busy} style={{ padding: '2px 8px', fontSize: 13 }}
+                onClick={async () => {
+                  try { await comments.removeMine.mutateAsync(); setNotice('Your comment was removed.') }
+                  catch (error) { setNotice(messageOf(error)) }
+                }}>
+                Delete mine
+              </button>
+            ) : (
+              <>
+                {me.data ? (
+                  <button className="btn ghost" type="button" disabled={busy} style={{ padding: '2px 8px', fontSize: 13 }}
+                    onClick={() => {
+                      setReportingComment(item)
+                      setReportReasonCategory('harassment')
+                      setReportOtherDetail('')
+                    }}>
+                    <Icon name="warn" size={13} /> Report
+                  </button>
+                ) : null}
+                {thread?.canModerate ? (
+                  <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
+                    onClick={() => {
+                      if (organizer) { setRemoving(item); setReason('') }
+                      else adminRemove.mutate(item.id)
+                    }}>
+                    Remove
+                  </button>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
       </div>)}
+      {reportingComment ? (
+        <Modal
+          open={!!reportingComment}
+          onClose={() => {
+            setReportingComment(null)
+            setReportOtherDetail('')
+          }}
+          label="Confirm Report"
+          title="รายงานความคิดเห็น (Report Comment)"
+        >
+          <div className="vstack" style={{ gap: 14 }}>
+            <p className="sub">
+              โปรดเลือกเหตุผลที่ต้องการรายงานความคิดเห็นนี้ เพื่อส่งให้ผู้จัดและแอดมินตรวจสอบ:
+            </p>
+            <div className="panel quiet" style={{ padding: '12px 14px', borderLeft: '3px solid var(--warn)' }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{reportingComment.author.fullName}</div>
+              <div style={{ margin: '6px 0', fontSize: 15 }}>{reportingComment.content}</div>
+              <span className="tag">{new Date(reportingComment.createdAt).toLocaleString()}</span>
+            </div>
+
+            <div className="field">
+              <label>เหตุผลในการรายงาน (Reason)</label>
+              <div className="vstack" style={{ gap: 8, marginTop: 4 }}>
+                {REPORT_REASONS.map(r => (
+                  <label
+                    key={r.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      background: reportReasonCategory === r.id ? 'var(--void-1)' : 'var(--void-2)',
+                      border: `1px solid ${reportReasonCategory === r.id ? 'var(--teal)' : 'var(--line-faint, #333)'}`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="report-reason"
+                      value={r.id}
+                      checked={reportReasonCategory === r.id}
+                      onChange={() => setReportReasonCategory(r.id)}
+                      style={{ cursor: 'pointer', margin: 0 }}
+                    />
+                    <span style={{ fontSize: 14 }}>{r.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {reportReasonCategory === 'other' ? (
+              <Field label="ระบุเหตุผลเพิ่มเติม (จำเป็น)" htmlFor="report-other-detail">
+                <textarea
+                  id="report-other-detail"
+                  rows={3}
+                  maxLength={255}
+                  placeholder="พิมพ์เหตุผลที่ต้องการรายงาน..."
+                  value={reportOtherDetail}
+                  onChange={e => setReportOtherDetail(e.target.value)}
+                />
+              </Field>
+            ) : null}
+
+            <div className="hstack" style={{ justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  setReportingComment(null)
+                  setReportOtherDetail('')
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                type="button"
+                disabled={busy || (reportReasonCategory === 'other' && !reportOtherDetail.trim())}
+                onClick={async () => {
+                  try {
+                    await comments.report.mutateAsync(reportingComment.id)
+                    setNotice('รายงานความคิดเห็นเรียบร้อยแล้ว (Comment reported)')
+                    setReportingComment(null)
+                    setReportOtherDetail('')
+                  } catch (error) {
+                    setNotice(messageOf(error))
+                  }
+                }}
+              >
+                Confirm Report
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
       {removing ? <form className="vstack" onSubmit={async event => {
         event.preventDefault()
         try { await comments.moderate.mutateAsync({ commentId: removing.id, reason: reason.trim() }); setRemoving(null); setNotice('Comment removed.') }
@@ -146,3 +289,4 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
     </Panel>
   </>
 }
+

@@ -6,7 +6,12 @@ import { Link } from 'react-router-dom'
 import { USE_MOCK } from '../../api/client'
 import { Badge, Empty, Facts, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamLink } from '../../components/kit/chips'
-import { useMe } from '../../hooks/useAuth'
+import { useState } from 'react'
+import { useMe, useUpdateMe } from '../../hooks/useAuth'
+import { Icon } from '../../components/kit/Icon'
+import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
+import { uploadImage } from '../../api/upload'
+import type { MeDto } from '../../types/dto'
 import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useReference'
 import { useBackendMyTeams } from '../../hooks/useTeam'
 import { useFollows, useUserStats } from '../../hooks/useUser'
@@ -52,7 +57,7 @@ export function ProfilePage() {
 
     return (
       <>
-        <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} name={currentUser.fullName} email={currentUser.email} />
+        <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} user={currentUser} />
         {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
         {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your identity loaded, but the statistics request failed." /> : null}
         {userStats ? (
@@ -111,7 +116,7 @@ export function ProfilePage() {
 
   return (
     <>
-      <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : 'Student record'} name={currentUser.fullName} email={currentUser.email} />
+      <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : 'Student record'} user={currentUser} />
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
       {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below. Retry when the server is ready." /> : null}
@@ -185,8 +190,83 @@ export function ProfilePage() {
   )
 }
 
-function ProfileHeading({ label, name, email }: { label: string; name: string; email: string }) {
-  return <div className="spread"><div><div className="tag"><em>//</em> {label}</div><h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>{name}</h1></div><Badge kind="neutral">{email}</Badge></div>
+function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
+  const updateMe = useUpdateMe()
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const inputId = 'profile-avatar-upload'
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setErr(null)
+    setLoading(true)
+    try {
+      if (USE_MOCK) {
+        const dataUrl = await shrinkImage(file)
+        await updateMe.mutateAsync({ avatarUrl: dataUrl })
+      } else {
+        const objectKey = await uploadImage(file, 'avatar')
+        await updateMe.mutateAsync({ avatarUrl: objectKey })
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const removeAvatar = async () => {
+    setErr(null)
+    setLoading(true)
+    try {
+      await updateMe.mutateAsync({ avatarUrl: null })
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Remove failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="spread" style={{ alignItems: 'flex-start' }}>
+      <div className="hstack" style={{ gap: 18, alignItems: 'center' }}>
+        {user.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={user.fullName}
+            style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--line)' }}
+          />
+        ) : (
+          <span className="avatar" style={{ width: 72, height: 72, fontSize: 30, display: 'grid', placeItems: 'center' }}>
+            {user.fullName.slice(0, 1)}
+          </span>
+        )}
+        <div>
+          <div className="tag"><em>//</em> {label}</div>
+          <h1 className="disp" style={{ fontSize: 32, margin: '2px 0 6px' }}>{user.fullName}</h1>
+          <div className="hstack" style={{ gap: 8 }}>
+            <input id={inputId} type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }}
+              onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
+            <label className="btn ghost" htmlFor={inputId} style={{ cursor: 'pointer', padding: '2px 8px', fontSize: 13 }}>
+              <Icon name="plus" size={12} /> {loading ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Upload photo'}
+            </label>
+            {user.avatarUrl ? (
+              <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
+                disabled={loading || updateMe.isPending} onClick={removeAvatar}>
+                Remove
+              </button>
+            ) : null}
+          </div>
+          {err || updateMe.isError ? (
+            <span className="sub" style={{ color: 'var(--red)', display: 'block', marginTop: 4 }}>
+              {err ?? (updateMe.error instanceof Error ? updateMe.error.message : 'Upload failed')}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <Badge kind="neutral">{user.email}</Badge>
+    </div>
+  )
 }
 
 function Stat({ label, value }: { label: string; value: number }) {

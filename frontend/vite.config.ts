@@ -12,6 +12,10 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/ltms-uploads': {
+        target: 'http://127.0.0.1:9000',
+        changeOrigin: true,
+      },
     },
   },
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "./src") } },

@@ -17,6 +17,7 @@ import { ConfirmCard, Modal } from '../../components/kit/Modal'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { useDisbandTeam, useRequestOfficialStatus, useUpdateTeam } from '../../hooks/useTeam'
 import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
+import { uploadImage } from '../../api/upload'
 import { useLtms } from '../../shared/store'
 import type { Team } from '../../shared/types'
 import type { BackendTeamDto } from '../../types/team.dto'
@@ -30,35 +31,61 @@ const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Arr
 const CODE_PATTERN = /^[A-Za-z0-9]{2,3}$/
 
 /** ตั้งหรือถอดโลโก้ทีม (FR-TM-04) — backend ยังไม่มีคอลัมน์โลโก้ */
-function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string }) {
+function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | null }) {
   const update = useUpdateTeam(teamId)
+  const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const inputId = `logo-${teamId}`
 
   const pick = async (file: File | undefined) => {
     if (!file) return
     setErr(null)
+    setLoading(true)
     try {
-      update.mutate({ logoUrl: await shrinkImage(file) })
+      if (USE_MOCK) {
+        const dataUrl = await shrinkImage(file)
+        await update.mutateAsync({ logoUrl: dataUrl })
+      } else {
+        const objectKey = await uploadImage(file, 'team_logo', { teamId })
+        await update.mutateAsync({ logoKey: objectKey })
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'ตั้งโลโก้ไม่สำเร็จ')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const removeLogo = async () => {
+    setErr(null)
+    setLoading(true)
+    try {
+      if (USE_MOCK) {
+        await update.mutateAsync({ logoUrl: null })
+      } else {
+        await update.mutateAsync({ logoKey: null })
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'ลบโลโก้ไม่สำเร็จ')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <span className="hstack" style={{ gap: 6 }}>
+    <span className="hstack" style={{ gap: 6, alignItems: 'center' }}>
       <input id={inputId} type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }}
         onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
       <label className="btn ghost" htmlFor={inputId} style={{ cursor: 'pointer' }}>
-        <Icon name="plus" size={12} /> {logo ? 'Change logo' : 'Add a logo'}
+        <Icon name="plus" size={12} /> {loading ? 'Uploading…' : logo ? 'Change logo' : 'Add a logo'}
       </label>
       {logo ? (
-        <button className="btn ghost" type="button" disabled={update.isPending}
-          onClick={() => update.mutate({ logoUrl: null })}>
+        <button className="btn ghost" type="button" disabled={loading || update.isPending}
+          onClick={removeLogo}>
           Remove logo
         </button>
       ) : null}
-      {err || update.isError ? <span className="sub">{err ?? errorMessage(update.error)}</span> : null}
+      {err || update.isError ? <span className="sub" style={{ color: 'var(--red)' }}>{err ?? errorMessage(update.error)}</span> : null}
     </span>
   )
 }
@@ -123,7 +150,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
         <button className="btn ghost" type="button" onClick={openEdit}>
           {USE_MOCK ? 'Edit name & code' : 'Rename'}
         </button>
-        {USE_MOCK && storeTeam ? <TeamLogoControl teamId={data.id} logo={storeTeam.logo} /> : null}
+        <TeamLogoControl teamId={data.id} logo={USE_MOCK ? storeTeam?.logo : data.logoUrl} />
         {data.officialStatus === 'Official' ? <Badge kind="ok">Official — exempt from automatic disabling</Badge>
           : officialPending ? <Badge kind="warn">Official status — with an admin</Badge>
             : (

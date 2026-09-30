@@ -97,7 +97,7 @@ function SearchBox() {
 function ProfileAvatarLink({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   const [imageFailed, setImageFailed] = useState(false)
   // /me can currently contain a storage key rather than a downloadable URL.
-  const imageUrl = avatarUrl && (/^https?:\/\//i.test(avatarUrl) || (avatarUrl.startsWith('/') && !avatarUrl.startsWith('//')))
+  const imageUrl = avatarUrl && (/^https?:\/\//i.test(avatarUrl) || (avatarUrl.startsWith('/') && !avatarUrl.startsWith('//')) || avatarUrl.startsWith('data:image/'))
     ? avatarUrl : null
 
   return (

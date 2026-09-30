@@ -35,7 +35,7 @@ function notificationHref(n: NotificationDto): string | null {
   if (n.relatedEntityType === 'tournament') {
     return n.type === 'comment_reported'
       ? `/t/${id}/community?reported=true`
-      : n.type === 'comment_removed' ? `/t/${id}/community` : `/t/${id}`
+      : n.type === 'comment_removed' ? `/t/${id}/community` : n.type === 'tournament_announcement' ? `/t/${id}/announcements` : `/t/${id}`
   }
   if (n.relatedEntityType === 'match') return `/m/${id}`
   if (n.relatedEntityType === 'team') return `/team/${id}`

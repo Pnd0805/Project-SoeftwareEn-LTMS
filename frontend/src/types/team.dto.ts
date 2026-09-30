@@ -113,6 +113,7 @@ export interface UpdateTeamRequest {
    * ของจริงเป็น S3 key (NF-SE-03) โหมด mock เก็บ data URL ที่ย่อแล้ว
    */
   logoUrl?: string | null;
+  logoKey?: string | null;
 }
 
 export interface SetMemberPositionRequest {
@@ -223,6 +224,7 @@ export interface BackendMyTeamDto {
 export interface BackendTeamDto {
   id: number;
   name: string;
+  logoUrl?: string | null;
   sportTypeId: number;
   readinessStatus: "Forming" | "Ready" | "Inactive";
   officialStatus: "Unofficial" | "Official";
