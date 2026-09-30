@@ -352,7 +352,7 @@
 | E17 | `DELETE /admin/feedback/:id` | ADM-u | ลบ (soft delete) + audit `feedback_removed` · **แจ้งเจ้าของพร้อมเหตุผล** (`feedback_removed_by_admin`) · ลบของตัวเองไม่แจ้ง | **`reason` บังคับ** 1–500 ตัวอักษร (แก้ 30 ก.ย. — เดิม optional) | **204** · ไม่ส่ง → **400** `VALIDATION_FAILED` |
 | E17b | `POST /admin/feedback/:id/restore` | ADM-u | **คืนของที่ถูกลบ** + audit `feedback_restored` · ล้างธง report ด้วย (มติ 23 ก.ย. 6.3.3 — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์) · **แจ้งเจ้าของ** (`feedback_restored`) · **แจ้งผู้ที่ลบไว้ด้วย** (`feedback_restore_overridden`) — คำตัดสินของเขาถูกกลับ และธง report ที่ล้างทำให้เขาหาจากคิวเองไม่ได้ | `—` | **200** `{ id, restored: true }` |
 
-## 10.3 ความเห็นต่อทัวร์ (C7 · OD-24) — 4 endpoint
+## 10.3 ความเห็นต่อทัวร์ (C7 · OD-24) — 5 endpoint
 
 > ย้ายจาก "คอมเมนต์ใต้แมตช์" มาเป็นระดับทัวร์ (มติ 22 ก.ย.) · **คนละ 1 อันต่อทัวร์ ส่งซ้ำ = แก้** · ทุกคนอ่านได้ · ทัวร์ต้อง `public`/`completed`
 
@@ -362,6 +362,7 @@
 | E14 | `GET /tournaments/:id/comments` | — (ล็อกอินได้ `mine`/`canComment`) | รายการความเห็น ใหม่สุดก่อน · ไม่โชว์ที่ถูกลบ · ทัวร์ private คนนอกได้ 404 · **`?reported=true` = คิวที่ถูกรายงาน** (ORG ของทัวร์/แอดมินเท่านั้น คนอื่น 403 `NOT_ORGANIZER`) · `isReported` ในแต่ละ item โผล่เฉพาะสองคนนี้ (`canModerate: true`) | `?page&pageSize&reported` | `{ items, mine, canComment, canModerate, pagination }` |
 | E14b | `DELETE /tournaments/:id/comments/me` | Auth | เจ้าของลบของตัวเอง (ลบจริง → เขียนใหม่ได้) | `—` | **204** |
 | E17c | `DELETE /tournaments/:id/comments/:cid` | ORG ของทัวร์นั้น | **ผู้จัดลบความเห็นของคนอื่น** (มติ 23 ก.ย. ข้อ 6) · ได้เฉพาะ `comment` · `reason` **บังคับ** 1–255 · audit `comment_removed_by_organizer` (`details: reason, tournamentId, authorUserId`) · แจ้งเจ้าของ (`comment_removed`) · **ไม่ใช่การแบน** — เจ้าของเขียนใหม่ได้ (ต่างจากแอดมินลบ) | `reason` | **204** |
+| E17d | `POST /tournaments/:id/comments/:cid/dismiss` | ORG ของทัวร์นั้น | **ผู้จัดตรวจแล้วปล่อยผ่าน** (มติ 30 ก.ย.) — ล้างธง `is_reported` ให้หลุดจากคิว `?reported=true` · audit `comment_report_dismissed` (`details: tournamentId, authorUserId`) · **ไม่แจ้งเจ้าของ** (เจ้าของไม่เคยรู้ว่าถูกรายงาน) · ได้เฉพาะ `comment` · ไม่ได้ถูกรายงาน/ปล่อยซ้ำ → 409 `FEEDBACK_NOT_REPORTED` · ลบไปแล้ว → 409 `FEEDBACK_ALREADY_REMOVED` | `—` (ไม่มี body) | **200** `{ id, isReported: false }` |
 
 ## 10.4 Pick'em ทายผล (C7 · OD-24) — 6 endpoint
 

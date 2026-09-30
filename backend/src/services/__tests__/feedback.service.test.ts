@@ -17,6 +17,7 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
   markReported: vi.fn(),
   softRemove: vi.fn(),
   restore: vi.fn(),
+  clearReported: vi.fn(),
   upsertComment: vi.fn(),
   findOwnComment: vi.fn(() => Promise.resolve(null)),
   listComments: vi.fn(() => Promise.resolve({ rows: [], totalItems: 0 })),
@@ -687,6 +688,54 @@ describe('organizer moderation of tournament comments', () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ removed_at: new Date() }));
     expect(await errOf(Service.removeCommentByOrganizer(20, 1, ORG, 'x'))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
     expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  // มติ 30 ก.ย. 2569 — ผู้จัดตรวจแล้วปล่อยผ่านได้
+  // เดิมธง report ล้างได้ที่เดียวคือ restore ของแอดมิน ⇒ ของที่ตรวจแล้วปกติค้างคิวตลอดไป
+  describe('dismissCommentReport', () => {
+    it('clears the flag and records who let it through', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
+      vi.mocked(FeedbackRepo.clearReported).mockResolvedValue(true);
+      await expect(Service.dismissCommentReport(20, 1, ORG)).resolves.toEqual({ id: 1, isReported: false });
+      expect(FeedbackRepo.clearReported).toHaveBeenCalledWith(1, ORG, { tournamentId: 20, authorUserId: 50 });
+    });
+
+    // ธง report เป็นความลับของคนที่ลบได้ (มติ 23 ก.ย. ข้อ 6.4) — บอกเจ้าของเท่ากับเปิดเผยว่ามีคนรายงาน
+    it('tells nobody — dismissing must not reveal that a report existed', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
+      vi.mocked(FeedbackRepo.clearReported).mockResolvedValue(true);
+      await Service.dismissCommentReport(20, 1, ORG);
+      expect(NotificationService.notify).not.toHaveBeenCalled();
+    });
+
+    it('409 when nothing was reported', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow());
+      expect(await errOf(Service.dismissCommentReport(20, 1, ORG))).toMatchObject({ status: 409, code: 'FEEDBACK_NOT_REPORTED' });
+      expect(FeedbackRepo.clearReported).not.toHaveBeenCalled();
+    });
+
+    // คนอีกคนกดปล่อยผ่านไปก่อนเสี้ยววินาที — UPDATE ไม่โดนแถว คืน false
+    it('409 when another dismiss won the race', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
+      vi.mocked(FeedbackRepo.clearReported).mockResolvedValue(false);
+      expect(await errOf(Service.dismissCommentReport(20, 1, ORG))).toMatchObject({ status: 409, code: 'FEEDBACK_NOT_REPORTED' });
+    });
+
+    it('409 when it has already been removed', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1, removed_at: new Date() }));
+      expect(await errOf(Service.dismissCommentReport(20, 1, ORG))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
+    });
+
+    it('the organizer cannot wave through a review or an MVP vote', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ is_reported: 1 }));
+      expect(await errOf(Service.dismissCommentReport(20, 1, ORG)))
+        .toMatchObject({ status: 403, code: 'FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER' });
+    });
+
+    it('404 when the comment belongs to another tournament', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ tournament_id: 99, is_reported: 1 }));
+      expect(await errOf(Service.dismissCommentReport(20, 1, ORG))).toMatchObject({ status: 404, code: 'FEEDBACK_NOT_FOUND' });
+    });
   });
 
   it('the organizer deleting their own comment is not notified', async () => {

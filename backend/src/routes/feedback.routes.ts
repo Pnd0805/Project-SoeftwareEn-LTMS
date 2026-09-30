@@ -16,6 +16,8 @@ tournamentFeedbackRouter.post('/:id/comments' , requireAuth , validate(tournamen
 tournamentFeedbackRouter.delete('/:id/comments/me' , requireAuth , Feedback.deleteOwnTournamentComment);
 // ผู้จัดลบความเห็นของคนอื่นในทัวร์ตัวเอง (มติ 23 ก.ย.) · body { reason } บังคับ — ต้องอยู่หลัง /comments/me ไม่งั้น 'me' โดนจับเป็น :cid
 tournamentFeedbackRouter.delete('/:id/comments/:cid' , requireAuth , requireOrganizer , Feedback.removeCommentByOrganizer);
+// ผู้จัดตรวจแล้วปล่อยผ่าน — ล้างธง report ให้หลุดจากคิว (มติ 30 ก.ย.) · ไม่มี body
+tournamentFeedbackRouter.post('/:id/comments/:cid/dismiss' , requireAuth , requireOrganizer , Feedback.dismissCommentReport);
 
 // mount ที่ /matches — โหวต MVP ย้ายมาเป็นรายแมตช์ (มติ 26 ก.ย.) · path ยังเป็น /mvp-votes เหมือนเดิม
 // จึงยังเข้าข้อยกเว้นของ lockCompletedTournament (โหวตได้แม้ทัวร์ปิดไปแล้ว ถ้ายังไม่พ้น 24 ชม. หลังแมตช์จบ)

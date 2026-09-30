@@ -72,6 +72,14 @@ export async function removeCommentByOrganizer(req: Request, res: Response) {
     res.status(204).send();
 }
 
+/** ผู้จัดตรวจแล้วปล่อยผ่าน — ไม่มี body (ดูเหตุผลที่ service) */
+export async function dismissCommentReport(req: Request, res: Response) {
+    const userId = requireUserId(req);
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    const feedbackId = parseId(req.params['cid'], 'รหัสความเห็น', 'cid');
+    res.status(200).json(await FeedbackService.dismissCommentReport(tournamentId, feedbackId, userId));
+}
+
 export async function restoreFeedback(req: Request, res: Response) {
     const userId = requireUserId(req);
     res.status(200).json(await FeedbackService.restoreFeedback(parseId(req.params['id'], 'รหัสความเห็น'), userId));

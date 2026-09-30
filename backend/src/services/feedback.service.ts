@@ -482,6 +482,33 @@ export async function reportFeedback(feedbackId: number, userId: number) {
     return { id: feedbackId, isReported: true };
 }
 
+/**
+ * ผู้จัดตรวจแล้วเห็นว่าความเห็นนี้ไม่ต้องลบ — ปล่อยผ่าน ล้างธงให้หลุดจากคิว (มติ 30 ก.ย. 2569)
+ * ด่านการอนุรักษ์ — ไม่ต้องใส่เหตุผล ต่างจากการลบที่ต้องใส่ เหตุผลบังคับมีไว้กันการลบเงียบ ๆ ไม่ใช่กันการไม่ลบ
+ * ★ ไม่แจ้งเจ้าของคอมเมนต์ — ธง report เป็นความลับของคนที่ลบได้ (มติ 23 ก.ย. ข้อ 6.4)
+ *   เจ้าของไม่เคยรู้ว่าถูกรายงาน การบอกตอนนี้เท่ากับเปิดเผยการรายงานที่ตัดสินไปแล้วว่าไม่มีมูล
+ */
+export async function dismissCommentReport(tournamentId: number, feedbackId: number, orgUserId: number) {
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback || feedback.tournament_id !== tournamentId) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้ในทัวร์นาเมนต์นี้');
+    }
+    // ด่านเดียวกับ removeCommentByOrganizer — ผู้จัดดูแลความเห็นต่อทัวร์เท่านั้น รีวิวของตัวเองแตะไม่ได้
+    if (feedback.feedback_type !== 'comment') {
+        throw new AppError(403, 'FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER',
+            'ผู้จัดกำกับดูแลได้เฉพาะความเห็นต่อทัวร์ — รีวิวจากผู้ลงแข่งและโหวต MVP ไม่ได้');
+    }
+    if (feedback.removed_at) {
+        throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
+    }
+    // ไม่ได้ถูกรายงานอยู่ หรือผู้จัดอีกคนกดปล่อยผ่านไปก่อนเสี้ยววินาที
+    if (!feedback.is_reported || !(await FeedbackRepo.clearReported(feedbackId, orgUserId, { tournamentId, authorUserId: feedback.user_id }))) {
+        throw new AppError(409, 'FEEDBACK_NOT_REPORTED', 'ความเห็นนี้ไม่ได้ถูกรายงานค้างอยู่');
+    }
+
+    return { id: feedbackId, isReported: false };
+}
+
 export async function removeFeedback(feedbackId: number, adminUserId: number, reason: string) {
     const feedback = await FeedbackRepo.findById(feedbackId);
     if (!feedback) {

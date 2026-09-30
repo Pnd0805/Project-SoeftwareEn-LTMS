@@ -304,6 +304,39 @@ export async function markReported(feedbackId: number): Promise<void> {
 }
 
 /**
+ * ผู้จัดตรวจแล้วเห็นว่าไม่ต้องลบ — ล้างธง report ให้หลุดจากคิว (มติ 30 ก.ย. 2569)
+ * เดิมธงล้างได้ที่เดียวคือ `restore` ของแอดมิน ⇒ ของที่ตรวจแล้วปกติค้างในคิวตลอดไป
+ * ทำให้ทางเดียวที่คิวจะว่างคือลบ ซึ่งเป็นแรงกดให้ลบของที่ไม่ควรลบ — สวนทางกันกับ 3 ชั้นที่กันลบพร่ำเพรื่อ
+ * เงื่อนไข `is_reported = TRUE` ใน UPDATE เพื่อกันสองคนกดพร้อมกัน คืน false ให้คนที่มาหลัง
+ */
+export async function clearReported(feedbackId: number, byUserId: number, details: Record<string, unknown>): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournament_feedback SET is_reported = FALSE
+             WHERE tournament_feedback_id = ? AND is_reported = TRUE AND removed_at IS NULL`,
+            [feedbackId]
+        );
+        if (result.affectedRows === 0) {
+            await conn.rollback();
+            return false;
+        }
+        await conn.query(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'comment_report_dismissed', 'tournament_feedback', ?, ?)`,
+            [byUserId, feedbackId, JSON.stringify(details)]
+        );
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+/**
  * ลบ (soft delete) + audit ในทรานแซกชันเดียว — คืน false ถ้าถูกลบไปแล้ว
  * ใช้ทั้งแอดมิน (`feedback_removed`) และผู้จัดที่ลบความเห็นในทัวร์ตัวเอง (`comment_removed_by_organizer`, มติ 23 ก.ย. ข้อ 6)
  */
