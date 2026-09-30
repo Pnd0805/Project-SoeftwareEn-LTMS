@@ -287,6 +287,32 @@ async function assertCommentsVisible(tournament: TournamentRow, viewerId?: numbe
     throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
 }
 
+/**
+ * ผู้จัดลบความเห็นไป แล้วเจ้าของเขียนใหม่ (revive) — ต้องบอกผู้จัด (มติ 1 ต.ค. 2569 · FE รายงาน 30 ก.ย.)
+ *
+ * `upsertComment` ไม่ล้าง `is_reported` ตอน revive (มติ 23 ก.ย. ข้อ 5-ก) โดยเจตนา — ความเห็นที่เคยถูกลบ
+ * แล้วถูกเขียนใหม่ **ควร** ถูกตรวจซ้ำ · แต่ผลข้างเคียงคือแถวนั้นกลับเข้าคิว `?reported=true` เอง
+ * โดยที่ **ไม่มีใครรายงานข้อความใหม่นี้** และไม่มีแจ้งเตือน ⇒ คิวโกหกว่ามีคนแจ้ง และผู้จัดอาจไม่เคยเปิดดูเลย
+ *
+ * ทางที่เลือกคือคงไว้ในคิวแต่แจ้งให้รู้ ไม่ใช่ล้างธง — เพราะการล้างธงทำให้การลบของผู้จัด
+ * ถูกพลิกกลับได้เงียบ ๆ ด้วยการเขียนใหม่ ซึ่งเป็นรูเดียวกับที่มติ 23 ก.ย. ปิดไป
+ *
+ * เกิดได้ครั้งเดียวต่อการลบหนึ่งครั้ง — revive แล้ว `removed_at` เป็น NULL การแก้ครั้งถัดไปไม่ใช่ revive อีก
+ * จึงไม่มีทางกลายเป็นสแปมใส่ผู้จัด
+ */
+async function notifyRewriteAfterRemoval(tournament: TournamentRow, authorUserId: number, stillFlagged: boolean): Promise<void> {
+    if (tournament.requested_by_user_id === authorUserId) return;   // ผู้จัดลบความเห็นตัวเองแล้วเขียนใหม่ ไม่ต้องแจ้งตัวเอง
+    const queueNote = stillFlagged
+        ? ' และยังค้างอยู่ในรายการที่ถูกรายงาน (?reported=true) เพราะธงจากรอบก่อนไม่ถูกล้าง'
+        : '';
+    await NotificationService.notify({
+        userId: tournament.requested_by_user_id, type: 'comment_rewritten_after_removal',
+        title: 'ความเห็นที่คุณลบถูกเขียนใหม่',
+        message: `เจ้าของความเห็นที่คุณลบในทัวร์นาเมนต์ "${tournament.name}" ส่งข้อความใหม่เข้ามาแล้ว${queueNote} — เปิดดูเพื่อตรวจว่าข้อความใหม่เหมาะสมหรือไม่`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
+}
+
 /** 201 ครั้งแรก · 200 แก้ของเดิม (isNew ให้ controller เลือก status) */
 export async function postTournamentComment(tournamentId: number, userId: number, content: string) {
     const tournament = await getTournamentOr404(tournamentId);
@@ -300,6 +326,7 @@ export async function postTournamentComment(tournamentId: number, userId: number
     }
     await FeedbackRepo.upsertComment(tournamentId, userId, content, removedByOrganizer);
     const saved = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    if (removedByOrganizer) await notifyRewriteAfterRemoval(tournament, userId, Boolean(existing?.is_reported));
     return { ...toCommentDto(saved!, userId), isNew: existing === null };
 }
 

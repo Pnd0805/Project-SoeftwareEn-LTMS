@@ -568,6 +568,61 @@ describe('tournament comments (C7)', () => {
     expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'เขียนใหม่', true);
   });
 
+  /**
+   * แก้ 1 ต.ค. 2569 — FE รายงาน 30 ก.ย. ว่าแถวที่ revive กลับเข้าคิว `?reported=true` เอง
+   * โดยไม่มีใครรายงานข้อความใหม่ และไม่มีใครได้รับแจ้ง ⇒ คิวโกหกว่ามีคนแจ้ง และผู้จัดอาจไม่เคยเปิดดู
+   * มติ: คงไว้ในคิว (ไม่ล้างธง เพราะจะเปิดรูให้พลิกคำตัดสินของผู้จัดเงียบ ๆ ด้วยการเขียนใหม่) แต่ต้องแจ้ง
+   */
+  it('tells the organizer when the comment they removed is rewritten', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment)
+      .mockResolvedValueOnce(commentRow({ removed_at: new Date(), removed_by: ORG, is_reported: 0 }))
+      .mockResolvedValueOnce(commentRow({ content: 'เขียนใหม่' }));
+
+    await Service.postTournamentComment(20, 50, 'เขียนใหม่');
+
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: ORG, type: 'comment_rewritten_after_removal', relatedEntityType: 'tournament', relatedEntityId: 20,
+    }));
+  });
+
+  // ธงยังค้าง = แถวนี้จะไปโผล่ในคิว ต้องบอกในข้อความ ไม่งั้นผู้จัดเปิดคิวมาแล้วหาไม่เจอว่าใครแจ้ง
+  it('says so in the message when the old report flag is still set', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment)
+      .mockResolvedValueOnce(commentRow({ removed_at: new Date(), removed_by: ORG, is_reported: 1 }))
+      .mockResolvedValueOnce(commentRow({ content: 'เขียนใหม่' }));
+
+    await Service.postTournamentComment(20, 50, 'เขียนใหม่');
+
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringContaining('?reported=true'),
+    }));
+  });
+
+  it('does not notify on an ordinary edit — only a revive counts', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment)
+      .mockResolvedValueOnce(commentRow({ is_reported: 1 }))
+      .mockResolvedValueOnce(commentRow({ content: 'แก้แล้ว' }));
+
+    await Service.postTournamentComment(20, 50, 'แก้แล้ว');
+
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  // ผู้จัดลบความเห็นของตัวเองแล้วเขียนใหม่ — ส่งหาตัวเองไม่มีประโยชน์ (กฎเดียวกับ removeFeedback/restoreFeedback)
+  it('does not notify the organizer about their own rewrite', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
+    vi.mocked(FeedbackRepo.findOwnComment)
+      .mockResolvedValueOnce(commentRow({ user_id: ORG, removed_at: new Date(), removed_by: ORG }))
+      .mockResolvedValueOnce(commentRow({ user_id: ORG, content: 'เขียนใหม่' }));
+
+    await Service.postTournamentComment(20, ORG, 'เขียนใหม่');
+
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
   // มติ 23 ก.ย. ข้อ 6.4 — ธง report เห็นได้เฉพาะคนที่ลบได้ ไม่งั้นกลายเป็นตราประจานที่ใครก็ตั้งให้คนอื่นได้
   it('hides isReported from an ordinary viewer and shows it to the organizer', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(publicT());
