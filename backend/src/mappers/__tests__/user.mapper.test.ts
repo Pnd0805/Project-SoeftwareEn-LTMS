@@ -24,6 +24,7 @@ const baseUserRow = {
   is_suspended: 0,
   suspended_reason: null,
   suspended_until: null,
+  suspended_category: null,
   total_points: 150,
   notification_prefs: { email: true, push: false },
   profile_edit_log: null,
@@ -199,7 +200,7 @@ describe('toAdminUserDto', () => {
     return {
       user_id : 1, full_name : 'Test User', email : 'test@example.com',
       user_type : 'student', faculty_id : 2,
-      is_suspended : 0, suspended_reason : null, suspended_until : null,
+      is_suspended : 0, suspended_reason : null, suspended_until : null, suspended_category : null,
       admin_scope_id : null, admin_scope_type : null, admin_scope_faculty_id : null,
       ...overrides,
     };
@@ -207,6 +208,21 @@ describe('toAdminUserDto', () => {
 
   it('ไม่ถูกระงับ: isSuspended false และไม่มีกำหนดพ้น', () => {
     expect(toAdminUserDto(adminRow())).toMatchObject({ isSuspended : false, suspendedUntil : null });
+  });
+
+  // migration 034 — เหตุผลที่แอดมินพิมพ์กับประเภทที่เจ้าตัวเห็นเป็นคนละช่อง และต้องคืนมาทั้งคู่ในคิวของแอดมิน
+  it('คืนประเภทพร้อมถ้อยคำไทย ไม่ให้ FE ต้อง map เอง', () => {
+    const dto = toAdminUserDto(adminRow({ is_suspended : 1 , suspended_reason : 'ด่าในคอมเมนต์แมตช์ 88' ,
+                                           suspended_category : 'abusive_language' }));
+    expect(dto.suspendedCategory).toBe('abusive_language');
+    expect(dto.suspendedCategoryLabel).toBe('ใช้ถ้อยคำไม่เหมาะสมหรือคุกคามผู้อื่น');
+    expect(dto.suspendedReason).toBe('ด่าในคอมเมนต์แมตช์ 88');   // บันทึกภายใน — แอดมินเห็นได้ แต่เจ้าตัวไม่ได้เห็นทางนี้
+  });
+
+  it('แถวเก่าที่ระงับก่อนมีชุดประเภท: ทั้งสองช่องเป็น null', () => {
+    const dto = toAdminUserDto(adminRow({ is_suspended : 1 , suspended_reason : 'ก่อกวน' }));
+    expect(dto.suspendedCategory).toBeNull();
+    expect(dto.suspendedCategoryLabel).toBeNull();
   });
 
   it('ระงับถาวร: isSuspended true แต่ suspendedUntil เป็น null — null แปลว่าถาวร ไม่ใช่ไม่มีข้อมูล', () => {

@@ -4,7 +4,7 @@ import { signToken } from '../utils/token.js';
 import { AppError } from '../utils/AppError.js';
 import type { RegisterInput } from '../schemas/auth.schema.js';
 import { authConfig } from '../config/auth.js';
-import { isCurrentlySuspended } from '../utils/suspension.js';
+import { isCurrentlySuspended , suspendedError } from '../utils/suspension.js';
 
 import { findFacultyById } from '../repositories/faculty.repo.js';
 import { findDepartmentInFaculty } from '../repositories/department.repo.js';
@@ -51,8 +51,7 @@ export async function login(email: string, password: string) {
   }
 
   if(isCurrentlySuspended(user)){
-    throw new AppError(403 , 'ACCOUNT_SUSPENDED' , 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ' ,
-                       { suspendedUntil : user.suspended_until?.toISOString() ?? null })
+    throw suspendedError(user)
   }
 
   const accessToken = signToken(user.user_id)

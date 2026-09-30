@@ -21,3 +21,7 @@ export async function getStatDefinitionBySportType(req : Request , res : Respons
     res.status(200).json(await Reference.getStatDefinitionBySportType(sportTypeId));
 }
 
+
+export async function getSuspensionCategories(req : Request , res : Response){
+    res.status(200).json(Reference.getSuspensionCategories());
+}

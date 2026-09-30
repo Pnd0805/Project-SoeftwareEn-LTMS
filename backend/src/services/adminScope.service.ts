@@ -13,6 +13,7 @@ import { toUserReportDto } from '../mappers/userReport.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import { suspensionEndsAt } from '../utils/suspension.js';
+import type { SuspensionCategory } from '../utils/suspension.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
 import type { AdminScopeRow } from '../types/db.js';
@@ -173,12 +174,17 @@ async function assertCanActOnUser(admin : AdminScopeRow , targetUserId : number 
 
 // แกนกลางของการระงับจริง — ใช้ทั้ง PATCH /admin/users/:id/suspend และตอนอนุมัติ user_reports (C2)
 // days = undefined คือระงับถาวร (พฤติกรรมเดิม) · มีค่าคือพ้นเองเมื่อครบ เพดานคุมที่ schema แล้ว
-async function performSuspend(admin : AdminScopeRow , targetUserId : number , reason : string | undefined , days : number | undefined){
+async function performSuspend(admin : AdminScopeRow , targetUserId : number , reason : string | undefined ,
+                              days : number | undefined , category : SuspensionCategory | undefined){
     const target = await checkUser(targetUserId);
     await assertCanActOnUser(admin , targetUserId , target);
 
     if(!reason){
         throw new AppError(400 , "SUSPEND_REASON_REQUIRED" , "กรุณาระบุเหตุผลที่ระงับผู้ใช้");
+    }
+    // เหตุผลที่พิมพ์เป็นบันทึกภายใน ส่งให้เจ้าตัวไม่ได้ ⇒ ต้องมีประเภทคู่กัน ไม่งั้นคนที่ถูกระงับไม่รู้อะไรเลย
+    if(!category){
+        throw new AppError(400 , "SUSPEND_CATEGORY_REQUIRED" , "กรุณาเลือกประเภทการระงับ เพราะผู้ใช้ที่ถูกระงับจะเห็นประเภทนี้");
     }
 
     const [ hasOrgTournament , hasApprovedApp ] = await Promise.all([
@@ -199,10 +205,10 @@ async function performSuspend(admin : AdminScopeRow , targetUserId : number , re
     }
 
     const until = suspensionEndsAt(days);
-    await UserRepo.suspendUser(targetUserId , true , reason , until);
+    await UserRepo.suspendUser(targetUserId , true , reason , until , category);
     // บันทึกทั้งสองค่า — days คือเจตนาที่แอดมินกด · until คือเวลาที่ผลจริงสิ้นสุด ตอนไล่ย้อนต้องแยกออกจากกันได้
     await AuditLogRepo.insertAuditLog(admin.user_id , 'user_suspended' , 'user' , targetUserId ,
-                                       { reason , days : days ?? null , until : until?.toISOString() ?? null });
+                                       { reason , category , days : days ?? null , until : until?.toISOString() ?? null });
 
     let warning : string | null = null;
     if(targetScope?.scope_type === 'faculty' && targetScope.faculty_id !== null){
@@ -219,9 +225,10 @@ async function performSuspend(admin : AdminScopeRow , targetUserId : number , re
 }
 
 // C2 — PATCH /admin/users/:id/suspend
-export async function suspendUser(admin : AdminScopeRow , targetUserId : number , suspended : boolean , reason : string | undefined , days : number | undefined){
+export async function suspendUser(admin : AdminScopeRow , targetUserId : number , suspended : boolean , reason : string | undefined ,
+                                   days : number | undefined , category : SuspensionCategory | undefined){
     if(suspended){
-        const { dto , warning } = await performSuspend(admin , targetUserId , reason , days);
+        const { dto , warning } = await performSuspend(admin , targetUserId , reason , days , category);
         return { ...dto , warning };
     }
 
@@ -360,10 +367,13 @@ async function checkReportReviewable(admin : AdminScopeRow , reportId : number){
 
 // POST /admin/user-reports/:id/approve — เรียก performSuspend ตัวเดียวกับ PATCH /admin/users/:id/suspend
 // assertCanActOnUser ข้างใน performSuspend จะกัน faculty admin ไม่ให้อนุมัติคำร้องที่ target เป็นแอดมินเองอยู่แล้ว
-export async function approveUserReport(admin : AdminScopeRow , reportId : number , days : number | undefined){
+export async function approveUserReport(admin : AdminScopeRow , reportId : number , days : number | undefined ,
+                                        category : SuspensionCategory | undefined){
     const report = await checkReportReviewable(admin , reportId);
 
-    const { dto , warning } = await performSuspend(admin , report.target_user_id , report.reason , days);
+    // report.reason เป็นข้อความที่ ผู้แจ้ง พิมพ์ — อีกเหตุผลหนึ่งที่ห้ามส่งให้เจ้าตัวเห็นตรงๆ
+    // แอดมินจึงต้องเลือกประเภทเองตอนอนุมัติ ไม่ใช่การหยิบจากคำร้องมาใช้เป็นประเภท
+    const { dto , warning } = await performSuspend(admin , report.target_user_id , report.reason , days , category);
 
     await UserReportRepo.updateStatus(reportId , 'approved' , admin.user_id , null);
     await AuditLogRepo.insertAuditLog(admin.user_id , 'user_report_approved' , 'user_report' , reportId , { targetUserId : report.target_user_id });

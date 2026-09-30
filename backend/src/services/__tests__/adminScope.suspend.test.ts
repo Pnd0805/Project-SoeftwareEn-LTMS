@@ -43,7 +43,7 @@ const target = {
   user_id : 9 , full_name : 'ผู้ใช้ทดสอบ' , email : 't@ku.th' , password_hash : 'h' ,
   gender : 'male' as const , birth_date : '2000-01-01' , user_type : 'student' as const ,
   faculty_id : 2 , department_id : 3 , year : 2 , profile_image_key : null ,
-  contact_info : null , address : null , is_suspended : 0 , suspended_reason : null , suspended_until : null ,
+  contact_info : null , address : null , is_suspended : 0 , suspended_reason : null , suspended_until : null , suspended_category : null ,
   total_points : 0 , notification_prefs : null , profile_edit_log : null ,
   created_at : NOW , updated_at : null ,
 };
@@ -61,13 +61,13 @@ afterEach(() => { vi.useRealTimers(); });
 
 describe('suspendUser — ระยะเวลาระงับ (มติ 1 ต.ค. 2569)', () => {
   it('ไม่ส่ง days = ระงับถาวร เขียน NULL ลงคอลัมน์ เหมือนก่อน migration 033 ทุกประการ', async () => {
-    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined);
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language');
 
-    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , true , 'ก่อกวน' , null);
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , true , 'ก่อกวน' , null , 'abusive_language');
   });
 
   it('ส่ง days = คำนวณเวลาสิ้นสุดจากตอนนี้ แล้วเขียนลงคอลัมน์', async () => {
-    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7);
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7 , 'abusive_language');
 
     const until = mockedUserRepo.suspendUser.mock.calls[0]![3] as Date;
     expect(until.toISOString()).toBe(new Date(NOW.getTime() + 7 * DAY).toISOString());
@@ -78,7 +78,7 @@ describe('suspendUser — ระยะเวลาระงับ (มติ 1 �
    * ต้องเก็บทั้งคู่ เพราะตอนไล่ย้อนคำถามคือ "ตั้งใจแบนกี่วัน" ไม่ใช่แค่ "หมดเมื่อไร"
    */
   it('audit log เก็บทั้งจำนวนวันและเวลาสิ้นสุด', async () => {
-    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7);
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7 , 'abusive_language');
 
     const payload = mockedAudit.insertAuditLog.mock.calls[0]![4] as Record<string , unknown>;
     expect(payload).toMatchObject({ reason : 'ก่อกวน' , days : 7 });
@@ -86,21 +86,54 @@ describe('suspendUser — ระยะเวลาระงับ (มติ 1 �
   });
 
   it('ระงับถาวร: audit log บอกชัดว่า days/until เป็น null ไม่ใช่ไม่มีช่อง', async () => {
-    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined);
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language');
 
     expect(mockedAudit.insertAuditLog.mock.calls[0]![4]).toMatchObject({ days : null , until : null });
   });
 
   it('ปลดระงับ: ล้างเวลาสิ้นสุดไปด้วย ไม่ปล่อยค้างไว้ให้โทษรอบหน้าสืบทอดกำหนดเก่า', async () => {
-    await suspendUser(admin , 9 , false , undefined , undefined);
+    await suspendUser(admin , 9 , false , undefined , undefined , undefined);
 
     expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
   });
 
   it('เหตุผลยังบังคับเหมือนเดิม แม้จะระบุจำนวนวันมาแล้ว', async () => {
-    await expect(suspendUser(admin , 9 , true , undefined , 7)).rejects.toMatchObject({
+    await expect(suspendUser(admin , 9 , true , undefined , 7 , 'abusive_language')).rejects.toMatchObject({
       status : 400 , code : 'SUSPEND_REASON_REQUIRED',
     });
     expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+  });
+
+  // ---- ประเภทของโทษ (migration 034 · OD-40 ทางเลือก ข) ----
+
+  it('เขียนประเภทลงคอลัมน์แยก ไม่ปนกับเหตุผลที่แอดมินพิมพ์', async () => {
+    await suspendUser(admin , 9 , true , 'พิมพ์ด่าในคอมเมนต์แมตช์ที่ 88' , 7 , 'abusive_language');
+
+    const call = mockedUserRepo.suspendUser.mock.calls[0]!;
+    expect(call[2]).toBe('พิมพ์ด่าในคอมเมนต์แมตช์ที่ 88');   // บันทึกภายใน ไม่ส่งออก
+    expect(call[4]).toBe('abusive_language');                  // ที่เจ้าตัวจะเห็น
+  });
+
+  /**
+   * ถ้าไม่บังคับ แอดมินจะข้ามทุกครั้ง แล้วฟีเจอร์นี้กลายเป็นของตกแต่ง — คนถูกระงับยังไม่รู้อะไรเหมือนเดิม
+   * เหตุผลเดียวกับที่ reason ถูกทำให้บังคับตอนแอดมินลบความเห็น
+   */
+  it('ไม่ส่งประเภทมา = 400 และไม่แตะฐานเลย', async () => {
+    await expect(suspendUser(admin , 9 , true , 'ก่อกวน' , 7 , undefined)).rejects.toMatchObject({
+      status : 400 , code : 'SUSPEND_CATEGORY_REQUIRED',
+    });
+    expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+  });
+
+  it('audit log เก็บประเภทไว้ด้วย', async () => {
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'cheating');
+
+    expect(mockedAudit.insertAuditLog.mock.calls[0]![4]).toMatchObject({ category : 'cheating' });
+  });
+
+  it('ปลดระงับล้างประเภทไปด้วย ไม่ให้โทษรอบหน้าสืบทอดประเภทเก่า', async () => {
+    await suspendUser(admin , 9 , false , undefined , undefined , undefined);
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
   });
 });

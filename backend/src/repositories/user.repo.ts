@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import { notSuspendedSql , suspendedSql } from '../utils/suspension.js';
+import type { SuspensionCategory } from '../utils/suspension.js';
 import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 
 import type { TeamInvitationRow, TeamRow, UserRow } from "../types/db.js";
@@ -77,7 +78,7 @@ export async function update(userId : number , input : UpdateMeInput) : Promise<
 }
 
 // C2 — GET /admin/users · LEFT JOIN admin_scopes เพื่อคืน adminScope ติดมาด้วย (ไม่ SELECT * เพราะ users/admin_scopes มี faculty_id ชื่อชนกัน)
-export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason' | 'suspended_until'> & {
+export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason' | 'suspended_until' | 'suspended_category'> & {
     admin_scope_id : number | null , admin_scope_type : 'faculty' | 'university_wide' | 'root' | null , admin_scope_faculty_id : number | null
 };
 
@@ -92,7 +93,7 @@ export async function searchUsersAdmin(filters : { q? : string | undefined; facu
     const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
     const [ rows ] = await pool.query<(AdminUserRow & RowDataPacket)[]>(
-        `SELECT u.user_id , u.full_name , u.email , u.user_type , u.faculty_id , u.is_suspended , u.suspended_reason , u.suspended_until,
+        `SELECT u.user_id , u.full_name , u.email , u.user_type , u.faculty_id , u.is_suspended , u.suspended_reason , u.suspended_until , u.suspended_category,
                 s.admin_scope_id , s.scope_type AS admin_scope_type , s.faculty_id AS admin_scope_faculty_id
            FROM users u LEFT JOIN admin_scopes s ON s.user_id = u.user_id
           ${whereSql}
@@ -103,11 +104,12 @@ export async function searchUsersAdmin(filters : { q? : string | undefined; facu
     return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
 }
 
-// until = null แปลว่าถาวร (ตอนระงับ) หรือไม่เกี่ยว (ตอนปลด) — ทั้งสองกรณีเขียน NULL ลงคอลัมน์เหมือนกัน
-export async function suspendUser(userId : number , suspended : boolean , reason : string | null , until : Date | null = null) : Promise<number>{
+// ตอนปลด (suspended = false) ล้างทุกอย่างที่เกี่ยวกับโทษ — ไม่ปล่อยค้างให้โทษรอบหน้าสืบทอดกำหนด/ประเภทเก่ามาเงียบๆ
+export async function suspendUser(userId : number , suspended : boolean , reason : string | null ,
+                                   until : Date | null = null , category : SuspensionCategory | null = null) : Promise<number>{
     const [ result ] = await pool.query<ResultSetHeader>(
-        `UPDATE users SET is_suspended = ? , suspended_reason = ? , suspended_until = ? WHERE user_id = ?`,
-        [suspended ? 1 : 0 , reason , suspended ? until : null , userId]);
+        `UPDATE users SET is_suspended = ? , suspended_reason = ? , suspended_until = ? , suspended_category = ? WHERE user_id = ?`,
+        [suspended ? 1 : 0 , reason , suspended ? until : null , suspended ? category : null , userId]);
     return result.affectedRows;
 }
 

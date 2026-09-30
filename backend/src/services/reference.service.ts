@@ -3,6 +3,7 @@ import * as SportRepo from '../repositories/sportType.repo.js';
 
 import { toFacultyDto , toDepartmentDto , toSportTypeDto , toSportStatDefinitionDto} from '../mappers/reference.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import { SUSPENSION_CATEGORIES } from '../utils/suspension.js';
 
 export async function getFaculty(){
     const faculty = await FacRepo.findAllFaculties();
@@ -38,4 +39,12 @@ export async function getStatDefinitionBySportType(sportTypeId : number){
     const statDef = await SportRepo.findStatDefinitionsBySportType(sportTypeId);
     const data = statDef.map(toSportStatDefinitionDto);
     return { items : data};
+}
+/**
+ * ชุดประเภทการระงับ สำหรับ dropdown ของแอดมิน (เพิ่ม 1 ต.ค. 2569)
+ * คืนที่นี่แทนให้ FE hardcode เพราะถ้อยคำนี้คือสิ่งที่คนถูกระงับจะอ่าน จึงต้องตรงกันทั้งสองที่เสมอ
+ * เปิดสาธารณะได้ — เป็นข้อความกฏการใช้งาน ไม่ใช่ข้อมูลของใคร (อยู่กับ faculties/sport-types ที่เปิดอยู่แล้ว)
+ */
+export function getSuspensionCategories(){
+    return { items : Object.entries(SUSPENSION_CATEGORIES).map(([ code , label ]) => ({ code , label })) };
 }

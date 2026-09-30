@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get('/faculties' , Reference.getAllFaculty);
 router.get('/sport-types' , Reference.getAllSportType);
+router.get('/suspension-categories' , Reference.getSuspensionCategories);
 
 router.get('/faculties/:id/departments' , Reference.getDepartmentByFaculty);
 router.get('/sport-types/:id/stat-definitions' , Reference.getStatDefinitionBySportType);

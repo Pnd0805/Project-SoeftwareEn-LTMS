@@ -58,7 +58,7 @@ export async function listUsers(req : Request , res : Response){
 
 export async function suspendUser(req : Request , res : Response){
     const userId = parseId(req.params['id'] , 'รหัสผู้ใช้' , 'id');
-    res.status(200).json(await AdminService.suspendUser(req.admin! , userId , req.body.suspended , req.body.reason , req.body.days));
+    res.status(200).json(await AdminService.suspendUser(req.admin! , userId , req.body.suspended , req.body.reason , req.body.days , req.body.category));
 }
 
 export async function listScopes(req : Request , res : Response){
@@ -96,7 +96,7 @@ export async function listUserReports(req : Request , res : Response){
 export async function approveUserReport(req : Request , res : Response){
     const reportId = parseId(req.params['id'] , 'รหัสคำร้อง' , 'id');
     // schema เป็น .optional() ทั้งก้อน — ยิงแบบไม่มี body เลยยังได้เหมือนเดิม req.body จึงเป็น undefined ได้
-    res.status(200).json(await AdminService.approveUserReport(req.admin! , reportId , req.body?.days));
+    res.status(200).json(await AdminService.approveUserReport(req.admin! , reportId , req.body?.days , req.body?.category));
 }
 
 export async function rejectUserReport(req : Request , res : Response){

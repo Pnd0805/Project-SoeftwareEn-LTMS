@@ -1,3 +1,5 @@
+import type { SuspensionCategory } from '../utils/suspension.js';
+
 export type UserRow = {
     user_id : number,
     full_name : string,
@@ -14,6 +16,7 @@ export type UserRow = {
     address : string | null,
     is_suspended : number,
     suspended_reason : string | null,
+    suspended_category : SuspensionCategory | null,   // ประเภทที่ส่งให้เจ้าตัวเห็น (suspended_reason เป็นบันทึกภายใน ไม่ส่งออก)
     suspended_until : Date | null,   // NULL = ถาวร · ดู utils/suspension.ts ห้ามอ่าน is_suspended ลอยๆ
     total_points : number,
     notification_prefs :  Record<string, boolean> | null,

@@ -45,6 +45,7 @@ const activeUser: UserRow = {
   is_suspended: 0,
   suspended_reason: null,
   suspended_until: null,
+  suspended_category: null,
   total_points: 0,
   notification_prefs: null,
   profile_edit_log: null,
@@ -150,13 +151,15 @@ describe('requireAuth middleware', () => {
     const next = vi.fn() as NextFunction;
     const until = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     mockedVerifyToken.mockReturnValue({ sub: '7' });
-    mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1, suspended_until: until });
+    mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1, suspended_until: until, suspended_category: 'spam' });
 
     await requireAuth(req, makeRes(), next);
 
     const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
     expect(err.code).toBe('ACCOUNT_SUSPENDED');
-    expect(err.extra).toEqual({ suspendedUntil: until.toISOString() });
+    expect(err.extra).toMatchObject({ suspendedUntil: until.toISOString(), suspendedCategory: 'spam' });
+    // migration 034 — client ที่แสดงแค่ message ต้องได้ประโยชน์ด้วย ไม่ใช่เฉพาะคนที่อ่าน extra ได้
+    expect(err.message).toContain('ก่อกวนระบบ');
   });
 
   it('ระงับถาวร: extra.suspendedUntil เป็น null ไม่ใช่หายไปทั้งช่อง — จอต้องแยกสองกรณีนี้ออกได้', async () => {
@@ -168,7 +171,8 @@ describe('requireAuth middleware', () => {
     await requireAuth(req, makeRes(), next);
 
     const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
-    expect(err.extra).toEqual({ suspendedUntil: null });
+    expect(err.extra).toMatchObject({ suspendedUntil: null, suspendedCategory: null, suspendedCategoryLabel: null });
+    expect(err.message).toBe('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');   // ไม่รู้ประเภท = ข้อความเดิม
   });
 
   it('ระงับแบบมีกำหนดที่เลยเวลาแล้ว: ผ่านด่านได้เลย ทั้งที่ธงในฐานยังเป็น 1', async () => {

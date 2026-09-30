@@ -73,6 +73,7 @@
 | R02  | `GET /faculties/:id/departments`        | —    | ภาควิชาในคณะ                                | —   | `{ items: [{id, name, facultyId}] }`                                            |
 | R03  | `GET /sport-types`                      | —    | ประเภทกีฬา + จำนวนสมาชิกขั้นต่ำ/สูงสุด      | —   | `{ items: [{id, name, minMembers, maxMembers, defaultMode}] }`                  |
 | R05  | `GET /sport-types/:id/stat-definitions` | —    | รายการสถิติที่กีฬานี้ต้องกรอก (ใช้ก่อน S06) | —   | `{ items: [{statDefinitionId, statKey, statLabelTh, dataType, displayOrder}] }` |
+| R06  | `GET /suspension-categories`            | —    | ประเภทการระงับ + ถ้อยคำที่ผู้ใช้จะอ่านใน 403 (dropdown ของแอดมิน) | —   | `{ items: [{code, label}] }` |
 
 > ข้อมูลกลุ่มนี้ **seed ผ่าน SQL ไม่ใช่ API** — ไม่มี POST/PATCH
 
@@ -423,7 +424,7 @@
 | `VALIDATION_FAILED` | 400 | ข้อมูลบางช่องไม่ถูกต้อง กรุณาตรวจสอบและกรอกใหม่ | `validate` middleware (มากับ `fields` เสมอ) |
 | `NO_TOKEN` | 401 | กรุณาเข้าสู่ระบบก่อนใช้งาน | `requireAuth` |
 | `TOKEN_EXPIRED` | 401 | เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่ | `requireAuth` |
-| `ACCOUNT_SUSPENDED` | 403 | บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ | `requireAuth` · A02 — **มี `extra.suspendedUntil`** (ISO = พ้นเมื่อไร · `null` = ถาวร) |
+| `ACCOUNT_SUSPENDED` | 403 | บัญชีนี้ถูกระงับการใช้งาน**เนื่องจาก<ประเภท>** กรุณาติดต่อผู้ดูแลระบบ | `requireAuth` · A02 — `extra` = `{ suspendedUntil , suspendedCategory , suspendedCategoryLabel }` · `null` ทั้งสาม = ถาวร + ไม่ระบุประเภท (แถวก่อน migration 034) |
 | `NOT_TEAM_LEADER` | 403 | คุณไม่ใช่หัวหน้าทีมนี้ | `requireTeamLeader` |
 | `NOT_ORGANIZER` | 403 | คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้ | `requireOrganizer` |
 | `NOT_REFEREE` | 403 | คุณไม่ได้เป็นกรรมการของแมตช์นี้ | `requireReferee` |

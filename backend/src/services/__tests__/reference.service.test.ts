@@ -20,6 +20,7 @@ vi.mock('../../mappers/reference.mapper.js', () => ({
 }));
 
 import * as referenceService from '../reference.service.js';
+import { SUSPENSION_CATEGORIES } from '../../utils/suspension.js';
 import * as FacRepo from '../../repositories/faculty.repo.js';
 import * as SportRepo from '../../repositories/sportType.repo.js';
 import {
@@ -137,5 +138,33 @@ describe('getStatDefinitionBySportType', () => {
       code: 'SPORT_TYPE_NOT_FOUND',
     });
     expect(mockedSportRepo.findStatDefinitionsBySportType).not.toHaveBeenCalled();
+  });
+});
+
+// GET /reference/suspension-categories (เพิ่ม 1 ต.ค. 2569 · OD-40 ทางเลือก ข)
+describe('getSuspensionCategories', () => {
+  it('คืนทุกประเภทพร้อมถ้อยคำ ให้ FE ทำ dropdown ได้โดยไม่ hardcode', () => {
+    const { items } = referenceService.getSuspensionCategories();
+
+    expect(items.map(i => i.code).sort()).toEqual(
+      ['abusive_language' , 'cheating' , 'false_information' , 'other' , 'spam']);
+    for(const item of items){
+      expect(item.label.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  // ถ้อยคำนี้คือสิ่งที่คนถูกระงับจะอ่านใน 403 ⇒ dropdown ของแอดมินกับ error ของผู้ใช้ต้องตรงกัน
+  it('ถ้อยคำมาจากชุดเดียวกับที่ 403 ใช้ ไม่ใช่ชุดที่พิมพ์ซ้ำ', () => {
+    const { items } = referenceService.getSuspensionCategories();
+    const spam = items.find(i => i.code === 'spam');
+
+    expect(spam?.label).toBe(SUSPENSION_CATEGORIES.spam);
+  });
+
+  it('ไม่แตะฐานเลย — เป็นข้อความกฎการใช้งาน ไม่ใช่ข้อมูลของใคร', () => {
+    referenceService.getSuspensionCategories();
+
+    expect(mockedFacRepo.findAllFaculties).not.toHaveBeenCalled();
+    expect(mockedSportRepo.findAllSportTypes).not.toHaveBeenCalled();
   });
 });

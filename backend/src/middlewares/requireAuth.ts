@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/AppError.js';
 import { verifyToken } from '../utils/token.js';
 import { findById } from '../repositories/user.repo.js';
-import { isCurrentlySuspended } from '../utils/suspension.js';
+import { isCurrentlySuspended , suspendedError } from '../utils/suspension.js';
 
 function readAccessToken(req: Request): string | null {
     const token = req.headers.authorization;
@@ -15,10 +15,7 @@ async function loadUser(sub: string | number) {
     const user = await findById(Number(sub));
     if (!user) throw new AppError(401, 'USER_NOT_FOUND', 'ไม่พบผู้ใช้นี้ในระบบ');
     // ระงับแบบมีกำหนดพ้นเองตรงนี้ — ไม่มี job มาล้างธง คนที่หมดเวลาแล้วจึงผ่านด่านนี้ตั้งแต่ request ถัดไป
-    if (isCurrentlySuspended(user)) {
-        throw new AppError(403, 'ACCOUNT_SUSPENDED', 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
-                           { suspendedUntil : user.suspended_until?.toISOString() ?? null });
-    }
+    if (isCurrentlySuspended(user)) throw suspendedError(user);
     return user;
 }
 

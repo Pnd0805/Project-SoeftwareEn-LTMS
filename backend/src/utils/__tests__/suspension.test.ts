@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { isCurrentlySuspended, suspensionEndsAt, suspendedSql, notSuspendedSql, MAX_SUSPENSION_DAYS } from '../suspension.js';
+import { isCurrentlySuspended, suspensionEndsAt, suspendedSql, notSuspendedSql, MAX_SUSPENSION_DAYS,
+         SUSPENSION_CATEGORIES, SUSPENSION_CATEGORY_KEYS, suspensionCategoryLabel, suspendedMessage, suspendedError } from '../suspension.js';
 
 const NOW = new Date('2026-10-01T12:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -73,5 +74,57 @@ describe('ชิ้นส่วน SQL', () => {
 
   it('notSuspendedSql เป็นนิเสธของอีกตัวพอดี ไม่ใช่เงื่อนไขที่เขียนซ้ำแยกกัน', () => {
     expect(notSuspendedSql('u')).toBe(`NOT ${suspendedSql('u')}`);
+  });
+});
+
+// ============ ประเภทของโทษที่ส่งให้เจ้าตัวเห็น (migration 034 · OD-40 ทางเลือก ข) ============
+describe('ประเภทของโทษ', () => {
+  it('ทุกประเภทมีถ้อยคำไทยที่ไม่ว่าง — คีย์ลอยๆ ที่ไม่มีข้อความคือของที่แสดงบนจอไม่ได้', () => {
+    for(const key of SUSPENSION_CATEGORY_KEYS){
+      expect(SUSPENSION_CATEGORIES[key].trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('ชุดคีย์ตรงกับ ENUM ในฐาน (migration 034) — ถ้าเพิ่มที่เดียวฝั่งใดฝั่งหนึ่งจะพังตอน INSERT', () => {
+    expect([...SUSPENSION_CATEGORY_KEYS].sort()).toEqual(
+      ['abusive_language' , 'cheating' , 'false_information' , 'other' , 'spam']);
+  });
+
+  it('other ต้องไม่ว่างเปล่า — คนอ่านต้องรู้ว่ามีกฎถูกละเมิด แม้ไม่รู้ข้อไหน', () => {
+    expect(SUSPENSION_CATEGORIES.other).toContain('ละเมิดกฎ');
+  });
+
+  it('แถวเก่าก่อน migration 034 เป็น null คืน null ไม่ใช่ข้อความเดา', () => {
+    expect(suspensionCategoryLabel(null)).toBeNull();
+    expect(suspensionCategoryLabel('spam')).toBe(SUSPENSION_CATEGORIES.spam);
+  });
+});
+
+describe('ข้อความและ error ของ 403', () => {
+  it('ไม่รู้ประเภท: ข้อความกลางๆ เหมือนก่อน migration 034', () => {
+    expect(suspendedMessage(null)).toBe('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+  });
+
+  // client ที่แสดงแค่ message ได้ประโยชน์โดยไม่ต้องแก้อะไร
+  it('รู้ประเภท: ต่อถ้อยคำเข้าไปในข้อความเลย', () => {
+    expect(suspendedMessage('cheating')).toContain(SUSPENSION_CATEGORIES.cheating);
+  });
+
+  it('403 แนบทั้งกำหนดพ้น ประเภท และถ้อยคำ', () => {
+    const until = new Date('2026-10-08T12:00:00Z');
+    const err = suspendedError({ suspended_category : 'spam' , suspended_until : until });
+
+    expect(err.status).toBe(403);
+    expect(err.code).toBe('ACCOUNT_SUSPENDED');
+    expect(err.extra).toEqual({
+      suspendedUntil : '2026-10-08T12:00:00.000Z',
+      suspendedCategory : 'spam',
+      suspendedCategoryLabel : SUSPENSION_CATEGORIES.spam,
+    });
+  });
+
+  it('ระงับถาวรและไม่รู้ประเภท: ทั้งสามช่องเป็น null ไม่ใช่หายไป — จอต้องแยกกรณีได้', () => {
+    const err = suspendedError({ suspended_category : null , suspended_until : null });
+    expect(err.extra).toEqual({ suspendedUntil : null , suspendedCategory : null , suspendedCategoryLabel : null });
   });
 });

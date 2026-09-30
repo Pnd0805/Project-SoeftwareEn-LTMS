@@ -51,6 +51,7 @@ const leaderUser: UserRow = {
   is_suspended: 0,
   suspended_reason: null,
   suspended_until: null,
+  suspended_category: null,
   total_points: 0,
   notification_prefs: null,
   profile_edit_log: null,

@@ -2,7 +2,8 @@ import type { MyInvitationRow, AdminUserRow } from '../repositories/user.repo.js
 import type { UserRow, AdminScopeRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
 import { toPublicImageUrl } from '../utils/imageUrl.js';
-import { isCurrentlySuspended } from '../utils/suspension.js';
+import { isCurrentlySuspended , suspensionCategoryLabel } from '../utils/suspension.js';
+import type { SuspensionCategory } from '../utils/suspension.js';
 
 export type MeDto = {
   id: number;
@@ -54,6 +55,10 @@ export type AdminUserDto = {
   // เพิ่ม 1 ต.ค. 2569 — null ทั้งที่ isSuspended = true แปลว่า "ระงับถาวร" ไม่ใช่ "ไม่มีข้อมูล"
   // ถ้า isSuspended = false แต่ช่องนี้มีค่าในอดีต แปลว่าเพิ่งพ้นโทษ (ธงในฐานยังไม่ถูกล้าง เพราะไม่มี cron)
   suspendedUntil : string | null,
+  // ประเภทที่เจ้าตัวเห็น (migration 034) — null คือแถวที่ระงับก่อนจะมีชุดนี้
+  // คนละอย่างกับ suspendedReason ที่เป็นข้อความอิสระของแอดมิน และไม่เคยส่งให้เจ้าตัวเห็น
+  suspendedCategory : SuspensionCategory | null,
+  suspendedCategoryLabel : string | null,
   adminScope : AdminScopeRefDto | null
 };
 
@@ -72,6 +77,8 @@ export function toAdminUserDto(row : AdminUserRow) : AdminUserDto{
     isSuspended : isCurrentlySuspended(row),   // ไม่ใช่ row.is_suspended ดิบ — คนที่พ้นกำหนดแล้วต้องแสดงว่าใช้งานได้
     suspendedReason : row.suspended_reason,
     suspendedUntil : row.suspended_until?.toISOString() ?? null,
+    suspendedCategory : row.suspended_category,
+    suspendedCategoryLabel : suspensionCategoryLabel(row.suspended_category),
     adminScope : adminScope
   };
 }
