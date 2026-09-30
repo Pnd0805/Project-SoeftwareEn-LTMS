@@ -9,6 +9,8 @@ vi.mock("../../services/notification.service.js", () => ({
     listMyNotifications: vi.fn(),
     markMyNotificationRead: vi.fn(),
     markAllMyNotificationsRead: vi.fn(),
+    getMyNotificationPrefs: vi.fn(),        // OD-38
+    updateMyNotificationPrefs: vi.fn(),     // OD-38
 }));
 
 import * as NotificationService from "../../services/notification.service.js";
@@ -52,7 +54,7 @@ describe("getMyNotifications", () => {
         const req = makeReq({ user: { user_id: 7 } as any, query: {} });
         await getMyNotifications(req, makeRes());
 
-        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, false, 1, 20, 0);
+        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, false, 1, 20, 0, false);
     });
 
     it("forwards computed pagination for explicit page/pageSize", async () => {
@@ -62,7 +64,7 @@ describe("getMyNotifications", () => {
         await getMyNotifications(req, makeRes());
 
         // page 2, size 10 -> offset (page - 1) * pageSize = 10 — real parsePagination logic.
-        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, false, 2, 10, 10);
+        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, false, 2, 10, 10, false);
     });
 
     it("sets unreadOnly true only for the exact string 'true'", async () => {
@@ -71,7 +73,7 @@ describe("getMyNotifications", () => {
         const req = makeReq({ query: { unread: "true" } });
         await getMyNotifications(req, makeRes());
 
-        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, true, 1, 20, 0);
+        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, true, 1, 20, 0, false);
     });
 
     it.each(["false", "1", "yes", ""])(
@@ -82,7 +84,7 @@ describe("getMyNotifications", () => {
             const req = makeReq({ query: { unread } });
             await getMyNotifications(req, makeRes());
 
-            expect(svc.listMyNotifications).toHaveBeenCalledWith(7, false, 1, 20, 0);
+            expect(svc.listMyNotifications).toHaveBeenCalledWith(7, false, 1, 20, 0, false);
         },
     );
 

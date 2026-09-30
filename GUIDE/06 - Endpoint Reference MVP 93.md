@@ -415,6 +415,32 @@
 
 ---
 
+## 10.5 ตั้งค่าแจ้งเตือนรายหมวด (C1 · OD-38) — 2 endpoint
+
+**ไฟล์:** `routes/notification.routes.ts` · `notification.controller.ts` · `notification.service.ts` · `config/notificationCategories.ts`
+
+> กล่องจดหมายเอง (`GET /me/notifications`, `PATCH /me/notifications/:id/read`, `POST /me/notifications/read-all`)
+> **ยังไม่เคยถูกบันทึกในไฟล์นี้** — ช่องว่างเดิม ไม่ได้เกิดจาก OD-38 · สัญญาของสามตัวนั้นอยู่ที่ `API_Design` E04–E06
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| E37 | `GET /me/notification-prefs` | Auth | หมวดแจ้งเตือนทั้งหมดของตัวเอง · คืน **ทุกหมวดรวม `critical`** พร้อมธง `locked` — FE ไม่ต้อง hardcode รายชื่อหมวด เพิ่มหมวดใหม่แล้วหน้าตั้งค่าโผล่เอง | `—` | **200** `{ categories: [{ key, enabled, locked }] }` |
+| E38 | `PATCH /me/notification-prefs` | Auth | เปิด/ปิดหมวด · ส่งเฉพาะหมวดที่เปลี่ยน ที่ไม่ส่งมาคงค่าเดิม | `{ team?, tournament?, match?, referee?, result?, community? }` ทุกตัวเป็น boolean | **200** รูปเดียวกับ E37 / **400** `VALIDATION_ERROR` |
+
+> **หมวดมี 7 — ปิดได้ 6** · `critical` ปิดไม่ได้ เกณฑ์คือ **"มีเส้นตายที่วัดได้ ไม่รู้แล้วเสียสิทธิ์ถาวร"**
+> (`team_invitations.expires_at` · `dispute_window_hours` 6–72 ชม. · `ORG_RESOLVE_HOURS` 48 ชม. · `AUTO_VERIFY_HOURS` · ช่วงรับสมัคร · เวลาแข่ง · หน้าต่างเช็คอิน)
+> รายชื่อ 17 ชนิดที่บังคับและเหตุผลรายตัวอยู่ใน `config/notificationCategories.ts` · มติทั้งหมดอยู่ใน OD-38
+
+> **E38 ส่ง `critical` หรือชื่อหมวดที่ไม่รู้จักมา → 400** ไม่ปล่อยผ่านเงียบ ๆ (คนที่กดปิดแล้วยังได้รับอยู่จะคิดว่าระบบพัง)
+> · object ว่างก็ 400 · ค่าที่ไม่ใช่ boolean ก็ 400
+
+> **ผลต่อ `GET /me/notifications` (OD-38)** — หมวดที่ปิดไว้ **ไม่โผล่ในกล่องและไม่ถูกนับใน `unreadCount`**
+> แต่ **แถวยังอยู่ในฐานครบ** (สเปค 08 §3 ห้ามลบ history) · `?includeMuted=true` เปิดดูย้อนหลังได้
+> ★ `unreadCount` ใช้ลิสต์ที่ปิดไว้ **เสมอ ไม่ขึ้นกับ `includeMuted`** — กระดิ่งคือ "ของที่คุณสนใจและยังไม่อ่าน" ไม่ใช่เลขที่กระพริบตาม query
+> ★ กรอง **ตอนอ่าน** ไม่ใช่ตอนเขียน → เปลี่ยนค่าแล้วมีผลย้อนหลังกับของเก่าในกล่องด้วย และเปิดกลับแล้วของเก่ากลับมาครบ
+
+---
+
 # ภาคผนวก — Error code ที่ใช้ได้ทุก endpoint
 
 | code | HTTP | message ไทย | โยนจากไหน |

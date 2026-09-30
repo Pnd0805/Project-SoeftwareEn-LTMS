@@ -1,4 +1,7 @@
 import * as NotificationRepo from '../repositories/notification.repo.js';
+import * as UserRepo from '../repositories/user.repo.js';
+import { MUTABLE_CATEGORIES, mutedTypes, resolvePrefs } from '../config/notificationCategories.js';
+import type { MutableCategory } from '../config/notificationCategories.js';
 import type { NotificationInput } from '../repositories/notification.repo.js';
 import { toNotificationDto } from '../mappers/notification.mapper.js';
 import { AppError } from '../utils/AppError.js';
@@ -6,14 +9,51 @@ import { buildPagination } from '../utils/pagination.js';
 
 // ---- C1-ก Inbox ของตัวเอง ----
 
-export async function listMyNotifications(userId: number, unreadOnly: boolean, page: number, pageSize: number, offset: number) {
-    const { rows, totalItems } = await NotificationRepo.findByUser(userId, unreadOnly, offset, pageSize);
-    const unreadCount = await NotificationRepo.countUnread(userId);
+/**
+ * OD-38 — หมวดที่ผู้ใช้ปิดไว้จะไม่โผล่ในกล่องและไม่ถูกนับในกระดิ่ง
+ *   `includeMuted = true` เปิดดูย้อนหลังได้ (สเปค 08 §3 ห้ามลบ history ทิ้ง)
+ *   ★ `unreadCount` ใช้ลิสต์ที่ปิดไว้ **เสมอ** ไม่ขึ้นกับ includeMuted — กระดิ่งคือ "ของที่คุณสนใจและยังไม่อ่าน"
+ *     ถ้าปล่อยให้เลขกระพริบตาม query ผู้ใช้จะเห็นเลขเด้งไปมาโดยไม่มีอะไรเปลี่ยนจริง
+ */
+export async function listMyNotifications(
+    userId: number, unreadOnly: boolean, page: number, pageSize: number, offset: number, includeMuted = false
+) {
+    const muted = mutedTypes(await UserRepo.findNotificationPrefs(userId));
+    const excluded = includeMuted ? [] : muted;
+
+    const { rows, totalItems } = await NotificationRepo.findByUser(userId, unreadOnly, offset, pageSize, excluded);
+    const unreadCount = await NotificationRepo.countUnread(userId, muted);
     return {
         items: rows.map(toNotificationDto),
         unreadCount,                                   // badge กระดิ่ง — นับทั้งหมด ไม่ขึ้นกับหน้าที่ขอ
         pagination: buildPagination(page, pageSize, totalItems),
     };
+}
+
+// ---- C1-ค ตั้งค่าแจ้งเตือนรายหมวด (OD-38) ----
+
+/**
+ * คืนทุกหมวดพร้อมธง `locked` — FE จะได้ไม่ต้อง hardcode รายชื่อหมวดเอง
+ * เพิ่มหมวดใหม่ทีหลังแล้วหน้าตั้งค่าโผล่ให้เอง ไม่ต้องรอ FE แก้ตาม
+ */
+export async function getMyNotificationPrefs(userId: number) {
+    const prefs = resolvePrefs(await UserRepo.findNotificationPrefs(userId));
+    return {
+        categories: [
+            { key: 'critical', enabled: true, locked: true },   // เรื่องที่มีเส้นตาย — ปิดไม่ได้ ดูเหตุผลใน config/notificationCategories.ts
+            ...MUTABLE_CATEGORIES.map(key => ({ key, enabled: prefs[key], locked: false })),
+        ],
+    };
+}
+
+/** PATCH = ส่งมาเฉพาะหมวดที่อยากเปลี่ยน · ที่ไม่ส่งมาคงค่าเดิม · `critical` ถูกกันตั้งแต่ชั้น schema แล้ว */
+export async function updateMyNotificationPrefs(userId: number, input: Partial<Record<MutableCategory, boolean>>) {
+    const current = resolvePrefs(await UserRepo.findNotificationPrefs(userId));
+    const updated = await UserRepo.updateNotificationPrefs(userId, { ...current, ...input });
+    if (updated === 0) {
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้");
+    }
+    return getMyNotificationPrefs(userId);
 }
 
 /** ของคนอื่น = 404 (ไม่บอกว่ามีอยู่จริง) · อ่านแล้วกดซ้ำ = 200 ผลเดิม */

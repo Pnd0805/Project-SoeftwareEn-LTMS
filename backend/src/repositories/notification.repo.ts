@@ -34,33 +34,52 @@ export type NotificationRow = {
     created_at: Date;
 };
 
-/** ใหม่สุดก่อน · unreadOnly = true → เฉพาะที่ยังไม่อ่าน */
+/**
+ * ชิ้นส่วน WHERE ที่ใช้ร่วมกันทุก query ของกล่องจดหมาย (OD-38)
+ * `excludeTypes` = ชนิดที่ผู้ใช้ปิดหมวดไว้ · กรองตอนอ่าน ไม่ใช่ตอนเขียน — แถวยังอยู่ในฐานครบ
+ * ลิสต์ว่าง = ไม่ได้ปิดอะไร ข้ามเงื่อนไขไปเลย จะได้ไม่มี `NOT IN ()` ที่ MySQL มองเป็น syntax error
+ */
+function inboxWhere(unreadOnly: boolean, excludeTypes: string[]): { sql: string; params: unknown[] } {
+    const parts = ['user_id = ?'];
+    const params: unknown[] = [];
+    if (unreadOnly) parts.push('is_read = FALSE');
+    if (excludeTypes.length > 0) {
+        parts.push(`type NOT IN (${excludeTypes.map(() => '?').join(', ')})`);
+        params.push(...excludeTypes);
+    }
+    return { sql: parts.join(' AND '), params };
+}
+
+/** ใหม่สุดก่อน · unreadOnly = true → เฉพาะที่ยังไม่อ่าน · excludeTypes = หมวดที่ผู้ใช้ปิด (OD-38) */
 export async function findByUser(
     userId: number,
     unreadOnly: boolean,
     offset: number,
-    pageSize: number
+    pageSize: number,
+    excludeTypes: string[] = []
 ): Promise<{ rows: NotificationRow[]; totalItems: number }> {
-    const where = unreadOnly ? 'user_id = ? AND is_read = FALSE' : 'user_id = ?';
+    const where = inboxWhere(unreadOnly, excludeTypes);
     const [rows] = await pool.query<(NotificationRow & RowDataPacket)[]>(
         `SELECT notification_id, user_id, type, title, message, related_entity_type, related_entity_id, is_read, created_at
          FROM notifications
-         WHERE ${where}
+         WHERE ${where.sql}
          ORDER BY created_at DESC, notification_id DESC
          LIMIT ? OFFSET ?`,
-        [userId, pageSize, offset]
+        [userId, ...where.params, pageSize, offset]
     );
     const [countRows] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
-        `SELECT COUNT(*) AS totalItems FROM notifications WHERE ${where}`,
-        [userId]
+        `SELECT COUNT(*) AS totalItems FROM notifications WHERE ${where.sql}`,
+        [userId, ...where.params]
     );
     return { rows, totalItems: countRows[0]?.totalItems ?? 0 };
 }
 
-export async function countUnread(userId: number): Promise<number> {
+/** badge กระดิ่ง — ★ ไม่นับหมวดที่ผู้ใช้ปิดไว้ (OD-38) ไม่งั้นกดเข้าไปแล้วหาไม่เจอว่าค้างอยู่ตรงไหน */
+export async function countUnread(userId: number, excludeTypes: string[] = []): Promise<number> {
+    const where = inboxWhere(true, excludeTypes);
     const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
-        `SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND is_read = FALSE`,
-        [userId]
+        `SELECT COUNT(*) AS cnt FROM notifications WHERE ${where.sql}`,
+        [userId, ...where.params]
     );
     return rows[0]?.cnt ?? 0;
 }
