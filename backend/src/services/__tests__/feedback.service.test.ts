@@ -452,7 +452,44 @@ describe('report / remove', () => {
     expect(FeedbackRepo.softRemove).toHaveBeenCalledWith(1, 3, 'หยาบคาย');
 
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ removed_at: new Date() }));
-    expect(await errOf(Service.removeFeedback(1, 3))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
+    expect(await errOf(Service.removeFeedback(1, 3, 'หยาบคาย'))).toMatchObject({ status: 409, code: 'FEEDBACK_ALREADY_REMOVED' });
+  });
+
+  // แก้ 30 ก.ย. 2569 — เดิมแอดมินลบแล้วเจ้าของไม่รู้เลย (รู้ตอนส่งใหม่แล้วเจอ 409 เท่านั้น) ขณะที่ผู้จัดลบแจ้งมาตลอด
+  it('an admin removal tells the author, with the reason', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5 }));
+    vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
+    await Service.removeFeedback(1, 3, 'หยาบคาย');
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 5, type: 'feedback_removed_by_admin', relatedEntityType: 'tournament', relatedEntityId: 20,
+    }));
+    expect(vi.mocked(NotificationService.notify).mock.calls[0]![0]).toMatchObject({
+      message: expect.stringContaining('หยาบคาย'),
+    });
+  });
+
+  it('an admin removing their own note is not notified', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 3 }));
+    vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
+    await Service.removeFeedback(1, 3, 'เปลี่ยนใจ');
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+
+  // โหวต MVP ไม่มีข้อความ — แจ้งว่า "ความเห็นของคุณถูกลบ" จะอ่านไม่รู้เรื่อง
+  it('the wording follows the kind that was removed', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, feedback_type: 'mvp_vote' }));
+    vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
+    await Service.removeFeedback(1, 3, 'โหวตตัวเอง');
+    expect(vi.mocked(NotificationService.notify).mock.calls[0]![0]).toMatchObject({ title: 'โหวต MVP ของคุณถูกลบ' });
+  });
+
+  it('a restore tells the author too', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, removed_at: new Date() }));
+    vi.mocked(FeedbackRepo.restore).mockResolvedValue(true);
+    await Service.restoreFeedback(1, 3);
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 5, type: 'feedback_restored', relatedEntityType: 'tournament', relatedEntityId: 20,
+    }));
   });
 });
 

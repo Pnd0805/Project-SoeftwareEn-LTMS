@@ -6,7 +6,7 @@ import * as MatchResultRepo from '../repositories/matchResult.repo.js';
 import { MVP_VOTING_HOURS } from '../config/scoring.js';
 import type { MatchRow, TournamentRow } from '../types/db.js';
 import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
-import type { CommentListRow } from '../repositories/feedback.repo.js';
+import type { CommentListRow, FeedbackRow } from '../repositories/feedback.repo.js';
 import { toReviewItemDto, toReviewSummaryDto, toMvpCandidateDto, toMyReviewDto } from '../mappers/feedback.mapper.js';
 import * as NotificationService from './notification.service.js';
 import { AppError } from '../utils/AppError.js';
@@ -384,6 +384,42 @@ export async function deleteOwnTournamentComment(tournamentId: number, userId: n
 
 // ───────────────────────── report / ลบ ─────────────────────────
 
+
+/**
+ * คำนามที่ใช้เรียกของที่ถูกลบในข้อความแจ้งเตือน — แอดมินลบได้ทุกประเปท
+ * จะเขียนว่า "ความเห็น" เหมาหมดไม่ได้ — โหวต MVP ไม่มีข้อความ ส่วนรีวิวเป็นคนละอันกับคอมเมนต์สาธารณะ
+ */
+function feedbackNoun(type: FeedbackRow['feedback_type']): string {
+    if (type === 'mvp_vote') return 'โหวต MVP';
+    if (type === 'organizer_feedback') return 'รีวิวการจัดทัวร์นาเมนต์';
+    return 'ความเห็น';
+}
+
+/**
+ * แจ้งเจ้าของเมื่อแอดมินลบหรือคืน (แก้ 30 ก.ย. 2569)
+ * เดิมผู้จัดลบแล้วแจ้ง แต่แอดมินลบแล้วเงียบ — เจ้าของรู้ตอนส่งใหม่แล้วเจอ 409 เท่านั้น
+ * คนที่ถูกลบต้องรู้เหมือนกัน ไม่ว่าคนลบจะเป็นผู้จัดหรือแอดมิน ไม่งั้นอุทธรณ์ไม่ได้
+ * ตั้งใจไม่แจ้งตอนแอดมินทำกับของตัวเอง — กติกาเดียวกับตอนผู้จัดลบคอมเมนต์ตัวเอง
+ */
+async function notifyFeedbackAuthor(feedback: FeedbackRow, byUserId: number,
+                                    kind: 'removed' | 'restored', reason: string | null): Promise<void> {
+    if (feedback.user_id === byUserId) return;
+    const tournament = await TournamentRepo.findTournamentById(feedback.tournament_id);
+    // 'โหวต MVP' ลงท้ายด้วยอักษรลาติน — เว้นวรรคก่อนคำไทยที่ต่อท้าย ไม่ให้กลายเป็น "MVPของคุณ"
+    const raw = feedbackNoun(feedback.feedback_type);
+    const noun = /[A-Za-z]$/.test(raw) ? `${raw} ` : raw;
+    const where = tournament ? ` ในทัวร์นาเมนต์ "${tournament.name}"` : '';
+    await NotificationService.notify({
+        userId: feedback.user_id,
+        type: kind === 'removed' ? 'feedback_removed_by_admin' : 'feedback_restored',
+        title: kind === 'removed' ? `${noun}ของคุณถูกลบ` : `${noun}ของคุณกลับมาแสดงอีกครั้ง`,
+        message: kind === 'removed'
+            ? `ผู้ดูแลระบบลบ${noun}ของคุณ${where} — เหตุผล: ${reason}`
+            : `ผู้ดูแลระบบตรวจแล้วนำ${noun}ของคุณ${where}กลับมาแสดงอีกครั้ง`,
+        relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+    });
+}
+
 /**
  * report ได้เฉพาะคนที่มองเห็นข้อความนั้น — organizer_feedback เห็นแค่ ORG ของทัวร์ · โหวต MVP ไม่มีข้อความให้ report
  * comment (C7 คอมเมนต์ทัวร์) ใครที่ล็อกอินก็ report ได้ ยกเว้นของตัวเอง
@@ -421,14 +457,16 @@ export async function reportFeedback(feedbackId: number, userId: number) {
     return { id: feedbackId, isReported: true };
 }
 
-export async function removeFeedback(feedbackId: number, adminUserId: number, reason?: string) {
+export async function removeFeedback(feedbackId: number, adminUserId: number, reason: string) {
     const feedback = await FeedbackRepo.findById(feedbackId);
     if (!feedback) {
         throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');
     }
-    if (feedback.removed_at || !(await FeedbackRepo.softRemove(feedbackId, adminUserId, reason ?? null))) {
+    if (feedback.removed_at || !(await FeedbackRepo.softRemove(feedbackId, adminUserId, reason))) {
         throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
     }
+
+    await notifyFeedbackAuthor(feedback, adminUserId, 'removed', reason);
 }
 
 /** แอดมินคืนความเห็นที่ถูกลบ (มติ 23 ก.ย. ข้อ 6.3.3) — ใช้ตอนเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์ */
@@ -440,5 +478,8 @@ export async function restoreFeedback(feedbackId: number, adminUserId: number) {
     if (!feedback.removed_at || !(await FeedbackRepo.restore(feedbackId, adminUserId))) {
         throw new AppError(409, 'FEEDBACK_NOT_REMOVED', 'ความเห็นนี้ไม่ได้ถูกลบอยู่');
     }
+
+    await notifyFeedbackAuthor(feedback, adminUserId, 'restored', null);
+
     return { id: feedbackId, restored: true };
 }

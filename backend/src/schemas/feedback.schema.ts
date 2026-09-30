@@ -25,8 +25,10 @@ export const removeCommentByOrganizerSchema = z.object({
 });
 export type RemoveCommentByOrganizerInput = z.infer<typeof removeCommentByOrganizerSchema>;
 
-// แอดมินลบ — เหตุผลไม่บังคับ แต่เก็บลง audit ถ้ามี
+// แอดมินลบ — เหตุผลบังคับ เท่ากันกับผู้จัด (แก้ 30 ก.ย. 2569 — เดิม optional เป็นความหลุด)
+// แอดมินลบได้กว้างกว่าผู้จัด (ทุกทัวร์ ทุกประเปท รวมรีวิวที่วิจารณ์ผู้จัด) จิงต้องอทิบายไม่น้อยกว่า
+// และเหตุผลนี้คือสิ่งเดียวที่เจ้าของความเห็นจะได้รับในแจ้งเตือน
 export const removeFeedbackSchema = z.object({
-    reason: z.string().trim().max(500, 'เหตุผลยาวได้ไม่เกิน 500 ตัวอักษร').optional(),
+    reason: z.string('กรุณาระบุเหตุผลที่ลบ').trim().min(1, 'กรุณาระบุเหตุผลที่ลบ').max(500, 'เหตุผลยาวได้ไม่เกิน 500 ตัวอักษร'),
 });
 export type RemoveFeedbackInput = z.infer<typeof removeFeedbackSchema>;

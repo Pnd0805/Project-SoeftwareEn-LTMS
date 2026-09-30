@@ -702,37 +702,26 @@ describe("removeFeedback", () => {
         expect(svc.removeFeedback).toHaveBeenCalledWith(9, 7, "ผิดกฎ");
     });
 
-    it("forwards undefined for reason when the body omits it (reason is optional here)", async () => {
-        svc.removeFeedback.mockResolvedValue(undefined as any);
-
-        await removeFeedback(makeReq({ body: {} }), makeRes());
-
-        expect(svc.removeFeedback).toHaveBeenCalledWith(42, 7, undefined);
-    });
-
-    it("forwards undefined for reason when req.body itself is undefined (falls back to {})", async () => {
-        svc.removeFeedback.mockResolvedValue(undefined as any);
-
-        await removeFeedback(makeReq({ body: undefined }), makeRes());
-
-        expect(svc.removeFeedback).toHaveBeenCalledWith(42, 7, undefined);
-    });
-
-    it("characterization: a whitespace-only reason trims to '' and is forwarded as '', not treated as absent", async () => {
-        // removeFeedbackSchema has no min-length check (reason is optional), so
-        // an empty string after trim() passes validation as-is.
-        svc.removeFeedback.mockResolvedValue(undefined as any);
-
-        await removeFeedback(makeReq({ body: { reason: "   " } }), makeRes());
-
-        expect(svc.removeFeedback).toHaveBeenCalledWith(42, 7, "");
+    // แก้ 30 ก.ย. 2569 — reason เคยเป็น optional ซี่งทำให้ audit เก็บ reason: null ได้
+    // สามเคสนี้เคยบันทืกพฏิกรรมเก่าไว้ ตอนนี้กลับด้านทั้งหมด
+    it.each([
+        ["the body omits it", {}],
+        ["req.body itself is undefined", undefined],
+        ["it is whitespace only", { reason: "   " }],
+    ])("rejects with VALIDATION_FAILED when %s", async (_label, body) => {
+        await expect(removeFeedback(makeReq({ body }), makeRes())).rejects.toMatchObject({
+            status: 400,
+            code: "VALIDATION_FAILED",
+            extra: { fields: { reason: "กรุณาระบุเหตุผลที่ลบ" } },
+        });
+        expect(svc.removeFeedback).not.toHaveBeenCalled();
     });
 
     it("responds 204 with no body", async () => {
         svc.removeFeedback.mockResolvedValue(undefined as any);
 
         const res = makeRes();
-        await removeFeedback(makeReq(), res);
+        await removeFeedback(makeReq({ body: { reason: "หยาบคาย" } }), res);
 
         expect(res.status).toHaveBeenCalledWith(204);
         expect(res.send).toHaveBeenCalledWith();
@@ -784,7 +773,7 @@ describe("removeFeedback", () => {
         svc.removeFeedback.mockRejectedValue(err);
 
         const res = makeRes();
-        await expect(removeFeedback(makeReq(), res)).rejects.toBe(err);
+        await expect(removeFeedback(makeReq({ body: { reason: "หยาบคาย" } }), res)).rejects.toBe(err);
         expect(res.status).not.toHaveBeenCalled();
     });
 });
