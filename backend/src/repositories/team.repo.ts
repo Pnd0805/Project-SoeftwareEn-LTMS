@@ -11,9 +11,16 @@ export async function findById(teamId : number) : Promise<TeamRow | null> {
     return team ?? null;
 }
 
+/**
+ * ทีมที่ผู้ใช้อยู่ — **เฉพาะทีมที่ยังไม่ถูกลบ** (เติม deleted_at IS NULL เมื่อ 30 ก.ย. 2569)
+ * เดิมคืนทีมที่ TM-07 กวาดทิ้งมาด้วย คนจึงเห็นทีมค้างใน "ทีมของฉัน" ที่กดอะไรก็ 404
+ * เป็นการหลุดจุดเดียว — countUnofficialTeamsByUser และ searchTeams มีเงื่อนไขนี้มาตลอด
+ * ทีมที่ถูกลบยังเปิดตรง GET /teams/:id ได้ (readinessStatus: 'Inactive') ลิงก์เก่าจึงยังอธิบายตัวเองได้
+ */
 export async function findTeamsByUser(userId : number) : Promise<TeamRow[]>{
     const [rows] = await pool.query<(TeamRow & RowDataPacket)[]>(`SELECT t.* FROM teams t JOIN team_members tm
-                                                                ON t.team_id = tm.team_id WHERE tm.user_id = ?`, [userId]);
+                                                                ON t.team_id = tm.team_id
+                                                                WHERE tm.user_id = ? AND t.deleted_at IS NULL`, [userId]);
     return rows;
 }
 
@@ -84,19 +91,13 @@ export async function deleteTeam(teamId : number){
 // TM-07 / BR-06 — กวาดทีมไม่ใช้งานแบบ lazy (ไม่มี cron) เรียกก่อน query จริงใน T02/T03 (GUIDE/12)
 // เปลี่ยนชื่อทีมตอนลบด้วย เพื่อปล่อย UNIQUE(name, sport_type_id) ให้ตั้งชื่อซ้ำได้ (มติ GUIDE/12 ข้อ "ฟื้นทีมที่ถูกปิดได้ไหม")
 // เช็ค "เคยแข่ง" ผ่าน MAX(matches.updated_at) แทนการเขียน teams.last_competed_at ตรงๆ — เลี่ยงไม่ต้องแก้โค้ดฝั่ง Matches/Results
-export async function sweepInactiveTeams() : Promise<{ noRegistration : number , inactive6Months : number }>{
-    const [ noReg ] = await pool.query<ResultSetHeader>(
-        `UPDATE teams t
-            SET deleted_at = NOW(), deleted_reason = 'no_registration', name = CONCAT(t.name, ' (deleted #', t.team_id, ')')
-          WHERE t.deleted_at IS NULL
+const SWEEP_RULES = {
+    // สร้างมาเกิน 14 วันแล้วไม่เคยสมัครทัวร์ไหนเลย
+    no_registration : `t.deleted_at IS NULL
             AND t.created_at < NOW() - INTERVAL 14 DAY
-            AND NOT EXISTS (SELECT 1 FROM tournament_applications a WHERE a.team_id = t.team_id)`
-    );
-
-    const [ inactive6mo ] = await pool.query<ResultSetHeader>(
-        `UPDATE teams t
-            SET deleted_at = NOW(), deleted_reason = 'inactive_6_months', name = CONCAT(t.name, ' (deleted #', t.team_id, ')')
-          WHERE t.deleted_at IS NULL
+            AND NOT EXISTS (SELECT 1 FROM tournament_applications a WHERE a.team_id = t.team_id)`,
+    // ไม่มีแมตช์ที่จบมาเกิน 6 เดือน และไม่มีใบสมัครที่ยังเดินอยู่
+    inactive_6_months : `t.deleted_at IS NULL
             AND (SELECT MAX(m.updated_at) FROM matches m
                   WHERE (m.team_a_id = t.team_id OR m.team_b_id = t.team_id) AND m.match_status = 'completed'
                 ) < NOW() - INTERVAL 6 MONTH
@@ -104,9 +105,38 @@ export async function sweepInactiveTeams() : Promise<{ noRegistration : number ,
                              WHERE a.team_id = t.team_id
                                AND a.tournament_application_status IN ('pending','approved')
                                AND a.applied_at > NOW() - INTERVAL 6 MONTH)`
-    );
+} as const;
 
-    return { noRegistration : noReg.affectedRows , inactive6Months : inactive6mo.affectedRows };
+export type SweptTeam = { teamId : number , name : string , reason : keyof typeof SWEEP_RULES };
+
+/**
+ * คืนทีมที่ "การเรียกครั้งนี้" กวาดจริง พร้อมชื่อเดิม — service เอาไปแจ้งลูกทีม (มติ 30 ก.ย. 2569)
+ *
+ * เดิมเป็น UPDATE ก้อนเดียวแล้วคืนแค่จำนวนแถว ซึ่งบอกไม่ได้ว่าทีมไหนโดนกวาด
+ * จึงแยกเป็น SELECT แล้ว UPDATE ทีละทีม โดยยังมี deleted_at IS NULL อยู่ใน WHERE —
+ * ถ้ามีสอง request กวาดพร้อมกัน มีแค่ตัวที่ affectedRows = 1 ที่ได้แจ้ง ลูกทีมจึงไม่ได้แจ้งเตือนซ้ำ
+ * ชื่อที่คืนคือชื่อก่อนต่อท้าย '(deleted #id)' — ข้อความแจ้งต้องเป็นชื่อที่ลูกทีมรู้จัก
+ */
+export async function sweepInactiveTeams() : Promise<SweptTeam[]>{
+    const swept : SweptTeam[] = [];
+
+    for(const reason of Object.keys(SWEEP_RULES) as (keyof typeof SWEEP_RULES)[]){
+        const [ candidates ] = await pool.query<({ team_id : number , name : string } & RowDataPacket)[]>(
+            `SELECT t.team_id , t.name FROM teams t WHERE ${SWEEP_RULES[reason]}`);
+
+        for(const team of candidates){
+            const [ result ] = await pool.query<ResultSetHeader>(
+                `UPDATE teams
+                    SET deleted_at = NOW(), deleted_reason = ?, name = CONCAT(name, ' (deleted #', team_id, ')')
+                  WHERE team_id = ? AND deleted_at IS NULL`, [reason , team.team_id]);
+
+            if(result.affectedRows === 1){
+                swept.push({ teamId : team.team_id , name : team.name , reason });
+            }
+        }
+    }
+
+    return swept;
 }
 
 

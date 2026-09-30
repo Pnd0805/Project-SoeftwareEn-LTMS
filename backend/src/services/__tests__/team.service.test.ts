@@ -42,7 +42,7 @@ vi.mock('../../repositories/team.repo.js', () => ({
   deletePendingInvite: vi.fn(),
   createOfficialRequest: vi.fn(),
   findOfficialRequestById: vi.fn(),
-  sweepInactiveTeams: vi.fn(),
+  sweepInactiveTeams: vi.fn(() => Promise.resolve([])),
 }));
 
 vi.mock('../../repositories/sportType.repo.js', () => ({
@@ -201,6 +201,9 @@ const teamInput = { name: 'New Team', sportTypeId: 1 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // clearAllMocks ล้าง implementation ที่ตั้งตอน mock ด้วย — การกวาดต้องคืน array ทุกครั้ง ไม่งั้น for..of พัง
+  mockedTeamRepo.sweepInactiveTeams.mockResolvedValue([]);
+  mockedTeamRepo.findTeamMemberById.mockResolvedValue([]);
 });
 
 describe('createTeam', () => {
@@ -256,6 +259,45 @@ describe('createTeam', () => {
 });
 
 describe('getMyTeam', () => {
+  // มติ 30 ก.ย. 2569 — TM-07 กวาดทีมตอนมีคนเปิดหน้า ไม่มี cron ⇒ ลูกทีมไม่ได้ทำอะไรเลยแต่ทีมหาย
+  it('tells every member of a team the sweep just closed, with the reason', async () => {
+    mockedTeamRepo.sweepInactiveTeams.mockResolvedValue([
+      { teamId: 91, name: 'ทีมหมี', reason: 'no_registration' },
+    ]);
+    mockedTeamRepo.findTeamMemberById.mockResolvedValue([{ user_id: 5 }, { user_id: 6 }] as never);
+    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
+
+    await teamService.getMyTeam(5);
+
+    expect(NotificationService.notifyUsers).toHaveBeenCalledWith([5, 6], expect.objectContaining({
+      type: 'team_deleted',
+      title: 'ทีม "ทีมหมี" ถูกปิดแล้ว',
+      relatedEntityId: 91,
+    }));
+    // หัวหน้าได้ด้วย — การกวาดไม่ได้เกิดจากการกดของใคร ต่างจากตอนหัวหน้าลบเอง
+    expect(vi.mocked(NotificationService.notifyUsers).mock.calls[0]![0]).toContain(5);
+  });
+
+  it('says why the team went, not just that it did', async () => {
+    mockedTeamRepo.sweepInactiveTeams.mockResolvedValue([
+      { teamId: 92, name: 'ทีมร้าง', reason: 'inactive_6_months' },
+    ]);
+    mockedTeamRepo.findTeamMemberById.mockResolvedValue([{ user_id: 5 }] as never);
+    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
+
+    await teamService.getMyTeam(5);
+
+    expect(vi.mocked(NotificationService.notifyUsers).mock.calls[0]![1]).toMatchObject({
+      message: expect.stringContaining('6 เดือน'),
+    });
+  });
+
+  it('sends nothing when the sweep closed nothing', async () => {
+    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
+    await teamService.getMyTeam(5);
+    expect(NotificationService.notifyUsers).not.toHaveBeenCalled();
+  });
+
   it('maps every team the user belongs to, including its member count', async () => {
     const teamA = { ...baseTeamRow, team_id: 1 };
     const teamB = { ...baseTeamRow, team_id: 2 };
@@ -364,6 +406,31 @@ describe('updateTeam', () => {
 });
 
 describe('deleteTeam', () => {
+  // มติ 30 ก.ย. 2569 — ทีมหายจากลิสต์แล้ว ลูกทีมต้องรู้ว่าหายไปไหน
+  it('tells the members, but not the leader who pressed delete', async () => {
+    mockedCheckTeam.mockResolvedValue(baseTeamRow);
+    mockedTeamRepo.deleteTeam.mockResolvedValue(1);
+    mockedTeamRepo.findTeamMemberById.mockResolvedValue([
+      { user_id: 5 }, { user_id: 6 }, { user_id: 7 },
+    ] as never);
+
+    await teamService.deleteTeam(10, 5);
+
+    expect(NotificationService.notifyUsers).toHaveBeenCalledWith([6, 7], expect.objectContaining({
+      type: 'team_deleted', relatedEntityType: 'team', relatedEntityId: 10,
+    }));
+  });
+
+  it('tells nobody when the row was already deleted', async () => {
+    mockedCheckTeam.mockResolvedValue(baseTeamRow);
+    mockedTeamRepo.deleteTeam.mockResolvedValue(0);
+    mockedTeamRepo.findTeamMemberById.mockResolvedValue([{ user_id: 6 }] as never);
+
+    await teamService.deleteTeam(10, 5);
+
+    expect(NotificationService.notifyUsers).not.toHaveBeenCalled();
+  });
+
   it('soft-deletes a team that is not already deleted', async () => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
     mockedTeamRepo.deleteTeam.mockResolvedValue(1);

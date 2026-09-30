@@ -562,7 +562,8 @@ describe('deleteTeamById', () => {
     const res = makeRes();
     await deleteTeamById(req, res);
 
-    expect(teamSvc.deleteTeam).toHaveBeenCalledWith(10);
+    // ส่ง userId ต่อด้วย — service ใช้เว้นไม่แจ้งเตือนหัวหน้าที่เป็นคนกดลบเอง (มติ 30 ก.ย.)
+        expect(teamSvc.deleteTeam).toHaveBeenCalledWith(10, 5);
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalledWith();
     expect(res.json).not.toHaveBeenCalled();

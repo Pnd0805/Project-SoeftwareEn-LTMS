@@ -39,8 +39,38 @@ export async function createTeam(input : TeamInput , leaderId : number){
     return toCreateTeam(data!);
 }
 
+/** ข้อความบอกเหตุผลที่ทีมถูกปิด — ลูกทีมต้องรู้ว่าเพราะอะไร ไม่ใช่เห็นทีมหายไปเฉย ๆ */
+const SWEEP_REASON_TEXT = {
+    no_registration   : 'ทีมนี้ถูกปิดอัตโนมัติเพราะไม่ได้สมัครลงแข่งขันภายใน 14 วันหลังสร้างทีม',
+    inactive_6_months : 'ทีมนี้ถูกปิดอัตโนมัติเพราะไม่มีการแข่งขันมานานเกิน 6 เดือน'
+} as const;
+
+/**
+ * กวาดทีมร้าง (TM-07) แล้วแจ้งสมาชิกทุกคนของทีมที่เพิ่งถูกกวาด (มติ 30 ก.ย. 2569)
+ *
+ * การกวาดเป็น lazy ไม่มี cron — ทีมจึงหายไปจากลิสต์ตอนที่ใครสักคนเปิดหน้าทีม โดยที่ลูกทีมไม่ได้ทำอะไรเลย
+ * ก่อนหน้านี้ทีมค้างอยู่ในลิสต์แต่กดอะไรก็ 404 ซึ่งอย่างน้อยยังเห็นว่ามีอยู่ · พอกรองออกแล้วทีมจะหายเงียบ
+ * ถ้าไม่แจ้ง ลูกทีมจะไม่มีทางรู้ว่าทีมหายไปไหนและเพราะอะไร
+ *
+ * แจ้งทุกคนรวมหัวหน้า เพราะการกวาดไม่ได้เกิดจากการกดของใคร — ต่างจากตอนหัวหน้าลบทีมเอง
+ * แจ้งเตือนพังไม่ทำให้การกวาดที่สำเร็จแล้วกลายเป็น error (notify กลืน error ให้อยู่แล้ว)
+ */
+async function sweepAndNotify(){
+    const swept = await TeamRepo.sweepInactiveTeams();
+
+    for(const team of swept){
+        const members = await TeamRepo.findTeamMemberById(team.teamId);
+        await NotificationService.notifyUsers(members.map(m => m.user_id) , {
+            type : 'team_deleted',
+            title : `ทีม "${team.name}" ถูกปิดแล้ว`,
+            message : SWEEP_REASON_TEXT[team.reason],
+            relatedEntityType : 'team', relatedEntityId : team.teamId
+        });
+    }
+}
+
 export async function getMyTeam(userId : number){
-    await TeamRepo.sweepInactiveTeams();
+    await sweepAndNotify();
     const data : MyTeam[] = [];
     const teams = await TeamRepo.findTeamsByUser(userId); //return TeamRow[]
     for(const team of teams){
@@ -64,7 +94,7 @@ export async function searchTeams(filters : { q? : string | undefined; sportType
 }
 
 export async function getTeamById(teamId : number){
-    await TeamRepo.sweepInactiveTeams();
+    await sweepAndNotify();
     const team = await checkTeam(teamId);
 
     const memberCount = await TeamRepo.countMemberByTeamId(teamId);
@@ -102,7 +132,7 @@ export async function updateTeam(teamId : number , sportType:number , newTeam : 
     return await getTeamById(teamId);
 };
 
-export async function deleteTeam(teamId : number){
+export async function deleteTeam(teamId : number , byUserId? : number){
     const team = await checkTeam(teamId);
 
     if(team['deleted_at'] !== null){
@@ -123,7 +153,21 @@ export async function deleteTeam(teamId : number){
     // เหลือแต่ใบสมัครที่ยัง pending → ปลดล็อกผู้เล่นทุกคน ไปอยู่ทีมอื่นในทัวร์เดียวกันได้
     await ApplicationRepo.deleteAllPlayersOfTeamSquads(teamId);
 
-    return await TeamRepo.deleteTeam(teamId);
+    // อ่านรายชื่อก่อนลบ — แถว team_members ยังอยู่หลัง soft delete แต่ไม่พึ่งลำดับให้เปราะ
+    const members = await TeamRepo.findTeamMemberById(teamId);
+    const affected = await TeamRepo.deleteTeam(teamId);
+
+    // แจ้งลูกทีม (มติ 30 ก.ย. 2569) — ไม่แจ้งหัวหน้าที่เป็นคนกด กติกาเดียวกับตอนผู้จัดลบความเห็นของตัวเอง
+    if(affected > 0){
+        await NotificationService.notifyUsers(members.map(m => m.user_id).filter(id => id !== byUserId) , {
+            type : 'team_deleted',
+            title : `ทีม "${team.name}" ถูกปิดแล้ว`,
+            message : `หัวหน้าทีมปิดทีม "${team.name}" — ทีมนี้จะไม่อยู่ในรายการทีมของคุณอีกต่อไป`,
+            relatedEntityType : 'team', relatedEntityId : teamId
+        });
+    }
+
+    return affected;
 }
 
 

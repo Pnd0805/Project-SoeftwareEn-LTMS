@@ -59,7 +59,8 @@ export async function deleteTeamById(req : Request , res : Response){
     if(!req.team){ 
         throw new AppError(404 , "TEAM_NOT_FOUND" , "ไม่พบทีมนี้ในระบบ");
     }
-    await TeamService.deleteTeam(req.team.team_id);
+    // ส่งคนกดไปด้วย เพื่อไม่แจ้งเตือนหัวหน้าที่เป็นคนลบเอง (requireTeamLeader การันตีว่ามี req.user)
+    await TeamService.deleteTeam(req.team.team_id , req.user?.user_id);
     return res.status(204).send();
 }
 

@@ -495,7 +495,15 @@ export async function reportFeedback(feedbackId: number, userId: number) {
  * ★ ไม่แจ้งเจ้าของคอมเมนต์ — ธง report เป็นความลับของคนที่ลบได้ (มติ 23 ก.ย. ข้อ 6.4)
  *   เจ้าของไม่เคยรู้ว่าถูกรายงาน การบอกตอนนี้เท่ากับเปิดเผยการรายงานที่ตัดสินไปแล้วว่าไม่มีมูล
  */
-export async function dismissCommentReport(tournamentId: number, feedbackId: number, orgUserId: number) {
+export async function dismissCommentReport(tournamentId: number, feedbackId: number, viewerId: number) {
+    // ★ ด่านเดียวกับ canModerate ของ E14 (แก้ 30 ก.ย. — เดิม requireOrganizer ทำให้แอดมินเห็นคิวแต่กดไม่ได้)
+    //   ใช้เงื่อนไขที่มีอยู่แล้วแทนการเขียนกฎใหม่ เพื่อไม่ให้ "คนที่เห็นคิว" กับ "คนที่กดได้" หลุดกันคนละทาง
+    //   ซึ่งเป็นสาเหตุเดิมของ FE-admin-queue-shows-undecidable-rows
+    const tournament = await getTournamentOr404(tournamentId);
+    if (tournament.requested_by_user_id !== viewerId && !(await isUniversityAdmin(viewerId))) {
+        throw new AppError(403, 'NOT_ORGANIZER', 'เฉพาะผู้จัดทัวร์นาเมนต์นี้และแอดมินเท่านั้นที่ปิดเรื่องที่ถูกรายงานได้');
+    }
+
     const feedback = await FeedbackRepo.findById(feedbackId);
     if (!feedback || feedback.tournament_id !== tournamentId) {
         throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้ในทัวร์นาเมนต์นี้');
@@ -509,7 +517,7 @@ export async function dismissCommentReport(tournamentId: number, feedbackId: num
         throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
     }
     // ไม่ได้ถูกรายงานอยู่ (รวมกรณีตรวจไปแล้ว ธงจึงไม่เคยขึ้น) หรือผู้จัดอีกคนกดปล่อยผ่านไปก่อนเสี้ยววินาที
-    if (!feedback.is_reported || !(await FeedbackRepo.clearReported(feedbackId, orgUserId, { tournamentId, authorUserId: feedback.user_id }))) {
+    if (!feedback.is_reported || !(await FeedbackRepo.clearReported(feedbackId, viewerId, { tournamentId, authorUserId: feedback.user_id }))) {
         throw new AppError(409, 'FEEDBACK_NOT_REPORTED', 'ความเห็นนี้ไม่ได้ถูกรายงานค้างอยู่');
     }
 

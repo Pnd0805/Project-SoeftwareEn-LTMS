@@ -693,6 +693,22 @@ describe('organizer moderation of tournament comments', () => {
   // มติ 30 ก.ย. 2569 — ผู้จัดตรวจแล้วปล่อยผ่านได้
   // เดิมธง report ล้างได้ที่เดียวคือ restore ของแอดมิน ⇒ ของที่ตรวจแล้วปกติค้างคิวตลอดไป
   describe('dismissCommentReport', () => {
+    // แก้ 30 ก.ย. — FE ขอให้แอดมิน university_wide กดได้ด้วย ไม่งั้นเห็นคิวแต่กดอะไรไม่ได้
+    it('a university-wide admin can dismiss too', async () => {
+      vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'university_wide' } as never);
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
+      vi.mocked(FeedbackRepo.clearReported).mockResolvedValue(true);
+      await expect(Service.dismissCommentReport(20, 1, 999)).resolves.toEqual({ id: 1, isReported: false });
+      expect(FeedbackRepo.clearReported).toHaveBeenCalledWith(1, 999, { tournamentId: 20, authorUserId: 50 });
+    });
+
+    it('a faculty admin or anyone else gets 403', async () => {
+      vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'faculty' } as never);
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
+      expect(await errOf(Service.dismissCommentReport(20, 1, 999))).toMatchObject({ status: 403, code: 'NOT_ORGANIZER' });
+      expect(FeedbackRepo.clearReported).not.toHaveBeenCalled();
+    });
+
     it('clears the flag and records who let it through', async () => {
       vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ is_reported: 1 }));
       vi.mocked(FeedbackRepo.clearReported).mockResolvedValue(true);
