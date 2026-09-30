@@ -1,5 +1,6 @@
 import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 import pool from '../config/db.js';
+import { notSuspendedSql } from '../utils/suspension.js';
 
 import type { AdminScopeRow, TeamAdminRequestRow } from '../types/db.js';
 import type { getOfficialRequest, getTransferRequest } from '../mappers/adminScope.mapper.js';
@@ -54,14 +55,14 @@ export async function deleteAdminScope(id : number) : Promise<number>{
 export async function countActiveUniversityWideAdmins() : Promise<number>{
     const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
         `SELECT COUNT(*) AS cnt FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
-          WHERE s.scope_type = 'university_wide' AND u.is_suspended = 0`);
+          WHERE s.scope_type = 'university_wide' AND ${notSuspendedSql('u')}`);
     return rows[0]!.cnt;
 }
 
 export async function countActiveFacultyAdmins(facultyId : number) : Promise<number>{
     const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
         `SELECT COUNT(*) AS cnt FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
-          WHERE s.scope_type = 'faculty' AND s.faculty_id = ? AND u.is_suspended = 0`,[facultyId]);
+          WHERE s.scope_type = 'faculty' AND s.faculty_id = ? AND ${notSuspendedSql('u')}`,[facultyId]);
     return rows[0]!.cnt;
 }
 

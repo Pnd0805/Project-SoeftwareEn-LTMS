@@ -6,7 +6,7 @@ import { requireAdmin } from '../middlewares/requireAdmin.js';
 import { requireAdminOversight } from '../middlewares/requireAdminOversight.js';
 import { validate } from '../middlewares/validate.js';
 import { rejectTeamOfficial, transferLeaderSchema } from '../schemas/team.schema.js';
-import { suspendUserSchema, grantScopeSchema } from '../schemas/admin.schema.js';
+import { suspendUserSchema, grantScopeSchema, approveUserReportSchema } from '../schemas/admin.schema.js';
 import { rejectUserReportSchema } from '../schemas/userReport.schema.js';
 import * as TournamentController from '../controllers/tournament.controller.js';
 
@@ -36,7 +36,7 @@ router.get('/oversight/stalled' , requireAuth , requireAdminOversight , Admin.ge
 
 // C2 — user_reports
 router.get('/user-reports' , requireAuth , requireAdmin , Admin.listUserReports);
-router.post('/user-reports/:id/approve' , requireAuth , requireAdmin , Admin.approveUserReport);
+router.post('/user-reports/:id/approve' , requireAuth , requireAdmin , validate(approveUserReportSchema) , Admin.approveUserReport);
 router.post('/user-reports/:id/reject' , requireAuth , requireAdmin , validate(rejectUserReportSchema) , Admin.rejectUserReport);
 
 export default router;

@@ -27,7 +27,7 @@
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
 | A01 | `POST /auth/register` | — | สมัครสมาชิก · เช็คอีเมลซ้ำ · hash รหัสผ่าน | `fullName, email, password, gender, birthDate, facultyId, departmentId, year` | **201** `{ id, fullName, email }` |
-| A02 | `POST /auth/login` | — | ล็อกอิน · เช็ค `is_suspended` · ออก JWT | `email, password` | **200** `{ accessToken, expiresIn, tokenType, user{id,fullName,userType} }` |
+| A02 | `POST /auth/login` | — | ล็อกอิน · เช็คสถานะระงับ **ที่คิดเวลาแล้ว** (`is_suspended` + `suspended_until`) · ออก JWT | `email, password` | **200** `{ accessToken, expiresIn, tokenType, user{id,fullName,userType} }` |
 | A03 | `POST /auth/logout` | Auth | ไม่ทำอะไร (ไม่มี session ฝั่ง server) | — | **204** |
 
 ---
@@ -423,7 +423,7 @@
 | `VALIDATION_FAILED` | 400 | ข้อมูลบางช่องไม่ถูกต้อง กรุณาตรวจสอบและกรอกใหม่ | `validate` middleware (มากับ `fields` เสมอ) |
 | `NO_TOKEN` | 401 | กรุณาเข้าสู่ระบบก่อนใช้งาน | `requireAuth` |
 | `TOKEN_EXPIRED` | 401 | เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่ | `requireAuth` |
-| `ACCOUNT_SUSPENDED` | 403 | บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ | `requireAuth` |
+| `ACCOUNT_SUSPENDED` | 403 | บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ | `requireAuth` · A02 — **มี `extra.suspendedUntil`** (ISO = พ้นเมื่อไร · `null` = ถาวร) |
 | `NOT_TEAM_LEADER` | 403 | คุณไม่ใช่หัวหน้าทีมนี้ | `requireTeamLeader` |
 | `NOT_ORGANIZER` | 403 | คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้ | `requireOrganizer` |
 | `NOT_REFEREE` | 403 | คุณไม่ได้เป็นกรรมการของแมตช์นี้ | `requireReferee` |

@@ -44,6 +44,7 @@ const activeUser: UserRow = {
   address: null,
   is_suspended: 0,
   suspended_reason: null,
+  suspended_until: null,
   total_points: 0,
   notification_prefs: null,
   profile_edit_log: null,
@@ -141,6 +142,46 @@ describe('requireAuth middleware', () => {
     expect(err.status).toBe(403);
     expect(err.code).toBe('ACCOUNT_SUSPENDED');
     expect(req.user).toBeUndefined();
+  });
+
+  // migration 033 — ระงับแบบมีกำหนดพ้นเองที่ด่านนี้ ไม่มี job มาล้างธง is_suspended ให้
+  it('ระงับแบบมีกำหนดที่ยังไม่ถึงเวลา: 403 และบอกกำหนดพ้นมาใน extra ด้วย', async () => {
+    const req = makeReq('Bearer valid.token');
+    const next = vi.fn() as NextFunction;
+    const until = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1, suspended_until: until });
+
+    await requireAuth(req, makeRes(), next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    expect(err.code).toBe('ACCOUNT_SUSPENDED');
+    expect(err.extra).toEqual({ suspendedUntil: until.toISOString() });
+  });
+
+  it('ระงับถาวร: extra.suspendedUntil เป็น null ไม่ใช่หายไปทั้งช่อง — จอต้องแยกสองกรณีนี้ออกได้', async () => {
+    const req = makeReq('Bearer valid.token');
+    const next = vi.fn() as NextFunction;
+    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1 });
+
+    await requireAuth(req, makeRes(), next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    expect(err.extra).toEqual({ suspendedUntil: null });
+  });
+
+  it('ระงับแบบมีกำหนดที่เลยเวลาแล้ว: ผ่านด่านได้เลย ทั้งที่ธงในฐานยังเป็น 1', async () => {
+    const req = makeReq('Bearer valid.token');
+    const next = vi.fn() as NextFunction;
+    const expired = new Date(Date.now() - 1000);
+    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1, suspended_until: expired });
+
+    await requireAuth(req, makeRes(), next);
+
+    expect(next).toHaveBeenCalledWith();
+    expect(req.user?.user_id).toBe(7);
   });
 
   it('attaches req.user and calls next() with no error for a valid, active user', async () => {

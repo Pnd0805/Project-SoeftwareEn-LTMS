@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import type { RowDataPacket } from 'mysql2';
 import { ORG_RESOLVE_HOURS } from '../config/scoring.js';
+import { notSuspendedSql } from '../utils/suspension.js';
 
 /**
  * OD-34 — คิวที่ค้างจนต้องมีคนเข้ามาปลดล็อก · ใช้กับ GET /admin/oversight/stalled เท่านั้น
@@ -48,7 +49,7 @@ export async function findComplaintsAwaitingAdmin(): Promise<number[]>{
  */
 export async function countUniversityAdmins(): Promise<{ total : number , active : number }>{
     const [ rows ] = await pool.query<({ total : number , active : number } & RowDataPacket)[]>(
-        `SELECT COUNT(*) AS total , SUM(u.is_suspended = 0) AS active
+        `SELECT COUNT(*) AS total , SUM(${notSuspendedSql('u')}) AS active
            FROM admin_scopes s JOIN users u ON u.user_id = s.user_id
           WHERE s.scope_type = 'university_wide'`);
     const row = rows[0];

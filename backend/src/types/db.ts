@@ -14,6 +14,7 @@ export type UserRow = {
     address : string | null,
     is_suspended : number,
     suspended_reason : string | null,
+    suspended_until : Date | null,   // NULL = ถาวร · ดู utils/suspension.ts ห้ามอ่าน is_suspended ลอยๆ
     total_points : number,
     notification_prefs :  Record<string, boolean> | null,
     profile_edit_log : unknown,

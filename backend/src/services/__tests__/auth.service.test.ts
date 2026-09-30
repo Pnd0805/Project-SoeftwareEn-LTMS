@@ -65,6 +65,7 @@ const baseUser: UserRow = {
   address: null,
   is_suspended: 0,
   suspended_reason: null,
+  suspended_until: null,
   total_points: 0,
   notification_prefs: null,
   profile_edit_log: null,
@@ -219,6 +220,29 @@ describe('auth.service login()', () => {
       code: 'ACCOUNT_SUSPENDED',
     });
 
+    expect(mockedSignToken).not.toHaveBeenCalled();
+  });
+
+  // migration 033 — ประตูล็อกอินต้องคิดเวลาเหมือน requireAuth ไม่งั้นคนพ้นโทษแล้วล็อกอินไม่ได้
+  it('ระงับแบบมีกำหนดที่เลยเวลาแล้ว: ล็อกอินได้ตามปกติ', async () => {
+    const expired = new Date(Date.now() - 1000);
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, is_suspended: 1, suspended_until: expired });
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    await expect(authService.login(baseUser.email, 'correct-password')).resolves.toMatchObject({ tokenType: 'Bearer' });
+    expect(mockedSignToken).toHaveBeenCalled();
+  });
+
+  it('ระงับแบบมีกำหนดที่ยังไม่ถึงเวลา: 403 พร้อมกำหนดพ้น', async () => {
+    const until = new Date(Date.now() + 86400000);
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, is_suspended: 1, suspended_until: until });
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    await expect(authService.login(baseUser.email, 'correct-password')).rejects.toMatchObject({
+      status: 403,
+      code: 'ACCOUNT_SUSPENDED',
+      extra: { suspendedUntil: until.toISOString() },
+    });
     expect(mockedSignToken).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,7 @@ import { toUserReportDto } from '../mappers/userReport.mapper.js';
 
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
+import { suspensionEndsAt } from '../utils/suspension.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
 import type { AdminScopeRow } from '../types/db.js';
@@ -171,7 +172,8 @@ async function assertCanActOnUser(admin : AdminScopeRow , targetUserId : number 
 }
 
 // แกนกลางของการระงับจริง — ใช้ทั้ง PATCH /admin/users/:id/suspend และตอนอนุมัติ user_reports (C2)
-async function performSuspend(admin : AdminScopeRow , targetUserId : number , reason : string | undefined){
+// days = undefined คือระงับถาวร (พฤติกรรมเดิม) · มีค่าคือพ้นเองเมื่อครบ เพดานคุมที่ schema แล้ว
+async function performSuspend(admin : AdminScopeRow , targetUserId : number , reason : string | undefined , days : number | undefined){
     const target = await checkUser(targetUserId);
     await assertCanActOnUser(admin , targetUserId , target);
 
@@ -196,8 +198,11 @@ async function performSuspend(admin : AdminScopeRow , targetUserId : number , re
         }
     }
 
-    await UserRepo.suspendUser(targetUserId , true , reason);
-    await AuditLogRepo.insertAuditLog(admin.user_id , 'user_suspended' , 'user' , targetUserId , { reason });
+    const until = suspensionEndsAt(days);
+    await UserRepo.suspendUser(targetUserId , true , reason , until);
+    // บันทึกทั้งสองค่า — days คือเจตนาที่แอดมินกด · until คือเวลาที่ผลจริงสิ้นสุด ตอนไล่ย้อนต้องแยกออกจากกันได้
+    await AuditLogRepo.insertAuditLog(admin.user_id , 'user_suspended' , 'user' , targetUserId ,
+                                       { reason , days : days ?? null , until : until?.toISOString() ?? null });
 
     let warning : string | null = null;
     if(targetScope?.scope_type === 'faculty' && targetScope.faculty_id !== null){
@@ -214,9 +219,9 @@ async function performSuspend(admin : AdminScopeRow , targetUserId : number , re
 }
 
 // C2 — PATCH /admin/users/:id/suspend
-export async function suspendUser(admin : AdminScopeRow , targetUserId : number , suspended : boolean , reason : string | undefined){
+export async function suspendUser(admin : AdminScopeRow , targetUserId : number , suspended : boolean , reason : string | undefined , days : number | undefined){
     if(suspended){
-        const { dto , warning } = await performSuspend(admin , targetUserId , reason);
+        const { dto , warning } = await performSuspend(admin , targetUserId , reason , days);
         return { ...dto , warning };
     }
 
@@ -355,10 +360,10 @@ async function checkReportReviewable(admin : AdminScopeRow , reportId : number){
 
 // POST /admin/user-reports/:id/approve — เรียก performSuspend ตัวเดียวกับ PATCH /admin/users/:id/suspend
 // assertCanActOnUser ข้างใน performSuspend จะกัน faculty admin ไม่ให้อนุมัติคำร้องที่ target เป็นแอดมินเองอยู่แล้ว
-export async function approveUserReport(admin : AdminScopeRow , reportId : number){
+export async function approveUserReport(admin : AdminScopeRow , reportId : number , days : number | undefined){
     const report = await checkReportReviewable(admin , reportId);
 
-    const { dto , warning } = await performSuspend(admin , report.target_user_id , report.reason);
+    const { dto , warning } = await performSuspend(admin , report.target_user_id , report.reason , days);
 
     await UserReportRepo.updateStatus(reportId , 'approved' , admin.user_id , null);
     await AuditLogRepo.insertAuditLog(admin.user_id , 'user_report_approved' , 'user_report' , reportId , { targetUserId : report.target_user_id });

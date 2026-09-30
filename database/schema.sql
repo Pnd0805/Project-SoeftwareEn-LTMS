@@ -67,6 +67,7 @@ CREATE TABLE users (
   address TEXT NULL,
   is_suspended BOOLEAN NOT NULL DEFAULT FALSE,
   suspended_reason TEXT NULL,
+  suspended_until DATETIME NULL,   -- NULL = ถาวร · มีค่า = พ้นเองเมื่อถึงเวลา (ประเมินตอนอ่าน ไม่มี job ล้างธง)
   total_points INT NOT NULL DEFAULT 0,
   notification_prefs JSON NULL,
   profile_edit_log JSON NULL,
@@ -876,4 +877,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('029_team_admin_requests_supporting_docs.sql'),   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration
   ('030_admin_scopes_single_root.sql'),              -- OD-34: บังคับ root คนเดียวที่ระดับฐาน ไม่ใช่แค่ทาง API
   ('031_team_logo_key.sql'),
-  ('032_feedback_report_cleared.sql');   -- จำว่าความเห็นไหนตรวจแล้ว กัน report ซ้ำเรื่องเดิม
+  ('032_feedback_report_cleared.sql'),   -- จำว่าความเห็นไหนตรวจแล้ว กัน report ซ้ำเรื่องเดิม
+  ('033_users_suspended_until.sql');     -- ระงับแบบมีกำหนดเวลา · NULL = ถาวรเหมือนเดิม

@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { notSuspendedSql , suspendedSql } from '../utils/suspension.js';
 import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 
 import type { TeamInvitationRow, TeamRow, UserRow } from "../types/db.js";
@@ -43,7 +44,7 @@ export async function create(data: NewUser): Promise<number>{
 /** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · ไม่คืนอีเมลใน response จึงเดาอีเมลคนอื่นจากผลลัพธ์ไม่ได้ */
 export async function searchByName(userName : string) : Promise<Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'>[]>{
     const [ rows ] = await pool.query<(UserRow & RowDataPacket)[]>(`SELECT user_id , full_name , profile_image_key FROM users
-                                                                    WHERE (full_name LIKE ? OR email LIKE ?) AND is_suspended = 0
+                                                                    WHERE (full_name LIKE ? OR email LIKE ?) AND ${notSuspendedSql('users')}
                                                                     ORDER BY full_name LIMIT 20` , [`%${userName}%`, `${userName}%`]);
     return rows;
 }; 
@@ -76,7 +77,7 @@ export async function update(userId : number , input : UpdateMeInput) : Promise<
 }
 
 // C2 — GET /admin/users · LEFT JOIN admin_scopes เพื่อคืน adminScope ติดมาด้วย (ไม่ SELECT * เพราะ users/admin_scopes มี faculty_id ชื่อชนกัน)
-export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason'> & {
+export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason' | 'suspended_until'> & {
     admin_scope_id : number | null , admin_scope_type : 'faculty' | 'university_wide' | 'root' | null , admin_scope_faculty_id : number | null
 };
 
@@ -86,11 +87,12 @@ export async function searchUsersAdmin(filters : { q? : string | undefined; facu
     const params : unknown[] = [];
     if(filters.q){ where.push('(u.full_name LIKE ? OR u.email LIKE ?)'); params.push(`%${filters.q}%` , `%${filters.q}%`); }
     if(filters.facultyId !== undefined){ where.push('u.faculty_id = ?'); params.push(filters.facultyId); }
-    if(filters.suspended !== undefined){ where.push('u.is_suspended = ?'); params.push(filters.suspended ? 1 : 0); }
+    // filters.suspended ถามถึงสถานะ *ตอนนี้* — คนที่หมดกำหนดแล้วต้องไม่โผล่ในลิสต์ "ถูกระงับ" ทั้งที่ธงยังค้างเป็น 1
+    if(filters.suspended !== undefined){ where.push(filters.suspended ? suspendedSql('u') : notSuspendedSql('u')); }
     const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
     const [ rows ] = await pool.query<(AdminUserRow & RowDataPacket)[]>(
-        `SELECT u.user_id , u.full_name , u.email , u.user_type , u.faculty_id , u.is_suspended , u.suspended_reason,
+        `SELECT u.user_id , u.full_name , u.email , u.user_type , u.faculty_id , u.is_suspended , u.suspended_reason , u.suspended_until,
                 s.admin_scope_id , s.scope_type AS admin_scope_type , s.faculty_id AS admin_scope_faculty_id
            FROM users u LEFT JOIN admin_scopes s ON s.user_id = u.user_id
           ${whereSql}
@@ -101,10 +103,11 @@ export async function searchUsersAdmin(filters : { q? : string | undefined; facu
     return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
 }
 
-export async function suspendUser(userId : number , suspended : boolean , reason : string | null) : Promise<number>{
+// until = null แปลว่าถาวร (ตอนระงับ) หรือไม่เกี่ยว (ตอนปลด) — ทั้งสองกรณีเขียน NULL ลงคอลัมน์เหมือนกัน
+export async function suspendUser(userId : number , suspended : boolean , reason : string | null , until : Date | null = null) : Promise<number>{
     const [ result ] = await pool.query<ResultSetHeader>(
-        `UPDATE users SET is_suspended = ? , suspended_reason = ? WHERE user_id = ?`,
-        [suspended ? 1 : 0 , reason , userId]);
+        `UPDATE users SET is_suspended = ? , suspended_reason = ? , suspended_until = ? WHERE user_id = ?`,
+        [suspended ? 1 : 0 , reason , suspended ? until : null , userId]);
     return result.affectedRows;
 }
 

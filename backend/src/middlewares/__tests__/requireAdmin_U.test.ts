@@ -37,6 +37,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     address: null,
     is_suspended: 0,
     suspended_reason: null,
+    suspended_until: null,
     total_points: 0,
     notification_prefs: null,
     profile_edit_log: null,

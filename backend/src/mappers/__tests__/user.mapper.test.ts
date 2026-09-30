@@ -4,7 +4,8 @@ vi.mock('../../utils/imageUrl.js', () => ({
   toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
 }));
 
-import { toMeDto, toUserRef, toPublicUserDto, toGetMyInvitation } from '../user.mapper.js';
+import { toMeDto, toUserRef, toPublicUserDto, toGetMyInvitation, toAdminUserDto } from '../user.mapper.js';
+import type { AdminUserRow } from '../../repositories/user.repo.js';
 
 const baseUserRow = {
   user_id: 1,
@@ -22,6 +23,7 @@ const baseUserRow = {
   address: '123 Main St',
   is_suspended: 0,
   suspended_reason: null,
+  suspended_until: null,
   total_points: 150,
   notification_prefs: { email: true, push: false },
   profile_edit_log: null,
@@ -188,5 +190,43 @@ describe('toGetMyInvitation', () => {
     };
 
     expect(toGetMyInvitation(row as any).invitedBy.avatarUrl).toBeNull();
+  });
+});
+
+// ============ AdminUserDto — สถานะระงับที่คิดเวลาแล้ว (migration 033) ============
+describe('toAdminUserDto', () => {
+  function adminRow(overrides : Partial<AdminUserRow> = {}) : AdminUserRow{
+    return {
+      user_id : 1, full_name : 'Test User', email : 'test@example.com',
+      user_type : 'student', faculty_id : 2,
+      is_suspended : 0, suspended_reason : null, suspended_until : null,
+      admin_scope_id : null, admin_scope_type : null, admin_scope_faculty_id : null,
+      ...overrides,
+    };
+  }
+
+  it('ไม่ถูกระงับ: isSuspended false และไม่มีกำหนดพ้น', () => {
+    expect(toAdminUserDto(adminRow())).toMatchObject({ isSuspended : false, suspendedUntil : null });
+  });
+
+  it('ระงับถาวร: isSuspended true แต่ suspendedUntil เป็น null — null แปลว่าถาวร ไม่ใช่ไม่มีข้อมูล', () => {
+    const dto = toAdminUserDto(adminRow({ is_suspended : 1, suspended_reason : 'ก่อกวน' }));
+    expect(dto).toMatchObject({ isSuspended : true, suspendedReason : 'ก่อกวน', suspendedUntil : null });
+  });
+
+  it('ระงับแบบมีกำหนดที่ยังไม่ถึงเวลา: ยังถูกระงับ และคืนกำหนดพ้นเป็น ISO', () => {
+    const until = new Date('2026-12-01T00:00:00Z');
+    const dto = toAdminUserDto(adminRow({ is_suspended : 1, suspended_until : until }));
+    expect(dto).toMatchObject({ isSuspended : true, suspendedUntil : '2026-12-01T00:00:00.000Z' });
+  });
+
+  /**
+   * ลิสต์ของแอดมินอ่านจากคอลัมน์ดิบไม่ได้ เพราะไม่มี cron มาล้างธงหลังหมดกำหนด
+   * ถ้าตรงนี้ตอบ true แอดมินจะเห็นคนที่พ้นโทษแล้วเป็น "ถูกระงับ" และกดปลดซ้ำโดยไม่จำเป็น
+   */
+  it('ระงับแบบมีกำหนดที่เลยเวลาแล้ว: isSuspended false ทั้งที่ธงในฐานยังเป็น 1', () => {
+    const dto = toAdminUserDto(adminRow({ is_suspended : 1, suspended_until : new Date(Date.now() - 1000) }));
+    expect(dto.isSuspended).toBe(false);
+    expect(dto.suspendedUntil).not.toBeNull();   // ยังคืนเวลาไว้ เพื่อให้จอบอกได้ว่า "เพิ่งพ้นเมื่อ..."
   });
 });

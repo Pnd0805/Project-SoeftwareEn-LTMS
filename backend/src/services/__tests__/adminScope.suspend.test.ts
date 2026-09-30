@@ -1,0 +1,106 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+}));
+vi.mock('../upload.service.js', () => ({
+  getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),
+}));
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
+vi.mock('../../repositories/user.repo.js', () => ({
+  findById: vi.fn(),
+  suspendUser: vi.fn(() => Promise.resolve(1)),
+  hasActivePublicTournamentAsOrganizer: vi.fn(() => Promise.resolve(false)),
+  hasApprovedApplicationAsLeader: vi.fn(() => Promise.resolve(false)),
+}));
+vi.mock('../../repositories/adminScope.repo.js', () => ({
+  findAdminByUserId: vi.fn(() => Promise.resolve(null)),
+  countActiveUniversityWideAdmins: vi.fn(() => Promise.resolve(5)),
+  countActiveFacultyAdmins: vi.fn(() => Promise.resolve(5)),
+}));
+vi.mock('../../repositories/auditLog.repo.js', () => ({
+  insertAuditLog: vi.fn(() => Promise.resolve(1)),
+}));
+
+import { suspendUser } from '../adminScope.service.js';
+import * as UserRepo from '../../repositories/user.repo.js';
+import * as AuditLogRepo from '../../repositories/auditLog.repo.js';
+import type { AdminScopeRow } from '../../types/db.js';
+
+const mockedUserRepo = vi.mocked(UserRepo);
+const mockedAudit = vi.mocked(AuditLogRepo);
+
+const NOW = new Date('2026-10-01T12:00:00Z');
+const DAY = 24 * 60 * 60 * 1000;
+
+const admin = { admin_scope_id : 1 , user_id : 1 , scope_type : 'university_wide' , faculty_id : null } as AdminScopeRow;
+
+const target = {
+  user_id : 9 , full_name : 'ผู้ใช้ทดสอบ' , email : 't@ku.th' , password_hash : 'h' ,
+  gender : 'male' as const , birth_date : '2000-01-01' , user_type : 'student' as const ,
+  faculty_id : 2 , department_id : 3 , year : 2 , profile_image_key : null ,
+  contact_info : null , address : null , is_suspended : 0 , suspended_reason : null , suspended_until : null ,
+  total_points : 0 , notification_prefs : null , profile_edit_log : null ,
+  created_at : NOW , updated_at : null ,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
+  mockedUserRepo.findById.mockResolvedValue(target);
+  mockedUserRepo.suspendUser.mockResolvedValue(1);
+  mockedUserRepo.hasActivePublicTournamentAsOrganizer.mockResolvedValue(false);
+  mockedUserRepo.hasApprovedApplicationAsLeader.mockResolvedValue(false);
+});
+afterEach(() => { vi.useRealTimers(); });
+
+describe('suspendUser — ระยะเวลาระงับ (มติ 1 ต.ค. 2569)', () => {
+  it('ไม่ส่ง days = ระงับถาวร เขียน NULL ลงคอลัมน์ เหมือนก่อน migration 033 ทุกประการ', async () => {
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined);
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , true , 'ก่อกวน' , null);
+  });
+
+  it('ส่ง days = คำนวณเวลาสิ้นสุดจากตอนนี้ แล้วเขียนลงคอลัมน์', async () => {
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7);
+
+    const until = mockedUserRepo.suspendUser.mock.calls[0]![3] as Date;
+    expect(until.toISOString()).toBe(new Date(NOW.getTime() + 7 * DAY).toISOString());
+  });
+
+  /**
+   * days คือเจตนาที่แอดมินกด · until คือผลที่เกิดจริง
+   * ต้องเก็บทั้งคู่ เพราะตอนไล่ย้อนคำถามคือ "ตั้งใจแบนกี่วัน" ไม่ใช่แค่ "หมดเมื่อไร"
+   */
+  it('audit log เก็บทั้งจำนวนวันและเวลาสิ้นสุด', async () => {
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7);
+
+    const payload = mockedAudit.insertAuditLog.mock.calls[0]![4] as Record<string , unknown>;
+    expect(payload).toMatchObject({ reason : 'ก่อกวน' , days : 7 });
+    expect(payload['until']).toBe(new Date(NOW.getTime() + 7 * DAY).toISOString());
+  });
+
+  it('ระงับถาวร: audit log บอกชัดว่า days/until เป็น null ไม่ใช่ไม่มีช่อง', async () => {
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined);
+
+    expect(mockedAudit.insertAuditLog.mock.calls[0]![4]).toMatchObject({ days : null , until : null });
+  });
+
+  it('ปลดระงับ: ล้างเวลาสิ้นสุดไปด้วย ไม่ปล่อยค้างไว้ให้โทษรอบหน้าสืบทอดกำหนดเก่า', async () => {
+    await suspendUser(admin , 9 , false , undefined , undefined);
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
+  });
+
+  it('เหตุผลยังบังคับเหมือนเดิม แม้จะระบุจำนวนวันมาแล้ว', async () => {
+    await expect(suspendUser(admin , 9 , true , undefined , 7)).rejects.toMatchObject({
+      status : 400 , code : 'SUSPEND_REASON_REQUIRED',
+    });
+    expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+  });
+});
