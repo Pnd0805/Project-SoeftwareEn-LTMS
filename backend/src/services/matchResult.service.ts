@@ -335,10 +335,18 @@ export async function getVerifiedResult(matchId : number , userId? : number){
         }
     }
 
-    // 6 ฟิลด์ข้อโต้แย้งเปิดให้คนกลุ่มเดียวกับ S03b เท่านั้น (ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม)
+    // ตัวคำค้านเปิดให้คนกลุ่มเดียวกับ S03b เท่านั้น (ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม)
     // ผลที่ยังไม่ final ผ่านด่านบนมาแล้วว่าเป็นผู้เกี่ยวข้อง จึงไม่ต้องถามซ้ำ
-    const canSeeDispute = !isFinal || (userId !== undefined && await canSeeUnfinishedResult(matchId , userId));
-    return { ...toVerifiedResult(matchRes , canSeeDispute) , ...await disputeWindowOf(matchRes) };
+    const insider = !isFinal || (userId !== undefined && await canSeeUnfinishedResult(matchId , userId));
+
+    // คำวินิจฉัยเปิดกว้างกว่าหนึ่งชั้น — ถึงผู้เล่นทุกคนในรายชื่อลงแข่งของสองทีม (มติ 30 ก.ย. 2569)
+    // migration 020 บังคับให้ผู้จัดเขียนก็เพื่อให้ "ทั้งสองทีม" รู้เหตุผล แต่เดิมไปไม่ถึงใครนอกจากหัวหน้า
+    // ถามฐานเฉพาะตอนที่ยังไม่ผ่านด่านแรก — ผู้เกี่ยวข้องเห็นทั้งสองชั้นอยู่แล้ว ไม่ต้องยิงซ้ำ
+    const isPlayerOfMatch = !insider && userId !== undefined
+                         && (await TeamRepo.findTeamIdOfUserInMatch(userId , matchId)) !== null;
+
+    return { ...toVerifiedResult(matchRes , { ruling : insider || isPlayerOfMatch , complaint : insider }) ,
+             ...await disputeWindowOf(matchRes) };
 }
 
 /**

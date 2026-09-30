@@ -227,7 +227,7 @@ describe('toVerifiedResult', () => {
                       'disputeResolution', 'disputeResolvedBy', 'disputeResolvedAt'];
 
         it('ไม่มีคีย์เลยเมื่อคนดูไม่มีสิทธิ์ — ไม่ใช่คืน null (null แปลว่า "ไม่มีข้อโต้แย้ง" คนละความหมาย)', () => {
-            const dto = toVerifiedResult(disputed(), false);
+            const dto = toVerifiedResult(disputed(), {});
             for (const key of KEYS) expect(dto).not.toHaveProperty(key);
             expect(JSON.stringify(dto)).not.toContain('กรรมการนับคะแนนผิด');
             expect(JSON.stringify(dto)).not.toContain('4001');
@@ -239,7 +239,7 @@ describe('toVerifiedResult', () => {
         });
 
         it('ส่งครบทั้ง 6 ฟิลด์เมื่อคนดูเป็นผู้เกี่ยวข้อง และแปลงเวลาเป็น ISO', () => {
-            const dto = toVerifiedResult(disputed(), true);
+            const dto = toVerifiedResult(disputed(), { ruling: true, complaint: true });
             expect(dto).toMatchObject({
                 disputeReason: 'กรรมการนับคะแนนผิดเซ็ตสาม',
                 disputeRaisedBy: 4001,
@@ -250,8 +250,32 @@ describe('toVerifiedResult', () => {
             });
         });
 
+        // มติ 30 ก.ย. 2569 — สองชั้นแยกจากกันได้จริง ไม่ใช่ all-or-nothing อีกต่อไป
+        it('ruling อย่างเดียว: ได้คำวินิจฉัย ตัวคำค้านไม่หลุดออกไปด้วย', () => {
+            const dto = toVerifiedResult(disputed(), { ruling: true });
+            expect(dto).toMatchObject({
+                disputeResolution: 'ตรวจคลิปแล้วผลเดิมถูกต้อง',
+                disputeResolvedBy: 9003,
+                disputeResolvedAt: '2026-05-11T09:00:00.000Z',
+            });
+            for (const key of ['disputeReason', 'disputeRaisedBy', 'disputeRaisedAt']) {
+                expect(dto).not.toHaveProperty(key);
+            }
+            // ข้อความกล่าวหาของคู่กรณีต้องไม่หลุดมากับคำวินิจฉัย
+            expect(JSON.stringify(dto)).not.toContain('กรรมการนับคะแนนผิด');
+            expect(JSON.stringify(dto)).not.toContain('4001');
+        });
+
+        it('complaint อย่างเดียว: ได้ตัวคำค้านฉัย', () => {
+            const dto = toVerifiedResult(disputed(), { complaint: true });
+            expect(dto).toHaveProperty('disputeReason', 'กรรมการนับคะแนนผิดเซ็ตสาม');
+            for (const key of ['disputeResolution', 'disputeResolvedBy', 'disputeResolvedAt']) {
+                expect(dto).not.toHaveProperty(key);
+            }
+        });
+
         it('ผลที่ไม่เคยถูกค้าน: ผู้เกี่ยวข้องได้คีย์ครบแต่เป็น null ทั้งหมด', () => {
-            const dto = toVerifiedResult(makeResultRow({ match_result_status: 'verified', verified_at: VERIFIED_AT }), true);
+            const dto = toVerifiedResult(makeResultRow({ match_result_status: 'verified', verified_at: VERIFIED_AT }), { ruling: true, complaint: true });
             for (const key of KEYS) expect(dto).toHaveProperty(key, null);
         });
     });

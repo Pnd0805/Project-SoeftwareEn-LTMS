@@ -7,7 +7,7 @@ vi.mock('../notification.service.js', () => ({
 vi.mock('../../repositories/matchResult.repo.js', () => ({ findmatchResultByMatchId: vi.fn(), findStandings: vi.fn(() => Promise.resolve([])) }));
 vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn(), findUnfinishedMatchIds: vi.fn(() => Promise.resolve([])) }));
-vi.mock('../../repositories/team.repo.js', () => ({}));
+vi.mock('../../repositories/team.repo.js', () => ({ findTeamIdOfUserInMatch: vi.fn(() => Promise.resolve(null)) }));
 vi.mock('../../repositories/sportType.repo.js', () => ({}));
 vi.mock('../walkover.service.js', () => ({}));
 vi.mock('../../middlewares/requireReferee.js', () => ({ isRefereeOfMatch: vi.fn(() => Promise.resolve(false)), isTeamLeaderOfMatch: vi.fn(() => Promise.resolve(false)) }));
@@ -17,6 +17,7 @@ import * as Service from '../matchResult.service.js';
 import * as ResRepo from '../../repositories/matchResult.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import * as TeamRepo from '../../repositories/team.repo.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../../middlewares/requireReferee.js';
 import { checkMatch } from '../../utils/checkExist.js';
 
@@ -37,6 +38,7 @@ beforeEach(() => {
   vi.mocked(checkMatch).mockResolvedValue(match());
   vi.mocked(isRefereeOfMatch).mockReset().mockResolvedValue(false);
   vi.mocked(isTeamLeaderOfMatch).mockReset().mockResolvedValue(false);
+  vi.mocked(TeamRepo.findTeamIdOfUserInMatch).mockReset().mockResolvedValue(null);
 });
 
 /**
@@ -86,6 +88,36 @@ describe('getVerifiedResult — ใครเห็น 6 ฟิลด์ข้อ
     vi.mocked(isTeamLeaderOfMatch).mockResolvedValue(true);
     const dto = await Service.getVerifiedResult(7, 4001) as Record<string, unknown>;
     expect(dto).toHaveProperty('disputeResolution', 'ตรวจแล้วรายชื่อถูกต้อง');
+  });
+
+  /**
+   * มติ 30 ก.ย. 2569 (FE-dispute-ruling-hidden-from-players) — สองชั้นไม่เท่ากันแล้ว
+   * ผู้เล่นในรายชื่อลงแข่งได้คำวินิจฉัย แต่ไม่ได้ตัวคำค้านที่อาจกล่าวหาเพื่อนร่วมทีมตัวเอง
+   */
+  const RULING = ['disputeResolution', 'disputeResolvedBy', 'disputeResolvedAt'];
+  const COMPLAINT = ['disputeReason', 'disputeRaisedBy', 'disputeRaisedAt'];
+
+  it('ผู้เล่นในรายชื่อลงแข่ง: ได้คำวินิจฉัย ไม่ได้ตัวคำค้าน', async () => {
+    vi.mocked(TeamRepo.findTeamIdOfUserInMatch).mockResolvedValue({ teamId: 11 });
+    const dto = await Service.getVerifiedResult(7, 7777) as Record<string, unknown>;
+
+    for (const key of RULING) expect(dto).toHaveProperty(key);
+    expect(dto).toHaveProperty('disputeResolution', 'ตรวจแล้วรายชื่อถูกต้อง');
+    for (const key of COMPLAINT) expect(dto).not.toHaveProperty(key);
+    // ข้อความของคู่กรณีและตัวตนคนค้านต้องไม่หลุดออกไปกับคำวินิจฉัย
+    expect(JSON.stringify(dto)).not.toContain('ส่งผู้เล่นนอกใบสมัคร');
+    expect(JSON.stringify(dto)).not.toContain('4001');
+  });
+
+  it('ผู้จัด/กรรมการ/หัวหน้า ไม่ต้องถูกถามซ้ำว่าอยู่ในรายชื่อไหม', async () => {
+    vi.mocked(isTeamLeaderOfMatch).mockResolvedValue(true);
+    await Service.getVerifiedResult(7, 4001);
+    expect(TeamRepo.findTeamIdOfUserInMatch).not.toHaveBeenCalled();
+  });
+
+  it('คนนอกที่ไม่ได้อยู่ในรายชื่อ: ไม่ได้แม้คำวินิจฉัย', async () => {
+    const dto = await Service.getVerifiedResult(7, 55555) as Record<string, unknown>;
+    for (const key of [...RULING, ...COMPLAINT]) expect(dto).not.toHaveProperty(key);
   });
 
   // ผลที่ยังไม่ final ผ่านด่าน canSeeUnfinishedResult มาแล้ว จึงต้องได้เห็นโดยไม่ถามซ้ำ

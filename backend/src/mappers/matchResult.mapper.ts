@@ -94,7 +94,15 @@ export type verifiedResult = {
     disputeResolvedAt? : string | null
 }
 
-export function toVerifiedResult(rows : MatchResultRow , canSeeDispute = false): verifiedResult{
+/**
+ * ★ แยกสองชั้น (มติ 30 ก.ย. 2569 — FE-dispute-ruling-hidden-from-players)
+ *   `ruling`    คำวินิจฉัยของผู้จัด — migration 020 บังคับให้เขียน **เพื่อให้ทั้งสองทีมรู้ว่าทำไม**
+ *               จึงต้องถึงผู้เล่นทุกคนในรายชื่อลงแข่ง ไม่ใช่แค่หัวหน้า · เป็นข้อความที่ตั้งใจให้อ่าน
+ *   `complaint` ตัวคำค้าน — คำของคู่กรณี อาจระบุชื่อและกล่าวหาผู้เล่นตรง ๆ และ `disputeRaisedBy`
+ *               บอกว่าหัวหน้าทีมไหนเป็นคนค้าน · คงไว้ที่ ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม
+ * เดิมกั้นหกฟิลด์เป็นก้อนเดียว ผู้เล่นจึงไม่เคยได้อ่านคำวินิจฉัยที่เขียนไว้ให้เขาอ่าน
+ */
+export function toVerifiedResult(rows : MatchResultRow , see : { ruling? : boolean , complaint? : boolean } = {}): verifiedResult{
     let isAmended: boolean;
     if(rows.amended_at === null)
         isAmended = false;
@@ -115,13 +123,15 @@ export function toVerifiedResult(rows : MatchResultRow , canSeeDispute = false):
         isAutoVerified : rows.verified_at !== null && rows.verified_by_user_id === null,
         verifiedAt : rows.verified_at?.toISOString() ?? null,
         // คนที่ไม่มีสิทธิ์ต้องไม่มีคีย์เหล่านี้เลย ไม่ใช่ได้ null — null แปลว่า "ไม่มีข้อโต้แย้ง" คนละความหมาย
-        ...(canSeeDispute ? {
-            disputeReason : rows.dispute_reason,
-            disputeRaisedBy : rows.dispute_raised_by,
-            disputeRaisedAt : rows.dispute_raised_at?.toISOString() ?? null,
+        ...(see.ruling ? {
             disputeResolution : rows.dispute_resolution,
             disputeResolvedBy : rows.dispute_resolved_by,
             disputeResolvedAt : rows.dispute_resolved_at?.toISOString() ?? null,
+        } : {}),
+        ...(see.complaint ? {
+            disputeReason : rows.dispute_reason,
+            disputeRaisedBy : rows.dispute_raised_by,
+            disputeRaisedAt : rows.dispute_raised_at?.toISOString() ?? null,
         } : {}),
     }
 }
