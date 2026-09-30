@@ -257,6 +257,7 @@ export async function getRefereeCoverage(tournamentId: TeamRef): Promise<Referee
     accepted,
     shortfall: Math.max(required - accepted, 0),
     blocksStatRecording: raw.uncovered.length > 0,
+    uncoveredMatchIds: raw.uncovered.map(m => m.matchId),
   };
 }
 

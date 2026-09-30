@@ -3,7 +3,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
 
-const { drawState, matchState, mutate, openRegistration, teamState } = vi.hoisted(() => ({
+const { coverageState, drawState, matchState, mutate, openRegistration, teamState } = vi.hoisted(() => ({
+  coverageState: { current: {} as Record<string, unknown> },
   drawState: { current: {} as Record<string, unknown> },
   matchState: { current: {} as Record<string, unknown> },
   mutate: vi.fn(),
@@ -14,6 +15,7 @@ const { drawState, matchState, mutate, openRegistration, teamState } = vi.hoiste
 vi.mock('../../../shared/store', () => ({ useLtms: () => ({}) }))
 vi.mock('../../../hooks/useAdmin', () => ({
   useTournamentReferees: () => ({ data: { acceptedCount: 2 }, isError: false }),
+  useRefereeCoverage: () => coverageState.current,
 }))
 vi.mock('../../../hooks/useMatch', () => ({
   useTournamentMatches: () => matchState.current,
@@ -48,6 +50,7 @@ describe('draw progress in real mode', () => {
     drawState.current = { mutate, isPending: false, isError: false }
     matchState.current = { data: { items: [] }, isPending: false, isError: false }
     teamState.current = { items: [{ id: 11, name: 'Alpha' }, { id: 12, name: 'Beta' }] }
+    coverageState.current = { data: { uncoveredMatchIds: [] }, isError: false }
   })
 
   it('does not advance to squad approval until the organizer opens registration', () => {
@@ -107,6 +110,45 @@ describe('draw progress in real mode', () => {
     expect(screen.getByText('Step 6 of 8')).toBeInTheDocument()
     expect(screen.getByText(/saved matches confirm that the bracket is drawn/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Generate bracket/ })).not.toBeInTheDocument()
+  })
+
+  /* 30 ก.ย. — t23: แมตช์ 13 มีเวลาและสนามครบแต่กรรมการ 0 จาก 2 รางกลับขึ้นว่าจัดนัดครบ
+     แล้วเลื่อนไป "Results come in" ทั้งที่ backend ไม่ยอมให้แมตช์นั้นเริ่ม */
+  it('does not count a fixture as set while the match is still short of referees', () => {
+    matchState.current = {
+      data: { items: [{
+        id: 13, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 12 }, status: 'scheduled',
+        venue: 'Court 1', scheduledTime: '2026-11-20T03:00:00Z', scheduledEndTime: '2026-11-20T05:00:00Z',
+      }] },
+      isPending: false,
+      isError: false,
+    }
+    coverageState.current = { data: { uncoveredMatchIds: [13] }, isError: false }
+    const view = render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
+
+    expect(screen.getByText('Step 6 of 8')).toBeInTheDocument()
+    expect(screen.getByText(/0 of 1 have all their referees/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ask referees for each match' })).toBeInTheDocument()
+
+    coverageState.current = { data: { uncoveredMatchIds: [] }, isError: false }
+    view.rerender(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByText('Step 7 of 8')).toBeInTheDocument()
+  })
+
+  it('does not claim the referees are set when coverage could not be read', () => {
+    matchState.current = {
+      data: { items: [{
+        id: 13, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 12 }, status: 'scheduled',
+        venue: 'Court 1', scheduledTime: '2026-11-20T03:00:00Z', scheduledEndTime: '2026-11-20T05:00:00Z',
+      }] },
+      isPending: false,
+      isError: false,
+    }
+    coverageState.current = { data: undefined, isError: true }
+    render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
+
+    expect(screen.getByText('Step 6 of 8')).toBeInTheDocument()
+    expect(screen.getByText(/could not be checked right now/)).toBeInTheDocument()
   })
 
   it('shows persistent pending feedback while the draw and match refresh are running', () => {

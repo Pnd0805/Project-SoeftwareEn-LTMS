@@ -24,7 +24,7 @@ import {
   useTournamentApplications, useTournamentTeams,
 } from '../../../hooks/useTournament'
 import { useTournamentMatches } from '../../../hooks/useMatch'
-import { useTournamentReferees } from '../../../hooks/useAdmin'
+import { useRefereeCoverage, useTournamentReferees } from '../../../hooks/useAdmin'
 import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { formatName, formatOf, refsNeeded } from '../../../shared/rules'
 import { hasValidBracket } from '../hasValidBracket'
@@ -94,6 +94,14 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const ready = real
     ? apiMatches.filter(m => m.venue && m.scheduledTime && m.scheduledEndTime)
     : (ms as ReturnType<typeof matchesOf>).filter(m => m.venue && (m.refs || []).length >= need)
+  /* 30 ก.ย. — เดิมโหมดจริงนับแค่เวลากับสนาม ทั้งที่ชื่อขั้นบอก "and the officials": t23 ขึ้นว่าจัดครบ
+     แล้วเลื่อนไป "Results come in" ขณะที่แมตช์ 13 มีกรรมการ 0 จาก 2 ซึ่ง M10 ไม่ยอมให้เริ่ม
+     (INSUFFICIENT_REFEREES) — นับกรรมการจาก F14 coverage ตัวเดียวกับที่ backend ใช้ ไม่นับเองจากแถว */
+  const coverage = useRefereeCoverage(real ? tournamentId : undefined)
+  const uncovered = new Set(coverage.data?.uncoveredMatchIds ?? [])
+  const staffed = real && coverage.data ? apiMatches.filter(m => !uncovered.has(m.id)) : []
+  const fixturesSet = ms.length > 0 && ready.length === ms.length
+  const officialsSet = !real || (!!coverage.data && staffed.length === ms.length)
   const done = real
     ? apiMatches.filter(m => m.status === 'completed')
     : (ms as ReturnType<typeof matchesOf>).filter(m => m.status === 'confirmed')
@@ -169,12 +177,19 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       ),
     },
     {
-      state: ms.length > 0 && ready.length === ms.length ? 'done' : 'idle',
+      state: fixturesSet && officialsSet ? 'done' : 'idle',
       title: 'Set every fixture',
-      note: ms.length
-        ? `${ready.length} of ${ms.length} have a kick-off, an end time and a venue on them.`
-        : 'Kick-off, end time, venue and the officials, one match at a time.',
-      cta: <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/schedule`)}>Open the schedule</button>,
+      note: !ms.length
+        ? 'Kick-off, end time, venue and the officials, one match at a time.'
+        : `${ready.length} of ${ms.length} have a kick-off, an end time and a venue on them. `
+          + (!real ? ''
+            : coverage.isError ? 'Whether each has its referees could not be checked right now.'
+              : !coverage.data ? 'Checking the referees on each match…'
+                : `${staffed.length} of ${ms.length} have all their referees.`),
+      /* เวลากับสนามครบแล้วแต่กรรมการยังขาด — งานที่เหลืออยู่ในแผงกรรมการรายแมตช์ของหน้า Draw ไม่ใช่หน้าตาราง */
+      cta: fixturesSet && real && formatOf(t) !== 'roundrobin'
+        ? <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/manage/draw`)}>Ask referees for each match</button>
+        : <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/schedule`)}>Open the schedule</button>,
     },
     {
       state: allPlayed ? 'done' : 'idle',

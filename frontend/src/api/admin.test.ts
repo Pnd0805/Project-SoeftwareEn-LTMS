@@ -115,6 +115,8 @@ describe("tournament referees", () => {
 
     await expect(getRefereeCoverage(5)).resolves.toEqual({
       tournamentId: 5, required: 2, accepted: 1, shortfall: 1, blocksStatRecording: true,
+      // รางของผู้จัดต้องรู้ว่าขาดที่นัดไหน ยอดรวมอย่างเดียวบอกไม่ได้ (SetupTrail ขั้น 6)
+      uncoveredMatchIds: [7],
     });
     expect(lastRequest().path).toBe("/tournaments/5/referees/coverage");
   });
