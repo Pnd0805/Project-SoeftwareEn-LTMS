@@ -2,7 +2,9 @@
 
 Frontend branch `feat/1` · API base path `/api/v1`
 
-**Current backend reference: `BE_KN` at `7a4499c`, read on 2026-09-29.**
+**Current backend reference: `BE_KN` at `7a4499c`, read on 2026-09-29 and
+re-checked 2026-09-30.** `BE_KN` has since moved to `2f072e7`; what that brings
+is listed under *Landed on `2f072e7`, not yet verified by us* below.
 The bulk of this file was verified against the running server at `a88f7ad` on
 2026-09-22, and the oldest items against `df506ea` on 2026-09-20. Every claim
 names the route, schema, service or migration it was checked against, plus live
@@ -78,6 +80,14 @@ and avatar uploads remain open as the notice said. Checking them turned up
 three problems in the test data and migrations, and a user question the same
 day turned up `FE-comment-report-cannot-be-dismissed`. 7 items.
 
+**Updated 2026-09-30.** Two items landed on `BE_KN` after our last read
+(`FE-comment-report-cannot-be-dismissed` in `f1a3624`,
+`FE-avatar-and-team-logo-uploads` in `4813d1f`); they are listed as landed
+but not yet verified. A day of restoring the QA baseline turned the two
+baseline items into three: migrate breaks on 024 and 028 as well as 029, and
+the baseline also predates rules the backend now enforces
+(`FE-qa-baseline-predates-current-rules`). 6 open, 2 awaiting our check.
+
 ## How to read it
 
 - Each item has a stable code (`FE-…`). It is derived from the item's own
@@ -99,11 +109,13 @@ day turned up `FE-comment-report-cannot-be-dismissed`. 7 items.
   seven regressions of 21 September turned out to be, and which of them are
   waiting on the three write-only fields listed below.
 - `HANDOVER-2026-09-23.md` is the same for the seven reports of 23 September.
-- `HANDOVER-2026-09-29.md` is the current one, and is where to start if you only
-  read one file. `FE-REPLY-BE_KN-2026-09-29.md` is the item-by-item answer to
-  the backend notice of 28 September, in Thai.
+- `HANDOVER-2026-09-29.md` covers 29 September. `FE-REPLY-BE_KN-2026-09-29.md`
+  is the item-by-item answer to the backend notice of 28 September, in Thai,
+  with a 30 September addendum at the end.
+- `HANDOVER-2026-09-30.md` is the current one, and is where to start if you
+  only read one file.
 
-## Delivery required — 7 items
+## Delivery required — 6 open, 2 landed awaiting our check
 
 Ranked by urgency. `FE-REPLY-BE_KN-2026-09-29.md` has the same items in Thai,
 item by item against the 2026-09-28 notice, with the live runs behind each one.
@@ -118,12 +130,25 @@ item by item against the 2026-09-28 notice, with the live runs behind each one.
       baseline restore after that brings them back with their old `created_at`
       and sweeps them again. Wanted: filter them out, the way the 2026-09-28
       notice says already happens.
-- [ ] **FE-migration-029-fails-on-baseline** — `qa-baseline.sql` (21 September)
-      already has `supporting_docs`, but its `schema_migrations` stops at 020, so
-      029's unconditional `ADD COLUMN` stops `npm run migrate` with
+- [ ] **FE-migration-029-fails-on-baseline** — *widened 2026-09-30: 024 and 028
+      fail too.* `qa-baseline.sql` (21 September) already has
+      `supporting_docs`, but its `schema_migrations` stops at 020, so 029's
+      unconditional `ADD COLUMN` stops `npm run migrate` with
       `ER_DUP_FIELDNAME` — and **030, the one-root rule, is never created** on
-      the database the test team uses. Wanted: make 029 check for the column
-      first, or record 021–029 in the baseline's `schema_migrations`.
+      the database the test team uses. Second cause, found restoring three
+      times on 2026-09-30: `qa-baseline.py restore` loads a `--add-drop-table`
+      dump, which drops only the tables *in the dump*. Tables created by later
+      migrations (`user_reports` from 024, `match_result_complaints` from 028)
+      survive the restore, so 024 and 028 then fail `ER_TABLE_EXISTS_ERROR` —
+      and any rows in them are pre-restore data sitting beside baseline data.
+      A bare restore without migrate is worse still: match pages and standings
+      answer 500 (`Unknown column 'm.started_at'`, `'ts.goals_for'`), which a
+      user reported as "the data is wrong". Wanted: re-save the baseline at the
+      current schema with `schema_migrations` complete, and have `restore`
+      drop the whole database first. Until then
+      `frontend/scripts/restore-qa.py` wraps restore + migrate and skips a
+      failed file only when its table exists and is empty or its columns
+      already exist.
 - [ ] **FE-qa-baseline-role-conflicts** — the baseline ships twelve cases the API
       now refuses (decision of 18 September, spec 02 §7): an organizer competing
       in their own tournament ×3 (9201 in t22/t23, 9001 in t14), a referee on a
@@ -132,9 +157,33 @@ item by item against the 2026-09-28 notice, with the live runs behind each one.
       in t2/t4). Checked all three API paths refuse new ones. Our dev database
       is cleaned (organizers of t22/t23 → 9001 and t14 → 9201, nine referee rows
       removed through F03), but every `qa-baseline.py restore` brings all twelve
-      back. `frontend/scripts/audit-roles.py` checks six rules and should exit
-      0 on a fixed baseline. Also: `OPEN_DECISIONS.md` still lists **OD-10 as
+      back. `frontend/scripts/audit-roles.py` checks eight rules and should exit
+      0 on a fixed baseline. **Removing is not enough on its own** (found
+      2026-09-30): five of those tournaments (t2, t4, t6, t14, t16) are already
+      public, so taking the conflicted referees out leaves them public with
+      fewer accepted referees than publishing requires — a state
+      `REFEREES_INCOMPLETE` forbids, and the organizer's step trail then jumps
+      back to "Appoint the referees" with every later step already done. A
+      fixed baseline needs replacements; ours uses `referee3@ku.th` and
+      `referee4@ku.th`, who conflict with nothing in those five. Also: `OPEN_DECISIONS.md` still lists **OD-10 as
       open** although the decision was taken and the code enforces it.
+- [ ] **FE-qa-baseline-predates-current-rules** — *new 2026-09-30.* Checked
+      the whole baseline against every transition the backend now guards.
+      Beyond the role conflicts above, four things are impossible under
+      today's rules and three of them show on screen:
+      - match #1 (t10) has had check-in open since 17 September with no start,
+        end, venue or referees — `SCHEDULE_INCOMPLETE` now forbids that, and M06
+        cannot edit a match that is not `scheduled`, so nobody can repair it
+        through the screen;
+      - match 12 (t21) is `in_progress` with a `submitted` result — OD-26 accepts
+        a result only after finish;
+      - t12 is `completed` with no `champion_team_id` or `completed_at` (closed
+        before migration 022), so its page reads "No champion was assigned";
+      - eight played matches have no `started_at` / `actual_end_time` (before
+        026). Nothing reads them yet, so we left them rather than invent times.
+      Wanted: fold these into the re-saved baseline. `restore-qa.py` shows the
+      fix for each, all through the API except t12's champion, which
+      `completeTournament` cannot set on a tournament already closed.
 - [ ] **FE-dispute-ruling-hidden-from-players** — *follow-up to
       `FE-dispute-resolution-not-returned`, decided 2026-09-29.* All six dispute
       fields now arrive on S05, but once the result is final only the organizer,
@@ -155,32 +204,23 @@ item by item against the 2026-09-28 notice, with the live runs behind each one.
       viewer is an admin, so changing it before we move that check to
       `adminScope` on `GET /me` locks root out of the whole page. We will say
       when.
-- [ ] **FE-comment-report-cannot-be-dismissed** — a reported tournament comment
-      stays in the organizer's `?reported=true` queue for good. Nothing in the
-      SRS or `OPEN_DECISIONS.md` covers clearing a report: FR-CM-01 asks only for
-      report-and-admin-removes, and the 23 September moderation decision clears
-      `is_reported` **only when an admin restores a removed comment**. So an
-      organizer who presses Report by mistake — or who receives a groundless
-      report — can clear it only by deleting a comment that did nothing wrong,
-      which notifies its author and writes a removal to the audit log. The
-      whole flow is otherwise working, checked end to end on t19 on 2026-09-29.
-      Wanted: a **dismiss** for the reviewer, not an undo for the reporter —
-      e.g. `POST /tournaments/:id/comments/:cid/dismiss-report` behind the same
-      guard as organizer removal, open to university-wide admins too, clearing
-      the flag with an audit row and no notification. An undo-my-report cannot
-      be built on the current column: `is_reported` is one boolean per comment
-      and does not record who reported, so one reporter withdrawing would erase
-      everyone else's report.
-- [ ] **FE-avatar-and-team-logo-uploads** — image uploads for people and teams
-      (R23). Confirmed still open at `7a4499c`, as the notice says.
-      `/uploads/presign` accepts four purposes, none of them a profile picture
-      or logo, although `users.profile_image_key` exists and `PATCH /me` takes
-      `avatarUrl`; `teams` has no logo column and `PATCH /teams/:id` takes only
-      name and visibility. User mappers hand back the raw S3 key as `avatarUrl`
-      in **14 places** (not 9 — the admin mappers merged on 2026-09-28 added
-      four). Wanted: an avatar purpose plus a mapped readable URL, and a
-      migration with a leader-only logo contract. Nothing on the frontend can
-      start until these exist.
+### Landed on `2f072e7`, not yet verified by us
+
+Both are on `BE_KN` as of 2026-09-30 and both match what we asked for on
+paper. Neither has been run against a live server or wired into a screen yet,
+so they stay unticked until we have.
+
+- [ ] **FE-comment-report-cannot-be-dismissed** — landed in `f1a3624`:
+      `POST /tournaments/:id/comments/:cid/dismiss` → `200 {id, isReported:
+      false}`, audit `comment_report_dismissed`, no reason, no notification to
+      the author, and a second dismiss of the same comment answers 409. That is
+      the reviewer-side dismiss we asked for rather than an undo for the
+      reporter. Still to do on our side: verify live, then a Dismiss button in
+      the Reported only view (slice 2's `LiveCommunityTab.tsx`).
+- [ ] **FE-avatar-and-team-logo-uploads** — landed in `4813d1f` (merged in
+      `49faf77`, with migration `031_team_logo_key.sql` and a bucket policy).
+      Not yet read in detail; we will check the presign purposes, the mapped
+      URL in all 14 user mappers, and the leader-only logo rule.
 
 Not an item, but asked for: **put breaking changes in the notice.** Two landed
 unannounced in the 2026-09-28 merge — MVP moving to per-match

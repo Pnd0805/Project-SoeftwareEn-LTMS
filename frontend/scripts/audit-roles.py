@@ -129,6 +129,48 @@ CHECKS = [
         ORDER BY c.match_id, c.match_checkin_id
         """,
     ),
+    # 30 ก.ย. — ขั้นของรางผู้จัด (SetupTrail) ย้อนกันเอง: ผู้ใช้เห็นทัวร์ที่เปิดสาธารณะ รับสมัคร
+    # อนุมัติทีมแล้ว แต่ขั้น 1 "แต่งตั้งกรรมการ" ยังเป็น NOW เพราะถอดกรรมการที่ขัดผลประโยชน์ (C2/C3)
+    # ออกหลังเปิดสาธารณะ — แก้บทบาทหนึ่งแล้วไปพังอีกกฎหนึ่ง จึงต้องตรวจคู่กันเสมอ
+    (
+        "C7", "ทัวร์ที่เปิดสาธารณะแล้วแต่กรรมการที่ตอบรับไม่ครบ",
+        "SRS BR-10 (กรรมการก่อน Public) · publishTournament → REFEREES_INCOMPLETE · ต้องการ 2 คนถ้าออนไซต์และกีฬามีสถิติ ไม่งั้น 1",
+        """
+        SELECT t.tournament_id AS tournament, t.name AS tournament_name, t.tournament_status AS status,
+               s.default_mode AS mode, x.have, x.needed
+        FROM tournaments t
+        JOIN sport_types s ON s.sport_type_id = t.sport_type_id
+        JOIN (
+          SELECT t2.tournament_id,
+                 (SELECT COUNT(*) FROM tournament_referees tr WHERE tr.tournament_id = t2.tournament_id
+                    AND tr.removed_at IS NULL AND tr.invitation_status = 'accepted'
+                    AND tr.external_approval_status IN ('not_required','approved')) AS have,
+                 CASE WHEN s2.default_mode = 'onsite' AND EXISTS (
+                        SELECT 1 FROM sport_stat_definitions d WHERE d.sport_type_id = t2.sport_type_id)
+                      THEN 2 ELSE 1 END AS needed
+          FROM tournaments t2 JOIN sport_types s2 ON s2.sport_type_id = t2.sport_type_id
+        ) x ON x.tournament_id = t.tournament_id
+        WHERE t.deleted_at IS NULL AND t.tournament_status IN ('public','completed') AND x.have < x.needed
+        ORDER BY t.tournament_id
+        """,
+    ),
+    (
+        "C8", "แมตช์ที่เลยขั้นนัดหมายแล้วแต่ยังไม่มีเวลาเริ่ม เวลาจบ หรือสนาม",
+        "open-checkin → SCHEDULE_INCOMPLETE (FE-open-checkin-has-no-fixture-gate) · M06 แก้นัดได้เฉพาะแมตช์ scheduled",
+        """
+        SELECT m.match_id, m.tournament_id AS tournament, m.match_status AS status,
+               CONCAT_WS(',', IF(m.scheduled_time IS NULL, 'start', NULL),
+                              IF(m.scheduled_end_time IS NULL, 'end', NULL),
+                              IF(m.venue IS NULL OR m.venue = '', 'venue', NULL)) AS missing
+        FROM matches m
+        WHERE m.match_status IN ('checkin_open','in_progress','finished','completed','disputed','result_rejected')
+          AND m.team_a_id IS NOT NULL AND m.team_b_id IS NOT NULL
+          AND (m.scheduled_time IS NULL OR m.scheduled_end_time IS NULL OR m.venue IS NULL OR m.venue = '')
+          AND NOT EXISTS (SELECT 1 FROM match_results r WHERE r.match_id = m.match_id
+                          AND r.match_result_status = 'walkover')
+        ORDER BY m.match_id
+        """,
+    ),
 ]
 
 

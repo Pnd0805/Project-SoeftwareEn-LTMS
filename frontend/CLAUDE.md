@@ -64,10 +64,14 @@ The backend blocks new rule-breaking cases through its API, but rows written str
 database never meet those checks — and `qa-baseline.sql` itself ships twelve of them (found
 2026-09-29: ปกรณ์ competing in t22/t23, which he organizes; สมหญิง and มานะ refereeing tournaments
 their team entered; สมชาย refereeing his own t2/t4). Every restore brings them back. The script
-checks six rules, each cited from the spec: organizer competing in their own tournament · referee
+checks eight rules, each cited from the spec: organizer competing in their own tournament · referee
 on a team entered in the same tournament · organizer refereeing their own tournament · referee on
 either team of the match they officiate · a match past `scheduled` without enough referees ·
-a check-in decided by someone who is not that match's referee. Exit code 1 = cases found (listed
+a check-in decided by someone who is not that match's referee · a public tournament with fewer
+accepted referees than publishing requires · a match past `scheduled` without start, end and venue.
+The last two exist because fixing one rule broke another (2026-09-30): removing conflicted referees
+from already-public tournaments left five of them short, and the organizer's step trail jumped back
+to "Appoint the referees" with publish, registration and squads already done. Exit code 1 = cases found (listed
 with ids), 0 = clean, 2 = database unreachable. Never "fix" a case by guessing which role to drop —
 report it and ask.
 
@@ -82,15 +86,30 @@ Test accounts all use password `abcd1234`:
 - `admin.eng@ku.th` — admin, **faculty 1 only**. `seed-test.sql` has always
   defined this account but `qa-baseline.sql` does not ship it, so a restored
   database has one admin and no way to test faculty scope — which is where
-  auto-approval and `ELIGIBILITY_OUT_OF_SCOPE` actually differ. Re-add after a
-  restore with the two inserts in `seed-test.sql` (user 9004 + its
-  `admin_scopes` row).
+  auto-approval and `ELIGIBILITY_OUT_OF_SCOPE` actually differ. `restore-qa.py`
+  re-adds it (user 9004 + its `admin_scopes` row), and `root@ku.th` (9099) too.
 
-Roll test data back without shifting a single id (replaces the prototype's "reset mock"):
+Roll test data back without shifting a single id (replaces the prototype's "reset mock") —
+**use the wrapper, never `qa-baseline.py restore` on its own:**
 
 ```bash
-python database/qa-baseline.py restore
+python C:/Users/DELL/Projects/Project-SoeftwareEn-LTMS/frontend/scripts/restore-qa.py
 ```
+
+The baseline dates from 2026-09-21, and a bare restore leaves a database the current backend cannot
+use (found 2026-09-30: match pages and standings all 500, missing `started_at` / `goals_for`).
+`migrate` alone does not finish either — restore keeps tables it did not dump, so 024 and 028 fail
+`ER_TABLE_EXISTS_ERROR`, and 029 fails `ER_DUP_FIELDNAME`. The wrapper restores, migrates (skipping a
+failed file only when its table exists and is empty, or its columns already exist — anything else
+stops with exit 4), re-adds `admin.eng@ku.th` and `root@ku.th` from `seed-test.sql`, applies the
+2026-09-29 decisions on the twelve baseline conflicts (hand the organizer over; remove referees
+through F03, so the backend must be running — otherwise exit 3, rerun with `--no-restore`), then
+the 2026-09-30 decisions: re-staffs the five public tournaments that removal left short with
+`referee3@ku.th` / `referee4@ku.th` (invite → accept), gives match #1 a fixture and two
+referees before reopening its check-in, and staffs match 13 (t23) from its tournament's pool. Match
+14 (t22) is left with no fixture on purpose — t22 correctly sits at step 6. It ends with the audit,
+which should exit 0. Everything recorded after 2026-09-21 is gone after a restore; that is the
+baseline, not the script.
 
 ## Working in this code
 

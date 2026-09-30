@@ -5,7 +5,8 @@ API base path: `/api/v1`
 
 **Current backend contract reference: remote `BE_KN@7a4499c` and its
 2026-09-28 FE notice** (answered in `FE-REPLY-BE_KN-2026-09-29.md`; this
-round is R28–R34). Verified with `git fetch origin BE_KN` on 2026-09-29.
+round is R28–R34; R35–R41 followed on 2026-09-30, when `BE_KN` moved to
+`2f072e7`, not yet pulled). Verified with `git fetch origin BE_KN` on 2026-09-29.
 Before that: `BE_KN@e5ea50d` and the 2026-09-23 C1/C6/C7 and BE_KN FE
 notices, verified on 2026-09-23. Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
@@ -521,6 +522,96 @@ The backend-facing half is in `FE-REPLY-BE_KN-2026-09-29.md` (Thai) and
             `canModerate` is true — the organizer can Remove directly, so the
             button only creates this mistake — and add **Dismiss** in the
             Reported only view once the route exists.
+
+### R35–R41 — restoring the QA baseline, and what it showed (2026-09-30)
+
+Everything here is against `BE_KN@7a4499c` after `npm run migrate`. `BE_KN` moved
+to `2f072e7` the same day; see the end of this section. Short version for both
+teams: `HANDOVER-2026-09-30.md`.
+
+- [x] **R35 — "can I use `python database/qa-baseline.py restore`?"** Yes, but a
+      bare restore leaves a database the current backend cannot use. The user ran
+      it once without migrate: match pages and standings answered 500
+      (`Unknown column 'm.started_at'`, `'ts.goals_for'`) and read as "the data is
+      wrong". Migrate alone does not finish either — restore drops only the tables
+      in its dump, so `user_reports` / `match_result_complaints` survive and 024 /
+      028 fail `ER_TABLE_EXISTS_ERROR`, and 029 fails `ER_DUP_FIELDNAME`. Filed
+      under `FE-migration-029-fails-on-baseline` (widened).
+- [x] **R36 — one command instead: `frontend/scripts/restore-qa.py`.** Restore →
+      migrate (a failed file is skipped only when its table exists and is empty,
+      or its columns already exist; anything else stops with exit 4) → re-add
+      `admin.eng@ku.th` and `root@ku.th` from `seed-test.sql` → the eight repair
+      steps below → the audit. Every repair goes through the API as the real
+      actor except the organizer handover and t12's champion, which no route can
+      make. Each repair is a fixed list of decisions the user took; it never
+      infers a fix from the audit. `--no-restore` repeats the repairs only (the
+      API steps need the backend running, otherwise exit 3). `frontend/CLAUDE.md`
+      now says never to restore without it.
+- [x] **R37 — "the progress trail says step 1 again on a tournament that is
+      already public".** The screenshot was t14. Our own 2026-09-29 fix caused
+      it: removing conflicted referees from five tournaments already public (t2,
+      t4, t6, t14, t16) left them below `REFEREES_INCOMPLETE`'s minimum, so the
+      trail lit "Appoint the referees" with publish, registration and squads
+      done. The trail was right; the data was impossible. Re-staffed with
+      `referee3@ku.th` / `referee4@ku.th` (invite → accept). Match #1 (t10), open
+      for check-in since 17 September with no fixture or referees, was closed (0
+      check-ins lost), scheduled, staffed through FR02, and reopened.
+      `audit-roles.py` gained **C7** (public tournament short of referees) and
+      **C8** (match past `scheduled` without start, end and venue); C8 caught
+      match #1 on a bare baseline.
+- [x] **R38 — "t23 is at *Results come in* but its match has no referees".**
+      A trail bug, ours to fix though the file is slice 2's (`SetupTrail.tsx`,
+      the user approved the edit). In real mode step 6 counted only kick-off,
+      end time and venue — its own label says "and the officials" — so t23
+      advanced while match 13 had 0 of 2 referees and M10 would refuse to start
+      it (`INSUFFICIENT_REFEREES`).
+      - Step 6 now also needs every match covered, read from F14
+        `GET /tournaments/:id/referees/coverage` — the same source the backend
+        uses, not a count of our own rows. `getRefereeCoverage` keeps
+        `uncoveredMatchIds`, which it used to fold into totals.
+      - The note reads "N of M have all their referees"; with the fixtures set
+        and referees missing, the button goes to Manage → Draw, where the
+        per-match planner is. Coverage that cannot be read says so instead of
+        passing.
+      - Tests: two in `DrawProgress.test.tsx`, both failing without the fix;
+        `api/admin.test.ts` pins the new field. Checked live: t23 → step 7,
+        t22 → step 6 "0 of 1 · 0 of 1".
+      - Data: match 13 staffed from t23's pool through FR02 (สมหญิง, มานะ).
+        Match 14 (t22) is left without a fixture on purpose.
+      - [ ] Slice 2: round-robin tournaments have no Draw tab, so the per-match
+            referee planner never renders for them (`ManageTab.tsx`, `showDraw`).
+            Step 6's button falls back to the schedule there.
+- [x] **R39 — "check the seed for anything else like this".** Thirteen more
+      rules, each tied to a backend transition (result ↔ match status, start
+      needs check-in, the minimum checked-in players, advancement to the next
+      match, a later round not starting before its feeders, closing a
+      tournament, stray check-ins, removed referees still on matches…). Two
+      showed on screen and were fixed with the user's approval:
+      - match 12 (t21) was `in_progress` with a `submitted` result, which OD-26
+        forbids — its referee finished it through M11; it now waits on the
+        winning leader;
+      - t12 was `completed` with no champion (closed before migration 022) and
+        its page said "No champion was assigned" — set from the verified final,
+        `completed_by` left empty because nobody knows who closed it.
+      Eight old matches lack `started_at` / `actual_end_time` (before 026). No
+      screen reads them; left alone rather than invent times. Filed as
+      `FE-qa-baseline-predates-current-rules`.
+- [x] **R40 — "the referee can dispute match 12?"** Yes, by design:
+      `requireCanDisputeResult` admits the match's referees as well as the team
+      leaders, and `viewer.can.disputeResult` mirrors it. No change.
+- [ ] **R41 — match 12 reads "Entered by —".** Seen during R39, not yet looked
+      at. The submitter's name is missing on the match page (slice 3).
+
+**`BE_KN` at `2f072e7` (not pulled or verified yet).** Two of our open items
+landed: the organizer's report **dismiss** (`f1a3624`,
+`POST /tournaments/:id/comments/:cid/dismiss`) and avatar/team-logo uploads
+(`4813d1f`, migration 031). Migration 032 also arrived. Pull, migrate, verify,
+then wire:
+
+- [ ] Backend delivery required → landed, verify: `FE-comment-report-cannot-be-dismissed`,
+      then a Dismiss button in the Reported only view (slice 2).
+- [ ] Backend delivery required → landed, verify: `FE-avatar-and-team-logo-uploads`
+      (R23), then the upload screens.
 
 ## FE delivery for BE_KN `a14d44c` + `a88f7ad` — 2026-09-21
 
