@@ -1,6 +1,7 @@
 import type { MatchDetailRow, MatchListRow, MatchCheckinListRow, MatchResultSummaryCols, MatchLineupRow } from '../repositories/match.repo.js';
 import type { BracketNodeListRow } from '../repositories/bracketNode.repo.js';
 import type { MatchRow } from '../types/db.js';
+import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 /**
  * B5 + outcome (รายงาน FE 19 ก.ย.) — สรุปผลบนแถวแมตช์ เพื่อให้ตาราง/สาย/แดชบอร์ดวาดได้จาก M04 อย่างเดียว
@@ -181,7 +182,7 @@ export function toLineupPlayerDto(row: MatchLineupRow): LineupPlayerDto {
     return {
         userId: row.user_id,
         fullName: row.full_name,
-        avatarUrl: row.profile_image_key,
+        avatarUrl: toPublicImageUrl(row.profile_image_key),
         checkinStatus: row.match_checkin_status === null ? null : toCheckinStatusApi(row.match_checkin_status),
         checkedInAt: row.checked_in_at,
     };

@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import {
   toMyApplicationDto,
   toOrganizerApplicationDto,
@@ -123,7 +128,7 @@ describe('toApplicationDetailDto', () => {
       status: 'approved',
       hardFilterDetails: [{ userId: 1, fullName: 'Somchai', passed: true }],
       softFilterDocuments: presignedUrls,
-      players: [{ userId: 1, fullName: 'Somchai', avatarUrl: 'avatar/1.jpg' }],
+      players: [{ userId: 1, fullName: 'Somchai', avatarUrl: 'https://cdn.test/avatar/1.jpg' }],
     });
   });
 

@@ -1,10 +1,11 @@
 import { randomUUID } from 'crypto';
-import { PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import s3 from '../config/s3.js';
 import { env } from '../config/env.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as TeamRepo from '../repositories/team.repo.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 import { AppError } from '../utils/AppError.js';
 import type { PresignUploadInput } from '../schemas/upload.schema.js';
@@ -58,6 +59,20 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
             throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
         }
         entityId = input.matchId;
+    } else if (input.purpose === 'avatar') {
+        entityId = userId; // ไม่รับ userId จาก body เด็ดขาด — กันส่ง key ไปเป็นรูปของคนอื่น
+    } else if (input.purpose === 'team_logo') {
+        if (input.teamId === undefined) {
+            throw new AppError(400, "VALIDATION_FAILED", "ต้องระบุ teamId");
+        }
+        const team = await TeamRepo.findById(input.teamId);
+        if (!team) {
+            throw new AppError(404, "TEAM_NOT_FOUND", "ไม่พบทีมนี้");
+        }
+        if (team.leader_id !== userId) {
+            throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
+        }
+        entityId = input.teamId;
     } else {
         if (input.tournamentId === undefined) {
             throw new AppError(400, "VALIDATION_FAILED", "ต้องระบุ tournamentId");
@@ -143,4 +158,53 @@ export async function validateSoftFilterDocuments(objectKeys: string[], tourname
 export async function getPresignedDownloadUrl(objectKey: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey });
     return getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
+}
+
+const IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
+
+async function assertImageObjectExists(objectKey: string, notFoundCode: string, notFoundMessage: string): Promise<void> {
+    try {
+        const metadata = await s3.send(new HeadObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
+        if (!metadata.ContentType || !IMAGE_CONTENT_TYPES.has(metadata.ContentType)) {
+            throw new AppError(422, notFoundCode, notFoundMessage, { objectKey });
+        }
+    } catch (error) {
+        if (error instanceof AppError) throw error;
+        if (isObjectNotFound(error)) {
+            throw new AppError(422, notFoundCode, notFoundMessage, { objectKey });
+        }
+        throw new AppError(503, 'STORAGE_UNAVAILABLE', 'ไม่สามารถตรวจสอบไฟล์ที่อัปโหลดได้ในขณะนี้');
+    }
+}
+
+// ตรวจ 2 ชั้นก่อนบันทึก key ลง DB (มติ C2-avatar ข้อ 5): (ก) key ตรง regex ว่าเป็นของ user นี้จริง (ข) ไฟล์มีอยู่จริงบน S3
+export async function validateAvatarKey(objectKey: string, userId: number): Promise<void> {
+    const expectedKey = new RegExp(
+        `^avatar/${userId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`,
+        'i'
+    );
+    if (!expectedKey.test(objectKey)) {
+        throw new AppError(422, 'AVATAR_KEY_INVALID', 'รูปนี้ไม่ได้ถูกอัปโหลดโดยผู้ใช้นี้', { objectKey });
+    }
+    await assertImageObjectExists(objectKey, 'AVATAR_KEY_NOT_FOUND', 'ไม่พบรูปที่อัปโหลดไว้ กรุณาอัปโหลดใหม่');
+}
+
+// ลบรูปเก่าตอนเปลี่ยนเป็นรูปใหม่ (มติ C2-avatar ข้อ 6) — best-effort เท่านั้น ลบไม่สำเร็จไม่ทำให้เปลี่ยนรูปล้ม แค่เขียน log
+export async function deleteObjectBestEffort(objectKey: string): Promise<void> {
+    try {
+        await s3.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
+    } catch (error) {
+        console.error(`deleteObjectBestEffort: failed to delete ${objectKey}`, error);
+    }
+}
+
+export async function validateTeamLogoKey(objectKey: string, teamId: number): Promise<void> {
+    const expectedKey = new RegExp(
+        `^team_logo/${teamId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`,
+        'i'
+    );
+    if (!expectedKey.test(objectKey)) {
+        throw new AppError(422, 'TEAM_LOGO_KEY_INVALID', 'โลโก้นี้ไม่ได้ถูกอัปโหลดสำหรับทีมนี้', { objectKey });
+    }
+    await assertImageObjectExists(objectKey, 'TEAM_LOGO_KEY_NOT_FOUND', 'ไม่พบโลโก้ที่อัปโหลดไว้ กรุณาอัปโหลดใหม่');
 }

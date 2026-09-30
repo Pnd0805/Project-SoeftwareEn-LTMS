@@ -12,6 +12,9 @@ vi.mock('../notification.service.js', () => ({
 vi.mock('../upload.service.js', () => ({
   getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),
 }));
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
 vi.mock('../../repositories/adminScope.repo.js', () => ({
   findAllOfficialRequests: vi.fn(),
   approveTeamOfficial: vi.fn(),
@@ -85,7 +88,7 @@ describe('adminScope.service getAllOfficialRequest()', () => {
       {
         id: 1,
         team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
-        requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'avatar.png' },
+        requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'https://cdn.test/avatar.png' },
         status: 'pending',
         supportingDocs: [],
         createdAt: '2024-04-01T00:00:00.000Z',

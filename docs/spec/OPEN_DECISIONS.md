@@ -650,3 +650,68 @@ FE รายงานว่า `POST /matches/:id/open-checkin` เป็น ORG
 - **บันทึกที่ `audit_logs`** (`match_abandoned` + เหตุผล) ไม่เพิ่มคอลัมน์ในตาราง `matches` · **ไม่จำกัดจำนวนครั้ง** — ฝนตกซ้ำสองวันเป็นไปได้จริง
 - **ไม่ใช้เส้นนี้เมื่อแข่งเกือบจบแล้วและผลใช้ได้** — กดจบการแข่งขัน (M10b) แล้วส่งผลตามปกติ เส้นนี้มีไว้เฉพาะตอนที่ผลยังไม่ควรนับ
 
+## OD-36 — Avatar/Team Logo URL Delivery — ✅ Resolved 2026-09-29
+
+`FE-avatar-and-team-logo-uploads` — `avatarUrl` เดิมคืน S3 key ดิบ ไม่ใช่ URL ที่ client เปิดดูได้ (`toUserRef()` ใช้เกือบทุก endpoint ที่คืนข้อมูลคน) และ `teams` ไม่มีคอลัมน์โลโก้เลย
+
+**เลือก public-read bucket** ตั้ง MinIO bucket policy ให้ prefix `avatar/` และ `team_logo/` อ่านได้สาธารณะ (`mc anonymous set download`) แล้ว mapper ประกอบ URL ตรงจาก `S3_PUBLIC_BASE` ไม่ต้อง presign เลย — เหตุผล: cache ได้ ไม่มีวันหมดอายุ list ยาวกี่คนก็ไม่มีต้นทุนเพิ่ม (แค่ string concat ไม่ยิง S3)
+
+**ทำไมไม่ใช้กฎเดียวกับเอกสารเช็คอิน/หลักฐานค้านผล** (ที่ต้อง presign ทุกครั้ง หมดอายุ 20 นาที) — สองอย่างนั้นเป็นเรื่อง PDPA (NF-SE-03) เห็นได้เฉพาะกรรมการของแมตช์ ส่วนรูปโปรไฟล์/โลโก้ทีมเป็นของที่ตั้งใจให้ทุกคนเห็นอยู่แล้วโดยธรรมชาติ (เหมือนหลุมพรางเดียวกับที่เกือบเกิดกับ `livestreamUrl` vs `roomCode` — อย่าลอกกฎของอีกฝั่งมาใช้ข้ามกัน)
+
+**อื่นๆ ที่ตัดสินไปพร้อมกัน**: avatar ผูก `entityId=userId` จาก token เสมอ (ไม่รับจาก body) · team_logo ต้องเป็นหัวหน้าทีม · บันทึก key ก่อนต้องตรวจ 2 ชั้น (regex ownership + `HeadObject` มีไฟล์จริง) ไม่ผ่าน → 422 · ส่ง `null` = ล้างรูป/โลโก้ · รูปเดิมตอนเปลี่ยนใหม่ลบแบบ best-effort ไม่ทำให้ request ล้มถ้าลบไม่สำเร็จ
+
+### เก็บตอน merge เข้า `BE_KN` (30 ก.ย.) — policy ถูกเขียนไว้แต่ไม่มีใครตั้งจริง
+
+ตอนรีวิวยิงจริงพบว่าทั้งวงทำงานถูกหมดจนถึงขั้นสุดท้าย แล้ว**เปิด URL ที่ระบบคืนมาไม่ได้**
+
+```
+1) presign avatar        200  avatar/9003/6ca688af-….png
+2) PUT ไฟล์ขึ้น MinIO     200
+3) PATCH /me             200  avatarUrl = http://localhost:9000/ltms/avatar/9003/….png
+4) เปิด avatarUrl         403 Forbidden      ← ตรงนี้
+```
+
+`mc anonymous set download` ที่ย่อหน้าข้างบนอ้างถึง **ไม่มีอยู่ในไฟล์ไหนเลย** — `minio-init` ใน
+`docker-compose.yml` ทำแค่ `mc alias set` กับ `mc mb` · ดีไซน์ไม่ผิด แต่ไม่มีใครตั้งค่าตามดีไซน์
+⇒ ใครที่ `docker compose up` ใหม่จะได้ URL ที่เปิดแล้ว 403 · **รูปยังแตกเหมือนเดิม แค่คนละสาเหตุ**
+
+แก้โดยเติมสองคำสั่งลง `minio-init` ให้ dev ทุกเครื่องได้ policy เองตอน `up` ไม่ต้องจำไปทำมือ
+
+```yaml
+mc anonymous set download local/${S3_BUCKET:-ltms-uploads}/avatar;
+mc anonymous set download local/${S3_BUCKET:-ltms-uploads}/team_logo;
+```
+
+**ยืนยันแล้วว่าแยกของสาธารณะกับของลับได้ถูก** — หลัง `minio-init` รันใหม่: `avatar/` และ `team_logo/`
+เปิดได้ **200** ส่วน `dispute_evidence/` `checkin_document/` `referee_identity/` `soft_filter_document/`
+ยัง **403** ทั้งหมด (ยิงจริงทั้ง 4 prefix)
+
+**และ `minio` ไม่มี `ports:` ใน compose เลย** — เจอเพราะ `docker compose up minio-init` recreate
+`minio` ตามและพอร์ตที่โฮสต์เคยเข้าถึงได้ก็หายไป ⇒ `npm run dev` บนเครื่องยิง MinIO ไม่ได้อีก
+เติม `127.0.0.1:9000-9001` ให้แล้ว · จำเป็นเพราะ dev รัน backend บนโฮสต์ **และ** เพราะ
+URL ของรูปถูกส่งไปให้เบราว์เซอร์เปิด ซึ่งเข้าชื่อ `minio` ในเน็ตเวิร์ก docker ไม่ได้
+
+### ⚠️ production ยังต้องทำมือ — ไม่มี `mc` บน AWS S3
+
+`mc anonymous set download` เป็นคำสั่งของ MinIO client ใช้กับ S3 จริงไม่ได้ · ตอน deploy
+ต้องใส่ bucket policy เองและ **ต้องจำกัดเฉพาะสอง prefix เท่านั้น ห้ามเปิดทั้ง bucket**
+
+```jsonc
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "s3:GetObject",
+    "Resource": [
+      "arn:aws:s3:::<bucket>/avatar/*",
+      "arn:aws:s3:::<bucket>/team_logo/*"
+    ]
+  }]
+}
+```
+
+พร้อมกับตั้ง `S3_PUBLIC_BASE` ให้ชี้โดเมนที่เบราว์เซอร์เปิดได้ (CDN หรือ bucket endpoint)
+ถ้าไม่ตั้ง ค่า fallback คือ `S3_ENDPOINT + S3_BUCKET` ซึ่งใน docker จะเป็น `http://minio:9000`
+**ที่เบราว์เซอร์เปิดไม่ได้** — จุดนี้เป็นกับดักของโหมด dockerized ที่ต้องระวังตอน deploy
+

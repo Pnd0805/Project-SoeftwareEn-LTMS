@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import {
   toGetOfficialRequest,
   toRequestApproveDto,
@@ -22,7 +27,7 @@ describe('toGetOfficialRequest', () => {
     expect(toGetOfficialRequest(row as any)).toEqual({
       id: 1,
       team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
-      requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'avatar.png' },
+      requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'https://cdn.test/avatar.png' },
       status: 'pending',
       supportingDocs: [],
       createdAt: '2024-04-01T00:00:00.000Z',

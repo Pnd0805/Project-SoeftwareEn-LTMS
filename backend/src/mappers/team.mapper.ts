@@ -1,4 +1,5 @@
 import { toUserRef } from './user.mapper.js';
+import { toPublicImageUrl } from '../utils/imageUrl.js';
 import type { TeamJoinRequestRow } from '../types/db.js';
 import type { JoinRequestWithUser, JoinRequestWithTeam } from '../repositories/joinRequest.repo.js';
 import type { TeamRow , TeamMemberRow, TeamInvitationRow, TeamAdminRequestRow } from "../types/db.js";
@@ -64,6 +65,7 @@ export function toMyTeam(row : TeamRow , mem_count : number , userId : number): 
 export type TeamDto = {
     id : number,
     name : string,
+    logoUrl : string | null,
     sportTypeId : number,
     readinessStatus : 'Forming' | 'Ready' | 'Inactive',
     officialStatus : 'Unofficial' | 'Official',
@@ -74,13 +76,14 @@ export type TeamDto = {
     createdAt : string
 }
 
-export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'visibility' | 'created_at' | 'deleted_at'>
+export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'logo_key' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'visibility' | 'created_at' | 'deleted_at'>
                         , member : number , leader : UserRefDto , maxMembers : number | null = null) : TeamDto {
 
     const status = row.deleted_at !== null ? 'Inactive' : row.readiness_status;
     return {
         id : row.team_id,
         name : row.name,
+        logoUrl : toPublicImageUrl(row.logo_key),
         sportTypeId : row.sport_type_id,
         readinessStatus : status,
         officialStatus : row.official_status,
@@ -148,7 +151,7 @@ export function toTeamMemberDto(rows : TeamMemberWithUserRef ) : TeamMemberDto{
     return{
         userId : rows.user_id,
         fullName : rows.full_name,
-        avatarUrl : rows.profile_image_key,
+        avatarUrl : toPublicImageUrl(rows.profile_image_key),
         joinedAt : rows.joined_at.toISOString()
     }
 }
@@ -179,7 +182,7 @@ export type getAllInvitation = {
 };
 
 export function toGetAllInvitation(rows : getInvitation) : getAllInvitation{
-    const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : rows.profile_image_key};
+    const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : toPublicImageUrl(rows.profile_image_key)};
     return {
         id : rows.team_invitation_id,
         invitedUser : user,

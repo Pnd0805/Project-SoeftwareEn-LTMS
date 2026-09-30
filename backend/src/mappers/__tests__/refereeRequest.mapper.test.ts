@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import { toRefereeRequestDto } from '../refereeRequest.mapper.js';
 import type { RefereeRequestListRow } from '../../repositories/refereeChangeRequest.repo.js';
 
@@ -75,12 +80,12 @@ describe('toRefereeRequestDto', () => {
                 requestedBy: 21,
                 refereeA: {
                     tournamentRefereeId: 31,
-                    user: { id: 41, fullName: 'Anong Referee', avatarUrl: 'avatars/41.jpg' },
+                    user: { id: 41, fullName: 'Anong Referee', avatarUrl: 'https://cdn.test/avatars/41.jpg' },
                     status: 'accepted',
                 },
                 refereeB: {
                     tournamentRefereeId: 32,
-                    user: { id: 42, fullName: 'Boonmee Referee', avatarUrl: 'avatars/42.jpg' },
+                    user: { id: 42, fullName: 'Boonmee Referee', avatarUrl: 'https://cdn.test/avatars/42.jpg' },
                     status: 'pending',
                 },
                 matchA: {
@@ -143,7 +148,7 @@ describe('toRefereeRequestDto', () => {
         it('nests the user built by toUserRef', () => {
             const dto = toRefereeRequestDto(makeRow());
 
-            expect(dto.refereeA.user).toEqual({ id: 41, fullName: 'Anong Referee', avatarUrl: 'avatars/41.jpg' });
+            expect(dto.refereeA.user).toEqual({ id: 41, fullName: 'Anong Referee', avatarUrl: 'https://cdn.test/avatars/41.jpg' });
         });
 
         it('keeps avatarUrl null when the referee has no profile image', () => {

@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../utils/imageUrl.js', () => ({
+  toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
+}));
+
 import {
   toMatchListItemDto,
   toMatchDetailDto,
@@ -526,7 +531,7 @@ describe('toLineupPlayerDto', () => {
     expect(toLineupPlayerDto(makeLineupRow())).toEqual({
       userId: 9,
       fullName: 'Somchai Jaidee',
-      avatarUrl: 'avatars/9.png',
+      avatarUrl: 'https://cdn.test/avatars/9.png',
       checkinStatus: 'checked_in',
       checkedInAt: CHECKED_IN,
     });
@@ -559,10 +564,10 @@ describe('toLineupPlayerDto', () => {
     expect(toLineupPlayerDto(makeLineupRow({ profile_image_key: null })).avatarUrl).toBeNull();
   });
 
-  it('passes profile_image_key through as avatarUrl without transforming it (a key, not a URL)', () => {
+  it('turns profile_image_key into a displayable URL via toPublicImageUrl (not a raw key)', () => {
     expect(
       toLineupPlayerDto(makeLineupRow({ profile_image_key: 'avatars/raw-key.png' })).avatarUrl,
-    ).toBe('avatars/raw-key.png');
+    ).toBe('https://cdn.test/avatars/raw-key.png');
   });
 
   it('does not expose which team the player belongs to (team_id is dropped)', () => {

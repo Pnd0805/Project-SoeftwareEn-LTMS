@@ -31,4 +31,8 @@ export const env = {
     // MinIO (dev) ต้องการ true เสมอ / AWS S3 จริง (production) ต้องตั้งเป็น false ผ่าน .env
     // ไม่ require เพราะไม่อยากบังคับทุกคนต้องตั้งค่านี้ตอน dev — ไม่ใส่ = ใช้ true (พฤติกรรมเดิม)
     S3_FORCE_PATH_STYLE : process.env["S3_FORCE_PATH_STYLE"] !== "false",
+
+    // URL สาธารณะสำหรับรูปที่ตั้งใจให้ทุกคนเห็น (avatar/team_logo) — ต้องตั้ง bucket policy อ่านสาธารณะก่อน (GUIDE)
+    // ไม่ require เพื่อไม่บังคับทุกเครื่อง — ไม่ใส่ = ประกอบจาก S3_ENDPOINT + S3_BUCKET เอง (ใช้ได้กับ MinIO path-style local)
+    S3_PUBLIC_BASE : process.env["S3_PUBLIC_BASE"] || `${requireEnv("S3_ENDPOINT")}/${requireEnv("S3_BUCKET")}`,
 };
