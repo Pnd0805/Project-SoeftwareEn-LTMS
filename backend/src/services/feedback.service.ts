@@ -275,7 +275,8 @@ function toCommentDto(row: CommentListRow, viewerId?: number, withReportFlag = f
         isMine: viewerId !== undefined && viewerId === row.user_id,
         // ธง report เห็นได้เฉพาะคนที่ลบได้ (ผู้จัดของทัวร์ / แอดมินทั้งมหาวิทยาลัย) — มติ 23 ก.ย. ข้อ 6.4
         // คนทั่วไปเห็นไม่ได้ ไม่งั้นกลายเป็นตราประจานที่ใครก็ตั้งให้คนอื่นได้ด้วยการกด report
-        ...(withReportFlag ? { isReported: Boolean(row.is_reported) } : {}),
+        // reportCleared มาคู่กัน (มติ 30 ก.ย.) — บอกคนกำกับดูแลว่าอันนี้เคยปล่อยผ่านไปแล้ว ไม่งั้นจะสับว่าทำไมธงไม่ขึ้น
+        ...(withReportFlag ? { isReported: Boolean(row.is_reported), reportCleared: row.report_cleared_at !== null } : {}),
     };
 }
 
@@ -466,6 +467,12 @@ export async function reportFeedback(feedbackId: number, userId: number) {
             throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');   // คนอื่นมองไม่เห็นอยู่แล้ว — ไม่บอกว่ามีอยู่จริง
         }
     }
+    // ตรวจแล้วปล่อยผ่านไปแล้ว = ไม่ขึ้นอีก (มติ 30 ก.ย. 2569) — คนเดิมกดซ้ำหรือคนอื่นกดต่อก็ไม่ส่งเรื่องใหม่
+    // จะกลับมาส่งได้อีกเมื่อเจ้าของแก้ข้อความ (upsertComment ล้าง report_cleared_at)
+    // ★ คืนค่าเดิมทุกครั้ง: คนกดต้องไม่รู้ว่าเรื่องนี้เคยถูกตัดสินไปแล้ว ไม่งั้นกลายเป็นการบอกสถานะการกำกับดูแลให้คนนอก
+    if (feedback.report_cleared_at) {
+        return { id: feedbackId, isReported: true };
+    }
     if (!feedback.is_reported) {
         await FeedbackRepo.markReported(feedbackId);
         // ความเห็นต่อทัวร์เป็นของสาธารณะบนหน้าผู้จัด — คนดูแลคือผู้จัด (มติ 23 ก.ย. ข้อ 6.4) · แจ้งครั้งแรกครั้งเดียว ไม่ใช่ทุกคนที่กด
@@ -501,7 +508,7 @@ export async function dismissCommentReport(tournamentId: number, feedbackId: num
     if (feedback.removed_at) {
         throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
     }
-    // ไม่ได้ถูกรายงานอยู่ หรือผู้จัดอีกคนกดปล่อยผ่านไปก่อนเสี้ยววินาที
+    // ไม่ได้ถูกรายงานอยู่ (รวมกรณีตรวจไปแล้ว ธงจึงไม่เคยขึ้น) หรือผู้จัดอีกคนกดปล่อยผ่านไปก่อนเสี้ยววินาที
     if (!feedback.is_reported || !(await FeedbackRepo.clearReported(feedbackId, orgUserId, { tournamentId, authorUserId: feedback.user_id }))) {
         throw new AppError(409, 'FEEDBACK_NOT_REPORTED', 'ความเห็นนี้ไม่ได้ถูกรายงานค้างอยู่');
     }

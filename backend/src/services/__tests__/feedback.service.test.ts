@@ -53,7 +53,7 @@ function match(overrides: Record<string, unknown> = {}) {
 function feedbackRow(overrides: Partial<FeedbackRow> = {}): FeedbackRow {
   return {
     tournament_feedback_id: 1, tournament_id: 20, user_id: 5, feedback_type: 'organizer_feedback',
-    content: 'ดีมาก', rating: 5, voted_for_user_id: null, match_id: null, is_reported: 0, removed_at: null, removed_by: null,
+    content: 'ดีมาก', rating: 5, voted_for_user_id: null, match_id: null, is_reported: 0, report_cleared_at: null, removed_at: null, removed_by: null,
     created_at: new Date('2026-09-21T00:00:00Z'), ...overrides,
   };
 }
@@ -737,6 +737,43 @@ describe('organizer moderation of tournament comments', () => {
       expect(await errOf(Service.dismissCommentReport(20, 1, ORG))).toMatchObject({ status: 404, code: 'FEEDBACK_NOT_FOUND' });
     });
   });
+
+    // หัวใจของมติ 30 ก.ย. — ปล่อยแล้วต้องจำ ไม่ใช่แค่ลดธง
+    it('a report on an already-cleared comment raises nothing and pings nobody', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ report_cleared_at: new Date('2026-09-21T12:00:00Z') }));
+      await expect(Service.reportFeedback(1, 60)).resolves.toEqual({ id: 1, isReported: true });
+      expect(FeedbackRepo.markReported).not.toHaveBeenCalled();
+      expect(NotificationService.notify).not.toHaveBeenCalled();
+    });
+
+    // ค่าที่คืนต้องเท่าเดิม — คนกดต้องแยกไม่ออกว่าเรื่องนี้เคยตัดสินไปแล้ว
+    it('the reporter cannot tell a cleared comment from a fresh one', async () => {
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ report_cleared_at: new Date() }));
+      const cleared = await Service.reportFeedback(1, 60);
+      vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow());
+      expect(cleared).toEqual(await Service.reportFeedback(1, 61));
+    });
+
+    // เจ้าของแก้ข้อความ → กลับเป็น "ยังไม่ตรวจ" — สิ่งที่ผู้จัดปล่อยผ่านคือข้อความนั้น
+    it('editing the comment puts it back to unreviewed (the repo clears the mark)', async () => {
+      vi.mocked(FeedbackRepo.findOwnComment)
+        .mockResolvedValueOnce(commentRow({ report_cleared_at: new Date() }))
+        .mockResolvedValueOnce(commentRow({ content: 'แก้แล้ว' }));
+      await Service.postTournamentComment(20, 50, 'แก้แล้ว');
+      expect(FeedbackRepo.upsertComment).toHaveBeenCalledWith(20, 50, 'แก้แล้ว', false);
+    });
+
+    // คนกำกับดูแลเห็นว่าอันไหนเคยปล่อยผ่าน · คนอื่นไม่เห็นทั้ง isReported และ reportCleared
+    it('reportCleared is moderator-only, like isReported', async () => {
+      vi.mocked(FeedbackRepo.listComments).mockResolvedValue({ rows: [commentRow({ report_cleared_at: new Date() })], totalItems: 1 });
+
+      const asOrg = await Service.listTournamentComments(20, ORG, 1, 10, 0);
+      expect(asOrg.items[0]).toMatchObject({ isReported: false, reportCleared: true });
+
+      const asStranger = await Service.listTournamentComments(20, 60, 1, 10, 0);
+      expect(asStranger.items[0]).not.toHaveProperty('reportCleared');
+      expect(asStranger.items[0]).not.toHaveProperty('isReported');
+    });
 
   it('the organizer deleting their own comment is not notified', async () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(commentRow({ user_id: ORG }));

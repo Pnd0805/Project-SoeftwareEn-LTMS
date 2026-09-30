@@ -16,13 +16,14 @@ export type FeedbackRow = {
     voted_for_user_id: number | null;
     match_id: number | null;
     is_reported: number;
+    report_cleared_at: Date | null;   // ตรวจแล้วปล่อยผ่านเมื่อไร · NULL = ยังไม่ตรวจ (migration 032)
     removed_at: Date | null;
     removed_by: number | null;   // คนที่ลบ — ใช้แยก "ผู้จัดลบ" (เขียนใหม่ได้) ออกจาก "แอดมินลบ" (ห้ามเขียนใหม่)
     created_at: Date;
 };
 
 const FEEDBACK_COLS = `f.tournament_feedback_id, f.tournament_id, f.user_id, f.feedback_type, f.content, f.rating,
-                       f.voted_for_user_id, f.match_id, f.is_reported, f.removed_at, f.removed_by, f.created_at`;
+                       f.voted_for_user_id, f.match_id, f.is_reported, f.report_cleared_at, f.removed_at, f.removed_by, f.created_at`;
 
 // ---- ทัวร์เริ่มแล้วหรือยัง ----
 
@@ -242,12 +243,14 @@ const COMMENT_SELECT = `SELECT ${FEEDBACK_COLS}, u.full_name AS author_name, u.p
  * คนละ 1 อันต่อทัวร์ (UNIQUE เดิม) — ส่งซ้ำ = แก้ข้อความ · ★ ธง report ไม่หาย (มติ 23 ก.ย. ข้อ 5-ก)
  * `revive` = แถวเดิมถูก "ผู้จัด" ลบไว้ แล้วเจ้าของเขียนใหม่ (มติ 23 ก.ย. ข้อ 6.6 ทาง ก) → คืนแถวเดิมให้มองเห็นอีกครั้ง
  * ธง is_reported ไม่ถูกล้างตรงนี้เหมือนกัน — คนตรวจยังเห็นว่าข้อความนี้เคยถูกรายงาน
+ * ★ แต่ report_cleared_at กลับเป็น NULL (มติ 30 ก.ย.) — สิ่งที่ผู้จัดตรวจผ่านคือข้อความนั้น ไม่ใช่แถวนั้น
+ *   ไม่กลับ = เขียนดี → ถูก report → ผู้จัดปล่อยผ่าน → แก้เป็นข้อความแย่ = รายงานไม่ขึ้นอีกตลอดกาล
  */
 export async function upsertComment(tournamentId: number, userId: number, content: string, revive = false): Promise<void> {
     await pool.query(
         `INSERT INTO tournament_feedback (tournament_id, user_id, feedback_type, content)
          VALUES (?, ?, 'comment', ?)
-         ON DUPLICATE KEY UPDATE content = VALUES(content)${revive ? ', removed_at = NULL, removed_by = NULL' : ''}`,
+         ON DUPLICATE KEY UPDATE content = VALUES(content), report_cleared_at = NULL${revive ? ', removed_at = NULL, removed_by = NULL' : ''}`,
         [tournamentId, userId, content]
     );
 }
@@ -314,7 +317,7 @@ export async function clearReported(feedbackId: number, byUserId: number, detail
     try {
         await conn.beginTransaction();
         const [result] = await conn.query<ResultSetHeader>(
-            `UPDATE tournament_feedback SET is_reported = FALSE
+            `UPDATE tournament_feedback SET is_reported = FALSE, report_cleared_at = NOW()
              WHERE tournament_feedback_id = ? AND is_reported = TRUE AND removed_at IS NULL`,
             [feedbackId]
         );
@@ -379,7 +382,7 @@ export async function restore(feedbackId: number, adminUserId: number): Promise<
     try {
         await conn.beginTransaction();
         const [result] = await conn.query<ResultSetHeader>(
-            `UPDATE tournament_feedback SET removed_at = NULL, removed_by = NULL, is_reported = FALSE
+            `UPDATE tournament_feedback SET removed_at = NULL, removed_by = NULL, is_reported = FALSE, report_cleared_at = NOW()
              WHERE tournament_feedback_id = ? AND removed_at IS NOT NULL`,
             [feedbackId]
         );

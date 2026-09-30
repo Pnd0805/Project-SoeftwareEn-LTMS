@@ -683,6 +683,9 @@ CREATE TABLE tournament_feedback (
   match_id INT NULL,
   match_key INT AS (IFNULL(match_id, 0)) STORED,
   is_reported BOOLEAN NOT NULL DEFAULT FALSE,
+  -- NULL = ยังไม่ตรวจ (ค่าตั้งต้น) · มีค่า = ผู้จัดตรวจแล้วปล่อยผ่าน (migration 032) — report ซ้ำจะไม่ขึ้นอีก
+  -- กลับเป็น NULL เมื่อเจ้าของแก้ข้อความ: สิ่งที่ตรวจผ่านคือข้อความนั้น ไม่ใช่แถวนั้น
+  report_cleared_at DATETIME NULL,
   removed_at DATETIME NULL,
   removed_by INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,   -- เวลาที่เขียนครั้งแรก · แก้แล้วไม่ขยับ (ใช้เรียงลำดับ)
@@ -872,4 +875,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('028_match_result_complaints.sql'),
   ('029_team_admin_requests_supporting_docs.sql'),   -- แก้ schema drift: คอลัมน์อยู่ใน schema.sql แต่ไม่มี migration
   ('030_admin_scopes_single_root.sql'),              -- OD-34: บังคับ root คนเดียวที่ระดับฐาน ไม่ใช่แค่ทาง API
-  ('031_team_logo_key.sql');
+  ('031_team_logo_key.sql'),
+  ('032_feedback_report_cleared.sql');   -- จำว่าความเห็นไหนตรวจแล้ว กัน report ซ้ำเรื่องเดิม
