@@ -81,7 +81,7 @@ Baseline หลัก:
 - Pick'em
 - replay viewing
 - schedule/stat correction
-- report export
+- ~~report export~~ — **ตัดออกจากขอบเขตแล้ว (30 ก.ย. 2569)** เหตุผลอยู่ใน `OPEN_DECISIONS.md` OD-37
 - referee change-request workflow ถ้าทีมยังยืนยัน scope นี้หลัง review ของ `OPEN_DECISIONS.md`
 
 ### Sprint #2 / Future
