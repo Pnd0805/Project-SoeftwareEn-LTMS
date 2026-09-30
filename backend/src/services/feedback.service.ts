@@ -9,6 +9,7 @@ import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
 import type { CommentListRow, FeedbackRow } from '../repositories/feedback.repo.js';
 import { toReviewItemDto, toReviewSummaryDto, toMvpCandidateDto, toMyReviewDto } from '../mappers/feedback.mapper.js';
 import * as NotificationService from './notification.service.js';
+import type { NotificationInput } from '../repositories/notification.repo.js';
 import { AppError } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
 
@@ -403,21 +404,45 @@ function feedbackNoun(type: FeedbackRow['feedback_type']): string {
  */
 async function notifyFeedbackAuthor(feedback: FeedbackRow, byUserId: number,
                                     kind: 'removed' | 'restored', reason: string | null): Promise<void> {
-    if (feedback.user_id === byUserId) return;
+    const tellAuthor = feedback.user_id !== byUserId;
+    // ผู้จัดที่ลบไว้คือคนที่คำตัดสินถูกกลับ — ต้องรู้ด้วย (แก้ 30 ก.ย. 2569)
+    // ไม่มีช่องทางอื่นให้เขารู้เลย: restore ล้าง is_reported ด้วย คอมเมนต์จึงหลุดจากคิว ?reported=true
+    // กลับมาโผล่ปนของใหม่ และ audit_logs ผู้จัดเปิดไม่ได้ ⇒ จะลบซ้ำโดยเข้าใจว่าเจ้าของโพสต์ซ้ำ วนได้ไม่จบ
+    const tellRemover = kind === 'restored' && typeof feedback.removed_by === 'number'
+                     && feedback.removed_by !== byUserId          // แอดมินลบเองแล้วคืนเอง
+                     && feedback.removed_by !== feedback.user_id; // เจ้าของไม่ต้องได้สองใบ
+    if (!tellAuthor && !tellRemover) return;
+
     const tournament = await TournamentRepo.findTournamentById(feedback.tournament_id);
     // 'โหวต MVP' ลงท้ายด้วยอักษรลาติน — เว้นวรรคก่อนคำไทยที่ต่อท้าย ไม่ให้กลายเป็น "MVPของคุณ"
     const raw = feedbackNoun(feedback.feedback_type);
     const noun = /[A-Za-z]$/.test(raw) ? `${raw} ` : raw;
     const where = tournament ? ` ในทัวร์นาเมนต์ "${tournament.name}"` : '';
-    await NotificationService.notify({
-        userId: feedback.user_id,
-        type: kind === 'removed' ? 'feedback_removed_by_admin' : 'feedback_restored',
-        title: kind === 'removed' ? `${noun}ของคุณถูกลบ` : `${noun}ของคุณกลับมาแสดงอีกครั้ง`,
-        message: kind === 'removed'
-            ? `ผู้ดูแลระบบลบ${noun}ของคุณ${where} — เหตุผล: ${reason}`
-            : `ผู้ดูแลระบบตรวจแล้วนำ${noun}ของคุณ${where}กลับมาแสดงอีกครั้ง`,
-        relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
-    });
+    const inputs: NotificationInput[] = [];
+
+    if (tellAuthor) {
+        inputs.push({
+            userId: feedback.user_id,
+            type: kind === 'removed' ? 'feedback_removed_by_admin' : 'feedback_restored',
+            title: kind === 'removed' ? `${noun}ของคุณถูกลบ` : `${noun}ของคุณกลับมาแสดงอีกครั้ง`,
+            message: kind === 'removed'
+                ? `ผู้ดูแลระบบลบ${noun}ของคุณ${where} — เหตุผล: ${reason}`
+                : `ผู้ดูแลระบบตรวจแล้วนำ${noun}ของคุณ${where}กลับมาแสดงอีกครั้ง`,
+            relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+        });
+    }
+
+    if (tellRemover) {
+        inputs.push({
+            userId: feedback.removed_by!,
+            type: 'feedback_restore_overridden',
+            title: `${noun}ที่คุณลบถูกนำกลับมาแสดง`,
+            message: `ผู้ดูแลระบบตรวจแล้วนำ${noun}ที่คุณลบ${where}กลับมาแสดง — ถ้ายังเห็นว่าไม่เหมาะสม กรุณาติดต่อผู้ดูแลระบบก่อนลบซ้ำ`,
+            relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+        });
+    }
+
+    await NotificationService.notify(inputs);
 }
 
 /**

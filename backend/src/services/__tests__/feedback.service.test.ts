@@ -52,7 +52,7 @@ function match(overrides: Record<string, unknown> = {}) {
 function feedbackRow(overrides: Partial<FeedbackRow> = {}): FeedbackRow {
   return {
     tournament_feedback_id: 1, tournament_id: 20, user_id: 5, feedback_type: 'organizer_feedback',
-    content: 'ดีมาก', rating: 5, voted_for_user_id: null, match_id: null, is_reported: 0, removed_at: null,
+    content: 'ดีมาก', rating: 5, voted_for_user_id: null, match_id: null, is_reported: 0, removed_at: null, removed_by: null,
     created_at: new Date('2026-09-21T00:00:00Z'), ...overrides,
   };
 }
@@ -460,12 +460,10 @@ describe('report / remove', () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5 }));
     vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
     await Service.removeFeedback(1, 3, 'หยาบคาย');
-    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+    expect(NotificationService.notify).toHaveBeenCalledWith([expect.objectContaining({
       userId: 5, type: 'feedback_removed_by_admin', relatedEntityType: 'tournament', relatedEntityId: 20,
-    }));
-    expect(vi.mocked(NotificationService.notify).mock.calls[0]![0]).toMatchObject({
       message: expect.stringContaining('หยาบคาย'),
-    });
+    })]);
   });
 
   it('an admin removing their own note is not notified', async () => {
@@ -480,16 +478,43 @@ describe('report / remove', () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, feedback_type: 'mvp_vote' }));
     vi.mocked(FeedbackRepo.softRemove).mockResolvedValue(true);
     await Service.removeFeedback(1, 3, 'โหวตตัวเอง');
-    expect(vi.mocked(NotificationService.notify).mock.calls[0]![0]).toMatchObject({ title: 'โหวต MVP ของคุณถูกลบ' });
+    expect(NotificationService.notify).toHaveBeenCalledWith([expect.objectContaining({ title: 'โหวต MVP ของคุณถูกลบ' })]);
   });
 
   it('a restore tells the author too', async () => {
     vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, removed_at: new Date() }));
     vi.mocked(FeedbackRepo.restore).mockResolvedValue(true);
     await Service.restoreFeedback(1, 3);
-    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+    expect(NotificationService.notify).toHaveBeenCalledWith([expect.objectContaining({
       userId: 5, type: 'feedback_restored', relatedEntityType: 'tournament', relatedEntityId: 20,
-    }));
+    })]);
+  });
+
+  // แก้ 30 ก.ย. 2569 — restore คือการกลับคำตัดสินของผู้จัด และ restore ล้างธง report ทิ้ง
+  // ⇒ ผู้จัดไม่มีช่องทางใดเห็นเลยว่าของที่ลบกลับมา จะลบซ้ำโดยเข้าใจว่าเจ้าของโพสต์ซ้ำ
+  it('a restore also tells the organizer whose deletion was overturned', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, removed_at: new Date(), removed_by: ORG }));
+    vi.mocked(FeedbackRepo.restore).mockResolvedValue(true);
+    await Service.restoreFeedback(1, 3);
+    expect(NotificationService.notify).toHaveBeenCalledWith([
+      expect.objectContaining({ userId: 5, type: 'feedback_restored' }),
+      expect.objectContaining({ userId: ORG, type: 'feedback_restore_overridden', relatedEntityId: 20 }),
+    ]);
+  });
+
+  it('the admin who removed it and then restored it is not told about their own reversal', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, removed_at: new Date(), removed_by: 3 }));
+    vi.mocked(FeedbackRepo.restore).mockResolvedValue(true);
+    await Service.restoreFeedback(1, 3);
+    expect(NotificationService.notify).toHaveBeenCalledWith([expect.objectContaining({ userId: 5 })]);
+  });
+
+  // เจ้าของลบเองแล้วแอดมินคืน — คนเดียวกัน ห้ามส่งสองใบ
+  it('an author who removed it themselves gets one notification, not two', async () => {
+    vi.mocked(FeedbackRepo.findById).mockResolvedValue(feedbackRow({ user_id: 5, removed_at: new Date(), removed_by: 5 }));
+    vi.mocked(FeedbackRepo.restore).mockResolvedValue(true);
+    await Service.restoreFeedback(1, 3);
+    expect(NotificationService.notify).toHaveBeenCalledWith([expect.objectContaining({ userId: 5 })]);
   });
 });
 

@@ -350,7 +350,7 @@
 | E22 | `GET /matches/:id/mvp-votes` | — (ล็อกอินได้ `mine`/`canVote`) | ผู้ถูกโหวต (คนที่เช็คอินสำเร็จ) + สถิติของเขาในแมตช์นั้น · **★ ระหว่างเปิดโหวตไม่มีจำนวนโหวตในคำตอบเลย** ทั้ง `candidates[].votes` และ `totalVotes` (OD-23 ข้อ 10) · ปิดโหวตแล้วจึงมีคะแนน + `winners` | `—` | `{ matchId, window, candidates, winners, (totalVotes หลังปิดโหวต), mine, canVote }` |
 | E15 | `POST /feedback/:id/report` | Auth | รายงานข้อความ (กดซ้ำได้ผลเดิม) · รีวิว report ได้เฉพาะผู้จัด · ความเห็นต่อทัวร์ report ได้ทุกคนยกเว้นเจ้าของ · **ความเห็นต่อทัวร์ → แจ้งเตือนผู้จัด** (`comment_reported`, ครั้งแรกครั้งเดียว) | `—` | `{ id, isReported: true }` |
 | E17 | `DELETE /admin/feedback/:id` | ADM-u | ลบ (soft delete) + audit `feedback_removed` · **แจ้งเจ้าของพร้อมเหตุผล** (`feedback_removed_by_admin`) · ลบของตัวเองไม่แจ้ง | **`reason` บังคับ** 1–500 ตัวอักษร (แก้ 30 ก.ย. — เดิม optional) | **204** · ไม่ส่ง → **400** `VALIDATION_FAILED` |
-| E17b | `POST /admin/feedback/:id/restore` | ADM-u | **คืนของที่ถูกลบ** + audit `feedback_restored` · ล้างธง report ด้วย (มติ 23 ก.ย. 6.3.3 — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์) · **แจ้งเจ้าของ** (`feedback_restored`) | `—` | **200** `{ id, restored: true }` |
+| E17b | `POST /admin/feedback/:id/restore` | ADM-u | **คืนของที่ถูกลบ** + audit `feedback_restored` · ล้างธง report ด้วย (มติ 23 ก.ย. 6.3.3 — เผื่อเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์) · **แจ้งเจ้าของ** (`feedback_restored`) · **แจ้งผู้ที่ลบไว้ด้วย** (`feedback_restore_overridden`) — คำตัดสินของเขาถูกกลับ และธง report ที่ล้างทำให้เขาหาจากคิวเองไม่ได้ | `—` | **200** `{ id, restored: true }` |
 
 ## 10.3 ความเห็นต่อทัวร์ (C7 · OD-24) — 4 endpoint
 
