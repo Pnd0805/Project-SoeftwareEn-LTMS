@@ -319,6 +319,17 @@ CREATE TABLE tournament_referees (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   removed_at DATETIME NULL,
   removed_by INT NULL,
+  -- OD-48 (migration 036) — "กรรมการคนเดียวกันใช้งานได้หลายแถวในทัวร์เดียว" ห้ามเกิดที่ระดับฐาน
+  -- MySQL 8 ไม่มี partial index จึงให้คอลัมน์นี้เป็น NULL เมื่อแถวใช้งานไม่ได้ (UNIQUE ไม่นับ NULL ซ้ำ)
+  -- ⇒ แถว pending/declined/rejected_by_admin/removed มีได้ไม่จำกัด ซึ่งจำเป็นต่อ soft delete และ F-15
+  -- เงื่อนไขต้องตรงกับ toRefereeStatus() === 'active' เป๊ะ (mappers/referee.mapper.ts)
+  active_user_id INT GENERATED ALWAYS AS (
+    CASE WHEN removed_at IS NULL
+              AND invitation_status = 'accepted'
+              AND (is_external = 0 OR external_approval_status IN ('not_required', 'approved'))
+         THEN user_id END
+  ) VIRTUAL,
+  UNIQUE KEY uq_tr_active_once (tournament_id, active_user_id),
   FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (invited_by) REFERENCES users(user_id),
@@ -882,4 +893,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('032_feedback_report_cleared.sql'),   -- จำว่าความเห็นไหนตรวจแล้ว กัน report ซ้ำเรื่องเดิม
   ('033_users_suspended_until.sql'),     -- ระงับแบบมีกำหนดเวลา · NULL = ถาวรเหมือนเดิม
   ('034_users_suspended_category.sql'),   -- บอกเจ้าตัวว่าโทษประเภทไหน โดยไม่ส่งข้อความดิบ
-  ('035_users_show_profile_stats.sql');   -- OD-46: ปิดการแสดงสถิติในโปรไฟล์ได้
+  ('035_users_show_profile_stats.sql'),   -- OD-46: ปิดการแสดงสถิติในโปรไฟล์ได้
+  ('036_tournament_referees_one_active_row.sql');   -- OD-48: ห้ามกรรมการคนเดิมใช้งานได้หลายแถวในทัวร์เดียว

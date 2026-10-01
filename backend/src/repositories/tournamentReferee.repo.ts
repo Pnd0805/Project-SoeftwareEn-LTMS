@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { AppError } from '../utils/AppError.js';
 import type { TournamentRefereeRow } from '../types/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import type { UserRow } from '../types/db.js';
@@ -156,6 +157,24 @@ export type ExternalApproval = {
 };
 
 /**
+ * UNIQUE `uq_tr_active_once` (migration 036) ห้ามคนเดียวกันมีแถว "ใช้งานได้" เกินหนึ่งแถวต่อทัวร์
+ *
+ * ด่านในโค้ด (inviteReferee หลัง dabe9e3) กันไว้ตั้งแต่ขาเข้าแล้ว แต่ด่านนั้นเป็น read-then-write
+ * ไม่มีล็อก ⇒ คำเชิญสองใบที่ยิงพร้อมกันผ่านด่านได้ทั้งคู่ แล้วมาชนกันตอนกดรับ/ตอนแอดมินอนุมัติ
+ * ซึ่งเป็นจังหวะที่ผู้ใช้เป็นคนกด ⇒ ต้องได้ข้อความที่อ่านรู้เรื่อง ไม่ใช่ 500 จาก ER_DUP_ENTRY ดิบ
+ *
+ * ตรวจชื่อ index ด้วย ไม่ใช่เช็คแค่ ER_DUP_ENTRY — ตารางนี้อาจมี UNIQUE อื่นเพิ่มทีหลัง
+ * แล้วเราจะกลืน error ของกฎที่ไม่เกี่ยวกันไปตอบข้อความผิดเรื่อง
+ *
+ * create() (F01 เชิญ) ไม่ต้องดักเพราะแถวใหม่เป็น invitation_status = 'pending'
+ * ⇒ active_user_id เป็น NULL ⇒ ไม่เคยชน UNIQUE ตัวนี้
+ */
+function isActiveRefereeConflict(err : unknown) : boolean{
+    const e = err as { code? : string; message? : string };
+    return e?.code === 'ER_DUP_ENTRY' && (e.message ?? '').includes('uq_tr_active_once');
+}
+
+/**
  * F05 — ตอบรับ + เลือกแมตช์ + บันทึกผลตรวจคนนอก ในทรานแซกชันเดียว
  * คืน true ถ้าอัปเดตได้จริง (false = มีคนตอบไปก่อนแล้ว → ไม่แตะ match_referees)
  */
@@ -184,6 +203,12 @@ export async function accept(tournamentRefereeId : number, acceptedMatchIds : nu
         return true;
     } catch (err) {
         await conn.rollback();
+        if(isActiveRefereeConflict(err)){
+            // มีแถวที่ใช้งานได้ของคนนี้ในทัวร์เดียวกันอยู่แล้ว ⇒ เขาเป็นกรรมการอยู่แล้ว
+            // คำเชิญใบนี้เป็นใบเกินที่เกิดจากเชิญซ้อนกันพอดี ไม่ใช่ความผิดของคนกด
+            throw new AppError(409, 'REFEREE_ALREADY_ACTIVE',
+                'คุณเป็นกรรมการของทัวร์นาเมนต์นี้อยู่แล้ว คำเชิญใบนี้จึงใช้ไม่ได้');
+        }
         throw err;
     } finally {
         conn.release();
@@ -275,14 +300,25 @@ export async function findPendingAdminReview(): Promise<AdminReviewRow[]>{
 
 /** AR02 — อนุมัติ "คน": ทุกแถว pending/needs_docs → approved · ล้างเอกสาร (PDPA) */
 export async function approveUser(userId : number, adminUserId : number): Promise<number>{
-    const [result] = await pool.query<ResultSetHeader>(
-        `UPDATE tournament_referees
-         SET external_approval_status = 'approved', approved_by = ?, approved_at = NOW(),
-             external_verification_docs = NULL, external_rejection_reason = NULL
-         WHERE user_id = ? AND is_external = 1 AND removed_at IS NULL
-           AND external_approval_status IN ('pending', 'needs_docs')`,
-        [adminUserId, userId]);
-    return result.affectedRows;
+    try {
+        const [result] = await pool.query<ResultSetHeader>(
+            `UPDATE tournament_referees
+             SET external_approval_status = 'approved', approved_by = ?, approved_at = NOW(),
+                 external_verification_docs = NULL, external_rejection_reason = NULL
+             WHERE user_id = ? AND is_external = 1 AND removed_at IS NULL
+               AND external_approval_status IN ('pending', 'needs_docs')`,
+            [adminUserId, userId]);
+        return result.affectedRows;
+    } catch (err) {
+        // อนุมัติทีเดียวทุกแถวของคนนี้ ⇒ ถ้าเขามีสองแถวรออยู่ในทัวร์เดียวกัน (เชิญซ้อนกันพอดี)
+        // ทั้งคู่จะกลายเป็นใช้งานได้พร้อมกันและชน UNIQUE ⇒ การอนุมัติล้มทั้งก้อน
+        // ต้องบอกแอดมินว่าให้ไปถอดใบเกินก่อน ไม่ใช่โยน 500 ให้เดาเอง
+        if(isActiveRefereeConflict(err)){
+            throw new AppError(409, 'REFEREE_DUPLICATE_ROWS',
+                'ผู้ใช้นี้มีคำเชิญค้างซ้อนกันในทัวร์นาเมนต์เดียวกัน กรุณาให้ผู้จัดถอดใบที่เกินออกก่อนจึงจะอนุมัติได้');
+        }
+        throw err;
+    }
 }
 
 /** AR04 — ขอเอกสารใหม่: ทุกแถว pending → needs_docs + ข้อความ · ล้างเอกสารเดิม */
