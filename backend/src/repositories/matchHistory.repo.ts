@@ -29,7 +29,8 @@ export type MatchHistoryStatRow = {
     value_int: number | null;
 };
 
-export async function findVerifiedMatchHistoryByUser(userId: number): Promise<MatchHistoryRow[]> {
+/** OD-47 — `tournamentId` กรองให้เหลือทัวร์เดียว (RW06 โปรไฟล์ในทัวร์) · ไม่ส่ง = ทุกทัวร์เหมือนเดิม (RW05) */
+export async function findVerifiedMatchHistoryByUser(userId: number, tournamentId?: number): Promise<MatchHistoryRow[]> {
     const [rows] = await pool.query<(MatchHistoryRow & RowDataPacket)[]>(
         `SELECT DISTINCT
                 m.match_id, m.round_number, m.scheduled_time, m.started_at, m.actual_end_time, m.venue, m.mode,
@@ -57,9 +58,10 @@ export async function findVerifiedMatchHistoryByUser(userId: number): Promise<Ma
              ON pms.match_id = m.match_id AND pms.user_id = ap.user_id
           WHERE ap.user_id = ?
             AND t.deleted_at IS NULL
+            AND (? IS NULL OR t.tournament_id = ?)
             AND (ci.match_checkin_id IS NOT NULL OR pms.player_match_stat_id IS NOT NULL)
           ORDER BY COALESCE(m.actual_end_time, mr.verified_at, m.scheduled_time) DESC, m.match_id DESC`,
-        [userId]
+        [userId, tournamentId ?? null, tournamentId ?? null]
     );
     return rows;
 }

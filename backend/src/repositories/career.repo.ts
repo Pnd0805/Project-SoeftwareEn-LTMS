@@ -15,7 +15,13 @@ export type CareerTournamentRow = {
     champion: number;
 };
 
-export async function findCareerByUser(userId: number): Promise<CareerTournamentRow[]> {
+/**
+ * OD-47 — `tournamentId` กรองให้เหลือทัวร์เดียว ใช้โดย "โปรไฟล์ในทัวร์" (RW06)
+ *
+ * ตัวเลขต่อทัวร์ชุดเดียวกันเป๊ะกับที่ U14 คืน ⇒ หน้าในทัวร์กับหน้าโปรไฟล์จะไม่แสดงเลขขัดกัน
+ * ถ้าเขียน SQL ใหม่แยกอีกชุด สองหน้าจะเพี้ยนกันเองวันที่มีใครแก้นิยาม played/wins ที่เดียว
+ */
+export async function findCareerByUser(userId: number, tournamentId?: number): Promise<CareerTournamentRow[]> {
     const [rows] = await pool.query<(CareerTournamentRow & RowDataPacket)[]>(
         `SELECT
             t.tournament_id,
@@ -41,10 +47,11 @@ export async function findCareerByUser(userId: number): Promise<CareerTournament
          WHERE ap.user_id = ?
            AND ta.tournament_application_status = 'approved'
            AND t.deleted_at IS NULL
+           AND (? IS NULL OR t.tournament_id = ?)
          GROUP BY t.tournament_id, t.name, t.sport_type_id, t.tournament_status,
                   t.champion_team_id, ta.team_id, tm.name
          ORDER BY COALESCE(t.completed_at, t.event_end_date, t.event_start_date) DESC, t.tournament_id DESC`,
-        [userId]
+        [userId, tournamentId ?? null, tournamentId ?? null]
     );
     return rows;
 }

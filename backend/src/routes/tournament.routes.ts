@@ -1,5 +1,6 @@
 import express from 'express';
 import * as TournamentController from '../controllers/tournament.controller.js';
+import * as TournamentPlayer from '../controllers/tournamentPlayer.controller.js';
 import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
 import { requireOrganizer, requireRequester } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
@@ -28,6 +29,11 @@ router.post('/:id/complete', requireAuth, requireOrganizer, TournamentController
 router.post('/:id/open-registration', requireAuth, requireOrganizer, TournamentController.openRegistration);
 router.post('/:id/close-registration', requireAuth, requireOrganizer, TournamentController.closeRegistration);
 router.get('/:id/eligibility-rules', optionalAuth, TournamentController.getEligibilityRules);
+
+// RW06 — โปรไฟล์ในทัวร์: สถิติของผู้ใช้คนหนึ่งในทัวร์นี้ทัวร์เดียว
+// สาธารณะโดยเจตนา **ไม่ผูกกับสวิตช์ OD-46** เพราะเป็นข้อมูลการแข่งขัน ไม่ใช่ข้อมูลโปรไฟล์
+// (สายการแข่ง ผลแมตช์ รายชื่อลงสนาม และ GET /matches/:id/stats ก็สาธารณะอยู่แล้ว) — ดู OD-47
+router.get('/:id/players/:userId/stats', TournamentPlayer.getTournamentPlayerStats);
 // C17b — ORG แทนที่กฎคุณสมบัติทั้งชุด (เฉพาะ pending_approval · ผ่านแล้วใช้ C09 amendment)
 router.put('/:id/eligibility-rules', requireAuth, requireRequester, validate(setEligibilityRulesSchema), TournamentController.setEligibilityRules);
 
