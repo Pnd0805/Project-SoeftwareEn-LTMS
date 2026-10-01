@@ -22,6 +22,25 @@ export async function findApplyingTeamOfUser(tournamentId : number, userId : num
     return rows[0] ?? null;
 }
 
+/**
+ * ทุกแถวที่ยัง active ของคนนี้ในทัวร์นี้ (แก้ 1 ต.ค. 2569)
+ *
+ * ตารางนี้เป็น soft delete (`removed_at`) และ F-15 ตั้งใจให้มีแถว active ได้มากกว่าหนึ่งแถว —
+ * คนที่ `accepted` แล้วแอดมินปฏิเสธตัวตน (`rejected_by_admin`) ถูกเชิญใหม่ได้ โดยแถวเก่ายังไม่ถูกลบ
+ * ⇒ "แถวล่าสุดตาม id" ไม่ใช่คำตอบของคำถามว่า "คนนี้เป็นกรรมการของทัวร์นี้อยู่ไหม"
+ *   ถ้าแถวล่าสุดถูกลบไปแล้วแต่แถวเก่ายัง active อยู่ `findLatestByTournamentAndUser` จะตอบว่าไม่เป็น
+ *
+ * เรียงจากเก่าไปใหม่ เพื่อให้ผู้เรียกเลือกแถวแรกที่ตรงเงื่อนไขได้แบบคาดเดาผลได้
+ */
+export async function findActiveByTournamentAndUser(tournamentId : number, userId : number)
+        : Promise<TournamentRefereeRow[]>{
+    const [rows] = await pool.query<(TournamentRefereeRow & RowDataPacket)[]>(
+        `SELECT * FROM tournament_referees
+         WHERE tournament_id = ? AND user_id = ? AND removed_at IS NULL
+         ORDER BY tournament_referee_id`, [tournamentId, userId]);
+    return rows;
+}
+
 export async function findLatestByTournamentAndUser(tournamentId : number, userId : number)
         : Promise<TournamentRefereeRow | null>{
     const [rows] = await pool.query<(TournamentRefereeRow & RowDataPacket)[]>(

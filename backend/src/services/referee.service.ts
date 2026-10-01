@@ -33,16 +33,19 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
             { teamId : applyingTeam.team_id });
     }
 
-    // 2. กันเชิญทับสถานะเดิม 
-    const latest = await RefRepo.findLatestByTournamentAndUser(tournamentId, input.userId);
-    if(latest && latest.removed_at === null){
-        if(latest.invitation_status === 'pending'){
-            throw new AppError(409, 'REFEREE_INVITATION_PENDING', 'ผู้ใช้นี้มีคำเชิญที่ยังไม่ได้ตอบอยู่แล้ว');
-        }
-        // accepted แต่ถูก admin ปฏิเสธตัวตน (rejected_by_admin) → เชิญซ้ำได้ (F-15) แถวใหม่จะเริ่มตรวจใหม่
-        if(latest.invitation_status === 'accepted' && toRefereeStatus(latest) !== 'rejected_by_admin'){
-            throw new AppError(409, 'REFEREE_ALREADY_ACCEPTED', 'ผู้ใช้นี้เป็นกรรมการของทัวร์นาเมนต์นี้อยู่แล้ว');
-        }
+    // 2. กันเชิญทับสถานะเดิม
+    //    ★ แก้ 1 ต.ค. 2569 — เดิมดู "แถวล่าสุดตาม id" แถวเดียว ซึ่งตอบผิดได้
+    //    ตารางเป็น soft delete + F-15 ตั้งใจให้มีแถว active ได้หลายแถว ⇒ แถวล่าสุดอาจเป็นแถวที่ถูกลบไปแล้ว
+    //    ขณะที่แถวเก่ายัง active อยู่ · ด่านจึงปล่อยผ่าน แล้วได้กรรมการ active ซ้ำคนในทัวร์เดียวกัน
+    //    (เจอของจริงในฐาน dev: ทัวร์ 2 มี 9002 เป็น accepted ค้างอยู่สามแถวพร้อมกัน)
+    const active = await RefRepo.findActiveByTournamentAndUser(tournamentId, input.userId);
+    if(active.some(r => r.invitation_status === 'pending')){
+        throw new AppError(409, 'REFEREE_INVITATION_PENDING', 'ผู้ใช้นี้มีคำเชิญที่ยังไม่ได้ตอบอยู่แล้ว');
+    }
+    // accepted แต่ถูก admin ปฏิเสธตัวตน (rejected_by_admin) → เชิญซ้ำได้ (F-15) แถวใหม่จะเริ่มตรวจใหม่
+    // ส่วน invitation_status = 'rejected' คือเจ้าตัวปฏิเสธเอง เชิญใหม่ได้เหมือนเดิม
+    if(active.some(r => r.invitation_status === 'accepted' && toRefereeStatus(r) !== 'rejected_by_admin')){
+        throw new AppError(409, 'REFEREE_ALREADY_ACCEPTED', 'ผู้ใช้นี้เป็นกรรมการของทัวร์นาเมนต์นี้อยู่แล้ว');
     }
 
     // 3. แมตช์ที่แนบมา — ต้องเป็นของทัวร์นี้ มีเวลาแข่งครบ และไม่ซ้อนกันเอง

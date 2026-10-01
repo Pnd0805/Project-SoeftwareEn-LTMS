@@ -15,6 +15,7 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
 
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findLatestByTournamentAndUser: vi.fn(),
+  findActiveByTournamentAndUser: vi.fn(() => Promise.resolve([])),
   findApplyingTeamOfUser: vi.fn(() => Promise.resolve(null)),
   create: vi.fn(),
   findLatestPerUserByTournament: vi.fn(),
@@ -197,7 +198,7 @@ describe('inviteReferee', () => {
       status: 404,
       code: 'USER_NOT_FOUND',
     });
-    expect(mockedRefRepo.findLatestByTournamentAndUser).not.toHaveBeenCalled();
+    expect(mockedRefRepo.findActiveByTournamentAndUser).not.toHaveBeenCalled();
   });
 
   // Conflict of interest (มติ 18 ก.ย. 2569)
@@ -222,8 +223,8 @@ describe('inviteReferee', () => {
 
   it('throws REFEREE_INVITATION_PENDING when an active pending invitation already exists', async () => {
     mockedUserRepo.findById.mockResolvedValue(makeUser());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(
-      makeInvitation({ invitation_status: 'pending', removed_at: null }),
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue(
+      [makeInvitation({ invitation_status: 'pending', removed_at: null })],
     );
 
     await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).rejects.toMatchObject({
@@ -235,8 +236,8 @@ describe('inviteReferee', () => {
 
   it('throws REFEREE_ALREADY_ACCEPTED when the user is already an active referee', async () => {
     mockedUserRepo.findById.mockResolvedValue(makeUser());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(
-      makeInvitation({ invitation_status: 'accepted', removed_at: null }),
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue(
+      [makeInvitation({ invitation_status: 'accepted', removed_at: null })],
     );
 
     await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).rejects.toMatchObject({
@@ -246,11 +247,9 @@ describe('inviteReferee', () => {
     expect(mockedRefRepo.create).not.toHaveBeenCalled();
   });
 
-  it('allows re-inviting when the latest invitation was already removed', async () => {
+  it('allows re-inviting when every prior invitation was already removed', async () => {
     mockedUserRepo.findById.mockResolvedValue(makeUser());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(
-      makeInvitation({ invitation_status: 'accepted', removed_at: new Date() }),
-    );
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);   // ถูกลบแล้วจึงไม่นับเป็น active
     mockedRefRepo.create.mockResolvedValue(99);
 
     const result = await refereeService.inviteReferee(20, 5, makeInviteInput());
@@ -259,10 +258,10 @@ describe('inviteReferee', () => {
     expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false, matchIds: [] });
   });
 
-  it('allows re-inviting when the latest accepted invitation was rejected by the admin (F-15)', async () => {
+  it('allows re-inviting when the active accepted invitation was rejected by the admin (F-15)', async () => {
     mockedUserRepo.findById.mockResolvedValue(makeUser());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(
-      makeInvitation({ invitation_status: 'accepted', is_external: 1, external_approval_status: 'rejected' }),
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue(
+      [makeInvitation({ invitation_status: 'accepted', is_external: 1, external_approval_status: 'rejected' })],
     );
     mockedRefRepo.create.mockResolvedValue(99);
 
@@ -270,20 +269,65 @@ describe('inviteReferee', () => {
     expect(mockedRefRepo.create).toHaveBeenCalled();
   });
 
-  it('allows re-inviting when the latest active invitation was rejected', async () => {
+  it('allows re-inviting when the active invitation was declined by the invitee', async () => {
     mockedUserRepo.findById.mockResolvedValue(makeUser());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(
-      makeInvitation({ invitation_status: 'rejected', removed_at: null }),
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue(
+      [makeInvitation({ invitation_status: 'rejected', removed_at: null })],
     );
     mockedRefRepo.create.mockResolvedValue(99);
 
     await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).resolves.toBeDefined();
     expect(mockedRefRepo.create).toHaveBeenCalled();
+  });
+
+  /**
+   * ★ บั๊กที่แก้ 1 ต.ค. 2569 — เดิมด่านนี้ดู "แถวล่าสุดตาม id" แถวเดียว
+   * ตารางเป็น soft delete และ F-15 ตั้งใจให้มีแถว active ได้หลายแถว ⇒ แถวล่าสุดอาจเป็นแถวที่ถูกลบแล้ว
+   * ขณะที่แถวเก่ายัง accepted อยู่ · ด่านจึงปล่อยผ่าน แล้วได้กรรมการ active ซ้ำคนในทัวร์เดียวกัน
+   * เจอของจริงในฐาน dev: ทัวร์ 2 มี 9002 เป็น accepted ค้างพร้อมกันสามแถว
+   */
+  it('still refuses when an OLDER row is active even though the newest row was removed', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser());
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue(
+      [makeInvitation({ invitation_status: 'accepted', removed_at: null })],
+    );
+
+    await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).rejects.toMatchObject({
+      status: 409, code: 'REFEREE_ALREADY_ACCEPTED',
+    });
+    expect(mockedRefRepo.create).not.toHaveBeenCalled();
+  });
+
+  // แถว rejected_by_admin ค้างอยู่ (F-15) + แถวที่ยัง accepted จริง ⇒ ต้องยังห้ามเชิญซ้ำ
+  // ถ้าตัดสินจากแถวใดแถวเดียวจะตอบผิดได้ทั้งสองทาง
+  it('refuses when an F-15 leftover sits beside a genuinely accepted row', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser());
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([
+      makeInvitation({ invitation_status: 'accepted', is_external: 1, external_approval_status: 'rejected' }),
+      makeInvitation({ invitation_status: 'accepted', removed_at: null }),
+    ]);
+
+    await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).rejects.toMatchObject({
+      status: 409, code: 'REFEREE_ALREADY_ACCEPTED',
+    });
+  });
+
+  // คำเชิญที่ยังไม่ตอบต้องชนะ ไม่ว่าจะอยู่แถวไหนในลิสต์
+  it('reports the pending invitation even when it is not the newest active row', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser());
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([
+      makeInvitation({ invitation_status: 'pending', removed_at: null }),
+      makeInvitation({ invitation_status: 'accepted', is_external: 1, external_approval_status: 'rejected' }),
+    ]);
+
+    await expect(refereeService.inviteReferee(20, 5, makeInviteInput())).rejects.toMatchObject({
+      status: 409, code: 'REFEREE_INVITATION_PENDING',
+    });
   });
 
   it('creates a new invitation with the correct payload when there is no prior invitation', async () => {
     mockedUserRepo.findById.mockResolvedValue(makeUser());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);
     mockedRefRepo.create.mockResolvedValue(100);
 
     const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ userId: 8, isExternal: true }));
@@ -301,7 +345,7 @@ describe('inviteReferee', () => {
   describe('with matches attached', () => {
     it('throws MATCH_NOT_FOUND when a matchId is not in this tournament', async () => {
       mockedUserRepo.findById.mockResolvedValue(makeUser());
-      mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+      mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);
       mockedMatchRepo.findByIdsInTournament.mockResolvedValue([{ match_id: 1, scheduled_time: new Date(), scheduled_end_time: new Date() }] as never);
 
       await expect(refereeService.inviteReferee(20, 5, makeInviteInput({ matchIds: [1, 2] }))).rejects.toMatchObject({
@@ -312,7 +356,7 @@ describe('inviteReferee', () => {
 
     it('propagates a schedule conflict between the attached matches', async () => {
       mockedUserRepo.findById.mockResolvedValue(makeUser());
-      mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+      mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);
       mockedMatchRepo.findByIdsInTournament.mockResolvedValue([
         { match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z') },
         { match_id: 2, scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z') },
@@ -326,7 +370,7 @@ describe('inviteReferee', () => {
 
     it('dedupes matchIds, creates the invitation with them attached, and mentions the count in the notification', async () => {
       mockedUserRepo.findById.mockResolvedValue(makeUser());
-      mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(null);
+      mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);
       mockedMatchRepo.findByIdsInTournament.mockResolvedValue([
         { match_id: 1, scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:00:00Z') },
         { match_id: 2, scheduled_time: new Date('2026-10-01T12:00:00Z'), scheduled_end_time: new Date('2026-10-01T13:00:00Z') },
