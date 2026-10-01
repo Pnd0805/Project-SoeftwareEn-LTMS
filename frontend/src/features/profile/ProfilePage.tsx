@@ -10,7 +10,8 @@ import { useState } from 'react'
 import { useMe, useUpdateMe } from '../../hooks/useAuth'
 import { Icon } from '../../components/kit/Icon'
 import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
-import { uploadImage } from '../../api/upload'
+import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
+import { Avatar } from '../../components/kit/Avatar'
 import type { MeDto } from '../../types/dto'
 import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useReference'
 import { useBackendMyTeams } from '../../hooks/useTeam'
@@ -197,7 +198,7 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
   const inputId = 'profile-avatar-upload'
 
   const pick = async (file: File | undefined) => {
-    if (!file) return
+    if (!file || loading || updateMe.isPending) return
     setErr(null)
     setLoading(true)
     try {
@@ -209,7 +210,7 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
         await updateMe.mutateAsync({ avatarUrl: objectKey })
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Upload failed')
+      setErr(imageUploadErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -221,7 +222,7 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
     try {
       await updateMe.mutateAsync({ avatarUrl: null })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Remove failed')
+      setErr(imageUploadErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -230,26 +231,18 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
   return (
     <div className="spread" style={{ alignItems: 'flex-start' }}>
       <div className="hstack" style={{ gap: 18, alignItems: 'center' }}>
-        {user.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt={user.fullName}
-            style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--line)' }}
-          />
-        ) : (
-          <span className="avatar" style={{ width: 72, height: 72, fontSize: 30, display: 'grid', placeItems: 'center' }}>
-            {user.fullName.slice(0, 1)}
-          </span>
-        )}
+        <Avatar name={user.fullName} avatarUrl={user.avatarUrl} size={72} alt={user.fullName}
+          style={{ borderRadius: '50%', border: '2px solid var(--line)' }} />
         <div>
           <div className="tag"><em>//</em> {label}</div>
           <h1 className="disp" style={{ fontSize: 32, margin: '2px 0 6px' }}>{user.fullName}</h1>
           <div className="hstack" style={{ gap: 8 }}>
-            <input id={inputId} type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }}
+            <input id={inputId} type="file" accept={USE_MOCK ? IMAGE_ACCEPT : UPLOAD_IMAGE_ACCEPT} disabled={loading || updateMe.isPending} aria-label="Choose profile photo" style={{ display: 'none' }}
               onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
-            <label className="btn ghost" htmlFor={inputId} style={{ cursor: 'pointer', padding: '2px 8px', fontSize: 13 }}>
+            <button className="btn ghost" type="button" disabled={loading || updateMe.isPending}
+              onClick={() => document.getElementById(inputId)?.click()} style={{ padding: '2px 8px', fontSize: 13 }}>
               <Icon name="plus" size={12} /> {loading ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Upload photo'}
-            </label>
+            </button>
             {user.avatarUrl ? (
               <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
                 disabled={loading || updateMe.isPending} onClick={removeAvatar}>
@@ -258,8 +251,8 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
             ) : null}
           </div>
           {err || updateMe.isError ? (
-            <span className="sub" style={{ color: 'var(--red)', display: 'block', marginTop: 4 }}>
-              {err ?? (updateMe.error instanceof Error ? updateMe.error.message : 'Upload failed')}
+            <span role="alert" className="sub" style={{ color: 'var(--red)', display: 'block', marginTop: 4 }}>
+              {err ?? imageUploadErrorMessage(updateMe.error)}
             </span>
           ) : null}
         </div>

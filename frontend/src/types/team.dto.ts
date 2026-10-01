@@ -45,9 +45,8 @@ export interface TeamDto {
   name: string;
   /** ยังไม่มีใน schema — teams ไม่มีคอลัมน์ code/color แต่ UI ทั้งแอปใช้
    *  TODO(schema): ทีมทุกที่ในแอปวาดด้วยตัวย่อกับสีประจำทีม
-   *    ALTER TABLE teams ADD code VARCHAR(8) NULL, ADD color VARCHAR(9) NULL,
-   *                      ADD logo_key VARCHAR(255) NULL;
-   *    ตอนนี้ prototype เก็บไว้ในหน่วยความจำเท่านั้น พอต่อ backend จริงจะหาย */
+   *    ALTER TABLE teams ADD code VARCHAR(8) NULL, ADD color VARCHAR(9) NULL;
+   *    code/color ยังเป็น prototype เท่านั้น; logo_key ส่งมอบแล้วใน migration 031 */
   code: string | null;
   color: string | null;
   logoUrl: string | null;

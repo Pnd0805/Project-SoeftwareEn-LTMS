@@ -14,6 +14,7 @@
  * ผ่านหรือไม่ผ่าน ใครเป็นคนตรวจ ไม่ใช่ array ของ id แบบที่ store เก็บ
  * แปลว่าหน้านี้บอกได้ด้วยว่า "ไม่ผ่านเพราะอะไร" ซึ่งของเดิมบอกไม่ได้
  */
+import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../components/kit/primitives'
@@ -122,7 +123,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                 <tr key={p.id}>
                   <td>
                     <span className="hstack">
-                      <span className="avatar">{p.fullName.slice(0, 1)}</span>{p.fullName}
+                      <Avatar name={p.fullName} avatarUrl={p.avatarUrl} />{p.fullName}
                     </span>
                   </td>
                   <td className="sub">
@@ -350,7 +351,7 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
                 <tr key={c.id}>
                   <td>
                     <span className="hstack">
-                      <span className="avatar">{c.user.fullName.slice(0, 1)}</span>{c.user.fullName}
+                      <Avatar name={c.user.fullName} avatarUrl={c.user.avatarUrl} />{c.user.fullName}
                       {c.user.id === myId ? <span className="tag"> · you</span> : null}
                     </span>
                   </td>

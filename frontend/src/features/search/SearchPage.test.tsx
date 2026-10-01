@@ -46,7 +46,7 @@ vi.mock('../../hooks/useTournament', () => ({
 }))
 vi.mock('../../hooks/useTeam', () => ({
   useSearchTeams: () => ({
-    data: { items: [{ id: 77, name: 'Campus API Squad', sportTypeId: 3, readinessStatus: 'Ready', memberCount: 4 }] },
+    data: { items: [{ id: 77, name: 'Campus API Squad', sportTypeId: 3, readinessStatus: 'Ready', memberCount: 4, logoUrl: 'https://storage.test/search-logo.png' }] },
     isPending: false,
     isError: false,
   }),
@@ -66,5 +66,6 @@ describe('SearchPage real-mode boundary', () => {
     expect(screen.queryByText('VALORANT Campus League 2025')).not.toBeInTheDocument()
     expect(screen.queryByText('Campus Seed Squad')).not.toBeInTheDocument()
     expect(screen.getByText('Campus API Squad')).toBeInTheDocument()
+    expect(document.querySelector('img[src="https://storage.test/search-logo.png"]')).not.toBeNull()
   })
 })

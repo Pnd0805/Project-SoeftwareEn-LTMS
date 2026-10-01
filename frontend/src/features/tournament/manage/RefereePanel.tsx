@@ -26,6 +26,7 @@
  *    ผู้จัดพิมพ์ชื่อคนที่มีตัวตนจริงแล้วขึ้น "ไม่มีชื่อในระบบ" ตลอด เชิญกรรมการไม่ได้
  *    (คอมเมนต์เดิมบอกว่ายังไม่มี endpoint ค้นหา — ไม่จริงแล้ว มีและใช้ได้)
  */
+import { Avatar } from '../../../components/kit/Avatar'
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { ConfirmCard, Modal } from '../../../components/kit/Modal'
@@ -255,7 +256,7 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
                     <tr key={r.id}>
                       <td>
                         <span className="hstack">
-                          <span className="avatar">{r.user.fullName.slice(0, 1)}</span>{r.user.fullName}
+                          <Avatar name={r.user.fullName} avatarUrl={r.user.avatarUrl} />{r.user.fullName}
                           {r.isExternal ? <span className="tag"> · external</span> : null}
                         </span>
                       </td>

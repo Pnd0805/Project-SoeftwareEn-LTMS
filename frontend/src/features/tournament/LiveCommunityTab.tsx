@@ -1,3 +1,4 @@
+import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
@@ -111,7 +112,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
       {comments.query.isError ? <Empty icon="warn" title="Unable to load comments" sub={messageOf(comments.query.error)} /> : null}
       {thread && entries.length === 0 ? <p className="sub">No comments here yet.</p> : null}
       {entries.map(item => <div className="notif" key={item.id} style={{ alignItems: 'flex-start' }}>
-        <span className="avatar">{item.author.fullName.slice(0, 1)}</span>
+        <Avatar name={item.author.fullName} avatarUrl={item.author.avatarUrl} />
         <div className="txt" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div className="hstack" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <b>{item.author.fullName}</b>

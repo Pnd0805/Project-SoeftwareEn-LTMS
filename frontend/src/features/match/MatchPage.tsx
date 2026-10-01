@@ -15,6 +15,7 @@
  * โค้ดเดิมไล่ดู m.refs / organizer / หัวหน้าทีมที่ชนะ แล้วผสมกับสถานะแมตช์เอง
  * ซึ่ง backend ต้องเช็คซ้ำอยู่ดี — กติกาเดียวกันเขียนสองที่แล้วจะเพี้ยนจากกัน
  */
+import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -788,7 +789,7 @@ export function MatchPage() {
                         <tbody>
                           {team.players.map(player => (
                             <tr key={player.id}>
-                              <td><span className="hstack"><span className="avatar">{player.fullName.slice(0, 1)}</span>{player.fullName}</span></td>
+                              <td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td>
                               <td>{player.checkinStatus === 'checked_in' ? <Badge kind="ok">Checked in</Badge>
                                 : player.checkinStatus === 'pending_verification' ? <Badge kind="warn">Pending verification</Badge>
                                   : player.checkinStatus === 'rejected' ? <Badge kind="crit">Rejected</Badge>

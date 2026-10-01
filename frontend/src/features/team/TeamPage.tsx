@@ -9,7 +9,7 @@
  * backend: GET /teams/:id · GET /teams/:id/members (403 = ไม่ใช่สมาชิก) ·
  *   DELETE /teams/:id/members/:uid ·
  *   GET/POST/DELETE /teams/:id/invitations · บทบาทของคนที่ดูอยู่ = role จาก GET /me/teams
- * โหมด mock เท่านั้น (backend ยังไม่มี route): โลโก้ · โอนสิทธิ์หัวหน้า ·
+ * โลโก้ใช้ URL จาก backend; โหมด mock เท่านั้น: โอนสิทธิ์หัวหน้า ·
  *   ผลแข่ง/เกียรติประวัติ (TeamRecord) · สถานะล็อกรายชื่อ
  *
  * ── กฎรายชื่อ ──────────────────────────────────────────────────────────────
@@ -21,6 +21,7 @@
  * โหมด mock บัญชีเดโมห้าใบมี id 1–5 แต่ทีมใช้ id จาก numOf เทียบกันไม่มีวันเท่า
  * หัวหน้าทีมเดโมจึงไม่เคยเห็นส่วนจัดการ ใช้ role จาก /me/teams ซึ่งเป็นสัญญาของ backend แทน
  */
+import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
@@ -115,15 +116,9 @@ export function TeamPage() {
 
       <div className="spread">
         <span className="hstack" style={{ gap: 16 }}>
-          {storeTeam?.logo ? (
-            <img src={storeTeam.logo} alt={data.name} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--line)' }} />
-          ) : data.logoUrl ? (
-            <img src={data.logoUrl} alt={data.name} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--line)' }} />
-          ) : storeTeam ? (
-            <TeamCrestView team={toTeamView(storeTeam)} size={64} />
-          ) : (
-            <span className="avatar" style={{ width: 64, height: 64, fontSize: 26 }}>{data.name.slice(0, 1)}</span>
-          )}
+          {storeTeam && !storeTeam.logo ? <TeamCrestView team={toTeamView(storeTeam)} size={64} />
+            : <Avatar name={data.name} avatarUrl={storeTeam?.logo ?? data.logoUrl} size={64} alt={data.name}
+                style={{ borderRadius: '50%', border: '2px solid var(--line)' }} />}
           <span className="vstack" style={{ gap: 5 }}>
             <span className="disp" style={{ fontSize: 32 }}>{data.name}</span>
             <span className="hstack">
@@ -266,7 +261,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                   <tr key={member.userId}>
                     <td>
                       <span className="hstack">
-                        <span className="avatar">{member.fullName.slice(0, 1)}</span>
+                        <Avatar name={member.fullName} avatarUrl={member.avatarUrl} />
                         {/* กดชื่อเพื่อเปิดโปรไฟล์สาธารณะ (GET /users/:id) */}
                         <button className="tchip link" type="button"
                           onClick={() => navigate(`/player/${member.userId}`)}>{member.fullName}</button>
@@ -391,7 +386,7 @@ function InvitePanel({ data, lockName, memberIds }: {
                 <tbody>
                   {results.map(person => (
                     <tr key={person.id}>
-                      <td><span className="hstack"><span className="avatar">{person.fullName.slice(0, 1)}</span>{person.fullName}</span></td>
+                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} />{person.fullName}</span></td>
                       <td style={{ textAlign: 'right' }}>
                         <button className="btn primary" type="button" disabled={invite.isPending}
                           onClick={() => {

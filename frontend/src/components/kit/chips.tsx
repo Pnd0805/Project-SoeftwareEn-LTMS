@@ -15,6 +15,7 @@
  * ให้ส่ง id มาค้น store ทุกคนจะย้ายไม่ได้จนกว่า Teams จะย้ายเสร็จก่อน ซึ่งบล็อกทั้งทีม
  * ชั้น View ตัดโซ่นั้นออก: ใครมี id, name, code, color ก็วาด chip ได้ทันที
  */
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLtms } from '../../shared/store'
 import { team, user } from '../../shared/selectors'
@@ -24,9 +25,10 @@ import type { Team } from '../../shared/types'
 // ══════════════ ชั้น View — ไม่แตะ store ══════════════
 
 export function TeamMarkView({ team: t }: { team?: TeamView | null }) {
+  const [failedLogo, setFailedLogo] = useState<string | null>(null)
   if (!t) return <i style={{ background: 'var(--hairline)' }} />
-  return t.logoUrl
-    ? <img src={t.logoUrl} alt="" width={16} height={16} style={{ borderRadius: 4, objectFit: 'cover', flex: '0 0 auto' }} />
+  return t.logoUrl && t.logoUrl !== failedLogo
+    ? <img src={t.logoUrl} onError={() => setFailedLogo(t.logoUrl ?? null)} alt="" width={16} height={16} style={{ borderRadius: 4, objectFit: 'cover', flex: '0 0 auto' }} />
     : <i style={{ background: t.color ?? 'var(--hairline)' }} />
 }
 
@@ -37,6 +39,7 @@ export function TeamMarkView({ team: t }: { team?: TeamView | null }) {
  * หน้าเช็คอิน พาเนลอนุมัติใบสมัคร) — เพิ่มโลโก้ที่เดียวแล้วขึ้นครบทุกจอ
  */
 export function TeamCrestView({ team: t, size = 32 }: { team?: TeamView | null; size?: number }) {
+  const [failedLogo, setFailedLogo] = useState<string | null>(null)
   if (!t) return <span className="avatar" style={{ width: size, height: size }}>?</span>
   return (
     <span style={{
@@ -45,8 +48,8 @@ export function TeamCrestView({ team: t, size = 32 }: { team?: TeamView | null; 
       fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: Math.round(size * 0.4),
       clipPath: 'polygon(0 0,100% 0,100% 74%,74% 100%,0 100%)', overflow: 'hidden',
     }}>
-      {t.logoUrl
-        ? <img src={t.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      {t.logoUrl && t.logoUrl !== failedLogo
+        ? <img src={t.logoUrl} onError={() => setFailedLogo(t.logoUrl ?? null)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : t.code}
     </span>
   )

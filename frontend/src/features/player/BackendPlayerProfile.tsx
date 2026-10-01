@@ -10,6 +10,7 @@
  * ⚠️ โปรไฟล์สาธารณะของ backend ไม่ส่งวันเกิด ชั้นปี หรืออีเมลมาให้ (PDPA — NF-SE-03)
  *    หน้านี้จึงไม่มีอายุกับชั้นปีเหมือนหน้าของ prototype และไม่ควรเดาเอาเอง
  */
+import { Avatar } from '../../components/kit/Avatar'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
@@ -59,7 +60,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
 
       <div className="spread">
         <span className="hstack" style={{ gap: 16 }}>
-          <span className="avatar" style={{ width: 60, height: 60, fontSize: 26 }}>{p.fullName.slice(0, 1)}</span>
+          <Avatar name={p.fullName} avatarUrl={p.avatarUrl} size={60} alt={p.fullName} />
           <span className="vstack" style={{ gap: 5 }}>
             <span className="disp" style={{ fontSize: 30 }}>{p.fullName}</span>
             <span className="hstack">

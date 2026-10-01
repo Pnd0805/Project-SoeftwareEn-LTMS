@@ -15,6 +15,7 @@
  *
  * ทั้งสองทางถูกแปลงเป็น `RegRow` ชุดเดียวก่อนวาด JSX จึงมีเส้นทางแสดงผลเดียว
  */
+import { Avatar } from '../../../components/kit/Avatar'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -234,7 +235,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
               <tbody>
                 {applicationDetail.data.players.map(player => (
                   <tr key={player.userId}>
-                    <td><span className="hstack"><span className="avatar">{player.fullName.slice(0, 1)}</span>{player.fullName}</span></td>
+                    <td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td>
                   </tr>
                 ))}
               </tbody>

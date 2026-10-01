@@ -4,6 +4,7 @@
  * Tournaments, squads and players in one list. It reads the same `visibleTo`
  * rule the pages do, so it can never offer a door that would then refuse to open.
  */
+import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Empty, Field, Panel } from '../../components/kit/primitives'
@@ -136,7 +137,7 @@ export function SearchPage() {
           <span className="tag"><em>//</em> Squads · {backendTeams.length}</span>
           {backendTeams.map(t => (
             <button className="who" type="button" key={t.id} onClick={() => navigate(`/team/${t.id}`)}>
-              <TeamCrestView team={{ id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} size={24} />
+              <TeamCrestView team={{ id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: t.logoUrl ?? null }} size={24} />
               <span className="meta">
                 <b>{t.name}</b>
                 <span className="tag">Sport #{t.sportTypeId} · {t.readinessStatus} · {t.memberCount} players</span>
@@ -162,7 +163,7 @@ export function SearchPage() {
           <span className="tag"><em>//</em> Players · {players.length}</span>
           {players.map(u => (
             <button className="who" type="button" key={u.id} onClick={() => navigate(`/player/${u.id}`)}>
-              <span className="avatar">{u.fullName.slice(0, 1)}</span>
+              <Avatar name={u.fullName} avatarUrl={u.avatarUrl} />
               <span className="meta"><b>{u.fullName}</b></span>
               <Icon name="chev" size={13} />
             </button>

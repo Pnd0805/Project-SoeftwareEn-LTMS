@@ -11,6 +11,7 @@
  * แต่ยังไม่มี route ให้ Admin อนุมัติ (SDS PATCH /admin/requests/{id}) — นอกโหมด mock
  * ได้ 501 และหน้าจอบอกว่ายังใช้ไม่ได้
  */
+import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
@@ -85,7 +86,7 @@ export function AdminRefereesTab() {
                 <tr key={r.id}>
                   <td>
                     <span className="hstack">
-                      <span className="avatar">{r.referee.fullName.slice(0, 1)}</span>{r.referee.fullName}
+                      <Avatar name={r.referee.fullName} avatarUrl={r.referee.avatarUrl} />{r.referee.fullName}
                       <Badge kind="warn">External</Badge>
                     </span>
                   </td>

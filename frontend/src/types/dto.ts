@@ -61,7 +61,7 @@ export interface MeDto {
   createdAt: string; // ISO 8601 พร้อม timezone เช่น "2026-08-02T14:30:00+07:00"
 }
 
-// U02 PATCH /me — allowlist 3 field เท่านั้น (GUIDE/06 เตือนไว้ ห้ามเพิ่มเอง)
+// U02 PATCH /me — avatarUrl ขาเข้ารับ objectKey จาก presign (หรือ null เพื่อลบ), ขาอ่านคืน public URL
 export type UpdateMeRequest = Partial<
   Pick<MeDto, "avatarUrl" | "contactInfo" | "address">
 >;

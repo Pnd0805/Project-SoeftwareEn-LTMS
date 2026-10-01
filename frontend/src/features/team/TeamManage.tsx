@@ -5,7 +5,7 @@
  * its logo, asking for Official status, and disbanding it.
  *
  * ชื่อทีมส่งผ่าน PATCH /teams/:id { name } (FR-TM-04 · 409 TEAM_NAME_TAKEN)
- * รหัสทีมกับโลโก้มีเฉพาะโหมด mock — updateTeamSchema ของ backend รับแค่ name
+ * รหัสทีมมีเฉพาะโหมด mock; โลโก้จริงอัปโหลดแล้วส่ง logoKey ให้ backend
  * คำร้อง Official ส่ง supportingDocs ตาม team.schema.ts (400 OFFICIAL_DOCS_REQUIRED)
  * ลบทีมได้เฉพาะทีมที่ยังไม่เคยลงแข่ง (FR-TM-05) — backend ยังไม่ตรวจข้อนี้ โหมด mock ตอบ 409
  */
@@ -17,7 +17,7 @@ import { ConfirmCard, Modal } from '../../components/kit/Modal'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { useDisbandTeam, useRequestOfficialStatus, useUpdateTeam } from '../../hooks/useTeam'
 import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
-import { uploadImage } from '../../api/upload'
+import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
 import { useLtms } from '../../shared/store'
 import type { Team } from '../../shared/types'
 import type { BackendTeamDto } from '../../types/team.dto'
@@ -30,7 +30,7 @@ const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Arr
 /** รหัสทีมสั้นๆ ที่ใช้บนชิปและตราทีม — ตัวอักษรหรือตัวเลข 2–3 ตัว */
 const CODE_PATTERN = /^[A-Za-z0-9]{2,3}$/
 
-/** ตั้งหรือถอดโลโก้ทีม (FR-TM-04) — backend ยังไม่มีคอลัมน์โลโก้ */
+/** ตั้งหรือถอดโลโก้ทีม — PATCH รับ key ส่วน GET คืน URL สาธารณะ */
 function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | null }) {
   const update = useUpdateTeam(teamId)
   const [loading, setLoading] = useState(false)
@@ -38,7 +38,7 @@ function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | nul
   const inputId = `logo-${teamId}`
 
   const pick = async (file: File | undefined) => {
-    if (!file) return
+    if (!file || loading || update.isPending) return
     setErr(null)
     setLoading(true)
     try {
@@ -50,7 +50,7 @@ function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | nul
         await update.mutateAsync({ logoKey: objectKey })
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'ตั้งโลโก้ไม่สำเร็จ')
+      setErr(imageUploadErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -66,7 +66,7 @@ function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | nul
         await update.mutateAsync({ logoKey: null })
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'ลบโลโก้ไม่สำเร็จ')
+      setErr(imageUploadErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -74,18 +74,19 @@ function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | nul
 
   return (
     <span className="hstack" style={{ gap: 6, alignItems: 'center' }}>
-      <input id={inputId} type="file" accept={IMAGE_ACCEPT} style={{ display: 'none' }}
+      <input id={inputId} type="file" accept={USE_MOCK ? IMAGE_ACCEPT : UPLOAD_IMAGE_ACCEPT} disabled={loading || update.isPending} aria-label="Choose team logo" style={{ display: 'none' }}
         onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
-      <label className="btn ghost" htmlFor={inputId} style={{ cursor: 'pointer' }}>
+      <button className="btn ghost" type="button" disabled={loading || update.isPending}
+        onClick={() => document.getElementById(inputId)?.click()}>
         <Icon name="plus" size={12} /> {loading ? 'Uploading…' : logo ? 'Change logo' : 'Add a logo'}
-      </label>
+      </button>
       {logo ? (
         <button className="btn ghost" type="button" disabled={loading || update.isPending}
           onClick={removeLogo}>
           Remove logo
         </button>
       ) : null}
-      {err || update.isError ? <span className="sub" style={{ color: 'var(--red)' }}>{err ?? errorMessage(update.error)}</span> : null}
+      {err || update.isError ? <span role="alert" className="sub" style={{ color: 'var(--red)' }}>{err ?? imageUploadErrorMessage(update.error)}</span> : null}
     </span>
   )
 }

@@ -7,10 +7,10 @@
  * ถ้าใครเผลอเอา useLtms() กลับเข้าไปในชั้นล่าง เทสต์นี้จะพังทันที
  * เพราะ render โดยไม่มี provider ใดๆ ทั้งสิ้น
  */
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
-import { TeamChipView, TeamLinkView } from "./chips"
+import { TeamChipView, TeamLinkView, TeamCrestView } from "./chips"
 import { toTeamView, type TeamView } from "./viewModels"
 import type { Team } from "../../shared/types"
 
@@ -71,5 +71,22 @@ describe("toTeamView", () => {
     } as Team
 
     expect(toTeamView(proto).logoUrl).toBeNull()
+  })
+})
+
+describe('Team logo fallback', () => {
+  it('recovers the crest after an image fails and retries a changed URL', () => {
+    const { container, rerender } = render(<TeamCrestView team={{ ...byteForce, logoUrl: 'https://storage.test/logo.png' }} />)
+    fireEvent.error(container.querySelector('img')!)
+    expect(container.querySelector('img')).toBeNull()
+    expect(screen.getByText('BYT')).toBeInTheDocument()
+    rerender(<TeamCrestView team={{ ...byteForce, logoUrl: 'https://storage.test/new-logo.png' }} />)
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://storage.test/new-logo.png')
+  })
+  it('keeps the name and mark when a chip logo fails', () => {
+    const { container } = render(<TeamChipView team={{ ...byteForce, logoUrl: 'https://storage.test/logo.png' }} />)
+    fireEvent.error(container.querySelector('img')!)
+    expect(screen.getByText('Byte Force')).toBeInTheDocument()
+    expect(container.querySelector('i')).not.toBeNull()
   })
 })
