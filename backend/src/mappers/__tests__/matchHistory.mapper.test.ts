@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { toMatchHistoryDto } from '../matchHistory.mapper.js';
 
 describe('matchHistory.mapper', () => {
@@ -21,7 +21,7 @@ describe('matchHistory.mapper', () => {
             winner_team_id: 5,
             score_data: { teamA: 2, teamB: 1 },
             verified_at: new Date('2026-09-20T09:10:00Z'),
-        }, [{ match_id: 10, stat_key: 'goals', stat_label_th: 'เธเธฃเธฐเธ•เธน', value_int: 2 }]);
+        }, [{ match_id: 10, stat_key: 'goals', stat_label_th: 'ประตู', value_int: 2 }]);
 
         expect(dto).toMatchObject({
             matchId: 10,
@@ -29,7 +29,7 @@ describe('matchHistory.mapper', () => {
             opponent: { id: 6, name: 'Red' },
             result: 'win',
             playedAt: '2026-09-20T09:00:00.000Z',
-            playerStats: [{ statKey: 'goals', statLabelTh: 'เธเธฃเธฐเธ•เธน', value: 2 }],
+            playerStats: [{ statKey: 'goals', statLabelTh: 'ประตู', value: 2 }],
         });
     });
 });

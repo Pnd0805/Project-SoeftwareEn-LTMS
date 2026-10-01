@@ -1,4 +1,4 @@
-﻿import pool from '../config/db.js';
+import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 export type RewardRow = {

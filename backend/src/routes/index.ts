@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 
 import Auth from './auth.routes.js';
 import Me from './me.routes.js';
@@ -26,7 +26,7 @@ import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.
 
 const router = express.Router();
 
-// B1 โ€” เธ—เธฑเธงเธฃเนเธ—เธตเน completed เนเธฅเนเธง เธเธเธดเน€เธชเธเธ—เธธเธ write เนเธ•เน /tournaments/:id เนเธฅเธฐ /matches/:id (เธขเธเน€เธงเนเธ announcements)
+// B1 — ทัวร์ที่ completed แล้ว ปฏิเสธทุก write ใต้ /tournaments/:id และ /matches/:id (ยกเว้น announcements)
 router.use(['/tournaments/:id', '/matches/:id'], lockCompletedTournament);
 
 
@@ -61,7 +61,7 @@ router.use('/admin' , refereeAdminRouter);
 router.use('/tournaments' , tournamentAnnouncementRouter);
 router.use('/announcements' , announcementRouter);
 
-// C1 Inbox โ€” GET/PATCH/POST /me/notifications
+// C1 Inbox — GET/PATCH/POST /me/notifications
 router.use('/me' , meNotificationRouter);
 
 // C6 feedback / rating / MVP vote
@@ -70,12 +70,12 @@ router.use('/matches' , matchMvpRouter);
 router.use('/feedback' , feedbackRouter);
 router.use('/admin' , adminFeedbackRouter);
 
-// OD-26 เธเนเธญ 8 โ€” เธขเธทเนเธเน€เธฃเธทเนเธญเธเธญเธขเธนเนเนเธ•เน /matches/:id (เธเธดเธ”เธ—เธฑเธงเธฃเนเนเธฅเนเธงเธขเธทเนเธเนเธกเนเนเธ”เนเน€เธญเธ)
-//                เธเธงเธฒเธกเน€เธซเนเธ ORG/เธเธณเธงเธดเธเธดเธเธเธฑเธขเนเธญเธ”เธกเธดเธเธญเธขเธนเนเธเธญเธ prefix เธเธฑเนเธ (เธ—เธณเนเธ”เนเนเธกเนเธ—เธฑเธงเธฃเนเธเธดเธ”เนเธฅเนเธง)
+// OD-26 ข้อ 8 — ยื่นเรื่องอยู่ใต้ /matches/:id (ปิดทัวร์แล้วยื่นไม่ได้เอง)
+//                ความเห็น ORG/คำวินิจฉัยแอดมินอยู่นอก prefix นั้น (ทำได้แม้ทัวร์ปิดแล้ว)
 router.use('/matches' , matchComplaintRouter);
 router.use('/match-result-complaints' , complaintRouter);
 
-// C7 Pick'em (เธเธญเธกเน€เธกเธเธ•เนเธ—เธฑเธงเธฃเนเธญเธขเธนเนเธเธฑเธ C6 เธ—เธตเน tournamentFeedbackRouter)
+// C7 Pick'em (คอมเมนต์ทัวร์อยู่กับ C6 ที่ tournamentFeedbackRouter)
 router.use('/matches' , matchEngagementRouter);
 router.use('/me' , mePickemRouter);
 router.use('/tournaments' , tournamentPickemRouter);

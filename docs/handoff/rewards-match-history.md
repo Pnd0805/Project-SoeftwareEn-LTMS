@@ -1,4 +1,4 @@
-﻿# Rewards + Match History Handoff
+# Rewards + Match History Handoff
 
 ## Context
 
@@ -241,3 +241,16 @@ The implementation can be extended later when the team decides these product rul
 - Does detailed match history need any additional fields beyond the current match/team/opponent/result/stat data?
 
 Until those rules are agreed, this branch intentionally keeps the implementation conservative and does not invent product behaviour that is not specified by the project sources.
+
+---
+
+## Encoding review and repair (2026-10-01)
+
+Following the team's `TO-TEAM-2026-10-01-encoding.md` review, the branch was repaired before merge:
+
+- Restored `backend/src/routes/index.ts` from the base commit and reapplied **only** the two intended imports and four router mounts; other developers' Thai comments are preserved.
+- Re-entered damaged Thai text in five newly added files, including `AppError` messages, `parseId` field labels and test fixture labels.
+- Removed accidental UTF-8 BOM bytes from all 19 originally changed files. Added tracked `.editorconfig` declaring UTF-8. Editors must read and save UTF-8; this repository ignores `.vscode/`, so each VS Code user should set `files.encoding` to `utf8` and `files.autoGuessEncoding` to `false` locally.
+- Reward service tests now assert the Thai user-facing error messages to catch future text corruption. Production build and full 2,471-test suite passed again after the repair.
+
+**Access policy to confirm:** `GET /users/:id/match-history` currently remains public, matching the first implementation's intended public profile/history use. The team should explicitly decide whether it needs authentication or other visibility restrictions before merge. No authorization behaviour was changed as part of the encoding repair.

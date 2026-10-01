@@ -1,4 +1,4 @@
-﻿import type { MatchHistoryRow, MatchHistoryStatRow } from '../repositories/matchHistory.repo.js';
+import type { MatchHistoryRow, MatchHistoryStatRow } from '../repositories/matchHistory.repo.js';
 
 export type MatchHistoryStatDto = {
     statKey: string;

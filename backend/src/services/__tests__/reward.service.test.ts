@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/reward.repo.js', () => ({
     listActiveRewards: vi.fn(),
@@ -40,6 +40,7 @@ describe('reward.service', () => {
         await expect(RewardService.setMyRewardDisplayed(1, 99, true)).rejects.toMatchObject({
             status: 404,
             code: 'USER_REWARD_NOT_FOUND',
+            message: 'ไม่พบรางวัลนี้ในบัญชีของคุณ',
         });
     });
 
@@ -53,7 +54,10 @@ describe('reward.service', () => {
     it('does not grant an inactive/missing reward', async () => {
         mockedCheckUser.mockResolvedValue({} as any);
         repo.findActiveRewardById.mockResolvedValue(null);
-        await expect(RewardService.grantReward(1, 5)).rejects.toMatchObject({ code: 'REWARD_NOT_FOUND' });
+        await expect(RewardService.grantReward(1, 5)).rejects.toMatchObject({
+            code: 'REWARD_NOT_FOUND',
+            message: 'ไม่พบรางวัลนี้',
+        });
         expect(repo.grantReward).not.toHaveBeenCalled();
     });
 });

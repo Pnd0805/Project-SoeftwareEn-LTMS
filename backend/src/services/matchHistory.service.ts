@@ -1,4 +1,4 @@
-﻿import * as MatchHistoryRepo from '../repositories/matchHistory.repo.js';
+import * as MatchHistoryRepo from '../repositories/matchHistory.repo.js';
 import { toMatchHistoryDto } from '../mappers/matchHistory.mapper.js';
 import { checkUser } from '../utils/checkExist.js';
 

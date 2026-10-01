@@ -1,4 +1,4 @@
-﻿import pool from '../config/db.js';
+import pool from '../config/db.js';
 import type { RowDataPacket } from 'mysql2';
 import type { MatchRow } from '../types/db.js';
 

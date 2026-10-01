@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('../../config/db.js', () => ({ default: { query: mocks.query } }));

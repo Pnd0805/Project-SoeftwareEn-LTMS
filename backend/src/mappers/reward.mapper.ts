@@ -1,4 +1,4 @@
-﻿import type { RewardRow, UserRewardRow } from '../repositories/reward.repo.js';
+import type { RewardRow, UserRewardRow } from '../repositories/reward.repo.js';
 
 export type RewardDto = {
     id: number;

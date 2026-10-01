@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
 import { updateRewardDisplaySchema } from '../schemas/reward.schema.js';

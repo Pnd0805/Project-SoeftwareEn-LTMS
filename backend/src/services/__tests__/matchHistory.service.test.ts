@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/matchHistory.repo.js', () => ({
     findVerifiedMatchHistoryByUser: vi.fn(),
@@ -30,8 +30,8 @@ describe('matchHistory.service', () => {
     it('groups player stats by match before mapping', async () => {
         repo.findVerifiedMatchHistoryByUser.mockResolvedValue([{ match_id: 10, my_team_id: 5, winner_team_id: 5 } as any]);
         repo.findStatsForUserMatches.mockResolvedValue([
-            { match_id: 10, stat_key: 'goals', stat_label_th: 'เธเธฃเธฐเธ•เธน', value_int: 2 },
-            { match_id: 10, stat_key: 'assists', stat_label_th: 'เนเธญเธชเธเธดเธชเธ•เน', value_int: 1 },
+            { match_id: 10, stat_key: 'goals', stat_label_th: 'ประตู', value_int: 2 },
+            { match_id: 10, stat_key: 'assists', stat_label_th: 'แอสซิสต์', value_int: 1 },
         ]);
         const result = await Service.getMatchHistory(3);
         expect(result.items[0]?.playerStats).toHaveLength(2);

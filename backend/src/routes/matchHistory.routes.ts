@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { getMatchHistory } from '../controllers/matchHistory.controller.js';
 
 const router = express.Router();

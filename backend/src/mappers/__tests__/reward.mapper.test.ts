@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { toRewardDto, toUserRewardDto } from '../reward.mapper.js';
 
 const base = {
