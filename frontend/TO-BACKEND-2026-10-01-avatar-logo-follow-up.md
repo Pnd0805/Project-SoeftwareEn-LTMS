@@ -1,3 +1,8 @@
+> Rechecked 2026-10-01 before commit: BE_KN@d5bda6d still lacks all three
+> DTO/download additions below. Other listed backend branch heads are unchanged.
+> Status: new backend work; no ready implementation awaiting merge was found.
+> Consolidated classification: TO-BACKEND-2026-10-01-frontend-workflows.md.
+
 # ถึง Backend — avatar/logo Notice follow-up · 1 ต.ค. 2569
 
 อ้างอิง Notice `FE-Notice-BE_KN-avatar-uploads.md` (`49faf77`) และตรวจ remote

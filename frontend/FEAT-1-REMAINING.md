@@ -3,7 +3,7 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend source reference: remote `BE_KN@7ea7328`**, checked with
+**Current backend source reference: remote `BE_KN@d5bda6d`**, checked with
 `git ls-remote` and `git fetch origin BE_KN` on 2026-10-01. The avatar/logo
 follow-up below compares `FE-Notice-BE_KN-avatar-uploads.md` (`49faf77`) with
 that source and the running local API. This does not close acceptance for other
@@ -12,6 +12,141 @@ Before that: `BE_KN@e5ea50d` and the 2026-09-23 C1/C6/C7 and BE_KN FE
 notices, verified on 2026-09-23. Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
+
+## Backend handoff classification - 2026-10-01
+
+- [x] Refresh remote heads/fetch before committing. Requested new BE gaps and
+  delivered-but-unwired FE work are classified in
+  `TO-BACKEND-2026-10-01-frontend-workflows.md`.
+- [x] Merge status: no verified implementation of the requested gaps was found
+  in the other eight backend branches; no request is labelled pending merge.
+- [ ] New BE work: announcement notifications, S05 recorder/time, admin dispute
+  reads, MyTeam/TeamRef logo URLs, private user-report downloads, team follow/feed
+  and an agreed received-MVP Profile metric/read contract.
+- [ ] FE backlog with delivered BE: entryNotes and transfer/swap request screens.
+  These are not new backend requests. Live/browser acceptance remains separate.
+
+## Notice C follow-up - 2026-10-01
+
+- [x] Fetch and verify remote `BE_KN@d5bda6d`; local backend HEAD also matches.
+- [x] After the user restored the baseline: `npm.cmd run migrate` returned
+  `up to date (34 migrations)`; `python scripts/audit-roles.py` returned exit 0,
+  all C1-C8 clean. No restore or fixture repair was performed by FE in this run.
+- [x] Inbox recognizes `comment_rewritten_after_removal`, uses moderation icon,
+  preserves server title/message and opens `/t/:id/community`, marking read.
+  Do not assume every rewrite is flagged: BE can notify with `stillFlagged=false`.
+- [x] Null actual end-time regression: organizer escalation stays closed with an
+  explicit missing-time message; completed legacy matches render without a made-up
+  deadline. MVP uses the server window and does not infer it from current time.
+- [ ] Live notification acceptance: remove comment, author rewrites, organizer
+  receives one notice, opens new content and can review any retained report flag.
+- [ ] Live referee permission regression: result/stat/check-in actions, transfers/
+  swaps and invited private tournaments with historical invitation rows.
+- [x] Database read verification: t14 organizer = 9201; t22/t23 = 9001;
+  matches 2-6 and 9 still have null actual_end_time.
+- [x] Notice C developer gates: 57 test files / 346 tests, lint, build and
+  git diff --check passed. Backend reference API on port 8000 returned HTTP 200.
+  Build retains the >500 kB chunk warning.
+- [ ] Confirm current organizer fixtures in screenshots and role-specific tests:
+  t14 = 9201; t22/t23 = 9001. Existing fixture repairs are historical evidence.
+
+## Frontend implementation follow-up — 2026-10-01
+
+Current frontend work is compared with fetched `BE_KN@7ea7328`. This section
+supersedes older implementation-gap wording for the items listed below; earlier
+runtime/QA evidence keeps its own date. Overall acceptance remains open.
+
+- [x] **R34 / screenshot — comment moderation:** `Reported` belongs to the
+  comment content, not the author row; moderators do not see Report. Added
+  Dismiss using `POST /tournaments/:id/comments/:cid/dismiss-report`, pending/error
+  feedback and refresh of every comments page/filter. The delivered `reportCleared`
+  status is rendered. Tests cover confirmation/cancel, comment ID, badge placement,
+  moderator controls, cleared state and filtered/unfiltered cache refresh.
+- [ ] **Comment browser acceptance:** Report → Dismiss → reload → edit → report
+  again, plus unchanged-text suppression. Backend reset semantics are source-checked;
+  real browser/database acceptance is still the screenshot follow-up below.
+- [x] **R32 — finished label:** introduced kit state `finished` / “Awaiting result”.
+  `submitted` remains “Awaiting confirmation”; dashboard counters/attention keep
+  finished matches distinct. Regression coverage checks the two states.
+- [x] **R38 — round-robin referees:** per-match planner appears in Manage → Referees
+  when no Draw tab exists. Progress links there; elimination formats keep Draw.
+  Component tests verify both entry points.
+- [x] **MVP frontend contract sync:** real mode calls GET/POST
+  `/matches/:id/mvp-votes`. `/mvp/:tournamentId?match=:matchId` selects only matches
+  returned for that tournament; Match → Community also hosts voting. Candidates
+  use `teamId` and recorded `stats`; votes/totalVotes are optional and counts/winners
+  stay hidden while voting is open. Eligibility comes from `canVote`, with pending,
+  empty, access/error and retry states. Mock tournament MVP remains isolated.
+- [ ] **MVP browser acceptance:** eligible spectator vote/change/reload; members
+  of either competing team cannot vote; counts appear only after the backend window
+  closes. Reject a match ID that does not belong to the selected tournament.
+- [x] **OD-26 delivered frontend screens:**
+  - Abandon: organizer/referee, required reason and explicit confirmation;
+    `POST /matches/:id/abandon`; match returns to Scheduled for rescheduling.
+  - Missing result: map `actualEndTime`; online referee may submit after 24 hours;
+    organizer decision uses `POST /matches/:id/result/organizer`, with required
+    explanation and confirmation. Double forfeit is offered only for online play.
+  - Dispute: required reason, optional proposed winner/team-ID score and up to five
+    PNG/JPEG evidence uploads (`dispute_evidence` + matchId). GET dispute details
+    displays the submitted proposal and authorized presigned evidence links.
+  - Complaints: GET/POST `/matches/:id/result/complaints`, organizer statement via
+    PUT `/match-result-complaints/:id/statement`, university-wide admin decision
+    via POST `/match-result-complaints/:id/decision` after the server reports the
+    admin stage. Respect `canAmendResult`/`amendBlockedBy`; unrelated viewers see
+    no private forms. Mutations refresh match/result/list/standings/complaints.
+- [ ] **OD-26 real-backend/browser acceptance:** role/deadline conflicts, storage
+  failure, proposal/evidence reload and complaint decisions, including tournament
+  closure and an already-progressed next round. Automated gates do not close this.
+- [ ] **OD-26 admin dispute resolution remains blocked:** resolve write exists,
+  but S05/S03b do not admit an unrelated university-wide admin to read the disputed
+  result/reason/evidence. Need an authorized read contract before adding that screen.
+- [x] **R41 frontend display fix:** use delivered `submittedRole`, distinguish
+  organizer and automatic decisions, and show an explicit role/name-unavailable
+  fallback instead of “Entered by —”. Do not invent a recorder or submission time.
+- [ ] **R41 actual name delivery:** S05 still omits recorder identity and submitted
+  time; request the fields from BE, then verify the true name after reload.
+- [x] **Announcement Inbox navigation:** regression verifies the delivered
+  `tournament_announcement` opens `/t/:id/announcements` and marks the notice read.
+- [ ] **Announcement notification delivery:** `announcement.service.ts#createAnnouncement`
+  at `7ea7328` creates the announcement without a notification call. Backend must
+  produce notices for the agreed tournament participants; FE must not create fake
+  notifications. Track this and the two blockers above in
+  `TO-BACKEND-2026-10-01-frontend-workflows.md`.
+- [ ] **Team-list/profile logos and private user-report downloads:** remain open
+  in `TO-BACKEND-2026-10-01-avatar-logo-follow-up.md`; no backend change is made here.
+
+- [x] **Additional delivered contracts reconciled with current BE_KN:**
+  - Admin users: read every page (local search must include more than the first
+    server page), map flat backend users/adminScope to view DTOs; unavailable squad
+    counts stay blank. Suspend/reinstate uses `suspended`, required category and
+    optional 1-90 days. Show the delivered expiry/category and respect actor scope.
+  - Admin rights: `/admin/scopes` read/grant/revoke screen with review confirmation;
+    Root grants University Admin, University Admin grants Faculty Admin, Faculty
+    Admin reads only; cannot revoke self/Root. Access probe now works for Root too.
+  - Audit logs: `/admin/audit-logs`, actor mapping, latest 100 records with pending,
+    empty, access/error and retry; mutations invalidate the audit cache.
+  - Official team captain transfer: POST `/teams/:id/transfer-leader` sends
+    `newLeaderId`, displays pending approval rather than immediate captain change.
+    Admin transfer queue has confirm approval and required rejection reason, then
+    refreshes team/queue data. Unofficial-team leader self-transfer remains absent.
+  - Tournament deletion: DELETE `/tournaments/:id`, organizer Progress entry point,
+    explicit confirmation, pending/error, navigation after success. Backend checks
+    applications/matches and rejects public/completed tournaments.
+  - Player follows: GET `/me/following`, POST/DELETE `/users/:id/follow`; refresh
+    profile/follows after writes, show names/links in Profile. Team follow is still
+    unavailable and its real-mode write button is hidden.
+  - Career by tournament: GET `/users/:id/career` on Profile and public player page;
+    show team, sport, played/wins/losses/champion with loading/empty/error/retry.
+- [ ] **Additional-contract live acceptance:** faculty/university/Root permissions,
+  suspension expiry/login, grant/revoke conflicts, leader approval/reload, delete
+  activity rejection, follow/unfollow/reload and real tournament career fixtures.
+  Source and automated tests do not close these browser/backend checks.
+
+- [x] **Developer verification (2026-10-01):** `npm.cmd test` passed **57 files /
+  342 tests**; `npm.cmd run lint` passed; `npm.cmd run build` passed (TypeScript +
+  Vite). Vite dev startup at `127.0.0.1:5181` succeeded and HTTP returned 200;
+  `git diff --check` passed. Build retains the >500 kB chunk warning (779.88 kB
+  JavaScript, 216.64 kB gzip). This is developer verification, not live acceptance.
 
 ## C1/C6/C7 engagement integration — checked 2026-09-23
 
@@ -539,10 +674,9 @@ The backend-facing half is in `FE-REPLY-BE_KN-2026-09-29.md` (Thai) and
         old rule. Live: finished match 13 as สมหญิง, saved 52–47, server
         accepted it; the match was then restored to `in_progress` for the user
         to repeat.
-      - [ ] Kit label for `finished`: the badge currently reads "Awaiting
-            confirmation". A closer label belongs in `components/kit`, which is
-            Person 1's.
-      - [ ] Rest of OD-26 has no screens: `abandon`, the organizer-result
+      - [x] Kit label for `finished`: now “Awaiting result”; submitted results
+            remain “Awaiting confirmation”. Verified in the 2026-10-01 follow-up.
+      - [ ] OD-26 overall acceptance remains open (screens delivered in the 2026-10-01 follow-up): `abandon`, the organizer-result
             ladder, admin dispute resolution after 48 hours, disputes with a
             proposed result and evidence, and `match_result_complaints`.
 - [x] **R33 — "ขอ account ของ กันตพงศ์ อินทรีย์".** Two accounts share the name:
@@ -557,17 +691,68 @@ The backend-facing half is in `FE-REPLY-BE_KN-2026-09-29.md` (Thai) and
       the browser: report as `playerA1@ku.th` → the comment shows under
       Reported only for `somchai@ku.th` → Remove asks for a reason. One test
       comment by มานะ is left on t19, unreported.
-      - Follow-up question: "if the organizer presses Report by mistake, can it
-        be undone?" No document covers it, and there is no route. Recommended a
-        reviewer-side **dismiss** rather than an undo for the reporter, because
-        `is_reported` is one boolean and does not record who reported.
-      - [ ] Backend delivery required: `FE-comment-report-cannot-be-dismissed`
-            — a dismiss route for organizer and university-wide admin. Until
-            then a groundless report stays in Reported only for good.
-      - [ ] Slice 2 (owner of `LiveCommunityTab.tsx`): hide **Report** when
-            `canModerate` is true — the organizer can Remove directly, so the
-            button only creates this mistake — and add **Dismiss** in the
-            Reported only view once the route exists.
+      - [x] Backend dismiss delivered in source at `BE_KN@7ea7328`:
+            `POST /tournaments/:id/comments/:cid/dismiss-report`, for the
+            organizer and university-wide admin; returns `{ id, isReported: false }`.
+            This supersedes the older missing-route note below; browser
+            acceptance and frontend wiring remain open.
+      - [ ] Slice 2 (`LiveCommunityTab.tsx`): hide **Report** when `canModerate`
+            is true and add **Dismiss** for reported comments. Show pending/error
+            feedback and refresh the comments/filter counts after success.
+            Accept: authorized reviewers can dismiss without deleting the comment;
+            it survives reload and leaves Reported only. A participant cannot dismiss.
+
+### Screenshot follow-up — comment reports and announcements, 2026-10-01
+
+Compared the six screenshot requests with frontend `3c50e30` and fetched
+backend source `BE_KN@7ea7328`. Owners below describe the remaining work;
+source inspection does not close real-backend/browser acceptance.
+
+- [x] **Report confirmation exists in FE:** reporting opens a modal showing the
+      author and comment, then requires **Confirm Report** before the mutation.
+      Existing code is recorded here; no new browser acceptance is claimed.
+- [ ] **Report confirmation acceptance · Frontend Tester:** Cancel/close sends
+      no report request; Confirm sends one request for the selected comment ID,
+      prevents repeated submission while pending and displays failure feedback.
+
+- [ ] **Reported badge belongs to the comment · Slice 2 / FE:** move the
+      `Reported` badge from the author/name row to the comment content or its
+      moderation controls. The report concerns that comment, not the author.
+      Keep it visible only to viewers allowed by the backend moderation DTO.
+      Accept: with several comments by different users, only the reported
+      comment is marked; its author's profile/name is not marked. Verify desktop
+      and mobile layout and reload persistence.
+
+- [ ] **Dismiss reset after comment edit · Slice 2 + Backend owner + Tester:**
+      verify the delivered contract and consume `reportCleared` where needed.
+      - [x] Source at `7ea7328`: dismiss sets `is_reported = FALSE` and
+        `report_cleared_at = NOW()`; reports on that unchanged comment do not
+        re-open the queue. `upsertComment` resets `report_cleared_at` to NULL
+        when the author edits, so a subsequent report can re-open it.
+        An unresolved `is_reported` flag is preserved on edit.
+      - [ ] Real acceptance: report comment A → organizer dismisses → reload;
+        reporting unchanged A leaves the queue clear → author edits A → report
+        again → A returns to Reported only. Comment B remains unchanged.
+        Editing alone must not automatically re-report a dismissed comment or
+        silently clear an unresolved report. Record API/Network evidence.
+
+- [ ] **Organizer announcements reach participating players' Inbox ·
+      Slice 1 (Inbox) + Slice 2 (Announcements) + Backend notification owner:**
+      verify notification production and the recipient rules for participants
+      in that tournament; confirm delivery via `GET /me/notifications`.
+      - [x] FE Inbox already routes a `tournament_announcement` notification
+        with `relatedEntityType: tournament` to `/t/:id/announcements`.
+        This verifies navigation code only, not notification delivery.
+      - [ ] Check current BE producer/recipient contract; if absent or incomplete,
+        request backend delivery and document the agreed membership/status rules.
+      - [ ] Real acceptance: organizer posts a distinctive announcement → a
+        participating player's Inbox receives it with the correct tournament ID
+        → Open shows the announcement → read state/badge survives reload.
+        Compare another tournament's participant to ensure recipients follow the
+        agreed scope and receive no duplicate notification for one announcement.
+
+MVP integration remains tracked under R28/R32; avatar/logo implementation and
+its remaining browser/DTO acceptance remain tracked under R23 above.
 
 ### R35–R41 — restoring the QA baseline, and what it showed (2026-09-30)
 
@@ -624,9 +809,8 @@ teams: `HANDOVER-2026-09-30.md`.
         t22 → step 6 "0 of 1 · 0 of 1".
       - Data: match 13 staffed from t23's pool through FR02 (สมหญิง, มานะ).
         Match 14 (t22) is left without a fixture on purpose.
-      - [ ] Slice 2: round-robin tournaments have no Draw tab, so the per-match
-            referee planner never renders for them (`ManageTab.tsx`, `showDraw`).
-            Step 6's button falls back to the schedule there.
+      - [x] Slice 2 frontend: round-robin per-match referee planner is now in
+            Manage → Referees; Step 6 links there. Browser acceptance remains open.
 - [x] **R39 — "check the seed for anything else like this".** Thirteen more
       rules, each tied to a backend transition (result ↔ match status, start
       needs check-in, the minimum checked-in players, advancement to the next
@@ -645,16 +829,17 @@ teams: `HANDOVER-2026-09-30.md`.
 - [x] **R40 — "the referee can dispute match 12?"** Yes, by design:
       `requireCanDisputeResult` admits the match's referees as well as the team
       leaders, and `viewer.can.disputeResult` mirrors it. No change.
-- [ ] **R41 — match 12 reads "Entered by —".** Seen during R39, not yet looked
-      at. The submitter's name is missing on the match page (slice 3).
+- [ ] **R41 — actual recorder name still requires BE.** Frontend role/fallback
+      display is implemented; S05 omits recorder identity and submission time.
+      See the 2026-10-01 implementation follow-up and backend request.
 
 **`BE_KN` at `2f072e7` (not pulled or verified yet).** Two of our open items
 landed: the organizer's report **dismiss** (`f1a3624`,
-`POST /tournaments/:id/comments/:cid/dismiss`) and avatar/team-logo uploads
+`POST /tournaments/:id/comments/:cid/dismiss-report`) and avatar/team-logo uploads
 (`4813d1f`, migration 031). Migration 032 also arrived. Pull, migrate, verify,
 then wire:
 
-- [ ] Backend delivery required → landed, verify: `FE-comment-report-cannot-be-dismissed`,
+- [ ] Backend source delivered at `7ea7328`; frontend/browser verification remains: `FE-comment-report-cannot-be-dismissed`,
       then a Dismiss button in the Reported only view (slice 2).
 - [ ] Backend delivery required → landed, verify: `FE-avatar-and-team-logo-uploads`
       (R23), then the upload screens.
@@ -1046,7 +1231,7 @@ API-backed page from silently mixing server data with the prototype seed.
 | [x] | Slice 1 | Profile — identity | Render the signed-in user's name and registry fields from `GET /me` without requiring a matching legacy-store user. The page must never return a blank screen because `legacyUser` is absent. |
 | [x] | Slice 1 | Profile — statistics | Use `GET /users/:id/stats`; show loading, empty, and error states without hiding the `/me` identity section. |
 | [x] | Slice 4 | Profile — squads | Use `GET /me/teams` for the signed-in user's squads; do not derive membership from `s.teams`. |
-| [x] | Slice 1 | Profile — unsupported panels (earlier boundary) | Hide or label these panels instead of calculating them from the seed. C6/C7 now supply tournament MVP and personal Pick'em reads, and the latter is wired; follows, career and received-MVP totals still need read contracts. |
+| [x] | Slice 1 | Profile — unsupported panels (earlier boundary) | Hide or label these panels instead of calculating them from the seed. C6/C7 now supply tournament MVP and personal Pick'em reads, and the latter is wired; player follows and tournament career are now wired in the 2026-10-01 follow-up; team follows/feed and received-MVP totals remain open. |
 | [x] | Slice 1 | Inbox — notifications | C1 is wired in real mode against `BE_KN@e5ea50d`; the older local 501 state applied to the previous baseline. Deployment/browser verification remains open above. |
 | [x] | Slice 4 | Inbox — team invitations | Keep team invitations on the API-backed flow using `GET /me/invitations` and invitation accept/decline routes; do not substitute general notifications for this flow. |
 | [x] | Slices 3 + 4 | Inbox — referee invitations | Keep referee invitations on `GET /me/referee-invitations` in `MatchesPage`; document the navigation until a unified Inbox contract exists. |
@@ -1055,7 +1240,7 @@ API-backed page from silently mixing server data with the prototype seed.
 | [x] | Slice 2 | Tournament detail | A numeric tournament route must not combine a backend DTO with store registrations, teams, brackets, announcements, or permissions. Each tab must be API-backed or explicitly unavailable. |
 | [x] | Slice 3 | Match, bracket, check-in and watch | Remove real-mode reads of store matches/results/check-ins. Each reachable view must be API-backed or explicitly unavailable. |
 | [x] | Slice 4 | Team detail and management | Logo, record, transfer, roster-lock and other mock-only sections must remain isolated from API-backed team identity/membership and be unavailable when their routes are missing. |
-| [x] | Slice 4 | Admin | Only Permanent squads may use the current baseline API. External referees, Users, and other unsupported tabs must not show store records in real mode. |
+| [x] | Slice 4 | Admin | Delivered real-mode admin tabs use BE_KN APIs (including Users, scopes, audit and leader transfers in the 2026-10-01 follow-up). Unsupported tabs must not show store records. |
 
 ### 3. Backend contract gates for remaining screens
 
@@ -1070,7 +1255,7 @@ API-backed page from silently mixing server data with the prototype seed.
       before the Search team section is enabled in real mode.
       Delivered as public T19 in BE_KN `c11954c`; the FE sends
       `visibility=public` and renders the returned numeric team DTOs.
-- [ ] **Backend owner:** define follows and any missing Profile career reads.
+- [ ] **Backend owner:** define team follows/feed and received-MVP totals. Player follows and tournament career are delivered/wired in the 2026-10-01 follow-up.
       Pick'em history (`GET /me/pickem`) and tournament MVP vote reads are now
       in `BE_KN@e5ea50d` and wired in real mode.
 - [x] **Head Frontend Dev:** update this file with each confirmed route, request,
@@ -1190,12 +1375,12 @@ delivers an agreed contract:
 - [x] ~~Backend delivery required: notification list, mark-one-read, and
       mark-all-read routes.~~ Delivered in `BE_KN@e5ea50d` (C1) and wired to
       Inbox/Shell. Live browser verification remains open.
-- [ ] Backend delivery required: follows plus any Profile career-by-tournament
-      and received-MVP-total reads that remain part of the approved UI. Pick'em
-      history and tournament MVP vote reads are delivered and wired in C7/C6.
-- [ ] Backend delivery required: team leader transfer (SDS
-      `POST /teams/{id}/transfer-leader`, FR-TM-08). Outside mock mode the UI
-      labels it unavailable.
+- [ ] Backend delivery required: team following, its notification feed and
+      received-MVP-total reads. Player follow and career-by-tournament are delivered
+      on `BE_KN@7ea7328` and wired in the 2026-10-01 frontend follow-up above.
+- [x] ~~Backend delivery required: team leader transfer~~ - delivered in current
+      `BE_KN@7ea7328`; frontend request and Admin decision queue are wired above.
+      Official transfers remain pending until Admin approval; live acceptance open.
 - [x] ~~Backend delivery required: tournament dashboard~~ — delivered as
       `GET /tournaments/:id/dashboard`, verified 2026-09-19. It answers
       `{teamCount, playerCount, matchCount, matchesCompleted}` — four totals, not
@@ -1208,14 +1393,10 @@ delivers an agreed contract:
       (per person, not per request row). `src/api/admin.ts` is wired to it and
       the Admin page's External referees tab now works against the backend.
       The queue does not say who invited the referee, so that column is blank.
-- [ ] Backend delivery required: the whole admin-user surface (FR-UM-05) —
-      `GET /admin/users`, `PATCH /admin/users/{id}/suspend`, `GET /admin/scopes`
-      for granting and revoking admin rights, and `GET /admin/audit-logs`. All
-      four answer 404 on `6ebda2e`. Login already refuses a suspended account
-      (`403 ACCOUNT_SUSPENDED`) and the test database has one to prove it, so
-      the rule exists with no way for an admin to apply it. The Admin page's
-      Users and Audit tabs work in mock mode only; in real mode they say the
-      routes do not exist.
+- [x] ~~Backend delivery required: admin-user surface (FR-UM-05)~~ - routes are
+      delivered in `BE_KN@7ea7328` and frontend Users, Admin rights and Audit screens
+      are wired above. Root/faculty/university and suspension browser checks remain
+      open; the earlier `6ebda2e` missing-route report is historical.
 - [x] ~~Backend delivery required: roster lock (FR-TM-04)~~ — delivered as B6
       (`c43f497`), verified 2026-09-20. `ensureRosterUnlocked` guards T07/T08/T09
       and T13; `PATCH /teams/9031/members/9201` answers `409 ROSTER_LOCKED` and
@@ -1482,12 +1663,14 @@ delivers an agreed contract:
       and years and says, live, who will decide the request; the manage tab's
       Entry & filter reads the real rules and sends a change through C09. What
       is *not* built is the C17b screen — see the item about it below.
-- [ ] Backend delivery required: entry notes, the soft filter (FR-TN-03). There
-      is no column and no route, so the free-text note an organizer writes for
-      applicants has nowhere to live. `saveEntryNotes()` answers 501.
-- [ ] Backend delivery required: `DELETE /tournaments/:id`. An organizer can
-      unpublish but never delete, so a tournament created by mistake is
-      permanent. `deleteTournament()` answers 501.
+- [x] Backend delivery: entryNotes / soft filter (FR-TN-03) is present in
+      `BE_KN@d5bda6d` schema/mapper/repository and PATCH /tournaments/:id.
+      This is delivered backend work, not pending merge or a new BE request.
+- [ ] Frontend integration remaining: replace saveEntryNotes() unavailable with
+      the delivered PATCH entryNotes contract, map the read field and verify reload.
+- [x] ~~Backend delivery required: `DELETE /tournaments/:id`~~ - delivered in
+      `BE_KN@7ea7328`; frontend Progress deletion screen is wired. Backend rejects
+      public/completed/activity-bearing tournaments; live acceptance remains open.
 - [x] ~~Backend delivery required: `PATCH /matches/:id/schedule` is all or
       nothing~~ — delivered as B9 (`c43f497`), verified 2026-09-20. Sending only
       `venue` to match 13 moved the court and left the times alone; a match that

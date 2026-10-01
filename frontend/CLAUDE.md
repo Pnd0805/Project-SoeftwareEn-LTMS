@@ -51,65 +51,49 @@ not take) and wastes a round of reporting. The order is always:
 
 ```bash
 docker start ltms-mysql ltms-minio
-cd C:/Users/DELL/Projects/ltms-backend-shokun2/backend && npm run migrate && npm run dev
+cd D:/Project-LTMS/BE_KN/backend && npm run migrate && npm run dev
 ```
 
 **Then run the role audit, every time, and tell the user what it found before doing anything else:**
 
 ```bash
-python C:/Users/DELL/Projects/Project-SoeftwareEn-LTMS/frontend/scripts/audit-roles.py
+python D:/Project-LTMS/ltms-frontend/frontend/scripts/audit-roles.py
 ```
 
-The backend blocks new rule-breaking cases through its API, but rows written straight into the
-database never meet those checks — and `qa-baseline.sql` itself ships twelve of them (found
-2026-09-29: ปกรณ์ competing in t22/t23, which he organizes; สมหญิง and มานะ refereeing tournaments
-their team entered; สมชาย refereeing his own t2/t4). Every restore brings them back. The script
-checks eight rules, each cited from the spec: organizer competing in their own tournament · referee
-on a team entered in the same tournament · organizer refereeing their own tournament · referee on
-either team of the match they officiate · a match past `scheduled` without enough referees ·
-a check-in decided by someone who is not that match's referee · a public tournament with fewer
-accepted referees than publishing requires · a match past `scheduled` without start, end and venue.
-The last two exist because fixing one rule broke another (2026-09-30): removing conflicted referees
-from already-public tournaments left five of them short, and the organizer's step trail jumped back
-to "Appoint the referees" with publish, registration and squads already done. Exit code 1 = cases found (listed
-with ids), 0 = clean, 2 = database unreachable. Never "fix" a case by guessing which role to drop —
-report it and ask.
+The current baseline at `BE_KN@d5bda6d` includes the approved repairs and schema
+034 (verified 2026-10-01: migration check up to date; C1-C8 role audit clean).
+Older baselines shipped twelve role conflicts. Keep the audit: API validation does
+not protect fixture rows written directly to SQL, and C1-C8 do not check missing
+actual end times on completed matches. Exit 1 means conflicts, exit 2 means the
+DB could not be reached. Report conflicts before changing roles.
 
 Test accounts all use password `abcd1234`:
 
 - `p9201@ku.th` — player, team leader, organizer and referee in one account, but **never two of
   those in the same tournament**: organizes t14, referees t19/t21, plays in t18/t22/t23/t28.
   (Until 2026-09-29 he organized t22/t23 while his team played in them — a conflict of interest
-  the API refuses. t22/t23 now belong to `somchai@ku.th`. A baseline restore undoes this; the
-  audit below will say so.)
+  the API refuses. t22/t23 now belong to `somchai@ku.th`. The schema-034 baseline includes these repairs; still audit after restore.)
 - `somchai@ku.th` — admin, **university-wide** (`admin_scopes.scope_type`)
-- `admin.eng@ku.th` — admin, **faculty 1 only**. `seed-test.sql` has always
-  defined this account but `qa-baseline.sql` does not ship it, so a restored
-  database has one admin and no way to test faculty scope — which is where
-  auto-approval and `ELIGIBILITY_OUT_OF_SCOPE` actually differ. `restore-qa.py`
-  re-adds it (user 9004 + its `admin_scopes` row), and `root@ku.th` (9099) too.
+- `admin.eng@ku.th` - faculty 1 admin (9004), and `root@ku.th` (9099) are
+  included in the schema-034 QA baseline. The legacy wrapper previously added
+  these accounts to the September baseline; do not reapply it on the new one.
 
-Roll test data back without shifting a single id (replaces the prototype's "reset mock") —
-**use the wrapper, never `qa-baseline.py restore` on its own:**
+## Current QA baseline (Notice C, 2026-10-01)
 
-```bash
-python C:/Users/DELL/Projects/Project-SoeftwareEn-LTMS/frontend/scripts/restore-qa.py
-```
+`BE_KN@d5bda6d` supplies a complete schema-034 baseline and a restore script that
+clears tables before importing. To intentionally reset QA data, use the backend's
+`python ../database/qa-baseline.py restore` from its `backend/` directory. Restore
+replaces current database data; do not run it merely to inspect the baseline.
 
-The baseline dates from 2026-09-21, and a bare restore leaves a database the current backend cannot
-use (found 2026-09-30: match pages and standings all 500, missing `started_at` / `goals_for`).
-`migrate` alone does not finish either — restore keeps tables it did not dump, so 024 and 028 fail
-`ER_TABLE_EXISTS_ERROR`, and 029 fails `ER_DUP_FIELDNAME`. The wrapper restores, migrates (skipping a
-failed file only when its table exists and is empty, or its columns already exist — anything else
-stops with exit 4), re-adds `admin.eng@ku.th` and `root@ku.th` from `seed-test.sql`, applies the
-2026-09-29 decisions on the twelve baseline conflicts (hand the organizer over; remove referees
-through F03, so the backend must be running — otherwise exit 3, rerun with `--no-restore`), then
-the 2026-09-30 decisions: re-staffs the five public tournaments that removal left short with
-`referee3@ku.th` / `referee4@ku.th` (invite → accept), gives match #1 a fixture and two
-referees before reopening its check-in, and staffs match 13 (t23) from its tournament's pool. Match
-14 (t22) is left with no fixture on purpose — t22 correctly sits at step 6. It ends with the audit,
-which should exit 0. Everything recorded after 2026-09-21 is gone after a restore; that is the
-baseline, not the script.
+`frontend/scripts/restore-qa.py` is the legacy repair wrapper for the September
+baseline. Do not repeat its repairs on the new baseline: their effects are already
+included. Keep it as historical tooling until compatibility is reviewed.
+
+The migrate and role-audit gates above still apply before live tests. With the
+schema-034 baseline migration should report `up to date (34 migrations)`.
+Current fixture roles: t14 organizer = 9201; t22/t23 organizer = 9001. Match 1 is
+t10 and match 13 is t23. Completed legacy matches 2-6 and 9 may have no actual
+end time; never synthesize a deadline from the current time.
 
 ## Working in this code
 

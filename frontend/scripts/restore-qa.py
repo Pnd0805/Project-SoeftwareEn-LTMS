@@ -1,4 +1,9 @@
 """
+LEGACY: repairs the September baseline. BE_KN@d5bda6d already includes these
+repairs in schema-034 qa-baseline.sql; use the backend qa-baseline.py restore
+for that baseline, followed by the workspace migration/audit verification gates.
+Do not reapply this wrapper without reviewing compatibility.
+
 frontend/scripts/restore-qa.py — ย้อนฐานกลับ QA baseline แล้วซ่อมให้ใช้งานได้ ในคำสั่งเดียว
 
     python frontend/scripts/restore-qa.py               ย้อน + ซ่อม + ตรวจ
