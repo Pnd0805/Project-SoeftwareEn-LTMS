@@ -6,9 +6,9 @@ const json = (body: object) => ({ headers: { 'Content-Type': 'application/json' 
 export const getReviews = (id: number) => apiFetch<ReviewSummary>(`/tournaments/${id}/feedback`)
 export const submitReview = (id: number, rating: number, content: string) =>
   apiFetch<ReviewSummary['mine']>(`/tournaments/${id}/feedback`, { method: 'POST', ...json({ rating, content }) })
-export const getMvp = (id: number) => apiFetch<MvpSummary>(`/tournaments/${id}/mvp-votes`)
+export const getMvp = (id: number) => apiFetch<MvpSummary>(`/matches/${id}/mvp-votes`)
 export const voteMvp = (id: number, userId: number) =>
-  apiFetch<{ tournamentId: number; votedForUserId: number; changed: boolean }>(`/tournaments/${id}/mvp-votes`, { method: 'POST', ...json({ userId }) })
+  apiFetch<{ matchId: number; votedForUserId: number; changed: boolean }>(`/matches/${id}/mvp-votes`, { method: 'POST', ...json({ userId }) })
 export const getComments = (id: number, page = 1, reported = false) =>
   apiFetch<CommentPage>(`/tournaments/${id}/comments?page=${page}&pageSize=20${reported ? '&reported=true' : ''}`)
 export const postComment = (id: number, content: string) =>
@@ -17,6 +17,8 @@ export const deleteOwnComment = (id: number) =>
   apiFetch<void>(`/tournaments/${id}/comments/me`, { method: 'DELETE' })
 export const removeCommentByOrganizer = (id: number, commentId: number, reason: string) =>
   apiFetch<void>(`/tournaments/${id}/comments/${commentId}`, { method: 'DELETE', ...json({ reason }) })
+export const dismissCommentReport = (id: number, commentId: number) =>
+  apiFetch<{ id: number; isReported: false }>(`/tournaments/${id}/comments/${commentId}/dismiss-report`, { method: 'POST' })
 export const reportFeedback = (id: number) =>
   apiFetch<{ id: number; isReported: true }>(`/feedback/${id}/report`, { method: 'POST' })
 export const removeFeedbackByAdmin = (id: number, reason?: string) =>

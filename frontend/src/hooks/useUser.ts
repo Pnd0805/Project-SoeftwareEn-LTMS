@@ -61,12 +61,14 @@ export function useFollow(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
+      if (target.startsWith("player:")) queryClient.invalidateQueries({ queryKey: ["users", Number(target.slice(7))] })
     },
   })
 
   return {
     isFollowing: follows.data?.targets.includes(target) ?? false,
     isLoading: follows.isLoading,
+    error: follows.error,
     toggle,
   }
 }
@@ -142,4 +144,8 @@ export function usePicks(
   })
 
   return { ...picks, place }
+}
+
+export function useUserCareer(userId: number | undefined) {
+  return useQuery({ queryKey: ['users', userId, 'career'], queryFn: () => userApi.getUserCareer(userId!), enabled: userId !== undefined });
 }

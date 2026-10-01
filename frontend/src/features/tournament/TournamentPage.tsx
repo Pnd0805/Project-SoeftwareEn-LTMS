@@ -183,9 +183,9 @@ export function TournamentPage() {
             : t.status === 'public' ? <Badge kind="ok">Public</Badge>
               : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
                 : <Badge kind="warn">Pending review</Badge>}
-          {(USE_MOCK ? !!champion : completed) ? (
+          {(USE_MOCK ? !!champion : true) ? (
             <button className="btn primary" type="button" onClick={() => navigate(`/mvp/${t.id}`)}>
-              <Icon name="star" size={12} /> Vote MVP
+              <Icon name="star" size={12} /> {USE_MOCK ? 'Vote MVP' : 'Match MVP'}
             </button>
           ) : null}
           {watchable ? (

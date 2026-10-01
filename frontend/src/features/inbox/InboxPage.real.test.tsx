@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 const { markRead, notificationQuery } = vi.hoisted(() => ({ markRead: vi.fn(), notificationQuery: vi.fn() }))
@@ -48,4 +48,27 @@ describe('real C1 Inbox', () => {
     /* รับ/ปฏิเสธอยู่ในแผง Action requests ของหน้าเดียวกัน */
     expect(screen.getByText('Action requests')).toBeInTheDocument()
   })
+})
+
+it('opens tournament announcements from Inbox and marks the delivered notification read', () => {
+  notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
+    items: [{ id: 99, type: 'tournament_announcement', title: 'Court changed', message: 'Court B', relatedEntityType: 'tournament', relatedEntityId: 23, isRead: false, createdAt: '2026-10-01T00:00:00Z' }],
+    unreadCount: 1, pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 },
+  } })
+  render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<InboxPage />} /><Route path="/t/23/announcements" element={<div>Court B announcement</div>} /></Routes></MemoryRouter>)
+  fireEvent.click(screen.getByRole('button', { name: 'Open' })); expect(markRead).toHaveBeenCalledWith(99); expect(screen.getByText('Court B announcement')).toBeInTheDocument()
+})
+
+it('opens rewritten comments in Community without assuming every rewrite is reported', () => {
+  markRead.mockClear()
+  notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
+    items: [{ id: 100, type: 'comment_rewritten_after_removal', title: 'Removed comment rewritten', message: 'Review the new content; an earlier report may remain.', relatedEntityType: 'tournament', relatedEntityId: 19, isRead: false, createdAt: '2026-10-01T00:00:00Z' }], unreadCount: 1,
+  } })
+  function Destination() { const location = useLocation(); return <div>Destination: {location.pathname}{location.search}</div> }
+  render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<InboxPage />} /><Route path="/t/19/community" element={<Destination />} /></Routes></MemoryRouter>)
+  expect(screen.getByText('Removed comment rewritten')).toBeInTheDocument()
+  expect(screen.getByText(/an earlier report may remain/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+  expect(markRead).toHaveBeenCalledWith(100)
+  expect(screen.getByText('Destination: /t/19/community')).toBeInTheDocument()
 })

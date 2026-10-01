@@ -1,5 +1,6 @@
 export interface FollowListDto {
   targets: string[]
+  items?: { id: number; fullName: string; avatarUrl: string | null }[]
 }
 
 export interface MvpVoteDto {

@@ -52,7 +52,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
   const entries = thread?.mine && !reported
     ? [thread.mine, ...thread.items.filter(item => !item.isMine)]
     : thread?.items ?? []
-  const busy = comments.post.isPending || comments.removeMine.isPending || comments.moderate.isPending || comments.report.isPending
+  const busy = comments.post.isPending || comments.removeMine.isPending || comments.moderate.isPending || comments.report.isPending || comments.dismiss.isPending
 
   const setFilter = (nextReported: boolean, nextPage = 1) => {
     const next = new URLSearchParams()
@@ -118,15 +118,21 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
             <b>{item.author.fullName}</b>
             {thread?.canModerate ? <span className="tag">#{item.id}</span> : null}
             {item.isMine ? <Badge kind="neutral">Yours</Badge> : null}
-            {thread?.canModerate && item.isReported ? <Badge kind="warn">Reported</Badge> : null}
             <span className="tag">{new Date(item.createdAt).toLocaleString()}</span>
           </div>
 
           <div style={{ fontSize: 15, lineHeight: 1.5, wordBreak: 'break-word', margin: '2px 0' }}>
             {item.content}
+            {thread?.canModerate && item.isReported ? <div style={{ marginTop: 6 }}><Badge kind="warn">Reported</Badge></div> : null}
+            {thread?.canModerate && item.reportCleared ? <div className="sub">Reviewed and dismissed. A new report can be made after the author edits this comment.</div> : null}
           </div>
 
           <div className="hstack" style={{ gap: 8, marginTop: 4 }}>
+            {thread?.canModerate && item.isReported ? <button className="btn ghost" type="button" disabled={busy}
+              onClick={async () => {
+                try { await comments.dismiss.mutateAsync(item.id); setNotice('Report dismissed. The comment remains visible.') }
+                catch (error) { setNotice(messageOf(error)) }
+              }}>{comments.dismiss.isPending ? 'Dismissing...' : 'Dismiss report'}</button> : null}
             {item.isMine ? (
               <button className="btn ghost" type="button" disabled={busy} style={{ padding: '2px 8px', fontSize: 13 }}
                 onClick={async () => {
@@ -137,7 +143,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
               </button>
             ) : (
               <>
-                {me.data ? (
+                {me.data && !thread?.canModerate ? (
                   <button className="btn ghost" type="button" disabled={busy} style={{ padding: '2px 8px', fontSize: 13 }}
                     onClick={() => {
                       setReportingComment(item)

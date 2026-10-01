@@ -1,10 +1,6 @@
-import { ApiError, mockDelay, USE_MOCK } from "./client"
+import { apiFetch, ApiError, mockDelay, USE_MOCK } from "./client"
 
-/**
- * ทั้งไฟล์นี้เป็นฟีเจอร์โซเชียล (ติดตาม · โหวต MVP · คอมเมนต์ · ทายผล)
- * ซึ่ง backend ยังไม่มี endpoint ให้เลยสักตัว — โหมดจริงจึงตอบ 501 ทุกเส้น
- * แทนที่จะยิงไปพาธที่เดาไว้แล้วได้ 404 (ดู FEAT-1-REMAINING)
- */
+/** Real player following uses BE_KN; unsupported prototype-only routes remain unavailable. */
 const unavailable = <T>(what: string): Promise<T> =>
   Promise.reject(new ApiError(501, { code: "ENDPOINT_UNAVAILABLE", message: `${what} ยังไม่มีใน backend` }));
 import type {
@@ -29,7 +25,8 @@ import { getMockPicks, mockPlacePick } from "../mocks/pick.mock"
 export async function getFollows(userId: number): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(getMockFollows(userId))
 
-  return unavailable<FollowListDto>("รายการติดตาม (/me/follows)")
+  const data = await apiFetch<{ items: { id: number; fullName: string; avatarUrl: string | null }[] }>("/me/following")
+  return { targets: data.items.map(row => `player:${row.id}`), items: data.items }
 }
 
 export async function follow(
@@ -38,8 +35,10 @@ export async function follow(
 ): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(mockFollow(userId, target))
 
-  void target;
-  return unavailable<FollowListDto>("การกดติดตาม")
+  const matched = /^player:([1-9]\d*)$/.exec(target)
+  if (!matched) return unavailable<FollowListDto>("Team following")
+  await apiFetch(`/users/${matched[1]}/follow`, { method: "POST" })
+  return getFollows(userId)
 }
 
 export async function unfollow(
@@ -48,8 +47,10 @@ export async function unfollow(
 ): Promise<FollowListDto> {
   if (USE_MOCK) return mockDelay(mockUnfollow(userId, target))
 
-  void target;
-  return unavailable<FollowListDto>("การเลิกติดตาม")
+  const matched = /^player:([1-9]\d*)$/.exec(target)
+  if (!matched) return unavailable<FollowListDto>("Team following")
+  await apiFetch(`/users/${matched[1]}/follow`, { method: "DELETE" })
+  return getFollows(userId)
 }
 
 export async function getMvpVotes(

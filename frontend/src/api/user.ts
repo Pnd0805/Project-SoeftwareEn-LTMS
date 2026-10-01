@@ -88,3 +88,12 @@ export async function searchUsers(q: string): Promise<UserSearchResult> {
   }
   return apiFetch<UserSearchResult>(`/users/search?q=${encodeURIComponent(q)}`);
 }
+
+export interface CareerTournamentDto {
+  tournament: { id: number; name: string; sportTypeId: number; status: string };
+  team: { id: number; name: string }; played: number; wins: number; losses: number; champion: boolean;
+}
+export function getUserCareer(userId: number): Promise<{ items: CareerTournamentDto[] }> {
+  if (USE_MOCK) return mockDelay({ items: [] });
+  return apiFetch(`/users/${userId}/career`);
+}

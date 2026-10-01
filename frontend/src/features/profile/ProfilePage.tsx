@@ -2,6 +2,7 @@
  * The signed-in user's profile. Real mode is rendered exclusively from API
  * DTOs; prototype-only career data remains available in mock mode.
  */
+import { BackendCareerPanel } from '../player/BackendCareerPanel'
 import { Link } from 'react-router-dom'
 import { USE_MOCK } from '../../api/client'
 import { Badge, Empty, Facts, Panel, TableWrap } from '../../components/kit/primitives'
@@ -28,7 +29,7 @@ export function ProfilePage() {
   const meQuery = useMe()
   const currentUser = meQuery.data
   const statsQuery = useUserStats(currentUser?.id)
-  const followsQuery = useFollows(currentUser?.id, USE_MOCK)
+  const followsQuery = useFollows(currentUser?.id)
   const teamsQuery = useBackendMyTeams()
   const facultiesQuery = useFaculties()
   const departmentsQuery = useDepartments(currentUser?.facultyId)
@@ -164,8 +165,8 @@ export function ProfilePage() {
               </div>) : <p className="sub">No predictions yet.</p>}
             </> : null}
           </Panel>
-          <Panel quiet><span className="tag"><em>//</em> Career and MVP totals</span>
-            <p className="sub">Tournament career and received-vote totals are not available from the server yet.</p></Panel>
+          <BackendCareerPanel userId={currentUser.id} />
+          <Panel quiet><span className="tag"><em>//</em> MVP totals</span><p className="sub">Received-vote totals are not available from the server yet.</p></Panel>
         </div>
 
         <div className="rail">
@@ -183,7 +184,10 @@ export function ProfilePage() {
           </Panel>
           <Panel quiet>
             <span className="tag"><em>//</em> Following</span>
-            <span className="sub">Following and its inbox feed are not available on the server yet.</span>
+            {followsQuery.isPending ? <p>Loading followed players...</p> : null}
+            {followsQuery.error ? <p role="alert">Unable to load followed players. <button className="btn" onClick={() => void followsQuery.refetch()}>Retry</button></p> : null}
+            {followsQuery.data?.items?.map(row => <div key={row.id}><Link to={`/player/${row.id}`}>{row.fullName}</Link></div>)}
+            {followsQuery.isSuccess && !followsQuery.data.items?.length ? <p>No followed players yet.</p> : null}
           </Panel>
         </div>
       </div>

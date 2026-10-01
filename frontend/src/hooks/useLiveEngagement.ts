@@ -23,7 +23,8 @@ export function useCommentsLive(id?: number, page = 1, reported = false) {
   const removeMine = useMutation({ mutationFn: () => api.deleteOwnComment(id!), onSuccess: refresh })
   const moderate = useMutation({ mutationFn: ({ commentId, reason }: { commentId: number; reason: string }) => api.removeCommentByOrganizer(id!, commentId, reason), onSuccess: refresh })
   const report = useMutation({ mutationFn: api.reportFeedback, onSuccess: refresh })
-  return { query, post, removeMine, moderate, report }
+  const dismiss = useMutation({ mutationFn: (commentId: number) => api.dismissCommentReport(id!, commentId), onSuccess: refresh })
+  return { query, post, removeMine, moderate, report, dismiss }
 }
 export function usePredictionLive(id?: number) {
   const qc = useQueryClient()

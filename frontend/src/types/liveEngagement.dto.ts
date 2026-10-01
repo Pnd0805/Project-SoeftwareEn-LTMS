@@ -9,9 +9,10 @@ export interface ReviewSummary {
 }
 
 export interface MvpSummary {
+  matchId: number;
   window: { opensAt: string | null; closesAt: string | null; isOpen: boolean };
-  candidates: Array<{ userId: number; fullName: string; avatarUrl: string | null; team: { id: number; name: string }; votes: number }>;
-  totalVotes: number;
+  candidates: Array<{ userId: number; fullName: string; avatarUrl: string | null; teamId: number; stats: Array<{ statKey: string; statLabelTh: string; value: number }>; votes?: number }>;
+  totalVotes?: number;
   winners: number[];
   mine: { votedForUserId: number } | null;
   canVote: boolean;
@@ -25,6 +26,7 @@ export interface TournamentComment {
   createdAt: string;
   isMine: boolean;
   isReported?: boolean;
+  reportCleared?: boolean;
 }
 export interface CommentPage {
   items: TournamentComment[];

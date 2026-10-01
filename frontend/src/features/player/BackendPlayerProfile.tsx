@@ -10,6 +10,7 @@
  * ⚠️ โปรไฟล์สาธารณะของ backend ไม่ส่งวันเกิด ชั้นปี หรืออีเมลมาให้ (PDPA — NF-SE-03)
  *    หน้านี้จึงไม่มีอายุกับชั้นปีเหมือนหน้าของ prototype และไม่ควรเดาเอาเอง
  */
+import { BackendCareerPanel } from './BackendCareerPanel'
 import { Avatar } from '../../components/kit/Avatar'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
@@ -72,12 +73,13 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
         </span>
         {currentUser && currentUser.id !== p.id ? (
           <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
-            onClick={() => follow.toggle.mutate()} disabled={follow.toggle.isPending}>
+            onClick={() => follow.toggle.mutate()} disabled={follow.isLoading || !!follow.error || follow.toggle.isPending}>
             {follow.isFollowing ? 'Following' : 'Follow this player'}
           </button>
         ) : null}
       </div>
 
+      {follow.error || follow.toggle.error ? <p role="alert">{(follow.error ?? follow.toggle.error) instanceof Error ? (follow.error ?? follow.toggle.error as Error)?.message : "Following request failed."}</p> : null}
       <Panel quiet>
         <span className="tag"><em>//</em> Squads · {p.teams.length}</span>
         {p.teams.length ? (
@@ -123,6 +125,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
           <div className="sub">Nothing recorded yet — figures appear once a referee confirms a match they played in.</div>
         ) : null}
       </Panel>
+      <BackendCareerPanel userId={userId} />
     </>
   )
 }

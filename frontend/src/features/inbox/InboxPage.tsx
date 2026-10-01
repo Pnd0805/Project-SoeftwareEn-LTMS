@@ -35,7 +35,7 @@ function notificationHref(n: NotificationDto): string | null {
   if (n.relatedEntityType === 'tournament') {
     return n.type === 'comment_reported'
       ? `/t/${id}/community?reported=true`
-      : n.type === 'comment_removed' ? `/t/${id}/community` : n.type === 'tournament_announcement' ? `/t/${id}/announcements` : `/t/${id}`
+      : (n.type === 'comment_removed' || n.type === 'comment_rewritten_after_removal') ? `/t/${id}/community` : n.type === 'tournament_announcement' ? `/t/${id}/announcements` : `/t/${id}`
   }
   if (n.relatedEntityType === 'match') return `/m/${id}`
   if (n.relatedEntityType === 'team') return `/team/${id}`
@@ -43,7 +43,7 @@ function notificationHref(n: NotificationDto): string | null {
 }
 
 function notificationIcon(type?: string): IconName {
-  if (type === 'comment_removed' || type === 'comment_reported') return 'shield'
+  if (type === 'comment_removed' || type === 'comment_reported' || type === 'comment_rewritten_after_removal') return 'shield'
   if (type === 'bracket_created' || type === 'bracket_redrawn') return 'trophy'
   if (type === 'pickem_cancelled') return 'star'
   if (type === 'match_walkover') return 'match'

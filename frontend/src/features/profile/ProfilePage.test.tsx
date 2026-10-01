@@ -32,6 +32,7 @@ vi.mock('../../hooks/useAuth', () => ({
 vi.mock('../../hooks/useUser', () => ({
   useUserStats: () => ({ data: undefined, isPending: false, isError: true }),
   useFollows: () => ({ data: undefined }),
+  useUserCareer: () => ({ data: undefined, isPending: false }),
 }))
 
 vi.mock('../../hooks/useTeam', () => ({

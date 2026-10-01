@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getComments, getMvp, getPredictionSummary, getReviews, placePrediction, postComment, removeCommentByOrganizer, restoreFeedbackByAdmin, submitReview } from './liveEngagement'
+import { dismissCommentReport, voteMvp, getComments, getMvp, getPredictionSummary, getReviews, placePrediction, postComment, removeCommentByOrganizer, restoreFeedbackByAdmin, submitReview } from './liveEngagement'
 
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock) })
@@ -10,7 +10,9 @@ describe('BE_KN C6/C7 request contract', () => {
     fetchMock.mockImplementation(async () => new Response('{}', { status: 200 }))
     await getReviews(23)
     await submitReview(23, 4, 'Well run')
-    await getMvp(23)
+    await getMvp(13)
+    await voteMvp(13, 9002)
+    await dismissCommentReport(23, 41)
     await getComments(23, 2, true)
     await postComment(23, 'Good match')
     await removeCommentByOrganizer(23, 41, 'Off topic')
@@ -25,6 +27,9 @@ describe('BE_KN C6/C7 request contract', () => {
     expect(calls).toContainEqual(['/api/v1/matches/13/predictions/summary', undefined, undefined])
     expect(calls).toContainEqual(['/api/v1/matches/13/predictions', 'POST', JSON.stringify({ teamId: 9024 })])
     expect(calls).toContainEqual(['/api/v1/admin/feedback/41/restore', 'POST', undefined])
+    expect(calls).toContainEqual(['/api/v1/matches/13/mvp-votes', undefined, undefined])
+    expect(calls).toContainEqual(['/api/v1/matches/13/mvp-votes', 'POST', JSON.stringify({ userId: 9002 })])
+    expect(calls).toContainEqual(['/api/v1/tournaments/23/comments/41/dismiss-report', 'POST', undefined])
     expect(calls.some(([path]) => String(path).includes('/matches/13/comments'))).toBe(false)
   })
 
