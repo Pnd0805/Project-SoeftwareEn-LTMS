@@ -12,6 +12,8 @@ import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { ConfirmCard, Modal } from '../../components/kit/Modal'
 import { useMe } from '../../hooks/useAuth'
+import { usePublicUser } from '../../hooks/useUser'
+import { useFaculties } from '../../hooks/useReference'
 import { useGrantAdminScope, useRevokeAdminScope, useSuspendUser, useUsersForAdmin } from '../../hooks/useAdmin'
 import type { UserAdminViewDto } from '../../types/admin.dto'
 
@@ -36,9 +38,24 @@ const inFilter = (u: UserAdminViewDto, f: FilterKey) =>
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
 
+/** Only mounted rows load profiles; reuse the public-profile query cache. */
+function SquadCount({ row }: { row: UserAdminViewDto }) {
+  const profile = usePublicUser(!USE_MOCK && row.teamCount == null ? row.user.id : undefined)
+  if (row.teamCount != null) return <>{row.teamCount}</>
+  if (USE_MOCK) return <span>Unavailable</span>
+  if (profile.isPending) return <span className="sub">Loading...</span>
+  if (profile.isError || !Array.isArray(profile.data?.teams)) return <button
+    className="btn ghost" type="button" aria-label={`Retry squads for ${row.user.fullName}`}
+    title="Could not load this user's squads" onClick={() => void profile.refetch()}>Retry</button>
+  return <span title="Current squads">{new Set(profile.data.teams.map(team => team.id)).size}</span>
+}
+
 export function AdminUsersTab() {
   const { data: me } = useMe()
   const users = useUsersForAdmin()
+  const faculties = useFaculties()
+  const facultyName = (u: UserAdminViewDto) => faculties.data?.items.find(f => f.id === u.facultyId)?.name
+    ?? u.facultyName ?? (u.facultyId == null ? null : `Faculty #${u.facultyId}`)
   const suspend = useSuspendUser()
   const grant = useGrantAdminScope()
   const revoke = useRevokeAdminScope()
@@ -63,7 +80,7 @@ export function AdminUsersTab() {
   const found = all.filter(u => inFilter(u, filter) && (!needle
     || u.user.fullName.toLowerCase().includes(needle)
     || u.email.toLowerCase().includes(needle)
-    || (u.facultyName ?? '').toLowerCase().includes(needle)))
+    || (facultyName(u) ?? '').toLowerCase().includes(needle)))
   const shown = found.slice(0, limit)
   const busy = suspend.isPending || grant.isPending || revoke.isPending
   const isSelf = (u: UserAdminViewDto) => !!me?.email && me.email.toLowerCase() === u.email.toLowerCase()
@@ -116,6 +133,10 @@ export function AdminUsersTab() {
       {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
       {actionError ? <Banner kind="crit"><b>That change did not go through.</b> {errorMessage(actionError)}</Banner> : null}
 
+      {faculties.isError ? <Banner kind="warn">
+        Could not load faculty names. Faculty IDs are shown until the list is available.
+        <button className="btn" type="button" onClick={() => void faculties.refetch()}>Retry faculty names</button>
+      </Banner> : null}
       {users.isPending ? <div className="sub">Loading users…</div> : null}
       {users.isError ? (
         status === 501 ? (
@@ -160,8 +181,8 @@ export function AdminUsersTab() {
                             <span className="sub">{u.email}</span>
                           </span>
                         </td>
-                        <td className="sub">{u.facultyName ?? '—'}</td>
-                        <td className="num">{u.teamCount ?? '-'}</td>
+                        <td className="sub">{facultyName(u) ?? '—'}</td>
+                        <td className="num"><SquadCount row={u} /></td>
                         <td>
                           {admin ? <Badge kind="crit">Admin</Badge>
                             : u.userType === 'external' ? <Badge kind="warn">External</Badge>
@@ -256,7 +277,7 @@ export function AdminUsersTab() {
         <ConfirmCard danger={!adminChange?.giving} ok={adminChange?.giving ? 'Make admin' : 'Revoke'}
           onCancel={() => setAdminChange(null)}
           body={adminChange?.giving
-            ? USE_MOCK ? 'They get university-wide admin rights.' : `They get faculty admin rights for Faculty #${adminChange.row.facultyId}.`
+            ? USE_MOCK ? 'They get university-wide admin rights.' : `They get faculty admin rights for ${facultyName(adminChange.row)}.`
             : 'They lose admin rights and go back to being a regular user.'}
           onConfirm={confirmAdminChange} />
       </Modal>

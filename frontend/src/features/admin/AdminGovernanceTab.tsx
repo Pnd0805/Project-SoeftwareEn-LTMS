@@ -15,13 +15,14 @@ export function AdminScopesTab() {
   const target = actor === 'root' ? 'university_wide' : 'faculty'
   const canGrant = actor === 'root' || actor === 'university_wide'
   const valid = Number.isInteger(Number(userId)) && Number(userId) > 0 && (target === 'university_wide' || faculties.data?.items.some(f => f.id === Number(facultyId)))
+  const facultyName = (id: number) => faculties.data?.items.find(f => f.id === id)?.name ?? `Faculty #${id}`
   const busy = grant.isPending || revoke.isPending
   return <Panel quiet><h3>Admin rights</h3>
     {scopes.isPending ? <p>Loading rights...</p> : null}
     {scopes.error ? <Banner kind="crit">{message(scopes.error)} <button className="btn" onClick={() => void scopes.refetch()}>Retry</button></Banner> : null}
     {grant.error || revoke.error ? <Banner kind="crit">{message(grant.error ?? revoke.error)}</Banner> : null}
     {grant.isSuccess || revoke.isSuccess ? <Banner kind="ok">Admin rights updated.</Banner> : null}
-    {(scopes.data?.items ?? []).map(row => <div className="spread" key={row.id}><span>{row.user.fullName} | {row.scopeType}{row.facultyId ? ` | Faculty #${row.facultyId}` : ''}</span>
+    {(scopes.data?.items ?? []).map(row => <div className="spread" key={row.id}><span>{row.user.fullName} | {row.scopeType}{row.facultyId ? ` | ${facultyName(row.facultyId)}` : ''}</span>
       <button className="btn ghost" disabled={busy || row.user.id === me.data?.id || row.scopeType !== target || !canGrant}
         onClick={() => { revoke.reset(); setRemoving(row) }}>Revoke</button></div>)}
     {scopes.isSuccess && !scopes.data.items.length ? <p>No admin rights in your scope.</p> : null}
@@ -29,7 +30,7 @@ export function AdminScopesTab() {
       {target === 'faculty' ? <Field label="Faculty" htmlFor="grant-faculty"><select id="grant-faculty" value={facultyId} onChange={e => setFacultyId(e.target.value)}><option value="">Choose faculty</option>{faculties.data?.items.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></Field> : null}
       <button className="btn primary" disabled={!valid || busy} onClick={() => { grant.reset(); setReview(true) }}>Review grant</button></> : <p>Faculty admins can view rights in their faculty.</p>}
     <Modal open={review} onClose={() => !busy && setReview(false)} title="Grant admin rights">
-      <p>Grant {target} rights to user #{userId}{target === 'faculty' ? ` in Faculty #${facultyId}` : ''}?</p>
+      <p>Grant {target} rights to user #{userId}{target === 'faculty' ? ` in ${facultyName(Number(facultyId))}` : ''}?</p>
       {grant.error ? <Banner kind="crit">{message(grant.error)}</Banner> : null}
       <button className="btn" disabled={busy} onClick={() => setReview(false)}>Cancel</button><button className="btn primary" disabled={busy || !valid} onClick={() => grant.mutate({ userId: Number(userId), scopeType: target, ...(target === 'faculty' ? { facultyId: Number(facultyId) } : {}) }, { onSuccess: () => { setReview(false); setUserId('') } })}>Confirm grant</button>
     </Modal>

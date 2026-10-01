@@ -1,9 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
-const state = vi.hoisted(() => ({ scope: 'root', grant: vi.fn(), suspend: vi.fn() }))
+const state = vi.hoisted(() => ({ scope: 'root', grant: vi.fn(), suspend: vi.fn(), profile: { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] }, loading: false, profileError: false, refetch: vi.fn() }))
 vi.mock('../../api/client', () => ({ USE_MOCK: false }))
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 9, email: 'admin@test', adminScope: { scopeType: state.scope, facultyId: 1 } } }) }))
 vi.mock('../../hooks/useReference', () => ({ useFaculties: () => ({ data: { items: [{ id: 1, name: 'Engineering' }] } }) }))
+vi.mock('../../hooks/useUser', () => ({ usePublicUser: () => ({
+ data: state.profile, isPending: state.loading, isError: state.profileError, refetch: state.refetch,
+}) }))
 vi.mock('../../hooks/useAdmin', () => ({
  useAdminScopes: () => ({ isSuccess: true, data: { items: [] } }),
  useAuditLogs: () => ({ isSuccess: true, data: { items: [] } }),
@@ -14,7 +17,7 @@ vi.mock('../../hooks/useAdmin', () => ({
 }))
 import { AdminScopesTab } from './AdminGovernanceTab'
 import { AdminUsersTab } from './AdminUsersTab'
-beforeEach(() => { state.scope = 'root'; state.grant.mockReset(); state.suspend.mockReset() })
+beforeEach(() => { state.scope = 'root'; state.grant.mockReset(); state.suspend.mockReset(); state.loading = false; state.profileError = false; state.refetch.mockReset(); state.profile = { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] } })
 it('Root reviews a university grant before sending it', () => {
  render(<AdminScopesTab />)
  fireEvent.change(screen.getByLabelText('User ID'), { target: { value: '42' } })
@@ -43,4 +46,22 @@ it('suspension includes category and checks the 90-day ceiling', () => {
  fireEvent.change(screen.getByLabelText(/Days/), { target: { value: '7' } })
  fireEvent.click(screen.getByRole('button', { name: 'Suspend account' }))
  expect(state.suspend).toHaveBeenCalledWith({ userId: 7, input: { suspend: true, reason: 'Repeated spam', category: 'spam', days: 7 } }, expect.anything())
+})
+
+it('shows the actual unique squad count and distinguishes a verified empty list', () => {
+ const view = render(<AdminUsersTab />)
+ expect(screen.getByTitle('Current squads')).toHaveTextContent('2')
+ state.profile = { teams: [] }; view.rerender(<AdminUsersTab />)
+ expect(screen.getByTitle('Current squads')).toHaveTextContent('0')
+})
+it('shows squad loading without claiming zero teams', () => {
+ state.loading = true; render(<AdminUsersTab />)
+ expect(screen.getByText('Loading...')).toBeInTheDocument()
+ expect(screen.queryByTitle('Current squads')).not.toBeInTheDocument()
+})
+it('lets an admin retry a failed squad read without showing a fake zero', () => {
+ state.profileError = true; render(<AdminUsersTab />)
+ expect(screen.queryByTitle('Current squads')).not.toBeInTheDocument()
+ fireEvent.click(screen.getByRole('button', { name: 'Retry squads for Player' }))
+ expect(state.refetch).toHaveBeenCalledOnce()
 })
