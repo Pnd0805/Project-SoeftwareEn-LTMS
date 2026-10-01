@@ -63,7 +63,8 @@ export async function getTournamentPlayerStats(tournamentId : number , userId : 
          *
          * FE ควรติดป้ายว่า "ทีมถอนตัวแล้ว" ไม่ใช่แสดงเหมือนทีมที่ยังแข่งอยู่
          * หมายเหตุ: U14/RW05 (หน้าโปรไฟล์) ยังไม่นับใบที่ถอน ⇒ ตัวเลขสองหน้าจะไม่เท่ากันในเคสนี้
-         * เป็นเรื่องที่ยกให้ทีมตัดสินแยก (ทางเลือก ข ของ OD-47)
+         * เป็นเรื่องที่ยกให้ทีมตัดสินแยก
+         * (OD-47 · `TO-TEAM-2026-10-02-withdrawn-stats.md` ข้อ ก — "ให้ U14/RW05 นับใบที่ถอนด้วยไหม")
          */
         withdrawn : career.has_approved === 0,
         playerStats : sumStats(stats),
