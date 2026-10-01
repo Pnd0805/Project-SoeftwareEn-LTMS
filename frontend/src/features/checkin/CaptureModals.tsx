@@ -6,7 +6,7 @@ import { Badge, Banner, Field } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 
 /**
- * เปิดกล้อง ถ้าไม่ได้ก็บอกเหตุผลแล้วให้เลือกไฟล์แทน
+ * Open the camera; QR capture requests enough detail for signed payloads.
  *
  * ไม่รับ `active` เพราะเนื้อโมดัลถูก mount เฉพาะตอนเปิดอยู่แล้ว — state จึงเริ่ม
  * ใหม่เองทุกครั้ง ไม่ต้องมี effect คอยรีเซ็ต (ซึ่ง react-hooks ห้ามด้วยเหตุผลที่ถูก:
@@ -24,12 +24,14 @@ function useCamera(facing: 'user' | 'environment') {
     const start = async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('เบราว์เซอร์นี้ไม่รองรับกล้อง')
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } })
+        stream = await navigator.mediaDevices.getUserMedia({ video: facing === 'environment'
+          ? { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+          : { facingMode: facing } })
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          await videoRef.current.play().catch(() => {})
-          setReady(true)
+          await videoRef.current.play()
+          if (!cancelled) setReady(true)
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'เปิดกล้องไม่ได้')
@@ -63,6 +65,7 @@ interface QrProps {
   expectedToken: string | null
   onScanned: (token: string) => void
   pending: boolean
+  submissionError?: string | null
 }
 
 export function QrScanModal(props: QrProps) {
@@ -74,11 +77,12 @@ export function QrScanModal(props: QrProps) {
   )
 }
 
-function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
+function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionError }: QrProps) {
   const { videoRef, error, ready } = useCamera('environment')
   const [typed, setTyped] = useState('')
   const [bad, setBad] = useState<string | null>(null)
   const [scanAttempt, setScanAttempt] = useState(0)
+  const [scanState, setScanState] = useState<'starting' | 'scanning' | 'detected' | 'error'>('starting')
   const delivered = useRef(false)
 
   const submit = useCallback((token: string) => {
@@ -102,9 +106,21 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
     const video = videoRef.current
     void import('@zxing/browser').then(({ BrowserQRCodeReader }) => {
       if (cancelled) return
-      return new BrowserQRCodeReader().decodeFromVideoElement(video, (result, _error, scanner) => {
-        if (cancelled || delivered.current || !result) return
+      return new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 200 }).decodeFromVideoElement(video, (result, decodeError, scanner) => {
+        if (cancelled || delivered.current) return
+        if (!result) {
+          // ZXing retries these ordinary "no readable QR yet" outcomes. Other
+          // errors stop its loop, even though the startup promise resolves.
+          const name = typeof decodeError?.getKind === 'function' ? decodeError.getKind()
+            : decodeError instanceof Error ? decodeError.name : ''
+          if (decodeError && !['NotFoundException', 'ChecksumException', 'FormatException'].includes(name)) {
+            setScanState('error')
+            setBad('ตัวสแกนหยุดอ่านภาพ กดสแกนอีกครั้ง หรือกรอกรหัสจากจอกรรมการ')
+          } else setScanState('scanning')
+          return
+        }
         delivered.current = true
+        setScanState('detected')
         scanner.stop()
         submitRef.current(result.getText())
       })
@@ -112,7 +128,10 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
       controls = value
       if (cancelled) value?.stop()
     }).catch(() => {
-      if (!cancelled) setBad('อ่าน QR ไม่ได้ กรอกรหัสบนจอกรรมการแทนได้')
+      if (!cancelled) {
+        setScanState('error')
+        setBad('เริ่มตัวสแกนไม่ได้ กดสแกนอีกครั้ง หรือกรอกรหัสจากจอกรรมการ')
+      }
     })
     return () => { cancelled = true; controls?.stop() }
   }, [ready, pending, scanAttempt, videoRef])
@@ -133,12 +152,20 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
         ) : null}
       </div>
 
+      <span role="status" className="sub">
+        {pending ? 'อ่าน QR แล้ว กำลังส่งเช็คอิน…'
+          : scanState === 'detected' ? 'อ่าน QR แล้ว หากเช็คอินไม่สำเร็จให้กดสแกนอีกครั้ง'
+            : scanState === 'error' ? 'ตัวสแกนไม่พร้อม'
+              : !ready ? 'กำลังเปิดกล้อง…' : 'กำลังสแกน QR — ให้เห็นทั้งรูปและขอบสีขาว ภาพต้องคมชัดและไม่มีแสงสะท้อน'}
+      </span>
+
       {error ? (
         <Banner kind="warn">
           <b>เปิดกล้องไม่ได้</b> — {error} กรอกรหัสที่เห็นบนจอกรรมการแทนได้
         </Banner>
       ) : null}
       {bad ? <Banner kind="crit">{bad}</Banner> : null}
+      {submissionError ? <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {submissionError}</Banner> : null}
 
       <Field label="รหัสบนจอกรรมการ" htmlFor="qr-manual">
         <input id="qr-manual" autoComplete="off" placeholder="กรอกรหัสจากจอกรรมการ"
@@ -150,7 +177,7 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
         {USE_MOCK ? <button className="btn" type="button" disabled={pending || !expectedToken}
           onClick={() => submit(expectedToken ?? '')}>จำลองว่าสแกนติด</button> : null}
         <button className="btn" type="button" disabled={pending || !ready}
-          onClick={() => { delivered.current = false; setScanAttempt(n => n + 1) }}>สแกนอีกครั้ง</button>
+          onClick={() => { delivered.current = false; setBad(null); setScanState('starting'); setScanAttempt(n => n + 1) }}>สแกนอีกครั้ง</button>
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => submit(typed)}>
           {pending ? 'กำลังเช็คอิน…' : 'ยืนยันรหัส'}

@@ -34,3 +34,38 @@ it('decodes the camera payload once, allows another scan, and releases resources
   expect(decoder.stop).toHaveBeenCalled()
   expect(stopTrack).toHaveBeenCalledOnce()
 })
+
+it('reports a fatal frame error instead of leaving a stopped decoder silent', async () => {
+  render(<QrScanModal open expectedToken={null} onScanned={vi.fn()} pending={false} onClose={() => {}} />)
+  await waitFor(() => expect(decoder.decode).toHaveBeenCalledTimes(1))
+  act(() => decoder.decode.mock.calls[0][1](undefined, new Error('Canvas failed'), { stop: decoder.stop }))
+  expect(screen.getByText(/ตัวสแกนหยุดอ่านภาพ/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'สแกนอีกครั้ง' }))
+  expect(screen.queryByText(/ตัวสแกนหยุดอ่านภาพ/)).not.toBeInTheDocument()
+  await waitFor(() => expect(decoder.decode).toHaveBeenCalledTimes(2))
+})
+
+it('keeps scanning ordinary unreadable frames using stable ZXing error kinds', async () => {
+  const scanned = vi.fn()
+  render(<QrScanModal open expectedToken={null} onScanned={scanned} pending={false} onClose={() => {}} />)
+  await waitFor(() => expect(decoder.decode).toHaveBeenCalledTimes(1))
+  act(() => decoder.decode.mock.calls[0][1](undefined,
+    { name: 'minifiedName', getKind: () => 'NotFoundException' }, { stop: decoder.stop }))
+  expect(screen.getByRole('status')).toHaveTextContent('กำลังสแกน QR')
+  expect(screen.queryByText(/ตัวสแกนหยุดอ่านภาพ/)).not.toBeInTheDocument()
+  expect(scanned).not.toHaveBeenCalled()
+})
+
+it('does not report a camera as ready after video playback fails', async () => {
+  vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValue(new Error('Playback unavailable'))
+  render(<QrScanModal open expectedToken={null} onScanned={vi.fn()} pending={false} onClose={() => {}} />)
+  await screen.findByText(/Playback unavailable/)
+  expect(decoder.decode).not.toHaveBeenCalled()
+})
+
+it('keeps the server rejection visible inside the open scan dialog', async () => {
+  render(<QrScanModal open expectedToken={null} onScanned={vi.fn()} pending={false}
+    onClose={() => {}} submissionError="That QR is invalid, expired, or belongs to another match." />)
+  expect(screen.getByRole('dialog')).toHaveTextContent('That QR is invalid, expired, or belongs to another match.')
+  await waitFor(() => expect(decoder.decode).toHaveBeenCalledTimes(1))
+})

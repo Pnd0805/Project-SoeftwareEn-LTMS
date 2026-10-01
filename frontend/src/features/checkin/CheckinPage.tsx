@@ -193,6 +193,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
         onClose={closeCapture}
         expectedToken={m.checkinToken}
         pending={checkin.isPending}
+        submissionError={checkin.isError ? checkinErrorMessage(checkin.error) : null}
         onScanned={token => {
           if (capture === null) return
           checkin.mutate(
@@ -393,6 +394,7 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
         onClose={() => setCapture(false)}
         expectedToken={null}
         pending={checkin.isPending}
+        submissionError={checkin.isError ? checkinErrorMessage(checkin.error) : null}
         onScanned={token => checkin.mutate(
           { method: 'qr_onsite', qrToken: token },
           { onSuccess: () => setCapture(false) },

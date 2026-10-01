@@ -24,7 +24,8 @@ export function CheckinQrPanel({ matchId, mockToken, done, total }: {
   return <Panel>
     <span className="tag"><em>//</em> Show this at the referee&apos;s table</span>
     {token ? <div className="hstack" style={{ gap: 22, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <QRCodeSVG value={token} size={240} marginSize={4} level="M" title="Check-in QR code" />
+      <QRCodeSVG value={token} size={320} marginSize={4} level="M" title="Check-in QR code"
+        style={{ flexShrink: 0, maxWidth: '100%', height: 'auto' }} />
       <div className="vstack" style={{ flex: 1, minWidth: 220, gap: 10 }}>
         <span className="tag">Code</span>
         <code style={{ wordBreak: 'break-all' }}>{token}</code>

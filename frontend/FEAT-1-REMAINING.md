@@ -43,6 +43,24 @@ are historical evidence, not the current backend reference.
   camera scan, successful participant submission and reload persistence;
   renewal/expired token, closed match and unauthorized role responses.
   R07 remains open until this evidence is captured. Backend files were not changed.
+- [x] Scanner follow-up after a photographed QR would not scan (2026-10-02):
+  request ideal 1920x1080 rear-camera capture; propagate video playback failure
+  instead of marking the camera ready; enlarge displayed QR to 320px; expose
+  scanning/detected/fatal-reader status and allow explicit retry. Handle ordinary
+  ZXing unreadable-frame errors by stable error kind, including minified builds.
+  The reader previously discarded callback errors even when ZXing stopped its loop.
+  QR submission failures now appear inside both scan dialogs, rather than only
+  behind the modal overlay, so successful decoding is distinguishable from an
+  expired/wrong-match/roster/API rejection.
+- [x] Follow-up developer verification: real ZXing reader decodes a dense QR
+  from deterministic 1280x720 camera pixels through the video/canvas path;
+  tests cover fatal-frame errors, normal unreadable frames, retry and playback
+  failure and server-error visibility. Full suite 63 files / 386 tests, lint and build passed; existing
+  main-bundle size warning remains. Active Vite PID 26736 on localhost:5173
+  uses this frontend checkout; the user's server was not restarted or stopped.
+- [ ] Reproduce the user's actual photographed QR/device/browser. No connected
+  browser was available for inspection; deterministic pixel tests do not prove
+  real-camera focus, glare, image quality or authenticated submission success.
 
 ## Backend handoff classification - 2026-10-01
 
