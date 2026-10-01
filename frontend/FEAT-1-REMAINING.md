@@ -2432,3 +2432,18 @@ Live fixture: p9201@ku.th organizes t14; mana@ku.th referees future m8/t19
 and can select somying from existing assignments. Password: abcd1234.
 For swap acceptance, supply two future scheduled matches with distinct assigned
 referees; do not rewrite baseline dates or roles just to make a test pass.
+
+## 2026-10-01 Admin Users display follow-up
+
+- [x] Faculty names resolved from /faculties in the user table, faculty-name
+  search and rights confirmations; keep ID fallback only if reference is missing.
+- [x] Squads resolved from public /users/:id teams for visible rows, reusing the
+  profile cache; count distinct team IDs and show confirmed empty arrays as 0.
+  Loading and failed reads are explicit; failed reads have a per-user Retry.
+  /admin/users does not currently include teamCount; no guessed count is used.
+- [ ] Browser acceptance: compare Admin Users counts with public profile teams
+  and verify reload, faculty-name search and failed-read Retry.
+
+- [x] Tournament Detail: show existing registrationStart/registrationEnd as
+  Registration opens/closes with Bangkok dates and times (UTC+7); missing dates
+  show Not specified. Frontend display only, using the existing detail response.

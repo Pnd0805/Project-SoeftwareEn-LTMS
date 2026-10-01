@@ -30,6 +30,15 @@ import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
 
+const registrationDateFormat = new Intl.DateTimeFormat('en-GB', {
+  dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok',
+})
+const registrationDate = (value: string | null | undefined) => {
+  if (!value) return 'Not specified'
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? `${registrationDateFormat.format(date)} (UTC+7)` : 'Unavailable'
+}
+
 const PUBLIC_TABS = ['bracket', 'dashboard', 'schedule', 'leaderboard', 'announcements', 'community']
 
 export function TournamentPage() {
@@ -219,6 +228,8 @@ export function TournamentPage() {
               ['Sport', t.sport],
               ['Format', formatName(t)],
               ['Date', t.date],
+              ['Registration opens', registrationDate(t.registrationStart)],
+              ['Registration closes', registrationDate(t.registrationEnd)],
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],
               ['Played', t.channel],
               ['Entry', ruleSummary(t.rules) || 'open to everybody'],
