@@ -20,6 +20,8 @@ import { meNotificationRouter } from './notification.routes.js';
 import { tournamentFeedbackRouter, matchMvpRouter, feedbackRouter, adminFeedbackRouter } from './feedback.routes.js';
 import { matchEngagementRouter, mePickemRouter, tournamentPickemRouter } from './engagement.routes.js';
 import { matchComplaintRouter, complaintRouter } from './matchResultComplaint.routes.js';
+import MatchHistory from './matchHistory.routes.js';
+import { rewardsRouter, userRewardsRouter, meRewardsRouter } from './reward.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
 
 const router = express.Router();
@@ -35,6 +37,10 @@ router.use('/' , Upload);
 
 router.use('/auth' , Auth);
 router.use('/me' , Me);
+router.use('/me', meRewardsRouter);
+router.use('/rewards', rewardsRouter);
+router.use('/users', userRewardsRouter);
+router.use('/users', MatchHistory);
 router.use('/users' , User);
 router.use('/teams' , Team);
 router.use('/invitations' , Invitation);
