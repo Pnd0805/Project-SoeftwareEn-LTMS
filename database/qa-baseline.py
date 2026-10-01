@@ -22,10 +22,11 @@ import subprocess
 import sys
 import time
 
-CONTAINER = "ltms-mysql"
-DB = "ltms"
+# env override ชื่อเดียวกับ frontend/scripts/*.py — ให้โหลด baseline ลงฐานชั่วคราวได้โดยไม่แตะฐาน dev
+CONTAINER = os.environ.get("LTMS_MYSQL_CONTAINER", "ltms-mysql")
+DB = os.environ.get("LTMS_MYSQL_DB", "ltms")
 USER = "root"
-PASSWORD = "secret"
+PASSWORD = os.environ.get("LTMS_MYSQL_PASSWORD", "secret")
 BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qa-baseline.sql")
 
 DUMP_ARGS = [
@@ -74,6 +75,33 @@ def save():
     show_counts("ข้อมูลที่เก็บไว้")
 
 
+def wipe():
+    """
+    ลบทุกตารางก่อนโหลด baseline (แก้ 1 ต.ค. 2569 — FE รายงาน 30 ก.ย.)
+
+    dump มี DROP TABLE IF EXISTS ให้เฉพาะตารางที่อยู่ในไฟล์ ⇒ ตารางที่ migration ใหม่กว่า baseline
+    สร้างไว้จะรอดจากการ restore แต่ schema_migrations ถูกทับด้วยของเก่า
+    ⇒ migrate รอบถัดไปพยายามสร้างตารางที่มีอยู่แล้ว แล้วล้มกลางทาง (024 · 028 · 029)
+    migration ที่เหลือหลังจุดที่ล้มจึงไม่เคยถูกสร้าง — ฐานดูเหมือนย้อนสำเร็จแต่ schema ไม่ครบ
+
+    ลบจาก information_schema ไม่ใช่ DROP DATABASE เพราะสิทธิ์ CREATE DATABASE อาจไม่มีในบางเครื่อง
+    และชื่อฐานกับ charset/collation เดิมต้องไม่เปลี่ยน
+    """
+    sql = "\n".join([
+        "SET FOREIGN_KEY_CHECKS = 0;",
+        "SET @tables := (SELECT GROUP_CONCAT(CONCAT('`', TABLE_NAME, '`')) FROM information_schema.TABLES",
+        "                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE');",
+        "SET @ddl := IF(@tables IS NULL, 'DO 0', CONCAT('DROP TABLE ', @tables));",
+        "PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;",
+        "SET FOREIGN_KEY_CHECKS = 1;",
+    ])
+    done = docker(LOAD_ARGS, stdin=sql.encode("utf-8"))
+    if done.returncode != 0:
+        print("ล้างฐานก่อน restore ไม่สำเร็จ:", done.stderr.decode("utf-8", "replace")[:400])
+        return False
+    return True
+
+
 def restore():
     ensure_container()
     if not os.path.exists(BASELINE):
@@ -82,6 +110,8 @@ def restore():
     with open(BASELINE, "rb") as f:
         payload = f.read()
     started = time.time()
+    if not wipe():
+        sys.exit(1)
     done = docker(LOAD_ARGS, stdin=payload)
     if done.returncode != 0:
         print("restore ไม่สำเร็จ:", done.stderr.decode("utf-8", "replace")[:400])

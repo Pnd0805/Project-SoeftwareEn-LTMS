@@ -1,3 +1,8 @@
+-- แก้ 1 ต.ค. 2569 — `CREATE TABLE` → `CREATE TABLE IF NOT EXISTS`
+-- แก้ไฟล์ที่ push ไปแล้ว ซึ่งขัดกฎในหัว migrate.ts — ปลอดภัยด้วยเหตุผลเดียวกันกับ 029:
+-- ฐานที่รันไฟล์นี้ไปแล้วจะไม่รันอีก · ฐานที่ยังไม่รันได้ตารางเหมือนเดิมเป๊ะ
+-- เหตุ: คนที่ restore qa-baseline.sql ทับฐานที่มีตารางนี้อยู่แล้ว เจอ ER_TABLE_EXISTS_ERROR
+-- แล้ว migration ทุกตัวหลังจากนี้ไม่เคยรัน (FE รายงาน 30 ก.ย.)
 -- OD-26 ข้อ 8 (มติ 26–27 ก.ย. 2569) — "เรื่องร้องเรียนผลแมตช์" คนละเส้นกับการโต้แย้งผล
 --
 -- ปัญหา: การโต้แย้ง (dispute) ใช้ได้แค่ในหน้าต่างเวลาสั้น ๆ พ้นแล้วปิดประตูสนิท ทีมที่ได้หลักฐาน
@@ -11,7 +16,7 @@
 -- นาฬิกาเรือนเดียว: created_at + ORG_RESOLVE_HOURS (48 ชม.) คือเส้นที่แอดมินมหาวิทยาลัยเข้ามาตัดสินได้
 -- จึงไม่มีสถานะ 'escalated' และไม่ต้องมี scheduler — คิวของแอดมินเป็นการ query ด้วยเวลาตรง ๆ
 -- ผู้จัดแนบความเห็นได้แต่ "ปัดตกไม่ได้" โดยดีไซน์: ไม่มีคอลัมน์ไหนให้ผู้จัดปิดเรื่อง
-CREATE TABLE match_result_complaints (
+CREATE TABLE IF NOT EXISTS match_result_complaints (
   match_result_complaint_id INT PRIMARY KEY AUTO_INCREMENT,
   match_id INT NOT NULL,
   match_result_id INT NOT NULL,
