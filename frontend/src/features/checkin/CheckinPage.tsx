@@ -17,7 +17,7 @@
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Badge, Banner, Crumb, Empty, Field, Panel, Qr, TableWrap } from '../../components/kit/primitives'
+import { Badge, Banner, Crumb, Empty, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { useMatch, useCheckins, useCheckin, useMyCheckin, useVerifyCheckin, useUpdateMatch } from '../../hooks/useMatch'
 import { USE_MOCK } from '../../api/client'
 import type { MatchCheckinDto, MatchDto, MatchTeamRef } from '../../types/match.dto'
@@ -27,16 +27,10 @@ import {
 } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
 import { checkinErrorMessage } from './checkinErrors'
+import { CheckinQrPanel } from './CheckinQrPanel'
 
 /** M15 revokes accepted QR/manual check-ins as well as pending photo checks. */
 const canRevoke = (c: MatchCheckinDto) => c.status === 'success'
-
-/** A stable-ish seed so the drawn code looks like the token it stands for. */
-const hashCode = (str: string) => {
-  let h = 0
-  for (const c of String(str)) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  return h
-}
 
 type CheckinReadState = 'loading' | 'ready' | 'error' | 'private'
 
@@ -524,32 +518,8 @@ export function CheckinPage() {
         <Badge kind="warn">{m.mode === 'onsite' ? 'On-site' : 'Online'}</Badge>
       </div>
 
-      {isRef && m.mode === 'onsite' && m.checkinToken ? (
-        <Panel>
-          <div className="spread"><span className="tag"><em>//</em> Show this at the referee's table</span></div>
-          <div className="hstack" style={{ alignItems: 'flex-start', gap: 22 }}>
-            <span className="qr"><Qr size={19} seed={hashCode(m.checkinToken)} /></span>
-            <span className="vstack" style={{ gap: 10, flex: 1, minWidth: 220 }}>
-              <div className="statline">
-                <div>
-                  <span className="tag">Code</span>
-                  {/* โค้ดของ backend เป็นโทเคนยาว — ต้องตัดบรรทัดได้ ไม่งั้นล้นกล่อง */}
-                  <span className="v" style={{
-                    fontFamily: 'var(--f-mono)', fontSize: m.checkinToken.length > 24 ? 12 : 24,
-                    letterSpacing: '.06em', wordBreak: 'break-all', lineHeight: 1.4,
-                  }}>
-                    {m.checkinToken}
-                  </span>
-                </div>
-                <div>
-                  <span className="tag">Verified</span>
-                  <span className="v" style={{ fontFamily: 'var(--f-mono)', fontSize: 24 }}>{done} / {total}</span>
-                </div>
-              </div>
-              <span className="tag"><em>//</em> Rotates every 60s — a screenshot is worthless a minute later</span>
-            </span>
-          </div>
-        </Panel>
+      {isRef && m.mode === 'onsite' && m.status === 'checkin_open' ? (
+        <CheckinQrPanel key={m.id} matchId={m.id} mockToken={m.checkinToken} done={done} total={total} />
       ) : null}
 
       {isRef && m.mode === 'online' ? (

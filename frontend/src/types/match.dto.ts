@@ -141,7 +141,7 @@ export interface MatchDto {
   /** ห้องแข่งสำหรับโหมด online */
   roomCode: string | null;
   /**
-   * โทเคนเช็คอินหน้างาน — server สร้างและหมุนทุก 60 วินาที
+   * Demo token. Real QR payload and expiresAt are fetched by useCheckinQr.
    *
    * prototype สร้างเองฝั่ง client จาก match id ซึ่งไม่มีความหมายเชิงความปลอดภัยเลย
    * ใครเปิด devtools ก็คำนวณได้ ของจริงต้องมาจาก server และ POST /checkin

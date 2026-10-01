@@ -1,24 +1,7 @@
-/**
- * src/features/checkin/CaptureModals.tsx
- *
- * สองวิธียืนยันตัวตนตอนเช็คอิน ซึ่งต่างกันเพราะสิ่งที่มันพิสูจน์ต่างกัน
- *
- *   on-site (FR-PV-03)  สแกน QR ที่โต๊ะกรรมการ — QR หมุนทุกนาที คนที่สแกนได้จึง
- *                       ต้องอยู่ตรงนั้นจริง สกรีนช็อตส่งต่อกันไม่ได้
- *   online  (FR-PV-04)  ไม่มีอะไรพิสูจน์ว่าอยู่ที่ไหน จึงถ่ายรูปหน้าคู่บัตรนักศึกษา
- *                       แล้วให้กรรมการเป็นคนตัดสิน — ผ่านเลยไม่ได้
- *
- * ── ขอบเขตของงานนี้ ──────────────────────────────────────────────────────
- * เป็น UI จริง แต่ตัวถอดรหัส QR ยังเป็น mock: ไม่มีไลบรารีอ่านภาพ จึงเทียบรหัส
- * ที่พิมพ์/ที่จำลองว่าสแกนได้ กับ `expectedToken` ตรงๆ ของจริงต้องต่อ
- * BarcodeDetector หรือ zxing แล้วอ่านจากเฟรมวิดีโอ — จุดต่อคือ `onScanned`
- *
- * กล้องเปิดด้วย getUserMedia จริง ถ้าเครื่องไม่มีกล้องหรือผู้ใช้ไม่อนุญาต **ไม่มี**
- * ทางให้แนบไฟล์แทน — UC-04 E2b กำหนดว่าเมื่อกล้องใช้ไม่ได้ ให้กรรมการยืนยันด้วย
- * ตนเองแล้วบันทึกเป็นข้อยกเว้นพร้อมเหตุผล ซึ่งสมเหตุสมผล เพราะไฟล์ที่แนบมาจะเป็น
- * รูปเมื่อไหร่ก็ได้ ไม่ได้พิสูจน์ว่าคนนั้นอยู่ตรงนั้นตอนนี้จริง (ดู ManualVerifyModal)
- */
-import { useEffect, useRef, useState } from 'react'
+/** Camera capture for on-site QR and online identity checks. QR validity is checked by the server. */
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { IScannerControls } from '@zxing/browser'
+import { USE_MOCK } from '../../api/client'
 import { Badge, Banner, Field } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 
@@ -95,19 +78,44 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
   const { videoRef, error, ready } = useCamera('environment')
   const [typed, setTyped] = useState('')
   const [bad, setBad] = useState<string | null>(null)
+  const [scanAttempt, setScanAttempt] = useState(0)
+  const delivered = useRef(false)
 
-  const submit = (token: string) => {
-    /* ห้าม .toUpperCase() กับค่าที่ส่งจริง — โค้ดของ backend เป็นโทเคนที่ตัวพิมพ์มีความหมาย
-       (เทียบแบบไม่สนตัวพิมพ์ได้ เพราะรหัสสั้นของ prototype เป็นตัวพิมพ์ใหญ่ล้วน) */
+  const submit = useCallback((token: string) => {
+    // Preserve the case of signed payloads.
     const clean = token.trim()
     if (!clean) { setBad('ยังไม่ได้กรอกรหัส'); return }
-    if (expectedToken && clean.toUpperCase() !== expectedToken.toUpperCase()) {
-      setBad('รหัสไม่ตรงกับที่กรรมการแสดงอยู่ — รหัสหมุนทุกนาที ลองอ่านใหม่')
+    if (expectedToken && clean !== expectedToken) {
+      setBad('รหัสไม่ตรงกับที่กรรมการแสดงอยู่ — ลองอ่านใหม่')
       return
     }
     setBad(null)
     onScanned(clean)
-  }
+  }, [expectedToken, onScanned])
+
+  const submitRef = useRef(submit)
+  useEffect(() => { submitRef.current = submit }, [submit])
+  useEffect(() => {
+    if (!ready || pending || !videoRef.current) return
+    let cancelled = false
+    let controls: IScannerControls | undefined
+    const video = videoRef.current
+    void import('@zxing/browser').then(({ BrowserQRCodeReader }) => {
+      if (cancelled) return
+      return new BrowserQRCodeReader().decodeFromVideoElement(video, (result, _error, scanner) => {
+        if (cancelled || delivered.current || !result) return
+        delivered.current = true
+        scanner.stop()
+        submitRef.current(result.getText())
+      })
+    }).then(value => {
+      controls = value
+      if (cancelled) value?.stop()
+    }).catch(() => {
+      if (!cancelled) setBad('อ่าน QR ไม่ได้ กรอกรหัสบนจอกรรมการแทนได้')
+    })
+    return () => { cancelled = true; controls?.stop() }
+  }, [ready, pending, scanAttempt, videoRef])
 
   return (
     <>
@@ -133,17 +141,16 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending }: QrProps) {
       {bad ? <Banner kind="crit">{bad}</Banner> : null}
 
       <Field label="รหัสบนจอกรรมการ" htmlFor="qr-manual">
-        <input id="qr-manual" autoComplete="off" placeholder="เช่น SEED-M-121"
+        <input id="qr-manual" autoComplete="off" placeholder="กรอกรหัสจากจอกรรมการ"
           value={typed} onChange={e => setTyped(e.target.value)} />
       </Field>
 
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
-        <button className="btn" type="button" disabled={pending || !expectedToken}
-          title={expectedToken ? undefined : 'แมตช์นี้ยังไม่เปิดเช็คอิน'}
-          onClick={() => submit(expectedToken ?? '')}>
-          จำลองว่าสแกนติด
-        </button>
+        {USE_MOCK ? <button className="btn" type="button" disabled={pending || !expectedToken}
+          onClick={() => submit(expectedToken ?? '')}>จำลองว่าสแกนติด</button> : null}
+        <button className="btn" type="button" disabled={pending || !ready}
+          onClick={() => { delivered.current = false; setScanAttempt(n => n + 1) }}>สแกนอีกครั้ง</button>
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => submit(typed)}>
           {pending ? 'กำลังเช็คอิน…' : 'ยืนยันรหัส'}

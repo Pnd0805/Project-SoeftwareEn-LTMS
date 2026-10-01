@@ -3,15 +3,46 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend source reference: remote `BE_KN@d5bda6d`**, checked with
-`git ls-remote` and `git fetch origin BE_KN` on 2026-10-01. The avatar/logo
-follow-up below compares `FE-Notice-BE_KN-avatar-uploads.md` (`49faf77`) with
-that source and the running local API. This does not close acceptance for other
+**Current backend source reference: remote `BE_KN@cd71437`**, checked with
+`git ls-remote` and `git fetch origin BE_KN` on 2026-10-02 for the QR review below.
+The 2026-10-01 avatar/logo follow-up compares `FE-Notice-BE_KN-avatar-uploads.md`
+(`49faf77`) with `BE_KN@d5bda6d` and the running local API. This does not close acceptance for other
 features. Earlier R28–R34 evidence uses `7a4499c` and the 2026-09-28 notice.
 Before that: `BE_KN@e5ea50d` and the 2026-09-23 C1/C6/C7 and BE_KN FE
 notices, verified on 2026-09-23. Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
+
+## Check-in QR review and frontend delivery - 2026-10-02
+
+- [x] Source review: frontend `feat/1`; clean local backend `BE_KN@d96472f`;
+  fetched remote `BE_KN@cd71437`. Both backend QR implementations sign a
+  match-specific JWT with a 1200-second lifetime and return `qrPayload` plus
+  `expiresAt`. Only the organizer/assigned referee may request a token while
+  check-in is open. Submission validates signature, expiry, match, mode,
+  authenticated identity and approved roster.
+- [x] Confirm refresh semantics: another request signs another token; calls
+  within the same second can return the same payload. Issuing a new token does
+  not revoke earlier tokens; each stays valid until its own expiry. The old
+  frontend claim of 60-second rotation/screenshot invalidation was incorrect.
+- [x] Render a real QR encoding the exact payload with a quiet margin; decode
+  live camera frames and preserve token case. Simulated scanning is mock-only.
+  Keep typed-code recovery, prevent repeated camera submissions, and release
+  decoder/camera resources on close. Camera decoding loads on demand.
+- [x] Fetch QR separately from general match reads, use server `expiresAt` for
+  countdown and renewal 30 seconds before expiry, and provide Refresh QR.
+  Display loading/error states; hide expired/invalid or failed-renewal codes.
+  A page reload requests a token again; QR appears only during open on-site
+  check-in for a role allowed to manage check-in.
+- [x] Developer verification: QR lifecycle/scanner regressions and actual
+  rendered-QR encode/decode round-trip preserve the exact signed-style payload.
+  Full suite: 62 files / 381 tests passed; lint, production build and
+  `git diff --check` passed. Dev server started at 127.0.0.1:5186 and was stopped
+  after verification. Build retains the existing main-bundle size warning.
+- [ ] Live acceptance: authenticated organizer/referee request, real-device
+  camera scan, successful participant submission and reload persistence;
+  renewal/expired token, closed match and unauthorized role responses.
+  R07 remains open until this evidence is captured. Backend files were not changed.
 
 ## Backend handoff classification - 2026-10-01
 

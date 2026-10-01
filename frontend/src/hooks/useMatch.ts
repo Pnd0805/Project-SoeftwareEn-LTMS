@@ -106,6 +106,22 @@ export function useMatch(matchId: MatchRef | undefined) {
   });
 }
 
+/** Server-issued QR: request on entry and renew shortly before its actual expiry. */
+export function useCheckinQr(matchId: number) {
+  return useQuery({
+    queryKey: ["match", matchId, "checkin-qr"],
+    queryFn: () => matchApi.getCheckinQr(matchId),
+    enabled: !USE_MOCK,
+    retry: retryPolicy,
+    refetchOnMount: "always",
+    refetchInterval: query => {
+      if (!query.state.data || query.state.error) return false;
+      const remaining = Date.parse(query.state.data.expiresAt) - Date.now();
+      return Number.isFinite(remaining) ? Math.max(1000, remaining - 30_000) : false;
+    },
+  });
+}
+
 export function useTournamentMatches(tournamentId: MatchRef | undefined) {
   return useQuery({
     queryKey: matchKeys.byTournament(tournamentId as MatchRef),

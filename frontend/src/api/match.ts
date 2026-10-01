@@ -680,11 +680,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
      อ่าน /checkins ไม่ได้ หน้าจอจึงขึ้น "0 of 2 checked in" ให้ทีมที่เช็คอินครบแล้ว
      ตัวหารที่ไม่มีตัวเศษคู่กันไม่ใช่ข้อมูล — ปล่อย 0 ไว้แล้วหน้าจอจะไม่แสดงบรรทัดนั้น */
 
-  /* โค้ด QR ขอได้เฉพาะผู้จัดหรือกรรมการของแมตช์ และเฉพาะตอนเปิดเช็คอิน */
-  if ((isReferee || isOrganizer) && dto.status === "checkin_open") {
-    const qr = await apiFetch<BackendCheckinQrDto>(`/matches/${matchId}/checkin-qr`).catch(() => null);
-    dto.checkinToken = qr?.qrPayload ?? null;
-  }
+  // The check-in screen owns QR fetching/expiry; ordinary match reads must not issue tokens.
   return dto;
 }
 
