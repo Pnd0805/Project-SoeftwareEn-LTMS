@@ -44,6 +44,7 @@ export interface LoginResponse {
 
 // ══════════════ Users & Profile — U01-U04, U06 ══════════════
 export interface MeDto {
+  adminScope?: { id: number; scopeType: 'faculty' | 'university_wide' | 'root'; facultyId: number | null } | null;
   id: number;
   fullName: string;
   email: string;

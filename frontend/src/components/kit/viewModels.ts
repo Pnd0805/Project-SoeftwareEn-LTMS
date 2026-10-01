@@ -45,7 +45,7 @@ export const toTeamView = (t: Team): TeamView => ({
 export type MatchState =
   | 'bye' | 'confirmed' | 'disputed' | 'pending'
   | 'checkin' | 'live' | 'scheduled' | 'waiting'
-  | 'rejected'
+  | 'rejected' | 'finished'
 
 /** `Match` (prototype) → `MatchState` */
 export const matchState = (m: Match): MatchState =>

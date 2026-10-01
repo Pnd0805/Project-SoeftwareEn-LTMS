@@ -155,6 +155,7 @@ const MATCH_STATE: Record<MatchState, { kind: Kind; label: string }> = {
   confirmed: { kind: 'ok', label: 'Confirmed' },
   disputed: { kind: 'crit', label: 'Disputed' },
   pending: { kind: 'warn', label: 'Awaiting confirmation' },
+  finished: { kind: 'warn', label: 'Awaiting result' },
   checkin: { kind: 'warn', label: 'Check-in open' },
   live: { kind: 'warn', label: 'In progress' },
   scheduled: { kind: 'neutral', label: 'Scheduled' },

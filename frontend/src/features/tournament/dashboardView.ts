@@ -18,7 +18,7 @@ import { matchStateOf, scoreText } from '../match/matchView'
 export type DashboardMatch = MatchDto & Partial<Pick<MatchListItemDto, 'score' | 'resultStatus' | 'outcome'>>
 
 /** ลำดับที่แสดงสถานะ — สิ่งที่ต้องมีคนทำก่อนขึ้นก่อน */
-export const STATE_ORDER: MatchState[] = ['live', 'checkin', 'disputed', 'rejected', 'pending', 'scheduled', 'waiting', 'confirmed']
+export const STATE_ORDER: MatchState[] = ['live', 'checkin', 'disputed', 'rejected', 'finished', 'pending', 'scheduled', 'waiting', 'confirmed']
 
 /**
  * สถานะของแถวหนึ่ง — ถ้าไม่มีสถานะผลมาด้วย แมตช์ที่ `completed` แล้วคือยืนยันผลแล้ว
@@ -67,7 +67,7 @@ const byTime = (dir: 1 | -1) => (a: DashboardMatch, b: DashboardMatch) => {
 
 export function summarizeMatches(items: DashboardMatch[], limit = 5): DashboardSummary {
   const byState: Record<MatchState, number> = {
-    bye: 0, confirmed: 0, disputed: 0, rejected: 0, pending: 0, checkin: 0, live: 0, scheduled: 0, waiting: 0,
+    bye: 0, confirmed: 0, disputed: 0, rejected: 0, finished: 0, pending: 0, checkin: 0, live: 0, scheduled: 0, waiting: 0,
   }
   const rows = items
     .filter(m => {
@@ -88,7 +88,7 @@ export function summarizeMatches(items: DashboardMatch[], limit = 5): DashboardS
     finished: byState.confirmed,
     byState,
     onNow: pick(['live', 'checkin']).sort(byTime(1)),
-    attention: pick(['disputed', 'pending']).sort(byTime(1)),
+    attention: pick(['disputed', 'finished', 'pending']).sort(byTime(1)),
     upNext: pick(['scheduled']).sort(byTime(1)).slice(0, limit),
     latest: pick(['confirmed']).sort(byTime(-1)).slice(0, limit),
     stage: open.length ? (open[0].m.stage || open[0].m.tag || null) : null,

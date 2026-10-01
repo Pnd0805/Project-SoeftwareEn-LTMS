@@ -77,6 +77,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useStatDefinitions: () => ({ data: { items: [] } }),
 }))
 
+vi.mock('./MatchWorkflowPanel', () => ({ MatchWorkflowPanel: () => null }))
 import { MatchPage } from './MatchPage'
 
 const renderPage = () => render(

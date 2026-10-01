@@ -1,3 +1,4 @@
+import { resultRecorder } from './resultAttribution'
 /**
  * src/features/match/ResultTrail.tsx
  *
@@ -18,7 +19,8 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
 export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   /* on-site: กรรมการบันทึก หัวหน้าทีมที่ชนะยืนยัน (FR-RS-03)
      online:  หัวหน้าทีมที่ชนะส่ง กรรมการยืนยัน (FR-RS-02) */
-  const recorder = m.mode === 'onsite' ? 'the referees' : "the winning team's leader"
+  const recorder = result?.submittedRole === 'organizer' ? 'the organizer'
+    : result?.submittedRole === 'referee' ? 'the referees' : m.mode === 'onsite' ? 'the referees' : "a team leader"
   const signer = m.mode === 'onsite' ? "the winning team's leader" : 'the referee'
 
   const recorded = !!result
@@ -51,7 +53,7 @@ export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDt
           ? <>Neither squad fielded enough players, so both forfeited · {when(result!.createdAt)}</>
           : <>A squad did not field enough players, so the other won by walkover · {when(result!.createdAt)}</>
         : recorded
-          ? <>Entered by {result!.submittedBy.fullName} · {when(result!.createdAt)}</>
+          ? <>Entered by {resultRecorder(result!)} · {when(result!.createdAt)}</>
           : <>Nothing recorded yet. {m.mode === 'onsite' ? 'The referee' : "The winning team's leader"} goes first.</>,
     },
     disputed
@@ -76,9 +78,9 @@ export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDt
         }
         : {
           state: settled ? 'done' : recorded ? 'now' : 'idle',
-          title: `Confirmed by ${signer}`,
+          title: result?.isAutoVerified ? 'Confirmed automatically' : result?.submittedRole === 'organizer' ? 'Decided by the organizer' : `Confirmed by ${signer}`,
           note: settled
-            ? <>Signed off by {result!.verifiedBy?.fullName ?? '—'} · {when(result!.verifiedAt)}</>
+            ? result?.isAutoVerified ? <>The backend confirmed this result after its confirmation window closed.</> : <>Signed off by {result!.verifiedBy?.fullName ?? '—'} · {when(result!.verifiedAt)}</>
             : recorded
               ? <>Waiting on {signer}. Until then nothing moves.</>
               : <>Comes after the result is recorded.</>,

@@ -299,10 +299,11 @@ export const CheckinDocumentTypeLabel: Record<CheckinDocumentType, string> = {
 };
 
 // match_results.submitted_role
-export const ResultSubmittedRoleEnum = z.enum(["team_leader", "referee"]);
+export const ResultSubmittedRoleEnum = z.enum(["team_leader", "referee", "organizer"]);
 export type ResultSubmittedRole = z.infer<typeof ResultSubmittedRoleEnum>;
 export const ResultSubmittedRoleOptions = ResultSubmittedRoleEnum.options;
 export const ResultSubmittedRoleLabel: Record<ResultSubmittedRole, string> = {
+  "organizer": "Organizer",
   "team_leader": "Team leader",
   "referee": "Referee",
 };

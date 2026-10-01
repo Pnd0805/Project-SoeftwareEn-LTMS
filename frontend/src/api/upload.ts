@@ -22,8 +22,8 @@ export function imageUploadErrorMessage(error: unknown): string {
 
 export async function uploadImage(
   file: File,
-  purpose: 'avatar' | 'team_logo',
-  options: { teamId?: number } = {}
+  purpose: 'avatar' | 'team_logo' | 'dispute_evidence',
+  options: { teamId?: number; matchId?: number } = {}
 ): Promise<string> {
   if (USE_MOCK) return shrinkImage(file)
 
@@ -36,9 +36,13 @@ export async function uploadImage(
     throw new ApiError(400, { code: 'VALIDATION_FAILED', message: 'ไม่พบทีมที่จะเปลี่ยนโลโก้ กรุณาเปิดหน้าทีมใหม่' })
   }
 
+  if (purpose === 'dispute_evidence' && (!Number.isSafeInteger(options.matchId) || (options.matchId ?? 0) < 1)) {
+    throw new ApiError(400, { code: 'VALIDATION_FAILED', message: 'A valid match is required for evidence upload.' })
+  }
+
   const presign = await apiFetch<{ uploadUrl: string; objectKey: string }>('/uploads/presign', {
     method: 'POST',
-    body: JSON.stringify({ purpose, contentType, ...(purpose === 'team_logo' ? { teamId: options.teamId } : {}) }),
+    body: JSON.stringify({ purpose, contentType, ...(purpose === 'team_logo' ? { teamId: options.teamId } : {}), ...(purpose === 'dispute_evidence' ? { matchId: options.matchId } : {}) }),
   })
 
   let put: Response

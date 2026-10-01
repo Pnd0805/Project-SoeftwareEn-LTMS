@@ -100,6 +100,7 @@ export interface MatchDto {
   /** ISO 8601 พร้อม timezone — DATETIME ใน DB ไม่มี tz, backend ต้อง normalize เป็น +07:00 */
   scheduledTime: string | null;
   scheduledEndTime?: string | null;
+  actualEndTime?: string | null;
   venue: string | null;
   checkinOpenAt: string | null;
   status: MatchStatus;
@@ -269,6 +270,7 @@ export interface UpdateMatchRequest {
 // ══════════════ Result — ตาราง `match_results` ══════════════
 
 export interface MatchResultDto {
+  isAutoVerified?: boolean;
   id: number;
   matchId: number;
   winnerTeamId: number | null;
@@ -578,6 +580,7 @@ export interface BackendMatchDetailDto extends BackendMatchListItemDto {
    * เพื่อให้หน้าจอขึ้นเองทันทีที่ backend เติมมา (ดู FE-replay-link-write-only)
    */
   livestreamUrl?: string | null;
+  actualEndTime?: string | null;
 }
 
 /** PUT /matches/:id/livestream (E12) — คืนแค่สองช่องนี้ ไม่ใช่แมตช์ทั้งใบ */
@@ -683,6 +686,9 @@ export interface BackendVerifiedResultDto {
 
 /** GET /matches/:id/result — 404 ระหว่างที่ผลถูกโต้แย้ง */
 export interface BackendResultDto {
+  submittedRole?: ResultSubmittedRole;
+  submittedBy?: PlayerRef | null;
+  isAutoVerified?: boolean;
   matchId: number;
   winnerTeamId: number | null;
   scoreData: Record<string, number> | null;

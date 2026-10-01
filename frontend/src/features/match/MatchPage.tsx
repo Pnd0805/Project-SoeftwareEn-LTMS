@@ -1,3 +1,5 @@
+import { MatchWorkflowPanel } from './MatchWorkflowPanel'
+import { resultRecorder } from './resultAttribution'
 /**
  * src/features/match/MatchPage.tsx
  *
@@ -15,6 +17,7 @@
  * โค้ดเดิมไล่ดู m.refs / organizer / หัวหน้าทีมที่ชนะ แล้วผสมกับสถานะแมตช์เอง
  * ซึ่ง backend ต้องเช็คซ้ำอยู่ดี — กติกาเดียวกันเขียนสองที่แล้วจะเพี้ยนจากกัน
  */
+import { MatchMvpVoting } from '../mvp/MvpPage'
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -572,14 +575,14 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               ? <><b>You won, so you confirm.</b> The losing side does not sign off — they raise a dispute instead.</>
               : <><b>You are the referee.</b> Check the submitted score against the record before confirming.</>}
           </Banner>
-          {can.disputeResult ? (
+          {USE_MOCK && can.disputeResult ? (
             <Field label="Reason, if you are disputing instead" htmlFor="dp-why">
               <input id="dp-why" value={reason} onChange={e => setReason(e.target.value)}
                 placeholder="What does not match?" />
             </Field>
           ) : null}
           <div className="hstack">
-            {can.disputeResult ? (
+            {USE_MOCK && can.disputeResult ? (
               <button className="btn danger" type="button"
                 disabled={dispute.isPending || !reason.trim()}
                 onClick={() => dispute.mutate({ reason: reason.trim(), teamId: m.viewer.myTeamId ?? 0 })}>
@@ -599,10 +602,10 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
       <Panel quiet>
         <span className="tag"><em>//</em> Waiting</span>
         <div className="sub">
-          Entered by {result.submittedBy.fullName}. Waiting on the{' '}
+          Entered by {resultRecorder(result)}. Waiting on the{' '}
           {m.mode === 'onsite' ? 'winning team leader' : 'referee'} to confirm.
         </div>
-        {can.disputeResult ? (
+        {USE_MOCK && can.disputeResult ? (
           <>
             <Field label="Why are you disputing this?" htmlFor="dp-why2">
               <input id="dp-why2" value={reason} onChange={e => setReason(e.target.value)}
@@ -687,7 +690,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
  * จึงแสดงได้เฉพาะโหมด mock กับแมตช์ที่อยู่ใน store — นอกนั้นบอกว่ายังใช้ไม่ได้ ไม่เรียก path ที่ไม่มี
  */
 function MatchCommunity({ matchId, match }: { matchId: string; match: MatchDto }) {
-  return USE_MOCK ? <MockMatchCommunity matchId={matchId} /> : <LivePickem match={match} />
+  return USE_MOCK ? <MockMatchCommunity matchId={matchId} /> : <><LivePickem match={match} /><MatchMvpVoting matchId={match.id} teamNames={Object.fromEntries([match.teamA, match.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></>
 }
 
 function MockMatchCommunity({ matchId }: { matchId: string }) {
@@ -749,6 +752,7 @@ export function MatchPage() {
             <>
               <MatchLifecycle m={m} />
               <ActionPanel m={m} result={result} />
+              {!USE_MOCK ? <MatchWorkflowPanel m={m} result={result} /> : null}
               {m.viewer.roles.includes('organizer') ? <OrganizerTools m={m} result={result} /> : null}
               {m.replayUrl ? (
                 <Panel quiet>

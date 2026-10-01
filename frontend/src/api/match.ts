@@ -168,6 +168,7 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
     teamB: teamFromBackend(m.teamB),
     scheduledTime: m.scheduledTime,
     scheduledEndTime: m.scheduledEndTime ?? null,
+    actualEndTime: m.actualEndTime ?? null,
     venue: m.venue,
     checkinOpenAt: m.checkinOpenAt ?? null,
     status: m.status,
@@ -644,7 +645,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
          ⚠️ on-site ผู้ยืนยันคือหัวหน้า "ทีมที่ชนะ" เท่านั้น — ใครชนะยังไม่รู้จนกว่าจะมี
          ใบผล (M05 ส่ง outcome มาเฉพาะแมตช์ที่ completed) ด่านนั้นจึงอยู่ที่หน้าจอ
          ตรงที่อ่าน result.winnerTeamId ได้ ไม่ใช่ตรงนี้ */
-      submitResult: playable && (onsite ? isReferee : isTeamLeader),
+      submitResult: playable && (onsite ? isReferee : isTeamLeader || (isReferee && !!dto.actualEndTime && Date.now() >= Date.parse(dto.actualEndTime) + 24 * 3600_000)),
       verifyResult: onsite ? isTeamLeader : isReferee,
       disputeResult: isTeamLeader || isReferee,
       resolveDispute: isOrganizer,
@@ -838,8 +839,9 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
     matchId: raw.matchId,
     winnerTeamId: raw.winnerTeamId,
     scoreData,
-    submittedBy: unknownPerson,
-    submittedRole: "referee",
+    submittedBy: raw.submittedBy ?? unknownPerson,
+    submittedRole: raw.submittedRole ?? "referee",
+    isAutoVerified: raw.isAutoVerified ?? false,
     /* อย่าตีขลุมว่า verified — ผู้จัดที่มาตัดสินข้อพิพาทต้องเห็นว่ามันยัง disputed อยู่
        walkover ก็ส่งต่อตามจริง: จบแล้วเหมือนกันแต่ไม่ได้ลงแข่ง หน้าจอต้องพูดคนละแบบ
        และแบบแพ้ทั้งคู่ไม่มีผู้ชนะให้ประกาศ (GUIDE/11 §10.5) */
@@ -859,7 +861,7 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
     amendedBy: null,
     amendReason: raw.amendReason,
     amendedAt: raw.amendedAt,
-    createdAt: raw.verifiedAt ?? new Date().toISOString(),
+    createdAt: '', // The result DTO does not deliver the submission timestamp.
   };
 }
 

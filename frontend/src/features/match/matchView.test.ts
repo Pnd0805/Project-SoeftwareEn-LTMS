@@ -33,8 +33,11 @@ describe("matchStateOf", () => {
 
   /* OD-26 — สถานะใหม่ `finished` เคยหล่นไปถึงบรรทัดสุดท้าย แมตช์ที่เพิ่งแข่งจบขึ้นป้าย "Scheduled" */
   it("reads a finished match with no result yet as waiting for its result, not as scheduled", () => {
-    expect(matchStateOf(match({ status: "finished", resultStatus: null }))).toBe("pending");
+    expect(matchStateOf(match({ status: "finished", resultStatus: null }))).toBe("finished");
     expect(isOpen(match({ status: "finished", resultStatus: null }))).toBe(true);
+    expect(matchStateOf(match({ status: "finished", resultStatus: "submitted" }))).toBe("pending");
+    render(createElement(MatchStateBadge, { state: "finished" }));
+    expect(screen.getByText("Awaiting result")).toBeInTheDocument();
   });
 
   /* R16 — ผู้จัดยกผลทิ้งแล้วแมตช์ไป `result_rejected` เดิมตกลงมาเป็น "Scheduled"

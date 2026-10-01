@@ -68,3 +68,12 @@ describe('image upload errors', () => {
       expect(imageUploadErrorMessage({ code })).not.toContain('ไม่ทราบ')
     })
 })
+
+it('presigns dispute evidence for the match and uploads without backend Authorization', async () => {
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ uploadUrl: 'https://storage.test/put', objectKey: 'dispute_evidence/13/a.png' })))
+    .mockResolvedValueOnce(new Response('', { status: 200 }))
+  const key = await uploadImage(new File(['png'], 'a.png', { type: 'image/png' }), 'dispute_evidence', { matchId: 13 })
+  expect(key).toBe('dispute_evidence/13/a.png')
+  expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ purpose: 'dispute_evidence', contentType: 'image/png', matchId: 13 })
+  expect(fetchMock.mock.calls[1][1]?.headers).toEqual({ 'Content-Type': 'image/png' })
+})
