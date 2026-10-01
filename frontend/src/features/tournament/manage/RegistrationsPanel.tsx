@@ -218,7 +218,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
         {t.entryNotes ? (
           <div className="panel quiet vstack">
             <span className="tag"><em>//</em> What you asked for</span>
-            <div style={{ fontSize: 15, lineHeight: 1.55 }}>{t.entryNotes}</div>
+            <div style={{ fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.entryNotes}</div>
           </div>
         ) : null}
         {!USE_MOCK && applicationDetail.isPending ? <div className="sub">Loading submitted players…</div> : null}

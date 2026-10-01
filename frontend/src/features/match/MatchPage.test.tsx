@@ -1,3 +1,4 @@
+vi.mock('./RefereeMatchRequest', () => ({ RefereeMatchRequest: () => null }))
 /**
  * สิ่งที่คนคนหนึ่งทำกับผลแมตช์ได้ — และสิ่งที่หน้าจอต้องพูดเมื่อทำไม่ได้
  *

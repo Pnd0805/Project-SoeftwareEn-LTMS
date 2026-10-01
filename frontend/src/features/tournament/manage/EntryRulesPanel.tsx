@@ -18,7 +18,7 @@ import { useState } from 'react'
 import { Badge, Banner, Facts, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
-import { useEligibilityRules, useRequestFilterChange, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
+import { useEligibilityRules, useSaveEntryNotes, useRequestFilterChange, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
 import { useFaculties } from '../../../hooks/useReference'
 import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
@@ -39,6 +39,9 @@ const toggle = (list: number[], value: number) =>
   list.includes(value) ? list.filter(x => x !== value) : [...list, value].sort((a, b) => a - b)
 
 export function EntryRulesPanel({ t }: { t: Tournament }) {
+  const saveNotes = useSaveEntryNotes(t.id)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [notes, setNotes] = useState(t.entryNotes ?? '')
   const tournamentId = Number(t.id)
   /* ทั้งสองคำขอนี้หน้าทัวร์นาเมนต์ดึงไปแล้ว — อ่านซ้ำได้จากแคช ไม่ได้ยิงเพิ่ม */
   const detail = useTournament(tournamentId)
@@ -127,11 +130,10 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
               <span className="tag">Entry notes — the system shows them, it never checks them</span>
             </span>
           </div>
-          {/* FR-TN-03 ยังไม่มีคอลัมน์และไม่มีเส้นทาง — เขียนช่องให้กรอกก็เท่ากับหลอก */}
-          <div className="sub">
-            Entry notes are not on the server yet, so there is nowhere to publish them. Put anything
-            applicants must know in the tournament announcements instead.
-          </div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{t.entryNotes || 'No entry notes published.'}</div>
+          <button className="btn ghost" type="button" onClick={() => {
+            saveNotes.reset(); setNotes(t.entryNotes ?? ''); setNotesOpen(true)
+          }}>Edit entry notes</button>
         </Panel>
 
         <Panel quiet>
@@ -211,6 +213,22 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           ) : null}
         </Panel>
       </div>
+
+      <Modal open={notesOpen} onClose={() => { if (!saveNotes.isPending) setNotesOpen(false) }} label="Entry notes" title={t.name}>
+        <Field label="Entry notes (up to 2,000 characters)" htmlFor="entry-notes">
+          <textarea id="entry-notes" rows={5} maxLength={2000} value={notes} disabled={saveNotes.isPending}
+            onChange={e => setNotes(e.target.value)} />
+        </Field>
+        <span className="sub">Applicants can read these notes. Leave this blank to remove them.</span>
+        {saveNotes.isError ? <Banner kind="crit">{errorMessage(saveNotes.error)}</Banner> : null}
+        <div className="hstack">
+          <button className="btn" disabled={saveNotes.isPending} onClick={() => setNotesOpen(false)}>Cancel</button>
+          <button className="btn primary" disabled={saveNotes.isPending || notes.trim().length > 2000}
+            onClick={() => saveNotes.mutate(notes, { onSuccess: () => setNotesOpen(false) })}>
+            {saveNotes.isPending ? 'Saving...' : 'Save entry notes'}
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={open} onClose={() => setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
         <div className="sub">

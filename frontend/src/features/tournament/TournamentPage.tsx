@@ -258,7 +258,7 @@ export function TournamentPage() {
           {t.entryNotes ? (
             <Panel quiet>
               <span className="tag"><em>//</em> Soft filter from the organizer</span>
-              <div style={{ fontSize: 15, lineHeight: 1.55 }}>{t.entryNotes}</div>
+              <div style={{ fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.entryNotes}</div>
             </Panel>
           ) : null}
         </div>

@@ -23,7 +23,9 @@ are historical evidence, not the current backend reference.
 - [ ] New BE work: announcement notifications, S05 recorder/time, admin dispute
   reads, MyTeam/TeamRef logo URLs, private user-report downloads, team follow/feed
   and an agreed received-MVP Profile metric/read contract.
-- [ ] FE backlog with delivered BE: entryNotes and transfer/swap request screens.
+- [x] Delivered-BE frontend implementation: entryNotes and transfer/swap request screens.
+- [ ] Browser acceptance: notes reload and transfer/swap consent flows; full receiver
+  list needs a referee-readable active pool contract (To-backend section 8).
   These are not new backend requests. Live/browser acceptance remains separate.
 
 ## Notice C remaining frontend follow-up - 2026-10-01
@@ -1675,8 +1677,11 @@ delivers an agreed contract:
 - [x] Backend delivery: entryNotes / soft filter (FR-TN-03) is present in
       `BE_KN@d5bda6d` schema/mapper/repository and PATCH /tournaments/:id.
       This is delivered backend work, not pending merge or a new BE request.
-- [ ] Frontend integration remaining: replace saveEntryNotes() unavailable with
-      the delivered PATCH entryNotes contract, map the read field and verify reload.
+- [x] Frontend entryNotes integration: PATCH entryNotes, trim/clear with null,
+      map read DTO into tournament view, editable soft notes with 2,000-character
+      limit and pending/error handling. Local API fresh-GET persistence/clear and
+      original-value restore passed; non-organizer PATCH rejected (403).
+- [ ] Browser acceptance: notes save/clear/reload and application display.
 - [x] ~~Backend delivery required: `DELETE /tournaments/:id`~~ - delivered in
       `BE_KN@7ea7328`; frontend Progress deletion screen is wired. Backend rejects
       public/completed/activity-bearing tournaments; live acceptance remains open.
@@ -2396,3 +2401,34 @@ close those gaps; the matrix stays unticked until real-browser verification.
 - [ ] Confirm route, request body, response DTO, error codes, and authorization.
 - [ ] Add the route to this file before starting frontend integration.
 - [ ] Only then replace the fallback implementation.
+
+## 2026-10-01 delivered-BE frontend workflows follow-up
+
+- [x] Referee Match Overview: send FR01 transfer/swap requests using actual
+  tournamentRefereeId values from public match assignments; choose only future
+  scheduled matches with both start/end times. Do not call organizer-only F02.
+- [x] Organizer Manage Draw/Referees: FR03 swap form uses active F02 candidates
+  actually assigned to two distinct matches. Consent is requested, not assumed.
+- [x] Inbox outgoing queue: show overall and per-side states, withdraw open
+  requests, open both swap matches; acceptance distinguishes open/applied/closed.
+  Refresh requests, matches and notifications; refresh after refused responses
+  because backend may cancel a request while rejecting its application.
+- [x] Local API transfer: mana/m8 to somying via real m7 assignment ID -> 201
+  open; fresh outgoing GET verified; DELETE -> 204; fresh GET -> cancelled.
+  No referee assignment was changed by this test. Notes QA restored t14's value.
+- [x] Automated verification: 58 files / 363 tests, lint, production build.
+- [ ] Browser acceptance: transfer/recipient response, referee swap and organizer
+  swap with both consent sides, conflict, withdrawn request and assignment reload.
+- [ ] Backend delivery required: referee-readable active receiver list for users
+  with no existing match assignment (current F02 requires organizer). See
+  TO-BACKEND-2026-10-01-frontend-workflows.md section 8 for DTO/access criteria.
+- [ ] Backend F02 canonical invitation and counts: section 7 remains open; FE
+  cannot recover an older active invitation ID omitted by that response.
+
+Click guide: Manage -> Entry & filter -> Edit entry notes; Match Overview ->
+Request a transfer or swap; Manage Draw/Referees -> Propose a referee swap;
+Inbox -> Action requests -> Your referee requests -> Withdraw request.
+Live fixture: p9201@ku.th organizes t14; mana@ku.th referees future m8/t19
+and can select somying from existing assignments. Password: abcd1234.
+For swap acceptance, supply two future scheduled matches with distinct assigned
+referees; do not rewrite baseline dates or roles just to make a test pass.

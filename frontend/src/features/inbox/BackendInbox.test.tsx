@@ -20,6 +20,8 @@ vi.mock('../../api/client', async original => ({
 const idle = { isPending: false, isError: false, isSuccess: false, error: null, mutate: vi.fn() }
 const acceptMutate = vi.fn()
 const declineMutate = vi.fn()
+const cancelMutate = vi.fn()
+let outgoing: typeof request[] = []
 
 const request = {
   id: 91, tournamentId: 23, type: 'org_add_match', requestedBy: 9201,
@@ -37,10 +39,11 @@ vi.mock('../../hooks/useTournament', () => ({
   useMyTournamentApplications: () => ({ data: { items: [] }, isPending: false }),
 }))
 vi.mock('../../hooks/useAdmin', () => ({
+  useCancelRefereeRequest: () => ({ ...idle, mutate: cancelMutate }),
   useAcceptRefereeInvitation: () => idle,
   useDeclineRefereeInvitation: () => idle,
   useMyRefereeInvitations: () => ({ data: { items: [] }, isPending: false }),
-  useMyRefereeRequests: () => ({ data: { incoming: [request], outgoing: [] }, isPending: false }),
+  useMyRefereeRequests: () => ({ data: { incoming: [request], outgoing }, isPending: false }),
   useAcceptRefereeRequest: () => ({ ...idle, mutate: acceptMutate }),
   useDeclineRefereeRequest: () => ({ ...idle, mutate: declineMutate }),
 }))
@@ -50,7 +53,7 @@ import { BackendInbox } from './BackendInbox'
 const renderInbox = () => render(<MemoryRouter><BackendInbox /></MemoryRouter>)
 const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => { vi.clearAllMocks(); outgoing = [] })
 
 describe('answering a match assignment request', () => {
   it('confirms the assignment only when the request actually applied', () => {
@@ -59,7 +62,7 @@ describe('answering a match assignment request', () => {
     renderInbox()
     clickAccept()
 
-    expect(screen.getByText(/You are officiating match #30/)).toBeInTheDocument()
+    expect(screen.getByText(/Request #91 applied/)).toBeInTheDocument()
   })
 
   it('does not claim the match when the request came back closed instead of applied', () => {
@@ -69,8 +72,8 @@ describe('answering a match assignment request', () => {
     clickAccept()
 
     expect(screen.queryByText(/You are officiating/)).not.toBeInTheDocument()
-    expect(screen.getByText(/did not come to you/)).toBeInTheDocument()
-    expect(screen.getByText(/now cancelled/)).toBeInTheDocument()
+    expect(screen.getByText(/is cancelled/)).toBeInTheDocument()
+    expect(screen.getByText(/Assignments were not changed/)).toBeInTheDocument()
   })
 
   it('says why a refused answer was refused', () => {
@@ -81,4 +84,22 @@ describe('answering a match assignment request', () => {
 
     expect(screen.getByText(/already have a match that overlaps/)).toBeInTheDocument()
   })
+})
+
+it('keeps acceptance pending when the second referee has not answered', () => {
+  acceptMutate.mockImplementation((_id, opts) => opts.onSuccess({ ...request, type: 'org_swap', status: 'open' }))
+  renderInbox(); clickAccept()
+  expect(screen.getByText(/other referee still needs to answer/)).toBeInTheDocument()
+  expect(screen.queryByText(/applied\./)).not.toBeInTheDocument()
+})
+
+it('shows outgoing consent states and allows withdrawing only open requests', () => {
+  outgoing = [{ ...request, id: 101 }, { ...request, id: 102, status: 'applied' }]
+  cancelMutate.mockImplementation((_id, opts) => opts.onSuccess())
+  renderInbox()
+  expect(screen.getAllByRole('button', { name: 'Withdraw request' })).toHaveLength(1)
+  expect(screen.getAllByText(/Somying: pending/)).toHaveLength(2)
+  fireEvent.click(screen.getByRole('button', { name: 'Withdraw request' }))
+  expect(cancelMutate).toHaveBeenCalledWith(101, expect.any(Object))
+  expect(screen.getByText('Request #101 withdrawn.')).toBeInTheDocument()
 })

@@ -96,6 +96,7 @@ export function tournamentView(
     registrationEnd: dto.registrationEnd,
     date: dto.eventStartDate,
     venue: dto.venue ?? '',
+    entryNotes: dto.entryNotes ?? undefined,
     pin: null,
     cap: dto.maxTeams,
     organizer: String(dto.requestedByUserId),

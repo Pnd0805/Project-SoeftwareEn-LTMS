@@ -18,7 +18,7 @@ import { fmtDate } from '../../shared/rules'
 import { useAnswerBackendInvitation, useBackendMyInvitations } from '../../hooks/useTeam'
 import {
   useAcceptRefereeInvitation, useAcceptRefereeRequest, useDeclineRefereeInvitation,
-  useDeclineRefereeRequest, useMyRefereeInvitations, useMyRefereeRequests,
+  useDeclineRefereeRequest, useMyRefereeInvitations, useMyRefereeRequests, useCancelRefereeRequest,
 } from '../../hooks/useAdmin'
 import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
@@ -47,15 +47,17 @@ export function BackendInbox() {
   const refereeRequests = useMyRefereeRequests()
   const acceptRequest = useAcceptRefereeRequest()
   const declineRequest = useDeclineRefereeRequest()
+  const cancelRequest = useCancelRefereeRequest()
   const applications = useMyTournamentApplications()
 
   const invites = teamInvites.data?.items ?? []
   const appointments = refereeInvites.data?.items ?? []
   const incoming = refereeRequests.data?.incoming ?? []
+  const outgoing = refereeRequests.data?.outgoing ?? []
   const decided = (applications.data?.items ?? []).filter(a => a.status !== 'pending')
   const waiting = (applications.data?.items ?? []).filter(a => a.status === 'pending')
   const nothing = !invites.length && !appointments.length && !incoming.length
-    && !decided.length && !waiting.length
+    && !decided.length && !waiting.length && !outgoing.length
 
   const loading = teamInvites.isPending || refereeInvites.isPending || refereeRequests.isPending
 
@@ -130,13 +132,17 @@ export function BackendInbox() {
                 <span className="sub">
                   {request.type === 'org_add_match' ? 'The organizer asks you to take this match'
                     : request.type === 'org_swap' ? 'The organizer proposes a swap'
+                    : request.type === 'ref_swap' ? 'Another referee proposes a swap'
                       : 'Another referee proposes a transfer'}
+                  {request.matchB ? ` with match #${request.matchB.id}` : ''}
                   {request.matchA.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
                 </span>
               </div>
               <div className="hstack">
                 <button className="btn ghost" type="button"
                   onClick={() => navigate(`/m/${request.matchA.id}`)}>Open the match</button>
+                {request.matchB ? <button className="btn ghost" type="button"
+                  onClick={() => navigate(`/m/${request.matchB!.id}`)}>Open second match</button> : null}
                 <button className="btn" type="button" disabled={declineRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined match #${request.matchA.id}.` }),
@@ -150,13 +156,10 @@ export function BackendInbox() {
                 <button className="btn primary" type="button" disabled={acceptRequest.isPending}
                   onClick={() => acceptRequest.mutate(request.id, {
                     onSuccess: answered => setNotice(answered.status === 'applied'
-                      ? { kind: 'ok', text: `You are officiating match #${answered.matchA.id}.` }
-                      : {
-                        kind: 'warn',
-                        text: `Match #${answered.matchA.id} did not come to you — that request is now `
-                          + `${answered.status}. Somebody else may have taken it, or the organizer `
-                          + `withdrew it. Ask them to send a new one.`,
-                      }),
+                      ? { kind: 'ok', text: `Request #${answered.id} applied. Open the matches to see the updated assignments.` }
+                      : { kind: 'warn', text: answered.status === 'open'
+                        ? 'Your acceptance was recorded. The other referee still needs to answer.'
+                        : `Request #${answered.id} is ${answered.status}. Assignments were not changed by this answer.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
                   })}>Accept</button>
               </div>
@@ -164,6 +167,25 @@ export function BackendInbox() {
           ))}
         </Panel>
       ) : null}
+
+      {refereeRequests.isError ? <Banner kind="crit">Could not load referee requests. {answerError(refereeRequests.error)}</Banner> : null}
+      {outgoing.length ? <Panel quiet>
+        <h3>Your referee requests</h3>
+        {outgoing.map(request => <div className="vstack" style={{ gap: 8 }} key={request.id}>
+          <div>Request #{request.id} | {request.type} | Match #{request.matchA.id}
+            {request.matchB ? ` / #${request.matchB.id}` : ''} | <Badge kind={request.status === 'applied' ? 'ok' : request.status === 'open' ? 'warn' : 'neutral'}>{request.status}</Badge></div>
+          <span className="sub">{request.refereeA.user.fullName}: {request.refereeA.status}
+            {request.refereeB ? ` | ${request.refereeB.user.fullName}: ${request.refereeB.status}` : ''}</span>
+          <div className="hstack">
+            <button className="btn ghost" onClick={() => navigate(`/m/${request.matchA.id}`)}>Open match</button>
+            {request.status === 'open' ? <button className="btn" disabled={cancelRequest.isPending}
+              onClick={() => cancelRequest.mutate(request.id, {
+                onSuccess: () => setNotice({ kind: 'ok', text: `Request #${request.id} withdrawn.` }),
+                onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+              })}>Withdraw request</button> : null}
+          </div>
+        </div>)}
+      </Panel> : null}
 
       {waiting.length || decided.length ? (
         <Panel quiet>

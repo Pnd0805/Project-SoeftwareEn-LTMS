@@ -17,8 +17,8 @@ Baseline: **BE_KN@d5bda6df8c02af5015b364d994a5a7bc587fa476**
 | ติดตามทีมและ notification feed | **ต้องการใหม่ / ต้องตกลง contract** | user follow ที่มีแล้วไม่ใช่ team follow |
 | Profile ยอด MVP ที่ได้รับ | **ต้องการใหม่ / ต้องตกลง metric** | ระบุว่าเป็นยอดคะแนนโหวตหรือจำนวนรางวัล และช่วงเวลาที่นับ |
 | F02 pool: canonical active invitation / effective counts | **ต้องการใหม่** | Notice C follow-up: see section 7 |
-| entryNotes / soft filter | **มีใน BE_KN แล้ว — รอ FE** | ไม่ต้องทำ BE ใหม่และไม่ต้องรอ merge |
-| หน้าเริ่มคำขอโอน/แลกแมตช์ | **BE มีแล้ว — รอ FE** | Inbox รับ/ปฏิเสธมีแล้ว แต่ FE ยังไม่มีหน้าส่งคำขอครบ |
+| entryNotes / soft filter | **BE delivered / FE implemented; browser acceptance open** | ไม่ต้องทำ BE ใหม่และไม่ต้องรอ merge |
+| หน้าเริ่มคำขอโอน/แลกแมตช์ | **BE delivered / FE implemented within available reads** | FE ส่งคำขอและดู/ถอนจาก Inbox ได้; รายชื่อปลายทางครบทุกคนรอ BE ตาม section 8 |
 
 ### รอ merge
 
@@ -80,9 +80,9 @@ Baseline: **BE_KN@d5bda6df8c02af5015b364d994a5a7bc587fa476**
 
 - entryNotes: tournament schema, mapper, repository รับ/อ่าน field แล้ว;
   `PATCH /tournaments/:id` ส่งผ่าน updateTournamentGeneral ลง `entry_notes` ได้
-  FE `saveEntryNotes()` ยัง unavailable จึงเป็นงาน FE ต่อ ไม่ใช่ BE blocker
+  FE save/read integration is implemented; browser acceptance remains open (see FE follow-up below).
 - Referee transfer/swap/add-match routes มีแล้ว; FE มี Inbox accept/decline
-  งานหน้าส่ง transfer/swap เป็น FE backlog ไม่ใช่คำขอ BE ใหม่
+  FE ส่ง transfer/swap และถอนคำขอได้แล้ว; browser acceptance ยังเปิด และ read pool เพิ่มอยู่ section 8
 - Dismiss report, rewritten-comment notification, match MVP, abandon,
   organizer-result, complaints, admin-users/scopes/audit, leader-transfer,
   tournament deletion, user follow และ career read มีใน baseline แล้ว
@@ -138,3 +138,38 @@ userReport evidence และ user/team follow/Profile reads ไม่พบง�
   หลายใบ (old approved active + newer rejected/removed) เพื่อทดสอบ gates และ F02
 - FE เปิด Inbox → tournament จาก referee_invited แล้ว และมี regression tests;
   Backend ยังเป็นผู้ตรวจสิทธิ์จริง การเปิด historical notice ไม่รับประกันสิทธิ์ปัจจุบัน
+
+## 8. รายชื่อปลายทางสำหรับกรรมการที่ขอโอน/แลกแมตช์
+
+สถานะ: **ต้องการ read contract เพิ่ม — FE ทำเส้นทางจาก assignments ที่มีแล้วได้**
+
+- `GET /tournaments/:id/referees` มี `requireOrganizer` จึงเรียกจากหน้าของกรรมการทั่วไปไม่ได้
+- FE เลือกปลายทางจาก `GET /matches/:id/referees` ของแมตช์ในทัวร์เดียวกัน โดยใช้
+  `tournamentRefereeId` จริง ไม่เดาจาก user ID และไม่เรียก F02 ด้วยสิทธิ์กรรมการ
+- ตอนนี้กรรมการที่ active แต่ยังไม่ได้รับแมตช์จะไม่ปรากฏในตัวเลือกปลายทาง
+- ขอ read API สำหรับกรรมการ active ในทัวร์เดียวกัน คืนเฉพาะ canonical invitation ID,
+  user reference และสถานะพร้อมรับงาน ไม่เปิดเอกสารกรรมการภายนอกหรือข้อมูลส่วนตัว
+  BE กำหนด route/DTO/permission แล้วแจ้ง FE; FE ยังไม่เดา route ใหม่
+- เกณฑ์ตรวจรับ: active referee สามารถเลือกผู้รับที่ยังไม่มีแมตช์ได้ ผู้รับที่ removed/
+  pending/rejected หรือไม่อยู่ในทัวร์ต้องไม่ถูกเสนอ และ POST ต้องตรวจสิทธิ์ซ้ำเสมอ
+
+## FE follow-up ที่ทำแล้ว · 2026-10-01
+
+- [x] Entry notes: Manage → Entry & filter → Edit entry notes; PATCH field เดียว,
+  trim/blank → null, จำกัด 2,000 ตัวอักษร, แสดง error และรอผลก่อนปิดหน้าต่าง
+  อ่าน DTO → tournament view → หน้า Overview/ใบสมัคร พร้อม refresh cache
+- [x] Referee: Match → Overview → Request a transfer or swap; เลือก invitation ID
+  จาก assignments จริงและแมตช์ที่ยัง scheduled พร้อมเวลาเริ่ม/จบในอนาคต
+- [x] Organizer: Manage → Draw หรือ Referees → Propose a referee swap;
+  เลือกคนที่รับแมตช์ A/B จริงและอยู่ใน F02 active pool ส่งคำขอรอทั้งสองฝ่ายยินยอม
+- [x] Inbox: คำขอที่ส่ง/สถานะสองฝ่าย/ถอนคำขอที่ open; incoming swap เปิดดูได้ทั้งสองแมตช์
+  รับแล้ว open = รออีกฝ่าย; applied = เปลี่ยนสำเร็จ; declined/cancelled ไม่อ้างว่าได้คุมแล้ว
+- [x] Automated regression: 58 files / 363 tests; lint และ production build ผ่าน
+- [x] Local API: migrate 34 + audit C1-C8 clean; t14 notes save/fresh GET/clear/restore
+  ผ่าน; non-organizer PATCH = 403; mana ส่ง transfer ของ m8 → somying ด้วย invitation ID
+  ที่อ่านจาก m7 ได้ 201 open, outgoing GET พบคำขอ, DELETE ได้ 204 และ GET เป็น cancelled
+  คืน notes เดิมแล้ว; คำขอ QA ยังคงเป็นประวัติ cancelled ตาม API
+- [ ] Browser acceptance: notes edit/clear/reload, transfer + receiving consent,
+  referee swap และ organizer swap ครบสองฝ่าย/refresh assignments/withdraw/conflict
+  ต้องมีแมตช์อนาคตสองนัดที่คนละคนรับจริงเพื่อทดสอบ swap
+- [ ] Full receiver list ยังรอ BE ตาม section 8; F02 ประวัติหลายใบยังรอ BE ตาม section 7

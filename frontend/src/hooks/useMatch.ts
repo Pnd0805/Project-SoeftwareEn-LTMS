@@ -14,7 +14,7 @@
  * ในทรานแซกชันเดียวกัน แปลว่า mutation ที่แตะผล ต้อง invalidate ทั้ง result และ match
  * ไม่งั้น UI จะค้างโชว์สถานะแมตช์เก่า — ทำเป็น helper `touchMatch` ไว้ข้างล่าง
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { USE_MOCK, retryPolicy } from "../api/client";
 import type { QueryClient } from "@tanstack/react-query";
 import * as matchApi from "../api/match";
@@ -379,4 +379,12 @@ export function useForfeitMatch(matchId: MatchRef, tournamentId?: MatchRef) {
       touchCheckin(qc, matchId);
     },
   });
+}
+
+/** Public accepted assignments supply real invitation IDs without using the organizer-only pool. */
+export function useTournamentMatchReferees(matchIds: number[]) {
+  return useQueries({ queries: matchIds.map(id => ({
+    queryKey: matchKeys.referees(id), queryFn: () => matchApi.getMatchReferees(id),
+    enabled: !USE_MOCK, retry: retryPolicy,
+  })) });
 }

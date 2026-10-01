@@ -10,7 +10,7 @@ vi.mock("./client", async (importOriginal) => ({
 }));
 
 import {
-  applyToTournament, approveAllApplications, approveApplication, cancelMyApplication,
+  saveEntryNotes, applyToTournament, approveAllApplications, approveApplication, cancelMyApplication,
   completeTournament, drawTournament, getApplicationDetail, getMyApplications, getTournamentAmendmentRequests,
   getTournamentApplications, getTournaments, openRegistration, closeRegistration, rejectApplication, withdrawMyApplication,
 } from "./tournament";
@@ -198,4 +198,16 @@ describe("BE_KN a14d44c/a88f7ad tournament contracts", () => {
     await expect(getTournamentAmendmentRequests(5)).resolves.toEqual({ items: [] });
     expect(lastRequest().path).toBe("/tournaments/5/amendment-requests");
   });
+});
+
+it('publishes trimmed entry notes through PATCH and clears them with null', async () => {
+  fetchMock.mockResolvedValue(json({ id: 5, entryNotes: 'Bring ID' }));
+  await saveEntryNotes(5, '  Bring ID  ');
+  expect(lastRequest()).toEqual({ path: '/tournaments/5', method: 'PATCH', body: { entryNotes: 'Bring ID' } });
+  await saveEntryNotes(5, '  ');
+  expect(lastRequest().body).toEqual({ entryNotes: null });
+});
+it('preserves organizer permission errors when saving entry notes', async () => {
+  fetchMock.mockResolvedValueOnce(apiError(403, 'NOT_ORGANIZER'));
+  await expect(saveEntryNotes(5, 'Bring ID')).rejects.toMatchObject({ status: 403, code: 'NOT_ORGANIZER' });
 });

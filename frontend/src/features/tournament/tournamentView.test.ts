@@ -24,14 +24,14 @@ describe('registration lifecycle view', () => {
       scopeType: 'faculty', organizingFacultyId: 1, organizingDepartmentId: null,
       requestedByUserId: 9001, status: 'public', registrationOpen: false,
       registrationStart: '2099-09-01T00:00:00+07:00', registrationEnd: '2099-09-30T23:59:59+07:00',
-      eventStartDate: '2099-10-01', eventEndDate: null, maxTeams: 8, minTeams: 2, venue: 'Gym',
+      entryNotes: 'Bring ID', eventStartDate: '2099-10-01', eventEndDate: null, maxTeams: 8, minTeams: 2, venue: 'Gym',
       disputeWindowHours: 24, genderRequirement: 'any', minAge: null, maxAge: null,
       rejectionReason: null, approvedBy: 1, approvedAt: '2099-01-01T00:00:00Z',
       createdAt: '2099-01-01T00:00:00Z', deletedAt: null,
     } satisfies TournamentDto
 
     expect(tournamentView(dto)).toMatchObject({
-      registrationOpen: false,
+      entryNotes: 'Bring ID', registrationOpen: false,
       registrationStart: dto.registrationStart,
       registrationEnd: dto.registrationEnd,
     })

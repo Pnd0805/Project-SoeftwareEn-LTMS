@@ -28,6 +28,7 @@ export interface TournamentDto {
   maxTeams: number;
   minTeams: number;
   venue: string | null;
+  entryNotes?: string | null;
   disputeWindowHours: number;
   genderRequirement: GenderRequirement;
   minAge: number | null;

@@ -94,13 +94,34 @@ function touchRefereeRequests(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["referees"] });
   qc.invalidateQueries({ queryKey: ["match"] });
   qc.invalidateQueries({ queryKey: ["matches"] });
+  qc.invalidateQueries({ queryKey: ["notifications"] });
+}
+
+export function useRequestRefereeTransfer() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: adminApi.requestRefereeTransfer,
+    onSuccess: () => touchRefereeRequests(qc) });
+}
+
+export function useRequestRefereeSwap(tournamentId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof adminApi.requestRefereeSwap>[1]) => adminApi.requestRefereeSwap(tournamentId, input),
+    onSuccess: () => touchRefereeRequests(qc),
+  });
+}
+
+export function useCancelRefereeRequest() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: adminApi.cancelRefereeRequest,
+    onSuccess: () => touchRefereeRequests(qc) });
 }
 
 export function useAcceptRefereeRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (requestId: number) => adminApi.acceptRefereeRequest(requestId),
-    onSuccess: () => touchRefereeRequests(qc),
+    onSettled: () => touchRefereeRequests(qc),
   });
 }
 
@@ -108,7 +129,7 @@ export function useDeclineRefereeRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (requestId: number) => adminApi.declineRefereeRequest(requestId),
-    onSuccess: () => touchRefereeRequests(qc),
+    onSettled: () => touchRefereeRequests(qc),
   });
 }
 

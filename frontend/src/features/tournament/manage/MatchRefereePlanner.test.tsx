@@ -56,6 +56,8 @@ vi.mock('../../../hooks/useAdmin', () => ({
   useCancelTournamentRefereeRequest: () => ({ ...idle, mutate: cancelRequest }),
 }))
 
+vi.mock('../../match/RefereeMatchRequest', () => ({ RefereeRequestForm: () => null }))
+
 import { MatchRefereePlanner } from './MatchRefereePlanner'
 
 beforeEach(() => {

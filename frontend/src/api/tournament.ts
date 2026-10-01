@@ -506,8 +506,9 @@ export async function saveEntryNotes(id: TournamentRef, text: string): Promise<T
     if (!notInStore(blocked)) return rejectWith<void>(blocked);
     return updateTournament(Number(id), {});
   }
-  void text;
-  return unavailable<TournamentDto>("บันทึกหมายเหตุการรับสมัคร");
+  return apiFetch(`/tournaments/${id}`, {
+    method: 'PATCH', body: JSON.stringify({ entryNotes: text.trim() || null }),
+  });
 }
 
 /**

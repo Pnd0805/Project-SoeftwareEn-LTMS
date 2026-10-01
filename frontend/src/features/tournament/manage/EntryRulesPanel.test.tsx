@@ -10,6 +10,7 @@ const { mutate, reset, setRules, detail } = vi.hoisted(() => ({
 }))
 
 vi.mock('../../../hooks/useTournament', () => ({
+  useSaveEntryNotes: () => ({ mutate: setRules, reset, isPending: false, isError: false }),
   useTournament: () => ({ data: detail.current }),
   useEligibilityRules: () => ({ data: { items: [] }, isError: false }),
   useRequestFilterChange: () => ({ mutate, reset, isPending: false, isError: false }),
@@ -83,3 +84,16 @@ describe('EntryRulesPanel amendment schedule', () => {
     expect(mutate).not.toHaveBeenCalled()
   })
 })
+
+ it('publishes soft notes without sending a hard-filter amendment', () => {
+   vi.clearAllMocks()
+   render(<EntryRulesPanel t={{ ...tournament, entryNotes: 'Bring an ID' }} />)
+   expect(screen.getByText('Bring an ID')).toBeInTheDocument()
+   fireEvent.click(screen.getByRole('button', { name: 'Edit entry notes' }))
+   const input = screen.getByLabelText(/Entry notes \(up to/)
+   expect(input).toHaveAttribute('maxlength', '2000')
+   fireEvent.change(input, { target: { value: 'Bring a student ID' } })
+   fireEvent.click(screen.getByRole('button', { name: 'Save entry notes' }))
+   expect(setRules).toHaveBeenCalledWith('Bring a student ID', expect.any(Object))
+   expect(mutate).not.toHaveBeenCalled()
+ })

@@ -1,3 +1,5 @@
+import { useNow } from '../../../hooks/useNow'
+import { RefereeRequestForm } from '../../match/RefereeMatchRequest'
 /**
  * src/features/tournament/manage/MatchRefereePlanner.tsx
  *
@@ -54,6 +56,7 @@ function MatchRow({ tournamentId, match, pool, openRequests, declinedRequests, b
   declinedRequests: BackendRefereeRequestDto[]
   busy: boolean
 }) {
+  const now = useNow()
   const assigned = useMatchReferees(match.id)
   const request = useRequestMatchReferee(tournamentId)
   const cancel = useCancelTournamentRefereeRequest(tournamentId)
@@ -66,6 +69,7 @@ function MatchRow({ tournamentId, match, pool, openRequests, declinedRequests, b
   const scheduled = !!match.scheduledTime && !!match.scheduledEndTime
   /* กฎเดียวกับ assertMatchChangeable — เปลี่ยนคนคุมได้เฉพาะนัดที่ยังไม่เริ่ม */
   const changeable = match.status === 'scheduled' && scheduled
+    && Date.parse(match.scheduledTime!) > now
   const working = busy || request.isPending || cancel.isPending || unassign.isPending
   const failed = request.error ?? cancel.error ?? unassign.error
 
@@ -183,6 +187,9 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
           an active referee can be asked to take a match.
         </Banner>
       ) : null}
+
+      {!busy && !matches.isError && !pool.isError && rows.length && activePool.length ? <RefereeRequestForm
+        tournamentId={tournamentId} matches={rows} pool={activePool} /> : null}
 
       {rows.length && activePool.length ? (
         <>

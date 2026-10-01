@@ -1,3 +1,4 @@
+import { RefereeMatchRequest } from './RefereeMatchRequest'
 import { MatchWorkflowPanel } from './MatchWorkflowPanel'
 import { resultRecorder } from './resultAttribution'
 /**
@@ -751,6 +752,7 @@ export function MatchPage() {
           {tab === 'overview' ? (
             <>
               <MatchLifecycle m={m} />
+              {!USE_MOCK ? <RefereeMatchRequest m={m} /> : null}
               <ActionPanel m={m} result={result} />
               {!USE_MOCK ? <MatchWorkflowPanel m={m} result={result} /> : null}
               {m.viewer.roles.includes('organizer') ? <OrganizerTools m={m} result={result} /> : null}
