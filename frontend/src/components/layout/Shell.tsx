@@ -183,7 +183,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{displayName}</div>
             <button className="btn ghost" type="button" style={{ width: '100%' }}
               onClick={() => { void logout.mutateAsync().finally(() => navigate('/login')) }}>
-              <Icon name="out" size={13} /> Switch role
+              <Icon name="out" size={13} /> Log out
             </button>
           </div>
         </nav>
