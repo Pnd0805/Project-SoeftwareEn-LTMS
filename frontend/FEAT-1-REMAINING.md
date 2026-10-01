@@ -2447,3 +2447,19 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
 - [x] Tournament Detail: show existing registrationStart/registrationEnd as
   Registration opens/closes with Bangkok dates and times (UTC+7); missing dates
   show Not specified. Frontend display only, using the existing detail response.
+
+## Registration rejection feedback follow-up (2026-10-01)
+
+- [x] Name and annotate backend-reported members in the registration table and
+  error summary: organizer/referee conflicts[], hard-filter details (gender,
+  age, year, faculty), removed/non-member userIds and players in another squad.
+  Resolve returned IDs against the readable team roster; unknown names use IDs.
+- [x] Team-role conflicts include unchecked team members. Deselecting a player
+  cannot resolve this backend team-wide rule; correct membership/role through
+  an authorized person or choose a different tournament. Hard filters apply
+  only to selected players. Avoid marking other members as passed without proof.
+- [x] Error names and causes are scoped to the rejected team/tournament; changing
+  either hides that prior submission feedback. Backend may stop at the first
+  failing validation, so displayed issues are not an exhaustive precheck.
+- [ ] Browser acceptance: reproduce the reported role conflict and verify names,
+  unchecked-member marker, recovery copy and corrected submission/reload.

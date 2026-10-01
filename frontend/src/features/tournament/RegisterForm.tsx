@@ -24,20 +24,10 @@ import { user } from '../../shared/selectors'
 import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
 import type { Team, Tournament } from '../../shared/types'
 import { numOf } from '../../mocks/storeBridge'
-import { conflictOfInterestDetails } from './registrationErrors'
-
-/** รายชื่อผู้ที่ไม่ผ่านเงื่อนไขรับสมัคร ตามที่ backend ส่งกลับมากับ 422 */
-type HardFilterFail = { userId: number; fullName: string; reason: string }
-type PlayerConflict = { userId: number; fullName: string; teamId: number; teamName: string }
+import { conflictOfInterestDetails, registrationMemberFailures } from './registrationErrors'
+import type { RegistrationMemberFailure } from './registrationErrors'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
-
-const REASON_LABEL: Record<string, string> = {
-  gender: 'เงื่อนไขเพศ',
-  age: 'เงื่อนไขอายุ',
-  year: 'เงื่อนไขชั้นปี',
-  faculty: 'เงื่อนไขคณะ',
-}
 
 /** What the organizer wrote about entering — shown, never checked by the system. */
 function EntryNotesBlock({ tr }: { tr: Tournament }) {
@@ -73,14 +63,15 @@ export function RegisterForm({
   const [squad, setSquad] = useState<string[]>(tm?.members ?? [])
   const [serverError, setServerError] = useState<string | null>(null)
   const [serverDetails, setServerDetails] = useState<string[]>([])
+  const [failedContext, setFailedContext] = useState<{ teamId: number; tournamentId: string } | null>(null)
   /* 422 HARD_FILTER_FAILED ส่งรายชื่อคนที่ไม่ผ่านมาให้ด้วย — ต้องบอกว่าใครและเพราะอะไร
      ไม่งั้นหัวหน้าทีมเห็นแค่ "สมาชิกบางคนไม่ผ่านเงื่อนไข" แล้วแก้อะไรไม่ถูก */
-  const [blockedMembers, setBlockedMembers] = useState<HardFilterFail[]>([])
+  const [blockedMembers, setBlockedMembers] = useState<RegistrationMemberFailure[]>([])
   /* หาในตัวเลือกที่ส่งเข้ามาก่อน แล้วค่อยถอยไปหาใน store (โหมด mock)
      ถ้าอ่านจาก store อย่างเดียว การเปลี่ยนรายการในโหมดจริงจะไม่มีผลอะไรเลย */
   const tr = options.find(o => o.id === trId) ?? s.tournaments.find(t => t.id === trId) ?? tournament
-  // The live backend evaluates the complete team. Keep the prototype-only
-  // precheck solely for mock mode and surface the server decision otherwise.
+  // Eligibility checks selected players; role conflicts check all team members.
+  // Real mode displays server decisions rather than guessing profile conditions.
   const fails = useMemo(() => USE_MOCK && tm ? hardFilter(s, tm, tr, squad) : [], [s, tm, tr, squad])
   const shut = regWindowClosed(tr)
   const locked = options.length < 2
@@ -122,6 +113,8 @@ export function RegisterForm({
   const sports = useSportTypes()
   const sport = (sports.data?.items ?? []).find(x => x.id === sportTypeId)
   const memberRows = teamMembers.data?.items ?? []
+  const currentFailure = failedContext?.teamId === selectedTeamId && failedContext?.tournamentId === tr.id
+  const memberFailures = currentFailure ? blockedMembers : []
   /* ผูกรายชื่อที่ติ๊กไว้กับทีมที่ติ๊กมัน — เปลี่ยนทีมแล้วรายชื่อเดิมเป็นของอีกทีม
      เก็บคู่กันไว้แล้วอ่านเทียบ จะได้ไม่ต้องล้างด้วย effect และไม่มีทางส่งข้ามทีม */
   const [picked, setPicked] = useState<{ teamId: number; ids: number[] }>({ teamId: 0, ids: [] })
@@ -138,6 +131,7 @@ export function RegisterForm({
     setServerError(null)
     setServerDetails([])
     setBlockedMembers([])
+    setFailedContext({ teamId: selectedTeamId, tournamentId: tr.id })
     try {
       await apply.mutateAsync(USE_MOCK ? input : { ...input, playerIds })
       onClose()
@@ -147,20 +141,14 @@ export function RegisterForm({
       }
       if (error instanceof ApiError) {
         setServerError(error.message)
-        if (error.code === 'HARD_FILTER_FAILED' && Array.isArray(error.details)) {
-          setBlockedMembers(error.details as HardFilterFail[])
-        } else if (error.code === 'SQUAD_SIZE_INVALID') {
+        setBlockedMembers(registrationMemberFailures(error, memberRows))
+        if (error.code === 'SQUAD_SIZE_INVALID') {
           setServerDetails([
-            `Selected ${String(error.extra.submitted ?? playerIds.length)} players; this sport requires ${String(error.extra.minMembers ?? '?')}–${String(error.extra.maxMembers ?? '?')}.`,
+            `Selected ${String(error.extra.submitted ?? playerIds.length)} players; this sport requires ${String(error.extra.minMembers ?? '?')}-${String(error.extra.maxMembers ?? '?')}.`,
           ])
-        } else if (error.code === 'PLAYER_NOT_IN_TEAM' && Array.isArray(error.extra.userIds)) {
-          const names = (error.extra.userIds as number[]).map(id => memberRows.find(m => m.userId === id)?.fullName ?? `User ${id}`)
-          setServerDetails(names.map(name => `${name} is no longer a member of this team. Refresh the roster and choose again.`))
-        } else if (error.code === 'PLAYER_ALREADY_REGISTERED' && Array.isArray(error.extra.players)) {
-          setServerDetails((error.extra.players as PlayerConflict[]).map(player =>
-            `${player.fullName} is already registered for this tournament with ${player.teamName}.`))
         } else if (error.code === 'TEAM_CONFLICT_OF_INTEREST') {
-          setServerDetails(conflictOfInterestDetails(error))
+          // The named causes appear below and beside members, including unchecked members.
+          setServerDetails(conflictOfInterestDetails(error, memberRows).slice(-1))
         }
       }
     }
@@ -231,7 +219,8 @@ export function RegisterForm({
           </span>
           <div className="sub">
             The squad is fixed once you send it, and a player entered here cannot enter this tournament
-            with another squad. Everyone left off stays on the team; they are simply not in this one.
+            with another squad. Entry rules apply to selected players. Organizer/referee conflicts
+            apply to everyone in the team, including members left off this squad.
           </div>
           {!selectedTeamId ? <div className="sub">Choose a team first.</div>
             : teamMembers.isPending ? <div className="sub">Loading the team…</div>
@@ -243,10 +232,11 @@ export function RegisterForm({
               ) : !memberRows.length ? <div className="sub">This team has no members yet.</div> : (
                 <TableWrap>
                   <table>
-                    <thead><tr><th>In</th><th>Player</th><th>Joined</th></tr></thead>
+                    <thead><tr><th>In</th><th>Player</th><th>Joined</th><th>Registration issue</th></tr></thead>
                     <tbody>
                       {memberRows.map(member => (
-                        <tr key={member.userId}>
+                        <tr key={member.userId} style={memberFailures.some(f => f.userId === member.userId)
+                          ? { background: 'color-mix(in srgb, var(--red) 10%, transparent)' } : undefined}>
                           <td>
                             <input type="checkbox" checked={playerIds.includes(member.userId)}
                               onChange={() => togglePlayer(member.userId)}
@@ -254,6 +244,8 @@ export function RegisterForm({
                           </td>
                           <td>{member.fullName}</td>
                           <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
+                          <td>{memberFailures.filter(f => f.userId === member.userId).map(f =>
+                            <div key={f.reason} style={{ color: 'var(--red)' }}>{f.reason}</div>)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -272,21 +264,21 @@ export function RegisterForm({
 
       <EntryNotesBlock tr={tr} />
 
-      {serverError ? (
+      {serverError && currentFailure ? (
         <Banner kind="crit">
           <b>Registration could not be submitted.</b><br />{serverError}
-          {blockedMembers.length ? (
+          {memberFailures.length ? (
             <>
               <br /><br />
-              <b>{blockedMembers.length} player{blockedMembers.length === 1 ? '' : 's'} did not clear the entry rules:</b>
+              <b>{new Set(memberFailures.map(f => f.userId)).size} player{new Set(memberFailures.map(f => f.userId)).size === 1 ? '' : 's'} blocked this submission:</b>
               <br />
-              {blockedMembers.map(fail => (
-                <span key={fail.userId}>
-                  {fail.fullName} — {REASON_LABEL[fail.reason] ?? fail.reason}<br />
+              {memberFailures.map(fail => (
+                <span key={`${fail.userId}:${fail.reason}`}>
+                  {fail.fullName} — {fail.reason}<br />
                 </span>
               ))}
-              Only the players you entered are checked — leave the named ones off and the rest can still
-              enter, or take the squad to a different tournament.
+              These are the issues reported for your last submission. Correct them and submit again;
+              further checks may report additional issues.
             </>
           ) : null}
           {serverDetails.length ? (
@@ -311,7 +303,7 @@ export function RegisterForm({
           <Banner kind="ok">
             {USE_MOCK
               ? `All ${squad.length} entering players clear the entry conditions${ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.`
-              : `Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks the ${playerIds.length} player${playerIds.length === 1 ? '' : 's'} you entered, not the whole team.`}
+              : `Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks the ${playerIds.length} player${playerIds.length === 1 ? '' : 's'} you entered, for entry rules; organizer/referee conflicts are checked against the whole team.`}
           </Banner>
         )}
 
