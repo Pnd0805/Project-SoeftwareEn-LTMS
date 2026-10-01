@@ -5,6 +5,7 @@ vi.mock('../../services/notification.service.js', () => ({
   notifyUsers: vi.fn(),
   notifyMatchAudience: vi.fn(),
   notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(),
   notifyTournamentReferees: vi.fn(),
   notifyMatchResultParties: vi.fn(),
 }));
@@ -533,6 +534,74 @@ describe('withdrawApplication', () => {
 
     await expect(applicationService.withdrawApplication(100, 5)).rejects.toMatchObject({ status: 409, code: 'MATCH_IN_PROGRESS' });
     expect(mockedApplicationRepo.updateApplicationStatus).not.toHaveBeenCalled();
+  });
+
+  /**
+   * เดิมมีแต่ ORG ที่ได้รู้ว่าทีมถอนตัว — คนที่เสียสิทธิ์ลงแข่งคือสมาชิกทีม แต่ไม่มีใครบอกเขา
+   * (แก้ 1 ต.ค. 2569) · ส่งถึงสมาชิกทุกคนของทีม ไม่ใช่แค่คนในรายชื่อลงแข่ง
+   *
+   * ไม่ซ้ำกับแจ้งเตือนรายแมตช์: แมตช์ที่ถูกตัดสินชนะบายจากการถอนนี้ ยิง match_walkover แยกอยู่แล้ว
+   * ตามมติ 22 ก.ย. ถึงสมาชิกทั้งสองทีม + กรรมการของแมตช์ + ORG (walkover.service)
+   */
+  it('แจ้งสมาชิกของทีมที่ถอน ไม่ใช่แจ้ง ORG คนเดียว', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    mockedMatchRepo.countMatchesByTournament.mockResolvedValue(0);
+
+    await applicationService.withdrawApplication(100, 5);
+
+    expect(NotificationService.notifyTeamMembers).toHaveBeenCalledWith(
+      [10],
+      expect.objectContaining({
+        type: 'application_withdrawn',
+        relatedEntityType: 'tournament',
+        relatedEntityId: 20,
+      }),
+      { exceptUserId: 5 },
+    );
+  });
+
+  // ทัวร์ยังไม่จัดสาย ⇒ ไม่มีแมตช์ให้ยิง match_walkover เลย อันนี้เป็นทางเดียวที่ทีมได้รู้
+  it('ทัวร์ที่ยังไม่มีสายก็ต้องแจ้งทีม และข้อความไม่พูดถึงชนะบาย', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    mockedMatchRepo.countMatchesByTournament.mockResolvedValue(0);
+
+    await applicationService.withdrawApplication(100, 5);
+
+    expect(Walkover.processTeamWithdrawal).not.toHaveBeenCalled();
+    const content = vi.mocked(NotificationService.notifyTeamMembers).mock.calls[0]![1];
+    expect(content.message).not.toContain('ชนะบาย');
+  });
+
+  it('มีสายแล้ว ข้อความบอกจำนวนแมตช์ที่ถูกตัดสินชนะบาย', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    mockedMatchRepo.countMatchesByTournament.mockResolvedValue(8);
+    vi.mocked(Walkover.processTeamWithdrawal).mockResolvedValue([
+      { matchId: 3, winnerTeamId: 11, loserTeamId: 10 },
+      { matchId: 4, winnerTeamId: 12, loserTeamId: 10 },
+    ]);
+
+    await applicationService.withdrawApplication(100, 5);
+
+    const content = vi.mocked(NotificationService.notifyTeamMembers).mock.calls[0]![1];
+    expect(content.message).toContain('2 แมตช์');
+  });
+
+  it('ถอนไม่สำเร็จ (ติดแมตช์ที่กำลังแข่ง) ไม่แจ้งใครเลย', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(
+      makeApplicationDetail({ team_leader_id: 5, tournament_application_status: 'approved' }),
+    );
+    vi.mocked(WalkoverRepo.hasInProgressMatch).mockResolvedValueOnce(true);
+
+    await expect(applicationService.withdrawApplication(100, 5)).rejects.toMatchObject({ code: 'MATCH_IN_PROGRESS' });
+
+    expect(NotificationService.notifyTeamMembers).not.toHaveBeenCalled();
+    expect(NotificationService.notify).not.toHaveBeenCalled();
   });
 });
 

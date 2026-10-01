@@ -5,6 +5,7 @@ vi.mock('../notification.service.js', () => ({
   notifyUsers: vi.fn(),
   notifyMatchAudience: vi.fn(),
   notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(),
   notifyTournamentReferees: vi.fn(),
   notifyMatchResultParties: vi.fn(),
 }));

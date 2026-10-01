@@ -87,6 +87,23 @@ export async function notifyTournamentSquads(
     }
 }
 
+/**
+ * สมาชิก "ทุกคน" ของทีม + หัวหน้าทีม — ใช้กับ event ที่เป็นเรื่องของ**ทีม** ไม่ใช่ของแมตช์
+ * (ถอนตัวจากทัวร์) ⇒ ต้องถึงสมาชิกที่ไม่ได้อยู่ในรายชื่อลงแข่งด้วย ซึ่ง notifyTournamentSquads ไม่ครอบ
+ */
+export async function notifyTeamMembers(
+    teamIds: number[],
+    content: Omit<NotificationInput, 'userId'>,
+    options: { exceptUserId?: number } = {}
+): Promise<void> {
+    try {
+        const recipients = (await NotificationRepo.findTeamMemberIds(teamIds)).filter(id => id !== options.exceptUserId);
+        await notifyUsers(recipients, content);
+    } catch (err) {
+        console.error(`[notify] หาสมาชิกของทีม ${teamIds.join(',')} ไม่สำเร็จ`, err);
+    }
+}
+
 /** กรรมการที่ตอบรับแล้วของทัวร์นี้ */
 export async function notifyTournamentReferees(tournamentId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
     try {

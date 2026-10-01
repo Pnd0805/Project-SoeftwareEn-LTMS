@@ -19,7 +19,8 @@ vi.mock('../../middlewares/requireReferee.js', () => ({
 }));
 vi.mock('../notification.service.js', () => ({
   notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
-  notifyTournamentTeamLeaders: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
 }));
 vi.mock('../referee.service.js', () => ({ listMyRefereeMatches: vi.fn() }));
 vi.mock('../../repositories/matchReferee.repo.js', () => ({}));

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../notification.service.js', () => ({
   notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
-  notifyTournamentTeamLeaders: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
 }));
 vi.mock('../../repositories/tournament.repo.js', () => ({
   findPendingTournamentRequests: vi.fn(),

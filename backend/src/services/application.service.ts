@@ -136,6 +136,26 @@ export async function withdrawApplication(applicationId: number, userId: number)
                  (walkovers.length > 0 ? ` — ตัดสินชนะบายให้คู่แข่งแล้ว ${walkovers.length} แมตช์` : ''),
         relatedEntityType: 'tournament', relatedEntityId: app.tournament_id,
     });
+
+    /**
+     * สมาชิกของทีมที่ถอน — เดิมมีแต่ ORG ที่ได้รู้ (แก้ 1 ต.ค. 2569)
+     *
+     * คนที่เสียสิทธิ์ลงแข่งคือสมาชิกทีม แต่ไม่มีใครบอกเขา · ส่งถึง**สมาชิกทุกคน** ไม่ใช่แค่คนในรายชื่อ
+     * ลงแข่ง เพราะคนที่ไม่ได้ถูกส่งชื่อลงรอบนี้ก็เสียโอกาสของทัวร์นี้ไปเหมือนกัน
+     *
+     * ไม่ส่งหาหัวหน้าทีมที่กดเอง (exceptUserId) และ**ไม่ซ้ำกับแจ้งเตือนรายแมตช์**:
+     * แมตช์ที่ถูกตัดสินชนะบายจากการถอนนี้ ยิง `match_walkover` แยกอยู่แล้วตามมติ 22 ก.ย.
+     * ถึงสมาชิกทุกคนของทั้งสองทีม + กรรมการของแมตช์ + ORG (walkover.service → notifyMatchDecidedWithoutPlay)
+     * ⇒ อันนี้คือ "ทีมคุณถอนจากทัวร์" ส่วนอันนั้นคือ "แมตช์นี้จบด้วยผลอะไร" คนละเรื่องกัน
+     * และเป็นทางเดียวที่ทีมได้รู้เมื่อทัวร์ยังไม่จัดสาย (matchCount = 0 ⇒ ไม่มีแมตช์ให้ยิงเลย)
+     */
+    await NotificationService.notifyTeamMembers([app.team_id], {
+        type: 'application_withdrawn',
+        title: 'ทีมของคุณถอนตัวจากทัวร์นาเมนต์',
+        message: `ทีม "${app.team_name}" ถอนตัวจากทัวร์นาเมนต์แล้ว` +
+                 (walkovers.length > 0 ? ` — แมตช์ที่ยังไม่แข่ง ${walkovers.length} แมตช์ถูกตัดสินให้คู่แข่งชนะบาย` : ''),
+        relatedEntityType: 'tournament', relatedEntityId: app.tournament_id,
+    }, { exceptUserId: userId });
     return { id: applicationId, status: "withdrawn", bracketExists: matchCount > 0, walkovers };
 }
 

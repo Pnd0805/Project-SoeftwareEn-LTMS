@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../notification.service.js', () => ({
   notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
-  notifyTournamentTeamLeaders: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
 }));
 vi.mock('../upload.service.js', () => ({
   getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),

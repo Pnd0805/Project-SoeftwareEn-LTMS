@@ -222,7 +222,7 @@
 | P05 | `POST /applications/:id/approve` | ORG | อนุมัติ (Soft Filter ดุลพินิจ) | — | `{ id, status:'approved' }` |
 | P06 | `POST /applications/:id/reject` | ORG | ปฏิเสธ · `reason` บังคับ | `reason` | `{ id, status:'rejected', reason }` |
 | P07 | `POST /applications/:id/cancel` | TL | **ยกเลิกก่อนอนุมัติ** (ต้องเป็น `pending`) | — | `{ id, status:'cancelled' }` / **409** `ALREADY_DECIDED` |
-| P08 | `POST /applications/:id/withdraw` | TL | **ถอนตัวหลังอนุมัติ** · คืนช่องว่าง + แจ้ง ORG · **มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย** (walkover, ลูกโซ่ถึงสายล่าง; คู่ที่ยังไม่มาจะบายตอนคู่มาถึง) · ถอนกลางแมตช์ไม่ได้ | — | `{ id, status:'withdrawn', bracketExists, walkovers: [{matchId, winnerTeamId, loserTeamId}] }` / **409** `MATCH_IN_PROGRESS` |
+| P08 | `POST /applications/:id/withdraw` | TL | **ถอนตัวหลังอนุมัติ** · คืนช่องว่าง + แจ้ง ORG · **1 ต.ค.: แจ้งสมาชิกทุกคนของทีมที่ถอนด้วย** (`application_withdrawn` · ไม่ส่งหาหัวหน้าทีมที่กดเอง) — เดิมมีแต่ ORG ที่ได้รู้ ทั้งที่คนเสียสิทธิ์ลงแข่งคือสมาชิกทีม · ส่งถึงสมาชิกทุกคนไม่ใช่แค่คนในรายชื่อลงแข่ง · ทัวร์ที่ยังไม่จัดสายนี่เป็นทางเดียวที่ทีมได้รู้ (ไม่มีแมตช์ให้ยิง `match_walkover`) · **มีสายแล้ว → แมตช์ที่ยังไม่เริ่มของทีมนี้ อีกฝั่งชนะบาย** (walkover, ลูกโซ่ถึงสายล่าง; คู่ที่ยังไม่มาจะบายตอนคู่มาถึง) · ถอนกลางแมตช์ไม่ได้ | — | `{ id, status:'withdrawn', bracketExists, walkovers: [{matchId, winnerTeamId, loserTeamId}] }` / **409** `MATCH_IN_PROGRESS` |
 | P09 | `GET /tournaments/:id/teams` | — | ทีมที่อนุมัติแล้ว (สาธารณะ) | — | `{ items: TeamRef[] }` |
 
 ---
@@ -325,9 +325,9 @@
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
-| E08 | `POST /tournaments/:id/announcements` | ORG | **แก้ 27 ก.ย.** เพิ่ม `type` — `announcements.announcement_type` มี 5 ค่า NOT NULL มาตั้งแต่ schema แรก แต่ INSERT ฮาร์ดโค้ด `'general'` และไม่มี response ไหนคืนออกมา คอลัมน์จึงไม่ได้ทำอะไรเลย · ค่า: `general` \| `schedule_change` \| `venue_change` \| `result` \| `livestream` · ไม่ส่งมา = `general` (ของเก่าไม่พัง) · ประกาศ + แจ้งเตือนผู้เกี่ยวข้อง | `title, body, type?` | **201** `{ id, type, title, body, createdAt }` |
+| E08 | `POST /tournaments/:id/announcements` | ORG | **1 ต.ค.: ยิงแจ้งเตือนแล้ว** (`tournament_announcement`) → ผู้เล่นในรายชื่อลงแข่ง + หัวหน้าทีม **+ กรรมการของทัวร์** ไม่ส่งกลับหาผู้จัดที่โพสต์เอง · หัวข้อขึ้นคำนำหน้าตาม `type` (`ประกาศจากผู้จัด:` / `เปลี่ยนกำหนดการแข่ง:` / `เปลี่ยนสนามแข่ง:` / `ประกาศผลการแข่งขัน:` / `ถ่ายทอดสด:`) · เดิมบันทึกลงฐานแล้วจบ ไม่มีใครรู้จนกว่าจะเข้าไปเปิดดูเอง · **แก้ 27 ก.ย.** เพิ่ม `type` — `announcements.announcement_type` มี 5 ค่า NOT NULL มาตั้งแต่ schema แรก แต่ INSERT ฮาร์ดโค้ด `'general'` และไม่มี response ไหนคืนออกมา คอลัมน์จึงไม่ได้ทำอะไรเลย · ค่า: `general` \| `schedule_change` \| `venue_change` \| `result` \| `livestream` · ไม่ส่งมา = `general` (ของเก่าไม่พัง) · ประกาศ + แจ้งเตือนผู้เกี่ยวข้อง | `title, body, type?` | **201** `{ id, type, title, body, createdAt }` |
 | E09 | `GET /tournaments/:id/announcements` | — | รายการประกาศ · ทุกแถวมี `type` แล้ว (แก้ 27 ก.ย.) FE ติดป้ายชนิดประกาศได้ | `?page&pageSize` | `{ items: [{id, type, title, body, createdAt}], pagination }` |
-| E10 | `PATCH /announcements/:id` | ORG | แก้ประกาศ · แก้ `type` ได้ด้วย (แก้ 27 ก.ย.) | `title?, body?, type?` | `{ id, type, title, body, createdAt }` |
+| E10 | `PATCH /announcements/:id` | ORG | แก้ประกาศ · แก้ `type` ได้ด้วย (แก้ 27 ก.ย.) · **ไม่ยิงแจ้งเตือนซ้ำโดยเจตนา** (1 ต.ค.) — แก้คำผิดคำเดียวจะกลายเป็นยิงใหม่ทั้งทัวร์ ถ้าสำคัญพอให้คนรู้อีกครั้ง ผู้จัดโพสต์ใหม่ได้ · E11 ที่ลบก็ไม่ยิง | `title?, body?, type?` | `{ id, type, title, body, createdAt }` |
 | E11 | `DELETE /announcements/:id` | ORG | **soft delete** | — | **204** |
 | E12 | `PUT /matches/:id/livestream` | ORG | ตั้งลิงก์ถ่ายทอดสด · validate YouTube URL · `youtubeUrl: null` = ล้างลิงก์ | `youtubeUrl` | `{ matchId, youtubeUrl }` / **400** `INVALID_YOUTUBE_URL` |
 

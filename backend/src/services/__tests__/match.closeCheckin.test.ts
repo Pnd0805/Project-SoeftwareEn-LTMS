@@ -9,7 +9,8 @@ vi.mock('../../middlewares/requireReferee.js', () => ({ isRefereeOfMatch: vi.fn(
 vi.mock('../walkover.service.js', () => ({ closeCheckin: vi.fn(() => Promise.resolve(true)) }));
 vi.mock('../notification.service.js', () => ({
   notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
-  notifyTournamentTeamLeaders: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
 }));
 vi.mock('../../repositories/walkover.repo.js', () => ({}));
 vi.mock('../referee.service.js', () => ({ listMyRefereeMatches: vi.fn() }));
