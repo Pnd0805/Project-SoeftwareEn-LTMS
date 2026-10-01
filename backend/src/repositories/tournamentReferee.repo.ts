@@ -41,6 +41,14 @@ export async function findActiveByTournamentAndUser(tournamentId : number, userI
     return rows;
 }
 
+/**
+ * ⚠️ ห้ามใช้ตอบคำถามว่า "คนนี้เป็นกรรมการของทัวร์นี้อยู่ไหม" — ใช้ findActiveRefereeRow() แทน
+ *
+ * ตารางเป็น soft delete และ F-15 ตั้งใจให้มีแถว active ได้หลายแถว
+ * ⇒ "แถวล่าสุดตาม id" ไม่ใช่คำตอบของคำถามนั้น (บั๊กที่แก้ 1 ต.ค. 2569)
+ * ตั้งแต่รอบนั้นโค้ดส่วนที่ใช้งานไม่เรียกตัวนี้แล้ว — คงไว้เพราะสาขาอื่นที่ยังไม่ merge ยังเรียกอยู่
+ * ลบได้เมื่อสาขาเหล่านั้นเข้ามาหมดแล้ว
+ */
 export async function findLatestByTournamentAndUser(tournamentId : number, userId : number)
         : Promise<TournamentRefereeRow | null>{
     const [rows] = await pool.query<(TournamentRefereeRow & RowDataPacket)[]>(

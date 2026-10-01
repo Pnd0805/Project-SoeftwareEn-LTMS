@@ -208,8 +208,11 @@ async function getVisibleTournament(tournamentId: number, userId?: number): Prom
      *   เปิดทั้งคู่โดยเจตนา — กฎว่าใครลงแข่งได้เป็นข้อมูลที่กรรมการควรรู้ก่อนรับงาน
      */
     if (userId !== undefined && tournament.tournament_status !== 'auto_deleted') {
-        const refereeRow = await TournamentRefereeRepo.findLatestByTournamentAndUser(tournament.tournament_id, userId);
-        if (refereeRow && refereeRow.removed_at === null) return tournament;
+        // กฎที่นี่คือ "มีแถวที่ยังไม่ถูกถอดอยู่ไหม" — pending ก็นับ ต่างจากอีกสองที่ต้อง active จริง
+        // เพราะกฎว่าใครลงแข่งได้เป็นข้อมูลที่คนถูกเชิญควรรู้ก่อนตัดสินว่าจะรับไหม
+        // แก้ 1 ต.ค. 2569 — เดิมดูแถวล่าสุดตาม id แถวเดียว ⇒ ถ้าแถวนั้นถูกถอดแต่แถวเก่ายังอยู่ ก็มองทัวร์ไม่เห็น
+        const refereeRows = await TournamentRefereeRepo.findActiveByTournamentAndUser(tournament.tournament_id, userId);
+        if (refereeRows.length > 0) return tournament;
     }
 
     throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');

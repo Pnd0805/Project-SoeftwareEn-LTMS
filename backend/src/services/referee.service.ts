@@ -360,6 +360,21 @@ export async function removeTournamentReferee(
     return { removed : true, uncoveredMatches : coverage.uncovered.map(m => m.matchId) };
 }
 
+/**
+ * แถวที่ "นับเป็นกรรมการใช้งานได้" ของคนนี้ในทัวร์นี้ · null = ไม่มี (เพิ่ม 1 ต.ค. 2569)
+ *
+ * ตารางเป็น soft delete และ F-15 ตั้งใจให้มีแถว active ได้หลายแถว ⇒ ต้องมองทุกแถว ไม่ใช่แถวล่าสุดตาม id
+ * เดิมสามที่เรียก findLatestByTournamentAndUser แล้วถาม isActiveReferee กับแถวนั้นแถวเดียว
+ * ⇒ ถ้าแถวล่าสุดเป็นแถวที่แอดมินปฏิเสธตัวตน (rejected_by_admin) ขณะที่แถวเก่า approved และยัง active
+ *   จะตอบว่า "ไม่ใช่กรรมการ" ทั้งที่เป็น ⇒ คุมแมตช์/ส่งผล/โอนแมตช์ไม่ได้ทั้งที่มีสิทธิ์
+ *
+ * คืนแถวแรก (id น้อยสุด) ที่ใช้งานได้ เพื่อให้ผลคาดเดาได้เวลามีหลายแถวที่ใช้งานได้พร้อมกัน
+ */
+export async function findActiveRefereeRow(tournamentId : number, userId : number){
+    const rows = await RefRepo.findActiveByTournamentAndUser(tournamentId, userId);
+    return rows.find(row => isActiveReferee(row)) ?? null;
+}
+
 /** กรรมการคนนี้ใช้งานได้จริงหรือยัง — นิยามอยู่ที่ toRefereeStatus() ที่เดียว */
 export function isActiveReferee(tr : RefereeStatusFields | null): boolean {
     if(!tr) return false;

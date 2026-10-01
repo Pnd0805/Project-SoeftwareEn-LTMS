@@ -918,3 +918,52 @@ describe('แจ้งเตือนกรรมการถูกถอด (�
     expect(result).toEqual({ removed: true, uncoveredMatches: [30] });
   });
 });
+
+/**
+ * findActiveRefereeRow — ตัวที่ด่านสิทธิ์สามที่ใช้ร่วมกัน (requireReferee · refereeRequest · tournament)
+ * แก้ 1 ต.ค. 2569: เดิมทั้งสามที่เรียก findLatestByTournamentAndUser แล้วถาม isActiveReferee กับแถวนั้นแถวเดียว
+ */
+describe('findActiveRefereeRow', () => {
+  it('ไม่มีแถว active เลย → null', async () => {
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);
+    expect(await refereeService.findActiveRefereeRow(20, 8)).toBeNull();
+  });
+
+  /**
+   * ★ บั๊กด้านสิทธิ์ที่แก้รอบนี้ — กรรมการนอกที่ถูกเชิญรอบสองแล้วแอดมินไม่อนุมัติ
+   * จะมีแถว rejected_by_admin เป็นแถวล่าสุด ขณะที่แถวเก่า approved และยัง active อยู่
+   * เดิมตอบว่า "ไม่ใช่กรรมการ" ⇒ คุมแมตช์ ส่งผล โอนแมตช์ และเปิดทัวร์ private ของตัวเองไม่ได้
+   */
+  it('มีแถว approved ที่ยัง active อยู่ → คืนแถวนั้น แม้แถวล่าสุดจะถูกแอดมินปฏิเสธ', async () => {
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([
+      makeInvitation({ tournament_referee_id: 24, invitation_status: 'accepted', is_external: 1,
+                       external_approval_status: 'approved' }),
+      makeInvitation({ tournament_referee_id: 25, invitation_status: 'accepted', is_external: 1,
+                       external_approval_status: 'rejected' }),
+    ]);
+
+    const row = await refereeService.findActiveRefereeRow(20, 8);
+
+    expect(row?.tournament_referee_id).toBe(24);
+  });
+
+  it('แถว active ทั้งหมดใช้งานไม่ได้ (pending / ถูกแอดมินปฏิเสธ) → null', async () => {
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([
+      makeInvitation({ tournament_referee_id: 30, invitation_status: 'pending' }),
+      makeInvitation({ tournament_referee_id: 31, invitation_status: 'accepted', is_external: 1,
+                       external_approval_status: 'rejected' }),
+    ]);
+
+    expect(await refereeService.findActiveRefereeRow(20, 8)).toBeNull();
+  });
+
+  // มีหลายแถวที่ใช้งานได้พร้อมกัน — ต้องคืนแถวเดิมทุกครั้ง ไม่ใช่สลับไปมาตามลำดับที่ฐานคืนมา
+  it('เลือกแถว id น้อยสุดเมื่อใช้งานได้หลายแถว เพื่อให้ผลคาดเดาได้', async () => {
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([
+      makeInvitation({ tournament_referee_id: 40, invitation_status: 'accepted' }),
+      makeInvitation({ tournament_referee_id: 41, invitation_status: 'accepted' }),
+    ]);
+
+    expect((await refereeService.findActiveRefereeRow(20, 8))?.tournament_referee_id).toBe(40);
+  });
+});

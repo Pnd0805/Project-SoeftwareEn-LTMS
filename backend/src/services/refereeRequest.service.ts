@@ -3,7 +3,7 @@ import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import { AppError } from '../utils/AppError.js';
-import { assertSchedulable, isActiveReferee } from './referee.service.js';
+import { assertSchedulable, isActiveReferee, findActiveRefereeRow } from './referee.service.js';
 import type { Schedulable } from './referee.service.js';
 import { toRefereeRequestDto } from '../mappers/refereeRequest.mapper.js';
 import type { RefRequestInput, OrgAddMatchInput, OrgSwapInput } from '../schemas/refereeRequest.schema.js';
@@ -79,9 +79,9 @@ export async function createRefRequest(userId : number, input : RefRequestInput)
     if(!myMatch) throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้');
     const tournamentId = myMatch.tournament_id;
 
-    // A = ตัวเรา (แถวล่าสุดในทัวร์นี้ ต้อง active)
-    const a = await RefRepo.findLatestByTournamentAndUser(tournamentId, userId);
-    if(!a || a.removed_at !== null || !isActiveReferee(a)){
+    // A = ตัวเรา — แถวที่นับเป็นกรรมการใช้งานได้ ไม่ใช่แถวล่าสุดตาม id (แก้ 1 ต.ค. 2569)
+    const a = await findActiveRefereeRow(tournamentId, userId);
+    if(!a){
         throw new AppError(403, 'NOT_TOURNAMENT_REFEREE', 'คุณไม่ได้เป็นกรรมการของทัวร์นาเมนต์นี้');
     }
     const b = await loadActiveReferee(input.toTournamentRefereeId, tournamentId);

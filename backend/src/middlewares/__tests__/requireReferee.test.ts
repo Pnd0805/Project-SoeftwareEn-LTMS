@@ -11,7 +11,8 @@ vi.mock('../../utils/checkExist.js', () => ({
 }));
 
 vi.mock('../../services/referee.service.js', () => ({
-  isActiveReferee: vi.fn(),
+  // isRefereeOfMatch ถามจากทุกแถวที่ active แล้ว ไม่ใช่ findLatest + isActiveReferee แยกสองก้อน (แก้ 1 ต.ค. 2569)
+  findActiveRefereeRow: vi.fn(),
   refereesNeededPerMatch: vi.fn(),
 }));
 
@@ -54,7 +55,7 @@ import {
 } from '../requireReferee.js';
 import { parseId } from '../../utils/parseId.js';
 import { checkMatch, checkMatchResult } from '../../utils/checkExist.js';
-import { isActiveReferee, refereesNeededPerMatch } from '../../services/referee.service.js';
+import { findActiveRefereeRow, refereesNeededPerMatch } from '../../services/referee.service.js';
 import { findLatestByTournamentAndUser } from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefereeRepo from '../../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
@@ -74,7 +75,7 @@ import type {
 const mockedParseId = vi.mocked(parseId);
 const mockedCheckMatch = vi.mocked(checkMatch);
 const mockedCheckMatchResult = vi.mocked(checkMatchResult);
-const mockedIsActiveReferee = vi.mocked(isActiveReferee);
+const mockedFindActiveRefereeRow = vi.mocked(findActiveRefereeRow);
 const mockedRefereesNeededPerMatch = vi.mocked(refereesNeededPerMatch);
 const mockedFindLatestByTournamentAndUser = vi.mocked(findLatestByTournamentAndUser);
 const mockedFindByMatch = vi.mocked(MatchRefereeRepo.findByMatch);
@@ -249,8 +250,7 @@ beforeEach(() => {
 
 describe('isRefereeOfMatch', () => {
   it('returns false without checking assignments when the referee is not active', async () => {
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
 
     const result = await isRefereeOfMatch(30, 5, 20);
 
@@ -259,8 +259,7 @@ describe('isRefereeOfMatch', () => {
   });
 
   it('returns true when active and assigned to the match', async () => {
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
 
     const result = await isRefereeOfMatch(30, 5, 20);
@@ -270,8 +269,7 @@ describe('isRefereeOfMatch', () => {
   });
 
   it('returns false when active but not assigned to this match', async () => {
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 999 } as any]);
 
     const result = await isRefereeOfMatch(30, 5, 20);
@@ -414,8 +412,7 @@ describe('requireCanSubmitResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue(finishedMatch);
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
 
     await requireCanSubmitResult(makeReq({ id: '30' }, refereeUser), makeRes(), vi.fn() as NextFunction);
@@ -455,8 +452,7 @@ describe('requireCanSubmitResult middleware', () => {
       mockedParseId.mockReturnValue(30);
       mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'onsite' });
       mockedFindmatchResultByMatchId.mockResolvedValue({ ...baseMatchResult, match_result_status: status });
-      mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-      mockedIsActiveReferee.mockReturnValue(true);
+      mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
       mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
       const next = vi.fn() as NextFunction;
 
@@ -470,8 +466,7 @@ describe('requireCanSubmitResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'onsite' });
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     const req = makeReq({ id: '30' }, refereeUser);
     const next = vi.fn() as NextFunction;
 
@@ -487,8 +482,7 @@ describe('requireCanSubmitResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue({ ...finishedMatch, mode: 'onsite' });
     mockedFindmatchResultByMatchId.mockResolvedValue(null);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
     const req = makeReq({ id: '30' }, refereeUser);
     const next = vi.fn() as NextFunction;
@@ -578,8 +572,7 @@ describe('requireCanVerifyResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online' });
     mockedCheckMatchResult.mockResolvedValue(baseMatchResult); // submitted_by_user_id: 200
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     const next = vi.fn() as NextFunction;
 
     await requireCanVerifyResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
@@ -593,8 +586,7 @@ describe('requireCanVerifyResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online' });
     mockedCheckMatchResult.mockResolvedValue(baseMatchResult);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
     const req = makeReq({ id: '30' }, refereeUser);
     const next = vi.fn() as NextFunction;
@@ -716,8 +708,7 @@ describe('requireCanDisputeResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue(baseMatch);
     mockedCheckMatchResult.mockResolvedValue({ ...baseMatchResult, match_result_status: 'verified', verified_at: null });
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(null);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     mockedTeamFindById.mockImplementation(async (id: number) => (id === 10 ? teamA : teamB));
     const next = vi.fn() as NextFunction;
 
@@ -732,8 +723,7 @@ describe('requireCanDisputeResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue(baseMatch);
     mockedCheckMatchResult.mockResolvedValue({ ...baseMatchResult, match_result_status: 'verified', verified_at: null });
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
     const next = vi.fn() as NextFunction;
 
@@ -746,8 +736,7 @@ describe('requireCanDisputeResult middleware', () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue(baseMatch);
     mockedCheckMatchResult.mockResolvedValue({ ...baseMatchResult, match_result_status: 'verified', verified_at: null });
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(null);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     mockedTeamFindById.mockImplementation(async (id: number) => (id === 10 ? teamA : teamB));
     const next = vi.fn() as NextFunction;
 
@@ -787,8 +776,7 @@ describe('requireCanRecordStats middleware', () => {
     mockedFindTournamentById.mockResolvedValue(baseTournament);
     mockedRefereesNeededPerMatch.mockResolvedValue((mode) => (mode === 'onsite' ? 2 : 1));
     mockedCountAcceptedByMatch.mockResolvedValue(2);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     const next = vi.fn() as NextFunction;
 
     await requireCanRecordStats(makeReq({ id: '30' }, refereeUser), makeRes(), next);
@@ -804,8 +792,7 @@ describe('requireCanRecordStats middleware', () => {
     mockedFindTournamentById.mockResolvedValue(baseTournament);
     mockedRefereesNeededPerMatch.mockResolvedValue((mode) => (mode === 'onsite' ? 2 : 1));
     mockedCountAcceptedByMatch.mockResolvedValue(2);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
     const next = vi.fn() as NextFunction;
 
@@ -817,8 +804,7 @@ describe('requireCanRecordStats middleware', () => {
   it('online: skips the referee-sufficiency check entirely', async () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online' });
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     const next = vi.fn() as NextFunction;
 
     await requireCanRecordStats(makeReq({ id: '30' }, refereeUser), makeRes(), next);
@@ -854,8 +840,7 @@ describe('requireReferee middleware', () => {
   it('parses the id with the 2-arg signature and looks up the match directly (not via checkMatch)', async () => {
     mockedParseId.mockReturnValue(30);
     mockedMatchFindById.mockResolvedValue(baseMatch);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
 
     await requireReferee(makeReq({ id: '30' }, refereeUser), makeRes(), vi.fn() as NextFunction);
@@ -879,8 +864,7 @@ describe('requireReferee middleware', () => {
   it('calls next with NOT_REFEREE when the caller is not assigned to the match', async () => {
     mockedParseId.mockReturnValue(30);
     mockedMatchFindById.mockResolvedValue(baseMatch);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
     const req = makeReq({ id: '30' }, refereeUser);
     const next = vi.fn() as NextFunction;
 
@@ -895,8 +879,7 @@ describe('requireReferee middleware', () => {
   it('attaches req.match and calls next() for the assigned referee', async () => {
     mockedParseId.mockReturnValue(30);
     mockedMatchFindById.mockResolvedValue(baseMatch);
-    mockedFindLatestByTournamentAndUser.mockResolvedValue(baseTournamentReferee);
-    mockedIsActiveReferee.mockReturnValue(true);
+    mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
     mockedFindByMatch.mockResolvedValue([{ user_id: 5 } as any]);
     const req = makeReq({ id: '30' }, refereeUser);
     const next = vi.fn() as NextFunction;

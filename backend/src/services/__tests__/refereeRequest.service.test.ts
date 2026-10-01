@@ -32,6 +32,8 @@ vi.mock('../../repositories/match.repo.js', () => ({
 vi.mock('../referee.service.js', () => ({
   assertSchedulable: vi.fn(),
   isActiveReferee: vi.fn(),
+  // createRefRequest หาแถวของตัวเองผ่านตัวนี้แล้ว ไม่ใช่ findLatest + isActiveReferee แยกสองก้อน (แก้ 1 ต.ค. 2569)
+  findActiveRefereeRow: vi.fn(),
 }));
 
 vi.mock('../../mappers/refereeRequest.mapper.js', () => ({
@@ -56,7 +58,7 @@ import * as ReqRepo from '../../repositories/refereeChangeRequest.repo.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
-import { assertSchedulable, isActiveReferee } from '../referee.service.js';
+import { assertSchedulable, isActiveReferee, findActiveRefereeRow } from '../referee.service.js';
 import { toRefereeRequestDto } from '../../mappers/refereeRequest.mapper.js';
 import * as NotificationService from '../notification.service.js';
 
@@ -66,6 +68,7 @@ const mockedMatchRefRepo = vi.mocked(MatchRefRepo);
 const mockedMatchRepo = vi.mocked(MatchRepo);
 const mockedAssertSchedulable = vi.mocked(assertSchedulable);
 const mockedIsActiveReferee = vi.mocked(isActiveReferee);
+const mockedFindActiveRefereeRow = vi.mocked(findActiveRefereeRow);
 const mockedToDto = vi.mocked(toRefereeRequestDto);
 const mockedNotify = vi.mocked(NotificationService.notify);
 const mockedNotifyUsers = vi.mocked(NotificationService.notifyUsers);
@@ -161,30 +164,20 @@ describe('createRefRequest', () => {
     mockedMatchRepo.findById.mockResolvedValue(null);
 
     await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
-    expect(mockedRefRepo.findLatestByTournamentAndUser).not.toHaveBeenCalled();
+    expect(mockedFindActiveRefereeRow).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['no row at all', null],
-    ['a removed referee row', makeReferee({ removed_at: new Date() })],
-  ])('throws NOT_TOURNAMENT_REFEREE when the caller has %s', async (_label, aRow) => {
+  // ไม่มีแถวเลย · ถูกถอดไปแล้ว · ยังไม่ active — ทั้งสามรวมอยู่ใน findActiveRefereeRow ที่คืน null
+  it('throws NOT_TOURNAMENT_REFEREE when the caller has no usable referee row', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(aRow);
-
-    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 403, code: 'NOT_TOURNAMENT_REFEREE' });
-  });
-
-  it('throws NOT_TOURNAMENT_REFEREE when the caller is not an active referee', async () => {
-    mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee());
-    mockedIsActiveReferee.mockReturnValueOnce(false);
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
 
     await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 403, code: 'NOT_TOURNAMENT_REFEREE' });
   });
 
   it('throws REFEREE_NOT_FOUND when the target referee is in a different tournament', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2, tournament_id: 999 }));
 
     await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 404, code: 'REFEREE_NOT_FOUND' });
@@ -192,16 +185,18 @@ describe('createRefRequest', () => {
 
   it('throws REFEREE_NOT_ACTIVE when the target referee has not accepted / is not yet admin-approved', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
-    mockedIsActiveReferee.mockReturnValueOnce(true).mockReturnValueOnce(false);
+    // เดิมต้องตอบ true ให้แถวของตัวเองก่อน แล้ว false ให้เป้าหมาย — ตอนนี้แถวของตัวเอง
+    // ไปอยู่ใน findActiveRefereeRow แล้ว isActiveReferee จึงถูกเรียกเฉพาะกับเป้าหมาย
+    mockedIsActiveReferee.mockReturnValueOnce(false);
 
     await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 409, code: 'REFEREE_NOT_ACTIVE' });
   });
 
   it('throws SAME_REFEREE when transferring/swapping with yourself', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 1 }));
 
     await expect(createRefRequest(100, { ...input, toTournamentRefereeId: 1 })).rejects.toMatchObject({
@@ -212,7 +207,7 @@ describe('createRefRequest', () => {
 
   it('throws REFEREE_NOT_ASSIGNED when the caller is not currently assigned to their own match', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [] }); // caller has nothing accepted
 
@@ -226,7 +221,7 @@ describe('createRefRequest', () => {
     ['the match already started', makeMatch({ scheduled_time: past(HOUR) })],
   ])('throws MATCH_NOT_CHANGEABLE when %s', async (_label, myMatch) => {
     mockMatches(myMatch);
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [1] });
 
@@ -235,7 +230,7 @@ describe('createRefRequest', () => {
 
   it('throws SAME_MATCH when swapping a match with itself', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [1] });
 
@@ -247,7 +242,7 @@ describe('createRefRequest', () => {
 
   it('throws MATCH_NOT_FOUND when theirMatchId is not in the same tournament', async () => {
     mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2, tournament_id: 999 }));
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [1] });
 
@@ -259,7 +254,7 @@ describe('createRefRequest', () => {
 
   it('throws REFEREE_NOT_ASSIGNED when the other referee is not assigned to theirMatchId', async () => {
     mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [1], 2: [] }); // b has nothing accepted
 
@@ -271,7 +266,7 @@ describe('createRefRequest', () => {
 
   it('throws REQUEST_ALREADY_OPEN when a duplicate open request already exists', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [1] });
     mockedReqRepo.existsOpenFor.mockResolvedValue(true);
@@ -282,7 +277,7 @@ describe('createRefRequest', () => {
 
   it('propagates a schedule-conflict AppError from assertSchedulable', async () => {
     mockMatches(makeMatch());
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
     mockReferees(makeReferee({ tournament_referee_id: 2 }));
     mockAccepted({ 1: [1], 2: [] });
     mockedAssertSchedulable.mockImplementationOnce(() => {
@@ -295,7 +290,7 @@ describe('createRefRequest', () => {
 
   it('creates a ref_transfer request (no theirMatchId) and notifies the target referee', async () => {
     mockMatches(makeMatch({ match_id: 1 }));
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
     mockReferees(makeReferee({ tournament_referee_id: 2, user_id: 200 }));
     mockAccepted({ 1: [1] });
 
@@ -320,7 +315,7 @@ describe('createRefRequest', () => {
 
   it('creates a ref_swap request (with theirMatchId) and checks conflicts for both sides', async () => {
     mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
-    mockedRefRepo.findLatestByTournamentAndUser.mockResolvedValue(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
     mockReferees(makeReferee({ tournament_referee_id: 2, user_id: 200 }));
     mockAccepted({ 1: [1], 2: [2] });
 

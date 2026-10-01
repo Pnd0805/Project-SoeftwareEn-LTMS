@@ -9,7 +9,11 @@ vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/team.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn() }));
 vi.mock('../../repositories/sportType.repo.js', () => ({}));
-vi.mock('../../services/referee.service.js', () => ({ isActiveReferee: vi.fn(() => true), refereesNeededPerMatch: vi.fn() }));
+// isRefereeOfMatch ใช้ findActiveRefereeRow แล้ว (แก้ 1 ต.ค. 2569) — คืนแถวอะไรก็ได้ที่ไม่ใช่ null
+vi.mock('../../services/referee.service.js', () => ({
+  findActiveRefereeRow: vi.fn(() => Promise.resolve({ tournament_referee_id: 1 })),
+  refereesNeededPerMatch: vi.fn(),
+}));
 
 import { requireCanSubmitResult } from '../requireReferee.js';
 import { checkMatch } from '../../utils/checkExist.js';

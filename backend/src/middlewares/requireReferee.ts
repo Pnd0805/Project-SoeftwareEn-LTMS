@@ -8,7 +8,7 @@ import * as TourRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 
-import { isActiveReferee, refereesNeededPerMatch } from "../services/referee.service.js";
+import { findActiveRefereeRow, refereesNeededPerMatch } from "../services/referee.service.js";
 
 import { isSubmitEscalationOpen } from "../utils/escalation.js";
 import { checkMatch, checkMatchResult } from "../utils/checkExist.js";
@@ -17,8 +17,10 @@ import { AppError } from "../utils/AppError.js";
 import type { MatchResultRow, MatchRow } from "../types/db.js";
 
 export async function isRefereeOfMatch(matchId: number, userId: number, tournamentId: number): Promise<boolean> {
-    const ref = await RefereeRepo.findLatestByTournamentAndUser(tournamentId, userId);
-    if (!isActiveReferee(ref)) return false;   // ★ ครึ่งที่เหลือ — ผ่านฟังก์ชันเดียว ไม่ต้องเช็คทีละ field
+    // ★ ถามจากทุกแถวที่ active ไม่ใช่แถวล่าสุดตาม id (แก้ 1 ต.ค. 2569)
+    // แถวล่าสุดอาจเป็นแถวที่แอดมินปฏิเสธตัวตน ขณะที่แถวเก่า approved ยัง active
+    // — กรรมการคนนั้นมีสิทธิ์คุมแมตช์อยู่ เดิมจะตอบว่าไม่ใช่
+    if (!(await findActiveRefereeRow(tournamentId, userId))) return false;
 
     const assignReferee = await MatchRefereeRepo.findByMatch(matchId);
     return assignReferee.some(r => r.user_id === userId); 
