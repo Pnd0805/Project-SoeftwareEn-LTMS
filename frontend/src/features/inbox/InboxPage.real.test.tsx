@@ -30,9 +30,8 @@ describe('real C1 Inbox', () => {
     expect(screen.getByText('Reported comments')).toBeInTheDocument()
   })
 
-  /* ทัวร์นาเมนต์ที่ยังไม่เปิดเผยแพร่ตอบ 404 ให้กรรมการที่เพิ่งถูกเชิญ ปุ่มที่พาไปหน้า
-     "ทัวร์นาเมนต์นี้ไม่มีอยู่" แย่กว่าไม่มีปุ่ม — คำตอบที่ต้องการอยู่ในหน้าเดียวกันอยู่แล้ว */
-  it('does not offer to open a tournament the invited referee cannot read yet', () => {
+  /* Notice C keeps private-tournament access for pending invitees. */
+  it('lets a pending invitee read the private tournament before accepting', () => {
     notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
       items: [{ id: 16, type: 'referee_invited', title: 'คุณได้รับเชิญเป็นกรรมการ',
         message: 'คุณได้รับเชิญเป็นกรรมการทัวร์นาเมนต์ "sun"',
@@ -41,12 +40,16 @@ describe('real C1 Inbox', () => {
     } })
     render(<MemoryRouter initialEntries={['/inbox']}><Routes>
       <Route path="/inbox" element={<InboxPage />} />
+      <Route path="/t/28" element={<div>Private tournament eligibility</div>} />
     </Routes></MemoryRouter>)
 
     expect(screen.getByText('คุณได้รับเชิญเป็นกรรมการ')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument()
     /* รับ/ปฏิเสธอยู่ในแผง Action requests ของหน้าเดียวกัน */
     expect(screen.getByText('Action requests')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(markRead).toHaveBeenCalledWith(16)
+    expect(screen.getByText('Private tournament eligibility')).toBeInTheDocument()
   })
 })
 
@@ -71,4 +74,13 @@ it('opens rewritten comments in Community without assuming every rewrite is repo
   fireEvent.click(screen.getByRole('button', { name: 'Open' }))
   expect(markRead).toHaveBeenCalledWith(100)
   expect(screen.getByText('Destination: /t/19/community')).toBeInTheDocument()
+})
+
+it.each([null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])('does not create an invitation link for invalid tournament ID %s', id => {
+  notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
+    items: [{ id: 101, type: 'referee_invited', title: 'Invitation', message: 'Read the invitation.', relatedEntityType: 'tournament', relatedEntityId: id, isRead: false, createdAt: '2026-10-01T00:00:00Z' }], unreadCount: 1,
+  } })
+  render(<MemoryRouter><InboxPage /></MemoryRouter>)
+  expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+  expect(screen.getByText('Action requests')).toBeInTheDocument()
 })

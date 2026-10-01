@@ -26,6 +26,24 @@ are historical evidence, not the current backend reference.
 - [ ] FE backlog with delivered BE: entryNotes and transfer/swap request screens.
   These are not new backend requests. Live/browser acceptance remains separate.
 
+## Notice C remaining frontend follow-up - 2026-10-01
+
+- [x] Inbox invitation navigation: `referee_invited` now opens `/t/:id` so a
+  pending invitee can read eligibility before accepting. Keep accept/decline in
+  Action requests; backend still authorizes the tournament read.
+- [x] Regression: open invitation, mark read, retain action requests before
+  navigation; reject null/zero/negative/fractional/unsafe tournament IDs.
+- [x] Recheck live prerequisites: migrate up to date (34); C1-C8 role audit clean.
+- [x] Developer verification: 57 files / 351 tests, lint, build and diff check
+  passed; Vite retains the >500 kB chunk warning. No new restore/role edits.
+- [ ] Private-invitation live acceptance: no private tournament with an unremoved
+  invitation exists in the current restored database. Need valid fixtures; no
+  tournament/role was created or changed in this verification.
+- [ ] Backend F02 follow-up: permissions now inspect all active invitation rows,
+  but F02 still reads MAX(id) per user. Request canonical usable row/effective
+  counts in TO-BACKEND-2026-10-01-frontend-workflows.md section 7; all eight other
+  backend branches still use the same MAX(id) query, so no confirmed pending merge.
+
 ## Notice C follow-up - 2026-10-01
 
 - [x] Fetch and verify remote `BE_KN@d5bda6d`; local backend HEAD also matches.
@@ -457,23 +475,14 @@ Two turned out to be bugs, one was a deliberate rule nobody had told the screen
 about, and one was a design question with a real answer. All four were checked
 against the running backend at `e5ea50d` before anything changed.
 
-- [x] **R24 — the referee invitation in the inbox opened onto a dead end.**
-      Reported as a 403; the actual status is **404**, and the screen it
-      produced said *"That tournament doesn't exist"*, which is worse than a
-      permission message. Cause: the C1 notification `referee_invited` carries
-      `relatedEntityType: 'tournament'`, so `notificationHref` sent the referee
-      to `/t/:id` — but `getVisibleTournament` admits only the requester and a
-      covering admin to a non-`public` tournament, and a referee invitation
-      almost always arrives while the tournament is still `private`, because
-      *approve → appoint referees → publish* is the order the product itself
-      prescribes. Reproduced end to end: invited 9003 to tournament 28
-      (`private`), `GET /tournaments/28` as 9003 → 404, inbox Open → "That
-      tournament doesn't exist". The frontend now renders no Open button for
-      `referee_invited`; Accept and Decline are in the Referee appointments
-      panel of the same page, which is what the referee actually needs. Filed
-      the other half as `FE-referee-cannot-read-invited-tournament` — a referee
-      still cannot look at what they are being asked to officiate before
-      answering, and that is a backend visibility rule, not a link.
+- [x] **R24 ? referee invitation navigation (Notice C supersedes the old workaround).**
+      Earlier QA reproduced GET /tournaments/28 as invited user 9003 returning
+      404; FE temporarily hid Open. In current BE_KN@d5bda6d, visibility checks
+      all unremoved invitations, including pending, so invitees can inspect
+      eligibility before accepting. FE now restores Inbox Open -> /t/:id,
+      marks the notice read and retains Accept/Decline in Action requests.
+      Valid navigation and invalid-ID regressions pass; pending-private runtime
+      acceptance stays open because the restored baseline has no matching fixture.
 - [x] **R25 — "does an admin not have to approve a new tournament any more?"**
       Deliberate, not a regression. `autoApproveIfOwnScope`
       (`tournament.service.ts:220`, decision of 18 ก.ย. item 8) approves on

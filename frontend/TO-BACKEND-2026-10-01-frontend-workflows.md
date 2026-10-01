@@ -16,6 +16,7 @@ Baseline: **BE_KN@d5bda6df8c02af5015b364d994a5a7bc587fa476**
 | หลักฐาน user report เป็น private download URL | **ต้องการใหม่** | เซ็น URL หลังตรวจสิทธิ์ พร้อมวิธี refresh |
 | ติดตามทีมและ notification feed | **ต้องการใหม่ / ต้องตกลง contract** | user follow ที่มีแล้วไม่ใช่ team follow |
 | Profile ยอด MVP ที่ได้รับ | **ต้องการใหม่ / ต้องตกลง metric** | ระบุว่าเป็นยอดคะแนนโหวตหรือจำนวนรางวัล และช่วงเวลาที่นับ |
+| F02 pool: canonical active invitation / effective counts | **ต้องการใหม่** | Notice C follow-up: see section 7 |
 | entryNotes / soft filter | **มีใน BE_KN แล้ว — รอ FE** | ไม่ต้องทำ BE ใหม่และไม่ต้องรอ merge |
 | หน้าเริ่มคำขอโอน/แลกแมตช์ | **BE มีแล้ว — รอ FE** | Inbox รับ/ปฏิเสธมีแล้ว แต่ FE ยังไม่มีหน้าส่งคำขอครบ |
 
@@ -107,3 +108,33 @@ announcement producer, S05 mapper, canSeeUnfinishedResult, MyTeam/TeamRef,
 userReport evidence และ user/team follow/Profile reads ไม่พบงานของรายการขอใหม่
 ที่พร้อมนำจาก branch อื่นมา merge ผลนี้เป็น source inspection ที่ remote heads
 ไม่ครอบคลุมงาน local ที่ยังไม่ push และไม่ใช่ runtime/browser acceptance ของ branch อื่น
+
+## 7. Notice C ต่อ: F02 pool ยังเลือกใบล่าสุดแทนสิทธิ์ที่ใช้งานจริง
+
+สถานะ: **ต้องการ BE แก้เพิ่ม — ไม่พบตัวแก้พร้อม merge ใน remote branches ที่ตรวจ**
+
+- Notice C แก้ permission gates ให้ถามทุกใบที่ยังมีผลแล้ว แต่
+  `backend/src/repositories/tournamentReferee.repo.ts#findLatestPerUserByTournament`
+  ยัง JOIN `MAX(tournament_referee_id)` ต่อ user แล้วค่อยกรอง `removed_at IS NULL`
+- `referee.service.ts#listTournamentReferees` ยังใช้ query นี้สร้าง F02 items,
+  acceptedCount และ awaitingAdminCount ดังนั้นใบล่าสุดที่ถูกถอดอาจทำให้ใบเก่าหายจาก pool;
+  ใบล่าสุดที่รอ/ไม่ผ่าน admin อาจทำให้ผู้มีใบเก่าที่ approved ถูกแสดงว่ายังไม่ active
+- FE planner ใช้ F02 row ที่ active และ invitation ID จริงเพื่อส่งคำขอ;
+  FE ไม่สามารถสร้างแถวที่ API ไม่ส่งมา หรือเดา ID ของใบเก่าที่มีสิทธิ์ได้
+- ขอ F02 คืน canonical row ที่มีสิทธิ์ใช้งานจริงต่อ user สำหรับการจัดแมตช์
+  พร้อมกติกาประวัติ/reinvite และยอดนับที่สอดคล้องกับการ publish; pending external
+  ที่เป็นใบใหม่ต้องไม่ทับสิทธิ์เก่าที่ approved แล้วยังไม่ถูกถอด
+- เกณฑ์ตรวจรับ: ใบเก่า accepted/approved + ใบใหม่ pending/rejected/removed
+  ยังคงมี active candidate ที่ใช้จัดแมตช์ได้; ไม่มีคนเดียวถูกนับซ้ำเป็นหลายที่นั่ง;
+  ถอดสิทธิ์จริงแล้ว pool และ match assignments เปลี่ยนตาม contract
+- ตรวจ repository ที่หัว branch ทั้งอีก 8 branches ในตารางด้านบนแล้ว
+  ยังใช้ MAX(id) รูปแบบเดียวกัน ไม่มีตัวแก้สำหรับ F02 ที่ยืนยันว่ารอ merge
+
+### QA fixture ที่ยังขาดสำหรับ private invitation
+
+- หลัง restore ตรวจ DB แล้วไม่พบแถว invitation ที่ยังไม่ถูกถอดในทัวร์สถานะ private
+  จึงยังยืนยัน pending-invite/private access ด้วย runtime/browser ไม่ได้จาก baseline นี้
+- ขอ fixture ที่ไม่ขัดกฎบทบาท: private tournament + pending invitee และ fixture
+  หลายใบ (old approved active + newer rejected/removed) เพื่อทดสอบ gates และ F02
+- FE เปิด Inbox → tournament จาก referee_invited แล้ว และมี regression tests;
+  Backend ยังเป็นผู้ตรวจสิทธิ์จริง การเปิด historical notice ไม่รับประกันสิทธิ์ปัจจุบัน
