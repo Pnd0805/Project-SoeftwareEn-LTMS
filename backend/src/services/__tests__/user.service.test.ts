@@ -64,6 +64,12 @@ vi.mock('../../mappers/userReport.mapper.js', () => ({
   toUserReportDto: vi.fn(),
 }));
 
+vi.mock('../upload.service.js', () => ({
+  validateAvatarKey: vi.fn(),
+  deleteObjectBestEffort: vi.fn(),
+  presignAll: vi.fn(),
+}));
+
 import * as userService from '../user.service.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
@@ -78,6 +84,7 @@ import { toTeamRef } from '../../mappers/team.mapper.js';
 import { toUserStatsDto } from '../../mappers/stat.mapper.js';
 import { toCareerTournamentDto } from '../../mappers/career.mapper.js';
 import { toUserReportDto } from '../../mappers/userReport.mapper.js';
+import * as UploadService from '../upload.service.js';
 import { AppError } from '../../utils/AppError.js';
 import type { UserRow, TeamRow, TeamInvitationRow } from '../../types/db.js';
 
@@ -97,6 +104,7 @@ const mockedToTeamRef = vi.mocked(toTeamRef);
 const mockedToUserStatsDto = vi.mocked(toUserStatsDto);
 const mockedToCareerTournamentDto = vi.mocked(toCareerTournamentDto);
 const mockedToUserReportDto = vi.mocked(toUserReportDto);
+const mockedUploadService = vi.mocked(UploadService);
 
 function makeUser(overrides: Partial<UserRow> = {}): UserRow {
   return {
@@ -492,15 +500,63 @@ describe('fileUserReport', () => {
   it('creates a report and returns the mapped DTO', async () => {
     mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
     mockedUserReportRepo.create.mockResolvedValue(10 as any);
-    mockedUserReportRepo.findByIdJoined.mockResolvedValue({ id: 10 } as any);
+    mockedUserReportRepo.findByIdJoined.mockResolvedValue({ id: 10, evidence: ['report_evidence/1/a.png'] } as any);
+    mockedUploadService.presignAll.mockResolvedValue(['https://s3.test/a.png?sig=x']);
     mockedToUserReportDto.mockReturnValue({ id: 10 } as any);
 
-    const result = await userService.fileUserReport(1, 2, 'spam', ['a.png']);
+    const result = await userService.fileUserReport(1, 2, 'spam', ['report_evidence/1/a.png']);
 
     expect(mockedCheckUser).toHaveBeenCalledWith(2);
-    expect(mockedUserReportRepo.create).toHaveBeenCalledWith(1, 2, 'spam', ['a.png']);
+    expect(mockedUserReportRepo.create).toHaveBeenCalledWith(1, 2, 'spam', ['report_evidence/1/a.png']);
     expect(mockedUserReportRepo.findByIdJoined).toHaveBeenCalledWith(10);
     expect(result).toEqual({ id: 10 });
+  });
+
+  /**
+   * หลักฐานถูกส่งออกเป็น presigned URL แล้ว (แก้ 1 ต.ค. 2569) ⇒ ขาเข้าต้องกันด้วย
+   * ไม่งั้นใครก็ยื่นคำร้องแนบ key ของคนอื่น แล้วให้ระบบเซ็นลิงก์ไฟล์นั้นออกมาให้
+   * กฎเดียวกับ dispute_evidence ใน matchResult/matchResultComplaint.service
+   */
+  it('ปฏิเสธ key ที่ไม่ใช่ของผู้แจ้ง โดยไม่บันทึกคำร้อง', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+
+    await expect(userService.fileUserReport(1, 2, 'spam', ['report_evidence/99/a.png'])).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_FAILED',
+    });
+    expect(mockedUserReportRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('ปฏิเสธ key ที่อัปไว้คนละ purpose แม้จะเป็นไฟล์ของตัวเอง', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+
+    await expect(userService.fileUserReport(1, 2, 'spam', ['avatar/1/a.png'])).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_FAILED',
+    });
+    expect(mockedUserReportRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('แนบหลักฐานหลายไฟล์ ต้องเป็นของผู้แจ้งทุกไฟล์ ไม่ใช่แค่ไฟล์แรก', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+
+    await expect(userService.fileUserReport(1, 2, 'spam',
+      ['report_evidence/1/a.png', 'report_evidence/99/b.png'])).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_FAILED',
+    });
+    expect(mockedUserReportRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('ไม่แนบหลักฐานเลยก็ยื่นได้ ไม่ติดด่านตรวจ key', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+    mockedUserReportRepo.create.mockResolvedValue(11 as any);
+    mockedUserReportRepo.findByIdJoined.mockResolvedValue({ id: 11, evidence: null } as any);
+    mockedUploadService.presignAll.mockResolvedValue([]);
+    mockedToUserReportDto.mockReturnValue({ id: 11 } as any);
+
+    await expect(userService.fileUserReport(1, 2, 'spam', [])).resolves.toEqual({ id: 11 });
+    expect(mockedUserReportRepo.create).toHaveBeenCalledWith(1, 2, 'spam', []);
   });
 
   it('blocks reporting yourself without creating a report', async () => {

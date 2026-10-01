@@ -26,6 +26,10 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
 
     if (input.purpose === 'referee_identity') {
         entityId = userId;
+    } else if (input.purpose === 'report_evidence') {
+        // หลักฐานแนบคำร้องขอระงับ — ผูกกับผู้แจ้งจาก token เท่านั้น ไม่รับ userId จาก body
+        // (ด่านตอนยื่นคำร้องตรวจว่า key ขึ้นต้นด้วย report_evidence/<ผู้แจ้ง>/ จึงแนบ key ของคนอื่นมาไม่ได้)
+        entityId = userId;
     } else if (input.purpose === 'dispute_evidence') {
         // หลักฐานประกอบการโต้แย้งผล (มติ 26 ก.ย.) — ขอลิงก์ได้เฉพาะคนที่ค้านผลแมตช์นั้นได้จริง
         // ไม่ผูกกับสถานะแมตช์เหมือนรูปเช็คอิน เพราะค้านได้ทั้งก่อนและหลัง verify
@@ -158,6 +162,12 @@ export async function validateSoftFilterDocuments(objectKeys: string[], tourname
 export async function getPresignedDownloadUrl(objectKey: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey });
     return getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
+}
+
+// คอลัมน์ JSON ที่เก็บ "array ของ S3 key" แล้วอาจเป็น NULL (evidence, supporting_docs, dispute_evidence)
+// รับ null ตรงๆ เพื่อให้ฝั่งเรียกไม่ต้องเขียน ?? [] ซ้ำทุกที่ แล้วเผลอลืมที่ใดที่หนึ่งแบบที่เคยเกิดกับ user_reports
+export async function presignAll(objectKeys: string[] | null | undefined): Promise<string[]> {
+    return Promise.all((objectKeys ?? []).map(key => getPresignedDownloadUrl(key)));
 }
 
 const IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);

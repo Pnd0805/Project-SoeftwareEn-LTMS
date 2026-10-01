@@ -11,6 +11,12 @@ vi.mock('../notification.service.js', () => ({
 
 vi.mock('../upload.service.js', () => ({
   getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),
+  presignAll: vi.fn((keys: string[] | null) =>
+    Promise.resolve((keys ?? []).map((key) => `https://s3/${key}?signed`))),
+}));
+
+vi.mock('../../repositories/userReport.repo.js', () => ({
+  findAllUserReports: vi.fn(),
 }));
 vi.mock('../../utils/imageUrl.js', () => ({
   toPublicImageUrl: (key: string | null) => (key === null ? null : `https://cdn.test/${key}`),
@@ -31,13 +37,16 @@ import {
   getAllOfficialRequest,
   approveTeamRequest,
   rejectTeamOfficial,
+  listUserReports,
 } from '../adminScope.service.js';
 import * as AdminRepo from '../../repositories/adminScope.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
+import * as UserReportRepo from '../../repositories/userReport.repo.js';
 import { AppError } from '../../utils/AppError.js';
 
 const mockedAdminRepo = vi.mocked(AdminRepo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
+const mockedUserReportRepo = vi.mocked(UserReportRepo);
 
 // Note: this suite mocks only the repositories. The mappers (toGetOfficialRequest,
 // toRequestApproveDto, toRequestRejectDto, toOfficialMemberConflictDto) and
@@ -273,5 +282,75 @@ describe('adminScope.service rejectTeamOfficial()', () => {
     expect(mockedAdminRepo.rejectTeamOfficial).toHaveBeenCalledWith(9, 1, 'เอกสารไม่ครบ');
     expect(mockedTeamRepo.findOfficialRequestById).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ status: 'rejected', reason: 'เอกสารไม่ครบ' });
+  });
+});
+
+// ============================= C2 — GET /admin/user-reports =============================
+// ชุดนี้ตรึงเรื่องเดียว: หลักฐานที่คืนให้แอดมินต้องเป็น presigned URL ไม่ใช่ S3 key ดิบ
+// (เดิมคิวนี้ส่ง key ดิบ FE เปิดรูปไม่ได้ แอดมินจึงตัดสินโดยไม่เห็นหลักฐาน — แก้ 1 ต.ค. 2569)
+describe('listUserReports', () => {
+  const universityAdmin = { admin_scope_id: 1, user_id: 1, scope_type: 'university_wide', faculty_id: null } as any;
+
+  function reportRow(overrides: Record<string, unknown> = {}) {
+    return {
+      user_report_id: 5,
+      reason: 'ใช้ถ้อยคำไม่เหมาะสม',
+      evidence: null,
+      user_report_status: 'pending',
+      created_at: new Date('2026-10-01T03:00:00Z'),
+      reporter_id: 9001, reporter_name: 'สมชาย ใจดี', reporter_avatar_key: null,
+      target_id: 9002, target_name: 'สมหญิง ตั้งใจ', target_faculty_id: 1,
+      target_is_admin: 0, target_avatar_key: null,
+      reviewed_by: null, reviewed_by_name: null, reviewed_at: null, rejection_reason: null,
+      ...overrides,
+    };
+  }
+
+  it('คืนหลักฐานเป็น presigned URL ไม่ใช่ S3 key ที่เก็บในฐาน', async () => {
+    mockedUserReportRepo.findAllUserReports.mockResolvedValue({
+      rows: [reportRow({ evidence: ['report_evidence/9001/a.png', 'report_evidence/9001/b.png'] })] as any,
+      totalItems: 1,
+    });
+
+    const result = await listUserReports(universityAdmin, 0, 1, 20);
+
+    expect(result.items[0]!.evidence).toEqual([
+      'https://s3/report_evidence/9001/a.png?signed',
+      'https://s3/report_evidence/9001/b.png?signed',
+    ]);
+  });
+
+  it('คำร้องที่ไม่มีหลักฐานคืน array ว่าง ไม่ใช่ null', async () => {
+    mockedUserReportRepo.findAllUserReports.mockResolvedValue({
+      rows: [reportRow()] as any,
+      totalItems: 1,
+    });
+
+    const result = await listUserReports(universityAdmin, 0, 1, 20);
+
+    expect(result.items[0]!.evidence).toEqual([]);
+  });
+
+  // เซ็นทีละแถว ⇒ ถ้าเผลอเซ็นแถวแรกแถวเดียวแล้วใช้ซ้ำ เทสข้อนี้จะพัง
+  it('เซ็นลิงก์แยกตามแถว ไม่ใช้ของแถวแรกซ้ำทุกแถว', async () => {
+    mockedUserReportRepo.findAllUserReports.mockResolvedValue({
+      rows: [
+        reportRow({ user_report_id: 5, evidence: ['report_evidence/9001/a.png'] }),
+        reportRow({ user_report_id: 6, evidence: ['report_evidence/9004/z.png'] }),
+      ] as any,
+      totalItems: 2,
+    });
+
+    const result = await listUserReports(universityAdmin, 0, 1, 20);
+
+    expect(result.items[0]!.evidence).toEqual(['https://s3/report_evidence/9001/a.png?signed']);
+    expect(result.items[1]!.evidence).toEqual(['https://s3/report_evidence/9004/z.png?signed']);
+  });
+
+  it('root แตะคิวนี้ไม่ได้ (assertNotRoot) และไม่ไปถึง repo', async () => {
+    const root = { admin_scope_id: 9, user_id: 9, scope_type: 'root', faculty_id: null } as any;
+
+    await expect(listUserReports(root, 0, 1, 20)).rejects.toMatchObject({ status: 403 });
+    expect(mockedUserReportRepo.findAllUserReports).not.toHaveBeenCalled();
   });
 });

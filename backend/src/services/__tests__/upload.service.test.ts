@@ -83,6 +83,37 @@ describe('createPresignedUpload — soft_filter_document', () => {
   });
 });
 
+describe('createPresignedUpload — report_evidence', () => {
+  // หลักฐานแนบคำร้องขอระงับผู้ใช้ (C2) — ผูก key กับผู้อัปจาก token เสมอ
+  // ด่านตอนยื่นคำร้องตรวจ prefix นี้ ⇒ ถ้า key ไม่มี userId อยู่ในนั้น จะกันคนแนบไฟล์ของคนอื่นไม่ได้เลย
+  it('ผูก key กับผู้อัปโหลด ไม่ต้องมี matchId/tournamentId', async () => {
+    const result = await uploadService.createPresignedUpload(
+      { purpose: 'report_evidence', contentType: 'image/png' } as never, 9001);
+
+    expect(result.objectKey).toMatch(/^report_evidence\/9001\/.+\.png$/);
+  });
+
+  it('ไม่แตะฐานข้อมูลเลย — ไม่ต้องมีแมตช์หรือทัวร์อยู่จริง', async () => {
+    await uploadService.createPresignedUpload(
+      { purpose: 'report_evidence', contentType: 'image/jpeg' } as never, 9001);
+
+    expect(vi.mocked(MatchRepo.findMatchById)).not.toHaveBeenCalled();
+    expect(vi.mocked(TournamentRepo.findTournamentById)).not.toHaveBeenCalled();
+  });
+});
+
+describe('presignAll', () => {
+  it('คอลัมน์ JSON ที่เป็น null คืน array ว่าง ไม่พังและไม่เซ็นอะไร', async () => {
+    await expect(uploadService.presignAll(null)).resolves.toEqual([]);
+    await expect(uploadService.presignAll(undefined)).resolves.toEqual([]);
+  });
+
+  it('เซ็นครบทุก key ตามลำดับเดิม', async () => {
+    await expect(uploadService.presignAll(['a.png', 'b.png']))
+      .resolves.toEqual(['https://s3/signed', 'https://s3/signed']);
+  });
+});
+
 describe('validateSoftFilterDocuments', () => {
   const ownKey = 'soft_filter_document/20/9001/11111111-1111-4111-8111-111111111111.jpg';
 

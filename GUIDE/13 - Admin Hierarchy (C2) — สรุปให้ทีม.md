@@ -47,12 +47,18 @@ CREATE TABLE user_reports (
   reported_by INT NOT NULL,       -- ผู้แจ้ง
   target_user_id INT NOT NULL,    -- ผู้ถูกแจ้ง (user หรือ admin ก็ได้)
   reason TEXT NOT NULL,           -- บังคับเสมอ
-  evidence JSON NULL,             -- array ของ S3 key รูป/ไฟล์หลักฐาน ไม่บังคับ
+  evidence JSON NULL,             -- array ของ S3 key รูป/ไฟล์หลักฐาน ไม่บังคับ (≤ 5 ไฟล์)
   user_report_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   reviewed_by INT NULL, reviewed_at DATETIME NULL, rejection_reason TEXT NULL,
   ...
 );
 ```
+
+**หลักฐานแนบ (แก้ 1 ต.ค. 2569):**
+- อัปผ่าน **M16 purpose `report_evidence`** → key เป็น `report_evidence/{ผู้แจ้ง}/{uuid}.{jpg|png}` · สูงสุด 5 ไฟล์
+- ตอนยื่นคำร้อง backend ตรวจว่าทุก key ขึ้นต้นด้วย `report_evidence/{ผู้แจ้ง}/` ไม่งั้น **400** `VALIDATION_FAILED`
+  → แนบ key ของคนอื่นเพื่อให้ระบบเซ็นลิงก์ไฟล์นั้นออกมาให้ไม่ได้ (กฎเดียวกับ `dispute_evidence`)
+- คิวแอดมินคืนหลักฐานเป็น **presigned URL เสมอ** ไม่ใช่ S3 key ดิบ (เดิมส่ง key ดิบ FE เปิดรูปไม่ได้เลย)
 
 **เส้นทางคำร้องไปหาใคร (routing อัตโนมัติ ไม่ต้องเลือกเอง):**
 - แจ้ง **user ธรรมดา** → ไปเข้าคิวของ Faculty Admin ของคณะที่ target สังกัด (University Admin เห็นทุกคำร้องอยู่แล้ว)

@@ -134,8 +134,16 @@ export async function fileUserReport(reporterId : number , targetUserId : number
         throw new AppError(400 , "CANNOT_REPORT_SELF" , "ไม่สามารถแจ้งเรื่องเกี่ยวกับตัวเองได้");
     }
 
+    // key ต้องเป็นของผู้แจ้งคนนี้เท่านั้น (กฎเดียวกับ dispute_evidence ใน matchResult/matchResultComplaint.service)
+    // ถ้าไม่ตรวจ ใครก็ยื่นคำร้องแนบ key ของคนอื่นได้ แล้วคิวแอดมินจะเซ็น presigned URL ให้ไฟล์นั้นออกมา
+    // ⇒ กลายเป็นช่องอ่านไฟล์ในถังผ่านคำร้องปลอม จึงต้องตรวจที่ขาเข้าคู่กับการเซ็นที่ขาออก
+    if(evidence.some(key => !key.startsWith(`report_evidence/${reporterId}/`))){
+        throw new AppError(400 , "VALIDATION_FAILED" , "ไฟล์หลักฐานไม่ใช่ไฟล์ที่คุณอัปโหลดไว้" ,
+            { fields : { evidence : 'ต้องเป็นไฟล์ที่อัปโหลดด้วย purpose report_evidence ของบัญชีคุณเอง' } });
+    }
+
     const reportId = await UserReportRepo.create(reporterId , targetUserId , reason , evidence);
     const report = await UserReportRepo.findByIdJoined(reportId);
-    return toUserReportDto(report!);
+    return toUserReportDto(report! , await UploadService.presignAll(report!.evidence));
 }
 

@@ -3,7 +3,9 @@ import * as z from 'zod';
 export const presignUploadSchema = z.object({
     // referee_identity = บัตรประชาชน/selfie ของกรรมการภายนอก (U12) — ผูกกับ user ไม่ต้องมี matchId/tournamentId
     // avatar = รูปโปรไฟล์ผูกกับ userId จาก token เสมอ ไม่รับจาก body · team_logo ต้องส่ง teamId
-    purpose: z.enum(['checkin_document', 'soft_filter_document', 'referee_identity', 'dispute_evidence', 'avatar', 'team_logo']),
+    // report_evidence = หลักฐานแนบคำร้องขอระงับผู้ใช้ (C2 POST /users/:id/report) — ผูกกับ userId ของผู้แจ้ง
+    //   ไม่ผูกกับ target เพราะคนแจ้งอัปรูปก่อนเลือกว่าจะแจ้งใคร และ key ต้องตรวจย้อนได้ว่าใครอัป (1 ต.ค. 69)
+    purpose: z.enum(['checkin_document', 'soft_filter_document', 'referee_identity', 'dispute_evidence', 'avatar', 'team_logo', 'report_evidence']),
     contentType: z.enum(['image/jpeg', 'image/png']),
     matchId: z.number().optional(),
     tournamentId: z.number().optional(),

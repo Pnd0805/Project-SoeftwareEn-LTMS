@@ -7,6 +7,17 @@ export type userReportDto = {
     reporter : UserRefDto,
     target : UserRefDto & { isAdmin : boolean },
     reason : string,
+    /**
+     * หลักฐานที่ผู้แจ้งแนบมา — **presigned URL เสมอ ไม่ใช่ S3 key ดิบ** (กฎรวม Part 3 ข้อ 11)
+     *
+     * เดิม mapper ส่ง `row.evidence` ออกไปตรงๆ ซึ่งเป็น key ในถัง ⇒ FE เอาไปแสดงเป็นรูปไม่ได้
+     * แอดมินจึงอนุมัติ/ปฏิเสธคำร้องขอระงับผู้ใช้โดยไม่เคยเห็นหลักฐานที่เป็นเหตุผลของคำร้อง
+     * (รูปแบบเดียวกับ supporting_docs ของคิวทีม Official ที่แก้ไป 27 ก.ย.)
+     *
+     * การเซ็นลิงก์ต้อง await ⇒ รับมาเป็นอาร์กิวเมนต์ ไม่ให้ mapper เรียก service (ชั้นล่างห้ามพึ่งชั้นบน)
+     * และตั้งใจให้เป็นพารามิเตอร์ **บังคับ** ไม่มีค่า default เพราะ default = [] จะทำให้ endpoint ใหม่
+     * ที่ลืมส่งเข้ามาเงียบๆ กลายเป็น "ไม่มีหลักฐาน" แทนที่จะพังตอน tsc
+     */
     evidence : string[],
     status : 'pending' | 'approved' | 'rejected',
     createdAt : string,
@@ -20,13 +31,13 @@ export type userReportDto = {
     rejectionReason : string | null
 };
 
-export function toUserReportDto(row : getUserReport) : userReportDto{
+export function toUserReportDto(row : getUserReport , evidence : string[]) : userReportDto{
     return {
         id : row.user_report_id,
         reporter : { id : row.reporter_id , fullName : row.reporter_name , avatarUrl : toPublicImageUrl(row.reporter_avatar_key) },
         target : { id : row.target_id , fullName : row.target_name , avatarUrl : toPublicImageUrl(row.target_avatar_key) , isAdmin : row.target_is_admin === 1 },
         reason : row.reason,
-        evidence : row.evidence ?? [],
+        evidence,
         status : row.user_report_status,
         createdAt : row.created_at.toISOString(),
         reviewedBy : row.reviewed_by,

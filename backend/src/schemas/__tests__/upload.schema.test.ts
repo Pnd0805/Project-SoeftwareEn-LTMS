@@ -124,5 +124,12 @@ describe('presignUploadErrorCodes', () => {
     expect(presignUploadSchema.safeParse({ purpose: 'dispute_evidence', contentType: 'image/jpeg', matchId: 7 }).success).toBe(true);
     expect(presignUploadSchema.safeParse({ purpose: 'dispute_evidence', contentType: 'image/jpeg' }).success).toBe(false);
   });
+  // report_evidence (เพิ่ม 1 ต.ค. 2569) — หลักฐานแนบคำร้องขอระงับผู้ใช้ C2
+  // ผูกกับผู้อัปจาก token เท่านั้น ⇒ ไม่ต้องมี matchId/tournamentId/teamId เหมือน referee_identity กับ avatar
+  it('accepts report_evidence with no entity id, and ignores ones sent anyway', () => {
+    expect(presignUploadSchema.safeParse({ purpose: 'report_evidence', contentType: 'image/png' }).success).toBe(true);
+    expect(presignUploadSchema.safeParse({
+      purpose: 'report_evidence', contentType: 'image/png', matchId: 3, tournamentId: 4, teamId: 5,
+    }).success).toBe(true);
+  });
 });
-
