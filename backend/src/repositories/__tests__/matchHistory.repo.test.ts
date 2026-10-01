@@ -18,7 +18,7 @@ describe('matchHistory.repo', () => {
         expect(sql).toContain("ci.match_checkin_status IN ('success', 'exception')");
         expect(sql).toContain('pms.player_match_stat_id IS NOT NULL');
         // OD-47 — ไม่ส่ง tournamentId = NULL ทั้งคู่ ⇒ ได้ทุกทัวร์เหมือนเดิม (RW05)
-        expect(values).toEqual([9, null, null]);
+        expect(values).toEqual([0, 9, null, null]);
     });
 
     it('does not query stats when history is empty', async () => {
@@ -32,6 +32,15 @@ describe('matchHistory.repo', () => {
 
         const [sql, values] = mocks.query.mock.calls[0]!;
         expect(sql).toContain('(? IS NULL OR t.tournament_id = ?)');
-        expect(values).toEqual([9, 20, 20]);
+        expect(values).toEqual([0, 9, 20, 20]);
+    });
+    /** OD-47 ข้อ ก — RW06 ต้องเห็นแมตช์ของคนในทีมที่ถอนตัว ไม่ใช่คืน matches ว่าง */
+    it('OD-47 — includeWithdrawn ส่ง 1 และ JOIN รับใบที่ withdrawn ด้วย', async () => {
+        mocks.query.mockResolvedValueOnce([[], []]);
+        await MatchHistoryRepo.findVerifiedMatchHistoryByUser(9, 20, true);
+
+        const [sql, values] = mocks.query.mock.calls[0]!;
+        expect(sql).toContain("ta.tournament_application_status = 'withdrawn'");
+        expect(values).toEqual([1, 9, 20, 20]);
     });
 });

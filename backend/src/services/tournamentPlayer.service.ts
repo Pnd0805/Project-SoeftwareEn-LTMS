@@ -22,15 +22,22 @@ export async function getTournamentPlayerStats(tournamentId : number , userId : 
     await checkTournament(tournamentId);
     await checkUser(userId);
 
-    const careerRows = await CareerRepo.findCareerByUser(userId , tournamentId);
-    const career = careerRows[0];
+    const careerRows = await CareerRepo.findCareerByUser(userId , tournamentId , true);
+    // ถอนแล้วสมัครใหม่ (A1) มีได้สองใบ — เอาใบที่ยัง approved ก่อนเสมอ ให้ผลคาดเดาได้
+    // ตัวเลขของทั้งสองแถวเท่ากันอยู่แล้ว เพราะแมตช์ผูกกับ (ทัวร์, ทีม) ไม่ได้ผูกกับใบสมัคร
+    const career = careerRows.find(row => row.has_approved === 1) ?? careerRows[0];
     if(!career){
-        // ไม่เคยอยู่ในรายชื่อที่ผ่านของทัวร์นี้ ⇒ "โปรไฟล์ของคนนี้ในทัวร์นี้" ไม่มีอยู่จริง
-        // ต่างจากกรณีอยู่ในรายชื่อแต่ยังไม่ได้ลงสนาม ซึ่งมีแถวและ played = 0
+        // ไม่เคยอยู่ในรายชื่อของทัวร์นี้เลย ⇒ "โปรไฟล์ของคนนี้ในทัวร์นี้" ไม่มีอยู่จริง
+        //
+        // flow ปกติกดมาไม่ถึงตรงนี้ (ไม่มีชื่อให้กด) แต่เส้นนี้สาธารณะและเดา URL ได้
+        // ถ้าตอบ 200 + played 0 จะเท่ากับยืนยันว่า "อยู่ในทัวร์นี้ แค่ยังไม่ได้ลงแข่ง" ซึ่งไม่จริง
+        //
+        // สองกรณีที่ **ไม่** ใช่ 404: (ก) อยู่ในรายชื่อแต่ยังไม่ลงสนาม → 200 + played 0
+        // (ข) ทีมถอนตัวหลังแข่งไปแล้ว → 200 + withdrawn true (แก้ 2 ต.ค. · ดู includeWithdrawn)
         throw new AppError(404 , 'PLAYER_NOT_IN_TOURNAMENT' , 'ผู้ใช้นี้ไม่ได้อยู่ในรายชื่อผู้เข้าแข่งขันของทัวร์นาเมนต์นี้');
     }
 
-    const rows = await MatchHistoryRepo.findVerifiedMatchHistoryByUser(userId , tournamentId);
+    const rows = await MatchHistoryRepo.findVerifiedMatchHistoryByUser(userId , tournamentId , true);
     const stats = await MatchHistoryRepo.findStatsForUserMatches(userId , rows.map(row => row.match_id));
 
     const byMatch = new Map<number , MatchHistoryRepo.MatchHistoryStatRow[]>();
@@ -48,6 +55,17 @@ export async function getTournamentPlayerStats(tournamentId : number , userId : 
         wins : Number(career.wins),
         losses : Number(career.losses),
         champion : career.champion === 1,
+        /**
+         * ทีมถอนตัวจากทัวร์นี้ไปแล้ว แต่สถิติที่ลงแข่งจริงยังนับ (แก้ 2 ต.ค.)
+         *
+         * M19 รายชื่อผู้เล่นแสดงคนของทีมที่ถอนตัวอยู่แล้วโดยเจตนา (มติ 26 ก.ย. — แมตช์ที่แข่งไปแล้ว
+         * ต้องบอกได้ว่าใครลงสนาม) ⇒ ถ้าเส้นนี้ไม่รับ ชื่อจะกดได้แต่กดไปเจอ 404
+         *
+         * FE ควรติดป้ายว่า "ทีมถอนตัวแล้ว" ไม่ใช่แสดงเหมือนทีมที่ยังแข่งอยู่
+         * หมายเหตุ: U14/RW05 (หน้าโปรไฟล์) ยังไม่นับใบที่ถอน ⇒ ตัวเลขสองหน้าจะไม่เท่ากันในเคสนี้
+         * เป็นเรื่องที่ยกให้ทีมตัดสินแยก (ทางเลือก ข ของ OD-47)
+         */
+        withdrawn : career.has_approved === 0,
         playerStats : sumStats(stats),
         matches : rows.map(row => toMatchHistoryDto(row , byMatch.get(row.match_id) ?? [])),
     };

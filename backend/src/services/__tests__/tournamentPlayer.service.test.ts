@@ -22,7 +22,7 @@ function careerRow(overrides : Record<string , unknown> = {}){
     return {
         tournament_id : 20, tournament_name : 'KU Cup', sport_type_id : 1, tournament_status : 'completed',
         team_id : 5, team_name : 'Blue',
-        played : 3, wins : 2, losses : 1, champion : 0,
+        played : 3, wins : 2, losses : 1, champion : 0, has_approved : 1,
         ...overrides,
     } as never;
 }
@@ -44,8 +44,8 @@ describe('getTournamentPlayerStats', () => {
     it('กรองทั้งสอง repo ด้วย tournamentId ไม่ใช่ดึงทุกทัวร์มาแล้วกรองทีหลัง', async () => {
         await Service.getTournamentPlayerStats(20 , 9);
 
-        expect(mockedCareer.findCareerByUser).toHaveBeenCalledWith(9 , 20);
-        expect(mockedHistory.findVerifiedMatchHistoryByUser).toHaveBeenCalledWith(9 , 20);
+        expect(mockedCareer.findCareerByUser).toHaveBeenCalledWith(9 , 20 , true);
+        expect(mockedHistory.findVerifiedMatchHistoryByUser).toHaveBeenCalledWith(9 , 20 , true);
     });
 
     it('คืนตัวเลขของทัวร์นี้พร้อมทีมที่ลงในทัวร์นี้', async () => {
@@ -54,7 +54,7 @@ describe('getTournamentPlayerStats', () => {
         expect(result).toMatchObject({
             tournament : { id : 20 , name : 'KU Cup' , sportTypeId : 1 , status : 'completed' },
             team : { id : 5 , name : 'Blue' },
-            played : 3 , wins : 2 , losses : 1 , champion : false,
+            played : 3 , wins : 2 , losses : 1 , champion : false , withdrawn : false,
         });
     });
 
@@ -145,5 +145,42 @@ describe('getTournamentPlayerStats', () => {
 
         await expect(Service.getTournamentPlayerStats(999 , 9)).rejects.toMatchObject({ status : 404 });
         expect(mockedCareer.findCareerByUser).not.toHaveBeenCalled();
+    });
+
+    /**
+     * OD-47 ข้อ ก (2 ต.ค.) — ทีมถอนตัวหลังแข่งไปแล้ว
+     *
+     * M19 รายชื่อผู้เล่นแสดงคนของทีมที่ถอนตัวอยู่แล้วโดยเจตนา (มติ 26 ก.ย. — แมตช์ที่แข่งไปแล้ว
+     * ต้องบอกได้ว่าใครลงสนาม) ⇒ ถ้าเส้นนี้ไม่รับใบที่ถอน ชื่อจะกดได้แต่กดไปเจอ 404
+     */
+    describe('ทีมถอนตัวหลังแข่งไปแล้ว', () => {
+        it('ยังคืนสถิติที่ลงแข่งจริง พร้อมธง withdrawn', async () => {
+            mockedCareer.findCareerByUser.mockResolvedValue([careerRow({ has_approved : 0 })]);
+
+            const result = await Service.getTournamentPlayerStats(20 , 9);
+
+            expect(result.withdrawn).toBe(true);
+            expect(result.played).toBe(3);
+            expect(result.wins).toBe(2);
+        });
+
+        // ถอนแล้วสมัครใหม่ได้ (A1) ⇒ มีสองใบ · เอาใบที่ยัง approved ก่อนเสมอ ให้ผลคาดเดาได้
+        it('ถอนแล้วสมัครใหม่: เลือกใบที่ยัง approved ไม่ใช่แถวแรกที่ SQL คืนมา', async () => {
+            mockedCareer.findCareerByUser.mockResolvedValue([
+                careerRow({ has_approved : 0 , team_id : 5 }),
+                careerRow({ has_approved : 1 , team_id : 7 }),
+            ]);
+
+            const result = await Service.getTournamentPlayerStats(20 , 9);
+
+            expect(result.withdrawn).toBe(false);
+            expect(result.team).toEqual({ id : 7 , name : 'Blue' });
+        });
+
+        it('มีแต่ใบที่ถอนหลายใบ ก็ยังตอบได้ ไม่ 404', async () => {
+            mockedCareer.findCareerByUser.mockResolvedValue([careerRow({ has_approved : 0 })]);
+
+            await expect(Service.getTournamentPlayerStats(20 , 9)).resolves.toMatchObject({ withdrawn : true });
+        });
     });
 });

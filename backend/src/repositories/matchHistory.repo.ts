@@ -29,8 +29,15 @@ export type MatchHistoryStatRow = {
     value_int: number | null;
 };
 
-/** OD-47 — `tournamentId` กรองให้เหลือทัวร์เดียว (RW06 โปรไฟล์ในทัวร์) · ไม่ส่ง = ทุกทัวร์เหมือนเดิม (RW05) */
-export async function findVerifiedMatchHistoryByUser(userId: number, tournamentId?: number): Promise<MatchHistoryRow[]> {
+/**
+ * OD-47 — `tournamentId` กรองให้เหลือทัวร์เดียว (RW06 โปรไฟล์ในทัวร์) · ไม่ส่ง = ทุกทัวร์เหมือนเดิม (RW05)
+ *
+ * `includeWithdrawn` (แก้ 2 ต.ค.) — นับใบที่ `withdrawn` ด้วย **ค่าเริ่มต้นไม่นับ** · เปิดเฉพาะ RW06
+ *   กฎเดียวกับ career.repo และ M19 รายชื่อผู้เล่น ซึ่งแสดงคนของทีมที่ถอนตัวอยู่แล้ว (มติ 26 ก.ย.)
+ *   ถ้าไม่เปิด RW06 จะคืน `matches: []` ให้คนของทีมที่ถอน ทั้งที่เขาลงแข่งจริงและผลยืนยันแล้ว
+ */
+export async function findVerifiedMatchHistoryByUser(userId: number, tournamentId?: number,
+                                                     includeWithdrawn = false): Promise<MatchHistoryRow[]> {
     const [rows] = await pool.query<(MatchHistoryRow & RowDataPacket)[]>(
         `SELECT DISTINCT
                 m.match_id, m.round_number, m.scheduled_time, m.started_at, m.actual_end_time, m.venue, m.mode,
@@ -42,7 +49,8 @@ export async function findVerifiedMatchHistoryByUser(userId: number, tournamentI
            FROM application_players ap
            JOIN tournament_applications ta
              ON ta.tournament_application_id = ap.tournament_application_id
-            AND ta.tournament_application_status = 'approved'
+            AND (ta.tournament_application_status = 'approved'
+                 OR (? = 1 AND ta.tournament_application_status = 'withdrawn'))
            JOIN matches m
              ON m.tournament_id = ta.tournament_id
             AND (m.team_a_id = ta.team_id OR m.team_b_id = ta.team_id)
@@ -61,7 +69,7 @@ export async function findVerifiedMatchHistoryByUser(userId: number, tournamentI
             AND (? IS NULL OR t.tournament_id = ?)
             AND (ci.match_checkin_id IS NOT NULL OR pms.player_match_stat_id IS NOT NULL)
           ORDER BY COALESCE(m.actual_end_time, mr.verified_at, m.scheduled_time) DESC, m.match_id DESC`,
-        [userId, tournamentId ?? null, tournamentId ?? null]
+        [includeWithdrawn ? 1 : 0, userId, tournamentId ?? null, tournamentId ?? null]
     );
     return rows;
 }
