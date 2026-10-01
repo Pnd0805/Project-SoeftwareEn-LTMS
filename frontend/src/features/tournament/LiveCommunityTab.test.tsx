@@ -26,6 +26,7 @@ describe('C7 tournament comments', () => {
     expect(screen.getAllByText('Mine')).toHaveLength(1)
     expect(screen.getByText('Reported')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent("Remove Other's comment")
     const confirm = screen.getByRole('button', { name: 'Remove comment' })
     expect(confirm).toBeDisabled()
     fireEvent.change(screen.getByLabelText('Reason (required, 1–255 characters)'), { target: { value: 'Off topic' } })

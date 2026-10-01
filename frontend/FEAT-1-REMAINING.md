@@ -2463,3 +2463,32 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
   failing validation, so displayed issues are not an exhaustive precheck.
 - [ ] Browser acceptance: reproduce the reported role conflict and verify names,
   unchecked-member marker, recovery copy and corrected submission/reload.
+
+
+## 2026-10-01: Inbox, moderation, audit and match MVP UI follow-up
+
+- [x] Inbox groups every notification on the current server page into named
+  sections: announcements, comments/moderation, referee updates, squad entries,
+  matches/results, teams, tournaments and other notifications. Unknown types
+  remain visible; unread actions, links and server pagination are preserved.
+  Section counts describe the current page, not all notification history.
+- [x] Organizer comment removal opens a modal showing the comment and author,
+  requires a trimmed reason (1-255 characters), permits cancellation and keeps
+  mutation failures visible. Uses the existing moderation endpoint.
+- [x] Admin Audit logs use cards, actor avatars/names, action and entity badges,
+  explicit Bangkok time, and expandable labeled detail fields. Search and entity
+  filters apply to the latest 100 returned records; no global totals are inferred.
+- [x] Profile image deletion button reads `Remove Photo`; the existing null-avatar
+  request and upload behavior are preserved.
+- [x] Real-mode Match has a `Vote MVP` tab at `/m/:id/mvp`, scoped directly to that
+  match. Tournament header no longer offers the real-mode match-selection button;
+  Community contains Pick'em. Existing `/mvp/:tournamentId` links remain supported
+  for compatibility, and mock mode retains its separate prototype award rules.
+- [x] Registration issues identify affected roster members and reasons using
+  backend error metadata (see the per-member registration section above).
+- [ ] Browser acceptance: verify category display/pagination, removal popup with
+  cancel/error/success, audit details on desktop/mobile, photo deletion and reload,
+  a valid per-match MVP vote/window, and registration failures in real mode.
+- Backend: no new endpoint needed for these UI changes. Existing Announcement
+  producer and Profile MVP aggregate requests remain separately tracked in
+  `TO-BACKEND-2026-10-01-frontend-workflows.md`.

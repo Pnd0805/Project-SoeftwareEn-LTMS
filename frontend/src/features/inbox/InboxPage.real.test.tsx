@@ -84,3 +84,17 @@ it.each([null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])('does not create an inv
   expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
   expect(screen.getByText('Action requests')).toBeInTheDocument()
 })
+
+it('separates announcements, moderation and unknown notifications without dropping any', () => {
+  notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
+    items: [
+      { id: 1, type: 'tournament_announcement', title: 'Venue changed', message: 'Gym', relatedEntityType: 'tournament', relatedEntityId: 23, createdAt: '2026-10-01T00:00:00Z' },
+      { id: 2, type: 'comment_removed', title: 'Comment hidden', message: 'Reason', relatedEntityType: 'tournament', relatedEntityId: 23, createdAt: '2026-10-01T00:00:00Z' },
+      { id: 3, type: 'future_type', title: 'Future notice', message: 'New update', createdAt: '2026-10-01T00:00:00Z' },
+    ], unreadCount: 3,
+  } })
+  render(<MemoryRouter><InboxPage /></MemoryRouter>)
+  expect(screen.getByRole('region', { name: 'Announcements' })).toHaveTextContent('Venue changed')
+  expect(screen.getByRole('region', { name: 'Comments and moderation' })).toHaveTextContent('Comment hidden')
+  expect(screen.getByRole('region', { name: 'Other notifications' })).toHaveTextContent('Future notice')
+})

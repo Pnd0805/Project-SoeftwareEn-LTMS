@@ -264,17 +264,20 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
         </Modal>
       ) : null}
 
-      {removing ? <form className="vstack" onSubmit={async event => {
+      {removing ? <Modal open onClose={() => !busy && setRemoving(null)} title="Remove comment"><form className="vstack" onSubmit={async event => {
         event.preventDefault()
+        if (busy || !reason.trim() || reason.trim().length > 255) return
         try { await comments.moderate.mutateAsync({ commentId: removing.id, reason: reason.trim() }); setRemoving(null); setNotice('Comment removed.') }
         catch (error) { setNotice(messageOf(error)) }
       }}>
+        {comments.moderate.isError ? <p role="alert">{messageOf(comments.moderate.error)}</p> : null}
+        <blockquote>{removing.content}</blockquote>
         <b>Remove {removing.author.fullName}'s comment</b>
         <Field label="Reason (required, 1–255 characters)" htmlFor="remove-reason"><textarea id="remove-reason" maxLength={255} value={reason} onChange={event => setReason(event.target.value)} /></Field>
         <span className="sub">The author will see this reason in their notification.</span>
-        <span className="hstack"><button className="btn" type="button" onClick={() => setRemoving(null)}>Cancel</button>
+        <span className="hstack"><button className="btn" type="button" disabled={busy} onClick={() => setRemoving(null)}>Cancel</button>
           <button className="btn primary" type="submit" disabled={!reason.trim() || busy}>Remove comment</button></span>
-      </form> : null}
+      </form></Modal> : null}
       {thread?.canComment && !reported ? <form className="vstack" onSubmit={async event => {
         event.preventDefault()
         try { await comments.post.mutateAsync(commentText.trim()); setCommentText(''); setNotice('Comment saved.') }

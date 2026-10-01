@@ -250,7 +250,7 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
             {user.avatarUrl ? (
               <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
                 disabled={loading || updateMe.isPending} onClick={removeAvatar}>
-                Remove
+                Remove Photo
               </button>
             ) : null}
           </div>

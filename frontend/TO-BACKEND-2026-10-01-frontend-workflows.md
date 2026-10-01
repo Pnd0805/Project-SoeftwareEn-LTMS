@@ -173,3 +173,26 @@ userReport evidence และ user/team follow/Profile reads ไม่พบง�
   referee swap และ organizer swap ครบสองฝ่าย/refresh assignments/withdraw/conflict
   ต้องมีแมตช์อนาคตสองนัดที่คนละคนรับจริงเพื่อทดสอบ swap
 - [ ] Full receiver list ยังรอ BE ตาม section 8; F02 ประวัติหลายใบยังรอ BE ตาม section 7
+
+
+## 9. Frontend UI follow-up: Inbox / moderation / audit / MVP (2026-10-01)
+
+**No new Backend request for this UI batch.** Frontend uses the existing APIs
+for notification categories, organizer comment-removal reason, audit cards,
+profile photo deletion, match-scoped MVP and per-member registration errors.
+This section records FE implementation scope, not fresh remote delivery evidence.
+
+- Inbox groups existing notifications on each API page. Creating announcement
+  notifications for participants is still the separate producer request in section 1.
+- Comment removal keeps `DELETE /tournaments/:id/comments/:commentId` with
+  `{ reason }`; only the reason form moves into a modal.
+- Audit uses the existing log DTO (actor, action, entity, time, details), with local
+  search/filter on the latest 100 returned records.
+- MVP voting stays `GET/POST /matches/:id/mvp-votes`; the main entry now belongs
+  to Match -> Vote MVP. Profile MVP aggregates remain the separate metric request.
+- Registration displays IDs/names from `conflicts`, hard-filter `details`,
+  non-member `userIds` and duplicate-registration `players`. Unknown names fall
+  back to a user ID. Backend may stop at the first failed validation; FE does not
+  claim this response identifies every possible failure in the squad.
+
+Real-browser acceptance remains open in `FEAT-1-REMAINING.md`.

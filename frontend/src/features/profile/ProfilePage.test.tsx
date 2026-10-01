@@ -106,7 +106,7 @@ describe('Profile avatar controls', () => {
   it('removes the saved image with null', async () => {
     profileState.avatarUrl = 'https://storage.test/profile.png'
     show()
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Photo' }))
     await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ avatarUrl: null }))
     expect(uploadMock).not.toHaveBeenCalled()
   })

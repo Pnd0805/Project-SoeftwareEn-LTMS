@@ -43,6 +43,17 @@ function notificationIcon(type?: string): IconName {
   return 'bell'
 }
 
+function notificationCategory(n: NotificationDto): string {
+  if (n.type === 'tournament_announcement') return 'Announcements'
+  if (n.type?.startsWith('comment_')) return 'Comments and moderation'
+  if (n.type?.startsWith('referee_')) return 'Referee updates'
+  if (n.type?.includes('application') || n.type?.includes('registration')) return 'Squad entries'
+  if (n.relatedEntityType === 'match' || n.type?.startsWith('pickem_')) return 'Matches and results'
+  if (n.relatedEntityType === 'team') return 'Team updates'
+  if (n.relatedEntityType === 'tournament') return 'Tournament updates'
+  return 'Other notifications'
+}
+
 export function InboxPage() {
   const navigate = useNavigate()
   const { data: currentUser, isLoading: userLoading } = useMe()
@@ -59,6 +70,11 @@ export function InboxPage() {
   const list = data && Array.isArray(data.items) ? data.items : null
   const count = data?.unreadCount ?? list?.filter(n => !(n.isRead ?? n.read)).length ?? 0
   const totalPages = data?.pagination?.totalPages ?? 1
+  const groups = new Map<string, NotificationDto[]>()
+  for (const item of list ?? []) {
+    const category = notificationCategory(item)
+    groups.set(category, [...(groups.get(category) ?? []), item])
+  }
 
   return <>
     <div className="spread">
@@ -75,7 +91,7 @@ export function InboxPage() {
     {isError || (!isLoading && !list) ? <Empty icon="warn" title="Unable to load inbox"
       sub={error instanceof Error ? error.message : 'Please try again later.'} /> : null}
     {markRead.isError || markAllRead.isError ? <Panel quiet><span className="sub">Could not mark notifications read. Try again.</span></Panel> : null}
-    {list?.length ? <div className="panel quiet">{list.map(n => {
+    {list?.length ? <div className="vstack">{Array.from(groups, ([category, items]) => <section className="panel quiet" key={category} aria-label={category}><h2 style={{ fontSize: 20 }}>{category} <span className="tag">{items.length} on this page</span></h2>{items.map(n => {
       const href = notificationHref(n)
       const isRead = n.isRead ?? n.read ?? false
       return <div className="notif" key={n.id}>
@@ -90,7 +106,7 @@ export function InboxPage() {
           navigate(href)
         }}>Open</button> : null}
       </div>
-    })}</div> : null}
+    })}</section>)}</div> : null}
     {list?.length === 0 ? <Empty icon="bell" title="Nothing here yet" sub="Approvals, results and announcements land here." /> : null}
     {!USE_MOCK && totalPages > 1 ? <div className="hstack">
       <button className="btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>

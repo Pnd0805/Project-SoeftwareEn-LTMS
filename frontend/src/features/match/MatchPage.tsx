@@ -42,7 +42,7 @@ import { LivePickem } from './LivePickem'
 import { StatSheet } from './StatSheet'
 import type { MatchDto, MatchResultDto, MatchTeamRef } from '../../types/match.dto'
 
-const TABS = ['overview', 'lineup', 'stats', 'progress', 'community']
+const TABS = ['overview', 'lineup', 'stats', 'progress', 'community', ...(!USE_MOCK ? ['mvp'] : [])]
 
 /**
  * จบแล้วหรือยัง — `walkover` จบพอๆ กับ `verified` (ไม่มีใครต้องยืนยันอีก
@@ -691,7 +691,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
  * จึงแสดงได้เฉพาะโหมด mock กับแมตช์ที่อยู่ใน store — นอกนั้นบอกว่ายังใช้ไม่ได้ ไม่เรียก path ที่ไม่มี
  */
 function MatchCommunity({ matchId, match }: { matchId: string; match: MatchDto }) {
-  return USE_MOCK ? <MockMatchCommunity matchId={matchId} /> : <><LivePickem match={match} /><MatchMvpVoting matchId={match.id} teamNames={Object.fromEntries([match.teamA, match.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></>
+  return USE_MOCK ? <MockMatchCommunity matchId={matchId} /> : <LivePickem match={match} />
 }
 
 function MockMatchCommunity({ matchId }: { matchId: string }) {
@@ -746,7 +746,7 @@ export function MatchPage() {
             awayLost={settled && !!m.teamB && winnerId !== m.teamB.id}
             linkTeams={!USE_MOCK || !!findStoreMatch(matchId)}
           />
-          <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'community' ? 'Community' : x }))} active={tab}
+          <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'mvp' ? 'Vote MVP' : x === 'community' ? 'Community' : x }))} active={tab}
             onPick={k => navigate(`/m/${m.id}/${k}`)} />
 
           {tab === 'overview' ? (
@@ -815,6 +815,7 @@ export function MatchPage() {
           {tab === 'progress' ? <ResultTrail m={m} result={result} /> : null}
 
           {tab === 'community' ? <MatchCommunity matchId={matchId} match={m} /> : null}
+          {tab === 'mvp' && !USE_MOCK ? <Panel quiet><h2>Match MVP</h2><MatchMvpVoting key={m.id} matchId={m.id} teamNames={Object.fromEntries([m.teamA, m.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></Panel> : null}
         </div>
 
         <div className="rail">

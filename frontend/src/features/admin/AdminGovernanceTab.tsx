@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Banner, Field, Panel } from '../../components/kit/primitives'
+import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { useMe } from '../../hooks/useAuth'
 import { useAdminScopes, useAuditLogs, useGrantAdminScope, useRevokeAdminScope } from '../../hooks/useAdmin'
 import { useFaculties } from '../../hooks/useReference'
 import { Modal } from '../../components/kit/Modal'
+import { Icon } from '../../components/kit/Icon'
+import { Avatar } from '../../components/kit/Avatar'
 import type { AdminScopeDto } from '../../types/admin.dto'
 const message = (error: unknown) => error instanceof Error ? error.message : 'Request failed.'
 export function AdminScopesTab() {
@@ -41,12 +43,48 @@ export function AdminScopesTab() {
     </Modal>
   </Panel>
 }
+const readable = (value: string) => value.replace(/[_.-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+const detailValue = (value: unknown): string => value === null ? 'Not specified'
+  : typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
+
 export function AdminAuditTab() {
   const logs = useAuditLogs({ limit: 100 })
-  return <Panel quiet><h3>Audit logs</h3><p>Latest 100 records. Read access requires Root or University Admin rights.</p>
+  const [search, setSearch] = useState('')
+  const [entity, setEntity] = useState('')
+  const items = logs.data?.items ?? []
+  const types = [...new Set(items.map(row => row.entityType))].sort()
+  const visible = items.filter(row => (!entity || row.entityType === entity) &&
+    [row.actionType, readable(row.actionType), row.entityType, String(row.entityId), row.user.fullName, String(row.user.id), JSON.stringify(row.details)]
+      .join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+  return <Panel quiet>
+    <div className="spread"><h3><Icon name="shield" size={20} /> Audit logs</h3><Badge kind="neutral">{items.length} records loaded</Badge></div>
+    <p className="sub">Latest 100 records. Search and filters apply to these records. Read access requires Root or University Admin rights.</p>
+    <div className="grid2">
+      <Field label="Search audit logs" htmlFor="audit-search"><input id="audit-search" type="search" placeholder="Action, person, entity ID or details" value={search} onChange={event => setSearch(event.target.value)} /></Field>
+      <Field label="Entity type" htmlFor="audit-entity"><select id="audit-entity" value={entity} onChange={event => setEntity(event.target.value)}><option value="">All entities</option>{types.map(type => <option key={type} value={type}>{readable(type)}</option>)}</select></Field>
+    </div>
     {logs.isPending ? <p>Loading audit logs...</p> : null}
     {logs.error ? <Banner kind="crit">{message(logs.error)} <button className="btn" onClick={() => void logs.refetch()}>Retry</button></Banner> : null}
-    {logs.isSuccess && !logs.data.items.length ? <p>No audit records.</p> : null}
-    {logs.data?.items.map(row => <div className="vstack" key={row.id}><b>{row.actionType} | {row.entityType} #{row.entityId}</b><span>{row.user.fullName} | {new Date(row.createdAt).toLocaleString()}</span><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(row.details, null, 2)}</pre></div>)}
+    {logs.isSuccess && !items.length ? <p>No audit records.</p> : null}
+    {logs.isSuccess && items.length > 0 && !visible.length ? <p>No records match these filters.</p> : null}
+    <div className="vstack" style={{ gap: 12 }}>
+      {visible.map(row => <article className="panel quiet" key={row.id} style={{ borderLeft: '4px solid var(--teal)', padding: 16 }}>
+        <div className="spread" style={{ flexWrap: 'wrap', gap: 8 }}>
+          <span className="hstack"><Icon name="shield" size={20} /><b title={row.actionType}>{readable(row.actionType)}</b></span>
+          <Badge kind="neutral">{readable(row.entityType)} #{row.entityId}</Badge>
+        </div>
+        <div className="hstack" style={{ flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+          <Avatar name={row.user.fullName} avatarUrl={row.user.avatarUrl} />
+          <span><b>{row.user.fullName}</b><br /><span className="sub">User #{row.user.id}</span></span>
+          <span className="sub"><Icon name="clock" size={14} /> {new Date(row.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })} (UTC+7)</span>
+          <span className="tag">Record #{row.id}</span>
+        </div>
+        {row.details && Object.keys(row.details).length ? <details style={{ marginTop: 12 }}><summary>View details ({Object.keys(row.details).length})</summary>
+          <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            {Object.entries(row.details).map(([key, value]) => <div key={key}><dt className="tag">{readable(key)}</dt><dd style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{detailValue(value)}</dd></div>)}
+          </dl>
+        </details> : <p className="sub">No additional details recorded.</p>}
+      </article>)}
+    </div>
   </Panel>
 }

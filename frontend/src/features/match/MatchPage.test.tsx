@@ -79,6 +79,7 @@ vi.mock('../../hooks/useMatch', () => ({
 }))
 
 vi.mock('./MatchWorkflowPanel', () => ({ MatchWorkflowPanel: () => null }))
+vi.mock('../mvp/MvpPage', () => ({ MatchMvpVoting: ({ matchId }: { matchId: number }) => <div>MVP for match {matchId}</div> }))
 import { MatchPage } from './MatchPage'
 
 const renderPage = () => render(
@@ -261,4 +262,11 @@ describe('finishing a match', () => {
     expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
     expect(screen.getByText(/recorded after the referee finishes the match/)).toBeInTheDocument()
   })
+})
+
+it('opens MVP directly for the current match without a tournament match selector', () => {
+  render(<MemoryRouter initialEntries={['/m/9/mvp']}><Routes><Route path="/m/:id/:tab" element={<MatchPage />} /></Routes></MemoryRouter>)
+  expect(screen.getByText('MVP for match 9')).toBeInTheDocument()
+  expect(screen.getByText('Vote MVP')).toBeInTheDocument()
+  expect(screen.queryByLabelText('MVP match')).not.toBeInTheDocument()
 })
