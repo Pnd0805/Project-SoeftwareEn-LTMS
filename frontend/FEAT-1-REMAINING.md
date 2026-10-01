@@ -3,10 +3,11 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-**Current backend contract reference: remote `BE_KN@7a4499c` and its
-2026-09-28 FE notice** (answered in `FE-REPLY-BE_KN-2026-09-29.md`; this
-round is R28–R34; R35–R41 followed on 2026-09-30, when `BE_KN` moved to
-`2f072e7`, not yet pulled). Verified with `git fetch origin BE_KN` on 2026-09-29.
+**Current backend source reference: remote `BE_KN@7ea7328`**, checked with
+`git ls-remote` and `git fetch origin BE_KN` on 2026-10-01. The avatar/logo
+follow-up below compares `FE-Notice-BE_KN-avatar-uploads.md` (`49faf77`) with
+that source and the running local API. This does not close acceptance for other
+features. Earlier R28–R34 evidence uses `7a4499c` and the 2026-09-28 notice.
 Before that: `BE_KN@e5ea50d` and the 2026-09-23 C1/C6/C7 and BE_KN FE
 notices, verified on 2026-09-23. Individual entries in the "Backend blockers" section retain
 the exact commit and date against which they were verified; older hashes there
@@ -178,16 +179,21 @@ already been delivered.
       users can upload/remove their own avatar, team leaders can upload/remove a
       team logo, and clicking the signed-in avatar in the shell navigates to
       `/me`.
-  - [ ] **Account avatar · Backend + FE:** `PATCH /me { avatarUrl }` and
-    `users.profile_image_key` exist, but `/uploads/presign` has no avatar purpose
-    and user mappers currently expose the raw key rather than a downloadable URL.
-    Add the authorized upload/read contract, then add Profile controls, preview,
-    pending/error states and render the saved avatar throughout the FE.
-  - [ ] **Team logo · Backend + FE:** `teams` has no logo column and
-    `PATCH /teams/:id` accepts only name/visibility. Add a migration, leader-only
-    upload/update/removal contract and mapped read field; then connect Team
-    manage/detail/list views. Do not use the prototype-only `logoUrl` as a real
-    backend fallback.
+  - [x] **Account avatar · Frontend implementation:** presign → binary PUT →
+    `PATCH /me { avatarUrl: objectKey }`; remove with `null`. Reads use the public
+    `avatarUrl` from the API. Real-mode MIME validation, error messages, pending
+    controls and failed-image fallback are implemented and covered by tests.
+  - [x] **Team logo · Frontend implementation:** leader controls upload via
+    `team_logo` + `teamId`, save `logoKey`, remove with `null`, and render the
+    returned `logoUrl` in detail and search. Failed logos recover to the team
+    initial/code. Backend source has `logo_key` since migration 031.
+  - [ ] **Team list/profile logo delivery:** `GET /me/teams` and public-profile
+    `teams[]` still omit `logoUrl`. Requested in
+    `TO-BACKEND-2026-10-01-avatar-logo-follow-up.md`; do not fetch every team
+    individually or fill real-mode rows from prototype storage.
+  - [ ] **Frontend Tester acceptance:** browser upload/remove, persistence after
+    reload/login, pending/error states, unauthorized controls and desktop/mobile
+    visual checks. Automated API/component evidence is recorded below.
   - [x] **Shell avatar link · FE:** replace the non-interactive initial in
     `Shell` with the current avatar/initial fallback in an accessible link or
     button to `/me`. Done 2026-09-23: the signed-in avatar links to `/me`, shows
@@ -259,16 +265,56 @@ Developer verification: 41 test files / 243 tests, lint, TypeScript.
       already declares `livestreamUrl` optional and the mapper reads it, so the
       link renders as soon as M05 returns it. Tracked as
       `FE-replay-link-write-only`.
-- [ ] **R23 — profile shortcut done; uploads still need backend contracts.**
-      Two of the three parts have no backend to build against:
-      `/uploads/presign` has no avatar purpose
-      (`purpose` is still `checkin_document | soft_filter_document |
-      referee_identity`) and `teams` has no logo column, so neither upload
-      contract exists. The Shell avatar now opens `/me` for signed-in users and
-      uses the avatar URL when available, with an initial fallback.
+- [ ] **R23 — frontend upload implementation done; browser acceptance and
+      team-list logo fields remain open.** The old missing-presign/logo-column
+      blocker was delivered in `49faf77`. The 2026-10-01 follow-up below covers
+      MIME validation, actionable errors, public avatar rendering and local
+      API/storage verification against `7ea7328`.
   - Accept: avatar and team logo persist across reload/login, unauthorized users
     cannot modify them, broken/expired image URLs recover visibly, removal works,
     and the shell avatar opens the signed-in profile on desktop and mobile.
+
+### R23 — avatar/logo Notice follow-up, 2026-10-01
+
+Compared `FE-Notice-BE_KN-avatar-uploads.md` (`49faf77`) with remote
+`BE_KN@7ea7328` and frontend `2a2617a` plus this working change.
+
+- [x] Real-mode file inputs and upload helper accept only PNG/JPEG. GIF/WebP
+      are rejected before any request; the helper never relabels their bytes as
+      JPEG. PUT uses the presigned content type and sends no bearer token.
+- [x] Avatar PATCH sends `objectKey` via `avatarUrl`; logo PATCH uses `logoKey`.
+      Both removals send `null`. Failed PUT cannot reach the save mutation.
+- [x] Profile/team controls prevent overlapping uploads while pending. They
+      explain `AVATAR_KEY_INVALID`, `AVATAR_KEY_NOT_FOUND`,
+      `TEAM_LOGO_KEY_INVALID`, `TEAM_LOGO_KEY_NOT_FOUND`, `NOT_TEAM_LEADER`,
+      `UNSUPPORTED_FILE_TYPE`, `STORAGE_UNAVAILABLE` and upload transport errors.
+- [x] Render public avatars in own/public profiles, team members/invite search,
+      player search, comments, external-referee queue, tournament referee pool,
+      application rosters, match lineups and check-in rosters. Broken/missing
+      URLs use initials; a replacement URL can load again. Team logos have
+      equivalent fallbacks in detail/chips/search. Shell already links to `/me`.
+- [x] Local prerequisite: migrations up to date (34); role audit C1–C8 has
+      zero cases. Ran `docker compose up --no-deps minio-init`, exit 0, with
+      anonymous download policies set for `avatar/` and `team_logo/`.
+- [x] Live API/storage smoke on 2026-10-01: PNG upload → PATCH key → anonymous
+      image GET 200 → reload GET → removal/null → reload. Avatar also survives
+      fresh login and appears on the public profile. Missing-object and URL-as-
+      key errors are 422; nonleader logo presign is 403; GIF is 400. Fixtures
+      (user 9051, team 9001) started with null images and returned to null.
+      Full evidence: `QA-AVATAR-UPLOADS-2026-10-01.md`.
+- [x] Developer verification: 48 test files / 310 tests, lint, TypeScript
+      and production build passed. `git diff --check` is clean. Existing
+      Vite >500 kB bundle warning remains.
+- [ ] Frontend Tester: actual browser file chooser/PUT CORS, reload/login,
+      permission/error recovery and desktop/mobile visuals. The live smoke
+      used HTTP requests; it is not browser acceptance.
+- [ ] Backend delivery required: `logoUrl: string | null` in `MyTeam` from
+      `/me/teams` and `TeamRef` in public-profile `teams[]`. See
+      `TO-BACKEND-2026-10-01-avatar-logo-follow-up.md`. `GET /teams` already uses
+      `toTeamDto` with `logoUrl` at `7ea7328`; Search now consumes it.
+- [ ] Separate backend follow-up: private user-report `evidence` still contains
+      raw keys. Request authorized presigned download URLs; never make this
+      evidence public or use the avatar bucket policy for it.
 
 ### R24–R27 — four questions from 2026-09-23
 
