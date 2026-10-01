@@ -119,7 +119,7 @@ describe('user.controller getUserStats()', () => {
     await getUserStats(req, res);
 
     expect(mockedParseId).toHaveBeenCalledWith('7', 'รหัสผู้ใช้');
-    expect(mockedUserService.getUserStats).toHaveBeenCalledWith(7);
+    expect(mockedUserService.getUserStats).toHaveBeenCalledWith(7, undefined);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ userId: 7, stats: [] });
   });
@@ -167,7 +167,7 @@ describe('user.controller C8 follow/career endpoints', () => {
 
     expect(mockedUserService.getFollowers).toHaveBeenCalledWith(7);
     expect(mockedUserService.getFollowing).toHaveBeenCalledWith(7);
-    expect(mockedUserService.getCareer).toHaveBeenCalledWith(7);
+    expect(mockedUserService.getCareer).toHaveBeenCalledWith(7, undefined);
   });
 
   it('loads /me/following from the authenticated user id', async () => {

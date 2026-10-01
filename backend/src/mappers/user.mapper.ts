@@ -20,6 +20,8 @@ export type MeDto = {
   address : string | null,
   totalPoints : number,
   notificationPrefs : Record<string , boolean> | null,
+  /** OD-46 — ค่าสวิตช์ของตัวเอง (หน้าตั้งค่าต้องรู้สถานะปัจจุบันเพื่อ render ปุ่ม) · แก้ผ่าน U02 */
+  showProfileStats : boolean,
   createdAt : string,
   /**
    * FE-viewer-admin-scope-unknown — สิทธิ์แอดมินของ *ตัวผู้เรียกเอง* · null = ไม่ใช่แอดมิน
@@ -91,7 +93,13 @@ export type PublicUserDto = {
   departmentId : number | null,
   teams: TeamRef[],
   followerCount: number,
-  isFollowing: boolean
+  isFollowing: boolean,
+  /**
+   * OD-46 — เจ้าของโปรไฟล์ปิดสถิติไว้ และคนที่ดูอยู่ไม่ใช่เจ้าตัว/แอดมิน
+   * มีในหน้าโปรไฟล์ด้วยเพื่อให้ FE รู้ตั้งแต่ request แรกว่าจะซ่อนแท็บสถิติ/ประวัติแมตช์เลยดีไหม
+   * ไม่ต้องยิงไปอีกสามเส้นแล้วค่อยพบว่าว่างทั้งหมด
+   */
+  statsHidden: boolean
 }
 
 export function toMeDto(row: UserRow , admin : AdminScopeRow | null = null): MeDto {
@@ -112,6 +120,7 @@ export function toMeDto(row: UserRow , admin : AdminScopeRow | null = null): MeD
     address: row.address,
     totalPoints: row.total_points,
     notificationPrefs: row.notification_prefs,
+    showProfileStats: row.show_profile_stats === 1,
     createdAt: row.created_at.toISOString()
   };
 }
@@ -129,7 +138,8 @@ export function toPublicUserDto(
   row: UserRow,
   team: TeamRef[],
   followerCount = 0,
-  isFollowing = false
+  isFollowing = false,
+  statsHidden = false
 ): PublicUserDto {
   return {
     id: row.user_id,
@@ -140,6 +150,7 @@ export function toPublicUserDto(
     teams: team,
     followerCount,
     isFollowing,
+    statsHidden,
   };
 }
 

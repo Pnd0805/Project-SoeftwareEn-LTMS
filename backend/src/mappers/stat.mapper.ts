@@ -19,11 +19,26 @@ export type OverAllStat = {
 
 export type UserStatsDto = {
     userId : number,
-    overall : OverAllStat,
-    bySport : SportStatDto[],
-    mvpVotes: number,
-    pickemPoints: number,
-    followerCount: number
+    /**
+     * OD-46 — เจ้าของโปรไฟล์ปิดการแสดงสถิติไว้ และคนที่ดูอยู่ไม่ใช่เจ้าตัว/แอดมิน
+     *
+     * true แล้วช่องสถิติเป็น null **ทั้งหมด ไม่ใช่ 0** โดยเจตนา — 0 อ่านได้ว่า "ลงแข่งแล้วไม่เคยชนะ"
+     * ซึ่งเป็นคำตอบที่ผิดและหน้าจอแยกจากของจริงไม่ออก · null บังคับให้ FE ตัดสินใจว่าจะแสดงอะไร
+     *
+     * `followerCount` ก็เป็น null ด้วยไม่ได้ยกเว้น — ไม่เสียอะไรเพราะ U01 (GET /users/:id) คืนให้อยู่แล้ว
+     */
+    statsHidden : boolean,
+    overall : OverAllStat | null,
+    bySport : SportStatDto[] | null,
+    mvpVotes: number | null,
+    pickemPoints: number | null,
+    followerCount: number | null
+}
+
+/** สถิติที่ถูกซ่อน — ไม่ส่งตัวเลขอะไรออกไปเลย แม้แต่ 0 */
+export function hiddenUserStatsDto(userId : number) : UserStatsDto{
+    return { userId , statsHidden : true , overall : null , bySport : null ,
+             mvpVotes : null , pickemPoints : null , followerCount : null };
 }
 
 export function toSportStatDto(row : UserSportStatRow): SportStatDto{
@@ -52,6 +67,7 @@ export function toUserStatsDto(
 
     return {
         userId,
+        statsHidden: false,
         overall: {
             matchesPlayed,
             wins,

@@ -41,4 +41,12 @@ describe('updateMeSchema', () => {
     const result = updateMeSchema.safeParse({ address: 'ok', unrelatedField: 'ignored' });
     expect(result.success).toBe(true);
   });
+  /** OD-46 — สวิตช์ปิดการแสดงสถิติในโปรไฟล์ (U02 เป็นทางเดียวที่แก้ได้) */
+  it('OD-46 — รับ showProfileStats เป็น boolean เท่านั้น', () => {
+    expect(updateMeSchema.safeParse({ showProfileStats: false }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ showProfileStats: true }).success).toBe(true);
+    expect(updateMeSchema.safeParse({ showProfileStats: 0 }).success).toBe(false);
+    expect(updateMeSchema.safeParse({ showProfileStats: 'false' }).success).toBe(false);
+    expect(updateMeSchema.safeParse({ showProfileStats: null }).success).toBe(false);
+  });
 });

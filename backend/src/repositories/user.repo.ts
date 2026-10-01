@@ -69,6 +69,11 @@ export async function update(userId : number , input : UpdateMeInput) : Promise<
         values.push(input.address);
     }
 
+    if(input.showProfileStats !== undefined){
+        sets.push('show_profile_stats = ?');
+        values.push(input.showProfileStats ? 1 : 0);
+    }
+
     sets.push('updated_at = NOW()');
 
     const [ result ] = await pool.query<ResultSetHeader>(`UPDATE users SET ${sets.join(', ')} WHERE user_id = ?`

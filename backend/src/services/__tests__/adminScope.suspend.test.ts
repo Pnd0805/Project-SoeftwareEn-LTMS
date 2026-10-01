@@ -45,7 +45,7 @@ const target = {
   gender : 'male' as const , birth_date : '2000-01-01' , user_type : 'student' as const ,
   faculty_id : 2 , department_id : 3 , year : 2 , profile_image_key : null ,
   contact_info : null , address : null , is_suspended : 0 , suspended_reason : null , suspended_until : null , suspended_category : null ,
-  total_points : 0 , notification_prefs : null , profile_edit_log : null ,
+  total_points : 0 , notification_prefs : null , show_profile_stats: 1, profile_edit_log : null ,
   created_at : NOW , updated_at : null ,
 };
 

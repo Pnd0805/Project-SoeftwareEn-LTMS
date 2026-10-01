@@ -20,6 +20,7 @@ export type UserRow = {
     suspended_until : Date | null,   // NULL = ถาวร · ดู utils/suspension.ts ห้ามอ่าน is_suspended ลอยๆ
     total_points : number,
     notification_prefs :  Record<string, boolean> | null,
+    show_profile_stats : number,      // OD-46 · 1 = เปิด (ค่าเริ่มต้น) · คุม stats/match-history/career ของหน้าโปรไฟล์เท่านั้น
     profile_edit_log : unknown,
     created_at : Date,
     updated_at : Date | null,

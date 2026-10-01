@@ -54,6 +54,7 @@ vi.mock('../../mappers/team.mapper.js', () => ({
 
 vi.mock('../../mappers/stat.mapper.js', () => ({
   toUserStatsDto: vi.fn(),
+  hiddenUserStatsDto: vi.fn((userId: number) => ({ userId, statsHidden: true })),
 }));
 
 vi.mock('../../mappers/career.mapper.js', () => ({
@@ -126,7 +127,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     suspended_until: null,
     suspended_category: null,
     total_points: 0,
-    notification_prefs: null,
+    notification_prefs: null, show_profile_stats: 1,
     profile_edit_log: null,
     created_at: new Date(),
     updated_at: null,
@@ -197,7 +198,7 @@ describe('getUserById', () => {
     expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [
       { id: 1, name: 'Team A' },
       { id: 2, name: 'Team B' },
-    ], 0, false);
+    ], 0, false, false);
     expect(result).toEqual({ id: 1, teams: [] });
   });
 
@@ -218,7 +219,7 @@ describe('getUserById', () => {
     await userService.getUserById(1);
 
     expect(mockedToTeamRef).not.toHaveBeenCalled();
-    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, false);
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, false, false);
   });
 });
 
@@ -238,6 +239,46 @@ describe('getUserStats', () => {
       { mvp_votes: 0, pickem_points: 0, follower_count: 0 },
     );
     expect(result).toEqual({ userId: 1, stats: [] });
+  });
+
+  /**
+   * OD-46 — ด่านอยู่ที่ utils/profileStats (ที่เดียวกับ U06 และ R05)
+   * ถามด่านก่อนค้น ไม่ใช่ค้นแล้วทิ้ง ⇒ โปรไฟล์ที่ปิดไว้ไม่กิน query สถิติเลย
+   */
+  describe('OD-46 — เจ้าของปิดการแสดงสถิติ', () => {
+    beforeEach(() => {
+      mockedCheckUser.mockResolvedValue(makeUser({ user_id: 1, show_profile_stats: 0 }));
+      mockedAdminRepo.findAdminByUserId.mockResolvedValue(null);
+    });
+
+    it('คนอื่นได้ชุดที่ซ่อนไว้ และไม่ไปแตะ repo สถิติเลย', async () => {
+      const result = await userService.getUserStats(1, 9999);
+
+      expect(result).toEqual({ userId: 1, statsHidden: true });
+      expect(mockedStatRepo.findStatsByUser).not.toHaveBeenCalled();
+      expect(mockedStatRepo.findProfileTotals).not.toHaveBeenCalled();
+      expect(mockedToUserStatsDto).not.toHaveBeenCalled();
+    });
+
+    it('คนที่ไม่ล็อกอินก็ไม่เห็น', async () => {
+      await expect(userService.getUserStats(1)).resolves.toEqual({ userId: 1, statsHidden: true });
+    });
+
+    it('เจ้าตัวยังเห็นสถิติของตัวเอง', async () => {
+      mockedStatRepo.findStatsByUser.mockResolvedValue([] as any);
+      mockedToUserStatsDto.mockReturnValue({ userId: 1, statsHidden: false } as any);
+
+      await expect(userService.getUserStats(1, 1)).resolves.toEqual({ userId: 1, statsHidden: false });
+      expect(mockedStatRepo.findStatsByUser).toHaveBeenCalledWith(1);
+    });
+
+    it('แอดมินทะลุได้', async () => {
+      mockedAdminRepo.findAdminByUserId.mockResolvedValue({ admin_scope_id: 1 } as any);
+      mockedStatRepo.findStatsByUser.mockResolvedValue([] as any);
+      mockedToUserStatsDto.mockReturnValue({ userId: 1, statsHidden: false } as any);
+
+      await expect(userService.getUserStats(1, 9500)).resolves.toEqual({ userId: 1, statsHidden: false });
+    });
   });
 
   it('propagates the error from checkUser without querying stats', async () => {
@@ -260,7 +301,7 @@ describe('C8 profile engagement', () => {
     await userService.getUserById(1, 99);
 
     expect(mockedFollowRepo.isFollowing).toHaveBeenCalledWith(99, 1);
-    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 12, true);
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 12, true, false);
   });
 
   it('returns MVP, Pickem and follower totals through stats', async () => {
@@ -363,7 +404,25 @@ describe('C8 profile engagement', () => {
 
     await expect(userService.getCareer(1)).resolves.toMatchObject({
       items: [{ played: 3, wins: 2, losses: 1, champion: true }],
+      statsHidden: false,
     });
+  });
+
+  /** OD-46 — ผลงานทัวร์ผูกสวิตช์เดียวกับสถิติ · items เป็น null ไม่ใช่ [] (ดู utils/profileStats) */
+  it('OD-46 — เจ้าของปิดสถิติ: career คืน items เป็น null และไม่แตะ repo', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 1, show_profile_stats: 0 }));
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(null);
+
+    await expect(userService.getCareer(1, 9999)).resolves.toEqual({ items: null, statsHidden: true });
+    expect(mockedCareerRepo.findCareerByUser).not.toHaveBeenCalled();
+  });
+
+  it('OD-46 — เจ้าตัวยังเห็น career ของตัวเอง', async () => {
+    mockedCheckUser.mockResolvedValue(makeUser({ user_id: 1, show_profile_stats: 0 }));
+    mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
+
+    await expect(userService.getCareer(1, 1)).resolves.toEqual({ items: [], statsHidden: false });
+    expect(mockedCareerRepo.findCareerByUser).toHaveBeenCalledWith(1);
   });
 });
 

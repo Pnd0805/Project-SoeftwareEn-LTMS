@@ -4,5 +4,5 @@ import * as MatchHistoryService from '../services/matchHistory.service.js';
 
 export async function getMatchHistory(req: Request, res: Response) {
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
-    res.status(200).json(await MatchHistoryService.getMatchHistory(userId));
+    res.status(200).json(await MatchHistoryService.getMatchHistory(userId, req.user?.user_id));
 }

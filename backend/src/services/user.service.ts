@@ -12,7 +12,8 @@ import { checkUser } from '../utils/checkExist.js';
 
 import { toPublicUserDto , toUserRef , toMeDto, toGetMyInvitation} from '../mappers/user.mapper.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
-import { toUserStatsDto } from '../mappers/stat.mapper.js';
+import { toUserStatsDto , hiddenUserStatsDto } from '../mappers/stat.mapper.js';
+import { canSeeProfileStats } from '../utils/profileStats.js';
 import { toCareerTournamentDto } from '../mappers/career.mapper.js';
 import { toUserReportDto } from '../mappers/userReport.mapper.js';
 
@@ -28,12 +29,18 @@ export async function getUserById(userId: number, viewerUserId?: number) {
             ? FollowRepo.isFollowing(viewerUserId, userId)
             : Promise.resolve(false),
     ]);
-    return toPublicUserDto(user, teamRows.map(toTeamRef), followerCount, isFollowing);
+    // OD-46 — บอกตั้งแต่หน้าโปรไฟล์ว่าสถิติถูกซ่อน FE จึงไม่ต้องยิงอีกสามเส้นแล้วค่อยพบว่าว่าง
+    const statsHidden = !(await canSeeProfileStats(user, viewerUserId));
+    return toPublicUserDto(user, teamRows.map(toTeamRef), followerCount, isFollowing, statsHidden);
 };
 
 
-export async function getUserStats(userId: number) {
-    await checkUser(userId);
+export async function getUserStats(userId: number, viewerUserId?: number) {
+    const user = await checkUser(userId);
+    // OD-46 — ถามด่านก่อน "แล้วค่อยค้น" ไม่ใช่ค้นแล้วทิ้ง ⇒ โปรไฟล์ที่ปิดไว้ไม่กิน query สถิติเลย
+    if (!(await canSeeProfileStats(user, viewerUserId))) {
+        return hiddenUserStatsDto(userId);
+    }
     const [userStat, totals] = await Promise.all([
         StatRepo.findStatsByUser(userId),
         StatRepo.findProfileTotals(userId),
@@ -80,10 +87,15 @@ export async function getFollowing(userId: number) {
     return { items: rows.map(toUserRef), count: rows.length };
 }
 
-export async function getCareer(userId: number) {
-    await checkUser(userId);
+export async function getCareer(userId: number, viewerUserId?: number) {
+    const user = await checkUser(userId);
+    // OD-46 — ผลงานทัวร์ที่เคยลงแข่งผูกกับสวิตช์เดียวกับสถิติ · items เป็น null ไม่ใช่ [] โดยเจตนา
+    // [] อ่านได้ว่า "ไม่เคยลงแข่งเลย" ซึ่งเป็นคำตอบที่ผิดและหน้าจอแยกจากของจริงไม่ออก
+    if (!(await canSeeProfileStats(user, viewerUserId))) {
+        return { items: null, statsHidden: true };
+    }
     const rows = await CareerRepo.findCareerByUser(userId);
-    return { items: rows.map(toCareerTournamentDto) };
+    return { items: rows.map(toCareerTournamentDto), statsHidden: false };
 }
 
 export async function searchUsers(userName : string){

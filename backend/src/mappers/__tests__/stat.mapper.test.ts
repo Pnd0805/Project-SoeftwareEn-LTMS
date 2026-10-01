@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toSportStatDto, toUserStatsDto } from '../stat.mapper.js';
+import { toSportStatDto, toUserStatsDto, hiddenUserStatsDto } from '../stat.mapper.js';
 
 describe('toSportStatDto', () => {
   it('maps a single sport-stat row to its DTO shape', () => {
@@ -26,6 +26,7 @@ describe('toUserStatsDto', () => {
 
     expect(result).toEqual({
       userId: 1,
+      statsHidden: false,
       overall: { matchesPlayed: 0, wins: 0, losses: 0, winRate: 0, championCount: 0 },
       bySport: [],
       mvpVotes: 0,
@@ -87,5 +88,21 @@ describe('toUserStatsDto', () => {
   it('maps C8 engagement totals onto the stats response', () => {
     const result = toUserStatsDto(1, [], { mvp_votes: 6, pickem_points: 120, follower_count: 9 });
     expect(result).toMatchObject({ mvpVotes: 6, pickemPoints: 120, followerCount: 9 });
+  });
+
+  /**
+   * OD-46 — สถิติที่ถูกซ่อนต้องเป็น null ทั้งชุด **ไม่ใช่ 0**
+   * 0 อ่านได้ว่า "ลงแข่งแล้วไม่เคยชนะ" ซึ่งเป็นคำตอบที่ผิด และหน้าจอแยกจากของจริงไม่ออก
+   */
+  it('OD-46 — สถิติที่ถูกซ่อนคืน null ทั้งชุด ไม่ใช่ 0', () => {
+    expect(hiddenUserStatsDto(9001)).toEqual({
+      userId: 9001,
+      statsHidden: true,
+      overall: null,
+      bySport: null,
+      mvpVotes: null,
+      pickemPoints: null,
+      followerCount: null,
+    });
   });
 });

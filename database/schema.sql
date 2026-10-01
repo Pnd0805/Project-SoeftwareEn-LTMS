@@ -71,6 +71,7 @@ CREATE TABLE users (
   suspended_until DATETIME NULL,   -- NULL = ถาวร · มีค่า = พ้นเองเมื่อถึงเวลา (ประเมินตอนอ่าน ไม่มี job ล้างธง)
   total_points INT NOT NULL DEFAULT 0,
   notification_prefs JSON NULL,
+  show_profile_stats TINYINT(1) NOT NULL DEFAULT 1,   -- OD-46: เจ้าตัวปิดการแสดงสถิติในโปรไฟล์ได้ (ไม่แตะตารางคะแนน/ผลแมตช์)
   profile_edit_log JSON NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
@@ -880,4 +881,5 @@ INSERT INTO schema_migrations (name) VALUES
   ('031_team_logo_key.sql'),
   ('032_feedback_report_cleared.sql'),   -- จำว่าความเห็นไหนตรวจแล้ว กัน report ซ้ำเรื่องเดิม
   ('033_users_suspended_until.sql'),     -- ระงับแบบมีกำหนดเวลา · NULL = ถาวรเหมือนเดิม
-  ('034_users_suspended_category.sql');   -- บอกเจ้าตัวว่าโทษประเภทไหน โดยไม่ส่งข้อความดิบ
+  ('034_users_suspended_category.sql'),   -- บอกเจ้าตัวว่าโทษประเภทไหน โดยไม่ส่งข้อความดิบ
+  ('035_users_show_profile_stats.sql');   -- OD-46: ปิดการแสดงสถิติในโปรไฟล์ได้

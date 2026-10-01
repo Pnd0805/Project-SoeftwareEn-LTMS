@@ -27,6 +27,7 @@ const baseUserRow = {
   suspended_category: null,
   total_points: 150,
   notification_prefs: { email: true, push: false },
+  show_profile_stats: 1,
   profile_edit_log: null,
   created_at: new Date('2023-09-01T12:00:00Z'),
   updated_at: null,
@@ -51,6 +52,7 @@ describe('toMeDto', () => {
       address: '123 Main St',
       totalPoints: 150,
       notificationPrefs: { email: true, push: false },
+      showProfileStats: true,
       createdAt: '2023-09-01T12:00:00.000Z',
       adminScope: null,
     });
@@ -91,7 +93,7 @@ describe('toMeDto', () => {
       profile_image_key: null,
       contact_info: null,
       address: null,
-      notification_prefs: null,
+      notification_prefs: null, show_profile_stats: 1,
     };
 
     const result = toMeDto(rowWithNulls as any);
@@ -136,7 +138,19 @@ describe('toPublicUserDto', () => {
       teams,
       followerCount: 0,
       isFollowing: false,
+      statsHidden: false,
     });
+  });
+
+  /**
+   * OD-46 — ธงนี้บอกว่า "response นี้ซ่อนสถิติไว้" ไม่ใช่ค่าสวิตช์ของเจ้าของโปรไฟล์
+   * เจ้าตัวที่ปิดสถิติไว้แล้วเปิดดูโปรไฟล์ตัวเองจะได้ false เพราะเขาเห็นข้อมูล
+   * ค่าสวิตช์จริงอยู่ที่ MeDto.showProfileStats (U01 /me) ซึ่งเป็นของคนละความหมาย
+   */
+  it('OD-46 — statsHidden ส่งต่อตามที่ service ตัดสิน ไม่ได้อ่านจากแถว', () => {
+    expect(toPublicUserDto(baseUserRow as any, [], 0, false, true).statsHidden).toBe(true);
+    expect(toPublicUserDto(baseUserRow as any, [], 0, false, false).statsHidden).toBe(false);
+    expect(toPublicUserDto(baseUserRow as any, []).statsHidden).toBe(false);
   });
 
   it('does not leak private fields like email, contactInfo, or address', () => {

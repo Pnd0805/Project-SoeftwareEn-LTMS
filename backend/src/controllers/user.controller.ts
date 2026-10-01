@@ -20,7 +20,7 @@ export async function getUserById(req: Request, res: Response) {
 
 export async function getUserStats(req : Request , res : Response){
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
-    res.status(200).json(await UserService.getUserStats(userId));
+    res.status(200).json(await UserService.getUserStats(userId, req.user?.user_id));
 }
 
 
@@ -50,7 +50,7 @@ export async function getMyFollowing(req: Request, res: Response) {
 
 export async function getCareer(req: Request, res: Response) {
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
-    res.status(200).json(await UserService.getCareer(userId));
+    res.status(200).json(await UserService.getCareer(userId, req.user?.user_id));
 }
 
 export async function searchUser(req : Request , res : Response){

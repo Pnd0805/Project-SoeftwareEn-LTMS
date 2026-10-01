@@ -68,7 +68,7 @@ const baseUser: UserRow = {
   suspended_until: null,
   suspended_category: null,
   total_points: 0,
-  notification_prefs: null,
+  notification_prefs: null, show_profile_stats: 1,
   profile_edit_log: null,
   created_at: new Date(),
   updated_at: null,
