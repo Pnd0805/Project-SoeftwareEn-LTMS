@@ -158,7 +158,7 @@ describe("admin official-team requests", () => {
   });
 });
 
-describe("routes the backend does not have yet", () => {
+describe("delivered admin-user contracts", () => {
   it("POST /tournaments/:id/referees sends isExternal", async () => {
     fetchMock.mockResolvedValueOnce(json({ id: 7, userId: 42, invitationStatus: "pending", isExternal: true }, 201));
 
@@ -190,11 +190,18 @@ describe("routes the backend does not have yet", () => {
     expect(lastRequest()).toEqual({ path: "/admin/referee-requests/42/approve", method: "POST", body: undefined });
   });
 
-  it("user management and admin rights fail without calling fetch", async () => {
-    await expect(getUsersForAdmin()).rejects.toMatchObject({ status: 501 });
-    await expect(suspendUser(9, { suspend: true, reason: "spam" })).rejects.toMatchObject({ status: 501 });
-    await expect(grantAdminScope({ userId: 9, scopeType: "university_wide" })).rejects.toMatchObject({ status: 501 });
-    await expect(revokeAdminScope(10)).rejects.toMatchObject({ status: 501 });
-    expect(fetchMock).not.toHaveBeenCalled();
+  it("uses delivered admin-user contracts and preserves suspension details", async () => {
+    const user = { id: 9, fullName: 'Player', email: 'p@test', userType: 'student', facultyId: 1, isSuspended: false, suspendedReason: null, suspendedUntil: null, suspendedCategoryLabel: null, adminScope: null };
+    fetchMock.mockResolvedValueOnce(json({ items: [user], pagination: { totalPages: 1 } }));
+    expect((await getUsersForAdmin()).items[0]).toMatchObject({ user: { id: 9 }, teamCount: null });
+    fetchMock.mockResolvedValueOnce(json({ ...user, isSuspended: true }));
+    await suspendUser(9, { suspend: true, reason: "spam", category: "spam", days: 7 });
+    expect(lastRequest()).toMatchObject({ path: '/admin/users/9/suspend', method: 'PATCH', body: { suspended: true, reason: 'spam', category: 'spam', days: 7 } });
+    fetchMock.mockResolvedValueOnce(json({ id: 10, user: { id: 9, fullName: 'Player' }, scopeType: 'faculty', facultyId: 1, createdAt: '2026-10-01' }));
+    await grantAdminScope({ userId: 9, scopeType: 'faculty', facultyId: 1 });
+    expect(lastRequest()).toMatchObject({ path: '/admin/scopes', method: 'POST', body: { userId: 9, scopeType: 'faculty', facultyId: 1 } });
+    fetchMock.mockResolvedValueOnce(json({ id: 10 }));
+    await revokeAdminScope(10);
+    expect(lastRequest()).toMatchObject({ path: '/admin/scopes/10', method: 'DELETE' });
   });
 });

@@ -5,13 +5,9 @@
  * rules or reinstate it, and grant or revoke admin rights. A suspended account
  * cannot sign in and cannot be entered in a tournament.
  *
- * ── backend ───────────────────────────────────────────────────────────────
- * ยังไม่มี GET /admin/users, PATCH /admin/users/{id}/suspend และการให้/เพิกถอนสิทธิ์
- * — นอกโหมด mock ได้ 501 · แต่ auth.service ของ backend ปฏิเสธการล็อกอินของบัญชี
- * ที่ถูกระงับอยู่แล้ว (403 ACCOUNT_SUSPENDED)
- *
- * ตัวเองดูจากอีเมลของ useMe — โหมด mock บัญชีเดโมมี id คนละชุดกับ id ในรายชื่อ
+ * BE_KN C2: flat user DTOs, scoped rights and suspension category/expiry.
  */
+import { USE_MOCK } from '../../api/client'
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { ConfirmCard, Modal } from '../../components/kit/Modal'
@@ -51,9 +47,16 @@ export function AdminUsersTab() {
   const [limit, setLimit] = useState(PAGE)
   const [suspending, setSuspending] = useState<UserAdminViewDto | null>(null)
   const [reason, setReason] = useState('')
+  const [category, setCategory] = useState<'abusive_language' | 'cheating' | 'false_information' | 'spam' | 'other'>('other')
+  const [days, setDays] = useState('')
   const [adminChange, setAdminChange] = useState<{ row: UserAdminViewDto; giving: boolean } | null>(null)
   const [notice, setNotice] = useState<Notice>(null)
 
+  const scope = me?.adminScope?.scopeType
+  const canGrant = USE_MOCK || scope === 'university_wide'
+  const canRevoke = (u: UserAdminViewDto) => USE_MOCK || (scope === 'university_wide' && u.adminScopes[0]?.scopeType === 'faculty')
+  const canSuspend = (u: UserAdminViewDto) => USE_MOCK || scope === 'university_wide' || (scope === 'faculty' && !u.adminScopes.length && u.facultyId === me?.adminScope?.facultyId)
+  const validDays = days === '' || (Number.isInteger(Number(days)) && Number(days) >= 1 && Number(days) <= 90)
   const status = statusOf(users.error)
   const all = users.data?.items ?? []
   const needle = query.trim().toLowerCase()
@@ -74,10 +77,10 @@ export function AdminUsersTab() {
   }
 
   const confirmSuspend = () => {
-    if (!suspending || !reason.trim()) return
+    if (!suspending || !reason.trim() || !validDays) return
     const target = suspending
     setNotice(null)
-    suspend.mutate({ userId: target.user.id, input: { suspend: true, reason: reason.trim() } }, {
+    suspend.mutate({ userId: target.user.id, input: { suspend: true, reason: reason.trim(), category, days: days === '' ? undefined : Number(days) } }, {
       onSuccess: () => {
         setSuspending(null)
         setReason('')
@@ -92,7 +95,7 @@ export function AdminUsersTab() {
     setAdminChange(null)
     setNotice(null)
     if (giving) {
-      grant.mutate({ userId: row.user.id, scopeType: 'university_wide' }, {
+      grant.mutate({ userId: row.user.id, scopeType: USE_MOCK ? 'university_wide' : 'faculty', facultyId: USE_MOCK ? undefined : row.facultyId ?? undefined }, {
         onSuccess: () => setNotice({ kind: 'ok', text: `${row.user.fullName} is now an admin.` }),
       })
     } else if (row.adminScopes[0]) {
@@ -158,7 +161,7 @@ export function AdminUsersTab() {
                           </span>
                         </td>
                         <td className="sub">{u.facultyName ?? '—'}</td>
-                        <td className="num">{u.teamCount}</td>
+                        <td className="num">{u.teamCount ?? '-'}</td>
                         <td>
                           {admin ? <Badge kind="crit">Admin</Badge>
                             : u.userType === 'external' ? <Badge kind="warn">External</Badge>
@@ -168,6 +171,8 @@ export function AdminUsersTab() {
                           {u.isSuspended ? (
                             <span className="vstack" style={{ gap: 2 }}>
                               <Badge kind="crit">Suspended</Badge>
+                              {u.suspendedUntil ? <span className="sub">Until {new Date(u.suspendedUntil).toLocaleString()}</span> : <span className="sub">Permanent</span>}
+                              {u.suspendedCategoryLabel ? <span className="sub">{u.suspendedCategoryLabel}</span> : null}
                               {u.suspendedReason ? <span className="sub">{u.suspendedReason}</span> : null}
                             </span>
                           ) : <Badge kind="ok">Active</Badge>}
@@ -175,26 +180,26 @@ export function AdminUsersTab() {
                         <td>
                           <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                             {u.isSuspended ? (
-                              <button className="btn ghost" type="button" disabled={busy} onClick={() => reinstate(u)}>
+                              <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)} onClick={() => reinstate(u)}>
                                 Reinstate
                               </button>
                             ) : (
-                              <button className="btn ghost" type="button" disabled={busy || self || admin}
-                                title={self ? "You can't suspend your own account" : admin ? 'Revoke admin rights first' : undefined}
-                                onClick={() => { suspend.reset(); setReason(''); setSuspending(u) }}>
+                              <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)}
+                                title={self ? "You can't suspend your own account" : !canSuspend(u) ? 'Outside your admin scope' : undefined}
+                                onClick={() => { suspend.reset(); setReason(''); setDays(''); setCategory('other'); setSuspending(u) }}>
                                 Suspend
                               </button>
                             )}
                             {admin ? (
-                              <button className="btn ghost" type="button" disabled={busy || self}
+                              <button className="btn ghost" type="button" disabled={busy || self || !canRevoke(u)}
                                 title={self ? "You can't revoke your own rights" : undefined}
                                 onClick={() => { revoke.reset(); setAdminChange({ row: u, giving: false }) }}>
                                 Revoke admin
                               </button>
                             ) : (
                               <button className="btn ghost" type="button"
-                                disabled={busy || u.isSuspended || u.userType === 'external'}
-                                title={u.isSuspended ? 'Reinstate the account first' : u.userType === 'external' ? 'External people cannot be admins' : undefined}
+                                disabled={busy || !canGrant || u.isSuspended || (!USE_MOCK && !u.facultyId)}
+                                title={u.isSuspended ? 'Reinstate the account first' : !canGrant ? 'University Admin rights required' : !u.facultyId && !USE_MOCK ? 'A faculty is required' : undefined}
                                 onClick={() => { grant.reset(); setAdminChange({ row: u, giving: true }) }}>
                                 Make admin
                               </button>
@@ -227,10 +232,19 @@ export function AdminUsersTab() {
         <Field label="Reason — kept with the account" htmlFor="suspend-reason">
           <textarea id="suspend-reason" rows={3} value={reason} onChange={e => setReason(e.target.value)} />
         </Field>
+        <Field label="Category shown to the account holder" htmlFor="suspend-category">
+          <select id="suspend-category" value={category} onChange={e => setCategory(e.target.value as typeof category)}>
+            <option value="abusive_language">Abusive language or harassment</option><option value="cheating">Cheating</option>
+            <option value="false_information">False information or impersonation</option><option value="spam">Spam</option><option value="other">Other rule violation</option>
+          </select>
+        </Field>
+        <Field label="Days (1-90); leave blank for permanent suspension" htmlFor="suspend-days">
+          <input id="suspend-days" type="number" min="1" max="90" step="1" value={days} onChange={e => setDays(e.target.value)} />
+        </Field>
         {suspend.isError ? <Banner kind="crit">{errorMessage(suspend.error)}</Banner> : null}
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setSuspending(null)}>Cancel</button>
-          <button className="btn danger" type="button" disabled={!reason.trim() || suspend.isPending} onClick={confirmSuspend}>
+          <button className="btn danger" type="button" disabled={!reason.trim() || !validDays || suspend.isPending} onClick={confirmSuspend}>
             {suspend.isPending ? 'Suspending…' : 'Suspend account'}
           </button>
         </div>
@@ -242,7 +256,7 @@ export function AdminUsersTab() {
         <ConfirmCard danger={!adminChange?.giving} ok={adminChange?.giving ? 'Make admin' : 'Revoke'}
           onCancel={() => setAdminChange(null)}
           body={adminChange?.giving
-            ? 'They get university-wide admin rights: every approval queue and account management.'
+            ? USE_MOCK ? 'They get university-wide admin rights.' : `They get faculty admin rights for Faculty #${adminChange.row.facultyId}.`
             : 'They lose admin rights and go back to being a regular user.'}
           onConfirm={confirmAdminChange} />
       </Modal>

@@ -125,7 +125,7 @@ export interface RefereeCoverageDto {
 export interface AdminScopeDto {
   id: number;
   user: UserRefDto;
-  scopeType: "faculty" | "university_wide";
+  scopeType: "faculty" | "university_wide" | "root";
   facultyId: number | null;
   facultyName: string | null;
   createdAt: string;
@@ -153,11 +153,17 @@ export interface UserAdminViewDto {
   suspendedReason: string | null;
   /** สิทธิ์ผู้ดูแลที่ถืออยู่ — ว่างแปลว่าเป็นผู้ใช้ทั่วไป */
   adminScopes: AdminScopeDto[];
-  teamCount: number;
+  teamCount: number | null;
+  facultyId?: number | null;
+  suspendedUntil?: string | null;
+  suspendedCategoryLabel?: string | null;
+  warning?: string | null;
 }
 
 export interface SuspendUserRequest {
   suspend: boolean;
+  category?: "abusive_language" | "cheating" | "false_information" | "spam" | "other";
+  days?: number;
   reason?: string;
 }
 
@@ -342,3 +348,12 @@ export interface BackendRefereeRequestDto {
   createdAt: string;
   resolvedAt: string | null;
 }
+
+export interface BackendAdminUserDto {
+  id: number; fullName: string; email: string; userType: string;
+  facultyId: number | null; isSuspended: boolean; suspendedReason: string | null;
+  suspendedUntil: string | null; suspendedCategoryLabel: string | null;
+  adminScope: { id: number; scopeType: AdminScopeDto['scopeType']; facultyId: number | null } | null;
+  warning?: string | null;
+}
+export type BackendAdminScopeDto = Pick<AdminScopeDto, 'id' | 'user' | 'scopeType' | 'facultyId' | 'createdAt'>;

@@ -187,8 +187,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
               : !coverage.data ? 'Checking the referees on each match…'
                 : `${staffed.length} of ${ms.length} have all their referees.`),
       /* เวลากับสนามครบแล้วแต่กรรมการยังขาด — งานที่เหลืออยู่ในแผงกรรมการรายแมตช์ของหน้า Draw ไม่ใช่หน้าตาราง */
-      cta: fixturesSet && real && formatOf(t) !== 'roundrobin'
-        ? <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/manage/draw`)}>Ask referees for each match</button>
+      cta: fixturesSet && real
+        ? <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/manage/${formatOf(t) === 'roundrobin' ? 'referees' : 'draw'}`)}>Ask referees for each match</button>
         : <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/schedule`)}>Open the schedule</button>,
     },
     {

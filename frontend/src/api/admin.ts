@@ -13,6 +13,7 @@ import type {
   RefereeCoverageDto,
   AppointRefereeRequest,
   AnswerAppointmentRequest,
+  BackendAdminUserDto, BackendAdminScopeDto,
   AdminScopeDto,
   GrantAdminScopeRequest,
   UserAdminViewDto,
@@ -61,13 +62,6 @@ const alreadyDecided = <T>(): Promise<T> =>
 /** ส่งเหตุผลที่ชั้น mock ปฏิเสธต่อเป็น error รูปเดียวกับ backend */
 const rejectWith = <T>(b: WriteBlock): Promise<T> =>
   mockReject<T>(b.status, { code: b.code, message: b.message, details: b.details });
-
-/**
- * backend ยังไม่มี endpoint นี้ (ดู FEAT-1-REMAINING หมวด backend blockers)
- * ตอบ 501 ทันทีแทนการยิงไปเส้นทางที่ไม่มีอยู่ — หน้าจอบอกไว้ว่าใช้ไม่ได้
- */
-const unavailable = <T>(what: string): Promise<T> =>
-  Promise.reject(new ApiError(501, { code: "ENDPOINT_UNAVAILABLE", message: `${what} ยังไม่มีใน backend` }));
 
 /** 404 ของเส้นจริง — ต่างจาก notFound() ที่เป็นของโหมด mock */
 const notFoundLive = <T>(what: string): Promise<T> =>
@@ -466,16 +460,36 @@ export async function reviewExternalReferee(
 
 // ══════════════ ผู้ใช้และสิทธิ์ — FR-UM-05 ══════════════
 
-/** SDS GET /admin/users — ยังไม่มีใน origin/backend */
+/** BE_KN C2 admin-user contract. */
+async function readAdminPages<T>(path: string, limit = Infinity): Promise<T[]> {
+  const items: T[] = [];
+  for (let page = 1; ; page++) {
+    const data = await apiFetch<{ items: T[]; pagination: { totalPages: number } }>(`${path}${path.includes('?') ? '&' : '?'}page=${page}&pageSize=100`);
+    items.push(...data.items);
+    if (items.length >= limit || page >= data.pagination.totalPages) return items;
+  }
+}
+function scopeFromBackend(row: BackendAdminScopeDto): AdminScopeDto {
+  return { ...row, facultyName: null, createdBy: null };
+}
+function userFromBackend(row: BackendAdminUserDto): UserAdminViewDto {
+  const user = { id: row.id, fullName: row.fullName, avatarUrl: null };
+  return { user, email: row.email, userType: row.userType, facultyId: row.facultyId,
+    facultyName: row.facultyId === null ? null : `Faculty #${row.facultyId}`,
+    isSuspended: row.isSuspended, suspendedReason: row.suspendedReason,
+    suspendedUntil: row.suspendedUntil, suspendedCategoryLabel: row.suspendedCategoryLabel,
+    teamCount: null, warning: row.warning,
+    adminScopes: row.adminScope ? [{ ...row.adminScope, user, createdAt: '', createdBy: null, facultyName: null }] : [] };
+}
 export async function getUsersForAdmin(): Promise<{ items: UserAdminViewDto[] }> {
   if (USE_MOCK) return mockDelay({ items: storeUsersForAdmin() });
-  return unavailable<{ items: UserAdminViewDto[] }>("รายชื่อผู้ใช้สำหรับ Admin");
+  return { items: (await readAdminPages<BackendAdminUserDto>("/admin/users")).map(userFromBackend) };
 }
 
-/** GET /admin/scopes — ยังไม่มีใน backend (แถวใน admin_scopes ต้องเพิ่มด้วยมือใน DB) */
+/** BE_KN C2 admin-user contract. */
 export async function getAdminScopes(): Promise<{ items: AdminScopeDto[] }> {
   if (USE_MOCK) return mockDelay({ items: storeAdminScopes() });
-  return unavailable<{ items: AdminScopeDto[] }>("รายการสิทธิ์ผู้ดูแล (/admin/scopes)");
+  return { items: (await readAdminPages<BackendAdminScopeDto>("/admin/scopes")).map(scopeFromBackend) };
 }
 
 /** ให้สิทธิ์ผู้ดูแล — ยังไม่มีใน origin/backend */
@@ -486,7 +500,7 @@ export async function grantAdminScope(input: GrantAdminScopeRequest): Promise<Ad
     const row = storeAdminScopes().find((sc) => sc.user.id === input.userId);
     return row ? mockDelay(row) : notFound<AdminScopeDto>("สิทธิ์ที่เพิ่งให้");
   }
-  return unavailable<AdminScopeDto>("การให้สิทธิ์ผู้ดูแล");
+  return scopeFromBackend(await apiFetch<BackendAdminScopeDto>("/admin/scopes", { method: "POST", body: JSON.stringify(input) }));
 }
 
 /** เพิกถอนสิทธิ์ผู้ดูแล — ยังไม่มีใน origin/backend */
@@ -495,7 +509,7 @@ export async function revokeAdminScope(scopeId: TeamRef): Promise<void> {
     const blocked = writeRevokeAdminScope(scopeId);
     return blocked ? rejectWith<void>(blocked) : mockDelay(undefined);
   }
-  return unavailable<void>("การเพิกถอนสิทธิ์ผู้ดูแล");
+  await apiFetch(`/admin/scopes/${scopeId}`, { method: "DELETE" });
 }
 
 /**
@@ -512,16 +526,18 @@ export async function suspendUser(
     const row = storeUsersForAdmin().find((u) => u.user.id === Number(userId));
     return row ? mockDelay(row) : notFound<UserAdminViewDto>("ผู้ใช้หลังระงับ");
   }
-  return unavailable<UserAdminViewDto>("การระงับบัญชี");
+  return userFromBackend(await apiFetch<BackendAdminUserDto>(`/admin/users/${userId}/suspend`, { method: "PATCH", body: JSON.stringify({ suspended: input.suspend, reason: input.reason, category: input.category, days: input.days }) }));
 }
 
 // ══════════════ Audit — FR-TC-05 ══════════════
 
-/** GET /admin/audit-logs — ยังไม่มีใน backend (FR-TC-05) */
+/** BE_KN C2 admin-user contract. */
 export async function getAuditLogs(query: AuditLogQuery = {}): Promise<{ items: AuditLogDto[] }> {
   if (USE_MOCK) return mockDelay({ items: storeAuditLogs() });
-  void query;
-  return unavailable<{ items: AuditLogDto[] }>("บันทึกการตรวจสอบย้อนหลัง (/admin/audit-logs)");
+  const params = new URLSearchParams();
+  for (const key of ['entityType', 'entityId', 'userId'] as const) if (query[key] !== undefined) params.set(key, String(query[key]));
+  const rows = await readAdminPages<Omit<AuditLogDto, 'user'> & { actor: { id: number; fullName: string } }>(`/admin/audit-logs?${params}`, query.limit);
+  return { items: rows.slice(0, query.limit ?? rows.length).map(({ actor, ...row }) => ({ ...row, user: { ...actor, avatarUrl: null } })) };
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -725,4 +741,19 @@ export function rejectAmendmentRequest(
     method: "POST",
     body: JSON.stringify({ reason }),
   });
+}
+
+export interface LeaderTransferDto {
+  id: number; team: { id: number; name: string; sportTypeId: number };
+  currentLeader: { id: number; fullName: string; avatarUrl: string | null };
+  proposedLeader: { id: number; fullName: string; avatarUrl: string | null };
+  status: 'pending' | 'approved' | 'rejected'; createdAt: string;
+}
+export async function getLeaderTransfers(): Promise<{ items: LeaderTransferDto[] }> {
+  if (USE_MOCK) return mockDelay({ items: [] });
+  return { items: await readAdminPages<LeaderTransferDto>('/admin/team-requests/transfers') };
+}
+export async function reviewLeaderTransfer(id: number, approve: boolean, reason?: string): Promise<void> {
+  if (USE_MOCK) return mockDelay(undefined);
+  await apiFetch(`/admin/team-requests/${id}/${approve ? 'approve-transfer' : 'reject-transfer'}`, { method: 'POST', ...(approve ? {} : { body: JSON.stringify({ reason }) }) });
 }

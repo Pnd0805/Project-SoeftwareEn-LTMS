@@ -34,17 +34,12 @@ export const adminKeys = {
 
 // ══════════════ queries ══════════════
 
-/**
- * "คนที่ล็อกอินอยู่เป็นแอดมินไหม" — backend ไม่มี endpoint ตอบตรงๆ
- * จึงถามด้วยการลองเปิดคิวที่ต้องเป็นแอดมินถึงจะดูได้ (403 INSUFFICIENT_ADMIN_SCOPE = ไม่ใช่)
- * ใช้คิวคำขอจัดทัวร์นาเมนต์เพราะรับทั้งแอดมินระดับคณะและระดับมหาวิทยาลัย
- * โหมด mock ไม่ต้องถาม — หน้าจออ่าน role จาก store เอง
- */
+/** Probe a read route shared by Root, University and Faculty Admins. */
 export function useAdminAccess(enabled = true) {
   return useQuery({
     queryKey: ["admin", "access"] as const,
     queryFn: async () => {
-      await adminApi.getTournamentRequests();
+      await adminApi.getAdminScopes();
       return true;
     },
     enabled: !USE_MOCK && enabled,
@@ -373,6 +368,7 @@ export function useGrantAdminScope() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: adminKeys.scopes });
       qc.invalidateQueries({ queryKey: adminKeys.users });
+      qc.invalidateQueries({ queryKey: ["audit"] });
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
@@ -385,6 +381,7 @@ export function useRevokeAdminScope() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: adminKeys.scopes });
       qc.invalidateQueries({ queryKey: adminKeys.users });
+      qc.invalidateQueries({ queryKey: ["audit"] });
     },
   });
 }
@@ -400,9 +397,19 @@ export function useSuspendUser() {
       adminApi.suspendUser(v.userId, v.input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: adminKeys.users });
+      qc.invalidateQueries({ queryKey: ["audit"] });
       qc.invalidateQueries({ queryKey: ["teams"] });
       qc.invalidateQueries({ queryKey: ["team"] });
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
+}
+
+export function useLeaderTransfers() {
+  return useQuery({ queryKey: ['admin', 'leaderTransfers'], queryFn: adminApi.getLeaderTransfers, retry: retryPolicy });
+}
+export function useReviewLeaderTransfer() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (input: { id: number; approve: boolean; reason?: string }) => adminApi.reviewLeaderTransfer(input.id, input.approve, input.reason),
+    onSuccess: () => { for (const key of ['admin', 'team', 'teams', 'audit', 'notifications']) qc.invalidateQueries({ queryKey: [key] }); } });
 }

@@ -355,7 +355,7 @@ export async function requestOfficialStatus(
  */
 export async function transferLeader(
   teamId: TeamRef, input: TransferLeaderRequest,
-): Promise<TeamAdminRequestDto> {
+): Promise<TeamAdminRequestDto | { id: number; status: "pending" | "approved" | "rejected"; currentLeaderId: number; proposedLeaderId: number }> {
   if (USE_MOCK) {
     /* prototype โอนทันที — FR-TM-08 บอกว่าทีม Official ต้องผ่าน Admin ก่อน
        ซึ่ง store ยังไม่มีคำร้องชนิดนั้น จึงคืนสถานะ approved ตรงไปตรงมา */
@@ -374,7 +374,7 @@ export async function transferLeader(
         })
       : notFound<TeamAdminRequestDto>("ทีม");
   }
-  return unavailable<TeamAdminRequestDto>("การโอนสิทธิ์หัวหน้าทีม");
+  return apiFetch(`/teams/${teamId}/transfer-leader`, { method: "POST", body: JSON.stringify({ newLeaderId: input.targetUserId }) });
 }
 
 /** TODO(guide): POST /admin/team-requests/:id/review — Admin ตัดสิน */

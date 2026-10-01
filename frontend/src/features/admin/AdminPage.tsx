@@ -30,6 +30,8 @@ import { useTournaments } from '../../hooks/useTournament'
 import { useSportTypes } from '../../hooks/useReference'
 import type { OfficialTeamRequestDto } from '../../types/admin.dto'
 import { AdminRefereesTab } from './AdminRefereesTab'
+import { AdminScopesTab, AdminAuditTab } from './AdminGovernanceTab'
+import { LeaderTransfersTab } from './LeaderTransfersTab'
 import { AdminUsersTab } from './AdminUsersTab'
 import { AdminFeedbackTab } from './AdminFeedbackTab'
 
@@ -49,6 +51,9 @@ const TABS = [
   { key: 'filters', label: 'Hard-filter changes' },
   { key: 'tournaments', label: 'All tournaments' },
   { key: 'users', label: 'Users' },
+  { key: 'scopes', label: 'Admin rights' },
+  { key: 'transfers', label: 'Leader transfers' },
+  { key: 'audit', label: 'Audit logs' },
   { key: 'feedback', label: 'Feedback' },
 ]
 
@@ -544,6 +549,9 @@ export function AdminPage() {
       ) : null}
 
       {tab === 'users' ? <AdminUsersTab /> : null}
+      {tab === 'scopes' ? <AdminScopesTab /> : null}
+      {tab === 'transfers' ? <LeaderTransfersTab /> : null}
+      {tab === 'audit' ? <AdminAuditTab /> : null}
       {tab === 'feedback' ? USE_MOCK ? <Panel quiet><span className="sub">Feedback moderation uses the real backend.</span></Panel> : <AdminFeedbackTab /> : null}
     </>
   )

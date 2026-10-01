@@ -134,7 +134,7 @@ export function TeamPage() {
           {!USE_MOCK && isLeader && data.readinessStatus === 'Ready' ? (
             <EnterTournamentButton team={data} variant="primary" />
           ) : null}
-          {currentUser ? (
+          {currentUser && USE_MOCK ? (
             <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
               onClick={() => follow.toggle.mutate()} disabled={follow.toggle.isPending}>
               {follow.isFollowing ? 'Following' : 'Follow this squad'}
@@ -273,7 +273,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                     <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
                     <td>
                       <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                        {isLeader && !captain && USE_MOCK ? (
+                        {isLeader && !captain && (USE_MOCK || data.officialStatus === "Official") ? (
                           <button className="btn ghost" type="button" disabled={transfer.isPending}
                             onClick={() => { transfer.reset(); setNotice(null); setHanding(member) }}>
                             Hand over
@@ -324,13 +324,13 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
       <Modal open={!!handing} onClose={() => setHanding(null)} label="Hand over the captaincy"
         title={handing ? `Make ${handing.fullName} the captain?` : ''}>
         <ConfirmCard ok="Hand over" onCancel={() => setHanding(null)}
-          body={handing ? `${handing.fullName} becomes the team leader. You stay in the squad, but only the new leader can manage it.` : ''}
+          body={handing && !USE_MOCK ? `Request admin approval to make ${handing.fullName} the leader. The current leader keeps their rights until approval.` : handing ? `${handing.fullName} becomes the team leader. You stay in the squad, but only the new leader can manage it.` : ''}
           onConfirm={() => {
             if (!handing) return
             const target = handing
             setHanding(null)
             transfer.mutate({ targetUserId: target.userId }, {
-              onSuccess: () => setNotice({ kind: 'ok', text: `${target.fullName} is now the captain of ${data.name}.` }),
+              onSuccess: () => setNotice({ kind: 'ok', text: USE_MOCK ? `${target.fullName} is now the captain of ${data.name}.` : `Transfer request sent for ${target.fullName}. Waiting for admin approval.` }),
             })
           }} />
       </Modal>

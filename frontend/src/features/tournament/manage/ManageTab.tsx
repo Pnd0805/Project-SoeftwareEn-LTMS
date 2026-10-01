@@ -14,6 +14,7 @@ import { user } from '../../../shared/selectors'
 import { fmtDate, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import { feedbackOf } from '../CommunityTab'
+import { DeleteTournamentPanel } from './DeleteTournamentPanel'
 import { DrawPanel } from './DrawPanel'
 import { EntryFilterPanel } from './EntryFilterPanel'
 import { MatchRefereePlanner } from './MatchRefereePlanner'
@@ -76,7 +77,7 @@ export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
         active={active}
         onPick={k => navigate(`/t/${t.id}/manage/${k}`)}
       />
-      {active === 'progress' ? <SetupTrail t={t} onAppoint={() => setFinder(true)} /> : null}
+      {active === 'progress' ? <><SetupTrail t={t} onAppoint={() => setFinder(true)} />{!USE_MOCK ? <DeleteTournamentPanel t={t} /> : null}</> : null}
       {active === 'registrations' ? <RegistrationsPanel t={t} /> : null}
       {active === 'entry' ? <EntryFilterPanel t={t} /> : null}
       {/* จับสายเสร็จแล้วงานถัดไปคือหาคนคุมทุกนัด — R10: ต้องทำได้ตรงนี้เลย รวมถึงนัด
@@ -84,7 +85,8 @@ export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
           FR02 ให้เรียก แผงนี้จึงขึ้นเฉพาะทัวร์ที่มาจาก API) */}
       {active === 'draw' ? <DrawPanel t={t} /> : null}
       {active === 'draw' && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
-      {active === 'referees' ? <RefereePanel t={t} onAppoint={() => setFinder(true)} /> : null}
+      {active === 'referees' ? <><RefereePanel t={t} onAppoint={() => setFinder(true)} />
+        {!showDraw && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}</> : null}
       {active === 'feedback' ? USE_MOCK ? <FeedbackPanel t={t} /> : <LiveFeedbackPanel tournamentId={liveTournamentId!} /> : null}
       <RefereeFinder t={t} open={finder} onClose={() => setFinder(false)} />
     </>

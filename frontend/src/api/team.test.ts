@@ -108,9 +108,10 @@ describe("team writes", () => {
     expect(lastRequest()).toEqual({ path: "/teams/3", method: "PATCH", body: { name: "Byte Force II" } });
   });
 
-  it("leader transfer has no backend route, so it fails without calling fetch", async () => {
-    await expect(transferLeader(3, { targetUserId: 42 })).rejects.toMatchObject({ status: 501, code: "ENDPOINT_UNAVAILABLE" });
-    expect(fetchMock).not.toHaveBeenCalled();
+  it("requests approval for an Official team leader transfer", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 88, status: 'pending', currentLeaderId: 7, proposedLeaderId: 42 }));
+    expect(await transferLeader(3, { targetUserId: 42 })).toMatchObject({ id: 88, status: 'pending' });
+    expect(lastRequest()).toMatchObject({ path: '/teams/3/transfer-leader', method: 'POST', body: { newLeaderId: 42 } });
   });
 });
 

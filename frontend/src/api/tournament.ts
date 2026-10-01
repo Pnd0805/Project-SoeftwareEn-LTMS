@@ -195,7 +195,7 @@ export async function deleteTournament(id: number): Promise<void> {
     tournament.deletedAt = isoNow();
     return tournamentMockDelay(undefined);
   }
-  return unavailable<void>("การลบทัวร์นาเมนต์");
+  await apiFetch(`/tournaments/${id}`, { method: "DELETE" });
 }
 
 export async function addEligibilityRule(id: number, input: CreateEligibilityRuleRequest): Promise<EligibilityRuleDto> {
