@@ -10,7 +10,26 @@ export async function getMyNotifications(req: Request, res: Response) {
     }
     const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
     const unreadOnly = req.query['unread'] === 'true';
-    res.status(200).json(await NotificationService.listMyNotifications(req.user.user_id, unreadOnly, newpage, newpageSize, offset));
+    // OD-43 — ปกติซ่อนหมวดที่ผู้ใช้ปิดไว้ · includeMuted=true คือเปิดดูย้อนหลัง (history ไม่เคยถูกลบ)
+    const includeMuted = req.query['includeMuted'] === 'true';
+    res.status(200).json(await NotificationService.listMyNotifications(
+        req.user.user_id, unreadOnly, newpage, newpageSize, offset, includeMuted));
+}
+
+// ---- OD-43 ตั้งค่าแจ้งเตือนรายหมวด ----
+
+export async function getMyNotificationPrefs(req: Request, res: Response) {
+    if (!req.user) {
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    res.status(200).json(await NotificationService.getMyNotificationPrefs(req.user.user_id));
+}
+
+export async function updateMyNotificationPrefs(req: Request, res: Response) {
+    if (!req.user) {
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    res.status(200).json(await NotificationService.updateMyNotificationPrefs(req.user.user_id, req.body));
 }
 
 export async function markNotificationRead(req: Request, res: Response) {

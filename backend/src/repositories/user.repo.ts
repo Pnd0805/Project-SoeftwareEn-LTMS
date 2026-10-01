@@ -82,6 +82,26 @@ export async function update(userId : number , input : UpdateMeInput) : Promise<
     return result.affectedRows;
 }
 
+// OD-43 — ตั้งค่าแจ้งเตือนรายหมวด · คอลัมน์ `notification_prefs` มีอยู่ใน schema แล้ว จึงไม่มี migration
+// เก็บเป็น JSON object ของหมวดที่ "ปิด" เท่านั้นก็พอ แต่เก็บครบทุกคีย์ให้อ่านง่ายกว่าเวลา debug
+
+/** อ่านเฉพาะคอลัมน์เดียว — ไม่ใช้ findById เพราะมันเป็น SELECT * ทั้งแถวเพื่อค่าตัวเดียว */
+export async function findNotificationPrefs(userId : number) : Promise<unknown>{
+    const [ rows ] = await pool.query<({ notification_prefs : unknown } & RowDataPacket)[]>(
+        'SELECT notification_prefs FROM users WHERE user_id = ?' , [userId]);
+
+    return rows[0]?.notification_prefs ?? null;
+}
+
+/** เขียนทับทั้งก้อน (ฝั่ง service รวมค่าเดิมกับค่าใหม่มาให้แล้ว) · คืน affectedRows ไว้ให้ service เช็คว่ามี user จริง */
+export async function updateNotificationPrefs(userId : number , prefs : Record<string , boolean>) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        'UPDATE users SET notification_prefs = ? , updated_at = NOW() WHERE user_id = ?' ,
+        [ JSON.stringify(prefs) , userId ]);
+
+    return result.affectedRows;
+}
+
 // C2 — GET /admin/users · LEFT JOIN admin_scopes เพื่อคืน adminScope ติดมาด้วย (ไม่ SELECT * เพราะ users/admin_scopes มี faculty_id ชื่อชนกัน)
 export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason' | 'suspended_until' | 'suspended_category'> & {
     admin_scope_id : number | null , admin_scope_type : 'faculty' | 'university_wide' | 'root' | null , admin_scope_faculty_id : number | null

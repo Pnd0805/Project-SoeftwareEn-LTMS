@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../../repositories/user.repo.js', () => ({
+  findNotificationPrefs: vi.fn(async () => null),      // null = ยังไม่เคยตั้งค่า → เปิดทุกหมวด
+  updateNotificationPrefs: vi.fn(async () => 1),
+}));
+
 vi.mock('../../repositories/notification.repo.js', () => ({
   insertNotification: vi.fn(),
   findByUser: vi.fn(),
@@ -46,7 +51,7 @@ describe('listMyNotifications (C1-ก GET /me/notifications)', () => {
 
     const result = await NotificationService.listMyNotifications(5, false, 1, 20, 0);
 
-    expect(NotificationRepo.findByUser).toHaveBeenCalledWith(5, false, 0, 20);
+    expect(NotificationRepo.findByUser).toHaveBeenCalledWith(5, false, 0, 20, []);
     expect(result.items[0]).toEqual({
       id: 1, type: 'application_decided', title: 'ใบสมัครได้รับการอนุมัติ',
       message: 'ใบสมัครของทีม "ทีมเสือ" ได้รับการอนุมัติแล้ว',
@@ -64,7 +69,7 @@ describe('listMyNotifications (C1-ก GET /me/notifications)', () => {
 
     await NotificationService.listMyNotifications(5, true, 2, 10, 10);
 
-    expect(NotificationRepo.findByUser).toHaveBeenCalledWith(5, true, 10, 10);
+    expect(NotificationRepo.findByUser).toHaveBeenCalledWith(5, true, 10, 10, []);
   });
 });
 
