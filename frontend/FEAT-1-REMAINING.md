@@ -2514,6 +2514,21 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
   unchecked-member marker, recovery copy and corrected submission/reload.
 
 
+## 2026-10-02: Referee start and check-in walkover warning
+
+- [x] Verified current `BE_KN@cd71437` M10 source: one squad below
+  `sport_types.min_members` completes as a walkover; both below returns
+  `409 INSUFFICIENT_CHECKINS`. Frontend start calls M10 directly.
+- [x] Start requires confirmation with an explicit immediate-walkover warning;
+  cancellation sends no request. Both-squads-short errors explain that start
+  was refused and suggest waiting for check-ins or organizer rescheduling.
+- [x] MatchPage tests pass (18 cases), TypeScript build check and scoped lint pass.
+- [ ] Real-browser acceptance: cancel, confirm with both squads ready, confirm
+  with one squad short (walkover), and confirm with both short (409, no start).
+- Backend rule remains authoritative. Returning 409 when only one squad is
+  short would require a backend rule change; this frontend change adds warning
+  and confirmation without changing the match outcome contract.
+
 ## 2026-10-01: Inbox, moderation, audit and match MVP UI follow-up
 
 - [x] Inbox groups every notification on the current server page into named

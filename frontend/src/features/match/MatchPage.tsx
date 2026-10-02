@@ -85,6 +85,7 @@ const lifecycleError = (error: unknown) => {
   if (code === 'NOT_REFEREE') return 'Only a referee assigned to this match can do that.'
   if (code === 'INVALID_STATUS_TRANSITION') return 'This match has already moved past that step. Reload to see where it stands.'
   if (code === 'INSUFFICIENT_REFEREES') return 'This match still needs its referees in place before it can start.'
+  if (code === 'INSUFFICIENT_CHECKINS') return 'Both squads are below the minimum number of checked-in players. The match has not started. Wait for more players to check in or ask the organizer to reschedule.'
   if (code === 'CHECKIN_NOT_OPEN') return 'Check-in is not open for this match.'
   if (code === 'MATCH_TEAMS_INCOMPLETE') return 'This match is still waiting on an earlier round for one of its places.'
   if (code === 'TEAMS_PRESENT') return 'Both squads met the minimum, so this is not a no-show — a referee starts it.'
@@ -110,6 +111,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
   const [confirmForfeit, setConfirmForfeit] = useState(false)
   /* กดจบก็ย้อนไม่ได้เหมือนกัน (ไม่มีเส้นพากลับไป in_progress) — ยืนยันอีกชั้น */
   const [confirmFinish, setConfirmFinish] = useState(false)
+  const [confirmStart, setConfirmStart] = useState(false)
 
   if (!isOrganizer && !isReferee) return null
   /* OD-26 — `in_progress` ต้องมีแผงนี้ด้วย เพราะปุ่ม "จบการแข่งขัน" อยู่ที่นี่ เดิมแผงหายทันที
@@ -165,13 +167,32 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
           {isReferee ? (
             <>
               <div className="sub">
-                Starting the match needs every referee in place and each squad at its sport&apos;s
-                minimum. A squad short of it loses by walkover.
+                Starting checks each squad against its sport&apos;s minimum number of checked-in
+                players. If only one squad meets it, that squad wins by walkover immediately.
+                If neither meets it, the server refuses to start the match.
               </div>
-              <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-                disabled={busy} onClick={() => start.mutate()}>
-                {start.isPending ? 'Starting…' : 'Start the match'}
-              </button>
+              {confirmStart ? (
+                <>
+                  <Banner kind="warn">
+                    <b>Starting can decide a walkover immediately.</b> Confirm that check-in is
+                    complete for both squads. If only one squad meets the minimum, the other loses
+                    and the match ends. This cannot be undone from here.
+                  </Banner>
+                  <span className="hstack">
+                    <button className="btn primary" type="button" disabled={busy}
+                      onClick={() => { setConfirmStart(false); start.mutate() }}>
+                      Yes — start and check attendance
+                    </button>
+                    <button className="btn ghost" type="button" disabled={busy}
+                      onClick={() => setConfirmStart(false)}>Cancel</button>
+                  </span>
+                </>
+              ) : (
+                <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
+                  disabled={busy} onClick={() => setConfirmStart(true)}>
+                  {start.isPending ? 'Starting…' : 'Start the match'}
+                </button>
+              )}
             </>
           ) : null}
 

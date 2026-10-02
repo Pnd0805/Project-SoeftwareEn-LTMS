@@ -1460,7 +1460,9 @@ export function forfeitMatch(matchId: MatchRef): Promise<BackendForfeitResultDto
   return apiFetch(`/matches/${matchId}/forfeit`, { method: "POST" });
 }
 
-/** POST /matches/:id/start — กรรมการของแมตช์เท่านั้น · ต้องมีคนเช็คอินแล้วฝั่งละ 1 คน */
+/** POST /matches/:id/start — referee only; both squads need sport.min_members successful check-ins.
+ * One squad short: completes as a walkover. Both short: 409 INSUFFICIENT_CHECKINS.
+ */
 export function startMatch(matchId: number): Promise<{ id: number; status: string }> {
   return apiFetch(`/matches/${matchId}/start`, { method: "POST" });
 }

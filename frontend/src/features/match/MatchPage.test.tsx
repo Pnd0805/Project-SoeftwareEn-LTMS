@@ -23,6 +23,7 @@ const verifyState = { ...idle, mutate: vi.fn() }
 const disputeState = { ...idle, mutate: vi.fn() }
 const resolveState = { ...idle, mutate: vi.fn() }
 const finishState = { ...idle, mutate: vi.fn() }
+const startState = { ...idle, mutate: vi.fn() }
 const submitResult = vi.fn()
 
 let match: MatchDto
@@ -70,7 +71,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useSetLivestream: () => ({ ...idle, mutate: vi.fn() }),
   useOpenMatchCheckin: () => ({ ...idle, mutate: vi.fn() }),
   useCloseMatchCheckin: () => ({ ...idle, mutate: vi.fn() }),
-  useStartMatch: () => ({ ...idle, mutate: vi.fn() }),
+  useStartMatch: () => startState,
   useFinishMatch: () => finishState,
   useForfeitMatch: () => ({ ...idle, mutate: vi.fn() }),
   useMatchStats: () => ({ data: { items: [] }, isPending: false, isError: false }),
@@ -90,6 +91,7 @@ const renderPage = () => render(
 
 beforeEach(() => {
   vi.clearAllMocks()
+  Object.assign(startState, idle)
   match = baseMatch()
   result = baseResult()
 })
@@ -218,6 +220,41 @@ describe('resolving a dispute', () => {
  * OD-26 — "จบการแข่งขัน" เป็นขั้นบังคับก่อนส่งผล (รายงาน 29 ก.ย.: สมหญิงกรอกสกอร์แมตช์ 13
  * แล้วได้ "Could not save the result. ต้องกดจบการแข่งขันก่อน" โดยไม่มีปุ่มจบให้กดที่ไหนเลย)
  */
+describe('starting a match with possible no-shows', () => {
+  beforeEach(() => {
+    match.status = 'checkin_open'
+    match.resultStatus = null
+    result = undefined
+  })
+
+  it('warns about immediate walkover and allows cancellation without starting', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Start the match' }))
+    expect(startState.mutate).not.toHaveBeenCalled()
+    expect(screen.getByText(/Starting can decide a walkover immediately/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(startState.mutate).not.toHaveBeenCalled()
+    expect(screen.queryByText(/Starting can decide a walkover immediately/)).not.toBeInTheDocument()
+  })
+
+  it('sends the start request only after confirmation', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Start the match' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes — start and check attendance' }))
+    expect(startState.mutate).toHaveBeenCalledTimes(1)
+  })
+
+  it('explains that both squads being short blocks start and offers recovery', () => {
+    startState.isError = true
+    startState.error = new ApiError(409, {
+      code: 'INSUFFICIENT_CHECKINS', message: 'ทั้งสองทีมมีผู้เล่นเช็คอินไม่ถึงขั้นต่ำ',
+    }) as unknown as null
+    renderPage()
+    expect(screen.getByText(/Both squads are below the minimum/)).toBeInTheDocument()
+    expect(screen.getByText(/ask the organizer to reschedule/)).toBeInTheDocument()
+  })
+})
+
 describe('finishing a match', () => {
   const asRefereeOf = (status: 'in_progress' | 'finished') => {
     match = baseMatch()
