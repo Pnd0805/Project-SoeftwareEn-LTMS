@@ -22,6 +22,11 @@ export type MeDto = {
   notificationPrefs : Record<string , boolean> | null,
   /** OD-46 — ค่าสวิตช์ของตัวเอง (หน้าตั้งค่าต้องรู้สถานะปัจจุบันเพื่อ render ปุ่ม) · แก้ผ่าน U02 */
   showProfileStats : boolean,
+  /**
+   * OD-53 — ยืนยันอีเมลแล้วหรือยัง · อยู่ใน /me (ของตัวเอง) ไม่ใช่ UserPublicDto โดยเจตนา
+   * ไม่ใช่ข้อมูลที่คนอื่นควรเห็น และไม่ได้ให้สิทธิ์อะไรเพิ่ม ⇒ ใช้ขึ้นแบนเนอร์ชวนยืนยันเท่านั้น
+   */
+  emailVerified : boolean,
   createdAt : string,
   /**
    * FE-viewer-admin-scope-unknown — สิทธิ์แอดมินของ *ตัวผู้เรียกเอง* · null = ไม่ใช่แอดมิน
@@ -121,6 +126,7 @@ export function toMeDto(row: UserRow , admin : AdminScopeRow | null = null): MeD
     totalPoints: row.total_points,
     notificationPrefs: row.notification_prefs,
     showProfileStats: row.show_profile_stats === 1,
+    emailVerified: row.email_verified === 1,
     createdAt: row.created_at.toISOString()
   };
 }

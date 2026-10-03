@@ -1,19 +1,62 @@
-import { randomBytes } from 'crypto';
+import { randomBytes , randomInt } from 'crypto';
 import * as userRepo from '../repositories/user.repo.js';
 import * as passwordResetRepo from '../repositories/passwordReset.repo.js';
+import * as emailVerifyRepo from '../repositories/emailVerification.repo.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { signToken } from '../utils/token.js';
 import { AppError } from '../utils/AppError.js';
 import type { RegisterInput } from '../schemas/auth.schema.js';
 import { authConfig } from '../config/auth.js';
 import { isCurrentlySuspended , suspendedError } from '../utils/suspension.js';
-import { sendPasswordResetEmail } from './mail.service.js';
+import { sendPasswordResetEmail , sendEmailVerificationOtp } from './mail.service.js';
 
 import { findFacultyById } from '../repositories/faculty.repo.js';
 import { findDepartmentInFaculty } from '../repositories/department.repo.js';
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;   // 1 ชม. — ตรงกับที่เขียนในเมล (TASK-password-recovery §4)
 const RESET_RATE_LIMIT_PER_HOUR = 3;         // GUIDE/06:503
+
+// ═══ OD-53 · ยืนยันอีเมลด้วย OTP 6 หลัก ═══
+const OTP_TTL_MINUTES = 10;                  // สั้นกว่า reset token (1 ชม.) เพราะของมีแค่ 6 หลัก เดาได้
+const OTP_TTL_MS = OTP_TTL_MINUTES * 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;                  // กรอกผิดครบ 5 = ใบนั้นตาย ขอใหม่เท่านั้น
+const OTP_RATE_LIMIT_PER_HOUR = 3;           // ตัวเลขเดียวกับ reset — ไม่มีเหตุให้คนจำสองตัวเลข
+
+/**
+ * ★ randomInt ไม่ใช่ Math.random — ต้องเป็น CSPRNG เพราะสิ่งนี้คุ้มกันการเข้าถึงบัญชี
+ * ★ randomInt(0 , 1000000) ไม่ใช่ randomBytes % 1000000 — modulo ของ 2^n ด้วย 10^6 ไม่ลงตัว
+ *   ทำให้เลขช่วงต้นๆ มีโอกาสออกมากกว่า (modulo bias) ⇒ เดาได้ง่ายกว่า 1 ในล้าน
+ * ★ padStart — ต้องยอมรับเลขที่ขึ้นต้นด้วยศูนย์ (007431) ไม่งั้นพื้นที่เดาเหลือแค่ 9 แสน
+ */
+function generateOtp() : string {
+  return String(randomInt(0 , 1_000_000)).padStart(6 , '0');
+}
+
+/**
+ * ออก OTP ใบใหม่ + ส่งเมล · คืน true เมื่อเมลออกจริง
+ *
+ * ★ ไม่โยน error ต่อเมื่อส่งเมลพัง แต่ **คืนค่าว่าพัง** — ต่างจาก forgotPassword()
+ *   ที่กลืนเงียบๆ เพราะที่นั่นการบอกว่าส่งไม่สำเร็จ = บอกว่าอีเมลนี้มีอยู่ในระบบ
+ *   แต่ register บอกอยู่แล้วว่าอีเมลซ้ำ (EMAIL_ALREADY_REGISTERED) ⇒ ไม่มีความลับให้รักษาตรงนี้
+ *   การเงียบข้อนี้จะกลายเป็น "รอเมลที่ไม่มาโดยไม่รู้ว่าไม่มา" ซึ่งแย่กว่าไม่ปิดอะไรเลย
+ * ★ ห้ามคืนเลข OTP ออกทาง response — เลขอยู่ในเมลเท่านั้น (นั่นคือสิ่งที่มันพิสูจน์)
+ */
+async function issueEmailVerificationOtp(userId : number , email : string , fullName : string) : Promise<boolean>{
+  const code = generateOtp();
+  const codeHash = await hashPassword(code);
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+  await emailVerifyRepo.invalidateAllForUser(userId);   // ไม่ควรมีหลายใบใช้ได้พร้อมกัน
+  await emailVerifyRepo.create(userId , codeHash , expiresAt);
+
+  try{
+    await sendEmailVerificationOtp(email , fullName , code , OTP_TTL_MINUTES);
+    return true;
+  }catch(err){
+    console.error('sendEmailVerificationOtp failed:' , err);
+    return false;
+  }
+}
 
 
 export async function register(input: RegisterInput) {
@@ -41,7 +84,85 @@ export async function register(input: RegisterInput) {
   const newId = await userRepo.create({fullName : input.fullName , email : input.email , passwordHash : passwordHash ,
     gender : input.gender , birthDate : input.birthDate , facultyId : input.facultyId , departmentId : input.departmentId , year : input.year});
 
-  return {id : newId , fullName : input.fullName , email : input.email}
+  // OD-53 — ส่ง OTP หลังสร้างบัญชีสำเร็จแล้ว · สมัครสำเร็จไม่ขึ้นกับผลการส่งเมล
+  // ถ้าส่งเมลก่อนแล้วค่อยสร้าง user เวลาที่ SMTP ล่มจะกลายเป็น "สมัครไม่ได้เพราะเมลพัง"
+  // ซึ่งขัดกับมติของ OD-53 ที่ว่าการยืนยันห้ามบล็อกการสมัคร
+  const emailVerificationSent = await issueEmailVerificationOtp(newId , input.email , input.fullName);
+
+  return {id : newId , fullName : input.fullName , email : input.email , emailVerificationSent}
+}
+
+
+// ★ ข้อความเดียวทุกเคสที่ผิด (ไม่มีอีเมล/เลขผิด/หมดอายุ/ใช้แล้ว/กรอกผิดครบโควตา)
+// เหตุเดียวกับ INVALID_RESET_TOKEN — แยกข้อความ = บอกคนเดาว่าเดาใกล้แค่ไหน
+// ข้อความบอกวิธีแก้ไว้เลย ("กดขอรหัสใหม่") ⇒ FE ไม่ต้องแยก error code เพื่อบอกผู้ใช้ว่าต้องทำอะไรต่อ
+const INVALID_OTP = () => new AppError(400 , 'INVALID_OTP' ,
+  'รหัสยืนยันไม่ถูกต้องหรือหมดอายุ กรุณากดขอรหัสใหม่');
+
+/**
+ * AV01 · POST /auth/verify-email — รับ { email , code } ไม่ต้องล็อกอิน
+ *
+ * ★ ทำไมไม่ใช้ requireAuth: register ไม่คืน accessToken ⇒ คนที่เพิ่งสมัครเสร็จยังไม่มี token
+ *   ถ้าบังคับให้ล็อกอินก่อน จะกลายเป็น "สมัคร → ล็อกอิน → ค่อยกรอกรหัส" ซึ่งช้ากว่าเดิมหนึ่งขั้น
+ *   และอีเมลในก้อนก็ไม่ใช่ความลับอยู่แล้ว — register บอกตรงๆ ว่าอีเมลไหนถูกใช้สมัครแล้ว
+ * ★ ยืนยันซ้ำคืน 200 เหมือนเดิม (idempotent) — กดสองครั้ง/รีเฟรชหน้าไม่ควรเห็น error
+ */
+export async function verifyEmail(email : string , code : string) : Promise<{ message : string , emailVerified : true }>{
+  const SUCCESS = { message : 'ยืนยันอีเมลสำเร็จ' , emailVerified : true as const };
+
+  const user = await userRepo.findByEmail(email);
+  if(!user){
+    throw INVALID_OTP();
+  }
+  if(user.email_verified === 1){
+    return SUCCESS;     // ยืนยันไปแล้ว — ไม่ต้องมี OTP ที่ใช้ได้อยู่ก็ถือว่าสำเร็จ
+  }
+
+  // รู้ user_id จากอีเมลแล้ว ⇒ กวาดแค่ใบของคนนี้ (ต่างจาก resetPassword ที่ต้องกวาดทุกคน)
+  // ใบที่กรอกผิดครบ OTP_MAX_ATTEMPTS จะไม่อยู่ในผลเลย (กรองที่ SQL)
+  const candidates = await emailVerifyRepo.findActiveByUser(user.user_id , OTP_MAX_ATTEMPTS);
+
+  for(const row of candidates){
+    if(await verifyPassword(code , row.code_hash)){
+      await emailVerifyRepo.markUsed(row.email_verification_otp_id);
+      await userRepo.markEmailVerified(user.user_id);
+      await emailVerifyRepo.invalidateAllForUser(user.user_id);   // ล้างใบที่เหลือทั้งหมด
+      return SUCCESS;
+    }
+  }
+
+  // กรอกผิด ⇒ นับขึ้นทุกใบที่เปิดอยู่ (ปกติมีใบเดียว) — ครบโควตาแล้วใบนั้นตาย
+  // ★ ถ้าไม่นับ ด่านกันเดาหายไปทั้งหมด — 6 หลักยิงรัวไม่จำกัดคือเดาออกได้ในหลักล้านครั้ง
+  for(const row of candidates){
+    await emailVerifyRepo.bumpAttempt(row.email_verification_otp_id);
+  }
+
+  throw INVALID_OTP();
+}
+
+/**
+ * AV02 · POST /auth/resend-verification — ขอรหัสใหม่
+ *
+ * คืน 200 เหมือนกันหมดทั้งเคสไม่มีอีเมล / ยืนยันไปแล้ว / ส่งสำเร็จ
+ * ยกเว้น 429 เมื่อเกินโควตา — รู้ดีว่าเป็นการบอกว่าอีเมลนี้มีอยู่จริง แต่รับได้เพราะ
+ * register บอกอยู่แล้วว่าอีเมลไหนซ้ำ ⇒ ข้อมูลนั้นหาได้ง่ายกว่าอยู่แล้วด้วย endpoint เดียว
+ * การเงียบ 429 ไว้จึงไม่ได้ปิดอะไรเลย แต่ทำให้คนกดรันๆ เข้าใจว่าส่งสำเร็จทั้งที่ไม่ส่ง
+ */
+export async function resendEmailVerification(email : string) : Promise<{ message : string }>{
+  const SUCCESS = { message : 'ถ้าอีเมลนี้ยังรอยืนยัน เราได้ส่งรหัสใหม่ไปให้แล้ว' };
+
+  const user = await userRepo.findByEmail(email);
+  if(!user || user.email_verified === 1){
+    return SUCCESS;
+  }
+
+  const issuedCount = await emailVerifyRepo.countIssuedWithinLastHour(user.user_id);
+  if(issuedCount >= OTP_RATE_LIMIT_PER_HOUR){
+    throw new AppError(429 , 'RATE_LIMITED' , 'ขอรหัสใหม่ถี่เกินไป กรุณารอสักครู่แล้วลองใหม่');
+  }
+
+  await issueEmailVerificationOtp(user.user_id , user.email , user.full_name);
+  return SUCCESS;
 }
 
 

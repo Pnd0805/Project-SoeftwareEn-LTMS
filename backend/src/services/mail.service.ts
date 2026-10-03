@@ -15,3 +15,28 @@ export async function sendPasswordResetEmail(to : string , fullName : string , r
             + `ถ้าคุณไม่ได้เป็นคนขอ ไม่ต้องทำอะไร บัญชีของคุณยังปลอดภัย`,
     });
 }
+
+// OD-53 — ส่งเลข 6 หลัก ไม่ส่งลิงก์
+// เจตนาที่เลือก OTP แทนลิงก์: ลิงก์ต้องมี route ฝั่ง FE รองรับ และตอนนี้ feat/1
+// ยังไม่มีแม้หน้า /reset-password เลย (แล้ว <Route path="*"> ของเขาเด้งไปหน้าแรก)
+// ★ เลขกรอกบนหน้าเดิม ⇒ ไม่พึ่ง FRONTEND_URL เลย ไม่ต้องรอใครตอบว่า path อะไร
+export async function sendEmailVerificationOtp(to : string , fullName : string , code : string , ttlMinutes : number) : Promise<void>{
+    await transport.sendMail({
+        from: env.MAIL_FROM,
+        to,
+        subject: `รหัสยืนยันอีเมล ${code} — LTMS`,
+        text: `สวัสดีคุณ ${fullName}
+
+`
+            + `รหัสยืนยันอีเมลของคุณคือ ${code}
+
+`
+            + `กรอกรหัสนี้ในหน้าที่คุณสมัครไว้ รหัสหมดอายุใน ${ttlMinutes} นาที
+
+`
+            + `ยังใช้งานระบบได้ปกติระหว่างที่ยังไม่ได้ยืนยัน การยืนยันช่วยให้กู้รหัสผ่านได้ถ้าวันหนึ่งลืมรหัส
+
+`
+            + `ถ้าคุณไม่ได้เป็นคนสมัคร ไม่ต้องทำอะไร`,
+    });
+}

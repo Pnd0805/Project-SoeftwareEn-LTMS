@@ -21,19 +21,32 @@
 
 ---
 
-# 1. Auth — 5 endpoint
+# 1. Auth — 7 endpoint
 
-**ไฟล์:** `routes/auth.routes.ts` · `controllers/auth.controller.ts` · `services/auth.service.ts` · `services/mail.service.ts` · `config/mail.ts` · `repositories/user.repo.ts` · `repositories/passwordReset.repo.ts` · `schemas/auth.schema.ts`
+**ไฟล์:** `routes/auth.routes.ts` · `controllers/auth.controller.ts` · `services/auth.service.ts` · `services/mail.service.ts` · `config/mail.ts` · `repositories/user.repo.ts` · `repositories/passwordReset.repo.ts` · `repositories/emailVerification.repo.ts` · `schemas/auth.schema.ts`
 
 ⚠️ **รหัส A04/A05 ด้านล่างชนกับ A04/A05 ของหมวด 11 Admin** (ทั้งคู่ขึ้นต้นด้วย "A" คนละความหมาย: Auth vs Admin) — ชนกันอยู่ก่อนแล้วจากตอนที่ทำ B-item Admin ไม่ได้เกิดจากการเพิ่มนี้ ไม่ได้แก้ให้ในรอบนี้เพราะ A05 ของ Admin ถูกอ้างอิงไขว้จาก A06 แล้ว (เสี่ยงพังจุดอื่น) — ควรเลือกสคีมา ID ใหม่ทั้งไฟล์วันหลัง
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
-| A01 | `POST /auth/register` | — | สมัครสมาชิก · เช็คอีเมลซ้ำ · hash รหัสผ่าน | `fullName, email, password, gender, birthDate, facultyId, departmentId, year` | **201** `{ id, fullName, email }` |
+| A01 | `POST /auth/register` | — | สมัครสมาชิก · เช็คอีเมลซ้ำ · hash รหัสผ่าน · **4 ต.ค. · OD-53**: ออก OTP ยืนยันอีเมลแล้วส่งเมลให้ทันที — **สมัครสำเร็จไม่ขึ้นกับผลการส่งเมล** (เมลพังก็ยัง 201 แต่ `emailVerificationSent:false`) · `users.email_verified` เริ่มที่ `0` และ **ยังไม่คุมสิทธิ์อะไรเลย** ไม่ยืนยันก็ใช้งานได้ครบทุกอย่าง | `fullName, email, password, gender, birthDate, facultyId, departmentId, year` | **201** `{ id, fullName, email, emailVerificationSent }` |
 | A02 | `POST /auth/login` | — | ล็อกอิน · เช็คสถานะระงับ **ที่คิดเวลาแล้ว** (`is_suspended` + `suspended_until`) · ออก JWT | `email, password` | **200** `{ accessToken, expiresIn, tokenType, user{id,fullName,userType} }` |
 | A03 | `POST /auth/logout` | Auth | ไม่ทำอะไร (ไม่มี session ฝั่ง server) | — | **204** |
 | A04 | `POST /auth/forgot-password` | — | ขอลิงก์ตั้งรหัสผ่านใหม่ · **ตอบ 200 เหมือนกันเป๊ะทุกกรณี** (มีอีเมล/ไม่มี/ถูกระงับ) กัน enumeration · อีเมลมีจริงและไม่ถูกระงับเท่านั้นถึงจะสร้าง token จริงและส่งเมล (SMTP ล่ม → log แล้วยังตอบ 200 เหมือนเดิม ไม่ throw ต่อ) · rate limit 3 ครั้ง/ชม./อีเมล (นับจาก `password_reset_tokens.expires_at` ย้อนกลับ ไม่มีคอลัมน์ `created_at`) เกิน → **429** `RATE_LIMITED` · ออก token ใหม่ = ล้าง token เก่าของคนนั้นทั้งหมดทันที (`used_at=NOW()`) · token ดิบ = `randomBytes(32).toString('hex')` เก็บลงฐานเป็น bcrypt hash เท่านั้น (ห้ามเก็บ/log ดิบ) อายุ 1 ชม. | `{ email }` | **200** `{ message }` |
 | A05 | `POST /auth/reset-password` | — | ใช้ token จากอีเมลตั้งรหัสผ่านใหม่ · รับแค่ token ดิบ (ไม่มี email/userId มาด้วย) → ต้องกวาดทุกแถวที่ `used_at IS NULL AND expires_at > NOW()` มา `verifyPassword` ทีละแถว (bcrypt hash ไม่เหมือนกันทุกครั้งแม้ปลอดภัยเทียบ plain เดียวกัน) · token ไม่มี/ผิด/ถูกใช้แล้ว/หมดอายุ/บัญชีถูกระงับ **รวมเป็นข้อความเดียวกันหมด** — ห้ามแยก ไม่งั้นบอกคนเดา token ว่าเดาใกล้แค่ไหน · สำเร็จ → hash รหัสใหม่ทับ `users.password_hash` + ล้าง token ที่เหลือของคนนั้นทั้งหมด (รวมใบที่เพิ่งใช้) · **ไม่คืน `accessToken`** ต้อง login ใหม่ | `{ token, newPassword }` | **200** `{ message }` / **400** `INVALID_RESET_TOKEN` / **400** `VALIDATION_FAILED` (รหัสใหม่ไม่ผ่านกฎ) |
+
+| AV01 | `POST /auth/verify-email` | — | **4 ต.ค. · OD-53** ยืนยันอีเมลด้วย OTP 6 หลัก · **ไม่ต้องล็อกอิน** เพราะ A01 ไม่คืน `accessToken` — คนที่เพิ่งสมัครยังไม่มี token · รู้ `user_id` จากอีเมลที่ส่งมา ⇒ กวาดแค่ใบของคนนั้น (ต่างจาก A05 ที่ต้องกวาดทุกคน) · กรอกผิด = `attempt_count + 1` ที่ฐาน **ครบ 5 ครั้งใบนั้นตายถาวร** ต้องขอใหม่ (AV02) — ใบที่ตายแล้วถูกกรองออกใน SQL ไม่ใช่ที่ service · ไม่มีอีเมล/เลขผิด/หมดอายุ/ใช้แล้ว/ครบโควตา **รวมเป็นข้อความเดียวกันหมด** เหตุเดียวกับ A05 · สำเร็จ → `users.email_verified=1` + ปิดใบนั้น + ล้างใบที่เหลือ · **ยืนยันซ้ำ → 200 เหมือนเดิม** (idempotent) กดสองครั้ง/รีเฟรชหน้าไม่เห็น error | `{ email, code }` (`code` = **string** ไม่ใช่ number — `007431` ต้องใช้ได้) | **200** `{ message, emailVerified:true }` / **400** `INVALID_OTP` / **400** `VALIDATION_FAILED` (`code` ไม่ใช่ตัวเลข 6 หลัก) |
+| AV02 | `POST /auth/resend-verification` | — | **4 ต.ค. · OD-53** ขอ OTP ใบใหม่ · **ตอบ 200 เหมือนกันทั้งเคสไม่มีอีเมล / ยืนยันไปแล้ว / ส่งสำเร็จ** · ออกใบใหม่ = ล้างใบเก่าทั้งหมดก่อนทันที ⇒ **ใบเก่าใช้ไม่ได้อีกเลย** · rate limit 3 ครั้ง/ชม./อีเมล นับจาก **`email_verification_otps.created_at`** ไม่ใช่ `expires_at` (ต่างจาก A04 เพราะ TTL 10 นาที ≠ หน้าต่าง 1 ชม.) เกิน → **429** `RATE_LIMITED` · ⚠️ **ใบที่ A01 ออกให้ตอนสมัครนับเป็นใบที่ 1** ⇒ เหลือขอใหม่ได้อีก 2 ครั้งในชั่วโมงแรก | `{ email }` | **200** `{ message }` / **429** `RATE_LIMITED` |
+
+> ⚠️ **AV01/AV02 ใช้รหัส `AV` ไม่ใช่ `A06`/`A07` โดยเจตนา** — หมวด 11 Admin มี `A06`/`A07` อยู่แล้ว ถ้าใช้เลขต่อจาก A05 จะกลายเป็นเลขชนกัน 4 คู่แทน 2 คู่ตามคำเตือนข้างบน
+
+> **OTP เป็นเลข 6 หลัก ไม่ใช่ลิงก์ในเมล โดยเจตนา** — ลิงก์ต้องมี route ฝั่ง FE รองรับ แต่ `feat/1` ยังไม่มีแม้หน้า `/reset-password`
+> และมี `<Route path="*" element={<Navigate to="/" replace />} />` ที่จะเด้งลิงก์ในเมลไปหน้าแรกแบบเงียบ ๆ
+> ⇒ **เลขกรอกบนหน้าเดิม ไม่พึ่ง `FRONTEND_URL` เลย** ไม่ต้องรอ FE ตอบว่า path อะไร (ต่างจาก A04/A05 ที่ยังรออยู่)
+
+> **ตัวเลขที่เลือกไว้** — TTL **10 นาที** (สั้นกว่า reset token 1 ชม. เพราะของมีแค่ 6 หลัก = 1,000,000 แบบ เดาได้จริง)
+> · กรอกผิดได้ **5 ครั้ง/ใบ** · ขอใหม่ **3 ครั้ง/ชม.** · เลขสุ่มด้วย `randomInt(0 , 1_000_000)` **ไม่ใช่ `randomBytes % 1000000`** (modulo bias) แล้ว `padStart(6,'0')`
+> · เก็บลงฐานเป็น **bcrypt hash** เท่านั้น ห้ามเก็บ/log/คืนเลขดิบ — เลขอยู่ในเมลเท่านั้น เพราะนั่นคือสิ่งที่มันพิสูจน์
 
 > **mailpit (dev)** — `docker compose up mailpit` แล้วเปิด `localhost:8025` ดูเมลที่ระบบส่งออกจริง (ไม่ต้องมี SMTP credential ใดๆ) · ค่า `SMTP_*`/`MAIL_FROM`/`FRONTEND_URL` ใน `config/env.ts` เป็น **optional ทั้งหมด** โดยเจตนา — ไม่ตั้งอะไรเลยก็ชี้ไป mailpit อัตโนมัติ เพื่อนที่ไม่ได้ทำเรื่องนี้ต้องรันโปรเจกต์ได้ปกติ
 
@@ -45,7 +58,7 @@
 
 | รหัส | Method + Path          | Auth | ทำอะไร                                            | รับ                                  | คืน                                                                                                                                                     |
 | ---- | ---------------------- | ---- | ------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| U01  | `GET /me`              | Auth | โปรไฟล์ตัวเอง (มีข้อมูลส่วนตัว)                   | —                                    | `{ id, fullName, email, gender, birthDate, facultyId, departmentId, year, avatarUrl, contactInfo, address, totalPoints, notificationPrefs, **showProfileStats**, createdAt, adminScope }` · `showProfileStats` = ค่าสวิตช์ของตัวเอง (OD-46 · 1 ต.ค.) หน้าตั้งค่าอ่านจากช่องนี้ |
+| U01  | `GET /me`              | Auth | โปรไฟล์ตัวเอง (มีข้อมูลส่วนตัว)                   | —                                    | `{ id, fullName, email, gender, birthDate, facultyId, departmentId, year, avatarUrl, contactInfo, address, totalPoints, notificationPrefs, **showProfileStats**, **emailVerified**, createdAt, adminScope }` · `showProfileStats` = ค่าสวิตช์ของตัวเอง (OD-46 · 1 ต.ค.) หน้าตั้งค่าอ่านจากช่องนี้ · `emailVerified` = ยืนยันอีเมลแล้วหรือยัง (OD-53 · 4 ต.ค.) **อยู่ใน /me เท่านั้น ไม่อยู่ในโปรไฟล์สาธารณะ** และ**ไม่ให้สิทธิ์อะไรเพิ่ม** ใช้ขึ้นแบนเนอร์ชวนยืนยันได้ |
 | U02  | `PATCH /me`            | Auth | แก้โปรไฟล์ · **allowlist 4 field เท่านั้น** · **1 ต.ค.: `showProfileStats` (boolean)** = เปิด/ปิดการแสดงสถิติในหน้าโปรไฟล์ของตัวเอง (OD-46) คุม U04 · U14 · RW05 พร้อมกันทั้งสามเส้น ไม่แตะตารางคะแนน/ผลแมตช์/โหวต MVP · `avatarUrl` ต้องเป็น S3 key ที่ตัวเองอัปโหลดจริงผ่าน M16 (`purpose=avatar`) เท่านั้น ตรวจ 2 ชั้น (regex ownership + HeadObject มีไฟล์จริง) ไม่ผ่าน → **422** `AVATAR_KEY_INVALID`/`AVATAR_KEY_NOT_FOUND` · ส่ง `null` = ล้างรูป · response คืน `avatarUrl` เป็น **URL เปิดดูได้จริง** (public-read bucket ไม่ใช่ presign) ไม่ใช่ S3 key ดิบ (29 ก.ย.)      | `avatarUrl?, contactInfo?, address?` | เหมือน U01                                                                                                                                              |
 | U03  | `GET /users/:id`       | Optional | โปรไฟล์สาธารณะ · **ไม่มี email/contact/address** · ถ้ามี token จะคืนสถานะ follow ของ viewer | — | `{ id, fullName, avatarUrl, facultyId, departmentId, teams[], followerCount, isFollowing, **statsHidden** }` · `statsHidden` (1 ต.ค. · OD-46) = เจ้าของปิดสถิติไว้และคนที่ดูอยู่ไม่ใช่เจ้าตัว/แอดมิน ⇒ FE ซ่อนแท็บสถิติ/ประวัติแมตช์ได้ตั้งแต่ request แรก ไม่ต้องยิงอีกสามเส้นแล้วค่อยพบว่าว่าง · ⚠️ ธงนี้หมายถึง**สถิติโปรไฟล์**เท่านั้น **ไม่ได้ห้ามแสดง RW06 (สถิติในทัวร์)** |
 | U04  | `GET /users/:id/stats` | Optional | สถิตินักกีฬา + totals ของหน้า profile · **1 ต.ค.: เป็น Optional auth แล้ว** (เดิมไม่รับ token เลย) เพราะเจ้าของโปรไฟล์ที่ปิดสถิติไว้ต้องยังดูของตัวเองได้ · **ปิดไว้ → ทุกช่องเป็น `null` ไม่ใช่ 0** (0 อ่านได้ว่า "ลงแข่งแล้วไม่เคยชนะ" ซึ่งผิด) · เจ้าตัว + แอดมินทะลุได้ · ผู้จัด/กรรมการไม่ทะลุ (ดูของทัวร์ตัวเองได้อยู่แล้ว)  · **4 ต.ค.: เอา `pickemPoints` ออก** (OD-51) — แต้ม Pick'em มาจากการทายผล ไม่ใช่ผลงานกีฬา และที่นี่เป็นแต้ม**รวมทุกทัวร์** · ดูได้ที่ตารางอันดับในทัวร์ (E28) และ `GET /me/pickem` (E27) ของเจ้าตัว| — | `{ userId, statsHidden, overall{...}\|null, bySport[]\|null, mvpVotes\|null, followerCount\|null }` |
@@ -525,6 +538,7 @@
 | `NOT_ORGANIZER` | 403 | คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้ | `requireOrganizer` |
 | `NOT_REFEREE` | 403 | คุณไม่ได้เป็นกรรมการของแมตช์นี้ | `requireReferee` |
 | `INSUFFICIENT_ADMIN_SCOPE` | 403 | สิทธิ์ผู้ดูแลระบบของคุณไม่ครอบคลุมขอบเขตนี้ | `requireAdmin` |
+| `INVALID_OTP` | 400 | รหัสยืนยันไม่ถูกต้องหรือหมดอายุ กรุณากดขอรหัสใหม่ | AV01 — **ก้อนเดียวสำหรับ 5 เคส** (ไม่มีอีเมล/เลขผิด/หมดอายุ/ใช้แล้ว/กรอกผิดครบ 5 ครั้ง) · ข้อความบอกวิธีแก้ไว้แล้ว FE ไม่ต้องแยก code |
 | `USER_NOT_FOUND` | 404 | ไม่พบผู้ใช้นี้ในระบบ | service |
 | `TEAM_NOT_FOUND` | 404 | ไม่พบทีมนี้ | service |
 | `TOURNAMENT_NOT_FOUND` | 404 | ไม่พบทัวร์นาเมนต์นี้ | service |

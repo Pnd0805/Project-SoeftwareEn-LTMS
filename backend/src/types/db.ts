@@ -20,6 +20,7 @@ export type UserRow = {
     suspended_until : Date | null,   // NULL = ถาวร · ดู utils/suspension.ts ห้ามอ่าน is_suspended ลอยๆ
     total_points : number,
     notification_prefs :  Record<string, boolean> | null,
+    email_verified : number,          // OD-53 · 1 = ยืนยันอีเมลแล้ว · ยังไม่คุมสิทธิ์อะไร (ไม่มี middleware ไหนอ่าน)
     show_profile_stats : number,      // OD-46 · 1 = เปิด (ค่าเริ่มต้น) · คุม stats/match-history/career ของหน้าโปรไฟล์เท่านั้น
     profile_edit_log : unknown,
     created_at : Date,
@@ -283,6 +284,17 @@ export type PasswordResetTokenRow = {
     token_hash : string,   // ★ hash ไม่ใช่ token ดิบ
     expires_at : Date,      // ★ ไม่มี created_at — นับอายุ/rate limit จาก expires_at ย้อนกลับ 1 ชม.
     used_at : Date | null    // ★ ใช้ได้ครั้งเดียว
+}
+
+// OD-53 — โครงเหมือน PasswordResetTokenRow แต่มีสองคอลัมน์เกิน ด้วยเหตุคนละข้อ (migration 037)
+export type EmailVerificationOtpRow = {
+    email_verification_otp_id : number,
+    user_id : number,
+    code_hash : string,      // ★ bcrypt ของเลข 6 หลัก ไม่ใช่เลขดิบ
+    expires_at : Date,       // ★ TTL 10 นาที (สั้นกว่า reset token เพราะของมีแค่ 6 หลัก)
+    used_at : Date | null,   // ★ ใช้ได้ครั้งเดียว
+    attempt_count : number,  // ★ กรอกผิดครบโควตา = ใบนั้นตาย · 6 หลักเดาได้จริง ต้องมีตัวนับ
+    created_at : Date        // ★ มีจริงๆ — rate limit นับ 1 ชม. แต่ TTL 10 นาที อนุมานจาก expires_at ไม่ได้
 }
 
 export type UserReportRow = {

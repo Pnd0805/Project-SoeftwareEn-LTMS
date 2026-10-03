@@ -28,6 +28,7 @@ const baseUserRow = {
   total_points: 150,
   notification_prefs: { email: true, push: false },
   show_profile_stats: 1,
+  email_verified: 0,
   profile_edit_log: null,
   created_at: new Date('2023-09-01T12:00:00Z'),
   updated_at: null,
@@ -53,6 +54,7 @@ describe('toMeDto', () => {
       totalPoints: 150,
       notificationPrefs: { email: true, push: false },
       showProfileStats: true,
+      emailVerified: false,
       createdAt: '2023-09-01T12:00:00.000Z',
       adminScope: null,
     });
@@ -93,7 +95,7 @@ describe('toMeDto', () => {
       profile_image_key: null,
       contact_info: null,
       address: null,
-      notification_prefs: null, show_profile_stats: 1,
+      notification_prefs: null, show_profile_stats: 1, email_verified: 0,
     };
 
     const result = toMeDto(rowWithNulls as any);

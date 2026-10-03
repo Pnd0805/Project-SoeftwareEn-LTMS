@@ -6,6 +6,7 @@ vi.mock('../../repositories/user.repo.js', () => ({
   findById: vi.fn(),
   create: vi.fn(),
   updatePassword: vi.fn(),
+  markEmailVerified: vi.fn(),
 }));
 
 vi.mock('../../repositories/faculty.repo.js', () => ({
@@ -23,6 +24,15 @@ vi.mock('../../repositories/passwordReset.repo.js', () => ({
   countIssuedWithinLastHour: vi.fn(),
   invalidateAllForUser: vi.fn(),
   markUsed: vi.fn(),
+}));
+
+vi.mock('../../repositories/emailVerification.repo.js', () => ({
+  create: vi.fn(),
+  findActiveByUser: vi.fn(),
+  countIssuedWithinLastHour: vi.fn(),
+  invalidateAllForUser: vi.fn(),
+  markUsed: vi.fn(),
+  bumpAttempt: vi.fn(),
 }));
 
 vi.mock('../../utils/password.js', () => ({
@@ -43,29 +53,33 @@ vi.mock('../../config/auth.js', () => ({
 
 vi.mock('../mail.service.js', () => ({
   sendPasswordResetEmail: vi.fn(),
+  sendEmailVerificationOtp: vi.fn(),
 }));
 
 // ---- Import the module under test AFTER mocks are declared ----
 import * as authService from '../auth.service.js';
 import * as userRepo from '../../repositories/user.repo.js';
 import * as passwordResetRepo from '../../repositories/passwordReset.repo.js';
+import * as emailVerifyRepo from '../../repositories/emailVerification.repo.js';
 import { findFacultyById } from '../../repositories/faculty.repo.js';
 import { findDepartmentInFaculty } from '../../repositories/department.repo.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { signToken } from '../../utils/token.js';
-import { sendPasswordResetEmail } from '../mail.service.js';
+import { sendPasswordResetEmail , sendEmailVerificationOtp } from '../mail.service.js';
 import { AppError } from '../../utils/AppError.js';
 import type { RegisterInput } from '../../schemas/auth.schema.js';
 import type { UserRow, PasswordResetTokenRow } from '../../types/db.js';
 
 const mockedUserRepo = vi.mocked(userRepo);
 const mockedPasswordResetRepo = vi.mocked(passwordResetRepo);
+const mockedEmailVerifyRepo = vi.mocked(emailVerifyRepo);
 const mockedFindFacultyById = vi.mocked(findFacultyById);
 const mockedFindDepartmentInFaculty = vi.mocked(findDepartmentInFaculty);
 const mockedHashPassword = vi.mocked(hashPassword);
 const mockedVerifyPassword = vi.mocked(verifyPassword);
 const mockedSignToken = vi.mocked(signToken);
 const mockedSendPasswordResetEmail = vi.mocked(sendPasswordResetEmail);
+const mockedSendEmailVerificationOtp = vi.mocked(sendEmailVerificationOtp);
 
 // ---- Test fixtures ----
 const baseUser: UserRow = {
@@ -88,6 +102,7 @@ const baseUser: UserRow = {
   suspended_category: null,
   total_points: 0,
   notification_prefs: null, show_profile_stats: 1,
+  email_verified: 0,
   profile_edit_log: null,
   created_at: new Date(),
   updated_at: null,
@@ -140,6 +155,7 @@ describe('auth.service register()', () => {
       id: 42,
       fullName: registerInput.fullName,
       email: registerInput.email,
+      emailVerificationSent: true,
     });
   });
 
@@ -423,5 +439,221 @@ describe('auth.service resetPassword()', () => {
       code: 'INVALID_RESET_TOKEN',
     });
     expect(mockedUserRepo.updatePassword).not.toHaveBeenCalled();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// OD-53 · ยืนยันอีเมลด้วย OTP 6 หลัก (A06/A07)
+// ══════════════════════════════════════════════════════════════════════════
+
+const unverifiedUser: UserRow = { ...baseUser, email_verified: 0 };
+const verifiedUser: UserRow = { ...baseUser, email_verified: 1 };
+
+const otpRow = {
+  email_verification_otp_id: 7,
+  user_id: 1,
+  code_hash: 'hashed-otp',
+  expires_at: new Date(Date.now() + 600_000),
+  used_at: null,
+  attempt_count: 0,
+  created_at: new Date(),
+};
+
+describe('auth.service register() — OTP ยืนยันอีเมล', () => {
+  function arrangeRegister() {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' });
+    mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, faculty_id: 1, name: 'CE' });
+    mockedHashPassword.mockResolvedValue('hashed');
+    mockedUserRepo.create.mockResolvedValue(42);
+  }
+
+  it('ส่งเลข 6 หลักเสมอ และยอมรับเลขที่ขึ้นต้นด้วยศูนย์ (padStart)', async () => {
+    arrangeRegister();
+
+    // สุ่มจริง 300 รอบ — ถ้าลืม padStart เลขที่น้อยกว่า 100000 จะหลุดมาเป็น 5 หลัก
+    for (let i = 0; i < 300; i++) {
+      mockedSendEmailVerificationOtp.mockClear();
+      await authService.register(registerInput);
+      const code = mockedSendEmailVerificationOtp.mock.calls[0]![2];
+      expect(code).toMatch(/^[0-9]{6}$/);
+    }
+  });
+
+  it('เก็บลงฐานเป็น hash ไม่ใช่เลขดิบ', async () => {
+    arrangeRegister();
+    mockedHashPassword.mockResolvedValue('bcrypt-of-otp');
+
+    await authService.register(registerInput);
+
+    const code = mockedSendEmailVerificationOtp.mock.calls[0]![2];
+    expect(mockedEmailVerifyRepo.create).toHaveBeenCalledWith(42, 'bcrypt-of-otp', expect.any(Date));
+    // ★ ข้อนี้คือหัวใจ — เลขดิบต้องไม่โผล่ไปเป็นอาร์กิวเมนต์ที่เขียนลงฐาน
+    expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalledWith(42, code, expect.any(Date));
+  });
+
+  it('ล้างใบเก่าก่อนออกใบใหม่ทุกครั้ง', async () => {
+    arrangeRegister();
+    await authService.register(registerInput);
+    expect(mockedEmailVerifyRepo.invalidateAllForUser).toHaveBeenCalledWith(42);
+  });
+
+  it('TTL อยู่ที่ 10 นาที ไม่ใช่ 1 ชั่วโมงแบบ reset token', async () => {
+    arrangeRegister();
+    const before = Date.now();
+    await authService.register(registerInput);
+
+    const expiresAt = mockedEmailVerifyRepo.create.mock.calls[0]![2] as Date;
+    const ttlMs = expiresAt.getTime() - before;
+    expect(ttlMs).toBeGreaterThan(9 * 60 * 1000);
+    expect(ttlMs).toBeLessThanOrEqual(10 * 60 * 1000 + 1000);
+  });
+
+  it('เมลพัง → สมัครยังสำเร็จ แต่คืน emailVerificationSent: false', async () => {
+    arrangeRegister();
+    mockedSendEmailVerificationOtp.mockRejectedValue(new Error('SMTP down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await authService.register(registerInput);
+
+    // ★ ต่างจาก forgotPassword ที่กลืนเงียบ — ที่นี่ผู้ใช้ต้องรู้ว่าเมลไม่มา
+    expect(result).toMatchObject({ id: 42, emailVerificationSent: false });
+    spy.mockRestore();
+  });
+
+  it('ไม่คืนเลข OTP ออกทาง response', async () => {
+    arrangeRegister();
+    const result = await authService.register(registerInput);
+    const code = mockedSendEmailVerificationOtp.mock.calls[0]![2];
+
+    expect(JSON.stringify(result)).not.toContain(code);
+  });
+});
+
+describe('auth.service verifyEmail()', () => {
+  it('กรอกถูก → ติดธงที่ users แล้วปิดใบนั้น แล้วล้างใบที่เหลือ', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([otpRow]);
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    const result = await authService.verifyEmail('test@example.com', '123456');
+
+    expect(result).toEqual({ message: expect.any(String), emailVerified: true });
+    expect(mockedEmailVerifyRepo.markUsed).toHaveBeenCalledWith(7);
+    expect(mockedUserRepo.markEmailVerified).toHaveBeenCalledWith(1);
+    expect(mockedEmailVerifyRepo.invalidateAllForUser).toHaveBeenCalledWith(1);
+    expect(mockedEmailVerifyRepo.bumpAttempt).not.toHaveBeenCalled();
+  });
+
+  it('ส่งโควตา 5 ครั้งลงไปให้ SQL กรอง — ด่านกันเดาต้องไม่หายไป', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([otpRow]);
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    await authService.verifyEmail('test@example.com', '123456');
+
+    expect(mockedEmailVerifyRepo.findActiveByUser).toHaveBeenCalledWith(1, 5);
+  });
+
+  it('กรอกผิด → นับขึ้น 1 แล้วโยน INVALID_OTP', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([otpRow]);
+    mockedVerifyPassword.mockResolvedValue(false);
+
+    await expect(authService.verifyEmail('test@example.com', '000000'))
+      .rejects.toMatchObject({ status: 400, code: 'INVALID_OTP' });
+
+    expect(mockedEmailVerifyRepo.bumpAttempt).toHaveBeenCalledWith(7);
+    expect(mockedUserRepo.markEmailVerified).not.toHaveBeenCalled();
+  });
+
+  it('ไม่มีใบที่ใช้ได้ (หมดอายุ/ใช้แล้ว/ครบโควตา) → INVALID_OTP และไม่มีอะไรให้นับ', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([]);
+
+    await expect(authService.verifyEmail('test@example.com', '123456'))
+      .rejects.toMatchObject({ code: 'INVALID_OTP' });
+
+    expect(mockedEmailVerifyRepo.bumpAttempt).not.toHaveBeenCalled();
+  });
+
+  it('ยืนยันซ้ำ → 200 เหมือนเดิม ไม่แตะตาราง OTP เลย (idempotent)', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(verifiedUser);
+
+    const result = await authService.verifyEmail('test@example.com', '123456');
+
+    expect(result.emailVerified).toBe(true);
+    expect(mockedEmailVerifyRepo.findActiveByUser).not.toHaveBeenCalled();
+    expect(mockedUserRepo.markEmailVerified).not.toHaveBeenCalled();
+  });
+
+  it('ไม่มีอีเมลนี้ → ได้ error ก้อนเดียวกับกรอกเลขผิด ไม่ใช่ 404', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+
+    const unknown = await authService.verifyEmail('nobody@example.com', '123456')
+      .catch((e: AppError) => e);
+
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([otpRow]);
+    mockedVerifyPassword.mockResolvedValue(false);
+    const wrongCode = await authService.verifyEmail('test@example.com', '000000')
+      .catch((e: AppError) => e);
+
+    // ★ สองเคสนี้ต้องแยกจากกันไม่ออก ไม่งั้นกลายเป็นเครื่องมือกวาดหาว่าอีเมลไหนมีในระบบ
+    expect((unknown as AppError).status).toBe((wrongCode as AppError).status);
+    expect((unknown as AppError).code).toBe((wrongCode as AppError).code);
+    expect((unknown as AppError).message).toBe((wrongCode as AppError).message);
+  });
+});
+
+describe('auth.service resendEmailVerification()', () => {
+  it('ยังไม่ยืนยัน + ไม่เกินโควตา → ออกใบใหม่แล้วส่งเมล', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(2);
+
+    await authService.resendEmailVerification('test@example.com');
+
+    expect(mockedEmailVerifyRepo.create).toHaveBeenCalled();
+    expect(mockedSendEmailVerificationOtp).toHaveBeenCalledWith(
+      'test@example.com', 'Test User', expect.stringMatching(/^[0-9]{6}$/), 10);
+  });
+
+  it('เกินโควตา 3 ครั้ง/ชม. → 429 และไม่ออกใบใหม่', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(3);
+
+    await expect(authService.resendEmailVerification('test@example.com'))
+      .rejects.toMatchObject({ status: 429, code: 'RATE_LIMITED' });
+
+    expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalled();
+    expect(mockedSendEmailVerificationOtp).not.toHaveBeenCalled();
+  });
+
+  it('ไม่มีอีเมลนี้ → 200 เหมือนกัน แต่ไม่ส่งเมลและไม่เขียนฐาน', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+
+    await expect(authService.resendEmailVerification('nobody@example.com'))
+      .resolves.toEqual({ message: expect.any(String) });
+
+    expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalled();
+    expect(mockedSendEmailVerificationOtp).not.toHaveBeenCalled();
+  });
+
+  it('ยืนยันไปแล้ว → 200 เหมือนกัน และไม่ส่งซ้ำ', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(verifiedUser);
+
+    await authService.resendEmailVerification('test@example.com');
+
+    expect(mockedSendEmailVerificationOtp).not.toHaveBeenCalled();
+  });
+
+  it('เคสไม่มีอีเมล กับ เคสยืนยันแล้ว ต้องได้ข้อความเดียวกันเป๊ะ', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    const a = await authService.resendEmailVerification('nobody@example.com');
+
+    mockedUserRepo.findByEmail.mockResolvedValue(verifiedUser);
+    const b = await authService.resendEmailVerification('test@example.com');
+
+    expect(a).toEqual(b);
   });
 });

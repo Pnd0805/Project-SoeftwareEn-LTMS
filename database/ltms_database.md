@@ -106,6 +106,7 @@ CREATE TABLE users (
   suspended_reason TEXT NULL,
   total_points INT NOT NULL DEFAULT 0,
   notification_prefs JSON NULL,
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE,  -- 🆕 OD-53 (4 ต.ค. 2569, migration 037) · ธงล้วนๆ ยังไม่คุมสิทธิ์อะไร
   profile_edit_log JSON NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL,
@@ -120,6 +121,21 @@ CREATE TABLE password_reset_tokens (
   token_hash VARCHAR(255) NOT NULL,
   expires_at DATETIME NOT NULL,
   used_at DATETIME NULL,
+  FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- 🆕 OD-53 (4 ต.ค. 2569, migration 037) — OTP ยืนยันอีเมล 6 หลัก
+-- โครงเหมือน password_reset_tokens แต่เพิ่ม 2 คอลัมน์ ด้วยเหตุคนละข้อ:
+--   attempt_count — 6 หลักเดาได้จริง (1,000,000 แบบ) ต้องมีโควตาการเดา ส่วน token 64 hex ไม่ต้อง
+--   created_at    — TTL 10 นาที แต่ rate limit นับ 1 ชม. ⇒ ใช้ทริก "expires_at ย้อนกลับ" ของ reset ไม่ได้
+CREATE TABLE email_verification_otps (
+  email_verification_otp_id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,        -- ★ bcrypt ของเลข ไม่ใช่เลขดิบ
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,                  -- ★ ใช้ได้ครั้งเดียว
+  attempt_count INT NOT NULL DEFAULT 0,   -- ★ กรอกผิดครบ 5 = ใบนั้นตาย
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 

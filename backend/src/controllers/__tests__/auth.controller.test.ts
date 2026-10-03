@@ -5,10 +5,12 @@ vi.mock('../../services/auth.service.js', () => ({
   register: vi.fn(),
   login: vi.fn(),
   forgotPassword: vi.fn(),
+  verifyEmail: vi.fn(),
+  resendEmailVerification: vi.fn(),
   resetPassword: vi.fn(),
 }));
 
-import { register, login, logout, forgotPassword, resetPassword } from '../auth.controller.js';
+import { register, login, logout, forgotPassword, resetPassword, verifyEmail, resendVerification } from '../auth.controller.js';
 import * as authService from '../../services/auth.service.js';
 
 const mockedAuthService = vi.mocked(authService);
@@ -135,5 +137,47 @@ describe('auth.controller resetPassword()', () => {
 
     await expect(resetPassword(req, res)).rejects.toBe(serviceError);
     expect(res.json).not.toHaveBeenCalled();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// OD-53 · AV01/AV02 — ยืนยันอีเมลด้วย OTP
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('auth.controller verifyEmail()', () => {
+  it('ส่ง email และ code ต่อให้ service ตามลำดับนั้น แล้วตอบ 200', async () => {
+    const payload = { message: 'ยืนยันอีเมลสำเร็จ', emailVerified: true };
+    mockedAuthService.verifyEmail.mockResolvedValue(payload as any);
+
+    const req = { body: { email: 'a@b.com', code: '123456' } } as any;
+    const res = makeRes();
+    await verifyEmail(req, res);
+
+    expect(mockedAuthService.verifyEmail).toHaveBeenCalledWith('a@b.com', '123456');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(payload);
+  });
+
+  it('ไม่แตะ req.user — endpoint นี้ตั้งใจให้ยิงได้โดยไม่ล็อกอิน', async () => {
+    mockedAuthService.verifyEmail.mockResolvedValue({} as any);
+
+    // ไม่มี user ในก้อน request เลย ต้องไม่โยน UNAUTHORIZED
+    const req = { body: { email: 'a@b.com', code: '000001' } } as any;
+    await expect(verifyEmail(req, makeRes())).resolves.toBeUndefined();
+  });
+});
+
+describe('auth.controller resendVerification()', () => {
+  it('ส่งแค่ email ต่อให้ service แล้วตอบ 200', async () => {
+    const payload = { message: 'ถ้าอีเมลนี้ยังรอยืนยัน เราได้ส่งรหัสใหม่ไปให้แล้ว' };
+    mockedAuthService.resendEmailVerification.mockResolvedValue(payload as any);
+
+    const req = { body: { email: 'a@b.com' } } as any;
+    const res = makeRes();
+    await resendVerification(req, res);
+
+    expect(mockedAuthService.resendEmailVerification).toHaveBeenCalledWith('a@b.com');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(payload);
   });
 });

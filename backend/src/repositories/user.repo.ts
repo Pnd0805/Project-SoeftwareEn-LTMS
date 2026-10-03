@@ -56,6 +56,15 @@ export async function updatePassword(userId : number , passwordHash : string) : 
     return result.affectedRows;
 }
 
+// OD-53 — ไม่รวมกับ update() ข้างล่าง เพราะนั่นเป็นข้อมูลที่ "เจ้าตัวแก้เองได้"
+// ส่วนธงนี้เป็นข้อสรุปของระบบ ขึ้นได้ทางเดียวคือกรอก OTP ที่ระบบส่งไปถูก — ห้ามมีทางให้ตั้งเอง
+// ไม่เซ็ต updated_at — คอลัมน์นั้นหมายถึง "เจ้าตัวแก้โปรไฟล์เมื่อไหร่" การยืนยันอีเมลไม่ใช่การแก้โปรไฟล์
+export async function markEmailVerified(userId : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET email_verified = 1 WHERE user_id = ?`, [userId]);
+    return result.affectedRows;
+}
+
 export async function update(userId : number , input : UpdateMeInput) : Promise<number> {
     const sets:string[] = [];
     const values: unknown[] = [];

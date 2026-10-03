@@ -13,6 +13,14 @@ export async function logout(req : Request , res : Response){
     res.status(204).send();
 }
 
+export async function verifyEmail(req : Request , res : Response){
+    res.status(200).json(await authService.verifyEmail(req.body.email , req.body.code));
+}
+
+export async function resendVerification(req : Request , res : Response){
+    res.status(200).json(await authService.resendEmailVerification(req.body.email));
+}
+
 export async function forgotPassword(req : Request , res : Response){
     res.status(200).json(await authService.forgotPassword(req.body.email));
 }
