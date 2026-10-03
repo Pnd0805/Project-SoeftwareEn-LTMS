@@ -59,6 +59,21 @@ describe('ตารางหมวด — ความครบถ้วนแ�
     }
   });
 
+  /**
+   * ★ เติมหมวด 3 ต.ค. — ชนิดที่เพิ่มหลังจากสาขา `backend_shokun_2` แยกออกไป (ตกหล่นจากตาราง)
+   * เทสสองข้อนี้มีเพื่อกัน "เติมแล้วหาย" ไม่ใช่เพียงกัน "ลืมเติม"
+   */
+  it('team_deleted เป็น critical — การกวาดทีมร้างเกิดขึ้นโดยลูกทีมไม่ได้ทำอะไรเลย', () => {
+    expect(categoryOf('team_deleted')).toBe('critical');
+    const allOff = Object.fromEntries(MUTABLE_CATEGORIES.map(c => [c, false]));
+    expect(mutedTypes(allOff)).not.toContain('team_deleted');
+  });
+
+  it('comment_rewritten_after_removal เป็น community — ไม่มีเส้นตาย รู้ช้าก็ตรวจได้', () => {
+    expect(categoryOf('comment_rewritten_after_removal')).toBe('community');
+    expect(mutedTypes({ community: false })).toContain('comment_rewritten_after_removal');
+  });
+
   it('เรื่องชุมชนปิดได้ทั้งหมด — ไม่มีเส้นตาย รู้ช้าก็ไม่เสียสิทธิ์', () => {
     for (const type of ['comment_removed', 'comment_reported', 'pickem_cancelled']) {
       expect(categoryOf(type), type).toBe('community');

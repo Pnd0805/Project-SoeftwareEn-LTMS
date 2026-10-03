@@ -27,9 +27,10 @@ const ANNOUNCEMENT_TITLE_PREFIX : Record<AnnouncementRow['announcement_type'] , 
  * กับหัวหน้าทีม ส่วน `schedule_change`/`venue_change` เป็นเรื่องที่กรรมการต้องรู้ก่อนใคร
  * สองกลุ่มนี้ไม่ทับกันเพราะกฎ CoI ห้ามคนในทีมที่ลงแข่งเป็นกรรมการของทัวร์เดียวกัน (BR-04/P01)
  *
- * ⚠️ ชนิด `tournament_announcement` **ยังไม่มีในตารางหมวดแจ้งเตือน** ซึ่งอยู่บนสาขา `backend_shokun_2`
- *    ⇒ ตอนนี้ผู้ใช้ปิดแจ้งเตือนชนิดนี้ไม่ได้ ต้องเติมหมวดหลัง merge (เรื่องเดียวกับ `team_deleted`
- *    และ `comment_rewritten_after_removal` · บันทึกไว้ใน OD-45)
+ * ⚠️ ชนิด `tournament_announcement` **ยังไม่มีในตารางหมวดแจ้งเตือน (OD-43)** ⇒ ยังเป็น `critical` โดยปริยาย ปิดไม่ได้
+ *    ค้างไว้เพราะ **ชนิดเดียวคุมสองความหมาย** — เลื่อนเวลาแข่ง/เปลี่ยนสนาม คือไปผิดวันแล้วแพ้บาย
+ *    ส่วนประกาศทั่วไป/ถ่ายทอดสด ไม่รู้ก็ไม่เสียอะไร → จะแยกเป็นสองชนิดหรือยุบเป็นหมวดเดียว ยังรอมติของทีม (OD-49)
+ *    (`team_deleted` กับ `comment_rewritten_after_removal` เติมหมวดไปแล้ว 3 ต.ค. เหลือตัวนี้ตัวเดียว)
  */
 export async function createAnnouncement(tournamentId : number , title : string , body : string , userId : number ,
                                          type : AnnouncementRow['announcement_type'] = 'general'){

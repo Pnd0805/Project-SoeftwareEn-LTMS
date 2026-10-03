@@ -25,6 +25,8 @@ export const NOTIFICATION_CATEGORY: Record<string, NotificationCategory> = {
     team_invited: 'critical',            // `team_invitations.expires_at` — คำเชิญหมดอายุใน 7 วัน (migration 013)
     team_invite_answered: 'team',
     team_member_removed: 'team',
+    team_deleted: 'critical',            // เส้นตายคือ `registration_end` ของทัวร์ที่ใบสมัครค้าง — ทีมหายแล้วต้องไปหาทีมใหม่สมัครให้ทัน (เกณฑ์เดียวกันกับ `application_decided`)
+                                         // ★ การกวาดทีมร้าง (TM-07) เกิดขึ้นโดยลูกทีมไม่ได้ทำอะไรเลย ปิดหมวดนี้แล้วทีมหายเงียบ 100%
     squad_below_minimum: 'critical',     // ต้องเติมคนก่อนแมตช์เริ่ม ไม่งั้น M10 ปรับแพ้บายทันที (`sport_types.min_members`)
 
     // ── ทัวร์นาเมนต์ + ใบสมัคร ──
@@ -64,6 +66,7 @@ export const NOTIFICATION_CATEGORY: Record<string, NotificationCategory> = {
     // ── ชุมชน ──
     comment_removed: 'community',
     comment_reported: 'community',
+    comment_rewritten_after_removal: 'community',   // ไม่มีเส้นตาย — ผู้จัดรู้ช้าก็ตรวจความเห็นได้ และแถวค้างในคิว `?reported=true` อยู่แล้ว
     feedback_removed_by_admin: 'community',
     feedback_restored: 'community',
     feedback_restore_overridden: 'community',
