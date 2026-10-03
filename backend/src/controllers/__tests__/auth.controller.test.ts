@@ -4,9 +4,11 @@ import type { Request, Response } from 'express';
 vi.mock('../../services/auth.service.js', () => ({
   register: vi.fn(),
   login: vi.fn(),
+  forgotPassword: vi.fn(),
+  resetPassword: vi.fn(),
 }));
 
-import { register, login, logout } from '../auth.controller.js';
+import { register, login, logout, forgotPassword, resetPassword } from '../auth.controller.js';
 import * as authService from '../../services/auth.service.js';
 
 const mockedAuthService = vi.mocked(authService);
@@ -93,5 +95,45 @@ describe('auth.controller logout()', () => {
     expect(res.json).not.toHaveBeenCalled();
     expect(mockedAuthService.register).not.toHaveBeenCalled();
     expect(mockedAuthService.login).not.toHaveBeenCalled();
+  });
+});
+
+describe('auth.controller forgotPassword()', () => {
+  it('ส่งต่อ email จาก body ไปให้ service แล้วตอบ 200 ด้วยผลลัพธ์', async () => {
+    const req = { body: { email: 'a@b.com' } } as Request;
+    const res = makeRes();
+    const serviceResult = { message: 'ถ้าอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว' };
+    mockedAuthService.forgotPassword.mockResolvedValue(serviceResult as any);
+
+    await forgotPassword(req, res);
+
+    expect(mockedAuthService.forgotPassword).toHaveBeenCalledWith('a@b.com');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(serviceResult);
+  });
+});
+
+describe('auth.controller resetPassword()', () => {
+  it('ส่งต่อ token/newPassword จาก body ไปให้ service แล้วตอบ 200 ด้วยผลลัพธ์', async () => {
+    const req = { body: { token: 'raw-token', newPassword: 'newpassword1' } } as Request;
+    const res = makeRes();
+    const serviceResult = { message: 'ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่' };
+    mockedAuthService.resetPassword.mockResolvedValue(serviceResult as any);
+
+    await resetPassword(req, res);
+
+    expect(mockedAuthService.resetPassword).toHaveBeenCalledWith('raw-token', 'newpassword1');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(serviceResult);
+  });
+
+  it('propagates (rejects with) the error when the token is invalid', async () => {
+    const req = { body: { token: 'bad', newPassword: 'newpassword1' } } as Request;
+    const res = makeRes();
+    const serviceError = new Error('INVALID_RESET_TOKEN');
+    mockedAuthService.resetPassword.mockRejectedValue(serviceError);
+
+    await expect(resetPassword(req, res)).rejects.toBe(serviceError);
+    expect(res.json).not.toHaveBeenCalled();
   });
 });

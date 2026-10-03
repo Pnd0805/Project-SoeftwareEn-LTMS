@@ -101,6 +101,10 @@ describe('toUserReportDto', () => {
 
     expect(dto.evidence).toEqual(['https://s3.test/report_evidence/9001/a.png?sig=x']);
     expect(dto.evidence.some(url => url === 'report_evidence/9001/a.png')).toBe(false);
+
+    // mapper แค่ส่งต่อตามลำดับ ไม่เรียงใหม่และไม่แตะ row.evidence ดิบเลย (รวมการตรวจจาก backend_step9-10)
+    expect(toUserReportDto(row({ evidence : ['k1' , 'k2'] }) , ['https://signed/k1' , 'https://signed/k2']).evidence)
+      .toEqual(['https://signed/k1' , 'https://signed/k2']);
   });
 
   it('isAdmin มาจากเลข 1/0 ของ SQL ไม่ใช่ค่าความจริงแบบหลวม', () => {

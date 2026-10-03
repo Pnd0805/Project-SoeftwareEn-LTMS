@@ -43,6 +43,14 @@ services:
       "
     restart: "no"
 
+  mailpit:
+    image: axllent/mailpit
+    container_name: ltms-mailpit
+    ports:
+      - "127.0.0.1:1025:1025"   # SMTP
+      - "127.0.0.1:8025:8025"   # หน้าเว็บดูเมล
+    restart: unless-stopped
+
 ############ build image ############
 
   backend:

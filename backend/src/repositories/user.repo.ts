@@ -50,6 +50,12 @@ export async function searchByName(userName : string) : Promise<Pick<UserRow , '
     return rows;
 }; 
 
+export async function updatePassword(userId : number , passwordHash : string) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET password_hash = ? WHERE user_id = ?`, [passwordHash , userId]);
+    return result.affectedRows;
+}
+
 export async function update(userId : number , input : UpdateMeInput) : Promise<number> {
     const sets:string[] = [];
     const values: unknown[] = [];

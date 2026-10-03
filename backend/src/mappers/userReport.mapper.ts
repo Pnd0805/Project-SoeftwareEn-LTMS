@@ -31,13 +31,14 @@ export type userReportDto = {
     rejectionReason : string | null
 };
 
-export function toUserReportDto(row : getUserReport , evidence : string[]) : userReportDto{
+// ★ ห้ามใช้ `toPublicImageUrl` กับ evidence — มันเป็นของส่วนตัว ไม่ใช่ของสาธารณะแบบ avatar/โลโก้
+export function toUserReportDto(row : getUserReport , presignedEvidence : string[]) : userReportDto{
     return {
         id : row.user_report_id,
         reporter : { id : row.reporter_id , fullName : row.reporter_name , avatarUrl : toPublicImageUrl(row.reporter_avatar_key) },
         target : { id : row.target_id , fullName : row.target_name , avatarUrl : toPublicImageUrl(row.target_avatar_key) , isAdmin : row.target_is_admin === 1 },
         reason : row.reason,
-        evidence,
+        evidence : presignedEvidence,
         status : row.user_report_status,
         createdAt : row.created_at.toISOString(),
         reviewedBy : row.reviewed_by,

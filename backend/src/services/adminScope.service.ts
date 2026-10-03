@@ -348,6 +348,7 @@ export async function listUserReports(admin : AdminScopeRow , offset : number , 
     const { rows , totalItems } = await UserReportRepo.findAllUserReports(facultyOnly , offset , pageSize);
     // หลักฐานคืนเป็น presigned URL เสมอ ไม่ส่ง S3 key ดิบ (กฎรวม Part 3 ข้อ 11 · pattern เดียวกับ S03b/S13c)
     // เดิมส่ง key ดิบออกไป ⇒ FE เปิดรูปไม่ได้เลย แอดมินจึงตัดสินคำร้องโดยไม่เห็นหลักฐาน (แก้ 1 ต.ค. 69)
+    // เป็นของส่วนตัว จึงใช้กฎคนละชุดกับ avatar/โลโก้ที่เป็นของสาธารณะ (OD-36)
     const items = await Promise.all(rows.map(async row => toUserReportDto(row , await presignAll(row.evidence))));
     return { items , pagination : buildPagination(page , pageSize , totalItems) };
 }

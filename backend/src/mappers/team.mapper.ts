@@ -62,6 +62,18 @@ export function toMyTeam(row : TeamRow , mem_count : number , userId : number): 
     }
 }
 
+// เหตุผลที่ทีมถูกปิด (TM-07/OD-30) — เขียนลง deleted_reason มานานแล้วแต่ไม่มี mapper ไหนอ่านกลับเลย
+// หัวหน้าทีมเห็นแค่ทีมหายไปเฉยๆ นึกว่าระบบพัง ทั้งที่ระบบลบให้เองเพราะกฎ TM-07 (14 วัน/6 เดือน)
+const DELETED_REASON_LABELS : Record<NonNullable<TeamRow['deleted_reason']> , string> = {
+    no_registration : 'ทีมถูกปิดอัตโนมัติ เนื่องจากไม่มีการยื่นสมัครทัวร์นาเมนต์ภายใน 14 วันหลังสร้างทีม',
+    inactive_6_months : 'ทีมถูกปิดอัตโนมัติ เนื่องจากไม่มีการแข่งขันมานานเกิน 6 เดือน',
+    leader_deleted : 'ทีมถูกลบโดยหัวหน้าทีม',
+};
+
+function toDeletedReasonLabel(reason : TeamRow['deleted_reason']) : string | null{
+    return reason === null ? null : DELETED_REASON_LABELS[reason];
+}
+
 export type TeamDto = {
     id : number,
     name : string,
@@ -73,10 +85,11 @@ export type TeamDto = {
     leader : UserRefDto,
     memberCount : number,
     maxMembers : number | null,          // sport_types.max_members — หน้าค้นหาแสดง "X/max" (มติ 20 ก.ย.)
+    deletedReason : string | null,       // null = ทีมยังไม่ถูกลบ (TM-07/OD-30)
     createdAt : string
 }
 
-export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'logo_key' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'visibility' | 'created_at' | 'deleted_at'>
+export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'logo_key' | 'sport_type_id' | 'readiness_status' | 'official_status' | 'visibility' | 'created_at' | 'deleted_at' | 'deleted_reason'>
                         , member : number , leader : UserRefDto , maxMembers : number | null = null) : TeamDto {
 
     const status = row.deleted_at !== null ? 'Inactive' : row.readiness_status;
@@ -91,6 +104,7 @@ export function toTeamDto(row : Pick<TeamRow , 'team_id' | 'name' | 'logo_key' |
         leader : leader,
         memberCount : member,
         maxMembers,
+        deletedReason : toDeletedReasonLabel(row.deleted_reason),
         createdAt : row.created_at.toISOString()
     }
 }

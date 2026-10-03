@@ -277,6 +277,14 @@ export type AdminScopeRow = {
     created_by : number | null
 }
 
+export type PasswordResetTokenRow = {
+    password_reset_token_id : number,
+    user_id : number,
+    token_hash : string,   // ★ hash ไม่ใช่ token ดิบ
+    expires_at : Date,      // ★ ไม่มี created_at — นับอายุ/rate limit จาก expires_at ย้อนกลับ 1 ชม.
+    used_at : Date | null    // ★ ใช้ได้ครั้งเดียว
+}
+
 export type UserReportRow = {
     user_report_id : number,
     reported_by : number,
