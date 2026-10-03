@@ -136,6 +136,7 @@ export async function fileUserReport(reporterId : number , targetUserId : number
 
     const reportId = await UserReportRepo.create(reporterId , targetUserId , reason , evidence);
     const report = await UserReportRepo.findByIdJoined(reportId);
-    return toUserReportDto(report!);
+    const presignedEvidence = await Promise.all((report!.evidence ?? []).map(key => UploadService.getPresignedDownloadUrl(key)));
+    return toUserReportDto(report! , presignedEvidence);
 }
 

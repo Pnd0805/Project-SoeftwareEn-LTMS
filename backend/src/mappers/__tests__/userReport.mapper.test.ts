@@ -28,7 +28,7 @@ function row(overrides: Partial<getUserReport> = {}): getUserReport {
 
 describe('toUserReportDto', () => {
   it('คำร้องที่ยังไม่ถูกพิจารณา: ช่องผลการพิจารณาเป็น null ครบทั้งสี่', () => {
-    const dto = toUserReportDto(row());
+    const dto = toUserReportDto(row(), []);
 
     expect(dto).toMatchObject({
       id: 5, status: 'pending', reason: 'ใช้ถ้อยคำไม่เหมาะสมในคอมเมนต์',
@@ -48,7 +48,7 @@ describe('toUserReportDto', () => {
       user_report_status: 'rejected',
       reviewed_by: 9003, reviewed_by_name: 'ผู้ดูแลระบบ', reviewed_at: REVIEWED_AT,
       rejection_reason: 'หลักฐานไม่เพียงพอ',
-    }));
+    }), []);
 
     expect(dto).toMatchObject({
       status: 'rejected',
@@ -63,7 +63,7 @@ describe('toUserReportDto', () => {
     const dto = toUserReportDto(row({
       user_report_status: 'approved',
       reviewed_by: 9003, reviewed_by_name: 'ผู้ดูแลระบบ', reviewed_at: REVIEWED_AT,
-    }));
+    }), []);
 
     expect(dto).toMatchObject({ status: 'approved', reviewedBy: 9003, rejectionReason: null });
   });
@@ -74,25 +74,28 @@ describe('toUserReportDto', () => {
     const dto = toUserReportDto(row({
       reporter_avatar_key: 'avatar/9001/a.png',
       target_avatar_key: 'avatar/9002/b.png',
-    }));
+    }), []);
 
     expect(dto.reporter.avatarUrl).toBe('https://cdn.test/avatar/9001/a.png');
     expect(dto.target.avatarUrl).toBe('https://cdn.test/avatar/9002/b.png');
   });
 
   it('ไม่มีรูปก็ยังเป็น null ไม่ใช่สตริงว่าง', () => {
-    const dto = toUserReportDto(row());
+    const dto = toUserReportDto(row(), []);
     expect(dto.reporter.avatarUrl).toBeNull();
     expect(dto.target.avatarUrl).toBeNull();
   });
 
-  it('evidence ที่ว่างคืน array ว่าง ไม่ใช่ null', () => {
-    expect(toUserReportDto(row()).evidence).toEqual([]);
-    expect(toUserReportDto(row({ evidence: ['k1', 'k2'] })).evidence).toEqual(['k1', 'k2']);
+  // evidence เป็นหลักฐานส่วนตัว ต้อง presign มาจาก service ก่อนแล้ว — mapper แค่ส่งต่อ ไม่แตะ row.evidence ดิบเลย
+  // (ต่างจาก avatarUrl ที่ mapper ประกอบ URL สาธารณะเองได้ตรงๆ เพราะ evidence ไม่ใช่ของสาธารณะ)
+  it('evidence ที่ presign มาแล้วถูกส่งต่อตรงๆ ไม่ถูกแตะ', () => {
+    expect(toUserReportDto(row(), []).evidence).toEqual([]);
+    expect(toUserReportDto(row({ evidence: ['k1', 'k2'] }), ['https://signed/k1', 'https://signed/k2']).evidence)
+      .toEqual(['https://signed/k1', 'https://signed/k2']);
   });
 
   it('isAdmin มาจากเลข 1/0 ของ SQL ไม่ใช่ค่าความจริงแบบหลวม', () => {
-    expect(toUserReportDto(row({ target_is_admin: 1 })).target.isAdmin).toBe(true);
-    expect(toUserReportDto(row({ target_is_admin: 0 })).target.isAdmin).toBe(false);
+    expect(toUserReportDto(row({ target_is_admin: 1 }), []).target.isAdmin).toBe(true);
+    expect(toUserReportDto(row({ target_is_admin: 0 }), []).target.isAdmin).toBe(false);
   });
 });

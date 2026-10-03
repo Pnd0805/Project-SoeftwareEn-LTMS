@@ -15,6 +15,7 @@
 | `REF`     | `requireAuth` + `requireReferee`                  |
 | `ADM-f`   | `requireAuth` + `requireAdmin('faculty')`         |
 | `ADM-u`   | `requireAuth` + `requireAdmin('university_wide')` |
+| `ADM`     | `requireAuth` + `requireAdmin` (C2) — รับแอดมินได้ทั้ง 3 ชั้น (`root`/`university_wide`/`faculty`) ที่ **ชั้น route** ต่างจาก `ADM-f`/`ADM-u` ที่ล็อกชั้นเดียวตั้งแต่ middleware · ด่านนี้แค่เช็คว่า "เป็นแอดมินไหม" แล้วปล่อยให้ **service เช็คเองว่า scope ไหนทำอะไรได้แค่ไหน** (ดูรายละเอียดจริงในช่อง "ทำอะไร" ของแต่ละแถว) |
 
 **ทุก endpoint ที่มี request body ต้องใส่ `validate(xxxSchema)` นำหน้าเสมอ**
 
@@ -112,7 +113,23 @@
 | T24 | `GET /me/join-requests` | Auth | คำขอที่ฉันส่ง ทุกสถานะ ล่าสุดก่อน | — | `{ items: [{id, team:{id,name,sportTypeId}, message, status, rejectReason, createdAt, respondedAt}] }` |
 | T25 | `DELETE /me/join-requests/:rid` | Auth | ยกเลิกคำขอของตัวเอง (เฉพาะ pending) | — | **204** / **409** `JOIN_REQUEST_ALREADY_ANSWERED` |
 
-**ไม่มี endpoint (ระบบทำเอง):** `Forming → Ready` (เกิดใน T13) · soft delete จากไม่ใช้งาน (scheduled job, BR-06)
+**ไม่มี endpoint (ระบบทำเอง):** `Forming → Ready` (เกิดใน T13) · soft delete จากไม่ใช้งาน (TM-07 — lazy sweep ตอนอ่าน T02/T03 ไม่ใช่ scheduled job)
+
+### โอนหัวหน้าทีม (C3 — FR-TM-08)
+
+**ปัญหาที่แก้**: หัวหน้าทีมลาออก/จบการศึกษา → ทีมค้าง ไม่มีใครเชิญคน/สมัครทัวร์/ส่งผลได้ นอกจากลบทีม
+แก้ด้วย 2 เส้นทาง — หัวหน้ากดโอนเองก่อนออก (T26→T28) หรือแอดมินโอนแทนตอนหัวหน้าหายไปเฉยๆ (T30)
+
+| รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
+|---|---|---|---|---|---|
+| T26 | `POST /teams/:id/transfer-leader` | TL | หัวหน้าทีมเริ่มคำขอโอนหัวหน้า · **ทีม Unofficial ใช้ไม่ได้เลย** → **403** `NOT_OFFICIAL_TEAM` (BR-07 บังคับผ่าน admin อนุมัติ ไม่ใช่ open ให้ทุกทีม) · ผู้รับต้องเป็นสมาชิกทีมอยู่แล้ว → **422** `NOT_A_TEAM_MEMBER` · **ไม่เปลี่ยน `leader_id` ทันที** สร้างคำขอรอแอดมินอนุมัติเท่านั้น (กันหัวหน้ายกให้ใครก็ได้โดยไม่มีใครตรวจสอบ) | `{ newLeaderId }` | **201** `{ id, status:'pending', currentLeaderId, proposedLeaderId }` |
+| T27 | `GET /admin/team-requests/transfers` | ADM-u | ดูคิวคำขอโอนหัวหน้าทีมที่รออนุมัติ | `?page&pageSize` | `{ items: [{id, team, currentLeader, proposedLeader, status, createdAt}], pagination }` |
+| T28 | `POST /admin/team-requests/:id/approve-transfer` | ADM-u | อนุมัติ → **endpoint นี้เท่านั้นที่ `UPDATE teams SET leader_id` จริง** · คำขอต้องยัง `pending` → **409** `ALREADY_DECIDED` ถ้าพิจารณาไปแล้ว | `—` | **200** `{ teamId, newLeaderId }` |
+| T29 | `POST /admin/team-requests/:id/reject-transfer` | ADM-u | ปฏิเสธคำขอ · ไม่แตะ `leader_id` เลย | `{ reason }` | **200** `{ status:'rejected', reason }` |
+| T30 | `POST /admin/teams/:id/transfer-leader` | ADM-u | **แอดมินโอนหัวหน้าทีมแทนทันที** ไม่ผ่านคิว — ใช้ตอนหัวหน้าเดิมหายไปเฉยๆ ไม่มากดโอนเอง (T26) · **ใช้ได้ทั้งทีม Official และ Unofficial** (ต่าง T26 ที่เฉพาะ Official) เพราะทีม Unofficial ไม่มีทางโอนหัวหน้าได้ทางอื่นเลยถ้าไม่มีช่องนี้ · ผู้รับต้องเป็นสมาชิกทีมอยู่แล้ว → **422** `NOT_A_TEAM_MEMBER` · ยังบันทึกลง `team_admin_requests` ด้วย (สถานะ `approved` ทันที) เพื่อมี audit trail ร่วมกับ T26→T28 | `{ newLeaderId }` | **200** `{ teamId, newLeaderId }` |
+
+> **ทำไม T26 ต้องผ่านคิวแต่ T30 ไม่ต้อง** — T26 เป็นหัวหน้าทีม**กดเอง** ต้องมีคนนอกตรวจสอบก่อนมีผลจริง (BR-07)
+> ส่วน T30 **แอดมินเป็นคนกดเอง** อยู่แล้ว ไม่ต้องมีคิวให้ตัวเองอนุมัติตัวเองซ้ำ — เหมือนหลักการเดียวกับ A10 ที่อนุมัติ=ลงมือจริงทันที
 
 ---
 
@@ -385,15 +402,37 @@
 
 # 11. Admin — กำกับดูแล (C2)
 
-> ⚠️ **หมวดนี้ยังไม่ครบ** — ชุด endpoint ของ C2 ที่มากับ `backend_step9-10` (`/admin/users`,
-> `/admin/scopes`, `/admin/audit-logs`, `/admin/user-reports`) **ยังไม่ถูกบันทึกในเอกสารนี้**
-> เป็นหนี้ของเจ้าของโมดูล · ตารางข้างล่างมีเฉพาะ endpoint ที่ OD-34 เพิ่มเข้ามา
+**ลำดับชั้นแอดมิน (มติ 22 ก.ย. 2569 · OD-34)** — 3 ชั้น `root` / `university_wide` / `faculty` แต่ละชั้นแต่งตั้งได้แค่ชั้นถัดลงมา
+ห้ามแต่งตั้งชั้นเดียวกับตัวเอง (`root`→`university_wide`→`faculty`→จบ) · `root` มีคนเดียวในระบบเสมอ ไม่ทำงานประจำวันเลย
+(แต่งตั้ง/ถอน `university_wide` + ดู `audit_logs`/`admin_scopes`/`oversight` เท่านั้น) · ดูเหตุผลเต็มที่ `GUIDE/13`
 
-**ไฟล์:** `routes/adminScope.routes.ts` · `adminScope.controller.ts` · `oversight.service.ts` · `oversight.repo.ts`
+**ไฟล์:** `routes/adminScope.routes.ts` · `adminScope.controller.ts` · `adminScope.service.ts` · `adminScope.repo.ts` ·
+`user.repo.ts` (`searchUsersAdmin`, `suspendUser`) · `userReport.repo.ts`/`userReport.mapper.ts` ·
+`auditLog.repo.ts` · `middlewares/requireAdmin.ts` · `oversight.service.ts` · `oversight.repo.ts`
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
 | A01 | `GET /admin/oversight/stalled` | Auth + **root หรือ university_wide** (faculty → 403) | มีอะไรค้างจนต้องมีคนเข้ามาปลดล็อกไหม · **อ่านอย่างเดียว** | `—` | `{ thresholdHours, disputesPastDeadline, complaintsAwaitingAdmin, universityAdmins, needsAttention }` |
+| A02 | `GET /admin/users` | `ADM` | ค้นหา/กรองผู้ใช้ · **`root` → 403** `ROOT_NO_DAILY_OPERATIONS` (ไม่ใช่งานของ root) · **แอดมินคณะถูกบังคับ `facultyId` เป็นคณะตัวเองเสมอ** ไม่ว่า query จะส่งอะไรมาก็ตาม (เขียนทับ ไม่ใช่แค่กรองเพิ่ม) · `university_wide` เห็นได้ตามที่ขอ (ไม่กรองเลยถ้าไม่ส่ง) · แต่ละแถวมี `adminScope` ติดมาถ้า user นั้นเป็นแอดมินอยู่แล้ว | `?q&facultyId&suspended&page&pageSize` | `{ items: [{id, fullName, email, userType, facultyId, isSuspended, suspendedReason, adminScope\|null}], pagination }` |
+| A03 | `PATCH /admin/users/:id/suspend` | `ADM` | ระงับ/เลิกระงับ · **`root` → 403** · ระงับตัวเอง → **403** `CANNOT_SUSPEND_SELF` · แอดมินคณะแตะแอดมิน (ทุกชั้น รวมคณะเดียวกัน) ไม่ได้เลย → **403** `INSUFFICIENT_ADMIN_SCOPE` · แอดมินคณะแตะคนนอกคณะตัวเอง → **403** เดียวกัน · `reason`+`category` **บังคับทั้งคู่** ตอน `suspended:true` (ไม่ส่ง → **400** `SUSPEND_REASON_REQUIRED`/`SUSPEND_CATEGORY_REQUIRED`) · `days` 1–90 เลือกได้ ไม่ส่ง = ถาวร · ห้ามระงับคนมีทัวร์ `public`/ใบสมัคร `approved` ค้างอยู่ → **409** `USER_HAS_ACTIVE_OBLIGATIONS` · ห้ามระงับ `university_wide` คนสุดท้ายที่ใช้งานได้ → **409** `LAST_UNIVERSITY_ADMIN` · ระงับแอดมินคณะคนสุดท้ายของคณะนั้นได้ แต่ response มี `warning` เตือนมาด้วย | `{ suspended, reason?, days?, category? }` | **200** `AdminUserDto & { warning: string\|null }` |
+| A04 | `GET /admin/scopes` | `ADM` | ดูรายชื่อแอดมินทั้งหมด · แอดมินคณะเห็นแค่คณะตัวเอง (บังคับ `facultyId` แบบเดียวกับ A02) · `root`/`university_wide` เห็นหมด — **`root` ไม่โดนบล็อกตรงนี้** เพราะดูรายชื่อแอดมินเป็นงานของ root โดยตรง (ต้องรู้ว่าใครเป็นแอดมินอยู่ก่อนจะแต่งตั้ง/ถอน) | `?facultyId&page&pageSize` | `{ items: [{id, user, scopeType, facultyId, createdAt}], pagination }` |
+| A05 | `POST /admin/scopes` | `ADM` | แต่งตั้งแอดมิน · **ลำดับชั้นบังคับ**: `root`→`university_wide` เท่านั้น, `university_wide`→`faculty` เท่านั้น, `faculty`→แต่งตั้งใครไม่ได้เลย — ข้ามกฎข้อไหนก็ **403** `INSUFFICIENT_ADMIN_SCOPE` · `scopeType:'faculty'` ต้องมี `facultyId` (ไม่มี → **400**) · `scopeType:'university_wide'` ต้องไม่มี `facultyId` (มี → **400**) · `facultyId` ต้องมีจริง → **404** `FACULTY_NOT_FOUND` · มีสิทธิ์แอดมินอยู่แล้วแต่งตั้งซ้ำไม่ได้ → **409** `ADMIN_SCOPE_ALREADY_EXISTS` · **ไม่มีทางส่ง `scopeType:'root'` เข้ามาได้เลย** (schema ไม่รับเป็นตัวเลือก) — root ตั้งได้แค่ผ่าน seed/DB bootstrap | `{ userId, scopeType:'faculty'\|'university_wide', facultyId? }` | **201** `{ id, user, scopeType, facultyId, createdAt }` |
+| A06 | `DELETE /admin/scopes/:id` | `ADM` | ถอนสิทธิ์แอดมิน · ลำดับชั้นเดียวกับ A05 กลับทิศ · **ถอน `root` ผ่าน API ไม่ได้เด็ดขาด ไม่ว่าใครขอ** → **403** `CANNOT_REVOKE_ROOT_SCOPE` (กู้คืนได้ทางเดียวคือแก้ฐานข้อมูลตรง) · ถอนสิทธิ์ของตัวเอง → **403** `CANNOT_REVOKE_OWN_SCOPE` · ถอน `university_wide` คนสุดท้าย → **409** `LAST_UNIVERSITY_ADMIN` | `—` | **200** `{ id }` |
+| A07 | `GET /admin/audit-logs` | `ADM` (**`faculty` → 403** `INSUFFICIENT_ADMIN_SCOPE` จาก service — เหลือแค่ `root`/`university_wide`) | ดูประวัติการกระทำทั้งระบบ · `audit_logs` มีการเขียนมานานแล้ว (`tournament.repo.ts`, `walkover.repo.ts`, `matchResult.repo.ts`) แต่ไม่มี endpoint อ่านเลยก่อนหน้านี้ · join ชื่อผู้กระทำมาให้ | `?entityType&entityId&userId&actionType&page&pageSize` | `{ items: [{id, actor:{id,fullName}, actionType, entityType, entityId, details, createdAt}], pagination }` |
+| A08 | `POST /users/:id/report` | `Auth` (**ไม่ใช่ `ADM`** — user ธรรมดายื่นได้) | แจ้งเรื่องขอระงับ user/แอดมินคนอื่น (เส้นทางคำร้องดู A09) · แจ้งตัวเอง → **400** `CANNOT_REPORT_SELF` · `reason` บังคับเสมอ `evidence` ไม่บังคับ | `{ reason, evidence? : string[] }` | **201** `userReportDto` (ดูรูปร่างที่ A09) |
+| A09 | `GET /admin/user-reports` | `ADM` (**`root` → 403**) | ดูคิวคำร้องที่มีคนแจ้งเข้ามา · **routing อัตโนมัติ ไม่ต้องเลือกเอง**: เป้าหมายเป็น user ธรรมดา → แอดมินคณะที่ `target.facultyId` ตรงกับแอดมินเห็น (+ `university_wide` เห็นทุกคำร้องอยู่แล้ว) · เป้าหมายเป็นแอดมิน (ทุกชั้น) → แอดมินคณะไม่เห็นเลย เห็นแค่ `university_wide` (เพราะแตะแอดมินไม่ได้อยู่แล้ว) · `evidence` เป็น **presigned URL เสมอ** ไม่ใช่ S3 key ดิบ (แก้ 1 ต.ค. — เดิมหลุดเป็น key ดิบ) | `?page&pageSize` | `{ items: [{id, reporter, target:{...,isAdmin}, reason, evidence:string[], status, createdAt, reviewedBy, reviewedByName, reviewedAt, rejectionReason}], pagination }` |
+| A10 | `POST /admin/user-reports/:id/approve` | `ADM` (**`root` → 403**) | **★ อนุมัติ = ระงับบัญชีทันที ไม่ใช่แค่ "รับเรื่อง"** — เรียกกลไกเดียวกับ A03 เป๊ะ (`performSuspend`) เช็คกฎเดียวกันหมด (ภาระค้าง/`LAST_UNIVERSITY_ADMIN`/แอดมินคณะแตะแอดมินไม่ได้) · แอดมินที่ถูกแจ้งอนุมัติคำร้องเรื่องตัวเองไม่ได้ → **403** `CANNOT_REVIEW_OWN_REPORT` · คำร้องถูกพิจารณาไปแล้ว → **409** `ALREADY_DECIDED` · **ไม่หยิบ `reason` ที่ผู้แจ้งพิมพ์มาเป็น `category` อัตโนมัติ** — คำของผู้แจ้งไม่ใช่คำวินิจฉัยของแอดมิน ต้องเลือก `category` เอง | `{ days?, category? }` (ไม่ใส่ `category` = **400** `SUSPEND_CATEGORY_REQUIRED` เหมือน A03) | **200** `AdminUserDto & { warning: string\|null }` |
+| A11 | `POST /admin/user-reports/:id/reject` | `ADM` (**`root` → 403**) | ปฏิเสธคำร้อง (ไม่ระงับใคร) · เช็คสิทธิ์แบบเดียวกับ A10 (แตะคนนอกคณะ/แอดมินคนอื่นไม่ได้, พิจารณาคำร้องเรื่องตัวเองไม่ได้) แต่ไม่เรียก `performSuspend` | `{ reason }` | **200** `{ id, status:'rejected', reason }` |
+
+> ⚠️ **A08 `evidence` — ช่องอัปโหลดยังไม่มีจริง** เช็คแล้วว่า `presignUploadSchema` (`upload.schema.ts`) ยังไม่มี `purpose`
+> สำหรับหลักฐานแจ้งผู้ใช้เลย (มีแค่ `checkin_document`/`soft_filter_document`/`referee_identity`/`dispute_evidence`/`avatar`/`team_logo`)
+> ⇒ **ตอนนี้ไม่มีทางขอ presigned upload URL เพื่อส่ง `evidence` ได้จริงในทางปฏิบัติ** ฝั่งอ่าน (A09, presign download) แก้แล้ว
+> แต่ฝั่งเขียน (ขอ URL อัปโหลด) ยังไม่มีคนทำ — ต้องเพิ่ม purpose ใหม่ก่อนฟีเจอร์นี้ใช้ได้ครบวงจรจริง (ยังไม่อยู่ในสโคป B1-B4 รอบนี้)
+
+> **คืนแค่ตัวเลขกับ id โดยเจตนา** — ไม่มีเหตุผลของข้อโต้แย้ง ไม่มีหลักฐาน ไม่มีชื่อคู่กรณี (OD-34)
+> root เป็นคนตรวจไม่ใช่คนตัดสิน · ต้องรู้แค่ว่า "มีของค้าง เท่าไร ที่ไหน" พอให้ตัดสินใจว่าต้องแต่งตั้ง
+> University Admin คนใหม่ไหม · ใครจะ **กด** ต้องผ่าน `requireAdmin_U` / `requireCanResolveDispute` ตามเดิม
+> ซึ่ง **root ไม่ผ่านทั้งคู่** — เป็นด่านคนละตัวกัน ไม่ใช่ความซ้ำซ้อน (A01 เท่านั้นที่ย่อหน้านี้อธิบาย)
 
 ```jsonc
 {

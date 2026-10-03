@@ -346,7 +346,10 @@ export async function listUserReports(admin : AdminScopeRow , offset : number , 
     assertNotRoot(admin);
     const facultyOnly = admin.scope_type === 'faculty' ? admin.faculty_id! : undefined;
     const { rows , totalItems } = await UserReportRepo.findAllUserReports(facultyOnly , offset , pageSize);
-    return { items : rows.map(toUserReportDto) , pagination : buildPagination(page , pageSize , totalItems) };
+    // หลักฐานเป็นของส่วนตัว ต้อง presign ไม่ใช่ URL สาธารณะ (เหตุผลเดียวกับ OD-36 ที่ avatar/โลโก้ใช้กฎคนละชุด)
+    const data = await Promise.all(rows.map(async row =>
+        toUserReportDto(row , await Promise.all((row.evidence ?? []).map(key => getPresignedDownloadUrl(key))))));
+    return { items : data , pagination : buildPagination(page , pageSize , totalItems) };
 }
 
 async function checkReportReviewable(admin : AdminScopeRow , reportId : number){

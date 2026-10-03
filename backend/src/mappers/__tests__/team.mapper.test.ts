@@ -249,6 +249,7 @@ describe('toTeamDto', () => {
       leader: LEADER,
       memberCount: 4,
       maxMembers: 12,
+      deletedReason: null,
       createdAt: '2024-01-15T08:30:00.000Z',
     });
   });
@@ -305,6 +306,7 @@ describe('toTeamDto', () => {
         visibility: 'private',
         created_at: new Date('2024-01-01T00:00:00.000Z'),
         deleted_at: null,
+        deleted_reason: null,
       },
       2,
       LEADER,
@@ -314,16 +316,31 @@ describe('toTeamDto', () => {
     expect(dto.readinessStatus).toBe('Ready');
   });
 
-  it('does not expose leader_id, deleted_at, deleted_reason or last_competed_at', () => {
+  it('does not expose leader_id, deleted_at or last_competed_at (but does expose a translated deletedReason — TM-07/OD-30)', () => {
     const team = makeTeamRow({
       deleted_at: new Date('2024-06-01T00:00:00.000Z'),
       deleted_reason: 'inactive_6_months',
       last_competed_at: new Date('2024-05-01T00:00:00.000Z'),
     });
+    const dto = toTeamDto(team, 4, LEADER);
 
-    expect(Object.keys(toTeamDto(team, 4, LEADER)).sort()).toEqual(
-      ['createdAt', 'id', 'leader', 'logoUrl', 'maxMembers', 'memberCount', 'name', 'officialStatus', 'readinessStatus', 'sportTypeId', 'visibility'].sort(),
+    expect(Object.keys(dto).sort()).toEqual(
+      ['createdAt', 'deletedReason', 'id', 'leader', 'logoUrl', 'maxMembers', 'memberCount', 'name', 'officialStatus', 'readinessStatus', 'sportTypeId', 'visibility'].sort(),
     );
+    expect(dto.deletedReason).toBe('ทีมถูกปิดอัตโนมัติ เนื่องจากไม่มีการแข่งขันมานานเกิน 6 เดือน');
+  });
+
+  it.each(['no_registration', 'inactive_6_months', 'leader_deleted'] as const)(
+    "translates deleted_reason '%s' into a human-readable Thai label",
+    (reason) => {
+      const dto = toTeamDto(makeTeamRow({ deleted_at: new Date('2024-06-01T00:00:00.000Z'), deleted_reason: reason }), 4, LEADER);
+      expect(dto.deletedReason).not.toBeNull();
+      expect(typeof dto.deletedReason).toBe('string');
+    },
+  );
+
+  it('deletedReason is null when the team is not deleted', () => {
+    expect(toTeamDto(makeTeamRow({ deleted_at: null, deleted_reason: null }), 4, LEADER).deletedReason).toBeNull();
   });
 
   it('throws a RangeError when created_at is an invalid Date', () => {
