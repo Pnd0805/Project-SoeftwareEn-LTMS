@@ -1,10 +1,13 @@
 import * as z from 'zod';
 
+// แยกออกมาจาก registerSchema เพื่อใช้ร่วมกับ resetPasswordSchema — ห้าม copy กฎรหัสผ่านซ้ำ (TASK-password-recovery)
+const passwordRule = z.string().refine(v => v.length >= 8 && /[0-9]/.test(v),
+            'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร และมีตัวเลขอย่างน้อย 1 ตัว');
+
 const registerSchema = z.object({
     fullName : z.string().min(2, 'ชื่อ-นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร').max(100, 'ชื่อ-นามสกุลต้องไม่เกิน 100 ตัวอักษร'),
     email : z.email('รูปแบบอีเมลไม่ถูกต้อง'),
-    password  : z.string().refine(v => v.length >= 8 && /[0-9]/.test(v),
-                'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร และมีตัวเลขอย่างน้อย 1 ตัว'),
+    password  : passwordRule,
     gender : z.enum(["male" , "female" , "other"], 'เพศต้องเป็น male, female หรือ other'),
     birthDate : z.iso.date('รูปแบบวันเกิดไม่ถูกต้อง ต้องเป็น YYYY-MM-DD'),
     facultyId : z.int('รหัสคณะต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกคณะ'),
@@ -17,5 +20,16 @@ const loginSchema = z.object({
     password  : z.string()
 });
 
-export { registerSchema , loginSchema };
+const forgotPasswordSchema = z.object({
+    email : z.email('รูปแบบอีเมลไม่ถูกต้อง')
+});
+
+const resetPasswordSchema = z.object({
+    token : z.string().min(1, 'กรุณาระบุ token'),
+    newPassword : passwordRule
+});
+
+export { registerSchema , loginSchema , forgotPasswordSchema , resetPasswordSchema };
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

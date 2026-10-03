@@ -12,3 +12,11 @@ export async function login(req : Request , res : Response){
 export async function logout(req : Request , res : Response){
     res.status(204).send();
 }
+
+export async function forgotPassword(req : Request , res : Response){
+    res.status(200).json(await authService.forgotPassword(req.body.email));
+}
+
+export async function resetPassword(req : Request , res : Response){
+    res.status(200).json(await authService.resetPassword(req.body.token , req.body.newPassword));
+}

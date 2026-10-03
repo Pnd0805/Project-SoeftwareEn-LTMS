@@ -84,6 +84,13 @@ describe("env - happy path", () => {
             S3_BUCKET: "uploads",
             S3_FORCE_PATH_STYLE: true,
             S3_PUBLIC_BASE: "http://localhost:9000/uploads",
+
+            SMTP_HOST: "localhost",
+            SMTP_PORT: 1025,
+            SMTP_USER: undefined,
+            SMTP_PASS: undefined,
+            MAIL_FROM: "no-reply@ltms.local",
+            FRONTEND_URL: "http://localhost:8080",
         });
     });
 

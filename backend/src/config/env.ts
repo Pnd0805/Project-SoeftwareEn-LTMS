@@ -35,4 +35,13 @@ export const env = {
     // URL สาธารณะสำหรับรูปที่ตั้งใจให้ทุกคนเห็น (avatar/team_logo) — ต้องตั้ง bucket policy อ่านสาธารณะก่อน (GUIDE)
     // ไม่ require เพื่อไม่บังคับทุกเครื่อง — ไม่ใส่ = ประกอบจาก S3_ENDPOINT + S3_BUCKET เอง (ใช้ได้กับ MinIO path-style local)
     S3_PUBLIC_BASE : process.env["S3_PUBLIC_BASE"] || `${requireEnv("S3_ENDPOINT")}/${requireEnv("S3_BUCKET")}`,
+
+    // Password recovery — ทุกตัว **ห้าม requireEnv** โดยเจตนา เพื่อนอีก 10+ คนที่ไม่ได้ทำเรื่องนี้ต้องรันโปรเจกต์ได้
+    // ปกติโดยไม่มี credential SMTP เลย · ไม่ตั้งค่า = ชี้ไป mailpit (localhost:1025) อัตโนมัติ
+    SMTP_HOST : process.env["SMTP_HOST"] || "localhost",
+    SMTP_PORT : Number(process.env["SMTP_PORT"] ?? 1025),   // 1025 = mailpit
+    SMTP_USER : process.env["SMTP_USER"],                    // undefined = ไม่ auth (mailpit ไม่ต้อง)
+    SMTP_PASS : process.env["SMTP_PASS"],
+    MAIL_FROM : process.env["MAIL_FROM"] || "no-reply@ltms.local",
+    FRONTEND_URL : process.env["FRONTEND_URL"] || "http://localhost:8080",
 };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { registerSchema, loginSchema } from '../auth.schema.js';
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../auth.schema.js';
 
 const validRegisterInput = {
   fullName: 'สมชาย ใจดี',
@@ -145,5 +145,58 @@ describe('loginSchema', () => {
   it('rejects a missing password field', () => {
     const result = loginSchema.safeParse({ email: 'user@example.com' });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('forgotPasswordSchema', () => {
+  it('accepts a well-formed email', () => {
+    const result = forgotPasswordSchema.safeParse({ email: 'user@example.com' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a malformed email', () => {
+    const result = forgotPasswordSchema.safeParse({ email: 'not-an-email' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a missing email field', () => {
+    const result = forgotPasswordSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('resetPasswordSchema', () => {
+  const valid = { token: 'a'.repeat(64), newPassword: 'newpassword1' };
+
+  it('accepts a valid token + password pair', () => {
+    const result = resetPasswordSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty token', () => {
+    const result = resetPasswordSchema.safeParse({ ...valid, token: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a missing token field', () => {
+    const { token, ...rest } = valid;
+    const result = resetPasswordSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  // ใช้กฎเดียวกับ registerSchema.password — ไม่ copy แยกออกมาใช้ร่วมกัน (TASK-password-recovery)
+  it('rejects a newPassword shorter than 8 characters even with a digit', () => {
+    const result = resetPasswordSchema.safeParse({ ...valid, newPassword: 'ab1' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an 8+ character newPassword with no digit', () => {
+    const result = resetPasswordSchema.safeParse({ ...valid, newPassword: 'onlyletters' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a newPassword with 8+ characters and at least one digit', () => {
+    const result = resetPasswordSchema.safeParse({ ...valid, newPassword: 'password1' });
+    expect(result.success).toBe(true);
   });
 });

@@ -3,7 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---- Mock every dependency auth.service.ts imports ----
 vi.mock('../../repositories/user.repo.js', () => ({
   findByEmail: vi.fn(),
+  findById: vi.fn(),
   create: vi.fn(),
+  updatePassword: vi.fn(),
 }));
 
 vi.mock('../../repositories/faculty.repo.js', () => ({
@@ -12,6 +14,15 @@ vi.mock('../../repositories/faculty.repo.js', () => ({
 
 vi.mock('../../repositories/department.repo.js', () => ({
   findDepartmentInFaculty: vi.fn(),
+}));
+
+vi.mock('../../repositories/passwordReset.repo.js', () => ({
+  create: vi.fn(),
+  findActiveByUser: vi.fn(),
+  findAllActive: vi.fn(),
+  countIssuedWithinLastHour: vi.fn(),
+  invalidateAllForUser: vi.fn(),
+  markUsed: vi.fn(),
 }));
 
 vi.mock('../../utils/password.js', () => ({
@@ -30,23 +41,31 @@ vi.mock('../../config/auth.js', () => ({
   },
 }));
 
+vi.mock('../mail.service.js', () => ({
+  sendPasswordResetEmail: vi.fn(),
+}));
+
 // ---- Import the module under test AFTER mocks are declared ----
 import * as authService from '../auth.service.js';
 import * as userRepo from '../../repositories/user.repo.js';
+import * as passwordResetRepo from '../../repositories/passwordReset.repo.js';
 import { findFacultyById } from '../../repositories/faculty.repo.js';
 import { findDepartmentInFaculty } from '../../repositories/department.repo.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { signToken } from '../../utils/token.js';
+import { sendPasswordResetEmail } from '../mail.service.js';
 import { AppError } from '../../utils/AppError.js';
 import type { RegisterInput } from '../../schemas/auth.schema.js';
-import type { UserRow } from '../../types/db.js';
+import type { UserRow, PasswordResetTokenRow } from '../../types/db.js';
 
 const mockedUserRepo = vi.mocked(userRepo);
+const mockedPasswordResetRepo = vi.mocked(passwordResetRepo);
 const mockedFindFacultyById = vi.mocked(findFacultyById);
 const mockedFindDepartmentInFaculty = vi.mocked(findDepartmentInFaculty);
 const mockedHashPassword = vi.mocked(hashPassword);
 const mockedVerifyPassword = vi.mocked(verifyPassword);
 const mockedSignToken = vi.mocked(signToken);
+const mockedSendPasswordResetEmail = vi.mocked(sendPasswordResetEmail);
 
 // ---- Test fixtures ----
 const baseUser: UserRow = {
@@ -245,5 +264,164 @@ describe('auth.service login()', () => {
       extra: { suspendedUntil: until.toISOString(), suspendedCategory: null, suspendedCategoryLabel: null },
     });
     expect(mockedSignToken).not.toHaveBeenCalled();
+  });
+});
+
+const baseResetToken: PasswordResetTokenRow = {
+  password_reset_token_id: 10,
+  user_id: baseUser.user_id,
+  token_hash: 'hashed-raw-token',
+  expires_at: new Date(Date.now() + 60 * 60 * 1000),
+  used_at: null,
+};
+
+describe('auth.service forgotPassword()', () => {
+  it('อีเมลที่มีจริง: ส่งเมล 1 ครั้ง สร้าง token ใหม่ และล้าง token เก่า', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+    mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(0);
+    mockedHashPassword.mockResolvedValue('hashed-raw-token');
+    mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(0);
+    mockedPasswordResetRepo.create.mockResolvedValue(10);
+    mockedSendPasswordResetEmail.mockResolvedValue(undefined);
+
+    const result = await authService.forgotPassword(baseUser.email);
+
+    expect(mockedPasswordResetRepo.invalidateAllForUser).toHaveBeenCalledWith(baseUser.user_id);
+    expect(mockedPasswordResetRepo.create).toHaveBeenCalledWith(baseUser.user_id, 'hashed-raw-token', expect.any(Date));
+    expect(mockedSendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    expect(mockedSendPasswordResetEmail).toHaveBeenCalledWith(baseUser.email, baseUser.full_name, expect.any(String));
+    expect(result).toEqual({ message: expect.any(String) });
+  });
+
+  it('ลิงก์ในเมลมี token ดิบ แต่สิ่งที่บันทึกลงฐานเป็น hash ไม่ใช่ token ดิบ', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+    mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(0);
+    mockedHashPassword.mockResolvedValue('hashed-raw-token');
+    mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(0);
+    mockedPasswordResetRepo.create.mockResolvedValue(10);
+    mockedSendPasswordResetEmail.mockResolvedValue(undefined);
+
+    await authService.forgotPassword(baseUser.email);
+
+    const rawTokenSentInEmail = mockedSendPasswordResetEmail.mock.calls[0]?.[2];
+    const tokenHashPersisted = mockedPasswordResetRepo.create.mock.calls[0]?.[1];
+
+    expect(rawTokenSentInEmail).toEqual(expect.any(String));
+    expect(tokenHashPersisted).toBe('hashed-raw-token');
+    expect(tokenHashPersisted).not.toBe(rawTokenSentInEmail);
+  });
+
+  it('อีเมลที่ไม่มีในระบบ: ตอบ body เหมือนกัน แต่ไม่ส่งเมลและไม่สร้าง token', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+
+    const result = await authService.forgotPassword('nobody@example.com');
+
+    expect(result).toEqual({ message: 'ถ้าอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว' });
+    expect(mockedSendPasswordResetEmail).not.toHaveBeenCalled();
+    expect(mockedPasswordResetRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('บัญชีที่ถูกระงับ: ตอบ body เหมือนกัน แต่ไม่ส่งเมลและไม่สร้าง token', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, is_suspended: 1 });
+
+    const result = await authService.forgotPassword(baseUser.email);
+
+    expect(result).toEqual({ message: 'ถ้าอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว' });
+    expect(mockedSendPasswordResetEmail).not.toHaveBeenCalled();
+    expect(mockedPasswordResetRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('ตัวส่งเมลโยน error: ยังตอบ 200 เหมือนเดิม (ไม่ throw ต่อ)', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+    mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(0);
+    mockedHashPassword.mockResolvedValue('hashed-raw-token');
+    mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(0);
+    mockedPasswordResetRepo.create.mockResolvedValue(10);
+    mockedSendPasswordResetEmail.mockRejectedValue(new Error('SMTP down'));
+
+    await expect(authService.forgotPassword(baseUser.email)).resolves.toEqual({
+      message: 'ถ้าอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว',
+    });
+  });
+
+  it('ขอครั้งที่ 4 ในชั่วโมงเดียว: ถูกปฏิเสธด้วย RATE_LIMITED', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+    mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(3);
+
+    await expect(authService.forgotPassword(baseUser.email)).rejects.toMatchObject({
+      status: 429,
+      code: 'RATE_LIMITED',
+    });
+
+    expect(mockedPasswordResetRepo.create).not.toHaveBeenCalled();
+    expect(mockedSendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('auth.service resetPassword()', () => {
+  it('token ถูกต้อง + รหัสผ่านผ่านกฎ: ตั้งรหัสใหม่ และล้าง token อื่นๆ ของคนนั้นทั้งหมด', async () => {
+    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
+    mockedVerifyPassword.mockResolvedValue(true);
+    mockedUserRepo.findById.mockResolvedValue(baseUser);
+    mockedHashPassword.mockResolvedValue('new-hashed-password');
+    mockedUserRepo.updatePassword.mockResolvedValue(1);
+    mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(1);
+
+    const result = await authService.resetPassword('raw-token', 'newpassword1');
+
+    expect(mockedUserRepo.updatePassword).toHaveBeenCalledWith(baseUser.user_id, 'new-hashed-password');
+    expect(mockedPasswordResetRepo.invalidateAllForUser).toHaveBeenCalledWith(baseUser.user_id);
+    expect(result).toEqual({ message: expect.any(String) });
+    expect(result).not.toHaveProperty('accessToken');
+  });
+
+  it('token ที่ไม่มีในระบบ (ไม่มีแถว active เลย): 400 INVALID_RESET_TOKEN', async () => {
+    mockedPasswordResetRepo.findAllActive.mockResolvedValue([]);
+
+    await expect(authService.resetPassword('unknown-token', 'newpassword1')).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_RESET_TOKEN',
+    });
+    expect(mockedUserRepo.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it('token ที่ไม่ตรงกับ hash ของแถว active ใดเลย (ครอบคลุมทั้งกรณีใช้ไปแล้ว/หมดอายุ — ไม่อยู่ใน findAllActive() แล้ว): 400 ข้อความเดียวกัน', async () => {
+    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
+    mockedVerifyPassword.mockResolvedValue(false);
+
+    const err1: AppError = await authService.resetPassword('wrong-token', 'newpassword1').catch((e) => e);
+    mockedPasswordResetRepo.findAllActive.mockResolvedValue([]);
+    const err2: AppError = await authService.resetPassword('expired-or-used-token', 'newpassword1').catch((e) => e);
+
+    expect(err1.status).toBe(400);
+    expect(err1.code).toBe('INVALID_RESET_TOKEN');
+    expect(err2.status).toBe(400);
+    expect(err2.code).toBe('INVALID_RESET_TOKEN');
+    expect(err1.message).toBe(err2.message);
+  });
+
+  it('response ไม่มี accessToken', async () => {
+    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
+    mockedVerifyPassword.mockResolvedValue(true);
+    mockedUserRepo.findById.mockResolvedValue(baseUser);
+    mockedHashPassword.mockResolvedValue('new-hashed-password');
+    mockedUserRepo.updatePassword.mockResolvedValue(1);
+    mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(1);
+
+    const result = await authService.resetPassword('raw-token', 'newpassword1');
+
+    expect(result).not.toHaveProperty('accessToken');
+  });
+
+  it('บัญชีถูกระงับ + token ที่ออกก่อนถูกระงับ: ใช้ไม่ได้ (400 INVALID_RESET_TOKEN)', async () => {
+    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
+    mockedVerifyPassword.mockResolvedValue(true);
+    mockedUserRepo.findById.mockResolvedValue({ ...baseUser, is_suspended: 1 });
+
+    await expect(authService.resetPassword('raw-token', 'newpassword1')).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_RESET_TOKEN',
+    });
+    expect(mockedUserRepo.updatePassword).not.toHaveBeenCalled();
   });
 });

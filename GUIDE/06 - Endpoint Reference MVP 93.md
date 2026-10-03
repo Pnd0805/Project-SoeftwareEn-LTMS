@@ -1,4 +1,4 @@
-# 06 — Endpoint Reference (MVP 107 endpoint)
+# 06 — Endpoint Reference (MVP 109 endpoint)
 
 > **เปิดไฟล์นี้ค้างไว้ตอนเขียนโค้ด** — รวมทุกอย่างที่ต้องรู้ต่อ 1 endpoint ไว้ในบรรทัดเดียว
 > ทุก path ละ prefix `/api/v1` ไว้ → `POST /teams` = `POST /api/v1/teams`
@@ -21,15 +21,21 @@
 
 ---
 
-# 1. Auth — 3 endpoint
+# 1. Auth — 5 endpoint
 
-**ไฟล์:** `routes/auth.routes.ts` · `controllers/auth.controller.ts` · `services/auth.service.ts` · `repositories/user.repo.ts` · `schemas/auth.schema.ts`
+**ไฟล์:** `routes/auth.routes.ts` · `controllers/auth.controller.ts` · `services/auth.service.ts` · `services/mail.service.ts` · `config/mail.ts` · `repositories/user.repo.ts` · `repositories/passwordReset.repo.ts` · `schemas/auth.schema.ts`
+
+⚠️ **รหัส A04/A05 ด้านล่างชนกับ A04/A05 ของหมวด 11 Admin** (ทั้งคู่ขึ้นต้นด้วย "A" คนละความหมาย: Auth vs Admin) — ชนกันอยู่ก่อนแล้วจากตอนที่ทำ B-item Admin ไม่ได้เกิดจากการเพิ่มนี้ ไม่ได้แก้ให้ในรอบนี้เพราะ A05 ของ Admin ถูกอ้างอิงไขว้จาก A06 แล้ว (เสี่ยงพังจุดอื่น) — ควรเลือกสคีมา ID ใหม่ทั้งไฟล์วันหลัง
 
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
 | A01 | `POST /auth/register` | — | สมัครสมาชิก · เช็คอีเมลซ้ำ · hash รหัสผ่าน | `fullName, email, password, gender, birthDate, facultyId, departmentId, year` | **201** `{ id, fullName, email }` |
 | A02 | `POST /auth/login` | — | ล็อกอิน · เช็คสถานะระงับ **ที่คิดเวลาแล้ว** (`is_suspended` + `suspended_until`) · ออก JWT | `email, password` | **200** `{ accessToken, expiresIn, tokenType, user{id,fullName,userType} }` |
 | A03 | `POST /auth/logout` | Auth | ไม่ทำอะไร (ไม่มี session ฝั่ง server) | — | **204** |
+| A04 | `POST /auth/forgot-password` | — | ขอลิงก์ตั้งรหัสผ่านใหม่ · **ตอบ 200 เหมือนกันเป๊ะทุกกรณี** (มีอีเมล/ไม่มี/ถูกระงับ) กัน enumeration · อีเมลมีจริงและไม่ถูกระงับเท่านั้นถึงจะสร้าง token จริงและส่งเมล (SMTP ล่ม → log แล้วยังตอบ 200 เหมือนเดิม ไม่ throw ต่อ) · rate limit 3 ครั้ง/ชม./อีเมล (นับจาก `password_reset_tokens.expires_at` ย้อนกลับ ไม่มีคอลัมน์ `created_at`) เกิน → **429** `RATE_LIMITED` · ออก token ใหม่ = ล้าง token เก่าของคนนั้นทั้งหมดทันที (`used_at=NOW()`) · token ดิบ = `randomBytes(32).toString('hex')` เก็บลงฐานเป็น bcrypt hash เท่านั้น (ห้ามเก็บ/log ดิบ) อายุ 1 ชม. | `{ email }` | **200** `{ message }` |
+| A05 | `POST /auth/reset-password` | — | ใช้ token จากอีเมลตั้งรหัสผ่านใหม่ · รับแค่ token ดิบ (ไม่มี email/userId มาด้วย) → ต้องกวาดทุกแถวที่ `used_at IS NULL AND expires_at > NOW()` มา `verifyPassword` ทีละแถว (bcrypt hash ไม่เหมือนกันทุกครั้งแม้ปลอดภัยเทียบ plain เดียวกัน) · token ไม่มี/ผิด/ถูกใช้แล้ว/หมดอายุ/บัญชีถูกระงับ **รวมเป็นข้อความเดียวกันหมด** — ห้ามแยก ไม่งั้นบอกคนเดา token ว่าเดาใกล้แค่ไหน · สำเร็จ → hash รหัสใหม่ทับ `users.password_hash` + ล้าง token ที่เหลือของคนนั้นทั้งหมด (รวมใบที่เพิ่งใช้) · **ไม่คืน `accessToken`** ต้อง login ใหม่ | `{ token, newPassword }` | **200** `{ message }` / **400** `INVALID_RESET_TOKEN` / **400** `VALIDATION_FAILED` (รหัสใหม่ไม่ผ่านกฎ) |
+
+> **mailpit (dev)** — `docker compose up mailpit` แล้วเปิด `localhost:8025` ดูเมลที่ระบบส่งออกจริง (ไม่ต้องมี SMTP credential ใดๆ) · ค่า `SMTP_*`/`MAIL_FROM`/`FRONTEND_URL` ใน `config/env.ts` เป็น **optional ทั้งหมด** โดยเจตนา — ไม่ตั้งอะไรเลยก็ชี้ไป mailpit อัตโนมัติ เพื่อนที่ไม่ได้ทำเรื่องนี้ต้องรันโปรเจกต์ได้ปกติ
 
 ---
 
@@ -542,7 +548,7 @@
 |---|---|
 | `POST /auth/login` | 10 ครั้ง / 15 นาที ต่อ IP |
 | `POST /auth/register` | 5 ครั้ง / ชั่วโมง ต่อ IP |
-| `POST /auth/forgot-password` | 3 ครั้ง / ชั่วโมง ต่ออีเมล (Sprint #1) |
+| `POST /auth/forgot-password` | 3 ครั้ง / ชั่วโมง ต่ออีเมล |
 
 > **ความเห็นต่อทัวร์ (E13) ไม่มี rate limit** — OD-24 (22 ก.ย.) กำหนดให้เขียนได้คนละ 1 อันต่อทัวร์ ส่งซ้ำคือแก้ของเดิม ไม่เพิ่มแถว จึงถล่มรายการไม่ได้อยู่แล้ว (เดิมกำหนดไว้ 10 ครั้ง/นาที ตอนที่ออกแบบให้โพสต์ได้หลายอัน)
 
