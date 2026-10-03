@@ -89,7 +89,7 @@ Baseline หลัก:
 - Badge / Achievement
 - participation history แบบละเอียด
 - advanced notifications
-- individual multi-entrant formats ที่ไม่ใช่ head-to-head
+- ~~individual multi-entrant formats ที่ไม่ใช่ head-to-head~~ — **ตัดออกจากขอบเขตแล้ว (4 ต.ค. 2569)** เหตุผลอยู่ใน `OPEN_DECISIONS.md` OD-52
 
 ## 7. Canonical Product Lifecycle
 
