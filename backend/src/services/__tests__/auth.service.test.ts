@@ -360,17 +360,55 @@ describe('auth.service forgotPassword()', () => {
     });
   });
 
-  it('ขอครั้งที่ 4 ในชั่วโมงเดียว: ถูกปฏิเสธด้วย RATE_LIMITED', async () => {
+  /**
+   * OD-54 — เกินโควตาแล้วต้อง **ไม่** โยน 429 เพราะ 429 โผล่เฉพาะกับอีเมลที่มีจริง
+   * เทสชุดนี้ตรึงสองเรื่องคู่กัน: การกันยังอยู่ (ไม่ออก token ไม่ส่งเมล)
+   * และคำตอบที่ส่งออกไปแยกจากเคสอีเมลไม่มีจริงไม่ออก
+   */
+  it('ขอครั้งที่ 4 ในชั่วโมงเดียว: ยังกันไว้ครบ — ไม่ออก token และไม่ส่งเมล', async () => {
     mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
     mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(3);
 
-    await expect(authService.forgotPassword(baseUser.email)).rejects.toMatchObject({
-      status: 429,
-      code: 'RATE_LIMITED',
+    await expect(authService.forgotPassword(baseUser.email)).resolves.toEqual({
+      message: 'ถ้าอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว',
     });
 
     expect(mockedPasswordResetRepo.create).not.toHaveBeenCalled();
+    expect(mockedPasswordResetRepo.invalidateAllForUser).not.toHaveBeenCalled();
     expect(mockedSendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it('ขอครั้งที่ 4 ไม่โยน error ใดๆ — ห้ามกลับไปเป็น 429 (OD-54)', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+    mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(99);
+
+    // ★ ถ้าวันหนึ่งมีคนเติม throw กลับเข้าไป เทสนี้จะแดงทันที
+    await expect(authService.forgotPassword(baseUser.email)).resolves.toBeDefined();
+  });
+
+  it('★ เคสเกินโควตา · อีเมลไม่มีจริง · บัญชีถูกระงับ ต้องได้คำตอบเหมือนกันเป๊ะทั้งสาม', async () => {
+    // ① เกินโควตา (อีเมลมีจริง)
+    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+    mockedPasswordResetRepo.countIssuedWithinLastHour.mockResolvedValue(3);
+    const overQuota = await authService.forgotPassword(baseUser.email);
+
+    // ② ไม่มีอีเมลนี้ในระบบ
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    const unknown = await authService.forgotPassword('nobody@example.com');
+
+    // ③ มีอีเมลแต่บัญชีถูกระงับถาวร
+    mockedUserRepo.findByEmail.mockResolvedValue({
+      ...baseUser, is_suspended: 1, suspended_until: null,
+    });
+    const suspended = await authService.forgotPassword(baseUser.email);
+
+    /**
+     * ★ นี่คือหัวใจของ OD-54 — ถ้าสามเคสนี้แยกจากกันออก
+     *   endpoint นี้จะกลายเป็นเครื่องมือกวาดหาว่าอีเมลไหนมีในระบบ
+     *   ซึ่งเป็นสิ่งเดียวที่คำสัญญา "ตอบ 200 เหมือนกันเป๊ะ" มีไว้เพื่อปิด
+     */
+    expect(overQuota).toEqual(unknown);
+    expect(suspended).toEqual(unknown);
   });
 });
 
