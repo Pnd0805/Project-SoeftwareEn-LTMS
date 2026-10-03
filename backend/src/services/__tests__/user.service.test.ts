@@ -175,7 +175,7 @@ beforeEach(() => {
   mockedFollowRepo.findFollowing.mockResolvedValue([]);
   mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
   mockedAdminRepo.findAdminByUserId.mockResolvedValue(null as any);
-  mockedStatRepo.findProfileTotals.mockResolvedValue({ mvp_votes: 0, pickem_points: 0, follower_count: 0 });
+  mockedStatRepo.findProfileTotals.mockResolvedValue({ mvp_votes: 0, follower_count: 0 });
 });
 
 describe('getUserById', () => {
@@ -236,7 +236,7 @@ describe('getUserStats', () => {
     expect(mockedToUserStatsDto).toHaveBeenCalledWith(
       1,
       [{ sport_type_id: 1, wins: 3 }],
-      { mvp_votes: 0, pickem_points: 0, follower_count: 0 },
+      { mvp_votes: 0, follower_count: 0 },
     );
     expect(result).toEqual({ userId: 1, stats: [] });
   });
@@ -309,7 +309,6 @@ describe('C8 profile engagement', () => {
     mockedStatRepo.findStatsByUser.mockResolvedValue([]);
     mockedStatRepo.findProfileTotals.mockResolvedValue({
       mvp_votes: 7,
-      pickem_points: 40,
       follower_count: 5,
     });
     mockedToUserStatsDto.mockReturnValue({ userId: 1 } as any);
@@ -319,7 +318,7 @@ describe('C8 profile engagement', () => {
     expect(mockedToUserStatsDto).toHaveBeenCalledWith(
       1,
       [],
-      { mvp_votes: 7, pickem_points: 40, follower_count: 5 },
+      { mvp_votes: 7, follower_count: 5 },
     );
   });
 

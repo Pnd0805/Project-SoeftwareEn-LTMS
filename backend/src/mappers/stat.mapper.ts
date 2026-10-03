@@ -31,14 +31,19 @@ export type UserStatsDto = {
     overall : OverAllStat | null,
     bySport : SportStatDto[] | null,
     mvpVotes: number | null,
-    pickemPoints: number | null,
+    /**
+     * ★ ไม่มี `pickemPoints` แล้ว (4 ต.ค. 2569) — ย้ายไปอยู่ที่ตารางอันดับในทัวร์เท่านั้น (E28)
+     *   เหตุผล: แต้มมาจากการทายผล ไม่ใช่ผลงานกีฬา · และที่นี่เป็นแต้ม **รวมทุกทัวร์**
+     *   ซึ่งไม่ตรงกับหลัก "สถิติในทัวร์เปิดเสมอ · สถิติรวมปิดได้" ของ OD-47
+     *   เจ้าตัวยังดูแต้มรวมของตัวเองได้ที่ `GET /me/pickem` (E27)
+     */
     followerCount: number | null
 }
 
 /** สถิติที่ถูกซ่อน — ไม่ส่งตัวเลขอะไรออกไปเลย แม้แต่ 0 */
 export function hiddenUserStatsDto(userId : number) : UserStatsDto{
     return { userId , statsHidden : true , overall : null , bySport : null ,
-             mvpVotes : null , pickemPoints : null , followerCount : null };
+             mvpVotes : null , followerCount : null };
 }
 
 export function toSportStatDto(row : UserSportStatRow): SportStatDto{
@@ -54,7 +59,7 @@ export function toSportStatDto(row : UserSportStatRow): SportStatDto{
 export function toUserStatsDto(
     userId: number,
     rows: UserSportStatRow[],
-    totals: UserProfileTotalsRow = { mvp_votes: 0, pickem_points: 0, follower_count: 0 }
+    totals: UserProfileTotalsRow = { mvp_votes: 0, follower_count: 0 }
 ): UserStatsDto {
     let matchesPlayed = 0, wins = 0, losses = 0, championCount = 0;
     for (const r of rows) {
@@ -77,7 +82,6 @@ export function toUserStatsDto(
         },
         bySport: rows.map(toSportStatDto),
         mvpVotes: Number(totals.mvp_votes),
-        pickemPoints: Number(totals.pickem_points),
         followerCount: Number(totals.follower_count),
     };
 }

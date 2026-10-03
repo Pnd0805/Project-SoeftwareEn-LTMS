@@ -12,18 +12,17 @@ describe('findProfileTotals', () => {
   it('reads pickem points, active MVP votes and follower count in one query', async () => {
     mocks.query.mockResolvedValueOnce([[{
       mvp_votes: 3,
-      pickem_points: 40,
       follower_count: 7,
     }], []]);
 
     await expect(findProfileTotals(5)).resolves.toEqual({
       mvp_votes: 3,
-      pickem_points: 40,
       follower_count: 7,
     });
 
     const [sql, values] = mocks.query.mock.calls[0]!;
-    expect(sql).toContain('u.total_points AS pickem_points');
+    // ★ 4 ต.ค. — ห้ามดึงแต้ม Pick'em มาอีก โปรไฟล์สาธารณะไม่คืนแต้มรวมทุกทัวร์อีกแล้ว
+    expect(sql).not.toContain('total_points');
     expect(sql).toContain("tf.feedback_type = 'mvp_vote'");
     expect(sql).toContain('tf.removed_at IS NULL');
     expect(sql).toContain('FROM follows f');
@@ -35,7 +34,7 @@ describe('findProfileTotals', () => {
    * ถ้านับโหวตของแมตช์ที่ยังเปิดโหวตอยู่ ใครก็ poll โปรไฟล์ดูเลขวิ่งได้ ทั้งที่หน้าแมตช์ตั้งใจไม่ส่งจำนวนโหวตออกไป
    */
   it('counts only votes from matches whose voting window has closed', async () => {
-    mocks.query.mockResolvedValueOnce([[{ mvp_votes: 0, pickem_points: 0, follower_count: 0 }], []]);
+    mocks.query.mockResolvedValueOnce([[{ mvp_votes: 0, follower_count: 0 }], []]);
     await findProfileTotals(5);
 
     const [sql, values] = mocks.query.mock.calls[0]!;

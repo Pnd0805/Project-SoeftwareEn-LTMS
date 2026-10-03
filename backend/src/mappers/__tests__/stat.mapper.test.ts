@@ -30,7 +30,6 @@ describe('toUserStatsDto', () => {
       overall: { matchesPlayed: 0, wins: 0, losses: 0, winRate: 0, championCount: 0 },
       bySport: [],
       mvpVotes: 0,
-      pickemPoints: 0,
       followerCount: 0,
     });
   });
@@ -86,8 +85,10 @@ describe('toUserStatsDto', () => {
   });
 
   it('maps C8 engagement totals onto the stats response', () => {
-    const result = toUserStatsDto(1, [], { mvp_votes: 6, pickem_points: 120, follower_count: 9 });
-    expect(result).toMatchObject({ mvpVotes: 6, pickemPoints: 120, followerCount: 9 });
+    const result = toUserStatsDto(1, [], { mvp_votes: 6, follower_count: 9 });
+    expect(result).toMatchObject({ mvpVotes: 6, followerCount: 9 });
+    // ★ 4 ต.ค. — แต้ม Pick'em ถูกเอาออกจากโปรไฟล์สาธารณะ ดูได้ที่ตารางอันดับในทัวร์ (E28) กับ /me/pickem (E27)
+    expect(result).not.toHaveProperty('pickemPoints');
   });
 
   /**
@@ -101,7 +102,6 @@ describe('toUserStatsDto', () => {
       overall: null,
       bySport: null,
       mvpVotes: null,
-      pickemPoints: null,
       followerCount: null,
     });
   });
