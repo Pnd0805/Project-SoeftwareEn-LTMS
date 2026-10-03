@@ -19,7 +19,6 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
 }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn() }));
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
-  findLatestByTournamentAndUser: vi.fn(async () => null),
   // การมองทัวร์ private ถามจากทุกแถวที่ active แล้ว (แก้ 1 ต.ค. 2569)
   findActiveByTournamentAndUser: vi.fn(async () => []),
 }));

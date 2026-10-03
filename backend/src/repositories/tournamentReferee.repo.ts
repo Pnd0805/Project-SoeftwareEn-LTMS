@@ -42,22 +42,22 @@ export async function findActiveByTournamentAndUser(tournamentId : number, userI
     return rows;
 }
 
-/**
- * ⚠️ ห้ามใช้ตอบคำถามว่า "คนนี้เป็นกรรมการของทัวร์นี้อยู่ไหม" — ใช้ findActiveRefereeRow() แทน
+/*
+ * ลบ findLatestByTournamentAndUser() ออกแล้ว (4 ต.ค. 2569)
  *
- * ตารางเป็น soft delete และ F-15 ตั้งใจให้มีแถว active ได้หลายแถว
- * ⇒ "แถวล่าสุดตาม id" ไม่ใช่คำตอบของคำถามนั้น (บั๊กที่แก้ 1 ต.ค. 2569)
- * ตั้งแต่รอบนั้นโค้ดส่วนที่ใช้งานไม่เรียกตัวนี้แล้ว — คงไว้เพราะสาขาอื่นที่ยังไม่ merge ยังเรียกอยู่
- * ลบได้เมื่อสาขาเหล่านั้นเข้ามาหมดแล้ว
+ * มันคืน "แถวล่าสุดตาม id" ซึ่ง **ไม่ใช่คำตอบ** ของคำถามว่า "คนนี้เป็นกรรมการของทัวร์นี้อยู่ไหม"
+ * เพราะตารางเป็น soft delete และ F-15 ตั้งใจให้มีแถวที่ใช้งานได้พร้อมแถว rejected_by_admin ค้างอยู่
+ * ⇒ ถ้าแถวล่าสุดเป็นแถวที่ถูกปฏิเสธ/ถูกถอด มันจะตอบว่า "ไม่เป็น" ทั้งที่แถวเก่ายังใช้งานได้
+ * เป็นบั๊กที่แก้ไปเมื่อ 1 ต.ค. (dabe9e3/d5bda6d) — มีสามที่เรียกตัวนี้แล้วถาม isActiveReferee แถวเดียว
+ *
+ * คงไว้ถึงวันนี้เพราะสาขาที่ยังไม่ merge ยังเรียกอยู่ · ตรวจแล้วว่าเงื่อนไขนั้นหมดไป:
+ * 6 สาขาที่เคยเรียก (rewards-match-history · be-c8-profile · be-c4-c5a · backend_shokun ·
+ * tournaments-step-5 · backend) เข้า BE_KN ครบ ahead=0 ทุกตัว และสาขาที่ยังมีของค้างทั้ง 6 ตัว
+ * เป็น frontend ที่ไม่เรียกเลย
+ *
+ * ★ ลบเพราะ **ชื่อมันอ่านเหมือนตัวที่ควรเรียก** — autocomplete เจอแล้วเรียกได้โดยไม่มีอะไรฟ้อง
+ *   เหลือ findActiveRefereeRow() ทางเดียวคือทางที่ถูก · คอมเมนต์ไม่ได้หยุดใคร แต่การไม่มีของให้เรียกหยุดได้
  */
-export async function findLatestByTournamentAndUser(tournamentId : number, userId : number)
-        : Promise<TournamentRefereeRow | null>{
-    const [rows] = await pool.query<(TournamentRefereeRow & RowDataPacket)[]>(
-        `SELECT * FROM tournament_referees
-         WHERE tournament_id = ? AND user_id = ?
-         ORDER BY tournament_referee_id DESC LIMIT 1`, [tournamentId, userId]);
-    return rows[0] ?? null;
-}
 
 type NewTournamentReferee = {
     tournamentId : number;

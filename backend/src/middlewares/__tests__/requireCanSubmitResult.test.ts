@@ -3,7 +3,6 @@ import type { Request, Response, NextFunction } from 'express';
 
 vi.mock('../../repositories/matchResult.repo.js', () => ({ findmatchResultByMatchId: vi.fn(() => Promise.resolve(null)) }));
 vi.mock('../../utils/checkExist.js', () => ({ checkMatch: vi.fn(), checkMatchResult: vi.fn() }));
-vi.mock('../../repositories/tournamentReferee.repo.js', () => ({ findLatestByTournamentAndUser: vi.fn() }));
 vi.mock('../../repositories/matchReferee.repo.js', () => ({ findByMatch: vi.fn(() => Promise.resolve([])), countAcceptedByMatch: vi.fn() }));
 vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/team.repo.js', () => ({ findById: vi.fn() }));

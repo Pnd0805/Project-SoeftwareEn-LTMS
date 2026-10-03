@@ -15,7 +15,6 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
 }));
 
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
-  findLatestByTournamentAndUser: vi.fn(),
   findActiveByTournamentAndUser: vi.fn(() => Promise.resolve([])),
   findApplyingTeamOfUser: vi.fn(() => Promise.resolve(null)),
   create: vi.fn(),
@@ -922,7 +921,7 @@ describe('แจ้งเตือนกรรมการถูกถอด (�
 
 /**
  * findActiveRefereeRow — ตัวที่ด่านสิทธิ์สามที่ใช้ร่วมกัน (requireReferee · refereeRequest · tournament)
- * แก้ 1 ต.ค. 2569: เดิมทั้งสามที่เรียก findLatestByTournamentAndUser แล้วถาม isActiveReferee กับแถวนั้นแถวเดียว
+ * แก้ 1 ต.ค. 2569: เดิมทั้งสามที่เรียก findLatestByTournamentAndUser (ลบฟังก์ชันนั้นไปแล้ว 4 ต.ค.) แล้วถาม isActiveReferee กับแถวนั้นแถวเดียว
  */
 describe('findActiveRefereeRow', () => {
   it('ไม่มีแถว active เลย → null', async () => {

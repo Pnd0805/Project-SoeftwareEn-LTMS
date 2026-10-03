@@ -15,7 +15,6 @@ vi.mock('../../repositories/refereeChangeRequest.repo.js', () => ({
 
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findById: vi.fn(),
-  findLatestByTournamentAndUser: vi.fn(),
 }));
 
 vi.mock('../../repositories/matchReferee.repo.js', () => ({

@@ -364,7 +364,7 @@ export async function removeTournamentReferee(
  * แถวที่ "นับเป็นกรรมการใช้งานได้" ของคนนี้ในทัวร์นี้ · null = ไม่มี (เพิ่ม 1 ต.ค. 2569)
  *
  * ตารางเป็น soft delete และ F-15 ตั้งใจให้มีแถว active ได้หลายแถว ⇒ ต้องมองทุกแถว ไม่ใช่แถวล่าสุดตาม id
- * เดิมสามที่เรียก findLatestByTournamentAndUser แล้วถาม isActiveReferee กับแถวนั้นแถวเดียว
+ * เดิมสามที่เรียก findLatestByTournamentAndUser (ลบฟังก์ชันนั้นไปแล้ว 4 ต.ค.) แล้วถาม isActiveReferee กับแถวนั้นแถวเดียว
  * ⇒ ถ้าแถวล่าสุดเป็นแถวที่แอดมินปฏิเสธตัวตน (rejected_by_admin) ขณะที่แถวเก่า approved และยัง active
  *   จะตอบว่า "ไม่ใช่กรรมการ" ทั้งที่เป็น ⇒ คุมแมตช์/ส่งผล/โอนแมตช์ไม่ได้ทั้งที่มีสิทธิ์
  *

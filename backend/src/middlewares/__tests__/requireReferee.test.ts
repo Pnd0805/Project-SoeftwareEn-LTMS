@@ -16,10 +16,6 @@ vi.mock('../../services/referee.service.js', () => ({
   refereesNeededPerMatch: vi.fn(),
 }));
 
-vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
-  findLatestByTournamentAndUser: vi.fn(),
-}));
-
 vi.mock('../../repositories/matchReferee.repo.js', () => ({
   findByMatch: vi.fn(),
   countAcceptedByMatch: vi.fn(),
@@ -56,7 +52,6 @@ import {
 import { parseId } from '../../utils/parseId.js';
 import { checkMatch, checkMatchResult } from '../../utils/checkExist.js';
 import { findActiveRefereeRow, refereesNeededPerMatch } from '../../services/referee.service.js';
-import { findLatestByTournamentAndUser } from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefereeRepo from '../../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
@@ -77,7 +72,6 @@ const mockedCheckMatch = vi.mocked(checkMatch);
 const mockedCheckMatchResult = vi.mocked(checkMatchResult);
 const mockedFindActiveRefereeRow = vi.mocked(findActiveRefereeRow);
 const mockedRefereesNeededPerMatch = vi.mocked(refereesNeededPerMatch);
-const mockedFindLatestByTournamentAndUser = vi.mocked(findLatestByTournamentAndUser);
 const mockedFindByMatch = vi.mocked(MatchRefereeRepo.findByMatch);
 const mockedCountAcceptedByMatch = vi.mocked(MatchRefereeRepo.countAcceptedByMatch);
 const mockedMatchFindById = vi.mocked(MatchRepo.findById);
