@@ -24,6 +24,7 @@ vi.mock('../../utils/checkExist.js', () => ({
 }));
 
 import * as announcementService from '../announcement.service.js';
+import { categoryOf } from '../../config/notificationCategories.js';
 import * as AnnouncementRepo from '../../repositories/announcement.repo.js';
 import * as NotificationService from '../notification.service.js';
 import { checkAnnouncement } from '../../utils/checkExist.js';
@@ -86,8 +87,41 @@ describe('createAnnouncement — แจ้งเตือน', () => {
 
     expect(mockedNotify.notifyTournamentReferees).toHaveBeenCalledWith(
       20,
-      expect.objectContaining({ type: 'tournament_announcement' }),
+      expect.objectContaining({ type: 'tournament_announcement_urgent' }),
     );
+  });
+
+  /**
+   * OD-49 — ประกาศถูกแยกเป็นสองชนิดตอนยิง เพราะ announcement_type เดียวคุมสองความหมายที่คนละขั้ว
+   *   schedule_change/venue_change  ไม่รู้ = ไปผิดวัน/ผิดสนาม = แพ้บาย (M10)  → critical ปิดไม่ได้
+   *   general/result/livestream     ไม่รู้ก็ไม่เสียสิทธิ์                      → tournament ปิดได้
+   * เทสนี้ตรึงการจับคู่ ไม่ใช่แค่ว่า "ยิงออกไป" — เพราะถ้าจับคู่ผิดจะไม่มีอะไรพังให้เห็น
+   */
+  it.each([
+    ['schedule_change' , 'tournament_announcement_urgent'],
+    ['venue_change'    , 'tournament_announcement_urgent'],
+    ['general'         , 'tournament_announcement'],
+    ['result'          , 'tournament_announcement'],
+    ['livestream'      , 'tournament_announcement'],
+  ] as const)('ประกาศประเภท %s ยิงเป็นชนิด %s', async (announcementType, notificationType) => {
+    await announcementService.createAnnouncement(20, 'หัวข้อ', 'เนื้อหา', 9001, announcementType);
+
+    expect(mockedNotify.notifyTournamentSquads).toHaveBeenCalledWith(
+      20, expect.objectContaining({ type: notificationType }), { exceptUserId: 9001 },
+    );
+    expect(mockedNotify.notifyTournamentReferees).toHaveBeenCalledWith(
+      20, expect.objectContaining({ type: notificationType }),
+    );
+  });
+
+  /**
+   * ★ ชนิดที่ยิงต้องอยู่ในตารางหมวดจริง ไม่ใช่สตริงที่พิมพ์ถูกโดยบังเอิญ
+   * tsc กันไว้ให้ชั้นหนึ่งแล้ว (NotificationInput.type เป็น union) แต่ตรึงที่ runtime ด้วย
+   * เพราะ union กันได้แค่ตอน compile — ถ้ามีใคร cast ทิ้งมันจะหลุด
+   */
+  it('ชนิดที่ยิงอยู่ในตารางหมวดทั้งสองตัว และอยู่หมวดที่ตั้งใจ', async () => {
+    expect(categoryOf('tournament_announcement_urgent')).toBe('critical');
+    expect(categoryOf('tournament_announcement')).toBe('tournament');
   });
 
   it('ทั้งสองกลุ่มได้เนื้อหาชุดเดียวกัน', async () => {

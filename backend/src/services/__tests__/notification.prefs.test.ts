@@ -69,6 +69,25 @@ describe('ตารางหมวด — ความครบถ้วนแ�
     expect(mutedTypes(allOff)).not.toContain('team_deleted');
   });
 
+  /**
+   * ★ OD-49 ข้อที่สาม — ประกาศของผู้จัดถูกแยกเป็นสองชนิด เพราะชนิดเดียวคุมสองความหมายที่คนละขั้ว
+   * ตรึงว่า "ปิดหมวด tournament แล้วข่าวเลื่อนเวลา/เปลี่ยนสนามต้องยังมาถึง" ซึ่งเป็นเหตุผลทั้งหมดของการแยก
+   * ครอบกรรมการด้วย — กรรมการได้ประกาศก้อนเดียวกับผู้เล่น ถ้าหลุดไปอยู่ tournament จะพลาดสนามที่ย้าย
+   */
+  it('ประกาศด่วนของผู้จัดปิดไม่ได้ แต่ประกาศทั่วไปปิดได้', () => {
+    expect(categoryOf('tournament_announcement_urgent')).toBe('critical');
+    expect(categoryOf('tournament_announcement')).toBe('tournament');
+
+    const muted = mutedTypes({ tournament: false });
+    expect(muted).toContain('tournament_announcement');
+    expect(muted).not.toContain('tournament_announcement_urgent');
+  });
+
+  it('★ ปิดทุกหมวดที่ปิดได้ ข่าวเลื่อนเวลาแข่งก็ยังมาถึง', () => {
+    const allOff = Object.fromEntries(MUTABLE_CATEGORIES.map(c => [c, false]));
+    expect(mutedTypes(allOff)).not.toContain('tournament_announcement_urgent');
+  });
+
   it('comment_rewritten_after_removal เป็น community — ไม่มีเส้นตาย รู้ช้าก็ตรวจได้', () => {
     expect(categoryOf('comment_rewritten_after_removal')).toBe('community');
     expect(mutedTypes({ community: false })).toContain('comment_rewritten_after_removal');

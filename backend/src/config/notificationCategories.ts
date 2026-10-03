@@ -8,6 +8,11 @@
  *
  * ชนิดที่ไม่อยู่ในตารางนี้ (ของใหม่ที่ยังไม่ได้จัดหมวด) ถือเป็น `critical` โดยปริยาย
  * เลือกทางนี้เพราะ "ลืมจัดหมวดแล้วแจ้งเตือนหายเงียบ" แย่กว่า "ลืมจัดหมวดแล้วปิดไม่ได้"
+ *
+ * ★ แต่ตั้งแต่ 3 ต.ค. (OD-49) **ลืมไม่ได้แล้ว** — `NotificationInput.type` เป็น union ที่มาจากคีย์ของตารางนี้
+ *   ⇒ เพิ่มชนิดแจ้งเตือนใหม่โดยไม่เติมที่นี่ = **compile ไม่ผ่าน** ไม่ต้องรอใครไปเจอเอง
+ *   ด่าน `critical` โดยปริยายยังอยู่ เพราะคอลัมน์ `notifications.type` เป็น VARCHAR ไม่ใช่ ENUM
+ *   ⇒ แถวเก่าในฐานที่ชนิดถูกเลิกใช้ไปแล้วยังมีได้ และต้องไม่ทำให้ `categoryOf()` คืน undefined
  */
 
 /** หมวดที่ผู้ใช้ปิดได้ — คีย์เหล่านี้คือสิ่งที่เก็บใน `users.notification_prefs` */
@@ -20,7 +25,7 @@ export type NotificationCategory = MutableCategory | 'critical';
  * ชนิด → หมวด · เหตุผลของทุกตัวที่เป็น `critical` เขียนกำกับไว้ว่าเส้นตายคืออะไร
  * (ตัวที่ไม่ใช่ critical ไม่มีเส้นตาย — รู้ช้าก็ไม่เสียสิทธิ์อะไร)
  */
-export const NOTIFICATION_CATEGORY: Record<string, NotificationCategory> = {
+export const NOTIFICATION_CATEGORY = {
     // ── ทีม ──
     team_invited: 'critical',            // `team_invitations.expires_at` — คำเชิญหมดอายุใน 7 วัน (migration 013)
     team_invite_answered: 'team',
@@ -35,6 +40,13 @@ export const NOTIFICATION_CATEGORY: Record<string, NotificationCategory> = {
     registration_toggled: 'critical',    // `registration_start`–`registration_end` — ปิดรับสมัครแล้วสมัครไม่ได้อีก
     application_decided: 'critical',     // ถูกปฏิเสธแล้วยังไปสมัครทัวร์อื่นทันถ้ารู้เร็ว — เส้นตายคือ `registration_end` ของทัวร์อื่น
     application_withdrawn: 'tournament',
+    // ★ OD-49 — ประกาศของผู้จัดถูกแยกเป็นสองชนิดตอนยิง เพราะ `announcement_type` เดียวคุมสองความหมายที่คนละขั้ว
+    //   ถ้าใช้ชนิดเดียว ต้องเลือกระหว่าง "คนแพ้บายเพราะไม่รู้ว่าเลื่อนเวลา" กับ "ปิดข่าวถ่ายทอดสดไม่ได้เลย"
+    //   คนตัดสินว่าประกาศไหนด่วนคือ `announcement.service.ts` ตอนยิง — ที่นี่แค่บอกว่าปิดได้หรือไม่ได้
+    tournament_announcement: 'tournament',          // general · result · livestream — ไม่รู้ก็ไม่เสียสิทธิ์
+    tournament_announcement_urgent: 'critical',     // schedule_change · venue_change — ไม่รู้ = ไปผิดวัน/ผิดสนาม = แพ้บาย (M10)
+                                                    // ★ กรรมการได้ประกาศก้อนเดียวกับผู้เล่น แต่เข้าทางหมวดนี้ ⇒ ปิดหมวด
+                                                    //   `tournament` แล้วยังได้รู้ว่าแมตช์ที่ต้องไปตัดสินย้ายสนาม
 
     // ── แมตช์ · ตาราง · สาย ──
     match_scheduled: 'critical',         // `matches.scheduled_time` — ไม่มาตามนัดคือแพ้บาย
@@ -71,11 +83,23 @@ export const NOTIFICATION_CATEGORY: Record<string, NotificationCategory> = {
     feedback_restored: 'community',
     feedback_restore_overridden: 'community',
     pickem_cancelled: 'community',
-};
+    // `satisfies` ไม่ใช่ `: Record<string , NotificationCategory>` — ต้องได้ทั้งสองอย่าง:
+    //   ตรวจว่าทุกค่าเป็นหมวดที่มีจริง (เหมือน Record) และ **เก็บชื่อคีย์ไว้เป็น literal** ให้ NotificationType ใช้ได้
+    // ถ้าใส่เป็น type annotation คีย์จะกลายเป็น `string` แล้ว union จะไม่กันอะไรเลย
+} satisfies Record<string, NotificationCategory>;
+
+/**
+ * ชนิดแจ้งเตือนที่ระบบยิงได้ — มาจากคีย์ของตารางข้างบนโดยตรง (OD-49)
+ *
+ * ตั้งใจให้เป็น union ไม่ใช่ `string` เพราะตอนที่ยังเป็น `string` มีชนิดหลุดการจัดหมวดไป **3 ตัวพร้อมกัน**
+ * โดยไม่มีอะไรพังเลย (ไม่อยู่ในตาราง = critical โดยปริยาย ⇒ ดูเหมือนทำงานปกติ) จนไปเจอตอน merge
+ */
+export type NotificationType = keyof typeof NOTIFICATION_CATEGORY;
 
 /** ชนิดที่ยังไม่ได้จัดหมวด = critical (ปิดไม่ได้) — ปลอดภัยกว่าปล่อยให้หายเงียบ */
 export function categoryOf(type: string): NotificationCategory {
-    return NOTIFICATION_CATEGORY[type] ?? 'critical';
+    // รับ `string` ไม่ใช่ `NotificationType` โดยเจตนา — ตัวเรียกคือฝั่งที่อ่านแถวเก่าจากฐาน (VARCHAR)
+    return (NOTIFICATION_CATEGORY as Record<string, NotificationCategory>)[type] ?? 'critical';
 }
 
 /** ค่าที่เก็บใน `users.notification_prefs` — คีย์ที่ไม่มี = เปิด (ค่าเริ่มต้นคือเปิดทุกหมวด) */
@@ -98,5 +122,7 @@ export function mutedTypes(stored: unknown): string[] {
     const prefs = resolvePrefs(stored);
     const off = new Set(MUTABLE_CATEGORIES.filter(c => !prefs[c]));
     if (off.size === 0) return [];
-    return Object.keys(NOTIFICATION_CATEGORY).filter(t => off.has(NOTIFICATION_CATEGORY[t] as MutableCategory));
+    return Object.entries(NOTIFICATION_CATEGORY)
+        .filter(([, category]) => off.has(category as MutableCategory))
+        .map(([type]) => type);
 }

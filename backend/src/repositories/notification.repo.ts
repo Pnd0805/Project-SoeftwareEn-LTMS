@@ -1,9 +1,15 @@
 import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { NotificationType } from '../config/notificationCategories.js';
 
 export type NotificationInput = {
     userId: number;
-    type: string;
+    /**
+     * OD-49 — union จากคีย์ของ NOTIFICATION_CATEGORY ไม่ใช่ string
+     * ★ เพิ่มชนิดแจ้งเตือนใหม่โดยไม่เติมหมวด = compile ไม่ผ่านทันที
+     * ตอนที่เป็น string มีชนิดหลุดการจัดหมวดไป 3 ตัวพร้อมกัน โดยไม่มีอะไรพัง
+     */
+    type: NotificationType;
     title: string;
     message: string;
     relatedEntityType?: string | null;
