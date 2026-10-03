@@ -1,17 +1,38 @@
 # LTMS Open Decisions and Known Gaps
 
 **Status:** Open / Non-normative until promoted  
-**Last reviewed:** 2026-09-15
+**Last reviewed:** 2026-10-04
 
 ไฟล์นี้เก็บเรื่องที่ยัง **ห้ามเดา** ใน implementation ถ้า decision ใดถูกทีมยืนยันแล้ว ให้ย้ายผลลัพธ์ไป domain spec และ mark entry นี้ว่า resolved
 
-## OD-01 — Exact Referee Match-Invitation API
+
+## อ่านสถานะของแต่ละข้อยังไง
+
+**ดูที่หัวข้อ อย่าดูที่เนื้อหา** — หัวข้อคือสิ่งเดียวที่กรองหาได้
+
+| ธง | หมายความว่า |
+|---|---|
+| ✅ `Resolved` / `ตัดสินแล้ว` / `ทำแล้ว` | จบแล้ว ที่เหลือเก็บไว้เป็นบันทึกเหตุผล |
+| ⚠️ | ปิดบางส่วน — หัวข้อบอกว่าเหลืออะไร |
+| ⏸ `Deferred` | ตั้งใจเลื่อนออกไป |
+| ไม่มีธง | **ยังค้างจริง ห้ามเดา** |
+
+**4 ต.ค. 2569 — ติดธงคืนให้ 5 ข้อ** · OD-01/02/04/09 มีกล่อง *"ปิดแล้ว (2026-09-15)"* อยู่ใน
+เนื้อหามานานแล้ว **แต่หัวข้อไม่ได้บอก** ⇒ ใครไล่หาว่ามีอะไรค้างจะเห็น 8 เรื่อง ทั้งที่ค้างจริงแค่ 3
+(OD-06 · OD-12 · OD-13) และ 4 ใน 5 ที่ติดธงคืนเป็นโมดูลกรรมการ ⇒ ดูเหมือนโมดูลนั้นค้างอยู่ 4 เรื่อง
+
+OD-14 **ไม่ติด ✅** เพราะปิดไปข้อเดียวจากสาม (ข้อกรรมการ) เหลือ bracket generation
+กับเอกสาร ERD เก่าที่ยัง assume MongoDB ⇒ ติด ⚠️ พร้อมบอกว่าเหลืออะไร
+
+**ติดธงให้แล้ว ไม่แตะเนื้อหาเดิมเลย** — ถ้าใครเห็นว่าข้อไหนยังไม่ควรปิด เอาธงออกได้
+
+## OD-01 — Exact Referee Match-Invitation API — ✅ Resolved 2026-09-15
 
 > **ปิดแล้ว (2026-09-15):** F01 รับ `matchIds?` · F05 รับ `matchIds` เลือกบางแมตช์ได้ แมตช์ที่ไม่เลือก → `match_referees.assignment_status = 'declined'` (เก็บ offer history) — `GUIDE/06 §6.1`
 
 Direction ที่คุยแล้ว: Referee สามารถเลือกตอบรับบาง Match ได้ แต่ต้อง finalize ว่า F01/F05 หรือ endpoint ใหม่เป็นเจ้าของ `acceptedMatchIds` และสถานะของ unselected matches จะเป็น `declined`, `unassigned` หรือเก็บ offer history อย่างไร
 
-## OD-02 — Referee Change Request Schema
+## OD-02 — Referee Change Request Schema — ✅ Resolved 2026-09-15
 
 > **ปิดแล้ว (2026-09-15):** ตาราง `referee_change_requests` (migration 003) + FR01–FR08 — `GUIDE/06 §6.2`, `GUIDE/11 §3.2`
 
@@ -31,7 +52,7 @@ Direction ที่คุยแล้ว: Referee สามารถเลือ
 
 Publication require **active Tournament Referee pool capacity ≥ peak concurrent demand** เท่านั้น ไม่บังคับให้ทุก planned Match มี explicit `match_referees` assignment ครบ ณ ตอน publish; explicit match assignment เป็น hard gate ภายหลังอย่างช้าที่สุดก่อน Match start
 
-## OD-04 — External Referee Document Model
+## OD-04 — External Referee Document Model — ✅ Resolved 2026-09-15
 
 > **ปิดแล้ว (2026-09-15):** `tournament_referees.external_verification_docs` JSON (S3 key) + `external_rejection_reason` · ตรวจ 'ต่อคน' ผ่านครั้งเดียวใช้ 1 ปีทุกทัวร์ · admin: approve / request-docs / reject — `GUIDE/06 §6.3`
 
@@ -79,7 +100,7 @@ M06 `PATCH /matches/:id/schedule` (implemented in `match.service.scheduleMatch`)
 
 เลื่อนวันแข่ง = M06 ทีละ match + C09 ขยายวัน เท่านั้น (ไม่มี bulk shift / re-pack — มติ 2026-09-17)
 
-## OD-09 — Missing Referee After Publication
+## OD-09 — Missing Referee After Publication — ✅ Resolved 2026-09-15
 
 > **ปิดแล้ว (2026-09-15):** ด่าน 2 ที่ M10 start: ไม่ครบ → 409 `INSUFFICIENT_REFEREES` · ไม่มี emergency/ORG fallback ใน MVP · ทัวร์ไม่ auto-unpublish
 
@@ -129,7 +150,7 @@ Domain/database model รองรับ `UNIVERSITY`, `FACULTY`, `DEPARTMENT` �
 
 SRS/SDS กำหนด Tournament/Match/Result retention 4 ปีและ private auto-delete แต่ต้อง finalize production implementation เช่น anonymization vs physical deletion, legal hold และ exact scheduled job
 
-## OD-14 — Implementation Gaps to Reconcile
+## OD-14 — Implementation Gaps to Reconcile — ⚠️ เหลือ 2 จาก 3 ข้อ (ข้อกรรมการปิดแล้ว 2026-09-15)
 
 Current code/schema/API มี known gaps เมื่อเทียบ Current Spec เช่น:
 
