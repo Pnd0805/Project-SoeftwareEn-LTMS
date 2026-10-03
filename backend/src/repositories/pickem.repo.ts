@@ -141,6 +141,45 @@ export async function findLeaderboard(tournamentId: number): Promise<Leaderboard
     return rows.map(r => ({ ...r, points: Number(r.points), correct: Number(r.correct), settled: Number(r.settled) }));
 }
 
+export type MyStandingRow = { points: number; correct: number; settled: number; rank_no: number };
+
+/**
+ * แต้ม + อันดับของคนเดียวในทัวร์เดียว (E29) — คืน null เมื่อยังไม่มีการทายที่ตัดสินแล้วในทัวร์นี้
+ *
+ * ★ กฎการจัดอันดับต้องตรงกับ `findLeaderboard()` เป๊ะ ไม่งั้นสองหน้าจะบอกอันดับไม่เหมือนกัน
+ *   ตารางอันดับเรียง `points DESC, correct DESC` แล้วขึ้นอันดับใหม่เมื่อ **points หรือ correct ต่างจากแถวก่อน**
+ *   ⇒ อันดับของเรา = จำนวนคนที่ (แต้มมากกว่า) หรือ (แต้มเท่ากันแต่ทายถูกมากกว่า) + 1
+ *   เขียนเป็นเงื่อนไขเดียวแบบนี้เพราะถ้าไปนับ "คนที่อยู่เหนือเรา" ด้วยการเรียงแล้วหาตำแหน่ง
+ *   คนที่แต้มเท่ากันจะได้อันดับไม่เท่ากัน ซึ่งขัดกับ (1,1,3) ที่ตารางอันดับใช้
+ *
+ * ชื่อคอลัมน์เป็น `rank_no` ไม่ใช่ `rank` เพราะ `RANK` เป็น reserved word ของ MySQL 8
+ */
+export async function findMyStanding(tournamentId: number, userId: number): Promise<MyStandingRow | null> {
+    const [rows] = await pool.query<(MyStandingRow & RowDataPacket)[]>(
+        `WITH totals AS (
+             SELECT p.user_id,
+                    SUM(p.points_earned) AS points,
+                    SUM(p.points_earned > 0) AS correct,
+                    COUNT(*) AS settled
+               FROM pickem_predictions p
+               JOIN matches m ON m.match_id = p.match_id
+              WHERE m.tournament_id = ? AND p.points_earned IS NOT NULL
+              GROUP BY p.user_id
+         )
+         SELECT t.points, t.correct, t.settled,
+                (SELECT COUNT(*) FROM totals o
+                  WHERE o.points > t.points
+                     OR (o.points = t.points AND o.correct > t.correct)) + 1 AS rank_no
+           FROM totals t
+          WHERE t.user_id = ?`,
+        [tournamentId, userId]
+    );
+    const row = rows[0];
+    return row === undefined ? null
+        : { points: Number(row.points), correct: Number(row.correct),
+            settled: Number(row.settled), rank_no: Number(row.rank_no) };
+}
+
 export async function findTotalPoints(userId: number): Promise<number> {
     const [rows] = await pool.query<({ total_points: number } & RowDataPacket)[]>(
         `SELECT total_points FROM users WHERE user_id = ?`, [userId]);

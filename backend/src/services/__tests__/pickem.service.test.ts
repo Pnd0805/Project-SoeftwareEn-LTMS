@@ -9,6 +9,7 @@ vi.mock('../../repositories/pickem.repo.js', () => ({
   findHistory: vi.fn(() => Promise.resolve([])),
   findLeaderboard: vi.fn(() => Promise.resolve([])),
   findTotalPoints: vi.fn(() => Promise.resolve(0)),
+  findMyStanding: vi.fn(() => Promise.resolve(null)),
 }));
 vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn() }));
@@ -179,5 +180,44 @@ describe('leaderboard', () => {
   it('404 for an unknown tournament', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(null);
     expect(await errOf(Service.getLeaderboard(999))).toMatchObject({ status: 404 });
+  });
+});
+
+/**
+ * E29 — แต้ม + อันดับของตัวเองในทัวร์เดียว (OD-51)
+ * มีเพราะ E28 คืนมาทั้งทัวร์และไม่มี pagination ⇒ FE ที่อยากโชว์แค่ของตัวเองต้องโหลดทั้งก้อน
+ */
+describe('getMyStanding — แต้ม/อันดับของตัวเองในทัวร์', () => {
+  it('ทัวร์ไม่มีจริง → 404 (ไม่ใช่คืนศูนย์เงียบ ๆ)', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(null);
+    const err = await errOf(Service.getMyStanding(999, 5));
+    expect(err).toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
+  });
+
+  it('มีแต้มแล้ว → ส่งต่อตามที่ repo ให้มา และเปลี่ยนชื่อ rank_no เป็น rank', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20 } as never);
+    vi.mocked(PickemRepo.findMyStanding).mockResolvedValue({ points: 40, correct: 4, settled: 6, rank_no: 3 });
+
+    expect(await Service.getMyStanding(20, 5))
+      .toEqual({ tournamentId: 20, points: 40, correct: 4, settled: 6, rank: 3 });
+  });
+
+  /**
+   * ★ ยังไม่มีการทายที่ตัดสินแล้ว → แต้มเป็น 0 แต่ **rank ต้องเป็น null**
+   * ถ้าส่ง rank เป็นเลขอะไรไปด้วย จะกลายเป็นโกหกว่าอยู่อันดับท้ายตาราง ทั้งที่ไม่ได้อยู่ในตารางเลย
+   * (E28 ก็ไม่มีคนนี้ในลิสต์ เพราะกรอง points_earned IS NOT NULL)
+   */
+  it('ยังไม่มีการทายที่ตัดสินแล้ว → แต้ม 0 แต่ rank เป็น null ไม่ใช่เลขท้ายตาราง', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20 } as never);
+    vi.mocked(PickemRepo.findMyStanding).mockResolvedValue(null);
+
+    expect(await Service.getMyStanding(20, 5))
+      .toEqual({ tournamentId: 20, points: 0, correct: 0, settled: 0, rank: null });
+  });
+
+  it('ส่ง tournamentId กับ userId ให้ repo ครบและไม่สลับกัน', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20 } as never);
+    await Service.getMyStanding(20, 777);
+    expect(PickemRepo.findMyStanding).toHaveBeenCalledWith(20, 777);
   });
 });

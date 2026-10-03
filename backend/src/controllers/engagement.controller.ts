@@ -39,6 +39,12 @@ export async function getMyPickem(req: Request, res: Response) {
     res.status(200).json(await PickemService.getMyHistory(requireUserId(req)));
 }
 
+/** E29 — แต้ม + อันดับของตัวเองในทัวร์นี้ */
+export async function getMyTournamentPickem(req: Request, res: Response) {
+    res.status(200).json(await PickemService.getMyStanding(
+        parseId(req.params['id'], 'รหัสทัวร์นาเมนต์'), req.user!.user_id));
+}
+
 export async function getPickemLeaderboard(req: Request, res: Response) {
     res.status(200).json(await PickemService.getLeaderboard(parseId(req.params['id'], 'รหัสทัวร์นาเมนต์')));
 }

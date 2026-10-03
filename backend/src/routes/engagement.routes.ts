@@ -18,3 +18,5 @@ mePickemRouter.get('/pickem' , requireAuth , Engagement.getMyPickem);
 
 export const tournamentPickemRouter = express.Router();
 tournamentPickemRouter.get('/:id/pickem-leaderboard' , Engagement.getPickemLeaderboard);
+// E29 — ของตัวเองในทัวร์นี้ · วางไว้หลัง leaderboard เพราะ path ไม่ชนกัน (me/pickem ไม่ใช่ pickem-leaderboard)
+tournamentPickemRouter.get('/:id/me/pickem' , requireAuth , Engagement.getMyTournamentPickem);

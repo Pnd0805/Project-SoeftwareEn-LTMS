@@ -156,6 +156,26 @@ export async function getMyHistory(userId: number) {
     };
 }
 
+/**
+ * E29 — แต้ม + อันดับของตัวเองในทัวร์เดียว
+ *
+ * มีเพราะ E28 คืนมาทั้งทัวร์และไม่มี pagination ⇒ FE ที่อยากโชว์แค่ "ของฉัน" ต้องโหลดทั้งก้อนมาหาแถวตัวเอง
+ *
+ * ★ ยังไม่มีการทายที่ตัดสินแล้วในทัวร์นี้ → `rank: null` และแต้มเป็น **0 ไม่ใช่ null**
+ *   ต่างจาก U04 ที่ซ่อนสถิติแล้วส่ง null ทั้งชุด — ที่นั่น null แปลว่า "ไม่บอก" ส่วนที่นี่
+ *   0 แต้มเป็นความจริง (ยังไม่ได้แต้ม) แต่ **อันดับยังไม่มีจริง** จึงเป็น null
+ *   ถ้าส่ง rank เป็นเลขอะไรไปด้วยจะกลายเป็นโกหกว่าอยู่อันดับท้ายตาราง ทั้งที่ไม่ได้อยู่ในตารางเลย
+ *
+ * ไม่เช็คว่าทัวร์ public ไหม — กฎเดียวกับ E28 ที่อ่านได้ตลอด (ตั้งใจไม่เพิ่มกฎใหม่ให้ต่างกัน)
+ */
+export async function getMyStanding(tournamentId: number, userId: number) {
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    if (!tournament) throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+    const row = await PickemRepo.findMyStanding(tournamentId, userId);
+    if (row === null) return { tournamentId, points: 0, correct: 0, settled: 0, rank: null };
+    return { tournamentId, points: row.points, correct: row.correct, settled: row.settled, rank: row.rank_no };
+}
+
 /** อันดับ Pick'em ในทัวร์ (สาธารณะ) · แต้มเท่ากันได้อันดับเดียวกัน (1,1,3) */
 export async function getLeaderboard(tournamentId: number) {
     const tournament = await TournamentRepo.findTournamentById(tournamentId);
