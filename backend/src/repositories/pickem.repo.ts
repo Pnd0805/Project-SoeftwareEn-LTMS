@@ -3,7 +3,17 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 // C7 — Pick'em (ตาราง pickem_predictions เดิม · UNIQUE (user_id, match_id) = คนละ 1 การทายต่อแมตช์)
-//   points_earned: NULL = ยังไม่ตัดสิน (หรือแมตช์จบแบบไม่มีผลยืนยัน = void) · 10 = ทายถูก · 0 = ทายผิด
+//   points_earned: NULL = ยังไม่ตัดสิน (หรือแมตช์จบแบบไม่มีผลยืนยัน = void) · > 0 = ทายฝั่งถูก · 0 = ทายฝั่งผิด
+//
+// ★ OD-56 (4 ต.ค.) — ตั้งแต่ migration 038 เก็บสกอร์ที่ทายด้วย (`predicted_score_data`)
+//   กฎที่ตกลงแล้ว: **ทายฝั่งผิด = 0 เสมอ ไม่ว่าสกอร์จะใกล้แค่ไหน** (มติข้อ ②)
+//   ⇒ `points_earned > 0` จึงยังแปลว่า "ทายฝั่งถูก" เหมือนเดิมเป๊ะ
+//      E28/E29 ที่นับ `SUM(points_earned > 0) AS correct` และ pickStatus() จึงไม่ต้องแก้
+//      **ถ้าวันหนึ่งเปลี่ยนใจให้ฝั่งผิดได้แต้มด้วย ต้องกลับมาแก้สองที่นั้นพร้อมกัน** ไม่งั้น
+//      ช่อง "ทายถูก" กับสถานะ won/lost จะโกหกเงียบ ๆ โดยไม่มีเทสไหนแดง
+//
+// ⏳ สูตรคะแนนบางส่วน (โบนัสสกอร์เป๊ะ / ผลต่างถูก) **ยังไม่ตัดสิน** — ดู OD-56
+//   ระหว่างนี้ยังคิดแบบเดิม: ฝั่งถูก = PICKEM_POINTS · ฝั่งผิด = 0
 export const PICKEM_POINTS = 10;
 
 export type PredictionRow = {
@@ -11,6 +21,8 @@ export type PredictionRow = {
     user_id: number;
     match_id: number;
     predicted_winner_team_id: number;
+    /** OD-56 · NULL = แถวที่ทายไว้ก่อน migration 038 (ทายแค่ฝั่ง ไม่มีสกอร์ให้เทียบ) */
+    predicted_score_data: Record<string, number> | null;
     points_earned: number | null;
     created_at: Date;
 };
@@ -24,12 +36,22 @@ export async function findPickerIdsTx(conn: PoolConnection, tournamentId: number
     return rows.map(r => r.user_id);
 }
 
-/** ทาย/เปลี่ยนการทาย (ก่อน cutoff เท่านั้น — service ตรวจแล้ว) · กันเขียนทับแถวที่ตัดสินแล้ว */
-export async function upsert(userId: number, matchId: number, teamId: number): Promise<void> {
+/**
+ * ทาย/เปลี่ยนการทาย (ก่อน cutoff เท่านั้น — service ตรวจแล้ว) · กันเขียนทับแถวที่ตัดสินแล้ว
+ *
+ * ★ `teamId` ที่รับมาคือผลการอนุมานจากสกอร์ (service คำนวณ) ไม่ใช่ค่าที่ผู้ใช้ส่งมาตรง ๆ
+ * ★ ทั้งสองคอลัมน์ต้องอัปเดตด้วยเงื่อนไข `points_earned IS NULL` **ชุดเดียวกัน**
+ *   ถ้าอันหนึ่งมีเงื่อนไขอีกอันไม่มี จะได้แถวที่ผู้ชนะกับสกอร์ไม่ตรงกัน ซึ่งแย่กว่าเขียนทับทั้งคู่
+ */
+export async function upsert(userId: number, matchId: number, teamId: number,
+                             scoreData: Record<string, number>): Promise<void> {
     await pool.query(
-        `INSERT INTO pickem_predictions (user_id, match_id, predicted_winner_team_id) VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE predicted_winner_team_id = IF(points_earned IS NULL, VALUES(predicted_winner_team_id), predicted_winner_team_id)`,
-        [userId, matchId, teamId]
+        `INSERT INTO pickem_predictions (user_id, match_id, predicted_winner_team_id, predicted_score_data)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+            predicted_winner_team_id = IF(points_earned IS NULL, VALUES(predicted_winner_team_id), predicted_winner_team_id),
+            predicted_score_data     = IF(points_earned IS NULL, VALUES(predicted_score_data),     predicted_score_data)`,
+        [userId, matchId, teamId, JSON.stringify(scoreData)]
     );
 }
 

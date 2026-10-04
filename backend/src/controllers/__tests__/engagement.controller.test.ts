@@ -55,17 +55,32 @@ beforeEach(() => {
 });
 
 describe("predict", () => {
-    it("parses the match id and forwards userId and body.teamId", async () => {
+    // OD-56 (4 ต.ค.) — ส่ง scoreData ต่อให้ service ไม่ใช่ teamId อีกแล้ว
+    it("parses the match id and forwards userId and body.scoreData", async () => {
         svc.predict.mockResolvedValue({ isNew: true, id: 1 } as any);
 
         const req = makeReq({
             params: { id: "5" } as any,
             user: { user_id: 7 } as any,
-            body: { teamId: 3 },
+            body: { scoreData: { "10": 2, "11": 1 } },
         });
         await predict(req, makeRes());
 
-        expect(svc.predict).toHaveBeenCalledWith(5, 7, 3);
+        expect(svc.predict).toHaveBeenCalledWith(5, 7, { "10": 2, "11": 1 });
+    });
+
+    // ★ กัน controller กลับไปหยิบ teamId ส่งต่อ — ผู้ชนะต้องมาจากสกอร์เท่านั้น
+    it("does not forward body.teamId even when the caller sends it", async () => {
+        svc.predict.mockResolvedValue({ isNew: true } as any);
+
+        const req = makeReq({
+            params: { id: "5" } as any,
+            user: { user_id: 7 } as any,
+            body: { scoreData: { "10": 1, "11": 2 }, teamId: 10 },
+        });
+        await predict(req, makeRes());
+
+        expect(svc.predict).toHaveBeenCalledWith(5, 7, { "10": 1, "11": 2 });
     });
 
     it("responds 201 and strips isNew when the service reports a new prediction", async () => {

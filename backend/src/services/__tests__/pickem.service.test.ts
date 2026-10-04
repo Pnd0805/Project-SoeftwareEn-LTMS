@@ -63,44 +63,132 @@ describe('cutoffReason — มติ: เปิดเช็คอิน หร�
   });
 });
 
-describe('predict', () => {
-  it('first pick → isNew · upsert', async () => {
-    await expect(Service.predict(1, 50, 11)).resolves.toEqual({ isNew: true, matchId: 1, teamId: 11, changed: false });
-    expect(PickemRepo.upsert).toHaveBeenCalledWith(50, 1, 11);
+/**
+ * OD-56 (4 ต.ค.) — ทายเป็น **สกอร์** ผู้ชนะมาจากการอนุมาน ไม่ได้รับมาจาก request
+ * ทีมในแมตช์ตัวอย่าง: team_a = 11 · team_b = 12
+ */
+const WIN_11 = { '11': 2, '12': 1 };   // ทายว่า 11 ชนะ
+const WIN_12 = { '11': 1, '12': 2 };   // ทายว่า 12 ชนะ
+
+describe('resolvePredictedWinner — อนุมานผู้ชนะจากสกอร์', () => {
+  it('ฝั่งที่แต้มมากกว่าคือผู้ชนะที่ทาย', () => {
+    expect(Service.resolvePredictedWinner(match(), WIN_11)).toBe(11);
+    expect(Service.resolvePredictedWinner(match(), WIN_12)).toBe(12);
   });
-  it('changing to the other team before cutoff → changed', async () => {
-    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 12 } as never);
-    await expect(Service.predict(1, 50, 11)).resolves.toMatchObject({ isNew: false, changed: true });
+
+  it('ไม่สนลำดับ key — ผลเหมือนกันทั้งสองแบบ', () => {
+    expect(Service.resolvePredictedWinner(match(), { '12': 1, '11': 2 })).toBe(11);
   });
-  it('409 PICKEM_CLOSED after cutoff with the reason', async () => {
-    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_status: 'checkin_open' }));
-    expect(await errOf(Service.predict(1, 50, 11))).toMatchObject({ status: 409, code: 'PICKEM_CLOSED', extra: { reason: 'checkin_open' } });
-    expect(PickemRepo.upsert).not.toHaveBeenCalled();
+
+  it('ชนะ 3-0 ก็อนุมานได้ (คะแนน 0 ถูกต้องตามกติกา)', () => {
+    expect(Service.resolvePredictedWinner(match(), { '11': 3, '12': 0 })).toBe(11);
   });
-  it('409 PICKEM_TEAMS_NOT_SET while waiting for the previous round', async () => {
-    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ team_a_id: null }));
-    expect(await errOf(Service.predict(1, 50, 12))).toMatchObject({ status: 409, code: 'PICKEM_TEAMS_NOT_SET' });
+
+  // ★ ระบบไม่รองรับผลเสมอ (ensureScoreData บังคับผู้ชนะต้องแต้มมากกว่า) ⇒ ทายเสมอก็อนุมานไม่ได้
+  it('422 PICK_SCORE_TIE เมื่อทายคะแนนเท่ากัน', () => {
+    expect(() => Service.resolvePredictedWinner(match(), { '11': 2, '12': 2 }))
+      .toThrowError(expect.objectContaining({ status: 422, code: 'PICK_SCORE_TIE' }));
   });
-  it('422 PICK_TEAM_NOT_IN_MATCH', async () => {
-    expect(await errOf(Service.predict(1, 50, 99))).toMatchObject({ status: 422, code: 'PICK_TEAM_NOT_IN_MATCH' });
-  });
-  it('403 PICKEM_CONFLICT for anyone inside the tournament', async () => {
-    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(true);
-    expect(await errOf(Service.predict(1, 50, 11))).toMatchObject({ status: 403, code: 'PICKEM_CONFLICT' });
-  });
-  it('403 PICKEM_CONFLICT for the organizer', async () => {
-    expect(await errOf(Service.predict(1, 7, 11))).toMatchObject({ status: 403, code: 'PICKEM_CONFLICT' });
-  });
-  it('404 MATCH_NOT_FOUND', async () => {
-    vi.mocked(MatchRepo.findById).mockResolvedValue(null);
-    expect(await errOf(Service.predict(1, 50, 11))).toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+
+  it.each([
+    ['ขาดทีมหนึ่ง', { '11': 2 }],
+    ['มีทีมที่ไม่ได้ลงแมตช์นี้', { '11': 2, '99': 1 }],
+    ['มีสาม key', { '11': 2, '12': 1, '99': 0 }],
+    ['ว่าง', {}],
+  ])('422 PICK_TEAM_NOT_IN_MATCH เมื่อ key %s', (_label, score) => {
+    expect(() => Service.resolvePredictedWinner(match(), score as Record<string, number>))
+      .toThrowError(expect.objectContaining({ status: 422, code: 'PICK_TEAM_NOT_IN_MATCH' }));
   });
 });
+
+describe('predict', () => {
+  it('ทายครั้งแรก → isNew · เก็บทั้งผู้ชนะที่อนุมานและสกอร์', async () => {
+    await expect(Service.predict(1, 50, WIN_11)).resolves.toEqual({
+      isNew: true, matchId: 1, teamId: 11, scoreData: WIN_11, changed: false,
+    });
+    expect(PickemRepo.upsert).toHaveBeenCalledWith(50, 1, 11, WIN_11);
+  });
+
+  // ★ คง teamId ไว้ใน response ทั้งที่ request ไม่ส่งมาแล้ว — FE (feat/1) ใช้ type เดิมอยู่
+  it('response ยังมี teamId = ผู้ชนะที่อนุมานได้', async () => {
+    await expect(Service.predict(1, 50, WIN_12)).resolves.toMatchObject({ teamId: 12 });
+  });
+
+  it('เปลี่ยนฝั่งที่ทาย → changed', async () => {
+    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 12, predicted_score_data: WIN_12 } as never);
+    await expect(Service.predict(1, 50, WIN_11)).resolves.toMatchObject({ isNew: false, changed: true });
+  });
+
+  /**
+   * ★ ของเดิมดูแค่ผู้ชนะ ⇒ "2-1 → 5-0" จะรายงานว่าไม่มีอะไรเปลี่ยน
+   *   ซึ่งผิดตั้งแต่มีสกอร์ เพราะโบนัสสกอร์เป็นคนละเรื่องกันคนละก้อน
+   */
+  it('ฝั่งเดิมแต่เปลี่ยนสกอร์ → ยังนับว่า changed', async () => {
+    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 11, predicted_score_data: { '11': 2, '12': 1 } } as never);
+    await expect(Service.predict(1, 50, { '11': 5, '12': 0 })).resolves.toMatchObject({ isNew: false, changed: true });
+  });
+
+  it('ส่งสกอร์เดิมเป๊ะ → changed: false', async () => {
+    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 11, predicted_score_data: { '11': 2, '12': 1 } } as never);
+    await expect(Service.predict(1, 50, WIN_11)).resolves.toMatchObject({ isNew: false, changed: false });
+  });
+
+  // แถวเก่าก่อน migration 038 ไม่มีสกอร์ ⇒ ส่งสกอร์มาครั้งแรกถือว่าเปลี่ยน
+  it('แถวเก่าที่ไม่มีสกอร์ (predicted_score_data = null) → changed', async () => {
+    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 11, predicted_score_data: null } as never);
+    await expect(Service.predict(1, 50, WIN_11)).resolves.toMatchObject({ isNew: false, changed: true });
+  });
+
+  it('409 PICKEM_CLOSED after cutoff with the reason', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_status: 'checkin_open' }));
+    expect(await errOf(Service.predict(1, 50, WIN_11))).toMatchObject({ status: 409, code: 'PICKEM_CLOSED', extra: { reason: 'checkin_open' } });
+    expect(PickemRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  it('409 PICKEM_TEAMS_NOT_SET while waiting for the previous round', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ team_a_id: null }));
+    expect(await errOf(Service.predict(1, 50, WIN_12))).toMatchObject({ status: 409, code: 'PICKEM_TEAMS_NOT_SET' });
+  });
+
+  it('422 PICK_TEAM_NOT_IN_MATCH เมื่อ key ไม่ใช่สองทีมของแมตช์นี้', async () => {
+    expect(await errOf(Service.predict(1, 50, { '99': 2, '11': 1 }))).toMatchObject({ status: 422, code: 'PICK_TEAM_NOT_IN_MATCH' });
+    expect(PickemRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  it('422 PICK_SCORE_TIE เมื่อทายเสมอ — ไม่เขียนลงฐาน', async () => {
+    expect(await errOf(Service.predict(1, 50, { '11': 2, '12': 2 }))).toMatchObject({ status: 422, code: 'PICK_SCORE_TIE' });
+    expect(PickemRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ★ ลำดับด่าน: ปิดทาย/ทีมไม่ครบ ต้องมาก่อนเรื่องสกอร์
+   *   คนที่ยิงตอนปิดแล้วควรรู้ว่า "ปิดแล้ว" ไม่ใช่ได้ 422 เรื่องสกอร์แล้วไปแก้ฟอร์มเสียเวลา
+   */
+  it('บอกว่าปิดทายแล้วก่อนบ่นเรื่องสกอร์', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_status: 'checkin_open' }));
+    expect(await errOf(Service.predict(1, 50, { '11': 2, '12': 2 }))).toMatchObject({ code: 'PICKEM_CLOSED' });
+  });
+
+  it('403 PICKEM_CONFLICT for anyone inside the tournament', async () => {
+    vi.mocked(FeedbackRepo.isTournamentInsider).mockResolvedValue(true);
+    expect(await errOf(Service.predict(1, 50, WIN_11))).toMatchObject({ status: 403, code: 'PICKEM_CONFLICT' });
+  });
+
+  it('403 PICKEM_CONFLICT for the organizer', async () => {
+    expect(await errOf(Service.predict(1, 7, WIN_11))).toMatchObject({ status: 403, code: 'PICKEM_CONFLICT' });
+  });
+
+  it('404 MATCH_NOT_FOUND', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(null);
+    expect(await errOf(Service.predict(1, 50, WIN_11))).toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+  });
+});
+
 
 describe('ทัวร์ที่ไม่ได้เปิดเผยแพร่ (มติ 22 ก.ย.)', () => {
   it.each(['private', 'pending_approval', 'rejected', 'auto_deleted'])('%s tournament → 409 TOURNAMENT_NOT_PUBLIC on predict and cancel', async (status) => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, requested_by_user_id: 7, tournament_status: status } as never);
-    expect(await errOf(Service.predict(1, 50, 11))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
+    expect(await errOf(Service.predict(1, 50, WIN_11))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
     expect(await errOf(Service.cancelPrediction(1, 50))).toMatchObject({ status: 409, code: 'TOURNAMENT_NOT_PUBLIC' });
     expect(PickemRepo.upsert).not.toHaveBeenCalled();
     expect(PickemRepo.remove).not.toHaveBeenCalled();

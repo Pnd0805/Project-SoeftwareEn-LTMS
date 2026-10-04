@@ -71,22 +71,63 @@ export function pickStatus(pick: Pick<PredictionRow, 'points_earned'>, matchStat
 
 // ───────── ทาย / ยกเลิก ─────────
 
-export async function predict(matchId: number, userId: number, teamId: number) {
+/**
+ * OD-56 (4 ต.ค.) — ตรวจสกอร์ที่ทาย แล้วคืนผู้ชนะที่อนุมานได้
+ *
+ * ★ แยกเป็นฟังก์ชันเพื่อให้ตรึงด้วยเทสได้ตรง ๆ และเพื่อให้สูตรคะแนน (ก้าวที่สอง)
+ *   เอาตรรกะชุดเดียวกันไปใช้ได้โดยไม่ต้องลอก
+ *
+ * ★ เงื่อนไข key ชุดเดียวกับ ensureScoreData ของผลการแข่ง (matchResult.service) โดยเจตนา
+ *   ถ้าสองฝั่งใช้กฎไม่ตรงกัน จะมีเคสที่ "ทายได้แต่ผลจริงใส่ไม่ได้" หรือกลับกัน
+ *   แล้วการเทียบสกอร์ตอนคิดคะแนนจะเจอรูปร่างที่ไม่คาด
+ */
+export function resolvePredictedWinner(match: MatchRow, scoreData: Record<string, number>): number {
+    const teamIds = [match.team_a_id, match.team_b_id].map(String);
+    const keys = Object.keys(scoreData);
+    if (keys.length !== 2 || !teamIds.every(id => keys.includes(id))) {
+        throw new AppError(422, 'PICK_TEAM_NOT_IN_MATCH',
+            `ต้องทายคะแนนของสองทีมที่ลงแมตช์นี้ (${teamIds.join(', ')}) เท่านั้น`,
+            { fields: { scoreData: `key ต้องเป็น ${teamIds.join(' และ ')}` }, expectedKeys: teamIds });
+    }
+
+    const a = scoreData[teamIds[0]!]!, b = scoreData[teamIds[1]!]!;
+    if (a === b) {
+        // ระบบไม่รองรับผลเสมอ (ensureScoreData บังคับผู้ชนะต้องแต้มมากกว่า) ⇒ ทายเสมอก็อนุมานผู้ชนะไม่ได้
+        throw new AppError(422, 'PICK_SCORE_TIE', 'ทายผลเสมอไม่ได้ — ต้องมีฝ่ายที่คะแนนมากกว่า',
+            { fields: { scoreData: 'คะแนนสองฝั่งต้องไม่เท่ากัน' } });
+    }
+    return a > b ? Number(teamIds[0]) : Number(teamIds[1]);
+}
+
+/** เทียบสกอร์สองก้อนว่าเหมือนกันทุก key ไหม — ใช้บอกว่า "เปลี่ยนการทาย" จริงหรือกดซ้ำ */
+function sameScore(x: Record<string, number> | null, y: Record<string, number>): boolean {
+    if (x === null) return false;
+    const kx = Object.keys(x);
+    return kx.length === Object.keys(y).length && kx.every(k => x[k] === y[k]);
+}
+
+export async function predict(matchId: number, userId: number, scoreData: Record<string, number>) {
     const match = await getMatchOr404(matchId);
     const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
     assertOpen(match, tournament);
-    if (teamId !== match.team_a_id && teamId !== match.team_b_id) {
-        throw new AppError(422, 'PICK_TEAM_NOT_IN_MATCH', 'ทายได้เฉพาะสองทีมที่ลงแมตช์นี้');
-    }
+
+    // ★ อนุมานผู้ชนะจากสกอร์ — ไม่รับ teamId จาก request อีกแล้ว (OD-56 มติข้อ ①)
+    const teamId = resolvePredictedWinner(match, scoreData);
+
     const conflict = await conflictOf(match, tournament, userId);
     if (conflict) throw conflict;
 
     const before = await PickemRepo.findMine(userId, matchId);
-    await PickemRepo.upsert(userId, matchId, teamId);
+    await PickemRepo.upsert(userId, matchId, teamId, scoreData);
     return {
         isNew: before === null,
-        matchId, teamId,
-        changed: before !== null && before.predicted_winner_team_id !== teamId,
+        // ★ คง `teamId` ไว้ใน response ทั้งที่ request ไม่ส่งมาแล้ว — FE (feat/1) ใช้ type
+        //   `{ matchId, teamId, changed }` อยู่ ⇒ เปลี่ยนแค่ขาส่ง ขารับไม่ต้องแก้
+        matchId, teamId, scoreData,
+        // เปลี่ยนผู้ชนะ **หรือ** เปลี่ยนแค่สกอร์ ก็ถือว่าเปลี่ยน — ของเดิมดูแค่ผู้ชนะ
+        // ซึ่งจะทำให้ "2-1 → 5-0" รายงานว่าไม่มีอะไรเปลี่ยน ทั้งที่โบนัสสกอร์ต่างกันคนละเรื่อง
+        changed: before !== null
+                 && (before.predicted_winner_team_id !== teamId || !sameScore(before.predicted_score_data, scoreData)),
     };
 }
 
@@ -117,7 +158,8 @@ export async function getSummary(matchId: number, viewerId?: number) {
     let canPredict = false;
     if (viewerId !== undefined) {
         const own = await PickemRepo.findMine(viewerId, matchId);
-        mine = own ? { teamId: own.predicted_winner_team_id, pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
+        mine = own ? { teamId: own.predicted_winner_team_id, scoreData: own.predicted_score_data,
+                       pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
         canPredict = reason === null && (await conflictOf(match, tournament, viewerId)) === null;
     }
 
@@ -127,7 +169,10 @@ export async function getSummary(matchId: number, viewerId?: number) {
 export async function getMine(matchId: number, userId: number) {
     const match = await getMatchOr404(matchId);
     const own = await PickemRepo.findMine(userId, matchId);
-    return own ? { matchId, teamId: own.predicted_winner_team_id, pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
+    // OD-56 — คืน scoreData กลับมาด้วย เพราะ FE ต้องเอาไปเติมฟอร์มตอนแก้การทาย
+    // null = แถวก่อน migration 038 (ทายแค่ฝั่ง ไม่มีสกอร์เก่าให้เติม)
+    return own ? { matchId, teamId: own.predicted_winner_team_id, scoreData: own.predicted_score_data,
+                   pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
 }
 
 function toHistoryItem(row: MyPickRow) {
@@ -137,6 +182,7 @@ function toHistoryItem(row: MyPickRow) {
         teamA: row.team_a_id === null ? null : { id: row.team_a_id, name: row.team_a_name },
         teamB: row.team_b_id === null ? null : { id: row.team_b_id, name: row.team_b_name },
         predicted: { id: row.predicted_winner_team_id, name: row.predicted_team_name },
+        scoreData: row.predicted_score_data,   // OD-56 · null = แถวก่อน migration 038
         scheduledTime: row.scheduled_time,
         pointsEarned: row.points_earned,
         status: pickStatus(row, row.match_status),

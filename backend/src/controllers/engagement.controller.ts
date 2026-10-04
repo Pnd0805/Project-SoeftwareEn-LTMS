@@ -15,7 +15,7 @@ function requireUserId(req: Request): number {
 export async function predict(req: Request, res: Response) {
     const userId = requireUserId(req);
     const matchId = parseId(req.params['id'], 'รหัสการแข่งขัน');
-    const { isNew, ...result } = await PickemService.predict(matchId, userId, req.body.teamId);
+    const { isNew, ...result } = await PickemService.predict(matchId, userId, req.body.scoreData);
     res.status(isNew ? 201 : 200).json(result);
 }
 
