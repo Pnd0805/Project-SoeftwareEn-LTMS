@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('../../config/db.js', () => ({ default: { query: mocks.query } }));
 
 import { findProfileTotals } from '../playerStat.repo.js';
-import { MVP_VOTING_HOURS } from '../../config/scoring.js';
+import { MVP_VOTING_HOURS, MVP_MIN_VOTES } from '../../config/scoring.js';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -129,7 +129,30 @@ describe('findProfileTotals', () => {
       const [sql, values] = mocks.query.mock.calls[1]!;
 
       expect(sql).toContain('tf.match_id IN (SELECT match_id FROM tournament_feedback');
-      expect(values).toEqual([MVP_VOTING_HOURS, 5, 5]);
+      expect(values).toEqual([MVP_VOTING_HOURS, 5, MVP_MIN_VOTES, 5]);
+    });
+
+    /**
+     * ★★ มติ ④ (4 ต.ค.) — ต้องได้โหวตอย่างน้อย MVP_MIN_VOTES ใบ ถึงนับเป็น MVP
+     *
+     *   กันสองเคสที่ "ได้โหวตมากสุด" ไม่ได้แปลว่าเด่นจริง
+     *     โหวต 1 ใบ         → คนนั้นได้ MVP จากเสียงคนเดียว
+     *     โหวต 5 ใบ คนละคน  → เสมอที่อันดับหนึ่งทุกคน → MVP 5 คนจากโหวตคนละใบ
+     *
+     *   ★ ไม่ใช้สัดส่วน 20% โดยเจตนา — ไม่แก้เคสโหวตน้อย (1 ใบ = 100% ผ่านสบาย)
+     *     และสร้างหน้าผา: เสมอ 5 คน = 20% พอดีผ่านหมด · เสมอ 6 คน = 16.7% ไม่ผ่านเลย
+     */
+    it('★ ต้องถึงขั้นต่ำก่อนถึงนับเป็น MVP — HAVING ไม่ใช่สัดส่วน (มติ ④)', async () => {
+      await findProfileTotals(5);
+      const [sql, values] = mocks.query.mock.calls[1]!;
+
+      expect(sql).toContain('HAVING COUNT(*) >= ?');
+      expect(values).toContain(MVP_MIN_VOTES);
+      // ขั้นต่ำมาจาก config ไม่ใช่เลขฮาร์ดโค้ดในคิวรี
+      expect(sql).not.toContain('HAVING COUNT(*) >= 3');
+      // ไม่ได้ทำเป็นสัดส่วน — ไม่มีการหารด้วยยอดโหวตรวมของแมตช์
+      expect(sql).not.toContain('0.2');
+      expect(sql).not.toContain('/ total');
     });
   });
 });

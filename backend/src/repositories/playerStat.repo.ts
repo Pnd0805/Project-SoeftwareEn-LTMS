@@ -2,7 +2,7 @@ import pool from '../config/db.js';
 import type { RowDataPacket } from 'mysql2';
 
 import type { PlayerMatchStatRow, PlayerProfileStatRow , SportTypeRow } from '../types/db.js';
-import { MVP_VOTING_HOURS } from '../config/scoring.js';
+import { MVP_VOTING_HOURS, MVP_MIN_VOTES } from '../config/scoring.js';
 
 export type UserSportStatRow =
     Pick<PlayerProfileStatRow , 'sport_type_id' | 'matches_played' | 'wins' | 'losses' | 'championships'> 
@@ -101,8 +101,13 @@ export async function findProfileTotals(userId: number): Promise<UserProfileTota
  *      เพราะคนที่ไม่มีโหวตจะได้ `COUNT(*) = 0` **แล้วกลายเป็น rnk = 1 พร้อมกันทุกคน**
  *      ⇒ แมตช์ที่ไม่มีใครโหวตจะแจก MVP ให้ผู้เล่นทั้งสองทีม — เทสตรึงไว้ว่าห้ามมี LEFT JOIN
  *
- *   ⚠️ ผลพลอยได้ที่ยอมรับไว้: โหวตใบเดียวก็ได้เป็น MVP (คนดู 1 คนโหวต 1 คน)
- *      ถ้าจะตั้งขั้นต่ำ (เช่นต้องมี ≥ 3 โหวตในแมตช์นั้น) เติม `HAVING COUNT(*) >= ?` ได้ที่เดียว
+ * ★ มติ ④ (4 ต.ค.) **ต้องได้โหวตอย่างน้อย `MVP_MIN_VOTES` ใบ** ถึงจะนับเป็น MVP
+ *   `HAVING COUNT(*) >= ?` — กันทั้ง "โหวตใบเดียวได้ MVP" และ "เสมอที่ 1 ใบกันทุกคน"
+ *   เหตุผลที่ใช้จำนวนนับไม่ใช่สัดส่วน 20% อยู่ที่ `config/scoring.ts`
+ *
+ *   ★ `HAVING` ทำงาน **ก่อน** window function ⇒ `RANK()` จัดอันดับเฉพาะคนที่ผ่านขั้นต่ำแล้ว
+ *     ซึ่งไม่ทำให้ลำดับเพี้ยน: ถ้าคนที่โหวตมากสุดยังไม่ถึงขั้นต่ำ คนที่ต่ำกว่าก็ไม่ถึงอยู่แล้ว
+ *     จึงไม่มีเคสที่ "คนอันดับสองได้ MVP เพราะอันดับหนึ่งถูกตัดออก" 
  *
  * ⚠️ โหวตระดับทัวร์ของเก่า (`tf.match_id IS NULL` · ก่อน 26 ก.ย.) **ไม่นับ**
  *   เพราะ "เด่นสุดในแมตช์ไหน" ไม่มีความหมายเมื่อไม่มีแมตช์ · ของพวกนั้นยังนับใน `mvp_votes` ตามเดิม
@@ -125,9 +130,10 @@ async function countMvpTimes(userId: number): Promise<number> {
                                     WHERE voted_for_user_id = ? AND feedback_type = 'mvp_vote'
                                       AND removed_at IS NULL AND match_id IS NOT NULL)
              GROUP BY tf.match_id, tf.voted_for_user_id
+            HAVING COUNT(*) >= ?
          ) ranked
          WHERE ranked.voted_for_user_id = ? AND ranked.rnk = 1`,
-        [MVP_VOTING_HOURS, userId, userId]
+        [MVP_VOTING_HOURS, userId, MVP_MIN_VOTES, userId]
     );
     return Number(rows[0]?.mvp_times ?? 0);
 }
