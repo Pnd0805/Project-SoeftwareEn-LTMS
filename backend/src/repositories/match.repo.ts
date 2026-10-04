@@ -23,9 +23,13 @@ export type MatchListRow = MatchResultSummaryCols & {
     team_a_id: number | null;
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
+    // OD-61 ก้าวที่ 2 — โลโก้ของสองทีมในแมตช์ · mapper แยก "ไม่มีทีมในช่องนั้น" (bye/dead slot)
+    // ออกจาก "มีทีมแต่ยังไม่อัปโลโก้" ด้วย team_x_id ไม่ใช่ด้วยคอลัมน์นี้
+    team_a_logo_key: string | null;
     team_b_id: number | null;
     team_b_name: string | null;
     team_b_sport_type_id: number | null;
+    team_b_logo_key: string | null;
 };
 
 export type MatchListFilters = {
@@ -64,7 +68,9 @@ export async function findMatchesByTournament(
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
-            tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
+            ta.logo_key AS team_a_logo_key,
+            tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id,
+            tb.logo_key AS team_b_logo_key
          FROM matches m
          LEFT JOIN teams ta ON m.team_a_id = ta.team_id
          LEFT JOIN teams tb ON m.team_b_id = tb.team_id
@@ -90,8 +96,12 @@ export type MatchDetailRow = Pick<MatchRow,
 > & MatchResultSummaryCols & {
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
+    // OD-61 ก้าวที่ 2 — โลโก้ของสองทีมในแมตช์ · mapper แยก "ไม่มีทีมในช่องนั้น" (bye/dead slot)
+    // ออกจาก "มีทีมแต่ยังไม่อัปโลโก้" ด้วย team_x_id ไม่ใช่ด้วยคอลัมน์นี้
+    team_a_logo_key: string | null;
     team_b_name: string | null;
     team_b_sport_type_id: number | null;
+    team_b_logo_key: string | null;
 };
 
 export async function findMatchById(Id: number): Promise<MatchDetailRow | null> {
@@ -102,7 +112,9 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
-            tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id
+            ta.logo_key AS team_a_logo_key,
+            tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id,
+            tb.logo_key AS team_b_logo_key
          FROM matches m
          LEFT JOIN teams ta ON m.team_a_id = ta.team_id
          LEFT JOIN teams tb ON m.team_b_id = tb.team_id

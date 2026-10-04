@@ -45,9 +45,13 @@ export type BracketNodeListRow = {
     team_a_id: number | null;
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
+    // OD-61 ก้าวที่ 2 — โลโก้ของทีมในช่องสาย · null = ช่องยังว่าง หรือทีมนั้นยังไม่อัปโลโก้
+    // mapper แยกสองเคสด้วย team_x_id (ดู toMatchTeamRef)
+    team_a_logo_key: string | null;
     team_b_id: number | null;
     team_b_name: string | null;
     team_b_sport_type_id: number | null;
+    team_b_logo_key: string | null;
     match_id: number | null;
     match_status: MatchRow['match_status'] | null;   // null = node ของ bye (ไม่มีแมตช์จริง)
     advances_to_node_id: number | null;
@@ -58,7 +62,9 @@ export async function findNodesByTournament(tournamentId: number): Promise<Brack
         `SELECT
             n.bracket_node_id, n.bracket_type, n.round, n.match_number,
             n.team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
+            ta.logo_key AS team_a_logo_key,
             n.team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id,
+            tb.logo_key AS team_b_logo_key,
             n.match_id, m.match_status,
             next_node.bracket_node_id AS advances_to_node_id
          FROM bracket_nodes n

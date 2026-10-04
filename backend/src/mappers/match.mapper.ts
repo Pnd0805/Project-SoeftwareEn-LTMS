@@ -1,6 +1,8 @@
 import type { MatchDetailRow, MatchListRow, MatchCheckinListRow, MatchResultSummaryCols, MatchLineupRow } from '../repositories/match.repo.js';
 import type { BracketNodeListRow } from '../repositories/bracketNode.repo.js';
 import type { MatchRow } from '../types/db.js';
+import { toTeamRef } from './team.mapper.js';
+import type { TeamRef } from './team.mapper.js';
 import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 /**
@@ -41,11 +43,36 @@ export function toMatchResultSummary(row: MatchResultSummaryCols & { match_statu
     return { ...base, outcome: { kind, winnerTeamId: winner, loserTeamId: kind === 'played' || kind === 'walkover' ? other : null } };
 }
 
+/**
+ * OD-61 ก้าวที่ 2 (4 ต.ค. 2569) — ประกอบ `TeamRef` ของทีมฝั่งหนึ่งในแมตช์/ช่องสาย
+ *
+ * ★ ทำไมต้องมีตัวนี้ แทนที่จะเรียก `toTeamRef(row)` ตรง ๆ เหมือนที่อื่น
+ *   แถวของแมตช์เก็บสองทีมใน **แถวเดียว** (`team_a_*` / `team_b_*`) ไม่ใช่แถวละทีม
+ *   ⇒ ต้องแยกคอลัมน์ออกมาเป็น "ทีม" ก่อน แล้วจึงประกอบเป็น TeamRef
+ *
+ * ★ แยกสองความหมายของ `null` ที่ปนกันอยู่ให้ชัด
+ * ```
+ * คืน null       = ช่องนั้นไม่มีทีม — bye / dead slot / สายยังไม่ถูกเติม
+ * logoUrl: null  = มีทีมจริง แต่ทีมนั้นยังไม่ได้อัปโลโก้
+ * ```
+ *   ตัดสินด้วย `teamId` อย่างเดียว **ห้ามตัดสินด้วย logoKey** — ทีมที่มีจริงแต่ไม่มีโลโก้
+ *   ต้องยังโผล่เป็นทีม ไม่ใช่หายไปทั้งก้อน
+ *
+ * ★ `name` / `sportTypeId` ใช้ `!` ได้เพราะ query `LEFT JOIN teams` ด้วย `team_id` เดียวกัน
+ *   ⇒ ถ้า `teamId` ไม่เป็น null แถวทีมนั้นมีจริง สองคอลัมน์นั้นจึงไม่เป็น null
+ */
+function toMatchTeamRef(
+    teamId: number | null, name: string | null, sportTypeId: number | null, logoKey: string | null,
+): TeamRef | null {
+    if (teamId === null) return null;
+    return toTeamRef({ team_id: teamId, name: name!, sport_type_id: sportTypeId!, logo_key: logoKey });
+}
+
 export type MatchListItemDto = MatchResultSummaryDto & {
     id: number;
     round: number | null;
-    teamA: { id: number; name: string; sportTypeId: number } | null;
-    teamB: { id: number; name: string; sportTypeId: number } | null;
+    teamA: TeamRef | null;      // OD-61 — ดู toMatchTeamRef()
+    teamB: TeamRef | null;
     scheduledTime: Date | null;
     scheduledEndTime: Date | null;
     venue: string | null;
@@ -62,12 +89,8 @@ export function toMatchListItemDto(row: MatchListRow): MatchListItemDto {
     return {
         id: row.match_id,
         round: row.round_number,
-        teamA: row.team_a_id !== null
-            ? { id: row.team_a_id, name: row.team_a_name!, sportTypeId: row.team_a_sport_type_id! }
-            : null,
-        teamB: row.team_b_id !== null
-            ? { id: row.team_b_id, name: row.team_b_name!, sportTypeId: row.team_b_sport_type_id! }
-            : null,
+        teamA: toMatchTeamRef(row.team_a_id, row.team_a_name, row.team_a_sport_type_id, row.team_a_logo_key),
+        teamB: toMatchTeamRef(row.team_b_id, row.team_b_name, row.team_b_sport_type_id, row.team_b_logo_key),
         scheduledTime: row.scheduled_time,
         scheduledEndTime: row.scheduled_end_time,
         venue: row.venue,
@@ -81,8 +104,8 @@ export type MatchDetailItemDto = MatchResultSummaryDto & {
     id: number;
     tournamentId: number;
     round: number | null;
-    teamA: { id: number; name: string; sportTypeId: number } | null;
-    teamB: { id: number; name: string; sportTypeId: number } | null;
+    teamA: TeamRef | null;      // OD-61 — ดู toMatchTeamRef()
+    teamB: TeamRef | null;
     scheduledTime: Date | null;
     scheduledEndTime: Date | null;
     venue: string | null;
@@ -105,12 +128,8 @@ export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): M
         id: row.match_id,
         tournamentId: row.tournament_id,
         round: row.round_number,
-        teamA: row.team_a_id !== null
-            ? { id: row.team_a_id, name: row.team_a_name!, sportTypeId: row.team_a_sport_type_id! }
-            : null,
-        teamB: row.team_b_id !== null
-            ? { id: row.team_b_id, name: row.team_b_name!, sportTypeId: row.team_b_sport_type_id! }
-            : null,
+        teamA: toMatchTeamRef(row.team_a_id, row.team_a_name, row.team_a_sport_type_id, row.team_a_logo_key),
+        teamB: toMatchTeamRef(row.team_b_id, row.team_b_name, row.team_b_sport_type_id, row.team_b_logo_key),
         scheduledTime: row.scheduled_time,
         scheduledEndTime: row.scheduled_end_time,
         venue: row.venue,
@@ -193,8 +212,8 @@ export type BracketNodeDto = {
     bracketType: 'winners' | 'losers' | 'grand_final';
     round: number | null;
     matchNumber: number;
-    teamA: { id: number; name: string; sportTypeId: number } | null;
-    teamB: { id: number; name: string; sportTypeId: number } | null;
+    teamA: TeamRef | null;      // OD-61 — ดู toMatchTeamRef()
+    teamB: TeamRef | null;
     matchId: number | null;
     matchStatus: string | null;
     advancesToNodeId: number | null;
@@ -206,12 +225,8 @@ export function toBracketNodeDto(row: BracketNodeListRow): BracketNodeDto {
         bracketType: row.bracket_type,
         round: row.round,
         matchNumber: row.match_number,
-        teamA: row.team_a_id !== null
-            ? { id: row.team_a_id, name: row.team_a_name!, sportTypeId: row.team_a_sport_type_id! }
-            : null,
-        teamB: row.team_b_id !== null
-            ? { id: row.team_b_id, name: row.team_b_name!, sportTypeId: row.team_b_sport_type_id! }
-            : null,
+        teamA: toMatchTeamRef(row.team_a_id, row.team_a_name, row.team_a_sport_type_id, row.team_a_logo_key),
+        teamB: toMatchTeamRef(row.team_b_id, row.team_b_name, row.team_b_sport_type_id, row.team_b_logo_key),
         matchId: row.match_id,
         matchStatus: row.match_status,
         advancesToNodeId: row.advances_to_node_id,

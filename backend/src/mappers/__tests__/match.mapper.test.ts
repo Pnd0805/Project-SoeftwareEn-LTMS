@@ -41,9 +41,11 @@ function makeListRow(overrides: Partial<MatchListRow> = {}): MatchListRow {
     team_a_id: 11,
     team_a_name: 'Lions',
     team_a_sport_type_id: 3,
+    team_a_logo_key: null,          // OD-61
     team_b_id: 12,
     team_b_name: 'Tigers',
     team_b_sport_type_id: 3,
+    team_b_logo_key: null,          // OD-61
     next_match_id: 5,
     loser_next_match_id: null,
     result_status: null,
@@ -72,8 +74,10 @@ function makeDetailRow(overrides: Partial<MatchDetailRow> = {}): MatchDetailRow 
     livestream_url: null,
     team_a_name: 'Lions',
     team_a_sport_type_id: 3,
+    team_a_logo_key: null,          // OD-61
     team_b_name: 'Tigers',
     team_b_sport_type_id: 3,
+    team_b_logo_key: null,          // OD-61
     next_match_id: 5,
     loser_next_match_id: null,
     result_status: null,
@@ -120,9 +124,11 @@ function makeNodeRow(overrides: Partial<BracketNodeListRow> = {}): BracketNodeLi
     team_a_id: 11,
     team_a_name: 'Lions',
     team_a_sport_type_id: 3,
+    team_a_logo_key: null,          // OD-61
     team_b_id: 12,
     team_b_name: 'Tigers',
     team_b_sport_type_id: 3,
+    team_b_logo_key: null,          // OD-61
     match_id: 1,
     match_status: 'scheduled',
     advances_to_node_id: 201,
@@ -138,8 +144,8 @@ describe('toMatchListItemDto', () => {
 
     expect(dto.id).toBe(1);
     expect(dto.round).toBe(2);
-    expect(dto.teamA).toEqual({ id: 11, name: 'Lions', sportTypeId: 3 });
-    expect(dto.teamB).toEqual({ id: 12, name: 'Tigers', sportTypeId: 3 });
+    expect(dto.teamA).toEqual({ id: 11, name: 'Lions', sportTypeId: 3, logoUrl: null });
+    expect(dto.teamB).toEqual({ id: 12, name: 'Tigers', sportTypeId: 3, logoUrl: null });
     expect(dto.scheduledTime).toBe(START);
     expect(dto.scheduledEndTime).toBe(END);
     expect(dto.venue).toBe('Hall A');
@@ -257,8 +263,8 @@ describe('toMatchDetailDto', () => {
     expect(dto.id).toBe(1);
     expect(dto.tournamentId).toBe(100);
     expect(dto.round).toBe(2);
-    expect(dto.teamA).toEqual({ id: 11, name: 'Lions', sportTypeId: 3 });
-    expect(dto.teamB).toEqual({ id: 12, name: 'Tigers', sportTypeId: 3 });
+    expect(dto.teamA).toEqual({ id: 11, name: 'Lions', sportTypeId: 3, logoUrl: null });
+    expect(dto.teamB).toEqual({ id: 12, name: 'Tigers', sportTypeId: 3, logoUrl: null });
     expect(dto.checkinOpenAt).toBe(CHECKIN_OPEN);
     expect(dto.status).toBe('checkin_open');
     expect(dto.mode).toBe('online');
@@ -602,8 +608,8 @@ describe('toBracketNodeDto', () => {
       bracketType: 'winners',
       round: 1,
       matchNumber: 1,
-      teamA: { id: 11, name: 'Lions', sportTypeId: 3 },
-      teamB: { id: 12, name: 'Tigers', sportTypeId: 3 },
+      teamA: { id: 11, name: 'Lions', sportTypeId: 3, logoUrl: null },
+      teamB: { id: 12, name: 'Tigers', sportTypeId: 3, logoUrl: null },
       matchId: 1,
       matchStatus: 'scheduled',
       advancesToNodeId: 201,
@@ -612,6 +618,28 @@ describe('toBracketNodeDto', () => {
 
   it.each(['winners', 'losers', 'grand_final'] as const)("passes bracket_type '%s' through", (bracketType) => {
     expect(toBracketNodeDto(makeNodeRow({ bracket_type: bracketType })).bracketType).toBe(bracketType);
+  });
+
+  /**
+   * OD-61 ก้าวที่ 2 (4 ต.ค. 2569) — แยกสองความหมายของ null ที่ปนกันง่าย
+   *
+   * 🔴 ทีมที่ "มีจริงแต่ยังไม่อัปโลโก้" ต้องยังโผล่เป็นทีม ไม่ใช่กลายเป็น null ทั้งก้อน
+   *   ถ้าใครเผลอตัดสินด้วย logoKey แทน teamId ช่องสายจะว่างทั้งที่มีทีมอยู่
+   *   แล้วหน้าสายการแข่งขันจะโชว์ "ยังไม่มีทีม" ทั้งทัวร์ โดย API ตอบ 200 ปกติ
+   */
+  it('★ ทีมมีจริงแต่ไม่มีโลโก้ → ยังเป็นทีม (logoUrl null) ไม่ใช่ null ทั้งก้อน', () => {
+    const dto = toBracketNodeDto(makeNodeRow({ team_a_logo_key: null }));
+
+    expect(dto.teamA).not.toBeNull();
+    expect(dto.teamA!.logoUrl).toBeNull();
+    expect(dto.teamA!.id).toBe(11);
+  });
+
+  it('★ มีโลโก้ → แปลงเป็น URL สาธารณะ ไม่ใช่ key ดิบ', () => {
+    const dto = toBracketNodeDto(makeNodeRow({ team_a_logo_key: 'teams/11/logo.png' }));
+
+    expect(dto.teamA!.logoUrl).toContain('teams/11/logo.png');
+    expect(dto.teamA!.logoUrl).not.toBe('teams/11/logo.png');
   });
 
   it('sets each team to null independently when its id is null', () => {
@@ -623,9 +651,9 @@ describe('toBracketNodeDto', () => {
     );
 
     expect(noA.teamA).toBeNull();
-    expect(noA.teamB).toEqual({ id: 12, name: 'Tigers', sportTypeId: 3 });
+    expect(noA.teamB).toEqual({ id: 12, name: 'Tigers', sportTypeId: 3, logoUrl: null });
     expect(noB.teamB).toBeNull();
-    expect(noB.teamA).toEqual({ id: 11, name: 'Lions', sportTypeId: 3 });
+    expect(noB.teamA).toEqual({ id: 11, name: 'Lions', sportTypeId: 3, logoUrl: null });
   });
 
   it('represents a bye node (no real match) with null matchId and matchStatus', () => {
