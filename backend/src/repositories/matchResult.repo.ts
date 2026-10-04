@@ -8,6 +8,7 @@ import * as BracketNodeRepo from '../repositories/bracketNode.repo.js';
 
 import type { SportStatDefinitionRow , PlayerMatchStatValueRow , TournamentStandingRow , TeamRow} from '../types/db.js';
 import * as PickemRepo from './pickem.repo.js';
+import * as RewardRepo from './reward.repo.js';
 
 
 
@@ -130,6 +131,8 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
     // C7 Pick'em — ผลยืนยันแล้วเท่านั้นที่ให้แต้ม (spec 08 §6) · ทรานแซกชันเดียวกับผล พังพร้อมกัน
     // OD-56 — ส่งสกอร์จริงกับกีหาไปด้วย — คิดโบนัสสกอร์ต้องรู้ทั้งผลจริงและ tolerance ของกีรา
     await PickemRepo.settleTx(conn, match.match_id, winnerId, score, sportId);
+    // OD-57 — แต้มเพิ่งเปลี่ยน ประเมินเหรียญ "นักทายแม่น" ใหม่ (แจกหรือริบ)
+    await RewardRepo.evaluatePickemRewardsTx(conn, match.match_id);
 }
 
 /**
@@ -161,6 +164,8 @@ async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId :
 
     // C7 Pick'em — ถอนผล = คืนแต้มที่ให้ไปทั้งหมด (amend ที่เปลี่ยนผู้ชนะจะ settle ใหม่ใน applyOutcomeTx ต่อทันที)
     await PickemRepo.unsettleTx(conn, match.match_id);
+    // OD-57 — ถอนแต้มแล้วต้องประเมินใหม่ด้วย ไม่งั้นเหรียญค้างทั้งที่เงื่อนไขไม่จริงแล้ว
+    await RewardRepo.evaluatePickemRewardsTx(conn, match.match_id);
 }
 
 function loserOf(match : MatchRow, winnerId : number): number{
@@ -383,6 +388,8 @@ export async function amendMatchResult(matchResId : number , match : MatchRow , 
              */
             await PickemRepo.unsettleTx(conn, match.match_id);
             await PickemRepo.settleTx(conn, match.match_id, newWinnerId, newScore, sportId);
+            // OD-57 — ประเมินครั้งเดียวหลังคิดแต้มใหม่เสร็จ (ถอนแล้วให้ใหม่ในจังหวะเดียว)
+            await RewardRepo.evaluatePickemRewardsTx(conn, match.match_id);
         }else{
             await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point, newScore);
         }

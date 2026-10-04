@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('../../config/db.js', () => ({ default: { query: mocks.query, getConnection: mocks.getConnection } }));
 vi.mock('../pickem.repo.js', () => ({ settleTx: vi.fn(), unsettleTx: vi.fn(), findPickerIdsTx: vi.fn(() => Promise.resolve([])) }));
+// OD-57 — amend เรียกตัวประเมินเหรียญด้วย · เทสนี้วัดลำดับ settle/unsettle ไม่ใช่เหรียญ จึง mock ทิ้ง
+vi.mock('../reward.repo.js', () => ({ evaluatePickemRewardsTx: vi.fn(() => Promise.resolve({ granted: 0, revoked: 0 })) }));
 vi.mock('../bracketNode.repo.js', () => ({ syncNodeTeamsFromMatchTx: vi.fn() }));
 vi.mock('../match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../tournament.repo.js', () => ({ findTournamentById: vi.fn(() => Promise.resolve({ tournament_id: 50, sport_type_id: 1 })) }));
