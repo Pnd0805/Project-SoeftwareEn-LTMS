@@ -78,7 +78,9 @@ CREATE TABLE sport_types (
   name VARCHAR(100) NOT NULL,
   min_members INT NOT NULL,
   max_members INT NOT NULL,
-  default_mode ENUM('onsite','online') NOT NULL DEFAULT 'onsite'
+  default_mode ENUM('onsite','online') NOT NULL DEFAULT 'onsite',
+  walkover_score JSON NULL,                           -- migration 011 · สกอร์ชนะบาย {"winner":n,"loser":n} — เดิมตกหล่นจากเอกสารนี้
+  pickem_score_tolerance INT NOT NULL DEFAULT 0  -- 🆕 OD-56 (migration 039) · ความคลาดรวมที่ยังนับเป็น "ทายใกล้" · 0 = ต้องเป๊ะ
 );
 ```
 > ไม่เพิ่ม audit trail — ข้อมูลนิ่งมาก แทบไม่เปลี่ยน (ตามผลตรวจ audit trail ข้อ 3)
@@ -666,7 +668,8 @@ CREATE TABLE pickem_predictions (
   pickem_prediction_id INT PRIMARY KEY AUTO_INCREMENT,  -- ♻️ เปลี่ยนชื่อจาก id
   user_id INT NOT NULL,
   match_id INT NOT NULL,
-  predicted_winner_team_id INT NOT NULL,
+  predicted_winner_team_id INT NOT NULL,              -- ♻️ OD-56: เปลี่ยนที่มา — service อนุมานจากสกอร์ (ฝั่งที่แต้มมากกว่า) ไม่รับจาก request
+  predicted_score_data JSON NULL,                     -- 🆕 OD-56 (4 ต.ค. 2569, migration 038) · NULL = แถวเก่าที่ทายแค่ฝั่ง
   points_earned INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(user_id),

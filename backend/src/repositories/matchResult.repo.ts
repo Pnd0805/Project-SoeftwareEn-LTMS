@@ -128,7 +128,8 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
     }
 
     // C7 Pick'em — ผลยืนยันแล้วเท่านั้นที่ให้แต้ม (spec 08 §6) · ทรานแซกชันเดียวกับผล พังพร้อมกัน
-    await PickemRepo.settleTx(conn, match.match_id, winnerId);
+    // OD-56 — ส่งสกอร์จริงกับกีหาไปด้วย — คิดโบนัสสกอร์ต้องรู้ทั้งผลจริงและ tolerance ของกีรา
+    await PickemRepo.settleTx(conn, match.match_id, winnerId, score, sportId);
 }
 
 /**
@@ -367,6 +368,21 @@ export async function amendMatchResult(matchResId : number , match : MatchRow , 
         }else if(wasVerified){
             await standingsTx(conn, match.tournament_id, newWinnerId, loserOf(match, newWinnerId), point, oldScore, -1);
             await standingsTx(conn, match.tournament_id, newWinnerId, loserOf(match, newWinnerId), point, newScore, 1);
+            /**
+             * OD-56 (4 ต.ค.) — ★ ต้องคิดแต้ม Pick'em ใหม่ด้วย ทั้งที่ผู้ชนะไม่เปลี่ยน
+             *
+             * ก่อน OD-56 กิ่งนี้ถูกต้องที่ไม่แตะ Pick'em เพราะแต้มขึ้นกับ "ใครชนะ" เท่านั้น
+             * ⇒ แก้สกอร์โดยผู้ชนะคนเดิมไม่กระทบใคร
+             *
+             * แต่ตอนนี้แต้มขึ้นกับ **สกอร์** ด้วย (ชั้น exact / close) ⇒ ถ้าไม่คิดใหม่
+             * คนที่ทายสกอร์เดิมไว้เป๊ะจะถือแต้ม 10 ค้างไว้ทั้งที่สกอร์นั้นถูกแก้ไปแล้ว
+             * และคนที่ทายตรงกับสกอร์ใหม่จะไม่ได้โบนัสที่ควรได้ — เพี้ยนแบบไม่มี error ฟ้อง
+             *
+             * unsettle ก่อน settle เพราะ unsettle คืนแต้มเก่าออกจาก users.total_points ให้ครบ
+             * แล้ว settle คิดใหม่จากสกอร์ใหม่ (settle แตะเฉพาะแถวที่ points_earned IS NULL)
+             */
+            await PickemRepo.unsettleTx(conn, match.match_id);
+            await PickemRepo.settleTx(conn, match.match_id, newWinnerId, newScore, sportId);
         }else{
             await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point, newScore);
         }

@@ -44,7 +44,9 @@ export type SportTypeRow = {
     min_members : number,
     max_members : number,
     default_mode : 'onsite' | 'online',
-    walkover_score : { winner : number, loser : number } | null   // สกอร์ชนะบาย (migration 011)
+    walkover_score : { winner : number, loser : number } | null ,  // สกอร์ชนะบาย (migration 011)
+    // OD-56 · ความคลาดรวมที่ยังนับเป็น "ทายใกล้" ของกีรานี้ (migration 039) · 0 = ต้องเป๊ะ
+    pickem_score_tolerance : number
 }
 
 export type SportStatDefinitionRow = {

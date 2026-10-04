@@ -1,20 +1,19 @@
 import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
+import { pickemScoreFor } from '../utils/pickemScore.js';
 
 // C7 — Pick'em (ตาราง pickem_predictions เดิม · UNIQUE (user_id, match_id) = คนละ 1 การทายต่อแมตช์)
 //   points_earned: NULL = ยังไม่ตัดสิน (หรือแมตช์จบแบบไม่มีผลยืนยัน = void) · > 0 = ทายฝั่งถูก · 0 = ทายฝั่งผิด
 //
-// ★ OD-56 (4 ต.ค.) — ตั้งแต่ migration 038 เก็บสกอร์ที่ทายด้วย (`predicted_score_data`)
-//   กฎที่ตกลงแล้ว: **ทายฝั่งผิด = 0 เสมอ ไม่ว่าสกอร์จะใกล้แค่ไหน** (มติข้อ ②)
-//   ⇒ `points_earned > 0` จึงยังแปลว่า "ทายฝั่งถูก" เหมือนเดิมเป๊ะ
-//      E28/E29 ที่นับ `SUM(points_earned > 0) AS correct` และ pickStatus() จึงไม่ต้องแก้
-//      **ถ้าวันหนึ่งเปลี่ยนใจให้ฝั่งผิดได้แต้มด้วย ต้องกลับมาแก้สองที่นั้นพร้อมกัน** ไม่งั้น
-//      ช่อง "ทายถูก" กับสถานะ won/lost จะโกหกเงียบ ๆ โดยไม่มีเทสไหนแดง
+// ★ OD-56 (4 ต.ค.) — ทายเป็นสกอร์ (migration 038) และคิดแต้ม 3 ชั้น (migration 039)
+//   ตัวเลขอยู่ที่ `config/scoring.ts` (PICKEM_TIER_POINTS) · สูตรอยู่ที่ `utils/pickemScore.ts`
 //
-// ⏳ สูตรคะแนนบางส่วน (โบนัสสกอร์เป๊ะ / ผลต่างถูก) **ยังไม่ตัดสิน** — ดู OD-56
-//   ระหว่างนี้ยังคิดแบบเดิม: ฝั่งถูก = PICKEM_POINTS · ฝั่งผิด = 0
-export const PICKEM_POINTS = 10;
+//   กฎที่ต้องไม่ลืม: **ทายฝั่งผิด = 0 เสมอ ไม่ว่าสกอร์จะใกล้แค่ไหน** (มติข้อ ②)
+//   ⇒ `points_earned > 0` จึงแปลว่า "ทายฝั่งถูก" ได้ตรง ๆ
+//      E28/E29 ที่นับ `SUM(points_earned > 0) AS correct` และ pickStatus() จึงยังพูดความจริง
+//      🔴 **ถ้าวันหนึ่งให้ฝั่งผิดได้แต้มด้วย ต้องกลับไปแก้สองที่นั้นพร้อมกัน** ไม่งั้น
+//         ช่อง "ทายถูก" กับสถานะ won/lost จะโกหกเงียบ ๆ โดยไม่มีเทสไหนแดง
 
 export type PredictionRow = {
     pickem_prediction_id: number;
@@ -86,19 +85,51 @@ export async function countByTeam(matchId: number): Promise<{ team_id: number; p
  * ผลถูกยืนยัน (S02 verify / S04 uphold ก่อน verify / S04 amend) → ให้แต้มคนทายถูก + บวก users.total_points
  * ตัดสินเฉพาะแถวที่ยังไม่ตัดสิน (points_earned IS NULL) → เรียกซ้ำก็ไม่บวกซ้ำ
  */
-export async function settleTx(conn: PoolConnection, matchId: number, winnerTeamId: number): Promise<void> {
-    await conn.query<ResultSetHeader>(
-        `UPDATE users u JOIN pickem_predictions p ON p.user_id = u.user_id
-         SET u.total_points = u.total_points + ?
-         WHERE p.match_id = ? AND p.points_earned IS NULL AND p.predicted_winner_team_id = ?`,
-        [PICKEM_POINTS, matchId, winnerTeamId]
+export async function settleTx(conn: PoolConnection, matchId: number, winnerTeamId: number,
+                               actualScore: Record<string, number> | null, sportTypeId: number): Promise<void> {
+    // tolerance ของกีฬานั้น — อ่านในทรานแซกชันเดียวกัน ไม่ส่งมาจากข้างนอกเพื่อให้คนเรียกไม่ต้องรู้เรื่องนี้
+    const [sportRows] = await conn.query<({ pickem_score_tolerance: number } & RowDataPacket)[]>(
+        `SELECT pickem_score_tolerance FROM sport_types WHERE sport_type_id = ?`, [sportTypeId]
     );
-    await conn.query<ResultSetHeader>(
-        `UPDATE pickem_predictions SET points_earned = IF(predicted_winner_team_id = ?, ?, 0)
-         WHERE match_id = ? AND points_earned IS NULL`,
-        [winnerTeamId, PICKEM_POINTS, matchId]
+    const tolerance = sportRows[0]?.pickem_score_tolerance ?? 0;
+
+    // ★ ต้องอ่านแถวที่ยังไม่ตัดสิน "ก่อน" เขียน — จับกลุ่มตามแต้มแล้วค่อยอัปเดตทีละกลุ่ม
+    //   ถ้าเขียน points_earned ก่อนแล้วมาบวก users.total_points ทีหลัง จะแยกไม่ออกว่า
+    //   แถวไหนเพิ่งตัดสินในรอบนี้กับแถวที่ตัดสินไปแล้วรอบก่อน แล้วอาจบวกซ้ำ
+    const [rows] = await conn.query<(Pick<PredictionRow, 'pickem_prediction_id' | 'predicted_winner_team_id' | 'predicted_score_data'> & RowDataPacket)[]>(
+        `SELECT pickem_prediction_id, predicted_winner_team_id, predicted_score_data
+           FROM pickem_predictions WHERE match_id = ? AND points_earned IS NULL`,
+        [matchId]
     );
+    if (rows.length === 0) return;
+
+    // แต้มมีได้แค่ 4 ค่า ⇒ จับกลุ่มแล้วยิงไม่เกิน 4 รอบ ไม่ใช่ยิงต่อคน
+    const byPoints = new Map<number, number[]>();
+    for (const row of rows) {
+        const { points } = pickemScoreFor(row.predicted_winner_team_id, row.predicted_score_data,
+                                          winnerTeamId, actualScore, tolerance);
+        const ids = byPoints.get(points) ?? [];
+        ids.push(row.pickem_prediction_id);
+        byPoints.set(points, ids);
+    }
+
+    for (const [points, ids] of byPoints) {
+        const marks = ids.map(() => '?').join(',');
+        if (points > 0) {
+            await conn.query<ResultSetHeader>(
+                `UPDATE users u JOIN pickem_predictions p ON p.user_id = u.user_id
+                    SET u.total_points = u.total_points + ?
+                  WHERE p.pickem_prediction_id IN (${marks})`,
+                [points, ...ids]
+            );
+        }
+        await conn.query<ResultSetHeader>(
+            `UPDATE pickem_predictions SET points_earned = ? WHERE pickem_prediction_id IN (${marks})`,
+            [points, ...ids]
+        );
+    }
 }
+
 
 /** ผลที่ยืนยันแล้วถูกถอน (S04 reject / amend เปลี่ยนผู้ชนะ) → คืนแต้มทั้งหมดของแมตช์นี้ กลับเป็นยังไม่ตัดสิน */
 export async function unsettleTx(conn: PoolConnection, matchId: number): Promise<void> {
