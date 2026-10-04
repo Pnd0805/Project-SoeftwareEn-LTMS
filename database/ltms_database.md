@@ -80,7 +80,10 @@ CREATE TABLE sport_types (
   max_members INT NOT NULL,
   default_mode ENUM('onsite','online') NOT NULL DEFAULT 'onsite',
   walkover_score JSON NULL,                           -- migration 011 · สกอร์ชนะบาย {"winner":n,"loser":n} — เดิมตกหล่นจากเอกสารนี้
-  pickem_score_tolerance INT NOT NULL DEFAULT 0  -- 🆕 OD-56 (migration 039) · ความคลาดรวมที่ยังนับเป็น "ทายใกล้" · 0 = ต้องเป๊ะ
+  pickem_tolerance_exact INT NOT NULL DEFAULT 0, -- 🆕 OD-56 (migration 040) · คลาดได้ ต่อฝั่ง เท่าไรยังนับเป็น "ทายเต็ม" · 0 = ต้องเป๊ะ
+  pickem_tolerance_close INT NOT NULL DEFAULT 0  -- 🆕 OD-56 (migration 040) · คลาดได้ ต่อฝั่ง เท่าไรยังนับเป็น "ทายใกล้" · ฐาน CHECK ว่า >= exact
+  -- ★ ชั้นแต้มตัดสินด้วย "ฝั่งที่คลาดมากสุด" ไม่ใช่ผลรวมสองฝั่ง (migration 039 ที่บวกรวมถูกยกเลิกแล้ว)
+  -- ค่าปัจจุบัน: ฟุตบอล (0,1) · บาสเกตบอล (5,10) · แบด/RoV/VALORANT (0,0)
 );
 ```
 > ไม่เพิ่ม audit trail — ข้อมูลนิ่งมาก แทบไม่เปลี่ยน (ตามผลตรวจ audit trail ข้อ 3)

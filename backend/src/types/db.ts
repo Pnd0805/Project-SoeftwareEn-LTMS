@@ -45,8 +45,10 @@ export type SportTypeRow = {
     max_members : number,
     default_mode : 'onsite' | 'online',
     walkover_score : { winner : number, loser : number } | null ,  // สกอร์ชนะบาย (migration 011)
-    // OD-56 · ความคลาดรวมที่ยังนับเป็น "ทายใกล้" ของกีรานี้ (migration 039) · 0 = ต้องเป๊ะ
-    pickem_score_tolerance : number
+    // OD-56 (migration 040) · เส้นสองเส้นของชั้นแต้ม Pick'em ของกีฬานี้
+    // ความหมาย = ความคลาดที่ยอมได้ **ต่อฝั่ง** (ไม่ใช่ผลรวมสองฝั่ง) · ฐานบังคับ close >= exact
+    pickem_tolerance_exact : number,
+    pickem_tolerance_close : number
 }
 
 export type SportStatDefinitionRow = {

@@ -2,11 +2,13 @@ import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 import { pickemScoreFor } from '../utils/pickemScore.js';
+import type { PickemTolerance } from '../utils/pickemScore.js';
+import type { SportTypeRow } from '../types/db.js';
 
 // C7 — Pick'em (ตาราง pickem_predictions เดิม · UNIQUE (user_id, match_id) = คนละ 1 การทายต่อแมตช์)
 //   points_earned: NULL = ยังไม่ตัดสิน (หรือแมตช์จบแบบไม่มีผลยืนยัน = void) · > 0 = ทายฝั่งถูก · 0 = ทายฝั่งผิด
 //
-// ★ OD-56 (4 ต.ค.) — ทายเป็นสกอร์ (migration 038) และคิดแต้ม 3 ชั้น (migration 039)
+// ★ OD-56 (4 ต.ค.) — ทายเป็นสกอร์ (migration 038) และคิดแต้ม 3 ชั้นแบบ "ยึดฝั่งที่แย่กว่า" (migration 040)
 //   ตัวเลขอยู่ที่ `config/scoring.ts` (PICKEM_TIER_POINTS) · สูตรอยู่ที่ `utils/pickemScore.ts`
 //
 //   กฎที่ต้องไม่ลืม: **ทายฝั่งผิด = 0 เสมอ ไม่ว่าสกอร์จะใกล้แค่ไหน** (มติข้อ ②)
@@ -87,11 +89,16 @@ export async function countByTeam(matchId: number): Promise<{ team_id: number; p
  */
 export async function settleTx(conn: PoolConnection, matchId: number, winnerTeamId: number,
                                actualScore: Record<string, number> | null, sportTypeId: number): Promise<void> {
-    // tolerance ของกีฬานั้น — อ่านในทรานแซกชันเดียวกัน ไม่ส่งมาจากข้างนอกเพื่อให้คนเรียกไม่ต้องรู้เรื่องนี้
-    const [sportRows] = await conn.query<({ pickem_score_tolerance: number } & RowDataPacket)[]>(
-        `SELECT pickem_score_tolerance FROM sport_types WHERE sport_type_id = ?`, [sportTypeId]
+    // เส้น tolerance ของกีฬานั้น — อ่านในทรานแซกชันเดียวกัน ไม่ส่งมาจากข้างนอกเพื่อให้คนเรียกไม่ต้องรู้เรื่องนี้
+    const [sportRows] = await conn.query<(Pick<SportTypeRow, 'pickem_tolerance_exact' | 'pickem_tolerance_close'> & RowDataPacket)[]>(
+        `SELECT pickem_tolerance_exact, pickem_tolerance_close FROM sport_types WHERE sport_type_id = ?`,
+        [sportTypeId]
     );
-    const tolerance = sportRows[0]?.pickem_score_tolerance ?? 0;
+    // กีฬาหาย (ไม่ควรเกิด — FK บังคับ) → ถือว่าต้องเป๊ะ ไม่ใช่แจกโบนัสฟรี
+    const tolerance: PickemTolerance = {
+        exact: sportRows[0]?.pickem_tolerance_exact ?? 0,
+        close: sportRows[0]?.pickem_tolerance_close ?? 0,
+    };
 
     // ★ ต้องอ่านแถวที่ยังไม่ตัดสิน "ก่อน" เขียน — จับกลุ่มตามแต้มแล้วค่อยอัปเดตทีละกลุ่ม
     //   ถ้าเขียน points_earned ก่อนแล้วมาบวก users.total_points ทีหลัง จะแยกไม่ออกว่า
