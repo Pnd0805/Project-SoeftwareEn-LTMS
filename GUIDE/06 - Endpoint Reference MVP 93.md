@@ -338,7 +338,7 @@
 
 ---
 
-# 9. Match Results — 10 endpoint
+# 9. Match Results — 11 endpoint
 
 **ไฟล์:** `routes/result.routes.ts` · `result.controller.ts` · `result.service.ts` (★ ไฟล์ที่ซับซ้อนที่สุด) · `matchResult.repo.ts`, `playerMatchStat.repo.ts`, `standings.repo.ts`, `playerProfileStat.repo.ts`
 
@@ -346,6 +346,7 @@
 |---|---|---|---|---|---|
 | S01 | `POST /matches/:id/result` | TL/REF ตาม **BR-13** | ส่งผล → `submitted` · **OD-26 ข้อ 6**: โหมด online พ้น 24 ชม.หลังแมตช์จบแล้วยังไม่มีใครส่ง **กรรมการของแมตช์ส่งแทนได้** · **ต้องกดจบการแข่งขัน (M10b) ก่อน** ไม่งั้น **409** `MATCH_NOT_FINISHED` (+`status`) — `result_rejected` ส่งใหม่ได้โดยไม่ต้องกดจบซ้ำ · idempotent (ส่งซ้ำ = UPDATE) · **scoreData (19 ก.ย.)**: key ต้องเป็นรหัส 2 ทีมของแมตช์ครบทั้งคู่ · คะแนน ≥ 0 · `winnerTeamId` ต้องคะแนนมากกว่า (เสมอยังไม่รองรับ) ไม่งั้น **400** `VALIDATION_FAILED` + `expectedKeys` — กฎเดียวกับ S04 amend · **B4**: ส่งซ้ำได้เฉพาะตอน `submitted`/`rejected` (ส่งใหม่หลัง reject = สถานะกลับเป็น submitted) · ผลที่ verified/disputed → **409** `MATCH_RESULT_ALREADY_VERIFIED` | `winnerTeamId, scoreData` | **201** `{ id, matchId, status:'submitted', submittedBy }` / **403** `WRONG_SUBMITTER_ROLE` / **409** `INSUFFICIENT_REFEREES` |
 | S02 | `POST /matches/:id/result/verify` | อีกฝ่ายตาม **BR-13** | ⭐ **transaction 9 ขั้น** — verified + เลื่อนสาย + standings + stats + แต้ม + แจ้งเตือน + audit | — | `{ matchId, status:'verified', winnerTeamId, nextMatchId }` / **403** `SAME_PERSON_CANNOT_VERIFY` |
+| S02b | `POST /matches/:id/result/override` | **REF ของแมตช์ · online เท่านั้น** | **ใหม่ 4 ต.ค. · OD-55** กรรมการเขียนผลทับของที่หัวหน้าทีมส่งมา · ★ **ลงที่ `submitted` ไม่ใช่ `verified`** — ถ้า verified ทันทีคนเดียวจะเป็นทั้งคนเขียนและคนรับรอง ซึ่งเป็นสิ่งเดียวที่ `SAME_PERSON_CANNOT_VERIFY` กันอยู่ · ลงที่ `submitted` แล้วเส้นทางเท่ากับโหมด onsite เป๊ะ (กรรมการเขียน → ทีมค้านได้ → เงียบ → auto-verify ซึ่งกรอง `submitted_role='referee'` อยู่แล้ว) · **onsite → 409 `OVERRIDE_ONSITE_NOT_ALLOWED`** (ที่นั่นกรรมการส่งผลเองตั้งแต่ต้น แก้ด้วยการส่งใหม่ทับได้เลยผ่าน S01) · **ผลที่ไม่ใช่ `submitted` → 409 `RESULT_NOT_OVERRIDABLE`** (verified/disputed/rejected/walkover) — เส้นนี้ **ไม่มีกลไกถอนผลออกจากสาย/ตารางคะแนน** (ไม่มี `undoOutcomeTx`) จึงห้ามแตะของที่ขยับไปแล้ว ต้องใช้ S03/S04 · ไม่ใช่กรรมการของแมตช์ → 403 `WRONG_SUBMITTER_ROLE` · `reason` **บังคับ** และถูกส่งต่อไปในข้อความแจ้งเตือน · ทับซ้ำได้ตราบที่ยัง `submitted` · นาฬิกา auto-verify **เริ่มนับใหม่** ทุกครั้งที่ทับ (`submitted_at = NOW()`) · ไม่แตะ `matches.match_status` | `{ winnerTeamId, scoreData, reason }` | **200** `{ id, matchId, status:'submitted', submittedBy }` / **409** / **403** / **400** `VALIDATION_FAILED` |
 | S03 | `POST /matches/:id/result/dispute` | TL/REF | โต้แย้งผล · **BR-14 มี 2 จังหวะ**: ก่อน verify (ฝ่ายที่ต้องยืนยันเลือกโต้แย้งแทน — ไม่มีกำหนดเวลา) หรือหลัง verify ภายใน `dispute_window_hours` · active ได้ครั้งละ 1 · ผลที่ `rejected` โต้แย้งไม่ได้ (**409** `RESULT_REJECTED`) | `reason` (บังคับ 1–1000), `claimedWinnerTeamId?`, `claimedScoreData?` (เสนอผลที่ถูกต้อง — ผู้จัดกด amend ต่อได้เลย), `evidenceKeys?` (≤5 ไฟล์ · อัปผ่าน M16 purpose `dispute_evidence`) | `{ matchId, status:'disputed' }` / **409** `DISPUTE_WINDOW_CLOSED` \| `DISPUTE_ALREADY_ACTIVE` \| `RESULT_IS_WALKOVER` · **26 ก.ย.**: `reason` บังคับ 1–1000 ตัวอักษร (เดิมสตริงว่างก็ผ่าน) · เสนอผลที่ถูกต้องมาด้วยได้ `claimedWinnerTeamId` + `claimedScoreData` · แนบหลักฐาน `evidenceKeys` ≤ 5 ไฟล์ (M16 purpose `dispute_evidence`) |
 | S04 | `POST /matches/:id/result/resolve` | ORG · **แอดมิน ADM-u เมื่อพ้น 48 ชม.** (OD-26 ข้อ 10 — เพิ่มคนที่กดได้ ไม่ใช่โอนอำนาจ · ก่อนหน้านั้น **403** `ORGANIZER_STILL_HAS_TIME` +`availableAt`) | ตัดสินข้อโต้แย้ง · **B4 (19 ก.ย.)**: `uphold` ปิดเรื่อง · `reject` **ถอนผลที่ verify ไปแล้วทั้งหมด** (เอาทีมออกจากรอบถัดไป + bracket_nodes, standings −1, player stats −1) แมตช์ → `result_rejected` รอส่งใหม่ S01→S02 · `amend` ORG ใส่ผู้ชนะ/สกอร์ที่ถูกเอง → ถอนผลเดิม+ใส่ผลใหม่ verified ทันที (`isAmended`) · reject/amend ได้เฉพาะเมื่อแมตช์ถัดไปยัง `scheduled` · **โต้แย้งก่อน verify**: uphold = verify ให้เลย (เดินสาย/standings ตอนนี้) · reject ไม่มีอะไรต้องถอน | `resolution:'uphold'\|'reject'\|'amend', resolutionNote` · amend เพิ่ม `winnerTeamId, scoreData` | `{ matchId, status:'verified'\|'rejected', isAmended }` / **409** `NO_ACTIVE_DISPUTE`, `NEXT_MATCH_STARTED` + `nextMatchId` · **400** winnerTeamId ไม่ใช่ทีมในแมตช์ |
 | S03b | `GET /matches/:id/result/dispute` | ORG / REF ของแมตช์ / หัวหน้า 2 ทีม | **ใหม่ (26 ก.ย.)** รายละเอียดข้อโต้แย้งไว้ใช้ตัดสิน — เดิมเก็บลงฐานข้อมูลแต่ไม่มี endpoint ไหนคืนออกมา ผู้จัดเห็นแค่ข้อความในแจ้งเตือน · หลักฐานคืนเป็น **presigned URL** เสมอ | — | `{ matchId, status, reason, raisedBy, raisedAt, claimedWinnerTeamId, claimedScoreData, evidence[], resolution, resolvedAt }` / **404** `NO_ACTIVE_DISPUTE` |
@@ -506,7 +507,7 @@
 
 > **หมวดมี 7 — ปิดได้ 6** · `critical` ปิดไม่ได้ เกณฑ์คือ **"มีเส้นตายที่วัดได้ ไม่รู้แล้วเสียสิทธิ์ถาวร"**
 > (`team_invitations.expires_at` · `dispute_window_hours` 6–72 ชม. · `ORG_RESOLVE_HOURS` 48 ชม. · `AUTO_VERIFY_HOURS` · ช่วงรับสมัคร · เวลาแข่ง · หน้าต่างเช็คอิน)
-> รายชื่อ **19 ชนิด**ที่บังคับและเหตุผลรายตัวอยู่ใน `config/notificationCategories.ts` · มติทั้งหมดอยู่ใน OD-43
+> รายชื่อ **20 ชนิด**ที่บังคับและเหตุผลรายตัวอยู่ใน `config/notificationCategories.ts` · มติทั้งหมดอยู่ใน OD-43
 
 > **เติมหมวดครบแล้ว 3 ต.ค. (OD-49)** — ชนิดที่เกิดขึ้นระหว่างที่งานนี้ยังอยู่บนสาขาอื่นจึงตกจากตาราง
 > `team_deleted` → **`critical`** (ทีมถูกกวาดอัตโนมัติโดยไม่มีใครกด ถ้าปิดได้ทีมจะหายเงียบ 100% · เส้นตายคือช่วงรับสมัครของทัวร์ที่ใบสมัครค้างอยู่)
@@ -549,6 +550,8 @@
 | `NOT_REFEREE` | 403 | คุณไม่ได้เป็นกรรมการของแมตช์นี้ | `requireReferee` |
 | `INSUFFICIENT_ADMIN_SCOPE` | 403 | สิทธิ์ผู้ดูแลระบบของคุณไม่ครอบคลุมขอบเขตนี้ | `requireAdmin` |
 | `INVALID_OTP` | 400 | รหัสยืนยันไม่ถูกต้องหรือหมดอายุ กรุณากดขอรหัสใหม่ | AV01 — **ก้อนเดียวสำหรับ 5 เคส** (ไม่มีอีเมล/เลขผิด/หมดอายุ/ใช้แล้ว/กรอกผิดครบ 5 ครั้ง) · ข้อความบอกวิธีแก้ไว้แล้ว FE ไม่ต้องแยก code |
+| `OVERRIDE_ONSITE_NOT_ALLOWED` | 409 | โหมด on-site กรรมการเป็นผู้ส่งผลเองอยู่แล้ว ถ้าผลยังไม่ถูกยืนยันให้ส่งผลใหม่ทับได้เลย | S02b · `extra` = `{ mode }` |
+| `RESULT_NOT_OVERRIDABLE` | 409 | แก้ผลทับได้เฉพาะผลที่ยังรอการยืนยัน — ผลที่ยืนยันแล้วต้องใช้การโต้แย้ง (S03) | S02b · `extra` = `{ status }` |
 | `USER_NOT_FOUND` | 404 | ไม่พบผู้ใช้นี้ในระบบ | service |
 | `TEAM_NOT_FOUND` | 404 | ไม่พบทีมนี้ | service |
 | `TOURNAMENT_NOT_FOUND` | 404 | ไม่พบทัวร์นาเมนต์นี้ | service |

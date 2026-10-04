@@ -36,21 +36,29 @@ export async function findDisputeByMatchId(matchId : number): Promise<DisputeDet
     return rows[0] ?? null;
 }
 
+/**
+ * SQL เดียวที่ใช้ทั้ง S01 (ส่งผล) และ S02b (กรรมการเขียนทับ) — ห้ามแยกเป็นสองชุด
+ * ถ้าแยก แล้ววันหนึ่งแก้กฎการรีเซ็ตนาฬิกาที่ชุดเดียว อีกเส้นจะเพี้ยนแบบเงียบ ๆ
+ */
+const SUBMIT_RESULT_UPSERT_SQL =
+    `INSERT INTO match_results(match_id,winner_team_id,score_data,submitted_by_user_id,submitted_role,match_result_status,submitted_at)
+      VALUES(? , ? , ? , ? ,? ,? , NOW())
+      ON DUPLICATE KEY UPDATE
+           winner_team_id = VALUES(winner_team_id),
+           score_data = VALUES(score_data),
+           submitted_by_user_id = VALUES(submitted_by_user_id),
+           submitted_role = VALUES(submitted_role),
+           match_result_status = 'submitted',
+           submitted_at = NOW(),   -- ส่งใหม่ = นาฬิกาเริ่มใหม่ (created_at ยังเป็นครั้งแรก)
+           verified_by_user_id = NULL, verified_at = NULL`;   // B4: ส่งใหม่หลัง reject เริ่มวงจร verify ใหม่
+
 export async function submitMatchResult(matchId : number , winnerId : number , score : Record<string , number> , userId:number , role : 'team_leader' | 'referee'): Promise<number>{
-    const [ results ] = await pool.query<ResultSetHeader>(`INSERT INTO match_results(match_id,winner_team_id,score_data,submitted_by_user_id,submitted_role,match_result_status,submitted_at)
-                                                           VALUES(? , ? , ? , ? ,? ,? , NOW())
-                                                           ON DUPLICATE KEY UPDATE
-                                                                winner_team_id = VALUES(winner_team_id),
-                                                                score_data = VALUES(score_data),
-                                                                submitted_by_user_id = VALUES(submitted_by_user_id),
-                                                                submitted_role = VALUES(submitted_role),
-                                                                match_result_status = 'submitted',
-                                                                submitted_at = NOW(),   -- ส่งใหม่ = นาฬิกาเริ่มใหม่ (created_at ยังเป็นครั้งแรก)
-                                                                verified_by_user_id = NULL, verified_at = NULL`,   // B4: ส่งใหม่หลัง reject เริ่มวงจร verify ใหม่
-                                                            [matchId , winnerId , JSON.stringify(score) , userId , role , 'submitted']);
-    
+    const [ results ] = await pool.query<ResultSetHeader>(SUBMIT_RESULT_UPSERT_SQL,
+                                                          [matchId , winnerId , JSON.stringify(score) , userId , role , 'submitted']);
+
     return results.insertId
 }
+
 
 
 /** ประตูของทีมจาก score_data ({"<teamId>": n}) — ไม่มี/ไม่ใช่ตัวเลข = 0 */
@@ -171,6 +179,38 @@ async function inTx<T>(fn : (conn : PoolConnection) => Promise<T>): Promise<T>{
     }finally{
         conn.release();
     }
+}
+
+/**
+ * S02b (OD-55) — กรรมการเขียนผลทับของที่หัวหน้าทีมส่งมา (โหมด online)
+ *
+ * ★ ลงที่ `submitted` ไม่ใช่ `verified` โดยเจตนา — ถ้า verified ทันที คนเดียวจะเป็นทั้ง
+ *   คนเขียนและคนรับรองในก้าวเดียว ซึ่งเป็นสิ่งเดียวที่ SAME_PERSON_CANNOT_VERIFY กันอยู่
+ *   ลงที่ submitted แล้วเส้นทางจะเท่ากับโหมด onsite เป๊ะ: กรรมการเขียน → ทีมค้านได้ →
+ *   เงียบ → auto-verify (ซึ่งกรองด้วย submitted_role = 'referee' อยู่แล้ว จึงรับช่วงได้เอง)
+ *
+ * ★ audit_logs อยู่ใน transaction เดียวกับการเขียนทับ **เป็นข้อบังคับ ไม่ใช่ของแถม**
+ *   match_results มีแถวเดียวต่อแมตช์ (ON DUPLICATE KEY UPDATE) ⇒ เขียนทับแล้วผลที่ทีม
+ *   ส่งมา **หายไปจากฐานถาวร** ถ้าแยกสองคำสั่งแล้วคำสั่งหลังล้ม จะได้ผลใหม่ที่ไม่มีหลักฐาน
+ *   ว่าทับอะไรไป แล้วเถียงกันไม่จบ
+ *
+ * ★ ไม่แตะ matches.match_status — ยังเป็น finished/result_rejected ตามเดิมเหมือน S01
+ *   (การเขียนทับคือ "ส่งผลใหม่" ไม่ใช่การเปลี่ยนสถานะการแข่ง)
+ */
+export async function overrideResultByReferee(match : MatchRow , winnerId : number , score : Record<string , number> ,
+                                              refereeUserId : number , reason : string ,
+                                              previous : { winnerTeamId : number | null , scoreData : Record<string , number> | null ,
+                                                           submittedByUserId : number | null , submittedRole : string | null }){
+    await inTx(async conn => {
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, details)
+             VALUES(?, 'match_result_overridden', 'match', ?, ?)`,
+            [refereeUserId , match.match_id , JSON.stringify({ reason , previous ,
+                                                               next : { winnerTeamId : winnerId , scoreData : score } })]);
+
+        await conn.query<ResultSetHeader>(SUBMIT_RESULT_UPSERT_SQL,
+            [match.match_id , winnerId , JSON.stringify(score) , refereeUserId , 'referee' , 'submitted']);
+    });
 }
 
 /** userId = null แปลว่าระบบยืนยันให้เอง (auto-verify) — คอลัมน์ verified_by_user_id ยอม NULL */

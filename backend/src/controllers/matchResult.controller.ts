@@ -18,6 +18,12 @@ export async function createSubmitMatchRes(req : Request , res : Response){
     return res.status(201).json(await MatchResService.createSubmitMatchRes(matchId , winnerId , score , userId , submitrole));
 }
 
+/** S02b — กรรมการเขียนผลทับ (โหมด online · OD-55) */
+export async function overrideMatchResult(req : Request , res : Response){
+    const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
+    return res.status(200).json(await MatchResService.overrideMatchResult(matchId , req.body , req.user!.user_id));
+}
+
 export async function updateVerifyMatchResult(req : Request , res : Response){
     const matchId = parseId(req.params['id'] , 'รหัสผลการแข่งขัน' , 'id');
     const userId = req.user!.user_id

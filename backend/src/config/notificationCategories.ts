@@ -71,6 +71,9 @@ export const NOTIFICATION_CATEGORY = {
     result_auto_verified: 'critical',    // `AUTO_VERIFY_HOURS` — ระบบยืนยันให้เอง เส้นตายเดียวกับข้างบน
     result_decided_by_organizer: 'critical', // ผู้จัดกรอกผลเอง (OD-26 ข้อ 6) — ยังโต้แย้งได้แต่มีเวลาจำกัด
     result_disputed: 'critical',         // `ORG_RESOLVE_HOURS` 48 ชม. ผู้จัดต้องตัดสิน
+    // OD-55 — กรรมการเขียนผลทับของที่หัวหน้าทีมส่งมา (โหมด online)
+    // critical เพราะนาฬิกาค้านเริ่มใหม่ตรงนี้ ถ้าปิดได้แล้วไม่เห็น = ถูกเปลี่ยนผลโดยไม่รู้ตัวจนหมดเวลาค้าน
+    result_overridden: 'critical',
     result_resolved: 'result',
     match_result_complaint_filed: 'critical',  // ผู้จัดมี 48 ชม. แนบความเห็น แล้วขึ้นแอดมินอัตโนมัติ
     match_result_complaint_decided: 'result',

@@ -6,8 +6,8 @@ import { inviteRefereeSchema, acceptInvitationSchema, submitDocsSchema } from '.
 import * as Identity from '../controllers/refereeIdentity.controller.js';
 import * as Referee from '../controllers/referee.controller.js';
 
-import { requireCanSubmitResult , requireCanVerifyResult , requireCanDisputeResult , requireCanRecordStats} from '../middlewares/requireReferee.js';
-import { resolveSchema, statSchema, organizerDecideSchema } from '../schemas/matchResult.schema.js';
+import { requireCanSubmitResult , requireCanVerifyResult , requireCanDisputeResult , requireCanRecordStats , requireCanOverrideResult} from '../middlewares/requireReferee.js';
+import { resolveSchema, statSchema, organizerDecideSchema, overrideResultSchema } from '../schemas/matchResult.schema.js';
 import { livestreamSchema } from '../schemas/match.schema.js';
 import * as MatchResult from '../controllers/matchResult.controller.js'
 
@@ -60,6 +60,8 @@ tournamentRefereeRouter.delete('/:id/referees/:rid', requireAuth, requireOrganiz
 // MatchResult
 matchRefereeRouter.post('/:id/result' , requireAuth , requireCanSubmitResult , validate(submitResultSchema) , MatchResult.createSubmitMatchRes);
 matchRefereeRouter.post('/:id/result/verify' , requireAuth , requireCanVerifyResult , MatchResult.updateVerifyMatchResult);
+// S02b (OD-55) — กรรมการเขียนผลทับในโหมด online · ลงที่ submitted ไม่ใช่ verified
+matchRefereeRouter.post('/:id/result/override' , requireAuth , requireCanOverrideResult , validate(overrideResultSchema) , MatchResult.overrideMatchResult);
 matchRefereeRouter.post('/:id/result/dispute' , requireAuth , requireCanDisputeResult , validate(disputeSchema) , MatchResult.updateDisputeMatchResult);
 matchRefereeRouter.get('/:id/result/dispute' , requireAuth , MatchResult.getDispute);   // ผู้จัดต้องอ่านเรื่องได้ก่อนตัดสิน
 // ผู้จัดตัดสินแมตช์ที่แข่งแล้วแต่ไม่มีใครส่งผล — ทางออกสุดท้ายของข้อ 6 (มติ 26 ก.ย.)

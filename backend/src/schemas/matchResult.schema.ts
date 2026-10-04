@@ -23,6 +23,20 @@ export const disputeSchema = z.object({
 
 export type DisputeInput = z.infer<typeof disputeSchema>;
 
+/**
+ * S02b (OD-55) — กรรมการเขียนผลทับในโหมด online
+ * กฎผู้ชนะ/สกอร์ตรวจที่ ensureScoreData ตัวเดียวกับ S01 ไม่ซ้ำกฎที่นี่
+ * `reason` **บังคับ** (มติ 4 ต.ค.) — ทีมที่ถูกเขียนทับต้องรู้ว่าเพราะอะไร
+ * ไม่งั้นได้แจ้งเตือนลอย ๆ ว่าผลเปลี่ยนแล้วค้านมั่วเพราะไม่มีข้อมูล
+ */
+export const overrideResultSchema = z.object({
+    winnerTeamId : z.int(),
+    scoreData : z.record(z.string() , z.int().nonnegative('คะแนนต้องไม่ติดลบ')),
+    reason : z.string().trim().min(1, 'กรุณาระบุเหตุผลที่แก้ผล').max(1000, 'เหตุผลยาวได้ไม่เกิน 1000 ตัวอักษร')
+});
+
+export type OverrideResultInput = z.infer<typeof overrideResultSchema>;
+
 // B4 (รายงาน FE 19 ก.ย.): amend = ORG แก้ผู้ชนะ/สกอร์เองในคำตัดสิน ไม่ต้องให้ส่งใหม่
 export const resolveSchema = z.object({
     resolution : z.enum(['uphold' , 'reject' , 'amend']),

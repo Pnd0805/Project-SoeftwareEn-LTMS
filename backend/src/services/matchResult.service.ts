@@ -11,7 +11,7 @@ import { AppError } from '../utils/AppError.js';
 import { findTournamentById } from '../repositories/tournament.repo.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { WIN_POINTS, AUTO_VERIFY_HOURS, AUTO_VERIFY_LEAD_MINUTES, SUBMIT_ESCALATION_HOURS } from '../config/scoring.js';
-import type { DisputeInput, OrganizerDecideInput, ResolveInput } from '../schemas/matchResult.schema.js';
+import type { DisputeInput, OrganizerDecideInput, ResolveInput, OverrideResultInput } from '../schemas/matchResult.schema.js';
 import type { MatchRow , TournamentRow } from '../types/db.js';
 import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
@@ -55,6 +55,42 @@ export async function createSubmitMatchRes(matchId : number , winnerId : number 
         relatedEntityType : 'match', relatedEntityId : matchId,
     }, { exceptUserId : submitById });
     return toSubmittedResultDto(matchRes!);
+}
+
+/**
+ * S02b (OD-55) — กรรมการเขียนผลทับของที่หัวหน้าทีมส่งมา (โหมด online)
+ *
+ * เดิมกรรมการที่เห็นว่าผลผิดทำได้ทางเดียวคือโต้แย้ง (S03) แล้ว **รอผู้จัดมากด amend**
+ * ซึ่งทำให้ผู้จัดต้องลงมือทุกครั้งแม้ไม่มีใครเถียงอะไรกันเลย — ขัดกับที่ OD-26 ตั้งใจให้ผู้จัด
+ * เป็นคนตัดสินข้อพิพาท ไม่ใช่เสมียนกรอกผล
+ *
+ * ผลที่เขียนทับลงที่ `submitted` ⇒ ทั้งสองทีมได้แจ้งเตือน + ค้านได้ + auto-verify รับช่วงถ้าเงียบ
+ * เท่ากับเส้นทางของโหมด onsite เป๊ะ ไม่มีกฎใหม่ให้ต้องจำ (รายละเอียดใน repo + OD-55)
+ */
+export async function overrideMatchResult(matchId : number , input : OverrideResultInput , refereeUserId : number){
+    const match = await checkMatch(matchId);
+    ensureScoreData(match , input.winnerTeamId , input.scoreData);
+
+    // อ่านของเดิมก่อนเขียนทับ — แถวผลมีแถวเดียวต่อแมตช์ ถ้าไม่เก็บไว้ ของที่ทีมส่งมาหายถาวร
+    const before = await MatchResRepo.findmatchResultByMatchId(matchId);
+
+    await MatchResRepo.overrideResultByReferee(match , input.winnerTeamId , input.scoreData , refereeUserId , input.reason , {
+        winnerTeamId : before?.winner_team_id ?? null,
+        scoreData : before?.score_data ?? null,
+        submittedByUserId : before?.submitted_by_user_id ?? null,
+        submittedRole : before?.submitted_role ?? null,
+    });
+
+    // ★ ไม่ใส่ exceptUserId — กรรมการที่เพิ่งแก้ไม่ได้อยู่ในกลุ่มผู้รับของ notifyMatchResultParties
+    //   (ฟังก์ชันนั้นส่งให้หัวหน้าสองทีม) และทั้งสองทีมต้องรู้ รวมทีมที่ส่งผลมาเองด้วย
+    await NotificationService.notifyMatchResultParties(matchId, {
+        type : 'result_overridden',
+        title : 'กรรมการแก้ผลการแข่งขัน',
+        message : `กรรมการแก้ผลแมตช์ #${matchId} เป็นผลใหม่ — เหตุผล: ${input.reason} · หากไม่ถูกต้องโต้แย้งได้`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    });
+
+    return toSubmittedResultDto((await MatchResRepo.findmatchResultByMatchId(matchId))!);
 }
 
 export async function verifyMatchResult(matchId : number , userid : number){

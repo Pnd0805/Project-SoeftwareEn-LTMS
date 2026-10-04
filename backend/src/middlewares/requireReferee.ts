@@ -172,6 +172,53 @@ export async function requireCanVerifyResult(req : Request , res : Response , ne
 }
 
 
+/**
+ * S02b (OD-55 · 4 ต.ค.) — กรรมการเขียนผลทับในโหมด online
+ *
+ * ★ เฉพาะ online: ที่นั่นคนส่งผลคือหัวหน้าทีมซึ่งเป็น **คู่กรณี** และกรรมการเป็นคนกลาง
+ *   ⇒ ให้คนกลางแก้ไม่ใช่การเอื้อประโยชน์ตัวเอง และเป็นอำนาจเดียวกับที่กรรมการมีใน onsite อยู่แล้ว
+ *   โหมด onsite ห้ามใช้เส้นนี้ — ที่นั่นกรรมการเป็นคนเขียนผลเองตั้งแต่ต้น (S01)
+ *   ถ้าเขียนผิดก็แก้ด้วยการส่งใหม่ได้เลยตอนยังไม่ถูก verify ไม่ต้องมีเส้นพิเศษ
+ *
+ * ★ เฉพาะ `submitted` (มติ 4 ต.ค. ข้อ ①) — ที่ verified แล้วห้ามแตะ
+ *   เพราะสาย (next_match_id) และตารางคะแนนขยับไปแล้ว การถอนต้องผ่าน S03/S04
+ *   ที่มีกลไกถอนผลครบ (undoOutcomeTx) และมีด่าน NEXT_MATCH_STARTED กันของที่ถอนไม่ได้
+ */
+export async function requireCanOverrideResult(req : Request , res : Response , next : NextFunction){
+    try{
+        if(!req.user){
+            return next(new AppError(401 , "NO_TOKEN" , "กรุณาเข้าสู่ระบบก่อนใช้งาน"));
+        }
+
+        const matchId = parseId(req.params['id'] , "รหัสการแข่งขัน" , "id");
+        const match = await checkMatch(matchId);
+
+        if(match.mode !== 'online'){
+            return next(new AppError(409 , "OVERRIDE_ONSITE_NOT_ALLOWED" ,
+                "โหมด on-site กรรมการเป็นผู้ส่งผลเองอยู่แล้ว ถ้าผลยังไม่ถูกยืนยันให้ส่งผลใหม่ทับได้เลย" ,
+                { mode : match.mode }));
+        }
+
+        const matchRes = await checkMatchResult(matchId);
+        if(matchRes.match_result_status !== 'submitted'){
+            return next(new AppError(409 , "RESULT_NOT_OVERRIDABLE" ,
+                "แก้ผลทับได้เฉพาะผลที่ยังรอการยืนยัน — ผลที่ยืนยันแล้วต้องใช้การโต้แย้ง (S03)" ,
+                { status : matchRes.match_result_status }));
+        }
+
+        if(!(await isRefereeOfMatch(matchId , req.user.user_id , match.tournament_id))){
+            return next(new AppError(403 , "WRONG_SUBMITTER_ROLE" , "เฉพาะกรรมการของแมตช์นี้เท่านั้นที่แก้ผลทับได้"));
+        }
+
+        req.match = match;
+        req.matchResult = matchRes;
+        next();
+
+    }catch(err){
+        next(err);
+    }
+}
+
 export async function requireCanDisputeResult(req : Request , res : Response , next : NextFunction){
     try{
         if(!req.user){
