@@ -30,7 +30,17 @@ export type UserStatsDto = {
     statsHidden : boolean,
     overall : OverAllStat | null,
     bySport : SportStatDto[] | null,
+    /** จำนวน "โหวตที่ได้รับ" รวมทุกแมตช์ที่ปิดโหวตแล้ว — โตตามจำนวนคนดู ไม่ใช่ตามฝีมือ */
     mvpVotes: number | null,
+    /**
+     * OD-60 (4 ต.ค. 2569) — จำนวน **ครั้งที่ได้เป็น MVP** (ได้โหวตมากสุดในแมตช์นั้น)
+     *
+     * ★ ส่งทั้งคู่โดยเจตนา เพราะวัดคนละอย่างและเรียงอันดับกลับทางกันได้
+     *   ⇒ หน้าจอควรใช้ `mvpTimes` เป็นตัวหลัก (ตรงกับที่คนเข้าใจคำว่า "ได้ MVP กี่ครั้ง")
+     *     และ `mvpVotes` เป็นตัวรอง · **ห้ามตั้งป้ายว่า "MVP" ให้ `mvpVotes`** คนจะอ่านผิด
+     * ★ เสมอที่อันดับหนึ่งนับให้ทุกคน (co-MVP) · นับเฉพาะแมตช์ที่ปิดโหวตแล้วเหมือน `mvpVotes`
+     */
+    mvpTimes: number | null,
     /**
      * ★ ไม่มี `pickemPoints` แล้ว (4 ต.ค. 2569) — ย้ายไปอยู่ที่ตารางอันดับในทัวร์เท่านั้น (E28)
      *   เหตุผล: แต้มมาจากการทายผล ไม่ใช่ผลงานกีฬา · และที่นี่เป็นแต้ม **รวมทุกทัวร์**
@@ -43,7 +53,7 @@ export type UserStatsDto = {
 /** สถิติที่ถูกซ่อน — ไม่ส่งตัวเลขอะไรออกไปเลย แม้แต่ 0 */
 export function hiddenUserStatsDto(userId : number) : UserStatsDto{
     return { userId , statsHidden : true , overall : null , bySport : null ,
-             mvpVotes : null , followerCount : null };
+             mvpVotes : null , mvpTimes : null , followerCount : null };
 }
 
 export function toSportStatDto(row : UserSportStatRow): SportStatDto{
@@ -59,7 +69,7 @@ export function toSportStatDto(row : UserSportStatRow): SportStatDto{
 export function toUserStatsDto(
     userId: number,
     rows: UserSportStatRow[],
-    totals: UserProfileTotalsRow = { mvp_votes: 0, follower_count: 0 }
+    totals: UserProfileTotalsRow = { mvp_votes: 0, mvp_times: 0, follower_count: 0 }
 ): UserStatsDto {
     let matchesPlayed = 0, wins = 0, losses = 0, championCount = 0;
     for (const r of rows) {
@@ -82,6 +92,7 @@ export function toUserStatsDto(
         },
         bySport: rows.map(toSportStatDto),
         mvpVotes: Number(totals.mvp_votes),
+        mvpTimes: Number(totals.mvp_times),
         followerCount: Number(totals.follower_count),
     };
 }
