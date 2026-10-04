@@ -96,6 +96,48 @@ export type TournamentRefereeListRow =
     Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
 
 /** กรรมการทั้งหมดของทัวร์ — แถวล่าสุดต่อ 1 คน เฉพาะที่ยังไม่ถูกถอด */
+/**
+ * F02 — แถวล่าสุดต่อ 1 คนในทัวร์นี้ (ทุกสถานะ เพราะหน้าผู้จัดต้องเห็น pending/declined/rejected ด้วย)
+ *
+ * 🔴 **ข้อควรรู้ก่อนรื้ออะไรรอบนี้ (บันทึก 4 ต.ค. 2569 · OD-59)**
+ *
+ * query นี้เลือก `MAX(id)` **ก่อน** แล้วค่อยกรอง `removed_at IS NULL`
+ * ลำดับนี้จะตอบผิดถ้าเกิดสถานะนี้:
+ *
+ * ```
+ * ใบเก่า id น้อย = ใช้งานได้จริง (active)
+ * ใบใหม่ id มาก  = pending / declined / rejected_by_admin / removed
+ * ⇒ รายงานใบใหม่ ⇒ คนที่เป็นกรรมการอยู่จริง ดูเหมือนยังไม่ active
+ *   (และถ้าใบใหม่ถูกถอด คนนั้นจะหายจาก F02 ไปเลย ทั้งที่ใบเก่ายังใช้ได้)
+ * ```
+ *
+ * ★ **ตอนนี้สถานะนั้นสร้างไม่ได้ — แต่ความถูกต้องไม่ได้อยู่ใน query นี้ มันยืมมาจาก 3 ด่าน**
+ *
+ * ```
+ * ด่าน 1  referee.service.ts (inviteReferee)  อ่าน "ทุกใบที่ยังมีผล" ไม่ใช่ใบล่าสุด
+ *         มีใบ pending → 409 REFEREE_INVITATION_PENDING
+ *         มีใบ accepted ที่ไม่ใช่ rejected_by_admin → 409 REFEREE_ALREADY_ACCEPTED
+ *         ⇒ ใบใหม่เกิดได้เฉพาะตอนใบเก่าไม่ใช่ active แล้ว
+ *
+ * ด่าน 2  migration 036 (UNIQUE ผ่าน generated column)
+ *         1 คน = ไม่เกิน 1 ใบที่ "ใช้งานได้" ต่อทัวร์ โดยฐานเป็นผู้บังคับ
+ *
+ * ด่าน 3  rejectUser() ในไฟล์นี้ — ตัดสิน "ต่อคน" ไม่ใช่ "ต่อใบ"
+ *         UPDATE ทุกใบของ user นั้น (ไม่กรอง tournament ไม่กรอง removed_at)
+ *         ⇒ ไม่มีทางเหลือใบ approved เก่าค้างคู่กับใบใหม่ที่ rejected
+ * ```
+ *
+ * ⇒ ลำดับที่เกิดได้จริงคือ **ใบที่ใช้งานได้มี id มากกว่าเสมอ** (rejected ก่อน → เชิญใหม่ตาม F-15 → approved)
+ *   ยืนยันกับข้อมูลจริงแล้ว: ทัวร์ 1 user 9003 มี tr 24 (rejected) คู่กับ tr 25 (approved) — MAX = 25 = ถูก
+ *
+ * 🔴 **ถ้าจะรื้อด่าน 1 หรือกฎ re-invite ของ F-15 ต้องกลับมาแก้ query นี้ด้วย**
+ *   เพราะมันจะเพี้ยนเงียบ ๆ โดยไม่มีเทสไหนแดง (เทสของ F02 ทดสอบ "คืนอะไร"
+ *   ไม่ได้ทดสอบสถานะที่ด่านอื่นห้ามไว้) · วิธีแก้ที่เตรียมไว้: ย้าย `removed_at IS NULL`
+ *   เข้าไปใน subquery ให้เป็น "ใบล่าสุดที่ยังอยู่" — เปลี่ยนพฤติกรรม 1 เคสจึงต้องแจ้ง FE ก่อน
+ *
+ * ★ ตัวอย่างของ query ที่กรองสถานะในSQL ตั้งแต่ต้นดูได้ที่ `findAssignableByTournament` (F02b)
+ *   ที่นั่นทำได้เพราะต้องการแค่คน active · ที่นี่ทำไม่ได้เพราะผู้จัดต้องเห็นทุกสถานะ
+ */
 export async function findLatestPerUserByTournament(tournamentId : number)
         : Promise<TournamentRefereeListRow[]>{
     const [rows] = await pool.query<(TournamentRefereeListRow & RowDataPacket)[]>(
