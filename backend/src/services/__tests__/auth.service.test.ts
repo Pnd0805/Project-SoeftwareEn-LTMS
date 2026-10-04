@@ -656,15 +656,33 @@ describe('auth.service resendEmailVerification()', () => {
       'test@example.com', 'Test User', expect.stringMatching(/^[0-9]{6}$/), 10);
   });
 
-  it('เกินโควตา 3 ครั้ง/ชม. → 429 และไม่ออกใบใหม่', async () => {
+  /**
+   * ★★ ตรึงการแก้ enumeration เมื่อ 4 ต.ค. — ห้ามกลับไปตอบ 429
+   *   เดิมเกินโควตา = 429 ซึ่งคัดกรองได้ว่าบัญชีไหน "มีจริงและยังไม่ยืนยัน"
+   *   (register บอกแค่ว่ามีบัญชี ไม่ได้บอกสถานะยืนยัน)
+   *   ตรวจจริงบนเซิร์ฟเวอร์ที่รันอยู่ได้ผล 200·200·429 ขณะที่อีเมลที่ไม่มีได้ 200 ทุกครั้ง
+   */
+  it('★ เกินโควตา → 200 เหมือนเคสอื่น (ไม่ใช่ 429) และไม่ออกใบใหม่', async () => {
     mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
     mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(3);
 
     await expect(authService.resendEmailVerification('test@example.com'))
-      .rejects.toMatchObject({ status: 429, code: 'RATE_LIMITED' });
+      .resolves.toEqual({ message: expect.any(String) });
 
+    // การกันยังทำงานครบ — เอาออกแค่การประกาศ
     expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalled();
     expect(mockedSendEmailVerificationOtp).not.toHaveBeenCalled();
+  });
+
+  it('★ เกินโควตา ต้องได้ก้อนตอบ "เท่ากันเป๊ะ" กับอีเมลที่ไม่มีในระบบ', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    const ghost = await authService.resendEmailVerification('nobody@example.com');
+
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(99);
+    const throttled = await authService.resendEmailVerification('test@example.com');
+
+    expect(throttled).toEqual(ghost);
   });
 
   it('ไม่มีอีเมลนี้ → 200 เหมือนกัน แต่ไม่ส่งเมลและไม่เขียนฐาน', async () => {
