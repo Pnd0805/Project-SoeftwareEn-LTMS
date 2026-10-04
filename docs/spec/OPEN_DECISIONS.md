@@ -491,6 +491,23 @@ OD-58 ทำให้ canSeeUnfinishedResult() ถาม AdminRepo ด้วย
 (`{ id; name; sportTypeId }`) ใช้ในรายการ/รายละเอียดแมตช์ และต้องแก้ query ของแมตช์หลายตัว
 ⇒ แยกเป็นงานต่อยอด ไม่รวมในนี้เพื่อให้คอมมิตนี้ยังรีวิวได้
 
+### ตรวจแล้วจริงกับระบบที่รันอยู่ (ฐานชั่วคราว `od61` · ลบแล้ว)
+
+ตั้ง `teams.logo_key = 'teams/9001/logo.png'` ให้ทีม 9001 แล้วไล่ทุกเส้นที่ `TeamRef` โผล่
+
+```
+GET /me/teams                      logoUrl = http://localhost:9000/ltms/teams/9001/logo.png  ✓
+GET /users/9001                    logoUrl = (เดียวกัน)                                      ✓
+GET /tournaments/2/standings       null · null · URL  ← ทีมที่ไม่มีโลโก้ได้ null ไม่ใช่สตริงว่าง ✓
+GET /tournaments/2/teams           มีคีย์ logoUrl ครบทุกทีม (null เพราะยังไม่ได้อัป)           ✓
+GET /admin/team-requests           URL  ← 🔴 เส้นที่ tsc จับไม่ได้ ตรวจแล้วมาจริง             ✓
+GET /admin/team-requests/transfers URL                                                        ✓
+GET /me/invitations                URL                                                        ✓
+```
+
+★ สองเส้นของคิวแอดมินคือจุดที่สำคัญที่สุดของการตรวจรอบนี้ — เป็นจุดที่ `tsc` เงียบ
+ถ้าไม่ยิงจริงจะไม่มีทางรู้ว่า `t.logo_key` ที่เติมด้วยมือนั้นถูกหรือไม่
+
 ### เทส
 
 ```
