@@ -149,8 +149,35 @@ export async function requireCanVerifyResult(req : Request , res : Response , ne
         }
 
         if(match.mode === 'online'){
-            if (!(await isRefereeOfMatch(matchId, req.user.user_id, match.tournament_id))) {
-                return next(new AppError(403, "WRONG_SUBMITTER_ROLE", "ตามโหมดการแข่งขันนี้ คุณไม่ใช่ผู้ที่ส่งผลได้"));
+            /**
+             * OD-55 (4 ต.ค.) — ผู้ยืนยันคือ **ฝ่ายที่ไม่ได้เขียนผล** ไม่ใช่ "ต้องเป็นกรรมการ" เสมอ
+             *
+             * ★ เดิมบรรทัดนี้บังคับ isRefereeOfMatch ตายตัว เพราะเขียนไว้ตอนที่สมมติฐานคือ
+             *   "โหมด online ทีมเป็นคนส่งผลเสมอ" ⇒ ผู้ยืนยันก็ต้องเป็นกรรมการเสมอ
+             *   แต่หลังมี S02b (กรรมการเขียนทับ) และบันไดข้อ 6 (กรรมการส่งแทนเมื่อทีมเงียบ)
+             *   สมมติฐานนั้นไม่จริงแล้ว — ถ้ายังบังคับกรรมการ จะไม่มีใครกดยืนยันได้เลย
+             *   (กรรมการคนที่ส่งติด SAME_PERSON ข้างบน · online ต้องการกรรมการแค่ 1 คน)
+             *   ⇒ ผลค้างรอ auto-verify อย่างเดียว ปิดเร็วไม่ได้แม้ทั้งสองทีมเห็นด้วย
+             *
+             * กฎที่ถูกคือกฎเดียวกับ onsite: ใครเขียน อีกฝ่ายรับรอง
+             *   submitted_role = 'team_leader'  →  กรรมการของแมตช์รับรอง
+             *   submitted_role = 'referee'      →  หัวหน้าทีมรับรอง
+             *
+             * ★ "หัวหน้าทีมฝ่ายไหนก็ได้" (มติ 4 ต.ค.) ต่างจาก onsite ที่บังคับฝ่ายที่ชนะ
+             *   เพราะที่นี่ผลที่รอรับรองมาจากคนกลาง ไม่ใช่จากคู่กรณี ⇒ ฝ่ายที่แพ้กดรับรอง
+             *   ก็คือการยอมรับผลที่ตัวเองเสียเปรียบ ซึ่งไม่มีเหตุให้ต้องกันไว้
+             *   และถ้าไม่ยอมก็ไม่ต้องกด — ไปโต้แย้ง (S03) ได้ตามปกติ
+             */
+            const verifierMustBeTeamLeader = matchRes.submitted_role === 'referee';
+            const ok = verifierMustBeTeamLeader
+                     ? await isTeamLeaderOfMatch(matchId, req.user.user_id)
+                     : await isRefereeOfMatch(matchId, req.user.user_id, match.tournament_id);
+
+            if(!ok){
+                return next(new AppError(403, "WRONG_SUBMITTER_ROLE",
+                    verifierMustBeTeamLeader
+                        ? "ผลนี้กรรมการเป็นผู้ส่ง ผู้ยืนยันต้องเป็นหัวหน้าทีมที่ลงแข่งในแมตช์นี้"
+                        : "ตามโหมดการแข่งขันนี้ คุณไม่ใช่ผู้ที่ส่งผลได้"));
             }
             req.match = match
             req.matchResult = matchRes!

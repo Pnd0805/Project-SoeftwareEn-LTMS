@@ -620,6 +620,102 @@ describe('requireCanVerifyResult middleware', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
+  /**
+   * OD-55 (4 ต.ค.) — โหมด online: ผู้ยืนยันคือ "ฝ่ายที่ไม่ได้เขียนผล"
+   *
+   * ก่อนหน้านี้ด่านนี้บังคับ isRefereeOfMatch ตายตัว ซึ่งถูกตอนที่ทีมเป็นคนส่งผลเสมอ
+   * แต่หลังมี S02b (กรรมการเขียนทับ) และบันไดข้อ 6 (กรรมการส่งแทนเมื่อทีมเงียบ)
+   * จะไม่มีใครกดยืนยันได้เลย — กรรมการคนที่ส่งติด SAME_PERSON และ online ต้องการ
+   * กรรมการแค่ 1 คน ⇒ ผลค้างรอ auto-verify อย่างเดียว ปิดเร็วไม่ได้แม้ทั้งสองทีมเห็นด้วย
+   *
+   * ★ เทสชุดนี้คือตัวกันไม่ให้กฎย้อนกลับไปเป็น "ต้องเป็นกรรมการเสมอ" — ซึ่งถ้าย้อน
+   *   endpoint จะยังตอบ 403 อย่างถูกต้องตามหน้าตา ไม่มีอะไรพัง แค่ไม่มีใครยืนยันได้
+   */
+  describe('online + กรรมการเป็นคนส่งผล (OD-55)', () => {
+    const refSubmitted = { ...baseMatchResult, submitted_role: 'referee' as const, submitted_by_user_id: 5 };
+
+    function arrange(result = refSubmitted) {
+      mockedParseId.mockReturnValue(30);
+      mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online', team_a_id: 10, team_b_id: 11 });
+      mockedCheckMatchResult.mockResolvedValue(result);
+    }
+
+    it('หัวหน้าทีม A ยืนยันได้', async () => {
+      arrange();
+      mockedTeamFindById.mockImplementation(async id => (id === 10 ? teamA : teamB));
+      const req = makeReq({ id: '30' }, makeUser({ user_id: 100 }));
+      const next = vi.fn() as NextFunction;
+
+      await requireCanVerifyResult(req, makeRes(), next);
+
+      expect(next).toHaveBeenCalledWith();
+      expect((req as any).matchResult).toEqual(refSubmitted);
+    });
+
+    // ★ มติ 4 ต.ค. — "ฝ่ายไหนก็ได้" ต่างจาก onsite ที่บังคับฝ่ายที่ชนะ
+    //   ผลที่รอรับรองมาจากคนกลาง ไม่ใช่คู่กรณี ⇒ ฝ่ายที่แพ้กดรับรองก็คือยอมรับผลที่ตัวเองเสียเปรียบ
+    it('หัวหน้าทีม B (ฝ่ายที่แพ้) ยืนยันได้ด้วย — ไม่ใช่เฉพาะฝ่ายที่ชนะแบบ onsite', async () => {
+      arrange();
+      mockedTeamFindById.mockImplementation(async id => (id === 10 ? teamA : teamB));
+      const next = vi.fn() as NextFunction;
+
+      // winner_team_id = 10 (ทีม A) แต่คนกดคือหัวหน้าทีม B (user 200)
+      await requireCanVerifyResult(makeReq({ id: '30' }, makeUser({ user_id: 200 })), makeRes(), next);
+
+      expect(next).toHaveBeenCalledWith();
+    });
+
+    it('กรรมการคนอื่นที่ไม่ได้ส่งผล กดยืนยันไม่ได้แล้ว — บทบาทสลับข้างไปที่ทีม', async () => {
+      arrange();
+      mockedTeamFindById.mockImplementation(async id => (id === 10 ? teamA : teamB));
+      mockedFindActiveRefereeRow.mockResolvedValue(baseTournamentReferee);
+      mockedFindByMatch.mockResolvedValue([{ user_id: 99 } as any]);
+      const next = vi.fn() as NextFunction;
+
+      await requireCanVerifyResult(makeReq({ id: '30' }, otherUser), makeRes(), next);
+
+      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+      expect(err.status).toBe(403);
+      expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
+      // ข้อความต้องบอกว่าต้องเป็นหัวหน้าทีม ไม่ใช่ข้อความเดิมที่ชี้ไปทางกรรมการ
+      expect(err.message).toContain('หัวหน้าทีม');
+    });
+
+    it('คนนอกที่ไม่ใช่ทั้งกรรมการและหัวหน้าทีม กดไม่ได้', async () => {
+      arrange();
+      mockedTeamFindById.mockImplementation(async id => (id === 10 ? teamA : teamB));
+      const next = vi.fn() as NextFunction;
+
+      await requireCanVerifyResult(makeReq({ id: '30' }, makeUser({ user_id: 777 })), makeRes(), next);
+
+      expect((next as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ code: 'WRONG_SUBMITTER_ROLE' });
+    });
+
+    // ★ SAME_PERSON ต้องยังมาก่อน — กรรมการที่เพิ่งเขียนทับห้ามรับรองงานตัวเอง
+    //   ข้อนี้คือหลักที่ OD-55 ทั้งข้อมีไว้รักษา ถ้าหลุดคือฟีเจอร์นี้ไม่ควรมีตั้งแต่แรก
+    it('กรรมการคนที่ส่งผลเองยังติด SAME_PERSON_CANNOT_VERIFY', async () => {
+      arrange();
+      const next = vi.fn() as NextFunction;
+
+      await requireCanVerifyResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
+
+      expect((next as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+        status: 403, code: 'SAME_PERSON_CANNOT_VERIFY',
+      });
+    });
+
+    it('ผลที่ทีมส่ง (submitted_role = team_leader) ยังใช้กฎเดิม — กรรมการเท่านั้นที่ยืนยันได้', async () => {
+      arrange({ ...baseMatchResult, submitted_role: 'team_leader' as const, submitted_by_user_id: 200 });
+      mockedTeamFindById.mockImplementation(async id => (id === 10 ? teamA : teamB));
+      const next = vi.fn() as NextFunction;
+
+      // หัวหน้าทีม A กด — ต้องไม่ผ่าน เพราะผลนี้คู่กรณีเป็นคนเขียน
+      await requireCanVerifyResult(makeReq({ id: '30' }, makeUser({ user_id: 100 })), makeRes(), next);
+
+      expect((next as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ code: 'WRONG_SUBMITTER_ROLE' });
+    });
+  });
+
   it('calls next with the error (does not reject) when checkMatchResult throws', async () => {
     mockedParseId.mockReturnValue(30);
     mockedCheckMatch.mockResolvedValue(baseMatch);
