@@ -17,6 +17,8 @@ import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 import * as NotificationService from './notification.service.js';
 import { isSubmitEscalationOpen } from '../utils/escalation.js';
+import { isAdminTakeoverOpen } from '../utils/disputeTakeover.js';
+import * as AdminRepo from '../repositories/adminScope.repo.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
 
 /**
@@ -439,7 +441,26 @@ async function canSeeUnfinishedResult(matchId : number , userId : number): Promi
     const tour = await findTournamentById(match.tournament_id);
     if(tour?.requested_by_user_id === userId) return true;
     if(await isRefereeOfMatch(matchId , userId , match.tournament_id)) return true;
-    return isTeamLeaderOfMatch(matchId , userId);
+    if(await isTeamLeaderOfMatch(matchId , userId)) return true;
+
+    /**
+     * ★ OD-58 (4 ต.ค. 2569) — แอดมินมหาวิทยาลัยที่ถึงคิวรับช่วงตัดสินแล้ว ต้องอ่านเรื่องได้
+     *
+     * 🔴 ก่อนหน้านี้เป็นทางตันจริง ไม่ใช่แค่ไม่สะดวก:
+     *   `requireCanResolveDispute` ให้ university_wide admin กด S04 ได้หลัง ORG_RESOLVE_HOURS
+     *   (OD-26 ข้อ 10 — จำเป็นเพราะรอบชิง/round robin ไม่มีแมตช์ถัดไปมากดดันผู้จัดที่หายไป)
+     *   **แต่ด่านนี้ไม่รับแอดมิน** ⇒ เขาอ่านสกอร์ที่ถูกค้าน คำค้าน และหลักฐานไม่ได้เลย
+     *   = มีอำนาจตัดสินโดยไม่มีข้อมูลที่ต้องใช้ตัดสิน (FE แจ้งมาเมื่อ 1 ต.ค.)
+     *
+     * ★ ขอบเขตผูกกับด่านกดเป๊ะ ๆ ไม่กว้างกว่าและไม่แคบกว่า — `isAdminTakeoverOpen` ตัวเดียวกัน
+     *   ⇒ "อ่านได้" กับ "กดได้" เปลี่ยนพร้อมกันเสมอ ถ้าวันหนึ่งใครปรับเส้นเวลา
+     *   ถ้าจะแคบกว่านี้ (เช่นเฉพาะเรื่องที่ยังไม่ถูกตัดสิน) ต้องแคบทั้งสองที่พร้อมกัน
+     */
+    const admin = await AdminRepo.findAdminByUserId(userId);
+    if(!admin || admin.scope_type !== 'university_wide') return false;
+
+    const result = await MatchResRepo.findmatchResultByMatchId(matchId);
+    return isAdminTakeoverOpen(result?.dispute_raised_at ?? null);
 }
 
 export type recordStat = {userId : number,

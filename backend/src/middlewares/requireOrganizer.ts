@@ -6,7 +6,7 @@ import * as MatchRepo from '../repositories/match.repo.js';
 import { checkAnnouncement } from '../utils/checkExist.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
 import * as MatchResRepo from '../repositories/matchResult.repo.js';
-import { ORG_RESOLVE_HOURS } from '../config/scoring.js';
+import { adminTakeoverOpensAt, isAdminTakeoverOpen } from '../utils/disputeTakeover.js';
 import type { TournamentRow } from '../types/db.js';
 
 /** ทัวร์ที่ยังไม่ถูกอนุมัติ/ถูกปฏิเสธ ยังไม่มีผู้จัดการแข่งขันที่ทำอะไรได้ */
@@ -158,8 +158,10 @@ export async function requireCanResolveDispute(req : Request, res : Response, ne
     if(raisedAt === null){
         return next(new AppError(409, 'NO_ACTIVE_DISPUTE', 'แมตช์นี้ไม่มีข้อโต้แย้งที่รอตัดสิน'));
     }
-    const openAt = new Date(raisedAt.getTime() + ORG_RESOLVE_HOURS * 3600 * 1000);
-    if(Date.now() < openAt.getTime()){
+    // ★ OD-58 — สูตรเวลาอยู่ที่ utils/disputeTakeover.ts ที่เดียว
+    //   เพราะด่าน "อ่านเรื่องได้มั้ย" (canSeeUnfinishedResult) ต้องตอบตรงกับด่านนี้เป๊ะ
+    const openAt = adminTakeoverOpensAt(raisedAt)!;
+    if(!isAdminTakeoverOpen(raisedAt)){
         return next(new AppError(403, 'ORGANIZER_STILL_HAS_TIME',
             `ผู้จัดยังมีเวลาตัดสินถึง ${openAt.toISOString()} — แอดมินเข้ามาตัดสินแทนได้หลังจากนั้น`,
             { availableAt : openAt.toISOString() }));
