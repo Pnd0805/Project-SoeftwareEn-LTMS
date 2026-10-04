@@ -97,6 +97,33 @@ describe('findProfileTotals', () => {
       expect(sql).not.toContain('LEFT JOIN matches m ON m.match_id = tf.match_id');
     });
 
+    /**
+     * ★★ มติ ①b — **ไม่มีใครโหวตเลย = ไม่มีใครได้ MVP** ไม่ใช่ "เสมอที่ 0 แล้วได้ทุกคน"
+     *
+     *   ข้อนี้ได้มาจากโครงข้อมูล: แต่ละแถวใน tournament_feedback คือ 1 โหวต
+     *   ⇒ COUNT(*) ของทุกกลุ่ม ≥ 1 เสมอ · คนที่ไม่มีโหวตไม่มีแถวให้จัดอันดับ
+     *
+     *   🔴 สิ่งที่จะพังมันคือการเปลี่ยนไปจัดอันดับจาก "รายชื่อผู้เล่นในแมตช์" แล้ว LEFT JOIN
+     *      โหวตเข้ามา (ซึ่งคนจะทำถ้าอยากโชว์ผู้เล่นทุกคนพร้อมยอดโหวต) — ตอนนั้นคนที่ไม่มีโหวต
+     *      จะได้ COUNT = 0 แล้ว **กลายเป็น rnk = 1 พร้อมกันทุกคน** ⇒ แมตช์ที่ไม่มีใครโหวต
+     *      จะแจก MVP ให้ผู้เล่นทั้งสองทีม
+     *   ⇒ เทสนี้ตรึงว่า "ตารางที่จัดอันดับ" ต้องเป็นตัวโหวตเอง และห้ามมี LEFT JOIN เลยในคิวรีนี้
+     *
+     *   ตรวจจริงแล้วบนฐานชั่วคราว od60b (ลบแล้ว):
+     *     แมตช์ปิดโหวตแต่ไม่มีใครโหวต → ไม่มีใครได้ · โหวตถูกลบหมด → ไม่มีใครได้
+     */
+    it('★ ไม่มีโหวตเลย = ไม่มีใครได้ MVP — จัดอันดับจากตัวโหวต ห้าม LEFT JOIN', async () => {
+      await findProfileTotals(5);
+      const [sql] = mocks.query.mock.calls[1]!;
+
+      // แถวที่เอามาจัดอันดับคือ "โหวต" ⇒ ไม่มีโหวต = ไม่มีแถว = ไม่มี rnk = 1
+      expect(sql).toContain('FROM tournament_feedback tf');
+      expect(sql).not.toContain('LEFT JOIN');
+      // ไม่มีการจัดอันดับจากรายชื่อผู้เล่น (ซึ่งจะทำให้คน 0 โหวตได้ rnk = 1)
+      expect(sql).not.toContain('application_players');
+      expect(sql).not.toContain('player_match_stats');
+    });
+
     it('จัดอันดับเฉพาะแมตช์ที่คนนี้มีโหวต ไม่ใช่ทุกแมตช์ในระบบ', async () => {
       await findProfileTotals(5);
       const [sql, values] = mocks.query.mock.calls[1]!;
