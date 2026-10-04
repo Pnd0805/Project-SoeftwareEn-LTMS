@@ -246,6 +246,18 @@ export async function requireCanOverrideResult(req : Request , res : Response , 
     }
 }
 
+/**
+ * ★ กรรมการค้านได้ด้วย — **ไม่ซ้ำซ้อนกับ S02b (override) อ่าน OD-55 ก่อนลบ**
+ *
+ * สองเส้นทับกันแค่สถานะ `submitted` + online เท่านั้น · นอกจากนั้น override ทำไม่ได้เลย:
+ *   `verified` (รวมที่ auto-verify ปิดให้) → 409 RESULT_NOT_OVERRIDABLE
+ *   onsite ทุกสถานะ                     → 409 OVERRIDE_ONSITE_NOT_ALLOWED
+ *
+ * และในช่องที่ทับกันก็ยังคนละงาน: override บังคับ winnerTeamId + scoreData
+ * ⇒ ทำได้เมื่อรู้ผลที่ถูกเท่านั้น · ส่วน dispute สกอร์เป็น optional และแนบหลักฐานได้ 5 ไฟล์
+ * ⇒ เคส "รู้ว่าผิดแต่ไม่รู้ว่าอะไรคือสิ่งที่ถูก" (ผู้เล่นไม่มีสิทธิ์ · สงสัยโกง · ควรแข่งใหม่)
+ *   มีเส้นนี้เส้นเดียว — รายละเอียดอยู่ใน OD-55 หัวข้อ "dispute ของกรรมการยังต้องมีอยู่"
+ */
 export async function requireCanDisputeResult(req : Request , res : Response , next : NextFunction){
     try{
         if(!req.user){
