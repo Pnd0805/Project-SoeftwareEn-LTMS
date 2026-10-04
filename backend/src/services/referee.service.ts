@@ -13,6 +13,9 @@ import type { MatchRefereeCoverageRow } from '../repositories/match.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as NotificationService from './notification.service.js';
+import { checkTournament } from '../utils/checkExist.js';
+import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
+import { toAssignableRefereeDto } from '../mappers/referee.mapper.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -106,6 +109,35 @@ export async function listTournamentReferees(tournamentId : number){
     const activeCount = accepted.filter(i => !i.isExternal || i.externalApprovalStatus === 'approved').length;
 
     return { items, acceptedCount : activeCount, awaitingAdminCount : accepted.length - activeCount };
+}
+
+/**
+ * F02b · OD-59 (4 ต.ค. 2569) — รายชื่อปลายทางที่ใช้ขอโอน/แลกแมตช์ได้
+ *
+ * ปัญหาที่แก้ (`TO-BACKEND-2026-10-01-frontend-workflows.md` ข้อ 8):
+ *   F02 (`GET /tournaments/:id/referees`) ติด `requireOrganizer` ⇒ หน้าของกรรมการเรียกไม่ได้
+ *   FE จึงต้องไปรวบรวมปลายทางจาก `GET /matches/:id/referees` ของแมตช์อื่นในทัวร์เดียวกัน
+ *   ⇒ **กรรมการที่ active แต่ยังไม่ได้รับแมตช์เลย ไม่โผล่ในตัวเลือกปลายทาง**
+ *      ซึ่งเป็นคนที่ควรโผล่ที่สุด เพราะว่างที่สุด
+ *
+ * ★ ไม่ผ่อน `requireOrganizer` ของ F02 แทน — F02 มี `isExternal` / `externalApprovalStatus`
+ *   ซึ่งเป็นเรื่องเอกสารตัวตน และ `awaitingAdminCount` ที่เป็นข้อมูลการจัดการของผู้จัด
+ *   เปิด F02 ให้กรรมการ = เปิดเกินที่งานนี้ต้องใช้ ⇒ ทำเส้นใหม่ที่คืนเท่าที่ต้องใช้พอดี
+ *
+ * สิทธิ์: **ผู้จัด หรือ กรรมการที่ใช้งานได้จริงของทัวร์นี้** — คนนอกทัวร์ไม่ได้รายชื่อคนในทัวร์
+ * ★ ตัวผู้เรียกเองถูกตัดออกจากผลลัพธ์ — ไม่มีใครขอโอนแมตช์ให้ตัวเอง และการโชว์ตัวเอง
+ *   ในลิสต์ปลายทางทำให้กดผิดได้เปล่า ๆ (ฝั่ง POST ก็ปฏิเสธอยู่แล้ว แต่ไม่ควรให้กดถึงตรงนั้น)
+ */
+export async function listAssignableReferees(tournamentId : number , userId : number){
+    const tournament = await checkTournament(tournamentId);
+
+    if(!isOrganizerOf(tournament , userId) && !(await findActiveRefereeRow(tournamentId , userId))){
+        throw new AppError(403 , 'NOT_TOURNAMENT_REFEREE' ,
+            'ดูรายชื่อกรรมการของทัวร์นาเมนต์นี้ได้เฉพาะผู้จัดและกรรมการของทัวร์นี้');
+    }
+
+    const rows = await RefRepo.findAssignableByTournament(tournamentId);
+    return { items : rows.filter(r => r.user_id !== userId).map(toAssignableRefereeDto) };
 }
 
 export async function listMyRefereeInvitations(userId : number){

@@ -223,6 +223,7 @@
 | รหัส | Method + Path | Auth | ทำอะไร | รับ | คืน |
 |---|---|---|---|---|---|
 | F01 | `POST /tournaments/:id/referees` | ORG | เชิญเป็นกรรมการ · แนบแมตช์ที่เสนอให้คุมได้ (ไม่แนบ = เข้า pool) · แมตช์ต้องอยู่ทัวร์นี้ มีเวลาเริ่ม/จบ ไม่ซ้อนกันเอง · **CoI**: ORG เอง / คนที่มีชื่อในทีมที่สมัครทัวร์นี้ เป็นกรรมการไม่ได้ | `userId, isExternal, matchIds?` | **201** `{ id, userId, invitationStatus:'pending', isExternal, matchIds }` / **404** `MATCH_NOT_FOUND` / **409** `ORGANIZER_CANNOT_BE_REFEREE`, `REFEREE_CONFLICT_OF_INTEREST` + `teamId`, `MATCH_NOT_SCHEDULED`, `REFEREE_TIME_CONFLICT`, `REFEREE_INVITATION_PENDING`, `REFEREE_ALREADY_ACCEPTED` |
+| F02b | `GET /tournaments/:id/referees/assignable` | Auth · **ผู้จัด หรือ กรรมการที่ใช้งานได้จริงของทัวร์นี้** | 🆕 **4 ต.ค. · OD-59** รายชื่อปลายทางสำหรับคำขอโอน/แลกแมตช์ (FR01/FR03) — F02 ติด `requireOrganizer` หน้าของกรรมการจึงเรียกไม่ได้ และการไปรวบรวมปลายทางจาก F12 ทำให้ **กรรมการที่ยังไม่ได้รับแมตช์เลยไม่โผล่** ซึ่งเป็นคนที่ว่างที่สุด · กรองสถานะ **ในSQL** ให้เหลือเฉพาะแถวที่ใช้งานได้ (นิยามเดียวกับ UNIQUE ของ migration 036) ⇒ คนที่รอตอบ/ถูกปฏิเสธ/ถูกถอดไม่หลุดออกไปเลย · **ตัดตัวผู้เรียกเองออก** · `id` คือ `tournamentRefereeId` ที่ POST ต้องใช้ ไม่ใช่ `userId` · `upcomingMatchCount` = แมตช์ของทัวร์นี้ที่ยัง `scheduled` และเขาถืออยู่ (เรียงจากว่างสุด) · **ไม่คืน** `isExternal`/`externalApprovalStatus`/`invitationStatus` — เรื่องเอกสารตัวตนไม่ใช่ของที่กรรมการอีกคนต้องรู้ | — | `{ items:[{ id, user:UserRef, upcomingMatchCount }] }` / **403** `NOT_TOURNAMENT_REFEREE` |
 | F02 | `GET /tournaments/:id/referees` | ORG | กรรมการทั้งหมด (แถวล่าสุดต่อคน ยังไม่ถูกถอด) + `status` รวม | — | `{ items: [{id, user, invitationStatus, isExternal, externalApprovalStatus, status}], acceptedCount }` |
 | F03 | `DELETE /tournaments/:id/referees/:rid` | ORG | ถอดกรรมการ · soft delete ทุกแถวของ user นั้น · **ถอดได้เสมอ** แต่บอกว่าแมตช์ไหนจะขาดคน (Q4) | — | **200** `{ removed:true, uncoveredMatches:[matchId] }` / **404** `REFEREE_NOT_FOUND` |
 | F04 | `GET /me/referee-invitations` | Auth | คำเชิญที่รอฉันตอบ พร้อมแมตช์ที่เสนอมา | — | `{ items: [{id, tournament, isExternal, matches:[{id, roundNumber, scheduledTime, scheduledEndTime, venue, mode, matchStatus, assignmentStatus}], createdAt}] }` |
@@ -392,6 +393,26 @@
 | S13c | `GET /match-result-complaints/:id` | สิทธิ์ชุดเดียวกับ S13b | รายละเอียดเรื่องเดียว · หลักฐานคืนเป็น **presigned URL** เสมอ | — | `{ complaintId, status, stage, escalatesAt, filedBy, reason, claimed*, evidence[], organizerStatement, decision, filerFlagged, canAmendResult }` |
 | S13d | `PUT /match-result-complaints/:id/statement` | ORG ของทัวร์ | ผู้จัด**แนบความเห็น** — **ไม่มี route ให้ปัดตกโดยเจตนา** (ผู้จัดอาจเป็นคู่กรณีเอง) · prefix อยู่**นอก** `/matches/:id` จึงทำได้**แม้ทัวร์ปิดแล้ว** · เขียนช้ากว่า 48 ชม.ได้ แต่ติดป้าย `organizerStatement.late` | `statement` | `{ ...complaint }` / **409** `COMPLAINT_ALREADY_DECIDED` |
 | S13e | `POST /match-result-complaints/:id/decision` | แอดมิน `university_wide` | วินิจฉัย — ได้เมื่อพ้น **48 ชม.** นับจากเวลายื่น (`created_at`) ไม่ว่าผู้จัดจะเขียนหรือไม่ · `upheld`+`record_only` = มีมูล บันทึกไว้ไม่แก้ผล · `upheld`+`amend_result` = แก้ผู้ชนะ/สกอร์ผ่านเส้นทาง amend เดิม (ต้อง `canAmendResult`) · `no_merit` = ไม่มีมูล ติด `filerFlagged` **เฉพาะผู้ยื่น** | `outcome:'upheld'\|'no_merit', remedy:'record_only'\|'amend_result', note, winnerTeamId?, scoreData?` | `{ ...complaint }` / **403** `ORGANIZER_STILL_HAS_TIME` (+`availableAt`) / **409** `RESULT_NOT_CHANGEABLE` (+`blockedBy`) \| `COMPLAINT_ALREADY_DECIDED` |
+
+> 🆕 **S05 คืน `submittedBy` / `submittedAt` แบบมีเงื่อนไข** (4 ต.ค. · OD-59)
+>
+> ```
+> ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม / แอดมินที่ถึงคิวตัดสิน (OD-58)
+>     submittedBy : UserRef | null      submittedAt : ISO | null
+> คนนอก / ไม่ล็อกอิน
+>     **ไม่มีสองคีย์นี้เลย** — เห็นแค่ submittedRole เหมือนเดิม
+> ```
+>
+> S05 เป็น endpoint สาธารณะเมื่อผลเป็น `verified`/`walkover` ⇒ ใส่ชื่อแบบไม่มีเงื่อนไขเท่ากับเปิด
+> "กรรมการคนไหนตัดสินแมตช์นี้" และ "หัวหน้าทีมคนไหนกรอกผล" ให้คนนอกทุกคน · `submittedRole`
+> ยังสาธารณะเหมือนเดิมเพราะเป็นป้ายบทบาท ไม่ใช่ตัวคน
+>
+> 🔴 **ไม่มีคีย์ ≠ ได้ `null`** — `submittedBy: null` สงวนไว้แปลว่า **บัญชีผู้ส่งถูกลบไปแล้ว**
+> (ตอนนั้น `submittedAt` ยังมีค่า — คนหาย ไม่ใช่เวลาหาย) · ถ้า FE เอา `null` ไปแปลว่า
+> "ไม่มีสิทธิ์" จะแยกสองเคสนี้ไม่ออก
+>
+> ★ กลุ่มที่เห็นคือกลุ่มเดียวกับ **ตัวคำค้าน** ไม่ใช่กลุ่มของ **คำวินิจฉัย** — คำวินิจฉัยขยายถึง
+> ผู้เล่นทุกคนเพราะเป็นข้อความที่เขียนให้ผู้เล่นอ่าน ส่วนชื่อคนกรอกผลไม่ใช่
 
 > **`isAmended` / `amendedAt` / `amendReason` ต้องมีในทุก response ที่คืนผลแข่ง**
 > คำนวณจาก `amended_at IS NOT NULL` **ไม่ใช่ค่าใน enum** (NF-SE-05)

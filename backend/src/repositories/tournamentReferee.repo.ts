@@ -113,6 +113,43 @@ export async function findLatestPerUserByTournament(tournamentId : number)
     return rows;
 }
 
+/**
+ * F02b · OD-59 (4 ต.ค. 2569) — กรรมการที่ "ใช้งานได้จริง" ของทัวร์นี้ สำหรับให้กรรมการอีกคน
+ * เลือกเป็นปลายทางของคำขอโอน/แลกแมตช์ (FR01/FR03)
+ *
+ * ★ ต่างจาก `findLatestPerUserByTournament` (F02) สองอย่าง
+ *     1. กรองสถานะ **ในSQL** ให้เหลือเฉพาะแถวที่ใช้งานได้ ไม่ใช่คืนทุกสถานะให้ service ไปกรอง
+ *        ⇒ คนที่รอตอบ/ถูกปฏิเสธ/ถูกถอด **ไม่หลุดออกไปถึงปลายทางเลย** แม้ FE จะเผลอไม่กรอง
+ *     2. ไม่คืน `is_external` / `external_approval_status` — เป็นเรื่องเอกสารตัวตนของคนนั้น
+ *        กรรมการอีกคนไม่มีเหตุต้องรู้ (เอกสารนี้ขอไว้ว่าห้ามเปิด)
+ *
+ * เงื่อนไข "ใช้งานได้" ตรงกับ `toRefereeStatus() === 'active'` และกับ UNIQUE ของ migration 036
+ * ⇒ ผลลัพธ์จึงมีได้ไม่เกิน 1 แถวต่อคน โดยฐานเป็นผู้การันตี ไม่ใช่โดย MAX(id)
+ *
+ * `upcoming_match_count` = แมตช์ของทัวร์นี้ที่ยัง `scheduled` และคนนี้ถืออยู่
+ * ใช้ตอบคำถาม "พร้อมรับงานเพิ่มมั้ย" โดยไม่ต้องเปิดข้อมูลส่วนตัวอะไรเลย
+ */
+export type AssignableRefereeRow =
+    Pick<TournamentRefereeRow, 'tournament_referee_id'> &
+    { user_id : number , full_name : string , profile_image_key : string | null , upcoming_match_count : number };
+
+export async function findAssignableByTournament(tournamentId : number): Promise<AssignableRefereeRow[]>{
+    const [rows] = await pool.query<(AssignableRefereeRow & RowDataPacket)[]>(
+        `SELECT tr.tournament_referee_id, u.user_id, u.full_name, u.profile_image_key,
+                COUNT(m.match_id) AS upcoming_match_count
+           FROM tournament_referees tr
+           JOIN users u ON u.user_id = tr.user_id
+           LEFT JOIN match_referees mr ON mr.tournament_referee_id = tr.tournament_referee_id
+           LEFT JOIN matches m ON m.match_id = mr.match_id AND m.match_status = 'scheduled'
+          WHERE tr.tournament_id = ?
+            AND tr.removed_at IS NULL
+            AND tr.invitation_status = 'accepted'
+            AND (tr.is_external = 0 OR tr.external_approval_status IN ('not_required', 'approved'))
+          GROUP BY tr.tournament_referee_id, u.user_id, u.full_name, u.profile_image_key
+          ORDER BY upcoming_match_count ASC, u.full_name ASC`, [tournamentId]);
+    return rows;
+}
+
 export type MyRefereeInvitationRow =
     Pick<TournamentRefereeRow, 'tournament_referee_id' | 'is_external' | 'created_at'> &
     Pick<TournamentRow, 'tournament_id' | 'name' | 'sport_type_id' | 'event_start_date'>;

@@ -1,8 +1,10 @@
 import type { MatchResultRow, SportStatDefinitionRow } from "../types/db.js";
 import type { MatchRow } from "../types/db.js";
 
-import type { playerStat } from "../repositories/matchResult.repo.js";
+import type { playerStat , ResultWithSubmitterRow } from "../repositories/matchResult.repo.js";
 import type { TeamRef } from "./team.mapper.js";
+import { toUserRef } from "./user.mapper.js";
+import type { UserRefDto } from "./user.mapper.js";
 
 export type submittedResultDto = {
     id : number,
@@ -73,6 +75,19 @@ export type verifiedResult = {
     isWalkover : boolean,   // ชนะบาย (ทีมถอน/ไม่มาแข่ง) — ไม่มีสกอร์จริง (GUIDE/11 §10.4)
     status : MatchResultRow['match_result_status'],   // submitted/disputed/rejected เห็นได้เฉพาะผู้เกี่ยวข้อง (S05)
     submittedRole : MatchResultRow['submitted_role'],
+    /**
+     * OD-59 (4 ต.ค. 2569) — ตัวตนและเวลาของการบันทึกผล · **ส่งแบบมีเงื่อนไข** เหมือน 6 ฟิลด์ข้อโต้แย้ง
+     *
+     * ★ S05 เป็น endpoint สาธารณะเมื่อผลเป็น verified/walkover ⇒ ถ้าใส่ชื่อแบบไม่มีเงื่อนไข
+     *   เท่ากับเปิด "ชื่อกรรมการที่ตัดสินแมตช์นี้" และ "หัวหน้าทีมคนไหนเป็นคนกรอก"
+     *   ให้คนนอกเห็นทุกแมตช์ของทุกทัวร์ ซึ่งไม่เคยมีใครตัดสินว่าเป็นข้อมูลสาธารณะ
+     *   ⇒ คนนอกเห็นแค่ `submittedRole` เหมือนเดิมเป๊ะ (ป้ายบทบาท ไม่ใช่ตัวคน)
+     *
+     * ★ ไม่มีคีย์เลยเมื่อไม่มีสิทธิ์ ไม่ใช่ได้ `null` — `null` แปลว่า "บัญชีผู้ส่งถูกลบไปแล้ว"
+     *   ซึ่งเป็นคนละความหมายกับ "คุณไม่มีสิทธิ์รู้"
+     */
+    submittedBy? : UserRefDto | null,
+    submittedAt? : string | null,
     isAutoVerified : boolean,
     verifiedAt : string | null,
     /**
@@ -102,7 +117,8 @@ export type verifiedResult = {
  *               บอกว่าหัวหน้าทีมไหนเป็นคนค้าน · คงไว้ที่ ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม
  * เดิมกั้นหกฟิลด์เป็นก้อนเดียว ผู้เล่นจึงไม่เคยได้อ่านคำวินิจฉัยที่เขียนไว้ให้เขาอ่าน
  */
-export function toVerifiedResult(rows : MatchResultRow , see : { ruling? : boolean , complaint? : boolean } = {}): verifiedResult{
+export function toVerifiedResult(rows : MatchResultRow & Partial<Pick<ResultWithSubmitterRow , 'submitted_by_name' | 'submitted_by_avatar_key'>> ,
+                                 see : { ruling? : boolean , complaint? : boolean , submitter? : boolean } = {}): verifiedResult{
     let isAmended: boolean;
     if(rows.amended_at === null)
         isAmended = false;
@@ -121,6 +137,15 @@ export function toVerifiedResult(rows : MatchResultRow , see : { ruling? : boole
         submittedRole : rows.submitted_role,
         // ระบบยืนยันให้เองเพราะไม่มีผู้โต้แย้ง (OD-26 ข้อ 7) — ต่างจากคนกดยืนยัน
         isAutoVerified : rows.verified_at !== null && rows.verified_by_user_id === null,
+        // OD-59 — ชื่อ null เมื่อบัญชีผู้ส่งถูกลบ (LEFT JOIN ไม่เจอ) ⇒ ไม่ปั้น UserRef ครึ่งใบ
+        ...(see.submitter ? {
+            submittedBy : rows.submitted_by_name === null || rows.submitted_by_name === undefined
+                        ? null
+                        : toUserRef({ user_id : rows.submitted_by_user_id,
+                                      full_name : rows.submitted_by_name,
+                                      profile_image_key : rows.submitted_by_avatar_key ?? null }),
+            submittedAt : rows.submitted_at?.toISOString() ?? null,
+        } : {}),
         verifiedAt : rows.verified_at?.toISOString() ?? null,
         // คนที่ไม่มีสิทธิ์ต้องไม่มีคีย์เหล่านี้เลย ไม่ใช่ได้ null — null แปลว่า "ไม่มีข้อโต้แย้ง" คนละความหมาย
         ...(see.ruling ? {

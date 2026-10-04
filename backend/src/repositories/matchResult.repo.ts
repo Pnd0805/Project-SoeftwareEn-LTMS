@@ -25,6 +25,28 @@ export async function findmatchResultByMatchId(matchId : number): Promise<MatchR
 
 
 
+/**
+ * OD-59 (4 ต.ค. 2569) — S05 ต้องบอกได้ว่า "ใครเป็นคนบันทึกผลนี้" ไม่ใช่แค่บทบาท
+ *
+ * ★ ทำเป็น query แยก ไม่ไปเติม JOIN ใน `findmatchResultByMatchId`
+ *   เพราะตัวนั้นถูกเรียกจากหลายที่ (middleware ด่านสิทธิ์ · autoVerify · amend ฯลฯ)
+ *   ที่ไม่ได้ใช้ชื่อเลย ⇒ ไม่ควรจ่าย JOIN ทุกครั้งเพื่อฟีเจอร์ของ endpoint เดียว
+ */
+export type ResultWithSubmitterRow = MatchResultRow & {
+    submitted_by_name : string | null,
+    submitted_by_avatar_key : string | null,
+};
+
+/** S05 — ผลพร้อมชื่อผู้บันทึกผล · LEFT JOIN เพราะบัญชีผู้ส่งอาจถูกลบไปแล้ว */
+export async function findResultWithSubmitter(matchId : number): Promise<ResultWithSubmitterRow | null>{
+    const [ rows ] = await pool.query<(ResultWithSubmitterRow & RowDataPacket)[]>(
+        `SELECT r.* , u.full_name AS submitted_by_name , u.profile_image_key AS submitted_by_avatar_key
+           FROM match_results r
+           LEFT JOIN users u ON u.user_id = r.submitted_by_user_id
+          WHERE r.match_id = ?`, [matchId]);
+    return rows[0] ?? null;
+}
+
 export type DisputeDetailRow = MatchResultRow & { raised_by_name : string | null };
 
 /** S03b — รายละเอียดข้อโต้แย้งพร้อมชื่อผู้ค้าน (ผู้จัดต้องใช้ตัดสิน) */

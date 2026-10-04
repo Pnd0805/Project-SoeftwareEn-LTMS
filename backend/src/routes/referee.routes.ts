@@ -52,6 +52,12 @@ matchRefereeRouter.delete('/:id/referees/:rid',
 // F14 — แมตช์ที่ยังขาดกรรมการ / กรรมการที่เวลาซ้อน (สำหรับหน้า ORG + เช็คก่อน publish)
 tournamentRefereeRouter.get('/:id/referees/coverage', requireAuth, requireOrganizer, Referee.coverage);
 
+// F02b — กรรมการที่ใช้งานได้จริงของทัวร์นี้ สำหรับเลือกปลายทาง FR01/FR03 (OD-59)
+// ★ ไม่มี requireOrganizer โดยเจตนา — กรรมการต้องเรียกได้ นั่นคือเหตุผลที่เส้นนี้มี
+//   ด่านสิทธิ์อยู่ในService (ผู้จัด หรือ กรรมการที่ใช้งานได้จริงของทัวร์นี้) เพราะต้องถามฐานว่า
+//   คนนี้เป็นกรรมการของทัวร์นี้ไหม ซึ่งเป็นคำถามเดียวกับที่ service ตอบอยู่แล้ว
+tournamentRefereeRouter.get('/:id/referees/assignable', requireAuth, Referee.listAssignable);
+
 // F03
 tournamentRefereeRouter.delete('/:id/referees/:rid', requireAuth, requireOrganizer, Referee.removeFromTournament);
 

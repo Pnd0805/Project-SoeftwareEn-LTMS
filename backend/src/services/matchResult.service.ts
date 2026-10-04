@@ -361,7 +361,8 @@ export async function findStartedNextMatchId(match : MatchRow): Promise<number |
 }
 
 export async function getVerifiedResult(matchId : number , userId? : number){
-    const matchRes = await MatchResRepo.findmatchResultByMatchId(matchId);
+    // OD-59 — query ที่ join ชื่อผู้ส่งผล (เฉพาะ endpoint นี้) · ชื่อจะถูกส่งออกหรือไม่ ตัดสินตอนท้าย
+    const matchRes = await MatchResRepo.findResultWithSubmitter(matchId);
     if(!matchRes){
         throw new AppError(404 , "NOT_FOUND" , "ไม่พบข้อมูลที่ต้องการ");
     }
@@ -383,7 +384,11 @@ export async function getVerifiedResult(matchId : number , userId? : number){
     const isPlayerOfMatch = !insider && userId !== undefined
                          && (await TeamRepo.findTeamIdOfUserInMatch(userId , matchId)) !== null;
 
-    return { ...toVerifiedResult(matchRes , { ruling : insider || isPlayerOfMatch , complaint : insider }) ,
+    // OD-59 — ตัวตนผู้บันทึกผลเปิดให้กลุ่มเดียวกับ "ตัวคำค้าน" (ORG / กรรมการของแมตช์ / หัวหน้า 2 ทีม
+    //          / แอดมินที่ถึงคิวตัดสินตาม OD-58) ไม่ขยายถึงผู้เล่นทุกคนเหมือนคำวินิจฉัย
+    //          เพราะคำวินิจฉัยเป็นข้อความที่เขียน "ให้ผู้เล่นอ่าน" ส่วนชื่อคนกรอกไม่ใช่
+    return { ...toVerifiedResult(matchRes , { ruling : insider || isPlayerOfMatch , complaint : insider ,
+                                              submitter : insider }) ,
              ...await disputeWindowOf(matchRes) };
 }
 

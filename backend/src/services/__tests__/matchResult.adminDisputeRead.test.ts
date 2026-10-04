@@ -7,10 +7,11 @@ vi.mock('../notification.service.js', () => ({
   notifyTournamentTeamLeaders: vi.fn(), notifyTeamMembers: vi.fn(),
   notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
 }));
-vi.mock('../../repositories/matchResult.repo.js', () => ({
-  findmatchResultByMatchId: vi.fn(), findDisputeByMatchId: vi.fn(),
-  findStandings: vi.fn(() => Promise.resolve([])),
-}));
+vi.mock('../../repositories/matchResult.repo.js', () => {
+  const findmatchResultByMatchId = vi.fn();
+  return { findmatchResultByMatchId, findResultWithSubmitter: findmatchResultByMatchId,
+           findDisputeByMatchId: vi.fn(), findStandings: vi.fn(() => Promise.resolve([])) };
+});
 vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({
   findTournamentById: vi.fn(), findUnfinishedMatchIds: vi.fn(() => Promise.resolve([])),
@@ -52,11 +53,15 @@ const match = () => ({ match_id: MATCH, tournament_id: TOURNAMENT, team_a_id: 11
                        next_match_id: null, loser_next_match_id: null }) as never;
 
 /** ผลที่ยัง **ไม่ final** (disputed) — คนนอกต้องได้ 404 */
-const disputedResult = (raisedAt: Date | null) => ({
+const SUBMITTED_AT = new Date('2026-10-01T09:00:00Z');
+const disputedResult = (raisedAt: Date | null, o: Record<string, unknown> = {}) => ({
   match_result_id: 1, match_id: MATCH, winner_team_id: 11, score_data: { 11: 3, 12: 1 },
   match_result_status: 'disputed', verified_at: null, amended_at: null, amend_reason: null,
   dispute_reason: 'ส่งผู้เล่นนอกใบสมัครลงแข่ง', dispute_raised_by: 4001, dispute_raised_at: raisedAt,
   dispute_resolution: null, dispute_resolved_by: null, dispute_resolved_at: null,
+  // OD-59 — ตัวตนผู้บันทึกผล (มาจาก LEFT JOIN users)
+  submitted_by_user_id: 7001, submitted_role: 'referee', submitted_at: SUBMITTED_AT,
+  submitted_by_name: 'กรรมการ สมศักดิ์', submitted_by_avatar_key: null, ...o,
 }) as never;
 
 const raisedHoursAgo = (h: number) => new Date(Date.now() - h * HOUR);
@@ -119,6 +124,74 @@ describe('S05 getVerifiedResult — ผลที่ยังไม่ final', ()
 
     await expect(Service.getVerifiedResult(MATCH, ORG)).resolves.toMatchObject({ status: 'disputed' });
     expect(AdminRepo.findAdminByUserId).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * OD-59 (4 ต.ค. 2569) — S05 คืน "ใครบันทึกผล" และ "เวลาที่บันทึก" แบบมีเงื่อนไข
+ *
+ * ★ S05 เป็น endpoint สาธารณะเมื่อผลเป็น verified/walkover ⇒ ถ้าใส่ชื่อแบบไม่มีเงื่อนไข
+ *   เท่ากับเปิดชื่อกรรมการที่ตัดสินแมตช์ และชื่อหัวหน้าทีมที่กรอกผล ให้คนนอกทุกคน
+ *   เทสชุดนี้ตรึงว่า **คนนอกต้องไม่มีคีย์เลย** ไม่ใช่ได้ null
+ */
+describe('S05 — ตัวตนผู้บันทึกผล (submittedBy / submittedAt)', () => {
+  /** ผล verified = สาธารณะ ⇒ ใช้ทดสอบว่า "คนนอกเห็นอะไร" ได้ตรงที่สุด */
+  const verifiedResult = (o: Record<string, unknown> = {}) =>
+    disputedResult(null, { match_result_status: 'verified', verified_at: new Date('2026-10-01T10:00:00Z'),
+                           verified_by_user_id: 9001, ...o });
+
+  it('★ คนนอก (ไม่ล็อกอิน) → ไม่มีคีย์ submittedBy/submittedAt เลย แต่ยังเห็น submittedRole', async () => {
+    vi.mocked(ResRepo.findmatchResultByMatchId).mockResolvedValue(verifiedResult());
+
+    const dto = await Service.getVerifiedResult(MATCH);
+
+    expect(dto).not.toHaveProperty('submittedBy');
+    expect(dto).not.toHaveProperty('submittedAt');
+    expect(dto.submittedRole).toBe('referee');     // ป้ายบทบาทยังสาธารณะเหมือนเดิม
+  });
+
+  it('★ ผู้จัด → เห็นชื่อและเวลา', async () => {
+    vi.mocked(ResRepo.findmatchResultByMatchId).mockResolvedValue(verifiedResult());
+
+    const dto = await Service.getVerifiedResult(MATCH, ORG);
+
+    expect(dto.submittedBy).toEqual({ id: 7001, fullName: 'กรรมการ สมศักดิ์', avatarUrl: null });
+    expect(dto.submittedAt).toBe(SUBMITTED_AT.toISOString());
+  });
+
+  it('หัวหน้าทีมในแมตช์ → เห็น', async () => {
+    vi.mocked(ResRepo.findmatchResultByMatchId).mockResolvedValue(verifiedResult());
+    vi.mocked(isTeamLeaderOfMatch).mockResolvedValue(true);
+
+    expect(await Service.getVerifiedResult(MATCH, 4001)).toHaveProperty('submittedBy');
+  });
+
+  it('★ แอดมินที่ถึงคิวตัดสิน (OD-58) → เห็นด้วย — เขาต้องรู้ว่าใครกรอกผลที่ถูกค้าน', async () => {
+    vi.mocked(ResRepo.findmatchResultByMatchId)
+      .mockResolvedValue(disputedResult(raisedHoursAgo(ORG_RESOLVE_HOURS + 1)));
+    vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'university_wide' } as never);
+
+    expect(await Service.getVerifiedResult(MATCH, ADMIN)).toHaveProperty('submittedBy');
+  });
+
+  /**
+   * ★ `null` สงวนไว้สำหรับ "บัญชีผู้ส่งถูกลบไปแล้ว" (LEFT JOIN ไม่เจอ) เท่านั้น
+   *   ถ้าเอาไปใช้แทน "ไม่มีสิทธิ์" ด้วย FE จะแยกสองเคสนี้ไม่ออก
+   */
+  it('บัญชีผู้ส่งถูกลบ → ผู้มีสิทธิ์ได้ submittedBy = null (มีคีย์ แต่ค่า null)', async () => {
+    vi.mocked(ResRepo.findmatchResultByMatchId)
+      .mockResolvedValue(verifiedResult({ submitted_by_name: null, submitted_by_avatar_key: null }));
+
+    const dto = await Service.getVerifiedResult(MATCH, ORG);
+
+    expect(dto.submittedBy).toBeNull();
+    expect(dto.submittedAt).toBe(SUBMITTED_AT.toISOString());   // เวลายังมี — คนหาย ไม่ใช่เวลาหาย
+  });
+
+  it('ไม่เคยมี submitted_at (ข้อมูลก่อน migration 026) → null ไม่ระเบิด', async () => {
+    vi.mocked(ResRepo.findmatchResultByMatchId).mockResolvedValue(verifiedResult({ submitted_at: null }));
+
+    expect((await Service.getVerifiedResult(MATCH, ORG)).submittedAt).toBeNull();
   });
 });
 

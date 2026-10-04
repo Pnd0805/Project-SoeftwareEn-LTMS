@@ -1,6 +1,6 @@
 import type { UserRefDto } from './user.mapper.js';
 import { toUserRef } from './user.mapper.js';
-import type { TournamentRefereeListRow , MyRefereeInvitationRow } from '../repositories/tournamentReferee.repo.js';
+import type { TournamentRefereeListRow , MyRefereeInvitationRow , AssignableRefereeRow } from '../repositories/tournamentReferee.repo.js';
 import type { MatchRefereeListRow, InvitedMatchRow, MyRefereeMatchRow } from '../repositories/matchReferee.repo.js';
 import type { TournamentRefereeRow } from '../types/db.js';
 
@@ -32,6 +32,28 @@ export function toRefereeStatus(row : RefereeStatusFields): RefereeStatus {
         if(row.external_approval_status === 'rejected') return 'rejected_by_admin';
     }
     return 'active';
+}
+
+/**
+ * F02b · OD-59 — ปลายทางที่เลือกได้สำหรับคำขอโอน/แลกแมตช์
+ *
+ * ★ มีแค่ 3 อย่างโดยเจตนา: id ของใบเชิญที่ใช้งานได้จริง · ตัวคน · ภาระงานที่ยังไม่เริ่ม
+ *   **ไม่มี** invitationStatus / isExternal / externalApprovalStatus — ทุกแถวที่คืนมาคือ active อยู่แล้ว
+ *   จึงไม่มีอะไรให้ FE ต้องกรองซ้ำ และไม่เปิดเรื่องเอกสารตัวตนของใครให้กรรมการอีกคนเห็น
+ */
+export type AssignableRefereeDto = {
+    id : number,
+    user : UserRefDto,
+    /** แมตช์ของทัวร์นี้ที่ยัง `scheduled` และเขาถืออยู่ — มากแปลว่างานแน่นแล้ว */
+    upcomingMatchCount : number,
+};
+
+export function toAssignableRefereeDto(row : AssignableRefereeRow): AssignableRefereeDto {
+    return {
+        id : row.tournament_referee_id,
+        user : toUserRef(row),
+        upcomingMatchCount : Number(row.upcoming_match_count),
+    };
 }
 
 export type TournamentRefereeDto = {

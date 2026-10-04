@@ -5,7 +5,13 @@ vi.mock('../notification.service.js', () => ({
   notifyTournamentTeamLeaders: vi.fn(),
   notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
 }));
-vi.mock('../../repositories/matchResult.repo.js', () => ({ findmatchResultByMatchId: vi.fn(), findStandings: vi.fn(() => Promise.resolve([])) }));
+// OD-59 — S05 อ่านผ่าน findResultWithSubmitter (query ที่ join ชื่อผู้ส่ง) ไม่ใช่ findmatchResultByMatchId
+// ผูกเป็น fn ตัวเดียวกัน เพื่อให้ mockResolvedValue ที่เทสเดิมตั้งไว้ยังคุมทั้งสองทาง
+vi.mock('../../repositories/matchResult.repo.js', () => {
+  const findmatchResultByMatchId = vi.fn();
+  return { findmatchResultByMatchId, findResultWithSubmitter: findmatchResultByMatchId,
+           findStandings: vi.fn(() => Promise.resolve([])) };
+});
 vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn(), findUnfinishedMatchIds: vi.fn(() => Promise.resolve([])) }));
 vi.mock('../../repositories/team.repo.js', () => ({ findTeamIdOfUserInMatch: vi.fn(() => Promise.resolve(null)) }));

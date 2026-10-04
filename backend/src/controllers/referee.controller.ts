@@ -12,6 +12,12 @@ export async function list(req : Request, res : Response){
     res.status(200).json(await RefereeService.listTournamentReferees(tournamentId));
 }
 
+// F02b — รายชื่อกรรมการที่ใช้งานได้จริงของทัวร์นี้ สำหรับเลือกปลายทางคำขอโอน/แลกแมตช์
+export async function listAssignable(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await RefereeService.listAssignableReferees(tournamentId, req.user!.user_id));
+}
+
 export async function listMyInvitations(req : Request, res : Response){
     res.status(200).json(await RefereeService.listMyRefereeInvitations(req.user!.user_id));
 }
