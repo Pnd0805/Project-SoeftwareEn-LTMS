@@ -43,7 +43,7 @@ describe('toSportTypeDto', () => {
       minMembers: 7,
       maxMembers: 11,
       defaultMode: 'onsite',
-      pickemTolerance: { exact: 0, close: 1 },
+      pickemTolerance: { spotOn: 0, close: 1 },
       pickemPoints: { spotOn: 10, close: 7, sideOnly: 4 },
     });
   });
@@ -51,7 +51,7 @@ describe('toSportTypeDto', () => {
   // ══════════════ OD-63 — เส้นและแต้มของ Pick'em ต้องออก API ══════════════
   // FE ต้องอธิบายกฎให้ผู้ใช้ก่อนกดส่ง · ค่าอยู่ใน sport_types (ผู้จัดแก้ได้) ⇒ hardcode ฝั่ง FE ไม่ได้
 
-  it('ส่งเส้นของกีฬานั้นตามจริง ไม่สลับ exact กับ close', () => {
+  it('ส่งเส้นของกีฬานั้นตามจริง ไม่สลับ spotOn กับ close', () => {
     const basketball = {
       sport_type_id: 2,
       name: 'บาสเกตบอล',
@@ -61,7 +61,7 @@ describe('toSportTypeDto', () => {
       pickem_tolerance_exact: 5,
       pickem_tolerance_close: 10,
     };
-    expect(toSportTypeDto(basketball as any).pickemTolerance).toEqual({ exact: 5, close: 10 });
+    expect(toSportTypeDto(basketball as any).pickemTolerance).toEqual({ spotOn: 5, close: 10 });
   });
 
   it('เส้น 0 ต้องออกไปเป็น 0 ไม่ใช่หายหรือกลายเป็นค่าตั้งต้น', () => {
@@ -77,8 +77,30 @@ describe('toSportTypeDto', () => {
       pickem_tolerance_close: 0,
     };
     const dto = toSportTypeDto(badminton as any);
-    expect(dto.pickemTolerance).toEqual({ exact: 0, close: 0 });
-    expect(dto.pickemTolerance.exact).toBe(0);
+    expect(dto.pickemTolerance).toEqual({ spotOn: 0, close: 0 });
+    expect(dto.pickemTolerance.spotOn).toBe(0);
+  });
+
+  it('คีย์ของ tolerance ต้องชื่อเดียวกับชั้นใน points — ไม่ใช่ exact ตามชื่อคอลัมน์', () => {
+    // ★ สองก้อนนี้ใช้คู่กันเสมอ (เส้นไม่มีประโยชน์ถ้าไม่รู้แต้ม และกลับกัน)
+    //   ⇒ ชื่อคีย์ต้องตรงกัน เพื่อให้ FE วนลูป tolerance[tier] / points[tier] ได้
+    //   เทสนี้กันคนเปลี่ยนกลับไปเป็น exact ตามชื่อคอลัมน์ในฐาน
+    const row = {
+      sport_type_id: 2,
+      name: 'บาสเกตบอล',
+      min_members: 5,
+      max_members: 12,
+      default_mode: 'onsite',
+      pickem_tolerance_exact: 5,
+      pickem_tolerance_close: 10,
+    };
+    const dto = toSportTypeDto(row as any);
+    expect(Object.keys(dto.pickemTolerance).sort()).toEqual(['close', 'spotOn']);
+    expect(dto.pickemTolerance).not.toHaveProperty('exact');
+    // ทุกคีย์ของ tolerance ต้องมีชั้นที่ตรงกันใน points
+    for (const key of Object.keys(dto.pickemTolerance)) {
+      expect(dto.pickemPoints).toHaveProperty(key);
+    }
   });
 
   it('แต้มมาจาก config ตัวเดียวกับที่คิดแต้มจริง ไม่ใช่เลขที่พิมพ์ซ้ำใน mapper', () => {

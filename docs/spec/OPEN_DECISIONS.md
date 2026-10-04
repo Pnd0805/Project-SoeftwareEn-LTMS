@@ -416,11 +416,46 @@ SportTypeDto                                   ไม่ส่งออกเล
 ### ✅ ที่ทำ
 
 ```ts
-SportTypeDto += pickemTolerance : { exact , close }
+SportTypeDto += pickemTolerance : { spotOn , close }
                 pickemPoints    : { spotOn , close , sideOnly }
 ```
 
 query เป็น `SELECT * FROM sport_types` อยู่แล้ว ⇒ **ไม่ต้องแตะ SQL** · แก้ mapper ที่เดียว
+
+### ★ คีย์ชื่อ `spotOn` ไม่ใช่ `exact` — เจ้าของงานทักเอง
+
+รอบแรกผมส่งเป็น `{ exact , close }` ตามชื่อคอลัมน์ `pickem_tolerance_exact`
+
+```
+🔴 แต่ scoring.ts เขียนห้ามคำนี้ไว้เองตอนตั้งชื่อชั้น:
+   "ชื่อไม่ใช่ exact เพราะในบาส (เส้น 5) คลาดได้ถึง 5 แต้มต่อฝั่งแล้วยังอยู่ชั้นนี้
+    ถ้าเรียก exact จะหลอกคนอ่านโค้ดว่าต้องตรงเก๊ะ"
+⇒ แล้วผมก็เอาคำที่ตัวเองเขียนห้ามไว้ ไปเป็นชื่อคีย์ที่ส่งออก API
+```
+
+เจ้าของงานทักเองว่า "เราไม่ใช้คำว่า exact นิ" · อาการหนึ่งที่พิสูจน์ว่าชื่อนี้ผิด:
+
+```
+md ที่ร่างไว้ต้องมีหัวข้อเต็ม ๆ ว่า "exact ไม่ได้หมายถึงตรงเป๊ะ"
+⇒ คำเตือนนั้นไม่ได้เกิดจากความยุ่งของกฎ มันเกิดจากชื่อคีย์ที่ตั้งผิด
+⇒ แก้ชื่อ แล้วคำเตือนหายไปทั้งหัวข้อ
+```
+
+และปัญหาที่ใหญ่กว่า — **สองก้อนที่ต้องใช้คู่กัน ตั้งชื่อไม่ตรงกัน**
+
+```
+ก่อน  tolerance { exact  , close }            ← ไม่ตรง
+      points    { spotOn , close , sideOnly }
+หลัง  tolerance { spotOn , close }            ← tolerance[tier] / points[tier] วนลูปได้
+```
+
+**ไม่ rename คอลัมน์ในฐาน** (`pickem_tolerance_exact` คงเดิม) — migration ที่แก้แค่ชื่อ
+ไม่คุ้มความเสี่ยง · ชื่อ `exact` เหลืออยู่แค่ "ข้างใน" ไม่โผล่ออก API
+
+```
++1 เทส: ตรึงว่าทุกคีย์ของ tolerance มีชั้นที่ตรงกันใน points
+         และไม่มีคีย์ `exact` หลุดออกไป ⇒ กันคนเปลี่ยนกลับตามชื่อคอลัมน์
+```
 
 ### ที่ตัดสินเอง (บอกไว้) — ส่ง `pickemPoints` ไปด้วย
 
@@ -448,9 +483,9 @@ query เป็น `SELECT * FROM sport_types` อยู่แล้ว ⇒ **�
 
 ```
 GET /sport-types
-  id 1 ฟุตบอล     tol { exact: 0 , close: 1  }   points { 10 , 7 , 4 }
-  id 2 บาสเกตบอล  tol { exact: 5 , close: 10 }   points { 10 , 7 , 4 }
-  id 3 แบดมินตัน   tol { exact: 0 , close: 0  }   points { 10 , 7 , 4 }
+  id 1 ฟุตบอล     tol { spotOn: 0 , close: 1  }   points { 10 , 7 , 4 }
+  id 2 บาสเกตบอล  tol { spotOn: 5 , close: 10 }   points { 10 , 7 , 4 }
+  id 3 แบดมินตัน   tol { spotOn: 0 , close: 0  }   points { 10 , 7 , 4 }
 ```
 
 ⇒ ตรงกับค่าในฐานทุกแถว · `0` ออกไปเป็น `0` จริง ไม่หาย

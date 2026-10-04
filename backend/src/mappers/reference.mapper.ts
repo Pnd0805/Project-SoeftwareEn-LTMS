@@ -27,9 +27,9 @@ export type SportTypeDto = {
      *   ถ้าไม่ส่งออก FE เหลือสองทาง: hardcode (วันไหนมีคนแก้ในฐาน หน้าจอโกหกเงียบ ๆ
      *   เพราะแต้มยังคิดถูกฝั่ง BE) หรือไม่บอกกฎเลย (ผู้ใช้ทายโดยไม่รู้ว่าคลาดได้เท่าไร)
      *
-     * `exact: 0, close: 0` = กีฬาที่นับเกม (แบด/RoV) ⇒ ชั้นรองไม่ยิงเลยโดยเจตนา
+     * `spotOn: 0, close: 0` = กีฬาที่นับเกม (แบด/RoV) ⇒ ชั้นรองไม่ยิงเลยโดยเจตนา
      */
-    pickemTolerance : { exact : number , close : number },
+    pickemTolerance : { spotOn : number , close : number },
     /**
      * แต้มของแต่ละชั้น · **ค่าคงที่ทั้งระบบ ไม่ใช่ต่อกีฬา** (มาจาก `config/scoring.ts`)
      *
@@ -70,7 +70,11 @@ export function toSportTypeDto(row: SportTypeRow): SportTypeDto{
         maxMembers : row.max_members,
         defaultMode : row.default_mode,
         pickemTolerance : {
-            exact : row.pickem_tolerance_exact,
+            // ★ คีย์ชื่อ spotOn ไม่ใช่ exact ตามชื่อคอลัมน์ — ตั้งใจให้ตรงกับชื่อชั้นใน pickemPoints
+            //   FE จะได้จับคู่ tolerance[tier] กับ points[tier] ด้วยคีย์เดียวกัน วนลูปได้
+            //   และคำว่า "exact" หลอกว่าต้องตรงเป๊ะ ซึ่งผิด (บาสคลาดได้ 5 แต้ม/ฝั่งแล้วยังอยู่ชั้นนี้)
+            //   — เหตุผลเดียวกับที่ `PICKEM_TIER_POINTS` ตั้งชื่อชั้นว่า spot_on ไม่ใช่ exact
+            spotOn : row.pickem_tolerance_exact,
             close : row.pickem_tolerance_close
         },
         // อ่านจาก config ตัวเดียวกับที่คิดแต้มจริง (utils/pickemScore.ts) ⇒ แก้ที่เดียว ไม่แยกร่าง
