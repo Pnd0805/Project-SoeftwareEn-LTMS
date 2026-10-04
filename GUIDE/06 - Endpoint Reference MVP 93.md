@@ -116,9 +116,19 @@
 | ---- | --------------------------------------- | ---- | ------------------------------------------- | --- | ------------------------------------------------------------------------------- |
 | R01  | `GET /faculties`                        | —    | รายชื่อคณะ                                  | —   | `{ items: [{id, name}] }`                                                       |
 | R02  | `GET /faculties/:id/departments`        | —    | ภาควิชาในคณะ                                | —   | `{ items: [{id, name, facultyId}] }`                                            |
-| R03  | `GET /sport-types`                      | —    | ประเภทกีฬา + จำนวนสมาชิกขั้นต่ำ/สูงสุด      | —   | `{ items: [{id, name, minMembers, maxMembers, defaultMode}] }`                  |
+| R03  | `GET /sport-types`                      | —    | ประเภทกีฬา + จำนวนสมาชิกขั้นต่ำ/สูงสุด      | —   | `{ items: [{id, name, minMembers, maxMembers, defaultMode, pickemTolerance, pickemPoints}] }`                  |
 | R05  | `GET /sport-types/:id/stat-definitions` | —    | รายการสถิติที่กีฬานี้ต้องกรอก (ใช้ก่อน S06) | —   | `{ items: [{statDefinitionId, statKey, statLabelTh, dataType, displayOrder}] }` |
 | R06  | `GET /suspension-categories`            | —    | ประเภทการระงับ + ถ้อยคำที่ผู้ใช้จะอ่านใน 403 (dropdown ของแอดมิน) | —   | `{ items: [{code, label}] }` |
+
+> 🆕 **R03 มีเส้นและแต้มของ Pick'em แล้ว** (OD-63 · 4 ต.ค.)
+>
+> ```
+> pickemTolerance { exact , close }      ความคลาดที่ยอมได้ **ต่อฝั่ง** · อยู่ใน sport_types ⇒ ผู้จัดแก้ได้
+> pickemPoints { spotOn , close , sideOnly }   ค่าคงที่ทั้งระบบ (10/7/4) · ไม่แยกตามกีฬา
+> ```
+>
+> ★ **ห้าม hardcode สองก้อนนี้ฝั่ง FE** — วันไหนมีคนแก้เส้นในฐาน หน้าจอจะโกหกเงียบ ๆ
+> เพราะแต้มยังคิดถูกอยู่ฝั่ง BE · `exact: 0, close: 0` = กีฬาที่นับเกม (แบด/RoV) ⇒ ชั้นรองไม่ยิงเลย
 
 > ข้อมูลกลุ่มนี้ **seed ผ่าน SQL ไม่ใช่ API** — ไม่มี POST/PATCH
 

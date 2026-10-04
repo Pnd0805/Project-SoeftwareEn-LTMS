@@ -1,4 +1,5 @@
 import type { FacultyRow , DepartmentRow , SportTypeRow , SportStatDefinitionRow } from "../types/db.js"
+import { PICKEM_TIER_POINTS } from "../config/scoring.js";
 
 export type FacultyDto = {
     id : number,
@@ -16,7 +17,26 @@ export type SportTypeDto = {
     name : string,
     minMembers : number,
     maxMembers : number,
-    defaultMode : 'onsite' | 'online'
+    defaultMode : 'onsite' | 'online',
+    /**
+     * OD-56 / OD-63 (4 ต.ค. 2569) — เส้นความคลาดของ Pick'em **ต่อฝั่ง** ของกีฬานี้
+     *
+     * ★ ส่งออกเพราะหน้าทายผลต้องบอกกฎให้ผู้ใช้ **ก่อน** กดส่ง
+     *   (บาส: คลาดไม่เกิน 5 แต้ม/ฝั่ง = เต็ม · ไม่เกิน 10 = ชั้นรอง)
+     *   ค่าพวกนี้อยู่ใน `sport_types` ⇒ ผู้จัดแก้ได้ ⇒ **FE hardcode ไม่ได้**
+     *   ถ้าไม่ส่งออก FE เหลือสองทาง: hardcode (วันไหนมีคนแก้ในฐาน หน้าจอโกหกเงียบ ๆ
+     *   เพราะแต้มยังคิดถูกฝั่ง BE) หรือไม่บอกกฎเลย (ผู้ใช้ทายโดยไม่รู้ว่าคลาดได้เท่าไร)
+     *
+     * `exact: 0, close: 0` = กีฬาที่นับเกม (แบด/RoV) ⇒ ชั้นรองไม่ยิงเลยโดยเจตนา
+     */
+    pickemTolerance : { exact : number , close : number },
+    /**
+     * แต้มของแต่ละชั้น · **ค่าคงที่ทั้งระบบ ไม่ใช่ต่อกีฬา** (มาจาก `config/scoring.ts`)
+     *
+     * ★ ส่งมาในก้อนเดียวกับ tolerance เพราะเลข 10/7/4 ไม่มีประโยชน์ถ้าไม่รู้เส้น
+     *   และเส้นก็ไม่มีประโยชน์ถ้าไม่รู้แต้ม — FE ต้องมีทั้งคู่จึงประกอบประโยคอธิบายกฎได้
+     */
+    pickemPoints : { spotOn : number , close : number , sideOnly : number }
 }; 
 
 export type SportStatDefinitionDto = {
@@ -48,7 +68,17 @@ export function toSportTypeDto(row: SportTypeRow): SportTypeDto{
         name : row.name,
         minMembers : row.min_members,
         maxMembers : row.max_members,
-        defaultMode : row.default_mode
+        defaultMode : row.default_mode,
+        pickemTolerance : {
+            exact : row.pickem_tolerance_exact,
+            close : row.pickem_tolerance_close
+        },
+        // อ่านจาก config ตัวเดียวกับที่คิดแต้มจริง (utils/pickemScore.ts) ⇒ แก้ที่เดียว ไม่แยกร่าง
+        pickemPoints : {
+            spotOn : PICKEM_TIER_POINTS.spot_on,
+            close : PICKEM_TIER_POINTS.close,
+            sideOnly : PICKEM_TIER_POINTS.side_only
+        }
     }
 }
 
