@@ -18,6 +18,9 @@ vi.mock('../../repositories/sportType.repo.js', () => ({}));
 vi.mock('../walkover.service.js', () => ({}));
 vi.mock('../../middlewares/requireReferee.js', () => ({}));
 vi.mock('../../utils/checkExist.js', () => ({}));
+// 🔴 OD-58 (4 ต.ค.) — canSeeUnfinishedResult() ถาม AdminRepo ด้วยแล้ว (แอดมินที่ถึงคิวตัดสินต้องอ่านได้)
+// ถ้าไม่ mock ที่นี่ เทสจะไปต่อฐานจริง แล้ว "ผ่าน" เฉพาะตอนที่เครื่องมี MySQL รันอยู่
+vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(() => Promise.resolve(null)) }));
 
 import * as Service from '../matchResult.service.js';
 import * as Repo from '../../repositories/matchResult.repo.js';

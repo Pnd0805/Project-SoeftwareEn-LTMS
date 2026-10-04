@@ -23,7 +23,7 @@ describe('toStandingDto', () => {
     );
 
     expect(dto).toEqual({
-      team: { id: 7, name: 'Lions', sportTypeId: 3 },
+      team: { id: 7, name: 'Lions', sportTypeId: 3, logoUrl: null },   // OD-61
       played: 3,
       wins: 2,
       losses: 1,
@@ -73,7 +73,7 @@ describe('toStandingDto', () => {
     expect(Object.keys(dto).sort()).toEqual(
       ['team', 'played', 'wins', 'losses', 'points', 'goalsFor', 'goalsAgainst', 'goalDiff', 'rank'].sort(),
     );
-    expect(Object.keys(dto.team).sort()).toEqual(['id', 'name', 'sportTypeId']);
+    expect(Object.keys(dto.team).sort()).toEqual(['id', 'logoUrl', 'name', 'sportTypeId']);
   });
 
   it('does not mutate the input row', () => {
@@ -180,7 +180,7 @@ describe('rankStandings', () => {
 
   it('ranks a single-team table as 1', () => {
     expect(rankStandings([row({ team_id: 1 })])).toEqual([
-      expect.objectContaining({ team: { id: 1, name: 'T1', sportTypeId: 1 }, rank: 1 }),
+      expect.objectContaining({ team: { id: 1, name: 'T1', sportTypeId: 1, logoUrl: null }, rank: 1 }),
     ]);
   });
 

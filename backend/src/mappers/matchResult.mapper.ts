@@ -3,6 +3,7 @@ import type { MatchRow } from "../types/db.js";
 
 import type { playerStat , ResultWithSubmitterRow } from "../repositories/matchResult.repo.js";
 import type { TeamRef } from "./team.mapper.js";
+import { toTeamRef } from "./team.mapper.js";
 import { toUserRef } from "./user.mapper.js";
 import type { UserRefDto } from "./user.mapper.js";
 
@@ -201,11 +202,12 @@ export type standingDto = {
     rank : number      // ทีมที่เสมอกันทุกเกณฑ์ได้อันดับเท่ากัน (1,1,3) — B3
 }
 
-export type StandingSource = { team_id : number , name : string , sport_type_id : number , played : number , won : number , lost : number , points : number , goals_for : number , goals_against : number };
+// OD-61 — logo_key เข้ามาด้วยเพื่อให้ team ในตารางอันดับมี logoUrl เหมือน TeamRef ที่อื่น
+export type StandingSource = { team_id : number , name : string , sport_type_id : number , logo_key : string | null , played : number , won : number , lost : number , points : number , goals_for : number , goals_against : number };
 
 export function toStandingDto(row : StandingSource , rank : number) : standingDto{
     return {
-        team : { id : row.team_id , name : row.name , sportTypeId : row.sport_type_id },
+        team : toTeamRef(row),
         played : row.played,
         wins : row.won,
         losses : row.lost,

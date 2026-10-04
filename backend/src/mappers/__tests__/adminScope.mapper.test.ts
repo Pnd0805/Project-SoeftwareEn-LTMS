@@ -19,6 +19,7 @@ describe('toGetOfficialRequest', () => {
       team_id: 10,
       name: 'Dream Team',
       sport_type_id: 2,
+      logo_key: null,              // OD-61 — query จริง SELECT คอลัมน์นี้มาด้วย
       user_id: 5,
       full_name: 'สมชาย ใจดี',
       profile_image_key: 'avatar.png',
@@ -26,7 +27,7 @@ describe('toGetOfficialRequest', () => {
 
     expect(toGetOfficialRequest(row as any)).toEqual({
       id: 1,
-      team: { id: 10, name: 'Dream Team', sportTypeId: 2 },
+      team: { id: 10, name: 'Dream Team', sportTypeId: 2, logoUrl: null },   // OD-61
       requestedBy: { id: 5, fullName: 'สมชาย ใจดี', avatarUrl: 'https://cdn.test/avatar.png' },
       status: 'pending',
       supportingDocs: [],
@@ -60,6 +61,7 @@ describe('toGetOfficialRequest', () => {
       team_id: 10,
       name: 'Dream Team',
       sport_type_id: 2,
+      logo_key: null,              // OD-61 — query จริง SELECT คอลัมน์นี้มาด้วย
       user_id: 5,
       full_name: 'สมชาย ใจดี',
       profile_image_key: null,
@@ -76,6 +78,7 @@ describe('toGetOfficialRequest', () => {
       team_id: 10,
       name: 'Dream Team',
       sport_type_id: 2,
+      logo_key: null,              // OD-61 — query จริง SELECT คอลัมน์นี้มาด้วย
       user_id: 5,
       full_name: 'สมชาย ใจดี',
       profile_image_key: null,

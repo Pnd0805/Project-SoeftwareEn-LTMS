@@ -533,12 +533,13 @@ export async function countMatches(tourId : number) : Promise<{ matchCount : num
     return { matchCount : rows[0]!.matchCount , matchesCompleted : Number(rows[0]!.matchesCompleted ?? 0) };
 }
 
-export type StandingRow = Pick<TournamentStandingRow , 'played' | 'won' | 'lost' | 'points' | 'goals_for' | 'goals_against'> & Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id'>;
+export type StandingRow = Pick<TournamentStandingRow , 'played' | 'won' | 'lost' | 'points' | 'goals_for' | 'goals_against'> & Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'logo_key'>;
 
 /** S12 — tie-break ก (มติ 21 ก.ย.): แต้ม → ผลต่างประตู → ประตูได้ → ชนะ → ชื่อทีม */
 export async function findStandings(tourId : number) : Promise<StandingRow[]>{
     const [rows] = await pool.query<(StandingRow & RowDataPacket)[]>(
-        `SELECT t.team_id, t.name, t.sport_type_id, ts.played, ts.won, ts.lost, ts.points, ts.goals_for, ts.goals_against
+        // OD-61 — t.logo_key สำหรับ TeamRef.logoUrl ในตารางอันดับ
+        `SELECT t.team_id, t.name, t.sport_type_id, t.logo_key, ts.played, ts.won, ts.lost, ts.points, ts.goals_for, ts.goals_against
          FROM tournament_standings ts
          JOIN teams t ON t.team_id = ts.team_id
          WHERE ts.tournament_id = ?

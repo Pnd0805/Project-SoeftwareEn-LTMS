@@ -1,4 +1,5 @@
 import type { TeamAdminRequestRow , TeamRow , UserRow } from "../types/db.js";
+import { toTeamRef } from './team.mapper.js';
 import type { TeamRef } from "./team.mapper.js";
 import type { UserRefDto } from "./user.mapper.js";
 import type { getAdminScope } from "../repositories/adminScope.repo.js";
@@ -25,7 +26,7 @@ export function toAdminScopeDto(row : getAdminScope) : getAdminScopeDto{
 
 
 export type getOfficialRequest = Pick<TeamAdminRequestRow, 'team_admin_request_id' | 'team_admin_request_status' | 'requested_at' | 'supporting_docs'> &
-                                  Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id'> &
+                                  Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id' | 'logo_key'> &
                                   Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
 
 export type getOfficialRequestDto = {
@@ -45,7 +46,8 @@ export type getOfficialRequestDto = {
 
 
 export function toGetOfficialRequest(rows : getOfficialRequest , supportingDocs : string[] = []):getOfficialRequestDto{
-    const team: TeamRef = { id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
+    // OD-61 — ใช้ toTeamRef ไม่ประกอบ object เองอีก เพื่อให้ logoUrl มาจากที่เดียวกับที่อื่น
+    const team: TeamRef = toTeamRef(rows);
     const user: UserRefDto = { id : rows.user_id , fullName : rows.full_name , avatarUrl : toPublicImageUrl(rows.profile_image_key)};
     return{
         id : rows.team_admin_request_id,
@@ -73,7 +75,7 @@ export function toRequestApproveDto(rows : Pick<TeamRow , 'team_id' | 'official_
 
 // C3 — ลิสต์คำขอโอนหัวหน้าทีมที่รออนุมัติ
 export type getTransferRequest = Pick<TeamAdminRequestRow, 'team_admin_request_id' | 'team_admin_request_status' | 'requested_at'> &
-                                  Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id'> &
+                                  Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id' | 'logo_key'> &
                                   {
                                       current_leader_id : number, current_leader_full_name : string, current_leader_profile_image_key : string | null,
                                       proposed_leader_id : number, proposed_leader_full_name : string, proposed_leader_profile_image_key : string | null
@@ -89,7 +91,7 @@ export type getTransferRequestDto = {
 }
 
 export function toGetTransferRequest(rows : getTransferRequest) : getTransferRequestDto{
-    const team: TeamRef = { id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
+    const team: TeamRef = toTeamRef(rows);
     const currentLeader: UserRefDto = { id : rows.current_leader_id , fullName : rows.current_leader_full_name , avatarUrl : toPublicImageUrl(rows.current_leader_profile_image_key)};
     const proposedLeader: UserRefDto = { id : rows.proposed_leader_id , fullName : rows.proposed_leader_full_name , avatarUrl : toPublicImageUrl(rows.proposed_leader_profile_image_key)};
     return {

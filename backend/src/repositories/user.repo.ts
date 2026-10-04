@@ -173,12 +173,12 @@ export async function hasApprovedApplicationAsLeader(userId : number) : Promise<
 
 export type MyInvitationRow = Pick<TeamInvitationRow , 'team_invitation_id' | 'expires_at'> &
                               Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'> &
-                              Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' >;
+                              Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'logo_key'>;
 
 export async function getMyInvitation(invitedUserId : number) : Promise<MyInvitationRow[]>{
     const [ rows ] = await pool.query<(MyInvitationRow & RowDataPacket)[]>(`SELECT inv.team_invitation_id , inv.expires_at ,
                                                                             u.user_id , u.full_name , u.profile_image_key  ,
-                                                                            t.team_id , t.name , t.sport_type_id
+                                                                            t.team_id , t.name , t.sport_type_id , t.logo_key
                                                                             FROM team_invitations inv JOIN teams t ON inv.team_id = t.team_id
                                                                             JOIN users u ON u.user_id = inv.invited_by_user_id
 

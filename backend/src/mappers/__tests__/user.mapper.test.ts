@@ -180,6 +180,7 @@ describe('toGetMyInvitation', () => {
       team_id: 10,
       name: 'Dream Team',
       sport_type_id: 1,
+      logo_key: null,              // OD-61
       user_id: 9,
       full_name: 'Inviter Name',
       profile_image_key: 'avatar.png',
@@ -188,7 +189,7 @@ describe('toGetMyInvitation', () => {
 
     expect(toGetMyInvitation(row as any)).toEqual({
       id: 1,
-      team: { id: 10, name: 'Dream Team', sportTypeId: 1 },
+      team: { id: 10, name: 'Dream Team', sportTypeId: 1, logoUrl: null },   // OD-61
       invitedBy: { id: 9, fullName: 'Inviter Name', avatarUrl: 'https://cdn.test/avatar.png' },
       expiresAt: '2024-03-01T00:00:00.000Z',
     });
@@ -200,6 +201,7 @@ describe('toGetMyInvitation', () => {
       team_id: 10,
       name: 'Dream Team',
       sport_type_id: 1,
+      logo_key: null,              // OD-61
       user_id: 9,
       full_name: 'Inviter Name',
       profile_image_key: null,

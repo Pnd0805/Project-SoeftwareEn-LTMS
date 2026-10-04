@@ -16,6 +16,9 @@ vi.mock('../walkover.service.js', () => ({ resolveIfOpponentWithdrawn: vi.fn(() 
 vi.mock('../../middlewares/requireReferee.js', () => ({ isRefereeOfMatch: vi.fn(), isTeamLeaderOfMatch: vi.fn() }));
 vi.mock('../../utils/checkExist.js', () => ({ checkMatch: vi.fn(), checkTournament: vi.fn(), checkTeam: vi.fn() }));
 vi.mock('../upload.service.js', () => ({ getPresignedDownloadUrl: vi.fn() }));
+// 🔴 OD-58 (4 ต.ค.) — canSeeUnfinishedResult() ถาม AdminRepo ด้วยแล้ว (แอดมินที่ถึงคิวตัดสินต้องอ่านได้)
+// ถ้าไม่ mock ที่นี่ เทสจะไปต่อฐานจริง แล้ว "ผ่าน" เฉพาะตอนที่เครื่องมี MySQL รันอยู่
+vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(() => Promise.resolve(null)) }));
 
 import * as Service from '../matchResult.service.js';
 import * as ResRepo from '../../repositories/matchResult.repo.js';

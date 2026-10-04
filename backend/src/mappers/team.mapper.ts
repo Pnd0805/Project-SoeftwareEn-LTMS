@@ -9,14 +9,27 @@ import type { getInvitation } from "../repositories/team.repo.js";
 export type TeamRef = {
     id : number,
     name : string,
-    sportTypeId : number
-}; 
+    sportTypeId : number,
+    /**
+     * OD-61 (4 ต.ค. 2569) — โลโก้ทีม · `null` = ทีมนี้ยังไม่ได้อัปโลโก้
+     *
+     * ★ เดิมมีแต่ใน `TeamDto` (หน้ารายละเอียดทีม) ⇒ โลโก้อัปขึ้นได้และไฟล์อยู่ในถังจริง
+     *   แต่แสดงได้ที่หน้าเดียวของทั้งระบบ · หน้าแชมป์ ตารางอันดับ คิวแอดมิน โปรไฟล์
+     *   ไม่มีโลโก้เลยทั้งที่ข้อมูลมีอยู่แล้ว (FE แจ้งมา 1 ต.ค.)
+     *
+     * 🔴 **การเพิ่มฟิลด์นี้ใน type บังคับให้ทุกจุดที่สร้าง `TeamRef` ต้องส่ง `logo_key` มา**
+     *   ซึ่งเป็นผลที่ต้องการ — ถ้า query ไหนลืม SELECT `t.logo_key` มา `tsc` จะแดงทันที
+     *   ไม่ใช่ปล่อยให้ออกไปเป็น `null` เงียบ ๆ แล้ว FE เข้าใจว่า "ทีมนี้ไม่มีโลโก้"
+     */
+    logoUrl : string | null
+};
 
-export function toTeamRef(row: Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id'>): TeamRef{
+export function toTeamRef(row: Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'logo_key'>): TeamRef{
     return {
         id : row.team_id,
         name : row.name,
-        sportTypeId : row.sport_type_id
+        sportTypeId : row.sport_type_id,
+        logoUrl : toPublicImageUrl(row.logo_key)
     }
 };
 
@@ -45,7 +58,9 @@ export type MyTeam = {
     readinessStatus : 'Forming' | 'Ready' | 'Inactive',
     officialStatus : 'Unofficial' | 'Official',
     memberCount : number,
-    role : 'leader' | 'member';
+    role : 'leader' | 'member',
+    /** OD-61 — โลโก้ทีม · `null` = ยังไม่ได้อัป · หน้า "ทีมของฉัน" ใช้ช่องนี้ */
+    logoUrl : string | null
 }
 
 export function toMyTeam(row : TeamRow , mem_count : number , userId : number): MyTeam {
@@ -58,7 +73,8 @@ export function toMyTeam(row : TeamRow , mem_count : number , userId : number): 
         readinessStatus : status,
         officialStatus : row.official_status,
         memberCount : mem_count,
-        role : role
+        role : role,
+        logoUrl : toPublicImageUrl(row.logo_key)
     }
 }
 

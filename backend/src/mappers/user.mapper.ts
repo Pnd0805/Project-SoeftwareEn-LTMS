@@ -1,6 +1,7 @@
 import type { MyInvitationRow, AdminUserRow } from '../repositories/user.repo.js';
 import type { UserRow, AdminScopeRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
+import { toTeamRef } from './team.mapper.js';
 import { toPublicImageUrl } from '../utils/imageUrl.js';
 import { isCurrentlySuspended , suspensionCategoryLabel } from '../utils/suspension.js';
 import type { SuspensionCategory } from '../utils/suspension.js';
@@ -168,7 +169,8 @@ export type getMyInvitationDto = {
 };
 
 export function toGetMyInvitation(rows : MyInvitationRow) : getMyInvitationDto{
-  const team:TeamRef = {id : rows.team_id , name : rows.name , sportTypeId : rows.sport_type_id};
+  // OD-61 — ใช้ toTeamRef ไม่ประกอบเอง เพื่อให้ logoUrl มาจากที่เดียวกับที่อื่น
+  const team:TeamRef = toTeamRef(rows);
   const user:UserRefDto = {id : rows.user_id , fullName : rows.full_name , avatarUrl : toPublicImageUrl(rows.profile_image_key),}
 
   return{

@@ -2,9 +2,10 @@ import pool from '../config/db.js';
 import type { TeamRow } from '../types/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
-export async function findApprovedTeamsByTournament(tournamentId: number): Promise<Pick<TeamRow , "team_id" | "name" | "sport_type_id">[]> {
+export async function findApprovedTeamsByTournament(tournamentId: number): Promise<Pick<TeamRow , "team_id" | "name" | "sport_type_id" | "logo_key">[]> {
     const [rows] = await pool.query<(TeamRow & RowDataPacket)[]>(
-        `SELECT t.team_id, t.name, t.sport_type_id
+        // OD-61 — logo_key ต้องมาด้วย ไม่งั้น toTeamRef ส่ง logoUrl เป็น null ทุกทีม
+        `SELECT t.team_id, t.name, t.sport_type_id, t.logo_key
          FROM tournament_applications ta
          JOIN teams t ON ta.team_id = t.team_id
          WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'`,

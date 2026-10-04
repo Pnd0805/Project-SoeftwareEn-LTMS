@@ -69,7 +69,7 @@ export async function countActiveFacultyAdmins(facultyId : number) : Promise<num
 export async function findAllOfficialRequests(offset: number, pageSize: number): Promise<{ rows: getOfficialRequest[], totalItems: number }> {
     const [ rows ] = await pool.query<(getOfficialRequest & RowDataPacket)[]>(`SELECT req.team_admin_request_id , req.team_admin_request_status , req.requested_at,
                                                                                 req.supporting_docs,
-                                                                                t.team_id , t.name , t.sport_type_id,
+                                                                                t.team_id , t.name , t.sport_type_id , t.logo_key,
                                                                                 u.user_id , u.full_name , u.profile_image_key
                                                                                 FROM team_admin_requests req JOIN teams t ON req.team_id = t.team_id
                                                                                 JOIN users u ON req.requested_by = u.user_id
@@ -87,7 +87,7 @@ export async function findAllOfficialRequests(offset: number, pageSize: number):
 // C3 — ลิสต์คำขอโอนหัวหน้าทีมที่รออนุมัติ (คู่กับ findAllOfficialRequests — กรอง request_type ต่างกัน)
 export async function findAllTransferRequests(offset: number, pageSize: number): Promise<{ rows: getTransferRequest[], totalItems: number }> {
     const [ rows ] = await pool.query<(getTransferRequest & RowDataPacket)[]>(`SELECT req.team_admin_request_id , req.team_admin_request_status , req.requested_at,
-                                                                                t.team_id , t.name , t.sport_type_id,
+                                                                                t.team_id , t.name , t.sport_type_id , t.logo_key,
                                                                                 cur.user_id AS current_leader_id , cur.full_name AS current_leader_full_name , cur.profile_image_key AS current_leader_profile_image_key,
                                                                                 tgt.user_id AS proposed_leader_id , tgt.full_name AS proposed_leader_full_name , tgt.profile_image_key AS proposed_leader_profile_image_key
                                                                                 FROM team_admin_requests req JOIN teams t ON req.team_id = t.team_id

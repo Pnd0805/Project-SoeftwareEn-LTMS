@@ -394,6 +394,19 @@
 | S13d | `PUT /match-result-complaints/:id/statement` | ORG ของทัวร์ | ผู้จัด**แนบความเห็น** — **ไม่มี route ให้ปัดตกโดยเจตนา** (ผู้จัดอาจเป็นคู่กรณีเอง) · prefix อยู่**นอก** `/matches/:id` จึงทำได้**แม้ทัวร์ปิดแล้ว** · เขียนช้ากว่า 48 ชม.ได้ แต่ติดป้าย `organizerStatement.late` | `statement` | `{ ...complaint }` / **409** `COMPLAINT_ALREADY_DECIDED` |
 | S13e | `POST /match-result-complaints/:id/decision` | แอดมิน `university_wide` | วินิจฉัย — ได้เมื่อพ้น **48 ชม.** นับจากเวลายื่น (`created_at`) ไม่ว่าผู้จัดจะเขียนหรือไม่ · `upheld`+`record_only` = มีมูล บันทึกไว้ไม่แก้ผล · `upheld`+`amend_result` = แก้ผู้ชนะ/สกอร์ผ่านเส้นทาง amend เดิม (ต้อง `canAmendResult`) · `no_merit` = ไม่มีมูล ติด `filerFlagged` **เฉพาะผู้ยื่น** | `outcome:'upheld'\|'no_merit', remedy:'record_only'\|'amend_result', note, winnerTeamId?, scoreData?` | `{ ...complaint }` / **403** `ORGANIZER_STILL_HAS_TIME` (+`availableAt`) / **409** `RESULT_NOT_CHANGEABLE` (+`blockedBy`) \| `COMPLAINT_ALREADY_DECIDED` |
 
+> 🆕 **`TeamRef` และ `MyTeam` คืน `logoUrl` แล้ว** (4 ต.ค. · OD-61)
+>
+> ```
+> logoUrl : string | null        null = ทีมนี้ยังไม่ได้อัปโลโก้ (ไม่ใช่สตริงว่าง)
+> ```
+>
+> เดิมมีแต่ใน `TeamDto` (หน้ารายละเอียดทีม) ⇒ โลโก้อัปขึ้นได้แต่แสดงได้หน้าเดียวของทั้งระบบ
+> ตอนนี้มาถึงทุกที่ที่ทีมโผล่เป็นตัวอ้างอิง — **แชมป์/รองแชมป์ · ตารางอันดับ · คิวทีม Official ·
+> คำขอโอนหัวหน้า · ทีมในโปรไฟล์ · ทีมของฉัน (`/me/teams`) · คำเชิญเข้าทีม**
+>
+> ⚠️ `teamA`/`teamB` ของรายการ/รายละเอียดแมตช์ **ยังไม่มีโลโก้** — เป็น type คนละตัวกับ `TeamRef`
+> แยกเป็นงานต่อยอด
+
 > 🆕 **S05 คืน `submittedBy` / `submittedAt` แบบมีเงื่อนไข** (4 ต.ค. · OD-59)
 >
 > ```

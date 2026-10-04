@@ -136,16 +136,33 @@ function makeJoinRequestTeamRow(overrides: Partial<JoinRequestWithTeam> = {}): J
 // ---------- toTeamRef ----------
 
 describe('toTeamRef', () => {
-  it('maps team_id, name and sport_type_id', () => {
-    expect(toTeamRef(makeTeamRow())).toEqual({ id: 10, name: 'Dream Team', sportTypeId: 1 });
+  it('maps team_id, name, sport_type_id and logo', () => {
+    expect(toTeamRef(makeTeamRow())).toEqual({ id: 10, name: 'Dream Team', sportTypeId: 1, logoUrl: null });
   });
 
-  it('returns only id, name and sportTypeId when given a full TeamRow', () => {
-    expect(Object.keys(toTeamRef(makeTeamRow())).sort()).toEqual(['id', 'name', 'sportTypeId']);
+  it('returns exactly four fields when given a full TeamRow', () => {
+    expect(Object.keys(toTeamRef(makeTeamRow())).sort())
+      .toEqual(['id', 'logoUrl', 'name', 'sportTypeId']);
   });
 
-  it('accepts a Pick of just the three columns', () => {
-    expect(toTeamRef({ team_id: 1, name: 'A', sport_type_id: 2 })).toEqual({ id: 1, name: 'A', sportTypeId: 2 });
+  it('accepts a Pick of just the four columns', () => {
+    expect(toTeamRef({ team_id: 1, name: 'A', sport_type_id: 2, logo_key: null }))
+      .toEqual({ id: 1, name: 'A', sportTypeId: 2, logoUrl: null });
+  });
+
+  /**
+   * OD-61 (4 ต.ค. 2569) — โลโก้ทีมต้องมาถึงทุกที่ที่ทีมโผล่เป็นตัวอ้างอิง
+   * เดิมมีแต่ใน TeamDto ⇒ อัปโลโก้ได้แต่แสดงได้หน้าเดียวของทั้งระบบ
+   */
+  it('★ มี logo_key → แปลงเป็น URL สาธารณะ', () => {
+    const dto = toTeamRef(makeTeamRow({ logo_key: 'teams/10/logo.png' }));
+
+    expect(dto.logoUrl).toContain('teams/10/logo.png');
+    expect(dto.logoUrl).not.toBe('teams/10/logo.png');   // ต้องเป็น URL ไม่ใช่ key ดิบ
+  });
+
+  it('ไม่มีโลโก้ → null ไม่ใช่ string ว่าง (FE แยกเคส "ยังไม่อัป" ได้)', () => {
+    expect(toTeamRef(makeTeamRow({ logo_key: null })).logoUrl).toBeNull();
   });
 });
 
@@ -180,6 +197,12 @@ describe('toMyTeam', () => {
 
   it("marks the role 'member' when the viewing user is not the leader", () => {
     expect(toMyTeam(makeTeamRow({ leader_id: 5 }), 4, 99).role).toBe('member');
+  });
+
+  it('★ OD-61 — คืน logoUrl ด้วย (หน้า "ทีมของฉัน" เดิมไม่มีโลโก้เลย)', () => {
+    expect(toMyTeam(makeTeamRow({ logo_key: 'teams/10/logo.png' }), 4, 5).logoUrl)
+      .toContain('teams/10/logo.png');
+    expect(toMyTeam(makeTeamRow({ logo_key: null }), 4, 5).logoUrl).toBeNull();
   });
 
   it('keeps memberCount and userId in the right positions (guards against swapped arguments)', () => {
@@ -220,7 +243,7 @@ describe('toMyTeam', () => {
 
   it('returns only the documented keys', () => {
     expect(Object.keys(toMyTeam(makeTeamRow(), 4, 5)).sort()).toEqual(
-      ['id', 'memberCount', 'name', 'officialStatus', 'readinessStatus', 'role', 'sportTypeId'].sort(),
+      ['id', 'logoUrl', 'memberCount', 'name', 'officialStatus', 'readinessStatus', 'role', 'sportTypeId'].sort(),
     );
   });
 
