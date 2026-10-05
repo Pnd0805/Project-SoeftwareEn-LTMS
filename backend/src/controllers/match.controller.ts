@@ -61,6 +61,12 @@ export async function listMyMatches(req: Request, res: Response) {
     res.status(200).json(await MatchService.listMyMatches(req.user!.user_id, { role }));
 }
 
+/** 🆕 BO-N — ผู้จัดตั้งรูปแบบของแมตช์เดียว (M-format) · สิทธิ์ตรวจที่ requireOrganizerOfMatch */
+export async function setMatchFormat(req: Request, res: Response) {
+    const matchId = parseId(req.params['id'], 'รหัสการแข่งขัน');
+    res.status(200).json(await MatchService.setMatchFormat(matchId, req.body));
+}
+
 export async function scheduleMatch(req: Request, res: Response) {
     const matchId = parseId(req.params['id'], 'รหัสการแข่งขัน');
     const result = await MatchService.scheduleMatch(matchId, req.body);

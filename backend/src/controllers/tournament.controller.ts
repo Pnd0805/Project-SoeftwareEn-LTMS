@@ -21,6 +21,15 @@ function optionalQuery(value: unknown): string | undefined {
     return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 }
 
+/** 🆕 BO-N — ผู้จัดตั้งรูปแบบของทั้งทัวร์ · สิทธิ์ตรวจทั้งที่ route (requireOrganizer) และใน service */
+export async function setTournamentFormat(req: Request, res: Response) {
+    if (!req.user) {
+        throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
+    }
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await TournamentService.setTournamentFormat(tournamentId, req.body, req.user.user_id));
+}
+
 export async function createTournament(req: Request, res: Response) {
     res.status(201).json(await TournamentService.createTournament(req.body, userId(req)));
 }

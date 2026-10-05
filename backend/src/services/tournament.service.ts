@@ -1,4 +1,6 @@
 import * as z from 'zod';
+import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
+import type { MatchFormatInput } from '../schemas/match.schema.js';
 import * as AdminScopeRepo from '../repositories/adminScope.repo.js';
 import * as TournamentRefereeRepo from '../repositories/tournamentReferee.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
@@ -250,6 +252,33 @@ async function autoApproveIfOwnScope(tournamentId: number, userId: number, organ
     return TournamentRepo.approveTournament(tournamentId, userId);
 }
 
+/**
+ * 🆕 BO-N (มติ 5 ต.ค.) — ผู้จัดตั้งรูปแบบ "แข่งหลายรอบ" ของ **ทั้งทัวร์**
+ *
+ * เขียนทั้งค่าของทัวร์และ stamp ลงแมตช์ที่ยังไม่เริ่มในทรานแซกชันเดียว (ดู repo)
+ * 🔴 ทับค่าที่ผู้จัดตั้งไว้เฉพาะแมตช์ด้วย — ตั้งทั้งทัวร์ทีหลังแล้วค่อยตั้งรอบชิงแยกอีกครั้ง
+ *
+ * มติข้อ ⑤: ล็อกเมื่อมีแมตช์ไหนของทัวร์เริ่มแข่งไปแล้ว (เหตุผลอยู่ใน match.service.setMatchFormat)
+ */
+export async function setTournamentFormat(tournamentId: number, input: MatchFormatInput, userId: number) {
+    const tournament = await getTournamentOr404(tournamentId);
+    // ★ ตรวจสิทธิ์ที่นี่ด้วยแม้ route จะมี requireOrganizer แล้ว — ฟังก์ชันนี้เขียนข้อมูลทั้งทัวร์
+    //   และ requireOrganizer ตรวจจาก req.params ซึ่งคนละทางกับ argument ที่ส่งเข้ามา
+    if (!isOrganizerOf(tournament, userId)) {
+        throw new AppError(403, "NOT_TOURNAMENT_ORGANIZER", "คุณไม่ใช่ผู้จัดของทัวร์นาเมนต์นี้");
+    }
+
+    const started = await TournamentRepo.countStartedMatchesOfTournament(tournamentId);
+    if (started > 0) {
+        throw new AppError(409, "MATCH_FORMAT_LOCKED",
+            "ทัวร์นาเมนต์นี้เริ่มแข่งไปแล้ว เปลี่ยนรูปแบบการแข่ง (BO) ไม่ได้ — ต้องตั้งก่อนแมตช์แรกเริ่มแข่ง",
+            { startedMatches: started });
+    }
+
+    await TournamentRepo.setTournamentBestOfTx(tournamentId, input.bestOf);
+    return { id: tournamentId, bestOf: input.bestOf };
+}
+
 export async function createTournament(input: CreateTournamentInput, userId: number) {
     ensureSchedule(input);
     ensureNotInPast(input);
@@ -261,6 +290,9 @@ export async function createTournament(input: CreateTournamentInput, userId: num
         name: input.name,
         sportTypeId: input.sportTypeId,
         bracketFormat: input.bracketFormat,
+        // ★ ?? null — schema ใช้ .nullish() ⇒ ไม่ส่งคีย์มาเลย (undefined) ได้ผลเท่ากับ null
+        //   ซึ่งคือ "กีฬานี้ไม่ได้แข่งเป็นรอบ" ⇒ ผู้จัดฟุตบอล/บาสไม่ต้องรู้เรื่อง BO-N
+        bestOf: input.bestOf ?? null,
         scopeType: input.scopeType,
         organizingFacultyId: input.organizingFacultyId as number,
         organizingDepartmentId: input.organizingDepartmentId ?? null,

@@ -14,9 +14,29 @@ import type { MatchRow, SportTypeRow } from '../types/db.js';
  * แจ้งเตือน (มติ 22 ก.ย. 2569): ทุกแมตช์ที่จบโดยไม่มีการแข่ง รวมลูกโซ่ → สมาชิกทุกคนของทีมในแมตช์ + กรรมการของแมตช์ + ORG
  */
 
+import { isBestOf , walkoverScoreForBestOf } from '../utils/matchFormat.js';
+
 export type WalkoverResult = { matchId : number; winnerTeamId : number | null; loserTeamId : number | null };
 
-function scoreDataFor(sport : SportTypeRow | null, winnerTeamId : number, loserTeamId : number): Record<string, number> | null{
+/**
+ * สกอร์ที่บันทึกเมื่อจบโดยไม่มีการแข่ง
+ *
+ * 🆕 BO-N (มติข้อ ④ · 5 ต.ค.) — แมตช์ที่มี best_of ต้องได้สกอร์ที่ **เข้ารูปแบบ**
+ *   BO1 1-0 · BO3 2-0 · BO5 3-0 · BO7 4-0   (คำนวณจาก N ไม่ได้อ่านจากตาราง)
+ *
+ * ★ ทำไมเลิกอ่าน sport_types.walkover_score สำหรับกีฬาที่แข่งเป็นรอบ:
+ *   คอลัมน์นั้นเก็บค่าเดียว **ต่อกีฬา** (แบด/RoV/VALORANT ถูก seed ไว้ 2-0 ตั้งแต่ migration 011
+ *   โดยคอมเมนต์เขียนว่า "BO3" ซึ่งเป็นความเชื่อของคนเขียน ไม่ใช่ข้อมูล)
+ *   แต่ทัวร์เดียวมีได้หลายรูปแบบ ⇒ ค่าเดียวตอบสองรูปแบบไม่ได้
+ *   🔴 และถ้าปล่อยให้มีสองแหล่ง วันหนึ่งมันจะขัดกันเองโดยไม่มีใครรู้ว่าอันไหนถูก
+ *     (รอบชิง BO5 ได้ walkover 2-0 ซึ่งผิดรูปแบบ แล้ว ensureScoreData จะปฏิเสธถ้ามีคนแก้ผลทีหลัง)
+ * ⇒ walkover_score เหลือใช้เฉพาะกีฬาที่ best_of เป็น null (ฟุตบอล 3-0 · บาสเกตบอล 20-0)
+ */
+function scoreDataFor(match : MatchRow, sport : SportTypeRow | null, winnerTeamId : number, loserTeamId : number): Record<string, number> | null{
+    if(isBestOf(match.best_of)){
+        const wo = walkoverScoreForBestOf(match.best_of);
+        return { [String(winnerTeamId)] : wo.winner, [String(loserTeamId)] : wo.loser };
+    }
     if(!sport?.walkover_score) return null;
     return { [String(winnerTeamId)] : sport.walkover_score.winner, [String(loserTeamId)] : sport.walkover_score.loser };
 }
@@ -58,7 +78,7 @@ export async function processTeamWithdrawal(tournamentId : number, teamId : numb
         if(await WalkoverRepo.applyWalkover({
             match : next, winnerTeamId : opponent, loserTeamId : teamId,
             actorUserId : leaderUserId, actorRole : 'team_leader',
-            scoreData : scoreDataFor(sport, opponent, teamId), winPoints : WIN_POINTS, reason : 'team_withdrawn'
+            scoreData : scoreDataFor(next, sport, opponent, teamId), winPoints : WIN_POINTS, reason : 'team_withdrawn'
         })){
             await announce(next, { winnerTeamId : opponent, loserTeamId : teamId, reason : 'team_withdrawn' });
         }
@@ -146,7 +166,7 @@ export async function applyNoShowWalkover(match : MatchRow, winnerTeamId : numbe
     if(await WalkoverRepo.applyWalkover({
         match, winnerTeamId, loserTeamId,
         actorUserId, actorRole,
-        scoreData : scoreDataFor(sport, winnerTeamId, loserTeamId), winPoints : WIN_POINTS, reason : 'insufficient_checkins'
+        scoreData : scoreDataFor(match, sport, winnerTeamId, loserTeamId), winPoints : WIN_POINTS, reason : 'insufficient_checkins'
     })){
         // คนที่กด (กรรมการ M10 / ORG M17) รู้อยู่แล้ว ไม่ต้องแจ้งตัวเอง
         await announce(match, { winnerTeamId, loserTeamId, reason : 'insufficient_checkins' }, actorUserId);

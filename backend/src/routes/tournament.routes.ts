@@ -1,4 +1,5 @@
 import express from 'express';
+import { matchFormatSchema } from '../schemas/match.schema.js';
 import * as TournamentController from '../controllers/tournament.controller.js';
 import * as TournamentPlayer from '../controllers/tournamentPlayer.controller.js';
 import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
@@ -15,6 +16,8 @@ router.post('/', requireAuth, validate(createTournamentSchema), TournamentContro
 router.get('/', TournamentController.getPublicTournaments);
 router.get('/:id', optionalAuth, TournamentController.getTournament);
 router.patch('/:id', requireAuth, requireOrganizer, validate(updateTournamentSchema), TournamentController.updateTournament);
+// 🆕 BO-N (มติ 5 ต.ค.) — ตั้งรูปแบบของทั้งทัวร์ + stamp ลงแมตช์ที่ยังไม่เริ่มในทรานแซกชันเดียว
+router.patch('/:id/format', requireAuth, requireOrganizer, validate(matchFormatSchema), TournamentController.setTournamentFormat);
 router.delete('/:id', requireAuth, requireRequester, TournamentController.deleteTournament);
 router.post('/:id/amendment-requests', requireAuth, requireOrganizer, validate(amendmentRequestSchema), TournamentController.requestAmendment);
 // C09b — ผู้ยื่นคำขอดูคำขอแก้ไขของทัวร์ตัวเอง (FE-organizer-see-their-own 21 ก.ย.)

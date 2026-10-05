@@ -60,6 +60,13 @@ function makeDetailRow(overrides: Partial<MatchDetailRow> = {}): MatchDetailRow 
     match_id: 1,
     tournament_id: 100,
     round_number: 2,
+    // 🆕 BO-N (มติ 5 ต.ค.) — null = กีฬาไม่ได้แข่งเป็นรอบ ⇒ mapper จะไปอ่านเส้นของกีฬาสองบรรทัดล่าง
+    best_of: null,
+    // ★ สองคอลัมน์นี้มาจาก JOIN sport_types ใน findMatchById ไม่ใช่คอลัมน์ของ matches
+    //   ค่า (0,1) คือเส้นของฟุตบอลในฐานจริง — ตั้งค่าจริงไว้เพื่อให้เทสจับได้ถ้า mapper
+    //   ไปอ่านจากรูปแบบแทนที่จะอ่านจากกีฬาเวลา best_of เป็น null
+    sport_pickem_tolerance_exact: 0,
+    sport_pickem_tolerance_close: 1,
     team_a_id: 11,
     team_b_id: 12,
     scheduled_time: START,
@@ -357,6 +364,9 @@ describe('toMatchDetailDto', () => {
         'mode',
         'roomCode',
         'livestreamUrl',
+        'bestOf',           // 🆕 BO-N (มติ 5 ต.ค.) — null = กีฬานี้ไม่ได้แข่งเป็นรอบ
+        'possibleScores',   // 🆕 คู่สกอร์ที่เป็นไปได้ ส่งมาให้ FE ทำปุ่มเลือก
+        'pickemTolerance',  // 🆕 เส้นของ "แมตช์นี้" — GET /sport-types ตอบได้แค่ต่อกีฬาซึ่งไม่พอ
         'nextMatchId',
         'loserNextMatchId',
         'resultStatus',

@@ -95,6 +95,10 @@ export type TournamentRow = {
     entry_notes : string | null,
     sport_type_id : number,
     bracket_format : 'single_elimination' | 'double_elimination' | 'round_robin' | null,
+    // 🆕 BO-N (migration 044) · ค่าตั้งต้นของทัวร์ที่ผู้จัดตั้ง — stamp ลง matches ตอนสร้างสาย
+    // null = กีฬานี้ไม่ได้แข่งเป็นรอบ (ฟุตบอล/บาสเกตบอล) ไม่ใช่ "ยังไม่ตั้ง"
+    // 🔴 แหล่งความจริงของการตรวจสกอร์/คิดแต้มคือ matches.best_of ไม่ใช่ตัวนี้
+    best_of : number | null,
     scope_type : 'department' | 'faculty' | 'university',
     organizing_faculty_id : number | null,
     organizing_department_id : number | null,
@@ -194,6 +198,9 @@ export type MatchRow = {
     next_match_id : number | null,
     loser_next_match_id : number | null,
     round_number : number | null,
+    // 🆕 BO-N (migration 044) · รูปแบบที่ใช้จริงของแมตช์นี้ — ★ แหล่งความจริงของการตรวจสกอร์
+    // รอบแบ่งกลุ่มกับรอบชิงไม่จำเป็นต้องเหมือนกัน จึงเก็บต่อแมตช์ ไม่ใช่ต่อทัวร์
+    best_of : number | null,
     team_a_id : number | null,
     team_b_id : number | null,
     scheduled_time : Date | null,

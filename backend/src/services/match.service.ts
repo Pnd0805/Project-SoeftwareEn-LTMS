@@ -1,4 +1,5 @@
 import * as MatchRepo from '../repositories/match.repo.js';
+import type { MatchFormatInput } from '../schemas/match.schema.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as RefereeService from './referee.service.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
@@ -108,6 +109,34 @@ function thaiDateOf(d: Date): string {
 //   3. ไม่ซ้อนช่วงเวลากับแมตช์อื่นของทีม/สนามเดียวกัน
 //   4. ไม่พังลำดับสาย: แมตช์ก่อนหน้าต้องจบก่อนเริ่ม และต้องจบก่อนแมตช์ถัดไปเริ่ม
 //   กรรมการซ้อนเวลา "ไม่" block ที่นี่ (มติ Q6) — ORG ดูจาก F14 coverage.conflicts
+/**
+ * 🆕 BO-N (มติ 5 ต.ค.) — ผู้จัดตั้งรูปแบบของ **แมตช์เดียว** (เช่นรอบชิง BO7 ขณะที่รอบกลุ่ม BO3)
+ *
+ * มติข้อ ⑤: เปลี่ยนกลางทัวร์ไม่ได้ ⇒ ล็อกเมื่อมีแมตช์ของ **ทัวร์นั้น** เริ่มแข่งไปแล้วแม้แมตช์เดียว
+ * ★ ล็อกระดับทัวร์ ไม่ใช่ระดับแมตช์ โดยเจตนา — ถ้าล็อกแค่แมตช์ตัวเอง ผู้จัดจะเปลี่ยนรูปแบบ
+ *   รอบชิงหลังเห็นว่าใครเข้าชิงได้ ซึ่งเป็นการเปลี่ยนกติกากลางเกม และใบทายผลที่ส่งไว้แล้ว
+ *   จะกลายเป็นใบที่เป็นไปไม่ได้ (ทาย 4-2 ไว้ แล้วถูกเปลี่ยนเป็น BO3)
+ *
+ * 🔴 ไม่ตรวจว่าสกอร์ที่บันทึกไว้เข้ารูปแบบใหม่ไหม เพราะด่านล็อกข้างบนรับประกันแล้วว่า
+ *   ยังไม่มีแมตช์ไหนเริ่มแข่ง ⇒ ยังไม่มีผลที่บันทึกไว้ให้ขัดกับรูปแบบใหม่ได้
+ */
+export async function setMatchFormat(matchId: number, input: MatchFormatInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const started = await TournamentRepo.countStartedMatchesOfTournament(match.tournament_id);
+    if (started > 0) {
+        throw new AppError(409, "MATCH_FORMAT_LOCKED",
+            "ทัวร์นาเมนต์นี้เริ่มแข่งไปแล้ว เปลี่ยนรูปแบบการแข่ง (BO) ไม่ได้ — ต้องตั้งก่อนแมตช์แรกเริ่มแข่ง",
+            { startedMatches: started });
+    }
+
+    await MatchRepo.updateMatchBestOf(matchId, input.bestOf);
+    return { id: matchId, bestOf: input.bestOf };
+}
+
 export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {

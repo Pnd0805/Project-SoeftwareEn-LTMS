@@ -47,6 +47,7 @@ describe('tournament entry notes persistence', () => {
       minTeams: 2,
       venue: 'สนามกีฬา',
       disputeWindowHours: null,   // null = ใช้ค่าตั้งต้นของคอลัมน์ (24 ชม.)
+      bestOf: null,               // 🆕 BO-N · null = กีฬานี้ไม่ได้แข่งเป็นรอบ
       entryNotes: 'กรุณานำบัตรนิสิตมาแสดง',
       genderRequirement: 'any',
       minAge: null,

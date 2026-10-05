@@ -83,3 +83,16 @@ export const abandonMatchSchema = z.object({
 });
 export type AbandonMatchInput = z.infer<typeof abandonMatchSchema>;
 
+/**
+ * 🆕 BO-N (มติ 5 ต.ค.) — ตั้งรูปแบบ "แข่งหลายรอบ" ของแมตช์เดียว หรือของทัวร์ทั้งทัวร์
+ *
+ * ★ `null` เป็นค่าที่ **ส่งมาได้** และมีความหมาย: "กีฬานี้ไม่ได้แข่งเป็นรอบ" ⇒ ปลดเพดาน
+ *   ⇒ ใช้ .nullable() ไม่ใช่ .optional() — ต้องแยก "ส่ง null มาเพื่อปลด" ออกจาก "ไม่ส่งคีย์มา"
+ *     ถ้าเป็น optional การปลดเพดานจะทำไม่ได้เลย
+ * 🔴 ค่าที่รับได้ต้องตรงกับ CHECK ในฐาน (migration 044) และ BEST_OF_VALUES ใน utils/matchFormat
+ */
+export const matchFormatSchema = z.object({
+    bestOf: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(7), z.null()],
+                    'รูปแบบต้องเป็น 1, 3, 5, 7 (BO1/BO3/BO5/BO7) หรือ null ถ้าไม่ใช่กีฬาที่แข่งเป็นรอบ'),
+});
+export type MatchFormatInput = z.infer<typeof matchFormatSchema>;

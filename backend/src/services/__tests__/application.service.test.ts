@@ -167,6 +167,7 @@ function makeTournament(overrides: Partial<TournamentRow> = {}): TournamentRow {
     name: 'Championship Cup',
     sport_type_id: 1,
     bracket_format: 'single_elimination',
+    best_of: null,            // ทัวร์นี้ไม่ได้ตั้งรูปแบบ BO (กีฬาไม่ได้แข่งเป็นรอบ)
     scope_type: 'university',
     organizing_faculty_id: null,
     organizing_department_id: null,

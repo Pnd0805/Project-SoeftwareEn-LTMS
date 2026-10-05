@@ -1,4 +1,5 @@
 import type { MatchDetailRow, MatchListRow, MatchCheckinListRow, MatchResultSummaryCols, MatchLineupRow } from '../repositories/match.repo.js';
+import { isBestOf , possibleScores , toleranceFor } from '../utils/matchFormat.js';
 import type { BracketNodeListRow } from '../repositories/bracketNode.repo.js';
 import type { MatchRow } from '../types/db.js';
 import { toTeamRef } from './team.mapper.js';
@@ -100,6 +101,11 @@ export function toMatchListItemDto(row: MatchListRow): MatchListItemDto {
     };
 }
 
+/** แปลงชื่อคีย์ภายใน (exact) เป็นชื่อที่ส่งออก API (spotOn) — คำว่า exact ห้ามโผล่ออก API (OD-63) */
+function toSpotOnClose(t: { exact: number; close: number }): { spotOn: number; close: number } {
+    return { spotOn: t.exact, close: t.close };
+}
+
 export type MatchDetailItemDto = MatchResultSummaryDto & {
     id: number;
     tournamentId: number;
@@ -121,6 +127,24 @@ export type MatchDetailItemDto = MatchResultSummaryDto & {
      * ต่างจาก `roomCode` ที่อยู่ข้าง ๆ กันแต่จำกัดผู้ดู — ลิงก์ถ่ายทอด/รีเพลย์มีไว้ให้คนดู
      */
     livestreamUrl: string | null;
+    /**
+     * 🆕 BO-N (มติ 5 ต.ค. 2569) — รูปแบบการแข่งของแมตช์นี้
+     *
+     * `bestOf`          1 | 3 | 5 | 7 · **null = กีฬานี้ไม่ได้แข่งเป็นรอบ** (ฟุตบอล/บาสเกตบอล)
+     *                   ไม่ใช่ "ยังไม่ตั้ง" ⇒ null แปลว่าไม่มีเพดาน ใช้กฎเดิมทุกข้อ
+     * `possibleScores`  คู่สกอร์ที่เป็นไปได้ทั้งหมด [เกมผู้ชนะ, เกมผู้แพ้] · [] เมื่อ bestOf เป็น null
+     *                   ★ ส่งมาให้ FE ทำปุ่มให้เลือกได้เลย ไม่ต้องคำนวณ (N+1)/2 เอง
+     *                   BO3 → [[2,0],[2,1]] · BO5 → [[3,0],[3,1],[3,2]]
+     * `pickemTolerance` เส้นความคลาดของ Pick'em **ของแมตช์นี้**
+     *
+     * 🔴 pickemTolerance ที่นี่เป็นแหล่งที่ถูกต้องเสมอ — ต่างจาก GET /sport-types ที่ส่งค่า
+     *   ต่อกีฬา ซึ่งผิดสำหรับกีฬาที่แข่งเป็นรอบ เพราะทัวร์เดียวมีได้ทั้ง BO3 และ BO7
+     *   (BO7 มีชั้นกลาง (0,1) · BO1/BO3/BO5 ไม่มี (0,0))
+     *   ⇒ หน้าทายผลต้องอ่านจากที่นี่ ไม่ใช่จาก GET /sport-types
+     */
+    bestOf: number | null;
+    possibleScores: [number, number][];
+    pickemTolerance: { spotOn: number; close: number };
 }
 
 export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): MatchDetailItemDto {
@@ -140,6 +164,11 @@ export function toMatchDetailDto(row: MatchDetailRow, canSeeRoomCode = false): M
         mode: row.mode,
         roomCode: canSeeRoomCode ? row.room_code : null,
         livestreamUrl: row.livestream_url,
+        bestOf: row.best_of,
+        possibleScores: isBestOf(row.best_of) ? possibleScores(row.best_of) : [],
+        // ★ คีย์ spotOn ไม่ใช่ exact — ชื่อเดียวกับที่ GET /sport-types ใช้ (OD-63) ให้ FE ไม่ต้องจำสองชื่อ
+        pickemTolerance: toSpotOnClose(toleranceFor(row.best_of,
+            { exact: row.sport_pickem_tolerance_exact, close: row.sport_pickem_tolerance_close })),
         ...toMatchResultSummary(row),
     };
 }

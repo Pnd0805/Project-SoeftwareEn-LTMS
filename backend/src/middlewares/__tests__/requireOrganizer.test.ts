@@ -78,6 +78,7 @@ const baseTournament: TournamentRow = {
   name: 'Inter-Faculty Championship',
   sport_type_id: 1,
   bracket_format: 'single_elimination',
+  best_of: null,            // ทัวร์นี้ไม่ได้ตั้งรูปแบบ BO (กีฬาไม่ได้แข่งเป็นรอบ)
   scope_type: 'university',
   organizing_faculty_id: null,
   organizing_department_id: null,
@@ -125,6 +126,7 @@ const baseMatch: MatchRow = {
   next_match_id: null,
   loser_next_match_id: null,
   round_number: 1,
+  best_of: null,            // กีฬาไม่ได้แข่งเป็นรอบ — ไม่มีเพดานสกอร์
   team_a_id: null,
   team_b_id: null,
   scheduled_time: null,

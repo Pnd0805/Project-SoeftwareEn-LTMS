@@ -92,8 +92,14 @@ export async function findMatchesByTournament(
 
 export type MatchDetailRow = Pick<MatchRow, 
     'match_id' | 'tournament_id' | 'round_number' | 'team_a_id' | 'team_b_id' | 
-    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'started_at' | 'actual_end_time' | 'match_status' | 'mode' | 'room_code' | 'livestream_url'
+    'scheduled_time' | 'scheduled_end_time' | 'venue' | 'checkin_open_at' | 'started_at' | 'actual_end_time' | 'match_status' | 'mode' | 'room_code' | 'livestream_url' | 'best_of'
 > & MatchResultSummaryCols & {
+    // 🆕 BO-N (มติ 5 ต.ค.) — เส้น tolerance ของ **กีฬา** มาด้วย เพราะ mapper ต้องเลือกแหล่ง:
+    //   best_of มีค่า → เส้นมาจากรูปแบบ · best_of null → เส้นมาจากสองคอลัมน์นี้
+    // 🔴 ส่งเส้นออก API ที่ระดับแมตช์ เพราะ GET /sport-types ตอบได้แค่ค่าต่อกีฬา
+    //   ซึ่งผิดสำหรับกีฬาที่แข่งเป็นรอบ (ทัวร์เดียวมีได้ทั้ง BO3 และ BO7)
+    sport_pickem_tolerance_exact: number;
+    sport_pickem_tolerance_close: number;
     team_a_name: string | null;
     team_a_sport_type_id: number | null;
     // OD-61 ก้าวที่ 2 — โลโก้ของสองทีมในแมตช์ · mapper แยก "ไม่มีทีมในช่องนั้น" (bye/dead slot)
@@ -108,7 +114,9 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
     const [rows] = await pool.query<(MatchDetailRow & RowDataPacket)[]>(
         `SELECT 
             m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.match_status, m.tournament_id , m.checkin_open_at , m.mode , m.room_code ,
-            m.started_at, m.actual_end_time, m.livestream_url,
+            m.started_at, m.actual_end_time, m.livestream_url, m.best_of,
+            st.pickem_tolerance_exact AS sport_pickem_tolerance_exact,
+            st.pickem_tolerance_close AS sport_pickem_tolerance_close,
             m.next_match_id, m.loser_next_match_id,
             r.match_result_status AS result_status, r.winner_team_id AS result_winner_team_id, r.score_data AS result_score,
             ta.team_id AS team_a_id, ta.name AS team_a_name, ta.sport_type_id AS team_a_sport_type_id,
@@ -116,6 +124,8 @@ export async function findMatchById(Id: number): Promise<MatchDetailRow | null> 
             tb.team_id AS team_b_id, tb.name AS team_b_name, tb.sport_type_id AS team_b_sport_type_id,
             tb.logo_key AS team_b_logo_key
          FROM matches m
+         JOIN tournaments tn ON tn.tournament_id = m.tournament_id
+         JOIN sport_types st ON st.sport_type_id = tn.sport_type_id
          LEFT JOIN teams ta ON m.team_a_id = ta.team_id
          LEFT JOIN teams tb ON m.team_b_id = tb.team_id
          LEFT JOIN match_results r ON r.match_result_id = (
@@ -395,17 +405,31 @@ type InsertMatchInput = {
     teamAId: number | null;
     teamBId: number | null;
     mode: 'onsite' | 'online';
+    /**
+     * 🆕 BO-N (มติ 5 ต.ค.) — รูปแบบของแมตช์ · stamp มาจาก `tournaments.best_of` ตอนสร้างสาย
+     *
+     * ★ **บังคับ ไม่ใส่ `?`** โดยเจตนา — ฟังก์ชันนี้ถูกเรียกจาก 3 ที่ (single/double elim,
+     *   round robin) ถ้าทำเป็น optional แล้วลืมที่ใดที่หนึ่ง แมตช์ชุดนั้นจะได้ null เงียบ ๆ
+     *   ⇒ ไม่มีเพดาน ⇒ สกอร์นอกรูปแบบผ่านได้เฉพาะรอบนั้น ซึ่งหายากมาก
+     *   บังคับไว้แล้ว tsc เป็นคนไล่ให้ครบทั้ง 3 ที่เอง
+     */
+    bestOf: number | null;
 };
 
 // mode ดึงจาก sport_types.default_mode ของทัวร์นาเมนต์นั้น (M01 ไม่มีช่องให้ organizer เลือกเอง
 // การแก้ทีละแมตช์ทีหลังต้องรอ M08 ซึ่งเป็น Sprint #2 ยังไม่ได้ทำ — ต้องคุยทีม)
 export async function insertMatchTx(conn: PoolConnection, input: InsertMatchInput): Promise<number> {
     const [result] = await conn.query<ResultSetHeader>(
-        `INSERT INTO matches (tournament_id, round_number, team_a_id, team_b_id, match_status, mode)
-         VALUES (?, ?, ?, ?, 'scheduled', ?)`,
-        [input.tournamentId, input.roundNumber, input.teamAId, input.teamBId, input.mode]
+        `INSERT INTO matches (tournament_id, round_number, team_a_id, team_b_id, match_status, mode, best_of)
+         VALUES (?, ?, ?, ?, 'scheduled', ?, ?)`,
+        [input.tournamentId, input.roundNumber, input.teamAId, input.teamBId, input.mode, input.bestOf]
     );
     return result.insertId;
+}
+
+/** 🆕 BO-N — ตั้งรูปแบบของแมตช์เดียว (รอบชิงต่างจากรอบแบ่งกลุ่มได้) · สิทธิ์/ด่านล็อกตรวจที่ service */
+export async function updateMatchBestOf(matchId: number, bestOf: number | null): Promise<void> {
+    await pool.query(`UPDATE matches SET best_of = ? WHERE match_id = ?`, [bestOf, matchId]);
 }
 
 export async function updateMatchNextMatchIdTx(conn: PoolConnection, matchId: number, nextMatchId: number): Promise<void> {

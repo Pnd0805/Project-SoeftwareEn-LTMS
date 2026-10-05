@@ -5,6 +5,7 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as FeedbackRepo from '../repositories/feedback.repo.js';
 import type { MatchRow, TournamentRow } from '../types/db.js';
 import { AppError } from '../utils/AppError.js';
+import { isBestOf , scorePairError , possibleScores } from '../utils/matchFormat.js';
 import { toPublicImageUrl } from '../utils/imageUrl.js';
 
 /**
@@ -96,6 +97,20 @@ export function resolvePredictedWinner(match: MatchRow, scoreData: Record<string
         throw new AppError(422, 'PICK_SCORE_TIE', 'ทายผลเสมอไม่ได้ — ต้องมีฝ่ายที่คะแนนมากกว่า',
             { fields: { scoreData: 'คะแนนสองฝั่งต้องไม่เท่ากัน' } });
     }
+    // 🆕 BO-N (มติ 5 ต.ค.) — ด่านเดียวกับข้อ d. ของ ensureScoreData และเรียกสูตรตัวเดียวกัน
+    // ★ ต้องตรวจที่นี่ด้วย ไม่ใช่แค่ตอนส่งผล: ถ้าคนทาย 3-1 ไว้ในแมตช์ BO3 ผลจริงจะไม่มีทาง
+    //   เป็น 3-1 ได้เลย ⇒ ใบนั้นแพ้แน่นอนตั้งแต่กดส่ง ซึ่งไม่ใช่ความผิดของผู้ใช้ แต่เป็นของเรา
+    //   ที่ปล่อยให้กรอกค่าที่เป็นไปไม่ได้ ⇒ บอกเขาตอนกดส่งดีกว่าให้รู้ตอนแพ้
+    // 🔴 ใช้ 422 ไม่ใช่ 400 ตามแบบของเส้นนี้ (PICK_* ทั้งหมดเป็น 422)
+    if (isBestOf(match.best_of)) {
+        const problem = scorePairError(match.best_of, Math.max(a, b), Math.min(a, b));
+        if (problem !== null) {
+            throw new AppError(422, 'PICK_SCORE_NOT_IN_MATCH_FORMAT', problem,
+                { fields: { scoreData: problem },
+                  bestOf: match.best_of, possibleScores: possibleScores(match.best_of) });
+        }
+    }
+
     return a > b ? Number(teamIds[0]) : Number(teamIds[1]);
 }
 

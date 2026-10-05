@@ -23,6 +23,7 @@ export type CreateTournamentRecord = {
     minAge: number | null;
     maxAge: number | null;
     disputeWindowHours: number | null;   // null = ใช้ค่าตั้งต้นของคอลัมน์ (24 ชม.)
+    bestOf: number | null;               // 🆕 BO-N · null = กีฬานี้ไม่ได้แข่งเป็นรอบ
     eligibilityRules: EligibilityRule[];
 };
 
@@ -115,6 +116,55 @@ export async function findTournamentById(id: number): Promise<TournamentRow | nu
     return rows[0] ?? null;
 }
 
+/**
+ * 🆕 BO-N (มติข้อ ⑤ · 5 ต.ค.) — มีแมตช์ของทัวร์นี้ "เริ่มแข่งไปแล้ว" หรือยัง
+ *
+ * ★ ล็อกที่ระดับ **ทัวร์** ไม่ใช่ระดับแมตช์ ตามมติ: "เปลี่ยนกลางทัวร์ไม่ได้ ต้องตั้งก่อนแมตช์แรกเริ่ม"
+ *   ⇒ แมตช์เดียวเริ่มแข่ง = ล็อกทั้งทัวร์ รวมแมตช์ที่ยังไม่ได้แข่งด้วย
+ *   เหตุ: ถ้าปล่อยให้เปลี่ยนรอบที่ยังไม่แข่งได้ ผู้จัดจะเปลี่ยนรูปแบบรอบชิงหลังเห็นว่าใครเข้าชิง
+ *   ซึ่งเป็นการเปลี่ยนกติกากลางเกม และใบทายผลที่ส่งไว้แล้วจะกลายเป็นใบที่เป็นไปไม่ได้
+ *
+ * 🔴 'checkin_open' **ไม่ใช่** เริ่มแข่ง — เปิดให้เช็คอินแล้วแต่ยังไม่เป่านกหวีด ยังแก้ได้
+ */
+export async function countStartedMatchesOfTournament(tournamentId: number): Promise<number> {
+    const [rows] = await pool.query<(RowDataPacket & { started: number })[]>(
+        `SELECT COUNT(*) AS started FROM matches
+          WHERE tournament_id = ?
+            AND (started_at IS NOT NULL
+                 OR match_status IN ('in_progress','completed','disputed','result_rejected'))`,
+        [tournamentId]
+    );
+    return Number(rows[0]?.started ?? 0);
+}
+
+/**
+ * ตั้งรูปแบบของทัวร์ **และ stamp ลงแมตช์ที่ยังไม่เริ่มทั้งหมด** ในทรานแซกชันเดียว
+ *
+ * ★ ทำสองอย่างพร้อมกันโดยเจตนา: ถ้าเขียนแค่ของทัวร์ แมตช์ที่สร้างสายไปแล้วจะยังถือค่าเก่า
+ *   แล้วผู้จัดจะเห็นว่า "ตั้งเป็น BO5 แล้ว" แต่กรรมการยังส่งผลแบบ BO3 ⇒ ขัดกันเงียบ ๆ
+ * 🔴 stamp แบบทับของเดิม (ไม่ใช่เฉพาะที่เป็น NULL) เพราะนี่คือการตั้งค่าใหม่ทั้งทัวร์
+ *   แมตช์ที่ผู้จัดตั้งค่าเฉพาะตัวไว้ (เช่นรอบชิง BO7) จะถูกทับด้วย ⇒ ต้องตั้งใหม่
+ *   ซึ่งถูกต้องกว่าการเก็บค่าเก่าไว้แบบที่ไม่มีใครเห็น
+ */
+export async function setTournamentBestOfTx(tournamentId: number, bestOf: number | null): Promise<void> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await conn.query(`UPDATE tournaments SET best_of = ? WHERE tournament_id = ?`, [bestOf, tournamentId]);
+        await conn.query(
+            `UPDATE matches SET best_of = ?
+              WHERE tournament_id = ? AND match_status IN ('scheduled','checkin_open')`,
+            [bestOf, tournamentId]
+        );
+        await conn.commit();
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
 export async function insertTournament(data: CreateTournamentRecord): Promise<number> {
     const conn = await pool.getConnection();
     try {
@@ -125,8 +175,8 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
              organizing_faculty_id, organizing_department_id, requested_by_user_id,
              registration_start, registration_end, event_start_date, event_end_date,
              max_teams, min_teams, venue, gender_requirement, min_age, max_age, dispute_window_hours,
-             tournament_status, registration_open)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IFNULL(?, DEFAULT(dispute_window_hours)), 'pending_approval', FALSE)`,
+             best_of, tournament_status, registration_open)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IFNULL(?, DEFAULT(dispute_window_hours)), ?, 'pending_approval', FALSE)`,
         [
             data.name,
             null,
@@ -147,7 +197,8 @@ export async function insertTournament(data: CreateTournamentRecord): Promise<nu
             data.genderRequirement,
             data.minAge,
             data.maxAge,
-            data.disputeWindowHours
+            data.disputeWindowHours,
+            data.bestOf
         ]
         );
         await replaceEligibilityRulesTx(conn, result.insertId, data.eligibilityRules);

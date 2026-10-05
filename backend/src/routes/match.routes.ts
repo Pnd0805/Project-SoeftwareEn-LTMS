@@ -2,7 +2,7 @@ import express from 'express';
 import * as Match from '../controllers/match.controller.js';
 import { requireAuth , optionalAuth } from '../middlewares/requireAuth.js';
 import { validate } from '../middlewares/validate.js';
-import { scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema, roomCodeSchema, abandonMatchSchema } from '../schemas/match.schema.js';
+import { matchFormatSchema, scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema, roomCodeSchema, abandonMatchSchema } from '../schemas/match.schema.js';
 import { requireReferee } from '../middlewares/requireReferee.js';
 import { requireOrganizer, requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
 
@@ -19,6 +19,9 @@ router.get('/me/matches' , requireAuth , Match.listMyMatches);
 // M21 รายชื่อผู้เล่นที่ทีมส่งลงแข่ง + สถานะเช็คอิน — เปิดสาธารณะเหมือน M03/M04 (มติ 19 ก.ย. 2569)
 router.get('/matches/:id/lineups' , Match.getMatchLineups);
 router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
+// 🆕 BO-N (มติ 5 ต.ค.) — ตั้งรูปแบบของแมตช์เดียว · ล็อกเมื่อมีแมตช์ของทัวร์เริ่มแข่งแล้ว (มติข้อ ⑤)
+//   ★ เส้นนี้คือเหตุผลที่เก็บ best_of ต่อแมตช์ ไม่ใช่ต่อทัวร์ — รอบชิงต่างจากรอบกลุ่มได้
+router.patch('/matches/:id/format' , requireAuth , requireOrganizerOfMatch , validate(matchFormatSchema) , Match.setMatchFormat);
 // M09 — กรรมการของแมตช์ หรือ ผู้จัด (มติ 27 ก.ย.) · สิทธิ์ตรวจใน service เหมือน M10b/M10c
 router.post('/matches/:id/open-checkin'  , requireAuth , Match.openCheckinMatch);
 router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);

@@ -2,8 +2,9 @@ import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 import { pickemScoreFor } from '../utils/pickemScore.js';
+import { toleranceFor } from '../utils/matchFormat.js';
 import type { PickemTolerance, PickemTier } from '../utils/pickemScore.js';
-import type { SportTypeRow } from '../types/db.js';
+import type { SportTypeRow , MatchRow } from '../types/db.js';
 
 // C7 — Pick'em (ตาราง pickem_predictions เดิม · UNIQUE (user_id, match_id) = คนละ 1 การทายต่อแมตช์)
 //   points_earned: NULL = ยังไม่ตัดสิน (หรือแมตช์จบแบบไม่มีผลยืนยัน = void) · > 0 = ทายฝั่งถูก · 0 = ทายฝั่งผิด
@@ -91,16 +92,28 @@ export async function countByTeam(matchId: number): Promise<{ team_id: number; p
  */
 export async function settleTx(conn: PoolConnection, matchId: number, winnerTeamId: number,
                                actualScore: Record<string, number> | null, sportTypeId: number): Promise<void> {
-    // เส้น tolerance ของกีฬานั้น — อ่านในทรานแซกชันเดียวกัน ไม่ส่งมาจากข้างนอกเพื่อให้คนเรียกไม่ต้องรู้เรื่องนี้
-    const [sportRows] = await conn.query<(Pick<SportTypeRow, 'pickem_tolerance_exact' | 'pickem_tolerance_close'> & RowDataPacket)[]>(
-        `SELECT pickem_tolerance_exact, pickem_tolerance_close FROM sport_types WHERE sport_type_id = ?`,
-        [sportTypeId]
+    // เส้น tolerance — อ่านในทรานแซกชันเดียวกัน ไม่ส่งมาจากข้างนอกเพื่อให้คนเรียกไม่ต้องรู้เรื่องนี้
+    //
+    // 🆕 BO-N (มติ 5 ต.ค.) — มีสองแหล่ง และ `matches.best_of` ชนะเสมอเมื่อมีค่า:
+    //   best_of มีค่า  → เส้นมาจาก **รูปแบบ** (BO7 ได้ชั้นกลาง (0,1) · ที่เหลือ (0,0))
+    //   best_of null   → เส้นมาจาก **กีฬา** ตามเดิม (ฟุตบอล (0,1) · บาสเกตบอล (5,10))
+    //
+    // ★ ทำไมเส้นต้องมาจากรูปแบบไม่ใช่กีฬา: คอลัมน์ใน sport_types เก็บค่าเดียวต่อกีฬา
+    //   แต่ทัวร์เดียวมีได้หลายรูปแบบ (กลุ่ม BO3 ชิง BO7) ⇒ ค่าเดียวตอบสองรูปแบบไม่ได้
+    //   ⇒ ถ้าอ่านจากกีฬาต่อไป แมตช์ BO7 จะถูกตัดสินด้วยเส้น (0,0) แล้วไม่มีใครได้ชั้นกลางเลย
+    //     โดยไม่มี error ให้เห็น
+    const [cfgRows] = await conn.query<(Pick<SportTypeRow, 'pickem_tolerance_exact' | 'pickem_tolerance_close'>
+                                        & Pick<MatchRow, 'best_of'> & RowDataPacket)[]>(
+        `SELECT s.pickem_tolerance_exact, s.pickem_tolerance_close, m.best_of
+           FROM matches m JOIN sport_types s ON s.sport_type_id = ?
+          WHERE m.match_id = ?`,
+        [sportTypeId, matchId]
     );
-    // กีฬาหาย (ไม่ควรเกิด — FK บังคับ) → ถือว่าต้องเป๊ะ ไม่ใช่แจกโบนัสฟรี
-    const tolerance: PickemTolerance = {
-        exact: sportRows[0]?.pickem_tolerance_exact ?? 0,
-        close: sportRows[0]?.pickem_tolerance_close ?? 0,
-    };
+    // แถวหาย (ไม่ควรเกิด — FK บังคับ) → ถือว่าต้องเป๊ะ ไม่ใช่แจกโบนัสฟรี
+    const tolerance: PickemTolerance = toleranceFor(cfgRows[0]?.best_of ?? null, {
+        exact: cfgRows[0]?.pickem_tolerance_exact ?? 0,
+        close: cfgRows[0]?.pickem_tolerance_close ?? 0,
+    });
 
     // ★ ต้องอ่านแถวที่ยังไม่ตัดสิน "ก่อน" เขียน — จับกลุ่มตามแต้มแล้วค่อยอัปเดตทีละกลุ่ม
     //   ถ้าเขียน points_earned ก่อนแล้วมาบวก users.total_points ทีหลัง จะแยกไม่ออกว่า

@@ -17,6 +17,7 @@ import * as Walkover from './walkover.service.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../middlewares/requireReferee.js';
 import * as NotificationService from './notification.service.js';
 import { isSubmitEscalationOpen } from '../utils/escalation.js';
+import { isBestOf , scorePairError , possibleScores } from '../utils/matchFormat.js';
 import { isAdminTakeoverOpen } from '../utils/disputeTakeover.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
@@ -26,6 +27,14 @@ import { getPresignedDownloadUrl } from './upload.service.js';
  *   a. key ของ scoreData ต้องเป็น id ของ 2 ทีมในแมตช์ครบทั้งคู่ ไม่มีอย่างอื่น
  *   b. คะแนนไม่ติดลบ (schema กันแล้ว)
  *   c. winnerTeamId ต้องเป็นฝ่ายที่คะแนนมากกว่า — กีฬาทั้ง 5 ของเราคะแนนมากกว่าชนะเสมอ · เสมอกันยังไม่รองรับ (B3)
+ *   d. 🆕 BO-N (มติ 5 ต.ค.) ถ้าแมตช์มี best_of สกอร์ต้องเป็นคู่ที่เป็นไปได้ในรูปแบบนั้น
+ *
+ * ★ ข้อ d. แก้ปัญหาที่ใหญ่กว่าการ "กันกรอกเลขเว่อร์": ก่อนหน้านี้หน่วยของสกอร์ไม่ได้ถูก
+ *   กำหนดไว้ที่ไหนเลย ⇒ แบดมินตันกรอก 2-0 (นับเกม) หรือ 21-19 (แต้มในเกม) ผ่านเท่ากันหมด
+ *   และ Pick'em ตั้ง tolerance ของกีฬาพวกนี้ไว้บนสมมติฐานว่าเป็นหน่วยเกม
+ *   ⇒ กรรมการที่กรอกคนละหน่วยทำให้แต้มทายผลทั้งทัวร์ผิดโดยไม่มี error ให้เห็น
+ *
+ * 🔴 ตรวจจาก `match.best_of` ไม่ใช่ของทัวร์ — รอบแบ่งกลุ่มกับรอบชิงเป็นคนละรูปแบบได้
  */
 export function ensureScoreData(match : MatchRow , winnerId : number , scoreData : Record<string , number>): void{
     const teamIds = [match.team_a_id , match.team_b_id].map(String);
@@ -38,9 +47,21 @@ export function ensureScoreData(match : MatchRow , winnerId : number , scoreData
         throw new AppError(400 , "VALIDATION_FAILED" , "winnerTeamId ต้องเป็นทีมใดทีมหนึ่งในแมตช์นี้" , { fields : { winnerTeamId : 'ไม่ใช่ทีมในแมตช์' } });
     }
     const loserId = match.team_a_id === winnerId ? match.team_b_id! : match.team_a_id!;
-    if(scoreData[String(winnerId)]! <= scoreData[String(loserId)]!){
+    const winnerScore = scoreData[String(winnerId)]! , loserScore = scoreData[String(loserId)]!;
+    if(winnerScore <= loserScore){
         throw new AppError(400 , "VALIDATION_FAILED" , "ทีมที่ชนะต้องมีคะแนนมากกว่าอีกฝ่าย (ระบบยังไม่รองรับผลเสมอ)" ,
             { fields : { winnerTeamId : 'คะแนนไม่มากกว่าอีกฝ่าย' } });
+    }
+
+    // d. BO-N — ต้องอยู่ **หลัง** ข้อ c. เพราะต้องรู้ก่อนว่าใครชนะจึงจะบอกได้ว่าเกมของใครต้องเป็นเท่าไร
+    // null = กีฬาไม่ได้แข่งเป็นรอบ ⇒ ไม่ตรวจอะไรเพิ่ม (ฟุตบอล/บาสเกตบอล)
+    if(isBestOf(match.best_of)){
+        const problem = scorePairError(match.best_of , winnerScore , loserScore);
+        if(problem !== null){
+            throw new AppError(400 , "SCORE_NOT_IN_MATCH_FORMAT" , problem ,
+                { fields : { scoreData : problem } ,
+                  bestOf : match.best_of , possibleScores : possibleScores(match.best_of) });
+        }
     }
 }
 

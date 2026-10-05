@@ -17,6 +17,11 @@ export const createTournamentSchema = z.object({
     name: z.string().trim().min(1).max(200),
     sportTypeId: z.int().positive(),
     bracketFormat: z.enum(['single_elimination', 'double_elimination', 'round_robin']),
+    // 🆕 BO-N (มติ 5 ต.ค.) — รูปแบบ "แข่งหลายรอบ" ของทัวร์นี้
+    // ★ ไม่บังคับ และ null มีความหมาย: "กีฬานี้ไม่ได้แข่งเป็นรอบ" (ฟุตบอล/บาสเกตบอล)
+    //   ⇒ ไม่ใส่คีย์มาเลยก็ได้ ได้ผลเท่ากับ null ⇒ ผู้จัดกีฬาที่ไม่เกี่ยวไม่ต้องรู้เรื่องนี้
+    // 🔴 ค่าที่รับได้ต้องตรงกับ CHECK ในฐาน (migration 044) และ BEST_OF_VALUES ใน utils
+    bestOf: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(7)]).nullish(),
     scopeType: z.enum(['department', 'faculty']),
     organizingFacultyId: optionalId,
     organizingDepartmentId: optionalId,

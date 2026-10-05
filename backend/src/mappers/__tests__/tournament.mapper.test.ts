@@ -16,6 +16,7 @@ function makeRow(overrides: Partial<TournamentRow> = {}): TournamentRow {
         description: 'Annual inter-faculty tournament',
         entry_notes: null,
         sport_type_id: 3,
+        best_of: null,          // 🆕 BO-N · null = กีฬานี้ไม่ได้แข่งเป็นรอบ
         bracket_format: 'single_elimination',
         scope_type: 'faculty',
         organizing_faculty_id: 7,
