@@ -1,4 +1,50 @@
+// ★ ต้องมาก่อน vi ด้วยเหตุผลของลำดับการโหลด — ดู "ค่า env ขั้นต่ำ" ข้างล่าง
+import 'dotenv/config';
 import { vi } from 'vitest';
+
+/**
+ * ค่า env ขั้นต่ำให้เทสรันได้โดย **ไม่ต้องมีไฟล์ `backend/.env`** (OD-68, 5 ต.ค. 2569)
+ *
+ * ★ อาการเดิม: `config/env.ts` เรียก `requireEnv()` ตอน import ⇒ ถ้าไม่มี `.env`
+ *   มันโยน `Missing require environment variable DB_HOST` **ตอนโหลดโมดูล**
+ *   ⇒ เทส 27 ไฟล์ล้มทั้งไฟล์ (0 test รัน) ไม่ใช่ล้มเป็นเทส ๆ
+ *   ⇒ และข้อความไม่ได้บอกว่าต้องสร้าง `.env` ก่อน
+ *
+ * `.env` อยู่ใน `.gitignore` ⇒ **เพื่อนที่ clone ใหม่แล้วรัน `npm test` เจอทันที**
+ * (ผมเจอเพราะไปรวม branch ใน worktree แยก ซึ่งไม่มี `.env` เหมือน clone ใหม่เป๊ะ)
+ *
+ * ★ ลำดับสำคัญ: `import 'dotenv/config'` อยู่ข้างบนสุด ⇒ ถ้าเครื่องไหน**มี** `.env`
+ *   ค่าจริงจะถูกโหลดก่อน แล้วบรรทัดข้างล่างเติมแค่ช่องที่ยัง**ว่าง** (`??=`)
+ *   ⇒ พฤติกรรมของเครื่องที่ตั้งค่าไว้แล้วไม่เปลี่ยนเลยแม้แต่ตัวเดียว
+ *
+ * ค่าที่ใส่ตั้งใจให้ดู **ปลอมอย่างชัดเจน** — ไม่ใช่ `localhost` ที่อ่านแล้วเข้าใจว่าเป็นค่าใช้งานจริง
+ * ถ้ามีอะไรหลุดไปต่อของจริงด้วยค่าพวกนี้ มันจะพังพร้อมชื่อที่บอกตัวเองว่ามาจากเทส
+ *
+ * 🔴 ไม่ได้แปลว่าเทสต่อฐานได้ — ด่านข้างล่างยังบล็อก MySQL/S3/SMTP ทั้งหมด
+ *    สองอย่างนี้แก้ปัญหาต่างกัน: อันนี้ทำให้ "โหลดโมดูลได้" อันนั้นทำให้ "ออกไปข้างนอกไม่ได้"
+ */
+const TEST_ENV_FALLBACK: Record<string, string> = {
+    DB_HOST: 'no-db.invalid',
+    DB_USER: 'test-user-never-used',
+    DB_PASSWORD: 'test-password-never-used',
+    DB_PORT: '1',
+    DB_NAME: 'test_db_never_used',
+
+    JWT_SECRET: 'test-jwt-secret-never-used',
+    JWT_EXPIRES_IN: '1h',
+
+    PORT: '1',
+
+    S3_ENDPOINT: 'http://no-s3.invalid',
+    S3_REGION: 'test-region',
+    S3_ACCESS_KEY_ID: 'test-key-never-used',
+    S3_SECRET_ACCESS_KEY: 'test-secret-never-used',
+    S3_BUCKET: 'test-bucket-never-used',
+};
+
+for (const [key, value] of Object.entries(TEST_ENV_FALLBACK)) {
+    process.env[key] ??= value;
+}
 
 /**
  * ด่านกันเทสออกไปแตะของจริงข้างนอก (OD-62, 4 ต.ค. 2569)
