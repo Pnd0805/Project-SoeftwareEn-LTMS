@@ -85,6 +85,8 @@
 
 ### Task 3: Team and public Player journey
 
+**Approved scope and base:** Ticket 3 only; direct execution from `912e9c7`. Include local intersecting name/sport/role filters, a wider Teams list beside invitations/entries, a street poster Team header, and supported next actions. Preserve inherited Team source/access fixes and their tests. Any inherited `useTeam.ts` correction is a dependency unchanged from the frozen API baseline, not a new hook change.
+
 **Files:**
 - Adapt presentation as needed: `src/features/team/TeamsPage.tsx`, `TeamPage.tsx`, `TeamManage.tsx`, `TeamRecord.tsx`; `src/features/player/PlayerPage.tsx`, `BackendPlayerProfile.tsx`, `BackendCareerPanel.tsx`; feature-scoped rules in `src/styles/prototype.css`.
 - Reuse existing Team state, invitation, access, accessibility and logo tests.
@@ -93,10 +95,12 @@
 - Consumes: Task 1 styles and existing Team/Player queries and handlers.
 - Produces: the same routes, component contracts and mutation behavior with the approved presentation.
 
-- [ ] **Step 1: Inspect the existing journey with the spec.** Identify only presentation gaps after Task 1: headings, source grouping, contextual actions and long-content layout. Retain the current Guest/private-data boundary and separate invitation/membership states.
-- [ ] **Step 2: Apply the Team presentation.** Group Team members and invitations clearly, preserve outcomes when rows disappear, and style existing management dialogs with the shared system. Use existing data and action handlers.
-- [ ] **Step 3: Verify.** Run `npx vitest run src/features/team`. Expected: all existing state, invitation, privacy and accessibility cases pass. Add a behavioral case only if implementation introduces behavior not already covered; any such case must fail before its fix.
-- [ ] **Step 4: Record the rendered cases for Task 9.** Include a long Team name, Guest view, failed invitations with available Teams and a leadership/removal dialog.
+- [x] **Step 1: Inspect the existing journey with the spec.** Identify only presentation gaps after Task 1: headings, source grouping, contextual actions and long-content layout. Retain the current Guest/private-data boundary and separate invitation/membership states.
+- [x] **Step 2: Apply the Team presentation.** First prove local filtering at the rendered page seam, then add supported next actions with navigation/focus tests. Group Team members and invitations clearly, preserve outcomes when rows disappear, and style existing management dialogs with the shared system. Use existing data and action handlers. Adapt public Player and Team record long-content layout without new data capabilities.
+- [x] **Step 3: Verify.** Run `npx vitest run src/features/team`. Expected: all existing state, invitation, privacy and accessibility cases pass. Add a behavioral case only if implementation introduces behavior not already covered; any such case must fail before its fix.
+- [x] **Step 4: Record the rendered cases for Task 9.** Include a long Team name, Guest view, failed invitations with available Teams and a leadership/removal dialog.
+
+**Completion evidence:** [Ticket 3](../notes/2026-10-05-ltms-ticket-03.md). Filters and supported shortcuts delivered, privacy/source/outcome regressions preserved, full suite 84 files / 577 tests passed. Direct standards/spec review and rendered confirmation completed. Staged commit snapshot passes TypeScript and 9 files / 60 Team/Player/Modal tests. Frozen files remain at the captured phase baseline.
 
 ### Task 4: Tournament participation and registration
 

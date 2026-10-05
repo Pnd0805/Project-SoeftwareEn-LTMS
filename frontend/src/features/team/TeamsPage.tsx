@@ -26,6 +26,28 @@ import { useReviews } from '../../hooks/useLiveEngagement'
 
 const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
+const accessDenied = (error: unknown) => [401, 403].includes((error as { status?: number } | null)?.status ?? 0)
+
+function SourceFeedback({ source, name }: {
+  source: { isPending: boolean; isError: boolean; error: unknown; refetch: () => unknown }
+  name: 'teams' | 'invitations' | 'entries'
+}) {
+  if (source.isPending) {
+    return <p className="sub" role="status">{name === 'teams' ? 'Loading your teams…' : `Loading ${name}…`}</p>
+  }
+  if (!source.isError) return null
+  const status = (source.error as { status?: number } | null)?.status
+  const message = status === 401 ? `Sign in to see your ${name}.`
+    : status === 403 ? `You cannot view your ${name}.` : `Could not load your ${name}.`
+  return (
+    <div role="alert">
+      <Banner kind="crit">
+        <b>{message}</b> <span>{errorMessage(source.error, 'Please try again.')}</span>{' '}
+        <button className="btn ghost" type="button" onClick={() => void source.refetch()}>Retry {name}</button>
+      </Banner>
+    </div>
+  )
+}
 
 /** FR-TM-01 — POST /teams (409 TEAM_NAME_TAKEN · 422 TEAM_QUOTA_EXCEEDED) */
 function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -39,7 +61,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
   const close = () => { create.reset(); onClose() }
 
   return (
-    <Modal open={open} onClose={close} label="Create a team" title="A squad names its sport when it is created">
+    <Modal open={open} onClose={close} label="Create a team" title="Create team">
       <div className="sub">
         You become its leader. The squad stays Forming until enough invited players accept — the
         minimum size follows from the sport.
@@ -75,7 +97,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
               navigate(`/team/${team.id}`)
             },
           })}>
-          {create.isPending ? 'Creating…' : 'Create the squad'}
+          {create.isPending ? 'Creating…' : 'Create team'}
         </button>
       </div>
     </Modal>
@@ -92,6 +114,9 @@ export function TeamsPage() {
   const withdrawApplication = useWithdrawMyApplication()
   const sportTypes = useSportTypes()
   const [creating, setCreating] = useState(false)
+  const [search, setSearch] = useState('')
+  const [sportFilter, setSportFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [withdrawPrompt, setWithdrawPrompt] = useState<{ applicationId: number; tournamentId: number; name: string } | null>(null)
   const [reviewRating, setReviewRating] = useState(5)
@@ -103,109 +128,180 @@ export function TeamsPage() {
     setWithdrawPrompt(null)
   }
 
-  if (teams.isPending) {
-    return <Panel><span className="sub">Loading your teams…</span></Panel>
-  }
-
-  if (teams.isError) {
-    const status = (teams.error as { status?: number } | null)?.status
-    return (
-      <Empty icon="team" title={status === 401 ? 'Sign in to see your teams' : 'Could not load your teams'}>
-        <p className="sub">{errorMessage(teams.error, 'Unable to load your teams.')}</p>
-        <button className="btn" type="button" onClick={() => teams.refetch()}>Try again</button>
-      </Empty>
-    )
-  }
-
-  const items = teams.data.items
-  const invites = invitations.data?.items ?? []
+  // ข้อมูล cache ใช้ต่อได้เมื่อระบบสะดุด แต่การปฏิเสธสิทธิ์ต้องซ่อนข้อมูลและปุ่มเดิม
+  const items = accessDenied(teams.error) ? [] : teams.data?.items ?? []
+  const invites = accessDenied(invitations.error) ? [] : invitations.data?.items ?? []
+  const entries = accessDenied(applications.error) ? [] : applications.data?.items ?? []
   const sportName = (sportTypeId: number) =>
     sportTypes.data?.items.find(x => x.id === sportTypeId)?.name ?? `Sport #${sportTypeId}`
+  const filtered = items.filter(team => team.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
+    && (!sportFilter || team.sportTypeId === Number(sportFilter))
+    && (!roleFilter || team.role === roleFilter))
+  const filtering = !!(search || sportFilter || roleFilter)
+  const clearFilters = () => { setSearch(''); setSportFilter(''); setRoleFilter('') }
+  // ใช้กีฬาของทีมที่โหลดแล้ว เพื่อให้ตัวกรองยังใช้ได้เมื่อข้อมูลอ้างอิงล้มเหลว
+  const teamSports = [...new Set(items.map(team => team.sportTypeId))]
 
   return (
     <>
-      <div className="spread">
-        <h1 className="disp" style={{ fontSize: 32 }}>Teams</h1>
+      <div className="spread teams-page-heading">
+        <h1 className="disp">Teams</h1>
         <button className="btn primary" type="button" onClick={() => setCreating(true)}>
           <Icon name="plus" size={13} /> Create a team
         </button>
       </div>
 
-      {notice ? <Banner kind="ok">{notice}</Banner> : null}
+      {notice ? <div role="status"><Banner kind="ok">{notice}</Banner></div> : null}
+      {answerInvitation.isError ? (
+        <div role="alert"><Banner kind="crit"><b>Couldn't answer the invitation.</b> {errorMessage(answerInvitation.error)}</Banner></div>
+      ) : null}
 
-      {invites.length ? (
-        <Panel>
-          <span className="tag"><em>//</em> Invitations waiting on you</span>
-          <Banner kind="warn" icon="team">
-            Accepting shares your faculty, year and date of birth with the organizer of any tournament
-            this squad enters — that is how the eligibility check works.
-          </Banner>
-          {answerInvitation.isError ? (
-            <Banner kind="crit"><b>Couldn't answer the invitation.</b> {errorMessage(answerInvitation.error)}</Banner>
-          ) : null}
-          {invites.map(invitation => {
-            const busy = answerInvitation.isPending && answerInvitation.variables?.invitationId === invitation.id
-            return (
-              <div className="spread" key={invitation.id}>
-                <span>
-                  <b>{invitation.team.name}</b><br />
-                  <span className="sub">
-                    Invited by {invitation.invitedBy.fullName} · expires {new Date(invitation.expiresAt).toLocaleDateString()}
-                  </span>
-                </span>
-                <span className="hstack">
-                  <button className="btn ghost" type="button" disabled={answerInvitation.isPending}
-                    onClick={() => {
-                      setNotice(null)
-                      answerInvitation.mutate({ invitationId: invitation.id, accept: false }, {
-                        onSuccess: () => setNotice(`Declined the invitation from ${invitation.team.name}.`),
-                      })
-                    }}>
-                    {busy && !answerInvitation.variables?.accept ? 'Declining…' : 'Decline'}
-                  </button>
-                  <button className="btn primary" type="button" disabled={answerInvitation.isPending}
-                    onClick={() => {
-                      setNotice(null)
-                      answerInvitation.mutate({ invitationId: invitation.id, accept: true }, {
-                        onSuccess: () => setNotice(`You joined ${invitation.team.name}.`),
-                      })
-                    }}>
-                    {busy && answerInvitation.variables?.accept ? 'Accepting…' : 'Accept invitation'}
-                  </button>
+      <div className="teams-workspace">
+        <section className="vstack teams-list" aria-labelledby="teams-list">
+          <div className="spread"><h2 id="teams-list" className="journey-heading">Your teams</h2>
+            <span className="sub" aria-live="polite">{items.length ? `${filtered.length} of ${items.length} teams` : ''}</span>
+          </div>
+          <div className="teams-filters">
+            <Field label="Search teams" htmlFor="teams-search">
+              <input type="search" id="teams-search" placeholder="Team name" value={search} onChange={e => setSearch(e.target.value)} />
+            </Field>
+            <Field label="Sport" htmlFor="teams-sport">
+              <select id="teams-sport" aria-label="Sport filter" value={sportFilter} onChange={e => setSportFilter(e.target.value)}>
+                <option value="">All sports</option>
+                {teamSports.map(id => <option key={id} value={id}>{sportName(id)}</option>)}
+              </select>
+            </Field>
+            <Field label="Role" htmlFor="teams-role">
+              <select id="teams-role" aria-label="Role filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+                <option value="">All roles</option><option value="leader">Leader</option><option value="member">Member</option>
+              </select>
+            </Field>
+          </div>
+          {filtering ? <button className="btn ghost teams-clear" type="button" onClick={clearFilters}>Clear filters</button> : null}
+          <SourceFeedback source={teams} name="teams" />
+          {filtered.map(team => (
+          <Panel key={team.id} className="team-list-row">
+            <div className="spread">
+              <div className="vstack" style={{ gap: 5 }}>
+                <h3 className="disp team-list-name">{team.name}</h3>
+                <span className="sub">
+                  {team.memberCount} member{team.memberCount === 1 ? '' : 's'} · {sportName(team.sportTypeId)}
                 </span>
               </div>
-            )
-          })}
-        </Panel>
-      ) : null}
-
-      {applications.data?.items.length ? (
-        <Panel quiet>
-          <span className="tag"><em>//</em> Your tournament applications</span>
-          {cancelApplication.isError ? <Banner kind="crit"><b>Couldn't cancel the application.</b> {errorMessage(cancelApplication.error)}</Banner> : null}
-          {withdrawApplication.isError ? <Banner kind="crit"><b>Couldn't withdraw.</b> {errorMessage(withdrawApplication.error)}</Banner> : null}
-          {applications.data.items.map(application => (
-            <div className="spread" key={application.id}>
-              <span>
-                <b>{application.team.name}</b><br /><span className="sub">{application.tournament.name}</span>
-                {application.rejectionReason ? <><br /><span className="sub">{application.rejectionReason}</span></> : null}
-              </span>
               <span className="hstack">
-                <Badge kind={application.status === 'approved' ? 'ok' : application.status === 'pending' ? 'warn' : 'crit'}>{application.status}</Badge>
-                {application.status === 'pending' ? (
-                  <button className="btn ghost" type="button" disabled={cancelApplication.isPending}
-                    onClick={() => cancelApplication.mutate(application.id)}>Cancel</button>
-                ) : null}
-                {application.status === 'approved' ? (
-                  <button className="btn ghost" type="button" disabled={withdrawApplication.isPending}
-                    onClick={() => USE_MOCK ? withdrawApplication.mutate(application.id)
-                      : setWithdrawPrompt({ applicationId: application.id, tournamentId: application.tournament.id, name: application.tournament.name })}>Withdraw</button>
-                ) : null}
+                <Badge kind={team.readinessStatus === 'Ready' ? 'ok' : 'warn'}>{team.readinessStatus}</Badge>
+                <Badge kind={team.officialStatus === 'Official' ? 'ok' : 'neutral'}>{team.officialStatus}</Badge>
+                <Badge kind="neutral">{team.role === 'leader' ? 'Leader' : 'Member'}</Badge>
               </span>
             </div>
-          ))}
-        </Panel>
-      ) : null}
+            {team.readinessStatus === 'Forming' ? (
+              <div className="sub">Needs more accepted players to enter a tournament.</div>
+            ) : null}
+            <div className="hstack">
+              <button className="btn" type="button" onClick={() => navigate(`/team/${team.id}`)}>
+                {team.role === 'leader' ? 'Manage team' : 'View team'} <Icon name="chev" size={11} />
+              </button>
+              {team.role === 'leader' && team.readinessStatus === 'Ready' ? (
+                USE_MOCK ? (
+                  <button className="btn ghost" type="button" onClick={() => navigate('/')}>Find tournament</button>
+                ) : (
+                  <EnterTournamentButton team={team} />
+                )
+              ) : null}
+            </div>
+          </Panel>
+        ))}
+        {teams.isSuccess && items.length > 0 && !filtered.length ? <Empty icon="search" title="No matching teams" sub="Try another name, sport or role." /> : null}
+
+        {teams.isSuccess && !items.length ? (
+          <Empty icon="team" title="You're not in a squad yet" sub="Create one, or wait for an invitation.">
+            <button className="btn primary" type="button" onClick={() => setCreating(true)}>
+              <Icon name="plus" size={13} /> Create a team
+            </button>
+          </Empty>
+        ) : null}
+        </section>
+
+        <div className="teams-work-rail">
+          <section className="teams-invitations" aria-labelledby="teams-invitations">
+            <Panel>
+              <h2 id="teams-invitations" className="journey-heading">Invitations</h2>
+              <SourceFeedback source={invitations} name="invitations" />
+              {invitations.isSuccess && !invites.length ? <p className="sub">No invitations right now.</p> : null}
+              {invites.length ? <Banner kind="warn" icon="team">
+                Accepting shares your faculty, year and date of birth with the organizer of any tournament
+                this squad enters — that is how the eligibility check works.
+              </Banner> : null}
+              {invites.map(invitation => {
+                const busy = answerInvitation.isPending && answerInvitation.variables?.invitationId === invitation.id
+                return (
+                  <div className="teams-work-row" key={invitation.id}>
+                    <span>
+                      <b>{invitation.team.name}</b><br />
+                      <span className="sub">
+                        Invited by {invitation.invitedBy.fullName} · expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                      </span>
+                    </span>
+                    <span className="hstack">
+                      <button className="btn ghost" type="button" disabled={answerInvitation.isPending}
+                        onClick={() => {
+                          setNotice(null)
+                          answerInvitation.mutate({ invitationId: invitation.id, accept: false }, {
+                            onSuccess: () => setNotice(`Declined the invitation from ${invitation.team.name}.`),
+                          })
+                        }}>
+                        {busy && !answerInvitation.variables?.accept ? 'Declining…' : 'Decline'}
+                      </button>
+                      <button className="btn primary" type="button" disabled={answerInvitation.isPending}
+                        onClick={() => {
+                          setNotice(null)
+                          answerInvitation.mutate({ invitationId: invitation.id, accept: true }, {
+                            onSuccess: () => setNotice(`You joined ${invitation.team.name}.`),
+                          })
+                        }}>
+                        {busy && answerInvitation.variables?.accept ? 'Accepting…' : 'Accept invitation'}
+                      </button>
+                    </span>
+                  </div>
+                )
+              })}
+            </Panel>
+          </section>
+
+          <section className="teams-entries" aria-labelledby="teams-entries">
+            <Panel quiet>
+              <h2 id="teams-entries" className="journey-heading">Entries</h2>
+              <SourceFeedback source={applications} name="entries" />
+              {cancelApplication.isError ? <div role="alert"><Banner kind="crit"><b>Couldn't cancel the application.</b> {errorMessage(cancelApplication.error)}</Banner></div> : null}
+              {withdrawApplication.isError ? <div role="alert"><Banner kind="crit"><b>Couldn't withdraw.</b> {errorMessage(withdrawApplication.error)}</Banner></div> : null}
+              {applications.isSuccess && !entries.length ? <p className="sub">No tournament entries yet.</p> : null}
+              {entries.map(application => (
+                <div className="teams-work-row" key={application.id}>
+                  <span>
+                    <b>{application.team.name}</b><br /><span className="sub">{application.tournament.name}</span>
+                    {application.rejectionReason ? <><br /><span className="sub">{application.rejectionReason}</span></> : null}
+                  </span>
+                  <span className="hstack">
+                    <Badge kind={application.status === 'approved' ? 'ok' : application.status === 'pending' ? 'warn' : 'crit'}>{application.status}</Badge>
+                    <button className="btn" type="button" aria-label={`View entry for ${application.team.name} in ${application.tournament.name}`}
+                      onClick={() => navigate(`/t/${application.tournament.id}`)}>View entry <Icon name="chev" size={11} /></button>
+                    {application.status === 'pending' ? (
+                      <button className="btn ghost" type="button" disabled={cancelApplication.isPending}
+                        onClick={() => cancelApplication.mutate(application.id)}>Cancel</button>
+                    ) : null}
+                    {application.status === 'approved' ? (
+                      <button className="btn ghost" type="button" disabled={withdrawApplication.isPending}
+                        onClick={() => USE_MOCK ? withdrawApplication.mutate(application.id)
+                          : setWithdrawPrompt({ applicationId: application.id, tournamentId: application.tournament.id, name: application.tournament.name })}>Withdraw</button>
+                    ) : null}
+                  </span>
+                </div>
+              ))}
+            </Panel>
+          </section>
+
+        </div>
+      </div>
 
       <Modal open={!!withdrawPrompt} onClose={() => setWithdrawPrompt(null)} label="Withdraw from tournament" title={withdrawPrompt?.name}>
         {reviewBeforeWithdraw.query.isPending ? <p className="sub">Checking the review window…</p> : null}
@@ -227,47 +323,6 @@ export function TeamsPage() {
           <button className="btn" type="button" disabled={withdrawApplication.isPending || reviewBeforeWithdraw.query.isPending}
             onClick={() => void finishWithdrawal().catch(() => {})}>{reviewBeforeWithdraw.query.data?.status === 'open' ? 'Skip review and withdraw' : 'Withdraw'}</button></div>
       </Modal>
-
-      {items.map(team => (
-        <Panel key={team.id}>
-          <div className="spread">
-            <span className="vstack" style={{ gap: 5 }}>
-              <b className="disp" style={{ fontSize: 21 }}>{team.name}</b>
-              <span className="sub">
-                {team.memberCount} member{team.memberCount === 1 ? '' : 's'} · {sportName(team.sportTypeId)}
-              </span>
-            </span>
-            <span className="hstack">
-              <Badge kind={team.readinessStatus === 'Ready' ? 'ok' : 'warn'}>{team.readinessStatus}</Badge>
-              <Badge kind={team.officialStatus === 'Official' ? 'ok' : 'neutral'}>{team.officialStatus}</Badge>
-              <Badge kind="neutral">{team.role === 'leader' ? 'You lead this squad' : 'You play here'}</Badge>
-            </span>
-          </div>
-          {team.readinessStatus === 'Forming' ? (
-            <div className="sub">Forming — it needs more accepted players before it can register for a tournament.</div>
-          ) : null}
-          <div className="hstack">
-            <button className="btn" type="button" onClick={() => navigate(`/team/${team.id}`)}>
-              {team.role === 'leader' ? 'Manage the squad' : 'Open'} <Icon name="chev" size={11} />
-            </button>
-            {team.role === 'leader' && team.readinessStatus === 'Ready' ? (
-              USE_MOCK ? (
-                <button className="btn ghost" type="button" onClick={() => navigate('/')}>Find a tournament to enter</button>
-              ) : (
-                <EnterTournamentButton team={team} />
-              )
-            ) : null}
-          </div>
-        </Panel>
-      ))}
-
-      {!items.length && !invites.length ? (
-        <Empty icon="team" title="You're not in a squad yet" sub="Create one, or wait for an invitation.">
-          <button className="btn primary" type="button" onClick={() => setCreating(true)}>
-            <Icon name="plus" size={13} /> Create a team
-          </button>
-        </Empty>
-      ) : null}
 
       <CreateTeamModal open={creating} onClose={() => setCreating(false)} />
     </>

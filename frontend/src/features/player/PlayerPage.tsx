@@ -25,15 +25,16 @@ export function CareerPanel({ pid }: { pid: string }) {
   const tours = careerByTournament(s, pid)
   if (!sports.length) {
     return (
-      <Panel quiet>
-        <span className="tag"><em>//</em> Career</span>
+      <Panel quiet className="player-career journey-data">
+        <h2 className="journey-heading">Career</h2>
         <div className="sub">Nothing recorded yet — figures appear once a referee confirms a match they played in.</div>
       </Panel>
     )
   }
   return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Career by sport — never summed across them</span>
+    <Panel quiet className="player-career journey-data">
+      <h2 className="journey-heading">Career by sport</h2>
+      <p className="sub">Each sport has its own record.</p>
       {sports.map(r => {
         const L = statLabels(r.sport)
         return (
@@ -55,8 +56,8 @@ export function CareerPanel({ pid }: { pid: string }) {
           </div>
         )
       })}
-      <span className="tag"><em>//</em> By tournament</span>
-      <TableWrap>
+      <h3 className="journey-subheading">By tournament</h3>
+      <TableWrap label="Player tournament history">
         <table>
           <thead><tr><th>Tournament</th><th>Sport</th><th>Played</th><th>Won</th><th>Finish</th></tr></thead>
           <tbody>
@@ -103,24 +104,24 @@ export function PlayerPage() {
 
   return (
     <>
-      <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{p.name}</Crumb>
+      <div className="journey-crumb"><Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{p.name}</Crumb></div>
 
-      <div className="spread">
-        <span className="hstack" style={{ gap: 16 }}>
+      <header className={`player-identity ${p.name.length > 60 ? 'long-name' : ''}`}>
+        <div className="player-identity-main">
           <span style={{
             width: 60, height: 60, flex: 'none', display: 'grid', placeItems: 'center',
             background: 'var(--red-ghost)', color: 'var(--red-text)', fontFamily: 'var(--f-display)',
             fontWeight: 700, fontSize: 26, clipPath: 'polygon(0 0,100% 0,100% 72%,72% 100%,0 100%)',
           }}>{p.name.slice(0, 1)}</span>
-          <span className="vstack" style={{ gap: 5 }}>
-            <span className="disp" style={{ fontSize: 30 }}>{p.name}</span>
+          <div className="vstack player-identity-copy">
+            <h1 className="disp">{p.name}</h1>
             <span className="hstack">
               <span className="tag">{p.faculty} · {p.major}</span>
               <span className="tag">Year <em>{p.year}</em></span>
               <span className="tag">Age <em>{ageOf(p.dob)}</em></span>
             </span>
-          </span>
-        </span>
+          </div>
+        </div>
         {currentUser ? (
           <button
             className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`}
@@ -128,17 +129,17 @@ export function PlayerPage() {
             onClick={() => follow.toggle.mutate()}
             disabled={follow.toggle.isPending}
           >
-            {follow.isFollowing ? 'Following' : 'Follow this player'}
+            {follow.isFollowing ? 'Following' : 'Follow player'}
           </button>
         ) : null}
-      </div>
+      </header>
 
       <CareerPanel pid={p.id} />
 
-      <Panel quiet>
-        <span className="tag"><em>//</em> Squads · {squads.length}</span>
+      <Panel quiet className="player-teams journey-data">
+        <h2 className="journey-heading">Teams <span className="journey-count">{squads.length}</span></h2>
         {squads.length ? (
-          <TableWrap>
+          <TableWrap label="Player teams">
             <table>
               <thead><tr><th>Squad</th><th>Role</th><th>Standing</th><th>State</th><th /></tr></thead>
               <tbody>

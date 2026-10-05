@@ -109,6 +109,12 @@ export function useAnswerBackendInvitation() {
     mutationFn: (value: { invitationId: number; accept: boolean }) => teamApi.answerBackendInvitation(value.invitationId, value.accept),
     /* รับคำเชิญแล้วสมาชิกของทีมนั้นเปลี่ยนด้วย ไม่ใช่แค่รายการคำเชิญ */
     onSuccess: () => touchTeam(qc),
+    onError: (error) => {
+      const status = (error as { status?: unknown } | null)?.status;
+      if (status === 403 || status === 409) {
+        void qc.invalidateQueries({ queryKey: ["teams", "backend", "invitations"] });
+      }
+    },
   });
 }
 

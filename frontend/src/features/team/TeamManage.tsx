@@ -130,15 +130,15 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
     details.mutate(USE_MOCK ? { name: name.trim(), code: code.trim() } : { name: name.trim() }, {
       onSuccess: () => {
         setEditing(false)
-        setNotice('Saved the squad details.')
+        setNotice('Team details saved.')
       },
     })
   }
 
   return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Run the squad</span>
-      {notice ? <Banner kind="ok">{notice}</Banner> : null}
+    <Panel quiet className="team-manage">
+      <h2 className="journey-heading">Manage team</h2>
+      {notice ? <div role="status"><Banner kind="ok">{notice}</Banner></div> : null}
       {disband.isError ? (
         <Banner kind="crit">
           <b>Couldn't disband the squad.</b> {errorMessage(disband.error)}
@@ -147,7 +147,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
         </Banner>
       ) : null}
 
-      <div className="hstack" style={{ flexWrap: 'wrap' }}>
+      <div className="hstack team-manage-controls">
         <button className="btn ghost" type="button" onClick={openEdit}>
           {USE_MOCK ? 'Edit name & code' : 'Rename'}
         </button>
@@ -156,7 +156,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
           : officialPending ? <Badge kind="warn">Official status — with an admin</Badge>
             : (
               <button className="btn ghost" type="button" onClick={() => { official.reset(); setAsking(true) }}>
-                Ask to be Official
+                Request Official status
               </button>
             )}
         <button className="btn danger" type="button" disabled={competed || disband.isPending}
@@ -169,7 +169,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
         <span className="sub">Disbanding is off — this squad has held a place in a tournament, so it stays on record.</span>
       ) : null}
 
-      <Modal open={editing} onClose={() => setEditing(false)} label="Edit the squad" title={data.name}>
+      <Modal open={editing} onClose={() => setEditing(false)} className="team-dialog" title={`Edit ${data.name}`}>
         <Field label="Name — unique within the sport" htmlFor="team-name">
           <input id="team-name" value={name} onChange={e => setName(e.target.value)} />
         </Field>
@@ -190,7 +190,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
         </div>
       </Modal>
 
-      <Modal open={asking} onClose={() => setAsking(false)} label="Ask an admin" title={`Official status for ${data.name}`}>
+      <Modal open={asking} onClose={() => setAsking(false)} className="team-dialog" title={`Official status for ${data.name}`}>
         <div className="sub">
           For standing clubs, not for squads avoiding the deadline. An admin decides, and checks that no
           member already plays for another Official squad in this sport.
@@ -207,16 +207,16 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
               onSuccess: () => {
                 setAsking(false)
                 setDocs('')
-                setNotice('Sent to an admin — Official status is a judgement, not a checkbox.')
+                setNotice('Official status requested. Awaiting admin review.')
               },
             })}>
-            {official.isPending ? 'Sending…' : 'Send to an admin'}
+            {official.isPending ? 'Sending…' : 'Send request'}
           </button>
         </div>
       </Modal>
 
       <Modal open={disbanding} onClose={() => setDisbanding(false)}
-        label="Destructive — read it before you answer" title={`Disband ${data.name}?`}>
+        className="team-dialog" title={`Disband ${data.name}?`}>
         <ConfirmCard danger ok="Disband" onCancel={() => setDisbanding(false)}
           body="Every member loses the squad. Only a squad that has never held a place in a tournament can be disbanded."
           onConfirm={() => {

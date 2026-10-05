@@ -13,7 +13,7 @@
 import { BackendCareerPanel } from './BackendCareerPanel'
 import { Avatar } from '../../components/kit/Avatar'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
+import { Badge, Banner, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useMe } from '../../hooks/useAuth'
 import { useFollow, usePublicUser, useUserStats } from '../../hooks/useUser'
@@ -31,7 +31,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
   if (userId === undefined) {
     return (
       <Empty icon="user" title="Invalid player link"
-        sub="That link points at prototype data, which only exists in mock mode.">
+        sub="Check the player link and try again.">
         <button className="btn" type="button" onClick={() => navigate('/')}>Back to tournaments</button>
       </Empty>
     )
@@ -57,31 +57,31 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
 
   return (
     <>
-      <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{p.fullName}</Crumb>
+      <div className="journey-crumb"><Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{p.fullName}</Crumb></div>
 
-      <div className="spread">
-        <span className="hstack" style={{ gap: 16 }}>
+      <header className={`player-identity ${p.fullName.length > 60 ? 'long-name' : ''}`}>
+        <div className="player-identity-main">
           <Avatar name={p.fullName} avatarUrl={p.avatarUrl} size={60} alt={p.fullName} />
-          <span className="vstack" style={{ gap: 5 }}>
-            <span className="disp" style={{ fontSize: 30 }}>{p.fullName}</span>
+          <div className="vstack player-identity-copy">
+            <h1 className="disp">{p.fullName}</h1>
             <span className="hstack">
               {facultyName ? <span className="tag">{facultyName}</span> : null}
               {departmentName ? <span className="tag">{departmentName}</span> : null}
               {overall?.championCount ? <Badge kind="ok">{`${overall.championCount} title${overall.championCount === 1 ? '' : 's'}`}</Badge> : null}
             </span>
-          </span>
-        </span>
+          </div>
+        </div>
         {currentUser && currentUser.id !== p.id ? (
           <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
             onClick={() => follow.toggle.mutate()} disabled={follow.isLoading || !!follow.error || follow.toggle.isPending}>
-            {follow.isFollowing ? 'Following' : 'Follow this player'}
+            {follow.isFollowing ? 'Following' : 'Follow player'}
           </button>
         ) : null}
-      </div>
+      </header>
 
       {follow.error || follow.toggle.error ? <p role="alert">{(follow.error ?? follow.toggle.error) instanceof Error ? (follow.error ?? follow.toggle.error as Error)?.message : "Following request failed."}</p> : null}
-      <Panel quiet>
-        <span className="tag"><em>//</em> Squads · {p.teams.length}</span>
+      <Panel quiet className="player-teams journey-data">
+        <h2 className="journey-heading">Teams <span className="journey-count">{p.teams.length}</span></h2>
         {p.teams.length ? (
           <div className="hstack" style={{ flexWrap: 'wrap', gap: 8 }}>
             {p.teams.map(team => (
@@ -94,9 +94,13 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
         ) : <div className="sub">Not in any squad yet.</div>}
       </Panel>
 
-      <Panel quiet>
-        <span className="tag"><em>//</em> Career — never summed across sports</span>
+      <Panel quiet className="player-career journey-data">
+        <h2 className="journey-heading">Career</h2>
         {stats.isPending ? <div className="sub">Loading figures…</div> : null}
+        {stats.isError ? <div role="alert"><Banner kind="crit">
+          <b>Could not load stats.</b> {stats.error instanceof Error ? stats.error.message : 'Please try again.'}{' '}
+          <button className="btn ghost" type="button" onClick={() => void stats.refetch()}>Retry stats</button>
+        </Banner></div> : null}
         {overall ? (
           <div className="statline">
             <div><span className="tag">Played</span><span className="v">{overall.matchesPlayed}</span></div>
@@ -106,7 +110,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
           </div>
         ) : null}
         {bySport.length ? (
-          <TableWrap>
+          <TableWrap label="Player stats by sport">
             <table>
               <thead><tr><th>Sport</th><th>Played</th><th>Won</th><th>Lost</th></tr></thead>
               <tbody>
@@ -122,7 +126,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
             </table>
           </TableWrap>
         ) : stats.isSuccess ? (
-          <div className="sub">Nothing recorded yet — figures appear once a referee confirms a match they played in.</div>
+          <div className="sub">No sport breakdown yet.</div>
         ) : null}
       </Panel>
       <BackendCareerPanel userId={userId} />

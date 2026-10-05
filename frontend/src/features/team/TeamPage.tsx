@@ -54,6 +54,7 @@ const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
 
 const statusOf = (error: unknown) => (error as { status?: number } | null)?.status
+const accessDenied = (error: unknown) => [401, 403].includes(statusOf(error) ?? 0)
 const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Array.isArray(error.extra.tournaments)
   ? error.extra.tournaments as Array<{ tournamentId: number; name: string }>
   : []
@@ -73,7 +74,8 @@ export function TeamPage() {
   const myApplications = useMyTournamentApplications(canReadPrivateTeamData)
   const sportTypes = useSportTypes()
   const follow = useFollow(currentUser?.id, `team:${teamId ?? ''}`)
-  const approvedIn = (myApplications.data?.items ?? [])
+  const readableApplications = accessDenied(myApplications.error) ? [] : myApplications.data?.items ?? []
+  const approvedIn = readableApplications
     .filter(application => application.team.id === team.data?.id && application.status === 'approved')
 
   if (teamId === undefined) {
@@ -90,7 +92,8 @@ export function TeamPage() {
   }
 
   const data = team.data
-  const isLeader = !!myTeams.data?.items.some(x => x.id === data.id && x.role === 'leader')
+  const isLeader = canReadPrivateTeamData && !accessDenied(myTeams.error)
+    && !!myTeams.data?.items.some(x => x.id === data.id && x.role === 'leader')
   /* ของที่ backend ยังไม่มีให้ — อ่านจาก store เฉพาะโหมด mock */
   const storeTeam = USE_MOCK ? findStoreTeam(data.id) : undefined
   const lock = storeTeam ? rosterLockOf(s, storeTeam) : null
@@ -104,32 +107,41 @@ export function TeamPage() {
    * ไม่ใช่สถานะทัวร์ ดังนั้น `completed` ก็ยังล็อกอยู่ตามกฎ Q2-ค
    */
   const committedTo = approvedIn[0]
-  const pendingIn = (myApplications.data?.items ?? [])
+  const pendingIn = readableApplications
     .find(application => application.team.id === team.data?.id && application.status === 'pending')
+  const currentEntry = committedTo ?? pendingIn
   const sport = sportTypes.data?.items.find(x => x.id === data.sportTypeId)
   const minPlayers = storeTeam ? minSquad(storeTeam) : sport?.minMembers
   const short = minPlayers !== undefined ? Math.max(0, minPlayers - data.memberCount) : 0
 
   return (
     <>
-      <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{data.name}</Crumb>
+      <div className="journey-crumb"><Crumb back={{ label: currentUser ? 'Teams' : 'Tournaments', onClick: () => navigate(currentUser ? '/teams' : '/') }}>{data.name}</Crumb></div>
 
-      <div className="spread">
-        <span className="hstack" style={{ gap: 16 }}>
+      <header className={`team-poster ${data.name.length > 60 ? 'long-name' : ''}`}>
+        <div className="team-poster-identity">
           {storeTeam && !storeTeam.logo ? <TeamCrestView team={toTeamView(storeTeam)} size={64} />
             : <Avatar name={data.name} avatarUrl={storeTeam?.logo ?? data.logoUrl} size={64} alt={data.name}
                 style={{ borderRadius: '50%', border: '2px solid var(--line)' }} />}
-          <span className="vstack" style={{ gap: 5 }}>
-            <span className="disp" style={{ fontSize: 32 }}>{data.name}</span>
-            <span className="hstack">
+          <div className="vstack team-poster-copy">
+            <h1 className="disp">{data.name}</h1>
+            <span className="hstack team-poster-meta">
               <Badge kind={data.readinessStatus === 'Ready' ? 'ok' : 'warn'}>{data.readinessStatus}</Badge>
               <Badge kind={data.officialStatus === 'Official' ? 'ok' : 'neutral'}>{data.officialStatus}</Badge>
               {sport ? <Badge kind="neutral">{sport.name}</Badge> : null}
-              <span className="tag">Captain <em>{data.leader.fullName}</em></span>
             </span>
-          </span>
-        </span>
-        <span className="hstack">
+            <span className="sub">Leader · <span>{data.leader.fullName}</span></span>
+          </div>
+        </div>
+        <div className="hstack team-poster-actions">
+          {isLeader && myApplications.isSuccess && !lock && !committedTo ? (
+            <button className={`btn ${data.readinessStatus === 'Forming' ? 'primary' : 'ghost'}`} type="button" onClick={() => {
+              document.getElementById('team-invite-search')?.focus()
+            }}><Icon name="plus" size={13} /> Invite players</button>
+          ) : null}
+          {isLeader && currentEntry ? (
+            <button className="btn" type="button" onClick={() => navigate(`/t/${currentEntry.tournament.id}`)}>View entry <Icon name="chev" size={11} /></button>
+          ) : null}
           {/* ประตูที่สองของการสมัครแข่ง — เริ่มจากทีม เลือกรายการทีหลัง */}
           {!USE_MOCK && isLeader && data.readinessStatus === 'Ready' ? (
             <EnterTournamentButton team={data} variant="primary" />
@@ -140,8 +152,8 @@ export function TeamPage() {
               {follow.isFollowing ? 'Following' : 'Follow this squad'}
             </button>
           ) : null}
-        </span>
-      </div>
+        </div>
+      </header>
 
       {data.readinessStatus === 'Forming' && short > 0 ? (
         <Banner kind="warn" icon="team">
@@ -200,8 +212,8 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
   const [removing, setRemoving] = useState<BackendTeamMemberDto | null>(null)
   const [handing, setHanding] = useState<BackendTeamMemberDto | null>(null)
   const [notice, setNotice] = useState<Notice>(null)
-  const forbidden = statusOf(members.error) === 403
-  const rows = members.data?.items ?? []
+  const forbidden = canViewMembers && statusOf(members.error) === 403
+  const rows = canViewMembers && !accessDenied(members.error) ? members.data?.items ?? [] : []
   const removalLocks = lockedTournamentsOf(kick.error)
   /* เดิมนับเฉพาะตัวจริง — migration 019 ตัดตัวจริง/ตัวสำรองระดับทีมออกแล้ว เหลือ
      คำถามเดียวที่ยังมีความหมาย: คนในคลังพอจะส่งลงแข่งตามขั้นต่ำของกีฬาไหม */
@@ -209,9 +221,9 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
   const dropsToForming = minPlayers !== undefined && data.memberCount - 1 < minPlayers
 
   return (
-    <Panel quiet>
+    <Panel quiet className="team-roster journey-data">
       <div className="spread">
-        <span className="tag"><em>//</em> Squad · {data.memberCount}</span>
+        <h2 className="journey-heading">Members <span className="journey-count">{data.memberCount}</span></h2>
         <span className="hstack" style={{ gap: 10 }}>
           {rows.length ? (
             <span className="sub">
@@ -229,7 +241,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
         </span>
       </div>
 
-      {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+      {notice ? <div role="status"><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
       {kick.isError ? (
         <Banner kind="crit">
           <b>Couldn't remove the player.</b> {errorMessage(kick.error)}
@@ -239,19 +251,19 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
       ) : null}
       {transfer.isError ? <Banner kind="crit"><b>Couldn't hand over the captaincy.</b> {errorMessage(transfer.error)}</Banner> : null}
 
-      {members.isPending ? <span className="sub">Loading members…</span> : null}
+      {canViewMembers && members.isPending ? <span className="sub">Loading members…</span> : null}
       {!canViewMembers ? <span className="sub">Sign in to view this squad&apos;s roster.</span> : null}
-      {forbidden ? <span className="sub">Only team members can view this roster.</span> : null}
-      {members.isError && !forbidden ? (
+      {forbidden ? <span className="sub">You do not have access to this roster.</span> : null}
+      {canViewMembers && members.isError && !forbidden ? (
         <div className="hstack">
           <span className="sub">{errorMessage(members.error)}</span>
           <button className="btn ghost" type="button" onClick={() => void members.refetch()}>Try again</button>
         </div>
       ) : null}
-      {members.isSuccess && !rows.length ? <span className="sub">No members found.</span> : null}
+      {canViewMembers && members.isSuccess && !rows.length ? <span className="sub">No members found.</span> : null}
 
       {rows.length ? (
-        <TableWrap>
+        <TableWrap label="Team members">
           <table>
             <thead><tr><th>Player</th><th>Joined</th><th /></tr></thead>
             <tbody>
@@ -275,18 +287,21 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                       <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                         {isLeader && !captain && (USE_MOCK || data.officialStatus === "Official") ? (
                           <button className="btn ghost" type="button" disabled={transfer.isPending}
+                            aria-label={`Hand over captaincy to ${member.fullName}`}
                             onClick={() => { transfer.reset(); setNotice(null); setHanding(member) }}>
                             Hand over
                           </button>
                         ) : null}
                         {isLeader && !captain ? (
                           <button className="btn ghost" type="button" disabled={!!lockName || kick.isPending}
+                            aria-label={`${kick.isPending && kick.variables === member.userId ? 'Removing' : 'Remove'} ${member.fullName}`}
                             title={lockName ? `Locked while ${lockName} is under way` : undefined}
                             onClick={() => { kick.reset(); setNotice(null); setRemoving(member) }}>
                             {kick.isPending && kick.variables === member.userId ? 'Removing…' : 'Remove'}
                           </button>
                         ) : null}
-                        <button className="btn ghost" type="button" onClick={() => navigate(`/player/${member.userId}`)}>
+                        <button className="btn ghost" type="button" aria-label={`Profile for ${member.fullName}`}
+                          onClick={() => navigate(`/player/${member.userId}`)}>
                           Profile <Icon name="chev" size={11} />
                         </button>
                       </span>
@@ -299,12 +314,12 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
         </TableWrap>
       ) : null}
 
-      {/* backend ยังไม่มี POST /teams/:id/transfer-leader — บอกตรงๆ ไม่ทำปุ่มหลอก */}
-      {isLeader && !USE_MOCK ? (
-        <span className="sub">Handing over the captaincy isn't available yet — the backend has no endpoint for it.</span>
+      {/* ทีมทั่วไปยังไม่เปิดโอนสิทธิ์ ส่วน Official ใช้คำร้องตาม handler เดิม */}
+      {isLeader && !USE_MOCK && data.officialStatus !== 'Official' ? (
+        <span className="sub">Leadership transfer is unavailable for this team.</span>
       ) : null}
 
-      <Modal open={!!removing} onClose={() => setRemoving(null)} label="Remove a player"
+      <Modal open={!!removing} onClose={() => setRemoving(null)} className="team-dialog"
         title={removing ? `Remove ${removing.fullName}?` : ''}>
         <ConfirmCard danger ok="Remove" onCancel={() => setRemoving(null)}
           body={removing
@@ -321,7 +336,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
           }} />
       </Modal>
 
-      <Modal open={!!handing} onClose={() => setHanding(null)} label="Hand over the captaincy"
+      <Modal open={!!handing} onClose={() => setHanding(null)} className="team-dialog"
         title={handing ? `Make ${handing.fullName} the captain?` : ''}>
         <ConfirmCard ok="Hand over" onCancel={() => setHanding(null)}
           body={handing && !USE_MOCK ? `Request admin approval to make ${handing.fullName} the leader. The current leader keeps their rights until approval.` : handing ? `${handing.fullName} becomes the team leader. You stay in the squad, but only the new leader can manage it.` : ''}
@@ -359,11 +374,10 @@ function InvitePanel({ data, lockName, memberIds }: {
   const typed = search.trim().length >= 3
 
   return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Add players</span>
+    <Panel quiet className="team-invitations journey-data">
+      <h2 className="journey-heading">Invite players</h2>
       <div className="sub">
-        Adding a player sends an invitation — they join once they accept. Anyone joining before a
-        tournament starts still has to clear the entry rules of the tournaments this squad is already in.
+        Players join after accepting. Tournament entry rules still apply.
       </div>
 
       {lockName ? (
@@ -372,16 +386,16 @@ function InvitePanel({ data, lockName, memberIds }: {
         </Banner>
       ) : (
         <>
-          <input value={search} placeholder="Search by name or email" aria-label="Search users to invite" autoComplete="off"
+          <input id="team-invite-search" value={search} placeholder="Name or email" aria-label="Search users to invite" autoComplete="off"
             onChange={e => { setSearch(e.target.value); invite.reset(); setNotice(null) }} />
-          {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+          {notice ? <div role="status"><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
           {invite.isError ? <Banner kind="crit"><b>Couldn't send the invitation.</b> {errorMessage(invite.error)}</Banner> : null}
           {!typed ? <span className="sub">Type at least three letters.</span> : null}
           {typed && users.isPending ? <span className="sub">Searching users…</span> : null}
           {typed && users.isError ? <span className="sub">{errorMessage(users.error)}</span> : null}
           {typed && users.isSuccess && !results.length ? <span className="sub">Nobody left to invite matches that.</span> : null}
           {results.length ? (
-            <TableWrap>
+            <TableWrap label="Players to invite">
               <table>
                 <tbody>
                   {results.map(person => (
@@ -389,6 +403,7 @@ function InvitePanel({ data, lockName, memberIds }: {
                       <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} />{person.fullName}</span></td>
                       <td style={{ textAlign: 'right' }}>
                         <button className="btn primary" type="button" disabled={invite.isPending}
+                          aria-label={`${invite.isPending && invite.variables?.userId === person.id ? 'Inviting' : 'Invite'} ${person.fullName}`}
                           onClick={() => {
                             setNotice(null)
                             invite.mutate({ userId: person.id }, {
@@ -407,13 +422,13 @@ function InvitePanel({ data, lockName, memberIds }: {
         </>
       )}
 
-      <span className="tag" style={{ marginTop: 6 }}><em>//</em> Sent invitations</span>
+      <h3 className="journey-subheading">Sent invitations</h3>
       {cancel.isError ? <Banner kind="crit"><b>Couldn't cancel the invitation.</b> {errorMessage(cancel.error)}</Banner> : null}
       {invitations.isPending ? <span className="sub">Loading sent invitations…</span> : null}
       {invitations.isError ? <span className="sub">{errorMessage(invitations.error)}</span> : null}
       {invitations.isSuccess && !sent.length ? <span className="sub">No invitations sent yet.</span> : null}
       {sent.length ? (
-        <TableWrap>
+        <TableWrap label="Sent invitations">
           <table>
             <thead><tr><th>Invited</th><th>Status</th><th /></tr></thead>
             <tbody>
@@ -428,7 +443,11 @@ function InvitePanel({ data, lockName, memberIds }: {
                   <td style={{ textAlign: 'right' }}>
                     {invitation.status === 'pending' ? (
                       <button className="btn ghost" type="button" disabled={cancel.isPending}
-                        onClick={() => cancel.mutate(invitation.id)}>
+                        aria-label={`Cancel invitation to ${invitation.invitedUser.fullName}`}
+                        onClick={() => {
+                          setNotice(null)
+                          cancel.mutate(invitation.id, { onSuccess: () => setNotice({ kind: 'ok', text: `Invitation to ${invitation.invitedUser.fullName} cancelled.` }) })
+                        }}>
                         {cancel.isPending && cancel.variables === invitation.id ? 'Cancelling…' : 'Cancel'}
                       </button>
                     ) : null}

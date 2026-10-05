@@ -72,6 +72,14 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - The full-page action preserves the card's existing destination, including the management destination where the existing relationship already provides it. Full-page permissions remain authoritative.
 - Closing, Escape and browser Back preserve browsing context. A refresh that removes the selected item closes the preview rather than retaining an inaccessible summary.
 
+### Team and public Player journey
+
+- Ticket 3 follow-up approved on 2026-10-05: place the Teams list first with local name search, sport and Leader/Member filters. Filters intersect, preserve independent invitations and entries, and offer Clear filters for no matches.
+- Use a wider Team list and a separate invitations/entries column on desktop; stack on mobile. Keep the source-specific loading, denied, retry, empty and lasting mutation outcomes.
+- Give Team details a restrained street poster header using the existing logo/name/sport and Barlow display font. Keep the roster and sent invitations clearly separate and calm.
+- Show next actions using existing data and handlers: open/manage a team, focus the permitted invitation search, or view an existing tournament entry. Missing application data never proves roster editing is allowed. Existing registration and mutation permissions remain authoritative.
+- Preserve named consequential confirmations and public-profile privacy. Make long names and dense Team/Player history readable without creating unsupported statistics.
+
 ### Rollout and compatibility
 
 - Apply the shared design language through the current shell, kit and styles, then adapt each existing journey. Preserve current domain behavior, role boundaries and recoverable form state.

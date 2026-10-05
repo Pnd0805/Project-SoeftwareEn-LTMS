@@ -49,7 +49,7 @@ export function TeamRecord({ t }: { t: Team }) {
   const sports = teamBySport(s, t.id)
 
   return (
-    <>
+    <section className="vstack team-record journey-data" aria-label="Team record">
       <div className="statline">
         <div><span className="tag">Played · all sports</span><span className="v">{rec.p}</span></div>
         <div><span className="tag">Won</span><span className="v">{rec.w}</span></div>
@@ -60,7 +60,7 @@ export function TeamRecord({ t }: { t: Team }) {
 
       {sports.length ? (
         <Panel quiet>
-          <span className="tag"><em>//</em> Record by sport — a club can field sides in several</span>
+          <h2 className="journey-heading">Record by sport</h2>
           {sports.map(r => {
             const L = statLabels(r.sport)
             return (
@@ -88,7 +88,7 @@ export function TeamRecord({ t }: { t: Team }) {
 
       {titles.length ? (
         <Panel>
-          <span className="tag"><em>//</em> Honours</span>
+          <h2 className="journey-heading">Honours</h2>
           <div className="hstack">
             {titles.map(x => (
               <span className="hstack" style={{ gap: 9, padding: '11px 14px', background: 'var(--panel-2)' }} key={x.id}>
@@ -101,9 +101,9 @@ export function TeamRecord({ t }: { t: Team }) {
       ) : null}
 
       <Panel quiet>
-        <span className="tag"><em>//</em> Results · {played.length}</span>
+        <h2 className="journey-heading">Results <span className="journey-count">{played.length}</span></h2>
         {played.length ? (
-          <TableWrap>
+          <TableWrap label="Team results">
             <table>
               <thead>
                 <tr><th>Date</th><th>Sport</th><th>Tournament</th><th>Home</th><th /><th>Away</th><th>Score</th><th /><th /></tr>
@@ -135,8 +135,8 @@ export function TeamRecord({ t }: { t: Team }) {
 
       {entered.length ? (
         <Panel quiet>
-          <span className="tag"><em>//</em> Tournaments entered</span>
-          <TableWrap>
+          <h2 className="journey-heading">Tournament entries</h2>
+          <TableWrap label="Team tournament entries">
             <table>
               <thead><tr><th>Tournament</th><th>Sport</th><th>Status</th><th>Finish</th><th /></tr></thead>
               <tbody>
@@ -167,6 +167,6 @@ export function TeamRecord({ t }: { t: Team }) {
           </TableWrap>
         </Panel>
       ) : null}
-    </>
+    </section>
   )
 }

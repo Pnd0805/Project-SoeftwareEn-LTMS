@@ -98,8 +98,8 @@ export function Crumb({ back, children }: { back: { label: string; onClick: () =
   )
 }
 
-export function TableWrap({ children }: { children: ReactNode }) {
-  return <div className="tblwrap">{children}</div>
+export function TableWrap({ children, label }: { children: ReactNode; label?: string }) {
+  return <div className="tblwrap" role={label ? 'region' : undefined} aria-label={label} tabIndex={label ? 0 : undefined}>{children}</div>
 }
 
 export type TrailState = 'done' | 'now' | 'idle' | 'bad'
