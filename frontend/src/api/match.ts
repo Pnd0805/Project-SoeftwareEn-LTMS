@@ -1645,3 +1645,12 @@ export function getTournamentWinner(
 ): Promise<BackendTournamentWinnerDto> {
   return apiFetch(`/tournaments/${tournamentId}/winner`);
 }
+
+/** PATCH /matches/:id/format — กำหนดรูปแบบการแข่งขัน (BO1, BO3, BO5, BO7) */
+export function setMatchFormat(matchId: MatchRef, body: { bestOf: number }): Promise<void> {
+  if (USE_MOCK) return Promise.resolve();
+  return apiFetch(`/matches/${matchId}/format`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}

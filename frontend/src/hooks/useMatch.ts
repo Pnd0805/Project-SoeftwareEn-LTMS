@@ -414,3 +414,11 @@ export function useTournamentMatchReferees(matchIds: number[]) {
     enabled: !USE_MOCK, retry: retryPolicy,
   })) });
 }
+
+export function useSetMatchFormat(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { bestOf: number }) => matchApi.setMatchFormat(matchId, body),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
