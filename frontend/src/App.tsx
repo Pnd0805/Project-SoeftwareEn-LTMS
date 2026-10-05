@@ -38,6 +38,7 @@ import { SearchPage } from './features/search/SearchPage'
 const PUBLIC_PATHS = [
   /^\/$/, /^\/home/, /^\/t\//, /^\/m\//, /^\/checkin\//, /^\/mvp\//,
   /^\/team\//, /^\/player\//, /^\/watch\//, /^\/search/, /^\/login$/,
+  /^\/register/, /^\/verify-email/,
 ]
 
 function Guard({ children, currentUser, isLoading }: {
@@ -59,7 +60,7 @@ export default function App() {
   const { data: currentUser, isLoading } = useMe()
   const location = useLocation()
 
-  if (location.pathname === '/login' || location.pathname === '/register') {
+  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/verify-email') {
     return (
       <>
         {location.pathname === '/login' ? <LoginPage /> : <RegisterPage />}

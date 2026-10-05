@@ -100,3 +100,15 @@ export function useUpdateMe() {
     },
   });
 }
+
+export function useVerifyEmail() {
+  return useMutation({
+    mutationFn: (input: { email: string; code: string }) => authApi.verifyEmail(input),
+  });
+}
+
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: (input: { email: string }) => authApi.resendVerification(input),
+  });
+}

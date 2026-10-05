@@ -100,3 +100,22 @@ export async function mockRegister(input: RegisterRequest): Promise<RegisterResp
     email: input.email,
   });
 }
+
+export async function mockVerifyEmail(_email: string, code: string): Promise<{ message: string; emailVerified: true }> {
+  if (code !== '123456' && !/^[0-9]{6}$/.test(code)) {
+    return mockReject(400, {
+      code: "INVALID_OTP",
+      message: "รหัส OTP ไม่ถูกต้องหรือหมดอายุ",
+    });
+  }
+  return mockDelay({
+    message: "ยืนยันอีเมลสำเร็จ",
+    emailVerified: true,
+  });
+}
+
+export async function mockResendVerification(_email: string): Promise<{ message: string }> {
+  return mockDelay({
+    message: "ระบบได้ส่งรหัส OTP ใหม่ไปยังอีเมลของคุณเรียบร้อยแล้ว",
+  });
+}

@@ -34,3 +34,23 @@ export async function logout(): Promise<void> {
   }
   setAccessToken(null);
 }
+
+export async function verifyEmail(input: { email: string; code: string }): Promise<{ message: string; emailVerified: boolean }> {
+  if (USE_MOCK) {
+    return authMock.mockVerifyEmail(input.email, input.code);
+  }
+  return apiFetch<{ message: string; emailVerified: boolean }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function resendVerification(input: { email: string }): Promise<{ message: string }> {
+  if (USE_MOCK) {
+    return authMock.mockResendVerification(input.email);
+  }
+  return apiFetch<{ message: string }>("/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
