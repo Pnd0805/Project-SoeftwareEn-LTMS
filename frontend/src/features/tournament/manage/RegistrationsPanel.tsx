@@ -81,7 +81,7 @@ function rowsFromStore(s: State, t: Tournament): RegRow[] {
       applicationId: r.id,
       teamStoreId: r.team,
       teamName: tm?.name ?? '—',
-      teamLogoUrl: tm?.logoUrl ?? null,
+      teamLogoUrl: (tm as { logoUrl?: string | null })?.logoUrl ?? null,
       status: r.status as RegRow['status'],
       hardFilterPassed: tm ? fails.length === 0 : null,
       hardFilterFails: fails.map(f => `${f.user.name} — ${f.rule}`),

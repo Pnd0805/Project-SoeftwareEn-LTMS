@@ -18,7 +18,7 @@
 import { useState } from 'react'
 import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamChipView } from '../../components/kit/chips'
-import { useStatDefinitions, useSubmitResult, useSaveMatchStats } from '../../hooks/useMatch'
+import { useStatDefinitions, useSubmitResult, useSaveMatchStats, useFinishMatch } from '../../hooks/useMatch'
 import { toTeamView } from './matchView'
 import { checkResult } from './resultRules'
 import type { MatchDto, MatchTeamRef } from '../../types/match.dto'
@@ -29,6 +29,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
   const { data: defs } = useStatDefinitions(m.tournament.sportTypeId)
   const submit = useSubmitResult(m.id, m.tournamentId)
   const saveStats = useSaveMatchStats(m.id)
+  const finish = useFinishMatch(m.id, m.tournamentId)
 
   const [sa, setSa] = useState(0)
   const [sb, setSb] = useState(0)
@@ -59,6 +60,9 @@ export function ResultForm({ m }: { m: MatchDto }) {
   }
 
   const onSubmitUnsafe = async () => {
+    if (m.status === 'in_progress' && m.viewer.can.finishMatch) {
+      await finish.mutateAsync()
+    }
     await submit.mutateAsync({
       winnerTeamId: winnerTeamId(),
       scoreData: {
@@ -185,9 +189,9 @@ export function ResultForm({ m }: { m: MatchDto }) {
       ) : null}
 
       <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-        disabled={submit.isPending || saveStats.isPending || blocked || statProblems.length > 0}
+        disabled={submit.isPending || saveStats.isPending || finish.isPending || blocked || statProblems.length > 0}
         onClick={onSubmit}>
-        {submit.isPending || saveStats.isPending ? 'Saving…' : 'Submit result'}
+        {submit.isPending || saveStats.isPending || finish.isPending ? 'Saving…' : m.status === 'in_progress' ? 'Finish & Submit result' : 'Submit result'}
       </button>
     </Panel>
   )

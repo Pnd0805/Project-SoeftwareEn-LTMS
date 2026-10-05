@@ -510,11 +510,12 @@ function checkinFromBackend(matchId: number, row: BackendCheckinDto): MatchCheck
   };
 }
 
-const lineupPlayers = (side: BackendMatchLineupsDto["teamA"]): PlayerRef[] =>
+const lineupPlayers = (side: BackendMatchLineupsDto["teamA"], leaderId?: number | null): PlayerRef[] =>
   side?.players.map((player) => ({
     id: player.userId,
     fullName: player.fullName,
     avatarUrl: player.avatarUrl,
+    isCaptain: Boolean(player.isCaptain || (leaderId && player.userId === leaderId)),
     checkinStatus: player.checkinStatus,
     checkedInAt: player.checkedInAt,
   })) ?? [];
@@ -580,7 +581,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
 
   /* ของที่หน้าแมตช์และหน้าเช็คอินต้องใช้ แต่ backend แยกไว้คนละเส้น:
      กรรมการของแมตช์ (F12) · รายชื่อที่อนุมัติของสองทีม · ผู้จัดของรายการ · ตัวเราเอง */
-  const [refs, me, tournament, lineups, myTeams] = await Promise.all([
+  const [refs, me, tournament, lineups, myTeams, teamAData, teamBData] = await Promise.all([
     apiFetch<{ items: BackendMatchRefereeDto[] }>(`/matches/${matchId}/referees`)
       .catch(() => ({ items: [] as BackendMatchRefereeDto[] })),
     apiFetch<{ id: number }>("/me").catch(() => null),
@@ -591,11 +592,15 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
     apiFetch<BackendMatchLineupsDto>(`/matches/${matchId}/lineups`),
     /* บทบาทหัวหน้าทีมยังมาจาก /me/teams; สิทธิ์เช็คอินมาจาก lineups เท่านั้น */
     apiFetch<{ items: Array<{ id: number; role: string }> }>("/me/teams").catch(() => ({ items: [] })),
+    dto.teamA?.id ? apiFetch<{ leader?: { id: number } | null; leaderId?: number }>(`/teams/${dto.teamA.id}`).catch(() => null) : Promise.resolve(null),
+    dto.teamB?.id ? apiFetch<{ leader?: { id: number } | null; leaderId?: number }>(`/teams/${dto.teamB.id}`).catch(() => null) : Promise.resolve(null),
   ]);
 
   dto.referees = refs.items.map((r) => r.referee);
-  if (dto.teamA) dto.teamA.players = lineupPlayers(lineups.teamA);
-  if (dto.teamB) dto.teamB.players = lineupPlayers(lineups.teamB);
+  const leaderAId = teamAData?.leader?.id ?? teamAData?.leaderId ?? null;
+  const leaderBId = teamBData?.leader?.id ?? teamBData?.leaderId ?? null;
+  if (dto.teamA) dto.teamA.players = lineupPlayers(lineups.teamA, leaderAId);
+  if (dto.teamB) dto.teamB.players = lineupPlayers(lineups.teamB, leaderBId);
   if (tournament) {
     dto.tournament = {
       ...dto.tournament,
@@ -625,7 +630,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
    * โดยไม่มีปุ่มจบการแข่งขันให้กดสักที่ (รายงาน 29 ก.ย. แมตช์ 13)
    * ⚠️ ยังต้องนับ `result_rejected` ไม่งั้นแมตช์ที่ผู้จัดยกผลทิ้งจะตัน (S04 reject)
    */
-  const playable = dto.status === "finished" || dto.status === "result_rejected";
+  const playable = dto.status === "finished" || dto.status === "result_rejected" || dto.status === "in_progress";
 
   /* backend ไม่ได้บอกว่าคนที่กำลังดูทำอะไรได้บ้าง — ประกอบจากบทบาทที่รู้
      (กฎจริงยังอยู่ที่ backend เสมอ ตรงนี้แค่ตัดสินว่าจะโชว์ปุ่มไหม) */
@@ -1663,4 +1668,12 @@ export function getTournamentWinner(
   tournamentId: number,
 ): Promise<BackendTournamentWinnerDto> {
   return apiFetch(`/tournaments/${tournamentId}/winner`);
+}
+
+/** BO-N: ตั้ง format การแข่งขัน (BO1, BO3, BO5, BO7) */
+export function setMatchFormat(matchId: number, bestOf: number): Promise<{ id: number; bestOf: number }> {
+  return apiFetch(`/matches/${matchId}/format`, {
+    method: "PATCH",
+    body: { bestOf },
+  });
 }

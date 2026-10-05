@@ -275,15 +275,15 @@ describe('finishing a match', () => {
     match.resultStatus = null
     match.viewer.roles = ['referee']
     match.viewer.can.finishMatch = status === 'in_progress'
-    match.viewer.can.submitResult = status === 'finished'
+    match.viewer.can.submitResult = true
     result = undefined
   }
 
-  it('does not hand the referee a result form while the match is still being played', () => {
+  it('allows the referee to enter result while in progress with auto-finish notification', () => {
     asRefereeOf('in_progress')
     renderPage()
-    expect(screen.queryByText(/enter the result/)).not.toBeInTheDocument()
-    expect(screen.getByText(/result form opens once the match is finished/)).toBeInTheDocument()
+    expect(screen.getByText(/การแข่งขันกำลังดำเนินอยู่/)).toBeInTheDocument()
+    expect(screen.getByText(/Finish & Submit result/)).toBeInTheDocument()
   })
 
   it('finishes only after the referee confirms play has ended', () => {
@@ -308,6 +308,7 @@ describe('finishing a match', () => {
     asRefereeOf('in_progress')
     match.viewer.roles = ['player']
     match.viewer.can.finishMatch = false
+    match.viewer.can.submitResult = false
     renderPage()
     expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
     expect(screen.getByText(/recorded after the referee finishes the match/)).toBeInTheDocument()
