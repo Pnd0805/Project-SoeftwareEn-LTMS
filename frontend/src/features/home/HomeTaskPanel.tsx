@@ -14,46 +14,53 @@ export function HomeTaskPanel({ feeds }: { feeds: readonly HomeTaskFeed[] }) {
 
   return (
     <section className="home-task-panel" aria-labelledby="home-task-heading" aria-busy={loading}>
-      <h2 id="home-task-heading" className="h-sec">Needs you</h2>
-      {loading ? <p role="status">Loading work…</p> : null}
-      {failed.length ? (
-        <>
-          <p role="alert">Some work could not load</p>
-          {failed.map(feed => (
-            <div key={feed.label} className="hstack" role="group" aria-label={`${feed.label} could not load`}>
-              <span className="sub">{feed.label}</span>
-              <button className="btn" type="button" onClick={feed.retry}
-                aria-label={`Retry ${feed.label}`}>
-                Retry
-              </button>
-            </div>
-          ))}
-        </>
-      ) : null}
-      {allReady && tasks.length === 0 ? (
-        <>
-          <p role="status">No tasks right now</p>
-          <a href="#tournaments">Browse tournaments</a>
-        </>
-      ) : null}
-      <ul className="home-task-list">
-        {tasks.map(task => {
-          const urgency = urgencyBadge[task.urgency]
-          return (
-            <li key={task.key}>
-              <Link className="home-task-link" to={task.href}>
-                <span className={`badge ${urgency.className}`}>{urgency.label}</span>
-                <span className="home-task-copy">
-                  <strong>{task.label}</strong>
-                  <span className="sub">{task.context}</span>
-                  {task.detail ? <span className="home-task-detail">{task.detail}</span> : null}
-                </span>
-                <Icon name="chev" size={13} aria-hidden="true" />
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="spread">
+        <h2 id="home-task-heading" className="h-sec">Needs you</h2>
+        {tasks.length > 0 ? <span className="sub home-task-count" aria-live="polite">
+          {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+        </span> : null}
+      </div>
+      <div className="home-task-body" role="group" aria-label="Your tasks" tabIndex={0}>
+        {loading ? <p role="status">Loading work…</p> : null}
+        {failed.length ? (
+          <>
+            <p role="alert">Some work could not load</p>
+            {failed.map(feed => (
+              <div key={feed.label} className="hstack" role="group" aria-label={`${feed.label} could not load`}>
+                <span className="sub">{feed.label}</span>
+                <button className="btn" type="button" onClick={feed.retry}
+                  aria-label={`Retry ${feed.label}`}>
+                  Retry
+                </button>
+              </div>
+            ))}
+          </>
+        ) : null}
+        {allReady && tasks.length === 0 ? (
+          <>
+            <p role="status">No tasks right now</p>
+            <a href="#tournaments">Browse tournaments</a>
+          </>
+        ) : null}
+        <ul className="home-task-list">
+          {tasks.map(task => {
+            const urgency = urgencyBadge[task.urgency]
+            return (
+              <li key={task.key}>
+                <Link className="home-task-link" to={task.href}>
+                  <span className={`badge ${urgency.className}`}>{urgency.label}</span>
+                  <span className="home-task-copy">
+                    <strong>{task.label}</strong>
+                    <span className="sub">{task.context}</span>
+                    {task.detail ? <span className="home-task-detail">{task.detail}</span> : null}
+                  </span>
+                  <Icon name="chev" size={13} aria-hidden="true" />
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </section>
   )
 }

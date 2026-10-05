@@ -18,3 +18,5 @@
 **Evidence:** [Ticket 1 verification and review](../../../docs/superpowers/notes/2026-10-05-ltms-ticket-01.md). Live backend verification remains outside this slice.
 
 **Follow-up evidence:** [50/50 Home and Next match](../../../docs/superpowers/notes/2026-10-05-ltms-home-next-match.md).
+
+**Long-list follow-up:** [Bounded Needs you area](../../../docs/superpowers/notes/2026-10-05-ltms-home-task-scroll.md).

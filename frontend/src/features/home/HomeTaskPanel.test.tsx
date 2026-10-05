@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import type { HomeTaskFeed } from './homeTasks'
@@ -37,6 +37,28 @@ describe('HomeTaskPanel', () => {
     expect(screen.getByRole('heading', { name: 'Needs you' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('link', { name: /Record result/ }))
     expect(screen.getByTestId('current-path')).toHaveTextContent('/m/12')
+  })
+
+  it('keeps every task in a named keyboard-focusable area with an accurate total and urgent work first', () => {
+    const tasks: HomeTaskFeed['tasks'] = Array.from({ length: 12 }, (_, index) => ({
+      key: `team:${index}`, source: 'team', label: `Review invitation ${index + 1}`,
+      context: 'Campus Cup', urgency: index === 11 ? 'urgent' : 'ready', href: `/team/${index + 1}`,
+    }))
+    const view = render(<MemoryRouter><HomeTaskPanel feeds={[{
+      source: 'team', label: 'Team invitations', state: 'ready', retry: vi.fn(), tasks: [...tasks, tasks[0]],
+    }]} /></MemoryRouter>)
+    expect(screen.getByText('12 tasks')).toBeInTheDocument()
+    const area = screen.getByRole('group', { name: 'Your tasks' })
+    area.focus()
+    expect(area).toHaveFocus()
+    const links = within(area).getAllByRole('link')
+    expect(links).toHaveLength(12)
+    expect(links[0]).toHaveTextContent('Review invitation 12')
+    expect(links[0]).toHaveAttribute('href', '/team/12')
+    view.rerender(<MemoryRouter><HomeTaskPanel feeds={[{
+      source: 'team', label: 'Team invitations', state: 'ready', retry: vi.fn(), tasks: [tasks[0]],
+    }]} /></MemoryRouter>)
+    expect(screen.getByText('1 task')).toBeInTheDocument()
   })
 
   it('announces while any task feed is loading', () => {
