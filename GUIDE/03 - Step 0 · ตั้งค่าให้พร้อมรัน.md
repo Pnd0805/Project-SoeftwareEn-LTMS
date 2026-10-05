@@ -123,6 +123,12 @@ npm i -D typescript tsx @types/node @types/bcrypt @types/cors
 
 ## 0.4 แก้ `docker-compose.yml` ให้สร้างตารางอัตโนมัติ
 
+> 🔴 **6 ต.ค. 69 — yaml ที่โชว์ด้านล่างเป็นของ 24 ส.ค. ไม่ตรงกับ `backend/docker-compose.yml` จริงแล้ว**
+> ของจริงเปลี่ยนไปสามจุด: รหัสมาจาก `${MYSQL_ROOT_PASSWORD}` ใน `.env` ไม่ได้ฝังเป็น `secret`
+> · พอร์ตเป็น `127.0.0.1:3307:3306` ไม่ใช่ `3306:3306` · มี `seed.sql` ใน initdb ด้วย
+> และมี service `minio` / `mailpit` / `backend` / `nginx` เพิ่มมา
+> ⇒ อ่านไฟล์จริงเสมอ บล็อกนี้เก็บไว้เพื่อ **อธิบายว่าแต่ละบรรทัดมีไว้ทำไม** เท่านั้น
+
 ```yaml
 services:
   mysql:
@@ -163,13 +169,20 @@ volumes:
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=secret
-DB_PORT=3306
+DB_PORT=3307   # 6 ต.ค. 69 — compose ผูก 3307 ไว้ ไม่ใช่ 3306 (หลายเครื่องมี MySQL ของตัวเองจับ 3306)
 DB_NAME=ltms
+MYSQL_ROOT_PASSWORD=secret   # 6 ต.ค. 69 — ต้องตรงกับ DB_PASSWORD ข้างบน
 
 PORT=8000
 JWT_SECRET=<สุ่มมาใส่ อย่างน้อย 32 ตัวอักษร>
 JWT_EXPIRES_IN=7d
 ```
+
+> **`MYSQL_ROOT_PASSWORD` ต่างจาก `DB_PASSWORD` ยังไง** — `DB_PASSWORD` คือรหัสที่ **แอป** ใช้ต่อฐาน
+> `MYSQL_ROOT_PASSWORD` คือรหัสที่ **compose ตั้งให้ container ตอนสร้างครั้งแรก**
+> สองตัวนี้ต้องเท่ากัน ไม่เท่ากัน = แอปต่อไม่ได้ (`ER_ACCESS_DENIED_ERROR`)
+> 🔴 ไม่ใส่ `MYSQL_ROOT_PASSWORD` เลย = compose ตีเป็นค่าว่าง ⇒ ได้ `root` ที่ไม่มีรหัส
+>   คนที่มี volume อยู่แล้วจะไม่เห็นปัญหาเพราะรหัสถูกตั้งไปตั้งแต่ตอนสร้าง ⇒ เจอเฉพาะคนที่ clone ใหม่
 
 สุ่ม secret:
 ```bash
