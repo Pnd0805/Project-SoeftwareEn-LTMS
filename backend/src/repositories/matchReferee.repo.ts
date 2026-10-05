@@ -25,6 +25,21 @@ export type MyRefereeMatchRow =
         team_b_id : number | null; team_b_name : string | null;
     };
 
+/**
+ * แมตช์ทุกทัวร์ที่กรรมการคนนี้รับไว้แล้ว — ใช้โดยหน้า "แมตช์ของฉัน" (/me/matches)
+ * และโดยด่านทับเวลาข้ามทัวร์ (referee.service bookingsOfReferee · ทางเลือก ก)
+ *
+ * ★ `t.deleted_at IS NULL` เติม 6 ต.ค. 2569 — เดิมไม่มี
+ *   เป็น "กันเหนียว + ความสม่ำเสมอ" ไม่ใช่ bug fix: สถานะที่มันกัน เกิดขึ้นไม่ได้ผ่าน API
+ *   เพราะ tournament.service deleteTournament ปฏิเสธถ้าทัวร์มีใบสมัครหรือแมตช์แล้ว
+ *   (TOURNAMENT_HAS_ACTIVITY) ⇒ ทัวร์ที่ถูกลบจะไม่มีแมตช์เลย
+ *   ที่เก็บไว้เพราะ (ก) query อื่นที่ JOIN tournaments ในโปรเจกต์กรอง deleted_at หมด
+ *   ตัวนี้เป็นตัวเดียวที่ไม่กรอง และ (ข) สิ่งที่กันอยู่คือด่านใน service ชั้นเดียว —
+ *   ถ้าวันหนึ่งมีมติให้ลบทัวร์ที่มีแมตช์ได้ query นี้จะกลายเป็นตัวบล็อกกรรมการผิดคน
+ *   โดยไม่มีอะไรฟ้อง (ด่านข้ามทัวร์ e872124 นับแถวจาก query นี้ว่าเป็น "งานที่ถืออยู่")
+ * ★ กรองที่ repo ไม่ใช่ที่ service เพราะทั้งสองผู้เรียกต้องการกฎเดียวกัน
+ *   ถ้ากรองที่ service จะต้องจำให้ครบทุกที่ และผู้เรียกที่สามในอนาคตจะได้ค่าผิดเงียบ ๆ
+ */
 export async function findAcceptedByUser(userId : number): Promise<MyRefereeMatchRow[]>{
     const [rows] = await pool.query<(MyRefereeMatchRow & RowDataPacket)[]>(
         `SELECT mr.match_referee_id, mr.tournament_referee_id,
@@ -40,6 +55,7 @@ export async function findAcceptedByUser(userId : number): Promise<MyRefereeMatc
          LEFT JOIN teams ta ON ta.team_id = m.team_a_id
          LEFT JOIN teams tb ON tb.team_id = m.team_b_id
          WHERE tr.user_id = ? AND mr.assignment_status = 'accepted'
+           AND t.deleted_at IS NULL
          ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`, [userId]);
     return rows;
 }
