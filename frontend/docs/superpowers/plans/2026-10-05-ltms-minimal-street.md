@@ -81,6 +81,8 @@
 
 **Approved visual follow-up:** [Street art wall](../notes/2026-10-05-ltms-tournament-street-wall.md). Tournament preview gains a generated wall texture, poster headline and sport sticker; other dialogs retain their presentation. Preview behavior and frozen files remain unchanged.
 
+**Approved lettering follow-up:** [Popup typography](../notes/2026-10-05-ltms-tournament-popup-type.md). Replace only the preview headline with self-hosted Rubik Dirt, staggered word strips and a ruby accent; preserve readable facts and controls and compact long headings.
+
 ### Task 3: Team and public Player journey
 
 **Files:**

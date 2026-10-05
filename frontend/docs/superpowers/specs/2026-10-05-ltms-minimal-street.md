@@ -54,6 +54,7 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - Inherit A's existing dark and light colors. Dark mode uses aubergine surfaces, warm cream text and emerald actions; light mode uses warm cream surfaces, brown text and deep green actions. Keep semantic warning and error colors with text labels.
 - Use nearly square 2px corners. Define surfaces with crisp outlines. Reserve a small offset shadow for the primary action and normal elevation for dialogs. Use flat page backgrounds and generous separation between groups.
 - Use self-hosted Barlow Condensed Bold for principal headings, Tournament names and sport bands. Use the installed Geist family for body text, form labels and controls. Keep uppercase selective and preserve the font license.
+- Approved popup refinement: Tournament preview uses self-hosted Rubik Dirt for its headline, with staggered paper word strips and a ruby accent. Barlow remains authoritative elsewhere; Geist remains on popup facts and controls. Compact headline sizes support long names.
 - Keep interface wording concise and English. Domain terms retain their glossary meaning: Team members, Squad list, Lineup, Invitation, Referee appointment and Match assignment are distinct.
 
 ### Navigation and Home

@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '../../components/kit/Modal'
 import { Icon } from '../../components/kit/Icon'
@@ -12,7 +13,13 @@ export function TournamentPreview({ open, name, sport, facts, href, onClose }: {
 }) {
   return <Modal open={open} className="tournament-preview" title={
     <span className="tournament-preview-head">
-      <span className="tournament-preview-poster"><span className="disp tournament-preview-title">{name}</span></span>
+      <span className="tournament-preview-poster">
+        <span className={`tournament-preview-title${name.length > 60 ? ' tournament-preview-title--long' : ''}`}>
+          {name.split(/\s+/).map((word, index) => <Fragment key={index}>
+            <span className="tournament-preview-word">{word}</span>{' '}
+          </Fragment>)}
+        </span>
+      </span>
     </span>
   } onClose={onClose}>
     <div className="tournament-preview-content">

@@ -6,6 +6,15 @@
   font-display:swap;
 }
 
+@font-face{
+  font-family:"Rubik Dirt";
+  src:url("/fonts/RubikDirt-Latin-Regular.woff2") format("woff2");
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
 :root{
   /* คงชุดสีเดิม เพื่อให้ผู้ใช้จำประเภทงานและสถานะได้ */
   --void:#14121C; --void-2:#1A1726;
@@ -408,10 +417,14 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 /* พื้นผิวอยู่เฉพาะส่วนโปสเตอร์ ข้อมูลจริงต้องอ่านได้บนสีพื้นทั้งสองธีม */
 .tournament-preview-head{display:flex;align-items:center;min-height:228px;padding:36px 36px 48px;
   background:#1E1B2A url('/images/tournament-street-wall.webp') center/cover;}
-.tournament-preview-poster{display:block;max-width:100%;transform:rotate(-2deg);}
-.tournament-preview-title{display:inline;font-size:48px;line-height:1.14;letter-spacing:-.015em;
-  padding:0 8px 4px;background:#E5DCC8;color:#14121C;box-decoration-break:clone;-webkit-box-decoration-break:clone;
-  overflow-wrap:anywhere;}
+.tournament-preview-poster{display:block;max-width:100%;transform:rotate(-1deg);}
+.tournament-preview-title{font-family:"Rubik Dirt",var(--f-ui);font-weight:400;font-size:48px;
+  line-height:1.3;letter-spacing:-.02em;text-transform:uppercase;color:#14121C;}
+.tournament-preview-title--long{font-size:32px;}
+.tournament-preview-word{display:inline-block;max-width:100%;padding:0 8px 2px;margin:3px 2px;
+  background:#E5DCC8;overflow-wrap:anywhere;transform:rotate(-1deg);}
+.tournament-preview-word:nth-child(2n){transform:rotate(1.5deg) translateY(2px);}
+.tournament-preview-word:last-child{background:#EA4658;transform:rotate(-2deg);}
 .tournament-preview-content{position:relative;display:flex;flex-direction:column;min-height:0;padding:40px 36px 28px;}
 .tournament-preview-sport{position:absolute;top:-20px;left:36px;max-width:calc(100% - 72px);margin:0;
   padding:8px 16px;background:var(--teal);color:var(--accent-ink);font-size:14px;font-weight:700;
@@ -427,6 +440,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 @media(max-width:600px){
   .tournament-preview-head{min-height:190px;padding:24px 24px 40px;}
   .tournament-preview-title{font-size:36px;}
+  .tournament-preview-title--long{font-size:24px;}
   .tournament-preview-content{padding:36px 24px 24px;}
   .tournament-preview-sport{left:24px;max-width:calc(100% - 48px);}
   .tournament-preview-facts>div{grid-template-columns:92px minmax(0,1fr);gap:12px;}
