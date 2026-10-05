@@ -1671,9 +1671,9 @@ export function getTournamentWinner(
 }
 
 /** BO-N: ตั้ง format การแข่งขัน (BO1, BO3, BO5, BO7) */
-export function setMatchFormat(matchId: number, bestOf: number): Promise<{ id: number; bestOf: number }> {
+export function setMatchFormat(matchId: MatchRef, body: { bestOf: number }): Promise<{ id: number; bestOf: number }> {
   return apiFetch(`/matches/${matchId}/format`, {
     method: "PATCH",
-    body: { bestOf },
+    body: JSON.stringify(body),
   });
 }
