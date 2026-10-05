@@ -609,7 +609,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
     /* S02b — กรรมการของแมตช์ online แก้ผลได้ตราบที่ยัง submitted (รวมผลที่ตัวเองเพิ่งแก้) */
     const correction = m.mode === 'online' && m.viewer.roles.includes('referee')
       ? <ResultOverride m={m} result={result} /> : null
-    const isRefereeOrSubmitter = m.viewer.roles.includes('referee') || result.submittedByUserId === m.viewer.myUserId
+    const isRefereeOrSubmitter = m.viewer.roles.includes('referee') || (m.viewer.myUserId !== null && result.submittedBy?.id === m.viewer.myUserId)
     const savedBanner = isRefereeOrSubmitter ? (
       <Banner kind="ok" icon="check">
         <b>บันทึกเรียบร้อยแล้ว</b> บันทึกผลการแข่งขันเรียบร้อยแล้ว (รอการยืนยันผล)
