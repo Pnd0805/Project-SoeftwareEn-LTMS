@@ -2,11 +2,45 @@ name: Backend Tests
 
 on:
   push:
-    branches: [main, master, backend]
+    # BE_KN คือสาขาหลักของฝั่ง backend โดยพฤตินัย (origin/main ตามไม่ทัน ~230 commit
+    # และไม่มีโฟลเดอร์ database/migrations เลย) — เดิมไม่มีชื่อนี้ในลิสต์ ทำให้ CI
+    # ไม่เคยรันบนสาขาที่ทุกคนทำงานอยู่จริง และของที่ build พังค้างอยู่ 2 วันไม่มีใครรู้
+    branches: [BE_KN, main, master, backend]
   pull_request:
-    branches: [main, master]
+    branches: [BE_KN, main, master]
 
 jobs:
+  build:
+    name: Build (tsc)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 3–5 ต.ค. npm run build พังอยู่สองวันโดยไม่มีสัญญาณอะไรเลย เพราะ CI รันแค่เทส
+      # และ vitest ไม่ compile ⇒ โค้ดที่ tsc ปฏิเสธก็ยังเทสเขียวได้
+      # ★ job นี้คือด่านที่ทำให้เรื่องนั้นเกิดซ้ำไม่ได้ — ไม่ต้องมีฐานข้อมูล ไม่ต้องมี .env
+      - name: Compile with tsc
+        run: npm run build
+
+      # 🔴 ยังไม่เปิด job typecheck (tsconfig ตัวเต็ม ซึ่งรวมไฟล์เทสด้วย)
+      #   เพราะยังมี error ค้าง 9 ตัวในไฟล์เทสของสามคน (แจ้งแยกฉบับแล้ว 5 ต.ค.)
+      #   เปิดตอนนี้ = CI แดงค้าง ซึ่งจะสอนให้ทุกคนเรียนรู้ที่จะมองข้าม CI
+      #   ซึ่งแย่กว่าไม่มี ⇒ เปิดเมื่อ npm run typecheck เหลือ 0
+
   test:
     name: Unit tests (fast)
     runs-on: ubuntu-latest
