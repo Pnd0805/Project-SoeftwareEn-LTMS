@@ -311,7 +311,19 @@ export async function getRefereeCoverage(tournamentId : number, sportTypeId : nu
 function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'onsite' | 'online') => number){
     // 1. จับกลุ่มตามแมตช์ นับเฉพาะกรรมการที่ active จริง
     const matches = new Map<number, MatchCoverage & { row : MatchRefereeCoverageRow }>();
-    const byReferee = new Map<number, { userId : number, matches : MatchRefereeCoverageRow[] }>();
+    /**
+     * 🔴 แก้ 6 ต.ค. 2569 — จับกลุ่มด้วย `user_id` ไม่ใช่ `tournament_referee_id`
+     *
+     * เดิมจับกลุ่มด้วย id ของ **แถวคำเชิญ** ⇒ ถ้าคนเดียวมีหลายแถว active ในทัวร์เดียวกัน
+     * F14 จะมองเป็นกรรมการหลายคน แล้ว **ไม่เทียบเวลาระหว่างแถว** ⇒ เวลาทับกันแต่เงียบ
+     * ★ เคสนั้นเคยเกิดจริง — ดูคอมเมนต์ที่ inviteReferee ข้อ 2:
+     *   "เจอของจริงในฐาน dev: ทัวร์ 2 มี 9002 เป็น accepted ค้างอยู่สามแถวพร้อมกัน"
+     *   ด่าน REFEREE_ALREADY_ACCEPTED ถูกแก้ไปแล้ว 1 ต.ค. แต่แถวที่ค้างจากก่อนนั้นยังอยู่ได้
+     *   และ GUIDE/11 §10.3 เขียนเจตนาไว้ว่า "หา REF ที่มี 2 แมตช์ทับกันทั้งทัวร์"
+     *   — คำว่า REF หมายถึง **คน** ไม่ใช่แถว
+     * 🙋 นี่คือการซ้อนเวลา **ในทัวร์เดียวกัน** เท่านั้น · การซ้อนข้ามทัวร์เป็นอีกเรื่อง
+     */
+    const byReferee = new Map<number, { tournamentRefereeId : number, matches : MatchRefereeCoverageRow[] }>();
 
     for(const r of rows){
         if(!matches.has(r.match_id)){
@@ -328,9 +340,9 @@ function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'o
         })) continue;
 
         matches.get(r.match_id)!.assigned++;
-        const ref = byReferee.get(r.tournament_referee_id) ?? { userId : r.user_id, matches : [] };
+        const ref = byReferee.get(r.user_id) ?? { tournamentRefereeId : r.tournament_referee_id, matches : [] };
         ref.matches.push(r);
-        byReferee.set(r.tournament_referee_id, ref);
+        byReferee.set(r.user_id, ref);
     }
 
     // 2. แมตช์ที่ยังขาด
@@ -341,14 +353,17 @@ function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'o
 
     // 3. กรรมการที่รับแมตช์ซ้อนเวลา (เกิดได้เมื่อ ORG เลื่อนเวลาแมตช์ทีหลัง)
     const conflicts : RefereeConflict[] = [];
-    for(const [tournamentRefereeId, ref] of byReferee){
+    for(const [userId, ref] of byReferee){
         const sorted = ref.matches
             .filter(m => m.scheduled_time && m.scheduled_end_time)
             .sort((a, b) => a.scheduled_time!.getTime() - b.scheduled_time!.getTime());
         for(let i = 1; i < sorted.length; i++){
             const prev = sorted[i - 1]!, cur = sorted[i]!;
             if(cur.scheduled_time! < prev.scheduled_end_time!){
-                conflicts.push({ tournamentRefereeId, userId : ref.userId, matchIds : [prev.match_id, cur.match_id] });
+                // tournamentRefereeId = แถวของ **แมตช์แรกในคู่ที่ทับ** (prev)
+                // ถ้าคนนี้มีหลายแถว สองแมตช์อาจมาจากต่างแถวกัน ⇒ ค่านี้ตอบได้แค่แถวเดียว
+                // คงคีย์เดิมไว้เพื่อไม่ให้ FE พัง · ตัวที่มีความหมายจริงคือ userId + matchIds
+                conflicts.push({ tournamentRefereeId : prev.tournament_referee_id!, userId, matchIds : [prev.match_id, cur.match_id] });
             }
         }
     }

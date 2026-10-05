@@ -804,6 +804,44 @@ describe('getRefereeCoverage (BR-10)', () => {
     expect(result.conflicts).toEqual([{ tournamentRefereeId: 5, userId: 70, matchIds: [1, 2] }]);
   });
 
+  /**
+   * 🔴 บั๊กที่แก้ 6 ต.ค. 2569 — เดิม F14 จับกลุ่มด้วย `tournament_referee_id` (id ของแถวคำเชิญ)
+   * ⇒ คนเดียวที่มีหลายแถว active ในทัวร์เดียวกัน ถูกมองเป็นกรรมการหลายคน และ **ไม่เทียบเวลากัน**
+   * ⇒ เวลาทับกันแต่ coverage เงียบ · ORG ไม่เห็นอะไรเลย
+   *
+   * ★ เคสนี้เกิดจริงในฐาน dev (ทัวร์ 2 มี 9002 accepted ค้างสามแถว) — ดูคอมเมนต์ที่ inviteReferee
+   *   และ GUIDE/11 §10.3 เขียนเจตนาไว้ว่าหา "REF ที่มี 2 แมตช์ทับกัน" ซึ่ง REF คือ **คน** ไม่ใช่แถว
+   */
+  it('จับกลุ่มด้วยคน ไม่ใช่แถวคำเชิญ — คนเดียวสองแถว active ในทัวร์เดียวกันต้องยังเจอว่าเวลาทับ', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      coverageRow({ match_id: 1, tournament_referee_id: 5, user_id: 70,
+                    scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z') }),
+      // คนเดิม (user 70) แต่มาจากคำเชิญอีกแถว (tr 6) — เดิมโค้ดมองเป็นคนละคน ⇒ ไม่เทียบเวลา
+      coverageRow({ match_id: 2, tournament_referee_id: 6, user_id: 70,
+                    scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z') }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.conflicts).toEqual([{ tournamentRefereeId: 5, userId: 70, matchIds: [1, 2] }]);
+  });
+
+  /** คนละคนจริง ๆ เวลาทับกันได้ ไม่ใช่ conflict — กันการแก้เกินจนรายงานมั่ว */
+  it('กรรมการสองคนคุมแมตช์ที่เวลาทับกัน ไม่ใช่ conflict', async () => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      coverageRow({ match_id: 1, tournament_referee_id: 5, user_id: 70,
+                    scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z') }),
+      coverageRow({ match_id: 2, tournament_referee_id: 6, user_id: 71,
+                    scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z') }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.conflicts).toEqual([]);
+  });
+
   it('does not report a conflict for two matches that do not overlap', async () => {
     mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
     mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
