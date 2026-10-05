@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type { AdminScopeRow, TournamentRow, UserRow } from '../types/db.js';
+import * as RewardRepo from './reward.repo.js';
 
 export type CreateTournamentRecord = {
     name: string;
@@ -653,6 +654,10 @@ export async function completeTournament(tournamentId: number, userId: number, c
              SET t.last_competed_at = NOW()
              WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'`,
             [tournamentId]);
+        // OD-64 — ประเมินเหรียญสายสถิติ · ต้องอยู่ **หลัง** การบวก championships ข้างบน
+        // ไม่งั้นเหรียญแชมป์จะอ่านค่าก่อนบวก แล้วช้าไปหนึ่งทัวร์เสมอ
+        await RewardRepo.evaluateStatRewardsForTournamentTx(conn, tournamentId);
+
         await conn.query<ResultSetHeader>(
             `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'tournament_completed', 'tournament', ?, ?)`,
             [userId, tournamentId, JSON.stringify({ championTeamId })]);

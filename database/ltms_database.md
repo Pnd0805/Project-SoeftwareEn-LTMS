@@ -674,6 +674,7 @@ CREATE TABLE pickem_predictions (
   predicted_winner_team_id INT NOT NULL,              -- ♻️ OD-56: เปลี่ยนที่มา — service อนุมานจากสกอร์ (ฝั่งที่แต้มมากกว่า) ไม่รับจาก request
   predicted_score_data JSON NULL,                     -- 🆕 OD-56 (4 ต.ค. 2569, migration 038) · NULL = แถวเก่าที่ทายแค่ฝั่ง
   points_earned INT NULL,
+  tier ENUM('spot_on','close','side_only','wrong_side') NULL,  -- 🆕 OD-65 (5 ต.ค. 2569, migration 042) · ชั้นของใบนี้ · NULL คู่กับ points_earned IS NULL เสมอ
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (match_id) REFERENCES matches(match_id),
@@ -700,7 +701,7 @@ CREATE TABLE user_rewards (
   user_id INT NOT NULL,
   reward_id INT NOT NULL,
   earned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  is_displayed BOOLEAN NOT NULL DEFAULT FALSE,
+  is_displayed BOOLEAN NOT NULL DEFAULT TRUE,           -- ♻️ OD-66 (5 ต.ค. 2569, migration 043) · เดิม FALSE ⇒ เหรียญที่ระบบแจกไม่โผล่ที่ไหนเลย · สวิตช์ RW04 กลายเป็น "เลือกซ่อน"
   FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (reward_id) REFERENCES rewards(reward_id),
   UNIQUE (user_id, reward_id)                          -- 🆕 ใหม่ — แทนที่ composite PK เดิม

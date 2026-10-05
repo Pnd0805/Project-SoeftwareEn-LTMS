@@ -2,7 +2,7 @@ import pool from '../config/db.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 import { pickemScoreFor } from '../utils/pickemScore.js';
-import type { PickemTolerance } from '../utils/pickemScore.js';
+import type { PickemTolerance, PickemTier } from '../utils/pickemScore.js';
 import type { SportTypeRow } from '../types/db.js';
 
 // C7 — Pick'em (ตาราง pickem_predictions เดิม · UNIQUE (user_id, match_id) = คนละ 1 การทายต่อแมตช์)
@@ -25,6 +25,8 @@ export type PredictionRow = {
     /** OD-56 · NULL = แถวที่ทายไว้ก่อน migration 038 (ทายแค่ฝั่ง ไม่มีสกอร์ให้เทียบ) */
     predicted_score_data: Record<string, number> | null;
     points_earned: number | null;
+    /** OD-65 — ชั้นของใบนี้ · NULL = ยังไม่ตัดสิน (ชุดเดียวกับ points_earned IS NULL เสมอ) */
+    tier: PickemTier | null;
     created_at: Date;
 };
 
@@ -110,17 +112,21 @@ export async function settleTx(conn: PoolConnection, matchId: number, winnerTeam
     );
     if (rows.length === 0) return;
 
-    // แต้มมีได้แค่ 4 ค่า ⇒ จับกลุ่มแล้วยิงไม่เกิน 4 รอบ ไม่ใช่ยิงต่อคน
-    const byPoints = new Map<number, number[]>();
+    // ชั้นมีได้แค่ 4 ค่า ⇒ จับกลุ่มแล้วยิงไม่เกิน 4 รอบ ไม่ใช่ยิงต่อคน
+    //
+    // ★ OD-65 — จับกลุ่มตาม **ชั้น** ไม่ใช่ตามแต้ม
+    //   ถ้าจับตามแต้มแล้ววันหนึ่งสองชั้นมีแต้มเท่ากัน สองชั้นจะยุบรวมเป็นกลุ่มเดียว
+    //   แล้วคอลัมน์ tier จะได้ค่าของชั้นใดชั้นหนึ่งแบบสุ่ม ⇒ จับตามชั้นปลอดภัยเสมอ
+    const byTier = new Map<PickemTier, { points: number, ids: number[] }>();
     for (const row of rows) {
-        const { points } = pickemScoreFor(row.predicted_winner_team_id, row.predicted_score_data,
-                                          winnerTeamId, actualScore, tolerance);
-        const ids = byPoints.get(points) ?? [];
-        ids.push(row.pickem_prediction_id);
-        byPoints.set(points, ids);
+        const { points, tier } = pickemScoreFor(row.predicted_winner_team_id, row.predicted_score_data,
+                                                winnerTeamId, actualScore, tolerance);
+        const group = byTier.get(tier) ?? { points, ids: [] };
+        group.ids.push(row.pickem_prediction_id);
+        byTier.set(tier, group);
     }
 
-    for (const [points, ids] of byPoints) {
+    for (const [tier, { points, ids }] of byTier) {
         const marks = ids.map(() => '?').join(',');
         if (points > 0) {
             await conn.query<ResultSetHeader>(
@@ -130,9 +136,10 @@ export async function settleTx(conn: PoolConnection, matchId: number, winnerTeam
                 [points, ...ids]
             );
         }
+        // แต้มกับชั้นเขียนพร้อมกันคำสั่งเดียว ⇒ ไม่มีจังหวะที่สองคอลัมน์ไม่ตรงกัน
         await conn.query<ResultSetHeader>(
-            `UPDATE pickem_predictions SET points_earned = ? WHERE pickem_prediction_id IN (${marks})`,
-            [points, ...ids]
+            `UPDATE pickem_predictions SET points_earned = ?, tier = ? WHERE pickem_prediction_id IN (${marks})`,
+            [points, tier, ...ids]
         );
     }
 }
@@ -147,7 +154,8 @@ export async function unsettleTx(conn: PoolConnection, matchId: number): Promise
         [matchId]
     );
     await conn.query<ResultSetHeader>(
-        `UPDATE pickem_predictions SET points_earned = NULL WHERE match_id = ?`,
+        // OD-65 — ล้าง tier พร้อม points_earned · สองคอลัมน์นี้ต้อง NULL หรือไม่ NULL ไปด้วยกันเสมอ
+        `UPDATE pickem_predictions SET points_earned = NULL, tier = NULL WHERE match_id = ?`,
         [matchId]
     );
 }

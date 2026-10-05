@@ -93,6 +93,16 @@
 | RW04 | `PATCH /me/rewards/:id/display` | Auth | เปิด/ปิดการแสดงรางวัลเป็นรายชิ้น · **404** `USER_REWARD_NOT_FOUND` ถ้าไม่ใช่รางวัลในบัญชีตัวเอง | `{ isDisplayed }` | รางวัลที่อัปเดตแล้ว |
 | RW05 | `GET /users/:id/match-history` | Optional | ประวัติแมตช์ที่ผล `verified` + สถิติรายแมตช์ของคนนี้ · **1 ต.ค.: ผูกสวิตช์ OD-46 เดียวกับ U04/U14** ปิดไว้ → `items: null` + `statsHidden: true` | — | `{ items:[{matchId, tournament, team, opponent, roundNumber, scheduledTime, startedAt, playedAt, venue, mode, scoreData, result, playerStats[]}]\|null, statsHidden }` |
 | RW06 | `GET /tournaments/:id/players/:userId/stats` | — | **ใหม่ 2 ต.ค. (OD-47) · "โปรไฟล์ในทัวร์"** สถิติของผู้ใช้คนหนึ่ง **ในทัวร์นี้ทัวร์เดียว** · **ไม่ผูกกับสวิตช์ OD-46 โดยเจตนา** — เป็นข้อมูลการแข่งขัน ไม่ใช่ข้อมูลโปรไฟล์ (สายการแข่ง ผลแมตช์ รายชื่อลงสนาม และ M-stats ก็สาธารณะอยู่แล้ว ⇒ ไล่บวกเองได้ เส้นนี้แค่บวกให้) · ใช้ repo ชุดเดียวกับ U14/RW05 โดยกรอง `tournament_id` ⇒ ตัวเลขไม่ขัดกับหน้าโปรไฟล์ · `playerStats` เป็นยอดรวมในทัวร์นี้ · ช่องที่กรรมการไม่กรอกเป็น `null` ไม่ใช่ 0 · **นับใบที่ `withdrawn` ด้วย** (แก้ 2 ต.ค.) ⇒ คนของทีมที่ถอนตัวหลังแข่งไปแล้วยังดูได้ + ธง `withdrawn: true` ให้ FE ติดป้าย — กฎเดียวกับ M19 ที่แสดงรายชื่อผู้เล่นของทีมที่ถอน (มติ 26 ก.ย.) ไม่งั้นชื่อกดได้แต่กดไปเจอ 404 · ⚠️ U14/RW05 ยังนับแค่ใบที่ `approved` ⇒ **ตัวเลขสองหน้าไม่เท่ากันในเคสนี้** (ทางเลือก ข ของ OD-47 ยังไม่ตัดสิน) | — | `{ tournament{id,name,sportTypeId,status}, team{id,name}, played, wins, losses, champion, playerStats[], matches[] }` / **404** `PLAYER_NOT_IN_TOURNAMENT` (ไม่เคยอยู่ในรายชื่อของทัวร์นี้เลย · เส้นนี้สาธารณะและเดา URL ได้ ถ้าตอบ 200 + `played: 0` จะเท่ากับยืนยันว่าอยู่ในทัวร์ ซึ่งไม่จริง — สองกรณีที่**ไม่ใช่** 404: อยู่ในรายชื่อแต่ยังไม่ลงสนาม → 200 + `played: 0` · ทีมถอนตัวหลังแข่งแล้ว → 200 + `withdrawn: true`) \| `TOURNAMENT_NOT_FOUND` \| `USER_NOT_FOUND` |
+> **RW01-RW04 · เหรียญมีรายการและมีคนแจกแล้ว (4 ต.ค. · OD-64)** — เดิม `rewards` ว่าง 0 แถว
+> และไม่มีใครเรียก `grantReward` ⇒ RW01 คืนลิสต์ว่างตลอดไป · migration 041 เติม **6 เหรียญ**
+> และระบบแจกให้เองที่ 2 จุด: **ปิดทัวร์** (5 เหรียญสายสถิติ อ่าน `player_profile_stats`)
+> และ **ทุกครั้งที่แต้ม Pick'em เปลี่ยน** (เหรียญ "นักทายแม่น") · ทั้งสองสาย **แจกหรือริบ** · เส้น amend ประเมินทั้งคู่ (OD-67)
+> เกณฑ์เก็บใน `rewards.criteria` (JSON) ไม่ได้ฝังในโค้ด · ไม่มี endpoint ใหม่ · รายละเอียดใน OD-64
+>
+> ★ **เหรียญขึ้นโปรไฟล์เลย ไม่ต้องกดอะไร** (OD-66) — `is_displayed` ตั้งต้นเป็น TRUE แล้ว
+> ⇒ RW04 เปลี่ยนความหมายจาก "เลือกโชว์" เป็น **"เลือกซ่อน"** · RW02 ยังกรอง `is_displayed = TRUE` เหมือนเดิม
+> 🔴 เหรียญอย่าง "ลงแข่งครั้งแรก" จะขึ้นของทุกคนอัตโนมัติ ⇒ ถ้าไม่อยากให้รก FE ควรโชว์เฉพาะ N อันล่าสุด
+
 | U14  | `GET /users/:id/career` | Optional | ประวัติแยก Tournament จาก **approved application** · **1 ต.ค.: ผูกสวิตช์ OD-46 เดียวกับ U04** ปิดไว้ → `items: null` + `statsHidden: true` (`null` ไม่ใช่ `[]` เพราะ `[]` อ่านได้ว่า "ไม่เคยลงแข่ง") · played/win/loss นับเฉพาะผล `verified` (walkover ไม่ถือว่าลงสนาม) | — | `{ items:[{tournament:{id,name,sportTypeId,status}, team:{id,name}, played,wins,losses,champion}]\|null, statsHidden }` |
 
 > **U01 กับ U03 ห้ามใช้ mapper ตัวเดียวกัน** — พลาดครั้งเดียวอีเมลรั่วทั้งระบบ
