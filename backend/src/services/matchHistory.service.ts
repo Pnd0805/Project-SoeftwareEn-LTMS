@@ -10,7 +10,8 @@ export async function getMatchHistory(userId: number, viewerUserId?: number) {
     if (!(await canSeeProfileStats(user, viewerUserId))) {
         return { items: null, statsHidden: true };
     }
-    const rows = await MatchHistoryRepo.findVerifiedMatchHistoryByUser(userId);
+    // true = นับแมตช์ของทัวร์ที่ทีมถอนตัวไปแล้วด้วย (มติ 5 ต.ค. — FE เลือกข้อ ก)
+    const rows = await MatchHistoryRepo.findVerifiedMatchHistoryByUser(userId, undefined, true);
     const stats = await MatchHistoryRepo.findStatsForUserMatches(userId, rows.map(row => row.match_id));
     const byMatch = new Map<number, MatchHistoryRepo.MatchHistoryStatRow[]>();
     for (const stat of stats) {

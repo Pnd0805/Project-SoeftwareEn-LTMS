@@ -30,6 +30,10 @@ describe('matchHistory.service', () => {
         await expect(Service.getMatchHistory(3)).resolves.toEqual({ items: [], statsHidden: false });
         expect(mockedCheckUser).toHaveBeenCalledWith(3);
         expect(repo.findStatsForUserMatches).toHaveBeenCalledWith(3, []);
+        // มติ 5 ต.ค. (FE เลือก ก) — RW05 นับแมตช์ของทัวร์ที่ทีมถอนตัวไปแล้วด้วย
+        // ยืนยันถึงอาร์กิวเมนต์ที่สาม เพราะถ้าใครกลับไปส่ง false RW05 จะเงียบกับทัวร์ที่ถอน
+        // ขณะที่ U14 และ RW06 ยังนับ ⇒ สามหน้าตอบไม่ตรงกันโดยไม่มี error
+        expect(repo.findVerifiedMatchHistoryByUser).toHaveBeenCalledWith(3, undefined, true);
     });
 
     it('groups player stats by match before mapping', async () => {

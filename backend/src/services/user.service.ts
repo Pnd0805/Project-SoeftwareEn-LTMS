@@ -94,7 +94,9 @@ export async function getCareer(userId: number, viewerUserId?: number) {
     if (!(await canSeeProfileStats(user, viewerUserId))) {
         return { items: null, statsHidden: true };
     }
-    const rows = await CareerRepo.findCareerByUser(userId);
+    // true = นับทัวร์ที่ทีมถอนตัวไปแล้วด้วย (มติ 5 ต.ค. — FE เลือกข้อ ก)
+    // เดิมเป็น false ⇒ U14 เงียบกับทัวร์ที่ถอน ขณะที่ RW06 นับ ⇒ สองหน้าตอบไม่ตรงกัน
+    const rows = await CareerRepo.findCareerByUser(userId, undefined, true);
     return { items: rows.map(toCareerTournamentDto), statsHidden: false };
 }
 

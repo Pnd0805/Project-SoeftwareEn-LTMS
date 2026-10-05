@@ -12,6 +12,14 @@ export type CareerTournamentDto = {
     wins: number;
     losses: number;
     champion: boolean;
+    /**
+     * ทีมถอนตัวจากทัวร์นี้ไปแล้ว แต่นัดที่ลงแข่งจริงยังนับอยู่ (มติ 5 ต.ค. — FE เลือกข้อ ก)
+     *
+     * 🔴 ไม่มีธงนี้ FE ติดป้าย "ทีมถอนตัวแล้ว" ไม่ได้ ⇒ ผู้ใช้จะเห็นทัวร์ที่ตัวเองถอนออกไปแล้ว
+     *   โผล่ในประวัติเหมือนแข่งจบปกติ ซึ่งอ่านได้ว่าระบบจำผิด
+     * ★ ไม่ต้องคิวรีเพิ่ม — career.repo คืน has_approved มาอยู่แล้วตั้งแต่ OD-47 (2 ต.ค.)
+     */
+    withdrawn: boolean;
 };
 
 export function toCareerTournamentDto(row: CareerTournamentRow): CareerTournamentDto {
@@ -27,5 +35,6 @@ export function toCareerTournamentDto(row: CareerTournamentRow): CareerTournamen
         wins: Number(row.wins),
         losses: Number(row.losses),
         champion: Boolean(row.champion),
+        withdrawn: row.has_approved === 0,
     };
 }

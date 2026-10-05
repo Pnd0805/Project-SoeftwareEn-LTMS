@@ -161,6 +161,22 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
  * B4 — ถอนผลที่ verify ไปแล้ว (กลับด้าน applyOutcomeTx) ก่อน reject/amend
  * service ต้องเช็คก่อนว่าแมตช์ถัดไปยัง scheduled (ไม่งั้นทีมที่ถูกเอาออกอาจแข่ง/บายไปแล้ว)
  * player stats ถอนตามรายชื่อลงแข่ง (application_players) ซึ่งล็อกหลัง approved · GREATEST(0) กันติดลบ
+ *
+ * ★ 6 ต.ค. 2569 — การถอนเลขรับ `withdrawn` ด้วย ไม่ใช่แค่ `approved`
+ *   🔴 บั๊กเดิม: applyOutcomeTx บวกเลขตอน verify โดยเช็คว่า **ตอนนั้น** ใบยัง approved
+ *     แต่การถอนตัวทีหลังไม่ลดเลขที่บวกไปแล้ว (ตั้งใจ — คนนั้นลงแข่งจริง · มติ 26 ก.ย.)
+ *     ⇒ ถ้าทีมถอนตัว **หลัง** verify แล้วค่อยมี reject/amend ผลนั้น
+ *       UPDATE นี้จะแมตช์ 0 แถว ⇒ เลขไม่ถูกลด ตลอดไป ⇒ โปรไฟล์ค้างนัดที่ถูกยกเลิกแล้ว
+ *       และลบออกไม่ได้นอกจากแก้มือในฐาน
+ *   คอมเมนต์เดิมเขียนว่า "ถอนจากรายชื่อชุดเดียวกับที่บวก จึงตรงกันเสมอ" ซึ่งจริงเฉพาะตอนที่
+ *   สถานะใบไม่เปลี่ยนระหว่างบวกกับถอน — ซึ่งเป็นสมมติฐานที่ไม่มีอะไรรับประกัน
+ *
+ *   ★ และการรับสองสถานะนี้ **ไม่ทำให้ลดเลขให้คนที่ไม่เกี่ยว** เพราะฐานบังคับไว้ว่า
+ *     tournament_applications UNIQUE (tournament_id, team_id) และ
+ *     application_players     UNIQUE (tournament_id, user_id)
+ *     ⇒ หนึ่งทีมมีใบเดียวต่อทัวร์ และหนึ่งคนอยู่ได้ใบเดียวต่อทัวร์
+ *     ⇒ ใบที่ approved กับใบที่ withdrawn ของ (ทัวร์, ทีม) เดียวกันคือ **แถวเดียวกัน** ในเวลาต่างกัน
+ *     ไม่ใช่สองแถวที่มีรายชื่อคนละชุด ⇒ ชุดคนที่ถูกลดเลข ตรงกับชุดที่ถูกบวกเสมอ
  */
 async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number,
                              score : Record<string, number> | null){
@@ -180,7 +196,7 @@ async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId :
              JOIN application_players ap ON ap.user_id = ps.user_id
              JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
              SET ps.matches_played = GREATEST(ps.matches_played - 1, 0), ps.wins = GREATEST(ps.wins - ?, 0), ps.losses = GREATEST(ps.losses - ?, 0), ps.updated_at = NOW()
-             WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved' AND ps.sport_type_id = ?`,
+             WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status IN ('approved', 'withdrawn') AND ps.sport_type_id = ?`,
             [won, 1 - won, match.tournament_id, teamId, sportId]);
     }
 

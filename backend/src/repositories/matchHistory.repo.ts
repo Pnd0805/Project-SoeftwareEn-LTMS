@@ -20,6 +20,17 @@ export type MatchHistoryRow = {
     winner_team_id: number | null;
     score_data: Record<string, number> | null;
     verified_at: Date | null;
+    /**
+     * 1 = ใบสมัครของคนนี้ในทัวร์นี้ยัง `approved` · 0 = ใบถูก `withdrawn` ไปแล้ว
+     * ส่งออก API ในชื่อ `withdrawn` (ตรงข้ามกัน) — FE ขอมาเพื่อติดป้าย "ทีมถอนตัวแล้ว" ต่อรายการ
+     *
+     * ★ อ่านจาก `ta` ตรง ๆ ได้ แม้ query นี้เป็น `SELECT DISTINCT` เพราะฐานบังคับไว้แล้วว่า
+     *   `application_players` มี `UNIQUE (tournament_id, user_id)`
+     *   ⇒ **หนึ่งคนอยู่ได้ใบเดียวต่อทัวร์** ⇒ `ta` ของแต่ละแถวมีได้ค่าเดียว ไม่มีทางทำให้แถวแตก
+     *   (และ `tournament_applications` มี `UNIQUE (tournament_id, team_id)` ซ้ำอีกชั้น
+     *    ⇒ ทีมเดียวก็มีใบเดียวต่อทัวร์ ⇒ "ถอนแล้วสมัครใหม่" ใช้แถวเดิม ไม่เกิดใบที่สอง)
+     */
+    has_approved: number;
 };
 
 export type MatchHistoryStatRow = {
@@ -32,12 +43,15 @@ export type MatchHistoryStatRow = {
 /**
  * OD-47 — `tournamentId` กรองให้เหลือทัวร์เดียว (RW06 โปรไฟล์ในทัวร์) · ไม่ส่ง = ทุกทัวร์เหมือนเดิม (RW05)
  *
- * `includeWithdrawn` (แก้ 2 ต.ค.) — นับใบที่ `withdrawn` ด้วย **ค่าเริ่มต้นไม่นับ** · เปิดเฉพาะ RW06
+ * `includeWithdrawn` — นับใบที่ `withdrawn` ด้วย
+ *
+ * ★ 6 ต.ค. 2569 — **ไม่มีค่าเริ่มต้นแล้ว ต้องส่งทุกครั้ง** เหตุผลเดียวกับ career.repo
+ *   FE ตอบข้อ ก ⇒ ทั้ง RW05 และ RW06 ส่ง true หมด ⇒ ค่าเริ่มต้น false ไม่มีใครใช้
+ *   ปล่อยไว้แล้ววันหนึ่งจะมีคนได้ false มาเงียบ ๆ แล้วเลขไม่ตรงกับอีกสองหน้า
  *   กฎเดียวกับ career.repo และ M19 รายชื่อผู้เล่น ซึ่งแสดงคนของทีมที่ถอนตัวอยู่แล้ว (มติ 26 ก.ย.)
- *   ถ้าไม่เปิด RW06 จะคืน `matches: []` ให้คนของทีมที่ถอน ทั้งที่เขาลงแข่งจริงและผลยืนยันแล้ว
  */
-export async function findVerifiedMatchHistoryByUser(userId: number, tournamentId?: number,
-                                                     includeWithdrawn = false): Promise<MatchHistoryRow[]> {
+export async function findVerifiedMatchHistoryByUser(userId: number, tournamentId: number | undefined,
+                                                     includeWithdrawn: boolean): Promise<MatchHistoryRow[]> {
     const [rows] = await pool.query<(MatchHistoryRow & RowDataPacket)[]>(
         `SELECT DISTINCT
                 m.match_id, m.round_number, m.scheduled_time, m.started_at, m.actual_end_time, m.venue, m.mode,
@@ -45,7 +59,8 @@ export async function findVerifiedMatchHistoryByUser(userId: number, tournamentI
                 ta.team_id AS my_team_id, my_team.name AS my_team_name,
                 CASE WHEN m.team_a_id = ta.team_id THEN m.team_b_id ELSE m.team_a_id END AS opponent_team_id,
                 CASE WHEN m.team_a_id = ta.team_id THEN team_b.name ELSE team_a.name END AS opponent_team_name,
-                mr.winner_team_id, mr.score_data, mr.verified_at
+                mr.winner_team_id, mr.score_data, mr.verified_at,
+                CASE WHEN ta.tournament_application_status = 'approved' THEN 1 ELSE 0 END AS has_approved
            FROM application_players ap
            JOIN tournament_applications ta
              ON ta.tournament_application_id = ap.tournament_application_id

@@ -407,6 +407,7 @@ describe('C8 profile engagement', () => {
       wins: 2,
       losses: 1,
       champion: true,
+      withdrawn: false,
     });
 
     await expect(userService.getCareer(1)).resolves.toMatchObject({
@@ -429,7 +430,9 @@ describe('C8 profile engagement', () => {
     mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
 
     await expect(userService.getCareer(1, 1)).resolves.toEqual({ items: [], statsHidden: false });
-    expect(mockedCareerRepo.findCareerByUser).toHaveBeenCalledWith(1);
+    // มติ 5 ต.ค. — U14 ส่ง includeWithdrawn = true (ไม่ใช่พึ่งค่าเริ่มต้นแล้ว เพราะไม่มีค่าเริ่มต้น)
+    // ยืนยันถึงอาร์กิวเมนต์ที่สาม ไม่ใช่แค่ userId เพราะถ้าใครกลับไปส่ง false เลขจะไม่ตรงกับ RW06
+    expect(mockedCareerRepo.findCareerByUser).toHaveBeenCalledWith(1, undefined, true);
   });
 });
 

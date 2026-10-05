@@ -10,7 +10,7 @@ beforeEach(() => vi.clearAllMocks());
 describe('career.repo', () => {
   it('builds career only from approved applications and verified match results', async () => {
     mocks.query.mockResolvedValueOnce([[], []]);
-    await findCareerByUser(9);
+    await findCareerByUser(9, undefined, false);
 
     const [sql, values] = mocks.query.mock.calls[0]!;
     expect(sql).toContain("ta.tournament_application_status = 'approved'");
@@ -18,14 +18,18 @@ describe('career.repo', () => {
     expect(sql).toContain('t.deleted_at IS NULL');
     expect(sql).not.toContain("mr.match_result_status = 'walkover'");
     // OD-47 — ไม่ส่ง tournamentId = NULL ทั้งคู่ ⇒ `(? IS NULL OR ...)` ปล่อยผ่าน ได้ทุกทัวร์เหมือนเดิม
-    // includeWithdrawn = 0 โดยค่าเริ่มต้น ⇒ U14 ยังนับแค่ใบที่ approved (ไม่เปลี่ยนตัวเลขโปรไฟล์ใคร)
+    //
+    // ★ 6 ต.ค. — เดิมบรรทัดนี้เรียก findCareerByUser(9) เฉย ๆ แล้วพึ่งค่าเริ่มต้น false
+    //   ตอนนี้พารามิเตอร์บังคับแล้ว และ **ไม่มีเส้นไหนในแอปส่ง false อีก** (U14/RW05/RW06 ส่ง true หมด)
+    //   ⇒ เคสนี้เหลือหน้าที่เดียวคือพิสูจน์ว่า SQL ยัง **เลือกได้** ว่าไม่นับใบที่ถอน
+    //     ซึ่งยังมีค่า เพราะถ้าวันหนึ่งใครทำพารามิเตอร์นี้เป็นของตาย เทสนี้จะจับได้
     expect(values).toEqual([9, 0, null, null]);
   });
 
   /** OD-47 — RW06 ใช้ repo ตัวเดียวกันโดยกรองทัวร์ ⇒ ตัวเลขชุดเดียวกับ U14 ไม่ใช่ SQL ชุดใหม่ */
   it('OD-47 — ส่ง tournamentId แล้วกรองเหลือทัวร์เดียว ด้วย SQL ชุดเดิม', async () => {
     mocks.query.mockResolvedValueOnce([[], []]);
-    await findCareerByUser(9, 20);
+    await findCareerByUser(9, 20, false);
 
     const [sql, values] = mocks.query.mock.calls[0]!;
     expect(sql).toContain('(? IS NULL OR t.tournament_id = ?)');
@@ -49,7 +53,7 @@ describe('career.repo', () => {
   // คิด has_approved เป็น MAX() ไม่ใส่ใน GROUP BY ⇒ คนที่ถอนแล้วสมัครใหม่ยังได้แถวเดียวต่อ (ทัวร์, ทีม)
   it('OD-47 — has_approved คิดเป็น MAX ไม่ได้อยู่ใน GROUP BY', async () => {
     mocks.query.mockResolvedValueOnce([[], []]);
-    await findCareerByUser(9);
+    await findCareerByUser(9, undefined, true);
 
     const [sql] = mocks.query.mock.calls[0]!;
     expect(sql).toContain('AS has_approved');

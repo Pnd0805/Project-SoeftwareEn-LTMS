@@ -27,6 +27,8 @@ export function toMatchHistoryDto(row: MatchHistoryRow, stats: MatchHistoryStatR
         mode: row.mode,
         scoreData: row.score_data,
         result: row.winner_team_id === null ? null : row.winner_team_id === row.my_team_id ? 'win' as const : 'loss' as const,
+        /** แมตช์นี้อยู่ในทัวร์ที่ทีมของผู้ใช้ถอนตัวไปแล้ว — ผลยังนับ แต่ FE ควรติดป้าย (มติ 5 ต.ค.) */
+        withdrawn: row.has_approved === 0,
         playerStats: stats.map(stat => ({
             statKey: stat.stat_key,
             statLabelTh: stat.stat_label_th,

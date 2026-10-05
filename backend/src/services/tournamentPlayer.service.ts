@@ -23,8 +23,14 @@ export async function getTournamentPlayerStats(tournamentId : number , userId : 
     await checkUser(userId);
 
     const careerRows = await CareerRepo.findCareerByUser(userId , tournamentId , true);
-    // ถอนแล้วสมัครใหม่ (A1) มีได้สองใบ — เอาใบที่ยัง approved ก่อนเสมอ ให้ผลคาดเดาได้
-    // ตัวเลขของทั้งสองแถวเท่ากันอยู่แล้ว เพราะแมตช์ผูกกับ (ทัวร์, ทีม) ไม่ได้ผูกกับใบสมัคร
+    // เอาแถวที่ยัง approved ก่อนเสมอ ให้ผลคาดเดาได้
+    //
+    // 🔴 แก้คำอธิบาย 6 ต.ค. — เหตุผลเดิมที่เขียนไว้ ("ถอนแล้วสมัครใหม่ มีได้สองใบ") ผิด
+    //   ฐานมี application_players UNIQUE (tournament_id, user_id) ⇒ หนึ่งคนมีใบเดียวต่อทัวร์
+    //   ⇒ เมื่อกรองด้วย tournamentId แล้ว แถวที่ได้มีได้ **อย่างมากหนึ่งแถว** อยู่แล้ว
+    //   ⇒ find() ตรงนี้จึงเป็นการกันไว้ ไม่ใช่การเลือกจากสองแถวที่เกิดขึ้นจริง
+    // ★ ไม่ถอดออก เพราะถ้าวันหนึ่ง unique key ถูกถอด บรรทัดนี้คือสิ่งที่ทำให้ผลยังคาดเดาได้
+    //   (ถ้าถอดออกแล้วใช้ careerRows[0] เฉย ๆ ผลจะขึ้นกับลำดับที่ MySQL คืนมา)
     const career = careerRows.find(row => row.has_approved === 1) ?? careerRows[0];
     if(!career){
         // ไม่เคยอยู่ในรายชื่อของทัวร์นี้เลย ⇒ "โปรไฟล์ของคนนี้ในทัวร์นี้" ไม่มีอยู่จริง
