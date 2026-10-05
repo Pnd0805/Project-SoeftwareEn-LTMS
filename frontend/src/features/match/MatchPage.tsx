@@ -814,7 +814,7 @@ export function MatchPage() {
               {' — '}คะแนนบนสุดจะยังคงเป็นคะแนนเดิมจนกว่าจะได้รับการยืนยันผล
             </Banner>
           ) : null}
-          <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'mvp' ? 'Vote MVP' : x === 'community' ? 'Community' : x }))} active={tab}
+          <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'mvp' ? 'Vote MVP' : x === 'community' ? "Pick'em" : x }))} active={tab}
             onPick={k => navigate(`/m/${m.id}/${k}`)} />
 
           {tab === 'overview' ? (
