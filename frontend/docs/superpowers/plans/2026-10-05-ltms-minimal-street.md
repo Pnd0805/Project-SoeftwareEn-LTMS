@@ -79,6 +79,8 @@
 
 **Completion evidence:** [Ticket 2](../notes/2026-10-05-ltms-ticket-02.md). Implemented directly in vertical test/implementation increments. The inherited shared Modal and its regression tests are included unchanged as required preview dependencies. Existing API/DTO/hooks/store/rules remain at the frozen baseline.
 
+**Approved visual follow-up:** [Street art wall](../notes/2026-10-05-ltms-tournament-street-wall.md). Tournament preview gains a generated wall texture, poster headline and sport sticker; other dialogs retain their presentation. Preview behavior and frozen files remain unchanged.
+
 ### Task 3: Team and public Player journey
 
 **Files:**

@@ -15,10 +15,11 @@ interface ModalProps {
   onClose: () => void
   label?: string
   title?: ReactNode
+  className?: string
   children: ReactNode
 }
 
-export function Modal({ open, onClose, label, title, children }: ModalProps) {
+export function Modal({ open, onClose, label, title, className, children }: ModalProps) {
   const backdropClosing = useRef(false)
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function Modal({ open, onClose, label, title, children }: ModalProps) {
     }}>
       <Dialog.Portal>
         <Dialog.Viewport className="modal-bg">
-          <Dialog.Popup className="modal" aria-modal="true" aria-label={title ? undefined : label || 'Dialog'}>
+          <Dialog.Popup className={['modal', className].filter(Boolean).join(' ')} aria-modal="true" aria-label={title ? undefined : label || 'Dialog'}>
             <div className="vstack">
               {label ? <Tag>{label}</Tag> : null}
               {title ? <Dialog.Title render={<h3 style={{ margin: 0, fontSize: 20 }} />}>{title}</Dialog.Title> : null}
