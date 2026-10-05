@@ -5,6 +5,16 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ltms
+    # เปิดพอร์ตออกโฮสต์ — dev รัน backend บนเครื่อง (npm run dev / npm run migrate) จึงต้องถึง
+    # mysql ทาง localhost ชื่อ `mysql` ใช้ได้เฉพาะ container ที่อยู่ในเน็ตเวิร์ก docker เดียวกัน
+    # 🔴 6 ต.ค. — ก่อนหน้านี้ไฟล์นี้ไม่มี ports: เลย แต่ container ที่ทุกคนรันอยู่มี 3307
+    #   ⇒ container นั้นไม่ได้เกิดจากไฟล์นี้ ใครสั่ง `docker compose down && up` พอร์ตจะหายไป
+    #     แล้ว DB_PORT=3307 ใน .env จะต่อไม่ติด เหมือนฐานพัง ทั้งที่ฐานปกติ
+    #     และคนที่ clone ใหม่ไม่มีพอร์ตให้ต่อตั้งแต่แรก ⇒ เติมให้ตรงกับของที่รันอยู่จริง
+    # 3307 ไม่ใช่ 3306 เพราะหลายเครื่องมี MySQL ของตัวเองจับ 3306 ไว้แล้ว
+    # ผูกกับ 127.0.0.1 เหมือน minio/mailpit — ไม่เปิดฐานออก LAN
+    ports:
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
