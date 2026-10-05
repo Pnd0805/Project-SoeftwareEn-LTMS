@@ -5,7 +5,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings } from "./match";
+import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings, overrideResult } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -242,5 +242,78 @@ describe("finish-then-submit contract (OD-26)", () => {
   it("lets the match referee open check-in", async () => {
     fetchMock.mockImplementation(routeAs(REFEREE, "scheduled"));
     expect((await getMatch(13)).viewer.can.openCheckin).toBe(true);
+  });
+});
+
+/* OD-59 / OD-55 (4 ต.ค.) — S05 บอกตัวผู้บันทึกแบบมีเงื่อนไข และ S02b ให้กรรมการแก้ผล online */
+describe("result recorder and referee correction", () => {
+  const detail = {
+    id: 12, tournamentId: 21, round: 1,
+    teamA: { id: 9007, name: "A", sportTypeId: 3 }, teamB: { id: 9008, name: "B", sportTypeId: 3 },
+    status: "finished", mode: "online",
+  };
+  const route = (resultBody: Record<string, unknown>) => (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/matches/12/result")) return Promise.resolve(json(resultBody));
+    if (url.endsWith("/matches/12")) return Promise.resolve(json(detail));
+    return Promise.resolve(json({}));
+  };
+  const base = { matchId: 12, winnerTeamId: 9008, scoreData: { "9007": 1, "9008": 2 }, status: "submitted",
+    submittedRole: "team_leader", isAmended: false, amendedAt: null, amendReason: null, verifiedAt: null, isWalkover: false };
+
+  it("reads a missing submittedBy key as hidden, not as an unnamed person", async () => {
+    fetchMock.mockImplementation(route(base));
+    const r = await getResult(12);
+    expect(r.submittedByVisibility).toBe("hidden");
+    expect(r.createdAt).toBe("");
+  });
+
+  it("reads submittedBy: null as a deleted account and keeps submittedAt", async () => {
+    fetchMock.mockImplementation(route({ ...base, submittedBy: null, submittedAt: "2026-10-04T08:00:00.000Z" }));
+    const r = await getResult(12);
+    expect(r.submittedByVisibility).toBe("deleted");
+    expect(r.createdAt).toBe("2026-10-04T08:00:00.000Z");
+  });
+
+  it("names the recorder when S05 sends them", async () => {
+    fetchMock.mockImplementation(route({ ...base, submittedBy: { id: 9101, fullName: "Leader A", avatarUrl: null } }));
+    const r = await getResult(12);
+    expect(r.submittedByVisibility).toBe("shown");
+    expect(r.submittedBy.fullName).toBe("Leader A");
+  });
+
+  it("posts a correction to S02b keyed by team id, with the reason", async () => {
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/matches/12/result/override")) {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({ winnerTeamId: 9007, scoreData: { "9007": 3, "9008": 1 }, reason: "Real score 3-1" });
+        return Promise.resolve(json({ id: 5, matchId: 12, status: "submitted" }));
+      }
+      return route(base)(input);
+    });
+    await expect(overrideResult(12, { winnerTeamId: 9007, scoreData: { a: 3, b: 1 }, reason: "Real score 3-1" }))
+      .resolves.toMatchObject({ status: "submitted" });
+  });
+});
+
+/* OD-61 — teamA/teamB เป็น TeamRef ที่มี logoUrl แล้ว · ทีมไม่มีโลโก้ ≠ ช่องไม่มีทีม */
+describe("team logos on matches", () => {
+  it("carries a team's logo, keeps a logo-less team, and keeps an empty slot empty", async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/matches/10")) {
+        return Promise.resolve(json({
+          id: 10, tournamentId: 17, round: 1, status: "scheduled", mode: "onsite",
+          teamA: { id: 9003, name: "With logo", sportTypeId: 2, logoUrl: "http://localhost:9000/ltms-uploads/team_logo/9003/x.png" },
+          teamB: null,
+        }));
+      }
+      if (url.endsWith("/me")) return Promise.reject(new Error("signed out"));
+      return Promise.resolve(json({ items: [] }));
+    });
+    const m = await getMatch(10);
+    expect(m.teamA?.logoUrl).toBe("http://localhost:9000/ltms-uploads/team_logo/9003/x.png");
+    expect(m.teamB).toBeNull();
   });
 });

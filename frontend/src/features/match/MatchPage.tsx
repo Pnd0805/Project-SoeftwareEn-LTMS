@@ -1,6 +1,7 @@
 import { RefereeMatchRequest } from './RefereeMatchRequest'
 import { MatchWorkflowPanel } from './MatchWorkflowPanel'
-import { resultRecorder } from './resultAttribution'
+import { canConfirm, confirmerName, confirmerOf, resultRecorder, type Confirmer } from './resultAttribution'
+import { ResultOverride } from './ResultOverride'
 /**
  * src/features/match/MatchPage.tsx
  *
@@ -21,6 +22,9 @@ import { resultRecorder } from './resultAttribution'
 import { MatchMvpVoting } from '../mvp/MvpPage'
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { getMatchDispute } from '../../api/matchWorkflow'
+import { useMe } from '../../hooks/useAuth'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Badge, Banner, Crumb, Empty, Facts, Field, MatchStateBadge, Panel, TableWrap, Tabs,
@@ -464,20 +468,19 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
  * `MATCH_RESULT_ALREADY_VERIFIED` (มีคนเซ็นไปแล้วระหว่างที่เราเปิดหน้าอยู่) ·
  * `DISPUTE_WINDOW_CLOSED` · `DISPUTE_ALREADY_ACTIVE`
  */
-function SignOffError({ verify, dispute, mode }: {
+function SignOffError({ verify, dispute, who }: {
   verify: { isError: boolean; error: unknown }
   dispute: { isError: boolean; error: unknown }
-  mode: MatchDto['mode']
+  who: Confirmer
 }) {
   const failed = verify.isError ? verify.error : dispute.isError ? dispute.error : null
   if (failed === null) return null
   const code = failed instanceof ApiError ? failed.code : ''
+  const signer = confirmerName(who)
   const hint = code === 'SAME_PERSON_CANNOT_VERIFY'
-    ? `The same person cannot both record and confirm a result. ${
-      mode === 'onsite' ? "The winning team's leader" : 'The match referee'} has to confirm this one.`
+    ? `The same person cannot both record and confirm a result. ${signer[0].toUpperCase()}${signer.slice(1)} has to confirm this one.`
     : code === 'WRONG_SUBMITTER_ROLE'
-      ? `On a ${mode} match this is not yours to sign. ${
-        mode === 'onsite' ? "The winning team's leader confirms" : 'The match referee confirms'}.`
+      ? `This one is not yours to sign — ${signer} confirms it.`
       : code === 'MATCH_RESULT_ALREADY_VERIFIED'
         ? 'Somebody signed this off while the page was open. Reload to see where it stands.'
         : failed instanceof Error ? failed.message : 'Something went wrong.'
@@ -495,6 +498,19 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   const verify = useVerifyResult(m.id, m.tournamentId)
   const dispute = useDisputeResult(m.id, m.tournamentId)
   const [reason, setReason] = useState('')
+  /* OD-58 — แอดมินทั้งมหาวิทยาลัยตัดสินข้อโต้แย้งได้หลัง 48 ชม. นับจากเวลาค้าน · ขอบเขตอ่าน S03b
+     ตรงกับขอบเขตกด S04 เป๊ะ (ฟังก์ชันเวลาเดียวกัน) จึงเปิดแผงตัดสินเมื่ออ่าน S03b สำเร็จ ไม่คำนวณเวลาเอง
+     — เดิมเปิดให้แต่ผู้จัด เพราะแอดมินกดได้แต่อ่านเรื่องไม่ได้ ปุ่มที่กดโดยไม่มีข้อมูลคือปุ่มที่ตัดสินมั่ว */
+  const me = useMe()
+  const universityAdmin = me.data?.adminScope?.scopeType === 'university_wide'
+  const disputed = result?.status === 'disputed' || m.status === 'disputed'
+  const adminRead = useQuery({
+    queryKey: ['matchDispute', m.id],
+    queryFn: () => getMatchDispute(m.id),
+    enabled: universityAdmin && !can.resolveDispute && disputed,
+    retry: false,
+  })
+  const adminMayRule = universityAdmin && adminRead.isSuccess
 
   if (!m.teamA || !m.teamB) {
     return (
@@ -506,10 +522,11 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   }
 
   if (result?.status === 'disputed') {
-    return can.resolveDispute ? <ResolvePanel m={m} result={result} /> : (
+    return can.resolveDispute || adminMayRule ? <ResolvePanel m={m} result={result} /> : (
       <Banner kind="crit">
         <b>Under dispute.</b> {result.disputeRaisedBy?.fullName ?? 'A team'} contested this result.
         The organizer decides.
+        {universityAdmin ? ' University-wide admins can rule on it 48 hours after it was raised.' : ''}
       </Banner>
     )
   }
@@ -586,16 +603,22 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
        isLeaderOfTeam(winner_team_id)) — เดิมโชว์แผงนี้ให้หัวหน้าทั้งสองฝั่ง ฝั่งที่แพ้จึง
        อ่านว่า "You won, so you confirm" แล้วกดไปเจอ 403 WRONG_SUBMITTER_ROLE
        ฝั่งที่แพ้ต้องตกไปแผง Waiting ข้างล่าง ซึ่งมีช่องโต้แย้งให้ตามดีไซน์ */
-    const iConfirm = can.verifyResult
-      && (m.mode !== 'onsite' || result.winnerTeamId === m.viewer.myTeamId)
+    /* OD-55 — ผู้ยืนยันขึ้นกับว่าใครเขียนผล (submittedRole) ไม่ใช่โหมดอย่างเดียว */
+    const confirmer = confirmerOf(m.mode, result.submittedRole)
+    const iConfirm = canConfirm(m, result)
+    /* S02b — กรรมการของแมตช์ online แก้ผลได้ตราบที่ยัง submitted (รวมผลที่ตัวเองเพิ่งแก้) */
+    const correction = m.mode === 'online' && m.viewer.roles.includes('referee')
+      ? <ResultOverride m={m} result={result} /> : null
     if (iConfirm) {
       return (
         <Panel>
           <span className="tag"><em>//</em> Your confirmation</span>
           <Banner kind="warn">
-            {m.mode === 'onsite'
+            {confirmer === 'winning_leader'
               ? <><b>You won, so you confirm.</b> The losing side does not sign off — they raise a dispute instead.</>
-              : <><b>You are the referee.</b> Check the submitted score against the record before confirming.</>}
+              : confirmer === 'referee'
+                ? <><b>You are the referee.</b> Check the submitted score against the record before confirming.</>
+                : <><b>The referee entered this result.</b> Either team leader can accept it — confirming means your side agrees with it, even if you lost. If you don&apos;t, dispute it instead.</>}
           </Banner>
           {USE_MOCK && can.disputeResult ? (
             <Field label="Reason, if you are disputing instead" htmlFor="dp-why">
@@ -616,16 +639,17 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               {verify.isPending ? 'Confirming…' : 'Confirm result'}
             </button>
           </div>
-          <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
+          <SignOffError verify={verify} dispute={dispute} who={confirmer} />
+          {correction}
         </Panel>
       )
     }
     return (
       <Panel quiet>
         <span className="tag"><em>//</em> Waiting</span>
+        {correction}
         <div className="sub">
-          Entered by {resultRecorder(result)}. Waiting on the{' '}
-          {m.mode === 'onsite' ? 'winning team leader' : 'referee'} to confirm.
+          Entered by {resultRecorder(result)}. Waiting on {confirmerName(confirmer)} to confirm.
         </div>
         {USE_MOCK && can.disputeResult ? (
           <>
@@ -638,7 +662,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               onClick={() => dispute.mutate({ reason: reason.trim(), teamId: m.viewer.myTeamId ?? 0 })}>
               Dispute this result
             </button>
-            <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
+            <SignOffError verify={verify} dispute={dispute} who={confirmer} />
           </>
         ) : null}
       </Panel>
@@ -673,6 +697,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
         <div className="sub">
           A result was recorded and one of the squads is disputing it. Only the organizer, this
           match&apos;s referees and the two squad leaders can see the score while that is settled.
+          {universityAdmin ? ' As a university-wide admin you can read and rule on it once 48 hours have passed since it was raised.' : ''}
         </div>
       </Panel>
     )

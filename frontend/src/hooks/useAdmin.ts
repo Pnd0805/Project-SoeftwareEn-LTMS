@@ -97,6 +97,16 @@ function touchRefereeRequests(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["notifications"] });
 }
 
+/** F02b — ปลายทางที่โอนแมตช์ให้ได้ รวมกรรมการที่ยังไม่มีแมตช์ */
+export function useAssignableReferees(tournamentId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["referees", tournamentId, "assignable"] as const,
+    queryFn: () => adminApi.getAssignableReferees(tournamentId as number),
+    enabled: enabled && tournamentId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
 export function useRequestRefereeTransfer() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: adminApi.requestRefereeTransfer,

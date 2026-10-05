@@ -43,7 +43,8 @@ export interface PredictionSummary {
   closesAt: string | null;
   total: number;
   teams: Array<{ teamId: number; picks: number; percent: number }>;
-  mine: { teamId: number; pointsEarned: number | null; status: 'pending' | 'won' | 'lost' | 'void' } | null;
+  /** OD-56 — ทายเป็นสกอร์ (teamId = ผู้ชนะที่ระบบอนุมานจากสกอร์) · pointsEarned เป็น 10/7/4/0 ไม่ใช่ 10/0 */
+  mine: { teamId: number; scoreData?: Record<string, number> | null; pointsEarned: number | null; status: 'pending' | 'won' | 'lost' | 'void' } | null;
   canPredict: boolean;
 }
 export interface PickemHistory {

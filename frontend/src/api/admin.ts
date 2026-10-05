@@ -622,6 +622,23 @@ export function requestRefereeSwap(
   });
 }
 
+/**
+ * F02b GET /tournaments/:id/referees/assignable — ปลายทางที่โอน/แลกแมตช์ให้ได้ (OD-59 · 4 ต.ค.)
+ *
+ * คืนกรรมการที่ "ใช้งานได้จริง" ทุกคน รวมคนที่ยังไม่มีแมตช์ (ว่างที่สุด) — เดิม FE รวบปลายทางจาก
+ * รายชื่อกรรมการของแมตช์อื่น คนที่ยังไม่ได้รับแมตช์จึงไม่โผล่เลย · ไม่รวมตัวผู้เรียก · เรียงจากว่างไปยุ่ง
+ * ผู้จัดหรือกรรมการที่ใช้งานได้ของทัวร์เท่านั้น — คนนอก 403 NOT_TOURNAMENT_REFEREE ไม่ใช่ลิสต์ว่าง
+ */
+export interface AssignableRefereeDto {
+  id: number;
+  user: { id: number; fullName: string; avatarUrl: string | null };
+  upcomingMatchCount: number;
+}
+export function getAssignableReferees(tournamentId: number): Promise<{ items: AssignableRefereeDto[] }> {
+  if (USE_MOCK) return mockDelay({ items: [] }); // ข้อมูลจำลองไม่มีพูลกรรมการระดับทัวร์ให้เลือก
+  return apiFetch(`/tournaments/${tournamentId}/referees/assignable`);
+}
+
 /** FR01 POST /referee-requests — กรรมการขอโอน (ไม่ส่ง theirMatchId) หรือแลกแมตช์ */
 export function requestRefereeTransfer(input: {
   myMatchId: number;

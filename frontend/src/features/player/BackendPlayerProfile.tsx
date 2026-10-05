@@ -9,6 +9,10 @@
  *
  * ⚠️ โปรไฟล์สาธารณะของ backend ไม่ส่งวันเกิด ชั้นปี หรืออีเมลมาให้ (PDPA — NF-SE-03)
  *    หน้านี้จึงไม่มีอายุกับชั้นปีเหมือนหน้าของ prototype และไม่ควรเดาเอาเอง
+ *
+ * OD-46 — เจ้าของปิดสถิติได้ (`statsHidden` บน U03 ตั้งแต่ request แรก) ⇒ U04/U14 ตอบ 200 แต่ช่องเป็น null
+ *   บอกว่าซ่อนไว้ ไม่ใช่ "ยังไม่มีอะไร" · สถิติในแต่ละทัวร์ (RW06) ยังเปิดเสมอ ไม่ได้ปิดตาม
+ * OD-60 — MVP ใช้ mvpTimes เป็นตัวหลัก · mvpVotes โตตามจำนวนคนดู ห้ามติดป้ายว่า "MVP"
  */
 import { BackendCareerPanel } from './BackendCareerPanel'
 import { Avatar } from '../../components/kit/Avatar'
@@ -52,8 +56,11 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
   const p = profile.data
   const facultyName = faculties.data?.items.find(f => f.id === p.facultyId)?.name
   const departmentName = departments.data?.items.find(d => d.id === p.departmentId)?.name
-  const overall = stats.data?.overall
-  const bySport = stats.data?.bySport ?? []
+  const hidden = !!p.statsHidden || !!stats.data?.statsHidden
+  const overall = hidden ? null : stats.data?.overall
+  const bySport = hidden ? [] : stats.data?.bySport ?? []
+  const mvpTimes = stats.data?.mvpTimes
+  const mvpVotes = stats.data?.mvpVotes
 
   return (
     <>
@@ -87,6 +94,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
             {p.teams.map(team => (
               <button className="btn ghost" type="button" key={team.id}
                 onClick={() => navigate(`/team/${team.id}`)}>
+                {team.logoUrl ? <img src={team.logoUrl} alt="" width={16} height={16} style={{ borderRadius: 4, objectFit: 'cover' }} /> : null}
                 {team.name} <Icon name="chev" size={11} />
               </button>
             ))}
@@ -96,13 +104,21 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
 
       <Panel quiet>
         <span className="tag"><em>//</em> Career — never summed across sports</span>
-        {stats.isPending ? <div className="sub">Loading figures…</div> : null}
+        {stats.isPending && !hidden ? <div className="sub">Loading figures…</div> : null}
+        {hidden ? (
+          <div className="sub">
+            This player keeps their profile stats private. Their figures inside each tournament are
+            still shown on that tournament&apos;s pages.
+          </div>
+        ) : null}
         {overall ? (
           <div className="statline">
             <div><span className="tag">Played</span><span className="v">{overall.matchesPlayed}</span></div>
             <div><span className="tag">Won</span><span className="v">{overall.wins}</span></div>
             <div><span className="tag">Lost</span><span className="v">{overall.losses}</span></div>
             <div><span className="tag">Win rate</span><span className="v">{Math.round(overall.winRate * 100)}%</span></div>
+            {mvpTimes != null ? <div><span className="tag">MVP</span><span className="v">{mvpTimes}×</span></div> : null}
+            {mvpVotes != null ? <div><span className="tag">MVP votes received</span><span className="v">{mvpVotes}</span></div> : null}
           </div>
         ) : null}
         {bySport.length ? (
@@ -121,7 +137,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
               </tbody>
             </table>
           </TableWrap>
-        ) : stats.isSuccess ? (
+        ) : stats.isSuccess && !hidden ? (
           <div className="sub">Nothing recorded yet — figures appear once a referee confirms a match they played in.</div>
         ) : null}
       </Panel>

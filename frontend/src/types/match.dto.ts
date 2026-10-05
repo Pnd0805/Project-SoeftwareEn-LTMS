@@ -277,6 +277,12 @@ export interface MatchResultDto {
   /** โครงสร้างคงที่ ไม่แตกตารางเหมือน player stats — shape ขึ้นกับชนิดกีฬา */
   scoreData: Record<string, unknown> | null;
   submittedBy: PlayerRef;
+  /**
+   * OD-59 — S05 ส่งชื่อผู้บันทึกให้เฉพาะผู้จัด กรรมการ หัวหน้าสองทีม และแอดมินที่ถึงคิวตัดสิน
+   * สามกรณีหน้าจอต้องพูดคนละแบบ: `hidden` ไม่มีคีย์ (ไม่มีสิทธิ์รู้) · `deleted` คีย์เป็น null
+   * (บัญชีผู้ส่งถูกลบ) · `shown` มีชื่อ — เดิมรวบเป็น "—" ทั้งหมด จึงขึ้น "Entered by —"
+   */
+  submittedByVisibility?: "shown" | "hidden" | "deleted";
   submittedRole: ResultSubmittedRole;
   status: MatchResultStatus;
 
@@ -487,6 +493,11 @@ export interface BackendTeamRef {
   id: number;
   name: string;
   sportTypeId: number;
+  /**
+   * OD-61 (4 ต.ค.) — URL สาธารณะพร้อมใช้ ไม่ใช่ object key · null = ทีมยังไม่อัปโลโก้
+   * ⚠️ อย่าปนกับ teamA === null (ช่องไม่มีทีม — บาย/ยังไม่รู้คู่) ทีมไม่มีโลโก้ยังต้องวาดพร้อมรูปแทน
+   */
+  logoUrl?: string | null;
 }
 
 export interface BackendPagination {
@@ -687,7 +698,9 @@ export interface BackendVerifiedResultDto {
 /** GET /matches/:id/result — 404 ระหว่างที่ผลถูกโต้แย้ง */
 export interface BackendResultDto {
   submittedRole?: ResultSubmittedRole;
+  /** OD-59 — ไม่มีคีย์ = ผู้ดูไม่มีสิทธิ์รู้ · null = บัญชีผู้ส่งถูกลบ (submittedAt ยังมีค่า) */
   submittedBy?: PlayerRef | null;
+  submittedAt?: string;
   isAutoVerified?: boolean;
   matchId: number;
   winnerTeamId: number | null;

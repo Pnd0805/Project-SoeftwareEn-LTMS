@@ -218,6 +218,8 @@ export interface BackendMyTeamDto {
   officialStatus: "Unofficial" | "Official";
   memberCount: number;
   role: "leader" | "member";
+  /** OD-61 (4 ต.ค.) — URL สาธารณะ · null = ยังไม่อัปโลโก้ */
+  logoUrl?: string | null;
 }
 
 export interface BackendTeamDto {

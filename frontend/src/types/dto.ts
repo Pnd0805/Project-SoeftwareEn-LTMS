@@ -78,30 +78,40 @@ export interface PublicUserDto extends UserRef {
   facultyId: number;
   departmentId: number;
   teams: TeamRef[];
+  /** OD-46 — เจ้าของปิดสถิติโปรไฟล์ไว้ ⇒ U04/U14/RW05 จะได้ null · รู้ได้ตั้งแต่ request แรก ไม่ต้องยิงสามเส้นก่อน */
+  statsHidden?: boolean;
 }
 
 // placeholder ชั่วคราวจนกว่าจะทำ Step 4 (Teams) — แค่พอให้ PublicUserDto compile ผ่าน
 export interface TeamRef {
   id: number;
   name: string;
+  /** OD-61 — URL สาธารณะ · null = ยังไม่อัปโลโก้ (ต้องมีรูปแทน ไม่ใช่ซ่อนทีม) */
+  logoUrl?: string | null;
 }
 
 export interface UserStatsDto {
   userId: number;
+  /** OD-46 — true = เจ้าของปิดไว้ ช่องข้างล่างเป็น null (ไม่ใช่ 0 — 0 อ่านว่า "ลงแข่งแต่ไม่เคยชนะ") */
+  statsHidden?: boolean;
   overall: {
     matchesPlayed: number;
     wins: number;
     losses: number;
     winRate: number;
     championCount: number;
-  };
+  } | null;
   bySport: Array<{
     sportTypeId: number;
     sportName: string;
     matchesPlayed: number;
     wins: number;
     losses: number;
-  }>;
+  }> | null;
+  /** ยอดโหวต MVP ที่ได้รับ — ตัวรอง ห้ามติดป้ายว่า "MVP" (โตตามจำนวนคนดู ไม่ใช่ฝีมือ) */
+  mvpVotes?: number | null;
+  /** OD-60 — จำนวนครั้งที่ได้เป็น MVP (โหวตสูงสุดในแมตช์ และอย่างน้อย 3 ใบ) — ตัวหลัก */
+  mvpTimes?: number | null;
 }
 
 export interface UserSearchResult {
@@ -124,6 +134,13 @@ export interface SportType {
   minMembers: number;
   maxMembers: number;
   defaultMode: Mode;
+  /**
+   * OD-63 (5 ต.ค.) — กฎ Pick'em ของกีฬานี้ · คีย์ชื่อเดียวกันโดยเจตนา (tolerance[tier] คู่กับ points[tier])
+   * ความคลาดวัด "ต่อฝั่ง" ยึดฝั่งที่แย่กว่า ไม่ใช่ผลรวม · อยู่ในฐาน ผู้จัดแก้ได้ ⇒ ห้าม hardcode
+   * spotOn === close (แบด/RoV/VALORANT = 0,0) คือเจตนา — ชั้นกลางไม่มีทางเกิด
+   */
+  pickemTolerance?: { spotOn: number; close: number };
+  pickemPoints?: { spotOn: number; close: number; sideOnly: number };
 }
 export interface StatDefinition {
   statDefinitionId: number;

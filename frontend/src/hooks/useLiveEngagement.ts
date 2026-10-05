@@ -30,7 +30,7 @@ export function usePredictionLive(id?: number) {
   const qc = useQueryClient()
   const query = useQuery({ queryKey: ['livePrediction', id], queryFn: () => api.getPredictionSummary(id!), enabled: !!id, retry: retryPolicy })
   const refresh = () => qc.invalidateQueries({ queryKey: ['livePrediction', id] })
-  const place = useMutation({ mutationFn: (teamId: number) => api.placePrediction(id!, teamId), onSuccess: refresh })
+  const place = useMutation({ mutationFn: (scoreData: Record<string, number>) => api.placePrediction(id!, scoreData), onSuccess: refresh })
   const cancel = useMutation({ mutationFn: () => api.cancelPrediction(id!), onSuccess: refresh })
   return { query, place, cancel }
 }

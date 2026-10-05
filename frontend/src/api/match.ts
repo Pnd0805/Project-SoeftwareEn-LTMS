@@ -151,7 +151,7 @@ const toZulu = (value: string): string => new Date(value).toISOString();
  * และตั้งสิทธิ์ทุกอย่างเป็น false เพราะ backend ยังไม่ได้บอกว่าคนดูทำอะไรได้บ้าง
  */
 const teamFromBackend = (t: BackendTeamRef | null): MatchTeamRef | null =>
-  t ? { id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: null, players: [] } : null;
+  t ? { id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: t.logoUrl ?? null, players: [] } : null;
 
 const roundLabel = (round: number | null) => (round === null ? "" : `Round ${round}`);
 
@@ -836,6 +836,7 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
     winnerTeamId: raw.winnerTeamId,
     scoreData,
     submittedBy: raw.submittedBy ?? unknownPerson,
+    submittedByVisibility: !("submittedBy" in raw) ? "hidden" : raw.submittedBy === null ? "deleted" : "shown",
     submittedRole: raw.submittedRole ?? "referee",
     isAutoVerified: raw.isAutoVerified ?? false,
     /* อย่าตีขลุมว่า verified — ผู้จัดที่มาตัดสินข้อพิพาทต้องเห็นว่ามันยัง disputed อยู่
@@ -857,7 +858,8 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
     amendedBy: null,
     amendReason: raw.amendReason,
     amendedAt: raw.amendedAt,
-    createdAt: '', // The result DTO does not deliver the submission timestamp.
+    /* OD-59 — submittedAt มาพร้อม submittedBy (เงื่อนไขเดียวกัน) · ไม่มีสิทธิ์ = ว่าง ไม่แสดงเวลา */
+    createdAt: raw.submittedAt ?? '',
   };
 }
 
@@ -943,6 +945,24 @@ async function toBackendScore(
     if (teamId !== null) out[teamId] = value;
   });
   return out;
+}
+
+/**
+ * S02b POST /matches/:id/result/override — กรรมการแก้ผลที่ทีมส่งมา (online เท่านั้น · OD-55)
+ *
+ * ผลกลับไปเป็น `submitted` ไม่ใช่ `verified` — ยังต้องให้หัวหน้าทีมฝ่ายไหนก็ได้รับรอง หรือรอ
+ * auto-verify · `reason` บังคับ และทั้งสองทีมเห็นในแจ้งเตือน `result_overridden`
+ */
+export async function overrideResult(
+  matchId: MatchRef,
+  input: { winnerTeamId: number; scoreData: Record<string, unknown>; reason: string },
+): Promise<{ id: number; matchId: number; status: "submitted" }> {
+  if (USE_MOCK) return unavailable("การแก้ผลโดยกรรมการ (S02b)");
+  const scoreData = await toBackendScore(matchId, input.scoreData);
+  return apiFetch(`/matches/${matchId}/result/override`, {
+    method: "POST",
+    body: JSON.stringify({ winnerTeamId: input.winnerTeamId, scoreData, reason: input.reason }),
+  });
 }
 
 /** TODO(guide): POST /matches/:id/result/verify */

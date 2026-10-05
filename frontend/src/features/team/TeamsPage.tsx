@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
+import { Avatar } from '../../components/kit/Avatar'
 import { Modal } from '../../components/kit/Modal'
 import {
   useAnswerBackendInvitation, useBackendMyInvitations, useBackendMyTeams, useCreateTeam,
@@ -231,11 +232,15 @@ export function TeamsPage() {
       {items.map(team => (
         <Panel key={team.id}>
           <div className="spread">
+            {/* OD-61 — /me/teams ส่ง logoUrl แล้ว · ไม่มีโลโก้ = ตัวอักษรย่อแทน (ไม่ใช่ซ่อนทีม) */}
+            <span className="hstack" style={{ gap: 12 }}>
+            <Avatar name={team.name} avatarUrl={team.logoUrl} size={40} alt={team.name} />
             <span className="vstack" style={{ gap: 5 }}>
               <b className="disp" style={{ fontSize: 21 }}>{team.name}</b>
               <span className="sub">
                 {team.memberCount} member{team.memberCount === 1 ? '' : 's'} · {sportName(team.sportTypeId)}
               </span>
+            </span>
             </span>
             <span className="hstack">
               <Badge kind={team.readinessStatus === 'Ready' ? 'ok' : 'warn'}>{team.readinessStatus}</Badge>

@@ -2,7 +2,7 @@ import { useNow } from '../../hooks/useNow'
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { useTournamentMatches, useTournamentMatchReferees } from '../../hooks/useMatch'
-import { useRequestRefereeTransfer, useRequestRefereeSwap } from '../../hooks/useAdmin'
+import { useAssignableReferees, useRequestRefereeTransfer, useRequestRefereeSwap } from '../../hooks/useAdmin'
 import type { MatchDto, MatchListItemDto } from '../../types/match.dto'
 import type { TournamentRefereeDto } from '../../types/admin.dto'
 
@@ -46,16 +46,26 @@ export function RefereeRequestForm({ tournamentId, matches, myMatch, pool }: {
   const refsOf = (id: number) => assignmentQueries[matches.findIndex(m => m.id === id)]?.data?.items ?? []
   const known = [...new Map(assignmentQueries.flatMap(q => q.data?.items ?? [])
     .map(r => [r.tournamentRefereeId, r])).values()]
-  const targets = myMatch ? known.filter(r => r.referee.id !== myMatch.viewer.myUserId
-    && !refsOf(myMatch.id).some(a => a.referee.id === r.referee.id)) : []
+  /* โอน (ไม่มีแมตช์ตอบแทน) — ปลายทางจาก F02b: กรรมการที่ใช้งานได้ทุกคน รวมคนที่ยังไม่มีแมตช์
+     ซึ่งเป็นคนที่ว่างที่สุด · เดิมรวบจากรายชื่อกรรมการของแมตช์อื่น คนที่ไม่มีแมตช์จึงไม่โผล่เลย (OD-59)
+     แลก (swap) — ปลายทางต้องถือแมตช์อยู่แล้วถึงจะมีอะไรให้แลก จึงยังอ่านจากการมอบหมายเหมือนเดิม */
+  const assignable = useAssignableReferees(tournamentId, !!myMatch)
+  const onMyMatch = myMatch ? refsOf(myMatch.id).map(a => a.referee.id) : []
+  const swapTargets = myMatch ? known.filter(r => r.referee.id !== myMatch.viewer.myUserId
+    && !onMyMatch.includes(r.referee.id)) : []
+  const transferTargets = (assignable.data?.items ?? [])
+    .filter(a => !onMyMatch.includes(a.user.id))
+    .map(a => ({ tournamentRefereeId: a.id, referee: a.user, upcoming: a.upcomingMatchCount }))
+  const targets: Array<{ tournamentRefereeId: number; referee: { id: number; fullName: string }; upcoming?: number }> =
+    kind === 'transfer' ? transferTargets : swapTargets
   const sourceRefs = refsOf(matchAId).filter(r => pool?.some(p => p.id === r.tournamentRefereeId && p.isActive))
   const targetRefs = refsOf(matchBId).filter(r => r.tournamentRefereeId !== refereeAId
     && pool?.some(p => p.id === r.tournamentRefereeId && p.isActive))
   const eligible = matches.filter(m => changeable(m, now))
   const theirMatches = eligible.filter(m => m.id !== matchAId
     && refsOf(m.id).some(r => r.tournamentRefereeId === refereeBId))
-  const loading = assignmentQueries.some(q => q.isPending)
-  const failedRead = assignmentQueries.some(q => q.isError)
+  const loading = assignmentQueries.some(q => q.isPending) || (!!myMatch && kind === 'transfer' && assignable.isPending)
+  const failedRead = assignmentQueries.some(q => q.isError) || (!!myMatch && kind === 'transfer' && assignable.isError)
   const busy = transfer.isPending || swap.isPending
   const error = transfer.error ?? swap.error
   const sourceValid = myMatch ? refsOf(matchAId).some(r => r.referee.id === myMatch.viewer.myUserId)
@@ -83,15 +93,24 @@ export function RefereeRequestForm({ tournamentId, matches, myMatch, pool }: {
     <fieldset disabled={busy || loading || failedRead} style={{ border: 0, padding: 0 }}>
       {myMatch ? <>
         <Field label="Request type" htmlFor="ref-request-kind"><select id="ref-request-kind" value={kind}
-          onChange={e => { reset(); setKind(e.target.value as 'transfer' | 'swap'); setMatchBId(0) }}>
+          onChange={e => { reset(); setKind(e.target.value as 'transfer' | 'swap'); setMatchBId(0); setRefereeBId(0) }}>
           <option value="transfer">Transfer my match</option><option value="swap">Swap matches</option>
         </select></Field>
         <Field label="Receiving referee" htmlFor="ref-request-target"><select id="ref-request-target" value={refereeBId}
           onChange={e => { reset(); setRefereeBId(Number(e.target.value)); setMatchBId(0) }}>
           <option value={0}>Choose a referee...</option>
-          {targets.map(r => <option key={r.tournamentRefereeId} value={r.tournamentRefereeId}>{r.referee.fullName}</option>)}
+          {targets.map(r => <option key={r.tournamentRefereeId} value={r.tournamentRefereeId}>
+            {r.referee.fullName}{r.upcoming !== undefined ? ` · ${r.upcoming} upcoming match${r.upcoming === 1 ? '' : 'es'}` : ''}
+          </option>)}
         </select></Field>
-        <span className="sub">This list shows other referees already assigned in this tournament. For a referee without a match, ask the organizer to arrange an assignment.</span>
+        {/* รายชื่อว่างเกิดได้จริงในทัวร์ที่มีกรรมการแค่สองคนและทั้งคู่คุมแมตช์นี้ — dropdown ว่างเฉยๆ
+            ดูเหมือนหน้าเสีย ต้องบอกว่าทำไมและต้องให้ใครทำอะไร */}
+        <span className="sub">{loading ? null : !targets.length ? (kind === 'transfer'
+          ? 'No other active referee in this tournament can take this match. Ask the organizer to appoint another referee first.'
+          : 'No other referee holds a future scheduled match in this tournament, so there is nothing to swap with. Try a transfer instead.')
+          : kind === 'transfer'
+            ? 'Every active referee of this tournament is listed, least busy first — including those with no match yet.'
+            : 'Only referees who already hold a match are listed, because a swap needs a match to trade.'}</span>
       </> : <>
         <Field label="First match" htmlFor="ref-request-match-a"><select id="ref-request-match-a" value={matchAId}
           onChange={e => { reset(); setMatchAId(Number(e.target.value)); setRefereeAId(0); setMatchBId(0); setRefereeBId(0) }}>

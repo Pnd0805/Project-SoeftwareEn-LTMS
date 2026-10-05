@@ -252,6 +252,16 @@ export function useSubmitResult(matchId: MatchRef, tournamentId?: MatchRef) {
   });
 }
 
+/** S02b — กรรมการแก้ผล online · ผลกลับไปรอการยืนยัน จึงแตะทั้งแมตช์และผลเหมือนการส่งผล */
+export function useOverrideResult(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { winnerTeamId: number; scoreData: Record<string, unknown>; reason: string }) =>
+      matchApi.overrideResult(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
 export function useVerifyResult(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({

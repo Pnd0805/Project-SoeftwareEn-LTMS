@@ -62,7 +62,7 @@ export function ProfilePage() {
         <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} user={currentUser} />
         {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
         {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your identity loaded, but the statistics request failed." /> : null}
-        {userStats ? (
+        {userStats?.overall ? (
           <div className="statline">
             <Stat label="Matches played" value={userStats.overall.matchesPlayed} />
             <Stat label="Won" value={userStats.overall.wins} />
@@ -122,7 +122,8 @@ export function ProfilePage() {
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
       {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below. Retry when the server is ready." /> : null}
-      {stats ? (
+      {/* OD-46 — overall/bySport เป็น null ได้เมื่อสถิติถูกซ่อน (เจ้าตัวเห็นของตัวเองเสมอ แต่ type ต้องกันไว้) */}
+      {stats?.overall ? (
         <>
           <div className="statline">
             <Stat label="Matches played" value={stats.overall.matchesPlayed} />
@@ -130,7 +131,7 @@ export function ProfilePage() {
             <Stat label="Titles" value={stats.overall.championCount} />
             <Stat label="Points" value={currentUser.totalPoints} />
           </div>
-          {stats.bySport.length ? (
+          {stats.bySport?.length ? (
             <Panel quiet><span className="tag"><em>//</em> Statistics by sport</span><TableWrap><table>
               <thead><tr><th>Sport</th><th>Played</th><th>Wins</th><th>Losses</th></tr></thead>
               <tbody>{stats.bySport.map(row => <tr key={row.sportTypeId}><td>{row.sportName}</td><td className="num">{row.matchesPlayed}</td><td className="num">{row.wins}</td><td className="num">{row.losses}</td></tr>)}</tbody>

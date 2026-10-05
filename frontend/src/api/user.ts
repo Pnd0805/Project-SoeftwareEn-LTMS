@@ -92,8 +92,11 @@ export async function searchUsers(q: string): Promise<UserSearchResult> {
 export interface CareerTournamentDto {
   tournament: { id: number; name: string; sportTypeId: number; status: string };
   team: { id: number; name: string }; played: number; wins: number; losses: number; champion: boolean;
+  /** ขอไว้ 5 ต.ค. (ตอบ withdrawn-stats ข้อ ก) — ทีมถอนตัวหลังแข่งแล้ว · ยังไม่มีจนกว่า backend จะส่ง */
+  withdrawn?: boolean;
 }
-export function getUserCareer(userId: number): Promise<{ items: CareerTournamentDto[] }> {
+/** OD-46 — เจ้าของปิดสถิติไว้ ⇒ `items: null, statsHidden: true` (null ไม่ใช่ [] ที่อ่านว่า "ไม่เคยลงแข่ง") */
+export function getUserCareer(userId: number): Promise<{ items: CareerTournamentDto[] | null; statsHidden?: boolean }> {
   if (USE_MOCK) return mockDelay({ items: [] });
   return apiFetch(`/users/${userId}/career`);
 }

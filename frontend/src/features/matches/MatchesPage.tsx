@@ -163,7 +163,14 @@ function AppointmentRow({ invite, onDone }: {
   return (
     <>
       {failed ? (
-        <Banner kind="crit"><b>ตอบคำเชิญไม่สำเร็จ</b> {(failed as Error).message}</Banner>
+        <Banner kind="crit">
+          <b>ตอบคำเชิญไม่สำเร็จ</b>{' '}
+          {/* migration 036 — ฐานห้ามกรรมการคนเดิมมีสองแถวที่ใช้งานได้ในทัวร์เดียว · เกิดเมื่อคำเชิญสองใบ
+              หลุดด่านพร้อมกัน เดิมเป็น 500 ดิบ ตอนนี้ 409 — บอกทางออกให้ด้วย ไม่ใช่แค่ว่าพัง */}
+          {(failed as { code?: string }).code === 'REFEREE_ALREADY_ACTIVE'
+            ? 'You are already an active referee of this tournament, so this extra invitation is not needed — decline it to clear it.'
+            : (failed as Error).message}
+        </Banner>
       ) : null}
       <div className="hstack">
         <button className="btn" type="button" disabled={pending}

@@ -20,7 +20,12 @@ import { useExternalRefereeRequests, useReviewExternalReferee } from '../../hook
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import type { ExternalRefereeRequestDto } from '../../types/admin.dto'
 
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
+/* migration 036 — AR02 อนุมัติ "คน" = ทุกแถวของคนนั้น ถ้ามีสองใบรอในทัวร์เดียวกันจะกลายเป็นใช้งานพร้อมกัน
+   ฐานจึงปฏิเสธเป็น 409 REFEREE_DUPLICATE_ROWS (เดิม 500) — แอดมินแก้เองไม่ได้ ต้องให้ผู้จัดถอดใบที่เกินก่อน */
+const errorMessage = (error: unknown) =>
+  (error as { code?: string } | null)?.code === 'REFEREE_DUPLICATE_ROWS'
+    ? "This person has two overlapping invitations in the same tournament. Ask that tournament's organizer to remove the extra one, then approve again."
+    : error instanceof Error ? error.message : 'Something went wrong.'
 const statusOf = (error: unknown) => (error as { status?: number } | null)?.status
 
 export function AdminRefereesTab() {
