@@ -23,6 +23,8 @@ function makeRow(overrides: Partial<RefereeRequestListRow> = {}): RefereeRequest
         request_id: 900,
         tournament_id: 100,
         request_type: 'ref_swap',
+        withdraw_scope: null,      // 🆕 FR09 — null สำหรับสี่ชนิดเดิม (ฐานมี CHECK บังคับ)
+        request_reason: null,      // 🆕 FR09 — เหตุผล มีเฉพาะ ref_withdraw
         requested_by: 21,
         referee_a_id: 31,
         referee_b_id: 32,
@@ -77,6 +79,8 @@ describe('toRefereeRequestDto', () => {
                 id: 900,
                 tournamentId: 100,
                 type: 'ref_swap',
+                withdrawScope: null,   // 🆕 FR09 — สี่ชนิดเดิมไม่มีขอบเขต
+                reason: null,          // 🆕 FR09 — และไม่มีเหตุผล
                 requestedBy: 21,
                 refereeA: {
                     tournamentRefereeId: 31,
@@ -113,6 +117,7 @@ describe('toRefereeRequestDto', () => {
                     'id',
                     'matchA',
                     'matchB',
+                    'reason',          // 🆕 FR09
                     'refereeA',
                     'refereeB',
                     'requestedBy',
@@ -120,6 +125,7 @@ describe('toRefereeRequestDto', () => {
                     'status',
                     'tournamentId',
                     'type',
+                    'withdrawScope',   // 🆕 FR09
                 ].sort(),
             );
         });
@@ -197,30 +203,30 @@ describe('toRefereeRequestDto', () => {
         it('formats the schedule as ISO strings', () => {
             const dto = toRefereeRequestDto(makeRow());
 
-            expect(dto.matchA.scheduledTime).toBe('2026-06-01T09:00:00.000Z');
-            expect(dto.matchA.scheduledEndTime).toBe('2026-06-01T10:00:00.000Z');
+            expect(dto.matchA!.scheduledTime).toBe('2026-06-01T09:00:00.000Z');
+            expect(dto.matchA!.scheduledEndTime).toBe('2026-06-01T10:00:00.000Z');
         });
 
         it('keeps scheduledTime and scheduledEndTime null when the match is unscheduled', () => {
             const dto = toRefereeRequestDto(makeRow({ ma_scheduled_time: null, ma_scheduled_end_time: null }));
 
-            expect(dto.matchA.scheduledTime).toBeNull();
-            expect(dto.matchA.scheduledEndTime).toBeNull();
+            expect(dto.matchA!.scheduledTime).toBeNull();
+            expect(dto.matchA!.scheduledEndTime).toBeNull();
         });
 
         it('handles a scheduled start with no end time', () => {
             const dto = toRefereeRequestDto(makeRow({ ma_scheduled_end_time: null }));
 
-            expect(dto.matchA.scheduledTime).toBe('2026-06-01T09:00:00.000Z');
-            expect(dto.matchA.scheduledEndTime).toBeNull();
+            expect(dto.matchA!.scheduledTime).toBe('2026-06-01T09:00:00.000Z');
+            expect(dto.matchA!.scheduledEndTime).toBeNull();
         });
 
         it('keeps roundNumber null when the match has no round', () => {
-            expect(toRefereeRequestDto(makeRow({ ma_round_number: null })).matchA.roundNumber).toBeNull();
+            expect(toRefereeRequestDto(makeRow({ ma_round_number: null })).matchA!.roundNumber).toBeNull();
         });
 
         it('uses match_a_id as the id', () => {
-            expect(toRefereeRequestDto(makeRow({ match_a_id: 55 })).matchA.id).toBe(55);
+            expect(toRefereeRequestDto(makeRow({ match_a_id: 55 })).matchA!.id).toBe(55);
         });
     });
 
@@ -251,8 +257,8 @@ describe('toRefereeRequestDto', () => {
         it('does not mix up match A and match B data', () => {
             const dto = toRefereeRequestDto(makeRow());
 
-            expect(dto.matchA.id).not.toBe(dto.matchB?.id);
-            expect(dto.matchA.scheduledTime).not.toBe(dto.matchB?.scheduledTime);
+            expect(dto.matchA!.id).not.toBe(dto.matchB?.id);
+            expect(dto.matchA!.scheduledTime).not.toBe(dto.matchB?.scheduledTime);
         });
     });
 
@@ -272,7 +278,7 @@ describe('toRefereeRequestDto', () => {
 
             expect(dto.type).toBe('org_add_match');
             expect(dto.refereeA.tournamentRefereeId).toBe(31);
-            expect(dto.matchA.id).toBe(1);
+            expect(dto.matchA!.id).toBe(1);
             expect(dto.refereeB).toBeNull();
             expect(dto.matchB).toBeNull();
         });
@@ -338,5 +344,49 @@ describe('toRefereeRequestDto', () => {
 
         expect(dtos.map((d) => d.id)).toEqual([1, 2]);
         expect(dtos[1]?.refereeB).toBeNull();
+    });
+});
+
+describe('toRefereeRequestDto — FR09 ref_withdraw (6 ต.ค. 2569)', () => {
+    /**
+     * ★ ขอบเขต 'tournament' ไม่ได้อ้างแมตช์ ⇒ matchA ต้องเป็น null ไม่ใช่ object ที่ id เป็น null
+     *   ถ้าปล่อยเป็น { id: null } FE ที่เช็ค `if (matchA)` จะอ่านว่ามีแมตช์แล้วไปอ่าน id ต่อ
+     */
+    it("ขอบเขต tournament ⇒ matchA เป็น null และส่ง scope/reason ออกไป", () => {
+        const dto = toRefereeRequestDto(makeRow({
+            request_type: 'ref_withdraw',
+            withdraw_scope: 'tournament',
+            request_reason: 'ติดทัวร์อื่นเวลาทับกัน',
+            referee_b_id: null, b_user_id: null, b_full_name: null, b_profile_image_key: null,
+            match_a_id: null, ma_round_number: null, ma_scheduled_time: null, ma_scheduled_end_time: null,
+            match_b_id: null, mb_round_number: null, mb_scheduled_time: null, mb_scheduled_end_time: null,
+        }));
+
+        expect(dto.matchA).toBeNull();
+        expect(dto.withdrawScope).toBe('tournament');
+        expect(dto.reason).toBe('ติดทัวร์อื่นเวลาทับกัน');
+        // refereeB เป็น null เพราะใบนี้ไม่มีกรรมการฝั่งที่สอง — ผู้ตอบคือ ORG ไม่ได้อยู่ในช่องนี้
+        expect(dto.refereeB).toBeNull();
+    });
+
+    it("ขอบเขต match ⇒ matchA ยังมีค่า และ scope บอกว่าเป็น match", () => {
+        const dto = toRefereeRequestDto(makeRow({
+            request_type: 'ref_withdraw',
+            withdraw_scope: 'match',
+            request_reason: 'ป่วย ไปไม่ได้',
+            referee_b_id: null, b_user_id: null, b_full_name: null, b_profile_image_key: null,
+            match_b_id: null, mb_round_number: null, mb_scheduled_time: null, mb_scheduled_end_time: null,
+        }));
+
+        expect(dto.matchA!.id).toBe(1);
+        expect(dto.withdrawScope).toBe('match');
+        expect(dto.reason).toBe('ป่วย ไปไม่ได้');
+    });
+
+    /** สี่ชนิดเดิมต้องไม่มี scope/reason โผล่มาเป็นค่าอื่นนอกจาก null */
+    it('สี่ชนิดเดิม ⇒ withdrawScope และ reason เป็น null', () => {
+        const dto = toRefereeRequestDto(makeRow());
+        expect(dto.withdrawScope).toBeNull();
+        expect(dto.reason).toBeNull();
     });
 });

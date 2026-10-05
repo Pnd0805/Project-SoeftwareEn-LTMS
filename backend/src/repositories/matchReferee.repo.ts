@@ -177,7 +177,15 @@ export async function findAssignedUserIdsInTournament(db : Queryable, tournament
 }
 
 export async function unassign(matchId : number, tournamentRefereeId : number): Promise<boolean>{
-    const [result] = await pool.query<ResultSetHeader>(
+    return unassignTx(pool, matchId, tournamentRefereeId);
+}
+
+/**
+ * เวอร์ชันที่รับ connection — ใช้โดย FR09 (ref_withdraw) ที่ต้องถอดกรรมการออกจากแมตช์
+ * **ในทรานแซกชันเดียวกับ** การปิดใบคำขอ ไม่ให้เกิดสภาพ "ถอดแล้วใบยังค้าง" หรือกลับกัน
+ */
+export async function unassignTx(db : Queryable, matchId : number, tournamentRefereeId : number): Promise<boolean>{
+    const [result] = await db.query<ResultSetHeader>(
         'DELETE FROM match_referees WHERE match_id = ? AND tournament_referee_id = ?',
         [matchId, tournamentRefereeId]);
     return result.affectedRows === 1;

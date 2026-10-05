@@ -2,7 +2,7 @@ import express from 'express';
 import { requireAuth } from '../middlewares/requireAuth.js';
 import { requireOrganizer } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
-import { refRequestSchema, orgAddMatchSchema, orgSwapSchema } from '../schemas/refereeRequest.schema.js';
+import { refRequestSchema, orgAddMatchSchema, orgSwapSchema, refWithdrawSchema } from '../schemas/refereeRequest.schema.js';
 import * as Req from '../controllers/refereeRequest.controller.js';
 
 /** /referee-requests */
@@ -14,6 +14,11 @@ export const meRefereeRequestRouter = express.Router();
 
 // FR01 — REF ขอโอน/แลกแมตช์กับกรรมการอีกคน
 refereeRequestRouter.post('/', requireAuth, validate(refRequestSchema), Req.createRefRequest);
+
+// FR09 — REF ขอถอนตัวจากแมตช์เดียว หรือทั้งทัวร์ (ORG อนุมัติ)
+// ★ ไม่มี requireOrganizer — คนยื่นคือกรรมการ · ด่าน "เป็นกรรมการของทัวร์นี้ไหม" อยู่ใน service
+//   เพราะต้องถามฐานว่าแถวของเขายัง active อยู่ไหม ซึ่ง middleware ตอบไม่ได้
+refereeRequestRouter.post('/withdraw', requireAuth, validate(refWithdrawSchema), Req.createRefWithdraw);
 
 // FR02 / FR03 — ORG ขอเพิ่มแมตช์ / ขอสลับ 2 คน
 tournamentRefereeRequestRouter.post('/:id/referee-requests/add-match',

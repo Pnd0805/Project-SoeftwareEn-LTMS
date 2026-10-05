@@ -21,10 +21,21 @@ export type RefereeRequestDto = {
     id : number,
     tournamentId : number,
     type : RefereeRequestType,
+    /**
+     * 🆕 FR09 — มีค่าเฉพาะ type `ref_withdraw`
+     * 'match' = ขอออกจากแมตช์เดียว (matchA มีค่า) · 'tournament' = ขอออกทั้งทัวร์ (matchA เป็น null)
+     */
+    withdrawScope : 'match' | 'tournament' | null,
+    /** 🆕 FR09 — เหตุผลที่กรรมการให้มา · null สำหรับสี่ชนิดเดิมที่ไม่มีช่องนี้ */
+    reason : string | null,
     requestedBy : number,
     refereeA : RequestRefereeDto,
     refereeB : RequestRefereeDto | null,
-    matchA : RequestMatchDto,
+    /**
+     * 🔴 null ได้ตั้งแต่ FR09 — ใบ `ref_withdraw` ขอบเขต 'tournament' ไม่ได้อ้างแมตช์ไหน
+     *   สี่ชนิดเดิมยังมีค่าเสมอ (ฐานบังคับด้วย CHECK chk_rcr_withdraw_shape)
+     */
+    matchA : RequestMatchDto | null,
     matchB : RequestMatchDto | null,
     status : RefereeRequestListRow['request_status'],
     createdAt : string,
@@ -36,6 +47,8 @@ export function toRefereeRequestDto(r : RefereeRequestListRow): RefereeRequestDt
         id : r.request_id,
         tournamentId : r.tournament_id,
         type : r.request_type,
+        withdrawScope : r.withdraw_scope,
+        reason : r.request_reason,
         requestedBy : r.requested_by,
         refereeA : {
             tournamentRefereeId : r.referee_a_id,
@@ -47,11 +60,11 @@ export function toRefereeRequestDto(r : RefereeRequestListRow): RefereeRequestDt
             user : toUserRef({ user_id : r.b_user_id, full_name : r.b_full_name ?? '', profile_image_key : r.b_profile_image_key }),
             status : r.b_status
         } : null,
-        matchA : {
+        matchA : r.match_a_id !== null ? {
             id : r.match_a_id, roundNumber : r.ma_round_number,
             scheduledTime : r.ma_scheduled_time?.toISOString() ?? null,
             scheduledEndTime : r.ma_scheduled_end_time?.toISOString() ?? null
-        },
+        } : null,
         matchB : r.match_b_id !== null ? {
             id : r.match_b_id, roundNumber : r.mb_round_number,
             scheduledTime : r.mb_scheduled_time?.toISOString() ?? null,

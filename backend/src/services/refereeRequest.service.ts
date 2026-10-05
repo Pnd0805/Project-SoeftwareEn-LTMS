@@ -6,8 +6,10 @@ import { AppError } from '../utils/AppError.js';
 import { assertSchedulable, isActiveReferee, findActiveRefereeRow } from './referee.service.js';
 import type { Schedulable } from './referee.service.js';
 import { toRefereeRequestDto } from '../mappers/refereeRequest.mapper.js';
-import type { RefRequestInput, OrgAddMatchInput, OrgSwapInput } from '../schemas/refereeRequest.schema.js';
-import type { MatchRow, RefereeChangeRequestRow, TournamentRefereeRow } from '../types/db.js';
+import type { RefRequestInput, OrgAddMatchInput, OrgSwapInput, RefWithdrawInput } from '../schemas/refereeRequest.schema.js';
+import type { MatchRow, RefereeChangeRequestRow, TournamentRefereeRow, TournamentRow } from '../types/db.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
 import * as NotificationService from './notification.service.js';
 
 // ───────────────────────────── helpers ─────────────────────────────
@@ -30,6 +32,24 @@ async function loadMatchInTournament(matchId : number, tournamentId : number): P
         throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้ในทัวร์นาเมนต์นี้');
     }
     return match;
+}
+
+/**
+ * ทัวร์ที่ "เรื่องจบแล้ว" รับคำขอใหม่หรือคำตอบไม่ได้ (มติ 6 ต.ค. · ทางเลือก ฏ)
+ *
+ * ★ คู่กับ NOT_EXPIRED ใน refereeChangeRequest.repo ที่กรองใบพวกนี้ออกจาก **รายการ**
+ *   ที่นี่คือด่านตอน **กด** — จำเป็นแยกกัน เพราะคนกดจาก URL ตรง ๆ หรือจากหน้าที่เปิดค้างไว้ได้
+ *   ถ้ามีแต่การกรองรายการ จะกลายเป็นซ่อนปุ่มแต่ยังกดได้ ซึ่งแย่กว่าไม่ซ่อน
+ */
+async function loadLiveTournament(tournamentId : number): Promise<TournamentRow>{
+    const t = await TournamentRepo.findTournamentById(tournamentId);
+    if(!t || t.deleted_at !== null){
+        throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+    }
+    if(t.tournament_status === 'completed'){
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้จบแล้ว เปลี่ยนกรรมการไม่ได้');
+    }
+    return t;
 }
 
 /** เปลี่ยนกรรมการได้เฉพาะแมตช์ที่ยังไม่เริ่ม (§5.3) */
@@ -60,9 +80,11 @@ async function assertNoConflictAfter(tournamentRefereeId : number, gain : Schedu
     assertSchedulable([...current.filter(m => !loseIds.includes(m.match_id)), ...gain]);
 }
 
-async function assertNoOpenDuplicate(matchAId : number, refereeAId : number): Promise<void>{
+async function assertNoOpenDuplicate(matchAId : number | null, refereeAId : number): Promise<void>{
     if(await ReqRepo.existsOpenFor(matchAId, refereeAId)){
-        throw new AppError(409, 'REQUEST_ALREADY_OPEN', 'มีคำขอเกี่ยวกับแมตช์นี้ของกรรมการคนนี้ที่ยังรอตอบอยู่แล้ว');
+        throw new AppError(409, 'REQUEST_ALREADY_OPEN', matchAId === null
+            ? 'คุณมีคำขอถอนตัวจากทัวร์นาเมนต์นี้ที่ยังรอผู้จัดตอบอยู่แล้ว'
+            : 'มีคำขอเกี่ยวกับแมตช์นี้ของกรรมการคนนี้ที่ยังรอตอบอยู่แล้ว');
     }
 }
 
@@ -127,6 +149,72 @@ export async function createRefRequest(userId : number, input : RefRequestInput)
         relatedEntityType : 'match', relatedEntityId : myMatch.match_id,
     });
     return dtoOf(id);
+}
+
+// ───────────────────────────── FR09 · กรรมการขอถอนตัว ─────────────────────────────
+
+/**
+ * FR09 (มติ 6 ต.ค. 2569 · ทางเลือก ซ ขอบเขตแบบ ญ3) — กรรมการขอถอนตัว **ORG อนุมัติ**
+ *
+ * ช่องว่างที่ปิด: ก่อนหน้านี้กรรมการที่ตอบรับไปแล้วออกได้ทางเดียวคือ ref_transfer/ref_swap
+ * ซึ่งต้องมีกรรมการอีกคนมารับช่วงและกดรับ ⇒ ทัวร์ที่ไม่มีคนอื่น หรือมีแต่ไม่มีใครรับ
+ * = ไม่มีทางออกในระบบ · และถ้าถูกเชิญแบบ pool (ยังไม่มีแมตช์) ก็ไม่มีใบให้ยื่นด้วยซ้ำ
+ *
+ * ★ ไม่ใช่การถอนตัวเอง — ORG เป็นคนกด เพราะเขาเป็นคนรับผลของการขาดกรรมการ
+ *   และเขามีอำนาจถอดอยู่แล้ว (F03/F12) สิ่งที่ขาดคือช่องทางให้ "ขอ"
+ *   🔴 ถ้าให้ถอนเองได้ ref_transfer จะเกือบไร้ความหมาย ไม่มีใครเสียเวลาหาคนรับช่วงอีก
+ *
+ * ORG ปฏิเสธได้ (เหมือนทุกชนิด) เพราะเขาอาจหาคนแทนไม่ทัน — กรรมการรับปากไว้แล้ว
+ */
+export async function createRefWithdraw(userId : number, input : RefWithdrawInput){
+    const tournamentId = input.scope === 'match'
+        ? (await loadMatchById(input.matchId!)).tournament_id
+        : input.tournamentId!;
+
+    await loadLiveTournament(tournamentId);
+
+    const me = await findActiveRefereeRow(tournamentId, userId);
+    if(!me){
+        throw new AppError(403, 'NOT_TOURNAMENT_REFEREE', 'คุณไม่ได้เป็นกรรมการของทัวร์นาเมนต์นี้');
+    }
+
+    let matchAId : number | null = null;
+    if(input.scope === 'match'){
+        const match = await loadMatchInTournament(input.matchId!, tournamentId);
+        assertAssigned(await acceptedMatchesOf(me.tournament_referee_id), match.match_id, 'คุณ');
+        assertMatchChangeable(match);
+        matchAId = match.match_id;
+    }
+
+    await assertNoOpenDuplicate(matchAId, me.tournament_referee_id);
+
+    const id = await ReqRepo.create({
+        tournamentId, type : 'ref_withdraw', withdrawScope : input.scope, requestedBy : userId,
+        refereeAId : me.tournament_referee_id, refereeBId : null,
+        matchAId, matchBId : null,
+        aStatus : 'accepted',      // คนขอถือว่าตกลงแล้ว
+        bStatus : 'pending',       // ★ ช่องนี้คือคำตอบของ ORG (ดู sideOf)
+        reason : input.reason
+    });
+
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    await NotificationService.notify({
+        userId : tournament!.requested_by_user_id, type : 'referee_change_request',
+        title : 'กรรมการขอถอนตัว',
+        message : input.scope === 'tournament'
+            ? `กรรมการขอถอนตัวจากทัวร์นาเมนต์ "${tournament?.name ?? ''}" — เหตุผล: ${input.reason}`
+            : `กรรมการขอถอนตัวจากแมตช์ #${matchAId} — เหตุผล: ${input.reason}`,
+        relatedEntityType : input.scope === 'tournament' ? 'tournament' : 'match',
+        relatedEntityId : input.scope === 'tournament' ? tournamentId : matchAId!,
+    });
+    return dtoOf(id);
+}
+
+/** หาแมตช์ด้วย id โดยยังไม่รู้ทัวร์ — ใช้เฉพาะ FR09 ขอบเขต 'match' ที่ไม่ได้รับ tournamentId มา */
+async function loadMatchById(matchId : number): Promise<MatchRow>{
+    const match = await MatchRepo.findById(matchId);
+    if(!match) throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้');
+    return match;
 }
 
 // ───────────────────────────── FR02 · ORG ขอเพิ่มแมตช์ ─────────────────────────────
@@ -212,6 +300,21 @@ export async function listTournamentRequests(tournamentId : number, status? : Re
 
 /** ฝั่งไหนของคำขอที่ user คนนี้ต้องตอบ */
 async function sideOf(req : RefereeChangeRequestRow, userId : number): Promise<'a' | 'b'>{
+    /**
+     * FR09 — `ref_withdraw` เป็นชนิดเดียวที่ **ผู้ตอบไม่ใช่กรรมการ** แต่เป็น ORG ของทัวร์
+     *
+     * ★ ใช้ช่อง b_status เป็นที่เก็บคำตอบของ ORG โดย referee_b_id เป็น NULL
+     *   เพื่อให้ answerSide / close / applyOrCancel ทั้งเส้นทำงานได้โดยไม่ต้องแก้
+     *   (ถ้าเพิ่มช่อง org_status ใหม่ ต้องแก้ทุกจุดที่อ่านสองช่องนี้ ซึ่งมีหลายที่)
+     * 🔴 ด่านสิทธิ์จึงอยู่ที่นี่ ไม่ได้อยู่ที่ middleware เพราะเส้น accept/decline เป็นเส้นรวม
+     *   ของทุกชนิด (POST /referee-requests/:id/accept) ⇒ ใส่ requireOrganizer ไม่ได้
+     */
+    if(req.request_type === 'ref_withdraw'){
+        const tournament = await TournamentRepo.findTournamentById(req.tournament_id);
+        if(tournament && isOrganizerOf(tournament, userId) && req.b_status === 'pending') return 'b';
+        throw new AppError(403, 'NOT_YOUR_REQUEST', 'คำขอถอนตัวนี้รอคำตอบจากผู้จัดการแข่งขันเท่านั้น');
+    }
+
     const [a, b] = await Promise.all([
         RefRepo.findById(req.referee_a_id),
         req.referee_b_id !== null ? RefRepo.findById(req.referee_b_id) : Promise.resolve(null)
@@ -241,9 +344,12 @@ export async function respondToRequest(requestId : number, userId : number, answ
         await ReqRepo.close(requestId, 'declined');
         await NotificationService.notify({
             userId : req.requested_by, type : 'referee_change_request',
-            title : 'คำขอเปลี่ยนกรรมการถูกปฏิเสธ',
-            message : `คำขอเปลี่ยนกรรมการของแมตช์ #${req.match_a_id} ถูกปฏิเสธ`,
-            relatedEntityType : 'match', relatedEntityId : req.match_a_id,
+            title : req.request_type === 'ref_withdraw' ? 'ผู้จัดไม่อนุมัติการถอนตัว' : 'คำขอเปลี่ยนกรรมการถูกปฏิเสธ',
+            message : req.match_a_id === null
+                ? 'ผู้จัดไม่อนุมัติคำขอถอนตัวจากทัวร์นาเมนต์นี้'
+                : `คำขอ${req.request_type === 'ref_withdraw' ? 'ถอนตัวจาก' : 'เปลี่ยนกรรมการของ'}แมตช์ #${req.match_a_id} ถูกปฏิเสธ`,
+            relatedEntityType : req.match_a_id === null ? 'tournament' : 'match',
+            relatedEntityId : req.match_a_id ?? req.tournament_id,
         });
         return dtoOf(requestId);
     }
@@ -255,10 +361,15 @@ export async function respondToRequest(requestId : number, userId : number, answ
         await applyOrCancel(fresh);
         await NotificationService.notify({
             userId : fresh.requested_by, type : 'referee_assigned',
-            title : 'เปลี่ยนกรรมการสำเร็จ',
-            message : `ทุกฝ่ายตกลงแล้ว กรรมการของแมตช์ #${fresh.match_a_id}` +
+            title : fresh.request_type === 'ref_withdraw' ? 'ผู้จัดอนุมัติการถอนตัว' : 'เปลี่ยนกรรมการสำเร็จ',
+            message : fresh.match_a_id === null
+                ? 'ผู้จัดอนุมัติให้คุณถอนตัวจากทัวร์นาเมนต์นี้ — ไม่ต้องคุมแมตช์ใดของทัวร์นี้แล้ว'
+                : fresh.request_type === 'ref_withdraw'
+                    ? `ผู้จัดอนุมัติให้คุณถอนตัวจากแมตช์ #${fresh.match_a_id} — ไม่ต้องไปคุมแมตช์นี้แล้ว`
+                    : `ทุกฝ่ายตกลงแล้ว กรรมการของแมตช์ #${fresh.match_a_id}` +
                       (fresh.match_b_id ? ` และ #${fresh.match_b_id}` : '') + ' ถูกเปลี่ยนตามคำขอ',
-            relatedEntityType : 'match', relatedEntityId : fresh.match_a_id,
+            relatedEntityType : fresh.match_a_id === null ? 'tournament' : 'match',
+            relatedEntityId : fresh.match_a_id ?? fresh.tournament_id,
         });
     }
     return dtoOf(requestId);
@@ -280,8 +391,22 @@ async function applyOrCancel(req : RefereeChangeRequestRow): Promise<void>{
 
 /** เงื่อนไขเดียวกับตอนสร้าง — แต่ตรวจกับข้อมูล ณ ตอนจะ apply */
 async function revalidate(req : RefereeChangeRequestRow): Promise<void>{
+    // ★ ด่านนี้มาก่อนทุกอย่าง — ทัวร์จบ/ถูกลบแล้ว คำขอทุกชนิดไม่มีความหมาย (มติ 6 ต.ค. · ฏ)
+    await loadLiveTournament(req.tournament_id);
+
     const a = await loadActiveReferee(req.referee_a_id, req.tournament_id);
-    const matchA = await loadMatchInTournament(req.match_a_id, req.tournament_id);
+
+    if(req.request_type === 'ref_withdraw'){
+        if(req.withdraw_scope === 'match'){
+            const match = await loadMatchInTournament(req.match_a_id!, req.tournament_id);
+            assertMatchChangeable(match);
+            assertAssigned(await acceptedMatchesOf(a.tournament_referee_id), match.match_id, 'กรรมการ ');
+        }
+        // ขอบเขตทัวร์: แค่ยังเป็นกรรมการ active อยู่ ก็พอ — loadActiveReferee ตรวจให้แล้ว
+        return;
+    }
+
+    const matchA = await loadMatchInTournament(req.match_a_id!, req.tournament_id);
     assertMatchChangeable(matchA);
 
     if(req.request_type === 'org_add_match'){

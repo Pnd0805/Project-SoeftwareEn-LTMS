@@ -23,6 +23,30 @@ export const orgSwapSchema = z.object({
     matchBId : id('แมตช์ของ B')
 });
 
+/**
+ * FR09 — กรรมการขอถอนตัว (มติ 6 ต.ค. 2569)
+ *
+ * ★ สองขอบเขตในสคีมาเดียว แต่ **บังคับคีย์ไม่เหมือนกัน** จึงใช้ discriminated union
+ *   ไม่ใช่ object ที่ทุกคีย์ optional ซึ่งจะยอมรับ { scope:'match' } ที่ไม่มี matchId
+ *   แล้วไปพังที่ service แทน (หรือแย่กว่านั้น ไปพังที่ฐาน)
+ *
+ * เหตุผล **บังคับ** ทั้งสองขอบเขต — ORG ตัดสินใจไม่ได้ถ้าไม่รู้ว่าเพราะอะไร
+ * และเขาคือคนที่ต้องไปหาคนแทน
+ */
+export const refWithdrawSchema = z.discriminatedUnion('scope', [
+    z.object({
+        scope : z.literal('match'),
+        matchId : id('รหัสแมตช์'),
+        reason : z.string().trim().min(5, 'กรุณาเขียนเหตุผลอย่างน้อย 5 ตัวอักษร').max(500, 'เหตุผลยาวเกิน 500 ตัวอักษร')
+    }),
+    z.object({
+        scope : z.literal('tournament'),
+        tournamentId : id('รหัสทัวร์นาเมนต์'),
+        reason : z.string().trim().min(5, 'กรุณาเขียนเหตุผลอย่างน้อย 5 ตัวอักษร').max(500, 'เหตุผลยาวเกิน 500 ตัวอักษร')
+    })
+]);
+
 export type RefRequestInput = z.infer<typeof refRequestSchema>;
 export type OrgAddMatchInput = z.infer<typeof orgAddMatchSchema>;
 export type OrgSwapInput = z.infer<typeof orgSwapSchema>;
+export type RefWithdrawInput = z.infer<typeof refWithdrawSchema>;

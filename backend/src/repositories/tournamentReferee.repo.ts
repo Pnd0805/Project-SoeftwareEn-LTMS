@@ -1,4 +1,8 @@
 import pool from '../config/db.js';
+import type { Pool, PoolConnection } from 'mysql2/promise';
+
+/** รับได้ทั้ง pool และ connection ของทรานแซกชัน — แบบเดียวกับ matchReferee.repo */
+type Queryable = Pool | PoolConnection;
 import { AppError } from '../utils/AppError.js';
 import type { TournamentRefereeRow } from '../types/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
@@ -455,6 +459,30 @@ export async function decline(tournamentRefereeId : number): Promise<boolean>{
 }
 
 /** ถอดทุกแถวของ user คนนี้ในทัวร์นี้ — คืนจำนวนแถวที่ถูกถอด */
+/**
+ * FR09 — ถอดกรรมการออกจากทัวร์ทั้งทัวร์ **ในทรานแซกชันเดียวกับการปิดใบคำขอ**
+ *
+ * รับ `tournamentRefereeId` แล้วหา user_id เองด้วย subquery เพราะ apply() ของใบคำขอ
+ * มีแต่ id ของแถว ไม่มี user_id ⇒ ถ้าให้ caller ไปอ่านก่อน จะเป็นคิวรีนอกทรานแซกชัน
+ * แล้วค่าที่อ่านได้อาจเก่าไปแล้วตอน UPDATE จริง
+ *
+ * ★ ถอด **ทุกแถว** ของคนนั้นในทัวร์นี้ เหมือน removeAllByUser (F03) ไม่ใช่แถวเดียว
+ *   เพราะคนเดียวมีได้หลายแถว active (F-15) ⇒ ถอดแถวเดียวจะเหลือแถวอื่นที่ยังนับเป็นกรรมการ
+ * 🔴 คืน false เมื่อไม่มีแถวไหนถูกถอด (ถูกถอดไปก่อนแล้ว) ⇒ apply() จะ rollback แล้วปิดใบเป็น
+ *   cancelled ซึ่งถูกต้อง: สิ่งที่ขอเกิดขึ้นแล้วด้วยวิธีอื่น ใบนี้ไม่มีความหมายต่อ
+ */
+export async function removeAllByRefereeIdTx(db : Queryable, tournamentId : number,
+                                             tournamentRefereeId : number, removedBy : number): Promise<boolean>{
+    const [result] = await db.query<ResultSetHeader>(
+        `UPDATE tournament_referees
+         SET removed_at = NOW(), removed_by = ?
+         WHERE tournament_id = ? AND removed_at IS NULL
+           AND user_id = (SELECT user_id FROM (SELECT user_id FROM tournament_referees
+                                               WHERE tournament_referee_id = ?) AS src)`,
+        [removedBy, tournamentId, tournamentRefereeId]);
+    return result.affectedRows > 0;
+}
+
 export async function removeAllByUser(tournamentId : number, userId : number, removedBy : number)
         : Promise<number>{
     const [result] = await pool.query<ResultSetHeader>(

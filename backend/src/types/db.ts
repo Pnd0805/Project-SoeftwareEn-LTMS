@@ -172,20 +172,34 @@ export type MatchRefereeRow = {
 }
 
 
-export type RefereeRequestType = 'org_add_match' | 'ref_transfer' | 'ref_swap' | 'org_swap';
+/**
+ * ★ 'ref_withdraw' (FR09 · migration 045 · 6 ต.ค. 2569) — กรรมการขอถอนตัว **ORG เป็นคนอนุมัติ**
+ *   ต่างจากอีกสี่ชนิดที่ปลายทางเป็นกรรมการอีกคน ⇒ ด่านตอบอยู่ที่ ORG ไม่ใช่ referee_b
+ *   ดู refereeRequest.service sideOf() ที่แยกสาขานี้ไว้
+ */
+export type RefereeRequestType = 'org_add_match' | 'ref_transfer' | 'ref_swap' | 'org_swap' | 'ref_withdraw';
 export type RefereeRequestSideStatus = 'not_required' | 'pending' | 'accepted' | 'declined';
 
 export type RefereeChangeRequestRow = {
     request_id : number,
     tournament_id : number,
     request_type : RefereeRequestType,
+    /** มีค่าเฉพาะ `ref_withdraw` — 'match' = ออกจากแมตช์เดียว · 'tournament' = ออกทั้งทัวร์ */
+    withdraw_scope : 'match' | 'tournament' | null,
     requested_by : number,
     referee_a_id : number,
     referee_b_id : number | null,
-    match_a_id : number,
+    /**
+     * 🔴 NULL ได้ตั้งแต่ migration 045 — **เฉพาะ** `ref_withdraw` ขอบเขต 'tournament'
+     *   ซึ่งไม่ได้อ้างแมตช์ไหน · สี่ชนิดเดิมยังต้องมีค่าเสมอ และฐานบังคับด้วย
+     *   CHECK `chk_rcr_withdraw_shape` ⇒ อย่าเขียนโค้ดที่ปล่อย NULL ให้ชนิดอื่น
+     */
+    match_a_id : number | null,
     match_b_id : number | null,
     a_status : RefereeRequestSideStatus,
     b_status : RefereeRequestSideStatus,
+    /** เหตุผล — บังคับสำหรับ `ref_withdraw` (ด่านอยู่ที่แอป) · NULL สำหรับสี่ชนิดเดิม */
+    request_reason : string | null,
     request_status : 'open' | 'applied' | 'declined' | 'cancelled',
     created_at : Date,
     resolved_at : Date | null

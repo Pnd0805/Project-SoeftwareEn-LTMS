@@ -10,6 +10,17 @@ export async function createRefRequest(req : Request, res : Response){
     res.status(201).json(await RequestService.createRefRequest(req.user!.user_id, req.body));
 }
 
+/**
+ * FR09 — กรรมการขอถอนตัว (จากแมตช์เดียว หรือทั้งทัวร์)
+ *
+ * ★ ทัวร์มาจาก body ไม่ใช่จาก path เพราะขอบเขต 'match' ส่งมาแต่ matchId
+ *   (service หาทัวร์จากแมตช์เอง) ⇒ ถ้าเอาไปแขวนใต้ /tournaments/:id จะต้องส่งซ้ำสองที่
+ *   แล้วมีโอกาสส่งไม่ตรงกัน ซึ่งเป็นสถานะที่ไม่ควรแสดงออกได้เลย
+ */
+export async function createRefWithdraw(req : Request, res : Response){
+    res.status(201).json(await RequestService.createRefWithdraw(req.user!.user_id, req.body));
+}
+
 export async function createOrgAddMatch(req : Request, res : Response){
     const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     res.status(201).json(await RequestService.createOrgAddMatch(tournamentId, req.user!.user_id, req.body));

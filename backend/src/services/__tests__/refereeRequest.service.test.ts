@@ -25,6 +25,17 @@ vi.mock('../../repositories/match.repo.js', () => ({
   findById: vi.fn(),
 }));
 
+// 🆕 6 ต.ค. — revalidate() เช็คก่อนทุกอย่างว่าทัวร์ยังไม่จบ/ไม่ถูกลบ (มติ ฏ) และ FR09 ใช้หา ORG
+//   ไม่ mock ที่นี่ = เทสจะไปต่อฐานจริง แล้ว "ผ่าน" เฉพาะตอนที่เครื่องมี MySQL รันอยู่
+vi.mock('../../repositories/tournament.repo.js', () => ({
+  findTournamentById: vi.fn(),
+}));
+
+// FR09 — ด่าน "คนนี้เป็น ORG ของทัวร์นี้ไหม" อยู่ใน service ไม่ใช่ middleware (เส้น accept เป็นเส้นรวม)
+vi.mock('../../middlewares/requireOrganizer.js', () => ({
+  isOrganizerOf: vi.fn(),
+}));
+
 // referee.service.js is a sibling service refereeRequest.service.ts leans on for two
 // pure-ish helpers (assertSchedulable, isActiveReferee). Mocked wholesale so this suite
 // only exercises refereeRequest.service.ts's own orchestration/branching.
@@ -46,6 +57,7 @@ vi.mock('../notification.service.js', () => ({
 
 import {
   createRefRequest,
+  createRefWithdraw,
   createOrgAddMatch,
   createOrgSwap,
   listMyRequests,
@@ -57,6 +69,8 @@ import * as ReqRepo from '../../repositories/refereeChangeRequest.repo.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
+import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import { isOrganizerOf } from '../../middlewares/requireOrganizer.js';
 import { assertSchedulable, isActiveReferee, findActiveRefereeRow } from '../referee.service.js';
 import { toRefereeRequestDto } from '../../mappers/refereeRequest.mapper.js';
 import * as NotificationService from '../notification.service.js';
@@ -65,6 +79,8 @@ const mockedReqRepo = vi.mocked(ReqRepo);
 const mockedRefRepo = vi.mocked(RefRepo);
 const mockedMatchRefRepo = vi.mocked(MatchRefRepo);
 const mockedMatchRepo = vi.mocked(MatchRepo);
+const mockedTournamentRepo = vi.mocked(TournamentRepo);
+const mockedIsOrganizerOf = vi.mocked(isOrganizerOf);
 const mockedAssertSchedulable = vi.mocked(assertSchedulable);
 const mockedIsActiveReferee = vi.mocked(isActiveReferee);
 const mockedFindActiveRefereeRow = vi.mocked(findActiveRefereeRow);
@@ -152,6 +168,12 @@ beforeEach(() => {
   mockedReqRepo.create.mockResolvedValue(500);
   mockedReqRepo.findListRowById.mockResolvedValue({ request_id: 500 } as any);
   mockedToDto.mockReturnValue({ id: 500 } as any);
+  // ทัวร์ที่ยังเดินอยู่ = ค่าเริ่มต้นของเส้นปกติ (มติ ฏ — ทัวร์จบแล้วคำขอทุกชนิดไม่มีความหมาย)
+  mockedTournamentRepo.findTournamentById.mockResolvedValue({
+    tournament_id: 10, name: 'KU Cup', tournament_status: 'public',
+    deleted_at: null, requested_by_user_id: 900,
+  } as any);
+  mockedIsOrganizerOf.mockReturnValue(false);
 });
 
 // ───────────────────────────── createRefRequest (FR01) ─────────────────────────────
@@ -730,5 +752,192 @@ describe('cancelRequest', () => {
 
     expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'cancelled');
     expect(result).toBeUndefined();
+  });
+});
+
+// ───────────────────────────── createRefWithdraw (FR09) ─────────────────────────────
+
+/**
+ * FR09 (มติ 6 ต.ค. 2569) — กรรมการขอถอนตัว **ORG อนุมัติ**
+ *
+ * ช่องว่างที่ปิด: เดิมกรรมการที่ตอบรับไปแล้วออกได้ทางเดียวคือ ref_transfer/ref_swap
+ * ซึ่งต้องมีคนมารับช่วงและกดรับ ⇒ ทัวร์ที่ไม่มีคนอื่น = ไม่มีทางออก
+ * และถ้าถูกเชิญแบบ pool (ยังไม่มีแมตช์) ก็ไม่มีใบให้ยื่นด้วยซ้ำ
+ */
+describe('createRefWithdraw (FR09)', () => {
+  const matchInput = { scope: 'match' as const, matchId: 1, reason: 'ติดทัวร์อื่นเวลาทับกัน' };
+  const tourInput = { scope: 'tournament' as const, tournamentId: 10, reason: 'ป่วย ไปไม่ได้ทั้งทัวร์' };
+
+  it('ขอบเขต match — เขียนใบด้วย scope match · match_a_id ของแมตช์นั้น · เหตุผลที่ส่งมา', async () => {
+    mockMatches(makeMatch({ match_id: 1, tournament_id: 10 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedMatchRefRepo.findByTournamentReferees.mockResolvedValue([
+      { match_id: 1, assignment_status: 'accepted', scheduled_time: future(HOUR), scheduled_end_time: future(2 * HOUR) },
+    ] as any);
+
+    await createRefWithdraw(100, matchInput);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'ref_withdraw', withdrawScope: 'match', matchAId: 1, matchBId: null,
+      refereeBId: null, aStatus: 'accepted', bStatus: 'pending',
+      reason: 'ติดทัวร์อื่นเวลาทับกัน',
+    }));
+  });
+
+  /**
+   * ★ เคสที่เป็นเหตุผลหลักของขอบเขต 'tournament': ถูกเชิญแบบ pool ยังไม่มีแมตช์เลย
+   *   ⇒ ไม่มี matchId ให้อ้าง ⇒ ถ้ามีแต่ขอบเขตแมตช์ คนนี้จะออกไม่ได้ตลอดไป
+   */
+  it('ขอบเขต tournament — ไม่ต้องมีแมตช์เลยก็ยื่นได้ และ match_a_id เป็น null', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+
+    await createRefWithdraw(100, tourInput);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'ref_withdraw', withdrawScope: 'tournament', matchAId: null,
+    }));
+    // ไม่แตะแมตช์เลย — ไม่อ่าน ไม่ตรวจเวลา
+    expect(mockedMatchRepo.findById).not.toHaveBeenCalled();
+  });
+
+  it('ไม่ใช่กรรมการ active ของทัวร์นี้ ⇒ 403 NOT_TOURNAMENT_REFEREE', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 403, code: 'NOT_TOURNAMENT_REFEREE' });
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('ขอออกจากแมตช์ที่ตัวเองไม่ได้รับไว้ ⇒ 409 REFEREE_NOT_ASSIGNED', async () => {
+    mockMatches(makeMatch({ match_id: 1, tournament_id: 10 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedMatchRefRepo.findByTournamentReferees.mockResolvedValue([]);
+
+    await expect(createRefWithdraw(100, matchInput))
+      .rejects.toMatchObject({ status: 409, code: 'REFEREE_NOT_ASSIGNED' });
+  });
+
+  /** กฎเดียวกับ ref_transfer — ถึงเวลาแข่งแล้วเปลี่ยนกรรมการไม่ได้ ไม่ตั้งเกณฑ์ใหม่ */
+  it('แมตช์ถึงเวลาแข่งแล้ว ⇒ 409 MATCH_NOT_CHANGEABLE', async () => {
+    mockMatches(makeMatch({ match_id: 1, tournament_id: 10, scheduled_time: past(HOUR) }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedMatchRefRepo.findByTournamentReferees.mockResolvedValue([
+      { match_id: 1, assignment_status: 'accepted', scheduled_time: past(HOUR), scheduled_end_time: future(HOUR) },
+    ] as any);
+
+    await expect(createRefWithdraw(100, matchInput))
+      .rejects.toMatchObject({ status: 409, code: 'MATCH_NOT_CHANGEABLE' });
+  });
+
+  /** มติ ฏ — ทัวร์จบแล้ว คำขอไม่มีความหมาย · ด่านนี้มาก่อนทุกอย่าง */
+  it('ทัวร์จบแล้ว ⇒ 409 TOURNAMENT_COMPLETED และไม่แตะอะไรต่อ', async () => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue({
+      tournament_id: 10, tournament_status: 'completed', deleted_at: null, requested_by_user_id: 900,
+    } as any);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_COMPLETED' });
+    expect(mockedFindActiveRefereeRow).not.toHaveBeenCalled();
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('มีใบที่ยังรอผู้จัดตอบอยู่แล้ว ⇒ 409 REQUEST_ALREADY_OPEN', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedReqRepo.existsOpenFor.mockResolvedValue(true);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 409, code: 'REQUEST_ALREADY_OPEN' });
+  });
+
+  /**
+   * 🔴 ด่านกันส่งซ้ำของใบระดับทัวร์ต้องถาม repo ด้วย matchAId = null
+   *   ถ้าส่งเลขแมตช์มั่ว ๆ ไป หรือ repo เทียบด้วย `match_a_id = NULL` (ซึ่งไม่เคยจริงใน SQL)
+   *   ด่านจะปล่อยผ่านทุกครั้งอย่างเงียบ ๆ แล้วกรรมการยื่นซ้ำได้ไม่จำกัด
+   */
+  it('ด่านกันส่งซ้ำของใบระดับทัวร์ ต้องถามด้วย matchAId = null', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+
+    await createRefWithdraw(100, tourInput);
+
+    expect(mockedReqRepo.existsOpenFor).toHaveBeenCalledWith(null, 1);
+  });
+
+  it('แจ้งเตือนไปที่ผู้จัด ไม่ใช่กรรมการอีกคน และมีเหตุผลอยู่ในข้อความ', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+
+    await createRefWithdraw(100, tourInput);
+
+    expect(mockedNotify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 900,                       // requested_by_user_id ของทัวร์ = ORG
+      message: expect.stringContaining('ป่วย ไปไม่ได้ทั้งทัวร์'),
+    }));
+  });
+});
+
+// ───────────────────────────── FR09 · ด่านฝั่งผู้ตอบ ─────────────────────────────
+
+describe('respondToRequest — ref_withdraw (FR09)', () => {
+  const withdrawRow = (over: Record<string, unknown> = {}) => ({
+    request_id: 500, tournament_id: 10, request_type: 'ref_withdraw', withdraw_scope: 'tournament',
+    requested_by: 100, referee_a_id: 1, referee_b_id: null,
+    match_a_id: null, match_b_id: null,
+    a_status: 'accepted', b_status: 'pending', request_status: 'open',
+    request_reason: 'ป่วย', ...over,
+  } as any);
+
+  /**
+   * ★ ชนิดนี้เป็นชนิดเดียวที่ผู้ตอบไม่ใช่กรรมการ ⇒ sideOf มีสาขาแยก
+   *   ถ้าสาขานั้นหาย กรรมการคนอื่นจะตอบใบถอนตัวของเพื่อนได้ ซึ่งไม่ควรเกิดเลย
+   */
+  it('คนที่ไม่ใช่ผู้จัด ตอบใบถอนตัวไม่ได้ ⇒ 403', async () => {
+    mockedReqRepo.findById.mockResolvedValue(withdrawRow());
+    mockedIsOrganizerOf.mockReturnValue(false);
+
+    await expect(respondToRequest(500, 777, 'accepted'))
+      .rejects.toMatchObject({ status: 403, code: 'NOT_YOUR_REQUEST' });
+    expect(mockedReqRepo.answerSide).not.toHaveBeenCalled();
+  });
+
+  it('ผู้จัดตอบได้ และคำตอบถูกบันทึกลงฝั่ง b', async () => {
+    mockedReqRepo.findById.mockResolvedValue(withdrawRow());
+    mockedIsOrganizerOf.mockReturnValue(true);
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedReqRepo.close.mockResolvedValue(true);
+
+    await respondToRequest(500, 900, 'declined');
+
+    expect(mockedReqRepo.answerSide).toHaveBeenCalledWith(500, 'b', 'declined');
+    expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'declined');
+  });
+
+  it('ผู้จัดอนุมัติ ⇒ apply() ถูกเรียกด้วยใบนั้น', async () => {
+    mockedReqRepo.findById
+      .mockResolvedValueOnce(withdrawRow())
+      .mockResolvedValueOnce(withdrawRow({ b_status: 'accepted' }));
+    mockedIsOrganizerOf.mockReturnValue(true);
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedRefRepo.findById.mockResolvedValue(makeReferee());
+    mockedReqRepo.apply.mockResolvedValue(true);
+
+    await respondToRequest(500, 900, 'accepted');
+
+    expect(mockedReqRepo.apply).toHaveBeenCalledWith(expect.objectContaining({
+      request_type: 'ref_withdraw', withdraw_scope: 'tournament',
+    }));
+  });
+
+  /** ขอบเขตทัวร์ไม่ได้อ้างแมตช์ ⇒ revalidate ต้องไม่ไปอ่านแมตช์ (จะได้ 404 เพราะ match_a_id เป็น null) */
+  it('ขอบเขตทัวร์ — revalidate ไม่แตะแมตช์เลย', async () => {
+    mockedReqRepo.findById
+      .mockResolvedValueOnce(withdrawRow())
+      .mockResolvedValueOnce(withdrawRow({ b_status: 'accepted' }));
+    mockedIsOrganizerOf.mockReturnValue(true);
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedRefRepo.findById.mockResolvedValue(makeReferee());
+    mockedReqRepo.apply.mockResolvedValue(true);
+
+    await respondToRequest(500, 900, 'accepted');
+
+    expect(mockedMatchRepo.findById).not.toHaveBeenCalled();
   });
 });
