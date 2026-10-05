@@ -2,7 +2,7 @@ import { useBackendMyInvitations, useBackendMyTeams } from '../../hooks/useTeam'
 import { useAdminAccess, useMyRefereeInvitations, useMyRefereeRequests, usePendingTournamentRequests } from '../../hooks/useAdmin'
 import { useMyMatches } from '../../hooks/useMatch'
 import { useMyTournaments } from '../../hooks/useTournament'
-import { HomeTaskPanel } from './HomeTaskPanel'
+import { HomeWorkspace } from './HomeWorkspace'
 import type { HomeTaskFeed } from './homeTasks'
 import { teamHomeTasks } from '../team/teamHomeTasks'
 import { refereeHomeTasks } from '../admin/refereeHomeTasks'
@@ -79,5 +79,5 @@ export function RealHomeTasks() {
     },
   ]
 
-  return <HomeTaskPanel feeds={feeds} />
+  return <HomeWorkspace feeds={feeds} matches={matches} />
 }

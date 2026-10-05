@@ -1,0 +1,50 @@
+Fixture: m-131
+{
+  width: 1440,
+  theme: 'light',
+  overflow: false,
+  columns: '554px 554px',
+  left: 554,
+  right: 554
+}
+{
+  width: 1440,
+  theme: 'dark',
+  overflow: false,
+  columns: '554px 554px',
+  left: 554,
+  right: 554
+}
+{
+  width: 1280,
+  theme: 'light',
+  overflow: false,
+  columns: '488px 488px',
+  left: 488,
+  right: 488
+}
+{
+  width: 1280,
+  theme: 'dark',
+  overflow: false,
+  columns: '488px 488px',
+  left: 488,
+  right: 488
+}
+{
+  width: 390,
+  theme: 'light',
+  overflow: false,
+  columns: '342px',
+  left: 342,
+  right: 342
+}
+{
+  width: 390,
+  theme: 'dark',
+  overflow: false,
+  columns: '342px',
+  left: 342,
+  right: 342
+}
+Match path /m/553103 page errors []

@@ -512,6 +512,18 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
   border:2px solid var(--ink);font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;box-shadow:var(--hard-sm);transition:top .14s ease;}
 .skip:focus{top:12px;}
+.home-workspace{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start;margin-bottom:16px;}
+.home-next-match{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.home-next-body{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:24px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-height:240px;}
+.home-next-body p{margin:0;}
+.home-next-tournament{font-size:14px;font-weight:600;color:var(--bone-dim);overflow-wrap:anywhere;}
+.home-next-teams{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%;}
+.home-next-teams h3{font-size:32px;line-height:1.05;overflow-wrap:anywhere;}
+.home-next-details{display:flex;flex-direction:column;gap:4px;align-self:stretch;padding-top:16px;border-top:1px solid var(--line);}
+.home-next-details time{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+.home-next-body .btn{margin-top:auto;}
+.home-next-empty{font-size:18px;font-weight:600;}
 .home-task-panel{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .home-page-title{margin-bottom:16px;}
 .tournament-destination-title{margin-bottom:4px;}
@@ -542,6 +554,8 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
   border-radius:var(--r-lg);}
 
 @media (max-width:820px){
+  .home-workspace{grid-template-columns:minmax(0,1fr);}
+  .home-next-body{padding:20px;}
   .shell{grid-template-columns:minmax(0,1fr);}
   .sb{position:static;max-height:none;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px;}
   .sb .brand{border:0;margin:0;padding:0 8px;}

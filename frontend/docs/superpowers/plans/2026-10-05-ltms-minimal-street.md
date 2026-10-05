@@ -58,7 +58,7 @@
 - [x] **Step 4: Apply the approved material treatment.** Self-host the approved font; keep A's color/QR tokens. Update the current shared CSS for 232px desktop sidebar, a consistent toolbar/content measure, angular controls, condensed principal headings, calm body text and restrained outlines. Keep current mobile fallbacks. Avoid introducing a second permanent stylesheet containing duplicate definitions of the same design system.
 - [x] **Step 5: Verify the slice.** Run `npx vitest run src/components/layout src/features/home` and `npx tsc --noEmit -p tsconfig.app.json`. Expected: all cases pass. Record which rendered checks remain pending; no CSS-string tests are required.
 
-**Completion evidence:** [Ticket 1](../notes/2026-10-05-ltms-ticket-01.md). Navigation was partly implemented by the stopped worker; the new Tournament retry case failed before implementation. The remaining slices are pending and are not authorized by the latest request.
+**Completion evidence:** [Ticket 1](../notes/2026-10-05-ltms-ticket-01.md). Navigation was partly implemented by the stopped worker; the new Tournament retry case failed before implementation. The remaining slices are pending and are not authorized by the latest request. The approved bounded Home follow-up adds Next match from the already consumed personal Match query in two equal columns; see [follow-up evidence](../notes/2026-10-05-ltms-home-next-match.md).
 
 ### Task 2: Tournament discovery and preview
 

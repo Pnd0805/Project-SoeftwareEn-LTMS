@@ -17,11 +17,17 @@ import { buildHomeCategories } from './homeView'
 import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
-import { HomeTaskPanel } from './HomeTaskPanel'
+import { HomeWorkspace } from './HomeWorkspace'
+import { useMyMatches } from '../../hooks/useMatch'
 import { mockHomeTasks, type HomeTaskFeed } from './homeTasks'
 import { RealHomeTasks } from './RealHomeTasks'
 
 const STAGES: [string, string][] = [['', 'All'], ['open', 'Open for entry'], ['competing', 'In progress'], ['finished', 'Finished']]
+
+function MockHomeWorkspace({ feeds }: { feeds: readonly HomeTaskFeed[] }) {
+  const matches = useMyMatches()
+  return <HomeWorkspace feeds={feeds} matches={matches} />
+}
 
 export function HomePage() {
   const s = useLtms()
@@ -130,7 +136,7 @@ export function HomePage() {
           </button>
         </div>
       ) : null}
-      {signedIn && homeDestination && USE_MOCK ? <HomeTaskPanel feeds={taskFeeds} /> : null}
+      {signedIn && homeDestination && USE_MOCK ? <MockHomeWorkspace feeds={taskFeeds} /> : null}
       {signedIn && homeDestination && !USE_MOCK ? <RealHomeTasks /> : null}
       {signedIn && homeDestination
         ? <h2 id="tournaments" className="disp tournament-destination-title" style={{ fontSize: 30, marginTop: 0 }}>Tournaments</h2>

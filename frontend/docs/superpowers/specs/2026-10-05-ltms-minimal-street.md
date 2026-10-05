@@ -61,7 +61,7 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - Use the existing Home destination for the signed-in task-first view. Use the existing all-Tournaments category destination for sidebar Tournament discovery. Guest Home remains public Tournament discovery.
 - Resolve active navigation by route family. Preserve the current Admin access probe and scope handling, search, notifications, profile shortcut, sign-out and theme persistence.
 - Render Needs you from the existing source-aware task feeds. Preserve per-source loading, retry and empty states. The standalone prototype's sample tasks are not production data.
-- The prototype's Next fixture panel is illustrative. Render a fixture only when existing consumed data establishes participants and schedule; otherwise allow the task section to use the available width. This spec authorizes no new fixture endpoint or inferred action capability.
+- Follow-up approved on 2026-10-05: signed-in Home uses two equal desktop columns, Needs you on the left and Next match on the right; stack them on mobile. Next match selects the nearest future scheduled/check-in-open match from the existing personal Match source only when participants and schedule are known. Show the Tournament, teams, time, venue (or Venue not set) and View match. Preserve the right column with No scheduled match when empty; distinguish loading/error/retry. This supersedes expanding the task area when no fixture exists. No new endpoint or inferred action capability is authorized.
 
 ### Tournament preview
 
