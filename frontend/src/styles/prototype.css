@@ -223,7 +223,11 @@ body{background:var(--void);}
 .team-tab:hover{background:var(--panel-2);color:var(--bone);}
 .team-tab[data-active]{background:var(--teal);color:var(--accent-ink);}
 .team-tab:focus-visible,.team-tab-panel:focus-visible{outline:2px solid var(--teal);outline-offset:3px;}
-.team-tab-panel{min-width:0;}
+/* กรอบแท็บสูงเท่ากันและเลื่อนภายใน เพื่อให้ส่วนประวัติไม่ขยับตามจำนวนรายการ */
+.team-tab-panel{min-width:0;height:440px;overflow-y:auto;overscroll-behavior-y:contain;
+  background:var(--void-2);border:1px solid var(--line);border-radius:var(--r);
+  scrollbar-width:thin;scrollbar-color:var(--line-hot) var(--void-2);}
+.team-tab-panel>.panel{min-height:100%;border:0;}
 /* ซ่อนทันทีที่เลิกใช้งาน ไม่รอรอบ transition ของ Tabs */
 .team-tab-panel[hidden],.team-tab-panel[inert]{display:none;}
 .team-list-row .spread>*,.teams-work-row>*,.team-poster-copy,.player-identity-copy{min-width:0;max-width:100%;}

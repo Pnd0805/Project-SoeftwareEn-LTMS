@@ -1,0 +1,230 @@
+[
+  {
+    "name": "keyboard-scroll-1280-dark",
+    "scrollTop": 20
+  },
+  {
+    "name": "panels-1280-dark",
+    "dimensions": [
+      {
+        "label": "Members",
+        "tab": "base-ui-_r_0_",
+        "height": 440,
+        "width": 1000,
+        "top": 494.96875,
+        "scrollHeight": 1949,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 950.96875,
+        "pageOverflow": false
+      },
+      {
+        "label": "Invites",
+        "tab": "base-ui-_r_1_",
+        "height": 440,
+        "width": 1000,
+        "top": 494.96875,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 950.96875,
+        "pageOverflow": false
+      },
+      {
+        "label": "Manage",
+        "tab": "base-ui-_r_2_",
+        "height": 440,
+        "width": 1000,
+        "top": 494.96875,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 950.96875,
+        "pageOverflow": false
+      }
+    ],
+    "equalDimensions": true,
+    "stableRecord": true,
+    "draftPreserved": true,
+    "shortcutFocus": true,
+    "dialogEscapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "keyboard-scroll-1440-light",
+    "scrollTop": 22
+  },
+  {
+    "name": "panels-1440-light",
+    "dimensions": [
+      {
+        "label": "Members",
+        "tab": "base-ui-_r_0_",
+        "height": 440,
+        "width": 1132,
+        "top": 494.96875,
+        "scrollHeight": 1949,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 950.96875,
+        "pageOverflow": false
+      },
+      {
+        "label": "Invites",
+        "tab": "base-ui-_r_1_",
+        "height": 440,
+        "width": 1132,
+        "top": 494.96875,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 950.96875,
+        "pageOverflow": false
+      },
+      {
+        "label": "Manage",
+        "tab": "base-ui-_r_2_",
+        "height": 440,
+        "width": 1132,
+        "top": 494.96875,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 950.96875,
+        "pageOverflow": false
+      }
+    ],
+    "equalDimensions": true,
+    "stableRecord": true,
+    "draftPreserved": true,
+    "shortcutFocus": true,
+    "dialogEscapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "keyboard-scroll-390-dark",
+    "scrollTop": 36
+  },
+  {
+    "name": "panels-390-dark",
+    "dimensions": [
+      {
+        "label": "Members",
+        "tab": "base-ui-_r_0_",
+        "height": 440,
+        "width": 342,
+        "top": 726.9375,
+        "scrollHeight": 3320,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 1182.9375,
+        "pageOverflow": false
+      },
+      {
+        "label": "Invites",
+        "tab": "base-ui-_r_1_",
+        "height": 440,
+        "width": 342,
+        "top": 726.9375,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 1182.9375,
+        "pageOverflow": false
+      },
+      {
+        "label": "Manage",
+        "tab": "base-ui-_r_2_",
+        "height": 440,
+        "width": 342,
+        "top": 726.9375,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 1182.9375,
+        "pageOverflow": false
+      }
+    ],
+    "equalDimensions": true,
+    "stableRecord": true,
+    "draftPreserved": true,
+    "shortcutFocus": true,
+    "dialogEscapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "keyboard-scroll-390-light",
+    "scrollTop": 36
+  },
+  {
+    "name": "panels-390-light",
+    "dimensions": [
+      {
+        "label": "Members",
+        "tab": "base-ui-_r_0_",
+        "height": 440,
+        "width": 342,
+        "top": 726.9375,
+        "scrollHeight": 3320,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 1182.9375,
+        "pageOverflow": false
+      },
+      {
+        "label": "Invites",
+        "tab": "base-ui-_r_1_",
+        "height": 440,
+        "width": 342,
+        "top": 726.9375,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 1182.9375,
+        "pageOverflow": false
+      },
+      {
+        "label": "Manage",
+        "tab": "base-ui-_r_2_",
+        "height": 440,
+        "width": 342,
+        "top": 726.9375,
+        "scrollHeight": 438,
+        "clientHeight": 438,
+        "scrollTop": 0,
+        "focusable": true,
+        "overflow": "auto",
+        "recordTop": 1182.9375,
+        "pageOverflow": false
+      }
+    ],
+    "equalDimensions": true,
+    "stableRecord": true,
+    "draftPreserved": true,
+    "shortcutFocus": true,
+    "dialogEscapeReturn": true,
+    "errors": []
+  }
+]

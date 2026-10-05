@@ -106,6 +106,8 @@
 
 **Latest visual correction:** [Team name and role borders](../notes/2026-10-06-team-role-colors.md). Removed paper behind list/detail Team names, kept emerald Leader outlines and added amber Member outlines. Team regressions: 7 files / 49 tests, TypeScript/build/lint and both-theme desktop/mobile checks pass; frozen API files unchanged.
 
+**Equal frame refinement:** [Team workspace panel sizes](../notes/2026-10-06-team-equal-panels.md). Members / Invites / Manage have matching full-width 440px frames with internal scrolling and a stable TeamRecord position. Team/Modal regressions: 8 files / 63 tests; build/lint, desktop/mobile computed dimensions, keyboard scrolling and dialog checks pass. Frozen API files unchanged.
+
 ### Task 4: Tournament participation and registration
 
 **Files:**
