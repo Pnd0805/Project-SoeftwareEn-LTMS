@@ -23,3 +23,9 @@ Browser fixtures use isolated mock storage and page reloads to load 21 and then 
 - [Measured results](home-task-scroll/render-results.txt)
 
 Screenshots show test data only; production seed, live backend and user browser storage were not changed. Live backend verification remains unavailable.
+
+## Equal-frame refinement
+
+The user subsequently requested equal Needs you / Next match frames and a larger task count. Both frames now use a fixed 320px outer height (also for short/empty states), superseding the initial shrinking behavior. Long Next match content scrolls inside its frame; its controls keep their size. Task count uses 18px, weight 600, in the primary text color.
+
+Browser measurements show 320/320 heights and equal widths at 1280 and 1440, both themes, and 320/320 in the stacked mobile layout. Long match names do not overflow the document; the existing View match link remains reachable. This refinement changes CSS only. Production build and diff whitespace checks pass; the existing bundle-size warning remains.

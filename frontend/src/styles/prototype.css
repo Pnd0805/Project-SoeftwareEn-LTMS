@@ -515,7 +515,9 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .home-workspace{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start;margin-bottom:16px;}
 .home-next-match{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .home-next-body{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:24px;
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-height:240px;}
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);height:320px;overflow-y:auto;
+  overscroll-behavior-y:contain;}
+.home-next-body>*{flex-shrink:0;}
 .home-next-body p{margin:0;}
 .home-next-tournament{font-size:14px;font-weight:600;color:var(--bone-dim);overflow-wrap:anywhere;}
 .home-next-teams{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%;}
@@ -525,11 +527,11 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .home-next-body .btn{margin-top:auto;}
 .home-next-empty{font-size:18px;font-weight:600;}
 .home-task-panel{display:flex;flex-direction:column;gap:12px;min-width:0;}
-/* จำกัดทั้งงานและสถานะโหลด เพื่อไม่ให้คิวที่ยาวดันรายการทัวร์นาเมนต์ลงไป */
-.home-task-body{display:flex;flex-direction:column;gap:12px;max-height:320px;overflow-y:auto;
+/* กรอบสองฝั่งสูงเท่ากัน และเลื่อนเนื้อหาภายในเพื่อรักษาตำแหน่งทัวร์นาเมนต์ */
+.home-task-body{display:flex;flex-direction:column;gap:12px;height:320px;max-height:320px;overflow-y:auto;
   overscroll-behavior-y:contain;scroll-padding-block:4px;min-width:0;
   background:var(--panel);border:1px solid var(--line);border-radius:var(--r);}
-.home-task-count{font-size:13px;font-variant-numeric:tabular-nums;}
+.home-task-count{font-size:18px;font-weight:600;color:var(--bone);font-variant-numeric:tabular-nums;}
 .home-task-body .home-task-list{flex-shrink:0;border:0;}
 .home-task-body>p,.home-task-body>a,.home-task-body>.hstack{margin:12px 16px;}
 .home-task-body .home-task-link:focus-visible{outline-offset:-3px;}
