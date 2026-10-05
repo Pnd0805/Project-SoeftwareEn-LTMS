@@ -59,7 +59,11 @@ export function ProfilePage() {
 
     return (
       <>
-        <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} user={currentUser} />
+        <ProfileHeading
+          label={legacyUser.role === 'Admin' ? 'Administrator' : legacyUser.external ? 'External' : 'Student record'}
+          user={currentUser}
+          isExternal={Boolean(legacyUser.external || currentUser.userType === 'external')}
+        />
         {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
         {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your identity loaded, but the statistics request failed." /> : null}
         {userStats?.overall ? (
@@ -98,9 +102,9 @@ export function ProfilePage() {
             ) : null}
           </div>
           <div className="rail">
-            <Panel><span className="tag"><em>//</em> Student record — the registry owns this</span><Facts rows={[
+            <Panel><span className="tag"><em>//</em> {legacyUser.external ? 'External record' : 'Student record — the registry owns this'}</span><Facts rows={[
               ['Faculty', legacyUser.faculty], ['Major', legacyUser.major], ['Year', String(currentUser.year)],
-              ['Age', String(ageOf(currentUser.birthDate))], ['Gender', currentUser.gender], ['Role', currentUser.userType === 'staff' ? 'Admin' : 'User'],
+              ['Age', String(ageOf(currentUser.birthDate))], ['Gender', currentUser.gender], ['Role', currentUser.userType === 'staff' ? 'Admin' : (currentUser.userType === 'external' || legacyUser.external) ? 'External' : 'User'],
             ]} /></Panel>
             <Panel quiet><span className="tag"><em>//</em> Following · {follows.length}</span>{follows.length ? follows.map(key => <div className="sub" key={key}>{key.replace('team:', 'Squad · ').replace('player:', 'Player · ')}</div>) : <span className="sub">Nothing followed yet.</span>}</Panel>
             <Panel quiet><span className="tag"><em>//</em> MVP votes received</span><span className="v" style={{ fontFamily: 'var(--f-display)', fontSize: 30, color: 'var(--teal)' }}>{mvpVotes}</span></Panel>
@@ -118,7 +122,11 @@ export function ProfilePage() {
 
   return (
     <>
-      <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : 'Student record'} user={currentUser} />
+      <ProfileHeading
+        label={currentUser.userType === 'staff' ? 'Administrator' : currentUser.userType === 'external' ? 'External' : 'Student record'}
+        user={currentUser}
+        isExternal={currentUser.userType === 'external' || (currentUser as any).isExternal === true}
+      />
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
       {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below. Retry when the server is ready." /> : null}
@@ -172,14 +180,14 @@ export function ProfilePage() {
 
         <div className="rail">
           <Panel>
-            <span className="tag"><em>//</em> Student record — the registry owns this</span>
+            <span className="tag"><em>//</em> {currentUser.userType === 'external' ? 'External record' : 'Student record — the registry owns this'}</span>
             <Facts rows={[
               ['Faculty', faculty ?? `Faculty #${currentUser.facultyId}`],
               ['Major', department ?? `Department #${currentUser.departmentId}`],
               ['Year', String(currentUser.year)],
               ['Age', String(ageOf(currentUser.birthDate))],
               ['Gender', currentUser.gender],
-              ['Role', currentUser.userType === 'staff' ? 'Admin' : 'User'],
+              ['Role', currentUser.userType === 'staff' ? 'Admin' : currentUser.userType === 'external' ? 'External' : 'User'],
             ]} />
             <span className="sub">The Hard filter reads these values. Ask the registry if one is wrong.</span>
           </Panel>
@@ -196,11 +204,12 @@ export function ProfilePage() {
   )
 }
 
-function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
+function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDto; isExternal?: boolean }) {
   const updateMe = useUpdateMe()
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const inputId = 'profile-avatar-upload'
+  const isExternalUser = isExternal ?? (user.userType === 'external' || (user as any).isExternal === true || (user as any).external === true)
 
   const pick = async (file: File | undefined) => {
     if (!file || loading || updateMe.isPending) return
@@ -240,7 +249,10 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
           style={{ borderRadius: '50%', border: '2px solid var(--line)' }} />
         <div>
           <div className="tag"><em>//</em> {label}</div>
-          <h1 className="disp" style={{ fontSize: 32, margin: '2px 0 6px' }}>{user.fullName}</h1>
+          <h1 className="disp" style={{ fontSize: 32, margin: '2px 0 6px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {user.fullName}
+            {isExternalUser ? <Badge kind="ok">External (Approve)</Badge> : null}
+          </h1>
           <div className="hstack" style={{ gap: 8 }}>
             <input id={inputId} type="file" accept={USE_MOCK ? IMAGE_ACCEPT : UPLOAD_IMAGE_ACCEPT} disabled={loading || updateMe.isPending} aria-label="Choose profile photo" style={{ display: 'none' }}
               onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />

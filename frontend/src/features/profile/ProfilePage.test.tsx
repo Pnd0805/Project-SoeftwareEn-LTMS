@@ -2,8 +2,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { updateProfile, uploadMock, profileState } = vi.hoisted(() => ({
-  updateProfile: vi.fn(), uploadMock: vi.fn(), profileState: { avatarUrl: null as string | null },
+const { updateProfile, uploadMock, profileState, mockUserState } = vi.hoisted(() => ({
+  updateProfile: vi.fn(),
+  uploadMock: vi.fn(),
+  profileState: { avatarUrl: null as string | null },
+  mockUserState: {
+    id: 9,
+    fullName: 'Backend Profile',
+    email: 'profile@example.test',
+    userType: 'student' as 'student' | 'staff' | 'external',
+    gender: 'male' as const,
+    birthDate: '2004-01-01',
+    facultyId: 2,
+    departmentId: 8,
+    year: 3,
+    totalPoints: 17,
+  },
 }))
 vi.mock('../../api/upload', async original => ({
   ...await original<typeof import('../../api/upload')>(), uploadImage: uploadMock,
@@ -19,9 +33,8 @@ vi.mock('../../shared/store', () => ({ useLtms: () => ({ users: [], teams: [], t
 vi.mock('../../hooks/useAuth', () => ({
   useMe: () => ({
     data: {
-      id: 9, fullName: 'Backend Profile', email: 'profile@example.test', userType: 'student',
-      gender: 'male', birthDate: '2004-01-01', facultyId: 2, departmentId: 8,
-      year: 3, totalPoints: 17, avatarUrl: profileState.avatarUrl,
+      ...mockUserState,
+      avatarUrl: profileState.avatarUrl,
     },
     isPending: false,
     isError: false,
@@ -61,6 +74,15 @@ describe('ProfilePage real-mode boundary', () => {
     expect(screen.getByText('Engineering')).toBeInTheDocument()
     expect(screen.getByText('Statistics are unavailable')).toBeInTheDocument()
     expect(screen.getByText('Pick\'em history')).toBeInTheDocument()
+  })
+
+  it('displays External (Approve) status badge after name when user is external', () => {
+    mockUserState.userType = 'external'
+    render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+
+    expect(screen.getByText('Backend Profile')).toBeInTheDocument()
+    expect(screen.getByText('External (Approve)')).toBeInTheDocument()
+    mockUserState.userType = 'student'
   })
 })
 
