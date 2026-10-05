@@ -48,6 +48,16 @@ it('suspension includes category and checks the 90-day ceiling', () => {
  expect(state.suspend).toHaveBeenCalledWith({ userId: 7, input: { suspend: true, reason: 'Repeated spam', category: 'spam', days: 7 } }, expect.anything())
 })
 
+it('allows permanent suspension without requiring days', () => {
+ state.scope = 'university_wide'; render(<AdminUsersTab />)
+ fireEvent.click(screen.getByRole('button', { name: 'Suspend' }))
+ fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'Severe cheating' } })
+ fireEvent.change(screen.getByLabelText(/ประเภทการระงับ/), { target: { value: 'permanent' } })
+ expect(screen.queryByLabelText(/Days/)).not.toBeInTheDocument()
+ fireEvent.click(screen.getByRole('button', { name: 'Suspend account' }))
+ expect(state.suspend).toHaveBeenCalledWith({ userId: 7, input: { suspend: true, reason: 'Severe cheating', category: 'other', days: undefined } }, expect.anything())
+})
+
 it('shows the actual unique squad count and distinguishes a verified empty list', () => {
  const view = render(<AdminUsersTab />)
  expect(screen.getByTitle('Current squads')).toHaveTextContent('2')
