@@ -180,7 +180,7 @@ export function TeamsPage() {
           {filtering ? <button className="btn ghost teams-clear" type="button" onClick={clearFilters}>Clear filters</button> : null}
           <SourceFeedback source={teams} name="teams" />
           {filtered.map(team => (
-          <Panel key={team.id} className={`team-list-row ${team.role === 'leader' ? 'team-list-leader' : ''}`}>
+          <Panel key={team.id} className={`team-list-row ${team.role === 'leader' ? 'team-list-leader' : 'team-list-member'}`}>
             <div className="spread">
               <div className="vstack" style={{ gap: 5 }}>
                 <div className="team-list-identity">

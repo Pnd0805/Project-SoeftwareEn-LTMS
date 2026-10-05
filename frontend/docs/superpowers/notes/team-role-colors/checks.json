@@ -1,0 +1,278 @@
+[
+  {
+    "name": "teams-1280-dark",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Engineering",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(30, 27, 42)",
+        "contrast": 12.367736332553791
+      },
+      {
+        "text": "Byte Force",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(38, 34, 52)",
+        "contrast": 11.318914580147853
+      },
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(38, 34, 52)",
+        "contrast": 11.318914580147853
+      }
+    ],
+    "frames": [
+      {
+        "role": "member",
+        "border": "rgb(217, 164, 48)",
+        "background": "rgb(30, 27, 42)",
+        "borderContrast": 7.469992092804367
+      },
+      {
+        "role": "leader",
+        "border": "rgb(58, 174, 124)",
+        "background": "rgb(38, 34, 52)",
+        "borderContrast": 5.530065200399694
+      },
+      {
+        "role": "leader",
+        "border": "rgb(58, 174, 124)",
+        "background": "rgb(38, 34, 52)",
+        "borderContrast": 5.530065200399694
+      }
+    ]
+  },
+  {
+    "name": "team-1280-dark",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(38, 34, 52)",
+        "contrast": 11.318914580147853
+      }
+    ],
+    "frames": []
+  },
+  {
+    "name": "interactions-1280-dark",
+    "filter": true,
+    "route": true,
+    "inviteFocus": true,
+    "onePanel": true,
+    "errors": []
+  },
+  {
+    "name": "teams-1440-light",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Engineering",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(255, 255, 255)",
+        "contrast": 15.808930832654912
+      },
+      {
+        "text": "Byte Force",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(248, 244, 236)",
+        "contrast": 14.410812273244055
+      },
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(248, 244, 236)",
+        "contrast": 14.410812273244055
+      }
+    ],
+    "frames": [
+      {
+        "role": "member",
+        "border": "rgb(128, 97, 36)",
+        "background": "rgb(255, 255, 255)",
+        "borderContrast": 5.748398348243478
+      },
+      {
+        "role": "leader",
+        "border": "rgb(18, 118, 78)",
+        "background": "rgb(248, 244, 236)",
+        "borderContrast": 5.136102304463343
+      },
+      {
+        "role": "leader",
+        "border": "rgb(18, 118, 78)",
+        "background": "rgb(248, 244, 236)",
+        "borderContrast": 5.136102304463343
+      }
+    ]
+  },
+  {
+    "name": "team-1440-light",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(248, 244, 236)",
+        "contrast": 14.410812273244055
+      }
+    ],
+    "frames": []
+  },
+  {
+    "name": "interactions-1440-light",
+    "filter": true,
+    "route": true,
+    "inviteFocus": true,
+    "onePanel": true,
+    "errors": []
+  },
+  {
+    "name": "teams-390-dark",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Engineering",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(30, 27, 42)",
+        "contrast": 12.367736332553791
+      },
+      {
+        "text": "Byte Force",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(38, 34, 52)",
+        "contrast": 11.318914580147853
+      },
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(38, 34, 52)",
+        "contrast": 11.318914580147853
+      }
+    ],
+    "frames": [
+      {
+        "role": "member",
+        "border": "rgb(217, 164, 48)",
+        "background": "rgb(30, 27, 42)",
+        "borderContrast": 7.469992092804367
+      },
+      {
+        "role": "leader",
+        "border": "rgb(58, 174, 124)",
+        "background": "rgb(38, 34, 52)",
+        "borderContrast": 5.530065200399694
+      },
+      {
+        "role": "leader",
+        "border": "rgb(58, 174, 124)",
+        "background": "rgb(38, 34, 52)",
+        "borderContrast": 5.530065200399694
+      }
+    ]
+  },
+  {
+    "name": "team-390-dark",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(229, 220, 200)",
+        "surface": "rgb(38, 34, 52)",
+        "contrast": 11.318914580147853
+      }
+    ],
+    "frames": []
+  },
+  {
+    "name": "interactions-390-dark",
+    "filter": true,
+    "route": true,
+    "inviteFocus": true,
+    "onePanel": true,
+    "errors": []
+  },
+  {
+    "name": "teams-390-light",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Engineering",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(255, 255, 255)",
+        "contrast": 15.808930832654912
+      },
+      {
+        "text": "Byte Force",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(248, 244, 236)",
+        "contrast": 14.410812273244055
+      },
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(248, 244, 236)",
+        "contrast": 14.410812273244055
+      }
+    ],
+    "frames": [
+      {
+        "role": "member",
+        "border": "rgb(128, 97, 36)",
+        "background": "rgb(255, 255, 255)",
+        "borderContrast": 5.748398348243478
+      },
+      {
+        "role": "leader",
+        "border": "rgb(18, 118, 78)",
+        "background": "rgb(248, 244, 236)",
+        "borderContrast": 5.136102304463343
+      },
+      {
+        "role": "leader",
+        "border": "rgb(18, 118, 78)",
+        "background": "rgb(248, 244, 236)",
+        "borderContrast": 5.136102304463343
+      }
+    ]
+  },
+  {
+    "name": "team-390-light",
+    "overflow": false,
+    "names": [
+      {
+        "text": "Byte Force Academy",
+        "background": "rgba(0, 0, 0, 0)",
+        "color": "rgb(42, 33, 23)",
+        "surface": "rgb(248, 244, 236)",
+        "contrast": 14.410812273244055
+      }
+    ],
+    "frames": []
+  },
+  {
+    "name": "interactions-390-light",
+    "filter": true,
+    "route": true,
+    "inviteFocus": true,
+    "onePanel": true,
+    "errors": []
+  }
+]

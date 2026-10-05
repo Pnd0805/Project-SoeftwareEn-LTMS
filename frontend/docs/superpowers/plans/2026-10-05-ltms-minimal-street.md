@@ -104,6 +104,8 @@
 
 **Approved Leader/tabs follow-up:** [Completed evidence](../notes/2026-10-06-team-leader-tabs.md), from `aac49fe`. Leader cards gain the approved poster/sticker treatment. Team details default to Members and show one of Members / Invites / Manage, retain drafts while switching and remove private panels on lost permission. The header shortcut opens Invites and focuses search. Full suite: 84 files / 581 tests; focused Team/Player/Modal suite: 9 files / 64 tests. No frozen API changes.
 
+**Latest visual correction:** [Team name and role borders](../notes/2026-10-06-team-role-colors.md). Removed paper behind list/detail Team names, kept emerald Leader outlines and added amber Member outlines. Team regressions: 7 files / 49 tests, TypeScript/build/lint and both-theme desktop/mobile checks pass; frozen API files unchanged.
+
 ### Task 4: Tournament participation and registration
 
 **Files:**

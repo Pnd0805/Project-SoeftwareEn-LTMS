@@ -212,7 +212,8 @@ body{background:var(--void);}
 .team-list-name{font-size:30px;margin:0;overflow-wrap:anywhere;text-wrap:balance;}
 .team-list-identity{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0;}
 .team-list-leader{border-color:var(--teal);background:var(--panel-2);}
-.team-list-leader .team-list-name{font-size:38px;line-height:1.05;color:var(--qr-ink);background:var(--qr-bg);padding:4px 8px 6px;max-width:100%;}
+.team-list-member{border-color:var(--amber);}
+.team-list-leader .team-list-name{font-size:38px;line-height:1.05;max-width:100%;}
 .team-leader-sticker{display:inline-flex;flex:none;font-family:var(--f-display);font-size:20px;font-weight:700;line-height:1;
   text-transform:uppercase;letter-spacing:.02em;padding:6px 10px;background:var(--teal);color:var(--accent-ink);transform:rotate(-3deg);}
 .team-workspace-tabs{min-width:0;}
@@ -240,7 +241,7 @@ body{background:var(--void);}
 .journey-crumb .crumb>span:last-child{min-width:0;overflow-wrap:anywhere;white-space:normal;}
 .journey-crumb .crumb>button{flex:none;}
 .team-poster h1{font-size:56px;line-height:1;margin:0;text-wrap:balance;overflow-wrap:anywhere;
-  color:var(--qr-ink);background:var(--qr-bg);padding:4px 12px 8px;align-self:flex-start;}
+  align-self:flex-start;}
 .team-poster-meta{flex-wrap:wrap;gap:8px;}
 .team-poster.long-name h1{font-size:40px;}
 .team-poster-actions{flex-wrap:wrap;padding-top:20px;border-top:1px solid var(--line-hot);}
@@ -287,7 +288,7 @@ body{background:var(--void);}
   .teams-filters>.field:first-child{grid-column:1/-1;}
   .team-poster{padding:20px;gap:20px;}
   .team-poster-identity,.player-identity-main{align-items:flex-start;gap:12px;}
-  .team-poster h1{font-size:36px;padding:4px 8px;}
+  .team-poster h1{font-size:36px;}
   .team-poster.long-name h1{font-size:28px;}
   .team-poster-actions{padding-top:16px;gap:8px;}
   .player-identity h1{font-size:36px;}
