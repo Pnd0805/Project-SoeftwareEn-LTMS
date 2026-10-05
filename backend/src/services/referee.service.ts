@@ -75,10 +75,103 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
         relatedEntityType : 'tournament', relatedEntityId : tournamentId,
     });
 
-    return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds };
+    /**
+     * คำเตือน "ข้ามทัวร์" ให้ ORG — **ไม่ block** (มติ 6 ต.ค. · ทางเลือก ก)
+     *
+     * ★ ตั้งใจเป็นคำเตือน ไม่ใช่ด่าน เพราะ ORG แก้ของทัวร์อื่นไม่ได้ ⇒ block แล้วเป็นทางตัน
+     *   ตรงกับมติ Q6 ที่ว่าเวลาซ้อน "เตือน ไม่ block" สำหรับฝั่ง ORG
+     * 🔴 บอกเฉพาะ "ชนกับงานนอกทัวร์นี้กี่แมตช์" ไม่บอกชื่อทัวร์/ชื่อแมตช์
+     *   เพราะตารางงานของกรรมการในทัวร์อื่นไม่ใช่ข้อมูลของ ORG คนนี้
+     *   ⇒ พอให้เขารู้ว่าควรถามกรรมการก่อน แต่ไม่เปิดข้อมูลทัวร์อื่น
+     * ด่านจริงอยู่ตอนกรรมการกดรับ ซึ่งเป็นคนที่เห็นข้อมูลนั้นได้
+     */
+    const held = await bookingsOfReferee(input.userId);
+    const crossTournamentWarnings = matchIds.length === 0 ? 0 : (await MatchRepo.findByIdsInTournament(tournamentId, matchIds))
+        .filter(m => m.scheduled_time && m.scheduled_end_time)
+        .filter(m => held.some(b => b.tournamentId !== tournamentId
+            && m.scheduled_time! < b.scheduled_end_time! && b.scheduled_time! < m.scheduled_end_time!))
+        .length;
+
+    return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds,
+             crossTournamentWarnings };
 }
 
 export type Schedulable = Pick<InvitedMatchRow, 'match_id' | 'scheduled_time' | 'scheduled_end_time'>;
+
+/** งานที่กรรมการคนนี้รับไว้แล้ว ซึ่งอาจอยู่ทัวร์อื่น — ใช้ทั้งด่าน block และคำเตือนตอนเชิญ */
+export type CrossTournamentBooking = {
+    matchId : number,
+    tournamentId : number,
+    tournamentName : string,
+    scheduledTime : string,
+    scheduledEndTime : string
+};
+
+/**
+ * งานที่กรรมการคนนี้รับไว้แล้ว **ทุกทัวร์** และยังต้องไปคุมจริง
+ *
+ * ★ ใช้ MatchRefRepo.findAcceptedByUser ซึ่งข้ามทัวร์อยู่แล้วโดยธรรมชาติ (เส้นเดียวกับ
+ *   หน้า "แมตช์ของฉัน" ของกรรมการ) ⇒ ไม่ต้องเขียนคิวรีใหม่สำหรับเรื่องนี้
+ *
+ * ตัดออกสามอย่าง:
+ *   ① แถวกรรมการที่ไม่ active (ถูกถอด · ยังไม่ตอบรับ · คนนอกที่ admin ยังไม่อนุมัติ)
+ *   ② แมตช์ที่ไม่มีเวลาเริ่ม/จบ — เทียบการทับไม่ได้
+ *   ③ แมตช์ที่จบไปแล้ว (`completed`/`finished`) — ไม่มีใครต้องไปอยู่ที่นั้นอีก
+ *     🔴 ไม่ตัดด้วย "เวลาผ่านไปแล้ว" เพราะแมตช์ที่เลยเวลาแต่ยัง scheduled คือแมตช์ที่
+ *       ยังไม่ได้เริ่มและอาจกำลังเริ่มช้า ⇒ คนยังต้องอยู่ที่นั้น ⇒ ยังนับเป็นการทับ
+ */
+export async function bookingsOfReferee(userId : number): Promise<(CrossTournamentBooking & Schedulable)[]> {
+    const rows = await MatchRefRepo.findAcceptedByUser(userId);
+    return rows
+        .filter(r => isActiveReferee(r))
+        .filter(r => r.scheduled_time !== null && r.scheduled_end_time !== null)
+        .filter(r => r.match_status !== 'completed' && r.match_status !== 'finished')
+        .map(r => ({
+            matchId : r.match_id, tournamentId : r.tournament_id, tournamentName : r.tournament_name,
+            scheduledTime : r.scheduled_time!.toISOString(), scheduledEndTime : r.scheduled_end_time!.toISOString(),
+            match_id : r.match_id, scheduled_time : r.scheduled_time, scheduled_end_time : r.scheduled_end_time
+        }));
+}
+
+/**
+ * ด่าน "ข้ามทัวร์" (มติ 6 ต.ค. 2569 · ทางเลือก ก) — FE รายงาน 6 ต.ค.
+ *
+ * 🔴 ช่องโหว่ที่ปิด: ด่านตรวจเวลาซ้อนทุกจุดก่อนหน้านี้ดูแค่แมตช์ **ในทัวร์เดียวกัน**
+ *   ทัวร์ A เชิญคุม 10:00 · ทัวร์ B เชิญคุม 10:30 วันเดียวกัน ⇒ ผ่านทั้งตอนเชิญและตอนรับ
+ *   และ F14 ของทั้งสองทัวร์ก็ไม่เห็น เพราะแต่ละอันดูแค่ทัวร์ตัวเอง
+ *   ⇒ สุดท้ายมีคนต้องอยู่สองที่พร้อมกัน และไม่มีใครรู้จนถึงวันแข่ง
+ *
+ * ★ ด่านนี้อยู่ที่ **ตอนกรรมการกดรับ** ไม่ใช่ตอน ORG เชิญ โดยเจตนา
+ *   ถ้า block ตอนเชิญ ORG จะได้ 409 จากข้อมูลของทัวร์อื่นที่เขา **มองไม่เห็นและแก้ไม่ได้**
+ *   ⇒ ทางตัน · และถ้าบอกว่าชนกับทัวร์ไหนก็เท่ากับเปิดตารางงานของกรรมการให้ ORG คนอื่นเห็น
+ *   คนที่เห็นตารางตัวเองทุกทัวร์และแก้ได้ คือกรรมการ ⇒ ด่านควรอยู่ตรงที่เขากด
+ *   ⇒ บอกชื่อทัวร์ในข้อความได้ ไม่รั่วให้ใคร เพราะเป็นตารางของตัวเขาเอง
+ *
+ * 🔴 และด่านนี้ต้องมาหลังจาก FR09 (ref_withdraw) เท่านั้น
+ *   ก่อนหน้านี้กรรมการออกจากแมตช์เก่าไม่ได้ถ้าไม่มีคนรับช่วง ⇒ block ไปก็ติดตาย
+ *
+ * `excludeMatchIds` — แมตช์ที่กำลังจะถูกเทียบอยู่แล้วในชุด incoming หรือกำลังจะถูกปล่อยไป
+ *   ไม่ใช่งานที่ "ยังถืออยู่" ⇒ ไม่ควรนับเป็นคู่ขัดแย้งของตัวเอง
+ */
+export async function assertNoCrossTournamentConflict(
+        userId : number, incoming : Schedulable[], excludeMatchIds : number[] = []): Promise<void> {
+    const wanted = incoming.filter(m => m.scheduled_time && m.scheduled_end_time);
+    if(wanted.length === 0) return;
+
+    const held = (await bookingsOfReferee(userId))
+        .filter(b => !excludeMatchIds.includes(b.matchId))
+        .filter(b => !wanted.some(w => w.match_id === b.matchId));
+
+    for(const w of wanted){
+        const clash = held.find(b => w.scheduled_time! < b.scheduled_end_time! && b.scheduled_time! < w.scheduled_end_time!);
+        if(clash){
+            throw new AppError(409, 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT',
+                `แมตช์ #${w.match_id} เวลาซ้อนกับแมตช์ #${clash.matchId} ของทัวร์นาเมนต์ "${clash.tournamentName}" ` +
+                'ที่คุณรับไว้แล้ว — ถ้าต้องการรับแมตช์นี้ ให้ขอถอนตัวจากแมตช์เดิมก่อน',
+                { matchId : w.match_id, conflictsWith : clash });
+        }
+    }
+}
 
 /** กรรมการ 1 คนคุมได้ทีละแมตช์ — ทุกแมตช์ต้องมีเวลาเริ่ม/จบ และห้ามซ้อนเวลากัน (ใช้ร่วมกับ refereeRequest.service) */
 export function assertSchedulable(matches : Schedulable[]): void {
@@ -190,6 +283,9 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
 
     // ORG อาจเลื่อนเวลาแมตช์ระหว่างรอตอบ → เช็คซ้อนเวลาอีกรอบตอนรับจริง
     assertSchedulable(chosen as InvitedMatchRow[]);
+    // มติ 6 ต.ค. (ทางเลือก ก) — และต้องไม่ซ้อนกับงานที่รับไว้ใน **ทัวร์อื่น** ด้วย
+    // ★ ด่านนี้อยู่ตรงนี้เพราะคนกดคือกรรมการเอง ซึ่งเป็นคนเดียวที่เห็นตารางตัวเองทุกทัวร์
+    await assertNoCrossTournamentConflict(userId, chosen as InvitedMatchRow[]);
 
     const { joinsOpenReview, ...approval } = await resolveApprovalForAccept(invitation, input.docs);
 

@@ -256,7 +256,9 @@ describe('inviteReferee', () => {
     const result = await refereeService.inviteReferee(20, 5, makeInviteInput());
 
     expect(mockedRefRepo.create).toHaveBeenCalled();
-    expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false, matchIds: [] });
+    // crossTournamentWarnings — 🆕 6 ต.ค. (ทางเลือก ก) · 0 = แมตช์ที่แนบมาไม่ทับงานในทัวร์อื่น
+    // ★ เป็นคำเตือนไม่ใช่ด่าน — ORG ยังเชิญได้ ด่านจริงอยู่ตอนกรรมการกดรับ
+    expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false, matchIds: [], crossTournamentWarnings: 0 });
   });
 
   it('allows re-inviting when the active accepted invitation was rejected by the admin (F-15)', async () => {
@@ -340,7 +342,7 @@ describe('inviteReferee', () => {
       isExternal: true,
       matchIds: [],
     });
-    expect(result).toEqual({ id: 100, userId: 8, invitationStatus: 'pending', isExternal: true, matchIds: [] });
+    expect(result).toEqual({ id: 100, userId: 8, invitationStatus: 'pending', isExternal: true, matchIds: [], crossTournamentWarnings: 0 });
   });
 
   describe('with matches attached', () => {
@@ -593,6 +595,38 @@ describe('acceptRefereeInvitation', () => {
     expect(result.requiresAdminApproval).toBe(true);
     expect(result.docsRequired).toBe(false);
     expect(mockedRefRepo.submitDocsForUser).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 🔴 เทส "เส้นต่อ" ไม่ใช่เทสของตัวด่าน — ด่านเองมี describe ของตัวเองท้ายไฟล์แล้ว
+   *   ข้อนี้พิสูจน์ว่า acceptRefereeInvitation **เรียกด่านนั้นจริง**
+   *   ★ เขียนเพราะลอง mutation แล้วพบว่าถอดบรรทัดที่เรียกด่านออกจาก acceptRefereeInvitation
+   *     เทสทั้ง 2953 ตัวยังเขียวหมด = ด่านถูกทดสอบแต่ "สายไฟ" ไม่ถูกทดสอบ
+   *     ซึ่งเป็นแบบเดียวกับที่ mock ขาดคีย์แล้วเทสวัดสาขาผิด (fa9e2b9)
+   */
+  it('ทางเลือก ก — ปฏิเสธการตอบรับเมื่อแมตช์ที่เลือกทับกับงานในทัวร์อื่น', async () => {
+    mockedRefRepo.findById.mockResolvedValue(makeInvitation({ invitation_status: 'pending', is_external: 0 }));
+    // ★ ใช้ ...Once ทั้งคู่โดยเจตนา — beforeEach ของไฟล์นี้ใช้ clearAllMocks ซึ่ง
+    //   **ไม่ล้าง implementation** ⇒ mockResolvedValue จะรั่วไปทำให้เทสถัดไปเพี้ยน
+    //   (เจอจริงตอนเขียนข้อนี้: declinedMatchIds ของเทสถัดไปกลายเป็น [1])
+    vi.mocked(MatchRefRepo.findByTournamentReferees).mockResolvedValueOnce([
+      { match_id: 1, scheduled_time: new Date('2026-11-01T11:00:00Z'), scheduled_end_time: new Date('2026-11-01T12:00:00Z') },
+    ] as never);
+    // งานที่เขารับไว้แล้วในทัวร์อื่น 10:00–11:30 ⇒ ทับกับ 11:00–12:00
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValueOnce([{
+      match_referee_id: 1, tournament_referee_id: 5,
+      invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+      match_id: 77, round_number: 1,
+      scheduled_time: new Date('2026-11-01T10:00:00Z'), scheduled_end_time: new Date('2026-11-01T11:30:00Z'),
+      venue: null, mode: 'onsite', match_status: 'scheduled',
+      tournament_id: 999, tournament_name: 'ทัวร์อื่น', sport_type_id: 1,
+      team_a_id: null, team_a_name: null, team_b_id: null, team_b_name: null,
+    }] as never);
+
+    await expect(refereeService.acceptRefereeInvitation(1, 8, { matchIds: [1] }))
+      .rejects.toMatchObject({ status: 409, code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT' });
+    // 🔴 สำคัญกว่าตัว error: ต้องไม่เขียนลงฐานเลย
+    expect(mockedRefRepo.accept).not.toHaveBeenCalled();
   });
 
   it('accepts a pending invitation without admin approval for internal referees', async () => {
@@ -1004,5 +1038,131 @@ describe('findActiveRefereeRow', () => {
     ]);
 
     expect((await refereeService.findActiveRefereeRow(20, 8))?.tournament_referee_id).toBe(40);
+  });
+});
+
+// ───────────────────────────── ด่านทับเวลา "ข้ามทัวร์" (ทางเลือก ก · 6 ต.ค. 2569) ─────────────────────────────
+
+/**
+ * 🔴 ช่องโหว่ที่ FE รายงาน 6 ต.ค. — ด่านตรวจเวลาซ้อนทุกจุดเดิมดูแค่แมตช์ **ในทัวร์เดียวกัน**
+ *   ทัวร์ A เชิญคุม 10:00 · ทัวร์ B เชิญคุม 10:30 วันเดียวกัน ⇒ ผ่านทั้งตอนเชิญและตอนรับ
+ *   และ F14 ของทั้งสองทัวร์ก็ไม่เห็น เพราะแต่ละอันดูแค่ทัวร์ตัวเอง
+ *
+ * ★ ด่านอยู่ที่ **ตอนกรรมการกดรับ** ไม่ใช่ตอน ORG เชิญ — ORG แก้ของทัวร์อื่นไม่ได้
+ */
+describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () => {
+  const T0 = new Date('2026-11-01T10:00:00Z');
+  const T1 = new Date('2026-11-01T11:30:00Z');
+
+  /** แถวจาก findAcceptedByUser — ต้องมีคอลัมน์ที่ isActiveReferee() ใช้ให้ครบ */
+  const booked = (over: Record<string, unknown> = {}) => ({
+    match_referee_id: 1, tournament_referee_id: 5,
+    invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+    match_id: 77, round_number: 1, scheduled_time: T0, scheduled_end_time: T1,
+    venue: null, mode: 'onsite', match_status: 'scheduled',
+    tournament_id: 999, tournament_name: 'ทัวร์อื่น', sport_type_id: 1,
+    team_a_id: null, team_a_name: null, team_b_id: null, team_b_name: null,
+    ...over,
+  }) as never;
+
+  const incoming = (over: Record<string, unknown> = {}) => ({
+    match_id: 1, scheduled_time: new Date('2026-11-01T11:00:00Z'),
+    scheduled_end_time: new Date('2026-11-01T12:00:00Z'), ...over,
+  }) as never;
+
+  it('ทับกับงานในทัวร์อื่น ⇒ 409 และบอกชื่อทัวร์ที่ชน', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+
+    const err: any = await refereeService.assertNoCrossTournamentConflict(8, [incoming()]).catch((e) => e);
+
+    expect(err).toMatchObject({ status: 409, code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT' });
+    // ★ บอกชื่อทัวร์ได้ เพราะ error ไปถึง **เจ้าของตาราง** เท่านั้น ไม่ได้ไปถึง ORG คนอื่น
+    expect(err.message).toContain('ทัวร์อื่น');
+    expect(err.extra).toMatchObject({ matchId: 1, conflictsWith: { matchId: 77, tournamentId: 999 } });
+  });
+
+  it('ไม่ทับกัน ⇒ ผ่าน', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [
+      incoming({ scheduled_time: new Date('2026-11-01T11:30:00Z'), scheduled_end_time: new Date('2026-11-01T12:30:00Z') }),
+    ])).resolves.toBeUndefined();
+  });
+
+  /** ชนกันแบบประชิด — จบ 11:30 แล้วเริ่ม 11:30 ไม่ใช่การทับ (ช่วงเป็น [เริ่ม, จบ) เหมือนทุกด่าน) */
+  it('จบพอดีแล้วเริ่มทันที ไม่ใช่การทับ', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [
+      incoming({ scheduled_time: T1, scheduled_end_time: new Date('2026-11-01T13:00:00Z') }),
+    ])).resolves.toBeUndefined();
+  });
+
+  /**
+   * 🔴 แถวที่ไม่ active ต้องไม่นับ — ถ้านับ คนที่ถูกถอดไปแล้วจะรับงานใหม่ไม่ได้ตลอดไป
+   *   เพราะงานเก่าที่เขาไม่ต้องไปคุมแล้ว ยังกันเขาอยู่
+   */
+  it('แถวกรรมการที่ถูกถอดแล้ว ไม่นับเป็นงานที่ถืออยู่', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked({ removed_at: new Date() })]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()])).resolves.toBeUndefined();
+  });
+
+  it('คนนอกที่แอดมินยังไม่อนุมัติ ไม่นับเป็นงานที่ถืออยู่', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([
+      booked({ is_external: 1, external_approval_status: 'pending' }),
+    ]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()])).resolves.toBeUndefined();
+  });
+
+  /** แมตช์ที่จบไปแล้วไม่มีใครต้องไปอยู่ที่นั้น ⇒ ไม่ใช่การทับ */
+  it('แมตช์ที่จบแล้ว ไม่นับเป็นงานที่ถืออยู่', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked({ match_status: 'completed' })]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()])).resolves.toBeUndefined();
+  });
+
+  /**
+   * ★ แมตช์ที่เลยเวลาแต่ยัง `scheduled` **ยังนับ** — มันคือแมตช์ที่กำลังเริ่มช้า
+   *   คนยังต้องอยู่ที่นั้น ⇒ ถ้าตัดด้วย "เวลาผ่านไปแล้ว" ด่านจะเปิดช่องให้รับงานทับได้
+   */
+  it('แมตช์ที่เลยเวลาแต่ยัง scheduled ยังนับเป็นงานที่ถืออยู่', async () => {
+    const past0 = new Date(Date.now() - 60 * 60 * 1000);
+    const past1 = new Date(Date.now() + 30 * 60 * 1000);
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([
+      booked({ scheduled_time: past0, scheduled_end_time: past1, match_status: 'scheduled' }),
+    ]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [
+      incoming({ scheduled_time: new Date(Date.now()), scheduled_end_time: new Date(Date.now() + 60 * 60 * 1000) }),
+    ])).rejects.toMatchObject({ code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT' });
+  });
+
+  /** แมตช์ที่กำลังจะปล่อยไป (เคสแลกแมตช์) ไม่ใช่งานที่ยังถืออยู่ ⇒ ไม่ควรกันตัวเอง */
+  it('แมตช์ที่อยู่ใน excludeMatchIds ไม่นับ', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()], [77]))
+      .resolves.toBeUndefined();
+  });
+
+  /** แมตช์เดียวกันที่อยู่ทั้งในชุดใหม่และในของที่ถือไว้ = แมตช์เดิม ไม่ใช่คู่ขัดแย้ง */
+  it('แมตช์เดียวกันกับที่ถืออยู่แล้ว ไม่ใช่การทับกับตัวเอง', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked({ match_id: 1 })]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [
+      incoming({ match_id: 1, scheduled_time: T0, scheduled_end_time: T1 }),
+    ])).resolves.toBeUndefined();
+  });
+
+  it('แมตช์ที่ยังไม่มีเวลา ⇒ ไม่ตรวจ (ด่าน MATCH_NOT_SCHEDULED จับไปแล้วก่อนหน้า)', async () => {
+    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+
+    await expect(refereeService.assertNoCrossTournamentConflict(8, [
+      incoming({ scheduled_time: null, scheduled_end_time: null }),
+    ])).resolves.toBeUndefined();
+    // ไม่ควรเสียเวลาไปอ่านตารางเลยถ้าไม่มีอะไรให้เทียบ
+    expect(MatchRefRepo.findAcceptedByUser).not.toHaveBeenCalled();
   });
 });

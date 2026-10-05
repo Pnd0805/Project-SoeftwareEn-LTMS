@@ -42,6 +42,8 @@ vi.mock('../../middlewares/requireOrganizer.js', () => ({
 vi.mock('../referee.service.js', () => ({
   assertSchedulable: vi.fn(),
   isActiveReferee: vi.fn(),
+  // 🆕 6 ต.ค. (ทางเลือก ก) — ด่านทับเวลาข้ามทัวร์ของฝั่งที่กำลังตอบรับ
+  assertNoCrossTournamentConflict: vi.fn(),
   // createRefRequest หาแถวของตัวเองผ่านตัวนี้แล้ว ไม่ใช่ findLatest + isActiveReferee แยกสองก้อน (แก้ 1 ต.ค. 2569)
   findActiveRefereeRow: vi.fn(),
 }));
@@ -71,7 +73,7 @@ import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import { isOrganizerOf } from '../../middlewares/requireOrganizer.js';
-import { assertSchedulable, isActiveReferee, findActiveRefereeRow } from '../referee.service.js';
+import { assertSchedulable, isActiveReferee, findActiveRefereeRow, assertNoCrossTournamentConflict } from '../referee.service.js';
 import { toRefereeRequestDto } from '../../mappers/refereeRequest.mapper.js';
 import * as NotificationService from '../notification.service.js';
 
@@ -84,6 +86,7 @@ const mockedIsOrganizerOf = vi.mocked(isOrganizerOf);
 const mockedAssertSchedulable = vi.mocked(assertSchedulable);
 const mockedIsActiveReferee = vi.mocked(isActiveReferee);
 const mockedFindActiveRefereeRow = vi.mocked(findActiveRefereeRow);
+const mockedCrossGuard = vi.mocked(assertNoCrossTournamentConflict);
 const mockedToDto = vi.mocked(toRefereeRequestDto);
 const mockedNotify = vi.mocked(NotificationService.notify);
 const mockedNotifyUsers = vi.mocked(NotificationService.notifyUsers);
@@ -164,6 +167,7 @@ beforeEach(() => {
   // Sane happy-path defaults; individual tests override to force a branch.
   mockedIsActiveReferee.mockReturnValue(true);
   mockedAssertSchedulable.mockImplementation(() => {});
+  mockedCrossGuard.mockResolvedValue(undefined);
   mockedReqRepo.existsOpenFor.mockResolvedValue(false);
   mockedReqRepo.create.mockResolvedValue(500);
   mockedReqRepo.findListRowById.mockResolvedValue({ request_id: 500 } as any);
@@ -941,3 +945,105 @@ describe('respondToRequest — ref_withdraw (FR09)', () => {
     expect(mockedMatchRepo.findById).not.toHaveBeenCalled();
   });
 });
+
+// ───────── ด่านทับเวลาข้ามทัวร์ ตอนตอบคำขอ (ทางเลือก ก · 6 ต.ค. 2569) ─────────
+
+/**
+ * 🔴 เทสชุดนี้คุม "สายไฟ" ไม่ใช่ตัวด่าน (ตัวด่านมีเทสของตัวเองใน referee.service.test)
+ *   เขียนเพราะลอง mutation แล้วพบว่าถอดบรรทัดที่เรียกด่านออกจาก respondToRequest
+ *   เทสทั้งหมดยังเขียว = ด่านถูกทดสอบแต่ไม่มีอะไรยืนยันว่าถูกเรียก
+ *
+ * ★ ตรวจตอน "ตอบ" และตรวจ **เฉพาะฝั่งที่กำลังตอบ** โดยเจตนา
+ *   ถ้าไปตรวจตอนสร้าง ฝั่งที่ได้ error คือคนขอ ⇒ กลายเป็นการบอกคนขอว่าอีกฝ่าย
+ *   มีงานทับในทัวร์อื่น = เปิดตารางงานของคนอื่นให้เห็น
+ */
+describe('respondToRequest — ด่านข้ามทัวร์ (ทางเลือก ก)', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    request_id: 500, tournament_id: 10, withdraw_scope: null, requested_by: 999,
+    referee_a_id: 1, referee_b_id: 2, match_a_id: 1, match_b_id: null,
+    a_status: 'accepted', b_status: 'pending', request_status: 'open', request_reason: null,
+    ...over,
+  } as any);
+
+  beforeEach(() => {
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedReqRepo.close.mockResolvedValue(true);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }),
+                 makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+  });
+
+  it('ref_transfer — B ที่กดรับ ถูกตรวจด้วยแมตช์ A ที่เขาจะได้มา', async () => {
+    const matchA = makeMatch({ match_id: 1 });
+    mockMatches(matchA);
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_transfer' }));
+
+    await respondToRequest(500, 200, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(200, [matchA], []);
+  });
+
+  it('org_add_match — A ที่กดรับ ถูกตรวจด้วยแมตช์ที่ ORG ขอให้รับเพิ่ม', async () => {
+    const matchA = makeMatch({ match_id: 1 });
+    mockMatches(matchA);
+    mockedReqRepo.findById.mockResolvedValue(row({
+      request_type: 'org_add_match', a_status: 'pending', b_status: 'not_required', referee_b_id: null,
+    }));
+
+    await respondToRequest(500, 100, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(100, [matchA], []);
+  });
+
+  /** แลกแมตช์: B ได้ A และปล่อย B ⇒ แมตช์ที่ปล่อยต้องอยู่ใน exclude ไม่ใช่กันตัวเอง */
+  it('ref_swap — B ได้แมตช์ A และปล่อยแมตช์ B ⇒ ส่ง lose ไปด้วย', async () => {
+    const matchA = makeMatch({ match_id: 1 });
+    const matchB = makeMatch({ match_id: 2 });
+    mockMatches(matchA, matchB);
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_swap', match_b_id: 2 }));
+
+    await respondToRequest(500, 200, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(200, [matchA], [2]);
+  });
+
+  /** ถอนตัวไม่มีใครได้งานเพิ่ม (และผู้ตอบคือ ORG ไม่ใช่กรรมการ) ⇒ ไม่มีอะไรให้ตรวจ */
+  it('ref_withdraw — ไม่มีงานเพิ่ม ⇒ ด่านถูกเรียกด้วยรายการว่าง', async () => {
+    mockedReqRepo.findById.mockResolvedValue(row({
+      request_type: 'ref_withdraw', withdraw_scope: 'tournament',
+      referee_b_id: null, match_a_id: null,
+    }));
+    mockedIsOrganizerOf.mockReturnValue(true);
+
+    await respondToRequest(500, 900, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(900, [], []);
+  });
+
+  /** 🔴 ด่านต้องมาก่อนการเขียน — ไม่ใช่ตรวจแล้วค่อยพบว่าเขียนไปแล้ว */
+  it('ด่านไม่ผ่าน ⇒ ไม่บันทึกคำตอบลงฐานเลย', async () => {
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_transfer' }));
+    mockedCrossGuard.mockRejectedValueOnce(
+      new AppErrorLike(409, 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT'));
+
+    await expect(respondToRequest(500, 200, 'accepted'))
+      .rejects.toMatchObject({ code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT' });
+    expect(mockedReqRepo.answerSide).not.toHaveBeenCalled();
+    expect(mockedReqRepo.apply).not.toHaveBeenCalled();
+  });
+
+  /** ปฏิเสธไม่ได้ทำให้ใครได้งานเพิ่ม ⇒ ไม่ต้องเสียเวลาอ่านตารางของใคร */
+  it('กดปฏิเสธ ⇒ ไม่เรียกด่านเลย', async () => {
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_transfer' }));
+
+    await respondToRequest(500, 200, 'declined');
+
+    expect(mockedCrossGuard).not.toHaveBeenCalled();
+  });
+});
+
+/** AppError ตัวจริงถูก mock ไม่ได้ในไฟล์นี้ — ใช้รูปร่างเดียวกันพอ (service แค่โยนต่อ) */
+class AppErrorLike extends Error {
+  constructor(public status: number, public code: string) { super(code); }
+}

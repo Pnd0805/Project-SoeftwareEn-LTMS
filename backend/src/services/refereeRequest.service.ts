@@ -3,7 +3,7 @@ import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import { AppError } from '../utils/AppError.js';
-import { assertSchedulable, isActiveReferee, findActiveRefereeRow } from './referee.service.js';
+import { assertSchedulable, isActiveReferee, findActiveRefereeRow, assertNoCrossTournamentConflict } from './referee.service.js';
 import type { Schedulable } from './referee.service.js';
 import { toRefereeRequestDto } from '../mappers/refereeRequest.mapper.js';
 import type { RefRequestInput, OrgAddMatchInput, OrgSwapInput, RefWithdrawInput } from '../schemas/refereeRequest.schema.js';
@@ -333,9 +333,44 @@ async function loadOpenRequest(requestId : number): Promise<RefereeChangeRequest
     return req;
 }
 
+/**
+ * แมตช์ที่ "คนที่กำลังตอบรับ" จะได้มาถือเพิ่ม — ใช้ตรวจการทับข้ามทัวร์ของ **ตัวเขาเอง**
+ *
+ * 🔴 ต้องตรวจตอน "ตอบ" ไม่ใช่ตอน "สร้าง" และตรวจเฉพาะฝั่งที่กำลังตอบ
+ *   ถ้าไปตรวจตอนสร้าง (createRefRequest) ฝั่งที่ได้ error คือ **คนขอ** ซึ่งจะกลายเป็น
+ *   การบอกคนขอว่าอีกฝ่ายมีงานทับในทัวร์อื่น = เปิดตารางงานของคนอื่นให้เห็น
+ *   ⇒ ที่นี่ error ไปถึงเจ้าของตารางเท่านั้น จึงบอกชื่อทัวร์ได้โดยไม่รั่ว
+ *
+ * ref_withdraw ไม่อยู่ในนี้เลย เพราะไม่มีใครได้งานเพิ่ม (และผู้ตอบคือ ORG ไม่ใช่กรรมการ)
+ */
+async function gainsOfAnsweringSide(req : RefereeChangeRequestRow, side : 'a' | 'b'): Promise<{ gain : Schedulable[]; lose : number[] }>{
+    if(req.request_type === 'ref_withdraw') return { gain : [], lose : [] };
+
+    const matchA = req.match_a_id !== null ? await MatchRepo.findById(req.match_a_id) : null;
+    const matchB = req.match_b_id !== null ? await MatchRepo.findById(req.match_b_id) : null;
+
+    // org_add_match: A รับแมตช์ A เพิ่ม (ไม่ปล่อยอะไร)
+    if(req.request_type === 'org_add_match'){
+        return side === 'a' && matchA ? { gain : [matchA], lose : [] } : { gain : [], lose : [] };
+    }
+    // ref_transfer: B รับแมตช์ A ไป · A เป็นคนปล่อย ไม่ได้รับอะไรเพิ่ม
+    if(req.request_type === 'ref_transfer'){
+        return side === 'b' && matchA ? { gain : [matchA], lose : [] } : { gain : [], lose : [] };
+    }
+    // ref_swap / org_swap: A ได้ B และปล่อย A · B ได้ A และปล่อย B
+    if(side === 'a') return { gain : matchB ? [matchB] : [], lose : matchA ? [matchA.match_id] : [] };
+    return { gain : matchA ? [matchA] : [], lose : matchB ? [matchB.match_id] : [] };
+}
+
 export async function respondToRequest(requestId : number, userId : number, answer : 'accepted' | 'declined'){
     const req = await loadOpenRequest(requestId);
     const side = await sideOf(req, userId);
+
+    // มติ 6 ต.ค. (ทางเลือก ก) — ตกลงรับงานเพิ่มได้ ต่อเมื่อไม่ทับกับงานที่ตัวเองรับไว้ทัวร์อื่น
+    if(answer === 'accepted'){
+        const { gain, lose } = await gainsOfAnsweringSide(req, side);
+        await assertNoCrossTournamentConflict(userId, gain, lose);
+    }
 
     const recorded = await ReqRepo.answerSide(requestId, side, answer);
     if(!recorded) throw new AppError(409, 'REQUEST_CLOSED', 'คำขอนี้ถูกตอบหรือปิดไปแล้ว');
