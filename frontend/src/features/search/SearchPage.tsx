@@ -32,7 +32,9 @@ export function SearchPage() {
   const { q: qParam } = useParams()
   const [q, setQ] = useState(decodeURIComponent(qParam ?? ''))
   const needle = q.trim().toLowerCase()
-  const teamSearch = useSearchTeams(q, !USE_MOCK)
+  const publicApplicable = !!needle && !USE_MOCK
+  const playerApplicable = !!currentUser && needle.length >= 3
+  const teamSearch = useSearchTeams(q, publicApplicable)
 
   const tournamentSource = USE_MOCK
     ? s.tournaments.filter(t => visibleTo(s, t))
@@ -44,11 +46,16 @@ export function SearchPage() {
     ? s.teams.filter(t => `${t.name} ${t.code}`.toLowerCase().includes(needle))
     : []
   const backendTeams = !USE_MOCK && needle ? (teamSearch.data?.items ?? []) : []
-  const userSearch = useSearchUsers(q, !!currentUser)
-  const players = userSearch.data?.items ?? []
+  const userSearch = useSearchUsers(q, playerApplicable)
+  const players = playerApplicable ? userSearch.data?.items ?? [] : []
   const total = tournaments.length + teams.length + backendTeams.length + players.length
-  const teamsPending = !USE_MOCK && teamSearch.isPending
-  const teamsError = !USE_MOCK && teamSearch.isError
+  const teamsPending = publicApplicable && teamSearch.isPending
+  const teamsError = publicApplicable && teamSearch.isError
+  const publicSettled = USE_MOCK || (
+    !!tournamentQuery.data && !tournamentQuery.isPending && !tournamentQuery.isError
+    && !!teamSearch.data && !teamSearch.isPending && !teamSearch.isError
+  )
+  const playersSettled = !playerApplicable || (!!userSearch.data && !userSearch.isPending && !userSearch.isError)
   const userErrorStatus = typeof userSearch.error === 'object' && userSearch.error !== null && 'status' in userSearch.error
     ? (userSearch.error as { status?: number }).status
     : undefined
@@ -80,27 +87,32 @@ export function SearchPage() {
       {!needle ? (
         <Empty icon="search" title="Type to search"
           sub="A private draft or a request still under review is not searchable — it is not a tournament yet." />
-      ) : needle.length < 3 ? (
-        <Empty icon="search" title="Keep typing" sub="Enter at least 3 characters to search for players." />
-      ) : !total && !tournamentQuery.isPending && !userSearch.isPending && !teamsPending
-        && !tournamentQuery.isError && !userSearch.isError && !teamsError ? (
+      ) : !total && publicSettled && playersSettled ? (
         <Empty icon="search" title={`Nothing matched “${q}”`} sub="Try a sport, a faculty, or part of a name." />
       ) : null}
 
-      {!USE_MOCK && tournamentQuery.isPending ? (
+      {needle && currentUser && needle.length < 3 ? (
+        <p className="sub">Enter at least 3 characters to search for players.</p>
+      ) : null}
+
+      {publicApplicable && tournamentQuery.isPending ? (
         <Panel quiet><span className="sub">Loading tournaments…</span></Panel>
       ) : null}
 
-      {!USE_MOCK && tournamentQuery.isError ? (
+      {publicApplicable && tournamentQuery.isError ? (
         <Panel quiet>
           <span className="error">Tournament search is unavailable because the server list could not be loaded.</span>
+          <button className="btn ghost" type="button" onClick={() => void tournamentQuery.refetch()}>Retry tournaments</button>
         </Panel>
       ) : null}
 
       {needle && teamsPending ? (
         <Panel quiet><span className="sub">Searching squads…</span></Panel>
       ) : teamsError ? (
-        <Panel quiet><span className="error">Unable to search squads right now. Please retry.</span></Panel>
+        <Panel quiet>
+          <span className="error">Unable to search squads right now.</span>
+          <button className="btn ghost" type="button" onClick={() => void teamSearch.refetch()}>Retry squads</button>
+        </Panel>
       ) : null}
 
       {tournaments.length ? (
@@ -148,17 +160,20 @@ export function SearchPage() {
         </Panel>
       ) : null}
 
-      {needle.length >= 3 && !!currentUser && userSearch.isPending ? (
+      {playerApplicable && userSearch.isPending ? (
         <Panel quiet><span className="sub">Searching players…</span></Panel>
-      ) : userSearch.isError ? (
+      ) : null}
+      {playerApplicable && userSearch.isError ? (
         <Panel quiet>
           <span className="error">
             {userErrorStatus === 401 ? 'Sign in again to search players.'
               : userErrorStatus === 403 ? 'Your account is not allowed to search players.'
                 : 'Unable to search players right now. Please retry.'}
           </span>
+          <button className="btn ghost" type="button" onClick={() => void userSearch.refetch()}>Retry players</button>
         </Panel>
-      ) : players.length ? (
+      ) : null}
+      {players.length ? (
         <Panel quiet>
           <span className="tag"><em>//</em> Players · {players.length}</span>
           {players.map(u => (

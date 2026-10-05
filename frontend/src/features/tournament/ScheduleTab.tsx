@@ -19,18 +19,29 @@ import { matchStateOf, scoreText, toTeamView } from '../match/matchView'
 
 export function ScheduleTab({ tournamentId }: { tournamentId: number | string }) {
   const navigate = useNavigate()
-  const { data, isPending } = useTournamentMatches(tournamentId)
+  const { data, isPending, isError, error, refetch } = useTournamentMatches(tournamentId)
 
-
-  if (isPending) return <Panel quiet><span className="sub">Loading the schedule…</span></Panel>
+  if (isPending && !data) return <Panel quiet><span className="sub">Loading the schedule…</span></Panel>
 
   const ms = data?.items ?? []
+  const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined
+  const failure = isError ? (
+    <Panel quiet>
+      <span className="error">{status === 401 ? 'Sign in to view the schedule'
+        : status === 403 ? 'You do not have access to this schedule'
+          : 'Could not load the schedule'}</span>
+      <button className="btn ghost" type="button" onClick={() => void refetch()}>Retry schedule</button>
+    </Panel>
+  ) : null
   if (!ms.length) {
+    if (failure) return failure
     return <Empty icon="clock" title="Nothing scheduled yet" sub="Fixtures appear once the bracket is drawn." />
   }
 
   return (
-    <TableWrap>
+    <>
+      {failure}
+      <TableWrap>
       <table>
         <thead>
           <tr>
@@ -61,6 +72,7 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
           ))}
         </tbody>
       </table>
-    </TableWrap>
+      </TableWrap>
+    </>
   )
 }

@@ -9,7 +9,7 @@
  * The Squad list is picked here, and the Hard filter is checked against those
  * players only — a member left off cannot fail it, because they are not entering.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, TableWrap } from '../../components/kit/primitives'
@@ -42,7 +42,7 @@ function EntryNotesBlock({ tr }: { tr: Tournament }) {
 }
 
 export function RegisterForm({
-  team: tm, options, tournament, sportTypeId, backendTeam, open, onClose,
+  team: tm, options, tournament, sportTypeId, backendTeam, open, onClose, feedback,
 }: {
   /** ทีมจาก store — มีเฉพาะโหมด mock · โหมดจริงเลือกทีมจาก GET /me/teams ในฟอร์มนี้เอง */
   team?: Team
@@ -57,11 +57,13 @@ export function RegisterForm({
   backendTeam?: { id: number; name: string }
   open: boolean
   onClose: () => void
+  /** Source refresh feedback supplied by the entry surface; keeps draft recovery in the dialog. */
+  feedback?: ReactNode
 }) {
   const s = useLtms()
   const [trId, setTrId] = useState(tournament.id)
   const [squad, setSquad] = useState<string[]>(tm?.members ?? [])
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useState<{ message: string; uncertain: boolean } | null>(null)
   const [serverDetails, setServerDetails] = useState<string[]>([])
   const [failedContext, setFailedContext] = useState<{ teamId: number; tournamentId: string } | null>(null)
   /* 422 HARD_FILTER_FAILED ส่งรายชื่อคนที่ไม่ผ่านมาให้ด้วย — ต้องบอกว่าใครและเพราะอะไร
@@ -126,6 +128,7 @@ export function RegisterForm({
   const tooFew = sport !== undefined && playerIds.length < sport.minMembers
   const tooMany = sport !== undefined && playerIds.length > sport.maxMembers
   const squadReady = !USE_MOCK && playerIds.length > 0 && !tooFew && !tooMany
+  const selectedCount = USE_MOCK ? squad.length : playerIds.length
 
   const submit = async (input: ApplyToTournamentInput) => {
     setServerError(null)
@@ -140,7 +143,7 @@ export function RegisterForm({
         Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ApplyToTournamentInput, { type: 'server', message }))
       }
       if (error instanceof ApiError) {
-        setServerError(error.message)
+        setServerError({ message: error.message, uncertain: false })
         setBlockedMembers(registrationMemberFailures(error, memberRows))
         if (error.code === 'SQUAD_SIZE_INVALID') {
           setServerDetails([
@@ -150,6 +153,11 @@ export function RegisterForm({
           // The named causes appear below and beside members, including unchecked members.
           setServerDetails(conflictOfInterestDetails(error, memberRows).slice(-1))
         }
+      } else {
+        setServerError({
+          message: 'Could not confirm registration. Check your entries before retrying.',
+          uncertain: true,
+        })
       }
     }
   }
@@ -158,6 +166,7 @@ export function RegisterForm({
     <Modal open={open} onClose={onClose}
       title={tm ? `Register ${tm.name}` : backendTeam ? `Register ${backendTeam.name}` : 'Register a squad'}>
       <form onSubmit={handleSubmit(submit)}>
+      {feedback}
       <input type="hidden" {...register('teamId', { valueAsNumber: true })} />
       {!USE_MOCK && backendTeam ? (
         <Field label="Team">
@@ -186,6 +195,10 @@ export function RegisterForm({
           </select>
         </Field>
       )}
+
+      <p className="sub" role="status" aria-label="Selected players">
+        {selectedCount} selected{sport ? ` · ${sport.minMembers}–${sport.maxMembers} players` : ''}
+      </p>
 
       {USE_MOCK ? <><span className="tag">
         <em>//</em> Who is entering — the entry rules are checked against these players only
@@ -265,8 +278,10 @@ export function RegisterForm({
       <EntryNotesBlock tr={tr} />
 
       {serverError && currentFailure ? (
+        <div role="alert">
         <Banner kind="crit">
-          <b>Registration could not be submitted.</b><br />{serverError}
+          {serverError.uncertain ? <b>{serverError.message}</b>
+            : <><b>Registration could not be submitted.</b><br />{serverError.message}</>}
           {memberFailures.length ? (
             <>
               <br /><br />
@@ -288,6 +303,7 @@ export function RegisterForm({
             </>
           ) : null}
         </Banner>
+        </div>
       ) : null}
       {shut ? <Banner kind="crit"><b>{shut}</b></Banner>
         : USE_MOCK && fails.length ? (
@@ -299,17 +315,19 @@ export function RegisterForm({
               <span key={i}>{f.user.name} — {f.rule}: needs {String(f.need)}, has {String(f.got)}<br /></span>
             ))}
           </Banner>
-        ) : (
+        ) : USE_MOCK ? (
           <Banner kind="ok">
-            {USE_MOCK
-              ? `All ${squad.length} entering players clear the entry conditions${ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.`
-              : `Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks the ${playerIds.length} player${playerIds.length === 1 ? '' : 's'} you entered, for entry rules; organizer/referee conflicts are checked against the whole team.`}
+            {`All ${squad.length} entering players clear the entry conditions${ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.`}
           </Banner>
+        ) : (
+          <p className="sub">
+            {`Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks the ${playerIds.length} player${playerIds.length === 1 ? '' : 's'} you entered, for entry rules; organizer/referee conflicts are checked against the whole team.`}
+          </p>
         )}
 
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>Cancel</button>
-        {errors.teamId?.message ? <span className="sub">{errors.teamId.message}</span> : null}
+        {errors.teamId?.message ? <span className="sub" role="alert">{errors.teamId.message}</span> : null}
         <button className="btn primary" type="submit"
           disabled={!!fails.length || !!shut
             || (USE_MOCK ? !squad.length : !squadReady)

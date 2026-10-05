@@ -1370,6 +1370,12 @@ Network-panel smoke checks remain pending and are intentionally unchecked.
 These screens may retain documented mock/store behavior until the backend
 delivers an agreed contract:
 
+- [ ] Backend delivery required: confirmed viewer action-capability data for
+      task-first Home's existing Match-list path (BE-GAP-R1). `getMyMatches()`
+      uses `composeMyMatches()` with `/tournaments/:id/matches` and
+      `/me/referee-matches`; `matchFromBackend()` defaults capabilities to false,
+      so every real Home Match action remains suppressed. Record the gap only;
+      do not infer permissions or change current endpoints/DTOs/adapters.
 - [x] ~~Backend delivery required: tournament list, detail, create, update,
       eligibility rules, announcements~~ — all delivered and wired, except the
       four listed separately (delete, eligibility-rule writes, entry notes,

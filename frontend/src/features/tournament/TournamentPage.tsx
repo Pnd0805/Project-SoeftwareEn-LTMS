@@ -46,7 +46,8 @@ export function TournamentPage() {
   const navigate = useNavigate()
   const { id, tab: tabParam, sub } = useParams()
   const tournamentId = parseBackendId(id)
-  const { data: tournamentData, isPending } = useTournament(tournamentId)
+  const tournamentQuery = useTournament(tournamentId)
+  const { data: tournamentData, isPending } = tournamentQuery
   const approvedTeams = useTournamentTeams(tournamentId)
   const eligibility = useEligibilityRules(tournamentId)
   const faculties = useFaculties()
@@ -64,20 +65,27 @@ export function TournamentPage() {
     : legacyTournament
   /* ชื่อผู้จัดมากับ GET /tournaments/:id อยู่แล้ว — store ไม่มีผู้ใช้คนนี้ในโหมดจริง */
   const organizerName = tournamentData?.organizer?.fullName
+  const errorStatus = typeof tournamentQuery.error === 'object' && tournamentQuery.error !== null
+    && 'status' in tournamentQuery.error ? tournamentQuery.error.status : undefined
+
+  if (!USE_MOCK && tournamentId !== undefined && tournamentQuery.isError && errorStatus !== 404
+    && (!tournamentData || errorStatus === 401 || errorStatus === 403)) {
+    return <Empty icon="warn" title={errorStatus === 401 ? 'Sign in to view this tournament'
+      : errorStatus === 403 ? 'You do not have access to this tournament' : 'Could not load the tournament'}>
+      <button className="btn" type="button" onClick={() => void tournamentQuery.refetch()}>Retry tournament</button>
+      <button className="btn ghost" type="button" onClick={() => navigate('/')}>Back to tournaments</button>
+    </Empty>
+  }
 
   /* query ที่ถูก disable (id ไม่ใช่ตัวเลข) ก็รายงาน isPending เหมือนกัน — ถ้าไม่กัน
      ลิงก์ของ prototype จะค้างที่ "Loading tournament" ตลอดกาลแทนที่จะบอกว่าไม่มี */
-  if (tournamentId !== undefined && isPending && !legacyTournament) {
+  if (tournamentId !== undefined && isPending && !tournamentData && !legacyTournament) {
     return <Empty title="Loading tournament" />
   }
 
-  if (!t) {
-    const prototypeLink = !USE_MOCK && tournamentId === undefined
+  if (!t || (!USE_MOCK && (tournamentId === undefined || (tournamentQuery.isError && errorStatus === 404)))) {
     return (
-      <Empty icon="warn" title="That tournament doesn't exist"
-        sub={prototypeLink
-          ? 'That link points at prototype data, which only exists in mock mode.'
-          : undefined}>
+      <Empty icon="warn" title="Tournament unavailable" sub="This link is unavailable or the tournament is not visible to you.">
         <button className="btn" type="button" onClick={() => navigate('/')}>Go back</button>
       </Empty>
     )
@@ -165,10 +173,36 @@ export function TournamentPage() {
       : approvedTeams.data?.items.find(candidate => candidate.id === tournamentData.championTeamId))
     ?? (USE_MOCK && t.champion ? team(s, t.champion) : null)
   const watchable = USE_MOCK && matchesOf(s, t.id).some(m => m.status === 'scheduled' && m.a && m.b)
+  const rulesConfirmed = USE_MOCK || (!!eligibility.data && !eligibility.isPending && !eligibility.isError)
+  const capacityConfirmed = USE_MOCK || (!!approvedTeams.data && !approvedTeams.isPending && !approvedTeams.isError)
+  const accessLost = (query: { isError: boolean; error: unknown }) => {
+    const status = typeof query.error === 'object' && query.error !== null && 'status' in query.error
+      ? query.error.status : undefined
+    return query.isError && (status === 401 || status === 403 || status === 404)
+  }
+  const approvedAccessLost = !USE_MOCK && accessLost(approvedTeams)
+  const entryAccessLost = !USE_MOCK && (accessLost(eligibility) || approvedAccessLost)
+  const entryFeedback = <>
+    {!rulesConfirmed ? <div className="vstack">
+      <span className="sub">{eligibility.isPending ? 'Loading entry rules…' : 'Entry rules are unconfirmed.'}</span>
+      {eligibility.isError ? <button className="btn ghost" type="button"
+        onClick={() => void eligibility.refetch()}>Retry entry rules</button> : null}
+    </div> : null}
+    {!capacityConfirmed ? <div className="vstack">
+      <span className="sub">{approvedTeams.isPending ? 'Loading approved teams…' : 'Capacity is unconfirmed.'}</span>
+      {approvedTeams.isError ? <button className="btn ghost" type="button"
+        onClick={() => void approvedTeams.refetch()}>Retry approved teams</button> : null}
+    </div> : null}
+  </>
 
   return (
     <>
       <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{t.name}</Crumb>
+
+      {!USE_MOCK && tournamentQuery.isError ? <Panel quiet>
+        <span className="error">Could not refresh the tournament. Showing the last loaded details.</span>
+        <button className="btn ghost" type="button" onClick={() => void tournamentQuery.refetch()}>Retry tournament</button>
+      </Panel> : null}
 
       {completed ? (
         <Banner kind="ok" icon="check">
@@ -232,24 +266,34 @@ export function TournamentPage() {
               ['Registration closes', registrationDate(t.registrationEnd)],
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],
               ['Played', t.channel],
-              ['Entry', ruleSummary(t.rules) || 'open to everybody'],
-              /* id ของ store ('t-fb') ไม่ยิง GET /tournaments/:id/teams — query ถูกปิดไว้และ
-                 TanStack v5 ถือว่า query ที่ปิดโดยยังไม่มีข้อมูลเป็น pending ตลอด ถ้าเช็ค
-                 isPending ก่อนจะค้างที่ Loading ทุกรายการใน seed จึงเช็คเฉพาะตอนมี id ตัวเลข */
-              ['Squads in', tournamentId !== undefined && approvedTeams.isPending
+              ['Entry', rulesConfirmed ? ruleSummary(t.rules) || 'open to everybody'
+                : eligibility.isPending ? 'Loading…' : 'Unavailable'],
+              /* Disabled prototype queries do not determine mock counts.
+                 Only confirmed real-mode public reads determine real capacity. */
+              ['Squads in', !USE_MOCK && approvedTeams.isPending
                 ? <span className="sub">Loading…</span>
-                : tournamentId !== undefined && approvedTeams.isError
+                : !capacityConfirmed
                   ? <span className="sub">Unavailable</span>
                   : <><b className="num">{approved.length}</b> <span className="sub">of {t.cap}</span></>],
               ['Run by', organizerName ?? user(s, t.organizer)?.name ?? '—'],
             ]} />
           </Panel>
+          {!USE_MOCK && !rulesConfirmed ? <Panel quiet>
+            <span className="tag"><em>//</em> Entry rules</span>
+            {eligibility.isPending ? <span className="sub">Loading entry rules…</span>
+              : <span className="error">Unable to load entry rules. Eligibility is unconfirmed.</span>}
+            {eligibility.isError ? <button className="btn ghost" type="button"
+              onClick={() => void eligibility.refetch()}>Retry entry rules</button> : null}
+          </Panel> : null}
           {tournamentId !== undefined ? <Panel quiet>
             <span className="tag"><em>//</em> Approved teams</span>
             {approvedTeams.isPending ? <span className="sub">Loading approved teams…</span> : null}
-            {approvedTeams.isError ? <span className="sub">Unable to load approved teams.</span> : null}
-            {approvedTeams.data?.items.length === 0 ? <span className="sub">No teams have been approved yet.</span> : null}
-            {approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>
+            {approvedTeams.isError ? <>
+              <span className="error">Unable to load approved teams. Capacity is unconfirmed.</span>
+              <button className="btn ghost" type="button" onClick={() => void approvedTeams.refetch()}>Retry approved teams</button>
+            </> : null}
+            {capacityConfirmed && approvedTeams.data?.items.length === 0 ? <span className="sub">No teams have been approved yet.</span> : null}
+            {!approvedAccessLost ? approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>
               {/* ชื่อกีฬาอยู่ใน sportTypes ที่หน้านี้ดึงมาอยู่แล้ว — เขียน "Sport #3" ทิ้งไว้
                   เป็นรหัสภายในที่ไม่มีความหมายกับคนอ่าน */}
               <span>{approvedTeam.name}<br /><span className="sub">
@@ -257,14 +301,16 @@ export function TournamentPage() {
                   ?? `Sport #${approvedTeam.sportTypeId}`}
               </span></span>
               <button className="btn ghost" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
-            </div>)}
+            </div>) : null}
           </Panel> : null}
           {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
               แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
           {completed ? null : (
             <EntryPanel t={t} applications={tournamentData?.applications}
-              approvedCount={tournamentId === undefined ? undefined : approved.length}
-              sportTypeId={tournamentData?.sportTypeId} />
+              approvedCount={tournamentId === undefined || !capacityConfirmed ? undefined : approved.length}
+              sportTypeId={tournamentData?.sportTypeId}
+              confirmation={{ rules: rulesConfirmed, capacity: capacityConfirmed, accessLost: entryAccessLost }}
+              feedback={entryFeedback} />
           )}
           {t.entryNotes ? (
             <Panel quiet>

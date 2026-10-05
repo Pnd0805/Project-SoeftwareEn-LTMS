@@ -10,7 +10,7 @@
  *     ได้ และต้องรวม: ensureCreateReferences บังคับให้ทั้งสองช่องมีคำตอบที่ถูกอยู่
  *     ชุดเดียว ถามแยกได้แต่กรอกให้ขัดกันเองแล้ว backend ตอบ 400
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -130,17 +130,17 @@ describe('who decides this request', () => {
   const chooseFaculty = () =>
     fireEvent.change(screen.getByLabelText(/Organising faculty/), { target: { value: '1' } })
 
-  it('warns that the default entry setting queues a faculty admin too', () => {
+  it('warns that the default entry setting queues a faculty admin too', async () => {
     renderPage()
-    chooseFaculty()
+    await act(async () => { chooseFaculty() })
 
     expect(screen.getByText(/a faculty admin sending this one still waits in the queue/))
       .toBeInTheDocument()
   })
 
-  it('says the own-faculty setting is the one that skips the queue', () => {
+  it('says the own-faculty setting is the one that skips the queue', async () => {
     renderPage()
-    chooseFaculty()
+    await act(async () => { chooseFaculty() })
     fireEvent.click(screen.getByRole('radio', { name: 'Only the faculty running it' }))
 
     expect(screen.getByText(/If that admin is you, it skips the queue/)).toBeInTheDocument()

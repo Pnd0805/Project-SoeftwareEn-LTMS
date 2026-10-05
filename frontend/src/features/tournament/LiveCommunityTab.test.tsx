@@ -20,7 +20,7 @@ vi.mock('../../hooks/useLiveEngagement', () => ({
 import { LiveCommunityTab } from './LiveCommunityTab'
 
 describe('C7 tournament comments', () => {
-  it('pins mine only once and requires a reason for organizer removal', () => {
+  it('pins mine only once and requires a reason for organizer removal', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={client}><MemoryRouter><LiveCommunityTab tournamentId={23} organizer /></MemoryRouter></QueryClientProvider>)
     expect(screen.getAllByText('Mine')).toHaveLength(1)
@@ -32,6 +32,8 @@ describe('C7 tournament comments', () => {
     fireEvent.change(screen.getByLabelText('Reason (required, 1–255 characters)'), { target: { value: 'Off topic' } })
     expect(confirm).toBeEnabled()
     fireEvent.click(confirm)
+    expect(await screen.findByText('Comment removed.')).toHaveAttribute('role', 'status')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(moderate).toHaveBeenCalledWith({ commentId: 42, reason: 'Off topic' })
   })
 })

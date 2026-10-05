@@ -8,7 +8,10 @@ vi.mock('../../shared/store', async original => ({ ...await original<typeof impo
 vi.mock('../../hooks/useTournament', () => ({ useApplyToTournament: () => ({ mutateAsync: state.apply, isPending: false }) }))
 vi.mock('../../hooks/useReference', () => ({ useSportTypes: () => ({ data: { items: [{ id: 1, name: 'Football', minMembers: 1, maxMembers: 2 }] } }) }))
 vi.mock('../../hooks/useTeam', () => ({
- useBackendMyTeams: () => ({ data: { items: [] } }),
+ useBackendMyTeams: () => ({ data: { items: [
+   { id: 9, name: 'Squad', sportTypeId: 1, readinessStatus: 'Ready', role: 'leader', memberCount: 2 },
+   { id: 10, name: 'Other squad', sportTypeId: 1, readinessStatus: 'Ready', role: 'leader', memberCount: 2 },
+ ] } }),
  useBackendTeamMembers: () => ({ data: { items: [
    { userId: 1, fullName: 'Alice', joinedAt: '2026-09-18T00:00:00Z' },
    { userId: 2, fullName: 'Bob', joinedAt: '2026-09-18T00:00:00Z' },
@@ -16,9 +19,9 @@ vi.mock('../../hooks/useTeam', () => ({
 }))
 import { RegisterForm } from './RegisterForm'
 const tournament = { id: '10', name: 'Cup', sport: 'Football', channel: 'onsite', date: '2099-01-01', rules: {} } as Tournament
-const renderForm = () => render(<RegisterForm backendTeam={{ id: 9, name: 'Squad' }}
+const renderForm = (onClose = vi.fn()) => render(<RegisterForm backendTeam={{ id: 9, name: 'Squad' }}
  options={[tournament, { ...tournament, id: '11', name: 'Other cup' }]} tournament={tournament}
- sportTypeId={1} open onClose={vi.fn()} />)
+ sportTypeId={1} open onClose={onClose} />)
 beforeEach(() => { state.apply.mockReset() })
 
 it('marks an unchecked team member whose referee role blocks registration', async () => {
@@ -27,6 +30,7 @@ it('marks an unchecked team member whose referee role blocks registration', asyn
  fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Bob' }))
  fireEvent.click(screen.getByRole('button', { name: 'Submit registration' }))
  await screen.findByText('Registration could not be submitted.')
+ expect(screen.getByRole('alert')).toHaveTextContent('Role conflict')
  const row = screen.getByText('Alice').closest('tr')!
  expect(within(row).getByRole('checkbox')).not.toBeChecked()
  expect(within(row).getByText(/กรรมการ/)).toBeInTheDocument()
@@ -42,8 +46,68 @@ it('shows hard-filter failure beside the named selected player without blaming o
  fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Bob' }))
  fireEvent.click(screen.getByRole('button', { name: 'Submit registration' }))
  await screen.findByText('Registration could not be submitted.')
+ expect(screen.getByRole('alert')).toHaveTextContent('Rule failure')
  const row = screen.getByText('Bob').closest('tr')!
  expect(within(row).getByText('ไม่ผ่านเงื่อนไขคณะ')).toBeInTheDocument()
  expect(within(screen.getByText('Alice').closest('tr')!).queryByText('ไม่ผ่านเงื่อนไขคณะ')).not.toBeInTheDocument()
  expect(screen.getByText(/1 player blocked this submission/)).toBeInTheDocument()
+})
+
+it('keeps the selected count and sport range visible when the selection is valid', () => {
+ renderForm()
+ expect(screen.getByRole('status', { name: 'Selected players' })).toHaveTextContent('0 selected · 1–2 players')
+ expect(screen.getByRole('button', { name: 'Submit registration' })).toBeDisabled()
+ fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Bob' }))
+ expect(screen.getByRole('status', { name: 'Selected players' })).toHaveTextContent('1 selected · 1–2 players')
+ expect(screen.getByRole('button', { name: 'Submit registration' })).toBeEnabled()
+ fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Alice' }))
+ expect(screen.getByRole('status', { name: 'Selected players' })).toHaveTextContent('2 selected · 1–2 players')
+})
+
+it.each([new TypeError('Connection lost'), 'Unexpected response'])('announces an unconfirmed outcome without replaying or clearing choices (%s)', async failure => {
+ state.apply.mockRejectedValue(failure)
+ const onClose = vi.fn()
+ renderForm(onClose)
+ fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Bob' }))
+ fireEvent.click(screen.getByRole('button', { name: 'Submit registration' }))
+ const alert = await screen.findByRole('alert')
+ expect(alert).toHaveTextContent('Could not confirm registration. Check your entries before retrying.')
+ expect(alert).not.toHaveTextContent('Registration could not be submitted.')
+ expect(screen.getByRole('checkbox', { name: 'Enter Bob' })).toBeChecked()
+ expect(screen.getByRole('checkbox', { name: 'Enter Alice' })).not.toBeChecked()
+ expect(screen.getByRole('status', { name: 'Selected players' })).toHaveTextContent('1 selected · 1–2 players')
+ expect(screen.getByLabelText('Tournament')).toHaveValue('10')
+ expect(state.apply).toHaveBeenCalledExactlyOnceWith({ teamId: 9, playerIds: [2] })
+ expect(onClose).not.toHaveBeenCalled()
+ fireEvent.change(screen.getByLabelText('Tournament'), { target: { value: '11' } })
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+ expect(screen.getByRole('checkbox', { name: 'Enter Bob' })).toBeChecked()
+ expect(state.apply).toHaveBeenCalledOnce()
+})
+
+it('presents real checks as unverified guidance rather than a successful validation', () => {
+ renderForm()
+ const guidance = screen.getByText(/Entry rules: open to everybody/)
+ expect(guidance).toHaveTextContent('The server checks the 0 players')
+ expect(guidance.closest('.banner.ok')).toBeNull()
+})
+
+it('does not reuse another team selection or error when switching teams', async () => {
+ state.apply.mockRejectedValueOnce(new TypeError('Connection lost')).mockResolvedValueOnce({})
+ const onClose = vi.fn()
+ render(<RegisterForm options={[tournament]} tournament={tournament} sportTypeId={1} open onClose={onClose} />)
+ await waitFor(() => expect(screen.getByLabelText('Team')).toHaveValue('9'))
+ fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Bob' }))
+ fireEvent.click(screen.getByRole('button', { name: 'Submit registration' }))
+ await screen.findByRole('alert')
+ fireEvent.change(screen.getByLabelText('Team'), { target: { value: '10' } })
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+ expect(screen.getByRole('checkbox', { name: 'Enter Bob' })).not.toBeChecked()
+ expect(screen.getByRole('status', { name: 'Selected players' })).toHaveTextContent('0 selected · 1–2 players')
+ expect(screen.getByRole('button', { name: 'Submit registration' })).toBeDisabled()
+ fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Alice' }))
+ fireEvent.click(screen.getByRole('button', { name: 'Submit registration' }))
+ await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+ expect(state.apply).toHaveBeenNthCalledWith(1, { teamId: 9, playerIds: [2] })
+ expect(state.apply).toHaveBeenNthCalledWith(2, { teamId: 10, playerIds: [1] })
 })

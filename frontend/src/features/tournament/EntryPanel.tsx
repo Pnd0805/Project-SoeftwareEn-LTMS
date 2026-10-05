@@ -5,7 +5,7 @@
  * just read the rules and the entry notes is already here; sending them to their
  * squad page to start again is the long way round to the same form.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Facts, Panel } from '../../components/kit/primitives'
 import { useLtms } from '../../shared/store'
@@ -27,30 +27,36 @@ import { registrationClosedReason } from './tournamentView'
  *   ใบสมัครเดิม → GET /me/applications
  * เดิมหน้านี้อ่านจาก store อย่างเดียว หัวหน้าทีมในโหมดจริงจึงไม่เห็นปุ่มสมัครเลย
  */
-export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
+export function EntryPanel({ t, applications, approvedCount, sportTypeId, confirmation, feedback }: {
   t: Tournament
   applications?: TournamentApplicationDto[]
   /** ยอดทีมที่ผู้จัดอนุมัติแล้ว จาก GET /tournaments/:id/teams (โหมดจริงเท่านั้น) */
   approvedCount?: number
   sportTypeId?: number
+  /** Optional public-read metadata; callers without it keep the existing confirmed-rules behavior. */
+  confirmation?: { rules: boolean; capacity: boolean; accessLost?: boolean }
+  feedback?: ReactNode
 }) {
   const s = useLtms()
   const storeUser = me(s)
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const meQuery = useMe()
-  const backendTeams = useBackendMyTeams()
-  const myApplications = useMyTournamentApplications()
+  const privateApplicable = !USE_MOCK && !!meQuery.data
+  const backendTeams = useBackendMyTeams(privateApplicable)
+  const myApplications = useMyTournamentApplications(privateApplicable)
   const u = USE_MOCK ? storeUser : (meQuery.data ? { id: String(meQuery.data.id) } : null)
 
-  /* ลำดับความน่าเชื่อ: ยอดจาก backend → ใบสมัครที่ส่งมาด้วย → store
-     GET /tournaments/:id ไม่มี applications ให้ ถ้าไม่รับ approvedCount มาด้วย
-     โหมดจริงจะตกมานับจาก store ที่ว่างเปล่าแล้วขึ้น 0 ตลอด */
-  const approved = approvedCount
+  /* Real entry capacity comes from the confirmed public approved-team read.
+     Missing data must not become an empty prototype count. */
+  const approved = USE_MOCK ? approvedCount
     ?? (applications
       ? applications.filter(application => application.status === 'approved').length
-      : regsOf(s, t.id).filter(r => r.status === 'approved').length)
-  const closed = registrationClosedReason(t, approved, !USE_MOCK)
+      : regsOf(s, t.id).filter(r => r.status === 'approved').length) : approvedCount
+  const closed = approved === undefined ? null : registrationClosedReason(t, approved, !USE_MOCK)
+  const rulesConfirmed = confirmation?.rules ?? true
+  const capacityConfirmed = confirmation?.capacity ?? approved !== undefined
+  const entryConfirmed = rulesConfirmed && capacityConfirmed && approved !== undefined
 
   /* every squad of mine already in this one, whatever the organizer decided */
   const mineIn = USE_MOCK && u
@@ -60,25 +66,45 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
   const forming = USE_MOCK && u ? squadsFor(s, t).filter(x => !teamReady(x)) : []
 
   /* โหมดจริง — ทีมที่เรานำอยู่และพร้อมแข่งในกีฬาเดียวกับรายการนี้ */
-  const myTeams = USE_MOCK ? [] : (backendTeams.data?.items ?? [])
+  const myTeams = privateApplicable ? (backendTeams.data?.items ?? [])
     .filter(x => x.role === 'leader' && (sportTypeId === undefined || x.sportTypeId === sportTypeId))
+    : []
   const backendReady = myTeams.filter(x => x.readinessStatus === 'Ready')
   const backendForming = myTeams.filter(x => x.readinessStatus !== 'Ready')
-  const backendEntries = USE_MOCK ? [] : (myApplications.data?.items ?? [])
+  const backendEntries = privateApplicable ? (myApplications.data?.items ?? [])
     .filter(a => a.tournament.id === Number(t.id) && a.status !== 'withdrawn' && a.status !== 'cancelled')
+    : []
+  const teamErrorStatus = typeof backendTeams.error === 'object' && backendTeams.error !== null
+    && 'status' in backendTeams.error ? backendTeams.error.status : undefined
+  const entryErrorStatus = typeof myApplications.error === 'object' && myApplications.error !== null
+    && 'status' in myApplications.error ? myApplications.error.status : undefined
+  const teamAccessLost = privateApplicable && backendTeams.isError
+    && (teamErrorStatus === 401 || teamErrorStatus === 403 || teamErrorStatus === 404)
+  const teamFailure = privateApplicable && backendTeams.isError ? <>
+    <span className="error">{teamErrorStatus === 401 ? 'Sign in again to view the squads you lead.'
+      : teamErrorStatus === 403 ? 'Your account is not allowed to view these squads.'
+        : 'Could not load the squads you lead.'}</span>
+    <button className="btn ghost" type="button" onClick={() => void backendTeams.refetch()}>Retry your squads</button>
+  </> : null
+  const draftFeedback = !entryConfirmed || teamFailure ? <div role="alert">
+    <p className="sub">Entry availability is unconfirmed. Your selected players are kept; the server checks registration when you submit.</p>
+    {feedback}
+    {teamFailure}
+  </div> : null
 
   return (
     <>
       <Panel>
         <div className="spread">
           <span className="tag"><em>//</em> Entry</span>
-          {closed
-            ? <Badge kind="neutral">{t.drawn ? 'Closed' : approved >= t.cap ? 'Full' : 'Not open'}</Badge>
+          {!entryConfirmed ? <Badge kind="neutral">Unconfirmed</Badge> : closed
+            ? <Badge kind="neutral">{t.drawn ? 'Closed' : approved !== undefined && approved >= t.cap ? 'Full' : 'Not open'}</Badge>
             : <Badge kind="ok">Open</Badge>}
         </div>
         <Facts rows={[
-          ['Squads in', <><b className="num">{approved}</b> <span className="sub">of {t.cap}</span></>],
-          ['Entry rules', ruleSummary(t.rules) || 'open to everybody'],
+          ['Squads in', !capacityConfirmed || approved === undefined ? 'Capacity unavailable'
+            : <><b className="num">{approved}</b> <span className="sub">of {t.cap}</span></>],
+          ['Entry rules', rulesConfirmed ? ruleSummary(t.rules) || 'open to everybody' : 'Eligibility unconfirmed'],
         ]} />
 
         {mineIn.map(r => (
@@ -99,11 +125,20 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
           </div>
         ))}
 
-        {closed ? null : !u ? (
+        {privateApplicable && myApplications.isPending ? <span className="sub">Loading your entries…</span> : null}
+        {privateApplicable && myApplications.isError ? <>
+          <span className="error">{entryErrorStatus === 401 ? 'Sign in again to view your entries.'
+            : entryErrorStatus === 403 ? 'Your account is not allowed to view these entries.'
+              : 'Could not load your entries.'}</span>
+          <button className="btn ghost" type="button" onClick={() => void myApplications.refetch()}>Retry your entries</button>
+        </> : null}
+
+        {!entryConfirmed ? <span className="sub">Entry availability is unconfirmed.</span>
+          : closed ? null : !u ? (
           <div className="hstack">
             <button className="btn primary" type="button" onClick={() => navigate('/login')}>Sign in to enter a squad</button>
           </div>
-        ) : can.length || backendReady.length ? (
+        ) : teamFailure ? teamFailure : can.length || backendReady.length ? (
           <div className="hstack">
             <button className="btn primary" type="button" onClick={() => setOpen(true)}>Register a squad</button>
           </div>
@@ -115,16 +150,17 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
           <div className="sub">
             {backendForming[0].name} is still Forming — it needs more players before it can enter.
           </div>
-        ) : !USE_MOCK && backendTeams.isPending ? (
+        ) : privateApplicable && backendTeams.isPending ? (
           <div className="sub">Loading the squads you lead…</div>
         ) : !USE_MOCK ? (
           <div className="sub">You need a squad you lead, in this sport, with Ready status before you can enter.</div>
         ) : null}
       </Panel>
 
-      {open && (can.length || backendReady.length) ? (
+      {open && u && !confirmation?.accessLost && !teamAccessLost
+        && (USE_MOCK ? can.length : backendReady.length || backendTeams.isError) ? (
         <RegisterForm team={can[0]} options={[t]} tournament={t} sportTypeId={sportTypeId}
-          open={open} onClose={() => setOpen(false)} />
+          open={open} onClose={() => setOpen(false)} feedback={draftFeedback} />
       ) : null}
     </>
   )
