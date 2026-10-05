@@ -16,7 +16,7 @@ import type { Registration, Tournament } from '../../shared/types'
 
 export type Rel = 'run' | 'playing' | null
 
-export function TournamentCard({ t, rel, entry }: { t: Tournament; rel: Rel; entry?: Registration }) {
+export function TournamentCard({ t, rel, entry, onPreview }: { t: Tournament; rel: Rel; entry?: Registration; onPreview?: () => void }) {
   const s = useLtms()
   const navigate = useNavigate()
   const n = USE_MOCK ? regsOf(s, t.id).filter(r => r.status === 'approved').length : null
@@ -37,7 +37,8 @@ export function TournamentCard({ t, rel, entry }: { t: Tournament; rel: Rel; ent
         gap: 12, textAlign: 'left', border: 0, color: 'inherit',
         ...(edge ? { boxShadow: `var(--sheen),0 0 0 1px ${edge}` } : {}),
       }}
-      onClick={() => navigate(`/t/${t.id}${rel === 'run' ? '/manage' : ''}`)}
+      aria-haspopup={onPreview ? 'dialog' : undefined}
+      onClick={onPreview ?? (() => navigate(`/t/${t.id}${rel === 'run' ? '/manage' : ''}`))}
     >
       <span className="cap" aria-hidden="true"><b>{t.sport}</b></span>
       <span className="spread">{status}<span className="tag">{t.sport}</span></span>

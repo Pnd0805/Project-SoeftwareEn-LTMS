@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { Dialog } from '@base-ui/react/dialog'
 import { Tag } from './primitives'
 
 interface ModalProps {
@@ -18,32 +19,39 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, label, title, children }: ModalProps) {
-  const box = useRef<HTMLDivElement>(null)
-  const onCloseRef = useRef(onClose)
-
-  /* Inline callbacks are common at call sites. Keep Escape wired to the latest
-     callback without treating every parent render as a newly opened dialog. */
-  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+  const backdropClosing = useRef(false)
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
-    document.addEventListener('keydown', onKey)
-    box.current?.querySelector<HTMLElement>('button, input, select, textarea')?.focus()
-    return () => document.removeEventListener('keydown', onKey)
+    const opener = document.activeElement
+    backdropClosing.current = false
+    return () => {
+      /* การกดฉากหลังต้องคืนโฟกัสด้วย แม้ browser ไม่รองรับ preventScroll */
+      if (backdropClosing.current && opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus({ preventScroll: true })
+      }
+    }
   }, [open])
 
-  if (!open) return null
   return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" ref={box} onClick={e => e.stopPropagation()}>
-        <div className="vstack">
-          {label ? <Tag>{label}</Tag> : null}
-          {title ? <h3 style={{ margin: 0, fontSize: 20 }}>{title}</h3> : null}
-          {children}
-        </div>
-      </div>
-    </div>
+    <Dialog.Root open={open} onOpenChange={(nextOpen, details) => {
+      if (!nextOpen) {
+        backdropClosing.current = details.reason === 'outside-press'
+        onClose()
+      }
+    }}>
+      <Dialog.Portal>
+        <Dialog.Viewport className="modal-bg">
+          <Dialog.Popup className="modal" aria-modal="true" aria-label={title ? undefined : label || 'Dialog'}>
+            <div className="vstack">
+              {label ? <Tag>{label}</Tag> : null}
+              {title ? <Dialog.Title render={<h3 style={{ margin: 0, fontSize: 20 }} />}>{title}</Dialog.Title> : null}
+              {children}
+            </div>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
