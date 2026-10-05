@@ -81,7 +81,7 @@ function rowsFromStore(s: State, t: Tournament): RegRow[] {
       applicationId: r.id,
       teamStoreId: r.team,
       teamName: tm?.name ?? '—',
-      teamLogoUrl: (tm as { logoUrl?: string | null })?.logoUrl ?? null,
+      teamLogoUrl: tm?.logo ?? (tm as { logoUrl?: string | null })?.logoUrl ?? null,
       status: r.status as RegRow['status'],
       hardFilterPassed: tm ? fails.length === 0 : null,
       hardFilterFails: fails.map(f => `${f.user.name} — ${f.rule}`),
@@ -203,12 +203,22 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
               <table>
                 <thead><tr><th>Squad</th><th>Failed on</th></tr></thead>
                 <tbody>
-                  {rejected.map(r => (
-                    <tr key={r.key}>
-                      <td>{r.teamStoreId ? <TeamLink id={r.teamStoreId} /> : r.teamName}</td>
-                      <td className="sub">{r.reason ?? ''}</td>
-                    </tr>
-                  ))}
+                  {rejected.map(r => {
+                    const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
+                    return (
+                      <tr key={r.key}>
+                        <td>
+                          <span className="hstack" style={{ gap: 8, alignItems: 'center' }}>
+                            <TeamCrestView size={20} team={tm
+                              ? toTeamView(tm)
+                              : { id: r.teamStoreId ?? String(r.applicationId ?? ''), name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: r.teamLogoUrl }} />
+                            {r.teamStoreId ? <TeamLink id={r.teamStoreId} /> : <span>{r.teamName}</span>}
+                          </span>
+                        </td>
+                        <td className="sub">{r.reason ?? ''}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </TableWrap>
