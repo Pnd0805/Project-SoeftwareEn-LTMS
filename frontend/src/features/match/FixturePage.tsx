@@ -23,6 +23,7 @@ import {
   useCancelTournamentRefereeRequest, useRequestMatchReferee, useTournamentRefereeRequests,
   useTournamentReferees,
 } from '../../hooks/useAdmin'
+import { useTournament } from '../../hooks/useTournament'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
@@ -56,20 +57,34 @@ const errorDetailId = (error: ApiError, key: string) => {
 
 /** Keep the server's scheduling decision visible instead of collapsing every rejection into one banner. */
 const scheduleError = (error: unknown) => {
-  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง'
+  if (!(error instanceof ApiError)) {
+    if (error instanceof Error) {
+      if (error.message.toLowerCase().includes('outside') || error.message.toLowerCase().includes('tournament dates')) {
+        return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
+      }
+      if (error.message.includes('end') && error.message.includes('start')) {
+        return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
+      }
+      return error.message
+    }
+    return 'กรุณาลองใหม่อีกครั้ง'
+  }
   if (error.code === 'MATCH_NOT_CHANGEABLE') {
     return 'แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว จึงไม่สามารถแก้ไขเวลาหรือสนามได้ (Check-in has opened or the match has already started, so its schedule is locked).'
   }
   if (error.code === 'SCHEDULE_INCOMPLETE') {
-    return error.message || 'ข้อมูลไม่ครบถ้วน: ต้องระบุเวลาเริ่ม เวลาจบ และสนามแข่งขันให้ครบ'
+    return 'ข้อมูลไม่ครบถ้วน: ต้องระบุเวลาเริ่ม เวลาจบ และสนามแข่งขันให้ครบ'
   }
-  if (error.code === 'VALIDATION_FAILED') {
-    return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
+  if (error.code === 'VALIDATION_FAILED' || error.message?.toLowerCase().includes('validation')) {
+    if (error.message?.includes('end') && error.message?.includes('start')) {
+      return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
+    }
+    return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ หรือรูปแบบเวลาไม่ถูกต้อง'
   }
-  if (error.code === 'OUTSIDE_TOURNAMENT_DATES') {
-    return error.message ? `${error.message} — วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว` : 'The match must start and finish within the tournament dates — วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว.'
+  if (error.code === 'OUTSIDE_TOURNAMENT_DATES' || error.message?.toLowerCase().includes('outside') || error.message?.toLowerCase().includes('tournament dates')) {
+    return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
   }
-  if (error.code === 'SCHEDULE_CONFLICT') {
+  if (error.code === 'SCHEDULE_CONFLICT' || error.message?.toLowerCase().includes('conflict')) {
     const id = errorDetailId(error, 'conflictingMatchId')
     return `ทีมหรือสนามนี้มีนัดแข่งซ้อนช่วงเวลาดังกล่าว (A squad or this venue already has an overlapping fixture${id ? ` (match #${id})` : ''}).`
   }
@@ -77,7 +92,7 @@ const scheduleError = (error: unknown) => {
     const id = errorDetailId(error, 'blockingMatchId')
     return `ลำดับเวลาขัดแย้งกับสายการแข่ง (This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}).`
   }
-  return error.message
+  return error.message || 'เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง'
 }
 
 /** เช็คว่ากีฬานี้เป็นกีฬาที่รองรับการเลือก Format การแข่ง (BO1, BO3, BO5, BO7) หรือไม่ (Valo, ROV, แบต) */
@@ -190,6 +205,8 @@ export function FixturePage() {
   const { id } = useParams()
   const matchId = id
   const { data: m, isPending, isError } = useMatch(matchId)
+  const tourQuery = useTournament(m?.tournament?.id)
+  const tourData = tourQuery.data
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const assign = useAssignReferees(matchId ?? 0, m?.tournamentId)
   const setFormat = useSetMatchFormat(matchId ?? 0, m?.tournamentId)
@@ -247,9 +264,39 @@ export function FixturePage() {
   const save = async () => {
     setClientError(null)
     setSavedSuccess(false)
-    if (kickoffVal && finishVal && new Date(finishVal) <= new Date(kickoffVal)) {
+    if (!kickoffVal) {
+      setClientError('กรุณาระบุเวลาเริ่มการแข่งขัน (Kick-off)')
+      return
+    }
+    if (!finishVal) {
+      setClientError('กรุณาระบุเวลาจบการแข่งขัน (End time)')
+      return
+    }
+    if (!venueVal || !venueVal.trim()) {
+      setClientError('กรุณาระบุสถานที่/สนามแข่งขัน (Venue)')
+      return
+    }
+    const kickoffDate = new Date(kickoffVal)
+    const finishDate = new Date(finishVal)
+    if (finishDate <= kickoffDate) {
       setClientError('ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)')
       return
+    }
+    if (tourData) {
+      const tourStart = tourData.eventStartDate ? new Date(tourData.eventStartDate) : null
+      const tourEnd = tourData.eventEndDate ? new Date(tourData.eventEndDate) : null
+      if (tourStart && !isNaN(tourStart.getTime()) && kickoffDate < tourStart) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${tourStart.toLocaleDateString()})`)
+        return
+      }
+      if (tourEnd && !isNaN(tourEnd.getTime()) && kickoffDate > tourEnd) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString()})`)
+        return
+      }
+      if (tourEnd && !isNaN(tourEnd.getTime()) && finishDate > tourEnd) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString()})`)
+        return
+      }
     }
     if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
       if (typeof window !== 'undefined') {
@@ -369,7 +416,7 @@ export function FixturePage() {
 
             {clientError || update.isError || assign.isError ? (
               <Banner kind="crit">
-                <b>Could not save the fixture.</b> {clientError ?? scheduleError(update.error ?? assign.error)} Nothing was changed.
+                <b>บันทึกไม่สำเร็จ:</b> {clientError ?? scheduleError(update.error ?? assign.error)}
               </Banner>
             ) : null}
 

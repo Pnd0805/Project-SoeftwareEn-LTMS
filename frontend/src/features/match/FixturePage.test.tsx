@@ -57,6 +57,14 @@ vi.mock('../../hooks/useAdmin', () => ({
   useCancelTournamentRefereeRequest: () => idleMutation,
 }))
 
+vi.mock('../../hooks/useTournament', () => ({
+  useTournament: () => ({
+    data: { id: 5, name: 'Campus Cup', eventStartDate: '2026-09-01', eventEndDate: '2026-10-15' },
+    isPending: false,
+    isError: false,
+  }),
+}))
+
 import { FixturePage } from './FixturePage'
 
 const renderPage = () => render(
