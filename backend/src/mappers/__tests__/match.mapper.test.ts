@@ -106,6 +106,7 @@ function makeCheckinRow(overrides: Partial<MatchCheckinListRow> = {}): MatchChec
 function makeLineupRow(overrides: Partial<MatchLineupRow> = {}): MatchLineupRow {
   return {
     team_id: 11,
+    application_status: 'approved',   // ทีมที่ยังไม่ถอนตัว — เคสหลัก (U14/RW05)
     user_id: 9,
     full_name: 'Somchai Jaidee',
     profile_image_key: 'avatars/9.png',

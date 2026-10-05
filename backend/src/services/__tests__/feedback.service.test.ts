@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { CommentListRow } from '../../repositories/feedback.repo.js';
 
 vi.mock('../../repositories/feedback.repo.js', () => ({
   hasPlayedMatch: vi.fn(() => Promise.resolve(false)),
@@ -701,8 +702,13 @@ describe('editing keeps the report flag', () => {
 
 // มติ 23 ก.ย. ข้อ 6 — ผู้จัดลบความเห็นต่อทัวร์ในทัวร์ตัวเองได้ (เฉพาะ comment) · ข้อ 6.4 report แล้วแจ้งผู้จัด
 describe('organizer moderation of tournament comments', () => {
-  const commentRow = (overrides: Record<string, unknown> = {}) =>
-    feedbackRow({ feedback_type: 'comment', content: 'ไม่สุภาพ', rating: null, user_id: 50, ...overrides });
+  // ★ ต้องมี author_name/author_avatar ด้วย — repo ที่คืนคอมเมนต์ JOIN users มาตลอด
+  //   (CommentListRow = FeedbackRow + สองคอลัมน์นั้น) ⇒ FeedbackRow เปล่า ๆ เป็นรูปร่าง
+  //   ที่ของจริงไม่เคยคืน · commentRow ตัวแรกของไฟล์นี้ใส่ไว้ครบอยู่แล้ว ตัวนี้ตามไม่ทัน
+  const commentRow = (overrides: Record<string, unknown> = {}): CommentListRow => ({
+    ...feedbackRow({ feedback_type: 'comment', content: 'ไม่สุภาพ', rating: null, user_id: 50 }),
+    author_name: 'สมชาย', author_avatar: null, ...overrides,
+  }) as CommentListRow;
 
   beforeEach(() => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null, name: 'Cup' }));
