@@ -59,6 +59,7 @@ export interface PlayerRef {
   id: number;
   fullName: string;
   avatarUrl: string | null;
+  isCaptain?: boolean;
   checkinStatus?: MatchLineupCheckinStatus;
   checkedInAt?: string | null;
 }
@@ -69,6 +70,7 @@ export interface BackendMatchLineupPlayerDto {
   userId: number;
   fullName: string;
   avatarUrl: string | null;
+  isCaptain?: boolean;
   checkinStatus: MatchLineupCheckinStatus;
   checkedInAt: string | null;
 }

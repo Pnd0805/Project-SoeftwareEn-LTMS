@@ -34,13 +34,67 @@ import { ApiError, USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
 import { numOf } from '../../../mocks/storeBridge'
 import { useAppointReferee, useRemoveReferee, useTournamentReferees } from '../../../hooks/useAdmin'
-import { useSearchUsers } from '../../../hooks/useUser'
+import { useSearchUsers, usePublicUser } from '../../../hooks/useUser'
 import { useMe } from '../../../hooks/useAuth'
 import { refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import type { TournamentRefereeDto } from '../../../types/admin.dto'
 
 type Notice = { kind: 'ok' | 'crit'; text: string } | null
+
+function RefereeCandidateRow({
+  userId,
+  name,
+  sub,
+  isMockExternal,
+  appointPending,
+  onAppoint,
+}: {
+  userId: number
+  name: string
+  sub: string
+  isMockExternal?: boolean
+  appointPending: boolean
+  onAppoint: (userId: number, isExternal: boolean) => void
+}) {
+  const publicUser = usePublicUser(USE_MOCK ? undefined : userId)
+  const isExternal = USE_MOCK
+    ? !!isMockExternal
+    : (publicUser.data?.facultyId == null || (publicUser.data as { userType?: string } | undefined)?.userType === 'external')
+
+  const affiliationLabel = USE_MOCK
+    ? sub
+    : publicUser.isPending
+      ? 'Checking affiliation…'
+      : isExternal
+        ? 'Outside the university'
+        : (publicUser.data?.facultyId ? `Faculty #${publicUser.data.facultyId}` : sub)
+
+  return (
+    <tr>
+      <td>
+        <span className="hstack" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="avatar">{name.slice(0, 1)}</span>
+          <span>{name}</span>
+          {USE_MOCK || !publicUser.isPending ? (
+            isExternal ? <Badge kind="warn">External</Badge> : <Badge kind="neutral">Internal</Badge>
+          ) : null}
+        </span>
+      </td>
+      <td className="sub">{affiliationLabel}</td>
+      <td style={{ textAlign: 'right' }}>
+        <button
+          className="btn primary"
+          type="button"
+          disabled={appointPending || (!USE_MOCK && publicUser.isPending)}
+          onClick={() => onAppoint(userId, isExternal)}
+        >
+          Invite to officiate
+        </button>
+      </td>
+    </tr>
+  )
+}
 
 function RefereeState({ r }: { r: TournamentRefereeDto }) {
   if (r.invitationStatus === 'pending') return <Badge kind="warn">Invited — waiting</Badge>
@@ -74,9 +128,6 @@ const appointError = (error: unknown) => {
 export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boolean; onClose: () => void }) {
   const s = useLtms()
   const [q, setQ] = useState('')
-  /* คนนอกมหาวิทยาลัยต้องให้ผู้จัดติ๊กเอง — /users/search ไม่ได้บอกมา และ
-     `is_external` เป็นของ "คำเชิญใบนี้" ไม่ใช่คุณสมบัติติดตัวคน */
-  const [external, setExternal] = useState(false)
   const needle = q.trim().toLowerCase()
   const { data: current } = useTournamentReferees(open ? t.id : undefined)
   const appoint = useAppointReferee(t.id)
@@ -111,7 +162,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
       }))
       : apiCands.map(x => ({
         key: String(x.id), userId: x.id, name: x.fullName,
-        sub: `Account #${x.id}`, external,
+        sub: `Account #${x.id}`, external: false,
       }))
   /* backend เริ่มค้นที่ 3 ตัวอักษร ส่วน store ใช้ 2 — บอกผู้ใช้ตามของจริง */
   const minChars = USE_MOCK ? 2 : 3
@@ -124,14 +175,9 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
         <input id="ref-find" autoComplete="off" value={q} onChange={e => setQ(e.target.value)}
           placeholder={USE_MOCK ? 'Start typing a name…' : 'Name in Thai or English, or the start of an email…'} />
       </Field>
-      {USE_MOCK ? (
-        <div className="sub">People from outside the university are marked External — an admin has to approve them after they accept.</div>
-      ) : (
-        <label className="hstack" style={{ gap: 8, fontSize: 14 }}>
-          <input type="checkbox" checked={external} onChange={e => setExternal(e.target.checked)} />
-          <span>They are from outside the university — an admin has to approve them after they accept.</span>
-        </label>
-      )}
+      <div className="sub" style={{ marginBottom: 12 }}>
+        ระบบจะตรวจจับสถานะกรรมการ (ภายใน/ภายนอก) ให้อัตโนมัติจากข้อมูลบัญชี โดยกรรมการภายนอกจะต้องรอการอนุมัติจากผู้ดูแลระบบหลังตอบรับคำเชิญ
+      </div>
       {!USE_MOCK && found.isFetching ? <div className="sub">Searching…</div> : null}
       {!USE_MOCK && found.isError ? (
         <Banner kind="crit"><b>Search failed.</b> {(found.error as Error).message}</Banner>
@@ -144,21 +190,15 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
           <table>
             <tbody>
               {cands.map(x => (
-                <tr key={x.key}>
-                  <td>
-                    <span className="hstack">
-                      <span className="avatar">{x.name.slice(0, 1)}</span>{x.name}
-                      {x.external ? <Badge kind="warn">External</Badge> : null}
-                    </span>
-                  </td>
-                  <td className="sub">{x.sub}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="btn primary" type="button" disabled={appoint.isPending}
-                      onClick={() => appoint.mutate({ userId: x.userId, isExternal: x.external })}>
-                      Invite to officiate
-                    </button>
-                  </td>
-                </tr>
+                <RefereeCandidateRow
+                  key={x.key}
+                  userId={x.userId}
+                  name={x.name}
+                  sub={x.sub}
+                  isMockExternal={x.external}
+                  appointPending={appoint.isPending}
+                  onAppoint={(userId, isExternal) => appoint.mutate({ userId, isExternal })}
+                />
               ))}
             </tbody>
           </table>
@@ -257,7 +297,7 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
                       <td>
                         <span className="hstack">
                           <Avatar name={r.user.fullName} avatarUrl={r.user.avatarUrl} />{r.user.fullName}
-                          {r.isExternal ? <span className="tag"> · external</span> : null}
+                          {r.isExternal ? <Badge kind="warn">External</Badge> : <Badge kind="neutral">Internal</Badge>}
                         </span>
                       </td>
                       <td><RefereeState r={r} /></td>

@@ -31,6 +31,11 @@ vi.mock('../../../hooks/useUser', () => ({
     ] },
     isFetching: false, isError: false, error: null,
   }),
+  usePublicUser: (id?: number) => ({
+    data: id === 9003 ? { id: 9003, facultyId: 1, departmentId: 1 } : null,
+    isPending: false,
+    isError: false,
+  }),
 }))
 vi.mock('../../../hooks/useAdmin', () => ({
   useTournamentReferees: () => ({ data: { items: [] } }),
@@ -63,4 +68,12 @@ describe('the organizer looking for referees', () => {
     renderFinder()
     expect(screen.getByText(/You organize this tournament, so you cannot also officiate it/)).toBeInTheDocument()
   })
+
+  it('automatically detects internal or external referee designation without manual toggle', () => {
+    renderFinder()
+    expect(screen.queryByLabelText(/เชิญเป็นกรรมการภายนอก/)).not.toBeInTheDocument()
+    expect(screen.getByText(/ระบบจะตรวจจับสถานะกรรมการ \(ภายใน\/ภายนอก\) ให้อัตโนมัติ/)).toBeInTheDocument()
+    expect(screen.getByText('Internal')).toBeInTheDocument()
+  })
 })
+

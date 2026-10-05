@@ -275,15 +275,15 @@ describe('finishing a match', () => {
     match.resultStatus = null
     match.viewer.roles = ['referee']
     match.viewer.can.finishMatch = status === 'in_progress'
-    match.viewer.can.submitResult = status === 'finished'
+    match.viewer.can.submitResult = true
     result = undefined
   }
 
-  it('does not hand the referee a result form while the match is still being played', () => {
+  it('allows the referee to score and finish the match while in progress', () => {
     asRefereeOf('in_progress')
     renderPage()
-    expect(screen.queryByText(/enter the result/)).not.toBeInTheDocument()
-    expect(screen.getByText(/result form opens once the match is finished/)).toBeInTheDocument()
+    expect(screen.getByText(/การแข่งขันกำลังดำเนินอยู่:/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Finish & Submit result' })).toBeInTheDocument()
   })
 
   it('finishes only after the referee confirms play has ended', () => {
@@ -304,13 +304,28 @@ describe('finishing a match', () => {
     expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
   })
 
-  it('says the match is being played to someone who cannot finish it', () => {
+  it('says the match is being played to someone who cannot finish or record it', () => {
     asRefereeOf('in_progress')
     match.viewer.roles = ['player']
     match.viewer.can.finishMatch = false
+    match.viewer.can.submitResult = false
     renderPage()
     expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
-    expect(screen.getByText(/recorded after the referee finishes the match/)).toBeInTheDocument()
+    expect(screen.getByText(/The score will be recorded by the referee/)).toBeInTheDocument()
+  })
+
+  it('displays Captain badge in lineup for team captain', () => {
+    match.teamA!.players = [
+      { id: 101, fullName: 'Alice Captain', avatarUrl: null, isCaptain: true, checkinStatus: 'checked_in', checkedInAt: null },
+      { id: 102, fullName: 'Bob Member', avatarUrl: null, isCaptain: false, checkinStatus: 'checked_in', checkedInAt: null },
+    ]
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={['/m/9/lineup']}>
+        <Routes><Route path="/m/:id/:tab" element={<MatchPage />} /></Routes>
+      </MemoryRouter>
+    </QueryClientProvider>)
+    expect(screen.getByText('Captain')).toBeInTheDocument()
+    expect(screen.getByText('Member')).toBeInTheDocument()
   })
 })
 

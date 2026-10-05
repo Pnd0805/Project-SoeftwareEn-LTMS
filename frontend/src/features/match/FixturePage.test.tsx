@@ -43,6 +43,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useAssignReferees: () => ({ ...idleMutation, mutateAsync: bulkAssignAsync }),
   useMatchReferees: () => ({ data: { items: [] }, isPending: false, isError: false }),
   useUnassignMatchReferee: () => idleMutation,
+  useSetMatchFormat: () => ({ ...idleMutation, mutateAsync: vi.fn() }),
 }))
 
 vi.mock('../../hooks/useAdmin', () => ({
@@ -117,5 +118,32 @@ describe('real-mode fixture referee consent flow', () => {
     renderPage()
     /* `needed` เป็นขั้นต่ำ ไม่ใช่เพดาน — ปุ่มต้องกดได้เสมอเมื่อแมตช์มีเวลาแล้ว */
     expect(screen.getByRole('button', { name: 'Request this match' })).toBeEnabled()
+  })
+
+  it('does not display format selection for non-BO sports like Volleyball', () => {
+    match.tournament.sportName = 'Volleyball'
+    renderPage()
+    expect(screen.queryByLabelText(/Format/)).not.toBeInTheDocument()
+  })
+
+  it('renders format selection (BO1, BO3, BO5, BO7) for esports and badminton, and locks format after save', async () => {
+    match.tournament.sportName = 'VALORANT'
+    localStorage.clear()
+    renderPage()
+
+    const formatSelect = screen.getByLabelText(/Format/) as HTMLSelectElement
+    expect(formatSelect).toBeInTheDocument()
+    expect(formatSelect).toBeEnabled()
+    expect(screen.getByText(/BO1 \(Best of 1\)/)).toBeInTheDocument()
+    expect(screen.getByText(/BO3 \(Best of 3\)/)).toBeInTheDocument()
+    expect(screen.getByText(/BO5 \(Best of 5\)/)).toBeInTheDocument()
+    expect(screen.getByText(/BO7 \(Best of 7\)/)).toBeInTheDocument()
+
+    fireEvent.change(formatSelect, { target: { value: 'BO5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save schedule' }))
+
+    expect(localStorage.getItem(`match_format_${match.id}`)).toBe('BO5')
+    expect(await screen.findByText(/ถูกล็อกแล้ว — ไม่สามารถเปลี่ยนแปลงได้ระหว่างทัว/)).toBeInTheDocument()
+    expect(formatSelect).toBeDisabled()
   })
 })

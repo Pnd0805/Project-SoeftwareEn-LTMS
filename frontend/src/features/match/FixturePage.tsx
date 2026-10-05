@@ -18,11 +18,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import {
   useAssignReferees, useMatch, useMatchReferees, useUnassignMatchReferee, useUpdateMatch,
+  useSetMatchFormat,
 } from '../../hooks/useMatch'
 import {
   useCancelTournamentRefereeRequest, useRequestMatchReferee, useTournamentRefereeRequests,
   useTournamentReferees,
 } from '../../hooks/useAdmin'
+import { isBoSport } from './matchView'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
@@ -176,11 +178,13 @@ export function FixturePage() {
   const { data: m, isPending, isError } = useMatch(matchId)
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const assign = useAssignReferees(matchId ?? 0, m?.tournamentId)
+  const setFormat = useSetMatchFormat(matchId ?? 0, m?.tournamentId)
 
   const [kickoff, setKickoff] = useState<string | null>(null)
   const [finish, setFinish] = useState<string | null>(null)
   const [venue, setVenue] = useState<string | null>(null)
   const [refs, setRefs] = useState<number[] | null>(null)
+  const [format, setFormatVal] = useState<string | null>(null)
 
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the fixture…</span></Panel>
@@ -190,6 +194,11 @@ export function FixturePage() {
   const finishVal = finish ?? toLocal(m.scheduledEndTime ?? null)
   const venueVal = venue ?? (m.venue ?? '')
   const refsVal = refs ?? m.referees.map(r => r.id)
+
+  const storedFormat = typeof window !== 'undefined' ? localStorage.getItem(`match_format_${m.id}`) : null
+  const [formatLocked, setFormatLocked] = useState(Boolean(storedFormat))
+  const currentFormat = format ?? storedFormat ?? 'BO3'
+  const isFormatLocked = formatLocked || Boolean(storedFormat)
 
   /* `can.editFixture` รวมสองเรื่องไว้ด้วยกัน: เป็นผู้จัดไหม และแมตช์ยังแก้ได้ไหม
      เขียน "403 — not yours to set" ให้ผู้จัดตัวจริงที่มาช้าไปคือบอกผิดเรื่อง เขามีสิทธิ์
@@ -220,18 +229,32 @@ export function FixturePage() {
     })
 
   const save = async () => {
+    if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`match_format_${m.id}`, currentFormat)
+      }
+      setFormatLocked(true)
+    }
     await update.mutateAsync({
       scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
       scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
       venue: venueVal || null,
     })
+    if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
+      try {
+        const num = parseInt(currentFormat.replace('BO', ''), 10)
+        await setFormat.mutateAsync({ bestOf: num })
+      } catch {
+        /* ignore if backend doesn't support or already set */
+      }
+    }
     if (USE_MOCK) {
       await assign.mutateAsync(refsVal)
       navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
     }
   }
 
-  const saving = update.isPending || assign.isPending
+  const saving = update.isPending || assign.isPending || setFormat.isPending
 
   return (
     <>
@@ -266,6 +289,25 @@ export function FixturePage() {
                 <input id={`as-v-${m.id}`} value={venueVal} onChange={e => setVenue(e.target.value)}
                   placeholder="Court 9" />
               </Field>
+              {isBoSport(m.tournament.sportName) ? (
+                <Field
+                  label={`Format (การแข่ง) ${isFormatLocked ? '— ถูกล็อกแล้ว — ไม่สามารถเปลี่ยนแปลงได้ระหว่างทัว' : ''}`}
+                  htmlFor={`as-fmt-${m.id}`}
+                >
+                  <select
+                    id={`as-fmt-${m.id}`}
+                    aria-label="Format"
+                    value={currentFormat}
+                    disabled={isFormatLocked}
+                    onChange={e => setFormatVal(e.target.value)}
+                  >
+                    <option value="BO1">BO1 (Best of 1)</option>
+                    <option value="BO3">BO3 (Best of 3)</option>
+                    <option value="BO5">BO5 (Best of 5)</option>
+                    <option value="BO7">BO7 (Best of 7)</option>
+                  </select>
+                </Field>
+              ) : null}
             </div>
 
             {/* TODO(schema): FR-MM-05 อยากให้ผู้เล่นหาสนามเจอ แต่ `matches` ไม่มีคอลัมน์พิกัด

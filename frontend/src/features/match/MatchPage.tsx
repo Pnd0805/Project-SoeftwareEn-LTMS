@@ -671,15 +671,23 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
 
   /* กำลังแข่ง — ยังส่งผลไม่ได้จนกว่าจะกดจบ (OD-26 · S01 ตอบ MATCH_NOT_FINISHED)
      เดิมฟอร์มผลเปิดตรงนี้ให้กรรมการกรอกครบทุกช่องแล้วค่อยเด้ง พร้อมข้อความว่า "ต้องกดจบ
-     การแข่งขันก่อน" ทั้งที่ไม่มีปุ่มจบให้กดที่ไหนเลย — บอกลำดับให้ถูกตั้งแต่ก่อนเริ่มกรอก */
+  /* กำลังแข่ง — สามารถใส่คะแนนและสถิติได้เลย และการกดส่งผลคะแนนจะจบการแข่งขัน (finish match) ให้โดยอัตโนมัติ */
   if (m.status === 'in_progress') {
+    if (can.submitResult) {
+      return (
+        <>
+          <Banner kind="info">
+            <b>การแข่งขันกำลังดำเนินอยู่:</b> คุณสามารถกรอกผลคะแนนและสถิติได้ทันที การกดส่งผลจะจบการแข่งขันให้โดยอัตโนมัติ
+          </Banner>
+          <ResultForm m={m} />
+        </>
+      )
+    }
     return (
       <Panel quiet>
         <span className="tag"><em>//</em> Being played</span>
         <div className="sub">
-          {can.finishMatch
-            ? 'The result form opens once the match is finished — use Finish the match above when play ends.'
-            : `The result is recorded after the ${m.mode === 'onsite' ? 'referee' : 'referee or organizer'} finishes the match.`}
+          The match is currently in progress. The score will be recorded by the {m.mode === 'onsite' ? 'referee' : 'winning team leader'}.
         </div>
       </Panel>
     )
@@ -837,11 +845,12 @@ export function MatchPage() {
                   {team.players.length ? (
                     <TableWrap>
                       <table>
-                        <thead><tr><th>Player</th><th>Check-in</th></tr></thead>
+                        <thead><tr><th>Player</th><th>Role</th><th>Check-in</th></tr></thead>
                         <tbody>
                           {team.players.map(player => (
                             <tr key={player.id}>
                               <td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td>
+                              <td>{player.isCaptain ? <Badge kind="warn">Captain</Badge> : <span className="sub">Member</span>}</td>
                               <td>{player.checkinStatus === 'checked_in' ? <Badge kind="ok">Checked in</Badge>
                                 : player.checkinStatus === 'pending_verification' ? <Badge kind="warn">Pending verification</Badge>
                                   : player.checkinStatus === 'rejected' ? <Badge kind="crit">Rejected</Badge>

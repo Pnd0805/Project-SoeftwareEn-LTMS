@@ -515,6 +515,7 @@ const lineupPlayers = (side: BackendMatchLineupsDto["teamA"]): PlayerRef[] =>
     id: player.userId,
     fullName: player.fullName,
     avatarUrl: player.avatarUrl,
+    isCaptain: Boolean(player.isCaptain),
     checkinStatus: player.checkinStatus,
     checkedInAt: player.checkedInAt,
   })) ?? [];
@@ -529,6 +530,7 @@ export async function getMatchLineups(matchId: MatchRef): Promise<BackendMatchLi
       userId: player.id,
       fullName: player.fullName,
       avatarUrl: player.avatarUrl,
+      isCaptain: Boolean(player.isCaptain),
       checkinStatus: player.checkinStatus ?? null,
       checkedInAt: player.checkedInAt ?? null,
     })),
@@ -621,11 +623,11 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
    * ตั้งแต่ OD-26 (26 ก.ย.) S01 รับผลเฉพาะแมตช์ที่ **`finished`** (กด "จบการแข่งขัน" แล้ว)
    * หรือ `result_rejected` (ผู้จัดยกผลทิ้ง แมตช์แข่งจบไปแล้วจริง) นอกนั้นตอบ
    * `409 MATCH_NOT_FINISHED` · เดิมตรงนี้เปิดฟอร์มตั้งแต่ `checkin_open`/`in_progress` ตาม
-   * backend รุ่นเก่าที่ไม่ดูสถานะเลย กรรมการจึงกรอกสกอร์ครบแล้วเจอ "Could not save the result"
-   * โดยไม่มีปุ่มจบการแข่งขันให้กดสักที่ (รายงาน 29 ก.ย. แมตช์ 13)
+   * หรือ `in_progress` (เริ่มแข่งแล้ว ใส่คะแนนและสถิติได้เลย และส่งผลจะ auto-finish ให้)
+   * หรือ `result_rejected` (ผู้จัดยกผลทิ้ง แมตช์แข่งจบไปแล้วจริง)
    * ⚠️ ยังต้องนับ `result_rejected` ไม่งั้นแมตช์ที่ผู้จัดยกผลทิ้งจะตัน (S04 reject)
    */
-  const playable = dto.status === "finished" || dto.status === "result_rejected";
+  const playable = dto.status === "finished" || dto.status === "in_progress" || dto.status === "result_rejected";
 
   /* backend ไม่ได้บอกว่าคนที่กำลังดูทำอะไรได้บ้าง — ประกอบจากบทบาทที่รู้
      (กฎจริงยังอยู่ที่ backend เสมอ ตรงนี้แค่ตัดสินว่าจะโชว์ปุ่มไหม) */
