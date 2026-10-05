@@ -88,6 +88,7 @@ import { toUserReportDto } from '../../mappers/userReport.mapper.js';
 import * as UploadService from '../upload.service.js';
 import { AppError } from '../../utils/AppError.js';
 import type { UserRow, TeamRow, TeamInvitationRow } from '../../types/db.js';
+import { userRef, teamRef } from '../../__tests__/helpers/rows.js';
 
 const mockedUserRepo = vi.mocked(UserRepo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
@@ -515,7 +516,10 @@ describe('updateMe', () => {
 
 describe('getMyInvitation', () => {
   it('returns every invitation for the user mapped to a DTO', async () => {
-    const rows = [baseInvitation, { ...baseInvitation, team_invitation_id: 2, team_id: 2 }];
+    const rows = [
+      { ...baseInvitation, ...userRef(), ...teamRef() },
+      { ...baseInvitation, team_invitation_id: 2, ...userRef(), ...teamRef({ team_id: 2 }) },
+    ];
     mockedUserRepo.getMyInvitation.mockResolvedValue(rows);
     mockedToGetMyInvitation
       .mockReturnValueOnce({ id: 1 } as any)

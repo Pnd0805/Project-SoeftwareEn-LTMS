@@ -100,6 +100,7 @@ import type {
   TeamInvitationRow,
   TeamAdminRequestRow,
 } from '../../types/db.js';
+import { userRef } from '../../__tests__/helpers/rows.js';
 
 const mockedTeamRepo = vi.mocked(TeamRepo);
 const mockedSportRepo = vi.mocked(SportRepo);
@@ -496,7 +497,10 @@ describe('getTeamMemberById', () => {
   it('returns mapped members when the requesting user belongs to the team', async () => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
     mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
-    const memberRows = [makeTeamMember({ team_member_id: 1, user_id: 5 }), makeTeamMember({ team_member_id: 2, user_id: 6 })];
+    const memberRows = [
+      { ...makeTeamMember({ team_member_id: 1 }), ...userRef({ user_id: 5 }) },
+      { ...makeTeamMember({ team_member_id: 2 }), ...userRef({ user_id: 6 }) },
+    ];
     mockedTeamRepo.findTeamMemberById.mockResolvedValue(memberRows);
     mockedToTeamMemberDto
       .mockReturnValueOnce({ id: 5 } as any)
@@ -684,7 +688,10 @@ describe('createInvitation', () => {
 describe('getAllInvitation', () => {
   it('returns every invitation for the team mapped to a DTO', async () => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
-    const rows = [baseInvitation, { ...baseInvitation, team_invitation_id: 56, invited_user_id: 9 }];
+    const rows = [
+      { ...baseInvitation, ...userRef() },
+      { ...baseInvitation, team_invitation_id: 56, invited_user_id: 9, ...userRef({ user_id: 9 }) },
+    ];
     mockedTeamRepo.findAllInvitationOfTeam.mockResolvedValue(rows);
     mockedToGetAllInvitation
       .mockReturnValueOnce({ id: 55 } as any)
