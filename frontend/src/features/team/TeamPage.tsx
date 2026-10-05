@@ -22,7 +22,8 @@
  * หัวหน้าทีมเดโมจึงไม่เคยเห็นส่วนจัดการ ใช้ role จาก /me/teams ซึ่งเป็นสัญญาของ backend แทน
  */
 import { Avatar } from '../../components/kit/Avatar'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Tabs } from '@base-ui/react/tabs'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
@@ -62,7 +63,6 @@ const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Arr
 export function TeamPage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const s = useLtms()
   const { data: currentUser } = useMe()
   const canReadPrivateTeamData = USE_MOCK || !!currentUser
   // String prototype links are resolved solely by the mock compatibility
@@ -72,11 +72,6 @@ export function TeamPage() {
   const members = useBackendTeamMembers(teamId, canReadPrivateTeamData)
   const myTeams = useBackendMyTeams(canReadPrivateTeamData)
   const myApplications = useMyTournamentApplications(canReadPrivateTeamData)
-  const sportTypes = useSportTypes()
-  const follow = useFollow(currentUser?.id, `team:${teamId ?? ''}`)
-  const readableApplications = accessDenied(myApplications.error) ? [] : myApplications.data?.items ?? []
-  const approvedIn = readableApplications
-    .filter(application => application.team.id === team.data?.id && application.status === 'approved')
 
   if (teamId === undefined) {
     return <Empty icon="team" title="Invalid team link"><button className="btn" type="button" onClick={() => navigate('/teams')}>Back to teams</button></Empty>
@@ -94,6 +89,39 @@ export function TeamPage() {
   const data = team.data
   const isLeader = canReadPrivateTeamData && !accessDenied(myTeams.error)
     && !!myTeams.data?.items.some(x => x.id === data.id && x.role === 'leader')
+  // เปลี่ยนทีม/สิทธิ์แล้วทิ้งแบบร่างส่วนตัว แต่สลับแท็บในทีมเดิมเก็บไว้
+  return <TeamDetails key={`${data.id}:${isLeader}:${canReadPrivateTeamData}`} data={data}
+    members={members} isLeader={isLeader} canReadPrivateTeamData={canReadPrivateTeamData}
+    userId={currentUser?.id} myApplications={myApplications} />
+}
+
+function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, myApplications }: {
+  data: BackendTeamDto
+  members: ReturnType<typeof useBackendTeamMembers>
+  isLeader: boolean
+  canReadPrivateTeamData: boolean
+  userId: number | undefined
+  myApplications: ReturnType<typeof useMyTournamentApplications>
+}) {
+  const navigate = useNavigate()
+  const s = useLtms()
+  const sportTypes = useSportTypes()
+  const follow = useFollow(userId, `team:${data.id}`)
+  const [activeTab, setActiveTab] = useState('members')
+  const focusInvite = useRef(false)
+  useEffect(() => {
+    if (activeTab === 'invites' && focusInvite.current) {
+      document.getElementById('team-invite-search')?.focus()
+      focusInvite.current = false
+    }
+  }, [activeTab])
+  const openInvites = () => {
+    if (activeTab === 'invites') document.getElementById('team-invite-search')?.focus()
+    else { focusInvite.current = true; setActiveTab('invites') }
+  }
+  const readableApplications = accessDenied(myApplications.error) ? [] : myApplications.data?.items ?? []
+  const approvedIn = readableApplications
+    .filter(application => application.team.id === data.id && application.status === 'approved')
   /* ของที่ backend ยังไม่มีให้ — อ่านจาก store เฉพาะโหมด mock */
   const storeTeam = USE_MOCK ? findStoreTeam(data.id) : undefined
   const lock = storeTeam ? rosterLockOf(s, storeTeam) : null
@@ -108,7 +136,7 @@ export function TeamPage() {
    */
   const committedTo = approvedIn[0]
   const pendingIn = readableApplications
-    .find(application => application.team.id === team.data?.id && application.status === 'pending')
+    .find(application => application.team.id === data.id && application.status === 'pending')
   const currentEntry = committedTo ?? pendingIn
   const sport = sportTypes.data?.items.find(x => x.id === data.sportTypeId)
   const minPlayers = storeTeam ? minSquad(storeTeam) : sport?.minMembers
@@ -116,7 +144,7 @@ export function TeamPage() {
 
   return (
     <>
-      <div className="journey-crumb"><Crumb back={{ label: currentUser ? 'Teams' : 'Tournaments', onClick: () => navigate(currentUser ? '/teams' : '/') }}>{data.name}</Crumb></div>
+      <div className="journey-crumb"><Crumb back={{ label: userId !== undefined ? 'Teams' : 'Tournaments', onClick: () => navigate(userId !== undefined ? '/teams' : '/') }}>{data.name}</Crumb></div>
 
       <header className={`team-poster ${data.name.length > 60 ? 'long-name' : ''}`}>
         <div className="team-poster-identity">
@@ -135,9 +163,7 @@ export function TeamPage() {
         </div>
         <div className="hstack team-poster-actions">
           {isLeader && myApplications.isSuccess && !lock && !committedTo ? (
-            <button className={`btn ${data.readinessStatus === 'Forming' ? 'primary' : 'ghost'}`} type="button" onClick={() => {
-              document.getElementById('team-invite-search')?.focus()
-            }}><Icon name="plus" size={13} /> Invite players</button>
+            <button className={`btn ${data.readinessStatus === 'Forming' ? 'primary' : 'ghost'}`} type="button" onClick={openInvites}><Icon name="plus" size={13} /> Invite players</button>
           ) : null}
           {isLeader && currentEntry ? (
             <button className="btn" type="button" onClick={() => navigate(`/t/${currentEntry.tournament.id}`)}>View entry <Icon name="chev" size={11} /></button>
@@ -146,7 +172,7 @@ export function TeamPage() {
           {!USE_MOCK && isLeader && data.readinessStatus === 'Ready' ? (
             <EnterTournamentButton team={data} variant="primary" />
           ) : null}
-          {currentUser && USE_MOCK ? (
+          {userId !== undefined && USE_MOCK ? (
             <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
               onClick={() => follow.toggle.mutate()} disabled={follow.toggle.isPending}>
               {follow.isFollowing ? 'Following' : 'Follow this squad'}
@@ -178,16 +204,32 @@ export function TeamPage() {
         </Banner>
       ) : null}
 
-      <RosterPanel data={data} members={members} isLeader={isLeader}
-        lockName={lock?.name ?? committedTo?.tournament.name ?? null} minPlayers={minPlayers}
-        canViewMembers={canReadPrivateTeamData} />
-
       {isLeader ? (
-        <InvitePanel data={data} lockName={lock?.name ?? committedTo?.tournament.name ?? null}
-          memberIds={(members.data?.items ?? []).map(m => m.userId)} />
-      ) : null}
-
-      {isLeader ? <TeamManage data={data} storeTeam={storeTeam} /> : null}
+        <Tabs.Root className="team-workspace-tabs" value={activeTab} onValueChange={setActiveTab}>
+          <Tabs.List className="team-tab-bar" aria-label="Team workspace" activateOnFocus>
+            <Tabs.Tab className="team-tab" value="members">Members</Tabs.Tab>
+            <Tabs.Tab className="team-tab" value="invites">Invites</Tabs.Tab>
+            <Tabs.Tab className="team-tab" value="manage">Manage</Tabs.Tab>
+          </Tabs.List>
+          {/* keepMounted เก็บคำค้น/แบบร่าง โดยแท็บที่ซ่อนยัง inert และไม่อยู่ในลำดับโฟกัส */}
+          <Tabs.Panel className="team-tab-panel" value="members" keepMounted>
+            <RosterPanel data={data} members={members} isLeader={isLeader}
+              lockName={lock?.name ?? committedTo?.tournament.name ?? null} minPlayers={minPlayers}
+              canViewMembers={canReadPrivateTeamData} />
+          </Tabs.Panel>
+          <Tabs.Panel className="team-tab-panel" value="invites" keepMounted>
+            <InvitePanel data={data} lockName={lock?.name ?? committedTo?.tournament.name ?? null}
+              memberIds={(members.data?.items ?? []).map(m => m.userId)} />
+          </Tabs.Panel>
+          <Tabs.Panel className="team-tab-panel" value="manage" keepMounted>
+            <TeamManage data={data} storeTeam={storeTeam} />
+          </Tabs.Panel>
+        </Tabs.Root>
+      ) : (
+        <RosterPanel data={data} members={members} isLeader={false}
+          lockName={lock?.name ?? committedTo?.tournament.name ?? null} minPlayers={minPlayers}
+          canViewMembers={canReadPrivateTeamData} />
+      )}
 
       {storeTeam ? <TeamRecord t={storeTeam} /> : null}
     </>

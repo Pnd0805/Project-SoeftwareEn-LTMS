@@ -210,6 +210,21 @@ body{background:var(--void);}
 .teams-clear{align-self:flex-start;}
 .team-list-row{padding:20px;gap:16px;}
 .team-list-name{font-size:30px;margin:0;overflow-wrap:anywhere;text-wrap:balance;}
+.team-list-identity{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0;}
+.team-list-leader{border-color:var(--teal);background:var(--panel-2);}
+.team-list-leader .team-list-name{font-size:38px;line-height:1.05;color:var(--qr-ink);background:var(--qr-bg);padding:4px 8px 6px;max-width:100%;}
+.team-leader-sticker{display:inline-flex;flex:none;font-family:var(--f-display);font-size:20px;font-weight:700;line-height:1;
+  text-transform:uppercase;letter-spacing:.02em;padding:6px 10px;background:var(--teal);color:var(--accent-ink);transform:rotate(-3deg);}
+.team-workspace-tabs{min-width:0;}
+.team-tab-bar{display:flex;gap:4px;border-bottom:1px solid var(--line-hot);margin-bottom:20px;}
+.team-tab{min-height:44px;padding:10px 20px;border:0;border-radius:var(--r) var(--r) 0 0;
+  font-family:var(--f-ui);font-size:15px;font-weight:650;background:transparent;color:var(--bone-dim);cursor:pointer;}
+.team-tab:hover{background:var(--panel-2);color:var(--bone);}
+.team-tab[data-active]{background:var(--teal);color:var(--accent-ink);}
+.team-tab:focus-visible,.team-tab-panel:focus-visible{outline:2px solid var(--teal);outline-offset:3px;}
+.team-tab-panel{min-width:0;}
+/* ซ่อนทันทีที่เลิกใช้งาน ไม่รอรอบ transition ของ Tabs */
+.team-tab-panel[hidden],.team-tab-panel[inert]{display:none;}
 .team-list-row .spread>*,.teams-work-row>*,.team-poster-copy,.player-identity-copy{min-width:0;max-width:100%;}
 .teams-work-row{display:flex;flex-direction:column;gap:12px;padding:16px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere;}
 .teams-work-row:last-child{border-bottom:0;padding-bottom:0;}
@@ -265,6 +280,8 @@ body{background:var(--void);}
 }
 @media(max-width:600px){
   .teams-page-heading h1{font-size:40px;}
+  .team-list-leader .team-list-name{font-size:32px;}
+  .team-tab{flex:1;padding:10px 12px;}
   .teams-work-rail{display:flex;}
   .teams-filters{grid-template-columns:repeat(2,minmax(0,1fr));}
   .teams-filters>.field:first-child{grid-column:1/-1;}

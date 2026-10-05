@@ -102,6 +102,8 @@
 
 **Completion evidence:** [Ticket 3](../notes/2026-10-05-ltms-ticket-03.md). Filters and supported shortcuts delivered, privacy/source/outcome regressions preserved, full suite 84 files / 577 tests passed. Direct standards/spec review and rendered confirmation completed. Staged commit snapshot passes TypeScript and 9 files / 60 Team/Player/Modal tests. Frozen files remain at the captured phase baseline.
 
+**Approved Leader/tabs follow-up:** [Completed evidence](../notes/2026-10-06-team-leader-tabs.md), from `aac49fe`. Leader cards gain the approved poster/sticker treatment. Team details default to Members and show one of Members / Invites / Manage, retain drafts while switching and remove private panels on lost permission. The header shortcut opens Invites and focuses search. Full suite: 84 files / 581 tests; focused Team/Player/Modal suite: 9 files / 64 tests. No frozen API changes.
+
 ### Task 4: Tournament participation and registration
 
 **Files:**

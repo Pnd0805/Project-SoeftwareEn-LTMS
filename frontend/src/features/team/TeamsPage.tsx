@@ -180,10 +180,13 @@ export function TeamsPage() {
           {filtering ? <button className="btn ghost teams-clear" type="button" onClick={clearFilters}>Clear filters</button> : null}
           <SourceFeedback source={teams} name="teams" />
           {filtered.map(team => (
-          <Panel key={team.id} className="team-list-row">
+          <Panel key={team.id} className={`team-list-row ${team.role === 'leader' ? 'team-list-leader' : ''}`}>
             <div className="spread">
               <div className="vstack" style={{ gap: 5 }}>
-                <h3 className="disp team-list-name">{team.name}</h3>
+                <div className="team-list-identity">
+                  <h3 className="disp team-list-name">{team.name}</h3>
+                  {team.role === 'leader' ? <span className="team-leader-sticker">Leader</span> : null}
+                </div>
                 <span className="sub">
                   {team.memberCount} member{team.memberCount === 1 ? '' : 's'} · {sportName(team.sportTypeId)}
                 </span>
@@ -191,7 +194,7 @@ export function TeamsPage() {
               <span className="hstack">
                 <Badge kind={team.readinessStatus === 'Ready' ? 'ok' : 'warn'}>{team.readinessStatus}</Badge>
                 <Badge kind={team.officialStatus === 'Official' ? 'ok' : 'neutral'}>{team.officialStatus}</Badge>
-                <Badge kind="neutral">{team.role === 'leader' ? 'Leader' : 'Member'}</Badge>
+                {team.role !== 'leader' ? <Badge kind="neutral">Member</Badge> : null}
               </span>
             </div>
             {team.readinessStatus === 'Forming' ? (

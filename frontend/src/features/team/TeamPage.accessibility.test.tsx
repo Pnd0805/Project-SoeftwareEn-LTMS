@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -49,19 +50,76 @@ beforeEach(() => {
   applicationsHook.mockReturnValue({ data: { items: [] } })
   invitationsHook.mockReturnValue({ isSuccess: true, data: { items: [] } })
 })
-function show() {
-  return render(
+function TeamRoutes() {
+  return (
     <MemoryRouter initialEntries={['/team/42']}>
       <Routes>
         <Route path="/team/:id" element={<TeamPage />} />
         <Route path="/teams" element={<h1>Personal Teams</h1>} />
         <Route path="/player/:id" element={<h1>Public player profile</h1>} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
+}
+function show() {
+  return render(<TeamRoutes />)
 }
 
 describe('TeamPage identity and contextual actions', () => {
+  it('defaults to Members and shows one named workspace panel at a time', () => {
+    show()
+    expect(screen.getByRole('tab', { name: 'Members' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+    expect(screen.getByRole('tabpanel', { name: 'Members' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Invite Dena Player' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Manage' }))
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+    expect(screen.getByRole('tabpanel', { name: 'Manage' })).toHaveTextContent('Team management')
+    expect(screen.queryByRole('button', { name: 'Remove Bob Member' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the invitation draft when switching away and returning', () => {
+    show()
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
+    fireEvent.change(screen.getByLabelText('Search users to invite'), { target: { value: 'Dena' } })
+    fireEvent.click(screen.getByRole('tab', { name: 'Manage' }))
+    expect(screen.getByLabelText('Search users to invite')).not.toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Invite Dena Player' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
+    expect(screen.getByLabelText('Search users to invite')).toBeVisible()
+    expect(screen.getByLabelText('Search users to invite')).toHaveValue('Dena')
+  })
+
+  it('activates tabs with arrow keys and skips hidden controls on Tab', async () => {
+    const user = userEvent.setup()
+    show()
+    await user.click(screen.getByRole('tab', { name: 'Members' }))
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: 'Invites' })).toHaveFocus()
+    expect(screen.getByRole('tabpanel', { name: 'Invites' })).toBeVisible()
+    await user.keyboard('{ArrowRight}{Tab}')
+    expect(screen.getByRole('tabpanel', { name: 'Manage' })).toHaveFocus()
+    expect(screen.queryByRole('button', { name: 'Remove Bob Member' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Invite Dena Player' })).not.toBeInTheDocument()
+  })
+
+  it('removes an active private panel and its draft when leader permission is revoked', () => {
+    const view = show()
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
+    fireEvent.change(screen.getByLabelText('Search users to invite'), { target: { value: 'Dena' } })
+    myTeamsHook.mockReturnValue({ data: { items: [{ id: 42, role: 'leader' }] }, isError: true, error: { status: 403 } })
+    view.rerender(<TeamRoutes />)
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Search users to invite')).not.toBeInTheDocument()
+    expect(screen.queryByText('Team management')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Profile for Bob Member' })).toBeVisible()
+    myTeamsHook.mockReturnValue({ data: { items: [{ id: 42, role: 'leader' }] } })
+    view.rerender(<TeamRoutes />)
+    expect(screen.getByRole('tab', { name: 'Members' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
+    expect(screen.getByLabelText('Search users to invite')).toHaveValue('')
+  })
+
   it('uses a valid Team h1 and returns signed-in viewers to Teams', () => {
     show()
     const heading = screen.getByRole('heading', { level: 1, name: 'Campus FC' })
@@ -83,6 +141,7 @@ describe('TeamPage identity and contextual actions', () => {
 
   it('names invitations and preserves the selected player payload', () => {
     show()
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
     fireEvent.change(screen.getByLabelText('Search users to invite'), { target: { value: 'Player' } })
     expect(screen.getByRole('button', { name: 'Invite Evan Player' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Invite Dena Player' }))
@@ -115,6 +174,7 @@ describe('TeamPage identity and contextual actions', () => {
     expect(screen.getByRole('button', { name: 'Remove Bob Member' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Remove Captain Campus' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Hand over captaincy to Captain Campus' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
     expect(screen.queryByLabelText('Search users to invite')).not.toBeInTheDocument()
     expect(screen.getByText('Adding players is locked.')).toBeInTheDocument()
   })
@@ -144,6 +204,9 @@ describe('TeamPage identity and contextual actions', () => {
     applicationsHook.mockReturnValue({ isSuccess: true, data: { items: [] } })
     show()
     fireEvent.click(screen.getByRole('button', { name: 'Invite players' }))
+    expect(screen.getByRole('tab', { name: 'Invites' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Search users to invite')).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite players' }))
     expect(screen.getByLabelText('Search users to invite')).toHaveFocus()
   })
 
@@ -168,6 +231,7 @@ describe('TeamPage identity and contextual actions', () => {
       options?.onSuccess()
     })
     show()
+    fireEvent.click(screen.getByRole('tab', { name: 'Invites' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel invitation to Evan Player' }))
     expect(screen.queryByRole('button', { name: 'Cancel invitation to Evan Player' })).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Invitation to Evan Player cancelled.')
