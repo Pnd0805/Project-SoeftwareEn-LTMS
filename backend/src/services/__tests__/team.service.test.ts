@@ -456,6 +456,9 @@ describe('deleteTeam', () => {
   it.each([
     ['a bracket already exists', { match_count: 8, status: 'approved' }],
     ['the application is approved but no bracket yet', { match_count: 0, status: 'approved' }],
+    // แยกสาขาซ้ายออกมาวัดเดี่ยว ๆ — ผู้จัดจับสายไปแล้วทั้งที่ใบของทีมนี้ยังค้าง pending
+    // เคสแรกตั้ง approved ไว้ จริงทั้งสองข้าง จึงบอกไม่ได้ว่า match_count > 0 ล็อกได้ด้วยตัวเอง
+    ['a bracket exists while the application is still pending', { match_count: 8, status: 'pending' }],
   ])('throws TEAM_LOCKED_IN_TOURNAMENT when %s', async (_label, squad) => {
     mockedCheckTeam.mockResolvedValue(baseTeamRow);
     vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
@@ -583,7 +586,9 @@ describe('deleteMember', () => {
   it('throws MEMBER_LOCKED_IN_TOURNAMENT when the player is registered in a tournament that already has a bracket', async () => {
     mockedTeamRepo.isMemberOf.mockResolvedValue(makeTeamMember());
     vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
-      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 8, squad_size: 11 },
+      // status 'pending' ตั้งใจ — ให้ล็อกเพราะ match_count > 0 อย่างเดียว ถ้าใส่ 'approved' ข้างขวาก็จริงด้วย
+      // แล้วจะไม่รู้ว่าเทสนี้วัดสาขาไหน (สาขา approved มีเคสของตัวเองใน describe 'member lock — Q2-ค')
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 8, squad_size: 11, status: 'pending' },
     ]);
 
     const err: any = await teamService.deleteMember(5, 10, 1).catch((e) => e);
@@ -600,7 +605,7 @@ describe('deleteMember', () => {
     mockedTeamRepo.countMemberByTeamId.mockResolvedValue(5);
     mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, min_members: 5 });
     vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
-      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 5 },
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 5, status: 'pending' },
     ]);
 
     await teamService.deleteMember(5, 10, 1);
@@ -618,7 +623,7 @@ describe('deleteMember', () => {
     mockedTeamRepo.countMemberByTeamId.mockResolvedValue(8);
     mockedSportRepo.findSportTypeById.mockResolvedValue({ ...baseSportType, min_members: 5 });
     vi.mocked(ApplicationRepo.findLiveSquadsOfTeam).mockResolvedValue([
-      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 7 },
+      { tournament_application_id: 70, tournament_id: 20, tournament_name: 'Cup', match_count: 0, squad_size: 7, status: 'pending' },
     ]);
 
     await teamService.deleteMember(5, 10, 1);
