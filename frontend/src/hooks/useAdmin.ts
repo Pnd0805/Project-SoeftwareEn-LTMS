@@ -168,11 +168,11 @@ export function useRejectAmendment() {
 }
 
 /** คิวคำขอจัดทัวร์นาเมนต์ตามรูปที่ backend ตอบจริง — ใช้กับหน้า Admin ในโหมดจริง */
-export function usePendingTournamentRequests() {
+export function usePendingTournamentRequests(enabled = true) {
   return useQuery({
     queryKey: adminKeys.tournamentRequests,
     queryFn: adminApi.getPendingTournamentRequests,
-    enabled: !USE_MOCK,
+    enabled: !USE_MOCK && enabled,
     retry: retryPolicy,
   });
 }

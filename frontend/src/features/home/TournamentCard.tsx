@@ -41,7 +41,7 @@ export function TournamentCard({ t, rel, entry }: { t: Tournament; rel: Rel; ent
     >
       <span className="cap" aria-hidden="true"><b>{t.sport}</b></span>
       <span className="spread">{status}<span className="tag">{t.sport}</span></span>
-      <span className="disp" style={{ fontSize: 22 }}>{t.name}</span>
+      <span className="disp tournament-title" style={{ fontSize: 22 }}>{t.name}</span>
       {rel === 'run'
         ? <span className="tag"><em>//</em> You run this</span>
         : rel === 'playing' && mine

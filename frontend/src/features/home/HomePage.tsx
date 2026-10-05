@@ -1,16 +1,7 @@
-/**
- * src/features/home/HomePage.tsx
- *
- * Home stays one column — it is a grid of cards and a rail would only squeeze
- * them. The "Needs you" queue sits at the top, full width, laying its rows out
- * in columns so ten items do not push the grid off the screen. Under it the
- * filter is a sticky toolbar labelled with the live count.
- */
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../../components/kit/Icon'
 import { Empty, Panel, Tabs } from '../../components/kit/primitives'
-import { Modal } from '../../components/kit/Modal'
 import { useLtms } from '../../shared/store'
 import {
   useMyTournamentApplications, useMyTournaments, useTournaments,
@@ -22,57 +13,39 @@ import type { Registration, Tournament } from '../../shared/types'
 import { TournamentCard } from './TournamentCard'
 import type { Rel } from './TournamentCard'
 import { workQueue } from './workQueue'
-import type { WorkEntry, WorkKind } from './workQueue'
 import { buildHomeCategories } from './homeView'
 import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
+import { HomeTaskPanel } from './HomeTaskPanel'
+import { mockHomeTasks, type HomeTaskFeed } from './homeTasks'
+import { RealHomeTasks } from './RealHomeTasks'
 
-const KIND_COLS: [WorkKind, string][] = [['crit', 'Urgent'], ['warn', 'Waiting'], ['ok', 'Ready']]
 const STAGES: [string, string][] = [['', 'All'], ['open', 'Open for entry'], ['competing', 'In progress'], ['finished', 'Finished']]
-
-/**
- * One "Needs you" column is one severity, and one severity can bundle several
- * things across several tournaments — this is where clicking stops guessing
- * which one you meant and lists them all.
- */
-function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries: WorkEntry[]; onClose: () => void }) {
-  const navigate = useNavigate()
-  const label = KIND_COLS.find(([k]) => k === kind)?.[1] ?? ''
-  return (
-    <Modal open={!!kind} onClose={onClose} label={label}>
-      <div className="vstack" style={{ gap: 14 }}>
-        {entries.map((x, i) => (
-          <div className="vstack" style={{ gap: 6 }} key={i}>
-            <span className="sub"><b style={{ color: 'var(--bone)' }}>{x.what}</b> — {x.where}</span>
-            {x.items.map((it, j) => (
-              <button className="who" type="button" key={j} onClick={() => { onClose(); navigate(it.href) }}>
-                <span className="meta"><b>{it.label}</b>{it.sub ? <span className="tag">{it.sub}</span> : null}</span>
-                <Icon name="chev" size={13} />
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-      <button className="btn ghost" type="button" onClick={onClose}>Cancel</button>
-    </Modal>
-  )
-}
 
 export function HomePage() {
   const s = useLtms()
   const { data: currentUser } = useMe()
-  const { data: tournamentData, isPending: apiPending, isError: apiError } = useTournaments()
+  const { data: tournamentData, isPending: apiPending, isError: apiError, refetch: retryTournaments } = useTournaments()
   const myTournaments = useMyTournaments(!!currentUser)
   const myApplications = useMyTournamentApplications(!!currentUser)
   const navigate = useNavigate()
+  const location = useLocation()
   const { tab: tabParam } = useParams()
   const u = USE_MOCK ? me(s) : undefined
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
-  const [openKind, setOpenKind] = useState<WorkKind | null>(null)
 
   const q = useMemo(() => USE_MOCK ? workQueue(s) : [], [s])
+  const signedIn = USE_MOCK ? !!u : !!currentUser
+  const homeDestination = location.pathname === '/'
+  const taskFeeds = useMemo<HomeTaskFeed[]>(() => USE_MOCK ? [{
+    source: 'mock',
+    label: 'Your tasks',
+    state: 'ready',
+    tasks: mockHomeTasks(q),
+    retry: () => {},
+  }] : [], [q])
   /* รายการทัวร์นาเมนต์ยังรอ backend (FEAT-1-REMAINING: backend blockers) — โหมด mock อ่าน seed
      ใน store ที่หน้าอื่นทุกหน้าอ่านอยู่ ไม่ใช่ fixture ของ api/tournament.ts ซึ่งมีรายการเดียว */
   const tournamentsPending = !USE_MOCK && apiPending
@@ -149,36 +122,25 @@ export function HomePage() {
 
   return (
     <>
-      {tournamentsPending ? <Panel quiet><span className="sub">Loading tournaments…</span></Panel> : null}
-      {!USE_MOCK && apiError ? <Empty title="Unable to load tournaments" sub="The server did not return the tournament list. Retry when the backend is available." /> : null}
-      <div className="spread">
-        <div>
-          <div className="tag"><em>//</em> University Sports Council · Season 2026</div>
-          <h1 className="disp" style={{ fontSize: 36, marginTop: 6 }}>Tournaments</h1>
-        </div>
-        {(USE_MOCK ? !!u : !!currentUser) ? (
+      {signedIn && homeDestination ? (
+        <div className="spread home-page-title">
+          <h1 className="disp" style={{ fontSize: 36, marginTop: 0 }}>Home</h1>
           <button className="btn primary" type="button" onClick={() => navigate('/request')}>
-            <Icon name="plus" size={13} /> Request a tournament
+            <Icon name="plus" size={13} /> Request tournament
           </button>
-        ) : null}
-      </div>
-
-      {q.length ? (
-        <Panel>
-          <div className="spread"><span className="tag"><em>//</em> Needs you · {q.length}</span></div>
-          <div className="workgrid">
-            {KIND_COLS.map(([kind, label]) => {
-              const n = q.filter(x => x.kind === kind).length
-              return (
-                <button className="workrow" type="button" key={kind} disabled={!n} onClick={() => setOpenKind(kind)}>
-                  <span className={`wk ${kind}`} />
-                  <span className="txt"><b>{label}</b><span className="sub">{n} thing{n === 1 ? '' : 's'}</span></span>
-                  <Icon name="chev" size={13} />
-                </button>
-              )
-            })}
-          </div>
-        </Panel>
+        </div>
+      ) : null}
+      {signedIn && homeDestination && USE_MOCK ? <HomeTaskPanel feeds={taskFeeds} /> : null}
+      {signedIn && homeDestination && !USE_MOCK ? <RealHomeTasks /> : null}
+      {signedIn && homeDestination
+        ? <h2 id="tournaments" className="disp tournament-destination-title" style={{ fontSize: 30, marginTop: 0 }}>Tournaments</h2>
+        : <h1 id="tournaments" className="disp tournament-destination-title" style={{ fontSize: 36, marginTop: 0 }}>Tournaments</h1>}
+      {tournamentsPending ? <Panel quiet><span className="sub" role="status">Loading tournaments…</span></Panel> : null}
+      {!USE_MOCK && apiError ? (
+        <div className="spread home-source-error" role="alert">
+          <span>Unable to load tournaments</span>
+          <button className="btn" type="button" aria-label="Retry tournaments" onClick={() => { void retryTournaments() }}>Retry</button>
+        </div>
       ) : null}
 
       <div className="toolbar home-toolbar">
@@ -218,7 +180,7 @@ export function HomePage() {
         <>
           <div className="home-category-tabs">
             <Tabs tabs={cats.map(c => ({ key: c.key, label: c.label }))} active={tab!}
-              onPick={k => navigate(k === 'all' ? '/' : `/home/${k}`)} />
+              onPick={k => navigate(`/home/${k}`)} />
           </div>
           <div className="grid3">
             {cats.find(c => c.key === tab)!.items.map(t => (
@@ -228,11 +190,9 @@ export function HomePage() {
             ))}
           </div>
         </>
-      ) : visible.length || (!USE_MOCK && apiError) ? null : (
-        <Empty title="No tournaments yet" sub="Request one to get started." />
+      ) : visible.length || tournamentsPending || (!USE_MOCK && apiError) ? null : (
+        <Empty title="No tournaments yet" sub={signedIn ? 'Request one to get started.' : 'Check back for upcoming tournaments.'} />
       )}
-
-      <WorkPicker kind={openKind} entries={q.filter(x => x.kind === openKind)} onClose={() => setOpenKind(null)} />
     </>
   )
 }

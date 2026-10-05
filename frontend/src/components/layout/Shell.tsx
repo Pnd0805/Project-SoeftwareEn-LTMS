@@ -22,6 +22,7 @@ import type { MeDto } from '../../types/dto'
 import { USE_MOCK } from '../../api/client'
 import { useAdminAccess } from '../../hooks/useAdmin'
 import { canShowAdminNav } from './adminNav'
+import { navSection } from './navSection'
 
 interface NavItem { to: string; icon: IconName; label: string; pill?: number }
 
@@ -30,7 +31,10 @@ function useNav(unreadCount: number, currentUser: MeDto | undefined, backendHasA
   const u = USE_MOCK ? me(s) : undefined
   if (!u && !currentUser) return []
   const invites = u ? s.invites.filter(i => i.user === u.id && i.status === 'pending').length : 0
-  const items: NavItem[] = [{ to: '/', icon: 'trophy', label: 'Tournaments' }]
+  const items: NavItem[] = [
+    { to: '/', icon: 'home', label: 'Home' },
+    { to: '/home/all', icon: 'trophy', label: 'Tournaments' },
+  ]
   if (canShowAdminNav(USE_MOCK, u?.role, backendHasAdminAccess)) {
     items.push({
       to: '/admin',
@@ -161,17 +165,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
     )
   }
 
-  const active = (to: string) =>
-    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+  const activeSection = navSection(location.pathname)
 
   return (
     <>
       {skip}
       <div className="shell">
-        <nav className="sb">
+        <nav className="sb" aria-label="Main navigation">
           <div className="brand"><span className="g"><Icon name="trophy" size={14} /></span><span>LTMS</span></div>
           {nav.map(item => (
-            <button key={item.to} className={`item ${active(item.to) ? 'on' : ''}`} type="button"
+            <button key={item.to} className={`item ${activeSection === item.to ? 'on' : ''}`} type="button"
+              aria-current={activeSection === item.to ? 'page' : undefined}
               onClick={() => navigate(item.to)}>
               <Icon name={item.icon} />
               <span>{item.label}</span>
@@ -179,7 +183,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </button>
           ))}
           <div className="foot">
-            <div className="tag"><em>//</em> Signed in as</div>
+            <div className="sub" style={{ fontSize: 12 }}>Signed in as</div>
             <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{displayName}</div>
             <button className="btn ghost" type="button" style={{ width: '100%' }}
               onClick={() => { void logout.mutateAsync().finally(() => navigate('/login')) }}>
