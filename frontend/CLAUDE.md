@@ -85,9 +85,11 @@ clears tables before importing. To intentionally reset QA data, use the backend'
 `python ../database/qa-baseline.py restore` from its `backend/` directory. Restore
 replaces current database data; do not run it merely to inspect the baseline.
 
-`frontend/scripts/restore-qa.py` is the legacy repair wrapper for the September
-baseline. Do not repeat its repairs on the new baseline: their effects are already
-included. Keep it as historical tooling until compatibility is reviewed.
+`python frontend/scripts/restore-qa.py` (since 2026-10-05) does exactly that in one
+command: backend restore → `npm run migrate` → audit. It finds the backend repo itself
+(`LTMS_BACKEND_DIR`, sibling `ltms-backend-shokun2`, or `D:/Project-LTMS/BE_KN`). Its
+September repair steps run only with `--legacy-repairs`. Do not use that flag on the new
+baseline: those repairs are already included.
 
 The migrate and role-audit gates above still apply before live tests. With the
 schema-034 baseline migration should report `up to date (34 migrations)`.
