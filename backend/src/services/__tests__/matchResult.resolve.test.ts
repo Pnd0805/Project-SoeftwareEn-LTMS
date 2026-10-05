@@ -47,7 +47,7 @@ beforeEach(() => {
 
 describe('resolveMatchResult (S04, B4)', () => {
   it('409 NO_ACTIVE_DISPUTE when the result is not disputed', async () => {
-    vi.mocked(Repo.findmatchResultByMatchId).mockResolvedValue({ ...disputed, match_result_status: 'verified' } as never);
+    vi.mocked(Repo.findmatchResultByMatchId).mockResolvedValue({ ...(disputed as object), match_result_status: 'verified' } as never);
     await expect(Service.resolveMatchResult(1, { resolution: 'reject', resolutionNote: 'x' }, 7))
       .rejects.toMatchObject({ status: 409, code: 'NO_ACTIVE_DISPUTE' });
   });

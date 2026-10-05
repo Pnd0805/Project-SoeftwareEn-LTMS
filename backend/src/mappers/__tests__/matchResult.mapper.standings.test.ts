@@ -10,6 +10,7 @@ const row = (o: Partial<StandingSource> & { team_id: number }): StandingSource =
   points: 0,
   goals_for: 0,
   goals_against: 0,
+  logo_key: null,           // OD-61 — ตารางอันดับส่ง logoUrl ด้วย
   ...o,
 });
 

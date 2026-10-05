@@ -59,6 +59,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     suspended_category: null,
     total_points: 0,
     notification_prefs: null, show_profile_stats: 1,
+    email_verified: 0,
     profile_edit_log: null,
     created_at: new Date(),
     updated_at: null,
@@ -99,6 +100,14 @@ const baseTournament: TournamentRow = {
   gender_requirement: 'any',
   min_age: null,
   max_age: null,
+  description: null,
+  // คอลัมน์ที่เพิ่มมาทีหลัง — ผู้จัดปิดทัวร์ (ผม · 21 ก.ย.) และ entry_notes (SleepyCaTT1425 · 21 ก.ย.)
+  // ★ ก้อนนี้ต้องครบทุกคอลัมน์จึงคอมไพล์ผ่าน ⇒ เติม entry_notes ของเขาด้วย แต่ค่าไม่กำกวม
+  //   (null = ไม่มีหมายเหตุการสมัคร ซึ่งเป็นสภาพของทุกทัวร์ที่ไม่ได้กรอกช่องนี้)
+  entry_notes: null,
+  champion_team_id: null,   // ยังไม่ปิดทัวร์ (tournament_status ข้างบนไม่ใช่ completed)
+  completed_at: null,
+  completed_by: null,
   rejection_reason: null,
   approved_by: null,
   approved_at: null,
@@ -119,10 +128,15 @@ const baseMatch: MatchRow = {
   team_a_id: null,
   team_b_id: null,
   scheduled_time: null,
+  scheduled_end_time: null,
   venue: null,
   checkin_open_at: null,
+  started_at: null,
+  actual_end_time: null,
   match_status: 'scheduled',
   mode: 'onsite',
+  livestream_url: null,
+  room_code: null,          // null = แมตช์ onsite (mode ข้างบนเป็น onsite)
   created_at: new Date(),
   updated_at: null,
 };

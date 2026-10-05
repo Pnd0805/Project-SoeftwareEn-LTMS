@@ -108,6 +108,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     suspended_category: null,
     total_points: 0,
     notification_prefs: null, show_profile_stats: 1,
+    email_verified: 0,
     profile_edit_log: null,
     created_at: new Date(),
     updated_at: null,
@@ -146,6 +147,13 @@ const baseTournament: TournamentRow = {
   gender_requirement: 'any',
   min_age: null,
   max_age: null,
+  // คอลัมน์ที่เพิ่มมาทีหลัง — ผู้จัดปิดทัวร์ (ผม · 21 ก.ย.) และ entry_notes (SleepyCaTT1425 · 21 ก.ย.)
+  // ★ ก้อนนี้ต้องครบทุกคอลัมน์จึงคอมไพล์ผ่าน ⇒ เติม entry_notes ของเขาด้วย แต่ค่าไม่กำกวม
+  //   (null = ไม่มีหมายเหตุการสมัคร ซึ่งเป็นสภาพของทุกทัวร์ที่ไม่ได้กรอกช่องนี้)
+  entry_notes: null,
+  champion_team_id: null,   // ยังไม่ปิดทัวร์ (tournament_status ข้างบนไม่ใช่ completed)
+  completed_at: null,
+  completed_by: null,
   rejection_reason: null,
   approved_by: null,
   approved_at: null,
@@ -174,6 +182,7 @@ const baseMatch: MatchRow = {
   match_status: 'scheduled',
   mode: 'onsite',
   livestream_url: null,
+  room_code: null,          // null = แมตช์ onsite
   created_at: new Date(),
   updated_at: null,
 };
@@ -185,6 +194,8 @@ const teamA: TeamRow = {
   leader_id: 100,
   readiness_status: 'Ready',
   official_status: 'Official',
+  logo_key: null,
+  visibility: 'private',
   created_at: new Date(),
   updated_at: null,
   last_competed_at: null,
@@ -207,6 +218,10 @@ const baseMatchResult: MatchResultRow = {
   submitted_by_user_id: 200,
   submitted_role: 'team_leader',
   match_result_status: 'submitted',
+  submitted_at: new Date(),
+  dispute_claimed_winner_team_id: null,
+  dispute_claimed_score: null,
+  dispute_evidence: null,
   dispute_reason: null,
   dispute_raised_by: null,
   dispute_raised_at: null,
@@ -634,7 +649,10 @@ describe('requireCanVerifyResult middleware', () => {
   describe('online + กรรมการเป็นคนส่งผล (OD-55)', () => {
     const refSubmitted = { ...baseMatchResult, submitted_role: 'referee' as const, submitted_by_user_id: 5 };
 
-    function arrange(result = refSubmitted) {
+    // ★ ประกาศชนิดเป็น MatchResultRow — ไม่ปล่อยให้อนุมานจากค่าตั้งต้น
+    //   refSubmitted มี submitted_role: 'referee' ⇒ ถ้าไม่ประกาศ พารามิเตอร์จะถูกอนุมาน
+    //   แคบเหลือ 'referee' ตัวเดียว แล้วเทสที่ต้องส่ง 'team_leader' เข้ามาก็คอมไพล์ไม่ผ่าน
+    function arrange(result: MatchResultRow = refSubmitted) {
       mockedParseId.mockReturnValue(30);
       mockedCheckMatch.mockResolvedValue({ ...baseMatch, mode: 'online', team_a_id: 10, team_b_id: 11 });
       mockedCheckMatchResult.mockResolvedValue(result);

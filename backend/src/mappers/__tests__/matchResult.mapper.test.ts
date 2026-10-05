@@ -46,8 +46,9 @@ function makeResultRow(overrides: Partial<MatchResultRow> = {}): MatchResultRow 
     };
 }
 
-const LIONS: TeamRef = { id: 11, name: 'Lions', sportTypeId: 3 };
-const TIGERS: TeamRef = { id: 12, name: 'Tigers', sportTypeId: 3 };
+// ★ logoUrl: null = มีทีมจริงแต่ยังไม่ได้อัปโลโก้ (คนละความหมายกับ teamA เป็น null = ไม่มีทีม)
+const LIONS: TeamRef = { id: 11, name: 'Lions', sportTypeId: 3, logoUrl: null };
+const TIGERS: TeamRef = { id: 12, name: 'Tigers', sportTypeId: 3, logoUrl: null };
 
 // ---------- toSubmittedResultDto ----------
 

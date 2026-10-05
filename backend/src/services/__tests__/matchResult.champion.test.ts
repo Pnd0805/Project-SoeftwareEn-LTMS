@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { StandingRow } from '../../repositories/matchResult.repo.js';
 
 vi.mock('../notification.service.js', () => ({
   notify: vi.fn(),
@@ -28,8 +29,12 @@ import type { TournamentRow } from '../../types/db.js';
 
 const rr = { tournament_id: 50, bracket_format: 'round_robin' } as unknown as TournamentRow;
 const se = { tournament_id: 50, bracket_format: 'single_elimination' } as unknown as TournamentRow;
-const row = (team_id: number, points: number, gf = 0, ga = 0) =>
-  ({ team_id, name: 'T' + team_id, sport_type_id: 1, played: 3, won: points / 3, lost: 3 - points / 3, points, goals_for: gf, goals_against: ga });
+// ★ ประกาศชนิดคืนค่าเป็น StandingRow — ไม่ปล่อยให้อนุมานจากค่าที่ใส่
+//   เดิมอนุมาน ⇒ วันที่ StandingRow เพิ่มคอลัมน์ (logo_key มาตอน OD-61) mock ก็ยังผ่าน
+//   แล้วเทสรับประกันพฤติกรรมบนแถวที่ของจริงไม่มีรูปร่างนั้น
+//   ตอนนี้ถ้า StandingRow เพิ่มคอลัมน์อีก จะพังที่นี่จุดเดียว ไม่ใช่เงียบทั้ง 9 จุดที่เรียก
+const row = (team_id: number, points: number, gf = 0, ga = 0): StandingRow =>
+  ({ team_id, name: 'T' + team_id, sport_type_id: 1, logo_key: null, played: 3, won: points / 3, lost: 3 - points / 3, points, goals_for: gf, goals_against: ga });
 
 beforeEach(() => vi.clearAllMocks());
 

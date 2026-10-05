@@ -84,7 +84,7 @@ describe('createBracket replace', () => {
     expect(conn.beginTransaction).toHaveBeenCalledTimes(1);
     expect(MatchRepo.clearBracketTx).toHaveBeenCalledWith(conn, 50);
     expect(MatchRepo.insertMatchTx).toHaveBeenCalledTimes(6);
-    expect(vi.mocked(MatchRepo.insertMatchTx).mock.calls.every(c => c[0] === conn)).toBe(true);
+    expect(vi.mocked(MatchRepo.insertMatchTx).mock.calls.every(c => (c[0] as unknown) === conn)).toBe(true);
     expect(conn.commit).toHaveBeenCalledTimes(1);
     expect(conn.rollback).not.toHaveBeenCalled();
     expect(conn.release).toHaveBeenCalledTimes(1);

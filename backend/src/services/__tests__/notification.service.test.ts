@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NotificationInput } from '../../repositories/notification.repo.js';
 
 vi.mock('../../repositories/user.repo.js', () => ({
   findNotificationPrefs: vi.fn(async () => null),      // null = ยังไม่เคยตั้งค่า → เปิดทุกหมวด
@@ -111,7 +112,12 @@ describe('markAllMyNotificationsRead (C1-ก POST /me/notifications/read-all)', 
 });
 
 describe('notify helpers (C1-ข)', () => {
-  const content = { type: 'checkin_opened', title: 'เปิดเช็คอินแล้ว', message: 'x', relatedEntityType: 'match', relatedEntityId: 42 };
+  // ★ ประกาศชนิดไว้ ไม่ปล่อยให้ TS อนุมานเป็น string
+  //   NotificationInput.type เป็น union จากคีย์ของ NOTIFICATION_CATEGORY (OD-49) เพื่อให้
+  //   "เพิ่มชนิดแจ้งเตือนใหม่โดยไม่เติมหมวด = compile ไม่ผ่าน"
+  //   🔴 แต่ถ้า const นี้ไม่มีชนิด TS จะอนุมาน type เป็น string แล้วด่านนั้นหายไปจากเทส
+  //   ⇒ พิมพ์ชื่อชนิดผิดในเทสก็ยังเขียว ซึ่งขัดกับเหตุผลที่ทำ OD-49 ทั้งข้อ
+  const content: Omit<NotificationInput, 'userId'> = { type: 'checkin_opened', title: 'เปิดเช็คอินแล้ว', message: 'x', relatedEntityType: 'match', relatedEntityId: 42 };
 
   it('never throws even if writing a notification fails — the action that triggered it already succeeded', async () => {
     vi.mocked(NotificationRepo.insertNotification).mockRejectedValue(new Error('db down'));

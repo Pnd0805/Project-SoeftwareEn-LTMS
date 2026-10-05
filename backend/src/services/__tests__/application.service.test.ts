@@ -103,10 +103,12 @@ const mockedToApplicationDetailDto = vi.mocked(toApplicationDetailDto);
 const mockedToMyApplicationDto = vi.mocked(toMyApplicationDto);
 const mockedToOrganizerApplicationDto = vi.mocked(toOrganizerApplicationDto);
 
-type ApprovedTeamRow = Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id'>;
+// 🔴 ชนิดนี้ประกาศซ้ำรูปร่างที่ findApprovedTeamsByTournament คืน ⇒ ของจริงเพิ่มคอลัมน์
+//   แล้วที่นี่ไม่ได้ตามไป (logo_key มาตอน OD-61) — ถ้าวันหนึ่งเพิ่มอีก ก็จะ drift อีก
+type ApprovedTeamRow = Pick<TeamRow, 'team_id' | 'name' | 'sport_type_id' | 'logo_key'>;
 
 function makeApprovedTeam(overrides: Partial<ApprovedTeamRow> = {}): ApprovedTeamRow {
-  return { team_id: 1, name: 'Team A', sport_type_id: 1, ...overrides };
+  return { team_id: 1, name: 'Team A', sport_type_id: 1, logo_key: null, ...overrides };
 }
 
 function makeLeaderApplication(overrides: Partial<LeaderApplicationRow> = {}): LeaderApplicationRow {
@@ -174,12 +176,16 @@ function makeTournament(overrides: Partial<TournamentRow> = {}): TournamentRow {
     organizer_external_reviewed_at: null,
     organizer_external_rejection_reason: null,
     organizer_external_verification_docs: null,
-    sport_type_id: 1,
+    description: null,
+    entry_notes: null,          // ของ SleepyCaTT1425 — ติดมาในก้อนเดียว ค่าไม่กำกวม
+    champion_team_id: null,     // ยังไม่ปิดทัวร์
+    completed_at: null,
+    completed_by: null,
     tournament_status: 'public',
     registration_open: 1,
     registration_start: null,
-    registration_end: '2026-09-20',   // อายุคำนวณ ณ วันปิดรับสมัคร (ADR-0011) — null ทำให้ TOURNAMENT_CONFIGURATION_INVALID
-    event_start_date: '2026-10-01',
+    registration_end: new Date('2026-09-20'),   // อายุคำนวณ ณ วันปิดรับสมัคร (ADR-0011) — null ทำให้ TOURNAMENT_CONFIGURATION_INVALID
+    event_start_date: '2026-10-01',   // DATE ไม่ใช่ DATETIME ⇒ ชนิดเป็น string ถูกแล้ว
     event_end_date: null,
     max_teams: 16,
     min_teams: 4,
@@ -816,7 +822,10 @@ describe('applyTournament', () => {
     ] as never);
     vi.mocked(mockedApplicationRepo.findRefereesAmongUsers).mockResolvedValueOnce([88]);   // Once — clearAllMocks ไม่ล้าง mockResolvedValue
 
-    const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88]).catch((e: unknown) => e as { code: string; extra: unknown });
+    // ★ cast ครอบผลของ await ทั้งก้อน ไม่ใช่ cast แค่ค่าใน catch
+    //   ถ้า cast แค่ใน catch ชนิดที่ได้จะเป็น union กับค่าที่ resolve สำเร็จ ⇒ อ่าน .extra ไม่ได้
+    const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88])
+      .catch((e: unknown) => e) as { code: string; extra: unknown };
     expect(err).toMatchObject({ status: 409, code: 'TEAM_CONFLICT_OF_INTEREST' });
     expect(err.extra).toEqual({ conflicts: [{ userId: 77, role: 'organizer' }, { userId: 88, role: 'referee' }] });
     expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
@@ -829,7 +838,8 @@ describe('applyTournament', () => {
       registration_open: 1, registration_start: new Date('2026-05-01'), registration_end: new Date('2026-06-01'),   // ระบบเวลา = 2026-06-15
     }));
 
-    const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88]).catch((e: unknown) => e as { code: string; message: string });
+    const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88])
+      .catch((e: unknown) => e) as { code: string; message: string };
     expect(err).toMatchObject({ status: 409, code: 'REGISTRATION_CLOSED' });
     expect(err.message).toBe('หมดช่วงรับสมัครแล้ว');
     expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
@@ -841,7 +851,8 @@ describe('applyTournament', () => {
       registration_open: 1, registration_start: new Date('2099-01-01'), registration_end: new Date('2099-02-01'),
     }));
 
-    const err = await applicationService.applyTournament(20, 10, 5, [1]).catch((e: unknown) => e as { code: string; message: string });
+    const err = await applicationService.applyTournament(20, 10, 5, [1])
+      .catch((e: unknown) => e) as { code: string; message: string };
     expect(err).toMatchObject({ status: 409, code: 'REGISTRATION_CLOSED' });
     expect(err.message).toBe('ยังไม่ถึงช่วงรับสมัคร');
   });

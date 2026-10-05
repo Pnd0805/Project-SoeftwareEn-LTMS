@@ -73,6 +73,8 @@ function makeTeam(overrides: Partial<TeamRow> = {}): TeamRow {
     leader_id: 5,
     readiness_status: 'Forming',
     official_status: 'Unofficial',
+    logo_key: null,
+    visibility: 'private',
     created_at: new Date(),
     updated_at: null,
     last_competed_at: null,

@@ -77,7 +77,7 @@ describe('application.controller getTournamentTeams()', () => {
 
 describe('application.controller getMyappication()', () => {
   it('throws USER_NOT_FOUND before touching res when req.user is missing', async () => {
-    const req = { user: undefined } as Request;
+    const req = { user: undefined } as unknown as Request;
     const res = makeRes();
 
     await expect(getMyappication(req, res)).rejects.toMatchObject({

@@ -54,7 +54,7 @@ beforeEach(() => {
 
 describe('user.controller getMe()', () => {
   it('throws USER_NOT_FOUND before touching res when req.user is missing', async () => {
-    const req = { user: undefined } as Request;
+    const req = { user: undefined } as unknown as Request;
     const res = makeRes();
 
     await expect(getMe(req, res)).rejects.toMatchObject({
@@ -219,7 +219,7 @@ describe('user.controller searchUser()', () => {
 
 describe('user.controller patchMe()', () => {
   it('throws USER_NOT_FOUND before touching res when req.user is missing', async () => {
-    const req = { user: undefined, body: {} } as Request;
+    const req = { user: undefined, body: {} } as unknown as Request;
     const res = makeRes();
 
     await expect(patchMe(req, res)).rejects.toMatchObject({
@@ -271,7 +271,7 @@ describe('user.controller getMyInvitation()', () => {
       'this endpoint reads req.user!.user_id directly with no guard, so it relies entirely on ' +
       'auth middleware having already populated req.user',
     async () => {
-      const req = { user: undefined } as Request;
+      const req = { user: undefined } as unknown as Request;
       const res = makeRes();
 
       await expect(getMyInvitation(req, res)).rejects.toThrow();

@@ -8,6 +8,7 @@ describe('toCareerTournamentDto', () => {
       tournament_name: 'KU Cup',
       sport_type_id: 2,
       tournament_status: 'completed',
+      has_approved: 1,          // ใบสมัครยังอนุมัติอยู่ — เคสหลักของ U04
       team_id: 7,
       team_name: 'Blue',
       played: '5' as any,

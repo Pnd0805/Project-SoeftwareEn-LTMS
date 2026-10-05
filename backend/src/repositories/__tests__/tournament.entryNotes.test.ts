@@ -46,6 +46,7 @@ describe('tournament entry notes persistence', () => {
       maxTeams: 8,
       minTeams: 2,
       venue: 'สนามกีฬา',
+      disputeWindowHours: null,   // null = ใช้ค่าตั้งต้นของคอลัมน์ (24 ชม.)
       entryNotes: 'กรุณานำบัตรนิสิตมาแสดง',
       genderRequirement: 'any',
       minAge: null,

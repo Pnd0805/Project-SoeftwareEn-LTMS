@@ -66,7 +66,7 @@ const userOf = (overrides: Partial<UserRow> = {}): UserRow => ({
   faculty_id: 3, department_id: 1, year: 2, profile_image_key: null,
   contact_info: null, address: null, is_suspended: 0, suspended_reason: null,
   suspended_until: null, suspended_category: null,
-  total_points: 0, notification_prefs: null, profile_edit_log: null,
+  total_points: 0, notification_prefs: null, show_profile_stats: 1, profile_edit_log: null, email_verified: 0,
   created_at: NOW, updated_at: null,
   ...overrides,
 });

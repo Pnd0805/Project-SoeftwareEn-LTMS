@@ -47,7 +47,7 @@ async function loadEnv(overrides: Record<string, string | undefined> = {}) {
     vi.resetModules();
 
     // env.ts lives at backend/src/config/env.ts; this test is in backend/src/config/__tests__/.
-    const mod = await import("../env");
+    const mod = await import("../env.js");
     return mod.env;
 }
 

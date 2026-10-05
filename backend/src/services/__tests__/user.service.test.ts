@@ -128,6 +128,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     suspended_category: null,
     total_points: 0,
     notification_prefs: null, show_profile_stats: 1,
+    email_verified: 0,
     profile_edit_log: null,
     created_at: new Date(),
     updated_at: null,
@@ -143,6 +144,8 @@ function makeTeam(overrides: Partial<TeamRow> = {}): TeamRow {
     leader_id: 5,
     readiness_status: 'Forming',
     official_status: 'Unofficial',
+    logo_key: null,
+    visibility: 'private',
     created_at: new Date(),
     updated_at: null,
     last_competed_at: null,
@@ -175,7 +178,7 @@ beforeEach(() => {
   mockedFollowRepo.findFollowing.mockResolvedValue([]);
   mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
   mockedAdminRepo.findAdminByUserId.mockResolvedValue(null as any);
-  mockedStatRepo.findProfileTotals.mockResolvedValue({ mvp_votes: 0, follower_count: 0 });
+  mockedStatRepo.findProfileTotals.mockResolvedValue({ mvp_votes: 0, mvp_times: 0, follower_count: 0 });
 });
 
 describe('getUserById', () => {
@@ -236,7 +239,7 @@ describe('getUserStats', () => {
     expect(mockedToUserStatsDto).toHaveBeenCalledWith(
       1,
       [{ sport_type_id: 1, wins: 3 }],
-      { mvp_votes: 0, follower_count: 0 },
+      { mvp_votes: 0, mvp_times: 0, follower_count: 0 },
     );
     expect(result).toEqual({ userId: 1, stats: [] });
   });
@@ -308,7 +311,10 @@ describe('C8 profile engagement', () => {
     mockedCheckUser.mockResolvedValue(baseUser);
     mockedStatRepo.findStatsByUser.mockResolvedValue([]);
     mockedStatRepo.findProfileTotals.mockResolvedValue({
+      // ★ 7 โหวต แต่ชนะ 2 ครั้ง — ตั้งค่าให้ไม่เท่ากันโดยเจตนา (OD-60)
+      //   ถ้าใส่เท่ากัน เทสจะไม่จับกรณีที่โค้ดหยิบผิดคอลัมน์
       mvp_votes: 7,
+      mvp_times: 2,
       follower_count: 5,
     });
     mockedToUserStatsDto.mockReturnValue({ userId: 1 } as any);
@@ -318,7 +324,7 @@ describe('C8 profile engagement', () => {
     expect(mockedToUserStatsDto).toHaveBeenCalledWith(
       1,
       [],
-      { mvp_votes: 7, follower_count: 5 },
+      { mvp_votes: 7, mvp_times: 2, follower_count: 5 },
     );
   });
 
@@ -390,6 +396,7 @@ describe('C8 profile engagement', () => {
       wins: 2,
       losses: 1,
       champion: 1,
+      has_approved: 1,
     };
     mockedCareerRepo.findCareerByUser.mockResolvedValue([row]);
     mockedToCareerTournamentDto.mockReturnValue({

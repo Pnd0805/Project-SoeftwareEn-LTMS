@@ -122,6 +122,8 @@ const baseTeamRow: TeamRow = {
   leader_id: 5,
   readiness_status: 'Forming',
   official_status: 'Unofficial',
+  logo_key: null,            // ยังไม่ได้อัปโลโก้ — สภาพของทุกแถวในฐานตอนนี้
+  visibility: 'private',     // ตรงกับ DEFAULT ของ migration 017
   created_at: new Date(),
   updated_at: null,
   last_competed_at: null,
@@ -135,6 +137,11 @@ const baseSportType: SportTypeRow = {
   min_members: 5,
   max_members: 11,
   default_mode: 'onsite',
+  // ★ ค่าของ 'Football' ในฐานจริงคือ walkover 3-0 และเส้น pickem (0,1)
+  //   ใส่ค่าจริงไม่ใส่ 0 ทิ้งไว้ เพราะ mock ที่ไม่เหมือนของจริงคือที่มาของปัญหานี้ทั้งกอง
+  walkover_score: { winner: 3, loser: 0 },
+  pickem_tolerance_exact: 0,
+  pickem_tolerance_close: 1,
 };
 
 function makeUser(overrides: Partial<UserRow> = {}): UserRow {
@@ -158,6 +165,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     suspended_category: null,
     total_points: 0,
     notification_prefs: null, show_profile_stats: 1,
+    email_verified: 0,         // ยังไม่ยืนยัน — สภาพของทุกบัญชีที่สมัครก่อน OD-53
     profile_edit_log: null,
     created_at: new Date(),
     updated_at: null,
