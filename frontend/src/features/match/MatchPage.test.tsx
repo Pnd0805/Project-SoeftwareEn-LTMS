@@ -275,15 +275,15 @@ describe('finishing a match', () => {
     match.resultStatus = null
     match.viewer.roles = ['referee']
     match.viewer.can.finishMatch = status === 'in_progress'
-    match.viewer.can.submitResult = true
+    match.viewer.can.submitResult = status === 'finished'
     result = undefined
   }
 
-  it('allows the referee to score and finish the match while in progress', () => {
+  it('does not hand the referee a result form while the match is still being played', () => {
     asRefereeOf('in_progress')
     renderPage()
-    expect(screen.getByText(/การแข่งขันกำลังดำเนินอยู่:/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Finish & Submit result' })).toBeInTheDocument()
+    expect(screen.queryByText(/enter the result/)).not.toBeInTheDocument()
+    expect(screen.getByText(/result form opens once the match is finished/)).toBeInTheDocument()
   })
 
   it('finishes only after the referee confirms play has ended', () => {
@@ -304,28 +304,13 @@ describe('finishing a match', () => {
     expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
   })
 
-  it('says the match is being played to someone who cannot finish or record it', () => {
+  it('says the match is being played to someone who cannot finish it', () => {
     asRefereeOf('in_progress')
     match.viewer.roles = ['player']
     match.viewer.can.finishMatch = false
-    match.viewer.can.submitResult = false
     renderPage()
     expect(screen.queryByRole('button', { name: 'Finish the match' })).not.toBeInTheDocument()
-    expect(screen.getByText(/The score will be recorded by the referee/)).toBeInTheDocument()
-  })
-
-  it('displays Captain badge in lineup for team captain', () => {
-    match.teamA!.players = [
-      { id: 101, fullName: 'Alice Captain', avatarUrl: null, isCaptain: true, checkinStatus: 'checked_in', checkedInAt: null },
-      { id: 102, fullName: 'Bob Member', avatarUrl: null, isCaptain: false, checkinStatus: 'checked_in', checkedInAt: null },
-    ]
-    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={['/m/9/lineup']}>
-        <Routes><Route path="/m/:id/:tab" element={<MatchPage />} /></Routes>
-      </MemoryRouter>
-    </QueryClientProvider>)
-    expect(screen.getByText('Captain')).toBeInTheDocument()
-    expect(screen.getByText('Member')).toBeInTheDocument()
+    expect(screen.getByText(/recorded after the referee finishes the match/)).toBeInTheDocument()
   })
 })
 
@@ -365,9 +350,9 @@ describe('online results after OD-55', () => {
     overrideResult.mockResolvedValue({ id: 5, matchId: 9, status: 'submitted' })
     result = baseResult({ status: 'submitted', submittedRole: 'team_leader' })
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Correct the result' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit result' }))
     fireEvent.change(screen.getByLabelText('Science'), { target: { value: '4' } })
-    const save = screen.getByRole('button', { name: 'Save the correction' })
+    const save = screen.getByRole('button', { name: 'Save edit result' })
     expect(save).toBeDisabled()
     fireEvent.change(screen.getByLabelText(/both teams will read this/), { target: { value: 'Real score was 3-4' } })
     fireEvent.click(save)
@@ -381,7 +366,20 @@ describe('online results after OD-55', () => {
     match.mode = 'onsite'
     result = baseResult({ status: 'submitted', submittedRole: 'referee' })
     renderPage()
-    expect(screen.queryByRole('button', { name: 'Correct the result' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit result' })).not.toBeInTheDocument()
+  })
+
+  it('keeps top score unchanged and displays notice below when an edit result is submitted', () => {
+    result = baseResult({
+      status: 'submitted',
+      scoreData: { a: 3, b: 4 },
+      originalScoreData: { a: 3, b: 1 },
+      overriddenScoreData: { a: 3, b: 4 },
+      overrideReason: 'Ref corrected the score',
+    })
+    renderPage()
+    expect(screen.getByText('มีการแก้ไขคะแนน:')).toBeInTheDocument()
+    expect(screen.getByText(/Ref corrected the score/)).toBeInTheDocument()
   })
 })
 

@@ -515,7 +515,6 @@ const lineupPlayers = (side: BackendMatchLineupsDto["teamA"]): PlayerRef[] =>
     id: player.userId,
     fullName: player.fullName,
     avatarUrl: player.avatarUrl,
-    isCaptain: Boolean(player.isCaptain),
     checkinStatus: player.checkinStatus,
     checkedInAt: player.checkedInAt,
   })) ?? [];
@@ -530,7 +529,6 @@ export async function getMatchLineups(matchId: MatchRef): Promise<BackendMatchLi
       userId: player.id,
       fullName: player.fullName,
       avatarUrl: player.avatarUrl,
-      isCaptain: Boolean(player.isCaptain),
       checkinStatus: player.checkinStatus ?? null,
       checkedInAt: player.checkedInAt ?? null,
     })),
@@ -623,11 +621,11 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
    * ตั้งแต่ OD-26 (26 ก.ย.) S01 รับผลเฉพาะแมตช์ที่ **`finished`** (กด "จบการแข่งขัน" แล้ว)
    * หรือ `result_rejected` (ผู้จัดยกผลทิ้ง แมตช์แข่งจบไปแล้วจริง) นอกนั้นตอบ
    * `409 MATCH_NOT_FINISHED` · เดิมตรงนี้เปิดฟอร์มตั้งแต่ `checkin_open`/`in_progress` ตาม
-   * หรือ `in_progress` (เริ่มแข่งแล้ว ใส่คะแนนและสถิติได้เลย และส่งผลจะ auto-finish ให้)
-   * หรือ `result_rejected` (ผู้จัดยกผลทิ้ง แมตช์แข่งจบไปแล้วจริง)
+   * backend รุ่นเก่าที่ไม่ดูสถานะเลย กรรมการจึงกรอกสกอร์ครบแล้วเจอ "Could not save the result"
+   * โดยไม่มีปุ่มจบการแข่งขันให้กดสักที่ (รายงาน 29 ก.ย. แมตช์ 13)
    * ⚠️ ยังต้องนับ `result_rejected` ไม่งั้นแมตช์ที่ผู้จัดยกผลทิ้งจะตัน (S04 reject)
    */
-  const playable = dto.status === "finished" || dto.status === "in_progress" || dto.status === "result_rejected";
+  const playable = dto.status === "finished" || dto.status === "result_rejected";
 
   /* backend ไม่ได้บอกว่าคนที่กำลังดูทำอะไรได้บ้าง — ประกอบจากบทบาทที่รู้
      (กฎจริงยังอยู่ที่ backend เสมอ ตรงนี้แค่ตัดสินว่าจะโชว์ปุ่มไหม) */
@@ -831,12 +829,23 @@ export async function getResult(matchId: MatchRef): Promise<MatchResultDto> {
   const scoreData: Record<string, unknown> = { ...byTeam };
   if (match?.teamA) scoreData.a = byTeam[String(match.teamA.id)] ?? null;
   if (match?.teamB) scoreData.b = byTeam[String(match.teamB.id)] ?? null;
+  const mapTeamScore = (byT: Record<string, number> | null | undefined): Record<string, unknown> | null => {
+    if (!byT) return null;
+    const s: Record<string, unknown> = { ...byT };
+    if (match?.teamA) s.a = byT[String(match.teamA.id)] ?? null;
+    if (match?.teamB) s.b = byT[String(match.teamB.id)] ?? null;
+    return s;
+  };
   const unknownPerson = { id: 0, fullName: "—", avatarUrl: null };
   return {
     id: raw.matchId,
     matchId: raw.matchId,
     winnerTeamId: raw.winnerTeamId,
     scoreData,
+    originalScoreData: mapTeamScore(raw.originalScoreData),
+    overriddenScoreData: mapTeamScore(raw.overriddenScoreData),
+    overrideReason: raw.overrideReason ?? null,
+    overriddenAt: raw.overriddenAt ?? null,
     submittedBy: raw.submittedBy ?? unknownPerson,
     submittedByVisibility: !("submittedBy" in raw) ? "hidden" : raw.submittedBy === null ? "deleted" : "shown",
     submittedRole: raw.submittedRole ?? "referee",
@@ -959,7 +968,17 @@ export async function overrideResult(
   matchId: MatchRef,
   input: { winnerTeamId: number; scoreData: Record<string, unknown>; reason: string },
 ): Promise<{ id: number; matchId: number; status: "submitted" }> {
-  if (USE_MOCK) return unavailable("การแก้ผลโดยกรรมการ (S02b)");
+  if (USE_MOCK) {
+    const existing = mockResults.find((x) => x.matchId === Number(matchId));
+    if (existing) {
+      existing.originalScoreData = existing.originalScoreData ?? existing.scoreData;
+      existing.overriddenScoreData = input.scoreData;
+      existing.overrideReason = input.reason;
+      existing.status = "submitted";
+      return mockDelay({ id: existing.id, matchId: existing.matchId, status: "submitted" });
+    }
+    return unavailable("การแก้ผลโดยกรรมการ (S02b)");
+  }
   const scoreData = await toBackendScore(matchId, input.scoreData);
   return apiFetch(`/matches/${matchId}/result/override`, {
     method: "POST",
@@ -1644,13 +1663,4 @@ export function getTournamentWinner(
   tournamentId: number,
 ): Promise<BackendTournamentWinnerDto> {
   return apiFetch(`/tournaments/${tournamentId}/winner`);
-}
-
-/** PATCH /matches/:id/format — กำหนดรูปแบบการแข่งขัน (BO1, BO3, BO5, BO7) */
-export function setMatchFormat(matchId: MatchRef, body: { bestOf: number }): Promise<void> {
-  if (USE_MOCK) return Promise.resolve();
-  return apiFetch(`/matches/${matchId}/format`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
 }

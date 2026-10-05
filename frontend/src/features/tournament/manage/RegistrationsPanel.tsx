@@ -43,6 +43,7 @@ interface RegRow {
   /** id ของทีมในฝั่ง store — มีเฉพาะทางเดิม ใช้ผูก TeamLink และอวาตาร์ */
   teamStoreId: string | null
   teamName: string
+  teamLogoUrl: string | null
   status: 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'cancelled'
   /** null = ยังไม่ได้ตรวจ · true = ผ่าน · false = ไม่ผ่าน */
   hardFilterPassed: boolean | null
@@ -59,6 +60,7 @@ function rowsFromApi(apps: BackendTournamentApplicationDto[]): RegRow[] {
     applicationId: a.id,
     teamStoreId: null,
     teamName: a.team.name,
+    teamLogoUrl: a.team.logoUrl ?? null,
     status: a.status,
     hardFilterPassed: a.hardFilterPassed,
     hardFilterFails: [],
@@ -79,6 +81,7 @@ function rowsFromStore(s: State, t: Tournament): RegRow[] {
       applicationId: r.id,
       teamStoreId: r.team,
       teamName: tm?.name ?? '—',
+      teamLogoUrl: tm?.logoUrl ?? null,
       status: r.status as RegRow['status'],
       hardFilterPassed: tm ? fails.length === 0 : null,
       hardFilterFails: fails.map(f => `${f.user.name} — ${f.rule}`),
@@ -138,7 +141,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
                 <div className="who" key={r.key}>
                   <TeamCrestView size={24} team={tm
                     ? toTeamView(tm)
-                    : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} />
+                    : { id: r.teamStoreId ?? String(r.applicationId ?? ''), name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: r.teamLogoUrl }} />
                   <span className="meta">
                     <b>{r.teamName}</b>
                     <span className="tag">
@@ -174,7 +177,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
                   <div className="who" key={r.key}>
                     <TeamCrestView size={24} team={tm
                       ? toTeamView(tm)
-                      : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} />
+                      : { id: r.teamStoreId ?? String(r.applicationId ?? ''), name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: r.teamLogoUrl }} />
                     <span className="meta">
                       <b>{r.teamName}</b>
                       <span className="tag">
@@ -214,7 +217,12 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
       </Panel>
 
       <Modal open={!!review} onClose={() => setReview(null)} label="Soft filter — your judgement"
-        title={review?.teamName}>
+        title={
+          <span className="hstack" style={{ gap: 10, alignItems: 'center' }}>
+            <TeamCrestView size={28} team={{ id: review?.teamStoreId ?? String(review?.applicationId ?? ''), name: review?.teamName ?? '', code: (review?.teamName ?? '').slice(0, 3).toUpperCase(), color: null, logoUrl: review?.teamLogoUrl ?? null }} />
+            <span>{review?.teamName}</span>
+          </span>
+        }>
         {t.entryNotes ? (
           <div className="panel quiet vstack">
             <span className="tag"><em>//</em> What you asked for</span>

@@ -669,14 +669,12 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
     )
   }
 
-  /* กำลังแข่ง — ยังส่งผลไม่ได้จนกว่าจะกดจบ (OD-26 · S01 ตอบ MATCH_NOT_FINISHED)
-     เดิมฟอร์มผลเปิดตรงนี้ให้กรรมการกรอกครบทุกช่องแล้วค่อยเด้ง พร้อมข้อความว่า "ต้องกดจบ
   /* กำลังแข่ง — สามารถใส่คะแนนและสถิติได้เลย และการกดส่งผลคะแนนจะจบการแข่งขัน (finish match) ให้โดยอัตโนมัติ */
   if (m.status === 'in_progress') {
     if (can.submitResult) {
       return (
         <>
-          <Banner kind="info">
+          <Banner kind="warn">
             <b>การแข่งขันกำลังดำเนินอยู่:</b> คุณสามารถกรอกผลคะแนนและสถิติได้ทันที การกดส่งผลจะจบการแข่งขันให้โดยอัตโนมัติ
           </Banner>
           <ResultForm m={m} />
@@ -687,7 +685,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
       <Panel quiet>
         <span className="tag"><em>//</em> Being played</span>
         <div className="sub">
-          The match is currently in progress. The score will be recorded by the {m.mode === 'onsite' ? 'referee' : 'winning team leader'}.
+          The match is currently in progress. The score will be recorded after the {m.mode === 'onsite' ? 'referee' : 'referee or organizer'} finishes the match.
         </div>
       </Panel>
     )
@@ -776,11 +774,19 @@ export function MatchPage() {
   const state = matchStateOf({ ...m, resultStatus: result?.status ?? m.resultStatus })
   /* ผลที่ผู้จัดยกทิ้งยังมีสกอร์เดิมติดมาในใบ แต่มันไม่นับแล้ว — วาดขึ้น scorebug ต่อเท่ากับ
      ประกาศสกอร์ที่เพิ่งถูกยกเลิกว่าเป็นผลของแมตช์ */
-  const sc = result?.status === 'rejected' ? { a: null, b: null, decider: null } : scoreOf(result, m)
+  const sc = result?.status === 'rejected'
+    ? { a: null, b: null, decider: null }
+    : (result?.status === 'submitted' && result?.originalScoreData)
+      ? scoreOf({ ...result, scoreData: result.originalScoreData }, m)
+      : scoreOf(result, m)
   const settled = isSettled(result)
   const winnerId = settled ? result?.winnerTeamId ?? null : null
   const isInLineup = m.viewer.myUserId !== null
     && [m.teamA, m.teamB].some(team => team?.players.some(player => player.id === m.viewer.myUserId))
+
+  const hasOverride = result?.status === 'submitted' && !!result?.overriddenScoreData
+  const ovA = result?.overriddenScoreData?.a ?? (m.teamA ? result?.overriddenScoreData?.[String(m.teamA.id)] : null)
+  const ovB = result?.overriddenScoreData?.b ?? (m.teamB ? result?.overriddenScoreData?.[String(m.teamB.id)] : null)
 
   return (
     <>
@@ -800,6 +806,14 @@ export function MatchPage() {
             awayLost={settled && !!m.teamB && winnerId !== m.teamB.id}
             linkTeams={!USE_MOCK || !!findStoreMatch(matchId)}
           />
+          {hasOverride ? (
+            <Banner kind="warn" icon="clock">
+              <b>มีการแก้ไขคะแนน:</b> มีการแก้คะแนนเป็น{' '}
+              <b>{m.teamA?.name ?? 'ทีม A'} {ovA !== undefined && ovA !== null ? String(ovA) : '—'} - {ovB !== undefined && ovB !== null ? String(ovB) : '—'} {m.teamB?.name ?? 'ทีม B'}</b>
+              {result?.overrideReason ? ` (เหตุผล: “${result.overrideReason}”)` : ''}
+              {' — '}คะแนนบนสุดจะยังคงเป็นคะแนนเดิมจนกว่าจะได้รับการยืนยันผล
+            </Banner>
+          ) : null}
           <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'mvp' ? 'Vote MVP' : x === 'community' ? 'Community' : x }))} active={tab}
             onPick={k => navigate(`/m/${m.id}/${k}`)} />
 

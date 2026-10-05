@@ -42,12 +42,12 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
       <div className="vstack">
         {done ? (
           <Banner kind="ok" icon="check">
-            <b>Result corrected.</b> It now waits for either team leader to accept it — it is not final yet.
+            <b>บันทึกเรียบร้อยแล้ว</b> ส่งเรื่องแก้ไขผลการแข่งขันแล้ว (Result edited). It now waits for either team leader to accept it — it is not final yet.
           </Banner>
         ) : null}
         <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
           onClick={() => { setOpen(true); setDone(false) }}>
-          Correct the result
+          Edit result
         </button>
         <span className="sub">
           Use this when you know the right score. If you don&apos;t, or the problem isn&apos;t the score
@@ -60,7 +60,7 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
 
   return (
     <Panel>
-      <span className="tag"><em>//</em> Correct the result</span>
+      <span className="tag"><em>//</em> Edit result</span>
       <div className="grid2" style={{ maxWidth: 420 }}>
         <Field label={m.teamA.name} htmlFor="ov-a">
           <input id="ov-a" type="number" min={0} max={999} value={a} onChange={e => setA(Number(e.target.value))} />
@@ -86,7 +86,7 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
               setDone(true)
             } catch { /* แสดงจาก override.error ข้างบน */ }
           }}>
-          {override.isPending ? 'Saving…' : 'Save the correction'}
+          {override.isPending ? 'Saving…' : 'Save edit result'}
         </button>
       </div>
     </Panel>

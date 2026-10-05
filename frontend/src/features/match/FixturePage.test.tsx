@@ -44,6 +44,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useMatchReferees: () => ({ data: { items: [] }, isPending: false, isError: false }),
   useUnassignMatchReferee: () => idleMutation,
   useSetMatchFormat: () => ({ ...idleMutation, mutateAsync: vi.fn() }),
+  useTournamentMatches: () => ({ data: { items: [] }, isPending: false, isError: false }),
 }))
 
 vi.mock('../../hooks/useAdmin', () => ({

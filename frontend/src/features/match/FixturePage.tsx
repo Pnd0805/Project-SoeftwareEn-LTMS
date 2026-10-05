@@ -17,14 +17,12 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import {
-  useAssignReferees, useMatch, useMatchReferees, useUnassignMatchReferee, useUpdateMatch,
-  useSetMatchFormat,
+  useAssignReferees, useMatch, useMatchReferees, useSetMatchFormat, useUnassignMatchReferee, useUpdateMatch,
 } from '../../hooks/useMatch'
 import {
   useCancelTournamentRefereeRequest, useRequestMatchReferee, useTournamentRefereeRequests,
   useTournamentReferees,
 } from '../../hooks/useAdmin'
-import { isBoSport } from './matchView'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
@@ -58,19 +56,35 @@ const errorDetailId = (error: ApiError, key: string) => {
 
 /** Keep the server's scheduling decision visible instead of collapsing every rejection into one banner. */
 const scheduleError = (error: unknown) => {
-  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Please try again.'
-  if (error.code === 'MATCH_NOT_CHANGEABLE') return 'Check-in has opened or the match has already started, so its schedule is locked.'
-  if (error.code === 'SCHEDULE_INCOMPLETE') return error.message
-  if (error.code === 'OUTSIDE_TOURNAMENT_DATES') return 'The match must start and finish within the tournament dates.'
+  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง'
+  if (error.code === 'MATCH_NOT_CHANGEABLE') {
+    return 'แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว จึงไม่สามารถแก้ไขเวลาหรือสนามได้ (Check-in has opened or the match has already started, so its schedule is locked).'
+  }
+  if (error.code === 'SCHEDULE_INCOMPLETE') {
+    return error.message || 'ข้อมูลไม่ครบถ้วน: ต้องระบุเวลาเริ่ม เวลาจบ และสนามแข่งขันให้ครบ'
+  }
+  if (error.code === 'VALIDATION_FAILED') {
+    return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
+  }
+  if (error.code === 'OUTSIDE_TOURNAMENT_DATES') {
+    return error.message ? `${error.message} — วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว` : 'The match must start and finish within the tournament dates — วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว.'
+  }
   if (error.code === 'SCHEDULE_CONFLICT') {
     const id = errorDetailId(error, 'conflictingMatchId')
-    return `A squad or this venue already has an overlapping fixture${id ? ` (match #${id})` : ''}.`
+    return `ทีมหรือสนามนี้มีนัดแข่งซ้อนช่วงเวลาดังกล่าว (A squad or this venue already has an overlapping fixture${id ? ` (match #${id})` : ''}).`
   }
   if (error.code === 'SCHEDULE_BREAKS_BRACKET') {
     const id = errorDetailId(error, 'blockingMatchId')
-    return `This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}.`
+    return `ลำดับเวลาขัดแย้งกับสายการแข่ง (This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}).`
   }
   return error.message
+}
+
+/** เช็คว่ากีฬานี้เป็นกีฬาที่รองรับการเลือก Format การแข่ง (BO1, BO3, BO5, BO7) หรือไม่ (Valo, ROV, แบต) */
+const isBoSport = (sportName?: string | null) => {
+  if (!sportName) return false
+  const s = sportName.toLowerCase()
+  return s.includes('valo') || s.includes('rov') || s.includes('badminton') || s.includes('แบต')
 }
 
 /** Real mode uses the consent-based FR02 flow; it never calls the removed bulk assignment route. */
@@ -185,6 +199,8 @@ export function FixturePage() {
   const [venue, setVenue] = useState<string | null>(null)
   const [refs, setRefs] = useState<number[] | null>(null)
   const [format, setFormatVal] = useState<string | null>(null)
+  const [clientError, setClientError] = useState<string | null>(null)
+  const [savedSuccess, setSavedSuccess] = useState(false)
 
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the fixture…</span></Panel>
@@ -229,28 +245,41 @@ export function FixturePage() {
     })
 
   const save = async () => {
+    setClientError(null)
+    setSavedSuccess(false)
+    if (kickoffVal && finishVal && new Date(finishVal) <= new Date(kickoffVal)) {
+      setClientError('ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)')
+      return
+    }
     if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
       if (typeof window !== 'undefined') {
         localStorage.setItem(`match_format_${m.id}`, currentFormat)
       }
       setFormatLocked(true)
     }
-    await update.mutateAsync({
-      scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
-      scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
-      venue: venueVal || null,
-    })
-    if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
-      try {
-        const num = parseInt(currentFormat.replace('BO', ''), 10)
-        await setFormat.mutateAsync({ bestOf: num })
-      } catch {
-        /* ignore if backend doesn't support or already set */
+    try {
+      await update.mutateAsync({
+        scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
+        scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
+        venue: venueVal || null,
+      })
+      if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
+        try {
+          const num = parseInt(currentFormat.replace('BO', ''), 10)
+          await setFormat.mutateAsync({ bestOf: num })
+        } catch {
+          /* ignore if backend doesn't support or already set */
+        }
       }
-    }
-    if (USE_MOCK) {
-      await assign.mutateAsync(refsVal)
-      navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
+      if (USE_MOCK) {
+        await assign.mutateAsync(refsVal)
+        setSavedSuccess(true)
+        navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
+      } else {
+        setSavedSuccess(true)
+      }
+    } catch {
+      // Handled by update.isError
     }
   }
 
@@ -338,9 +367,9 @@ export function FixturePage() {
               ) : null}
             </Field> : <RealRefereeAssignments match={m} />}
 
-            {update.isError || assign.isError ? (
+            {clientError || update.isError || assign.isError ? (
               <Banner kind="crit">
-                <b>Could not save the fixture.</b> {scheduleError(update.error ?? assign.error)} Nothing was changed.
+                <b>Could not save the fixture.</b> {clientError ?? scheduleError(update.error ?? assign.error)} Nothing was changed.
               </Banner>
             ) : null}
 
@@ -348,7 +377,11 @@ export function FixturePage() {
               disabled={saving} onClick={save}>
               {saving ? 'Saving…' : USE_MOCK ? 'Save this fixture' : 'Save schedule'}
             </button>
-            {!USE_MOCK && update.isSuccess ? <Banner kind="ok">Schedule saved. Referee requests can now be sent separately.</Banner> : null}
+            {(update.isSuccess || savedSuccess) ? (
+              <Banner kind="ok" icon="check">
+                <b>บันทึกเรียบร้อยแล้ว</b> บันทึกข้อมูลการแข่งขันสำเร็จ (Schedule saved. Referee requests can now be sent separately.)
+              </Banner>
+            ) : null}
           </>
         ) : (
           <>

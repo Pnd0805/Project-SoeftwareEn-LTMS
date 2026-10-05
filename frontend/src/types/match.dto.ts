@@ -162,6 +162,8 @@ export interface MatchDto {
    * เป็นแค่ "เปิดเช็คอิน"
    */
   resultStatus: MatchResultStatus | null;
+  /** Format การแข่ง (Best of N) เช่น 1, 3, 5, 7 */
+  bestOf?: number | null;
   /** สิ่งที่คนที่กำลังดูอยู่ทำได้ */
   viewer: MatchViewerContext;
 }
@@ -303,6 +305,13 @@ export interface MatchResultDto {
   amendReason: string | null;
   /** isAmended = (amendedAt !== null) — ไม่มี boolean แยก */
   amendedAt: string | null;
+
+  /** เมื่อกรรมการแก้ผลที่ submitted — สกอร์เดิมก่อนแก้ */
+  originalScoreData?: Record<string, unknown> | null;
+  /** สกอร์ใหม่ที่แก้รอการยืนยัน */
+  overriddenScoreData?: Record<string, unknown> | null;
+  overrideReason?: string | null;
+  overriddenAt?: string | null;
 
   createdAt: string;
 }
@@ -558,6 +567,7 @@ export interface BackendMatchListItemDto extends BackendMatchResultSummary {
   scheduledEndTime: string | null;
   venue: string | null;
   status: MatchStatus;
+  bestOf?: number | null;
 }
 
 /**
@@ -730,6 +740,10 @@ export interface BackendResultDto {
   disputeResolution?: string | null;
   disputeResolvedBy?: PlayerRef | null;
   disputeResolvedAt?: string | null;
+  originalScoreData?: Record<string, number> | null;
+  overriddenScoreData?: Record<string, number> | null;
+  overrideReason?: string | null;
+  overriddenAt?: string | null;
 }
 
 export interface BackendDisputeRequest {
