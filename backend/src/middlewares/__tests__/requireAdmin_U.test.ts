@@ -83,7 +83,7 @@ describe('requireAdmin_U middleware', () => {
 
     expect(mockedFindAdminByUserId).toHaveBeenCalledWith(42);
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(403);
     expect(err.code).toBe('INSUFFICIENT_ADMIN_SCOPE');
@@ -99,7 +99,7 @@ describe('requireAdmin_U middleware', () => {
     await requireAdmin_U(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('INSUFFICIENT_ADMIN_SCOPE');
     expect((req as any).admin).toBeUndefined();

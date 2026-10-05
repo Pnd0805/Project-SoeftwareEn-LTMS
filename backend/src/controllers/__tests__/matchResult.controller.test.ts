@@ -34,6 +34,7 @@ import {
     getStandings,
     updateLivestream,
 } from "../matchResult.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const svc = {
     createSubmitMatchRes: vi.mocked(MatchResService.createSubmitMatchRes),
@@ -56,7 +57,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { id: "42" },
         body: {},

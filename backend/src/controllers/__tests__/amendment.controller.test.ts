@@ -13,6 +13,7 @@ vi.mock("../../services/tournament.service.js", () => ({
 import * as TournamentService from "../../services/tournament.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { approve, reject } from "../amendment.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const approveAmendment = vi.mocked(TournamentService.approveAmendment);
 const rejectAmendment = vi.mocked(TournamentService.rejectAmendment);
@@ -27,7 +28,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { id: "42" },
         body: {},

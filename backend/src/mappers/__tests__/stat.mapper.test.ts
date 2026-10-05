@@ -51,7 +51,7 @@ describe('toUserStatsDto', () => {
       championCount: 1,
     });
     expect(result.bySport).toHaveLength(2);
-    expect(result.bySport[0]).toEqual({
+    expect(result.bySport![0]).toEqual({
       sportTypeId: 1,
       sportName: 'Football',
       matchesPlayed: 10,
@@ -67,7 +67,7 @@ describe('toUserStatsDto', () => {
 
     const result = toUserStatsDto(1, rows as any);
 
-    expect(result.overall.winRate).toBeCloseTo(0.3);
+    expect(result.overall!.winRate).toBeCloseTo(0.3);
   });
 
   it('avoids a divide-by-zero and reports winRate 0 when matchesPlayed is 0 across all rows', () => {
@@ -77,7 +77,7 @@ describe('toUserStatsDto', () => {
 
     const result = toUserStatsDto(1, rows as any);
 
-    expect(result.overall.winRate).toBe(0);
+    expect(result.overall!.winRate).toBe(0);
   });
 
   it('keeps userId as passed in, independent of the row data', () => {

@@ -17,7 +17,7 @@ describe('notFound middleware', () => {
     notFound(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(404);
     expect(err.code).toBe('NOT_FOUND');

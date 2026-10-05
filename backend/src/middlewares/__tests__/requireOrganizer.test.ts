@@ -155,7 +155,7 @@ describe('requireOrganizer middleware', () => {
     await requireOrganizer(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedParseId).not.toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe('requireOrganizer middleware', () => {
     await requireOrganizer(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(404);
     expect(err.code).toBe('TOURNAMENT_NOT_FOUND');
   });
@@ -198,7 +198,7 @@ describe('requireOrganizer middleware', () => {
 
     await requireOrganizer(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('NOT_ORGANIZER');
     expect((req as any).tournament).toBeUndefined();
@@ -218,7 +218,7 @@ describe('requireOrganizer middleware', () => {
 
       await requireOrganizer(req, res, next);
 
-      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
       expect(err.status).toBe(403);
       expect(err.code).toBe('NOT_ORGANIZER');
     },
@@ -267,7 +267,7 @@ describe('requireOrganizerOfMatch middleware', () => {
 
     await requireOrganizerOfMatch(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedParseId).not.toHaveBeenCalled();
@@ -296,7 +296,7 @@ describe('requireOrganizerOfMatch middleware', () => {
 
     await requireOrganizerOfMatch(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(404);
     expect(err.code).toBe('MATCH_NOT_FOUND');
     expect(mockedFindTournamentById).not.toHaveBeenCalled();
@@ -313,7 +313,7 @@ describe('requireOrganizerOfMatch middleware', () => {
     await requireOrganizerOfMatch(req, res, next);
 
     expect(mockedFindTournamentById).toHaveBeenCalledWith(20);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(404);
     expect(err.code).toBe('TOURNAMENT_NOT_FOUND');
   });
@@ -328,7 +328,7 @@ describe('requireOrganizerOfMatch middleware', () => {
 
     await requireOrganizerOfMatch(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('NOT_ORGANIZER');
     expect((req as any).match).toBeUndefined();
@@ -375,7 +375,7 @@ describe('requireOrganizerOfAnnouncement middleware', () => {
     await requireOrganizerOfAnnouncement(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedParseId).not.toHaveBeenCalled();
@@ -437,7 +437,7 @@ describe('requireOrganizerOfAnnouncement middleware', () => {
     await requireOrganizerOfAnnouncement(req, res, next);
 
     expect(mockedFindTournamentById).toHaveBeenCalledWith(20);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(404);
     expect(err.code).toBe('TOURNAMENT_NOT_FOUND');
   });
@@ -452,7 +452,7 @@ describe('requireOrganizerOfAnnouncement middleware', () => {
 
     await requireOrganizerOfAnnouncement(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('NOT_ORGANIZER');
     expect((req as any).announcement).toBeUndefined();

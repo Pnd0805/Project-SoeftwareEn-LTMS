@@ -75,6 +75,7 @@ import {
 import * as TeamService from '../../services/team.service.js';
 import * as JoinRequestService from '../../services/joinRequest.service.js';
 import { AppError } from '../../utils/AppError.js';
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const teamSvc = vi.mocked(TeamService);
 const joinSvc = vi.mocked(JoinRequestService);
@@ -87,7 +88,7 @@ function makeRes(): Response {
   return res as Response;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
   return {
     params: { id: '10' },
     query: {},

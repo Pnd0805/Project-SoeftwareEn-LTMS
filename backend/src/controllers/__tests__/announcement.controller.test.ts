@@ -23,6 +23,7 @@ import {
     updateAnnouncement,
     deleteAnnouncement,
 } from "../announcement.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const createAnnouncementSvc = vi.mocked(AnnouncementService.createAnnouncement);
 const listAnnouncementsSvc = vi.mocked(AnnouncementService.listAnnouncements);
@@ -41,7 +42,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { id: "42" },
         query: {},

@@ -76,7 +76,7 @@ describe('requireTeamLeader middleware', () => {
 
     expect(mockedFindById).toHaveBeenCalledWith(10);
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(404);
     expect(err.code).toBe('TEAM_NOT_FOUND');
@@ -91,7 +91,7 @@ describe('requireTeamLeader middleware', () => {
     await requireTeamLeader(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
   });
@@ -105,7 +105,7 @@ describe('requireTeamLeader middleware', () => {
     await requireTeamLeader(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('NOT_TEAM_LEADER');
     expect(req.team).toBeUndefined();

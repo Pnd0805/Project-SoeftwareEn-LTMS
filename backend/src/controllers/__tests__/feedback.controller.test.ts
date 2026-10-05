@@ -35,6 +35,7 @@ import {
     reportFeedback,
     removeFeedback,
 } from "../feedback.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const svc = {
     submitOrganizerFeedback: vi.mocked(FeedbackService.submitOrganizerFeedback),
@@ -58,7 +59,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { id: "42" },
         query: {},
@@ -474,7 +475,7 @@ describe("deleteOwnTournamentComment", () => {
 });
 
 describe("removeCommentByOrganizer", () => {
-    function makeReqWithCid(overrides: Partial<Request> = {}): Request {
+    function makeReqWithCid(overrides: Overrides<Request> = {}): Request {
         return makeReq({ params: { id: "5", cid: "9" } as any, ...overrides });
     }
 

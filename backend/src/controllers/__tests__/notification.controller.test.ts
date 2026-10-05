@@ -20,6 +20,7 @@ import {
     markNotificationRead,
     markAllNotificationsRead,
 } from "../notification.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const svc = {
     listMyNotifications: vi.mocked(NotificationService.listMyNotifications),
@@ -34,7 +35,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { id: "42" },
         query: {},

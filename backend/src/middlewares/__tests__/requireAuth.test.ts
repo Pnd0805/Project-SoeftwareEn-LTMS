@@ -66,7 +66,7 @@ describe('requireAuth middleware', () => {
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
@@ -81,7 +81,7 @@ describe('requireAuth middleware', () => {
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedVerifyToken).not.toHaveBeenCalled();
   });
@@ -94,7 +94,7 @@ describe('requireAuth middleware', () => {
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedVerifyToken).not.toHaveBeenCalled();
   });
@@ -124,7 +124,7 @@ describe('requireAuth middleware', () => {
 
     expect(mockedFindById).toHaveBeenCalledWith(7);
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('USER_NOT_FOUND');
   });
@@ -139,7 +139,7 @@ describe('requireAuth middleware', () => {
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('ACCOUNT_SUSPENDED');
     expect(req.user).toBeUndefined();
@@ -155,7 +155,7 @@ describe('requireAuth middleware', () => {
 
     await requireAuth(req, makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('ACCOUNT_SUSPENDED');
     expect(err.extra).toMatchObject({ suspendedUntil: until.toISOString(), suspendedCategory: 'spam' });
     // migration 034 — client ที่แสดงแค่ message ต้องได้ประโยชน์ด้วย ไม่ใช่เฉพาะคนที่อ่าน extra ได้
@@ -170,7 +170,7 @@ describe('requireAuth middleware', () => {
 
     await requireAuth(req, makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.extra).toMatchObject({ suspendedUntil: null, suspendedCategory: null, suspendedCategoryLabel: null });
     expect(err.message).toBe('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');   // ไม่รู้ประเภท = ข้อความเดิม
   });
@@ -225,7 +225,7 @@ describe('optionalAuth middleware', () => {
     await optionalAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
@@ -240,7 +240,7 @@ describe('optionalAuth middleware', () => {
     await optionalAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedVerifyToken).not.toHaveBeenCalled();
   });
@@ -272,7 +272,7 @@ describe('optionalAuth middleware', () => {
 
     expect(mockedFindById).toHaveBeenCalledWith(7);
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('USER_NOT_FOUND');
   });
@@ -287,7 +287,7 @@ describe('optionalAuth middleware', () => {
     await optionalAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('ACCOUNT_SUSPENDED');
     expect(req.user).toBeUndefined();

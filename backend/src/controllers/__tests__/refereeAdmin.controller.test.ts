@@ -14,6 +14,7 @@ vi.mock("../../services/refereeAdmin.service.js", () => ({
 import * as AdminService from "../../services/refereeAdmin.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { listPending, approve, requestDocs, reject } from "../refereeAdmin.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const svc = {
     listPendingExternalReferees: vi.mocked(AdminService.listPendingExternalReferees),
@@ -29,7 +30,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { userId: "42" },
         body: {},

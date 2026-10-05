@@ -396,7 +396,7 @@ describe('requireCanSubmitResult middleware', () => {
 
     await requireCanSubmitResult(req, makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedParseId).not.toHaveBeenCalled();
@@ -421,7 +421,7 @@ describe('requireCanSubmitResult middleware', () => {
 
     await requireCanSubmitResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(409);
     expect(err.code).toBe('MATCH_TEAMS_INCOMPLETE');
     expect(mockedFindmatchResultByMatchId).not.toHaveBeenCalled();
@@ -435,7 +435,7 @@ describe('requireCanSubmitResult middleware', () => {
 
     await requireCanSubmitResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(409);
     expect(err.code).toBe('MATCH_RESULT_ALREADY_VERIFIED');
   });
@@ -466,7 +466,7 @@ describe('requireCanSubmitResult middleware', () => {
 
     await requireCanSubmitResult(req, makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
     expect((req as any).submitrole).toBeUndefined();
@@ -496,7 +496,7 @@ describe('requireCanSubmitResult middleware', () => {
 
     await requireCanSubmitResult(makeReq({ id: '30' }, otherUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
   });
@@ -531,7 +531,7 @@ describe('requireCanVerifyResult middleware', () => {
   it('calls next with NO_TOKEN when req.user is missing', async () => {
     const next = vi.fn() as NextFunction;
     await requireCanVerifyResult(makeReq({ id: '30' }, undefined), makeRes(), next);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
   });
@@ -544,7 +544,7 @@ describe('requireCanVerifyResult middleware', () => {
 
     await requireCanVerifyResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(409);
     expect(err.code).toBe('MATCH_RESULT_ALREADY_VERIFIED');
   });
@@ -557,7 +557,7 @@ describe('requireCanVerifyResult middleware', () => {
 
     await requireCanVerifyResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('SAME_PERSON_CANNOT_VERIFY');
   });
@@ -571,7 +571,7 @@ describe('requireCanVerifyResult middleware', () => {
 
     await requireCanVerifyResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
   });
@@ -601,7 +601,7 @@ describe('requireCanVerifyResult middleware', () => {
 
     await requireCanVerifyResult(makeReq({ id: '30' }, otherUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
   });
@@ -674,7 +674,7 @@ describe('requireCanVerifyResult middleware', () => {
 
       await requireCanVerifyResult(makeReq({ id: '30' }, otherUser), makeRes(), next);
 
-      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
       expect(err.status).toBe(403);
       expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
       // ข้อความต้องบอกว่าต้องเป็นหัวหน้าทีม ไม่ใช่ข้อความเดิมที่ชี้ไปทางกรรมการ
@@ -688,7 +688,7 @@ describe('requireCanVerifyResult middleware', () => {
 
       await requireCanVerifyResult(makeReq({ id: '30' }, makeUser({ user_id: 777 })), makeRes(), next);
 
-      expect((next as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ code: 'WRONG_SUBMITTER_ROLE' });
+      expect((next as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toMatchObject({ code: 'WRONG_SUBMITTER_ROLE' });
     });
 
     // ★ SAME_PERSON ต้องยังมาก่อน — กรรมการที่เพิ่งเขียนทับห้ามรับรองงานตัวเอง
@@ -699,7 +699,7 @@ describe('requireCanVerifyResult middleware', () => {
 
       await requireCanVerifyResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-      expect((next as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+      expect((next as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toMatchObject({
         status: 403, code: 'SAME_PERSON_CANNOT_VERIFY',
       });
     });
@@ -712,7 +712,7 @@ describe('requireCanVerifyResult middleware', () => {
       // หัวหน้าทีม A กด — ต้องไม่ผ่าน เพราะผลนี้คู่กรณีเป็นคนเขียน
       await requireCanVerifyResult(makeReq({ id: '30' }, makeUser({ user_id: 100 })), makeRes(), next);
 
-      expect((next as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ code: 'WRONG_SUBMITTER_ROLE' });
+      expect((next as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toMatchObject({ code: 'WRONG_SUBMITTER_ROLE' });
     });
   });
 
@@ -733,7 +733,7 @@ describe('requireCanDisputeResult middleware', () => {
   it('calls next with NO_TOKEN when req.user is missing', async () => {
     const next = vi.fn() as NextFunction;
     await requireCanDisputeResult(makeReq({ id: '30' }, undefined), makeRes(), next);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
   });
@@ -746,7 +746,7 @@ describe('requireCanDisputeResult middleware', () => {
 
     await requireCanDisputeResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(409);
     expect(err.code).toBe('DISPUTE_ALREADY_ACTIVE');
   });
@@ -759,7 +759,7 @@ describe('requireCanDisputeResult middleware', () => {
 
     await requireCanDisputeResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('RESULT_IS_WALKOVER');
   });
 
@@ -771,7 +771,7 @@ describe('requireCanDisputeResult middleware', () => {
 
     await requireCanDisputeResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('RESULT_REJECTED');
   });
 
@@ -789,7 +789,7 @@ describe('requireCanDisputeResult middleware', () => {
 
     await requireCanDisputeResult(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(409);
     expect(err.code).toBe('DISPUTE_WINDOW_CLOSED');
   });
@@ -804,7 +804,7 @@ describe('requireCanDisputeResult middleware', () => {
 
     await requireCanDisputeResult(makeReq({ id: '30' }, otherUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
   });
@@ -840,7 +840,7 @@ describe('requireCanRecordStats middleware', () => {
   it('calls next with NO_TOKEN when req.user is missing', async () => {
     const next = vi.fn() as NextFunction;
     await requireCanRecordStats(makeReq({ id: '30' }, undefined), makeRes(), next);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
   });
@@ -855,7 +855,7 @@ describe('requireCanRecordStats middleware', () => {
 
     await requireCanRecordStats(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(409);
     expect(err.code).toBe('INSUFFICIENT_REFEREES');
   });
@@ -871,7 +871,7 @@ describe('requireCanRecordStats middleware', () => {
 
     await requireCanRecordStats(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
   });
@@ -901,7 +901,7 @@ describe('requireCanRecordStats middleware', () => {
 
     expect(mockedFindTournamentById).not.toHaveBeenCalled();
     expect(mockedCountAcceptedByMatch).not.toHaveBeenCalled();
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.code).toBe('WRONG_SUBMITTER_ROLE');
   });
 
@@ -921,7 +921,7 @@ describe('requireReferee middleware', () => {
   it('calls next with NO_TOKEN when req.user is missing', async () => {
     const next = vi.fn() as NextFunction;
     await requireReferee(makeReq({ id: '30' }, undefined), makeRes(), next);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(401);
     expect(err.code).toBe('NO_TOKEN');
     expect(mockedParseId).not.toHaveBeenCalled();
@@ -946,7 +946,7 @@ describe('requireReferee middleware', () => {
 
     await requireReferee(makeReq({ id: '30' }, refereeUser), makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(404);
     expect(err.code).toBe('MATCH_NOT_FOUND');
   });
@@ -960,7 +960,7 @@ describe('requireReferee middleware', () => {
 
     await requireReferee(req, makeRes(), next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err.status).toBe(403);
     expect(err.code).toBe('NOT_REFEREE');
     expect((req as any).match).toBeUndefined();

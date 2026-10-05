@@ -10,6 +10,7 @@ vi.mock("../../services/upload.service.js", () => ({
 import * as UploadService from "../../services/upload.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { presignUpload } from "../upload.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const createPresignedUpload = vi.mocked(UploadService.createPresignedUpload);
 
@@ -20,7 +21,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         body: {},
         user: { user_id: 7 },

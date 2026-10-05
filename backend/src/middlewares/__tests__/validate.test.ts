@@ -43,7 +43,7 @@ describe('validate middleware', () => {
     validate(schema)(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(400);
     expect(err.code).toBe('VALIDATION_FAILED');
@@ -59,7 +59,7 @@ describe('validate middleware', () => {
 
     validate(schema)(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     const fields = err.extra?.fields as Record<string, string>;
     expect(Object.keys(fields).sort()).toEqual(['age', 'email']);
   });
@@ -71,7 +71,7 @@ describe('validate middleware', () => {
 
     validate(schema)(req, res, next);
 
-    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0][0] as AppError;
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
     const fields = err.extra?.fields as Record<string, string>;
     expect(fields).toHaveProperty('email');
   });

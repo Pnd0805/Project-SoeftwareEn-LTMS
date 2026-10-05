@@ -39,7 +39,7 @@ describe('matchHistory.service', () => {
             { match_id: 10, stat_key: 'assists', stat_label_th: 'แอสซิสต์', value_int: 1 },
         ]);
         const result = await Service.getMatchHistory(3);
-        expect(result.items[0]?.playerStats).toHaveLength(2);
+        expect(result.items![0]?.playerStats).toHaveLength(2);
     });
 
     /**

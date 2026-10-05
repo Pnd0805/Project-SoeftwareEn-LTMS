@@ -10,6 +10,7 @@ vi.mock("../../services/refereeIdentity.service.js", () => ({
 
 import * as IdentityService from "../../services/refereeIdentity.service.js";
 import { getMine, submitDocs } from "../refereeIdentity.controller.js";
+import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
 const svc = {
     getMyIdentity: vi.mocked(IdentityService.getMyIdentity),
@@ -23,7 +24,7 @@ function makeRes() {
     return res as unknown as Response & typeof res;
 }
 
-function makeReq(overrides: Partial<Request> = {}): Request {
+function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         body: {},
         user: { user_id: 7 },

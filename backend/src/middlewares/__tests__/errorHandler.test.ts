@@ -90,7 +90,7 @@ describe('errorHandler middleware', () => {
       errorHandler(err, req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      const body = (res.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const body = (res.json as ReturnType<typeof vi.fn>).mock.calls[0]![0];
       expect(body.error.code).toBe('INTERNAL_ERROR');
       // The raw error message (which could leak internals like a DB
       // connection string) must never reach the client.
