@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit --skipLibCheck false",
+    "typecheck": "tsc --noEmit",
     "migrate": "tsx src/scripts/migrate.ts",
     "test": "vitest run",
     "test:watch": "vitest",
