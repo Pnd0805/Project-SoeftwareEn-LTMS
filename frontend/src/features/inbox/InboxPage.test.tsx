@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { notifications } = vi.hoisted(() => ({ notifications: vi.fn() }))
+const { notifications, markRead } = vi.hoisted(() => ({ notifications: vi.fn(), markRead: vi.fn() }))
 
 vi.mock('../../api/client', async original => ({
   ...await original<typeof import('../../api/client')>(), USE_MOCK: true,
@@ -12,7 +12,7 @@ vi.mock('../../hooks/useAuth', () => ({
 }))
 vi.mock('../../hooks/useNotifications', () => ({
   useNotifications: notifications,
-  useMarkNotificationRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useMarkNotificationRead: () => ({ mutate: markRead, isPending: false }),
   useMarkNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
@@ -42,5 +42,16 @@ describe('InboxPage response states', () => {
     draw()
     expect(screen.getByText('Unable to load inbox')).toBeInTheDocument()
     expect(screen.queryByText('Nothing here yet')).not.toBeInTheDocument()
+  })
+
+  it('uses the message to name a mock action when no notification title exists', () => {
+    notifications.mockReturnValue({ data: { items: [{ id: 31, message: 'Your team invitation has expired.',
+      href: '/team/t-9', read: false, createdAt: '2026-10-01T00:00:00Z' }] }, isLoading: false, isError: false })
+    markRead.mockImplementation((_id, options) => options.onSuccess())
+    draw()
+    fireEvent.click(screen.getByRole('button', { name: 'Mark read: Your team invitation has expired.' }))
+    expect(markRead).toHaveBeenCalledWith(31, expect.any(Object))
+    expect(screen.getByRole('status')).toHaveTextContent('Marked read: Your team invitation has expired.')
+    expect(screen.queryByRole('heading', { name: 'Action requests' })).not.toBeInTheDocument()
   })
 })

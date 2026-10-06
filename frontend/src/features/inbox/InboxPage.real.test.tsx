@@ -25,7 +25,7 @@ describe('real C1 Inbox', () => {
       <Route path="/t/:id/community" element={<div>Reported comments</div>} />
     </Routes></MemoryRouter>)
     expect(screen.getByText('Inbox · 9 unread')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Open:/ }))
     expect(markRead).toHaveBeenCalledWith(31)
     expect(screen.getByText('Reported comments')).toBeInTheDocument()
   })
@@ -44,10 +44,10 @@ describe('real C1 Inbox', () => {
     </Routes></MemoryRouter>)
 
     expect(screen.getByText('คุณได้รับเชิญเป็นกรรมการ')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Open:/ })).toBeInTheDocument()
     /* รับ/ปฏิเสธอยู่ในแผง Action requests ของหน้าเดียวกัน */
     expect(screen.getByText('Action requests')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Open:/ }))
     expect(markRead).toHaveBeenCalledWith(16)
     expect(screen.getByText('Private tournament eligibility')).toBeInTheDocument()
   })
@@ -59,7 +59,7 @@ it('opens tournament announcements from Inbox and marks the delivered notificati
     unreadCount: 1, pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 },
   } })
   render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<InboxPage />} /><Route path="/t/23/announcements" element={<div>Court B announcement</div>} /></Routes></MemoryRouter>)
-  fireEvent.click(screen.getByRole('button', { name: 'Open' })); expect(markRead).toHaveBeenCalledWith(99); expect(screen.getByText('Court B announcement')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /^Open:/ })); expect(markRead).toHaveBeenCalledWith(99); expect(screen.getByText('Court B announcement')).toBeInTheDocument()
 })
 
 it('opens rewritten comments in Community without assuming every rewrite is reported', () => {
@@ -71,7 +71,7 @@ it('opens rewritten comments in Community without assuming every rewrite is repo
   render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<InboxPage />} /><Route path="/t/19/community" element={<Destination />} /></Routes></MemoryRouter>)
   expect(screen.getByText('Removed comment rewritten')).toBeInTheDocument()
   expect(screen.getByText(/an earlier report may remain/)).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+  fireEvent.click(screen.getByRole('button', { name: /^Open:/ }))
   expect(markRead).toHaveBeenCalledWith(100)
   expect(screen.getByText('Destination: /t/19/community')).toBeInTheDocument()
 })
@@ -81,7 +81,7 @@ it.each([null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])('does not create an inv
     items: [{ id: 101, type: 'referee_invited', title: 'Invitation', message: 'Read the invitation.', relatedEntityType: 'tournament', relatedEntityId: id, isRead: false, createdAt: '2026-10-01T00:00:00Z' }], unreadCount: 1,
   } })
   render(<MemoryRouter><InboxPage /></MemoryRouter>)
-  expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Open:/ })).not.toBeInTheDocument()
   expect(screen.getByText('Action requests')).toBeInTheDocument()
 })
 

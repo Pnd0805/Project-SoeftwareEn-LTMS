@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Empty, Panel } from '../../components/kit/primitives'
+import { Banner, Empty, Panel } from '../../components/kit/primitives'
 import { useMe } from '../../hooks/useAuth'
 import { useMarkNotificationRead, useMarkNotificationsRead, useNotifications } from '../../hooks/useNotifications'
 import { USE_MOCK } from '../../api/client'
@@ -8,6 +8,7 @@ import type { NotificationDto } from '../../types/notification.dto'
 import { Icon } from '../../components/kit/Icon'
 import type { IconName } from '../../components/kit/Icon'
 import { BackendInbox } from './BackendInbox'
+import '../search/search-inbox-workspace.css'
 
 function age(at: string): string {
   const seconds = Math.round((Date.now() - new Date(at).getTime()) / 1000)
@@ -60,14 +61,16 @@ export function InboxPage() {
   const userId = currentUser?.id
   const [page, setPage] = useState(1)
   const [unread, setUnread] = useState(false)
-  const { data, isLoading, isError, error } = useNotifications(userId, true, page, unread)
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'crit'; text: string } | null>(null)
+  const { data, isLoading, isError, error, refetch } = useNotifications(userId, true, page, unread)
   const markRead = useMarkNotificationRead(userId)
   const markAllRead = useMarkNotificationsRead(userId)
 
-  if (userLoading) return <Panel quiet><span className="sub">Loading inbox…</span></Panel>
-  if (!currentUser) return <Empty icon="bell" title="Sign in to open Inbox" />
+  if (userLoading) return <div className="inbox-page"><h1 className="disp">Inbox</h1><Panel quiet><span className="sub" role="status">Loading inbox…</span></Panel></div>
+  if (!currentUser) return <div className="inbox-page"><h1 className="disp">Inbox</h1><Empty icon="bell" title="Sign in to open Inbox" /></div>
 
-  const list = data && Array.isArray(data.items) ? data.items : null
+  const denied = isError && typeof error === 'object' && error !== null && 'status' in error && (error.status === 401 || error.status === 403)
+  const list = !denied && data && Array.isArray(data.items) ? data.items : null
   const count = data?.unreadCount ?? list?.filter(n => !(n.isRead ?? n.read)).length ?? 0
   const totalPages = data?.pagination?.totalPages ?? 1
   const groups = new Map<string, NotificationDto[]>()
@@ -76,43 +79,53 @@ export function InboxPage() {
     groups.set(category, [...(groups.get(category) ?? []), item])
   }
 
-  return <>
+  return <div className="inbox-page">
     <div className="spread">
-      <h1 className="disp" style={{ fontSize: 32 }}>Inbox {count > 0 ? `· ${count} unread` : ''}</h1>
+      <h1 className="disp">Inbox {count > 0 && !denied ? `· ${count} unread` : ''}</h1>
       <span className="hstack">
-        {!USE_MOCK ? <button className="btn ghost" type="button" onClick={() => { setPage(1); setUnread(!unread) }}>
+        {!USE_MOCK ? <button className="btn ghost" type="button" aria-pressed={unread} onClick={() => { setPage(1); setUnread(!unread) }}>
           {unread ? 'Show all' : 'Unread only'}
         </button> : null}
-        {count > 0 ? <button className="btn" type="button" disabled={markAllRead.isPending}
-          onClick={() => markAllRead.mutate()}>Mark all read</button> : null}
+        {count > 0 && !denied ? <button className="btn" type="button" disabled={markAllRead.isPending || markRead.isPending}
+          onClick={() => { setNotice(null); markAllRead.mutate(undefined, {
+            onSuccess: () => setNotice({ kind: 'ok', text: 'All notifications marked read.' }),
+            onError: () => setNotice({ kind: 'crit', text: 'Could not mark all notifications read. Try again.' }),
+          }) }}>Mark all read</button> : null}
       </span>
     </div>
-    {isLoading ? <Panel quiet><span className="sub">Loading notifications…</span></Panel> : null}
-    {isError || (!isLoading && !list) ? <Empty icon="warn" title="Unable to load inbox"
-      sub={error instanceof Error ? error.message : 'Please try again later.'} /> : null}
-    {markRead.isError || markAllRead.isError ? <Panel quiet><span className="sub">Could not mark notifications read. Try again.</span></Panel> : null}
-    {list?.length ? <div className="vstack">{Array.from(groups, ([category, items]) => <section className="panel quiet" key={category} aria-label={category}><h2 style={{ fontSize: 20 }}>{category} <span className="tag">{items.length} on this page</span></h2>{items.map(n => {
+    {notice ? <div role={notice.kind === 'crit' ? 'alert' : 'status'}><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
+    {markRead.isPending || markAllRead.isPending ? <p className="sub" role="status">Marking notifications read…</p> : null}
+    {isLoading ? <Panel quiet><span className="sub" role="status">Loading notifications…</span></Panel> : null}
+    {isError || (!isLoading && !list) ? <Panel quiet><div role="alert"><b>Unable to load inbox</b><p className="sub">{error instanceof Error ? error.message : 'Notifications are unavailable. Try again.'}</p></div>
+      <button className="btn ghost" type="button" onClick={() => void refetch()}>Retry notifications</button></Panel> : null}
+    {list?.length ? <div className="inbox-notifications">{Array.from(groups, ([category, items]) => <section className="panel quiet" key={category} aria-label={category}><h2>{category} <span className="tag">{items.length} on this page</span></h2>{items.map(n => {
       const href = notificationHref(n)
       const isRead = n.isRead ?? n.read ?? false
+      const label = n.title ?? n.message ?? 'Notification'
       return <div className="notif" key={n.id}>
-        <span className={`dot ${isRead ? 'read' : ''}`} />
+        <span className={`dot ${isRead ? 'read' : ''}`} aria-hidden="true" />
         <Icon name={notificationIcon(n.type)} size={17} />
-        <span className="txt"><b>{n.title ?? 'Notification'}</b><br />{n.message}<br />
-          <span className="tag">{age(n.createdAt)}</span></span>
-        {!isRead ? <button className="btn ghost" type="button" disabled={markRead.isPending}
-          onClick={() => markRead.mutate(n.id)}>Mark read</button> : null}
-        {href ? <button className="btn ghost" type="button" onClick={() => {
+        <span className="txt"><b>{n.title ?? 'Notification'}</b><span className="inbox-message">{n.message}</span>
+          <span className="tag">{isRead ? 'Read' : 'Unread'} · <time dateTime={n.createdAt} title={n.createdAt}>{age(n.createdAt)}</time></span></span>
+        <div className="inbox-row-actions">
+        {!isRead ? <button className="btn ghost" type="button" aria-label={`Mark read: ${label}`} disabled={markRead.isPending || markAllRead.isPending}
+          onClick={() => { setNotice(null); markRead.mutate(n.id, {
+            onSuccess: () => setNotice({ kind: 'ok', text: `Marked read: ${label}` }),
+            onError: () => setNotice({ kind: 'crit', text: `Could not mark read: ${label}. Try again.` }),
+          }) }}>Mark read</button> : null}
+        {href ? <button className="btn ghost" type="button" aria-label={`Open: ${label}`} onClick={() => {
           if (!isRead) markRead.mutate(n.id)
           navigate(href)
         }}>Open</button> : null}
+        </div>
       </div>
     })}</section>)}</div> : null}
-    {list?.length === 0 ? <Empty icon="bell" title="Nothing here yet" sub="Approvals, results and announcements land here." /> : null}
-    {!USE_MOCK && totalPages > 1 ? <div className="hstack">
+    {!isLoading && !isError && list?.length === 0 ? <Empty icon="bell" title={unread ? 'No unread notifications' : 'Nothing here yet'} sub="Approvals, results and announcements land here." /> : null}
+    {!USE_MOCK && !denied && totalPages > 1 ? <div className="hstack">
       <button className="btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
       <span className="tag">Page {page} of {totalPages}</span>
       <button className="btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
     </div> : null}
     {!USE_MOCK ? <BackendInbox /> : null}
-  </>
+  </div>
 }

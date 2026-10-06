@@ -125,7 +125,7 @@ describe('Search applicable source states', () => {
     hooks.teams.mockReturnValue(teams)
     search()
     expect(screen.getByText('Campus Cup')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Retry squads' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry teams' }))
     expect(teams.refetch).toHaveBeenCalledOnce()
     expect(hooks.tournaments.mock.results[0].value.refetch).not.toHaveBeenCalled()
     expect(screen.queryByText('Nothing matched “Campus”')).not.toBeInTheDocument()
