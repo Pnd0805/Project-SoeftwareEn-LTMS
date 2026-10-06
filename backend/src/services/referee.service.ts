@@ -16,6 +16,7 @@ import * as NotificationService from './notification.service.js';
 import { checkTournament } from '../utils/checkExist.js';
 import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
 import { toAssignableRefereeDto } from '../mappers/referee.mapper.js';
+import { timesOverlap } from '../utils/timeOverlap.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -163,7 +164,7 @@ export async function assertNoCrossTournamentConflict(
         .filter(b => !wanted.some(w => w.match_id === b.matchId));
 
     for(const w of wanted){
-        const clash = held.find(b => w.scheduled_time! < b.scheduled_end_time! && b.scheduled_time! < w.scheduled_end_time!);
+        const clash = held.find(b => timesOverlap(w.scheduled_time!, w.scheduled_end_time!, b.scheduled_time!, b.scheduled_end_time!));
         if(clash){
             throw new AppError(409, 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT',
                 `แมตช์ #${w.match_id} เวลาซ้อนกับแมตช์ #${clash.matchId} ของทัวร์นาเมนต์ "${clash.tournamentName}" ` +
@@ -184,7 +185,7 @@ export function assertSchedulable(matches : Schedulable[]): void {
     const sorted = [...matches].sort((a, b) => a.scheduled_time!.getTime() - b.scheduled_time!.getTime());
     for(let i = 1; i < sorted.length; i++){
         const prev = sorted[i - 1]!, cur = sorted[i]!;
-        if(cur.scheduled_time! < prev.scheduled_end_time!){
+        if(timesOverlap(prev.scheduled_time!, prev.scheduled_end_time!, cur.scheduled_time!, cur.scheduled_end_time!)){
             throw new AppError(409, 'REFEREE_TIME_CONFLICT',
                 `แมตช์ #${prev.match_id} กับ #${cur.match_id} เวลาซ้อนกัน กรรมการคนเดียวคุมพร้อมกันไม่ได้`,
                 { matchIds : [prev.match_id, cur.match_id] });
@@ -455,7 +456,7 @@ function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'o
             .sort((a, b) => a.scheduled_time!.getTime() - b.scheduled_time!.getTime());
         for(let i = 1; i < sorted.length; i++){
             const prev = sorted[i - 1]!, cur = sorted[i]!;
-            if(cur.scheduled_time! < prev.scheduled_end_time!){
+            if(timesOverlap(prev.scheduled_time!, prev.scheduled_end_time!, cur.scheduled_time!, cur.scheduled_end_time!)){
                 // tournamentRefereeId = แถวของ **แมตช์แรกในคู่ที่ทับ** (prev)
                 // ถ้าคนนี้มีหลายแถว สองแมตช์อาจมาจากต่างแถวกัน ⇒ ค่านี้ตอบได้แค่แถวเดียว
                 // คงคีย์เดิมไว้เพื่อไม่ให้ FE พัง · ตัวที่มีความหมายจริงคือ userId + matchIds

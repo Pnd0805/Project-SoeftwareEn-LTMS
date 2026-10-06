@@ -604,3 +604,145 @@ describe('listMyMatches (/me/matches)', () => {
     expect((await matchService.listMyMatches(7, { role: 'referee' })).items).toEqual([]);
   });
 });
+
+/**
+ * 🆕 ธงเวลาทับของตัวเอง ข้ามทุกทัวร์ (มติ 6 ต.ค. 2569 · ทางเลือก ก)
+ *
+ * 🔴 ช่องโหว่ที่ปิด: ตอน ORG จัดตาราง findConflictingMatch ตรวจทีมกับสนามข้ามทัวร์
+ *   แต่ไม่ตรวจ "คน" ⇒ คนเดียวอยู่หลายทีมได้ (team_members UNIQUE แค่ team_id+user_id)
+ *   ⇒ ORG สองคนที่ไม่รู้จักกันจัดแมตช์เวลาเดียวกันให้คนเดียวกันได้ ไม่มีใครรู้จนถึงวันแข่ง
+ * ★ เป็นคำเตือนไม่ใช่การบล็อก เพราะผู้เล่นไม่มีประตู "กดรับ" และการเตือน ORG
+ *   เท่ากับเปิดข้อมูลทัวร์อื่นของคนอื่น ⇒ ที่ถูกคือหน้าของเจ้าตัว
+ */
+describe('listMyMatches — ธงเวลาทับของตัวเอง (conflictingMatchIds)', () => {
+  /** ผู้เล่น: ช่วงเวลาเป็น Date ทั้งคู่ (ฝั่ง repo คืน Date) */
+  const playerRow = (id: number, start: string, end: string | null, o: Record<string, unknown> = {}) => ({
+    match_id: id, round_number: 1, scheduled_time: new Date(start), scheduled_end_time: end === null ? null : new Date(end),
+    venue: null, mode: 'onsite', match_status: 'scheduled',
+    tournament_id: 50, tournament_name: 'T', sport_type_id: 1,
+    team_a_id: 11, team_a_name: 'A', team_b_id: 12, team_b_name: 'B', my_team_id: 11, ...o,
+  });
+  const refItem = (id: number, start: string, end: string, o: Record<string, unknown> = {}) => ({
+    id, tournament: { id: 51, name: 'U', sportTypeId: 2 }, round: 1, teamA: null, teamB: null,
+    scheduledTime: new Date(start), scheduledEndTime: new Date(end),
+    venue: null, mode: 'online', status: 'scheduled', ...o,
+  });
+
+  async function run(players: unknown[], referees: unknown[] = []) {
+    vi.mocked(MatchRepo.findMatchesOfPlayer).mockResolvedValue(players as never);
+    const { listMyRefereeMatches } = await import('../referee.service.js');
+    vi.mocked(listMyRefereeMatches).mockResolvedValue({ items: referees } as never);
+    const out = await matchService.listMyMatches(7, {});
+    return new Map(out.items.map(m => [m.id, (m as { conflictingMatchIds: number[] }).conflictingMatchIds]));
+  }
+
+  it('ลงแข่งสองทัวร์เวลาทับกัน = ติดธงชี้หากันทั้งสองฝั่ง', async () => {
+    const got = await run([
+      playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T04:30:00Z'),
+      playerRow(2, '2026-10-10T04:00:00Z', '2026-10-10T05:00:00Z', { tournament_id: 60, tournament_name: 'T2', team_a_id: 21, my_team_id: 21 }),
+    ]);
+
+    expect(got.get(1)).toEqual([2]);
+    expect(got.get(2)).toEqual([1]);
+  });
+
+  it('เวลาไม่ทับ = ไม่ติดธง', async () => {
+    const got = await run([
+      playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T04:00:00Z'),
+      playerRow(2, '2026-10-10T06:00:00Z', '2026-10-10T07:00:00Z'),
+    ]);
+
+    expect(got.get(1)).toEqual([]);
+    expect(got.get(2)).toEqual([]);
+  });
+
+  /**
+   * ★ ติดกันพอดีไม่ใช่การทับ — จบ 11:00 แล้วเริ่ม 11:00 ไปต่อได้
+   *   ถ้านับเป็นทับ ตารางที่จัดชนกันพอดี (เรื่องปกติในทัวร์) จะขึ้นเตือนทั้งวัน
+   */
+  it('จบพอดีแล้วเริ่มต่อ = ไม่ใช่การทับ', async () => {
+    const got = await run([
+      playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T04:00:00Z'),
+      playerRow(2, '2026-10-10T04:00:00Z', '2026-10-10T05:00:00Z'),
+    ]);
+
+    expect(got.get(1)).toEqual([]);
+  });
+
+  /** ★ ข้อจำกัดจริงคือ "ร่างกายเดียวอยู่สองที่พร้อมกันไม่ได้" ⇒ ข้ามบทบาทด้วย */
+  it('ลงแข่งทัวร์หนึ่ง ทับกับงานกรรมการอีกทัวร์ = ติดธงข้ามบทบาท', async () => {
+    const got = await run(
+      [playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T04:30:00Z')],
+      [refItem(9, '2026-10-10T04:00:00Z', '2026-10-10T05:00:00Z')]);
+
+    expect(got.get(1)).toEqual([9]);
+    expect(got.get(9)).toEqual([1]);
+  });
+
+  it('ยังไม่มีเวลาเริ่ม/จบ = ไม่ติดธง (เทียบไม่ได้ ไม่ใช่ไม่ทับ)', async () => {
+    const got = await run([
+      playerRow(1, '2026-10-10T03:00:00Z', null),
+      playerRow(2, '2026-10-10T03:30:00Z', '2026-10-10T04:00:00Z'),
+    ]);
+
+    expect(got.get(1)).toEqual([]);
+    expect(got.get(2)).toEqual([]);
+  });
+
+  /**
+   * 🔴 แข่งจบแล้วรอผล (finished) ไม่ใช่คู่ขัดแย้ง — เจ้าตัวไม่ต้องไปอยู่ที่นั้นอีก
+   *   แต่ยังอยู่ในลิสต์ เพราะลิสต์ตัดแค่ completed ตามมติ 20 ก.ย. (คนละเรื่องกัน)
+   */
+  it('แมตช์ที่แข่งจบแล้วรอผล ไม่นับเป็นคู่ขัดแย้ง แต่ยังอยู่ในลิสต์', async () => {
+    const got = await run([
+      playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T04:30:00Z'),
+      playerRow(2, '2026-10-10T04:00:00Z', '2026-10-10T05:00:00Z', { match_status: 'finished' }),
+    ]);
+
+    expect(got.has(2)).toBe(true);
+    expect(got.get(1)).toEqual([]);
+    expect(got.get(2)).toEqual([]);
+  });
+
+  /**
+   * ★ แมตช์ที่เลยเวลาแล้วแต่ยัง scheduled = อาจกำลังเริ่มช้า ⇒ ยังต้องไป ⇒ ยังนับเป็นการทับ
+   *   (เหตุผลเดียวกับ bookingsOfReferee ของด่านกรรมการ — ไม่ตัดด้วย "เวลาผ่านไปแล้ว")
+   */
+  it('แมตช์ในอดีตที่ยัง scheduled ยังนับเป็นการทับ', async () => {
+    const got = await run([
+      playerRow(1, '2020-01-01T03:00:00Z', '2020-01-01T04:30:00Z'),
+      playerRow(2, '2020-01-01T04:00:00Z', '2020-01-01T05:00:00Z'),
+    ]);
+
+    expect(got.get(1)).toEqual([2]);
+  });
+
+  it('ทับสามแมตช์พร้อมกัน = คืนครบทุกตัว ไม่ใช่ตัวแรกตัวเดียว', async () => {
+    const got = await run([
+      playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T06:00:00Z'),
+      playerRow(2, '2026-10-10T04:00:00Z', '2026-10-10T05:00:00Z'),
+      playerRow(3, '2026-10-10T05:30:00Z', '2026-10-10T07:00:00Z'),
+    ]);
+
+    expect(got.get(1)).toEqual([2, 3]);
+  });
+
+  /**
+   * 🔴 ?role=player ต้องไม่ทำให้ธงหายไป... แต่ต้องรู้ด้วยว่ามันเปลี่ยนความหมาย:
+   *   ธงคำนวณจาก "ลิสต์ที่กรองแล้ว" ⇒ กรองเฉพาะผู้เล่น จะไม่เห็นว่าทับกับงานกรรมการ
+   *   ★ ตั้งใจให้เป็นแบบนี้ — ธงอธิบายสิ่งที่ผู้ใช้เห็นอยู่บนจอ ไม่ใช่สิ่งที่ถูกซ่อนไป
+   *     ถ้าอยากเห็นภาพรวมทั้งหมด ต้องเรียกแบบไม่กรอง (ซึ่งเป็นค่าตั้งต้นของหน้านั้น)
+   */
+  it('?role=player: ธงคิดจากลิสต์ที่กรองแล้ว ⇒ ไม่เห็นการทับกับงานกรรมการ', async () => {
+    vi.mocked(MatchRepo.findMatchesOfPlayer).mockResolvedValue([
+      playerRow(1, '2026-10-10T03:00:00Z', '2026-10-10T04:30:00Z')] as never);
+    const { listMyRefereeMatches } = await import('../referee.service.js');
+    vi.mocked(listMyRefereeMatches).mockResolvedValue(
+      { items: [refItem(9, '2026-10-10T04:00:00Z', '2026-10-10T05:00:00Z')] } as never);
+
+    const out = await matchService.listMyMatches(7, { role: 'player' });
+
+    expect(out.items.map(m => m.id)).toEqual([1]);
+    expect((out.items[0] as { conflictingMatchIds: number[] }).conflictingMatchIds).toEqual([]);
+  });
+});

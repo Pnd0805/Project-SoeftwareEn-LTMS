@@ -20,6 +20,7 @@ import { buildPagination } from '../utils/pagination.js';
 import type { SubmitCheckinInput, ManualCheckinInput, ScheduleMatchInput } from '../schemas/match.schema.js';
 import type { MatchListFilters } from '../repositories/match.repo.js';
 import type { MatchRow } from '../types/db.js';
+import { timesOverlap } from '../utils/timeOverlap.js';
 
 export async function getTournamentMatches(
     tournamentId: number,
@@ -88,14 +89,51 @@ export async function listMyMatches(userId: number, filters: { role?: 'player' |
         scheduledTime: r.scheduled_time, scheduledEndTime: r.scheduled_end_time, venue: r.venue, mode: r.mode, status: r.match_status,
     }));
     const referee = (await RefereeService.listMyRefereeMatches(userId, {})).items.map(m => ({ ...m, role: 'referee' as const, myTeamId: null }));
-    const items = [...player, ...referee]
+    const found = [...player, ...referee]
         .filter(m => filters.role === undefined || m.role === filters.role)
         .filter(m => m.status !== 'completed')
         .sort((a, b) => {
             const ta = a.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER, tb = b.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
             return ta !== tb ? ta - tb : a.id - b.id;
         });
+    const items = found.map(m => ({ ...m, conflictingMatchIds : conflictsWithin(found, m) }));
     return { items };
+}
+
+/** แมตช์ที่ใช้เทียบการทับได้ — ต้องมีเวลาเริ่ม/จบ และยังต้องมีตัวไปอยู่ที่นั้นจริง */
+// status เป็น string กว้าง ๆ เพราะฝั่งกรรมการมาจาก DTO ของ referee.service ซึ่งคายเป็น string
+// ⇒ รับทั้งสองฝั่งโดยไม่ต้อง cast · ที่ใช้จริงมีค่าเดียวคือ 'finished'
+type MyMatchForConflict = { id : number; scheduledTime : Date | null; scheduledEndTime : Date | null; status : string };
+
+/**
+ * 🆕 ธงเวลาทับของ "ตัวเอง" ข้ามทุกทัวร์ (มติ 6 ต.ค. 2569 · ทางเลือก ก)
+ *
+ * 🔴 ช่องโหว่ที่ปิด: findConflictingMatch ตอน ORG จัดตารางตรวจ **ทีมกับสนาม** ข้ามทัวร์
+ *   แต่ไม่ได้ตรวจ **คน** · team_members UNIQUE แค่ (team_id, user_id) ⇒ คนเดียวอยู่ได้หลายทีม
+ *   ⇒ สมชายอยู่ทีม A (ทัวร์ 1) และทีม B (ทัวร์ 2) · ORG สองคนที่ไม่รู้จักกันจัดแมตช์เวลาเดียวกัน
+ *     ไม่มีด่านไหนเห็น และไม่มีใครรู้จนถึงวันแข่ง
+ *
+ * ★ ทำไมเป็น "คำเตือน" ไม่ใช่ "บล็อก" — ผู้เล่นไม่มีประตู "กดรับ" เหมือนกรรมการ
+ *   ทีมส่งชื่อลงแข่งแทนเขา ⇒ ไม่มีจุดไหนที่เจ้าตัวกดตัดสินใจให้ block ได้
+ *   และถ้าไปเตือน ORG ตอนจัดตาราง เท่ากับบอก ORG ว่าคนนี้ไปลงทัวร์อื่นด้วย = เอาข้อมูล
+ *   ของคนอื่นไปบอก ⇒ จุดที่ถูกต้องคือหน้าของเจ้าตัวเอง ซึ่งข้ามทัวร์อยู่แล้วและเป็นข้อมูลตัวเขา
+ *
+ * ★ ครอบทั้งสองบทบาท: ผู้เล่นชนผู้เล่น · ผู้เล่นชนงานกรรมการ · กรรมการชนกรรมการ
+ *   เพราะข้อจำกัดจริงคือ "ร่างกายเดียวอยู่สองที่พร้อมกันไม่ได้" ไม่เกี่ยวกับบทบาท
+ *
+ * 🔴 ไม่นับแมตช์ `finished` เป็นคู่ขัดแย้ง — แข่งจบแล้วรอผล เจ้าตัวไม่ต้องไปอยู่ที่นั้นอีก
+ *   (ยังอยู่ในลิสต์ เพราะลิสต์ตัดแค่ `completed` ตามมติ 20 ก.ย. — คนละเรื่องกัน)
+ *   แต่ยังนับแมตช์ที่เลยเวลาแล้วแต่ยัง `scheduled` เพราะอาจกำลังเริ่มช้า ⇒ ยังต้องไป
+ *   (เหตุผลเดียวกับ bookingsOfReferee ของด่านกรรมการ)
+ */
+function conflictsWithin(all : MyMatchForConflict[], me : MyMatchForConflict): number[] {
+    if(me.scheduledTime === null || me.scheduledEndTime === null) return [];
+    if(me.status === 'finished') return [];
+    return all
+        .filter(o => o.id !== me.id && o.status !== 'finished')
+        .filter(o => o.scheduledTime !== null && o.scheduledEndTime !== null)
+        .filter(o => timesOverlap(me.scheduledTime!, me.scheduledEndTime!, o.scheduledTime!, o.scheduledEndTime!))
+        .map(o => o.id);
 }
 
 /** วันที่ (ไทย UTC+7) ของ instant นี้ ในรูป YYYY-MM-DD — ไว้เทียบกับ DATE ของทัวร์ */
