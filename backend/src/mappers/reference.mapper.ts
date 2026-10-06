@@ -19,6 +19,16 @@ export type SportTypeDto = {
     maxMembers : number,
     defaultMode : 'onsite' | 'online',
     /**
+     * 🆕 มติ 7 ต.ค. 2569 (①ก · FE ขอมา) — "กีฬานี้แข่งเป็นรอบ (BO-N) ไหม"
+     *
+     * true  ⇒ หน้าสร้างทัวร์โชว์ตัวเลือก BO1/BO3/BO5/BO7 ได้ · ส่ง bestOf มาได้
+     * false ⇒ ซ่อนตัวเลือกนั้น · ส่ง bestOf มาจะได้ 400 BEST_OF_NOT_SUPPORTED (มติ ②ก)
+     *
+     * ★ มีอยู่เพื่อให้ FE เลิกจับคู่ "ชื่อกีฬา" ในโค้ดตัวเอง — ค่านี้เป็นของ server
+     *   เพิ่มกีฬาใหม่ในฐานแล้ว FE ไม่ต้องแก้โค้ดตาม
+     */
+    supportsBestOf : boolean,
+    /**
      * OD-56 / OD-63 (4 ต.ค. 2569) — เส้นความคลาดของ Pick'em **ต่อฝั่ง** ของกีฬานี้
      *
      * ★ ส่งออกเพราะหน้าทายผลต้องบอกกฎให้ผู้ใช้ **ก่อน** กดส่ง
@@ -69,6 +79,7 @@ export function toSportTypeDto(row: SportTypeRow): SportTypeDto{
         minMembers : row.min_members,
         maxMembers : row.max_members,
         defaultMode : row.default_mode,
+        supportsBestOf : row.supports_best_of === 1,
         pickemTolerance : {
             // ★ คีย์ชื่อ spotOn ไม่ใช่ exact ตามชื่อคอลัมน์ — ตั้งใจให้ตรงกับชื่อชั้นใน pickemPoints
             //   FE จะได้จับคู่ tolerance[tier] กับ points[tier] ด้วยคีย์เดียวกัน วนลูปได้

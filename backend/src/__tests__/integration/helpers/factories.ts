@@ -19,11 +19,21 @@ export async function createFaculty(o: { name?: string } = {}): Promise<number> 
     return insert('faculties', { name: o.name ?? `คณะทดสอบ ${uniq()}` });
 }
 
-export async function createSportType(o: { name?: string; minMembers?: number; maxMembers?: number } = {}): Promise<number> {
+/**
+ * 🆕 supportsBestOf (migration 047) — ค่าเริ่มต้น **true** ต่างจาก DEFAULT 0 ของฐานโดยเจตนา
+ *   ฐานตั้ง 0 ไว้เพื่อให้กีฬาจริงที่เพิ่มใหม่ต้องมีคนตั้งใจเปิด (ดูเหตุผลใน migration 047)
+ *   แต่ "กีฬาทดสอบ" ในเทสเป็นกีฬากลาง ๆ ที่เทสส่วนใหญ่ไม่สนเรื่อง BO
+ *   ⇒ ถ้าตามค่าฐาน เทสที่ตั้ง BO จะได้ 400 โดยไม่เกี่ยวกับเรื่องที่มันทดสอบ
+ *   เทสที่อยากทดสอบ **ด่าน** ของมติ 7 ต.ค. ให้ส่ง supportsBestOf: false มาตรง ๆ
+ */
+export async function createSportType(
+    o: { name?: string; minMembers?: number; maxMembers?: number; supportsBestOf?: boolean } = {}
+): Promise<number> {
     return insert('sport_types', {
         name: o.name ?? `กีฬาทดสอบ ${uniq()}`,
         min_members: o.minMembers ?? 2,
         max_members: o.maxMembers ?? 10,
+        supports_best_of: (o.supportsBestOf ?? true) ? 1 : 0,
     });
 }
 

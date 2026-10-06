@@ -1,3 +1,5 @@
+import { AppError } from './AppError.js';
+
 /**
  * รูปแบบ "แข่งหลายรอบ" BO-N — สูตรกลางที่ทุกที่ต้องเรียกตัวเดียวกัน (มติ 5 ต.ค. 2569)
  *
@@ -96,6 +98,38 @@ export function toleranceFor(
     sportTolerance: { exact: number; close: number }
 ): { exact: number; close: number } {
     return isBestOf(bestOf) ? toleranceForBestOf(bestOf) : sportTolerance;
+}
+
+/**
+ * 🆕 มติ 7 ต.ค. 2569 (②ก) — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้ง best_of ไม่ได้
+ *
+ * คืนข้อความเหตุผลเมื่อไม่ผ่าน (null = ผ่าน) ตามรูปแบบเดียวกับ scorePairError ในไฟล์นี้
+ * ⇒ ผู้เรียกเป็นคนโยน AppError เอง (ไฟล์นี้ตั้งใจให้เป็นตรรกะล้วน ไม่รู้จัก HTTP)
+ *
+ * ★ บังคับทางเดียวโดยเจตนา: "ไม่แข่งเป็นรอบ + ตั้ง BO มา" = ผิด
+ *   แต่ "แข่งเป็นรอบ + ไม่ตั้ง BO (null)" = ยอมให้ผ่าน
+ *   เหตุ: ผู้จัดอาจยังไม่ตัดสินใจตอนสร้างทัวร์ แล้วมาตั้งทีหลังก่อนแมตช์แรกเริ่ม (มติ 5 ต.ค.)
+ *   ถ้าบังคับให้ต้องมี จะเปลี่ยนขั้นตอนการสร้างทัวร์ของกีฬากลุ่มนั้นทั้งหมด ซึ่งเกินขอบเขตมตินี้
+ * 🔴 ธงนี้เป็นของ **กีฬา** ไม่ใช่ของทัวร์ ⇒ ด่านต้องอ่านกีฬาของทัวร์/แมตช์นั้นทุกครั้ง
+ *   ห้ามเดาจากชื่อกีฬา (ซึ่งเป็นสิ่งที่ FE ทำอยู่และเป็นเหตุให้ทำมตินี้)
+ */
+export function assertBestOfAllowed(
+    sport : { name : string; supports_best_of : number },
+    bestOf : number | null | undefined
+): void {
+    const problem = bestOfNotSupportedError(sport, bestOf);
+    if(problem !== null){
+        throw new AppError(400, 'BEST_OF_NOT_SUPPORTED', problem, { fields : { bestOf : problem } });
+    }
+}
+
+export function bestOfNotSupportedError(
+    sport : { name : string; supports_best_of : number },
+    bestOf : number | null | undefined
+): string | null {
+    if(bestOf === null || bestOf === undefined) return null;
+    if(sport.supports_best_of === 1) return null;
+    return `กีฬา "${sport.name}" ไม่ได้แข่งเป็นรอบ จึงตั้งรูปแบบ BO ไม่ได้ — ให้ไม่ส่งค่านี้ หรือส่ง null`;
 }
 
 /**

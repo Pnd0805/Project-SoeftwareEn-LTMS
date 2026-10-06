@@ -33,6 +33,8 @@ describe('toSportTypeDto', () => {
       min_members: 7,
       max_members: 11,
       default_mode: 'onsite',
+      // migration 047 — ฟุตบอลนับแต้มในเกมเดียว ไม่ได้แข่งเป็นรอบ
+      supports_best_of: 0,
       // OD-63 — คอลัมน์จริงของฟุตบอล (migration 040) · ใส่ใน fixture ให้ตรงกับที่ query คืนมา
       pickem_tolerance_exact: 0,
       pickem_tolerance_close: 1,
@@ -43,9 +45,29 @@ describe('toSportTypeDto', () => {
       minMembers: 7,
       maxMembers: 11,
       defaultMode: 'onsite',
+      supportsBestOf: false,
       pickemTolerance: { spotOn: 0, close: 1 },
       pickemPoints: { spotOn: 10, close: 7, sideOnly: 4 },
     });
+  });
+
+  /**
+   * 🆕 มติ 7 ต.ค. 2569 (①ก · FE ขอมา) — "กีฬานี้แข่งเป็นรอบไหม" ต้องออก API
+   *   FE เคยต้องจับคู่ **ชื่อกีฬา** ในโค้ดตัวเองเพื่อรู้ว่าจะโชว์ตัวเลือก BO-N หรือไม่
+   *   ⇒ เพิ่มกีฬาใหม่ในฐาน FE ต้องแก้โค้ดตาม ซึ่งไม่มีใครรู้ว่าต้องแก้
+   * ★ ส่งเป็น boolean ไม่ใช่เลข 0/1 ตามคอลัมน์ — FE ใช้ตรงตัวในเงื่อนไข ไม่ต้องแปลง
+   */
+  it.each([
+    ['กีฬาที่แข่งเป็นรอบ ส่ง true', 1, true],
+    ['กีฬาที่นับแต้ม ส่ง false', 0, false],
+  ])('%s', (_name, column, expected) => {
+    const row = {
+      sport_type_id: 4, name: 'E-Sport: RoV', min_members: 5, max_members: 7,
+      default_mode: 'online', supports_best_of: column,
+      pickem_tolerance_exact: 0, pickem_tolerance_close: 0,
+    };
+
+    expect(toSportTypeDto(row as any)).toMatchObject({ supportsBestOf: expected });
   });
 
   // ══════════════ OD-63 — เส้นและแต้มของ Pick'em ต้องออก API ══════════════

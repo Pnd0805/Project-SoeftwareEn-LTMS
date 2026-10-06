@@ -101,18 +101,21 @@ ON DUPLICATE KEY UPDATE name = new.name, faculty_id = new.faculty_id;
 -- ---------------------------------------------------------------------
 -- มติทีม 17 ก.ย. 2569: เหลือ 5 กีฬา id 1–5 (ฟุตบอล, บาสเกตบอล, แบดมินตัน, RoV, VALORANT)
 -- ⚠️ เครื่องที่ seed เวอร์ชันเก่า (9 กีฬา id 1–9) ต้อง remap ก่อน — ดู database/migrations/010_sport_types_renumber.sql
-INSERT INTO sport_types (sport_type_id, name, min_members, max_members, default_mode, walkover_score) VALUES
-  (1, 'ฟุตบอล',           11, 18, 'onsite', JSON_OBJECT('winner', 3,  'loser', 0)),   -- FIFA 3–0
-  (2, 'บาสเกตบอล',         5, 12, 'onsite', JSON_OBJECT('winner', 20, 'loser', 0)),   -- FIBA 20–0
-  (3, 'แบดมินตัน',         2,  4, 'onsite', JSON_OBJECT('winner', 2,  'loser', 0)),   -- 2–0 เกม
-  (4, 'E-Sport: RoV',      5,  7, 'online', JSON_OBJECT('winner', 2,  'loser', 0)),   -- BO3 2–0
-  (5, 'E-Sport: VALORANT', 5,  7, 'online', JSON_OBJECT('winner', 2,  'loser', 0))    -- BO3 2–0 แมพ
+-- supports_best_of (migration 047) — 1 = กีฬานี้แข่งเป็นรอบ (BO-N) ⇒ ตั้ง best_of ได้
+--   0 = นับแต้มในเกมเดียว ⇒ ตั้ง best_of ไม่ได้ (ด่านที่แอป) · walkover_score ยังเป็นแหล่งความจริงของกลุ่มนี้
+INSERT INTO sport_types (sport_type_id, name, min_members, max_members, default_mode, supports_best_of, walkover_score) VALUES
+  (1, 'ฟุตบอล',           11, 18, 'onsite', 0, JSON_OBJECT('winner', 3,  'loser', 0)),   -- FIFA 3–0
+  (2, 'บาสเกตบอล',         5, 12, 'onsite', 0, JSON_OBJECT('winner', 20, 'loser', 0)),   -- FIBA 20–0
+  (3, 'แบดมินตัน',         2,  4, 'onsite', 1, JSON_OBJECT('winner', 2,  'loser', 0)),   -- 2–0 เกม
+  (4, 'E-Sport: RoV',      5,  7, 'online', 1, JSON_OBJECT('winner', 2,  'loser', 0)),   -- BO3 2–0
+  (5, 'E-Sport: VALORANT', 5,  7, 'online', 1, JSON_OBJECT('winner', 2,  'loser', 0))    -- BO3 2–0 แมพ
 AS new
 ON DUPLICATE KEY UPDATE
   name = new.name,
   min_members = new.min_members,
   max_members = new.max_members,
   default_mode = new.default_mode,
+  supports_best_of = new.supports_best_of,
   walkover_score = new.walkover_score;
 
 

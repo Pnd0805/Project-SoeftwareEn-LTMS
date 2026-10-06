@@ -320,4 +320,22 @@ describe('รูปแบบแมตช์ (BO) และลิงก์ไล�
     const { match } = await setup({ sport: plainSport });
     expect((await as(organizer).patch(`/matches/${match}/format`).send({ bestOf: 4 })).status).toBe(400);
   });
+
+  /**
+   * 🆕 มติ 7 ต.ค. 2569 (②ก) — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้ง BO ไม่ได้
+   *   ก่อนมตินี้ best_of ไม่ผูกกับกีฬาเลย ⇒ ตั้ง BO5 ให้ฟุตบอลได้และไม่มีใครรู้
+   * ★ ธงอยู่ที่ตารางกีฬา ⇒ เทสสร้างกีฬาที่ปิดธงไว้ แล้วยิงผ่าน HTTP จริงทั้งเส้น
+   */
+  it('กีฬาที่ไม่ได้แข่งเป็นรอบ: ตั้ง BO → 400 · ส่ง null ได้', async () => {
+    const pointsSport = await createSportType({ supportsBestOf: false });
+    const { match } = await setup({ sport: pointsSport });
+
+    const blocked = await as(organizer).patch(`/matches/${match}/format`).send({ bestOf: 3 });
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.error?.code ?? blocked.body.code).toBe('BEST_OF_NOT_SUPPORTED');
+    expect((await one<{ best_of: number | null }>('SELECT best_of FROM matches WHERE match_id = ?', [match]))!.best_of).toBeNull();
+
+    // ★ ปลดรูปแบบต้องทำได้เสมอ — ไม่งั้นแก้ของที่ตั้งผิดไว้ก่อนมีด่านนี้ไม่ได้
+    expect((await as(organizer).patch(`/matches/${match}/format`).send({ bestOf: null })).status).toBe(200);
+  });
 });

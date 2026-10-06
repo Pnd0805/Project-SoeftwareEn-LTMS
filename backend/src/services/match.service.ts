@@ -1,6 +1,7 @@
 import * as MatchRepo from '../repositories/match.repo.js';
 import type { MatchFormatInput } from '../schemas/match.schema.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as RefereeService from './referee.service.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
@@ -15,6 +16,7 @@ function formatThaiDateTime(date: Date): string {
 }
 import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi, toLineupPlayerDto } from '../mappers/match.mapper.js';
 import { AppError } from '../utils/AppError.js';
+import { assertBestOfAllowed } from '../utils/matchFormat.js';
 import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
 import { buildPagination } from '../utils/pagination.js';
 import type { SubmitCheckinInput, ManualCheckinInput, ScheduleMatchInput } from '../schemas/match.schema.js';
@@ -170,6 +172,11 @@ export async function setMatchFormat(matchId: number, input: MatchFormatInput) {
             "ทัวร์นาเมนต์นี้เริ่มแข่งไปแล้ว เปลี่ยนรูปแบบการแข่ง (BO) ไม่ได้ — ต้องตั้งก่อนแมตช์แรกเริ่มแข่ง",
             { startedMatches: started });
     }
+
+    // มติ 7 ต.ค. 2569 (②ก) — ธงอยู่ที่กีฬา ⇒ แมตช์ → ทัวร์ → กีฬา
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    const sport = tournament ? await SportTypeRepo.findSportTypeById(tournament.sport_type_id) : null;
+    if (sport) assertBestOfAllowed(sport, input.bestOf);
 
     await MatchRepo.updateMatchBestOf(matchId, input.bestOf);
     return { id: matchId, bestOf: input.bestOf };

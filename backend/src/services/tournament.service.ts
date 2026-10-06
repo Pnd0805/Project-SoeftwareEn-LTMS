@@ -17,6 +17,7 @@ import { toUserRef } from '../mappers/user.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import { adminOverseesTournament } from '../utils/adminScope.js';
+import { assertBestOfAllowed } from '../utils/matchFormat.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
@@ -136,6 +137,8 @@ function ensureAges(minAge: number | null | undefined, maxAge: number | null | u
 async function ensureCreateReferences(input: CreateTournamentInput): Promise<void> {
     const sport = await SportTypeRepo.findSportTypeById(input.sportTypeId);
     if (!sport) validationError('ไม่พบชนิดกีฬา', { sportTypeId: 'ไม่พบชนิดกีฬานี้' });
+    // มติ 7 ต.ค. 2569 (②ก) — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้ง BO มาไม่ได้ · ใช้แถวกีฬาที่อ่านมาแล้ว ไม่ยิงซ้ำ
+    assertBestOfAllowed(sport, input.bestOf);
 
     if (input.scopeType === 'faculty') {
         if (input.organizingFacultyId === undefined || input.organizingFacultyId === null) {
@@ -280,6 +283,10 @@ export async function setTournamentFormat(tournamentId: number, input: MatchForm
             "ทัวร์นาเมนต์นี้เริ่มแข่งไปแล้ว เปลี่ยนรูปแบบการแข่ง (BO) ไม่ได้ — ต้องตั้งก่อนแมตช์แรกเริ่มแข่ง",
             { startedMatches: started });
     }
+
+    // มติ 7 ต.ค. 2569 (②ก) — ธงอยู่ที่กีฬา ⇒ ต้องอ่านกีฬาของทัวร์นี้ ห้ามเดาจากชื่อ
+    const sport = await SportTypeRepo.findSportTypeById(tournament.sport_type_id);
+    if (sport) assertBestOfAllowed(sport, input.bestOf);
 
     await TournamentRepo.setTournamentBestOfTx(tournamentId, input.bestOf);
     return { id: tournamentId, bestOf: input.bestOf };

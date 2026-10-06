@@ -29,8 +29,13 @@ vi.mock('../../repositories/department.repo.js', () => ({}));
 vi.mock('../../repositories/faculty.repo.js', () => ({
   findFacultyById: vi.fn(async (id: number) => (id < 100 ? { faculty_id: id, name: 'F' } : null)),
 }));
+// 🆕 migration 047 — supports_best_of: 1 = กีฬาที่แข่งเป็นรอบ (BO-N) · 0 = นับแต้มในเกมเดียว
+//   id 1 ฟุตบอล (นับแต้ม) · id 4 RoV (แข่งเป็นรอบ) ⇒ ใช้ทดสอบด่านของมติ 7 ต.ค. ②ก
 vi.mock('../../repositories/sportType.repo.js', () => ({
-  findSportTypeById: vi.fn(async (id: number) => (id === 1 ? { sport_type_id: 1, name: 'Football' } : null)),
+  findSportTypeById: vi.fn(async (id: number) =>
+    id === 1 ? { sport_type_id: 1, name: 'Football', supports_best_of: 0 }
+    : id === 4 ? { sport_type_id: 4, name: 'E-Sport: RoV', supports_best_of: 1 }
+    : null),
 }));
 vi.mock('../referee.service.js', () => ({}));
 vi.mock('../../repositories/user.repo.js', () => ({}));
@@ -245,5 +250,58 @@ describe('setTournamentFormat — NOT_TOURNAMENT_ORGANIZER', () => {
     await expect(Service.setTournamentFormat(50, { bestOf: 3 } as never, 7))
       .resolves.toEqual({ id: 50, bestOf: 3 });
     expect(TournamentRepo.setTournamentBestOfTx).toHaveBeenCalledWith(50, 3);
+  });
+});
+
+/**
+ * 🆕 มติ 7 ต.ค. 2569 (②ก) — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้งรูปแบบ BO มาไม่ได้
+ *
+ * ก่อนมตินี้ `best_of` ไม่ผูกกับกีฬาเลย ⇒ ตั้ง BO5 ให้ฟุตบอลได้ และไม่มีใครรู้
+ * (FE เลี่ยงด้วยการจับคู่ชื่อกีฬาในโค้ดตัวเอง ซึ่งเป็นเหตุให้ทำมตินี้ทั้งก้อน)
+ * ★ ด่านอยู่ที่ service ทั้ง 3 ทางที่เขียน best_of ได้ — ที่นี่ทดสอบ 2 ทางของฝั่งทัวร์
+ *   (ทางที่สาม setMatchFormat อยู่ใน matchFormat.bo.test.ts)
+ */
+describe('BEST_OF_NOT_SUPPORTED — กีฬาที่ไม่ได้แข่งเป็นรอบ (มติ 7 ต.ค. ②ก)', () => {
+  it('สร้างทัวร์ฟุตบอลพร้อม bestOf → 400 และไม่เขียนอะไร', async () => {
+    await expect(Service.createTournament(input({ sportTypeId: 1, bestOf: 3 }), 9))
+      .rejects.toMatchObject({ status: 400, code: 'BEST_OF_NOT_SUPPORTED' });
+
+    expect(TournamentRepo.insertTournament).not.toHaveBeenCalled();
+  });
+
+  it('สร้างทัวร์ฟุตบอลโดยไม่ส่ง bestOf = สร้างได้ตามเดิม', async () => {
+    await expect(Service.createTournament(input({ sportTypeId: 1 }), 9)).resolves.toMatchObject({ id: 77 });
+  });
+
+  it('สร้างทัวร์กีฬาที่แข่งเป็นรอบพร้อม bestOf = สร้างได้', async () => {
+    await expect(Service.createTournament(input({ sportTypeId: 4, bestOf: 5 }), 9)).resolves.toMatchObject({ id: 77 });
+    expect(TournamentRepo.insertTournament).toHaveBeenCalledWith(expect.objectContaining({ bestOf: 5 }));
+  });
+
+  /** ★ ทางที่สอง: ผู้จัดมาตั้งรูปแบบทีหลัง — ด่านต้องอยู่ที่นี่ด้วย ไม่ใช่แค่ตอนสร้าง */
+  it('ตั้งรูปแบบทีหลังให้ทัวร์ฟุตบอล → 400 และไม่เขียนอะไร', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(
+      { tournament_id: 50, requested_by_user_id: 7, tournament_status: 'private', sport_type_id: 1 } as never);
+
+    await expect(Service.setTournamentFormat(50, { bestOf: 7 } as never, 7))
+      .rejects.toMatchObject({ status: 400, code: 'BEST_OF_NOT_SUPPORTED' });
+
+    expect(TournamentRepo.setTournamentBestOfTx).not.toHaveBeenCalled();
+  });
+
+  it('ตั้งรูปแบบทีหลังให้ทัวร์กีฬาที่แข่งเป็นรอบ = ตั้งได้', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(
+      { tournament_id: 50, requested_by_user_id: 7, tournament_status: 'private', sport_type_id: 4 } as never);
+
+    await expect(Service.setTournamentFormat(50, { bestOf: 7 } as never, 7)).resolves.toEqual({ id: 50, bestOf: 7 });
+    expect(TournamentRepo.setTournamentBestOfTx).toHaveBeenCalledWith(50, 7);
+  });
+
+  /** ★ ปลดรูปแบบ (null) ต้องทำได้ทุกกีฬา — ไม่งั้นแก้ของที่ตั้งผิดไว้ไม่ได้ */
+  it('ส่ง null ให้ทัวร์ฟุตบอล = ผ่าน (ปลดรูปแบบได้เสมอ)', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(
+      { tournament_id: 50, requested_by_user_id: 7, tournament_status: 'private', sport_type_id: 1 } as never);
+
+    await expect(Service.setTournamentFormat(50, { bestOf: null } as never, 7)).resolves.toEqual({ id: 50, bestOf: null });
   });
 });

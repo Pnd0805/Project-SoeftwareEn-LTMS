@@ -19,12 +19,18 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
     findTournamentById: vi.fn(),
     countStartedMatchesOfTournament: vi.fn(),
 }));
+// 🆕 มติ 7 ต.ค. 2569 (②ก) — setMatchFormat ต้องอ่าน "กีฬาของทัวร์" เพื่อรู้ว่าตั้ง BO ได้ไหม
+//   ไม่ mock ไว้ = เทสจะไปเรียกฐานจริง
+vi.mock('../../repositories/sportType.repo.js', () => ({
+    findSportTypeById: vi.fn(),
+}));
 
 import * as MatchResultService from '../matchResult.service.js';
 import * as PickemService from '../pickem.service.js';
 import * as MatchService from '../match.service.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import * as SportTypeRepo from '../../repositories/sportType.repo.js';
 import type { MatchRow } from '../../types/db.js';
 
 /** แมตช์ขั้นต่ำที่สองด่านต้องใช้ — ทีม 10 กับ 11 */
@@ -148,6 +154,9 @@ describe('③ setMatchFormat — ล็อกตามมติข้อ ⑤', (
     beforeEach(() => {
         vi.mocked(MatchRepo.findMatchById).mockResolvedValue({ match_id: 30, tournament_id: 20 } as never);
         vi.mocked(TournamentRepo.countStartedMatchesOfTournament).mockResolvedValue(0);
+        // ★ กีฬาที่แข่งเป็นรอบ — เคสปกติของบล็อกนี้ (ด่านของมติ 7 ต.ค. มีเทสแยกข้างล่าง)
+        vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, sport_type_id: 4 } as never);
+        vi.mocked(SportTypeRepo.findSportTypeById).mockResolvedValue({ sport_type_id: 4, name: 'E-Sport: RoV', supports_best_of: 1 } as never);
     });
 
     it('ตั้งได้เมื่อยังไม่มีแมตช์ไหนของทัวร์เริ่มแข่ง', async () => {
@@ -175,5 +184,40 @@ describe('③ setMatchFormat — ล็อกตามมติข้อ ⑤', (
         await expect(MatchService.setMatchFormat(30, { bestOf: 3 }))
             .rejects.toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
         expect(MatchRepo.updateMatchBestOf).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * 🆕 มติ 7 ต.ค. 2569 (②ก) — ทางที่สามที่เขียน best_of ได้: ตั้งรูปแบบของแมตช์เดียว
+ *   (สองทางของฝั่งทัวร์อยู่ใน tournament.create.test.ts)
+ * ★ ธงอยู่ที่ "กีฬา" ⇒ ด่านต้องเดิน แมตช์ → ทัวร์ → กีฬา ทุกครั้ง ห้ามเดาจากชื่อ
+ */
+describe('④ setMatchFormat — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้ง BO ไม่ได้ (มติ 7 ต.ค. ②ก)', () => {
+    beforeEach(() => {
+        vi.mocked(MatchRepo.findMatchById).mockResolvedValue({ match_id: 30, tournament_id: 20 } as never);
+        vi.mocked(TournamentRepo.countStartedMatchesOfTournament).mockResolvedValue(0);
+        vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20, sport_type_id: 1 } as never);
+        vi.mocked(SportTypeRepo.findSportTypeById).mockResolvedValue({ sport_type_id: 1, name: 'ฟุตบอล', supports_best_of: 0 } as never);
+    });
+
+    it('ตั้ง BO ให้แมตช์ฟุตบอล → 400 BEST_OF_NOT_SUPPORTED และไม่เขียนอะไร', async () => {
+        await expect(MatchService.setMatchFormat(30, { bestOf: 5 }))
+            .rejects.toMatchObject({ status: 400, code: 'BEST_OF_NOT_SUPPORTED' });
+
+        expect(MatchRepo.updateMatchBestOf).not.toHaveBeenCalled();
+    });
+
+    /** ★ ปลดรูปแบบ (null) ต้องทำได้เสมอ — ไม่งั้นแก้ของที่ตั้งผิดไว้ก่อนมีด่านนี้ไม่ได้ */
+    it('ส่ง null ให้แมตช์ฟุตบอล = ผ่าน', async () => {
+        await expect(MatchService.setMatchFormat(30, { bestOf: null })).resolves.toEqual({ id: 30, bestOf: null });
+        expect(MatchRepo.updateMatchBestOf).toHaveBeenCalledWith(30, null);
+    });
+
+    /** ★ ด่านต้องอ่านกีฬาของ **ทัวร์ของแมตช์นั้น** ไม่ใช่กีฬาอื่น */
+    it('อ่านกีฬาจากทัวร์ของแมตช์นั้น', async () => {
+        await expect(MatchService.setMatchFormat(30, { bestOf: 3 })).rejects.toMatchObject({ code: 'BEST_OF_NOT_SUPPORTED' });
+
+        expect(TournamentRepo.findTournamentById).toHaveBeenCalledWith(20);
+        expect(SportTypeRepo.findSportTypeById).toHaveBeenCalledWith(1);
     });
 });

@@ -45,6 +45,8 @@ export type SportTypeRow = {
     min_members : number,
     max_members : number,
     default_mode : 'onsite' | 'online',
+    // migration 047 · 1 = กีฬานี้แข่งเป็นรอบ (BO-N) ⇒ ตั้ง best_of ได้ · 0 = นับแต้มในเกมเดียว
+    supports_best_of : number,
     walkover_score : { winner : number, loser : number } | null ,  // สกอร์ชนะบาย (migration 011)
     // OD-56 (migration 040) · เส้นสองเส้นของชั้นแต้ม Pick'em ของกีฬานี้
     // ความหมาย = ความคลาดที่ยอมได้ **ต่อฝั่ง** (ไม่ใช่ผลรวมสองฝั่ง) · ฐานบังคับ close >= exact

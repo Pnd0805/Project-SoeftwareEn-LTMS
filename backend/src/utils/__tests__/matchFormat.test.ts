@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     BEST_OF_VALUES, isBestOf, gamesToWin, maxGamesForLoser, possibleScores,
     scorePairError, toleranceForBestOf, toleranceFor, walkoverScoreForBestOf,
+    bestOfNotSupportedError, assertBestOfAllowed,
 } from '../matchFormat.js';
 
 describe('BEST_OF_VALUES', () => {
@@ -170,4 +171,51 @@ describe('walkoverScoreForBestOf (มติข้อ ④ · 5 ต.ค.)', () => 
             expect(scorePairError(n, wo.winner, wo.loser)).toBeNull();
         }
     });
+});
+
+/**
+ * 🆕 มติ 7 ต.ค. 2569 (②ก) — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้ง best_of ไม่ได้
+ *
+ * ก่อนมตินี้ `best_of` ไม่ได้ผูกกับกีฬาเลย (อยู่ที่ทัวร์/แมตช์) ⇒ ตั้ง BO5 ให้ฟุตบอลก็ได้
+ * ★ บังคับทางเดียว: "ไม่แข่งเป็นรอบ + ส่ง BO มา" = ผิด · "แข่งเป็นรอบ + ไม่ส่ง (null)" = ผ่าน
+ *   เพราะผู้จัดตั้ง BO ทีหลังได้ก่อนแมตช์แรกเริ่ม (มติ 5 ต.ค.) ⇒ บังคับให้มีตอนสร้างไม่ได้
+ */
+describe('bestOfNotSupportedError / assertBestOfAllowed (มติ 7 ต.ค.)', () => {
+  const rounds = { name: 'E-Sport: RoV', supports_best_of: 1 };
+  const points = { name: 'ฟุตบอล', supports_best_of: 0 };
+
+  it.each([1, 3, 5, 7])('กีฬาที่แข่งเป็นรอบ ตั้ง BO%i ได้', (bo) => {
+    expect(bestOfNotSupportedError(rounds, bo)).toBeNull();
+  });
+
+  it.each([1, 3, 5, 7])('กีฬาที่นับแต้ม ตั้ง BO%i ไม่ได้ และข้อความบอกชื่อกีฬา', (bo) => {
+    const problem = bestOfNotSupportedError(points, bo);
+
+    expect(problem).not.toBeNull();
+    expect(problem).toContain('ฟุตบอล');
+  });
+
+  /** ★ null/undefined = "ไม่ได้แข่งเป็นรอบ" ⇒ ผ่านทั้งสองกลุ่ม (undefined = ไม่ส่งคีย์มาเลย) */
+  it.each([
+    ['null กับกีฬาที่นับแต้ม', points, null],
+    ['undefined กับกีฬาที่นับแต้ม', points, undefined],
+    ['null กับกีฬาที่แข่งเป็นรอบ', rounds, null],
+  ])('%s ⇒ ผ่าน', (_name, sport, bo) => {
+    expect(bestOfNotSupportedError(sport, bo)).toBeNull();
+  });
+
+  it('assertBestOfAllowed โยน 400 BEST_OF_NOT_SUPPORTED พร้อม fields.bestOf', () => {
+    try {
+      assertBestOfAllowed(points, 3);
+      expect.unreachable('ต้องโยน');
+    } catch (err) {
+      expect(err).toMatchObject({ status: 400, code: 'BEST_OF_NOT_SUPPORTED' });
+      expect((err as { extra?: { fields?: Record<string, string> } }).extra?.fields?.['bestOf']).toBeTruthy();
+    }
+  });
+
+  it('assertBestOfAllowed ไม่โยนเมื่อผ่าน', () => {
+    expect(() => assertBestOfAllowed(rounds, 5)).not.toThrow();
+    expect(() => assertBestOfAllowed(points, null)).not.toThrow();
+  });
 });
