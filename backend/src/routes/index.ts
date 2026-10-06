@@ -23,11 +23,18 @@ import { matchComplaintRouter, complaintRouter } from './matchResultComplaint.ro
 import MatchHistory from './matchHistory.routes.js';
 import { rewardsRouter, userRewardsRouter, meRewardsRouter } from './reward.routes.js';
 import { lockCompletedTournament } from '../middlewares/lockCompletedTournament.js';
+import { requireVisibleTournamentForReads } from '../middlewares/requireVisibleTournament.js';
+import { optionalAuth } from '../middlewares/requireAuth.js';
 
 const router = express.Router();
 
 // B1 — ทัวร์ที่ completed แล้ว ปฏิเสธทุก write ใต้ /tournaments/:id และ /matches/:id (ยกเว้น announcements)
 router.use(['/tournaments/:id', '/matches/:id'], lockCompletedTournament);
+
+// A2 — ทัวร์ที่ยังไม่เผยแพร่ ปฏิเสธการ "อ่าน" ทุกเส้นใต้สองเส้นทางนี้ด้วยเหตุผลเดียวกับ GET /tournaments/:id
+//   optionalAuth ต้องมาก่อน เพื่อให้ผู้จัด/แอดมิน/กรรมการที่ถูกเชิญยังอ่านทัวร์ของตัวเองได้
+//   (เส้นที่มี optionalAuth/requireAuth ของตัวเองอยู่แล้วไม่โหลด user ซ้ำ — ดูคอมเมนต์ใน requireAuth.ts)
+router.use(['/tournaments/:id', '/matches/:id'], optionalAuth, requireVisibleTournamentForReads);
 
 
 router.use('/' , Reference);

@@ -19,7 +19,10 @@ async function loadUser(sub: string | number) {
     return user;
 }
 
+// A2 (6 ต.ค. 2569) — optionalAuth ถูก mount ไว้ก่อนด่านมองเห็นทัวร์ใต้ /tournaments/:id และ /matches/:id
+// ⇒ ถ้ามีคนโหลด user ไปแล้วในคำขอเดียวกัน ไม่ต้องอ่านฐานซ้ำ (token ผ่านแล้วแน่นอน ไม่งั้นจะไม่มี req.user)
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+    if (req.user) return next();
     const token = req.headers.authorization;
     const accessToken = readAccessToken(req);
     if (!token || accessToken === null) {
@@ -37,6 +40,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 }
 
 export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+    if (req.user) return next();
     if (!req.headers.authorization) return next();
     try {
         const accessToken = readAccessToken(req);

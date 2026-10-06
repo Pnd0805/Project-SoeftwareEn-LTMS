@@ -80,18 +80,17 @@ describe('ทัวร์ private / pending_approval — หน้าหลั�
   });
 
   /**
-   * 🐞 ข้อมูลรั่ว (integration test เจอ 6 ต.ค.) — ยังไม่ได้แก้ production
-   *   หน้าหลัก/กฎคุณสมบัติ/คอมเมนต์ ตอบ 404 กับทัวร์ที่ยังไม่เผยแพร่ (getVisibleTournament)
-   *   แต่ endpoint ข้างเคียงไม่ได้ผ่านด่านเดียวกัน ⇒ คนไม่ล็อกอินอ่านได้:
-   *     GET /tournaments/:id/matches   — คู่แข่งขัน ชื่อทีม
-   *     GET /matches/:id               — รายละเอียดแมตช์ ชื่อทีม
-   *     GET /tournaments/:id/teams     — ทีมที่ผ่านการอนุมัติ
-   *     (bracket · standings · announcements ตอบ 200 ด้วย — อย่างน้อยบอกว่าทัวร์นี้มีอยู่จริง)
-   *   กรณีจริง: ผู้จัดได้รับอนุมัติแล้ว (private) จับสายไว้ก่อนเผยแพร่ ⇒ คู่แข่งขันหลุดก่อนเปิดตัว
-   * ทางแก้ที่เสนอ: ให้ endpoint เหล่านี้เรียก getVisibleTournament (หรือเทียบเท่า) ก่อนอ่านข้อมูล
-   * ★ it.fails = ผ่านตราบที่ยังรั่ว · แก้แล้วจะแดง ⇒ เปลี่ยนเป็น it ธรรมดา
+   * A2 — แก้แล้ว 6 ต.ค. 2569 (เดิมเป็น it.fails: ข้อมูลรั่ว)
+   *
+   * `GET /tournaments/:id` ตอบ 404 กับทัวร์ที่ยังไม่เผยแพร่มาตลอด แต่ endpoint ข้างเคียง
+   * ไม่ได้ผ่านด่านเดียวกัน ⇒ คนที่ไม่ล็อกอินอ่านคู่แข่งขัน ชื่อทีม สายการแข่ง ตารางคะแนน ได้
+   * กรณีจริง: ผู้จัดได้รับอนุมัติแล้ว (private) จับสายไว้ก่อนเผยแพร่ ⇒ หลุดก่อนเปิดตัว
+   *
+   * แก้ด้วย middleware ตัวเดียวที่ mount ใต้ /tournaments/:id และ /matches/:id
+   * (requireVisibleTournamentForReads) ⇒ เส้นที่เพิ่มในอนาคตได้ด่านนี้ไปด้วยอัตโนมัติ
+   * ★ เทสจึงกวาดทุกเส้นที่รั่ว ไม่ใช่แค่ 3 เส้นที่รายงานไว้ตอนแรก
    */
-  describe('🐞 endpoint ข้างเคียงยังเปิดข้อมูลของทัวร์ที่ยังไม่เผยแพร่', () => {
+  describe('A2 — ทัวร์ที่ยังไม่เผยแพร่ ปิดทุกเส้นที่อ่านข้อมูลได้', () => {
     let match: number;
     beforeEach(async () => {
       const a = await createTeam({ leader: (await createUser()).id, sportTypeId: sport, name: 'ทีมลับ A' });
@@ -100,19 +99,58 @@ describe('ทัวร์ private / pending_approval — หน้าหลั�
       match = await createMatch({ tournamentId: tour, teamA: a, teamB: b });
     });
 
-    it.fails('🐞 GET /tournaments/:id/matches → ควรเป็น 404 (ตอนนี้ได้ 200 พร้อมชื่อทีม)', async () => {
-      const res = await anon.get(`/tournaments/${tour}/matches`);
-      expect(res.status).toBe(404);
+    /** ★ สามเส้นที่รายงานไว้ — เส้นที่หลุด "ของจริง" คือชื่อทีมกับคู่แข่งขัน */
+    it('คนไม่ล็อกอิน: /matches · /teams · /matches/:id → 404 และไม่มีชื่อทีมหลุด', async () => {
+      for(const path of [`/tournaments/${tour}/matches`, `/tournaments/${tour}/teams`, `/matches/${match}`]){
+        const res = await anon.get(path);
+        expect({ path, status: res.status }).toEqual({ path, status: 404 });
+        expect(JSON.stringify(res.body)).not.toContain('ทีมลับ');
+      }
     });
 
-    it.fails('🐞 GET /matches/:id → ควรเป็น 404 (ตอนนี้ได้ 200 พร้อมชื่อทีม)', async () => {
-      const res = await anon.get(`/matches/${match}`);
-      expect(res.status).toBe(404);
+    /**
+     * ★ เส้นที่เหลือ อย่างน้อยก็ยืนยันว่า "ทัวร์นี้มีอยู่จริง" ⇒ ต้องปิดด้วย
+     * 🔴 หมายเหตุจากการทดสอบด้วยการถอดด่านออก: 11 ใน 13 เส้นแดงทันที
+     *   แต่ `/winner` กับ `/matches/:id/result` ตอบ 404 อยู่แล้วด้วยเหตุผลของตัวเอง
+     *   (ยังไม่มีแชมป์ · ยังไม่มีผลที่ยืนยัน) ⇒ สองข้อนั้นไม่ได้พิสูจน์ด่านนี้
+     *   เก็บไว้เป็นการกันถอยหลังเท่านั้น อย่าอ่านว่าเป็นหลักฐานว่าด่านทำงาน
+     */
+    it.each([
+      'bracket', 'standings', 'winner', 'dashboard', 'announcements', 'pickem-leaderboard',
+    ])('คนไม่ล็อกอิน: /tournaments/:id/%s → 404', async (sub) => {
+      expect((await anon.get(`/tournaments/${tour}/${sub}`)).status).toBe(404);
     });
 
-    it.fails('🐞 GET /tournaments/:id/teams → ควรเป็น 404 (ตอนนี้ได้ 200 พร้อมชื่อทีม)', async () => {
-      const res = await anon.get(`/tournaments/${tour}/teams`);
-      expect(res.status).toBe(404);
+    it.each(['lineups', 'referees', 'result', 'stats', 'mvp-votes', 'predictions/summary'])(
+      'คนไม่ล็อกอิน: /matches/:id/%s → 404', async (sub) => {
+      expect((await anon.get(`/matches/${match}/${sub}`)).status).toBe(404);
+    });
+
+    /** 🔴 ด่านนี้ต้องไม่ปิดตาคนที่มีสิทธิ์อ่านจริง — ไม่งั้นแก้รูแล้วทำทัวร์ของตัวเองพัง */
+    it('ผู้จัดยังอ่านทัวร์ของตัวเองได้ทุกเส้น', async () => {
+      for(const path of [`/tournaments/${tour}/matches`, `/tournaments/${tour}/teams`, `/matches/${match}`, `/tournaments/${tour}/bracket`]){
+        const res = await as(organizer).get(path);
+        expect({ path, status: res.status }).toEqual({ path, status: 200 });
+      }
+    });
+
+    it('กรรมการที่ถูกเชิญยังอ่านได้', async () => {
+      const ref = await createUser();
+      await addTournamentReferee({ tournamentId: tour, userId: ref.id, invitedBy: organizer.id });
+      expect((await as(ref).get(`/tournaments/${tour}/matches`)).status).toBe(200);
+    });
+
+    it('แอดมินมหาวิทยาลัยยังอ่านได้', async () => {
+      const admin = await createUser();
+      await makeAdmin(admin.id, 'university_wide');
+      expect((await as(admin).get(`/tournaments/${tour}/matches`)).status).toBe(200);
+    });
+
+    /** ★ ทัวร์ public ต้องไม่กระทบเลย — คนทั่วไปยังอ่านได้เหมือนเดิม */
+    it('ทัวร์ public คนไม่ล็อกอินยังอ่านได้เหมือนเดิม', async () => {
+      const open = await createTournament({ organizer: organizer.id, sportTypeId: sport, facultyId: faculty, status: 'public' });
+      expect((await anon.get(`/tournaments/${open}/matches`)).status).toBe(200);
+      expect((await anon.get(`/tournaments/${open}/teams`)).status).toBe(200);
     });
   });
 });

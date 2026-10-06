@@ -220,6 +220,13 @@ async function getVisibleTournament(tournamentId: number, userId?: number): Prom
     throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
 }
 
+/**
+ * A2 (6 ต.ค. 2569) — เปิดตัวตัดสิน "ใครมองเห็นทัวร์นี้" ให้ middleware ใช้ร่วม
+ *   requireVisibleTournamentForReads เอาไปกั้นการอ่านทุกเส้นใต้ /tournaments/:id และ /matches/:id
+ *   ⇒ กฎการมองเห็นมีที่เดียว ไม่ต้องเขียนซ้ำในแต่ละ controller (และไม่หลงลืมเส้นใหม่ในอนาคต)
+ */
+export const findVisibleTournament = getVisibleTournament;
+
 async function getDetail(tournament: TournamentRow): Promise<ReturnType<typeof toTournamentDetailDto>> {
     const organizer = await TournamentRepo.findTournamentOrganizer(tournament.tournament_id);
     if (!organizer) throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
