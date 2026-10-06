@@ -29,16 +29,17 @@ type NewUser = {
   passwordHash: string;
   gender: 'male' | 'female' | 'other';
   birthDate: string;
+  userType: 'student' | 'external';   // ★ คิดจากโดเมนอีเมลที่ service (utils/kuEmail.ts) ไม่ใช่ repo
   facultyId: number;
   departmentId: number;
   year: number;
 };
 
 export async function create(data: NewUser): Promise<number>{
-    const [ result ] = await pool.query<(ResultSetHeader)>(`INSERT INTO users(full_name , email , 
-        password_hash , gender , birth_date , user_type , faculty_id , department_id , year) VALUES (? , ? , ? ,? ,? , 'student' , ? ,? ,?)`,
-       [data.fullName , data.email , data.passwordHash , data.gender , data.birthDate , data.facultyId , data.departmentId ,data.year]); 
-    
+    const [ result ] = await pool.query<(ResultSetHeader)>(`INSERT INTO users(full_name , email ,
+        password_hash , gender , birth_date , user_type , faculty_id , department_id , year) VALUES (? , ? , ? ,? ,? , ? , ? ,? ,?)`,
+       [data.fullName , data.email , data.passwordHash , data.gender , data.birthDate , data.userType , data.facultyId , data.departmentId ,data.year]);
+
     return result.insertId;
 }
 

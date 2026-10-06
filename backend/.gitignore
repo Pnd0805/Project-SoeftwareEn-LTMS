@@ -8,3 +8,5 @@ compose.bak
 docker-compose.override.yml
 *.tar
 TASK-*.md
+STATUS-*.md
+NOTICE-*.md

@@ -149,6 +149,7 @@ describe('auth.service register()', () => {
         fullName: registerInput.fullName,
         email: registerInput.email,
         passwordHash: 'hashed-plaintext-password',
+        userType: 'external',   // registerInput.email ไม่ใช่โดเมน @ku.th
       }),
     );
     expect(result).toEqual({
@@ -157,6 +158,24 @@ describe('auth.service register()', () => {
       email: registerInput.email,
       emailVerificationSent: true,
     });
+  });
+
+  it('สมัครด้วยอีเมล @ku.th ได้ userType เป็น student', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' });
+    mockedFindDepartmentInFaculty.mockResolvedValue({
+      department_id: 2,
+      faculty_id: 1,
+      name: 'Computer Engineering',
+    });
+    mockedHashPassword.mockResolvedValue('hashed-plaintext-password');
+    mockedUserRepo.create.mockResolvedValue(43);
+
+    await authService.register({ ...registerInput, email: 'somchai@ku.th' });
+
+    expect(mockedUserRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ userType: 'student' }),
+    );
   });
 
   it('throws EMAIL_ALREADY_REGISTERED when the email is already in use', async () => {
