@@ -33,6 +33,9 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
 vi.mock('../../repositories/matchReferee.repo.js', () => ({
   findByTournamentReferees: vi.fn().mockResolvedValue([]),
   findAcceptedByUser: vi.fn().mockResolvedValue([]),
+  // ★ ต้อง mock ด้วย — ของจริง findAcceptedByUser เรียกตัวนี้ต่อ และ F14 เรียกตัวนี้ตรง ๆ
+  //   ถ้าไม่มี เทสจะพังด้วย "No findAcceptedByUsers export" ไม่ใช่เงียบ ๆ ไปต่อฐานจริง
+  findAcceptedByUsers: vi.fn().mockResolvedValue([]),
   findByMatch: vi.fn(),
   unassign: vi.fn(),
 }));
@@ -613,8 +616,10 @@ describe('acceptRefereeInvitation', () => {
       { match_id: 1, scheduled_time: new Date('2026-11-01T11:00:00Z'), scheduled_end_time: new Date('2026-11-01T12:00:00Z') },
     ] as never);
     // งานที่เขารับไว้แล้วในทัวร์อื่น 10:00–11:30 ⇒ ทับกับ 11:00–12:00
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValueOnce([{
-      match_referee_id: 1, tournament_referee_id: 5,
+    // ★ stub ที่ findAcceptedByUsers (ไม่ใช่ตัวเดี่ยว) เพราะ bookingsOfReferees เรียกตัวนี้
+    //   ⇒ ถ้า stub ผิดตัว ค่าที่ queue ไว้จะไม่ถูกใช้ แล้วไปโผล่ในเทสถัดไปที่เรียกตัวเดี่ยว
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValueOnce([{
+      match_referee_id: 1, tournament_referee_id: 5, user_id: 8,
       invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
       match_id: 77, round_number: 1,
       scheduled_time: new Date('2026-11-01T10:00:00Z'), scheduled_end_time: new Date('2026-11-01T11:30:00Z'),
@@ -891,7 +896,7 @@ describe('getRefereeCoverage (BR-10)', () => {
   it('returns matchesTotal 0 and no uncovered/conflicts when the tournament has no matches', async () => {
     mockedMatchRepo.findRefereeCoverage.mockResolvedValue([]);
     await expect(refereeService.getRefereeCoverage(20, 1)).resolves.toEqual({
-      matchesTotal: 0, matchesCovered: 0, uncovered: [], conflicts: [],
+      matchesTotal: 0, matchesCovered: 0, uncovered: [], conflicts: [], crossTournamentConflicts: [],
     });
   });
 });
@@ -1056,7 +1061,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
 
   /** แถวจาก findAcceptedByUser — ต้องมีคอลัมน์ที่ isActiveReferee() ใช้ให้ครบ */
   const booked = (over: Record<string, unknown> = {}) => ({
-    match_referee_id: 1, tournament_referee_id: 5,
+    match_referee_id: 1, tournament_referee_id: 5, user_id: 8,
     invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
     match_id: 77, round_number: 1, scheduled_time: T0, scheduled_end_time: T1,
     venue: null, mode: 'onsite', match_status: 'scheduled',
@@ -1071,7 +1076,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
   }) as never;
 
   it('ทับกับงานในทัวร์อื่น ⇒ 409 และบอกชื่อทัวร์ที่ชน', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked()]);
 
     const err: any = await refereeService.assertNoCrossTournamentConflict(8, [incoming()]).catch((e) => e);
 
@@ -1082,7 +1087,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
   });
 
   it('ไม่ทับกัน ⇒ ผ่าน', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked()]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [
       incoming({ scheduled_time: new Date('2026-11-01T11:30:00Z'), scheduled_end_time: new Date('2026-11-01T12:30:00Z') }),
@@ -1091,7 +1096,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
 
   /** ชนกันแบบประชิด — จบ 11:30 แล้วเริ่ม 11:30 ไม่ใช่การทับ (ช่วงเป็น [เริ่ม, จบ) เหมือนทุกด่าน) */
   it('จบพอดีแล้วเริ่มทันที ไม่ใช่การทับ', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked()]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [
       incoming({ scheduled_time: T1, scheduled_end_time: new Date('2026-11-01T13:00:00Z') }),
@@ -1103,13 +1108,13 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
    *   เพราะงานเก่าที่เขาไม่ต้องไปคุมแล้ว ยังกันเขาอยู่
    */
   it('แถวกรรมการที่ถูกถอดแล้ว ไม่นับเป็นงานที่ถืออยู่', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked({ removed_at: new Date() })]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked({ removed_at: new Date() })]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()])).resolves.toBeUndefined();
   });
 
   it('คนนอกที่แอดมินยังไม่อนุมัติ ไม่นับเป็นงานที่ถืออยู่', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([
       booked({ is_external: 1, external_approval_status: 'pending' }),
     ]);
 
@@ -1118,7 +1123,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
 
   /** แมตช์ที่จบไปแล้วไม่มีใครต้องไปอยู่ที่นั้น ⇒ ไม่ใช่การทับ */
   it('แมตช์ที่จบแล้ว ไม่นับเป็นงานที่ถืออยู่', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked({ match_status: 'completed' })]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked({ match_status: 'completed' })]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()])).resolves.toBeUndefined();
   });
@@ -1130,7 +1135,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
   it('แมตช์ที่เลยเวลาแต่ยัง scheduled ยังนับเป็นงานที่ถืออยู่', async () => {
     const past0 = new Date(Date.now() - 60 * 60 * 1000);
     const past1 = new Date(Date.now() + 30 * 60 * 1000);
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([
       booked({ scheduled_time: past0, scheduled_end_time: past1, match_status: 'scheduled' }),
     ]);
 
@@ -1141,7 +1146,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
 
   /** แมตช์ที่กำลังจะปล่อยไป (เคสแลกแมตช์) ไม่ใช่งานที่ยังถืออยู่ ⇒ ไม่ควรกันตัวเอง */
   it('แมตช์ที่อยู่ใน excludeMatchIds ไม่นับ', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked()]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [incoming()], [77]))
       .resolves.toBeUndefined();
@@ -1149,7 +1154,7 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
 
   /** แมตช์เดียวกันที่อยู่ทั้งในชุดใหม่และในของที่ถือไว้ = แมตช์เดิม ไม่ใช่คู่ขัดแย้ง */
   it('แมตช์เดียวกันกับที่ถืออยู่แล้ว ไม่ใช่การทับกับตัวเอง', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked({ match_id: 1 })]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked({ match_id: 1 })]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [
       incoming({ match_id: 1, scheduled_time: T0, scheduled_end_time: T1 }),
@@ -1157,12 +1162,162 @@ describe('assertNoCrossTournamentConflict (ทางเลือก ก)', () =>
   });
 
   it('แมตช์ที่ยังไม่มีเวลา ⇒ ไม่ตรวจ (ด่าน MATCH_NOT_SCHEDULED จับไปแล้วก่อนหน้า)', async () => {
-    vi.mocked(MatchRefRepo.findAcceptedByUser).mockResolvedValue([booked()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([booked()]);
 
     await expect(refereeService.assertNoCrossTournamentConflict(8, [
       incoming({ scheduled_time: null, scheduled_end_time: null }),
     ])).resolves.toBeUndefined();
     // ไม่ควรเสียเวลาไปอ่านตารางเลยถ้าไม่มีอะไรให้เทียบ
-    expect(MatchRefRepo.findAcceptedByUser).not.toHaveBeenCalled();
+    expect(MatchRefRepo.findAcceptedByUsers).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 🆕 F14 ท่อนที่สอง — crossTournamentConflicts (FE ขอ 6 ต.ค. 2569)
+ *
+ * 🔴 ทำไมต้องมีทั้งที่มีด่านตอนกรรมการกดรับแล้ว:
+ *   ด่านนั้นดักตอนกดรับ ⇒ ตอนนั้นเวลายังไม่ทับ
+ *   แต่ M06 ปล่อยให้ ORG เลื่อนเวลาแมตช์ได้โดยไม่ดูกรรมการ (มติ Q6 — เตือน ไม่ block)
+ *   ⇒ "เลื่อนแล้วเพิ่งทับ" ไม่มีใครรู้ · หน้านี้คือที่เดียวที่บอกได้
+ */
+describe('getRefereeCoverage — crossTournamentConflicts', () => {
+  /** แมตช์ในทัวร์ 20 (ทัวร์ที่ ORG เปิดดู) ที่กรรมการ 70 ถืออยู่ */
+  const here = (over: Record<string, unknown> = {}) => ({
+    match_id: 1, round_number: 1,
+    scheduled_time: new Date('2026-10-01T10:00:00Z'), scheduled_end_time: new Date('2026-10-01T11:30:00Z'),
+    mode: 'onsite', tournament_referee_id: 5, user_id: 70,
+    invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+    ...over,
+  }) as never;
+
+  /** งานที่กรรมการ 70 ถืออยู่ — ค่าตั้งต้นอยู่ "ทัวร์อื่น" (999) */
+  const held = (over: Record<string, unknown> = {}) => ({
+    match_referee_id: 9, tournament_referee_id: 5, user_id: 70,
+    invitation_status: 'accepted', is_external: 0, external_approval_status: 'not_required', removed_at: null,
+    match_id: 77, round_number: 1,
+    scheduled_time: new Date('2026-10-01T11:00:00Z'), scheduled_end_time: new Date('2026-10-01T12:00:00Z'),
+    venue: null, mode: 'onsite', match_status: 'scheduled',
+    tournament_id: 999, tournament_name: 'ทัวร์อื่น', sport_type_id: 1,
+    team_a_id: null, team_a_name: null, team_b_id: null, team_b_name: null,
+    ...over,
+  }) as never;
+
+  beforeEach(() => {
+    mockedSportTypeRepo.findStatDefinitionsBySportType.mockResolvedValue([]);
+  });
+
+  it('ทับกับงานในทัวร์อื่น ⇒ บอก userId + matchId ของทัวร์นี้ + จำนวน', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held()]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([{ userId: 70, matchId: 1, conflictCount: 1 }]);
+  });
+
+  /**
+   * 🔴 ข้อสำคัญเรื่องความเป็นส่วนตัว — ห้ามมีชื่อทัวร์หรือรหัสแมตช์ของทัวร์อื่นหลุดออกไป
+   *   ตารางงานของกรรมการในทัวร์อื่นไม่ใช่ข้อมูลของ ORG คนนี้ (กฎเดียวกับตอนเชิญ)
+   */
+  it('ไม่หลุดชื่อทัวร์อื่นหรือรหัสแมตช์ของทัวร์อื่นออกไปเลย', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held()]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    const dumped = JSON.stringify(result);
+    expect(dumped).not.toContain('ทัวร์อื่น');
+    expect(dumped).not.toContain('77');
+    expect(dumped).not.toContain('999');
+  });
+
+  /** ★ ทับกันเองในทัวร์นี้ รายงานที่ conflicts อยู่แล้ว ⇒ ต้องไม่นับซ้ำที่นี่ */
+  it('งานที่อยู่ในทัวร์เดียวกันนี้ ไม่นับเป็นการทับข้ามทัวร์', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held({ tournament_id: 20 })]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([]);
+  });
+
+  it('เวลาไม่ทับ ⇒ ไม่รายงาน', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held({
+      scheduled_time: new Date('2026-10-01T13:00:00Z'), scheduled_end_time: new Date('2026-10-01T14:00:00Z'),
+    })]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([]);
+  });
+
+  it('ทับหลายแมตช์ ⇒ conflictCount เป็นจำนวนแมตช์ ไม่ใช่จำนวนทัวร์', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([
+      held({ match_id: 77 }),
+      held({ match_id: 78, tournament_id: 998, tournament_name: 'ทัวร์ที่สาม' }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([{ userId: 70, matchId: 1, conflictCount: 2 }]);
+  });
+
+  /** ★ ใช้กฎ "งานที่ถืออยู่" ชุดเดียวกับด่านตอนกดรับ — ถูกถอด/จบแล้ว/ไม่มีเวลา ไม่นับ */
+  it.each([
+    ['ถูกถอดจากทัวร์นั้นแล้ว', { removed_at: new Date() }],
+    ['แมตช์จบแล้ว',            { match_status: 'completed' }],
+    ['แข่งจบรอผล',             { match_status: 'finished' }],
+    ['คนนอกที่แอดมินยังไม่อนุมัติ', { is_external: 1, external_approval_status: 'pending' }],
+    ['ยังไม่มีเวลาจบ',          { scheduled_end_time: null }],
+  ])('งานที่ %s ไม่นับเป็นการทับ', async (_name, over) => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here()]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held(over)]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([]);
+  });
+
+  /**
+   * ★ แมตช์ของทัวร์นี้ที่ยังไม่ได้ตั้งเวลา เทียบไม่ได้ ⇒ ข้าม ไม่ใช่รายงานว่าไม่ทับ
+   *   (ไม่ควร throw เพราะหน้า coverage ต้องเปิดดูได้แม้ตารางยังไม่เสร็จ)
+   */
+  it('แมตช์ของทัวร์นี้ที่ยังไม่มีเวลา ถูกข้ามไปเฉย ๆ', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([here({ scheduled_time: null, scheduled_end_time: null })]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held()]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([]);
+  });
+
+  /**
+   * 🔴 ไม่มีกรรมการเลย ⇒ ต้องไม่ยิงคิวรีด้วย userIds ว่าง
+   *   `IN ()` เป็น SQL ที่ MySQL ไม่ยอมรับ ⇒ ถ้าหลุดไปจะพังทั้งหน้า ไม่ใช่คืนค่าว่าง
+   */
+  it('ทัวร์ที่ยังไม่มีกรรมการ active เลย ⇒ ไม่ยิงคิวรีงานที่ถืออยู่', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      here({ tournament_referee_id: null, user_id: null }),
+    ]);
+
+    const result = await refereeService.getRefereeCoverage(20, 1);
+
+    expect(result.crossTournamentConflicts).toEqual([]);
+    expect(MatchRefRepo.findAcceptedByUsers).toHaveBeenCalledWith([]);
+  });
+
+  it('กรรมการหลายคน ⇒ ถามฐานครั้งเดียว ไม่ใช่วนถามทีละคน', async () => {
+    mockedMatchRepo.findRefereeCoverage.mockResolvedValue([
+      here(),
+      here({ match_id: 2, tournament_referee_id: 6, user_id: 71 }),
+    ]);
+    vi.mocked(MatchRefRepo.findAcceptedByUsers).mockResolvedValue([held()]);
+
+    await refereeService.getRefereeCoverage(20, 1);
+
+    expect(MatchRefRepo.findAcceptedByUsers).toHaveBeenCalledTimes(1);
+    expect(MatchRefRepo.findAcceptedByUsers).toHaveBeenCalledWith([70, 71]);
   });
 });

@@ -99,6 +99,9 @@ function makeMyRefereeMatchRow(overrides: Partial<MyRefereeMatchRow> = {}): MyRe
   return {
     match_referee_id: 21,
     tournament_referee_id: 1,
+    // user_id เพิ่มในแถว 6 ต.ค. 2569 — เวอร์ชันหลายคนของคิวรีต้องแยกได้ว่าแถวนี้ของใคร
+    // (mapper ไม่ได้ใช้ค่านี้ แต่ type ของแถวบังคับให้ fixture ต้องมี)
+    user_id: 5,
     invitation_status: 'accepted',
     is_external: 0,
     external_approval_status: 'not_required',

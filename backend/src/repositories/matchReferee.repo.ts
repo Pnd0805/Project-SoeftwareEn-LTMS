@@ -20,6 +20,8 @@ export type MyRefereeMatchRow =
     Pick<MatchRefereeRow, 'match_referee_id' | 'tournament_referee_id'> &
     Pick<TournamentRefereeRow, 'invitation_status' | 'is_external' | 'external_approval_status' | 'removed_at'> &
     Pick<MatchRow, 'match_id' | 'round_number' | 'scheduled_time' | 'scheduled_end_time' | 'venue' | 'mode' | 'match_status'> & {
+        /** ★ ต้องมีเพราะเวอร์ชันหลายคน (findAcceptedByUsers) ต้องแยกได้ว่าแถวนี้ของใคร */
+        user_id : number;
         tournament_id : number; tournament_name : string; sport_type_id : number;
         team_a_id : number | null; team_a_name : string | null;
         team_b_id : number | null; team_b_name : string | null;
@@ -41,8 +43,21 @@ export type MyRefereeMatchRow =
  *   ถ้ากรองที่ service จะต้องจำให้ครบทุกที่ และผู้เรียกที่สามในอนาคตจะได้ค่าผิดเงียบ ๆ
  */
 export async function findAcceptedByUser(userId : number): Promise<MyRefereeMatchRow[]>{
+    return findAcceptedByUsers([userId]);
+}
+
+/**
+ * เหมือน `findAcceptedByUser` แต่ถามหลายคนในคิวรีเดียว — ใช้โดย F14 (ด่านทับเวลาข้ามทัวร์
+ * ของหน้า coverage) ซึ่งต้องถามกรรมการทุกคนของทัวร์พร้อมกัน
+ *
+ * ★ SQL มีชุดเดียว ตัวเดี่ยวเรียกตัวนี้ด้วย — ถ้าแยกเป็นสองสำเนา วันหนึ่งจะมีคนแก้ที่เดียว
+ *   (เช่นเติม `t.deleted_at IS NULL` เมื่อ 6 ต.ค.) แล้วอีกตัวเงียบ ๆ ตอบไม่เหมือนกัน
+ * 🔴 ว่างต้องคืน [] ก่อนถึง SQL — `IN ()` เป็น SQL ที่ MySQL ไม่ยอมรับ (syntax error)
+ */
+export async function findAcceptedByUsers(userIds : number[]): Promise<MyRefereeMatchRow[]>{
+    if(userIds.length === 0) return [];
     const [rows] = await pool.query<(MyRefereeMatchRow & RowDataPacket)[]>(
-        `SELECT mr.match_referee_id, mr.tournament_referee_id,
+        `SELECT mr.match_referee_id, mr.tournament_referee_id, tr.user_id,
                 tr.invitation_status, tr.is_external, tr.external_approval_status, tr.removed_at,
                 m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
                 t.tournament_id, t.name AS tournament_name, t.sport_type_id,
@@ -54,9 +69,9 @@ export async function findAcceptedByUser(userId : number): Promise<MyRefereeMatc
          JOIN tournaments t ON t.tournament_id = m.tournament_id
          LEFT JOIN teams ta ON ta.team_id = m.team_a_id
          LEFT JOIN teams tb ON tb.team_id = m.team_b_id
-         WHERE tr.user_id = ? AND mr.assignment_status = 'accepted'
+         WHERE tr.user_id IN (?) AND mr.assignment_status = 'accepted'
            AND t.deleted_at IS NULL
-         ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`, [userId]);
+         ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`, [userIds]);
     return rows;
 }
 

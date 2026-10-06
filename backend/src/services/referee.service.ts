@@ -54,12 +54,13 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
 
     // 3. แมตช์ที่แนบมา — ต้องเป็นของทัวร์นี้ มีเวลาแข่งครบ และไม่ซ้อนกันเอง
     const matchIds = [...new Set(input.matchIds)];
+    let attached : Awaited<ReturnType<typeof MatchRepo.findByIdsInTournament>> = [];
     if(matchIds.length > 0){
-        const matches = await MatchRepo.findByIdsInTournament(tournamentId, matchIds);
-        if(matches.length !== matchIds.length){
+        attached = await MatchRepo.findByIdsInTournament(tournamentId, matchIds);
+        if(attached.length !== matchIds.length){
             throw new AppError(404, 'MATCH_NOT_FOUND', 'บางแมตช์ไม่อยู่ในทัวร์นาเมนต์นี้');
         }
-        assertSchedulable(matches);
+        assertSchedulable(attached);
     }
 
     // 4. เขียน (คำเชิญ + แมตช์ที่แนบ ในทรานแซกชันเดียว)
@@ -86,11 +87,13 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
      *   ⇒ พอให้เขารู้ว่าควรถามกรรมการก่อน แต่ไม่เปิดข้อมูลทัวร์อื่น
      * ด่านจริงอยู่ตอนกรรมการกดรับ ซึ่งเป็นคนที่เห็นข้อมูลนั้นได้
      */
+    // ★ 6 ต.ค. — ใช้ timesOverlap ตัวกลางเหมือนอีก 4 ที่ (เดิมเขียนเทียบเองซ้ำที่นี่ = สำเนาที่ 5)
+    //   และใช้ `matches` ที่อ่านมาแล้วในข้อ 3 ไม่ยิง findByIdsInTournament ซ้ำรอบสอง
     const held = await bookingsOfReferee(input.userId);
-    const crossTournamentWarnings = matchIds.length === 0 ? 0 : (await MatchRepo.findByIdsInTournament(tournamentId, matchIds))
+    const crossTournamentWarnings = attached
         .filter(m => m.scheduled_time && m.scheduled_end_time)
         .filter(m => held.some(b => b.tournamentId !== tournamentId
-            && m.scheduled_time! < b.scheduled_end_time! && b.scheduled_time! < m.scheduled_end_time!))
+            && timesOverlap(m.scheduled_time!, m.scheduled_end_time!, b.scheduled_time!, b.scheduled_end_time!)))
         .length;
 
     return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds,
@@ -122,16 +125,32 @@ export type CrossTournamentBooking = {
  *       ยังไม่ได้เริ่มและอาจกำลังเริ่มช้า ⇒ คนยังต้องอยู่ที่นั้น ⇒ ยังนับเป็นการทับ
  */
 export async function bookingsOfReferee(userId : number): Promise<(CrossTournamentBooking & Schedulable)[]> {
-    const rows = await MatchRefRepo.findAcceptedByUser(userId);
-    return rows
-        .filter(r => isActiveReferee(r))
-        .filter(r => r.scheduled_time !== null && r.scheduled_end_time !== null)
-        .filter(r => r.match_status !== 'completed' && r.match_status !== 'finished')
-        .map(r => ({
+    return (await bookingsOfReferees([userId])).get(userId) ?? [];
+}
+
+/**
+ * เหมือน `bookingsOfReferee` แต่หลายคนในคิวรีเดียว — ใช้โดย F14 ที่ต้องถามกรรมการทุกคนของทัวร์
+ *
+ * ★ กฎการกรองทั้งสามข้อ (และ isActiveReferee) อยู่ที่นี่ที่เดียว ตัวเดี่ยวเรียกตัวนี้ด้วย
+ *   ⇒ ด่านตอนกดรับ กับ คำเตือนใน F14 ตอบจาก "งานที่ถืออยู่" ชุดเดียวกันเสมอ
+ *   ถ้าเขียนแยก แล้ววันหนึ่งมีคนแก้กฎที่เดียว ผู้จัดกับกรรมการจะเห็นคนละความจริง
+ */
+export async function bookingsOfReferees(userIds : number[]): Promise<Map<number, (CrossTournamentBooking & Schedulable)[]>> {
+    const rows = await MatchRefRepo.findAcceptedByUsers(userIds);
+    const byUser = new Map<number, (CrossTournamentBooking & Schedulable)[]>();
+    for(const r of rows){
+        if(!isActiveReferee(r)) continue;
+        if(r.scheduled_time === null || r.scheduled_end_time === null) continue;
+        if(r.match_status === 'completed' || r.match_status === 'finished') continue;
+        const list = byUser.get(r.user_id) ?? [];
+        list.push({
             matchId : r.match_id, tournamentId : r.tournament_id, tournamentName : r.tournament_name,
-            scheduledTime : r.scheduled_time!.toISOString(), scheduledEndTime : r.scheduled_end_time!.toISOString(),
+            scheduledTime : r.scheduled_time.toISOString(), scheduledEndTime : r.scheduled_end_time.toISOString(),
             match_id : r.match_id, scheduled_time : r.scheduled_time, scheduled_end_time : r.scheduled_end_time
-        }));
+        });
+        byUser.set(r.user_id, list);
+    }
+    return byUser;
 }
 
 /**
@@ -388,6 +407,27 @@ type RefereeConflict = {
     matchIds : [number, number]
 };
 
+/**
+ * 🆕 F14 ท่อนที่สอง (FE ขอ 6 ต.ค. 2569) — กรรมการของทัวร์นี้ที่งานทับกับ **ทัวร์อื่น**
+ *
+ * 🔴 ทำไมต้องมี ทั้งที่มีด่านตอนกรรมการกดรับแล้ว (e872124)
+ *   ด่านนั้นดักตอน "กดรับ" ⇒ ตอนนั้นเวลายังไม่ทับ
+ *   แต่ M06 ปล่อยให้ ORG **เลื่อนเวลาแมตช์** ได้โดยไม่ดูกรรมการเลย (มติ Q6 — เตือน ไม่ block
+ *   เพราะกรรมการแก้ได้ด้วยการสลับ/โอน/ถอนตัว ต่างจากทีมกับสนามที่แก้ไม่ได้)
+ *   ⇒ เลื่อนแล้วเพิ่งทับ = ไม่มีใครรู้ · ที่นี่คือที่เดียวที่บอกได้
+ *
+ * ★ `conflictCount` เป็น **จำนวนแมตช์** ของทัวร์อื่นที่ทับกับแมตช์นี้ ไม่ใช่จำนวนทัวร์
+ * 🔴 ไม่มีชื่อทัวร์ ไม่มีรหัสแมตช์ของทัวร์อื่นโดยเจตนา — ตารางงานของกรรมการในทัวร์อื่น
+ *   ไม่ใช่ข้อมูลของ ORG คนนี้ · พอให้รู้ว่าควรไปถามกรรมการก่อน
+ *   (กฎเดียวกับ `crossTournamentWarnings` ตอนเชิญ · คนที่เห็นชื่อทัวร์ได้คือเจ้าตัวเท่านั้น)
+ */
+type CrossTournamentConflict = {
+    userId : number,
+    /** แมตช์ของ **ทัวร์นี้** ที่มีปัญหา — ORG กดเข้าไปเลื่อน/เปลี่ยนกรรมการได้เลย */
+    matchId : number,
+    conflictCount : number
+};
+
 /** BR-11: on-site ที่ต้องบันทึกสถิติ ใช้กรรมการ 2 คน นอกนั้น 1 — ใช้ร่วมกับ C13 publish และ M10 start */
 export async function refereesNeededPerMatch(sportTypeId : number): Promise<(mode : 'onsite' | 'online') => number> {
     const statDefs = await SportTypeRepo.findStatDefinitionsBySportType(sportTypeId);
@@ -402,7 +442,37 @@ export async function refereesNeededPerMatch(sportTypeId : number): Promise<(mod
 export async function getRefereeCoverage(tournamentId : number, sportTypeId : number){
     const rows = await MatchRepo.findRefereeCoverage(tournamentId);
     const needed = await refereesNeededPerMatch(sportTypeId);
-    return summarizeCoverage(rows, needed);
+    const { byReferee, ...summary } = summarizeCoverage(rows, needed);
+    return { ...summary, crossTournamentConflicts : await crossTournamentConflicts(tournamentId, byReferee) };
+}
+
+/**
+ * เทียบแมตช์ของกรรมการแต่ละคน **ในทัวร์นี้** กับงานที่เขาถืออยู่ **นอกทัวร์นี้**
+ *
+ * ★ ถามฐานครั้งเดียวสำหรับกรรมการทุกคน (bookingsOfReferees) ไม่ใช่วนถามทีละคน
+ *   ทัวร์ที่มีกรรมการ 10 คน = 10 คิวรีต่อการเปิดหน้า F14 หนึ่งครั้ง ซึ่ง ORG เปิดบ่อย
+ * ★ `b.tournamentId !== tournamentId` คือหัวใจ — งานในทัวร์นี้ที่ทับกันเอง
+ *   รายงานไปแล้วที่ `conflicts` ⇒ ไม่นับซ้ำที่นี่
+ */
+async function crossTournamentConflicts(
+        tournamentId : number,
+        byReferee : Map<number, { tournamentRefereeId : number, matches : MatchRefereeCoverageRow[] }>
+        ): Promise<CrossTournamentConflict[]>{
+    const held = await bookingsOfReferees([...byReferee.keys()]);
+    const out : CrossTournamentConflict[] = [];
+    for(const [userId, ref] of byReferee){
+        const outside = (held.get(userId) ?? []).filter(b => b.tournamentId !== tournamentId);
+        if(outside.length === 0) continue;
+        for(const m of ref.matches){
+            if(!m.scheduled_time || !m.scheduled_end_time) continue;
+            const conflictCount = outside
+                .filter(b => timesOverlap(m.scheduled_time!, m.scheduled_end_time!, b.scheduled_time!, b.scheduled_end_time!))
+                .length;
+            if(conflictCount > 0) out.push({ userId, matchId : m.match_id, conflictCount });
+        }
+    }
+    // เรียงให้ผลคงที่ — FE แสดงเป็นลิสต์ และเทสเทียบตรง ๆ ได้
+    return out.sort((a, b) => a.userId !== b.userId ? a.userId - b.userId : a.matchId - b.matchId);
 }
 
 function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'onsite' | 'online') => number){
@@ -469,7 +539,9 @@ function summarizeCoverage(rows : MatchRefereeCoverageRow[], needed : (mode : 'o
         matchesTotal : matches.size,
         matchesCovered : matches.size - uncovered.length,
         uncovered,
-        conflicts
+        conflicts,
+        /** ★ ภายใน — getRefereeCoverage ใช้ต่อแล้วถอดออกก่อนตอบ ไม่ได้อยู่ใน response */
+        byReferee
     };
 }
 

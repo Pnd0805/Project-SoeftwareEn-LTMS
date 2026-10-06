@@ -30,7 +30,9 @@ describe('findAcceptedByUser', () => {
 
         const [sql, values] = mocks.query.mock.calls[0]!;
         expect(sql).toContain('t.deleted_at IS NULL');
-        expect(values).toEqual([9]);
+        // ★ array ชั้นเดียวซ้อนใน values เพราะคิวรีใช้ `IN (?)` — mysql2 กาง array ให้เอง
+        //   (ตัวเดี่ยวเรียกตัวหลายคนต่อ ⇒ SQL มีชุดเดียว ไม่มีสำเนาที่จะ drift)
+        expect(values).toEqual([[9]]);
     });
 
     it('ยังคืนเฉพาะแมตช์ที่รับไว้แล้ว และข้ามทัวร์ (ไม่มีการกรองด้วย tournament_id)', async () => {
@@ -42,5 +44,38 @@ describe('findAcceptedByUser', () => {
         //   แล้วช่องโหว่ที่ FE รายงาน 6 ต.ค. จะกลับมาโดยไม่มีอะไรฟ้อง
         expect(sql).not.toContain('t.tournament_id = ?');
         expect(sql).not.toContain('m.tournament_id = ?');
+    });
+});
+
+describe('findAcceptedByUsers', () => {
+    /**
+     * 🔴 รายชื่อว่างต้องไม่ไปถึง SQL — `IN ()` เป็น syntax error ของ MySQL
+     *   ถ้าหลุดไป หน้า F14 ของทัวร์ที่ยังไม่มีกรรมการจะพังทั้งหน้า ไม่ใช่คืนค่าว่าง
+     *   (ด่านนี้ต้องเทสที่ชั้น repo — ชั้น service mock repo ไว้ จึงมองไม่เห็นว่ามีการกันหรือไม่)
+     */
+    it('userIds ว่าง = คืน [] โดยไม่ยิงคิวรีเลย', async () => {
+        const rows = await MatchRefRepo.findAcceptedByUsers([]);
+
+        expect(rows).toEqual([]);
+        expect(mocks.query).not.toHaveBeenCalled();
+    });
+
+    it('หลายคน = คิวรีเดียว ส่ง array เข้าไปให้ IN (?) กางเอง', async () => {
+        await MatchRefRepo.findAcceptedByUsers([70, 71]);
+
+        expect(mocks.query).toHaveBeenCalledTimes(1);
+        const [sql, values] = mocks.query.mock.calls[0]!;
+        expect(sql).toContain('tr.user_id IN (?)');
+        expect(values).toEqual([[70, 71]]);
+    });
+
+    /** ★ ตัวเดี่ยวต้องเป็นทางผ่านของตัวนี้ ไม่ใช่ SQL สำเนาที่สอง */
+    it('ตัวเดี่ยวให้ SQL ชุดเดียวกับตัวหลายคน', async () => {
+        await MatchRefRepo.findAcceptedByUser(9);
+        const single = mocks.query.mock.calls[0]![0];
+        mocks.query.mockClear();
+        await MatchRefRepo.findAcceptedByUsers([9]);
+
+        expect(mocks.query.mock.calls[0]![0]).toBe(single);
     });
 });
