@@ -163,9 +163,12 @@ export function RegisterForm({
   }
 
   return (
-    <Modal open={open} onClose={onClose}
+    <Modal open={open} onClose={onClose} className="tour-registration-dialog"
       title={tm ? `Register ${tm.name}` : backendTeam ? `Register ${backendTeam.name}` : 'Register a squad'}>
-      <form onSubmit={handleSubmit(submit)}>
+      <form className="tour-registration-form" onSubmit={handleSubmit(submit)}>
+      <div className="tour-registration-body vstack" role="region" aria-label="Registration details" tabIndex={0}>
+      <section className="vstack" aria-label="Team and tournament">
+      <h2 className="journey-heading">Team</h2>
       {feedback}
       <input type="hidden" {...register('teamId', { valueAsNumber: true })} />
       {!USE_MOCK && backendTeam ? (
@@ -196,14 +199,14 @@ export function RegisterForm({
         </Field>
       )}
 
-      <p className="sub" role="status" aria-label="Selected players">
-        {selectedCount} selected{sport ? ` · ${sport.minMembers}–${sport.maxMembers} players` : ''}
-      </p>
+      </section>
+      <section className="vstack" aria-label="Players">
+      <h2 className="journey-heading">Players</h2>
 
       {USE_MOCK ? <><span className="tag">
         <em>//</em> Who is entering — the entry rules are checked against these players only
       </span>
-      <TableWrap>
+      <TableWrap label="Players to enter">
         <table>
           <thead><tr><th>In</th><th>Player</th><th>Faculty</th><th>Year</th><th>Age</th></tr></thead>
           <tbody>
@@ -243,7 +246,7 @@ export function RegisterForm({
                   <button className="btn ghost" type="button" onClick={() => void teamMembers.refetch()}>Try again</button>
                 </div>
               ) : !memberRows.length ? <div className="sub">This team has no members yet.</div> : (
-                <TableWrap>
+                <TableWrap label="Players to enter">
                   <table>
                     <thead><tr><th>In</th><th>Player</th><th>Joined</th><th>Registration issue</th></tr></thead>
                     <tbody>
@@ -275,6 +278,8 @@ export function RegisterForm({
         </>
       )}
 
+      </section>
+      {tr.entryNotes ? <h2 className="journey-heading">Entry notes</h2> : null}
       <EntryNotesBlock tr={tr} />
 
       {serverError && currentFailure ? (
@@ -325,6 +330,11 @@ export function RegisterForm({
           </p>
         )}
 
+      </div>
+      <footer className="tour-registration-footer">
+      <p className="sub" role="status" aria-label="Selected players">
+        {selectedCount} selected{sport ? ` · ${sport.minMembers}–${sport.maxMembers} players` : ''}
+      </p>
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>Cancel</button>
         {errors.teamId?.message ? <span className="sub" role="alert">{errors.teamId.message}</span> : null}
@@ -335,6 +345,7 @@ export function RegisterForm({
           Submit registration
         </button>
       </div>
+      </footer>
       </form>
     </Modal>
   )

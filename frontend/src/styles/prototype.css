@@ -733,3 +733,98 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
   .home-category-tabs .tab{flex:none;}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+.tour-identity{align-items:flex-start;margin-bottom:24px;gap:20px;}
+.tour-identity>div{min-width:0;}
+.tour-identity h1{font-size:clamp(36px,4.5vw,60px);line-height:1;overflow-wrap:anywhere;max-width:24ch;}
+.tour-identity p{margin:10px 0 0;}
+.tour-page{display:flex;flex-direction:column;gap:24px;min-width:0;}
+.tour-overview,.tour-support,.tour-dashboard-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;}
+.tour-overview-closed{grid-template-columns:1fr;}
+.tour-overview-frame{height:360px;overflow:auto;min-width:0;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);}
+.tour-overview-frame>.panel{border:0;min-height:100%;}
+.tour-entry>.hstack:has(>.btn.primary){margin-top:auto;}
+.tour-entry .btn.primary{min-height:44px;}
+.tour-details .facts{margin:0;}
+.tour-workspace{min-width:0;display:flex;flex-direction:column;gap:24px;}
+.tour-workspace>.tabs{gap:24px;}
+.tour-workspace>.empty,.tour-workspace>.banner{min-height:260px;}
+.tour-support:empty{display:none;}
+.tour-support>section{height:280px;overflow:auto;min-width:0;border:1px solid var(--line);border-radius:var(--r);background:var(--void-2);}
+.tour-support>section>.panel{border:0;min-height:100%;}
+.tour-schedule,.tour-leaderboard,.tour-bracket{min-width:0;}
+.tour-schedule-filters{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr));gap:16px;}
+.tour-clear{align-self:flex-start;}
+.tour-schedule>.tblwrap,.tour-leaderboard>.tblwrap{max-height:520px;}
+.tour-schedule thead,.tour-leaderboard thead{position:sticky;top:0;z-index:1;background:var(--panel);}
+.tour-dashboard{gap:24px;}
+.tour-dashboard-pair>.panel{min-width:0;min-height:164px;}
+.tour-dashboard-pair>.tour-match-list{height:280px;}
+.tour-match-list>.tblwrap{min-height:0;overflow:auto;flex:1;}
+.tour-match-list>.tblwrap table{min-width:660px;}
+.tour-bracket-toolbar{align-items:flex-end;gap:16px;}
+.tour-bracket-toolbar p{margin:8px 0 0;}
+.tour-bracket-toolbar .field{max-width:260px;min-width:0;}
+.tour-bracket-toolbar>.hstack{flex-wrap:wrap;align-items:flex-end;}
+.tour-bracket-scroll{overflow:auto;max-height:560px;min-height:280px;scrollbar-gutter:stable;}
+.tour-bracket-scroll .bracket{min-width:max-content;padding:24px 4px;}
+.tour-bracket-scroll .bcol{width:240px;}
+.tour-bracket-scroll .grid2{min-width:480px;}
+.tour-bracket-scroll .bnode{overflow-wrap:anywhere;}
+.tour-bracket-scroll .bnode.tour-highlight{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 10%,var(--panel));}
+.tour-highlight-label{display:block;font-size:12px;font-weight:600;color:var(--bone);padding:8px;border-top:1px solid var(--teal);text-align:left;}
+.tour-registration-dialog.modal{width:min(860px,100%);height:min(780px,86dvh);overflow:hidden;}
+.tour-registration-dialog>.vstack{height:100%;min-height:0;}
+.tour-registration-dialog h3{font-family:var(--f-display);font-size:32px!important;line-height:1.1;overflow-wrap:anywhere;flex-shrink:0;}
+.tour-registration-form{display:flex;flex-direction:column;flex:1;min-height:0;gap:0;}
+.tour-registration-body{flex:1;min-height:0;overflow:auto;padding:4px 8px 20px 2px;gap:24px;scrollbar-gutter:stable;}
+.tour-registration-body>section{gap:16px;}
+.tour-registration-body .tblwrap{flex-shrink:0;}
+.tour-registration-body p,.tour-registration-body .sub{max-width:72ch;}
+.tour-registration-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:16px;flex-shrink:0;}
+.tour-registration-footer p{margin:0;color:var(--bone);font-weight:600;font-variant-numeric:tabular-nums;}
+.tour-registration-footer .hstack{justify-content:flex-end;flex-wrap:wrap;}
+.tour-overview-frame,.tour-bracket-scroll,.tour-registration-body,.tour-support>section{scrollbar-color:var(--line-hot) var(--void-2);}
+@media(max-width:900px){
+  .tour-overview,.tour-support,.tour-dashboard-pair{grid-template-columns:1fr;}
+  .tour-identity{flex-wrap:wrap;}
+  .tour-bracket-toolbar{flex-wrap:wrap;}
+  .tour-overview-frame{height:360px;}
+}
+@media(max-width:600px){
+  .tour-workspace>.tabs{gap:16px;}
+  .tour-schedule-filters{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .tour-schedule-filters>.field:first-child{grid-column:1/-1;}
+  .tour-bracket-toolbar>.hstack{width:100%;}
+  .tour-bracket-toolbar .field{flex:1;}
+  .tour-registration-dialog.modal{padding:20px;max-height:90dvh;height:90dvh;}
+  .tour-registration-footer{flex-direction:column;align-items:stretch;gap:12px;}
+  .tour-registration-footer .hstack{justify-content:space-between;}
+  .tour-registration-footer .btn{white-space:normal;}
+}
+
+.tour-community-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;}
+.tour-community-pair>section{height:360px;overflow:auto;min-width:0;border:1px solid var(--line);border-radius:var(--r);background:var(--void-2);}
+.tour-community-pair>section>.panel{border:0;min-height:100%;}
+.tour-announcement-body{max-width:72ch;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;}
+.tour-page .facts dd,.tour-page .notif .txt{overflow-wrap:anywhere;}
+@media(max-width:900px){.tour-community-pair{grid-template-columns:1fr;}}
+
+.tour-entry-surface{min-height:100%;}
+.tour-overview-frame .tour-entry{border:0;min-height:360px;}
+
+.tour-api-node{position:relative;}
+.tour-node-open{position:absolute;inset:0;z-index:1;width:100%;height:100%;border:0;background:transparent;cursor:pointer;border-radius:var(--r);}
+.tour-api-node a{position:relative;z-index:2;}
+.tour-node-open:focus-visible{outline:2px solid var(--teal);outline-offset:4px;}
+
+.tour-match-list-body{flex:1;min-height:0;overflow:auto;}
+.tour-match-item{padding:12px 0;border-bottom:1px solid var(--line);}
+.tour-match-item:first-child{padding-top:0;}
+.tour-match-item:last-child{border-bottom:0;}
+.tour-match-item>.spread{align-items:flex-start;gap:8px;}
+.tour-match-item>.spread>.sub{font-size:13px;}
+.tour-match-teams{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.tour-match-teams .tchip{max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+.tour-bracket-scroll .bhead{background:var(--teal);color:var(--accent-ink);gap:8px;flex-wrap:wrap;}
+.tour-bracket-scroll .bhead .tag,.tour-bracket-scroll .bhead .tag em{color:var(--accent-ink);}
+.tour-bracket-scroll .bhead .tag{font-family:var(--f-ui);letter-spacing:0;line-height:1.3;}

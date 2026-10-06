@@ -56,10 +56,10 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
 
   return (
     <>
-      <div className="grid2">
-        <Panel quiet>
+      <div className="tour-community-pair">
+        <section role="region" aria-label="Tournament feedback summary" tabIndex={0}><Panel quiet>
           <div className="spread">
-            <span className="tag"><em>//</em> How it was run</span>
+            <h2 className="journey-heading">How it was run</h2>
             {f.count
               ? <Badge kind={f.avg >= 4 ? 'ok' : f.avg >= 3 ? 'warn' : 'crit'}>{f.avg} out of 5</Badge>
               : <Badge kind="neutral">No ratings yet</Badge>}
@@ -68,10 +68,10 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
             <div><span className="tag">Average</span><span className="v">{f.count ? f.avg : '—'}</span></div>
             <div><span className="tag">Ratings</span><span className="v">{f.count}</span></div>
           </div>
-        </Panel>
+        </Panel></section>
 
-        <Panel quiet>
-          <span className="tag"><em>//</em> {org ? 'Your tournament' : mine ? 'Your feedback' : 'Tell the organizer'}</span>
+        <section role="region" aria-label="Your tournament feedback" tabIndex={0}><Panel quiet>
+          <h2 className="journey-heading">{org ? 'Your tournament' : mine ? 'Your feedback' : 'Tell the organizer'}</h2>
           {org || !u ? (
             <div className="sub">
               {org
@@ -103,13 +103,13 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
               </form>
             </>
           )}
-        </Panel>
+        </Panel></section>
       </div>
 
       <Panel quiet>
-        <span className="tag"><em>//</em> Match threads · {talked.length}</span>
+        <h2 className="journey-heading">Match threads · {talked.length}</h2>
         {talked.length ? (
-          <TableWrap>
+          <TableWrap label="Match threads">
             <table>
               <thead><tr><th>Match</th><th>Round</th><th>Comments</th><th /></tr></thead>
               <tbody>

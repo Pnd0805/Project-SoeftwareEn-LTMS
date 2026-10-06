@@ -83,6 +83,12 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - Show next actions using existing data and handlers: open/manage a team, focus the permitted invitation search, or view an existing tournament entry. Missing application data never proves roster editing is allowed. Existing registration and mutation permissions remain authoritative.
 - Preserve named consequential confirmations and public-profile privacy. Make long names and dense Team/Player history readable without creating unsupported statistics.
 
+### Tournament participation layout
+
+- Ticket 4 UX additions approved for implementation: a factual identity summary, prominent existing entry action with unavailable reasons, registration grouped into Team / Players / Entry notes with a persistent selected-player count and Submit, local Schedule team/round/state filters and Clear filters, and Bracket left/right navigation with highlighting for a locally selected team. Use loaded data and existing server decisions; no new endpoint or inferred eligibility.
+- User-requested Ticket 4 refinement: use a consistent grid with aligned block edges and equal widths/heights for peer blocks. Keep headings/actions aligned, use 20px inner padding and 24px between major groups, and preserve the established Minimal Street fonts, angular corners and A palette.
+- Give dense Schedule and Bracket content a broad reading area with contained native scrolling. Keep short/empty/loading peer frames consistent, preserve keyboard access and stack groups on narrow screens. Existing routes, data, submission recovery and server permissions remain authoritative.
+
 ### Rollout and compatibility
 
 - Apply the shared design language through the current shell, kit and styles, then adapt each existing journey. Preserve current domain behavior, role boundaries and recoverable form state.

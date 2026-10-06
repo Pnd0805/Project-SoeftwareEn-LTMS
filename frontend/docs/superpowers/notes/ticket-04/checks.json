@@ -1,0 +1,527 @@
+[
+  {
+    "name": "bracket-1280-dark",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 768,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "bracket-controls-1280-dark",
+    "buttonsScroll": true,
+    "keyboardScroll": true,
+    "highlighted": 6
+  },
+  {
+    "name": "schedule-1280-dark",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 768,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "registration-1280-dark",
+    "footer": {
+      "top": 661.609375,
+      "bottom": 719,
+      "dialogBottom": 744,
+      "viewport": 800
+    },
+    "selectionsRetained": true,
+    "sourceFailureVisible": true
+  },
+  {
+    "name": "runtime-1280-dark",
+    "errors": []
+  },
+  {
+    "name": "bracket-1280-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 768,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "bracket-controls-1280-light",
+    "buttonsScroll": true,
+    "keyboardScroll": true,
+    "highlighted": 6
+  },
+  {
+    "name": "schedule-1280-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 488,
+        "height": 360,
+        "top": 293.78125,
+        "left": 768,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "registration-1280-light",
+    "footer": {
+      "top": 661.609375,
+      "bottom": 719,
+      "dialogBottom": 744,
+      "viewport": 800
+    },
+    "selectionsRetained": true,
+    "sourceFailureVisible": true
+  },
+  {
+    "name": "runtime-1280-light",
+    "errors": []
+  },
+  {
+    "name": "bracket-1440-dark",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "bracket-controls-1440-dark",
+    "buttonsScroll": true,
+    "keyboardScroll": true,
+    "highlighted": 6
+  },
+  {
+    "name": "schedule-1440-dark",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "registration-1440-dark",
+    "footer": {
+      "top": 754.609375,
+      "bottom": 812,
+      "dialogBottom": 837,
+      "viewport": 900
+    },
+    "selectionsRetained": true,
+    "sourceFailureVisible": true
+  },
+  {
+    "name": "runtime-1440-dark",
+    "errors": []
+  },
+  {
+    "name": "bracket-1440-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "bracket-controls-1440-light",
+    "buttonsScroll": true,
+    "keyboardScroll": true,
+    "highlighted": 6
+  },
+  {
+    "name": "schedule-1440-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "registration-1440-light",
+    "footer": {
+      "top": 754.609375,
+      "bottom": 812,
+      "dialogBottom": 837,
+      "viewport": 900
+    },
+    "selectionsRetained": true,
+    "sourceFailureVisible": true
+  },
+  {
+    "name": "dashboard-1440-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "leaderboard-1440-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "community-1440-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "announcements-1440-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 256,
+        "padding": "20px"
+      },
+      {
+        "width": 554,
+        "height": 360,
+        "top": 296.1875,
+        "left": 834,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "runtime-1440-light",
+    "errors": []
+  },
+  {
+    "name": "bracket-390-dark",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 514.953125,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 898.953125,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "bracket-controls-390-dark",
+    "buttonsScroll": true,
+    "keyboardScroll": true,
+    "highlighted": 6
+  },
+  {
+    "name": "schedule-390-dark",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 514.953125,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 898.953125,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "registration-390-dark",
+    "footer": {
+      "top": 687.40625,
+      "bottom": 780.796875,
+      "dialogBottom": 801.796875,
+      "viewport": 844
+    },
+    "selectionsRetained": true,
+    "sourceFailureVisible": true
+  },
+  {
+    "name": "runtime-390-dark",
+    "errors": []
+  },
+  {
+    "name": "bracket-390-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 514.953125,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 898.953125,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "bracket-controls-390-light",
+    "buttonsScroll": true,
+    "keyboardScroll": true,
+    "highlighted": 6
+  },
+  {
+    "name": "schedule-390-light",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 514.953125,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 898.953125,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "registration-390-light",
+    "footer": {
+      "top": 687.40625,
+      "bottom": 780.796875,
+      "dialogBottom": 801.796875,
+      "viewport": 844
+    },
+    "selectionsRetained": true,
+    "sourceFailureVisible": true
+  },
+  {
+    "name": "runtime-390-light",
+    "errors": []
+  },
+  {
+    "name": "long-content",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 823.9375,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 1207.9375,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "guest",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 356.171875,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 740.171875,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  },
+  {
+    "name": "denied",
+    "pageOverflow": false,
+    "overview": [
+      {
+        "width": 342,
+        "height": 360,
+        "top": 514.953125,
+        "left": 24,
+        "padding": "20px"
+      },
+      {
+        "width": 342,
+        "height": 360,
+        "top": 898.953125,
+        "left": 24,
+        "padding": "20px"
+      }
+    ],
+    "groupsGap": "24px"
+  }
+]

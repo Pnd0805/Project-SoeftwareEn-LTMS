@@ -118,10 +118,12 @@
 - Consumes: shared presentation, current Tournament routes and query states, the existing registration form/feedback interface.
 - Produces: unchanged Tournament/registration contracts with coherent page, tab, form and dense-data layout.
 
-- [ ] **Step 1: Trace the existing Guest detail and Team Leader entry paths.** Identify presentation changes without altering Hard filter rules, registration decisions or the mounted form's identity.
-- [ ] **Step 2: Apply the page and registration layout.** Establish identity/state/action hierarchy, readable tabs and contained scrolling for wide bracket/table regions. Preserve selected Squad list, counts, retry controls and submission feedback through recoverable failures.
-- [ ] **Step 3: Verify.** Run `npx vitest run src/features/tournament`. Expected: all current tests pass, including `EntryPanel.refresh.test.tsx` and `journeySourceStates.test.tsx`. A style migration must not replace those cases with weaker assertions.
-- [ ] **Step 4: Record rendered cases.** Include a wide bracket, a dense schedule and the open registration form after a retryable source failure.
+- [x] **Step 1: Trace the existing Guest detail and Team Leader entry paths.** Identify presentation changes without altering Hard filter rules, registration decisions or the mounted form's identity.
+- [x] **Step 2: Apply the page and registration layout.** Establish identity/state/action hierarchy, readable tabs and contained scrolling for wide bracket/table regions. Apply the user's even-block refinement: consistent grid, aligned edges and matching widths/heights for peer blocks, 20px panel padding and 24px between major groups. Align peer headings/actions, retain frame size through short/empty/loading states and keep dense Schedule/Bracket content in a broad reading area. Narrow screens stack the groups. Preserve selected Squad list, counts, retry controls and submission feedback through recoverable failures.
+- [x] **Step 3: Verify.** Run `npx vitest run src/features/tournament`. Expected: all current tests pass, including `EntryPanel.refresh.test.tsx` and `journeySourceStates.test.tsx`. A style migration must not replace those cases with weaker assertions.
+- [x] **Step 4: Record rendered cases.** Include a wide bracket, a dense schedule and the open registration form after a retryable source failure. Compare peer block dimensions, edge alignment, spacing and scrolling at both desktop sizes and in both themes; check narrow-screen stacking and long content.
+
+**Completion evidence (2026-10-06):** [Ticket 04](../notes/2026-10-06-ltms-ticket-04.md). Full suite: 86 files / 591 tests; TypeScript, lint and production build passed. API baseline: all 49 frozen hashes unchanged. Desktop 1280×800 and 1440×900 plus 390×844 narrow layouts verified in both themes with HTTP fixtures, native Bracket controls, source-failure draft retention, equal frames and no page overflow. Direct standards/spec review completed; live backend acceptance remains separate.
 
 ### Task 5: Organizer setup and review work
 

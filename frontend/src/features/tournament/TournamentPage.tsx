@@ -1,10 +1,7 @@
 /**
  * src/features/tournament/TournamentPage.tsx
  *
- * The heavy page splits in half: tabs and their content left, a sticky rail of
- * facts right. Below 900px the rail drops under the content. The rail carries
- * the .facts card (sport, format, date, venue, channel, entry rules, squads in,
- * organizer), the entry panel, and the organizer's entry notes.
+ * Tournament identity, paired entry/details frames and a broad public workspace.
  */
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
@@ -197,7 +194,7 @@ export function TournamentPage() {
 
   return (
     <>
-      <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{t.name}</Crumb>
+      <div className="journey-crumb"><Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{t.name}</Crumb></div>
 
       {!USE_MOCK && tournamentQuery.isError ? <Panel quiet>
         <span className="error">Could not refresh the tournament. Showing the last loaded details.</span>
@@ -212,10 +209,10 @@ export function TournamentPage() {
         </Banner>
       ) : null}
 
-      <div className="spread">
+      <header className="spread tour-identity">
         <div>
-          <div className="tag"><em>//</em> {t.sport} · {formatName(t)} · {t.channel}</div>
-          <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>{t.name}</h1>
+          <h1 className="disp">{t.name}</h1>
+          <p className="sub">{t.sport} · {formatName(t)} · {t.channel}</p>
           <div className="tag" style={{ marginTop: 6 }}>
             {org ? <><em>//</em> You run this tournament</> : `Run by ${organizerName ?? user(s, t.organizer)?.name ?? '—'}`}
           </div>
@@ -237,27 +234,13 @@ export function TournamentPage() {
             </button>
           ) : null}
         </div>
-      </div>
+      </header>
 
-      <div className="split">
-        <div>
-          <Tabs
-            tabs={tabs.map(x => ({ key: x, label: x === 'manage' ? 'Manage' : x }))}
-            active={tab}
-            onPick={k => navigate(`/t/${t.id}/${k}`)}
-          />
-          {tab === 'bracket' ? <BracketTab t={t} /> : null}
-          {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
-          {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
-          {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
-          {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
-          {tab === 'community' ? USE_MOCK ? <CommunityTab t={t} org={org} /> : <LiveCommunityTab tournamentId={tournamentId!} organizer={org} /> : null}
-          {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}
-        </div>
-
-        <div className="rail">
-          <Panel>
-            <span className="tag"><em>//</em> The details</span>
+      <div className="tour-page">
+        <div className={`tour-overview${completed ? ' tour-overview-closed' : ''}`}>
+          <section className="tour-overview-frame" aria-label="Tournament details" tabIndex={0}>
+          <Panel className="tour-details">
+            <h2 className="journey-heading">Details</h2>
             <Facts rows={[
               ['Sport', t.sport],
               ['Format', formatName(t)],
@@ -278,15 +261,42 @@ export function TournamentPage() {
               ['Run by', organizerName ?? user(s, t.organizer)?.name ?? '—'],
             ]} />
           </Panel>
-          {!USE_MOCK && !rulesConfirmed ? <Panel quiet>
-            <span className="tag"><em>//</em> Entry rules</span>
+          </section>
+          {!completed ? <section className="tour-overview-frame" aria-label="Tournament entry" tabIndex={0}>
+          {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
+              แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
+          <EntryPanel t={t} applications={tournamentData?.applications}
+              approvedCount={tournamentId === undefined || !capacityConfirmed ? undefined : approved.length}
+              sportTypeId={tournamentData?.sportTypeId}
+              confirmation={{ rules: rulesConfirmed, capacity: capacityConfirmed, accessLost: entryAccessLost }}
+              feedback={entryFeedback} />
+          </section> : null}
+        </div>
+        <section className="tour-workspace" aria-label="Tournament workspace">
+          <Tabs
+            tabs={tabs.map(x => ({ key: x, label: x === 'manage' ? 'Manage' : x }))}
+            active={tab}
+            onPick={k => navigate(`/t/${t.id}/${k}`)}
+          />
+          {tab === 'bracket' ? <BracketTab t={t} /> : null}
+          {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
+          {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
+          {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
+          {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
+          {tab === 'community' ? USE_MOCK ? <CommunityTab t={t} org={org} /> : <LiveCommunityTab tournamentId={tournamentId!} organizer={org} /> : null}
+          {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}
+        </section>
+        <div className="tour-support">
+
+          {!USE_MOCK && !rulesConfirmed ? <section role="region" aria-label="Entry rules" tabIndex={0}><Panel quiet>
+            <h2 className="journey-heading">Entry rules</h2>
             {eligibility.isPending ? <span className="sub">Loading entry rules…</span>
               : <span className="error">Unable to load entry rules. Eligibility is unconfirmed.</span>}
             {eligibility.isError ? <button className="btn ghost" type="button"
               onClick={() => void eligibility.refetch()}>Retry entry rules</button> : null}
-          </Panel> : null}
-          {tournamentId !== undefined ? <Panel quiet>
-            <span className="tag"><em>//</em> Approved teams</span>
+          </Panel></section> : null}
+          {tournamentId !== undefined ? <section role="region" aria-label="Approved teams" tabIndex={0}><Panel quiet>
+            <h2 className="journey-heading">Approved teams</h2>
             {approvedTeams.isPending ? <span className="sub">Loading approved teams…</span> : null}
             {approvedTeams.isError ? <>
               <span className="error">Unable to load approved teams. Capacity is unconfirmed.</span>
@@ -302,21 +312,13 @@ export function TournamentPage() {
               </span></span>
               <button className="btn ghost" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
             </div>) : null}
-          </Panel> : null}
-          {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
-              แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
-          {completed ? null : (
-            <EntryPanel t={t} applications={tournamentData?.applications}
-              approvedCount={tournamentId === undefined || !capacityConfirmed ? undefined : approved.length}
-              sportTypeId={tournamentData?.sportTypeId}
-              confirmation={{ rules: rulesConfirmed, capacity: capacityConfirmed, accessLost: entryAccessLost }}
-              feedback={entryFeedback} />
-          )}
+          </Panel></section> : null}
+
           {t.entryNotes ? (
-            <Panel quiet>
-              <span className="tag"><em>//</em> Soft filter from the organizer</span>
+            <section role="region" aria-label="Entry notes" tabIndex={0}><Panel quiet>
+              <h2 className="journey-heading">Entry notes</h2>
               <div style={{ fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.entryNotes}</div>
-            </Panel>
+            </Panel></section>
           ) : null}
         </div>
       </div>

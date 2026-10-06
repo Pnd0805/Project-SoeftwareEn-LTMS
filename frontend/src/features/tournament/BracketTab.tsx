@@ -6,9 +6,10 @@
  * table lives on the leaderboard tab. Double elimination shows two trees and a
  * single grand final, with no bracket reset.
  */
-import React, { useLayoutEffect, useRef } from 'react'
+import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Empty, MatchStateBadge, Panel, StatusBadge } from '../../components/kit/primitives'
+import { Empty, Field, MatchStateBadge, Panel, StatusBadge } from '../../components/kit/primitives'
+import { Icon } from '../../components/kit/Icon'
 import { TeamLinkView } from '../../components/kit/chips'
 import { useTournamentMatches } from '../../hooks/useMatch'
 import { matchStateOf, outcomeNote, toTeamView } from '../match/matchView'
@@ -21,8 +22,44 @@ import type { MatchListItemDto } from '../../types/match.dto'
 import { USE_MOCK } from '../../api/client'
 import { hasValidBracket } from './hasValidBracket'
 
+const HighlightTeam = createContext('')
+
+function BracketWorkspace({ teams, children }: {
+  teams: { id: string; name: string }[]; children: React.ReactNode
+}) {
+  const [selected, setSelected] = useState('')
+  const scroll = useRef<HTMLDivElement>(null)
+  const selectedName = teams.find(t => t.id === selected)?.name
+  const move = (direction: number) => {
+    const region = scroll.current
+    // ใช้ scroll ของ browser เพื่อให้ปุ่ม ลูกศร และ trackpad เลื่อนพื้นที่เดียวกัน
+    region?.scrollBy({ left: direction * Math.max(240, region.clientWidth * .75),
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+  }
+  return <Panel quiet className="tour-bracket">
+    <div className="spread tour-bracket-toolbar">
+      <div><h2 className="journey-heading">Bracket</h2>
+        <p className="sub" role="status">{selectedName ? `Highlighting ${selectedName}` : 'Choose a match to view details.'}</p>
+      </div>
+      <div className="hstack">
+        <Field label="Highlight team" htmlFor="bracket-team"><select id="bracket-team" value={selected}
+          onChange={e => setSelected(e.target.value)}><option value="">All teams</option>
+          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select></Field>
+        <button className="btn" type="button" aria-label="Previous rounds" onClick={() => move(-1)}><Icon name="chevL" /></button>
+        <button className="btn" type="button" aria-label="Next rounds" onClick={() => move(1)}><Icon name="chev" /></button>
+      </div>
+    </div>
+    <HighlightTeam.Provider value={selected}>
+      <div className="tour-bracket-scroll" ref={scroll} role="region" aria-label="Bracket matches" tabIndex={0}>{children}</div>
+    </HighlightTeam.Provider>
+  </Panel>
+}
+
 function ApiBracketNode({ m }: { m: MatchListItemDto }) {
   const navigate = useNavigate()
+  const selected = useContext(HighlightTeam)
+  const highlighted = [m.teamA, m.teamB].find(t => t && String(t.id) === selected)
   const score = m.score
   /* ใครชนะให้ backend บอก (B5 `outcome.winnerTeamId`) — เทียบสกอร์เองไม่พอ:
      คู่ถอน/ไม่มาไม่มีสกอร์ และกีฬาที่แต้มน้อยกว่าชนะก็มี */
@@ -42,8 +79,12 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
       : <TeamLinkView team={toTeamView(t)} />
 
   return (
-    <button className={`bnode ${state === 'disputed' ? 'act' : ''}`} type="button"
-      data-mid={m.id} data-next={m.nextMatchId ?? undefined} onClick={() => navigate(`/m/${m.id}`)}>
+    <div className={`bnode tour-api-node ${state === 'disputed' ? 'act' : ''} ${highlighted ? 'tour-highlight' : ''}`}
+      data-mid={m.id} data-next={m.nextMatchId ?? undefined}>
+      {/* แยกปุ่มเปิดแมตช์กับลิงก์ทีม ให้ keyboard เลือกปลายทางได้โดยไม่ซ้อน control */}
+      <button className="tour-node-open" type="button" aria-labelledby={`bracket-match-${m.id}`}
+        onClick={() => navigate(`/m/${m.id}`)} />
+      <span id={`bracket-match-${m.id}`}>
       <span className="bhead">
         <span className="tag"><em>//</em> {m.tag || m.stage}</span>
         <MatchStateBadge state={state} />
@@ -59,15 +100,19 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
         {slot(m.teamB)}
         <span className="sc">{m.score?.b ?? '—'}</span>
       </span>
-    </button>
+      {highlighted ? <span className="tour-highlight-label">Highlighted team: {highlighted.name}</span> : null}
+      </span>
+    </div>
   )
 }
 
 function ApiBracket({ matches, host }: { matches: MatchListItemDto[]; host: React.RefObject<HTMLDivElement | null> }) {
   const rounds = [...new Set(matches.map(match => match.roundNumber ?? 0))].sort((a, b) => a - b)
+  const teams = [...new Map(matches.flatMap(m => [m.teamA, m.teamB]).filter(t => t !== null)
+    .map(t => [String(t.id), { id: String(t.id), name: t.name }])).values()]
   return (
+    <BracketWorkspace teams={teams}>
     <div ref={host}>
-      <Panel quiet>
         <div className="bracket">
           {rounds.map(round => (
             <div className="bcol" key={round}>
@@ -80,14 +125,16 @@ function ApiBracket({ matches, host }: { matches: MatchListItemDto[]; host: Reac
             </div>
           ))}
         </div>
-      </Panel>
     </div>
+    </BracketWorkspace>
   )
 }
 
 function BracketNode({ m }: { m: Match }) {
   const s = useLtms()
   const navigate = useNavigate()
+  const selected = useContext(HighlightTeam)
+  const highlighted = selected && (m.a === selected || m.b === selected) ? team(s, selected) : null
   const decided = m.status === 'confirmed'
 
   const row = (id: string | null, score: number | null, win: boolean, lose: boolean) => {
@@ -106,7 +153,7 @@ function BracketNode({ m }: { m: Match }) {
 
   return (
     <button
-      className={`bnode ${m.status === 'disputed' || m.status === 'pending' ? 'act' : ''}`}
+      className={`bnode ${m.status === 'disputed' || m.status === 'pending' ? 'act' : ''} ${highlighted ? 'tour-highlight' : ''}`}
       type="button" data-mid={m.id} data-next={nextOf(s, m)?.id} onClick={() => navigate(`/m/${m.id}`)}
     >
       <span className="bhead">
@@ -115,6 +162,7 @@ function BracketNode({ m }: { m: Match }) {
       </span>
       {row(m.a, m.sa, decided && (m.sa ?? 0) > (m.sb ?? 0), decided && (m.sa ?? 0) < (m.sb ?? 0))}
       {row(m.b, m.sb, decided && (m.sb ?? 0) > (m.sa ?? 0), decided && (m.sb ?? 0) < (m.sa ?? 0))}
+      {highlighted ? <span className="tour-highlight-label">Highlighted team: {highlighted.name}</span> : null}
     </button>
   )
 }
@@ -152,8 +200,11 @@ function useBracketLines(deps: unknown) {
       })
     }
     draw()
+    // ข้อความไฮไลต์และชื่อยาวอาจเปลี่ยนความสูงหลังวัดครั้งแรก
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(draw)
+    host.current?.querySelectorAll('.bnode').forEach(node => observer?.observe(node))
     addEventListener('resize', draw)
-    return () => removeEventListener('resize', draw)
+    return () => { observer?.disconnect(); removeEventListener('resize', draw) }
   }, [deps])
   return host
 }
@@ -215,10 +266,15 @@ function MockBracketTab({ t }: { t: Tournament }) {
     )
   }
 
+  const teams = [...new Set(ms.flatMap(m => [m.a, m.b]))].flatMap(id => {
+    const t = team(s, id)
+    return t ? [{ id: t.id, name: t.name }] : []
+  })
+
   if (rr) {
     const days = [...new Set(ms.map(m => m.round))].sort((a, b) => a - b)
     return (
-      <div ref={host}>
+      <BracketWorkspace teams={teams}><div ref={host}>
         {days.map(d => (
           <div key={d}>
             <div className="tag" style={{ marginTop: 8 }}>
@@ -227,7 +283,7 @@ function MockBracketTab({ t }: { t: Tournament }) {
             <div className="grid2">{ms.filter(m => m.round === d).map(m => <BracketNode key={m.id} m={m} />)}</div>
           </div>
         ))}
-      </div>
+      </div></BracketWorkspace>
     )
   }
 
@@ -239,33 +295,33 @@ function MockBracketTab({ t }: { t: Tournament }) {
     const lb = ms.filter(m => m.bracket === 'L')
     const gf = ms.filter(m => m.bracket === 'GF')
     return (
-      <div ref={host}>
+      <BracketWorkspace teams={teams}><div ref={host}>
         <div className="tag"><em>//</em> Winners bracket</div>
-        <div className="tblwrap"><div className="bracket">
+        <div className="bracket">
           {byRound(wb).map((c, i) => <Column key={i} label={matchStage(s, c[0])} list={c} />)}
-        </div></div>
+        </div>
         <div className="tag" style={{ marginTop: 10 }}>
           <em>//</em> Losers bracket — a first loss sends you here, a second sends you home
         </div>
-        <div className="tblwrap"><div className="bracket">
+        <div className="bracket">
           {byRound(lb).map((c, i) => <Column key={i} label={matchStage(s, c[0])} list={c} />)}
-        </div></div>
+        </div>
         {gf.length ? (
           <>
             <div className="tag" style={{ marginTop: 10 }}><em>//</em> Grand final — one match, no bracket reset</div>
             <div className="grid2">{gf.map(m => <BracketNode key={m.id} m={m} />)}</div>
           </>
         ) : null}
-      </div>
+      </div></BracketWorkspace>
     )
   }
 
   const cols = Array.from({ length: t.rounds }, (_, r) => ms.filter(m => m.round === r))
   return (
-    <div ref={host}>
-      <div className="tblwrap"><div className="bracket">
+    <BracketWorkspace teams={teams}><div ref={host}>
+      <div className="bracket">
         {cols.map((c, r) => <Column key={r} label={roundName(r, t.rounds)} list={c} />)}
-      </div></div>
-    </div>
+      </div>
+    </div></BracketWorkspace>
   )
 }

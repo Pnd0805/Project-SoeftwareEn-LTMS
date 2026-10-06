@@ -28,28 +28,26 @@ function MatchList({ title, list, empty, showScore }: {
   const navigate = useNavigate()
   if (!list.length && !empty) return null
   return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> {title} · {list.length}</span>
+    <Panel quiet className="tour-match-list">
+      <div className="spread"><h2 className="journey-heading">{title}</h2><span className="num sub">{list.length}</span></div>
       {list.length ? (
-        <TableWrap>
-          <table>
-            <tbody>
-              {list.map(m => (
-                <tr key={m.id}>
-                  <td className="num">{m.scheduledTime ? fmtDate(m.scheduledTime) : '—'}</td>
-                  <td className="tag">{m.tag || m.stage}</td>
-                  <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
-                  <td className="tag">vs</td>
-                  <td><TeamLinkView team={toTeamView(m.teamB)} /></td>
-                  <td>{showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableWrap>
+        <div className="tour-match-list-body" role="region" aria-label={title} tabIndex={0}>
+          {list.map(m => (
+            <div className="tour-match-item" key={m.id}>
+              <div className="spread">
+                <span className="sub">{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
+                <span className="hstack">
+                  {showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}
+                  <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
+                </span>
+              </div>
+              <div className="tour-match-teams">
+                <TeamLinkView team={toTeamView(m.teamA)} /><span className="sub">vs</span>
+                <TeamLinkView team={toTeamView(m.teamB)} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : <span className="sub">{empty}</span>}
     </Panel>
   )
@@ -80,7 +78,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
   const top = standings.data ? topOfTable(standings.data.rows, standings.data.format) : null
 
   return (
-    <>
+    <div className="tour-dashboard vstack">
       <div className="statline">
         <div><span className="tag">Matches</span><span className="v">{s.total}</span></div>
         <div><span className="tag">Confirmed</span><span className="v">{s.finished}</span></div>
@@ -88,9 +86,10 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
         <div><span className="tag">Awaiting a decision</span><span className="v">{decisions}</span></div>
       </div>
 
+      <div className="tour-dashboard-pair">
       <Panel quiet>
         <div className="spread">
-          <span className="tag"><em>//</em> Progress</span>
+          <h2 className="journey-heading">Progress</h2>
           <span className="sub">{s.finished} of {s.total} confirmed · {pct}%</span>
         </div>
         <div role="progressbar" aria-label="Matches confirmed" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
@@ -101,7 +100,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
       </Panel>
 
       <Panel quiet>
-        <span className="tag"><em>//</em> Match status</span>
+        <h2 className="journey-heading">Match status</h2>
         <div className="hstack" style={{ flexWrap: 'wrap', gap: 12 }}>
           {STATE_ORDER.filter(k => s.byState[k] > 0).map(k => (
             <span className="hstack" style={{ gap: 6 }} key={k}>
@@ -111,16 +110,18 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
         </div>
       </Panel>
 
+      </div>
+      <div className="tour-dashboard-pair">
       <MatchList title="On now" list={s.onNow} />
       <MatchList title="Awaiting a decision" list={s.attention} />
       <MatchList title="Up next" list={s.upNext} empty="No fixtures left to play." />
       <MatchList title="Latest results" list={s.latest} empty="No confirmed results yet." showScore />
 
+      </div>
       <Panel quiet>
         <div className="spread">
-          <span className="tag">
-            <em>//</em> {top?.kind === 'still-in' ? `Still in the running · ${top.teams.length}` : 'Top of the table'}
-          </span>
+          <h2 className="journey-heading"> {top?.kind === 'still-in' ? `Still in the running · ${top.teams.length}` : 'Top of the table'}
+          </h2>
           <button className="btn ghost" type="button" onClick={() => navigate(`/t/${tournamentId}/leaderboard`)}>
             Full leaderboard
           </button>
@@ -138,7 +139,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
                 </div>
               </>
             ) : top?.rows.length ? (
-              <TableWrap>
+              <TableWrap label="Top of the table">
                 <table>
                   <tbody>
                     {top.rows.map(r => (
@@ -153,6 +154,6 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
               </TableWrap>
             ) : <span className="sub">Positions appear once a result is confirmed.</span>}
       </Panel>
-    </>
+    </div>
   )
 }

@@ -62,9 +62,9 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
   }
 
   return <>
-    <div className="grid2">
-      <Panel quiet>
-        <div className="spread"><span className="tag"><em>//</em> Tournament reviews</span>
+    <div className="tour-community-pair">
+      <section role="region" aria-label="Tournament reviews" tabIndex={0}><Panel quiet>
+        <div className="spread"><h2 className="journey-heading">Tournament reviews</h2>
           {review ? <Badge kind="neutral">{review.summary.average ?? '—'} / 5 · {review.summary.count} reviews</Badge> : null}
         </div>
         {reviews.query.isPending ? <span className="sub">Loading reviews…</span> : null}
@@ -93,19 +93,19 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
             {review.mine ? <button className="btn ghost" type="button" onClick={() => { setRating(review.mine!.rating); setReviewText(review.mine!.content ?? '') }}>Load my review to edit</button> : null}
           </form> : !me.data && review.status === 'open' ? <p className="sub">Sign in to review this tournament.</p> : null}
         </> : null}
-      </Panel>
-      <Panel quiet>
-        <span className="tag"><em>//</em> Pick'em leaderboard</span>
+      </Panel></section>
+      <section role="region" aria-label="Prediction leaderboard" tabIndex={0}><Panel quiet>
+        <h2 className="journey-heading">Pick'em leaderboard</h2>
         {leaderboard.isPending ? <p className="sub">Loading leaderboard…</p> : null}
         {leaderboard.isError ? <p className="sub">Unable to load leaderboard.</p> : null}
         {leaderboard.data?.items.length === 0 ? <p className="sub">No settled predictions yet.</p> : null}
         {leaderboard.data?.items.map(row => <div className="spread" key={row.user.id}>
           <span>#{row.rank} {row.user.fullName}</span><span>{row.points} points · {row.correct}/{row.settled}</span>
         </div>)}
-      </Panel>
+      </Panel></section>
     </div>
     <Panel quiet>
-      <div className="spread"><span className="tag"><em>//</em> Tournament comments · {thread?.pagination.totalItems ?? 0}</span>
+      <div className="spread"><h2 className="journey-heading">Tournament comments · {thread?.pagination.totalItems ?? 0}</h2>
         {thread?.canModerate ? <button className="btn ghost" type="button" onClick={() => setFilter(!reported)}>{reported ? 'All comments' : 'Reported only'}</button> : null}
       </div>
       {comments.query.isPending ? <p className="sub">Loading comments…</p> : null}

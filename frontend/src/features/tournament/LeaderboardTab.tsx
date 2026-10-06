@@ -24,7 +24,7 @@ import type { StandingRowDto, StandingsDto } from '../../types/match.dto'
 function RoundRobinTable({ s }: { s: StandingsDto }) {
   const unit = s.scoreUnit.toLowerCase()
   return (
-    <TableWrap>
+    <TableWrap label="Leaderboard standings">
       <table>
         <thead>
           <tr>
@@ -68,7 +68,7 @@ function RoundRobinTable({ s }: { s: StandingsDto }) {
  */
 function EliminationTable({ rows }: { rows: StandingRowDto[] }) {
   return (
-    <TableWrap>
+    <TableWrap label="Leaderboard standings">
       <table>
         <thead>
           <tr><th>#</th><th>Squad</th><th>Went out</th><th>P</th><th>W</th><th>Form</th></tr>
@@ -111,7 +111,8 @@ export function LeaderboardTab({ tournamentId }: { tournamentId: number | string
     return <Empty icon="trophy" title="No table yet" sub="Positions appear once a result is confirmed." />
   }
 
-  return data.format === 'round_robin'
-    ? <RoundRobinTable s={data} />
-    : <EliminationTable rows={data.rows} />
+  return <Panel quiet className="tour-leaderboard">
+    <h2 className="journey-heading">Leaderboard</h2>
+    {data.format === 'round_robin' ? <RoundRobinTable s={data} /> : <EliminationTable rows={data.rows} />}
+  </Panel>
 }

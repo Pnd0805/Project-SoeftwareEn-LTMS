@@ -286,6 +286,16 @@ describe('Schedule source states', () => {
     expect(screen.getByText(message)).toBeInTheDocument()
     expect(screen.queryByText('Nothing scheduled yet')).not.toBeInTheDocument()
   })
+  it.each([401, 403, 404])('hides cached fixtures when access is lost with HTTP %s', status => {
+    hooks.matches.mockReturnValue(failed(httpError(status), { items: [{
+      id: 11, tag: 'Private fixture', roundNumber: 1, scheduledTime: null, teamA: null, teamB: null,
+      status: 'scheduled', resultStatus: null, outcome: null, viewer: { can: { editFixture: false } },
+    }] }))
+    render(<MemoryRouter><ScheduleTab tournamentId={42} /></MemoryRouter>)
+    expect(screen.queryByText('Private fixture')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry schedule' })).toBeInTheDocument()
+  })
   it('keeps loaded fixtures and their destination during a background failure', () => {
     hooks.matches.mockReturnValue(failed(httpError(500), { items: [{
       id: 11, tag: 'Round 1', scheduledTime: null, teamA: null, teamB: null,
@@ -305,6 +315,16 @@ describe('Schedule source states', () => {
 })
 
 describe('Entry private source states', () => {
+  it.each([
+    [{ ...tournament, registrationOpen: false }, 0, 'Registration has not been opened by the organizer yet.'],
+    [tournament, 16, 'Full at 16 squads.'],
+    [{ ...tournament, drawn: true }, 0, 'The bracket is drawn — entries are closed.'],
+  ] as const)('explains an unavailable entry action using existing decisions: %s', (t, count, reason) => {
+    render(<MemoryRouter><EntryPanel t={t} approvedCount={count} sportTypeId={3} /></MemoryRouter>)
+    expect(screen.getByText(reason)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Register a squad' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sign in to enter a squad' })).not.toBeInTheDocument()
+  })
   it('disables Guest private reads and hides cached entries', () => {
     hooks.myTeams.mockReturnValue(pending())
     hooks.applications.mockReturnValue(ready({ items: [{ id: 1, tournament: { id: 42 }, team: { name: 'Private entry' }, status: 'approved' }] }))

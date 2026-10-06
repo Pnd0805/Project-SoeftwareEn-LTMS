@@ -84,6 +84,17 @@ beforeEach(() => {
 })
 
 describe('Entry refresh preserves an active real registration draft', () => {
+  it('returns focus to entry feedback when a failed refresh removes the original trigger', async () => {
+    const view = render(<Page />)
+    const opener = screen.getByRole('button', { name: 'Register a squad' })
+    opener.focus()
+    fireEvent.click(opener)
+    const dialog = await screen.findByRole('dialog')
+    hooks.rules.mockReturnValue(failed(new TypeError('offline'), { items: [] }))
+    view.rerender(<Page />)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Entry feedback' })).toHaveFocus())
+  })
   it.each(['rules', 'approved'] as const)('retains the mounted form, choices and personal entries after %s refresh fails', async source => {
     hooks.apply.mockRejectedValueOnce(new TypeError('Connection lost'))
     const { view, dialog } = await openDraft()

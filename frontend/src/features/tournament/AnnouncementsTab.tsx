@@ -38,13 +38,14 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
 
   return (
     <>
+      <div className="spread"><h2 className="journey-heading">Announcements</h2>
       {org ? (
         <div className="hstack" style={{ justifyContent: 'flex-end' }}>
           <button className="btn primary" type="button" onClick={() => { publish.reset(); setOpen(true) }}>
             <Icon name="bell" size={13} /> Post an announcement
           </button>
         </div>
-      ) : null}
+      ) : null}</div>
 
       {announcements.isPending ? <Panel quiet><span className="sub">Loading announcements…</span></Panel>
         : announcements.isError ? (
@@ -57,8 +58,8 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
             <div className="spread">
               <span className="tag"><em>//</em> Organizer · {new Date(a.createdAt).toLocaleDateString()}</span>
             </div>
-            <div className="disp" style={{ fontSize: 19 }}>{a.title}</div>
-            <div style={{ fontSize: 15, lineHeight: 1.55 }}>{a.body}</div>
+            <h3 className="journey-heading">{a.title}</h3>
+            <div className="tour-announcement-body">{a.body}</div>
           </Panel>
         )) : <Empty icon="bell" title="Nothing announced yet" />}
 

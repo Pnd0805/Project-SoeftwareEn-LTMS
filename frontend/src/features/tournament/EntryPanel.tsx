@@ -5,7 +5,7 @@
  * just read the rules and the entry notes is already here; sending them to their
  * squad page to start again is the long way round to the same form.
  */
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Facts, Panel } from '../../components/kit/primitives'
 import { useLtms } from '../../shared/store'
@@ -41,6 +41,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
   const storeUser = me(s)
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const entryFeedbackRef = useRef<HTMLDivElement>(null)
   const meQuery = useMe()
   const privateApplicable = !USE_MOCK && !!meQuery.data
   const backendTeams = useBackendMyTeams(privateApplicable)
@@ -94,9 +95,10 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
 
   return (
     <>
-      <Panel>
+      <div ref={entryFeedbackRef} className="tour-entry-surface" role="region" aria-label="Entry feedback" tabIndex={-1}>
+      <Panel className="tour-entry">
         <div className="spread">
-          <span className="tag"><em>//</em> Entry</span>
+          <h2 className="journey-heading">Entry</h2>
           {!entryConfirmed ? <Badge kind="neutral">Unconfirmed</Badge> : closed
             ? <Badge kind="neutral">{t.drawn ? 'Closed' : approved !== undefined && approved >= t.cap ? 'Full' : 'Not open'}</Badge>
             : <Badge kind="ok">Open</Badge>}
@@ -106,6 +108,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
             : <><b className="num">{approved}</b> <span className="sub">of {t.cap}</span></>],
           ['Entry rules', rulesConfirmed ? ruleSummary(t.rules) || 'open to everybody' : 'Eligibility unconfirmed'],
         ]} />
+        {entryConfirmed && closed ? <p className="sub">{closed}</p> : null}
 
         {mineIn.map(r => (
           <div className="spread" key={r.id}>
@@ -156,11 +159,16 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
           <div className="sub">You need a squad you lead, in this sport, with Ready status before you can enter.</div>
         ) : null}
       </Panel>
+      </div>
 
       {open && u && !confirmation?.accessLost && !teamAccessLost
         && (USE_MOCK ? can.length : backendReady.length || backendTeams.isError) ? (
         <RegisterForm team={can[0]} options={[t]} tournament={t} sportTypeId={sportTypeId}
-          open={open} onClose={() => setOpen(false)} feedback={draftFeedback} />
+          open={open} onClose={() => {
+            setOpen(false)
+            /* โหลดซ้ำล้มเหลวอาจถอดปุ่มเดิม จึงคืนโฟกัสไปยังข้อความแก้ไขแทน */
+            if (!entryConfirmed || teamFailure) requestAnimationFrame(() => entryFeedbackRef.current?.focus())
+          }} feedback={draftFeedback} />
       ) : null}
     </>
   )
