@@ -353,11 +353,14 @@ describe('auth.service forgotPassword()', () => {
     mockedHashPassword.mockResolvedValue('hashed-raw-token');
     mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(0);
     mockedPasswordResetRepo.create.mockResolvedValue(10);
-    mockedSendPasswordResetEmail.mockRejectedValue(new Error('SMTP down'));
+    mockedSendPasswordResetEmail.mockRejectedValueOnce(new Error('SMTP down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});   // log นี้คือสิ่งที่เทสตั้งใจให้เกิด
 
     await expect(authService.forgotPassword(baseUser.email)).resolves.toEqual({
       message: 'ถ้าอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว',
     });
+    expect(spy).toHaveBeenCalledWith('sendPasswordResetEmail failed:', expect.any(Error));
+    spy.mockRestore();
   });
 
   /**
@@ -549,7 +552,8 @@ describe('auth.service register() — OTP ยืนยันอีเมล', ()
 
   it('เมลพัง → สมัครยังสำเร็จ แต่คืน emailVerificationSent: false', async () => {
     arrangeRegister();
-    mockedSendEmailVerificationOtp.mockRejectedValue(new Error('SMTP down'));
+    // ★ Once — mockRejectedValue ถาวรจะค้างข้ามเทส (clearAllMocks ไม่ล้าง implementation) ⇒ เทสหลังจากนี้ส่งเมลไม่ได้ทั้งหมด
+    mockedSendEmailVerificationOtp.mockRejectedValueOnce(new Error('SMTP down'));
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await authService.register(registerInput);

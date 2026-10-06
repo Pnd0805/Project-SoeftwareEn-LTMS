@@ -252,4 +252,13 @@ describe('rejectInvitation', () => {
   });
 });
 
-
+// 🔴 BR-05 — ช่องว่างระหว่าง SRS กับโค้ด (ไม่ใช่ช่องว่างของเทส) · ต้องเคาะกับทีมก่อนแก้
+//   SRS: "ต้องตรวจเงื่อนไขนี้ทั้งตอนตอบรับคำเชิญและตอนอนุมัติทีม Official"
+//   ตอนอนุมัติ: มีแล้ว (adminScope.service approveTeamRequest → MEMBER_CONFLICT · มีเทส)
+//   ตอนตอบรับคำเชิญ: acceptInvitation / createAcceptInvite ไม่ได้เช็คว่าผู้ใช้อยู่ทีม Official อื่นในกีฬาเดียวกัน
+//   ⇒ คนที่อยู่ทีม Official ฟุตบอลแล้ว รับคำเชิญเข้าทีม Official ฟุตบอลอีกทีมได้
+//   ถ้าทีมยืนยันว่าต้องตาม SRS: เพิ่มด่านใน acceptInvitation (และ joinRequest) แล้วเปลี่ยน todo เป็นเทสจริง
+describe('acceptInvitation — BR-05 ทีม Official 1 ทีม/กีฬา', () => {
+  it.todo('422 เมื่อรับคำเชิญเข้าทีม Official ขณะที่อยู่ทีม Official อื่นในกีฬาเดียวกันแล้ว');
+  it.todo('รับได้เมื่อทีม Official อีกทีมเป็นคนละกีฬา');
+});

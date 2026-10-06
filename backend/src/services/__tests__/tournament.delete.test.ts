@@ -69,3 +69,13 @@ describe('deleteTournament (DELETE /tournaments/:id)', () => {
     });
   });
 });
+
+// 🔴 BR-03 — ยังไม่พบการ implement ใน src (ไม่มีโค้ดไหนตั้งสถานะ 'auto_deleted' เลย มีแต่ฝั่งอ่าน)
+//   อาจอยู่ใน database/migrations เป็น MySQL EVENT ซึ่งไม่ได้อยู่ใน repo backend ที่ตรวจ
+//   ถ้าเป็น EVENT: ทดสอบด้วย unit test ไม่ได้ ต้องเป็น integration test กับฐานจริง
+//   ถ้ายังไม่มี: ต้องเขียนงานเบื้องหลัง (แบบ sweepInactiveTeams) แล้วเปลี่ยน todo เป็นเทสจริง
+describe('BR-03 ลบทัวร์อัตโนมัติ', () => {
+  it.todo("ทัวร์ที่ยัง private เมื่อถึงวันแข่ง → สถานะ 'auto_deleted'");
+  it.todo('แจ้งเตือนผู้จัดก่อนถึงกำหนดลบ');
+  it.todo('ข้อมูลทัวร์ทั้งหมดถูกลบเมื่อผ่านไป 4 ปี');
+});
