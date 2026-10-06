@@ -132,6 +132,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
   const needle = q.trim().toLowerCase()
   const { data: current } = useTournamentReferees(open ? t.id : undefined)
   const appoint = useAppointReferee(t.id)
+  const [invitationNotice, setInvitationNotice] = useState<string | null>(null)
 
   /* คนที่อยู่ในทัวร์นาเมนต์แล้ว (ทั้งตอบรับและรอตอบ) ไม่ควรโผล่ให้เชิญซ้ำ
      บัญชีที่ถูกระงับแต่งตั้งไม่ได้ (FR-UM-05) จึงไม่แสดงเลย */
@@ -186,6 +187,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
       {appoint.isError ? (
         <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {appointError(appoint.error)}</Banner>
       ) : null}
+      {invitationNotice ? <Banner kind="ok">{invitationNotice}</Banner> : null}
       {cands.length ? (
         <TableWrap>
           <table>
@@ -198,7 +200,14 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
                   sub={x.sub}
                   isMockExternal={x.external}
                   appointPending={appoint.isPending}
-                  onAppoint={(userId, isExternal) => appoint.mutate({ userId, isExternal })}
+                  onAppoint={(userId, isExternal) => {
+                    setInvitationNotice(null)
+                    appoint.mutate({ userId, isExternal }, { onSuccess: result => setInvitationNotice(
+                      result.crossTournamentWarnings && result.crossTournamentWarnings > 0
+                        ? `Invitation sent. This referee has work outside this tournament overlapping ${result.crossTournamentWarnings} offered matches and may not be able to accept them all.`
+                        : 'Invitation sent — waiting for the referee to answer.',
+                    ) })
+                  }}
                 />
               ))}
             </tbody>

@@ -48,6 +48,7 @@ vi.mock('../../hooks/useAuth', () => ({
 }))
 
 vi.mock('../../hooks/useUser', () => ({
+  useUserMatchHistory: () => ({ data: { items: [], statsHidden: false }, isSuccess: true }),
   useUserStats: () => ({ data: undefined, isPending: false, isError: true }),
   useFollows: () => ({ data: undefined }),
   useUserCareer: () => ({ data: undefined, isPending: false }),

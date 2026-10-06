@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock('../../hooks/useUser', () => ({
+  useUserMatchHistory: () => ({ data: { items: [], statsHidden: false }, isSuccess: true }),
   usePublicUser: () => ({ isPending: false, isError: false, data: state.profile }),
   useUserStats: () => ({ isPending: false, isSuccess: true, data: state.stats }),
   useUserCareer: () => ({ isPending: false, isSuccess: true, error: null, data: state.career, refetch: vi.fn() }),

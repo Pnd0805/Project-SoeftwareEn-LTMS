@@ -247,6 +247,8 @@ export interface MatchViewerContext {
  * ถ้าไม่มี tournamentName / score / checkedIn ติดมาด้วย หน้า list ต้องยิงเพิ่มอีก 3 request ต่อแถว
  */
 export interface MatchListItemDto extends MatchDto {
+  /** From unfiltered GET /me/matches; undefined means this row was not assessed. */
+  conflictingMatchIds?: number[];
   /**
    * สกอร์ถูกดึงขึ้นมาจาก match_results.score_data ให้แล้ว — null = ยังไม่มีผล
    * หน้า list ต้องการแค่ตัวเลข ไม่ต้องการ MatchResultDto ทั้งก้อน
@@ -258,6 +260,22 @@ export interface MatchListItemDto extends MatchDto {
    * ถ้าไม่มีก็ตีความเหมือนเดิมทุกอย่าง จึงเป็น optional ไม่ใช่ null
    */
   outcome?: MatchOutcome | null;
+}
+
+export interface BackendMyMatchDto {
+  id: number;
+  role: 'player' | 'referee';
+  myTeamId: number | null;
+  tournament: { id: number; name: string; sportTypeId: number };
+  round: number | null;
+  teamA: { id: number; name: string; logoUrl?: string | null } | null;
+  teamB: { id: number; name: string; logoUrl?: string | null } | null;
+  scheduledTime: string | null;
+  scheduledEndTime: string | null;
+  venue: string | null;
+  mode: Mode;
+  status: MatchStatus;
+  conflictingMatchIds: number[];
 }
 
 /**

@@ -15,6 +15,7 @@
  * OD-60 — MVP ใช้ mvpTimes เป็นตัวหลัก · mvpVotes โตตามจำนวนคนดู ห้ามติดป้ายว่า "MVP"
  */
 import { BackendCareerPanel } from './BackendCareerPanel'
+import { BackendMatchHistoryPanel } from './BackendMatchHistoryPanel'
 import { PublicRewards } from '../rewards/RewardsPage'
 import { TeamChipView } from '../../components/kit/chips'
 import { Avatar } from '../../components/kit/Avatar'
@@ -143,6 +144,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
         ) : null}
       </Panel>
       <BackendCareerPanel userId={userId} />
+      <BackendMatchHistoryPanel userId={userId} />
       <PublicRewards userId={userId} />
     </>
   )

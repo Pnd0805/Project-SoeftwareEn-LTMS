@@ -5,7 +5,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings, overrideResult } from "./match";
+import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings, getMyMatches, overrideResult } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -13,6 +13,41 @@ const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => vi.unstubAllGlobals());
+
+describe('unfiltered personal schedule', () => {
+  const row = (id: number, role: 'player' | 'referee', conflicts: number[]) => ({
+    id, role, myTeamId: role === 'player' ? 3 : null,
+    tournament: { id: id + 20, name: `Tour ${id}`, sportTypeId: 1 }, round: 1,
+    teamA: { id: 3, name: 'A' }, teamB: { id: 4, name: 'B' },
+    scheduledTime: '2026-10-10T03:00:00Z', scheduledEndTime: '2026-10-10T04:00:00Z',
+    mode: 'online', venue: 'Room', status: 'scheduled', conflictingMatchIds: conflicts,
+  });
+  const serve = (rows: unknown[], failure = false) => fetchMock.mockImplementation(input => {
+    const url = String(input);
+    if (url.endsWith('/me/matches')) return Promise.resolve(failure ? json({ code: 'FORBIDDEN', message: 'Denied' }, 403) : json({ items: rows }));
+    if (url.endsWith('/me')) return Promise.resolve(json({ id: 9 }));
+    return Promise.resolve(json({ items: [], pagination: { totalPages: 1 } }));
+  });
+  it('keeps cross-role conflicts and server modes, including matches outside the enrichment cap', async () => {
+    const rows = Array.from({ length: 14 }, (_, i) => row(i + 1, i === 13 ? 'referee' : 'player', i === 0 ? [14] : i === 13 ? [1] : []));
+    serve(rows);
+    const result = await getMyMatches();
+    expect(result.items).toHaveLength(14);
+    expect(result.items.find(m => m.id === 1)).toMatchObject({ conflictingMatchIds: [14], mode: 'online', viewer: { roles: ['player'], myTeamId: 3 } });
+    expect(result.items.find(m => m.id === 14)).toMatchObject({ conflictingMatchIds: [1], viewer: { roles: ['referee'] } });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me/matches?'))).toBe(false);
+  });
+  it('merges two roles on one match and excludes a self conflict', async () => {
+    serve([row(1, 'player', [1, 2]), row(1, 'referee', [2]), row(2, 'referee', [1])]);
+    const result = await getMyMatches();
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({ conflictingMatchIds: [2], viewer: { roles: ['player', 'referee'] } });
+  });
+  it('propagates a personal schedule read failure instead of claiming there are no conflicts', async () => {
+    serve([], true);
+    await expect(getMyMatches()).rejects.toMatchObject({ status: 403, message: 'Denied' });
+  });
+});
 
 describe("match check-in contract", () => {
   const checkedInRow = {

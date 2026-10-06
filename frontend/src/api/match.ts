@@ -24,6 +24,7 @@ import type {
   BackendCheckinRequest,
   BackendManualCheckinDto,
   BackendRefereeMatchDto,
+  BackendMyMatchDto,
   BackendManualCheckinRequest,
   BackendMyCheckinDto,
   MatchResultDto,
@@ -214,16 +215,10 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
 
 
 /**
- * "แมตช์ของฉัน" — backend ไม่มีเส้นนี้ (ไม่มี GET /matches) จึงประกอบเอาเองจากของที่มี
- *
- *   ผู้เล่น   → GET /me/teams + GET /me/applications  (ทีมเราลงรายการไหนบ้าง)
- *   ผู้จัด    → GET /me/tournament-requests           (รายการที่เราขอจัดและผ่านแล้ว)
- *   กรรมการ  → GET /matches/:id/referees               (ต้องไล่ถามรายแมตช์)
- *
- * ⚠️ ข้อจำกัดที่ต้องรู้: GET /me/referee-invitations คืนเฉพาะคำเชิญที่ "ยังไม่ตอบ"
- *    พอกรรมการกดรับแล้วคำเชิญหายไป ไม่มีเส้นไหนบอกได้ว่าเราเป็นกรรมการของรายการใดบ้าง
- *    ตรงนี้จึงต้องกวาดจากรายการที่ publish แล้วมาไล่เช็ครายแมตช์ ซึ่งเปลืองคำขอ
- *    (จำกัดจำนวนไว้ด้วยค่าคงที่ข้างล่าง) — ควรขอให้ backend เพิ่ม GET /me/matches
+ * GET /me/matches owns active player/referee membership and conflict flags.
+ * Existing tournament reads enrich result/check-in data and preserve the
+ * organizer queue and completed history. Enrichment caps must not hide rows
+ * returned by the personal schedule endpoint.
  */
 const MAX_TOURNAMENTS = 12;
 const MAX_CHECKIN_PROBES = 8;
@@ -314,13 +309,15 @@ async function fillScores(items: MatchListItemDto[], limit = 32): Promise<void> 
 export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }> {
   const me = await apiFetch<{ id: number }>("/me");
 
-  const [teams, applications, requests, publicTournaments, refereeMatches] = await Promise.all([
+  const [teams, applications, requests, publicTournaments, refereeMatches, ownMatches] = await Promise.all([
     safe(apiFetch<{ items: Array<{ id: number; role: string; sportTypeId: number }> }>("/me/teams"), { items: [] }),
     safe(apiFetch<{ items: Array<{ tournament: { id: number; name: string }; team: { id: number }; status: string }> }>("/me/applications"), { items: [] }),
     safe(apiFetch<{ items: Array<{ id: number; name: string; status: string }> }>("/me/tournament-requests"), { items: [] }),
     safe(apiFetch<{ items: Array<{ id: number; name: string }> }>("/tournaments"), { items: [] }),
     /* B7 (`c43f497`): กรรมการอ่านแมตช์ของตัวเองได้ตรงๆ แล้ว */
     safe(apiFetch<{ items: BackendRefereeMatchDto[] }>("/me/referee-matches"), { items: [] }),
+    // Required, unfiltered: filtering roles here would hide player/referee conflicts.
+    apiFetch<{ items: BackendMyMatchDto[] }>("/me/matches"),
   ]);
 
   /* กรรมการรับเชิญทัวร์ไหนก็ได้ ไม่จำเป็นต้องลงแข่งหรือเป็นผู้จัดของทัวร์นั้น — เดิมต้อง
@@ -342,6 +339,7 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
   requests.items.forEach((r) => names.set(r.id, r.name));
   publicTournaments.items.forEach((t) => names.set(t.id, t.name));
   refereeMatches.items.forEach((m) => names.set(m.tournament.id, m.tournament.name));
+  ownMatches.items.forEach((m) => names.set(m.tournament.id, m.tournament.name));
 
   /* รายการที่ต้องไปดูแมตช์: ของเราแน่ๆ ก่อน แล้วค่อยเติมรายการสาธารณะไว้หากรรมการ */
   const mine = new Set<number>([
@@ -352,6 +350,7 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
     /* ทัวร์ที่เราเป็นกรรมการ ดึงรายการแมตช์มาด้วย จะได้ผลสรุปแบบ M04 (สกอร์/สถานะผล)
        ซึ่ง B7 ไม่ได้แนบมากับแถวของมันเอง */
     ...refereeMatches.items.map((m) => m.tournament.id),
+    ...ownMatches.items.map((m) => m.tournament.id),
   ]);
   const candidates = [...mine, ...publicTournaments.items.map((t) => t.id).filter((id) => !mine.has(id))]
     .slice(0, MAX_TOURNAMENTS);
@@ -380,9 +379,11 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
   /* ทัวร์ที่ถูกตัดออกเพราะเกิน MAX_TOURNAMENTS — ใช้แถวจาก B7 แทน ดีกว่าปล่อยให้แมตช์
      ที่เรารับเป็นกรรมการหายไปจากคิว (แถวนั้นไม่มีสกอร์กับสถานะผล ก็ขึ้นเป็นขีดกลางไป) */
   const known = new Set(sources.map((src) => src.match.id));
-  refereeMatches.items
+  [...ownMatches.items, ...refereeMatches.items]
     .filter((m) => !known.has(m.id))
     .forEach((m) => {
+      if (known.has(m.id)) return;
+      known.add(m.id);
       const teamRef = (t: { id: number; name: string } | null) =>
         t ? { ...t, sportTypeId: m.tournament.sportTypeId } : null;
       sources.push({
@@ -417,8 +418,10 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
 
   const items: MatchListItemDto[] = [];
   sources.forEach((src) => {
-    const roles = roleOf(src);
-    if (refereeMatchIds.has(src.match.id)) roles.push("referee");
+    const own = ownMatches.items.filter(m => m.id === src.match.id);
+    const roles = roleOf(src).filter(role => role === 'organizer' || src.match.status === 'completed');
+    own.forEach(m => { if (!roles.includes(m.role)) roles.push(m.role); });
+    if (src.match.status === 'completed' && refereeMatchIds.has(src.match.id)) roles.push("referee");
     if (!roles.length) return;
 
     const dto = matchFromBackend({ ...src.match, tournamentId: src.tournamentId });
@@ -438,6 +441,17 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
       myTeamId,
       isTeamLeader: myTeamId !== null && myLedTeamIds.has(myTeamId),
     };
+    if (own.length) {
+      const row = own[0];
+      dto.conflictingMatchIds = [...new Set(own.flatMap(m => m.conflictingMatchIds ?? []))].filter(id => id !== row.id);
+      dto.scheduledTime = row.scheduledTime;
+      dto.scheduledEndTime = row.scheduledEndTime;
+      dto.status = row.status;
+      dto.mode = row.mode;
+      dto.venue = row.venue;
+      dto.viewer.myTeamId = own.find(m => m.role === 'player')?.myTeamId ?? null;
+      dto.viewer.isTeamLeader = dto.viewer.myTeamId !== null && myLedTeamIds.has(dto.viewer.myTeamId);
+    }
     items.push(dto);
   });
 
@@ -460,7 +474,7 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
     }),
   );
 
-  await Promise.all([fillScores(items), fillModes(items)]);
+  await Promise.all([fillScores(items), fillModes(items.filter(m => !ownMatches.items.some(row => row.id === m.id)))]);
 
   items.sort((a, b) => {
     if (!a.scheduledTime) return 1;
@@ -694,7 +708,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
 }
 
 /**
- * TODO(guide): GET /matches?assignedToMe=true
+ * GET /me/matches supplies active personal roles and conflict IDs.
  * แมตช์ที่ "ฉัน" เกี่ยวข้อง ไม่ว่าจะในฐานะกรรมการ ผู้เล่น หรือผู้จัด
  * หน้า /matches (MatchesPage) ใช้ตัวนี้ตัวเดียว จึงคืน MatchListItemDto ที่
  * denormalize ชื่อทัวร์นาเมนต์ สกอร์ และยอดเช็คอินมาให้แล้ว — กัน N+1 ต่อแถว
@@ -721,8 +735,7 @@ export async function getMyMatches(): Promise<{ items: MatchListItemDto[] }> {
       .filter((m) => m.viewer.roles.length);
     return mockDelay({ items: seeded });
   }
-  /* ไม่มีเส้นเดียวจบ — ประกอบจากทีมของเรา รายการที่เราจัด และกรรมการรายแมตช์
-     (ดูหมายเหตุที่ composeMyMatches ว่าทำไมต้องกวาดหลายคำขอ) */
+  /* Unfiltered personal schedule, enriched with organizer/result reads. */
   return composeMyMatches();
 }
 

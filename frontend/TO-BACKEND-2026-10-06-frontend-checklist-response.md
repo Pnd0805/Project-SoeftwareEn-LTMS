@@ -97,3 +97,59 @@ production build passed. The existing >500 kB main-bundle warning remains.
 An isolated Vite server on 127.0.0.1:5189 returned HTTP 200 for Profile, tournament
 referee management and the new component modules, then was stopped. This confirms
 development serving, not browser or live-backend acceptance of the new workflows.
+
+## ตอบ To-FE / To-Team รอบล่าสุด — 2026-10-06
+
+ตรวจ remote และ fetch `BE_KN@7add50c47d48f1ba6c566836ff7ffbe098df148e` ก่อนทำงาน
+ส่วนนี้เป็นสถานะล่าสุดที่ต่อจาก delivery ด้านบน ไม่ได้เปลี่ยนหลักฐานของรอบก่อน
+
+### FE รับมาทำแล้ว
+
+- [x] อ่าน `/me/matches` แบบไม่ส่ง `?role=` และใช้ `conflictingMatchIds`
+  แสดงคำเตือน ชื่อทัวร์ เวลา บทบาท และลิงก์แมตช์ที่ชน ก่อนแบ่งกลุ่มผู้เล่น/กรรมการ
+  รวมบทบาทซ้ำของแมตช์เดียว และไม่ทิ้งรายการแม้เกินขอบเขต enrichment เดิม
+  ถ้าเวลาเริ่ม/จบไม่ครบ แจ้งว่าเทียบเวลาไม่ได้ ไม่แสดงว่าไม่มีเวลาชน
+  หากอ่าน personal schedule ไม่สำเร็จ ใช้ error/Retry ไม่เปลี่ยนเป็นลิสต์ไม่มี conflict
+- [x] รองรับ `REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT` ในสองเส้นตอบรับ
+  เก็บข้อความ BE และเพิ่มลิงก์ไปแมตช์เดิมจาก `conflictsWith.matchId`
+  เพื่อใช้ FR09 ที่ส่งมอบแล้ว การเปิดแมตช์ไม่ใช่การถอนตัวทันที ยังต้องกรอกเหตุผลและรอ ORG
+- [x] รองรับ `crossTournamentWarnings` หลังเชิญสำเร็จ บอกจำนวนแมตช์ที่ทับ
+  พร้อมยืนยันว่าคำเชิญถูกส่งแล้ว ไม่เปิดชื่อ/รหัสทัวร์อื่น
+  จอเชิญเข้า pool เดิมส่ง `matchIds: []` จึงตาม contract ได้ค่า 0 ตามปกติ
+- [x] U14 มีป้าย Team withdrew อยู่แล้ว เพิ่ม RW05 Match history ในโปรไฟล์
+  เจ้าตัวและโปรไฟล์สาธารณะ โดยคงผลแพ้ชนะ/สกอร์เดิมและป้ายถอนตัวต่อรายการ
+  แยก hidden/null, empty, loading และ read error/Retry; ไม่รวมเลขใหม่แทน U04
+  RW06 ยังไม่มีจอเฉพาะใน FE จึงไม่เพิ่มจอ/เรียก API นั้นเพียงเพื่ออ่าน field ที่เพิ่มมา
+
+### คำตอบและคำขอถึง BE
+
+- [x] `conflictingMatchIds` แบบ ID เพียงพอแล้ว: FE ใช้รายการเดียวกันหา object
+  ไม่ต้องเพิ่ม `conflictsWith` ซ้ำในแต่ละแถว และยังไม่ขอ summary ตัวนับรวม
+- [ ] ขอเพิ่ม F14 `crossTournamentConflicts: [{ userId, matchId, conflictCount }]`
+  เมื่อ ORG เลื่อนเวลาแล้วชนงานนอกทัวร์ โดยคืน [] เมื่อไม่มี conflict และไม่เปิดชื่อ/
+  รหัสทัวร์อื่น FE จะเตือนให้ ORG ติดต่อกรรมการ; ขณะนี้ไม่มี field นี้ใน source ที่ตรวจ
+- [ ] U04: FE เสนอทาง ก — ตอน verify นับใบ approved และ withdrawn ด้วย
+  เพื่อให้ยอดรวมตรงกับ U14/RW05 รวมถึง amend/dispute ที่ยืนยันหลังทีมถอนตัว
+  ขอทีม/BE ยืนยันนิยามและตรวจความจำเป็นของ recount/backfill จากฐานที่จะใช้งานจริง
+  ตัวเลขฐานใน notice เป็น snapshot ของ BE ไม่ใช่การยืนยันฐานปัจจุบันจาก FE
+- [ ] Admin เปิดเอกสาร External: ยังขอ authorized expiring read URL สำหรับ
+  private identity keys พร้อมกรณีไฟล์หาย/หมดอายุ (ตาม blocker ด้านบน)
+- [ ] Rewards criteria/progress/final artwork: ยังรอ read contract/assets ที่ตกลงกัน
+
+### To-Team: ยกเลิกทัวร์ — ข้อเสนอ ไม่ใช่มติ
+
+- [ ] FE เสนอ ข: เพิ่ม cancelled และคงด่าน delete ปัจจุบัน; ขอทีมตกลง
+  ช่วงที่ยกเลิกได้ ผู้มีสิทธิ์ และผลต่อสถิติ/รางวัล/Pick'em ที่เกิดขึ้นแล้วให้ชัด
+  ก่อน BE ส่ง migration, endpoint, DTO และ notification contract
+- [x] ผลกระทบ FE: tournament status enum/mapper, list/detail badges และตัวกรอง,
+  Manage/registration/fixture/match actions, เหตุผลและ confirmation,
+  notification navigation และ career/history ที่ยังเปิดอ่านได้
+  จอรายละเอียดปัจจุบันแยก public/private/completed; จอ cancelled ต้องเป็น
+  หน้าประวัติที่อ่านได้ ไม่ใช่ใช้ 404 แทนหรือปล่อยปุ่มแก้การแข่งขันให้กดต่อ
+- [ ] ยังไม่เพิ่มสถานะหรือยิง cancel endpoint ที่ BE ยังไม่ส่งมอบ
+- [ ] Browser/live-backend acceptance ของ flow ใหม่ยังเปิด แยกจาก developer checks
+
+Developer checks รอบนี้ผ่าน 78 files / 478 tests, lint และ production build
+Vite แยก instance ที่ 127.0.0.1:5189 เปิด Matches/Profile และ modules ใหม่ HTTP 200
+แล้วปิดเฉพาะ instance ที่สร้างตรวจ งานนี้ไม่เปลี่ยน source BE และไม่ปิด browser QA
+ยังมีคำเตือนขนาด main bundle >500 kB เดิม

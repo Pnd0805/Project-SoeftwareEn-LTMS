@@ -149,3 +149,7 @@ export function usePicks(
 export function useUserCareer(userId: number | undefined) {
   return useQuery({ queryKey: ['users', userId, 'career'], queryFn: () => userApi.getUserCareer(userId!), enabled: userId !== undefined });
 }
+
+export function useUserMatchHistory(userId: number | undefined) {
+  return useQuery({ queryKey: ['users', userId, 'match-history'], queryFn: () => userApi.getUserMatchHistory(userId!), enabled: userId !== undefined, retry: retryPolicy });
+}

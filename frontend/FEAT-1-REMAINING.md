@@ -3,6 +3,31 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## Latest To-FE / To-Team follow-up — 2026-10-06
+
+- [x] Verified/fetched remote `BE_KN@7add50c47d48f1ba6c566836ff7ffbe098df148e`.
+- [x] Personal schedule uses unfiltered `/me/matches` conflict IDs across roles;
+  visible match/time/role links, missing-time warning and required-read error/Retry.
+  Server rows remain visible beyond enrichment limits; duplicate roles are merged.
+- [x] Referee acceptance preserves the cross-tournament error and offers the
+  returned existing-match link to the delivered withdrawal flow; no automatic release.
+- [x] Successful invitation displays the server warning count without another
+  tournament's details. Current pool invitations have no offered matches (count 0).
+- [x] RW05 match history on own/public profiles retains wins/losses/scores and
+  withdrawn badges, distinguishes privacy/empty/failure states and refreshes after
+  result writes. U14 withdrawn display already delivered; U04 totals remain unchanged.
+- [x] Updated To-Backend with ID/summary answers, F14 count-only field request,
+  U04 recommendation and cancellation impact inventory.
+- [ ] F14 crossTournamentConflicts: waiting for backend field, then organizer UI.
+- [ ] U04 counting semantics and tournament cancellation: waiting for team decision
+  and backend delivery; these proposals do not close either acceptance issue.
+- [ ] Authorized External identity document reads and optional rewards contracts/assets.
+- [ ] Live-browser acceptance: cross-role/time warnings and links, missing times,
+  refusal/withdrawal recovery, invitation warning success, withdrawn win/history/privacy.
+- [x] Developer validation: 78 files / 478 tests passed; lint and production build
+  passed. Isolated Vite 127.0.0.1:5189 served Matches/Profile and new modules HTTP 200,
+  then was stopped. Existing >500 kB main-bundle warning remains.
+
 ## FE Checklist delivery — 2026-10-06
 
 Current contract for this delivery: remote `BE_KN@63045d17188cec87577122dc4146de423073abbf`,

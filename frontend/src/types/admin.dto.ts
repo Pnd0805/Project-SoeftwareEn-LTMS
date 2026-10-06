@@ -65,6 +65,8 @@ export interface ReviewTournamentRequest {
  *    ให้เรียงด้วย `tournament_referee_id DESC` แทน (รีวิว schema รอบแรกเจอ)
  */
 export interface TournamentRefereeDto {
+  /** Invitation write response only: count, never another referee's private schedule. */
+  crossTournamentWarnings?: number;
   id: number;
   tournamentId: number;
   user: UserRefDto;

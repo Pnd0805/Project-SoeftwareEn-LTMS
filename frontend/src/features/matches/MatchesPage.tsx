@@ -19,7 +19,8 @@
  * (route มีใน backend แล้ว จึงไม่มี fallback จาก store)
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { RefereeConflictLink } from '../match/RefereeConflictLink'
 import { Badge, Banner, Empty, Panel, MatchStateBadge, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { Modal } from '../../components/kit/Modal'
@@ -43,6 +44,7 @@ function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
       <div className="spread">
         <span className="tag"><em>//</em> {m.tournament.name}</span>
         <MatchStateBadge state={matchStateOf(m)} />
+        {m.conflictingMatchIds?.length ? <Badge kind="crit">Time conflict</Badge> : null}
       </div>
       <div className="hstack" style={{ gap: 9 }}>
         <TeamChipView team={toTeamView(m.teamA)} />
@@ -92,7 +94,7 @@ function MatchTable({ list }: { list: MatchListItemDto[] }) {
               <td className="tag">vs</td>
               <td><TeamLinkView team={toTeamView(m.teamB)} /></td>
               <td className="num">{scoreText(m)}</td>
-              <td><MatchStateBadge state={matchStateOf(m)} /></td>
+              <td><MatchStateBadge state={matchStateOf(m)} />{m.conflictingMatchIds?.length ? <> <Badge kind="crit">Time conflict</Badge></> : null}</td>
               <td><button className="btn primary" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button></td>
             </tr>
           ))}
@@ -170,6 +172,7 @@ function AppointmentRow({ invite, onDone }: {
           {(failed as { code?: string }).code === 'REFEREE_ALREADY_ACTIVE'
             ? 'You are already an active referee of this tournament, so this extra invitation is not needed — decline it to clear it.'
             : (failed as Error).message}
+          <RefereeConflictLink error={failed} />
         </Banner>
       ) : null}
       <div className="hstack">
@@ -294,6 +297,19 @@ export function MatchesPage() {
       <h1 className="disp" style={{ fontSize: 32 }}>Matches</h1>
 
       <RefereeInvites />
+
+      {all.filter(m => m.conflictingMatchIds?.length).map(m => (
+        <Panel quiet key={`conflict:${m.id}`}>
+          <Banner kind="warn"><b>Time conflict — {m.tournament.name}</b></Banner>
+          <p><Link to={`/m/${m.id}`}>Match #{m.id}</Link> · {m.viewer.roles.filter(role => role !== 'organizer').join(' / ')} · {m.scheduledTime ? fmtDate(m.scheduledTime) : 'Not scheduled'} – {m.scheduledEndTime ? fmtDate(m.scheduledEndTime) : 'End time not set'}</p>
+          <ul>{m.conflictingMatchIds!.map(id => {
+            const other = all.find(row => row.id === id)
+            return <li key={id}><Link to={`/m/${id}`}>{other?.tournament.name ?? `Match #${id}`} · Match #{id}</Link>{other ? <> · {other.viewer.roles.filter(role => role !== 'organizer').join(' / ')} · {other.scheduledTime ? fmtDate(other.scheduledTime) : 'Not scheduled'} – {other.scheduledEndTime ? fmtDate(other.scheduledEndTime) : 'End time not set'}</> : null}</li>
+          })}</ul>
+          <p className="sub">You cannot attend both at the same time. Players: contact your team captain. Referees: open the match to request withdrawal; the organizer must approve it first.</p>
+        </Panel>
+      ))}
+      {all.some(m => m.conflictingMatchIds !== undefined && (!m.scheduledTime || !m.scheduledEndTime)) ? <Banner kind="warn">Some matches have no start or end time. Time conflicts cannot be checked for those matches yet.</Banner> : null}
 
       {orgDisputes.length ? (
         <>

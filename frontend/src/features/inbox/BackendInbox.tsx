@@ -23,8 +23,9 @@ import {
 import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
 import { TeamChipView } from '../../components/kit/chips'
+import { RefereeConflictLink } from '../match/RefereeConflictLink'
 
-type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string } | null
+type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string; error?: unknown } | null
 
 /** ตอบคำขอแล้วเด้ง — บอกให้ตรงว่าเพราะอะไร ไม่ใช่ปล่อยเงียบ (R18) */
 const answerError = (error: unknown) => {
@@ -68,7 +69,7 @@ export function BackendInbox() {
         <h2 className="disp" style={{ fontSize: 24 }}>Action requests</h2>
       </div>
 
-      {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+      {notice ? <Banner kind={notice.kind}>{notice.text}<RefereeConflictLink error={notice.error} /></Banner> : null}
 
       {loading ? <Panel quiet><span className="sub">Loading…</span></Panel> : null}
 
@@ -115,7 +116,10 @@ export function BackendInbox() {
                   })}>Decline</button>
                 <button className="btn primary" type="button" disabled={acceptReferee.isPending}
                   onClick={() => acceptReferee.mutate(invite.id, {
-                    onSuccess: () => setNotice({ kind: 'ok', text: `You are now eligible to officiate ${invite.tournament.name}.` }),
+                    onSuccess: result => setNotice({ kind: 'ok', text: result?.requiresAdminApproval
+                      ? `Accepted — an admin still needs to approve you for ${invite.tournament.name}.`
+                      : `You are now eligible to officiate ${invite.tournament.name}.` }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Accept</button>
               </div>
             </div>
@@ -149,7 +153,7 @@ export function BackendInbox() {
                 <button className="btn" type="button" disabled={declineRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined request #${request.id}.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Decline</button>
                 {/* R18 — เดิมขึ้น "You are officiating" ทุกครั้งที่คำขอตอบกลับมา 200 แต่ FR06
                     คืนใบคำขอพร้อม `status` ซึ่งเป็น `cancelled` ได้ เมื่อมีใบอื่นบนแมตช์
@@ -163,7 +167,7 @@ export function BackendInbox() {
                       : { kind: 'warn', text: answered.status === 'open'
                         ? 'Your acceptance was recorded. The other referee still needs to answer.'
                         : `Request #${answered.id} is ${answered.status}. Assignments were not changed by this answer.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Accept</button>
               </div>
             </div>
@@ -185,7 +189,7 @@ export function BackendInbox() {
             {request.status === 'open' ? <button className="btn" disabled={cancelRequest.isPending}
               onClick={() => cancelRequest.mutate(request.id, {
                 onSuccess: () => setNotice({ kind: 'ok', text: `Request #${request.id} withdrawn.` }),
-                onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
               })}>Withdraw request</button> : null}
           </div>
         </div>)}

@@ -58,6 +58,15 @@ const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: 'Ac
 beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request] })
 
 describe('answering a match assignment request', () => {
+  it('preserves the BE cross-tournament message and links the conflicting match', () => {
+    acceptMutate.mockImplementation((_id, opts) => opts.onError(new ApiError(409, {
+      code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT', message: 'Your existing match overlaps this invitation.', conflictsWith: { matchId: 8 },
+    })));
+    renderInbox(); clickAccept();
+    expect(screen.getByText('Your existing match overlaps this invitation.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open match #8 to request withdrawal/ })).toHaveAttribute('href', '/m/8');
+    expect(screen.queryByText(/You are officiating/)).not.toBeInTheDocument();
+  });
   it('renders a tournament withdrawal without matchA and lets the receiving organizer decide', () => {
     incoming = [{ ...request, type: 'ref_withdraw', matchA: null, withdrawScope: 'tournament', reason: 'Cannot attend this tournament' }]
     renderInbox()

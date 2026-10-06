@@ -3,6 +3,7 @@
  * DTOs; prototype-only career data remains available in mock mode.
  */
 import { BackendCareerPanel } from '../player/BackendCareerPanel'
+import { BackendMatchHistoryPanel } from '../player/BackendMatchHistoryPanel'
 import { Link } from 'react-router-dom'
 import { USE_MOCK } from '../../api/client'
 import { Badge, Empty, Facts, Panel, TableWrap } from '../../components/kit/primitives'
@@ -177,6 +178,7 @@ export function ProfilePage() {
             </> : null}
           </Panel>
           <BackendCareerPanel userId={currentUser.id} />
+          <BackendMatchHistoryPanel userId={currentUser.id} />
           <Panel quiet><span className="tag"><em>//</em> MVP totals</span>
             {stats?.mvpTimes != null ? <Stat label="MVP awards" value={stats.mvpTimes} /> : null}
             {stats?.mvpVotes != null ? <Stat label="MVP votes received" value={stats.mvpVotes} /> : null}

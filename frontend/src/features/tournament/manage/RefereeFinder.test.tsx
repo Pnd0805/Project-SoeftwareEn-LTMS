@@ -5,7 +5,7 @@
  * `invitee ≠ inviter` → `409 ORGANIZER_CANNOT_BE_REFEREE` · รายชื่อค้นหาเคยคืนตัวผู้จัด
  * เองมาด้วย กดเชิญได้แล้วได้ 409 ดิบ — ปุ่มที่รู้อยู่แล้วว่าพังต้องไม่ถูกแสดง
  */
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../api/client'
 import type { Tournament } from '../../../shared/types'
@@ -53,6 +53,13 @@ beforeEach(() => {
 })
 
 describe('the organizer looking for referees', () => {
+  it('shows invitation success with a privacy-preserving warning count', () => {
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ crossTournamentWarnings: 2 }));
+    renderFinder();
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }));
+    expect(screen.getByText(/Invitation sent.*overlapping 2 offered matches/)).toBeInTheDocument();
+    expect(screen.queryByText('เชิญไม่สำเร็จ')).not.toBeInTheDocument();
+  });
   it('is not offered their own account', () => {
     renderFinder()
     expect(screen.queryByText('ปกรณ์ ใจดี')).not.toBeInTheDocument()

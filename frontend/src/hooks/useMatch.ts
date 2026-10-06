@@ -52,6 +52,7 @@ export const matchKeys = {
  * เรียกตัวนี้ใน onSuccess ของทุก mutation ที่แตะผล จะได้ไม่ลืมสัก key
  */
 function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef) {
+  qc.invalidateQueries({ queryKey: ['users'] });
   qc.invalidateQueries({ queryKey: ['rewards'] });
   qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.result(matchId) });
@@ -134,7 +135,7 @@ export function useTournamentMatches(tournamentId: MatchRef | undefined) {
 
 /** หน้า /matches — แมตช์ที่ฉันต้องทำอะไรสักอย่าง */
 export function useMyMatches() {
-  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, retry: retryPolicy });
+  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, retry: retryPolicy, refetchInterval: 30_000 });
 }
 
 /**
