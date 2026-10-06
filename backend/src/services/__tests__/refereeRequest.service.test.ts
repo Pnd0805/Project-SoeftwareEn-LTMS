@@ -199,7 +199,7 @@ beforeEach(() => {
   mockedReqRepo.existsOpenFor.mockResolvedValue(false);
   mockedReqRepo.create.mockResolvedValue(500);
   mockedReqRepo.findListRowById.mockResolvedValue({ request_id: 500 } as any);
-  mockedToDto.mockReturnValue({ id: 500 } as any);
+  mockedToDto.mockReturnValue(makeRequestDto());   // id 500 — ตรงกับ create/findListRowById ข้างบน
   // ทัวร์ที่ยังเดินอยู่ = ค่าเริ่มต้นของเส้นปกติ (มติ ฏ — ทัวร์จบแล้วคำขอทุกชนิดไม่มีความหมาย)
   mockedTournamentRepo.findTournamentById.mockResolvedValue({
     tournament_id: 10, name: 'KU Cup', tournament_status: 'public',
@@ -363,7 +363,7 @@ describe('createRefRequest', () => {
     expect(mockedNotify).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 200, type: 'referee_change_request', relatedEntityId: 1 }),
     );
-    expect(result).toEqual({ id: 500 });
+    expect(result).toEqual(makeRequestDto());
   });
 
   it('creates a ref_swap request (with theirMatchId) and checks conflicts for both sides', async () => {
@@ -430,7 +430,7 @@ describe('createOrgAddMatch', () => {
       bStatus: 'not_required',
     });
     expect(mockedNotify).toHaveBeenCalledWith(expect.objectContaining({ userId: 100 }));
-    expect(result).toEqual({ id: 500 });
+    expect(result).toEqual(makeRequestDto());
   });
 });
 
@@ -495,7 +495,7 @@ describe('createOrgSwap', () => {
       bStatus: 'pending',
     });
     expect(mockedNotifyUsers).toHaveBeenCalledWith([100, 200], expect.objectContaining({ type: 'referee_change_request' }));
-    expect(result).toEqual({ id: 500 });
+    expect(result).toEqual(makeRequestDto());
   });
 });
 
@@ -540,12 +540,12 @@ describe('listTournamentRequests', () => {
 
   it('filters by status and maps the rows', async () => {
     mockedReqRepo.findByTournament.mockResolvedValue([makeRequestRow()]);
-    mockedToDto.mockReturnValue({ id: 500 } as any);
+    mockedToDto.mockReturnValue(makeRequestDto());
 
     const result = await listTournamentRequests(10, 'open');
 
     expect(mockedReqRepo.findByTournament).toHaveBeenCalledWith(10, 'open');
-    expect(result).toEqual({ items: [{ id: 500 }] });
+    expect(result).toEqual({ items: [makeRequestDto()] });
   });
 });
 
@@ -605,7 +605,7 @@ describe('respondToRequest', () => {
     expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'declined');
     expect(mockedNotify).toHaveBeenCalledWith(expect.objectContaining({ userId: 100, relatedEntityId: 1 }));
     expect(mockedReqRepo.apply).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: 500 });
+    expect(result).toEqual(makeRequestDto());
   });
 
   it('on accept when the other side is still pending: does not apply and does not send the "success" notification', async () => {
@@ -651,7 +651,7 @@ describe('respondToRequest', () => {
     expect(mockedNotify).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 100, type: 'referee_assigned', relatedEntityId: 1 }),
     );
-    expect(result).toEqual({ id: 500 });
+    expect(result).toEqual(makeRequestDto());
   });
 
   it('includes the second match in the success message for a swap-type request', async () => {

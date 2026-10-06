@@ -146,6 +146,12 @@ type MatchStatus = 'scheduled' | 'checkin_open' | 'in_progress' | 'finished' | '
 export async function createMatch(o: {
     tournamentId: number; teamA: number | null; teamB: number | null;
     mode?: 'onsite' | 'online'; status?: MatchStatus; round?: number;
+    /** ผู้ชนะไหลไปแมตช์นี้ (สร้างแมตช์ปลายทางก่อน แล้วส่ง id มา) */
+    nextMatchId?: number | null;
+    /** ตั้งเวลาแข่ง (จบหลังเริ่ม 1 ชม.) — การเปลี่ยนกรรมการต้องมีเวลาในอนาคต · ไม่ส่ง = ยังไม่ตั้งเวลา */
+    scheduledAt?: Date;
+    /** สนาม — เปิดเช็คอิน/เริ่มแข่งต้องมีเวลาและสนามครบ (assertFixtureComplete) */
+    venue?: string;
 }): Promise<number> {
     return insert('matches', {
         tournament_id: o.tournamentId,
@@ -154,6 +160,10 @@ export async function createMatch(o: {
         mode: o.mode ?? 'onsite',
         match_status: o.status ?? 'scheduled',
         round_number: o.round ?? 1,
+        next_match_id: o.nextMatchId ?? null,
+        scheduled_time: o.scheduledAt ?? null,
+        scheduled_end_time: o.scheduledAt ? new Date(o.scheduledAt.getTime() + 3600_000) : null,
+        venue: o.venue ?? null,
     });
 }
 

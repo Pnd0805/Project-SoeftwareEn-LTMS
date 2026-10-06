@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { anon, as } from './helpers/api.js';
 import { all, one, testDb } from './helpers/db.js';
 import { createSportType, createTeam, createUser, type TestUser } from './helpers/factories.js';
@@ -114,9 +114,16 @@ describe('requireTeamLeader — แก้/ลบทีมได้เฉพา�
    * ★ it.fails = เทสนี้ "ผ่าน" ตราบที่บั๊กยังอยู่ · แก้แล้วจะแดง ⇒ เปลี่ยนเป็น it ธรรมดา
    */
   it.fails('id ทีมไม่ใช่ตัวเลข → 4xx ไม่ใช่ 500 (บั๊ก: ตอนนี้ได้ 500)', async () => {
-    const res = await as(leader).patch('/teams/abc').send({ name: 'x' });
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(res.status).toBeLessThan(500);
+    // errorHandler พิมพ์ error ที่ไม่คาดคิดลง stderr — ปิดไว้เฉพาะเทสนี้ (เป็นอาการของบั๊กที่รู้อยู่แล้ว)
+    // ★ try/finally เพราะ it.fails คาดว่า expect ข้างในจะพัง — ไม่งั้น spy ค้างไปปิด log ของเทสถัดไป
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await as(leader).patch('/teams/abc').send({ name: 'x' });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('หัวหน้าลบทีม → 204 · soft delete (แถวยังอยู่ มี deleted_at)', async () => {
