@@ -54,7 +54,7 @@ beforeEach(() => {
 
 describe('the organizer looking for referees', () => {
   it('shows invitation success with a privacy-preserving warning count', () => {
-    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ crossTournamentWarnings: 2 }));
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: true, crossTournamentWarnings: 2 }));
     renderFinder();
     fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }));
     expect(screen.getByText(/Invitation sent.*overlapping 2 offered matches/)).toBeInTheDocument();
@@ -76,11 +76,28 @@ describe('the organizer looking for referees', () => {
     expect(screen.getByText(/You organize this tournament, so you cannot also officiate it/)).toBeInTheDocument()
   })
 
-  it('automatically detects internal or external referee designation without manual toggle', () => {
+  it('leaves classification to the server without manual toggle or faculty-based inference', () => {
     renderFinder()
     expect(screen.queryByLabelText(/เชิญเป็นกรรมการภายนอก/)).not.toBeInTheDocument()
     expect(screen.getByText(/ระบบจะตรวจจับสถานะกรรมการ \(ภายใน\/ภายนอก\) ให้อัตโนมัติ/)).toBeInTheDocument()
-    expect(screen.getByText('Internal')).toBeInTheDocument()
+    expect(screen.getByText('ระบบกำหนดภายใน/ภายนอกเมื่อส่งคำเชิญ')).toBeInTheDocument()
+    expect(screen.queryByText('Internal')).not.toBeInTheDocument()
+    expect(screen.queryByText('External')).not.toBeInTheDocument()
+  })
+
+  it('uses returned External classification even though the legacy request field is false', () => {
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: true, crossTournamentWarnings: 0 }))
+    renderFinder()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
+    expect(appointState.mutate).toHaveBeenCalledWith({ userId: 9003, isExternal: false }, expect.anything())
+    expect(screen.getByText(/External — ต้องส่งเอกสาร/)).toBeInTheDocument()
+  })
+
+  it('displays Internal only after the server confirms it', () => {
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: false }))
+    renderFinder()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
+    expect(screen.getByText(/Internal — ระบบจัดเป็นกรรมการภายใน/)).toBeInTheDocument()
   })
 })
 

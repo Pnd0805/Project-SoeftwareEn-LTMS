@@ -195,9 +195,9 @@ describe("delivered admin-user contracts", () => {
   it("POST /tournaments/:id/referees sends isExternal", async () => {
     fetchMock.mockResolvedValueOnce(json({ id: 7, userId: 42, invitationStatus: "pending", isExternal: true }, 201));
 
-    await appointReferee(5, { userId: 42, isExternal: true });
+    await expect(appointReferee(5, { userId: 42, isExternal: false })).resolves.toMatchObject({ isExternal: true });
     expect(lastRequest()).toEqual({
-      path: "/tournaments/5/referees", method: "POST", body: { userId: 42, isExternal: true, matchIds: [] },
+      path: "/tournaments/5/referees", method: "POST", body: { userId: 42, isExternal: false, matchIds: [] },
     });
   });
 
@@ -206,6 +206,7 @@ describe("delivered admin-user contracts", () => {
       userId: 42,
       user: { id: 42, fullName: "External Ref", avatarUrl: null, email: "ref@ku.th" },
       docs: ["referee/42.jpg"],
+      docsSubmitted: true,
       tournaments: [{ id: 5, name: "Spring Cup", tournamentRefereeId: 11 }],
       submittedAt: "2026-09-10T00:00:00.000Z",
     }] }));
@@ -213,7 +214,7 @@ describe("delivered admin-user contracts", () => {
     const { items } = await getExternalRefereeRequests();
     expect(lastRequest().path).toBe("/admin/referee-requests");
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ id: 42, tournament: { id: 5 }, invitedBy: null, status: "pending" });
+    expect(items[0]).toMatchObject({ id: 42, tournament: { id: 5 }, invitedBy: null, status: "pending", docsSubmitted: true });
   });
 
   it("AR02 approves per person, not per request row", async () => {

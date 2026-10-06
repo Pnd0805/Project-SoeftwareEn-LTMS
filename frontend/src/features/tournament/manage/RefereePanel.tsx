@@ -35,7 +35,7 @@ import { ApiError, USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
 import { numOf } from '../../../mocks/storeBridge'
 import { useAppointReferee, useRemoveReferee, useTournamentReferees } from '../../../hooks/useAdmin'
-import { useSearchUsers, usePublicUser } from '../../../hooks/useUser'
+import { useSearchUsers } from '../../../hooks/useUser'
 import { useMe } from '../../../hooks/useAuth'
 import { refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
@@ -58,18 +58,8 @@ function RefereeCandidateRow({
   appointPending: boolean
   onAppoint: (userId: number, isExternal: boolean) => void
 }) {
-  const publicUser = usePublicUser(USE_MOCK ? undefined : userId)
-  const isExternal = USE_MOCK
-    ? !!isMockExternal
-    : (publicUser.data?.facultyId == null || (publicUser.data as { userType?: string } | undefined)?.userType === 'external')
-
-  const affiliationLabel = USE_MOCK
-    ? sub
-    : publicUser.isPending
-      ? 'Checking affiliation…'
-      : isExternal
-        ? 'Outside the university'
-        : (publicUser.data?.facultyId ? `Faculty #${publicUser.data.facultyId}` : sub)
+  const isExternal = USE_MOCK ? !!isMockExternal : false
+  const affiliationLabel = USE_MOCK ? sub : 'ระบบกำหนดภายใน/ภายนอกเมื่อส่งคำเชิญ'
 
   return (
     <tr>
@@ -77,7 +67,7 @@ function RefereeCandidateRow({
         <span className="hstack" style={{ gap: 8, alignItems: 'center' }}>
           <span className="avatar">{name.slice(0, 1)}</span>
           <span>{name}</span>
-          {USE_MOCK || !publicUser.isPending ? (
+          {USE_MOCK ? (
             isExternal ? <Badge kind="warn">External</Badge> : <Badge kind="neutral">Internal</Badge>
           ) : null}
         </span>
@@ -87,7 +77,7 @@ function RefereeCandidateRow({
         <button
           className="btn primary"
           type="button"
-          disabled={appointPending || (!USE_MOCK && publicUser.isPending)}
+          disabled={appointPending}
           onClick={() => onAppoint(userId, isExternal)}
         >
           Invite to officiate
@@ -204,9 +194,11 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
                   onAppoint={(userId, isExternal) => {
                     setInvitationNotice(null)
                     appoint.mutate({ userId, isExternal }, { onSuccess: result => setInvitationNotice(
-                      result.crossTournamentWarnings && result.crossTournamentWarnings > 0
+                      (result.isExternal
+                        ? 'External — ต้องส่งเอกสารและผ่านการยืนยันตัวตนจากผู้ดูแลก่อนคุมแมตช์. '
+                        : 'Internal — ระบบจัดเป็นกรรมการภายใน. ') + (result.crossTournamentWarnings && result.crossTournamentWarnings > 0
                         ? `Invitation sent. This referee has work outside this tournament overlapping ${result.crossTournamentWarnings} offered matches and may not be able to accept them all.`
-                        : 'Invitation sent — waiting for the referee to answer.',
+                        : 'Invitation sent — waiting for the referee to answer.'),
                     ) })
                   }}
                 />

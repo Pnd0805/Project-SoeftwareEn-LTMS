@@ -3,6 +3,29 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## External referee change integration — 2026-10-06
+
+- [x] Read External To-FE; verified/fetched BE_KN@29a6aec (includes 4703e35).
+  Inspected server-owned F01 classification and AR01/AR02 docsSubmitted gate.
+- [x] Invitation option A: no editable classification; remove faculty/userType
+  inference and candidate profile dependency. Display returned F01 isExternal
+  after invitation, retain server classification in the pool and warning counts.
+- [x] AR01 docsSubmitted preserved through per-tournament adapter rows; one queue
+  with waiting-docs / waiting-review badges. Missing field shows unknown/Retry.
+- [x] Approve disabled unless docsSubmitted is true; Request documents/Reject
+  remain usable without documents. DOCS_NOT_SUBMITTED has actionable copy/refetch.
+- [x] Answered BE questions 1–5 in
+  `TO-BACKEND-2026-10-06-external-referee-response.md`; cancellation/expiry are
+  recommendations awaiting team decisions, not speculative implementation.
+- [x] Focused API/UI verification: 3 files / 35 tests passed.
+- [x] Full suite: 80 files / 494 tests passed; lint, production build and diff
+  check passed. Isolated Vite port 5191 served Admin, Manage and both changed
+  UI modules HTTP 200, then was stopped. Existing >500 kB main-bundle warning
+  remains. HTTP smoke checks do not establish authenticated browser acceptance.
+- [ ] Live invitation/classification/reload and no-docs -> submit -> review
+  acceptance, request-docs/reject and stale 409; private document reads still
+  need BE delivery. See the response for details.
+
 ## OTP login bypass report — 2026-10-06
 
 - [x] Verified/fetched remote BE_KN@29a6aec: login checks credentials and

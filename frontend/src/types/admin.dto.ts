@@ -257,6 +257,7 @@ export interface ExternalRefereeRequestDto {
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   docs?: string[];
+  docsSubmitted?: boolean;
 }
 
 export type RefereeWithdrawalInput =
@@ -331,6 +332,7 @@ export interface BackendExternalRefereeQueueItem {
   user: UserRefDto & { email: string };
   /** S3 key ดิบ — ต้องขอ presign เองก่อนเปิดดู */
   docs: string[];
+  docsSubmitted: boolean;
   tournaments: Array<{ id: number; name: string; tournamentRefereeId: number }>;
   submittedAt: string;
 }

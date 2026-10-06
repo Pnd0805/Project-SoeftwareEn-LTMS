@@ -23,6 +23,9 @@ import type { ExternalRefereeRequestDto } from '../../types/admin.dto'
 /* migration 036 — AR02 อนุมัติ "คน" = ทุกแถวของคนนั้น ถ้ามีสองใบรอในทัวร์เดียวกันจะกลายเป็นใช้งานพร้อมกัน
    ฐานจึงปฏิเสธเป็น 409 REFEREE_DUPLICATE_ROWS (เดิม 500) — แอดมินแก้เองไม่ได้ ต้องให้ผู้จัดถอดใบที่เกินก่อน */
 const errorMessage = (error: unknown) =>
+  (error as { code?: string } | null)?.code === 'DOCS_NOT_SUBMITTED'
+    ? 'ผู้ใช้นี้ยังไม่ได้ส่งเอกสารยืนยันตัวตน อนุมัติไม่ได้ — ต้องรอให้ส่งเอกสารก่อน หรือกด Request documents เพื่อทวงเอกสาร'
+    :
   (error as { code?: string } | null)?.code === 'REFEREE_DUPLICATE_ROWS'
     ? "This person has two overlapping invitations in the same tournament. Ask that tournament's organizer to remove the extra one, then approve again."
     : error instanceof Error ? error.message : 'Something went wrong.'
@@ -43,6 +46,7 @@ export function AdminRefereesTab() {
   const busyId = review.isPending ? review.variables?.requestId : requestDocs.isPending ? requestDocs.variables?.userId : undefined
 
   const decide = (r: ExternalRefereeRequestDto, approve: boolean, why?: string) => {
+    if (approve && r.docsSubmitted !== true) return
     setNotice(null)
     review.mutate({ requestId: r.id, input: { approve, reason: why } }, {
       onSuccess: () => {
@@ -51,6 +55,9 @@ export function AdminRefereesTab() {
           : { kind: 'warn', text: `${r.referee.fullName} was not approved for ${r.tournament.name} — the reason goes to them and the organizer.` })
         setRejecting(null)
         setReason('')
+      },
+      onError: error => {
+        if ((error as { code?: string } | null)?.code === 'DOCS_NOT_SUBMITTED') void requests.refetch()
       },
     })
   }
@@ -83,6 +90,10 @@ export function AdminRefereesTab() {
       ) : null}
 
       {requests.isSuccess && !rows.length ? <div className="sub">Nothing waiting.</div> : null}
+      {rows.some(r => r.docsSubmitted === undefined) ? <Banner kind="warn">
+        ยังไม่ได้รับสถานะการส่งเอกสาร จึงยังอนุมัติไม่ได้
+        <button className="btn" type="button" onClick={() => void requests.refetch()}>Retry</button>
+      </Banner> : null}
 
       {rows.length ? (
         <TableWrap>
@@ -95,6 +106,7 @@ export function AdminRefereesTab() {
                     <span className="hstack">
                       <Avatar name={r.referee.fullName} avatarUrl={r.referee.avatarUrl} />{r.referee.fullName}
                       <Badge kind="warn">External</Badge>
+                      <Badge kind={r.docsSubmitted === true ? 'neutral' : 'warn'}>{r.docsSubmitted === true ? 'รอตรวจ' : r.docsSubmitted === false ? 'รอเอกสารจากผู้สมัคร' : 'ตรวจสถานะเอกสารไม่ได้'}</Badge>
                     </span>
                   </td>
                   <td>
@@ -119,7 +131,7 @@ export function AdminRefereesTab() {
                         onClick={() => { review.reset(); requestDocs.reset(); setAskingDocs(false); setReason(''); setRejecting(r) }}>
                         Reject
                       </button>
-                      <button className="btn primary" type="button" disabled={busyId !== undefined}
+                      <button className="btn primary" type="button" disabled={busyId !== undefined || r.docsSubmitted !== true}
                         onClick={() => decide(r, true)}>
                         {busyId === r.id && review.variables?.input.approve ? 'Approving…' : 'Approve'}
                       </button>

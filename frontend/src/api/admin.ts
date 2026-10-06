@@ -431,6 +431,7 @@ export async function getExternalRefereeRequests(): Promise<{ items: ExternalRef
         status: "pending" as const,
         createdAt: row.submittedAt,
         docs: row.docs,
+        docsSubmitted: row.docsSubmitted,
       })),
     ),
   };
