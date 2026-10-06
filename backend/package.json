@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:slow": "vitest run --config vitest.slow.config.ts",
+    "test:int": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
@@ -36,7 +37,9 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.2.0",
     "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^5.0.0",
+    "supertest": "^7.3.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
