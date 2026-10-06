@@ -8,6 +8,7 @@ import { AppError } from '../utils/AppError.js';
 import type { RegisterInput } from '../schemas/auth.schema.js';
 import { authConfig } from '../config/auth.js';
 import { isCurrentlySuspended , suspendedError } from '../utils/suspension.js';
+import { isExternalEmail } from '../utils/kuEmail.js';
 import { sendPasswordResetEmail , sendEmailVerificationOtp } from './mail.service.js';
 
 import { findFacultyById } from '../repositories/faculty.repo.js';
@@ -81,8 +82,12 @@ export async function register(input: RegisterInput) {
 
   const passwordHash = await hashPassword(input.password)
 
+  // มติ 6 ต.ค. 2569 — user_type คิดจากโดเมนอีเมล (@ku.th = student) ไม่ hardcode 'student' อีกต่อไป
+  // กฎโดเมนอยู่ที่ utils/kuEmail.ts ที่เดียว (ใช้ร่วมกับ referee.service.ts) ห้ามเขียนซ้ำที่นี่
+  const userType = isExternalEmail(input.email) ? 'external' as const : 'student' as const;
+
   const newId = await userRepo.create({fullName : input.fullName , email : input.email , passwordHash : passwordHash ,
-    gender : input.gender , birthDate : input.birthDate , facultyId : input.facultyId , departmentId : input.departmentId , year : input.year});
+    gender : input.gender , birthDate : input.birthDate , userType , facultyId : input.facultyId , departmentId : input.departmentId , year : input.year});
 
   // OD-53 — ส่ง OTP หลังสร้างบัญชีสำเร็จแล้ว · สมัครสำเร็จไม่ขึ้นกับผลการส่งเมล
   // ถ้าส่งเมลก่อนแล้วค่อยสร้าง user เวลาที่ SMTP ล่มจะกลายเป็น "สมัครไม่ได้เพราะเมลพัง"
