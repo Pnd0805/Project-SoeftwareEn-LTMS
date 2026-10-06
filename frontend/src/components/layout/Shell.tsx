@@ -19,6 +19,7 @@ import { me } from '../../shared/selectors'
 import { useLogout, useMe } from '../../hooks/useAuth'
 import { useNotifications } from '../../hooks/useNotifications'
 import type { MeDto } from '../../types/dto'
+import { UserTypeLabel } from '../../types/enums'
 import { USE_MOCK } from '../../api/client'
 import { useAdminAccess } from '../../hooks/useAdmin'
 import { canShowAdminNav } from './adminNav'
@@ -128,6 +129,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const n = unreadCount
   const displayName = currentUser?.fullName ?? (USE_MOCK ? u?.name : '') ?? ''
+  const displayRole = canShowAdminNav(USE_MOCK, u?.role, adminAccess.data === true)
+    ? 'Admin'
+    : currentUser?.userType ? UserTypeLabel[currentUser.userType] : (USE_MOCK ? u?.role : undefined)
 
   /* the first tab stop — standard on GitHub, Wikipedia, gov.uk */
   const skip = (
@@ -180,7 +184,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
           <div className="foot">
             <div className="tag"><em>//</em> Signed in as</div>
-            <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{displayName}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0' }}>{displayName}</div>
+            {displayRole ? <div className="sub" style={{ fontSize: 12, marginBottom: 8 }}>Role: <span style={{ color: 'var(--teal)', fontWeight: 700 }}>{displayRole}</span></div> : null}
             <button className="btn ghost" type="button" style={{ width: '100%' }}
               onClick={() => { void logout.mutateAsync().finally(() => navigate('/login')) }}>
               <Icon name="out" size={13} /> Log out
