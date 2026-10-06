@@ -99,9 +99,33 @@ describe('sweepInactiveTeams — เงื่อนไขของ BR-06', () =>
     });
   });
 
-  // 🔴 ช่องว่างระหว่าง SRS กับโค้ด (ไม่ใช่ช่องว่างของเทส) — ต้องเคาะกับทีมก่อนแก้
-  //   BR-06 ระบุว่าใช้กับ "ทีม Unofficial" แต่ SWEEP_RULES ทั้งสองข้อไม่กรอง official_status เลย
-  //   ⇒ ทีม Official ที่ไม่ได้แข่ง 6 เดือนก็จะถูกปิดด้วย
-  //   ถ้าทีมยืนยันว่าต้องตาม SRS: เติม `AND t.official_status = 'Unofficial'` ในทั้งสองข้อ แล้วเปลี่ยน todo นี้เป็นเทสจริง
-  it.todo("ทีม Official ไม่ถูกกวาดด้วยกฎ 2 สัปดาห์/6 เดือน (SWEEP_RULES ต้องกรอง official_status = 'Unofficial')");
+  /**
+   * 🔴 มติ 6 ต.ค. 2569 (B3) — ปิดช่องว่างระหว่าง SRS กับโค้ด
+   *
+   * BR-06 ระบุว่ากฎ 2 สัปดาห์ / 6 เดือน ใช้กับ "ทีม Unofficial" แต่ SQL เดิมไม่กรอง
+   * official_status เลย ⇒ ทีม Official ที่ไม่ได้แข่ง 6 เดือนก็ถูกปิดอัตโนมัติไปด้วย
+   * (เดิมเป็น it.todo รอเคาะ — เคาะแล้วว่าตาม SRS)
+   *
+   * ★ ต้องยืนยัน **ทั้งสองกฎ** แยกกัน ไม่ใช่เช็ครวม: เงื่อนไขอยู่ใน SQL คนละก้อน
+   *   เติมข้อเดียวแล้วอีกข้อลืม = ทีม Official ยังถูกกวาดได้ด้วยกฎที่ลืม
+   */
+  describe('ทีม Official ไม่ถูกกวาด (BR-06 ใช้กับทีม Unofficial เท่านั้น)', () => {
+    it('กฎข้อ 1 (14 วัน) กรองเฉพาะทีม Unofficial', async () => {
+      await sweepInactiveTeams();
+      expect(ruleSql(/INTERVAL 14 DAY/)).toContain("t.official_status = 'Unofficial'");
+    });
+
+    it('กฎข้อ 2 (6 เดือน) กรองเฉพาะทีม Unofficial', async () => {
+      await sweepInactiveTeams();
+      expect(ruleSql(/INTERVAL 6 MONTH/)).toContain("t.official_status = 'Unofficial'");
+    });
+
+    /** ★ กันเคสที่มีคนเติมเงื่อนไขไว้ข้อเดียว — ทั้งสอง SELECT ต้องมีครบ */
+    it('ทุกกฎที่กวาดทีม มีเงื่อนไขนี้ครบ', async () => {
+      await sweepInactiveTeams();
+      const sqls = selects();
+      expect(sqls).toHaveLength(2);
+      expect(sqls.every(sql => sql.includes("t.official_status = 'Unofficial'"))).toBe(true);
+    });
+  });
 });

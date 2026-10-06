@@ -91,13 +91,28 @@ export async function deleteTeam(teamId : number){
 // TM-07 / BR-06 — กวาดทีมไม่ใช้งานแบบ lazy (ไม่มี cron) เรียกก่อน query จริงใน T02/T03 (GUIDE/12)
 // เปลี่ยนชื่อทีมตอนลบด้วย เพื่อปล่อย UNIQUE(name, sport_type_id) ให้ตั้งชื่อซ้ำได้ (มติ GUIDE/12 ข้อ "ฟื้นทีมที่ถูกปิดได้ไหม")
 // เช็ค "เคยแข่ง" ผ่าน MAX(matches.updated_at) แทนการเขียน teams.last_competed_at ตรงๆ — เลี่ยงไม่ต้องแก้โค้ดฝั่ง Matches/Results
+/**
+ * 🔴 มติ 6 ต.ค. 2569 (B3) — ทั้งสองกฎใช้กับ **ทีม Unofficial เท่านั้น**
+ *
+ * SRS BR-06 เขียนว่ากฎ 2 สัปดาห์ / 6 เดือน ใช้กับทีม Unofficial แต่ SQL เดิมไม่กรอง
+ * official_status เลย ⇒ ทีม Official ที่ไม่ได้แข่ง 6 เดือนก็ถูกปิดอัตโนมัติไปด้วย
+ * ซึ่งเป็นทีมที่ผ่านการอนุมัติจากแอดมินมาแล้ว — ปิดเองเงียบ ๆ ไม่ได้
+ *
+ * ★ เงื่อนไขต้องอยู่ใน **ทั้งสองกฎ** ไม่ใช่ข้อเดียว: กฎข้อ 1 จับทีมที่ไม่เคยสมัครทัวร์เลย
+ *   ซึ่งทีม Official ก็เข้าข่ายได้ (เป็น Official จากการอนุมัติ ไม่ใช่จากการลงแข่ง)
+ * ★ ไม่มีเส้นทางไหนในระบบลดสถานะ Official กลับเป็น Unofficial (ค้นแล้ว มีแต่
+ *   approveTeamOfficial ที่ตั้งเป็น 'Official') ⇒ ไม่มีเคส "ทีมเก่าถูกลดสถานะแล้วถูกกวาดทันที"
+ *   ถ้าวันหนึ่งเพิ่มการลดสถานะ ต้องกลับมาคิดเรื่องนาฬิกา 14 วันที่นับจาก created_at ด้วย
+ */
 const SWEEP_RULES = {
     // สร้างมาเกิน 14 วันแล้วไม่เคยสมัครทัวร์ไหนเลย
     no_registration : `t.deleted_at IS NULL
+            AND t.official_status = 'Unofficial'
             AND t.created_at < NOW() - INTERVAL 14 DAY
             AND NOT EXISTS (SELECT 1 FROM tournament_applications a WHERE a.team_id = t.team_id)`,
     // ไม่มีแมตช์ที่จบมาเกิน 6 เดือน และไม่มีใบสมัครที่ยังเดินอยู่
     inactive_6_months : `t.deleted_at IS NULL
+            AND t.official_status = 'Unofficial'
             AND (SELECT MAX(m.updated_at) FROM matches m
                   WHERE (m.team_a_id = t.team_id OR m.team_b_id = t.team_id) AND m.match_status = 'completed'
                 ) < NOW() - INTERVAL 6 MONTH
