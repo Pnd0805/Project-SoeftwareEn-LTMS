@@ -399,17 +399,19 @@ describe('listTournamentReferees', () => {
   it('returns mapped referees along with a count of accepted ones', async () => {
     const rows = [makeInvitation({ tournament_referee_id: 1 }), makeInvitation({ tournament_referee_id: 2 })];
     mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(rows as never);
+    // 🔴 6 ต.ค. — ตัวเลขสรุปนับจาก `status` ที่ toRefereeStatus ตัดสิน ไม่ใช่เขียนเงื่อนไขซ้ำ
+    //   ⇒ stub ต้องมี status ด้วย (ของเดิมมีแค่ invitationStatus)
     mockedToTournamentRefereeDto
-      .mockReturnValueOnce({ id: 1, invitationStatus: 'accepted' } as any)
-      .mockReturnValueOnce({ id: 2, invitationStatus: 'pending' } as any);
+      .mockReturnValueOnce({ id: 1, invitationStatus: 'accepted', status: 'active' } as any)
+      .mockReturnValueOnce({ id: 2, invitationStatus: 'pending', status: 'pending' } as any);
 
     const result = await refereeService.listTournamentReferees(20);
 
     expect(mockedRefRepo.findLatestPerUserByTournament).toHaveBeenCalledWith(20);
     expect(result).toEqual({
       items: [
-        { id: 1, invitationStatus: 'accepted' },
-        { id: 2, invitationStatus: 'pending' },
+        { id: 1, invitationStatus: 'accepted', status: 'active' },
+        { id: 2, invitationStatus: 'pending', status: 'pending' },
       ],
       acceptedCount: 1,
       awaitingAdminCount: 0,
@@ -419,7 +421,7 @@ describe('listTournamentReferees', () => {
   it('returns acceptedCount 0 when none of the referees have accepted', async () => {
     const rows = [makeInvitation({ tournament_referee_id: 1 })];
     mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(rows as never);
-    mockedToTournamentRefereeDto.mockReturnValue({ id: 1, invitationStatus: 'pending' } as any);
+    mockedToTournamentRefereeDto.mockReturnValue({ id: 1, invitationStatus: 'pending', status: 'pending' } as any);
 
     const result = await refereeService.listTournamentReferees(20);
 
@@ -1383,5 +1385,61 @@ describe('inviteReferee — คนนอกคิดจากอีเมล ไ
     const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ isExternal: true }));
 
     expect(result).toMatchObject({ isExternal: false });
+  });
+});
+
+/**
+ * 🔴 ตัวเลขสรุปของ F02 (แก้ 6 ต.ค. 2569) — "รอแอดมินตรวจ" ต้องไม่รวมคนที่แอดมินปฏิเสธแล้ว
+ *
+ * สูตรเดิม awaitingAdminCount = (ตอบรับทั้งหมด) − (พร้อมทำงาน)
+ *   ⇒ คนที่ถูกปฏิเสธก็ "ตอบรับแล้วและไม่พร้อมทำงาน" ⇒ ถูกนับเป็นรอแอดมินด้วย
+ *   ⇒ ผู้จัดเห็น "รอแอดมินตรวจ 1 คน" ค้างตลอดไป แล้วรอสิ่งที่ไม่เกิด
+ *     ไม่ไปหากรรมการคนใหม่ (พิสูจน์บนฐานจำลองแล้ว: หลังปฏิเสธ 0 → 1)
+ * ★ ข้อมูลที่ถูกมีอยู่ใน items[].status แล้ว — ผิดแค่ตัวเลขสรุป
+ */
+describe('listTournamentReferees — ตัวเลขสรุปต้องตรงกับ status', () => {
+  const dto = (id: number, status: string) => ({ id, status }) as never;
+
+  const setup = (statuses: string[]) => {
+    mockedRefRepo.findLatestPerUserByTournament.mockResolvedValue(
+      statuses.map((_, i) => makeInvitation({ tournament_referee_id: i + 1 })) as never);
+    mockedToTournamentRefereeDto.mockReset();
+    for(const [i, st] of statuses.entries()) mockedToTournamentRefereeDto.mockReturnValueOnce(dto(i + 1, st));
+  };
+
+  it('คนที่แอดมินปฏิเสธ ไม่ถูกนับเป็น "รอแอดมิน"', async () => {
+    setup(['active', 'rejected_by_admin']);
+
+    const result = await refereeService.listTournamentReferees(20);
+
+    expect(result.acceptedCount).toBe(1);
+    expect(result.awaitingAdminCount).toBe(0);
+  });
+
+  it('คนที่รอแอดมินจริง ถูกนับ', async () => {
+    setup(['active', 'pending_admin', 'pending_admin']);
+
+    const result = await refereeService.listTournamentReferees(20);
+
+    expect(result.acceptedCount).toBe(1);
+    expect(result.awaitingAdminCount).toBe(2);
+  });
+
+  /** ★ สถานะอื่นไม่เข้าทั้งสองช่อง — รอตอบคำเชิญ / ปฏิเสธเอง / ถูกถอด */
+  it.each(['pending', 'declined', 'removed'])('สถานะ %s ไม่เข้าทั้งสองตัวเลข', async (st) => {
+    setup(['active', st]);
+
+    const result = await refereeService.listTournamentReferees(20);
+
+    expect(result.acceptedCount).toBe(1);
+    expect(result.awaitingAdminCount).toBe(0);
+  });
+
+  it('ไม่มีใครเลย = 0 ทั้งคู่', async () => {
+    setup([]);
+
+    const result = await refereeService.listTournamentReferees(20);
+
+    expect(result).toMatchObject({ acceptedCount: 0, awaitingAdminCount: 0 });
   });
 });

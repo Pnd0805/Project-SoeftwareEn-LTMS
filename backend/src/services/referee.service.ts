@@ -231,12 +231,27 @@ export async function listTournamentReferees(tournamentId : number){
     const rows = await RefRepo.findLatestPerUserByTournament(tournamentId);
     const items = rows.map(toTournamentRefereeDto);
 
-    // acceptedCount = พร้อมปฏิบัติงานจริง (active) — คนนอกที่ admin ยังไม่อนุมัติไม่นับ (FE gaps 19 ก.ย. / FR-RM-02)
-    // awaitingAdminCount = ตอบรับแล้วแต่รอ admin · (effectiveCount เดิมถูกตัด — ค่าเดียวกับ acceptedCount)
-    const accepted = items.filter(i => i.invitationStatus === 'accepted');
-    const activeCount = accepted.filter(i => !i.isExternal || i.externalApprovalStatus === 'approved').length;
+    /**
+     * acceptedCount        = พร้อมปฏิบัติงานจริง (FE gaps 19 ก.ย. / FR-RM-02)
+     * awaitingAdminCount   = ตอบรับแล้วและ **ยังรอแอดมินตรวจอยู่จริง**
+     *
+     * 🔴 แก้ 6 ต.ค. 2569 — เดิม awaitingAdminCount = (ตอบรับทั้งหมด) − (พร้อมทำงาน)
+     *   ซึ่งเหมารวม "คนที่แอดมินปฏิเสธแล้ว" เข้าไปด้วย เพราะเขาก็ตอบรับแล้วและไม่พร้อมทำงาน
+     *   ⇒ หลังแอดมินปฏิเสธ ผู้จัดเห็น "รอแอดมินตรวจ 1 คน" ค้างอยู่ตลอดไป
+     *     แล้วรอสิ่งที่ไม่เกิด ไม่ไปหากรรมการคนใหม่ (พิสูจน์บนฐานจำลองแล้ว 0 → 1)
+     *   ★ ข้อมูลที่ถูกมีอยู่ใน items[].status แล้ว ผิดแค่ตัวเลขสรุป
+     *
+     * ★ นับจาก `status` ที่ toRefereeStatus() ตัดสิน ไม่เขียนเงื่อนไขซ้ำที่นี่
+     *   ของเดิมเขียนเงื่อนไข (!isExternal || approval === 'approved') ซ้ำขึ้นมาใหม่
+     *   ซึ่งขัดกฎที่ referee.mapper เขียนไว้เองว่า "นิยามเดียวของทั้งระบบ
+     *   ห้ามเขียนเงื่อนไขซ้ำที่อื่น" ⇒ และมันตอบไม่ตรงกันในเคส external + not_required
+     *   (toRefereeStatus ว่า active · สูตรเดิมว่าไม่ active) ซึ่งเป็นเคสเดียวกับที่
+     *   findAssignableByTournament ใน SQL นับว่าใช้งานได้
+     */
+    const acceptedCount = items.filter(i => i.status === 'active').length;
+    const awaitingAdminCount = items.filter(i => i.status === 'pending_admin').length;
 
-    return { items, acceptedCount : activeCount, awaitingAdminCount : accepted.length - activeCount };
+    return { items, acceptedCount, awaitingAdminCount };
 }
 
 /**
