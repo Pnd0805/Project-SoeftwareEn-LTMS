@@ -6,8 +6,31 @@ import { getIdentityState } from './refereeIdentity.service.js';
 import type { AdminReviewRow } from '../repositories/tournamentReferee.repo.js';
 import type { RejectExternalRefereeInput } from '../schemas/referee.schema.js';
 import * as NotificationService from './notification.service.js';
+import { presignAll } from './upload.service.js';
 
-/** AR01 — คิวตรวจตัวตน จัดกลุ่ม "ต่อคน" (1 รายการ = 1 user แม้รออยู่หลายทัวร์) */
+/**
+ * AR01 — คิวตรวจตัวตน จัดกลุ่ม "ต่อคน" (1 รายการ = 1 user แม้รออยู่หลายทัวร์)
+ *
+ * 🔴 แก้ 6 ต.ค. 2569 (FE รายงานว่าเป็น blocker) — `docs` ต้องเป็น presigned URL
+ *   เดิมส่ง **S3 key ดิบ** ออกไปพร้อมคอมเมนต์ว่า "FE ขอ presign เอง"
+ *   แต่ไม่มี endpoint ไหนให้ FE ขอได้เลย ⇒ แอดมินตัดสินโดยไม่เห็นเอกสาร
+ *   และขัดกฎที่ upload.service เขียนไว้เองว่า "ทุก response ที่มีรูปต้องเป็น presigned URL
+ *   ไม่ใช่ S3 key ดิบ" — ที่นี่เป็น **ที่เดียวในโปรเจกต์** ที่ไม่ทำตาม ขณะที่อีก 7 ที่
+ *   presign ฝั่ง server หมด (คำขอทีมทางการ · คำร้องผู้ใช้ · เอกสาร soft filter ·
+ *   รูปเช็คอิน · หลักฐานค้านผล · หลักฐานร้องเรียน · คำร้องของตัวเอง)
+ *   🔴 น่าเป็นห่วงกว่าที่อื่นด้วย เพราะเอกสารยืนยันตัวตนเป็นของที่ส่วนตัวที่สุดในระบบ
+ *   (เรื่องเดียวกันเคยเกิดกับคำร้องผู้ใช้ แก้ไปแล้ว 1 ต.ค. — คอมเมนต์ยังอยู่ใน mapper)
+ *
+ * ★ อายุลิงก์ใช้ค่ากลางของระบบ (20 นาที) ไม่ตั้งพิเศษ — มติ 6 ต.ค. ทางเลือก ก
+ *   ถ้าวันหนึ่งคิดว่ายาวเกินไป ควรลดทั้งระบบที่เดียว ไม่ใช่ทำพิเศษเฉพาะหน้านี้
+ *   (หลักฐานคำร้องผู้ใช้ก็อ่อนไหวไม่ต่างกันและใช้ค่าเดียวกัน)
+ * ★ ไม่เช็คก่อนว่าไฟล์ยังอยู่จริงไหม — มติ 6 ต.ค. ทางเลือก ก เหมือนอีก 7 ที่
+ *   การ presign เป็นการเซ็นในเครื่องเรา ไม่ยิงไปถามที่เก็บไฟล์เลย ⇒ เปิดคิวได้เสมอ
+ *   แม้ที่เก็บไฟล์ล่ม (แค่รูปไม่ขึ้น) · ถ้าเช็คทุกไฟล์จะเป็น 1 คำขอต่อไฟล์ต่อการเปิดคิว
+ *   และทำให้ที่เก็บไฟล์ล่ม = คิวทั้งหน้าเปิดไม่ได้
+ *   🙋 เคส "มีชื่อไฟล์แต่ไฟล์ไม่อยู่" เกิดยาก เพราะคิวลิสต์แค่แถวที่รอตรวจ
+ *     และระบบล้างเอกสารทิ้งทันทีที่อนุมัติ/ขอเอกสารใหม่ (PDPA)
+ */
 export async function listPendingExternalReferees(){
     const rows = await RefRepo.findPendingAdminReview();
     const byUser = new Map<number, AdminReviewRow[]>();
@@ -16,12 +39,14 @@ export async function listPendingExternalReferees(){
         list.push(r);
         byUser.set(r.user_id, list);
     }
-    const items = [...byUser.values()].map(group => {
+    const items = await Promise.all([...byUser.values()].map(async group => {
         const first = group[0]!;
+        const docKeys = group.find(g => g.external_verification_docs)?.external_verification_docs ?? [];
         return {
             userId : first.user_id,
             user : { ...toUserRef(first), email : first.email },
-            docs : group.find(g => g.external_verification_docs)?.external_verification_docs ?? [],  // S3 key — FE ขอ presign เอง
+            /** presigned URL อายุ 20 นาที — ไม่ใช่ S3 key · ดูเหตุผลที่หัวฟังก์ชัน */
+            docs : await presignAll(docKeys),
             /**
              * 🆕 6 ต.ค. 2569 (ทางเลือก ข) — แยก "ยังไม่ส่งเอกสาร" ออกจาก "ส่งแล้ว"
              * 🔴 คิวนี้ลิสต์ทุกคนที่สถานะ pending ซึ่งรวมคนที่ **กดรับคำเชิญแล้วแต่ยังไม่ส่งเอกสาร**
@@ -34,7 +59,7 @@ export async function listPendingExternalReferees(){
             tournaments : group.map(g => ({ id : g.tournament_id, name : g.tournament_name, tournamentRefereeId : g.tournament_referee_id })),
             submittedAt : first.created_at.toISOString()
         };
-    });
+    }));
     return { items };
 }
 

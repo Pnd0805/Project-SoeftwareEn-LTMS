@@ -23,6 +23,13 @@ vi.mock('../notification.service.js', () => ({
   notify: vi.fn(),
 }));
 
+// 🔴 ต้อง mock — AR01 presign เอกสารฝั่ง server แล้ว (แก้ 6 ต.ค.)
+//   ถ้าไม่ mock เทสจะไปเรียก presigner จริงซึ่งต้องมี env/S3 ⇒ "ผ่าน" เฉพาะบางเครื่อง
+vi.mock('../upload.service.js', () => ({
+  presignAll: vi.fn((keys: string[] | null) =>
+    Promise.resolve((keys ?? []).map((key) => `https://s3/${key}?signed`))),
+}));
+
 import {
   listPendingExternalReferees,
   approveExternalReferee,
@@ -82,7 +89,8 @@ describe('listPendingExternalReferees', () => {
       {
         userId: 5,
         user: { id: 5, fullName: 'สมชาย', avatarUrl: 'a.png', email: 'a@x.com' },
-        docs: ['doc1.pdf'],
+        // 🔴 presigned URL ไม่ใช่ S3 key — แก้ 6 ต.ค. (FE เปิดเอกสารไม่ได้ = blocker)
+        docs: ['https://s3/doc1.pdf?signed'],
         // 🆕 6 ต.ค. 2569 — ธงแยก "ส่งเอกสารแล้ว" ออกจาก "ยังไม่ส่ง" (ทางเลือก ข)
         docsSubmitted: true,
         tournaments: [
@@ -124,7 +132,8 @@ describe('listPendingExternalReferees', () => {
 
     const result = await listPendingExternalReferees();
 
-    expect(result.items[0]?.docs).toEqual(['doc1.pdf']);
+    // 🔴 presigned URL — คง key เดิมไว้ในลิงก์ให้เห็นว่าหยิบจากแถวที่สอง ไม่ใช่แถวแรก
+    expect(result.items[0]?.docs).toEqual(['https://s3/doc1.pdf?signed']);
   });
 
   it('defaults docs to an empty array when no row in the group has any', async () => {
@@ -423,6 +432,66 @@ describe('listPendingExternalReferees — ธง docsSubmitted', () => {
 
     const result = await listPendingExternalReferees();
 
-    expect(result.items[0]).toMatchObject({ docsSubmitted: true, docs: ['doc.pdf'] });
+    expect(result.items[0]).toMatchObject({ docsSubmitted: true, docs: ['https://s3/doc.pdf?signed'] });
+  });
+});
+
+/**
+ * 🔴 AR01 ต้องไม่ส่ง S3 key ดิบออกไป (FE รายงานเป็น blocker · แก้ 6 ต.ค. 2569)
+ *
+ * เดิมส่ง key ดิบพร้อมคอมเมนต์ว่า "FE ขอ presign เอง" แต่ไม่มี endpoint ไหนให้ขอได้
+ * ⇒ แอดมินตัดสินโดยไม่เห็นเอกสาร · และขัดกฎที่โปรเจกต์เขียนไว้เองใน upload.service
+ *   ที่ว่า "ทุก response ที่มีรูปต้องเป็น presigned URL ไม่ใช่ S3 key ดิบ"
+ * ★ เอกสารยืนยันตัวตนเป็นของที่ส่วนตัวที่สุดในระบบ ⇒ ต้องไม่หลุดเป็น key ให้เดา path ต่อ
+ */
+describe('listPendingExternalReferees — ต้องเป็น presigned URL ไม่ใช่ S3 key', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    tournament_referee_id: 1, user_id: 5, tournament_id: 100,
+    external_verification_docs: null, created_at: new Date('2024-01-01T00:00:00Z'),
+    full_name: 'สมชาย', profile_image_key: 'a.png', email: 'a@x.com', tournament_name: 'Tour A',
+    ...over,
+  }) as any;
+
+  it('ทุกไฟล์ถูก presign และไม่มี key ดิบหลงออกไป', async () => {
+    const key = 'referee_identity/5/11111111-1111-4111-8111-111111111111.jpg';
+    mockedRefRepo.findPendingAdminReview.mockResolvedValue([
+      row({ external_verification_docs: [key, 'referee_identity/5/second.png'] }),
+    ]);
+    mockedToUserRef.mockReturnValue({ id: 5, fullName: 'สมชาย', avatarUrl: 'a.png' });
+
+    const result = await listPendingExternalReferees();
+
+    expect(result.items[0]?.docs).toHaveLength(2);
+    for(const url of result.items[0]!.docs) expect(url).toMatch(/^https:\/\/s3\//);
+    // 🔴 ไม่มีสมาชิกไหนเป็น key เปล่า ๆ (เทสนี้คือตัวที่จะแดงถ้ามีคนถอด presign ออก)
+    expect(result.items[0]?.docs).not.toContain(key);
+  });
+
+  it('ยังไม่ส่งเอกสาร = array ว่าง ไม่ใช่ null และไม่เรียก presign ด้วยค่า null', async () => {
+    mockedRefRepo.findPendingAdminReview.mockResolvedValue([row()]);
+    mockedToUserRef.mockReturnValue({ id: 5, fullName: 'สมชาย', avatarUrl: 'a.png' });
+
+    const result = await listPendingExternalReferees();
+
+    expect(result.items[0]?.docs).toEqual([]);
+  });
+
+  /**
+   * ★ หลายคนในคิว ⇒ เอกสารต้องไม่ปนกัน
+   *   ถ้าเผลอ presign ของคนแรกซ้ำทุกคน แอดมินจะตรวจเอกสารผิดคน ซึ่งเงียบมาก
+   */
+  it('หลายคนในคิว เอกสารของใครของมัน ไม่ใช้ของคนแรกซ้ำ', async () => {
+    mockedRefRepo.findPendingAdminReview.mockResolvedValue([
+      row({ user_id: 5, external_verification_docs: ['a.jpg'] }),
+      row({ tournament_referee_id: 9, user_id: 6, external_verification_docs: ['b.jpg'] }),
+    ]);
+    mockedToUserRef.mockImplementation((r: any) => ({ id: r.user_id, fullName: 'x', avatarUrl: null }) as any);
+
+    const result = await listPendingExternalReferees();
+
+    expect(result.items.map(i => i.docs)).toEqual([
+      ['https://s3/a.jpg?signed'],
+      ['https://s3/b.jpg?signed'],
+    ]);
   });
 });
