@@ -16,6 +16,7 @@ import * as ComplaintRepo from '../repositories/matchResultComplaint.repo.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
+import { adminOverseesTournament } from '../utils/adminScope.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
@@ -160,10 +161,8 @@ async function ensureCreateReferences(input: CreateTournamentInput): Promise<voi
     }
 }
 
-function canManageTournament(admin: AdminScopeRow, tournament: TournamentRow): boolean {
-    return admin.scope_type === 'university_wide' ||
-        (admin.scope_type === 'faculty' && admin.faculty_id !== null && admin.faculty_id === tournament.organizing_faculty_id);
-}
+/** ย้ายไป utils/adminScope.ts แล้ว (มติ B6 6 ต.ค. 2569) — middleware ต้องใช้กฎเดียวกัน ห้ามเขียนซ้ำ */
+const canManageTournament = adminOverseesTournament;
 
 async function getTournamentAdmin(userId: number, tournament: TournamentRow): Promise<AdminScopeRow> {
     const admin = await AdminScopeRepo.findAdminByUserId(userId);

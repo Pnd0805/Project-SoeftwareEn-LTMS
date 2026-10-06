@@ -52,9 +52,50 @@ describe('requireComplaintReaderOfMatch', () => {
     expect(await run(requireComplaintReaderOfMatch, ORG)).toBeUndefined();
   });
 
-  it('lets an admin of any scope read', async () => {
-    vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'faculty' } as never);
-    expect(await run(requireComplaintReaderOfMatch, ADMIN)).toBeUndefined();
+  /**
+   * 🔴 มติ 6 ต.ค. 2569 (B6) — แอดมินอ่านได้เฉพาะในขอบเขตตัวเอง
+   *   เดิมเทสนี้ชื่อ "lets an admin of any scope read" และผ่านกับ scope_type 'faculty'
+   *   โดยที่ fixture ไม่ได้ตั้งคณะให้ทั้งแอดมินและทัวร์เลย ⇒ ผ่านเพราะ undefined === undefined
+   *   ไม่ใช่เพราะกฎขอบเขต · ชุดใหม่ตั้งคณะให้ชัดทุกเคส
+   */
+  describe('ขอบเขตของแอดมิน (B6)', () => {
+    const inFaculty = (id: number | null) =>
+      vi.mocked(findTournamentById).mockResolvedValue(
+        { requested_by_user_id: ORG, tournament_status: 'public', organizing_faculty_id: id } as never);
+    const asAdmin = (scope: string, facultyId: number | null) =>
+      vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: scope, faculty_id: facultyId } as never);
+
+    it('แอดมินมหาวิทยาลัยอ่านได้ทุกเรื่อง', async () => {
+      inFaculty(7);
+      asAdmin('university_wide', null);
+      expect(await run(requireComplaintReaderOfMatch, ADMIN)).toBeUndefined();
+    });
+
+    it('แอดมินคณะอ่านได้ เมื่อทัวร์เป็นของคณะตัวเอง', async () => {
+      inFaculty(7);
+      asAdmin('faculty', 7);
+      expect(await run(requireComplaintReaderOfMatch, ADMIN)).toBeUndefined();
+    });
+
+    it('แอดมินคณะอ่านทัวร์คณะอื่นไม่ได้ → 403', async () => {
+      inFaculty(7);
+      asAdmin('faculty', 8);
+      expect(await run(requireComplaintReaderOfMatch, ADMIN)).toMatchObject({ status: 403, code: 'NOT_COMPLAINT_PARTY' });
+    });
+
+    /** ★ มติ 28 ก.ย. (OD-34): root เป็นคนแต่งตั้ง+คนตรวจ ไม่ใช่คนปฏิบัติงาน ⇒ ไม่อ่านเนื้อเรื่อง */
+    it('root อ่านไม่ได้ → 403', async () => {
+      inFaculty(7);
+      asAdmin('root', null);
+      expect(await run(requireComplaintReaderOfMatch, ADMIN)).toMatchObject({ status: 403, code: 'NOT_COMPLAINT_PARTY' });
+    });
+
+    /** 🔴 ทัวร์ที่ไม่มีคณะเจ้าภาพ: แอดมินคณะต้องไม่ผ่านด่านด้วยค่าว่างเทียบค่าว่าง */
+    it('ทัวร์ไม่มีคณะเจ้าภาพ แอดมินคณะก็อ่านไม่ได้', async () => {
+      inFaculty(null);
+      asAdmin('faculty', null);
+      expect(await run(requireComplaintReaderOfMatch, ADMIN)).toMatchObject({ status: 403 });
+    });
   });
 
   it('lets a team leader of the match read', async () => {
@@ -106,7 +147,7 @@ describe('requireOrganizerOfComplaint', () => {
   it('refuses a team leader, an admin, and a stranger alike', async () => {
     vi.mocked(Referee.isTeamLeaderOfMatch).mockResolvedValue(true);
     expect((await run(requireOrganizerOfComplaint, LEADER, '1'))?.code).toBe('NOT_ORGANIZER');
-    vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'university_wide' } as never);
+    vi.mocked(AdminRepo.findAdminByUserId).mockResolvedValue({ scope_type: 'university_wide', faculty_id: null } as never);
     expect((await run(requireOrganizerOfComplaint, ADMIN, '1'))?.code).toBe('NOT_ORGANIZER');
     expect((await run(requireOrganizerOfComplaint, OUTSIDER, '1'))?.code).toBe('NOT_ORGANIZER');
   });

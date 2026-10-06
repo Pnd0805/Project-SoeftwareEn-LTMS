@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/AppError.js';
 import { parseId } from '../utils/parseId.js';
+import { adminOverseesTournament } from '../utils/adminScope.js';
 import { findTournamentById } from '../repositories/tournament.repo.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as AdminRepo from '../repositories/adminScope.repo.js';
@@ -16,6 +17,19 @@ import { isRefereeOfMatch, isTeamLeaderOfMatch } from './requireReferee.js';
  * เพราะผู้จัดอาจเป็นคู่กรณีเอง (หลัก "คนตัดสินต้องมีข้อมูลและไม่ใช่คู่กรณี")
  */
 
+/**
+ * 🔴 มติ 6 ต.ค. 2569 (B6) — แอดมินอ่านได้เฉพาะเรื่องร้องเรียน "ในขอบเขตตัวเอง"
+ *
+ * เดิมเช็คแค่ "เป็นแอดมินไหม" ถ้าใช่ผ่านเลย ⇒ แอดมินคณะ A อ่านเรื่องร้องเรียนของทัวร์คณะ B ได้
+ * และ root ก็อ่านได้ทั้งหมด ทั้งที่เรื่องร้องเรียนพกหลักฐานและข้อกล่าวหาถึงตัวบุคคล
+ * ส่วนการ "ตัดสิน" จำกัดเฉพาะแอดมินมหาวิทยาลัยอยู่แล้ว (requireAdmin_U) — ถูกต้องตามเดิม
+ *
+ * ใหม่: แอดมินมหาวิทยาลัย อ่านได้ทุกเรื่อง · แอดมินคณะ อ่านได้เฉพาะทัวร์ที่คณะตัวเองเป็นเจ้าภาพ
+ * ★ root อ่านไม่ได้ — ไม่ใช่ของแถม แต่เป็นมติ 28 ก.ย. (OD-34) ที่ root เป็นคนแต่งตั้ง+คนตรวจ
+ *   ไม่ใช่คนปฏิบัติงาน · ของที่ root เห็นคือคิวที่ค้างแบบไม่มีเนื้อหา (/admin/oversight/stalled)
+ *   ซึ่งมีเทสล็อกไว้ว่า payload ต้องจืด ⇒ การให้ root อ่านเนื้อเรื่องที่นี่ขัดกับมตินั้นมาตลอด
+ * ★ ใช้ตัวตัดสินตัวเดียวกับที่ทัวร์ใช้ (adminOverseesTournament) ไม่เขียนกฎขอบเขตซ้ำ
+ */
 async function canReadComplaintsOfMatch(matchId : number , userId : number): Promise<boolean>{
     const match = await MatchRepo.findById(matchId);
     if(!match) return false;
@@ -24,7 +38,7 @@ async function canReadComplaintsOfMatch(matchId : number , userId : number): Pro
     if(tournament && isOrganizerOf(tournament , userId)) return true;
 
     const admin = await AdminRepo.findAdminByUserId(userId);
-    if(admin) return true;
+    if(admin && tournament && adminOverseesTournament(admin , tournament)) return true;
 
     return (await isTeamLeaderOfMatch(matchId , userId)) || (await isRefereeOfMatch(matchId , userId , match.tournament_id));
 }
