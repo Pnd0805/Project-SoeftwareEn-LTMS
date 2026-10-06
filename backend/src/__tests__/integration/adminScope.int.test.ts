@@ -183,6 +183,28 @@ describe('PATCH /admin/users/:id/suspend — ขอบเขตของกา�
    * ด่านใหม่อยู่ที่ performSuspend ⇒ ครอบทั้ง PATCH suspend และการอนุมัติคำร้องผู้ใช้
    * ★ กันเฉพาะ "ระงับ" — "ปลดระงับ root" ยังทำได้ (เป็นการกู้คืน มีเทสที่ชั้น unit)
    */
+  /**
+   * B5 — มติ 6 ต.ค. 2569 ทางเลือก ก: ระงับแอดมินมหาวิทยาลัยด้วยปุ่มเดียวไม่ได้
+   *   ต้องถอนสิทธิ์ก่อน (เฉพาะ root ที่ถอน university_wide ได้) แล้วจึงระงับในฐานะผู้ใช้ทั่วไป
+   *   ⇒ ไม่ต้องให้อำนาจกดใหม่กับ root เลย (ไม่ขัดมติ 28 ก.ย. OD-34)
+   */
+  it('university admin ระงับ university admin คนอื่น → 403 · ถอนสิทธิ์ก่อนแล้วระงับได้', async () => {
+    const blocked = await suspend(uni, uni2.id);
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error?.code ?? blocked.body.code).toBe('CANNOT_SUSPEND_UNIVERSITY_ADMIN');
+    expect(await isSuspended(uni2.id)).toBe(false);
+
+    // ขั้นที่ 1 — root ถอนสิทธิ์
+    const scopes = await as(root).get('/admin/scopes');
+    const scopeId = (scopes.body.items as { id: number; user: { id: number } }[])
+      .find(s => s.user.id === uni2.id)!.id;
+    expect((await as(root).delete(`/admin/scopes/${scopeId}`)).status).toBeLessThan(300);
+
+    // ขั้นที่ 2 — ตอนนี้เป็นผู้ใช้ทั่วไป ⇒ ระงับได้ตามปกติ
+    expect((await suspend(uni, uni2.id)).status).toBeLessThan(300);
+    expect(await isSuspended(uni2.id)).toBe(true);
+  });
+
   it('university admin ระงับ root → 403 และ root ยังใช้ระบบได้', async () => {
     const res = await suspend(uni, root.id);
 

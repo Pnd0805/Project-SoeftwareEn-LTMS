@@ -47,7 +47,7 @@ const target = {
   gender : 'male' as const , birth_date : '2000-01-01' , user_type : 'student' as const ,
   faculty_id : 2 , department_id : 3 , year : 2 , profile_image_key : null ,
   contact_info : null , address : null , is_suspended : 0 , suspended_reason : null , suspended_until : null , suspended_category : null ,
-  total_points : 0 , notification_prefs : null , show_profile_stats: 1, profile_edit_log : null , email_verified : 0 ,
+  total_points : 0 , notification_prefs : null , show_profile_stats: 1, profile_edit_log : null , email_verified : 0 , token_version : 0 ,
   created_at : NOW , updated_at : null ,
 };
 
@@ -232,13 +232,62 @@ describe('suspendUser — ห้ามระงับ root (A1)', () => {
     expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
   });
 
-  /** ★ แอดมินคนอื่นที่ไม่ใช่ root ยังระงับได้ตามเดิม — ด่านใหม่ต้องไม่กินกว้างเกิน */
-  it('ระงับ university admin คนอื่นยังทำได้ตามเดิม (ยังไม่มีมติให้ห้าม — ข้อ B5)', async () => {
+  /** ★ แอดมินคณะยังระงับได้ตามเดิม — ด่าน root ต้องไม่กินกว้างเกิน (B5 ก็ไม่แตะเคสนี้) */
+  it('ระงับแอดมินคณะยังทำได้ตามเดิม', async () => {
     mockedAdminRepo.findAdminByUserId.mockResolvedValue(
-      { admin_scope_id : 7 , user_id : 9 , scope_type : 'university_wide' , faculty_id : null } as AdminScopeRow);
+      { admin_scope_id : 7 , user_id : 9 , scope_type : 'faculty' , faculty_id : 2 } as AdminScopeRow);
 
     await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language');
 
     expect(mockedUserRepo.suspendUser).toHaveBeenCalled();
+  });
+});
+
+/**
+ * 🔴 B5 (มติ 6 ต.ค. 2569 ทางเลือก ก) — ระงับแอดมินมหาวิทยาลัยด้วยปุ่มเดียวไม่ได้
+ *
+ * เดิมทำได้ กันแค่ "คนสุดท้าย" ขณะที่การถอนสิทธิ์ระดับเดียวกันทำไม่ได้เลย
+ * ⇒ ถอนสิทธิ์เพื่อนร่วมระดับไม่ได้ แต่ปิดบัญชีเขาได้ ซึ่งผลหนักกว่า = เดินอ้อมกฎอำนาจ
+ * ★ ทางที่เลือกคือ 2 ขั้น: root ถอนสิทธิ์ก่อน → แล้วระงับในฐานะผู้ใช้ทั่วไป
+ *   (ไม่ให้อำนาจกดใหม่กับ root เลย ⇒ ไม่ขัดมติ 28 ก.ย. OD-34)
+ */
+describe('suspendUser — ระงับแอดมินมหาวิทยาลัยไม่ได้ (B5)', () => {
+  const univScope = { admin_scope_id : 7 , user_id : 9 , scope_type : 'university_wide' , faculty_id : null } as AdminScopeRow;
+
+  it('ระงับแอดมินมหาวิทยาลัยคนอื่น → 403 CANNOT_SUSPEND_UNIVERSITY_ADMIN และไม่เขียนฐาน', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(univScope);
+
+    await expect(suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language'))
+      .rejects.toMatchObject({ status : 403 , code : 'CANNOT_SUSPEND_UNIVERSITY_ADMIN' });
+
+    expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+    expect(mockedAudit.insertAuditLog).not.toHaveBeenCalled();
+  });
+
+  /** ★ ปฏิเสธโดยไม่ต้องสนว่าเหลือกี่คน — เหตุผลคือ "อำนาจระดับเดียวกัน" ไม่ใช่ "คนสุดท้าย" */
+  it('ปฏิเสธแม้มีแอดมินมหาวิทยาลัยเหลืออีกหลายคน', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(univScope);
+    mockedAdminRepo.countActiveUniversityWideAdmins.mockResolvedValue(9);
+
+    await expect(suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language'))
+      .rejects.toMatchObject({ code : 'CANNOT_SUSPEND_UNIVERSITY_ADMIN' });
+  });
+
+  /** ★ ขั้นที่สองของทางเลือก ก: ถอนสิทธิ์แล้ว (ไม่มี scope) ⇒ ระงับได้ตามปกติ */
+  it('ถอนสิทธิ์ไปแล้ว (เป็นผู้ใช้ทั่วไป) ⇒ ระงับได้ตามปกติ', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(null);
+
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language');
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalled();
+  });
+
+  /** ★ ปลดระงับยังทำได้ — ด่านนี้อยู่ในเส้น "ระงับ" เท่านั้น ไม่ใช่เส้นกู้คืน */
+  it('ปลดระงับแอดมินมหาวิทยาลัยยังทำได้', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(univScope);
+
+    await suspendUser(admin , 9 , false , undefined , undefined , undefined);
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
   });
 });
