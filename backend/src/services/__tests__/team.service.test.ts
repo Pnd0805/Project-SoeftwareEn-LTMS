@@ -167,6 +167,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     total_points: 0,
     notification_prefs: null, show_profile_stats: 1,
     email_verified: 0,         // ยังไม่ยืนยัน — สภาพของทุกบัญชีที่สมัครก่อน OD-53
+    token_version: 0,         // B1 (migration 046) — บัญชีที่ยังไม่เคยเปลี่ยนรหัสผ่าน
     profile_edit_log: null,
     created_at: new Date(),
     updated_at: null,

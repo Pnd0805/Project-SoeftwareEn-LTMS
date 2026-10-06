@@ -22,19 +22,19 @@ beforeEach(() => {
 
 describe('signToken', () => {
   it('produces a well-formed JWT (three dot-separated segments)', () => {
-    const token = signToken(1);
+    const token = signToken(1, 0);
     expect(token.split('.')).toHaveLength(3);
   });
 
   it('stringifies the numeric userId into the "sub" claim', () => {
-    const token = signToken(42);
+    const token = signToken(42, 0);
     const decoded = jwt.verify(token, TEST_SECRET) as { sub: string };
     expect(decoded.sub).toBe('42');
     expect(typeof decoded.sub).toBe('string');
   });
 
   it('sets an expiry in the future based on authConfig.expireIn', () => {
-    const token = signToken(1);
+    const token = signToken(1, 0);
     const decoded = jwt.decode(token) as { exp: number; iat: number };
     expect(decoded.exp - decoded.iat).toBe(3600);
   });
@@ -42,9 +42,9 @@ describe('signToken', () => {
 
 describe('verifyToken', () => {
   it('returns the sub claim for a token signed by signToken itself', () => {
-    const token = signToken(7);
+    const token = signToken(7, 0);
     const result = verifyToken(token);
-    expect(result).toEqual({ sub: '7' });
+    expect(result).toEqual({ sub: '7', tv: 0 });
   });
 
   it('throws TOKEN_EXPIRED for a garbage/malformed token string', () => {
@@ -88,5 +88,34 @@ describe('verifyToken', () => {
   it('throws TOKEN_EXPIRED when sub is missing entirely', () => {
     const noSubToken = jwt.sign({ role: 'admin' }, TEST_SECRET, { expiresIn: 3600 });
     expect(() => verifyToken(noSubToken)).toThrow(AppError);
+  });
+});
+
+/**
+ * 🔴 B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — เลขรุ่นของบัตร (`tv`)
+ *
+ * เปลี่ยนรหัสผ่าน → users.token_version บวก 1 ⇒ บัตรที่พกเลขเก่าใช้ไม่ได้ทุกใบทุกเครื่อง
+ * (การเทียบอยู่ที่ requireAuth — ที่นี่ล็อกแค่ว่าเลขถูกใส่ลงบัตรและอ่านกลับได้ตรง)
+ * ★ บัตรที่ออกก่อน migration 046 ไม่มีช่องนี้ → ต้องอ่านเป็น 0 ไม่ใช่ undefined
+ *   เพราะทุกบัญชีเดิมอยู่ที่รุ่น 0 ⇒ deploy แล้วไม่มีใครถูกเตะออกจากระบบ
+ */
+describe('เลขรุ่นของบัตร (B1)', () => {
+  it('ใส่เลขรุ่นลงบัตร และอ่านกลับได้ตรงกัน', () => {
+    const token = signToken(7, 5);
+
+    expect(verifyToken(token)).toEqual({ sub: '7', tv: 5 });
+  });
+
+  it('บัตรเก่าที่ไม่มีช่องเลขรุ่น อ่านเป็นรุ่น 0 (คนที่ล็อกอินค้างอยู่ตอน deploy ไม่ถูกเตะออก)', () => {
+    const legacyToken = jwt.sign({ sub: '7' }, TEST_SECRET, { expiresIn: 3600 });
+
+    expect(verifyToken(legacyToken)).toEqual({ sub: '7', tv: 0 });
+  });
+
+  /** ★ ของที่ไม่ใช่ตัวเลขในช่องนั้น (บัตรปลอม/ของเก่าเพี้ยน) ต้องไม่กลายเป็นผ่าน */
+  it('ช่องเลขรุ่นไม่ใช่ตัวเลข → อ่านเป็นรุ่น 0', () => {
+    const weirdToken = jwt.sign({ sub: '7', tv: 'abc' }, TEST_SECRET, { expiresIn: 3600 });
+
+    expect(verifyToken(weirdToken)).toEqual({ sub: '7', tv: 0 });
   });
 });

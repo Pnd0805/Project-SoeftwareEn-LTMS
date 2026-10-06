@@ -68,7 +68,7 @@ const target = {
   faculty_id: 2, department_id: 3, year: 2, profile_image_key: null,
   contact_info: null, address: null, is_suspended: 0, suspended_reason: null,
   suspended_until: null, suspended_category: null, total_points: 0, notification_prefs: null,
-  show_profile_stats: 1, profile_edit_log: null, email_verified: 0,
+  show_profile_stats: 1, profile_edit_log: null, email_verified: 0, token_version: 0,
   created_at: new Date('2026-10-01T00:00:00Z'), updated_at: null,
 };
 

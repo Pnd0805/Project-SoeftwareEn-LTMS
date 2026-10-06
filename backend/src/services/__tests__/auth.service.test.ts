@@ -103,6 +103,7 @@ const baseUser: UserRow = {
   total_points: 0,
   notification_prefs: null, show_profile_stats: 1,
   email_verified: 0,
+  token_version: 0,
   profile_edit_log: null,
   created_at: new Date(),
   updated_at: null,
@@ -210,7 +211,8 @@ describe('auth.service login()', () => {
 
     expect(mockedUserRepo.findByEmail).toHaveBeenCalledWith(baseUser.email);
     expect(mockedVerifyPassword).toHaveBeenCalledWith('correct-password', baseUser.password_hash);
-    expect(mockedSignToken).toHaveBeenCalledWith(baseUser.user_id);
+    // B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — บัตรต้องพกเลขรุ่นของบัญชีตอนออกบัตร
+    expect(mockedSignToken).toHaveBeenCalledWith(baseUser.user_id, baseUser.token_version);
     expect(result).toEqual({
       accessToken: 'signed-jwt-token',
       expiresIn: 3600,
@@ -715,5 +717,24 @@ describe('auth.service resendEmailVerification()', () => {
     const b = await authService.resendEmailVerification('test@example.com');
 
     expect(a).toEqual(b);
+  });
+});
+
+/**
+ * 🔴 B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — เปลี่ยนรหัสผ่านแล้วบัตรเก่าต้องใช้ไม่ได้
+ *
+ * เดิม: ตั้งรหัสใหม่สำเร็จ → รหัสเก่าล็อกอินไม่ได้ (ถูก) แต่บัตรที่ออกไปก่อนหน้ายังใช้ได้
+ *   จนหมดอายุเอง ⇒ เหตุผลหลักที่คนเปลี่ยนรหัส ("สงสัยว่ามีคนเข้าบัญชี") ไม่ถูกตอบสนอง
+ * ★ การบวกเลขรุ่นอยู่ใน SQL เดียวกับการเขียนรหัสใหม่ (user.repo.updatePassword)
+ *   ⇒ เทสชั้นนี้ยืนยันแค่ว่า "ออกบัตรด้วยเลขรุ่นปัจจุบัน" — ตัว UPDATE มีเทสที่ชั้น repo/integration
+ */
+describe('login — เลขรุ่นของบัตร (B1)', () => {
+  it('ออกบัตรด้วยเลขรุ่นปัจจุบันของบัญชี ไม่ใช่ค่าคงที่', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, token_version: 4 });
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    await authService.login(baseUser.email, 'correct-password');
+
+    expect(mockedSignToken).toHaveBeenCalledWith(baseUser.user_id, 4);
   });
 });

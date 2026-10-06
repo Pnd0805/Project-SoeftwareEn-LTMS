@@ -186,20 +186,47 @@ describe('เซสชัน', () => {
   });
 
   /**
-   * 🟠 ข้อสังเกตด้านความปลอดภัย (integration test เจอ 6 ต.ค.) — ยังไม่ได้แก้ production
-   *   ระบบใช้ JWT แบบ stateless: requireAuth เช็คแค่ว่ามีผู้ใช้และไม่ถูกระงับ
-   *   ⇒ ตั้งรหัสผ่านใหม่แล้ว token ที่ออกก่อนหน้ายังใช้ได้จนหมดอายุ (JWT_EXPIRES_IN)
-   *   ถ้ามีคนขโมย session ไป การเปลี่ยนรหัสผ่านไม่ได้เตะเขาออก — ซึ่งเป็นเหตุผลหลักที่ผู้ใช้เปลี่ยนรหัส
-   *   (logout ก็ไม่ได้ทำอะไรฝั่งเซิร์ฟเวอร์ด้วยเหตุผลเดียวกัน — token เดิมยังใช้ได้)
-   * ทางแก้ที่เสนอ: เพิ่ม users.password_changed_at แล้วให้ requireAuth ปฏิเสธ token ที่ iat < ค่านั้น
-   *   (หรือ token_version ที่เพิ่มทุกครั้งที่เปลี่ยนรหัส) — ต้องมี migration ⇒ ควรเคาะกับทีม
-   * ★ it.fails = ผ่านตราบที่ยังเป็นแบบนี้ · แก้แล้วจะแดง ⇒ เปลี่ยนเป็น it ธรรมดา
+   * B1 — แก้แล้ว 6 ต.ค. 2569 (เดิมเป็น it.fails) · มติ ทางเลือก ข "เลขรุ่นของบัตร"
+   *
+   * เดิม: ตั้งรหัสผ่านใหม่แล้ว บัตรที่ออกก่อนหน้ายังใช้ได้จนหมดอายุเอง
+   *   ⇒ เหตุผลหลักที่คนเปลี่ยนรหัส ("สงสัยว่ามีคนเข้าบัญชี") ไม่ถูกตอบสนอง
+   * ตอนนี้: users.token_version บวก 1 ใน SQL เดียวกับการเขียนรหัสใหม่ (migration 046)
+   *   บัตรพก tv ไปด้วย ⇒ requireAuth ปฏิเสธบัตรที่พกเลขเก่าทุกใบทุกเครื่อง
    */
-  it.fails('🟠 ตั้งรหัสผ่านใหม่แล้ว token เดิมต้องใช้ไม่ได้ (ตอนนี้ยังใช้ได้)', async () => {
+  it('ตั้งรหัสผ่านใหม่แล้ว บัตรเดิมใช้ไม่ได้ทันที', async () => {
     const user = await createUserWithPassword('OldPass-123');
     expect((await as(user).get('/me')).status).toBe(200);
+
     await anon.post('/auth/forgot-password').send({ email: user.email });
     await anon.post('/auth/reset-password').send({ token: resetTokenIn(user.email), newPassword: 'NewPass-456' });
+
     expect((await as(user).get('/me')).status).toBe(401);
+  });
+
+  /** ★ บัตรใบใหม่ที่ได้จากการล็อกอินด้วยรหัสใหม่ ต้องใช้ได้ปกติ (ไม่ใช่เตะทุกคนออกถาวร) */
+  it('ล็อกอินด้วยรหัสใหม่แล้วได้บัตรที่ใช้งานได้', async () => {
+    const user = await createUserWithPassword('OldPass-123');
+    await anon.post('/auth/forgot-password').send({ email: user.email });
+    await anon.post('/auth/reset-password').send({ token: resetTokenIn(user.email), newPassword: 'NewPass-456' });
+
+    const login = await anon.post('/auth/login').send({ email: user.email, password: 'NewPass-456' });
+    expect(login.status).toBe(200);
+
+    const fresh = { ...user, token: login.body.accessToken as string };
+    expect((await as(fresh).get('/me')).status).toBe(200);
+  });
+
+  /**
+   * ★ เตะเฉพาะบัญชีที่เปลี่ยนรหัส — ไม่ใช่เตะทุกคนในระบบ
+   *   (ถ้าเลขรุ่นไปอยู่ที่อื่นที่ไม่ใช่ระดับบัญชี เทสนี้จะจับได้)
+   */
+  it('คนอื่นที่ไม่ได้เปลี่ยนรหัส บัตรยังใช้ได้', async () => {
+    const user = await createUserWithPassword('OldPass-123');
+    const other = await createUserWithPassword('OtherPass-123');
+
+    await anon.post('/auth/forgot-password').send({ email: user.email });
+    await anon.post('/auth/reset-password').send({ token: resetTokenIn(user.email), newPassword: 'NewPass-456' });
+
+    expect((await as(other).get('/me')).status).toBe(200);
   });
 });

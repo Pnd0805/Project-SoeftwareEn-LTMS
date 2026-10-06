@@ -49,6 +49,7 @@ const activeUser: UserRow = {
   total_points: 0,
   notification_prefs: null, show_profile_stats: 1,
   email_verified: 0,
+  token_version: 0,
   profile_edit_log: null,
   created_at: new Date(),
   updated_at: null,
@@ -118,7 +119,7 @@ describe('requireAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const res = makeRes();
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue(null);
 
     await requireAuth(req, res, next);
@@ -134,7 +135,7 @@ describe('requireAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const res = makeRes();
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1 });
 
     await requireAuth(req, res, next);
@@ -151,7 +152,7 @@ describe('requireAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const next = vi.fn() as NextFunction;
     const until = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1, suspended_until: until, suspended_category: 'spam' });
 
     await requireAuth(req, makeRes(), next);
@@ -166,7 +167,7 @@ describe('requireAuth middleware', () => {
   it('ระงับถาวร: extra.suspendedUntil เป็น null ไม่ใช่หายไปทั้งช่อง — จอต้องแยกสองกรณีนี้ออกได้', async () => {
     const req = makeReq('Bearer valid.token');
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1 });
 
     await requireAuth(req, makeRes(), next);
@@ -180,7 +181,7 @@ describe('requireAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const next = vi.fn() as NextFunction;
     const expired = new Date(Date.now() - 1000);
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1, suspended_until: expired });
 
     await requireAuth(req, makeRes(), next);
@@ -193,7 +194,7 @@ describe('requireAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const res = makeRes();
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue(activeUser);
 
     await requireAuth(req, res, next);
@@ -266,7 +267,7 @@ describe('optionalAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const res = makeRes();
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue(null);
 
     await optionalAuth(req, res, next);
@@ -282,7 +283,7 @@ describe('optionalAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const res = makeRes();
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue({ ...activeUser, is_suspended: 1 });
 
     await optionalAuth(req, res, next);
@@ -298,7 +299,7 @@ describe('optionalAuth middleware', () => {
     const req = makeReq('Bearer valid.token');
     const res = makeRes();
     const next = vi.fn() as NextFunction;
-    mockedVerifyToken.mockReturnValue({ sub: '7' });
+    mockedVerifyToken.mockReturnValue({ sub: '7', tv: 0 });
     mockedFindById.mockResolvedValue(activeUser);
 
     await optionalAuth(req, res, next);

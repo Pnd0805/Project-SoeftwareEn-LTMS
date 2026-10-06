@@ -50,9 +50,19 @@ export async function searchByName(userName : string) : Promise<Pick<UserRow , '
     return rows;
 }; 
 
+/**
+ * B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — เปลี่ยนรหัสผ่านแล้วบัตรเก่าทุกใบต้องใช้ไม่ได้
+ *
+ * บวก token_version ใน **คำสั่งเดียวกับการเขียนรหัสใหม่** ⇒ แยกกันไม่ได้
+ *   ⇒ ทุกเส้นทางที่เปลี่ยนรหัสผ่าน (วันนี้มีแค่ reset password · วันหน้าอาจมี "เปลี่ยนรหัสใน /me")
+ *     ได้ผลนี้อัตโนมัติโดยไม่มีใครต้องนึกถึง — รูปแบบเดียวกับที่ A2 ใช้ด่านเดียวแทนการไล่แก้ทีละที่
+ * 🔴 ห้ามแยกเป็นสอง UPDATE หรือย้ายการบวกไปที่ service — ถ้าแยก จะมีวันที่ใครเพิ่มเส้นทางใหม่
+ *   แล้วลืมบวก ⇒ บั๊กเดิมกลับมาแบบเงียบ ๆ ในเส้นทางเดียว
+ */
 export async function updatePassword(userId : number , passwordHash : string) : Promise<number>{
     const [ result ] = await pool.query<ResultSetHeader>(
-        `UPDATE users SET password_hash = ? WHERE user_id = ?`, [passwordHash , userId]);
+        `UPDATE users SET password_hash = ? , token_version = token_version + 1 WHERE user_id = ?`,
+        [passwordHash , userId]);
     return result.affectedRows;
 }
 

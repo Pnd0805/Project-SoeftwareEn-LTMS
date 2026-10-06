@@ -54,7 +54,8 @@ export async function createUser(o: {
         suspended_until: o.suspendedUntil ?? null,
         ...(o.emailVerified === undefined ? {} : { email_verified: o.emailVerified ? 1 : 0 }),
     });
-    return { id, email, token: signToken(id) };
+    // B1 — บัญชีที่เพิ่งสร้างอยู่ที่เลขรุ่น 0 (DEFAULT ของ migration 046) ยังไม่เคยเปลี่ยนรหัสผ่าน
+    return { id, email, token: signToken(id, 0) };
 }
 
 export async function createUserWithPassword(password: string, o: Parameters<typeof createUser>[0] = {}): Promise<TestUser> {

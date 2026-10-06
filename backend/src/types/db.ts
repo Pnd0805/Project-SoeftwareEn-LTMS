@@ -21,6 +21,7 @@ export type UserRow = {
     total_points : number,
     notification_prefs :  Record<string, boolean> | null,
     email_verified : number,          // OD-53 · 1 = ยืนยันอีเมลแล้ว · ยังไม่คุมสิทธิ์อะไร (ไม่มี middleware ไหนอ่าน)
+    token_version : number,           // B1 (migration 046) · บัตรที่พกเลขรุ่นไม่ตรงกับค่านี้ใช้ไม่ได้ — เปลี่ยนรหัสผ่าน = บวก 1
     show_profile_stats : number,      // OD-46 · 1 = เปิด (ค่าเริ่มต้น) · คุม stats/match-history/career ของหน้าโปรไฟล์เท่านั้น
     profile_edit_log : unknown,
     created_at : Date,

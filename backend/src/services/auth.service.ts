@@ -195,7 +195,7 @@ export async function login(email: string, password: string) {
     throw suspendedError(user)
   }
 
-  const accessToken = signToken(user.user_id)
+  const accessToken = signToken(user.user_id , user.token_version)
   return { accessToken : accessToken, expiresIn: authConfig.expireIn, tokenType: "Bearer" as const ,
            user: { id: user.user_id , fullName : user.full_name , userType: user.user_type }}
 }
