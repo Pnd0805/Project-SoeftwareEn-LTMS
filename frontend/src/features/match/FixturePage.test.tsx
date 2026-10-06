@@ -49,6 +49,7 @@ vi.mock('../../hooks/useMatch', () => ({
 }))
 
 vi.mock('../../hooks/useAdmin', () => ({
+  useRefereeCoverage: () => ({ data: { crossTournamentConflicts: [] }, isError: false }),
   useTournamentReferees: () => ({
     data: { items: [{ id: 17, user: { id: 70, fullName: 'Ref One', avatarUrl: null }, isActive: true }] },
     isPending: false, isError: false,

@@ -52,6 +52,7 @@ export const matchKeys = {
  * เรียกตัวนี้ใน onSuccess ของทุก mutation ที่แตะผล จะได้ไม่ลืมสัก key
  */
 function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef) {
+  qc.invalidateQueries({ queryKey: ['referees'] });
   qc.invalidateQueries({ queryKey: ['users'] });
   qc.invalidateQueries({ queryKey: ['rewards'] });
   qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
@@ -92,6 +93,7 @@ function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef)
 
 /** Schedule/check-in-state writes change match views, never results or standings. */
 function touchMatchSchedule(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['referees'] });
   /* Invalidate both numeric and legacy route-id variants until every screen uses one id system. */
   qc.invalidateQueries({ queryKey: matchKeys.all });
   qc.invalidateQueries({ queryKey: ["matches"] });

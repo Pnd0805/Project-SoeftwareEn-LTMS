@@ -262,6 +262,8 @@ export function useRefereeCoverage(tournamentId: TeamRef | undefined) {
     queryFn: () => adminApi.getRefereeCoverage(tournamentId as TeamRef),
     enabled: tournamentId !== undefined,
     retry: retryPolicy,
+    refetchOnMount: 'always',
+    refetchInterval: 30_000,
   });
 }
 

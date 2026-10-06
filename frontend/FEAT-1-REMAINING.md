@@ -3,6 +3,38 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## F14 / U04 backend reply integration — 2026-10-06
+
+- [x] Read `FE-Notice/TO-FE-2026-10-06-f14-cross-tournament-and-u04.md`;
+  verified remote BE_KN and fetched `c524726fe9a5d0d81ab8168847178b450f6dedb3`
+  into this frontend checkout. Inspected organizer-only F14 route/service and
+  U04 approved/withdrawn result-stat writes. Backend working tree was not changed.
+- [x] F14 DTO/adapter retains only `userId`, local `matchId`, `conflictCount`;
+  absent additive field defaults to an empty list for older running servers.
+- [x] Organizer Manage -> Referees displays every affected local match, referee
+  name (ID fallback), count of overlapping outside matches, round and Bangkok
+  start/end times when available. Links open the local Fixture for schedule or
+  assignment changes; no outside tournament/match details are requested or shown.
+- [x] Fixture displays the current match's warning; coverage refreshes after
+  schedule/assignment/result changes, on entry/focus and every 30 seconds while active.
+  Warning does not disable schedule saves or change staffing/publication rules.
+- [x] Required coverage loading/error/Retry and enrichment failure/Retry remain
+  explicit; enrichment failure keeps ID-based warnings visible.
+- [x] U04 option A is delivered by backend; retain API totals and award behavior.
+  No FE recount or local database rewrite is performed.
+- [x] Developer tests: full suite 79 files / 485 tests passed; additional schedule
+  invalidation regression 1 file / 1 test passed (486 tests across 80 files).
+- [x] Lint, production build and diff check passed. Vite on isolated port 5190
+  served Manage, Fixture and the warning module HTTP 200; the owned server was
+  stopped. Existing >500 kB main-bundle warning remains. HTTP delivery is not
+  live authenticated browser/API acceptance.
+- [ ] Live acceptance: reschedule to create a conflict, inspect Referees and
+  Fixture, reload, resolve by rescheduling/reassignment and verify warning removal;
+  include several local matches for one referee and organizer privacy checks.
+- [ ] Local U04 acceptance: withdraw before result verification and compare U04
+  with U14/RW05. Historical totals are not automatically backfilled; report any
+  pre-fix mismatch to BE for an agreed recount, without resetting a user's database.
+
 ## Latest To-FE / To-Team follow-up — 2026-10-06
 
 - [x] Verified/fetched remote `BE_KN@7add50c47d48f1ba6c566836ff7ffbe098df148e`.
@@ -18,9 +50,12 @@ API base path: `/api/v1`
   result writes. U14 withdrawn display already delivered; U04 totals remain unchanged.
 - [x] Updated To-Backend with ID/summary answers, F14 count-only field request,
   U04 recommendation and cancellation impact inventory.
-- [ ] F14 crossTournamentConflicts: waiting for backend field, then organizer UI.
-- [ ] U04 counting semantics and tournament cancellation: waiting for team decision
-  and backend delivery; these proposals do not close either acceptance issue.
+- [x] F14 crossTournamentConflicts: delivered in BE_KN@eba889a and integrated
+  in organizer Referees and per-match Fixture; see the follow-up below.
+- [x] U04 counting semantics: BE_KN@c524726 implements option A, including
+  withdrawn applications at result verification. FE continues displaying U04 totals.
+- [ ] U04 local-data acceptance/backfill and tournament cancellation decision
+  remain separate open items; older totals are not automatically recounted.
 - [ ] Authorized External identity document reads and optional rewards contracts/assets.
 - [ ] Live-browser acceptance: cross-role/time warnings and links, missing times,
   refusal/withdrawal recovery, invitation warning success, withdrawn win/history/privacy.
@@ -104,9 +139,10 @@ section describe earlier reviews, not the contract used for this delivery.
   keys/object strings in Admin review with field labels, dates, counts and
   eligibility descriptions. Existing 9 tests, lint/build and sample values passed.
 - [ ] User visual acceptance for the revised amendment Changes display (deferred).
-- [ ] Backend/product follow-up: U04 totals when withdrawal precedes verification;
-  cross-tournament coverage warnings after rescheduling;
-  optional reward criteria/progress/artwork contracts. See the handoff below.
+- [x] U04 withdrawn totals and F14 cross-tournament coverage fields delivered
+  and consumed; see the current F14/U04 section for remaining live acceptance.
+- [ ] Backend/product follow-up: optional reward criteria/progress/artwork
+  contracts and tournament cancellation decision. See the handoff below.
 
 Handoff: `TO-BACKEND-2026-10-06-frontend-checklist-response.md`.
 

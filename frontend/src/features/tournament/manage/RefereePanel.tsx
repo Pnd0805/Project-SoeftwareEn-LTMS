@@ -11,7 +11,7 @@
  * ตอบรับ/ปฏิเสธ: POST /referee-invitations/:id/accept | /decline
  *
  * ตาม FEAT-1-REMAINING (Priority 2) ยอดที่ตอบรับแล้วใช้ `acceptedCount` จาก backend
- * ไม่นับเองจากแถว · referee coverage ยังไม่มี endpoint จึงไม่เรียก
+ * ไม่นับเองจากแถว · F14 แสดงคำเตือนกรรมการมีงานนอกทัวร์ทับเวลา
  *
  * ── เพิ่มและถอดได้ทุกเมื่อ ────────────────────────────────────────────────
  * ผู้จัดแต่งตั้งและถอดกรรมการได้ตลอด ทั้งก่อนเปิดรับและระหว่างแข่ง (ทีมกำหนด 13 ก.ย. 2026)
@@ -27,6 +27,7 @@
  *    (คอมเมนต์เดิมบอกว่ายังไม่มี endpoint ค้นหา — ไม่จริงแล้ว มีและใช้ได้)
  */
 import { Avatar } from '../../../components/kit/Avatar'
+import { RefereeCoverageWarnings } from './RefereeCoverageWarnings'
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { ConfirmCard, Modal } from '../../../components/kit/Modal'
@@ -291,6 +292,7 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
       ) : null}
 
       {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+      {!USE_MOCK ? <RefereeCoverageWarnings tournamentId={Number(t.id)} /> : null}
 
       {referees && !rows.length ? <div className="sub">No referees invited yet.</div> : null}
 

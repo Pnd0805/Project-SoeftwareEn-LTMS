@@ -116,6 +116,14 @@ export interface RefereeCoverageDto {
   /** แมตช์ที่กรรมการยังไม่ครบ (โหมดจริงเท่านั้น) — ยอดรวมข้างบนบอกไม่ได้ว่าขาดที่นัดไหน
    *  รางของผู้จัดจึงเคยนับว่า "จัดนัดครบ" ทั้งที่แมตช์ยังไม่มีกรรมการสักคน */
   uncoveredMatchIds?: number[];
+  /** Accepted work outside this tournament; only local match IDs and counts are disclosed. */
+  crossTournamentConflicts?: CrossTournamentConflictDto[];
+}
+
+export interface CrossTournamentConflictDto {
+  userId: number;
+  matchId: number;
+  conflictCount: number;
 }
 
 // ══════════════ สิทธิ์ผู้ดูแล — ตาราง `admin_scopes` ══════════════
@@ -280,6 +288,7 @@ export interface BackendRefereeCoverageDto {
   }>;
   /** กรรมการที่มีแมตช์เวลาซ้อนกัน — เตือนเฉยๆ ไม่บล็อก */
   conflicts: Array<{ userId: number; matchIds: number[] }>;
+  crossTournamentConflicts?: CrossTournamentConflictDto[];
 }
 
 /** GET /tournaments/:id/referees — F02 */

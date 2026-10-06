@@ -1,5 +1,22 @@
 # FE response to the 3–5 October Checklist — 2026-10-06
 
+## Follow-up to F14/U04 reply
+
+- [x] Verified/fetched latest remote `BE_KN@c524726` (includes F14 `eba889a`).
+- [x] F14 warning delivered in organizer Referees and Fixture: local match,
+  referee name/ID, outside match count, local schedule and edit links. Query
+  refresh follows schedule/assignment/result writes and every 30 seconds.
+- [x] U04 option A acknowledged; frontend keeps API totals without recomputing.
+- [ ] Live conflict/reload/removal acceptance and local historical U04 data
+  consistency remain open in FEAT-1-REMAINING; no automatic recount is assumed.
+- [x] BO capability flag question: FE would benefit from a server-owned flag
+  in sport-types, so supported sports do not depend on display-name matching.
+  Please propose its field name and semantics; current hardcoded BO support
+  remains until an actual contract is delivered.
+- [ ] External policy and tournament cancellation still need team decisions.
+  The prior cancellation impact inventory remains applicable; this F14/U04
+  delivery does not introduce or infer a cancellation status.
+
 Verified target: remote `BE_KN@63045d17188cec87577122dc4146de423073abbf`.
 Frontend implementation and developer checks are complete for Checklist A1–A6,
 B1–B5 and C1–C4. Live acceptance stays open in `FEAT-1-REMAINING.md`.
@@ -19,12 +36,10 @@ B1–B5 and C1–C4. Live acceptance stays open in `FEAT-1-REMAINING.md`.
   is inferred from earned badge count or unrelated profile totals.
 - [ ] D6 final artwork: decide the badge assets and their delivery/read contract
   before replacing the fallback.
-- [ ] U04: retain the open issue where a team withdraws before result verification
-  and profile totals differ from career/history. The FE does not silently recompute
-  totals or change the award criteria.
-- [ ] F14: need cross-tournament coverage counts after rescheduling to complete
-  the organizer warning reported by the user. Invitation acceptance checks alone
-  do not close this case.
+- [x] U04: option A delivered in BE_KN@c524726; FE keeps server totals. Local
+  historical-data acceptance/backfill stays open, without changing award criteria.
+- [x] F14: counts delivered in BE_KN@eba889a; organizer Referees and Fixture
+  display warnings. Live rescheduling/reload acceptance remains open.
 - [x] External referee decision FE error: the user reproduced a synthetic 404
   thrown by the FE adapter after a successful backend decision. This FE defect
   is fixed and the user confirmed Approve plus assignment/acceptance/match access
@@ -125,12 +140,12 @@ development serving, not browser or live-backend acceptance of the new workflows
 
 - [x] `conflictingMatchIds` แบบ ID เพียงพอแล้ว: FE ใช้รายการเดียวกันหา object
   ไม่ต้องเพิ่ม `conflictsWith` ซ้ำในแต่ละแถว และยังไม่ขอ summary ตัวนับรวม
-- [ ] ขอเพิ่ม F14 `crossTournamentConflicts: [{ userId, matchId, conflictCount }]`
+- [x] BE ส่ง F14 `crossTournamentConflicts: [{ userId, matchId, conflictCount }]` แล้ว
   เมื่อ ORG เลื่อนเวลาแล้วชนงานนอกทัวร์ โดยคืน [] เมื่อไม่มี conflict และไม่เปิดชื่อ/
-  รหัสทัวร์อื่น FE จะเตือนให้ ORG ติดต่อกรรมการ; ขณะนี้ไม่มี field นี้ใน source ที่ตรวจ
-- [ ] U04: FE เสนอทาง ก — ตอน verify นับใบ approved และ withdrawn ด้วย
+  รหัสทัวร์อื่น FE เตือนให้ ORG ติดต่อกรรมการ พร้อมลิงก์แก้แมตช์ของทัวร์นี้
+- [x] U04: BE ทำทาง ก แล้ว — ตอน verify นับใบ approved และ withdrawn ด้วย
   เพื่อให้ยอดรวมตรงกับ U14/RW05 รวมถึง amend/dispute ที่ยืนยันหลังทีมถอนตัว
-  ขอทีม/BE ยืนยันนิยามและตรวจความจำเป็นของ recount/backfill จากฐานที่จะใช้งานจริง
+  BE ยืนยันนิยามแล้ว; ยังต้องตรวจความจำเป็นของ recount/backfill จากฐานที่จะใช้งานจริง
   ตัวเลขฐานใน notice เป็น snapshot ของ BE ไม่ใช่การยืนยันฐานปัจจุบันจาก FE
 - [ ] Admin เปิดเอกสาร External: ยังขอ authorized expiring read URL สำหรับ
   private identity keys พร้อมกรณีไฟล์หาย/หมดอายุ (ตาม blocker ด้านบน)

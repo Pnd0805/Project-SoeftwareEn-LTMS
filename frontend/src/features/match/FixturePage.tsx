@@ -25,6 +25,7 @@ import {
 } from '../../hooks/useAdmin'
 import { useTournament } from '../../hooks/useTournament'
 import { MatchFormatPanel } from './MatchFormatPanel'
+import { RefereeCoverageWarnings } from '../tournament/manage/RefereeCoverageWarnings'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
@@ -323,6 +324,7 @@ export function FixturePage() {
       </div>
 
       {isBoSport(m.tournament.sportName) ? <MatchFormatPanel key={m.id} match={m} /> : null}
+      {!USE_MOCK ? <RefereeCoverageWarnings tournamentId={m.tournamentId} matchId={m.id} /> : null}
       <Panel quiet>
         <div className="spread">
           <span className="hstack" style={{ gap: 8 }}>
@@ -374,7 +376,7 @@ export function FixturePage() {
                   Referees tab first.
                 </div>
               ) : null}
-            </Field> : <RealRefereeAssignments match={m} />}
+            </Field> : <div id="referee-assignments"><RealRefereeAssignments match={m} /></div>}
 
             {clientError || update.isError || assign.isError ? (
               <Banner kind="crit">

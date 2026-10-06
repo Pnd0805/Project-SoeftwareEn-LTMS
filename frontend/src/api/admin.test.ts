@@ -118,8 +118,26 @@ describe("tournament referees", () => {
       tournamentId: 5, required: 2, accepted: 1, shortfall: 1, blocksStatRecording: true,
       // รางของผู้จัดต้องรู้ว่าขาดที่นัดไหน ยอดรวมอย่างเดียวบอกไม่ได้ (SetupTrail ขั้น 6)
       uncoveredMatchIds: [7],
+      crossTournamentConflicts: [],
     });
     expect(lastRequest().path).toBe("/tournaments/5/referees/coverage");
+  });
+
+  it('retains local conflict IDs/counts without leaking unexpected private schedule fields', async () => {
+    fetchMock.mockResolvedValueOnce(json({
+      matchesTotal: 2, matchesCovered: 2, uncovered: [], conflicts: [],
+      crossTournamentConflicts: [
+        { userId: 70, matchId: 41, conflictCount: 2, tournamentName: 'Private Cup', outsideMatchId: 999 },
+        { userId: 70, matchId: 42, conflictCount: 1 },
+      ],
+    }));
+    const coverage = await getRefereeCoverage(5);
+    expect(coverage.crossTournamentConflicts).toEqual([
+      { userId: 70, matchId: 41, conflictCount: 2 },
+      { userId: 70, matchId: 42, conflictCount: 1 },
+    ]);
+    expect(coverage.blocksStatRecording).toBe(false);
+    expect(JSON.stringify(coverage)).not.toMatch(/Private Cup|outsideMatchId/);
   });
 });
 
