@@ -102,11 +102,15 @@ describe('verifyMatchResult — ธุรกรรมเดียวครบท
     expect(loserRow!.sql).toMatch(/VALUES \(\?, \?, 1, 0, 1, 0,/);     // แพ้ 1 · แต้ม 0
   });
 
-  it('② สถิติผู้เล่นทั้งสองทีม · นับเฉพาะคนที่ส่งลงแข่ง (application_players ที่ approved)', async () => {
+  // 🔴 อัปเดต 6 ต.ค. 2569 (มติ U04 ทางเลือก ก · FE เสนอ) — เงื่อนไขเปลี่ยนจาก `= 'approved'`
+  //   เป็น `IN ('approved','withdrawn')` ให้สมมาตรกับฝั่งถอนสถิติ และให้หัวโปรไฟล์ตรงกับ
+  //   รายการประวัติ · ไม่ใช่การลดความเข้มของเทสเดิม แค่ย้ายตามมติ
+  //   เหตุผลเต็มอยู่ที่ describe('applyOutcomeTx — ตัวนับสถิติผู้เล่น (U04)') ท้ายไฟล์
+  it('② สถิติผู้เล่นทั้งสองทีม · นับเฉพาะคนที่ส่งลงแข่ง (application_players)', async () => {
     await verifyMatchResult(100, 70, 7, 3);
     const stats = callsMatching(/INSERT INTO player_profile_stats/);
     expect(stats).toHaveLength(2);
-    for (const s of stats) expect(s.sql).toContain("tournament_application_status = 'approved'");
+    for (const s of stats) expect(s.sql).toContain("tournament_application_status IN ('approved', 'withdrawn')");
     expect(stats[0]!.values.slice(0, 5)).toEqual([3, 1, 0, 20, 5]);   // กีฬา · ชนะ · แพ้ · ทัวร์ · ทีมผู้ชนะ
     expect(stats[1]!.values.slice(0, 5)).toEqual([3, 0, 1, 20, 6]);
   });
@@ -148,5 +152,58 @@ describe('verifyMatchResult — ③ ล้มกลางทาง = ย้อ�
     expect(mocks.rollback).toHaveBeenCalledTimes(1);
     expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.release).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * 🆕 U04 ทางเลือก ก (มติ 6 ต.ค. 2569 · FE เสนอ) — ตัวนับสถิติต้องนับคนที่ทีมถอนตัวด้วย
+ *
+ * 🔴 ที่แก้: ก่อนหน้านี้สองฝั่งไม่สมมาตร
+ *   ฝั่งบวก (applyOutcomeTx ตอน verify)  รับแค่ `approved`
+ *   ฝั่งถอน (undoOutcomeTx ตอน reject)   รับทั้ง `approved` และ `withdrawn` (แก้ 6 ต.ค. เช้า)
+ *   ⇒ คนที่ทีมถอนตัว **ก่อน** verify ไม่เคยถูกบวก แต่ถ้ามี reject/amend จะถูกถอน
+ *   ⇒ และหัวโปรไฟล์ (U04) ไม่ตรงกับรายการประวัติ (U14/RW05) ที่นับใบ withdrawn
+ *     ผู้ใช้เห็นเลขสองที่ไม่เท่ากัน โดยไม่มี error อะไรบอก
+ *
+ * ★ อ่าน **ตัว SQL** เพราะ applyOutcomeTx ไม่ได้ export และผลจริงต้องมีฐาน
+ *   สิ่งที่ต้องกันคือ "เงื่อนไขใน WHERE ถูกแก้กลับ" ซึ่งอ่านจากข้อความ SQL ได้ตรง ๆ
+ */
+describe('applyOutcomeTx — ตัวนับสถิติผู้เล่น (U04)', () => {
+  /** คำสั่งที่บวก player_profile_stats — หาจากตารางและ INSERT ไม่ใช่จากลำดับ (ลำดับเปลี่ยนได้) */
+  const statsInsertSqls = () => callsMatching(/INSERT INTO player_profile_stats/).map(c => c.sql);
+
+  it('บวกเลขให้ทั้งใบที่ approved และใบที่ withdrawn', async () => {
+    await verifyMatchResult(100, 70, 7, 3);
+
+    const sqls = statsInsertSqls();
+    expect(sqls.length).toBeGreaterThan(0);
+    for(const sql of sqls){
+      expect(sql).toContain("ta.tournament_application_status IN ('approved', 'withdrawn')");
+      // 🔴 รูปแบบเดิมที่ทำให้สองฝั่งไม่สมมาตร — ถ้ากลับไปเป็นแบบนี้ เทสต้องแดง
+      expect(sql).not.toContain("ta.tournament_application_status = 'approved'");
+    }
+  });
+
+  /**
+   * ★ ต้องบวกให้ ทั้งสองทีม (ผู้ชนะและผู้แพ้) ⇒ 2 คำสั่ง
+   *   ถ้าเหลือคำสั่งเดียว ฝ่ายแพ้จะไม่ถูกนับว่าลงแข่ง ซึ่งเงียบมาก เพราะ matches_played
+   *   ของฝ่ายชนะยังเพิ่มถูกต้องอยู่
+   */
+  it('บวกให้ทั้งทีมชนะและทีมแพ้ และผูกกีฬาของทัวร์นั้น', async () => {
+    await verifyMatchResult(100, 70, 7, 3);
+
+    const calls = callsMatching(/INSERT INTO player_profile_stats/);
+    expect(calls).toHaveLength(2);
+    // values = [sportId, won, lost, tournamentId, teamId, won, lost]
+    expect(calls[0]!.values[0]).toBe(3);                 // sport_type_id ของทัวร์ 20
+    expect(calls.map(c => c.values[4])).toEqual([5, 6]); // ทีมชนะก่อน แล้วทีมแพ้
+  });
+
+  /** ★ สมมาตรกับฝั่งถอน — เงื่อนไขของสองฝั่งต้องเป็นข้อความเดียวกันเป๊ะ */
+  it('เงื่อนไขใบสมัครตรงกับฝั่งถอนสถิติคำต่อคำ', async () => {
+    await verifyMatchResult(100, 70, 7, 3);
+
+    const shared = "ta.tournament_application_status IN ('approved', 'withdrawn')";
+    for(const sql of statsInsertSqls()) expect(sql).toContain(shared);
   });
 });

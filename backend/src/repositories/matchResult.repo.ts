@@ -139,12 +139,24 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
 
     await standingsTx(conn, match.tournament_id, winnerId, loserId, point, score, 1);
 
-    // player stats ให้เฉพาะคนที่ทีมส่งลงแข่งในทัวร์นี้ (application_players — มติ 19 ก.ย.) ไม่ใช่ทุกคนในคลังทีม
+    /**
+     * player stats ให้เฉพาะคนที่ทีมส่งลงแข่งในทัวร์นี้ (application_players — มติ 19 ก.ย.)
+     * ไม่ใช่ทุกคนในคลังทีม
+     *
+     * ★ 6 ต.ค. 2569 (มติ ทางเลือก ก · FE เสนอ) — รับใบที่ `withdrawn` ด้วย ไม่ใช่แค่ `approved`
+     *   🔴 เดิมสองฝั่งไม่สมมาตร: ฝั่งบวกรับแค่ approved แต่ฝั่งถอน (undoOutcomeTx) รับทั้งคู่
+     *     ⇒ คนที่ทีมถอนตัว **ก่อน** verify ไม่เคยถูกบวก แต่ถ้ามีการ reject/amend จะถูกถอน
+     *       (GREATEST(0) กันแค่ติดลบ ไม่ได้ทำให้ถูก)
+     *   🔴 และเลขหัวโปรไฟล์ (U04) ไม่ตรงกับรายการข้างล่าง (U14/RW05) ที่นับใบ withdrawn
+     *     ตั้งแต่ 10940f9 ⇒ ผู้ใช้เห็นสองตัวเลขไม่เท่ากันโดยไม่มีอะไรเตือน
+     *   ⇒ นับให้ เพราะเขา "ลงแข่งจริง" การที่ทีมถอนตัวทีหลังไม่ได้ลบนัดที่เตะไปแล้ว
+     *     ซึ่งเป็นเหตุผลเดียวกับที่การถอนตัวหลัง verify ไม่ลดเลข (มติ 26 ก.ย.)
+     */
     for(const [teamId, won] of [[winnerId, 1], [loserId, 0]] as const){
         await conn.query<ResultSetHeader>(`INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
                                            SELECT ap.user_id, ?, 1, ?, ?, 0 FROM application_players ap
                                            JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
-                                           WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved'
+                                           WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status IN ('approved', 'withdrawn')
                                            ON DUPLICATE KEY UPDATE
                                            matches_played = matches_played + 1, wins = wins + ?, losses = losses + ?, updated_at = NOW()`,
                                            [sportId, won, 1 - won, match.tournament_id, teamId, won, 1 - won]);
