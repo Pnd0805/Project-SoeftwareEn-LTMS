@@ -22,6 +22,15 @@ export async function listPendingExternalReferees(){
             userId : first.user_id,
             user : { ...toUserRef(first), email : first.email },
             docs : group.find(g => g.external_verification_docs)?.external_verification_docs ?? [],  // S3 key — FE ขอ presign เอง
+            /**
+             * 🆕 6 ต.ค. 2569 (ทางเลือก ข) — แยก "ยังไม่ส่งเอกสาร" ออกจาก "ส่งแล้ว"
+             * 🔴 คิวนี้ลิสต์ทุกคนที่สถานะ pending ซึ่งรวมคนที่ **กดรับคำเชิญแล้วแต่ยังไม่ส่งเอกสาร**
+             *   (resolveApprovalForAccept ตั้ง pending ให้ตั้งแต่ตอนกดรับ แม้ไม่มีเอกสารแนบ)
+             *   ⇒ เดิมเขาโผล่ในคิวโดยมี docs: [] ซึ่งแยกจาก "ส่งมาแต่ไฟล์ว่าง" ไม่ได้
+             * ★ ยังโชว์ในคิวต่อ (ไม่ซ่อน) เพราะแอดมินต้องเห็นว่ามีใครค้างอยู่ไม่ส่งเอกสาร
+             *   แต่ด่านใน approveExternalReferee กันไม่ให้กดอนุมัติคนกลุ่มนี้
+             */
+            docsSubmitted : group.some(g => g.external_verification_docs !== null),
             tournaments : group.map(g => ({ id : g.tournament_id, name : g.tournament_name, tournamentRefereeId : g.tournament_referee_id })),
             submittedAt : first.created_at.toISOString()
         };
@@ -40,6 +49,18 @@ export async function approveExternalReferee(userId : number, adminUserId : numb
     const state = await getIdentityState(userId);
     if(state.status !== 'pending' && state.status !== 'needs_docs'){
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
+    }
+    /**
+     * 🔴 มติ 6 ต.ค. 2569 (ทางเลือก ข) — ห้ามอนุมัติคนที่ยังไม่ส่งเอกสาร
+     *   เดิมด่านนี้เช็คแค่สถานะ ⇒ คนที่กดรับคำเชิญแล้วแต่ยังไม่ส่งเอกสารเลย
+     *   ก็ถูกกดอนุมัติได้ = "ยืนยันตัวตน" โดยไม่เคยเห็นเอกสารอะไร
+     *   และผลนั้นใช้ได้ 1 ปี ก็อปไปทุกทัวร์ที่เขาจะเข้าต่อจากนั้น (resolveApprovalForAccept)
+     *   ⇒ ไม่ใช่แค่ขั้นตอนไม่ครบ แต่ผลมันกระจายต่อเอง
+     * ★ ไม่ใช่การซ่อนเขาจากคิว — คิวยังโชว์พร้อมธง `docsSubmitted` ให้แอดมินเห็นว่าใครค้างอยู่
+     */
+    if(!state.docsSubmitted){
+        throw new AppError(409, 'DOCS_NOT_SUBMITTED',
+            'ผู้ใช้นี้ยังไม่ได้ส่งเอกสารยืนยันตัวตน อนุมัติไม่ได้ — ต้องรอให้เขาส่งเอกสารก่อน');
     }
     const affected = await RefRepo.approveUser(userId, adminUserId);
     await NotificationService.notify({

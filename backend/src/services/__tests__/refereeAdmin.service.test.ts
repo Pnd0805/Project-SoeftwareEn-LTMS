@@ -83,6 +83,8 @@ describe('listPendingExternalReferees', () => {
         userId: 5,
         user: { id: 5, fullName: 'สมชาย', avatarUrl: 'a.png', email: 'a@x.com' },
         docs: ['doc1.pdf'],
+        // 🆕 6 ต.ค. 2569 — ธงแยก "ส่งเอกสารแล้ว" ออกจาก "ยังไม่ส่ง" (ทางเลือก ข)
+        docsSubmitted: true,
         tournaments: [
           { id: 100, name: 'Tour A', tournamentRefereeId: 1 },
           { id: 200, name: 'Tour B', tournamentRefereeId: 2 },
@@ -222,7 +224,9 @@ describe('approveExternalReferee', () => {
     'approves the user and notifies them when identity status is "%s"',
     async (status) => {
       mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
-      mockedGetIdentityState.mockResolvedValue({ status } as any);
+      // 🔴 ต้องมี docsSubmitted: true — 6 ต.ค. เพิ่มด่านห้ามอนุมัติคนที่ยังไม่ส่งเอกสาร
+      //   (ของเดิมเช็คแค่สถานะ ⇒ อนุมัติคนที่ไม่เคยส่งเอกสารได้)
+      mockedGetIdentityState.mockResolvedValue({ status, docsSubmitted: true } as any);
       mockedRefRepo.approveUser.mockResolvedValue(3);
 
       const result = await approveExternalReferee(1, 99);
@@ -340,4 +344,85 @@ describe('rejectExternalReferee', () => {
       });
     },
   );
+});
+
+/**
+ * 🆕 ด่านใหม่ 6 ต.ค. 2569 (ทางเลือก ข) — ห้ามอนุมัติคนที่ยังไม่ส่งเอกสาร
+ *
+ * 🔴 ช่องที่ปิด: resolveApprovalForAccept ตั้งสถานะ `pending` ให้ตั้งแต่ตอน **กดรับคำเชิญ**
+ *   แม้ไม่มีเอกสารแนบมาเลย ⇒ คนนั้นโผล่ในคิวแอดมินทันทีโดยมี docs: []
+ *   แล้วด่านเดิมเช็คแค่สถานะ ⇒ แอดมินกด "อนุมัติ" ได้โดยไม่เคยเห็นเอกสารอะไร
+ *   และผลนั้นใช้ได้ 1 ปี ก็อปไปทุกทัวร์ที่เขาจะเข้าต่อจากนั้น ⇒ ผลกระจายต่อเอง
+ */
+describe('approveExternalReferee — ต้องส่งเอกสารก่อน (DOCS_NOT_SUBMITTED)', () => {
+  it.each(['pending', 'needs_docs'] as const)(
+    'สถานะ %s แต่ยังไม่ส่งเอกสาร = 409 และไม่อนุมัติ ไม่แจ้งเตือน',
+    async (status) => {
+      mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
+      mockedGetIdentityState.mockResolvedValue({ status, docsSubmitted: false } as any);
+
+      await expect(approveExternalReferee(1, 99)).rejects.toMatchObject({
+        status: 409, code: 'DOCS_NOT_SUBMITTED',
+      });
+      expect(mockedRefRepo.approveUser).not.toHaveBeenCalled();
+      expect(mockedNotify).not.toHaveBeenCalled();
+    },
+  );
+
+  /**
+   * ★ ด่านนี้ต้องมาหลังด่านสถานะ — คนที่ถูกปฏิเสธไปแล้ว (rejected) ก็ไม่มีเอกสารเหมือนกัน
+   *   ถ้าสลับลำดับ เขาจะได้ DOCS_NOT_SUBMITTED ซึ่งบอกให้ "ส่งเอกสาร" ทั้งที่เรื่องจบไปแล้ว
+   */
+  it('คนที่ถูกปฏิเสธไปแล้ว ยังได้ NOT_PENDING_REVIEW ไม่ใช่ DOCS_NOT_SUBMITTED', async () => {
+    mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
+    mockedGetIdentityState.mockResolvedValue({ status: 'rejected', docsSubmitted: false } as any);
+
+    await expect(approveExternalReferee(1, 99)).rejects.toMatchObject({ code: 'NOT_PENDING_REVIEW' });
+  });
+
+  /** ★ ปฏิเสธ (AR03) ไม่ติดด่านนี้ — ไม่มีเอกสารก็ปฏิเสธได้ ไม่งั้นคนที่ไม่ยอมส่งจะค้างคิวตลอดไป */
+  it('ปฏิเสธคนที่ยังไม่ส่งเอกสารได้ตามปกติ', async () => {
+    mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
+    mockedGetIdentityState.mockResolvedValue({ status: 'pending', docsSubmitted: false } as any);
+    mockedRefRepo.rejectUser.mockResolvedValue(1 as any);
+
+    await expect(rejectExternalReferee(1, 99, { reason: 'ไม่ส่งเอกสารตามกำหนด' } as any))
+      .resolves.toMatchObject({ identityStatus: 'rejected' });
+  });
+});
+
+/**
+ * ธง docsSubmitted ในคิวแอดมิน — แอดมินต้องแยกได้ว่า "ยังไม่ส่ง" กับ "ส่งแล้ว"
+ * ★ ไม่ซ่อนคนที่ยังไม่ส่งออกจากคิว เพราะแอดมินต้องเห็นว่ามีใครค้างอยู่
+ */
+describe('listPendingExternalReferees — ธง docsSubmitted', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    tournament_referee_id: 1, user_id: 5, tournament_id: 100,
+    external_verification_docs: null, created_at: new Date('2024-01-01T00:00:00Z'),
+    full_name: 'สมชาย', profile_image_key: 'a.png', email: 'a@x.com', tournament_name: 'Tour A',
+    ...over,
+  }) as any;
+
+  it('ยังไม่ส่งเอกสารเลย = false และยังอยู่ในคิว', async () => {
+    mockedRefRepo.findPendingAdminReview.mockResolvedValue([row()]);
+    mockedToUserRef.mockReturnValue({ id: 5, fullName: 'สมชาย', avatarUrl: 'a.png' });
+
+    const result = await listPendingExternalReferees();
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ docsSubmitted: false, docs: [] });
+  });
+
+  /** ★ ส่งแล้วแถวใดแถวหนึ่งก็ถือว่าส่งแล้ว — เอกสารเป็นของ "คน" ไม่ใช่ของทัวร์ */
+  it('ส่งแล้วแถวใดแถวหนึ่ง = true', async () => {
+    mockedRefRepo.findPendingAdminReview.mockResolvedValue([
+      row(),
+      row({ tournament_referee_id: 2, tournament_id: 200, external_verification_docs: ['doc.pdf'] }),
+    ]);
+    mockedToUserRef.mockReturnValue({ id: 5, fullName: 'สมชาย', avatarUrl: 'a.png' });
+
+    const result = await listPendingExternalReferees();
+
+    expect(result.items[0]).toMatchObject({ docsSubmitted: true, docs: ['doc.pdf'] });
+  });
 });
