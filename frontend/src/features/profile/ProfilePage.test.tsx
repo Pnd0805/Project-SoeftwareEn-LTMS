@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { updateProfile, uploadMock, profileState, mockUserState } = vi.hoisted(() => ({
+const { updateProfile, uploadMock, profileState, mockUserState, identityState } = vi.hoisted(() => ({
+  identityState: { status: 'approved' },
   updateProfile: vi.fn(),
   uploadMock: vi.fn(),
   profileState: { avatarUrl: null as string | null },
@@ -18,6 +19,10 @@ const { updateProfile, uploadMock, profileState, mockUserState } = vi.hoisted(()
     year: 3,
     totalPoints: 17,
   },
+}))
+vi.mock('../../hooks/useAdmin', () => ({
+  useRefereeIdentity: () => ({ data: { status: identityState.status, tournaments: [], docsRequired: false }, isPending: false, isError: false }),
+  useSubmitRefereeIdentityDocs: () => ({ isPending: false }),
 }))
 vi.mock('../../api/upload', async original => ({
   ...await original<typeof import('../../api/upload')>(), uploadImage: uploadMock,
@@ -66,6 +71,7 @@ vi.mock('../player/PlayerPage', () => ({ CareerPanel: () => null }))
 import { ProfilePage } from './ProfilePage'
 
 describe('ProfilePage real-mode boundary', () => {
+  beforeEach(() => { mockUserState.userType = 'student'; identityState.status = 'approved' })
   it('keeps /me identity visible without a legacy user when stats fail', () => {
     render(<MemoryRouter><ProfilePage /></MemoryRouter>)
 
@@ -76,12 +82,18 @@ describe('ProfilePage real-mode boundary', () => {
     expect(screen.getByText('Pick\'em history')).toBeInTheDocument()
   })
 
-  it('displays External (Approve) status badge after name when user is external', () => {
+  it('displays External (Approve) only after the identity API confirms approval', () => {
     mockUserState.userType = 'external'
     render(<MemoryRouter><ProfilePage /></MemoryRouter>)
 
     expect(screen.getByText('Backend Profile')).toBeInTheDocument()
     expect(screen.getByText('External (Approve)')).toBeInTheDocument()
+    mockUserState.userType = 'student'
+  })
+  it.each(['none', 'pending', 'needs_docs', 'rejected'])('does not claim approval for identity status %s', status => {
+    mockUserState.userType = 'external'; identityState.status = status
+    render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+    expect(screen.queryByText('External (Approve)')).not.toBeInTheDocument()
     mockUserState.userType = 'student'
   })
 })

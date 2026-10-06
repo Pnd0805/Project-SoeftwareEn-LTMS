@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
+vi.mock('../../match/RefereeWithdrawal', () => ({ OrganizerWithdrawals: () => <div>Withdrawal queue</div> }))
 vi.mock('../../../api/client', async original => ({ ...await original<typeof import('../../../api/client')>(), USE_MOCK: false }))
 vi.mock('../../../shared/store', () => ({ useLtms: () => ({}) }))
 vi.mock('../CommunityTab', () => ({ feedbackOf: vi.fn() }))

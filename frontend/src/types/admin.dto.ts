@@ -246,7 +246,12 @@ export interface ExternalRefereeRequestDto {
   invitedBy: UserRefDto | null;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
+  docs?: string[];
 }
+
+export type RefereeWithdrawalInput =
+  | { scope: 'match'; matchId: number; reason: string }
+  | { scope: 'tournament'; tournamentId: number; reason: string };
 
 /** ไม่อนุมัติต้องระบุเหตุผล (SDS 7.4 — ทุกการปฏิเสธต้องระบุเหตุผล) */
 export interface ReviewExternalRefereeRequest {

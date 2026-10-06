@@ -43,18 +43,74 @@ section describe earlier reviews, not the contract used for this delivery.
 - [x] Developer verification: `npm.cmd test -- --maxWorkers=2` passed 70 files /
   446 tests; lint and production build passed. Vite started on 127.0.0.1:5188;
   reset-password HTML returned HTTP 200. Existing >500 kB main-bundle warning.
-- [ ] Live acceptance: real verification/recovery email, OTP expiry/quotas and
-  login; reset-link one-time use; BO save/reload and concurrent lock; each logo
+- [x] Local Auth acceptance reported by the user on 2026-10-06: verification
+  and recovery email received, password reset completed with a different password,
+  new-password login accepted, old-password login rejected, used reset link
+  rejected, and incorrect/expired OTP rejected. Email evidence is from local
+  Mailpit; external SMTP/inbox delivery is not established by this check.
+- [ ] Remaining Auth acceptance: resend cooldown (60 seconds) and quota
+  (3/hour, including no additional email when exhausted), leading-zero OTP,
+  and an expired reset link. These cases were not reported as tested.
+- [ ] Other live acceptance: BO save/reload and concurrent lock; each logo
   route with an uploaded image; reward visibility/revocation as owner and guest;
   university-admin deadline/permission checks and urgent announcement navigation.
-  No connected browser was available. HTTP HTML delivery is not browser acceptance.
-- [ ] Full FR09 withdrawal creation UI and organizer management flow; migration
-  045/runtime and cross-tournament consent acceptance remain unverified here.
+  No connected browser was available for agent inspection. The Auth checks above
+  are user-reported acceptance; HTTP HTML delivery alone is not browser acceptance.
+- [x] Local DB migrations through 045 applied on 2026-10-06 during OTP recovery.
+- [x] FR09 UI: referee withdrawal for one future match or the whole tournament,
+  5–500-character reason, pending-consent copy, outgoing history/cancellation,
+  organizer queue/history and confirmed approve/decline with assignment refresh.
+  Whole-tournament withdrawal is available from the tournament page after active
+  referee access is checked; approved External pool referees also have it in Profile.
+- [x] External profile badge reads `/me/referee-identity` and distinguishes none,
+  pending, needs_docs, approved, rejected, loading and errors; mock mode does not
+  infer approval from user category. Refresh on focus and every 30 seconds.
+- [x] External identity documents UI: JPEG/PNG 1–5 files uploaded using the
+  `referee_identity` purpose before submitting keys to U12. Supports initial
+  submission/resubmission and Admin request-docs with a reason of up to 500 characters.
+  Admin sees document count/filenames and the organizer sees needs_docs correctly.
+- [ ] Backend blocker: AR01 supplies private document keys but the current
+  BE_KN routes expose no authorized referee-identity download/read URL. Admin
+  cannot open these documents yet; no public URL or alternative upload purpose is used.
+- [ ] Live acceptance for the new identity/docs and FR09 flows, including
+  organizer decisions, cancellation, duplicate/stale requests and cross-tournament
+  conflicts, remains deferred. Developer checks do not close these cases.
+- [x] Amendment change display: replace raw JSON in organizer history and raw
+  keys/object strings in Admin review with field labels, dates, counts and
+  eligibility descriptions. Existing 9 tests, lint/build and sample values passed.
+- [ ] User visual acceptance for the revised amendment Changes display (deferred).
 - [ ] Backend/product follow-up: U04 totals when withdrawal precedes verification;
-  cross-tournament coverage warnings after rescheduling; External approval defect;
+  cross-tournament coverage warnings after rescheduling;
   optional reward criteria/progress/artwork contracts. See the handoff below.
 
 Handoff: `TO-BACKEND-2026-10-06-frontend-checklist-response.md`.
+
+### Final frontend workflow verification — 2026-10-06
+
+- [x] Identity/docs and withdrawal delivery checked against fetched remote
+  `BE_KN@8a75156f8102a2a091301817d62275ad3a00f1ab`.
+- [x] Full suite: 74 files / 464 tests passed; lint and production build passed.
+  Vite started on 127.0.0.1:5189; Profile, tournament referee management and new
+  component modules returned HTTP 200. The owned verification server was stopped.
+  Existing >500 kB main-bundle warning remains. These checks do not establish
+  real-browser acceptance; the deferred cases above remain open.
+
+### External decision error follow-up — 2026-10-06
+
+- [x] Reproduced from user report and source: the real API adapter threw a
+  synthetic 404 after a successful AR02/AR03 response. Decisions now resolve
+  without inventing a request-detail DTO; real backend errors still propagate.
+  Queue, referee coverage, match permissions and notifications are refreshed.
+  Rows for the same person in different tournaments now have distinct keys.
+- [x] Developer checks: 23 focused API/UI tests, lint and production build passed.
+  API-backed UI tests cover Approve and Reject, the success notice and removal of
+  all affected pending tournament rows. Existing bundle-size warning remains.
+- [x] User confirmed the External Approve retest succeeded on 2026-10-06 after
+  the synthetic 404 fix. Close the reported Admin decision error.
+- [x] User confirmed assignment -> External acceptance -> match management
+  access succeeds on 2026-10-06. Close this External workflow acceptance.
+- [ ] Remaining External acceptance: Reject with reason and organizer active-count
+  persistence after reload. These outcomes have not been separately confirmed.
 
 **Current backend source reference: remote `BE_KN@cd71437`**, checked with
 `git ls-remote` and `git fetch origin BE_KN` on 2026-10-02 for the QR review below.

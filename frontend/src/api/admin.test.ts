@@ -14,6 +14,7 @@ import {
   getExternalRefereeRequests, getMyRefereeInvitations, getRefereeCoverage, getTeamRequests,
   getTournamentReferees, getUsersForAdmin, grantAdminScope, rejectTeamRequest, removeReferee,
   requestMatchReferee, reviewExternalReferee, revokeAdminScope, suspendUser,
+  requestRefereeWithdrawal, submitRefereeIdentityDocs, requestExternalRefereeDocs,
 } from "./admin";
 
 const json = (body: unknown, status = 200) =>
@@ -159,6 +160,20 @@ describe("admin official-team requests", () => {
 });
 
 describe("delivered admin-user contracts", () => {
+  it('FR09 submits discriminated withdrawal scopes and U12/AR04 preserve docs and review reasons', async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 3, status: 'open', matchA: null }));
+    await requestRefereeWithdrawal({ scope: 'tournament', tournamentId: 14, reason: 'Unable to attend' });
+    expect(lastRequest()).toEqual({ path: '/referee-requests/withdraw', method: 'POST', body: { scope: 'tournament', tournamentId: 14, reason: 'Unable to attend' } });
+    fetchMock.mockResolvedValueOnce(json({ id: 4, status: 'open' }));
+    await requestRefereeWithdrawal({ scope: 'match', matchId: 23, reason: 'Schedule overlap' });
+    expect(lastRequest().body).toEqual({ scope: 'match', matchId: 23, reason: 'Schedule overlap' });
+    fetchMock.mockResolvedValueOnce(json({ status: 'pending' }));
+    await submitRefereeIdentityDocs(['referee_identity/42/test.png']);
+    expect(lastRequest()).toEqual({ path: '/me/referee-identity/docs', method: 'PUT', body: { docs: ['referee_identity/42/test.png'] } });
+    fetchMock.mockResolvedValueOnce(json({ identityStatus: 'needs_docs' }));
+    await requestExternalRefereeDocs(42, 'Please send a clearer image');
+    expect(lastRequest()).toEqual({ path: '/admin/referee-requests/42/request-docs', method: 'POST', body: { reason: 'Please send a clearer image' } });
+  });
   it("POST /tournaments/:id/referees sends isExternal", async () => {
     fetchMock.mockResolvedValueOnce(json({ id: 7, userId: 42, invitationStatus: "pending", isExternal: true }, 201));
 
@@ -186,8 +201,19 @@ describe("delivered admin-user contracts", () => {
   it("AR02 approves per person, not per request row", async () => {
     fetchMock.mockResolvedValueOnce(json({ userId: 42, identityStatus: "approved", tournamentsUpdated: 2 }));
 
-    await expect(reviewExternalReferee(42, { approve: true })).rejects.toMatchObject({ status: 404 });
+    await expect(reviewExternalReferee(42, { approve: true })).resolves.toBeUndefined();
     expect(lastRequest()).toEqual({ path: "/admin/referee-requests/42/approve", method: "POST", body: undefined });
+  });
+
+  it("AR03 accepts a successful rejection and forwards its reason", async () => {
+    fetchMock.mockResolvedValueOnce(json({ userId: 42, identityStatus: "rejected", tournamentsUpdated: 2 }));
+    await expect(reviewExternalReferee(42, { approve: false, reason: "Documents do not match" })).resolves.toBeUndefined();
+    expect(lastRequest()).toEqual({ path: "/admin/referee-requests/42/reject", method: "POST", body: { reason: "Documents do not match" } });
+  });
+
+  it("AR02 preserves a real backend failure", async () => {
+    fetchMock.mockResolvedValueOnce(apiError(409, "REFEREE_DUPLICATE_ROWS"));
+    await expect(reviewExternalReferee(42, { approve: true })).rejects.toMatchObject({ status: 409, code: "REFEREE_DUPLICATE_ROWS" });
   });
 
   it("uses delivered admin-user contracts and preserves suspension details", async () => {

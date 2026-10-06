@@ -5,6 +5,7 @@ import { useTournamentMatches, useTournamentMatchReferees } from '../../hooks/us
 import { useAssignableReferees, useRequestRefereeTransfer, useRequestRefereeSwap } from '../../hooks/useAdmin'
 import type { MatchDto, MatchListItemDto } from '../../types/match.dto'
 import type { TournamentRefereeDto } from '../../types/admin.dto'
+import { RefereeWithdrawal } from './RefereeWithdrawal'
 
 function changeable(match: Pick<MatchListItemDto, 'status' | 'scheduledTime' | 'scheduledEndTime'>, now: number) {
   return match.status === 'scheduled' && !!match.scheduledEndTime && !!match.scheduledTime
@@ -15,7 +16,7 @@ export function RefereeMatchRequest({ m }: { m: MatchDto }) {
   const now = useNow()
   const allowed = m.viewer.roles.includes('referee') && changeable(m, now)
   if (!allowed) return null
-  return <RefereeRequestMatches m={m} />
+  return <><RefereeWithdrawal tournamentId={m.tournamentId} matchId={m.id} /><RefereeRequestMatches m={m} /></>
 }
 
 function RefereeRequestMatches({ m }: { m: MatchDto }) {

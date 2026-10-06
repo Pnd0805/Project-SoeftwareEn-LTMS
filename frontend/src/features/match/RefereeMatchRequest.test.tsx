@@ -16,6 +16,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useTournamentMatchReferees: () => assignments.map((items, i) => ({ data: { items: state.alone && i > 0 ? [] : items }, isPending: state.loading, isError: state.readError })),
 }))
 vi.mock('../../hooks/useAdmin', () => ({
+  useRequestRefereeWithdrawal: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false }),
   useRequestRefereeTransfer: () => ({ mutate: state.transfer, reset: vi.fn(), isPending: false, error: state.error }),
   useRequestRefereeSwap: () => ({ mutate: state.swap, reset: vi.fn(), isPending: false, error: null }),
   /* F02b — กรรมการที่ใช้งานได้ทุกคน รวม 9005 ที่ยังไม่มีแมตช์ (ผู้เรียกเองไม่อยู่ในลิสต์) */

@@ -11,6 +11,13 @@ beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock); set
 afterEach(() => { setAccessToken(null); vi.unstubAllGlobals() })
 
 describe('real image uploads', () => {
+  it('uploads identity documents under the authenticated user without sending backend credentials to storage', async () => {
+    fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/private-identity', objectKey: 'referee_identity/9/key.png' }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+    expect(await uploadImage(png(), 'referee_identity')).toBe('referee_identity/9/key.png')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ purpose: 'referee_identity', contentType: 'image/png' })
+    expect(fetchMock.mock.calls[1][1].headers).toEqual({ 'Content-Type': 'image/png' })
+  })
   it.each(['image/png', 'image/jpeg'])('keeps %s MIME and returns the key only after PUT succeeds', async contentType => {
     const file = new File(['image'], 'photo', { type: contentType })
     fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/upload', objectKey: 'avatar/9/key.png' }))

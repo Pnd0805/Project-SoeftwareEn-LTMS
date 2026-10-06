@@ -7,16 +7,16 @@
  * count towards the referees a tournament needs before it can go public.
  *
  * ── backend ───────────────────────────────────────────────────────────────
- * POST /tournaments/:id/referees รับ isExternal แล้ว และการตอบรับคืน requiresAdminApproval
- * แต่ยังไม่มี route ให้ Admin อนุมัติ (SDS PATCH /admin/requests/{id}) — นอกโหมด mock
- * ได้ 501 และหน้าจอบอกว่ายังใช้ไม่ได้
+ * AR01 reads the per-person queue; AR02/AR03 decide all pending tournaments
+ * for that person. A successful decision refreshes the queue and referee reads.
  */
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
-import { useExternalRefereeRequests, useReviewExternalReferee } from '../../hooks/useAdmin'
+import { useExternalRefereeRequests, useReviewExternalReferee, useRequestExternalRefereeDocs } from '../../hooks/useAdmin'
+import { USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import type { ExternalRefereeRequestDto } from '../../types/admin.dto'
 
@@ -32,13 +32,15 @@ export function AdminRefereesTab() {
   const navigate = useNavigate()
   const requests = useExternalRefereeRequests()
   const review = useReviewExternalReferee()
+  const requestDocs = useRequestExternalRefereeDocs()
+  const [askingDocs, setAskingDocs] = useState(false)
   const [rejecting, setRejecting] = useState<ExternalRefereeRequestDto | null>(null)
   const [reason, setReason] = useState('')
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
 
   const status = statusOf(requests.error)
   const rows = requests.data?.items ?? []
-  const busyId = review.isPending ? review.variables?.requestId : undefined
+  const busyId = review.isPending ? review.variables?.requestId : requestDocs.isPending ? requestDocs.variables?.userId : undefined
 
   const decide = (r: ExternalRefereeRequestDto, approve: boolean, why?: string) => {
     setNotice(null)
@@ -85,10 +87,10 @@ export function AdminRefereesTab() {
       {rows.length ? (
         <TableWrap>
           <table>
-            <thead><tr><th>Referee</th><th>Tournament</th><th>Appointed by</th><th /></tr></thead>
+            <thead><tr><th>Referee</th><th>Tournament</th><th>Appointed by</th><th>Documents</th><th /></tr></thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id}>
+                <tr key={`${r.id}:${r.tournament.id}`}>
                   <td>
                     <span className="hstack">
                       <Avatar name={r.referee.fullName} avatarUrl={r.referee.avatarUrl} />{r.referee.fullName}
@@ -104,9 +106,17 @@ export function AdminRefereesTab() {
                   </td>
                   <td className="sub">{r.invitedBy?.fullName ?? '—'}</td>
                   <td>
+                    {(r.docs ?? []).length ? <>
+                      <div>{r.docs!.length} ไฟล์</div>
+                      {r.docs!.map((key, index) => <div className="sub" key={key}>เอกสาร {index + 1} · {key.split('/').at(-1)}</div>)}
+                      <span className="sub">ยังเปิดดูเอกสารไม่ได้ในระบบนี้</span>
+                    </> : <span className="sub">ยังไม่มีเอกสาร</span>}
+                  </td>
+                  <td>
                     <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                      {!USE_MOCK ? <button className="btn" type="button" disabled={busyId !== undefined} onClick={() => { requestDocs.reset(); review.reset(); setAskingDocs(true); setReason(''); setRejecting(r) }}>Request documents</button> : null}
                       <button className="btn ghost" type="button" disabled={busyId !== undefined}
-                        onClick={() => { review.reset(); setReason(''); setRejecting(r) }}>
+                        onClick={() => { review.reset(); requestDocs.reset(); setAskingDocs(false); setReason(''); setRejecting(r) }}>
                         Reject
                       </button>
                       <button className="btn primary" type="button" disabled={busyId !== undefined}
@@ -122,17 +132,24 @@ export function AdminRefereesTab() {
         </TableWrap>
       ) : null}
 
-      <Modal open={!!rejecting} onClose={() => setRejecting(null)} label="Do not approve an external referee"
+      <Modal open={!!rejecting} onClose={() => { if (busyId === undefined) setRejecting(null) }} label={askingDocs ? 'Request additional identity documents' : 'Do not approve an external referee'}
         title={rejecting?.referee.fullName ?? ''}>
         <Field label="Reason — sent to the referee and the organizer" htmlFor="ext-ref-reason">
-          <textarea id="ext-ref-reason" rows={3} value={reason} onChange={e => setReason(e.target.value)} />
+          <textarea id="ext-ref-reason" rows={3} maxLength={500} disabled={busyId !== undefined} value={reason} onChange={e => setReason(e.target.value)} />
         </Field>
         {review.isError ? <Banner kind="crit">{errorMessage(review.error)}</Banner> : null}
+        {requestDocs.isError ? <Banner kind="crit">{errorMessage(requestDocs.error)}</Banner> : null}
         <div className="hstack">
-          <button className="btn" type="button" onClick={() => setRejecting(null)}>Cancel</button>
-          <button className="btn danger" type="button" disabled={!reason.trim() || review.isPending}
-            onClick={() => { if (rejecting) decide(rejecting, false, reason.trim()) }}>
-            {review.isPending ? 'Sending…' : 'Do not approve'}
+          <button className="btn" type="button" disabled={busyId !== undefined} onClick={() => setRejecting(null)}>Cancel</button>
+          <button className="btn danger" type="button" disabled={!reason.trim() || reason.trim().length > 500 || busyId !== undefined}
+            onClick={() => {
+              if (!rejecting || busyId !== undefined || !reason.trim()) return
+              if (askingDocs) requestDocs.mutate({ userId: rejecting.id, reason: reason.trim() }, { onSuccess: () => {
+                setNotice({ kind: 'ok', text: 'ขอเอกสารเพิ่มแล้ว กรรมการยังรอการตรวจและยังไม่ได้รับอนุมัติ' }); setRejecting(null); setReason('')
+              } })
+              else decide(rejecting, false, reason.trim())
+            }}>
+            {busyId !== undefined ? 'Sending…' : askingDocs ? 'Send document request' : 'Do not approve'}
           </button>
         </div>
       </Modal>

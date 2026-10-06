@@ -23,6 +23,7 @@ import { ageOf } from '../../shared/rules'
 import { tour } from '../../shared/selectors'
 import { useLtms } from '../../shared/store'
 import { CareerPanel } from '../player/PlayerPage'
+import { ExternalIdentityBadge, ExternalIdentityPanel } from './ExternalIdentityPanel'
 
 export function ProfilePage() {
   const s = useLtms()
@@ -127,6 +128,7 @@ export function ProfilePage() {
         user={currentUser}
         isExternal={currentUser.userType === 'external'}
       />
+      {currentUser.userType === 'external' ? <ExternalIdentityPanel /> : null}
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
       {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below. Retry when the server is ready." /> : null}
@@ -255,7 +257,7 @@ function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDt
           <div className="tag"><em>//</em> {label}</div>
           <h1 className="disp" style={{ fontSize: 32, margin: '2px 0 6px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {user.fullName}
-            {isExternalUser ? <Badge kind="ok">External (Approve)</Badge> : null}
+            {isExternalUser ? USE_MOCK ? <Badge kind="neutral">External</Badge> : <ExternalIdentityBadge /> : null}
           </h1>
           <div className="hstack" style={{ gap: 8 }}>
             <input id={inputId} type="file" accept={USE_MOCK ? IMAGE_ACCEPT : UPLOAD_IMAGE_ACCEPT} disabled={loading || updateMe.isPending} aria-label="Choose profile photo" style={{ display: 'none' }}

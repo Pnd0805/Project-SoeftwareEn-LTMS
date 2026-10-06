@@ -30,6 +30,7 @@ import { useTournaments } from '../../hooks/useTournament'
 import { useSportTypes } from '../../hooks/useReference'
 import type { OfficialTeamRequestDto } from '../../types/admin.dto'
 import { AdminRefereesTab } from './AdminRefereesTab'
+import { formatAmendmentChanges } from '../../shared/amendmentChanges'
 import { AdminScopesTab, AdminAuditTab } from './AdminGovernanceTab'
 import { LeaderTransfersTab } from './LeaderTransfersTab'
 import { AdminUsersTab } from './AdminUsersTab'
@@ -416,10 +417,10 @@ export function AdminPage() {
                 <table>
                   <thead><tr><th>Field</th><th>Asked for</th></tr></thead>
                   <tbody>
-                    {Object.entries(request.requestedChanges).map(([field, value]) => (
+                    {formatAmendmentChanges(request.requestedChanges).map(({ field, label, value }) => (
                       <tr key={field}>
-                        <td className="sub">{field}</td>
-                        <td>{String(value)}</td>
+                        <td className="sub">{label}</td>
+                        <td>{value}</td>
                       </tr>
                     ))}
                   </tbody>

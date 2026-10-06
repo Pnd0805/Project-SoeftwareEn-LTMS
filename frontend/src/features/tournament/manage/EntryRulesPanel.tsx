@@ -24,6 +24,7 @@ import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../sche
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
 import type { GenderRequirement } from '../../../types/enums'
 import type { Tournament } from '../../../shared/types'
+import { formatAmendmentChanges } from '../../../shared/amendmentChanges'
 
 const YEARS = [1, 2, 3, 4, 5, 6, 7, 8]
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
@@ -195,7 +196,13 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                   {amendmentHistory.data.items.map(item => (
                     <tr key={item.id}>
                       <td>{new Date(item.requestedAt).toLocaleString()}</td>
-                      <td><code>{JSON.stringify(item.requestedChanges)}</code></td>
+                      <td>
+                        <div className="vstack" style={{ gap: 6, minWidth: 200, overflowWrap: 'anywhere' }}>
+                          {formatAmendmentChanges(item.requestedChanges, facultyName).map(change => (
+                            <div key={change.field}><b>{change.label}:</b> {change.value}</div>
+                          ))}
+                        </div>
+                      </td>
                       <td>{item.reason ?? '—'}</td>
                       <td><Badge kind={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'crit' : 'warn'}>{item.status}</Badge></td>
                       <td>

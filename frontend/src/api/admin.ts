@@ -429,23 +429,24 @@ export async function getExternalRefereeRequests(): Promise<{ items: ExternalRef
         invitedBy: null,
         status: "pending" as const,
         createdAt: row.submittedAt,
+        docs: row.docs,
       })),
     ),
   };
 }
 
-/** SDS PATCH /admin/requests/{id} — อนุมัติหรือไม่อนุมัติ (ไม่อนุมัติต้องมีเหตุผล) */
+/** AR02/AR03 — approve or reject a person's identity; refresh reads after success. */
 export async function reviewExternalReferee(
   requestId: TeamRef, input: ReviewExternalRefereeRequest,
-): Promise<ExternalRefereeRequestDto> {
+): Promise<void> {
   if (USE_MOCK) {
     /* อ่านแถวก่อนตัดสิน — ตัดสินแล้วคำขอออกจากคิว หาไม่เจออีก */
     const before = storeExternalRefereeRequests().find((r) => r.id === Number(requestId));
     const blocked = writeReviewExternalReferee(requestId, input.approve, input.reason);
-    if (blocked) return rejectWith<ExternalRefereeRequestDto>(blocked);
-    return before
-      ? mockDelay({ ...before, status: input.approve ? "approved" as const : "rejected" as const })
-      : notFound<ExternalRefereeRequestDto>("คำขอกรรมการภายนอก");
+    if (blocked) return rejectWith<void>(blocked);
+    if (!before) return notFound<void>("คำขอกรรมการภายนอก");
+    await mockDelay(undefined);
+    return;
   }
   /* AR02/AR03 — ตัดสินเป็นรายคน requestId ที่ส่งมาจึงเป็น userId ตามที่คลี่ไว้ข้างบน
      backend ตอบแค่สถานะใหม่ ไม่ได้ส่งรายละเอียดคำขอกลับมา ผู้เรียกต้อง invalidate แล้วอ่านคิวใหม่ */
@@ -455,7 +456,6 @@ export async function reviewExternalReferee(
   } else {
     await rejectExternalRefereeIdentity(userId, input.reason ?? "ไม่อนุมัติโดยผู้ดูแลระบบ");
   }
-  return notFoundLive<ExternalRefereeRequestDto>("รายละเอียดคำขอหลังตัดสิน (backend ไม่ได้ส่งกลับมา)");
 }
 
 // ══════════════ ผู้ใช้และสิทธิ์ — FR-UM-05 ══════════════
@@ -683,6 +683,10 @@ export function cancelRefereeRequest(requestId: number): Promise<void> {
 /** U11 GET /me/referee-identity — สถานะการตรวจตัวตนของฉัน */
 export function getMyRefereeIdentity(): Promise<BackendRefereeIdentityDto> {
   return apiFetch("/me/referee-identity");
+}
+
+export function requestRefereeWithdrawal(input: import('../types/admin.dto').RefereeWithdrawalInput): Promise<BackendRefereeRequestDto> {
+  return apiFetch('/referee-requests/withdraw', { method: 'POST', body: JSON.stringify(input) });
 }
 
 /** U12 PUT /me/referee-identity/docs — ส่งเอกสาร 1–5 ไฟล์ (S3 key จาก presign) */

@@ -95,6 +95,29 @@ function touchRefereeRequests(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["match"] });
   qc.invalidateQueries({ queryKey: ["matches"] });
   qc.invalidateQueries({ queryKey: ["notifications"] });
+  qc.invalidateQueries({ queryKey: ['refereeIdentity'] });
+}
+
+export function useRefereeIdentity(enabled = true) {
+  return useQuery({ queryKey: ['refereeIdentity'], queryFn: adminApi.getMyRefereeIdentity,
+    enabled: !USE_MOCK && enabled, retry: retryPolicy, refetchInterval: enabled ? 30000 : false });
+}
+
+export function useSubmitRefereeIdentityDocs() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: adminApi.submitRefereeIdentityDocs,
+    onSuccess: () => { touchRefereeRequests(qc); qc.invalidateQueries({ queryKey: adminKeys.externalReferees }); } });
+}
+
+export function useRequestExternalRefereeDocs() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { userId: number; reason: string }) => adminApi.requestExternalRefereeDocs(v.userId, v.reason),
+    onSuccess: () => { touchRefereeRequests(qc); qc.invalidateQueries({ queryKey: adminKeys.externalReferees }); } });
+}
+
+export function useRequestRefereeWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: adminApi.requestRefereeWithdrawal, onSuccess: () => touchRefereeRequests(qc) });
 }
 
 /** F02b — ปลายทางที่โอนแมตช์ให้ได้ รวมกรรมการที่ยังไม่มีแมตช์ */
@@ -385,8 +408,11 @@ export function useReviewExternalReferee() {
     mutationFn: (v: { requestId: TeamRef; input: ReviewExternalRefereeRequest }) =>
       adminApi.reviewExternalReferee(v.requestId, v.input),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['refereeIdentity'] });
       qc.invalidateQueries({ queryKey: adminKeys.externalReferees });
       qc.invalidateQueries({ queryKey: ["referees"] });
+      qc.invalidateQueries({ queryKey: ["match"] });
+      qc.invalidateQueries({ queryKey: ["matches"] });
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });

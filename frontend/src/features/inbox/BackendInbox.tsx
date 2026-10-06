@@ -179,6 +179,7 @@ export function BackendInbox() {
             {request.matchB ? ` / #${request.matchB.id}` : ''} | <Badge kind={request.status === 'applied' ? 'ok' : request.status === 'open' ? 'warn' : 'neutral'}>{request.status}</Badge></div>
           <span className="sub">{request.refereeA.user.fullName}: {request.refereeA.status}
             {request.refereeB ? ` | ${request.refereeB.user.fullName}: ${request.refereeB.status}` : ''}</span>
+          {request.reason ? <div style={{ whiteSpace: 'pre-wrap' }}>เหตุผล: {request.reason}</div> : null}
           <div className="hstack">
             <button className="btn ghost" onClick={() => navigate(request.matchA ? `/m/${request.matchA.id}` : `/t/${request.tournamentId}`)}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
             {request.status === 'open' ? <button className="btn" disabled={cancelRequest.isPending}

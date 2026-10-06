@@ -30,6 +30,7 @@ import { LiveCommunityTab } from './LiveCommunityTab'
 import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
+import { TournamentRefereeWithdrawal } from '../match/RefereeWithdrawal'
 
 const registrationDateFormat = new Intl.DateTimeFormat('en-GB', {
   dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok',
@@ -210,6 +211,7 @@ export function TournamentPage() {
 
       <div className="split">
         <div>
+          {!USE_MOCK && currentUser && !org && !completed && tournamentId ? <TournamentRefereeWithdrawal tournamentId={tournamentId} /> : null}
           <Tabs
             tabs={tabs.map(x => ({ key: x, label: x === 'manage' ? 'Manage' : x }))}
             active={tab}

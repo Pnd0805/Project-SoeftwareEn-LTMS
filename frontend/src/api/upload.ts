@@ -22,7 +22,7 @@ export function imageUploadErrorMessage(error: unknown): string {
 
 export async function uploadImage(
   file: File,
-  purpose: 'avatar' | 'team_logo' | 'dispute_evidence',
+  purpose: 'avatar' | 'team_logo' | 'dispute_evidence' | 'referee_identity',
   options: { teamId?: number; matchId?: number } = {}
 ): Promise<string> {
   if (USE_MOCK) return shrinkImage(file)

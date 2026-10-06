@@ -100,6 +100,7 @@ function RefereeState({ r }: { r: TournamentRefereeDto }) {
   if (r.invitationStatus === 'pending') return <Badge kind="warn">Invited — waiting</Badge>
   if (r.invitationStatus !== 'accepted') return <Badge kind="neutral">Declined</Badge>
   if (r.isExternal && r.externalApprovalStatus === 'pending') return <Badge kind="warn">Accepted — waiting for admin approval</Badge>
+  if (r.isExternal && r.externalApprovalStatus === 'needs_docs') return <Badge kind="warn">Accepted — additional documents required</Badge>
   if (r.isExternal && r.externalApprovalStatus === 'rejected') return <Badge kind="crit">Not approved by an admin</Badge>
   return <Badge kind="ok">Accepted</Badge>
 }
