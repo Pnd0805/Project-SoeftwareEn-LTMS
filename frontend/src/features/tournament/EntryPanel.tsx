@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Facts, Panel } from '../../components/kit/primitives'
+import { TeamChipView } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
 import { me, regsOf, squadsFor, team } from '../../shared/selectors'
 import { minSquad, ruleSummary, teamReady } from '../../shared/rules'
@@ -92,7 +93,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
 
         {backendEntries.map(a => (
           <div className="spread" key={a.id}>
-            <span className="sub">{a.team.name}</span>
+            <TeamChipView team={a.team} />
             {a.status === 'approved' ? <Badge kind="ok">In</Badge>
               : a.status === 'rejected' ? <Badge kind="crit">{a.rejectionReason ?? 'Rejected'}</Badge>
                 : <Badge kind="warn">Waiting on the organizer</Badge>}

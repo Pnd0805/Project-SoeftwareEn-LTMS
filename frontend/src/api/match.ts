@@ -171,6 +171,10 @@ function matchFromBackend(m: BackendMatchListItemDto & Partial<BackendMatchDetai
     actualEndTime: m.actualEndTime ?? null,
     venue: m.venue,
     checkinOpenAt: m.checkinOpenAt ?? null,
+    bestOf: m.bestOf ?? null,
+    possibleScores: m.possibleScores ?? [],
+    pickemTolerance: m.pickemTolerance,
+    startedAt: m.startedAt ?? null,
     status: m.status,
     mode: m.mode ?? "onsite",
     createdAt: m.scheduledTime ?? new Date().toISOString(),
@@ -1671,7 +1675,7 @@ export function getTournamentWinner(
 }
 
 /** BO-N: ตั้ง format การแข่งขัน (BO1, BO3, BO5, BO7) */
-export function setMatchFormat(matchId: MatchRef, body: { bestOf: number }): Promise<{ id: number; bestOf: number }> {
+export function setMatchFormat(matchId: MatchRef, body: { bestOf: number | null }): Promise<{ id: number; bestOf: number | null }> {
   return apiFetch(`/matches/${matchId}/format`, {
     method: "PATCH",
     body: JSON.stringify(body),

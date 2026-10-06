@@ -17,13 +17,14 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import {
-  useAssignReferees, useMatch, useMatchReferees, useSetMatchFormat, useUnassignMatchReferee, useUpdateMatch,
+  useAssignReferees, useMatch, useMatchReferees, useUnassignMatchReferee, useUpdateMatch,
 } from '../../hooks/useMatch'
 import {
   useCancelTournamentRefereeRequest, useRequestMatchReferee, useTournamentRefereeRequests,
   useTournamentReferees,
 } from '../../hooks/useAdmin'
 import { useTournament } from '../../hooks/useTournament'
+import { MatchFormatPanel } from './MatchFormatPanel'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
@@ -116,7 +117,7 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
   const acceptedIds = new Set((assigned.data?.items ?? []).map(row => row.tournamentRefereeId))
   /* จับคำขอเข้ากับแมตช์ด้วย `matchA.id` ของคำขอนั้นเสมอ ไม่ใช่เดาจากลำดับ (R17) */
   const ofThisMatch = (status: 'open' | 'declined') => (requests.data?.items ?? []).filter(row =>
-    row.type === 'org_add_match' && row.matchA.id === match.id && row.status === status)
+    row.type === 'org_add_match' && row.matchA?.id === match.id && row.status === status)
   const openRequests = ofThisMatch('open')
   const pendingByReferee = new Map(openRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
   /* R17 — คำขอที่ถูกปฏิเสธเคยหายไปทั้งแถว ผู้จัดจึงไม่รู้ว่าใครไม่รับ และเผลอขอคนเดิมซ้ำ */
@@ -209,13 +210,11 @@ export function FixturePage() {
   const tourData = tourQuery.data
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const assign = useAssignReferees(matchId ?? 0, m?.tournamentId)
-  const setFormat = useSetMatchFormat(matchId ?? 0, m?.tournamentId)
 
   const [kickoff, setKickoff] = useState<string | null>(null)
   const [finish, setFinish] = useState<string | null>(null)
   const [venue, setVenue] = useState<string | null>(null)
   const [refs, setRefs] = useState<number[] | null>(null)
-  const [format, setFormatVal] = useState<string | null>(null)
   const [clientError, setClientError] = useState<string | null>(null)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
@@ -227,11 +226,6 @@ export function FixturePage() {
   const finishVal = finish ?? toLocal(m.scheduledEndTime ?? null)
   const venueVal = venue ?? (m.venue ?? '')
   const refsVal = refs ?? m.referees.map(r => r.id)
-
-  const storedFormat = typeof window !== 'undefined' ? localStorage.getItem(`match_format_${m.id}`) : null
-  const [formatLocked, setFormatLocked] = useState(Boolean(storedFormat))
-  const currentFormat = format ?? storedFormat ?? 'BO3'
-  const isFormatLocked = formatLocked || Boolean(storedFormat)
 
   /* `can.editFixture` รวมสองเรื่องไว้ด้วยกัน: เป็นผู้จัดไหม และแมตช์ยังแก้ได้ไหม
      เขียน "403 — not yours to set" ให้ผู้จัดตัวจริงที่มาช้าไปคือบอกผิดเรื่อง เขามีสิทธิ์
@@ -298,26 +292,12 @@ export function FixturePage() {
         return
       }
     }
-    if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`match_format_${m.id}`, currentFormat)
-      }
-      setFormatLocked(true)
-    }
     try {
       await update.mutateAsync({
         scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
         scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
         venue: venueVal || null,
       })
-      if (isBoSport(m.tournament.sportName) && !isFormatLocked) {
-        try {
-          const num = parseInt(currentFormat.replace('BO', ''), 10)
-          await setFormat.mutateAsync({ bestOf: num })
-        } catch {
-          /* ignore if backend doesn't support or already set */
-        }
-      }
       if (USE_MOCK) {
         await assign.mutateAsync(refsVal)
         setSavedSuccess(true)
@@ -330,7 +310,7 @@ export function FixturePage() {
     }
   }
 
-  const saving = update.isPending || assign.isPending || setFormat.isPending
+  const saving = update.isPending || assign.isPending
 
   return (
     <>
@@ -342,6 +322,7 @@ export function FixturePage() {
           : <Badge kind="neutral">Locked — {MatchStatusLabel[m.status]}</Badge>}
       </div>
 
+      {isBoSport(m.tournament.sportName) ? <MatchFormatPanel key={m.id} match={m} /> : null}
       <Panel quiet>
         <div className="spread">
           <span className="hstack" style={{ gap: 8 }}>
@@ -365,25 +346,6 @@ export function FixturePage() {
                 <input id={`as-v-${m.id}`} value={venueVal} onChange={e => setVenue(e.target.value)}
                   placeholder="Court 9" />
               </Field>
-              {isBoSport(m.tournament.sportName) ? (
-                <Field
-                  label={`Format (การแข่ง) ${isFormatLocked ? '— ถูกล็อกแล้ว — ไม่สามารถเปลี่ยนแปลงได้ระหว่างทัว' : ''}`}
-                  htmlFor={`as-fmt-${m.id}`}
-                >
-                  <select
-                    id={`as-fmt-${m.id}`}
-                    aria-label="Format"
-                    value={currentFormat}
-                    disabled={isFormatLocked}
-                    onChange={e => setFormatVal(e.target.value)}
-                  >
-                    <option value="BO1">BO1 (Best of 1)</option>
-                    <option value="BO3">BO3 (Best of 3)</option>
-                    <option value="BO5">BO5 (Best of 5)</option>
-                    <option value="BO7">BO7 (Best of 7)</option>
-                  </select>
-                </Field>
-              ) : null}
             </div>
 
             {/* TODO(schema): FR-MM-05 อยากให้ผู้เล่นหาสนามเจอ แต่ `matches` ไม่มีคอลัมน์พิกัด
@@ -424,7 +386,7 @@ export function FixturePage() {
               disabled={saving} onClick={save}>
               {saving ? 'Saving…' : USE_MOCK ? 'Save this fixture' : 'Save schedule'}
             </button>
-            {(update.isSuccess || savedSuccess) ? (
+            {savedSuccess ? (
               <Banner kind="ok" icon="check">
                 <b>บันทึกเรียบร้อยแล้ว</b> บันทึกข้อมูลการแข่งขันสำเร็จ (Schedule saved. Referee requests can now be sent separately.)
               </Banner>

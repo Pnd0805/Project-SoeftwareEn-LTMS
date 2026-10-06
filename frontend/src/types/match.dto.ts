@@ -164,6 +164,9 @@ export interface MatchDto {
   resultStatus: MatchResultStatus | null;
   /** Format การแข่ง (Best of N) เช่น 1, 3, 5, 7 */
   bestOf?: number | null;
+  possibleScores?: [number, number][];
+  pickemTolerance?: { spotOn: number; close: number };
+  startedAt?: string | null;
   /** สิ่งที่คนที่กำลังดูอยู่ทำได้ */
   viewer: MatchViewerContext;
 }
@@ -592,6 +595,9 @@ export interface BackendRefereeMatchDto {
 
 /** GET /matches/:id — ฟิลด์ผลสรุปชุดเดียวกับ M04 */
 export interface BackendMatchDetailDto extends BackendMatchListItemDto {
+  possibleScores?: [number, number][];
+  pickemTolerance?: { spotOn: number; close: number };
+  startedAt?: string | null;
   tournamentId: number;
   checkinOpenAt: string | null;
   mode: Mode;

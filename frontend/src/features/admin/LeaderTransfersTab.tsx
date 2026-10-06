@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { TeamLinkView } from '../../components/kit/chips'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useLeaderTransfers, useReviewLeaderTransfer } from '../../hooks/useAdmin'
@@ -13,7 +13,7 @@ export function LeaderTransfersTab() {
     {queue.error ? <Banner kind="crit">{queue.error instanceof Error ? queue.error.message : 'Unable to read requests.'} <button className="btn" onClick={() => void queue.refetch()}>Retry</button></Banner> : null}
     {decision.isSuccess ? <Banner kind="ok">Transfer request decided.</Banner> : null}
     {queue.isSuccess && !pending.length ? <p>No pending transfers.</p> : null}
-    {pending.map(row => <div className="spread" key={row.id}><span><Link to={`/team/${row.team.id}`}>{row.team.name}</Link> | {row.currentLeader.fullName} to {row.proposedLeader.fullName}</span><span className="hstack">{[true, false].map(approve => <button className="btn" key={String(approve)} disabled={decision.isPending} onClick={() => { decision.reset(); setReason(''); setReview({ row, approve }) }}>{approve ? 'Approve' : 'Reject'}</button>)}</span></div>)}
+    {pending.map(row => <div className="spread" key={row.id}><span><TeamLinkView team={row.team} /> | {row.currentLeader.fullName} to {row.proposedLeader.fullName}</span><span className="hstack">{[true, false].map(approve => <button className="btn" key={String(approve)} disabled={decision.isPending} onClick={() => { decision.reset(); setReason(''); setReview({ row, approve }) }}>{approve ? 'Approve' : 'Reject'}</button>)}</span></div>)}
     <Modal open={!!review} onClose={() => !decision.isPending && setReview(null)} title={review?.approve ? 'Approve transfer?' : 'Reject transfer?'}>
       <p>{review?.row.team.name}: {review?.row.currentLeader.fullName} to {review?.row.proposedLeader.fullName}</p>
       {!review?.approve ? <Field label="Rejection reason" htmlFor="transfer-reason"><textarea id="transfer-reason" value={reason} onChange={e => setReason(e.target.value)} /></Field> : null}

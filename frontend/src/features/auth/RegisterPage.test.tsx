@@ -68,7 +68,7 @@ describe('RegisterPage OTP flow', () => {
     )
 
     const otpInput = screen.getByPlaceholderText('123456')
-    fireEvent.change(otpInput, { target: { value: '123456' } })
+    fireEvent.change(otpInput, { target: { value: '007431' } })
 
     const verifyBtn = screen.getByRole('button', { name: 'ยืนยันรหัส OTP' })
     fireEvent.click(verifyBtn)
@@ -76,7 +76,7 @@ describe('RegisterPage OTP flow', () => {
     await waitFor(() => {
       expect(mockVerifyEmailMutateAsync).toHaveBeenCalledWith({
         email: 'newuser@ku.th',
-        code: '123456',
+        code: '007431',
       })
     })
 
@@ -102,6 +102,6 @@ describe('RegisterPage OTP flow', () => {
       })
     })
 
-    expect(screen.getByText(/ระบบได้ส่งรหัส OTP ใหม่ไปยังอีเมลของคุณเรียบร้อยแล้ว/)).toBeInTheDocument()
+    expect(screen.getByText(/รับคำขอแล้ว หากอีเมลนี้ยังรอยืนยัน/)).toBeInTheDocument()
   })
 })

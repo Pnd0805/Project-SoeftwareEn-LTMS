@@ -346,7 +346,7 @@ export function AdminPage() {
                 <tbody>
                   {permanentRows.map(r => (
                     <tr key={r.id}>
-                      <td><TeamLinkView team={{ id: r.team.id, name: r.team.name }} /></td>
+                      <td><TeamLinkView team={r.team} /></td>
                       <td className="sub">{r.requestedBy.fullName}</td>
                       <td className="tag">{fmtDate(r.createdAt)}</td>
                       <td>

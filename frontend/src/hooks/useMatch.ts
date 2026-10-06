@@ -52,6 +52,7 @@ export const matchKeys = {
  * เรียกตัวนี้ใน onSuccess ของทุก mutation ที่แตะผล จะได้ไม่ลืมสัก key
  */
 function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef) {
+  qc.invalidateQueries({ queryKey: ['rewards'] });
   qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.result(matchId) });
   /* สถิติเปลี่ยนไปพร้อมผลเสมอ เพราะ ResultForm ส่งสองคำขอติดกัน */
@@ -418,7 +419,10 @@ export function useTournamentMatchReferees(matchIds: number[]) {
 export function useSetMatchFormat(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { bestOf: number }) => matchApi.setMatchFormat(matchId, body),
-    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+    mutationFn: (body: { bestOf: number | null }) => matchApi.setMatchFormat(matchId, body),
+    onSuccess: () => {
+      touchMatch(qc, matchId, tournamentId);
+      qc.invalidateQueries({ queryKey: ['livePrediction', Number(matchId)] });
+    },
   });
 }

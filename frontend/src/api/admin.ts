@@ -761,7 +761,7 @@ export function rejectAmendmentRequest(
 }
 
 export interface LeaderTransferDto {
-  id: number; team: { id: number; name: string; sportTypeId: number };
+  id: number; team: { id: number; name: string; sportTypeId: number; logoUrl?: string | null };
   currentLeader: { id: number; fullName: string; avatarUrl: string | null };
   proposedLeader: { id: number; fullName: string; avatarUrl: string | null };
   status: 'pending' | 'approved' | 'rejected'; createdAt: string;

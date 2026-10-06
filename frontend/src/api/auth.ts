@@ -54,3 +54,13 @@ export async function resendVerification(input: { email: string }): Promise<{ me
     body: JSON.stringify(input),
   });
 }
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  if (USE_MOCK) throw new Error('Password recovery is available with the live server.');
+  return apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+}
+
+export async function resetPassword(input: { token: string; newPassword: string }): Promise<{ message: string }> {
+  if (USE_MOCK) throw new Error('Password recovery is available with the live server.');
+  return apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify(input) });
+}

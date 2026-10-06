@@ -6,7 +6,7 @@ import { BackendCareerPanel } from '../player/BackendCareerPanel'
 import { Link } from 'react-router-dom'
 import { USE_MOCK } from '../../api/client'
 import { Badge, Empty, Facts, Panel, TableWrap } from '../../components/kit/primitives'
-import { TeamLink } from '../../components/kit/chips'
+import { TeamLink, TeamLinkView } from '../../components/kit/chips'
 import { useState } from 'react'
 import { useMe, useUpdateMe } from '../../hooks/useAuth'
 import { Icon } from '../../components/kit/Icon'
@@ -125,7 +125,7 @@ export function ProfilePage() {
       <ProfileHeading
         label={currentUser.userType === 'staff' ? 'Administrator' : currentUser.userType === 'external' ? 'External' : 'Student record'}
         user={currentUser}
-        isExternal={currentUser.userType === 'external' || (currentUser as any).isExternal === true}
+        isExternal={currentUser.userType === 'external'}
       />
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
@@ -157,7 +157,7 @@ export function ProfilePage() {
             {!teamsQuery.isPending && !teamsQuery.isError && !teams.length ? <Empty icon="team" title="Not in a squad yet" sub="Create a squad or accept an invitation from the Teams page." /> : null}
             {teams.length ? (
               <TableWrap><table><thead><tr><th>Squad</th><th>Role</th><th>Sport</th><th>Members</th></tr></thead><tbody>
-                {teams.map(team => <tr key={team.id}><td><Link to={`/team/${team.id}`}>{team.name}</Link></td><td className="sub">{team.role === 'leader' ? 'Leader' : 'Player'}</td><td className="sub">{sports.get(team.sportTypeId) ?? `Sport #${team.sportTypeId}`}</td><td className="num">{team.memberCount}</td></tr>)}
+                {teams.map(team => <tr key={team.id}><td><TeamLinkView team={team} /></td><td className="sub">{team.role === 'leader' ? 'Leader' : 'Player'}</td><td className="sub">{sports.get(team.sportTypeId) ?? `Sport #${team.sportTypeId}`}</td><td className="num">{team.memberCount}</td></tr>)}
               </tbody></table></TableWrap>
             ) : null}
           </Panel>
@@ -175,7 +175,11 @@ export function ProfilePage() {
             </> : null}
           </Panel>
           <BackendCareerPanel userId={currentUser.id} />
-          <Panel quiet><span className="tag"><em>//</em> MVP totals</span><p className="sub">Received-vote totals are not available from the server yet.</p></Panel>
+          <Panel quiet><span className="tag"><em>//</em> MVP totals</span>
+            {stats?.mvpTimes != null ? <Stat label="MVP awards" value={stats.mvpTimes} /> : null}
+            {stats?.mvpVotes != null ? <Stat label="MVP votes received" value={stats.mvpVotes} /> : null}
+          </Panel>
+          <Link className="btn" to="/me/rewards">My rewards — manage profile display</Link>
         </div>
 
         <div className="rail">
@@ -209,7 +213,7 @@ function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDt
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const inputId = 'profile-avatar-upload'
-  const isExternalUser = isExternal ?? (user.userType === 'external' || (user as any).isExternal === true || (user as any).external === true)
+  const isExternalUser = isExternal ?? (user.userType === 'external')
 
   const pick = async (file: File | undefined) => {
     if (!file || loading || updateMe.isPending) return

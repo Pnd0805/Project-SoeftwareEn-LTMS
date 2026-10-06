@@ -21,6 +21,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { useCreateTournament } from '../../hooks/useTournament'
+import { isBoSport } from '../match/matchView'
 import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
 import { ApiError } from '../../api/client'
@@ -82,6 +83,8 @@ export function RequestPage() {
    * ในฟอร์มแล้วตั้งค่าให้ตรงกับภาควิชาทุกครั้งที่ภาควิชาเปลี่ยน
    */
   const organizingFacultyId = useWatch({ control, name: 'organizingFacultyId' })
+  const sportId = useWatch({ control, name: 'sportTypeId' })
+  const boSport = isBoSport(sports?.items.find(s => s.id === sportId)?.name ?? '')
   const organizingDepartmentId = useWatch({ control, name: 'organizingDepartmentId' })
   const { data: departments } = useDepartments(organizingFacultyId ?? undefined)
   /* สองช่องนี้คุมค่าเอง ไม่ได้ผ่าน register — setValue เฉยๆ จะไม่ตรวจซ้ำให้ ข้อความ
@@ -129,7 +132,8 @@ export function RequestPage() {
       const base = input.scopeType === 'faculty' ? { ...input, organizingDepartmentId: null } : input
       /* สองลิสต์ของฟอร์มไม่ใช่ช่องของ backend — ยุบเป็น eligibilityRules ก่อนส่ง
          และไม่ส่งช่องนั้นเลยถ้าไม่ได้จำกัดอะไร (ลิสต์ว่างกับไม่ส่งมีผลเท่ากัน) */
-      const { eligibilityFacultyIds, eligibilityYears, ...rest } = base
+      const { eligibilityFacultyIds, eligibilityYears, bestOf, ...other } = base
+      const rest = boSport ? { ...other, ...(bestOf == null ? {} : { bestOf }) } : other
       /* คิดคณะจากโหมดอีกรอบตรงนี้ ไม่ได้หยิบลิสต์ที่ติ๊กไว้ไปตรงๆ — คนที่ติ๊กเจาะจงแล้วสลับ
          กลับไป "ทุกคณะ" ยังมีค่าค้างในฟอร์ม ถ้าส่งค่านั้นไปคำขอจะจำกัดคณะโดยไม่ได้ตั้งใจ */
       const rules = toEligibilityRules(
@@ -233,6 +237,11 @@ export function RequestPage() {
                   {BracketFormatOptions.map(f => <option key={f} value={f}>{BracketFormatLabel[f]}</option>)}
                 </select>
               </Field>
+              {boSport ? <Field label="BO format — fixed after the first match starts" htmlFor="rq-bo">
+                <select id="rq-bo" {...register('bestOf', { setValueAs: value => value === '' ? null : Number(value) })}>
+                  <option value="">No BO limit</option>{[1, 3, 5, 7].map(n => <option key={n} value={n}>BO{n}</option>)}
+                </select>
+              </Field> : null}
               {/* ช่องล่างรับค่าว่างได้จริง ช่องบนรับไม่ได้ — สองช่องติดกันที่หน้าตาเหมือนกัน
                   แต่กฎคนละอย่าง ต้องบอกตั้งแต่ก่อนกดส่ง ไม่ใช่รอให้กดแล้วค่อยขึ้นสีแดง */}
               <Field label="Organising faculty — who puts it on" htmlFor="rq-fac">

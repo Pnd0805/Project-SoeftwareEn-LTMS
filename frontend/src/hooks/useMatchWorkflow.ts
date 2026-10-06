@@ -5,7 +5,7 @@ import type { ComplaintDecisionInput, OrganizerResultInput, ResultChallengeInput
 export function useMatchWorkflow(id: number, readComplaints: boolean, readDispute: boolean) {
   const qc = useQueryClient()
   const refresh = async () => {
-    await Promise.all(['match', 'matches', 'standings', 'tournament', 'tournaments', 'liveMvp', 'matchComplaints', 'matchDispute', 'notifications'].map(key => qc.invalidateQueries({ queryKey: [key] })))
+    await Promise.all(['match', 'matches', 'standings', 'tournament', 'tournaments', 'liveMvp', 'matchComplaints', 'matchDispute', 'notifications', 'rewards'].map(key => qc.invalidateQueries({ queryKey: [key] })))
   }
   const complaints = useQuery({ queryKey: ['matchComplaints', id], queryFn: () => api.getResultComplaints(id), enabled: readComplaints, retry: retryPolicy })
   const dispute = useQuery({ queryKey: ['matchDispute', id], queryFn: () => api.getMatchDispute(id), enabled: readDispute, retry: retryPolicy })

@@ -3,6 +3,59 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## FE Checklist delivery — 2026-10-06
+
+Current contract for this delivery: remote `BE_KN@63045d17188cec87577122dc4146de423073abbf`,
+verified with `git ls-remote` and fetched on 2026-10-06. The references below this
+section describe earlier reviews, not the contract used for this delivery.
+
+- [x] A1/A2: email OTP, six-character string (including leading zeros), resend
+  cooldown 60 seconds and 3/hour quota copy. A successful resend response is
+  described as an accepted request; it does not promise email delivery.
+- [x] A3/D1: public `/reset-password?token=<64 hex>` and `/forgot-password`,
+  password/confirmation validation, expired-link feedback and login navigation.
+  Calls the delivered auth routes; no login is required to open either form.
+- [x] A4/A5/B4: retain online referee Edit result, assignable transfer targets
+  including referees with no assignments, and university-admin dispute read gate.
+- [x] A6/B1/C4: `/me/rewards`, catalogue and public displayed rewards; trophy
+  fallback for missing artwork, Hide checkbox sends `isDisplayed: false`.
+  Refresh on entry/focus, every 30 seconds while active and after result writes;
+  refreshed IDs replace the list even when the item count is unchanged.
+- [x] B2/B3/OD-69: Pick'em sends team-ID `scoreData`. Match `pickemTolerance`
+  controls rule text; sport `pickemPoints` controls points and settled tier labels.
+  Result/prediction/correction/organizer/complaint forms share server-provided BO
+  score choices. `bestOf: null` retains unrestricted integer scores.
+- [x] OD-69 BO setup: optional field when creating VALORANT/RoV/Badminton;
+  fixture has separate whole-tournament and single-match writes. Whole-tournament
+  overwrite requires review confirmation. Lock after any match starts, check all
+  tournament matches, handle `MATCH_FORMAT_LOCKED` and both score-format errors.
+  Removed the incorrect per-browser localStorage lock and swallowed write errors.
+- [x] B5: preserve logos through shared match/standings views and complete missing
+  Inbox invitations, own/public-profile squads, both admin team queues, tournament
+  entries, champion and runner-up displays. Shared marks handle absent/broken logos
+  separately from a missing team slot.
+- [x] C1/C2/C3: own/public profile distinguish MVP awards and votes; result reads
+  distinguish hidden/deleted submitters and retain submitted time; urgent and
+  ordinary announcement notifications both open Announcements.
+- [x] FR09 compatibility: nullable `matchA`, withdrawal type/scope/reason, safe
+  Inbox/fixture/planner reads and recipient decision controls. This closes the
+  breaking-read change, not the entire withdrawal feature.
+- [x] Developer verification: `npm.cmd test -- --maxWorkers=2` passed 70 files /
+  446 tests; lint and production build passed. Vite started on 127.0.0.1:5188;
+  reset-password HTML returned HTTP 200. Existing >500 kB main-bundle warning.
+- [ ] Live acceptance: real verification/recovery email, OTP expiry/quotas and
+  login; reset-link one-time use; BO save/reload and concurrent lock; each logo
+  route with an uploaded image; reward visibility/revocation as owner and guest;
+  university-admin deadline/permission checks and urgent announcement navigation.
+  No connected browser was available. HTTP HTML delivery is not browser acceptance.
+- [ ] Full FR09 withdrawal creation UI and organizer management flow; migration
+  045/runtime and cross-tournament consent acceptance remain unverified here.
+- [ ] Backend/product follow-up: U04 totals when withdrawal precedes verification;
+  cross-tournament coverage warnings after rescheduling; External approval defect;
+  optional reward criteria/progress/artwork contracts. See the handoff below.
+
+Handoff: `TO-BACKEND-2026-10-06-frontend-checklist-response.md`.
+
 **Current backend source reference: remote `BE_KN@cd71437`**, checked with
 `git ls-remote` and `git fetch origin BE_KN` on 2026-10-02 for the QR review below.
 The 2026-10-01 avatar/logo follow-up compares `FE-Notice-BE_KN-avatar-uploads.md`

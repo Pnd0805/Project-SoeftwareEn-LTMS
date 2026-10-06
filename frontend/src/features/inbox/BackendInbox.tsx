@@ -22,6 +22,7 @@ import {
 } from '../../hooks/useAdmin'
 import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
+import { TeamChipView } from '../../components/kit/chips'
 
 type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string } | null
 
@@ -77,7 +78,7 @@ export function BackendInbox() {
           {invites.map(invite => (
             <div className="vstack" style={{ gap: 8 }} key={invite.id}>
               <div className="hstack">
-                <b>{invite.team.name}</b>
+                <TeamChipView team={invite.team} />
                 <span className="sub">
                   invited by {invite.invitedBy.fullName} · expires {fmtDate(invite.expiresAt)}
                 </span>
@@ -128,24 +129,26 @@ export function BackendInbox() {
           {incoming.map(request => (
             <div className="vstack" style={{ gap: 8 }} key={request.id}>
               <div className="hstack">
-                <b>Match #{request.matchA.id}</b>
+                <b>{request.matchA ? `Match #${request.matchA.id}` : `Tournament #${request.tournamentId}`}</b>
                 <span className="sub">
-                  {request.type === 'org_add_match' ? 'The organizer asks you to take this match'
+                  {request.type === 'ref_withdraw' ? 'A referee asks the organizer to approve withdrawal'
+                    : request.type === 'org_add_match' ? 'The organizer asks you to take this match'
                     : request.type === 'org_swap' ? 'The organizer proposes a swap'
                     : request.type === 'ref_swap' ? 'Another referee proposes a swap'
                       : 'Another referee proposes a transfer'}
                   {request.matchB ? ` with match #${request.matchB.id}` : ''}
-                  {request.matchA.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
+                  {request.matchA?.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
                 </span>
               </div>
+              {request.reason ? <p>Withdrawal reason: {request.reason}</p> : null}
               <div className="hstack">
                 <button className="btn ghost" type="button"
-                  onClick={() => navigate(`/m/${request.matchA.id}`)}>Open the match</button>
+                  onClick={() => navigate(request.matchA ? `/m/${request.matchA.id}` : `/t/${request.tournamentId}`)}>{request.matchA ? 'Open the match' : 'Open tournament'}</button>
                 {request.matchB ? <button className="btn ghost" type="button"
                   onClick={() => navigate(`/m/${request.matchB!.id}`)}>Open second match</button> : null}
                 <button className="btn" type="button" disabled={declineRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
-                    onSuccess: () => setNotice({ kind: 'warn', text: `Declined match #${request.matchA.id}.` }),
+                    onSuccess: () => setNotice({ kind: 'warn', text: `Declined request #${request.id}.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
                   })}>Decline</button>
                 {/* R18 — เดิมขึ้น "You are officiating" ทุกครั้งที่คำขอตอบกลับมา 200 แต่ FR06
@@ -172,12 +175,12 @@ export function BackendInbox() {
       {outgoing.length ? <Panel quiet>
         <h3>Your referee requests</h3>
         {outgoing.map(request => <div className="vstack" style={{ gap: 8 }} key={request.id}>
-          <div>Request #{request.id} | {request.type} | Match #{request.matchA.id}
+          <div>Request #{request.id} | {request.type} | {request.matchA ? `Match #${request.matchA.id}` : `Tournament #${request.tournamentId}`}
             {request.matchB ? ` / #${request.matchB.id}` : ''} | <Badge kind={request.status === 'applied' ? 'ok' : request.status === 'open' ? 'warn' : 'neutral'}>{request.status}</Badge></div>
           <span className="sub">{request.refereeA.user.fullName}: {request.refereeA.status}
             {request.refereeB ? ` | ${request.refereeB.user.fullName}: ${request.refereeB.status}` : ''}</span>
           <div className="hstack">
-            <button className="btn ghost" onClick={() => navigate(`/m/${request.matchA.id}`)}>Open match</button>
+            <button className="btn ghost" onClick={() => navigate(request.matchA ? `/m/${request.matchA.id}` : `/t/${request.tournamentId}`)}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
             {request.status === 'open' ? <button className="btn" disabled={cancelRequest.isPending}
               onClick={() => cancelRequest.mutate(request.id, {
                 onSuccess: () => setNotice({ kind: 'ok', text: `Request #${request.id} withdrawn.` }),
@@ -193,7 +196,7 @@ export function BackendInbox() {
           {[...waiting, ...decided].map(application => (
             <div className="spread" key={application.id}>
               <span className="sub">
-                <b>{application.team.name}</b> → {application.tournament.name}
+                <TeamChipView team={application.team} /> → {application.tournament.name}
                 {application.rejectionReason ? ` · ${application.rejectionReason}` : ''}
               </span>
               {application.status === 'approved' ? <Badge kind="ok">In</Badge>

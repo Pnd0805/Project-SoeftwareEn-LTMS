@@ -16,7 +16,9 @@
  * UPDATE แถวเดิม ไม่สร้างซ้ำ — ปุ่มไม่ต้องกันการกดซ้ำเอง
  */
 import { useState } from 'react'
-import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
+import { Banner, Panel, TableWrap } from '../../components/kit/primitives'
+import { ScoreInputs } from './ScoreInputs'
+import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { TeamChipView } from '../../components/kit/chips'
 import { useStatDefinitions, useSubmitResult, useSaveMatchStats, useFinishMatch } from '../../hooks/useMatch'
 import { toTeamView } from './matchView'
@@ -34,6 +36,9 @@ export function ResultForm({ m }: { m: MatchDto }) {
   const [sa, setSa] = useState(0)
   const [sb, setSb] = useState(0)
   const [stat, setStat] = useState<Nums>({})
+  const [saved, setSaved] = useState(false)
+  const [didFinish, setDidFinish] = useState(false)
+  const format = scoreFormatFromError(m, submit.error)
 
   const sides = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const statDefs = defs?.items ?? []
@@ -60,8 +65,11 @@ export function ResultForm({ m }: { m: MatchDto }) {
   }
 
   const onSubmitUnsafe = async () => {
-    if (m.status === 'in_progress' && m.viewer.can.finishMatch) {
+    if (!validMatchScore(format, sa, sb)) return
+    setSaved(false)
+    if (m.status === 'in_progress' && m.viewer.can.finishMatch && !didFinish) {
       await finish.mutateAsync()
+      setDidFinish(true)
     }
     await submit.mutateAsync({
       winnerTeamId: winnerTeamId(),
@@ -80,11 +88,12 @@ export function ResultForm({ m }: { m: MatchDto }) {
       })).filter(e => Object.values(e.values).some(Boolean))
       if (entries.length) await saveStats.mutateAsync({ entries })
     }
+    setSaved(true)
   }
 
   /* OD-20: no match can finish level in any format. The on-field tiebreak is
      reflected in the aggregate score; Draw/Decider are not separate inputs. */
-  const blocked = level
+  const blocked = !validMatchScore(format, sa, sb)
 
   /* สถิติที่ขัดกับสกอร์ — เช่นฟุตบอลที่มีแอสซิสต์ทั้งที่ไม่มีประตู
      ตรวจสดขณะกรอก คนกรอกจะได้เห็นก่อนกดส่ง ไม่ใช่โดนปฏิเสธทีหลัง */
@@ -111,16 +120,9 @@ export function ResultForm({ m }: { m: MatchDto }) {
         <em>//</em> {m.mode === 'onsite' ? 'Referee' : 'Winning team leader'} — enter the result
       </span>
 
-      <div className="grid2" style={{ maxWidth: 420 }}>
-        <Field label={m.teamA?.name ?? 'Home'} htmlFor="sc-a">
-          <input id="sc-a" type="number" min={0} max={999} value={sa} onChange={e => setSa(Number(e.target.value))} />
-        </Field>
-        <Field label={m.teamB?.name ?? 'Away'} htmlFor="sc-b">
-          <input id="sc-b" type="number" min={0} max={999} value={sb} onChange={e => setSb(Number(e.target.value))} />
-        </Field>
-      </div>
+      <ScoreInputs match={{ ...m, ...format }} a={sa} b={sb} setA={setSa} setB={setSb} prefix="sc" disabled={submit.isPending || finish.isPending || saveStats.isPending} />
 
-      {blocked ? (
+      {level ? (
         <Banner kind="warn">
           <b>Every match needs a winner.</b> Finish the tiebreak on the field, then enter the aggregate
           score with the winning side ahead.
@@ -163,6 +165,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
         </Banner>
       ) : null}
 
+      {finish.isError ? <Banner kind="crit">จบการแข่งขันไม่สำเร็จ {finish.error instanceof Error ? finish.error.message : 'กรุณาลองใหม่'}</Banner> : null}
       {submit.isError ? (
         <Banner kind="crit">
           Could not save the result.{' '}
@@ -182,7 +185,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
         </Banner>
       ) : null}
 
-      {submit.isSuccess ? (
+      {saved && !saveStats.isError ? (
         <Banner kind="ok" icon="check">
           <b>บันทึกเรียบร้อยแล้ว</b> บันทึกผลการแข่งขันและสถิติสำเร็จ
         </Banner>

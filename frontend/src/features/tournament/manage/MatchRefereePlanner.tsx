@@ -159,7 +159,7 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
    */
   const forMatch = (matchId: number, status: BackendRefereeRequestDto['status']) =>
     (requests.data?.items ?? []).filter(row =>
-      row.type === 'org_add_match' && row.matchA.id === matchId && row.status === status)
+      row.type === 'org_add_match' && row.matchA?.id === matchId && row.status === status)
   const busy = matches.isPending || pool.isPending || requests.isPending
 
   return (

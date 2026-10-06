@@ -115,7 +115,8 @@ export async function mockVerifyEmail(_email: string, code: string): Promise<{ m
 }
 
 export async function mockResendVerification(_email: string): Promise<{ message: string }> {
+  void _email;
   return mockDelay({
-    message: "ระบบได้ส่งรหัส OTP ใหม่ไปยังอีเมลของคุณเรียบร้อยแล้ว",
+    message: "รับคำขอแล้ว หากอีเมลนี้ยังรอยืนยันและไม่เกินโควตา จะส่งรหัสใหม่ให้",
   });
 }

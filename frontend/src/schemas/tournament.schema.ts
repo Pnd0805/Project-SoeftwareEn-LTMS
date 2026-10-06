@@ -30,6 +30,7 @@ const dateTimeSchema = z.string()
 const tournamentFieldsSchema = z.object({
   name: z.string().trim().min(1, "กรุณาระบุชื่อการแข่งขัน").max(200, "ชื่อการแข่งขันต้องไม่เกิน 200 ตัวอักษร"),
   sportTypeId: z.number().int().positive(),
+  bestOf: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(7)]).nullable().optional(),
   bracketFormat: BracketFormatEnum.nullable().optional(),
   /* MVP รับแค่ระดับภาควิชากับคณะ — 'university' มีในฐานข้อมูลแต่ยังรอ Change Management
      (API Design Part 3 · OpenAPI ของ POST /tournaments รับแค่สองค่านี้) */

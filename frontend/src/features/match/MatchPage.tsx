@@ -1,4 +1,6 @@
 import { RefereeMatchRequest } from './RefereeMatchRequest'
+import { ScoreInputs } from './ScoreInputs'
+import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { MatchWorkflowPanel } from './MatchWorkflowPanel'
 import { canConfirm, confirmerName, confirmerOf, resultRecorder, type Confirmer } from './resultAttribution'
 import { ResultOverride } from './ResultOverride'
@@ -356,6 +358,8 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
   const noteMissing = !note.trim()
   const blocked = resolve.isPending || noteMissing
   const level = sa === sb
+  const format = scoreFormatFromError(m, resolve.error)
+  const invalidScore = !validMatchScore(format, sa, sb)
 
   return (
     <Panel>
@@ -370,16 +374,9 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
 
       {USE_MOCK ? (
         <>
-          <div className="grid2" style={{ maxWidth: 420 }}>
-            <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
-              <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
-            </Field>
-            <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
-              <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
-            </Field>
-          </div>
+          <ScoreInputs match={{ ...m, ...format }} a={sa} b={sb} setA={setSa} setB={setSb} prefix="rs" disabled={resolve.isPending} />
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={resolve.isPending || level}
+            disabled={resolve.isPending || invalidScore}
             title={level ? 'A corrected score still needs a winner' : undefined}
             onClick={() => resolve.mutate({
               resolution: `Organizer recorded ${sa}–${sb}`,
@@ -409,16 +406,9 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
               </Banner>
             </div>
           ) : null}
-          <div className="grid2" style={{ maxWidth: 420 }}>
-            <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
-              <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
-            </Field>
-            <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
-              <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
-            </Field>
-          </div>
+          <ScoreInputs match={{ ...m, ...format }} a={sa} b={sb} setA={setSa} setB={setSb} prefix="rs" disabled={resolve.isPending} />
           <span className="hstack">
-            <button className="btn primary" type="button" disabled={blocked || level}
+            <button className="btn primary" type="button" disabled={blocked || invalidScore}
               title={noteMissing ? 'Write the reason first'
                 : level ? 'A corrected score still needs a winner' : undefined}
               onClick={() => resolve.mutate({

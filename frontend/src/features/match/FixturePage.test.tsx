@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MatchDto } from '../../types/match.dto'
 import { ApiError } from '../../api/client'
@@ -33,7 +34,7 @@ const match = {
   },
 } as MatchDto
 
-const idleMutation = { isPending: false, isError: false, isSuccess: false, error: null, mutate: vi.fn() }
+const idleMutation = { isPending: false, isError: false, isSuccess: false, error: null, mutate: vi.fn(), reset: vi.fn() }
 
 vi.mock('../../hooks/useMatch', () => ({
   useMatch: () => ({ data: match, isPending: false, isError: false }),
@@ -68,9 +69,9 @@ vi.mock('../../hooks/useTournament', () => ({
 import { FixturePage } from './FixturePage'
 
 const renderPage = () => render(
-  <MemoryRouter initialEntries={['/m/23/fixture']}>
+  <QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/m/23/fixture']}>
     <Routes><Route path="/m/:id/fixture" element={<FixturePage />} /></Routes>
-  </MemoryRouter>,
+  </MemoryRouter></QueryClientProvider>,
 )
 
 beforeEach(() => {
@@ -78,6 +79,7 @@ beforeEach(() => {
   bulkAssignAsync.mockReset().mockResolvedValue(match)
   requestReferee.mockReset()
   updateError = null
+  match.tournament.sportName = 'Volleyball'
 })
 
 describe('real-mode fixture referee consent flow', () => {
@@ -135,24 +137,17 @@ describe('real-mode fixture referee consent flow', () => {
     expect(screen.queryByLabelText(/Format/)).not.toBeInTheDocument()
   })
 
-  it('renders format selection (BO1, BO3, BO5, BO7) for esports and badminton, and locks format after save', async () => {
+  it('saves BO through the server without locking it in localStorage', async () => {
     match.tournament.sportName = 'VALORANT'
     localStorage.clear()
     renderPage()
-
-    const formatSelect = screen.getByLabelText(/Format/) as HTMLSelectElement
-    expect(formatSelect).toBeInTheDocument()
+    const formatSelect = screen.getByLabelText('BO format')
     expect(formatSelect).toBeEnabled()
-    expect(screen.getByText(/BO1 \(Best of 1\)/)).toBeInTheDocument()
-    expect(screen.getByText(/BO3 \(Best of 3\)/)).toBeInTheDocument()
-    expect(screen.getByText(/BO5 \(Best of 5\)/)).toBeInTheDocument()
-    expect(screen.getByText(/BO7 \(Best of 7\)/)).toBeInTheDocument()
-
-    fireEvent.change(formatSelect, { target: { value: 'BO5' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save schedule' }))
-
-    expect(localStorage.getItem(`match_format_${match.id}`)).toBe('BO5')
-    expect(await screen.findByText(/ถูกล็อกแล้ว — ไม่สามารถเปลี่ยนแปลงได้ระหว่างทัว/)).toBeInTheDocument()
-    expect(formatSelect).toBeDisabled()
+    for (const n of [1, 3, 5, 7]) expect(screen.getByRole('option', { name: `BO${n}` })).toBeInTheDocument()
+    fireEvent.change(formatSelect, { target: { value: '5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Set for this match' }))
+    expect(await screen.findByRole('status')).toBeInTheDocument()
+    expect(localStorage.getItem(`match_format_${match.id}`)).toBeNull()
+    expect(formatSelect).toBeEnabled()
   })
 })

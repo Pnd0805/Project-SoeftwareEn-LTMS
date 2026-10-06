@@ -15,6 +15,8 @@
  * OD-60 — MVP ใช้ mvpTimes เป็นตัวหลัก · mvpVotes โตตามจำนวนคนดู ห้ามติดป้ายว่า "MVP"
  */
 import { BackendCareerPanel } from './BackendCareerPanel'
+import { PublicRewards } from '../rewards/RewardsPage'
+import { TeamChipView } from '../../components/kit/chips'
 import { Avatar } from '../../components/kit/Avatar'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
@@ -94,8 +96,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
             {p.teams.map(team => (
               <button className="btn ghost" type="button" key={team.id}
                 onClick={() => navigate(`/team/${team.id}`)}>
-                {team.logoUrl ? <img src={team.logoUrl} alt="" width={16} height={16} style={{ borderRadius: 4, objectFit: 'cover' }} /> : null}
-                {team.name} <Icon name="chev" size={11} />
+                <TeamChipView team={team} /> <Icon name="chev" size={11} />
               </button>
             ))}
           </div>
@@ -142,6 +143,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
         ) : null}
       </Panel>
       <BackendCareerPanel userId={userId} />
+      <PublicRewards userId={userId} />
     </>
   )
 }

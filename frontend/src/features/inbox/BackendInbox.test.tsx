@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
+import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 
 vi.mock('../../api/client', async original => ({
   ...await original<typeof import('../../api/client')>(),
@@ -23,13 +24,14 @@ const declineMutate = vi.fn()
 const cancelMutate = vi.fn()
 let outgoing: typeof request[] = []
 
-const request = {
+const request: BackendRefereeRequestDto = {
   id: 91, tournamentId: 23, type: 'org_add_match', requestedBy: 9201,
   refereeA: { tournamentRefereeId: 34, user: { id: 9002, fullName: 'Somying', avatarUrl: null }, status: 'pending' },
   refereeB: null,
   matchA: { id: 30, roundNumber: 1, scheduledTime: '2026-11-20T03:00:00.000Z', scheduledEndTime: '2026-11-20T05:00:00.000Z' },
   matchB: null, status: 'open', createdAt: '2026-09-22T00:00:00.000Z', resolvedAt: null,
 }
+let incoming: BackendRefereeRequestDto[] = [request]
 
 vi.mock('../../hooks/useTeam', () => ({
   useBackendMyInvitations: () => ({ data: { items: [] }, isPending: false }),
@@ -43,7 +45,7 @@ vi.mock('../../hooks/useAdmin', () => ({
   useAcceptRefereeInvitation: () => idle,
   useDeclineRefereeInvitation: () => idle,
   useMyRefereeInvitations: () => ({ data: { items: [] }, isPending: false }),
-  useMyRefereeRequests: () => ({ data: { incoming: [request], outgoing }, isPending: false }),
+  useMyRefereeRequests: () => ({ data: { incoming, outgoing }, isPending: false }),
   useAcceptRefereeRequest: () => ({ ...idle, mutate: acceptMutate }),
   useDeclineRefereeRequest: () => ({ ...idle, mutate: declineMutate }),
 }))
@@ -53,9 +55,17 @@ import { BackendInbox } from './BackendInbox'
 const renderInbox = () => render(<MemoryRouter><BackendInbox /></MemoryRouter>)
 const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
 
-beforeEach(() => { vi.clearAllMocks(); outgoing = [] })
+beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request] })
 
 describe('answering a match assignment request', () => {
+  it('renders a tournament withdrawal without matchA and lets the receiving organizer decide', () => {
+    incoming = [{ ...request, type: 'ref_withdraw', matchA: null, withdrawScope: 'tournament', reason: 'Cannot attend this tournament' }]
+    renderInbox()
+    expect(screen.getByText('Tournament #23')).toBeInTheDocument()
+    expect(screen.getByText(/Cannot attend this tournament/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open tournament' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument()
+  })
   it('confirms the assignment only when the request actually applied', () => {
     acceptMutate.mockImplementation((_id, opts) =>
       opts.onSuccess({ ...request, status: 'applied', resolvedAt: '2026-09-22T02:00:00.000Z' }))

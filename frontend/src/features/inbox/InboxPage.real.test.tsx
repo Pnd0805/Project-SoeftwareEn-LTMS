@@ -14,6 +14,15 @@ vi.mock('./BackendInbox', () => ({ BackendInbox: () => <div>Action requests</div
 import { InboxPage } from './InboxPage'
 
 describe('real C1 Inbox', () => {
+  it('opens an urgent announcement in Announcements and marks it read', () => {
+    notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
+      items: [{ id: 90, type: 'tournament_announcement_urgent', title: 'Match moved', message: 'Court B', relatedEntityType: 'tournament', relatedEntityId: 23, isRead: false, createdAt: '2026-10-06T00:00:00Z' }], unreadCount: 1,
+    } })
+    render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<InboxPage />} /><Route path="/t/:id/announcements" element={<div>Urgent announcement details</div>} /></Routes></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(screen.getByText('Urgent announcement details')).toBeInTheDocument()
+    expect(markRead).toHaveBeenCalledWith(90)
+  })
   it('uses server unreadCount and opens reported comments from a new notice', () => {
     notificationQuery.mockReturnValue({ isLoading: false, isError: false, data: {
       items: [{ id: 31, type: 'comment_reported', title: 'Comment reported', message: 'Please review',

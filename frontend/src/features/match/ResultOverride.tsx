@@ -10,6 +10,8 @@
  * ไม่มี endpoint บอกเวลาปิดอัตโนมัติ (24 ชม. หลังส่ง หรือ 15 นาทีก่อนนัดถัดไป) จึงไม่นับถอยหลัง
  */
 import { useState } from 'react'
+import { ScoreInputs } from './ScoreInputs'
+import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { ApiError } from '../../api/client'
 import { useOverrideResult } from '../../hooks/useMatch'
@@ -32,6 +34,7 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
   const [b, setB] = useState(() => asNumber(result.scoreData?.b))
   const [reason, setReason] = useState('')
   const [done, setDone] = useState(false)
+  const format = scoreFormatFromError(m, override.error)
 
   if (!m.teamA || !m.teamB) return null
   const level = a === b
@@ -61,14 +64,7 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
   return (
     <Panel>
       <span className="tag"><em>//</em> Edit result</span>
-      <div className="grid2" style={{ maxWidth: 420 }}>
-        <Field label={m.teamA.name} htmlFor="ov-a">
-          <input id="ov-a" type="number" min={0} max={999} value={a} onChange={e => setA(Number(e.target.value))} />
-        </Field>
-        <Field label={m.teamB.name} htmlFor="ov-b">
-          <input id="ov-b" type="number" min={0} max={999} value={b} onChange={e => setB(Number(e.target.value))} />
-        </Field>
-      </div>
+      <ScoreInputs match={{ ...m, ...format }} a={a} b={b} setA={setA} setB={setB} prefix="ov" disabled={override.isPending} />
       {level ? <Banner kind="warn"><b>Every match needs a winner.</b> Enter the score with the winning side ahead.</Banner> : null}
       <Field label="Reason — both teams will read this" htmlFor="ov-why">
         <textarea id="ov-why" maxLength={500} value={reason} onChange={e => setReason(e.target.value)}
@@ -77,7 +73,7 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
       {override.isError ? <Banner kind="crit"><b>The correction did not go through.</b> {overrideError(override.error)}</Banner> : null}
       <div className="hstack">
         <button className="btn" type="button" disabled={override.isPending} onClick={() => setOpen(false)}>Cancel</button>
-        <button className="btn primary" type="button" disabled={override.isPending || level || !reason.trim()}
+        <button className="btn primary" type="button" disabled={override.isPending || !validMatchScore(format, a, b) || !reason.trim()}
           onClick={async () => {
             try {
               await override.mutateAsync({ winnerTeamId, scoreData: { a, b }, reason: reason.trim() })

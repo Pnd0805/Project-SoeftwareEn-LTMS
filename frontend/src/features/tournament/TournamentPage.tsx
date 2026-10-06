@@ -9,6 +9,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
+import { TeamChipView } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
 import { USE_MOCK } from '../../api/client'
 import { useEligibilityRules, useTournament, useTournamentTeams } from '../../hooks/useTournament'
@@ -187,7 +188,7 @@ export function TournamentPage() {
           </div>
         </div>
         <div className="hstack">
-          {champion ? <Badge kind="ok">{`Champion · ${champion.name}`}</Badge>
+          {champion ? <Badge kind="ok">Champion · <TeamChipView team={{ id: champion.id, name: champion.name, logoUrl: 'logoUrl' in champion && typeof champion.logoUrl === 'string' ? champion.logoUrl : 'logo' in champion && typeof champion.logo === 'string' ? champion.logo : null }} /></Badge>
             : completed ? <Badge kind="ok">Completed</Badge>
             : t.status === 'public' ? <Badge kind="ok">Public</Badge>
               : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
@@ -204,6 +205,8 @@ export function TournamentPage() {
           ) : null}
         </div>
       </div>
+
+      {winner.data?.runnerUpTeam ? <Panel quiet><span className="tag">Runner-up</span><TeamChipView team={winner.data.runnerUpTeam} /></Panel> : null}
 
       <div className="split">
         <div>

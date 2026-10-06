@@ -23,7 +23,7 @@ const createMutate = vi.fn()
 
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 9001 } }) }))
 vi.mock('../../hooks/useReference', () => ({
-  useSportTypes: () => ({ data: { items: [{ id: 1, name: 'ฟุตบอล' }] } }),
+  useSportTypes: () => ({ data: { items: [{ id: 1, name: 'ฟุตบอล' }, { id: 3, name: 'VALORANT' }] } }),
   useFaculties: () => ({ data: { items: [{ id: 1, name: 'วิศวกรรมศาสตร์' }, { id: 2, name: 'วิทยาศาสตร์' }] } }),
   useDepartments: (facultyId?: number) => ({
     data: { items: facultyId === 1 ? [{ id: 2, name: 'วิศวกรรมไฟฟ้า' }] : [] },
@@ -50,6 +50,26 @@ beforeEach(() => {
 })
 
 describe('organising faculty and department are one question', () => {
+  it('sends BO when creating a round-based tournament', async () => {
+    renderPage(); fillTheRest()
+    fireEvent.change(screen.getByLabelText(/Organising faculty/), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Sport'), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText(/BO format/), { target: { value: '7' } })
+    send()
+    await waitFor(() => expect(createMutate).toHaveBeenCalled())
+    expect(createMutate.mock.calls[0][0]).toMatchObject({ sportTypeId: 3, bestOf: 7 })
+  })
+  it('omits an earlier BO selection when the sport changes to football', async () => {
+    renderPage(); fillTheRest()
+    fireEvent.change(screen.getByLabelText(/Organising faculty/), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Sport'), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText(/BO format/), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Sport'), { target: { value: '1' } })
+    expect(screen.queryByLabelText(/BO format/)).not.toBeInTheDocument()
+    send()
+    await waitFor(() => expect(createMutate).toHaveBeenCalled())
+    expect(createMutate.mock.calls[0][0]).not.toHaveProperty('bestOf')
+  })
   it('asks for the level nowhere — a blank department means the whole faculty', async () => {
     renderPage()
     expect(screen.queryByLabelText('Scope')).not.toBeInTheDocument()

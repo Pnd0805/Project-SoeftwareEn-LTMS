@@ -252,7 +252,7 @@ export interface BackendTeamListResponse<T> {
 
 export interface BackendMyInvitationDto {
   id: number;
-  team: { id: number; name: string; sportTypeId: number };
+  team: { id: number; name: string; sportTypeId: number; logoUrl?: string | null };
   invitedBy: UserRefDto;
   expiresAt: string;
 }

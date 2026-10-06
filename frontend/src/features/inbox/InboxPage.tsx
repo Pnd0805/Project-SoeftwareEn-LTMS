@@ -27,7 +27,7 @@ function notificationHref(n: NotificationDto): string | null {
   if (n.relatedEntityType === 'tournament') {
     return n.type === 'comment_reported'
       ? `/t/${id}/community?reported=true`
-      : (n.type === 'comment_removed' || n.type === 'comment_rewritten_after_removal') ? `/t/${id}/community` : n.type === 'tournament_announcement' ? `/t/${id}/announcements` : `/t/${id}`
+      : (n.type === 'comment_removed' || n.type === 'comment_rewritten_after_removal') ? `/t/${id}/community` : (n.type === 'tournament_announcement' || n.type === 'tournament_announcement_urgent') ? `/t/${id}/announcements` : `/t/${id}`
   }
   if (n.relatedEntityType === 'match') return `/m/${id}`
   if (n.relatedEntityType === 'team') return `/team/${id}`
@@ -44,7 +44,7 @@ function notificationIcon(type?: string): IconName {
 }
 
 function notificationCategory(n: NotificationDto): string {
-  if (n.type === 'tournament_announcement') return 'Announcements'
+  if (n.type === 'tournament_announcement' || n.type === 'tournament_announcement_urgent') return 'Announcements'
   if (n.type?.startsWith('comment_')) return 'Comments and moderation'
   if (n.type?.startsWith('referee_')) return 'Referee updates'
   if (n.type?.includes('application') || n.type?.includes('registration')) return 'Squad entries'

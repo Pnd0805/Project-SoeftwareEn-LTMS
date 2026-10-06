@@ -101,6 +101,7 @@ export function LoginPage() {
         </button>
       </form>
 
+      <Link className="btn ghost" to="/forgot-password">ลืมรหัสผ่าน?</Link>
       <div className="hstack" style={{ justifyContent: 'space-between', gap: 8 }}>
         <span className="sub">ยังไม่มีบัญชี?</span>
         <Link className="btn ghost" to="/register">สมัครสมาชิก</Link>

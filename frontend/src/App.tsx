@@ -15,6 +15,7 @@ import { isGuest } from './shared/selectors'
 import { useMe } from './hooks/useAuth'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
+import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
 import { HomePage } from './features/home/HomePage'
 import { TournamentPage } from './features/tournament/TournamentPage'
 import { MatchPage } from './features/match/MatchPage'
@@ -30,6 +31,7 @@ import { InboxPage } from './features/inbox/InboxPage'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { AdminPage } from './features/admin/AdminPage'
 import { RequestPage } from './features/request/RequestPage'
+import { RewardsPage } from './features/rewards/RewardsPage'
 import { SearchPage } from './features/search/SearchPage'
 
 /* every route a Guest may open without signing in — bracket, schedule, search,
@@ -38,7 +40,7 @@ import { SearchPage } from './features/search/SearchPage'
 const PUBLIC_PATHS = [
   /^\/$/, /^\/home/, /^\/t\//, /^\/m\//, /^\/checkin\//, /^\/mvp\//,
   /^\/team\//, /^\/player\//, /^\/watch\//, /^\/search/, /^\/login$/,
-  /^\/register/, /^\/verify-email/,
+  /^\/register/, /^\/verify-email/, /^\/reset-password$/, /^\/forgot-password$/,
 ]
 
 function Guard({ children, currentUser, isLoading }: {
@@ -48,6 +50,7 @@ function Guard({ children, currentUser, isLoading }: {
 }) {
   const s = useLtms()
   const location = useLocation()
+
   const signedIn = !!currentUser
   const guest = isGuest(s)
   const isPublic = PUBLIC_PATHS.some(p => p.test(location.pathname))
@@ -59,6 +62,10 @@ function Guard({ children, currentUser, isLoading }: {
 export default function App() {
   const { data: currentUser, isLoading } = useMe()
   const location = useLocation()
+
+  if (location.pathname === '/reset-password' || location.pathname === '/forgot-password') {
+    return <><PasswordRecoveryPage key={location.pathname + location.search} reset={location.pathname === '/reset-password'} /><Toasts /></>
+  }
 
   if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/verify-email') {
     return (
@@ -97,6 +104,7 @@ export default function App() {
           <Route path="/matches" element={currentUser ? <MatchesPage /> : <Navigate to="/login" replace />} />
           <Route path="/inbox" element={currentUser ? <InboxPage /> : <Navigate to="/login" replace />} />
           <Route path="/me" element={currentUser ? <ProfilePage /> : <Navigate to="/login" replace />} />
+          <Route path="/me/rewards" element={currentUser ? <RewardsPage /> : <Navigate to="/login" replace />} />
           <Route path="/request" element={currentUser ? <RequestPage /> : <Navigate to="/login" replace />} />
           <Route path="/admin" element={currentUser ? <AdminPage /> : <Navigate to="/login" replace />} />
           <Route path="/admin/:tab" element={currentUser ? <AdminPage /> : <Navigate to="/login" replace />} />

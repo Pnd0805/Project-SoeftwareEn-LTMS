@@ -24,6 +24,8 @@ import { LivePickem } from './LivePickem'
 const match = (sportTypeId = 2) => ({
   id: 13, teamA: { id: 9024, name: 'Science' }, teamB: { id: 9023, name: 'Engineering' },
   tournament: { sportTypeId },
+  bestOf: null,
+  pickemTolerance: sportTypeId === 3 ? { spotOn: 0, close: 0 } : { spotOn: 5, close: 10 },
 }) as unknown as MatchDto
 
 beforeEach(() => {
@@ -32,6 +34,10 @@ beforeEach(() => {
 })
 
 describe('predicting a score', () => {
+  it('uses the match tolerance when it differs from the sport default', () => {
+    render(<LivePickem match={{ ...match(3), bestOf: 7, possibleScores: [[4, 0]], pickemTolerance: { spotOn: 0, close: 1 } }} />)
+    expect(screen.getByText('Right winner, score off by at most 1 per side → 7 points')).toBeInTheDocument()
+  })
   it('sends the score keyed by team id, never a teamId', () => {
     render(<LivePickem match={match()} />)
     fireEvent.change(screen.getByLabelText('Science'), { target: { value: '52' } })

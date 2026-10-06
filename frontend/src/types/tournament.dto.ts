@@ -135,6 +135,7 @@ export interface TournamentListResponse {
 export interface CreateTournamentRequest {
   name: string;
   sportTypeId: number;
+  bestOf?: 1 | 3 | 5 | 7 | null;
   bracketFormat?: BracketFormat | null;
   /** MVP รับแค่สองค่านี้ — 'university' ยังรอ Change Management */
   scopeType: Exclude<TournamentScopeType, "university">;

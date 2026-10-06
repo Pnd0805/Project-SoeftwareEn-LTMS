@@ -209,10 +209,10 @@ describe("finish-then-submit contract (OD-26)", () => {
     return Promise.resolve(json({ error: { code: "NOT_FOUND", message: path } }, 404));
   };
 
-  it("keeps the result form closed while the match is being played, and offers Finish instead", async () => {
+  it("allows the referee to enter scores during play and finish before submitting", async () => {
     fetchMock.mockImplementation(routeAs(REFEREE, "in_progress"));
     const m = await getMatch(13);
-    expect(m.viewer.can.submitResult).toBe(false);
+    expect(m.viewer.can.submitResult).toBe(true);
     expect(m.viewer.can.finishMatch).toBe(true);
   });
 

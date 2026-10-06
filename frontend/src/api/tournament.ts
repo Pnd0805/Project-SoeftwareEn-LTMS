@@ -139,6 +139,11 @@ export async function getTournament(id: number): Promise<TournamentDetailDto> {
  * กับ `private` เดิมประกาศชนิดเป็น `TournamentDto` ทั้งที่ของจริงมีสี่ช่อง คนเรียกจึง
  * มองไม่เห็น `autoApproved` และหน้าจอเขียน "รอแอดมิน" ให้ทุกคนแม้คนที่ผ่านแล้ว
  */
+export function setTournamentFormat(id: number, bestOf: number | null): Promise<{ id: number; bestOf: number | null }> {
+  if (USE_MOCK) throw new Error('Tournament BO settings need the live server.');
+  return apiFetch(`/tournaments/${id}/format`, { method: 'PATCH', body: JSON.stringify({ bestOf }) });
+}
+
 export async function createTournament(input: CreateTournamentRequest): Promise<TournamentCreatedDto> {
   if (USE_MOCK) {
     const tournament: TournamentDto = {

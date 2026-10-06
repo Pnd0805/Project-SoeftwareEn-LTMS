@@ -100,7 +100,7 @@ export function RegisterPage() {
     setOtpError(null)
     try {
       await resendVerification.mutateAsync({ email: emailParam })
-      setResendMessage('ระบบได้ส่งรหัส OTP ใหม่ไปยังอีเมลของคุณเรียบร้อยแล้ว (สามารถขอใหม่ได้สูงสุด 3 ครั้ง/ชั่วโมง)')
+      setResendMessage('รับคำขอแล้ว หากอีเมลนี้ยังรอยืนยันและไม่เกินโควตา ระบบจะส่งรหัสใหม่ให้ กรุณาตรวจกล่องจดหมายและสแปม (สูงสุด 3 ครั้ง/ชั่วโมง)')
       setResendCooldown(60)
     } catch (err) {
       if (err instanceof ApiError) {

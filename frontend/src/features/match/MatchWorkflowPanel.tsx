@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ScoreInputs } from './ScoreInputs'
+import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { Badge, Banner, Panel } from '../../components/kit/primitives'
 import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
 import { useMe } from '../../hooks/useAuth'
@@ -7,15 +9,12 @@ import type { MatchDto, MatchResultDto } from '../../types/match.dto'
 import type { ComplaintDecisionInput, OrganizerResultInput, ResultChallengeInput, ResultComplaint } from '../../types/matchWorkflow.dto'
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The request failed. Please try again.'
-const validScore = (a: number, b: number) => Number.isSafeInteger(a) && Number.isSafeInteger(b) && a >= 0 && b >= 0 && a !== b
+const validScore = (m: MatchDto, a: number, b: number, error: unknown) => validMatchScore(scoreFormatFromError(m, error), a, b)
 function scoreInput(m: MatchDto, a: number, b: number) {
   return { winnerTeamId: a > b ? m.teamA!.id : m.teamB!.id, scoreData: { [m.teamA!.id]: a, [m.teamB!.id]: b } }
 }
-function Scores({ m, a, b, setA, setB, disabled = false }: { m: MatchDto; a: number; b: number; setA: (value: number) => void; setB: (value: number) => void; disabled?: boolean }) {
-  return <div className="grid2">
-    <label>Score for {m.teamA?.name}<input aria-label={`Score for ${m.teamA?.name}`} type="number" min={0} step={1} disabled={disabled} value={a} onChange={e => setA(Number(e.target.value))} /></label>
-    <label>Score for {m.teamB?.name}<input aria-label={`Score for ${m.teamB?.name}`} type="number" min={0} step={1} disabled={disabled} value={b} onChange={e => setB(Number(e.target.value))} /></label>
-  </div>
+function Scores({ m, a, b, setA, setB, disabled = false, error }: { m: MatchDto; a: number; b: number; setA: (value: number) => void; setB: (value: number) => void; disabled?: boolean; error?: unknown }) {
+  return <ScoreInputs match={{ ...m, ...scoreFormatFromError(m, error) }} a={a} b={b} setA={setA} setB={setB} disabled={disabled} prefix="workflow-score" labelA={`Score for ${m.teamA?.name}`} labelB={`Score for ${m.teamB?.name}`} />
 }
 function EvidenceLinks({ urls }: { urls: string[] }) {
   return <div className="hstack">{urls.map((url, i) => /^https?:\/\//i.test(url)
@@ -37,14 +36,14 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
     {done ? <p role="status">Your request was saved.</p> : null}
     <form className="vstack" onSubmit={async e => {
       e.preventDefault()
-      if (busy || !reason.trim() || (propose && !validScore(a, b))) return
+      if (busy || !reason.trim() || (propose && !validScore(m, a, b, error))) return
       const score = propose ? scoreInput(m, a, b) : null
       try { await submit({ reason: reason.trim(), ...(score ? { claimedWinnerTeamId: score.winnerTeamId, claimedScoreData: score.scoreData } : {}), ...(keys.length ? { evidenceKeys: keys } : {}) }); setDone(true); setReason(''); setKeys([]) }
       catch { setDone(false) }
     }}>
       <label>Reason (required)<textarea aria-label={`${title} reason`} required maxLength={1000} value={reason} onChange={e => { setReason(e.target.value); setDone(false) }} disabled={busy} /></label>
       <label><input type="checkbox" checked={propose} disabled={busy} onChange={e => setPropose(e.target.checked)} /> Propose a corrected score</label>
-      {propose ? <><Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={busy} />{!validScore(a, b) ? <p className="sub">Enter non-negative whole numbers with a winning side.</p> : null}</> : null}
+      {propose ? <><Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={busy} error={error} />{!validScore(m, a, b, error) ? <p className="sub">Enter non-negative whole numbers with a winning side.</p> : null}</> : null}
       <label>Evidence (PNG/JPEG, up to 5 files)<input aria-label={`${title} evidence`} type="file" accept={UPLOAD_IMAGE_ACCEPT} multiple disabled={busy || keys.length >= 5}
         onChange={async e => {
           const files = Array.from(e.target.files ?? []); e.target.value = ''
@@ -59,7 +58,7 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
       {keys.map((key, i) => <span key={key}>Evidence {i + 1} uploaded <button type="button" className="btn ghost" disabled={busy} onClick={() => { setKeys(previous => previous.filter(item => item !== key)); setUploadError('') }}>Remove attachment {i + 1}</button></span>)}
       {uploading ? <p role="status">Uploading evidence...</p> : null}
       {uploadError || error ? <p role="alert">{uploadError || errorText(error)}</p> : null}
-      <button className="btn primary" type="submit" disabled={busy || !reason.trim() || !!uploadError || (propose && !validScore(a, b))}>{pending ? 'Saving...' : title}</button>
+      <button className="btn primary" type="submit" disabled={busy || !reason.trim() || !!uploadError || (propose && !validScore(m, a, b, error))}>{pending ? 'Saving...' : title}</button>
     </form>
   </Panel>
 }
@@ -68,12 +67,12 @@ function OrganizerDecision({ m, pending, error, submit }: { m: MatchDto; pending
   const [outcome, setOutcome] = useState<'result' | 'double_forfeit'>('result')
   const [a, setA] = useState(0); const [b, setB] = useState(0)
   const [confirm, setConfirm] = useState(false)
-  const allowed = !!reason.trim() && (outcome === 'double_forfeit' || validScore(a, b))
+  const allowed = !!reason.trim() && (outcome === 'double_forfeit' || validScore(m, a, b, error))
   return <Panel quiet><h3>Organizer decision: no result submitted</h3>
     <p className="sub">Available 24 hours after play ends. The backend verifies the deadline and that no active result exists.</p>
     <label>Outcome<select aria-label="Organizer outcome" value={outcome} disabled={pending} onChange={e => { setOutcome(e.target.value as typeof outcome); setConfirm(false) }}>
       <option value="result">Record the played result</option>{m.mode === 'online' ? <option value="double_forfeit">Both teams forfeit</option> : null}</select></label>
-    {outcome === 'result' ? <Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={pending} /> : <Banner kind="warn">Neither team advances. Confirm this decision only after checking both teams.</Banner>}
+    {outcome === 'result' ? <Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={pending} error={error} /> : <Banner kind="warn">Neither team advances. Confirm this decision only after checking both teams.</Banner>}
     <label>Required explanation<textarea aria-label="Organizer decision reason" maxLength={1000} disabled={pending} value={reason} onChange={e => setReason(e.target.value)} /></label>
     {error ? <p role="alert">{errorText(error)}</p> : null}
     <button className="btn" type="button" disabled={pending || !allowed} onClick={() => setConfirm(true)}>Review organizer decision</button>
@@ -108,8 +107,8 @@ function ComplaintReview({ m, row, organizer, admin, pending, error, statement, 
         <select aria-label={`Complaint ${row.complaintId} outcome`} value={outcome} disabled={pending} onChange={e => { setOutcome(e.target.value as typeof outcome); setAmend(false) }}><option value="upheld">Complaint upheld</option><option value="no_merit">No merit (flags the filer)</option></select>
         {outcome === 'upheld' ? <label><input type="checkbox" checked={amend} disabled={pending || !row.canAmendResult || !m.teamA || !m.teamB} onChange={e => setAmend(e.target.checked)} /> Amend the result</label> : null}
         {!row.canAmendResult ? <p className="sub">Result cannot be amended: {row.amendBlockedBy}</p> : null}
-        {amend ? <Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={pending} /> : null}
-        <button className="btn danger" type="button" disabled={pending || !text.trim() || (amend && !validScore(a, b))} onClick={async () => {
+        {amend ? <Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={pending} error={error} /> : null}
+        <button className="btn danger" type="button" disabled={pending || !text.trim() || (amend && !validScore(m, a, b, error))} onClick={async () => {
           try { await decide({ outcome, remedy: amend ? 'amend_result' : 'record_only', note: text.trim(), ...(amend ? scoreInput(m, a, b) : {}) }); setText('') } catch { /* mutation owns feedback */ }
         }}>Save complaint decision</button>
       </> : null}
