@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { anon, as } from './helpers/api.js';
 import { all, one, testDb } from './helpers/db.js';
 import { createSportType, createTeam, createUser, type TestUser } from './helpers/factories.js';
@@ -105,25 +105,23 @@ describe('requireTeamLeader — แก้/ลบทีมได้เฉพา�
   });
 
   /**
-   * 🐞 บั๊กที่ integration test เจอ (6 ต.ค.) — ยังไม่ได้แก้ production
-   *   requireTeamLeader ใช้ Number(req.params.id) แทน parseId ⇒ 'abc' กลายเป็น NaN
-   *   mysql2 เขียน NaN ลง SQL เป็นคำเปล่า ⇒ MySQL อ่านเป็นชื่อคอลัมน์ ⇒ "Unknown column 'NaN'" ⇒ 500
-   *   กระทบทุก route ที่ผ่าน requireTeamLeader (10 route)
-   *   unit test เชื่อว่าได้ 404 (คอมเมนต์ใน team.controller.test.ts) เพราะ repo ถูก mock
-   * ทางแก้: requireTeamLeader ใช้ parseId(req.params['id'], 'รหัสทีม', 'id') แบบเดียวกับ requireOrganizer
-   * ★ it.fails = เทสนี้ "ผ่าน" ตราบที่บั๊กยังอยู่ · แก้แล้วจะแดง ⇒ เปลี่ยนเป็น it ธรรมดา
+   * A3 — แก้แล้ว 6 ต.ค. 2569 (เดิมเป็น it.fails: 500)
+   *   requireTeamLeader ใช้ Number(req.params.id) ⇒ 'abc' กลายเป็น NaN แล้วเข้า SQL
+   *   mysql2 เขียน NaN ลงคิวรีเป็นคำเปล่า ⇒ MySQL อ่านเป็นชื่อคอลัมน์ ⇒ 500 INTERNAL_ERROR
+   *   กระทบทุก route ที่ผ่านด่านนี้ · ตอนนี้ใช้ parseId แบบเดียวกับ requireOrganizer ⇒ 400
+   *   ★ ไม่ต้องปิด console.error อีกแล้ว เพราะไม่มี error ที่ไม่คาดคิดเกิดขึ้น
    */
-  it.fails('id ทีมไม่ใช่ตัวเลข → 4xx ไม่ใช่ 500 (บั๊ก: ตอนนี้ได้ 500)', async () => {
-    // errorHandler พิมพ์ error ที่ไม่คาดคิดลง stderr — ปิดไว้เฉพาะเทสนี้ (เป็นอาการของบั๊กที่รู้อยู่แล้ว)
-    // ★ try/finally เพราะ it.fails คาดว่า expect ข้างในจะพัง — ไม่งั้น spy ค้างไปปิด log ของเทสถัดไป
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    try {
-      const res = await as(leader).patch('/teams/abc').send({ name: 'x' });
-      expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(res.status).toBeLessThan(500);
-    } finally {
-      spy.mockRestore();
-    }
+  it('id ทีมไม่ใช่ตัวเลข → 400 VALIDATION_FAILED ไม่ใช่ 500', async () => {
+    const res = await as(leader).patch('/teams/abc').send({ name: 'x' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error?.code ?? res.body.code).toBe('VALIDATION_FAILED');
+  });
+
+  /** ★ ไม่ใช่แค่ PATCH — ทุกเส้นที่ผ่าน requireTeamLeader ต้องได้ 400 เหมือนกันหมด */
+  it('เส้นอื่นที่ผ่านด่านเดียวกันก็ได้ 400 ไม่ใช่ 500', async () => {
+    expect((await as(leader).delete('/teams/abc')).status).toBe(400);
+    expect((await as(leader).post('/teams/abc/official-request').send({ documents: [] })).status).toBe(400);
   });
 
   it('หัวหน้าลบทีม → 204 · soft delete (แถวยังอยู่ มี deleted_at)', async () => {

@@ -12,17 +12,20 @@ import type { Request, Response } from 'express';
 // Two things confirmed by reading team.routes.ts and requireTeamLeader.ts
 // alongside this controller, not visible from the controller alone:
 //
-// 1. requireTeamLeader.ts validates the :id route param with a bare
-//    `Number(teamId)`, not parseId. A malformed team id therefore 404s as
-//    TEAM_NOT_FOUND at the middleware layer for every requireTeamLeader-gated
-//    route (updateTeamById, deleteTeamById, deleteMember, the invitation
-//    endpoints, createTeamOfficialRequest, and the join-request
-//    approve/reject endpoints) — the controller's own
-//    `parseId(req.params['id'], ...)` call for that same team id never runs
-//    in production on those routes; it only runs here, in isolated unit
-//    tests of the controller. The 400 VALIDATION_FAILED tests below for the
-//    *team* id on those handlers are accurate as controller-unit tests, but
-//    don't reflect what a real HTTP request would receive.
+// 1. requireTeamLeader.ts runs before these handlers and validates the :id
+//    route param itself, so the controller's own parseId call for that same
+//    team id never runs in production on requireTeamLeader-gated routes
+//    (updateTeamById, deleteTeamById, deleteMember, the invitation endpoints,
+//    createTeamOfficialRequest, and the join-request approve/reject endpoints).
+//    The 400 VALIDATION_FAILED tests below are still accurate as controller
+//    units, and they now match what a real request receives.
+//    🔴 Corrected 6 Oct 2026 (A3): this comment used to claim a malformed team
+//    id 404s as TEAM_NOT_FOUND at the middleware layer. It did not — the
+//    middleware used a bare `Number(teamId)`, so 'abc' became NaN, reached SQL,
+//    and produced a 500. The 404 belief came from reading these unit tests,
+//    where the repository is mocked and never sees the NaN. The middleware now
+//    uses parseId, so a malformed id is a 400 on every one of those routes.
+//    Integration coverage: __tests__/integration/team.int.test.ts.
 //
 // 2. listMyJoinRequests and cancelJoinRequest have no route wired up
 //    anywhere in team.routes.ts. They're still tested below as controller
