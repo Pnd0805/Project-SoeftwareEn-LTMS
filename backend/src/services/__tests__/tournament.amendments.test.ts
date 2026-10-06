@@ -121,7 +121,11 @@ describe('requestAmendment (C09)', () => {
     mockedTournamentRepo.findTournamentById.mockResolvedValue(baseTournament());
     mockedTournamentRepo.insertAmendmentRequest.mockResolvedValue(900);
 
-    const result = await Service.requestAmendment(26, 9, { requestedChanges: JSON.stringify({ maxTeams: 20 }), reason: 'ทีมสมัครเยอะ' });
+    // as any ไม่ใช่เพราะชนิดผิด — route ส่ง string มาไม่ได้ (amendmentRequestSchema ปฏิเสธที่ zod ก่อน)
+    // เทสนี้คุ้มครองเส้นนี้ไว้เผื่อมีคนเรียก service ตรง ๆ ในอนาคต
+    // 🔴 อย่าลบ branch string ใน normalizeChanges ตามเทสนี้ — ตัวเดียวกันใช้อ่าน requested_changes
+    //    จากฐานด้วย (getTournamentAmendments · getPendingAmendments · approveAmendment) ซึ่งเป็น string ได้จริง
+    const result = await Service.requestAmendment(26, 9, { requestedChanges: JSON.stringify({ maxTeams: 20 }) as any, reason: 'ทีมสมัครเยอะ' });
 
     expect(mockedTournamentRepo.insertAmendmentRequest).toHaveBeenCalledWith(26, 9, { maxTeams: 20 }, 'ทีมสมัครเยอะ');
     expect(result).toEqual({ id: 900, status: 'pending' });

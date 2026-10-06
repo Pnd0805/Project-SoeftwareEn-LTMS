@@ -225,13 +225,22 @@ describe('createTeam', () => {
     mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
     mockedTeamRepo.createTeam.mockResolvedValue(10);
     mockedTeamRepo.findById.mockResolvedValue(baseTeamRow);
-    mockedToCreateTeam.mockReturnValue({ id: 10, name: 'New Team' });
+    // ค่าตรงกับสิ่งที่ toCreateTeam(baseTeamRow) จะคืนจริง ⇒ บรรทัด expect(result) ยืนยันได้ว่า
+    // service ส่งผลของ mapper (ที่ได้จากแถวที่อ่านกลับมา) ออกไปตรง ๆ ไม่ได้ปั้นจาก input เอง
+    const createdDto = {
+      id: baseTeamRow.team_id,
+      name: baseTeamRow.name,
+      sportTypeId: baseTeamRow.sport_type_id,
+      readinessStatus: baseTeamRow.readiness_status,
+      leaderId: baseTeamRow.leader_id,
+    };
+    mockedToCreateTeam.mockReturnValue(createdDto);
 
     const result = await teamService.createTeam(teamInput, 5);
 
     expect(mockedTeamRepo.createTeam).toHaveBeenCalledWith(teamInput, 5);
     expect(mockedToCreateTeam).toHaveBeenCalledWith(baseTeamRow);
-    expect(result).toEqual({ id: 10, name: 'New Team' });
+    expect(result).toEqual(createdDto);
   });
 
   it('throws VALIDATION_FAILED when the sport type does not exist', async () => {

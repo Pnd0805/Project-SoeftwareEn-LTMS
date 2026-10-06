@@ -74,7 +74,7 @@ import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import { isOrganizerOf } from '../../middlewares/requireOrganizer.js';
 import { assertSchedulable, isActiveReferee, findActiveRefereeRow, assertNoCrossTournamentConflict } from '../referee.service.js';
-import { toRefereeRequestDto } from '../../mappers/refereeRequest.mapper.js';
+import { toRefereeRequestDto, type RefereeRequestDto } from '../../mappers/refereeRequest.mapper.js';
 import * as NotificationService from '../notification.service.js';
 
 const mockedReqRepo = vi.mocked(ReqRepo);
@@ -114,6 +114,34 @@ function makeMatch(overrides: Record<string, unknown> = {}) {
     scheduled_end_time: future(2 * HOUR),
     ...overrides,
   } as any;
+}
+
+/**
+ * DTO เต็มตัวสำหรับ mock ของ toRefereeRequestDto — ทับเฉพาะคีย์ที่เทสสนใจ
+ * ★ อยู่ในไฟล์นี้เพราะใช้ที่เดียว (ตาม rows.ts: ย้ายไปของกลางเมื่อ "พบว่าซ้ำจริง" เท่านั้น)
+ * ★ ชนิดเป็น RefereeRequestDto ⇒ วันที่ DTO เพิ่มฟิลด์ จะพังที่นี่ที่เดียว ไม่ใช่ทุกเทส
+ */
+function makeRequestDto(overrides: Partial<RefereeRequestDto> = {}): RefereeRequestDto {
+  return {
+    id: 500,
+    tournamentId: 10,
+    type: 'org_swap',
+    withdrawScope: null,
+    reason: null,
+    requestedBy: 999,
+    refereeA: {
+      tournamentRefereeId: 1,
+      user: { id: 100, fullName: 'กรรมการ A', avatarUrl: null },
+      status: 'pending',
+    },
+    refereeB: null,
+    matchA: null,
+    matchB: null,
+    status: 'open',
+    createdAt: '2026-10-01T00:00:00.000Z',
+    resolvedAt: null,
+    ...overrides,
+  };
 }
 
 function makeRequestRow(overrides: Record<string, unknown> = {}) {
@@ -479,13 +507,16 @@ describe('listMyRequests', () => {
     const outgoingRow = makeRequestRow({ request_id: 2 });
     mockedReqRepo.findPendingForUser.mockResolvedValue([incomingRow]);
     mockedReqRepo.findCreatedByUser.mockResolvedValue([outgoingRow]);
-    mockedToDto.mockImplementation((r: any) => ({ id: r.request_id }));
+    mockedToDto.mockImplementation((r) => makeRequestDto({ id: r.request_id }));
 
     const result = await listMyRequests(100);
 
     expect(mockedReqRepo.findPendingForUser).toHaveBeenCalledWith(100);
     expect(mockedReqRepo.findCreatedByUser).toHaveBeenCalledWith(100);
-    expect(result).toEqual({ incoming: [{ id: 1 }], outgoing: [{ id: 2 }] });
+    expect(result).toEqual({
+      incoming: [makeRequestDto({ id: 1 })],
+      outgoing: [makeRequestDto({ id: 2 })],
+    });
   });
 
   it('returns empty arrays when there is nothing pending or created', async () => {
