@@ -4,6 +4,9 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   findRecentApproval: vi.fn(),
   findOpenReview: vi.fn(),
   findLatestRejection: vi.fn(),
+  // 🔴 ขาดตัวนี้ = ทุกเทสในไฟล์พังทันที ("No export is defined on the mock")
+  //    เพิ่มมา 6 ต.ค. 2569 พร้อมสถานะ 'expired' (มติอายุ 1 ปี ทางเลือก ค)
+  findLatestApprovalAnyAge: vi.fn(),
   findLiveExternalRows: vi.fn(),
   submitDocsForUser: vi.fn(),
 }));
@@ -22,6 +25,8 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  // ★ ค่าเริ่มต้น "ไม่เคยผ่านการยืนยันเลย" — เทสที่พูดถึงสถานะหมดอายุตั้งค่านี้เองในเทส
+  mockedRefRepo.findLatestApprovalAnyAge.mockResolvedValue(null);
 });
 
 describe('getIdentityState', () => {
@@ -340,5 +345,112 @@ describe('resolveApprovalForAccept', () => {
     expect(result).toEqual({
       status: 'pending', approvedBy: null, approvedAt: null, docs: null, reason: null, joinsOpenReview: false,
     });
+  });
+});
+
+/**
+ * 🔴 อายุการยืนยันตัวตน 1 ปี — มติ 6 ต.ค. 2569 ทางเลือก ค
+ *   "ทัวร์ใหม่ต้องตรวจใหม่ · ทัวร์เดิมไม่กระทบ"
+ *
+ * เดิมเมื่อผลอนุมัติเก่าเกิน 1 ปี จะได้ status 'none' + docsRequired true
+ *   ⇒ จอบอกว่า "ยังไม่ผ่านการยืนยัน ต้องส่งเอกสาร" ขณะที่คำตอบเดียวกันยังลิสต์ทัวร์ที่ approved
+ *     และเจ้าตัวยังคุมแมตช์ได้จริง (ด่านดูแค่สถานะ ไม่ดูอายุ)
+ *   ⇒ ถ้ากดส่งเอกสารตามที่จอบอก จะได้ 409 DOCS_NOT_EXPECTED = ทางตัน
+ * ★ เทสชุดนี้ล็อก "ข้อความไม่ขัดกับด่าน" ไม่ได้ล็อกพฤติกรรมของด่าน (ด่านไม่ถูกแตะเลย)
+ */
+describe('getIdentityState — ผลอนุมัติเก่าเกิน 1 ปี (มติทางเลือก ค)', () => {
+  const twoYearsAgo = new Date('2024-01-01T00:00:00Z');
+
+  const noneOpen = () => {
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);   // เกิน 1 ปี ⇒ คิวรีนี้ไม่คืนอะไร
+    mockedRefRepo.findOpenReview.mockResolvedValue(null);
+    mockedRefRepo.findLatestRejection.mockResolvedValue(null);
+  };
+
+  it('ได้สถานะ "expired" พร้อมวันที่หมดอายุ ไม่ใช่ "none"', async () => {
+    noneOpen();
+    mockedRefRepo.findLatestApprovalAnyAge.mockResolvedValue({ approved_at: twoYearsAgo } as never);
+
+    const result = await getIdentityState(100);
+
+    expect(result).toEqual({
+      status: 'expired',
+      approvedAt: twoYearsAgo,
+      expiresAt: new Date(twoYearsAgo.getTime() + ONE_YEAR_MS),
+      adminMessage: null,
+      docsSubmitted: false,
+    });
+  });
+
+  it('ไม่ขอเอกสาร เพราะยังไม่มีแถวที่รอการตรวจให้ส่ง (ไม่งั้นเป็นทางตัน)', async () => {
+    noneOpen();
+    mockedRefRepo.findLatestApprovalAnyAge.mockResolvedValue({ approved_at: twoYearsAgo } as never);
+    mockedRefRepo.findLiveExternalRows.mockResolvedValue([]);
+
+    const result = await getMyIdentity(100);
+
+    expect(result.status).toBe('expired');
+    expect(result.docsRequired).toBe(false);
+  });
+
+  /** ★ ไม่เคยยืนยันเลย ต้องยังเป็น 'none' + ขอเอกสาร — ด่านใหม่ต้องไม่กลืนเคสนี้ */
+  it('ไม่เคยยืนยันเลย ยังเป็น "none" และยังขอเอกสารเหมือนเดิม', async () => {
+    noneOpen();
+    mockedRefRepo.findLiveExternalRows.mockResolvedValue([]);
+
+    const result = await getMyIdentity(100);
+
+    expect(result.status).toBe('none');
+    expect(result.docsRequired).toBe(true);
+  });
+
+  /** ★ มีการตรวจค้างอยู่ (ถูกเชิญทัวร์ใหม่แล้ว) ⇒ pending ชนะ expired เพราะมีสิ่งที่ต้องทำจริง */
+  it('ถูกเชิญทัวร์ใหม่แล้ว (มีการตรวจค้าง) → pending ไม่ใช่ expired', async () => {
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);
+    mockedRefRepo.findOpenReview.mockResolvedValue(
+      { tournament_referee_id: 5, external_approval_status: 'pending',
+        external_verification_docs: null, external_rejection_reason: null } as never);
+    mockedRefRepo.findLatestApprovalAnyAge.mockResolvedValue({ approved_at: twoYearsAgo } as never);
+
+    const result = await getIdentityState(100);
+
+    expect(result.status).toBe('pending');
+  });
+
+  /**
+   * ★ มีทั้งใบปฏิเสธและใบอนุมัติที่หมดอายุ — ใบที่แอดมินตัดสินทีหลังเป็นคำตอบ
+   *   (ถูกปฏิเสธก่อน แล้วภายหลังผ่าน ⇒ ใบปฏิเสธเก่ายังค้างในฐาน ไม่ถูกล้าง)
+   */
+  it('ปฏิเสธก่อน แล้วผ่านทีหลัง (แต่หมดอายุแล้ว) → expired', async () => {
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);
+    mockedRefRepo.findOpenReview.mockResolvedValue(null);
+    mockedRefRepo.findLatestRejection.mockResolvedValue(
+      { approved_at: new Date('2023-01-01T00:00:00Z'), external_rejection_reason: 'เอกสารไม่ชัด' } as never);
+    mockedRefRepo.findLatestApprovalAnyAge.mockResolvedValue({ approved_at: twoYearsAgo } as never);
+
+    expect((await getIdentityState(100)).status).toBe('expired');
+  });
+
+  it('ผ่านก่อน แล้วถูกปฏิเสธทีหลัง → rejected (ใบปฏิเสธใหม่กว่า)', async () => {
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);
+    mockedRefRepo.findOpenReview.mockResolvedValue(null);
+    mockedRefRepo.findLatestRejection.mockResolvedValue(
+      { approved_at: new Date('2025-06-01T00:00:00Z'), external_rejection_reason: 'ไม่ผ่าน' } as never);
+    mockedRefRepo.findLatestApprovalAnyAge.mockResolvedValue({ approved_at: twoYearsAgo } as never);
+
+    const result = await getIdentityState(100);
+
+    expect(result.status).toBe('rejected');
+    expect(result.adminMessage).toBe('ไม่ผ่าน');
+  });
+
+  /** 🔴 หัวใจของมติ ค: ตอนรับคำเชิญทัวร์ใหม่ ผลเก่าที่หมดอายุต้องไม่ถูกก็อปมา */
+  it('ตอบรับคำเชิญทัวร์ใหม่: ผลเก่าเกิน 1 ปีไม่ถูกก็อป แถวใหม่เริ่มที่ pending', async () => {
+    mockedRefRepo.findRecentApproval.mockResolvedValue(null);   // กรอง 1 ปีแล้วไม่เหลือ
+    mockedRefRepo.findOpenReview.mockResolvedValue(null);
+
+    const result = await resolveApprovalForAccept({ is_external: 1, user_id: 100 }, ['k1.jpg']);
+
+    expect(result).toMatchObject({ status: 'pending', approvedAt: null, docs: ['k1.jpg'] });
   });
 });

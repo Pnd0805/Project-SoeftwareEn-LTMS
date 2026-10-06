@@ -191,6 +191,8 @@ export async function findAssignableByTournament(tournamentId : number): Promise
             AND tr.removed_at IS NULL
             AND tr.invitation_status = 'accepted'
             AND (tr.is_external = 0 OR tr.external_approval_status IN ('not_required', 'approved'))
+            -- ด่านดูสถานะ ไม่ดูอายุ (มติ 1 ปี ทางเลือก ค): ทัวร์ที่รับงานไปแล้วทำต่อได้จนจบ
+            -- อายุ 1 ปีมีผลตอน "รับงานใหม่" เท่านั้น ⇒ findRecentApproval ที่ตอน accept
           GROUP BY tr.tournament_referee_id, u.user_id, u.full_name, u.profile_image_key
           ORDER BY upcoming_match_count ASC, u.full_name ASC`, [tournamentId]);
     return rows;
@@ -309,6 +311,21 @@ export async function findRecentApproval(userId : number)
         `SELECT tournament_referee_id, approved_by, approved_at FROM tournament_referees
          WHERE user_id = ? AND is_external = 1 AND external_approval_status = 'approved'
            AND approved_at > DATE_SUB(NOW(), INTERVAL 1 YEAR)
+         ORDER BY approved_at DESC LIMIT 1`, [userId]);
+    return rows[0] ?? null;
+}
+
+/**
+ * ผล approve ล่าสุด **โดยไม่สนอายุ** — ใช้แยก "เคยผ่านแล้วหมดอายุ" ออกจาก "ไม่เคยยืนยันเลย"
+ * (มติ 6 ต.ค. 2569 อายุการยืนยัน 1 ปี ทางเลือก ค — ดูกฎเต็มที่หัว refereeIdentity.service.ts)
+ * 🔴 ห้ามเอาไปใช้เป็นด่านอนุญาตให้ทำงาน — ด่านต้องใช้ findRecentApproval ที่กรอง 1 ปี
+ */
+export async function findLatestApprovalAnyAge(userId : number)
+        : Promise<Pick<TournamentRefereeRow, 'approved_at'> | null>{
+    const [rows] = await pool.query<(Pick<TournamentRefereeRow, 'approved_at'> & RowDataPacket)[]>(
+        `SELECT approved_at FROM tournament_referees
+         WHERE user_id = ? AND is_external = 1 AND external_approval_status = 'approved'
+           AND approved_at IS NOT NULL
          ORDER BY approved_at DESC LIMIT 1`, [userId]);
     return rows[0] ?? null;
 }
