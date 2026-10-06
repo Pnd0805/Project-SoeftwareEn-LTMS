@@ -27,6 +27,7 @@ import {
 } from './CaptureModals'
 import { toTeamView } from '../match/matchView'
 import { checkinErrorMessage } from './checkinErrors'
+import { matchTime } from '../match/matchTime'
 import { CheckinQrPanel } from './CheckinQrPanel'
 
 /** M15 revokes accepted QR/manual check-ins as well as pending photo checks. */
@@ -46,7 +47,8 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
   const isRef = m.viewer.can.manageCheckin
   /* ตัดสินการเช็คอินของคนอื่นได้ไหม — คนละเรื่องกับการดูคอนโซล ดู can.verifyCheckin */
   const canJudge = m.viewer.can.verifyCheckin
-  const inCount = team.players.filter(p => p.checkinStatus === 'checked_in').length
+  const verifiedIds = new Set(checkins.filter(row => row.status === 'success').map(row => row.user.id))
+  const inCount = team.players.filter(player => verifiedIds.has(player.id)).length
 
   /** ผู้เล่นที่กำลังยืนยันตัวตนอยู่ · null = ไม่ได้เปิดโมดัล */
   const [capture, setCapture] = useState<number | null>(null)
@@ -60,31 +62,31 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
   const closeCapture = () => setCapture(null)
 
   return (
-    <Panel quiet>
+    <Panel quiet className="checkin-squad-frame">
       <div className="spread">
         <span className="tchip"><TeamMarkView team={toTeamView(team)} /><b>{team.name}</b></span>
         {/* ผู้เล่นเห็นแค่แถวของตัวเอง เขียน "1 of 12 in" ก็เท่ากับโกหกว่าที่เหลือยังไม่มา */}
         <span className="tag">
-          {isRef ? `${inCount} of ${team.players.length} in` : `${team.players.length} on the sheet`}
+          {isRef && rosterReadState === 'ready' ? `${inCount} of ${team.players.length} in` : `${team.players.length} on the sheet`}
         </span>
       </div>
       {/* ผู้เล่นอ่านรายการเช็คอินไม่ได้ (403) — คำตอบของการส่งจึงเป็นที่เดียวที่เจ้าตัวเห็นผล */}
       {checkin.isSuccess ? (
         <Banner kind={checkin.data.status === 'success' ? 'ok' : 'warn'} icon="check">
           {checkin.data.status === 'success'
-            ? <><b>เช็คอินเรียบร้อย</b> กรรมการเห็นชื่อคุณในรายการแล้ว</>
-            : <><b>ส่งรูปบัตรแล้ว</b> รอกรรมการตรวจ — สถานะจะเปลี่ยนเมื่อกรรมการกดผ่าน</>}
+            ? <><b>Checked in</b> The referee can see your check-in.</>
+            : <><b>Photo sent</b> Waiting for referee approval.</>}
         </Banner>
       ) : null}
       {checkin.isError ? (
-        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {checkinErrorMessage(checkin.error)}</Banner>
+        <Banner kind="crit"><b>Check-in failed</b> {checkinErrorMessage(checkin.error)}</Banner>
       ) : null}
       {/* คำตัดสินของกรรมการก็เด้งได้ (`ALREADY_REJECTED` · `ALREADY_DECIDED` ·
           `MATCH_NOT_CHANGEABLE`) เดิมไม่มีที่แสดง กดแล้วเงียบเหมือนไม่มีอะไรเกิดขึ้น */}
       {verify.isError ? (
-        <Banner kind="crit"><b>บันทึกคำตัดสินไม่สำเร็จ</b> {checkinErrorMessage(verify.error)}</Banner>
+        <Banner kind="crit"><b>Decision not saved</b> {checkinErrorMessage(verify.error)}</Banner>
       ) : null}
-      <TableWrap>
+      <TableWrap label={`${team.name} check-in roster`}>
         <table>
           <thead><tr><th>Player</th><th>How</th><th>State</th><th /></tr></thead>
           <tbody>
@@ -278,7 +280,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
  * ได้ 403 จึงไม่มีทางรู้ว่า "ใครยังไม่มา" ได้เลย หน้านี้เลยแสดงเท่าที่ระบบบอกได้จริง
  * คือรายการเช็คอินที่เกิดขึ้นแล้ว และให้ผู้เล่นที่ล็อกอินอยู่เช็คอินตัวเองได้
  */
-function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDto[] }) {
+function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: MatchCheckinDto[]; readState: CheckinReadState }) {
   const checkin = useCheckin(m.id)
   const verify = useVerifyCheckin(m.id)
   const isRef = m.viewer.can.manageCheckin
@@ -299,7 +301,7 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
         <span className="tag"><em>//</em> Check-in</span>
         {/* ยอดรวมเป็นความจริงเฉพาะกับคนที่อ่านรายการทั้งแมตช์ได้ — ผู้เล่นได้ 403
             จะเขียน "0 verified" ให้เขาอ่านก็เท่ากับบอกว่าไม่มีใครมา */}
-        {isRef ? (
+        {isRef && readState === 'ready' ? (
           <span className="tag">
             {checkins.length} · {checkins.filter(c => c.status === 'success').length} verified
           </span>
@@ -327,18 +329,18 @@ function CheckinConsole({ m, checkins }: { m: MatchDto; checkins: MatchCheckinDt
       {checkin.isSuccess ? (
         <Banner kind={checkin.data.status === 'success' ? 'ok' : 'warn'} icon="check">
           {checkin.data.status === 'success'
-            ? <><b>เช็คอินเรียบร้อย</b> กรรมการเห็นชื่อคุณในรายการแล้ว</>
-            : <><b>ส่งรูปบัตรแล้ว</b> รอกรรมการตรวจ — สถานะจะเปลี่ยนเมื่อกรรมการกดผ่าน</>}
+            ? <><b>Checked in</b> The referee can see your check-in.</>
+            : <><b>Photo sent</b> Waiting for referee approval.</>}
         </Banner>
       ) : null}
       {checkin.isError ? (
-        <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {checkinErrorMessage(checkin.error)}</Banner>
+        <Banner kind="crit"><b>Check-in failed</b> {checkinErrorMessage(checkin.error)}</Banner>
       ) : null}
       {verify.isError ? (
-        <Banner kind="crit"><b>บันทึกคำตัดสินไม่สำเร็จ</b> {checkinErrorMessage(verify.error)}</Banner>
+        <Banner kind="crit"><b>Decision not saved</b> {checkinErrorMessage(verify.error)}</Banner>
       ) : null}
       {checkins.length ? (
-        <TableWrap>
+        <TableWrap label="Other player check-ins">
           <table>
             <thead><tr><th>Player</th><th>How</th><th>State</th><th /></tr></thead>
             <tbody>
@@ -469,8 +471,10 @@ export function CheckinPage() {
   const { data: m, isPending, isError } = useMatch(matchId)
   const checkinsQuery = useCheckins(matchId)
   const myCheckinQuery = useMyCheckin(matchId)
-  const checkinData = checkinsQuery.data
-  const mine = myCheckinQuery.data
+  const deniedRoster = checkinsQuery.isError && [401, 403, 404].includes((checkinsQuery.error as { status?: number } | null)?.status ?? 0)
+  const deniedMine = myCheckinQuery.isError && [401, 403, 404].includes((myCheckinQuery.error as { status?: number } | null)?.status ?? 0)
+  const checkinData = deniedRoster ? undefined : checkinsQuery.data
+  const mine = deniedMine ? undefined : myCheckinQuery.data
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const [room, setRoom] = useState<string | null>(null)
 
@@ -509,26 +513,37 @@ export function CheckinPage() {
     : myCheckinQuery.isPending || myCheckinQuery.isFetching
       ? 'loading'
       : 'ready'
-  const everyoneIn = total > 0 && done >= total
+  const fullRosterKnown = !!m.teamA?.players.length && !!m.teamB?.players.length
+  const everyoneIn = isRef && rosterReadState === 'ready' && fullRosterKnown && total > 0 && done >= total
   const knownPlayerIds = new Set(squads.flatMap(t => t.players.map(p => p.id)))
 
   return (
-    <>
+    <div className="checkin-page">
       <Crumb back={{ label: 'Match', onClick: () => navigate(`/m/${m.id}`) }}>Check-in</Crumb>
       <div className="spread">
         <h1 className="disp" style={{ fontSize: 28 }}>Check in</h1>
         <Badge kind="warn">{m.mode === 'onsite' ? 'On-site' : 'Online'}</Badge>
       </div>
 
+      <div className="checkin-summary-pair">
+        <Panel className="checkin-summary-frame">
+          <h2>Player readiness</h2>
+          {isRef ? <>
+            <strong className="checkin-count">{rosterReadState === 'ready' ? done : '—'}</strong>
+            <p className="sub">{rosterReadState === 'ready' ? fullRosterKnown ? `of ${total} players verified` : 'verified players; full roster unavailable'
+              : rosterReadState === 'loading' ? 'Loading check-in status…' : 'Check-in status unavailable'}</p>
+          </> : <p className="sub">Your identity check is shown beside your name. Other check-ins may be private.</p>}
+          {m.checkinOpenAt ? <p className="sub">Check-in opens {matchTime(m.checkinOpenAt)}</p> : null}
+          <p className="sub">{m.mode === 'onsite' ? 'Players scan the referee’s QR using their own account.' : 'Players submit their own identity photo for referee review.'}</p>
+        </Panel>
       {isRef && m.mode === 'onsite' && m.status === 'checkin_open' ? (
-        <CheckinQrPanel key={m.id} matchId={m.id} mockToken={m.checkinToken} done={done} total={total} />
+        <CheckinQrPanel key={m.id} matchId={m.id} mockToken={m.checkinToken} done={done} total={fullRosterKnown ? total : 0} countsKnown={rosterReadState === 'ready'} />
       ) : null}
 
       {isRef && m.mode === 'online' ? (
-        <Panel>
+        <Panel className="checkin-summary-frame">
           <div className="spread">
-            <span className="tag"><em>//</em> Verified</span>
-            <span className="v" style={{ fontFamily: 'var(--f-mono)', fontSize: 24 }}>{done} / {total}</span>
+            <h2>Match room</h2>
           </div>
           {/* A null draft means untouched; an empty string remains a deliberate clear. */}
           {(
@@ -547,6 +562,8 @@ export function CheckinPage() {
           )}
         </Panel>
       ) : null}
+
+      </div>
 
       {!isRef && m.mode === 'online' && m.roomCode ? (
         <Banner kind="ok" icon="check">
@@ -584,6 +601,7 @@ export function CheckinPage() {
 
       {/* ทีมที่เรารู้รายชื่อ (ทีมของเราเอง) แสดงเต็มทีม — ทีมที่ไม่รู้ (backend เปิดให้เฉพาะ
           สมาชิกของทีมนั้น) แสดงเท่าที่เช็คอินเข้ามาแล้วในคอนโซลด้านล่าง ไม่ให้ซ้ำกัน */}
+      <div className="checkin-squad-pair">
       {squads.filter(t => t.players.length).map(t => (
         <SquadPanel
           key={t.id}
@@ -594,19 +612,20 @@ export function CheckinPage() {
           myCheckinReadState={myCheckinReadState}
         />
       ))}
+      </div>
       {squads.some(t => !t.players.length) ? (
-        <CheckinConsole m={m} checkins={checkins.filter(c => !knownPlayerIds.has(c.user.id))} />
+        <CheckinConsole m={m} readState={rosterReadState} checkins={checkins.filter(c => !knownPlayerIds.has(c.user.id))} />
       ) : null}
 
       {everyoneIn ? (
         <Panel>
-          <Banner kind="ok" icon="check"><b>Everyone is through.</b> Check-in is finished for this match.</Banner>
+          <Banner kind="ok" icon="check"><b>Everyone is through.</b> All listed players are verified.</Banner>
           {m.viewer.can.submitResult ? (
             <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
               onClick={() => navigate(`/m/${m.id}`)}>Record the result</button>
           ) : null}
         </Panel>
       ) : null}
-    </>
+    </div>
   )
 }

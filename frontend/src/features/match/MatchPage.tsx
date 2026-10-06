@@ -21,9 +21,9 @@ import { resultRecorder } from './resultAttribution'
 import { MatchMvpVoting } from '../mvp/MvpPage'
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
-  Badge, Banner, Crumb, Empty, Facts, Field, MatchStateBadge, Panel, TableWrap, Tabs,
+  Badge, Banner, Crumb, Empty, Facts, Field, MatchStateBadge, Panel, TableWrap,
 } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { ScorebugView } from '../../components/kit/Scorebug'
@@ -35,6 +35,9 @@ import { ApiError, USE_MOCK } from '../../api/client'
 import { useLtms } from '../../shared/store'
 import { findStoreMatch, tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
+import { MatchSection } from './MatchSection'
+import { MatchNextStep } from './MatchNextStep'
+import { matchTime } from './matchTime'
 import { ResultForm } from './ResultForm'
 import { ResultTrail } from './ResultTrail'
 import { SocialBar } from './SocialBar'
@@ -491,6 +494,16 @@ function SignOffError({ verify, dispute, mode }: {
 
 /** The one thing this person can do to this match, if anything. */
 function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
+  const eligible = !!m.teamA && !!m.teamB && m.viewer.can.submitResult
+    && (!result || result.status === 'rejected') && m.status !== 'in_progress' && m.status !== 'disputed'
+  const [visited, setVisited] = useState(eligible)
+  if (eligible && !visited) setVisited(true)
+  return <>
+    <ActionStatus m={m} result={result} />
+    {visited ? <ResultForm m={m} visible={eligible} /> : null}
+  </>
+}
+function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   const can = m.viewer.can
   const verify = useVerifyResult(m.id, m.tournamentId)
   const dispute = useDisputeResult(m.id, m.tournamentId)
@@ -537,7 +550,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               {m.mode === 'onsite' ? 'the referee enters it and the winning team leader confirms'
                 : 'the winning team leader enters it and the referee confirms'}.
             </div>
-            <ResultForm m={m} />
+
           </>
         ) : (
           <div className="sub">
@@ -662,7 +675,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   }
 
   /* No result yet. Whoever records first depends on the mode. */
-  if (can.submitResult) return <ResultForm m={m} />
+  if (can.submitResult) return null
 
   /* แมตช์ที่โต้แย้งอยู่แต่คนดูไม่มีสิทธิ์เห็นผล (A7 เปิดให้เฉพาะผู้จัด กรรมการของแมตช์
      และหัวหน้าทีมสองฝั่ง) — คนอื่นได้ 404 จึงมาถึงตรงนี้โดยไม่มี result */
@@ -725,13 +738,16 @@ function MockMatchCommunity({ matchId }: { matchId: string }) {
 
 export function MatchPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id, tab: tabParam } = useParams()
   /* ส่ง id ดิบจาก URL ไป — ชั้น API รับได้ทั้งเลขของ API และ string ของ store
      ระหว่างที่สไลซ์อื่นยังไม่ย้าย (ดู mocks/storeBridge.ts) */
   const matchId = id
 
   const { data: m, isPending, isError } = useMatch(matchId)
-  const { data: result } = useResult(matchId)
+  const resultQuery = useResult(matchId)
+  const resultStatus = (resultQuery.error as { status?: number } | null)?.status
+  const result = resultQuery.isError && [401, 403, 404].includes(resultStatus ?? 0) ? undefined : resultQuery.data
 
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the match…</span></Panel>
@@ -750,15 +766,14 @@ export function MatchPage() {
     && [m.teamA, m.teamB].some(team => team?.players.some(player => player.id === m.viewer.myUserId))
 
   return (
-    <>
+    <div className="match-page">
       <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}`) }}>{m.tag}</Crumb>
       <div className="spread">
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
         <MatchStateBadge state={state} />
       </div>
 
-      <div className="split">
-        <div>
+      <div className="match-scoreboard">
           <ScorebugView
             home={toTeamView(m.teamA)} away={toTeamView(m.teamB)}
             scoreA={sc.a} scoreB={sc.b}
@@ -767,11 +782,44 @@ export function MatchPage() {
             awayLost={settled && !!m.teamB && winnerId !== m.teamB.id}
             linkTeams={!USE_MOCK || !!findStoreMatch(matchId)}
           />
-          <Tabs tabs={TABS.map(x => ({ key: x, label: x === 'mvp' ? 'Vote MVP' : x === 'community' ? 'Community' : x }))} active={tab}
-            onPick={k => navigate(`/m/${m.id}/${k}`)} />
+      </div>
+      <div className="match-summary-pair">
+        <MatchNextStep m={m} result={result} />
+        <div className="match-details">
+          <Panel className="match-summary-frame">
+            <h2>Match details</h2>
+            <Facts rows={[
+              ['Kick-off', matchTime(m.scheduledTime)],
+              /* TODO(schema): FR-MM-05 asks for the venue's position so players can find it.
+                 `matches` stores only the name — no coordinates on the match or a join to get them. */
+              ['End', matchTime(m.scheduledEndTime)],
+              ['Venue', m.venue || 'Not set'],
+              ['Played', m.mode],
+              ['Referees', m.referees.map(r => r.fullName).join(', ') || 'none assigned'],
+              ['Stage', m.stage],
+              ...(m.mode === 'online' && m.roomCode ? [['Room code', m.roomCode] as [string, React.ReactNode]] : []),
+            ]} />
+            {m.viewer.can.editFixture ? (
+              <button className="btn" type="button" onClick={() => navigate(`/m/${m.id}/fixture`)}>
+                <Icon name="clock" size={13} /> Edit the fixture
+              </button>
+            ) : null}
+          </Panel>
+        </div>
+      </div>
+      <nav className="match-context-links" aria-label="Match navigation">
+        <button className="btn ghost" type="button" onClick={() => navigate(location.state?.matchListHref || '/matches', { state: { matchListScroll: location.state?.matchListScroll, matchListRegions: location.state?.matchListRegions } })}>Back to matches</button>
+        <button className="btn ghost" type="button" onClick={() => navigate(`/t/${tournamentRouteId(m.tournament.id)}/bracket`)}>View bracket</button>
+        {m.nextMatchId ? <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.nextMatchId}`, { state: location.state })}>Next match</button> : null}
+      </nav>
+      <nav className="tabs match-tabs" aria-label="Match sections">
+        {TABS.map(x => <button className={`tab ${tab === x ? 'on' : ''}`} type="button" key={x} aria-current={tab === x ? 'page' : undefined}
+          onClick={() => navigate(`/m/${m.id}/${x}`, { state: location.state })}>
+          {x === 'mvp' ? 'Vote MVP' : x === 'progress' ? 'History' : x.charAt(0).toUpperCase() + x.slice(1)}
+        </button>)}
+      </nav>
 
-          {tab === 'overview' ? (
-            <>
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-overview`} active={tab === 'overview'} label="Overview">
               <MatchLifecycle m={m} />
               {!USE_MOCK ? <RefereeMatchRequest m={m} /> : null}
               <ActionPanel m={m} result={result} />
@@ -800,17 +848,17 @@ export function MatchPage() {
                   </div>
                 </Panel>
               ) : null}
-            </>
-          ) : null}
+          </MatchSection>
 
-          {tab === 'lineup' ? (
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-lineup`} active={tab === 'lineup'} label="Lineup">
             <Panel quiet>
-              <span className="tag"><em>//</em> Lineup</span>
+              <h2>Lineup</h2>
+              <div className="match-lineup-pair">
               {[m.teamA, m.teamB].map((team, index) => team ? (
-                <div className="vstack" key={team.id} style={{ gap: 8 }}>
-                  <b>{team.name}</b>
+                <div className="match-lineup-frame" key={team.id}>
+                  <h3>{team.name}</h3>
                   {team.players.length ? (
-                    <TableWrap>
+                    <TableWrap label={`${team.name} lineup`}>
                       <table>
                         <thead><tr><th>Player</th><th>Check-in</th></tr></thead>
                         <tbody>
@@ -828,38 +876,17 @@ export function MatchPage() {
                     </TableWrap>
                   ) : <div className="sub">No approved players are attached to this side.</div>}
                 </div>
-              ) : <div className="sub" key={`empty-${index}`}>This side is waiting for a team.</div>)}
+              ) : <div className="match-lineup-frame" key={`empty-${index}`}>Waiting for a team.</div>)}
+              </div>
             </Panel>
-          ) : null}
+          </MatchSection>
 
-          {tab === 'stats' ? <StatSheet m={m} /> : null}
-          {tab === 'progress' ? <ResultTrail m={m} result={result} /> : null}
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-stats`} active={tab === 'stats'} label="Statistics"><StatSheet m={m} /></MatchSection>
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-progress`} active={tab === 'progress'} label="History"><ResultTrail m={m} result={result} /></MatchSection>
 
-          {tab === 'community' ? <MatchCommunity matchId={matchId} match={m} /> : null}
-          {tab === 'mvp' && !USE_MOCK ? <Panel quiet><h2>Match MVP</h2><MatchMvpVoting key={m.id} matchId={m.id} teamNames={Object.fromEntries([m.teamA, m.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></Panel> : null}
-        </div>
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-community`} active={tab === 'community'} label="Community"><MatchCommunity matchId={matchId} match={m} /></MatchSection>
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-mvp`} active={tab === 'mvp'} label="MVP">{!USE_MOCK ? <Panel quiet><h2>Match MVP</h2><MatchMvpVoting key={m.id} matchId={m.id} teamNames={Object.fromEntries([m.teamA, m.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></Panel> : null}</MatchSection>
 
-        <div className="rail">
-          <Panel>
-            <span className="tag"><em>//</em> The details</span>
-            <Facts rows={[
-              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : 'Not scheduled'],
-              /* TODO(schema): FR-MM-05 asks for the venue's position so players can find it.
-                 `matches` stores only the name — no coordinates on the match or a join to get them. */
-              ['Venue', m.venue || '—'],
-              ['Played', m.mode],
-              ['Referees', m.referees.map(r => r.fullName).join(', ') || 'none assigned'],
-              ['Stage', m.stage],
-              ...(m.mode === 'online' && m.roomCode ? [['Room code', m.roomCode] as [string, React.ReactNode]] : []),
-            ]} />
-            {m.viewer.can.editFixture ? (
-              <button className="btn" type="button" onClick={() => navigate(`/m/${m.id}/fixture`)}>
-                <Icon name="clock" size={13} /> Edit the fixture
-              </button>
-            ) : null}
-          </Panel>
-        </div>
-      </div>
-    </>
+    </div>
   )
 }

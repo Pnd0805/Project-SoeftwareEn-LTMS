@@ -95,6 +95,7 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - Derive next steps from the current setup sequence. Source loading/failure cannot establish zero counts or a permitted action. Authoritative access denial hides unavailable cached private content; retryable registration refresh retains the review and rejection draft.
 - Mount Manage sections on first visit, preserve inactive drafts without visible/focusable inactive content, suspend portal dialogs on tab changes, and reset when the Tournament changes. Existing Round-robin assignment placement remains in Referees.
 - Keep 20px panel padding, 24px major gaps, equal peer frame heights, concise English and the established palette/fonts. Keep decision controls visible while reviewing long lists; retain all server decisions and mutation contracts.
+- Referee follow-up: make swap requests and per-match assignments an equal 360px frame pair, side by side on desktop and stacked on narrow screens. Contain long lists/form content in native scroll areas; preserve all assignments, request states and mutation payloads.
 
 ### Rollout and compatibility
 
@@ -126,3 +127,7 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - The earlier correction batch passed 79 files / 537 tests, TypeScript, lint and build. That is prior evidence, not verification of this unimplemented rollout.
 - Browser access and a running backend were unavailable during previous acceptance. Keep those conditions visible until they are actually verified.
 - No issue-tracker configuration was found. These artifacts are local review drafts; tracker setup is available through `/setup-matt-pocock-skills` before external publication.
+
+## Ticket 6 approved scope — 2026-10-06
+
+The user approved the expanded Match Workspace summary and requested implementation. Follow the matching ticket's additions and the research note. Keep loaded-data filtering and grouping inside existing role queues. Retain drafts only for the same Match/account, hide inactive portals, and remove cached denied content. Read deadlines from supplied timestamps only; no new workflow timing or action capability. Result/statistic writes remain separate: partial success must be explicit. Existing API, hooks, DTOs, payloads and domain rules remain frozen.

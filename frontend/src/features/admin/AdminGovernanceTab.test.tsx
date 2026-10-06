@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
-const state = vi.hoisted(() => ({ scope: 'root', grant: vi.fn(), suspend: vi.fn(), profile: { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] }, loading: false, profileError: false, refetch: vi.fn() }))
+const state = vi.hoisted(() => ({ scope: 'root', grant: vi.fn(), suspend: vi.fn(), profile: { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] }, loading: false, profileError: false, refetch: vi.fn(), usersError: null as { status: number } | null, scopesError: null as { status: number } | null }))
 vi.mock('../../api/client', () => ({ USE_MOCK: false }))
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 9, email: 'admin@test', adminScope: { scopeType: state.scope, facultyId: 1 } } }) }))
 vi.mock('../../hooks/useReference', () => ({ useFaculties: () => ({ data: { items: [{ id: 1, name: 'Engineering' }] } }) }))
@@ -8,16 +8,53 @@ vi.mock('../../hooks/useUser', () => ({ usePublicUser: () => ({
  data: state.profile, isPending: state.loading, isError: state.profileError, refetch: state.refetch,
 }) }))
 vi.mock('../../hooks/useAdmin', () => ({
- useAdminScopes: () => ({ isSuccess: true, data: { items: [] } }),
+ useAdminScopes: () => ({ isSuccess: !state.scopesError, isError: !!state.scopesError, error: state.scopesError, refetch: state.refetch, data: { items: [] } }),
  useAuditLogs: () => ({ isSuccess: true, data: { items: [] } }),
  useGrantAdminScope: () => ({ mutate: state.grant, reset: vi.fn() }),
  useRevokeAdminScope: () => ({ mutate: vi.fn(), reset: vi.fn() }),
  useSuspendUser: () => ({ mutate: state.suspend, reset: vi.fn() }),
- useUsersForAdmin: () => ({ isSuccess: true, data: { items: [{ user: { id: 7, fullName: 'Player' }, email: 'player@test', userType: 'student', facultyName: 'Engineering', facultyId: 1, teamCount: null, adminScopes: [], isSuspended: false }] } }),
+ useUsersForAdmin: () => ({ isSuccess: !state.usersError, isError: !!state.usersError, error: state.usersError, refetch: state.refetch, data: { items: [{ user: { id: 7, fullName: 'Player' }, email: 'player@test', userType: 'student', facultyName: 'Engineering', facultyId: 1, teamCount: null, adminScopes: [], isSuspended: false }] } }),
 }))
 import { AdminScopesTab } from './AdminGovernanceTab'
 import { AdminUsersTab } from './AdminUsersTab'
-beforeEach(() => { state.scope = 'root'; state.grant.mockReset(); state.suspend.mockReset(); state.loading = false; state.profileError = false; state.refetch.mockReset(); state.profile = { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] } })
+beforeEach(() => { state.scope = 'root'; state.grant.mockReset(); state.suspend.mockReset(); state.loading = false; state.profileError = false; state.refetch.mockReset(); state.profile = { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] }; state.usersError = null; state.scopesError = null })
+
+it('retains the user list and suspension draft through a recoverable refresh failure', () => {
+ state.scope = 'university_wide'; const view = render(<AdminUsersTab />)
+ fireEvent.click(screen.getByRole('button', { name: 'Suspend' }))
+ fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'Repeated spam' } })
+ state.usersError = { status: 503 }; view.rerender(<AdminUsersTab />)
+ expect(screen.getByRole('table', { hidden: true })).toHaveTextContent('player@test')
+ expect(screen.getByLabelText(/Reason/)).toHaveValue('Repeated spam')
+})
+it('hides a cached user and suspension dialog when access is denied', () => {
+ state.scope = 'university_wide'; const view = render(<AdminUsersTab />)
+ fireEvent.click(screen.getByRole('button', { name: 'Suspend' }))
+ state.usersError = { status: 403 }; view.rerender(<AdminUsersTab />)
+ expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+ expect(screen.queryByText('Player')).not.toBeInTheDocument()
+})
+it('hides the grant form and confirmation after the rights source denies access', () => {
+ const view = render(<AdminScopesTab />)
+ fireEvent.change(screen.getByLabelText('User ID'), { target: { value: '42' } })
+ fireEvent.click(screen.getByRole('button', { name: 'Review grant' }))
+ state.scopesError = { status: 403 }; view.rerender(<AdminScopesTab />)
+ expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+ expect(screen.queryByLabelText('User ID')).not.toBeInTheDocument()
+})
+it('keeps a reviewed user grant open until its request succeeds', () => {
+ state.scope = 'university_wide'; render(<AdminUsersTab />)
+ fireEvent.click(screen.getByRole('button', { name: 'Make admin' }))
+ fireEvent.click(screen.getByRole('button', { name: 'Make admin' }))
+ expect(state.grant).toHaveBeenCalledWith({ userId: 7, scopeType: 'faculty', facultyId: 1 }, expect.anything())
+ expect(screen.getByRole('dialog')).toHaveTextContent('Player')
+})
+it('hides an open user grant if the current actor loses the required rights', () => {
+ state.scope = 'university_wide'; const view = render(<AdminUsersTab />)
+ fireEvent.click(screen.getByRole('button', { name: 'Make admin' }))
+ state.scope = 'faculty'; view.rerender(<AdminUsersTab />)
+ expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
 it('Root reviews a university grant before sending it', () => {
  render(<AdminScopesTab />)
  fireEvent.change(screen.getByLabelText('User ID'), { target: { value: '42' } })

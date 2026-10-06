@@ -18,9 +18,10 @@
  * กล่อง "คำเชิญเป็นกรรมการ" อ่านจาก GET /me/referee-invitations อย่างเดียว
  * (route มีใน backend แล้ว จึงไม่มี fallback จาก store)
  */
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Banner, Empty, Panel, MatchStateBadge, TableWrap } from '../../components/kit/primitives'
+import { matchTime } from '../match/matchTime'
 import { Icon } from '../../components/kit/Icon'
 import { Modal } from '../../components/kit/Modal'
 import { TeamChipView, TeamLinkView } from '../../components/kit/chips'
@@ -35,6 +36,20 @@ import {
 } from '../match/matchView'
 import type { MatchListItemDto } from '../../types/match.dto'
 import type { MyRefereeInvitationDto } from '../../types/admin.dto'
+
+function useOpenMatch() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  return (href: string) => {
+    const matchListHref = location.pathname + location.search
+    const matchListScroll = window.scrollY
+    const matchListRegions = Object.fromEntries([...document.querySelectorAll<HTMLElement>('.match-list-groups-scroll, .match-bucket-scroll')]
+      .map(region => [region.getAttribute('aria-label') ?? '', region.scrollTop]))
+    const state = { ...location.state, matchListScroll, matchListRegions }
+    navigate(matchListHref, { replace: true, state })
+    navigate(href, { state: { ...state, matchListHref } })
+  }
+}
 
 function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
   return (
@@ -53,7 +68,7 @@ function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
         <div>
           <span className="tag">Kick-off</span>
           <span className="v" style={{ fontSize: 16, fontFamily: 'var(--f-mono)' }}>
-            {m.scheduledTime ? fmtDate(m.scheduledTime) : 'Not scheduled'}
+            {m.scheduledTime ? matchTime(m.scheduledTime) : 'Not scheduled'}
           </span>
         </div>
         <div>
@@ -75,10 +90,10 @@ function MatchCard({ m, onPick }: { m: MatchListItemDto; onPick: () => void }) {
   )
 }
 
-function MatchTable({ list }: { list: MatchListItemDto[] }) {
-  const navigate = useNavigate()
+function MatchTable({ list, label = 'Matches' }: { list: MatchListItemDto[]; label?: string }) {
+  const openMatch = useOpenMatch()
   return (
-    <TableWrap>
+    <TableWrap label={label}>
       <table>
         <thead>
           <tr><th>Kick-off</th><th>Tournament</th><th>Home</th><th /><th>Away</th><th>Score</th><th>State</th><th /></tr>
@@ -86,14 +101,14 @@ function MatchTable({ list }: { list: MatchListItemDto[] }) {
         <tbody>
           {list.map(m => (
             <tr key={m.id}>
-              <td className="num">{m.scheduledTime ? fmtDate(m.scheduledTime) : '—'}</td>
+              <td className="num">{m.scheduledTime ? matchTime(m.scheduledTime) : 'Not scheduled'}</td>
               <td className="sub">{m.tournament.name}</td>
               <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
               <td className="tag">vs</td>
               <td><TeamLinkView team={toTeamView(m.teamB)} /></td>
               <td className="num">{scoreText(m)}</td>
               <td><MatchStateBadge state={matchStateOf(m)} /></td>
-              <td><button className="btn primary" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button></td>
+              <td><button className="btn primary" type="button" onClick={() => openMatch(`/m/${m.id}`)}>Open</button></td>
             </tr>
           ))}
         </tbody>
@@ -104,16 +119,16 @@ function MatchTable({ list }: { list: MatchListItemDto[] }) {
 
 /** A card summary opening straight into a short menu of what to do next. */
 function RefQuickCard({ m, onClose }: { m: MatchListItemDto; onClose: () => void }) {
-  const navigate = useNavigate()
+  const openMatch = useOpenMatch()
   const bucket = refBucketOf(m)
   const primary = bucket === 'room' ? 'Open the room'
     : bucket === 'score' ? 'Enter the score'
       : bucket === 'confirm' ? 'Confirm the result' : 'Open the match'
-  const blurb = bucket === 'room' ? 'ไม่มี QR ให้สแกนเพราะแข่งออนไลน์ — ประกาศรหัสห้องก่อน แล้วทั้งสองทีมจะได้รับแจ้ง'
-    : bucket === 'score' ? "Both sides are due on court — record the result once it's in."
-      : bucket === 'confirm' ? 'The winning squad already submitted online — confirm it to close this out.'
-        : 'Nothing for you to do yet — waiting on the squads.'
-  const go = (href: string) => { onClose(); navigate(href) }
+  const blurb = bucket === 'room' ? 'Review the online room and player check-ins.'
+    : bucket === 'score' ? 'Result entry opens after play finishes.'
+      : bucket === 'confirm' ? 'Review the submitted result and your available actions.'
+        : 'Open the match to see the current state.'
+  const go = (href: string) => { onClose(); openMatch(href) }
   return (
     <>
       <div className="spread">
@@ -244,95 +259,103 @@ function RefereeInvites() {
   )
 }
 
+function GroupedMatches({ list, title }: { list: MatchListItemDto[]; title: string }) {
+  const groups = new Map<string, MatchListItemDto[]>()
+  for (const match of list) {
+    const key = `${match.tournament.id}:${match.stage}`
+    groups.set(key, [...(groups.get(key) ?? []), match])
+  }
+  return <section className="match-list-section" aria-label={title}>
+    <h2>{title} <span className="sub">{list.length}</span></h2>
+    <div className="match-list-groups-scroll" role="region" aria-label={`${title} matches`} tabIndex={0}>
+    {[...groups.entries()].map(([key, rows]) => <div className="match-list-group" key={key}>
+      <h3>{rows[0].tournament.name} <span className="sub">{rows[0].stage}</span></h3>
+      <MatchTable list={rows} label={`${title}: ${rows[0].tournament.name}, ${rows[0].stage}`} />
+    </div>)}
+    </div>
+  </section>
+}
+
 export function MatchesPage() {
   const [quick, setQuick] = useState<MatchListItemDto | null>(null)
+  const [params, setParams] = useSearchParams()
+  const location = useLocation()
+  const search = params.get('q') ?? ''
+  const selectedState = params.get('state') ?? ''
   const { data, isPending, isError, error, refetch } = useMyMatches()
-
-  if (isPending) {
-    return (
-      <>
-        <h1 className="disp" style={{ fontSize: 32 }}>Matches</h1>
-        <Panel quiet><span className="sub">Loading your fixture list…</span></Panel>
-      </>
-    )
+  const status = (error as { status?: number } | null)?.status
+  const denied = isError && [401, 403, 404].includes(status ?? 0)
+  useEffect(() => {
+    const position = location.state?.matchListScroll
+    if (typeof position === 'number') window.scrollTo({ top: position, behavior: 'instant' })
+    const regions = location.state?.matchListRegions
+    if (regions) for (const region of document.querySelectorAll<HTMLElement>('.match-list-groups-scroll, .match-bucket-scroll')) {
+      const top = regions[region.getAttribute('aria-label') ?? '']
+      if (typeof top === 'number') region.scrollTop = top
+    }
+  }, [location.key, location.state, data])
+  const filter = (key: string, value: string) => {
+    const next = new URLSearchParams(params)
+    if (value) next.set(key, value); else next.delete(key)
+    setParams(next, { replace: true })
   }
-
-  if (isError) {
-    return (
-      <>
-        <h1 className="disp" style={{ fontSize: 32 }}>Matches</h1>
-        <Banner kind="crit">
-          <b>Could not load your matches.</b>{' '}
-          {error instanceof Error ? error.message : 'Something went wrong.'}
-        </Banner>
-        <div className="hstack">
-          <button className="btn primary" type="button" onClick={() => refetch()}>Try again</button>
-        </div>
-      </>
-    )
-  }
-
-  const all = data.items
-  const asRef = all.filter(m => m.viewer.roles.includes('referee'))
-  const asPlayer = all.filter(m => m.viewer.roles.includes('player'))
-  const asOrg = all.filter(m => m.viewer.roles.includes('organizer'))
+  const all = denied ? [] : data?.items ?? []
+  const needle = search.trim().toLocaleLowerCase()
+  const visible = all.filter(m => (!needle || [m.tournament.name, m.stage, m.tag, m.teamA?.name, m.teamB?.name, m.venue]
+    .some(value => value?.toLocaleLowerCase().includes(needle))) && (!selectedState || matchStateOf(m) === selectedState))
+  const asRef = visible.filter(m => m.viewer.roles.includes('referee'))
+  const asPlayer = visible.filter(m => m.viewer.roles.includes('player'))
+  const asOrg = visible.filter(m => m.viewer.roles.includes('organizer'))
   const orgDisputes = asOrg.filter(m => matchStateOf(m) === 'disputed')
   const refOpen = asRef.filter(isOpen)
-
   const grouped: Record<RefBucket, MatchListItemDto[]> = { room: [], score: [], confirm: [], waiting: [] }
   refOpen.forEach(m => { grouped[refBucketOf(m)].push(m) })
+  const currentQuick = quick && !denied ? all.find(m => m.id === quick.id) : null
 
-  return (
-    <>
-      <h1 className="disp" style={{ fontSize: 32 }}>Matches</h1>
-
-      <RefereeInvites />
-
-      {orgDisputes.length ? (
-        <>
-          <Banner kind="crit">
-            <b>
-              {orgDisputes.length === 1
-                ? '1 dispute needs your decision.'
-                : `${orgDisputes.length} disputes need your decision.`}
-            </b>
-          </Banner>
-          <MatchTable list={orgDisputes} />
-        </>
-      ) : null}
-
-      {refOpen.length ? (
-        <>
-          <span className="tag"><em>//</em> You are officiating — waiting on you · {refOpen.length}</span>
+  return <div className="matches-page">
+    <h1 className="disp">Matches</h1>
+    {isError ? <Banner kind="crit">
+      <b>Could not load your matches.</b> {error instanceof Error ? error.message : 'Try refreshing the list.'}
+      <button className="btn" type="button" onClick={() => void refetch()}>Try again</button>
+    </Banner> : null}
+    {denied || (isError && !data) ? null : isPending && !data
+      ? <Panel quiet>Loading your fixture list…</Panel>
+      : <>
+        <div className="match-list-toolbar">
+          <label className="field">Search<input type="search" aria-label="Search matches" placeholder="Team, tournament or round" value={search}
+            onChange={e => filter('q', e.target.value)} /></label>
+          <label className="field">Status<select aria-label="Match status" value={selectedState} onChange={e => filter('state', e.target.value)}>
+            <option value="">All statuses</option>
+            {Object.entries({ waiting: 'Waiting for teams', scheduled: 'Scheduled', checkin: 'Check-in open', live: 'In progress', finished: 'Finished', pending: 'Awaiting confirmation', confirmed: 'Confirmed', disputed: 'Disputed', rejected: 'Result rejected' })
+              .map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select></label>
+          <span className="sub" role="status">{visible.length} of {all.length} matches</span>
+          {search || selectedState ? <button className="btn ghost" type="button" onClick={() => {
+            const next = new URLSearchParams(params); next.delete('q'); next.delete('state'); setParams(next, { replace: true })
+          }}>Clear filters</button> : null}
+        </div>
+        <RefereeInvites />
+        {orgDisputes.length ? <GroupedMatches title="Disputes to review" list={orgDisputes} /> : null}
+        {refOpen.length ? <section className="match-list-section" aria-label="Referee work">
+          <h2>Referee work <span className="sub">{refOpen.length}</span></h2>
           <div className="refgrid">
-            {(Object.keys(REF_BUCKETS) as RefBucket[]).map(k => (
-              <div className="vstack" style={{ gap: 12 }} key={k}>
-                <span className="tag"><em>//</em> {REF_BUCKETS[k].label} · {grouped[k].length}</span>
-                {grouped[k].length
-                  ? (
-                    <div className="vstack" style={{ gap: 12 }}>
-                      {grouped[k].map(m => <MatchCard key={m.id} m={m} onPick={() => setQuick(m)} />)}
-                    </div>
-                  )
-                  : <span className="refempty">{REF_BUCKETS[k].empty}</span>}
+            {(Object.keys(REF_BUCKETS) as RefBucket[]).map(k => <div className="match-work-bucket" key={k}>
+              <h3>{REF_BUCKETS[k].label} <span className="sub">{grouped[k].length}</span></h3>
+              <div className="match-bucket-scroll" role="region" aria-label={REF_BUCKETS[k].label} tabIndex={0}>
+                {grouped[k].length ? grouped[k].map(m => <MatchCard key={m.id} m={m} onPick={() => setQuick(m)} />)
+                  : <span className="sub">{REF_BUCKETS[k].empty}</span>}
               </div>
-            ))}
+            </div>)}
           </div>
-        </>
-      ) : null}
-
-      {asRef.length ? (<><span className="tag"><em>//</em> You are officiating — every match · {asRef.length}</span><MatchTable list={asRef} /></>) : null}
-      {asPlayer.length ? (<><span className="tag"><em>//</em> Your squad plays · {asPlayer.length}</span><MatchTable list={asPlayer} /></>) : null}
-      {asOrg.length ? (<><span className="tag"><em>//</em> You run this tournament · {asOrg.length}</span><MatchTable list={asOrg} /></>) : null}
-
-      {!asRef.length && !asPlayer.length && !asOrg.length ? (
-        <Empty icon="match" title="Nothing on your fixture list"
-          sub="Matches appear once a bracket you are part of is drawn." />
-      ) : null}
-
-      <Modal open={!!quick} onClose={() => setQuick(null)}>
-        {quick ? <RefQuickCard m={quick} onClose={() => setQuick(null)} /> : null}
-      </Modal>
-    </>
-  )
+        </section> : null}
+        {asRef.length ? <GroupedMatches title="You referee" list={asRef} /> : null}
+        {asPlayer.length ? <GroupedMatches title="Your team" list={asPlayer} /> : null}
+        {asOrg.length ? <GroupedMatches title="You organize" list={asOrg} /> : null}
+        {!visible.length ? <Empty icon="match" title={all.length ? 'No matches found' : 'No matches yet'}
+          sub={all.length ? 'Change or clear your filters.' : 'Your matches appear after the bracket is drawn.'} /> : null}
+      </>}
+    <Modal open={!!currentQuick} title="Match preview" onClose={() => setQuick(null)}>
+      {currentQuick ? <RefQuickCard m={currentQuick} onClose={() => setQuick(null)} /> : null}
+    </Modal>
+  </div>
 }

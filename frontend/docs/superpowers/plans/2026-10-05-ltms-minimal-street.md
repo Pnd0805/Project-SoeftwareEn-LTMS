@@ -12,14 +12,14 @@
 
 ## Global Constraints
 
-- Work under `frontend/` in the existing `ltms-desktop-ux` worktree. Source paths below are relative to `frontend/`; commands run there.
+- Work under `frontend/` in the assigned worktree. Tasks 1–7 used `ltms-desktop-ux`; the user authorized separate Orca worktrees for 8A and 8B on 2026-10-06. Source paths below are relative to `frontend/`; commands run there.
 - Freeze `src/api/`, `src/types/`, hook implementations in `src/hooks/`, `src/shared/store.ts` and `src/shared/rules.ts` at this phase's starting working tree. Earlier changes remain intact.
 - Preserve payloads, endpoints, permissions and domain rules. Record missing server capabilities; show supported states and actions.
 - Keep concise English UI and glossary distinctions. Preserve the previous partial-source, privacy, dialog and registration draft-retention corrections.
 - Use A's existing color tokens in both themes, 2px corners, Barlow Condensed Bold for principal headings and Geist for body text and controls.
 - Desktop acceptance is 1280 × 800 and 1440 × 900, both themes. Mobile redesign follows this phase; retain responsive usability meanwhile.
 - Add behavioral tests for changed behavior. Use rendered inspection for CSS-only decisions rather than tests that repeat CSS values.
-- Execute directly. Retain uncommitted work and prototype evidence until the user requests a commit or archival branch. No merge, push or deployment is part of this plan.
+- Execute directly within each assigned worktree. The user authorized tested completion commits for 8A and 8B; commit only that ticket's changes. Preserve inherited work and prototype evidence. No merge, push or deployment is part of this plan.
 
 ## Review Focus
 
@@ -33,10 +33,11 @@
 
 - Before Task 1, record the starting branch/commit, frozen-file names and SHA-256 hashes in this plan's execution ledger. Include inherited uncommitted files; a HEAD-only diff is not the phase boundary.
 - The frozen working-tree set is captured in the [API and source baseline manifest](../notes/2026-10-05-ltms-minimal-street-api-baseline.md); compare all 49 hashes during final review, including inherited uncommitted changes.
-- Task 1 produces the shared appearance and Home/Tournaments route distinction consumed by Tasks 2–8. Keep existing class names and kit signatures so those pages remain functional during migration.
+- Task 1 produces the shared appearance and Home/Tournaments route distinction consumed by Tasks 2–7, 8A and 8B. Keep existing class names and kit signatures so those pages remain functional during migration.
 - Task 2 alone adds the preview callback to Tournament cards and query selection to Home. Task 4 consumes the existing full Tournament destinations, not preview internals.
-- Tasks 3–8 share the design system but do not depend on each other's behavior. Execute them in numerical order and scope local layout rules to the relevant feature.
-- Task 9 consumes all eight completed slices and their evidence. A missing browser or backend keeps the corresponding acceptance row pending.
+- Tasks 3–7, 8A and 8B share the design system but do not depend on each other's behavior. The user authorized parallel 8A/8B execution in separate Orca worktrees on 2026-10-06; each worker implements its own ticket directly without supervised orchestration or additional agents.
+- Task 8 was split into 8A (Account) and 8B (Search/Inbox). Each has separate files, verification and evidence. Use the exact task identifier `8A` or `8B` when extracting an execution brief. Use the two owned feature stylesheets instead of editing shared `src/styles/prototype.css`. Each worker updates only its ticket and note; shared plan/index completion accounting waits for integration. Merge/push are not authorized.
+- Task 9 consumes all nine completed implementation slices and their combined evidence. A missing browser or backend keeps the corresponding acceptance row pending.
 - Review directly under the user's no-subagent instruction. Document that the final source review is by the implementer; do not represent it as independent review.
 
 ---
@@ -153,10 +154,12 @@
 - Consumes: current Match capability flags, result state, Lineup/Check-in behavior and dedicated QR colors.
 - Produces: the same Match actions and payloads with aligned participants, score, status and controls.
 
-- [ ] **Step 1: Trace a viewer, Team Leader and assigned Referee view using existing fixtures.** Identify the supported actions in each state; retain missing-capability behavior.
-- [ ] **Step 2: Apply the Match presentation.** Keep scores and time units intact, contain wide statistics, preserve result/Dispute feedback and retain QR-specific foreground/background tokens.
-- [ ] **Step 3: Verify.** Run `npx vitest run src/features/match src/features/checkin src/features/mvp src/components/kit/Scorebug.test.tsx`. Expected: all existing capability, result, attribution, camera and QR cases pass.
-- [ ] **Step 4: Record rendered cases.** Include long Team names, dense Player statistics, QR in both themes, a result dialog and unsupported real-mode action capabilities.
+- [x] **Step 1: Trace a viewer, Team Leader and assigned Referee view using existing fixtures.** Identify the supported actions in each state; retain missing-capability behavior.
+- [x] **Step 2: Apply the Match presentation.** Keep scores and time units intact, contain wide statistics, preserve result/Dispute feedback and retain QR-specific foreground/background tokens.
+- [x] **Step 3: Verify.** Run `npx vitest run src/features/match src/features/checkin src/features/mvp src/components/kit/Scorebug.test.tsx`. Expected: all existing capability, result, attribution, camera and QR cases pass.
+- [x] **Step 4: Record rendered cases.** Include long Team names, dense Player statistics, QR in both themes, a result dialog and unsupported real-mode action capabilities.
+
+**Completion evidence:** [Ticket 06](../notes/2026-10-06-ltms-ticket-06.md). Expanded existing-surface scope approved on 2026-10-06. Full suite: 92 files / 615 tests; focused Match suite: 18 files / 107 tests before the final readiness count regression case. TypeScript, lint and production build passed. All 49 frozen hashes unchanged. Desktop 1280x800 / 1440x900 and narrow 390x844 checked in both themes with intercepted HTTP fixtures: 66 captures / 72 records plus six readiness-count checks. Direct standards/spec review completed. No live backend testing or commit.
 
 ### Task 7: Scoped Admin review
 
@@ -168,25 +171,44 @@
 - Consumes: existing Admin scope/access results and work queues.
 - Produces: identical permitted decisions, with readable rows/details and retained feedback after removal from a queue.
 
-- [ ] **Step 1: Trace a faculty-scoped review, a university-scoped review and an unauthorized staff account.** Use the existing probe and query behavior as authority.
-- [ ] **Step 2: Apply the Admin presentation.** Group work types and expose entity, state and decision context; retain named confirmation and success/error feedback.
-- [ ] **Step 3: Verify.** Run `npx vitest run src/features/admin src/components/layout/Shell.admin.test.ts src/features/home/RealHomeTasks.adminAccess.test.tsx`. Expected: all pass with no broadened access.
-- [ ] **Step 4: Record rendered cases.** Include a long request, an empty scoped queue, a denied account and a decision whose row disappears.
+- [x] **Step 1: Trace a faculty-scoped review, a university-scoped review and an unauthorized staff account.** Use the existing probe and query behavior as authority.
+- [x] **Step 2: Apply the Admin presentation.** Group work types and expose entity, state and decision context; retain named confirmation and success/error feedback.
+- [x] **Step 3: Verify.** Run `npx vitest run src/features/admin src/components/layout/Shell.admin.test.ts src/features/home/RealHomeTasks.adminAccess.test.tsx`. Expected: all pass with no broadened access.
+- [x] **Step 4: Record rendered cases.** Include a long request, an empty scoped queue, a denied account and a decision whose row disappears.
 
-### Task 8: Account, Search and Inbox
+**Completion evidence:** [Ticket 07](../notes/2026-10-06-ltms-ticket-07.md). Full suite: 93 files / 629 tests; final focused Admin suite: 8 files / 36 tests. TypeScript, lint and production build passed. All 49 frozen hashes unchanged. Desktop 1280x800 / 1440x900 and narrow 390x844 checked in both themes using intercepted HTTP fixtures: 71 captures / 78 records. One batched visual correction and confirmation; direct standards/spec review completed. No live backend testing or commit. Tickets 8–9 remain separate pending slices.
+
+### Task 8A: Account
 
 **Files:**
-- Adapt: `src/features/auth/LoginPage.tsx`, `RegisterPage.tsx`; `src/features/profile/ProfilePage.tsx`; `src/features/search/SearchPage.tsx`; `src/features/inbox/InboxPage.tsx`, `BackendInbox.tsx`; scoped CSS.
-- Reuse Profile, Search and both Inbox-mode tests.
+- Adapt: `src/features/auth/LoginPage.tsx`, `RegisterPage.tsx`; `src/features/profile/ProfilePage.tsx`.
+- Create: `src/features/auth/account-workspace.css`; import from the owned pages and scope rules to Account roots, retaining current shared tokens.
+- Reuse: `src/features/profile/ProfilePage.test.tsx`, `src/components/layout/Shell.profile.test.tsx`. Add auth consumer tests under `src/features/auth/` only for concrete uncovered behavior affected by the work.
 
 **Interfaces:**
-- Consumes: current authentication, account editing, search and notification behavior.
-- Produces: the same routes and handlers with consistent form, list and feedback presentation.
+- Consumes: Task 1 presentation, current authentication hooks/schemas, reference data and account editing behavior.
+- Produces: unchanged Login/Register/Profile routes, submits and redirects with consistent fields, retained values and save/validation feedback. No interface needed by 8B changes.
 
-- [ ] **Step 1: Inspect the sign-in, account editing, empty/failed Search and actionable Inbox states.** Keep the current submit/redirect and permission behavior.
-- [ ] **Step 2: Apply the supporting-page presentation.** Use shared fields and actions, readable validation text, contextual labels and stable feedback placement. Keep avatar fallbacks and edited values.
-- [ ] **Step 3: Verify.** Run `npx vitest run src/features/profile src/features/search src/features/inbox src/components/layout/Shell.profile.test.tsx`. Expected: all pass.
-- [ ] **Step 4: Record rendered cases.** Include auth validation, long Profile/Inbox content, Search failure and an Inbox action that changes the displayed row.
+- [ ] **Step 1: Inspect sign-in, registration and account editing states.** Trace existing validation, staff/student redirect, faculty/department selections, save failure and avatar upload/fallback behavior; keep current handlers and permissions.
+- [ ] **Step 2: Apply Account presentation.** Use shared fields/actions, concise English, readable validation and stable pending/save feedback. Preserve edited values and existing mock-only controls. Scope layout changes to Account roots; leave Search/Inbox and shared tokens intact.
+- [ ] **Step 3: Verify.** Run `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run src/features/auth src/features/profile src/components/layout/Shell.profile.test.tsx`, TypeScript, lint and build; compare frozen hashes. Expected: exit 0 and no changed frozen file. If an affected auth behavior lacks coverage, add a consumer test asserting its original payload/redirect or retained draft after rejection, observing the regression before fixing it.
+- [ ] **Step 4: Record rendered cases and direct review.** Check Login validation, Register reference choices/errors, long Profile content, avatar fallback and failed save in both desktop sizes/themes and at 390px. Record keyboard access, no page overflow and actual data-mode behavior in `docs/superpowers/notes/2026-10-06-ltms-ticket-08a.md`.
+
+### Task 8B: Search and Inbox
+
+**Files:**
+- Adapt: `src/features/search/SearchPage.tsx`; `src/features/inbox/InboxPage.tsx`, `BackendInbox.tsx`.
+- Create: `src/features/search/search-inbox-workspace.css`; import from the owned pages and scope rules to Search/Inbox roots, retaining current shared tokens.
+- Reuse: `src/features/search/SearchPage.test.tsx`; `src/features/inbox/InboxPage.test.tsx`, `InboxPage.real.test.tsx`, `BackendInbox.test.tsx`.
+
+**Interfaces:**
+- Consumes: Task 1 presentation, current Search queries and existing mock/real notification behavior and action capabilities.
+- Produces: unchanged Search/Inbox routes and supported handlers with consistent lists, source states and retained action feedback. Independent of 8A.
+
+- [ ] **Step 1: Inspect Search and both Inbox modes.** Trace results, empty/failed sources, recovery, denied content, permitted action destinations and a row-changing action. Preserve source and permission distinctions.
+- [ ] **Step 2: Apply Search/Inbox presentation.** Use readable result/notification rows, contextual concise actions, visible labels and stable pending/outcome feedback. Scope layout changes to Search/Inbox roots; leave Account and shared tokens intact.
+- [ ] **Step 3: Verify.** Run `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run src/features/search src/features/inbox`, TypeScript, lint and build; compare frozen hashes. Expected: exit 0 and no changed frozen file. For any uncovered affected row-changing action, assert its original destination/payload and visible result after row removal; source failure must not appear as an empty result.
+- [ ] **Step 4: Record rendered cases and direct review.** Check long Search results, empty/failed Search, long notifications, mock/real Inbox and action feedback after row change in both desktop sizes/themes and at 390px. Record keyboard access and no page overflow in `docs/superpowers/notes/2026-10-06-ltms-ticket-08b.md`.
 
 ### Task 9: Desktop acceptance and design record
 
@@ -195,10 +217,10 @@
 - Retain: the approved `Home.prototype.html` and its assets as prototype evidence until archival is authorized.
 
 **Interfaces:**
-- Consumes: Tasks 1–8, phase baseline, spec and the route/rendering cases recorded by each task.
+- Consumes: Tasks 1–7, 8A and 8B, phase baseline, spec and the route/rendering cases recorded by each task. Inspect their combined code after any separately authorized worktree integration.
 - Produces: a route coverage inventory, verification results, implemented design documentation and explicit remaining acceptance gaps.
 
-- [ ] **Step 1: Account for every route in `src/App.tsx`.** Assign it to one of Tasks 1–8 and record a representative audience/state. Document current permission handling; do not create new access rules from the glossary.
+- [ ] **Step 1: Account for every route in `src/App.tsx`.** Assign it to one of Tasks 1–7, 8A or 8B and record a representative audience/state. Document current permission handling; do not create new access rules from the glossary.
 - [ ] **Step 2: Run the required source gates.** Run `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint`, `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run --reporter=dot`, and `npm run build`. Expected: each exits 0. Record warnings and exact test totals from this run. Compare the frozen-file names and hashes against the phase baseline.
 - [ ] **Step 3: Inspect the render through an approved browser surface.** Batch both desktop sizes, both themes and the recorded journey states. Inspect focus order, overflow, long content, modal escape/return and contrast. If browser access is unavailable, leave this step pending and report the exact missing evidence.
 - [ ] **Step 4: Complete the bounded Impeccable pass.** Run its detector once on changed UI targets; batch material fixes and confirm with at most one more rendering round. Review directly under the user's no-subagent constraint and distinguish this from independent review. Re-run only gates affected by fixes.
@@ -206,6 +228,6 @@
 
 ## Review and publication state
 
-This plan and the nine separate local tickets are prepared for review. The approved prototype settles the visual choice; the new implementation breakdown and testing seam still need the review required by the explicitly invoked to-spec, to-tickets and writing-plans workflows. No production implementation was started after those document requests arrived.
+Tasks 1–7 are complete with the evidence recorded above. The user authorized separate Orca workers to implement and test 8A and 8B, then commit their own changes, on 2026-10-06. Task 9 waits for both and their combined code. There are ten active local tickets; the original 08 document is a compatibility index. Merge and push remain prohibited.
 
 The repository has no configured issue-tracker destination or triage vocabulary. Keep the local drafts concrete and reviewable; external publication follows tracker setup. This plan adds no approval gate to ordinary reversible implementation work after its review is complete.

@@ -1,3 +1,4 @@
+import { matchTime } from './matchTime'
 import { resultRecorder } from './resultAttribution'
 /**
  * src/features/match/ResultTrail.tsx
@@ -14,7 +15,7 @@ import { Badge, Panel, Trail } from '../../components/kit/primitives'
 import type { TrailStep } from '../../components/kit/primitives'
 import type { MatchDto, MatchResultDto } from '../../types/match.dto'
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
+const when = (iso: string | null) => (iso ? matchTime(iso) : '')
 
 export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   /* on-site: กรรมการบันทึก หัวหน้าทีมที่ชนะยืนยัน (FR-RS-03)
@@ -100,9 +101,10 @@ export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDt
   ]
 
   return (
-    <Panel quiet>
-      <span className="tag">
-        <em>//</em> How this result got here
+    <Panel quiet className="match-result-history">
+      <h2>Result history</h2>
+      <span className="sub">
+        How this result got here
         {result?.amendedAt ? <> <Badge kind="warn">Amended</Badge></> : null}
       </span>
       <Trail steps={steps} />

@@ -15,10 +15,11 @@ import { toTeamView } from './matchView'
 import type { MatchDto } from '../../types/match.dto'
 
 export function StatSheet({ m }: { m: MatchDto }) {
-  const { data: stats, isPending } = useMatchStats(m.id)
-  const { data: defs } = useStatDefinitions(m.tournament.sportTypeId)
+  const { data: stats, isPending, isError, refetch } = useMatchStats(m.id)
+  const { data: defs, isError: defsError, isPending: defsPending, refetch: refetchDefs } = useStatDefinitions(m.tournament.sportTypeId)
 
-  if (isPending) return <Panel quiet><span className="sub">Loading statistics…</span></Panel>
+  if (isError || defsError) return <Empty icon="warn" title="Statistics unavailable" sub="Could not read the recorded statistics or column definitions."><button className="btn" type="button" onClick={() => { if (isError) void refetch(); if (defsError) void refetchDefs() }}>Try again</button></Empty>
+  if (isPending || defsPending) return <Panel quiet><span className="sub">Loading statistics…</span></Panel>
 
   const rows = stats?.items ?? []
   const cols = defs?.items ?? []
@@ -31,9 +32,10 @@ export function StatSheet({ m }: { m: MatchDto }) {
     m.teamA?.id === teamId ? m.teamA : m.teamB?.id === teamId ? m.teamB : null
 
   return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Recorded {m.tournament.sportName} statistics</span>
-      <TableWrap>
+    <Panel quiet className="match-stat-sheet">
+      <h2>Player statistics</h2>
+      <p className="sub">{m.tournament.sportName}</p>
+      <TableWrap label="Recorded player statistics">
         <table>
           <thead>
             <tr>

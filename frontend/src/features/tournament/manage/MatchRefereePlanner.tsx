@@ -113,7 +113,7 @@ function MatchRow({ tournamentId, match, pool, openRequests, declinedRequests, b
         </span>
         {failed ? <Banner kind="crit">{requestError(failed)}</Banner> : null}
       </td>
-      <td style={{ minWidth: 200 }}>
+      <td>
         {!changeable ? (
           <span className="sub">
             {scheduled ? 'This match has started — referees are fixed now.'
@@ -193,16 +193,15 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
         </Banner>
       ) : null}
 
-      {!busy && !matches.isError && !pool.isError && rows.length && activePool.length ? <RefereeRequestForm
-        tournamentId={tournamentId} matches={rows} pool={activePool} /> : null}
-
       {rows.length && activePool.length ? (
-        <>
-          <div className="sub">
-            Asking a referee sends them a request — it counts only once they accept. Later rounds
-            can be staffed now, before anyone knows who plays in them, as long as the slot has a
-            kick-off time.
-          </div>
+        <div className="organizer-assignment-pair">
+          {!busy && !matches.isError && !pool.isError ? <section className="organizer-referee-frame organizer-swap-frame"
+            role="region" aria-label="Referee swap request" tabIndex={0}>
+            <RefereeRequestForm tournamentId={tournamentId} matches={rows} pool={activePool} />
+          </section> : null}
+          <section className="organizer-referee-frame organizer-assignment-frame" aria-label="Assign referees" role="group">
+            <h3>Assign referees</h3>
+            <p className="sub">Requests count after acceptance. Set a future start and end time first.</p>
           <TableWrap label="Match referee assignments">
             <table>
               <thead><tr><th>Match</th><th>Referees</th><th>Add</th></tr></thead>
@@ -215,7 +214,8 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
               </tbody>
             </table>
           </TableWrap>
-        </>
+          </section>
+        </div>
       ) : null}
     </Panel>
   )

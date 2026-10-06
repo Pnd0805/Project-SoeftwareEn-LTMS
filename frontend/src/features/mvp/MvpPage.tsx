@@ -4,6 +4,7 @@
  * Real mode votes per match using the backend's eligibility and voting window.
  * The tournament route selects a match; the prototype retains its mock award.
  */
+import { matchTime } from '../match/matchTime'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel } from '../../components/kit/primitives'
 import { TeamChip } from '../../components/kit/chips'
@@ -64,12 +65,12 @@ export function MatchMvpVoting({ matchId, teamNames = {} }: { matchId: number; t
   if (!data) return <Empty icon="star" title="No MVP data available" />
   return <>
     <Banner kind={data.window.isOpen ? 'ok' : 'warn'} icon="star">
-      {data.window.isOpen ? `Voting closes ${data.window.closesAt ? new Date(data.window.closesAt).toLocaleString() : 'soon'}.`
+      {data.window.isOpen ? `Voting closes ${data.window.closesAt ? matchTime(data.window.closesAt) : 'soon'}.`
         : data.window.opensAt ? 'Voting is closed.' : 'Voting is unavailable until the backend provides an eligible voting window. Matches decided without play are not eligible.'}
     </Banner>
     {mvp.vote.isError ? <p className="sub" role="alert">{mvp.vote.error instanceof Error ? mvp.vote.error.message : 'Could not save your vote.'}</p> : null}
-    {data.candidates.length === 0 ? <Empty icon="star" title="No MVP candidates yet" /> : <Panel quiet>
-      {data.candidates.map(candidate => <div className="spread" key={candidate.userId}>
+    {data.candidates.length === 0 ? <Empty icon="star" title="No MVP candidates yet" /> : <Panel quiet className="match-mvp-candidates">
+      {data.candidates.map(candidate => <div className="match-mvp-row" key={candidate.userId}>
         <span className="hstack"><Avatar name={candidate.fullName} avatarUrl={candidate.avatarUrl} />
           <span><b>{candidate.fullName}</b><br /><span className="sub">{teamNames[candidate.teamId] ?? `Team #${candidate.teamId}`}</span>
             {candidate.stats?.length ? <div className="sub">{candidate.stats.map(stat => `${stat.statLabelTh || stat.statKey}: ${stat.value}`).join(' | ')}</div> : null}</span></span>
@@ -140,14 +141,14 @@ function MockMvpPage() {
           : <>You have <b>one vote for the whole tournament</b>. Candidates are ranked on the statistics referees recorded.</>}
       </Banner>
 
-      <Panel quiet>
+      <Panel quiet className="match-mvp-candidates">
         {cands.map(([pid, st]) => {
           const p = user(s, pid)
           if (!p) return null
           return (
-            <div className="hstack" style={{ gap: 14 }} key={pid}>
+            <div className="match-mvp-row" key={pid}>
               <span className="avatar">{p.name.slice(0, 1)}</span>
-              <span style={{ width: 190 }}>
+              <span className="match-mvp-name">
                 <b style={{ fontSize: 15 }}>{p.name}</b><br />
                 <span className="tag">{st.goals} · {st.assists} assists</span>
               </span>

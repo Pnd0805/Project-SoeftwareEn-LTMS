@@ -1,0 +1,1054 @@
+[
+  {
+    "name": "requests-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "decline-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "filters-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Rule change queue",
+      "Requested changes for Northside Community Championship Tournament for Engineering and Sporting Academies",
+      "Requested changes for District 2 Championship",
+      "Requested changes for District 3 Championship",
+      "Requested changes for District 4 Championship",
+      "Requested changes for District 5 Championship",
+      "Requested changes for District 6 Championship",
+      "Requested changes for District 7 Championship",
+      "Requested changes for District 8 Championship",
+      "Requested changes for District 9 Championship",
+      "Requested changes for District 10 Championship",
+      "Requested changes for District 11 Championship",
+      "Requested changes for District 12 Championship"
+    ]
+  },
+  {
+    "name": "permanent-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Official squad requests"
+    ]
+  },
+  {
+    "name": "referees-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "External referee requests"
+    ]
+  },
+  {
+    "name": "users-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin user directory"
+    ]
+  },
+  {
+    "name": "scopes-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "audit-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Audit records"
+    ]
+  },
+  {
+    "name": "transfers-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Pending leader transfers"
+    ]
+  },
+  {
+    "name": "feedback-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "receipt-1280-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "interactions-1280-dark",
+    "receiptRetained": true,
+    "errors": [],
+    "writes": [
+      {
+        "path": "/tournaments/50/approve",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "requests-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "decline-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "filters-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Rule change queue",
+      "Requested changes for Northside Community Championship Tournament for Engineering and Sporting Academies",
+      "Requested changes for District 2 Championship",
+      "Requested changes for District 3 Championship",
+      "Requested changes for District 4 Championship",
+      "Requested changes for District 5 Championship",
+      "Requested changes for District 6 Championship",
+      "Requested changes for District 7 Championship",
+      "Requested changes for District 8 Championship",
+      "Requested changes for District 9 Championship",
+      "Requested changes for District 10 Championship",
+      "Requested changes for District 11 Championship",
+      "Requested changes for District 12 Championship"
+    ]
+  },
+  {
+    "name": "permanent-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Official squad requests"
+    ]
+  },
+  {
+    "name": "referees-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "External referee requests"
+    ]
+  },
+  {
+    "name": "users-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin user directory"
+    ]
+  },
+  {
+    "name": "scopes-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "audit-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Audit records"
+    ]
+  },
+  {
+    "name": "transfers-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Pending leader transfers"
+    ]
+  },
+  {
+    "name": "feedback-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "receipt-1280-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1000
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "interactions-1280-light",
+    "receiptRetained": true,
+    "errors": [],
+    "writes": [
+      {
+        "path": "/tournaments/50/approve",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "requests-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "decline-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "filters-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Rule change queue",
+      "Requested changes for Northside Community Championship Tournament for Engineering and Sporting Academies",
+      "Requested changes for District 2 Championship",
+      "Requested changes for District 3 Championship",
+      "Requested changes for District 4 Championship",
+      "Requested changes for District 5 Championship",
+      "Requested changes for District 6 Championship",
+      "Requested changes for District 7 Championship",
+      "Requested changes for District 8 Championship",
+      "Requested changes for District 9 Championship",
+      "Requested changes for District 10 Championship",
+      "Requested changes for District 11 Championship",
+      "Requested changes for District 12 Championship"
+    ]
+  },
+  {
+    "name": "permanent-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Official squad requests"
+    ]
+  },
+  {
+    "name": "referees-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "External referee requests"
+    ]
+  },
+  {
+    "name": "users-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin user directory"
+    ]
+  },
+  {
+    "name": "scopes-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "audit-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Audit records"
+    ]
+  },
+  {
+    "name": "transfers-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Pending leader transfers"
+    ]
+  },
+  {
+    "name": "feedback-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "receipt-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "interactions-1440-dark",
+    "receiptRetained": true,
+    "errors": [],
+    "writes": [
+      {
+        "path": "/tournaments/50/approve",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "requests-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "decline-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "filters-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Rule change queue",
+      "Requested changes for Northside Community Championship Tournament for Engineering and Sporting Academies",
+      "Requested changes for District 2 Championship",
+      "Requested changes for District 3 Championship",
+      "Requested changes for District 4 Championship",
+      "Requested changes for District 5 Championship",
+      "Requested changes for District 6 Championship",
+      "Requested changes for District 7 Championship",
+      "Requested changes for District 8 Championship",
+      "Requested changes for District 9 Championship",
+      "Requested changes for District 10 Championship",
+      "Requested changes for District 11 Championship",
+      "Requested changes for District 12 Championship"
+    ]
+  },
+  {
+    "name": "permanent-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Official squad requests"
+    ]
+  },
+  {
+    "name": "referees-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "External referee requests"
+    ]
+  },
+  {
+    "name": "users-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin user directory"
+    ]
+  },
+  {
+    "name": "scopes-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "audit-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Audit records"
+    ]
+  },
+  {
+    "name": "transfers-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Pending leader transfers"
+    ]
+  },
+  {
+    "name": "feedback-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "receipt-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "interactions-1440-light",
+    "receiptRetained": true,
+    "errors": [],
+    "writes": [
+      {
+        "path": "/tournaments/50/approve",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "requests-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "decline-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "filters-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Rule change queue",
+      "Requested changes for Northside Community Championship Tournament for Engineering and Sporting Academies",
+      "Requested changes for District 2 Championship",
+      "Requested changes for District 3 Championship",
+      "Requested changes for District 4 Championship",
+      "Requested changes for District 5 Championship",
+      "Requested changes for District 6 Championship",
+      "Requested changes for District 7 Championship",
+      "Requested changes for District 8 Championship",
+      "Requested changes for District 9 Championship",
+      "Requested changes for District 10 Championship",
+      "Requested changes for District 11 Championship",
+      "Requested changes for District 12 Championship"
+    ]
+  },
+  {
+    "name": "permanent-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Official squad requests"
+    ]
+  },
+  {
+    "name": "referees-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "External referee requests"
+    ]
+  },
+  {
+    "name": "users-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin user directory"
+    ]
+  },
+  {
+    "name": "scopes-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "audit-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Audit records"
+    ]
+  },
+  {
+    "name": "transfers-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Pending leader transfers"
+    ]
+  },
+  {
+    "name": "feedback-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "receipt-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "interactions-390-dark",
+    "receiptRetained": true,
+    "errors": [],
+    "writes": [
+      {
+        "path": "/tournaments/50/approve",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "requests-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "decline-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "filters-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Rule change queue",
+      "Requested changes for Northside Community Championship Tournament for Engineering and Sporting Academies",
+      "Requested changes for District 2 Championship",
+      "Requested changes for District 3 Championship",
+      "Requested changes for District 4 Championship",
+      "Requested changes for District 5 Championship",
+      "Requested changes for District 6 Championship",
+      "Requested changes for District 7 Championship",
+      "Requested changes for District 8 Championship",
+      "Requested changes for District 9 Championship",
+      "Requested changes for District 10 Championship",
+      "Requested changes for District 11 Championship",
+      "Requested changes for District 12 Championship"
+    ]
+  },
+  {
+    "name": "permanent-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Official squad requests"
+    ]
+  },
+  {
+    "name": "referees-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "External referee requests"
+    ]
+  },
+  {
+    "name": "users-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin user directory"
+    ]
+  },
+  {
+    "name": "scopes-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "audit-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Audit records"
+    ]
+  },
+  {
+    "name": "transfers-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Pending leader transfers"
+    ]
+  },
+  {
+    "name": "feedback-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "receipt-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "16px",
+        "width": 342
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "interactions-390-light",
+    "receiptRetained": true,
+    "errors": [],
+    "writes": [
+      {
+        "path": "/tournaments/50/approve",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "faculty",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Admin rights in your scope"
+    ]
+  },
+  {
+    "name": "faculty-denied",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "staff-denied",
+    "overflow": false,
+    "panels": [],
+    "namedScrollAreas": []
+  },
+  {
+    "name": "empty",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "refresh-failed",
+    "overflow": false,
+    "panels": [
+      {
+        "padding": "20px",
+        "width": 1132
+      }
+    ],
+    "namedScrollAreas": [
+      "Tournament request queue"
+    ]
+  },
+  {
+    "name": "source-access",
+    "draftRetained": true,
+    "deniedCacheHidden": true,
+    "writes": []
+  }
+]

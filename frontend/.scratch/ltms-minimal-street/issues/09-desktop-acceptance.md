@@ -2,7 +2,7 @@
 
 **What to build:** A verified desktop rollout and a durable record of the implemented visual system, with remaining integration gaps stated at their actual scope.
 
-**Blocked by:** 01, 02, 03, 04, 05, 06, 07, 08 — all implementation slices.
+**Blocked by:** 01, 02, 03, 04, 05, 06, 07, 08A, 08B — all implementation slices. Acceptance runs against their combined code, after any separately authorized worktree integration.
 
 **Status:** draft — ready for breakdown review.
 

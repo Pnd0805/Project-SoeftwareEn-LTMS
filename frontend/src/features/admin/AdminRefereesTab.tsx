@@ -12,6 +12,8 @@
  * ได้ 501 และหน้าจอบอกว่ายังใช้ไม่ได้
  */
 import { Avatar } from '../../components/kit/Avatar'
+import { USE_MOCK } from '../../api/client'
+import { adminReadBlocked } from './adminView'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
@@ -32,7 +34,7 @@ export function AdminRefereesTab() {
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
 
   const status = statusOf(requests.error)
-  const rows = requests.data?.items ?? []
+  const rows = adminReadBlocked(requests) ? [] : requests.data?.items ?? []
   const busyId = review.isPending ? review.variables?.requestId : undefined
 
   const decide = (r: ExternalRefereeRequestDto, approve: boolean, why?: string) => {
@@ -49,14 +51,15 @@ export function AdminRefereesTab() {
   }
 
   return (
-    <Panel>
-      <span className="tag"><em>//</em> External referees · {rows.length}</span>
+    <Panel className="admin-referees">
+      <h2>External referees</h2>
       <div className="sub">
         People from outside the university who accepted an appointment. They count as a referee only once
         you approve them, and a decline has to say why.
       </div>
+      {!USE_MOCK ? <p className="sub">Approval or rejection applies to every pending tournament for that referee.</p> : null}
 
-      {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+      {notice ? <div role="status"><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
       {review.isError && !rejecting ? (
         <Banner kind="crit"><b>The decision did not go through.</b> {errorMessage(review.error)}</Banner>
       ) : null}
@@ -64,7 +67,7 @@ export function AdminRefereesTab() {
       {requests.isPending ? <div className="sub">Loading requests…</div> : null}
       {requests.isError ? (
         status === 501 ? (
-          <Banner kind="warn"><b>Not available yet.</b> The backend has no route for approving external referees.</Banner>
+          <Banner kind="warn"><b>Review unavailable.</b> External referee approval is not available yet.</Banner>
         ) : status === 401 || status === 403 ? (
           <Banner kind="warn"><b>This queue is for admins.</b> Your account does not have access to it.</Banner>
         ) : (
@@ -78,12 +81,12 @@ export function AdminRefereesTab() {
       {requests.isSuccess && !rows.length ? <div className="sub">Nothing waiting.</div> : null}
 
       {rows.length ? (
-        <TableWrap>
+        <TableWrap label="External referee requests">
           <table>
             <thead><tr><th>Referee</th><th>Tournament</th><th>Appointed by</th><th /></tr></thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id}>
+                <tr key={`${r.id}-${r.tournament.id}`}>
                   <td>
                     <span className="hstack">
                       <Avatar name={r.referee.fullName} avatarUrl={r.referee.avatarUrl} />{r.referee.fullName}
@@ -117,14 +120,14 @@ export function AdminRefereesTab() {
         </TableWrap>
       ) : null}
 
-      <Modal open={!!rejecting} onClose={() => setRejecting(null)} label="Do not approve an external referee"
+      <Modal className="admin-decision-dialog" open={!!rejecting && rows.some(row => row.id === rejecting.id)} onClose={() => { if (!review.isPending) setRejecting(null) }} label="Do not approve an external referee"
         title={rejecting?.referee.fullName ?? ''}>
         <Field label="Reason — sent to the referee and the organizer" htmlFor="ext-ref-reason">
-          <textarea id="ext-ref-reason" rows={3} value={reason} onChange={e => setReason(e.target.value)} />
+          <textarea id="ext-ref-reason" rows={3} disabled={review.isPending} value={reason} onChange={e => setReason(e.target.value)} />
         </Field>
         {review.isError ? <Banner kind="crit">{errorMessage(review.error)}</Banner> : null}
         <div className="hstack">
-          <button className="btn" type="button" onClick={() => setRejecting(null)}>Cancel</button>
+          <button className="btn" type="button" disabled={review.isPending} onClick={() => setRejecting(null)}>Cancel</button>
           <button className="btn danger" type="button" disabled={!reason.trim() || review.isPending}
             onClick={() => { if (rejecting) decide(rejecting, false, reason.trim()) }}>
             {review.isPending ? 'Sending…' : 'Do not approve'}

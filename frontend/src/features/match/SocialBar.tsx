@@ -6,6 +6,7 @@
  * below the fold. So the page carries where each stands and a way in; the doing
  * happens over the top, and closing it puts the score back in front of you.
  */
+import { useMatchActive } from './MatchActivity'
 import { useState } from 'react'
 import { Badge, Field, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
@@ -129,6 +130,7 @@ export function SocialBar({ m }: { m: Match }) {
   const s = useLtms()
   const u = me(s)
   const picks = usePicks(m.id, u?.id)
+  const active = useMatchActive()
   const [openPick, setOpenPick] = useState(false)
   const [openTalk, setOpenTalk] = useState(false)
   const comments = useComments(m.id)
@@ -173,10 +175,10 @@ export function SocialBar({ m }: { m: Match }) {
         </div>
       </Panel>
 
-      <Modal open={openPick} onClose={() => setOpenPick(false)}>
+      <Modal open={openPick && active} onClose={() => setOpenPick(false)}>
         <PickBlock m={m} onClose={() => setOpenPick(false)} />
       </Modal>
-      <Modal open={openTalk} onClose={() => setOpenTalk(false)} title={matchStage(s, m)}>
+      <Modal open={openTalk && active} onClose={() => setOpenTalk(false)} title={matchStage(s, m)}>
         <CommentBlock m={m} onClose={() => setOpenTalk(false)} />
       </Modal>
     </>

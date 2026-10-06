@@ -55,13 +55,34 @@ beforeEach(() => {
   refetch.mockReset()
   mutation.mutate.mockReset()
   match.mode = 'onsite'
+  match.teamB = null
   match.roomCode = null
   checkinsQuery = {
     data: undefined, isPending: true, isFetching: true, isError: false, refetch,
   }
 })
 
+it('does not announce complete check-in from cached data after access is denied', () => {
+  match.teamB = { ...match.teamA!, id: 8, name: 'Red Team', players: [] }
+  checkinsQuery = {
+    data: { items: [{ id: 41, user: { id: 9201 }, status: 'success', method: 'manual_by_referee' }] },
+    isPending: false, isFetching: false, isError: true, error: { status: 403 }, refetch,
+  }
+  renderPage()
+  expect(screen.queryByText('Everyone is through.')).not.toBeInTheDocument()
+  expect(screen.queryByText('Checked in')).not.toBeInTheDocument()
+  expect(screen.queryByText('0 · 0 verified')).not.toBeInTheDocument()
+})
+
 describe('referee check-in roster state', () => {
+  it('counts verified players from the readable check-in source rather than stale lineup metadata', () => {
+    checkinsQuery = {
+      data: { items: [{ id: 41, user: { id: 9201, fullName: 'Checked Player' }, status: 'success', method: 'manual_by_referee' }] },
+      isPending: false, isFetching: false, isError: false, refetch,
+    }
+    renderPage()
+    expect(screen.getByText('1 of 1 in')).toBeInTheDocument()
+  })
   it('does not claim Not yet or offer a manual write while the list is loading', () => {
     renderPage()
 
@@ -128,9 +149,9 @@ describe('referee check-in roster state', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(mutation.mutate).not.toHaveBeenCalled()
 
-    const why = screen.getByLabelText(/เหตุผล/)
+    const why = screen.getByLabelText('Reason shown to the player')
     fireEvent.change(why, { target: { value: 'สแกนแทนกัน' } })
-    fireEvent.click(screen.getByRole('button', { name: 'ถอนการเช็คอิน' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke check-in' }))
 
     expect(mutation.mutate).toHaveBeenCalledWith(
       { userId: 9201, input: { status: 'rejected', rejectionReason: 'สแกนแทนกัน' } },
@@ -156,10 +177,10 @@ describe('referee check-in roster state', () => {
     expect(screen.getByText('Rejected')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Verify by hand' }))
     /* โมดัลต้องบอกด้วยว่ากำลังกดให้ใหม่หลังถูกปฏิเสธ ไม่ใช่เคสกล้องเสียธรรมดา */
-    expect(screen.getByText(/เช็คอินของคนนี้ถูกปฏิเสธไว้/)).toBeInTheDocument()
+    expect(screen.getByText(/This check-in was rejected/)).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('เหตุผล'), { target: { value: 'ตรวจบัตรแล้ว ตัวจริง' } })
-    fireEvent.click(screen.getByRole('button', { name: 'ยืนยันว่าตรวจแล้ว' }))
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'ตรวจบัตรแล้ว ตัวจริง' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verify check-in' }))
     expect(mutation.mutate).toHaveBeenCalledWith(
       { method: 'manual_by_referee', userId: 9201, note: 'ตรวจบัตรแล้ว ตัวจริง' },
       expect.anything(),

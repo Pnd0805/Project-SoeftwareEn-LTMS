@@ -21,6 +21,11 @@ const idle = { isPending: false, isError: false, isSuccess: false, error: null, 
 const emptyList = { data: { items: [] }, isPending: false, isError: false, isSuccess: true, error: null }
 const reviewMutate = vi.fn()
 const reviewState = { ...idle, mutate: reviewMutate }
+let accessQuery: Record<string, unknown>
+let requestQuery: Record<string, unknown>
+let amendmentQuery: Record<string, unknown>
+const accessRefetch = vi.fn()
+const approveAmendment = vi.fn()
 
 const request = (id: number, name: string) => ({
   id, name, sportTypeId: 1,
@@ -29,17 +34,15 @@ const request = (id: number, name: string) => ({
 })
 
 vi.mock('../../hooks/useAdmin', () => ({
-  useAdminAccess: () => ({ data: true, isPending: false, isError: false, isSuccess: true, error: null }),
-  usePendingTournamentRequests: () => ({
-    ...emptyList, data: { items: [request(24, 'บาสเกตบอลสัมพันธ์'), request(25, 'แบดมินตันหญิง')] },
-  }),
+  useAdminAccess: () => accessQuery,
+  usePendingTournamentRequests: () => requestQuery,
   useReviewTournamentRequest: () => reviewState,
   useTeamRequests: () => emptyList,
   useApproveTeamRequest: () => idle,
   useRejectTeamRequest: () => idle,
   useExternalRefereeRequests: () => emptyList,
-  useAmendmentRequests: () => emptyList,
-  useApproveAmendment: () => idle,
+  useAmendmentRequests: () => amendmentQuery,
+  useApproveAmendment: () => ({ ...idle, mutate: approveAmendment }),
   useRejectAmendment: () => idle,
 }))
 vi.mock('../../hooks/useTournament', () => ({ useTournaments: () => emptyList }))
@@ -74,9 +77,64 @@ const failWith = (code: string, message: string) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  accessQuery = { data: true, isPending: false, isError: false, isSuccess: true, error: null, refetch: accessRefetch }
+  requestQuery = { ...emptyList, data: { items: [request(24, 'บาสเกตบอลสัมพันธ์'), request(25, 'แบดมินตันหญิง')] } }
+  amendmentQuery = emptyList
   reviewState.isError = false
   reviewState.error = null
   reviewMutate.mockImplementation(() => {})
+})
+
+it('keeps a named approval receipt after the request leaves the queue', () => {
+  reviewMutate.mockImplementation((_vars, opts) => {
+    requestQuery = { ...emptyList, data: { items: [] } }
+    opts.onSuccess?.()
+  })
+  renderPage()
+  fireEvent.click(approveIn('แบดมินตันหญิง'))
+  expect(screen.getByRole('status')).toHaveTextContent('Approved แบดมินตันหญิง')
+  expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+})
+
+it('keeps a named change receipt after an amendment leaves the queue', () => {
+  amendmentQuery = { ...emptyList, data: { items: [{ id: 31, status: 'pending', tournamentName: 'Campus Cup', requestedAt: '2026-10-01', requestedBy: { fullName: 'Organizer' }, requestedChanges: { maxTeams: 16 } }] } }
+  approveAmendment.mockImplementation((_id, opts) => { amendmentQuery = emptyList; opts.onSuccess?.() })
+  render(<MemoryRouter initialEntries={['/admin/filters']}><Routes><Route path="/admin/:tab" element={<AdminPage />} /></Routes></MemoryRouter>)
+  fireEvent.click(screen.getByRole('button', { name: 'Approve the change' }))
+  expect(screen.getByRole('status')).toHaveTextContent('Approved changes for Campus Cup')
+})
+it('shows the actual proposed condition values in readable change details', () => {
+  amendmentQuery = { ...emptyList, data: { items: [{ id: 31, status: 'pending', tournamentName: 'Campus Cup', requestedAt: '2026-10-01', requestedBy: { fullName: 'Organizer' }, requestedChanges: { eligibilityRules: [{ faculty: 'Engineering', minAge: 18 }] } }] } }
+  render(<MemoryRouter initialEntries={['/admin/filters']}><Routes><Route path="/admin/:tab" element={<AdminPage />} /></Routes></MemoryRouter>)
+  expect(screen.getByRole('cell', { name: 'Faculty: Engineering · Min age: 18' })).toBeInTheDocument()
+})
+
+it('hides cached requests and their open dialog after the source denies access', () => {
+  const view = renderPage()
+  fireEvent.click(within(rowOf('แบดมินตันหญิง')).getByRole('button', { name: 'Decline' }))
+  requestQuery = { ...requestQuery, isError: true, isSuccess: false, error: new ApiError(403, { code: 'DENIED', message: 'Access denied' }) }
+  view.rerender(ui())
+  expect(screen.queryByText('แบดมินตันหญิง')).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('retains the decline reason through a recoverable queue refresh failure', () => {
+  const view = renderPage()
+  fireEvent.click(within(rowOf('แบดมินตันหญิง')).getByRole('button', { name: 'Decline' }))
+  fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'Needs venue confirmation' } })
+  requestQuery = { ...requestQuery, isError: true, isSuccess: false, error: new Error('Temporary failure') }
+  view.rerender(ui())
+  expect(screen.getByLabelText(/Reason/)).toHaveValue('Needs venue confirmation')
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+
+it('offers retry after an access probe failure instead of claiming the account lacks admin rights', () => {
+  accessQuery = { ...accessQuery, isSuccess: false, isError: true, error: new ApiError(503, { code: 'UNAVAILABLE', message: 'Temporary failure' }) }
+  renderPage()
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+  expect(accessRefetch).toHaveBeenCalledOnce()
+  expect(screen.queryByText('403 — admin only')).not.toBeInTheDocument()
+  expect(screen.queryByText('แบดมินตันหญิง')).not.toBeInTheDocument()
 })
 
 describe('a request above a faculty admin’s scope', () => {

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { matchTime } from './matchTime'
+import { useEffect, useRef, useState } from 'react'
 import { Badge, Banner, Panel } from '../../components/kit/primitives'
 import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
 import { useMe } from '../../hooks/useAuth'
@@ -21,6 +22,28 @@ function EvidenceLinks({ urls }: { urls: string[] }) {
   return <div className="hstack">{urls.map((url, i) => /^https?:\/\//i.test(url)
     ? <a key={url} href={url} target="_blank" rel="noopener noreferrer">Evidence {i + 1}</a> : null)}</div>
 }
+function EvidencePreview({ file }: { file: File }) {
+  const image = useRef<HTMLImageElement>(null)
+  useEffect(() => {
+    if (!image.current || typeof URL.createObjectURL !== 'function') return
+    const url = URL.createObjectURL(file)
+    image.current.src = url
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+  return <img ref={image} alt={file.name} />
+}
+function ScoreComparison({ m, result, claimed }: { m: MatchDto; result?: MatchResultDto; claimed: Record<string, unknown> }) {
+  const score = (data: Record<string, unknown> | null | undefined, id: number | undefined, fallback: string) => {
+    const value = data?.[String(id)] ?? data?.[fallback]
+    return typeof value === 'number' ? value : 'Not supplied'
+  }
+  return <div className="match-score-comparison">
+    {[{ title: 'Recorded result', data: result?.scoreData }, { title: 'Claimed result', data: claimed }].map(({ title, data }) => <div key={title}>
+      <h4>{title}</h4>
+      <dl>{[m.teamA, m.teamB].map((team, i) => <div key={i}><dt>{team?.name ?? 'Team not set'}</dt><dd>{score(data, team?.id, i ? 'b' : 'a')}</dd></div>)}</dl>
+    </div>)}
+  </div>
+}
 export function ResultChallengeForm({ m, title, pending, error, submit }: {
   m: MatchDto; title: string; pending: boolean; error: unknown; submit: (input: ResultChallengeInput) => Promise<unknown>
 }) {
@@ -28,18 +51,19 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
   const [propose, setPropose] = useState(false)
   const [a, setA] = useState(0)
   const [b, setB] = useState(0)
-  const [keys, setKeys] = useState<string[]>([])
+  const [attachments, setAttachments] = useState<{ key: string; file: File }[]>([])
+  const keys = attachments.map(item => item.key)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [done, setDone] = useState(false)
   const busy = pending || uploading
-  return <Panel quiet><h3>{title}</h3>
+  return <Panel quiet className="match-challenge-form"><h3>{title}</h3>
     {done ? <p role="status">Your request was saved.</p> : null}
     <form className="vstack" onSubmit={async e => {
       e.preventDefault()
       if (busy || !reason.trim() || (propose && !validScore(a, b))) return
       const score = propose ? scoreInput(m, a, b) : null
-      try { await submit({ reason: reason.trim(), ...(score ? { claimedWinnerTeamId: score.winnerTeamId, claimedScoreData: score.scoreData } : {}), ...(keys.length ? { evidenceKeys: keys } : {}) }); setDone(true); setReason(''); setKeys([]) }
+      try { await submit({ reason: reason.trim(), ...(score ? { claimedWinnerTeamId: score.winnerTeamId, claimedScoreData: score.scoreData } : {}), ...(keys.length ? { evidenceKeys: keys } : {}) }); setDone(true); setReason(''); setAttachments([]) }
       catch { setDone(false) }
     }}>
       <label>Reason (required)<textarea aria-label={`${title} reason`} required maxLength={1000} value={reason} onChange={e => { setReason(e.target.value); setDone(false) }} disabled={busy} /></label>
@@ -52,11 +76,15 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
           setUploadError('')
           if (files.length + keys.length > 5) { setUploadError('Attach no more than 5 files.'); return }
           setUploading(true)
-          try { for (const file of files) { const key = await uploadImage(file, 'dispute_evidence', { matchId: m.id }); setKeys(previous => [...previous, key]) } }
+          try { for (const file of files) { const key = await uploadImage(file, 'dispute_evidence', { matchId: m.id }); setAttachments(previous => [...previous, { key, file }]) } }
           catch (failure) { setUploadError(imageUploadErrorMessage(failure)) }
           finally { setUploading(false) }
         }} /></label>
-      {keys.map((key, i) => <span key={key}>Evidence {i + 1} uploaded <button type="button" className="btn ghost" disabled={busy} onClick={() => { setKeys(previous => previous.filter(item => item !== key)); setUploadError('') }}>Remove attachment {i + 1}</button></span>)}
+      <p className="sub" role="status">{attachments.length} of 5 files</p>
+      <div className="match-evidence-grid">{attachments.map(({ key, file }, i) => <div className="match-evidence-item" key={key}>
+        <EvidencePreview file={file} /><b>{file.name}</b><span className="sub">Uploaded</span>
+        <button type="button" className="btn ghost" disabled={busy} onClick={() => { setAttachments(previous => previous.filter(item => item.key !== key)); setUploadError('') }}>Remove attachment {i + 1}</button>
+      </div>)}</div>
       {uploading ? <p role="status">Uploading evidence...</p> : null}
       {uploadError || error ? <p role="alert">{uploadError || errorText(error)}</p> : null}
       <button className="btn primary" type="submit" disabled={busy || !reason.trim() || !!uploadError || (propose && !validScore(a, b))}>{pending ? 'Saving...' : title}</button>
@@ -84,8 +112,8 @@ function OrganizerDecision({ m, pending, error, submit }: { m: MatchDto; pending
       }}>Confirm organizer decision</button></div> : null}
   </Panel>
 }
-function ComplaintReview({ m, row, organizer, admin, pending, error, statement, decide }: {
-  m: MatchDto; row: ResultComplaint; organizer: boolean; admin: boolean; pending: boolean; error: unknown;
+function ComplaintReview({ m, result, row, organizer, admin, pending, error, statement, decide }: {
+  m: MatchDto; result?: MatchResultDto; row: ResultComplaint; organizer: boolean; admin: boolean; pending: boolean; error: unknown;
   statement: (text: string) => Promise<unknown>; decide: (input: ComplaintDecisionInput) => Promise<unknown>
 }) {
   const [text, setText] = useState('')
@@ -94,8 +122,8 @@ function ComplaintReview({ m, row, organizer, admin, pending, error, statement, 
   const [a, setA] = useState(row.claimedScoreData?.[String(m.teamA?.id)] ?? 0)
   const [b, setB] = useState(row.claimedScoreData?.[String(m.teamB?.id)] ?? 0)
   return <Panel quiet><h3>Complaint #{row.complaintId} <Badge kind="neutral">{row.status}</Badge></h3>
-    <p>{row.filedBy.fullName}: {row.reason}</p><p className="sub">Admin stage begins {new Date(row.escalatesAt).toLocaleString()}</p>
-    {row.claimedScoreData ? <p>Proposed score: {m.teamA?.name} {row.claimedScoreData[String(m.teamA?.id)]} - {row.claimedScoreData[String(m.teamB?.id)]} {m.teamB?.name}</p> : null}
+    <p>{row.filedBy.fullName}: {row.reason}</p><p className="sub">Admin stage begins {matchTime(row.escalatesAt)}</p>
+    {row.claimedScoreData ? <ScoreComparison m={m} result={result} claimed={row.claimedScoreData} /> : null}
     <EvidenceLinks urls={row.evidence} />
     {row.organizerStatement ? <p>Organizer: {row.organizerStatement.statement}{row.organizerStatement.late ? ' (after the deadline)' : ''}</p> : null}
     {row.decision ? <p>Decision: {row.decision.note} | {row.decision.remedy}</p> : null}
@@ -143,18 +171,18 @@ export function MatchWorkflowPanel({ m, result }: { m: MatchDto; result?: MatchR
     </Panel> : null}
     {organizer && m.status === 'finished' && (!result || result.status === 'rejected') && m.teamA && m.teamB ? elapsed
       ? <OrganizerDecision m={m} pending={flow.organizer.isPending} error={flow.organizer.error} submit={flow.organizer.mutateAsync} />
-      : <Panel quiet>Organizer result decisions become available 24 hours after the recorded end of play.{m.actualEndTime ? ` Available at ${new Date(Date.parse(m.actualEndTime) + 24 * 3600_000).toLocaleString()}.` : ' The backend has not supplied the actual end time.'}</Panel> : null}
+      : <Panel quiet>Organizer result decisions become available 24 hours after the recorded end of play.{m.actualEndTime ? ` Available at ${matchTime(Number.isFinite(Date.parse(m.actualEndTime)) ? new Date(Date.parse(m.actualEndTime) + 24 * 3600_000).toISOString() : null)}.` : ' The backend has not supplied the actual end time.'}</Panel> : null}
     {party && m.teamA && m.teamB && (result?.status === 'submitted' || result?.status === 'verified') ? <ResultChallengeForm m={m} title="Dispute this result" pending={flow.challenge.isPending} error={flow.challenge.error} submit={flow.challenge.mutateAsync} /> : null}
     {activeDispute ? <Panel quiet><h3>Dispute details</h3>
       {flow.dispute.isPending ? <p>Loading dispute...</p> : flow.dispute.isError ? <p role="alert">{errorText(flow.dispute.error)}</p> : flow.dispute.data ? <>
         <p>{flow.dispute.data.raisedBy?.fullName ?? 'A match party'}: {flow.dispute.data.reason}</p>
-        {flow.dispute.data.claimedScoreData ? <p>Proposed score: {m.teamA?.name} {flow.dispute.data.claimedScoreData[String(m.teamA?.id)]} - {flow.dispute.data.claimedScoreData[String(m.teamB?.id)]} {m.teamB?.name}</p> : null}
+        {flow.dispute.data.claimedScoreData ? <ScoreComparison m={m} result={result} claimed={flow.dispute.data.claimedScoreData} /> : null}
         <EvidenceLinks urls={flow.dispute.data.evidence} />
       </> : null}
     </Panel> : null}
     {read ? <Panel quiet><h3>Result complaints</h3><p className="sub">Final results outside the ordinary dispute window can be complained about before tournament closure. The organizer adds a statement; university-wide admins decide after 48 hours.</p>
       {flow.complaints.isPending ? <p>Loading complaints...</p> : flow.complaints.isError ? <><p role="alert">{errorText(flow.complaints.error)}</p><button className="btn" onClick={() => void flow.complaints.refetch()}>Retry complaints</button></>
-        : !flow.complaints.data?.complaints.length ? <p>No complaints.</p> : flow.complaints.data.complaints.map(row => <ComplaintReview key={row.complaintId} m={m} row={row} organizer={organizer} admin={admin} pending={flow.statement.isPending || flow.decision.isPending} error={flow.statement.error || flow.decision.error}
+        : !flow.complaints.data?.complaints.length ? <p>No complaints.</p> : flow.complaints.data.complaints.map(row => <ComplaintReview key={row.complaintId} m={m} result={result} row={row} organizer={organizer} admin={admin} pending={flow.statement.isPending || flow.decision.isPending} error={flow.statement.error || flow.decision.error}
           statement={text => flow.statement.mutateAsync({ complaintId: row.complaintId, text })} decide={input => flow.decision.mutateAsync({ complaintId: row.complaintId, input })} />)}
     </Panel> : null}
     {party && m.teamA && m.teamB && (result?.status === 'verified' || result?.status === 'walkover') ? <ResultChallengeForm m={m} title="File result complaint" pending={flow.file.isPending} error={flow.file.error} submit={flow.file.mutateAsync} /> : null}

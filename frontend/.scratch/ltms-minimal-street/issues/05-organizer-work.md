@@ -18,6 +18,8 @@
 
 Keep concise English, the existing Minimal Street palette and equal peer frames. Check desktop, narrow layout and both themes. Preserve every frozen API/source file, permissions and business rules. Execute directly; no workers.
 
+**Completed Referee layout follow-up:** swap requests and per-match assignments now use equal 360px frames, desktop columns and bounded native scrolling. Existing invitation/appointment peers retain the same height. See the Ticket 05 evidence note.
+
 - [x] Request and setup forms use clear labels, grouped fields and one primary action for the current step.
 - [x] Existing prerequisites and publish/Draw availability remain authoritative.
 - [x] Soft filter decisions remain associated with the correct Team and Entry notes.

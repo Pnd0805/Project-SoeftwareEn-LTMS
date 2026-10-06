@@ -17,14 +17,15 @@ export function AdminFeedbackTab() {
   const remove = useMutation({ mutationFn: () => removeFeedbackByAdmin(id, reason.trim() || undefined), onSuccess: () => { setNotice(`Feedback #${id} removed.`); refresh() } })
   const restore = useMutation({ mutationFn: () => restoreFeedbackByAdmin(id), onSuccess: () => { setNotice(`Feedback #${id} restored.`); refresh() } })
   const error = remove.error ?? restore.error
-  return <Panel quiet>
-    <span className="tag"><em>//</em> Feedback moderation · university admin</span>
+  const busy = remove.isPending || restore.isPending
+  return <Panel quiet className="admin-feedback">
+    <h2>Feedback moderation</h2>
     <p className="sub">Enter the feedback ID shown on a tournament's comments or reviews. Removal excludes it from public counts. Restore clears its report flag.</p>
-    <Field label="Feedback ID" htmlFor="feedback-id"><input id="feedback-id" inputMode="numeric" value={idText} onChange={event => setIdText(event.target.value)} /></Field>
-    <Field label="Reason (optional for admin removal)" htmlFor="feedback-reason"><textarea id="feedback-reason" maxLength={255} value={reason} onChange={event => setReason(event.target.value)} /></Field>
+    <Field label="Feedback ID" htmlFor="feedback-id"><input id="feedback-id" disabled={busy} inputMode="numeric" value={idText} onChange={event => setIdText(event.target.value)} /></Field>
+    <Field label="Reason (optional)" htmlFor="feedback-reason"><textarea id="feedback-reason" disabled={busy} maxLength={255} value={reason} onChange={event => setReason(event.target.value)} /></Field>
     <div className="hstack">
-      <button className="btn" type="button" disabled={!valid || remove.isPending || restore.isPending} onClick={() => remove.mutate()}>Remove</button>
-      <button className="btn" type="button" disabled={!valid || remove.isPending || restore.isPending} onClick={() => restore.mutate()}>Restore</button>
+      <button className="btn danger" type="button" disabled={!valid || busy} onClick={() => remove.mutate()}>{remove.isPending ? 'Removing…' : 'Remove'}</button>
+      <button className="btn" type="button" disabled={!valid || busy} onClick={() => restore.mutate()}>{restore.isPending ? 'Restoring…' : 'Restore'}</button>
     </div>
     {error ? <p role="alert" className="sub">{error instanceof Error ? error.message : 'Moderation failed.'}</p> : null}
     {notice ? <p role="status" className="sub">{notice}</p> : null}

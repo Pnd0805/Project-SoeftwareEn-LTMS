@@ -44,7 +44,7 @@ function MockWatchPage() {
       <Crumb back={{ label: t.name, onClick: () => navigate(`/t/${t.id}`) }}>Watch</Crumb>
       <div className="spread">
         <h1 className="disp" style={{ fontSize: 28 }}>{matchStage(s, feature)}</h1>
-        {isLive ? <span className="live"><i />Live</span> : <Badge kind="ok">Full time</Badge>}
+        {isLive ? <Badge kind="warn">{feature.status === 'pending' ? 'Awaiting confirmation' : 'Scheduled'}</Badge> : <Badge kind="ok">Full time</Badge>}
       </div>
 
       <Scorebug m={feature} />
@@ -52,12 +52,12 @@ function MockWatchPage() {
       <Panel quiet style={{ alignItems: 'center', padding: '34px 20px', textAlign: 'center' }}>
         <Icon name="match" size={34} />
         <div className="disp" style={{ fontSize: 21 }}>
-          {isLive ? `Stream from ${feature.venue || 'the venue'}` : `Replay — ${feature.venue || 'the venue'}`}
+          {feature.replay ? `Replay — ${feature.venue || 'the venue'}` : 'No video available'}
         </div>
-        <span className="sub">Stream ingest is not part of this build — the page assumes a URL exists.</span>
+        <span className="sub">{feature.replay ? <a href={feature.replay} target="_blank" rel="noopener noreferrer">Watch replay</a> : 'Open the match to follow its recorded status.'}</span>
       </Panel>
 
-      <div className="grid2">
+      <div className="match-watch-pair">
         <Panel quiet>
           <span className="tag"><em>//</em> What the system knows</span>
           {feature.enteredBy ? (
@@ -95,7 +95,7 @@ function MockWatchPage() {
       {done.length ? (
         <>
           <span className="tag"><em>//</em> Replays · {done.length}</span>
-          <TableWrap>
+          <TableWrap label="Match replays">
             <table>
               <thead><tr><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>Replay</th><th /></tr></thead>
               <tbody>

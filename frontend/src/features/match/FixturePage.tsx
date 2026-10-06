@@ -13,6 +13,7 @@
  *    ฝั่ง server ที่ยังไม่มี endpoint รองรับ หน้านี้จึงยังบันทึกทับกันได้อยู่
  *    เป็นช่องว่างจริง ไม่ใช่เรื่องที่ลืม
  */
+import { displayTimeZone, matchTime } from './matchTime'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Field, Panel, TableWrap } from '../../components/kit/primitives'
@@ -114,7 +115,7 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
         <div className="sub">No active referee is available. Invite one in the tournament Referees tab first.</div>
       ) : null}
       {activePool.length ? (
-        <TableWrap>
+        <TableWrap label="Fixture referees">
           <table>
             <thead><tr><th>Referee</th><th>State</th><th /></tr></thead>
             <tbody>
@@ -197,11 +198,11 @@ export function FixturePage() {
   const isOrganizer = m.viewer.roles.includes('organizer')
   if (!isOrganizer) {
     return (
-      <>
+      <div className="match-fixture-page">
         <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}`) }}>Fixture</Crumb>
         <Empty icon="warn" title="403 — not yours to set"
           sub="Kick-off, venue and officials are the organizer's to place." />
-      </>
+      </div>
     )
   }
 
@@ -234,7 +235,7 @@ export function FixturePage() {
   const saving = update.isPending || assign.isPending
 
   return (
-    <>
+    <div className="match-fixture-page">
       <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`) }}>Fixture</Crumb>
       <div className="spread">
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
@@ -243,7 +244,8 @@ export function FixturePage() {
           : <Badge kind="neutral">Locked — {MatchStatusLabel[m.status]}</Badge>}
       </div>
 
-      <Panel quiet>
+      <Panel quiet className="match-fixture-form">
+        <p className="sub">Times shown in {displayTimeZone()}.</p>
         <div className="spread">
           <span className="hstack" style={{ gap: 8 }}>
             <span className="badge neutral">{m.tag}</span>
@@ -272,7 +274,7 @@ export function FixturePage() {
                 ช่อง Map pin ของ prototype จึงยังไม่มีที่เก็บ */}
 
             {USE_MOCK ? <Field label="Referees — appointment makes them eligible, this makes them responsible">
-              <TableWrap>
+              <TableWrap label="Fixture referees">
                 <table>
                   <thead><tr><th>On</th><th>Referee</th></tr></thead>
                   <tbody>
@@ -319,14 +321,14 @@ export function FixturePage() {
                 : 'It cannot be moved any more.'}
             </Banner>
             <Facts rows={[
-              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'],
-              ['End', m.scheduledEndTime ? new Date(m.scheduledEndTime).toLocaleString() : '—'],
+              ['Kick-off', m.scheduledTime ? matchTime(m.scheduledTime) : '—'],
+              ['End', m.scheduledEndTime ? matchTime(m.scheduledEndTime) : '—'],
               ['Venue', m.venue || '—'],
               ['Referees', m.referees.map(r => r.fullName).join(', ') || 'nobody named'],
             ]} />
           </>
         )}
       </Panel>
-    </>
+    </div>
   )
 }

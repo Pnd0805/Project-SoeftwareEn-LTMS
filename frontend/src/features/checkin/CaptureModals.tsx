@@ -23,7 +23,7 @@ function useCamera(facing: 'user' | 'environment') {
 
     const start = async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) throw new Error('เบราว์เซอร์นี้ไม่รองรับกล้อง')
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support camera access.')
         stream = await navigator.mediaDevices.getUserMedia({ video: facing === 'environment'
           ? { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
           : { facingMode: facing } })
@@ -34,7 +34,7 @@ function useCamera(facing: 'user' | 'environment') {
           if (!cancelled) setReady(true)
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'เปิดกล้องไม่ได้')
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Camera unavailable')
       }
     }
     void start()
@@ -57,7 +57,7 @@ const videoStyle: React.CSSProperties = { width: '100%', height: '100%', objectF
 
 /**
  * `expectedToken` คือรหัสที่กรรมการกำลังแสดงอยู่ ผู้เล่นต้องได้รหัสเดียวกันมา
- * ในเดโมกดปุ่ม "จำลองว่าสแกนติด" ได้ หรือพิมพ์รหัสที่เห็นบนจอกรรมการก็ได้
+ * ในเดโมกดปุ่ม "Demo scan" ได้ หรือพิมพ์รหัสที่เห็นบนจอกรรมการก็ได้
  */
 interface QrProps {
   open: boolean
@@ -70,8 +70,8 @@ interface QrProps {
 
 export function QrScanModal(props: QrProps) {
   return (
-    <Modal open={props.open} onClose={props.onClose} label="Check in — on-site"
-      title="สแกน QR ที่โต๊ะกรรมการ">
+    <Modal className="match-capture-dialog" open={props.open} onClose={props.onClose} label="Check in — on-site"
+      title="Scan check-in QR">
       {props.open ? <QrScanBody {...props} /> : null}
     </Modal>
   )
@@ -88,9 +88,9 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
   const submit = useCallback((token: string) => {
     // Preserve the case of signed payloads.
     const clean = token.trim()
-    if (!clean) { setBad('ยังไม่ได้กรอกรหัส'); return }
+    if (!clean) { setBad('Enter a code.'); return }
     if (expectedToken && clean !== expectedToken) {
-      setBad('รหัสไม่ตรงกับที่กรรมการแสดงอยู่ — ลองอ่านใหม่')
+      setBad('Code does not match the referee’s QR. Scan again.')
       return
     }
     setBad(null)
@@ -115,7 +115,7 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
             : decodeError instanceof Error ? decodeError.name : ''
           if (decodeError && !['NotFoundException', 'ChecksumException', 'FormatException'].includes(name)) {
             setScanState('error')
-            setBad('ตัวสแกนหยุดอ่านภาพ กดสแกนอีกครั้ง หรือกรอกรหัสจากจอกรรมการ')
+            setBad('Scanner stopped. Scan again or enter the referee’s code.')
           } else setScanState('scanning')
           return
         }
@@ -130,7 +130,7 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
     }).catch(() => {
       if (!cancelled) {
         setScanState('error')
-        setBad('เริ่มตัวสแกนไม่ได้ กดสแกนอีกครั้ง หรือกรอกรหัสจากจอกรรมการ')
+        setBad('Scanner could not start. Scan again or enter the referee’s code.')
       }
     })
     return () => { cancelled = true; controls?.stop() }
@@ -147,50 +147,50 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
         }} />
         {!ready ? (
           <span className="tag" style={{ position: 'absolute', bottom: 10 }}>
-            {error ? 'กล้องไม่พร้อม' : 'กำลังเปิดกล้อง…'}
+            {error ? 'Camera unavailable' : 'Starting camera…'}
           </span>
         ) : null}
       </div>
 
       <span role="status" className="sub">
-        {pending ? 'อ่าน QR แล้ว กำลังส่งเช็คอิน…'
-          : scanState === 'detected' ? 'อ่าน QR แล้ว หากเช็คอินไม่สำเร็จให้กดสแกนอีกครั้ง'
-            : scanState === 'error' ? 'ตัวสแกนไม่พร้อม'
-              : !ready ? 'กำลังเปิดกล้อง…' : 'กำลังสแกน QR — ให้เห็นทั้งรูปและขอบสีขาว ภาพต้องคมชัดและไม่มีแสงสะท้อน'}
+        {pending ? 'QR detected. Checking in…'
+          : scanState === 'detected' ? 'QR detected. Scan again if check-in fails.'
+            : scanState === 'error' ? 'Scanner unavailable'
+              : !ready ? 'Starting camera…' : 'Scanning QR. Keep the whole code and its border visible; avoid glare.'}
       </span>
 
       {error ? (
         <Banner kind="warn">
-          <b>เปิดกล้องไม่ได้</b> — {error} กรอกรหัสที่เห็นบนจอกรรมการแทนได้
+          <b>Camera unavailable</b> — {error} Enter the referee’s code instead.
         </Banner>
       ) : null}
       {bad ? <Banner kind="crit">{bad}</Banner> : null}
-      {submissionError ? <Banner kind="crit"><b>เช็คอินไม่สำเร็จ</b> {submissionError}</Banner> : null}
+      {submissionError ? <Banner kind="crit"><b>Check-in failed</b> {submissionError}</Banner> : null}
 
-      <Field label="รหัสบนจอกรรมการ" htmlFor="qr-manual">
-        <input id="qr-manual" autoComplete="off" placeholder="กรอกรหัสจากจอกรรมการ"
+      <Field label="Referee’s code" htmlFor="qr-manual">
+        <input id="qr-manual" autoComplete="off" placeholder="Enter the referee’s code"
           value={typed} onChange={e => setTyped(e.target.value)} />
       </Field>
 
       <div className="hstack">
-        <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
+        <button className="btn" type="button" onClick={onClose}>Cancel</button>
         {USE_MOCK ? <button className="btn" type="button" disabled={pending || !expectedToken}
-          onClick={() => submit(expectedToken ?? '')}>จำลองว่าสแกนติด</button> : null}
+          onClick={() => submit(expectedToken ?? '')}>Demo scan</button> : null}
         <button className="btn" type="button" disabled={pending || !ready}
-          onClick={() => { delivered.current = false; setBad(null); setScanState('starting'); setScanAttempt(n => n + 1) }}>สแกนอีกครั้ง</button>
+          onClick={() => { delivered.current = false; setBad(null); setScanState('starting'); setScanAttempt(n => n + 1) }}>Scan again</button>
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => submit(typed)}>
-          {pending ? 'กำลังเช็คอิน…' : 'ยืนยันรหัส'}
+          {pending ? 'Checking in…' : 'Check in'}
         </button>
       </div>
     </>
   )
 }
 
-// ══════════════ online — ถ่ายรูปคู่บัตร ══════════════
+// ══════════════ online — Take photoคู่บัตร ══════════════
 
 /**
- * FR-PV-04 — รูปหน้าคู่บัตรนักศึกษา ส่งแล้วยังไม่ผ่านทันที กรรมการต้องตรวจก่อน
+ * FR-PV-04 — รูปหน้าคู่Student ID ส่งแล้วยังไม่ผ่านทันที กรรมการต้องตรวจก่อน
  * รูปถูกย่อก่อนเก็บด้วยเหตุผลเดียวกับโลโก้ทีม (ดู mocks/imageInput.ts)
  */
 interface PhotoProps {
@@ -202,8 +202,8 @@ interface PhotoProps {
 
 export function IdPhotoModal(props: PhotoProps) {
   return (
-    <Modal open={props.open} onClose={props.onClose} label="Check in — online"
-      title="ถ่ายรูปหน้าคู่บัตรนักศึกษา">
+    <Modal className="match-capture-dialog" open={props.open} onClose={props.onClose} label="Check in — online"
+      title="Take an identity photo">
       {props.open ? <IdPhotoBody {...props} /> : null}
     </Modal>
   )
@@ -219,13 +219,13 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
 
   const capture = async () => {
     const v = videoRef.current
-    if (!v || !v.videoWidth) { setBad('กล้องยังไม่พร้อม'); return }
+    if (!v || !v.videoWidth) { setBad('Camera is not ready.'); return }
     const canvas = document.createElement('canvas')
     const scale = Math.min(1, 640 / Math.max(v.videoWidth, v.videoHeight))
     canvas.width = Math.round(v.videoWidth * scale)
     canvas.height = Math.round(v.videoHeight * scale)
     const ctx = canvas.getContext('2d')
-    if (!ctx) { setBad('วาดภาพไม่ได้'); return }
+    if (!ctx) { setBad('Could not capture the image.'); return }
     ctx.drawImage(v, 0, 0, canvas.width, canvas.height)
     setBad(null)
     setShot(canvas.toDataURL('image/jpeg', 0.8))
@@ -234,13 +234,13 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
   return (
     <>
       <Banner kind="warn">
-        <b>ถือบัตรไว้ข้างหน้าให้เห็นทั้งหน้าและบัตรในรูปเดียว</b>{' '}
-        กรรมการเป็นคนตรวจ — ส่งแล้วยังไม่ถือว่าเช็คอินสำเร็จจนกว่าจะได้รับอนุมัติ
+        <b>Keep your face and ID visible in one photo.</b>{' '}
+        A referee reviews the photo. You are checked in only after approval.
       </Banner>
 
       <div style={frameStyle}>
         {shot
-          ? <img src={shot} alt="รูปที่ถ่ายไว้" style={videoStyle} />
+          ? <img src={shot} alt="Captured identity photo" style={videoStyle} />
           : <video ref={videoRef} style={videoStyle} muted playsInline />}
         {!shot ? (
           <span aria-hidden style={{
@@ -250,46 +250,46 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
         ) : null}
         {!shot && !ready ? (
           <span className="tag" style={{ position: 'absolute', bottom: 10 }}>
-            {error ? 'กล้องไม่พร้อม' : 'กำลังเปิดกล้อง…'}
+            {error ? 'Camera unavailable' : 'Starting camera…'}
           </span>
         ) : null}
       </div>
 
       {error && !shot ? (
         <Banner kind="crit">
-          <b>เปิดกล้องไม่ได้</b> — {error}{' '}
-          แนบไฟล์แทนไม่ได้ตามข้อกำหนด ให้แจ้งกรรมการยืนยันตัวตนให้ที่หน้างานแทน (UC-04 E2b)
+          <b>Camera unavailable</b> — {error}{' '}
+          File uploads are unavailable for this check. Ask a referee to verify your identity in person.
         </Banner>
       ) : null}
       {bad ? <Banner kind="crit">{bad}</Banner> : null}
 
-      <Field label="บัตรที่ใช้" htmlFor="doc-type">
+      <Field label="ID type" htmlFor="doc-type">
         <select id="doc-type" value={docType}
           onChange={e => setDocType(e.target.value as 'student_id' | 'national_id')}>
-          <option value="student_id">บัตรนักศึกษา</option>
-          <option value="national_id">บัตรประชาชน</option>
+          <option value="student_id">Student ID</option>
+          <option value="national_id">National ID</option>
         </select>
       </Field>
 
       <label className="hstack" style={{ gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
         <span className="sub">
-          ยินยอมให้จัดเก็บภาพนี้เพื่อยืนยันตัวตน และเข้าใจว่าภาพจะถูกลบเมื่อการแข่งขันสิ้นสุด
-          (เห็นได้เฉพาะกรรมการของแมตช์และผู้ดูแลระบบ)
+          I consent to storing this photo for identity verification and understand it will be deleted after the tournament.
+          Only the match referees and administrators can view it.
         </span>
       </label>
 
       <div className="hstack">
-        <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
+        <button className="btn" type="button" onClick={onClose}>Cancel</button>
         {shot ? (
-          <button className="btn" type="button" onClick={() => setShot(null)}>ถ่ายใหม่</button>
+          <button className="btn" type="button" onClick={() => setShot(null)}>Retake</button>
         ) : (
-          <button className="btn" type="button" disabled={!ready} onClick={() => void capture()}>ถ่ายรูป</button>
+          <button className="btn" type="button" disabled={!ready} onClick={() => void capture()}>Take photo</button>
         )}
         <button className="btn primary" type="button" disabled={!shot || !consent || pending}
-          title={consent ? undefined : 'ต้องให้ความยินยอมก่อนส่งภาพ'}
+          title={consent ? undefined : 'Consent is required before sending the photo.'}
           onClick={() => shot && onSubmit({ photo: shot, documentType: docType })}>
-          {pending ? 'กำลังส่ง…' : 'ส่งให้กรรมการตรวจ'}
+          {pending ? 'Sending…' : 'Send for review'}
         </button>
       </div>
     </>
@@ -298,7 +298,7 @@ function IdPhotoBody({ onClose, onSubmit, pending }: PhotoProps) {
 
 // ══════════════ ฝั่งกรรมการ — ดูรูปแล้วตัดสิน ══════════════
 
-/** FR-PV-04 — กรรมการเปิดรูปที่ผู้เล่นส่ง แล้วอนุมัติหรือปฏิเสธพร้อมเหตุผล */
+/** FR-PV-04 — กรรมการเปิดรูปที่ผู้เล่นส่ง แล้วApproveหรือRejectพร้อมเหตุผล */
 interface ReviewProps {
   open: boolean
   onClose: () => void
@@ -310,7 +310,7 @@ interface ReviewProps {
 
 export function ReviewPhotoModal(props: ReviewProps) {
   return (
-    <Modal open={props.open} onClose={props.onClose} label="ตรวจหลักฐาน" title={props.playerName}>
+    <Modal className="match-capture-dialog" open={props.open} onClose={props.onClose} label="Review identity" title={props.playerName}>
       {props.open ? <ReviewPhotoBody {...props} /> : null}
     </Modal>
   )
@@ -323,26 +323,26 @@ function ReviewPhotoBody({ onClose, playerName, photo, onDecide, pending }: Revi
     <>
       <div style={frameStyle}>
         {photo
-          ? <img src={photo} alt={`หลักฐานของ ${playerName}`} style={videoStyle} />
-          : <span className="sub">ผู้เล่นคนนี้ไม่ได้แนบรูปมา</span>}
+          ? <img src={photo} alt={`Identity photo for ${playerName}`} style={videoStyle} />
+          : <span className="sub">No photo was attached.</span>}
       </div>
       <div className="hstack">
-        <Badge kind="warn">รอการตรวจ</Badge>
-        <span className="sub">เทียบหน้ากับบัตร และเทียบชื่อกับรายชื่อในทีม</span>
+        <Badge kind="warn">Awaiting review</Badge>
+        <span className="sub">Compare the face, ID and team roster.</span>
       </div>
-      <Field label="เหตุผล ถ้าจะปฏิเสธ" htmlFor="reject-why">
+      <Field label="Rejection reason" htmlFor="reject-why">
         <input id="reject-why" value={reason} onChange={e => setReason(e.target.value)}
-          placeholder="เช่น รูปเบลอจนอ่านบัตรไม่ออก" />
+          placeholder="e.g. The ID is unreadable" />
       </Field>
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>ปิด</button>
         <button className="btn danger" type="button" disabled={pending || !reason.trim()}
           onClick={() => onDecide(false, reason.trim())}>
-          ปฏิเสธ
+          Reject
         </button>
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => onDecide(true)}>
-          {pending ? 'กำลังบันทึก…' : 'อนุมัติ'}
+          {pending ? 'Saving…' : 'Approve'}
         </button>
       </div>
     </>
@@ -371,7 +371,7 @@ interface RevokeProps {
 
 export function RevokeCheckinModal(props: RevokeProps) {
   return (
-    <Modal open={props.open} onClose={props.onClose} label="ถอนการเช็คอิน"
+    <Modal className="match-capture-dialog" open={props.open} onClose={props.onClose} label="Revoke check-in"
       title={props.playerName}>
       {props.open ? <RevokeCheckinBody {...props} /> : null}
     </Modal>
@@ -383,27 +383,27 @@ function RevokeCheckinBody({ onClose, method, onConfirm, pending }: RevokeProps)
   return (
     <>
       <Banner kind="warn">
-        <b>เช็คอินนี้ผ่านไปแล้ว ({method})</b>{' '}
-        ถอนแล้วผู้เล่นคนนี้จะไม่ถูกนับในยอดที่ใช้ตัดสินแพ้บาย และเจ้าตัวเช็คอินใหม่ได้
-        (หรือคุณกดยืนยันให้ใหม่ได้) — ถ้าแมตช์เริ่มไปแล้ว การถอนไม่ย้อนคำตัดสินที่ออกไปแล้ว
+        <b>This check-in is accepted ({method}).</b>{' '}
+        Revoking removes this player from the verified count used for forfeits. The player can check in again
+        or you can verify them again. Revoking after play starts does not reverse an existing decision.
       </Banner>
-      <Field label="เหตุผล — ผู้เล่นคนนี้เห็นข้อความนี้" htmlFor="revoke-why">
+      <Field label="Reason shown to the player" htmlFor="revoke-why">
         <input id="revoke-why" value={reason} onChange={e => setReason(e.target.value)}
-          placeholder="เช่น สแกนแทนกัน ตัวจริงไม่ได้มาที่สนาม" />
+          placeholder="e.g. Another person scanned; the player is absent" />
       </Field>
       <div className="hstack">
-        <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
+        <button className="btn" type="button" onClick={onClose}>Cancel</button>
         <button className="btn danger" type="button" disabled={pending || !reason.trim()}
-          title={reason.trim() ? undefined : 'ต้องระบุเหตุผลก่อนถอน'}
+          title={reason.trim() ? undefined : 'Enter a reason before revoking.'}
           onClick={() => onConfirm(reason.trim())}>
-          {pending ? 'กำลังถอน…' : 'ถอนการเช็คอิน'}
+          {pending ? 'Revoking…' : 'Revoke check-in'}
         </button>
       </div>
     </>
   )
 }
 
-// ══════════════ UC-04 E2b — กรรมการยืนยันด้วยตนเอง ══════════════
+// ══════════════ UC-04 E2b — กรรมการVerify in person ══════════════
 
 /**
  * ไม่มีกล้องหรือสัญญาณขัดข้อง กรรมการยืนยันตัวตนหน้างานแล้วบันทึกเป็นข้อยกเว้น
@@ -416,7 +416,7 @@ interface ManualProps {
   onConfirm: (reason: string) => void
   pending: boolean
   /**
-   * เหตุผลที่แถวนี้ถูกปฏิเสธไว้ก่อนหน้า — มีค่า = กำลังกดให้ใหม่หลังถูก reject
+   * เหตุผลที่แถวนี้ถูกRejectไว้ก่อนหน้า — มีค่า = กำลังกดให้ใหม่หลังถูก reject
    * M19 เขียนทับแถวเดิมได้ตั้งแต่ 21 ก.ย. (OD-19 ข้อ 2) จึงเป็นทางกลับของ M15
    */
   afterReject?: string | null
@@ -424,7 +424,7 @@ interface ManualProps {
 
 export function ManualVerifyModal(props: ManualProps) {
   return (
-    <Modal open={props.open} onClose={props.onClose} label="ยืนยันด้วยตนเอง"
+    <Modal className="match-capture-dialog" open={props.open} onClose={props.onClose} label="Verify in person"
       title={props.playerName}>
       {props.open ? <ManualVerifyBody {...props} /> : null}
     </Modal>
@@ -437,27 +437,27 @@ function ManualVerifyBody({ onClose, onConfirm, pending, afterReject }: ManualPr
     <>
       {afterReject != null ? (
         <Banner kind="warn">
-          <b>เช็คอินของคนนี้ถูกปฏิเสธไว้</b>
+          <b>This check-in was rejected.</b>
           {afterReject ? <> — “{afterReject}”</> : null}{' '}
-          กดยืนยันให้ใหม่ได้ ระบบจะเขียนทับแถวเดิมและล้างเหตุผลที่ปฏิเสธไว้ออก
-          (M19 · มติ 21 ก.ย.) — ต้องบอกด้วยว่ารอบนี้ตรวจอะไรจนยอมให้ผ่าน
+          Verifying again replaces the existing check-in and clears its rejection reason.
+          Explain what you checked before approving this time.
         </Banner>
       ) : (
         <Banner kind="warn">
-          <b>ใช้เมื่อกล้องหรือสัญญาณใช้ไม่ได้เท่านั้น</b>{' '}
-          คุณกำลังรับรองว่าตรวจบัตรของผู้เล่นคนนี้ด้วยตาที่หน้างานแล้ว — บันทึกนี้ตรวจสอบ
-          ย้อนหลังได้ จึงต้องระบุเหตุผล
+          <b>Use only when camera or connection access fails.</b>{' '}
+          You confirm that you inspected the player’s ID in person. This record can be
+          audited; a reason is required.
         </Banner>
       )}
-      <Field label="เหตุผล" htmlFor="manual-why">
+      <Field label="Reason" htmlFor="manual-why">
         <input id="manual-why" value={reason} onChange={e => setReason(e.target.value)}
-          placeholder="เช่น กล้องของผู้เล่นเสีย ตรวจบัตรนักศึกษาที่หน้างานแล้ว" />
+          placeholder="e.g. Camera failed; physical ID inspected" />
       </Field>
       <div className="hstack">
-        <button className="btn" type="button" onClick={onClose}>ยกเลิก</button>
+        <button className="btn" type="button" onClick={onClose}>Cancel</button>
         <button className="btn primary" type="button" disabled={pending || !reason.trim()}
           onClick={() => onConfirm(reason.trim())}>
-          {pending ? 'กำลังบันทึก…' : 'ยืนยันว่าตรวจแล้ว'}
+          {pending ? 'Saving…' : 'Verify check-in'}
         </button>
       </div>
     </>

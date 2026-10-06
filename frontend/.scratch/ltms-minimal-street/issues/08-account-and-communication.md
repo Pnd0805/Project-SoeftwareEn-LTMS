@@ -1,16 +1,10 @@
-# 08: Use account, Search and Inbox consistently
+# 08: Account and communication — split index
 
-**What to build:** Extend the approved presentation through sign-in, registration, Profile, Search and Inbox so supporting journeys use the same controls and feedback.
+**Status:** superseded by two implementation tickets at the user's request on 2026-10-06. This file preserves earlier links; it is not an executable ticket.
 
-**Blocked by:** 01 — Find the next task from Home.
+- [08A — Account](08a-account.md): Login, Register and Profile.
+- [08B — Search and Inbox](08b-search-and-inbox.md): Search, mock Inbox and real-mode Inbox.
 
-**Status:** draft — ready for breakdown review.
+Both depend on 01 and preserve the original scope. Neither depends on the other; 09 waits for both. Read the matching Task 8A or 8B in the [implementation plan](../../../docs/superpowers/plans/2026-10-05-ltms-minimal-street.md).
 
-- [ ] Authentication forms retain existing validation, submission and redirect behavior while adopting the shared visual treatment.
-- [ ] Profile editing retains selected values, save feedback and avatar fallback behavior.
-- [ ] Search distinguishes results, an empty result and source failure with the correct recovery.
-- [ ] Inbox actions retain their permitted destinations and visible result after row changes.
-- [ ] Long user names, notifications and validation text remain readable without page-level overflow.
-- [ ] All controls retain visible labels, keyboard access and context-specific action names.
-
-**Review entry:** Open the [spec and execution index](../../../docs/superpowers/tickets/2026-10-05-ltms-minimal-street.md), then Task 8 of the implementation plan.
+**Review entry:** [Spec and execution index](../../../docs/superpowers/tickets/2026-10-05-ltms-minimal-street.md).

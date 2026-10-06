@@ -7,8 +7,8 @@ vi.mock('./RefereeMatchRequest', () => ({ RefereeMatchRequest: () => null }))
  *   R16  ผู้จัดกด "ยกผลทิ้ง" แล้วแมตช์ตัน ไม่มีใครส่งผลใหม่ได้
  *        และก่อนหน้านั้น ปุ่มตัดสินทั้งสามถูก disable เงียบๆ เพราะยังไม่ได้กรอกเหตุผล
  */
-import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { createMemoryRouter, RouterProvider, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
 import type { MatchDto, MatchResultDto } from '../../types/match.dto'
@@ -25,9 +25,12 @@ const resolveState = { ...idle, mutate: vi.fn() }
 const finishState = { ...idle, mutate: vi.fn() }
 const startState = { ...idle, mutate: vi.fn() }
 const submitResult = vi.fn()
+const saveStats = vi.fn()
+let definitions: { statKey: string; statLabelTh: string }[] = []
 
 let match: MatchDto
 let result: MatchResultDto | undefined
+let resultError: { status: number } | undefined
 
 const team = (id: number, name: string) =>
   ({ id, name, code: name.slice(0, 3), color: null, logoUrl: null, players: [] })
@@ -63,7 +66,7 @@ const baseResult = (over: Partial<MatchResultDto> = {}): MatchResultDto => ({
 
 vi.mock('../../hooks/useMatch', () => ({
   useMatch: () => ({ data: match, isPending: false, isError: false }),
-  useResult: () => ({ data: result }),
+  useResult: () => ({ data: result, isError: !!resultError, error: resultError }),
   useVerifyResult: () => verifyState,
   useDisputeResult: () => disputeState,
   useResolveDispute: () => resolveState,
@@ -75,8 +78,8 @@ vi.mock('../../hooks/useMatch', () => ({
   useFinishMatch: () => finishState,
   useForfeitMatch: () => ({ ...idle, mutate: vi.fn() }),
   useMatchStats: () => ({ data: { items: [] }, isPending: false, isError: false }),
-  useSaveMatchStats: () => ({ ...idle, mutate: vi.fn() }),
-  useStatDefinitions: () => ({ data: { items: [] } }),
+  useSaveMatchStats: () => ({ ...idle, mutate: saveStats, mutateAsync: saveStats }),
+  useStatDefinitions: () => ({ data: { items: definitions } }),
 }))
 
 vi.mock('./MatchWorkflowPanel', () => ({ MatchWorkflowPanel: () => null }))
@@ -89,11 +92,56 @@ const renderPage = () => render(
   </MemoryRouter>,
 )
 
+it('retains a result draft across section navigation and browser Back', async () => {
+  match = baseMatch()
+  match.status = 'finished'
+  result = undefined
+  const router = createMemoryRouter([{ path: '/m/:id/:tab?', element: <MatchPage /> }], { initialEntries: ['/m/9/overview'] })
+  render(<RouterProvider router={router} />)
+  fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '7' } })
+  await act(async () => { await router.navigate('/m/9/lineup') })
+  expect(screen.queryByRole('spinbutton', { name: 'Engineering' })).not.toBeInTheDocument()
+  await act(async () => { await router.navigate(-1) })
+  expect(screen.getByLabelText('Engineering')).toHaveValue(7)
+})
+
+it('keeps partial-save feedback when the result refreshes during statistics submission', async () => {
+  match = baseMatch()
+  match.status = 'finished'
+  match.teamA!.players = [{ id: 1, fullName: 'Player One', avatarUrl: null }]
+  definitions = [{ statKey: 'points', statLabelTh: 'Points' }]
+  result = undefined
+  const router = createMemoryRouter([{ path: '/m/:id/:tab?', element: <MatchPage /> }], { initialEntries: ['/m/9/overview'] })
+  submitResult.mockImplementation(async () => {
+    result = baseResult({ status: 'submitted' })
+    await router.navigate('/m/9/overview')
+    return {}
+  })
+  saveStats.mockRejectedValue(new Error('Stats unavailable'))
+  render(<RouterProvider router={router} />)
+  fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '7' } })
+  fireEvent.change(screen.getByLabelText('Points for Player One'), { target: { value: '7' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Review result' }))
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Submit result' }))
+  await waitFor(() => expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent('Score saved.'))
+  expect(screen.getByLabelText('Points for Player One')).toHaveValue(7)
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
+  definitions = []
+  resultError = undefined
   Object.assign(startState, idle)
   match = baseMatch()
   result = baseResult()
+})
+
+it('hides a cached private result when its source denies access', () => {
+  result = baseResult({ status: 'submitted', submittedBy: { id: 999, fullName: 'Private Recorder', avatarUrl: null } })
+  resultError = { status: 403 }
+  renderPage()
+  expect(screen.queryByText('Private Recorder')).not.toBeInTheDocument()
+  expect(document.querySelectorAll('.sb-score')[0]).toHaveTextContent('—')
 })
 
 describe('a result the organizer threw out', () => {

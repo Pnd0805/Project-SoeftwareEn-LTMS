@@ -15,7 +15,9 @@
  * S01 เป็น idempotent อยู่แล้ว (match_results.match_id เป็น UNIQUE) กดซ้ำจึง
  * UPDATE แถวเดิม ไม่สร้างซ้ำ — ปุ่มไม่ต้องกันการกดซ้ำเอง
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Modal } from '../../components/kit/Modal'
+import { useMatchActive } from './MatchActivity'
 import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { TeamChipView } from '../../components/kit/chips'
 import { useStatDefinitions, useSubmitResult, useSaveMatchStats } from '../../hooks/useMatch'
@@ -25,7 +27,7 @@ import type { MatchDto, MatchTeamRef } from '../../types/match.dto'
 
 type Nums = Record<string, number>
 
-export function ResultForm({ m }: { m: MatchDto }) {
+export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boolean }) {
   const { data: defs } = useStatDefinitions(m.tournament.sportTypeId)
   const submit = useSubmitResult(m.id, m.tournamentId)
   const saveStats = useSaveMatchStats(m.id)
@@ -33,14 +35,21 @@ export function ResultForm({ m }: { m: MatchDto }) {
   const [sa, setSa] = useState(0)
   const [sb, setSb] = useState(0)
   const [stat, setStat] = useState<Nums>({})
+  const [review, setReview] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState<{ kind: 'error' | 'partial' | 'success'; text: string } | null>(null)
+  const active = useMatchActive()
+  const submitting = useRef(false)
+  const busy = saving || submit.isPending || saveStats.isPending
+
 
   const sides = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const statDefs = defs?.items ?? []
   const level = sa === sb
 
   const key = (playerId: number, statKey: string) => `${playerId}:${statKey}`
-  const num = (playerId: number, statKey: string) => (
-    <input type="number" min={0} max={999} style={{ width: 74 }}
+  const num = (playerId: number, statKey: string, label: string) => (
+    <input id={`stat-${playerId}-${statKey}`} aria-label={label} type="number" min={0} max={999} disabled={busy} style={{ width: 74 }}
       value={stat[key(playerId, statKey)] ?? 0}
       onChange={e => setStat(p => ({ ...p, [key(playerId, statKey)]: Number(e.target.value) }))} />
   )
@@ -51,14 +60,24 @@ export function ResultForm({ m }: { m: MatchDto }) {
      กรรมการถูกถอนหลังเริ่มแมตช์ → 409 INSUFFICIENT_REFEREES) สกอร์เข้าไปแล้วแต่ตัวเลข
      ที่พิมพ์ไว้หายหมด ต้อง catch ไว้เอง ไม่งั้น mutateAsync reject ลอยและหน้าจอเงียบสนิท */
   const onSubmit = async () => {
+    if (submitting.current || busy || !m.viewer.can.submitResult || blocked || statProblems.length) return
+    submitting.current = true
+    setSaving(true)
+    setFeedback(null)
+    let scoreSaved = false
     try {
-      await onSubmitUnsafe()
-    } catch {
-      /* สถานะข้อผิดพลาดอยู่ที่ตัว mutation แล้ว แบนเนอร์ข้างล่างอ่านจากตรงนั้น */
-    }
+      await onSubmitUnsafe(() => { scoreSaved = true })
+      setFeedback({ kind: 'success', text: 'Result saved.' })
+      setReview(false)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Try again.'
+      setFeedback({ kind: scoreSaved ? 'partial' : 'error', text: scoreSaved
+        ? `Score saved. Player statistics were not saved. ${detail} Your numbers are retained; review and submit again.`
+        : `Result not saved. ${detail} Your draft is retained.` })
+    } finally { submitting.current = false; setSaving(false) }
   }
 
-  const onSubmitUnsafe = async () => {
+  const onSubmitUnsafe = async (onScoreSaved: () => void) => {
     await submit.mutateAsync({
       winnerTeamId: winnerTeamId(),
       scoreData: {
@@ -66,6 +85,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
         b: sb,
       },
     })
+    onScoreSaved()
     /* สถิติเป็นคนละตาราง (player_match_stats) จึงเป็นคนละ request
        ส่งเฉพาะคนที่มีตัวเลขจริง — แถวศูนย์ล้วนไม่ต้องเก็บ */
     if (m.viewer.can.recordStats && statDefs.length) {
@@ -80,7 +100,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
 
   /* OD-20: no match can finish level in any format. The on-field tiebreak is
      reflected in the aggregate score; Draw/Decider are not separate inputs. */
-  const blocked = level
+  const blocked = level || !Number.isSafeInteger(sa) || !Number.isSafeInteger(sb) || sa < 0 || sb < 0 || sa > 999 || sb > 999
 
   /* สถิติที่ขัดกับสกอร์ — เช่นฟุตบอลที่มีแอสซิสต์ทั้งที่ไม่มีประตู
      ตรวจสดขณะกรอก คนกรอกจะได้เห็นก่อนกดส่ง ไม่ใช่โดนปฏิเสธทีหลัง */
@@ -101,25 +121,44 @@ export function ResultForm({ m }: { m: MatchDto }) {
       })
     : []
 
+  const problemText = (problem: string) => problem
+    .replace('สกอร์ติดลบไม่ได้', 'Scores cannot be negative.')
+    .replace('สกอร์ไม่เสมอ จึงไม่ต้องมีตัวตัดสิน — ลบค่าในช่องตัวตัดสินออก', 'Remove the tiebreak when the scores are not level.')
+    .replace(/: สกอร์ (\d+) แต่รวมของผู้เล่นได้ (\d+) — ต้องเท่ากัน$/, ': score $1, player total $2. These must match.')
+    .replace(/: มีแอสซิสต์ (\d+) ทั้งที่ไม่มีประตูเลย$/, ': $1 assists recorded with no goals.')
+    .replace(/: แอสซิสต์ (\d+) มากกว่าประตู (\d+) — หนึ่งประตูมีแอสซิสต์ได้ไม่เกินหนึ่ง$/, ': $1 assists exceed $2 goals. Each goal allows at most one assist.')
+  const problemField = (problem: string) => {
+    const team = sides.find(side => problem.startsWith(`${side.name}:`))
+    const column = problem.includes('แอสซิสต์') ? 'assists' : ['goals', 'points', 'kills', 'score'].find(key => statDefs.some(def => def.statKey === key))
+    return team?.players[0] && column
+      ? { id: `stat-${team.players[0].id}-${column}`, label: `Check ${team.name} statistics` }
+      : { id: 'sc-a', label: 'Check scores' }
+  }
+
+  // ผลอาจรีเฟรชก่อนคำขอสถิติจบ ต้องคงฟอร์มจนแสดงผลของทั้งสองคำขอครบ
+  if (!visible && !saving && feedback?.kind !== 'partial' && feedback?.kind !== 'error') return null
+
   return (
-    <Panel>
-      <span className="tag">
-        <em>//</em> {m.mode === 'onsite' ? 'Referee' : 'Winning team leader'} — enter the result
+    <Panel className="match-result-form">
+      <h2>Record result</h2>
+      <span className="sub">
+        {m.mode === 'onsite' ? 'Referee' : 'Winning team leader'} — enter the result
       </span>
 
-      <div className="grid2" style={{ maxWidth: 420 }}>
+      <div className="grid2 match-score-inputs">
         <Field label={m.teamA?.name ?? 'Home'} htmlFor="sc-a">
-          <input id="sc-a" type="number" min={0} max={999} value={sa} onChange={e => setSa(Number(e.target.value))} />
+          <input id="sc-a" disabled={busy} aria-invalid={blocked} aria-describedby={blocked ? "result-blockers" : undefined} type="number" min={0} max={999} value={sa} onChange={e => setSa(Number(e.target.value))} />
         </Field>
         <Field label={m.teamB?.name ?? 'Away'} htmlFor="sc-b">
-          <input id="sc-b" type="number" min={0} max={999} value={sb} onChange={e => setSb(Number(e.target.value))} />
+          <input id="sc-b" disabled={busy} aria-invalid={blocked} type="number" min={0} max={999} value={sb} onChange={e => setSb(Number(e.target.value))} />
         </Field>
       </div>
 
       {blocked ? (
         <Banner kind="warn">
-          <b>Every match needs a winner.</b> Finish the tiebreak on the field, then enter the aggregate
-          score with the winning side ahead.
+          <div id="result-blockers"><b>Every match needs a winner.</b> Finish the tiebreak, then enter the final score.
+            {' '}<a href="#sc-a" onClick={e => { e.preventDefault(); document.getElementById('sc-a')?.focus() }}>Enter a winning score using whole numbers from 0 to 999.</a>
+          </div>
         </Banner>
       ) : null}
 
@@ -128,7 +167,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
           <span className="tag">
             <em>//</em> {m.tournament.sportName} — per player. These feed the top scorers and every profile.
           </span>
-          <TableWrap>
+          <TableWrap label="Player statistics entry">
             <table>
               <thead>
                 <tr>
@@ -141,7 +180,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
                   <tr key={`${t.id}-${p.id}`}>
                     <td>{p.fullName}</td>
                     <td><TeamChipView team={toTeamView(t)} /></td>
-                    {statDefs.map(d => <td key={d.statKey}>{num(p.id, d.statKey)}</td>)}
+                    {statDefs.map(d => <td key={d.statKey}>{num(p.id, d.statKey, `${d.statLabelTh || d.statKey} for ${p.fullName}`)}</td>)}
                   </tr>
                 )))}
               </tbody>
@@ -152,9 +191,12 @@ export function ResultForm({ m }: { m: MatchDto }) {
 
       {statProblems.length ? (
         <Banner kind="crit">
-          <b>สถิติยังไม่สอดคล้องกับสกอร์</b>
+          <b>Check the player statistics.</b>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-            {statProblems.map(p => <li key={p}>{p}</li>)}
+            {statProblems.map(p => {
+              const field = problemField(p)
+              return <li key={p}>{problemText(p)} <a href={`#${field.id}`} onClick={e => { e.preventDefault(); document.getElementById(field.id)?.focus() }}>{field.label}</a></li>
+            })}
           </ul>
         </Banner>
       ) : null}
@@ -178,11 +220,26 @@ export function ResultForm({ m }: { m: MatchDto }) {
         </Banner>
       ) : null}
 
-      <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-        disabled={submit.isPending || saveStats.isPending || blocked || statProblems.length > 0}
-        onClick={onSubmit}>
-        {submit.isPending || saveStats.isPending ? 'Saving…' : 'Submit result'}
-      </button>
+      {feedback ? <p role={feedback.kind === 'success' ? 'status' : 'alert'} className={`match-save-feedback ${feedback.kind}`}>{feedback.text}</p> : null}
+      <button className="btn primary" type="button" disabled={busy || !m.viewer.can.submitResult || blocked || statProblems.length > 0}
+        onClick={() => { setFeedback(null); setReview(true) }}>Review result</button>
+      <Modal open={review && active} title="Review result" className="match-result-dialog" onClose={() => { if (!busy && !submitting.current) setReview(false) }}>
+        <div className="match-dialog-body" role="region" aria-label="Result review" tabIndex={0}>
+          <div className="match-review-scores">
+            <div><b>{m.teamA?.name ?? 'Home'}</b><strong>{sa}</strong></div>
+            <div><b>{m.teamB?.name ?? 'Away'}</b><strong>{sb}</strong></div>
+          </div>
+          <p className="sub">Check both teams and the final score. The existing confirmation process follows submission.</p>
+          {m.viewer.can.recordStats && statDefs.length ? <p className="sub">Player statistics are saved separately after the score.</p> : null}
+          {feedback && feedback.kind !== 'success' ? <p role="alert" className={`match-save-feedback ${feedback.kind}`}>{feedback.text}</p> : null}
+        </div>
+        <div className="match-dialog-footer">
+          <button className="btn" type="button" disabled={busy} onClick={() => setReview(false)}>Back to edit</button>
+          <button className="btn primary" type="button" disabled={busy || !m.viewer.can.submitResult || blocked || statProblems.length > 0} onClick={() => void onSubmit()}>
+            {busy ? 'Saving…' : 'Submit result'}
+          </button>
+        </div>
+      </Modal>
     </Panel>
   )
 }

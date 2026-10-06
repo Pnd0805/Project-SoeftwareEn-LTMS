@@ -8,9 +8,10 @@
  * BE_KN C2: flat user DTOs, scoped rights and suspension category/expiry.
  */
 import { USE_MOCK } from '../../api/client'
+import { adminReadBlocked } from './adminView'
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
-import { ConfirmCard, Modal } from '../../components/kit/Modal'
+import { Modal } from '../../components/kit/Modal'
 import { useMe } from '../../hooks/useAuth'
 import { usePublicUser } from '../../hooks/useUser'
 import { useFaculties } from '../../hooks/useReference'
@@ -75,7 +76,8 @@ export function AdminUsersTab() {
   const canSuspend = (u: UserAdminViewDto) => USE_MOCK || scope === 'university_wide' || (scope === 'faculty' && !u.adminScopes.length && u.facultyId === me?.adminScope?.facultyId)
   const validDays = days === '' || (Number.isInteger(Number(days)) && Number(days) >= 1 && Number(days) <= 90)
   const status = statusOf(users.error)
-  const all = users.data?.items ?? []
+  const blocked = adminReadBlocked(users)
+  const all = blocked ? [] : users.data?.items ?? []
   const needle = query.trim().toLowerCase()
   const found = all.filter(u => inFilter(u, filter) && (!needle
     || u.user.fullName.toLowerCase().includes(needle)
@@ -84,6 +86,12 @@ export function AdminUsersTab() {
   const shown = found.slice(0, limit)
   const busy = suspend.isPending || grant.isPending || revoke.isPending
   const isSelf = (u: UserAdminViewDto) => !!me?.email && me.email.toLowerCase() === u.email.toLowerCase()
+  const suspensionTarget = all.find(row => row.user.id === suspending?.user.id)
+  const adminTarget = all.find(row => row.user.id === adminChange?.row.user.id)
+  const maySuspend = !!suspensionTarget && canSuspend(suspensionTarget) && !isSelf(suspensionTarget) && !suspensionTarget.isSuspended
+  const mayChangeAdmin = !!adminTarget && (adminChange?.giving
+    ? canGrant && !adminTarget.isSuspended && (USE_MOCK || !!adminTarget.facultyId)
+    : canRevoke(adminTarget) && !isSelf(adminTarget))
   const actionError = grant.error ?? revoke.error ?? (suspending ? null : suspend.error)
 
   const reinstate = (u: UserAdminViewDto) => {
@@ -94,7 +102,7 @@ export function AdminUsersTab() {
   }
 
   const confirmSuspend = () => {
-    if (!suspending || !reason.trim() || !validDays) return
+    if (!suspending || !maySuspend || busy || !reason.trim() || !validDays) return
     const target = suspending
     setNotice(null)
     suspend.mutate({ userId: target.user.id, input: { suspend: true, reason: reason.trim(), category, days: days === '' ? undefined : Number(days) } }, {
@@ -107,30 +115,30 @@ export function AdminUsersTab() {
   }
 
   const confirmAdminChange = () => {
-    if (!adminChange) return
-    const { row, giving } = adminChange
-    setAdminChange(null)
+    if (!adminChange || !adminTarget || !mayChangeAdmin || busy || blocked) return
+    const row = adminTarget
+    const { giving } = adminChange
     setNotice(null)
     if (giving) {
       grant.mutate({ userId: row.user.id, scopeType: USE_MOCK ? 'university_wide' : 'faculty', facultyId: USE_MOCK ? undefined : row.facultyId ?? undefined }, {
-        onSuccess: () => setNotice({ kind: 'ok', text: `${row.user.fullName} is now an admin.` }),
+        onSuccess: () => { setAdminChange(null); setNotice({ kind: 'ok', text: `${row.user.fullName} is now an admin.` }) },
       })
     } else if (row.adminScopes[0]) {
       revoke.mutate(row.adminScopes[0].id, {
-        onSuccess: () => setNotice({ kind: 'warn', text: `${row.user.fullName} is no longer an admin.` }),
+        onSuccess: () => { setAdminChange(null); setNotice({ kind: 'warn', text: `${row.user.fullName} is no longer an admin.` }) },
       })
     }
   }
 
   return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Users · {all.length}</span>
+    <Panel quiet className="admin-users">
+      <h2>Users</h2>
       <div className="sub">
         Find anyone, suspend an account that broke the rules or reinstate it, and grant or revoke admin rights.
         A suspended account cannot sign in and cannot be entered in a tournament.
       </div>
 
-      {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
+      {notice ? <div role="status"><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
       {actionError ? <Banner kind="crit"><b>That change did not go through.</b> {errorMessage(actionError)}</Banner> : null}
 
       {faculties.isError ? <Banner kind="warn">
@@ -140,7 +148,7 @@ export function AdminUsersTab() {
       {users.isPending ? <div className="sub">Loading users…</div> : null}
       {users.isError ? (
         status === 501 ? (
-          <Banner kind="warn"><b>Not available yet.</b> The backend has no route for listing or suspending users.</Banner>
+          <Banner kind="warn"><b>Account management unavailable.</b> User listing and account changes are not available yet.</Banner>
         ) : status === 401 || status === 403 ? (
           <Banner kind="warn"><b>Account management is for admins.</b> Your account does not have access to it.</Banner>
         ) : (
@@ -151,14 +159,15 @@ export function AdminUsersTab() {
         )
       ) : null}
 
-      {users.isSuccess ? (
+      {!blocked && (users.isSuccess || !!users.data) ? (
         <>
-          <div className="hstack" style={{ flexWrap: 'wrap' }}>
-            <input value={query} placeholder="Search by name, email or faculty" aria-label="Search users"
+          <div className="admin-user-toolbar">
+            <input type="search" value={query} placeholder="Name, email or faculty" aria-label="Search users"
               style={{ flex: '1 1 240px' }}
               onChange={e => { setQuery(e.target.value); setLimit(PAGE) }} />
             {FILTERS.map(f => (
               <button key={f.key} type="button" className={`btn ${filter === f.key ? 'primary' : 'ghost'}`}
+                aria-pressed={filter === f.key}
                 onClick={() => { setFilter(f.key); setLimit(PAGE) }}>
                 {f.label} · {all.filter(u => inFilter(u, f.key)).length}
               </button>
@@ -166,7 +175,7 @@ export function AdminUsersTab() {
           </div>
 
           {!found.length ? <div className="sub">Nobody matches that.</div> : (
-            <TableWrap>
+            <TableWrap label="Admin user directory">
               <table>
                 <thead><tr><th>Name</th><th>Faculty</th><th>Squads</th><th>Role</th><th>Status</th><th /></tr></thead>
                 <tbody>
@@ -244,42 +253,44 @@ export function AdminUsersTab() {
         </>
       ) : null}
 
-      <Modal open={!!suspending} onClose={() => setSuspending(null)} label="Suspend an account"
+      <Modal className="admin-decision-dialog" open={!!suspending && maySuspend} onClose={() => { if (!busy) setSuspending(null) }} label="Suspend an account"
         title={suspending?.user.fullName ?? ''}>
         <div className="sub">
           They can't sign in while suspended, and they can't be entered in a tournament. Their squads and past
           results stay as they are.
         </div>
         <Field label="Reason — kept with the account" htmlFor="suspend-reason">
-          <textarea id="suspend-reason" rows={3} value={reason} onChange={e => setReason(e.target.value)} />
+          <textarea id="suspend-reason" rows={3} disabled={busy} value={reason} onChange={e => setReason(e.target.value)} />
         </Field>
         <Field label="Category shown to the account holder" htmlFor="suspend-category">
-          <select id="suspend-category" value={category} onChange={e => setCategory(e.target.value as typeof category)}>
+          <select id="suspend-category" disabled={busy} value={category} onChange={e => setCategory(e.target.value as typeof category)}>
             <option value="abusive_language">Abusive language or harassment</option><option value="cheating">Cheating</option>
             <option value="false_information">False information or impersonation</option><option value="spam">Spam</option><option value="other">Other rule violation</option>
           </select>
         </Field>
         <Field label="Days (1-90); leave blank for permanent suspension" htmlFor="suspend-days">
-          <input id="suspend-days" type="number" min="1" max="90" step="1" value={days} onChange={e => setDays(e.target.value)} />
+          <input id="suspend-days" disabled={busy} type="number" min="1" max="90" step="1" value={days} onChange={e => setDays(e.target.value)} />
         </Field>
         {suspend.isError ? <Banner kind="crit">{errorMessage(suspend.error)}</Banner> : null}
         <div className="hstack">
-          <button className="btn" type="button" onClick={() => setSuspending(null)}>Cancel</button>
+          <button className="btn" type="button" disabled={busy} onClick={() => setSuspending(null)}>Cancel</button>
           <button className="btn danger" type="button" disabled={!reason.trim() || !validDays || suspend.isPending} onClick={confirmSuspend}>
             {suspend.isPending ? 'Suspending…' : 'Suspend account'}
           </button>
         </div>
       </Modal>
 
-      <Modal open={!!adminChange} onClose={() => setAdminChange(null)}
+      <Modal className="admin-decision-dialog" open={!!adminChange && mayChangeAdmin} onClose={() => { if (!busy) setAdminChange(null) }}
         label={adminChange?.giving ? 'Grant admin rights' : 'Revoke admin rights'}
         title={adminChange?.row.user.fullName ?? ''}>
-        <ConfirmCard danger={!adminChange?.giving} ok={adminChange?.giving ? 'Make admin' : 'Revoke'}
-          onCancel={() => setAdminChange(null)}
-          body={adminChange?.giving
+        <p className="sub">{adminChange?.giving
             ? USE_MOCK ? 'They get university-wide admin rights.' : `They get faculty admin rights for ${facultyName(adminChange.row)}.`
-            : 'They lose admin rights and go back to being a regular user.'}
-          onConfirm={confirmAdminChange} />
+            : 'They lose admin rights and go back to being a regular user.'}</p>
+        {grant.error || revoke.error ? <Banner kind="crit">{errorMessage(grant.error ?? revoke.error)}</Banner> : null}
+        <div className="hstack">
+          <button className="btn" type="button" disabled={busy} onClick={() => setAdminChange(null)}>Cancel</button>
+          <button className={`btn ${adminChange?.giving ? 'primary' : 'danger'}`} type="button" disabled={busy} onClick={confirmAdminChange}>{busy ? 'Saving…' : adminChange?.giving ? 'Make admin' : 'Revoke'}</button>
+        </div>
       </Modal>
     </Panel>
   )

@@ -5,8 +5,8 @@ import { USE_MOCK } from '../../api/client'
 import { Banner, Panel } from '../../components/kit/primitives'
 import { checkinErrorMessage } from './checkinErrors'
 
-export function CheckinQrPanel({ matchId, mockToken, done, total }: {
-  matchId: number; mockToken: string | null; done: number; total: number
+export function CheckinQrPanel({ matchId, mockToken, done, total, countsKnown = true }: {
+  matchId: number; mockToken: string | null; done: number; total: number; countsKnown?: boolean
 }) {
   const [now, setNow] = useState(() => Date.now())
   const query = useCheckinQr(matchId)
@@ -21,15 +21,14 @@ export function CheckinQrPanel({ matchId, mockToken, done, total }: {
   const token = USE_MOCK ? mockToken : usable && !query.isError ? query.data?.qrPayload : null
   const seconds = Math.max(0, Math.floor((expiry - now) / 1000))
 
-  return <Panel>
-    <span className="tag"><em>//</em> Show this at the referee&apos;s table</span>
-    {token ? <div className="hstack" style={{ gap: 22, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <QRCodeSVG value={token} size={320} marginSize={4} level="M" title="Check-in QR code"
+  return <Panel className="checkin-summary-frame checkin-qr-frame">
+    <h2>Check-in QR</h2>
+    {token ? <div className="checkin-qr-content">
+      <QRCodeSVG value={token} size={224} fgColor="var(--qr-ink)" bgColor="var(--qr-bg)" marginSize={4} level="M" title="Check-in QR code"
         style={{ flexShrink: 0, maxWidth: '100%', height: 'auto' }} />
-      <div className="vstack" style={{ flex: 1, minWidth: 220, gap: 10 }}>
-        <span className="tag">Code</span>
-        <code style={{ wordBreak: 'break-all' }}>{token}</code>
-        <span className="tag">Verified: {done} / {total}</span>
+      <div className="vstack" style={{ flex: 1, minWidth: 0, gap: 10 }}>
+        <details><summary>QR payload</summary><code style={{ wordBreak: 'break-all' }}>{token}</code></details>
+        <span className="tag">{countsKnown ? total > 0 ? `Verified: ${done} / ${total}` : `Verified: ${done}` : 'Roster status unavailable'}</span>
         <span>{USE_MOCK ? 'Demo QR' : `Expires in ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} · renews automatically before expiry`}</span>
       </div>
     </div> : <Banner kind={query.isPending ? 'warn' : 'crit'}>
