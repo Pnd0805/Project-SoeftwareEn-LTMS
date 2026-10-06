@@ -46,7 +46,7 @@ export function ResultForm({ m }: { m: MatchDto }) {
 
   const key = (playerId: number, statKey: string) => `${playerId}:${statKey}`
   const num = (playerId: number, statKey: string) => (
-    <input type="number" min={0} max={999} style={{ width: 74 }}
+    <input type="number" min={0} max={999} style={{ width: 74 }} aria-label={`${sides.flatMap(s => s.players).find(p => p.id === playerId)?.fullName ?? `Player ${playerId}`} · ${statDefs.find(d => d.statKey === statKey)?.statLabelTh ?? statKey}`}
       value={stat[key(playerId, statKey)] ?? 0}
       onChange={e => setStat(p => ({ ...p, [key(playerId, statKey)]: Number(e.target.value) }))} />
   )

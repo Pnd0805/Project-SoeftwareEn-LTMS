@@ -250,6 +250,7 @@ export interface ReviewTournamentApplicationRequest {
 }
 
 export interface TournamentAnnouncementDto {
+  type?: 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream';
   id: number;
   tournamentId: number;
   authorId: number;
@@ -263,6 +264,7 @@ export interface TournamentAnnouncementListResponse {
 }
 
 export interface CreateTournamentAnnouncementRequest {
+  type?: 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream';
   title: string;
   body: string;
 }
@@ -346,6 +348,7 @@ export interface BackendPendingTournamentRequestDto {
 
 /** GET /admin/amendment-requests — คำขอแก้ไขทัวร์นาเมนต์ที่รอ Admin */
 export interface BackendAmendmentRequestDto {
+  reason?: string | null;
   id: number;
   tournamentId: number;
   tournamentName: string;

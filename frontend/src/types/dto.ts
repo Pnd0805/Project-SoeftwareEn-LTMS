@@ -44,6 +44,7 @@ export interface LoginResponse {
 
 // ══════════════ Users & Profile — U01-U04, U06 ══════════════
 export interface MeDto {
+  showProfileStats?: boolean;
   adminScope?: { id: number; scopeType: 'faculty' | 'university_wide' | 'root'; facultyId: number | null } | null;
   id: number;
   fullName: string;
@@ -64,7 +65,7 @@ export interface MeDto {
 
 // U02 PATCH /me — avatarUrl ขาเข้ารับ objectKey จาก presign (หรือ null เพื่อลบ), ขาอ่านคืน public URL
 export type UpdateMeRequest = Partial<
-  Pick<MeDto, "avatarUrl" | "contactInfo" | "address">
+  Pick<MeDto, "avatarUrl" | "contactInfo" | "address" | "showProfileStats">
 >;
 
 export interface UserRef {
@@ -129,6 +130,7 @@ export interface Department {
   facultyId: number;
 }
 export interface SportType {
+  supportsBestOf?: boolean;
   id: number;
   name: string;
   minMembers: number;

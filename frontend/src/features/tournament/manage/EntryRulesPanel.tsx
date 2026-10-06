@@ -100,7 +100,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     if (pendingApproval) {
       if (setPendingRules.isPending) return
       setPendingRules.mutate(toEligibilityRules(draftFaculties, draftYears), {
-        onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString()) },
+        onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })) },
       })
       return
     }
@@ -116,7 +116,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         ...(scheduleNeedsFix ? { eventStartDate } : {}),
       },
     },
-    { onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString()) } },
+    { onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })) } },
     )
   }
 
@@ -195,7 +195,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                 <tbody>
                   {amendmentHistory.data.items.map(item => (
                     <tr key={item.id}>
-                      <td>{new Date(item.requestedAt).toLocaleString()}</td>
+                      <td>{new Date(item.requestedAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</td>
                       <td>
                         <div className="vstack" style={{ gap: 6, minWidth: 200, overflowWrap: 'anywhere' }}>
                           {formatAmendmentChanges(item.requestedChanges, facultyName).map(change => (
@@ -209,7 +209,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                         {item.rejectionReason ? <><b>{item.rejectionReason}</b><br /></> : null}
                         <span className="sub">
                           {item.reviewedBy ? `By ${item.reviewedBy.fullName}` : 'Not reviewed yet'}
-                          {item.reviewedAt ? ` · ${new Date(item.reviewedAt).toLocaleString()}` : ''}
+                          {item.reviewedAt ? ` · ${new Date(item.reviewedAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}` : ''}
                         </span>
                       </td>
                     </tr>

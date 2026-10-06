@@ -17,6 +17,7 @@
 import { BackendCareerPanel } from './BackendCareerPanel'
 import { BackendMatchHistoryPanel } from './BackendMatchHistoryPanel'
 import { PublicRewards } from '../rewards/RewardsPage'
+import { ReportUserButton } from './ReportUserButton'
 import { TeamChipView } from '../../components/kit/chips'
 import { Avatar } from '../../components/kit/Avatar'
 import { useNavigate } from 'react-router-dom'
@@ -90,6 +91,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
       </div>
 
       {follow.error || follow.toggle.error ? <p role="alert">{(follow.error ?? follow.toggle.error) instanceof Error ? (follow.error ?? follow.toggle.error as Error)?.message : "Following request failed."}</p> : null}
+      {currentUser && currentUser.id !== userId ? <ReportUserButton userId={userId} name={p.fullName} /> : null}
       <Panel quiet>
         <span className="tag"><em>//</em> Squads · {p.teams.length}</span>
         {p.teams.length ? (

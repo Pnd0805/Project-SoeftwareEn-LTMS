@@ -21,7 +21,6 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { useCreateTournament } from '../../hooks/useTournament'
-import { isBoSport } from '../match/matchView'
 import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useReference'
 import { useMe } from '../../hooks/useAuth'
 import { ApiError } from '../../api/client'
@@ -84,7 +83,7 @@ export function RequestPage() {
    */
   const organizingFacultyId = useWatch({ control, name: 'organizingFacultyId' })
   const sportId = useWatch({ control, name: 'sportTypeId' })
-  const boSport = isBoSport(sports?.items.find(s => s.id === sportId)?.name ?? '')
+  const boSport = sports?.items.find(s => s.id === sportId)?.supportsBestOf === true
   const organizingDepartmentId = useWatch({ control, name: 'organizingDepartmentId' })
   const { data: departments } = useDepartments(organizingFacultyId ?? undefined)
   /* สองช่องนี้คุมค่าเอง ไม่ได้ผ่าน register — setValue เฉยๆ จะไม่ตรวจซ้ำให้ ข้อความ
@@ -223,34 +222,37 @@ export function RequestPage() {
           <Panel>
             <span className="tag"><em>//</em> What it is</span>
             <Field label="Name" htmlFor="rq-name">
-              <input id="rq-name" {...register('name')} placeholder="Faculty Football Cup 2026" aria-invalid={!!errors.name} />
-              {fieldError('name') ? <span className="sub">{fieldError('name')}</span> : null}
+              <input id="rq-name" {...register('name')} placeholder="Faculty Football Cup 2026" aria-invalid={!!errors.name} aria-describedby={errors.name ? "rq-error-name" : undefined} />
+              {fieldError('name') ? <span className="sub" id="rq-error-name">{fieldError('name')}</span> : null}
             </Field>
             <div className="grid2">
               <Field label="Sport" htmlFor="rq-sport">
-                <select id="rq-sport" {...register('sportTypeId', { valueAsNumber: true })}>
+                <select id="rq-sport" {...register('sportTypeId', { valueAsNumber: true })} aria-invalid={!!errors.sportTypeId} aria-describedby={errors.sportTypeId ? "rq-error-sportTypeId" : undefined}>
                   {(sports?.items ?? []).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
                 </select>
+              {fieldError('sportTypeId') ? <span className="sub" id="rq-error-sportTypeId">{fieldError('sportTypeId')}</span> : null}
               </Field>
               <Field label="Format — fixed once the draw is made" htmlFor="rq-format">
-                <select id="rq-format" {...register('bracketFormat')}>
+                <select id="rq-format" {...register('bracketFormat')} aria-invalid={!!errors.bracketFormat} aria-describedby={errors.bracketFormat ? "rq-error-bracketFormat" : undefined}>
                   {BracketFormatOptions.map(f => <option key={f} value={f}>{BracketFormatLabel[f]}</option>)}
                 </select>
+              {fieldError('bracketFormat') ? <span className="sub" id="rq-error-bracketFormat">{fieldError('bracketFormat')}</span> : null}
               </Field>
               {boSport ? <Field label="BO format — fixed after the first match starts" htmlFor="rq-bo">
-                <select id="rq-bo" {...register('bestOf', { setValueAs: value => value === '' ? null : Number(value) })}>
+                <select id="rq-bo" {...register('bestOf', { setValueAs: value => value === '' ? null : Number(value) })} aria-invalid={!!errors.bestOf} aria-describedby={errors.bestOf ? "rq-error-bestOf" : undefined}>
                   <option value="">No BO limit</option>{[1, 3, 5, 7].map(n => <option key={n} value={n}>BO{n}</option>)}
                 </select>
+              {fieldError('bestOf') ? <span className="sub" id="rq-error-bestOf">{fieldError('bestOf')}</span> : null}
               </Field> : null}
               {/* ช่องล่างรับค่าว่างได้จริง ช่องบนรับไม่ได้ — สองช่องติดกันที่หน้าตาเหมือนกัน
                   แต่กฎคนละอย่าง ต้องบอกตั้งแต่ก่อนกดส่ง ไม่ใช่รอให้กดแล้วค่อยขึ้นสีแดง */}
               <Field label="Organising faculty — who puts it on" htmlFor="rq-fac">
-                <select id="rq-fac" value={organizingFacultyId ?? ''} aria-invalid={!!errors.organizingFacultyId}
+                <select id="rq-fac" value={organizingFacultyId ?? ''} aria-invalid={!!errors.organizingFacultyId} aria-describedby={errors.organizingFacultyId ? "rq-error-organizingFacultyId" : undefined}
                   onChange={e => pickFaculty(e.target.value)}>
                   <option value="">Choose a faculty — required</option>
                   {(faculties?.items ?? []).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
-                {fieldError('organizingFacultyId') ? <span className="sub">{fieldError('organizingFacultyId')}</span>
+                {fieldError('organizingFacultyId') ? <span className="sub" id="rq-error-organizingFacultyId">{fieldError('organizingFacultyId')}</span>
                   : organizingFacultyId == null
                     ? <span className="sub">Every tournament is run by one faculty. LTMS has no university-wide
                       level yet, so this cannot be left blank.</span>
@@ -258,21 +260,21 @@ export function RequestPage() {
               </Field>
               <Field label="Organising department — optional" htmlFor="rq-dept">
                 <select id="rq-dept" value={organizingDepartmentId ?? ''} disabled={organizingFacultyId == null}
-                  aria-invalid={!!errors.organizingDepartmentId}
+                  aria-invalid={!!errors.organizingDepartmentId} aria-describedby={errors.organizingDepartmentId ? "rq-error-organizingDepartmentId" : undefined}
                   onChange={e => pickDepartment(e.target.value)}>
                   <option value="">The whole faculty</option>
                   {(departments?.items ?? []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
-                {fieldError('organizingDepartmentId') ? <span className="sub">{fieldError('organizingDepartmentId')}</span> : null}
-                {fieldError('scopeType') ? <span className="sub">{fieldError('scopeType')}</span> : null}
+                {fieldError('organizingDepartmentId') ? <span className="sub" id="rq-error-organizingDepartmentId">{fieldError('organizingDepartmentId')}</span> : null}
+                {fieldError('scopeType') ? <span className="sub" id="rq-error-scopeType">{fieldError('scopeType')}</span> : null}
               </Field>
               <Field label="Squad cap" htmlFor="rq-cap">
-                <input id="rq-cap" type="number" min={2} max={64} {...register('maxTeams', { valueAsNumber: true })} />
-                {fieldError('maxTeams') ? <span className="sub">{fieldError('maxTeams')}</span> : null}
+                <input id="rq-cap" type="number" min={2} max={64} {...register('maxTeams', { valueAsNumber: true })} aria-invalid={!!errors.maxTeams} aria-describedby={errors.maxTeams ? "rq-error-maxTeams" : undefined} />
+                {fieldError('maxTeams') ? <span className="sub" id="rq-error-maxTeams">{fieldError('maxTeams')}</span> : null}
               </Field>
               <Field label="Minimum squads" htmlFor="rq-min-teams">
-                <input id="rq-min-teams" type="number" min={1} {...register('minTeams', { valueAsNumber: true })} />
-                {fieldError('minTeams') ? <span className="sub">{fieldError('minTeams')}</span> : null}
+                <input id="rq-min-teams" type="number" min={1} {...register('minTeams', { valueAsNumber: true })} aria-invalid={!!errors.minTeams} aria-describedby={errors.minTeams ? "rq-error-minTeams" : undefined} />
+                {fieldError('minTeams') ? <span className="sub" id="rq-error-minTeams">{fieldError('minTeams')}</span> : null}
               </Field>
             </div>
           </Panel>
@@ -285,25 +287,25 @@ export function RequestPage() {
             <div className="grid2">
               <Field label="Entry opens" htmlFor="rq-reg-start">
                 <input id="rq-reg-start" type="datetime-local"
-                  {...register('registrationStart')} />
-                {fieldError('registrationStart') ? <span className="sub">{fieldError('registrationStart')}</span> : null}
+                  {...register('registrationStart')} aria-invalid={!!errors.registrationStart} aria-describedby={errors.registrationStart ? "rq-error-registrationStart" : undefined} />
+                {fieldError('registrationStart') ? <span className="sub" id="rq-error-registrationStart">{fieldError('registrationStart')}</span> : null}
               </Field>
               <Field label="Entry closes" htmlFor="rq-reg-end">
                 <input id="rq-reg-end" type="datetime-local"
-                  {...register('registrationEnd')} />
-                {fieldError('registrationEnd') ? <span className="sub">{fieldError('registrationEnd')}</span> : null}
+                  {...register('registrationEnd')} aria-invalid={!!errors.registrationEnd} aria-describedby={errors.registrationEnd ? "rq-error-registrationEnd" : undefined} />
+                {fieldError('registrationEnd') ? <span className="sub" id="rq-error-registrationEnd">{fieldError('registrationEnd')}</span> : null}
               </Field>
               <Field label="First match date" htmlFor="rq-date">
-                <input id="rq-date" type="date" {...register('eventStartDate')} />
-                {fieldError('eventStartDate') ? <span className="sub">{fieldError('eventStartDate')}</span> : null}
+                <input id="rq-date" type="date" {...register('eventStartDate')} aria-invalid={!!errors.eventStartDate} aria-describedby={errors.eventStartDate ? "rq-error-eventStartDate" : undefined} />
+                {fieldError('eventStartDate') ? <span className="sub" id="rq-error-eventStartDate">{fieldError('eventStartDate')}</span> : null}
               </Field>
               <Field label="Last match date" htmlFor="rq-date-end">
-                <input id="rq-date-end" type="date" {...register('eventEndDate')} />
-                {fieldError('eventEndDate') ? <span className="sub">{fieldError('eventEndDate')}</span> : null}
+                <input id="rq-date-end" type="date" {...register('eventEndDate')} aria-invalid={!!errors.eventEndDate} aria-describedby={errors.eventEndDate ? "rq-error-eventEndDate" : undefined} />
+                {fieldError('eventEndDate') ? <span className="sub" id="rq-error-eventEndDate">{fieldError('eventEndDate')}</span> : null}
               </Field>
               <Field label="Default venue" htmlFor="rq-venue">
-                <input id="rq-venue" {...register('venue')} placeholder="Main Stadium" aria-invalid={!!errors.venue} />
-                {fieldError('venue') ? <span className="sub">{fieldError('venue')}</span> : null}
+                <input id="rq-venue" {...register('venue')} placeholder="Main Stadium" aria-invalid={!!errors.venue} aria-describedby={errors.venue ? "rq-error-venue" : undefined} />
+                {fieldError('venue') ? <span className="sub" id="rq-error-venue">{fieldError('venue')}</span> : null}
               </Field>
             </div>
           </Panel>
@@ -317,20 +319,22 @@ export function RequestPage() {
             </Banner>
             <div className="grid2">
               <Field label="Gender" htmlFor="rq-gender">
-                <select id="rq-gender" {...register('genderRequirement')}>
+                <select id="rq-gender" {...register('genderRequirement')} aria-invalid={!!errors.genderRequirement} aria-describedby={errors.genderRequirement ? "rq-error-genderRequirement" : undefined}>
                   {GenderRequirementOptions.map(x => <option key={x} value={x}>{GenderRequirementLabel[x]}</option>)}
                 </select>
+              {fieldError('genderRequirement') ? <span className="sub" id="rq-error-genderRequirement">{fieldError('genderRequirement')}</span> : null}
               </Field>
               {/* ขอบเขตเดียวกับ backend (optionalAge = int 0–120) — ไม่ใส่ min/max ไว้
                   ลูกศรของเบราว์เซอร์กดลงไปติดลบได้ แล้วค่อยไปเด้ง 400 ตอนกดส่ง */}
               <Field label="Minimum age" htmlFor="rq-lo">
                 <input id="rq-lo" type="number" min={0} max={120}
-                  {...register('minAge', { setValueAs: value => value === '' ? null : Number(value) })} />
-                {fieldError('minAge') ? <span className="sub">{fieldError('minAge')}</span> : null}
+                  {...register('minAge', { setValueAs: value => value === '' ? null : Number(value) })} aria-invalid={!!errors.minAge} aria-describedby={errors.minAge ? "rq-error-minAge" : undefined} />
+                {fieldError('minAge') ? <span className="sub" id="rq-error-minAge">{fieldError('minAge')}</span> : null}
               </Field>
               <Field label="Maximum age" htmlFor="rq-hi">
                 <input id="rq-hi" type="number" min={0} max={120}
-                  {...register('maxAge', { setValueAs: value => value === '' ? null : Number(value) })} />
+                  {...register('maxAge', { setValueAs: value => value === '' ? null : Number(value) })} aria-invalid={!!errors.maxAge} aria-describedby={errors.maxAge ? "rq-error-maxAge" : undefined} />
+              {fieldError('maxAge') ? <span className="sub" id="rq-error-maxAge">{fieldError('maxAge')}</span> : null}
               </Field>
             </div>
 
@@ -411,7 +415,7 @@ export function RequestPage() {
             <span className="tag"><em>//</em> What happens next</span>
             <div className="sub">
               An admin approves or declines it. Approved, it arrives as your <b>Private</b> draft: appoint
-              the referees, then open it to the public. LTMS deletes a private tournament on its match date.
+              the referees, then open it to the public.
             </div>
             <span className="tag"><em>//</em> Entry conditions as they read now</span>
             <div style={{ fontSize: 15 }}>The server validates entry conditions before creating the request.</div>

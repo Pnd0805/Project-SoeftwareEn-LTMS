@@ -1,3 +1,4 @@
+import { Modal } from '../../components/kit/Modal'
 import { RefereeMatchRequest } from './RefereeMatchRequest'
 import { ScoreInputs } from './ScoreInputs'
 import { scoreFormatFromError, validMatchScore } from './scoreFormat'
@@ -352,7 +353,8 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
   const [sb, setSb] = useState(s.b ?? 0)
   const [note, setNote] = useState('')
   const resolve = useResolveDispute(m.id, m.tournamentId)
-  const disputedBy = result.disputeRaisedBy?.fullName ?? 'A team'
+  const [decision, setDecision] = useState<Parameters<typeof resolve.mutate>[0] | null>(null)
+  const disputedBy = result.disputeRaisedBy?.fullName ?? 'A participant'
   /* คำตัดสินทุกแบบต้องมีเหตุผล ทั้งสองทีมอ่าน · เสมอไม่มีผู้ชนะให้บันทึก (backend บังคับ
      winnerTeamId เป็น int) จึงแก้เป็นสกอร์เสมอไม่ได้ ต้องเลือกทางอื่นแทน */
   const noteMissing = !note.trim()
@@ -411,7 +413,7 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
             <button className="btn primary" type="button" disabled={blocked || invalidScore}
               title={noteMissing ? 'Write the reason first'
                 : level ? 'A corrected score still needs a winner' : undefined}
-              onClick={() => resolve.mutate({
+              onClick={() => setDecision({
                 decision: 'amend',
                 resolution: note.trim(),
                 winnerTeamId: sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
@@ -421,12 +423,12 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
             </button>
             <button className="btn" type="button" disabled={blocked}
               title={noteMissing ? 'Write the reason first' : undefined}
-              onClick={() => resolve.mutate({ decision: 'uphold', resolution: note.trim() })}>
+              onClick={() => setDecision({ decision: 'uphold', resolution: note.trim() })}>
               Keep the recorded score
             </button>
             <button className="btn crit" type="button" disabled={blocked}
               title={noteMissing ? 'Write the reason first' : undefined}
-              onClick={() => resolve.mutate({ decision: 'reject', resolution: note.trim() })}>
+              onClick={() => setDecision({ decision: 'reject', resolution: note.trim() })}>
               Throw the result out
             </button>
           </span>
@@ -438,6 +440,12 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
         </>
       )}
 
+      <Modal open={decision !== null} title="Confirm final dispute decision" onClose={() => !resolve.isPending && setDecision(null)}>
+        <Banner kind="warn">{decision?.decision === 'amend' ? `Replace the result with ${decision.scoreData?.a}–${decision.scoreData?.b}. The result is final and the bracket and statistics update.` : decision?.decision === 'uphold' ? 'Keep the recorded result as final. The dispute will close.' : 'Reject the result and undo its effects on the bracket and statistics. A new result must be recorded.'}</Banner>
+        <p style={{ whiteSpace: 'pre-wrap' }}>Reason: {decision?.resolution}</p>
+        {resolve.isError ? <Banner kind="crit">{resolve.error instanceof Error ? resolve.error.message : 'Decision failed.'}</Banner> : null}
+        <button className="btn" disabled={resolve.isPending} onClick={() => setDecision(null)}>Cancel</button>{' '}<button className="btn danger" disabled={resolve.isPending} onClick={() => decision && resolve.mutate(decision, { onSuccess: () => setDecision(null) })}>Confirm final decision</button>
+      </Modal>
       {resolve.isError ? (
         <Banner kind="crit">
           <b>That did not go through.</b>{' '}
@@ -514,7 +522,7 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   if (result?.status === 'disputed') {
     return can.resolveDispute || adminMayRule ? <ResolvePanel m={m} result={result} /> : (
       <Banner kind="crit">
-        <b>Under dispute.</b> {result.disputeRaisedBy?.fullName ?? 'A team'} contested this result.
+        <b>Under dispute.</b> {result.disputeRaisedBy?.fullName ?? 'A participant'} contested this result.
         The organizer decides.
         {universityAdmin ? ' University-wide admins can rule on it 48 hours after it was raised.' : ''}
       </Banner>
@@ -766,7 +774,7 @@ export function MatchPage() {
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the match…</span></Panel>
 
-  const tab = TABS.includes(tabParam ?? '') ? tabParam! : 'overview'
+  const tab = tabParam === 'pickem' ? 'community' : TABS.includes(tabParam ?? '') ? tabParam! : 'overview'
   /* ใบผล (S05) เปิดให้เฉพาะผู้จัด กรรมการของแมตช์ และหัวหน้าสองทีม คนอื่นได้ 404
      เดิมเขียน `?? null` ทับ ผู้เล่นธรรมดาจึงเห็นป้ายเป็น "Check-in open" ขณะที่หัวหน้าทีม
      เห็น "Awaiting confirmation" ทั้งที่ M05 ส่ง resultStatus มาให้ทุกคนอยู่แล้ว (B5) */
@@ -890,7 +898,7 @@ export function MatchPage() {
           <Panel>
             <span className="tag"><em>//</em> The details</span>
             <Facts rows={[
-              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : 'Not scheduled'],
+              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : 'Not scheduled'],
               /* TODO(schema): FR-MM-05 asks for the venue's position so players can find it.
                  `matches` stores only the name — no coordinates on the match or a join to get them. */
               ['Venue', m.venue || '—'],

@@ -27,7 +27,7 @@ export function formatAmendmentChanges(changes: Record<string, unknown>, faculty
     if (['registrationStart', 'registrationEnd', 'eventStartDate', 'eventEndDate'].includes(field) && typeof value === 'string' && value) {
       const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value)
       const date = new Date(dateOnly ? `${value}T00:00:00Z` : value)
-      if (!Number.isNaN(date.getTime())) text = new Intl.DateTimeFormat('th-TH', {
+      if (!Number.isNaN(date.getTime())) text = new Intl.DateTimeFormat('en-GB', {
         calendar: 'gregory', day: 'numeric', month: 'short', year: 'numeric',
         timeZone: dateOnly ? 'UTC' : 'Asia/Bangkok',
         ...(!dateOnly ? { hour: '2-digit', minute: '2-digit' } as const : {}),

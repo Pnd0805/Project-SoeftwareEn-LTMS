@@ -1,3 +1,4 @@
+import { setAccessToken } from './client';
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./client", async (importOriginal) => ({
@@ -11,8 +12,8 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const fetchMock = vi.fn<typeof fetch>();
 
-beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => { setAccessToken("test-session"); fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
+afterEach(() => { setAccessToken(null); vi.unstubAllGlobals(); });
 
 describe('unfiltered personal schedule', () => {
   const row = (id: number, role: 'player' | 'referee', conflicts: number[]) => ({
@@ -244,6 +245,16 @@ describe("finish-then-submit contract (OD-26)", () => {
     return Promise.resolve(json({ error: { code: "NOT_FOUND", message: path } }, 404));
   };
 
+  it('does not probe personal endpoints for a guest and keeps every write permission false', async () => {
+    setAccessToken(null)
+    fetchMock.mockImplementation(routeAs(REFEREE, "scheduled"))
+    const m = await getMatch(13)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me'))).toBe(false)
+    expect(m.viewer.myUserId).toBeNull()
+    expect(m.viewer.can.openCheckin).toBe(false)
+    expect(m.viewer.can.submitResult).toBe(false)
+  })
+
   it("allows the referee to enter scores during play and finish before submitting", async () => {
     fetchMock.mockImplementation(routeAs(REFEREE, "in_progress"));
     const m = await getMatch(13);
@@ -352,3 +363,10 @@ describe("team logos on matches", () => {
     expect(m.teamB).toBeNull();
   });
 });
+
+it('propagates private-match 404 without probing enrichment or using mock data', async () => {
+ setAccessToken(null)
+ fetchMock.mockResolvedValueOnce(json({ error: { code: 'MATCH_NOT_FOUND', message: 'Match not found' } }, 404))
+ await expect(getMatch(999)).rejects.toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' })
+ expect(fetchMock).toHaveBeenCalledTimes(1)
+})

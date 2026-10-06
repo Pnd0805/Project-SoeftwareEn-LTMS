@@ -1,23 +1,34 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
-const state = vi.hoisted(() => ({ scope: 'root', grant: vi.fn(), suspend: vi.fn(), profile: { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] }, loading: false, profileError: false, refetch: vi.fn() }))
+const state = vi.hoisted(() => ({ targetScope: '', suspended: false, scope: 'root', grant: vi.fn(), audit: vi.fn(), suspend: vi.fn(), profile: { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] }, loading: false, profileError: false, refetch: vi.fn() }))
 vi.mock('../../api/client', () => ({ USE_MOCK: false }))
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 9, email: 'admin@test', adminScope: { scopeType: state.scope, facultyId: 1 } } }) }))
 vi.mock('../../hooks/useReference', () => ({ useFaculties: () => ({ data: { items: [{ id: 1, name: 'Engineering' }] } }) }))
-vi.mock('../../hooks/useUser', () => ({ usePublicUser: () => ({
+vi.mock('../../hooks/useUser', () => ({ useSearchUsers: () => ({ data: { items: [] } }), usePublicUser: () => ({
  data: state.profile, isPending: state.loading, isError: state.profileError, refetch: state.refetch,
 }) }))
 vi.mock('../../hooks/useAdmin', () => ({
  useAdminScopes: () => ({ isSuccess: true, data: { items: [] } }),
- useAuditLogs: () => ({ isSuccess: true, data: { items: [] } }),
+ useAuditLogs: (query: unknown, enabled: boolean) => { state.audit(query, enabled); return { isSuccess: true, data: { items: [] } } },
  useGrantAdminScope: () => ({ mutate: state.grant, reset: vi.fn() }),
  useRevokeAdminScope: () => ({ mutate: vi.fn(), reset: vi.fn() }),
  useSuspendUser: () => ({ mutate: state.suspend, reset: vi.fn() }),
- useUsersForAdmin: () => ({ isSuccess: true, data: { items: [{ user: { id: 7, fullName: 'Player' }, email: 'player@test', userType: 'student', facultyName: 'Engineering', facultyId: 1, teamCount: null, adminScopes: [], isSuspended: false }] } }),
+ useUsersForAdmin: () => ({ isSuccess: true, data: { items: [{ user: { id: 7, fullName: 'Player' }, email: 'player@test', userType: 'student', facultyName: 'Engineering', facultyId: 1, teamCount: null, adminScopes: state.targetScope ? [{ scopeType: state.targetScope }] : [], isSuspended: state.suspended }] } }),
 }))
-import { AdminScopesTab } from './AdminGovernanceTab'
+import { AdminScopesTab, AdminAuditTab } from './AdminGovernanceTab'
 import { AdminUsersTab } from './AdminUsersTab'
-beforeEach(() => { state.scope = 'root'; state.grant.mockReset(); state.suspend.mockReset(); state.loading = false; state.profileError = false; state.refetch.mockReset(); state.profile = { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] } })
+beforeEach(() => { state.scope = 'root'; state.targetScope = ''; state.suspended = false; state.grant.mockReset(); state.suspend.mockReset(); state.loading = false; state.profileError = false; state.refetch.mockReset(); state.profile = { teams: [{ id: 1 }, { id: 2 }, { id: 1 }] } })
+it('does not fetch or expose audit records to Faculty Admin', () => {
+ state.scope = 'faculty'; state.audit.mockClear(); render(<AdminAuditTab />)
+ expect(state.audit).toHaveBeenCalledWith({ page: 1 }, false)
+ expect(screen.getByText('Audit logs are available to Root and University Admin only.')).toBeInTheDocument()
+ expect(screen.queryByRole('button', { name: 'Next page' })).not.toBeInTheDocument()
+})
+for (const scope of ['root', 'university_wide']) it(`enables paginated audit reads for ${scope}`, () => {
+ state.scope = scope; state.audit.mockClear(); render(<AdminAuditTab />)
+ expect(state.audit).toHaveBeenCalledWith({ page: 1 }, true)
+ expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+})
 it('Root reviews a university grant before sending it', () => {
  render(<AdminScopesTab />)
  fireEvent.change(screen.getByLabelText('User ID'), { target: { value: '42' } })
@@ -74,4 +85,17 @@ it('lets an admin retry a failed squad read without showing a fake zero', () => 
  expect(screen.queryByTitle('Current squads')).not.toBeInTheDocument()
  fireEvent.click(screen.getByRole('button', { name: 'Retry squads for Player' }))
  expect(state.refetch).toHaveBeenCalledOnce()
+})
+
+for (const target of ['root', 'university_wide']) it(`blocks suspension of ${target} with an explicit explanation`, () => {
+ state.scope = 'university_wide'; state.targetScope = target
+ render(<AdminUsersTab />)
+ expect(screen.getByRole('button', { name: 'Suspend' })).toBeDisabled()
+ expect(screen.getByText(target === 'root' ? 'Root accounts cannot be suspended.' : 'Root must revoke University Admin rights before this account can be suspended.')).toBeInTheDocument()
+ expect(state.suspend).not.toHaveBeenCalled()
+})
+it('does not apply protected suspension rules to reinstatement', () => {
+ state.scope = 'university_wide'; state.targetScope = 'university_wide'; state.suspended = true
+ render(<AdminUsersTab />)
+ expect(screen.getByRole('button', { name: 'Reinstate' })).toBeEnabled()
 })

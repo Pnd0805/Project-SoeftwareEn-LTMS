@@ -1,3 +1,4 @@
+import { useNow } from '../../hooks/useNow'
 /**
  * src/features/home/HomePage.tsx
  *
@@ -17,7 +18,7 @@ import {
 } from '../../hooks/useTournament'
 import { USE_MOCK } from '../../api/client'
 import { me, myTeams, regsOf, visibleTo } from '../../shared/selectors'
-import { tourLifecycle } from '../../shared/rules'
+import { registrationIsOpen, tourLifecycle } from '../../shared/rules'
 import type { Registration, Tournament } from '../../shared/types'
 import { TournamentCard } from './TournamentCard'
 import type { Rel } from './TournamentCard'
@@ -60,6 +61,7 @@ function WorkPicker({ kind, entries, onClose }: { kind: WorkKind | null; entries
 }
 
 export function HomePage() {
+  const currentTime = useNow()
   const s = useLtms()
   const { data: currentUser } = useMe()
   const { data: tournamentData, isPending: apiPending, isError: apiError } = useTournaments()
@@ -90,7 +92,7 @@ export function HomePage() {
   const textFiltered = needle
     ? all.filter(t => `${t.name} ${t.sport} ${t.venue}`.toLowerCase().includes(needle))
     : all
-  const visible = status ? textFiltered.filter(t => tourLifecycle(t) === status) : textFiltered
+  const visible = status ? textFiltered.filter(t => tourLifecycle(t, currentTime) === status) : textFiltered
 
   /* Relationship buckets depend on prototype-only registrations. In real mode
      the list is server-owned, so never infer them from stale `ltms.v1` data. */
@@ -109,7 +111,7 @@ export function HomePage() {
       && t.status === 'public' && !t.drawn
       && regsOf(s, t.id).filter(r => r.status === 'approved').length < t.cap)
     const rest = visible.filter(t => !mine.includes(t) && !playing.includes(t) && !open.includes(t)
-      && (status || needle || tourLifecycle(t) !== 'finished'))
+      && (status || needle || tourLifecycle(t, currentTime) !== 'finished'))
     cats = [
       { key: 'mine', label: `Yours to run · ${mine.length}`, items: mine, rel: 'run' as Rel },
       { key: 'playing', label: `You're competing in · ${playing.length}`, items: playing, rel: 'playing' as Rel },
@@ -127,7 +129,7 @@ export function HomePage() {
         .map(a => String(a.tournament.id)),
     )
     const openIds = new Set(
-      (tournamentData?.items ?? []).filter(dto => dto.registrationOpen).map(dto => String(dto.id)),
+      all.filter(t => registrationIsOpen(t, currentTime)).map(t => t.id),
     )
     const mine = visible.filter(t => mineIds.has(t.id))
     const playing = visible.filter(t => !mineIds.has(t.id) && playingIds.has(t.id))

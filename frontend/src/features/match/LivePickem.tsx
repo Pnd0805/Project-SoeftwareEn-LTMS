@@ -49,8 +49,8 @@ export function LivePickem({ match }: { match: MatchDto }) {
         {settled ? `${pickLabel(mine.pointsEarned ?? 0, sport?.pickemPoints)} · +${mine.pointsEarned} points`
           : mine.status === 'void' ? 'Void' : 'Waiting for the result'}
       </Badge> : null}</div>
-    {!data?.isOpen ? <p className="sub">Predictions closed{data?.closedReason ? `: ${data.closedReason.replaceAll('_', ' ')}` : ''}.</p> : null}
-    {data?.closesAt ? <p className="sub">Scheduled kick-off: {new Date(data.closesAt).toLocaleString()}</p> : null}
+    {!data?.isOpen ? <p className="sub">Predictions closed{['finished', 'completed'].includes(match.status) ? ': match finished' : data?.closedReason ? `: ${data.closedReason.replaceAll('_', ' ')}` : ''}.</p> : null}
+    {data?.closesAt ? <p className="sub">Scheduled kick-off: {new Date(data.closesAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</p> : null}
     {error ? <p className="sub" role="alert">{error instanceof Error ? error.message : 'Could not update prediction.'}</p> : null}
     <div className="sub">{data?.teams.map(row => `${row.teamId === teamA.id ? teamA.name : teamB.name} ${row.percent}%`).join(' · ')}</div>
     {data?.canPredict ? <>

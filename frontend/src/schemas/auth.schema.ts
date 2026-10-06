@@ -1,6 +1,6 @@
 /**
  * src/schemas/auth.schema.ts
- * ก็อปกฎมาจาก GUIDE/04 §6 (schemas/auth.schema.ts ฝั่ง backend) ตรงเป๊ะ
+ * อิงกฎสมัครสมาชิก Backend พร้อมข้อจำกัด UX วันเกิดและชั้นปี 1-8
  * เจตนา: frontend เช็คไว-ให้ user feedback ทันที / backend เช็คซ้ำเสมอ (ห้ามเชื่อ client)
  * ข้อความ error ใช้ภาษาไทยตาม NF-US-03 เหมือนฝั่ง backend
  */
@@ -19,10 +19,11 @@ export const registerSchema = z.object({
     .regex(/\d/, { message: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร และมีตัวเลขอย่างน้อย 1 ตัว" }),
   gender: GenderEnum,
   // "YYYY-MM-DD" ตรงกับ birth_date DATE ในฝั่ง backend — ห้ามส่ง Date object
-  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "รูปแบบวันเกิดไม่ถูกต้อง (YYYY-MM-DD)" }),
+  birthDate: z.iso.date({ message: "รูปแบบวันเกิดไม่ถูกต้อง (YYYY-MM-DD)" })
+    .refine(value => value <= new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }), "วันเกิดต้องไม่อยู่ในอนาคต"),
   facultyId: z.number().int().positive({ message: "กรุณาเลือกคณะ" }),
   departmentId: z.number().int().positive({ message: "กรุณาเลือกภาควิชา" }),
-  year: z.number().int().positive({ message: "กรุณาระบุชั้นปี" }),
+  year: z.number().int().min(1, { message: "ชั้นปีต้องอยู่ระหว่าง 1-8" }).max(8, { message: "ชั้นปีต้องอยู่ระหว่าง 1-8" }),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

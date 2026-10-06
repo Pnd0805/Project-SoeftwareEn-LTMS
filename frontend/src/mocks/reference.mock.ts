@@ -25,12 +25,12 @@ export const mockDepartments: Department[] = [
 ];
 
 export const mockSportTypes: SportType[] = [
-  { id: 1, name: "Football", minMembers: 7, maxMembers: 18, defaultMode: "onsite" },
-  { id: 2, name: "Futsal", minMembers: 5, maxMembers: 12, defaultMode: "onsite" },
-  { id: 3, name: "Basketball", minMembers: 5, maxMembers: 12, defaultMode: "onsite" },
-  { id: 4, name: "Volleyball", minMembers: 6, maxMembers: 14, defaultMode: "onsite" },
-  { id: 5, name: "Badminton", minMembers: 2, maxMembers: 6, defaultMode: "onsite" },
-  { id: 6, name: "VALORANT", minMembers: 5, maxMembers: 8, defaultMode: "online" },
-  { id: 7, name: "ROV", minMembers: 5, maxMembers: 8, defaultMode: "online" },
-  { id: 8, name: "Chess", minMembers: 1, maxMembers: 3, defaultMode: "onsite" },
+  { id: 1, name: "Football", minMembers: 7, maxMembers: 18, defaultMode: "onsite", supportsBestOf: false },
+  { id: 2, name: "Futsal", minMembers: 5, maxMembers: 12, defaultMode: "onsite", supportsBestOf: false },
+  { id: 3, name: "Basketball", minMembers: 5, maxMembers: 12, defaultMode: "onsite", supportsBestOf: false },
+  { id: 4, name: "Volleyball", minMembers: 6, maxMembers: 14, defaultMode: "onsite", supportsBestOf: true },
+  { id: 5, name: "Badminton", minMembers: 2, maxMembers: 6, defaultMode: "onsite", supportsBestOf: true },
+  { id: 6, name: "VALORANT", minMembers: 5, maxMembers: 8, defaultMode: "online", supportsBestOf: true },
+  { id: 7, name: "ROV", minMembers: 5, maxMembers: 8, defaultMode: "online", supportsBestOf: true },
+  { id: 8, name: "Chess", minMembers: 1, maxMembers: 3, defaultMode: "onsite", supportsBestOf: false },
 ];

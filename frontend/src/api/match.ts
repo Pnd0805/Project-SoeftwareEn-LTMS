@@ -14,7 +14,7 @@
  *   ทุกตัว mark ด้วย TODO(guide) — พอได้ GUIDE/06 มาให้ไล่แก้เฉพาะบรรทัด path
  *   **ตัวเรียกไม่ต้องแก้เลย** เพราะ signature ตั้งตาม use case ไม่ได้ตั้งตาม URL
  */
-import { ApiError, apiFetch, mockDelay, mockReject, USE_MOCK } from "./client";
+import { ApiError, hasAccessToken, apiFetch, mockDelay, mockReject, USE_MOCK } from "./client";
 import type {
   MatchDto,
   MatchListItemDto,
@@ -602,14 +602,14 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
   const [refs, me, tournament, lineups, myTeams, teamAData, teamBData] = await Promise.all([
     apiFetch<{ items: BackendMatchRefereeDto[] }>(`/matches/${matchId}/referees`)
       .catch(() => ({ items: [] as BackendMatchRefereeDto[] })),
-    apiFetch<{ id: number }>("/me").catch(() => null),
+    hasAccessToken() ? apiFetch<{ id: number }>("/me").catch(() => null) : Promise.resolve(null),
     raw.tournamentId
       ? apiFetch<{ name: string; sportTypeId: number; organizer?: { id: number } }>(`/tournaments/${raw.tournamentId}`)
         .catch(() => null)
       : Promise.resolve(null),
     apiFetch<BackendMatchLineupsDto>(`/matches/${matchId}/lineups`),
     /* บทบาทหัวหน้าทีมยังมาจาก /me/teams; สิทธิ์เช็คอินมาจาก lineups เท่านั้น */
-    apiFetch<{ items: Array<{ id: number; role: string }> }>("/me/teams").catch(() => ({ items: [] })),
+    hasAccessToken() ? apiFetch<{ items: Array<{ id: number; role: string }> }>("/me/teams").catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
     dto.teamA?.id ? apiFetch<{ leader?: { id: number } | null; leaderId?: number }>(`/teams/${dto.teamA.id}`).catch(() => null) : Promise.resolve(null),
     dto.teamB?.id ? apiFetch<{ leader?: { id: number } | null; leaderId?: number }>(`/teams/${dto.teamB.id}`).catch(() => null) : Promise.resolve(null),
   ]);

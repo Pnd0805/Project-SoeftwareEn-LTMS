@@ -31,6 +31,7 @@ import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
 import { TournamentRefereeWithdrawal } from '../match/RefereeWithdrawal'
+import { dateRange } from '../../shared/display'
 
 const registrationDateFormat = new Intl.DateTimeFormat('en-GB', {
   dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok',
@@ -176,7 +177,7 @@ export function TournamentPage() {
         <Banner kind="ok" icon="check">
           <b>This tournament is closed.</b>{' '}
           {champion ? `${champion.name} won it. ` : tournamentData?.championTeamId === null ? 'No champion was assigned. ' : ''}
-          {tournamentData?.completedAt ? `Closed ${new Date(tournamentData.completedAt).toLocaleString()}.` : 'Results are final.'}
+          {tournamentData?.completedAt ? `Closed ${new Date(tournamentData.completedAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}.` : 'Results are final.'}
         </Banner>
       ) : null}
 
@@ -232,7 +233,7 @@ export function TournamentPage() {
             <Facts rows={[
               ['Sport', t.sport],
               ['Format', formatName(t)],
-              ['Date', t.date],
+                ['Date', dateRange(t.date, t.eventEndDate)],
               ['Registration opens', registrationDate(t.registrationStart)],
               ['Registration closes', registrationDate(t.registrationEnd)],
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],

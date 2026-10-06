@@ -25,6 +25,7 @@ import { tour } from '../../shared/selectors'
 import { useLtms } from '../../shared/store'
 import { CareerPanel } from '../player/PlayerPage'
 import { ExternalIdentityBadge, ExternalIdentityPanel } from './ExternalIdentityPanel'
+import { ProfileSettings, NotificationSettings } from './ProfileSettings'
 
 export function ProfilePage() {
   const s = useLtms()
@@ -130,6 +131,8 @@ export function ProfilePage() {
         isExternal={currentUser.userType === 'external'}
       />
       {currentUser.userType === 'external' ? <ExternalIdentityPanel /> : null}
+      <ProfileSettings key={currentUser.id} user={currentUser} />
+      <NotificationSettings />
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
       {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below. Retry when the server is ready." /> : null}

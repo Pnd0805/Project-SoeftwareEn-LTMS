@@ -16,7 +16,7 @@ export function RefereeCoverageWarnings({ tournamentId, matchId }: { tournamentI
   const rows = (coverage.data.crossTournamentConflicts ?? []).filter(row => matchId === undefined || row.matchId === matchId)
   if (!rows.length) return null
   const when = (iso: string | null | undefined) => iso && Number.isFinite(Date.parse(iso))
-    ? new Date(iso).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีเวลา'
+    ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีเวลา'
   return <Banner kind="warn">
     <div className="vstack">
       <b>กรรมการมีงานนอกทัวร์นี้ทับเวลา</b>

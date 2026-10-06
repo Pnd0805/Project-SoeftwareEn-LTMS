@@ -1,3 +1,4 @@
+import { USE_MOCK } from './api/client'
 /**
  * src/App.tsx
  *
@@ -52,7 +53,7 @@ function Guard({ children, currentUser, isLoading }: {
   const location = useLocation()
 
   const signedIn = !!currentUser
-  const guest = isGuest(s)
+  const guest = USE_MOCK && isGuest(s)
   const isPublic = PUBLIC_PATHS.some(p => p.test(location.pathname))
   if (isLoading) return null
   if (!signedIn && !guest && !isPublic) return <Navigate to="/login" replace />

@@ -269,7 +269,7 @@ export function RegisterPage() {
 
         <label className="field">
           <span className="label">ชั้นปี</span>
-          <input type="number" min={1} {...form.register('year', { valueAsNumber: true })} />
+          <input type="number" min={1} max={8} {...form.register('year', { valueAsNumber: true })} />
         </label>
         {form.formState.errors.year && <span className="error">{form.formState.errors.year.message}</span>}
 

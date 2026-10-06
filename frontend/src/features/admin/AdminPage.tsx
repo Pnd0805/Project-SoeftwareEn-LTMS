@@ -1,3 +1,4 @@
+import { useNow } from '../../hooks/useNow'
 /**
  * src/features/admin/AdminPage.tsx
  *
@@ -30,11 +31,15 @@ import { useTournaments } from '../../hooks/useTournament'
 import { useSportTypes } from '../../hooks/useReference'
 import type { OfficialTeamRequestDto } from '../../types/admin.dto'
 import { AdminRefereesTab } from './AdminRefereesTab'
-import { formatAmendmentChanges } from '../../shared/amendmentChanges'
 import { AdminScopesTab, AdminAuditTab } from './AdminGovernanceTab'
 import { LeaderTransfersTab } from './LeaderTransfersTab'
 import { AdminUsersTab } from './AdminUsersTab'
 import { AdminFeedbackTab } from './AdminFeedbackTab'
+import { UserReportsTab } from './UserReportsTab'
+import { StalledWorkTab } from './StalledWorkTab'
+import { TournamentReviewDetails, TournamentReviewDisclosure } from './TournamentReviewDetails'
+import { IdentityDocs } from './IdentityDocs'
+import { displayDate } from '../../shared/display'
 
 /** คำตอบที่ C02/C03 ปฏิเสธมา — อ่านเป็นภาษาของหน้านี้ ไม่ใช่ข้อความดิบของ backend */
 const tournamentDecisionError = (error: unknown) => {
@@ -52,6 +57,8 @@ const TABS = [
   { key: 'filters', label: 'Hard-filter changes' },
   { key: 'tournaments', label: 'All tournaments' },
   { key: 'users', label: 'Users' },
+  { key: 'user-reports', label: 'User reports' },
+  { key: 'stalled', label: 'Stalled work' },
   { key: 'scopes', label: 'Admin rights' },
   { key: 'transfers', label: 'Leader transfers' },
   { key: 'audit', label: 'Audit logs' },
@@ -59,6 +66,7 @@ const TABS = [
 ]
 
 export function AdminPage() {
+  const clockNow = useNow()
   const s = useLtms()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
@@ -71,6 +79,8 @@ export function AdminPage() {
   const tournamentRequestsQuery = usePendingTournamentRequests()
   const reviewTournamentReq = useReviewTournamentRequest()
   const [rejectingTournament, setRejectingTournament] = useState<{ id: number; name: string } | null>(null)
+  const [approvingTournament, setApprovingTournament] = useState<{ id: number; name: string } | null>(null)
+  const [approvingOfficial, setApprovingOfficial] = useState<OfficialTeamRequestDto | null>(null)
   const [tournamentReason, setTournamentReason] = useState('')
   /* คำขอที่ server บอกแล้วว่าเกินขอบเขตของเรา — เก็บไว้ต่อแถว ไม่ใช่แถบรวมที่บอกไม่ได้
      ว่าแถวไหนเพิ่งพัง */
@@ -124,6 +134,7 @@ export function AdminPage() {
       {
         onSuccess: () => {
           setRejectingTournament(null)
+          setApprovingTournament(null)
           setTournamentReason('')
           setAboveScope(current => current.filter(x => x !== id))
         },
@@ -135,7 +146,9 @@ export function AdminPage() {
            แล้วบอกว่าต้องให้ใครตัดสิน ดีกว่าปล่อยให้กดซ้ำแล้วได้คำตอบเดิมทุกครั้ง
            (ดู BACKEND-GAPS `FE-admin-queue-shows-undecidable-rows`) */
         onError: error => {
+          if ((error as { code?: string }).code === 'INVALID_STATUS_TRANSITION') setApprovingTournament(null)
           if ((error as { code?: string }).code === 'ELIGIBILITY_OUT_OF_SCOPE') {
+            setApprovingTournament(null)
             setAboveScope(current => current.includes(id) ? current : [...current, id])
           }
         },
@@ -156,7 +169,7 @@ export function AdminPage() {
     setTeamNotice(null)
     rejectTeamReq.reset()
     approveTeamReq.mutate(r.id, {
-      onSuccess: () => setTeamNotice({ kind: 'ok', text: `${r.team.name} is now an Official squad.` }),
+      onSuccess: () => { setApprovingOfficial(null); setTeamNotice({ kind: 'ok', text: `${r.team.name} is now an Official squad.` }) },
     })
   }
 
@@ -200,6 +213,18 @@ export function AdminPage() {
       </div>
 
       <Tabs tabs={TABS} active={tab} onPick={k => navigate(`/admin/${k}`)} />
+      <Modal open={!!approvingTournament} title={`Approve ${approvingTournament?.name ?? ''}?`} onClose={() => !reviewTournamentReq.isPending && setApprovingTournament(null)}>
+        <p>The applicant becomes Organizer and the tournament becomes Private. Publishing is a separate action.</p>
+        {reviewTournamentReq.isError ? <Banner kind="crit">{tournamentDecisionError(reviewTournamentReq.error)}</Banner> : null}
+        <button className="btn" disabled={reviewTournamentReq.isPending} onClick={() => setApprovingTournament(null)}>Cancel</button>{' '}<button className="btn primary" disabled={reviewTournamentReq.isPending} onClick={() => approvingTournament && decideTournamentRequest(approvingTournament.id, true)}>Confirm approval</button>
+      </Modal>
+      <Modal open={!!approvingOfficial} title={`Approve Official status for ${approvingOfficial?.team.name ?? ''}?`} onClose={() => !approveTeamReq.isPending && setApprovingOfficial(null)}>
+        <p>The squad becomes Official after the server checks its members. Review the supporting documents first.</p>
+        {approveTeamReq.isError ? <Banner kind="crit">{(approveTeamReq.error as Error).message}</Banner> : null}
+        <button className="btn" disabled={approveTeamReq.isPending} onClick={() => setApprovingOfficial(null)}>Cancel</button>{' '}<button className="btn primary" disabled={approveTeamReq.isPending} onClick={() => approvingOfficial && approveOfficial(approvingOfficial)}>Confirm Official approval</button>
+      </Modal>
+      {tab === 'user-reports' ? <UserReportsTab /> : null}
+      {tab === 'stalled' ? <StalledWorkTab /> : null}
 
       {tab === 'requests' && !USE_MOCK ? (
         <Panel>
@@ -226,9 +251,10 @@ export function AdminPage() {
                     <b>{r.name}</b><Badge kind="neutral">{sportName(r.sportTypeId)}</Badge>
                     {outOfScope ? <Badge kind="warn">Above your scope</Badge> : null}
                   </span>
-                  <span className="tag">{fmtDate(r.eventStartDate)}</span>
+                  <span className="tag">{displayDate(r.eventStartDate)}</span>
                 </div>
                 <div className="sub">Requested by {r.requestedBy.fullName} · asked on {fmtDate(r.createdAt)}</div>
+                <TournamentReviewDisclosure id={r.id} />
                 {outOfScope ? (
                   <Banner kind="warn" icon="clock">
                     <b>This one is not yours to approve.</b> It admits entrants from outside your faculty, or
@@ -247,7 +273,7 @@ export function AdminPage() {
                   {/* ปุ่มที่รู้อยู่แล้วว่าจะได้ 403 เดิมกลับมา ไม่ควรยังกดได้ */}
                   <button className="btn primary" type="button" disabled={reviewTournamentReq.isPending || outOfScope}
                     title={outOfScope ? 'A university admin has to approve this one' : undefined}
-                    onClick={() => decideTournamentRequest(r.id, true)}>Approve</button>
+                    onClick={() => setApprovingTournament({ id: r.id, name: r.name })}>Approve</button>
                 </div>
               </div>
             )
@@ -343,13 +369,14 @@ export function AdminPage() {
           {permanentRows.length ? (
             <TableWrap>
               <table>
-                <thead><tr><th>Squad</th><th>Asked by</th><th>When</th><th /></tr></thead>
+                <thead><tr><th>Squad</th><th>Asked by</th><th>When</th><th>Documents</th><th /></tr></thead>
                 <tbody>
                   {permanentRows.map(r => (
                     <tr key={r.id}>
                       <td><TeamLinkView team={r.team} /></td>
                       <td className="sub">{r.requestedBy.fullName}</td>
                       <td className="tag">{fmtDate(r.createdAt)}</td>
+                      <td><IdentityDocs docs={r.supportingDocs} docsSubmitted={!!r.supportingDocs?.length} fetchedAt={teamRequestsQuery.dataUpdatedAt} now={clockNow} onRefresh={() => void teamRequestsQuery.refetch()} refreshing={teamRequestsQuery.isFetching} /></td>
                       <td>
                         <span className="hstack" style={{ gap: 6 }}>
                           <button className="btn ghost" type="button" disabled={busyRequestId !== undefined}
@@ -357,7 +384,7 @@ export function AdminPage() {
                             Reject
                           </button>
                           <button className="btn primary" type="button" disabled={busyRequestId !== undefined}
-                            onClick={() => approveOfficial(r)}>
+                            onClick={() => { approveTeamReq.reset(); setApprovingOfficial(r) }}>
                             {busyRequestId === r.id && approveTeamReq.isPending ? 'Approving…' : 'Approve'}
                           </button>
                         </span>
@@ -413,19 +440,9 @@ export function AdminPage() {
                 <span className="tag">{fmtDate(request.requestedAt)}</span>
               </div>
               <div className="sub">Asked by {request.requestedBy.fullName}</div>
-              <TableWrap>
-                <table>
-                  <thead><tr><th>Field</th><th>Asked for</th></tr></thead>
-                  <tbody>
-                    {formatAmendmentChanges(request.requestedChanges).map(({ field, label, value }) => (
-                      <tr key={field}>
-                        <td className="sub">{label}</td>
-                        <td>{value}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableWrap>
+              <p style={{ whiteSpace: 'pre-wrap' }}>Reason: {request.reason ?? 'Not provided'}</p>
+              <TournamentReviewDetails id={request.tournamentId} changes={request.requestedChanges} />
+
               <div className="hstack">
                 <button className="btn danger" type="button" disabled={rejectAmendment.isPending}
                   onClick={() => { setAmendmentReason(''); setRejectingAmendment({ id: request.id, name: request.tournamentName }) }}>

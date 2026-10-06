@@ -23,7 +23,7 @@
  */
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { ConfirmCard, Modal } from '../../components/kit/Modal'
@@ -47,6 +47,7 @@ import { minSquad, rosterLockOf } from '../../shared/rules'
 import type { BackendTeamDto, BackendTeamMemberDto } from '../../types/team.dto'
 import { TeamManage } from './TeamManage'
 import { TeamRecord } from './TeamRecord'
+import { JoinRequestsPanel } from './JoinRequestsPanel'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
 
@@ -113,6 +114,7 @@ export function TeamPage() {
   return (
     <>
       <Crumb back={{ label: 'Tournaments', onClick: () => navigate('/') }}>{data.name}</Crumb>
+      {!USE_MOCK ? <JoinRequestsPanel teamId={data.id} visibility={data.visibility} leader={isLeader} member={!!myTeams.data?.items.some(x => x.id === data.id)} signedIn={!!currentUser} membershipPending={myTeams.isPending || myTeams.isError} /> : null}
 
       <div className="spread">
         <span className="hstack" style={{ gap: 16 }}>
@@ -270,7 +272,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                     </td>
                     {/* ช่องตัวจริง/ตัวสำรองหายไปพร้อม migration 019 — ทีมเป็นคลังผู้เล่น
                         ใครลงแข่งเลือกตอนสมัครแต่ละทัวร์แทน (application_players) */}
-                    <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
+                    <td className="sub">{new Date(member.joinedAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })}</td>
                     <td>
                       <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                         {isLeader && !captain && (USE_MOCK || data.officialStatus === "Official") ? (
@@ -301,7 +303,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
 
       {/* backend ยังไม่มี POST /teams/:id/transfer-leader — บอกตรงๆ ไม่ทำปุ่มหลอก */}
       {isLeader && !USE_MOCK ? (
-        <span className="sub">Handing over the captaincy isn't available yet — the backend has no endpoint for it.</span>
+        <span className="sub">Captaincy transfers are available for Official squads. Request Official status first.</span>
       ) : null}
 
       <Modal open={!!removing} onClose={() => setRemoving(null)} label="Remove a player"
@@ -372,7 +374,7 @@ function InvitePanel({ data, lockName, memberIds }: {
         </Banner>
       ) : (
         <>
-          <input value={search} placeholder="Search by name or email" aria-label="Search users to invite" autoComplete="off"
+          <input value={search} placeholder="Search by name" aria-label="Search users to invite" autoComplete="off"
             onChange={e => { setSearch(e.target.value); invite.reset(); setNotice(null) }} />
           {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
           {invite.isError ? <Banner kind="crit"><b>Couldn't send the invitation.</b> {errorMessage(invite.error)}</Banner> : null}
@@ -386,7 +388,7 @@ function InvitePanel({ data, lockName, memberIds }: {
                 <tbody>
                   {results.map(person => (
                     <tr key={person.id}>
-                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} />{person.fullName}</span></td>
+                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} /><Link to={`/player/${person.id}`} target="_blank" rel="noopener noreferrer">{person.fullName}</Link> <span className="sub">Player #{person.id}</span></span></td>
                       <td style={{ textAlign: 'right' }}>
                         <button className="btn primary" type="button" disabled={invite.isPending}
                           onClick={() => {

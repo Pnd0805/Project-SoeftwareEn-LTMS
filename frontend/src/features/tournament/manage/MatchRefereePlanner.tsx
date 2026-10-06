@@ -38,7 +38,7 @@ const requestError = (error: unknown) => {
   return error.message
 }
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : null)
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : null)
 
 /** ชื่อคู่แข่ง — นัดรอบหลังยังไม่มีทีม เขียนว่ารออยู่แทนที่จะปล่อยว่าง */
 const pairing = (m: MatchListItemDto) =>

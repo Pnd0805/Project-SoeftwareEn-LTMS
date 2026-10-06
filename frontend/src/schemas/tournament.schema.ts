@@ -136,6 +136,7 @@ export const reviewTournamentApplicationSchema = z.object({
 export const tournamentStatusSchema = TournamentStatusEnum;
 
 export const createTournamentAnnouncementSchema = z.object({
+  type: z.enum(['general', 'schedule_change', 'venue_change', 'result', 'livestream']).optional(),
   title: z.string().trim().min(1, "กรุณาระบุหัวข้อประกาศ").max(200),
   body: z.string().trim().min(1, "กรุณาระบุข้อความประกาศ").max(5000),
 });

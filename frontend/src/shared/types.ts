@@ -87,6 +87,7 @@ export interface Tournament {
   registrationOpen?: boolean
   registrationStart?: string | null
   registrationEnd?: string | null
+  eventEndDate?: string | null
   date: string
   venue: string
   pin: Pin | null

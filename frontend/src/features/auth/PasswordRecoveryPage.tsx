@@ -18,7 +18,7 @@ export function PasswordRecoveryPage({ reset = false }: { reset?: boolean }) {
   const error = reset ? change.error : forgot.error
 
   return <div className="auth"><div className="auth-card">
-    <h1 className="disp">{reset ? 'Reset password' : 'Forgot password'}</h1>
+    <h1 className="disp">{reset ? 'ตั้งรหัสผ่านใหม่' : 'ลืมรหัสผ่าน'}</h1>
     {done ? <Banner kind="ok">{reset
       ? 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสใหม่'
       : 'รับคำขอแล้ว หากอีเมลนี้อยู่ในระบบ คุณจะได้รับลิงก์ตั้งรหัสใหม่ กรุณาตรวจกล่องจดหมายและสแปม'}</Banner>
@@ -33,15 +33,15 @@ export function PasswordRecoveryPage({ reset = false }: { reset?: boolean }) {
           } catch { /* Mutation supplies the visible error below. */ }
         }}>
           {reset ? <>
-            <Field label="New password" htmlFor="reset-password"><input id="reset-password" type="password" autoComplete="new-password" required value={password} disabled={busy} onChange={e => setPassword(e.target.value)} /></Field>
+            <Field label="รหัสผ่านใหม่" htmlFor="reset-password"><input id="reset-password" type="password" autoComplete="new-password" required value={password} disabled={busy} onChange={e => setPassword(e.target.value)} /></Field>
             <p className="sub">อย่างน้อย 8 ตัวอักษร และมีตัวเลขอย่างน้อย 1 ตัว</p>
-            <Field label="Confirm new password" htmlFor="reset-confirm"><input id="reset-confirm" type="password" autoComplete="new-password" required value={confirm} disabled={busy} onChange={e => setConfirm(e.target.value)} /></Field>
+            <Field label="ยืนยันรหัสผ่านใหม่" htmlFor="reset-confirm"><input id="reset-confirm" type="password" autoComplete="new-password" required value={confirm} disabled={busy} onChange={e => setConfirm(e.target.value)} /></Field>
             {confirm && password !== confirm ? <p role="alert">รหัสผ่านทั้งสองช่องไม่ตรงกัน</p> : null}
-          </> : <Field label="Email" htmlFor="recovery-email"><input id="recovery-email" type="email" autoComplete="email" required value={email} disabled={busy} onChange={e => setEmail(e.target.value)} /></Field>}
+          </> : <Field label="อีเมล" htmlFor="recovery-email"><input id="recovery-email" type="email" autoComplete="email" required value={email} disabled={busy} onChange={e => setEmail(e.target.value)} /></Field>}
           {error ? <Banner kind="crit">{error instanceof Error ? error.message : 'ทำรายการไม่สำเร็จ กรุณาลองใหม่'}</Banner> : null}
-          <button className="btn primary" disabled={busy || (reset && (!validPassword || password !== confirm))}>{busy ? 'Sending…' : reset ? 'Set new password' : 'Send reset link'}</button>
+          <button className="btn primary" disabled={busy || (reset && (!validPassword || password !== confirm))}>{busy ? 'กำลังส่ง…' : reset ? 'บันทึกรหัสผ่านใหม่' : 'ส่งลิงก์ตั้งรหัสผ่าน'}</button>
         </form>}
-    {reset ? <Link className="btn ghost" to="/forgot-password">Request a new link</Link> : null}
-    <Link className="btn ghost" to="/login">Back to login</Link>
+    {reset ? <Link className="btn ghost" to="/forgot-password">ขอลิงก์ใหม่</Link> : null}
+    <Link className="btn ghost" to="/login">กลับไปเข้าสู่ระบบ</Link>
   </div></div>
 }

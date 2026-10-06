@@ -40,7 +40,7 @@ const toLocal = (iso: string | null) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const toLocalReadable = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
+const toLocalReadable = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : '')
 
 const refereeRequestError = (error: unknown) => {
   if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Could not request this referee.'
@@ -62,7 +62,7 @@ const scheduleError = (error: unknown) => {
   if (!(error instanceof ApiError)) {
     if (error instanceof Error) {
       if (error.message.toLowerCase().includes('outside') || error.message.toLowerCase().includes('tournament dates')) {
-        return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
+        return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
       }
       if (error.message.includes('end') && error.message.includes('start')) {
         return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
@@ -84,7 +84,7 @@ const scheduleError = (error: unknown) => {
     return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ หรือรูปแบบเวลาไม่ถูกต้อง'
   }
   if (error.code === 'OUTSIDE_TOURNAMENT_DATES' || error.message?.toLowerCase().includes('outside') || error.message?.toLowerCase().includes('tournament dates')) {
-    return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
+    return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
   }
   if (error.code === 'SCHEDULE_CONFLICT' || error.message?.toLowerCase().includes('conflict')) {
     const id = errorDetailId(error, 'conflictingMatchId')
@@ -95,13 +95,6 @@ const scheduleError = (error: unknown) => {
     return `ลำดับเวลาขัดแย้งกับสายการแข่ง (This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}).`
   }
   return error.message || 'เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง'
-}
-
-/** เช็คว่ากีฬานี้เป็นกีฬาที่รองรับการเลือก Format การแข่ง (BO1, BO3, BO5, BO7) หรือไม่ (Valo, ROV, แบต) */
-const isBoSport = (sportName?: string | null) => {
-  if (!sportName) return false
-  const s = sportName.toLowerCase()
-  return s.includes('valo') || s.includes('rov') || s.includes('badminton') || s.includes('แบต')
 }
 
 /** Real mode uses the consent-based FR02 flow; it never calls the removed bulk assignment route. */
@@ -281,15 +274,15 @@ export function FixturePage() {
       const tourStart = tourData.eventStartDate ? new Date(tourData.eventStartDate) : null
       const tourEnd = tourData.eventEndDate ? new Date(tourData.eventEndDate) : null
       if (tourStart && !isNaN(tourStart.getTime()) && kickoffDate < tourStart) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${tourStart.toLocaleDateString()})`)
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${tourStart.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
         return
       }
       if (tourEnd && !isNaN(tourEnd.getTime()) && kickoffDate > tourEnd) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString()})`)
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
         return
       }
       if (tourEnd && !isNaN(tourEnd.getTime()) && finishDate > tourEnd) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัว (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString()})`)
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
         return
       }
     }
@@ -323,7 +316,7 @@ export function FixturePage() {
           : <Badge kind="neutral">Locked — {MatchStatusLabel[m.status]}</Badge>}
       </div>
 
-      {isBoSport(m.tournament.sportName) ? <MatchFormatPanel key={m.id} match={m} /> : null}
+      <MatchFormatPanel key={m.id} match={m} />
       {!USE_MOCK ? <RefereeCoverageWarnings tournamentId={m.tournamentId} matchId={m.id} /> : null}
       <Panel quiet>
         <div className="spread">
@@ -405,8 +398,8 @@ export function FixturePage() {
                 : 'It cannot be moved any more.'}
             </Banner>
             <Facts rows={[
-              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'],
-              ['End', m.scheduledEndTime ? new Date(m.scheduledEndTime).toLocaleString() : '—'],
+              ['Kick-off', m.scheduledTime ? new Date(m.scheduledTime).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : '—'],
+              ['End', m.scheduledEndTime ? new Date(m.scheduledEndTime).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : '—'],
               ['Venue', m.venue || '—'],
               ['Referees', m.referees.map(r => r.fullName).join(', ') || 'nobody named'],
             ]} />

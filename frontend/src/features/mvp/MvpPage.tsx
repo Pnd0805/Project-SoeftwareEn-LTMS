@@ -64,7 +64,7 @@ export function MatchMvpVoting({ matchId, teamNames = {} }: { matchId: number; t
   if (!data) return <Empty icon="star" title="No MVP data available" />
   return <>
     <Banner kind={data.window.isOpen ? 'ok' : 'warn'} icon="star">
-      {data.window.isOpen ? `Voting closes ${data.window.closesAt ? new Date(data.window.closesAt).toLocaleString() : 'soon'}.`
+      {data.window.isOpen ? `Voting closes ${data.window.closesAt ? new Date(data.window.closesAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : 'soon'}.`
         : data.window.opensAt ? 'Voting is closed.' : 'Voting is unavailable until the backend provides an eligible voting window. Matches decided without play are not eligible.'}
     </Banner>
     {mvp.vote.isError ? <p className="sub" role="alert">{mvp.vote.error instanceof Error ? mvp.vote.error.message : 'Could not save your vote.'}</p> : null}

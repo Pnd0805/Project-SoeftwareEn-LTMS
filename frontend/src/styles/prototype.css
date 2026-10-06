@@ -226,6 +226,9 @@ input,select,textarea{background:var(--void-2);padding:8px 12px;font-size:16px;c
   font-family:inherit;border:2px solid var(--line-hot);width:100%;border-radius:var(--r);}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--teal);box-shadow:var(--hard-sm);}
 .field.bad input,.field.bad select{border-color:var(--red);}
+.profile-checkbox{display:flex;align-items:center;gap:12px;}
+.profile-checkbox input[type="checkbox"]{width:auto;flex:0 0 auto;padding:0;margin:0;}
+.profile-preference{justify-content:space-between;padding:8px 0;}
 .err{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--red-text);}
 
 .tblwrap{overflow-x:auto;}

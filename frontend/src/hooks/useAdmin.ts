@@ -284,10 +284,11 @@ export function useAdminScopes() {
   return useQuery({ queryKey: adminKeys.scopes, queryFn: adminApi.getAdminScopes, retry: retryPolicy });
 }
 
-export function useAuditLogs(query: AuditLogQuery = {}) {
+export function useAuditLogs(query: AuditLogQuery = {}, enabled = true) {
   return useQuery({
     queryKey: adminKeys.audit(query),
     queryFn: () => adminApi.getAuditLogs(query),
+    enabled,
     retry: retryPolicy,
   });
 }

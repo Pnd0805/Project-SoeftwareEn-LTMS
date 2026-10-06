@@ -119,12 +119,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   /* `userType: staff` describes employment, not admin authorization. The
      backend queue is guarded by admin_scopes and is the current capability
      check until GET /me exposes scopes directly. */
-  const adminAccess = useAdminAccess(!!currentUser)
+  const adminAccess = useAdminAccess(!!currentUser?.adminScope)
   const logout = useLogout()
   const { data: notificationData } = useNotifications(currentUser?.id)
   const unreadCount = notificationData?.unreadCount
     ?? notificationData?.items?.filter(notification => !(notification.isRead ?? notification.read)).length ?? 0
-  const nav = useNav(unreadCount, currentUser, adminAccess.data === true)
+  const nav = useNav(unreadCount, currentUser ?? undefined, adminAccess.data === true)
   const location = useLocation()
   const navigate = useNavigate()
   const n = unreadCount

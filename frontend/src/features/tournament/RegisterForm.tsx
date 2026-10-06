@@ -243,7 +243,7 @@ export function RegisterForm({
                               aria-label={`Enter ${member.fullName}`} />
                           </td>
                           <td>{member.fullName}</td>
-                          <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
+                          <td className="sub">{new Date(member.joinedAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })}</td>
                           <td>{memberFailures.filter(f => f.userId === member.userId).map(f =>
                             <div key={f.reason} style={{ color: 'var(--red)' }}>{f.reason}</div>)}</td>
                         </tr>

@@ -40,8 +40,8 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const meQuery = useMe()
-  const backendTeams = useBackendMyTeams()
-  const myApplications = useMyTournamentApplications()
+  const backendTeams = useBackendMyTeams(!!meQuery.data)
+  const myApplications = useMyTournamentApplications(!!meQuery.data)
   const u = USE_MOCK ? storeUser : (meQuery.data ? { id: String(meQuery.data.id) } : null)
 
   /* ลำดับความน่าเชื่อ: ยอดจาก backend → ใบสมัครที่ส่งมาด้วย → store
@@ -63,7 +63,8 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
   /* โหมดจริง — ทีมที่เรานำอยู่และพร้อมแข่งในกีฬาเดียวกับรายการนี้ */
   const myTeams = USE_MOCK ? [] : (backendTeams.data?.items ?? [])
     .filter(x => x.role === 'leader' && (sportTypeId === undefined || x.sportTypeId === sportTypeId))
-  const backendReady = myTeams.filter(x => x.readinessStatus === 'Ready')
+  const enteredIds = new Set((myApplications.data?.items ?? []).filter(a => a.tournament.id === Number(t.id) && (a.status === 'approved' || a.status === 'pending')).map(a => a.team.id))
+  const backendReady = myTeams.filter(x => x.readinessStatus === 'Ready' && !enteredIds.has(x.id))
   const backendForming = myTeams.filter(x => x.readinessStatus !== 'Ready')
   const backendEntries = USE_MOCK ? [] : (myApplications.data?.items ?? [])
     .filter(a => a.tournament.id === Number(t.id) && a.status !== 'withdrawn' && a.status !== 'cancelled')
@@ -100,13 +101,14 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
           </div>
         ))}
 
+        {!USE_MOCK && myApplications.isError ? <p role="alert">Could not load your entry status. <button className="btn" onClick={() => void myApplications.refetch()}>Retry entries</button></p> : null}
         {closed ? null : !u ? (
           <div className="hstack">
             <button className="btn primary" type="button" onClick={() => navigate('/login')}>Sign in to enter a squad</button>
           </div>
         ) : can.length || backendReady.length ? (
           <div className="hstack">
-            <button className="btn primary" type="button" onClick={() => setOpen(true)}>Register a squad</button>
+            <button className="btn primary" type="button" disabled={!USE_MOCK && (myApplications.isPending || myApplications.isError)} onClick={() => setOpen(true)}>Register a squad</button>
           </div>
         ) : forming.length ? (
           <div className="sub">
@@ -118,6 +120,8 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId }: {
           </div>
         ) : !USE_MOCK && backendTeams.isPending ? (
           <div className="sub">Loading the squads you lead…</div>
+        ) : !USE_MOCK && backendEntries.some(a => a.status === 'approved' || a.status === 'pending') ? (
+          <div className="sub">Your entry is shown above. The organizer reviews pending applications.</div>
         ) : !USE_MOCK ? (
           <div className="sub">You need a squad you lead, in this sport, with Ready status before you can enter.</div>
         ) : null}

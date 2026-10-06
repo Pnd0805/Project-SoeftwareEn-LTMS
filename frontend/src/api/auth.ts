@@ -3,7 +3,7 @@
  * ทุกฟังก์ชัน signature ตรงกับตาราง GUIDE/06 §1 เป๊ะ — สลับ mock/จริงข้างในฟังก์ชันเดียว
  * component/hook ข้างนอกไม่รู้เลยว่าตอนนี้คุยกับ mock หรือ backend จริง
  */
-import { apiFetch, setAccessToken, USE_MOCK } from "./client";
+import { ApiError, apiFetch, setAccessToken, USE_MOCK } from "./client";
 import type { RegisterRequest, RegisterResponse, LoginRequest, LoginResponse } from "../types/dto";
 import * as authMock from "../mocks/auth.mock";
 
@@ -30,7 +30,11 @@ export async function login(input: LoginRequest): Promise<LoginResponse> {
 
 export async function logout(): Promise<void> {
   if (!USE_MOCK) {
-    await apiFetch<void>("/auth/logout", { method: "POST" });
+    try { await apiFetch<void>("/auth/logout", { method: "POST" }); }
+    catch (error) {
+      // An invalidated/expired session is already logged out on the server.
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+    }
   }
   setAccessToken(null);
 }

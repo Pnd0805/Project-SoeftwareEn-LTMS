@@ -6,7 +6,7 @@
  */
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
@@ -76,6 +76,8 @@ export function SearchPage() {
             placeholder="Name, sport, venue, faculty…" />
         </Field>
       </Panel>
+
+      {!currentUser && needle ? <Panel quiet>Sign in to search for players. <Link to="/login">Sign in</Link></Panel> : null}
 
       {!needle ? (
         <Empty icon="search" title="Type to search"

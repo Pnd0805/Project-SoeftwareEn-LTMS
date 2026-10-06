@@ -1,3 +1,4 @@
+import type { BackendPagination } from '../types/match.dto';
 /**
  * src/api/admin.ts — Person 4 (Admin · Organizer approval · Referee)
  *
@@ -534,10 +535,15 @@ export async function suspendUser(
 // ══════════════ Audit — FR-TC-05 ══════════════
 
 /** BE_KN C2 admin-user contract. */
-export async function getAuditLogs(query: AuditLogQuery = {}): Promise<{ items: AuditLogDto[] }> {
+export async function getAuditLogs(query: AuditLogQuery = {}): Promise<{ items: AuditLogDto[]; pagination?: BackendPagination }> {
   if (USE_MOCK) return mockDelay({ items: storeAuditLogs() });
   const params = new URLSearchParams();
   for (const key of ['entityType', 'entityId', 'userId'] as const) if (query[key] !== undefined) params.set(key, String(query[key]));
+  if (query.page !== undefined) {
+    params.set('page', String(query.page)); params.set('pageSize', '20');
+    const response = await apiFetch<{ items: Array<Omit<AuditLogDto, 'user'> & { actor: { id: number; fullName: string } }>; pagination: BackendPagination }>(`/admin/audit-logs?${params}`);
+    return { ...response, items: response.items.map(({ actor, ...row }) => ({ ...row, user: { ...actor, avatarUrl: null } })) };
+  }
   const rows = await readAdminPages<Omit<AuditLogDto, 'user'> & { actor: { id: number; fullName: string } }>(`/admin/audit-logs?${params}`, query.limit);
   return { items: rows.slice(0, query.limit ?? rows.length).map(({ actor, ...row }) => ({ ...row, user: { ...actor, avatarUrl: null } })) };
 }

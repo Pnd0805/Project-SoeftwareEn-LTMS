@@ -111,12 +111,3 @@ export function refBucketOf(m: MatchListItemDto): RefBucket {
  */
 export const isOpen = (m: MatchListItemDto) =>
   !!m.teamA && !!m.teamB && matchStateOf(m) !== 'confirmed'
-
-/**
- * รูปแบบ BO1, BO3, BO5, BO7 อนุญาตเฉพาะ Valorant, ROV, และ Badminton (แบดมินตัน)
- */
-export function isBoSport(sportName?: string | null): boolean {
-  if (!sportName) return false
-  const s = sportName.toLowerCase()
-  return s.includes('valo') || s.includes('rov') || s.includes('badminton') || s.includes('แบด')
-}

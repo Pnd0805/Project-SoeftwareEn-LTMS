@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -48,9 +49,9 @@ import { TeamPage } from './TeamPage'
 describe('TeamPage guest access', () => {
   it('shows public team information without calling authenticated team endpoints', () => {
     render(
-      <MemoryRouter initialEntries={['/team/42']}>
+      <QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/team/42']}>
         <Routes><Route path="/team/:id" element={<TeamPage />} /></Routes>
-      </MemoryRouter>,
+      </MemoryRouter></QueryClientProvider>,
     )
 
     expect(screen.getAllByText('Public Campus FC')).toHaveLength(2)

@@ -46,7 +46,7 @@ export function LoginPage() {
           form.setError(field as keyof LoginInput, { type: 'server', message })
         })
       } else {
-        form.setError('root', { type: 'server', message: 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
+        form.setError('root', { type: 'server', message: error instanceof Error ? error.message : 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
       }
     }
   }
@@ -61,7 +61,7 @@ export function LoginPage() {
           form.setError(field as keyof LoginInput, { type: 'server', message })
         })
       } else {
-        form.setError('root', { type: 'server', message: 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
+        form.setError('root', { type: 'server', message: error instanceof Error ? error.message : 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
       }
     }
   }
@@ -100,6 +100,7 @@ export function LoginPage() {
           {login.isPending ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
         </button>
       </form>
+      {(login.error as { code?: string } | null)?.code === 'EMAIL_NOT_VERIFIED' ? <Link className="btn" to={`/register?step=otp&email=${encodeURIComponent(form.getValues('email'))}`}>กลับไปยืนยันอีเมลด้วย OTP</Link> : null}
 
       <Link className="btn ghost" to="/forgot-password">ลืมรหัสผ่าน?</Link>
       <div className="hstack" style={{ justifyContent: 'space-between', gap: 8 }}>

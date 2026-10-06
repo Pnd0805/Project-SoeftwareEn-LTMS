@@ -11,6 +11,7 @@
  * การจัดการรายชื่อ โลโก้ คำร้อง Official และการลบทีมอยู่ที่หน้าทีม (/team/:id)
  */
 import { useState } from 'react'
+import { MyJoinRequests } from './MyJoinRequests'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
@@ -19,7 +20,7 @@ import { Modal } from '../../components/kit/Modal'
 import {
   useAnswerBackendInvitation, useBackendMyInvitations, useBackendMyTeams, useCreateTeam,
 } from '../../hooks/useTeam'
-import { useCancelMyApplication, useMyTournamentApplications, useWithdrawMyApplication } from '../../hooks/useTournament'
+import { useCancelMyApplication, useMyTournamentApplications, useWithdrawMyApplication, useTournament } from '../../hooks/useTournament'
 import { useSportTypes } from '../../hooks/useReference'
 import { USE_MOCK } from '../../api/client'
 import { EnterTournamentButton } from '../tournament/EnterTournamentButton'
@@ -81,6 +82,14 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
       </div>
     </Modal>
   )
+}
+
+function WithdrawEntryButton({ tournamentId, busy, onWithdraw }: { tournamentId: number; busy: boolean; onWithdraw: () => void }) {
+  const tournament = useTournament(USE_MOCK ? undefined : tournamentId)
+  if (!USE_MOCK && tournament.isPending) return <span className="sub">Checking tournament status…</span>
+  if (!USE_MOCK && tournament.isError) return <button className="btn ghost" onClick={() => void tournament.refetch()}>Retry tournament status</button>
+  if (tournament.data?.status === 'completed' || tournament.data?.championTeamId) return <span className="sub">Tournament finished — withdrawal is closed.</span>
+  return <button className="btn ghost" type="button" disabled={busy} onClick={onWithdraw}>Withdraw</button>
 }
 
 export function TeamsPage() {
@@ -151,7 +160,7 @@ export function TeamsPage() {
                 <span>
                   <b>{invitation.team.name}</b><br />
                   <span className="sub">
-                    Invited by {invitation.invitedBy.fullName} · expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                    Invited by {invitation.invitedBy.fullName} · expires {new Date(invitation.expiresAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })}
                   </span>
                 </span>
                 <span className="hstack">
@@ -180,6 +189,7 @@ export function TeamsPage() {
         </Panel>
       ) : null}
 
+      {!USE_MOCK ? <MyJoinRequests /> : null}
       {applications.data?.items.length ? (
         <Panel quiet>
           <span className="tag"><em>//</em> Your tournament applications</span>
@@ -198,9 +208,9 @@ export function TeamsPage() {
                     onClick={() => cancelApplication.mutate(application.id)}>Cancel</button>
                 ) : null}
                 {application.status === 'approved' ? (
-                  <button className="btn ghost" type="button" disabled={withdrawApplication.isPending}
-                    onClick={() => USE_MOCK ? withdrawApplication.mutate(application.id)
-                      : setWithdrawPrompt({ applicationId: application.id, tournamentId: application.tournament.id, name: application.tournament.name })}>Withdraw</button>
+                  <WithdrawEntryButton tournamentId={application.tournament.id} busy={withdrawApplication.isPending}
+                    onWithdraw={() => USE_MOCK ? withdrawApplication.mutate(application.id)
+                      : setWithdrawPrompt({ applicationId: application.id, tournamentId: application.tournament.id, name: application.tournament.name })} />
                 ) : null}
               </span>
             </div>

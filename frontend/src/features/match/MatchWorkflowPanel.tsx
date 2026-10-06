@@ -93,7 +93,7 @@ function ComplaintReview({ m, row, organizer, admin, pending, error, statement, 
   const [a, setA] = useState(row.claimedScoreData?.[String(m.teamA?.id)] ?? 0)
   const [b, setB] = useState(row.claimedScoreData?.[String(m.teamB?.id)] ?? 0)
   return <Panel quiet><h3>Complaint #{row.complaintId} <Badge kind="neutral">{row.status}</Badge></h3>
-    <p>{row.filedBy.fullName}: {row.reason}</p><p className="sub">Admin stage begins {new Date(row.escalatesAt).toLocaleString()}</p>
+    <p>{row.filedBy.fullName}: {row.reason}</p><p className="sub">Admin stage begins {new Date(row.escalatesAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</p>
     {row.claimedScoreData ? <p>Proposed score: {m.teamA?.name} {row.claimedScoreData[String(m.teamA?.id)]} - {row.claimedScoreData[String(m.teamB?.id)]} {m.teamB?.name}</p> : null}
     <EvidenceLinks urls={row.evidence} />
     {row.organizerStatement ? <p>Organizer: {row.organizerStatement.statement}{row.organizerStatement.late ? ' (after the deadline)' : ''}</p> : null}
@@ -142,7 +142,7 @@ export function MatchWorkflowPanel({ m, result }: { m: MatchDto; result?: MatchR
     </Panel> : null}
     {organizer && m.status === 'finished' && (!result || result.status === 'rejected') && m.teamA && m.teamB ? elapsed
       ? <OrganizerDecision m={m} pending={flow.organizer.isPending} error={flow.organizer.error} submit={flow.organizer.mutateAsync} />
-      : <Panel quiet>Organizer result decisions become available 24 hours after the recorded end of play.{m.actualEndTime ? ` Available at ${new Date(Date.parse(m.actualEndTime) + 24 * 3600_000).toLocaleString()}.` : ' The backend has not supplied the actual end time.'}</Panel> : null}
+      : <Panel quiet>Organizer result decisions become available 24 hours after the recorded end of play.{m.actualEndTime ? ` Available at ${new Date(Date.parse(m.actualEndTime) + 24 * 3600_000).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}.` : ' The backend has not supplied the actual end time.'}</Panel> : null}
     {party && m.teamA && m.teamB && (result?.status === 'submitted' || result?.status === 'verified') ? <ResultChallengeForm m={m} title="Dispute this result" pending={flow.challenge.isPending} error={flow.challenge.error} submit={flow.challenge.mutateAsync} /> : null}
     {activeDispute ? <Panel quiet><h3>Dispute details</h3>
       {flow.dispute.isPending ? <p>Loading dispute...</p> : flow.dispute.isError ? <p role="alert">{errorText(flow.dispute.error)}</p> : flow.dispute.data ? <>

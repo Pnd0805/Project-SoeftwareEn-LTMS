@@ -1,3 +1,4 @@
+import { useNow } from '../../hooks/useNow'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
@@ -5,7 +6,7 @@ import { useRefereeIdentity, useSubmitRefereeIdentityDocs } from '../../hooks/us
 import { imageUploadErrorMessage, uploadImage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
 import { RefereeWithdrawal } from '../match/RefereeWithdrawal'
 
-const statusLabel = { none: 'External', pending: 'External — Pending', needs_docs: 'External — Needs documents', approved: 'External (Approve)', rejected: 'External — Rejected' }
+const statusLabel = { none: 'External', pending: 'External — Pending', needs_docs: 'External — Needs documents', approved: 'External (Approve)', expired: 'External — Approval expired', rejected: 'External — Rejected' }
 export function ExternalIdentityBadge() {
   const identity = useRefereeIdentity()
   return <Badge kind={identity.data?.status === 'approved' ? 'ok' : 'warn'}>
@@ -14,6 +15,7 @@ export function ExternalIdentityBadge() {
 }
 
 export function ExternalIdentityPanel() {
+  const clockNow = useNow()
   const query = useRefereeIdentity()
   const submit = useSubmitRefereeIdentityDocs()
   const [files, setFiles] = useState<File[]>([])
@@ -39,11 +41,13 @@ export function ExternalIdentityPanel() {
     {query.isError ? <Banner kind="crit">ตรวจสถานะไม่สำเร็จ {query.error instanceof Error ? query.error.message : ''} <button className="btn" onClick={() => void query.refetch()}>Retry</button></Banner> : null}
     {identity ? <>
       <div>สถานะการตรวจ: {statusLabel[identity.status]}</div>
-      {identity.expiresAt ? <div className="sub">Approved until {new Date(identity.expiresAt).toLocaleDateString()}</div> : null}
+      {identity.expiresAt ? <div className="sub">{identity.status === 'expired' ? 'Approval expired on' : 'Approved until'} {new Date(identity.expiresAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })}</div> : null}
+      {identity.status === 'expired' ? <Banner kind="warn">การยืนยันตัวตนหมดอายุแล้ว งานในทัวร์เดิมทำต่อได้จนจบ รอคำเชิญทัวร์ใหม่แล้วระบบจะขอเอกสารเพื่อตรวจใหม่ ไม่ต้องส่งเอกสารตอนนี้</Banner> : null}
+      {identity.status === 'approved' && identity.expiresAt && Date.parse(identity.expiresAt) - clockNow <= 30 * 86400000 ? <Banner kind="warn">การยืนยันตัวตนใกล้หมดอายุ งานทัวร์เดิมทำต่อได้จนจบ ทัวร์ใหม่หลังหมดอายุจะต้องตรวจเอกสารใหม่</Banner> : null}
       {identity.adminMessage ? <Banner kind="warn">ข้อความจากผู้ดูแล: {identity.adminMessage}</Banner> : null}
       {identity.status === 'rejected' ? <div className="sub">ติดต่อผู้จัดให้เชิญใหม่ก่อนส่งเอกสารอีกครั้ง</div> : null}
       {identity.tournaments.map(t => <div key={t.tournamentRefereeId}><Link to={`/t/${t.id}`}>{t.name}</Link> · {t.externalApprovalStatus}</div>)}
-      {identity.status === 'approved' ? identity.tournaments.filter(t => t.externalApprovalStatus === 'approved').map(t => <RefereeWithdrawal key={t.tournamentRefereeId} tournamentId={t.id} />) : null}
+      {identity.status === 'approved' || identity.status === 'expired' ? identity.tournaments.filter(t => t.externalApprovalStatus === 'approved').map(t => <RefereeWithdrawal key={t.tournamentRefereeId} tournamentId={t.id} />) : null}
       {identity.docsSubmitted && !identity.docsRequired ? <div className="sub">ได้รับเอกสารแล้ว ไม่ต้องส่งซ้ำระหว่างรอตรวจ</div> : null}
       {identity.docsRequired && identity.tournaments.length > 0 ? <>
         <Field label="เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)" htmlFor="ref-identity-files">

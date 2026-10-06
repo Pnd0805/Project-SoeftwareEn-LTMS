@@ -630,7 +630,7 @@ export function getApplicationDetail(
 /** PATCH /announcements/:id — ผู้จัดแก้ประกาศ */
 export function updateAnnouncement(
   announcementId: number,
-  input: { title?: string; body?: string },
+  input: { title?: string; body?: string; type?: 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream' },
 ): Promise<TournamentAnnouncementDto> {
   return apiFetch(`/announcements/${announcementId}`, { method: "PATCH", body: JSON.stringify(input) });
 }

@@ -20,7 +20,7 @@ export function LiveFeedbackPanel({ tournamentId }: { tournamentId: number }) {
     {data?.items?.length === 0 ? <p className="sub">No reviews yet.</p> : null}
     {data?.items?.map(item => <div className="notif" key={item.id}>
       <span className="txt"><b>{item.rating}/5</b> {item.isReported ? <Badge kind="warn">Reported</Badge> : null}<br />
-        {item.content || 'No written review'}<br /><span className="tag">{new Date(item.createdAt).toLocaleString()}</span></span>
+        {item.content || 'No written review'}<br /><span className="tag">{new Date(item.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</span></span>
       {!item.isReported ? <button className="btn ghost" type="button" disabled={report.isPending}
         onClick={async () => { try { await report.mutateAsync(item.id); setNotice('Review reported.') }
           catch (error) { setNotice(error instanceof Error ? error.message : 'Could not report review.') } }}>Report</button> : null}

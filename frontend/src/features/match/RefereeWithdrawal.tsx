@@ -73,7 +73,7 @@ export function OrganizerWithdrawals({ tournamentId }: { tournamentId: number })
     {rows.map(r => <div className="vstack" style={{ gap: 8, marginTop: 12 }} key={r.id}>
       <b>{r.refereeA.user.fullName} · {r.withdrawScope === 'tournament' ? 'ถอนจากทั้งทัวร์' : `ถอนจากแมตช์ #${r.matchA?.id ?? '—'}`}</b>
       <div style={{ whiteSpace: 'pre-wrap' }}>เหตุผล: {r.reason ?? 'ไม่ระบุ'}</div>
-      <div className="sub">ยื่นเมื่อ {new Date(r.createdAt).toLocaleString()}</div>
+      <div className="sub">ยื่นเมื่อ {new Date(r.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</div>
       <Badge kind={r.status === 'open' ? 'warn' : r.status === 'applied' ? 'ok' : 'neutral'}>{r.status}</Badge>
       {r.status === 'open' ? <div className="hstack">
         <button className="btn" disabled={busy} onClick={() => { accept.reset(); decline.reset(); setSelected({ request: r, approve: false }) }}>Decline withdrawal</button>

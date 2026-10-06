@@ -216,6 +216,8 @@ async function invalidateTournament(queryClient: ReturnType<typeof useQueryClien
     queryClient.invalidateQueries({ queryKey: ["match"] }),
     queryClient.invalidateQueries({ queryKey: ["matches"] }),
     queryClient.invalidateQueries({ queryKey: ["standings"] }),
+    queryClient.invalidateQueries({ queryKey: ["me", "applications"] }),
+    queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   ]);
   void id;
 }
@@ -296,6 +298,15 @@ export function useTournamentAnnouncements(tournamentId: TournamentRef | undefin
     queryFn: () => tournamentApi.getAnnouncements(tournamentId as TournamentRef),
     enabled: tournamentId !== undefined,
   });
+}
+
+export function useEditAnnouncement(tournamentId: TournamentRef) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { id: number; input: Parameters<typeof tournamentApi.updateAnnouncement>[1] }) => tournamentApi.updateAnnouncement(v.id, v.input), onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements', tournamentId] }) });
+}
+export function useDeleteAnnouncement(tournamentId: TournamentRef) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: tournamentApi.deleteAnnouncement, onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements', tournamentId] }) });
 }
 
 export function useSubmitTournamentFeedback(tournamentId: TournamentRef) {

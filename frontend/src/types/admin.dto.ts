@@ -194,6 +194,7 @@ export interface AuditLogDto {
 }
 
 export interface AuditLogQuery {
+  page?: number;
   entityType?: string;
   entityId?: number;
   userId?: number;
@@ -203,6 +204,7 @@ export interface AuditLogQuery {
 // ══════════════ คำร้องทีม Official — FR-TM-06, FR-TM-08 ══════════════
 
 export interface OfficialTeamRequestDto {
+  supportingDocs?: string[];
   id: number;
   team: {
     id: number;
@@ -339,7 +341,7 @@ export interface BackendExternalRefereeQueueItem {
 
 /** GET /me/referee-identity — U11 */
 export interface BackendRefereeIdentityDto {
-  status: "none" | "pending" | "needs_docs" | "approved" | "rejected";
+  status: "none" | "pending" | "needs_docs" | "approved" | "expired" | "rejected";
   approvedAt: string | null;
   expiresAt: string | null;
   adminMessage: string | null;

@@ -36,7 +36,7 @@ export function RewardsPage() {
       {rewards.isError ? <Banner kind="crit">{rewards.error instanceof Error ? rewards.error.message : 'Unable to load rewards.'} <button className="btn" onClick={() => void rewards.refetch()}>Retry</button></Banner> : null}
       {rewards.isSuccess && !rewards.data.items.length ? <p>No earned rewards yet.</p> : null}
       {rewards.data?.items.map(row => <div className="spread" key={row.id}>
-        <div><RewardName reward={row} />{row.description ? <p className="sub">{row.description}</p> : null}<p className="sub">Earned {new Date(row.earnedAt).toLocaleString()}</p><Badge kind={row.isDisplayed ? 'ok' : 'neutral'}>{row.isDisplayed ? 'Displayed on profile' : 'Hidden from profile'}</Badge></div>
+        <div><RewardName reward={row} />{row.description ? <p className="sub">{row.description}</p> : null}<p className="sub">Earned {new Date(row.earnedAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</p><Badge kind={row.isDisplayed ? 'ok' : 'neutral'}>{row.isDisplayed ? 'Displayed on profile' : 'Hidden from profile'}</Badge></div>
         <label className="hstack"><input type="checkbox" checked={!row.isDisplayed} disabled={display.isPending || rewards.isFetching} onChange={e => display.mutate({ id: row.id, isDisplayed: !e.target.checked })} />Hide {row.name} from profile</label>
       </div>)}
     </Panel>

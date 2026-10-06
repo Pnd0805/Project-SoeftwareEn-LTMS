@@ -73,7 +73,12 @@ export function AdminUsersTab() {
   const scope = me?.adminScope?.scopeType
   const canGrant = USE_MOCK || scope === 'university_wide'
   const canRevoke = (u: UserAdminViewDto) => USE_MOCK || (scope === 'university_wide' && u.adminScopes[0]?.scopeType === 'faculty')
-  const canSuspend = (u: UserAdminViewDto) => USE_MOCK || scope === 'university_wide' || (scope === 'faculty' && !u.adminScopes.length && u.facultyId === me?.adminScope?.facultyId)
+  const canManageAccount = (u: UserAdminViewDto) => USE_MOCK || scope === 'university_wide' || (scope === 'faculty' && !u.adminScopes.length && u.facultyId === me?.adminScope?.facultyId)
+  const suspensionBlock = (u: UserAdminViewDto) => u.adminScopes.some(s => s.scopeType === 'root')
+    ? 'Root accounts cannot be suspended.'
+    : u.adminScopes.some(s => s.scopeType === 'university_wide')
+      ? 'Root must revoke University Admin rights before this account can be suspended.' : null
+  const canSuspend = (u: UserAdminViewDto) => canManageAccount(u) && !suspensionBlock(u)
   const validDays = banType === 'permanent' || (days.trim() !== '' && Number.isInteger(Number(days)) && Number(days) >= 1 && Number(days) <= 90)
   const status = statusOf(users.error)
   const all = users.data?.items ?? []
@@ -195,7 +200,7 @@ export function AdminUsersTab() {
                           {u.isSuspended ? (
                             <span className="vstack" style={{ gap: 2 }}>
                               <Badge kind="crit">Suspended</Badge>
-                              {u.suspendedUntil ? <span className="sub">Until {new Date(u.suspendedUntil).toLocaleString()}</span> : <span className="sub">Permanent</span>}
+                              {u.suspendedUntil ? <span className="sub">Until {new Date(u.suspendedUntil).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</span> : <span className="sub">Permanent</span>}
                               {u.suspendedCategoryLabel ? <span className="sub">{u.suspendedCategoryLabel}</span> : null}
                               {u.suspendedReason ? <span className="sub">{u.suspendedReason}</span> : null}
                             </span>
@@ -204,12 +209,12 @@ export function AdminUsersTab() {
                         <td>
                           <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                             {u.isSuspended ? (
-                              <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)} onClick={() => reinstate(u)}>
+                              <button className="btn ghost" type="button" disabled={busy || self || !canManageAccount(u)} onClick={() => reinstate(u)}>
                                 Reinstate
                               </button>
                             ) : (
                               <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)}
-                                title={self ? "You can't suspend your own account" : !canSuspend(u) ? 'Outside your admin scope' : undefined}
+                                title={self ? "You can't suspend your own account" : suspensionBlock(u) ?? (!canSuspend(u) ? 'Outside your admin scope' : undefined)}
                                 onClick={() => { suspend.reset(); setReason(''); setBanType('temporary'); setDays(''); setCategory('other'); setSuspending(u) }}>
                                 Suspend
                               </button>
@@ -229,6 +234,7 @@ export function AdminUsersTab() {
                               </button>
                             )}
                           </span>
+                          {!u.isSuspended && suspensionBlock(u) ? <span className="sub">{suspensionBlock(u)}</span> : null}
                         </td>
                       </tr>
                     )

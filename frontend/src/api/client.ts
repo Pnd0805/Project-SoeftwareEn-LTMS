@@ -80,6 +80,7 @@ const readStoredToken = (): string | null => {
 };
 
 let accessToken: string | null = readStoredToken();
+export const hasAccessToken = () => accessToken !== null;
 export function setAccessToken(token: string | null): void {
   accessToken = token;
   try {

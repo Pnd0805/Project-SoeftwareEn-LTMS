@@ -14,7 +14,7 @@ import { Badge, Panel, Trail } from '../../components/kit/primitives'
 import type { TrailStep } from '../../components/kit/primitives'
 import type { MatchDto, MatchResultDto } from '../../types/match.dto'
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : '')
 
 export function ResultTrail({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   /* on-site: กรรมการบันทึก หัวหน้าทีมที่ชนะยืนยัน (FR-RS-03)

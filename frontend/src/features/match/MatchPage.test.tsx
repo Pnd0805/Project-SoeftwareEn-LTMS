@@ -223,9 +223,11 @@ describe('resolving a dispute', () => {
     expect(screen.queryByText(/Write the reason first/)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Throw the result out' }))
+    expect(resolveState.mutate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm final decision' }))
     expect(resolveState.mutate).toHaveBeenCalledWith({
       decision: 'reject', resolution: 'Checked the score sheet',
-    })
+    }, expect.anything())
   })
 })
 

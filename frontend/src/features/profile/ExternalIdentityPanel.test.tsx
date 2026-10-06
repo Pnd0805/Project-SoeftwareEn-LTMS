@@ -7,11 +7,22 @@ vi.mock('../../hooks/useAdmin', () => ({
   useSubmitRefereeIdentityDocs: () => ({ mutateAsync: submit, isPending: false }),
 }))
 vi.mock('../../api/upload', async original => ({ ...await original<typeof import('../../api/upload')>(), uploadImage: upload }))
-import { ExternalIdentityPanel } from './ExternalIdentityPanel'
+import { ExternalIdentityBadge, ExternalIdentityPanel } from './ExternalIdentityPanel'
 beforeEach(() => { vi.clearAllMocks(); state.status = 'pending'; state.docsRequired = true; upload.mockResolvedValue('referee_identity/9/test.png'); submit.mockResolvedValue({ status: 'pending' }) })
 const show = () => render(<MemoryRouter><ExternalIdentityPanel /></MemoryRouter>)
 const pick = (files: File[]) => fireEvent.change(screen.getByLabelText('เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)'), { target: { files } })
 describe('External identity document flow', () => {
+  it('explains expired approval without requesting documents before a new invitation', () => {
+    state.status = 'expired'; state.docsRequired = false
+    show()
+    expect(screen.getByText('สถานะการตรวจ: External — Approval expired')).toBeInTheDocument()
+    expect(screen.getByText(/งานในทัวร์เดิมทำต่อได้จนจบ/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' })).not.toBeInTheDocument()
+    expect(submit).not.toHaveBeenCalled()
+    render(<ExternalIdentityBadge />)
+    expect(screen.getByText('External — Approval expired')).toBeInTheDocument()
+  })
   it('uploads private identity files and submits object keys, then shows awaiting review', async () => {
     show(); pick([new File(['png'], 'id.png', { type: 'image/png' })]); fireEvent.click(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' }))
     await screen.findByText('ส่งเอกสารแล้ว รอผู้ดูแลระบบตรวจสอบ')

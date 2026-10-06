@@ -40,7 +40,7 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
         <tbody>
           {ms.map(m => (
             <tr key={m.id}>
-              <td className="num">{m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'}</td>
+              <td className="num">{m.scheduledTime ? new Date(m.scheduledTime).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : '—'}</td>
               <td className="tag">{m.tag}</td>
               <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
               <td className="tag">vs</td>

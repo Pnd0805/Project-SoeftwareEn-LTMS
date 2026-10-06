@@ -181,7 +181,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
                     <span className="meta">
                       <b>{r.teamName}</b>
                       <span className="tag">
-                        {tm ? `${user(s, tm.leader)?.name} · ${tm.members.length} players` : 'via API'}
+                        {tm ? `${user(s, tm.leader)?.name} · ${tm.members.length} players` : 'Approved squad'}
                       </span>
                     </span>
                     {tm ? (

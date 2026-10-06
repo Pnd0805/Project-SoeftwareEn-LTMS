@@ -90,6 +90,7 @@ describe('a request above a faculty admin’s scope', () => {
     failWith('ELIGIBILITY_OUT_OF_SCOPE', 'ทัวร์นาเมนต์นี้เปิดรับนอกคณะของคุณ')
     renderPage()
     fireEvent.click(approveIn('แบดมินตันหญิง'))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm approval' }))
 
     expect(within(rowOf('แบดมินตันหญิง')).getByText('Above your scope')).toBeInTheDocument()
     expect(approveIn('แบดมินตันหญิง')).toBeDisabled()
@@ -101,6 +102,7 @@ describe('a request above a faculty admin’s scope', () => {
     failWith('ELIGIBILITY_OUT_OF_SCOPE', 'ทัวร์นาเมนต์นี้เปิดรับนอกคณะของคุณ')
     renderPage()
     fireEvent.click(approveIn('แบดมินตันหญิง'))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm approval' }))
 
     expect(screen.getByText(/a university admin has to\s+approve it/i)).toBeInTheDocument()
     expect(screen.queryByText(/ทัวร์นาเมนต์นี้เปิดรับนอกคณะของคุณ/)).not.toBeInTheDocument()
@@ -113,6 +115,7 @@ describe('a request above a faculty admin’s scope', () => {
     failWith('ELIGIBILITY_OUT_OF_SCOPE', 'ทัวร์นาเมนต์นี้เปิดรับนอกคณะของคุณ')
     renderPage()
     fireEvent.click(approveIn('แบดมินตันหญิง'))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm approval' }))
 
     expect(within(rowOf('แบดมินตันหญิง')).getByRole('button', { name: 'Decline' })).toBeEnabled()
     expect(screen.getByText(/Declining it is still permitted/)).toBeInTheDocument()
@@ -122,10 +125,20 @@ describe('a request above a faculty admin’s scope', () => {
     failWith('INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ')
     const view = renderPage()
     fireEvent.click(approveIn('แบดมินตันหญิง'))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm approval' }))
     view.rerender(ui())
 
     expect(screen.getByText(/The decision did not go through/)).toBeInTheDocument()
     expect(screen.getByText(/Somebody already decided this one/)).toBeInTheDocument()
     expect(approveIn('แบดมินตันหญิง')).toBeEnabled()
   })
+})
+
+it('does not submit an approval when the confirmation is cancelled', () => {
+  renderPage()
+  fireEvent.click(approveIn('แบดมินตันหญิง'))
+  expect(reviewMutate).not.toHaveBeenCalled()
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+  expect(reviewMutate).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

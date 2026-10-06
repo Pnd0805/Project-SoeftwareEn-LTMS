@@ -23,7 +23,7 @@ const createMutate = vi.fn()
 
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 9001 } }) }))
 vi.mock('../../hooks/useReference', () => ({
-  useSportTypes: () => ({ data: { items: [{ id: 1, name: 'ฟุตบอล' }, { id: 3, name: 'VALORANT' }] } }),
+  useSportTypes: () => ({ data: { items: [{ id: 1, name: 'ฟุตบอล', supportsBestOf: false }, { id: 3, name: 'Unfamiliar sport', supportsBestOf: true }] } }),
   useFaculties: () => ({ data: { items: [{ id: 1, name: 'วิศวกรรมศาสตร์' }, { id: 2, name: 'วิทยาศาสตร์' }] } }),
   useDepartments: (facultyId?: number) => ({
     data: { items: facultyId === 1 ? [{ id: 2, name: 'วิศวกรรมไฟฟ้า' }] : [] },
