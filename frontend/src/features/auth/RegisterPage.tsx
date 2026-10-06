@@ -8,10 +8,10 @@ import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Icon } from '../../components/kit/Icon'
 import { useRegister } from '../../hooks/useAuth'
 import { useDepartments, useFaculties } from '../../hooks/useReference'
 import { registerSchema, type RegisterInput } from '../../schemas/auth.schema'
+import './account-workspace.css'
 
 const defaultValues: RegisterInput = {
   fullName: '',
@@ -34,6 +34,7 @@ export function RegisterPage() {
     defaultValues,
   })
   const facultyId = useWatch({ control: form.control, name: 'facultyId' })
+  const departmentId = useWatch({ control: form.control, name: 'departmentId' })
   const departments = useDepartments(facultyId)
 
   useEffect(() => {
@@ -53,96 +54,122 @@ export function RegisterPage() {
           form.setError(field as keyof RegisterInput, { type: 'server', message })
         })
       } else {
-        form.setError('root', { type: 'server', message: 'สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' })
+        form.setError('root', { type: 'server', message: 'Unable to create your account. Please try again.' })
       }
     }
   }
 
   return (
-    <div className="auth"><div className="auth-card">
-      <div className="hstack" style={{ gap: 11 }}>
-        <span style={{ width: 34, height: 34, background: 'var(--red)', display: 'grid', placeItems: 'center', clipPath: 'polygon(0 0,100% 0,100% 72%,72% 100%,0 100%)' }}>
-          <Icon name="trophy" size={19} />
-        </span>
-        <span className="disp" style={{ fontSize: 30 }}>LTMS</span>
-      </div>
+    <main className="auth account-workspace account-register"><div className="auth-card">
+      <header className="account-heading">
+        <h1 className="disp">Create account</h1>
+        <p className="sub">Join LTMS. Already registered? <Link to="/login">Sign in</Link>.</p>
+      </header>
 
-      <div className="sub">
-        สมัครสมาชิกเพื่อเข้าระบบ LTMS
-      </div>
-
-      <form className="vstack" style={{ gap: 12 }} onSubmit={form.handleSubmit(submit)}>
-        <label className="field">
-          <span className="label">ชื่อ-นามสกุล</span>
-          <input type="text" placeholder="สมชาย ใจดี" {...form.register('fullName')} />
-        </label>
-        {form.formState.errors.fullName && <span className="error">{form.formState.errors.fullName.message}</span>}
-
-        <label className="field">
-          <span className="label">อีเมล</span>
-          <input type="email" placeholder="you@ku.th" {...form.register('email')} />
-        </label>
-        {form.formState.errors.email && <span className="error">{form.formState.errors.email.message}</span>}
-
-        <label className="field">
-          <span className="label">รหัสผ่าน</span>
-          <input type="password" placeholder="••••••••" {...form.register('password')} />
-        </label>
-        {form.formState.errors.password && <span className="error">{form.formState.errors.password.message}</span>}
-
-        <label className="field">
-          <span className="label">เพศ</span>
-          <select {...form.register('gender')}>
-            <option value="male">ชาย</option>
-            <option value="female">หญิง</option>
-            <option value="other">อื่น ๆ</option>
-          </select>
-        </label>
-
-        <label className="field">
-          <span className="label">วันเกิด</span>
-          <input type="date" {...form.register('birthDate')} />
-        </label>
-        {form.formState.errors.birthDate && <span className="error">{form.formState.errors.birthDate.message}</span>}
-
-        <label className="field">
-          <span className="label">คณะ</span>
-          <select {...form.register('facultyId', { valueAsNumber: true })} disabled={faculties.isLoading}>
-            {faculties.data?.items.map(faculty => (
-              <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
-            ))}
-          </select>
-        </label>
-        {form.formState.errors.facultyId && <span className="error">{form.formState.errors.facultyId.message}</span>}
-
-        <label className="field">
-          <span className="label">ภาควิชา</span>
-          <select {...form.register('departmentId', { valueAsNumber: true })}
-            disabled={departments.isLoading || !departments.data?.items.length}>
-            {departments.data?.items.map(department => (
-              <option key={department.id} value={department.id}>{department.name}</option>
-            ))}
-          </select>
-        </label>
-        {form.formState.errors.departmentId && <span className="error">{form.formState.errors.departmentId.message}</span>}
-
-        <label className="field">
-          <span className="label">ชั้นปี</span>
-          <input type="number" min={1} {...form.register('year', { valueAsNumber: true })} />
-        </label>
-        {form.formState.errors.year && <span className="error">{form.formState.errors.year.message}</span>}
-
-        {form.formState.errors.root && <span className="error">{form.formState.errors.root.message}</span>}
+      <form className="account-form" onSubmit={form.handleSubmit(submit)} aria-busy={register.isPending}>
+        <fieldset className="account-fieldset">
+          <legend>Account details</legend>
+          <div className="account-fields">
+            <div className="account-field account-wide">
+              <label className="field">
+                <span className="label">Full name</span>
+                <input type="text" placeholder="Your full name" autoComplete="name" aria-invalid={!!form.formState.errors.fullName}
+                  aria-describedby={form.formState.errors.fullName ? 'register-name-error' : undefined} {...form.register('fullName')} />
+              </label>
+              {form.formState.errors.fullName && <span className="error" id="register-name-error" role="alert">{form.formState.errors.fullName.message}</span>}
+            </div>
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Email</span>
+                <input type="email" placeholder="you@ku.th" autoComplete="email" aria-invalid={!!form.formState.errors.email}
+                  aria-describedby={form.formState.errors.email ? 'register-email-error' : undefined} {...form.register('email')} />
+              </label>
+              {form.formState.errors.email && <span className="error" id="register-email-error" role="alert">{form.formState.errors.email.message}</span>}
+            </div>
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Password</span>
+                <input type="password" placeholder="Choose a password" autoComplete="new-password" aria-invalid={!!form.formState.errors.password}
+                  aria-describedby={form.formState.errors.password ? 'register-password-hint register-password-error' : 'register-password-hint'} {...form.register('password')} />
+              </label>
+              <span className="sub" id="register-password-hint">At least 8 characters, including a number.</span>
+              {form.formState.errors.password && <span className="error" id="register-password-error" role="alert">{form.formState.errors.password.message}</span>}
+            </div>
+          </div>
+        </fieldset>
+        <fieldset className="account-fieldset">
+          <legend>Student details</legend>
+          <div className="account-fields">
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Gender</span>
+                <select aria-invalid={!!form.formState.errors.gender} aria-describedby={form.formState.errors.gender ? 'register-gender-error' : undefined} {...form.register('gender')}>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              {form.formState.errors.gender && <span className="error" id="register-gender-error" role="alert">{form.formState.errors.gender.message}</span>}
+            </div>
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Birth date</span>
+                <input type="date" autoComplete="bday" aria-invalid={!!form.formState.errors.birthDate}
+                  aria-describedby={form.formState.errors.birthDate ? 'register-birth-error' : undefined} {...form.register('birthDate')} />
+              </label>
+              {form.formState.errors.birthDate && <span className="error" id="register-birth-error" role="alert">{form.formState.errors.birthDate.message}</span>}
+            </div>
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Faculty</span>
+                <select {...form.register('facultyId', { valueAsNumber: true })} disabled={faculties.isLoading}
+                  aria-invalid={!!form.formState.errors.facultyId} aria-describedby={form.formState.errors.facultyId ? 'register-faculty-error' : undefined}>
+                  {faculties.data?.items.map(faculty => (
+                    <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
+                  ))}
+                </select>
+              </label>
+              <span className="sub account-reference-value">{faculties.data?.items.find(item => item.id === facultyId)?.name}</span>
+              {form.formState.errors.facultyId && <span className="error" id="register-faculty-error" role="alert">{form.formState.errors.facultyId.message}</span>}
+              {faculties.isLoading && <span className="sub" role="status">Loading faculties…</span>}
+              {faculties.isError && <div className="error" role="alert">Unable to load faculties. <button className="btn ghost" type="button" onClick={() => void faculties.refetch()}>Retry faculties</button></div>}
+              {faculties.isSuccess && !faculties.data.items.length && <span className="sub">No faculties available.</span>}
+            </div>
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Department</span>
+                <select {...form.register('departmentId', { valueAsNumber: true })}
+                  disabled={departments.isLoading || !departments.data?.items.length}
+                  aria-invalid={!!form.formState.errors.departmentId} aria-describedby={form.formState.errors.departmentId ? 'register-department-error' : undefined}>
+                  {departments.data?.items.map(department => (
+                    <option key={department.id} value={department.id}>{department.name}</option>
+                  ))}
+                </select>
+              </label>
+              <span className="sub account-reference-value">{departments.data?.items.find(item => item.id === departmentId)?.name}</span>
+              {form.formState.errors.departmentId && <span className="error" id="register-department-error" role="alert">{form.formState.errors.departmentId.message}</span>}
+              {departments.isLoading && <span className="sub" role="status">Loading departments…</span>}
+              {departments.isError && <div className="error" role="alert">Unable to load departments. <button className="btn ghost" type="button" onClick={() => void departments.refetch()}>Retry departments</button></div>}
+              {departments.isSuccess && !departments.data.items.length && <span className="sub">No departments available for this faculty.</span>}
+            </div>
+            <div className="account-field">
+              <label className="field">
+                <span className="label">Year</span>
+                <input type="number" min={1} aria-invalid={!!form.formState.errors.year}
+                  aria-describedby={form.formState.errors.year ? 'register-year-error' : undefined} {...form.register('year', { valueAsNumber: true })} />
+              </label>
+              {form.formState.errors.year && <span className="error" id="register-year-error" role="alert">{form.formState.errors.year.message}</span>}
+            </div>
+          </div>
+        </fieldset>
+        {form.formState.errors.root && <span className="error" role="alert">{form.formState.errors.root.message}</span>}
 
         <button className="btn primary" type="submit" disabled={register.isPending}>
-          {register.isPending ? 'กำลังสมัครสมาชิก...' : 'สมัครสมาชิก'}
+          {register.isPending ? 'Creating account…' : 'Create account'}
         </button>
+        {register.isPending && <span className="sub" role="status">Creating your account. Please wait.</span>}
       </form>
 
-      <div className="hstack" style={{ justifyContent: 'space-between', gap: 8 }}>
-        <span className="sub">มีบัญชีอยู่แล้ว?</span>
-        <Link className="btn ghost" to="/login">เข้าสู่ระบบ</Link>
-      </div>
-    </div></div>
+    </div></main>
   )
 }

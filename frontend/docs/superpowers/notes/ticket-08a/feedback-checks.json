@@ -1,0 +1,800 @@
+{
+  "checks": [
+    {
+      "id": "profile-save-failure-1280-dark",
+      "overflow": false,
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "dark",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "profile-saved-1280-dark",
+      "overflow": false,
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "dark",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "interactions-1280-dark",
+      "keyboardFocus": true,
+      "dialog": "Account pages have no dialog; existing file chooser is native.",
+      "errors": []
+    },
+    {
+      "id": "profile-save-failure-1280-light",
+      "overflow": false,
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "light",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "profile-saved-1280-light",
+      "overflow": false,
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "light",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "interactions-1280-light",
+      "keyboardFocus": true,
+      "dialog": "Account pages have no dialog; existing file chooser is native.",
+      "errors": []
+    },
+    {
+      "id": "profile-save-failure-1440-dark",
+      "overflow": false,
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "dark",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": false,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "profile-saved-1440-dark",
+      "overflow": false,
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "dark",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": false,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "interactions-1440-dark",
+      "keyboardFocus": true,
+      "dialog": "Account pages have no dialog; existing file chooser is native.",
+      "errors": []
+    },
+    {
+      "id": "profile-save-failure-1440-light",
+      "overflow": false,
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "light",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": false,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "profile-saved-1440-light",
+      "overflow": false,
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "light",
+      "scrollAreas": [
+        {
+          "label": "My statistics by sport",
+          "tabIndex": 0,
+          "height": 85,
+          "overflowX": false,
+          "overflowY": false
+        },
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": false,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "interactions-1440-light",
+      "keyboardFocus": true,
+      "dialog": "Account pages have no dialog; existing file chooser is native.",
+      "errors": []
+    },
+    {
+      "id": "profile-save-failure-390-dark",
+      "overflow": false,
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "dark",
+      "scrollAreas": [
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "profile-saved-390-dark",
+      "overflow": false,
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "dark",
+      "scrollAreas": [
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "interactions-390-dark",
+      "keyboardFocus": true,
+      "dialog": "Account pages have no dialog; existing file chooser is native.",
+      "errors": []
+    },
+    {
+      "id": "profile-save-failure-390-light",
+      "overflow": false,
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "light",
+      "scrollAreas": [
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "profile-saved-390-light",
+      "overflow": false,
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "headingFont": "\"Barlow Condensed\", Impact, sans-serif",
+      "panelPadding": "20px",
+      "majorGap": "24px",
+      "rootCorners": "2px",
+      "colorScheme": "light",
+      "scrollAreas": [
+        {
+          "label": "My squads",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        },
+        {
+          "label": "Player tournament history",
+          "tabIndex": 0,
+          "height": 440,
+          "overflowX": true,
+          "overflowY": true
+        }
+      ],
+      "fields": []
+    },
+    {
+      "id": "interactions-390-light",
+      "keyboardFocus": true,
+      "dialog": "Account pages have no dialog; existing file chooser is native.",
+      "errors": []
+    }
+  ],
+  "writes": [
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "body": {
+        "email": "account@example.test",
+        "password": "1"
+      }
+    },
+    {
+      "path": "/auth/register",
+      "method": "POST",
+      "body": {
+        "fullName": "Alexandria Northside Community Sporting Academy Department of Software Engineering",
+        "email": "account@example.test",
+        "password": "password123",
+        "gender": "male",
+        "birthDate": "2000-01-01",
+        "facultyId": 2,
+        "departmentId": 8,
+        "year": 1
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": null
+      }
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "body": {
+        "email": "account@example.test",
+        "password": "1"
+      }
+    },
+    {
+      "path": "/auth/register",
+      "method": "POST",
+      "body": {
+        "fullName": "Alexandria Northside Community Sporting Academy Department of Software Engineering",
+        "email": "account@example.test",
+        "password": "password123",
+        "gender": "male",
+        "birthDate": "2000-01-01",
+        "facultyId": 2,
+        "departmentId": 8,
+        "year": 1
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": null
+      }
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "body": {
+        "email": "account@example.test",
+        "password": "1"
+      }
+    },
+    {
+      "path": "/auth/register",
+      "method": "POST",
+      "body": {
+        "fullName": "Alexandria Northside Community Sporting Academy Department of Software Engineering",
+        "email": "account@example.test",
+        "password": "password123",
+        "gender": "male",
+        "birthDate": "2000-01-01",
+        "facultyId": 2,
+        "departmentId": 8,
+        "year": 1
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": null
+      }
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "body": {
+        "email": "account@example.test",
+        "password": "1"
+      }
+    },
+    {
+      "path": "/auth/register",
+      "method": "POST",
+      "body": {
+        "fullName": "Alexandria Northside Community Sporting Academy Department of Software Engineering",
+        "email": "account@example.test",
+        "password": "password123",
+        "gender": "male",
+        "birthDate": "2000-01-01",
+        "facultyId": 2,
+        "departmentId": 8,
+        "year": 1
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": null
+      }
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "body": {
+        "email": "account@example.test",
+        "password": "1"
+      }
+    },
+    {
+      "path": "/auth/register",
+      "method": "POST",
+      "body": {
+        "fullName": "Alexandria Northside Community Sporting Academy Department of Software Engineering",
+        "email": "account@example.test",
+        "password": "password123",
+        "gender": "male",
+        "birthDate": "2000-01-01",
+        "facultyId": 2,
+        "departmentId": 8,
+        "year": 1
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": null
+      }
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "body": {
+        "email": "account@example.test",
+        "password": "1"
+      }
+    },
+    {
+      "path": "/auth/register",
+      "method": "POST",
+      "body": {
+        "fullName": "Alexandria Northside Community Sporting Academy Department of Software Engineering",
+        "email": "account@example.test",
+        "password": "password123",
+        "gender": "male",
+        "birthDate": "2000-01-01",
+        "facultyId": 2,
+        "departmentId": 8,
+        "year": 1
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/uploads/presign",
+      "method": "POST",
+      "body": {
+        "purpose": "avatar",
+        "contentType": "image/png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": "avatar/9/fixture.png"
+      }
+    },
+    {
+      "path": "/me",
+      "method": "PATCH",
+      "body": {
+        "avatarUrl": null
+      }
+    }
+  ]
+}

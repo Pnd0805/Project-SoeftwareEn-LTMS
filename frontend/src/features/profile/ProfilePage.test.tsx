@@ -110,4 +110,28 @@ describe('Profile avatar controls', () => {
     await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ avatarUrl: null }))
     expect(uploadMock).not.toHaveBeenCalled()
   })
+  it('announces a successful save and clears the receipt when a retry fails', async () => {
+    show(); pick()
+    expect(await screen.findByRole('status')).toHaveTextContent('Photo saved.')
+    updateProfile.mockRejectedValueOnce({ code: 'AVATAR_KEY_NOT_FOUND' })
+    pick()
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByText('Photo saved.')).not.toBeInTheDocument()
+    updateProfile.mockResolvedValueOnce(undefined)
+    pick()
+    expect(await screen.findByRole('status')).toHaveTextContent('Photo saved.')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+  it('shows removal progress, prevents duplicate actions and announces completion', async () => {
+    profileState.avatarUrl = 'https://storage.test/profile.png'
+    let finish!: () => void
+    updateProfile.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve }))
+    show()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Photo' }))
+    expect(screen.getByRole('button', { name: 'Removing…' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Remove Photo' })).toBeDisabled()
+    finish()
+    expect(await screen.findByRole('status')).toHaveTextContent('Photo removed.')
+    expect(updateProfile).toHaveBeenCalledTimes(1)
+  })
 })

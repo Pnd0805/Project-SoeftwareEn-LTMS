@@ -23,6 +23,7 @@ import { ageOf } from '../../shared/rules'
 import { tour } from '../../shared/selectors'
 import { useLtms } from '../../shared/store'
 import { CareerPanel } from '../player/PlayerPage'
+import '../auth/account-workspace.css'
 
 export function ProfilePage() {
   const s = useLtms()
@@ -37,17 +38,17 @@ export function ProfilePage() {
   const pickem = usePickemHistory(!USE_MOCK && !!currentUser)
 
   if (meQuery.isPending) {
-    return <Panel quiet><span className="sub">Loading your profile…</span></Panel>
+    return <div className="account-workspace account-profile"><Panel quiet><span className="sub" role="status">Loading your profile…</span></Panel></div>
   }
 
   if (meQuery.isError || !currentUser) {
-    return <Empty icon="user" title="Unable to load your profile" sub="Sign in again or retry when the server is available." />
+    return <div className="account-workspace account-profile"><Empty icon="user" title="Unable to load your profile" sub="Sign in again or retry when the server is available." /></div>
   }
 
   if (USE_MOCK) {
     const legacyUser = s.users.find(user => user.email === currentUser.email)
     if (!legacyUser) {
-      return <Empty icon="user" title="Profile data is unavailable" sub="The signed-in account is not present in the mock dataset." />
+      return <div className="account-workspace account-profile"><Empty icon="user" title="Profile data is unavailable" sub="The signed-in account is not present in the mock dataset." /></div>
     }
 
     const userStats = statsQuery.data
@@ -58,7 +59,7 @@ export function ProfilePage() {
     const follows = followsQuery.data?.targets ?? []
 
     return (
-      <>
+      <div className="account-workspace account-profile">
         <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} user={currentUser} />
         {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
         {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your identity loaded, but the statistics request failed." /> : null}
@@ -85,13 +86,13 @@ export function ProfilePage() {
             <Panel quiet>
               <span className="tag"><em>//</em> Squads · {squads.length}</span>
               {squads.length ? (
-                <TableWrap><table><thead><tr><th>Squad</th><th>Role</th><th>Sport</th></tr></thead><tbody>
+                <TableWrap label="My squads"><table><thead><tr><th>Squad</th><th>Role</th><th>Sport</th></tr></thead><tbody>
                   {squads.map(team => <tr key={team.id}><td><TeamLink id={team.id} /></td><td className="sub">{team.leader === legacyUser.id ? 'Leader' : 'Player'}</td><td className="sub">{team.sport ?? '—'}</td></tr>)}
                 </tbody></table></TableWrap>
               ) : <div className="sub">Not in a squad yet.</div>}
             </Panel>
             {byTour.length ? (
-              <Panel quiet><span className="tag"><em>//</em> Tournaments</span><TableWrap><table>
+              <Panel quiet><span className="tag"><em>//</em> Tournaments</span><TableWrap label="My tournament record"><table>
                 <thead><tr><th>Tournament</th><th>Sport</th><th>Played</th><th>Finish</th></tr></thead>
                 <tbody>{byTour.map(row => <tr key={row.tour}><td>{tour(s, row.tour)?.name ?? row.name}</td><td><Badge kind="neutral">{row.sport}</Badge></td><td className="num">{row.p}</td><td className="sub">{row.finish}</td></tr>)}</tbody>
               </table></TableWrap></Panel>
@@ -106,7 +107,7 @@ export function ProfilePage() {
             <Panel quiet><span className="tag"><em>//</em> MVP votes received</span><span className="v" style={{ fontFamily: 'var(--f-display)', fontSize: 30, color: 'var(--teal)' }}>{mvpVotes}</span></Panel>
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
@@ -117,7 +118,7 @@ export function ProfilePage() {
   const teams = teamsQuery.data?.items ?? []
 
   return (
-    <>
+    <div className="account-workspace account-profile">
       <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : 'Student record'} user={currentUser} />
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
@@ -131,7 +132,7 @@ export function ProfilePage() {
             <Stat label="Points" value={currentUser.totalPoints} />
           </div>
           {stats.bySport.length ? (
-            <Panel quiet><span className="tag"><em>//</em> Statistics by sport</span><TableWrap><table>
+            <Panel quiet><span className="tag"><em>//</em> Statistics by sport</span><TableWrap label="My statistics by sport"><table>
               <thead><tr><th>Sport</th><th>Played</th><th>Wins</th><th>Losses</th></tr></thead>
               <tbody>{stats.bySport.map(row => <tr key={row.sportTypeId}><td>{row.sportName}</td><td className="num">{row.matchesPlayed}</td><td className="num">{row.wins}</td><td className="num">{row.losses}</td></tr>)}</tbody>
             </table></TableWrap></Panel>
@@ -147,7 +148,7 @@ export function ProfilePage() {
             {teamsQuery.isError ? <Empty icon="team" title="Unable to load squads" sub="The profile is available, but the squad request failed." /> : null}
             {!teamsQuery.isPending && !teamsQuery.isError && !teams.length ? <Empty icon="team" title="Not in a squad yet" sub="Create a squad or accept an invitation from the Teams page." /> : null}
             {teams.length ? (
-              <TableWrap><table><thead><tr><th>Squad</th><th>Role</th><th>Sport</th><th>Members</th></tr></thead><tbody>
+              <TableWrap label="My squads"><table><thead><tr><th>Squad</th><th>Role</th><th>Sport</th><th>Members</th></tr></thead><tbody>
                 {teams.map(team => <tr key={team.id}><td><Link to={`/team/${team.id}`}>{team.name}</Link></td><td className="sub">{team.role === 'leader' ? 'Leader' : 'Player'}</td><td className="sub">{sports.get(team.sportTypeId) ?? `Sport #${team.sportTypeId}`}</td><td className="num">{team.memberCount}</td></tr>)}
               </tbody></table></TableWrap>
             ) : null}
@@ -191,20 +192,22 @@ export function ProfilePage() {
           </Panel>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
 function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
   const updateMe = useUpdateMe()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'upload' | 'remove' | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [saved, setSaved] = useState<string | null>(null)
   const inputId = 'profile-avatar-upload'
 
   const pick = async (file: File | undefined) => {
     if (!file || loading || updateMe.isPending) return
     setErr(null)
-    setLoading(true)
+    setSaved(null)
+    setLoading('upload')
     try {
       if (USE_MOCK) {
         const dataUrl = await shrinkImage(file)
@@ -213,56 +216,61 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
         const objectKey = await uploadImage(file, 'avatar')
         await updateMe.mutateAsync({ avatarUrl: objectKey })
       }
+      setSaved('Photo saved.')
     } catch (e) {
       setErr(imageUploadErrorMessage(e))
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
   const removeAvatar = async () => {
     setErr(null)
-    setLoading(true)
+    setSaved(null)
+    setLoading('remove')
     try {
       await updateMe.mutateAsync({ avatarUrl: null })
+      setSaved('Photo removed.')
     } catch (e) {
       setErr(imageUploadErrorMessage(e))
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
   return (
-    <div className="spread" style={{ alignItems: 'flex-start' }}>
-      <div className="hstack" style={{ gap: 18, alignItems: 'center' }}>
+    <header className="account-profile-heading">
+      <div className="account-identity">
         <Avatar name={user.fullName} avatarUrl={user.avatarUrl} size={72} alt={user.fullName}
-          style={{ borderRadius: '50%', border: '2px solid var(--line)' }} />
-        <div>
-          <div className="tag"><em>//</em> {label}</div>
-          <h1 className="disp" style={{ fontSize: 32, margin: '2px 0 6px' }}>{user.fullName}</h1>
-          <div className="hstack" style={{ gap: 8 }}>
-            <input id={inputId} type="file" accept={USE_MOCK ? IMAGE_ACCEPT : UPLOAD_IMAGE_ACCEPT} disabled={loading || updateMe.isPending} aria-label="Choose profile photo" style={{ display: 'none' }}
+          style={{ borderRadius: '2px', border: '2px solid var(--line-hot)' }} />
+        <div className="account-identity-copy">
+          <h1 className="disp">{user.fullName}</h1>
+          <p className="sub">{label}</p>
+          <p className="account-email">{user.email}</p>
+          <div className="account-photo-actions">
+            <input id={inputId} type="file" accept={USE_MOCK ? IMAGE_ACCEPT : UPLOAD_IMAGE_ACCEPT} disabled={!!loading || updateMe.isPending} aria-label="Choose profile photo" style={{ display: 'none' }}
               onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
-            <button className="btn ghost" type="button" disabled={loading || updateMe.isPending}
-              onClick={() => document.getElementById(inputId)?.click()} style={{ padding: '2px 8px', fontSize: 13 }}>
-              <Icon name="plus" size={12} /> {loading ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Upload photo'}
+            <button className="btn ghost" type="button" disabled={!!loading || updateMe.isPending}
+              onClick={() => document.getElementById(inputId)?.click()}>
+              <Icon name="plus" size={12} /> {loading === 'remove' ? 'Removing…' : loading ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Upload photo'}
             </button>
             {user.avatarUrl ? (
-              <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
-                disabled={loading || updateMe.isPending} onClick={removeAvatar}>
+              <button className="btn ghost" type="button"
+                disabled={!!loading || updateMe.isPending} onClick={removeAvatar}>
                 Remove Photo
               </button>
             ) : null}
           </div>
           {err || updateMe.isError ? (
-            <span role="alert" className="sub" style={{ color: 'var(--red)', display: 'block', marginTop: 4 }}>
+            <span role="alert" className="error">
               {err ?? imageUploadErrorMessage(updateMe.error)}
             </span>
           ) : null}
+          {saved && <span className="account-save-feedback" role="status">{saved}</span>}
+          <p className="sub">{USE_MOCK ? 'Choose a photo from your device.' : 'PNG or JPEG. Upload a new photo to retry a failed save.'}</p>
         </div>
       </div>
-      <Badge kind="neutral">{user.email}</Badge>
-    </div>
+    </header>
   )
 }
 
