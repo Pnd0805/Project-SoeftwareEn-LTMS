@@ -18,6 +18,9 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   insertTournament: vi.fn(async () => 77),
   approveTournament: vi.fn(async () => true),
   findTournamentById: vi.fn(),
+  // ใช้โดย setTournamentFormat (บล็อกท้ายไฟล์) — ถ้าไม่ mock ไว้ เทสจะไปเรียกฐานจริง
+  countStartedMatchesOfTournament: vi.fn(async () => 0),
+  setTournamentBestOfTx: vi.fn(async () => true),
 }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn() }));
 vi.mock('../../repositories/tournamentReferee.repo.js', () => ({}));
@@ -134,5 +137,99 @@ describe('createTournament — BR-01 ต้องผ่านการอนุ�
   ])('คำขอไม่ถูกต้อง (%s) → ไม่สร้างแถวเลย', async (_label, patch, code) => {
     await expect(Service.createTournament(input(patch as Partial<CreateTournamentInput>), 9)).rejects.toMatchObject({ code });
     expect(TournamentRepo.insertTournament).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * TOURNAMENT_DATES_IN_PAST — เดิม **ไม่มีเทสไหนเอ่ยถึงเลย** (ไล่ตรวจ 6 ต.ค. 2569)
+ * เป็นข้อ 9 ที่ FE รายงานมา 18 ก.ย. และแก้ไปแล้ว แต่ไม่มีอะไรกันการถอยหลัง
+ *
+ * ★ ด่านนี้เทียบ "วันปิดรับสมัคร" กับเวลาจริง แต่เทียบ "วันแข่ง" กับวันนี้ตามเวลาไทย
+ *   ไม่ใช่ความไม่สม่ำเสมอ: ปิดรับสมัครเป็น timestamp (ปิด 16:00 วันนี้ = ยังรับได้ถึง 16:00)
+ *   แต่วันแข่งเป็นวันที่เปล่า ๆ ⇒ แข่ง "วันนี้" ต้องสร้างได้ · ถ้าตัดด้วย UTC ผู้ใช้ไทย
+ *   ตอนเช้าก่อน 7 โมงจะสร้างทัวร์ที่แข่งวันนี้ไม่ได้ ทั้งที่ยังไม่ถึงเวลาแข่ง
+ */
+describe('createTournament — TOURNAMENT_DATES_IN_PAST', () => {
+  beforeEach(() => { vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(null); });
+
+  it('วันปิดรับสมัครผ่านไปแล้ว = 400 และไม่ insert', async () => {
+    await expect(Service.createTournament(input({ registrationStart: iso(-20), registrationEnd: iso(-1) }), 9))
+      .rejects.toMatchObject({ status: 400, code: 'TOURNAMENT_DATES_IN_PAST' });
+    expect(TournamentRepo.insertTournament).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 🔴 ขา "วันแข่งก่อนวันนี้" ของ TOURNAMENT_DATES_IN_PAST **เรียกไม่ถึงจาก createTournament**
+   *   createTournament เรียก ensureSchedule ก่อน ซึ่งบังคับ registrationEnd < eventStart
+   *   แล้ว ensureNotInPast บังคับ registrationEnd > now
+   *   ⇒ eventStart > now เสมอ ⇒ eventStartDate ไม่มีทางก่อนวันนี้ได้
+   *   ของจริงจะได้ INVALID_DATE_RANGE จาก ensureSchedule ก่อน ไม่ใช่ TOURNAMENT_DATES_IN_PAST
+   * ★ เทสนี้ล็อก "ความจริง" ไว้ ไม่ใช่ล็อกสิ่งที่เราคิดว่าเกิด — ถ้าวันหนึ่งมีคนสลับลำดับ
+   *   สองด่านนี้ หรือผ่อน ensureSchedule ให้แข่งวันเดียวกับวันปิดรับสมัครได้ เทสนี้จะแดง
+   *   แล้วคนแก้จะได้รู้ว่าต้องกลับมาคิดเรื่องวันแข่งในอดีตด้วย
+   *   (ตัวบรรทัดที่โยนยังเก็บไว้ในโค้ดได้ ในฐานะด่านของ amendment/ทางเรียกอื่นในอนาคต)
+   */
+  it('วันแข่งในอดีต: ติด INVALID_DATE_RANGE ของ ensureSchedule ก่อน ไม่ใช่ด่านวันในอดีต', async () => {
+    const err = await Service.createTournament(
+      input({ eventStartDate: dateOnly(-5), eventEndDate: dateOnly(-5) }), 9).catch((e: unknown) => e);
+
+    expect(err).toMatchObject({ status: 400, code: 'INVALID_DATE_RANGE' });
+    expect(TournamentRepo.insertTournament).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ★ ขอบล่างที่สร้างได้จริง: ปิดรับสมัครวันนี้ แข่งเริ่มพรุ่งนี้
+   *   (แข่ง "วันนี้" สร้างไม่ได้เลย เพราะ registrationEnd ต้องอยู่ก่อนเที่ยงคืนของวันแข่ง
+   *    แต่ก็ต้องอยู่ในอนาคต — เป็นผลพลอยได้ของสองด่านรวมกัน ไม่ใช่กฎที่เขียนไว้ตรง ๆ)
+   */
+  it('ปิดรับสมัครวันนี้ แข่งพรุ่งนี้ = สร้างได้', async () => {
+    await expect(Service.createTournament(
+      input({ registrationStart: iso(-1), registrationEnd: iso(0.2),
+              eventStartDate: dateOnly(1), eventEndDate: dateOnly(2) }), 9))
+      .resolves.toMatchObject({ id: 77 });
+  });
+});
+
+/**
+ * NOT_TOURNAMENT_ORGANIZER ที่ setTournamentFormat — เดิม **ไม่มีเทสไหนเอ่ยถึงเลย**
+ *
+ * ★ route มี requireOrganizer อยู่แล้ว ด่านนี้จึงดูซ้ำ — แต่ไม่ซ้ำ:
+ *   requireOrganizer ตรวจจาก req.params ส่วนฟังก์ชันนี้ทำงานกับ argument ที่ส่งเข้ามา
+ *   ซึ่งเป็นคนละทาง ⇒ ถ้ามีใครเรียกฟังก์ชันนี้จากที่อื่น (service อื่น งานเบื้องหลัง สคริปต์)
+ *   จะไม่มี middleware คุ้มให้
+ * 🔴 ฟังก์ชันนี้เขียน best_of ของ "ทั้งทัวร์" ⇒ ถ้าด่านนี้เงียบ คนนอกเปลี่ยนกติกา
+ *   การนับแพ้ชนะของทัวร์คนอื่นได้
+ */
+describe('setTournamentFormat — NOT_TOURNAMENT_ORGANIZER', () => {
+  const tour = (o: Record<string, unknown> = {}) =>
+    ({ tournament_id: 50, requested_by_user_id: 7, tournament_status: 'private', ...o }) as never;
+
+  it('ไม่ใช่ผู้จัดของทัวร์นี้ = 403 และไม่เขียนอะไร', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tour());
+
+    await expect(Service.setTournamentFormat(50, { bestOf: 3 } as never, 999)).rejects.toMatchObject({
+      status: 403, code: 'NOT_TOURNAMENT_ORGANIZER',
+    });
+    expect(TournamentRepo.setTournamentBestOfTx).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ★ เจ้าของทัวร์ที่ยังไม่ผ่านการอนุมัติ ก็ยังไม่ใช่ "ผู้จัด" — isOrganizerOf ตัดสถานะ
+   *   pending_approval / rejected ออก ⇒ ตั้ง BO ตอนยังไม่ได้รับอนุมัติไม่ได้
+   */
+  it('เจ้าของทัวร์แต่ทัวร์ยัง pending_approval = 403 เหมือนกัน', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tour({ tournament_status: 'pending_approval' }));
+
+    await expect(Service.setTournamentFormat(50, { bestOf: 3 } as never, 7)).rejects.toMatchObject({
+      status: 403, code: 'NOT_TOURNAMENT_ORGANIZER',
+    });
+  });
+
+  it('ผู้จัดตัวจริงของทัวร์ที่อนุมัติแล้ว = ตั้งได้', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tour());
+
+    await expect(Service.setTournamentFormat(50, { bestOf: 3 } as never, 7))
+      .resolves.toEqual({ id: 50, bestOf: 3 });
+    expect(TournamentRepo.setTournamentBestOfTx).toHaveBeenCalledWith(50, 3);
   });
 });

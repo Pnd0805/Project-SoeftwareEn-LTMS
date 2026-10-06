@@ -149,3 +149,46 @@ describe('validateSoftFilterDocuments', () => {
     await expectAppError(uploadService.validateSoftFilterDocuments([ownKey], 20, 9001), 422, 'SOFT_FILTER_DOCUMENT_INVALID');
   });
 });
+
+/**
+ * STORAGE_UNAVAILABLE — เดิม **ไม่มีเทสไหนเอ่ยถึงเลย** (ไล่ตรวจ 6 ต.ค. 2569)
+ *
+ * ★ ความสำคัญอยู่ที่ "แยกให้ออกระหว่างของผู้ใช้ผิด กับของเราพัง"
+ *   ไฟล์ไม่มีจริง / ชนิดไฟล์ผิด = 422 ผู้ใช้ต้องไปอัปโหลดใหม่
+ *   MinIO ล่ม เน็ตขาด สิทธิ์ S3 หมด      = 503 ผู้ใช้ทำอะไรไม่ได้ ต้องให้ลองใหม่ทีหลัง
+ * 🔴 ถ้าเหมารวมเป็น 422 ทั้งหมด ผู้ใช้จะถูกบอกว่า "ไฟล์ของคุณใช้ไม่ได้ อัปโหลดใหม่"
+ *   ทุกครั้งที่ฝั่งเราล่ม ⇒ เขาจะอัปโหลดใหม่ซ้ำ ๆ แล้วก็เจอเหมือนเดิม
+ *   และเราจะไม่เห็นว่าระบบเก็บไฟล์มีปัญหาเลยเพราะมันถูกนับเป็นความผิดของผู้ใช้
+ */
+describe('STORAGE_UNAVAILABLE — แยก "ที่เก็บไฟล์ล่ม" ออกจาก "ไฟล์ผู้ใช้ผิด"', () => {
+  const ownKey = 'soft_filter_document/20/9001/11111111-1111-4111-8111-111111111111.jpg';
+  const avatarKey = 'avatar/9001/22222222-2222-4222-8222-222222222222.png';
+
+  it('เอกสาร soft filter: S3 ล่ม (ไม่ใช่ 404) = 503 ไม่ใช่ 422', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'TimeoutError', $metadata: { httpStatusCode: 500 } });
+
+    await expectAppError(uploadService.validateSoftFilterDocuments([ownKey], 20, 9001), 503, 'STORAGE_UNAVAILABLE');
+  });
+
+  it('รูปโปรไฟล์: S3 ล่ม = 503 ไม่ใช่ AVATAR_KEY_NOT_FOUND', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'NetworkingError' });
+
+    await expectAppError(uploadService.validateAvatarKey(avatarKey, 9001), 503, 'STORAGE_UNAVAILABLE');
+  });
+
+  /**
+   * ★ เส้นแบ่งที่ต้องล็อกไว้: 404 ยังต้องเป็น 422 เหมือนเดิม
+   *   เทสคู่นี้คือตัวที่ทำให้ "เหมารวมทุก error เป็น 503" ก็ผิด และ "เหมารวมเป็น 422" ก็ผิด
+   */
+  it('รูปโปรไฟล์: ไฟล์ไม่มีจริง = 422 ของผู้ใช้ ไม่ใช่ 503', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'NotFound', $metadata: { httpStatusCode: 404 } });
+
+    await expectAppError(uploadService.validateAvatarKey(avatarKey, 9001), 422, 'AVATAR_KEY_NOT_FOUND');
+  });
+
+  it('AppError ที่โยนจากข้างในต้องผ่านออกมาเหมือนเดิม ไม่ถูกกลืนเป็น 503', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'application/pdf' });
+
+    await expectAppError(uploadService.validateAvatarKey(avatarKey, 9001), 422, 'AVATAR_KEY_NOT_FOUND');
+  });
+});

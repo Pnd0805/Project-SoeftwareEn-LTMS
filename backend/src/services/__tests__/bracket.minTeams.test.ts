@@ -158,3 +158,54 @@ describe('createBracket replace — ถูกปฏิเสธแล้วส�
     expect(conn.commit).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * BRACKET_FORMAT_NOT_SET — เดิม **ไม่มีเทสไหนเอ่ยถึงเลย** (ไล่ตรวจ 6 ต.ค. 2569)
+ *
+ * ★ ด่านนี้อยู่ "ท้ายสุด" ของ buildBracket เป็น fallthrough: ไม่ตรงรูปแบบไหนเลย ⇒ โยน
+ *   ⇒ มันคือตัวกันไม่ให้ฟังก์ชันจบแบบเงียบ ๆ โดยไม่สร้างอะไร
+ * 🔴 ถ้าเปลี่ยน fallthrough เป็น return ว่าง ๆ (ซึ่งดู "ไม่พัง" กว่า) ORG จะกดจับสายสำเร็จ
+ *   ได้ response 200 แต่ไม่มีแมตช์เกิดขึ้นเลย แล้วทุกคนรอสายที่ไม่มีอยู่
+ *   นี่คือเหตุผลที่ต้องเป็น error ไม่ใช่ no-op
+ *
+ * ★ ลำดับสำคัญ: ด่านจำนวนทีมมาก่อน ⇒ ต้องให้ทีมครบ 2 ทีมก่อน ด่านนี้จึงจะถึง
+ *   (min_teams ของทัวร์ที่ไม่ตั้งรูปแบบ ยังใช้พื้น 2 — ล็อกไว้ที่เทส minTeamsToDraw ข้างบน)
+ */
+describe('createBracket — ทัวร์ที่ยังไม่ตั้งรูปแบบสาย', () => {
+  /**
+   * ★ ต้องตั้ง countMatchesByTournament เองทุกเทสในบล็อกนี้
+   *   clearAllMocks ล้างแค่ประวัติการเรียก ไม่ล้าง implementation ⇒ ค่าที่เทสก่อนหน้าตั้งไว้ (6)
+   *   จะค้างมา แล้วจะติด BRACKET_ALREADY_EXISTS ก่อนถึงด่านที่บล็อกนี้ต้องการเทส
+   */
+  it('bracket_format = null = 422 BRACKET_FORMAT_NOT_SET', async () => {
+    setup(null, 2);
+    vi.mocked(MatchRepo.countMatchesByTournament).mockResolvedValue(0 as never);
+
+    await expect(createBracket(50, 'random', undefined)).rejects.toMatchObject({
+      status: 422, code: 'BRACKET_FORMAT_NOT_SET',
+    });
+  });
+
+  it('ไม่สร้างแมตช์ทิ้งไว้ครึ่ง ๆ และไม่แจ้งทีมว่าสายออกแล้ว', async () => {
+    setup(null, 2);
+    vi.mocked(MatchRepo.countMatchesByTournament).mockResolvedValue(0 as never);
+
+    await expect(createBracket(50, 'random', undefined)).rejects.toMatchObject({ code: 'BRACKET_FORMAT_NOT_SET' });
+    expect(MatchRepo.insertMatchTx).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 🔴 เคสที่อันตรายที่สุดคือ replace: true — ตอนนั้นสายเก่าถูกลบไปแล้วในทรานแซกชัน
+   *   ถ้าด่านนี้ไม่โยน ทัวร์จะเหลือ "ไม่มีสายทั้งเก่าและใหม่"
+   *   โยนแล้ว catch ใน createBracket ต้อง rollback ⇒ สายเดิมกลับมาครบ
+   */
+  it('replace: true ที่ไม่มีรูปแบบ = rollback สายเดิมไม่หาย', async () => {
+    setup(null, 2);
+    vi.mocked(MatchRepo.countMatchesByTournament).mockResolvedValue(6 as never);
+
+    await expect(createBracket(50, 'random', undefined, true)).rejects.toMatchObject({ code: 'BRACKET_FORMAT_NOT_SET' });
+    expect(conn.rollback).toHaveBeenCalledTimes(1);
+    expect(conn.commit).not.toHaveBeenCalled();
+    expect(conn.release).toHaveBeenCalledTimes(1);
+  });
+});

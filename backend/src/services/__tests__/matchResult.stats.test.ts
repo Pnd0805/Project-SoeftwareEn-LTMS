@@ -15,7 +15,8 @@ vi.mock('../../repositories/matchResult.repo.js', () => ({
   allPlayerInMatch: vi.fn(),
   showPlayerStat: vi.fn(),
 }));
-vi.mock('../../repositories/match.repo.js', () => ({}));
+// updateLivestreamUrl ใช้โดยบล็อก INVALID_YOUTUBE_URL ท้ายไฟล์
+vi.mock('../../repositories/match.repo.js', () => ({ updateLivestreamUrl: vi.fn() }));
 vi.mock('../../repositories/team.repo.js', () => ({ findTeamIdOfUserInMatch: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({}));
 vi.mock('../../repositories/sportType.repo.js', () => ({ findStatDefinitionsBySportType: vi.fn() }));
@@ -31,6 +32,7 @@ import * as Repo from '../../repositories/matchResult.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import * as SportTypeRepo from '../../repositories/sportType.repo.js';
 import * as CheckExist from '../../utils/checkExist.js';
+import * as MatchRepo from '../../repositories/match.repo.js';
 
 const mockedRepo = vi.mocked(Repo);
 const mockedTeamRepo = vi.mocked(TeamRepo);
@@ -118,5 +120,54 @@ describe('getPlayerMatchStat', () => {
 
     expect(result).toEqual({ items: [] });
     expect(mockedRepo.showPlayerStat).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * INVALID_YOUTUBE_URL — เดิม **ไม่มีเทสไหนเอ่ยถึงเลย** (ไล่ตรวจ 6 ต.ค. 2569)
+ *
+ * ★ ลิงก์นี้ถูกเอาไปฝังในหน้าแมตช์ให้คนอื่นกด ⇒ ไม่ได้ตรวจเพื่อความสวยงาม
+ *   แต่เพื่อไม่ให้ ORG ใส่ลิงก์ไปที่ไหนก็ได้แล้วระบบพาคนดูไปตามนั้น
+ * 🔴 ถ้าด่านนี้เงียบ ช่อง "ลิงก์ถ่ายทอดสด" จะกลายเป็นช่องแปะลิงก์อะไรก็ได้
+ *   ที่เว็บเราเป็นคนพาไป — คนกดจะเชื่อว่าเป็นลิงก์ที่ระบบรับรอง
+ */
+describe('updateLivestream — INVALID_YOUTUBE_URL', () => {
+  beforeEach(() => { mockedCheckExist.checkMatch.mockResolvedValue({ match_id: 1 } as never); });
+
+  it.each([
+    ['ไม่ใช่ลิงก์เลย', 'ไม่ใช่ลิงก์'],
+    ['โดเมนอื่น', 'https://vimeo.com/123456'],
+    ['โดเมนที่แค่มีคำว่า youtube อยู่ข้างใน', 'https://notyoutube.com/watch?v=abc123'],
+    ['ลิงก์ youtube แต่ไม่มีรหัสวิดีโอ', 'https://youtube.com/watch?v='],
+  ])('%s = 400 และไม่เขียนลงฐาน', async (_name, url) => {
+    await expect(Service.updateLivestream(1, url)).rejects.toMatchObject({
+      status: 400, code: 'INVALID_YOUTUBE_URL',
+    });
+    expect(MatchRepo.updateLivestreamUrl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['แบบเต็ม', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'],
+    ['แบบย่อ youtu.be', 'https://youtu.be/dQw4w9WgXcQ'],
+    ['ไม่มี www', 'https://youtube.com/watch?v=dQw4w9WgXcQ'],
+  ])('%s = ผ่าน และเขียนลงฐาน', async (_name, url) => {
+    await expect(Service.updateLivestream(1, url)).resolves.toEqual({ matchId: 1, youtubeUrl: url });
+    expect(MatchRepo.updateLivestreamUrl).toHaveBeenCalledWith(1, url);
+  });
+
+  /**
+   * ★ null = "ลบลิงก์ออก" ต้องไม่ติดด่านตรวจรูปแบบ
+   *   ไม่งั้น ORG ที่แปะลิงก์ผิดไว้ จะลบทิ้งไม่ได้เลย
+   */
+  it('null = ลบลิงก์ออกได้ ไม่ติดด่านตรวจรูปแบบ', async () => {
+    await expect(Service.updateLivestream(1, null)).resolves.toEqual({ matchId: 1, youtubeUrl: null });
+    expect(MatchRepo.updateLivestreamUrl).toHaveBeenCalledWith(1, null);
+  });
+
+  it('แมตช์ไม่มีอยู่ = ตรวจแมตช์ก่อน ไม่ตรวจลิงก์ก่อน', async () => {
+    mockedCheckExist.checkMatch.mockRejectedValue(
+      Object.assign(new Error('ไม่พบแมตช์นี้'), { status: 404, code: 'MATCH_NOT_FOUND' }));
+
+    await expect(Service.updateLivestream(1, 'ไม่ใช่ลิงก์')).rejects.toMatchObject({ code: 'MATCH_NOT_FOUND' });
   });
 });
