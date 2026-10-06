@@ -261,7 +261,9 @@ describe('inviteReferee', () => {
     expect(mockedRefRepo.create).toHaveBeenCalled();
     // crossTournamentWarnings — 🆕 6 ต.ค. (ทางเลือก ก) · 0 = แมตช์ที่แนบมาไม่ทับงานในทัวร์อื่น
     // ★ เป็นคำเตือนไม่ใช่ด่าน — ORG ยังเชิญได้ ด่านจริงอยู่ตอนกรรมการกดรับ
-    expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: false, matchIds: [], crossTournamentWarnings: 0 });
+    // 🔴 isExternal: true แม้ body ส่ง false มา — 6 ต.ค. ระบบคิดจากโดเมนอีเมลเอง
+    //   fixture ใช้ ref@example.com ซึ่งไม่ใช่ @ku.th ⇒ เป็นคนนอก · ดู describe ท้ายไฟล์
+    expect(result).toEqual({ id: 99, userId: 8, invitationStatus: 'pending', isExternal: true, matchIds: [], crossTournamentWarnings: 0 });
   });
 
   it('allows re-inviting when the active accepted invitation was rejected by the admin (F-15)', async () => {
@@ -1319,5 +1321,67 @@ describe('getRefereeCoverage — crossTournamentConflicts', () => {
 
     expect(MatchRefRepo.findAcceptedByUsers).toHaveBeenCalledTimes(1);
     expect(MatchRefRepo.findAcceptedByUsers).toHaveBeenCalledWith([70, 71]);
+  });
+});
+
+/**
+ * 🆕 มติ 6 ต.ค. 2569 — "คนนี้เป็นคนนอกไหม" คิดจากโดเมนอีเมล ไม่เชื่อ checkbox ของ ORG
+ *
+ * 🔴 ช่องที่ปิด: เดิม `isExternal` มาจาก request body ตรง ๆ และระบบไม่มีข้อมูลใดเลย
+ *   ให้ตรวจสอบ (users.user_type hardcode 'student' ทุกคน · ไม่มีใครเขียน 'external' ได้)
+ *   ⇒ ขั้นตอนยืนยันตัวตนกรรมการภายนอกทั้งเส้น (ส่งเอกสาร → แอดมินตรวจ → 4 ด่านที่กัน
+ *     คนที่ยังไม่ผ่าน) ถูกข้ามได้ด้วยการ **ไม่ติ๊กช่องเดียว**
+ *   และ ORG มีแรงจูงใจให้ไม่ติ๊ก เพราะติ๊กแล้วกรรมการต้องรอแอดมินก่อนคุมแมตช์ได้
+ *
+ * ★ ยังรับฟิลด์เดิมจาก body (ไม่ breaking) แต่ไม่ใช้ตัดสิน — ค่าที่คืนไปคือค่าจริงที่คิดได้
+ * 🙋 ขั้นถัดไปเมื่อระบบสมัครเขียน users.user_type จากโดเมนให้แล้ว (ขอไว้ใน md 6 ต.ค.)
+ *   จะเปลี่ยนมาอ่านคอลัมน์นั้น โดยกฎโดเมนยังอยู่ที่ utils/kuEmail ที่เดิม
+ */
+describe('inviteReferee — คนนอกคิดจากอีเมล ไม่ใช่จาก body', () => {
+  beforeEach(() => {
+    mockedRefRepo.findActiveByTournamentAndUser.mockResolvedValue([]);
+    mockedRefRepo.create.mockResolvedValue(99);
+  });
+
+  it('อีเมล @ku.th = คนใน แม้ ORG ติ๊กว่าเป็นคนนอก', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser({ email: 'somchai.j@ku.th' }));
+
+    const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ isExternal: true }));
+
+    expect(mockedRefRepo.create).toHaveBeenCalledWith(expect.objectContaining({ isExternal: false }));
+    expect(result).toMatchObject({ isExternal: false });
+  });
+
+  it('อีเมลโดเมนอื่น = คนนอก แม้ ORG ไม่ติ๊ก', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser({ email: 'somchai@gmail.com' }));
+
+    const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ isExternal: false }));
+
+    expect(mockedRefRepo.create).toHaveBeenCalledWith(expect.objectContaining({ isExternal: true }));
+    expect(result).toMatchObject({ isExternal: true });
+  });
+
+  /**
+   * 🔴 โดเมนต้องตรงทั้งก้อน — เทียบแบบ endsWith จะทำให้ปลอมเป็นคนในได้ง่ายมาก
+   *   จดโดเมน fake-ku.th แล้วสมัคร = กลายเป็นคนในทันที
+   */
+  it.each([
+    ['โดเมนที่ลงท้ายคล้ายกัน', 'a@fake-ku.th'],
+    ['โดเมนที่มีคำว่า ku.th อยู่ข้างใน', 'a@ku.th.evil.com'],
+    ['subdomain ที่ไม่ใช่ ku.th', 'a@mail.ku.th.co'],
+  ])('%s = คนนอก', async (_name, email) => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser({ email }));
+
+    const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ isExternal: false }));
+
+    expect(result).toMatchObject({ isExternal: true });
+  });
+
+  it('ตัวพิมพ์ใหญ่ในโดเมนยังเป็นคนใน', async () => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser({ email: 'Somchai@KU.TH' }));
+
+    const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ isExternal: true }));
+
+    expect(result).toMatchObject({ isExternal: false });
   });
 });

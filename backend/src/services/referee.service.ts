@@ -17,6 +17,7 @@ import { checkTournament } from '../utils/checkExist.js';
 import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
 import { toAssignableRefereeDto } from '../mappers/referee.mapper.js';
 import { timesOverlap } from '../utils/timeOverlap.js';
+import { isExternalEmail } from '../utils/kuEmail.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -64,8 +65,22 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
     }
 
     // 4. เขียน (คำเชิญ + แมตช์ที่แนบ ในทรานแซกชันเดียว)
+    /**
+     * 🔴 มติ 6 ต.ค. 2569 — เลิกเชื่อ `input.isExternal` จาก request body
+     *   เดิม "คนนี้เป็นคนนอกไหม" มาจาก checkbox ที่ ORG ติ๊ก ซึ่งตรวจไม่ได้เลย
+     *   และคนติ๊กมีแรงจูงใจให้ **ไม่** ติ๊ก เพราะติ๊กแล้วกรรมการต้องรอแอดมินอนุมัติ
+     *   ก่อนคุมแมตช์ได้ ⇒ ขั้นตอนยืนยันตัวตนทั้งเส้นถูกข้ามได้ด้วยการไม่ติ๊กช่องเดียว
+     *   ⇒ คิดจาก **โดเมนอีเมลของคนที่ถูกเชิญ** ซึ่งเป็นข้อมูลที่เจ้าตัวให้และเปลี่ยนไม่ได้
+     *
+     * ★ ยังรับฟิลด์ `isExternal` ต่อ (ไม่ breaking) แต่ไม่ได้ใช้ตัดสิน — ค่าที่คืนไปคือค่าจริง
+     *   ที่ระบบคิดได้ ⇒ FE เห็นความจริงกลับไป ไม่ต้องเดา
+     * 🙋 ขั้นถัดไปเมื่อระบบสมัครเขียน `users.user_type` ให้แล้ว: เปลี่ยนมาอ่านคอลัมน์นั้น
+     *   แทนการอ่านอีเมล โดยกฎโดเมนยังอยู่ที่ `utils/kuEmail` ที่เดิม
+     */
+    const isExternal = isExternalEmail(user.email);
+
     const newId = await RefRepo.create({
-        tournamentId, userId : input.userId, invitedBy, isExternal : input.isExternal, matchIds
+        tournamentId, userId : input.userId, invitedBy, isExternal, matchIds
     });
 
     const tournament = await TournamentRepo.findTournamentById(tournamentId);
@@ -96,7 +111,7 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
             && timesOverlap(m.scheduled_time!, m.scheduled_end_time!, b.scheduled_time!, b.scheduled_end_time!)))
         .length;
 
-    return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal : input.isExternal, matchIds,
+    return { id : newId, userId : input.userId, invitationStatus : 'pending', isExternal, matchIds,
              crossTournamentWarnings };
 }
 
