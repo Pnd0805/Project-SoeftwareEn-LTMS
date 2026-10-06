@@ -1337,8 +1337,11 @@ describe('getRefereeCoverage — crossTournamentConflicts', () => {
  *   และ ORG มีแรงจูงใจให้ไม่ติ๊ก เพราะติ๊กแล้วกรรมการต้องรอแอดมินก่อนคุมแมตช์ได้
  *
  * ★ ยังรับฟิลด์เดิมจาก body (ไม่ breaking) แต่ไม่ใช้ตัดสิน — ค่าที่คืนไปคือค่าจริงที่คิดได้
- * 🙋 ขั้นถัดไปเมื่อระบบสมัครเขียน users.user_type จากโดเมนให้แล้ว (ขอไว้ใน md 6 ต.ค.)
- *   จะเปลี่ยนมาอ่านคอลัมน์นั้น โดยกฎโดเมนยังอยู่ที่ utils/kuEmail ที่เดิม
+ *
+ * 🔴 มติ 7 ต.ค. 2569 — **ไม่** เปลี่ยนไปอ่าน users.user_type (เหตุผลเต็มอยู่หัว inviteReferee)
+ *   ระบบสมัครเขียนคอลัมน์นั้นให้แล้วจริง แต่ไม่มีใครแก้คอลัมน์นั้นได้หลังสมัคร และอีเมลก็เปลี่ยนไม่ได้
+ *   ⇒ สองทางให้คำตอบเดียวกันเสมอ · สลับแล้วไม่ได้อะไรเพิ่ม
+ *   จะสลับเมื่อมีทางแก้ "ชนิดผู้ใช้" ได้จริง (เช่น ปุ่มของแอดมิน) แล้วคอลัมน์จะมีความหมาย
  */
 describe('inviteReferee — คนนอกคิดจากอีเมล ไม่ใช่จาก body', () => {
   beforeEach(() => {
@@ -1386,6 +1389,32 @@ describe('inviteReferee — คนนอกคิดจากอีเมล ไ
     const result = await refereeService.inviteReferee(20, 5, makeInviteInput({ isExternal: true }));
 
     expect(result).toMatchObject({ isExternal: false });
+  });
+
+  /**
+   * 🔴 เทส "มีฟัน" ของมติ 7 ต.ค. — ค่ามาจาก **อีเมล** ไม่ใช่จาก users.user_type
+   *
+   * ตั้งค่าสองตัวให้ขัดกันโดยเจตนา: user_type บอกว่าเป็นคนใน · อีเมลบอกว่าเป็นคนนอก
+   * ⇒ ถ้าใครเปลี่ยน inviteReferee ไปอ่านคอลัมน์ user_type เทสสองข้อนี้จะแดงทันที
+   *
+   * 🙋 ถึงคนที่มาเจอเทสนี้แดง — **อย่าแก้เทสให้เขียว** ให้อ่านเหตุผลก่อน
+   *   มติคือยังไม่สลับ เพราะไม่มีใครแก้ users.user_type ได้หลังสมัคร (ไม่มี endpoint เลย)
+   *   และอีเมลก็เปลี่ยนไม่ได้ ⇒ สองทางให้คำตอบเดียวกัน สลับแล้วไม่ได้อะไรเพิ่ม
+   *   ถ้าจะสลับจริง ต้องมี 2 อย่างก่อน:
+   *     ① ทางแก้ชนิดผู้ใช้ (ปุ่มของแอดมิน) ไม่งั้นคอลัมน์ไม่มีความหมายกว่าอีเมล
+   *     ② ย้อนอัปเดตแถวที่สร้างก่อน 6 ต.ค. 2569 (เป็น 'student' ทั้งหมด รวมคนที่ใช้อีเมลนอก)
+   *   แล้วค่อยกลับมาแก้เทสนี้พร้อมอธิบายว่าทำครบแล้ว
+   */
+  it.each([
+    ['user_type student แต่อีเมล gmail ⇒ คนนอก', 'student' as const, 'nok@gmail.com', true],
+    ['user_type external แต่อีเมล ku.th ⇒ คนใน', 'external' as const, 'nai@ku.th', false],
+  ])('%s', async (_name, userType, email, expected) => {
+    mockedUserRepo.findById.mockResolvedValue(makeUser({ user_type: userType, email }));
+
+    const result = await refereeService.inviteReferee(20, 5, makeInviteInput());
+
+    expect(mockedRefRepo.create).toHaveBeenCalledWith(expect.objectContaining({ isExternal: expected }));
+    expect(result).toMatchObject({ isExternal: expected });
   });
 });
 
