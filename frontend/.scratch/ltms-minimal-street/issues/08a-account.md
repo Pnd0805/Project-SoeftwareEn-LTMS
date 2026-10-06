@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Find the next task from Home. Independent of 08B.
 
-**Status:** complete — implemented and verified in `ltms-ticket-08a` on 2026-10-07 under the user's 2026-10-06 authorization. Completion evidence: [Task 8A note](../../../docs/superpowers/notes/2026-10-06-ltms-ticket-08a.md). Merge and push remain prohibited.
+**Status:** complete — implemented and verified in `ltms-ticket-08a`, commit `4a8c021`; integrated locally into `ltms-desktop-ux` under the user's 2026-10-07 authorization. [Task 8A evidence](../../../docs/superpowers/notes/2026-10-06-ltms-ticket-08a.md), [combined verification](../../../docs/superpowers/notes/2026-10-07-ltms-ticket-08-integration.md). Push remains prohibited.
 
 **Ownership:** LoginPage, RegisterPage, ProfilePage and their tests; `src/features/auth/account-workspace.css`, imported only by the owned pages. Retain shared kit, stylesheet, tokens, shell, API, hooks, schemas, payloads and permissions. Record completion in this ticket and the 08A note; shared plan/index updates wait for integration.
 

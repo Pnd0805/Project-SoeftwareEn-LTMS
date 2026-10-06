@@ -1,6 +1,6 @@
 # LTMS Minimal Street — ticket index
 
-Status: Tickets 01–07 complete. Tickets 08A, 08B and 09 pending; no external issues created. Ticket 08 was split at the user's request on 2026-10-06. There are ten active tickets; the original 08 file is a compatibility index. Tickets 06–07 remain uncommitted. See [Ticket 07 evidence](../notes/2026-10-06-ltms-ticket-07.md).
+Status: Tickets 01–07, 08A and 08B complete; 09 remains pending. The user authorized local integration of 08A/08B into `ltms-desktop-ux` on 2026-10-07. Combined suite: 96 files / 655 tests; see [integration evidence](../notes/2026-10-07-ltms-ticket-08-integration.md). No external issues or push. There are ten active tickets; the original 08 file is a compatibility index. Completed 06–07 and their evidence are preserved in the common snapshot commit `1459182`.
 
 Start with the [spec](../specs/2026-10-05-ltms-minimal-street.md) for behavior and constraints. Open the [implementation plan](../plans/2026-10-05-ltms-minimal-street.md) when implementing a ticket; it owns exact files, interfaces and verification commands. Each ticket is stored separately following the local to-tickets format.
 
@@ -17,7 +17,7 @@ Start with the [spec](../specs/2026-10-05-ltms-minimal-street.md) for behavior a
 | [08B — Search and Inbox](../../../.scratch/ltms-minimal-street/issues/08b-search-and-inbox.md) | 01 | Search and both Inbox modes with retained action feedback |
 | [09 — Desktop acceptance](../../../.scratch/ltms-minimal-street/issues/09-desktop-acceptance.md) | 01–07, 08A, 08B | Rendered and automated evidence plus design documentation |
 
-Tickets 02–07, 08A and 08B depend on the shared visual system established by 01, not on one another. The user authorized separate Orca worktrees and Codex workers for 08A and 08B on 2026-10-06, with testing and a completion commit for each; merge and push are prohibited. Each worker executes its own slice directly without supervised orchestration or additional agents. Each owns a separate feature stylesheet, ticket and evidence note; shared plan/index updates wait for integration. Ticket 09 checks the combined result after both are complete.
+Tickets 02–07, 08A and 08B depend on the shared visual system established by 01, not on one another. Separate Orca workers completed 08A/08B directly without supervised orchestration or additional agents, owning separate feature stylesheets and evidence. Their user-authorized local integration on 2026-10-07 updates shared completion accounting. Ticket 09 checks the combined result; push remains prohibited.
 
 All slices use the existing frontend-to-server paths. A vertical slice here includes the user-facing behavior, existing data consumption and verification; it does not authorize a schema or API edit.
 

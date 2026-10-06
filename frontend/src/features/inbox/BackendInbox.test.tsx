@@ -51,7 +51,7 @@ vi.mock('../../hooks/useAdmin', () => ({
 import { BackendInbox } from './BackendInbox'
 
 const renderInbox = () => render(<MemoryRouter><BackendInbox /></MemoryRouter>)
-const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
+const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: /^Accept request/ }))
 
 beforeEach(() => { vi.clearAllMocks(); outgoing = [] })
 
@@ -97,9 +97,9 @@ it('shows outgoing consent states and allows withdrawing only open requests', ()
   outgoing = [{ ...request, id: 101 }, { ...request, id: 102, status: 'applied' }]
   cancelMutate.mockImplementation((_id, opts) => opts.onSuccess())
   renderInbox()
-  expect(screen.getAllByRole('button', { name: 'Withdraw request' })).toHaveLength(1)
+  expect(screen.getAllByRole('button', { name: /^Withdraw request/ })).toHaveLength(1)
   expect(screen.getAllByText(/Somying: pending/)).toHaveLength(2)
-  fireEvent.click(screen.getByRole('button', { name: 'Withdraw request' }))
+  fireEvent.click(screen.getByRole('button', { name: /^Withdraw request/ }))
   expect(cancelMutate).toHaveBeenCalledWith(101, expect.any(Object))
   expect(screen.getByText('Request #101 withdrawn.')).toBeInTheDocument()
 })

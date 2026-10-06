@@ -19,7 +19,7 @@
 - Use A's existing color tokens in both themes, 2px corners, Barlow Condensed Bold for principal headings and Geist for body text and controls.
 - Desktop acceptance is 1280 × 800 and 1440 × 900, both themes. Mobile redesign follows this phase; retain responsive usability meanwhile.
 - Add behavioral tests for changed behavior. Use rendered inspection for CSS-only decisions rather than tests that repeat CSS values.
-- Execute directly within each assigned worktree. The user authorized tested completion commits for 8A and 8B; commit only that ticket's changes. Preserve inherited work and prototype evidence. No merge, push or deployment is part of this plan.
+- Execute directly within each assigned worktree. The user authorized tested completion commits for 8A and 8B, then their local integration into `ltms-desktop-ux` on 2026-10-07. Preserve inherited work, worker branches and prototype evidence. Push and deployment remain outside scope.
 
 ## Review Focus
 
@@ -36,7 +36,7 @@
 - Task 1 produces the shared appearance and Home/Tournaments route distinction consumed by Tasks 2–7, 8A and 8B. Keep existing class names and kit signatures so those pages remain functional during migration.
 - Task 2 alone adds the preview callback to Tournament cards and query selection to Home. Task 4 consumes the existing full Tournament destinations, not preview internals.
 - Tasks 3–7, 8A and 8B share the design system but do not depend on each other's behavior. The user authorized parallel 8A/8B execution in separate Orca worktrees on 2026-10-06; each worker implements its own ticket directly without supervised orchestration or additional agents.
-- Task 8 was split into 8A (Account) and 8B (Search/Inbox). Each has separate files, verification and evidence. Use the exact task identifier `8A` or `8B` when extracting an execution brief. Use the two owned feature stylesheets instead of editing shared `src/styles/prototype.css`. Each worker updates only its ticket and note; shared plan/index completion accounting waits for integration. Merge/push are not authorized.
+- Task 8 was split into 8A (Account) and 8B (Search/Inbox). Each has separate files, verification and evidence. Use the exact task identifier `8A` or `8B` when extracting an execution brief. Use the two owned feature stylesheets instead of editing shared `src/styles/prototype.css`. Each worker updated only its ticket and note; shared completion accounting is updated in the separately authorized 2026-10-07 integration. Push remains prohibited.
 - Task 9 consumes all nine completed implementation slices and their combined evidence. A missing browser or backend keeps the corresponding acceptance row pending.
 - Review directly under the user's no-subagent instruction. Document that the final source review is by the implementer; do not represent it as independent review.
 
@@ -189,10 +189,12 @@
 - Consumes: Task 1 presentation, current authentication hooks/schemas, reference data and account editing behavior.
 - Produces: unchanged Login/Register/Profile routes, submits and redirects with consistent fields, retained values and save/validation feedback. No interface needed by 8B changes.
 
-- [ ] **Step 1: Inspect sign-in, registration and account editing states.** Trace existing validation, staff/student redirect, faculty/department selections, save failure and avatar upload/fallback behavior; keep current handlers and permissions.
-- [ ] **Step 2: Apply Account presentation.** Use shared fields/actions, concise English, readable validation and stable pending/save feedback. Preserve edited values and existing mock-only controls. Scope layout changes to Account roots; leave Search/Inbox and shared tokens intact.
-- [ ] **Step 3: Verify.** Run `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run src/features/auth src/features/profile src/components/layout/Shell.profile.test.tsx`, TypeScript, lint and build; compare frozen hashes. Expected: exit 0 and no changed frozen file. If an affected auth behavior lacks coverage, add a consumer test asserting its original payload/redirect or retained draft after rejection, observing the regression before fixing it.
-- [ ] **Step 4: Record rendered cases and direct review.** Check Login validation, Register reference choices/errors, long Profile content, avatar fallback and failed save in both desktop sizes/themes and at 390px. Record keyboard access, no page overflow and actual data-mode behavior in `docs/superpowers/notes/2026-10-06-ltms-ticket-08a.md`.
+- [x] **Step 1: Inspect sign-in, registration and account editing states.** Trace existing validation, staff/student redirect, faculty/department selections, save failure and avatar upload/fallback behavior; keep current handlers and permissions.
+- [x] **Step 2: Apply Account presentation.** Use shared fields/actions, concise English, readable validation and stable pending/save feedback. Preserve edited values and existing mock-only controls. Scope layout changes to Account roots; leave Search/Inbox and shared tokens intact.
+- [x] **Step 3: Verify.** Run `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run src/features/auth src/features/profile src/components/layout/Shell.profile.test.tsx`, TypeScript, lint and build; compare frozen hashes. Expected: exit 0 and no changed frozen file. If an affected auth behavior lacks coverage, add a consumer test asserting its original payload/redirect or retained draft after rejection, observing the regression before fixing it.
+- [x] **Step 4: Record rendered cases and direct review.** Check Login validation, Register reference choices/errors, long Profile content, avatar fallback and failed save in both desktop sizes/themes and at 390px. Record keyboard access, no page overflow and actual data-mode behavior in `docs/superpowers/notes/2026-10-06-ltms-ticket-08a.md`.
+
+**Completion evidence:** [Ticket 08A](../notes/2026-10-06-ltms-ticket-08a.md), commit `4a8c021`. Focused: 3 files / 25 tests; isolated full suite: 94 files / 638 tests. TypeScript/lint/build and 49 frozen hashes passed. Real/mock rendered evidence covers both themes at 1280x800, 1440x900 and 390x844; Profile identity stays read-only because only photo editing is supported. Direct implementer review, not independent review; no live backend acceptance. Integrated locally with 08B on 2026-10-07; see [integration evidence](../notes/2026-10-07-ltms-ticket-08-integration.md).
 
 ### Task 8B: Search and Inbox
 
@@ -205,10 +207,12 @@
 - Consumes: Task 1 presentation, current Search queries and existing mock/real notification behavior and action capabilities.
 - Produces: unchanged Search/Inbox routes and supported handlers with consistent lists, source states and retained action feedback. Independent of 8A.
 
-- [ ] **Step 1: Inspect Search and both Inbox modes.** Trace results, empty/failed sources, recovery, denied content, permitted action destinations and a row-changing action. Preserve source and permission distinctions.
-- [ ] **Step 2: Apply Search/Inbox presentation.** Use readable result/notification rows, contextual concise actions, visible labels and stable pending/outcome feedback. Scope layout changes to Search/Inbox roots; leave Account and shared tokens intact.
-- [ ] **Step 3: Verify.** Run `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run src/features/search src/features/inbox`, TypeScript, lint and build; compare frozen hashes. Expected: exit 0 and no changed frozen file. For any uncovered affected row-changing action, assert its original destination/payload and visible result after row removal; source failure must not appear as an empty result.
-- [ ] **Step 4: Record rendered cases and direct review.** Check long Search results, empty/failed Search, long notifications, mock/real Inbox and action feedback after row change in both desktop sizes/themes and at 390px. Record keyboard access and no page overflow in `docs/superpowers/notes/2026-10-06-ltms-ticket-08b.md`.
+- [x] **Step 1: Inspect Search and both Inbox modes.** Trace results, empty/failed sources, recovery, denied content, permitted action destinations and a row-changing action. Preserve source and permission distinctions.
+- [x] **Step 2: Apply Search/Inbox presentation.** Use readable result/notification rows, contextual concise actions, visible labels and stable pending/outcome feedback. Scope layout changes to Search/Inbox roots; leave Account and shared tokens intact.
+- [x] **Step 3: Verify.** Run `VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run src/features/search src/features/inbox`, TypeScript, lint and build; compare frozen hashes. Expected: exit 0 and no changed frozen file. For any uncovered affected row-changing action, assert its original destination/payload and visible result after row removal; source failure must not appear as an empty result.
+- [x] **Step 4: Record rendered cases and direct review.** Check long Search results, empty/failed Search, long notifications, mock/real Inbox and action feedback after row change in both desktop sizes/themes and at 390px. Record keyboard access and no page overflow in `docs/superpowers/notes/2026-10-06-ltms-ticket-08b.md`.
+
+**Completion evidence:** [Ticket 08B](../notes/2026-10-06-ltms-ticket-08b.md), commit `30da536`. Focused: 6 files / 40 tests; isolated full suite: 95 files / 646 tests. TypeScript/lint/build and 49 frozen hashes passed. Both themes at 1280x800, 1440x900 and 390x844 checked with intercepted fixtures: 78 captures / 90 records. Direct implementer review, not independent review; no live backend acceptance. Integrated locally with 08A on 2026-10-07; combined full suite: 96 files / 655 tests. Ticket 09 remains pending.
 
 ### Task 9: Desktop acceptance and design record
 
@@ -228,6 +232,6 @@
 
 ## Review and publication state
 
-Tasks 1–7 are complete with the evidence recorded above. The user authorized separate Orca workers to implement and test 8A and 8B, then commit their own changes, on 2026-10-06. Task 9 waits for both and their combined code. There are ten active local tickets; the original 08 document is a compatibility index. Merge and push remain prohibited.
+Tasks 1–7, 8A and 8B are complete with the evidence recorded above. The user authorized separate Orca workers on 2026-10-06 and local integration into `ltms-desktop-ux` on 2026-10-07. The combined code passes 96 files / 655 tests, TypeScript, lint and build; 49 frozen hashes are unchanged. Task 9 remains pending for route/rendered acceptance and the design record. There are ten active local tickets; the original 08 document is a compatibility index. Worker worktrees/branches are retained. Push and deployment remain prohibited.
 
 The repository has no configured issue-tracker destination or triage vocabulary. Keep the local drafts concrete and reviewable; external publication follows tracker setup. This plan adds no approval gate to ordinary reversible implementation work after its review is complete.

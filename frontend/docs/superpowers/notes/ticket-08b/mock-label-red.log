@@ -1,0 +1,202 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-ticket-08b/frontend
+
+ ❯ src/features/inbox/InboxPage.test.tsx (8 tests | 1 failed) 62ms
+     × uses the message to name a mock action when no notification title exists 42ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/inbox/InboxPage.test.tsx > InboxPage response states > uses the message to name a mock action when no notification title exists
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Mark read: Your team invitation has expired."
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox · 1 unread":
+  <h1
+    class="disp"
+  />
+
+  Name "Other notifications 1 on this page":
+  <h2 />
+
+  --------------------------------------------------
+  button:
+
+  Name "Mark all read":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Mark read: Notification":
+  <button
+    aria-label="Mark read: Notification"
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Open: Notification":
+  <button
+    aria-label="Open: Notification"
+    class="btn ghost"
+    type="button"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Other notifications":
+  <section
+    aria-label="Other notifications"
+    class="panel quiet"
+  />
+
+  --------------------------------------------------
+  time:
+
+  Name "2026-10-01T00:00:00Z":
+  <time
+    datetime="2026-10-01T00:00:00Z"
+    title="2026-10-01T00:00:00Z"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="inbox-page"
+    >
+      <div
+        class="spread"
+      >
+        <h1
+          class="disp"
+        >
+          Inbox
+          · 1 unread
+        </h1>
+        <span
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Mark all read
+          </button>
+        </span>
+      </div>
+      <div
+        class="inbox-notifications"
+      >
+        <section
+          aria-label="Other notifications"
+          class="panel quiet"
+        >
+          <h2>
+            Other notifications
+
+            <span
+              class="tag"
+            >
+              1
+               on this page
+            </span>
+          </h2>
+          <div
+            class="notif"
+          >
+            <span
+              aria-hidden="true"
+              class="dot "
+            />
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="17"
+              viewBox="0 0 24 24"
+              width="17"
+            >
+              <path
+                d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+                stroke="currentColor"
+                stroke-linejoin="round"
+                stroke-width="1.7"
+              />
+              <path
+                d="M10 18a2 2 0 0 0 4 0"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+            </svg>
+            <span
+              class="txt"
+            >
+              <b>
+                Notification
+              </b>
+              <span
+                class="inbox-message"
+              >
+                Your team invitation has expired.
+              </span>
+              <span
+                class="tag"
+              >
+                Unread
+                 ·
+                <time
+                  datetime="2026-10-01T00:00:00Z"
+                  title="2026-10-01T00:00:00Z"
+                >
+                  5d ago
+                </time>
+              </span>
+            </span>
+            <div
+              class="inbox-row-actions"
+            >
+              <button
+                aria-label="Mark read: Notification"
+                class="btn ghost"
+                type="button"
+              >
+                Mark read
+              </button>
+              <button
+                aria-label="Open: Notification"
+                class="btn ghost"
+                type="button"
+              >
+                Open
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.test.tsx:52:28
+     50|     markRead.mockImplementation((_id, options) => options.onSuccess())
+     51|     draw()
+     52|     fireEvent.click(screen.getByRole('button', { name: 'Mark read: You…
+       |                            ^
+     53|     expect(markRead).toHaveBeenCalledWith(31, expect.any(Object))
+     54|     expect(screen.getByRole('status')).toHaveTextContent('Marked read:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  00:01:14
+   Duration  487ms (transform 100ms, setup 45ms, import 123ms, tests 62ms, environment 201ms)

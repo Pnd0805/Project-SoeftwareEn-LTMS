@@ -21,6 +21,7 @@ import { USE_MOCK } from '../../api/client'
 import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
 import { useSearchTeams } from '../../hooks/useTeam'
+import './search-inbox-workspace.css'
 
 export function SearchPage() {
   const s = useLtms()
@@ -61,15 +62,15 @@ export function SearchPage() {
     : undefined
 
   return (
-    <>
-      <div className="spread">
-        <div>
-          <div className="tag"><em>//</em> Everything you can see</div>
-          <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>Search</h1>
-        </div>
-      </div>
+    <div className="search-page">
+      <header><h1 className="disp">Search</h1><p className="sub">Find tournaments, teams and players.</p></header>
 
-      <Panel>
+      <Panel className="search-controls">
+        <Field label="Search terms" htmlFor="se-q">
+          <input id="se-q" type="search" autoFocus autoComplete="off" value={q}
+            onChange={e => { setQ(e.target.value); navigate(`/search/${encodeURIComponent(e.target.value)}`, { replace: true }) }}
+            placeholder="Name, sport, venue, faculty…" />
+        </Field>
         <Field label="Tournament status" htmlFor="se-status">
           <select id="se-status" value={tournamentStatus}
             onChange={e => setTournamentStatus(e.target.value as 'public' | 'completed')}>
@@ -77,16 +78,12 @@ export function SearchPage() {
             <option value="completed">Completed</option>
           </select>
         </Field>
-        <Field label={needle ? `${total} result${total === 1 ? '' : 's'}` : 'Squads, players, tournaments'} htmlFor="se-q">
-          <input id="se-q" autoFocus autoComplete="off" value={q}
-            onChange={e => { setQ(e.target.value); navigate(`/search/${encodeURIComponent(e.target.value)}`, { replace: true }) }}
-            placeholder="Name, sport, venue, faculty…" />
-        </Field>
       </Panel>
+      {needle ? <p className="sub search-summary" role="status">{total} result{total === 1 ? '' : 's'}{publicSettled && playersSettled ? '' : ' loaded · Search in progress or incomplete'}</p> : null}
 
       {!needle ? (
         <Empty icon="search" title="Type to search"
-          sub="A private draft or a request still under review is not searchable — it is not a tournament yet." />
+          sub="Search public tournaments and teams. Sign in to search players." />
       ) : !total && publicSettled && playersSettled ? (
         <Empty icon="search" title={`Nothing matched “${q}”`} sub="Try a sport, a faculty, or part of a name." />
       ) : null}
@@ -96,30 +93,30 @@ export function SearchPage() {
       ) : null}
 
       {publicApplicable && tournamentQuery.isPending ? (
-        <Panel quiet><span className="sub">Loading tournaments…</span></Panel>
+        <Panel quiet><span className="sub" role="status">Loading tournaments…</span></Panel>
       ) : null}
 
       {publicApplicable && tournamentQuery.isError ? (
         <Panel quiet>
-          <span className="error">Tournament search is unavailable because the server list could not be loaded.</span>
+          <span className="error" role="alert">Unable to load tournaments. Try again.</span>
           <button className="btn ghost" type="button" onClick={() => void tournamentQuery.refetch()}>Retry tournaments</button>
         </Panel>
       ) : null}
 
       {needle && teamsPending ? (
-        <Panel quiet><span className="sub">Searching squads…</span></Panel>
+        <Panel quiet><span className="sub" role="status">Searching teams…</span></Panel>
       ) : teamsError ? (
         <Panel quiet>
-          <span className="error">Unable to search squads right now.</span>
-          <button className="btn ghost" type="button" onClick={() => void teamSearch.refetch()}>Retry squads</button>
+          <span className="error" role="alert">Unable to search teams right now.</span>
+          <button className="btn ghost" type="button" onClick={() => void teamSearch.refetch()}>Retry teams</button>
         </Panel>
       ) : null}
 
       {tournaments.length ? (
-        <Panel quiet>
-          <span className="tag"><em>//</em> Tournaments · {tournaments.length}</span>
+        <Panel quiet className="search-results">
+          <h2>Tournaments <span className="tag">{tournaments.length}</span></h2>
           {tournaments.map(t => (
-            <button className="who" type="button" key={t.id} onClick={() => navigate(`/t/${t.id}`)}>
+            <button className="who" type="button" key={t.id} aria-label={`Open tournament: ${t.name}`} onClick={() => navigate(`/t/${t.id}`)}>
               <span className="avatar"><Icon name="trophy" size={13} /></span>
               <span className="meta"><b>{t.name}</b><span className="tag">{t.sport} · {formatName(t)} · {t.status}</span></span>
               <Icon name="chev" size={13} />
@@ -129,10 +126,10 @@ export function SearchPage() {
       ) : null}
 
       {teams.length ? (
-        <Panel quiet>
-          <span className="tag"><em>//</em> Squads · {teams.length}</span>
+        <Panel quiet className="search-results">
+          <h2>Teams <span className="tag">{teams.length}</span></h2>
           {teams.map(t => (
-            <button className="who" type="button" key={t.id} onClick={() => navigate(`/team/${t.id}`)}>
+            <button className="who" type="button" key={t.id} aria-label={`Open team: ${t.name}`} onClick={() => navigate(`/team/${t.id}`)}>
               <TeamCrestView team={toTeamView(t)} size={24} />
               <span className="meta">
                 <b>{t.name}</b>
@@ -145,10 +142,10 @@ export function SearchPage() {
       ) : null}
 
       {backendTeams.length ? (
-        <Panel quiet>
-          <span className="tag"><em>//</em> Squads · {backendTeams.length}</span>
+        <Panel quiet className="search-results">
+          <h2>Teams <span className="tag">{backendTeams.length}</span></h2>
           {backendTeams.map(t => (
-            <button className="who" type="button" key={t.id} onClick={() => navigate(`/team/${t.id}`)}>
+            <button className="who" type="button" key={t.id} aria-label={`Open team: ${t.name}`} onClick={() => navigate(`/team/${t.id}`)}>
               <TeamCrestView team={{ id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: t.logoUrl ?? null }} size={24} />
               <span className="meta">
                 <b>{t.name}</b>
@@ -161,11 +158,11 @@ export function SearchPage() {
       ) : null}
 
       {playerApplicable && userSearch.isPending ? (
-        <Panel quiet><span className="sub">Searching players…</span></Panel>
+        <Panel quiet><span className="sub" role="status">Searching players…</span></Panel>
       ) : null}
       {playerApplicable && userSearch.isError ? (
         <Panel quiet>
-          <span className="error">
+          <span className="error" role="alert">
             {userErrorStatus === 401 ? 'Sign in again to search players.'
               : userErrorStatus === 403 ? 'Your account is not allowed to search players.'
                 : 'Unable to search players right now. Please retry.'}
@@ -174,10 +171,10 @@ export function SearchPage() {
         </Panel>
       ) : null}
       {players.length ? (
-        <Panel quiet>
-          <span className="tag"><em>//</em> Players · {players.length}</span>
+        <Panel quiet className="search-results">
+          <h2>Players <span className="tag">{players.length}</span></h2>
           {players.map(u => (
-            <button className="who" type="button" key={u.id} onClick={() => navigate(`/player/${u.id}`)}>
+            <button className="who" type="button" key={u.id} aria-label={`Open player: ${u.fullName}`} onClick={() => navigate(`/player/${u.id}`)}>
               <Avatar name={u.fullName} avatarUrl={u.avatarUrl} />
               <span className="meta"><b>{u.fullName}</b></span>
               <Icon name="chev" size={13} />
@@ -185,6 +182,6 @@ export function SearchPage() {
           ))}
         </Panel>
       ) : null}
-    </>
+    </div>
   )
 }
