@@ -12,6 +12,7 @@ import { Icon } from '../../components/kit/Icon'
 import { useRegister, useVerifyEmail, useResendVerification } from '../../hooks/useAuth'
 import { useDepartments, useFaculties } from '../../hooks/useReference'
 import { registerSchema, type RegisterInput } from '../../schemas/auth.schema'
+import { activeOtpRequests, readOtpRequests, saveOtpRequest, OTP_COOLDOWN_MS, OTP_REQUEST_LIMIT, OTP_WINDOW_MS } from './otpRequests'
 
 const defaultValues: RegisterInput = {
   fullName: '',
@@ -39,15 +40,22 @@ export function RegisterPage() {
   const [otpError, setOtpError] = useState<string | null>(null)
   const [otpSuccess, setOtpSuccess] = useState(false)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
-  const [resendCooldown, setResendCooldown] = useState(0)
+  const [clock, setClock] = useState(() => Date.now())
+  const [requestHistory, setRequestHistory] = useState(() => ({ email: emailParam, times: readOtpRequests(emailParam, Date.now()) }))
+  const requestTimes = activeOtpRequests(requestHistory.email === emailParam ? requestHistory.times : readOtpRequests(emailParam, clock), clock)
+  const quotaReached = requestTimes.length >= OTP_REQUEST_LIMIT
+  const quotaSeconds = quotaReached ? Math.max(0, Math.ceil((requestTimes[requestTimes.length - OTP_REQUEST_LIMIT] + OTP_WINDOW_MS - clock) / 1000)) : 0
+  const resendCooldown = requestTimes.length ? Math.max(0, Math.ceil((requestTimes.at(-1)! + OTP_COOLDOWN_MS - clock) / 1000)) : 0
 
   useEffect(() => {
-    if (resendCooldown <= 0) return
-    const timer = setInterval(() => {
-      setResendCooldown(prev => prev - 1)
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [resendCooldown])
+    if (step !== 'otp') return
+    const refresh = () => setClock(Date.now())
+    const storage = () => { setRequestHistory({ email: emailParam, times: readOtpRequests(emailParam, Date.now()) }); refresh() }
+    const timer = setInterval(refresh, 1000)
+    window.addEventListener('storage', storage)
+    window.addEventListener('focus', refresh)
+    return () => { clearInterval(timer); window.removeEventListener('storage', storage); window.removeEventListener('focus', refresh) }
+  }, [step, emailParam])
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -66,6 +74,9 @@ export function RegisterPage() {
   const submit = async (values: RegisterInput) => {
     try {
       await register.mutateAsync(values)
+      const now = Date.now()
+      setRequestHistory({ email: values.email, times: saveOtpRequest(values.email, readOtpRequests(values.email, now), now) })
+      setClock(now)
       navigate(`/register?step=otp&email=${encodeURIComponent(values.email)}`)
     } catch (error) {
       if (error instanceof ApiError && error.fields) {
@@ -96,12 +107,15 @@ export function RegisterPage() {
   }
 
   const handleResendOtp = async () => {
-    if (resendCooldown > 0) return
+    if (resendCooldown > 0 || quotaReached || resendVerification.isPending) return
     setOtpError(null)
+    setResendMessage(null)
     try {
       await resendVerification.mutateAsync({ email: emailParam })
+      const now = Date.now()
+      setRequestHistory({ email: emailParam, times: saveOtpRequest(emailParam, requestTimes, now) })
+      setClock(now)
       setResendMessage('รับคำขอแล้ว หากอีเมลนี้ยังรอยืนยันและไม่เกินโควตา ระบบจะส่งรหัสใหม่ให้ กรุณาตรวจกล่องจดหมายและสแปม (สูงสุด 3 ครั้ง/ชั่วโมง)')
-      setResendCooldown(60)
     } catch (err) {
       if (err instanceof ApiError) {
         setOtpError(err.message)
@@ -153,7 +167,9 @@ export function RegisterPage() {
             </label>
 
             {otpError && <span className="error">{otpError}</span>}
-            {resendMessage && <span className="sub" style={{ color: 'var(--green)' }}>{resendMessage}</span>}
+            {quotaReached ? <div className="banner warn" role="status">
+              <b>คุณขอรหัสครบ 3 ครั้งในช่วง 1 ชั่วโมงจากเบราว์เซอร์นี้แล้ว</b> ขอใหม่ได้ในอีก {Math.ceil(quotaSeconds / 60)} นาที
+            </div> : resendMessage && <span className="sub" role="status">{resendMessage}</span>}
 
             <button className="btn primary" type="submit" disabled={verifyEmail.isPending || otpCode.length !== 6}>
               {verifyEmail.isPending ? 'กำลังยืนยัน...' : 'ยืนยันรหัส OTP'}
@@ -163,13 +179,13 @@ export function RegisterPage() {
               <button
                 className="btn ghost"
                 type="button"
-                disabled={resendVerification.isPending || resendCooldown > 0}
+                disabled={resendVerification.isPending || resendCooldown > 0 || quotaReached}
                 onClick={handleResendOtp}
               >
-                {resendCooldown > 0 ? `ขอรหัส OTP ใหม่อีกครั้ง (${resendCooldown}s)` : 'ขอรหัส OTP ใหม่อีกครั้ง'}
+                {quotaReached ? 'ขอรหัส OTP ใหม่อีกครั้ง — ครบโควตา 3 ครั้ง/ชั่วโมง' : resendCooldown > 0 ? `ขอรหัส OTP ใหม่อีกครั้ง (${resendCooldown}s)` : 'ขอรหัส OTP ใหม่อีกครั้ง'}
               </button>
               <span className="sub" style={{ fontSize: 12 }}>
-                * สามารถขอรหัสใหม่ได้สูงสุด 3 ครั้ง/ชั่วโมง
+                * สูงสุด 3 ครั้ง/ชั่วโมง รวมรหัสครั้งแรกตอนสมัคร · เบราว์เซอร์นี้บันทึก {requestTimes.length}/3 ครั้ง
               </span>
             </div>
           </form>
@@ -196,7 +212,7 @@ export function RegisterPage() {
         สมัครสมาชิกเพื่อเข้าระบบ LTMS
       </div>
 
-      <form className="vstack" style={{ gap: 12 }} onSubmit={form.handleSubmit(submit)}>
+      <form className="vstack" style={{ gap: 12 }} onSubmit={event => { void form.handleSubmit(submit)(event) }}>
         <label className="field">
           <span className="label">ชื่อ-นามสกุล</span>
           <input type="text" placeholder="สมชาย ใจดี" {...form.register('fullName')} />

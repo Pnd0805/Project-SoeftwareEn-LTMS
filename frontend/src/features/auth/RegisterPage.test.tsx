@@ -1,11 +1,20 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RegisterPage } from './RegisterPage'
+import { readOtpRequests, saveOtpRequest } from './otpRequests'
 
 const mockRegisterMutateAsync = vi.fn()
 const mockVerifyEmailMutateAsync = vi.fn()
 const mockResendVerificationMutateAsync = vi.fn()
+
+beforeEach(() => { vi.clearAllMocks(); localStorage.clear() })
+afterEach(() => vi.useRealTimers())
+
+const renderOtp = (email = 'newuser@ku.th') => render(<MemoryRouter initialEntries={[`/register?step=otp&email=${email}`]}><RegisterPage /></MemoryRouter>)
+const requestOtp = async () => {
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /ขอรหัส OTP ใหม่อีกครั้ง/ })) })
+}
 
 vi.mock('../../hooks/useAuth', () => ({
   useRegister: () => ({
@@ -103,5 +112,60 @@ describe('RegisterPage OTP flow', () => {
     })
 
     expect(screen.getByText(/รับคำขอแล้ว หากอีเมลนี้ยังรอยืนยัน/)).toBeInTheDocument()
+  })
+
+  it('warns after three accepted requests, persists across reload, and unlocks at the rolling hour boundary', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-06T12:00:00Z'))
+    mockResendVerificationMutateAsync.mockResolvedValue({ message: 'accepted' })
+    const view = renderOtp()
+    await requestOtp()
+    expect(screen.getByRole('button', { name: /ขอรหัส OTP ใหม่อีกครั้ง/ })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(59_000))
+    expect(screen.getByRole('button', { name: /ขอรหัส OTP ใหม่อีกครั้ง/ })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(1000))
+    await requestOtp()
+    act(() => vi.advanceTimersByTime(60_000))
+    await requestOtp()
+    expect(screen.getByText('คุณขอรหัสครบ 3 ครั้งในช่วง 1 ชั่วโมงจากเบราว์เซอร์นี้แล้ว')).toBeInTheDocument()
+    expect(screen.queryByText(/รับคำขอแล้ว หากอีเมลนี้ยังรอยืนยัน/)).not.toBeInTheDocument()
+    await requestOtp()
+    expect(mockResendVerificationMutateAsync).toHaveBeenCalledTimes(3)
+    view.unmount()
+    renderOtp()
+    expect(screen.getByRole('button', { name: /ครบโควตา/ })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(3_480_000))
+    expect(screen.getByRole('button', { name: /ขอรหัส OTP ใหม่อีกครั้ง/ })).toBeEnabled()
+    expect(screen.queryByText(/คุณขอรหัสครบ 3 ครั้ง/)).not.toBeInTheDocument()
+  })
+
+  it('includes the initial registration request and isolates history by email', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-06T12:00:00Z'))
+    const now = Date.now()
+    saveOtpRequest('newuser@ku.th', [], now - 120_000)
+    saveOtpRequest('newuser@ku.th', readOtpRequests('newuser@ku.th', now), now - 60_000)
+    saveOtpRequest('someoneelse@ku.th', [], now)
+    mockResendVerificationMutateAsync.mockResolvedValue({ message: 'accepted' })
+    renderOtp()
+    await requestOtp()
+    expect(screen.getByRole('button', { name: /ครบโควตา/ })).toBeDisabled()
+    expect(readOtpRequests('someoneelse@ku.th', now)).toHaveLength(1)
+  })
+
+  it('preserves the 60-second cooldown across remount and does not count a failed request', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-06T12:00:00Z'))
+    mockResendVerificationMutateAsync.mockRejectedValueOnce(new Error('Network failure'))
+    const view = renderOtp()
+    await requestOtp()
+    expect(readOtpRequests('newuser@ku.th', Date.now())).toEqual([])
+    mockResendVerificationMutateAsync.mockResolvedValue({ message: 'accepted' })
+    await requestOtp()
+    view.unmount()
+    renderOtp()
+    expect(screen.getByRole('button', { name: /\(60s\)/ })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(60_000))
+    expect(screen.getByRole('button', { name: /ขอรหัส OTP ใหม่อีกครั้ง/ })).toBeEnabled()
   })
 })

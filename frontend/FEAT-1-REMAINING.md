@@ -108,6 +108,16 @@ section describe earlier reviews, not the contract used for this delivery.
   new-password login accepted, old-password login rejected, used reset link
   rejected, and incorrect/expired OTP rejected. Email evidence is from local
   Mailpit; external SMTP/inbox delivery is not established by this check.
+- [x] OTP quota-feedback fix (2026-10-06), verified against fetched remote
+  BE_KN@29a6aec: AV02 intentionally returns identical HTTP 200 at quota, so FE
+  tracks browser requests per email in a rolling hour, including registration.
+  After 3 accepted requests show an explicit quota warning, retry wait and disabled
+  resend; cooldown and history survive reload. Clears stale success text at quota.
+  Server issuance history on other browsers is unknown; this is local UI feedback,
+  not a claim that each accepted request sent an email or that server quota is known.
+- [x] OTP developer regressions: 7 tests cover 60-second cooldown, rolling-hour
+  release, three-request warning, reload, per-email isolation, failed requests
+  and leading-zero string submission. These are not live Mailpit acceptance.
 - [ ] Remaining Auth acceptance: resend cooldown (60 seconds) and quota
   (3/hour, including no additional email when exhausted), leading-zero OTP,
   and an expired reset link. These cases were not reported as tested.
