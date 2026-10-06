@@ -82,15 +82,33 @@ describe('สมัครสมาชิกและยืนยันอีเ�
     }
   });
 
-  it('🔒 ส่งฟิลด์ต้องห้ามตอนสมัคร (สิทธิ์แอดมิน/ยืนยันแล้ว/ระงับ) → ไม่มีผล', async () => {
+  /**
+   * 🔴 แก้ 6 ต.ค. 2569 ตอนรวมงาน user_type ของ vimsd (6b2311b)
+   *   เดิมเทสนี้คาดว่า user_type = 'student' เพราะโค้ดฝัง 'student' ไว้ใน SQL
+   *   ตอนนี้ระบบคิดจากโดเมนอีเมล (มติ ①ก3 · @ku.th) และอีเมลในเทสนี้ไม่ใช่ @ku.th
+   *   ⇒ ค่าที่ถูกคือ 'external' · เจตนาของเทส (ผู้สมัครตั้ง user_type เองไม่ได้) ไม่เปลี่ยน
+   *   ★ ยังเป็นเทสความปลอดภัยเหมือนเดิม: ส่ง userType: 'staff' มาแล้วต้องไม่ได้ 'staff'
+   *     เพิ่มเคส @ku.th คู่กัน เพื่อให้เห็นว่าค่าที่ได้มาจากโดเมน ไม่ใช่มาจากคำขอ
+   */
+  it('🔒 ส่งฟิลด์ต้องห้ามตอนสมัคร (สิทธิ์แอดมิน/ยืนยันแล้ว/ชนิดผู้ใช้) → ไม่มีผล', async () => {
     const email = 'escalate@test.local';
     const res = await anon.post('/auth/register').send({
       ...registration(email), emailVerified: true, email_verified: 1, adminScope: 'university_wide', userType: 'staff',
     });
     expect(res.status).toBe(201);
     expect(await verified(email)).toBe(false);
-    expect(await one('SELECT user_type FROM users WHERE email = ?', [email])).toEqual({ user_type: 'student' });
+    // 'external' เพราะโดเมนไม่ใช่ ku.th — ที่สำคัญคือ **ไม่ใช่ 'staff'** ที่ผู้สมัครส่งมา
+    expect(await one('SELECT user_type FROM users WHERE email = ?', [email])).toEqual({ user_type: 'external' });
     expect(await one('SELECT 1 FROM admin_scopes WHERE user_id = ?', [res.body.id])).toBeNull();
+  });
+
+  it('ชนิดผู้ใช้มาจากโดเมนอีเมล: @ku.th → student แม้ส่ง userType อื่นมา', async () => {
+    const email = 'nisit@ku.th';
+
+    const res = await anon.post('/auth/register').send({ ...registration(email), userType: 'staff' });
+
+    expect(res.status).toBe(201);
+    expect(await one('SELECT user_type FROM users WHERE email = ?', [email])).toEqual({ user_type: 'student' });
   });
 
   it('ขอรหัสใหม่ → รหัสใหม่ใช้ได้', async () => {
