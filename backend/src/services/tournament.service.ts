@@ -452,6 +452,20 @@ export async function updateTournament(tournamentId: number, userId: number, inp
     return getDetail(await getTournamentOr404(tournamentId));
 }
 
+/**
+ * มติ 6 ต.ค. 2569 (B7 ทางเลือก ก) — **API รับเฉพาะ object** ไม่เปิดให้ส่งเป็น JSON string
+ *   ด่าน zod (`amendmentRequestSchema`) ปฏิเสธ string ตั้งแต่ชั้น route แล้ว และ FE ส่ง object อยู่แล้ว
+ *   ถ้าวันหนึ่งจะเปิดรับ string ต้องคุยกับ FE ก่อน เพราะเป็นการเปลี่ยนสัญญา
+ *   และต้องตกลงด้วยว่า "string ที่พังรูป" ให้ตอบรหัสอะไร (ตอนนี้ตกที่ VALIDATION_FAILED ข้างล่าง)
+ *
+ * ★ branch string ที่นี่คือ **กันเหนียว ไม่ใช่เส้นทางที่ใช้งานจริง** — เก็บไว้เพราะราคาเท่า 4 บรรทัด
+ *   🔴 คอมเมนต์เดิม (ที่นี่และในเทส) อ้างว่า "อ่าน requested_changes จากฐานได้เป็น string จริง"
+ *     — ตรวจกับฐานจริงแล้วไม่ใช่: คอลัมน์เป็นชนิด json และตัวเชื่อม mysql2 แปลงให้เป็น object
+ *     ทุกทางที่โค้ดนี้ใช้ (query · execute · นิพจน์ JSON) · MySQL 8.4 · ตารางมี 0 แถว
+ *     ⇒ ไม่มีข้อมูลเก่าที่รูปทรงต่างค้างอยู่ด้วย
+ *   เหตุผลที่ยังเก็บไว้คือเหตุผลอื่น: เผื่อฐานที่ตั้งด้วยมือได้คอลัมน์เป็น text แทน json
+ *   และเผื่อสคริปต์/เทสที่เรียก service ตรงโดยไม่ผ่าน API (มีเทสล็อกเส้นนี้ไว้แล้ว)
+ */
 function normalizeChanges(value: unknown): AmendmentChanges {
     if (typeof value === 'string') {
         try {

@@ -122,9 +122,11 @@ describe('requestAmendment (C09)', () => {
     mockedTournamentRepo.insertAmendmentRequest.mockResolvedValue(900);
 
     // as any ไม่ใช่เพราะชนิดผิด — route ส่ง string มาไม่ได้ (amendmentRequestSchema ปฏิเสธที่ zod ก่อน)
-    // เทสนี้คุ้มครองเส้นนี้ไว้เผื่อมีคนเรียก service ตรง ๆ ในอนาคต
-    // 🔴 อย่าลบ branch string ใน normalizeChanges ตามเทสนี้ — ตัวเดียวกันใช้อ่าน requested_changes
-    //    จากฐานด้วย (getTournamentAmendments · getPendingAmendments · approveAmendment) ซึ่งเป็น string ได้จริง
+    // มติ 6 ต.ค. 2569 (B7 ทางเลือก ก): ไม่เปิดให้ API รับ string · เทสนี้คุ้มครอง branch กันเหนียว
+    //   ไว้เผื่อมีคนเรียก service ตรง ๆ (สคริปต์/เทส) และเผื่อฐานที่ตั้งด้วยมือได้คอลัมน์เป็น text
+    // 🔴 แก้คอมเมนต์ 6 ต.ค. — เดิมเขียนว่า "อ่าน requested_changes จากฐานได้เป็น string จริง"
+    //   ตรวจกับฐานจริงแล้วไม่ใช่: คอลัมน์เป็น json และ mysql2 คืนเป็น object ทุกทาง (ดูหัว normalizeChanges)
+    //   ⇒ อย่าอ้างเหตุผลนั้นต่อ แต่ก็ยังไม่ต้องลบ branch — ราคาถูกและกันเคสข้างบนได้
     const result = await Service.requestAmendment(26, 9, { requestedChanges: JSON.stringify({ maxTeams: 20 }) as any, reason: 'ทีมสมัครเยอะ' });
 
     expect(mockedTournamentRepo.insertAmendmentRequest).toHaveBeenCalledWith(26, 9, { maxTeams: 20 }, 'ทีมสมัครเยอะ');
