@@ -138,3 +138,60 @@ describe('suspendUser — ระยะเวลาระงับ (มติ 1 �
     expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
   });
 });
+
+/**
+ * ด่าน USER_HAS_ACTIVE_OBLIGATIONS — เดิม **ไม่มีเทสไหนเอ่ยถึงเลย** (ไล่ตรวจ 6 ต.ค. 2569)
+ *
+ * ★ นี่คือมติของทีมเรื่องอำนาจแอดมิน ไม่ใช่ validation เฉย ๆ:
+ *   ห้ามระงับคนที่ยังถือภาระค้างอยู่ เพราะถ้าระงับ คนที่เดือดร้อนคือ "คนอื่น" —
+ *   ทัวร์ที่เขาจัดอยู่จะไม่มีคนดูแล และทีมที่เขาเป็นหัวหน้าจะไม่มีคนกดอะไรได้
+ *   ⇒ ต้องจัดการภาระให้จบก่อน แล้วค่อยระงับ
+ *
+ * 🔴 ถ้าด่านนี้เงียบ จะไม่มีอะไรฟ้องเลย — การระงับสำเร็จตามปกติ
+ *   ความเสียหายไปโผล่ที่ทัวร์ที่ค้างอยู่ทีหลัง ซึ่งไล่ย้อนกลับมาหาสาเหตุนี้ยากมาก
+ */
+describe('suspendUser — ภาระค้างอยู่ (USER_HAS_ACTIVE_OBLIGATIONS)', () => {
+  it('ยังจัดทัวร์ที่เปิดอยู่ = 409 และไม่ระงับ', async () => {
+    mockedUserRepo.hasActivePublicTournamentAsOrganizer.mockResolvedValue(true);
+
+    await expect(suspendUser(admin , 9 , true , 'ก่อกวน' , 7 , 'abusive_language')).rejects.toMatchObject({
+      status : 409 , code : 'USER_HAS_ACTIVE_OBLIGATIONS',
+    });
+    expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+    expect(mockedAudit.insertAuditLog).not.toHaveBeenCalled();
+  });
+
+  it('เป็นหัวหน้าทีมที่มีใบสมัครอนุมัติแล้ว = 409 และไม่ระงับ', async () => {
+    mockedUserRepo.hasApprovedApplicationAsLeader.mockResolvedValue(true);
+
+    await expect(suspendUser(admin , 9 , true , 'ก่อกวน' , 7 , 'abusive_language')).rejects.toMatchObject({
+      status : 409 , code : 'USER_HAS_ACTIVE_OBLIGATIONS',
+    });
+    expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ★ ต้องเช็คทั้งสองอย่างพร้อมกันเสมอ (Promise.all) ไม่ใช่ลัดวงจรหยุดที่ตัวแรก
+   *   ไม่ใช่เรื่องความเร็ว แต่เพราะถ้าวันหนึ่งมีคนอยากให้ error บอกว่า "ค้างอะไรอยู่"
+   *   ต้องมีคำตอบทั้งสองข้าง ไม่ใช่รู้แค่ข้อแรกที่เจอ
+   */
+  it('ไม่มีภาระค้าง = ระงับได้ และถาม ครบทั้งสองอย่าง', async () => {
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , 7 , 'abusive_language');
+
+    expect(mockedUserRepo.hasActivePublicTournamentAsOrganizer).toHaveBeenCalledWith(9);
+    expect(mockedUserRepo.hasApprovedApplicationAsLeader).toHaveBeenCalledWith(9);
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalled();
+  });
+
+  /**
+   * ปลดระงับต้องไม่ติดด่านนี้ ไม่งั้นคนที่ถูกระงับไว้ตอนยังไม่มีภาระ
+   * แต่ภายหลังทีมของเขาได้รับอนุมัติ จะกลายเป็นปลดไม่ออกตลอดกาล
+   */
+  it('ปลดระงับไม่ติดด่านนี้ แม้มีภาระค้างอยู่', async () => {
+    mockedUserRepo.hasActivePublicTournamentAsOrganizer.mockResolvedValue(true);
+
+    await suspendUser(admin , 9 , false , undefined , undefined , undefined);
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
+  });
+});
