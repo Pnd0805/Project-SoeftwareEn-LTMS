@@ -1,0 +1,110 @@
+# Frontend QA / Notice — 7 ต.ค. 2026
+
+อ่านครบ `FE-Notice/TO-FE-2026-10-07-sport-capability-and-changes.md`,
+`FE-Notice/TO-team-2026-10-07-decisions-done-and-pending.md` และ
+`FE-Notice/LTMS_QA_Issues_Frontend.md` (FE-01–FE-43)
+
+ตรวจ remote ด้วย ls-remote และ fetch `BE_KN@8d161a6d25b1ebc501e1412bde37b911cfdea4de`
+ฐาน frontend เดิม `7c8f187`. แก้เฉพาะ checkout frontend นี้
+
+**ทำแล้ว = code implementation / developer checks ไม่ใช่ live QA sign-off.**
+36 ข้อทำใน FE แล้ว, 5 ข้อทำบางส่วน, 2 ข้อยังรอ endpoint/DTO
+ทุก flow ยังต้องทดสอบกับ BE_KN จริงหลัง migration และ reload
+
+## Notice วันนี้
+
+- [x] `supportsBestOf` จาก GET /sport-types คุม Request/Fixture/MatchFormat และ mock reference; เลิก helper ที่เดาชื่อกีฬา
+- [x] Unsupported sport ซ่อน selector; BO เดิมที่ผิดยังล้างด้วย `bestOf: null` ได้; whole-tournament มี confirmation และ server lock
+- [x] `BEST_OF_NOT_SUPPORTED` รักษา server message/field errors; เอกสาร [API-CONTRACT-2026-10-07.md](API-CONTRACT-2026-10-07.md)
+- [x] Root/University Admin Suspend ถูกปิดพร้อมเหตุผล; Reinstate ใช้กฎของ action เดิม
+- [x] U11 `expired` ใน DTO/Profile; existing tournament work ยังทำต่อได้; ไม่ขอเอกสารถ้า docsRequired=false
+- [x] UI เตือนเมื่อ approved.expiresAt อยู่ภายใน 30 วัน; ไม่ใช่ server notification ใหม่
+- [x] Private-match 404 ส่งต่อและหยุด enrichment; session ที่มี token ยังแนบ Authorization ตามเดิม
+- [x] /me 401 TOKEN_EXPIRED เปลี่ยนเป็น anonymous และล้าง token; login ใหม่ล้าง cache เดิม; logout 401 ล้าง local session ได้
+- [x] Login 403 EMAIL_NOT_VERIFIED มีทางกลับ OTP; FE ไม่เปิด verification gate แทน BE
+- [x] ตัดข้อความ automatic private-tournament deletion ที่ยังไม่มี implementation
+- [ ] Live privacy: anonymous private URL + organizer/admin/referee access + stale session
+- [ ] Live password reset: migration 046 แล้วตรวจ token เก่าและ login ใหม่ข้าม session
+- [ ] Live identity/docs: MinIO จริง, link expiry 20 นาที, file missing, expired -> new invitation
+- [ ] SMTP และ OTP จริงก่อนเปิด login verification gate
+
+## FE-01–FE-43
+
+| ID | สถานะโค้ด | การแก้ / ขอบเขต |
+|---|---|---|
+| FE-01 | ทำแล้ว | Progress ยอมปิดรายการเมื่อผลครบ รวม walkover ที่ไม่มี fixture |
+| FE-02 | ทำแล้ว | Home badge/filter/count และฟอร์มสมัครใช้ธง/ช่วงรับสมัครเดียวกัน; วาดสายไม่ปิดรับสมัครเอง |
+| FE-03 | ทำแล้ว | หัวหน้าเปิด Public ได้; search ยังคงอ่านเฉพาะทีมที่ API เปิดเผย |
+| FE-04 | ทำแล้ว | Join request, leader approve/reject, คำขอของฉันและ cancel |
+| FE-05 | รอ BE | ยังไม่มี endpoint ออกจากทีมด้วยตนเอง |
+| FE-06 | ทำแล้ว | หลังสมัคร refetch /me/applications และแสดงสถานะ; ตัดทีมที่ Pending/Approved ออกจากตัวเลือก |
+| FE-07 | ทำแล้ว | Official supportingDocs มี preview/refresh/error และ confirmation ก่อนอนุมัติ |
+| FE-08 | บางส่วน | FE กันวันเกิดอนาคต/วันที่ผิด และชั้นปี 1–8; BE ยังต้อง enforce และยืนยันช่วง |
+| FE-09 | ทำแล้ว | Review disclosure วันแข่ง/สนาม/จำนวนทีม/เงื่อนไขจาก API และ confirmation ก่อนอนุมัติ |
+| FE-10 | บางส่วน | ตัด /me และ /me/teams ที่ไม่จำเป็นสำหรับ guest Match; lazy-load review details; ยังไม่ได้วัด waterfall จริง |
+| FE-11 | บางส่วน | แยกคนชื่อซ้ำด้วย Player ID + ลิงก์ public profile; search DTO ไม่มี email/faculty |
+| FE-12 | ทำแล้ว | ใช้ A participant แทนการกล่าวว่าเป็นทีมเมื่อไม่มีข้อมูล actor |
+| FE-13 | ทำแล้ว | Admin queue ใช้ calendar date ไม่ขึ้น 07:00 |
+| FE-14 | ทำแล้ว | หน้าทัวร์แสดงวันเริ่ม–วันสุดท้าย |
+| FE-15 | ทำแล้ว | วันที่ใช้ en-GB; timestamp กำหนด Bangkok, calendar date ไม่เลื่อนวัน |
+| FE-16 | ทำแล้ว | Finished รอ completed จาก BE; ไม่เดาจากวันแข่งที่ผ่านมา; ชื่อสิทธิ์อ่านง่าย |
+| FE-17 | ทำแล้ว | แก้ข้อความ Fixture error ที่ถูกตัดคำ |
+| FE-18 | ทำแล้ว | โอนหัวหน้าทีมอธิบายว่าเฉพาะ Official |
+| FE-19 | ทำแล้ว | เลิกแสดง VIA API เป็นแหล่งที่มาของใบสมัคร |
+| FE-20 | ทำแล้ว | นับ fixture/referee เฉพาะแมตช์ที่ยังไม่ completed |
+| FE-21 | ทำแล้ว | Login แสดง server error ของ credentials |
+| FE-22 | ทำแล้ว | Forgot/reset password ภาษาไทยและสถานะครบ |
+| FE-23 | ทำแล้ว | ตรวจสถานะทัวร์ก่อน Withdraw; completed ไม่มีปุ่มถอน |
+| FE-24 | ทำแล้ว | Initial random draw มี confirmation; Cancel ไม่สร้างแมตช์ |
+| FE-25 | ทำแล้ว | Dispute confirmation แสดง decision/score/reason ก่อนส่ง |
+| FE-26 | ทำแล้ว | Guest player search มีคำแนะนำให้ sign in |
+| FE-27 | ทำแล้ว | แก้ contactInfo/address/showProfileStats พร้อม save/error |
+| FE-28 | ทำแล้ว | Guest /me gates, user admin-scope gate, stale guest guard, expiry handling และ login/logout cache clear |
+| FE-29 | ทำแล้ว | Player-stat inputs มี accessible name |
+| FE-30 | ทำแล้ว | Request validation มี aria-invalid/describedby และข้อความทุกช่องที่รายงาน |
+| FE-31 | ทำแล้ว | Announcement create/edit/delete, 5 types, trim, confirmation, cache refresh |
+| FE-32 | รอ BE | Standings ไม่คืน eliminated round/outLabel; แสดง Not provided และไม่แต่งรอบเอง |
+| FE-33 | ทำแล้ว | Elimination dashboard ไม่โชว์ pts เป็นเกณฑ์จัดอันดับ; อันดับตาม BE |
+| FE-34 | ทำแล้ว | กันประกาศว่างหลัง trim; legacy card ว่างมีคำอธิบาย; BE ต้องกัน direct API ด้วย |
+| FE-35 | ทำแล้ว | /m/:id/pickem เปิด canonical community view |
+| FE-36 | ทำแล้ว | Prediction closed แยก finished/completed กับ started |
+| FE-37 | ทำแล้ว | Report user + evidence uploads และ admin paginated queue/decisions/confirmation |
+| FE-38 | บางส่วน | รายทัวร์มีคิว reported comments/reviews + เนื้อหา + confirmation; restore เดิมเป็น action รอง; global/deleted-history API ยังไม่มี |
+| FE-39 | บางส่วน | Hard-filter reason + Current/Requested จาก detail/rules; approved count ไม่ใช่ affected count ที่ BE ยังไม่ส่ง |
+| FE-40 | ทำแล้ว | Self guards และ Root/University suspension protection; Reinstate ไม่ถูกปิดด้วยกฎ Suspend |
+| FE-41 | ทำแล้ว | Admin rights ค้นผู้ใช้ด้วยชื่อ/ID และแสดงชื่อระดับสิทธิ์ |
+| FE-42 | ทำแล้ว | Audit page 20 records ใช้ server pagination เข้าถึงเกิน 100; search/filter ระบุ current page |
+| FE-43 | ทำแล้ว | Notification preferences เคารพ locked critical; Stalled overview read-only และ scope gates |
+
+## งานส่งต่อ BE / ทีม
+
+รายละเอียด [TO-BACKEND-2026-10-07-frontend-qa-response.md](TO-BACKEND-2026-10-07-frontend-qa-response.md)
+
+- [x] Migration 046 token_version และ 047 supports_best_of ยืนยันในฐาน local QA แล้ว
+- [ ] Self-leave endpoint, eliminated-round standings, richer safe search DTO,
+  global reported-feedback/deleted-history queue และ affected-team count
+- [ ] BE birthday/year validation และ trim ประกาศว่างจาก direct API
+- [ ] B2 Official membership single team/sport, B4 cleanup/4-year retention,
+  cancellation, referee user_type/backfill และ rewards artwork/criteria ตามมติทีม
+- [ ] วัด Network timing ของ Match/Fixture/Teams บน API ที่ทำงานจริง
+- [x] Live API integration 66 checks: registration/approval/withdrawal, joins,
+  uploads/report rejection, announcement CRUD, preferences, draw/BO and permissions
+- [x] Browser login/reload/logout, profile/preferences, admin scope/cache,
+  announcement create/edit/cancel, private tournament/match และ MinIO image preview
+- [ ] Browser upload/CORS PUT, join conflicts, dispute decisions และ reset-token acceptance
+- [ ] Mobile/light theme, manual draw, online mode และ real-device scanning
+
+## Validation รอบนี้
+
+- `npm.cmd test -- --maxWorkers=2`: **92 files / 543 tests ผ่าน**; `npm.cmd run lint`, `npm.cmd run build` (รวม TypeScript) ผ่าน; `git diff --check` ผ่าน. Build ยังมีคำเตือน bundle >500 kB (main 924.20 kB)
+- Vite isolated port 5193: root, /admin/user-reports และ 4 modules ที่แก้ตอบ HTTP 200;
+  หยุดเฉพาะ server ที่เริ่มรอบนี้แล้ว การโหลด HTML/module ไม่ใช่ browser flow acceptance
+- Follow-up หลังผู้ใช้เปิด services: live API ผ่าน 66 checks; แก้ audit role gate;
+  focused regression 4 files / 25 tests, lint/build ผ่าน (main 924.47 kB).
+  [รายละเอียดผลจริงและ BE blockers](QA-LIVE-2026-10-07.md)
+- Browser เชื่อมต่อ Chrome แล้ว; [ผล QA ตาม flow ที่ทดสอบจริง](QA-BROWSER-2026-10-07.md).
+  แก้ checkbox layout และข้อความ announcement visibility เพิ่ม; focused 6 files / 27 tests,
+  lint และ build ผ่าน (main 924.59 kB).
+  ยังไม่ถือว่าปิด FE-01–FE-43 ทั้งหมด ไม่แก้ backend หรือรัน migration;
+  ใช้ข้อมูล QA และคืนค่า/ลบประกาศทดสอบแล้ว
+- คงการลบ HANDOVER-2026-09-22/23 และไฟล์ FE-Notice ที่มีอยู่เดิมไว้ตามสภาพเดิม

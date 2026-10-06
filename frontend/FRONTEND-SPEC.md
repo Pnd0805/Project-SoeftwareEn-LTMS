@@ -4,6 +4,11 @@ Resolved via grilling session on top of `requirement.txt`, then extended after a
 Then reconciled against the five user story maps and the SRS flowcharts, which overruled several earlier calls.
 See `CONTEXT.md` for term definitions. Built out in `ltms-mockup.html` (77 screens).
 
+Current implementation addendum (7 Oct 2026):
+[API contract](API-CONTRACT-2026-10-07.md),
+[QA status](FE-QA-ACTION-LIST-2026-10-07.md).
+These document the delivered BE_KN fields, error codes and open acceptance items.
+
 ## Visual style
 - **v1 is street graffiti over the NEW_UI aurora palette** (`NEW_UI/color pattle.jpg`):
   Black Velvet `#212231` cards on a `#181926` ground, Supernatural `#313642` raised, Silver Tree

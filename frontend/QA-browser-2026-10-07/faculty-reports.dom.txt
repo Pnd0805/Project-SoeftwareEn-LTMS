@@ -1,0 +1,68 @@
+- button "Skip to the main content"
+- navigation:
+  - generic: LTMS
+  - button "Tournaments":
+    - generic: Tournaments
+  - button "Admin":
+    - generic: Admin
+  - button "Teams":
+    - generic: Teams
+  - button "Matches":
+    - generic: Matches
+  - button "Inbox":
+    - generic: Inbox
+  - button "Profile":
+    - generic: Profile
+  - emphasis: //
+  - text: Signed in as
+  - generic: อาจารย์วิศวะ
+  - generic: "Role: Admin"
+  - button "Log out":
+    - text: Log out
+- textbox "Search":
+  - /placeholder: Search tournaments, teams, players…
+- button "Switch to light mode":
+- button "Notifications, 0 unread":
+- link "Open my profile":
+  - /url: /me
+  - text: อ
+- main:
+  - emphasis: //
+  - text: System administration
+  - heading "Admin" [level=1]
+  - generic: 2 to organize
+  - generic: 3 change requests
+  - button "Requests to organize"
+  - button "Permanent squads"
+  - button "External referees"
+  - button "Hard-filter changes"
+  - button "All tournaments"
+  - button "Users"
+  - button "User reports" [active]
+  - button "Stalled work"
+  - button "Admin rights"
+  - button "Leader transfers"
+  - button "Audit logs"
+  - button "Feedback"
+  - heading "User reports" [level=3]
+  - article:
+    - text: "ผู้เล่น เอหนึ่ง · Report #2 · rejected"
+    - paragraph: Reported by มานะ ไร้ทีม
+    - paragraph: Disposable QA report - no real allegation
+    - generic: 1 ไฟล์
+    - link "เอกสาร 1 · d58f5e49-4e32-4c42-b4cf-18193d8518ca.png":
+      - /url: http://127.0.0.1:9000/ltms-uploads/report_evidence/9003/d58f5e49-4e32-4c42-b4cf-18193d8518ca.png?[presigned query redacted]
+    - img "เอกสาร 1 · d58f5e49-4e32-4c42-b4cf-18193d8518ca.png"
+    - paragraph: "Reviewed by สมชาย ใจดี: Disposable QA completed; no action against user"
+  - article:
+    - text: "ผู้เล่น เอหนึ่ง · Report #1 · rejected"
+    - paragraph: Reported by มานะ ไร้ทีม
+    - paragraph: Disposable QA report - no real allegation
+    - generic: 1 ไฟล์
+    - link "เอกสาร 1 · 6f44d7c0-52de-4211-9a23-b31d4ab2fadf.png":
+      - /url: http://127.0.0.1:9000/ltms-uploads/report_evidence/9003/6f44d7c0-52de-4211-9a23-b31d4ab2fadf.png?[presigned query redacted]
+    - img "เอกสาร 1 · 6f44d7c0-52de-4211-9a23-b31d4ab2fadf.png"
+    - paragraph: "Reviewed by สมชาย ใจดี: Disposable QA completed; no action against user"
+  - button "Previous" [disabled]
+  - generic: Page 1
+  - button "Next" [disabled]

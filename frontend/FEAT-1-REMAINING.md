@@ -3,6 +3,36 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## Notice / QA implementation — 2026-10-07
+
+- [x] Read today's TO-FE, TO-team and FE-01–FE-43. Verified/fetched
+  `BE_KN@8d161a6d25b1ebc501e1412bde37b911cfdea4de`.
+- [x] Implemented 36 FE issues; 5 partial and 2 blocked by missing BE routes/DTO.
+  Full issue-by-issue status: [FE-QA-ACTION-LIST-2026-10-07.md](FE-QA-ACTION-LIST-2026-10-07.md).
+- [x] Server-owned BO capability and legacy null clearing; Root/University Admin
+  Suspend protection; expired referee identity and 30-day UI reminder.
+- [x] Registration windows/status refresh; completed-match fixture progress;
+  real completed status instead of date-based completion; completed withdrawal guard.
+- [x] Team public/admission management, profile/contact/statistics settings,
+  notification preferences, user-report evidence + admin queue, read-only oversight,
+  paginated audit history and reported-feedback moderation per tournament.
+- [x] Approval/draw/dispute confirmations, announcement CRUD/types/trim,
+  readable dates/copy, accessible validation/stat inputs, guest/session/cache gates.
+- [x] Developer validation: **92 files / 543 tests**, lint, TypeScript/production build
+  and diff check pass. Main bundle 924.20 kB; existing >500 kB warning remains.
+- [x] Isolated Vite port 5193: app routes and changed modules HTTP 200, then stopped.
+- [x] Local contract note: [API-CONTRACT-2026-10-07.md](API-CONTRACT-2026-10-07.md).
+  BE handoff: [TO-BACKEND-2026-10-07-frontend-qa-response.md](TO-BACKEND-2026-10-07-frontend-qa-response.md).
+- [ ] BE self-leave, eliminated-round standings, richer safe user search,
+  affected-team count, global feedback/deleted-history listing and DOB/year validation.
+- [x] Migration 046/047 verified in running local QA; 66 authenticated API/adapters checks passed.
+  [Live evidence and BE findings](QA-LIVE-2026-10-07.md). Audit Faculty permission gate fixed;
+  4 files / 25 focused tests, lint and build passed (main 924.47 kB).
+- [ ] SMTP/OTP and team decisions (B2/B4/cancellation/type backfill/rewards).
+- [ ] Live authenticated acceptance, reload/role/privacy/MinIO/token reset,
+  mobile/light/manual/online/real-device QA. API now running, but no browser surface
+  is connected; API integration does not close browser/device acceptance.
+
 ## External referee change integration — 2026-10-06
 
 - [x] Read External To-FE; verified/fetched BE_KN@29a6aec (includes 4703e35).
@@ -2764,7 +2794,8 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
   mutation failures visible. Uses the existing moderation endpoint.
 - [x] Admin Audit logs use cards, actor avatars/names, action and entity badges,
   explicit Bangkok time, and expandable labeled detail fields. Search and entity
-  filters apply to the latest 100 returned records; no global totals are inferred.
+  filters apply to the current server page; 7 Oct follow-up added pagination.
+  No global search totals are inferred.
 - [x] Profile image deletion button reads `Remove Photo`; the existing null-avatar
   request and upload behavior are preserved.
 - [x] Real-mode Match has a `Vote MVP` tab at `/m/:id/mvp`, scoped directly to that
@@ -2779,3 +2810,18 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
 - Backend: no new endpoint needed for these UI changes. Existing Announcement
   producer and Profile MVP aggregate requests remain separately tracked in
   `TO-BACKEND-2026-10-01-frontend-workflows.md`.
+
+## 2026-10-07: Connected browser follow-up
+
+- [x] Chrome real-mode QA: guest entry filter, seeded login/reload/logout,
+  profile/preferences persistence, Faculty gates, University audit pagination,
+  cross-role audit cache hiding, private tournament/match denial, organizer
+  announcement create/edit/validation/delete-cancel and MinIO image preview.
+- [x] Fix Profile checkbox layout and private-tournament announcement wording.
+  Focused regression: 6 files / 27 tests passed.
+- [x] Restore QA preferences/contact, remove only the browser-created QA
+  announcement, reset viewport override and log out the final QA account.
+- [ ] Browser file upload/expiry, network waterfall, SMTP/reset/expired identity,
+  join conflicts/dispute decisions, mobile/light/manual/online/real-device QA.
+- Exact coverage and capture limitations: [QA-BROWSER-2026-10-07.md](QA-BROWSER-2026-10-07.md).
+  BE handoff priorities: [TO-BACKEND-2026-10-07-frontend-qa-response.md](TO-BACKEND-2026-10-07-frontend-qa-response.md).
