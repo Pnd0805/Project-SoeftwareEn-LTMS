@@ -65,6 +65,9 @@ describe('RegisterPage OTP flow', () => {
     expect(screen.getByText('newuser@ku.th')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('123456')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'ยืนยันรหัส OTP' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'เข้าสู่ระบบ' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'เข้าสู่ระบบ' })).not.toBeInTheDocument()
+    expect(screen.getByText('กรุณายืนยัน OTP ให้สำเร็จก่อนเข้าสู่ระบบ')).toBeInTheDocument()
   })
 
   it('allows entering 6-digit OTP code and calls verifyEmail', async () => {

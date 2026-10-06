@@ -3,6 +3,21 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## OTP login bypass report — 2026-10-06
+
+- [x] Verified/fetched remote BE_KN@29a6aec: login checks credentials and
+  suspension, then issues a token without checking `email_verified`; auth loader
+  also omits this gate. The user's bypass is consistent with current source.
+- [x] Removed Login link from pending OTP; show a verification instruction.
+  Login button is available only after successful OTP verification in this step.
+- [x] Developer verification: 7 Auth UI tests, lint, build and diff check passed;
+  existing main-bundle size warning remains. Backend enforcement is still open.
+- [ ] Backend enforcement and old-token rejection are required; frontend link
+  removal does not prevent direct `/login` or direct login API access. See
+  `TO-BACKEND-2026-10-06-otp-login-bypass.md` for proposed contract and regressions.
+- [ ] Live acceptance: deny login before verification, accept after valid OTP;
+  wrong/expired OTP and previously-issued tokens must not bypass the gate.
+
 ## F14 / U04 backend reply integration — 2026-10-06
 
 - [x] Read `FE-Notice/TO-FE-2026-10-06-f14-cross-tournament-and-u04.md`;

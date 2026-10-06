@@ -193,7 +193,7 @@ export function RegisterPage() {
 
         <div className="hstack" style={{ justifyContent: 'space-between', gap: 8, marginTop: 12 }}>
           <Link className="btn ghost" to="/register">ย้อนกลับไปหน้าสมัคร</Link>
-          <Link className="btn ghost" to="/login">เข้าสู่ระบบ</Link>
+          {!otpSuccess ? <span className="sub">กรุณายืนยัน OTP ให้สำเร็จก่อนเข้าสู่ระบบ</span> : null}
         </div>
       </div></div>
     )
