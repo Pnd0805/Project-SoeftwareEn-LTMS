@@ -18,6 +18,8 @@ import { Modal } from '../../components/kit/Modal'
 import { useExternalRefereeRequests, useReviewExternalReferee, useRequestExternalRefereeDocs } from '../../hooks/useAdmin'
 import { USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
+import { useNow } from '../../hooks/useNow'
+import { IdentityDocs } from './IdentityDocs'
 import type { ExternalRefereeRequestDto } from '../../types/admin.dto'
 
 /* migration 036 — AR02 อนุมัติ "คน" = ทุกแถวของคนนั้น ถ้ามีสองใบรอในทัวร์เดียวกันจะกลายเป็นใช้งานพร้อมกัน
@@ -33,6 +35,7 @@ const statusOf = (error: unknown) => (error as { status?: number } | null)?.stat
 
 export function AdminRefereesTab() {
   const navigate = useNavigate()
+  const now = useNow()
   const requests = useExternalRefereeRequests()
   const review = useReviewExternalReferee()
   const requestDocs = useRequestExternalRefereeDocs()
@@ -118,11 +121,8 @@ export function AdminRefereesTab() {
                   </td>
                   <td className="sub">{r.invitedBy?.fullName ?? '—'}</td>
                   <td>
-                    {(r.docs ?? []).length ? <>
-                      <div>{r.docs!.length} ไฟล์</div>
-                      {r.docs!.map((key, index) => <div className="sub" key={key}>เอกสาร {index + 1} · {key.split('/').at(-1)}</div>)}
-                      <span className="sub">ยังเปิดดูเอกสารไม่ได้ในระบบนี้</span>
-                    </> : <span className="sub">ยังไม่มีเอกสาร</span>}
+                    <IdentityDocs docs={r.docs} docsSubmitted={r.docsSubmitted} fetchedAt={requests.dataUpdatedAt}
+                      now={now} refreshing={requests.isFetching} onRefresh={() => void requests.refetch()} />
                   </td>
                   <td>
                     <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>

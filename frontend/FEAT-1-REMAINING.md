@@ -177,9 +177,14 @@ section describe earlier reviews, not the contract used for this delivery.
   `referee_identity` purpose before submitting keys to U12. Supports initial
   submission/resubmission and Admin request-docs with a reason of up to 500 characters.
   Admin sees document count/filenames and the organizer sees needs_docs correctly.
-- [ ] Backend blocker: AR01 supplies private document keys but the current
-  BE_KN routes expose no authorized referee-identity download/read URL. Admin
-  cannot open these documents yet; no public URL or alternative upload purpose is used.
+- [x] AR01 document links (BE_KN `462fdb1`, 20-minute presigned URLs): the admin
+  queue links each file by name and previews images (`features/admin/IdentityDocs.tsx`).
+  A failed image load says the document could not be opened and offers Refresh
+  queue — never "no documents". Links older than 18 minutes prompt a refresh.
+  "Submitted but no link" is shown apart from "nothing submitted". Live 6 Oct:
+  the seed file for 9053 returns 404 from MinIO and the queue shows the
+  could-not-open state. A PDF failure cannot be detected across origins, so
+  PDFs rely on the expiry notice.
 - [ ] Live acceptance for the new identity/docs and FR09 flows, including
   organizer decisions, cancellation, duplicate/stale requests and cross-tournament
   conflicts, remains deferred. Developer checks do not close these cases.
