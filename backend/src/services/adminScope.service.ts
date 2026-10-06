@@ -179,6 +179,29 @@ async function performSuspend(admin : AdminScopeRow , targetUserId : number , re
     const target = await checkUser(targetUserId);
     await assertCanActOnUser(admin , targetUserId , target);
 
+    // ย้ายขึ้นมาจากข้างล่าง (เดิมอ่านหลังด่านเหตุผล/ภาระค้าง) — ใช้ค่าเดียวกันทั้งด่าน root และด่าน university admin คนสุดท้าย
+    const targetScope = await AdminRepo.findAdminByUserId(targetUserId);
+
+    /**
+     * 🔴 A1 (integration test เจอ 6 ต.ค. 2569) — ห้ามระงับบัญชี root ไม่ว่าใครจะเป็นคนขอ
+     *
+     * เดิม assertCanActOnUser จำกัดเฉพาะแอดมินคณะ และด่านล่างกันแค่ "university admin คนสุดท้าย"
+     * ⇒ university admin ระงับ root ได้ · root ที่ถูกระงับเรียก API อะไรไม่ได้เลย (requireAuth ตอบ 403)
+     * ขัดกับเจตนาในโค้ดเอง: revokeScope ห้ามถอนสิทธิ์ root "ไม่ว่าใครจะเป็นคนขอ" เพราะต้องมีเสมอ 1 คน
+     * แต่การระงับบัญชีให้ผลเดียวกันคือ root ใช้ระบบไม่ได้ ⇒ ด่านที่ตั้งไว้ถูกเดินอ้อมได้ด้วยปุ่มอื่น
+     *
+     * ★ ที่ตัดสินเอง: วางด่านที่ performSuspend ไม่ใช่ assertCanActOnUser
+     *   assertCanActOnUser ใช้ร่วมกับ "ยกเลิกการระงับ" และ "ปฏิเสธคำร้อง" ด้วย
+     *   ถ้าวางที่นั่น จะกลายเป็น "ปลดระงับ root ก็ไม่ได้" ซึ่งเป็นการกู้คืน ไม่ใช่การทำร้าย
+     *   (root ที่ถูกระงับไว้ก่อนหน้านี้ทางฐาน ยังต้องปลดได้) ⇒ กันเฉพาะทางที่ทำร้าย
+     * ★ ครอบทั้งสองทางที่ระงับได้จริง: PATCH /admin/users/:id/suspend และการอนุมัติคำร้องผู้ใช้
+     *   เพราะทั้งคู่ลงมาที่ฟังก์ชันนี้ที่เดียว
+     */
+    if(targetScope?.scope_type === 'root'){
+        throw new AppError(403 , "CANNOT_SUSPEND_ROOT" ,
+                           "ไม่สามารถระงับบัญชี Root ได้ — ระบบต้องมี Root อยู่เสมอ แก้ได้ทางฐานข้อมูลเท่านั้น");
+    }
+
     if(!reason){
         throw new AppError(400 , "SUSPEND_REASON_REQUIRED" , "กรุณาระบุเหตุผลที่ระงับผู้ใช้");
     }
@@ -195,8 +218,8 @@ async function performSuspend(admin : AdminScopeRow , targetUserId : number , re
         throw new AppError(409 , "USER_HAS_ACTIVE_OBLIGATIONS" , "ผู้ใช้นี้มีทัวร์นาเมนต์หรือทีมที่กำลังดำเนินอยู่ ต้องจัดการให้เสร็จก่อนระงับ");
     }
 
-    // targetScope เป็น null เสมอในเคสปกติ เพราะ assertCanActOnUser กันแอดมินคณะไปแล้ว — เหลือแค่ university_wide ที่ระงับแอดมินได้จริง
-    const targetScope = await AdminRepo.findAdminByUserId(targetUserId);
+    // targetScope อ่านไว้ข้างบนแล้ว (ด่าน root) — ในเคสปกติเป็น null เพราะ assertCanActOnUser กันแอดมินคณะไปแล้ว
+    // เหลือแค่ university_wide ที่ระงับแอดมินได้จริง
     if(targetScope?.scope_type === 'university_wide'){
         const activeCount = await AdminRepo.countActiveUniversityWideAdmins();
         if(activeCount <= 1){

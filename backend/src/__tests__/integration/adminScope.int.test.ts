@@ -175,19 +175,22 @@ describe('PATCH /admin/users/:id/suspend — ขอบเขตของกา�
   });
 
   /**
-   * 🐞 ช่องโหว่ที่ integration test เจอ (6 ต.ค.) — ยังไม่ได้แก้ production
-   *   assertCanActOnUser จำกัดเฉพาะแอดมินคณะ · performSuspend กันแค่ "university admin คนสุดท้าย"
-   *   ⇒ university admin ระงับบัญชี root ได้ · root ที่ถูกระงับเรียก API อะไรไม่ได้เลย (requireAuth ตอบ 403)
-   *   ขัดกับเจตนาในโค้ดเอง: revokeScope ห้ามแตะ root "ไม่ว่าใครจะเป็นคนขอ" — แต่การระงับปิดบัญชีได้ผลเดียวกัน
-   *   และ root แก้ได้ทางฐานเท่านั้น ⇒ เท่ากับ university admin ล็อก root ออกจากระบบได้
-   * ทางแก้ที่เสนอ: ใน assertCanActOnUser ห้ามทุกคนระงับผู้ที่มี scope_type = 'root'
-   *   (และควรเคาะกับทีมว่า university admin ระงับ university admin คนอื่นได้ไหม — ตอนนี้ได้)
-   * ★ it.fails = ผ่านตราบที่ช่องโหว่ยังอยู่ · แก้แล้วจะแดง ⇒ เปลี่ยนเป็น it ธรรมดา
+   * A1 — แก้แล้ว 6 ต.ค. 2569 (เดิมเป็น it.fails: ช่องโหว่)
+   *
+   * university admin ระงับบัญชี root ได้ ⇒ root เรียก API อะไรไม่ได้เลย (requireAuth ตอบ 403)
+   * ขัดกับเจตนาในโค้ดเอง: revokeScope ห้ามถอนสิทธิ์ root "ไม่ว่าใครจะเป็นคนขอ" เพราะต้องมีเสมอ 1 คน
+   * แต่การระงับให้ผลเดียวกัน ⇒ เท่ากับเดินอ้อมด่านนั้นด้วยปุ่มอื่น
+   * ด่านใหม่อยู่ที่ performSuspend ⇒ ครอบทั้ง PATCH suspend และการอนุมัติคำร้องผู้ใช้
+   * ★ กันเฉพาะ "ระงับ" — "ปลดระงับ root" ยังทำได้ (เป็นการกู้คืน มีเทสที่ชั้น unit)
    */
-  it.fails('🐞 university admin ระงับ root → ต้องถูกปฏิเสธ (ตอนนี้ทำได้)', async () => {
+  it('university admin ระงับ root → 403 และ root ยังใช้ระบบได้', async () => {
     const res = await suspend(uni, root.id);
+
     expect(res.status).toBe(403);
+    expect(res.body.error?.code ?? res.body.code).toBe('CANNOT_SUSPEND_ROOT');
     expect(await isSuspended(root.id)).toBe(false);
+    // ★ ข้อสำคัญของบั๊กนี้คือ root ถูกล็อกออกจากระบบ ⇒ ยืนยันว่ายังเรียก API ได้จริง
+    expect((await as(root).get('/admin/scopes')).status).toBe(200);
   });
 });
 

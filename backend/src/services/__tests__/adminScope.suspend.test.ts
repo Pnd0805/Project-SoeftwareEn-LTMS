@@ -28,12 +28,14 @@ vi.mock('../../repositories/auditLog.repo.js', () => ({
 }));
 
 import { suspendUser } from '../adminScope.service.js';
+import * as AdminRepo from '../../repositories/adminScope.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import * as AuditLogRepo from '../../repositories/auditLog.repo.js';
 import type { AdminScopeRow } from '../../types/db.js';
 
 const mockedUserRepo = vi.mocked(UserRepo);
 const mockedAudit = vi.mocked(AuditLogRepo);
+const mockedAdminRepo = vi.mocked(AdminRepo);
 
 const NOW = new Date('2026-10-01T12:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -57,6 +59,10 @@ beforeEach(() => {
   mockedUserRepo.suspendUser.mockResolvedValue(1);
   mockedUserRepo.hasActivePublicTournamentAsOrganizer.mockResolvedValue(false);
   mockedUserRepo.hasApprovedApplicationAsLeader.mockResolvedValue(false);
+  // 🔴 clearAllMocks ไม่ล้าง implementation ⇒ ต้องตั้งค่าเริ่มต้นเองทุกเทส ไม่งั้นค่าจากเทสก่อนรั่วมา
+  mockedAdminRepo.findAdminByUserId.mockResolvedValue(null);
+  mockedAdminRepo.countActiveUniversityWideAdmins.mockResolvedValue(5);
+  mockedAdminRepo.countActiveFacultyAdmins.mockResolvedValue(5);
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -193,5 +199,46 @@ describe('suspendUser — ภาระค้างอยู่ (USER_HAS_ACTIVE_
     await suspendUser(admin , 9 , false , undefined , undefined , undefined);
 
     expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
+  });
+});
+
+/**
+ * 🔴 A1 (แก้ 6 ต.ค. 2569) — ห้ามระงับบัญชี root ไม่ว่าใครจะเป็นคนขอ
+ *
+ * เดิม university admin ระงับ root ได้ ⇒ root เรียก API อะไรไม่ได้เลย (requireAuth ตอบ 403)
+ * ขัดกับเจตนาในโค้ดเอง: revokeScope ห้ามถอนสิทธิ์ root เพราะระบบต้องมี root เสมอ
+ * แต่การระงับบัญชีให้ผลเดียวกัน ⇒ เดินอ้อมด่านนั้นได้ด้วยปุ่มอื่น
+ * ★ กันเฉพาะ "ระงับ" ไม่กัน "ปลดระงับ" — ปลดระงับคือการกู้คืน root ที่ติดอยู่
+ */
+describe('suspendUser — ห้ามระงับ root (A1)', () => {
+  const rootScope = { admin_scope_id : 99 , user_id : 9 , scope_type : 'root' , faculty_id : null } as AdminScopeRow;
+
+  it('university admin ระงับ root → 403 CANNOT_SUSPEND_ROOT และไม่เขียนฐานเลย', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(rootScope);
+
+    await expect(suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language'))
+      .rejects.toMatchObject({ status : 403 , code : 'CANNOT_SUSPEND_ROOT' });
+
+    expect(mockedUserRepo.suspendUser).not.toHaveBeenCalled();
+    expect(mockedAudit.insertAuditLog).not.toHaveBeenCalled();
+  });
+
+  /** ★ ปลดระงับ root ต้องยังทำได้ — ไม่งั้น root ที่ถูกระงับไว้ก่อนหน้านี้จะติดถาวร */
+  it('ปลดระงับ root ยังทำได้', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(rootScope);
+
+    await suspendUser(admin , 9 , false , undefined , undefined , undefined);
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalledWith(9 , false , null);
+  });
+
+  /** ★ แอดมินคนอื่นที่ไม่ใช่ root ยังระงับได้ตามเดิม — ด่านใหม่ต้องไม่กินกว้างเกิน */
+  it('ระงับ university admin คนอื่นยังทำได้ตามเดิม (ยังไม่มีมติให้ห้าม — ข้อ B5)', async () => {
+    mockedAdminRepo.findAdminByUserId.mockResolvedValue(
+      { admin_scope_id : 7 , user_id : 9 , scope_type : 'university_wide' , faculty_id : null } as AdminScopeRow);
+
+    await suspendUser(admin , 9 , true , 'ก่อกวน' , undefined , 'abusive_language');
+
+    expect(mockedUserRepo.suspendUser).toHaveBeenCalled();
   });
 });
