@@ -191,9 +191,13 @@ describe('กรรมการภายนอก — ต้องผ่าน�
     teamA = await createTeam({ leader: (await createUser()).id, sportTypeId: sport });
     teamB = await createTeam({ leader: (await createUser()).id, sportTypeId: sport });
     match = await createMatch({ tournamentId: tour, teamA, teamB, status: 'finished' });
+    // 🔴 มติ 6 ต.ค. 2569 (ทางเลือก ข) — แอดมินอนุมัติคนที่ยังไม่ส่งเอกสารไม่ได้ (409 DOCS_NOT_SUBMITTED)
+    //   ⇒ fixture ต้องมีเอกสารแล้ว ไม่งั้นเทส "อนุมัติ → ส่งผลได้" จะติดด่านใหม่ ไม่ใช่ติดเรื่องที่ทดสอบ
+    //   ไม่ใช่การลดความเข้มของเทส — เคส "ไม่มีเอกสารแล้วอนุมัติ" มีเทสของตัวเองข้างล่าง
     const row = await insert('tournament_referees', {
       tournament_id: tour, user_id: external.id, invited_by: organizer.id,
       invitation_status: 'accepted', is_external: 1, external_approval_status: 'pending',
+      external_verification_docs: JSON.stringify(['referee_identity/doc-1.jpg']),
     });
     await assignMatchReferee({ matchId: match, tournamentRefereeId: row });
   });
@@ -213,6 +217,19 @@ describe('กรรมการภายนอก — ต้องผ่าน�
     if (scope) await makeAdmin(who.id, scope, faculty);
     expect((await as(who).post(`/admin/referee-requests/${external.id}/approve`)).status).toBe(403);
     expect(await approvalOf()).toBe('pending');
+  });
+
+  /** มติ 6 ต.ค. 2569 (ทางเลือก ข) — ไม่มีเอกสาร = อนุมัติไม่ได้ ต้องรอ/ทวงเอกสารก่อน */
+  it('ยังไม่ส่งเอกสาร → แอดมินมหาวิทยาลัยอนุมัติไม่ได้ (409) · ยัง pending', async () => {
+    await testDb().query('UPDATE tournament_referees SET external_verification_docs = NULL WHERE user_id = ?', [external.id]);
+    const admin = await createUser();
+    await makeAdmin(admin.id, 'university_wide');
+
+    const res = await as(admin).post(`/admin/referee-requests/${external.id}/approve`);
+
+    expect(res.status).toBe(409);
+    expect(await approvalOf()).toBe('pending');
+    expect((await submit()).status).toBe(403);   // ★ ยังส่งผลไม่ได้ ด่านเดิมยังทำงาน
   });
 
   it('แอดมินมหาวิทยาลัยอนุมัติ → approved · แล้วส่งผลแมตช์ที่ได้รับมอบหมายได้ทันที', async () => {
