@@ -181,12 +181,26 @@ describe('createTournament — TOURNAMENT_DATES_IN_PAST', () => {
    * ★ ขอบล่างที่สร้างได้จริง: ปิดรับสมัครวันนี้ แข่งเริ่มพรุ่งนี้
    *   (แข่ง "วันนี้" สร้างไม่ได้เลย เพราะ registrationEnd ต้องอยู่ก่อนเที่ยงคืนของวันแข่ง
    *    แต่ก็ต้องอยู่ในอนาคต — เป็นผลพลอยได้ของสองด่านรวมกัน ไม่ใช่กฎที่เขียนไว้ตรง ๆ)
+   *
+   * 🔴 แก้ 7 ต.ค. 2569 — เทสนี้เคยแดงเองตามเวลาจริงที่รัน (flaky)
+   *   เดิมใช้ `Date.now()` จริง: registrationEnd = now + 0.2 วัน · eventStartDate = วันที่ของ now + 1 วัน
+   *   แต่ `eventStartDate` เป็น **วันที่ล้วน** ⇒ ถูกอ่านเป็นเที่ยงคืน UTC ของวันนั้น
+   *   ⇒ ถ้ารันตอน UTC เหลือไม่ถึง 4.8 ชม. จะข้ามวัน (ประมาณ 02:12–07:00 เวลาไทย)
+   *     registrationEnd จะเลยเที่ยงคืนของ "พรุ่งนี้" ไปแล้ว ⇒ ได้ INVALID_DATE_RANGE
+   *   เจอจริงตอนรันชุดเทสเวลา 02:16 — แดงทั้งที่ไม่มีใครแก้โค้ดส่วนนั้นเลย
+   *   ⇒ ตรึงเวลาด้วย fake timer ให้เป็นเวลากลางวัน แล้วเทสอ่านกฎเดิมได้ตรงทุกเวลาที่รัน
    */
   it('ปิดรับสมัครวันนี้ แข่งพรุ่งนี้ = สร้างได้', async () => {
-    await expect(Service.createTournament(
-      input({ registrationStart: iso(-1), registrationEnd: iso(0.2),
-              eventStartDate: dateOnly(1), eventEndDate: dateOnly(2) }), 9))
-      .resolves.toMatchObject({ id: 77 });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-07T03:00:00Z'));   // 10:00 เวลาไทย — ห่างเที่ยงคืน UTC เกิน 0.2 วัน
+    try {
+      await expect(Service.createTournament(
+        input({ registrationStart: iso(-1), registrationEnd: iso(0.2),
+                eventStartDate: dateOnly(1), eventEndDate: dateOnly(2) }), 9))
+        .resolves.toMatchObject({ id: 77 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
