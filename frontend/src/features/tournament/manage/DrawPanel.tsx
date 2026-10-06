@@ -30,11 +30,13 @@ import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import { checkDraw } from '../../match/resultRules'
 import { randomizeDraw } from './drawRandom'
+import { useManageActive } from './ManageActivity'
 
 /** ทีมหนึ่งทีมในสายจับ — id เก็บเป็น string เสมอเพื่อให้ <select> เทียบค่าได้ */
 interface Entry { id: string; name: string; ref: number | string }
 
 export function DrawPanel({ t }: { t: Tournament }) {
+  const active = useManageActive()
   const s = useLtms()
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   /**
@@ -50,6 +52,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
   const draw = useDrawTournament(tournamentId ?? t.id)
   const [confirmReplace, setConfirmReplace] = useState(false)
   const [replaceKind, setReplaceKind] = useState<'manual' | 'random'>('manual')
+  const [initialDraw, setInitialDraw] = useState<(number | string)[] | null>(null)
 
   const entries: Entry[] = live
     ? (approvedTeams.data?.items ?? [])
@@ -94,6 +97,13 @@ export function DrawPanel({ t }: { t: Tournament }) {
   }
 
   if (formatOf(t) === 'roundrobin') return null
+
+  if (live && (approvedTeams.isError || tournamentMatches.isError)) {
+    return <Panel quiet><h2>Draw</h2><Banner kind="warn"><b>Unable to check draw.</b> Refresh teams and matches before editing.</Banner>
+      <button className="btn" type="button" onClick={() => { void approvedTeams.refetch(); void tournamentMatches.refetch() }}>Try again</button></Panel>
+  }
+
+  if (live && tournamentMatches.isPending && !tournamentMatches.data) return <Panel quiet><p className="sub">Checking saved matches…</p></Panel>
 
   if (live && approvedTeams.isPending) {
     return <Panel quiet><span className="sub">Loading the squads that got in…</span></Panel>
@@ -151,7 +161,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
       setConfirmReplace(true)
       return
     }
-    draw.mutate({ teamIds: teamIds as number[] })
+    setInitialDraw(teamIds)
   }
 
   const randomDraw = () => {
@@ -167,7 +177,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
       setConfirmReplace(true)
       return
     }
-    draw.mutate({ teamIds: teamIds as number[] })
+    setInitialDraw(teamIds)
   }
 
   const replace = () => {
@@ -189,7 +199,12 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
   return (
     <Panel quiet>
-      <Modal open={confirmReplace} onClose={() => setConfirmReplace(false)}
+      <Modal className="organizer-confirm" open={active && initialDraw !== null} onClose={() => setInitialDraw(null)} title={t.name} label="Draw bracket">
+        <ConfirmCard ok="Confirm draw" onCancel={() => setInitialDraw(null)}
+          onConfirm={() => { if (initialDraw) draw.mutate({ teamIds: initialDraw as number[] }); setInitialDraw(null) }}
+          body={<>Create the matches from {initialDraw?.length} approved teams in the order shown. Check pairings before confirming. Existing registration and draw rules still apply.</>} />
+      </Modal>
+      <Modal className="organizer-confirm" open={active && confirmReplace} onClose={() => setConfirmReplace(false)}
         label={replaceKind === 'random' ? 'Random redraw' : 'Redraw the bracket'} title={t.name}>
         <ConfirmCard danger ok={replaceKind === 'random' ? 'Random redraw now' : 'Redraw now'}
           onCancel={() => setConfirmReplace(false)} onConfirm={replace}
@@ -201,7 +216,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
           </>} />
       </Modal>
       <div className="spread">
-        <span className="tag"><em>//</em> Arrange the draw by hand</span>
+        <h2>Draw</h2>
         {started ? <Badge kind="neutral">Locked — the tournament has started</Badge>
           : replacementUnavailable ? <Badge kind="warn">Redraw unavailable</Badge>
             : alreadyDrawn ? <Badge kind="warn">Open until the first match starts</Badge>
@@ -217,7 +232,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
       {drawProblems.length ? (
         <Banner kind="crit">
-          <b>สายนี้ยังส่งไม่ได้</b>
+          <b>Check the draw</b>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
             {drawProblems.map(p => <li key={p}>{p}</li>)}
           </ul>
@@ -226,7 +241,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
       {draw.isError ? (
         <Banner kind="crit">
-          <b>จับสายไม่สำเร็จ</b> {(draw.error as Error).message}
+          <b>Couldn't draw the bracket.</b> {(draw.error as Error).message}
           {errorCode === 'BRACKET_IN_USE' ? (
             <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
               {bracketInUseMatches.map((match, index) => (

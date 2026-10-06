@@ -205,19 +205,19 @@ export function RequestPage() {
 
   return (
     <>
-      <div className="spread">
+      <div className="spread organizer-request-heading">
         <div>
-          <div className="tag"><em>//</em> An admin decides</div>
-          <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>Request a tournament</h1>
+          <h1 className="disp">Request a tournament</h1>
+          <p className="sub">Set the details and entry rules, then send for approval.</p>
         </div>
       </div>
 
-      <div className="split">
-        <form onSubmit={handleSubmit(submit)}>
+      <div className="split organizer-request">
+        <form onSubmit={handleSubmit(submit)} className="organizer-request-form">
           {sendError ? <Banner kind="crit"><b>Could not send the request.</b> {sendError}</Banner> : null}
 
           <Panel>
-            <span className="tag"><em>//</em> What it is</span>
+            <h2>Tournament</h2>
             <Field label="Name" htmlFor="rq-name">
               <input id="rq-name" {...register('name')} placeholder="Faculty Football Cup 2026" aria-invalid={!!errors.name} />
               {fieldError('name') ? <span className="sub">{fieldError('name')}</span> : null}
@@ -269,7 +269,7 @@ export function RequestPage() {
           </Panel>
 
           <Panel>
-            <span className="tag"><em>//</em> When and where</span>
+            <h2>Dates & venue</h2>
             <div className="sub">
               Entry has to open and close before the first match. Every squad applies inside that window.
             </div>
@@ -300,7 +300,7 @@ export function RequestPage() {
           </Panel>
 
           <Panel>
-            <span className="tag"><em>//</em> Who may enter — the hard filter</span>
+            <h2>Entry rules</h2>
             <Banner kind="warn">
               <b>Every condition is optional, and every one you set is enforced with no override.</b>{' '}
               A squad with one failing player is rejected outright, and after approval these can only be
@@ -399,12 +399,12 @@ export function RequestPage() {
 
         <div className="rail">
           <Panel quiet>
-            <span className="tag"><em>//</em> What happens next</span>
+            <h2>Next steps</h2>
             <div className="sub">
               An admin approves or declines it. Approved, it arrives as your <b>Private</b> draft: appoint
               the referees, then open it to the public. LTMS deletes a private tournament on its match date.
             </div>
-            <span className="tag"><em>//</em> Entry conditions as they read now</span>
+            <h3>Entry checks</h3>
             <div style={{ fontSize: 15 }}>The server validates entry conditions before creating the request.</div>
           </Panel>
         </div>

@@ -7,7 +7,8 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Panel, TableWrap, Tabs } from '../../../components/kit/primitives'
+import { Badge, Panel, TableWrap } from '../../../components/kit/primitives'
+import { ManageActivity } from './ManageActivity'
 import { USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
 import { user } from '../../../shared/selectors'
@@ -62,33 +63,44 @@ const LABELS: Record<string, string> = {
 }
 
 export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
+  return <ManageWorkspace key={t.id} t={t} sub={sub} />
+}
+
+function ManageWorkspace({ t, sub }: { t: Tournament; sub?: string }) {
   const navigate = useNavigate()
-  const [finder, setFinder] = useState(false)
+  const [finder, setFinder] = useState<string | null>(null)
   /* id ของ store เป็น string — แผงที่คุยกับ API ต้องได้เลขเท่านั้น */
   const liveTournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const showDraw = formatOf(t) !== 'roundrobin'
   const subtabs = ['progress', 'registrations', 'entry', ...(showDraw ? ['draw'] : []), 'referees', 'feedback']
   const active = subtabs.includes(sub ?? '') ? sub! : 'registrations'
+  const [visited, setVisited] = useState<string[]>([active])
+  /* ไม่ mount ทุกแผงพร้อมกัน เพราะบางแผงอ่านข้อมูลส่วนตัวเมื่อเปิดครั้งแรก */
+  if (!visited.includes(active)) setVisited([...visited, active])
 
   return (
-    <>
-      <Tabs
-        tabs={subtabs.map(k => ({ key: k, label: LABELS[k] }))}
-        active={active}
-        onPick={k => navigate(`/t/${t.id}/manage/${k}`)}
-      />
-      {active === 'progress' ? <><SetupTrail t={t} onAppoint={() => setFinder(true)} />{!USE_MOCK ? <DeleteTournamentPanel t={t} /> : null}</> : null}
-      {active === 'registrations' ? <RegistrationsPanel t={t} /> : null}
-      {active === 'entry' ? <EntryFilterPanel t={t} /> : null}
+    <div className="organizer-workspace">
+      <nav className="tabs organizer-tabs" aria-label="Manage sections">
+        {subtabs.map(k => <button key={k} type="button" className={`tab ${k === active ? 'on' : ''}`}
+          aria-current={k === active ? 'page' : undefined} aria-controls={`manage-${k}`}
+          onClick={() => navigate(`/t/${t.id}/manage/${k}`)}>{LABELS[k]}</button>)}
+      </nav>
+      {subtabs.filter(k => visited.includes(k)).map(k => <ManageActivity.Provider key={k} value={active === k}>
+        <section id={`manage-${k}`} className="organizer-section" aria-label={LABELS[k]} hidden={active !== k} inert={active !== k}>
+      {k === 'progress' ? <><SetupTrail t={t} onAppoint={() => setFinder(k)} />{!USE_MOCK ? <DeleteTournamentPanel t={t} /> : null}</> : null}
+      {k === 'registrations' ? <RegistrationsPanel t={t} /> : null}
+      {k === 'entry' ? <EntryFilterPanel t={t} /> : null}
       {/* จับสายเสร็จแล้วงานถัดไปคือหาคนคุมทุกนัด — R10: ต้องทำได้ตรงนี้เลย รวมถึงนัด
           รอบหลังที่ยังไม่รู้คู่ ไม่ใช่ไล่เปิดหน้า Fixture ทีละแมตช์ (โหมด mock ไม่มีเส้น
           FR02 ให้เรียก แผงนี้จึงขึ้นเฉพาะทัวร์ที่มาจาก API) */}
-      {active === 'draw' ? <DrawPanel t={t} /> : null}
-      {active === 'draw' && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
-      {active === 'referees' ? <><RefereePanel t={t} onAppoint={() => setFinder(true)} />
+      {k === 'draw' ? <DrawPanel t={t} /> : null}
+      {k === 'draw' && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
+      {k === 'referees' ? <><RefereePanel t={t} onAppoint={() => setFinder(k)} />
         {!showDraw && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}</> : null}
-      {active === 'feedback' ? USE_MOCK ? <FeedbackPanel t={t} /> : <LiveFeedbackPanel tournamentId={liveTournamentId!} /> : null}
-      <RefereeFinder t={t} open={finder} onClose={() => setFinder(false)} />
-    </>
+      {k === 'feedback' ? USE_MOCK ? <FeedbackPanel t={t} /> : <LiveFeedbackPanel tournamentId={liveTournamentId!} /> : null}
+        </section>
+      </ManageActivity.Provider>)}
+      <RefereeFinder t={t} open={finder === active} onClose={() => setFinder(null)} />
+    </div>
   )
 }

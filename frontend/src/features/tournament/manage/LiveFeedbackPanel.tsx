@@ -12,7 +12,7 @@ export function LiveFeedbackPanel({ tournamentId }: { tournamentId: number }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['liveReviews', tournamentId] }) })
   const data = reviews.query.data
   return <Panel quiet>
-    <div className="spread"><span className="tag"><em>//</em> Reviews from participants</span>
+    <div className="spread"><h2>Participant feedback</h2>
       {data ? <Badge kind="neutral">{data.summary.average ?? '—'} / 5 · {data.summary.count}</Badge> : null}</div>
     <p className="sub">Review text is private to organizers. Author names are withheld.</p>
     {reviews.query.isPending ? <p className="sub">Loading reviews…</p> : null}

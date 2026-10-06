@@ -1,15 +1,17 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
 
-const { coverageState, drawState, matchState, mutate, openRegistration, teamState } = vi.hoisted(() => ({
+const { coverageState, drawState, matchState, mutate, complete, openRegistration, teamState, teamFailure } = vi.hoisted(() => ({
   coverageState: { current: {} as Record<string, unknown> },
   drawState: { current: {} as Record<string, unknown> },
   matchState: { current: {} as Record<string, unknown> },
   mutate: vi.fn(),
+  complete: vi.fn(),
   openRegistration: vi.fn(),
   teamState: { current: { items: [{ id: 11, name: 'Alpha' }, { id: 12, name: 'Beta' }] } },
+  teamFailure: { error: false },
 }))
 
 vi.mock('../../../shared/store', () => ({ useLtms: () => ({}) }))
@@ -21,7 +23,7 @@ vi.mock('../../../hooks/useMatch', () => ({
   useTournamentMatches: () => matchState.current,
 }))
 vi.mock('../../../hooks/useTournament', () => ({
-  useCompleteTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+  useCompleteTournament: () => ({ mutate: complete, isPending: false, isError: false }),
   useDrawTournament: () => drawState.current,
   useOpenTournamentRegistration: () => ({ mutate: openRegistration, isPending: false, isError: false }),
   usePublishTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
@@ -29,6 +31,7 @@ vi.mock('../../../hooks/useTournament', () => ({
   useTournamentTeams: () => ({
     data: teamState.current,
     isPending: false,
+    isError: teamFailure.error,
   }),
 }))
 
@@ -51,6 +54,44 @@ describe('draw progress in real mode', () => {
     matchState.current = { data: { items: [] }, isPending: false, isError: false }
     teamState.current = { items: [{ id: 11, name: 'Alpha' }, { id: 12, name: 'Beta' }] }
     coverageState.current = { data: { uncoveredMatchIds: [] }, isError: false }
+    teamFailure.error = false
+  })
+
+  it('does not offer drawing from an unconfirmed approved-team source', () => {
+    teamFailure.error = true
+    render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByText(/Unable to check setup/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Generate bracket/ })).not.toBeInTheDocument()
+  })
+
+  it('withholds the draw editor when approved teams could not be checked', () => {
+    teamFailure.error = true
+    render(<DrawPanel t={tournament} />)
+    expect(screen.getByText(/Unable to check draw/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Draw random bracket' })).not.toBeInTheDocument()
+  })
+
+  it('requires confirmation before closing completed matches and explains the write lock', () => {
+    matchState.current = { data: { items: [{
+      id: 71, roundNumber: 1, teamA: { id: 11 }, teamB: { id: 12 }, status: 'completed',
+      venue: 'Court 1', scheduledTime: '2026-11-20T03:00:00Z', scheduledEndTime: '2026-11-20T05:00:00Z',
+    }] }, isPending: false, isError: false }
+    render(<MemoryRouter><SetupTrail t={tournament} onAppoint={vi.fn()} /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Close tournament' }))
+    expect(complete).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: tournament.name })).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText(/lock every write except announcements/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm close' }))
+    expect(complete).toHaveBeenCalledOnce()
+  })
+
+  it('confirms an initial manual draw without adding replace to its payload', () => {
+    render(<DrawPanel t={tournament} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Draw this way' }))
+    expect(mutate).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: tournament.name })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm draw' }))
+    expect(mutate).toHaveBeenCalledWith({ teamIds: [11, 12] })
   })
 
   it('does not advance to squad approval until the organizer opens registration', () => {

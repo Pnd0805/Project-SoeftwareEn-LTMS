@@ -15,6 +15,7 @@
  *    ผ่านตัวกรองไปแล้วจะกลายเป็นผิดกฎย้อนหลัง
  */
 import { useState } from 'react'
+import { useManageActive } from './ManageActivity'
 import { Badge, Banner, Facts, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
@@ -39,6 +40,7 @@ const toggle = (list: number[], value: number) =>
   list.includes(value) ? list.filter(x => x !== value) : [...list, value].sort((a, b) => a - b)
 
 export function EntryRulesPanel({ t }: { t: Tournament }) {
+  const active = useManageActive()
   const saveNotes = useSaveEntryNotes(t.id)
   const [notesOpen, setNotesOpen] = useState(false)
   const [notes, setNotes] = useState(t.entryNotes ?? '')
@@ -121,7 +123,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
 
   return (
     <>
-      <div className="vstack" style={{ gap: 8 }}>
+      <div className="organizer-entry-grid">
         <Panel quiet>
           <div className="who">
             <span className="avatar" style={{ background: 'var(--teal)' }}><Icon name="bell" size={13} /></span>
@@ -214,7 +216,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         </Panel>
       </div>
 
-      <Modal open={notesOpen} onClose={() => { if (!saveNotes.isPending) setNotesOpen(false) }} label="Entry notes" title={t.name}>
+      <Modal open={active && notesOpen} onClose={() => { if (!saveNotes.isPending) setNotesOpen(false) }} label="Entry notes" title={t.name}>
         <Field label="Entry notes (up to 2,000 characters)" htmlFor="entry-notes">
           <textarea id="entry-notes" rows={5} maxLength={2000} value={notes} disabled={saveNotes.isPending}
             onChange={e => setNotes(e.target.value)} />
@@ -230,7 +232,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         </div>
       </Modal>
 
-      <Modal open={open} onClose={() => setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
+      <Modal open={active && open} onClose={() => setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
         <div className="sub">
           {pendingApproval
             ? 'This request is still awaiting approval, so faculty and year rules can be corrected directly.'

@@ -1,6 +1,6 @@
 # LTMS Minimal Street — ticket index
 
-Status: Tickets 01–04 complete. Tickets 05–09 pending; no external issues created. See [Ticket 04 evidence](../notes/2026-10-06-ltms-ticket-04.md).
+Status: Tickets 01–05 complete. Tickets 06–09 pending; no external issues created. See [Ticket 05 evidence](../notes/2026-10-06-ltms-ticket-05.md).
 
 Start with the [spec](../specs/2026-10-05-ltms-minimal-street.md) for behavior and constraints. Open the [implementation plan](../plans/2026-10-05-ltms-minimal-street.md) when implementing a ticket; it owns exact files, interfaces and verification commands. Each ticket is stored separately following the local to-tickets format.
 

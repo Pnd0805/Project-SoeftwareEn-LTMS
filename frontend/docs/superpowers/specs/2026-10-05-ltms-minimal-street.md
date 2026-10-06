@@ -89,6 +89,13 @@ This is a frontend presentation rollout over the existing working data flows. Cu
 - User-requested Ticket 4 refinement: use a consistent grid with aligned block edges and equal widths/heights for peer blocks. Keep headings/actions aligned, use 20px inner padding and 24px between major groups, and preserve the established Minimal Street fonts, angular corners and A palette.
 - Give dense Schedule and Bracket content a broad reading area with contained native scrolling. Keep short/empty/loading peer frames consistent, preserve keyboard access and stack groups on narrow screens. Existing routes, data, submission recovery and server permissions remain authoritative.
 
+### Organizer workspace
+
+- Ticket 5 scope approved on 2026-10-06: next step with missing prerequisites; one Manage section at a time with retained drafts; grouped Request/setup forms; local Team search/status/counts for registrations; Team/Players/Entry notes review with persistent decision controls; separate Referee invitations, accepted appointments and Match assignments; consequence explanations before Publish, Draw, Close and Delete.
+- Derive next steps from the current setup sequence. Source loading/failure cannot establish zero counts or a permitted action. Authoritative access denial hides unavailable cached private content; retryable registration refresh retains the review and rejection draft.
+- Mount Manage sections on first visit, preserve inactive drafts without visible/focusable inactive content, suspend portal dialogs on tab changes, and reset when the Tournament changes. Existing Round-robin assignment placement remains in Referees.
+- Keep 20px panel padding, 24px major gaps, equal peer frame heights, concise English and the established palette/fonts. Keep decision controls visible while reviewing long lists; retain all server decisions and mutation contracts.
+
 ### Rollout and compatibility
 
 - Apply the shared design language through the current shell, kit and styles, then adapt each existing journey. Preserve current domain behavior, role boundaries and recoverable form state.

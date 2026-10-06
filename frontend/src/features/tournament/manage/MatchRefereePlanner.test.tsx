@@ -6,6 +6,7 @@
  */
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../../api/client'
 
 vi.mock('../../../api/client', async importOriginal => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -34,6 +35,7 @@ const firstRound = {
 
 let matches = [firstRound, scheduledSlot, unscheduledSlot]
 let openRequests: unknown[] = []
+let sourceError: ApiError | null = null
 
 vi.mock('../../../hooks/useMatch', () => ({
   useTournamentMatches: () => ({ data: { items: matches }, isPending: false, isError: false }),
@@ -51,7 +53,7 @@ vi.mock('../../../hooks/useAdmin', () => ({
     },
     isPending: false, isError: false,
   }),
-  useTournamentRefereeRequests: () => ({ data: { items: openRequests }, isPending: false, isError: false }),
+  useTournamentRefereeRequests: () => ({ data: { items: openRequests }, isPending: false, isError: !!sourceError, error: sourceError }),
   useRequestMatchReferee: () => ({ ...idle, mutate: requestReferee }),
   useCancelTournamentRefereeRequest: () => ({ ...idle, mutate: cancelRequest }),
 }))
@@ -61,9 +63,18 @@ vi.mock('../../match/RefereeMatchRequest', () => ({ RefereeRequestForm: () => nu
 import { MatchRefereePlanner } from './MatchRefereePlanner'
 
 beforeEach(() => {
+  sourceError = null
   vi.clearAllMocks()
   matches = [firstRound, scheduledSlot, unscheduledSlot]
   openRequests = []
+})
+
+it('hides cached match staffing after an authoritative request-source denial', () => {
+  sourceError = new ApiError(403, { code: 'FORBIDDEN', message: 'Access denied' })
+  render(<MatchRefereePlanner tournamentId={23} />)
+  expect(screen.getByText(/Unable to view match assignments/)).toBeInTheDocument()
+  expect(screen.queryByText('Somying')).not.toBeInTheDocument()
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
 })
 
 describe('planning referees from the draw', () => {

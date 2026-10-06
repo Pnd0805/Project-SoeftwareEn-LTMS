@@ -29,6 +29,7 @@ import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { formatName, formatOf, refsNeeded } from '../../../shared/rules'
 import { hasValidBracket } from '../hasValidBracket'
 import type { Tournament } from '../../../shared/types'
+import { useManageActive } from './ManageActivity'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 const errorCode = (error: unknown) => typeof error === 'object' && error !== null && 'code' in error
@@ -46,6 +47,7 @@ const unfinishedMatches = (error: unknown): Array<{ id: number; status: string }
 }
 
 export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
+  const active = useManageActive()
   const s = useLtms()
   const navigate = useNavigate()
   const publish = usePublishTournament(t.id)
@@ -53,8 +55,9 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const need = refsNeeded(t)
   /* สองขั้นนี้ย้อนกลับไม่ได้ — เปิดสาธารณะแล้วคนเห็นทันที จับสายแล้วปิดรับสมัครถาวร
      เดิมกดปุ๊บทำปุ๊บ ไม่ถามอะไรเลย */
-  const [confirming, setConfirming] = useState<'publish' | 'draw' | null>(null)
-  const { data: referees, isError: refereesError } = useTournamentReferees(t.id)
+  const [confirming, setConfirming] = useState<'publish' | 'draw' | 'close' | null>(null)
+  const refereesQuery = useTournamentReferees(t.id)
+  const { data: referees, isError: refereesError } = refereesQuery
 
   /* id ตัวเลข → อ่านจาก backend · id string (prototype) → อ่านจาก store
      ⚠️ เดิมอ่าน useTournament(id).applications ซึ่ง backend ไม่เคยส่งมาเลย
@@ -112,6 +115,16 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   /* ยอดตอบรับมาจาก acceptedCount ของ GET /tournaments/:id/referees (FEAT-1-REMAINING)
      ระหว่างโหลดยังไม่รู้ จึงบอกว่ากำลังตรวจ ไม่เดาจาก store */
   const acceptedRefs = referees?.acceptedCount
+  const sources = [refereesQuery, approvedTeams, applications, backendMatches]
+  /* ยอดจาก cache ไม่ใช่การยืนยันว่าขั้นถัดไปทำได้เมื่อแหล่งข้อมูลตรวจสอบไม่สำเร็จ */
+  if (real && sources.some(source => source.isError || (source.isPending && !source.data))) {
+    return <Panel><h2>Next step</h2>
+      {sources.some(source => source.isError) ? <>
+        <Banner kind="warn"><b>Unable to check setup.</b> Refresh the sources before continuing.</Banner>
+        <button className="btn" type="button" onClick={() => { sources.forEach(source => void source.refetch()) }}>Try again</button>
+      </> : <p className="sub">Checking setup…</p>}
+    </Panel>
+  }
   const steps: TrailStep[] = [
     {
       state: acceptedRefs !== undefined && acceptedRefs >= need ? 'done' : 'idle',
@@ -207,7 +220,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
         : 'Every match must be completed before the tournament can be closed.',
       cta: allPlayed ? (
         <button className="btn primary" type="button" disabled={complete.isPending}
-          onClick={() => complete.mutate()}>
+          onClick={() => setConfirming('close')}>
           {complete.isPending ? 'Closing…' : 'Close tournament'}
         </button>
       ) : undefined,
@@ -221,14 +234,21 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   })
 
   return (
-    <Panel>
+    <Panel className="organizer-progress">
       <div className="spread">
-        <span className="tag"><em>//</em> Running this tournament — where you are</span>
+        <h2>Next step</h2>
         {now < 0 ? <Badge kind="ok">Every step done</Badge> : <Badge kind="warn">{`Step ${now + 1} of ${steps.length}`}</Badge>}
       </div>
-      <Modal open={confirming !== null} onClose={() => setConfirming(null)}
-        label={confirming === 'draw' ? 'Draw the bracket' : 'Open to the public'} title={t.name}>
-        {confirming === 'draw' ? (
+      {now >= 0 ? <div className="organizer-next">
+        <h3>{steps[now].title}</h3>
+        <p className="sub">{steps[now].note}</p>
+        {steps[now].cta ? <div className="hstack">{steps[now].cta}</div> : null}
+      </div> : null}
+      <Modal className="organizer-confirm" open={active && confirming !== null} onClose={() => setConfirming(null)}
+        label={confirming === 'close' ? 'Close tournament' : confirming === 'draw' ? 'Draw the bracket' : 'Publish tournament'} title={t.name}>
+        {confirming === 'close' ? <ConfirmCard danger ok="Confirm close" onCancel={() => setConfirming(null)}
+          onConfirm={() => { setConfirming(null); complete.mutate() }}
+          body={<>Publish the final winner and lock every write except announcements. The server checks that every match is completed before closing.</>} /> : confirming === 'draw' ? (
           <ConfirmCard danger ok="Draw it" onCancel={() => setConfirming(null)}
             onConfirm={() => { setConfirming(null); draw.mutate({}) }}
             body={<>
@@ -262,7 +282,9 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
                 : errorMessage(complete.error)}
         </Banner>
       ) : null}
-      <Trail steps={steps} />
+      <details className="organizer-steps"><summary>All steps</summary>
+        <Trail steps={steps.map((step, i) => ({ ...step, cta: undefined, note: i === now ? 'Current step — see above.' : step.note }))} />
+      </details>
     </Panel>
   )
 }

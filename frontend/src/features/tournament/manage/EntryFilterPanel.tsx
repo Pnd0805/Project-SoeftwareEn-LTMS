@@ -19,6 +19,7 @@ import { EntryRulesPanel } from './EntryRulesPanel'
 import { useRequestFilterChange, useSaveEntryNotes } from '../../../hooks/useTournament'
 import { FACULTIES, MAJORS, ruleSummary } from '../../../shared/rules'
 import type { Rules, Tournament } from '../../../shared/types'
+import { useManageActive } from './ManageActivity'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 
@@ -65,6 +66,7 @@ export function EntryFilterPanel({ t }: { t: Tournament }) {
 }
 
 function StoreEntryFilterPanel({ t }: { t: Tournament }) {
+  const active = useManageActive()
   useLtms()
   const saveNotes = useSaveEntryNotes(t.id)
   const requestChange = useRequestFilterChange(t.id)
@@ -76,7 +78,7 @@ function StoreEntryFilterPanel({ t }: { t: Tournament }) {
 
   return (
     <>
-      <div className="vstack" style={{ gap: 8 }}>
+      <div className="organizer-entry-grid">
         <Panel quiet>
           <div className="who">
             <span className="avatar" style={{ background: 'var(--teal)' }}><Icon name="bell" size={13} /></span>
@@ -113,7 +115,7 @@ function StoreEntryFilterPanel({ t }: { t: Tournament }) {
         </Panel>
       </div>
 
-      <Modal open={notesOpen} onClose={() => setNotesOpen(false)} label="Soft filter" title={t.name}>
+      <Modal open={active && notesOpen} onClose={() => setNotesOpen(false)} label="Entry notes" title={t.name}>
         <Field label="Soft filter" htmlFor="en-text">
           <textarea id="en-text" rows={5} value={notes} onChange={e => setNotes(e.target.value)} />
         </Field>
@@ -127,7 +129,7 @@ function StoreEntryFilterPanel({ t }: { t: Tournament }) {
         </div>
       </Modal>
 
-      <Modal open={changeOpen} onClose={() => setChangeOpen(false)} label="Request a hard-filter change" title={t.name}>
+      <Modal open={active && changeOpen} onClose={() => setChangeOpen(false)} label="Request a hard-filter change" title={t.name}>
         <div className="sub">
           The conditions were set once, at creation, and are enforced with no override. An admin decides.
         </div>

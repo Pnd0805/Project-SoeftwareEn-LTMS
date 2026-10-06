@@ -20,9 +20,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Field, Panel, TableWrap } from '../../../components/kit/primitives'
-import { TeamCrestView, TeamLink } from '../../../components/kit/chips'
+import { Badge, Banner, Field, Panel, TableWrap } from '../../../components/kit/primitives'
+import { TeamCrestView } from '../../../components/kit/chips'
 import { toTeamView } from '../../../components/kit/viewModels'
+import { useManageActive } from './ManageActivity'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import { useApplicationDetail, useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
@@ -91,209 +92,133 @@ function rowsFromStore(s: State, t: Tournament): RegRow[] {
 }
 
 export function RegistrationsPanel({ t }: { t: Tournament }) {
+  const active = useManageActive()
   const s = useLtms()
   const navigate = useNavigate()
   const [review, setReview] = useState<RegRow | null>(null)
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('all')
   const reviewApplicationId = typeof review?.applicationId === 'number' ? review.applicationId : undefined
-  const applicationDetail = useApplicationDetail(reviewApplicationId, !!review)
-
-  /* เดียวกับ TournamentPage — id ตัวเลขเท่านั้นที่ API รู้จัก */
+  const applicationDetail = useApplicationDetail(reviewApplicationId, active && !!review)
   const tournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const applications = useTournamentApplications(tournamentId)
-  const live = tournamentId !== undefined && !!applications.data
-
-  const rows = live ? rowsFromApi(applications.data?.items ?? []) : rowsFromStore(s, t)
+  const rows = !USE_MOCK ? rowsFromApi(applications.data?.items ?? []) : rowsFromStore(s, t)
   const pend = rows.filter(r => r.status === 'pending')
   const approved = rows.filter(r => r.status === 'approved')
-  const rejected = rows.filter(r => r.status === 'rejected')
-
-  /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store จึงส่งตัวที่หน้าถืออยู่ไปตรงๆ */
+  const filtered = rows.filter(r => r.teamName.toLowerCase().includes(search.trim().toLowerCase())
+    && (status === 'all' || r.status === status))
   const apiId = tournamentId ?? t.id
   const approve = useApproveRegistration(apiId)
   const reject = useRejectRegistration(apiId)
-
   const { register, handleSubmit, setError, reset, formState: { errors } } =
     useForm<ReviewTournamentApplicationInput>({ resolver: zodResolver(reviewTournamentApplicationSchema) })
+  const denied = (error: unknown) => error instanceof ApiError && [401, 403, 404].includes(error.status)
+  const message = (error: unknown) => error instanceof Error ? error.message : 'Try again.'
+  const busy = approve.isPending || reject.isPending
+  const reviewCurrent = !!review && rows.some(r => r.key === review.key && r.status === 'pending')
+  const reviewBlocked = !review || review.applicationId === null || busy || (!USE_MOCK && denied(applicationDetail.error))
 
-  if (!USE_MOCK && applications.isPending) return <Panel><span className="sub">Loading registrations…</span></Panel>
-  if (!USE_MOCK && applications.isError) return <Panel><span className="sub">Unable to load registrations. {applications.error instanceof Error ? applications.error.message : ''}</span><button className="btn ghost" type="button" onClick={() => applications.refetch()}>Try again</button></Panel>
+  if (!USE_MOCK && !applications.data && applications.isPending) return <Panel><span className="sub">Loading registrations…</span></Panel>
+  if (!USE_MOCK && applications.isError && (!applications.data || denied(applications.error))) return <Panel>
+    <Banner kind="crit">Unable to load registrations. {message(applications.error)}</Banner>
+    <button className="btn" type="button" onClick={() => void applications.refetch()}>Try again</button>
+  </Panel>
 
-  /** ปุ่มสั่งงานได้ต่อเมื่อแถวนั้นมี applicationId จริง */
-  const actionable = (r: RegRow) => r.applicationId !== null
-  const blockedHint = 'ใบสมัครนี้ไม่มี id ที่สั่งงานได้'
+  const startReview = (r: RegRow) => { reset(); approve.reset(); reject.reset(); setReview(r) }
+  const rejectReview = handleSubmit(async input => {
+    if (reviewBlocked || !review || review.applicationId === null) return
+    try {
+      await reject.mutateAsync({ applicationId: review.applicationId, rejectionReason: input.rejectionReason ?? '' })
+      setReview(null); reset()
+    } catch (error) {
+      if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, text]) =>
+        setError(field as keyof ReviewTournamentApplicationInput, { type: 'server', message: text }))
+    }
+  })
 
-  return (
-    <>
-      <Panel>
-        <div className="spread">
-          <span className="tag"><em>//</em> Registrations</span>
-          <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} in · ${pend.length} waiting`}</Badge>
-        </div>
+  return <>
+    <Panel className="organizer-registrations">
+      <div className="spread"><h2>Registrations</h2>
+        <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} approved · ${pend.length} pending`}</Badge>
+      </div>
+      {!USE_MOCK && applications.isError ? <Banner kind="warn">
+        Showing saved registrations. {message(applications.error)}{' '}
+        <button className="btn ghost" type="button" onClick={() => void applications.refetch()}>Try again</button>
+      </Banner> : null}
+      <div className="organizer-filters">
+        <Field label="Search teams" htmlFor="registration-search"><input id="registration-search" type="search"
+          placeholder="Team name" value={search} onChange={e => setSearch(e.target.value)} /></Field>
+        <Field label="Registration status" htmlFor="registration-status"><select id="registration-status" value={status} onChange={e => setStatus(e.target.value)}>
+          <option value="all">All statuses</option>
+          {['pending', 'approved', 'rejected', 'withdrawn', 'cancelled'].map(value => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}
+        </select></Field>
+        {search || status !== 'all' ? <button className="btn ghost" type="button" onClick={() => { setSearch(''); setStatus('all') }}>Clear filters</button> : null}
+      </div>
+      <p className="sub" role="status">{filtered.length} of {rows.length} registrations</p>
+      {approve.isError ? <Banner kind="crit">Couldn't approve the team. {message(approve.error)}</Banner> : null}
+      {approve.isSuccess ? <Banner kind="ok">Team approved.</Banner> : null}
+      {filtered.length ? <TableWrap label="Registration list"><table>
+        <thead><tr><th>Team</th><th>Status</th><th>Hard filter</th><th>Applied</th><th>Action</th></tr></thead>
+        <tbody>{filtered.map(r => {
+          const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
+          return <tr key={r.key}>
+            <td><span className="hstack"><TeamCrestView size={28} team={tm ? toTeamView(tm)
+              : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} /><b>{r.teamName}</b></span>
+              {r.reason ? <p className="sub">{r.reason}</p> : null}</td>
+            <td><Badge kind={r.status === 'approved' ? 'ok' : r.status === 'pending' ? 'warn' : r.status === 'rejected' ? 'crit' : 'neutral'}>{r.status}</Badge></td>
+            <td><Badge kind={r.hardFilterPassed === false ? 'crit' : r.hardFilterPassed ? 'ok' : 'neutral'}>
+              {r.hardFilterPassed === false ? 'Failed' : r.hardFilterPassed ? 'Passed' : 'Not checked'}</Badge></td>
+            <td className="sub">{r.at ? fmtDate(r.at) : '—'}</td>
+            <td>{r.status === 'pending' ? <div className="hstack">
+              <button className="btn" type="button" onClick={() => startReview(r)}>Review</button>
+              <button className="btn primary" type="button" disabled={r.applicationId === null || busy}
+                onClick={() => { if (r.applicationId !== null) approve.mutate(r.applicationId) }}>{approve.isPending && approve.variables === r.applicationId ? 'Approving…' : 'Approve'}</button>
+            </div> : tm ? <button className="btn ghost" type="button" onClick={() => navigate(`/team/${tm.id}`)}>View team</button> : '—'}</td>
+          </tr>
+        })}</tbody>
+      </table></TableWrap> : <div className="empty"><b>{rows.length ? 'No matching registrations' : 'No registrations yet'}</b>
+        <p className="sub">{rows.length ? 'Change or clear the filters.' : 'Applications appear here when teams enter.'}</p></div>}
+    </Panel>
 
-        {pend.length ? (
-          <div className="vstack" style={{ gap: 8 }}>
-            {pend.map(r => {
-              const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
-              return (
-                <div className="who" key={r.key}>
-                  <TeamCrestView size={24} team={tm
-                    ? toTeamView(tm)
-                    : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} />
-                  <span className="meta">
-                    <b>{r.teamName}</b>
-                    <span className="tag">
-                      {tm ? `${user(s, tm.leader)?.name} · ${tm.members.length} players · ` : ''}
-                      {r.at ? fmtDate(r.at) : '—'}
-                    </span>
-                  </span>
-                  {r.hardFilterPassed === false
-                    ? <Badge kind="crit">{r.hardFilterFails.length ? `${r.hardFilterFails.length} failed` : 'Failed'}</Badge>
-                    : r.hardFilterPassed ? <Badge kind="ok">Passed</Badge> : <Badge kind="neutral">Not checked</Badge>}
-                  <span className="hstack">
-                    <button className="btn ghost" type="button" onClick={() => setReview(r)}>Review</button>
-                    <button className="btn primary" type="button"
-                      disabled={!actionable(r) || approve.isPending}
-                      title={actionable(r) ? undefined : blockedHint}
-                      onClick={() => { if (r.applicationId !== null) approve.mutate(r.applicationId) }}>
-                      Approve
-                    </button>
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        ) : null}
-
-        {approved.length ? (
-          <>
-            <div className="tag" style={{ marginTop: 6 }}><em>//</em> Approved</div>
-            <div className="vstack" style={{ gap: 8 }}>
-              {approved.map(r => {
-                const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
-                return (
-                  <div className="who" key={r.key}>
-                    <TeamCrestView size={24} team={tm
-                      ? toTeamView(tm)
-                      : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} />
-                    <span className="meta">
-                      <b>{r.teamName}</b>
-                      <span className="tag">
-                        {tm ? `${user(s, tm.leader)?.name} · ${tm.members.length} players` : 'via API'}
-                      </span>
-                    </span>
-                    {tm ? (
-                      <button className="btn ghost" type="button" onClick={() => navigate(`/team/${tm.id}`)}>View squad</button>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        ) : null}
-
-        {rejected.length ? (
-          <>
-            <div className="tag" style={{ marginTop: 6 }}>
-              <em>//</em> Rejected by the hard filter — a record, not a decision
-            </div>
-            <TableWrap>
-              <table>
-                <thead><tr><th>Squad</th><th>Failed on</th></tr></thead>
-                <tbody>
-                  {rejected.map(r => (
-                    <tr key={r.key}>
-                      <td>{r.teamStoreId ? <TeamLink id={r.teamStoreId} /> : r.teamName}</td>
-                      <td className="sub">{r.reason ?? ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableWrap>
-          </>
-        ) : null}
-      </Panel>
-
-      <Modal open={!!review} onClose={() => setReview(null)} label="Soft filter — your judgement"
-        title={review?.teamName}>
-        {t.entryNotes ? (
-          <div className="panel quiet vstack">
-            <span className="tag"><em>//</em> What you asked for</span>
-            <div style={{ fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.entryNotes}</div>
-          </div>
-        ) : null}
-        {!USE_MOCK && applicationDetail.isPending ? <div className="sub">Loading submitted players…</div> : null}
-        {!USE_MOCK && applicationDetail.isError ? (
-          <div className="hstack">
-            <span className="sub">Unable to load the submitted players. {applicationDetail.error instanceof Error ? applicationDetail.error.message : ''}</span>
-            <button className="btn ghost" type="button" onClick={() => void applicationDetail.refetch()}>Try again</button>
-          </div>
-        ) : null}
-        {!USE_MOCK && applicationDetail.isSuccess && applicationDetail.data.players.length ? (
-          <TableWrap>
-            <table>
-              <thead><tr><th>Player</th></tr></thead>
-              <tbody>
-                {applicationDetail.data.players.map(player => (
-                  <tr key={player.userId}>
-                    <td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
-        ) : null}
-        {!USE_MOCK && applicationDetail.isSuccess && !applicationDetail.data.players.length ? (
-          <div className="sub">This application no longer has a locked player list.</div>
-        ) : null}
-        {USE_MOCK && review?.squad.length ? (
-          <TableWrap>
-            <table>
-              <thead><tr><th>Player</th><th>Faculty</th><th>Year</th></tr></thead>
-              <tbody>
-                {review.squad.map(id => {
-                  const p = user(s, id)
-                  return p ? <tr key={id}><td>{p.name}</td><td className="sub">{p.faculty}</td><td className="num">{p.year}</td></tr> : null
-                })}
-              </tbody>
-            </table>
-          </TableWrap>
-        ) : null}
-        {review?.hardFilterFails.length ? (
-          <div className="banner crit">
-            <span className="grow">
-              <b>The hard filter refuses this squad.</b> {review.hardFilterFails.join('; ')}
-            </span>
-          </div>
-        ) : null}
-        <div className="hstack">
-          <button className="btn" type="button" onClick={() => setReview(null)}>Cancel</button>
-          <form onSubmit={handleSubmit(async input => {
-            if (!review || review.applicationId === null) return
-            try {
-              await reject.mutateAsync({ applicationId: review.applicationId, rejectionReason: input.rejectionReason ?? '' })
-              setReview(null); reset()
-            }
-            catch (error) { if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ReviewTournamentApplicationInput, { type: 'server', message })) }
-          })}>
+    <Modal className="organizer-review-dialog" open={active && reviewCurrent} onClose={() => { if (!busy) setReview(null) }} label="Review entry" title={review?.teamName}>
+      <form id="registration-review" className="organizer-review-body" role="region" aria-label="Entry review details" tabIndex={0} onSubmit={rejectReview}>
+        <section className="vstack"><h4>Team</h4>
+          <p className="sub">Review this submitted entry before deciding. The hard filter is checked by the system.</p>
+          <Badge kind={review?.hardFilterPassed === false ? 'crit' : review?.hardFilterPassed ? 'ok' : 'neutral'}>
+            {review?.hardFilterPassed === false ? 'Hard filter failed' : review?.hardFilterPassed ? 'Hard filter passed' : 'Hard filter not checked'}</Badge>
+          {review?.hardFilterFails.length ? <Banner kind="crit">{review.hardFilterFails.join('; ')}</Banner> : null}
+        </section>
+        <section className="vstack"><h4>Entry notes</h4><p className="organizer-notes">{t.entryNotes || 'No entry notes.'}</p></section>
+        <section className="vstack organizer-review-players"><h4>Players</h4>
+          {!USE_MOCK && applicationDetail.isPending ? <p className="sub">Loading submitted players…</p> : null}
+          {!USE_MOCK && applicationDetail.isError ? <Banner kind="crit">Unable to load the submitted players. {message(applicationDetail.error)}{' '}
+            <button className="btn ghost" type="button" onClick={() => void applicationDetail.refetch()}>Try again</button></Banner> : null}
+          {!USE_MOCK && applicationDetail.data && !denied(applicationDetail.error) ? applicationDetail.data.players.length ?
+            <TableWrap label="Submitted players"><table><thead><tr><th>Player</th></tr></thead><tbody>{applicationDetail.data.players.map(player =>
+              <tr key={player.userId}><td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td></tr>)}</tbody></table></TableWrap>
+            : <p className="sub">This application no longer has a locked player list.</p> : null}
+          {USE_MOCK && review?.squad.length ? <TableWrap label="Submitted players"><table><thead><tr><th>Player</th><th>Faculty</th><th>Year</th></tr></thead><tbody>
+            {review.squad.map(id => { const p = user(s, id); return p ? <tr key={id}><td>{p.name}</td><td>{p.faculty}</td><td>{p.year}</td></tr> : null })}
+          </tbody></table></TableWrap> : null}
+        </section>
+        <section className="vstack organizer-review-reason">
           <input type="hidden" value="rejected" {...register('status')} />
-          <Field label="Reason" htmlFor="registration-reason">
-            <textarea id="registration-reason" rows={3} {...register('rejectionReason')} />
-            {errors.rejectionReason?.message ? <span className="sub">{errors.rejectionReason.message}</span> : null}
-          </Field>
-          <button className="btn danger" type="submit"
-            disabled={!review || !actionable(review) || reject.isPending}
-            title={review && actionable(review) ? undefined : blockedHint}>
-            Decline
-          </button>
-          <button className="btn primary" type="button"
-            disabled={!review || !actionable(review) || approve.isPending}
-            title={review && actionable(review) ? undefined : blockedHint}
-            onClick={() => { if (review?.applicationId != null) approve.mutate(review.applicationId, { onSuccess: () => setReview(null) }) }}>
-            Approve
-          </button>
-          </form>
+          <Field label="Reason" htmlFor="registration-reason"><textarea id="registration-reason" rows={3} placeholder="Required for rejection" {...register('rejectionReason')} />
+            {errors.rejectionReason?.message ? <span className="sub">{errors.rejectionReason.message}</span> : null}</Field>
+          {reject.isError ? <Banner kind="crit">Couldn't reject the team. {message(reject.error)}</Banner> : null}
+          {approve.isError ? <Banner kind="crit">Couldn't approve the team. {message(approve.error)}</Banner> : null}
+        </section>
+      </form>
+      <div className="organizer-review-footer">
+        <p className="sub">{busy ? 'Saving decision…' : 'Decision applies to this team only.'}</p>
+        <div className="hstack">
+          <button className="btn" type="button" disabled={busy} onClick={() => setReview(null)}>Cancel</button>
+          <button className="btn danger" type="submit" form="registration-review" disabled={reviewBlocked}>{reject.isPending ? 'Rejecting…' : 'Reject'}</button>
+          <button className="btn primary" type="button" disabled={reviewBlocked} onClick={() => {
+            if (review?.applicationId != null) approve.mutate(review.applicationId, { onSuccess: () => setReview(null) })
+          }}>{approve.isPending ? 'Approving…' : 'Approve'}</button>
         </div>
-      </Modal>
-    </>
-  )
+      </div>
+    </Modal>
+  </>
 }

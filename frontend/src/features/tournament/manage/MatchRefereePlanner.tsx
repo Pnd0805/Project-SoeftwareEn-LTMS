@@ -148,6 +148,11 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
 
   if (tournamentId === undefined) return null
 
+  /* การปฏิเสธสิทธิ์ต้องซ่อนข้อมูลเก่า แม้ query จะยังเก็บ cache ของคนคุมแมตช์ไว้ */
+  if ([matches.error, pool.error, requests.error].some(error => error instanceof ApiError && [401, 403, 404].includes(error.status))) {
+    return <Panel quiet><h2>Match assignments</h2><Banner kind="warn">Unable to view match assignments. Access is unavailable for this account.</Banner></Panel>
+  }
+
   const rows = (matches.data?.items ?? []).slice()
     .sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0) || a.id - b.id)
   const activePool = (pool.data?.items ?? []).filter(r => r.isActive)
@@ -165,7 +170,7 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
   return (
     <Panel quiet>
       <div className="spread">
-        <span className="tag"><em>//</em> Referees for every match</span>
+        <h2>Match assignments</h2>
         <span className="tag">{rows.length} {rows.length === 1 ? 'match' : 'matches'}</span>
       </div>
 
@@ -198,7 +203,7 @@ export function MatchRefereePlanner({ tournamentId }: { tournamentId: number | u
             can be staffed now, before anyone knows who plays in them, as long as the slot has a
             kick-off time.
           </div>
-          <TableWrap>
+          <TableWrap label="Match referee assignments">
             <table>
               <thead><tr><th>Match</th><th>Referees</th><th>Add</th></tr></thead>
               <tbody>

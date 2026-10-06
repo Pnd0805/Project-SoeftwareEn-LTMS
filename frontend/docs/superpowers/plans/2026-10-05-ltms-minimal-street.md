@@ -127,6 +127,8 @@
 
 ### Task 5: Organizer setup and review work
 
+**Approved breakdown:** All seven Organizer outcomes in the spec were approved on 2026-10-06. Implement directly from `be1319a`; preserve frozen contracts. Additional behavioral seams: local registration discovery/recovery, retained tab drafts, initial Draw/Close confirmation, Referee grouping, dialog initial focus and authoritative source guards.
+
 **Files:**
 - Adapt: `src/features/request/RequestPage.tsx`; `src/features/tournament/manage/ManageTab.tsx`, `SetupTrail.tsx`, `RegistrationsPanel.tsx`, `EntryRulesPanel.tsx`, `EntryFilterPanel.tsx`, `DrawPanel.tsx`, `RefereePanel.tsx`, `MatchRefereePlanner.tsx`, `LiveFeedbackPanel.tsx`, `DeleteTournamentPanel.tsx`; scoped CSS.
 - Reuse current Request and management tests.
@@ -135,10 +137,12 @@
 - Consumes: shared styles and existing setup, registration and Referee-management state.
 - Produces: unchanged request/decision interfaces with clear prerequisites, work grouping and outcomes.
 
-- [ ] **Step 1: Trace a request, a setup prerequisite and a registration review.** Retain the current values, server decisions and confirmation boundaries.
-- [ ] **Step 2: Apply the Organizer presentation.** Keep prerequisites beside the related action; group registrations, Referee invitations/appointments and Match assignments distinctly. Preserve all validation, conflict feedback and pending states.
-- [ ] **Step 3: Verify.** Run `npx vitest run src/features/request src/features/tournament/manage`. Expected: all pass, including setup/referee/draw behavior. New runtime behavior requires a separate failing behavioral case before implementation.
-- [ ] **Step 4: Record rendered cases.** Include a blocked publish/Draw action, long Player search results and a consequential decision dialog.
+- [x] **Step 1: Trace a request, a setup prerequisite and a registration review.** Retain the current values, server decisions and confirmation boundaries.
+- [x] **Step 2: Apply the Organizer presentation.** Keep prerequisites beside the related action; group registrations, Referee invitations/appointments and Match assignments distinctly. Preserve all validation, conflict feedback and pending states.
+- [x] **Step 3: Verify.** Run `npx vitest run src/features/request src/features/tournament/manage`. Expected: all pass, including setup/referee/draw behavior. New runtime behavior requires a separate failing behavioral case before implementation.
+- [x] **Step 4: Record rendered cases.** Include a blocked publish/Draw action, long Player search results and a consequential decision dialog.
+
+**Completion evidence:** [Ticket 05](../notes/2026-10-06-ltms-ticket-05.md). Focused suite: 10 files / 47 tests; final full suite: 89 files / 602 tests. TypeScript, lint and production build passed. All 49 frozen hashes unchanged. Both themes at desktop 1280×800 / 1440×900 and narrow 390×844 checked using HTTP fixtures; 37 captures / 46 records. Direct standards/spec review completed. Live backend verification remains separate.
 
 ### Task 6: Match, Check-in and result journeys
 

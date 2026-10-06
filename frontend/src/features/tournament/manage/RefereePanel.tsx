@@ -39,6 +39,7 @@ import { useMe } from '../../../hooks/useAuth'
 import { refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import type { TournamentRefereeDto } from '../../../types/admin.dto'
+import { useManageActive } from './ManageActivity'
 
 type Notice = { kind: 'ok' | 'crit'; text: string } | null
 
@@ -117,7 +118,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
   const minChars = USE_MOCK ? 2 : 3
 
   return (
-    <Modal open={open} onClose={onClose}
+    <Modal className="organizer-finder-dialog" open={open} onClose={onClose}
       label={`Appoint a referee — an ${t.channel} match needs ${t.channel === 'onsite' ? 2 : 1}`}
       title={t.name}>
       <Field label={USE_MOCK ? 'Search the roll by name' : 'Search by name or email'} htmlFor="ref-find">
@@ -137,10 +138,10 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
         <Banner kind="crit"><b>Search failed.</b> {(found.error as Error).message}</Banner>
       ) : null}
       {appoint.isError ? (
-        <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {appointError(appoint.error)}</Banner>
+        <Banner kind="crit"><b>Couldn't invite the referee.</b> {appointError(appoint.error)}</Banner>
       ) : null}
       {cands.length ? (
-        <TableWrap>
+        <TableWrap label="Referee search results">
           <table>
             <tbody>
               {cands.map(x => (
@@ -176,6 +177,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
 }
 
 export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
+  const active = useManageActive()
   const { data: referees, isPending, isError, error, refetch } = useTournamentReferees(t.id)
   const remove = useRemoveReferee(t.id)
   const [removing, setRemoving] = useState<TournamentRefereeDto | null>(null)
@@ -208,13 +210,17 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
     })
   }
 
+  if (isError && [401, 403, 404].includes(status ?? 0)) return <Panel quiet><h2>Referees</h2>
+    <Banner kind="warn"><b>You can't view this tournament's referees.</b> Only its organizer can see the referee list.</Banner>
+  </Panel>
+
   return (
     <Panel quiet>
       <div className="spread">
-        <span className="tag"><em>//</em> Referees — an {t.channel} match needs {required}</span>
+        <h2>Referees</h2>
         {referees ? <Badge kind={short === 0 ? 'ok' : 'warn'}>{`${accepted} of ${required} accepted`}</Badge> : null}
       </div>
-      <span className="sub">Appoint or remove referees at any time — before the tournament opens or while it is being played.</span>
+      <span className="sub">Each {t.channel} match needs {required}. An accepted appointment joins the pool; match assignments are separate.</span>
 
       {isPending ? <div className="sub">Loading referees…</div> : null}
 
@@ -244,13 +250,16 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
 
       {referees && !rows.length ? <div className="sub">No referees invited yet.</div> : null}
 
-      {rows.length ? (
-        <>
-          <TableWrap>
-            <table>
-              <thead><tr><th>On this tournament</th><th>State</th><th /></tr></thead>
-              <tbody>
-                {rows.map(r => {
+      {referees ? <div className="organizer-referee-pair">
+        {[
+          { label: 'Invitations and responses', rows: rows.filter(r => !r.isActive), empty: 'No pending invitations or responses.' },
+          { label: 'Accepted appointments', rows: rows.filter(r => r.isActive), empty: 'No active referees yet.' },
+        ].map(group => <section key={group.label} className="organizer-referee-group" role="group" aria-label={group.label}>
+          <div className="spread"><h3>{group.label}</h3><Badge kind="neutral">{group.rows.length} shown</Badge></div>
+          {group.rows.length ? <TableWrap label={group.label}><table>
+            <thead><tr><th>Referee</th><th>State</th><th>Action</th></tr></thead>
+            <tbody>
+                {group.rows.map(r => {
                   const busy = remove.isPending && remove.variables === r.user.id
                   return (
                     <tr key={r.id}>
@@ -270,17 +279,16 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
                     </tr>
                   )
                 })}
-              </tbody>
-            </table>
-          </TableWrap>
-        </>
-      ) : null}
+            </tbody>
+          </table></TableWrap> : <p className="sub">{group.empty}</p>}
+        </section>)}
+      </div> : null}
 
       <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }} onClick={onAppoint}>
         Appoint a referee
       </button>
 
-      <Modal open={!!removing} onClose={() => setRemoving(null)}
+      <Modal className="organizer-confirm" open={active && !!removing} onClose={() => setRemoving(null)}
         label={removing?.invitationStatus === 'pending' ? 'Withdraw an invitation' : 'Remove a referee'}
         title={removing?.user.fullName}>
         <ConfirmCard
