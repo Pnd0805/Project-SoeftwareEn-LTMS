@@ -500,7 +500,7 @@ export interface StandingRowDto {
    * ป้ายบอกว่าจบตรงไหน เช่น "Quarter-final" หรือ "Champion"
    * server เป็นคนตั้งชื่อรอบ เพราะต้องรู้ว่าสายมีกี่รอบ
    */
-  outLabel: string;
+  outLabel: string | null;
 }
 
 export interface StandingsDto {
@@ -828,6 +828,7 @@ export interface BackendBracketDto {
 
 /** GET /tournaments/:id/standings */
 export interface BackendStandingDto {
+  outLabel: string | null;
   team: BackendTeamRef;
   played: number;
   wins: number;

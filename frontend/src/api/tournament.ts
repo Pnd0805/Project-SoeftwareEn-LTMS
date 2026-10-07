@@ -550,6 +550,13 @@ export async function requestFilterChange(
 }
 
 /** C09b — every amendment submitted by this tournament's organizer, newest first. */
+export function previewAmendment(id: number, input: { changes: AmendmentRequestPayload; reason: string }): Promise<import('../types/tournament.dto').AmendmentPreviewDto> {
+  return apiFetch(`/tournaments/${id}/amendment-requests/preview`, {
+    method: 'POST', body: JSON.stringify({ requestedChanges: input.changes, reason: input.reason.trim() }),
+  });
+}
+
+/** C09b — every amendment submitted by this tournament's organizer, newest first. */
 export function getTournamentAmendmentRequests(
   id: number,
 ): Promise<{ items: import('../types/tournament.dto').TournamentAmendmentHistoryItemDto[] }> {

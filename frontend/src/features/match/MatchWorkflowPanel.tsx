@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ownResultRecovery } from '../../shared/refereeRecovery'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 import { ScoreInputs } from './ScoreInputs'
 import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { Badge, Banner, Panel } from '../../components/kit/primitives'
@@ -57,7 +59,7 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
         }} /></label>
       {keys.map((key, i) => <span key={key}>Evidence {i + 1} uploaded <button type="button" className="btn ghost" disabled={busy} onClick={() => { setKeys(previous => previous.filter(item => item !== key)); setUploadError('') }}>Remove attachment {i + 1}</button></span>)}
       {uploading ? <p role="status">Uploading evidence...</p> : null}
-      {uploadError || error ? <p role="alert">{uploadError || errorText(error)}</p> : null}
+      {uploadError || error ? <div role="alert">{uploadError || errorText(error)}<ContractErrorDetails error={error} /></div> : null}
       <button className="btn primary" type="submit" disabled={busy || !reason.trim() || !!uploadError || (propose && !validScore(m, a, b, error))}>{pending ? 'Saving...' : title}</button>
     </form>
   </Panel>
@@ -144,7 +146,7 @@ export function MatchWorkflowPanel({ m, result }: { m: MatchDto; result?: MatchR
     {organizer && m.status === 'finished' && (!result || result.status === 'rejected') && m.teamA && m.teamB ? elapsed
       ? <OrganizerDecision m={m} pending={flow.organizer.isPending} error={flow.organizer.error} submit={flow.organizer.mutateAsync} />
       : <Panel quiet>Organizer result decisions become available 24 hours after the recorded end of play.{m.actualEndTime ? ` Available at ${new Date(Date.parse(m.actualEndTime) + 24 * 3600_000).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}.` : ' The backend has not supplied the actual end time.'}</Panel> : null}
-    {ownResult && (result?.status === 'submitted' || result?.status === 'verified') ? <Panel quiet>You recorded this result and cannot dispute it. {m.mode === 'online' && result.status === 'submitted' ? 'Use Edit result with a correction reason.' : 'Ask another authorized referee or a team leader to review or challenge it.'}</Panel> : null}
+    {ownResult && (result?.status === 'submitted' || result?.status === 'verified') ? <Panel quiet>You recorded this result and cannot dispute it. {ownResultRecovery(result.status, m.mode)}</Panel> : null}
     {party && !ownResult && m.teamA && m.teamB && (result?.status === 'submitted' || result?.status === 'verified') ? <ResultChallengeForm m={m} title="Dispute this result" pending={flow.challenge.isPending} error={flow.challenge.error} submit={flow.challenge.mutateAsync} /> : null}
     {activeDispute ? <Panel quiet><h3>Dispute details</h3>
       {flow.dispute.isPending ? <p>Loading dispute...</p> : flow.dispute.isError ? <p role="alert">{errorText(flow.dispute.error)}</p> : flow.dispute.data ? <>

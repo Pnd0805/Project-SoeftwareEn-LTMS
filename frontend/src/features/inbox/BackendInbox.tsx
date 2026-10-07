@@ -24,6 +24,7 @@ import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
 import { TeamChipView } from '../../components/kit/chips'
 import { RefereeConflictLink } from '../match/RefereeConflictLink'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 
 type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string; error?: unknown } | null
 
@@ -69,7 +70,7 @@ export function BackendInbox() {
         <h2 className="disp" style={{ fontSize: 24 }}>Action requests</h2>
       </div>
 
-      {notice ? <Banner kind={notice.kind}>{notice.text}<RefereeConflictLink error={notice.error} /></Banner> : null}
+      {notice ? <Banner kind={notice.kind}>{notice.text}<RefereeConflictLink error={notice.error} /><ContractErrorDetails error={notice.error} /></Banner> : null}
 
       {loading ? <Panel quiet><span className="sub">Loading…</span></Panel> : null}
 
@@ -88,10 +89,12 @@ export function BackendInbox() {
                 <button className="btn" type="button" disabled={answerInvite.isPending}
                   onClick={() => answerInvite.mutate({ invitationId: invite.id, accept: false }, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined the invitation from ${invite.team.name}.` }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Decline</button>
                 <button className="btn primary" type="button" disabled={answerInvite.isPending}
                   onClick={() => answerInvite.mutate({ invitationId: invite.id, accept: true }, {
                     onSuccess: () => setNotice({ kind: 'ok', text: `You joined ${invite.team.name}.` }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Accept</button>
               </div>
             </div>
@@ -119,7 +122,7 @@ export function BackendInbox() {
                     onSuccess: result => setNotice({ kind: 'ok', text: result?.requiresAdminApproval
                       ? `Accepted — an admin still needs to approve you for ${invite.tournament.name}.`
                       : `You are now eligible to officiate ${invite.tournament.name}.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
+                    onError: error => { setNotice({ kind: 'crit', text: answerError(error), error }); if (error instanceof ApiError && error.code === 'REFEREE_INVITATION_EXPIRED') void refereeInvites.refetch() },
                   })}>Accept</button>
               </div>
             </div>

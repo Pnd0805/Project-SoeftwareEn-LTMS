@@ -50,6 +50,7 @@ import { TeamRecord } from './TeamRecord'
 import { JoinRequestsPanel } from './JoinRequestsPanel'
 import { LeaveTeamPanel } from './LeaveTeamPanel'
 import { searchUserLabel } from '../../shared/display'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
 
@@ -381,7 +382,7 @@ function InvitePanel({ data, lockName, memberIds }: {
           <input value={search} placeholder="Search by name" aria-label="Search users to invite" autoComplete="off"
             onChange={e => { setSearch(e.target.value); invite.reset(); setNotice(null) }} />
           {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}
-          {invite.isError ? <Banner kind="crit"><b>Couldn't send the invitation.</b> {errorMessage(invite.error)}</Banner> : null}
+          {invite.isError ? <Banner kind="crit"><b>Couldn't send the invitation.</b> {errorMessage(invite.error)}<ContractErrorDetails error={invite.error} /></Banner> : null}
           {!typed ? <span className="sub">Type at least three letters.</span> : null}
           {typed && users.isPending ? <span className="sub">Searching users…</span> : null}
           {typed && users.isError ? <span className="sub">{errorMessage(users.error)}</span> : null}

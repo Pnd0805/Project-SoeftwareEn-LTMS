@@ -608,7 +608,9 @@ function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
     const iConfirm = canConfirm(m, result)
     /* S02b — กรรมการของแมตช์ online แก้ผลได้ตราบที่ยัง submitted (รวมผลที่ตัวเองเพิ่งแก้) */
     const correction = m.mode === 'online' && m.viewer.roles.includes('referee')
-      ? <ResultOverride m={m} result={result} /> : null
+      ? <ResultOverride m={m} result={result} />
+      : !USE_MOCK && m.mode === 'onsite' && m.viewer.roles.includes('referee')
+        ? <details><summary>Correct submitted result</summary><p className="sub">Resubmit the corrected result before verification. The server rechecks your referee assignment and the current result status.</p><ResultForm m={m} /></details> : null
     const isRefereeOrSubmitter = m.viewer.roles.includes('referee') || (m.viewer.myUserId !== null && result.submittedBy?.id === m.viewer.myUserId)
     const savedBanner = isRefereeOrSubmitter ? (
       <Banner kind="ok" icon="check">

@@ -106,6 +106,18 @@ beforeEach(() => {
   result = baseResult()
 })
 
+it('offers assigned onsite referees resubmission while the result is submitted, and removes it after verification', () => {
+  match = { ...baseMatch(), status: 'finished', resultStatus: 'submitted' }
+  result = baseResult({ status: 'submitted' })
+  const page = renderPage()
+  expect(screen.getByText('Correct submitted result')).toBeInTheDocument()
+  expect(submitResult).not.toHaveBeenCalled()
+  page.unmount()
+  result = baseResult({ status: 'verified' })
+  renderPage()
+  expect(screen.queryByText('Correct submitted result')).not.toBeInTheDocument()
+})
+
 describe('a result the organizer threw out', () => {
   it('says what happened instead of claiming nothing was ever recorded', () => {
     renderPage()

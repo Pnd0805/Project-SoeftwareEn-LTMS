@@ -225,6 +225,7 @@ export async function getTournamentReferees(
       approvedAt: null,
       createdAt: "",
       removedAt: row.status === "removed" ? "removed" : null,
+      status: row.status,
       removedBy: null,
       isActive: row.status === "active",
     })),

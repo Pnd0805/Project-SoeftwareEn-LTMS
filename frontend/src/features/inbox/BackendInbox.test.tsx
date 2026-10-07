@@ -22,6 +22,9 @@ const idle = { isPending: false, isError: false, isSuccess: false, error: null, 
 const acceptMutate = vi.fn()
 const declineMutate = vi.fn()
 const cancelMutate = vi.fn()
+const appointmentMutate = vi.fn()
+const refreshAppointments = vi.fn()
+let appointments: Array<{ id: number; tournament: { id: number; name: string }; isExternal: boolean; createdAt: string }> = []
 let outgoing: typeof request[] = []
 
 const request: BackendRefereeRequestDto = {
@@ -42,9 +45,9 @@ vi.mock('../../hooks/useTournament', () => ({
 }))
 vi.mock('../../hooks/useAdmin', () => ({
   useCancelRefereeRequest: () => ({ ...idle, mutate: cancelMutate }),
-  useAcceptRefereeInvitation: () => idle,
+  useAcceptRefereeInvitation: () => ({ ...idle, mutate: appointmentMutate }),
   useDeclineRefereeInvitation: () => idle,
-  useMyRefereeInvitations: () => ({ data: { items: [] }, isPending: false }),
+  useMyRefereeInvitations: () => ({ data: { items: appointments }, isPending: false, refetch: refreshAppointments }),
   useMyRefereeRequests: () => ({ data: { incoming, outgoing }, isPending: false }),
   useAcceptRefereeRequest: () => ({ ...idle, mutate: acceptMutate }),
   useDeclineRefereeRequest: () => ({ ...idle, mutate: declineMutate }),
@@ -55,7 +58,16 @@ import { BackendInbox } from './BackendInbox'
 const renderInbox = () => render(<MemoryRouter><BackendInbox /></MemoryRouter>)
 const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
 
-beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request] })
+beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request]; appointments = [] })
+
+it('recovers from a referee invitation expiring between reading and accepting it', () => {
+ incoming = []; appointments = [{ id: 34, tournament: { id: 23, name: 'Campus cup' }, isExternal: false, createdAt: '2026-10-07T03:00:00Z' }]
+ appointmentMutate.mockImplementation((_id, options) => options.onError(new ApiError(409, { code: 'REFEREE_INVITATION_EXPIRED', message: 'Invitation expired', expiresAt: '2026-10-14T03:00:00Z' })))
+ renderInbox(); clickAccept()
+ expect(screen.getByText(/Refresh your invitations and ask the organizer for a new invitation/)).toBeInTheDocument()
+ expect(refreshAppointments).toHaveBeenCalledOnce()
+ expect(screen.queryByText(/You are now eligible/)).not.toBeInTheDocument()
+})
 
 describe('answering a match assignment request', () => {
   it('preserves the BE cross-tournament message and links the conflicting match', () => {

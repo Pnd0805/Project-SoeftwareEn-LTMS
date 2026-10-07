@@ -21,6 +21,14 @@ const renderForm = () => render(<RegisterForm backendTeam={{ id: 9, name: 'Squad
  sportTypeId={1} open onClose={vi.fn()} />)
 beforeEach(() => { state.apply.mockReset() })
 
+it('explains ALREADY_APPLIED as an active team application rather than blaming individual players', async () => {
+ state.apply.mockRejectedValue(new ApiError(409, { code: 'ALREADY_APPLIED', message: 'Active application exists' }))
+ renderForm(); fireEvent.click(screen.getByRole('checkbox', { name: 'Enter Bob' }))
+ fireEvent.click(screen.getByRole('button', { name: 'Submit registration' }))
+ await screen.findByText(/This team already has a pending or approved application/)
+ expect(screen.queryByText(/สมัครทัวร์นี้กับทีมอื่นแล้ว/)).not.toBeInTheDocument()
+})
+
 it('marks an unchecked team member whose referee role blocks registration', async () => {
  state.apply.mockRejectedValue(new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Role conflict', conflicts: [{ userId: 1, role: 'referee' }] }))
  renderForm()

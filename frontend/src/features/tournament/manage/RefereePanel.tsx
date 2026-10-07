@@ -40,6 +40,7 @@ import { useMe } from '../../../hooks/useAuth'
 import { refsNeeded } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import type { TournamentRefereeDto } from '../../../types/admin.dto'
+import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
 
 type Notice = { kind: 'ok' | 'crit'; text: string } | null
 
@@ -88,6 +89,8 @@ function RefereeCandidateRow({
 }
 
 function RefereeState({ r }: { r: TournamentRefereeDto }) {
+  if (r.status === 'expired') return <Badge kind="neutral">Invitation expired — can invite again</Badge>
+  if (r.status === 'removed') return <Badge kind="neutral">Removed</Badge>
   if (r.invitationStatus === 'pending') return <Badge kind="warn">Invited — waiting</Badge>
   if (r.invitationStatus !== 'accepted') return <Badge kind="neutral">Declined</Badge>
   if (r.isExternal && r.externalApprovalStatus === 'pending') return <Badge kind="warn">Accepted — waiting for admin approval</Badge>
@@ -127,7 +130,9 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
 
   /* คนที่อยู่ในทัวร์นาเมนต์แล้ว (ทั้งตอบรับและรอตอบ) ไม่ควรโผล่ให้เชิญซ้ำ
      บัญชีที่ถูกระงับแต่งตั้งไม่ได้ (FR-UM-05) จึงไม่แสดงเลย */
-  const taken = new Set((current?.items ?? []).map(r => r.user.id))
+  const taken = new Set((current?.items ?? []).filter(r =>
+    !['expired', 'removed', 'declined', 'rejected_by_admin'].includes(r.status ?? '')
+    && r.invitationStatus !== 'rejected').map(r => r.user.id))
   /**
    * ผู้จัดเป็นกรรมการทัวร์ของตัวเองไม่ได้ — spec `02-roles-permissions.md` §7 (ห้ามใช้สิทธิ์
    * ปฏิบัติงานกับเรื่องของตัวเอง) และมติ 18 ก.ย. ที่ F01 บังคับไว้ด้วย `invitee ≠ inviter`
@@ -176,7 +181,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
         <Banner kind="crit"><b>Search failed.</b> {(found.error as Error).message}</Banner>
       ) : null}
       {appoint.isError ? (
-        <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {appointError(appoint.error)}</Banner>
+        <Banner kind="crit"><b>เชิญไม่สำเร็จ</b> {appointError(appoint.error)}<ContractErrorDetails error={appoint.error} /></Banner>
       ) : null}
       {invitationNotice ? <Banner kind="ok">{invitationNotice}</Banner> : null}
       {cands.length ? (

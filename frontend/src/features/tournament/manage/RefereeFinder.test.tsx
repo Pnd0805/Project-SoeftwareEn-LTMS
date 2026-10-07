@@ -21,6 +21,7 @@ vi.mock('../../../shared/store', async original => ({
 
 const ME = 9201
 let appointState: { isPending: boolean; isError: boolean; error: unknown; mutate: ReturnType<typeof vi.fn> }
+let existing: Array<{ id: number; user: { id: number }; invitationStatus: string; status: string }> = []
 
 vi.mock('../../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: ME } }) }))
 vi.mock('../../../hooks/useUser', () => ({
@@ -38,7 +39,7 @@ vi.mock('../../../hooks/useUser', () => ({
   }),
 }))
 vi.mock('../../../hooks/useAdmin', () => ({
-  useTournamentReferees: () => ({ data: { items: [] } }),
+  useTournamentReferees: () => ({ data: { items: existing } }),
   useAppointReferee: () => appointState,
   useRemoveReferee: () => ({ isPending: false, isError: false, error: null, mutate: vi.fn() }),
 }))
@@ -49,7 +50,16 @@ const tournament = { id: 23, name: 'QA Cup', channel: 'onsite' } as unknown as T
 const renderFinder = () => render(<RefereeFinder t={tournament} open onClose={() => {}} />)
 
 beforeEach(() => {
+  existing = []
   appointState = { isPending: false, isError: false, error: null, mutate: vi.fn() }
+})
+
+it('offers a person again after the server computes their pending invitation as expired', () => {
+ existing = [{ id: 31, user: { id: 9003 }, invitationStatus: 'pending', status: 'expired' }]
+ renderFinder()
+ expect(screen.getByRole('button', { name: 'Invite to officiate' })).toBeEnabled()
+ fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
+ expect(appointState.mutate.mock.calls[0][0]).toEqual({ userId: 9003 })
 })
 
 describe('the organizer looking for referees', () => {

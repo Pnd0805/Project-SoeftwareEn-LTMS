@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getComments, getReviews, removeFeedbackByAdmin, restoreFeedbackByAdmin, dismissCommentReport } from '../../api/liveEngagement'
+import { getComments, getReviews, removeFeedbackByAdmin, dismissCommentReport } from '../../api/liveEngagement'
 import { getTournaments } from '../../api/tournament'
 import { retryPolicy } from '../../api/client'
 import { useMe } from '../../hooks/useAuth'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
+import { RemovedFeedbackPanel } from './RemovedFeedbackPanel'
 
 export function AdminFeedbackTab() {
   const qc = useQueryClient()
@@ -15,18 +16,16 @@ export function AdminFeedbackTab() {
   const [tournamentId, setTournamentId] = useState<number | undefined>()
   const [page, setPage] = useState(1)
   const [reason, setReason] = useState('')
-  const [restoreId, setRestoreId] = useState('')
-  const validRestoreId = Number.isSafeInteger(Number(restoreId)) && Number(restoreId) > 0
-  const [selected, setSelected] = useState<{ id: number; dismiss: boolean; restore?: boolean; content: string } | null>(null)
+  const [selected, setSelected] = useState<{ id: number; dismiss: boolean; content: string } | null>(null)
   const tournaments = useQuery({ queryKey: ['tournaments', 'moderation'], queryFn: () => getTournaments(), enabled: allowed, retry: retryPolicy })
   const comments = useQuery({ queryKey: ['liveComments', tournamentId, page, true], queryFn: () => getComments(tournamentId!, page, true), enabled: allowed && !!tournamentId, retry: retryPolicy })
   const reviews = useQuery({ queryKey: ['liveReviews', tournamentId], queryFn: () => getReviews(tournamentId!), enabled: allowed && !!tournamentId, retry: retryPolicy })
-  const act = useMutation({ mutationFn: async (input: { id: number; dismiss: boolean; restore?: boolean; reason: string }) => { if (input.restore) await restoreFeedbackByAdmin(input.id); else if (input.dismiss) await dismissCommentReport(tournamentId!, input.id); else await removeFeedbackByAdmin(input.id, input.reason || undefined) },
-    onSuccess: () => { setSelected(null); void qc.invalidateQueries({ queryKey: ['liveComments'] }); void qc.invalidateQueries({ queryKey: ['liveReviews'] }) } })
+  const act = useMutation({ mutationFn: async (input: { id: number; dismiss: boolean; reason: string }) => { if (input.dismiss) await dismissCommentReport(tournamentId!, input.id); else await removeFeedbackByAdmin(input.id, input.reason || undefined) },
+    onSuccess: () => { setSelected(null); void qc.invalidateQueries({ queryKey: ['liveComments'] }); void qc.invalidateQueries({ queryKey: ['liveReviews'] }); void qc.invalidateQueries({ queryKey: ['removedFeedback'] }) } })
   const choose = (id: number, content: string, dismiss = false) => { act.reset(); setReason(''); setSelected({ id, content, dismiss }) }
-  if (!allowed) return <Panel quiet>Feedback moderation requires University Admin rights.</Panel>
-  return <Panel quiet><h3>Reported comments and reviews</h3>
-    <p className="sub">Choose a tournament to read reports before deciding. This list covers the tournament directory. A global queue and deleted feedback history require additional server support.</p>
+  if (!allowed) return <><Panel quiet>Feedback moderation requires University Admin rights.</Panel><RemovedFeedbackPanel /></>
+  return <><Panel quiet><h3>Reported comments and reviews</h3>
+    <p className="sub">Choose a tournament to read reports before deciding. Reported items are listed per tournament; removed feedback is listed separately below.</p>
     <Field label="Tournament" htmlFor="moderation-tournament"><select id="moderation-tournament" value={tournamentId ?? ''} disabled={act.isPending} onChange={e => { setTournamentId(e.target.value ? Number(e.target.value) : undefined); setPage(1) }}><option value="">Choose a tournament</option>{tournaments.data?.items.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
     {tournaments.isPending ? <p>Loading tournaments…</p> : null}
     {tournaments.isError ? <Banner kind="crit">Could not load tournaments. <button className="btn" onClick={() => void tournaments.refetch()}>Retry tournaments</button></Banner> : null}
@@ -44,12 +43,11 @@ export function AdminFeedbackTab() {
       {reviews.data?.items?.filter(r => r.isReported).map(r => <article className="panel quiet" key={r.id}><b>{r.rating}/5 · Review #{r.id}</b><p style={{ whiteSpace: 'pre-wrap' }}>{r.content || 'No written review'}</p><button className="btn danger" disabled={act.isPending} onClick={() => choose(r.id, r.content || 'No written review')}>Review removal</button></article>)}
       {reviews.isSuccess ? <p className="sub">{reviews.data.items === null ? 'Review details are unavailable for this account.' : reviews.data.items.some(r => r.isReported) ? 'Reviewer names remain private.' : 'No reported reviews.'}</p> : null}
     </> : null}
-    <details><summary>Restore previously removed feedback</summary><p className="sub">Deleted feedback is absent from the current list. Enter its known ID to restore it; its removed content cannot be previewed through the current API.</p><Field label="Removed feedback ID" htmlFor="restore-feedback-id"><input id="restore-feedback-id" inputMode="numeric" value={restoreId} onChange={e => setRestoreId(e.target.value)} /></Field><button className="btn" disabled={!validRestoreId || act.isPending} onClick={() => { act.reset(); setReason(''); setSelected({ id: Number(restoreId), dismiss: false, restore: true, content: `Feedback #${restoreId}` }) }}>Review restoration</button></details>
-    <Modal open={!!selected} onClose={() => !act.isPending && setSelected(null)} title={selected?.restore ? 'Restore this feedback?' : selected?.dismiss ? 'Dismiss this report?' : 'Remove this feedback?'}>
-      <p style={{ whiteSpace: 'pre-wrap' }}>{selected?.content}</p><p>{selected?.restore ? 'The feedback will become visible again and its report flag will clear. Its removed content is unavailable for preview.' : selected?.dismiss ? 'The comment stays visible and leaves the reported queue.' : 'The feedback will leave public counts. The action is recorded for review.'}</p>
-      {!selected?.dismiss && !selected?.restore ? <Field label="Moderation reason (optional)" htmlFor="moderation-reason"><textarea id="moderation-reason" maxLength={255} value={reason} onChange={e => setReason(e.target.value)} /></Field> : null}
+    <Modal open={!!selected} onClose={() => !act.isPending && setSelected(null)} title={selected?.dismiss ? 'Dismiss this report?' : 'Remove this feedback?'}>
+      <p style={{ whiteSpace: 'pre-wrap' }}>{selected?.content}</p><p>{selected?.dismiss ? 'The comment stays visible and leaves the reported queue.' : 'The feedback will leave public counts. The action is recorded for review.'}</p>
+      {!selected?.dismiss ? <Field label="Moderation reason (optional)" htmlFor="moderation-reason"><textarea id="moderation-reason" maxLength={255} value={reason} onChange={e => setReason(e.target.value)} /></Field> : null}
       {act.isError ? <Banner kind="crit">{act.error.message}</Banner> : null}
       <button className="btn" disabled={act.isPending} onClick={() => setSelected(null)}>Cancel</button>{' '}<button className="btn danger" disabled={act.isPending} onClick={() => selected && act.mutate({ ...selected, reason: reason.trim() })}>Confirm moderation</button>
     </Modal>
-  </Panel>
+  </Panel><RemovedFeedbackPanel /></>
 }

@@ -25,6 +25,8 @@ export const removeFeedbackByAdmin = (id: number, reason?: string) =>
   apiFetch<void>(`/admin/feedback/${id}`, { method: 'DELETE', ...json({ reason }) })
 export const restoreFeedbackByAdmin = (id: number) =>
   apiFetch<{ id: number; restored: true }>(`/admin/feedback/${id}/restore`, { method: 'POST' })
+export const getRemovedFeedback = (page = 1) =>
+  apiFetch<import('../types/liveEngagement.dto').RemovedFeedbackPage>(`/admin/feedback/removed?page=${page}&pageSize=20`)
 export const getPredictionSummary = (id: number) => apiFetch<PredictionSummary>(`/matches/${id}/predictions/summary`)
 /* OD-56 (4 ต.ค.) — ทายเป็นสกอร์ ไม่มี teamId แล้ว (ระบบอนุมานผู้ชนะจากสกอร์) · key = รหัสทีมของแมตช์
    เดิมส่ง { teamId } ซึ่ง schema ใหม่ไม่รับ — ทายผลจากหน้าแมตช์ได้ 400 ทุกครั้ง */

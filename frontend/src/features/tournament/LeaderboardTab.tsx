@@ -78,7 +78,7 @@ function EliminationTable({ rows }: { rows: StandingRowDto[] }) {
             <tr key={r.team.id}>
               <td className="num">{r.rank}</td>
               <td><TeamLinkView team={r.team} /></td>
-              <td>{r.outLabel || 'Not provided'}</td>
+              <td>{r.outLabel ?? 'Outcome not decided yet'}</td>
               <td className="num">{r.played}</td>
               <td className="num">{r.won}</td>
               <td><FormGuide form={r.form} /></td>

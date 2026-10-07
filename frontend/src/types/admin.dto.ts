@@ -65,6 +65,7 @@ export interface ReviewTournamentRequest {
  *    ให้เรียงด้วย `tournament_referee_id DESC` แทน (รีวิว schema รอบแรกเจอ)
  */
 export interface TournamentRefereeDto {
+  status?: BackendTournamentRefereeDto['status'];
   /** Invitation write response only: count, never another referee's private schedule. */
   crossTournamentWarnings?: number;
   id: number;
@@ -301,7 +302,7 @@ export interface BackendTournamentRefereeDto {
   invitationStatus: "pending" | "accepted" | "rejected";
   isExternal: boolean;
   externalApprovalStatus: "not_required" | "pending" | "needs_docs" | "approved" | "rejected";
-  status: "pending" | "pending_admin" | "active" | "declined" | "rejected_by_admin" | "removed";
+  status: "pending" | "expired" | "pending_admin" | "active" | "declined" | "rejected_by_admin" | "removed";
 }
 
 export interface BackendTournamentRefereeListDto {

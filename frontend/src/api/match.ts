@@ -1445,7 +1445,7 @@ export async function getStandings(tournamentId: MatchRef): Promise<StandingsDto
       scoredAgainst: row.goalsAgainst,
       scoreDifference: row.goalDiff,
       form: [],
-      outLabel: "",
+      outLabel: row.outLabel ?? null,
     })),
   };
 }

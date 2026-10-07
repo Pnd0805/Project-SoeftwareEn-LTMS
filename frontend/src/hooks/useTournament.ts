@@ -327,3 +327,7 @@ export function useRequestFilterChange(tournamentId: TournamentRef) {
     onSuccess: () => invalidateTournament(queryClient, tournamentId),
   });
 }
+
+export function usePreviewAmendment(tournamentId: number) {
+  return useMutation({ mutationFn: (input: { changes: AmendmentRequestPayload; reason: string }) => tournamentApi.previewAmendment(tournamentId, input) });
+}

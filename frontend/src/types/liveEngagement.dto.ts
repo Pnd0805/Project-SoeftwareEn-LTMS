@@ -36,6 +36,25 @@ export interface CommentPage {
   pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }
 
+export interface RemovedFeedbackItem {
+  id: number;
+  tournamentId: number;
+  tournamentName: string;
+  feedbackType: 'comment' | 'organizer_feedback' | 'mvp_vote';
+  content: string | null;
+  rating: number | null;
+  author: { id: number; fullName: string; avatarUrl: string | null };
+  removedAt: string;
+  removedBy: { id: number; fullName: string } | null;
+  removalReason: string | null;
+  removedByRole: 'organizer' | 'admin' | null;
+  canRestore: boolean;
+}
+export interface RemovedFeedbackPage {
+  items: RemovedFeedbackItem[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}
+
 export interface PredictionSummary {
   matchId: number;
   isOpen: boolean;

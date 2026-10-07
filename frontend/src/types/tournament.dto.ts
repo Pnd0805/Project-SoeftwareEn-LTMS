@@ -222,6 +222,12 @@ export interface AmendmentRequestPayload {
   eligibilityRules?: BackendEligibilityRuleInput[];
 }
 
+export interface AmendmentPreviewDto {
+  canSubmit: boolean;
+  blockers: Array<{ code: string; message: string; details: Record<string, unknown> | null }>;
+  pendingAmendmentId: number | null;
+}
+
 export interface InviteTournamentRefereeRequest {
   userId: number;
   /** backend บังคับช่องนี้ — ไม่ส่งถือว่า false ที่ชั้น api */
