@@ -40,6 +40,8 @@ import { StalledWorkTab } from './StalledWorkTab'
 import { TournamentReviewDetails, TournamentReviewDisclosure } from './TournamentReviewDetails'
 import { IdentityDocs } from './IdentityDocs'
 import { displayDate } from '../../shared/display'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+import type { BackendAmendmentRequestDto } from '../../types/tournament.dto'
 
 /** คำตอบที่ C02/C03 ปฏิเสธมา — อ่านเป็นภาษาของหน้านี้ ไม่ใช่ข้อความดิบของ backend */
 const tournamentDecisionError = (error: unknown) => {
@@ -91,6 +93,7 @@ export function AdminPage() {
   const publicTournaments = useTournaments()
   const amendments = useAmendmentRequests()
   const approveAmendment = useApproveAmendment()
+  const [approvingAmendment, setApprovingAmendment] = useState<BackendAmendmentRequestDto | null>(null)
   const rejectAmendment = useRejectAmendment()
   const [rejectingAmendment, setRejectingAmendment] = useState<{ id: number; name: string } | null>(null)
   const [amendmentReason, setAmendmentReason] = useState('')
@@ -431,7 +434,7 @@ export function AdminPage() {
             </Banner>
           ) : null}
           {approveAmendment.isError ? (
-            <Banner kind="crit"><b>The decision did not go through.</b> {(approveAmendment.error as Error).message}</Banner>
+            <Banner kind="crit"><b>The decision did not go through.</b> {(approveAmendment.error as Error).message}<ContractErrorDetails error={approveAmendment.error} /></Banner>
           ) : null}
           {amendmentRows.map(request => (
             <div className="vstack" style={{ gap: 9 }} key={request.id}>
@@ -440,6 +443,7 @@ export function AdminPage() {
                 <span className="tag">{fmtDate(request.requestedAt)}</span>
               </div>
               <div className="sub">Asked by {request.requestedBy.fullName}</div>
+              {request.selfRequested ? <Badge kind="warn">You submitted this request</Badge> : null}
               <p style={{ whiteSpace: 'pre-wrap' }}>Reason: {request.reason ?? 'Not provided'}</p>
               <TournamentReviewDetails id={request.tournamentId} changes={request.requestedChanges} />
 
@@ -449,7 +453,7 @@ export function AdminPage() {
                   Decline
                 </button>
                 <button className="btn primary" type="button" disabled={approveAmendment.isPending}
-                  onClick={() => approveAmendment.mutate(request.id)}>
+                  onClick={() => { approveAmendment.reset(); setApprovingAmendment(request) }}>
                   {approveAmendment.isPending ? 'Approving…' : 'Approve the change'}
                 </button>
               </div>
@@ -458,6 +462,15 @@ export function AdminPage() {
           {amendments.isSuccess && !amendmentRows.length ? <div className="sub">Nothing waiting.</div> : null}
         </Panel>
       ) : null}
+
+      <Modal open={!!approvingAmendment} onClose={() => !approveAmendment.isPending && setApprovingAmendment(null)} title="Approve amendment?">
+        <p>{approvingAmendment?.tournamentName}</p>
+        {approvingAmendment?.selfRequested ? <Banner kind="warn">You submitted this request. Approving it yourself will be recorded as approval by the requester.</Banner> : null}
+        {approvingAmendment ? <TournamentReviewDetails id={approvingAmendment.tournamentId} changes={approvingAmendment.requestedChanges} /> : null}
+        {approveAmendment.isError ? <Banner kind="crit">{(approveAmendment.error as Error).message}<ContractErrorDetails error={approveAmendment.error} /></Banner> : null}
+        <button className="btn" disabled={approveAmendment.isPending} onClick={() => setApprovingAmendment(null)}>Cancel</button>{' '}
+        <button className="btn primary" disabled={approveAmendment.isPending} onClick={() => approvingAmendment && approveAmendment.mutate(approvingAmendment.id, { onSuccess: () => setApprovingAmendment(null) })}>Confirm amendment approval</button>
+      </Modal>
 
       <Modal open={!!rejectingAmendment} onClose={() => setRejectingAmendment(null)}
         label="Decline a change request" title={rejectingAmendment?.name ?? ''}>

@@ -21,6 +21,8 @@ const idle = { isPending: false, isError: false, isSuccess: false, error: null, 
 const emptyList = { data: { items: [] }, isPending: false, isError: false, isSuccess: true, error: null }
 const reviewMutate = vi.fn()
 const reviewState = { ...idle, mutate: reviewMutate }
+const amendmentQueue = { ...emptyList, data: { items: [] as Array<{ id: number; tournamentId: number; tournamentName: string; requestedBy: { id: number; fullName: string }; selfRequested: boolean; requestedChanges: Record<string, unknown>; status: string; requestedAt: string }> } }
+const amendmentMutate = vi.fn()
 
 const request = (id: number, name: string) => ({
   id, name, sportTypeId: 1,
@@ -38,12 +40,12 @@ vi.mock('../../hooks/useAdmin', () => ({
   useApproveTeamRequest: () => idle,
   useRejectTeamRequest: () => idle,
   useExternalRefereeRequests: () => emptyList,
-  useAmendmentRequests: () => emptyList,
-  useApproveAmendment: () => idle,
+  useAmendmentRequests: () => amendmentQueue,
+  useApproveAmendment: () => ({ ...idle, mutate: amendmentMutate, reset: vi.fn() }),
   useRejectAmendment: () => idle,
 }))
-vi.mock('../../hooks/useTournament', () => ({ useTournaments: () => emptyList }))
-vi.mock('../../hooks/useReference', () => ({ useSportTypes: () => ({ data: { items: [{ id: 1, name: 'ฟุตบอล' }] } }) }))
+vi.mock('../../hooks/useTournament', () => ({ useTournaments: () => emptyList, useTournament: () => ({ data: { eventStartDate: '2026-12-01' } }), useEligibilityRules: () => emptyList }))
+vi.mock('../../hooks/useReference', () => ({ useSportTypes: () => ({ data: { items: [{ id: 1, name: 'ฟุตบอล' }] } }), useFaculties: () => emptyList }))
 vi.mock('./AdminRefereesTab', () => ({ AdminRefereesTab: () => null }))
 vi.mock('./AdminUsersTab', () => ({ AdminUsersTab: () => null }))
 vi.mock('./AdminFeedbackTab', () => ({ AdminFeedbackTab: () => null }))
@@ -74,6 +76,7 @@ const failWith = (code: string, message: string) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  amendmentQueue.data.items = []
   reviewState.isError = false
   reviewState.error = null
   reviewMutate.mockImplementation(() => {})
@@ -141,4 +144,18 @@ it('does not submit an approval when the confirmation is cancelled', () => {
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
   expect(reviewMutate).not.toHaveBeenCalled()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+it('warns before self-approval and sends an amendment only after confirmation', () => {
+  amendmentQueue.data.items = [{ id: 7, tournamentId: 22, tournamentName: 'Self request', requestedBy: { id: 9001, fullName: 'Admin' }, selfRequested: true, requestedChanges: { maxTeams: 8 }, status: 'pending', requestedAt: '2026-10-07T03:00:00Z' }]
+  renderPage()
+  fireEvent.click(screen.getByRole('button', { name: 'Hard-filter changes' }))
+  expect(screen.getByText('You submitted this request')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Approve the change' }))
+  expect(screen.getByText(/Approving it yourself will be recorded/)).toBeInTheDocument()
+  expect(amendmentMutate).not.toHaveBeenCalled()
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+  expect(amendmentMutate).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Approve the change' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm amendment approval' }))
+  expect(amendmentMutate).toHaveBeenCalledWith(7, expect.any(Object))
 })

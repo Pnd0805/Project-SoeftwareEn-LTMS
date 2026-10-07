@@ -47,7 +47,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
         minimum size follows from the sport.
       </div>
       <Field label="Name" htmlFor="nt-name">
-        <input id="nt-name" value={name} onChange={e => setName(e.target.value)} placeholder="Byte Force" />
+        <input id="nt-name" maxLength={150} value={name} onChange={e => setName(e.target.value)} placeholder="Byte Force" />
       </Field>
       <Field label="Sport" htmlFor="nt-sport">
         {sportTypes.isPending ? <div className="sub">Loading sports…</div>
@@ -68,7 +68,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
       <div className="hstack">
         <button className="btn" type="button" onClick={close}>Cancel</button>
         <button className="btn primary" type="button"
-          disabled={!name.trim() || sportTypeId === '' || create.isPending}
+          disabled={!name.trim() || name.trim().length > 150 || sportTypeId === '' || create.isPending}
           onClick={() => create.mutate({ name: name.trim(), sportTypeId: Number(sportTypeId) }, {
             onSuccess: team => {
               setName('')

@@ -9,13 +9,15 @@ export function ProfileSettings({ user }: { user: MeDto }) {
   const [contact, setContact] = useState(user.contactInfo ?? '')
   const [address, setAddress] = useState(user.address ?? '')
   const [showStats, setShowStats] = useState(user.showProfileStats !== false)
-  return <Panel quiet><h3>Profile settings</h3><form className="vstack" onSubmit={e => { e.preventDefault(); if (!save.isPending) save.mutate({ contactInfo: contact, address, showProfileStats: showStats }) }}>
-    <Field label="Contact information" htmlFor="profile-contact"><input id="profile-contact" value={contact} onChange={e => setContact(e.target.value)} disabled={save.isPending} /></Field>
-    <Field label="Address" htmlFor="profile-address"><textarea id="profile-address" value={address} onChange={e => setAddress(e.target.value)} disabled={save.isPending} /></Field>
+  const valid = contact.length <= 255 && address.length <= 2000
+  return <Panel quiet><h3>Profile settings</h3><form className="vstack" onSubmit={e => { e.preventDefault(); if (valid && !save.isPending) save.mutate({ contactInfo: contact.trim() ? contact : null, address: address.trim() ? address : null, showProfileStats: showStats }) }}>
+    <Field label="Contact information" htmlFor="profile-contact"><input id="profile-contact" maxLength={255} value={contact} onChange={e => setContact(e.target.value)} disabled={save.isPending} /></Field>
+    <Field label="Address" htmlFor="profile-address"><textarea id="profile-address" maxLength={2000} value={address} onChange={e => setAddress(e.target.value)} disabled={save.isPending} /></Field>
+    {!valid ? <Banner kind="crit">Contact information allows 255 characters; address allows 2,000. Shorten the saved text before submitting.</Banner> : null}
     <label className="profile-checkbox"><input type="checkbox" checked={showStats} onChange={e => setShowStats(e.target.checked)} disabled={save.isPending} /> <span>Show career and match statistics on my public profile</span></label>
     <p className="sub">Competition results and leaderboards stay visible. You can still see your own statistics.</p>
     {save.isError ? <Banner kind="crit">{save.error.message}</Banner> : null}{save.isSuccess ? <p role="status">Profile saved.</p> : null}
-    <button className="btn primary" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save profile settings'}</button>
+    <button className="btn primary" disabled={!valid || save.isPending}>{save.isPending ? 'Saving…' : 'Save profile settings'}</button>
   </form></Panel>
 }
 export function NotificationSettings() {

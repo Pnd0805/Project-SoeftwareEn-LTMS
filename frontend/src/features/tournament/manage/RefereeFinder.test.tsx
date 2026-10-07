@@ -80,7 +80,7 @@ describe('the organizer looking for referees', () => {
     renderFinder()
     expect(screen.queryByLabelText(/เชิญเป็นกรรมการภายนอก/)).not.toBeInTheDocument()
     expect(screen.getByText(/ระบบจะตรวจจับสถานะกรรมการ \(ภายใน\/ภายนอก\) ให้อัตโนมัติ/)).toBeInTheDocument()
-    expect(screen.getByText('ระบบกำหนดภายใน/ภายนอกเมื่อส่งคำเชิญ')).toBeInTheDocument()
+    expect(screen.getByText(/ระบบกำหนดภายใน\/ภายนอกเมื่อส่งคำเชิญ/)).toBeInTheDocument()
     expect(screen.queryByText('Internal')).not.toBeInTheDocument()
     expect(screen.queryByText('External')).not.toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('the organizer looking for referees', () => {
     appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: true, crossTournamentWarnings: 0 }))
     renderFinder()
     fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
-    expect(appointState.mutate).toHaveBeenCalledWith({ userId: 9003, isExternal: false }, expect.anything())
+    expect(appointState.mutate).toHaveBeenCalledWith({ userId: 9003 }, expect.anything())
     expect(screen.getByText(/External — ต้องส่งเอกสาร/)).toBeInTheDocument()
   })
 

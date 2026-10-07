@@ -2,6 +2,7 @@ import { Modal } from '../../components/kit/Modal'
 import { RefereeMatchRequest } from './RefereeMatchRequest'
 import { ScoreInputs } from './ScoreInputs'
 import { scoreFormatFromError, validMatchScore } from './scoreFormat'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 import { MatchWorkflowPanel } from './MatchWorkflowPanel'
 import { canConfirm, confirmerName, confirmerOf, resultRecorder, type Confirmer } from './resultAttribution'
 import { ResultOverride } from './ResultOverride'
@@ -91,7 +92,7 @@ const lifecycleError = (error: unknown) => {
   if (code === 'NOT_ORGANIZER') return 'Only the organizer of this tournament can do that.'
   if (code === 'NOT_REFEREE') return 'Only a referee assigned to this match can do that.'
   if (code === 'INVALID_STATUS_TRANSITION') return 'This match has already moved past that step. Reload to see where it stands.'
-  if (code === 'INSUFFICIENT_REFEREES') return 'This match still needs its referees in place before it can start.'
+  if (code === 'INSUFFICIENT_REFEREES') return 'This match needs enough accepted referees before opening check-in or starting. Complete the referee appointments first.'
   if (code === 'INSUFFICIENT_CHECKINS') return 'Both squads are below the minimum number of checked-in players. The match has not started. Wait for more players to check in or ask the organizer to reschedule.'
   if (code === 'CHECKIN_NOT_OPEN') return 'Check-in is not open for this match.'
   if (code === 'MATCH_TEAMS_INCOMPLETE') return 'This match is still waiting on an earlier round for one of its places.'
@@ -283,6 +284,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
         <Banner kind="crit">
           <b>That did not go through.</b>{' '}
           {lifecycleError(failed.error)}
+          <ContractErrorDetails error={failed.error} />
         </Banner>
       ) : null}
     </Panel>

@@ -233,6 +233,7 @@ export function TournamentPage() {
             <Facts rows={[
               ['Sport', t.sport],
               ['Format', formatName(t)],
+              ...(!USE_MOCK && tournamentData?.bestOf !== undefined ? [['Tournament BO default', tournamentData.bestOf == null ? 'No BO limit' : `BO${tournamentData.bestOf} (individual matches can differ)`] as [string, string]] : []),
                 ['Date', dateRange(t.date, t.eventEndDate)],
               ['Registration opens', registrationDate(t.registrationStart)],
               ['Registration closes', registrationDate(t.registrationEnd)],

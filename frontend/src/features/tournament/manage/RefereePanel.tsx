@@ -59,7 +59,7 @@ function RefereeCandidateRow({
   onAppoint: (userId: number, isExternal: boolean) => void
 }) {
   const isExternal = USE_MOCK ? !!isMockExternal : false
-  const affiliationLabel = USE_MOCK ? sub : 'ระบบกำหนดภายใน/ภายนอกเมื่อส่งคำเชิญ'
+  const affiliationLabel = USE_MOCK ? sub : `${sub} · ระบบกำหนดภายใน/ภายนอกเมื่อส่งคำเชิญ`
 
   return (
     <tr>
@@ -155,7 +155,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
       }))
       : apiCands.map(x => ({
         key: String(x.id), userId: x.id, name: x.fullName,
-        sub: `Account #${x.id}`, external: false,
+        sub: [`Player #${x.id}`, x.facultyName, x.year == null ? null : `Year ${x.year}`].filter(Boolean).join(' · '), external: false,
       }))
   /* backend เริ่มค้นที่ 3 ตัวอักษร ส่วน store ใช้ 2 — บอกผู้ใช้ตามของจริง */
   const minChars = USE_MOCK ? 2 : 3
@@ -193,7 +193,7 @@ export function RefereeFinder({ t, open, onClose }: { t: Tournament; open: boole
                   appointPending={appoint.isPending}
                   onAppoint={(userId, isExternal) => {
                     setInvitationNotice(null)
-                    appoint.mutate({ userId, isExternal }, { onSuccess: result => setInvitationNotice(
+                    appoint.mutate(USE_MOCK ? { userId, isExternal } : { userId }, { onSuccess: result => setInvitationNotice(
                       (result.isExternal
                         ? 'External — ต้องส่งเอกสารและผ่านการยืนยันตัวตนจากผู้ดูแลก่อนคุมแมตช์. '
                         : 'Internal — ระบบจัดเป็นกรรมการภายใน. ') + (result.crossTournamentWarnings && result.crossTournamentWarnings > 0

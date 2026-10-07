@@ -16,7 +16,7 @@ export function ScoreInputs({ match, a, b, setA, setB, disabled = false, prefix,
     </div>}
   </div>
   return <div className="grid2" style={{ maxWidth: 420 }}>
-    <Field label={labelA ?? nameA} htmlFor={`${prefix}-a`}><input id={`${prefix}-a`} type="number" min={0} step={1} value={a} disabled={disabled} onChange={e => setA(Number(e.target.value))} /></Field>
-    <Field label={labelB ?? nameB} htmlFor={`${prefix}-b`}><input id={`${prefix}-b`} type="number" min={0} step={1} value={b} disabled={disabled} onChange={e => setB(Number(e.target.value))} /></Field>
+    <Field label={labelA ?? nameA} htmlFor={`${prefix}-a`}><input id={`${prefix}-a`} type="number" min={0} max={999} step={1} value={a} disabled={disabled} onChange={e => setA(Number(e.target.value))} /></Field>
+    <Field label={labelB ?? nameB} htmlFor={`${prefix}-b`}><input id={`${prefix}-b`} type="number" min={0} max={999} step={1} value={b} disabled={disabled} onChange={e => setB(Number(e.target.value))} /></Field>
   </div>
 }

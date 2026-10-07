@@ -25,15 +25,13 @@ import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types
 import type { GenderRequirement } from '../../../types/enums'
 import type { Tournament } from '../../../shared/types'
 import { formatAmendmentChanges } from '../../../shared/amendmentChanges'
+import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
 
 const YEARS = [1, 2, 3, 4, 5, 6, 7, 8]
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 const amendmentErrorMessage = (error: unknown) => {
   const value = error as { code?: unknown; message?: unknown } | null
-  if (value?.code === 'INVALID_DATE_RANGE') {
-    return `${typeof value.message === 'string' ? value.message : 'The tournament schedule is invalid.'} `
-      + 'The server checks the existing schedule with every amendment. Correct the first match date below and send both changes together.'
-  }
+  if (value?.code === 'TOURNAMENT_DATA_CONFLICT') return `${typeof value.message === 'string' ? value.message : 'The existing tournament data conflicts.'} Include corrections to the existing conflicting fields in the same request.`
   return errorMessage(error)
 }
 const toggle = (list: number[], value: number) =>
@@ -197,6 +195,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                     <tr key={item.id}>
                       <td>{new Date(item.requestedAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}</td>
                       <td>
+                        {item.selfApproved ? <Badge kind="warn">Approved by the requester</Badge> : null}
                         <div className="vstack" style={{ gap: 6, minWidth: 200, overflowWrap: 'anywhere' }}>
                           {formatAmendmentChanges(item.requestedChanges, facultyName).map(change => (
                             <div key={change.field}><b>{change.label}:</b> {change.value}</div>
@@ -314,7 +313,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         </Field> : null}
 
         {requestChange.isError ? (
-          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}</Banner>
+          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}<ContractErrorDetails error={requestChange.error} /></Banner>
         ) : null}
         {setPendingRules.isError ? (
           <Banner kind="crit"><b>Couldn&apos;t save the conditions.</b> {errorMessage(setPendingRules.error)}</Banner>

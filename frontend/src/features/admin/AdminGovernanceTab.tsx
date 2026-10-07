@@ -1,5 +1,5 @@
 import { useSearchUsers } from '../../hooks/useUser'
-import { statusLabel } from '../../shared/display'
+import { statusLabel, searchUserLabel } from '../../shared/display'
 import { useState } from 'react'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { useMe } from '../../hooks/useAuth'
@@ -36,7 +36,7 @@ export function AdminScopesTab() {
     {canGrant ? <><Field label="Find a user by name" htmlFor="grant-search"><input id="grant-search" type="search" placeholder="At least 3 characters" value={searchUser} onChange={e => setSearchUser(e.target.value)} /></Field>
       {found.isFetching ? <p>Searching users…</p> : null}
       {found.isError ? <Banner kind="crit">{message(found.error)} <button className="btn" onClick={() => void found.refetch()}>Retry search</button></Banner> : null}
-      {found.data?.items.map(u => <button className="btn ghost" key={u.id} onClick={() => { setUserId(String(u.id)); setSearchUser(u.fullName) }}>{u.fullName} · #{u.id}</button>)}
+      {found.data?.items.map(u => <button className="btn ghost" key={u.id} onClick={() => { setUserId(String(u.id)); setSearchUser(u.fullName) }}>{u.fullName} · {searchUserLabel(u)}</button>)}
       {found.isSuccess && !found.data.items.length ? <p>No matching users.</p> : null}
       <Field label="User ID" htmlFor="grant-user"><input id="grant-user" type="number" min="1" step="1" value={userId} onChange={e => setUserId(e.target.value)} /></Field>
       {target === 'faculty' ? <Field label="Faculty" htmlFor="grant-faculty"><select id="grant-faculty" value={facultyId} onChange={e => setFacultyId(e.target.value)}><option value="">Choose faculty</option>{faculties.data?.items.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></Field> : null}
@@ -87,6 +87,7 @@ export function AdminAuditTab() {
         <div className="spread" style={{ flexWrap: 'wrap', gap: 8 }}>
           <span className="hstack"><Icon name="shield" size={20} /><b title={row.actionType}>{readable(row.actionType)}</b></span>
           <Badge kind="neutral">{readable(row.entityType)} #{row.entityId}</Badge>
+          {row.details?.selfApproved === true ? <Badge kind="warn">Approved by the requester</Badge> : null}
         </div>
         <div className="hstack" style={{ flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
           <Avatar name={row.user.fullName} avatarUrl={row.user.avatarUrl} />

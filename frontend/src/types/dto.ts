@@ -115,8 +115,12 @@ export interface UserStatsDto {
   mvpTimes?: number | null;
 }
 
+export interface UserSearchItem extends UserRef {
+  facultyName: string | null;
+  year: number | null;
+}
 export interface UserSearchResult {
-  items: UserRef[];
+  items: UserSearchItem[];
 }
 
 // ══════════════ Reference data — R01-R03, R05 ══════════════

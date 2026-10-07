@@ -73,7 +73,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           <div className="statline"><div><span className="tag">Average</span><span className="v">{review.summary.average ?? '—'}</span></div>
             <div><span className="tag">Ratings</span><span className="v">{review.summary.count}</span></div></div>
           <div className="sub">{[5, 4, 3, 2, 1].map(stars => `${stars}★ ${review.summary.distribution[String(stars)] ?? 0}`).join(' · ')}</div>
-          {review.status === 'not_started' ? <p className="sub">Reviews open {review.opensAt ? new Date(review.opensAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) : 'when the tournament starts'}.</p> : null}
+          {review.status === 'not_started' ? <p className="sub">Reviews are not open yet. {review.opensAt ? `Scheduled tournament start: ${new Date(review.opensAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}. ` : ''}Availability follows the tournament’s played-match status.</p> : null}
           {review.status === 'closed' ? <p className="sub">Reviews are closed.</p> : null}
           {review.mine ? <p className="sub">Your review: {review.mine.rating}/5 {review.mine.content}</p> : null}
           {!organizer && review.items?.map(item => <div className="notif" key={item.id}>

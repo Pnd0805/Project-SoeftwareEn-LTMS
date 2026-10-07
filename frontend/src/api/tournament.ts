@@ -239,13 +239,12 @@ export async function inviteReferee(id: number, input: InviteTournamentRefereeRe
     mockTournamentReferees.push(referee);
     return tournamentMockDelay(referee);
   }
-  /* inviteRefereeSchema บังคับ isExternal (ไม่ใช่ optional) และรับ matchIds
+  /* Server classifies external status; matchIds select offered matches.
      ไม่ส่ง matchIds = เชิญเข้า pool เฉยๆ ยังคุมแมตช์ไหนไม่ได้จนกว่าจะมอบหมาย */
   return apiFetch(`/tournaments/${id}/referees`, {
     method: "POST",
     body: JSON.stringify({
       userId: input.userId,
-      isExternal: input.isExternal ?? false,
       matchIds: input.matchIds ?? [],
     }),
   });

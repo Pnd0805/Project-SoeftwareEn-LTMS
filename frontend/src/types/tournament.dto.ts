@@ -41,6 +41,8 @@ export interface TournamentDto {
 }
 
 export interface TournamentDetailDto extends TournamentDto {
+  /** Tournament default only; score validation must use each match's format. */
+  bestOf?: number | null;
   eligibilityRules: EligibilityRuleDto[];
   referees: TournamentRefereeDto[];
   applications: TournamentApplicationDto[];
@@ -304,6 +306,7 @@ export interface CompleteTournamentResponse {
 
 /** C09b — organizer-visible amendment history, newest first. */
 export interface TournamentAmendmentHistoryItemDto {
+  selfApproved?: boolean;
   id: number;
   requestedChanges: Record<string, unknown>;
   reason: string | null;
@@ -348,6 +351,7 @@ export interface BackendPendingTournamentRequestDto {
 
 /** GET /admin/amendment-requests — คำขอแก้ไขทัวร์นาเมนต์ที่รอ Admin */
 export interface BackendAmendmentRequestDto {
+  selfRequested?: boolean;
   reason?: string | null;
   id: number;
   tournamentId: number;

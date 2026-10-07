@@ -56,3 +56,13 @@ it('renders a completed legacy match whose actual end time is null', () => {
   expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument()
   expect(flow.organizer).not.toHaveBeenCalled()
 })
+it('does not offer a referee a dispute of their own submitted result', () => {
+  render(<MatchWorkflowPanel m={match({ status: 'finished' })} result={{ status: 'submitted', submittedBy: { id: 7 } } as MatchResultDto} />)
+  expect(screen.queryByText('Dispute this result')).not.toBeInTheDocument()
+  expect(screen.getByText(/You recorded this result and cannot dispute it/)).toBeInTheDocument()
+  expect(flow.challenge).not.toHaveBeenCalled()
+})
+it('retains the dispute form for another assigned referee', () => {
+  render(<MatchWorkflowPanel m={match({ status: 'finished' })} result={{ status: 'submitted', submittedBy: { id: 8 } } as MatchResultDto} />)
+  expect(screen.getByRole('heading', { name: 'Dispute this result' })).toBeInTheDocument()
+})

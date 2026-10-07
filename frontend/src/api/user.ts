@@ -84,7 +84,7 @@ export async function searchUsers(q: string): Promise<UserSearchResult> {
   }
   if (USE_MOCK) {
     /* ค้นจากคนใน seed ทั้งหมด ด้วย id ชุดเดียวกับทีมและคำเชิญ (ดู mocks/storeUsers.ts) */
-    return mockDelay({ items: searchStoreUsers(q) });
+    return mockDelay({ items: searchStoreUsers(q).map(user => ({ ...user, facultyName: null, year: null })) });
   }
   return apiFetch<UserSearchResult>(`/users/search?q=${encodeURIComponent(q)}`);
 }

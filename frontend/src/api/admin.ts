@@ -322,12 +322,11 @@ export async function appointReferee(
       .find((r) => r.user.id === input.userId && r.invitationStatus === "pending");
     return row ? mockDelay(row) : notFound<TournamentRefereeDto>("คำเชิญที่เพิ่งสร้าง");
   }
-  /* inviteRefereeSchema บังคับ isExternal และรับ matchIds (ว่าง = เข้า pool เฉยๆ) */
+  /* Server classifies external status; empty matchIds invites to the pool. */
   return apiFetch(`/tournaments/${tournamentId}/referees`, {
     method: "POST",
     body: JSON.stringify({
       userId: input.userId,
-      isExternal: input.isExternal ?? false,
       matchIds: input.matchIds ?? [],
     }),
   });
@@ -575,7 +574,6 @@ export function inviteBackendReferee(
     method: "POST",
     body: JSON.stringify({
       userId: input.userId,
-      isExternal: input.isExternal ?? false,
       matchIds: input.matchIds ?? [],
     }),
   });

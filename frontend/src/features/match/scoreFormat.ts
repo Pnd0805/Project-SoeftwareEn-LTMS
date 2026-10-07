@@ -2,7 +2,7 @@ import type { MatchDto } from '../../types/match.dto'
 
 type Format = Pick<MatchDto, 'bestOf' | 'possibleScores'>
 export function validMatchScore(m: Format, a: number, b: number): boolean {
-  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || a < 0 || b < 0 || a === b) return false
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || a < 0 || b < 0 || a > 999 || b > 999 || a === b) return false
   return m.bestOf == null || !!m.possibleScores?.some(([win, loss]) => Math.max(a, b) === win && Math.min(a, b) === loss)
 }
 export function scoreFormatFromError(match: Format, error?: unknown): Format {

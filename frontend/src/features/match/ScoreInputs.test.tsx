@@ -16,10 +16,11 @@ describe('server BO score choices', () => {
     expect(validMatchScore(m, 21, 19)).toBe(false)
     expect(validMatchScore(m, 1, 2)).toBe(true)
   })
-  it('keeps football scores unrestricted when bestOf is null and possibleScores is empty', () => {
+  it('uses the shared 999 typo limit while keeping non-BO sports independent of BO choices', () => {
     render(<ScoreInputs match={{ ...sides, bestOf: null, possibleScores: [] }} a={1200} b={2} setA={vi.fn()} setB={vi.fn()} prefix="test" />)
     expect(screen.getAllByRole('spinbutton')).toHaveLength(2)
-    expect(validMatchScore({ bestOf: null, possibleScores: [] }, 1200, 2)).toBe(true)
+    expect(validMatchScore({ bestOf: null, possibleScores: [] }, 1200, 2)).toBe(false)
+    expect(validMatchScore({ bestOf: null, possibleScores: [] }, 999, 2)).toBe(true)
   })
   it.each(['PICK_SCORE_NOT_IN_MATCH_FORMAT', 'SCORE_NOT_IN_MATCH_FORMAT'])('recovers the changed format from %s', code => {
     const format = scoreFormatFromError({ bestOf: 3 }, new ApiError(422, { code, message: 'Changed', bestOf: 7, possibleScores: [[4, 0], [4, 3]] }))

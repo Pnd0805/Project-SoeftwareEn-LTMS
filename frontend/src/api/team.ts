@@ -280,6 +280,12 @@ export async function kickMember(teamId: TeamRef, userId: number): Promise<void>
   return apiFetch(`/teams/${teamId}/members/${userId}`, { method: "DELETE" });
 }
 
+/** BE_KN: authenticated member leaves their own membership; leader/entry locks stay server-owned. */
+export async function leaveTeam(teamId: number): Promise<void> {
+  if (USE_MOCK) return unavailable<void>("การออกจากทีมด้วยตนเอง");
+  return apiFetch(`/teams/${teamId}/members/me`, { method: "DELETE" });
+}
+
 /** POST /teams/:id/invitations { invitedUserId } — FR-TM-02 */
 export async function inviteMember(
   teamId: TeamRef, input: InviteMemberRequest,

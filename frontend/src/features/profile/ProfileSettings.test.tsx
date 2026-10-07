@@ -29,3 +29,16 @@ it('honors server locks on other categories too', () => {
   render(<NotificationSettings />)
   expect(screen.getByLabelText('Community notifications')).toBeDisabled()
 })
+it('clears blank contact and address with null rather than storing a second empty representation', () => {
+  render(<ProfileSettings user={{ id: 9, contactInfo: 'Contact', address: 'Dorm' } as MeDto} />)
+  fireEvent.change(screen.getByLabelText('Contact information'), { target: { value: '' } })
+  fireEvent.change(screen.getByLabelText('Address'), { target: { value: '   ' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save profile settings' }))
+  expect(state.profile).toHaveBeenCalledWith({ contactInfo: null, address: null, showProfileStats: true })
+})
+it('does not submit legacy profile data beyond the new server limits', () => {
+  render(<ProfileSettings user={{ id: 9, contactInfo: 'x'.repeat(256), address: null } as MeDto} />)
+  expect(screen.getByRole('button', { name: 'Save profile settings' })).toBeDisabled()
+  fireEvent.submit(screen.getByRole('button', { name: 'Save profile settings' }).closest('form')!)
+  expect(state.profile).not.toHaveBeenCalled()
+})

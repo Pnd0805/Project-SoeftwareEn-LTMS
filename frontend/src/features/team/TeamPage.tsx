@@ -48,6 +48,8 @@ import type { BackendTeamDto, BackendTeamMemberDto } from '../../types/team.dto'
 import { TeamManage } from './TeamManage'
 import { TeamRecord } from './TeamRecord'
 import { JoinRequestsPanel } from './JoinRequestsPanel'
+import { LeaveTeamPanel } from './LeaveTeamPanel'
+import { searchUserLabel } from '../../shared/display'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
 
@@ -179,6 +181,8 @@ export function TeamPage() {
 
       {isLeader ? <TeamManage data={data} storeTeam={storeTeam} /> : null}
 
+      {!USE_MOCK && myTeams.data?.items.some(x => x.id === data.id) ? <LeaveTeamPanel teamId={data.id} name={data.name} leader={isLeader} /> : null}
+
       {storeTeam ? <TeamRecord t={storeTeam} /> : null}
     </>
   )
@@ -203,7 +207,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
   const [handing, setHanding] = useState<BackendTeamMemberDto | null>(null)
   const [notice, setNotice] = useState<Notice>(null)
   const forbidden = statusOf(members.error) === 403
-  const rows = members.data?.items ?? []
+  const rows = members.isError ? [] : members.data?.items ?? []
   const removalLocks = lockedTournamentsOf(kick.error)
   /* เดิมนับเฉพาะตัวจริง — migration 019 ตัดตัวจริง/ตัวสำรองระดับทีมออกแล้ว เหลือ
      คำถามเดียวที่ยังมีความหมาย: คนในคลังพอจะส่งลงแข่งตามขั้นต่ำของกีฬาไหม */
@@ -217,7 +221,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
         <span className="hstack" style={{ gap: 10 }}>
           {rows.length ? (
             <span className="sub">
-              {data.maxMembers !== null ? `Players ${squadSize} / ${data.maxMembers}`
+              {data.maxMembers != null ? `Players ${squadSize} · up to ${data.maxMembers} per tournament entry`
                 : minPlayers === undefined ? `Players ${squadSize}`
                   : squadSize >= minPlayers ? `Players ${squadSize} · ${minPlayers} needed to enter`
                     : `Players ${squadSize} of the ${minPlayers} needed to enter`}
@@ -388,7 +392,7 @@ function InvitePanel({ data, lockName, memberIds }: {
                 <tbody>
                   {results.map(person => (
                     <tr key={person.id}>
-                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} /><Link to={`/player/${person.id}`} target="_blank" rel="noopener noreferrer">{person.fullName}</Link> <span className="sub">Player #{person.id}</span></span></td>
+                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} /><Link to={`/player/${person.id}`} target="_blank" rel="noopener noreferrer">{person.fullName}</Link> <span className="sub">{searchUserLabel(person)}</span></span></td>
                       <td style={{ textAlign: 'right' }}>
                         <button className="btn primary" type="button" disabled={invite.isPending}
                           onClick={() => {

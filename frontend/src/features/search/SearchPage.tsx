@@ -21,6 +21,7 @@ import { USE_MOCK } from '../../api/client'
 import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
 import { useSearchTeams } from '../../hooks/useTeam'
+import { searchUserLabel } from '../../shared/display'
 
 export function SearchPage() {
   const s = useLtms()
@@ -166,7 +167,7 @@ export function SearchPage() {
           {players.map(u => (
             <button className="who" type="button" key={u.id} onClick={() => navigate(`/player/${u.id}`)}>
               <Avatar name={u.fullName} avatarUrl={u.avatarUrl} />
-              <span className="meta"><b>{u.fullName}</b></span>
+              <span className="meta"><b>{u.fullName}</b><span className="sub">{searchUserLabel(u)}</span></span>
               <Icon name="chev" size={13} />
             </button>
           ))}

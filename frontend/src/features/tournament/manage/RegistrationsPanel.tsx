@@ -20,12 +20,13 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Field, Panel, TableWrap } from '../../../components/kit/primitives'
+import { Badge, Banner, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { TeamCrestView, TeamLink } from '../../../components/kit/chips'
 import { toTeamView } from '../../../components/kit/viewModels'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import { useApplicationDetail, useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
+import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
 import { ApiError, USE_MOCK } from '../../../api/client'
 import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
 import { regsOf, team, user } from '../../../shared/selectors'
@@ -132,6 +133,8 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
           <span className="tag"><em>//</em> Registrations</span>
           <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} in · ${pend.length} waiting`}</Badge>
         </div>
+        {approve.isError ? <Banner kind="crit">{approve.error.message}<ContractErrorDetails error={approve.error} /></Banner> : null}
+        {reject.isError ? <Banner kind="crit">{reject.error.message}</Banner> : null}
 
         {pend.length ? (
           <div className="vstack" style={{ gap: 8 }}>
@@ -276,6 +279,8 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
             </table>
           </TableWrap>
         ) : null}
+        {approve.isError ? <Banner kind="crit">{approve.error.message}<ContractErrorDetails error={approve.error} /></Banner> : null}
+        {reject.isError ? <Banner kind="crit">{reject.error.message}</Banner> : null}
         {review?.hardFilterFails.length ? (
           <div className="banner crit">
             <span className="grow">

@@ -192,12 +192,12 @@ describe("delivered admin-user contracts", () => {
     await requestExternalRefereeDocs(42, 'Please send a clearer image');
     expect(lastRequest()).toEqual({ path: '/admin/referee-requests/42/request-docs', method: 'POST', body: { reason: 'Please send a clearer image' } });
   });
-  it("POST /tournaments/:id/referees sends isExternal", async () => {
+  it("POST /tournaments/:id/referees leaves external classification to the server", async () => {
     fetchMock.mockResolvedValueOnce(json({ id: 7, userId: 42, invitationStatus: "pending", isExternal: true }, 201));
 
     await expect(appointReferee(5, { userId: 42, isExternal: false })).resolves.toMatchObject({ isExternal: true });
     expect(lastRequest()).toEqual({
-      path: "/tournaments/5/referees", method: "POST", body: { userId: 42, isExternal: false, matchIds: [] },
+      path: "/tournaments/5/referees", method: "POST", body: { userId: 42, matchIds: [] },
     });
   });
 

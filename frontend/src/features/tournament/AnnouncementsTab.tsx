@@ -73,12 +73,12 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
         <form onSubmit={handleSubmit(post)}>
         <Field label="Announcement type" htmlFor="an-type"><select id="an-type" {...register('type')}>{['general', 'schedule_change', 'venue_change', 'result', 'livestream'].map(type => <option key={type} value={type}>{type.replaceAll('_', ' ')}</option>)}</select></Field>
         <Field label="Headline" htmlFor="an-title">
-          <input id="an-title" {...register('title')} aria-invalid={!!errors.title} aria-describedby={errors.title ? "an-title-error" : undefined}
+          <input id="an-title" maxLength={255} {...register('title')} aria-invalid={!!errors.title} aria-describedby={errors.title ? "an-title-error" : undefined}
             placeholder="Saturday kick-offs move 30 minutes later" />
           {errors.title?.message ? <span className="sub" id="an-title-error">{errors.title.message}</span> : null}
         </Field>
         <Field label="Message" htmlFor="an-body">
-          <textarea id="an-body" rows={3} {...register('body')} aria-invalid={!!errors.body} aria-describedby={errors.body ? "an-body-error" : undefined}
+          <textarea id="an-body" rows={3} maxLength={5000} {...register('body')} aria-invalid={!!errors.body} aria-describedby={errors.body ? "an-body-error" : undefined}
             placeholder="What changed, and what people should do about it." />
           {errors.body?.message ? <span className="sub" id="an-body-error">{errors.body.message}</span> : null}
         </Field>

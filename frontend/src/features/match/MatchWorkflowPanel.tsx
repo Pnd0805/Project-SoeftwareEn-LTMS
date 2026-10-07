@@ -119,6 +119,7 @@ export function MatchWorkflowPanel({ m, result }: { m: MatchDto; result?: MatchR
   const me = useMe()
   const organizer = m.viewer.roles.includes('organizer')
   const referee = m.viewer.roles.includes('referee')
+  const ownResult = referee && result?.submittedBy?.id === me.data?.id
   const party = referee || m.viewer.isTeamLeader
   const admin = me.data?.adminScope?.scopeType === 'university_wide'
   const read = !!me.data && (organizer || party || !!me.data.adminScope)
@@ -143,7 +144,8 @@ export function MatchWorkflowPanel({ m, result }: { m: MatchDto; result?: MatchR
     {organizer && m.status === 'finished' && (!result || result.status === 'rejected') && m.teamA && m.teamB ? elapsed
       ? <OrganizerDecision m={m} pending={flow.organizer.isPending} error={flow.organizer.error} submit={flow.organizer.mutateAsync} />
       : <Panel quiet>Organizer result decisions become available 24 hours after the recorded end of play.{m.actualEndTime ? ` Available at ${new Date(Date.parse(m.actualEndTime) + 24 * 3600_000).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}.` : ' The backend has not supplied the actual end time.'}</Panel> : null}
-    {party && m.teamA && m.teamB && (result?.status === 'submitted' || result?.status === 'verified') ? <ResultChallengeForm m={m} title="Dispute this result" pending={flow.challenge.isPending} error={flow.challenge.error} submit={flow.challenge.mutateAsync} /> : null}
+    {ownResult && (result?.status === 'submitted' || result?.status === 'verified') ? <Panel quiet>You recorded this result and cannot dispute it. {m.mode === 'online' && result.status === 'submitted' ? 'Use Edit result with a correction reason.' : 'Ask another authorized referee or a team leader to review or challenge it.'}</Panel> : null}
+    {party && !ownResult && m.teamA && m.teamB && (result?.status === 'submitted' || result?.status === 'verified') ? <ResultChallengeForm m={m} title="Dispute this result" pending={flow.challenge.isPending} error={flow.challenge.error} submit={flow.challenge.mutateAsync} /> : null}
     {activeDispute ? <Panel quiet><h3>Dispute details</h3>
       {flow.dispute.isPending ? <p>Loading dispute...</p> : flow.dispute.isError ? <p role="alert">{errorText(flow.dispute.error)}</p> : flow.dispute.data ? <>
         <p>{flow.dispute.data.raisedBy?.fullName ?? 'A match party'}: {flow.dispute.data.reason}</p>
