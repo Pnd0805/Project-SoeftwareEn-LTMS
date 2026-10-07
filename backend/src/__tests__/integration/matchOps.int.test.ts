@@ -116,11 +116,11 @@ describe('เปิด/ปิดเช็คอิน', () => {
     expect(await statusOf(match)).toBe('scheduled');
   });
 
-  it('ยังไม่ได้ตั้งเวลา/สนาม → 409 SCHEDULE_INCOMPLETE (ไม่แจ้งผู้เล่นทั้งที่ไม่รู้ว่าแข่งเมื่อไหร่)', async () => {
+  it('ยังไม่ได้ตั้งเวลา/สนาม → 409 MATCH_NOT_SCHEDULED (ไม่แจ้งผู้เล่นทั้งที่ไม่รู้ว่าแข่งเมื่อไหร่)', async () => {
     const { match } = await setup({ sport: plainSport, fixture: false });
     const res = await as(organizer).post(`/matches/${match}/open-checkin`);
     expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe('SCHEDULE_INCOMPLETE');
+    expect(res.body.error.code).toBe('MATCH_NOT_SCHEDULED');
     expect(await statusOf(match)).toBe('scheduled');
   });
 

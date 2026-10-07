@@ -12,6 +12,7 @@ export const livestreamSchema = z.object({
 // scheduledEndTime บังคับ — กรรมการ (F01/F05/FR) และการเช็คทับซ้อนต้องใช้ช่วงเวลา [เริ่ม, จบ)
 // B9 (รายงาน FE 19 ก.ย.): ส่งเฉพาะฟิลด์ที่จะแก้ก็ได้ (แค่สนาม / แค่เวลา) — service เติมค่าเดิมของแมตช์ให้
 // ครั้งแรกที่ยังไม่เคยตั้ง ต้องครบทั้งสามอยู่ดี (service ตอบ 400 SCHEDULE_INCOMPLETE)
+// ★ อย่าสับสนกับ 409 MATCH_NOT_SCHEDULED ของด่านเปิดเช็คอิน/เริ่มแข่ง — คนละเรื่อง
 export const scheduleMatchSchema = z.object({
     // รับทั้ง Z และ +07:00 ให้ตรงกับ C01 (FE gaps 19 ก.ย.)
     scheduledTime: z.iso.datetime({ offset: true, message: 'รูปแบบวันเวลาไม่ถูกต้อง' }).optional(),

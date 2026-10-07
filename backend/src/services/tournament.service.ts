@@ -641,7 +641,7 @@ function preExistingDataConflict(tournament: TournamentRow): AppError | null {
  *
  * ★ ไม่ผ่อนด่าน — ยังปฏิเสธเหมือนเดิม แต่เปลี่ยน **รหัสและข้อความ** เมื่อพิสูจน์ได้ว่าข้อมูลเดิม
  *   ผิดอยู่ก่อนแล้ว ⇒ FE แยกสองกรณีนี้ได้: "ค่าที่คุณกรอกผิด" กับ "ข้อมูลเดิมพัง ต้องแก้มาด้วย"
- * ★ 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ SCHEDULE_INCOMPLETE ของ M06: payload ที่ส่งมาไม่ผิด
+ * ★ 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ MATCH_NOT_SCHEDULED ของ M09/M10: payload ที่ส่งมาไม่ผิด
  *   สิ่งที่ผิดคือสถานะที่เก็บอยู่
  */
 function validateAmendmentAgainstTournament(tournament: TournamentRow, changes: AmendmentChanges): void {

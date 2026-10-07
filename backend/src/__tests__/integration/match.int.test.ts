@@ -122,7 +122,7 @@ describe('POST /matches/:id/finish — ผู้จัดหรือกรร�
     // ★ ผลที่ตามมาซึ่งเป็นเหตุผลของการแก้: เปิดเช็คอินซ้ำทันทีไม่ได้อีกแล้ว
     const again = await as(referee).post(`/matches/${scheduledMatch}/open-checkin`);
     expect(again.status).toBe(409);
-    expect(again.body.error.code).toBe('SCHEDULE_INCOMPLETE');
+    expect(again.body.error.code).toBe('MATCH_NOT_SCHEDULED');
   });
 
   it('แมตช์ไม่มีอยู่ → 404', async () => {

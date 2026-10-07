@@ -265,10 +265,10 @@ describe('openCheckinMatch (M09)', () => {
    * และไม่มีจุดไหนบังคับให้ผู้จัดกรอก · เดิมเปิดเช็คอินได้เลย แล้วพอพ้น `scheduled` ก็แก้ย้อนไม่ได้อีก
    * เกิดขึ้นจริงในฐาน dev: แมตช์ 10/11/12 `completed` โดยเวลาและสนามเป็น NULL
    */
-  it('409 SCHEDULE_INCOMPLETE listing exactly what is missing, before anything else happens', async () => {
+  it('409 MATCH_NOT_SCHEDULED listing exactly what is missing, before anything else happens', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: null, scheduled_end_time: null, venue: null }));
 
-    const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'SCHEDULE_INCOMPLETE');
+    const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'MATCH_NOT_SCHEDULED');
     expect(err.extra).toEqual({ missing: ['scheduledTime', 'scheduledEndTime', 'venue'] });
     expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
     // แจ้งเตือนเรียกคืนไม่ได้ — ผู้เล่นต้องไม่ได้ "เปิดเช็คอินแล้ว" ของแมตช์ที่ไม่มีเวลา
@@ -276,12 +276,34 @@ describe('openCheckinMatch (M09)', () => {
   });
 
   // ด่านนี้ใช้กับกรรมการด้วย ไม่ใช่แค่ผู้จัด (สิทธิ์ตรวจก่อน ตารางตรวจหลัง)
-  it('409 SCHEDULE_INCOMPLETE naming only the one field that is missing', async () => {
+  it('409 MATCH_NOT_SCHEDULED naming only the one field that is missing', async () => {
     vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled({ venue: null }));
 
-    const err = await expectAppError(matchService.openCheckinMatch(1, REF), 409, 'SCHEDULE_INCOMPLETE');
+    const err = await expectAppError(matchService.openCheckinMatch(1, REF), 409, 'MATCH_NOT_SCHEDULED');
     expect(err.extra).toEqual({ missing: ['venue'] });
+  });
+
+  /**
+   * 🔴 7 ต.ค. 2569 — สองเส้นนี้เคยใช้รหัส `SCHEDULE_INCOMPLETE` ร่วมกัน
+   *   `extra.missing` รูปเดียวกันเป๊ะ แต่สิ่งที่ผู้ใช้ต้องทำคนละเรื่อง:
+   *     400 = กรอกในฟอร์มที่เปิดอยู่  ·  409 = ไปตั้งตารางที่ M06 ก่อน
+   *   ⇒ FE ที่มี handler กลางอ่าน `code` + `missing` จะพาผู้ใช้ไปผิดทาง
+   * ★ เทสนี้คือหลักประกันว่าสองเส้นจะไม่ถูกรวมรหัสกันอีก — ถ้าใครรวม เทสนี้แดง
+   */
+  it('ขาดช่องเดียวกันเป๊ะ แต่คนละเส้น ⇒ ต้องคนละรหัสและคนละ status', async () => {
+    const noFixture = { scheduled_time: null, scheduled_end_time: null, venue: null };
+
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match(noFixture));
+    const form = await expectAppError(matchService.scheduleMatch(1, {}), 400, 'SCHEDULE_INCOMPLETE');
+
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match(noFixture));
+    const state = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'MATCH_NOT_SCHEDULED');
+
+    // ★ จุดสำคัญ: payload เหมือนกันทุกตัวอักษร ⇒ FE แยกจากตรงนี้ไม่ได้ ต้องแยกที่ code
+    expect(form.extra).toEqual(state.extra);
+    expect(form.code).not.toBe(state.code);
+    expect(form.status).not.toBe(state.status);
   });
 
   it('returns INVALID_STATUS_TRANSITION when the match is no longer scheduled', async () => {
@@ -857,12 +879,12 @@ describe('หน้าต่างเวลาของแมตช์ (BE-04)',
       await expect(matchService.openCheckinMatch(1, ORG)).resolves.toBeDefined();
     });
 
-    /** ★ แมตช์ที่ยังไม่มีเวลานัด ต้องตกที่ SCHEDULE_INCOMPLETE เหมือนเดิม ไม่ใช่ด่านใหม่ */
-    it('ไม่มีเวลานัด → ยังเป็น SCHEDULE_INCOMPLETE ตามเดิม', async () => {
+    /** ★ แมตช์ที่ยังไม่มีเวลานัด ต้องตกที่ MATCH_NOT_SCHEDULED ไม่ใช่ด่านหน้าต่างเวลา */
+    it('ไม่มีเวลานัด → ยังเป็น MATCH_NOT_SCHEDULED ตามเดิม', async () => {
       at('2026-10-01T09:45:00.000Z');
       vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: null, scheduled_end_time: null, venue: null }));
 
-      await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'SCHEDULE_INCOMPLETE');
+      await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'MATCH_NOT_SCHEDULED');
     });
   });
 

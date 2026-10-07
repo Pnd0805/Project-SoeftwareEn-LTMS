@@ -203,6 +203,9 @@ export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) 
         ...(venue === null ? ['venue'] : []),
     ];
     if (scheduledTime === null || scheduledEndTime === null || venue === null) {
+        // ★ ที่นี่ **payload ผิดจริง** (ตั้งครั้งแรกต้องส่งครบสามช่อง) ⇒ 400 และ `missing`
+        //   หมายถึงช่องในฟอร์มนี้ · ต่างจาก 409 MATCH_NOT_SCHEDULED ของด่านเช็คอิน/เริ่มแข่ง
+        //   ที่ `missing` หมายถึงช่องที่ต้องไปตั้งที่อื่น — ดู assertFixtureComplete
         throw new AppError(400, "SCHEDULE_INCOMPLETE", "แมตช์นี้ยังไม่เคยตั้งเวลา ต้องระบุเวลาเริ่ม เวลาจบ และสนามให้ครบ", { missing });
     }
     if (scheduledEndTime <= scheduledTime) {
@@ -590,7 +593,7 @@ export async function abandonMatch(matchId: number, userId: number, reason: stri
  *   และผลชนะบายโต้แย้งไม่ได้ ⇒ ความเสียหายถาวร (QA 6 ต.ค.)
  *
  * ★ เรียกหลัง `assertFixtureComplete` เสมอ — ที่นี่ถือว่า `scheduled_time` มีค่าแล้ว
- * ★ คืน 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ SCHEDULE_INCOMPLETE: ไม่มี payload ที่ผิด
+ * ★ คืน 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ MATCH_NOT_SCHEDULED: ไม่มี payload ที่ผิด
  *   สิ่งที่ผิดคือจังหวะเวลา · `extra` บอกหน้าต่างกลับไปให้ FE แสดง/ซ่อนปุ่มได้
  */
 function assertWithinSchedule(
@@ -616,6 +619,28 @@ function assertWithinSchedule(
     }
 }
 
+/**
+ * 🔴 7 ต.ค. 2569 — เดิมที่นี่ใช้รหัส `SCHEDULE_INCOMPLETE` ร่วมกับ `scheduleMatch`
+ *   ซึ่ง**เป็นคนละเรื่องกัน** แต่ FE แยกไม่ออกเพราะ `extra.missing` รูปเดียวกันเป๊ะ
+ *
+ *   400 `SCHEDULE_INCOMPLETE`  (scheduleMatch)  `missing` = ช่องที่ **คำขอนี้** ยังไม่ส่งมา
+ *                                               ⇒ ผู้ใช้ต้อง **กรอกในฟอร์มที่เปิดอยู่**
+ *   409 `MATCH_NOT_SCHEDULED`  (ที่นี่)          `missing` = ช่องที่ **แมตช์** ยังไม่ถูกตั้ง
+ *                                               ⇒ ผู้ใช้ต้อง **ไปตั้งตารางที่ M06 ก่อน**
+ *
+ *   ⇒ FE ที่มี handler กลางอ่าน `code` + `missing` เคยไฮไลต์ฟอร์มที่ไม่มีช่องนั้น
+ *     ในจอเช็คอินซึ่งไม่มีฟอร์มตั้งเวลาเลย
+ *
+ * ★ **ไม่ใช่รหัสใหม่** — `MATCH_NOT_SCHEDULED` (409) มีอยู่แล้วที่
+ *   `referee.service.assertSchedulable` และแปลว่า "แมตช์นี้ยังไม่ได้กำหนดเวลา" เหมือนกันเป๊ะ
+ *   ⇒ ที่นี่คือการ **เลิกใช้รหัสผิด** ไม่ใช่การเพิ่มของใหม่ให้ FE ต้องเรียนรู้
+ * ★ เข้ากฎที่ระบบใช้อยู่แล้ว: **อ่าน/ไม่มีของ = 404 · ลงมือในสถานะที่ไม่พร้อม = 409**
+ *   (`NO_ACTIVE_DISPUTE` และ `REFEREE_NOT_ASSIGNED` ทำตามนี้ทั้งคู่)
+ * ★ `extra.missing` คงรูปเดิมไว้ — FE ใช้บอกผู้จัดได้ว่าขาดอะไรก่อนพาไปหน้า M06
+ *   แต่เป็น **optional**: ของ `assertSchedulable` ไม่มี `extra` เลย (เช็คแค่เวลา ไม่เช็คสนาม)
+ *   ⇒ FE ต้องอ่านแบบ `extra?.missing` ไม่ใช่สมมติว่ามีเสมอ
+ * 🔴 ห้ามเอารหัสนี้ไปใช้กับ `scheduleMatch` — ที่นั่น payload ผิดจริง ต้องเป็น 400
+ */
 function assertFixtureComplete(match : Pick<MatchRow, 'scheduled_time' | 'scheduled_end_time' | 'venue'>): void {
     const missing = [
         ...(!match.scheduled_time ? ['scheduledTime'] : []),
@@ -623,7 +648,7 @@ function assertFixtureComplete(match : Pick<MatchRow, 'scheduled_time' | 'schedu
         ...(!match.venue ? ['venue'] : []),
     ];
     if (missing.length > 0) {
-        throw new AppError(409, "SCHEDULE_INCOMPLETE",
+        throw new AppError(409, "MATCH_NOT_SCHEDULED",
             "แมตช์นี้ยังไม่ได้กำหนดเวลาแข่งและสนาม ต้องตั้งให้ครบก่อน (M06)", { missing });
     }
 }

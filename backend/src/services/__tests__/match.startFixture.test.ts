@@ -71,11 +71,11 @@ describe('startMatch — fixture gate (M10)', () => {
     await expect(MatchService.startMatch(1, REFEREE)).resolves.toEqual({ id: 1, status: 'in_progress' });
   });
 
-  it('409 SCHEDULE_INCOMPLETE listing every missing field', async () => {
+  it('409 MATCH_NOT_SCHEDULED listing every missing field', async () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: null, scheduled_end_time: null, venue: null }));
 
     const err = await errOf(MatchService.startMatch(1, REFEREE));
-    expect(err).toMatchObject({ status: 409, code: 'SCHEDULE_INCOMPLETE' });
+    expect(err).toMatchObject({ status: 409, code: 'MATCH_NOT_SCHEDULED' });
     expect(err?.extra).toEqual({ missing: ['scheduledTime', 'scheduledEndTime', 'venue'] });
     expect(MatchRepo.markMatchStarted).not.toHaveBeenCalled();
   });
@@ -88,7 +88,7 @@ describe('startMatch — fixture gate (M10)', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ [field]: null }));
 
     const err = await errOf(MatchService.startMatch(1, REFEREE));
-    expect(err).toMatchObject({ code: 'SCHEDULE_INCOMPLETE' });
+    expect(err).toMatchObject({ code: 'MATCH_NOT_SCHEDULED' });
     expect(err?.extra).toEqual({ missing });
   });
 
@@ -100,7 +100,7 @@ describe('startMatch — fixture gate (M10)', () => {
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ venue: null }));
     vi.mocked(Walkover.decideNoShow).mockReturnValue({ winnerTeamId: 11, loserTeamId: 12 } as never);
 
-    expect(await errOf(MatchService.startMatch(1, REFEREE))).toMatchObject({ code: 'SCHEDULE_INCOMPLETE' });
+    expect(await errOf(MatchService.startMatch(1, REFEREE))).toMatchObject({ code: 'MATCH_NOT_SCHEDULED' });
     expect(Walkover.decideNoShow).not.toHaveBeenCalled();
     expect(Walkover.applyNoShowWalkover).not.toHaveBeenCalled();
     expect(MatchRepo.countSuccessfulCheckins).not.toHaveBeenCalled();
