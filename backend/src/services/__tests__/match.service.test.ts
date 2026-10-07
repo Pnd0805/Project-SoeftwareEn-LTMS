@@ -42,6 +42,8 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
 
 vi.mock('../../middlewares/requireReferee.js', () => ({
   isRefereeOfMatch: vi.fn(),
+  // BE-16 — ค่าเริ่มต้น "กรรมการครบ" เพื่อให้เทสเก่าที่ไม่ได้พูดเรื่องกรรมการยังทดสอบเรื่องของตัวเอง
+  isRefereeSufficient: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('../upload.service.js', () => ({
@@ -67,7 +69,7 @@ vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.
 import * as matchService from '../match.service.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
-import { isRefereeOfMatch } from '../../middlewares/requireReferee.js';
+import { isRefereeOfMatch, isRefereeSufficient } from '../../middlewares/requireReferee.js';
 import { getPresignedDownloadUrl } from '../upload.service.js';
 import { AppError } from '../../utils/AppError.js';
 import * as NotificationService from '../notification.service.js';
@@ -228,8 +230,35 @@ describe('openCheckinMatch (M09)', () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(organizerTournament);
     vi.mocked(isRefereeOfMatch).mockReset().mockResolvedValue(false);
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled());
+    // BE-16 — ด่านกรรมการอ่านแถวเต็มผ่าน findById · ค่าเริ่มต้น = ครบ (ดู mock ของ isRefereeSufficient)
+    vi.mocked(MatchRepo.findById).mockResolvedValue(scheduled() as never);
+    vi.mocked(isRefereeSufficient).mockReset().mockResolvedValue(true);
   });
   afterEach(() => { vi.useRealTimers(); });
+
+  /**
+   * 🆕 BE-16 (7 ต.ค. 2569 · มติ ④) — เปิดเช็คอินได้ทั้งที่แมตช์ยังไม่มีกรรมการ → ล็อกตาย
+   *
+   * เส้นทางที่ QA เดิน: เปิดเช็คอิน 200 → กรรมการกดรับ 409 REQUEST_NO_LONGER_VALID
+   * → ส่งคำขอใหม่ 409 MATCH_NOT_CHANGEABLE → กดเริ่ม 409 INSUFFICIENT_REFEREES
+   * ⇒ ปิดที่ทางเข้า ไม่ผ่อนด่านเปลี่ยนกรรมการ (มติ: ถึงช่วงเช็คอินกรรมการควรอยู่หน้างานแล้ว)
+   */
+  it('กรรมการยังไม่ครบ → 409 INSUFFICIENT_REFEREES · ไม่เปิด ไม่แจ้งเตือน', async () => {
+    vi.mocked(isRefereeSufficient).mockResolvedValue(false);
+
+    await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'INSUFFICIENT_REFEREES');
+    expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
+    // ★ แจ้งเตือนเรียกคืนไม่ได้ — ผู้เล่นต้องไม่ได้ข่าวของแมตช์ที่ยังเริ่มไม่ได้
+    expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
+  });
+
+  /** ★ กรรมการของแมตช์ก็เปิดเช็คอินได้ (มติ 27 ก.ย.) ⇒ ด่านนี้ต้องใช้กับเขาด้วย ไม่ใช่แค่ผู้จัด */
+  it('กรรมการเปิดเอง แต่กรรมการยังไม่ครบ → 409 เหมือนกัน', async () => {
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true);
+    vi.mocked(isRefereeSufficient).mockResolvedValue(false);
+
+    await expectAppError(matchService.openCheckinMatch(1, REF), 409, 'INSUFFICIENT_REFEREES');
+  });
 
   /**
    * FE-open-checkin-has-no-fixture-gate — แมตช์ที่ `createBracket` สร้างมาไม่มีเวลาและสนาม
@@ -783,6 +812,9 @@ describe('หน้าต่างเวลาของแมตช์ (BE-04)',
   describe('เปิดเช็คอิน', () => {
     beforeEach(() => {
       vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduledMatch());
+      // BE-16 — ด่านกรรมการอยู่หลังด่านเวลา เคสที่ "เปิดได้" จึงต้องผ่านด่านนี้ด้วย
+      vi.mocked(MatchRepo.findById).mockResolvedValue(scheduledMatch() as never);
+      vi.mocked(isRefereeSufficient).mockReset().mockResolvedValue(true);
     });
 
     it('ก่อนเวลานัด 3 สัปดาห์ → 409 TOO_EARLY_FOR_MATCH และไม่แจ้งเตือนใคร', async () => {

@@ -263,7 +263,8 @@ async function autoApproveIfOwnScope(tournamentId: number, userId: number, organ
     const admin = await AdminScopeRepo.findAdminByUserId(userId);
     if (!admin) return false;
     if (!adminCoversEligibility(admin, organizingFacultyId, rules)) return false;   // Q2-ข
-    return TournamentRepo.approveTournament(tournamentId, userId);
+    // selfApproved = true โดยนิยามของเส้นทางนี้ — แอดมินอนุมัติทัวร์ที่ตัวเองสร้าง (BE-40 · มติ ⑥ ค)
+    return TournamentRepo.approveTournament(tournamentId, userId, true);
 }
 
 /**
@@ -399,7 +400,12 @@ export async function approveTournament(tournamentId: number, userId: number) {
     if (tournament.tournament_status !== 'pending_approval') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ');
     }
-    if (!await TournamentRepo.approveTournament(tournamentId, userId)) {
+    /**
+     * 🔴 BE-40 (มติ ⑥ ค) — QA รายงานแค่เส้นทาง amendment แต่ช่องเดียวกันอยู่ที่นี่ด้วย:
+     *   แอดมินที่เป็นคนขอจัดทัวร์เอง กดอนุมัติคำขอจัดทัวร์ของตัวเองได้
+     *   ⇒ ติดป้ายด้วยมาตรฐานเดียวกัน ไม่งั้นปิดช่องเดียวแล้วอีกช่องยังอ่านเหมือนมีคนตรวจ
+     */
+    if (!await TournamentRepo.approveTournament(tournamentId, userId, tournament.requested_by_user_id === userId)) {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
     }
     await NotificationService.notify({
@@ -718,6 +724,14 @@ export async function getTournamentAmendments(tournamentId: number) {
             requestedAt: row.requested_at.toISOString(),
             reviewedAt: row.reviewed_at ? row.reviewed_at.toISOString() : null,
             reviewedBy: row.reviewed_by === null ? null : { id: row.reviewed_by, name: row.reviewer_name },
+            /**
+             * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — คำขอนี้ถูกอนุมัติโดยคนที่ยื่นเอง
+             * ★ ต้องขึ้นบนจอ ไม่ใช่ซ่อนไว้ใน audit log ที่มีแต่แอดมินมหาวิทยาลัยเห็น
+             *   คนที่ต้องรู้ว่า "ข้อนี้ไม่มีคนที่สองตรวจ" คือคนที่อ่านประวัติของทัวร์
+             * ★ `false` ตอนยังไม่ถูกพิจารณา (reviewed_by = null) — ไม่ใช่ null
+             *   เพราะ FE เอาไปวางบนป้ายตรง ๆ และ "ยังไม่ตัดสิน" บอกด้วย `status` อยู่แล้ว
+             */
+            selfApproved: row.reviewed_by !== null && row.reviewed_by === row.requested_by,
             rejectionReason: row.rejection_reason
         }))
     };
@@ -736,7 +750,14 @@ export async function getPendingAmendments(userId: number, offset: number, page:
             requestedChanges: normalizeChanges(row.requested_changes),
             reason: row.request_reason,
             status: row.tournament_amendment_request_status,
-            requestedAt: row.requested_at.toISOString()
+            requestedAt: row.requested_at.toISOString(),
+            /**
+             * 🆕 BE-40 (มติ ⑥ ค) — "คำขอนี้คุณยื่นเอง"
+             * ★ `row.user_id` คือผู้ยื่น (SELECT join บน `ar.requested_by`) ไม่ใช่ผู้จัดทัวร์
+             * ★ เตือน**ก่อน**กด — ป้ายหลังกดอย่างเดียวไม่ช่วยคนที่เผลอ · และไม่ได้บล็อก
+             *   เพราะถ้าบล็อก ระบบที่มีแอดมินมหาวิทยาลัยคนเดียวจะตัน (root อนุมัติแทนไม่ได้)
+             */
+            selfRequested: row.user_id === userId
         })),
         pagination: buildPagination(page, pageSize, totalItems)
     };

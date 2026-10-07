@@ -439,7 +439,19 @@ async function insertAuditLog(conn: PoolConnection, userId: number, actionType: 
     );
 }
 
-export async function approveTournament(tournamentId: number, adminId: number): Promise<boolean> {
+/**
+ * 🔴 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — `selfApproved` = คนอนุมัติคือคนที่ขอจัดทัวร์เอง
+ *
+ * มติ ⑥ ค คือ "ทำได้ แต่ห้ามให้ประวัติอ่านเหมือนมีคนที่สองตรวจ"
+ * ⇒ ไม่บล็อก (จะทำให้ระบบที่มีแอดมินมหาวิทยาลัยคนเดียวตันทันที — root อนุมัติแทนไม่ได้
+ *   เพราะ `adminCoversEligibility` คืน false สำหรับ root ตาม OD-34) แต่บันทึกให้ตรงความจริง
+ * ★ ไม่ใช่ค่าที่คำนวณได้ทีหลังเสมอ — `approved_by` เทียบกับ `requested_by_user_id` ได้ตอนนี้
+ *   แต่ `requested_by_user_id` ของทัวร์เปลี่ยนมือได้ (โอนผู้จัด) ⇒ ป้ายต้องถูกตรึงไว้ตอนกด
+ * ★ เส้นทาง `autoApproveIfOwnScope` (มติ 18 ก.ย. ข้อ 8) ส่ง true มาด้วยโดยถูกต้อง —
+ *   นั่นคือกรณีที่ทีม**ตั้งใจ**ให้แอดมินอนุมัติทัวร์ตัวเองอยู่แล้ว · ป้ายนี้ไม่ได้ตัดสินว่าผิด
+ *   มันแค่ทำให้ audit log แยกสองกรณีนี้ออกจาก "มีคนที่สองตรวจจริง" ได้
+ */
+export async function approveTournament(tournamentId: number, adminId: number, selfApproved: boolean): Promise<boolean> {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -451,7 +463,7 @@ export async function approveTournament(tournamentId: number, adminId: number): 
             [adminId, adminId, tournamentId]
         );
         if (result.affectedRows === 1) {
-            await insertAuditLog(conn, adminId, 'tournament_approved', 'tournament', tournamentId);
+            await insertAuditLog(conn, adminId, 'tournament_approved', 'tournament', tournamentId, { selfApproved });
         }
         await conn.commit();
         return result.affectedRows === 1;
@@ -505,8 +517,8 @@ export async function approveAmendment(amendmentId: number, adminId: number, cha
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
-        const [amendments] = await conn.query<(Pick<AmendmentRow, 'tournament_amendment_request_id' | 'tournament_id' | 'tournament_amendment_request_status'> & { max_teams: number } & RowDataPacket)[]>(
-            `SELECT ar.tournament_amendment_request_id, ar.tournament_id,
+        const [amendments] = await conn.query<(Pick<AmendmentRow, 'tournament_amendment_request_id' | 'tournament_id' | 'tournament_amendment_request_status' | 'requested_by'> & { max_teams: number } & RowDataPacket)[]>(
+            `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_by,
                     ar.tournament_amendment_request_status, t.max_teams
              FROM tournament_amendment_requests ar
              JOIN tournaments t ON t.tournament_id = ar.tournament_id
@@ -551,7 +563,13 @@ export async function approveAmendment(amendmentId: number, adminId: number, cha
              WHERE tournament_amendment_request_id = ?`,
             [adminId, amendmentId]
         );
-        await insertAuditLog(conn, adminId, 'tournament_amendment_approved', 'tournament_amendment_request', amendmentId, { changes });
+        /**
+         * 🔴 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — ป้าย "อนุมัติคำขอของตัวเอง"
+         *   อ่านค่า `requested_by` จากแถวที่ FOR UPDATE ไว้แล้ว ⇒ ไม่มีช่องให้คนอื่นแก้ระหว่างกลาง
+         *   ★ เทียบกับ `requested_by` ของ **คำขอ** ไม่ใช่ผู้จัดทัวร์ปัจจุบัน — คนที่ลงชื่อขอคือคนที่ต้องเทียบ
+         */
+        await insertAuditLog(conn, adminId, 'tournament_amendment_approved', 'tournament_amendment_request', amendmentId,
+            { changes, selfApproved : amendment.requested_by === adminId });
         await conn.commit();
         return 'ok';
     } catch (error) {
@@ -765,12 +783,12 @@ export async function softDeleteTournament(tournamentId: number, userId: number)
 }
 
 /** C09b — คำขอแก้ไขทั้งหมดของทัวร์ (ผู้ยื่นคำขอดูสถานะ/เหตุผลที่ถูกปฏิเสธ) ล่าสุดก่อน — FE-organizer-see-their-own 21 ก.ย. */
-export type TournamentAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'requested_changes' | 'request_reason' |
+export type TournamentAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'requested_by' | 'requested_changes' | 'request_reason' |
     'tournament_amendment_request_status' | 'requested_at' | 'reviewed_by' | 'reviewed_at' | 'rejection_reason'> & { reviewer_name: string | null };
 
 export async function findAmendmentsByTournament(tournamentId: number): Promise<TournamentAmendmentRow[]> {
     const [rows] = await pool.query<(TournamentAmendmentRow & RowDataPacket)[]>(
-        `SELECT ar.tournament_amendment_request_id, ar.requested_changes, ar.request_reason, ar.tournament_amendment_request_status,
+        `SELECT ar.tournament_amendment_request_id, ar.requested_by, ar.requested_changes, ar.request_reason, ar.tournament_amendment_request_status,
                 ar.requested_at, ar.reviewed_by, ar.reviewed_at, ar.rejection_reason, u.full_name AS reviewer_name
          FROM tournament_amendment_requests ar
          LEFT JOIN users u ON u.user_id = ar.reviewed_by

@@ -52,7 +52,16 @@ async function loadLiveTournament(tournamentId : number): Promise<TournamentRow>
     return t;
 }
 
-/** เปลี่ยนกรรมการได้เฉพาะแมตช์ที่ยังไม่เริ่ม (§5.3) */
+/**
+ * เปลี่ยนกรรมการได้เฉพาะแมตช์ที่ยังไม่เริ่ม (§5.3)
+ *
+ * 🔴 มติ 7 ต.ค. 2569 ข้อ ④ — ด่านนี้ **ตั้งใจไม่ผ่อน** ให้ครอบ `checkin_open`
+ *   BE-16 รายงานว่าด่านนี้ทำให้แมตช์ล็อกตาย (กรรมการกดรับไม่ได้หลังเปิดเช็คอิน)
+ *   แต่สาเหตุจริงคือ "เปิดเช็คอินได้ทั้งที่ยังไม่มีกรรมการ" ⇒ ปิดที่ทางเข้าแทน
+ *   (ดู `openCheckinMatch` ใน match.service.ts)
+ *   เหตุผลที่ไม่ผ่อน: ถึงช่วงเช็คอิน กรรมการควรอยู่หน้างานแล้ว ไม่ใช่จังหวะสลับตัวคน
+ *   ⇒ ถ้าใครมาอ่านแล้วคิดว่าด่านนี้ "แคบเกิน" ให้อ่านด่านที่ openCheckinMatch ก่อน
+ */
 function assertMatchChangeable(match : MatchRow): void {
     if(match.match_status !== 'scheduled' || !match.scheduled_time || !match.scheduled_end_time){
         throw new AppError(409, 'MATCH_NOT_CHANGEABLE', `แมตช์ #${match.match_id} เริ่มไปแล้วหรือยังไม่ได้กำหนดเวลา เปลี่ยนกรรมการไม่ได้`);

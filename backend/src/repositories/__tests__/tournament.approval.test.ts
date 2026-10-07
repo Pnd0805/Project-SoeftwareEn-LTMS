@@ -61,7 +61,7 @@ describe('insertTournament — ① เกิดมาเป็น pending_approv
 });
 
 describe.each([
-  ['approveTournament', () => approveTournament(50, 1), 'private', 'tournament_approved'],
+  ['approveTournament', () => approveTournament(50, 1, false), 'private', 'tournament_approved'],
   ['rejectTournament', () => rejectTournament(50, 1, 'สนามไม่ว่าง'), 'rejected', 'tournament_rejected'],
 ] as const)('%s — ② รับเฉพาะทัวร์ที่ยัง pending_approval', (_name, run, toStatus, auditAction) => {
   it(`เปลี่ยนเป็น '${toStatus}' เฉพาะแถวที่ยัง pending_approval และยังไม่ถูกลบ`, async () => {
@@ -90,5 +90,21 @@ describe.each([
     expect(mocks.rollback).toHaveBeenCalledTimes(1);
     expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.release).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — audit log ต้องแยก "มีคนที่สองตรวจ" ออกจาก "อนุมัติเอง"
+ *   มติ ค = ไม่บล็อก แต่ห้ามให้ประวัติอ่านเหมือนมีคนตรวจ ⇒ ป้ายต้องอยู่ในแถว audit
+ */
+describe('approveTournament — ป้าย selfApproved ใน audit (BE-40)', () => {
+  it('คนอื่นอนุมัติ → selfApproved: false', async () => {
+    await approveTournament(50, 1, false);
+    expect(JSON.parse(auditCalls()[0]!.values[4] as string)).toEqual({ selfApproved: false });
+  });
+
+  it('ผู้ขอจัดอนุมัติเอง → selfApproved: true', async () => {
+    await approveTournament(50, 9, true);
+    expect(JSON.parse(auditCalls()[0]!.values[4] as string)).toEqual({ selfApproved: true });
   });
 });

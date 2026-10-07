@@ -221,6 +221,63 @@ describe('คำขอแก้ไขทัวร์นาเมนต์ — �
     expect(await maxTeams()).toBe(20);
   });
 
+  /**
+   * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — แอดมินที่เป็นผู้จัด อนุมัติคำขอของตัวเองได้
+   *
+   * มติ ค = **ไม่บล็อก** แต่ต้องไม่ให้ประวัติอ่านเหมือนมีคนที่สองตรวจ
+   *   เหตุผลที่ไม่บล็อก: ระบบอาจมีแอดมินมหาวิทยาลัยคนเดียว และ root อนุมัติ amendment แทน
+   *   ไม่ได้ (`adminCoversEligibility` คืน false สำหรับ root ตาม OD-34) ⇒ บล็อกแล้วตันถาวร
+   *   และทีมถือมติไว้แล้วตั้งแต่ 18 ก.ย. ข้อ 8 ว่าแอดมินอนุมัติทัวร์ที่ตัวเองสร้างได้
+   *
+   * ★ เทสนี้ต้องเป็น integration ไม่ใช่ unit — ป้ายคิดจาก `requested_by` ที่ต้องมาจาก SQL
+   *   ถ้าใครลบคอลัมน์นั้นออกจาก SELECT ฝั่ง unit (ที่ mock แถว) จะยังเขียวแต่ของจริงเป็น false เสมอ
+   */
+  describe('ผู้จัดที่เป็นแอดมินด้วย อนุมัติคำขอของตัวเอง (BE-40)', () => {
+    const amendments = (who: TestUser) => as(who).get(`/tournaments/${tour}/amendment-requests`);
+    const auditDetails = async () => (await one<{ details: unknown }>(
+      `SELECT details FROM audit_logs WHERE action_type = 'tournament_amendment_approved' AND entity_id = ?`, [amendment]))!.details;
+
+    it('อนุมัติได้ (ไม่บล็อก) · ติดป้าย selfApproved ทั้งใน response และ audit log', async () => {
+      await makeAdmin(organizer.id, 'university_wide');
+
+      expect((await as(organizer).post(`/amendment-requests/${amendment}/approve`)).status).toBe(200);
+      expect(await maxTeams()).toBe(20);
+
+      const list = await amendments(organizer);
+      expect(list.body.items[0]).toMatchObject({ id: amendment, status: 'approved', selfApproved: true });
+      expect(await auditDetails()).toMatchObject({ selfApproved: true });
+    });
+
+    /** ★ เคสตรงข้าม — มีคนที่สองตรวจจริง ป้ายต้องไม่ติด ไม่งั้นป้ายไม่มีความหมาย */
+    it('คนอื่นอนุมัติ → selfApproved: false ทั้งสองที่', async () => {
+      expect((await as(facAdmin).post(`/amendment-requests/${amendment}/approve`)).status).toBe(200);
+
+      const list = await amendments(organizer);
+      expect(list.body.items[0]).toMatchObject({ id: amendment, status: 'approved', selfApproved: false });
+      expect(await auditDetails()).toMatchObject({ selfApproved: false });
+    });
+
+    /** ★ ยังไม่ถูกพิจารณา → false ไม่ใช่ null (FE เอาไปวางบนป้ายตรง ๆ · "ยังไม่ตัดสิน" ดูที่ status) */
+    it('ยังรอพิจารณา → selfApproved: false', async () => {
+      const list = await amendments(organizer);
+      expect(list.body.items[0]).toMatchObject({ status: 'pending', selfApproved: false });
+    });
+
+    /**
+     * ★ คิวของแอดมินต้องเตือน**ก่อน**กด — ป้ายหลังกดช่วยคนอ่านประวัติ ไม่ได้ช่วยคนที่กำลังจะกด
+     */
+    it('คิวของแอดมิน: คำขอที่ตัวเองยื่น → selfRequested: true · ของคนอื่น → false', async () => {
+      await makeAdmin(organizer.id, 'university_wide');
+
+      const mine = await as(organizer).get('/admin/amendment-requests');
+      expect(mine.status).toBe(200);
+      expect(mine.body.items.find((i: { id: number }) => i.id === amendment)).toMatchObject({ selfRequested: true });
+
+      const theirs = await as(uniAdmin).get('/admin/amendment-requests');
+      expect(theirs.body.items.find((i: { id: number }) => i.id === amendment)).toMatchObject({ selfRequested: false });
+    });
+  });
+
   it('อนุมัติซ้ำ → 409 ALREADY_DECIDED', async () => {
     expect((await as(uniAdmin).post(`/amendment-requests/${amendment}/approve`)).status).toBe(200);
     expect((await as(uniAdmin).post(`/amendment-requests/${amendment}/approve`)).status).toBe(409);

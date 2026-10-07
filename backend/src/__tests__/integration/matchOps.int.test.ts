@@ -97,6 +97,25 @@ describe('เปิด/ปิดเช็คอิน', () => {
     expect(await statusOf(match)).toBe('scheduled');
   });
 
+  /**
+   * 🆕 BE-16 (7 ต.ค. 2569 · มติ ④) — เปิดเช็คอินได้ทั้งที่แมตช์ยังไม่มีกรรมการ → แมตช์ล็อกตาย
+   *
+   * เดิม: เปิดเช็คอิน 200 → กรรมการกดรับคำขอ 409 → ส่งคำขอใหม่ 409 MATCH_NOT_CHANGEABLE
+   *       → กดเริ่ม 409 INSUFFICIENT_REFEREES ⇒ ไปต่อไม่ได้ จนกว่าจะนึกออกว่าต้องปิดเช็คอินย้อน
+   *
+   * ★ ปิดที่ทางเข้า ไม่ผ่อนด่านเปลี่ยนกรรมการ — ถึงช่วงเช็คอิน กรรมการควรอยู่หน้างานแล้ว
+   * ★ เทสนี้คือหลักฐานว่าด่านทำงานจริงบนเส้นทาง HTTP ไม่ใช่แค่ใน unit ที่ mock
+   */
+  it('ยังไม่มีกรรมการรับแมตช์ → 409 INSUFFICIENT_REFEREES · ยัง scheduled', async () => {
+    const { match } = await setup({ sport: plainSport, referees: 0 });
+
+    const res = await as(organizer).post(`/matches/${match}/open-checkin`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('INSUFFICIENT_REFEREES');
+    expect(await statusOf(match)).toBe('scheduled');
+  });
+
   it('ยังไม่ได้ตั้งเวลา/สนาม → 409 SCHEDULE_INCOMPLETE (ไม่แจ้งผู้เล่นทั้งที่ไม่รู้ว่าแข่งเมื่อไหร่)', async () => {
     const { match } = await setup({ sport: plainSport, fixture: false });
     const res = await as(organizer).post(`/matches/${match}/open-checkin`);

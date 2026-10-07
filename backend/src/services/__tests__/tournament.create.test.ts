@@ -100,7 +100,8 @@ describe('createTournament — BR-01 ต้องผ่านการอนุ�
 
     await expect(Service.createTournament(input({ eligibilityRules: [{ type: 'faculty', value: 3 }] }), 9))
       .resolves.toMatchObject({ status: 'private', autoApproved: true });
-    expect(TournamentRepo.approveTournament).toHaveBeenCalledWith(77, 9);
+    // BE-40 (มติ ⑥ ค) — เส้นทางนี้ selfApproved = true โดยนิยาม: แอดมินอนุมัติทัวร์ที่ตัวเองสร้าง
+    expect(TournamentRepo.approveTournament).toHaveBeenCalledWith(77, 9, true);
   });
 
   it('แอดมินคณะ + ทัวร์ในคณะตัวเองแต่เปิดรับทุกคณะ → เกินอำนาจคณะ ⇒ ยัง pending_approval (รอแอดมินมหาวิทยาลัย)', async () => {

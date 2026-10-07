@@ -87,20 +87,38 @@ beforeEach(() => {
 describe('getTournamentAmendments', () => {
   it('maps every request with the requester reason and the admin decision', async () => {
     vi.mocked(TournamentRepo.findAmendmentsByTournament).mockResolvedValue([
-      { tournament_amendment_request_id: 5, requested_changes: JSON.stringify({ maxTeams: 12 }), request_reason: 'มีทีมสมัครเยอะ',
+      { tournament_amendment_request_id: 5, requested_by: 9, requested_changes: JSON.stringify({ maxTeams: 12 }), request_reason: 'มีทีมสมัครเยอะ',
         tournament_amendment_request_status: 'rejected', requested_at: new Date('2026-09-20T01:00:00Z'),
         reviewed_by: 9001, reviewed_at: new Date('2026-09-20T02:00:00Z'), rejection_reason: 'สนามรองรับไม่พอ', reviewer_name: 'สมชาย' },
-      { tournament_amendment_request_id: 6, requested_changes: { venue: 'B' }, request_reason: null,
+      { tournament_amendment_request_id: 6, requested_by: 9, requested_changes: { venue: 'B' }, request_reason: null,
         tournament_amendment_request_status: 'pending', requested_at: new Date('2026-09-21T01:00:00Z'),
         reviewed_by: null, reviewed_at: null, rejection_reason: null, reviewer_name: null },
     ]);
     await expect(Service.getTournamentAmendments(26)).resolves.toEqual({ items: [
       { id: 5, requestedChanges: { maxTeams: 12 }, reason: 'มีทีมสมัครเยอะ', status: 'rejected', requestedAt: '2026-09-20T01:00:00.000Z',
-        reviewedAt: '2026-09-20T02:00:00.000Z', reviewedBy: { id: 9001, name: 'สมชาย' }, rejectionReason: 'สนามรองรับไม่พอ' },
+        reviewedAt: '2026-09-20T02:00:00.000Z', reviewedBy: { id: 9001, name: 'สมชาย' }, rejectionReason: 'สนามรองรับไม่พอ',
+        selfApproved: false },
       { id: 6, requestedChanges: { venue: 'B' }, reason: null, status: 'pending', requestedAt: '2026-09-21T01:00:00.000Z',
-        reviewedAt: null, reviewedBy: null, rejectionReason: null },
+        reviewedAt: null, reviewedBy: null, rejectionReason: null, selfApproved: false },
     ] });
     expect(TournamentRepo.findAmendmentsByTournament).toHaveBeenCalledWith(26);
+  });
+
+  /**
+   * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — แอดมินที่เป็นผู้จัดอนุมัติคำขอของตัวเองได้
+   *
+   * มติ ค = **ไม่บล็อก** (ถ้าบล็อก ระบบที่มีแอดมินมหาวิทยาลัยคนเดียวจะตันทันที
+   * เพราะ root อนุมัติ amendment แทนไม่ได้ ตาม OD-34) แต่ต้องไม่ให้ประวัติอ่านเหมือนมีคนตรวจ
+   * ⇒ ฟิลด์นี้คือสิ่งที่ทำให้ "อนุมัติเอง" ต่างจาก "มีคนที่สองตรวจ" บนจอ
+   */
+  it('ผู้ยื่นกับผู้อนุมัติเป็นคนเดียวกัน → selfApproved: true', async () => {
+    vi.mocked(TournamentRepo.findAmendmentsByTournament).mockResolvedValue([
+      { tournament_amendment_request_id: 7, requested_by: 9001, requested_changes: { maxTeams: 12 }, request_reason: 'ขยายทีม',
+        tournament_amendment_request_status: 'approved', requested_at: new Date('2026-09-22T01:00:00Z'),
+        reviewed_by: 9001, reviewed_at: new Date('2026-09-22T02:00:00Z'), rejection_reason: null, reviewer_name: 'สมชาย' },
+    ]);
+    const res = await Service.getTournamentAmendments(26);
+    expect(res.items[0]).toMatchObject({ id: 7, status: 'approved', selfApproved: true });
   });
 });
 
@@ -205,7 +223,29 @@ describe('getPendingAmendments', () => {
     expect(result.items).toEqual([{
       id: 5, tournamentId: 26, tournamentName: 'Cup', requestedBy: { id: 100, fullName: 'สมชาย', avatarUrl: null },
       requestedChanges: { maxTeams: 20 }, reason: 'x', status: 'pending', requestedAt: '2026-01-01T00:00:00.000Z',
+      selfRequested: false,
     }]);
+  });
+
+  /**
+   * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — เตือนในคิวว่า "คำขอนี้คุณยื่นเอง"
+   *   มติ ค ไม่บล็อก ⇒ ป้ายต้องมาก่อนกด ไม่ใช่มาทีหลังใน audit log ที่คนส่วนใหญ่ไม่เห็น
+   *   ★ `user_id` ของแถวคือ **ผู้ยื่น** (SQL join บน ar.requested_by) ไม่ใช่ผู้จัดทัวร์
+   */
+  it('คำขอที่แอดมินคนที่ดูคิวยื่นเอง → selfRequested: true', async () => {
+    mockedAdminScopeRepo.findAdminByUserId.mockResolvedValue(uniAdmin);
+    const row = {
+      tournament_amendment_request_id: 5, tournament_id: 26, tournament_name: 'Cup',
+      requested_changes: JSON.stringify({ maxTeams: 20 }), request_reason: 'x',
+      tournament_amendment_request_status: 'pending', requested_at: new Date('2026-01-01T00:00:00Z'),
+      user_id: 9001, full_name: 'สมชาย', profile_image_key: null,
+    };
+    mockedTournamentRepo.findPendingAmendments.mockResolvedValue({ rows: [row] as any, totalItems: 1 });
+    mockedToUserRef.mockReturnValue({ id: 9001, fullName: 'สมชาย', avatarUrl: null });
+
+    const result = await Service.getPendingAmendments(9001, 0, 1, 20);
+
+    expect(result.items[0]).toMatchObject({ id: 5, selfRequested: true });
   });
 });
 
