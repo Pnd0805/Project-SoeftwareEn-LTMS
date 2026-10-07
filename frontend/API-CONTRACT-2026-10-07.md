@@ -1,6 +1,6 @@
 # Frontend integration contract — BE_KN 7 Oct 2026
 
-Verified remote/fetched head after QA Round 2/3: `7aae61f0c5fce1314528175db1f9566842e4c2b6`.
+Verified remote/fetched head after QA Round 4: `7e37d9374d5a6ae42370a6d6a58ed5d1e2a5cec9`.
 Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/mappers.
 
 ## Sport BO capability
@@ -86,3 +86,24 @@ Missing routes/data and live acceptance are tracked in the QA checklist and BE r
   behavior remains unchanged; no global token-version bump introduced.
 
 See [Round 2/3 response and live blocker](TO-BACKEND-2026-10-07-qa-round23-response.md).
+
+## QA Round 4 additions
+
+- Migration 049 scopes tournament/team application uniqueness to active entries.
+  Duplicate active team application is ALREADY_APPLIED; player conflict remains PLAYER_ALREADY_REGISTERED.
+- Migration 050 adds referee invitation expiry (7 days). Tournament referee **status**
+  includes expired, while invitationStatus stays pending/accepted/rejected.
+- Stale acceptance: REFEREE_INVITATION_EXPIRED with expiresAt. REFEREE_INVITATION_PENDING
+  includes tournamentRefereeId/expiresAt. Registration conflicts include invitationStatus/expiresAt.
+- CANNOT_DISPUTE_OWN_RESULT includes resultStatus/mode. Onsite submitted results can be
+  resubmitted; online submitted results use correction with reason; verified results cannot use either path.
+- Standings outLabel is string|null, unchanged rank/order; round robin deliberately null.
+- POST /tournaments/:id/amendment-requests/preview uses the same requestedChanges/reason
+  schema as submission, requires organizer, returns canSubmit/blockers[]/pendingAmendmentId without writes.
+- GET /admin/feedback/removed?page=&pageSize= delivers items with content/rating/author,
+  removal actor/role/time/reason and canRestore plus pagination. Read scoped to Faculty/University,
+  Root forbidden; restoration still University only and server-owned canRestore controls the UI.
+- openedBy and new MinIO fixture are still not delivered. Admin pre-approval impact for
+  another organizer needs an authorized contract; the organizer preview is not that contract.
+
+See [Round 4 response](TO-BACKEND-2026-10-07-qa-round4-response.md).

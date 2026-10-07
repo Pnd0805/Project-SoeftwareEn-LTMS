@@ -1,5 +1,7 @@
 # FE response to QA Round 2 and 3 — 7 Oct 2026
 
+> Historical evidence. BE Round 4 delivers the reapplication schema/source fix, referee expiry, standings labels, organizer preview and removed history. See [the current FE response](TO-BACKEND-2026-10-07-qa-round4-response.md). Old failing API evidence is retained; no new runtime pass is implied.
+
 Read both `TO-FE-2026-10-07-qa-response-round2.md` and `round3.md`.
 Verified remote with ls-remote and fetched `BE_KN@7aae61f0c5fce1314528175db1f9566842e4c2b6`.
 Only frontend files changed. The running local API supports the new DTOs; its exact runtime SHA is not exposed.

@@ -3,7 +3,25 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-## Notice / QA implementation — 2026-10-07
+## QA Response Round 4 — current implementation, 2026-10-07
+
+- [x] Read Round 4; verified ls-remote/fetched `BE_KN@7e37d9374d5a6ae42370a6d6a58ed5d1e2a5cec9`.
+- [x] ALREADY_APPLIED recovery distinguishes active team applications from player conflicts.
+- [x] Referee expired status survives the adapter, has explicit copy and allows re-invitation.
+- [x] REFEREE_INVITATION_EXPIRED recovery displays supplied deadline and refreshes stale inbox.
+- [x] Structured pending/accepted conflict recovery and deadline feedback; no message parsing.
+- [x] Own-result recovery uses resultStatus/mode; onsite submitted-result resubmission is available to assigned referees, verified results cannot use it.
+- [x] Preserve server outLabel/null and published rank/order; do not add elimination labels to round robin.
+- [x] Organizer amendment preview uses the exact current payload; no submission before a successful matching preview; editing invalidates it. All blockers and pending request shown separately.
+- [x] Paginated removed feedback with content/reason/actor; Faculty/University reads, Root denied, restoration only from delivered canRestore with confirmation and cache refresh.
+- [x] User confirms migrations completed; FE did not run migrations or change BE files.
+- [ ] FE-39 full admin pre-approval impact: delivered preview requires organizer; request a reviewer-authorized read contract or metadata on queue rows.
+- [ ] BE openedBy and valid second MinIO fixture remain undelivered.
+- [ ] Browser/manual QA skipped at user request; live API acceptance was not rerun this round.
+- [x] Current status and BE handoff: [Round 4 response](TO-BACKEND-2026-10-07-qa-round4-response.md).
+- [x] Developer verification: 96 files / 576 tests, lint, TypeScript/build and diff check passed; existing 939.31 kB chunk warning. Isolated Vite 5194/changed modules HTTP 200, then stopped.
+
+## Notice / QA implementation — 2026-10-07 (historical initial round)
 
 - [x] Read today's TO-FE, TO-team and FE-01–FE-43. Verified/fetched
   `BE_KN@8d161a6d25b1ebc501e1412bde37b911cfdea4de`.

@@ -8,7 +8,7 @@
 ฐาน frontend เดิม `7c8f187`. แก้เฉพาะ checkout frontend นี้
 
 **ทำแล้ว = code implementation / developer checks ไม่ใช่ live QA sign-off.**
-Round 2/3 update: 39 implemented, 3 partial, 1 waiting for BE DTO. These counts describe implementation, not QA sign-off.
+Round 4 update: 41 implemented, 2 partial (FE-10 timing and FE-39 admin pre-approval impact), 0 waiting for the original standings DTO. These counts describe implementation, not QA sign-off.
 ทุก flow ยังต้องทดสอบกับ BE_KN จริงหลัง migration และ reload
 
 ## Notice วันนี้
@@ -63,14 +63,14 @@ Round 2/3 update: 39 implemented, 3 partial, 1 waiting for BE DTO. These counts 
 | FE-29 | ทำแล้ว | Player-stat inputs มี accessible name |
 | FE-30 | ทำแล้ว | Request validation มี aria-invalid/describedby และข้อความทุกช่องที่รายงาน |
 | FE-31 | ทำแล้ว | Announcement create/edit/delete, 5 types, trim, confirmation, cache refresh |
-| FE-32 | รอ BE | Standings ไม่คืน eliminated round/outLabel; แสดง Not provided และไม่แต่งรอบเอง |
+| FE-32 | Done | Round 4 preserves server outLabel/null and published ranks; elimination shows undecided state for null, round robin has no elimination column |
 | FE-33 | ทำแล้ว | Elimination dashboard ไม่โชว์ pts เป็นเกณฑ์จัดอันดับ; อันดับตาม BE |
 | FE-34 | ทำแล้ว | กันประกาศว่างหลัง trim; legacy card ว่างมีคำอธิบาย; BE ต้องกัน direct API ด้วย |
 | FE-35 | ทำแล้ว | /m/:id/pickem เปิด canonical community view |
 | FE-36 | ทำแล้ว | Prediction closed แยก finished/completed กับ started |
 | FE-37 | ทำแล้ว | Report user + evidence uploads และ admin paginated queue/decisions/confirmation |
-| FE-38 | บางส่วน | รายทัวร์มีคิว reported comments/reviews + เนื้อหา + confirmation; restore เดิมเป็น action รอง; global/deleted-history API ยังไม่มี |
-| FE-39 | Partial | Display affectedTeamCount/teams/players on rejected amendments; normal preflight impact contract still absent |
+| FE-38 | Done | Reported content per tournament plus paginated removed history; read by Faculty/University, Root denied; restoration from selected content and server canRestore, no manual ID required |
+| FE-39 | Partial | Organizer previews actual impact before submission; admin sees reason/current/requested and rejection impact. Preview is organizer-only, so impact before another admin approves still needs a read contract |
 | FE-40 | ทำแล้ว | Self guards และ Root/University suspension protection; Reinstate ไม่ถูกปิดด้วยกฎ Suspend |
 | FE-41 | ทำแล้ว | Admin rights ค้นผู้ใช้ด้วยชื่อ/ID และแสดงชื่อระดับสิทธิ์ |
 | FE-42 | ทำแล้ว | Audit page 20 records ใช้ server pagination เข้าถึงเกิน 100; search/filter ระบุ current page |
@@ -82,7 +82,8 @@ Round 2/3 update: 39 implemented, 3 partial, 1 waiting for BE DTO. These counts 
 
 - [x] Migration 046 token_version และ 047 supports_best_of ยืนยันในฐาน local QA แล้ว
 - [x] Round 2/3 self-leave, safe search, profile null clear, detail bestOf and amendment conflict impact delivered
-- [ ] Eliminated-round standings, global reported-feedback/deleted-history queue and normal preflight impact
+- [x] Round 4 eliminated-round labels, removed-feedback history and organizer amendment preflight implemented
+- [ ] Admin pre-approval impact for a reviewer who is not the organizer; consolidated reported queue remains optional additional work with no new route delivered
 - [x] BE confirms birthday/year enforcement and announcement trim/limits in Round 2; live registration acceptance separate
 - [ ] B2 Official membership single team/sport, B4 cleanup/4-year retention,
   cancellation, referee user_type/backfill และ rewards artwork/criteria ตามมติทีม
@@ -114,3 +115,8 @@ Round 2/3 update: 39 implemented, 3 partial, 1 waiting for BE DTO. These counts 
 Verified remote/fetched `BE_KN@7aae61f`. See [latest response](TO-BACKEND-2026-10-07-qa-round23-response.md). Real API: 14 PASS / 1 FAIL, including 3 cleanup checks. Reapplication fails with zero matches; SQL shows the unique tournament/team index covers withdrawn applications. Old QA reports belong to the earlier DB.
 
 Validation: full suite 95 files / 559 tests passed; final login/review regression 2 files / 5 tests passed. Lint and TypeScript/build passed (main 932.00 kB; existing bundle-size warning). Git diff whitespace check passed.
+
+## Round 4 follow-up
+
+Verified remote/fetched `BE_KN@7e37d93`. [Current implementation and BE questions](TO-BACKEND-2026-10-07-qa-round4-response.md).
+Developer verification: **96 files / 576 tests passed**, lint and TypeScript/build passed; existing 939.31 kB chunk warning. Isolated Vite 5194 served changed modules HTTP 200, then stopped. Browser/manual QA skipped as requested; prior live evidence remains historical.
