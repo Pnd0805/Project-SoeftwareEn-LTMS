@@ -101,6 +101,15 @@ export async function requestAmendment(req: Request, res: Response) {
     res.status(201).json(await TournamentService.requestAmendment(id, userId(req), req.body));
 }
 
+/**
+ * 🆕 FE-39 (มติ ④ ก) — ดูผลกระทบก่อนยื่น · อ่านอย่างเดียว ไม่เขียนอะไรเลย
+ * ★ 200 ไม่ใช่ 201 — ไม่ได้สร้างอะไรขึ้นมา
+ */
+export async function previewAmendmentImpact(req: Request, res: Response) {
+    const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await TournamentService.previewAmendmentImpact(id, userId(req), req.body));
+}
+
 export async function publishTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.publishTournament(req.tournament!, userId(req)));
 }

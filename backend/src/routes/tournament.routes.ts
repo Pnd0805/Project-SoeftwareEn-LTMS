@@ -20,6 +20,13 @@ router.patch('/:id', requireAuth, requireOrganizer, validate(updateTournamentSch
 router.patch('/:id/format', requireAuth, requireOrganizer, validate(matchFormatSchema), TournamentController.setTournamentFormat);
 router.delete('/:id', requireAuth, requireRequester, TournamentController.deleteTournament);
 router.post('/:id/amendment-requests', requireAuth, requireOrganizer, validate(amendmentRequestSchema), TournamentController.requestAmendment);
+/**
+ * 🆕 FE-39 (มติ ④ ก) — dry run ของเส้นบน · ด่านสิทธิ์และ schema ชุดเดียวกันเป๊ะ
+ * ★ ต้องใช้ schema เดียวกัน ไม่ใช่ schema ที่หลวมกว่า — ไม่งั้น preview จะผ่านของที่ยื่นจริงไม่ผ่าน
+ * ★ POST ไม่ใช่ GET เพราะ body มี requestedChanges ที่เป็น object/array ซ้อนกัน
+ *   (ยังไม่เขียนอะไรลงฐาน — ดู previewAmendmentImpact)
+ */
+router.post('/:id/amendment-requests/preview', requireAuth, requireOrganizer, validate(amendmentRequestSchema), TournamentController.previewAmendmentImpact);
 // C09b — ผู้ยื่นคำขอดูคำขอแก้ไขของทัวร์ตัวเอง (FE-organizer-see-their-own 21 ก.ย.)
 router.get('/:id/amendment-requests', requireAuth, requireRequester, TournamentController.getTournamentAmendments);
 

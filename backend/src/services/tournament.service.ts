@@ -684,6 +684,54 @@ export async function setEligibilityRules(tournament: TournamentRow, userId: num
     return { items: rules.map(r => ({ ruleType: r.type, ruleValue: r.value })) };
 }
 
+/**
+ * 🆕 FE-39 (7 ต.ค. 2569 · มติ ④ ก) — ดูผลกระทบก่อนยื่น/ก่อนอนุมัติ (dry run)
+ *
+ * FE ขอมาว่า "ไม่มีสัญญาสำหรับดูผลกระทบล่วงหน้า" ⇒ ผู้จัดกับแอดมินต้องกดส่งจริงก่อน
+ * จึงจะรู้ว่าการแก้นี้ทำให้ทีมที่อนุมัติไปแล้วผิดเงื่อนไขย้อนหลังกี่ทีม
+ * ⇒ ปุ่มที่ "อาจจะพังหรือไม่พังก็ได้" ซึ่งคนกดต้องเดาเอง
+ *
+ * ★ ใช้ด่านตัวเดียวกับของจริงทั้งหมด ไม่เขียนกฎซ้ำ — `validateAmendmentAgainstTournament`
+ *   และ `assertAmendmentKeepsApprovedTeamsEligible` คือฟังก์ชันเดิมเป๊ะ
+ *   ⇒ ไม่มีทางที่ preview กับของจริงจะตอบไม่ตรงกัน เพราะเป็นโค้ดชุดเดียวกัน
+ *   🔴 ถ้าใครจะเพิ่มด่านใหม่ใน requestAmendment/approveAmendment ต้องเพิ่มที่นี่ด้วย
+ *      ไม่งั้น preview จะบอกว่า "ผ่าน" แล้วของจริงไม่ผ่าน ซึ่งแย่กว่าไม่มี preview เลย
+ *
+ * ★ ไม่เขียนอะไรลงฐานเลย และไม่ส่งแจ้งเตือน — เป็นการอ่านอย่างเดียว
+ * ★ คืน 200 เสมอ ไม่ throw แม้จะมีสิ่งกีดขวาง — เพราะ "มีผลกระทบ" คือ**คำตอบ**
+ *   ของ endpoint นี้ ไม่ใช่ความผิดพลาด (ของจริงยังตอบ 409 ตามเดิม ไม่เปลี่ยน)
+ * ★ `blockers` เป็น array ไม่ใช่ตัวเดียว — เผื่อวันหน้าตรวจได้หลายเรื่องในรอบเดียว
+ *   ตอนนี้ด่านแรกที่เจอจะหยุด จึงมีได้ไม่เกิน 1 ใบ และ FE ต้องไม่สมมติว่ามีแค่ใบเดียว
+ */
+export async function previewAmendmentImpact(tournamentId: number, userId: number, input: AmendmentRequestInput) {
+    void userId;   // ด่านสิทธิ์อยู่ที่ requireOrganizer บน route (เหมือน requestAmendment)
+    const tournament = await getTournamentOr404(tournamentId);
+    const changes = validateAmendmentChanges(input.requestedChanges);
+
+    const blockers : { code : string; message : string; details : unknown }[] = [];
+    try {
+        validateAmendmentAgainstTournament(tournament, changes);
+        await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);
+    } catch (err) {
+        // ★ จับเฉพาะ AppError — ข้อผิดพลาดของระบบ (ฐานล่ม ฯลฯ) ต้องเด้งขึ้นไปเป็น 500 ตามเดิม
+        if(!(err instanceof AppError)) throw err;
+        blockers.push({ code : err.code, message : err.message, details : err.extra ?? null });
+    }
+
+    /**
+     * ★ บอกด้วยว่ามีใบค้างอยู่หรือไม่ — ไม่ใช่ blocker ของ "เนื้อหา" แต่เป็นสิ่งที่จะทำให้
+     *   กดยื่นจริงแล้วได้ 409 AMENDMENT_ALREADY_PENDING ⇒ คนกดควรรู้ก่อน
+     *   แยกฟิลด์กันเพื่อให้ FE แสดงคนละแบบได้ (ใบค้าง = "รอผลใบเดิม" ไม่ใช่ "แก้ไม่ได้")
+     */
+    const pendingAmendment = await TournamentRepo.findPendingAmendmentOfTournament(tournamentId);
+
+    return {
+        canSubmit : blockers.length === 0 && pendingAmendment === null,
+        blockers,
+        pendingAmendmentId : pendingAmendment?.tournament_amendment_request_id ?? null
+    };
+}
+
 export async function requestAmendment(tournamentId: number, userId: number, input: AmendmentRequestInput) {
     const tournament = await getTournamentOr404(tournamentId);
     const changes = validateAmendmentChanges(input.requestedChanges);

@@ -278,6 +278,98 @@ describe('คำขอแก้ไขทัวร์นาเมนต์ — �
     });
   });
 
+  /**
+   * 🆕 FE-39 (7 ต.ค. 2569 · มติ ④ ก) — ดูผลกระทบก่อนยื่น (dry run)
+   *
+   * FE รายงานว่าไม่มีสัญญาสำหรับดูผลกระทบล่วงหน้า ⇒ ผู้จัดต้องกดส่งจริงก่อนจึงจะรู้ว่า
+   * การแก้นี้ทำให้ทีมที่อนุมัติไปแล้วผิดเงื่อนไขย้อนหลังกี่ทีม — เป็นปุ่มที่ต้องเดาผล
+   *
+   * ★ สิ่งที่เทสชุดนี้ต้องตรึงให้ได้สองอย่าง
+   *     ① ไม่เขียนอะไรลงฐานเลย (ถ้าเขียน มันไม่ใช่ preview)
+   *     ② ตอบ**ตรงกับของจริง** — ใช้ด่านชุดเดียวกัน ไม่ใช่กฎที่เขียนซ้ำ
+   *   ข้อ ② สำคัญกว่า: preview ที่บอกว่า "ผ่าน" แล้วของจริงไม่ผ่าน แย่กว่าไม่มี preview
+   */
+  describe('ดูผลกระทบก่อนยื่น — POST /amendment-requests/preview (FE-39)', () => {
+    const preview = (who: TestUser, changes: Record<string, unknown>) =>
+      as(who).post(`/tournaments/${tour}/amendment-requests/preview`)
+        .send({ requestedChanges: changes, reason: 'อยากดูผลกระทบก่อน' });
+    const amendmentCount = async () => (await all('SELECT 1 FROM tournament_amendment_requests')).length;
+
+    /** ★ `beforeEach` ของบล็อกนี้ยื่นไปแล้วหนึ่งใบ ⇒ สถานะตั้งต้นคือ "มีใบค้าง" */
+    it('มีใบค้างอยู่ → canSubmit false พร้อมเลขใบที่ค้าง · ไม่ใช่ blocker ของเนื้อหา', async () => {
+      const res = await preview(organizer, { maxTeams: 24 });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ canSubmit: false, blockers: [], pendingAmendmentId: amendment });
+    });
+
+    it('ไม่มีใบค้าง และการแก้ไม่กระทบใคร → canSubmit true', async () => {
+      expect((await as(facAdmin).post(`/amendment-requests/${amendment}/reject`).send({ reason: 'x' })).status).toBe(200);
+
+      const res = await preview(organizer, { maxTeams: 24 });
+
+      expect(res.body).toEqual({ canSubmit: true, blockers: [], pendingAmendmentId: null });
+    });
+
+    /**
+     * ★ เคสที่ FE ขอมาตรง ๆ — บอกชื่อทีมและเหตุผลรายคน **ก่อน**กดยื่น
+     *   ทีมของ leaderA ถูกอนุมัติแล้วและผู้เล่นเป็นชาย ⇒ เปลี่ยนเป็น "หญิงเท่านั้น" แล้วชน
+     */
+    it('การแก้ทำให้ทีมที่อนุมัติแล้วผิดเงื่อนไข → บอกจำนวนทีมและเหตุผลรายคน · ไม่เขียนอะไรลงฐาน', async () => {
+      expect((await as(facAdmin).post(`/amendment-requests/${amendment}/reject`).send({ reason: 'x' })).status).toBe(200);
+      const app = await insert('tournament_applications',
+        { tournament_id: tour, team_id: teamA, tournament_application_status: 'approved' });
+      await insert('application_players', { tournament_application_id: app, tournament_id: tour, user_id: leaderA.id });
+      const before = await amendmentCount();
+
+      const res = await preview(organizer, { genderRequirement: 'female' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.canSubmit).toBe(false);
+      expect(res.body.blockers).toEqual([expect.objectContaining({
+        code: 'AMENDMENT_BREAKS_APPROVED_TEAMS',
+        details: expect.objectContaining({
+          affectedTeamCount: 1,
+          affectedTeams: [expect.objectContaining({
+            teamId: teamA,
+            players: [expect.objectContaining({ userId: leaderA.id, reason: 'gender' })],
+          })],
+        }),
+      })]);
+      // ★ ① dry run จริง — ไม่มีใบใหม่เกิดขึ้น
+      expect(await amendmentCount()).toBe(before);
+    });
+
+    /**
+     * ★ ② หลักฐานว่า preview ตอบตรงกับของจริง — ยิงของจริงต่อท้ายด้วย payload เดียวกัน
+     *   แล้วรหัสต้องตรงกัน · ถ้าวันหน้ามีคนเพิ่มด่านในเส้นจริงแต่ลืมเพิ่มใน preview เทสนี้จะแดง
+     */
+    it('preview บอก blocker อะไร ยื่นจริงต้องได้รหัสเดียวกัน', async () => {
+      expect((await as(facAdmin).post(`/amendment-requests/${amendment}/reject`).send({ reason: 'x' })).status).toBe(200);
+      const app = await insert('tournament_applications',
+        { tournament_id: tour, team_id: teamA, tournament_application_status: 'approved' });
+      await insert('application_players', { tournament_application_id: app, tournament_id: tour, user_id: leaderA.id });
+
+      const dry = await preview(organizer, { genderRequirement: 'female' });
+      const real = await as(organizer).post(`/tournaments/${tour}/amendment-requests`)
+        .send({ requestedChanges: { genderRequirement: 'female' }, reason: 'อยากดูผลกระทบก่อน' });
+
+      expect(real.status).toBe(409);
+      expect(real.body.error.code).toBe(dry.body.blockers[0].code);
+    });
+
+    it.each([
+      ['ผู้ใช้ทั่วไป', () => stranger],
+      ['ผู้จัดทัวร์อื่น', () => otherOrganizer],
+    ])('%s → 403 (ด่านสิทธิ์ชุดเดียวกับการยื่นจริง)', async (_label, who) => {
+      expect((await preview(who(), { maxTeams: 24 })).status).toBe(403);
+    });
+
+    it('เนื้อหาผิด schema → 400 เหมือนเส้นจริง (ไม่ใช่ preview ที่หลวมกว่า)', async () => {
+      expect((await preview(organizer, { maxTeams: -5 })).status).toBe(400);
+    });
+  });
+
   it('อนุมัติซ้ำ → 409 ALREADY_DECIDED', async () => {
     expect((await as(uniAdmin).post(`/amendment-requests/${amendment}/approve`)).status).toBe(200);
     expect((await as(uniAdmin).post(`/amendment-requests/${amendment}/approve`)).status).toBe(409);
