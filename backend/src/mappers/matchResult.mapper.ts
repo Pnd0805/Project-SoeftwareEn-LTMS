@@ -199,13 +199,19 @@ export type standingDto = {
     goalsFor : number,
     goalsAgainst : number,
     goalDiff : number,
-    rank : number      // ทีมที่เสมอกันทุกเกณฑ์ได้อันดับเท่ากัน (1,1,3) — B3
+    rank : number,     // ทีมที่เสมอกันทุกเกณฑ์ได้อันดับเท่ากัน (1,1,3) — B3
+    /**
+     * 🆕 FE-32 (7 ต.ค. 2569 · มติ ข) — "ตกรอบ 8 ทีมสุดท้าย" / "รองแชมป์" / "แชมป์"
+     * null = ลีกแบบพบกันหมด (ที่นั่น `rank` คือคำตอบจริง) หรือทีมนี้ยังไม่ตกรอบ
+     * เหตุผลและกฎการคิดอยู่ที่ `utils/eliminationStage.ts`
+     */
+    outLabel : string | null
 }
 
 // OD-61 — logo_key เข้ามาด้วยเพื่อให้ team ในตารางอันดับมี logoUrl เหมือน TeamRef ที่อื่น
 export type StandingSource = { team_id : number , name : string , sport_type_id : number , logo_key : string | null , played : number , won : number , lost : number , points : number , goals_for : number , goals_against : number };
 
-export function toStandingDto(row : StandingSource , rank : number) : standingDto{
+export function toStandingDto(row : StandingSource , rank : number , outLabel : string | null = null) : standingDto{
     return {
         team : toTeamRef(row),
         played : row.played,
@@ -215,17 +221,20 @@ export function toStandingDto(row : StandingSource , rank : number) : standingDt
         goalsFor : row.goals_for,
         goalsAgainst : row.goals_against,
         goalDiff : row.goals_for - row.goals_against,
-        rank : rank
+        rank : rank,
+        outLabel : outLabel
     };
 }
 
 /** อันดับแบบ "เท่ากันได้" — เกณฑ์เดียวกับ ORDER BY ใน findStandings (แต้ม, ผลต่าง, ประตูได้, ชนะ) · ชื่อทีมใช้แค่ให้ลำดับนิ่ง ไม่ถือว่าต่างอันดับ */
-export function rankStandings(rows : StandingSource[]) : standingDto[]{
+export function rankStandings(rows : StandingSource[] , outLabels : Map<number , string | null> = new Map()) : standingDto[]{
     const key = (r : StandingSource) => `${r.points}|${r.goals_for - r.goals_against}|${r.goals_for}|${r.won}`;
     let rank = 0, prevKey = '';
     return rows.map((row , i) => {
         const k = key(row);
         if(k !== prevKey){ rank = i + 1; prevKey = k; }
-        return toStandingDto(row , rank);
+        // ★ ป้าย "ตกรอบ" ไม่เปลี่ยนอันดับ — อันดับยังมาจากเกณฑ์ B3 เดิมทุกตัว
+        //   ทั้งสองอย่างอยู่คู่กันเพื่อให้คนอ่านแปลอันดับที่เท่ากันได้ ไม่ใช่มาแทนกัน
+        return toStandingDto(row , rank , outLabels.get(row.team_id) ?? null);
     });
 }

@@ -16,6 +16,9 @@ vi.mock('../../repositories/match.repo.js', () => ({ findById: vi.fn() }));
 vi.mock('../../repositories/tournament.repo.js', () => ({ findTournamentById: vi.fn(), findUnfinishedMatchIds: vi.fn(() => Promise.resolve([])) }));
 vi.mock('../../repositories/team.repo.js', () => ({ findTeamIdOfUserInMatch: vi.fn(() => Promise.resolve(null)) }));
 vi.mock('../../repositories/sportType.repo.js', () => ({}));
+// 🔴 FE-32 (7 ต.ค.) — getStandings อ่านโหนดในสายเพื่อคิดป้าย "ตกรอบไหน"
+//   ถ้าไม่ mock ที่นี่ เทสจะไปแตะ pool จริง แล้วด่าน no-real-io จะฟ้อง
+vi.mock('../../repositories/bracketNode.repo.js', () => ({ findSettledNodesByTournament: vi.fn(() => Promise.resolve([])) }));
 vi.mock('../walkover.service.js', () => ({}));
 vi.mock('../../middlewares/requireReferee.js', () => ({ isRefereeOfMatch: vi.fn(() => Promise.resolve(false)), isTeamLeaderOfMatch: vi.fn(() => Promise.resolve(false)) }));
 vi.mock('../../utils/checkExist.js', () => ({ checkMatch: vi.fn(), checkTournament: vi.fn(), checkTeam: vi.fn() }));
@@ -29,7 +32,7 @@ import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import * as TeamRepo from '../../repositories/team.repo.js';
 import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../../middlewares/requireReferee.js';
-import { checkMatch } from '../../utils/checkExist.js';
+import { checkMatch, checkTournament } from '../../utils/checkExist.js';
 
 const VERIFIED_AT = new Date('2026-09-26T10:00:00Z');
 const result = (o: Record<string, unknown> = {}) => ({
@@ -179,6 +182,11 @@ describe('getVerifiedResult — dispute window', () => {
 
 // ข้อ 1 (มติ 26 ก.ย.) — round robin ทุกแมตช์ป้อนตารางเดียวกัน อันดับระหว่างทางจึงยังไม่เป็นทางการ
 describe('getStandings — provisional flag', () => {
+  // FE-32 — getStandings อ่าน bracket_format จากทัวร์ ⇒ checkTournament ต้องคืนแถว ไม่ใช่ undefined
+  beforeEach(() => {
+    vi.mocked(checkTournament).mockResolvedValue({ bracket_format: 'round_robin' } as never);
+  });
+
   it('flags the table while any match is unfinished and lists them', async () => {
     vi.mocked(TournamentRepo.findUnfinishedMatchIds).mockResolvedValue([
       { match_id: 12, match_status: 'disputed' }, { match_id: 15, match_status: 'in_progress' },

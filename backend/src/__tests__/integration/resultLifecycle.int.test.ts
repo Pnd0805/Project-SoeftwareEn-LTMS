@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { anon, as } from './helpers/api.js';
-import { one, testDb } from './helpers/db.js';
+import { insert, one, testDb } from './helpers/db.js';
 import {
   addTournamentReferee, assignMatchReferee, createFaculty, createMatch, createSportType,
   createTeam, createTournament, createUser, makeAdmin, type TestUser,
@@ -268,5 +268,68 @@ describe('BR-14 โต้แย้งผล', () => {
       expect((await resolve(uniAdmin)).status).toBe(200);
       expect((await result())!.match_result_status).toBe('verified');
     });
+  });
+});
+
+/**
+ * 🆕 FE-32 (7 ต.ค. 2569 · มติ ข) — ตารางอันดับบอกว่า "ตกรอบไหน"
+ *
+ * FE รายงานว่า `/standings` ใช้กับทุกรูปแบบเหมือนกันหมด และเรียงด้วยแต้ม/ผลต่าง
+ * ⇒ ในทัวร์แพ้คัดออก ทุกทีมที่ตกรอบเดียวกันได้อันดับเท่ากัน และไม่มีอะไรบอกว่ารอบไหน
+ *
+ * ★ กฎการคิดอยู่ที่ `utils/eliminationStage.ts` และมีเทสตรรกะครบทุกรูปทรงที่ unit
+ *   ที่นี่พิสูจน์ของที่ unit พิสูจน์ไม่ได้: query ดึงโหนด + ผลที่ยืนยันแล้วมาถูกรูป
+ *   และ bracket_format ของทัวร์ถูกส่งเข้าตัวคิดป้ายจริง
+ */
+describe('ป้าย "ตกรอบไหน" ในตารางอันดับ (FE-32)', () => {
+  const standings = () => as(leaderA).get(`/tournaments/${tour}/standings`);
+  const labelOf = async (teamId: number) =>
+    (await standings()).body.items.find((i: { team: { id: number } }) => i.team.id === teamId)?.outLabel;
+
+  beforeEach(async () => {
+    await setup('onsite');
+    expect((await as(referee).post(`/matches/${match}/result`).send(score())).status).toBe(201);
+    expect((await as(leaderA).post(`/matches/${match}/result/verify`)).status).toBe(200);
+    // โหนดในสายของแมตช์ที่เพิ่งจบ — ทัวร์นี้มีสองทีม ⇒ แมตช์นี้คือรอบชิง
+    await insert('bracket_nodes', {
+      tournament_id: tour, node_code: 'W-R1-M1', bracket_type: 'winners',
+      round: 1, match_number: 1, team_a_id: teamA, team_b_id: teamB, match_id: match,
+    });
+  });
+
+  it('แพ้คัดออก → ผู้แพ้รอบชิงได้ "รองแชมป์" · ผู้ชนะได้ "แชมป์"', async () => {
+    await testDb().query("UPDATE tournaments SET bracket_format = 'single_elimination' WHERE tournament_id = ?", [tour]);
+
+    expect(await labelOf(teamB)).toBe('รองแชมป์');
+    expect(await labelOf(teamA)).toBe('แชมป์');
+  });
+
+  /** ★ ลีกพบกันหมดต้องไม่มีป้าย — ที่นั่น `rank` คือคำตอบจริง ป้าย "ตกรอบ" จะเป็นข้อมูลผิด */
+  it('ลีกพบกันหมด → outLabel เป็น null ทุกทีม', async () => {
+    await testDb().query("UPDATE tournaments SET bracket_format = 'round_robin' WHERE tournament_id = ?", [tour]);
+
+    expect(await labelOf(teamA)).toBeNull();
+    expect(await labelOf(teamB)).toBeNull();
+  });
+
+  /**
+   * 🔴 ผลที่ยังไม่มีใครยืนยันต้องไม่ทำให้ใครถูกประกาศว่าตกรอบ
+   *   ถ้าผลถูกโต้แย้งแล้วพลิก ป้ายที่ขึ้นไปแล้วเรียกคืนไม่ได้
+   *   เทสนี้ตรึงเงื่อนไข `match_result_status IN ('verified','walkover')` ใน query
+   */
+  it('ผลยังไม่ถูกยืนยัน → ยังไม่ติดป้ายใคร', async () => {
+    await testDb().query("UPDATE tournaments SET bracket_format = 'single_elimination' WHERE tournament_id = ?", [tour]);
+    await testDb().query("UPDATE match_results SET match_result_status = 'submitted' WHERE match_id = ?", [match]);
+
+    expect(await labelOf(teamA)).toBeNull();
+    expect(await labelOf(teamB)).toBeNull();
+  });
+
+  /** ★ ป้ายไม่เปลี่ยนอันดับ — สองอย่างอยู่คู่กัน ไม่ใช่มาแทนกัน */
+  it('อันดับยังมาจากเกณฑ์เดิม (ผู้ชนะอันดับ 1)', async () => {
+    await testDb().query("UPDATE tournaments SET bracket_format = 'single_elimination' WHERE tournament_id = ?", [tour]);
+
+    const items = (await standings()).body.items;
+    expect(items[0]).toMatchObject({ team: { id: teamA }, rank: 1, outLabel: 'แชมป์' });
   });
 });

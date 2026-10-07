@@ -57,6 +57,37 @@ export type BracketNodeListRow = {
     advances_to_node_id: number | null;
 };
 
+/**
+ * 🆕 FE-32 (7 ต.ค. 2569 · มติ ข) — โหนดในสายที่ **ผลจบแล้ว** สำหรับคิดป้าย "ตกรอบไหน"
+ *
+ * ★ นับเฉพาะผลที่ตกลงกันแล้ว (`verified` / `walkover`) — ชุดเดียวกับที่ `tournament_standings`
+ *   ถูกอัปเดต ⇒ ป้ายกับตัวเลขในตารางอันดับมาจากความจริงชุดเดียวกันเสมอ
+ *   🔴 ห้ามใส่ `submitted` เข้ามา — ผลที่ยังไม่มีใครยืนยันจะทำให้ทีมถูกประกาศว่าตกรอบ
+ *     ก่อนที่จะมีใครรับรองผล และถ้าถูกโต้แย้งแล้วผลพลิก ป้ายที่เคยขึ้นไปเรียกคืนไม่ได้
+ * ★ ไม่ JOIN ชื่อทีม — ตัวคิดป้ายต้องการแค่ id เท่านั้น
+ */
+export type SettledNodeRow = {
+    bracket_type: 'winners' | 'losers' | 'grand_final';
+    round: number | null;
+    team_a_id: number | null;
+    team_b_id: number | null;
+    winner_team_id: number;
+};
+
+export async function findSettledNodesByTournament(tournamentId: number): Promise<SettledNodeRow[]> {
+    const [rows] = await pool.query<(SettledNodeRow & RowDataPacket)[]>(
+        `SELECT n.bracket_type, n.round, n.team_a_id, n.team_b_id, r.winner_team_id
+         FROM bracket_nodes n
+         JOIN match_results r ON r.match_id = n.match_id
+         WHERE n.tournament_id = ?
+           AND r.match_result_status IN ('verified', 'walkover')
+           AND r.winner_team_id IS NOT NULL
+         ORDER BY n.round, n.match_number`,
+        [tournamentId]
+    );
+    return rows;
+}
+
 export async function findNodesByTournament(tournamentId: number): Promise<BracketNodeListRow[]> {
     const [rows] = await pool.query<(BracketNodeListRow & RowDataPacket)[]>(
         `SELECT

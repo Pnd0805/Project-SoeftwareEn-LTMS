@@ -3,6 +3,8 @@ import * as MatchRepo from '../repositories/match.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as BracketNodeRepo from '../repositories/bracketNode.repo.js';
+import { eliminationLabels } from '../utils/eliminationStage.js';
 
 
 import { toDisputeResultDto, toSubmittedResultDto, toVerifiedResultDto , toResolveResultDto, toVerifiedResult , toPlayerMatchStat, toTournamentWinnerDto, toStandingDto , rankStandings } from '../mappers/matchResult.mapper.js';
@@ -621,10 +623,17 @@ export async function getDashboard(tourId : number){
  * isProvisional = false เมื่อไม่มีแมตช์ค้างแล้ว (ซึ่งคือเงื่อนไขเดียวกับที่ปิดทัวร์ได้) จึงใช้เป็นสัญญาณ "อันดับเป็นทางการ" ได้เลย
  */
 export async function getStandings(tourId : number){
-    await checkTournament(tourId);
+    const tournament = await checkTournament(tourId);
 
     const rows = await MatchResRepo.findStandings(tourId);
-    const items = rankStandings(rows);
+    /**
+     * 🆕 FE-32 (7 ต.ค. 2569 · มติ ข) — ป้าย "ตกรอบ N ทีมสุดท้าย" ของทัวร์แบบแพ้คัดออก
+     * ★ ไม่แตะอันดับเดิมเลย — ป้ายเป็นข้อมูลเพิ่ม ไม่ใช่เกณฑ์เรียงใหม่ (ดู rankStandings)
+     * ★ ลีกแบบพบกันหมดจะได้ Map ว่าง ⇒ ทุกทีม outLabel = null (กฎอยู่ที่ eliminationStage.ts)
+     */
+    const settled = await BracketNodeRepo.findSettledNodesByTournament(tourId);
+    const outLabels = eliminationLabels(tournament.bracket_format, settled, rows.map(r => r.team_id));
+    const items = rankStandings(rows, outLabels);
     const pending = await TournamentRepo.findUnfinishedMatchIds(tourId);
 
     return {

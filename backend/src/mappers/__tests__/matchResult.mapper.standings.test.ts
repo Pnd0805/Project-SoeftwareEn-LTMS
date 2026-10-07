@@ -33,6 +33,7 @@ describe('toStandingDto', () => {
       goalsAgainst: 4,
       goalDiff: 3,
       rank: 1,
+      outLabel: null,   // FE-32 — ค่าเริ่มต้นเมื่อผู้เรียกไม่ได้ส่งป้ายมา (ลีกพบกันหมด / ยังไม่ตกรอบ)
     });
   });
 
@@ -72,7 +73,7 @@ describe('toStandingDto', () => {
     const dto = toStandingDto(row({ team_id: 1, name: 'Lions', sport_type_id: 9 }), 1);
 
     expect(Object.keys(dto).sort()).toEqual(
-      ['team', 'played', 'wins', 'losses', 'points', 'goalsFor', 'goalsAgainst', 'goalDiff', 'rank'].sort(),
+      ['team', 'played', 'wins', 'losses', 'points', 'goalsFor', 'goalsAgainst', 'goalDiff', 'rank', 'outLabel'].sort(),
     );
     expect(Object.keys(dto.team).sort()).toEqual(['id', 'logoUrl', 'name', 'sportTypeId']);
   });
