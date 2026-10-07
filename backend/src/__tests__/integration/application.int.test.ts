@@ -253,6 +253,76 @@ describe('อนุมัติ/ปฏิเสธ/ยกเลิกใบส�
     expect((await as(organizer).post('/applications/999999/approve')).status).toBe(404);
   });
 
+  /**
+   * 🆕 BE-03 (7 ต.ค. 2569) — อนุมัติเกินโควตา `max_teams` ไม่ได้
+   *
+   * QA: ทัวร์ maxTeams 4 อนุมัติครบ 5 ใบได้ แล้วจับสายออกมา 4 แมตช์สำหรับ 5 ทีม
+   * ⇒ ทีมที่เกินมาไม่มีที่ยืนในสาย และไม่มีใครรู้จนถึงวันแข่ง
+   *
+   * ★ ต้องเป็นเทส integration — ด่านอยู่ในทรานแซกชันของ repo (นับ + เขียนภายใต้ `FOR UPDATE`)
+   *   เทสที่ mock repo จะตรึงได้แค่ว่า service แปลคำตอบถูก ไม่ได้ตรึงว่าโควตาทำงานจริง
+   */
+  describe('โควตาทัวร์ (BE-03)', () => {
+    it('อนุมัติใบที่ทำให้เกิน maxTeams → 409 TOURNAMENT_FULL · ใบนั้นยัง pending', async () => {
+      // ทัวร์ที่รับได้ทีมเดียว
+      const small = await createTournament({
+        organizer: organizer.id, sportTypeId: sport, facultyId: faculty,
+        status: 'public', registrationOpen: true, minTeams: 1, maxTeams: 1 });
+
+      const leaderB = await createUser({ facultyId: faculty, year: 2 });
+      const pB = await createUser({ facultyId: faculty, year: 2 });
+      const teamB = await createTeam({ leader: leaderB.id, sportTypeId: sport, members: [pB.id] });
+
+      expect((await apply(leader, squad(), small)).status).toBe(201);
+      expect((await apply(leaderB, { teamId: teamB, playerIds: [leaderB.id, pB.id] }, small)).status).toBe(201);
+
+      const first = (await applicationOf(team, small))!.tournament_application_id;
+      const second = (await applicationOf(teamB, small))!.tournament_application_id;
+
+      expect((await as(organizer).post(`/applications/${first}/approve`)).status).toBe(200);
+
+      const full = await as(organizer).post(`/applications/${second}/approve`);
+      expect(full.status).toBe(409);
+      expect(full.body.error.code).toBe('TOURNAMENT_FULL');
+      expect(full.body.error.maxTeams ?? full.body.error.extra?.maxTeams).toBe(1);
+
+      // ★ สำคัญกว่า status code: ฐานต้องไม่มีทีมเกินโควตา
+      expect((await applicationOf(teamB, small))!.tournament_application_status).toBe('pending');
+      expect(await all('SELECT 1 FROM tournament_applications WHERE tournament_id = ? AND tournament_application_status = ?', [small, 'approved']))
+        .toHaveLength(1);
+    });
+
+    /**
+     * ★ เคสที่ด่านแบบ "เช็คใน service แล้วเขียนทีหลัง" จะหลุด — กดอนุมัติสองใบ**พร้อมกัน**
+     *   ทั้งสองคำขอจะนับได้ 0 (ยังไม่เกิน 1) แล้วเขียนทั้งคู่ ⇒ ได้ 2 ทีมทั้งที่มีด่าน
+     *   เทสนี้คือเหตุผลที่ด่านต้องอยู่ในทรานแซกชันพร้อม FOR UPDATE
+     */
+    it('กดอนุมัติสองใบพร้อมกัน → ผ่านได้ใบเดียว', async () => {
+      const small = await createTournament({
+        organizer: organizer.id, sportTypeId: sport, facultyId: faculty,
+        status: 'public', registrationOpen: true, minTeams: 1, maxTeams: 1 });
+
+      const leaderB = await createUser({ facultyId: faculty, year: 2 });
+      const pB = await createUser({ facultyId: faculty, year: 2 });
+      const teamB = await createTeam({ leader: leaderB.id, sportTypeId: sport, members: [pB.id] });
+
+      expect((await apply(leader, squad(), small)).status).toBe(201);
+      expect((await apply(leaderB, { teamId: teamB, playerIds: [leaderB.id, pB.id] }, small)).status).toBe(201);
+
+      const first = (await applicationOf(team, small))!.tournament_application_id;
+      const second = (await applicationOf(teamB, small))!.tournament_application_id;
+
+      const [a, b] = await Promise.all([
+        as(organizer).post(`/applications/${first}/approve`),
+        as(organizer).post(`/applications/${second}/approve`),
+      ]);
+
+      expect([a!.status, b!.status].sort()).toEqual([200, 409]);
+      expect(await all('SELECT 1 FROM tournament_applications WHERE tournament_id = ? AND tournament_application_status = ?', [small, 'approved']))
+        .toHaveLength(1);
+    });
+  });
+
   it('รายการใบสมัครของทัวร์ ดูได้เฉพาะผู้จัด', async () => {
     expect((await as(leader).get(`/tournaments/${tour}/applications`)).status).toBe(403);
     expect((await as(organizer).get(`/tournaments/${tour}/applications`)).status).toBe(200);

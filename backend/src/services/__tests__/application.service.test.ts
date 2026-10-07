@@ -27,6 +27,10 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findPlayerConflicts: vi.fn(() => Promise.resolve([])),
   findPlayersByApplication: vi.fn(() => Promise.resolve([])),
   deletePlayersByApplication: vi.fn(),
+  // 🆕 BE-03 (7 ต.ค. 2569) — อนุมัติผ่านด่านโควตาในทรานแซกชันเดียว
+  //    ค่าเริ่ม 'ok' เพื่อให้เทสเก่าที่ไม่ได้สนเรื่องโควตายังอ่านเจตนาเดิมได้
+  approveApplicationWithinQuota: vi.fn(() => Promise.resolve({ decision: 'ok', maxTeams: 16, approvedTeams: 1 })),
+  findApprovedSquadsForFilter: vi.fn(() => Promise.resolve([])),
 }));
 
 vi.mock('../../repositories/sportType.repo.js', () => ({
@@ -674,12 +678,71 @@ describe('approveApplication', () => {
 
     const result = await applicationService.approveApplication(100, 7);
 
-    expect(mockedApplicationRepo.updateApplicationStatus).toHaveBeenCalledWith(100, 'approved');
+    // 🔴 แก้ 7 ต.ค. 2569 (BE-03) — เดิมเช็ค `updateApplicationStatus(100, 'approved')`
+    //    ตอนนี้การอนุมัติต้องผ่าน `approveApplicationWithinQuota` ซึ่งนับโควตา + เขียน
+    //    ในทรานแซกชันเดียว · ถ้ามีคนเปลี่ยนกลับไปเขียนตรง ๆ เทสนี้จะแดง
+    expect(mockedApplicationRepo.approveApplicationWithinQuota).toHaveBeenCalledWith(100);
+    expect(mockedApplicationRepo.updateApplicationStatus).not.toHaveBeenCalled();
     // C1-ข — แจ้งหัวหน้าทีมว่าผ่านแล้ว
     expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
       userId: 5, type: 'application_decided', relatedEntityType: 'tournament', relatedEntityId: 20,
     }));
     expect(result).toEqual({ id: 100, status: 'approved' });
+  });
+
+  /**
+   * 🆕 BE-03 (7 ต.ค. 2569) — ห้ามอนุมัติเกินโควตา `max_teams`
+   *
+   * QA: ทัวร์ maxTeams 4 อนุมัติ 5 ใบได้ทั้งหมด แล้วจับสายออกมา 4 แมตช์สำหรับ 5 ทีม
+   * ★ ด่านจริงอยู่ในทรานแซกชันของ repo (ดูเหตุผลที่นั่น) ⇒ เทสชั้นนี้ตรึงว่า service
+   *   **แปลคำตอบของ repo เป็น error ที่ถูก** และไม่ส่งแจ้งเตือนเมื่อไม่ได้อนุมัติ
+   */
+  describe('โควตาทัวร์ (BE-03)', () => {
+    beforeEach(() => {
+      mockedApplicationRepo.findApplicationById.mockResolvedValue(
+        makeApplicationDetail({
+          tournament_requested_by_user_id: 7,
+          tournament_status: 'public',
+          tournament_application_status: 'pending',
+        }),
+      );
+    });
+
+    it('ทัวร์เต็มแล้ว → 409 TOURNAMENT_FULL พร้อมบอกโควตา และไม่แจ้งเตือนใคร', async () => {
+      mockedApplicationRepo.approveApplicationWithinQuota.mockResolvedValue(
+        { decision: 'tournament_full', maxTeams: 4, approvedTeams: 4 } as never);
+
+      await expect(applicationService.approveApplication(100, 7)).rejects.toMatchObject({
+        status: 409, code: 'TOURNAMENT_FULL',
+        extra: { maxTeams: 4, approvedTeams: 4 },
+      });
+
+      // ★ สำคัญ: หัวหน้าทีมต้องไม่ได้รับ "ใบสมัครได้รับการอนุมัติ" ทั้งที่ไม่ได้อนุมัติ
+      expect(NotificationService.notify).not.toHaveBeenCalled();
+    });
+
+    /**
+     * ★ repo ตรวจ `pending` ซ้ำภายใต้ล็อก — เคสที่ service เช็คผ่านแล้วแต่มีคนอื่น
+     *   อนุมัติไปก่อนในเสี้ยววินาทีนั้น ต้องได้ ALREADY_DECIDED ไม่ใช่อนุมัติซ้ำ
+     */
+    it('repo บอกว่าถูกตัดสินไปแล้ว (แข่งกันเขียน) → 409 ALREADY_DECIDED', async () => {
+      mockedApplicationRepo.approveApplicationWithinQuota.mockResolvedValue(
+        { decision: 'already_decided', maxTeams: 0, approvedTeams: 0 } as never);
+
+      await expect(applicationService.approveApplication(100, 7)).rejects.toMatchObject({
+        status: 409, code: 'ALREADY_DECIDED',
+      });
+      expect(NotificationService.notify).not.toHaveBeenCalled();
+    });
+
+    it('repo บอกว่าไม่พบใบ (ถูกลบระหว่างทาง) → 404', async () => {
+      mockedApplicationRepo.approveApplicationWithinQuota.mockResolvedValue(
+        { decision: 'not_found', maxTeams: 0, approvedTeams: 0 } as never);
+
+      await expect(applicationService.approveApplication(100, 7)).rejects.toMatchObject({
+        status: 404, code: 'APPLICATION_NOT_FOUND',
+      });
+    });
   });
 });
 

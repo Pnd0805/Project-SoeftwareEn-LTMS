@@ -95,6 +95,36 @@ describe('POST /matches/:id/finish — ผู้จัดหรือกรร�
     expect(await matchStatus(match)).toBe('scheduled');
   });
 
+  /**
+   * 🆕 BE-24 (แก้ 7 ต.ค. 2569 · มติ ⑪ ก) — ยกเลิกกลางคันต้องล้างตารางด้วย
+   *
+   * เดิมคืนสถานะเป็น `scheduled` แต่เก็บเวลา/สนามไว้ ⇒ กรรมการเปิดเช็คอินใหม่ได้ทันที
+   * ขัดกับแจ้งเตือนที่ระบบเองส่งว่า "รอผู้จัดนัดเวลาใหม่ แล้วต้องเช็คอินใหม่ในวันแข่งจริง"
+   * ⇒ ข้อความของระบบเถียงกับพฤติกรรมของระบบ (QA 6 ต.ค.)
+   */
+  it('ยกเลิกกลางคันแล้ว เวลาและสนามถูกล้าง · เปิดเช็คอินใหม่ไม่ได้จนผู้จัดนัดเวลาใหม่', async () => {
+    /**
+     * ★ ต้องสร้างแมตช์ที่ **มีตารางจริง** — แมตช์ของ describe นี้เกิดมาโดยไม่มีเวลา/สนาม
+     *   ถ้าใช้ตัวนั้น เทสจะเขียวทั้งที่ยังไม่ได้แก้อะไร (null อยู่แล้วตั้งแต่ต้น)
+     * ★ เวลานัด +5 นาที ⇒ ถ้าโค้ดไม่ล้างตาราง การเปิดเช็คอินซ้ำจะ **สำเร็จ** (อยู่ในหน้าต่าง)
+     *   ซึ่งคือพฤติกรรมเดิมที่เป็นปัญหา ⇒ เทสนี้แยกสองกรณีออกจากกันได้จริง
+     */
+    const scheduledMatch = await createMatch({
+      tournamentId: tour, teamA, teamB, status: 'in_progress',
+      scheduledAt: new Date(Date.now() + 5 * 60_000), venue: 'สนามกลาง' });
+    await assignMatchReferee({ matchId: scheduledMatch, tournamentRefereeId: refRow });
+
+    expect((await as(referee).post(`/matches/${scheduledMatch}/abandon`).send({ reason: 'ฝนตก' })).status).toBe(200);
+
+    expect(await one('SELECT scheduled_time AS t, scheduled_end_time AS e, venue AS v FROM matches WHERE match_id = ?', [scheduledMatch]))
+      .toEqual({ t: null, e: null, v: null });
+
+    // ★ ผลที่ตามมาซึ่งเป็นเหตุผลของการแก้: เปิดเช็คอินซ้ำทันทีไม่ได้อีกแล้ว
+    const again = await as(referee).post(`/matches/${scheduledMatch}/open-checkin`);
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('SCHEDULE_INCOMPLETE');
+  });
+
   it('แมตช์ไม่มีอยู่ → 404', async () => {
     expect((await as(organizer).post('/matches/999999/finish')).status).toBe(404);
   });

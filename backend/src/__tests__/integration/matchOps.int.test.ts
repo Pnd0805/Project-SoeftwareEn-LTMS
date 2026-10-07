@@ -53,7 +53,16 @@ async function setup(o: { sport: number; mode?: 'onsite' | 'online'; status?: 's
   const fixture = o.fixture ?? true;
   const match = await createMatch({
     tournamentId: tour, teamA, teamB, mode: o.mode ?? 'onsite', status: o.status ?? 'scheduled',
-    ...(fixture ? { scheduledAt: new Date(Date.now() + 3600_000), venue: 'สนามกลาง' } : {}),
+    /**
+     * 🔴 แก้ 7 ต.ค. 2569 (BE-04) — เดิมตั้งเวลานัดไว้ "อีก 1 ชั่วโมง"
+     *   หลังเพิ่มหน้าต่างเวลา (เปิดเช็คอิน −60..+60 นาที · เริ่มแข่ง −15 นาที)
+     *   เวลานัด +60 นาทีทำให้ทุกเทสที่กด start ได้ TOO_EARLY_FOR_MATCH
+     *   และเคสเปิดเช็คอินไปติดขอบ 60 นาทีเป๊ะ ซึ่งพลิกได้เพราะ DATETIME ของ mysql
+     *   ปัดเศษวินาที (ไม่เก็บมิลลิวินาที)
+     * ★ +5 นาที = อยู่กลางหน้าต่างทั้งสองด่าน และยังเป็น "อนาคต" ตามที่
+     *   `assertMatchChangeable` (เปลี่ยนกรรมการ) ต้องการ
+     */
+    ...(fixture ? { scheduledAt: new Date(Date.now() + 5 * 60_000), venue: 'สนามกลาง' } : {}),
   });
   const refs = [ref1, ref2].slice(0, o.referees ?? 1);
   for (const r of refs) {

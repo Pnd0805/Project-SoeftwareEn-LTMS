@@ -130,6 +130,106 @@ export async function updateApplicationStatus(id: number, status: 'pending' | 'a
     );
 }
 
+/**
+ * 🆕 BE-03 (7 ต.ค. 2569) — อนุมัติใบสมัครโดยไม่ให้เกินโควตาของทัวร์
+ *
+ * เดิม `approveApplication` ใน service เรียก `updateApplicationStatus` ตรง ๆ และ
+ * **ไม่มีจุดไหนในระบบอ่าน `max_teams` ตอนอนุมัติเลย** ⇒ ทัวร์ maxTeams 4 อนุมัติ 5 ทีมได้
+ * แล้วจับสายได้ 4 แมตช์สำหรับ 5 ทีม (QA 6 ต.ค.)
+ *
+ * 🔴 ทำไมต้องเป็นทรานแซกชัน ไม่ใช่เช็คใน service แล้วค่อยเขียน
+ *   ผู้จัดเปิดสองแท็บแล้วกดอนุมัติพร้อมกัน — ทั้งสองคำขอจะนับได้ 3 (ยังไม่เกิน 4)
+ *   แล้วเขียนทั้งคู่ ⇒ ได้ 5 ทีมทั้งที่มีด่านอยู่ · เป็นเคสเดียวกับที่ `approveAmendment`
+ *   แก้ไว้แล้วด้วย `countApprovedTeamsInConnection` (ลอก pattern นั้นมา)
+ * ★ `FOR UPDATE` บนแถวทัวร์ = ตัวที่ทำให้สองคำขอเรียงคิวกัน ไม่ใช่การนับ
+ *   (ล็อกบนแถวทัวร์ ไม่ใช่บนใบสมัคร เพราะโควตาเป็นของทัวร์)
+ */
+export type ApproveDecision = 'ok' | 'tournament_full' | 'already_decided' | 'not_found';
+
+export async function approveApplicationWithinQuota(applicationId: number): Promise<{ decision: ApproveDecision; maxTeams: number; approvedTeams: number }> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [appRows] = await conn.query<({ tournament_id: number; tournament_application_status: string } & RowDataPacket)[]>(
+            `SELECT tournament_id, tournament_application_status
+             FROM tournament_applications WHERE tournament_application_id = ? FOR UPDATE`,
+            [applicationId]
+        );
+        const app = appRows[0];
+        if (!app) {
+            await conn.rollback();
+            return { decision: 'not_found', maxTeams: 0, approvedTeams: 0 };
+        }
+        if (app.tournament_application_status !== 'pending') {
+            await conn.rollback();
+            return { decision: 'already_decided', maxTeams: 0, approvedTeams: 0 };
+        }
+
+        // ★ ล็อกแถวทัวร์ — ทำให้การอนุมัติของทัวร์เดียวกันเรียงคิวกัน
+        const [tourRows] = await conn.query<({ max_teams: number } & RowDataPacket)[]>(
+            `SELECT max_teams FROM tournaments WHERE tournament_id = ? FOR UPDATE`,
+            [app.tournament_id]
+        );
+        const maxTeams = Number(tourRows[0]?.max_teams ?? 0);
+
+        const [countRows] = await conn.query<({ total: number } & RowDataPacket)[]>(
+            `SELECT COUNT(*) AS total FROM tournament_applications
+             WHERE tournament_id = ? AND tournament_application_status = 'approved'`,
+            [app.tournament_id]
+        );
+        const approvedTeams = Number(countRows[0]?.total ?? 0);
+
+        if (approvedTeams >= maxTeams) {
+            await conn.rollback();
+            return { decision: 'tournament_full', maxTeams, approvedTeams };
+        }
+
+        await conn.query(
+            `UPDATE tournament_applications SET tournament_application_status = 'approved'
+             WHERE tournament_application_id = ?`,
+            [applicationId]
+        );
+        await conn.commit();
+        return { decision: 'ok', maxTeams, approvedTeams: approvedTeams + 1 };
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export type ApprovedSquadMemberRow = {
+    team_id: number;
+    team_name: string;
+    user_id: number;
+    full_name: string;
+    gender: 'male' | 'female' | 'other';
+    birth_date: string;
+};
+
+/**
+ * 🆕 BE-36 (7 ต.ค. 2569) — รายชื่อที่ "ถูกส่งลงแข่ง" ของทีมที่อนุมัติแล้วทั้งทัวร์
+ *
+ * ใช้ตรวจย้อนหลังว่าการแก้เพศ/อายุจะทำให้ทีมที่ผ่านไปแล้วผิดกฎไหม
+ * ★ ยึด `application_players` ไม่ใช่ `team_members` — Hard Filter ตัดสินที่**รายชื่อที่ส่งลงแข่ง**
+ *   (มติ 19 ก.ย. ทีม = คลังผู้เล่น) ⇒ คนในคลังที่ไม่ได้ถูกส่งลงรอบนี้ไม่เกี่ยว
+ */
+export async function findApprovedSquadsForFilter(tournamentId: number): Promise<ApprovedSquadMemberRow[]> {
+    const [rows] = await pool.query<(ApprovedSquadMemberRow & RowDataPacket)[]>(
+        `SELECT ta.team_id, t.name AS team_name, u.user_id, u.full_name, u.gender, u.birth_date
+         FROM tournament_applications ta
+         JOIN teams t ON t.team_id = ta.team_id
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+         JOIN users u ON u.user_id = ap.user_id
+         WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'
+         ORDER BY ta.team_id, u.full_name`,
+        [tournamentId]
+    );
+    return rows;
+}
+
 export async function rejectApplicationInDb(id: number, reason: string): Promise<void> {
     await pool.query(
         "UPDATE tournament_applications SET tournament_application_status = 'rejected', rejection_reason = ? WHERE tournament_application_id = ?",

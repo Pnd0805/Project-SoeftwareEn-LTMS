@@ -157,6 +157,33 @@ describe('BR-14 โต้แย้งผล', () => {
     expect((await result())!.match_result_status).toBe('verified');
   });
 
+  /**
+   * 🆕 BE-17 (แก้ 7 ต.ค. 2569 · มติ ⑤ ก) — คนที่ส่งผลเอง โต้แย้งผลของตัวเองได้
+   *
+   * QA: กรรมการส่งผล → หัวหน้าทีมยืนยัน → **กรรมการคนเดิม** กดโต้แย้ง ได้ 200 กลับเป็น disputed
+   * ⇒ ขัดกับหลักที่ระบบบังคับทุกที่ว่าคนส่งผล ≠ คนยืนยัน · ถ้าคนส่งค้านเองได้
+   *   เท่ากับพลิกผลที่คนอื่นยืนยันแล้วได้ฝ่ายเดียว โดยข้ามกลไกตรวจสอบทั้งหมด
+   *
+   * ★ บล็อกนี้กรรมการเป็นคนส่งผล (ดู beforeEach) ⇒ เป็นคนที่ต้องถูกกัน
+   */
+  it('คนที่ส่งผลเอง โต้แย้งผลตัวเอง → 403 CANNOT_DISPUTE_OWN_RESULT · ผลยัง verified', async () => {
+    const res = await dispute(referee);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('CANNOT_DISPUTE_OWN_RESULT');
+    expect((await result())!.match_result_status).toBe('verified');
+  });
+
+  /**
+   * ★ ด่านนี้ต้องแคบ — ปิดแค่ "คนส่ง" ไม่ใช่กรรมการทั้งหมด
+   *   หัวหน้าทีมที่กด verify ไปแล้ว ยังโต้แย้งได้ (เขาไม่ใช่คนส่ง) และนั่นคือเจตนาเดิมของ BR-14
+   *   ถ้าเทสนี้แดง แปลว่าด่านกว้างเกินและปิดทางค้านที่ควรมี
+   */
+  it('หัวหน้าทีมที่ยืนยันผลไปแล้ว ยังโต้แย้งได้ (ไม่ใช่คนส่ง)', async () => {
+    expect((await dispute(leaderA)).status).toBeLessThan(300);
+    expect((await result())!.match_result_status).toBe('disputed');
+  });
+
   it('โต้แย้งซ้ำระหว่างที่ยังไม่ตัดสิน → 409 DISPUTE_ALREADY_ACTIVE', async () => {
     expect((await dispute(leaderB)).status).toBeLessThan(300);
     const again = await dispute(leaderB);

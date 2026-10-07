@@ -19,6 +19,7 @@ import { AppError } from '../utils/AppError.js';
 import { adminOverseesTournament } from '../utils/adminScope.js';
 import { assertBestOfAllowed } from '../utils/matchFormat.js';
 import { isStudyYear , MIN_STUDY_YEAR , MAX_STUDY_YEAR } from '../utils/studyYear.js';
+import { genderAgeFailReason } from '../utils/hardFilter.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
@@ -464,9 +465,90 @@ export async function getTournament(tournamentId: number, userId?: number) {
     return getDetail(await getVisibleTournament(tournamentId, userId));
 }
 
+/**
+ * 🔴 BE-15 (แก้ 7 ต.ค. 2569) — ช่องที่ล็อกแล้วส่งมาได้ 200 แต่ค่าไม่เปลี่ยน
+ *
+ * `updateTournamentSchema` รับแค่ venue/description/entryNotes แล้วปิดท้ายด้วย `.passthrough()`
+ * ⇒ ส่ง `maxTeams` มาก็ผ่าน schema แล้วถูกเมินเงียบ ๆ ที่ repo · ผู้จัดเข้าใจว่าแก้สำเร็จ
+ *
+ * ★ ทำไมยังเก็บ `.passthrough()` ไว้ ไม่ใช้ `.strict()`
+ *   `.strict()` จะปฏิเสธ**ทุก**คีย์ที่ไม่รู้จัก ⇒ ถ้าหน้าแก้ทัวร์ของ FE ส่ง object ทั้งก้อน
+ *   กลับมา (pattern ที่พบบ่อย) จะพังทันทีทั้งจอ · ด่านนี้จึงปฏิเสธเฉพาะช่องที่ "มีความหมาย
+ *   แต่แก้ทางนี้ไม่ได้" และยังตัดคีย์แปลกอื่น ๆ ทิ้งเงียบเหมือนเดิม (มติ 7 ต.ค. ⑩ ข)
+ */
+const AMENDMENT_ONLY_FIELDS = new Set([
+    'registrationStart', 'registrationEnd', 'eventStartDate', 'eventEndDate',
+    'minTeams', 'maxTeams', 'genderRequirement', 'minAge', 'maxAge', 'eligibilityRules'
+]);
+
+/** แก้ไม่ได้เลยหลังสร้าง — ไม่มีแม้แต่ทาง amendment (เปลี่ยนแล้วสายและใบสมัครที่มีอยู่ไม่มีความหมาย) */
+const IMMUTABLE_FIELDS = new Set([
+    'sportTypeId', 'bracketFormat', 'scopeType', 'organizingFacultyId', 'organizingDepartmentId', 'bestOf'
+]);
+
 export async function updateTournament(tournamentId: number, userId: number, input: UpdateTournamentInput) {
+    const keys = Object.keys(input as Record<string, unknown>);
+    const amendmentFields = keys.filter(k => AMENDMENT_ONLY_FIELDS.has(k));
+    const immutableFields = keys.filter(k => IMMUTABLE_FIELDS.has(k));
+    if (amendmentFields.length > 0 || immutableFields.length > 0) {
+        throw new AppError(409, 'USE_AMENDMENT_REQUEST',
+            amendmentFields.length > 0
+                ? 'บางช่องแก้ทางนี้ไม่ได้ — ต้องยื่นคำขอแก้ไขให้แอดมินอนุมัติ'
+                : 'บางช่องแก้ไม่ได้หลังสร้างทัวร์นาเมนต์แล้ว',
+            { amendmentFields, immutableFields });
+    }
+
     await TournamentRepo.updateTournamentGeneral(tournamentId, userId, input);
     return getDetail(await getTournamentOr404(tournamentId));
+}
+
+/**
+ * 🔴 BE-36 (แก้ 7 ต.ค. 2569) — แก้เพศ/อายุแล้วทีมที่อนุมัติไปแล้วผิดกฎย้อนหลัง
+ *
+ * ของเดิม: กฎ "ห้ามแก้เงื่อนไขให้ทีมที่ผ่านแล้วผิดย้อนหลัง" ถูกบังคับ **2 ใน 3** เส้น
+ *   maxTeams          ✔ repo คืน capacity_conflict ถ้าน้อยกว่าทีมที่อนุมัติแล้ว
+ *   eligibilityRules  ✔ ensureEligibilityEditable (ชั้นปี/คณะ)
+ *   genderRequirement / minAge / maxAge  ✘ ไม่มีด่านอะไรเลย
+ * ⇒ ทัวร์ 22 กลายเป็นหญิงล้วนทันทีโดยทีมชาย 2 ทีมยังอยู่ในรายชื่อที่อนุมัติ (QA 7 ต.ค.)
+ *
+ * ★ ตรวจทั้งตอน**ยื่น**และตอน**อนุมัติ** — ยื่นคำขอที่ไม่มีทางอนุมัติได้ก็ไม่มีประโยชน์
+ *   และสถานะเปลี่ยนได้ระหว่างยื่นกับอนุมัติ ⇒ ด่านตอนอนุมัติเป็นตัวจริง ตอนยื่นคือบอกเร็ว
+ * ★ ใช้ `genderAgeFailReason` ตัวเดียวกับที่ใบสมัครใช้ (utils/hardFilter.ts) — ถ้าเขียนสูตร
+ *   ขึ้นใหม่ที่นี่ ทีมอาจผ่านตอนสมัครแล้วถูกตีว่าไม่ผ่านตอนแก้กฎ โดยไม่มีใครรู้ว่าสูตรไหนถูก
+ * ★ ทางออกของผู้จัดคือถอน/ปฏิเสธทีมที่ชนก่อน แล้วยื่นใหม่ — ระบบไม่ตีทีมที่อนุมัติแล้ว
+ *   กลับเป็น pending ให้เอง เพราะนั่นคือการถอนการอนุมัติของผู้จัด ซึ่งต้องเป็นคนตัดสิน
+ */
+const GENDER_AGE_FIELDS = ['genderRequirement', 'minAge', 'maxAge'] as const;
+
+async function assertAmendmentKeepsApprovedTeamsEligible(tournament: TournamentRow, changes: AmendmentChanges): Promise<void> {
+    if (!GENDER_AGE_FIELDS.some(f => Object.prototype.hasOwnProperty.call(changes, f))) return;
+
+    const registrationEnd = amendmentValue(changes, 'registrationEnd', tournament.registration_end);
+    if (registrationEnd === null) return;   // ยังไม่มีวันปิดรับสมัคร ⇒ ยังไม่มีทีมที่ผ่านตัวกรองได้
+
+    const rules = {
+        genderRequirement: amendmentValue(changes, 'genderRequirement', tournament.gender_requirement),
+        minAge: amendmentValue(changes, 'minAge', tournament.min_age),
+        maxAge: amendmentValue(changes, 'maxAge', tournament.max_age),
+        asOf: registrationEnd
+    };
+
+    const squads = await ApplicationRepo.findApprovedSquadsForFilter(tournament.tournament_id);
+    const affected = new Map<number, { teamId: number; teamName: string; players: { userId: number; fullName: string; reason: 'gender' | 'age' }[] }>();
+    for (const member of squads) {
+        const reason = genderAgeFailReason(member, rules);
+        if (reason === null) continue;
+        const entry = affected.get(member.team_id)
+            ?? { teamId: member.team_id, teamName: member.team_name, players: [] };
+        entry.players.push({ userId: member.user_id, fullName: member.full_name, reason });
+        affected.set(member.team_id, entry);
+    }
+
+    if (affected.size > 0) {
+        throw new AppError(409, 'AMENDMENT_BREAKS_APPROVED_TEAMS',
+            `การแก้นี้ทำให้ทีมที่อนุมัติไปแล้ว ${affected.size} ทีมผิดเงื่อนไขย้อนหลัง — ต้องถอนหรือปฏิเสธทีมที่ชนก่อน แล้วยื่นคำขอใหม่`,
+            { affectedTeamCount: affected.size, affectedTeams: [...affected.values()] });
+    }
 }
 
 /**
@@ -600,6 +682,7 @@ export async function requestAmendment(tournamentId: number, userId: number, inp
     const tournament = await getTournamentOr404(tournamentId);
     const changes = validateAmendmentChanges(input.requestedChanges);
     validateAmendmentAgainstTournament(tournament, changes);
+    await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);   // BE-36 — บอกเร็ว ด่านจริงอยู่ตอนอนุมัติ
     if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
         await ensureEligibilityEditable(tournament);
         changes['eligibilityRules'] = await normalizeEligibilityRules(changes['eligibilityRules'] as EligibilityRuleInput[]);
@@ -656,6 +739,7 @@ export async function approveAmendment(amendmentId: number, userId: number) {
     const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
     const changes = validateAmendmentChanges(amendment.requested_changes);
     validateAmendmentAgainstTournament(tournament, changes);
+    await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);   // BE-36 — ด่านจริง (สถานะเปลี่ยนได้หลังยื่น)
     if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
         await ensureEligibilityEditable(tournament);
         if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, changes['eligibilityRules'] as EligibilityRule[])) eligibilityOutOfScope();

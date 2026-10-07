@@ -4,6 +4,7 @@ import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as RefereeService from './referee.service.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
+import { CHECKIN_OPEN_BEFORE_MINUTES, CHECKIN_OPEN_AFTER_MINUTES, MATCH_START_BEFORE_MINUTES } from '../config/scoring.js';
 import { getPresignedDownloadUrl } from './upload.service.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
@@ -298,6 +299,8 @@ export async function openCheckinMatch(matchId: number, userId: number) {
     // เช็คก่อนทุกด่านที่ต้องยิงฐานข้อมูล และก่อนยิงแจ้งเตือน — ผู้เล่นต้องไม่ได้แจ้งเตือน
     // "เปิดเช็คอินแล้ว" สำหรับแมตช์ที่ไม่มีเวลาไม่มีสนาม เพราะแจ้งเตือนเรียกคืนไม่ได้
     assertFixtureComplete(match);
+    // BE-04 — และต้องอยู่ในหน้าต่างเวลาของแมตช์นี้ (เหตุผลเต็มที่ assertWithinSchedule)
+    assertWithinSchedule(match, { beforeMinutes : CHECKIN_OPEN_BEFORE_MINUTES, afterMinutes : CHECKIN_OPEN_AFTER_MINUTES }, 'เปิดเช็คอิน');
 
     /**
      * ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเดินหน้าทับแมตช์ต้นทางที่ยังไม่สรุป
@@ -419,6 +422,13 @@ export async function startMatch(matchId: number, userId: number){
     // ตะแกรงกันแมตช์ที่เลยด่าน M09 มาก่อนกฎนี้มีผล (เปิดเช็คอินค้างไว้ตั้งแต่ก่อน 27 ก.ย.)
     // ★ ต้องอยู่ก่อนการตัดสินไม่มาตามนัดด้านล่าง — ไม่งั้นทีมอาจถูกปรับแพ้บายในแมตช์ที่ไม่ควรเริ่มตั้งแต่ต้น
     assertFixtureComplete(match);
+    /**
+     * BE-04 — ห้ามกดเริ่มก่อนเวลานัดเกิน MATCH_START_BEFORE_MINUTES
+     * ★ ไม่มีขอบบน (afterMinutes = null) โดยเจตนา — แมตช์ที่เริ่มสายต้องเริ่มได้เสมอ
+     *   ถ้าปิดประตูไว้ แมตช์ที่ล่าช้าจะค้างและไม่มีทางจบ ซึ่งแย่กว่าการเริ่มสาย
+     * ★ ต้องอยู่ก่อน `decideNoShow` ด้านล่าง — ไม่งั้นทีมแพ้บายในแมตช์ที่ยังไม่ถึงเวลา
+     */
+    assertWithinSchedule(match, { beforeMinutes : MATCH_START_BEFORE_MINUTES, afterMinutes : null }, 'เริ่มแข่ง');
 
     if (match.team_a_id === null || match.team_b_id === null) {
         throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง");
@@ -519,6 +529,9 @@ export async function abandonMatch(matchId: number, userId: number, reason: stri
         throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "สถานะแมตช์เปลี่ยนไปแล้ว");
     }
 
+    // 🔴 BE-24 — การล้างตาราง (เวลา/สนาม) อยู่ใน `MatchRepo.abandonMatch` ทรานแซกชันเดียวกัน
+    //    เหตุผลเต็มอยู่ที่นั่น · แจ้งเตือนข้างล่างที่บอกว่า "รอผู้จัดนัดเวลาใหม่" จึงเป็นจริงแล้ว
+
     await NotificationService.notifyMatchAudience(matchId, {
         type: 'match_abandoned',
         title: 'แมตช์ถูกยกเลิกกลางคัน',
@@ -542,6 +555,40 @@ export async function abandonMatch(matchId: number, userId: number, reason: stri
  * ใช้ code กับรูปร่าง `extra.missing` เดียวกับ M06 เพื่อให้ FE ใช้ตัวแสดงข้อความเดิมได้
  * แต่เป็น 409 ไม่ใช่ 400 — M06 เป็นปัญหาของ payload ที่ส่งมา ส่วนตรงนี้ไม่มี payload เลย เป็นปัญหาสถานะ
  */
+/**
+ * 🔴 BE-04 (แก้ 7 ต.ค. 2569) — เปิดเช็คอิน/เริ่มแข่งได้เฉพาะใกล้เวลานัด
+ *
+ * `assertFixtureComplete` ตอบได้แค่ว่า "มีเวลานัดไหม" ไม่ได้ตอบว่า "ถึงเวลาแล้วหรือยัง"
+ * ⇒ เปิดเช็คอินล่วงหน้า 3 สัปดาห์แล้วกดเริ่มได้ ทีมที่ยังไม่มาแพ้บายทั้งที่ยังไม่ถึงวันแข่ง
+ *   และผลชนะบายโต้แย้งไม่ได้ ⇒ ความเสียหายถาวร (QA 6 ต.ค.)
+ *
+ * ★ เรียกหลัง `assertFixtureComplete` เสมอ — ที่นี่ถือว่า `scheduled_time` มีค่าแล้ว
+ * ★ คืน 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ SCHEDULE_INCOMPLETE: ไม่มี payload ที่ผิด
+ *   สิ่งที่ผิดคือจังหวะเวลา · `extra` บอกหน้าต่างกลับไปให้ FE แสดง/ซ่อนปุ่มได้
+ */
+function assertWithinSchedule(
+    match : Pick<MatchRow, 'match_id' | 'scheduled_time'>,
+    window : { beforeMinutes : number; afterMinutes : number | null },
+    action : string,
+    now = Date.now()
+): void {
+    if (!match.scheduled_time) return;   // ไม่มีเวลานัด = หน้าที่ของ assertFixtureComplete ไม่ใช่ที่นี่
+    const scheduled = new Date(match.scheduled_time).getTime();
+    const opensAt = scheduled - window.beforeMinutes * 60_000;
+    const closesAt = window.afterMinutes === null ? null : scheduled + window.afterMinutes * 60_000;
+
+    if (now < opensAt) {
+        throw new AppError(409, "TOO_EARLY_FOR_MATCH",
+            `ยังไม่ถึงเวลา${action} — ทำได้ตั้งแต่ ${window.beforeMinutes} นาทีก่อนเวลานัด`,
+            { scheduledTime: new Date(scheduled).toISOString(), opensAt: new Date(opensAt).toISOString() });
+    }
+    if (closesAt !== null && now > closesAt) {
+        throw new AppError(409, "TOO_LATE_FOR_MATCH",
+            `เลยเวลา${action}แล้ว — ผู้จัดต้องนัดเวลาใหม่ก่อน`,
+            { scheduledTime: new Date(scheduled).toISOString(), closesAt: new Date(closesAt).toISOString() });
+    }
+}
+
 function assertFixtureComplete(match : Pick<MatchRow, 'scheduled_time' | 'scheduled_end_time' | 'venue'>): void {
     const missing = [
         ...(!match.scheduled_time ? ['scheduledTime'] : []),

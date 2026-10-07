@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../notification.service.js', () => ({
   notify: vi.fn(),
@@ -215,11 +215,21 @@ describe('openCheckinMatch (M09)', () => {
   // แมตช์ที่ตารางครบ — ด่าน fixture (มติ 27 ก.ย.) กันแมตช์ที่ยังไม่มีเวลา/สนามไว้ก่อนทุกด่านอื่น
   const scheduled = (o: Record<string, unknown> = {}) =>
     match({ scheduled_time: new Date(START), scheduled_end_time: new Date(END), venue: 'สนาม A', ...o });
+  /**
+   * 🔴 ตรึงเวลาเมื่อ 7 ต.ค. 2569 (BE-04) — เพิ่มด่าน "เปิดเช็คอินได้เฉพาะใกล้เวลานัด"
+   *   เทสชุดนี้ใช้เวลานัดคงที่ (START = 2026-10-01) ซึ่งเป็นอดีตไปแล้วตอนรันจริง
+   *   ⇒ ถ้าไม่ตรึงเวลา ทุกเทสในบล็อกนี้จะได้ TOO_LATE_FOR_MATCH แทนเรื่องที่มันทดสอบ
+   * ★ 09:45 = 15 นาทีก่อนเวลานัด ⇒ อยู่ในหน้าต่าง 60 นาที และเป็นเวลากลาง ๆ ที่ไม่ติดขอบ
+   *   (เคสขอบมีเทสของตัวเองข้างล่าง)
+   */
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-01T09:45:00.000Z'));
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(organizerTournament);
     vi.mocked(isRefereeOfMatch).mockReset().mockResolvedValue(false);
     vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduled());
   });
+  afterEach(() => { vi.useRealTimers(); });
 
   /**
    * FE-open-checkin-has-no-fixture-gate — แมตช์ที่ `createBracket` สร้างมาไม่มีเวลาและสนาม
@@ -744,5 +754,111 @@ describe('listMyMatches — ธงเวลาทับของตัวเอ�
 
     expect(out.items.map(m => m.id)).toEqual([1]);
     expect((out.items[0] as { conflictingMatchIds: number[] }).conflictingMatchIds).toEqual([]);
+  });
+});
+
+/**
+ * 🆕 BE-04 (แก้ 7 ต.ค. 2569 · มติ ③ ก) — เปิดเช็คอิน/เริ่มแข่งได้เฉพาะใกล้เวลานัด
+ *
+ * QA: ตั้งแมตช์วันที่ 27 ต.ค. แล้ววันที่ 6 ต.ค. เปิดเช็คอิน + ให้ทีมเดียวเช็คอินครบ + กดเริ่ม
+ * ⇒ ทีมที่ยังไม่มา **แพ้บายล่วงหน้า 3 สัปดาห์** และผลชนะบายโต้แย้งไม่ได้ (RESULT_IS_WALKOVER)
+ *   ความเสียหายถาวร และเกิดได้โดยไม่มีใครทำผิดอะไรเลย
+ *
+ * ★ ทุกเทสในบล็อกนี้ตรึงเวลา — ด่านนี้เทียบกับ `Date.now()` ถ้าไม่ตรึง เทสจะพลิกตามวันที่รัน
+ */
+describe('หน้าต่างเวลาของแมตช์ (BE-04)', () => {
+  const ORG = 9003;
+  const SCHEDULED = '2026-10-01T10:00:00.000Z';
+  const scheduledMatch = (o: Record<string, unknown> = {}) =>
+    match({ scheduled_time: new Date(SCHEDULED), scheduled_end_time: new Date('2026-10-01T11:30:00.000Z'), venue: 'สนาม A', ...o });
+
+  const at = (iso: string) => { vi.useFakeTimers(); vi.setSystemTime(new Date(iso)); };
+  afterEach(() => { vi.useRealTimers(); });
+
+  beforeEach(() => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(organizerTournament);
+    vi.mocked(isRefereeOfMatch).mockReset().mockResolvedValue(false);
+  });
+
+  describe('เปิดเช็คอิน', () => {
+    beforeEach(() => {
+      vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduledMatch());
+    });
+
+    it('ก่อนเวลานัด 3 สัปดาห์ → 409 TOO_EARLY_FOR_MATCH และไม่แจ้งเตือนใคร', async () => {
+      at('2026-09-10T10:00:00.000Z');
+
+      const err = await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'TOO_EARLY_FOR_MATCH');
+      expect(err.extra).toMatchObject({ scheduledTime: SCHEDULED });
+      expect(MatchRepo.openMatchCheckin).not.toHaveBeenCalled();
+      // ★ แจ้งเตือนเรียกคืนไม่ได้ — ผู้เล่นต้องไม่ได้ "เปิดเช็คอินแล้ว" ของแมตช์ที่ยังไม่ถึงเวลา
+      expect(NotificationService.notifyMatchAudience).not.toHaveBeenCalled();
+    });
+
+    /** ★ เคสขอบ: 60 นาทีก่อนเวลานัดเป๊ะ ต้องเปิดได้ (ไม่ใช่ off-by-one) */
+    it('60 นาทีก่อนเวลานัดเป๊ะ → เปิดได้', async () => {
+      at('2026-10-01T09:00:00.000Z');
+
+      await expect(matchService.openCheckinMatch(1, ORG)).resolves.toBeDefined();
+    });
+
+    it('61 นาทีก่อนเวลานัด → ยังไม่ได้', async () => {
+      at('2026-10-01T08:59:00.000Z');
+
+      await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'TOO_EARLY_FOR_MATCH');
+    });
+
+    /**
+     * ★ มีขอบบนด้วย — เลยเวลานัดไปนานแล้วต้องให้ผู้จัดนัดใหม่ ไม่ใช่เปิดเช็คอินย้อนหลัง
+     *   แต่ขอบบนต้องไม่แคบ (60 นาที) เพราะแมตช์จริงเริ่มสายได้ ถ้าปิดประตูตอนถึงเวลานัดเป๊ะ
+     *   แมตช์ที่ยังไม่เปิดเช็คอินจะเดินต่อไม่ได้เลย — เป็นจุดค้างแบบเดียวกับ BE-16
+     */
+    it('เลยเวลานัดเกิน 60 นาที → 409 TOO_LATE_FOR_MATCH', async () => {
+      at('2026-10-01T11:01:00.000Z');
+
+      await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'TOO_LATE_FOR_MATCH');
+    });
+
+    it('เลยเวลานัดแต่ยังไม่ถึง 60 นาที → ยังเปิดได้ (แมตช์เริ่มสายได้)', async () => {
+      at('2026-10-01T10:30:00.000Z');
+
+      await expect(matchService.openCheckinMatch(1, ORG)).resolves.toBeDefined();
+    });
+
+    /** ★ แมตช์ที่ยังไม่มีเวลานัด ต้องตกที่ SCHEDULE_INCOMPLETE เหมือนเดิม ไม่ใช่ด่านใหม่ */
+    it('ไม่มีเวลานัด → ยังเป็น SCHEDULE_INCOMPLETE ตามเดิม', async () => {
+      at('2026-10-01T09:45:00.000Z');
+      vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ scheduled_time: null, scheduled_end_time: null, venue: null }));
+
+      await expectAppError(matchService.openCheckinMatch(1, ORG), 409, 'SCHEDULE_INCOMPLETE');
+    });
+  });
+
+  describe('เริ่มแข่ง', () => {
+    beforeEach(() => {
+      vi.mocked(MatchRepo.findMatchById).mockResolvedValue(scheduledMatch({ match_status: 'checkin_open' }));
+    });
+
+    it('กดเริ่มก่อนเวลานัด 3 สัปดาห์ → 409 TOO_EARLY_FOR_MATCH และไม่มีใครแพ้บาย', async () => {
+      at('2026-09-10T10:00:00.000Z');
+
+      await expectAppError(matchService.startMatch(1, ORG), 409, 'TOO_EARLY_FOR_MATCH');
+      // ★ หัวใจของบั๊กนี้: ต้องหยุด**ก่อน**ถึงการตัดสินไม่มาตามนัด (decideNoShow)
+      //   ด่านเวลาอยู่ก่อน MatchRepo.findById ⇒ ถ้า findById ถูกเรียก แปลว่าด่านไม่ทำงาน
+      expect(MatchRepo.findById).not.toHaveBeenCalled();
+    });
+
+    it('ก่อนเวลานัด 15 นาทีเป๊ะ → เริ่มได้ (ไม่ติดด่านเวลา)', async () => {
+      at('2026-10-01T09:45:00.000Z');
+
+      await expect(matchService.startMatch(1, ORG)).rejects.not.toMatchObject({ code: 'TOO_EARLY_FOR_MATCH' });
+    });
+
+    /** ★ ไม่มีขอบบน — แมตช์ที่เริ่มสายต้องเริ่มได้เสมอ ไม่งั้นค้างและไม่มีทางจบ */
+    it('เลยเวลานัดไปหลายชั่วโมง → ไม่ติดด่านเวลา', async () => {
+      at('2026-10-01T18:00:00.000Z');
+
+      await expect(matchService.startMatch(1, ORG)).rejects.not.toMatchObject({ code: 'TOO_LATE_FOR_MATCH' });
+    });
   });
 });

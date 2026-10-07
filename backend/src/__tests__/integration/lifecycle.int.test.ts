@@ -45,16 +45,44 @@ describe('PATCH /tournaments/:id — แก้ได้เฉพาะข้อ�
     expect((await tourRow(tour))!.venue).toBe('สนามใหม่');
   });
 
-  it('🔒 ส่งฟิลด์ต้องห้ามมาด้วย (schema นี้ใช้ .passthrough()) → ไม่มีผลกับฐาน', async () => {
+  /**
+   * 🔴 เขียนใหม่เมื่อ 7 ต.ค. 2569 (BE-15 · มติ ⑩ ข)
+   *
+   * เทสเดิมชื่อ "ส่งฟิลด์ต้องห้ามมาด้วย → ไม่มีผลกับฐาน" และยืนยันว่าได้ **200**
+   * ⇒ ตรึงพฤติกรรมที่เป็นปัญหาไว้: ผู้จัดส่ง `maxTeams` มาแล้วได้ 200 เข้าใจว่าแก้สำเร็จ
+   *   ทั้งที่ค่าไม่เปลี่ยน แล้วไปรู้ตัวเอาวันแข่ง (QA 6 ต.ค.)
+   *
+   * ★ สิ่งที่ยังต้องจริงเหมือนเดิม — **ฐานต้องไม่เปลี่ยน** · ที่เปลี่ยนคือคำตอบ: 409 ไม่ใช่ 200
+   * ★ คีย์ที่ไม่มีความหมาย (snake_case ที่ API ไม่เคยรับ) ยังถูกเมินเงียบเหมือนเดิม
+   *   เพราะไม่ได้ใช้ `.strict()` — ถ้าใช้ จอที่ส่ง object ทั้งก้อนกลับมาจะพังทั้งจอ
+   */
+  it('🔒 ส่งช่องที่ต้องยื่นคำขอแก้ไขมาด้วย → 409 USE_AMENDMENT_REQUEST · ฐานไม่เปลี่ยนเลย', async () => {
     const res = await as(organizer).patch(`/tournaments/${tour}`).send({
       venue: 'สนามใหม่',
-      tournament_status: 'completed', tournamentStatus: 'completed', status: 'completed',
-      requested_by_user_id: stranger.id, requestedByUserId: stranger.id,
-      max_teams: 999, maxTeams: 999, registration_open: 1,
+      maxTeams: 999, genderRequirement: 'female',
     });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('USE_AMENDMENT_REQUEST');
+    expect((res.body.error.amendmentFields ?? res.body.error.extra?.amendmentFields).sort())
+      .toEqual(['genderRequirement', 'maxTeams']);
+
+    // ★ ทั้งก้อนต้องไม่ถูกเขียน — รวมถึง venue ที่ส่งมาคู่กันและปกติแก้ได้
+    expect(await tourRow(tour)).toMatchObject({
+      venue: 'สนามทดสอบ', tournament_status: 'public', max_teams: 16, registration_open: 0,
+    });
+  });
+
+  /** ★ คีย์ที่ไม่มีความหมายเลย ยังถูกเมินเงียบ (ไม่ใช้ .strict()) และของที่แก้ได้ยังแก้ได้ */
+  it('คีย์ที่ API ไม่เคยรับ ยังถูกเมินเงียบ · ฟิลด์ที่แก้ได้ยังแก้ได้', async () => {
+    const res = await as(organizer).patch(`/tournaments/${tour}`).send({
+      venue: 'สนามใหม่',
+      tournament_status: 'completed', requested_by_user_id: stranger.id, registration_open: 1,
+    });
+
     expect(res.status).toBe(200);
     expect(await tourRow(tour)).toMatchObject({
-      venue: 'สนามใหม่', tournament_status: 'public', requested_by_user_id: organizer.id, max_teams: 16, registration_open: 0,
+      venue: 'สนามใหม่', tournament_status: 'public', requested_by_user_id: organizer.id, registration_open: 0,
     });
   });
 });

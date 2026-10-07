@@ -21,7 +21,11 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   findPendingAmendments: vi.fn(),
 }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn() }));
-vi.mock('../../repositories/application.repo.js', () => ({ findEligibilityRules: vi.fn() }));
+// 🆕 BE-36 (7 ต.ค. 2569) — ไม่ใส่ findApprovedSquadsForFilter = ไฟล์นี้พังทั้งไฟล์
+vi.mock('../../repositories/application.repo.js', () => ({
+  findEligibilityRules: vi.fn(),
+  findApprovedSquadsForFilter: vi.fn(() => Promise.resolve([])),
+}));
 vi.mock('../../repositories/department.repo.js', () => ({}));
 vi.mock('../../repositories/faculty.repo.js', () => ({ findFacultyById: vi.fn() }));
 vi.mock('../../repositories/sportType.repo.js', () => ({}));
@@ -73,6 +77,7 @@ const baseTournament = (o: Partial<TournamentRow> = {}) => ({
 beforeEach(() => {
   vi.resetAllMocks();
   mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
+  mockedApplicationRepo.findApprovedSquadsForFilter.mockResolvedValue([]);   // BE-36 — ค่าเริ่ม: ยังไม่มีทีมที่อนุมัติ
   mockedTournamentRepo.hasLiveApplications.mockResolvedValue(false);
 });
 
@@ -368,5 +373,100 @@ describe('ข้อมูลเดิมของทัวร์ขัดกั�
     await expect(Service.requestAmendment(26, 7,
       { requestedChanges: { registrationEnd: futureIso(60) }, reason: 'ขอเลื่อน' } as never))
       .rejects.toMatchObject({ status: 400, code: 'INVALID_DATE_RANGE' });
+  });
+});
+
+/**
+ * 🆕 BE-36 (แก้ 7 ต.ค. 2569) — แก้เพศ/อายุแล้วทีมที่อนุมัติไปแล้วผิดกฎย้อนหลัง
+ *
+ * QA: ทัวร์ 22 เปิดรับสมัครอยู่ มีทีมชาย 2 ทีมที่อนุมัติแล้ว · ผู้จัดขอเปลี่ยนเป็น female
+ * แอดมินอนุมัติ ⇒ ทัวร์กลายเป็นหญิงล้วนทันที ทีมชายทั้งสองยังอยู่ในรายชื่อที่อนุมัติ
+ * ไม่มีการตรวจซ้ำ ไม่มีแจ้งเตือน
+ *
+ * ★ กฎนี้ระบบบังคับอยู่แล้ว 2 ใน 3 เส้น (maxTeams → capacity_conflict ·
+ *   eligibilityRules → ELIGIBILITY_LOCKED) · เพศ/อายุคือเส้นที่ขาดไป ไม่ใช่การออกแบบ
+ * ★ ใช้สูตร `genderAgeFailReason` ตัวเดียวกับที่ใบสมัครใช้ (utils/hardFilter.ts)
+ *   ⇒ ทีมที่ผ่านตอนสมัครจะไม่ถูกตีว่าไม่ผ่านตอนแก้กฎด้วยสูตรที่ต่างกัน
+ */
+describe('ทีมที่อนุมัติแล้วต้องไม่ผิดกฎย้อนหลัง (BE-36)', () => {
+  const maleSquad = [
+    { team_id: 30, team_name: 'ทีมชาย A', user_id: 101, full_name: 'สมชาย', gender: 'male' as const, birth_date: '2004-01-15' },
+    { team_id: 31, team_name: 'ทีมชาย B', user_id: 102, full_name: 'สมศักดิ์', gender: 'male' as const, birth_date: '2004-02-20' },
+  ];
+
+  beforeEach(() => {
+    // ★ ต้องระบุ gender_requirement/อายุให้ชัด — baseTournament ไม่ได้ตั้งไว้ และ undefined
+    //   จะถูกอ่านว่า "ไม่ใช่ any" ⇒ ทุกคนตกเพศ ทำให้เทสเคสอายุอ่านผลผิดเหตุ
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(
+      baseTournament({ gender_requirement: 'any', min_age: null, max_age: null }));
+    mockedTournamentRepo.insertAmendmentRequest.mockResolvedValue(7 as never);
+    mockedTournamentRepo.findAmendmentById.mockResolvedValue(
+      { tournament_amendment_request_id: 7, tournament_id: 26, tournament_amendment_request_status: 'pending',
+        requested_changes: { genderRequirement: 'female' } } as never);
+    mockedAdminScopeRepo.findAdminByUserId.mockResolvedValue(uniAdmin);
+    mockedApplicationRepo.findApprovedSquadsForFilter.mockResolvedValue(maleSquad as never);
+  });
+
+  it('ยื่นคำขอเปลี่ยนเป็นหญิงล้วน ขณะมีทีมชายที่อนุมัติแล้ว → 409 และไม่บันทึกคำขอ', async () => {
+    await expect(Service.requestAmendment(26, 7,
+      { requestedChanges: { genderRequirement: 'female' }, reason: 'เปลี่ยนรุ่น' } as never))
+      .rejects.toMatchObject({ status: 409, code: 'AMENDMENT_BREAKS_APPROVED_TEAMS' });
+
+    expect(mockedTournamentRepo.insertAmendmentRequest).not.toHaveBeenCalled();
+  });
+
+  /** ★ ด่านตัวจริงอยู่ตอนอนุมัติ — ทีมอาจถูกอนุมัติเพิ่มหลังยื่นคำขอไปแล้ว */
+  it('แอดมินอนุมัติคำขอนั้น → 409 และทัวร์ไม่ถูกแก้', async () => {
+    await expect(Service.approveAmendment(7, 9))
+      .rejects.toMatchObject({ status: 409, code: 'AMENDMENT_BREAKS_APPROVED_TEAMS' });
+
+    expect(mockedTournamentRepo.approveAmendment).not.toHaveBeenCalled();
+  });
+
+  /** ★ ต้องบอกว่าทีมไหนและใครชน ไม่ใช่แค่ปฏิเสธ — ผู้จัดต้องรู้ว่าต้องถอนทีมไหนก่อน */
+  it('บอกจำนวนทีมและรายชื่อคนที่ชน พร้อมเหตุผลรายคน', async () => {
+    const err = await Service.approveAmendment(7, 9).catch((e: unknown) => e);
+    const extra = (err as { extra: { affectedTeamCount: number; affectedTeams: { teamId: number; players: { userId: number; reason: string }[] }[] } }).extra;
+
+    expect(extra.affectedTeamCount).toBe(2);
+    expect(extra.affectedTeams.map(t => t.teamId).sort()).toEqual([30, 31]);
+    expect(extra.affectedTeams[0]!.players[0]).toMatchObject({ userId: 101, reason: 'gender' });
+  });
+
+  /** ★ อายุใช้วันปิดรับสมัครเป็นหลัก ไม่ใช่วันนี้ — สูตรเดียวกับตอนตรวจใบสมัคร */
+  it('จับเคสอายุด้วย ไม่ใช่แค่เพศ', async () => {
+    mockedTournamentRepo.findAmendmentById.mockResolvedValue(
+      { tournament_amendment_request_id: 7, tournament_id: 26, tournament_amendment_request_status: 'pending',
+        requested_changes: { minAge: 30 } } as never);
+
+    const err = await Service.approveAmendment(7, 9).catch((e: unknown) => e);
+
+    expect((err as { code: string }).code).toBe('AMENDMENT_BREAKS_APPROVED_TEAMS');
+    expect((err as { extra: { affectedTeams: { players: { reason: string }[] }[] } }).extra.affectedTeams[0]!.players[0]!.reason)
+      .toBe('age');
+  });
+
+  /**
+   * ★ เคสตรงข้าม: การแก้ที่ไม่ทำให้ใครผิด ต้องผ่านตามเดิม
+   *   ถ้าเทสนี้แดง แปลว่าด่านใหม่กว้างเกินไปและบล็อกการแก้ที่ควรทำได้
+   */
+  it('แก้เป็นเงื่อนไขที่ทุกทีมยังผ่าน → อนุมัติได้ตามเดิม', async () => {
+    mockedTournamentRepo.findAmendmentById.mockResolvedValue(
+      { tournament_amendment_request_id: 7, tournament_id: 26, tournament_amendment_request_status: 'pending',
+        requested_changes: { genderRequirement: 'male' } } as never);
+    mockedTournamentRepo.approveAmendment.mockResolvedValue('ok' as never);
+
+    await expect(Service.approveAmendment(7, 9)).resolves.toMatchObject({ status: 'approved' });
+  });
+
+  /** ★ คำขอที่ไม่แตะเพศ/อายุเลย ต้องไม่ไปอ่านรายชื่อทีมโดยเปล่าประโยชน์ */
+  it('คำขอที่ไม่เกี่ยวกับเพศ/อายุ ไม่ต้องอ่านรายชื่อทีม', async () => {
+    mockedTournamentRepo.findAmendmentById.mockResolvedValue(
+      { tournament_amendment_request_id: 7, tournament_id: 26, tournament_amendment_request_status: 'pending',
+        requested_changes: { minTeams: 3 } } as never);
+    mockedTournamentRepo.approveAmendment.mockResolvedValue('ok' as never);
+
+    await expect(Service.approveAmendment(7, 9)).resolves.toMatchObject({ status: 'approved' });
+    expect(mockedApplicationRepo.findApprovedSquadsForFilter).not.toHaveBeenCalled();
   });
 });

@@ -9,22 +9,16 @@ import { toApplicationDetailDto, toMyApplicationDto } from '../mappers/applicati
 import { toOrganizerApplicationDto } from '../mappers/application.mapper.js';
 import { AppError } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
+import { genderAgeFailReason } from '../utils/hardFilter.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
 import * as NotificationService from './notification.service.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
-function calculateAge(birthDate: string, asOfDate: Date | string): number {
-    const birth = new Date(birthDate);
-    const asOf = asOfDate instanceof Date ? asOfDate : new Date(asOfDate);
-    let age = asOf.getUTCFullYear() - birth.getUTCFullYear();
-    const hasHadBirthdayThisYear =
-        asOf.getUTCMonth() > birth.getUTCMonth() ||
-        (asOf.getUTCMonth() === birth.getUTCMonth() && asOf.getUTCDate() >= birth.getUTCDate());
-    if (!hasHadBirthdayThisYear) age -= 1;
-    return age;
-}
+// 🔴 `calculateAge` ย้ายไป utils/hardFilter.ts เมื่อ 7 ต.ค. 2569 (BE-36)
+//    เพราะ `approveAmendment` ต้องตรวจเพศ/อายุย้อนหลังด้วยสูตรเดียวกัน
+//    ถ้าเขียนขึ้นใหม่ที่ฝั่งนั้น จะมีสองสูตรที่เถียงกันได้
 
 
 export async function getApprovedTeams(tournamentId: number) {
@@ -171,7 +165,30 @@ export async function approveApplication(applicationId: number,userId: number) {
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
-    await ApplicationRepo.updateApplicationStatus(applicationId, "approved");
+
+    /**
+     * 🔴 BE-03 (7 ต.ค. 2569) — ห้ามอนุมัติเกินโควตา `max_teams`
+     *
+     * เดิมเรียก `updateApplicationStatus` ตรง ๆ ⇒ ทัวร์ maxTeams 4 อนุมัติ 5 ทีมได้
+     * แล้วจับสายออกมา 4 แมตช์สำหรับ 5 ทีม — ทีมที่เกินมาไม่มีที่ยืนในสาย
+     * ★ ด่านอยู่ใน**ทรานแซกชันเดียวกับการเขียน** (ดู repo) ไม่ใช่เช็คที่นี่แล้วเขียนทีหลัง
+     *   เพราะกดอนุมัติพร้อมกันสองใบจะผ่านด่านทั้งคู่
+     * ★ ด่าน `pending` ข้างบนยังอยู่เพื่อให้ได้ข้อความ/โค้ดเดิมในเคสปกติ แต่ repo ตรวจซ้ำ
+     *   ภายใต้ล็อกด้วย — ของข้างบนคือ "ตอบเร็ว" ของข้างล่างคือ "ถูกต้องจริง"
+     */
+    const quota = await ApplicationRepo.approveApplicationWithinQuota(applicationId);
+    if (quota.decision === 'not_found'){
+        throw new AppError(404, "APPLICATION_NOT_FOUND", "ไม่พบใบสมัครนี้");
+    }
+    if (quota.decision === 'already_decided'){
+        throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
+    }
+    if (quota.decision === 'tournament_full'){
+        throw new AppError(409, "TOURNAMENT_FULL",
+            `ทัวร์นาเมนต์นี้รับทีมครบ ${quota.maxTeams} ทีมแล้ว อนุมัติเพิ่มไม่ได้ — ถ้าต้องการรับมากกว่านี้ ต้องยื่นคำขอแก้จำนวนทีมสูงสุดให้แอดมินอนุมัติ`,
+            { maxTeams: quota.maxTeams, approvedTeams: quota.approvedTeams });
+    }
+
     await NotificationService.notify({
         userId: app.team_leader_id, type: 'application_decided',
         title: 'ใบสมัครได้รับการอนุมัติ',
@@ -300,22 +317,20 @@ export async function applyTournament(
 
     const failedMembers: HardFilterFail[] = [];
 
+    if (tournament.registration_end === null) {
+        throw new AppError(409, "TOURNAMENT_CONFIGURATION_INVALID", "ทัวร์นาเมนต์ยังไม่ได้กำหนดวันปิดรับสมัคร");
+    }
     for (const member of squad) {
-        if (tournament.gender_requirement !== 'any' && member.gender !== tournament.gender_requirement) {
-            failedMembers.push({ userId: member.user_id, fullName: member.full_name, reason: 'gender' });
-            continue;
-        }
-
-        if (tournament.registration_end === null) {
-            throw new AppError(409, "TOURNAMENT_CONFIGURATION_INVALID", "ทัวร์นาเมนต์ยังไม่ได้กำหนดวันปิดรับสมัคร");
-        }
-        const age = calculateAge(member.birth_date, tournament.registration_end);
-        if (tournament.min_age !== null && age < tournament.min_age) {
-            failedMembers.push({ userId: member.user_id, fullName: member.full_name, reason: 'age' });
-            continue;
-        }
-        if (tournament.max_age !== null && age > tournament.max_age) {
-            failedMembers.push({ userId: member.user_id, fullName: member.full_name, reason: 'age' });
+        // ★ เพศ/อายุ ใช้สูตรกลาง `genderAgeFailReason` ตัวเดียวกับที่ `approveAmendment` ใช้
+        //   ตรวจย้อนหลัง (BE-36) ⇒ ทีมที่ผ่านตอนสมัครต้องไม่ถูกตีว่าไม่ผ่านตอนแก้กฎ
+        const genderOrAge = genderAgeFailReason(member, {
+            genderRequirement: tournament.gender_requirement,
+            minAge: tournament.min_age,
+            maxAge: tournament.max_age,
+            asOf: tournament.registration_end
+        });
+        if (genderOrAge !== null) {
+            failedMembers.push({ userId: member.user_id, fullName: member.full_name, reason: genderOrAge });
             continue;
         }
 

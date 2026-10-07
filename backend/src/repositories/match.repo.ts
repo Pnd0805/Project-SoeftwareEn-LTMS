@@ -244,8 +244,19 @@ export async function abandonMatch(matchId: number, userId: number, reason: stri
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
+        /**
+         * 🔴 BE-24 (แก้ 7 ต.ค. 2569 · มติ ⑪ ก) — ล้างตารางด้วย ไม่ใช่แค่ตีสถานะกลับ
+         *
+         * เดิมคืนสถานะเป็น `scheduled` แต่เก็บ `scheduled_time`/`scheduled_end_time`/`venue` ไว้
+         * ⇒ `assertFixtureComplete` ผ่าน กรรมการเปิดเช็คอินใหม่ได้ทันที — ขัดกับแจ้งเตือนที่
+         *   service ส่งออกไปเองว่า "รอผู้จัดนัดเวลาใหม่ แล้วต้องเช็คอินใหม่ในวันแข่งจริง"
+         * ★ อยู่ใน UPDATE เดียวกัน ไม่ใช่ query แยก — ถ้าแยกแล้วพลาดกลางทาง จะได้แมตช์ที่
+         *   สถานะกลับเป็น scheduled แต่ยังมีตารางเดิม ซึ่งคือบั๊กเดิมเป๊ะ ๆ
+         * ★ ล้างสนามด้วย: เหตุที่ยกเลิกกลางคันมักเป็นเพราะสนามใช้ไม่ได้ (ฝนตก ไฟดับ)
+         */
         const [res] = await conn.query<ResultSetHeader>(
-            `UPDATE matches SET match_status = 'scheduled', checkin_open_at = NULL, started_at = NULL, actual_end_time = NULL, updated_at = NOW()
+            `UPDATE matches SET match_status = 'scheduled', checkin_open_at = NULL, started_at = NULL, actual_end_time = NULL,
+                    scheduled_time = NULL, scheduled_end_time = NULL, venue = NULL, updated_at = NOW()
              WHERE match_id = ? AND match_status = 'in_progress'`, [matchId]);
         if (res.affectedRows === 0) {
             await conn.rollback();
