@@ -1,4 +1,15 @@
 import * as z from 'zod';
+import { MIN_STUDY_YEAR , MAX_STUDY_YEAR } from '../utils/studyYear.js';
+
+/**
+ * วันนี้ตามเวลาไทยในรูป YYYY-MM-DD
+ * ★ เทียบเป็น **สตริง** ไม่ใช่ Date — `birthDate` เป็นวันที่ล้วน ถ้าแปลงเป็น Date จะกลายเป็น
+ *   เที่ยงคืน UTC แล้วคนที่เกิดวันนี้จะถูกปฏิเสธช่วงเช้าเวลาไทย (เป็นบั๊กเวลาแบบเดียวกับที่เจอใน
+ *   เทส tournament.create เมื่อ 7 ต.ค.) · เลื่อน +7 ชม. แล้วอ่านส่วนวันที่ = วันที่ของไทยตรง ๆ
+ */
+function todayInThailand(): string {
+    return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0 , 10);
+}
 
 // แยกออกมาจาก registerSchema เพื่อใช้ร่วมกับ resetPasswordSchema — ห้าม copy กฎรหัสผ่านซ้ำ (TASK-password-recovery)
 const passwordRule = z.string().refine(v => v.length >= 8 && /[0-9]/.test(v),
@@ -9,10 +20,16 @@ const registerSchema = z.object({
     email : z.email('รูปแบบอีเมลไม่ถูกต้อง'),
     password  : passwordRule,
     gender : z.enum(["male" , "female" , "other"], 'เพศต้องเป็น male, female หรือ other'),
-    birthDate : z.iso.date('รูปแบบวันเกิดไม่ถูกต้อง ต้องเป็น YYYY-MM-DD'),
+    // 🔴 BE-05 — เดิมตรวจแค่รูปแบบ ⇒ สมัครด้วย birthDate 2030-01-01 ได้ โปรไฟล์ขึ้น "Age -4"
+    //    และอายุติดลบนั้นถูกใช้ตัดสิน Hard Filter (min_age/max_age) จริง
+    birthDate : z.iso.date('รูปแบบวันเกิดไม่ถูกต้อง ต้องเป็น YYYY-MM-DD')
+        .refine(v => v <= todayInThailand() , 'วันเกิดต้องไม่อยู่ในอนาคต'),
     facultyId : z.int('รหัสคณะต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกคณะ'),
     departmentId : z.int('รหัสภาควิชาต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกภาควิชา'),
-    year : z.int('ชั้นปีต้องเป็นจำนวนเต็ม').positive('กรุณาระบุชั้นปี')
+    // 🔴 BE-05 — เดิม positive() เฉย ๆ ⇒ ชั้นปี 99 สมัครได้ · ใช้กฎกลางตัวเดียวกับกฎคุณสมบัติ
+    year : z.int('ชั้นปีต้องเป็นจำนวนเต็ม')
+        .min(MIN_STUDY_YEAR , `ชั้นปีต้องอยู่ระหว่าง ${MIN_STUDY_YEAR}–${MAX_STUDY_YEAR}`)
+        .max(MAX_STUDY_YEAR , `ชั้นปีต้องอยู่ระหว่าง ${MIN_STUDY_YEAR}–${MAX_STUDY_YEAR}`)
 });
 
 const loginSchema = z.object({

@@ -4,7 +4,14 @@ const matchIdList = z.array(z.int('รหัสแมตช์ต้องเป
 
 export const inviteRefereeSchema = z.object({
     userId : z.int('รหัสผู้ใช้ต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกผู้ใช้ที่ต้องการเชิญ'),
-    isExternal : z.boolean('กรุณาระบุว่าเป็นกรรมการภายนอกหรือไม่'),
+    /**
+     * 🔴 แก้ 7 ต.ค. 2569 (BE-23) — เลิก **บังคับ** ส่ง
+     *   มติ 6 ต.ค. ให้ server ตัดสินจากโดเมนอีเมลเอง (ดู referee.service.ts) ⇒ ค่านี้ไม่ถูกใช้แล้ว
+     *   แต่ยัง required อยู่ ⇒ ไม่ส่งมาได้ VALIDATION_FAILED และส่งมาผิดก็ไม่มีผล
+     *   = ช่องที่บังคับกรอกแต่กรอกอะไรก็ได้ ซึ่งแย่กว่าไม่มีช่อง
+     * ★ ยังรับฟิลด์ต่อ (ไม่ breaking สำหรับ FE ที่ยังส่งมา) แต่ server ไม่สนค่า
+     */
+    isExternal : z.boolean('isExternal ต้องเป็น true หรือ false').optional(),
     /** แมตช์ที่เสนอให้คุม — ไม่ส่ง/ว่าง = เชิญเข้า pool เฉย ๆ */
     matchIds : matchIdList.default([])
 });

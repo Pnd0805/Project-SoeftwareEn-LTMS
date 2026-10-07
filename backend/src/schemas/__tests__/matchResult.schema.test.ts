@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { submitResultSchema, disputeSchema, resolveSchema, statSchema } from '../matchResult.schema.js';
+import {
+  submitResultSchema, disputeSchema, resolveSchema, statSchema,
+  overrideResultSchema, organizerDecideSchema,   // 🆕 7 ต.ค. 2569 — เทสเพดานสกอร์ยิงให้ครบทุกช่อง (BE-18)
+} from '../matchResult.schema.js';
+import { MAX_SCORE_PER_TEAM } from '../../utils/matchFormat.js';
 
 describe('submitResultSchema', () => {
   it('accepts a valid winnerTeamId and scoreData record', () => {
@@ -238,5 +242,37 @@ describe('statSchema', () => {
       playerStats: [{ userId: 1, values: [{ value: 5 }] }],
     });
     expect(result.success).toBe(false);
+  });
+});
+
+/**
+ * 🆕 การแก้ 7 ต.ค. 2569 (BE-18) — สกอร์ต้องมีเพดาน
+ *
+ * QA ส่งผลแมตช์แบดมินตันด้วย `999999` กับ `1` แล้วได้ 201 · ไม่มีด่านไหนร้อง
+ * ⇒ สถิติผู้เล่น ตารางอันดับ และคะแนน Pick'em เพี้ยนตามไปทั้งหมด
+ *
+ * ★ ไฟล์นี้มีช่องสกอร์ **5 จุด** และเดิมแต่ละจุดเขียนกฎซ้ำกันเอง ⇒ เทสต้องยิงให้ครบทุกจุด
+ *   ไม่ใช่แค่ `submitResultSchema` ไม่งั้นเหลือรูไว้ที่เหลือโดยไม่มีใครรู้
+ * ★ ไม่ใช่กฎของกีฬา — เป็นด่านกันพิมพ์ผิด · กีฬาที่แข่งเป็นรอบมีด่านที่แคบกว่ามาก
+ *   (`possibleScores`: BO3 ได้แค่ 2-0 / 2-1) ซึ่งอยู่ที่ service ไม่ใช่ที่นี่
+ */
+describe('เพดานสกอร์ ครบทุกช่องในไฟล์นี้ (BE-18)', () => {
+  const over = MAX_SCORE_PER_TEAM + 1;
+
+  it.each([
+    ['submitResultSchema (กรรมการส่งผล)', (s: Record<string, number>) =>
+      submitResultSchema.safeParse({ winnerTeamId: 10, scoreData: s })],
+    ['disputeSchema (ทีมค้านพร้อมเสนอผล)', (s: Record<string, number>) =>
+      disputeSchema.safeParse({ reason: 'สกอร์ผิด', claimedWinnerTeamId: 10, claimedScoreData: s })],
+    ['overrideResultSchema (กรรมการเขียนทับ)', (s: Record<string, number>) =>
+      overrideResultSchema.safeParse({ winnerTeamId: 10, scoreData: s, reason: 'แก้ผล' })],
+    ['resolveSchema (ผู้จัดตัดสินแล้วแก้ผล)', (s: Record<string, number>) =>
+      resolveSchema.safeParse({ resolution: 'amend', resolutionNote: 'ok', winnerTeamId: 10, scoreData: s })],
+    ['organizerDecideSchema (ผู้จัดชี้ขาดแมตช์ที่ไม่มีใครส่งผล)', (s: Record<string, number>) =>
+      organizerDecideSchema.safeParse({ outcome: 'result', reason: 'ไม่มีใครส่ง', winnerTeamId: 10, scoreData: s })],
+  ])('%s: ปฏิเสธสกอร์ที่เกินเพดาน และรับค่าที่ขอบ', (_name, parse) => {
+    expect(parse({ '10': over, '11': 1 }).success).toBe(false);
+    expect(parse({ '10': 999999, '11': 1 }).success).toBe(false);
+    expect(parse({ '10': MAX_SCORE_PER_TEAM, '11': 0 }).success).toBe(true);
   });
 });

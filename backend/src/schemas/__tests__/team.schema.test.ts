@@ -126,3 +126,35 @@ describe('rejectTeamOfficial', () => {
     expect(result.success).toBe(false);
   });
 });
+
+/**
+ * 🆕 การแก้ 7 ต.ค. 2569 (BE-08 · BE-09) — ชื่อทีมต้องตัดช่องว่างและมีเพดานเท่าคอลัมน์
+ *
+ * BE-08: `PATCH /teams/:id` ด้วย `{"name":"   "}` ได้ 200 · ชื่อในฐานเป็น "   "
+ *        หน้าทีมไม่มีชื่อ และข้อความแจ้งเตือนกลายเป็น "… was removed from ." (ชื่อหายจากประโยค)
+ * BE-09: ชื่อ 300 ตัวทะลุ VARCHAR(150) ⇒ mysql โยน error ดิบ ⇒ ผู้ใช้ได้ 500 INTERNAL_ERROR
+ * ★ ต้องกันทั้งสองสคีมา — `teamSchema` (สร้าง) และ `updateTeamSchema` (แก้ชื่อ) ใช้กฎตัวเดียวกัน
+ */
+describe('ชื่อทีม — ช่องว่างล้วนและความยาวเกินคอลัมน์ (BE-08 · BE-09)', () => {
+  it.each([
+    ['ช่องว่าง 3 ตัว', '   '],
+    ['แท็บกับขึ้นบรรทัด', '\t\n'],
+  ])('สร้างทีมด้วยชื่อ %s ไม่ได้', (_name, name) => {
+    expect(teamSchema.safeParse({ name, sportTypeId: 1 }).success).toBe(false);
+    expect(updateTeamSchema.safeParse({ name }).success).toBe(false);
+  });
+
+  /** ★ `.trim()` ของ zod **แปลงค่า** ให้ด้วย ⇒ ที่ลงฐานต้องเป็นชื่อที่ตัดแล้ว ไม่ใช่ที่ส่งมา */
+  it('ตัดช่องว่างหัวท้ายออกให้ก่อนเก็บ', () => {
+    const result = teamSchema.safeParse({ name: '  ทีมวิศวะ  ', sportTypeId: 1 });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.name).toBe('ทีมวิศวะ');
+  });
+
+  it('ปฏิเสธชื่อที่ยาวเกินคอลัมน์ (150) แทนที่จะปล่อยไปพังที่ฐานเป็น 500', () => {
+    expect(teamSchema.safeParse({ name: 'ก'.repeat(151), sportTypeId: 1 }).success).toBe(false);
+    expect(teamSchema.safeParse({ name: 'ก'.repeat(150), sportTypeId: 1 }).success).toBe(true);
+    expect(updateTeamSchema.safeParse({ name: 'ก'.repeat(151) }).success).toBe(false);
+  });
+});

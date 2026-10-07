@@ -306,3 +306,67 @@ describe('rejectAmendment', () => {
     expect(result).toEqual({ id: 5, status: 'rejected', reason: 'ไม่เห็นด้วย' });
   });
 });
+
+/**
+ * 🆕 การแก้ 7 ต.ค. 2569 (BE-39) — "คำขอถูกปฏิเสธด้วยข้อผิดพลาดที่ไม่เกี่ยวกับช่องที่ขอ"
+ *
+ * ทัวร์ 14 ของ baseline มีวันปิดรับสมัคร (30 พ.ย.) อยู่**หลัง**วันแข่ง (20 ต.ค.) อยู่แล้ว
+ * ⇒ ผู้จัดขอเปลี่ยนแค่ `genderRequirement` ก็ได้ `INVALID_DATE_RANGE` ที่ชี้ไปที่ `eventStartDate`
+ *   ซึ่งเขาไม่ได้กรอก และไม่มีทางรู้ว่าต้องทำอะไรต่อ
+ *
+ * ★ ไม่ได้ผ่อนด่าน — ยังปฏิเสธเหมือนเดิม เปลี่ยนแค่รหัส/ข้อความเมื่อพิสูจน์ได้ว่า**ข้อมูลเดิม**
+ *   ผิดอยู่ก่อนแล้ว ⇒ FE แยก "ค่าที่คุณกรอกผิด" ออกจาก "ข้อมูลเดิมพัง ต้องแก้มาด้วย" ได้
+ * ★ เทสคู่สุดท้ายคือหัวใจ: ถ้าใครเปลี่ยนไปปล่อยผ่านเมื่อข้อมูลเดิมพัง เทสนั้นจะแดง
+ */
+describe('ข้อมูลเดิมของทัวร์ขัดกันเองอยู่แล้ว (BE-39)', () => {
+  // ปิดรับสมัครหลังวันแข่ง — ผิดกฎ ensureSchedule อยู่ก่อนที่จะมีใครยื่นคำขอ
+  // ★ cast เหมือน baseTournament — pool ตั้ง dateStrings ⇒ ของจริงที่ mysql คืนมาก็เป็นสตริง
+  const brokenTournament = () => baseTournament({
+    registration_start: futureIso(1),
+    registration_end: futureIso(60),
+    event_start_date: futureDateOnly(10),
+    event_end_date: futureDateOnly(12),
+  } as unknown as Partial<TournamentRow>);
+
+  beforeEach(() => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(brokenTournament());
+    mockedTournamentRepo.insertAmendmentRequest.mockResolvedValue(7 as never);
+  });
+
+  it('ขอแก้ช่องที่ไม่เกี่ยวกับวัน → บอกว่าข้อมูลเดิมพัง ไม่ใช่ INVALID_DATE_RANGE', async () => {
+    await expect(Service.requestAmendment(26, 7, { requestedChanges: { genderRequirement: 'female' }, reason: 'ขอเปลี่ยน' } as never))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_DATA_CONFLICT' });
+  });
+
+  /** ★ ต้องบอกด้วยว่า "ช่องที่พัง" คือช่องไหน เพื่อให้ผู้จัดรู้ว่าต้องขอแก้อะไรเพิ่ม */
+  it('บอกช่องที่พังของเดิม แยกจากช่องที่ผู้ขอกรอก', async () => {
+    const err = await Service.requestAmendment(26, 7,
+      { requestedChanges: { genderRequirement: 'female' }, reason: 'ขอเปลี่ยน' } as never).catch((e: unknown) => e);
+
+    expect((err as { extra: { conflictingFields: Record<string, string>; requestedFields: string[] } }).extra)
+      .toMatchObject({ requestedFields: ['genderRequirement'] });
+    expect(Object.keys((err as { extra: { conflictingFields: Record<string, string> } }).extra.conflictingFields).length)
+      .toBeGreaterThan(0);
+  });
+
+  /** ★ ยังปฏิเสธ — ด่านไม่ได้หายไป เปลี่ยนแค่ข้อความ */
+  it('ไม่อนุมัติให้ผ่าน (ด่านยังอยู่ แค่เปลี่ยนข้อความ)', async () => {
+    await expect(Service.requestAmendment(26, 7, { requestedChanges: { genderRequirement: 'female' }, reason: 'ขอเปลี่ยน' } as never))
+      .rejects.toThrow();
+
+    expect(mockedTournamentRepo.insertAmendmentRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ★ เคสตรงข้าม: ข้อมูลเดิมสะอาด แต่ผู้ขอกรอกวันที่ผิดมาเอง ⇒ ต้องได้ error เดิม
+   *   ถ้าเทสนี้แดง แปลว่าโค้ดกลบทุกอย่างเป็น TOURNAMENT_DATA_CONFLICT ซึ่งทำให้ผู้ใช้
+   *   ที่กรอกผิดจริงไม่รู้ว่าตัวเองกรอกผิด
+   */
+  it('ข้อมูลเดิมสะอาด แต่ค่าที่ขอมาผิด → ยังเป็น INVALID_DATE_RANGE ตามเดิม', async () => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(baseTournament());
+
+    await expect(Service.requestAmendment(26, 7,
+      { requestedChanges: { registrationEnd: futureIso(60) }, reason: 'ขอเลื่อน' } as never))
+      .rejects.toMatchObject({ status: 400, code: 'INVALID_DATE_RANGE' });
+  });
+});

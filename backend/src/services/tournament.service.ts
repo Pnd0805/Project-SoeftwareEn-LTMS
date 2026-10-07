@@ -18,6 +18,7 @@ import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import { adminOverseesTournament } from '../utils/adminScope.js';
 import { assertBestOfAllowed } from '../utils/matchFormat.js';
+import { isStudyYear , MIN_STUDY_YEAR , MAX_STUDY_YEAR } from '../utils/studyYear.js';
 import type { AdminScopeRow, TournamentRow } from '../types/db.js';
 import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
 import { refereesNeededPerMatch } from './referee.service.js';
@@ -55,8 +56,11 @@ export async function normalizeEligibilityRules(rules: EligibilityRuleInput[] | 
         const key = `${rule.type}:${rule.value}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        if (rule.type === 'year' && rule.value > 8) {
-            validationError('ชั้นปีต้องอยู่ระหว่าง 1–8', { eligibilityRules: `ชั้นปี ${rule.value} ไม่ถูกต้อง` });
+        // 🔴 7 ต.ค. 2569 (BE-05) — เดิมเลข 8 ฮาร์ดโค้ดที่นี่ที่เดียว และตรวจแค่ขอบบน
+        //    ตอนนี้ใช้กฎกลางตัวเดียวกับตอนสมัครสมาชิก (utils/studyYear.ts) ⇒ สองที่เถียงกันไม่ได้
+        if (rule.type === 'year' && !isStudyYear(rule.value)) {
+            validationError(`ชั้นปีต้องอยู่ระหว่าง ${MIN_STUDY_YEAR}–${MAX_STUDY_YEAR}`,
+                            { eligibilityRules: `ชั้นปี ${rule.value} ไม่ถูกต้อง` });
         }
         if (rule.type === 'faculty' && !(await FacultyRepo.findFacultyById(rule.value))) {
             validationError('ไม่พบคณะในกฎคุณสมบัติ', { eligibilityRules: `ไม่พบคณะ ${rule.value}` });
@@ -507,19 +511,70 @@ function amendmentValue<T>(changes: AmendmentChanges, key: string, fallback: T):
     return Object.prototype.hasOwnProperty.call(changes, key) ? changes[key] as T : fallback;
 }
 
+/**
+ * ข้อมูลเดิมของทัวร์ผิดกฎอยู่แล้วหรือไม่ — คืน error ตัวที่ผิด (null = ข้อมูลเดิมสะอาด)
+ *
+ * ใช้คู่กับ `validateAmendmentAgainstTournament` เท่านั้น ⇒ ไม่ส่งออกจากไฟล์นี้
+ * ตรวจ "ค่าเดิมล้วน" โดยไม่ผสมค่าที่ขอแก้ ⇒ บอกได้ว่าที่ผิดเป็นของเดิมหรือของที่ขอมา
+ */
+function preExistingDataConflict(tournament: TournamentRow): AppError | null {
+    try {
+        ensureSchedule({
+            registrationStart: tournament.registration_start,
+            registrationEnd: tournament.registration_end,
+            eventStartDate: tournament.event_start_date,
+            eventEndDate: tournament.event_end_date,
+            minTeams: tournament.min_teams,
+            maxTeams: tournament.max_teams
+        });
+        ensureAges(tournament.min_age, tournament.max_age);
+        return null;
+    } catch (err) {
+        return err instanceof AppError ? err : null;
+    }
+}
+
+/**
+ * 🔴 BE-39 (แก้ 7 ต.ค. 2569) — "คำขอแก้ไขถูกปฏิเสธด้วยข้อผิดพลาดที่ไม่เกี่ยวกับช่องที่ขอ"
+ *
+ * ของเดิม: ฟังก์ชันนี้ผสมค่าที่ขอแก้กับค่าเดิม แล้วตรวจทั้งชุด ซึ่ง**ถูกต้อง** — ห้ามอนุมัติ
+ *   คำขอที่พาทัวร์ไปอยู่ในสถานะที่ผิดกฎ แม้ต้นเหตุจะไม่ใช่ช่องที่ขอ
+ * แต่ข้อความที่ได้ชี้ไปที่ `eventStartDate`/`registrationEnd` ซึ่งผู้ขอ**ไม่ได้ขอแก้** และ
+ *   ไม่มีทางรู้ว่าต้องทำอะไร (ทัวร์ 14 ของ baseline: วันปิดรับสมัคร 30 พ.ย. อยู่หลังวันแข่ง 20 ต.ค.
+ *   ⇒ ขอเปลี่ยนแค่ genderRequirement ก็ได้ INVALID_DATE_RANGE)
+ *
+ * ★ ไม่ผ่อนด่าน — ยังปฏิเสธเหมือนเดิม แต่เปลี่ยน **รหัสและข้อความ** เมื่อพิสูจน์ได้ว่าข้อมูลเดิม
+ *   ผิดอยู่ก่อนแล้ว ⇒ FE แยกสองกรณีนี้ได้: "ค่าที่คุณกรอกผิด" กับ "ข้อมูลเดิมพัง ต้องแก้มาด้วย"
+ * ★ 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ SCHEDULE_INCOMPLETE ของ M06: payload ที่ส่งมาไม่ผิด
+ *   สิ่งที่ผิดคือสถานะที่เก็บอยู่
+ */
 function validateAmendmentAgainstTournament(tournament: TournamentRow, changes: AmendmentChanges): void {
-    ensureSchedule({
-        registrationStart: amendmentValue(changes, 'registrationStart', tournament.registration_start),
-        registrationEnd: amendmentValue(changes, 'registrationEnd', tournament.registration_end),
-        eventStartDate: amendmentValue(changes, 'eventStartDate', tournament.event_start_date),
-        eventEndDate: amendmentValue(changes, 'eventEndDate', tournament.event_end_date),
-        minTeams: amendmentValue(changes, 'minTeams', tournament.min_teams),
-        maxTeams: amendmentValue(changes, 'maxTeams', tournament.max_teams)
-    });
-    ensureAges(
-        amendmentValue(changes, 'minAge', tournament.min_age),
-        amendmentValue(changes, 'maxAge', tournament.max_age)
-    );
+    try {
+        ensureSchedule({
+            registrationStart: amendmentValue(changes, 'registrationStart', tournament.registration_start),
+            registrationEnd: amendmentValue(changes, 'registrationEnd', tournament.registration_end),
+            eventStartDate: amendmentValue(changes, 'eventStartDate', tournament.event_start_date),
+            eventEndDate: amendmentValue(changes, 'eventEndDate', tournament.event_end_date),
+            minTeams: amendmentValue(changes, 'minTeams', tournament.min_teams),
+            maxTeams: amendmentValue(changes, 'maxTeams', tournament.max_teams)
+        });
+        ensureAges(
+            amendmentValue(changes, 'minAge', tournament.min_age),
+            amendmentValue(changes, 'maxAge', tournament.max_age)
+        );
+    } catch (err) {
+        const existing = preExistingDataConflict(tournament);
+        // ข้อมูลเดิมสะอาด ⇒ ค่าที่ขอมาเป็นต้นเหตุจริง ส่ง error เดิมกลับไปตรง ๆ
+        if (existing === null) throw err;
+        throw new AppError(409, 'TOURNAMENT_DATA_CONFLICT',
+            `ข้อมูลเดิมของทัวร์นาเมนต์นี้ขัดกันเองอยู่แล้ว (${existing.message}) ` +
+            `จึงอนุมัติคำขอนี้ไม่ได้ — ต้องขอแก้ค่าที่ขัดกันมาในคำขอเดียวกันด้วย`,
+            {
+                // ช่องที่พังของเดิม (ไม่ใช่ช่องที่ผู้ขอกรอก) — FE เอาไปไฮไลต์ให้ผู้จัดเห็นว่าต้องเพิ่มอะไร
+                conflictingFields: (existing.extra?.['fields'] as Record<string, string> | undefined) ?? {},
+                requestedFields: Object.keys(changes)
+            });
+    }
 }
 
 async function ensureEligibilityEditable(tournament: TournamentRow): Promise<void> {

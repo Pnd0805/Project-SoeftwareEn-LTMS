@@ -1,9 +1,20 @@
 import * as z from 'zod';
+import { MAX_SCORE_PER_TEAM } from '../utils/matchFormat.js';
+
+/**
+ * สกอร์หนึ่งช่อง — 🔴 BE-18 (7 ต.ค. 2569): เดิมมีแต่ `nonnegative()` ไม่มีเพดาน
+ *   กรรมการส่ง 999999 ได้ 201 · เพดานกลางอยู่ที่ utils/matchFormat.ts (ดูเหตุผลที่เลือกเลขนั้น)
+ * ★ รวมเป็นตัวแปรเดียวเพราะไฟล์นี้มีช่องสกอร์ **5 จุด** (ส่งผล · โต้แย้ง · เขียนทับ · ตัดสิน · ผู้จัดชี้ขาด)
+ *   ถ้าไม่รวม จะมีคนเติมเพดานได้แค่บางจุดแล้วเหลือรูไว้ที่เหลือ
+ */
+const scoreValue = z.int()
+    .nonnegative('คะแนนต้องไม่ติดลบ')
+    .max(MAX_SCORE_PER_TEAM , `คะแนนต้องไม่เกิน ${MAX_SCORE_PER_TEAM}`);
 
 // FE-nothing-validates-keys-scoredata (19 ก.ย.): คะแนนต้องไม่ติดลบ (b) · key/ผู้ชนะเช็คใน service (ต้องรู้ทีมของแมตช์) — ดู ensureScoreData
 export const submitResultSchema = z.object({
     winnerTeamId : z.int(),
-    scoreData : z.record(z.string() , z.int().nonnegative('คะแนนต้องไม่ติดลบ'))
+    scoreData : z.record(z.string() , scoreValue)
 });
 
 /**
@@ -16,7 +27,7 @@ export const submitResultSchema = z.object({
 export const disputeSchema = z.object({
     reason : z.string().trim().min(1, 'กรุณาระบุเหตุผลที่โต้แย้ง').max(1000, 'เหตุผลยาวได้ไม่เกิน 1000 ตัวอักษร'),
     claimedWinnerTeamId : z.int().positive().optional(),
-    claimedScoreData : z.record(z.string(), z.int().nonnegative('คะแนนต้องไม่ติดลบ')).optional(),
+    claimedScoreData : z.record(z.string(), scoreValue).optional(),
     evidenceKeys : z.array(z.string().trim().min(1).max(512)).max(5, 'แนบหลักฐานได้ไม่เกิน 5 ไฟล์').optional(),
 }).refine(d => (d.claimedWinnerTeamId === undefined) === (d.claimedScoreData === undefined),
           { message : 'ถ้าเสนอผลที่ถูกต้อง ต้องระบุทั้งทีมที่ชนะและสกอร์' , path : ['claimedScoreData'] });
@@ -31,7 +42,7 @@ export type DisputeInput = z.infer<typeof disputeSchema>;
  */
 export const overrideResultSchema = z.object({
     winnerTeamId : z.int(),
-    scoreData : z.record(z.string() , z.int().nonnegative('คะแนนต้องไม่ติดลบ')),
+    scoreData : z.record(z.string() , scoreValue),
     reason : z.string().trim().min(1, 'กรุณาระบุเหตุผลที่แก้ผล').max(1000, 'เหตุผลยาวได้ไม่เกิน 1000 ตัวอักษร')
 });
 
@@ -42,7 +53,7 @@ export const resolveSchema = z.object({
     resolution : z.enum(['uphold' , 'reject' , 'amend']),
     resolutionNote : z.string(),
     winnerTeamId : z.int().optional(),
-    scoreData : z.record(z.string() , z.int().nonnegative('คะแนนต้องไม่ติดลบ')).optional()
+    scoreData : z.record(z.string() , scoreValue).optional()
 }).refine(d => d.resolution !== 'amend' || (d.winnerTeamId !== undefined && d.scoreData !== undefined),
           { message : 'amend ต้องระบุ winnerTeamId และ scoreData' , path : ['winnerTeamId'] });
 
@@ -56,7 +67,7 @@ export const organizerDecideSchema = z.object({
     outcome : z.enum(['result', 'double_forfeit']),
     reason : z.string().trim().min(1, 'กรุณาระบุเหตุผล').max(1000, 'เหตุผลยาวได้ไม่เกิน 1000 ตัวอักษร'),
     winnerTeamId : z.int().positive().optional(),
-    scoreData : z.record(z.string(), z.int().nonnegative('คะแนนต้องไม่ติดลบ')).optional(),
+    scoreData : z.record(z.string(), scoreValue).optional(),
 }).refine(d => d.outcome !== 'result' || (d.winnerTeamId !== undefined && d.scoreData !== undefined),
           { message : 'outcome = result ต้องระบุ winnerTeamId และ scoreData' , path : ['winnerTeamId'] });
 

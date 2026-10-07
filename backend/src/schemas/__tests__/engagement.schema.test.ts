@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { predictionSchema } from '../engagement.schema.js';
+import { MAX_SCORE_PER_TEAM } from '../../utils/matchFormat.js';
 
 /**
  * OD-56 (4 ต.ค.) — เปลี่ยนจาก `{ teamId }` เป็น `{ scoreData }`
@@ -70,5 +71,23 @@ describe('predictionSchema', () => {
 
   it('ส่งแค่ teamId แบบเดิมไม่ผ่านแล้ว', () => {
     expect(predictionSchema.safeParse({ teamId: 5 }).success).toBe(false);
+  });
+});
+
+/**
+ * 🆕 การแก้ 7 ต.ค. 2569 (BE-31) — สกอร์ที่ทายต้องมีเพดานเดียวกับผลจริง
+ *
+ * เดิม `POST /matches/:id/predictions` รับ `999999` ⇒ ทายค่าที่เป็นไปไม่ได้แล้วรอให้พลาด
+ * ★ ใช้ค่าคงที่ตัวเดียวกับผลจริง (MAX_SCORE_PER_TEAM) — ถ้าสองฝั่งใช้เพดานต่างกัน จะมีคนทาย
+ *   สกอร์ที่กรรมการส่งไม่ได้ ซึ่งแปลว่าทายนั้นไม่มีทางถูก
+ */
+describe('เพดานสกอร์ที่ทาย (BE-31)', () => {
+  it('ปฏิเสธสกอร์ที่เกินเพดาน', () => {
+    expect(predictionSchema.safeParse({ scoreData: { '10': 999999, '11': 1 } }).success).toBe(false);
+    expect(predictionSchema.safeParse({ scoreData: { '10': MAX_SCORE_PER_TEAM + 1, '11': 1 } }).success).toBe(false);
+  });
+
+  it('รับค่าที่ขอบ', () => {
+    expect(predictionSchema.safeParse({ scoreData: { '10': MAX_SCORE_PER_TEAM, '11': 0 } }).success).toBe(true);
   });
 });

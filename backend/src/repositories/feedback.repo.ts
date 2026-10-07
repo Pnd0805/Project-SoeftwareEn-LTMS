@@ -100,6 +100,14 @@ export type MvpCandidateRow = {
  * ★ ยึด match_checkins เป็นหลัก แล้ว LEFT JOIN หาทีมเอา — ถ้าไปผูกกับ application_players แบบบังคับ
  *   ทีมที่ "ถอนตัวหลังแมตช์นี้แข่งจบ" จะทำให้ผู้เล่นหายจากรายการ (P08 ลบรายชื่อลงแข่งทิ้ง) = ผล MVP ของแมตช์ที่แข่งจริงหายตามไปด้วย
  * ★ เรียงตามทีม/ชื่อ ไม่ใช่ตามคะแนน — ลำดับตามคะแนนจะบอกใบ้ผลระหว่างเปิดโหวต (ข้อ 10) · service เรียงใหม่เองหลังปิดโหวต
+ *
+ * 🔴 แก้ 7 ต.ค. 2569 (BE-28) — เดิมกรอง `match_checkin_status = 'success'` ที่นี่ **ที่เดียว**
+ *   ในโค้ด ส่วนที่อื่นทั้งหมดนับ 'exception' ด้วยเสมอ (match.repo:306,371 · matchHistory.repo:79
+ *   · mapper แปลงทั้งสองค่าเป็น 'checked_in') เพราะ 'exception' = กรรมการเช็คอินแทนผู้เล่น
+ *   ตอนกล้อง/เน็ตพัง (M19, UC-04 E2b) ซึ่ง "เช็คอินแล้ว" เหมือนกัน
+ *   ⇒ แมตช์ที่กรรมการเช็คอินให้ทุกคนได้ `candidates: []` โหวตใครก็ MVP_CANDIDATE_NOT_ELIGIBLE
+ *     และแมตช์ที่เช็คอินผสมกันจะหายไปเฉพาะคนที่ถูกเช็คอินด้วยมือ (ซึ่งมองไม่ออกจากหน้าเว็บ)
+ * ★ ห้ามเปลี่ยนกลับเป็น 'success' เดี่ยว ๆ — 'rejected'/'pending' ยังต้องไม่เข้าเหมือนเดิม
  */
 export async function findMvpCandidatesOfMatch(matchId: number): Promise<MvpCandidateRow[]> {
     const [rows] = await pool.query<(MvpCandidateRow & RowDataPacket)[]>(
@@ -115,7 +123,7 @@ export async function findMvpCandidatesOfMatch(matchId: number): Promise<MvpCand
          LEFT JOIN (tournament_applications ta
                     JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id)
                 ON ta.tournament_id = m.tournament_id AND ta.team_id IN (m.team_a_id, m.team_b_id) AND ap.user_id = c.user_id
-         WHERE c.match_id = ? AND c.match_checkin_status = 'success'
+         WHERE c.match_id = ? AND c.match_checkin_status IN ('success', 'exception')
          ORDER BY team_id, u.full_name`,
         [matchId]
     );

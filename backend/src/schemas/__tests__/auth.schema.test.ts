@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../auth.schema.js';
 
 const validRegisterInput = {
@@ -198,5 +198,59 @@ describe('resetPasswordSchema', () => {
   it('accepts a newPassword with 8+ characters and at least one digit', () => {
     const result = resetPasswordSchema.safeParse({ ...valid, newPassword: 'password1' });
     expect(result.success).toBe(true);
+  });
+});
+
+/**
+ * 🆕 มติ/การแก้ 7 ต.ค. 2569 (BE-05) — ค่าที่ผู้ใช้แก้เองไม่ได้ ต้องถูกตั้งแต่ตอนสมัคร
+ *
+ * `birthDate` และ `year` ไปโผล่ที่ Hard Filter ของทุกทัวร์ (อายุขั้นต่ำ/สูงสุด · ชั้นปีที่รับ)
+ * และ**ผู้ใช้แก้เองไม่ได้** หลังสมัคร ⇒ ค่าขยะที่หลุดเข้าไปติดอยู่ตลอดชีวิตบัญชี
+ * ของจริงที่ QA เจอ: สมัครด้วย birthDate 2030-01-01 + year 99 ⇒ โปรไฟล์ขึ้น "Age -4, Year 99"
+ */
+describe('registerSchema — birthDate ห้ามอยู่ในอนาคต (BE-05)', () => {
+  // ★ ตรึงเวลา: ด่านนี้เทียบกับ "วันนี้" ⇒ ถ้าใช้เวลาจริง เทสจะหมดอายุเองในอนาคต
+  //   และเคสขอบ (เกิดวันนี้) จะพลิกตามเวลาที่รันเหมือนเทส tournament.create ที่เพิ่งแก้
+  const freeze = (iso: string) => { vi.useFakeTimers(); vi.setSystemTime(new Date(iso)); };
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('ปฏิเสธวันเกิดในอนาคต', () => {
+    freeze('2026-10-07T03:00:00Z');
+    expect(registerSchema.safeParse({ ...validRegisterInput, birthDate: '2030-01-01' }).success).toBe(false);
+  });
+
+  /**
+   * ★ เกิด "วันนี้" ต้องผ่าน — เป็นขอบที่ off-by-one ได้ง่ายที่สุด
+   *   03:00 UTC = 10:00 ของวันที่ 7 ตามเวลาไทย ⇒ วันนี้ของไทยคือ 2026-10-07
+   */
+  it('รับวันเกิดวันนี้ (ตามเวลาไทย)', () => {
+    freeze('2026-10-07T03:00:00Z');
+    expect(registerSchema.safeParse({ ...validRegisterInput, birthDate: '2026-10-07' }).success).toBe(true);
+  });
+
+  /**
+   * ★ เคสที่พิสูจน์ว่าต้องคิดเป็นเวลาไทย ไม่ใช่ UTC
+   *   19:00 UTC ของวันที่ 6 = 02:00 ของวันที่ 7 ตามเวลาไทย ⇒ คนไทยที่เกิดวันที่ 7 ต้องสมัครได้
+   *   ถ้าโค้ดเทียบกับวันที่แบบ UTC จะปฏิเสธ เพราะ UTC ยังเป็นวันที่ 6
+   */
+  it('คนที่เกิดวันนี้สมัครได้ตั้งแต่เที่ยงคืนเวลาไทย (ไม่ใช่เที่ยงคืน UTC)', () => {
+    freeze('2026-10-06T19:00:00Z');
+    expect(registerSchema.safeParse({ ...validRegisterInput, birthDate: '2026-10-07' }).success).toBe(true);
+  });
+
+  it('รับวันเกิดในอดีตตามเดิม', () => {
+    freeze('2026-10-07T03:00:00Z');
+    expect(registerSchema.safeParse({ ...validRegisterInput, birthDate: '2000-01-15' }).success).toBe(true);
+  });
+});
+
+describe('registerSchema — ชั้นปีต้องอยู่ในช่วงที่ระบบรองรับ (BE-05)', () => {
+  it.each([9, 99, 1000])('ปฏิเสธชั้นปี %i', (year) => {
+    expect(registerSchema.safeParse({ ...validRegisterInput, year }).success).toBe(false);
+  });
+
+  /** ★ 1 และ 8 ต้องผ่าน — ช่วงเดียวกับที่ `normalizeEligibilityRules` ใช้ตรวจกฎคุณสมบัติ */
+  it.each([1, 8])('รับชั้นปี %i (ขอบของช่วง)', (year) => {
+    expect(registerSchema.safeParse({ ...validRegisterInput, year }).success).toBe(true);
   });
 });

@@ -139,6 +139,7 @@ describe('toTournamentDetailDto', () => {
             entryNotes: null,
             sportTypeId: 3,
             bracketFormat: 'single_elimination',
+            bestOf: null,
             scopeType: 'faculty',
             organizingFacultyId: 7,
             organizingDepartmentId: null,
@@ -401,6 +402,7 @@ describe('toTournamentDetailDto', () => {
         expect(Object.keys(toTournamentDetailDto(makeRow(), ORGANIZER, 0)).sort()).toEqual(
             [
                 'approvedTeamCount',
+                'bestOf',
                 'bracketFormat',
                 'championTeamId',
                 'completedAt',
@@ -428,6 +430,21 @@ describe('toTournamentDetailDto', () => {
                 'venue',
             ].sort(),
         );
+    });
+
+    /**
+     * 🆕 7 ต.ค. 2569 (รายงาน FE) — `bestOf` ต้องออกมาถึงหน้าเว็บ
+     *
+     * บั๊กเดิมไม่ใช่ "ค่าผิด" แต่คือ **ฟิลด์ไม่มีใน DTO เลย** ⇒ ผู้จัดตั้ง BO5 แล้วรีเฟรช
+     * ค่าหายจากจอทั้งที่ฐานเก็บไว้ถูก และแมตช์ก็สืบทอดถูก
+     * ★ ต้องทดสอบด้วยค่า **ไม่ null** ด้วย — ถ้าเทสมีแต่เคส null การ hardcode `bestOf: null`
+     *   ไว้ใน mapper ก็ยังเขียว ซึ่งคือบั๊กเดิมในรูปใหม่
+     */
+    it.each([
+        ['กีฬาที่แข่งเป็นรอบ', 5, 5],
+        ['กีฬาที่นับแต้ม (null = ไม่ได้แข่งเป็นรอบ ไม่ใช่ "ยังไม่ตั้ง")', null, null],
+    ])('ส่ง bestOf ออกไปตามที่เก็บในฐาน: %s', (_name, column, expected) => {
+        expect(toTournamentDetailDto(makeRow({ best_of: column }), ORGANIZER, 0).bestOf).toBe(expected);
     });
 
     // OD-26 ข้อ 8 — เรื่องร้องเรียนไม่บล็อกการปิดทัวร์ แต่ต้องมองเห็นได้

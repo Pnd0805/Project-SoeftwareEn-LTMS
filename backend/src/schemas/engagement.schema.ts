@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { MAX_SCORE_PER_TEAM } from '../utils/matchFormat.js';
 
 // C7 — Pick'em ทายผู้ชนะ (ทีมต้องอยู่ในแมตช์ — ตรวจใน service)
 /**
@@ -14,7 +15,10 @@ import * as z from 'zod';
  *   จะอนุมานผู้ชนะไม่ได้ (มติข้อ ②)
  */
 export const predictionSchema = z.object({
-    scoreData: z.record(z.string(), z.int('คะแนนต้องเป็นจำนวนเต็ม').nonnegative('คะแนนต้องไม่ติดลบ') ,
+    // 🔴 BE-31 (7 ต.ค. 2569) — เดิมไม่มีเพดาน ⇒ ทาย 999999 ได้ · เพดานเดียวกับผลจริง
+    scoreData: z.record(z.string(), z.int('คะแนนต้องเป็นจำนวนเต็ม')
+                                     .nonnegative('คะแนนต้องไม่ติดลบ')
+                                     .max(MAX_SCORE_PER_TEAM , `คะแนนต้องไม่เกิน ${MAX_SCORE_PER_TEAM}`) ,
                         'กรุณาทายคะแนนของทั้งสองทีม'),
 });
 export type PredictionInput = z.infer<typeof predictionSchema>;

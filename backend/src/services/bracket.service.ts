@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import pool from '../config/db.js';
 import type { PoolConnection } from 'mysql2/promise';
 import * as ApplicationRepo from '../repositories/application.repo.js';
@@ -291,10 +292,21 @@ function resolveDoubleEliminationByes(plan: PlannedMatchNode[]): PlannedMatchNod
     return result;
 }
 
+/**
+ * สับลำดับทีมก่อนจับสาย (Fisher–Yates)
+ *
+ * 🔴 แก้ 7 ต.ค. 2569 (BE-21) — เดิมใช้ `Math.random()`
+ *   `Math.random` ของ V8 เป็น xorshift128+ ที่เดาสถานะต่อไปได้เมื่อเห็นผลก่อนหน้าพอ
+ *   ⇒ ตำแหน่งในสายเป็นของที่มีผลประโยชน์ (เจอทีมเต็งรอบไหน / ได้บายหรือไม่) คนที่เห็นผล
+ *     การจับสายหลายทัวร์จึงพออนุมานลำดับถัดไปได้ · OTP ย้ายไป randomInt ตั้งแต่ OD-53 แล้ว
+ *     เหลือที่นี่เป็นที่เดียวในระบบที่ยังสุ่มด้วยตัวที่เดาได้
+ * ★ `randomInt(max)` คืน 0..max-1 แบบไม่เอนเอียง (ปฏิเสธค่าที่ทำให้ modulo เบ้) — ห้ามเปลี่ยนไป
+ *   ใช้ `randomBytes % n` เองเพราะจะเสียคุณสมบัตินั้นไป
+ */
 function shuffle<T>(input: T[]): T[] {
     const arr = [...input];
     for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = randomInt(i + 1);
         [arr[i], arr[j]] = [arr[j]!, arr[i]!];
     }
     return arr;

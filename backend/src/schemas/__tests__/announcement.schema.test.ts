@@ -28,9 +28,35 @@ describe('createAnnouncementSchema', () => {
     expect(createAnnouncementSchema.safeParse({ title: 'a', body: 'b', type: 'urgent' }).success).toBe(false);
   });
 
-  it('accepts empty strings for title and body (no min-length constraint)', () => {
-    const result = createAnnouncementSchema.safeParse({ title: '', body: '' });
+  /**
+   * 🔴 กลับด้านเมื่อ 7 ต.ค. 2569 (BE-29) — เทสเดิมชื่อ
+   *   "accepts empty strings for title and body (no min-length constraint)" และยืนยันว่า `true`
+   *   = ตรึง**พฤติกรรมที่เป็นบั๊ก**ไว้ ไม่ใช่ตรึงเจตนา
+   *   ของจริงที่เกิดขึ้น: ประกาศเปล่าได้ 201 การ์ดเปล่าขึ้นหน้าเว็บ และยิงแจ้งเตือน
+   *   "ประกาศจากผู้จัด: " ถึงหัวหน้าทีมทุกคน ซึ่งเรียกคืนไม่ได้
+   * ★ ไม่ได้ลบเทส แต่เขียนใหม่ให้ยืนยันเจตนาที่ถูก — และกันช่องว่างล้วนด้วย ซึ่งเทสเดิมไม่แตะ
+   */
+  it.each([
+    ['ว่างทั้งคู่', '', ''],
+    ['หัวข้อว่าง', '', 'เนื้อหา'],
+    ['เนื้อหาว่าง', 'หัวข้อ', ''],
+    ['ช่องว่างล้วน', '   ', '   '],
+  ])('ปฏิเสธประกาศที่ %s', (_name, title, body) => {
+    expect(createAnnouncementSchema.safeParse({ title, body }).success).toBe(false);
+  });
+
+  /** ★ `.trim()` ต้อง **แปลงค่า** ให้ด้วย ไม่ใช่แค่ตรวจ — ที่เก็บลงฐานต้องไม่มีช่องว่างหัวท้าย */
+  it('ตัดช่องว่างหัวท้ายออกให้', () => {
+    const result = createAnnouncementSchema.safeParse({ title: '  เลื่อนเวลา  ', body: '  ย้ายไป 15:00  ' });
+
     expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({ title: 'เลื่อนเวลา', body: 'ย้ายไป 15:00' });
+  });
+
+  /** BE-30 — หัวข้อ 300 ตัวเคยทะลุ VARCHAR(255) แล้วผู้ใช้ได้ 500 INTERNAL_ERROR */
+  it('ปฏิเสธหัวข้อที่ยาวเกินคอลัมน์ แทนที่จะปล่อยไปพังที่ฐาน', () => {
+    expect(createAnnouncementSchema.safeParse({ title: 'ก'.repeat(256), body: 'ok' }).success).toBe(false);
+    expect(createAnnouncementSchema.safeParse({ title: 'ก'.repeat(255), body: 'ok' }).success).toBe(true);
   });
 
   it('rejects a missing title', () => {

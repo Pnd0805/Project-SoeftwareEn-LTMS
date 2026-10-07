@@ -185,4 +185,56 @@ describe('โหวต MVP — หลังแมตช์จบ · ผู้ถ
     expect((await anon.post(`/matches/${match}/mvp-votes`).send({ userId: playerA.id })).status).toBe(401);
     expect((await anon.get(`/matches/${match}/mvp-votes`)).status).toBe(200);
   });
+
+  /**
+   * 🆕 การแก้ 7 ต.ค. 2569 (BE-28) — คนที่กรรมการเช็คอินให้ด้วยมือ ต้องเป็นตัวเลือก MVP ด้วย
+   *
+   * `match_checkin_status = 'exception'` คือเช็คอินที่กรรมการกดแทนผู้เล่นตอนกล้อง/เน็ตพัง
+   * (M19, UC-04 E2b) ⇒ "เช็คอินแล้ว" เหมือน 'success' และโค้ดที่อื่นทั้งหมดนับรวมเสมอ
+   * แต่ `findMvpCandidatesOfMatch` กรอง `= 'success'` ที่เดียว ⇒ แมตช์ที่กรรมการเช็คอินให้
+   * ทุกคนได้ `candidates: []` หน้าเว็บขึ้น "No MVP candidates yet" และโหวตใครก็ไม่ได้
+   *
+   * ★ ยิงผ่าน HTTP จริงทั้งเส้น เพราะบั๊กอยู่ใน SQL — เทส unit ที่ mock repo จะไม่เห็นอะไรเลย
+   */
+  describe('เช็คอินด้วยมือ (exception) นับเป็นตัวเลือก MVP (BE-28)', () => {
+    const setCheckin = (userId: number, status: string) =>
+      testDb().query('UPDATE match_checkins SET match_checkin_status = ? WHERE match_id = ? AND user_id = ?',
+                     [status, match, userId]);
+
+    it('กรรมการเช็คอินให้ทุกคน → ยังมีตัวเลือกครบ และโหวตได้', async () => {
+      await setCheckin(playerA.id, 'exception');
+      await setCheckin(playerB.id, 'exception');
+
+      const list = await anon.get(`/matches/${match}/mvp-votes`);
+      expect(list.status).toBe(200);
+      expect(list.body.candidates.map((c: { userId: number }) => c.userId).sort())
+        .toEqual([playerA.id, playerB.id].sort());
+
+      expect((await vote(fan, playerA.id)).status).toBeLessThan(300);
+    });
+
+    /** ★ เช็คอินผสมกัน — เคสที่มองไม่ออกจากหน้าเว็บ เพราะหายไปแค่บางคน */
+    it('เช็คอินผสม qr + มือ → มีทั้งสองคน', async () => {
+      await setCheckin(playerB.id, 'exception');
+
+      const list = await anon.get(`/matches/${match}/mvp-votes`);
+      expect(list.body.candidates.map((c: { userId: number }) => c.userId).sort())
+        .toEqual([playerA.id, playerB.id].sort());
+    });
+
+    /**
+     * ★ ด่านไม่ได้หายไป — 'rejected' (กรรมการปฏิเสธการเช็คอิน) ยังต้องไม่เข้า
+     *   ถ้าใครแก้เป็น "เอาทุกแถวใน match_checkins" เทสนี้จะแดง
+     */
+    it.each(['rejected', 'pending'])('สถานะ %s ยังไม่นับเป็นตัวเลือก', async (status) => {
+      await setCheckin(playerB.id, status);
+
+      const list = await anon.get(`/matches/${match}/mvp-votes`);
+      expect(list.body.candidates.map((c: { userId: number }) => c.userId)).toEqual([playerA.id]);
+
+      const res = await vote(fan, playerB.id);
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('MVP_CANDIDATE_NOT_ELIGIBLE');
+    });
+  });
 });

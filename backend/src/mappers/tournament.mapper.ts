@@ -37,6 +37,14 @@ export type TournamentDetailDto = {
     entryNotes: string | null;
     sportTypeId: number;
     bracketFormat: TournamentRow['bracket_format'];
+    /**
+     * 🆕 7 ต.ค. 2569 (รายงาน FE) — BO-N ที่ผู้จัดตั้งไว้ · null = กีฬานี้ไม่ได้แข่งเป็นรอบ
+     *   มีมาตั้งแต่ migration 044 และ POST/PATCH เขียนได้ แมตช์ก็สืบทอดถูก แต่ **ไม่เคยส่งออก**
+     *   ⇒ FE ตั้ง BO แล้วรีเฟรช ค่าหายไปจากจอ ทั้งที่ในฐานมีอยู่
+     * 🔴 นี่คือ "ค่าตั้งต้นของทัวร์" — แหล่งความจริงของการตรวจสกอร์คือ `bestOf` ของแต่ละแมตช์
+     *   (ดู types/db.ts) · แมตช์ที่ผู้จัดตั้งรูปแบบรายแมตช์ทีหลังจะไม่ตรงกับค่านี้ และถูกต้องแล้ว
+     */
+    bestOf: number | null;
     scopeType: TournamentRow['scope_type'];
     organizingFacultyId: number | null;
     organizingDepartmentId: number | null;
@@ -71,6 +79,7 @@ export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto,
         entryNotes: row.entry_notes,
         sportTypeId: row.sport_type_id,
         bracketFormat: row.bracket_format,
+        bestOf: row.best_of,
         scopeType: row.scope_type,
         organizingFacultyId: row.organizing_faculty_id,
         organizingDepartmentId: row.organizing_department_id,

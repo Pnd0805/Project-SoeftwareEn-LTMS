@@ -1,12 +1,26 @@
 import * as z from 'zod';
 
+/**
+ * ชื่อทีม — `teams.name` เป็น VARCHAR(150)
+ *
+ * 🔴 แก้ 7 ต.ค. 2569 (BE-08 · BE-09) — เดิม `z.string().min(1)` ทั้งสองที่
+ *   BE-08: ไม่มี `.trim()` ⇒ ตั้งชื่อเป็น "   " ได้ หน้าทีมไม่มีชื่อ และข้อความแจ้งเตือน
+ *          กลายเป็น "… was removed from ." (ชื่อหายไปจากประโยค)
+ *   BE-09: ไม่มี `.max()` ⇒ ชื่อ 300 ตัวทะลุคอลัมน์ แล้ว mysql โยน error ดิบ ⇒ ผู้ใช้ได้ 500
+ * ★ `.trim()` ของ zod **แปลงค่า** ให้ด้วย ⇒ ที่เก็บลงฐานคือชื่อที่ตัดช่องว่างแล้ว
+ *   ลำดับสำคัญ: trim ก่อน แล้วจึง min/max ไม่งั้น "   " ยังนับว่ายาว 3
+ */
+const teamName = z.string().trim()
+    .min(1 , 'กรุณาระบุชื่อทีม')
+    .max(150 , 'ชื่อทีมยาวได้ไม่เกิน 150 ตัวอักษร');
+
 export const teamSchema = z.object({
-    name : z.string().min(1 , 'กรุณาระบุชื่อทีม'),
+    name : teamName,
     sportTypeId : z.int('รหัสกีฬาต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกกีฬา')
 });
 
 export const updateTeamSchema = z.object({
-    name : z.string().min(1 , 'กรุณาใส่ชื่อทีม').optional(),
+    name : teamName.optional(),
     visibility : z.enum(['private' , 'public'] , 'visibility ต้องเป็น private หรือ public').optional(),   // มติ 20 ก.ย.
     logoKey : z.string().max(512).nullable().optional()   // ส่ง null = ล้างโลโก้ (FE-avatar-and-team-logo-uploads)
 });
