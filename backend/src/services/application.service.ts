@@ -357,7 +357,7 @@ export async function applyTournament(
     // 7. บันทึกใบสมัคร + รายชื่อผู้เล่น + document keys ในทรานแซกชันเดียว (ต้องเกิดพร้อมกันหรือไม่เกิดเลย)
     //    hard_filter_details ต้องเป็น array รายคน ไม่ใช่ object สรุป — P04 ดึงไปโชว์ตรงๆ
     const hardFilterDetails = squad.map(m => ({ userId: m.user_id, fullName: m.full_name, passed: true }));
-    const newId = await ApplicationRepo.insertApplicationWithPlayers(
+    const inserted = await ApplicationRepo.insertApplicationWithPlayers(
         tournamentId,
         teamId,
         hardFilterDetails,
@@ -365,13 +365,21 @@ export async function applyTournament(
         softFilterDocuments
     );
 
-    // null = ชน uq_tournament_player — คนเดียวลงได้ทีมเดียวต่อหนึ่งทัวร์ (กันไว้ที่ DB เผื่อสองทีมสมัครพร้อมกัน)
-    if (newId === null) {
+    /**
+     * ด่านที่ฐาน — มีไว้เผื่อสองคำขอมาพร้อมกันจนด่าน SELECT ข้างบนผ่านทั้งคู่
+     * 🔴 ต้องแยกสองเรื่องนี้ออกจากกัน (มติ ① ก) — เดิมตอบ PLAYER_ALREADY_REGISTERED ทั้งคู่
+     *   ⇒ ทีมที่กดสมัครซ้ำได้ข้อความกล่าวหาผู้เล่น ซึ่งพาไปแก้ผิดทาง
+     */
+    if (inserted.decision === 'team_already_active') {
+        // รหัสเดียวกับด่าน SELECT ข้างบนโดยเจตนา — เรื่องเดียวกัน คนละจังหวะ FE จัดการที่เดียว
+        throw new AppError(409, "ALREADY_APPLIED", "ทีมนี้สมัครทัวร์นาเมนต์นี้ไปแล้ว");
+    }
+    if (inserted.decision === 'player_taken') {
         const taken = await ApplicationRepo.findPlayerConflicts(tournamentId, playerIds);
         throw new AppError(409, "PLAYER_ALREADY_REGISTERED",
             "มีผู้เล่นที่ถูกส่งลงแข่งทัวร์นาเมนต์นี้กับทีมอื่นไปแล้ว",
             { players: taken.map(p => ({ userId: p.user_id, fullName: p.full_name, teamId: p.team_id, teamName: p.team_name })) });
     }
 
-    return { id: newId, status: 'pending', hardFilterPassed: true, playerIds };
+    return { id: inserted.id, status: 'pending', hardFilterPassed: true, playerIds };
 }

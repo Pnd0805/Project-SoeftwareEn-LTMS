@@ -1071,7 +1071,7 @@ describe('applyTournament', () => {
     ];
     mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue(members);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(500);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'ok', id: 500 });
 
     const result = await applicationService.applyTournament(20, 10, 5, [1, 2]);
 
@@ -1097,7 +1097,7 @@ describe('applyTournament', () => {
       makeMember({ user_id: 2, full_name: 'Bob' }),
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(501);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'ok', id: 501 });
     const docs = [
       'soft_filter_document/20/5/11111111-1111-4111-8111-111111111111.jpg',
       'soft_filter_document/20/5/22222222-2222-4222-8222-222222222222.png',
@@ -1187,7 +1187,7 @@ describe('applyTournament', () => {
       makeMember({ user_id: 2, full_name: 'Bob' }),
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(501);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'ok', id: 501 });
 
     await expect(applicationService.applyTournament(20, 10, 5, [2])).resolves.toMatchObject({ id: 501 });
   });
@@ -1198,7 +1198,7 @@ describe('applyTournament', () => {
     mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);
     mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([makeMember({ user_id: 1, full_name: 'Alice' })]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(null);   // ชน uq_tournament_player
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'player_taken' });   // ชน uq_tournament_player
     mockedApplicationRepo.findPlayerConflicts.mockResolvedValue([
       { user_id: 1, full_name: 'Alice', team_id: 11, team_name: 'Other Team' },
     ]);
@@ -1209,6 +1209,27 @@ describe('applyTournament', () => {
     expect(err.extra).toEqual({ players: [{ userId: 1, fullName: 'Alice', teamId: 11, teamName: 'Other Team' }] });
   });
 
+  /**
+   * 🆕 FE blocker 7 ต.ค. 2569 (มติ ① ก) — ชน UNIQUE ของ "ทีมนี้สมัครแล้ว" ต้องไม่ไปกล่าวหาผู้เล่น
+   *
+   * เดิม repo คืน null สำหรับ ER_DUP_ENTRY ทุกชนิด ⇒ ใบที่ชนเพราะทีมซ้ำได้ข้อความว่า
+   * "มีผู้เล่นถูกส่งลงกับทีมอื่นแล้ว" ทั้งที่ไม่มีผู้เล่นคนไหนชนเลย — พาไปแก้ผิดทาง
+   * ★ ต้องไม่เรียก findPlayerConflicts ด้วย — ยิงคำถามที่ไม่มีคำตอบใส่ฐานโดยเปล่าประโยชน์
+   */
+  it('ชน UNIQUE ของทีม (uq_application_active) → ALREADY_APPLIED ไม่ใช่ PLAYER_ALREADY_REGISTERED', async () => {
+    mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
+    mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament());
+    mockedApplicationRepo.findExistingApplication.mockResolvedValue(null);   // ด่าน SELECT ผ่าน (แข่งกันยิง)
+    mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([makeMember({ user_id: 1, full_name: 'Alice' })]);
+    mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'team_already_active' });
+
+    const err: any = await applicationService.applyTournament(20, 10, 5, [1]).catch((e) => e);
+
+    expect(err).toMatchObject({ status: 409, code: 'ALREADY_APPLIED' });
+    expect(mockedApplicationRepo.findPlayerConflicts).not.toHaveBeenCalled();
+  });
+
   it('skips the gender check entirely when the tournament has no gender requirement', async () => {
     mockedApplicationRepo.findTeamForApply.mockResolvedValue(makeTeamForApply({ leader_id: 5 }));
     mockedTournamentRepo.findTournamentById.mockResolvedValue(makeTournament({ gender_requirement: 'any' }));
@@ -1217,7 +1238,7 @@ describe('applyTournament', () => {
       makeMember({ user_id: 1, gender: 'female' }),
     ]);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(500);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'ok', id: 500 });
 
     await expect(applicationService.applyTournament(20, 10, 5, [1])).resolves.toMatchObject({
       hardFilterPassed: true,

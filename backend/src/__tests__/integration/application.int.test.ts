@@ -43,6 +43,76 @@ const applicationOf = (teamId: number, tournamentId = tour) =>
     'SELECT tournament_application_id, tournament_application_status FROM tournament_applications WHERE team_id = ? AND tournament_id = ?',
     [teamId, tournamentId]);
 
+/**
+ * 🆕 FE blocker 7 ต.ค. 2569 (มติ ① ก) — ทีมที่ถอนตัวแล้วสมัครทัวร์เดิมใหม่ไม่ได้
+ *
+ * FE ทำซ้ำได้จริงบน API จริง: สมัคร → อนุมัติ → ถอนตัว → สมัครใหม่ด้วยทีม/ผู้เล่นชุดเดิม
+ * ⇒ 409 PLAYER_ALREADY_REGISTERED ทั้งที่ `application_players` ว่างเปล่าแล้ว
+ *
+ * 🔴 สาเหตุอยู่ที่ UNIQUE (tournament_id, team_id) ของ schema.sql ซึ่งครอบทุกสถานะ
+ *   ขณะที่ `findExistingApplication` นับเฉพาะ pending/approved พร้อมคอมเมนต์ว่า
+ *   "withdraw แล้วสมัครใหม่ได้" ⇒ ฐานกับ service ขัดกันเอง (migration 049 แก้ให้ตรงกัน)
+ *
+ * ★ เทสชุดนี้ต้องเป็น integration — UNIQUE อยู่ที่ฐาน unit ที่ mock repo จับไม่ได้เลย
+ */
+describe('ถอนตัวแล้วสมัครใหม่ (FE blocker · migration 049)', () => {
+  const rowsOf = (teamId: number) => all<{ tournament_application_id: number; tournament_application_status: string }>(
+    `SELECT tournament_application_id, tournament_application_status FROM tournament_applications
+      WHERE team_id = ? AND tournament_id = ? ORDER BY tournament_application_id`, [teamId, tour]);
+
+  it('อนุมัติแล้วถอนตัว → สมัครใหม่ได้ 201 · ใบเก่ายังอยู่ในประวัติ', async () => {
+    expect((await apply(leader, squad())).status).toBe(201);
+    const first = (await applicationOf(team))!.tournament_application_id;
+    expect((await as(organizer).post(`/applications/${first}/approve`)).status).toBeLessThan(300);
+    expect((await as(leader).post(`/applications/${first}/withdraw`)).status).toBeLessThan(300);
+
+    const again = await apply(leader, squad());
+
+    expect(again.status).toBe(201);
+    // ★ สองแถว ไม่ใช่แถวเดียวที่ถูกเขียนทับ — ประวัติที่เคยถอนต้องอ่านย้อนได้
+    const rows = await rowsOf(team);
+    expect(rows.map(r => r.tournament_application_status)).toEqual(['withdrawn', 'pending']);
+  });
+
+  it('ใบถูกปฏิเสธแล้ว → สมัครใหม่ได้', async () => {
+    expect((await apply(leader, squad())).status).toBe(201);
+    const first = (await applicationOf(team))!.tournament_application_id;
+    expect((await as(organizer).post(`/applications/${first}/reject`).send({ reason: 'เอกสารไม่ครบ' })).status).toBeLessThan(300);
+
+    expect((await apply(leader, squad())).status).toBe(201);
+    expect((await rowsOf(team)).map(r => r.tournament_application_status)).toEqual(['rejected', 'pending']);
+  });
+
+  /**
+   * ★ เคสที่ด่านนี้**ต้อง**ยังบล็อก — ใบที่ยังมีชีวิตอยู่ยังต้องมีได้ใบเดียว
+   *   ถ้าเทสนี้แดง แปลว่า migration 049 ปลดล็อกกว้างเกินไปจนรับใบซ้อนได้
+   */
+  it('ใบเดิมยัง pending → สมัครซ้ำไม่ได้ 409 ALREADY_APPLIED · ยังมีใบเดียว', async () => {
+    expect((await apply(leader, squad())).status).toBe(201);
+
+    const again = await apply(leader, squad());
+
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('ALREADY_APPLIED');
+    expect(await rowsOf(team)).toHaveLength(1);
+  });
+
+  /**
+   * ★ ข้อความต้องชี้ถูกจุด — ชนเพราะ "ทีมนี้สมัครแล้ว" ต้องไม่ไปกล่าวหาผู้เล่น
+   *   ยิงพร้อมกันเพื่อให้ด่าน SELECT ผ่านทั้งคู่ แล้วไปตกที่ UNIQUE ของฐาน
+   *   (ด่านที่ service คนละชั้นกับด่านที่ฐาน — เทสนี้จับชั้นฐานโดยเฉพาะ)
+   */
+  it('ยิงสมัครพร้อมกันสองคำขอ → สำเร็จใบเดียว · อีกใบได้ ALREADY_APPLIED ไม่ใช่ PLAYER_ALREADY_REGISTERED', async () => {
+    const [a, b] = await Promise.all([apply(leader, squad()), apply(leader, squad())]);
+
+    const codes = [a, b].map(r => r.status).sort();
+    expect(codes).toEqual([201, 409]);
+    const failed = a.status === 409 ? a : b;
+    expect(failed.body.error.code).toBe('ALREADY_APPLIED');
+    expect(await rowsOf(team)).toHaveLength(1);
+  });
+});
+
 // ───────────────────────────── ยื่นใบสมัคร ─────────────────────────────
 
 describe('POST /tournaments/:id/applications — ใครยื่นได้', () => {

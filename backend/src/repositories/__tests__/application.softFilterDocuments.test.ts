@@ -41,7 +41,7 @@ describe('insertApplicationWithPlayers soft-filter documents', () => {
       [{ userId: 1, passed: true }],
       [1, 2],
       docs,
-    )).resolves.toBe(77);
+    )).resolves.toEqual({ decision: 'ok', id: 77 });
 
     const [applicationSql, applicationValues] = mocks.query.mock.calls[0]!;
     expect(applicationSql).toContain('soft_filter_documents');

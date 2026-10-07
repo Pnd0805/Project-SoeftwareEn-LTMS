@@ -84,7 +84,7 @@ describe('application age eligibility', () => {
       },
     ] as any);
     mockedApplicationRepo.findEligibilityRules.mockResolvedValue([]);
-    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue(123);
+    mockedApplicationRepo.insertApplicationWithPlayers.mockResolvedValue({ decision: 'ok', id: 123 });
 
     await expect(ApplicationService.applyTournament(30, 20, 7, [7])).resolves.toMatchObject({
       id: 123,

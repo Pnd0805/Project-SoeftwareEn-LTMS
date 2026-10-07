@@ -413,16 +413,34 @@ export async function findPlayerConflicts(tournamentId: number, userIds: number[
 }
 
 /**
- * P01 — ใบสมัคร + รายชื่อผู้เล่น ต้องเกิดพร้อมกันหรือไม่เกิดเลย
- * คืน null = ชน uq_tournament_player (มีคนถูกส่งลงทัวร์นี้กับทีมอื่นไปแล้ว) → service ไปหาว่าใครชนด้วย findPlayerConflicts
+ * 🔴 แก้ 7 ต.ค. 2569 (FE blocker · มติ ① ก) — เดิมคืน `null` สำหรับ ER_DUP_ENTRY **ทุกชนิด**
+ *
+ * มี UNIQUE สามตัวที่ INSERT ชุดนี้ชนได้ และความหมายคนละเรื่องกันสิ้นเชิง:
+ *   `uq_application_active`  = ทีมนี้มีใบที่ยังใช้งานอยู่ในทัวร์นี้แล้ว   (migration 049)
+ *   `uq_tournament_player`   = มีผู้เล่นถูกส่งลงทัวร์นี้กับ **ทีมอื่น** แล้ว (migration 018)
+ *   `uq_application_player`  = ส่งชื่อคนเดิมซ้ำในใบเดียวกัน
+ * เดิมยุบทั้งสามเป็น null ⇒ service แปลเป็น PLAYER_ALREADY_REGISTERED หมด
+ * ⇒ ทีมที่ถอนตัวแล้วสมัครใหม่ (ชน UNIQUE เดิมที่ครอบทุกสถานะ) ได้ข้อความว่า
+ *   "ผู้เล่นอยู่ทีมอื่นแล้ว" ทั้งที่ `application_players` ว่างเปล่า — กล่าวหาผิดจุด
+ *   และทำให้ไล่หาสาเหตุไม่ได้เลย (FE เสียเวลาไปถึงขั้นอ่าน SHOW INDEX เอง)
+ *
+ * ★ แยกด้วย **ชื่อ index ใน sqlMessage** ไม่ใช่เดาจากลำดับคำสั่ง — ชื่อ index เป็น
+ *   ข้อมูลที่ MySQL บอกมาตรง ๆ ส่วนลำดับคำสั่งเปลี่ยนได้เมื่อมีคนมาแก้ฟังก์ชันนี้
+ * ★ `decision` ไม่ใช่ null เพื่อให้ TypeScript บังคับให้ทุกกรณีถูกแปลที่ service
+ *   (รูปแบบเดียวกับ `ApproveDecision` ของ BE-03)
  */
+export type InsertApplicationDecision =
+    | { decision: 'ok'; id: number }
+    | { decision: 'team_already_active' }
+    | { decision: 'player_taken' };
+
 export async function insertApplicationWithPlayers(
     tournamentId: number,
     teamId: number,
     hardFilterDetails: unknown,
     playerIds: number[],
     softFilterDocuments: string[] = []
-): Promise<number | null> {
+): Promise<InsertApplicationDecision> {
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
@@ -446,10 +464,17 @@ export async function insertApplicationWithPlayers(
         );
 
         await conn.commit();
-        return applicationId;
+        return { decision: 'ok', id: applicationId };
     } catch (err) {
         await conn.rollback();
-        if ((err as { code?: string }).code === 'ER_DUP_ENTRY') return null;
+        if ((err as { code?: string }).code === 'ER_DUP_ENTRY') {
+            const sqlMessage = (err as { sqlMessage?: string }).sqlMessage ?? '';
+            // ★ ไม่มี else ที่คืน 'player_taken' แบบเดา — ถ้าเป็น UNIQUE ตัวที่สามเรื่องก็ยังเป็นผู้เล่น
+            //   (uq_application_player = ส่งชื่อคนเดิมซ้ำในใบเดียวกัน ซึ่ง schema กันไว้ก่อนถึงตรงนี้แล้ว)
+            return sqlMessage.includes('uq_application_active')
+                ? { decision: 'team_already_active' }
+                : { decision: 'player_taken' };
+        }
         throw err;
     } finally {
         conn.release();
