@@ -8,7 +8,7 @@
 ฐาน frontend เดิม `7c8f187`. แก้เฉพาะ checkout frontend นี้
 
 **ทำแล้ว = code implementation / developer checks ไม่ใช่ live QA sign-off.**
-36 ข้อทำใน FE แล้ว, 5 ข้อทำบางส่วน, 2 ข้อยังรอ endpoint/DTO
+Round 2/3 update: 39 implemented, 3 partial, 1 waiting for BE DTO. These counts describe implementation, not QA sign-off.
 ทุก flow ยังต้องทดสอบกับ BE_KN จริงหลัง migration และ reload
 
 ## Notice วันนี้
@@ -36,13 +36,13 @@
 | FE-02 | ทำแล้ว | Home badge/filter/count และฟอร์มสมัครใช้ธง/ช่วงรับสมัครเดียวกัน; วาดสายไม่ปิดรับสมัครเอง |
 | FE-03 | ทำแล้ว | หัวหน้าเปิด Public ได้; search ยังคงอ่านเฉพาะทีมที่ API เปิดเผย |
 | FE-04 | ทำแล้ว | Join request, leader approve/reject, คำขอของฉันและ cancel |
-| FE-05 | รอ BE | ยังไม่มี endpoint ออกจากทีมด้วยตนเอง |
+| FE-05 | Done | Round 2/3 self-leave, confirmation and cache refresh; real 204/leader/non-member/approved-entry lock verified |
 | FE-06 | ทำแล้ว | หลังสมัคร refetch /me/applications และแสดงสถานะ; ตัดทีมที่ Pending/Approved ออกจากตัวเลือก |
 | FE-07 | ทำแล้ว | Official supportingDocs มี preview/refresh/error และ confirmation ก่อนอนุมัติ |
-| FE-08 | บางส่วน | FE กันวันเกิดอนาคต/วันที่ผิด และชั้นปี 1–8; BE ยังต้อง enforce และยืนยันช่วง |
+| FE-08 | Done | FE DOB/year guards; BE confirms no future DOB and year 1-8 in Round 2; live registration/SMTP acceptance separate |
 | FE-09 | ทำแล้ว | Review disclosure วันแข่ง/สนาม/จำนวนทีม/เงื่อนไขจาก API และ confirmation ก่อนอนุมัติ |
 | FE-10 | บางส่วน | ตัด /me และ /me/teams ที่ไม่จำเป็นสำหรับ guest Match; lazy-load review details; ยังไม่ได้วัด waterfall จริง |
-| FE-11 | บางส่วน | แยกคนชื่อซ้ำด้วย Player ID + ลิงก์ public profile; search DTO ไม่มี email/faculty |
+| FE-11 | Done | Player ID, public profile and nullable facultyName/year from safe search; no private contact; real DTO verified |
 | FE-12 | ทำแล้ว | ใช้ A participant แทนการกล่าวว่าเป็นทีมเมื่อไม่มีข้อมูล actor |
 | FE-13 | ทำแล้ว | Admin queue ใช้ calendar date ไม่ขึ้น 07:00 |
 | FE-14 | ทำแล้ว | หน้าทัวร์แสดงวันเริ่ม–วันสุดท้าย |
@@ -70,7 +70,7 @@
 | FE-36 | ทำแล้ว | Prediction closed แยก finished/completed กับ started |
 | FE-37 | ทำแล้ว | Report user + evidence uploads และ admin paginated queue/decisions/confirmation |
 | FE-38 | บางส่วน | รายทัวร์มีคิว reported comments/reviews + เนื้อหา + confirmation; restore เดิมเป็น action รอง; global/deleted-history API ยังไม่มี |
-| FE-39 | บางส่วน | Hard-filter reason + Current/Requested จาก detail/rules; approved count ไม่ใช่ affected count ที่ BE ยังไม่ส่ง |
+| FE-39 | Partial | Display affectedTeamCount/teams/players on rejected amendments; normal preflight impact contract still absent |
 | FE-40 | ทำแล้ว | Self guards และ Root/University suspension protection; Reinstate ไม่ถูกปิดด้วยกฎ Suspend |
 | FE-41 | ทำแล้ว | Admin rights ค้นผู้ใช้ด้วยชื่อ/ID และแสดงชื่อระดับสิทธิ์ |
 | FE-42 | ทำแล้ว | Audit page 20 records ใช้ server pagination เข้าถึงเกิน 100; search/filter ระบุ current page |
@@ -81,9 +81,9 @@
 รายละเอียด [TO-BACKEND-2026-10-07-frontend-qa-response.md](TO-BACKEND-2026-10-07-frontend-qa-response.md)
 
 - [x] Migration 046 token_version และ 047 supports_best_of ยืนยันในฐาน local QA แล้ว
-- [ ] Self-leave endpoint, eliminated-round standings, richer safe search DTO,
-  global reported-feedback/deleted-history queue และ affected-team count
-- [ ] BE birthday/year validation และ trim ประกาศว่างจาก direct API
+- [x] Round 2/3 self-leave, safe search, profile null clear, detail bestOf and amendment conflict impact delivered
+- [ ] Eliminated-round standings, global reported-feedback/deleted-history queue and normal preflight impact
+- [x] BE confirms birthday/year enforcement and announcement trim/limits in Round 2; live registration acceptance separate
 - [ ] B2 Official membership single team/sport, B4 cleanup/4-year retention,
   cancellation, referee user_type/backfill และ rewards artwork/criteria ตามมติทีม
 - [ ] วัด Network timing ของ Match/Fixture/Teams บน API ที่ทำงานจริง
@@ -108,3 +108,9 @@
   ยังไม่ถือว่าปิด FE-01–FE-43 ทั้งหมด ไม่แก้ backend หรือรัน migration;
   ใช้ข้อมูล QA และคืนค่า/ลบประกาศทดสอบแล้ว
 - คงการลบ HANDOVER-2026-09-22/23 และไฟล์ FE-Notice ที่มีอยู่เดิมไว้ตามสภาพเดิม
+
+## Round 2/3 follow-up
+
+Verified remote/fetched `BE_KN@7aae61f`. See [latest response](TO-BACKEND-2026-10-07-qa-round23-response.md). Real API: 14 PASS / 1 FAIL, including 3 cleanup checks. Reapplication fails with zero matches; SQL shows the unique tournament/team index covers withdrawn applications. Old QA reports belong to the earlier DB.
+
+Validation: full suite 95 files / 559 tests passed; final login/review regression 2 files / 5 tests passed. Lint and TypeScript/build passed (main 932.00 kB; existing bundle-size warning). Git diff whitespace check passed.

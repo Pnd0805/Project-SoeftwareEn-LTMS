@@ -1,5 +1,7 @@
 # To Backend / Team — Frontend QA response, 7 Oct 2026
 
+> Historical report. See [Round 2/3 resolutions and current blockers](TO-BACKEND-2026-10-07-qa-round23-response.md). Self-leave, safe search, profile null clearing, detail bestOf and amendment conflict metadata have since been delivered. Old QA IDs below belong to the earlier DB. Incorrect FE-32/BE-30, FE-38/BE-33 and FE-10/BE-18 pairings have been removed.
+
 Verified/fetched `BE_KN@8d161a6d25b1ebc501e1412bde37b911cfdea4de`.
 Frontend baseline `7c8f187`; this response describes local FE changes, not deployed QA sign-off.
 FE implementation commit: `5d031a9` on `feat/1`.
@@ -18,11 +20,11 @@ and [API-CONTRACT-2026-10-07.md](API-CONTRACT-2026-10-07.md).
 | FE-05 | Current team routes have no authenticated self-leave endpoint; leader-only member deletion is not a substitute | No fabricated leave action |
 | FE-08 / BE-05 | Register schema permits positive year without ceiling and does not reject future birthDateISO | FE uses 1–8, matching existing eligibility-year UI; please enforce DOB and confirm the year range centrally |
 | FE-11 / BE-19 | /users/search returns UserRef only, no email/faculty discriminator | Show name, Player ID and public profile link; request safe disambiguation data, not private contact data |
-| FE-32 / BE-30 | Standings mapper does not deliver eliminated round/outLabel and uses points/goals/wins ranks | Show published rank, omit misleading elimination pts copy and show Not provided for round |
+| FE-32 | Standings mapper does not deliver eliminated round/outLabel and uses points/goals/wins ranks | Show published rank, omit misleading elimination pts copy and show Not provided for round |
 | FE-34 / BE-29 | FE trims nonempty title/body; direct API still needs equivalent checks | Reject whitespace in FE, explain legacy blank cards |
-| FE-38 / BE-33 | No global admin reported-feedback listing/deleted-history read route | Read reported comments + reviews per directory tournament; preserve known-ID restore as secondary confirmed action |
+| FE-38 | No global admin reported-feedback listing/deleted-history read route | Read reported comments + reviews per directory tournament; preserve known-ID restore as secondary confirmed action |
 | FE-39 / BE-36 | Amendment reason exists; exact affected-team count is absent | Compare current detail/rules against requested changes; approved count is not represented as affected count |
-| FE-10 / BE-18 | Local API and Chrome now reachable | Actual guest match adapter skips /me and /me/teams; browser waterfall profiling remains open |
+| FE-10 | Local API and Chrome now reachable | Actual guest match adapter skips /me and /me/teams; browser waterfall profiling remains open |
 
 ## Environment / decisions / acceptance
 

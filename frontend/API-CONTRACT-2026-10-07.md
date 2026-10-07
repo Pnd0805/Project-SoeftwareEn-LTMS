@@ -1,6 +1,6 @@
 # Frontend integration contract — BE_KN 7 Oct 2026
 
-Verified remote/fetched head: `8d161a6d25b1ebc501e1412bde37b911cfdea4de`.
+Verified remote/fetched head after QA Round 2/3: `7aae61f0c5fce1314528175db1f9566842e4c2b6`.
 Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/mappers.
 
 ## Sport BO capability
@@ -55,3 +55,34 @@ the Suspend restrictions must not disable it.
   /tournaments/:id/feedback; university-admin moderation uses existing feedback routes.
 
 Missing routes/data and live acceptance are tracked in the QA checklist and BE response.
+
+## QA Round 2/3 additions
+
+- DELETE /teams/:id/members/me returns 204; leader 409 LEADER_CANNOT_LEAVE;
+  approved entry 409 MEMBER_LOCKED_IN_TOURNAMENT; non-member 404.
+- GET /users/search returns nullable facultyName/year in search items only.
+  General UserRef and private contact exposure are unchanged.
+- GET /tournaments/:id returns nullable stored bestOf; match.bestOf remains authoritative.
+- PATCH /me accepts null to clear contactInfo/address. Limits 255/2000;
+  omitted keys are preserved and empty strings are still strings.
+- Team name trim/1–150; announcement title trim/1–255, body trim/1–5000;
+  scores/predictions integer 0–999 plus match-specific BO restrictions.
+- Real referee invitation payload omits isExternal; server classification controls identity.
+- TOURNAMENT_DATA_CONFLICT extra: conflictingFields object/requestedFields array.
+  AMENDMENT_BREAKS_APPROVED_TEAMS extra: affectedTeamCount, affectedTeams with
+  teamId/teamName/players (userId/fullName/reason). No normal preflight impact promised.
+- Amendment history selfApproved, admin queue selfRequested and audit details.selfApproved.
+  Self approval remains permitted under the delivered team policy and explicitly labeled.
+- Login 429 TOO_MANY_LOGIN_ATTEMPTS includes retryAfterSeconds and Retry-After.
+- TOO_EARLY_FOR_MATCH extra scheduledTime/opensAt: check-in 60 min before,
+  start 15 min before. TOO_LATE_FOR_MATCH extra scheduledTime/closesAt:
+  check-in 60 min after. Start has no matching upper bound.
+- Open-checkin also requires accepted referees. CANNOT_DISPUTE_OWN_RESULT prevents
+  the submitting referee from disputing the same result; onsite editing remains restricted.
+- Abandon clears scheduledTime/scheduledEndTime/venue to null.
+- Review opensAt remains scheduled event start, not actual opening; status/canSubmit
+  controls availability. FE chooses proposed openedBy addition, awaiting delivered DTO.
+- Migration 048 deduplicates and enforces pending-request uniqueness. Logout token
+  behavior remains unchanged; no global token-version bump introduced.
+
+See [Round 2/3 response and live blocker](TO-BACKEND-2026-10-07-qa-round23-response.md).
