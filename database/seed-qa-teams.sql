@@ -17,7 +17,7 @@ DELETE FROM team_members WHERE user_id BETWEEN 9201 AND 9260;
 DELETE FROM teams WHERE team_id BETWEEN 9020 AND 9040;
 DELETE FROM team_invitations WHERE invited_user_id BETWEEN 9201 AND 9260;
 DELETE FROM users WHERE user_id BETWEEN 9201 AND 9260;
-DELETE FROM users WHERE user_id BETWEEN 9051 AND 9053;
+DELETE FROM users WHERE user_id BETWEEN 9051 AND 9054;
 
 -- ผู้ใช้
 INSERT INTO users (user_id, full_name, email, password_hash, gender, birth_date, user_type,
@@ -25,6 +25,8 @@ INSERT INTO users (user_id, full_name, email, password_hash, gender, birth_date,
   (9051, 'วีระชัย นกหวีดทอง', 'referee3@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1990-04-12', 'staff', 1, 1, NULL, 0, NULL),
   (9052, 'อรทัย กฎกติกา', 'referee4@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '1992-08-03', 'staff', 2, 6, NULL, 0, NULL),
   (9053, 'สมเกียรติ ภายนอก', 'referee.ext@outside.org', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1988-01-20', 'external', NULL, NULL, NULL, 0, NULL),
+  -- 🆕 7 ต.ค. 2569 — กรรมการภายนอกคนที่สอง เอกสารของเขา "เปิดดูได้จริง" (ของ 9053 เปิดไม่ได้โดยเจตนา)
+  (9054, 'ประเสริฐ เอกสารครบ', 'referee.ext2@outside.org', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1986-03-09', 'external', NULL, NULL, NULL, 0, NULL),
   (9201, 'ปกรณ์ ใจดี', 'p9201@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '2005-01-01', 'student', 1, 1, 1, 0, NULL),
   (9202, 'ธนวัฒน์ วัฒนกุล', 'p9202@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '2004-02-02', 'student', 1, 2, 2, 0, NULL),
   (9203, 'ศุภโชค มณีรัตน์', 'p9203@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '2003-03-03', 'student', 1, 3, 3, 0, NULL),

@@ -44,12 +44,16 @@ services:
     container_name: ltms-minio-init
     depends_on:
       - minio
+    # 🆕 7 ต.ค. — mount ไฟล์ตัวอย่าง เพื่ออัปขึ้น bucket ตอน init (ดู database/fixtures/README.md)
+    volumes:
+      - ../database/fixtures:/fixtures:ro
     entrypoint: >
       /bin/sh -c "
       until mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID} ${S3_SECRET_ACCESS_KEY}; do echo 'waiting for minio...'; sleep 1; done;
       mc mb --ignore-existing local/${S3_BUCKET:-ltms-uploads};
       mc anonymous set download local/${S3_BUCKET:-ltms-uploads}/avatar;
       mc anonymous set download local/${S3_BUCKET:-ltms-uploads}/team_logo;
+      mc cp /fixtures/referee-identity-9054.png local/${S3_BUCKET:-ltms-uploads}/referee_identity/9054/00000000-0000-4000-8000-000000009054.png;
       "
     restart: "no"
 

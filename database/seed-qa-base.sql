@@ -12,22 +12,31 @@
 --
 -- ⚠️ ต้องรันก่อน seed-qa-teams.sql และก่อนสคริปต์ .py ทุกตัว
 --    รันซ้ำได้ — ลบเฉพาะช่วง id ของตัวเองก่อนเสมอ (ทีม 9005–9011, ผู้ใช้
---    9051–9053 และ 9101–9108) ถ้ามีใบสมัคร/แมตช์ค้างอ้างถึงของพวกนี้จะติด
+--    9051–9054 และ 9101–9108) ถ้ามีใบสมัคร/แมตช์ค้างอ้างถึงของพวกนี้จะติด
 --    foreign key ให้ล้างข้อมูลแข่งขันก่อน
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ลบของชุดนี้ก่อน เพื่อให้รันซ้ำได้โดยไม่ชนคีย์
 DELETE FROM team_members WHERE team_id BETWEEN 9005 AND 9011;
 DELETE FROM teams        WHERE team_id BETWEEN 9005 AND 9011;
-DELETE FROM users        WHERE user_id IN (9051,9052,9053,9101,9102,9103,9104,9105,9106,9107,9108);
+DELETE FROM users        WHERE user_id IN (9051,9052,9053,9054,9101,9102,9103,9104,9105,9106,9107,9108);
 
 -- กรรมการสำหรับทดสอบ: referee3/referee4 เป็นกรรมการในระบบ ส่วน referee.ext
 -- เป็นคนนอกมหาวิทยาลัย ใช้ทดสอบเส้นทางที่ต้องแนบเอกสารให้แอดมินตรวจ
 -- ผู้เล่น playerA1–playerD2 จับคู่เป็นทีมแบดมินตัน 4 ทีมตามลำดับ
+--
+-- 🆕 7 ต.ค. 2569 (FE ขอ · ทางเลือก ข) — กรรมการภายนอก **คนที่สอง** 9054
+--    มีไว้ให้มีเอกสารที่ "เปิดดูได้จริง" คู่กับของ 9053 ที่ "เปิดไม่ได้"
+--      9053  referee.ext@outside.org   เอกสารชี้ไป object ที่ **ไม่มีใน MinIO** → 404 โดยเจตนา
+--            (ไว้ทดสอบจอกู้สถานการณ์ตอนไฟล์หาย — 🔴 ห้ามอัปไฟล์ให้มันมี)
+--      9054  referee.ext2@outside.org  เอกสารชี้ไป object ที่ **มีจริง** (minio-init อัปให้)
+--            → ทดสอบลิงก์ presigned ที่เปิดได้ และทดสอบว่าหมดอายุตามเวลาจริง
+--    ⚠️ ของ 9054 ใช้ได้เฉพาะเมื่อ minio-init รันแล้ว — ดู database/fixtures/README.md
 
 INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9051,'วีระชัย นกหวีดทอง','referee3@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','male','1990-04-12','staff',1,1,NULL,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-09-18 03:08:30',NULL);
 INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9052,'อรทัย กฎกติกา','referee4@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','female','1992-08-03','staff',2,6,NULL,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-09-18 03:08:30',NULL);
 INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9053,'สมเกียรติ ภายนอก','referee.ext@outside.org','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','male','1988-01-20','external',NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-09-18 03:08:30',NULL);
+INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9054,'ประเสริฐ เอกสารครบ','referee.ext2@outside.org','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','male','1986-03-09','external',NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-10-07 00:00:00',NULL);
 INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9101,'ผู้เล่น เอหนึ่ง','playerA1@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','male','2004-01-01','student',1,1,2,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-09-17 15:29:46',NULL);
 INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9102,'ผู้เล่น เอสอง','playerA2@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','male','2004-02-01','student',1,1,2,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-09-17 15:29:46',NULL);
 INSERT INTO `users` (`user_id`, `full_name`, `email`, `password_hash`, `gender`, `birth_date`, `user_type`, `faculty_id`, `department_id`, `year`, `profile_image_key`, `contact_info`, `address`, `is_suspended`, `suspended_reason`, `total_points`, `notification_prefs`, `profile_edit_log`, `created_at`, `updated_at`) VALUES (9103,'ผู้เล่น บีหนึ่ง','playerB1@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e','male','2004-03-01','student',1,1,3,NULL,NULL,NULL,0,NULL,0,NULL,NULL,'2026-09-17 15:29:46',NULL);

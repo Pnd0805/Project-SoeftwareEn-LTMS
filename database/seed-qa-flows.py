@@ -51,6 +51,16 @@ ORG = tok("somchai@ku.th")
 SOMYING = tok("somying@ku.th")
 MANA = tok("mana@ku.th")
 EXTERNAL = tok("referee.ext@outside.org")
+EXTERNAL2 = tok("referee.ext2@outside.org")
+
+# 7 ต.ค. 2569 (FE ขอ - ทางเลือก ข) - เอกสารกรรมการภายนอกสองแบบคู่กัน
+#   DOC_MISSING  object ไม่มีใน MinIO -> ลิงก์ดูเอกสารตอบ 404 โดยเจตนา (ห้ามอัปให้มันมี)
+#   DOC_PRESENT  object มีจริง (minio-init อัปจาก database/fixtures/) -> ทดสอบลิงก์ที่เปิดได้
+# รูปคีย์ของ DOC_PRESENT ตรงกับที่ระบบสร้างจริงตอน presign upload
+#   (referee_identity/<userId>/<uuid>.png - ขีดล่าง ไม่ใช่ขีดกลาง) ส่วนของ 9053 เป็นชื่อที่
+#   ตั้งมือตั้งแต่ 18 ก.ย. ไม่ตรงรูปจริง คงไว้เพราะ FE อ้างคีย์นี้ในรายงาน QA แล้ว
+DOC_MISSING = "referee-identity/9053-id-card.jpg"
+DOC_PRESENT = "referee_identity/9054/00000000-0000-4000-8000-000000009054.png"
 
 BADMINTON = 19          # แบดมินตัน ชิงแชมป์มหาวิทยาลัย (มีแมตช์ 6/7/8)
 VOLLEY = 20             # วอลเลย์บอล คู่พิเศษ (แมตช์ 9 กำลังแข่ง)
@@ -63,12 +73,20 @@ def find_match(tournament_id, status):
 
 
 print("\n1) กรรมการภายนอกรอแอดมินตรวจเอกสาร")
-code, invite = call("เชิญกรรมการภายนอก", "POST", f"/tournaments/{BADMINTON}/referees", ORG,
+code, invite = call("เชิญกรรมการภายนอก (เอกสารเปิดไม่ได้)", "POST", f"/tournaments/{BADMINTON}/referees", ORG,
                     {"userId": 9053, "isExternal": True, "matchIds": []})
 if code == 201:
     call("กรรมการภายนอกตอบรับ + แนบเอกสาร", "POST", f"/referee-invitations/{invite['id']}/accept",
-         EXTERNAL, {"matchIds": [], "docs": ["referee-identity/9053-id-card.jpg"]})
-    call("คิวของแอดมินตอนนี้", "GET", "/admin/referee-requests", ORG)
+         EXTERNAL, {"matchIds": [], "docs": [DOC_MISSING]})
+
+# กรรมการภายนอกคนที่สอง - คิวเดียวกัน แต่เอกสารเปิดดูได้จริง => แอดมินเห็นสองแถวเทียบกันได้
+code2, invite2 = call("เชิญกรรมการภายนอกคนที่สอง (เอกสารเปิดได้)", "POST", f"/tournaments/{BADMINTON}/referees", ORG,
+                      {"userId": 9054, "isExternal": True, "matchIds": []})
+if code2 == 201:
+    call("คนที่สองตอบรับ + แนบเอกสารที่มีจริง", "POST", f"/referee-invitations/{invite2['id']}/accept",
+         EXTERNAL2, {"matchIds": [], "docs": [DOC_PRESENT]})
+
+call("คิวของแอดมินตอนนี้", "GET", "/admin/referee-requests", ORG)
 
 print("\n2) คำขอให้กรรมการรับแมตช์เพิ่ม (ยังรอกรรมการตอบ)")
 final_match = find_match(BADMINTON, "scheduled")
