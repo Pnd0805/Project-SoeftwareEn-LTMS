@@ -180,6 +180,69 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
       expect(await Service.feedbackStatus(tournament())).toBe('closed');
     });
 
+    /**
+     * 🆕 FE-1 (7 ต.ค. 2569 · ทางเลือก ข) — `openedBy` บอกว่าเชื่อ `opensAt` เป็นป้ายได้ไหม
+     *
+     * เคสที่เป็นปัญหาจริงคือกิ่งกลาง: `status: 'open'` ขณะที่ `opensAt` ยังเป็นอนาคต
+     * ⇒ จอที่เขียน "เปิดให้รีวิวได้ตั้งแต่ <opensAt>" โกหกคนที่รีวิวได้อยู่แล้ว
+     */
+    describe('openedBy — เปิดเพราะอะไร', () => {
+      it("ถึงวันเริ่มตามกำหนดการ → 'event_start' (opensAt อยู่ในอดีต · FE โชว์ได้)", async () => {
+        vi.setSystemTime(new Date('2026-09-30T17:00:00Z'));
+        expect(await Service.feedbackState(upcoming())).toEqual({ status: 'open', openedBy: 'event_start' });
+      });
+
+      it("ยังไม่ถึงกำหนดการ แต่มีแมตช์แข่งจริงแล้ว → 'first_match' (ห้ามโชว์ opensAt)", async () => {
+        vi.setSystemTime(new Date('2026-09-30T16:59:59Z'));
+        vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(true);
+        const state = await Service.feedbackState(upcoming());
+        expect(state).toEqual({ status: 'open', openedBy: 'first_match' });
+        // 🔴 หลักฐานว่าเคสนี้เกิดได้จริง: opensAt เป็นเวลาใน "อนาคต" ขณะที่ status เปิดแล้ว
+        expect(Service.feedbackOpensAt(upcoming()).getTime()).toBeGreaterThan(Date.now());
+      });
+
+      it("ยังไม่ถึงกำหนดการและไม่มีแมตช์ → not_started + openedBy เป็น null", async () => {
+        vi.setSystemTime(new Date('2026-09-30T16:59:59Z'));
+        expect(await Service.feedbackState(upcoming())).toEqual({ status: 'not_started', openedBy: null });
+      });
+
+      it("ปิดทัวร์แล้วแต่ยังไม่ถึงวันเริ่มตามกำหนดการ → 'completed' (ไม่ยิงหาแมตช์)", async () => {
+        const weird = tournament({ event_start_date: '2026-10-01', completed_at: COMPLETED_AT });
+        vi.setSystemTime(new Date('2026-09-22T00:00:00Z'));
+        expect(await Service.feedbackState(weird)).toEqual({ status: 'open', openedBy: 'completed' });
+        expect(FeedbackRepo.hasPlayedMatch).not.toHaveBeenCalled();
+      });
+
+      /**
+       * 🔴 ลำดับกิ่งสำคัญ: ทัวร์ที่ "ปิดแล้ว **และ** ถึงวันเริ่มไปแล้ว" ต้องได้ 'event_start'
+       *   ไม่ใช่ 'completed' — เพราะคำถามที่ตอบคือ "โชว์ opensAt ได้ไหม" และกรณีนี้โชว์ได้
+       *   (ถ้าใครสลับกิ่ง completed ขึ้นไปก่อน เทสนี้แดง)
+       */
+      it("ปิดแล้วและถึงวันเริ่มไปแล้ว → 'event_start' ไม่ใช่ 'completed'", async () => {
+        expect(await Service.feedbackState(tournament())).toEqual({ status: 'open', openedBy: 'event_start' });
+      });
+
+      it('ปิดรับแล้ว → closed + openedBy เป็น null (ไม่มี "เหตุที่เปิด")', async () => {
+        vi.setSystemTime(new Date('2026-09-27T00:00:01Z'));
+        expect(await Service.feedbackState(tournament())).toEqual({ status: 'closed', openedBy: null });
+      });
+
+      it('GET ส่ง openedBy ออกมาทั้งแบบล็อกอินและไม่ล็อกอิน', async () => {
+        vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(upcoming());
+        vi.mocked(FeedbackRepo.hasPlayedMatch).mockResolvedValue(true);
+        vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+        vi.setSystemTime(new Date('2026-09-30T16:59:59Z'));
+        expect(await Service.getOrganizerFeedback(20)).toMatchObject({ status: 'open', openedBy: 'first_match' });
+        expect(await Service.getOrganizerFeedback(20, 5)).toMatchObject({ status: 'open', openedBy: 'first_match' });
+      });
+
+      /** ★ ทัวร์ที่ completed โดยไม่มี completed_at (ข้อมูลก่อน migration 022) ปิดไปแล้วแน่นอน */
+      it('ทัวร์เก่าที่ completed แต่ไม่มี completed_at → closed + null', async () => {
+        expect(await Service.feedbackState(tournament({ completed_at: null })))
+          .toEqual({ status: 'closed', openedBy: null });
+      });
+    });
+
     it('editing = sending again while open overwrites the rating', async () => {
       vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
       vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(feedbackRow({ rating: 1 })).mockResolvedValueOnce(feedbackRow({ rating: 4 }));

@@ -50,11 +50,42 @@ export function feedbackOpensAt(tournament: TournamentRow): Date {
 
 export type FeedbackStatus = 'not_started' | 'open' | 'closed';
 
+/**
+ * 🆕 FE-1 (7 ต.ค. 2569 · FE เลือกทางเลือก ข) — `openedBy` บอกว่า "เปิดเพราะอะไร"
+ *
+ * ปัญหาที่ FE เจอ: `opensAt` คือ **วันเริ่มทัวร์ตามกำหนดการ** (event_start_date 00:00 เวลาไทย)
+ * แต่รีวิวเปิดได้ก่อนถึงวันนั้นด้วย ถ้ามีแมตช์ที่แข่งจริงแล้ว (มติ 22 ก.ย.)
+ * ⇒ มีสถานะที่ `status: 'open'` ขณะที่ `opensAt` **เป็นเวลาในอนาคต**
+ *   จอที่เขียนว่า "เปิดให้รีวิวได้ตั้งแต่ <opensAt>" จึงโกหกผู้ใช้ที่รีวิวได้อยู่แล้ว
+ *
+ * ทางเลือก ข = ไม่เปลี่ยนความหมายของ `opensAt` (ยังเป็นกำหนดการ) แต่ส่งมาด้วยว่า
+ * **ฟิลด์นั้นเชื่อเป็นป้ายได้ไหม**:
+ *   'event_start'  ถึงกำหนดการแล้ว ⇒ `opensAt` อยู่ในอดีต · FE วางบนป้ายได้ตรง ๆ
+ *   'completed'    ทัวร์ปิดแล้วแต่ยังไม่ถึงวันเริ่มตามกำหนดการ (ข้อมูลเพี้ยน/ยกเลิกแล้วปิด)
+ *   'first_match'  ยังไม่ถึงกำหนดการ แต่มีแมตช์แข่งจริงแล้ว ⇒ **ห้ามโชว์ `opensAt`**
+ *   null           ยังไม่เปิด (`not_started`) หรือปิดแล้ว (`closed`) — ไม่มี "เหตุที่เปิด"
+ *
+ * 🔴 นี่ **ไม่ใช่** "เหตุแรกสุดตามเวลา" — ระบบไม่เก็บว่าแมตช์แรกแข่งเมื่อไร จึงตอบไม่ได้ว่า
+ *   แมตช์แข่งก่อนหรือหลังวันเริ่มตามกำหนดการ · คำถามที่ตอบคือ "ตอนนี้เปิดเพราะอะไร"
+ *   ซึ่งเป็นคำถามที่ FE ต้องใช้จริง (จะโชว์ `opensAt` หรือไม่)
+ * ★ ลำดับกิ่งเรียง `event_start` ไว้ก่อน จึงไม่ยิง `hasPlayedMatch` ในเคสปกติ
+ *   (ทัวร์ที่เริ่มแล้ว = เกือบทั้งหมด) — ผลลัพธ์บูลีนเหมือนของเดิมเป๊ะ
+ */
+export type FeedbackOpenedBy = 'event_start' | 'completed' | 'first_match';
+
+export async function feedbackState(tournament: TournamentRow, now = new Date()):
+        Promise<{ status: FeedbackStatus; openedBy: FeedbackOpenedBy | null }> {
+    if (!isFeedbackOpen(tournament, now)) return { status: 'closed', openedBy: null };
+    if (now >= feedbackOpensAt(tournament)) return { status: 'open', openedBy: 'event_start' };
+    if (tournament.tournament_status === 'completed') return { status: 'open', openedBy: 'completed' };
+    return (await FeedbackRepo.hasPlayedMatch(tournament.tournament_id))
+        ? { status: 'open', openedBy: 'first_match' }
+        : { status: 'not_started', openedBy: null };
+}
+
 /** not_started = ทัวร์ยังไม่เริ่ม · open = ให้คะแนน/แก้ได้ · closed = เลย 7 วันหลังปิดทัวร์ */
 export async function feedbackStatus(tournament: TournamentRow, now = new Date()): Promise<FeedbackStatus> {
-    if (!isFeedbackOpen(tournament, now)) return 'closed';
-    if (tournament.tournament_status === 'completed' || now >= feedbackOpensAt(tournament)) return 'open';
-    return (await FeedbackRepo.hasPlayedMatch(tournament.tournament_id)) ? 'open' : 'not_started';
+    return (await feedbackState(tournament, now)).status;
 }
 
 /**
@@ -125,11 +156,11 @@ export async function submitOrganizerFeedback(tournamentId: number, userId: numb
 export async function getOrganizerFeedback(tournamentId: number, userId?: number) {
     const tournament = await getTournamentOr404(tournamentId);
     const summary = toReviewSummaryDto(await FeedbackRepo.summarizeOrganizerFeedback(tournamentId));
-    const status = await feedbackStatus(tournament);
+    const { status, openedBy } = await feedbackState(tournament);
     const opensAt = feedbackOpensAt(tournament);
     const closesAt = feedbackClosesAt(tournament);
     if (userId === undefined) {
-        return { summary, status, opensAt, closesAt, mine: null, canSubmit: false, items: null };
+        return { summary, status, openedBy, opensAt, closesAt, mine: null, canSubmit: false, items: null };
     }
 
     const mineRow = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
@@ -144,7 +175,7 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
         ? (await FeedbackRepo.listOrganizerFeedback(tournamentId)).map(row => toReviewItemDto(row, isAdmin))
         : null;
 
-    return { summary, status, opensAt, closesAt, mine, canSubmit, items };
+    return { summary, status, openedBy, opensAt, closesAt, mine, canSubmit, items };
 }
 
 // ───────────────────────── โหวต MVP รายแมตช์ (มติ 26 ก.ย. 2569 · OD-23 แก้) ─────────────────────────
