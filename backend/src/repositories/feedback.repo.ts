@@ -351,6 +351,76 @@ export async function clearReported(feedbackId: number, byUserId: number, detail
  * ลบ (soft delete) + audit ในทรานแซกชันเดียว — คืน false ถ้าถูกลบไปแล้ว
  * ใช้ทั้งแอดมิน (`feedback_removed`) และผู้จัดที่ลบความเห็นในทัวร์ตัวเอง (`comment_removed_by_organizer`, มติ 23 ก.ย. ข้อ 6)
  */
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — รายการความเห็น/รีวิวที่ถูกลบ (soft delete)
+ *
+ * ปัญหาที่ทำให้ต้องมี: ระบบมี `DELETE /admin/feedback/:id` และ `POST .../restore` อยู่แล้ว
+ * แต่**ไม่มี endpoint ไหนบอกได้ว่ามีอะไรถูกลบไปบ้าง** ⇒ แอดมินที่ลบไปแล้วหาเลขกลับมา
+ * กู้คืนไม่ได้ ต้องไปขุดจาก /admin/audit-logs แล้วอ่าน entity_id เอง
+ * ⇒ ปุ่ม restore ที่ทำไว้ใช้งานจริงแทบไม่ได้ · นี่คือชิ้นที่หายไปของฟีเจอร์ที่มีอยู่แล้ว
+ *   ไม่ใช่ฟีเจอร์ใหม่
+ *
+ * ★ `removed_at IS NOT NULL` เท่านั้น — ของที่เจ้าตัวลบเองเป็น DELETE จริง
+ *   (`deleteOwnComment`) จึงไม่มีแถวให้ขึ้นที่นี่ตั้งแต่ต้น ซึ่งถูกต้อง: ไม่มีใครควรกู้คืน
+ *   สิ่งที่เจ้าของลบเอง (มติ: เหมือน YouTube/Facebook ที่ลบเองแล้วหายจริง)
+ * ★ เหตุผลการลบเก็บอยู่ใน `audit_logs.details.reason` ไม่ใช่คอลัมน์ในตารางนี้
+ *   ⇒ ต้อง JOIN แถว audit ล่าสุดของการลบ · ถ้าไม่เอาเหตุผลมาด้วย แอดมินจะเห็นแต่ว่า
+ *     "มีอะไรถูกลบ" โดยไม่รู้ว่าทำไม ซึ่งตัดสินใจกู้คืนไม่ได้
+ */
+export type RemovedFeedbackRow = {
+    tournament_feedback_id: number;
+    tournament_id: number;
+    tournament_name: string;
+    feedback_type: 'comment' | 'organizer_feedback' | 'mvp_vote';
+    content: string | null;
+    rating: number | null;
+    removed_at: Date;
+    author_user_id: number;
+    author_full_name: string;
+    author_profile_image_key: string | null;
+    removed_by_user_id: number | null;
+    removed_by_full_name: string | null;
+    removal_reason: string | null;
+    removal_action: string | null;
+};
+
+export async function findRemovedFeedback(
+    scope: { clause: string; params: number[] }, offset: number, pageSize: number
+): Promise<{ rows: RemovedFeedbackRow[]; totalItems: number }> {
+    const latestRemovalAudit =
+        `(SELECT MAX(a2.audit_log_id) FROM audit_logs a2
+           WHERE a2.entity_type = 'tournament_feedback'
+             AND a2.entity_id = f.tournament_feedback_id
+             AND a2.action_type IN ('feedback_removed', 'comment_removed_by_organizer'))`;
+
+    const [rows] = await pool.query<(RemovedFeedbackRow & RowDataPacket)[]>(
+        `SELECT f.tournament_feedback_id, f.tournament_id, t.name AS tournament_name,
+                f.feedback_type, f.content, f.rating, f.removed_at,
+                au.user_id AS author_user_id, au.full_name AS author_full_name,
+                au.profile_image_key AS author_profile_image_key,
+                f.removed_by AS removed_by_user_id, ru.full_name AS removed_by_full_name,
+                JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.reason')) AS removal_reason,
+                al.action_type AS removal_action
+           FROM tournament_feedback f
+           JOIN tournaments t ON t.tournament_id = f.tournament_id
+           JOIN users au ON au.user_id = f.user_id
+           LEFT JOIN users ru ON ru.user_id = f.removed_by
+           LEFT JOIN audit_logs al ON al.audit_log_id = ${latestRemovalAudit}
+          WHERE f.removed_at IS NOT NULL AND t.deleted_at IS NULL${scope.clause}
+          ORDER BY f.removed_at DESC, f.tournament_feedback_id DESC
+          LIMIT ? OFFSET ?`,
+        [...scope.params, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems
+           FROM tournament_feedback f
+           JOIN tournaments t ON t.tournament_id = f.tournament_id
+          WHERE f.removed_at IS NOT NULL AND t.deleted_at IS NULL${scope.clause}`,
+        scope.params
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
 export async function softRemove(
     feedbackId: number, byUserId: number, reason: string | null,
     audit: { actionType: string; details?: Record<string, unknown> } = { actionType: 'feedback_removed' }

@@ -91,6 +91,17 @@ export async function reportFeedback(req: Request, res: Response) {
     res.status(200).json(await FeedbackService.reportFeedback(feedbackId, userId));
 }
 
+/**
+ * 🆕 FE-38 (มติ ค ก) — รายการความเห็น/รีวิวที่ถูกลบ
+ * ★ ด่านขอบเขตอยู่ใน service ไม่ใช่ route — เพราะต้องถามฐานว่าแอดมินคนนี้ scope อะไร
+ *   แล้วแปลงเป็นเงื่อนไข SQL · route มีแค่ requireAdmin (รับทั้งคณะและมหาวิทยาลัย)
+ */
+export async function listRemovedFeedback(req: Request, res: Response) {
+    const userId = requireUserId(req);
+    const { newpage , newpageSize , offset } = parsePagination(req.query['page'] , req.query['pageSize']);
+    res.status(200).json(await FeedbackService.listRemovedFeedback(userId, offset, newpage, newpageSize));
+}
+
 export async function removeFeedback(req: Request, res: Response) {
     const userId = requireUserId(req);
     const feedbackId = parseId(req.params['id'], 'รหัสความเห็น');

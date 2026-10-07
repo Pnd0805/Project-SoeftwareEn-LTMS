@@ -1,6 +1,7 @@
 import express from 'express';
 import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
 import { requireAdmin_U } from '../middlewares/requireAdmin_U.js';
+import { requireAdmin } from '../middlewares/requireAdmin.js';
 import { requireOrganizer } from '../middlewares/requireOrganizer.js';
 import { validate } from '../middlewares/validate.js';
 import { organizerFeedbackSchema, mvpVoteSchema, tournamentCommentSchema } from '../schemas/feedback.schema.js';
@@ -33,5 +34,13 @@ feedbackRouter.post('/:id/report' , requireAuth , Feedback.reportFeedback);
 
 // mount ที่ /admin — แอดมินทั้งมหาวิทยาลัยลบ (soft delete + audit)
 export const adminFeedbackRouter = express.Router();
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — ดูว่ามีอะไรถูกลบไปบ้าง
+ * ★ `requireAdmin` ไม่ใช่ `requireAdmin_U` โดยเจตนา — แอดมินคณะต้องเห็นของคณะตัวเองได้
+ *   แต่ **ลบ/กู้คืนยังเป็น requireAdmin_U ตามเดิม** (สองบรรทัดล่าง) ⇒ เห็นได้ ≠ แก้ได้
+ *   ขอบเขตการเห็นตัดสินใน service (ดู listRemovedFeedback) เพราะต้องแปลงเป็นเงื่อนไข SQL
+ * ★ ต้องประกาศก่อน '/feedback/:id' ไหม: ไม่ต้อง — คนละ method (GET vs DELETE/POST)
+ */
+adminFeedbackRouter.get('/feedback/removed' , requireAuth , requireAdmin , Feedback.listRemovedFeedback);
 adminFeedbackRouter.delete('/feedback/:id' , requireAuth , requireAdmin_U , Feedback.removeFeedback);   // body { reason? } ไม่บังคับ
 adminFeedbackRouter.post('/feedback/:id/restore' , requireAuth , requireAdmin_U , Feedback.restoreFeedback);   // คืนของที่ถูกลบ (เจ้าของอุทธรณ์)

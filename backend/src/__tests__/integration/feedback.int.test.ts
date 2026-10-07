@@ -203,3 +203,129 @@ describe('PATCH /me/rewards/:id/display — ตั้งค่าได้เฉ
     expect(JSON.stringify(res.body).length).toBeGreaterThan(20);
   });
 });
+
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — รายการความเห็น/รีวิวที่ถูกลบ
+ *
+ * ปัญหา: ระบบมีปุ่มลบและปุ่มกู้คืนอยู่แล้ว แต่**ไม่มีที่ไหนบอกว่ามีอะไรถูกลบไปบ้าง**
+ * ⇒ แอดมินที่ลบไปแล้วหาเลขกลับมากู้คืนไม่ได้ ต้องไปขุดจาก /admin/audit-logs
+ * ⇒ ปุ่ม restore ที่ทำไว้ใช้งานจริงแทบไม่ได้ · นี่คือชิ้นที่หายไปของฟีเจอร์ที่มีอยู่แล้ว
+ *
+ * ★ มติ ค ก แยกสองเรื่องออกจากกันชัด ๆ:
+ *     **เห็น** — มหาวิทยาลัยเห็นหมด · คณะเห็นของคณะตัวเอง · root ไม่เห็น (OD-34)
+ *     **ลบ/กู้คืน** — คงไว้ที่แอดมินมหาวิทยาลัยเท่านั้นตามเดิม ไม่ขยายอำนาจใคร
+ *   เทสชุดนี้ต้องตรึงทั้งสองฝั่ง — ถ้าวันหน้าใครเผลอเปิดให้แอดมินคณะกู้คืนได้ เทสจะแดง
+ */
+describe('GET /admin/feedback/removed — รายการของที่ถูกลบ (FE-38)', () => {
+  let uniAdmin: TestUser;
+  let sameFacAdmin: TestUser;
+  let otherFacAdmin: TestUser;
+  let removedComment: number;
+  let removedReview: number;
+
+  const list = (who: TestUser) => as(who).get('/admin/feedback/removed');
+  const idsSeenBy = async (who: TestUser) =>
+    ((await list(who)).body.items as { id: number }[]).map(i => i.id).sort();
+
+  beforeEach(async () => {
+    const tourFaculty = (await one<{ organizing_faculty_id: number }>(
+      'SELECT organizing_faculty_id FROM tournaments WHERE tournament_id = ?', [tour]))!.organizing_faculty_id;
+    uniAdmin = await createUser();
+    sameFacAdmin = await createUser();
+    otherFacAdmin = await createUser();
+    await makeAdmin(uniAdmin.id, 'university_wide');
+    await makeAdmin(sameFacAdmin.id, 'faculty', tourFaculty);
+    await makeAdmin(otherFacAdmin.id, 'faculty', await createFaculty());
+
+    // ① คอมเมนต์ที่ผู้จัดลบ
+    expect((await as(fan).post(`/tournaments/${tour}/comments`).send({ content: 'ไม่สุภาพ' })).status).toBeLessThan(300);
+    removedComment = (await feedbackRows('comment'))[0]!.tournament_feedback_id;
+    expect((await as(organizer).delete(`/tournaments/${tour}/comments/${removedComment}`).send({ reason: 'ใช้คำหยาบ' })).status).toBeLessThan(300);
+
+    // ② รีวิวที่มีคะแนน ซึ่งแอดมินมหาวิทยาลัยลบ
+    await testDb().query('UPDATE tournaments SET event_start_date = CURDATE() - INTERVAL 1 DAY WHERE tournament_id = ?', [tour]);
+    expect((await as(player).post(`/tournaments/${tour}/feedback`).send({ rating: 1, content: 'สแปม' })).status).toBeLessThan(300);
+    removedReview = (await feedbackRows('organizer_feedback'))[0]!.tournament_feedback_id;
+    expect((await as(uniAdmin).delete(`/admin/feedback/${removedReview}`).send({ reason: 'เป็นสแปม' })).status).toBeLessThan(300);
+  });
+
+  it('แอดมินมหาวิทยาลัยเห็นทั้งหมด พร้อมเหตุผล ผู้ลบ และบทบาทของผู้ลบ', async () => {
+    const res = await list(uniAdmin);
+
+    expect(res.status).toBe(200);
+    expect(await idsSeenBy(uniAdmin)).toEqual([removedComment, removedReview].sort());
+    const byId = (id: number) => res.body.items.find((i: { id: number }) => i.id === id);
+    // ★ เหตุผลอยู่ใน audit_logs ไม่ใช่คอลัมน์ในตาราง — ถ้า JOIN พลาด ค่านี้จะเป็น null
+    expect(byId(removedComment)).toMatchObject({
+      feedbackType: 'comment', removalReason: 'ใช้คำหยาบ',
+      removedByRole: 'organizer', removedBy: { id: organizer.id }, canRestore: true,
+    });
+    expect(byId(removedReview)).toMatchObject({
+      feedbackType: 'organizer_feedback', rating: 1, removalReason: 'เป็นสแปม',
+      removedByRole: 'admin', removedBy: { id: uniAdmin.id }, canRestore: true,
+    });
+  });
+
+  it('แอดมินคณะเจ้าภาพเห็นของคณะตัวเอง แต่กู้คืนไม่ได้ (canRestore false)', async () => {
+    const res = await list(sameFacAdmin);
+
+    expect(res.status).toBe(200);
+    expect(await idsSeenBy(sameFacAdmin)).toEqual([removedComment, removedReview].sort());
+    expect(res.body.items.every((i: { canRestore: boolean }) => i.canRestore === false)).toBe(true);
+  });
+
+  it('แอดมินคณะอื่นไม่เห็นอะไรเลย', async () => {
+    expect(await idsSeenBy(otherFacAdmin)).toEqual([]);
+  });
+
+  /**
+   * 🔴 root อ่านไม่ได้ ต้องเป็น **403 ไม่ใช่รายการว่าง** — มติ 28 ก.ย. (OD-34)
+   *   root เป็นคนแต่งตั้ง+คนตรวจ ไม่ใช่คนปฏิบัติงาน · ของที่ root เห็นคือคิวค้างแบบไม่มีเนื้อหา
+   *   รายการว่างจะอ่านเหมือน "ไม่มีอะไรถูกลบ" ซึ่งเป็นคำตอบผิด ไม่ใช่การปฏิเสธ
+   */
+  it('root → 403 (ไม่ใช่รายการว่าง)', async () => {
+    const root = await createUser();
+    await makeAdmin(root.id, 'root');
+
+    const res = await list(root);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('INSUFFICIENT_ADMIN_SCOPE');
+  });
+
+  it.each([
+    ['ผู้ใช้ทั่วไป', () => fan],
+    ['ผู้จัดทัวร์', () => organizer],
+  ])('%s → 403', async (_label, who) => {
+    expect((await list(who())).status).toBe(403);
+  });
+
+  it('ไม่ล็อกอิน → 401', async () => {
+    expect((await anon.get('/admin/feedback/removed')).status).toBe(401);
+  });
+
+  /**
+   * ★ ของที่ **เจ้าตัวลบเอง** ต้องไม่ขึ้นที่นี่ — เส้นนั้นเป็น DELETE จริง ไม่มีแถวเหลือ
+   *   (มติ 7 ต.ค.: ลบเองแล้วหายจริงเหมือน YouTube/Facebook ⇒ ไม่มีใครควรกู้คืนได้)
+   */
+  it('คอมเมนต์ที่เจ้าตัวลบเอง → ไม่ขึ้นในรายการ', async () => {
+    expect((await as(fan2).post(`/tournaments/${tour}/comments`).send({ content: 'เดี๋ยวลบเอง' })).status).toBeLessThan(300);
+    expect((await as(fan2).delete(`/tournaments/${tour}/comments/me`)).status).toBeLessThan(300);
+
+    expect(await idsSeenBy(uniAdmin)).toEqual([removedComment, removedReview].sort());
+  });
+
+  it('กู้คืนจากเลขที่เห็นในรายการได้จริง → หายออกจากรายการ', async () => {
+    expect((await as(uniAdmin).post(`/admin/feedback/${removedReview}/restore`)).status).toBeLessThan(300);
+
+    expect(await idsSeenBy(uniAdmin)).toEqual([removedComment]);
+  });
+
+  /** ★ ด่านอำนาจต้องไม่ขยายตามการมองเห็น — เห็นได้ ≠ แก้ได้ */
+  it('แอดมินคณะกู้คืนไม่ได้ → 403 · ยังถูกลบอยู่', async () => {
+    const res = await as(sameFacAdmin).post(`/admin/feedback/${removedReview}/restore`);
+
+    expect(res.status).toBe(403);
+    expect(await idsSeenBy(sameFacAdmin)).toEqual([removedComment, removedReview].sort());
+  });
+});

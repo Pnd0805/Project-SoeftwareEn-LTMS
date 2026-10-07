@@ -12,6 +12,8 @@ import * as NotificationService from './notification.service.js';
 import type { NotificationInput } from '../repositories/notification.repo.js';
 import { AppError } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
+import { adminScopeSqlOrNull } from '../utils/adminScope.js';
+import { toUserRef } from '../mappers/user.mapper.js';
 
 /**
  * C6 — "รีวิวจากผู้ลงแข่ง" (organizer_feedback) + "โหวต MVP" (mvp_vote) · spec 08 §4–5 · มติทีม 21 ก.ย. 2569 (แก้ข้อ 1–2 วันเดียวกัน)
@@ -564,6 +566,64 @@ export async function removeFeedback(feedbackId: number, adminUserId: number, re
 }
 
 /** แอดมินคืนความเห็นที่ถูกลบ (มติ 23 ก.ย. ข้อ 6.3.3) — ใช้ตอนเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์ */
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — `GET /admin/feedback/removed`
+ *
+ * มติ ค ก: **การมองเห็น**แบ่งตามขอบเขต (มหาวิทยาลัยเห็นหมด · คณะเห็นของคณะตัวเอง)
+ * ส่วน**การลบและกู้คืน**คงไว้ที่แอดมินมหาวิทยาลัยเท่านั้นตามเดิม ไม่ขยายอำนาจใคร
+ *
+ * เหตุผลที่แยกสองเรื่องนี้ออกจากกัน (คุยกันแล้ว 7 ต.ค.):
+ *   ① ปัญหาที่แก้คือ "ลบไปแล้วหาไม่เจอ" ⇒ แก้ด้วยการมองเห็น ไม่ต้องแตะอำนาจ
+ *   ② แอดมินคณะอยู่ใกล้ผู้จัดมากกว่าแอดมินมหาวิทยาลัย — ให้เขาลบ/กู้รีวิวของทัวร์
+ *      คณะตัวเองได้ จะเปิดรูที่กฎ "ผู้จัดลบรีวิวตัวเองไม่ได้" ปิดอยู่กลับมาบางส่วน
+ *   ③ กฎ "อำนาจล่างไม่ย้อนอำนาจบน" ยังมีคำถามค้างสองข้อ (ของที่ *ผู้จัด* ลบ กู้ได้ไหม ·
+ *      ตัดสินจากสิทธิ์ตอนลบหรือสิทธิ์ปัจจุบัน) ⇒ ยังไม่ตัดสิน จึงไม่เปิดอำนาจไปก่อน
+ * ★ แอดมินคณะยัง **เห็น** ว่าในคณะตัวเองมีอะไรถูกลบ ซึ่งเป็นข้อมูลที่เขาควรรู้
+ *   ถ้าอยากกู้คืนให้ขอแอดมินมหาวิทยาลัย — ช้ากว่าแต่ไม่มีรูข้างบน
+ *
+ * 🔴 root อ่านไม่ได้ (403) — ไม่ใช่ได้รายการว่าง · เนื้อหาความเห็นที่ถูกลบเป็นข้อมูลที่
+ *   root ไม่ควรเห็นตามมติ OD-34 · กฎอยู่ที่ `adminScopeSqlOrNull` ที่เดียว
+ */
+export async function listRemovedFeedback(userId: number, offset: number, page: number, pageSize: number) {
+    const admin = await AdminRepo.findAdminByUserId(userId);
+    if (!admin) {
+        throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูรายการความเห็นที่ถูกลบ');
+    }
+    const scope = adminScopeSqlOrNull(admin, 't');
+    if (scope === null) {
+        throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'สิทธิ์ผู้ดูแลระบบของคุณไม่ครอบคลุมขอบเขตนี้');
+    }
+
+    const { rows, totalItems } = await FeedbackRepo.findRemovedFeedback(scope, offset, pageSize);
+    return {
+        items: rows.map(row => ({
+            id: row.tournament_feedback_id,
+            tournamentId: row.tournament_id,
+            tournamentName: row.tournament_name,
+            feedbackType: row.feedback_type,
+            content: row.content,
+            rating: row.rating,
+            author: toUserRef({ user_id: row.author_user_id, full_name: row.author_full_name,
+                                profile_image_key: row.author_profile_image_key }),
+            removedAt: row.removed_at.toISOString(),
+            removedBy: row.removed_by_user_id === null ? null
+                     : { id: row.removed_by_user_id, fullName: row.removed_by_full_name },
+            removalReason: row.removal_reason,
+            /**
+             * ★ บอกด้วยว่า "ใครลบ" ในเชิงบทบาท ไม่ใช่แค่ชื่อคน — แอดมินคณะต้องแยกได้ว่า
+             *   ของที่ผู้จัดลบ กับของที่แอดมินมหาวิทยาลัยลบ เป็นสองเรื่องคนละน้ำหนัก
+             *   (และเป็นข้อมูลที่ต้องใช้ถ้าวันหน้าทีมตัดสินเรื่องสิทธิ์กู้คืน)
+             */
+            removedByRole: row.removal_action === 'comment_removed_by_organizer' ? 'organizer' as const
+                         : row.removal_action === 'feedback_removed' ? 'admin' as const
+                         : null,
+            /** ★ กู้คืนได้เฉพาะแอดมินมหาวิทยาลัย — ส่งมาให้ FE ซ่อนปุ่มได้ตรง ๆ ไม่ต้องเดา */
+            canRestore: admin.scope_type === 'university_wide'
+        })),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
 export async function restoreFeedback(feedbackId: number, adminUserId: number) {
     const feedback = await FeedbackRepo.findById(feedbackId);
     if (!feedback) {

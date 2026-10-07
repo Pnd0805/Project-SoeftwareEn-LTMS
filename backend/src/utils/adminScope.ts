@@ -12,6 +12,29 @@ import type { AdminScopeRow } from '../types/db.js';
  *   เพราะ middleware ต้องใช้กฎเดียวกัน และ repository/middleware เรียก service ไม่ได้
  *   ⇒ ตรรกะล้วนอยู่ใน utils/ ตามโครงของโปรเจกต์
  */
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — กฎขอบเขตเดียวกับ `adminOverseesTournament` แต่เป็น SQL
+ *
+ * ใช้กับ **รายการ** ที่ต้องกรองในฐาน (กรองใน TS ไม่ได้ เพราะต้องแบ่งหน้าให้ถูก)
+ * คืน `null` = คนนี้อ่านรายการนี้ไม่ได้เลย ⇒ ผู้เรียกต้องตอบ 403 ไม่ใช่คืนรายการว่าง
+ *
+ * ★ root ได้ `null` — ตรงกับ `adminOverseesTournament` ที่คืน false ให้ root
+ *   ไม่ใช่ของแถม แต่เป็นมติ 28 ก.ย. (OD-34): root แต่งตั้ง+ตรวจ ไม่ใช่คนปฏิบัติงาน
+ *   ของที่ root เห็นคือคิวค้างแบบไม่มีเนื้อหา (/admin/oversight/stalled)
+ * ★ แอดมินคณะที่ไม่มี `faculty_id` ได้ `null` ด้วย — ข้อมูลไม่ครบต้องไม่กลายเป็น "เห็นทุกคณะ"
+ *   (เคสนี้เจอจริงตอนทำ B6: fixture ที่ไม่ได้ตั้งคณะเลย กลับผ่านด่าน)
+ *
+ * 🔴 ถ้าแก้ตัวนี้ ต้องแก้ `adminOverseesTournament` ให้ตรงกันด้วย — สองตัวตอบคำถาม
+ *   เดียวกันคนละรูป · `tournament.repo.adminScopeWhere` เป็นสำเนาเก่าที่ยังไม่ได้ย้ายมา
+ * @param alias ชื่อย่อของตาราง `tournaments` ใน query ที่เรียก
+ */
+export function adminScopeSqlOrNull(admin : AdminScopeRow , alias = 't'): { clause : string; params : number[] } | null {
+    if(admin.scope_type === 'university_wide') return { clause : '' , params : [] };
+    if(admin.scope_type !== 'faculty') return null;
+    if(typeof admin.faculty_id !== 'number') return null;
+    return { clause : ` AND ${alias}.organizing_faculty_id = ?` , params : [admin.faculty_id] };
+}
+
 export function adminOverseesTournament(admin : AdminScopeRow , tournament : { organizing_faculty_id : number | null }): boolean {
     if(admin.scope_type === 'university_wide') return true;
     if(admin.scope_type !== 'faculty') return false;
