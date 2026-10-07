@@ -1,4 +1,4 @@
-import type { MyInvitationRow, AdminUserRow } from '../repositories/user.repo.js';
+import type { MyInvitationRow, AdminUserRow, UserSearchRow } from '../repositories/user.repo.js';
 import type { UserRow, AdminScopeRow } from '../types/db.js';
 import type { TeamRef } from './team.mapper.js';
 import { toTeamRef } from './team.mapper.js';
@@ -140,6 +140,28 @@ export function toUserRef(row: Pick<UserRow , 'user_id' | 'full_name' | 'profile
   };
 }
 
+
+/**
+ * 🆕 BE-19 / FE-11 (7 ต.ค. 2569 · มติ ⑫ ก) — DTO ของ "ผลค้นหาผู้ใช้" เท่านั้น
+ *
+ * ★ ตั้งใจ**ไม่**เติมฟิลด์เข้า `UserRefDto` — ตัวนั้นถูกใช้ซ้ำทั่วระบบ (ผู้จัด · ผู้เชิญ ·
+ *   ผู้ส่งผล · ผู้ยื่นคำขอ ฯลฯ) ถ้าเติมที่นั่น คณะและชั้นปีจะไปโผล่ใน response อีกหลายสิบที่
+ *   ที่ไม่มีใครขอ และกลายเป็นการเปิดข้อมูลโดยไม่ได้ตั้งใจ
+ * ★ `facultyName` ไม่ใช่ `facultyId` — คนเลือกจากจอ ไม่ได้เลือกจากเลข และ FE จะได้
+ *   ไม่ต้องยิง /faculties มาเทียบเองทุกครั้ง
+ */
+export type UserSearchDto = UserRefDto & {
+  facultyName : string | null;
+  year : number | null;
+};
+
+export function toUserSearchDto(row : UserSearchRow): UserSearchDto {
+  return {
+    ...toUserRef(row),
+    facultyName : row.faculty_name,
+    year : row.year
+  };
+}
 
 export function toPublicUserDto(
   row: UserRow,

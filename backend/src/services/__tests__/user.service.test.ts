@@ -33,6 +33,8 @@ vi.mock('../../repositories/adminScope.repo.js', () => ({
 }));
 
 vi.mock('../../repositories/userReport.repo.js', () => ({
+  // 🆕 BE-38 (7 ต.ค. 2569) — ด่านกันรายงานซ้ำ · ค่าเริ่ม null = ยังไม่มีเรื่องค้าง
+  findPendingByPair: vi.fn(() => Promise.resolve(null)),
   create: vi.fn(),
   findByIdJoined: vi.fn(),
 }));
@@ -44,6 +46,8 @@ vi.mock('../../utils/checkExist.js', () => ({
 vi.mock('../../mappers/user.mapper.js', () => ({
   toPublicUserDto: vi.fn(),
   toUserRef: vi.fn(),
+  // 🆕 BE-19 (7 ต.ค. 2569) — mapper ของผลค้นหา · ไม่ใส่ = ไฟล์นี้พังทั้งไฟล์
+  toUserSearchDto: vi.fn(),
   toMeDto: vi.fn(),
   toGetMyInvitation: vi.fn(),
 }));
@@ -80,7 +84,7 @@ import * as CareerRepo from '../../repositories/career.repo.js';
 import * as AdminRepo from '../../repositories/adminScope.repo.js';
 import * as UserReportRepo from '../../repositories/userReport.repo.js';
 import { checkUser } from '../../utils/checkExist.js';
-import { toPublicUserDto, toUserRef, toMeDto, toGetMyInvitation } from '../../mappers/user.mapper.js';
+import { toPublicUserDto, toUserRef, toMeDto, toGetMyInvitation , toUserSearchDto } from '../../mappers/user.mapper.js';
 import { toTeamRef } from '../../mappers/team.mapper.js';
 import { toUserStatsDto } from '../../mappers/stat.mapper.js';
 import { toCareerTournamentDto } from '../../mappers/career.mapper.js';
@@ -100,6 +104,7 @@ const mockedUserReportRepo = vi.mocked(UserReportRepo);
 const mockedCheckUser = vi.mocked(checkUser);
 const mockedToPublicUserDto = vi.mocked(toPublicUserDto);
 const mockedToUserRef = vi.mocked(toUserRef);
+const mockedToUserSearchDto = vi.mocked(toUserSearchDto);
 const mockedToMeDto = vi.mocked(toMeDto);
 const mockedToGetMyInvitation = vi.mocked(toGetMyInvitation);
 const mockedToTeamRef = vi.mocked(toTeamRef);
@@ -452,20 +457,30 @@ describe('searchUsers', () => {
     });
   });
 
+  /**
+   * 🔴 แก้ 7 ต.ค. 2569 (BE-19 / FE-11 · มติ ⑫ ก) — ผลค้นหาต้องแยกคนชื่อซ้ำได้
+   *   เดิม mapper คือ `toUserRef` (id/fullName/avatarUrl) ⇒ "วรรณิดา ทองคำ" สองแถว
+   *   ที่หน้าตาเหมือนกันทุกอย่าง · ตอนนี้ใช้ `toUserSearchDto` ซึ่งเติมคณะและชั้นปี
+   * ★ เทสนี้ยังตรึงสิ่งเดิมไว้ (เรียก repo ด้วย query ที่ถูก · ส่งผลครบทุกแถว)
+   *   แต่ยืนยัน mapper ตัวใหม่ — ถ้ามีคนเปลี่ยนกลับไป `toUserRef` เทสนี้จะแดง
+   */
   it('returns mapped results for a valid query', async () => {
     const rows = [
-      makeUser({ user_id: 1, full_name: 'Alice' }),
-      makeUser({ user_id: 2, full_name: 'Alicia' }),
+      { ...makeUser({ user_id: 1, full_name: 'Alice' }), faculty_name: 'วิศวกรรมศาสตร์', year: 2 },
+      { ...makeUser({ user_id: 2, full_name: 'Alicia' }), faculty_name: null, year: null },
     ];
     mockedUserRepo.searchByName.mockResolvedValue(rows);
-    mockedToUserRef
-      .mockReturnValueOnce({ id: 1, fullName: 'Alice' } as any)
-      .mockReturnValueOnce({ id: 2, fullName: 'Alicia' } as any);
+    mockedToUserSearchDto
+      .mockReturnValueOnce({ id: 1, fullName: 'Alice', facultyName: 'วิศวกรรมศาสตร์', year: 2 } as any)
+      .mockReturnValueOnce({ id: 2, fullName: 'Alicia', facultyName: null, year: null } as any);
 
     const result = await userService.searchUsers('ali');
 
     expect(mockedUserRepo.searchByName).toHaveBeenCalledWith('ali');
-    expect(result).toEqual({ items: [{ id: 1, fullName: 'Alice' }, { id: 2, fullName: 'Alicia' }] });
+    expect(result).toEqual({ items: [
+      { id: 1, fullName: 'Alice', facultyName: 'วิศวกรรมศาสตร์', year: 2 },
+      { id: 2, fullName: 'Alicia', facultyName: null, year: null },
+    ] });
   });
 
   it('returns an empty items array when no users match', async () => {

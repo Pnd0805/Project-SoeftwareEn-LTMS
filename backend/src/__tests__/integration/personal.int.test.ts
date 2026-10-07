@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { anon, as } from './helpers/api.js';
-import { all, insert, one } from './helpers/db.js';
+import { all, insert, one, testDb } from './helpers/db.js';
 import { createFaculty, createSportType, createTeam, createTournament, createUser, type TestUser } from './helpers/factories.js';
 
 /**
@@ -77,6 +77,30 @@ describe('โปรไฟล์ — ข้อมูลส่วนตัวไ�
     expect(JSON.stringify(res.body)).not.toContain(alice.email);
   });
 
+  /**
+   * 🆕 BE-19 / FE-11 (7 ต.ค. 2569 · มติ ⑫ ก) — ผลค้นหามีแค่ชื่อ แยกคนชื่อซ้ำไม่ได้
+   *
+   * FE เจอ "วรรณิดา ทองคำ" สองแถวที่หน้าตาเหมือนกันทุกอย่างตอนเชิญเข้าทีม
+   * ⇒ หัวหน้าทีมเชิญผิดคนแล้วไม่มีทางรู้
+   *
+   * ★ เพิ่มคณะและชั้นปี ซึ่ง**แสดงบนโปรไฟล์สาธารณะอยู่แล้ว** ⇒ ไม่ได้เปิดข้อมูลใหม่
+   *   เทส "ไม่มีอีเมลในผลลัพธ์" ข้างบนยังต้องเขียวต่อไป — นั่นคือเส้นที่ไม่ข้าม
+   */
+  it('ผลค้นหามีคณะและชั้นปี เพื่อแยกคนชื่อซ้ำ', async () => {
+    const faculty = await createFaculty();
+    const twin = await createUser({ fullName: 'Alice ทดสอบ', facultyId: faculty, year: 3 });
+
+    const res = await as(bob).get('/users/search?q=Alice');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(2);
+    expect(res.body.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: twin.id, facultyName: expect.any(String), year: 3 }),
+      // ★ alice ไม่มีคณะ/ชั้นปี → ต้องเป็น null ไม่ใช่หายไปจาก object (FE อ่านคีย์ตรง ๆ)
+      expect.objectContaining({ id: alice.id, facultyName: null, year: null }),
+    ]));
+  });
+
   it('ตัวเองดู /me → เห็นข้อมูลส่วนตัวของตัวเอง', async () => {
     const res = await as(alice).get('/me');
     expect(res.body).toMatchObject({ email: alice.email, birthDate: '2003-05-05' });
@@ -143,6 +167,43 @@ describe('ติดตาม และรายงานผู้ใช้', () 
     expect((await as(alice).post(`/users/${bob.id}/report`).send({ reason: 'พูดจาไม่สุภาพ' })).status).toBeLessThan(300);
     expect(await one('SELECT reported_by, target_user_id FROM user_reports'))
       .toEqual({ reported_by: alice.id, target_user_id: bob.id });
+  });
+
+  /**
+   * 🆕 BE-38 (7 ต.ค. 2569 · มติ ⑦ ค) — คนเดิมรายงานเป้าหมายเดิมซ้ำได้ 201 ทั้งสองครั้ง
+   * ⇒ คิวแอดมินมีเรื่องเดียวกันจากคนเดียวกันหลายใบ · ตัดสินใบหนึ่งแล้วอีกใบยังค้าง
+   */
+  it('รายงานคนเดิมซ้ำขณะเรื่องยังรอพิจารณา → 409 · มีใบเดียว', async () => {
+    expect((await as(alice).post(`/users/${bob.id}/report`).send({ reason: 'พูดจาไม่สุภาพ' })).status).toBeLessThan(300);
+
+    const again = await as(alice).post(`/users/${bob.id}/report`).send({ reason: 'พูดจาไม่สุภาพ' });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('REPORT_ALREADY_PENDING');
+
+    expect(await all('SELECT 1 FROM user_reports')).toHaveLength(1);
+  });
+
+  /**
+   * ★ ด่านนี้ต้องแคบ — ผูกกับ **คู่** (ผู้รายงาน, เป้าหมาย) ไม่ใช่เป้าหมายเดี่ยว
+   *   คนละคนรายงานคนเดียวกันต้องได้ เพราะจำนวนผู้รายงานเป็นข้อมูลที่แอดมินใช้ตัดสิน
+   *   ถ้าเทสนี้แดง แปลว่าด่านกว้างเกินและปิดปากคนอื่นไปด้วย
+   */
+  it('คนละคนรายงานคนเดียวกัน → ได้ทั้งสองใบ', async () => {
+    const carol = await createUser({ fullName: 'Carol ทดสอบ' });
+
+    expect((await as(alice).post(`/users/${bob.id}/report`).send({ reason: 'เหตุผล A' })).status).toBeLessThan(300);
+    expect((await as(carol).post(`/users/${bob.id}/report`).send({ reason: 'เหตุผล B' })).status).toBeLessThan(300);
+
+    expect(await all('SELECT 1 FROM user_reports')).toHaveLength(2);
+  });
+
+  /** ★ ตัดสินแล้วรายงานใหม่ได้ — พฤติกรรมอาจเกิดซ้ำจริง ด่านต้องไม่ปิดถาวร */
+  it('เรื่องเดิมถูกตัดสินแล้ว → รายงานใหม่ได้', async () => {
+    expect((await as(alice).post(`/users/${bob.id}/report`).send({ reason: 'ครั้งแรก' })).status).toBeLessThan(300);
+    await testDb().query("UPDATE user_reports SET user_report_status = 'rejected'");
+
+    expect((await as(alice).post(`/users/${bob.id}/report`).send({ reason: 'เกิดอีกแล้ว' })).status).toBeLessThan(300);
+    expect(await all('SELECT 1 FROM user_reports')).toHaveLength(2);
   });
 });
 

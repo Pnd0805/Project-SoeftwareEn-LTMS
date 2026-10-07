@@ -10,7 +10,7 @@ import * as UploadService from './upload.service.js';
 import { AppError } from '../utils/AppError.js';
 import { checkUser } from '../utils/checkExist.js';
 
-import { toPublicUserDto , toUserRef , toMeDto, toGetMyInvitation} from '../mappers/user.mapper.js';
+import { toPublicUserDto , toUserRef , toUserSearchDto , toMeDto, toGetMyInvitation} from '../mappers/user.mapper.js';
 import { toTeamRef } from '../mappers/team.mapper.js';
 import { toUserStatsDto , hiddenUserStatsDto } from '../mappers/stat.mapper.js';
 import { canSeeProfileStats } from '../utils/profileStats.js';
@@ -105,7 +105,8 @@ export async function searchUsers(userName : string){
         throw new AppError(400 , "QUERY_TOO_SHORT" , "กรุณาพิมพ์อย่างน้อย 3 ตัวอักษร");
     }
     const matchName = await UserRepo.searchByName(userName);
-    const data = matchName.map(toUserRef);
+    // BE-19 — ส่งคณะ/ชั้นปีมาด้วยเพื่อให้แยกคนชื่อซ้ำได้ (เหตุผลที่เลือกสองฟิลด์นี้อยู่ที่ repo)
+    const data = matchName.map(toUserSearchDto);
     return { items : data};
 }
 
@@ -154,6 +155,20 @@ export async function fileUserReport(reporterId : number , targetUserId : number
     if(evidence.some(key => !key.startsWith(`report_evidence/${reporterId}/`))){
         throw new AppError(400 , "VALIDATION_FAILED" , "ไฟล์หลักฐานไม่ใช่ไฟล์ที่คุณอัปโหลดไว้" ,
             { fields : { evidence : 'ต้องเป็นไฟล์ที่อัปโหลดด้วย purpose report_evidence ของบัญชีคุณเอง' } });
+    }
+
+    /**
+     * 🔴 BE-38 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — คนเดิมรายงานเป้าหมายเดิมซ้ำได้ 201 ทั้งสองครั้ง
+     *   ⇒ คิวแอดมินมีเรื่องเดียวกันหลายใบจากคนเดียวกัน และตัดสินใบหนึ่งแล้วอีกใบยังค้าง
+     * ★ ผูกกับ **คู่** (ผู้รายงาน, เป้าหมาย) — คนละคนรายงานคนเดียวกันยังได้ และควรได้
+     *   เพราะจำนวนผู้รายงานเป็นข้อมูลที่แอดมินใช้ตัดสิน
+     * ★ ตัดสินแล้ว (approved/rejected) รายงานใหม่ได้ — พฤติกรรมอาจเกิดซ้ำจริง
+     */
+    const pendingReport = await UserReportRepo.findPendingByPair(reporterId , targetUserId);
+    if(pendingReport){
+        throw new AppError(409 , "REPORT_ALREADY_PENDING" ,
+            "คุณรายงานผู้ใช้คนนี้ไว้แล้วและเรื่องยังรอแอดมินพิจารณา" ,
+            { reportId : pendingReport.user_report_id });
     }
 
     const reportId = await UserReportRepo.create(reporterId , targetUserId , reason , evidence);

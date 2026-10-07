@@ -44,10 +44,29 @@ export async function create(data: NewUser): Promise<number>{
 }
 
 /** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · ไม่คืนอีเมลใน response จึงเดาอีเมลคนอื่นจากผลลัพธ์ไม่ได้ */
-export async function searchByName(userName : string) : Promise<Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'>[]>{
-    const [ rows ] = await pool.query<(UserRow & RowDataPacket)[]>(`SELECT user_id , full_name , profile_image_key FROM users
-                                                                    WHERE (full_name LIKE ? OR email LIKE ?) AND ${notSuspendedSql('users')}
-                                                                    ORDER BY full_name LIMIT 20` , [`%${userName}%`, `${userName}%`]);
+export type UserSearchRow = Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key' | 'year'> & {
+    faculty_name : string | null;
+};
+
+/**
+ * 🔴 BE-19 / FE-11 (แก้ 7 ต.ค. 2569 · มติ ⑫ ก) — ผลค้นหามีแค่ชื่อ แยกคนชื่อซ้ำไม่ได้
+ *
+ * ตอนเชิญเข้าทีม FE เจอ "วรรณิดา ทองคำ" สองแถวที่หน้าตาเหมือนกันทุกอย่าง
+ * ⇒ หัวหน้าทีมเชิญผิดคนแล้วไม่มีทางรู้
+ *
+ * ★ เพิ่ม **คณะและชั้นปี** ไม่ใช่อีเมล — สองอย่างนี้แสดงอยู่บนโปรไฟล์สาธารณะแล้ว
+ *   ⇒ ไม่ได้เปิดข้อมูลใหม่แม้แต่ฟิลด์เดียว · อีเมลปิดบางส่วน (som***@ku.th) แยกคนได้แม่นกว่า
+ *   แต่เป็นข้อมูลติดต่อ และเดาอีเมลเต็มจากชื่อได้ไม่ยาก ⇒ ไม่คุ้มกับที่ได้
+ *   (FE เขียนมาเองว่า "safe disambiguation data, not private contact data")
+ * ★ LEFT JOIN — บัญชีภายนอกและ root ไม่มีคณะ ต้องยังขึ้นในผลค้นหา
+ */
+export async function searchByName(userName : string) : Promise<UserSearchRow[]>{
+    const [ rows ] = await pool.query<(UserSearchRow & RowDataPacket)[]>(
+        `SELECT u.user_id , u.full_name , u.profile_image_key , u.year , f.name AS faculty_name
+           FROM users u
+           LEFT JOIN faculties f ON f.faculty_id = u.faculty_id
+          WHERE (u.full_name LIKE ? OR u.email LIKE ?) AND ${notSuspendedSql('u')}
+          ORDER BY u.full_name LIMIT 20` , [`%${userName}%`, `${userName}%`]);
     return rows;
 }; 
 

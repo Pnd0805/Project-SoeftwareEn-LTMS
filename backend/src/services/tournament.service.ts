@@ -683,6 +683,21 @@ export async function requestAmendment(tournamentId: number, userId: number, inp
     const changes = validateAmendmentChanges(input.requestedChanges);
     validateAmendmentAgainstTournament(tournament, changes);
     await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);   // BE-36 — บอกเร็ว ด่านจริงอยู่ตอนอนุมัติ
+
+    /**
+     * 🔴 BE-38 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — ยื่นคำขอแก้ไขเนื้อหาเดิมซ้ำได้ 201 ทั้งสองครั้ง
+     *   และใบที่สองยังค้างหลังใบแรกอนุมัติแล้ว (baseline ทัวร์ 14 มี 3 ใบเหมือนกันค้างอยู่)
+     *   ⇒ แอดมินอ่านเรื่องเดียวกันหลายรอบ และอนุมัติใบที่สองจะทับการแก้ของใบแรกโดยไม่มีใครรู้
+     * ★ หนึ่งใบค้างต่อทัวร์ ไม่ใช่ต่อ "เนื้อหาที่เหมือนกัน" — เทียบเนื้อหา JSON จะเลี่ยงได้ง่าย
+     *   ด้วยการสลับลำดับคีย์ และผู้จัดก็ไม่ควรมีสองเรื่องค้างพร้อมกันอยู่แล้ว
+     * ★ ด่านที่กัน race จริงคือ UNIQUE ใน migration 048
+     */
+    const pendingAmendment = await TournamentRepo.findPendingAmendmentOfTournament(tournamentId);
+    if (pendingAmendment) {
+        throw new AppError(409, 'AMENDMENT_ALREADY_PENDING',
+            'ทัวร์นาเมนต์นี้มีคำขอแก้ไขรอแอดมินพิจารณาอยู่แล้ว — รอผล หรือให้แอดมินปฏิเสธใบเดิมก่อน',
+            { amendmentId: pendingAmendment.tournament_amendment_request_id });
+    }
     if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
         await ensureEligibilityEditable(tournament);
         changes['eligibilityRules'] = await normalizeEligibilityRules(changes['eligibilityRules'] as EligibilityRuleInput[]);

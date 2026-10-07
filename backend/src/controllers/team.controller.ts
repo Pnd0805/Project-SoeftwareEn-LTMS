@@ -70,6 +70,13 @@ export  async function getTeamMember(req : Request , res : Response){
 }
 
 
+// BE-11 / FE-05 — DELETE /teams/:id/members/me
+export async function leaveTeam(req : Request , res : Response){
+    const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
+    await TeamService.leaveTeam(req.user!.user_id , teamId);
+    return res.status(204).send();
+}
+
 export async function deleteMember(req : Request , res : Response){
     const teamId = parseId(req.params['id'] , 'รหัสทีม' , 'id');
     const userId = parseId(req.params['uid'] , 'รหัสผู้ใช้' , 'uid');

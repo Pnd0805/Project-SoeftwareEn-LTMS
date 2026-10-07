@@ -183,6 +183,30 @@ describe('คำขอแก้ไขทัวร์นาเมนต์ — �
     expect(await all('SELECT 1 FROM tournament_amendment_requests')).toHaveLength(1);
   });
 
+  /**
+   * 🆕 BE-38 (7 ต.ค. 2569 · มติ ⑦ ค) — ยื่นคำขอเนื้อหาเดิมซ้ำได้ 201 ทั้งสองครั้ง
+   *   และใบที่สองยังค้างหลังใบแรกอนุมัติแล้ว (baseline ทัวร์ 14 มี 3 ใบเหมือนกันค้างอยู่)
+   *   ⇒ แอดมินอ่านเรื่องเดียวกันหลายรอบ และอนุมัติใบที่สองจะทับการแก้ของใบแรกโดยไม่มีใครรู้
+   *
+   * ★ `beforeEach` ของบล็อกนี้ยื่นไปแล้วหนึ่งใบ ⇒ ใบนี้คือ "ใบที่สอง"
+   * ★ สองชั้น: ด่านที่ service ให้ข้อความ · UNIQUE ของ migration 048 กัน race
+   */
+  it('ยื่นซ้ำขณะใบเดิมยังรอพิจารณา → 409 AMENDMENT_ALREADY_PENDING · มีใบเดียว', async () => {
+    const again = await request(organizer);
+
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('AMENDMENT_ALREADY_PENDING');
+    expect(await all('SELECT 1 FROM tournament_amendment_requests')).toHaveLength(1);
+  });
+
+  /** ★ ใบเดิมถูกตัดสินแล้ว ต้องยื่นใหม่ได้ — ด่านนี้กัน "ค้างซ้อน" ไม่ใช่กันการยื่นอีกครั้ง */
+  it('ใบเดิมถูกปฏิเสธแล้ว → ยื่นใหม่ได้', async () => {
+    expect((await as(facAdmin).post(`/amendment-requests/${amendment}/reject`).send({ reason: 'สนามไม่พอ' })).status).toBe(200);
+
+    expect((await request(organizer)).status).toBe(201);
+    expect(await all('SELECT 1 FROM tournament_amendment_requests')).toHaveLength(2);
+  });
+
   it.each([
     ['ผู้ใช้ทั่วไป', () => stranger],
     ['ผู้จัดที่ยื่นเอง (อนุมัติคำขอตัวเอง)', () => organizer],

@@ -265,6 +265,46 @@ export async function createInvitation(teamId : number , invitedUserId : number 
 
 
 
+/**
+ * 🆕 BE-10 (7 ต.ค. 2569) — ปิดคำเชิญที่เลยวันหมดอายุแล้วแต่ยังค้างเป็น pending
+ *
+ * ระบบไม่มี scheduler ⇒ `team_invitation_status` ยังเป็น 'pending' ตลอดไปแม้เลย `expires_at`
+ * (T13 ตอบ 410 ตอนกดรับ แต่ไม่เคยเขียนสถานะกลับ)
+ * ★ ต้องเรียก **ก่อน** INSERT คำเชิญใหม่ ไม่งั้น UNIQUE ของ migration 048 จะบล็อก
+ *   การเชิญคนเดิมใหม่ตลอดไป ซึ่งผิดเจตนา · เป็นการเก็บกวาดแบบ lazy ตรงจังหวะที่มีคนมาใช้งาน
+ *   (รูปแบบเดียวกับ autoVerifyDue ที่ไม่มี scheduler เหมือนกัน)
+ */
+export async function expireStaleInvitations(teamId : number , invitedUserId : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE team_invitations SET team_invitation_status = 'expired'
+          WHERE team_id = ? AND invited_user_id = ? AND team_invitation_status = 'pending' AND expires_at < NOW()`,
+        [teamId , invitedUserId]);
+    return result.affectedRows;
+}
+
+/** คำเชิญที่ยังมีชีวิต (pending และยังไม่หมดอายุ) ของคู่นี้ — null = ไม่มี */
+export async function findLiveInvitation(teamId : number , invitedUserId : number) : Promise<TeamInvitationRow | null>{
+    const [ rows ] = await pool.query<(TeamInvitationRow & RowDataPacket)[]>(
+        `SELECT * FROM team_invitations
+          WHERE team_id = ? AND invited_user_id = ? AND team_invitation_status = 'pending' AND expires_at >= NOW()
+          LIMIT 1`,
+        [teamId , invitedUserId]);
+    return rows[0] ?? null;
+}
+
+/**
+ * 🆕 BE-10 · BE-38 — คำขอของทีมที่ยังค้างอยู่ในคิวแอดมิน (ชนิดเดียวกัน)
+ * ★ `request_type` แยกสองชนิดในตารางเดียว ⇒ ขอ Official ค้างอยู่ไม่ควรบล็อกการขอโอนหัวหน้า
+ */
+export async function findPendingTeamRequest(teamId : number , requestType : 'official_status' | 'leader_transfer')
+    : Promise<TeamAdminRequestRow | null>{
+    const [ rows ] = await pool.query<(TeamAdminRequestRow & RowDataPacket)[]>(
+        `SELECT * FROM team_admin_requests
+          WHERE team_id = ? AND request_type = ? AND team_admin_request_status = 'pending' LIMIT 1`,
+        [teamId , requestType]);
+    return rows[0] ?? null;
+}
+
 export async function deletePendingInvite(teamId : number , invitedId : number){
     const [ result ] = await pool.query<ResultSetHeader>(`DELETE FROM team_invitations WHERE team_id = ? AND team_invitation_id = ? AND team_invitation_status = ?`
                                                          ,[teamId , invitedId , 'pending']);

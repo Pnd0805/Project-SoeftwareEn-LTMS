@@ -17,6 +17,8 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   approveAmendment: vi.fn(),
   rejectAmendment: vi.fn(),
   insertAmendmentRequest: vi.fn(),
+  // 🆕 BE-38 (7 ต.ค. 2569) — ด่านกันคำขอแก้ไขซ้ำ · ค่าเริ่ม null = ยังไม่มีใบค้าง
+  findPendingAmendmentOfTournament: vi.fn(() => Promise.resolve(null)),
   hasLiveApplications: vi.fn(),
   findPendingAmendments: vi.fn(),
 }));

@@ -7,6 +7,19 @@ export async function findById(id : number) : Promise<UserReportRow | null>{
     return rows[0] ?? null;
 }
 
+/**
+ * 🆕 BE-38 (7 ต.ค. 2569) — รายงานของคู่นี้ที่ยังรอพิจารณา · null = ไม่มี
+ * ★ ผูกกับคู่ (ผู้รายงาน, เป้าหมาย) ไม่ใช่เป้าหมายเดี่ยว — คนละคนรายงานคนเดียวกันได้
+ *   และควรได้ด้วย เพราะจำนวนผู้รายงานเป็นข้อมูลที่แอดมินใช้ตัดสิน
+ */
+export async function findPendingByPair(reportedBy : number , targetUserId : number) : Promise<{ user_report_id : number } | null>{
+    const [ rows ] = await pool.query<({ user_report_id : number } & RowDataPacket)[]>(
+        `SELECT user_report_id FROM user_reports
+          WHERE reported_by = ? AND target_user_id = ? AND user_report_status = 'pending' LIMIT 1`,
+        [reportedBy , targetUserId]);
+    return rows[0] ?? null;
+}
+
 export async function create(reportedBy : number , targetUserId : number , reason : string , evidence : string[]) : Promise<number>{
     const [ result ] = await pool.query<ResultSetHeader>(
         `INSERT INTO user_reports(reported_by , target_user_id , reason , evidence) VALUES(? , ? , ? , ?)`,

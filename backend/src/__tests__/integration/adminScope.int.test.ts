@@ -23,15 +23,27 @@ let facAdmin: TestUser;
 let userA: TestUser;          // ผู้ใช้ทั่วไปคณะ A
 let userB: TestUser;          // ผู้ใช้ทั่วไปคณะ B
 
+/**
+ * 🔴 แก้ 7 ต.ค. 2569 (BE-37 · มติ ⑬ ข) — คนที่จะได้สิทธิ์แอดมินต้องเป็นบัญชีภายใน
+ *   และแอดมินคณะต้องสังกัดคณะนั้นจริง
+ *
+ * `createUser` ตั้งอีเมลเริ่มต้นเป็น `@test.local` ซึ่งนับเป็น**บัญชีภายนอก** (utils/kuEmail)
+ * ⇒ ผู้ใช้ที่ไฟล์นี้จะเอาไปแต่งตั้งต้องใช้อีเมล `@ku.th` ไม่งั้นติดด่านใหม่ที่ไม่เกี่ยวกับ
+ *   เรื่องที่แต่ละเทสทดสอบ (ลำดับชั้นการแต่งตั้ง)
+ * ★ ไม่แก้ค่าเริ่มต้นของ factory — ไฟล์อื่นใช้ความเป็น "คนนอก" เป็นเงื่อนไขอยู่ (กรรมการภายนอก)
+ * ★ `userA`/`userB` ผูกคณะให้ตรงกับคณะที่จะมอบสิทธิ์ (facA/facB) ตามกฎใหม่
+ */
+const kuEmail = () => `admin-${Math.random().toString(36).slice(2, 10)}@ku.th`;
+
 beforeEach(async () => {
   facA = await createFaculty();
   facB = await createFaculty();
-  root = await createUser();
-  uni = await createUser();
-  uni2 = await createUser();
-  facAdmin = await createUser({ facultyId: facA });
-  userA = await createUser({ facultyId: facA });
-  userB = await createUser({ facultyId: facB });
+  root = await createUser({ email: kuEmail() });
+  uni = await createUser({ email: kuEmail() });
+  uni2 = await createUser({ email: kuEmail() });
+  facAdmin = await createUser({ facultyId: facA, email: kuEmail() });
+  userA = await createUser({ facultyId: facA, email: kuEmail() });
+  userB = await createUser({ facultyId: facB, email: kuEmail() });
   await makeAdmin(root.id, 'root');
   await makeAdmin(uni.id, 'university_wide');
   await makeAdmin(uni2.id, 'university_wide');
@@ -79,14 +91,72 @@ describe('POST /admin/scopes — แต่งตั้งได้เฉพา�
     expect(await scopeOf(userB.id)).toBeNull();
   });
 
+  /**
+   * 🆕 BE-37 (7 ต.ค. 2569 · มติ ⑬ ข) — แต่งตั้งใครเป็นแอดมินก็ได้
+   *
+   * ด่านเดิมตรวจครบทุกอย่างยกเว้น **ตัวผู้รับ** ⇒ QA ตั้ง `referee.ext@outside.org`
+   * (บัญชีภายนอก ไม่มีคณะ) เป็นแอดมินคณะวิศวกรรมศาสตร์ได้ 201
+   * ⇒ คนนอกมหาวิทยาลัยเห็นและตัดสินเรื่องของคณะได้ทั้งหมด
+   */
+  describe('คนที่จะได้สิทธิ์ต้องเป็นคนใน และสังกัดคณะนั้นจริง (BE-37)', () => {
+    it('บัญชีภายนอก (ไม่ใช่ @ku.th) → 422 EXTERNAL_ACCOUNT_CANNOT_BE_ADMIN', async () => {
+      const outsider = await createUser({ email: 'referee.ext@outside.org', facultyId: facA });
+
+      const res = await as(uni).post('/admin/scopes').send({ userId: outsider.id, scopeType: 'faculty', facultyId: facA });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('EXTERNAL_ACCOUNT_CANNOT_BE_ADMIN');
+      expect(await scopeOf(outsider.id)).toBeNull();
+    });
+
+    it('บัญชีภายนอก แต่งตั้งเป็น university_wide ก็ไม่ได้ (root แต่งตั้ง)', async () => {
+      const outsider = await createUser({ email: 'someone@outside.org' });
+
+      const res = await as(root).post('/admin/scopes').send({ userId: outsider.id, scopeType: 'university_wide' });
+
+      expect(res.status).toBe(422);
+      expect(await scopeOf(outsider.id)).toBeNull();
+    });
+
+    /** ★ ไม่ใช่แค่ "ต้องมีคณะ" — อาจารย์คณะ A เป็นแอดมินคณะ B ก็ผิดความหมายของตำแหน่ง */
+    it('คนของคณะ A แต่งตั้งเป็นแอดมินคณะ B → 422 ADMIN_FACULTY_MISMATCH', async () => {
+      const res = await as(uni).post('/admin/scopes').send({ userId: userA.id, scopeType: 'faculty', facultyId: facB });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('ADMIN_FACULTY_MISMATCH');
+      expect(await scopeOf(userA.id)).toBeNull();
+    });
+
+    it('คนที่ไม่มีคณะเลย แต่งตั้งเป็นแอดมินคณะ → 422', async () => {
+      const noFaculty = await createUser({ email: kuEmail() });
+
+      const res = await as(uni).post('/admin/scopes').send({ userId: noFaculty.id, scopeType: 'faculty', facultyId: facA });
+
+      expect(res.status).toBe(422);
+      expect(await scopeOf(noFaculty.id)).toBeNull();
+    });
+
+    /** ★ เคสตรงข้าม — university_wide ไม่ต้องมีคณะ ด่านคณะต้องไม่เผลอบล็อก */
+    it('คนในที่ไม่มีคณะ แต่งตั้งเป็น university_wide ได้ (root แต่งตั้ง)', async () => {
+      const staff = await createUser({ email: kuEmail() });
+
+      const res = await as(root).post('/admin/scopes').send({ userId: staff.id, scopeType: 'university_wide' });
+
+      expect(res.status).toBe(201);
+      expect(await scopeOf(staff.id)).toMatchObject({ scope_type: 'university_wide', faculty_id: null });
+    });
+  });
+
   it('ผู้ใช้ทั่วไป → 403 ที่ requireAdmin', async () => {
     const res = await as(userA).post('/admin/scopes').send({ userId: userA.id, scopeType: 'faculty', facultyId: facA });
     expect(res.status).toBe(403);
     expect(await scopeOf(userA.id)).toBeNull();
   });
 
+  /** ★ ใช้ facA (คณะของ facAdmin) — ด่านคณะใหม่ (BE-37) อยู่ก่อนด่าน "มีสิทธิ์อยู่แล้ว"
+   *    ถ้าส่ง facB มา จะได้ 422 ADMIN_FACULTY_MISMATCH ซึ่งไม่ใช่เรื่องที่เทสนี้ทดสอบ */
   it('ผู้ใช้ที่มีสิทธิ์อยู่แล้ว → 409 (ต้องถอนก่อน ไม่เขียนทับ)', async () => {
-    const res = await as(uni).post('/admin/scopes').send({ userId: facAdmin.id, scopeType: 'faculty', facultyId: facB });
+    const res = await as(uni).post('/admin/scopes').send({ userId: facAdmin.id, scopeType: 'faculty', facultyId: facA });
     expect(res.status).toBe(409);
     expect((await scopeOf(facAdmin.id))!.faculty_id).toBe(facA);
   });

@@ -28,6 +28,76 @@ const resetTokenIn = (email: string) => mailbox.lastTo(email)!.text.match(/token
 const verified = async (email: string) =>
   (await one<{ email_verified: number }>('SELECT email_verified FROM users WHERE email = ?', [email]))!.email_verified === 1;
 
+/**
+ * 🆕 BE-06 (7 ต.ค. 2569 · มติ ⑭ ค) — จำกัดจำนวนครั้งที่ล็อกอินผิด
+ *
+ * เดิมยิงรหัสผิด 12 ครั้งติดกันได้ 401 ทุกครั้ง ไม่มีหน่วง ไม่มีล็อก
+ * ⇒ เครื่องเดารหัสทำงานได้เต็มความเร็วของเซิร์ฟเวอร์
+ *
+ * ★ ข้อจำกัดที่ยอมรับแล้วอยู่ในหัว `middlewares/rateLimitLogin.ts` (เก็บในหน่วยความจำ
+ *   ของ process · หายเมื่อรีสตาร์ท · เพดานคูณตามจำนวน process)
+ * ★ ตัวนับถูกล้างใน `setup/perFile.ts` ทุกเทส ⇒ เทสอื่นที่ยิงรหัสผิดไม่กวนกัน
+ */
+describe('จำกัดจำนวนครั้งที่ล็อกอินผิด (BE-06)', () => {
+  const PASSWORD = 'Passw0rd-123';
+  const wrongLogin = (email: string) => anon.post('/auth/login').send({ email, password: 'ผิดแน่นอน-123' });
+
+  it('ยิงรหัสผิดเกินเพดาน → 429 TOO_MANY_LOGIN_ATTEMPTS พร้อม Retry-After', async () => {
+    const user = await createUserWithPassword(PASSWORD);
+
+    // 10 ครั้งแรกยัง 401 ตามเดิม (ไม่เปลี่ยนพฤติกรรมของการกรอกผิดธรรมดา)
+    for (let i = 0; i < 10; i++) {
+      expect((await wrongLogin(user.email)).status).toBe(401);
+    }
+
+    const blocked = await wrongLogin(user.email);
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe('TOO_MANY_LOGIN_ATTEMPTS');
+    expect(blocked.headers['retry-after']).toBeDefined();
+  });
+
+  /**
+   * 🔴 ข้อจำกัดที่ยอมรับแล้ว — เขียนเป็นเทสไว้เพื่อไม่ให้ใครเข้าใจผิดว่าด่านนี้แก้ครบ
+   *
+   * ด่านนี้ปฏิเสธ **ก่อน** ตรวจรหัสผ่าน ⇒ เมื่อโควตาของคู่ (IP, อีเมล) หมด
+   * เจ้าของบัญชีที่มาจากไอพีเดียวกันก็เข้าไม่ได้แม้กรอกรหัสถูก (15 นาที)
+   *
+   * ★ ที่ดีขึ้นกว่าการนับที่ตาราง `users` คือ **ขอบเขต** ไม่ใช่การไม่มีผลกระทบ:
+   *   นับที่บัญชี = ล็อกทุกเส้นทางทุกเครื่อง · นับที่ (IP, อีเมล) = เหยื่อย้ายเครือข่าย
+   *   แล้วเข้าได้ทันที · ตอนแรกผมเขียนเทสนี้ไว้ว่า "รหัสที่ถูกยังเข้าได้" ซึ่ง**ผิด**
+   *   และเทสเป็นตัวจับได้ — จึงแก้ทั้งเทสและคำอธิบายในไฟล์ middleware ให้ตรงความจริง
+   */
+  it('โควตาหมดแล้ว รหัสที่ถูกก็เข้าไม่ได้จนพ้นช่วงเวลา (ข้อจำกัดที่ยอมรับ)', async () => {
+    const user = await createUserWithPassword(PASSWORD);
+    for (let i = 0; i < 10; i++) await wrongLogin(user.email);
+
+    const blocked = await anon.post('/auth/login').send({ email: user.email, password: PASSWORD });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe('TOO_MANY_LOGIN_ATTEMPTS');
+  });
+
+  /** ★ อีเมลอื่นจากไอพีเดียวกันต้องไม่พลอยติด — เพดานต่อ IP หลวมกว่ามาก (NAT ของมหาวิทยาลัย) */
+  it('อีเมลอื่นไม่พลอยติดด้วย', async () => {
+    const victim = await createUserWithPassword(PASSWORD);
+    const bystander = await createUserWithPassword(PASSWORD);
+
+    for (let i = 0; i < 11; i++) await wrongLogin(victim.email);
+
+    expect((await anon.post('/auth/login').send({ email: bystander.email, password: PASSWORD })).status).toBe(200);
+  });
+
+  it('กรอกผิดไม่ถึงเพดานแล้วเข้าถูก → ตัวนับถูกล้าง ยิงผิดใหม่ได้อีกเต็มโควตา', async () => {
+    const user = await createUserWithPassword(PASSWORD);
+
+    for (let i = 0; i < 5; i++) expect((await wrongLogin(user.email)).status).toBe(401);
+    expect((await anon.post('/auth/login').send({ email: user.email, password: PASSWORD })).status).toBe(200);
+
+    for (let i = 0; i < 10; i++) {
+      expect((await wrongLogin(user.email)).status).toBe(401);
+    }
+  });
+});
+
 // ───────────────────────────── สมัคร + ยืนยันอีเมล ─────────────────────────────
 
 describe('สมัครสมาชิกและยืนยันอีเมล', () => {

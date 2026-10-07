@@ -21,6 +21,14 @@ router.delete('/:id' , requireAuth , requireTeamLeader , Team.deleteTeamById);
 
 //-- Member
 router.get('/:id/members' , requireAuth , Team.getTeamMember);
+/**
+ * 🆕 BE-11 / FE-05 (7 ต.ค. 2569) — สมาชิกออกจากทีมเอง
+ * ★ ต้องประกาศ **ก่อน** '/:id/members/:uid' — express จับตามลำดับ ถ้าอยู่หลัง
+ *   คำว่า 'me' จะถูกจับเป็น :uid แล้วไปติด requireTeamLeader (403) ซึ่งคือบั๊กเดิม
+ * ★ ไม่มี requireTeamLeader โดยเจตนา — คนที่ออกคือเจ้าตัว ไม่ใช่หัวหน้าทีม
+ *   (ด่านอื่นทั้งหมดอยู่ใน service ตัวเดียวกับที่หัวหน้าทีมใช้)
+ */
+router.delete('/:id/members/me' , requireAuth , Team.leaveTeam);
 router.delete('/:id/members/:uid' , requireAuth , requireTeamLeader , Team.deleteMember);
 
 //Invitations

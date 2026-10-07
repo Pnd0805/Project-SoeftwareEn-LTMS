@@ -18,6 +18,10 @@ vi.mock('../upload.service.js', () => ({ getPresignedDownloadUrl: vi.fn(), presi
 vi.mock('../../repositories/team.repo.js', () => ({
   findById: vi.fn(),
   isMemberOf: vi.fn(),
+  // 🆕 BE-10 (7 ต.ค. 2569) — ด่านกันคำขอซ้ำ · ไม่ใส่ = ไฟล์นี้พังทั้งไฟล์
+  expireStaleInvitations: vi.fn(() => Promise.resolve(0)),
+  findLiveInvitation: vi.fn(() => Promise.resolve(null)),
+  findPendingTeamRequest: vi.fn(() => Promise.resolve(null)),
   createTransferRequest: vi.fn(async () => 300),
   findTransferRequestById: vi.fn(),
   update: vi.fn(),

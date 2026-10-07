@@ -241,6 +241,31 @@ export async function deleteMember(userId : number , teamId : number , sportId :
 
 
 //Invitation
+/**
+ * 🆕 BE-11 / FE-05 (7 ต.ค. 2569 · มติ ⑧ ก) — สมาชิกออกจากทีมเอง
+ *
+ * เดิมมีทางเดียวคือ `DELETE /teams/:id/members/:uid` ซึ่งติด `requireTeamLeader`
+ * ⇒ สมาชิกลบตัวเองได้ 403 NOT_TEAM_LEADER และไม่มี endpoint อื่นเลย
+ *   คนที่อยากออกต้องไปขอหัวหน้าทีมเตะออก ซึ่งไม่ใช่เรื่องเดียวกัน
+ *
+ * ★ ใช้ `deleteMember` ตัวเดิมทั้งก้อน — ด่านที่ถูกมีอยู่แล้วครบ (คนที่ถูกส่งลงแข่งในทัวร์
+ *   ที่อนุมัติ/จัดสายแล้วออกไม่ได้ · แจ้งหัวหน้าทีมเมื่อรายชื่อเหลือไม่ถึงขั้นต่ำ)
+ *   ⇒ ข้อนี้คือการเปิด "ทางเข้า" ใหม่ ไม่ใช่การเขียนกฎใหม่ และกฎจะไม่แตกเป็นสองชุด
+ * ★ หัวหน้าทีมออกเองไม่ได้ — ทีมต้องมีหัวหน้าเสมอ และการโอนหัวหน้าต้องผ่านแอดมิน (C3)
+ *   ถ้าให้ออกได้ ระบบต้องเลือกหัวหน้าคนใหม่แทนทีม ซึ่งเป็นการตัดสินใจที่ไม่ใช่ของระบบ
+ */
+export async function leaveTeam(userId : number , teamId : number){
+    const team = await checkTeam(teamId);
+
+    if(team.leader_id === userId){
+        throw new AppError(409 , "LEADER_CANNOT_LEAVE" ,
+            "หัวหน้าทีมออกจากทีมเองไม่ได้ — ต้องโอนสิทธิ์หัวหน้าทีมให้สมาชิกคนอื่นก่อน (หรือยุบทีม)");
+    }
+
+    await deleteMember(userId , teamId , team.sport_type_id);
+    return { teamId , userId };
+}
+
 export async function createInvitation(teamId : number , invitedUserId : number , invitedByUserId : number){
     await checkUser(invitedUserId);
     // ทีม = คลังผู้เล่น (มติ 19 ก.ย.) — เพิ่มคนเข้าคลังได้เสมอ ไม่มีเพดาน (Q3-ก) · เพดานจริงอยู่ที่ตอนส่งรายชื่อลงแข่ง P01
@@ -248,6 +273,23 @@ export async function createInvitation(teamId : number , invitedUserId : number 
     const member = await TeamRepo.isMemberOf(teamId , invitedUserId);
     if(member){
         throw new AppError(409 , "ALREADY_MEMBER" , " ผู้ใช้นี้อยู่ในทีมแล้ว");
+    }
+
+    /**
+     * 🔴 BE-10 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — เชิญคนเดิมซ้ำได้ 201 ทั้งสองครั้ง
+     *   และใบที่ซ้ำยังค้างเป็น pending หลังคนนั้นเข้าทีมแล้ว ⇒ ในจอของผู้ถูกเชิญมีคำเชิญ
+     *   ค้างอยู่กับทีมที่เขาอยู่แล้ว
+     *
+     * ★ ปิดใบที่หมดอายุก่อนตรวจ — ไม่งั้นคำเชิญที่ค้างมาเกิน 7 วันจะบล็อกการเชิญใหม่ตลอดไป
+     *   (ระบบไม่มี scheduler จึงไม่มีใครเขียนสถานะ 'expired' ให้)
+     * ★ ด่านนี้มีไว้ให้ข้อความดี · ด่านที่กัน race จริงคือ UNIQUE ใน migration 048
+     */
+    await TeamRepo.expireStaleInvitations(teamId , invitedUserId);
+    const liveInvite = await TeamRepo.findLiveInvitation(teamId , invitedUserId);
+    if(liveInvite){
+        throw new AppError(409 , "INVITATION_ALREADY_PENDING" ,
+            "มีคำเชิญที่ส่งให้ผู้ใช้นี้ค้างอยู่แล้ว — รอเขาตอบ หรือยกเลิกคำเชิญเดิมก่อน" ,
+            { invitationId : liveInvite.team_invitation_id , expiresAt : liveInvite.expires_at.toISOString() });
     }
 
     // Conflict of interest (มติ 18 ก.ย. 2569, GUIDE/10 F-19): ORG/กรรมการของทัวร์ที่ทีมนี้สมัครอยู่ เข้าทีมไม่ได้ — เช็คซ้ำอีกครั้งตอนกดรับ (T13)
@@ -301,6 +343,23 @@ export async function createOfficialRequest(userId : number , teamId : number , 
         const fields = { supportingDocs : "กรุณายื่นเอกสารประกอบ"};
         throw new AppError(400 , "OFFICIAL_DOCS_REQUIRED" , "กรุณาแนบเอกสารประกอบคําร้อง" , { fields});
     }
+
+    /**
+     * 🔴 BE-10 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — ขอเป็นทีม Official ซ้ำได้ 201 ทั้งสองครั้ง
+     *   และใบที่ซ้ำยังค้างในคิวแอดมิน **หลังทีมเป็น Official แล้ว** ⇒ แอดมินเปิดอ่านเรื่องที่จบแล้ว
+     *
+     * ★ สองด่าน ไม่ใช่ด่านเดียว: "เป็นแล้ว" กับ "ขอค้างอยู่" เป็นปัญหาต่างกันและข้อความต่างกัน
+     *   ถ้ารวมเป็นด่านเดียว ทีมที่เป็น Official แล้วจะได้ข้อความว่า "รอแอดมินพิจารณา" ซึ่งผิด
+     */
+    if(team.official_status === 'Official'){
+        throw new AppError(409 , "TEAM_ALREADY_OFFICIAL" , "ทีมนี้เป็นทีม Official อยู่แล้ว");
+    }
+    const pendingOfficial = await TeamRepo.findPendingTeamRequest(teamId , 'official_status');
+    if(pendingOfficial){
+        throw new AppError(409 , "OFFICIAL_REQUEST_ALREADY_PENDING" ,
+            "มีคำขอเป็นทีม Official ของทีมนี้รอแอดมินพิจารณาอยู่แล้ว" ,
+            { requestId : pendingOfficial.team_admin_request_id });
+    }
     const requestId = await TeamRepo.createOfficialRequest(teamId ,userId ,docs);
     const OfficialReq = await TeamRepo.findOfficialRequestById(requestId);
     return getTeamOfficialRequestDto(OfficialReq!);
@@ -317,6 +376,22 @@ export async function transferLeader(requesterId : number , teamId : number , ne
     const member = await TeamRepo.isMemberOf(teamId , newLeaderId);
     if(!member){
         throw new AppError(422 , "NOT_A_TEAM_MEMBER" , "ผู้ใช้ที่เลือกต้องเป็นสมาชิกของทีมนี้อยู่แล้ว");
+    }
+
+    /**
+     * 🔴 BE-10 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — สองเคสที่เคยได้ 201 ทั้งที่ไม่มีความหมาย
+     *   ① `newLeaderId` เท่ากับหัวหน้าปัจจุบัน ⇒ ใบที่ `currentLeaderId === proposedLeaderId`
+     *      ไปนอนในคิวแอดมิน ซึ่งอนุมัติแล้วก็ไม่เปลี่ยนอะไรเลย
+     *   ② ยื่นซ้ำ ⇒ แอดมินเห็นเรื่องเดียวกันหลายใบ
+     */
+    if(newLeaderId === team.leader_id){
+        throw new AppError(422 , "ALREADY_TEAM_LEADER" , "ผู้ใช้ที่เลือกเป็นหัวหน้าทีมอยู่แล้ว");
+    }
+    const pendingTransfer = await TeamRepo.findPendingTeamRequest(teamId , 'leader_transfer');
+    if(pendingTransfer){
+        throw new AppError(409 , "TRANSFER_REQUEST_ALREADY_PENDING" ,
+            "มีคำขอโอนหัวหน้าทีมของทีมนี้รอแอดมินพิจารณาอยู่แล้ว" ,
+            { requestId : pendingTransfer.team_admin_request_id });
     }
 
     const requestId = await TeamRepo.createTransferRequest(teamId , requesterId , newLeaderId);

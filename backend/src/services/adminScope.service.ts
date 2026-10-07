@@ -16,6 +16,7 @@ import { suspensionEndsAt } from '../utils/suspension.js';
 import type { SuspensionCategory } from '../utils/suspension.js';
 import { getPresignedDownloadUrl , presignAll } from './upload.service.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
+import { isExternalEmail } from '../utils/kuEmail.js';
 import type { AdminScopeRow } from '../types/db.js';
 
 export async function getAllOfficialRequest(offset : number , page : number , pageSize : number){
@@ -329,6 +330,32 @@ export async function grantScope(admin : AdminScopeRow , targetUserId : number ,
     }
     if(facultyId !== undefined && !(await FacultyRepo.findFacultyById(facultyId))){
         throw new AppError(404 , "FACULTY_NOT_FOUND" , "ไม่พบคณะนี้");
+    }
+
+    /**
+     * 🔴 BE-37 (แก้ 7 ต.ค. 2569 · มติ ⑬ ข) — แต่งตั้งใครเป็นแอดมินก็ได้
+     *
+     * ด่านเดิมตรวจครบทุกอย่าง **ยกเว้นตัวผู้รับ**: ระบุคณะครบไหม · คณะมีจริงไหม ·
+     * มีสิทธิ์เดิมอยู่ไหม · ผู้ให้มีอำนาจไหม — แต่ไม่เคยดูว่าคนที่จะได้สิทธิ์เป็นใคร
+     * ⇒ QA ตั้ง `referee.ext@outside.org` (บัญชีภายนอก ไม่มีคณะ) เป็น**แอดมินคณะวิศวกรรมศาสตร์**
+     *   ได้ 201 · คนนอกมหาวิทยาลัยจึงเห็นและตัดสินเรื่องของคณะได้ทั้งหมด
+     *
+     * ★ แอดมินคณะ: `users.faculty_id` ต้องตรงกับคณะที่จะให้ — ไม่ใช่แค่ "ต้องมีคณะ"
+     *   เพราะอาจารย์คณะ A เป็นแอดมินคณะ B ก็ผิดความหมายของตำแหน่งเหมือนกัน
+     * ★ university_wide: ต้องเป็นบัญชีภายใน — ใช้ `isExternalEmail` ตัวเดียวกับที่
+     *   ตัดสินกรรมการภายนอก (มติ 6 ต.ค.) ไม่เขียนกฎโดเมนขึ้นมาใหม่
+     * ★ root ไม่ผ่านทางนี้อยู่แล้ว (`grantScopeSchema` ไม่รับ 'root' — OD-34)
+     * 🙋 ตรวจกับ qa-baseline แล้ว (7 ต.ค.): แอดมินคณะที่มีอยู่คือ 9004 faculty_id = 1
+     *   ตรงกับ scope faculty_id = 1 ⇒ ด่านนี้ไม่ทำให้ข้อมูลเดิมผิดกฎย้อนหลัง
+     */
+    if(isExternalEmail(targetUser.email)){
+        throw new AppError(422 , "EXTERNAL_ACCOUNT_CANNOT_BE_ADMIN" ,
+            "บัญชีภายนอกมหาวิทยาลัยเป็นแอดมินไม่ได้");
+    }
+    if(scopeType === 'faculty' && targetUser.faculty_id !== facultyId){
+        throw new AppError(422 , "ADMIN_FACULTY_MISMATCH" ,
+            "ผู้ใช้นี้ไม่ได้สังกัดคณะที่จะมอบสิทธิ์ — แอดมินคณะต้องเป็นคนของคณะนั้น" ,
+            { userFacultyId : targetUser.faculty_id , requestedFacultyId : facultyId ?? null });
     }
 
     const existing = await AdminRepo.findAdminByUserId(targetUserId);

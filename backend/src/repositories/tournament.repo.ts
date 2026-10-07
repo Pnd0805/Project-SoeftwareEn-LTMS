@@ -391,6 +391,20 @@ export async function findAmendmentById(id: number): Promise<AmendmentRow | null
     return rows[0] ?? null;
 }
 
+/**
+ * 🆕 BE-38 (7 ต.ค. 2569) — คำขอแก้ไขของทัวร์นี้ที่ยังรอพิจารณา (หนึ่งใบต่อทัวร์)
+ * ★ ไม่สนว่าใครยื่น — มีแต่ผู้จัดที่ยื่นได้ และโควตาคือ "หนึ่งเรื่องค้างต่อทัวร์"
+ *   เพราะคิวแอดมินเป็นของทัวร์ ไม่ใช่ของคน
+ */
+export async function findPendingAmendmentOfTournament(tournamentId: number): Promise<{ tournament_amendment_request_id: number } | null> {
+    const [rows] = await pool.query<({ tournament_amendment_request_id: number } & RowDataPacket)[]>(
+        `SELECT tournament_amendment_request_id FROM tournament_amendment_requests
+          WHERE tournament_id = ? AND tournament_amendment_request_status = 'pending' LIMIT 1`,
+        [tournamentId]
+    );
+    return rows[0] ?? null;
+}
+
 export async function findPendingAmendments(admin: AdminScopeRow, offset: number, pageSize: number): Promise<{ rows: AdminAmendmentRow[]; totalItems: number }> {
     const scope = adminScopeWhere(admin);
     const [rows] = await pool.query<(AdminAmendmentRow & RowDataPacket)[]>(

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { anon, as } from './helpers/api.js';
-import { all, one, testDb } from './helpers/db.js';
-import { createSportType, createTeam, createUser, type TestUser } from './helpers/factories.js';
+import { all, insert, one, testDb } from './helpers/db.js';
+import { createFaculty, createSportType, createTeam, createTournament, createUser, type TestUser } from './helpers/factories.js';
 
 /**
  * ทีม · คำเชิญ · คำขอเข้าร่วม — สิทธิ์ "หัวหน้าทีม" ผูกกับทีมรายการนั้น (requireTeamLeader)
@@ -152,6 +152,63 @@ describe('DELETE /teams/:id/members/:uid', () => {
     expect(await isMember(team, other.id)).toBe(true);
   });
 
+  /**
+   * 🆕 BE-11 / FE-05 (7 ต.ค. 2569 · มติ ⑧ ก) — สมาชิกออกจากทีมเอง
+   *
+   * เดิมมีทางเดียวคือ `DELETE /teams/:id/members/:uid` ที่ติด `requireTeamLeader`
+   * ⇒ สมาชิกลบตัวเองได้ 403 NOT_TEAM_LEADER และไม่มี endpoint อื่นเลย
+   *   คนที่อยากออกต้องไปขอหัวหน้าทีมเตะออก ซึ่งไม่ใช่เรื่องเดียวกัน
+   *
+   * ★ route `/members/me` ต้องถูกประกาศก่อน `/members/:uid` — ถ้าสลับลำดับ express
+   *   จะจับ 'me' เป็น :uid แล้วไปติด requireTeamLeader (403) ซึ่งคือบั๊กเดิม
+   */
+  describe('ออกจากทีมเอง — DELETE /members/me (BE-11)', () => {
+    it('สมาชิกออกเองได้ → 204 · ไม่เป็นสมาชิกแล้ว', async () => {
+      const res = await as(member).delete(`/teams/${team}/members/me`);
+
+      expect(res.status).toBe(204);
+      expect(await isMember(team, member.id)).toBe(false);
+    });
+
+    /** ★ ทีมต้องมีหัวหน้าเสมอ · การโอนหัวหน้าต้องผ่านแอดมิน ⇒ ระบบเลือกคนใหม่แทนทีมไม่ได้ */
+    it('หัวหน้าทีมออกเอง → 409 LEADER_CANNOT_LEAVE · ยังเป็นสมาชิก', async () => {
+      const res = await as(leader).delete(`/teams/${team}/members/me`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('LEADER_CANNOT_LEAVE');
+      expect(await isMember(team, leader.id)).toBe(true);
+    });
+
+    it('คนนอกทีมเรียก → 404 (ไม่ได้อยู่ในทีมนี้)', async () => {
+      const res = await as(stranger).delete(`/teams/${team}/members/me`);
+
+      expect(res.status).toBe(404);
+    });
+
+    it('ไม่ล็อกอิน → 401', async () => {
+      expect((await anon.delete(`/teams/${team}/members/me`)).status).toBe(401);
+      expect(await isMember(team, member.id)).toBe(true);
+    });
+
+    /**
+     * ★ ด่านที่ `deleteMember` มีอยู่แล้วต้องยังทำงานกับทางเข้าใหม่ด้วย — นี่คือเหตุผลที่
+     *   เลือกใช้ service ตัวเดิมทั้งก้อน ไม่เขียนกฎขึ้นใหม่ · ถ้าใครแยกเป็นสองชุด เทสนี้จะแดง
+     */
+    it('คนที่ถูกส่งลงแข่งในทัวร์ที่อนุมัติแล้ว ออกเองไม่ได้ → 409 MEMBER_LOCKED_IN_TOURNAMENT', async () => {
+      const faculty = await createFaculty();
+      const organizer = await createUser();
+      const tour = await createTournament({ organizer: organizer.id, sportTypeId: sport, facultyId: faculty, status: 'public' });
+      const app = await insert('tournament_applications', { tournament_id: tour, team_id: team, tournament_application_status: 'approved' });
+      await insert('application_players', { tournament_application_id: app, tournament_id: tour, user_id: member.id });
+
+      const res = await as(member).delete(`/teams/${team}/members/me`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('MEMBER_LOCKED_IN_TOURNAMENT');
+      expect(await isMember(team, member.id)).toBe(true);
+    });
+  });
+
   it('BR-04 ขาลง: เอาออกจนต่ำกว่าขั้นต่ำ → ทีมกลับเป็น Forming', async () => {
     const third = await createUser();
     await testDb().query('INSERT INTO team_members (team_id, user_id) VALUES (?, ?)', [team, third.id]);
@@ -183,6 +240,38 @@ describe('คำเชิญ — สร้างได้เฉพาะหั�
     const res = await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: member.id });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('ALREADY_MEMBER');
+  });
+
+  /**
+   * 🆕 BE-10 (7 ต.ค. 2569 · มติ ⑦ ค) — เชิญคนเดิมซ้ำได้ 201 ทั้งสองครั้ง
+   *   และใบที่ซ้ำยังค้างเป็น pending หลังคนนั้นเข้าทีมแล้ว
+   *
+   * ★ สองชั้น: ด่านที่ service ให้ข้อความ · UNIQUE ของ migration 048 กัน race
+   *   เทสนี้ยิงผ่าน HTTP ⇒ ผ่านทั้งสองชั้น
+   */
+  it('เชิญคนเดิมซ้ำ → 409 INVITATION_ALREADY_PENDING · มีคำเชิญใบเดียว', async () => {
+    expect((await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: stranger.id })).status).toBe(201);
+
+    const again = await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: stranger.id });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('INVITATION_ALREADY_PENDING');
+
+    expect(await invitationsOf(team)).toHaveLength(1);
+  });
+
+  /**
+   * ★ เคสที่ด่านนี้**ต้องไม่**บล็อก — คำเชิญที่หมดอายุแล้ว
+   *   ระบบไม่มี scheduler ⇒ สถานะยังเป็น 'pending' ตลอดไปแม้เลย expires_at
+   *   ถ้าไม่ปิดใบเก่าก่อน จะเชิญคนเดิมใหม่ไม่ได้อีกตลอดไป (และ UNIQUE จะยิ่งล็อกแน่น)
+   */
+  it('คำเชิญเดิมหมดอายุแล้ว → เชิญใหม่ได้ · ใบเก่าถูกปิดเป็น expired', async () => {
+    expect((await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: stranger.id })).status).toBe(201);
+    await testDb().query('UPDATE team_invitations SET expires_at = NOW() - INTERVAL 1 DAY WHERE team_id = ?', [team]);
+
+    expect((await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: stranger.id })).status).toBe(201);
+
+    const rows = await invitationsOf(team);
+    expect(rows.map(r => r.team_invitation_status).sort()).toEqual(['expired', 'pending']);
   });
 
   it('เชิญผู้ใช้ที่ไม่มีอยู่ → 404', async () => {
@@ -329,5 +418,64 @@ describe('POST /teams/:id/transfer-leader — BR-07 สร้างคำร้�
     await testDb().query("UPDATE teams SET official_status = 'Official' WHERE team_id = ?", [team]);
     expect((await as(member).post(`/teams/${team}/transfer-leader`).send({ newLeaderId: member.id })).status).toBe(403);
     expect(await one('SELECT 1 FROM team_admin_requests WHERE team_id = ?', [team])).toBeNull();
+  });
+
+  /**
+   * 🆕 BE-10 (7 ต.ค. 2569 · มติ ⑦ ค) — สองเคสที่เคยได้ 201 ทั้งที่ไม่มีความหมาย
+   *   แล้วไปนอนในคิวแอดมินให้คนตรวจเสียเวลา
+   */
+  describe('คำขอที่ไม่มีความหมาย (BE-10)', () => {
+    beforeEach(async () => {
+      await testDb().query("UPDATE teams SET official_status = 'Official' WHERE team_id = ?", [team]);
+    });
+
+    it('โอนหัวหน้าให้ตัวเอง (หัวหน้าปัจจุบัน) → 422 ALREADY_TEAM_LEADER · ไม่มีคำขอเกิดขึ้น', async () => {
+      const res = await as(leader).post(`/teams/${team}/transfer-leader`).send({ newLeaderId: leader.id });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('ALREADY_TEAM_LEADER');
+      expect(await one('SELECT 1 FROM team_admin_requests WHERE team_id = ?', [team])).toBeNull();
+    });
+
+    it('ขอโอนซ้ำขณะที่ใบเดิมยังรอ → 409 · มีใบเดียว', async () => {
+      expect((await as(leader).post(`/teams/${team}/transfer-leader`).send({ newLeaderId: member.id })).status).toBeLessThan(300);
+
+      const again = await as(leader).post(`/teams/${team}/transfer-leader`).send({ newLeaderId: member.id });
+      expect(again.status).toBe(409);
+      expect(again.body.error.code).toBe('TRANSFER_REQUEST_ALREADY_PENDING');
+
+      expect(await all("SELECT 1 FROM team_admin_requests WHERE team_id = ? AND request_type = 'leader_transfer'", [team]))
+        .toHaveLength(1);
+    });
+  });
+
+  /**
+   * 🆕 BE-10 (7 ต.ค. 2569 · มติ ⑦ ค) — ขอเป็นทีม Official ซ้ำ / ขอตอนเป็นแล้ว
+   * ★ `supportingDocs` ต้องเป็น key ที่ผ่านด่านของ upload ⇒ ยิงผ่าน service ไม่ได้ตรง ๆ
+   *   เทสนี้จึงสร้างใบ pending ลงฐานตรง ๆ แล้วทดสอบว่า "ใบที่สอง" ถูกปฏิเสธ
+   */
+  describe('ขอเป็นทีม Official ซ้ำ (BE-10)', () => {
+    it('มีใบรอพิจารณาอยู่แล้ว → 409 OFFICIAL_REQUEST_ALREADY_PENDING', async () => {
+      await insert('team_admin_requests', {
+        team_id: team, request_type: 'official_status', requested_by: leader.id,
+        team_admin_request_status: 'pending', supporting_docs: JSON.stringify(['official_docs/1/a.pdf']) });
+
+      const res = await as(leader).post(`/teams/${team}/official-request`).send({ supportingDocs: ['official_docs/1/b.pdf'] });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('OFFICIAL_REQUEST_ALREADY_PENDING');
+      expect(await all("SELECT 1 FROM team_admin_requests WHERE team_id = ? AND request_type = 'official_status'", [team]))
+        .toHaveLength(1);
+    });
+
+    /** ★ ข้อความต้องต่างกัน — ทีมที่เป็น Official แล้วไม่ควรได้ยินว่า "รอแอดมินพิจารณา" */
+    it('ทีมเป็น Official แล้ว → 409 TEAM_ALREADY_OFFICIAL', async () => {
+      await testDb().query("UPDATE teams SET official_status = 'Official' WHERE team_id = ?", [team]);
+
+      const res = await as(leader).post(`/teams/${team}/official-request`).send({ supportingDocs: ['official_docs/1/a.pdf'] });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('TEAM_ALREADY_OFFICIAL');
+    });
   });
 });
