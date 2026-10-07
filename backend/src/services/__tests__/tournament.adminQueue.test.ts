@@ -32,6 +32,9 @@ import type { AdminScopeRow } from '../../types/db.js';
 
 const facultyAdmin = { scope_type: 'faculty', faculty_id: 1 } as AdminScopeRow;
 const uniAdmin = { scope_type: 'university_wide', faculty_id: null } as AdminScopeRow;
+const rootAdmin = { scope_type: 'root', faculty_id: null } as AdminScopeRow;
+/** แอดมินคณะที่ยังไม่ถูกตั้งคณะ — ข้อมูลไม่ครบ ต้องไม่กลายเป็น "เห็นทุกคณะ" หรือ "ไม่มีงานค้าง" */
+const facultyAdminNoFaculty = { scope_type: 'faculty', faculty_id: null } as AdminScopeRow;
 
 const row = (id: number, facultyId: number | null = 1) => ({
   tournament_id: id, name: `Cup ${id}`, sport_type_id: 3,
@@ -150,5 +153,37 @@ describe('getPendingTournamentRequests — canDecide', () => {
 
     expect(out.items).toEqual([]);
     expect(ApplicationRepo.findEligibilityRulesOfMany).toHaveBeenCalledWith([]);
+  });
+});
+
+/**
+ * 🧹 7 ต.ค. 2569 — กฎขอบเขตแอดมินเหลือที่เดียว (`utils/adminScope.adminScopeSqlOrNull`)
+ *
+ * เดิม `tournament.repo` มีสำเนาของตัวเองที่ต่างจากตัวจริง 2 เคส และทั้งสองเคสตอบ
+ * **200 รายการว่าง** ซึ่งอ่านเหมือน "ไม่มีคำขอค้าง" = คำตอบผิด ไม่ใช่การบอกว่าดูไม่ได้
+ * ★ สองเทสนี้คือหลักประกันว่าสำเนานั้นไม่กลับมา — ไม่ได้ทดสอบ SQL แต่ทดสอบว่า
+ *   service เป็นคนตัดสิน 403 และ repo ไม่ถูกเรียกเลย
+ */
+describe('getPendingTournamentRequests — ขอบเขตที่อ่านคิวนี้ไม่ได้ → 403 ไม่ใช่รายการว่าง', () => {
+  it('root → 403 (OD-34: root แต่งตั้ง+ตรวจ ไม่ใช่คนกดอนุมัติ)', async () => {
+    vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(rootAdmin);
+    await expect(Service.getPendingTournamentRequests(9, 0, 1, 20))
+      .rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ADMIN_SCOPE' });
+    expect(vi.mocked(TournamentRepo.findPendingTournamentRequests)).not.toHaveBeenCalled();
+  });
+
+  it('แอดมินคณะที่ยังไม่ถูกตั้งคณะ → 403 ไม่ใช่คิวว่าง', async () => {
+    vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(facultyAdminNoFaculty);
+    await expect(Service.getPendingTournamentRequests(9, 0, 1, 20))
+      .rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ADMIN_SCOPE' });
+    expect(vi.mocked(TournamentRepo.findPendingTournamentRequests)).not.toHaveBeenCalled();
+  });
+
+  it('แอดมินคณะปกติ → repo ได้เงื่อนไขคณะตัวเองมาแล้ว ไม่ใช่แถวแอดมิน', async () => {
+    vi.mocked(AdminScopeRepo.findAdminByUserId).mockResolvedValue(facultyAdmin);
+    vi.mocked(TournamentRepo.findPendingTournamentRequests).mockResolvedValue({ rows: [], totalItems: 0 } as never);
+    await Service.getPendingTournamentRequests(9, 0, 1, 20);
+    expect(vi.mocked(TournamentRepo.findPendingTournamentRequests))
+      .toHaveBeenCalledWith({ clause: ' AND t.organizing_faculty_id = ?', params: [1] }, 0, 20);
   });
 });

@@ -219,12 +219,27 @@ describe('getPendingAmendments', () => {
 
     const result = await Service.getPendingAmendments(9, 0, 1, 20);
 
-    expect(mockedTournamentRepo.findPendingAmendments).toHaveBeenCalledWith(uniAdmin, 0, 20);
+    // 🧹 7 ต.ค. — repo รับ **scope ที่คิดแล้ว** ไม่ใช่แถวแอดมิน (กฎเดียวที่ `utils/adminScope`)
+    expect(mockedTournamentRepo.findPendingAmendments).toHaveBeenCalledWith({ clause: '', params: [] }, 0, 20);
     expect(result.items).toEqual([{
       id: 5, tournamentId: 26, tournamentName: 'Cup', requestedBy: { id: 100, fullName: 'สมชาย', avatarUrl: null },
       requestedChanges: { maxTeams: 20 }, reason: 'x', status: 'pending', requestedAt: '2026-01-01T00:00:00.000Z',
       selfRequested: false,
     }]);
+  });
+
+  /**
+   * 🧹 7 ต.ค. 2569 — root ได้ **403 ไม่ใช่รายการว่าง**
+   * เดิม repo มีกฎขอบเขตสำเนาของตัวเองที่แปลง root เป็น `organizing_faculty_id = NULL`
+   *   ⇒ ไม่มีแถวตรง ⇒ 200 รายการว่าง = คำตอบผิด ("ไม่มีคำขอค้าง") ไม่ใช่การปฏิเสธ
+   * ★ เทสนี้คือหลักประกันว่ากฎกลางถูกใช้จริง — ถ้าใครเอาสำเนาเก่ากลับมา เทสนี้แดง
+   */
+  it('root → 403 ไม่ใช่รายการว่าง (OD-34)', async () => {
+    mockedAdminScopeRepo.findAdminByUserId.mockResolvedValue(
+      { ...uniAdmin, scope_type: 'root' } as AdminScopeRow);
+    await expect(Service.getPendingAmendments(9, 0, 1, 20))
+      .rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ADMIN_SCOPE' });
+    expect(mockedTournamentRepo.findPendingAmendments).not.toHaveBeenCalled();
   });
 
   /**

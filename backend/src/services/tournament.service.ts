@@ -16,7 +16,7 @@ import * as ComplaintRepo from '../repositories/matchResultComplaint.repo.js';
 import { toUserRef } from '../mappers/user.mapper.js';
 import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
-import { adminOverseesTournament } from '../utils/adminScope.js';
+import { adminOverseesTournament, adminScopeSqlOrNull } from '../utils/adminScope.js';
 import { assertBestOfAllowed } from '../utils/matchFormat.js';
 import { isStudyYear , MIN_STUDY_YEAR , MAX_STUDY_YEAR } from '../utils/studyYear.js';
 import { genderAgeFailReason } from '../utils/hardFilter.js';
@@ -365,7 +365,15 @@ export async function getMyTournamentRequests(userId: number, offset: number, pa
 export async function getPendingTournamentRequests(userId: number, offset: number, page: number, pageSize: number) {
     const admin = await AdminScopeRepo.findAdminByUserId(userId);
     if (!admin) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิวคำขอทัวร์นาเมนต์');
-    const { rows, totalItems } = await TournamentRepo.findPendingTournamentRequests(admin, offset, pageSize);
+    /**
+     * 🧹 7 ต.ค. 2569 — ใช้กฎขอบเขตกลางตัวเดียว (เดิม repo มีสำเนาของตัวเอง ดูเหตุผลที่
+     *   `tournament.repo` เหนือ `findPendingTournamentRequests`)
+     * 🔴 `null` ⇒ **403 ไม่ใช่รายการว่าง** — root และแอดมินคณะที่ยังไม่ถูกตั้งคณะ ตกที่นี่
+     *   รายการว่างอ่านเหมือน "ไม่มีคำขอค้าง" ซึ่งเป็นคำตอบผิด ไม่ใช่การบอกว่าดูไม่ได้
+     */
+    const scope = adminScopeSqlOrNull(admin, 't');
+    if (scope === null) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิวคำขอทัวร์นาเมนต์');
+    const { rows, totalItems } = await TournamentRepo.findPendingTournamentRequests(scope, offset, pageSize);
 
     // university_wide ตัดสินได้ทุกแถวอยู่แล้ว ไม่ต้องยิงหากฎเลย — และเป็นคนที่คิวยาวที่สุด
     const rulesOf = admin.scope_type === 'university_wide'
@@ -788,7 +796,10 @@ export async function getTournamentAmendments(tournamentId: number) {
 export async function getPendingAmendments(userId: number, offset: number, page: number, pageSize: number) {
     const admin = await AdminScopeRepo.findAdminByUserId(userId);
     if (!admin) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิว amendment');
-    const { rows, totalItems } = await TournamentRepo.findPendingAmendments(admin, offset, pageSize);
+    // 🔴 เหตุผลเดียวกับคิวคำขอทัวร์ด้านบน — `null` ⇒ 403 ไม่ใช่รายการว่าง
+    const scope = adminScopeSqlOrNull(admin, 't');
+    if (scope === null) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิว amendment');
+    const { rows, totalItems } = await TournamentRepo.findPendingAmendments(scope, offset, pageSize);
     return {
         items: rows.map(row => ({
             id: row.tournament_amendment_request_id,

@@ -1,6 +1,6 @@
 import pool from '../config/db.js';
 import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import type { AdminScopeRow, TournamentRow, UserRow } from '../types/db.js';
+import type { TournamentRow, UserRow } from '../types/db.js';
 import * as RewardRepo from './reward.repo.js';
 
 export type CreateTournamentRecord = {
@@ -227,13 +227,22 @@ export async function findMyTournamentRequests(userId: number, offset: number, p
     return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
 }
 
-function adminScopeWhere(admin: AdminScopeRow): { clause: string; params: number[] } {
-    if (admin.scope_type === 'university_wide') return { clause: '', params: [] };
-    return { clause: ' AND t.organizing_faculty_id = ?', params: [admin.faculty_id as number] };
-}
+/**
+ * 🧹 7 ต.ค. 2569 — รวมกฎขอบเขตแอดมินให้เหลือที่เดียว (`utils/adminScope.adminScopeSqlOrNull`)
+ *
+ * เดิมไฟล์นี้มี `adminScopeWhere` ของตัวเอง ซึ่งเป็นสำเนาเก่าที่ **ไม่ตรงกับตัวจริง** 2 เคส:
+ *   ① `root` → ของเก่าได้ `organizing_faculty_id = NULL` ⇒ ไม่มีแถวตรง ⇒ **200 รายการว่าง**
+ *      แต่กฎกลางให้ `null` ⇒ ผู้เรียกต้องตอบ **403** · รายการว่างอ่านเหมือน "ไม่มีคำขอค้าง"
+ *      ซึ่งเป็นคำตอบผิด ไม่ใช่การปฏิเสธ (มติ OD-34 · หลักเดียวกับ FE-38)
+ *   ② แอดมินคณะที่ `faculty_id` เป็น NULL → ของเก่าก็ได้รายการว่างเหมือนกัน
+ *      กฎกลางกันไว้ตั้งแต่ตอนทำ B6 เพราะ "ข้อมูลไม่ครบ" ต้องไม่กลายเป็นคำตอบเงียบ ๆ
+ *
+ * ⇒ repository ไม่ตัดสินขอบเขตเองอีก · รับ scope ที่ service คิดมาแล้ว (รูปเดียวกับ
+ *   `feedback.repo.findRemovedFeedback`) เพราะ 403 เป็นเรื่องของ service ไม่ใช่ของ SQL
+ */
+export type AdminScopeSql = { clause: string; params: number[] };
 
-export async function findPendingTournamentRequests(admin: AdminScopeRow, offset: number, pageSize: number): Promise<{ rows: AdminTournamentRequestRow[]; totalItems: number }> {
-    const scope = adminScopeWhere(admin);
+export async function findPendingTournamentRequests(scope: AdminScopeSql, offset: number, pageSize: number): Promise<{ rows: AdminTournamentRequestRow[]; totalItems: number }> {
     const [rows] = await pool.query<(AdminTournamentRequestRow & RowDataPacket)[]>(
         `SELECT t.tournament_id, t.name, t.sport_type_id, t.event_start_date, t.created_at, t.organizing_faculty_id,
                 u.user_id, u.full_name, u.profile_image_key
@@ -405,8 +414,7 @@ export async function findPendingAmendmentOfTournament(tournamentId: number): Pr
     return rows[0] ?? null;
 }
 
-export async function findPendingAmendments(admin: AdminScopeRow, offset: number, pageSize: number): Promise<{ rows: AdminAmendmentRow[]; totalItems: number }> {
-    const scope = adminScopeWhere(admin);
+export async function findPendingAmendments(scope: AdminScopeSql, offset: number, pageSize: number): Promise<{ rows: AdminAmendmentRow[]; totalItems: number }> {
     const [rows] = await pool.query<(AdminAmendmentRow & RowDataPacket)[]>(
         `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_changes, ar.request_reason,
                 ar.tournament_amendment_request_status, ar.requested_at,

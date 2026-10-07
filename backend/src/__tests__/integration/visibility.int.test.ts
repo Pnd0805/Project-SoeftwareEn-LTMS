@@ -214,6 +214,32 @@ describe('คิวคำขอทัวร์ของแอดมิน — �
     expect(text).toContain('คำขอคณะ A');
     expect(text).toContain('คำขอคณะ B');
   });
+
+  /**
+   * 🧹 7 ต.ค. 2569 — root ได้ **403 ไม่ใช่รายการว่าง**
+   *
+   * เดิม `tournament.repo` มีกฎขอบเขตสำเนาของตัวเอง ซึ่งแปลง root เป็น
+   * `organizing_faculty_id = NULL` ⇒ ไม่มีแถวตรง ⇒ **200 + items: []**
+   * ทั้งที่ในฐานมีคำขอค้างอยู่ 2 ใบจริง ๆ (beforeEach ด้านบนสร้างไว้)
+   * ⇒ root อ่านแล้วเข้าใจว่า "ไม่มีคำขอค้าง" ซึ่งเป็นคำตอบผิด ไม่ใช่การปฏิเสธ
+   *
+   * ★ เทสนี้ยิง API จริงถึงฐานจริง จึงจับได้ว่าสำเนาเก่าหายไปจริง —
+   *   เทส unit ที่ mock repo พิสูจน์ได้แค่ว่า service ตัดสินใจถูก ไม่ใช่ว่า SQL หายไป
+   */
+  it('root → 403 ทั้งสองคิว ทั้งที่มีคำขอค้างอยู่จริง (OD-34)', async () => {
+    const root = await createUser();
+    await makeAdmin(root.id, 'root');
+    expect((await as(root).get('/admin/tournament-requests?pageSize=100')).status).toBe(403);
+    expect((await as(root).get('/admin/amendment-requests?pageSize=100')).status).toBe(403);
+  });
+
+  /** ข้อมูลไม่ครบต้องไม่กลายเป็นคำตอบเงียบ ๆ — แอดมินคณะที่ยังไม่ถูกตั้งคณะก็ 403 */
+  it('แอดมินคณะที่ยังไม่ถูกตั้งคณะ → 403 ไม่ใช่คิวว่าง', async () => {
+    const admin = await createUser();
+    await makeAdmin(admin.id, 'faculty', null);
+    expect((await as(admin).get('/admin/tournament-requests?pageSize=100')).status).toBe(403);
+    expect((await as(admin).get('/admin/amendment-requests?pageSize=100')).status).toBe(403);
+  });
 });
 
 // ───────────────────────────── กรรมการภายนอก ─────────────────────────────

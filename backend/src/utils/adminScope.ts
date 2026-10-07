@@ -25,7 +25,9 @@ import type { AdminScopeRow } from '../types/db.js';
  *   (เคสนี้เจอจริงตอนทำ B6: fixture ที่ไม่ได้ตั้งคณะเลย กลับผ่านด่าน)
  *
  * 🔴 ถ้าแก้ตัวนี้ ต้องแก้ `adminOverseesTournament` ให้ตรงกันด้วย — สองตัวตอบคำถาม
- *   เดียวกันคนละรูป · `tournament.repo.adminScopeWhere` เป็นสำเนาเก่าที่ยังไม่ได้ย้ายมา
+ *   เดียวกันคนละรูป
+ * ★ 7 ต.ค. 2569 — `tournament.repo.adminScopeWhere` (สำเนาเก่าที่ root ได้รายการว่างแทน 403)
+ *   ถูกลบแล้ว · คิวคำขอทัวร์และคิว amendment มาใช้ตัวนี้ทั้งคู่ ⇒ ไม่มีสำเนาเหลือในระบบ
  * @param alias ชื่อย่อของตาราง `tournaments` ใน query ที่เรียก
  */
 export function adminScopeSqlOrNull(admin : AdminScopeRow , alias = 't'): { clause : string; params : number[] } | null {
