@@ -10,6 +10,7 @@
 **ทำแล้ว = code implementation / developer checks ไม่ใช่ live QA sign-off.**
 Round 4 update: 41 implemented, 2 partial (FE-10 timing and FE-39 admin pre-approval impact), 0 waiting for the original standings DTO. These counts describe implementation, not QA sign-off.
 Round 5: openedBy review copy and queue scope/403 handling implemented against BE_KN@234e4a1. Original counts remain 41 implemented / 2 partial. [Latest BE response](TO-BACKEND-2026-10-07-qa-round5-response.md).
+Error/status follow-up: BE_KN@77039f6 separates match-state 409 MATCH_NOT_SCHEDULED from form 400 SCHEDULE_INCOMPLETE; FE recovery integrated with legacy 409 compatibility. Original counts remain 41 / 2. [Latest follow-up](TO-BACKEND-2026-10-07-error-status-response.md).
 ทุก flow ยังต้องทดสอบกับ BE_KN จริงหลัง migration และ reload
 
 ## Notice วันนี้
@@ -126,3 +127,8 @@ Developer verification: **96 files / 576 tests passed**, lint and TypeScript/bui
 
 Verified remote/fetched `BE_KN@234e4a1`; implementation commit `65da597`. [Current closures and BE contract requests](TO-BACKEND-2026-10-07-qa-round5-response.md).
 Developer verification: **97 files / 599 tests passed**, lint and TypeScript/build passed; existing chunk warning (main 941.47 kB). Isolated Vite 5195 served root/changed modules HTTP 200 and was stopped. Browser/manual QA excluded; no new live API acceptance pass claimed.
+
+## Error/status conflict follow-up
+
+Verified remote/fetched `BE_KN@77039f6`; implementation `579309f` integrates the delivered 400/409 split with optional missing metadata and legacy 409 compatibility. [Current BE response](TO-BACKEND-2026-10-07-error-status-response.md).
+Developer verification: **97 files / 618 tests passed**, lint and TypeScript/build passed; existing chunk warning (main 943.27 kB). Isolated Vite 5195/root/changed modules HTTP 200, task-owned server stopped. No browser/manual QA or new live API acceptance pass claimed.

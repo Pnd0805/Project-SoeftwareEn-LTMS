@@ -3,7 +3,20 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-## QA Response Round 5 — current implementation, 2026-10-07
+## Error/status conflict follow-up — current implementation, 2026-10-07
+
+- [x] Read ERROR-CODES-status-conflicts-2026-10-07; verified/fetched `BE_KN@77039f6b0abb4767e194cde825dc5555cadf9c8f`. BE already implemented option A after the notice snapshot.
+- [x] Distinguish schedule form 400 SCHEDULE_INCOMPLETE from lifecycle/FR02 409 MATCH_NOT_SCHEDULED without parsing server messages.
+- [x] Form highlights only known missing request fields; accessible descriptions and draft-edit error reset. Inputs remain locked while saving.
+- [x] Lifecycle recovery explains organizer scheduling and links organizer to the fixture editor; referees receive organizer guidance. FR02 handles absent optional missing metadata.
+- [x] Legacy 409 SCHEDULE_INCOMPLETE remains supported for an older running backend; it never becomes a 400 form-field error.
+- [x] Target-user 404 remains an API error without clearing the session; no code-based USER_NOT_FOUND login redirect. NO_ACTIVE_DISPUTE/REFEREE_NOT_ASSIGNED keep existing endpoint/status semantics.
+- [x] [Updated contract and BE handoff](TO-BACKEND-2026-10-07-error-status-response.md).
+- [x] Implementation commit `579309f`; final 97 files / 618 tests, lint, TypeScript/build and diff check passed. Existing main 943.27 kB warning; isolated Vite 5195/changed modules HTTP 200 and task-owned server stopped.
+- [ ] Original FE-39 reviewer impact and team invitation conflict status/expiry metadata remain undelivered.
+- [ ] Authenticated runtime/browser/real-device acceptance and FE-10 performance timing remain open; no browser/manual QA requested this round.
+
+## QA Response Round 5 — historical implementation, 2026-10-07
 
 - [x] Read Round 5; verified ls-remote/fetched `BE_KN@234e4a15183ac9f64f66d2242afc531623ee02f1` and inspected source at that ref.
 - [x] openedBy explains event_start/first_match/completed from the delivered field; future opensAt is not presented as the opening date for first_match/completed. canSubmit remains server-owned.

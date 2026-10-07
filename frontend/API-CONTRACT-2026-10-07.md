@@ -1,7 +1,31 @@
 # Frontend integration contract — BE_KN 7 Oct 2026
 
-Verified remote/fetched head after QA Round 5: `234e4a15183ac9f64f66d2242afc531623ee02f1`.
+Verified remote/fetched head after error/status follow-up: `77039f6b0abb4767e194cde825dc5555cadf9c8f`.
 Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/mappers.
+
+## Error/status conflict follow-up
+
+- BE implemented option A after the notice: PATCH /matches/:id/schedule retains
+  **400 SCHEDULE_INCOMPLETE**, while POST /matches/:id/open-checkin and /start
+  now use **409 MATCH_NOT_SCHEDULED**. They describe different recovery actions.
+- For 400, missing identifies required fields in the current schedule request.
+  FE marks only known supplied fields with accessible descriptions, keeps the
+  draft and resets stale server feedback when it changes.
+- For 409, missing identifies absent stored match scheduling fields. Show
+  organizer scheduling recovery; the organizer can open /m/:id/fixture.
+  FR02 already uses MATCH_NOT_SCHEDULED without extra metadata, so missing is
+  optional. Never infer a missing field from the message or assume all are absent.
+- FE also recognizes legacy **409 SCHEDULE_INCOMPLETE** as match-state recovery
+  for older running backend processes. **400 SCHEDULE_INCOMPLETE** remains a
+  request error; same code/missing data must not cause the wrong recovery.
+- USER_NOT_FOUND on target-user operations is 404, not a login redirect.
+  Auth remains driven by HTTP 401; do not add endpoint errors for unreachable
+  controller guards after requireAuth. Defensive 401 auth handling is preserved.
+- NO_ACTIVE_DISPUTE: GET /matches/:id/result/dispute uses 404; POST
+  /matches/:id/result/resolve uses 409. REFEREE_NOT_ASSIGNED: DELETE assignment
+  uses 404; FR02 operations use 409. Preserve the route/status meanings.
+
+See [FE handoff](TO-BACKEND-2026-10-07-error-status-response.md).
 
 ## QA Round 5 additions
 
