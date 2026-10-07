@@ -161,6 +161,8 @@ export type TournamentRefereeRow = {
     approved_at : Date | null,
     external_rejection_reason : string | null,
     created_at : Date,
+    /** BE-13 (migration 050) — คำเชิญหมดอายุเมื่อไหร่ · มีความหมายเฉพาะแถวที่ยัง pending */
+    expires_at : Date | null,
     removed_at : Date | null,
     removed_by : number | null
 }

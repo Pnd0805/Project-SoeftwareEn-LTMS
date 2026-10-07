@@ -13,6 +13,7 @@ import { genderAgeFailReason } from '../utils/hardFilter.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
 import * as NotificationService from './notification.service.js';
+import { REFEREE_INVITATION_DAYS } from '../config/scoring.js';
 
 type HardFilterFail = { userId: number; fullName: string; reason: 'gender' | 'age' | 'year' | 'faculty' };
 
@@ -280,16 +281,40 @@ export async function applyTournament(
     // 3.1 Conflict of interest (มติ 18 ก.ย. 2569): ORG หรือกรรมการของทัวร์นี้ มีชื่อในทีมไม่ได้ แม้ไม่ได้ลงแข่ง
     //     (F01 กันฝั่งเชิญกรรมการอยู่แล้ว — ตรงนี้กันการสมัคร "หลัง" ถูกเชิญเป็นกรรมการ)
     const memberIds = members.map(m => m.user_id);
-    const conflicts: { userId: number; role: 'organizer' | 'referee' }[] = [];
+    const conflicts: {
+        userId: number; role: 'organizer' | 'referee';
+        invitationStatus?: 'pending' | 'accepted'; expiresAt?: string | null;
+    }[] = [];
     if (memberIds.includes(tournament.requested_by_user_id)) {
         conflicts.push({ userId: tournament.requested_by_user_id, role: 'organizer' });
     }
-    for (const refereeId of await ApplicationRepo.findRefereesAmongUsers(tournamentId, memberIds)) {
-        conflicts.push({ userId: refereeId, role: 'referee' });
+    /**
+     * 🆕 BE-13 (7 ต.ค. 2569 · มติ ⑨ ง) — บอกให้ครบว่าติดเพราะอะไร และใครปลดล็อกได้
+     *
+     * เดิมข้อความคือ "สมาชิกในทีมเป็นผู้จัดหรือกรรมการของทัวร์นาเมนต์นี้ สมัครไม่ได้"
+     * หัวหน้าทีมอ่านแล้วไม่รู้ว่า ① ใคร ② เพราะคำเชิญที่ยังไม่ได้ตอบ ③ ใครกดแก้ได้
+     * ⇒ ทางออกมีอยู่สองทางตั้งแต่ต้น (ผู้ถูกเชิญกดปฏิเสธ · ผู้จัดยกเลิกคำเชิญ)
+     *   แต่ทั้งสองคนไม่เคยเห็น 409 ใบนี้ · ข้อความจึงต้องเป็นตัวพาข้อมูลไปหาพวกเขา
+     * ★ `invitationStatus` คือตัวที่ทำให้ FE แยกสองกรณีได้:
+     *     pending  = ยังไม่ตอบ → บอกวันหมดอายุ และบอกว่าปฏิเสธ/ยกเลิกแล้วสมัครได้ทันที
+     *     accepted = เป็นกรรมการจริง → เปลี่ยนรายชื่อผู้เล่น หรือเลิกเป็นกรรมการ
+     */
+    for (const ref of await ApplicationRepo.findRefereeConflictsAmongUsers(tournamentId, memberIds)) {
+        conflicts.push({
+            userId : ref.user_id, role : 'referee',
+            invitationStatus : ref.invitation_status,
+            expiresAt : ref.expires_at === null ? null : ref.expires_at.toISOString()
+        });
     }
     if (conflicts.length > 0) {
+        const waiting = conflicts.filter(c => c.invitationStatus === 'pending');
+        const detail = waiting.length > 0
+            ? ` — มี ${waiting.length} คนที่ได้รับคำเชิญเป็นกรรมการแต่ยังไม่ได้ตอบ`
+              + ` ให้เขากดปฏิเสธคำเชิญ หรือให้ผู้จัดการแข่งขันยกเลิกคำเชิญ แล้วสมัครได้ทันที`
+              + ` (คำเชิญจะหมดอายุเองใน ${REFEREE_INVITATION_DAYS} วัน)`
+            : ` — ให้เปลี่ยนรายชื่อผู้เล่น หรือให้เขาเลิกเป็นกรรมการของทัวร์นาเมนต์นี้ก่อน`;
         throw new AppError(409, "TEAM_CONFLICT_OF_INTEREST",
-            "สมาชิกในทีมเป็นผู้จัดหรือกรรมการของทัวร์นาเมนต์นี้ สมัครไม่ได้", { conflicts });
+            `สมาชิกในทีมเป็นผู้จัดหรือกรรมการของทัวร์นาเมนต์นี้ สมัครไม่ได้${detail}`, { conflicts });
     }
     // 4. รายชื่อผู้เล่นที่ลงแข่ง (มติ 19 ก.ย. 2569) — ทีม = คลังผู้เล่น, ใบสมัคร = รายชื่อที่ส่งลงแข่ง
     //    จำนวนต้องอยู่ใน [min_members, max_members] ของกีฬา · ส่งแล้วล็อก แก้ไม่ได้ · ทุกคนต้องเป็นสมาชิกทีมนี้จริง

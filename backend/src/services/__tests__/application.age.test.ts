@@ -14,7 +14,7 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findTeamForApply: vi.fn(),
   findExistingApplication: vi.fn(),
   findTeamMembersForFilter: vi.fn(),
-  findRefereesAmongUsers: vi.fn(() => Promise.resolve([])),
+  findRefereeConflictsAmongUsers: vi.fn(() => Promise.resolve([])),
   findEligibilityRules: vi.fn(),
   insertApplication: vi.fn(),
   insertApplicationWithPlayers: vi.fn(),

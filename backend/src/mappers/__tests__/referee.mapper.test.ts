@@ -29,6 +29,8 @@ function makeRefereeRow(overrides: Record<string, unknown> = {}): RefereeListRow
     user_id: 5,
     full_name: 'กรรมการ A',
     profile_image_key: 'avatars/5.png',
+    // BE-13 — null = ไม่มีวันหมดอายุ ⇒ เทสเดิมยังทดสอบเรื่องเดิม
+    expires_at: null,
     invitation_status: 'accepted',
     is_external: 0,
     external_approval_status: 'not_required',

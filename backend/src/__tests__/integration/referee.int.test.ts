@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { as } from './helpers/api.js';
-import { all, insert, one } from './helpers/db.js';
+import { all, insert, one, testDb } from './helpers/db.js';
 import {
   addTournamentReferee, assignMatchReferee, createFaculty, createMatch, createSportType,
   createTeam, createTournament, createUser, type TestUser,
@@ -39,6 +39,92 @@ const refRowsOf = (tournamentId: number, userId: number) =>
     [tournamentId, userId]);
 const invite = (who: TestUser, tournamentId: number, userId: number) =>
   as(who).post(`/tournaments/${tournamentId}/referees`).send({ userId, isExternal: false });
+
+/**
+ * 🆕 BE-13 (7 ต.ค. 2569 · มติ ⑨ ง) — คำเชิญกรรมการต้องมีวันหมดอายุ
+ *
+ * ปัญหา: ผู้จัดเชิญใครเป็นกรรมการ แล้วคนนั้นไม่ตอบ ⇒ ทีมของคนนั้นสมัครทัวร์นั้นไม่ได้ **ตลอดไป**
+ *   เพราะด่าน CoI นับคำเชิญ 'pending' ว่าเป็นกรรมการแล้ว และตารางนี้ไม่มีคอลัมน์วันหมดอายุเลย
+ *   (คำเชิญเข้าทีมมี 7 วันมาตั้งแต่ migration 013)
+ *
+ * 🔴 เคสที่ไม่มีทางออกเลยก่อนแก้: ผู้จัดหายไปจากโครงการ ⇒ ไม่มีใครมีสิทธิ์ยกเลิกคำเชิญแทน
+ *   ⇒ ให้ "เวลา" เป็นคนปลดล็อก แทนที่จะต้องมีคนจำ
+ *
+ * ★ ระบบไม่มี scheduler ⇒ แถวในฐานยังเป็น 'pending' ตลอด · "หมดอายุ" คำนวณตอนอ่านทุกครั้ง
+ *   (รูปแบบเดียวกับ `findLiveInvitation` ของคำเชิญเข้าทีม)
+ */
+describe('คำเชิญกรรมการหมดอายุใน 7 วัน (BE-13)', () => {
+  const expireInvitation = (id: number) =>
+    testDb().query('UPDATE tournament_referees SET expires_at = NOW() - INTERVAL 1 DAY WHERE tournament_referee_id = ?', [id]);
+  const inviteAndGetId = async () => {
+    expect((await invite(organizer, tour, candidate.id)).status).toBeLessThan(300);
+    return (await refRowsOf(tour, candidate.id))[0]!.tournament_referee_id;
+  };
+
+  it('เชิญใหม่ → ฐานบันทึกวันหมดอายุไว้ประมาณ 7 วันข้างหน้า', async () => {
+    const id = await inviteAndGetId();
+
+    const row = await one<{ days: number }>(
+      'SELECT TIMESTAMPDIFF(HOUR, NOW(), expires_at) AS days FROM tournament_referees WHERE tournament_referee_id = ?', [id]);
+    // 7 วัน = 168 ชม. · เผื่อเวลารันเทส
+    expect(row!.days).toBeGreaterThanOrEqual(167);
+    expect(row!.days).toBeLessThanOrEqual(168);
+  });
+
+  it('คำเชิญหมดอายุแล้ว → กดรับไม่ได้ 409 REFEREE_INVITATION_EXPIRED · สถานะในฐานไม่เปลี่ยน', async () => {
+    const id = await inviteAndGetId();
+    await expireInvitation(id);
+
+    const res = await as(candidate).post(`/referee-invitations/${id}/accept`).send({ matchIds: [] });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('REFEREE_INVITATION_EXPIRED');
+    expect((await refRowsOf(tour, candidate.id))[0]!.invitation_status).toBe('pending');
+  });
+
+  /** ★ ไม่ใช่แค่ซ่อนปุ่ม — ใบที่หมดอายุต้องหายจากรายการด้วย ไม่งั้นคนจะกดแล้วเจอ error เปล่า ๆ */
+  it('คำเชิญหมดอายุแล้ว → ไม่ขึ้นใน "คำเชิญของฉัน"', async () => {
+    const id = await inviteAndGetId();
+    expect((await as(candidate).get('/me/referee-invitations')).body.items).toHaveLength(1);
+
+    await expireInvitation(id);
+
+    expect((await as(candidate).get('/me/referee-invitations')).body.items).toHaveLength(0);
+  });
+
+  /**
+   * ★ ด่านเชิญซ้ำต้องปล่อยใบที่หมดอายุผ่าน — ถ้ายังนับ ผู้จัดจะเชิญคนเดิมใหม่ไม่ได้ตลอดไป
+   *   ⇒ วันหมดอายุจะกลายเป็นแค่การย้ายทางตันไปอีกที่ ไม่ได้แก้อะไรเลย
+   */
+  it('คำเชิญหมดอายุแล้ว → ผู้จัดเชิญคนเดิมใหม่ได้', async () => {
+    const id = await inviteAndGetId();
+    await expireInvitation(id);
+
+    expect((await invite(organizer, tour, candidate.id)).status).toBeLessThan(300);
+    expect(await refRowsOf(tour, candidate.id)).toHaveLength(2);
+  });
+
+  /** ★ เคสตรงข้าม — ใบที่ยังไม่หมดอายุต้องยังบล็อกการเชิญซ้ำ (ด่านต้องไม่ถูกปลดทิ้งทั้งอัน) */
+  it('คำเชิญยังไม่หมดอายุ → เชิญซ้ำไม่ได้ 409 REFEREE_INVITATION_PENDING พร้อมวันหมดอายุ', async () => {
+    await inviteAndGetId();
+
+    const res = await invite(organizer, tour, candidate.id);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('REFEREE_INVITATION_PENDING');
+    expect(typeof res.body.error.expiresAt).toBe('string');
+    expect(await refRowsOf(tour, candidate.id)).toHaveLength(1);
+  });
+
+  it('ผู้จัดเห็นสถานะ expired ในรายการกรรมการของทัวร์', async () => {
+    const id = await inviteAndGetId();
+    await expireInvitation(id);
+
+    const res = await as(organizer).get(`/tournaments/${tour}/referees`);
+
+    expect(res.body.items.find((i: { id: number }) => i.id === id)).toMatchObject({ status: 'expired' });
+  });
+});
 
 // ───────────────────────────── เชิญ ─────────────────────────────
 

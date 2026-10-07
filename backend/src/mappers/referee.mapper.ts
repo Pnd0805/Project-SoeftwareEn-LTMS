@@ -7,6 +7,7 @@ import type { TournamentRefereeRow } from '../types/db.js';
 
 export type RefereeStatus =
     'pending'            // รอ ref ตอบคำเชิญ
+  | 'expired'            // 🆕 BE-13 — เชิญแล้วไม่มีใครตอบจนเลยกำหนด (ไม่บล็อกใครอีกต่อไป)
   | 'pending_admin'      // ★ ตอบรับแล้ว รอ admin ตรวจเอกสาร (คนนอกเท่านั้น)
   | 'active'             // ใช้งานได้จริง คุมแมตช์ได้
   | 'declined'           // ref ปฏิเสธเอง
@@ -15,17 +16,35 @@ export type RefereeStatus =
 
 export type RefereeStatusFields =
     Pick<TournamentRefereeRow, 'invitation_status' | 'is_external' | 'external_approval_status'>
-    & { removed_at? : Date | null };
+    & { removed_at? : Date | null }
+    /**
+     * 🆕 BE-13 — optional เพราะ query เก่าหลายตัวไม่ได้ SELECT คอลัมน์นี้มา
+     * ★ ไม่มีค่า ⇒ ถือว่า "ยังไม่หมดอายุ" ซึ่งเป็นพฤติกรรมเดิมเป๊ะ (ปลอดภัยโดยปริยาย)
+     */
+    & { expires_at? : Date | null };
 
 /**
  * นิยามเดียวของ "กรรมการอยู่สถานะไหน" ทั้งระบบ
  * services/referee.service.ts → isActiveReferee() เรียกฟังก์ชันนี้ ห้ามเขียนเงื่อนไขซ้ำที่อื่น
  * (กฎอยู่ฝั่ง mapper เพราะ service เรียก mapper ได้ แต่ mapper เรียก service ไม่ได้)
  */
+/** คำเชิญใบนี้เลยกำหนดแล้วหรือยัง — นิยามเดียวทั้งระบบ ห้ามเขียนเงื่อนไขซ้ำที่อื่น */
+export function isExpiredInvitation(row : { expires_at? : Date | null }, now = new Date()): boolean {
+    return row.expires_at != null && row.expires_at.getTime() <= now.getTime();
+}
+
 export function toRefereeStatus(row : RefereeStatusFields): RefereeStatus {
     if(row.removed_at) return 'removed';
     if(row.invitation_status === 'rejected') return 'declined';
-    if(row.invitation_status === 'pending')  return 'pending';
+    /**
+     * 🆕 BE-13 (มติ ⑨ ง) — คำเชิญที่เลยกำหนดแล้วต้องไม่อ่านว่า "รอตอบ" อีก
+     * ★ ระบบไม่มี scheduler ⇒ แถวในฐานยังเป็น 'pending' ตลอดไป
+     *   "หมดอายุ" จึงเป็นสิ่งที่**คำนวณตอนอ่าน** ไม่ใช่สิ่งที่รอให้ใครมาเขียน
+     *   (รูปแบบเดียวกับ `findLiveInvitation` ของคำเชิญเข้าทีม)
+     */
+    if(row.invitation_status === 'pending'){
+        return isExpiredInvitation(row) ? 'expired' : 'pending';
+    }
 
     if(row.is_external === 1){
         if(row.external_approval_status === 'pending' || row.external_approval_status === 'needs_docs') return 'pending_admin';

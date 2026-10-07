@@ -20,7 +20,7 @@ vi.mock('../../repositories/application.repo.js', () => ({
   findTeamForApply: vi.fn(),
   findExistingApplication: vi.fn(),
   findTeamMembersForFilter: vi.fn(),
-  findRefereesAmongUsers: vi.fn(() => Promise.resolve([])),
+  findRefereeConflictsAmongUsers: vi.fn(() => Promise.resolve([])),
   findEligibilityRules: vi.fn(),
   insertApplication: vi.fn(),
   insertApplicationWithPlayers: vi.fn(),
@@ -884,14 +884,19 @@ describe('applyTournament', () => {
     mockedApplicationRepo.findTeamMembersForFilter.mockResolvedValue([
       makeMember({ user_id: 5 }), makeMember({ user_id: 77 }), makeMember({ user_id: 88 }),
     ] as never);
-    vi.mocked(mockedApplicationRepo.findRefereesAmongUsers).mockResolvedValueOnce([88]);   // Once — clearAllMocks ไม่ล้าง mockResolvedValue
+    vi.mocked(mockedApplicationRepo.findRefereeConflictsAmongUsers)
+      .mockResolvedValueOnce([{ user_id: 88, invitation_status: 'accepted', expires_at: null }]);   // Once — clearAllMocks ไม่ล้าง mockResolvedValue
 
     // ★ cast ครอบผลของ await ทั้งก้อน ไม่ใช่ cast แค่ค่าใน catch
     //   ถ้า cast แค่ใน catch ชนิดที่ได้จะเป็น union กับค่าที่ resolve สำเร็จ ⇒ อ่าน .extra ไม่ได้
     const err = await applicationService.applyTournament(20, 10, 5, [5, 77, 88])
       .catch((e: unknown) => e) as { code: string; extra: unknown };
     expect(err).toMatchObject({ status: 409, code: 'TEAM_CONFLICT_OF_INTEREST' });
-    expect(err.extra).toEqual({ conflicts: [{ userId: 77, role: 'organizer' }, { userId: 88, role: 'referee' }] });
+    // BE-13 — ฝั่งกรรมการมีสถานะและวันหมดอายุติดมาด้วย เพื่อให้ FE แยก "ยังไม่ตอบ" จาก "เป็นกรรมการจริง"
+    expect(err.extra).toEqual({ conflicts: [
+      { userId: 77, role: 'organizer' },
+      { userId: 88, role: 'referee', invitationStatus: 'accepted', expiresAt: null },
+    ] });
     expect(mockedApplicationRepo.insertApplication).not.toHaveBeenCalled();
   });
 

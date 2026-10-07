@@ -118,6 +118,8 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
 
 function makeInvitation(overrides: Partial<TournamentRefereeRow> = {}): TournamentRefereeRow {
   return {
+    // BE-13 — null = ไม่มีวันหมดอายุ (ค่าเริ่มต้นที่ไม่เปลี่ยนความหมายของเทสเดิม)
+    expires_at: null,
     tournament_referee_id: 1,
     tournament_id: 20,
     user_id: 8,

@@ -9,6 +9,7 @@ import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import type { UserRow } from '../types/db.js';
 import type { TournamentRow } from '../types/db.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
+import { REFEREE_INVITATION_DAYS } from '../config/scoring.js';
 
 /** แถวล่าสุดของ user คนนี้ในทัวร์นี้ — ★ ไม่กรอง removed_at ให้ service ตัดสินเอง */
 /**
@@ -78,10 +79,14 @@ export async function create(data : NewTournamentReferee): Promise<number>{
     try {
         await conn.beginTransaction();
 
+        /**
+         * 🆕 BE-13 (มติ ⑨ ง) — ตั้งวันหมดอายุตั้งแต่ตอนออกใบ ไม่ใช่ไปคิดทีหลัง
+         * ★ คิดจาก NOW() ของฐาน ไม่ใช่ของ node — เวลาเดียวกับที่ทุก query ใช้เทียบ
+         */
         const [result] = await conn.query<ResultSetHeader>(
-            `INSERT INTO tournament_referees (tournament_id, user_id, invited_by, is_external)
-             VALUES (?, ?, ?, ?)`,
-            [data.tournamentId, data.userId, data.invitedBy, data.isExternal]);
+            `INSERT INTO tournament_referees (tournament_id, user_id, invited_by, is_external, expires_at)
+             VALUES (?, ?, ?, ?, NOW() + INTERVAL ? DAY)`,
+            [data.tournamentId, data.userId, data.invitedBy, data.isExternal, REFEREE_INVITATION_DAYS]);
 
         await MatchRefRepo.insertPending(conn, result.insertId, data.matchIds);
 
@@ -96,7 +101,9 @@ export async function create(data : NewTournamentReferee): Promise<number>{
 }
 
 export type TournamentRefereeListRow =
-    Pick<TournamentRefereeRow, 'tournament_referee_id' | 'invitation_status' | 'is_external' | 'external_approval_status'> &
+    // 🆕 BE-13 — `expires_at` ต้องอยู่ในชนิดนี้ ไม่งั้น toRefereeStatus() จะไม่เคยเห็นค่าเลย
+    // และผู้จัดจะอ่านใบที่หมดอายุว่า "รอตอบ" ตลอดไป ซึ่งคือความสับสนที่ BE-13 รายงาน
+    Pick<TournamentRefereeRow, 'tournament_referee_id' | 'invitation_status' | 'is_external' | 'external_approval_status' | 'expires_at'> &
     Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
 
 /** กรรมการทั้งหมดของทัวร์ — แถวล่าสุดต่อ 1 คน เฉพาะที่ยังไม่ถูกถอด */
@@ -146,6 +153,7 @@ export async function findLatestPerUserByTournament(tournamentId : number)
         : Promise<TournamentRefereeListRow[]>{
     const [rows] = await pool.query<(TournamentRefereeListRow & RowDataPacket)[]>(
         `SELECT tr.tournament_referee_id, tr.invitation_status, tr.is_external, tr.external_approval_status,
+                tr.expires_at,
                 u.user_id, u.full_name, u.profile_image_key
          FROM tournament_referees tr
          JOIN ( SELECT user_id, MAX(tournament_referee_id) AS latest_id
@@ -217,6 +225,8 @@ export async function findPendingInvitationsByUser(userId : number)
          JOIN tournaments t ON t.tournament_id = tr.tournament_id
          WHERE tr.removed_at IS NULL
            AND tr.invitation_status = 'pending'
+           -- 🆕 BE-13 — ใบที่เลยกำหนดแล้วกดตอบไม่ได้ จึงต้องไม่ขึ้นในรายการให้หลงกด
+           AND (tr.expires_at IS NULL OR tr.expires_at > NOW())
            AND t.deleted_at IS NULL
          ORDER BY tr.created_at DESC`, [userId]);
     return rows;

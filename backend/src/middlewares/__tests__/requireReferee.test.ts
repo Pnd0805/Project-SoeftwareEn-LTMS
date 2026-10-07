@@ -240,6 +240,8 @@ const baseMatchResult: MatchResultRow = {
 };
 
 const baseTournamentReferee: TournamentRefereeRow = {
+  // BE-13 — null = ไม่มีวันหมดอายุ ⇒ เทสเดิมทดสอบเรื่องของตัวเองต่อไปโดยไม่เปลี่ยนความหมาย
+  expires_at: null,
   tournament_referee_id: 60,
   tournament_id: 20,
   user_id: 5,

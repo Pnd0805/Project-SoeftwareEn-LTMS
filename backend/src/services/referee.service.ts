@@ -6,7 +6,7 @@ import { resolveApprovalForAccept } from './refereeIdentity.service.js';
 import { toTournamentRefereeDto, toMyRefereeInvitationDto, toMatchRefereeDto, toMyRefereeMatchDto } from '../mappers/referee.mapper.js';
 import type { InvitedMatchRow } from '../repositories/matchReferee.repo.js';
 import * as MatchRefRepo from '../repositories/matchReferee.repo.js';
-import { toRefereeStatus } from '../mappers/referee.mapper.js';
+import { toRefereeStatus, isExpiredInvitation } from '../mappers/referee.mapper.js';
 import type { RefereeStatusFields } from '../mappers/referee.mapper.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import type { MatchRefereeCoverageRow } from '../repositories/match.repo.js';
@@ -18,6 +18,7 @@ import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
 import { toAssignableRefereeDto } from '../mappers/referee.mapper.js';
 import { timesOverlap } from '../utils/timeOverlap.js';
 import { isExternalEmail } from '../utils/kuEmail.js';
+import { REFEREE_INVITATION_DAYS } from '../config/scoring.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
     // 1. คนที่ถูกเชิญมีตัวตนจริงไหม
@@ -44,8 +45,17 @@ export async function inviteReferee(tournamentId : number, invitedBy : number, i
     //    ขณะที่แถวเก่ายัง active อยู่ · ด่านจึงปล่อยผ่าน แล้วได้กรรมการ active ซ้ำคนในทัวร์เดียวกัน
     //    (เจอของจริงในฐาน dev: ทัวร์ 2 มี 9002 เป็น accepted ค้างอยู่สามแถวพร้อมกัน)
     const active = await RefRepo.findActiveByTournamentAndUser(tournamentId, input.userId);
-    if(active.some(r => r.invitation_status === 'pending')){
-        throw new AppError(409, 'REFEREE_INVITATION_PENDING', 'ผู้ใช้นี้มีคำเชิญที่ยังไม่ได้ตอบอยู่แล้ว');
+    /**
+     * 🆕 BE-13 (มติ ⑨ ง) — ใบที่เลยกำหนดแล้วต้อง **ไม่** บล็อกการเชิญใหม่
+     * ★ สำคัญกว่าที่เห็น: ถ้าด่านนี้ยังนับใบที่หมดอายุ ผู้จัดจะเชิญคนเดิมใหม่ไม่ได้ตลอดไป
+     *   ⇒ วันหมดอายุจะกลายเป็นแค่การย้ายทางตันไปอีกที่ ไม่ได้แก้อะไร
+     */
+    const livePending = active.find(r => r.invitation_status === 'pending' && !isExpiredInvitation(r));
+    if(livePending){
+        throw new AppError(409, 'REFEREE_INVITATION_PENDING',
+            'ผู้ใช้นี้มีคำเชิญที่ยังไม่ได้ตอบอยู่แล้ว — รอเขาตอบ หรือยกเลิกคำเชิญเดิมก่อน',
+            { tournamentRefereeId : livePending.tournament_referee_id,
+              expiresAt : livePending.expires_at === null ? null : livePending.expires_at.toISOString() });
     }
     // accepted แต่ถูก admin ปฏิเสธตัวตน (rejected_by_admin) → เชิญซ้ำได้ (F-15) แถวใหม่จะเริ่มตรวจใหม่
     // ส่วน invitation_status = 'rejected' คือเจ้าตัวปฏิเสธเอง เชิญใหม่ได้เหมือนเดิม
@@ -342,6 +352,19 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
 
     if(invitation.invitation_status !== 'pending'){
         throw new AppError(409, 'INVITATION_ALREADY_ANSWERED', 'คำเชิญนี้ถูกตอบไปแล้ว');
+    }
+
+    /**
+     * 🆕 BE-13 (มติ ⑨ ง) — ใบที่เลยกำหนดแล้วกดรับไม่ได้
+     * ★ ต้องมีด่านนี้ ไม่ใช่แค่กรองออกจากรายการ — คนกดจาก URL ตรง ๆ หรือจากหน้าที่
+     *   เปิดค้างไว้ได้ · ถ้ามีแต่การกรองรายการ จะกลายเป็นซ่อนปุ่มแต่ยังกดได้
+     *   (หลักเดียวกับ `loadLiveTournament` ใน refereeRequest.service.ts)
+     * ★ ข้อความบอกทางออกตรง ๆ — คนที่กดช้าไม่ได้ทำอะไรผิด เขาแค่ต้องขอใบใหม่
+     */
+    if(isExpiredInvitation(invitation)){
+        throw new AppError(409, 'REFEREE_INVITATION_EXPIRED',
+            `คำเชิญนี้หมดอายุแล้ว (มีอายุ ${REFEREE_INVITATION_DAYS} วันนับจากวันที่เชิญ) — ขอให้ผู้จัดการแข่งขันส่งคำเชิญใหม่`,
+            { expiresAt : invitation.expires_at === null ? null : invitation.expires_at.toISOString() });
     }
 
     // เลือกได้เฉพาะแมตช์ที่ ORG เสนอมาเท่านั้น — [] = เข้าทัวร์แบบ pool

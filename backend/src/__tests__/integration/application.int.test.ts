@@ -44,6 +44,75 @@ const applicationOf = (teamId: number, tournamentId = tour) =>
     [teamId, tournamentId]);
 
 /**
+ * 🆕 BE-13 (7 ต.ค. 2569 · มติ ⑨ ง) — คำเชิญกรรมการที่ไม่มีใครตอบ บล็อกทีมของคนนั้นถาวร
+ *
+ * นี่คือหัวใจของ BE-13 — ด่าน Conflict of interest นับคำเชิญ 'pending' ว่าเป็นกรรมการแล้ว
+ * และคำเชิญไม่มีวันหมดอายุ ⇒ ทีมสมัครไม่ได้ตลอดไป
+ *
+ * 🔴 ความเจ็บอยู่ที่ว่า 409 ไปโผล่ที่ **หัวหน้าทีม** ซึ่งไม่มีสิทธิ์ทั้งสองทางที่ปลดล็อกได้
+ *   (ผู้ถูกเชิญกดปฏิเสธ · ผู้จัดยกเลิกคำเชิญ) ส่วนสองคนที่กดได้ก็ไม่เคยเห็น error ใบนี้
+ *   ⇒ แก้สองชั้น: ① ให้เวลาเป็นคนปลดล็อก ② ให้ข้อความพาข้อมูลไปหาคนที่กดได้
+ */
+describe('คำเชิญกรรมการค้าง ไม่บล็อกทีมตลอดไป (BE-13)', () => {
+  const inviteAsReferee = async (expiresIn: string) => {
+    const id = await addTournamentReferee({ tournamentId: tour, userId: p1.id, invitedBy: organizer.id, invitationStatus: 'pending' });
+    await testDb().query(`UPDATE tournament_referees SET expires_at = NOW() ${expiresIn} WHERE tournament_referee_id = ?`, [id]);
+    return id;
+  };
+
+  it('คำเชิญยังไม่หมดอายุ → ทีมสมัครไม่ได้ · ข้อความบอกว่าติดเพราะคำเชิญที่ยังไม่ตอบ และใครปลดล็อกได้', async () => {
+    await inviteAsReferee('+ INTERVAL 3 DAY');
+
+    const res = await apply(leader, squad());
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('TEAM_CONFLICT_OF_INTEREST');
+    // ★ ข้อความต้องพาทางออกไปด้วย ไม่ใช่บอกแค่ว่า "สมัครไม่ได้"
+    expect(res.body.error.message).toContain('ยังไม่ได้ตอบ');
+    expect(res.body.error.message).toContain('ยกเลิกคำเชิญ');
+    // ★ FE ต้องแยก "ยังไม่ตอบ" จาก "เป็นกรรมการจริง" ได้จากข้อมูล ไม่ใช่จากการอ่านข้อความ
+    expect(res.body.error.conflicts).toEqual([
+      { userId: p1.id, role: 'referee', invitationStatus: 'pending', expiresAt: expect.any(String) },
+    ]);
+    expect(await applicationOf(team)).toBeNull();
+  });
+
+  it('คำเชิญหมดอายุแล้ว → ทีมสมัครได้ 201 โดยไม่ต้องมีใครไปกดอะไร', async () => {
+    await inviteAsReferee('- INTERVAL 1 DAY');
+
+    expect((await apply(leader, squad())).status).toBe(201);
+  });
+
+  /** ★ เคสที่ด่านนี้**ต้อง**ยังบล็อก — คนที่ตอบรับแล้วเป็นกรรมการจริง ไม่เกี่ยวกับวันหมดอายุ */
+  it('ตอบรับเป็นกรรมการแล้ว → ทีมยังสมัครไม่ได้ (วันหมดอายุไม่เกี่ยว)', async () => {
+    const id = await addTournamentReferee({ tournamentId: tour, userId: p1.id, invitedBy: organizer.id, invitationStatus: 'accepted' });
+    await testDb().query('UPDATE tournament_referees SET expires_at = NOW() - INTERVAL 1 DAY WHERE tournament_referee_id = ?', [id]);
+
+    const res = await apply(leader, squad());
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.conflicts).toEqual([
+      { userId: p1.id, role: 'referee', invitationStatus: 'accepted', expiresAt: expect.any(String) },
+    ]);
+  });
+
+  /** ★ ประตูที่สองของกฎเดียวกัน — คนที่มีคำเชิญค้างเข้าทีมที่สมัครทัวร์นั้นไม่ได้ด้วย */
+  it('คำเชิญหมดอายุแล้ว → เข้าทีมที่สมัครทัวร์นั้นอยู่ได้', async () => {
+    const outsider = await createUser({ facultyId: faculty, year: 2 });
+    const refRow = await addTournamentReferee({ tournamentId: tour, userId: outsider.id, invitedBy: organizer.id, invitationStatus: 'pending' });
+    expect((await apply(leader, squad())).status).toBe(201);
+
+    const blocked = await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: outsider.id });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.error.code).toBe('TEAM_CONFLICT_OF_INTEREST');
+
+    await testDb().query('UPDATE tournament_referees SET expires_at = NOW() - INTERVAL 1 DAY WHERE tournament_referee_id = ?', [refRow]);
+
+    expect((await as(leader).post(`/teams/${team}/invitations`).send({ invitedUserId: outsider.id })).status).toBe(201);
+  });
+});
+
+/**
  * 🆕 FE blocker 7 ต.ค. 2569 (มติ ① ก) — ทีมที่ถอนตัวแล้วสมัครทัวร์เดิมใหม่ไม่ได้
  *
  * FE ทำซ้ำได้จริงบน API จริง: สมัคร → อนุมัติ → ถอนตัว → สมัครใหม่ด้วยทีม/ผู้เล่นชุดเดิม

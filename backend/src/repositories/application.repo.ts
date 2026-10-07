@@ -276,20 +276,35 @@ export async function findTeamMembersForFilter(teamId: number): Promise<TeamMemb
 /**
  * Conflict of interest (มติ 18 ก.ย. 2569): สมาชิกทีมที่จะสมัคร ห้ามเป็นกรรมการของทัวร์นี้ (คำเชิญ pending/accepted ที่ยังไม่ถูกถอด)
  * — ORG เช็คแยกใน service จาก tournament.requested_by_user_id
+ *
+ * 🆕 BE-13 (7 ต.ค. 2569 · มติ ⑨ ง) — คืน **สถานะและวันหมดอายุ** ไม่ใช่แค่ user_id
+ *
+ * เดิมคืนแค่ id ⇒ ข้อความที่หัวหน้าทีมได้คือ "สมาชิกในทีมเป็นผู้จัดหรือกรรมการ สมัครไม่ได้"
+ * ซึ่งไม่บอกว่าใคร ไม่บอกว่าเพราะคำเชิญที่ยังไม่ตอบ และไม่บอกว่าใครกดแก้ได้
+ * ⇒ 409 ไปโผล่ที่คนที่ทำอะไรไม่ได้เลย ส่วนสองคนที่กดได้ไม่มีใครรู้ว่ากำลังบล็อกใครอยู่
+ *   (นี่คือรูปร่างจริงของ BE-13 — ข้อมูลอยู่คนละมือกับคนที่กดแก้ได้)
  */
-export async function findRefereesAmongUsers(tournamentId: number, userIds: number[]): Promise<number[]> {
+export type RefereeConflictRow = {
+    user_id: number;
+    invitation_status: 'pending' | 'accepted';
+    expires_at: Date | null;
+};
+
+export async function findRefereeConflictsAmongUsers(tournamentId: number, userIds: number[]): Promise<RefereeConflictRow[]> {
     if (userIds.length === 0) return [];
-    const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
-        `SELECT DISTINCT tr.user_id
+    const [rows] = await pool.query<(RefereeConflictRow & RowDataPacket)[]>(
+        `SELECT tr.user_id, tr.invitation_status, tr.expires_at
          FROM tournament_referees tr
          WHERE tr.tournament_id = ? AND tr.user_id IN (?) AND tr.removed_at IS NULL
-           AND tr.invitation_status IN ('pending', 'accepted')
+           -- 🆕 BE-13 (migration 050) — คำเชิญที่เลยกำหนดแล้วต้องเลิกบล็อกทีมของคนนั้น
+           AND (tr.invitation_status = 'accepted'
+                OR (tr.invitation_status = 'pending' AND (tr.expires_at IS NULL OR tr.expires_at > NOW())))
            AND tr.tournament_referee_id = (
                SELECT MAX(t2.tournament_referee_id) FROM tournament_referees t2
                WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)`,
         [tournamentId, userIds]
     );
-    return rows.map(r => r.user_id);
+    return rows;
 }
 
 /**
@@ -307,7 +322,9 @@ export async function findTeamTournamentConflictForUser(teamId: number, userId: 
            AND (t.requested_by_user_id = ?
                 OR EXISTS (SELECT 1 FROM tournament_referees tr
                            WHERE tr.tournament_id = t.tournament_id AND tr.user_id = ? AND tr.removed_at IS NULL
-                             AND tr.invitation_status IN ('pending', 'accepted')
+                             -- 🆕 BE-13 — เงื่อนไขเดียวกับ findRefereesAmongUsers (ประตูคนละบานของกฎเดียวกัน)
+                             AND (tr.invitation_status = 'accepted'
+                                  OR (tr.invitation_status = 'pending' AND (tr.expires_at IS NULL OR tr.expires_at > NOW())))
                              AND tr.tournament_referee_id = (
                                  SELECT MAX(t2.tournament_referee_id) FROM tournament_referees t2
                                  WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)))
