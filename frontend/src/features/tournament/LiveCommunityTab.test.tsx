@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReviewSummary } from '../../types/liveEngagement.dto'
 
-const { moderate, dismiss, report, state } = vi.hoisted(() => ({ moderate: vi.fn().mockResolvedValue(undefined), dismiss: vi.fn().mockResolvedValue(undefined), report: vi.fn().mockResolvedValue(undefined), state: { canModerate: true, cleared: false } }))
+const { moderate, dismiss, report, state } = vi.hoisted(() => ({ moderate: vi.fn().mockResolvedValue(undefined), dismiss: vi.fn().mockResolvedValue(undefined), report: vi.fn().mockResolvedValue(undefined), state: { canModerate: true, cleared: false, review: { status: 'open', openedBy: null, opensAt: null, canSubmit: false } as Pick<ReviewSummary, 'status' | 'openedBy' | 'opensAt' | 'canSubmit'> } }))
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 7 } }) }))
 vi.mock('../../hooks/useLiveEngagement', () => ({
-  useReviews: () => ({ query: { data: { summary: { average: null, count: 0, distribution: {} }, status: 'open', mine: null, canSubmit: false }, isPending: false, isError: false }, submit: { isPending: false } }),
+  useReviews: () => ({ query: { data: { summary: { average: null, count: 0, distribution: {} }, mine: null, ...state.review }, isPending: false, isError: false }, submit: { isPending: false } }),
   usePickemLeaderboard: () => ({ data: { items: [] }, isPending: false, isError: false }),
   useCommentsLive: () => ({
     query: { data: { items: [
@@ -18,6 +19,12 @@ vi.mock('../../hooks/useLiveEngagement', () => ({
   }),
 }))
 import { LiveCommunityTab } from './LiveCommunityTab'
+
+beforeEach(() => {
+  state.canModerate = true
+  state.cleared = false
+  state.review = { status: 'open', openedBy: null, opensAt: null, canSubmit: false }
+})
 
 describe('C7 tournament comments', () => {
   it('pins mine only once and requires a reason for organizer removal', () => {
@@ -66,4 +73,43 @@ it('shows the delivered cleared status without re-marking the comment', () => {
   expect(screen.getByText(/Reviewed and dismissed/)).toBeInTheDocument()
   expect(screen.queryByText('Reported')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Dismiss report' })).not.toBeInTheDocument()
+})
+
+describe('review opening reason', () => {
+  it.each([
+    ['first_match', 'Reviews are open because competitive play has begun.'],
+    ['completed', 'Reviews are open because the tournament has completed.'],
+  ] as const)('explains %s without claiming the future scheduled date opened reviews', (openedBy, explanation) => {
+    state.review = { status: 'open', openedBy, opensAt: '2099-12-01T00:00:00Z', canSubmit: false }
+    renderComments()
+    expect(screen.getByText(explanation)).toBeInTheDocument()
+    expect(screen.queryByText(/2099|scheduled tournament start/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Send review' })).not.toBeInTheDocument()
+  })
+
+  it('uses the scheduled start only for event_start', () => {
+    state.review = { status: 'open', openedBy: 'event_start', opensAt: '2026-10-07T00:00:00Z', canSubmit: false }
+    renderComments()
+    expect(screen.getByText(/Reviews have been open since the scheduled tournament start/)).toHaveTextContent('07/10/2026, 07:00:00')
+  })
+
+  it('shows a future start as scheduled while not_started', () => {
+    state.review = { status: 'not_started', openedBy: null, opensAt: '2099-12-01T00:00:00Z', canSubmit: false }
+    renderComments()
+    expect(screen.getByText(/Reviews are not open yet/)).toHaveTextContent('Scheduled tournament start: 01/12/2099, 07:00:00')
+    expect(screen.queryByRole('button', { name: 'Send review' })).not.toBeInTheDocument()
+  })
+
+  it('does not show the scheduled opening date once closed', () => {
+    state.review = { status: 'closed', openedBy: null, opensAt: '2099-12-01T00:00:00Z', canSubmit: false }
+    renderComments()
+    expect(screen.getByText('Reviews are closed.')).toBeInTheDocument()
+    expect(screen.queryByText(/2099|scheduled tournament start/i)).not.toBeInTheDocument()
+  })
+
+  it('uses canSubmit as the authority even without an opening reason', () => {
+    state.review.canSubmit = true
+    renderComments()
+    expect(screen.getByRole('button', { name: 'Send review' })).toBeEnabled()
+  })
 })

@@ -7,6 +7,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { USE_MOCK, retryPolicy } from "../api/client";
 import * as adminApi from "../api/admin";
+import { useMe } from './useAuth';
+import { canReadTournamentQueues } from '../shared/adminQueueAccess';
 import type { TeamRef } from "../mocks/teamBridge";
 import type {
   ReviewTournamentRequest,
@@ -65,9 +67,11 @@ export function useMyRefereeInvitations() {
 }
 
 export function useTournamentRequests() {
+  const me = useMe();
   return useQuery({
-    queryKey: adminKeys.tournamentRequests,
+    queryKey: [...adminKeys.tournamentRequests, 'legacy', me.data?.id, me.data?.adminScope],
     queryFn: adminApi.getTournamentRequests,
+    enabled: USE_MOCK || canReadTournamentQueues(me.data?.adminScope),
     retry: retryPolicy,
   });
 }
@@ -167,11 +171,12 @@ export function useDeclineRefereeRequest() {
 }
 
 /** GET /admin/amendment-requests — คำขอแก้ไขรายการที่รอแอดมิน (C09) */
-export function useAmendmentRequests() {
+export function useAmendmentRequests(enabled = true) {
+  const me = useMe();
   return useQuery({
-    queryKey: adminKeys.amendments,
+    queryKey: [...adminKeys.amendments, me.data?.id, me.data?.adminScope],
     queryFn: adminApi.getAmendmentRequests,
-    enabled: !USE_MOCK,
+    enabled: !USE_MOCK && enabled && canReadTournamentQueues(me.data?.adminScope),
     retry: retryPolicy,
   });
 }
@@ -201,11 +206,12 @@ export function useRejectAmendment() {
 }
 
 /** คิวคำขอจัดทัวร์นาเมนต์ตามรูปที่ backend ตอบจริง — ใช้กับหน้า Admin ในโหมดจริง */
-export function usePendingTournamentRequests() {
+export function usePendingTournamentRequests(enabled = true) {
+  const me = useMe();
   return useQuery({
-    queryKey: adminKeys.tournamentRequests,
+    queryKey: [...adminKeys.tournamentRequests, me.data?.id, me.data?.adminScope],
     queryFn: adminApi.getPendingTournamentRequests,
-    enabled: !USE_MOCK,
+    enabled: !USE_MOCK && enabled && canReadTournamentQueues(me.data?.adminScope),
     retry: retryPolicy,
   });
 }

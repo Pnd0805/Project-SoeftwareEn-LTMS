@@ -10,6 +10,14 @@ const pdf = 'http://localhost:9000/ltms-uploads/referee-identity/9053-letter.pdf
 const props = { docsSubmitted: true, fetchedAt: 1_000, now: 1_000, refreshing: false }
 
 describe('identity documents in the admin queue', () => {
+  it('preserves the 9054 signed PNG URL without rewriting its opaque object key', () => {
+    const url = 'http://localhost:9000/ltms-uploads/referee_identity/9054/00000000-0000-4000-8000-000000009054.png?X-Amz-Expires=1200&X-Amz-Signature=abc'
+    render(<IdentityDocs {...props} docs={[url]} onRefresh={vi.fn()} />)
+    expect(screen.getByRole('link')).toHaveAttribute('href', url)
+    expect(screen.getByRole('img')).toHaveAttribute('src', url)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('links each signed URL under its file name, without the signature', () => {
     render(<IdentityDocs {...props} docs={[signed, pdf]} onRefresh={vi.fn()} />)
     expect(screen.getByRole('link', { name: 'เอกสาร 1 · 9053-id-card.jpg' })).toHaveAttribute('href', signed)

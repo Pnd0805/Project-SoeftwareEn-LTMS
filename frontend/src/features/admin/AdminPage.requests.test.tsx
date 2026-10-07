@@ -23,6 +23,8 @@ const reviewMutate = vi.fn()
 const reviewState = { ...idle, mutate: reviewMutate }
 const amendmentQueue = { ...emptyList, data: { items: [] as Array<{ id: number; tournamentId: number; tournamentName: string; requestedBy: { id: number; fullName: string }; selfRequested: boolean; requestedChanges: Record<string, unknown>; status: string; requestedAt: string }> } }
 const amendmentMutate = vi.fn()
+const viewer = { scope: { scopeType: 'faculty', facultyId: 1 } as { scopeType: string; facultyId: number | null } | null }
+vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 9001, adminScope: viewer.scope }, isPending: false, isError: false }) }))
 
 const request = (id: number, name: string) => ({
   id, name, sportTypeId: 1,
@@ -30,17 +32,18 @@ const request = (id: number, name: string) => ({
   eventStartDate: '2026-12-01', createdAt: '2026-09-18T15:11:00.000Z',
 })
 
+const tournamentQueue = { ...emptyList, data: { items: [request(24, 'บาสเกตบอลสัมพันธ์'), request(25, 'แบดมินตันหญิง')] } }
+const pendingRequests = vi.fn<(enabled: boolean) => typeof tournamentQueue>(() => tournamentQueue)
+const amendmentRequests = vi.fn<(enabled: boolean) => typeof amendmentQueue>(() => amendmentQueue)
 vi.mock('../../hooks/useAdmin', () => ({
   useAdminAccess: () => ({ data: true, isPending: false, isError: false, isSuccess: true, error: null }),
-  usePendingTournamentRequests: () => ({
-    ...emptyList, data: { items: [request(24, 'บาสเกตบอลสัมพันธ์'), request(25, 'แบดมินตันหญิง')] },
-  }),
+  usePendingTournamentRequests: (enabled: boolean) => pendingRequests(enabled),
   useReviewTournamentRequest: () => reviewState,
   useTeamRequests: () => emptyList,
   useApproveTeamRequest: () => idle,
   useRejectTeamRequest: () => idle,
   useExternalRefereeRequests: () => emptyList,
-  useAmendmentRequests: () => amendmentQueue,
+  useAmendmentRequests: (enabled: boolean) => amendmentRequests(enabled),
   useApproveAmendment: () => ({ ...idle, mutate: amendmentMutate, reset: vi.fn() }),
   useRejectAmendment: () => idle,
 }))
@@ -55,9 +58,9 @@ import { AdminPage } from './AdminPage'
 /* mutation state ของ mock เป็น object ธรรมดา ไม่ได้บอก React ว่าเปลี่ยน — กรณีที่
    หน้าจอไม่ได้ตั้ง state ของตัวเองจึงต้องสั่ง render ซ้ำเองเพื่ออ่านผลหลังคำขอเด้ง
    และต้องสร้าง element ใหม่ทุกครั้ง ไม่งั้น React ข้ามการ render เพราะเป็นตัวเดิม */
-const ui = () => (
-  <MemoryRouter initialEntries={['/admin/requests']}>
-    <Routes><Route path="/admin/:tab" element={<AdminPage />} /></Routes>
+const ui = (path = '/admin/requests') => (
+  <MemoryRouter initialEntries={[path]}>
+    <Routes><Route path="/admin/:tab?" element={<AdminPage />} /></Routes>
   </MemoryRouter>
 )
 const renderPage = () => render(ui())
@@ -76,10 +79,74 @@ const failWith = (code: string, message: string) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  viewer.scope = { scopeType: 'faculty', facultyId: 1 }
+  tournamentQueue.isError = false
+  tournamentQueue.error = null
+  amendmentQueue.isError = false
+  amendmentQueue.error = null
   amendmentQueue.data.items = []
   reviewState.isError = false
   reviewState.error = null
   reviewMutate.mockImplementation(() => {})
+})
+
+describe('Round 5 queue permissions', () => {
+  it.each([
+    { scopeType: 'root', facultyId: null },
+    { scopeType: 'faculty', facultyId: null },
+  ])('blocks direct queue access for $scopeType / $facultyId without hiding oversight', scope => {
+    viewer.scope = scope
+    renderPage()
+    expect(pendingRequests).toHaveBeenCalledWith(false)
+    expect(amendmentRequests).toHaveBeenCalledWith(false)
+    expect(screen.getByText('Tournament queue access unavailable')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Requests to organize/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Hard-filter changes/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Admin rights' })).toBeInTheDocument()
+    expect(screen.queryByText('แบดมินตันหญิง')).not.toBeInTheDocument()
+    expect(screen.queryByText('Nothing waiting.')).not.toBeInTheDocument()
+  })
+
+  it('blocks the amendment deep link as well', () => {
+    viewer.scope = { scopeType: 'root', facultyId: null }
+    render(ui('/admin/filters'))
+    expect(screen.getByText('Tournament queue access unavailable')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve the change' })).not.toBeInTheDocument()
+  })
+
+  it.each(['requests', 'filters'])('shows a denied %s queue instead of cached rows or an empty state', tab => {
+    const error = new ApiError(403, { code: 'INSUFFICIENT_ADMIN_SCOPE', message: 'Scope denied' })
+    if (tab === 'requests') { tournamentQueue.isError = true; tournamentQueue.error = error as unknown as null }
+    else {
+      amendmentQueue.isError = true; amendmentQueue.error = error as unknown as null
+      amendmentQueue.data.items = [{ id: 7, tournamentId: 22, tournamentName: 'Stale amendment', requestedBy: { id: 9001, fullName: 'Admin' }, selfRequested: true, requestedChanges: {}, status: 'pending', requestedAt: '2026-10-07' }]
+    }
+    render(ui(`/admin/${tab}`))
+    expect(screen.getByText('Queue access denied.')).toBeInTheDocument()
+    expect(screen.queryByText('Nothing waiting.')).not.toBeInTheDocument()
+    expect(screen.queryByText('แบดมินตันหญิง')).not.toBeInTheDocument()
+    expect(screen.queryByText('Stale amendment')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve the change' })).not.toBeInTheDocument()
+  })
+
+  it.each(['root', 'faculty'])('closes a pending decision if the viewer changes to another %s scope', scopeType => {
+    const view = renderPage()
+    fireEvent.click(approveIn('แบดมินตันหญิง'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    viewer.scope = { scopeType, facultyId: scopeType === 'faculty' ? 2 : null }
+    view.rerender(ui())
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(reviewMutate).not.toHaveBeenCalled()
+  })
+
+  it('continues to enable queues for university admins', () => {
+    viewer.scope = { scopeType: 'university_wide', facultyId: null }
+    renderPage()
+    expect(pendingRequests).toHaveBeenCalledWith(true)
+    expect(amendmentRequests).toHaveBeenCalledWith(true)
+    expect(approveIn('แบดมินตันหญิง')).toBeEnabled()
+  })
 })
 
 describe('a request above a faculty admin’s scope', () => {
