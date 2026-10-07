@@ -1,7 +1,30 @@
 # Frontend integration contract — BE_KN 7 Oct 2026
 
-Verified remote/fetched head after QA Round 4: `7e37d9374d5a6ae42370a6d6a58ed5d1e2a5cec9`.
+Verified remote/fetched head after QA Round 5: `234e4a15183ac9f64f66d2242afc531623ee02f1`.
 Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/mappers.
+
+## QA Round 5 additions
+
+- GET /tournaments/:id/feedback adds openedBy: event_start | completed | first_match | null.
+  status remains not_started | open | closed; canSubmit remains the submission authority.
+  opensAt is the scheduled tournament start, including when it is still in the future.
+  Show that timestamp as an opening date only for open/event_start; first_match and
+  completed use their delivered explanation without claiming the future date opened reviews.
+  not_started may show the scheduled start; closed has no opening-date assertion.
+  openedBy explains current availability, not the chronological first opening event.
+- GET /admin/tournament-requests and /admin/amendment-requests return 403
+  INSUFFICIENT_ADMIN_SCOPE for Root and faculty admins with no assigned faculty.
+  Faculty with an assigned faculty and University Admin keep their normal queue access.
+  Gate queue hooks/tabs from GET /me.adminScope, explain blocked deep links, and
+  preserve 403 as an access error. Separate cached queues by actor and scope; hide
+  stale rows and confirmation dialogs after scope changes or queue read errors.
+  Root scope management, audit and existing oversight access remain available.
+- BE fixture 9054 uses referee_identity/9054/00000000-0000-4000-8000-000000009054.png.
+  IdentityDocs preserves the full HTTP presigned URL without object-key rewriting.
+  Links still have a 20-minute lifetime. Fixture 9053 intentionally remains missing.
+  Fixture delivery in seed/compose does not prove an existing local DB/bucket was updated.
+- Round 5 does not add reviewer-authorized amendment impact or team invitation
+  conflict status/expiry metadata. Those Round 4 contract gaps remain open.
 
 ## Sport BO capability
 

@@ -3,6 +3,8 @@
 Verified ls-remote/fetched `BE_KN@7e37d9374d5a6ae42370a6d6a58ed5d1e2a5cec9` and inspected routes, services, middleware and mappers at that ref. Frontend baseline `8a17a20`, branch `feat/1`. Only frontend code/documents changed.
 FE implementation commit: `d2755b5`.
 
+Round 5 supersedes the openedBy/MinIO delivery status below: [latest response](TO-BACKEND-2026-10-07-qa-round5-response.md). Other contract gaps remain open as described there.
+
 User confirms migrations have been run. FE did not run migrations or independently retest the schema. Browser/manual QA was excluded at the user's request; live API fixture checks were not rerun this round. The closures below describe implementation and developer checks.
 
 ## Integrated Round 4 contracts

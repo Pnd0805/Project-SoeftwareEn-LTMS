@@ -3,7 +3,21 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-## QA Response Round 4 — current implementation, 2026-10-07
+## QA Response Round 5 — current implementation, 2026-10-07
+
+- [x] Read Round 5; verified ls-remote/fetched `BE_KN@234e4a15183ac9f64f66d2242afc531623ee02f1` and inspected source at that ref.
+- [x] openedBy explains event_start/first_match/completed from the delivered field; future opensAt is not presented as the opening date for first_match/completed. canSubmit remains server-owned.
+- [x] Root/unassigned Faculty queue tabs hidden, queries disabled, direct URLs explain access; 403 is an error, never an empty queue.
+- [x] Queue cache separates actor/scope; stale rows and confirmations hidden after scope changes or queue errors. Root scope/audit/oversight access retained.
+- [x] IdentityDocs preserves the new 9054 PNG presigned URL and existing 9053 missing-file recovery; no key-prefix assumption.
+- [x] BE fixture delivery acknowledged; no BE edits, seed reload, migration rerun or browser/manual QA performed. User's prior migration confirmation retained.
+- [ ] Existing local DB/bucket fixture 9054 population and real preview/expiry acceptance remain unverified.
+- [ ] FE-39 reviewer-authorized pre-approval impact and team invitation conflict status/expiry metadata still require BE contracts; Round 5 adds neither.
+- [ ] FE-10 browser performance timing and remaining authenticated/browser/device acceptance.
+- [x] Original checklist remains 41 implemented / 2 partial; [Round 5 response](TO-BACKEND-2026-10-07-qa-round5-response.md).
+- [x] Implementation committed in `65da597`. Final developer checks: 97 files / 599 tests, lint, TypeScript/build and diff check passed; existing main 941.47 kB chunk warning. Isolated Vite 5195/changed modules HTTP 200, task-owned server stopped.
+
+## QA Response Round 4 — historical implementation, 2026-10-07
 
 - [x] Read Round 4; verified ls-remote/fetched `BE_KN@7e37d9374d5a6ae42370a6d6a58ed5d1e2a5cec9`.
 - [x] ALREADY_APPLIED recovery distinguishes active team applications from player conflicts.
@@ -16,7 +30,7 @@ API base path: `/api/v1`
 - [x] Paginated removed feedback with content/reason/actor; Faculty/University reads, Root denied, restoration only from delivered canRestore with confirmation and cache refresh.
 - [x] User confirms migrations completed; FE did not run migrations or change BE files.
 - [ ] FE-39 full admin pre-approval impact: delivered preview requires organizer; request a reviewer-authorized read contract or metadata on queue rows.
-- [ ] BE openedBy and valid second MinIO fixture remain undelivered.
+- [x] openedBy and valid second MinIO fixture delivered in Round 5; FE integration above. Runtime acceptance is separate.
 - [ ] Browser/manual QA skipped at user request; live API acceptance was not rerun this round.
 - [x] Current status and BE handoff: [Round 4 response](TO-BACKEND-2026-10-07-qa-round4-response.md).
 - [x] Developer verification: 96 files / 576 tests, lint, TypeScript/build and diff check passed; existing 939.31 kB chunk warning. Isolated Vite 5194/changed modules HTTP 200, then stopped.

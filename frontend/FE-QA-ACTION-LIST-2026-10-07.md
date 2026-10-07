@@ -9,6 +9,7 @@
 
 **ทำแล้ว = code implementation / developer checks ไม่ใช่ live QA sign-off.**
 Round 4 update: 41 implemented, 2 partial (FE-10 timing and FE-39 admin pre-approval impact), 0 waiting for the original standings DTO. These counts describe implementation, not QA sign-off.
+Round 5: openedBy review copy and queue scope/403 handling implemented against BE_KN@234e4a1. Original counts remain 41 implemented / 2 partial. [Latest BE response](TO-BACKEND-2026-10-07-qa-round5-response.md).
 ทุก flow ยังต้องทดสอบกับ BE_KN จริงหลัง migration และ reload
 
 ## Notice วันนี้
@@ -120,3 +121,8 @@ Validation: full suite 95 files / 559 tests passed; final login/review regressio
 
 Verified remote/fetched `BE_KN@7e37d93`. [Current implementation and BE questions](TO-BACKEND-2026-10-07-qa-round4-response.md).
 Developer verification: **96 files / 576 tests passed**, lint and TypeScript/build passed; existing 939.31 kB chunk warning. Isolated Vite 5194 served changed modules HTTP 200, then stopped. Browser/manual QA skipped as requested; prior live evidence remains historical.
+
+## Round 5 follow-up
+
+Verified remote/fetched `BE_KN@234e4a1`; implementation commit `65da597`. [Current closures and BE contract requests](TO-BACKEND-2026-10-07-qa-round5-response.md).
+Developer verification: **97 files / 599 tests passed**, lint and TypeScript/build passed; existing chunk warning (main 941.47 kB). Isolated Vite 5195 served root/changed modules HTTP 200 and was stopped. Browser/manual QA excluded; no new live API acceptance pass claimed.
