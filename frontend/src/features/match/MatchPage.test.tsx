@@ -25,6 +25,7 @@ const disputeState = { ...idle, mutate: vi.fn() }
 const resolveState = { ...idle, mutate: vi.fn() }
 const finishState = { ...idle, mutate: vi.fn() }
 const startState = { ...idle, mutate: vi.fn() }
+const openState = { ...idle, mutate: vi.fn() }
 const submitResult = vi.fn()
 const overrideResult = vi.fn()
 
@@ -72,7 +73,7 @@ vi.mock('../../hooks/useMatch', () => ({
   useResolveDispute: () => resolveState,
   useSubmitResult: () => ({ ...idle, mutate: submitResult, mutateAsync: submitResult }),
   useSetLivestream: () => ({ ...idle, mutate: vi.fn() }),
-  useOpenMatchCheckin: () => ({ ...idle, mutate: vi.fn() }),
+  useOpenMatchCheckin: () => openState,
   useCloseMatchCheckin: () => ({ ...idle, mutate: vi.fn() }),
   useStartMatch: () => startState,
   useFinishMatch: () => finishState,
@@ -93,7 +94,7 @@ import { MatchPage } from './MatchPage'
 const renderPage = () => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <MemoryRouter initialEntries={['/m/9']}>
-      <Routes><Route path="/m/:id" element={<MatchPage />} /></Routes>
+      <Routes><Route path="/m/:id" element={<MatchPage />} /><Route path="/m/:id/fixture" element={<div>Fixture editor</div>} /></Routes>
     </MemoryRouter>
   </QueryClientProvider>,
 )
@@ -102,6 +103,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   meState.current = { data: undefined }
   Object.assign(startState, idle)
+  Object.assign(openState, idle)
   match = baseMatch()
   result = baseResult()
 })
@@ -172,6 +174,19 @@ describe('opening check-in', () => {
 
     expect(screen.getByRole('button', { name: 'Open check-in' })).toBeEnabled()
     expect(screen.queryByText(/Finish the fixture first/)).not.toBeInTheDocument()
+  })
+
+  it.each(['MATCH_NOT_SCHEDULED', 'SCHEDULE_INCOMPLETE'])('recovers a stale open-checkin rejection %s through the fixture page', code => {
+    asOrganizerOfScheduledMatch()
+    openState.isError = true
+    openState.error = new ApiError(409, { code, message: 'Unrelated text', missing: ['venue'] }) as unknown as null
+    renderPage()
+    expect(screen.getByText('The match schedule is not ready.')).toBeInTheDocument()
+    expect(screen.getByText('Missing schedule fields: Venue.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Set the fixture' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Venue' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Set the fixture' }))
+    expect(screen.getByText('Fixture editor')).toBeInTheDocument()
   })
 
   /* R20 — ปุ่มอ่านจาก can.openCheckin ที่เดียว วันที่ backend เปิดให้กรรมการกดได้
@@ -280,6 +295,17 @@ describe('starting a match with possible no-shows', () => {
     expect(screen.getByText(/Both squads are below the minimum/)).toBeInTheDocument()
     expect(screen.getByText(/ask the organizer to reschedule/)).toBeInTheDocument()
   })
+})
+
+it('asks a referee to get the organizer to schedule after a start rejection with no missing metadata', () => {
+  match.status = 'checkin_open'
+  result = undefined
+  startState.isError = true
+  startState.error = new ApiError(409, { code: 'MATCH_NOT_SCHEDULED', message: 'Unrelated text' }) as unknown as null
+  renderPage()
+  expect(screen.getByText(/The organizer must complete the match schedule/)).toBeInTheDocument()
+  expect(screen.queryByText(/Missing schedule fields:/)).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Set the fixture' })).not.toBeInTheDocument()
 })
 
 describe('finishing a match', () => {

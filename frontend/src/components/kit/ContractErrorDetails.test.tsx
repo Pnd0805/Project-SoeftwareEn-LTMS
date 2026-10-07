@@ -29,3 +29,24 @@ it('explains stale expired invitations with the delivered deadline and a new inv
   render(<ContractErrorDetails error={new ApiError(409, { code: 'REFEREE_INVITATION_EXPIRED', message: 'Expired', expiresAt: '2026-10-14T03:00:00Z' })} />)
   expect(screen.getByText(/14\/10\/2026, 10:00:00.*Refresh your invitations/)).toBeInTheDocument()
 })
+
+it.each(['MATCH_NOT_SCHEDULED', 'SCHEDULE_INCOMPLETE'])('shows optional schedule recovery metadata for 409 %s without parsing the message', code => {
+  render(<ContractErrorDetails error={new ApiError(409, { code, message: 'Fill in the form', missing: ['scheduledTime', null, 'venue', 'venue', '__proto__'] })} />)
+  expect(screen.getByText(/The organizer must complete the match schedule/)).toBeInTheDocument()
+  expect(screen.getByText('Missing schedule fields: Kick-off, Venue.')).toBeInTheDocument()
+})
+
+it('supports an unscheduled FR02 match with no extra metadata', () => {
+  render(<ContractErrorDetails error={new ApiError(409, { code: 'MATCH_NOT_SCHEDULED', message: 'Unrelated text' })} />)
+  expect(screen.getByText(/The organizer must complete/)).toBeInTheDocument()
+  expect(screen.queryByText(/Missing schedule fields/)).not.toBeInTheDocument()
+})
+
+it.each([
+  [400, 'SCHEDULE_INCOMPLETE'], [400, 'MATCH_NOT_SCHEDULED'],
+  [404, 'USER_NOT_FOUND'], [404, 'NO_ACTIVE_DISPUTE'], [409, 'NO_ACTIVE_DISPUTE'],
+  [404, 'REFEREE_NOT_ASSIGNED'], [409, 'REFEREE_NOT_ASSIGNED'],
+] as const)('does not give match-scheduling recovery for %i %s', (status, code) => {
+  render(<ContractErrorDetails error={new ApiError(status, { code, message: 'Set the fixture', missing: ['venue'] })} />)
+  expect(screen.queryByText(/The organizer must complete|Missing schedule fields/)).not.toBeInTheDocument()
+})

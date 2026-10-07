@@ -1,5 +1,6 @@
 import { ApiError } from '../../api/client'
 import { ownResultRecovery, refereeInvitationRecovery } from '../../shared/refereeRecovery'
+import { missingScheduleFields, scheduleErrorKind, scheduleFieldLabels } from '../../shared/matchScheduleErrors'
 
 const field = (value: string) => value.replace(/([a-z])([A-Z])/g, '$1 $2')
 const date = (value: unknown) => typeof value === 'string' && Number.isFinite(Date.parse(value))
@@ -11,6 +12,10 @@ const record = (value: unknown): Record<string, unknown> => value && typeof valu
 export function ContractErrorDetails({ error }: { error: unknown }) {
   if (!(error instanceof ApiError)) return null
   const e = error.extra
+  if (scheduleErrorKind(error) === 'match') return <div>
+    <p>The organizer must complete the match schedule before retrying this action.</p>
+    {missingScheduleFields(error).length ? <p>Missing schedule fields: {missingScheduleFields(error).map(key => scheduleFieldLabels[key]).join(', ')}.</p> : null}
+  </div>
   if (error.code === 'CANNOT_DISPUTE_OWN_RESULT') return <p>{ownResultRecovery(e.resultStatus, e.mode)}</p>
   if (error.code === 'REFEREE_INVITATION_EXPIRED') return <p>This referee invitation expired{date(e.expiresAt) ? ` at ${date(e.expiresAt)}` : ''}. Refresh your invitations and ask the organizer for a new invitation.</p>
   if (error.code === 'REFEREE_INVITATION_PENDING') return <p>Invitation{typeof e.tournamentRefereeId === 'number' ? ` #${e.tournamentRefereeId}` : ''} is awaiting a response{date(e.expiresAt) ? ` until ${date(e.expiresAt)}` : ''}. Ask the invitee to respond or cancel the invitation before inviting again.</p>

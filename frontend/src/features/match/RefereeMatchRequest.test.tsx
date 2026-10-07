@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { MatchDto, MatchListItemDto } from '../../types/match.dto'
 import type { TournamentRefereeDto } from '../../types/admin.dto'
+import { ApiError } from '../../api/client'
 
 const state = vi.hoisted(() => ({
   transfer: vi.fn(), swap: vi.fn(), loading: false, readError: false, error: null as Error | null, alone: false,
@@ -73,6 +74,12 @@ it('reports conflicts without claiming any assignment changed', () => {
   render(<RefereeMatchRequest m={mine} />)
   expect(screen.getByText('Schedule conflict')).toBeInTheDocument()
   expect(screen.queryByText(/Assignments change only after/)).not.toBeInTheDocument()
+})
+it('explains an unscheduled match from FR02 without requiring optional missing metadata', () => {
+  state.error = new ApiError(409, { code: 'MATCH_NOT_SCHEDULED', message: 'Match has no time' })
+  render(<RefereeMatchRequest m={mine} />)
+  expect(screen.getByText(/The organizer must complete the match schedule/)).toBeInTheDocument()
+  expect(screen.queryByText(/Missing schedule fields/)).not.toBeInTheDocument()
 })
 it('shows an open request as awaiting consent and prevents a duplicate send', () => {
   state.transfer.mockImplementation((_input, options) => options.onSuccess({ id: 50, status: 'open' }))

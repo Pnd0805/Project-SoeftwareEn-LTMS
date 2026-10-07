@@ -27,6 +27,8 @@ import { useTournament } from '../../hooks/useTournament'
 import { MatchFormatPanel } from './MatchFormatPanel'
 import { RefereeCoverageWarnings } from '../tournament/manage/RefereeCoverageWarnings'
 import { ApiError, USE_MOCK } from '../../api/client'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+import { missingScheduleFields, scheduleErrorKind } from '../../shared/matchScheduleErrors'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
 import type { MatchDto } from '../../types/match.dto'
@@ -74,8 +76,8 @@ const scheduleError = (error: unknown) => {
   if (error.code === 'MATCH_NOT_CHANGEABLE') {
     return 'แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว จึงไม่สามารถแก้ไขเวลาหรือสนามได้ (Check-in has opened or the match has already started, so its schedule is locked).'
   }
-  if (error.code === 'SCHEDULE_INCOMPLETE') {
-    return 'ข้อมูลไม่ครบถ้วน: ต้องระบุเวลาเริ่ม เวลาจบ และสนามแข่งขันให้ครบ'
+  if (scheduleErrorKind(error) === 'request') {
+    return 'ข้อมูลไม่ครบถ้วน: กรอกช่องที่ต้องระบุในฟอร์มตั้งตารางนี้ให้ครบ (Complete the required fields in this schedule form).'
   }
   if (error.code === 'VALIDATION_FAILED' || error.message?.toLowerCase().includes('validation')) {
     if (error.message?.includes('end') && error.message?.includes('start')) {
@@ -131,7 +133,7 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
       {readError ? (
         <Banner kind="crit"><b>Could not load referee assignments.</b> Retry by reopening this fixture.</Banner>
       ) : null}
-      {request.isError ? <Banner kind="crit"><b>Request not sent.</b> {refereeRequestError(request.error)}</Banner> : null}
+      {request.isError ? <Banner kind="crit"><b>Request not sent.</b> {refereeRequestError(request.error)}<ContractErrorDetails error={request.error} /></Banner> : null}
       {cancel.isError || unassign.isError ? (
         <Banner kind="crit"><b>Could not update this assignment.</b>{' '}
           {refereeRequestError(cancel.error ?? unassign.error)}</Banner>
@@ -219,6 +221,7 @@ export function FixturePage() {
   const kickoffVal = kickoff ?? toLocal(m.scheduledTime)
   const finishVal = finish ?? toLocal(m.scheduledEndTime ?? null)
   const venueVal = venue ?? (m.venue ?? '')
+  const serverMissing = scheduleErrorKind(update.error) === 'request' ? missingScheduleFields(update.error) : []
   const refsVal = refs ?? m.referees.map(r => r.id)
 
   /* `can.editFixture` รวมสองเรื่องไว้ด้วยกัน: เป็นผู้จัดไหม และแมตช์ยังแก้ได้ไหม
@@ -331,15 +334,27 @@ export function FixturePage() {
             <div className="grid2">
               <Field label="Kick-off" htmlFor={`as-k-${m.id}`}>
                 <input id={`as-k-${m.id}`} type="datetime-local" value={kickoffVal}
-                  onChange={e => setKickoff(e.target.value)} />
+                  disabled={saving}
+                  aria-invalid={serverMissing.includes('scheduledTime') || undefined}
+                  aria-describedby={serverMissing.includes('scheduledTime') ? `as-k-error-${m.id}` : undefined}
+                  onChange={e => { update.reset(); setKickoff(e.target.value) }} />
+                {serverMissing.includes('scheduledTime') ? <span className="sub" id={`as-k-error-${m.id}`}>Kick-off is required in this schedule request.</span> : null}
               </Field>
               <Field label="End" htmlFor={`as-e-${m.id}`}>
                 <input id={`as-e-${m.id}`} type="datetime-local" value={finishVal}
-                  onChange={e => setFinish(e.target.value)} />
+                  disabled={saving}
+                  aria-invalid={serverMissing.includes('scheduledEndTime') || undefined}
+                  aria-describedby={serverMissing.includes('scheduledEndTime') ? `as-e-error-${m.id}` : undefined}
+                  onChange={e => { update.reset(); setFinish(e.target.value) }} />
+                {serverMissing.includes('scheduledEndTime') ? <span className="sub" id={`as-e-error-${m.id}`}>End is required in this schedule request.</span> : null}
               </Field>
               <Field label="Venue" htmlFor={`as-v-${m.id}`}>
-                <input id={`as-v-${m.id}`} value={venueVal} onChange={e => setVenue(e.target.value)}
+                <input id={`as-v-${m.id}`} value={venueVal} onChange={e => { update.reset(); setVenue(e.target.value) }}
+                  disabled={saving}
+                  aria-invalid={serverMissing.includes('venue') || undefined}
+                  aria-describedby={serverMissing.includes('venue') ? `as-v-error-${m.id}` : undefined}
                   placeholder="Court 9" />
+                {serverMissing.includes('venue') ? <span className="sub" id={`as-v-error-${m.id}`}>Venue is required in this schedule request.</span> : null}
               </Field>
             </div>
 

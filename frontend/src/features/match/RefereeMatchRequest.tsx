@@ -6,6 +6,7 @@ import { useAssignableReferees, useRequestRefereeTransfer, useRequestRefereeSwap
 import type { MatchDto, MatchListItemDto } from '../../types/match.dto'
 import type { TournamentRefereeDto } from '../../types/admin.dto'
 import { RefereeWithdrawal } from './RefereeWithdrawal'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 
 function changeable(match: Pick<MatchListItemDto, 'status' | 'scheduledTime' | 'scheduledEndTime'>, now: number) {
   return match.status === 'scheduled' && !!match.scheduledEndTime && !!match.scheduledTime
@@ -138,7 +139,7 @@ export function RefereeRequestForm({ tournamentId, matches, myMatch, pool }: {
         {busy ? 'Sending...' : 'Send request'}
       </button>
     </fieldset>
-    {error ? <Banner kind="crit">{error.message}</Banner> : null}
+    {error ? <Banner kind="crit">{error.message}<ContractErrorDetails error={error} /></Banner> : null}
     {notice ? <Banner kind="ok">{notice} <Badge kind="warn">Check Inbox for the decision</Badge></Banner> : null}
     {!loading && !failedRead && !eligible.length ? <span className="sub">No future scheduled matches are available.</span> : null}
   </Panel>

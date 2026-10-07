@@ -40,6 +40,7 @@ import {
   useResolveDispute, useResult, useSetLivestream, useStartMatch, useVerifyResult, useFinishMatch,
 } from '../../hooks/useMatch'
 import { ApiError, USE_MOCK } from '../../api/client'
+import { scheduleErrorKind } from '../../shared/matchScheduleErrors'
 import { useLtms } from '../../shared/store'
 import { findStoreMatch, tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
@@ -99,7 +100,7 @@ const lifecycleError = (error: unknown) => {
   if (code === 'TEAMS_PRESENT') return 'Both squads met the minimum, so this is not a no-show — a referee starts it.'
   if (code === 'NOT_MATCH_PARTICIPANT') return 'Only this match’s referees or the organizer can do that.'
   if (code === 'MATCH_NOT_IN_PROGRESS') return 'This match is not being played right now. Reload to see where it stands.'
-  if (code === 'SCHEDULE_INCOMPLETE') return 'The fixture is not complete yet — set the kick-off, end time and venue first.'
+  if (scheduleErrorKind(error) === 'match') return 'The match schedule is not ready.'
   if (code === 'PREDECESSOR_DISPUTED') return 'An earlier match that feeds this one is still disputed. It has to be settled first.'
   return error instanceof Error ? error.message : 'Something went wrong.'
 }
@@ -146,7 +147,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
           {/* R19 — เปิดเช็คอินก่อนจัดนัดให้ครบไม่ได้: กรรมการยังขอไม่ได้เลยถ้าไม่มีเวลาจบ
               (FR02 `assertMatchChangeable`) และพอเปิดเช็คอินไปแล้วก็แก้นัดไม่ได้อีก M06
               รับเฉพาะแมตช์ `scheduled` — กดตอนนี้คือขังตัวเองไว้กับนัดที่ยังไม่เสร็จ
-              ฝั่ง backend มีด่านเดียวกันแล้ว (`409 SCHEDULE_INCOMPLETE` + `missing[]` ตั้งแต่ 7a4499c)
+              ฝั่ง backend มีด่านเดียวกันแล้ว (`409 MATCH_NOT_SCHEDULED` + optional `missing[]`)
               ปุ่มที่ปิดไว้ตรงนี้จึงแค่บอกล่วงหน้า ไม่ใช่ด่านเดียวที่มี */}
           {!fixtureComplete ? (
             <Banner kind="warn">
@@ -285,6 +286,8 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
           <b>That did not go through.</b>{' '}
           {lifecycleError(failed.error)}
           <ContractErrorDetails error={failed.error} />
+          {isOrganizer && scheduleErrorKind(failed.error) === 'match' ? <button className="btn" type="button"
+            onClick={() => navigate(`/m/${m.id}/fixture`)}>Set the fixture</button> : null}
         </Banner>
       ) : null}
     </Panel>

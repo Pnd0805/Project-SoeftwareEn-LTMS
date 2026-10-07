@@ -15,6 +15,7 @@ const updateAsync = vi.fn()
 const bulkAssignAsync = vi.fn()
 const requestReferee = vi.fn()
 let updateError: unknown = null
+const updateReset = vi.fn(() => { updateError = null })
 const match = {
   id: 23, tournamentId: 5, bracketNodeId: 1, nextMatchId: null, loserNextMatchId: null,
   roundNumber: 2, teamA: null, teamB: null,
@@ -40,7 +41,7 @@ const idleMutation = { isPending: false, isError: false, isSuccess: false, error
 vi.mock('../../hooks/useMatch', () => ({
   useMatch: () => ({ data: match, isPending: false, isError: false }),
   useUpdateMatch: () => ({
-    ...idleMutation, mutateAsync: updateAsync, isError: updateError !== null, error: updateError,
+    ...idleMutation, reset: updateReset, mutateAsync: updateAsync, isError: updateError !== null, error: updateError,
   }),
   useAssignReferees: () => ({ ...idleMutation, mutateAsync: bulkAssignAsync }),
   useMatchReferees: () => ({ data: { items: [] }, isPending: false, isError: false }),
@@ -81,10 +82,39 @@ beforeEach(() => {
   bulkAssignAsync.mockReset().mockResolvedValue(match)
   requestReferee.mockReset()
   updateError = null
+  updateReset.mockClear()
   match.tournament.sportName = 'Volleyball'
 })
 
 describe('real-mode fixture referee consent flow', () => {
+  it('marks only missing request fields from 400 and clears stale errors when the draft changes', () => {
+    updateError = new ApiError(400, { code: 'SCHEDULE_INCOMPLETE', message: 'Unrelated text', missing: ['venue', 'venue', 'unknown'] })
+    renderPage()
+    const venue = screen.getByRole('textbox', { name: 'Venue' })
+    expect(venue).toHaveAttribute('aria-invalid', 'true')
+    expect(venue).toHaveAccessibleDescription('Venue is required in this schedule request.')
+    expect(screen.getByLabelText('Kick-off')).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByLabelText('End')).not.toHaveAttribute('aria-invalid')
+    expect(screen.queryByText(/The organizer must complete/)).not.toBeInTheDocument()
+    fireEvent.change(venue, { target: { value: 'Court 2' } })
+    expect(updateReset).toHaveBeenCalledTimes(1)
+    expect(venue).not.toHaveAttribute('aria-invalid')
+  })
+
+  it.each(['MATCH_NOT_SCHEDULED', 'SCHEDULE_INCOMPLETE'])('never treats a 409 %s as a missing field in the current request', code => {
+    updateError = new ApiError(409, { code, message: 'Stored match not ready', missing: ['venue'] })
+    renderPage()
+    expect(screen.getByRole('textbox', { name: 'Venue' })).not.toHaveAttribute('aria-invalid')
+    expect(screen.queryByText(/Venue is required in this schedule request/)).not.toBeInTheDocument()
+  })
+
+  it('keeps generic form recovery when the 400 response has no missing array', () => {
+    updateError = new ApiError(400, { code: 'SCHEDULE_INCOMPLETE', message: 'Unrelated text' })
+    renderPage()
+    expect(screen.getByText(/Complete the required fields in this schedule form/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save schedule' })).toBeEnabled()
+  })
+
   it('requests one tournament referee without calling the removed bulk assignment route', () => {
     renderPage()
 
