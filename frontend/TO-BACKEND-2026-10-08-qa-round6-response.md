@@ -55,7 +55,9 @@ FE รอบนี้ไม่ได้แก้ BE, รัน migration, restor
 
 Original FE-01–FE-43 ยังคง **41 implemented / 2 partial**: FE-10 browser timing และ FE-39 reviewer impact ช่องว่าง metadata ของ team conflict ปิด implementation ใน Round 6 แล้ว
 
-SMTP/OTP gate พักตามเจ้าของงาน; B2/B4/cancellation และมติทีมอื่นยังรอทีม รวมถึงวิธีบันทึก error codes ใน Part 4 ที่ BE แจ้งไว้ ไม่ใช่งานที่ FE ปิดเองได้
+SMTP/OTP สถานะล่าสุดจากเจ้าของงาน (8 ต.ค.): **รอ BE merge SMTP จริงแทน mail จำลอง** แล้วจึงทดสอบส่ง/ยืนยัน OTP และ enforcement ร่วมกัน ข้อความพักเพราะ Google 2FA ใน notice เป็นบริบทก่อนคำชี้แจงนี้; B2/B4/cancellation และมติทีมอื่นยังรอทีม รวมถึงวิธีบันทึก error codes ใน Part 4 ที่ BE แจ้งไว้ ไม่ใช่งานที่ FE ปิดเองได้
+
+OTP follow-up (8 ต.ค.): เจ้าของงานยัง bypass ได้ ตรวจ remote/source ล่าสุด `BE_KN@240e9e6` แล้ว login ยังออก token โดยไม่ตรวจ email_verified และ loadUser ยังไม่มี gate เช่นกัน SMTP พร้อมอย่างเดียวไม่แก้จุดนี้ ต้องส่งมอบ server enforcement ก่อนปิด production acceptance ดู [หลักฐานและรายการแก้ OTP bypass](TO-BACKEND-2026-10-06-otp-login-bypass.md)
 
 Developer verification: **98 files / 639 tests passed** (`--maxWorkers=2`), lint, TypeScript/production build และ diff check ผ่าน Focused Round 6: **9 files / 107 tests passed** Build มี warning ขนาด chunk เดิม (main **944.22 kB**)
 

@@ -3,6 +3,17 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
+## Account registration steps — 2026-10-08
+
+- [x] Verified remote/fetched `BE_KN@240e9e62ca5aa5c429e9e7159414692c2052ae45`; inspected register schema/service and exact @ku.th classification.
+- [x] Personal details in step one; internal email alone advances to a separate student-details step. Back retains the draft in memory; no password persistence in URL/storage.
+- [x] Submit only after valid student details and successful reference reads; no automatic faculty/department ID 1. Changing faculty clears the old department; loading/empty/error/retry states included.
+- [x] Server errors for personal fields return to step one; successful registration retains the existing OTP flow.
+- [ ] External personal-only registration requires BE conditional fields/service/nullable contract. Current BE still requires facultyId/departmentId/year for all emails; FE does not post an invalid body or invent academic values.
+- [x] [Registration contract handoff](TO-BACKEND-2026-10-08-registration-two-step.md). This additional feature does not change original FE-01–FE-43 implementation counts.
+- [x] Implementation `31d52f0`: final 99 files / 659 tests passed, lint/TypeScript/build/diff check passed; existing main 949.00 kB warning. Isolated Vite 5196 registration route/changed modules HTTP 200, task-owned server stopped.
+- [ ] Authenticated external registration and SMTP/OTP acceptance after BE delivery; no browser/manual QA performed for this implementation.
+
 ## QA Response Round 6 — current implementation, 2026-10-08
 
 - [x] Verified remote/fetched BE_KN@4b51af59850899fc999032f6d7632979b791ae0e and current source.
@@ -15,7 +26,8 @@ API base path: `/api/v1`
 - [x] Isolated Vite 5195 root/changed modules HTTP 200; task-owned server stopped. No browser/manual QA or new authenticated API acceptance pass claimed.
 - [ ] BE must deliver reviewer-authorized impact route/schema before FE-39 can close.
 - [ ] BE focused fixture population/canonical DB keys and authenticated MinIO preview/expiry acceptance.
-- [ ] FE-10 timing and authenticated browser/device acceptance remain open; SMTP/OTP paused and other decisions await team.
+- [ ] FE-10 timing and authenticated browser/device acceptance remain open; latest owner clarification: waiting for BE to merge real SMTP instead of simulated mail, then verify OTP delivery/enforcement. Other decisions await team.
+- [ ] OTP bypass still open (owner report 8 Oct, verified BE_KN@240e9e6): login issues tokens and loadUser accepts them without email_verified enforcement. SMTP setup alone does not close this production blocker. [Updated BE evidence](TO-BACKEND-2026-10-06-otp-login-bypass.md).
 
 ## Error/status conflict follow-up — historical implementation, 2026-10-07
 
