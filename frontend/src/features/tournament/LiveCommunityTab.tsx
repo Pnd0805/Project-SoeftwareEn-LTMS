@@ -195,7 +195,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
             <p className="sub">
               โปรดเลือกเหตุผลที่ต้องการรายงานความคิดเห็นนี้ เพื่อส่งให้ผู้จัดและแอดมินตรวจสอบ:
             </p>
-            <div className="panel quiet" style={{ padding: '12px 14px', borderLeft: '3px solid var(--warn)' }}>
+            <div className="panel quiet" style={{ padding: '12px 14px', border: '1px solid var(--amber)' }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{reportingComment.author.fullName}</div>
               <div style={{ margin: '6px 0', fontSize: 15 }}>{reportingComment.content}</div>
               <span className="tag">{new Date(reportingComment.createdAt).toLocaleString()}</span>
@@ -212,9 +212,9 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
                       alignItems: 'center',
                       gap: 10,
                       padding: '8px 12px',
-                      borderRadius: 6,
-                      background: reportReasonCategory === r.id ? 'var(--void-1)' : 'var(--void-2)',
-                      border: `1px solid ${reportReasonCategory === r.id ? 'var(--teal)' : 'var(--line-faint, #333)'}`,
+                      borderRadius: 'var(--r)',
+                      background: reportReasonCategory === r.id ? 'var(--panel-3)' : 'var(--void-2)',
+                      border: `1px solid ${reportReasonCategory === r.id ? 'var(--teal)' : 'var(--line-hot)'}`,
                       cursor: 'pointer',
                     }}
                   >
