@@ -8,6 +8,7 @@
 ฐาน frontend เดิม `7c8f187`. แก้เฉพาะ checkout frontend นี้
 
 **ทำแล้ว = code implementation / developer checks ไม่ใช่ live QA sign-off.**
+Round 7 (8 Oct), current: verified/fetched BE_KN@000d9ec; paginated pick'em, conditional external signup/nullable academic data and closure notifications integrated. FE-39 reviewer impact delivered at ce5f79f and integrated before admin confirmation. **42 implemented / 1 partial (FE-10 timing)**; focused fixture script/baseline delivery resolved, runtime application and SMTP/OTP enforcement remain open. Full developer checks: **101 files / 681 tests**, lint/build/diff check, isolated Vite 5197 HTTP module checks passed. [Current BE response](TO-BACKEND-2026-10-08-qa-round7-response.md).
 Round 4 update: 41 implemented, 2 partial (FE-10 timing and FE-39 admin pre-approval impact), 0 waiting for the original standings DTO. These counts describe implementation, not QA sign-off.
 Round 5: openedBy review copy and queue scope/403 handling implemented against BE_KN@234e4a1. Original counts remain 41 implemented / 2 partial. [Latest BE response](TO-BACKEND-2026-10-07-qa-round5-response.md).
 Error/status follow-up: BE_KN@77039f6 separates match-state 409 MATCH_NOT_SCHEDULED from form 400 SCHEDULE_INCOMPLETE; FE recovery integrated with legacy 409 compatibility. Original counts remain 41 / 2. [Latest follow-up](TO-BACKEND-2026-10-07-error-status-response.md).
@@ -73,7 +74,7 @@ Round 6 (8 Oct): BE_KN@4b51af5 team-conflict metadata integrated across invite/a
 | FE-36 | ทำแล้ว | Prediction closed แยก finished/completed กับ started |
 | FE-37 | ทำแล้ว | Report user + evidence uploads และ admin paginated queue/decisions/confirmation |
 | FE-38 | Done | Reported content per tournament plus paginated removed history; read by Faculty/University, Root denied; restoration from selected content and server canRestore, no manual ID required |
-| FE-39 | Partial | Organizer previews actual impact before submission; admin sees reason/current/requested and rejection impact. Preview is organizer-only, so impact before another admin approves still needs a read contract |
+| FE-39 | Implemented | Organizer preview retained; admin now reads request-specific impact from the reviewer-authorized endpoint before confirmation, uses current stored changes/reason, displays supplied blockers/affected teams and blocks loading/error/already-decided approval. BE rechecks on POST; authenticated acceptance remains open |
 | FE-40 | ทำแล้ว | Self guards และ Root/University suspension protection; Reinstate ไม่ถูกปิดด้วยกฎ Suspend |
 | FE-41 | ทำแล้ว | Admin rights ค้นผู้ใช้ด้วยชื่อ/ID และแสดงชื่อระดับสิทธิ์ |
 | FE-42 | ทำแล้ว | Audit page 20 records ใช้ server pagination เข้าถึงเกิน 100; search/filter ระบุ current page |

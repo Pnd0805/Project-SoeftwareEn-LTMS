@@ -1,9 +1,49 @@
 # Frontend integration contract — BE_KN 7–8 Oct 2026
 
-Latest verified remote/fetched head (Round 6): `4b51af59850899fc999032f6d7632979b791ae0e`. Historical error/status follow-up: `77039f6b0abb4767e194cde825dc5555cadf9c8f`.
+Latest verified remote/fetched head (Round 7): `000d9ec798b0774e304abee228ab1172ff1edb51`; FE-39 delivered at `ce5f79f`. Historical Round 6: `4b51af59850899fc999032f6d7632979b791ae0e`; error/status follow-up: `77039f6b0abb4767e194cde825dc5555cadf9c8f`.
 Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/mappers.
 
-## QA Round 6 additions
+## Round 7 additions — 2026-10-08
+
+- GET /tournaments/:id/pickem-leaderboard now returns items + pagination
+  (page/pageSize/totalItems/totalPages). FE requests page + pageSize=20, keeps each
+  page in its own query key, and displays server rank unchanged, including ties.
+  BE normalizes invalid page values, defaults size to 20, caps it at 100, and caches
+  results for 5 seconds. Refresh can still return cached results during this window.
+- POST /auth/register requires fullName/email/password/gender/birthDate for all.
+  Exact @ku.th (case-insensitive) also requires facultyId/departmentId/year (1–8).
+  External requests omit all three; BE stores them as null and owns userType.
+  Do not send null or invalid placeholder IDs: optional fields still validate if
+  supplied. /me and public-user academic IDs allow null. KU student details remain
+  a local second step, with one register POST after completion. OTP flow unchanged.
+- tournament_auto_delete_warning belongs to immutable critical notifications;
+  tournament_auto_deleted belongs to mutable tournament notifications. Both link
+  via relatedEntityType=tournament and relatedEntityId. Critical stays disabled in
+  settings regardless of a missing server lock flag.
+- Private tournaments receive a warning 7 days before event start, then close as
+  auto_deleted at event start with registration disabled. Scheduled cleanup runs
+  hourly; hard purge is after 4 years. These are server jobs, not client timers.
+  Migrations 051/052 are delivered; applying them to runtime DB is a separate check.
+- GET /admin/amendment-requests/:requestId/impact is now delivered (option A).
+  Response: requestId/tournamentId/tournamentName/status/requestedChanges/reason/
+  selfRequested/alreadyDecided/canApprove/blockers[{code,message,details}]. Reviewer
+  authorization matches queue scope: assigned Faculty or University Admin; Root,
+  unassigned/out-of-scope Faculty return 403 INSUFFICIENT_ADMIN_SCOPE; absent request
+  returns 404 AMENDMENT_NOT_FOUND. Already-decided requests return 200 with
+  alreadyDecided=true, canApprove=false. Stored payload validation produces blockers;
+  unexpected DB/system faults remain errors. Affected teams/counts are available
+  in the AMENDMENT_BREAKS_APPROVED_TEAMS blocker, not invented for clean previews.
+  FE reads only on opening confirmation, disables approval during loading/refresh/
+  errors/blockers/already-decided states, and uses the response's stored changes.
+  POST /amendment-requests/:id/approve still rechecks current rules/races.
+- BE@000d9ec adds database/qa-fixture-9054.sql for focused population after migrate
+  and updates baseline with 9054 + canonical 9053 key. 9053 must retain no object;
+  9054 uses the PNG from minio-init. Delivery is confirmed; runtime application and
+  authenticated preview/expiry acceptance are not claimed.
+
+See [Round 7 handoff](TO-BACKEND-2026-10-08-qa-round7-response.md).
+
+## QA Round 6 additions — historical
 
 - HTTP 409 TEAM_CONFLICT_OF_INTEREST on POST /teams/:id/invitations,
   POST /invitations/:id/accept and POST /teams/:id/join-requests includes flat
@@ -21,7 +61,7 @@ Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/m
   BE accepts only the current user's referee_identity/<userId>/<UUIDv4>.jpg|png
   keys; FE treats the presign-returned key as opaque, uses purpose referee_identity,
   and uploads afresh on retry. BE does not check object existence at submission.
-- Reviewer-authorized amendment impact is still undelivered. FE selected a read
+- At the Round 6 snapshot, reviewer-authorized amendment impact was undelivered. FE selected a read
   by request ID when opening review details (option A); no proposed endpoint is
   called until BE delivers its route/schema and scope checks.
 - Server UTC changes do not change Bangkok timestamp display or calendar dates.

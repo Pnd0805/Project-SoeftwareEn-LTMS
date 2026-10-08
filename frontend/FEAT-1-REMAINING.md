@@ -3,7 +3,25 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-## Account registration steps — 2026-10-08
+## Round 7 — current implementation, 2026-10-08
+
+- [x] Verified ls-remote/fetch `BE_KN@000d9ec798b0774e304abee228ab1172ff1edb51`; Round 7 + reviewer impact (`ce5f79f`) + focused fixture script are already pushed by BE.
+- [x] Pick'em server pagination/query keys/navigation/refresh; preserve global ranks and ties; acknowledge BE cache up to 5 seconds. Loading/error/missing-pagination response does not masquerade as an empty/full leaderboard.
+- [x] External signup submits only personal data, even after returning from internal student fields; KU still requires step two/reference reads. Domain classification warning and nullable academic profile handling added; OTP unchanged.
+- [x] New closure warning/closure notification labels, categories, icons and tournament links; critical settings remain immutable, tournament settings remain mutable.
+- [x] FE-39 option A implemented: request-ID impact on opening admin confirmation; scope/actor cache isolation; current stored payload/reason/self-request warning; real blockers/affected teams; no approval during loading/refresh/error/already-decided states. Approval still rechecks at BE.
+- [x] Hourly job/BR-03 and migration 052 staff classification acknowledged. FE permissions remain based on adminScope, not a staff label.
+- [x] BE delivered focused 9054 script and updated baseline/canonical 9053 key at `000d9ec`. The earlier request for a BE script is resolved.
+- [x] Full developer checks: **101 files / 681 tests**, lint, TypeScript/build, diff check; existing main chunk warning (952.83 kB). Isolated Vite 5197 registration/changed modules HTTP 200. No browser/manual QA performed.
+- [x] Implementation commit `6f6f658`; task-owned Vite PID 1824 stopped. Unrelated notice files/handover deletions preserved; no FE push requested in this task.
+- [x] [Current To-Backend response](TO-BACKEND-2026-10-08-qa-round7-response.md). Original FE-01–FE-43: **42 implemented / 1 partial**, FE-10 browser timing remains partial. This describes implementation, not QA sign-off.
+- [ ] Runtime operator applies latest migrations and focused fixture to the existing QA DB; rerun minio-init and verify 9054 object, preserve missing 9053 object. No DB/BE mutations performed by FE in this task.
+- [ ] Await BE merge of real SMTP and server enforcement of email verification in login/protected access. Current fetched login still issues tokens without email_verified gate.
+- [ ] Authenticated API/browser/device/MinIO preview/expiry and FE-10 timing acceptance remain separate work.
+
+## Account registration steps — historical before Round 7, 2026-10-08
+
+External registration blocker below was resolved by Round 7; retain this section as the prior implementation record.
 
 - [x] Verified remote/fetched `BE_KN@240e9e62ca5aa5c429e9e7159414692c2052ae45`; inspected register schema/service and exact @ku.th classification.
 - [x] Personal details in step one; internal email alone advances to a separate student-details step. Back retains the draft in memory; no password persistence in URL/storage.
@@ -14,7 +32,9 @@ API base path: `/api/v1`
 - [x] Implementation `31d52f0`: final 99 files / 659 tests passed, lint/TypeScript/build/diff check passed; existing main 949.00 kB warning. Isolated Vite 5196 registration route/changed modules HTTP 200, task-owned server stopped.
 - [ ] Authenticated external registration and SMTP/OTP acceptance after BE delivery; no browser/manual QA performed for this implementation.
 
-## QA Response Round 6 — current implementation, 2026-10-08
+## QA Response Round 6 — historical implementation, 2026-10-08
+
+FE-39 route and focused fixture script below were delivered after this snapshot; see Round 7 above.
 
 - [x] Verified remote/fetched BE_KN@4b51af59850899fc999032f6d7632979b791ae0e and current source.
 - [x] Flat TEAM_CONFLICT_OF_INTEREST metadata drives pending/accepted/organizer recovery across invite, accept and join request. Accepted team admission never suggests waiting for expiry or unchecking a registration player.

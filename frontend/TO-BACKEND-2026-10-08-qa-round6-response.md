@@ -1,5 +1,7 @@
 # FE → BE: QA Response Round 6 — 8 ต.ค. 2026
 
+**อัปเดต Round 7:** FE-39 option A ส่งมอบแล้วที่ `ce5f79f` และ FE ต่อครบ; BE ส่ง focused fixture script/แก้ baseline ที่ `000d9ec` แล้ว รายการขอ route/script ด้านล่างเป็นประวัติ ดู [คำตอบล่าสุด Round 7](TO-BACKEND-2026-10-08-qa-round7-response.md) ส่วน DB/MinIO environment ที่เคยแจ้งยังอ้างอิงในคำตอบล่าสุด
+
 อ่าน `FE-Notice/TO-FE-2026-10-08-qa-response-round6.md` และตรวจ remote/fetch พร้อม source ที่ `BE_KN@4b51af59850899fc999032f6d7632979b791ae0e` แล้ว ฐาน FE `dc59fb9`, branch `feat/1` แก้เฉพาะ frontend รอบนี้ตามคำสั่งเดิมไม่ทำ browser/manual QA
 
 FE implementation commit: `1a7d519`.
