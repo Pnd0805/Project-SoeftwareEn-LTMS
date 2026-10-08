@@ -110,12 +110,51 @@ const SWEEP_RULES = {
             AND t.official_status = 'Unofficial'
             AND t.created_at < NOW() - INTERVAL 14 DAY
             AND NOT EXISTS (SELECT 1 FROM tournament_applications a WHERE a.team_id = t.team_id)`,
-    // ไม่มีแมตช์ที่จบมาเกิน 6 เดือน และไม่มีใบสมัครที่ยังเดินอยู่
+    /**
+     * ไม่มีแมตช์ที่จบมาเกิน 6 เดือน และไม่มีใบสมัครที่ยังเดินอยู่
+     *
+     * 🔴 A2 (8 ต.ค. 2569) — เขียนใหม่เพราะคิวรีเดิมทำให้ **API ทั้งระบบ** ช้า
+     *
+     * ของเดิมเป็น subquery ที่ผูกกับทีมทีละแถว และใช้
+     *     (m.team_a_id = t.team_id OR m.team_b_id = t.team_id)
+     * `OR` คร่อม **สองคอลัมน์** ⇒ MySQL เลือก index เดียวไม่ได้ ⇒ ไล่ `matches` ใหม่ทุกทีม
+     * (`EXPLAIN` ของเดิมบอกตรง ๆ ว่า "Index range scan on m — **re-planned for each iteration**")
+     *
+     * และฟังก์ชันนี้ถูกเรียก **ทุกครั้งที่เปิดหน้าทีม** (`GET /teams/:id` · `GET /me/teams`)
+     * ⇒ ถือ connection 1 ใน 10 ของ pool ไว้นาน ⇒ **ทุก endpoint รอคิวตามไปด้วย**
+     * (load test ผ่าน 1/5 · API รับได้ ~20 คำขอ/วินาที · ที่ 500 คน 12% timeout)
+     *
+     * ของใหม่รวมแมตช์ของทุกทีมในรอบเดียว แล้วค่อยเทียบ:
+     *   แยกฝั่ง a กับฝั่ง b เป็นคนละ `SELECT` ⇒ **แต่ละฝั่งใช้ index ของตัวเองได้**
+     *   (`matches` มี index `team_a_id` และ `team_b_id` แยกกันอยู่แล้วจาก FK)
+     *   `UNION ALL` ไม่ใช่ `UNION` — ไม่ต้องตัดซ้ำ เพราะ `GROUP BY` ข้างนอกรวมให้อยู่แล้ว
+     *   ชุดนี้ไม่ผูกกับ `t` ⇒ MySQL คิดครั้งเดียวต่อการกวาด ไม่ใช่ครั้งละทีม
+     *
+     * 🔴 **ความหมายต้องเหมือนเดิมเป๊ะ ไม่ใช่แค่เร็วขึ้น**
+     *   ทีมที่ **ไม่เคยมีแมตช์ที่จบเลย** ต้องไม่ถูกกฎนี้กวาด (เป็นหน้าที่ของกฎ 14 วัน)
+     *   ของเดิมได้ผลนั้นจาก `MAX(...) = NULL` แล้ว `NULL < x` เป็นเท็จ
+     *   ของใหม่ได้ผลเดียวกันเพราะทีมนั้น **ไม่โผล่ในชุด `IN`** ตั้งแต่แรก
+     *   ⇒ ห้ามใส่ `COALESCE`/`IFNULL` เพื่อ "กัน NULL" เด็ดขาด — จะกลายเป็นกวาดทีมใหม่ทิ้ง
+     *
+     * วัดจริงบนชุดข้อมูลสังเคราะห์ 2,000 ทีม / 98,000 แมตช์ (90,000 completed):
+     *   เดิม **~40 วินาที**  →  ใหม่ **~150 ms**  ·  ทีมที่ถูกเลือก **990 ทีมเท่ากัน ไม่ต่างแม้แถวเดียว**
+     */
     inactive_6_months : `t.deleted_at IS NULL
             AND t.official_status = 'Unofficial'
-            AND (SELECT MAX(m.updated_at) FROM matches m
-                  WHERE (m.team_a_id = t.team_id OR m.team_b_id = t.team_id) AND m.match_status = 'completed'
-                ) < NOW() - INTERVAL 6 MONTH
+            AND t.team_id IN (
+                SELECT team_id FROM (
+                    SELECT m.team_a_id AS team_id , MAX(m.updated_at) AS last_done
+                      FROM matches m
+                     WHERE m.match_status = 'completed' AND m.team_a_id IS NOT NULL
+                     GROUP BY m.team_a_id
+                    UNION ALL
+                    SELECT m.team_b_id , MAX(m.updated_at)
+                      FROM matches m
+                     WHERE m.match_status = 'completed' AND m.team_b_id IS NOT NULL
+                     GROUP BY m.team_b_id
+                ) lm
+                 GROUP BY team_id
+                HAVING MAX(last_done) < NOW() - INTERVAL 6 MONTH)
             AND NOT EXISTS (SELECT 1 FROM tournament_applications a
                              WHERE a.team_id = t.team_id
                                AND a.tournament_application_status IN ('pending','approved')

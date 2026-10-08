@@ -54,9 +54,29 @@ describe('sweepInactiveTeams — เงื่อนไขของ BR-06', () =>
       expect(sql).toMatch(/MAX\(m\.updated_at\)[\s\S]*m\.match_status = 'completed'[\s\S]*< NOW\(\) - INTERVAL 6 MONTH/);
     });
 
+    /**
+      * 🔴 A2 (8 ต.ค. 2569) — เดิมเช็คข้อความ `(m.team_a_id = t.team_id OR m.team_b_id = t.team_id)`
+      *   ซึ่งเป็น `OR` คร่อมสองคอลัมน์ที่ทำให้ใช้ index ไม่ได้ · ตอนนี้แยกเป็นสองฝั่ง
+      *   เทสจึงเช็ค **เจตนา** (นับทั้งสองฝั่ง · ไม่มี OR คร่อมคอลัมน์) ไม่ใช่ข้อความเดิม
+      */
     it('นับทั้งแมตช์ที่ทีมเป็นฝั่ง A และฝั่ง B', async () => {
       await sweepInactiveTeams();
-      expect(ruleSql(/INTERVAL 6 MONTH/)).toContain('(m.team_a_id = t.team_id OR m.team_b_id = t.team_id)');
+      const sql = ruleSql(/INTERVAL 6 MONTH/);
+      expect(sql).toContain('m.team_a_id');
+      expect(sql).toContain('m.team_b_id');
+    });
+
+    it('🔴 ห้ามกลับไปใช้ OR คร่อมสองคอลัมน์ — เป็นต้นเหตุที่ API ทั้งระบบช้า (A2)', async () => {
+      await sweepInactiveTeams();
+      expect(ruleSql(/INTERVAL 6 MONTH/)).not.toMatch(/m\.team_a_id\s*=[^)]*OR\s*m\.team_b_id\s*=/);
+    });
+
+    it('ชุดแมตช์ต้องไม่ผูกกับทีมทีละแถว — คิดครั้งเดียวต่อการกวาด ไม่ใช่ครั้งละทีม', async () => {
+      await sweepInactiveTeams();
+      const sql = ruleSql(/INTERVAL 6 MONTH/);
+      // subquery ที่รวมแมตช์ ต้องไม่อ้างถึง `t.` เลย (ถ้าอ้าง = correlated = กลับไปช้าเหมือนเดิม)
+      const matchSet = sql.slice(sql.indexOf('SELECT team_id FROM'), sql.indexOf('HAVING'));
+      expect(matchSet).not.toContain('t.team_id');
     });
 
     it('ทีมที่มีใบสมัครที่ยังเดินอยู่ (pending/approved) ภายใน 6 เดือน → ไม่ถูกกวาด', async () => {
@@ -65,8 +85,13 @@ describe('sweepInactiveTeams — เงื่อนไขของ BR-06', () =>
         /NOT EXISTS[\s\S]*tournament_application_status IN \('pending','approved'\)[\s\S]*a\.applied_at > NOW\(\) - INTERVAL 6 MONTH/);
     });
 
-    it('ทีมที่ไม่เคยแข่งเลย → MAX() เป็น NULL ⇒ ข้อนี้ไม่จับ (เป็นหน้าที่ของข้อ 1)', async () => {
-      // NULL < x เป็น NULL (ไม่จริง) ใน SQL ⇒ ทีมที่ "ยังไม่มีทัวร์แรก" ไม่ถูกกฎ 6 เดือนกวาด ตรงกับคำว่า "หลังทัวร์แรก"
+    /**
+      * ทีมที่ยังไม่เคยแข่งเลย ต้องไม่ถูกกฎนี้กวาด — เป็นหน้าที่ของกฎ 14 วัน
+      * เดิมได้ผลนั้นจาก `MAX(...) = NULL` แล้ว `NULL < x` เป็นเท็จ
+      * ตอนนี้ได้ผลเดียวกันเพราะทีมนั้น **ไม่โผล่ในชุด `IN`** ตั้งแต่แรก
+      * 🔴 ทั้งสองแบบพังเหมือนกันถ้าใครใส่ COALESCE/IFNULL เพื่อ "กัน NULL" ⇒ จะกวาดทีมใหม่ทิ้ง
+      */
+    it('ทีมที่ไม่เคยแข่งเลย → ข้อนี้ไม่จับ (เป็นหน้าที่ของข้อ 1) ⇒ ห้ามมี COALESCE/IFNULL', async () => {
       await sweepInactiveTeams();
       expect(ruleSql(/INTERVAL 6 MONTH/)).not.toMatch(/COALESCE|IFNULL/);
     });
