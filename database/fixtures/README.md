@@ -58,3 +58,41 @@ docker exec ltms-minio mc ls --recursive local/ltms-uploads/referee_identity/
 1. วางไฟล์ไว้ในโฟลเดอร์นี้ (เล็ก ๆ — ไฟล์พวกนี้เข้า git)
 2. เติมบรรทัด `mc cp` ใน `minio-init` ของ `backend/docker-compose.yml`
 3. เติมตารางข้างบน และบอกในไฟล์ seed ว่าแถวไหนอ้างถึงมัน
+
+
+---
+
+## เติม fixture นี้ลงฐานที่มีข้อมูลอยู่แล้ว (8 ต.ค. 2569)
+
+ไฟล์ในโฟลเดอร์นี้แก้แค่ฝั่ง **MinIO** · แถวในฐาน (ผู้ใช้ 9054 · คำเชิญ · เอกสาร) เป็นอีกเรื่อง
+
+| สถานการณ์ | ทำอะไร |
+|---|---|
+restore `database/qa-baseline.sql` ใหม่ทั้งก้อน | **ไม่ต้องทำอะไรเพิ่ม** — 8 ต.ค. เติม 9054 เข้าไปในตัว baseline แล้ว และแก้คีย์ของ 9053 ให้ถูกรูปด้วย |
+ฐานมีข้อมูลที่ทำไว้แล้ว ไม่อยาก restore ทับ | `mysql ... ltms < database/qa-fixture-9054.sql` |
+
+```bash
+# ฐานที่มีข้อมูลอยู่แล้ว (FE ขอมาแบบนี้ 8 ต.ค.)
+mysql -h 127.0.0.1 -P 3307 -u root -p ltms < database/qa-fixture-9054.sql
+```
+
+★ `qa-fixture-9054.sql` **รันซ้ำได้** และ**ลอกเลขทัวร์มาจากแถวของ 9053 เอง** ไม่ฮาร์ดโค้ด
+  (เลขทัวร์ของแต่ละเครื่องไม่เหมือนกัน — บางเครื่อง restore baseline บางเครื่อง seed เอง)
+★ ท้ายไฟล์พิมพ์ตารางตรวจผลให้ว่าได้ครบ 3 อย่างหรือยัง ⇒ ไม่ต้องไปไล่ query เอง
+🔴 ต้องรัน **หลัง** `npm run migrate` — baseline เป็น dump ที่เก่ากว่า migration 036
+
+### ฝั่ง MinIO ต้องสั่งเองหนึ่งครั้ง
+
+```bash
+cd backend && docker compose up -d minio-init
+```
+
+🔴 ถ้า container `minio-init` รันจบไปก่อน `git pull` มันจะไม่รันใหม่เอง ⇒ ต้องสั่งซ้ำหลัง pull
+ตรวจว่าไฟล์ขึ้นจริง และ **ต้องไม่เห็นของ 9053**:
+
+```bash
+docker exec ltms-minio mc ls --recursive local/ltms-uploads/referee_identity/
+```
+
+★ `minio-init` ที่ `Exited (0)` เป็นหลักฐานระดับ setup เท่านั้น — ไม่ได้ยืนยันว่า object อยู่ใน bucket
+  (FE ตั้งข้อสังเกตนี้ไว้เอง 8 ต.ค. และถูกต้อง) ⇒ ต้องดูด้วย `mc ls` หรือหน้าเว็บ MinIO
