@@ -7,6 +7,7 @@ import type { MatchRow, TournamentRow } from '../types/db.js';
 import { AppError } from '../utils/AppError.js';
 import { isBestOf , scorePairError , possibleScores } from '../utils/matchFormat.js';
 import { toPublicImageUrl } from '../utils/imageUrl.js';
+import { buildPagination } from '../utils/pagination.js';
 
 /**
  * C7 — Pick'em (FR-PK-01 · spec 08 §6 · OD-24 มติ 22 ก.ย. 2569)
@@ -237,17 +238,60 @@ export async function getMyStanding(tournamentId: number, userId: number) {
     return { tournamentId, points: row.points, correct: row.correct, settled: row.settled, rank: row.rank_no };
 }
 
-/** อันดับ Pick'em ในทัวร์ (สาธารณะ) · แต้มเท่ากันได้อันดับเดียวกัน (1,1,3) */
-export async function getLeaderboard(tournamentId: number) {
+/**
+ * จำผลตารางอันดับไว้ 5 วินาทีต่อ (ทัวร์ · หน้า · ขนาดหน้า)
+ *
+ * 🔴 B3 / perf P2 (8 ต.ค. 2569) — เดิมคำนวณใหม่ทุกคำขอ ~230 ms CPU ของ MySQL ต่อครั้ง
+ *   แม้แบ่งหน้าแล้วก็ยังต้องรวมแต้มของคนทั้งทัวร์ก่อนจัดอันดับ ⇒ ค่าคงที่ตัวนี้ไม่หายไปตาม LIMIT
+ *
+ * ★ 5 วินาทีเลือกจากเกณฑ์ PF-04 ที่ยอมให้ตารางอันดับตามหลังได้ ≤ 10 วินาที — เอาครึ่งหนึ่งไว้เป็นระยะปลอดภัย
+ *   สายกับตารางคะแนนไม่ได้แคช ⇒ ยังเห็นผลทันทีเหมือนเดิม
+ * ★ แคชเฉพาะก้อนที่ส่งออก (DTO) ได้เพราะ `toPublicImageUrl()` เป็นฟังก์ชันล้วน ไม่ใช่ presigned URL ที่หมดอายุ
+ *   🔴 ถ้าวันหนึ่งเปลี่ยนรูปโปรไฟล์ไปใช้ presigned URL **ห้ามแคช DTO ต่อ** ต้องย้ายไปแคชแถวดิบ
+ * ★ หลายโปรเซสจะมีแคชของตัวเองคนละชุด — ยังถูกต้องเพราะต่างกันได้ไม่เกิน TTL
+ */
+const LEADERBOARD_TTL_MS = 5_000;
+const LEADERBOARD_CACHE_MAX = 200;        // กันแคชบวมเมื่อมีทัวร์/หน้าเยอะ — คีย์หมดอายุถูกทิ้งตอนเขียนใหม่
+type LeaderboardPage = Awaited<ReturnType<typeof buildLeaderboardPage>>;
+const leaderboardCache = new Map<string , { at: number; value: LeaderboardPage }>();
+
+/** ล้างแคชของทัวร์เดียว — ใช้ตอนทดสอบ และเผื่อวันหนึ่งอยากล้างทันทีหลังตัดสินผล */
+export function clearLeaderboardCache(): void {
+    leaderboardCache.clear();
+}
+
+async function buildLeaderboardPage(tournamentId: number , offset: number , page: number , pageSize: number) {
+    const { rows , totalItems } = await PickemRepo.findLeaderboard(tournamentId , offset , pageSize);
+    return {
+        items: rows.map(r => ({
+            rank: r.rank_no,
+            user: { id: r.user_id, fullName: r.full_name, avatarUrl: toPublicImageUrl(r.profile_image_key) },
+            points: r.points, correct: r.correct, settled: r.settled,
+        })),
+        pagination: buildPagination(page , pageSize , totalItems),
+    };
+}
+
+/**
+ * อันดับ Pick'em ในทัวร์ (สาธารณะ) · แต้มเท่ากันได้อันดับเดียวกัน (1,1,3)
+ *
+ * 🔴 เปลี่ยนรูป response แล้ว (B3 ② · มติ 8 ต.ค.) — เดิมคืน `{ items }` ของทุกคน
+ *   ตอนนี้คืน `{ items , pagination }` และ **ค่าตั้งต้นคือ 20 คนแรก** ⇒ FE ต้องแก้ตาม
+ *   อันดับในแต่ละหน้าเป็นอันดับของทั้งทัวร์ (คิดใน SQL) ไม่ใช่ลำดับในหน้านั้น
+ */
+export async function getLeaderboard(tournamentId: number , offset = 0 , page = 1 , pageSize = 20) {
     const tournament = await TournamentRepo.findTournamentById(tournamentId);
     if (!tournament) throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
-    const rows = await PickemRepo.findLeaderboard(tournamentId);
-    let rank = 0;
-    return {
-        items: rows.map((r, i) => {
-            if (i === 0 || r.points !== rows[i - 1]!.points || r.correct !== rows[i - 1]!.correct) rank = i + 1;
-            return { rank, user: { id: r.user_id, fullName: r.full_name, avatarUrl: toPublicImageUrl(r.profile_image_key) },
-                     points: r.points, correct: r.correct, settled: r.settled };
-        }),
-    };
+
+    const key = `${tournamentId}:${page}:${pageSize}`;
+    const hit = leaderboardCache.get(key);
+    if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.value;
+
+    const value = await buildLeaderboardPage(tournamentId , offset , page , pageSize);
+    if (leaderboardCache.size >= LEADERBOARD_CACHE_MAX) {
+        const deadline = Date.now() - LEADERBOARD_TTL_MS;
+        for (const [k , v] of leaderboardCache) if (v.at <= deadline) leaderboardCache.delete(k);
+    }
+    leaderboardCache.set(key , { at: Date.now() , value });
+    return value;
 }

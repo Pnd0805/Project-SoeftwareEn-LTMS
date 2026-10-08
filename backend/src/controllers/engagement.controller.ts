@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { parseId } from '../utils/parseId.js';
+import { parsePagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import * as PickemService from '../services/pickem.service.js';
 
@@ -45,6 +46,13 @@ export async function getMyTournamentPickem(req: Request, res: Response) {
         parseId(req.params['id'], 'รหัสทัวร์นาเมนต์'), req.user!.user_id));
 }
 
+/**
+ * E28 — ตารางอันดับ pick'em
+ * 🔴 B3 ② (8 ต.ค. 2569) — แบ่งหน้าแล้ว ค่าตั้งต้น 20 คน (เพดาน 100 ตาม `parsePagination`)
+ *   เดิมคืนทุกคน = 477 KB ต่อคำขอที่ 4,000 คน
+ */
 export async function getPickemLeaderboard(req: Request, res: Response) {
-    res.status(200).json(await PickemService.getLeaderboard(parseId(req.params['id'], 'รหัสทัวร์นาเมนต์')));
+    const { newpage , newpageSize , offset } = parsePagination(req.query['page'] , req.query['pageSize']);
+    res.status(200).json(await PickemService.getLeaderboard(
+        parseId(req.params['id'], 'รหัสทัวร์นาเมนต์') , offset , newpage , newpageSize));
 }
