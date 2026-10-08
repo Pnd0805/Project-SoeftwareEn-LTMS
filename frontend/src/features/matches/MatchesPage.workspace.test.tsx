@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { MatchListItemDto } from '../../types/match.dto'
@@ -10,11 +10,11 @@ vi.mock('../../hooks/useMatch', () => ({ useMyMatches: () => query }))
 vi.mock('../../hooks/useAdmin', () => ({ useMyRefereeInvitations: () => ({ data: { items: [] } }) }))
 import { MatchesPage } from './MatchesPage'
 
-const item = (id: number, name: string, role: 'player' | 'organizer', status: 'scheduled' | 'in_progress') => ({
+const item = (id: number, name: string, role: 'player' | 'organizer' | 'referee', status: 'scheduled' | 'in_progress' | 'finished') => ({
   id, tournamentId: id, tournament: { id, name }, stage: 'Round 1', roundNumber: 1, tag: 'R1', status,
   teamA: { id: 101, name: 'Engineering', code: 'ENG', color: null },
   teamB: { id: 102, name: 'Science', code: 'SCI', color: null },
-  viewer: { roles: [role] }, resultStatus: null, score: null, scheduledTime: null,
+  viewer: { roles: [role] }, mode: 'onsite', resultStatus: null, score: null, scheduledTime: null,
 }) as MatchListItemDto
 beforeEach(() => {
   query = { data: { items: [item(1, 'Campus Cup', 'player', 'scheduled'), item(2, 'Autumn Cup', 'organizer', 'in_progress')] }, isPending: false, isError: false, refetch }
@@ -59,4 +59,50 @@ it('keeps cached matches through a recoverable refresh failure, but hides them o
   act(() => { void router.navigate('/matches?keep=yes&again=1') })
   expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
   expect(screen.queryByText('Campus Cup')).not.toBeInTheDocument()
+})
+
+it('gives the populated referee category all 30 tasks and lets empty categories be selected', () => {
+  query = { data: { items: Array.from({ length: 30 }, (_, i) => item(i + 1, `Cup ${i + 1}`, 'referee', 'finished')) } }
+  mount()
+  expect(screen.getByRole('button', { name: 'Scores 30' })).toHaveAttribute('aria-pressed', 'true')
+  expect(within(screen.getByRole('region', { name: 'Needs your score' })).getAllByRole('button', { name: 'Record result' })).toHaveLength(30)
+  expect(screen.queryByRole('region', { name: 'Needs a room' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Rooms 0' }))
+  expect(screen.getByRole('region', { name: 'Needs a room' })).toHaveTextContent('No room setup tasks in this view.')
+  expect(screen.queryByRole('region', { name: 'Needs your score' })).not.toBeInTheDocument()
+})
+
+it('restores the selected category and queue position after opening its direct action', async () => {
+  query = { data: { items: [item(1, 'Campus Cup', 'referee', 'finished'), { ...item(2, 'Autumn Cup', 'referee', 'finished'), mode: 'online', resultStatus: 'submitted' }] } }
+  const router = mount()
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmation 1' }))
+  const queue = screen.getByRole('region', { name: 'Needs your confirmation' })
+  queue.scrollTop = 180
+  fireEvent.click(within(queue).getByRole('button', { name: 'Confirm result' }))
+  expect(router.state.location.pathname).toBe('/m/2')
+  await act(async () => { await router.navigate(-1) })
+  expect(screen.getByRole('button', { name: 'Confirmation 1' })).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('region', { name: 'Needs your confirmation' }).scrollTop).toBe(180)
+})
+
+it('opens scheduled referee matches without claiming that a result can already be recorded', () => {
+  query = { data: { items: [item(1, 'Campus Cup', 'referee', 'scheduled')] } }
+  const router = mount()
+  const queue = screen.getByRole('region', { name: 'Needs your score' })
+  expect(within(queue).queryByRole('button', { name: 'Record result' })).not.toBeInTheDocument()
+  fireEvent.click(within(queue).getByRole('button', { name: 'Open match' }))
+  expect(router.state.location.pathname).toBe('/m/1')
+})
+
+it('identifies each task and its actions by teams, tournament and round', () => {
+  query = { data: { items: [item(1, 'Campus Cup', 'referee', 'finished'), {
+    ...item(2, 'Autumn Cup', 'referee', 'finished'), teamB: { id: 103, name: 'Medicine', code: 'MED', color: null },
+  }] } }
+  mount()
+  const task = screen.getByRole('article', { name: 'Engineering vs Medicine Autumn Cup R1' })
+  expect(within(task).getByRole('button', { name: 'Record result' })).toHaveAccessibleDescription('Engineering vs Medicine Autumn Cup R1')
+  fireEvent.click(within(task).getByRole('button', { name: 'Match details' }))
+  const preview = screen.getByRole('dialog', { name: 'Match preview' })
+  expect(within(preview).getByText('Medicine')).toBeInTheDocument()
+  expect(within(preview).getByRole('button', { name: /Check-in console/ })).toBeInTheDocument()
 })

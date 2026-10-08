@@ -78,7 +78,7 @@ describe('Tournament preview from discovery', () => {
     await user.click(await screen.findByRole('button', { name: /Campus Cup/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Campus Cup' })
     expect(within(dialog).getByText('Sport not available')).toBeInTheDocument()
-    for (const label of ['Venue', 'Starts', 'Capacity', 'Status', 'Entry']) {
+    for (const label of ['Venue', 'Starts', 'Capacity', 'Visibility', 'Phase', 'Entry']) {
       expect(within(dialog).queryByText(label, { selector: 'dt' })).not.toBeInTheDocument()
     }
     expect(within(dialog).getByText('Details unavailable.')).toBeInTheDocument()
@@ -154,6 +154,8 @@ describe('Tournament preview from discovery', () => {
     expect(within(dialog).getByText('16 teams')).toBeInTheDocument()
     expect(within(dialog).getByText('Jan 10, 2027')).toBeInTheDocument()
     expect(within(dialog).getByText('Public')).toBeInTheDocument()
+    expect(within(dialog).getByText('Visibility', { selector: 'dt' })).toBeInTheDocument()
+    expect(within(dialog).queryByText('Phase', { selector: 'dt' })).not.toBeInTheDocument()
     expect(within(dialog).getByText('Closed')).toBeInTheDocument()
     expect(within(dialog).getByRole('link', { name: 'Open tournament' })).toHaveAttribute('href', '/t/71/manage')
   })

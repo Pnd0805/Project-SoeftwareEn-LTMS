@@ -387,3 +387,26 @@ describe('Entry private source states', () => {
     expect(screen.queryByText('Loading your entries…')).not.toBeInTheDocument()
   })
 })
+
+
+describe('Quality20 tournament task order', () => {
+  it('keeps working-route facts in a closed disclosure after named route navigation', () => {
+    render(<MemoryRouter initialEntries={['/t/42/bracket']}><Routes>
+      <Route path="/t/:id/:tab" element={<TournamentPage />} />
+    </Routes></MemoryRouter>)
+    const link = screen.getByRole('link', { name: 'Bracket' })
+    expect(link).toHaveAttribute('aria-current', 'page')
+    const summary = screen.getByText('Details & entry', { selector: 'summary' })
+    expect(summary.closest('details')).not.toHaveAttribute('open')
+    expect(link.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Bracket content')).toBeInTheDocument()
+  })
+  it('gives the organizer entry-management guidance instead of player entry advice', () => {
+    hooks.me.mockReturnValue({ data: { id: 7 } })
+    hooks.tournament.mockReturnValue(ready({ ...dto, organizer: { id: 7, fullName: 'Organizer' } }))
+    detail()
+    expect(screen.getByText('Review registrations and entry rules in Manage.')).toBeInTheDocument()
+    expect(screen.queryByText('You need a squad you lead, in this sport, with Ready status before you can enter.')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manage registrations' })).toHaveAttribute('href', '/t/42/manage/registrations')
+  })
+})

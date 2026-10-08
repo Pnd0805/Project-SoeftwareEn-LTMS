@@ -111,7 +111,7 @@ export function CommunityTab({ t, org }: { t: Tournament; org: boolean }) {
         {talked.length ? (
           <TableWrap label="Match threads">
             <table>
-              <thead><tr><th>Match</th><th>Round</th><th>Comments</th><th /></tr></thead>
+              <thead><tr><th>Match</th><th>Round</th><th>Comments</th><th>Actions</th></tr></thead>
               <tbody>
                 {talked.map(({ m, n }) => (
                   <tr key={m.id}>

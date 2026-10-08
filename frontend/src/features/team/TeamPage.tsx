@@ -307,7 +307,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
       {rows.length ? (
         <TableWrap label="Team members">
           <table>
-            <thead><tr><th>Player</th><th>Joined</th><th /></tr></thead>
+            <thead><tr><th>Player</th><th>Joined</th><th>Actions</th></tr></thead>
             <tbody>
               {rows.map(member => {
                 const captain = member.userId === data.leader.id
@@ -472,7 +472,7 @@ function InvitePanel({ data, lockName, memberIds }: {
       {sent.length ? (
         <TableWrap label="Sent invitations">
           <table>
-            <thead><tr><th>Invited</th><th>Status</th><th /></tr></thead>
+            <thead><tr><th>Invited</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {sent.map(invitation => (
                 <tr key={invitation.id}>

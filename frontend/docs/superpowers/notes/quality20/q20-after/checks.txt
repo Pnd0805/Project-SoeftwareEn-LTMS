@@ -1,0 +1,22 @@
+Q20, 2026-10-08. Frontend-only, uncommitted work.
+
+RED: 3 expected new mobile-navigation failures; 17 existing tests passed.
+Focused Shell/GlobalScan: 2 files, 20 tests passed.
+Full suite: 100 files, 689 tests passed.
+Command-local full-suite environment: VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run --maxWorkers=2
+TypeScript: npx tsc --noEmit -p tsconfig.app.json, exit 0.
+Lint: npm run lint, exit 0.
+Build: npm run build, exit 0; inherited >500 kB chunk warning remains Q22 work.
+Whitespace: git diff --check, exit 0.
+Protected source preservation: 60 API/hooks/types and excluded feature source hashes match layout-baseline.json.
+Detector: 0 primary findings; 73 pre-existing design-ramp advisories.
+
+Browser baseline: 40 captures; 2 guest overflow cases at 320px.
+Browser final: 88 records = 40 normal captures + 24 menu captures + 24 keyboard records; 0 page overflow/runtime errors.
+Additional interactions: 24 records across 390/320 and both themes; search/theme/Inbox/logout/resize/Scan/long-name/doubled-text checks pass.
+Signed-in mobile shell before main: 115.6px (target <=120px); guest: 114px.
+Main first-child top includes 12px content padding: 127.6px signed-in.
+Desktop sidebar: 232px at 1280 and 1440.
+Physical iPhone safe area/camera/native file capture: UNVERIFIED; simulated browser branches do not close this acceptance row.
+No live backend requests or writes; fixtures use isolated browser contexts.
+Q23 is deferred until integration and has not started.

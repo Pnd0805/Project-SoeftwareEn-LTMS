@@ -147,27 +147,41 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
         </Banner>
       ) : null}
 
-      <div className="hstack team-manage-controls">
-        <button className="btn ghost" type="button" onClick={openEdit}>
-          {USE_MOCK ? 'Edit name & code' : 'Rename'}
-        </button>
-        <TeamLogoControl teamId={data.id} logo={USE_MOCK ? storeTeam?.logo : data.logoUrl} />
-        {data.officialStatus === 'Official' ? <Badge kind="ok">Official — exempt from automatic disabling</Badge>
+      <section className="team-manage-routine" aria-label="Team settings">
+        <div className="team-manage-row">
+          <h3>{USE_MOCK ? 'Name & code' : 'Team name'}</h3>
+          <button className="btn ghost" type="button" onClick={openEdit}>
+            {USE_MOCK ? 'Edit name & code' : 'Rename'}
+          </button>
+        </div>
+        <div className="team-manage-row">
+          <h3>Team logo</h3>
+          <TeamLogoControl teamId={data.id} logo={USE_MOCK ? storeTeam?.logo : data.logoUrl} />
+        </div>
+        <div className="team-manage-row">
+          <h3>Official status</h3>
+          {data.officialStatus === 'Official' ? <Badge kind="ok">Official — exempt from automatic disabling</Badge>
           : officialPending ? <Badge kind="warn">Official status — with an admin</Badge>
             : (
               <button className="btn ghost" type="button" onClick={() => { official.reset(); setAsking(true) }}>
                 Request Official status
               </button>
             )}
+        </div>
+      </section>
+      <section className="team-manage-danger" aria-label="Disband team">
+        <div>
+          <h3>Disband team</h3>
+          <p className="sub">{competed
+            ? 'Disbanding is off — this squad has held a place in a tournament, so it stays on record.'
+            : 'Every member loses the squad. Only teams that have never held a tournament place can be disbanded.'}</p>
+        </div>
         <button className="btn danger" type="button" disabled={competed || disband.isPending}
           title={competed ? 'A squad that has held a place in a tournament stays on record' : undefined}
           onClick={() => { disband.reset(); setDisbanding(true) }}>
           {disband.isPending ? 'Disbanding…' : 'Disband'}
         </button>
-      </div>
-      {competed ? (
-        <span className="sub">Disbanding is off — this squad has held a place in a tournament, so it stays on record.</span>
-      ) : null}
+      </section>
 
       <Modal open={editing} onClose={() => setEditing(false)} className="team-dialog" title={`Edit ${data.name}`}>
         <Field label="Name — unique within the sport" htmlFor="team-name">

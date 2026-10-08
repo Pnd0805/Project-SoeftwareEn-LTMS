@@ -106,7 +106,7 @@ export function TeamRecord({ t }: { t: Team }) {
           <TableWrap label="Team results">
             <table>
               <thead>
-                <tr><th>Date</th><th>Sport</th><th>Tournament</th><th>Home</th><th /><th>Away</th><th>Score</th><th /><th /></tr>
+                <tr><th>Date</th><th>Sport</th><th>Tournament</th><th>Home</th><th aria-label="Versus" /><th>Away</th><th>Score</th><th>Outcome</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {played.slice(0, 12).map(m => {
@@ -138,7 +138,7 @@ export function TeamRecord({ t }: { t: Team }) {
           <h2 className="journey-heading">Tournament entries</h2>
           <TableWrap label="Team tournament entries">
             <table>
-              <thead><tr><th>Tournament</th><th>Sport</th><th>Status</th><th>Finish</th><th /></tr></thead>
+              <thead><tr><th>Tournament</th><th>Sport</th><th>Status</th><th>Finish</th><th>Actions</th></tr></thead>
               <tbody>
                 {entered.map(r => {
                   const tr = tour(s, r.tour)

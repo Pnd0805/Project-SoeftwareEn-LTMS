@@ -18,7 +18,7 @@ const m = {
   teamB: { id: 102, name: 'Science', players: [] },
 } as unknown as MatchDto
 beforeEach(() => { submit.mockReset().mockResolvedValue({}); stats.mockReset().mockResolvedValue({}) })
-function mount() { render(<MemoryRouter><ResultForm m={m} /></MemoryRouter>) }
+function mount(match = m) { render(<MemoryRouter><ResultForm m={match} /></MemoryRouter>) }
 it('reviews team-associated scores before sending the unchanged result payload', async () => {
   mount()
   fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '3' } })
@@ -55,5 +55,47 @@ it('links inconsistent player totals to the corresponding statistic input', () =
   fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '3' } })
   fireEvent.click(screen.getByRole('link', { name: 'Check Engineering statistics' }))
   expect(screen.getByLabelText('Points for Player One')).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Review result' })).toBeDisabled()
+})
+
+const largeMatch = {
+  ...m,
+  teamA: { ...m.teamA!, players: Array.from({ length: 24 }, (_, i) => ({ id: i + 1, fullName: `Engineering Player ${i + 1}` })) },
+  teamB: { ...m.teamB!, players: Array.from({ length: 24 }, (_, i) => ({ id: i + 101, fullName: `Science Player ${i + 1}` })) },
+} as MatchDto
+
+it('retains hidden drafts and submits statistics from both teams after filtering 48 players', async () => {
+  mount(largeMatch)
+  fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText('Points for Engineering Player 1'), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText('Science'), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText('Points for Science Player 1'), { target: { value: '1' } })
+  fireEvent.change(screen.getByRole('combobox', { name: 'Statistics team' }), { target: { value: '102' } })
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Find player' }), { target: { value: 'Science Player 24' } })
+  expect(screen.getByText('1 of 48 players')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Points for Engineering Player 1')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Clear player filters' }))
+  expect(screen.getByLabelText('Points for Engineering Player 1')).toHaveValue(3)
+  expect(screen.getByLabelText('Points for Science Player 1')).toHaveValue(1)
+  fireEvent.change(screen.getByRole('combobox', { name: 'Statistics team' }), { target: { value: '102' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Review result' }))
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Submit result' }))
+  await waitFor(() => expect(stats).toHaveBeenCalledWith({ entries: [
+    { userId: 1, teamId: 101, values: { points: 3 } },
+    { userId: 101, teamId: 102, values: { points: 1 } },
+  ] }))
+  expect(submit).toHaveBeenCalledWith({ winnerTeamId: 101, scoreData: { a: 3, b: 1 } })
+})
+
+it('reveals and focuses an invalid statistic even when both player filters hide its row', async () => {
+  mount(largeMatch)
+  fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '3' } })
+  fireEvent.change(screen.getByRole('combobox', { name: 'Statistics team' }), { target: { value: '102' } })
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Find player' }), { target: { value: 'Nobody' } })
+  expect(screen.queryByLabelText('Points for Engineering Player 1')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('link', { name: 'Check Engineering statistics' }))
+  await waitFor(() => expect(screen.getByLabelText('Points for Engineering Player 1')).toHaveFocus())
+  expect(screen.getByRole('combobox', { name: 'Statistics team' })).toHaveValue('')
+  expect(screen.getByRole('searchbox', { name: 'Find player' })).toHaveValue('')
   expect(screen.getByRole('button', { name: 'Review result' })).toBeDisabled()
 })

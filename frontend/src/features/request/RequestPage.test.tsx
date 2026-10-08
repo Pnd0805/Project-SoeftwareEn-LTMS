@@ -10,7 +10,7 @@
  *     ได้ และต้องรวม: ensureCreateReferences บังคับให้ทั้งสองช่องมีคำตอบที่ถูกอยู่
  *     ชุดเดียว ถามแยกได้แต่กรอกให้ขัดกันเองแล้ว backend ตอบ 400
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -34,6 +34,7 @@ vi.mock('../../hooks/useTournament', () => ({
 }))
 
 import { RequestPage } from './RequestPage'
+import { ApiError } from '../../api/client'
 
 const renderPage = () => render(<MemoryRouter><RequestPage /></MemoryRouter>)
 
@@ -47,6 +48,54 @@ const send = () => fireEvent.click(screen.getByRole('button', { name: 'Send the 
 beforeEach(() => {
   vi.clearAllMocks()
   createMutate.mockResolvedValue({ id: 30, name: 'QA Cup', status: 'pending_approval', autoApproved: false })
+})
+
+describe('reviewing a request without changing its contract', () => {
+  it('groups the fields and keeps the review in sync with faculty and eligibility choices', async () => {
+    renderPage()
+    for (const name of ['Tournament', 'Schedule', 'Eligibility']) {
+      expect(screen.getByRole('heading', { name })).toBeInTheDocument()
+    }
+    fillTheRest()
+    fireEvent.change(screen.getByLabelText(/Organising faculty/), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Only the faculty running it' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Year 2' }))
+    const review = within(screen.getByRole('complementary', { name: 'Request review summary' }))
+    expect(review.getByText('QA Cup')).toBeInTheDocument()
+    expect(review.getByText(/Year 2/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Organising faculty/), { target: { value: '2' } })
+    expect(review.getByText('วิทยาศาสตร์', { exact: true })).toBeInTheDocument()
+    expect(review.queryByText(/วิศวกรรมศาสตร์/)).not.toBeInTheDocument()
+    send()
+    await waitFor(() => expect(createMutate).toHaveBeenCalled())
+    expect(createMutate.mock.calls[0]![0]).toMatchObject({
+      name: 'QA Cup', sportTypeId: 1, bracketFormat: 'single_elimination',
+      scopeType: 'faculty', organizingFacultyId: 2, organizingDepartmentId: null,
+      minTeams: 2, maxTeams: 8, venue: 'คอร์ต 1', genderRequirement: 'any',
+      eligibilityRules: [{ type: 'faculty', value: 2 }, { type: 'year', value: 2 }],
+    })
+    expect(createMutate.mock.calls[0]![0]).not.toHaveProperty('eligibilityFacultyIds')
+    expect(createMutate.mock.calls[0]![0]).not.toHaveProperty('eligibilityYears')
+  })
+
+  it('retains the draft and review after authoritative server validation, then retries the same payload', async () => {
+    createMutate.mockRejectedValueOnce(new ApiError(422, { code: 'VALIDATION_ERROR', message: 'Check venue', fields: { venue: 'Venue is unavailable' } }))
+    renderPage()
+    fillTheRest()
+    fireEvent.change(screen.getByLabelText(/Organising faculty/), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Minimum age'), { target: { value: '18' } })
+    fireEvent.change(screen.getByLabelText('Maximum age'), { target: { value: '24' } })
+    send()
+    expect(await screen.findByText('Venue is unavailable')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue('QA Cup')
+    expect(screen.getByLabelText('Default venue')).toHaveValue('คอร์ต 1')
+    expect(screen.getByLabelText('Minimum age')).toHaveValue(18)
+    expect(within(screen.getByRole('complementary', { name: 'Request review summary' })).getByText('QA Cup')).toBeInTheDocument()
+    const firstPayload = createMutate.mock.calls[0]![0]
+    send()
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(2))
+    expect(createMutate.mock.calls[1]![0]).toEqual(firstPayload)
+  })
 })
 
 describe('organising faculty and department are one question', () => {

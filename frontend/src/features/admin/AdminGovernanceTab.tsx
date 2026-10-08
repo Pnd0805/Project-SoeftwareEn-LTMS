@@ -37,7 +37,7 @@ export function AdminScopesTab() {
     </div>
     {canGrant && !blocked ? <div className="admin-grant-form"><h3>Grant rights</h3><Field label="User ID" htmlFor="grant-user"><input id="grant-user" disabled={busy} type="number" min="1" step="1" value={userId} onChange={e => setUserId(e.target.value)} /></Field>
       {target === 'faculty' ? <Field label="Faculty" htmlFor="grant-faculty"><select id="grant-faculty" disabled={busy} value={facultyId} onChange={e => setFacultyId(e.target.value)}><option value="">Choose faculty</option>{faculties.data?.items.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></Field> : null}
-      <button className="btn primary" disabled={!valid || busy} onClick={() => { grant.reset(); setReview(true) }}>Review grant</button></div> : actor === 'faculty' ? <p>Faculty admins can view rights in their faculty.</p> : null}
+      <button className="btn primary" disabled={!valid || busy} onClick={() => { grant.reset(); setReview(true) }}>Review grant</button></div> : null}
     <Modal className="admin-decision-dialog" open={review && !blocked && canGrant} onClose={() => !busy && setReview(false)} title="Grant admin rights">
       <p>Grant {target} rights to user #{userId}{target === 'faculty' ? ` in ${facultyName(Number(facultyId))}` : ''}?</p>
       {grant.error ? <Banner kind="crit">{message(grant.error)}</Banner> : null}

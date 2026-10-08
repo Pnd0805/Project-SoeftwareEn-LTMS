@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { InboxPage } from './InboxPage'
@@ -51,10 +51,25 @@ it('retains a named mark-read result when the unread row disappears', async () =
 
 it('retains the mark-all result when all notification rows disappear', async () => {
   draw(); await screen.findByText('Court changed')
+  await screen.findByText('Byte Force')
   fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
   await waitFor(() => expect(screen.queryByText('Court changed')).not.toBeInTheDocument())
   expect(screen.getByRole('status')).toHaveTextContent('All notifications marked read')
+  expect(screen.getByRole('status').compareDocumentPosition(screen.getByRole('region', { name: 'Needs action' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(writes).toEqual([{ path: '/me/notifications/read-all', method: 'POST', body: null }])
+  expect(joined).toBe(false)
+  expect(screen.getByRole('button', { name: 'Accept team invitation: Byte Force' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Accept referee invitation: Autumn Cup' })).toBeEnabled()
+})
+
+it('puts the counted pending decisions before notification history and pagination', async () => {
+  draw(); await screen.findByText('Court changed'); await screen.findByText('Autumn Cup')
+  const actions = screen.getByRole('region', { name: 'Needs action' })
+  const updates = screen.getByRole('region', { name: 'Updates' })
+  expect(within(actions).getByText('2 pending')).toBeInTheDocument()
+  expect(within(actions).getByRole('button', { name: 'Accept team invitation: Byte Force' })).toBeEnabled()
+  expect(within(updates).getByText('Court changed')).toBeInTheDocument()
+  expect(actions.compareDocumentPosition(updates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 it('retains the team acceptance result after the invitation disappears', async () => {

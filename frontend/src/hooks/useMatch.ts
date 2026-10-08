@@ -132,8 +132,8 @@ export function useTournamentMatches(tournamentId: MatchRef | undefined) {
 }
 
 /** หน้า /matches — แมตช์ที่ฉันต้องทำอะไรสักอย่าง */
-export function useMyMatches() {
-  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, retry: retryPolicy });
+export function useMyMatches(enabled = true) {
+  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, enabled, retry: retryPolicy });
 }
 
 /**
@@ -306,6 +306,16 @@ export function useCheckin(matchId: MatchRef) {
   return useMutation({
     mutationFn: (input: CheckinRequest) => matchApi.checkin(matchId, input),
     onSuccess: () => touchCheckin(qc, matchId),
+  });
+}
+
+/** The global Scan action gets its Match id from the QR before it can submit. */
+export function useCheckinFromQr() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ matchId, qrToken }: { matchId: MatchRef; qrToken: string }) =>
+      matchApi.checkin(matchId, { method: "qr_onsite", qrToken }),
+    onSuccess: (_result, { matchId }) => touchCheckin(qc, matchId),
   });
 }
 

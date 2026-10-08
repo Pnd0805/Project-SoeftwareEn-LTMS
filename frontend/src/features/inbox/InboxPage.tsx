@@ -95,6 +95,9 @@ export function InboxPage() {
     </div>
     {notice ? <div role={notice.kind === 'crit' ? 'alert' : 'status'}><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
     {markRead.isPending || markAllRead.isPending ? <p className="sub" role="status">Marking notifications read…</p> : null}
+    {!USE_MOCK ? <BackendInbox /> : null}
+    <section className="inbox-updates" aria-label="Updates">
+    <h2 className="disp">Updates</h2>
     {isLoading ? <Panel quiet><span className="sub" role="status">Loading notifications…</span></Panel> : null}
     {isError || (!isLoading && !list) ? <Panel quiet><div role="alert"><b>Unable to load inbox</b><p className="sub">{error instanceof Error ? error.message : 'Notifications are unavailable. Try again.'}</p></div>
       <button className="btn ghost" type="button" onClick={() => void refetch()}>Retry notifications</button></Panel> : null}
@@ -126,6 +129,6 @@ export function InboxPage() {
       <span className="tag">Page {page} of {totalPages}</span>
       <button className="btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
     </div> : null}
-    {!USE_MOCK ? <BackendInbox /> : null}
+    </section>
   </div>
 }

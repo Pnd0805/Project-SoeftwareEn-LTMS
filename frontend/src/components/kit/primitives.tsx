@@ -80,7 +80,7 @@ export function Tabs({ tabs, active, onPick }: {
   return (
     <div className="tabs">
       {tabs.map(t => (
-        <button key={t.key} className={`tab ${t.key === active ? 'on' : ''}`} type="button" onClick={() => onPick(t.key)}>
+        <button key={t.key} className={`tab ${t.key === active ? 'on' : ''}`} type="button" aria-pressed={t.key === active} onClick={() => onPick(t.key)}>
           {t.label}
         </button>
       ))}

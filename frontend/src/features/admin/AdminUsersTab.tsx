@@ -134,7 +134,6 @@ export function AdminUsersTab() {
     <Panel quiet className="admin-users">
       <h2>Users</h2>
       <div className="sub">
-        Find anyone, suspend an account that broke the rules or reinstate it, and grant or revoke admin rights.
         A suspended account cannot sign in and cannot be entered in a tournament.
       </div>
 
@@ -177,7 +176,7 @@ export function AdminUsersTab() {
           {!found.length ? <div className="sub">Nobody matches that.</div> : (
             <TableWrap label="Admin user directory">
               <table>
-                <thead><tr><th>Name</th><th>Faculty</th><th>Squads</th><th>Role</th><th>Status</th><th /></tr></thead>
+                <thead><tr><th>Name</th><th>Faculty</th><th>Squads</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
                   {shown.map(u => {
                     const admin = u.adminScopes.length > 0

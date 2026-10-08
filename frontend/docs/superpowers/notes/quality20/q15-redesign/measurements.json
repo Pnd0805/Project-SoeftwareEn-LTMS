@@ -1,0 +1,1309 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "errors": [],
+    "queue": {
+      "width": 1132,
+      "height": 520,
+      "scrollHeight": 3794,
+      "columns": 2,
+      "cards": [
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        }
+      ],
+      "firstCardY": 385.578125,
+      "firstActionY": 565.65625,
+      "initiallyVisibleActions": 4
+    },
+    "keyboard": {
+      "scrollTop": 3274,
+      "activeVisible": true
+    },
+    "hiddenStatisticValidation": "unit coverage; real adapter has no sport name",
+    "form": {
+      "height": 367,
+      "scrollHeight": 4972,
+      "width": 1090,
+      "scrollWidth": 1090,
+      "footerOutside": true,
+      "scoreBeforeStats": true
+    },
+    "statisticsKeyboard": {
+      "scrollTop": 4586,
+      "activeVisible": true
+    },
+    "reviewFooter": {
+      "top": 592.6875,
+      "bottom": 650.078125,
+      "viewport": 900
+    },
+    "failedSubmit": [
+      {
+        "path": "/matches/100/result",
+        "method": "POST",
+        "body": {
+          "winnerTeamId": 11,
+          "scoreData": {
+            "11": 3,
+            "12": 0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "errors": [],
+    "queue": {
+      "width": 1132,
+      "height": 520,
+      "scrollHeight": 3794,
+      "columns": 2,
+      "cards": [
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        }
+      ],
+      "firstCardY": 385.578125,
+      "firstActionY": 565.65625,
+      "initiallyVisibleActions": 4
+    },
+    "keyboard": {
+      "scrollTop": 3274,
+      "activeVisible": true
+    },
+    "hiddenStatisticValidation": "unit coverage; real adapter has no sport name",
+    "form": {
+      "height": 367,
+      "scrollHeight": 4972,
+      "width": 1090,
+      "scrollWidth": 1090,
+      "footerOutside": true,
+      "scoreBeforeStats": true
+    },
+    "reviewFooter": {
+      "top": 592.6875,
+      "bottom": 650.078125,
+      "viewport": 900
+    }
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "errors": [],
+    "queue": {
+      "width": 1000,
+      "height": 520,
+      "scrollHeight": 4147,
+      "columns": 2,
+      "cards": [
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 486,
+          "height": 259,
+          "overflow": false,
+          "actionInCard": true
+        }
+      ],
+      "firstCardY": 385.578125,
+      "firstActionY": 589.15625,
+      "initiallyVisibleActions": 2
+    },
+    "keyboard": {
+      "scrollTop": 3627,
+      "activeVisible": true
+    },
+    "hiddenStatisticValidation": "unit coverage; real adapter has no sport name",
+    "form": {
+      "height": 367,
+      "scrollHeight": 4972,
+      "width": 958,
+      "scrollWidth": 958,
+      "footerOutside": true,
+      "scoreBeforeStats": true
+    },
+    "reviewFooter": {
+      "top": 542.6875,
+      "bottom": 600.078125,
+      "viewport": 800
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "errors": [],
+    "queue": {
+      "width": 342,
+      "height": 520,
+      "scrollHeight": 9837,
+      "columns": 1,
+      "cards": [
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        }
+      ],
+      "firstCardY": 872.15625,
+      "firstActionY": 1123.328125,
+      "initiallyVisibleActions": 0
+    },
+    "keyboard": {
+      "scrollTop": 9317,
+      "activeVisible": true
+    },
+    "hiddenStatisticValidation": "unit coverage; real adapter has no sport name",
+    "form": {
+      "height": 364,
+      "scrollHeight": 5244,
+      "width": 300,
+      "scrollWidth": 300,
+      "footerOutside": true,
+      "scoreBeforeStats": true
+    },
+    "reviewFooter": {
+      "top": 601.28125,
+      "bottom": 662.28125,
+      "viewport": 844
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "errors": [],
+    "queue": {
+      "width": 342,
+      "height": 520,
+      "scrollHeight": 9837,
+      "columns": 1,
+      "cards": [
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 332,
+          "height": 310,
+          "overflow": false,
+          "actionInCard": true
+        }
+      ],
+      "firstCardY": 872.15625,
+      "firstActionY": 1123.328125,
+      "initiallyVisibleActions": 0
+    },
+    "keyboard": {
+      "scrollTop": 9317,
+      "activeVisible": true
+    },
+    "hiddenStatisticValidation": "unit coverage; real adapter has no sport name",
+    "form": {
+      "height": 364,
+      "scrollHeight": 5244,
+      "width": 300,
+      "scrollWidth": 300,
+      "footerOutside": true,
+      "scoreBeforeStats": true
+    },
+    "reviewFooter": {
+      "top": 601.28125,
+      "bottom": 662.28125,
+      "viewport": 844
+    }
+  },
+  {
+    "width": 1440,
+    "height": 560,
+    "theme": "dark",
+    "errors": [],
+    "queue": {
+      "width": 1132,
+      "height": 364,
+      "scrollHeight": 3794,
+      "columns": 2,
+      "cards": [
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        },
+        {
+          "width": 552,
+          "height": 235,
+          "overflow": false,
+          "actionInCard": true
+        }
+      ],
+      "firstCardY": 385.578125,
+      "firstActionY": 565.65625,
+      "initiallyVisibleActions": 0
+    },
+    "keyboard": {
+      "scrollTop": 3430,
+      "activeVisible": true
+    },
+    "hiddenStatisticValidation": "unit coverage; real adapter has no sport name",
+    "form": {
+      "height": 367,
+      "scrollHeight": 4972,
+      "width": 1090,
+      "scrollWidth": 1090,
+      "footerOutside": true,
+      "scoreBeforeStats": true
+    },
+    "reviewFooter": {
+      "top": 422.6875,
+      "bottom": 480.078125,
+      "viewport": 560
+    }
+  }
+]

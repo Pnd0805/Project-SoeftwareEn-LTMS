@@ -7,7 +7,7 @@
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Empty, Field, Panel } from '../../components/kit/primitives'
+import { Empty, Field, Panel, Tabs } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { visibleTo } from '../../shared/selectors'
@@ -27,6 +27,7 @@ export function SearchPage() {
   const s = useLtms()
   const { data: currentUser } = useMe()
   const [tournamentStatus, setTournamentStatus] = useState<'public' | 'completed'>('public')
+  const [category, setCategory] = useState('all')
   const tournamentQuery = useTournaments({ status: tournamentStatus })
   const sportTypes = useSportTypes()
   const navigate = useNavigate()
@@ -57,6 +58,12 @@ export function SearchPage() {
     && !!teamSearch.data && !teamSearch.isPending && !teamSearch.isError
   )
   const playersSettled = !playerApplicable || (!!userSearch.data && !userSearch.isPending && !userSearch.isError)
+  const categoryCount = category === 'tournaments' ? tournaments.length
+    : category === 'teams' ? teams.length + backendTeams.length : players.length
+  const categorySettled = category === 'tournaments'
+    ? USE_MOCK || (!!tournamentQuery.data && !tournamentQuery.isPending && !tournamentQuery.isError)
+    : category === 'teams' ? USE_MOCK || (!!teamSearch.data && !teamSearch.isPending && !teamSearch.isError)
+      : playerApplicable && playersSettled
   const userErrorStatus = typeof userSearch.error === 'object' && userSearch.error !== null && 'status' in userSearch.error
     ? (userSearch.error as { status?: number }).status
     : undefined
@@ -80,13 +87,24 @@ export function SearchPage() {
         </Field>
       </Panel>
       {needle ? <p className="sub search-summary" role="status">{total} result{total === 1 ? '' : 's'}{publicSettled && playersSettled ? '' : ' loaded · Search in progress or incomplete'}</p> : null}
+      {needle ? <div className="search-categories" role="group" aria-label="Search categories">
+        <Tabs active={category} onPick={setCategory} tabs={[
+          { key: 'all', label: `All ${total}` },
+          { key: 'tournaments', label: `Tournaments ${tournaments.length}` },
+          { key: 'teams', label: `Teams ${teams.length + backendTeams.length}` },
+          { key: 'players', label: `Players ${players.length}` },
+        ]} />
+      </div> : null}
 
       {!needle ? (
         <Empty icon="search" title="Type to search"
           sub="Search public tournaments and teams. Sign in to search players." />
-      ) : !total && publicSettled && playersSettled ? (
+      ) : category === 'all' && !total && publicSettled && playersSettled ? (
         <Empty icon="search" title={`Nothing matched “${q}”`} sub="Try a sport, a faculty, or part of a name." />
       ) : null}
+      {needle && category !== 'all' && !categoryCount && categorySettled ? <Empty icon="search"
+        title={`No ${category} matched “${q}”`} sub="Try another category or search term." /> : null}
+      {needle && category === 'players' && !currentUser ? <p className="sub">Sign in to search players.</p> : null}
 
       {needle && currentUser && needle.length < 3 ? (
         <p className="sub">Enter at least 3 characters to search for players.</p>
@@ -112,20 +130,20 @@ export function SearchPage() {
         </Panel>
       ) : null}
 
-      {tournaments.length ? (
+      {tournaments.length && (category === 'all' || category === 'tournaments') ? (
         <Panel quiet className="search-results">
           <h2>Tournaments <span className="tag">{tournaments.length}</span></h2>
           {tournaments.map(t => (
             <button className="who" type="button" key={t.id} aria-label={`Open tournament: ${t.name}`} onClick={() => navigate(`/t/${t.id}`)}>
               <span className="avatar"><Icon name="trophy" size={13} /></span>
-              <span className="meta"><b>{t.name}</b><span className="tag">{t.sport} · {formatName(t)} · {t.status}</span></span>
+              <span className="meta"><b>{t.name}</b><span className="tag">{/^Sport \d+$/.test(t.sport) ? 'Sport unavailable' : t.sport} · {formatName(t)} · {t.status}</span></span>
               <Icon name="chev" size={13} />
             </button>
           ))}
         </Panel>
       ) : null}
 
-      {teams.length ? (
+      {teams.length && (category === 'all' || category === 'teams') ? (
         <Panel quiet className="search-results">
           <h2>Teams <span className="tag">{teams.length}</span></h2>
           {teams.map(t => (
@@ -141,7 +159,7 @@ export function SearchPage() {
         </Panel>
       ) : null}
 
-      {backendTeams.length ? (
+      {backendTeams.length && (category === 'all' || category === 'teams') ? (
         <Panel quiet className="search-results">
           <h2>Teams <span className="tag">{backendTeams.length}</span></h2>
           {backendTeams.map(t => (
@@ -149,7 +167,7 @@ export function SearchPage() {
               <TeamCrestView team={{ id: t.id, name: t.name, code: t.name.slice(0, 3).toUpperCase(), color: null, logoUrl: t.logoUrl ?? null }} size={24} />
               <span className="meta">
                 <b>{t.name}</b>
-                <span className="tag">Sport #{t.sportTypeId} · {t.readinessStatus} · {t.memberCount} players</span>
+                <span className="tag">{sportTypes.data?.items.find(sport => sport.id === t.sportTypeId)?.name ?? 'Sport unavailable'} · {t.readinessStatus} · {t.memberCount} players</span>
               </span>
               <Icon name="chev" size={13} />
             </button>
@@ -170,7 +188,7 @@ export function SearchPage() {
           <button className="btn ghost" type="button" onClick={() => void userSearch.refetch()}>Retry players</button>
         </Panel>
       ) : null}
-      {players.length ? (
+      {players.length && (category === 'all' || category === 'players') ? (
         <Panel quiet className="search-results">
           <h2>Players <span className="tag">{players.length}</span></h2>
           {players.map(u => (

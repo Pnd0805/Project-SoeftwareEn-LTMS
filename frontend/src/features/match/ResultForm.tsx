@@ -35,6 +35,8 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
   const [sa, setSa] = useState(0)
   const [sb, setSb] = useState(0)
   const [stat, setStat] = useState<Nums>({})
+  const [teamFilter, setTeamFilter] = useState('')
+  const [playerSearch, setPlayerSearch] = useState('')
   const [review, setReview] = useState(false)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'partial' | 'success'; text: string } | null>(null)
@@ -45,6 +47,9 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
 
   const sides = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const statDefs = defs?.items ?? []
+  const players = sides.flatMap(team => team.players.map(player => ({ team, player })))
+  const visiblePlayers = players.filter(({ team, player }) => (!teamFilter || String(team.id) === teamFilter)
+    && player.fullName.toLocaleLowerCase().includes(playerSearch.trim().toLocaleLowerCase()))
   const level = sa === sb
 
   const key = (playerId: number, statKey: string) => `${playerId}:${statKey}`
@@ -134,6 +139,13 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
       ? { id: `stat-${team.players[0].id}-${column}`, label: `Check ${team.name} statistics` }
       : { id: 'sc-a', label: 'Check scores' }
   }
+  const focusProblem = (id: string) => {
+    const field = document.getElementById(id)
+    if (field) { field.focus(); return }
+    setTeamFilter('')
+    setPlayerSearch('')
+    requestAnimationFrame(() => document.getElementById(id)?.focus())
+  }
 
   // ผลอาจรีเฟรชก่อนคำขอสถิติจบ ต้องคงฟอร์มจนแสดงผลของทั้งสองคำขอครบ
   if (!visible && !saving && feedback?.kind !== 'partial' && feedback?.kind !== 'error') return null
@@ -145,6 +157,7 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
         {m.mode === 'onsite' ? 'Referee' : 'Winning team leader'} — enter the result
       </span>
 
+      <div className="match-result-body" role="region" aria-label="Result entry fields" tabIndex={0}>
       <div className="grid2 match-score-inputs">
         <Field label={m.teamA?.name ?? 'Home'} htmlFor="sc-a">
           <input id="sc-a" disabled={busy} aria-invalid={blocked} aria-describedby={blocked ? "result-blockers" : undefined} type="number" min={0} max={999} value={sa} onChange={e => setSa(Number(e.target.value))} />
@@ -162,11 +175,34 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
         </Banner>
       ) : null}
 
+      {statProblems.length ? (
+        <Banner kind="crit">
+          <b>Check the player statistics.</b>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            {statProblems.map(p => {
+              const field = problemField(p)
+              return <li key={p}>{problemText(p)} <a href={`#${field.id}`} onClick={e => { e.preventDefault(); focusProblem(field.id) }}>{field.label}</a></li>
+            })}
+          </ul>
+        </Banner>
+      ) : null}
+
       {m.viewer.can.recordStats && statDefs.length ? (
         <>
           <span className="tag">
             <em>//</em> {m.tournament.sportName} — per player. These feed the top scorers and every profile.
           </span>
+          <div className="match-stat-filters">
+            <label className="field">Statistics team<select value={teamFilter} disabled={busy} onChange={e => setTeamFilter(e.target.value)}>
+              <option value="">Both teams</option>
+              {sides.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select></label>
+            <label className="field">Find player<input type="search" value={playerSearch} disabled={busy}
+              placeholder="Player name" onChange={e => setPlayerSearch(e.target.value)} /></label>
+            <span className="sub" role="status">{visiblePlayers.length} of {players.length} players</span>
+            {teamFilter || playerSearch ? <button className="btn ghost" type="button" disabled={busy}
+              onClick={() => { setTeamFilter(''); setPlayerSearch('') }}>Clear player filters</button> : null}
+          </div>
           <TableWrap label="Player statistics entry">
             <table>
               <thead>
@@ -176,29 +212,18 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
                 </tr>
               </thead>
               <tbody>
-                {sides.flatMap(t => t.players.map(p => (
+                {visiblePlayers.map(({ team: t, player: p }) => (
                   <tr key={`${t.id}-${p.id}`}>
                     <td>{p.fullName}</td>
                     <td><TeamChipView team={toTeamView(t)} /></td>
                     {statDefs.map(d => <td key={d.statKey}>{num(p.id, d.statKey, `${d.statLabelTh || d.statKey} for ${p.fullName}`)}</td>)}
                   </tr>
-                )))}
+                ))}
+                {!visiblePlayers.length ? <tr><td colSpan={statDefs.length + 2}>No players match these filters. Clear the player filters to see both teams.</td></tr> : null}
               </tbody>
             </table>
           </TableWrap>
         </>
-      ) : null}
-
-      {statProblems.length ? (
-        <Banner kind="crit">
-          <b>Check the player statistics.</b>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-            {statProblems.map(p => {
-              const field = problemField(p)
-              return <li key={p}>{problemText(p)} <a href={`#${field.id}`} onClick={e => { e.preventDefault(); document.getElementById(field.id)?.focus() }}>{field.label}</a></li>
-            })}
-          </ul>
-        </Banner>
       ) : null}
 
       {submit.isError ? (
@@ -219,10 +244,12 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
           still here — press Submit again to send them.
         </Banner>
       ) : null}
-
+      </div>
+      <div className="match-result-footer">
       {feedback ? <p role={feedback.kind === 'success' ? 'status' : 'alert'} className={`match-save-feedback ${feedback.kind}`}>{feedback.text}</p> : null}
       <button className="btn primary" type="button" disabled={busy || !m.viewer.can.submitResult || blocked || statProblems.length > 0}
         onClick={() => { setFeedback(null); setReview(true) }}>Review result</button>
+      </div>
       <Modal open={review && active} title="Review result" className="match-result-dialog" onClose={() => { if (!busy && !submitting.current) setReview(false) }}>
         <div className="match-dialog-body" role="region" aria-label="Result review" tabIndex={0}>
           <div className="match-review-scores">
