@@ -49,4 +49,15 @@ export const env = {
     // ไม่ requireEnv ตามกฎเดิมของไฟล์นี้ — เพื่อนอีก 10+ คนต้องรันโปรเจกต์ได้โดยไม่ต้องตั้งอะไร
     // 2000 มาจากของจริง: load test เจอคำขอค้างจน timeout 2,000+ ครั้ง โดย log ว่างเปล่า
     SLOW_REQUEST_MS : Number(process.env["SLOW_REQUEST_MS"] ?? 2000),
+
+    // C3 (8 ต.ค. 2569) — ขนาด pool ของ MySQL · ไม่ตั้ง = 10 (ค่าตั้งต้นของ mysql2 เดิม)
+    // ตอน load test connection ทั้ง 10 ถูกถือยาวโดยคิวรีที่ช้า ⇒ ทุก endpoint รอคิวไปด้วย
+    // 🔴 เพิ่มค่านี้ **ไม่ใช่การแก้คิวรีช้า** — ฐานก็มี max_connections ของตัวเอง
+    //   มีไว้ให้ปรับตามเครื่องตอน deploy โดยไม่ต้องแก้โค้ด ไม่ใช่ปุ่มเร่งความเร็ว
+    DB_POOL_SIZE : Number(process.env["DB_POOL_SIZE"] ?? 10),
+
+    // C4 (8 ต.ค. 2569) — ต้อง **มากกว่า** idle timeout ของ reverse proxy ที่อยู่หน้าเรา
+    // ไม่งั้น Node ปิด connection พอดีจังหวะที่ proxy กำลังส่งคำขอใหม่เข้ามา ⇒ 502 ประปราย
+    // (load test เห็น ECONNRESET 4 ครั้งจาก 29,000 คำขอ ด้วยเหตุนี้) · nginx ตั้งต้น 60 วิ ⇒ 65
+    KEEP_ALIVE_TIMEOUT_MS : Number(process.env["KEEP_ALIVE_TIMEOUT_MS"] ?? 65_000),
 };

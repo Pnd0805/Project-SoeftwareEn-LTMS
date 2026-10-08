@@ -93,6 +93,10 @@ describe("env - happy path", () => {
             FRONTEND_URL: "http://localhost:8080",
             // C2 (8 ต.ค. 2569) — ไม่ตั้ง = 2000 ms · 0 = ปิดการ log คำขอช้าสนิท
             SLOW_REQUEST_MS: 2000,
+            // C3 — ไม่ตั้ง = 10 (ค่าตั้งต้นเดิมของ mysql2) ⇒ พฤติกรรมไม่เปลี่ยนสำหรับคนที่ไม่ตั้ง
+            DB_POOL_SIZE: 10,
+            // C4 — ไม่ตั้ง = 65 วินาที (ยาวกว่า idle timeout ตั้งต้นของ nginx ที่ 60)
+            KEEP_ALIVE_TIMEOUT_MS: 65_000,
         });
     });
 

@@ -10,7 +10,9 @@ const pool = mysql.createPool({
     database : env.DB_NAME,
     timezone : 'Z',
     dateStrings : ['DATE'],
-    charset : 'utf8mb4'
+    charset : 'utf8mb4',
+    // C3 — ปรับได้ตอน deploy โดยไม่ต้องแก้โค้ด (ไม่ตั้ง = 10 เท่าเดิม)
+    connectionLimit : env.DB_POOL_SIZE
 });
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2/promise';
 import pool from '../../config/db.js';
+import { env } from '../../config/env.js';
 
 /**
  * 🔴 A3 (8 ต.ค. 2569) — ทุก connection ของแอปต้องคิดเวลาเป็น UTC
@@ -38,5 +39,21 @@ describe('A3 — เขตเวลาของ connection ที่แอปใ
         const [rows] = await pool.query<({ drift: number } & RowDataPacket)[]>(
             'SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW()) AS drift');
         expect(Number(rows[0]?.drift)).toBe(0);
+    });
+});
+
+/**
+ * 🆕 C3 (8 ต.ค. 2569) — ขนาด pool ตั้งผ่าน env ได้
+ *
+ * เทส `env.test.ts` พิสูจน์แค่ว่า `env.DB_POOL_SIZE` อ่านค่ามาถูก — ถ้าใครลืมส่งต่อให้
+ * `createPool` ค่านั้นจะไม่มีผลอะไรเลยและไม่มีอะไรแดง ⇒ ข้อนี้ตรวจที่ pool ตัวจริง
+ */
+describe('C3 — ขนาด pool ของแอป', () => {
+    it('connectionLimit ของ pool ตัวจริง ต้องเท่ากับ env.DB_POOL_SIZE', () => {
+        expect(pool.pool.config.connectionLimit).toBe(env.DB_POOL_SIZE);
+    });
+
+    it('ไม่ตั้ง env → ยังเป็น 10 เท่าเดิม (ของเก่าไม่เปลี่ยนพฤติกรรม)', () => {
+        expect(env.DB_POOL_SIZE).toBe(10);
     });
 });
