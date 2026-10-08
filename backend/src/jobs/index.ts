@@ -1,6 +1,6 @@
 import type { Job } from './scheduler.js';
 import { sweepAndNotify } from '../services/team.service.js';
-import { sweepAutoDeleteTournaments } from '../services/tournament.service.js';
+import { purgeExpiredTournaments, sweepAutoDeleteTournaments, warnBeforeAutoDelete } from '../services/tournament.service.js';
 
 /**
  * ทะเบียนงานเบื้องหลัง (มติ 8 ต.ค. 2569)
@@ -12,6 +12,10 @@ import { sweepAutoDeleteTournaments } from '../services/tournament.service.js';
  *    วันที่กฎเปลี่ยน แล้วลำดับกลับมามีผลโดยไม่มีใครนึกถึง)
  */
 export const backgroundJobs : Job[] = [
+    // 🔴 เตือนก่อนปิด — ต้องมาก่อนงานปิด ไม่ใช่เพราะลำดับบังคับ แต่เพราะอ่านแล้วตรงกับลำดับเหตุการณ์จริง
+    //   (คิวรีเตือนตัดทัวร์ที่ถึงวันแข่งแล้วออกอยู่แล้ว ⇒ ไม่มีทางได้ทั้งคำเตือนและคำปิดในรอบเดียว)
+    { name : 'เตือนผู้จัดล่วงหน้าก่อนปิดทัวร์ (BR-03)' , run : warnBeforeAutoDelete },
     { name : 'ปิดทัวร์ที่ยังไม่เผยแพร่จนถึงวันแข่ง (BR-03)' , run : sweepAutoDeleteTournaments },
+    { name : 'ลบทัวร์ที่ปิดไปเกิน 4 ปี (BR-03)' , run : purgeExpiredTournaments },
     { name : 'กวาดทีมร้าง (TM-07 · BR-06)' , run : sweepAndNotify },
 ];

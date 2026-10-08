@@ -44,6 +44,10 @@ export const NOTIFICATION_CATEGORY = {
     //   🔴 ถ้าวันหนึ่งทำ "แจ้งล่วงหน้าก่อนถึงกำหนด" (คำถามที่ยังไม่มีมติ) อันนั้นต้องเป็น critical
     //     เพราะตอนนั้นผู้จัดยังเผยแพร่ทันถ้ารู้
     tournament_auto_deleted: 'tournament',
+    // BR-03 ส่วนที่ 2 — เตือนล่วงหน้า 7 วันว่าทัวร์จะถูกปิดถ้ายังไม่เผยแพร่
+    // ★ อันนี้ **critical** ต่างจากตัวบนที่แจ้งตอนปิดไปแล้ว — ตอนนี้ผู้จัดยังกดเผยแพร่ทันถ้ารู้
+    //   เส้นตายที่วัดได้คือ `event_start_date` · ไม่รู้แล้วทัวร์หายถาวร
+    tournament_auto_delete_warning: 'critical',
     registration_toggled: 'critical',    // `registration_start`–`registration_end` — ปิดรับสมัครแล้วสมัครไม่ได้อีก
     application_decided: 'critical',     // ถูกปฏิเสธแล้วยังไปสมัครทัวร์อื่นทันถ้ารู้เร็ว — เส้นตายคือ `registration_end` ของทัวร์อื่น
     application_withdrawn: 'tournament',

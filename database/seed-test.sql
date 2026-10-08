@@ -26,7 +26,8 @@
 INSERT INTO users
   (user_id, full_name, email, password_hash, gender, birth_date, user_type, faculty_id, department_id, year, profile_image_key)
 VALUES
-  (9001, 'สมชาย ใจดี',    'somchai@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male',   '2004-05-01', 'student', 1, 1, 3, 'avatars/9001.jpg'),
+  -- 'staff' เพราะมีแถวใน admin_scopes ด้านล่าง (university_wide) — มติ 8 ต.ค. 2569
+  (9001, 'สมชาย ใจดี',    'somchai@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male',   '2004-05-01', 'staff',   1, 1, 3, 'avatars/9001.jpg'),
   (9002, 'สมหญิง รักเรียน','somying@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '2005-02-14', 'student', 2, 6, 2, NULL),
   (9003, 'มานะ ไร้ทีม',    'mana@ku.th',    '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male',   '2003-11-30', 'student', 8, 30, 4, NULL),
   (9004, 'อาจารย์วิศวะ',   'admin.eng@ku.th','$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '1985-01-01', 'staff',   1, NULL, NULL, NULL),

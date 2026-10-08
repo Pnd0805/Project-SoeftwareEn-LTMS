@@ -45,6 +45,19 @@ export async function create(data: NewUser): Promise<number>{
     return result.insertId;
 }
 
+
+/**
+ * เปลี่ยน user_type (มติ 8 ต.ค. 2569) — 'staff' = คนที่ถือยศแอดมิน/root
+ *
+ * ★ ที่เดียวที่เขียนคอลัมน์นี้นอกจากตอนสมัคร · ผู้เรียกคือ `adminScope.service`
+ *   ตอนแต่งตั้ง (→ 'staff') และตอนถอดยศ (→ ค่าตามโดเมนอีเมล)
+ * 🔴 ห้ามให้ repo เป็นคนตัดสินว่าควรเป็นค่าอะไร — กฎโดเมนอยู่ที่ `utils/kuEmail.ts` ที่เดียว
+ *   (repo เรียก service ไม่ได้ตามชั้นของโปรเจกต์ ⇒ ส่งค่าที่คิดแล้วเข้ามา)
+ */
+export async function updateUserType(userId : number , userType : 'student' | 'staff' | 'external') : Promise<void>{
+    await pool.query(`UPDATE users SET user_type = ? WHERE user_id = ?` , [userType , userId]);
+}
+
 /** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · ไม่คืนอีเมลใน response จึงเดาอีเมลคนอื่นจากผลลัพธ์ไม่ได้ */
 export type UserSearchRow = Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key' | 'year'> & {
     faculty_name : string | null;

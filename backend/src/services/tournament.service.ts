@@ -1019,3 +1019,39 @@ export async function sweepAutoDeleteTournaments(){
 
     return swept;
 }
+
+/**
+ * BR-03 ส่วนที่ 2 — เตือนผู้จัด 7 วันก่อนทัวร์จะถูกปิดอัตโนมัติ (มติ 8 ต.ค. 2569)
+ *
+ * ★ ข้อความต้องบอก **ทางออก** ไม่ใช่แค่คำเตือน — สิ่งที่ผู้จัดต้องทำคือกดเผยแพร่
+ * ★ แจ้งเตือนหมวด critical (ปิดไม่ได้) ต่างจากตัวที่แจ้งตอนปิดไปแล้ว
+ *   เพราะอันนี้ยังแก้ทันถ้ารู้ — เกณฑ์ critical คือ "มีเส้นตายที่วัดได้ ไม่รู้แล้วเสียสิทธิ์ถาวร"
+ * ★ จำว่าเตือนแล้ว **ก่อน** ส่ง ถ้าจำไม่ติด (รอบอื่นชิงไปก่อน) ก็ไม่ส่ง ⇒ ไม่มีทางส่งซ้ำ
+ */
+export const AUTO_DELETE_WARNING_DAYS = 7;
+
+export async function warnBeforeAutoDelete(){
+    const targets = await TournamentRepo.findTournamentsToWarnBeforeAutoDelete(AUTO_DELETE_WARNING_DAYS);
+    const warned : number[] = [];
+
+    for(const t of targets){
+        if(!await TournamentRepo.markAutoDeleteWarned(t.tournamentId)) continue;
+
+        await NotificationService.notifyUsers([t.organizerId] , {
+            type : 'tournament_auto_delete_warning',
+            title : `ทัวร์นาเมนต์ "${t.name}" ยังไม่ได้เผยแพร่`,
+            message : `วันเริ่มแข่งคือ ${t.eventStartDate} — ถ้ายังไม่กดเผยแพร่ก่อนถึงวันนั้น ระบบจะปิดทัวร์นี้อัตโนมัติ`,
+            relatedEntityType : 'tournament', relatedEntityId : t.tournamentId
+        });
+        warned.push(t.tournamentId);
+    }
+
+    return warned;
+}
+
+/** BR-03 ส่วนที่ 3 — ทัวร์ที่ปิดไปเกิน 4 ปี ⇒ soft delete (เหตุผลทั้งหมดอยู่ใน repo) */
+export const TOURNAMENT_RETENTION_YEARS = 4;
+
+export async function purgeExpiredTournaments(){
+    return TournamentRepo.purgeTournamentsClosedOver(TOURNAMENT_RETENTION_YEARS);
+}

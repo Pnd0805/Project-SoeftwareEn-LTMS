@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { as } from './helpers/api.js';
-import { insert, one } from './helpers/db.js';
+import { insert, one, testDb } from './helpers/db.js';
 import { createFaculty, createSportType, createTeam, createUser, makeAdmin, type TestUser } from './helpers/factories.js';
 
 /**
@@ -343,5 +343,77 @@ describe('BR-07 คำร้องทีม — อนุมัติได้�
 
     expect((await as(uni).post(`/admin/team-requests/${transferReq}/approve-transfer`)).status).toBe(200);
     expect((await teamRow())!.leader_id).toBe(member.id);
+  });
+});
+
+
+/**
+ * มติ 8 ต.ค. 2569 — `users.user_type` = 'staff' สำหรับคนที่ถือยศ
+ *
+ * 🔴 ก่อนมตินี้ `'staff'` เป็นค่า **ร้าง**: ไม่มีโค้ดไหนเขียน (ตั้งแต่มติ 6 ต.ค. ที่ให้คิดจากอีเมล)
+ *   และไม่มีโค้ดไหนอ่านไปตัดสินอะไร ⇒ ค่าที่ไปถึงไม่ได้
+ *
+ * ★ ต้องเป็นเทส integration — ประเด็นคือ "คอลัมน์ในฐานถูกเขียนจริงไหม"
+ *   เทส unit ที่ mock repo ทิ้ง พิสูจน์ได้แค่ว่ามีการ "เรียกฟังก์ชัน"
+ * ★ คอลัมน์นี้ไม่ได้ให้สิทธิ์ใคร (สิทธิ์มาจาก `admin_scopes`) ⇒ เขียนพลาดไม่ทำให้ใครได้สิทธิ์เกิน
+ *   แต่ทำให้ข้อมูลโกหก ซึ่งไม่มีเทสอื่นจับได้เลย
+ */
+describe("user_type = 'staff' ตามยศ", () => {
+  const typeOf = async (userId: number) =>
+    (await one<{ user_type: string }>('SELECT user_type FROM users WHERE user_id = ?', [userId]))!.user_type;
+
+  it('แต่งตั้งเป็นแอดมินคณะ → user_type กลายเป็น staff', async () => {
+    expect(await typeOf(userB.id)).toBe('student');
+
+    const res = await as(uni).post('/admin/scopes').send({ userId: userB.id, scopeType: 'faculty', facultyId: facB });
+    expect(res.status).toBe(201);
+    expect(await typeOf(userB.id)).toBe('staff');
+  });
+
+  it('ถอดยศ → กลับเป็น student (คนใน @ku.th)', async () => {
+    const granted = await as(uni).post('/admin/scopes').send({ userId: userB.id, scopeType: 'faculty', facultyId: facB });
+    const scopeId = granted.body.id;
+    expect(await typeOf(userB.id)).toBe('staff');
+
+    expect((await as(uni).delete(`/admin/scopes/${scopeId}`)).status).toBe(200);
+    expect(await typeOf(userB.id)).toBe('student');
+  });
+
+  /**
+   * 🔴 เหตุที่ **ห้ามตั้งเป็น 'student' ตรง ๆ** ตอนถอดยศ
+   *   ปัจจุบัน `grantScope` กันบัญชีภายนอกไว้ (EXTERNAL_ACCOUNT_CANNOT_BE_ADMIN)
+   *   แต่แถวที่ตั้งผ่าน DB/seed ไม่ผ่านด่านนั้น ⇒ ถ้าลดเป็น 'student' ทันที
+   *   ระบบจะบอกว่าคนนอกมหาวิทยาลัยเป็นนิสิต · กฎที่ใช้คือ isKuEmail ตัวเดียวกับตอนสมัคร
+   */
+  it('ถอดยศคนที่อีเมลเป็นบัญชีภายนอก → กลับเป็น external ไม่ใช่ student', async () => {
+    const outsiderAdmin = await createUser({ email: `outside-admin-${Date.now()}@outside.org` });
+    const scopeId = await insert('admin_scopes', {
+      user_id: outsiderAdmin.id, scope_type: 'faculty', faculty_id: facB, created_by: uni.id,
+    });
+    await testDb().query("UPDATE users SET user_type = 'staff' WHERE user_id = ?", [outsiderAdmin.id]);
+
+    expect((await as(uni).delete(`/admin/scopes/${scopeId}`)).status).toBe(200);
+    expect(await typeOf(outsiderAdmin.id)).toBe('external');
+  });
+
+  it('ถอนยศไม่สำเร็จ (ถอนของตัวเอง) → user_type ไม่เปลี่ยน', async () => {
+    const granted = await as(uni).post('/admin/scopes').send({ userId: userB.id, scopeType: 'faculty', facultyId: facB });
+    const scopeId = granted.body.id;
+
+    expect((await as(userB).delete(`/admin/scopes/${scopeId}`)).status).toBe(403);
+    expect(await typeOf(userB.id)).toBe('staff');
+  });
+
+  /** ★ ยังเหลือยศใบอื่น → ห้ามลด (ผ่าน API เหลือไม่ได้ แต่แถวที่ตั้งผ่าน DB มีได้) */
+  it('ยังเหลือยศอีกใบ → ไม่ลดกลับ', async () => {
+    const granted = await as(uni).post('/admin/scopes').send({ userId: userB.id, scopeType: 'faculty', facultyId: facB });
+    const scopeId = granted.body.id;
+    const extra = await insert('admin_scopes', {
+      user_id: userB.id, scope_type: 'faculty', faculty_id: facB, created_by: uni.id,
+    });
+
+    expect((await as(uni).delete(`/admin/scopes/${scopeId}`)).status).toBe(200);
+    expect(await typeOf(userB.id)).toBe('staff');
+    expect(extra).toBeGreaterThan(0);
   });
 });

@@ -764,6 +764,75 @@ export async function completeTournament(tournamentId: number, userId: number, c
 
 
 /**
+ * BR-03 ส่วนที่ 2 — ทัวร์ที่ยัง private และใกล้ถึงวันแข่ง (ยังเตือนไม่ได้)
+ *
+ * ★ ตัดทัวร์ที่ **ถึงวันแข่งแล้ว** ออก (`event_start_date > CURDATE())
+ *   เพราะพวกนั้นเป็นงานของ sweepPrivatePastDueTournaments() ที่ปิดเลย
+ *   ถ้าไม่ตัด ผู้จัดจะได้ "อีก 0 วันจะถูกปิด" กับ "ถูกปิดแล้ว" ในรอบงานเดียวกัน
+ *
+ * ★ ใช้ <= ไม่ใช่ = กับเส้น 7 วัน — ถ้าเซิร์ฟเวอร์ดับไปสองวันแล้วกลับมา
+ *   ทัวร์ที่เหลือ 5 วันต้องยังได้รับการเตือน ไม่ใช่พลาดไปเพราะไม่ได้ตรงวันพอดี
+ *   (ที่กันการเตือนซ้ำคือ `auto_delete_warned_at ไม่ใช่ความแม่นของวัน)
+ */
+// ★ eventStartDate เป็น string ไม่ใช่ Date — config/db.ts ตั้ง dateStrings:[DATE] ไว้
+//   คอลัมน์ชนิด DATE จึงกลับมาเป็น YYYY-MM-DD ตรง ๆ (types/db.ts ก็ประกาศแบบนี้ทั้งไฟล์)
+export type TournamentToWarn = { tournamentId : number , name : string , organizerId : number , eventStartDate : string };
+
+export async function findTournamentsToWarnBeforeAutoDelete(daysAhead : number) : Promise<TournamentToWarn[]> {
+    const [ rows ] = await pool.query<({ tournament_id : number , name : string , requested_by_user_id : number , event_start_date : string } & RowDataPacket)[]>(
+        `SELECT tournament_id , name , requested_by_user_id , event_start_date
+           FROM tournaments
+          WHERE tournament_status = 'private'
+            AND deleted_at IS NULL
+            AND auto_delete_warned_at IS NULL
+            AND event_start_date > CURDATE()
+            AND event_start_date <= CURDATE() + INTERVAL ? DAY`,
+        [daysAhead]);
+
+    return rows.map(r => ({ tournamentId : r.tournament_id , name : r.name ,
+                            organizerId : r.requested_by_user_id , eventStartDate : r.event_start_date }));
+}
+
+/**
+ * จำว่าเตือนทัวร์นี้ไปแล้ว · คืน false เมื่อมีรอบอื่นจำไปก่อนแล้ว (ผู้จัดจะได้ไม่ถูกเตือนซ้ำ)
+ * 🔴 `auto_delete_warned_at IS NULL ใน WHERE คือด่านนั้น — ห้ามถอด
+ *    งานนี้รันทุกชั่วโมง ถ้าถอด ผู้จัดจะได้ข้อความเดิม 24 ครั้งต่อวัน
+ */
+export async function markAutoDeleteWarned(tournamentId : number) : Promise<boolean> {
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE tournaments SET auto_delete_warned_at = NOW()
+          WHERE tournament_id = ? AND auto_delete_warned_at IS NULL`,
+        [tournamentId]);
+    return result.affectedRows === 1;
+}
+
+/**
+ * BR-03 ส่วนที่ 3 — ทัวร์ที่ปิดไปเกิน 4 ปี ⇒ soft delete (มติ 8 ต.ค. 2569)
+ *
+ * ★ "วันปิดทัวร์" = `COALESCE(completed_at, event_end_date, event_start_date)
+ *   ลำดับนี้**ไม่ใช่ของใหม่** — `career.repo.ts ใช้ลำดับเดียวกันเป๊ะสำหรับ "ทัวร์นี้จบเมื่อไร"
+ *   เหตุที่ต้องมีตัวสำรอง: `completed_at มีค่าเฉพาะทัวร์ที่ผู้จัดกดปิด (B1)
+ *   ทัวร์ที่ rejected / auto_deleted / จัดจบแล้วไม่มีใครกดปิด จะไม่มีวันถูกลบเลยถ้าดูแต่คอลัมน์นั้น
+ *
+ * ★ soft delete แถว `tournaments เท่านั้น (มติ 8 ต.ค. ทาง ก)
+ *   ฝั่งอ่านซ่อนทัวร์ที่มี `deleted_at อยู่แล้ว ⇒ แมตช์/ใบสมัคร/การทาย/เช็คอิน หายตามโดยปริยาย
+ *   และกู้คืนได้ถ้าลบผิด · ตารางลูกหลายตัวไม่มีคอลัมน์ `deleted_at จึงไล่ลบไม่ได้โดยไม่ migration เพิ่ม
+ * ★ `deleted_by = NULL ตามที่ schema เขียนกำกับไว้เอง: "NULL = auto/system deletion"
+ * ★ ไม่แจ้งเตือนใคร — เรื่องนี้เกิดหลังปิดทัวร์ 4 ปี ผู้จัดคนนั้นอาจไม่อยู่ในระบบแล้ว
+ *   และไม่มีอะไรให้ใครทำต่อ (ต่างจากการเตือนล่วงหน้า 7 วันที่ยังแก้ทัน)
+ */
+export async function purgeTournamentsClosedOver(years : number) : Promise<number> {
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE tournaments
+            SET deleted_at = NOW() , deleted_by = NULL , updated_at = NOW()
+          WHERE deleted_at IS NULL
+            AND COALESCE(completed_at , event_end_date , event_start_date) < NOW() - INTERVAL ? YEAR`,
+        [years]);
+    return result.affectedRows;
+}
+
+
+/**
  * BR-03 ส่วนที่ 1 — ทัวร์ที่ยังเป็น private เมื่อถึงวันแข่ง ⇒ 'auto_deleted'
  *
  * 🔴 ก่อน 8 ต.ค. 2569 **ไม่มีโค้ดไหนตั้งสถานะ 'auto_deleted' เลย** มีแต่ฝั่งอ่านที่ซ่อนสถานะนี้
