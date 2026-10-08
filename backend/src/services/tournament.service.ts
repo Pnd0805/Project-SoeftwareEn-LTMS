@@ -994,3 +994,28 @@ export async function getEligibilityRules(tournamentId: number, userId?: number)
     const rows = await ApplicationRepo.findEligibilityRules(tournamentId);
     return { items: rows.map(row => ({ ruleType: row.rule_type, ruleValue: row.rule_value })) };
 }
+
+/**
+ * BR-03 ส่วนที่ 1 — ปิดทัวร์ที่ยัง private เมื่อถึงวันแข่ง แล้วแจ้งผู้จัด
+ *
+ * ★ **ที่ตัดสินเอง (บอกไว้):** แจ้งผู้จัด "ตอนที่ปิด" ด้วย
+ *   คำถามที่ยังไม่มีมติคือ "แจ้งล่วงหน้ากี่วัน" ซึ่งยังไม่ทำ
+ *   แต่การปิดโดยไม่บอกอะไรเลยจะทำให้ทัวร์หายไปเฉย ๆ โดยผู้จัดไม่รู้สาเหตุ
+ *   ⇒ ใช้หลักเดียวกับการกวาดทีม (มติ 30 ก.ย.) ที่ต้องบอกลูกทีมว่าทีมหายเพราะอะไร
+ *
+ * แจ้งเตือนพังไม่ทำให้การปิดที่สำเร็จแล้วกลายเป็น error (notifyUsers กลืน error ให้อยู่แล้ว)
+ */
+export async function sweepAutoDeleteTournaments(){
+    const swept = await TournamentRepo.sweepPrivatePastDueTournaments();
+
+    for(const t of swept){
+        await NotificationService.notifyUsers([t.organizerId] , {
+            type : 'tournament_auto_deleted',
+            title : `ทัวร์นาเมนต์ "${t.name}" ถูกปิดอัตโนมัติ`,
+            message : 'ทัวร์นาเมนต์นี้ถูกปิดอัตโนมัติเพราะยังไม่ได้เผยแพร่ (ยังเป็นส่วนตัว) จนถึงวันเริ่มการแข่งขัน',
+            relatedEntityType : 'tournament', relatedEntityId : t.tournamentId
+        });
+    }
+
+    return swept;
+}

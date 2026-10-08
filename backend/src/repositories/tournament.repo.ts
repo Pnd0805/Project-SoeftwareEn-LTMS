@@ -763,6 +763,54 @@ export async function completeTournament(tournamentId: number, userId: number, c
 }
 
 
+/**
+ * BR-03 ส่วนที่ 1 — ทัวร์ที่ยังเป็น private เมื่อถึงวันแข่ง ⇒ 'auto_deleted'
+ *
+ * 🔴 ก่อน 8 ต.ค. 2569 **ไม่มีโค้ดไหนตั้งสถานะ 'auto_deleted' เลย** มีแต่ฝั่งอ่านที่ซ่อนสถานะนี้
+ *   ⇒ สถานะมีอยู่ในชนิดข้อมูล แต่ไม่มีทางไปถึงได้จริง (Peranut ตรวจถึง migration 050)
+ *
+ * ★ ทำแค่ส่วนที่กฎชัดแล้ว — อีกสองส่วนของ BR-03 ยังไม่มีมติ จึง **ยังไม่ทำ**:
+ *     · แจ้งเตือนผู้จัดล่วงหน้ากี่วันก่อนถึงกำหนด
+ *     · "ลบข้อมูลเมื่อครบ 4 ปี" นับจากอะไร และเป็นลบจริงหรือ soft delete
+ *
+ * ★ "ถึงวันแข่ง" เทียบกับ `event_start_date ซึ่งเป็นชนิด DATE ⇒ ทัวร์ที่เริ่ม "วันนี้" เข้าเกณฑ์ด้วย
+ *   ใช้ CURDATE() เพราะอ่านเจตนาได้ตรง (เทียบวันกับวัน)
+ *   🔴 ตรวจแล้วว่า NOW() ให้ผล **เท่ากันเป๊ะ** กับคอลัมน์ชนิด DATE เพราะ MySQL เลื่อน DATE
+ *     ขึ้นเป็นเที่ยงคืนของวันนั้นก่อนเทียบ ⇒ นี่ไม่ใช่เรื่องถูก/ผิด แต่เป็นเรื่องอ่านรู้เรื่อง
+ *     (เคยเขียนคอมเมนต์ไว้ว่า NOW() จะทำให้พลาด ซึ่งไม่จริง — mutation ทดสอบแล้วไม่ต่างกัน)
+ * ★ ไม่แตะ `deleted_at — คอลัมน์นั้นหมายถึง "มีคนลบ" และคู่กับ `deleted_by
+ *   ส่วน auto_deleted เป็นสถานะของตัวทัวร์เอง ซึ่งฝั่งอ่านซ่อนให้อยู่แล้ว
+ * ★ ปิดรับสมัครด้วย เพื่อไม่ให้มีใบสมัครใหม่วิ่งเข้าหาทัวร์ที่ตายแล้ว
+ *
+ * คืนเฉพาะทัวร์ที่ "การเรียกครั้งนี้" เปลี่ยนสถานะได้จริง (รูปแบบเดียวกับ sweepInactiveTeams)
+ * ⇒ ถ้ามีสองรอบทำงานพร้อมกัน ผู้จัดไม่ได้รับแจ้งซ้ำ
+ */
+export type AutoDeletedTournament = { tournamentId : number , name : string , organizerId : number };
+
+export async function sweepPrivatePastDueTournaments() : Promise<AutoDeletedTournament[]> {
+    const [ candidates ] = await pool.query<({ tournament_id : number , name : string , requested_by_user_id : number } & RowDataPacket)[]>(
+        `SELECT tournament_id , name , requested_by_user_id
+           FROM tournaments
+          WHERE tournament_status = 'private'
+            AND deleted_at IS NULL
+            AND event_start_date <= CURDATE()`);
+
+    const swept : AutoDeletedTournament[] = [];
+    for(const t of candidates){
+        const [ result ] = await pool.query<ResultSetHeader>(
+            `UPDATE tournaments
+                SET tournament_status = 'auto_deleted' , registration_open = FALSE , updated_at = NOW()
+              WHERE tournament_id = ? AND tournament_status = 'private' AND deleted_at IS NULL`,
+            [t.tournament_id]);
+
+        if(result.affectedRows === 1){
+            swept.push({ tournamentId : t.tournament_id , name : t.name , organizerId : t.requested_by_user_id });
+        }
+    }
+    return swept;
+}
+
+
 export async function softDeleteTournament(tournamentId: number, userId: number): Promise<boolean> {
     const conn = await pool.getConnection();
     try {

@@ -70,12 +70,21 @@ describe('deleteTournament (DELETE /tournaments/:id)', () => {
   });
 });
 
-// 🔴 BR-03 — ยังไม่พบการ implement ใน src (ไม่มีโค้ดไหนตั้งสถานะ 'auto_deleted' เลย มีแต่ฝั่งอ่าน)
-//   อาจอยู่ใน database/migrations เป็น MySQL EVENT ซึ่งไม่ได้อยู่ใน repo backend ที่ตรวจ
-//   ถ้าเป็น EVENT: ทดสอบด้วย unit test ไม่ได้ ต้องเป็น integration test กับฐานจริง
-//   ถ้ายังไม่มี: ต้องเขียนงานเบื้องหลัง (แบบ sweepInactiveTeams) แล้วเปลี่ยน todo เป็นเทสจริง
+// BR-03 ลบทัวร์อัตโนมัติ — สถานะ 8 ต.ค. 2569
+//   ยืนยันแล้วว่าก่อนหน้านี้ไม่มีโค้ด/EVENT/trigger ไหนตั้งสถานะ 'auto_deleted' เลย มีแต่ฝั่งอ่านที่ซ่อนมัน
+//   ⇒ สถานะมีอยู่ใน enum แต่ไม่มีทางไปถึงได้จริง
 describe('BR-03 ลบทัวร์อัตโนมัติ', () => {
-  it.todo("ทัวร์ที่ยัง private เมื่อถึงวันแข่ง → สถานะ 'auto_deleted'");
-  it.todo('แจ้งเตือนผู้จัดก่อนถึงกำหนดลบ');
-  it.todo('ข้อมูลทัวร์ทั้งหมดถูกลบเมื่อผ่านไป 4 ปี');
+  /**
+   * ✅ ส่วนที่ 1 ทำแล้ว (มติ 8 ต.ค. 2569) — `repositories/tournament.repo.sweepPrivatePastDueTournaments()`
+   *   + `services/tournament.service.sweepAutoDeleteTournaments()` · รันจาก `jobs/` ชั่วโมงละครั้ง
+   *   เทสจริงอยู่ที่ `__tests__/integration/tournamentAutoDelete.int.test.ts` (12 เคส)
+   *   และ `repositories/__tests__/tournament.autoDelete.test.ts` (ด่านกันรอบทำงานซ้อนกัน)
+   *   🔴 ไม่เขียนซ้ำที่นี่ — กฎทั้งหมดอยู่ใน SQL ⇒ unit ที่ mock repo ทิ้งจะพิสูจน์อะไรไม่ได้
+   *
+   * 🔴 อีกสองข้อยังไม่ทำเพราะ **ยังไม่มีมติ** ไม่ใช่เพราะยังไม่มีคนเขียน:
+   *   · แจ้งล่วงหน้ากี่วันก่อนถึงกำหนด (ถ้าทำ ต้องจัดเป็นแจ้งเตือนหมวด critical — ตอนนั้นผู้จัดยังเผยแพร่ทันถ้ารู้)
+   *   · "ลบเมื่อครบ 4 ปี" นับจากอะไร (วันแข่ง/วันปิดทัวร์) และเป็นลบจริงหรือ soft delete
+   */
+  it.todo('แจ้งเตือนผู้จัดก่อนถึงกำหนดลบ — รอมติว่ากี่วัน');
+  it.todo('ข้อมูลทัวร์ทั้งหมดถูกลบเมื่อผ่านไป 4 ปี — รอมติว่านับจากอะไร และลบจริงหรือ soft delete');
 });

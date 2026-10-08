@@ -60,4 +60,10 @@ export const env = {
     // ไม่งั้น Node ปิด connection พอดีจังหวะที่ proxy กำลังส่งคำขอใหม่เข้ามา ⇒ 502 ประปราย
     // (load test เห็น ECONNRESET 4 ครั้งจาก 29,000 คำขอ ด้วยเหตุนี้) · nginx ตั้งต้น 60 วิ ⇒ 65
     KEEP_ALIVE_TIMEOUT_MS : Number(process.env["KEEP_ALIVE_TIMEOUT_MS"] ?? 65_000),
+
+    // งานเบื้องหลังที่รันตามเวลา (มติ 8 ต.ค. 2569) — 0 = ปิดสนิท
+    // เหตุผลที่ย้ายการกวาดมาอยู่ที่นี่แทนการกวาดตอนมีคนเปิดหน้า อยู่ใน jobs/scheduler.ts
+    JOB_INTERVAL_MS : Number(process.env["JOB_INTERVAL_MS"] ?? 3_600_000),
+    // หน่วงรอบแรกหลังเซิร์ฟเวอร์ขึ้น เพื่อไม่แย่ง connection กับคำขอชุดแรก
+    JOB_STARTUP_DELAY_MS : Number(process.env["JOB_STARTUP_DELAY_MS"] ?? 10_000),
 };

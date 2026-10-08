@@ -37,6 +37,13 @@ export const NOTIFICATION_CATEGORY = {
     // ── ทัวร์นาเมนต์ + ใบสมัคร ──
     tournament_decided: 'tournament',
     tournament_published: 'tournament',
+    // BR-03 (8 ต.ค. 2569) — ทัวร์ที่ยังไม่เผยแพร่จนถึงวันแข่ง ถูกปิดอัตโนมัติ
+    // ★ **ที่ตัดสินเอง (บอกไว้):** จัดเป็น 'tournament' ไม่ใช่ 'critical'
+    //   เกณฑ์ critical คือ "มีเส้นตายที่วัดได้ ไม่รู้แล้วเสียสิทธิ์ถาวร" — ของนี้เรื่องเกิดไปแล้ว
+    //   ไม่มีเส้นตายอะไรให้ผู้จัดไปทำทันอีก ⇒ เป็นการบอกให้รู้ ไม่ใช่การเตือนให้ทัน
+    //   🔴 ถ้าวันหนึ่งทำ "แจ้งล่วงหน้าก่อนถึงกำหนด" (คำถามที่ยังไม่มีมติ) อันนั้นต้องเป็น critical
+    //     เพราะตอนนั้นผู้จัดยังเผยแพร่ทันถ้ารู้
+    tournament_auto_deleted: 'tournament',
     registration_toggled: 'critical',    // `registration_start`–`registration_end` — ปิดรับสมัครแล้วสมัครไม่ได้อีก
     application_decided: 'critical',     // ถูกปฏิเสธแล้วยังไปสมัครทัวร์อื่นทันถ้ารู้เร็ว — เส้นตายคือ `registration_end` ของทัวร์อื่น
     application_withdrawn: 'tournament',
