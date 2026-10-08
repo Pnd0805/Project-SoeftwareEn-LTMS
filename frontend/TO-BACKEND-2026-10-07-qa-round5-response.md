@@ -3,6 +3,8 @@
 Verified ls-remote/fetched `BE_KN@234e4a15183ac9f64f66d2242afc531623ee02f1` and inspected source at that ref. Frontend baseline `7940cf6`, branch `feat/1`. Changes are frontend-only. Browser/manual QA was excluded by the user; this response records implementation and developer checks.
 FE implementation commit: `65da597`.
 
+Superseded status: [Round 6 response](TO-BACKEND-2026-10-08-qa-round6-response.md) integrates team conflict metadata, updates the 9053 key and selects FE-39 option A. The remaining-work section below records the Round 5 snapshot.
+
 ## Closed FE implementation
 
 1. **Review opening reason:** integrated openedBy into the feedback DTO and community view. event_start uses the scheduled Bangkok start; first_match and completed explain actual play/completion without presenting future opensAt as the opening date. not_started labels the date as scheduled; closed states closure. Null/unknown data uses neutral open copy. canSubmit remains the sole authority for displaying the submit form. No event chronology is inferred.

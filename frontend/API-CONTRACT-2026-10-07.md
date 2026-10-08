@@ -1,7 +1,33 @@
-# Frontend integration contract — BE_KN 7 Oct 2026
+# Frontend integration contract — BE_KN 7–8 Oct 2026
 
-Verified remote/fetched head after error/status follow-up: `77039f6b0abb4767e194cde825dc5555cadf9c8f`.
+Latest verified remote/fetched head (Round 6): `4b51af59850899fc999032f6d7632979b791ae0e`. Historical error/status follow-up: `77039f6b0abb4767e194cde825dc5555cadf9c8f`.
 Base URL: `/api/v1`. Source: today's TO-FE and current backend routes/services/mappers.
+
+## QA Round 6 additions
+
+- HTTP 409 TEAM_CONFLICT_OF_INTEREST on POST /teams/:id/invitations,
+  POST /invitations/:id/accept and POST /teams/:id/join-requests includes flat
+  error.tournamentId, role, invitationStatus and expiresAt. ApiError.extra preserves
+  these fields; there is no nested error.extra. Pending referee invitations allow
+  decline/cancel/expiry recovery with the supplied Bangkok deadline. Accepted
+  referee roles have expiresAt=null and require ending the incompatible role or
+  choosing an eligible team/person; waiting does not solve them. Organizer has
+  invitationStatus=null and expiresAt=null. Missing metadata does not imply pending.
+- Fixture 9053 now uses referee_identity/9053/00000000-0000-4000-8000-000000009053.jpg.
+  It still intentionally has no MinIO object. Fixture 9054 keeps the canonical PNG
+  key delivered in Round 5. Tests preserve full signed URLs and missing-file recovery.
+- PUT /me/referee-identity/docs and POST /referee-invitations/:id/accept (when docs
+  are supplied) can return 422 REFEREE_IDENTITY_KEY_INVALID with flat objectKeys.
+  BE accepts only the current user's referee_identity/<userId>/<UUIDv4>.jpg|png
+  keys; FE treats the presign-returned key as opaque, uses purpose referee_identity,
+  and uploads afresh on retry. BE does not check object existence at submission.
+- Reviewer-authorized amendment impact is still undelivered. FE selected a read
+  by request ID when opening review details (option A); no proposed endpoint is
+  called until BE delivers its route/schema and scope checks.
+- Server UTC changes do not change Bangkok timestamp display or calendar dates.
+  Runtime/502/fixture acceptance requires separate evidence.
+
+See [Round 6 handoff](TO-BACKEND-2026-10-08-qa-round6-response.md).
 
 ## Error/status conflict follow-up
 
@@ -47,8 +73,9 @@ See [FE handoff](TO-BACKEND-2026-10-07-error-status-response.md).
   IdentityDocs preserves the full HTTP presigned URL without object-key rewriting.
   Links still have a 20-minute lifetime. Fixture 9053 intentionally remains missing.
   Fixture delivery in seed/compose does not prove an existing local DB/bucket was updated.
-- Round 5 does not add reviewer-authorized amendment impact or team invitation
-  conflict status/expiry metadata. Those Round 4 contract gaps remain open.
+- Round 5 did not add reviewer-authorized amendment impact or team invitation
+  conflict status/expiry metadata. Round 6 delivers team metadata above; reviewer
+  impact remains open.
 
 ## Sport BO capability
 

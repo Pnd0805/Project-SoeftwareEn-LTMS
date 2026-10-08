@@ -3,7 +3,21 @@
 Frontend branch: `feat/1`
 API base path: `/api/v1`
 
-## Error/status conflict follow-up — current implementation, 2026-10-07
+## QA Response Round 6 — current implementation, 2026-10-08
+
+- [x] Verified remote/fetched BE_KN@4b51af59850899fc999032f6d7632979b791ae0e and current source.
+- [x] Flat TEAM_CONFLICT_OF_INTEREST metadata drives pending/accepted/organizer recovery across invite, accept and join request. Accepted team admission never suggests waiting for expiry or unchecking a registration player.
+- [x] Canonical 9053 missing-file key in tests; valid 9054 stays a separate fixture. No client object-key construction.
+- [x] REFEREE_IDENTITY_KEY_INVALID recovery: fresh presign/upload on retry and unchanged API-returned keys; selected files retained, no false success on rejection.
+- [x] FE-39 option A selected: request-ID impact read when opening review details. DB/MinIO environment supplied to BE for focused fixture population.
+- [x] [Round 6 To-Backend](TO-BACKEND-2026-10-08-qa-round6-response.md); original checklist remains 41 implemented / 2 partial (FE-10 timing, FE-39 reviewer impact).
+- [x] Implementation commit `1a7d519`; full suite 98 files / 639 tests passed with 2 workers, lint/TypeScript/build/diff check passed. Initial concurrent QR test timeout passed in isolation and on the full rerun; no QR code/timeout edits. Existing main 944.22 kB chunk warning.
+- [x] Isolated Vite 5195 root/changed modules HTTP 200; task-owned server stopped. No browser/manual QA or new authenticated API acceptance pass claimed.
+- [ ] BE must deliver reviewer-authorized impact route/schema before FE-39 can close.
+- [ ] BE focused fixture population/canonical DB keys and authenticated MinIO preview/expiry acceptance.
+- [ ] FE-10 timing and authenticated browser/device acceptance remain open; SMTP/OTP paused and other decisions await team.
+
+## Error/status conflict follow-up — historical implementation, 2026-10-07
 
 - [x] Read ERROR-CODES-status-conflicts-2026-10-07; verified/fetched `BE_KN@77039f6b0abb4767e194cde825dc5555cadf9c8f`. BE already implemented option A after the notice snapshot.
 - [x] Distinguish schedule form 400 SCHEDULE_INCOMPLETE from lifecycle/FR02 409 MATCH_NOT_SCHEDULED without parsing server messages.
@@ -13,7 +27,7 @@ API base path: `/api/v1`
 - [x] Target-user 404 remains an API error without clearing the session; no code-based USER_NOT_FOUND login redirect. NO_ACTIVE_DISPUTE/REFEREE_NOT_ASSIGNED keep existing endpoint/status semantics.
 - [x] [Updated contract and BE handoff](TO-BACKEND-2026-10-07-error-status-response.md).
 - [x] Implementation commit `579309f`; final 97 files / 618 tests, lint, TypeScript/build and diff check passed. Existing main 943.27 kB warning; isolated Vite 5195/changed modules HTTP 200 and task-owned server stopped.
-- [ ] Original FE-39 reviewer impact and team invitation conflict status/expiry metadata remain undelivered.
+- [ ] Original FE-39 reviewer impact remains undelivered. Team invitation conflict metadata was subsequently delivered/integrated in Round 6 above.
 - [ ] Authenticated runtime/browser/real-device acceptance and FE-10 performance timing remain open; no browser/manual QA requested this round.
 
 ## QA Response Round 5 — historical implementation, 2026-10-07
@@ -25,7 +39,7 @@ API base path: `/api/v1`
 - [x] IdentityDocs preserves the new 9054 PNG presigned URL and existing 9053 missing-file recovery; no key-prefix assumption.
 - [x] BE fixture delivery acknowledged; no BE edits, seed reload, migration rerun or browser/manual QA performed. User's prior migration confirmation retained.
 - [ ] Existing local DB/bucket fixture 9054 population and real preview/expiry acceptance remain unverified.
-- [ ] FE-39 reviewer-authorized pre-approval impact and team invitation conflict status/expiry metadata still require BE contracts; Round 5 adds neither.
+- [ ] FE-39 reviewer-authorized pre-approval impact still requires BE delivery; Round 5 added neither contract, while Round 6 subsequently delivered team invitation metadata above.
 - [ ] FE-10 browser performance timing and remaining authenticated/browser/device acceptance.
 - [x] Original checklist remains 41 implemented / 2 partial; [Round 5 response](TO-BACKEND-2026-10-07-qa-round5-response.md).
 - [x] Implementation committed in `65da597`. Final developer checks: 97 files / 599 tests, lint, TypeScript/build and diff check passed; existing main 941.47 kB chunk warning. Isolated Vite 5195/changed modules HTTP 200, task-owned server stopped.

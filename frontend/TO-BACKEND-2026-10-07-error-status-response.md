@@ -3,6 +3,8 @@
 Read `FE-Notice/ERROR-CODES-status-conflicts-2026-10-07.md` and verified ls-remote/fetched **BE_KN@77039f6b0abb4767e194cde825dc5555cadf9c8f**. The notice's 234e4a1 snapshot proposed options; current BE already implements option A. FE baseline `9962cea`, branch `feat/1`. Only frontend files changed.
 FE implementation commit: `579309f`.
 
+Latest status: [Round 6 response](TO-BACKEND-2026-10-08-qa-round6-response.md). Team conflict metadata is now delivered/integrated; FE-39 reviewer impact still awaits its read contract.
+
 ## Implemented
 
 | Contract | FE recovery |

@@ -11,6 +11,7 @@
 Round 4 update: 41 implemented, 2 partial (FE-10 timing and FE-39 admin pre-approval impact), 0 waiting for the original standings DTO. These counts describe implementation, not QA sign-off.
 Round 5: openedBy review copy and queue scope/403 handling implemented against BE_KN@234e4a1. Original counts remain 41 implemented / 2 partial. [Latest BE response](TO-BACKEND-2026-10-07-qa-round5-response.md).
 Error/status follow-up: BE_KN@77039f6 separates match-state 409 MATCH_NOT_SCHEDULED from form 400 SCHEDULE_INCOMPLETE; FE recovery integrated with legacy 409 compatibility. Original counts remain 41 / 2. [Latest follow-up](TO-BACKEND-2026-10-07-error-status-response.md).
+Round 6 (8 Oct): BE_KN@4b51af5 team-conflict metadata integrated across invite/accept/join requests; canonical 9053 missing-file fixture and identity-key 422 recovery updated. Original counts remain 41 / 2. FE-39 option A selected, awaiting reviewer route/schema. [Current BE response](TO-BACKEND-2026-10-08-qa-round6-response.md).
 ทุก flow ยังต้องทดสอบกับ BE_KN จริงหลัง migration และ reload
 
 ## Notice วันนี้
@@ -132,3 +133,9 @@ Developer verification: **97 files / 599 tests passed**, lint and TypeScript/bui
 
 Verified remote/fetched `BE_KN@77039f6`; implementation `579309f` integrates the delivered 400/409 split with optional missing metadata and legacy 409 compatibility. [Current BE response](TO-BACKEND-2026-10-07-error-status-response.md).
 Developer verification: **97 files / 618 tests passed**, lint and TypeScript/build passed; existing chunk warning (main 943.27 kB). Isolated Vite 5195/root/changed modules HTTP 200, task-owned server stopped. No browser/manual QA or new live API acceptance pass claimed.
+
+## Round 6 follow-up — 8 Oct 2026
+
+Verified remote/fetched `BE_KN@4b51af5`; implementation `1a7d519` integrates team conflict metadata/recovery, canonical 9053 fixture and identity-key 422 retry guidance. FE-39 option A selected; reviewer read contract and focused DB fixture population remain BE handoffs. [Round 6 response](TO-BACKEND-2026-10-08-qa-round6-response.md).
+
+Developer verification: **98 files / 639 tests passed** with 2 workers; lint, TypeScript/build and diff check passed. Initial concurrent QR test timeout passed in isolation and on full rerun without QR code/timeout edits. Existing main 944.22 kB chunk warning. Isolated Vite 5195 root/changed modules HTTP 200 and task-owned server stopped. Browser/manual QA and new authenticated API/device acceptance excluded.
