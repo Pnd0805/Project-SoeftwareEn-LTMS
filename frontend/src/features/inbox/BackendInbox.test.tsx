@@ -24,6 +24,8 @@ const declineMutate = vi.fn()
 const cancelMutate = vi.fn()
 const appointmentMutate = vi.fn()
 const refreshAppointments = vi.fn()
+const answerTeam = vi.fn()
+let teamInvitations: Array<{ id: number; team: { id: number; name: string; logoUrl: null }; invitedBy: { fullName: string }; expiresAt: string }> = []
 let appointments: Array<{ id: number; tournament: { id: number; name: string }; isExternal: boolean; createdAt: string }> = []
 let outgoing: typeof request[] = []
 
@@ -37,8 +39,8 @@ const request: BackendRefereeRequestDto = {
 let incoming: BackendRefereeRequestDto[] = [request]
 
 vi.mock('../../hooks/useTeam', () => ({
-  useBackendMyInvitations: () => ({ data: { items: [] }, isPending: false }),
-  useAnswerBackendInvitation: () => idle,
+  useBackendMyInvitations: () => ({ data: { items: teamInvitations }, isPending: false }),
+  useAnswerBackendInvitation: () => ({ ...idle, mutate: answerTeam }),
 }))
 vi.mock('../../hooks/useTournament', () => ({
   useMyTournamentApplications: () => ({ data: { items: [] }, isPending: false }),
@@ -58,7 +60,18 @@ import { BackendInbox } from './BackendInbox'
 const renderInbox = () => render(<MemoryRouter><BackendInbox /></MemoryRouter>)
 const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
 
-beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request]; appointments = [] })
+beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request]; appointments = []; teamInvitations = [] })
+
+it.each(['pending', 'accepted'])('shows %s referee recovery after team invitation acceptance is refused', status => {
+ incoming = []
+ teamInvitations = [{ id: 51, team: { id: 42, name: 'Campus FC', logoUrl: null }, invitedBy: { fullName: 'Leader' }, expiresAt: '2026-12-01T09:00:00Z' }]
+ answerTeam.mockImplementation((_input, options) => options.onError(new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Unrelated text', role: 'referee', invitationStatus: status, expiresAt: status === 'pending' ? '2026-10-15T09:00:00Z' : null })))
+ renderInbox(); clickAccept()
+ expect(answerTeam).toHaveBeenCalledWith({ invitationId: 51, accept: true }, expect.any(Object))
+ if (status === 'pending') expect(screen.getByText(/awaiting a response until 15\/10\/2026, 16:00:00/)).toBeInTheDocument()
+ else expect(screen.getByText(/Waiting for the invitation to expire will not resolve/)).toBeInTheDocument()
+ expect(screen.queryByText(/You joined/)).not.toBeInTheDocument()
+})
 
 it('recovers from a referee invitation expiring between reading and accepting it', () => {
  incoming = []; appointments = [{ id: 34, tournament: { id: 23, name: 'Campus cup' }, isExternal: false, createdAt: '2026-10-07T03:00:00Z' }]

@@ -12,9 +12,10 @@ afterEach(() => { setAccessToken(null); vi.unstubAllGlobals() })
 
 describe('real image uploads', () => {
   it('uploads identity documents under the authenticated user without sending backend credentials to storage', async () => {
-    fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/private-identity', objectKey: 'referee_identity/9/key.png' }))
+    const key = 'referee_identity/9/00000000-0000-4000-8000-000000000009.png'
+    fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/private-identity', objectKey: key }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
-    expect(await uploadImage(png(), 'referee_identity')).toBe('referee_identity/9/key.png')
+    expect(await uploadImage(png(), 'referee_identity')).toBe(key)
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ purpose: 'referee_identity', contentType: 'image/png' })
     expect(fetchMock.mock.calls[1][1].headers).toEqual({ 'Content-Type': 'image/png' })
   })
@@ -70,7 +71,7 @@ describe('image upload errors', () => {
   it.each(['AVATAR_KEY_NOT_FOUND', 'TEAM_LOGO_KEY_NOT_FOUND'])('tells the user to upload again for %s', code => {
     expect(imageUploadErrorMessage(new ApiError(422, { code, message: 'Invalid' }))).toContain('อัปโหลดใหม่')
   })
-  it.each(['AVATAR_KEY_INVALID', 'TEAM_LOGO_KEY_INVALID', 'NOT_TEAM_LEADER', 'UNSUPPORTED_FILE_TYPE', 'STORAGE_UNAVAILABLE'])('explains %s even for an error from another client module instance', code => {
+  it.each(['REFEREE_IDENTITY_KEY_INVALID', 'AVATAR_KEY_INVALID', 'TEAM_LOGO_KEY_INVALID', 'NOT_TEAM_LEADER', 'UNSUPPORTED_FILE_TYPE', 'STORAGE_UNAVAILABLE'])('explains %s even for an error from another client module instance', code => {
       expect(imageUploadErrorMessage({ code, message: 'Raw server text' })).not.toBe('Raw server text')
       expect(imageUploadErrorMessage({ code })).not.toContain('ไม่ทราบ')
     })

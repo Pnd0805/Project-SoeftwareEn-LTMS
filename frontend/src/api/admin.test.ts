@@ -186,8 +186,8 @@ describe("delivered admin-user contracts", () => {
     await requestRefereeWithdrawal({ scope: 'match', matchId: 23, reason: 'Schedule overlap' });
     expect(lastRequest().body).toEqual({ scope: 'match', matchId: 23, reason: 'Schedule overlap' });
     fetchMock.mockResolvedValueOnce(json({ status: 'pending' }));
-    await submitRefereeIdentityDocs(['referee_identity/42/test.png']);
-    expect(lastRequest()).toEqual({ path: '/me/referee-identity/docs', method: 'PUT', body: { docs: ['referee_identity/42/test.png'] } });
+    await submitRefereeIdentityDocs(['referee_identity/42/00000000-0000-4000-8000-000000000042.png']);
+    expect(lastRequest()).toEqual({ path: '/me/referee-identity/docs', method: 'PUT', body: { docs: ['referee_identity/42/00000000-0000-4000-8000-000000000042.png'] } });
     fetchMock.mockResolvedValueOnce(json({ identityStatus: 'needs_docs' }));
     await requestExternalRefereeDocs(42, 'Please send a clearer image');
     expect(lastRequest()).toEqual({ path: '/admin/referee-requests/42/request-docs', method: 'POST', body: { reason: 'Please send a clearer image' } });

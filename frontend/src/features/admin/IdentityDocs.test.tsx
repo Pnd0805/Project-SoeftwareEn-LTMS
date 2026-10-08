@@ -5,8 +5,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DOC_LINK_TTL_MS, IdentityDocs } from './IdentityDocs'
 
-const signed = 'http://localhost:9000/ltms-uploads/referee-identity/9053-id-card.jpg?X-Amz-Expires=1200&X-Amz-Signature=abc'
-const pdf = 'http://localhost:9000/ltms-uploads/referee-identity/9053-letter.pdf?X-Amz-Signature=def'
+const signed = 'http://localhost:9000/ltms-uploads/referee_identity/9053/00000000-0000-4000-8000-000000009053.jpg?X-Amz-Expires=1200&X-Amz-Signature=abc'
+// Generic document-renderer coverage; PDF is not a Round 6 identity-upload fixture.
+const pdf = 'http://localhost:9000/ltms-uploads/documents/manual.pdf?X-Amz-Signature=def'
 const props = { docsSubmitted: true, fetchedAt: 1_000, now: 1_000, refreshing: false }
 
 describe('identity documents in the admin queue', () => {
@@ -20,9 +21,9 @@ describe('identity documents in the admin queue', () => {
 
   it('links each signed URL under its file name, without the signature', () => {
     render(<IdentityDocs {...props} docs={[signed, pdf]} onRefresh={vi.fn()} />)
-    expect(screen.getByRole('link', { name: 'เอกสาร 1 · 9053-id-card.jpg' })).toHaveAttribute('href', signed)
-    expect(screen.getByRole('link', { name: 'เอกสาร 2 · 9053-letter.pdf' })).toHaveAttribute('target', '_blank')
-    expect(screen.getByRole('img', { name: 'เอกสาร 1 · 9053-id-card.jpg' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'เอกสาร 1 · 00000000-0000-4000-8000-000000009053.jpg' })).toHaveAttribute('href', signed)
+    expect(screen.getByRole('link', { name: 'เอกสาร 2 · manual.pdf' })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('img', { name: 'เอกสาร 1 · 00000000-0000-4000-8000-000000009053.jpg' })).toHaveAttribute('src', signed)
   })
 
   it('says the file could not be opened — not that there is none — when the preview fails', () => {

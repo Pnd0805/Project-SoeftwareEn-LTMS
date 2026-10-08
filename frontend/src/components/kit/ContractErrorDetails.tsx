@@ -19,7 +19,12 @@ export function ContractErrorDetails({ error }: { error: unknown }) {
   if (error.code === 'CANNOT_DISPUTE_OWN_RESULT') return <p>{ownResultRecovery(e.resultStatus, e.mode)}</p>
   if (error.code === 'REFEREE_INVITATION_EXPIRED') return <p>This referee invitation expired{date(e.expiresAt) ? ` at ${date(e.expiresAt)}` : ''}. Refresh your invitations and ask the organizer for a new invitation.</p>
   if (error.code === 'REFEREE_INVITATION_PENDING') return <p>Invitation{typeof e.tournamentRefereeId === 'number' ? ` #${e.tournamentRefereeId}` : ''} is awaiting a response{date(e.expiresAt) ? ` until ${date(e.expiresAt)}` : ''}. Ask the invitee to respond or cancel the invitation before inviting again.</p>
-  if (error.code === 'TEAM_CONFLICT_OF_INTEREST') return <div>{(Array.isArray(e.conflicts) ? e.conflicts : [e]).map(record).filter(row => row.role === 'referee').map((row, i) => <p key={i}>{typeof row.userId === 'number' ? `Player #${row.userId}: ` : ''}{refereeInvitationRecovery(row)}</p>)}</div>
+  if (error.code === 'TEAM_CONFLICT_OF_INTEREST') return <div>{(Array.isArray(e.conflicts) ? e.conflicts : [e]).map(record).map((row, i) => {
+    const recovery = row.role === 'organizer' ? 'The tournament organizer cannot join a team entered in that tournament. Choose another eligible team or person.'
+      : row.role === 'referee' ? refereeInvitationRecovery(row, 'team') : ''
+    return recovery ? <p key={i}>{typeof row.userId === 'number' ? `Player #${row.userId}: ` : ''}{recovery}</p> : null
+  })}</div>
+  if (error.code === 'REFEREE_IDENTITY_KEY_INVALID') return <p>Upload new JPEG or PNG identity documents from your own account and submit them again.</p>
   if (error.code === 'TOURNAMENT_DATA_CONFLICT') return <div>
     <p>Existing fields to correct in the same request:</p>
     <ul>{Object.entries(record(e.conflictingFields)).map(([key, value]) => <li key={key}>{field(key)}: {String(value)}</li>)}</ul>

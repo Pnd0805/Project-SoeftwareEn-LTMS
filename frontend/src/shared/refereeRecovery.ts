@@ -1,9 +1,11 @@
 const time = (value: unknown) => typeof value === 'string' && Number.isFinite(Date.parse(value))
   ? new Date(value).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) + ' (UTC+7)' : null
 
-export function refereeInvitationRecovery(row: { invitationStatus?: unknown; expiresAt?: unknown }) {
+export function refereeInvitationRecovery(row: { invitationStatus?: unknown; expiresAt?: unknown }, context: 'registration' | 'team' = 'registration') {
   if (row.invitationStatus === 'pending') return `Referee invitation is awaiting a response${time(row.expiresAt) ? ` until ${time(row.expiresAt)}` : ''}. Ask the invitee to decline it or the organizer to cancel it, then retry. An expired invitation stops blocking entry.`
-  if (row.invitationStatus === 'accepted') return 'This person accepted the referee role. Change the team membership or ask the organizer to end the referee role before retrying; unchecking a player does not remove this team-wide conflict.'
+  if (row.invitationStatus === 'accepted') return context === 'team'
+    ? 'This person accepted the referee role. Ask the organizer to end the incompatible referee role, or choose another eligible team or person. Waiting for the invitation to expire will not resolve this conflict.'
+    : 'This person accepted the referee role. Change the team membership or ask the organizer to end the referee role before retrying; unchecking a player does not remove this team-wide conflict.'
   return ''
 }
 

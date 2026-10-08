@@ -7,6 +7,25 @@ it('distinguishes the broken existing fields from the fields requested by the or
   expect(screen.getByText('event Start Date: must follow registrationEnd')).toBeInTheDocument()
   expect(screen.getByText('Requested fields: gender Requirement')).toBeInTheDocument()
 })
+it('uses pending referee metadata and an exact Bangkok deadline from a flat team error', () => {
+  render(<ContractErrorDetails error={new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Accepted referee', role: 'referee', invitationStatus: 'pending', expiresAt: '2026-10-15T09:00:00Z' })} />)
+  expect(screen.getByText(/awaiting a response until 15\/10\/2026, 16:00:00 \(UTC\+7\)/)).toBeInTheDocument()
+  expect(screen.queryByText(/accepted the referee role/)).not.toBeInTheDocument()
+})
+it('does not offer accepted referees invitation-expiry waiting even if stale data contains a deadline', () => {
+  render(<ContractErrorDetails error={new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Pending invitation', role: 'referee', invitationStatus: 'accepted', expiresAt: '2026-10-15T09:00:00Z' })} />)
+  expect(screen.getByText(/Waiting for the invitation to expire will not resolve/)).toBeInTheDocument()
+  expect(screen.queryByText(/15\/10\/2026|unchecking|awaiting a response/)).not.toBeInTheDocument()
+})
+it('does not invent referee status or expiry for legacy team errors', () => {
+  render(<ContractErrorDetails error={new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Pending invitation', role: 'referee' })} />)
+  expect(screen.queryByText(/awaiting|accepted|expire/)).not.toBeInTheDocument()
+})
+it('shows invalid identity document recovery without exposing rejected object keys', () => {
+  render(<ContractErrorDetails error={new ApiError(422, { code: 'REFEREE_IDENTITY_KEY_INVALID', message: 'Invalid', objectKeys: ['avatar/another-user/private.png'] })} />)
+  expect(screen.getByText(/Upload new JPEG or PNG identity documents from your own account/)).toBeInTheDocument()
+  expect(screen.queryByText(/avatar\/another-user/)).not.toBeInTheDocument()
+})
 it('shows affected teams and players from server metadata without substituting the approved count', () => {
   render(<ContractErrorDetails error={new ApiError(409, { code: 'AMENDMENT_BREAKS_APPROVED_TEAMS', message: 'Conflict', affectedTeamCount: 1, affectedTeams: [{ teamId: 3, teamName: 'Alpha', players: [{ userId: 5, fullName: 'Player A', reason: 'age' }] }] })} />)
   expect(screen.getByText('Affected approved teams: 1')).toBeInTheDocument()

@@ -1,16 +1,17 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
-const state = vi.hoisted(() => ({ mutate: vi.fn(), hook: vi.fn(), pending: false, own: false }))
+import { ApiError } from '../../api/client'
+const state = vi.hoisted(() => ({ mutate: vi.fn(), hook: vi.fn(), pending: false, own: false, error: null as ApiError | null }))
 vi.mock('../../hooks/useQaFeatures', () => ({ useJoinRequests: (...args: unknown[]) => {
   state.hook(...args)
   return { team: { isSuccess: true, data: { items: [{ id: 7, user: { id: 12, fullName: 'New player' }, message: 'Please admit me', status: 'pending' }] } },
     mine: { isPending: state.pending, data: { items: state.own ? [{ id: 8, team: { id: 42 }, status: 'pending' }] : [] } },
-    action: { mutate: state.mutate, reset: vi.fn() } }
+    action: { mutate: state.mutate, reset: vi.fn(), isError: !!state.error, error: state.error } }
 } }))
 import { JoinRequestsPanel } from './JoinRequestsPanel'
 const page = (override: Partial<Parameters<typeof JoinRequestsPanel>[0]> = {}) => render(<MemoryRouter><JoinRequestsPanel teamId={42} visibility="public" leader={false} member={false} signedIn membershipPending={false} {...override} /></MemoryRouter>)
-beforeEach(() => { vi.clearAllMocks(); state.pending = false; state.own = false })
+beforeEach(() => { vi.clearAllMocks(); state.pending = false; state.own = false; state.error = null })
 it('keeps private reads disabled for guests and offers sign-in instead of admission', () => {
   page({ signedIn: false })
   expect(state.hook).toHaveBeenCalledWith(42, false, false)
@@ -35,4 +36,13 @@ it('requires leader confirmation, preserves the request identity and permits can
   fireEvent.click(screen.getByRole('button', { name: 'Review admission' }))
   fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }))
   expect(state.mutate).toHaveBeenCalledWith({ kind: 'review', id: 7, approve: true, reason: '' }, expect.anything())
+})
+
+it.each(['pending', 'accepted', 'organizer'])('explains the structured %s conflict when requesting admission', status => {
+  state.error = new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Unrelated text', role: status === 'organizer' ? 'organizer' : 'referee', invitationStatus: status === 'organizer' ? null : status, expiresAt: status === 'pending' ? '2026-10-15T09:00:00Z' : null })
+  page()
+  if (status === 'pending') expect(screen.getByText(/awaiting a response until 15\/10\/2026, 16:00:00/)).toBeInTheDocument()
+  else if (status === 'accepted') expect(screen.getByText(/Waiting for the invitation to expire will not resolve/)).toBeInTheDocument()
+  else expect(screen.getByText(/The tournament organizer cannot join/)).toBeInTheDocument()
+  expect(screen.queryByText('Request sent. The leader will review it.')).not.toBeInTheDocument()
 })

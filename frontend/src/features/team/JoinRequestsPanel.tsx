@@ -4,6 +4,7 @@ import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useJoinRequests } from '../../hooks/useQaFeatures'
 import type { JoinRequest } from '../../api/qaFeatures'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 
 export function JoinRequestsPanel({ teamId, visibility, leader, member, signedIn, membershipPending }: {
   teamId: number; visibility?: string; leader: boolean; member: boolean; signedIn: boolean; membershipPending: boolean
@@ -19,7 +20,7 @@ export function JoinRequestsPanel({ teamId, visibility, leader, member, signedIn
   })
   return <Panel quiet><h3>{leader ? 'Visibility and join requests' : 'Join this squad'}</h3>
     {notice ? <p role="status">{notice}</p> : null}
-    {action.isError ? <Banner kind="crit">{action.error.message}</Banner> : null}
+    {action.isError ? <Banner kind="crit">{action.error.message}<ContractErrorDetails error={action.error} /></Banner> : null}
     {leader ? <>
       <Field label="Squad visibility" htmlFor={`visibility-${teamId}`}><select id={`visibility-${teamId}`} value={visibility ?? 'private'} disabled={action.isPending} onChange={e => act({ kind: 'visibility', visibility: e.target.value as 'public' | 'private' })}><option value="private">Private — invitation only</option><option value="public">Public — searchable, accepts join requests</option></select></Field>
       <p className="sub">Public squads appear in search. Joining still requires your approval.</p>
@@ -39,7 +40,7 @@ export function JoinRequestsPanel({ teamId, visibility, leader, member, signedIn
     <Modal open={!!review} title={`${review?.approve ? 'Admit' : 'Reject'} ${review?.row.user.fullName ?? ''}?`} onClose={() => !action.isPending && setReview(null)}>
       <p>{review?.approve ? 'They will become a squad member. The server checks membership limits and conflicts before admission.' : 'They will remain outside the squad.'}</p>
       {!review?.approve ? <Field label="Reason (optional)" htmlFor="join-reject-reason"><textarea id="join-reject-reason" maxLength={255} value={reason} onChange={e => setReason(e.target.value)} /></Field> : null}
-      {action.isError ? <Banner kind="crit">{action.error.message}</Banner> : null}
+      {action.isError ? <Banner kind="crit">{action.error.message}<ContractErrorDetails error={action.error} /></Banner> : null}
       <button className="btn" disabled={action.isPending} onClick={() => setReview(null)}>Cancel</button>{' '}
       <button className="btn primary" disabled={action.isPending} onClick={() => review && act({ kind: 'review', id: review.row.id, approve: review.approve, reason: reason.trim() })}>Confirm decision</button>
     </Modal>
