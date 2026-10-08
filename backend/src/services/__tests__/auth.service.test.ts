@@ -109,12 +109,23 @@ const baseUser: UserRow = {
   updated_at: null,
 };
 
+/**
+ * 🔴 มติ 8 ต.ค. 2569 — คณะ/ภาควิชา/ชั้นปี บังคับ **เฉพาะคนใน (@ku.th)**
+ *   ก้อนตั้งต้นนี้เป็นอีเมล **คนนอก** จึงไม่มีสามช่องนั้น (ของเดิมใส่ไว้ทั้งที่เป็น example.com
+ *   แล้วเทสก็ยืนยันว่าด่านตรวจคณะทำงาน ⇒ เป็นการตรึงพฤติกรรมที่มติใหม่ยกเลิกไปแล้ว)
+ */
 const registerInput: RegisterInput = {
   fullName: 'New User',
   email: 'new@example.com',
   password: 'plaintext-password',
   gender: 'female',
   birthDate: '2001-05-05',
+};
+
+/** คนใน — ต้องมีสามช่องครบ ไม่งั้น schema ไม่ปล่อยผ่านตั้งแต่ชั้น validate */
+const kuRegisterInput: RegisterInput = {
+  ...registerInput,
+  email: 'somchai@ku.th',
   facultyId: 1,
   departmentId: 2,
   year: 1,
@@ -125,25 +136,14 @@ beforeEach(() => {
 });
 
 describe('auth.service register()', () => {
-  it('registers a new user successfully', async () => {
+  it('คนนอกสมัครได้โดยไม่มีคณะ/ภาควิชา/ชั้นปี → เก็บเป็น NULL ทั้งสามช่อง', async () => {
     mockedUserRepo.findByEmail.mockResolvedValue(null);
-    mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' });
-    mockedFindDepartmentInFaculty.mockResolvedValue({
-      department_id: 2,
-      faculty_id: 1,
-      name: 'Computer Engineering',
-    });
     mockedHashPassword.mockResolvedValue('hashed-plaintext-password');
     mockedUserRepo.create.mockResolvedValue(42);
 
     const result = await authService.register(registerInput);
 
     expect(mockedUserRepo.findByEmail).toHaveBeenCalledWith(registerInput.email);
-    expect(mockedFindFacultyById).toHaveBeenCalledWith(registerInput.facultyId);
-    expect(mockedFindDepartmentInFaculty).toHaveBeenCalledWith(
-      registerInput.facultyId,
-      registerInput.departmentId,
-    );
     expect(mockedHashPassword).toHaveBeenCalledWith(registerInput.password);
     expect(mockedUserRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -151,6 +151,7 @@ describe('auth.service register()', () => {
         email: registerInput.email,
         passwordHash: 'hashed-plaintext-password',
         userType: 'external',   // registerInput.email ไม่ใช่โดเมน @ku.th
+        facultyId: null, departmentId: null, year: null,
       }),
     );
     expect(result).toEqual({
@@ -161,7 +162,36 @@ describe('auth.service register()', () => {
     });
   });
 
-  it('สมัครด้วยอีเมล @ku.th ได้ userType เป็น student', async () => {
+  /** ★ คนนอกไม่มีคณะให้ตรวจ ⇒ ยิงฐานน้อยลงสองครั้งด้วย ไม่ใช่แค่ "ไม่ error" */
+  it('คนนอก → ไม่ตรวจคณะ/ภาควิชาเลย', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    mockedHashPassword.mockResolvedValue('hashed-plaintext-password');
+    mockedUserRepo.create.mockResolvedValue(42);
+
+    await authService.register(registerInput);
+
+    expect(mockedFindFacultyById).not.toHaveBeenCalled();
+    expect(mockedFindDepartmentInFaculty).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 🔴 ตามมติ: คนนอกที่ส่งสามช่องนี้มา **ไม่เก็บ** — ปล่อยผ่านแล้วนับเป็น NULL
+   *   ไม่ตอบ error เพราะ FE อาจค้างค่าจากหน้าก่อนไว้ แล้วคนนอกจะสมัครไม่ได้เพราะเรื่องไม่สำคัญ
+   */
+  it('คนนอกส่งคณะ/ภาควิชา/ชั้นปีมาด้วย → ไม่เก็บ และไม่ตอบ error', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    mockedHashPassword.mockResolvedValue('hashed-plaintext-password');
+    mockedUserRepo.create.mockResolvedValue(42);
+
+    await authService.register({ ...registerInput, facultyId: 1, departmentId: 2, year: 1 });
+
+    expect(mockedFindFacultyById).not.toHaveBeenCalled();
+    expect(mockedUserRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ facultyId: null, departmentId: null, year: null }),
+    );
+  });
+
+  it('สมัครด้วยอีเมล @ku.th ได้ userType เป็น student และเก็บคณะ/ภาควิชา/ชั้นปีไว้', async () => {
     mockedUserRepo.findByEmail.mockResolvedValue(null);
     mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' });
     mockedFindDepartmentInFaculty.mockResolvedValue({
@@ -172,10 +202,12 @@ describe('auth.service register()', () => {
     mockedHashPassword.mockResolvedValue('hashed-plaintext-password');
     mockedUserRepo.create.mockResolvedValue(43);
 
-    await authService.register({ ...registerInput, email: 'somchai@ku.th' });
+    await authService.register(kuRegisterInput);
 
+    expect(mockedFindFacultyById).toHaveBeenCalledWith(1);
+    expect(mockedFindDepartmentInFaculty).toHaveBeenCalledWith(1 , 2);
     expect(mockedUserRepo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ userType: 'student' }),
+      expect.objectContaining({ userType: 'student' , facultyId: 1 , departmentId: 2 , year: 1 }),
     );
   });
 
@@ -195,7 +227,7 @@ describe('auth.service register()', () => {
     mockedUserRepo.findByEmail.mockResolvedValue(null);
     mockedFindFacultyById.mockResolvedValue(null);
 
-    const err: AppError = await authService.register(registerInput).catch((e) => e);
+    const err: AppError = await authService.register(kuRegisterInput).catch((e) => e);
 
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(400);
@@ -210,7 +242,7 @@ describe('auth.service register()', () => {
     mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' });
     mockedFindDepartmentInFaculty.mockResolvedValue(null);
 
-    const err: AppError = await authService.register(registerInput).catch((e) => e);
+    const err: AppError = await authService.register(kuRegisterInput).catch((e) => e);
 
     expect(err).toBeInstanceOf(AppError);
     expect(err.status).toBe(400);

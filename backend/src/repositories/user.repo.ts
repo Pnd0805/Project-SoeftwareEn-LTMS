@@ -30,9 +30,11 @@ type NewUser = {
   gender: 'male' | 'female' | 'other';
   birthDate: string;
   userType: 'student' | 'external';   // ★ คิดจากโดเมนอีเมลที่ service (utils/kuEmail.ts) ไม่ใช่ repo
-  facultyId: number;
-  departmentId: number;
-  year: number;
+  // 🔴 มติ 8 ต.ค. 2569 — คนนอกไม่มีคณะ/ภาควิชา/ชั้นปี ⇒ NULL ทั้งสามช่อง
+  //   คอลัมน์ในฐานเป็น NULL ได้อยู่แล้ว (schema.sql:62-64) ไม่ต้อง migration
+  facultyId: number | null;
+  departmentId: number | null;
+  year: number | null;
 };
 
 export async function create(data: NewUser): Promise<number>{

@@ -19,10 +19,16 @@ beforeEach(async () => {
   department = await insert('departments', { faculty_id: faculty, name: 'ภาคทดสอบ' });
 });
 
+/**
+ * 🔴 มติ 8 ต.ค. 2569 — คณะ/ภาควิชา/ชั้นปี บังคับเฉพาะคนใน (@ku.th)
+ *   ★ อีเมล `@test.local` ที่ไฟล์นี้ใช้ทั้งไฟล์คือ **คนนอก** ⇒ สามช่องนั้นไม่ถูกบังคับและไม่ถูกเก็บ
+ *     เทสไหนที่ต้องการให้ด่านคณะทำงาน ต้องใช้ `kuRegistration()` (อีเมล @ku.th)
+ */
 const registration = (email: string) => ({
   fullName: 'สมหญิง ทดสอบ', email, password: 'Passw0rd-123', gender: 'female',
   birthDate: '2004-02-02', facultyId: faculty, departmentId: department, year: 2,
 });
+const kuRegistration = (local: string) => registration(`${local}@ku.th`);
 const otpIn = (email: string) => mailbox.lastTo(email)!.text.match(/\b(\d{6})\b/)![1]!;
 const resetTokenIn = (email: string) => mailbox.lastTo(email)!.text.match(/token=([0-9a-f]+)/)![1]!;
 const verified = async (email: string) =>
@@ -139,11 +145,58 @@ describe('สมัครสมาชิกและยืนยันอีเ�
     expect((await one<{ n: number }>('SELECT COUNT(*) AS n FROM users WHERE email = ?', [email]))!.n).toBe(1);
   });
 
-  it('ภาควิชาไม่อยู่ในคณะที่เลือก → 400 · ไม่สร้างบัญชี', async () => {
+  it('คนใน: ภาควิชาไม่อยู่ในคณะที่เลือก → 400 · ไม่สร้างบัญชี', async () => {
     const otherFaculty = await createFaculty();
-    const res = await anon.post('/auth/register').send({ ...registration('mismatch@test.local'), facultyId: otherFaculty });
+    const res = await anon.post('/auth/register').send({ ...kuRegistration('mismatch'), facultyId: otherFaculty });
     expect(res.status).toBe(400);
-    expect(await one("SELECT 1 FROM users WHERE email = 'mismatch@test.local'")).toBeNull();
+    expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    expect(await one("SELECT 1 FROM users WHERE email = 'mismatch@ku.th'")).toBeNull();
+  });
+
+  /**
+   * 🔴 มติ 8 ต.ค. 2569 — ของเดิมบังคับคณะ/ภาควิชา/ชั้นปีกับทุกคน
+   *   ⇒ **คนนอกสมัครไม่ได้เลย** เพราะไม่มีคณะให้เลือก (BE-?? ของเดิมข้อ 1)
+   *   คอลัมน์ในฐานเป็น NULL ได้มาตั้งแต่ schema.sql แล้ว — ที่บังคับไว้คือ Zod ชั้นเดียว
+   */
+  it('คนนอก: สมัครได้โดยไม่ส่งคณะ/ภาควิชา/ชั้นปี → บัญชีเป็น external และสามช่องเป็น NULL', async () => {
+    const email = 'outsider.no.faculty@test.local';
+    const { fullName, password, gender, birthDate } = registration(email);
+    const res = await anon.post('/auth/register').send({ fullName, email, password, gender, birthDate });
+
+    expect(res.status).toBe(201);
+    const row = await one<{ user_type: string; faculty_id: number | null; department_id: number | null; year: number | null }>(
+      'SELECT user_type, faculty_id, department_id, year FROM users WHERE email = ?', [email]);
+    expect(row).toEqual({ user_type: 'external', faculty_id: null, department_id: null, year: null });
+  });
+
+  /** ตามมติ: ส่งมาก็ไม่เก็บ และไม่ตอบ error (FE อาจค้างค่าจากหน้าก่อนไว้) */
+  it('คนนอก: ส่งคณะ/ภาควิชา/ชั้นปีมาด้วย → 201 แต่ไม่ถูกเก็บ', async () => {
+    const email = 'outsider.with.faculty@test.local';
+    const res = await anon.post('/auth/register').send(registration(email));
+
+    expect(res.status).toBe(201);
+    const row = await one<{ faculty_id: number | null; department_id: number | null; year: number | null }>(
+      'SELECT faculty_id, department_id, year FROM users WHERE email = ?', [email]);
+    expect(row).toEqual({ faculty_id: null, department_id: null, year: null });
+  });
+
+  it('คนใน: ไม่ส่งคณะ/ภาควิชา/ชั้นปี → 400 ครบทั้งสามช่อง · ไม่สร้างบัญชี', async () => {
+    const { fullName, password, gender, birthDate } = registration('x');
+    const res = await anon.post('/auth/register').send({ fullName, email: 'insider.missing@ku.th', password, gender, birthDate });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    expect(Object.keys(res.body.error.fields)).toEqual(expect.arrayContaining(['facultyId', 'departmentId', 'year']));
+    expect(await one("SELECT 1 FROM users WHERE email = 'insider.missing@ku.th'")).toBeNull();
+  });
+
+  it('คนใน: ส่งครบ → 201 และเก็บค่าไว้จริง', async () => {
+    const res = await anon.post('/auth/register').send(kuRegistration('insider.ok'));
+
+    expect(res.status).toBe(201);
+    const row = await one<{ user_type: string; faculty_id: number; department_id: number; year: number }>(
+      'SELECT user_type, faculty_id, department_id, year FROM users WHERE email = ?', ['insider.ok@ku.th']);
+    expect(row).toEqual({ user_type: 'student', faculty_id: faculty, department_id: department, year: 2 });
   });
 
   it('รหัสผ่านอ่อน (ไม่มีตัวเลข / สั้นกว่า 8) → 400', async () => {

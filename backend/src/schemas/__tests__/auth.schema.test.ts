@@ -19,6 +19,51 @@ describe('registerSchema — valid input', () => {
   });
 });
 
+/**
+ * 🔴 มติ 8 ต.ค. 2569 — คณะ/ภาควิชา/ชั้นปี บังคับ **เฉพาะคนใน (@ku.th)**
+ *   ของเดิมบังคับทุกคน ⇒ คนนอกสมัครไม่ได้เลยเพราะไม่มีคณะให้เลือก
+ *   ★ กฎโดเมนต้องเป็น `isKuEmail` ตัวเดียวกับที่ service ใช้เขียน `user_type`
+ *     ไม่งั้น "ต้องกรอกไหม" กับ "เป็นคนในไหม" จะตอบไม่เหมือนกันแบบเงียบ ๆ
+ */
+describe('registerSchema — คณะ/ภาควิชา/ชั้นปี บังคับเฉพาะคนใน', () => {
+  const base = { fullName: 'สมชาย ใจดี', password: 'password1', gender: 'male', birthDate: '2000-01-15' };
+  const insider = { ...base, email: 'somchai@ku.th' };
+  const outsider = { ...base, email: 'somchai@gmail.com' };
+
+  it('คนนอกไม่ส่งสามช่องนั้น → ผ่าน', () => {
+    expect(registerSchema.safeParse(outsider).success).toBe(true);
+  });
+
+  it('คนในไม่ส่งสามช่องนั้น → ไม่ผ่าน และบอกครบทั้งสามช่อง', () => {
+    const result = registerSchema.safeParse(insider);
+    expect(result.success).toBe(false);
+    const paths = result.error!.issues.map(i => String(i.path[0]));
+    expect(paths).toEqual(expect.arrayContaining(['facultyId', 'departmentId', 'year']));
+  });
+
+  it('คนในส่งครบ → ผ่าน', () => {
+    expect(registerSchema.safeParse({ ...insider, facultyId: 1, departmentId: 1, year: 3 }).success).toBe(true);
+  });
+
+  it.each(['facultyId', 'departmentId', 'year'])('คนในขาดช่อง %s ช่องเดียว → ไม่ผ่าน', (missing) => {
+    const payload: Record<string, unknown> = { ...insider, facultyId: 1, departmentId: 1, year: 3 };
+    delete payload[missing];
+    const result = registerSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+    expect(result.error!.issues.map(i => String(i.path[0]))).toContain(missing);
+  });
+
+  /** 🔴 `endsWith('ku.th')` เฉย ๆ จะทำให้โดเมนปลอมนับเป็นคนใน — กฎกลางกันไว้แล้ว เทสนี้ตรึงว่ายังใช้กฎกลางอยู่ */
+  it.each(['somchai@fake-ku.th', 'somchai@notku.th', 'somchai@ku.th.evil.com'])(
+    'โดเมนที่ไม่ใช่ ku.th จริง (%s) → ไม่ถูกบังคับให้กรอก', (email) => {
+      expect(registerSchema.safeParse({ ...base, email }).success).toBe(true);
+    });
+
+  it('โดเมน KU.TH ตัวพิมพ์ใหญ่ก็เป็นคนใน', () => {
+    expect(registerSchema.safeParse({ ...base, email: 'somchai@KU.TH' }).success).toBe(false);
+  });
+});
+
 describe('registerSchema — fullName', () => {
   it('rejects a fullName shorter than 2 characters', () => {
     const result = registerSchema.safeParse({ ...validRegisterInput, fullName: 'a' });

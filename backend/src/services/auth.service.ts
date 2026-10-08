@@ -68,26 +68,42 @@ export async function register(input: RegisterInput) {
       { fields: { email: 'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ' } });
   }
 
-  const fac = await findFacultyById(input.facultyId);
-  if(!fac){
-    const fields = { 'facultyId' : "ไม่พบคณะที่เลือก"};
-    throw new AppError(400 , "VALIDATION_FAILED" , "ข้อมูลบางช่องไม่ถูกต้อง กรุณาตรวจสอบและกรอกใหม่" ,  { fields });
-  }
+  // มติ 6 ต.ค. 2569 — user_type คิดจากโดเมนอีเมล (@ku.th = student) ไม่ hardcode 'student' อีกต่อไป
+  // กฎโดเมนอยู่ที่ utils/kuEmail.ts ที่เดียว (ใช้ร่วมกับ referee.service.ts) ห้ามเขียนซ้ำที่นี่
+  const external = isExternalEmail(input.email);
+  const userType = external ? 'external' as const : 'student' as const;
 
-  const depCheck = await findDepartmentInFaculty(input.facultyId , input.departmentId);
-  if(!depCheck){
-      const fields = { 'departmentId' : "ภาควิชาที่เลือกไม่อยู่ในคณะนี้"};
+  /**
+   * 🔴 มติ 8 ต.ค. 2569 — คนนอกสมัครได้โดยไม่มีคณะ/ภาควิชา/ชั้นปี (เก็บเป็น NULL ทั้งสามช่อง)
+   *
+   * ของเดิมบังคับครบทุกคน ⇒ **คนนอกสมัครไม่ได้เลย** เพราะไม่มีคณะให้เลือก
+   * ★ ถึงคนนอกจะส่งค่าสามช่องนี้มา ก็ **ไม่เก็บ** — ปล่อยผ่านแล้วนับเป็น NULL ตามมติ
+   *   (ไม่ตอบ error เพราะ FE อาจค้างค่าจากหน้าก่อนไว้ แล้วคนนอกจะสมัครไม่ได้เพราะเรื่องที่ไม่สำคัญ)
+   * ★ ด่านตรวจว่าคณะ/ภาควิชามีจริงจึงทำ **เฉพาะคนใน** — ของคนนอกไม่มีอะไรให้ตรวจ
+   */
+  const facultyId = external ? null : input.facultyId!;
+  const departmentId = external ? null : input.departmentId!;
+  const year = external ? null : input.year!;
+
+  if(!external){
+    //  ปลอดภัยเพราะ superRefine ของ registerSchema บังคับครบสามช่องแล้วเมื่ออีเมลเป็น @ku.th
+    const fac = await findFacultyById(input.facultyId!);
+    if(!fac){
+      const fields = { 'facultyId' : "ไม่พบคณะที่เลือก"};
       throw new AppError(400 , "VALIDATION_FAILED" , "ข้อมูลบางช่องไม่ถูกต้อง กรุณาตรวจสอบและกรอกใหม่" ,  { fields });
+    }
+
+    const depCheck = await findDepartmentInFaculty(input.facultyId! , input.departmentId!);
+    if(!depCheck){
+        const fields = { 'departmentId' : "ภาควิชาที่เลือกไม่อยู่ในคณะนี้"};
+        throw new AppError(400 , "VALIDATION_FAILED" , "ข้อมูลบางช่องไม่ถูกต้อง กรุณาตรวจสอบและกรอกใหม่" ,  { fields });
+    }
   }
 
   const passwordHash = await hashPassword(input.password)
 
-  // มติ 6 ต.ค. 2569 — user_type คิดจากโดเมนอีเมล (@ku.th = student) ไม่ hardcode 'student' อีกต่อไป
-  // กฎโดเมนอยู่ที่ utils/kuEmail.ts ที่เดียว (ใช้ร่วมกับ referee.service.ts) ห้ามเขียนซ้ำที่นี่
-  const userType = isExternalEmail(input.email) ? 'external' as const : 'student' as const;
-
   const newId = await userRepo.create({fullName : input.fullName , email : input.email , passwordHash : passwordHash ,
-    gender : input.gender , birthDate : input.birthDate , userType , facultyId : input.facultyId , departmentId : input.departmentId , year : input.year});
+    gender : input.gender , birthDate : input.birthDate , userType , facultyId , departmentId , year});
 
   // OD-53 — ส่ง OTP หลังสร้างบัญชีสำเร็จแล้ว · สมัครสำเร็จไม่ขึ้นกับผลการส่งเมล
   // ถ้าส่งเมลก่อนแล้วค่อยสร้าง user เวลาที่ SMTP ล่มจะกลายเป็น "สมัครไม่ได้เพราะเมลพัง"
