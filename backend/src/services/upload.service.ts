@@ -199,6 +199,40 @@ export async function validateAvatarKey(objectKey: string, userId: number): Prom
     await assertImageObjectExists(objectKey, 'AVATAR_KEY_NOT_FOUND', 'ไม่พบรูปที่อัปโหลดไว้ กรุณาอัปโหลดใหม่');
 }
 
+/**
+ * 🔴 A1 (8 ต.ค. 2569) — เอกสารยืนยันตัวตนกรรมการ ต้องเป็นไฟล์ที่ **ผู้สมัครคนนี้อัปเอง**
+ *
+ * เดิม `PUT /me/referee-identity/docs` และ `POST /referee-invitations/:id/accept`
+ * รับ object key อะไรก็ได้ (schema ตรวจแค่เป็น string 1–255 ตัวอักษร)
+ * แล้วคิวแอดมินเซ็น presigned URL ให้เปิดไฟล์ตาม key นั้นตรง ๆ
+ * ⇒ ผู้สมัครแนบ **ไฟล์ของคนอื่น** เป็น "บัตรของตัวเอง" ได้ — เช่น avatar ของคนอื่น
+ *   ซึ่ง key โผล่อยู่ใน URL สาธารณะอยู่แล้ว ⇒ เดาไม่ต้องเดา ก็อปมาวางได้เลย
+ * ⇒ แอดมินตัดสิน **ตัวตน** จากเอกสารที่ไม่ใช่ของผู้สมัคร · อนุมัติแล้วได้สิทธิ์คุมแมตช์และส่งผล
+ *
+ * upload ชนิดอื่นตรวจ key หมดแล้ว (avatar · team_logo · dispute_evidence ·
+ * soft_filter_document) — เหลือชนิดนี้ชนิดเดียว ซึ่งเป็นชนิดที่ผลเสียหนักที่สุด
+ *
+ * ★ ตรวจ **รูปของ key** อย่างเดียว ไม่ HEAD ว่ามีไฟล์จริง — ต่างจาก `validateAvatarKey`
+ *   โดยเจตนา เพราะ fixture 9053 เป็น key ที่ **ตั้งใจให้ไม่มีไฟล์** ไว้ทดสอบจอกู้สถานการณ์
+ *   ตอนลิงก์ตอบ 404 (FE ขอให้คงไว้ 7 ต.ค.) ⇒ ถ้า HEAD ที่นี่ จะสร้างสถานะนั้นผ่าน API ไม่ได้อีก
+ *   🙋 ถ้าทีมอยากได้ HEAD ด้วย ต้องตัดสินใจเรื่อง fixture นั้นพร้อมกัน — ยังไม่ทำรอบนี้
+ * ★ รูป key มาจาก `createPresignedUpload` ที่เดียว: `referee_identity/<userId>/<uuid v4>.<ext>`
+ */
+const REFEREE_IDENTITY_KEY = (userId: number) => new RegExp(
+    `^referee_identity/${userId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`,
+    'i'
+);
+
+export function validateRefereeIdentityKeys(objectKeys: string[], userId: number): void {
+    const expected = REFEREE_IDENTITY_KEY(userId);
+    const invalid = objectKeys.filter(key => !expected.test(key));
+    if (invalid.length > 0) {
+        throw new AppError(422, 'REFEREE_IDENTITY_KEY_INVALID',
+            'เอกสารยืนยันตัวตนต้องเป็นไฟล์ที่คุณอัปโหลดเอง — ขอลิงก์อัปโหลดใหม่แล้วส่งอีกครั้ง',
+            { objectKeys: invalid });
+    }
+}
+
 // ลบรูปเก่าตอนเปลี่ยนเป็นรูปใหม่ (มติ C2-avatar ข้อ 6) — best-effort เท่านั้น ลบไม่สำเร็จไม่ทำให้เปลี่ยนรูปล้ม แค่เขียน log
 export async function deleteObjectBestEffort(objectKey: string): Promise<void> {
     try {

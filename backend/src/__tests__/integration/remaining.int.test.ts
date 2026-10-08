@@ -186,7 +186,11 @@ describe('PUT /me/referee-identity/docs — ส่งเอกสารตัว
   });
 
   /**
-   * 🐞 ช่องโหว่ใหม่ (integration test เจอ 8 ต.ค. 2569) — ยังไม่ได้แก้ production
+   * ✅ แก้แล้ว 8 ต.ค. 2569 (A1) — `upload.service.validateRefereeIdentityKeys`
+   *   เรียกทั้งที่ `PUT /me/referee-identity/docs` และตอนรับคำเชิญที่แนบ docs มา
+   *   it.fails ถูกพลิกเป็น it ธรรมดาแล้วตามที่โน้ตเดิมบอกไว้ · บันทึกของเดิมไว้ข้างล่าง
+   *
+   * 🐞 ช่องโหว่เดิม (integration test เจอ 8 ต.ค. 2569)
    *   submitMyDocs / submitDocsForUser รับ key อะไรก็ได้ (schema แค่ string 1-255 ตัวอักษร)
    *   แล้วคิวแอดมิน (listPendingExternalReferees) เซ็น URL ให้ดูไฟล์ตาม key นั้นตรง ๆ
    *   ⇒ ผู้สมัครส่งไฟล์ของคนอื่นเป็น "บัตรของตัวเอง" ได้ เช่น avatar ของคนอื่น ซึ่ง key อยู่ใน URL สาธารณะ
@@ -194,18 +198,59 @@ describe('PUT /me/referee-identity/docs — ส่งเอกสารตัว
    *   upload อื่นทุกชนิดตรวจหมด: avatar · team_logo · dispute_evidence · soft_filter_document
    * ทางแก้ที่เสนอ: ตรวจทุก key ให้ตรง ^referee_identity/{userId}/<uuid>.(jpg|png)$ แบบ validateAvatarKey
    *   (และถ้าทำได้ HEAD ว่ามีไฟล์จริง) ทั้งที่ PUT /me/referee-identity/docs และตอนรับคำเชิญที่แนบ docs มา
-   * ★ it.fails = ผ่านตราบที่ช่องโหว่ยังอยู่ · แก้แล้วจะแดง ⇒ เปลี่ยนเป็น it ธรรมดา
+   * 🔴 ด่านตรวจ **รูปของ key** อย่างเดียว ไม่ HEAD ว่ามีไฟล์จริง — ตั้งใจ เพราะ fixture 9053
+   *   เป็น key ที่ตั้งใจให้ไม่มีไฟล์ ไว้ทดสอบจอกู้สถานการณ์ตอนลิงก์ตอบ 404 (FE ขอให้คงไว้)
    */
-  it.fails('🐞 ส่ง avatar ของคนอื่นเป็นเอกสารตัวตน → ควรเป็น 422 (ตอนนี้รับ)', async () => {
+  it('ส่ง avatar ของคนอื่นเป็นเอกสารตัวตน → 422', async () => {
     const victimAvatar = `avatar/${stranger.id}/${uuid}.png`;
     const res = await as(external).put('/me/referee-identity/docs').send({ docs: [victimAvatar] });
     expect(res.status).toBe(422);
     expect(JSON.stringify(await docsOf(external.id))).not.toContain(victimAvatar);
   });
 
-  it.fails('🐞 ส่งเอกสารตัวตนของกรรมการคนอื่น → ควรเป็น 422 (ตอนนี้รับ)', async () => {
+  it('ส่งเอกสารตัวตนของกรรมการคนอื่น → 422', async () => {
     const res = await as(external).put('/me/referee-identity/docs').send({ docs: [`referee_identity/${stranger.id}/${uuid}.png`] });
     expect(res.status).toBe(422);
+  });
+
+  /**
+   * 🔴 ประตูที่สองของเส้นเดียวกัน — แนบเอกสารมาพร้อม **กดรับคำเชิญ**
+   *   ถ้าตรวจแต่ `PUT /me/referee-identity/docs` ช่องโหว่ยังเปิดอยู่ทางนี้ทั้งบาน
+   *   (`resolveApprovalForAccept` รับ `docs` แล้วเขียนลงฐานตรง ๆ เหมือนกัน)
+   */
+  it('กดรับคำเชิญพร้อมแนบเอกสารของคนอื่น → 422 และไม่มีอะไรถูกเขียนลงฐาน', async () => {
+    const tour = await createTournament({ organizer: organizer.id, sportTypeId: sport, facultyId: faculty, status: 'public' });
+    const newbie = await createUser({ userType: 'external' });
+    const invitationId = await insert('tournament_referees', {
+      tournament_id: tour, user_id: newbie.id, invited_by: organizer.id,
+      invitation_status: 'pending', is_external: 1,
+    });
+
+    const res = await as(newbie).post(`/referee-invitations/${invitationId}/accept`)
+      .send({ matchIds: [], docs: [`referee_identity/${stranger.id}/${uuid}.png`] });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('REFEREE_IDENTITY_KEY_INVALID');
+    // ★ ต้องไม่รับคำเชิญไปด้วย — ถ้าด่านอยู่ผิดที่ จะกลายเป็น "รับแล้วแต่เอกสารไม่เข้า"
+    const row = await one<{ st: string; d: unknown }>(
+      'SELECT invitation_status AS st, external_verification_docs AS d FROM tournament_referees WHERE tournament_referee_id = ?',
+      [invitationId]);
+    expect(row).toMatchObject({ st: 'pending', d: null });
+  });
+
+  /** ของตัวเองยังผ่านตามปกติ — ด่านใหม่ต้องไม่กันคนที่ทำถูก */
+  it('กดรับคำเชิญพร้อมแนบเอกสารของตัวเอง → ผ่าน', async () => {
+    const tour = await createTournament({ organizer: organizer.id, sportTypeId: sport, facultyId: faculty, status: 'public' });
+    const newbie = await createUser({ userType: 'external' });
+    const invitationId = await insert('tournament_referees', {
+      tournament_id: tour, user_id: newbie.id, invited_by: organizer.id,
+      invitation_status: 'pending', is_external: 1,
+    });
+
+    const res = await as(newbie).post(`/referee-invitations/${invitationId}/accept`)
+      .send({ matchIds: [], docs: [`referee_identity/${newbie.id}/${uuid}.png`] });
+
+    expect(res.status).toBe(200);
   });
 });
 

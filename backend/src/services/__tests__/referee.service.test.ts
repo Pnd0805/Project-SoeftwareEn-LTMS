@@ -559,10 +559,12 @@ describe('acceptRefereeInvitation', () => {
     mockedRefRepo.findOpenReview.mockResolvedValue(null);
     mockedRefRepo.accept.mockResolvedValue(true as any);
 
-    const result = await refereeService.acceptRefereeInvitation(1, 8, { matchIds: [], docs: ['id-card.jpg'] });
+    // 🔴 A1 — key ต้องตรงรูปจริงและเป็นของ userId ที่กดรับ (8) ไม่งั้นด่านใหม่ตอบ 422 ก่อน
+    const ownDoc = 'referee_identity/8/3f2504e0-4f89-41d3-9a0c-0305e82c3301.jpg';
+    const result = await refereeService.acceptRefereeInvitation(1, 8, { matchIds: [], docs: [ownDoc] });
 
     expect(mockedRefRepo.accept).toHaveBeenCalledWith(1, [], {
-      status: 'pending', approvedBy: null, approvedAt: null, docs: ['id-card.jpg'], reason: null,
+      status: 'pending', approvedBy: null, approvedAt: null, docs: [ownDoc], reason: null,
     });
     expect(result).toEqual({
       id: 1, invitationStatus: 'accepted', requiresAdminApproval: true, docsRequired: false,

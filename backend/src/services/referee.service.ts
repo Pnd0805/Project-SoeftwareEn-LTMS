@@ -18,6 +18,7 @@ import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
 import { toAssignableRefereeDto } from '../mappers/referee.mapper.js';
 import { timesOverlap } from '../utils/timeOverlap.js';
 import { isExternalEmail } from '../utils/kuEmail.js';
+import { validateRefereeIdentityKeys } from './upload.service.js';
 import { REFEREE_INVITATION_DAYS } from '../config/scoring.js';
 
 export async function inviteReferee(tournamentId : number, invitedBy : number, input : InviteRefereeInput){
@@ -381,6 +382,9 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     // ★ ด่านนี้อยู่ตรงนี้เพราะคนกดคือกรรมการเอง ซึ่งเป็นคนเดียวที่เห็นตารางตัวเองทุกทัวร์
     await assertNoCrossTournamentConflict(userId, chosen as InvitedMatchRow[]);
 
+    // 🔴 A1 — ประตูที่สองของเส้นเดียวกัน: แนบเอกสารมาพร้อมกดรับคำเชิญ
+    //   ถ้าตรวจแต่ `PUT /me/referee-identity/docs` ช่องโหว่ยังเปิดอยู่ทางนี้
+    if(input.docs) validateRefereeIdentityKeys(input.docs, userId);
     const { joinsOpenReview, ...approval } = await resolveApprovalForAccept(invitation, input.docs);
 
     const updated = await RefRepo.accept(invitationId, chosenIds, approval);

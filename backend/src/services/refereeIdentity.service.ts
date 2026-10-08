@@ -1,5 +1,6 @@
 import * as RefRepo from '../repositories/tournamentReferee.repo.js';
 import { AppError } from '../utils/AppError.js';
+import { validateRefereeIdentityKeys } from './upload.service.js';
 import type { ExternalApproval } from '../repositories/tournamentReferee.repo.js';
 import type { SubmitDocsInput } from '../schemas/referee.schema.js';
 import type { TournamentRefereeRow } from '../types/db.js';
@@ -87,6 +88,9 @@ export async function getMyIdentity(userId : number){
 
 /** U12 — PUT /me/referee-identity/docs: ส่งครั้งเดียว ไปทุกทัวร์ที่รออยู่ → กลับเข้าคิว admin */
 export async function submitMyDocs(userId : number, input : SubmitDocsInput){
+    // 🔴 A1 — ต้องเป็นไฟล์ที่คนนี้อัปเอง (เหตุผลเต็มที่ upload.service.validateRefereeIdentityKeys)
+    //   ตรวจ **ก่อน** อ่านสถานะ เพราะ key ของคนอื่นต้องถูกปฏิเสธเสมอ ไม่ว่าเขาจะอยู่สถานะไหน
+    validateRefereeIdentityKeys(input.docs, userId);
     const state = await getIdentityState(userId);
     if(state.status === 'approved'){
         throw new AppError(409, 'DOCS_NOT_EXPECTED', 'คุณผ่านการยืนยันตัวตนแล้ว ไม่ต้องส่งเอกสารอีก');

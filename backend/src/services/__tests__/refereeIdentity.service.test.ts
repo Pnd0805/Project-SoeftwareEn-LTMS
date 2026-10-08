@@ -236,7 +236,14 @@ describe('getMyIdentity', () => {
 });
 
 describe('submitMyDocs', () => {
-  const input = { docs: ['doc1.pdf', 'doc2.pdf'] };
+  /**
+   * 🔴 A1 (8 ต.ค. 2569) — key ต้องตรงรูปที่ `createPresignedUpload` สร้างจริง
+   *   `referee_identity/<userId>/<uuid v4>.(jpg|png)` ⇒ fixture เดิมที่เป็น 'doc1.pdf'
+   *   ถูกด่านใหม่ปฏิเสธ (422) ก่อนถึงตรรกะที่เทสชุดนี้ตั้งใจทดสอบ
+   *   ★ `USER_ID` ต้องตรงกับที่ส่งเข้า submitMyDocs ทุกข้อ ไม่งั้น key กลายเป็นของคนอื่น
+   */
+  const USER_ID = 100;
+  const input = { docs: [`referee_identity/${USER_ID}/3f2504e0-4f89-41d3-9a0c-0305e82c3301.jpg`, `referee_identity/${USER_ID}/3f2504e0-4f89-41d3-9a0c-0305e82c3302.png`] };
 
   it('throws DOCS_NOT_EXPECTED when the user is already approved, without touching the repo write', async () => {
     mockedRefRepo.findRecentApproval.mockResolvedValue({
