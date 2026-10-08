@@ -1,0 +1,628 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+ ❯ src/App.lazy.quality20.test.tsx (37 tests | 8 failed) 5229ms
+     × announces /admin loading inside the shell before showing its current heading 5ms
+     × announces /request loading inside the shell before showing its current heading 3ms
+     × announces /m/13 loading inside the shell before showing its current heading 2ms
+     × offers document reload for a rejected lazy module instead of repeating its cached rejection 1013ms
+     × offers a document reload and working navigation after /watch/23 fails 1009ms
+     × offers a document reload and working navigation after /player/9 fails 1007ms
+     × offers a document reload and working navigation after /mvp/23 fails 1004ms
+     × clears a page render error when shell navigation opens another route 1016ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > route loading with existing permission boundaries > announces /admin loading inside the shell before showing its current heading
+TestingLibraryElementError: Unable to find an accessible element with the role "status"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Admin fixture":
+  [36m<h1 />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<main>[39m
+  [36m<h1>[39m
+    [0mAdmin fixture[0m
+  [36m</h1>[39m
+[36m</main>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/App.lazy.quality20.test.tsx:83:45
+     81|   ])('announces %s loading inside the shell before showing its current…
+     82|     page(route)
+     83|     expect(within(screen.getByRole('main')).getByRole('status')).toHav…
+       |                                             ^
+     84|     expect(screen.getByRole('navigation', { name: 'Shell' })).toBeInTh…
+     85|     expect(screen.queryByRole('heading', { name: heading })).not.toBeI…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > route loading with existing permission boundaries > announces /request loading inside the shell before showing its current heading
+TestingLibraryElementError: Unable to find an accessible element with the role "status"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Request fixture":
+  [36m<h1 />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<main>[39m
+  [36m<h1>[39m
+    [0mRequest fixture[0m
+  [36m</h1>[39m
+[36m</main>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/App.lazy.quality20.test.tsx:83:45
+     81|   ])('announces %s loading inside the shell before showing its current…
+     82|     page(route)
+     83|     expect(within(screen.getByRole('main')).getByRole('status')).toHav…
+       |                                             ^
+     84|     expect(screen.getByRole('navigation', { name: 'Shell' })).toBeInTh…
+     85|     expect(screen.queryByRole('heading', { name: heading })).not.toBeI…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > route loading with existing permission boundaries > announces /m/13 loading inside the shell before showing its current heading
+TestingLibraryElementError: Unable to find an accessible element with the role "status"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Match fixture":
+  [36m<h1 />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<main>[39m
+  [36m<h1>[39m
+    [0mMatch fixture[0m
+  [36m</h1>[39m
+[36m</main>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/App.lazy.quality20.test.tsx:83:45
+     81|   ])('announces %s loading inside the shell before showing its current…
+     82|     page(route)
+     83|     expect(within(screen.getByRole('main')).getByRole('status')).toHav…
+       |                                             ^
+     84|     expect(screen.getByRole('navigation', { name: 'Shell' })).toBeInTh…
+     85|     expect(screen.queryByRole('heading', { name: heading })).not.toBeI…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > cached chunk rejection recovery > offers document reload for a rejected lazy module instead of repeating its cached rejection
+TestingLibraryElementError: Unable to find role="link" and name "Reload page"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel"[39m
+      [33mstyle[39m=[32m"display: grid; gap: 10px; padding: 18px;"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"tag"[39m
+      [36m>[39m
+        [36m<em>[39m
+          [0m//[0m
+        [36m</em>[39m
+        [0m Something on this screen broke[0m
+      [36m</span>[39m
+      [36m<b>[39m
+        [0mThis page could not be drawn.[0m
+      [36m</b>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mThe rest of the app still works — this is a bug in the screen, not in your data.[0m
+      [36m</div>[39m
+      [36m<code[39m
+        [33mclass[39m=[32m"sub"[39m
+        [33mstyle[39m=[32m"white-space: pre-wrap; word-break: break-word;"[39m
+      [36m>[39m
+        [0mFailed to fetch dynamically imported module: /assets/missing.js[0m
+      [36m</code>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"hstack"[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mTry again[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn ghost"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mBack to tournaments[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel"[39m
+      [33mstyle[39m=[32m"display: grid; gap: 10px; padding: 18px;"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"tag"[39m
+      [36m>[39m
+        [36m<em>[39m
+          [0m//[0m
+        [36m</em>[39m
+        [0m Something on this screen broke[0m
+      [36m</span>[39m
+      [36m<b>[39m
+        [0mThis page could not be drawn.[0m
+      [36m</b>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mThe rest of the app still works — this is a bug in the screen, not in your data.[0m
+      [36m</div>[39m
+      [36m<code[39m
+        [33mclass[39m=[32m"sub"[39m
+        [33mstyle[39m=[32m"white-space: pre-wrap; word-break: break-word;"[39m
+      [36m>[39m
+        [0mFailed to fetch dynamically imported module: /assets/missing.js[0m
+      [36m</code>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"hstack"[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mTry again[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn ghost"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mBack to tournaments[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/App.lazy.quality20.test.tsx:107:25
+    105|     if (retry) fireEvent.click(retry)
+    106|     expect(load).toHaveBeenCalledOnce()
+    107|     expect(await screen.findByRole('link', { name: 'Reload page' })).t…
+       |                         ^
+    108|   })
+    109|   it.each([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > cached chunk rejection recovery > offers a document reload and working navigation after /watch/23 fails
+TestingLibraryElementError: Unable to find an element with the text: This page could not load.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<h1>[39m
+        [0mWatch fixture[0m
+      [36m</h1>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<h1>[39m
+        [0mWatch fixture[0m
+      [36m</h1>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/App.lazy.quality20.test.tsx:116:25
+    114|     state.failure = new TypeError(message)
+    115|     page(route); await loaded()
+    116|     expect(await screen.findByText('This page could not load.')).toBeI…
+       |                         ^
+    117|     expect(screen.getByRole('link', { name: 'Reload page' })).toHaveAt…
+    118|     expect(screen.getByRole('link', { name: 'Back to tournaments' })).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > cached chunk rejection recovery > offers a document reload and working navigation after /player/9 fails
+TestingLibraryElementError: Unable to find an element with the text: This page could not load.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<h1>[39m
+        [0mPlayer fixture[0m
+      [36m</h1>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<h1>[39m
+        [0mPlayer fixture[0m
+      [36m</h1>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/App.lazy.quality20.test.tsx:116:25
+    114|     state.failure = new TypeError(message)
+    115|     page(route); await loaded()
+    116|     expect(await screen.findByText('This page could not load.')).toBeI…
+       |                         ^
+    117|     expect(screen.getByRole('link', { name: 'Reload page' })).toHaveAt…
+    118|     expect(screen.getByRole('link', { name: 'Back to tournaments' })).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > cached chunk rejection recovery > offers a document reload and working navigation after /mvp/23 fails
+TestingLibraryElementError: Unable to find an element with the text: This page could not load.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<h1>[39m
+        [0mMVP fixture[0m
+      [36m</h1>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<h1>[39m
+        [0mMVP fixture[0m
+      [36m</h1>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/App.lazy.quality20.test.tsx:116:25
+    114|     state.failure = new TypeError(message)
+    115|     page(route); await loaded()
+    116|     expect(await screen.findByText('This page could not load.')).toBeI…
+       |                         ^
+    117|     expect(screen.getByRole('link', { name: 'Reload page' })).toHaveAt…
+    118|     expect(screen.getByRole('link', { name: 'Back to tournaments' })).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > cached chunk rejection recovery > clears a page render error when shell navigation opens another route
+TestingLibraryElementError: Unable to find role="heading" and name "Home fixture"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"panel"[39m
+        [33mstyle[39m=[32m"display: grid; gap: 10px; padding: 18px;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tag"[39m
+        [36m>[39m
+          [36m<em>[39m
+            [0m//[0m
+          [36m</em>[39m
+          [0m Something on this screen broke[0m
+        [36m</span>[39m
+        [36m<b>[39m
+          [0mThis page could not be drawn.[0m
+        [36m</b>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sub"[39m
+        [36m>[39m
+          [0mThe rest of the app still works — this is a bug in the screen, not in your data.[0m
+        [36m</div>[39m
+        [36m<code[39m
+          [33mclass[39m=[32m"sub"[39m
+          [33mstyle[39m=[32m"white-space: pre-wrap; word-break: break-word;"[39m
+        [36m>[39m
+          [0mFixture render failure[0m
+        [36m</code>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mTry again[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn ghost"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mBack to tournaments[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<nav[39m
+      [33maria-label[39m=[32m"Shell"[39m
+    [36m>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/"[39m
+      [36m>[39m
+        [0mHome[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/request"[39m
+      [36m>[39m
+        [0mRequest[0m
+      [36m</a>[39m
+      [36m<a[39m
+        [33mdata-discover[39m=[32m"true"[39m
+        [33mhref[39m=[32m"/m/13"[39m
+      [36m>[39m
+        [0mMatch[0m
+      [36m</a>[39m
+    [36m</nav>[39m
+    [36m<main>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"panel"[39m
+        [33mstyle[39m=[32m"display: grid; gap: 10px; padding: 18px;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tag"[39m
+        [36m>[39m
+          [36m<em>[39m
+            [0m//[0m
+          [36m</em>[39m
+          [0m Something on this screen broke[0m
+        [36m</span>[39m
+        [36m<b>[39m
+          [0mThis page could not be drawn.[0m
+        [36m</b>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sub"[39m
+        [36m>[39m
+          [0mThe rest of the app still works — this is a bug in the screen, not in your data.[0m
+        [36m</div>[39m
+        [36m<code[39m
+          [33mclass[39m=[32m"sub"[39m
+          [33mstyle[39m=[32m"white-space: pre-wrap; word-break: break-word;"[39m
+        [36m>[39m
+          [0mFixture render failure[0m
+        [36m</code>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mTry again[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn ghost"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mBack to tournaments[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/App.lazy.quality20.test.tsx:134:25
+    132|     expect(await screen.findByText('This page could not be drawn.')).t…
+    133|     fireEvent.click(screen.getByRole('link', { name: 'Home' }))
+    134|     expect(await screen.findByRole('heading', { name: 'Home fixture' }…
+       |                         ^
+    135|   })
+    136| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 29 passed (37)
+   Start at  04:10:40
+   Duration  5.56s (transform 32ms, setup 44ms, import 36ms, tests 5.23s, environment 201ms)

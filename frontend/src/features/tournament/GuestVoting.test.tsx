@@ -43,8 +43,8 @@ describe('guest voting permissions', () => {
         <Routes><Route path="/mvp/:id" element={<MvpPage />} /></Routes>
       </MemoryRouter>,
     )
-    expect(screen.getByText('Tournament MVP')).toBeInTheDocument()
-    expect(screen.getByText(/Sign in to vote/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Match MVP' })).toBeInTheDocument()
+    expect(screen.getByText('No matches yet')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Vote' })).not.toBeInTheDocument()
   })
 

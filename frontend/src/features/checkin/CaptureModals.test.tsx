@@ -61,6 +61,31 @@ it('does not report a camera as ready after video playback fails', async () => {
   render(<QrScanModal open expectedToken={null} onScanned={vi.fn()} pending={false} onClose={() => {}} />)
   await screen.findByText(/Playback unavailable/)
   expect(decoder.decode).not.toHaveBeenCalled()
+  expect(screen.queryByText('Starting camera…')).not.toBeInTheDocument()
+  expect(screen.getByRole('alert')).toHaveTextContent('Playback unavailable')
+})
+
+it('announces camera denial once and allows a new camera attempt with the manual draft retained', async () => {
+  vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValueOnce(new Error('Permission denied'))
+  render(<QrScanModal open expectedToken={null} onScanned={vi.fn()} pending={false} onClose={() => {}} />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Permission denied')
+  expect(screen.queryByText('Starting camera…')).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Referee’s code'), { target: { value: 'My.MixedCase.Code' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Retry camera' }))
+  await waitFor(() => expect(decoder.decode).toHaveBeenCalledTimes(1))
+  expect(screen.getByLabelText('Referee’s code')).toHaveValue('My.MixedCase.Code')
+})
+
+it('announces invalid manual input without stale detected/scanning status and keeps it editable', async () => {
+  const scanned = vi.fn()
+  render(<QrScanModal open expectedToken="valid" onScanned={scanned} pending={false} onClose={() => {}} />)
+  await waitFor(() => expect(decoder.decode).toHaveBeenCalledTimes(1))
+  fireEvent.change(screen.getByLabelText('Referee’s code'), { target: { value: 'wrong' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Check in' }))
+  expect(screen.getByRole('alert')).toHaveTextContent('Code does not match')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Referee’s code')).toHaveValue('wrong')
+  expect(scanned).not.toHaveBeenCalled()
 })
 
 it('keeps the server rejection visible inside the open scan dialog', async () => {

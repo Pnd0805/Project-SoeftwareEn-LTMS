@@ -6,7 +6,7 @@
  * can actually derive from what referees recorded. Stream *ingest* is out of
  * scope; these screens assume a stream URL exists.
  */
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, StatusBadge, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { Scorebug } from '../../components/kit/Scorebug'
@@ -16,9 +16,16 @@ import { matchesOf, user } from '../../shared/selectors'
 import { routeTour } from '../../mocks/routeIds'
 import { matchStage, matchTag } from '../../shared/rules'
 import { USE_MOCK } from '../../api/client'
+import { parseBackendId } from '../../api/ids'
 
 export function WatchPage() {
-  return USE_MOCK ? <MockWatchPage /> : <Empty icon="match" title="Watch is unavailable" sub="The tournament watch view is not available yet. Open a match from the tournament bracket to see its details." />
+  const { id } = useParams()
+  if (USE_MOCK) return <MockWatchPage />
+  const tournamentId = parseBackendId(id)
+  return <Empty icon="match" title="Watch is unavailable" sub="The tournament watch view is not available yet. Open a match from the tournament bracket to see its details.">
+    {tournamentId ? <Link className="btn" to={`/t/${tournamentId}/bracket`}>View bracket</Link>
+      : <Link className="btn" to="/home/all">Find a tournament</Link>}
+  </Empty>
 }
 
 function MockWatchPage() {
@@ -35,7 +42,9 @@ function MockWatchPage() {
   const feature = live[0] ?? done[done.length - 1]
 
   if (!feature) {
-    return <Empty icon="match" title="Nothing to watch yet" sub="Matches appear here once the bracket is drawn." />
+    return <Empty icon="match" title="Nothing to watch yet" sub="Matches appear here once the bracket is drawn.">
+      <Link className="btn" to={`/t/${t.id}/bracket`}>View bracket</Link>
+    </Empty>
   }
   const isLive = feature.status !== 'confirmed'
 
@@ -55,6 +64,10 @@ function MockWatchPage() {
           {feature.replay ? `Replay — ${feature.venue || 'the venue'}` : 'No video available'}
         </div>
         <span className="sub">{feature.replay ? <a href={feature.replay} target="_blank" rel="noopener noreferrer">Watch replay</a> : 'Open the match to follow its recorded status.'}</span>
+        <div className="hstack">
+          <Link className="btn primary" to={`/m/${feature.id}`}>Open match</Link>
+          <Link className="btn" to={`/t/${t.id}/bracket`}>View bracket</Link>
+        </div>
       </Panel>
 
       <div className="match-watch-pair">
@@ -94,8 +107,8 @@ function MockWatchPage() {
 
       {done.length ? (
         <>
-          <span className="tag"><em>//</em> Replays · {done.length}</span>
-          <TableWrap label="Match replays">
+          <span className="tag"><em>//</em> Recorded matches · {done.length}</span>
+          <TableWrap label="Recorded matches">
             <table>
               <thead><tr><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>Replay</th><th /></tr></thead>
               <tbody>

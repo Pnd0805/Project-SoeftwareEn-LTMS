@@ -1,0 +1,30 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+ ❯ src/App.lazy.quality20.test.tsx (38 tests | 1 failed) 204ms
+     × retains the current match draft when its existing route tabs change 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > route loading with existing permission boundaries > retains the current match draft when its existing route tabs change
+Error: expect(element).toHaveValue(Retain this result)
+
+Expected the element to have value:
+  Retain this result
+Received:
+
+ ❯ src/App.lazy.quality20.test.tsx:104:58
+    102|     fireEvent.change(await screen.findByLabelText('Result draft'), { t…
+    103|     fireEvent.click(screen.getByRole('link', { name: 'Progress fixture…
+    104|     expect(await screen.findByLabelText('Result draft')).toHaveValue('…
+       |                                                          ^
+    105|   })
+    106| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 37 passed (38)
+   Start at  04:19:26
+   Duration  552ms (transform 34ms, setup 47ms, import 36ms, tests 204ms, environment 214ms)

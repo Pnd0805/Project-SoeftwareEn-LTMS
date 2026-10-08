@@ -1,7 +1,7 @@
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Badge, Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { Modal } from '../../components/kit/Modal'
@@ -10,6 +10,9 @@ import { removeFeedbackByAdmin, restoreFeedbackByAdmin } from '../../api/liveEng
 import { useMe } from '../../hooks/useAuth'
 import { useCommentsLive, usePickemLeaderboard, useReviews } from '../../hooks/useLiveEngagement'
 import type { TournamentComment } from '../../types/liveEngagement.dto'
+import './feedback-moderation.css'
+
+type FeedbackTarget = { id: number; tournamentId: number; kind: 'comment' | 'review'; author: string | null; content: string | null; rating?: number }
 
 const messageOf = (error: unknown) => error instanceof ApiError ? error.message : 'Request failed. Please try again.'
 
@@ -24,12 +27,16 @@ const REPORT_REASONS = [
 export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: number; organizer: boolean }) {
   const me = useMe()
   const qc = useQueryClient()
-  const [lastRemovedId, setLastRemovedId] = useState<number | null>(null)
-  const adminRemove = useMutation({ mutationFn: (id: number) => removeFeedbackByAdmin(id), onSuccess: (_, id) => {
-    setLastRemovedId(id); void qc.invalidateQueries({ queryKey: ['liveComments', tournamentId] }); void qc.invalidateQueries({ queryKey: ['liveReviews', tournamentId] })
+  const [lastRemoved, setLastRemoved] = useState<FeedbackTarget | null>(null)
+  const [adminConfirmation, setAdminConfirmation] = useState<{ target: FeedbackTarget; action: 'remove' | 'restore' } | null>(null)
+  const refreshFeedback = (id: number) => {
+    void qc.invalidateQueries({ queryKey: ['liveComments', id] }); void qc.invalidateQueries({ queryKey: ['liveReviews', id] })
+  }
+  const adminRemove = useMutation({ mutationFn: ({ target, reason }: { target: FeedbackTarget; reason: string }) => removeFeedbackByAdmin(target.id, reason.trim() || undefined), onSuccess: (_, { target }) => {
+    setLastRemoved(target); setAdminConfirmation(null); setNotice(`Feedback #${target.id} removed.`); refreshFeedback(target.tournamentId)
   } })
-  const adminRestore = useMutation({ mutationFn: restoreFeedbackByAdmin, onSuccess: () => {
-    setLastRemovedId(null); void qc.invalidateQueries({ queryKey: ['liveComments', tournamentId] }); void qc.invalidateQueries({ queryKey: ['liveReviews', tournamentId] })
+  const adminRestore = useMutation({ mutationFn: (target: FeedbackTarget) => restoreFeedbackByAdmin(target.id), onSuccess: (_, target) => {
+    setLastRemoved(null); setAdminConfirmation(null); setNotice(`Feedback #${target.id} restored.`); refreshFeedback(target.tournamentId)
   } })
   const reviews = useReviews(tournamentId)
   const leaderboard = usePickemLeaderboard(tournamentId)
@@ -53,6 +60,13 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
     ? [thread.mine, ...thread.items.filter(item => !item.isMine)]
     : thread?.items ?? []
   const busy = comments.post.isPending || comments.removeMine.isPending || comments.moderate.isPending || comments.report.isPending || comments.dismiss.isPending
+  const adminBusy = adminRemove.isPending || adminRestore.isPending
+  const canModerateTarget = (target: FeedbackTarget) => !organizer && !!me.data && target.tournamentId === tournamentId &&
+    (target.kind === 'comment' ? thread?.canModerate === true : review?.items != null)
+  const confirmAdmin = (target: FeedbackTarget, action: 'remove' | 'restore') => {
+    if (!canModerateTarget(target) || adminBusy) return
+    adminRemove.reset(); adminRestore.reset(); setNotice(''); setReason(''); setAdminConfirmation({ target, action })
+  }
 
   const setFilter = (nextReported: boolean, nextPage = 1) => {
     const next = new URLSearchParams()
@@ -78,7 +92,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           {review.mine ? <p className="sub">Your review: {review.mine.rating}/5 {review.mine.content}</p> : null}
           {!organizer && review.items?.map(item => <div className="notif" key={item.id}>
             <span className="txt"><b>#{item.id} · {item.rating}/5</b> {item.author?.fullName}<br />{item.content}</span>
-            <button className="btn ghost" type="button" disabled={adminRemove.isPending} onClick={() => adminRemove.mutate(item.id)}>Remove</button>
+            <button className="btn ghost" type="button" disabled={adminBusy || !me.data} onClick={() => confirmAdmin({ id: item.id, tournamentId, kind: 'review', author: item.author?.fullName ?? null, content: item.content, rating: item.rating }, 'remove')}>Remove</button>
           </div>)}
           {review.canSubmit ? <form className="vstack" onSubmit={async event => {
             event.preventDefault()
@@ -157,7 +171,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
                   <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
                     onClick={() => {
                       if (organizer) { setRemoving(item); setReason('') }
-                      else adminRemove.mutate(item.id)
+                      else confirmAdmin({ id: item.id, tournamentId, kind: 'comment', author: item.author.fullName, content: item.content }, 'remove')
                     }}>
                     Remove
                   </button>
@@ -293,10 +307,34 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
         <button className="btn" disabled={page >= thread.pagination.totalPages} onClick={() => setFilter(reported, page + 1)}>Next</button>
       </div> : null}
       {notice ? <p role="status" className="sub">{notice}</p> : null}
-      {adminRemove.isError || adminRestore.isError ? <p role="alert" className="sub">{messageOf(adminRemove.error ?? adminRestore.error)}</p> : null}
-      {lastRemovedId && !organizer ? <button className="btn ghost" type="button" disabled={adminRestore.isPending}
-        onClick={() => adminRestore.mutate(lastRemovedId)}>Restore removed item #{lastRemovedId}</button> : null}
+      {adminConfirmation && canModerateTarget(adminConfirmation.target) ? <Modal open title={adminConfirmation.action === 'remove' ? 'Remove feedback' : 'Restore feedback'} className="feedback-moderation-dialog"
+        onClose={() => !adminBusy && setAdminConfirmation(null)}>
+        <form className="vstack" onSubmit={event => {
+          event.preventDefault()
+          if (adminBusy || !canModerateTarget(adminConfirmation.target)) return
+          if (adminConfirmation.action === 'remove') adminRemove.mutate({ target: adminConfirmation.target, reason })
+          else adminRestore.mutate(adminConfirmation.target)
+        }}>
+          <div className="feedback-moderation-context" role="region" aria-label="Selected feedback" tabIndex={0}>
+            <b>{adminConfirmation.target.kind === 'review' ? 'Review' : 'Comment'} #{adminConfirmation.target.id}</b>
+            <Link to={`/t/${adminConfirmation.target.tournamentId}/community`}>Tournament #{adminConfirmation.target.tournamentId}</Link>
+            <span>{adminConfirmation.target.author ?? 'Author unavailable'}</span>
+            {adminConfirmation.target.rating !== undefined ? <span>{adminConfirmation.target.rating} / 5 rating</span> : null}
+            <blockquote>{adminConfirmation.target.content ?? 'No written review attached.'}</blockquote>
+          </div>
+          <p className="sub">{adminConfirmation.action === 'remove' ? 'Removal excludes this item from public counts.' : 'Restoring makes this item available again and clears its report flag.'}</p>
+          {adminConfirmation.action === 'remove' ? <Field label="Reason (optional)" htmlFor="admin-feedback-reason"><textarea id="admin-feedback-reason" disabled={adminBusy} maxLength={255} value={reason} onChange={event => setReason(event.target.value)} /></Field> : null}
+          {adminRemove.isError || adminRestore.isError ? <p role="alert" className="sub">{(adminRemove.error ?? adminRestore.error) instanceof Error ? (adminRemove.error ?? adminRestore.error)?.message : 'Moderation failed. Try again.'}</p> : null}
+          <div className="hstack">
+            <button className="btn" type="button" disabled={adminBusy} onClick={() => setAdminConfirmation(null)}>Cancel</button>
+            <button className={`btn ${adminConfirmation.action === 'remove' ? 'danger' : 'primary'}`} type="submit" disabled={adminBusy}>
+              {adminBusy ? 'Saving…' : adminConfirmation.action === 'remove' ? 'Confirm removal' : 'Confirm restore'}
+            </button>
+          </div>
+        </form>
+      </Modal> : null}
+      {lastRemoved && canModerateTarget(lastRemoved) ? <button className="btn ghost" type="button" disabled={adminBusy}
+        onClick={() => confirmAdmin(lastRemoved, 'restore')}>Restore removed item #{lastRemoved.id}</button> : null}
     </Panel>
   </>
 }
-

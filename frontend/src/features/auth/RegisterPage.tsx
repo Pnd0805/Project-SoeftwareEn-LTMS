@@ -4,7 +4,6 @@
  * Minimal registration page wired to useRegister() and the schema.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
@@ -13,15 +12,11 @@ import { useDepartments, useFaculties } from '../../hooks/useReference'
 import { registerSchema, type RegisterInput } from '../../schemas/auth.schema'
 import './account-workspace.css'
 
-const defaultValues: RegisterInput = {
+const defaultValues: Partial<RegisterInput> = {
   fullName: '',
   email: '',
   password: '',
-  gender: 'male',
-  birthDate: '2000-01-01',
-  facultyId: 1,
-  departmentId: 1,
-  year: 1,
+  birthDate: '',
 }
 
 export function RegisterPage() {
@@ -35,16 +30,18 @@ export function RegisterPage() {
   })
   const facultyId = useWatch({ control: form.control, name: 'facultyId' })
   const departmentId = useWatch({ control: form.control, name: 'departmentId' })
-  const departments = useDepartments(facultyId)
-
-  useEffect(() => {
-    const firstDepartment = departments.data?.items[0]
-    if (firstDepartment && !departments.data?.items.some(item => item.id === form.getValues('departmentId'))) {
-      form.setValue('departmentId', firstDepartment.id, { shouldValidate: true })
-    }
-  }, [departments.data, form])
+  const selectedFaculty = Number.isFinite(facultyId) && facultyId > 0 ? facultyId : undefined
+  const departments = useDepartments(selectedFaculty)
 
   const submit = async (values: RegisterInput) => {
+    if (!faculties.data?.items.some(item => item.id === values.facultyId)) {
+      form.setError('facultyId', { type: 'validate', message: 'Choose an available faculty.' }, { shouldFocus: true })
+      return
+    }
+    if (!departments.data?.items.some(item => item.id === values.departmentId && item.facultyId === values.facultyId)) {
+      form.setError('departmentId', { type: 'validate', message: 'Choose a department in this faculty.' }, { shouldFocus: true })
+      return
+    }
     try {
       await register.mutateAsync(values)
       navigate('/login')
@@ -104,6 +101,7 @@ export function RegisterPage() {
               <label className="field">
                 <span className="label">Gender</span>
                 <select aria-invalid={!!form.formState.errors.gender} aria-describedby={form.formState.errors.gender ? 'register-gender-error' : undefined} {...form.register('gender')}>
+                  <option value="">Choose gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
@@ -122,8 +120,9 @@ export function RegisterPage() {
             <div className="account-field">
               <label className="field">
                 <span className="label">Faculty</span>
-                <select {...form.register('facultyId', { valueAsNumber: true })} disabled={faculties.isLoading}
+                <select {...form.register('facultyId', { valueAsNumber: true, onChange: () => form.resetField('departmentId') })} disabled={faculties.isLoading}
                   aria-invalid={!!form.formState.errors.facultyId} aria-describedby={form.formState.errors.facultyId ? 'register-faculty-error' : undefined}>
+                  <option value="">Choose faculty</option>
                   {faculties.data?.items.map(faculty => (
                     <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
                   ))}
@@ -139,8 +138,9 @@ export function RegisterPage() {
               <label className="field">
                 <span className="label">Department</span>
                 <select {...form.register('departmentId', { valueAsNumber: true })}
-                  disabled={departments.isLoading || !departments.data?.items.length}
+                  disabled={!selectedFaculty || departments.isLoading || !departments.data?.items.length}
                   aria-invalid={!!form.formState.errors.departmentId} aria-describedby={form.formState.errors.departmentId ? 'register-department-error' : undefined}>
+                  <option value="">Choose department</option>
                   {departments.data?.items.map(department => (
                     <option key={department.id} value={department.id}>{department.name}</option>
                   ))}
@@ -150,7 +150,8 @@ export function RegisterPage() {
               {form.formState.errors.departmentId && <span className="error" id="register-department-error" role="alert">{form.formState.errors.departmentId.message}</span>}
               {departments.isLoading && <span className="sub" role="status">Loading departments…</span>}
               {departments.isError && <div className="error" role="alert">Unable to load departments. <button className="btn ghost" type="button" onClick={() => void departments.refetch()}>Retry departments</button></div>}
-              {departments.isSuccess && !departments.data.items.length && <span className="sub">No departments available for this faculty.</span>}
+              {!selectedFaculty ? <span className="sub">Choose a faculty first.</span> : null}
+              {selectedFaculty && departments.isSuccess && !departments.data.items.length && <span className="sub">No departments available for this faculty.</span>}
             </div>
             <div className="account-field">
               <label className="field">

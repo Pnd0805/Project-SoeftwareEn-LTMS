@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { State } from '../../shared/types'
 
 const { updateProfile, uploadMock, profileState } = vi.hoisted(() => ({
-  updateProfile: vi.fn(), uploadMock: vi.fn(), profileState: { avatarUrl: null as string | null },
+  updateProfile: vi.fn(), uploadMock: vi.fn(), profileState: { avatarUrl: null as string | null, refetch: vi.fn(), fetching: false, mock: false, fixture: null as State | null },
 }))
 vi.mock('../../api/upload', async original => ({
   ...await original<typeof import('../../api/upload')>(), uploadImage: uploadMock,
@@ -11,10 +12,10 @@ vi.mock('../../api/upload', async original => ({
 
 vi.mock('../../api/client', async importOriginal => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
-  USE_MOCK: false,
+  get USE_MOCK() { return profileState.mock },
 }))
 
-vi.mock('../../shared/store', () => ({ useLtms: () => ({ users: [], teams: [], tournaments: [], votes: [] }) }))
+vi.mock('../../shared/store', () => ({ useLtms: () => profileState.fixture ?? ({ users: [], teams: [], tournaments: [], votes: [] }) }))
 
 vi.mock('../../hooks/useAuth', () => ({
   useMe: () => ({
@@ -30,7 +31,7 @@ vi.mock('../../hooks/useAuth', () => ({
 }))
 
 vi.mock('../../hooks/useUser', () => ({
-  useUserStats: () => ({ data: undefined, isPending: false, isError: true }),
+  useUserStats: () => ({ data: profileState.mock ? { overall: { matchesPlayed: 0, wins: 0, championCount: 0 } } : undefined, isPending: false, isError: !profileState.mock, refetch: profileState.refetch, isFetching: profileState.fetching }),
   useFollows: () => ({ data: undefined }),
   useUserCareer: () => ({ data: undefined, isPending: false }),
 }))
@@ -51,8 +52,59 @@ vi.mock('../../hooks/useLiveEngagement', () => ({
 vi.mock('../player/PlayerPage', () => ({ CareerPanel: () => null }))
 
 import { ProfilePage } from './ProfilePage'
+import { SEED } from '../../shared/seed'
+
+beforeEach(() => { profileState.mock = false; profileState.fixture = null })
+
+describe('Profile mock career facts', () => {
+  const show = (finishKnown = true, empty = false) => {
+    profileState.mock = true
+    const fixture = SEED()
+    const player = fixture.users.find(user => user.id === 'u-play')!
+    player.email = 'profile@example.test'
+    const tournament = fixture.tournaments.find(t => t.id === 't-fb')!
+    tournament.format = 'roundrobin'
+    tournament.champion = finishKnown ? 't-eng' : null
+    fixture.matches = empty ? [] : fixture.matches.filter(m => m.tour === tournament.id && m.a && m.b).slice(0, 3)
+    fixture.matches.forEach((match, i) => {
+      match.a = 't-eng'; match.b = 't-sci'; match.status = 'confirmed'; match.note = ''
+      match.sa = i === 2 ? 0 : 2; match.sb = 1
+      match.lineup = { 't-eng': { starters: ['u-play'], subs: [] } }
+    })
+    if (!finishKnown) fixture.registrations = []
+    profileState.fixture = fixture
+    return render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+  }
+  it('agrees with the confirmed tournament record instead of zero mock API totals', () => {
+    const view = show()
+    const stats = view.container.querySelector<HTMLElement>('.statline')!
+    expect(within(stats).getByText('Matches played').parentElement).toHaveTextContent('3')
+    expect(within(stats).getByText('Won').parentElement).toHaveTextContent('2')
+    expect(within(stats).getByText('Titles').parentElement).toHaveTextContent('1')
+    const record = screen.getByRole('region', { name: 'My tournament record' })
+    expect(within(record).getByText('3')).toBeInTheDocument()
+    expect(within(record).getByText('Champion')).toBeInTheDocument()
+  })
+  it('does not fabricate a title fact with no confirmed career rows', () => {
+    const view = show(false, true)
+    const stats = view.container.querySelector<HTMLElement>('.statline')!
+    expect(within(stats).getByText('Matches played').parentElement).toHaveTextContent('0')
+    expect(within(stats).getByText('Titles').parentElement).toHaveTextContent('Unavailable')
+  })
+})
 
 describe('ProfilePage real-mode boundary', () => {
+  it('retries failed stats without replacing loaded account details', () => {
+    const view = render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Retry stats' }))
+    expect(profileState.refetch).toHaveBeenCalledOnce()
+    profileState.fetching = true
+    view.rerender(<MemoryRouter><ProfilePage /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Retrying stats…' })).toBeDisabled()
+    expect(screen.getByText('Backend Profile')).toBeInTheDocument()
+    expect(screen.getByText('Engineering')).toBeInTheDocument()
+    profileState.fetching = false
+  })
   it('keeps /me identity visible without a legacy user when stats fail', () => {
     render(<MemoryRouter><ProfilePage /></MemoryRouter>)
 

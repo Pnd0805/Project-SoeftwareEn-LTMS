@@ -1,0 +1,827 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+stderr | src/features/admin/AdminFeedbackTab.quality20.test.tsx > identifies the selected comment before removal and retains that context for restore
+An update to LiveCommunityTab inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/features/admin/AdminFeedbackTab.quality20.test.tsx > identifies the selected review before removal and retains that context for restore
+An update to LiveCommunityTab inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/features/admin/AdminFeedbackTab.quality20.test.tsx > does not remove on cancel and retains the target and reason on failed mutation
+An update to LiveCommunityTab inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ src/features/admin/AdminFeedbackTab.quality20.test.tsx (5 tests | 4 failed) 115ms
+   × blocks raw-ID moderation when target context is unavailable 47ms
+   × identifies the selected comment before removal and retains that context for restore 32ms
+   × identifies the selected review before removal and retains that context for restore 12ms
+   × does not remove on cancel and retains the target and reason on failed mutation 13ms
+ ❯ src/features/auth/RegisterPage.quality20.test.tsx (4 tests | 3 failed) 197ms
+   × starts with unchosen student fields and does not submit invented values 81ms
+   × does not select an identity when faculty reference data arrives late 27ms
+   × clears the old department immediately when faculty changes, even before the new list arrives 36ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/auth/RegisterPage.quality20.test.tsx > starts with unchosen student fields and does not submit invented values
+Error: expect(element).toHaveValue()
+
+Expected the element to have value:
+
+Received:
+  male
+ ❯ src/features/auth/RegisterPage.quality20.test.tsx:65:43
+     63|   const { container } = show()
+     64|   await screen.findByRole('option', { name: 'Engineering' })
+     65|   expect(screen.getByLabelText('Gender')).toHaveValue('')
+       |                                           ^
+     66|   expect(screen.getByLabelText('Birth date')).toHaveValue('')
+     67|   expect(screen.getByLabelText('Faculty')).toHaveValue('')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/features/auth/RegisterPage.quality20.test.tsx > does not select an identity when faculty reference data arrives late
+Error: expect(element).toHaveValue()
+
+Expected the element to have value:
+
+Received:
+  1
+ ❯ src/features/auth/RegisterPage.quality20.test.tsx:83:44
+     81|   releaseFaculties!()
+     82|   await screen.findByRole('option', { name: 'Engineering' })
+     83|   expect(screen.getByLabelText('Faculty')).toHaveValue('')
+       |                                            ^
+     84|   expect(screen.getByLabelText('Department')).toHaveValue('')
+     85|   expect(screen.getByLabelText('Full name')).toHaveValue('Deliberate S…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/features/auth/RegisterPage.quality20.test.tsx > clears the old department immediately when faculty changes, even before the new list arrives
+Error: expect(element).toHaveValue()
+
+Expected the element to have value:
+
+Received:
+  undefined
+ ❯ src/features/auth/RegisterPage.quality20.test.tsx:100:47
+     98|   holdDepartments = true
+     99|   fireEvent.change(screen.getByLabelText('Faculty'), { target: { value…
+    100|   expect(screen.getByLabelText('Department')).toHaveValue('')
+       |                                               ^
+    101|   fireEvent.submit(container.querySelector('form')!)
+    102|   await waitFor(() => expect(screen.getByLabelText('Department')).toHa…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/features/admin/AdminFeedbackTab.quality20.test.tsx > blocks raw-ID moderation when target context is unavailable
+Error: expect(element).toBeDisabled()
+
+Received element is not disabled:
+  <button
+  class="btn danger"
+  type="button"
+/>
+ ❯ src/features/admin/AdminFeedbackTab.quality20.test.tsx:33:32
+     31|   for (const action of ['Remove', 'Restore']) {
+     32|     const button = screen.queryByRole('button', { name: action, exact:…
+     33|     if (button) expect(button).toBeDisabled()
+       |                                ^
+     34|   }
+     35|   expect(screen.getByText(/target context is unavailable/i)).toBeInThe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/features/admin/AdminFeedbackTab.quality20.test.tsx > identifies the selected comment before removal and retains that context for restore
+TestingLibraryElementError: Unable to find an accessible element with the role "dialog"
+
+Here are the accessible roles:
+
+  region:
+
+  Name "Tournament reviews":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Tournament reviews"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  Name "Prediction leaderboard":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Prediction leaderboard"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Tournament reviews":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  Name "Pick'em leaderboard":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  Name "Tournament comments · 1":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Reported only":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Remove":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mstyle[39m=[32m"padding: 2px 8px; font-size: 13px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"tour-community-pair"[39m
+    [36m>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"Tournament reviews"[39m
+        [33mrole[39m=[32m"region"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"spread"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"journey-heading"[39m
+            [36m>[39m
+              [0mTournament reviews[0m
+            [36m</h2>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"badge neutral"[39m
+            [36m>[39m
+              [0m2[0m
+              [0m / 5 · [0m
+              [0m1[0m
+              [0m reviews[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"statline"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mAverage[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m2[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mRatings[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0m5★ 0 · 4★ 0 · 3★ 0 · 2★ 0 · 1★ 0[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"Prediction leaderboard"[39m
+        [33mrole[39m=[32m"region"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"journey-heading"[39m
+          [36m>[39m
+            [0mPick'em leaderboard[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mNo settled predictions yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"spread"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"journey-heading"[39m
+        [36m>[39m
+          [0mTournament comments · [0m
+          [0m1[0m
+        [36m</h2>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn ghost"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mReported only[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"notif"[39m
+        [33mstyle[39m=[32m"align-items: flex-start;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+          [33mstyle[39m=[32m"width: 24px; height: 24px; font-size: 10.08px; overflow: hidden;"[39m
+        [36m>[39m
+          [0mO[0m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"txt"[39m
+          [33mstyle[39m=[32m"display: flex; flex-direction: column; gap: 4px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 8px; align-items: center; flex-wrap: wrap;"[39m
+          [36m>[39m
+            [36m<b>[39m
+              [0mOther author[0m
+            [36m</b>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [0m#[0m
+              [0m42[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [0m10/1/2026, 7:00:00 AM[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"font-size: 15px; line-height: 1.5; word-break: break-word; margin: 2px 0px;"[39m
+          [36m>[39m
+            [0mComment to inspect[0m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 8px; margin-top: 4px;"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn ghost"[39m
+              [33mstyle[39m=[32m"padding: 2px 8px; font-size: 13px;"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mRemove[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/admin/AdminFeedbackTab.quality20.test.tsx:46:25
+     44|   fireEvent.click(screen.getByRole('button', { name: 'Remove', exact: …
+     45|   expect(remove).not.toHaveBeenCalled()
+     46|   const dialog = screen.getByRole('dialog')
+       |                         ^
+     47|   expect(dialog).toHaveTextContent(`#${id}`)
+     48|   expect(dialog).toHaveTextContent(kind === 'review' ? 'Review author'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  src/features/admin/AdminFeedbackTab.quality20.test.tsx > identifies the selected review before removal and retains that context for restore
+TestingLibraryElementError: Unable to find an accessible element with the role "dialog"
+
+Here are the accessible roles:
+
+  region:
+
+  Name "Tournament reviews":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Tournament reviews"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  Name "Prediction leaderboard":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Prediction leaderboard"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Tournament reviews":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  Name "Pick'em leaderboard":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  Name "Tournament comments · 1":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Remove":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Reported only":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"tour-community-pair"[39m
+    [36m>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"Tournament reviews"[39m
+        [33mrole[39m=[32m"region"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"spread"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"journey-heading"[39m
+            [36m>[39m
+              [0mTournament reviews[0m
+            [36m</h2>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"badge neutral"[39m
+            [36m>[39m
+              [0m2[0m
+              [0m / 5 · [0m
+              [0m1[0m
+              [0m reviews[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"statline"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mAverage[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m2[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mRatings[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0m5★ 0 · 4★ 0 · 3★ 0 · 2★ 0 · 1★ 0[0m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"notif"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"txt"[39m
+            [36m>[39m
+              [36m<b>[39m
+                [0m#[0m
+                [0m55[0m
+                [0m · [0m
+                [0m2[0m
+                [0m/5[0m
+              [36m</b>[39m
+              [0m [0m
+              [0mReview author[0m
+              [36m<br />[39m
+              [0mReview to inspect[0m
+            [36m</span>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn ghost"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mRemove[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"Prediction leaderboard"[39m
+        [33mrole[39m=[32m"region"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"journey-heading"[39m
+          [36m>[39m
+            [0mPick'em leaderboard[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mNo settled predictions yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"spread"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"journey-heading"[39m
+        [36m>[39m
+          [0mTournament comments · [0m
+          [0m1[0m
+        [36m</h2>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn ghost"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mReported only[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mNo comments here yet.[0m
+      [36m</p>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/admin/AdminFeedbackTab.quality20.test.tsx:46:25
+     44|   fireEvent.click(screen.getByRole('button', { name: 'Remove', exact: …
+     45|   expect(remove).not.toHaveBeenCalled()
+     46|   const dialog = screen.getByRole('dialog')
+       |                         ^
+     47|   expect(dialog).toHaveTextContent(`#${id}`)
+     48|   expect(dialog).toHaveTextContent(kind === 'review' ? 'Review author'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  src/features/admin/AdminFeedbackTab.quality20.test.tsx > does not remove on cancel and retains the target and reason on failed mutation
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Cancel"
+
+Here are the accessible roles:
+
+  region:
+
+  Name "Tournament reviews":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Tournament reviews"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  Name "Prediction leaderboard":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Prediction leaderboard"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Tournament reviews":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  Name "Pick'em leaderboard":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  Name "Tournament comments · 1":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Reported only":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Remove":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mstyle[39m=[32m"padding: 2px 8px; font-size: 13px;"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"tour-community-pair"[39m
+    [36m>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"Tournament reviews"[39m
+        [33mrole[39m=[32m"region"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"spread"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"journey-heading"[39m
+            [36m>[39m
+              [0mTournament reviews[0m
+            [36m</h2>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"badge neutral"[39m
+            [36m>[39m
+              [0m2[0m
+              [0m / 5 · [0m
+              [0m1[0m
+              [0m reviews[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"statline"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mAverage[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m2[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mRatings[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0m5★ 0 · 4★ 0 · 3★ 0 · 2★ 0 · 1★ 0[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"Prediction leaderboard"[39m
+        [33mrole[39m=[32m"region"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"journey-heading"[39m
+          [36m>[39m
+            [0mPick'em leaderboard[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mNo settled predictions yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"spread"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mclass[39m=[32m"journey-heading"[39m
+        [36m>[39m
+          [0mTournament comments · [0m
+          [0m1[0m
+        [36m</h2>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn ghost"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mReported only[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"notif"[39m
+        [33mstyle[39m=[32m"align-items: flex-start;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+          [33mstyle[39m=[32m"width: 24px; height: 24px; font-size: 10.08px; overflow: hidden;"[39m
+        [36m>[39m
+          [0mO[0m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"txt"[39m
+          [33mstyle[39m=[32m"display: flex; flex-direction: column; gap: 4px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 8px; align-items: center; flex-wrap: wrap;"[39m
+          [36m>[39m
+            [36m<b>[39m
+              [0mOther author[0m
+            [36m</b>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [0m#[0m
+              [0m42[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [0m10/1/2026, 7:00:00 AM[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"font-size: 15px; line-height: 1.5; word-break: break-word; margin: 2px 0px;"[39m
+          [36m>[39m
+            [0mComment to inspect[0m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 8px; margin-top: 4px;"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn ghost"[39m
+              [33mstyle[39m=[32m"padding: 2px 8px; font-size: 13px;"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mRemove[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/admin/AdminFeedbackTab.quality20.test.tsx:66:26
+     64|   show(true)
+     65|   fireEvent.click(screen.getByRole('button', { name: 'Remove', exact: …
+     66|   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+       |                          ^
+     67|   expect(remove).not.toHaveBeenCalled()
+     68|   fireEvent.click(screen.getByRole('button', { name: 'Remove', exact: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 2 passed (9)
+   Start at  03:30:32
+   Duration  919ms (transform 145ms, setup 167ms, import 281ms, tests 312ms, environment 853ms)

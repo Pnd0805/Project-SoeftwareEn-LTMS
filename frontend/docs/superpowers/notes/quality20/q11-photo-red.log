@@ -1,0 +1,277 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+ ❯ src/features/checkin/GlobalScanDialog.test.tsx (4 tests | 1 failed) 1083ms
+   × announces a failed photo once and exposes another capture without stale reading status 1014ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/checkin/GlobalScanDialog.test.tsx > announces a failed photo once and exposes another capture without stale reading status
+TestingLibraryElementError: Unable to find role="alert"
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow-y: hidden; overflow-x: hidden;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mdata-base-ui-portal[39m=[32m""[39m
+    [33mid[39m=[32m"_r_4_"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33maria-hidden[39m=[32m"true"[39m
+      [33mdata-base-ui-inert[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+      [33mstyle[39m=[32m"position: fixed; inset: 0px; user-select: none; -webkit-user-select: none;"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"modal-bg"[39m
+      [33mdata-open[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"base-ui-_r_5_"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"modal"[39m
+        [33mdata-base-ui-focusable[39m=[32m""[39m
+        [33mdata-open[39m=[32m""[39m
+        [33mid[39m=[32m"_r_3_"[39m
+        [33mrole[39m=[32m"dialog"[39m
+        [33mstyle[39m=[32m"--nested-dialogs: 0;"[39m
+        [33mtabindex[39m=[32m"-1"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mCheck in — on-site[0m
+          [36m</span>[39m
+          [36m<h3[39m
+            [33mid[39m=[32m"base-ui-_r_5_"[39m
+            [33mstyle[39m=[32m"margin: 0px; font-size: 20px;"[39m
+          [36m>[39m
+            [0mScan check-in QR[0m
+          [36m</h3>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mScan failed[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"banner crit"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 4 2.5 20h19L12 4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 10v4M12 17h.01"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"grow"[39m
+            [36m>[39m
+              [0mNo QR found in the photo. Take another photo.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn primary"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mTake another photo[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow-y: hidden; overflow-x: hidden;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mdata-base-ui-portal[39m=[32m""[39m
+    [33mid[39m=[32m"_r_4_"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33maria-hidden[39m=[32m"true"[39m
+      [33mdata-base-ui-inert[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+      [33mstyle[39m=[32m"position: fixed; inset: 0px; user-select: none; -webkit-user-select: none;"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"modal-bg"[39m
+      [33mdata-open[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"base-ui-_r_5_"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"modal"[39m
+        [33mdata-base-ui-focusable[39m=[32m""[39m
+        [33mdata-open[39m=[32m""[39m
+        [33mid[39m=[32m"_r_3_"[39m
+        [33mrole[39m=[32m"dialog"[39m
+        [33mstyle[39m=[32m"--nested-dialogs: 0;"[39m
+        [33mtabindex[39m=[32m"-1"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mCheck in — on-site[0m
+          [36m</span>[39m
+          [36m<h3[39m
+            [33mid[39m=[32m"base-ui-_r_5_"[39m
+            [33mstyle[39m=[32m"margin: 0px; font-size: 20px;"[39m
+          [36m>[39m
+            [0mScan check-in QR[0m
+          [36m</h3>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mScan failed[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"banner crit"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 4 2.5 20h19L12 4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 10v4M12 17h.01"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"grow"[39m
+            [36m>[39m
+              [0mNo QR found in the photo. Take another photo.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn primary"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mTake another photo[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/checkin/GlobalScanDialog.test.tsx:78:23
+     76|   render(<MemoryRouter><GlobalScanPhoto file={new File(['image'], 'qr.…
+     77|     onClose={() => {}} onRetry={retry} /></MemoryRouter>)
+     78|   expect(await screen.findByRole('alert')).toHaveTextContent('No QR fo…
+       |                       ^
+     79|   expect(screen.queryByRole('status')).not.toBeInTheDocument()
+     80|   fireEvent.click(screen.getByRole('button', { name: 'Take another pho…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  03:15:42
+   Duration  1.75s (transform 51ms, setup 78ms, import 112ms, tests 1.08s, environment 404ms)
