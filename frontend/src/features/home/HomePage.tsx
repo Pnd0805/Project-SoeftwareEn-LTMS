@@ -24,9 +24,6 @@ import { RealHomeTasks } from './RealHomeTasks'
 import { TournamentPreview } from './TournamentPreview'
 
 const STAGES: [string, string][] = [['', 'All'], ['open', 'Open for entry'], ['competing', 'In progress'], ['finished', 'Finished']]
-const PREVIEW_STATUSES: Record<string, string> = {
-  public: 'Public', private: 'Private', pending: 'Pending review', pending_approval: 'Pending review', completed: 'Completed',
-}
 
 function previewDate(value: string | null | undefined) {
   if (!value) return 'Not available'
@@ -162,7 +159,8 @@ export function HomePage() {
     { label: 'Starts', value: previewDate(USE_MOCK ? preview?.date : previewDto?.eventStartDate) },
     { label: 'Capacity', value: typeof previewCapacity === 'number' && Number.isFinite(previewCapacity) && previewCapacity > 0
       ? `${previewCapacity} teams` : 'Not available' },
-    { label: 'Status', value: previewStatus ? PREVIEW_STATUSES[previewStatus] ?? 'Not available' : 'Not available' },
+    { label: 'Visibility', value: previewStatus === 'public' ? 'Public' : previewStatus === 'private' ? 'Private' : 'Not available' },
+    { label: 'Phase', value: previewStatus === 'completed' ? 'Completed' : previewStatus === 'pending' || previewStatus === 'pending_approval' ? 'Pending review' : 'Not available' },
     { label: 'Entry', value: previewEntry === true ? 'Open' : previewEntry === false ? 'Closed' : 'Not available' },
   ].filter(fact => fact.value !== 'Not available')
   const previewSport = USE_MOCK ? preview?.sport : sportTypes.data?.items.find(sport => sport.id === previewDto?.sportTypeId)?.name

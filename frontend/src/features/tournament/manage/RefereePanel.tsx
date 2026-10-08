@@ -218,7 +218,10 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
     <Panel quiet>
       <div className="spread">
         <h2>Referees</h2>
-        {referees ? <Badge kind={short === 0 ? 'ok' : 'warn'}>{`${accepted} of ${required} accepted`}</Badge> : null}
+        {referees ? <div className="referee-staffing-facts">
+          <Badge kind="neutral">{accepted} accepted</Badge>
+          <span className="sub">{required} required per match</span>
+        </div> : null}
       </div>
       <span className="sub">Each {t.channel} match needs {required}. An accepted appointment joins the pool; match assignments are separate.</span>
 
@@ -300,7 +303,7 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
               ? <>
                 They stop officiating {t.name} straight away and come off every match that isn't finished —
                 assign someone else to those. Finished matches keep their name.
-                {leaves < required ? <> This leaves {leaves} of {required} accepted referees.</> : null}
+                {leaves < required ? <> This leaves {leaves} accepted referees. Each match requires {required}.</> : null}
               </>
               : 'They have not started officiating yet. Their appointment is cancelled, along with any request waiting for an admin.'}
           onCancel={() => setRemoving(null)}

@@ -7,6 +7,43 @@
   min-width: 0;
 }
 
+.inbox-updates,
+.inbox-needs-action,
+.inbox-request-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.inbox-page .disp:not(h1) {
+  font-size: 28px;
+  margin: 0;
+}
+
+.inbox-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: min(440px, 60dvh);
+  overflow: auto;
+  padding: 4px;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--line-hot) var(--void-2);
+}
+
+.inbox-action-list > .panel {
+  flex-shrink: 0;
+}
+
+.search-categories .tabs {
+  flex-wrap: wrap;
+}
+
+.search-categories .tab {
+  min-height: 44px;
+}
+
 .search-page h1,
 .inbox-page h1 {
   font-size: 40px;

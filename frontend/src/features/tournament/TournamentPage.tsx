@@ -3,8 +3,8 @@
  *
  * Tournament identity, paired entry/details frames and a broad public workspace.
  */
-import { useNavigate, useParams } from 'react-router-dom'
-import { Badge, Banner, Crumb, Empty, Facts, Panel, Tabs, VenueLine } from '../../components/kit/primitives'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Badge, Banner, Crumb, Empty, Facts, Panel, VenueLine } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
 import { USE_MOCK } from '../../api/client'
@@ -209,10 +209,10 @@ export function TournamentPage() {
         </Banner>
       ) : null}
 
-      <header className="spread tour-identity">
+      <header className={`spread tour-identity${tabParam ? ' tour-identity-compact' : ''}`}>
         <div>
           <h1 className="disp">{t.name}</h1>
-          <p className="sub">{t.sport} · {formatName(t)} · {t.channel}</p>
+          <p className="sub">{t.sport} · {formatName(t)} · {t.channel === 'onsite' ? 'On-site' : t.channel}</p>
           <div className="tag" style={{ marginTop: 6 }}>
             {org ? <><em>//</em> You run this tournament</> : `Run by ${organizerName ?? user(s, t.organizer)?.name ?? '—'}`}
           </div>
@@ -237,6 +237,12 @@ export function TournamentPage() {
       </header>
 
       <div className="tour-page">
+        <nav className="tabs" aria-label="Tournament sections">
+          {tabs.map(k => <Link key={k} to={`/t/${t.id}/${k}`} className={`tab ${tab === k ? 'on' : ''}`}
+            aria-current={tab === k ? 'page' : undefined}>{k[0].toUpperCase() + k.slice(1)}</Link>)}
+        </nav>
+        <details className="tour-context" open={!tabParam}>
+          <summary>Details & entry</summary>
         <div className={`tour-overview${completed ? ' tour-overview-closed' : ''}`}>
           <section className="tour-overview-frame" aria-label="Tournament details" tabIndex={0}>
           <Panel className="tour-details">
@@ -265,19 +271,15 @@ export function TournamentPage() {
           {!completed ? <section className="tour-overview-frame" aria-label="Tournament entry" tabIndex={0}>
           {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
               แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
-          <EntryPanel t={t} applications={tournamentData?.applications}
+          <EntryPanel t={t} organizer={org} applications={tournamentData?.applications}
               approvedCount={tournamentId === undefined || !capacityConfirmed ? undefined : approved.length}
               sportTypeId={tournamentData?.sportTypeId}
               confirmation={{ rules: rulesConfirmed, capacity: capacityConfirmed, accessLost: entryAccessLost }}
               feedback={entryFeedback} />
           </section> : null}
         </div>
+        </details>
         <section className="tour-workspace" aria-label="Tournament workspace">
-          <Tabs
-            tabs={tabs.map(x => ({ key: x, label: x === 'manage' ? 'Manage' : x }))}
-            active={tab}
-            onPick={k => navigate(`/t/${t.id}/${k}`)}
-          />
           {tab === 'bracket' ? <BracketTab t={t} /> : null}
           {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
           {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}

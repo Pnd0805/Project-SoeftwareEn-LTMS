@@ -27,6 +27,9 @@ const PATHS = {
   search: (
     <><circle cx="10.5" cy="10.5" r="6" stroke="currentColor" strokeWidth="1.7"/><path d="m19 19-4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></>
   ),
+  scan: (
+    <><path d="M8 4H4v4M16 4h4v4M4 16v4h4M20 16v4h-4M7 12h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" strokeLinejoin="miter"/></>
+  ),
   check: (
     <><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></>
   ),

@@ -71,15 +71,20 @@ export function BackendInbox() {
   const settled = sources.every(({ query }) => !!query.data && !query.isPending && !query.isError)
   const pending = answerInvite.isPending || acceptReferee.isPending || declineReferee.isPending
     || acceptRequest.isPending || declineRequest.isPending || cancelRequest.isPending
+  const actionCount = invites.length + appointments.length + incoming.length
+  const actionsSettled = sources.slice(0, 3).every(({ query }) => !!query.data && !query.isPending && !query.isError)
 
   return (
-    <section className="inbox-requests" aria-label="Action requests">
+    <div className="inbox-requests">
+    <section className="inbox-needs-action" aria-label="Needs action">
       <div className="spread">
-        <h2 className="disp">Action requests</h2>
+        <h2 className="disp">Needs action</h2>
+        <Badge kind="neutral">{actionCount} {actionsSettled ? 'pending' : 'loaded'}</Badge>
       </div>
 
       {notice ? <div role={notice.kind === 'crit' ? 'alert' : 'status'}><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
       {pending ? <p className="sub" role="status">Saving your answer…</p> : null}
+      <div className="inbox-action-list" role="region" aria-label="Pending invitations and assignments" tabIndex={0}>
       {sources.map(({ label, query }) => query.isPending ? <Panel quiet key={label}><span className="sub" role="status">Loading {label}…</span></Panel>
         : query.isError ? <Panel quiet key={label}><div role="alert"><b>Unable to load {label}</b><p className="sub">{answerError(query.error)}</p></div>
           <button className="btn ghost" type="button" onClick={() => void query.refetch()}>Retry {label}</button></Panel> : null)}
@@ -187,6 +192,15 @@ export function BackendInbox() {
         </Panel>
       ) : null}
 
+      {settled && nothing ? (
+        <Empty icon="bell" title="Nothing waiting on you"
+          sub="Invitations, referee appointments and entry decisions land here." />
+      ) : null}
+      </div>
+    </section>
+
+    {outgoing.length || waiting.length || decided.length ? <section className="inbox-request-updates" aria-label="Request updates">
+      <h2 className="disp">Request updates</h2>
       {outgoing.length ? <Panel quiet>
         <h3>Your referee requests</h3>
         {outgoing.map(request => <div className="inbox-request-row" key={request.id}>
@@ -224,10 +238,7 @@ export function BackendInbox() {
         </Panel>
       ) : null}
 
-      {settled && nothing ? (
-        <Empty icon="bell" title="Nothing waiting on you"
-          sub="Invitations, referee appointments and entry decisions land here." />
-      ) : null}
-    </section>
+    </section> : null}
+    </div>
   )
 }

@@ -1,0 +1,92 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 1573.71875,
+      "firstActionInitiallyVisible": false,
+      "height": 2921
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2165
+    }
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 1573.71875,
+      "firstActionInitiallyVisible": false,
+      "height": 2921
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2165
+    }
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 1573.71875,
+      "firstActionInitiallyVisible": false,
+      "height": 2945
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2165
+    }
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 1573.71875,
+      "firstActionInitiallyVisible": false,
+      "height": 2945
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2165
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 2958.90625,
+      "firstActionInitiallyVisible": false,
+      "height": 5005
+    },
+    "search": {
+      "total": "19 results",
+      "height": 3519
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 2958.90625,
+      "firstActionInitiallyVisible": false,
+      "height": 5005
+    },
+    "search": {
+      "total": "19 results",
+      "height": 3519
+    }
+  }
+]

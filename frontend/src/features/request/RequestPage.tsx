@@ -1,8 +1,8 @@
 /**
  * src/features/request/RequestPage.tsx
  *
- * Requesting a tournament is one form in four groups: what it is, when entry is
- * open, how long it runs, and who may enter. The entry conditions are set here
+ * Requesting a tournament is one form in three groups: Tournament, Schedule,
+ * and Eligibility. The entry conditions are set here
  * and only here — after an admin approves them, changing them means asking again
  * with a reason.
  *
@@ -44,6 +44,13 @@ const asLocalDateTime = (d: Date) =>
 const asDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
 const asIdOrNull = (value: string) => (value === '' ? null : Number(value))
+const reviewDate = (value: string | undefined) => {
+  if (!value) return 'Not set'
+  const date = new Date(value.includes('T') ? value : `${value}T00:00`)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium', ...(value.includes('T') ? { timeStyle: 'short' as const } : {}),
+  }).format(date)
+}
 
 export function RequestPage() {
   const navigate = useNavigate()
@@ -121,6 +128,11 @@ export function RequestPage() {
     && organizingFacultyId != null
     && admittedFaculties[0] === organizingFacultyId
   const facultyName = (id: number) => (faculties?.items ?? []).find(f => f.id === id)?.name ?? `คณะ #${id}`
+  const draft = useWatch({ control })
+  const entryFaculties = admittedFaculties.length ? admittedFaculties.map(facultyName).join(', ') : 'Every faculty'
+  const entryYears = admittedYears.length ? admittedYears.map(year => `Year ${year}`).join(', ') : 'Every year'
+  const entryAge = draft.minAge != null && draft.maxAge != null ? `${draft.minAge}–${draft.maxAge} years`
+    : draft.minAge != null ? `${draft.minAge}+ years` : draft.maxAge != null ? `Up to ${draft.maxAge} years` : 'Any age'
 
   if (!me) return null
   const submit = async (input: CreateTournamentInput) => {
@@ -213,10 +225,10 @@ export function RequestPage() {
       </div>
 
       <div className="split organizer-request">
-        <form onSubmit={handleSubmit(submit)} className="organizer-request-form">
+        <form id="tournament-request" onSubmit={handleSubmit(submit)} className="organizer-request-form">
           {sendError ? <Banner kind="crit"><b>Could not send the request.</b> {sendError}</Banner> : null}
 
-          <Panel>
+          <Panel className="request-field-group">
             <h2>Tournament</h2>
             <Field label="Name" htmlFor="rq-name">
               <input id="rq-name" {...register('name')} placeholder="Faculty Football Cup 2026" aria-invalid={!!errors.name} />
@@ -243,8 +255,7 @@ export function RequestPage() {
                 </select>
                 {fieldError('organizingFacultyId') ? <span className="sub">{fieldError('organizingFacultyId')}</span>
                   : organizingFacultyId == null
-                    ? <span className="sub">Every tournament is run by one faculty. LTMS has no university-wide
-                      level yet, so this cannot be left blank.</span>
+                    ? <span className="sub">Required: the organising faculty cannot be left blank.</span>
                     : null}
               </Field>
               <Field label="Organising department — optional" htmlFor="rq-dept">
@@ -268,10 +279,10 @@ export function RequestPage() {
             </div>
           </Panel>
 
-          <Panel>
-            <h2>Dates & venue</h2>
+          <Panel className="request-field-group">
+            <h2>Schedule</h2>
             <div className="sub">
-              Entry has to open and close before the first match. Every squad applies inside that window.
+              Entry must open and close before the first match date.
             </div>
             <div className="grid2">
               <Field label="Entry opens" htmlFor="rq-reg-start">
@@ -299,12 +310,11 @@ export function RequestPage() {
             </div>
           </Panel>
 
-          <Panel>
-            <h2>Entry rules</h2>
+          <Panel className="request-field-group">
+            <h2>Eligibility</h2>
             <Banner kind="warn">
-              <b>Every condition is optional, and every one you set is enforced with no override.</b>{' '}
-              A squad with one failing player is rejected outright, and after approval these can only be
-              changed by asking an admin again.
+              <b>Optional rules apply to every player, with no override.</b>{' '}
+              One failing player rejects the squad. Changes after approval need an admin.
             </Banner>
             <div className="grid2">
               <Field label="Gender" htmlFor="rq-gender">
@@ -327,8 +337,7 @@ export function RequestPage() {
 
             <span className="tag"><em>//</em> Which faculties may enter</span>
             <div className="sub">
-              A different question from the organising faculty above, which only says who is putting
-              the tournament on.
+              Who can enter, separate from who organises it.
             </div>
             <span className="segmented" role="radiogroup" aria-label="Which faculties may enter">
               {ADMIT.map(([value, label]) => (
@@ -369,16 +378,13 @@ export function RequestPage() {
                 "ถ้าคนนั้นคือคุณ" แทนการทึกทักว่าใช่หรือไม่ใช่ */}
             <Banner kind={ownFacultyOnly ? 'ok' : 'warn'} icon={ownFacultyOnly ? 'check' : 'clock'}>
               {admit === 'own' && organizingFacultyId == null ? (
-                <><b>Choose the organising faculty above first.</b> Entry is set to follow it, and while
-                  that is blank the tournament admits every faculty.</>
+                <><b>Choose the organising faculty above first.</b> Until then, entry admits every faculty.</>
               ) : ownFacultyOnly ? (
-                <><b>{facultyName(admittedFaculties[0]!)}&apos;s admin decides this one.</b> It admits only
-                  the faculty running it, so it stays inside that faculty. If that admin is you, it skips
-                  the queue and is approved the moment you send it.</>
+                <><b>{facultyName(admittedFaculties[0]!)}&apos;s admin decides this one.</b> If that admin is you, it skips
+                  the queue and is approved when sent.</>
               ) : admittedFaculties.length === 0 ? (
-                <><b>A university admin decides this one.</b> It is open to every faculty, which is above
-                  a faculty admin&apos;s scope — so a faculty admin sending this one still waits in the
-                  queue. Set entry to <em>Only the faculty running it</em> to decide it yourself.</>
+                <><b>A university admin decides this one.</b> Open to every faculty: a faculty admin sending this one still waits in the queue.
+                  For faculty approval, choose <em>Only the faculty running it</em>.</>
               ) : admittedFaculties.length > 1 ? (
                 <><b>A university admin decides this one.</b> It admits {admittedFaculties.length} faculties,
                   so no single faculty&apos;s admin can approve it — including their own faculty&apos;s.</>
@@ -388,25 +394,32 @@ export function RequestPage() {
               )}
             </Banner>
           </Panel>
-
-          <div className="hstack">
-            <button className="btn" type="button" onClick={() => navigate('/')}>Cancel</button>
-            <button className="btn primary" type="submit" disabled={isSubmitting || create.isPending}>
-              {create.isPending ? 'Sending…' : 'Send the request'}
-            </button>
-          </div>
         </form>
 
-        <div className="rail">
+        <aside className="rail request-review" aria-label="Request review summary" tabIndex={0}>
           <Panel quiet>
-            <h2>Next steps</h2>
-            <div className="sub">
-              An admin approves or declines it. Approved, it arrives as your <b>Private</b> draft: appoint
-              the referees, then open it to the public. LTMS deletes a private tournament on its match date.
-            </div>
-            <h3>Entry checks</h3>
-            <div style={{ fontSize: 15 }}>The server validates entry conditions before creating the request.</div>
+            <h2>Review your request</h2>
+            <dl className="request-review-facts">
+              <div><dt>Tournament</dt><dd>{draft.name?.trim() || 'Name not set'}</dd>
+                <dd>{sports?.items.find(s => s.id === draft.sportTypeId)?.name ?? 'Sport not set'} · {draft.bracketFormat ? BracketFormatLabel[draft.bracketFormat] : 'Format not set'}</dd>
+                <dd>{draft.minTeams ?? '—'}–{draft.maxTeams ?? '—'} squads</dd></div>
+              <div><dt>Organiser</dt><dd>{organizingFacultyId == null ? 'Choose a faculty' : facultyName(organizingFacultyId)}</dd>
+                <dd>{organizingDepartmentId == null ? 'Whole faculty' : departments?.items.find(d => d.id === organizingDepartmentId)?.name ?? `Department #${organizingDepartmentId}`}</dd></div>
+              <div><dt>Entry window</dt><dd>{reviewDate(draft.registrationStart)} to {reviewDate(draft.registrationEnd)}</dd></div>
+              <div><dt>Match dates & venue</dt><dd>{reviewDate(draft.eventStartDate)} to {reviewDate(draft.eventEndDate)}</dd><dd>{draft.venue?.trim() || 'Venue not set'}</dd></div>
+              <div><dt>Who can enter</dt><dd>{entryFaculties} · {entryYears}</dd>
+                <dd>{GenderRequirementLabel[draft.genderRequirement ?? 'any']} · {entryAge}</dd></div>
+            </dl>
+            <h3>After approval</h3>
+            <p className="sub">Your Private draft needs referees before you publish it. LTMS deletes private tournaments on their match date.</p>
+            <p className="sub">The server validates your request when you send it.</p>
           </Panel>
+        </aside>
+        <div className="hstack request-actions">
+          <button className="btn" type="button" onClick={() => navigate('/')}>Cancel</button>
+          <button className="btn primary" type="submit" form="tournament-request" disabled={isSubmitting || create.isPending}>
+            {create.isPending ? 'Sending…' : 'Send the request'}
+          </button>
         </div>
       </div>
     </>

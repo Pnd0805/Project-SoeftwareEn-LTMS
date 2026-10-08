@@ -141,7 +141,7 @@ export function PlayerPage() {
         {squads.length ? (
           <TableWrap label="Player teams">
             <table>
-              <thead><tr><th>Squad</th><th>Role</th><th>Standing</th><th>State</th><th /></tr></thead>
+              <thead><tr><th>Squad</th><th>Role</th><th>Standing</th><th>State</th><th>Actions</th></tr></thead>
               <tbody>
                 {squads.map(t => (
                   <tr key={t.id}>

@@ -6,7 +6,7 @@
  * squad page to start again is the long way round to the same form.
  */
 import { useRef, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Badge, Facts, Panel } from '../../components/kit/primitives'
 import { useLtms } from '../../shared/store'
 import { me, regsOf, squadsFor, team } from '../../shared/selectors'
@@ -27,8 +27,9 @@ import { registrationClosedReason } from './tournamentView'
  *   ใบสมัครเดิม → GET /me/applications
  * เดิมหน้านี้อ่านจาก store อย่างเดียว หัวหน้าทีมในโหมดจริงจึงไม่เห็นปุ่มสมัครเลย
  */
-export function EntryPanel({ t, applications, approvedCount, sportTypeId, confirmation, feedback }: {
+export function EntryPanel({ t, applications, approvedCount, sportTypeId, confirmation, feedback, organizer = false }: {
   t: Tournament
+  organizer?: boolean
   applications?: TournamentApplicationDto[]
   /** ยอดทีมที่ผู้จัดอนุมัติแล้ว จาก GET /tournaments/:id/teams (โหมดจริงเท่านั้น) */
   approvedCount?: number
@@ -136,7 +137,10 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
           <button className="btn ghost" type="button" onClick={() => void myApplications.refetch()}>Retry your entries</button>
         </> : null}
 
-        {!entryConfirmed ? <span className="sub">Entry availability is unconfirmed.</span>
+        {organizer ? <div className="vstack">
+          <p className="sub">Review registrations and entry rules in Manage.</p>
+          <Link className="btn" to={`/t/${t.id}/manage/registrations`}>Manage registrations</Link>
+        </div> : !entryConfirmed ? <span className="sub">Entry availability is unconfirmed.</span>
           : closed ? null : !u ? (
           <div className="hstack">
             <button className="btn primary" type="button" onClick={() => navigate('/login')}>Sign in to enter a squad</button>

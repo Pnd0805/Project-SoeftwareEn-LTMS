@@ -6,7 +6,7 @@
  * than quietly swapping in the bracket.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Badge, Panel, TableWrap } from '../../../components/kit/primitives'
 import { ManageActivity } from './ManageActivity'
 import { USE_MOCK } from '../../../api/client'
@@ -67,7 +67,6 @@ export function ManageTab({ t, sub }: { t: Tournament; sub?: string }) {
 }
 
 function ManageWorkspace({ t, sub }: { t: Tournament; sub?: string }) {
-  const navigate = useNavigate()
   const [finder, setFinder] = useState<string | null>(null)
   /* id ของ store เป็น string — แผงที่คุยกับ API ต้องได้เลขเท่านั้น */
   const liveTournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
@@ -81,9 +80,9 @@ function ManageWorkspace({ t, sub }: { t: Tournament; sub?: string }) {
   return (
     <div className="organizer-workspace">
       <nav className="tabs organizer-tabs" aria-label="Manage sections">
-        {subtabs.map(k => <button key={k} type="button" className={`tab ${k === active ? 'on' : ''}`}
+        {subtabs.map(k => <Link key={k} to={`/t/${t.id}/manage/${k}`} className={`tab ${k === active ? 'on' : ''}`}
           aria-current={k === active ? 'page' : undefined} aria-controls={`manage-${k}`}
-          onClick={() => navigate(`/t/${t.id}/manage/${k}`)}>{LABELS[k]}</button>)}
+          >{LABELS[k]}</Link>)}
       </nav>
       {subtabs.filter(k => visited.includes(k)).map(k => <ManageActivity.Provider key={k} value={active === k}>
         <section id={`manage-${k}`} className="organizer-section" aria-label={LABELS[k]} hidden={active !== k} inert={active !== k}>

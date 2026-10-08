@@ -33,6 +33,8 @@ it('intersects local team, round and state filters, clears no matches and opens 
     <Route path="/m/:id" element={<MatchDestination />} />
   </Routes></MemoryRouter></QueryClientProvider>)
   const table = await screen.findByRole('table')
+  expect(within(table).getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
+  expect(within(table).getAllByRole('columnheader').every(header => !!(header.textContent || header.getAttribute('aria-label'))?.trim())).toBe(true)
   fireEvent.change(screen.getByRole('searchbox', { name: 'Search schedule' }), { target: { value: 'northside' } })
   fireEvent.change(screen.getByLabelText('Round filter'), { target: { value: '2' } })
   fireEvent.change(screen.getByLabelText('Match state filter'), { target: { value: 'scheduled' } })

@@ -80,7 +80,7 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
       <table>
         <thead>
           <tr>
-            <th>Kick-off</th><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>State</th><th />
+            <th>Kick-off</th><th>Round</th><th>Home</th><th aria-label="Versus" /><th>Away</th><th>Score</th><th>State</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>

@@ -16,7 +16,7 @@ import { useState } from 'react'
 import { Badge, Banner, Empty, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { adminChangeValue, adminFieldLabel, adminReadBlocked } from './adminView'
 import { Modal } from '../../components/kit/Modal'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { TeamLinkView } from '../../components/kit/chips'
 import { decideFilterChange, decideTournament, useLtms } from '../../shared/store'
 import { isAdmin, regsOf, user } from '../../shared/selectors'
@@ -199,7 +199,7 @@ export function AdminPage() {
     <div className="admin-page">
       <div className="spread">
         <div>
-          <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>Admin</h1>
+          <h1 className="disp" style={{ fontSize: 32 }}>Admin</h1>
           <p className="sub">Review requests within your admin rights. Each queue keeps its own access rules.</p>
         </div>
         <div className="hstack">
@@ -213,10 +213,10 @@ export function AdminPage() {
       <nav className="admin-navigation" aria-label="Admin sections">
         {[{ name: 'Reviews', keys: ['requests', 'permanent', 'referees', 'filters', 'transfers'] },
           { name: 'Directory', keys: ['tournaments', 'users'] },
-          { name: 'Governance', keys: ['scopes', 'audit', 'feedback'] }].map(group => <div className="admin-nav-group" key={group.name}>
-          <span className="sub">{group.name}</span>
-          <div className="admin-nav-items">{TABS.filter(item => group.keys.includes(item.key)).map(item => <button type="button" className={`tab ${tab === item.key ? 'on' : ''}`} key={item.key}
-            aria-current={tab === item.key ? 'page' : undefined} onClick={() => navigate(`/admin/${item.key}`)}>{item.label}</button>)}</div>
+          { name: 'Governance', keys: ['scopes', 'audit', 'feedback'] }].map(group => <div className="admin-nav-group" role="group" aria-label={group.name} key={group.name}>
+          <h2>{group.name}</h2>
+          <div className="admin-nav-items">{TABS.filter(item => group.keys.includes(item.key)).map(item => <Link className={`tab ${tab === item.key ? 'on' : ''}`} key={item.key}
+            aria-current={tab === item.key ? 'page' : undefined} to={`/admin/${item.key}`}>{item.label}</Link>)}</div>
         </div>)}
       </nav>
       {decisionNotice ? <div role="status"><Banner kind={decisionNotice.kind}>{decisionNotice.text}</Banner></div> : null}
@@ -225,6 +225,7 @@ export function AdminPage() {
       {tab === 'requests' && !USE_MOCK ? (
         <Panel>
           <h2>Tournament requests <span className="sub">{tournamentRequestsQuery.data && !requestsBlocked ? backendRequests.length : '—'}</span></h2>
+          <p className="sub admin-queue-explanation">Approval creates a private tournament for this Organizer. Appoint referees before publication.</p>
           {tournamentRequestsQuery.isPending ? <div className="sub">Loading requests…</div> : null}
           {tournamentRequestsQuery.isError ? (
             <Banner kind="crit">
@@ -257,11 +258,7 @@ export function AdminPage() {
                     from every faculty, which is above a faculty admin&apos;s scope — a university admin has to
                     approve it. Declining it is still permitted, so think twice before you do.
                   </Banner>
-                ) : (
-                  <div className="sub">
-                    Approval creates a private tournament for this Organizer. Appoint referees before publication.
-                  </div>
-                )}
+                ) : null}
                 <div className="hstack">
                   <button className="btn danger" type="button" disabled={reviewTournamentReq.isPending}
                     onClick={() => { setTournamentReason(''); setRejectingTournament({ id: r.id, name: r.name }) }}>Decline</button>
@@ -298,6 +295,7 @@ export function AdminPage() {
       {tab === 'requests' && USE_MOCK ? (
         <Panel>
           <h2>Tournament requests <span className="sub">{requests.length}</span></h2>
+          <p className="sub admin-queue-explanation">Approval creates a private tournament for this Organizer. Appoint referees before publication.</p>
           <div className="admin-review-list" role="region" aria-label="Tournament request queue" tabIndex={0}>
           {requests.length ? requests.map(t => (
             <div className="vstack admin-review-item" role="article" aria-label={t.name} key={t.id}>
@@ -312,9 +310,6 @@ export function AdminPage() {
               </div>
               <div className="sub">
                 {user(s, t.organizer)?.name} · {t.venue} · cap {t.cap} · entry {ruleSummary(t.rules) || 'open to everybody'}
-              </div>
-              <div className="sub">
-                Approval creates a private tournament for this Organizer. Appoint referees before publication.
               </div>
               <div className="hstack">
                 <button className="btn danger" type="button" onClick={() => { decideTournament(t.id, false); setDecisionNotice({ kind: 'warn', text: `Declined ${t.name}.` }) }}>Decline</button>
@@ -365,7 +360,7 @@ export function AdminPage() {
           {permanentRows.length ? (
             <TableWrap label="Official squad requests">
               <table>
-                <thead><tr><th>Squad</th><th>Asked by</th><th>When</th><th /></tr></thead>
+                <thead><tr><th>Squad</th><th>Asked by</th><th>When</th><th>Actions</th></tr></thead>
                 <tbody>
                   {permanentRows.map(r => (
                     <tr key={r.id}>
@@ -427,14 +422,14 @@ export function AdminPage() {
           {approveAmendment.isError ? (
             <Banner kind="crit"><b>The decision did not go through.</b> {(approveAmendment.error as Error).message}</Banner>
           ) : null}
-          <div className="admin-review-list" role="region" aria-label="Rule change queue" tabIndex={0}>
+          <div className="admin-review-list admin-change-list" role="region" aria-label="Rule change queue" tabIndex={0}>
           {amendmentRows.map(request => (
-            <div className="vstack admin-review-item" role="article" aria-label={`Changes for ${request.tournamentName}`} key={request.id}>
-              <div className="spread">
-                <h3>{request.tournamentName}</h3><Badge kind="warn">Pending changes</Badge>
-                <span className="tag">{fmtDate(request.requestedAt)}</span>
+            <div className="vstack admin-review-item admin-change-item" role="article" aria-label={`Changes for ${request.tournamentName}`} key={request.id}>
+              <div className="vstack admin-change-identity">
+                <h3>{request.tournamentName}</h3>
+                <div className="hstack"><Badge kind="warn">Pending changes</Badge><span className="tag">{fmtDate(request.requestedAt)}</span></div>
+                <div className="sub">Asked by {request.requestedBy.fullName}</div>
               </div>
-              <div className="sub">Asked by {request.requestedBy.fullName}</div>
               <TableWrap label={`Requested changes for ${request.tournamentName}`}>
                 <table>
                   <thead><tr><th>Field</th><th>Asked for</th></tr></thead>
@@ -489,8 +484,7 @@ export function AdminPage() {
         <Panel>
           <h2>Rule changes <span className="sub">{filters.length}</span></h2>
           <div className="sub">
-            The conditions are set once and enforced with no override. This queue exists because the
-            alternative is an organizer quietly widening the rules once they see who registered.
+            Entry rules are enforced without overrides. Approval applies the requested rules shown below.
           </div>
           <div className="admin-review-list" role="region" aria-label="Rule change queue" tabIndex={0}>
           {filters.length ? filters.map(t => (
@@ -527,7 +521,7 @@ export function AdminPage() {
           ) : null}
           <TableWrap label="Published tournaments">
             <table>
-              <thead><tr><th>Tournament</th><th>Sport</th><th>Starts</th><th>Venue</th><th>Registration</th><th /></tr></thead>
+              <thead><tr><th>Tournament</th><th>Sport</th><th>Starts</th><th>Venue</th><th>Registration</th><th>Actions</th></tr></thead>
               <tbody>
                 {(publicTournaments.data?.items ?? []).map(item => (
                   <tr key={item.id}>
@@ -550,7 +544,7 @@ export function AdminPage() {
           <h2>Tournaments <span className="sub">{s.tournaments.length}</span></h2>
           <TableWrap label="All tournaments">
             <table>
-              <thead><tr><th>Tournament</th><th>Sport</th><th>Format</th><th>Organizer</th><th>Status</th><th>Squads</th><th /></tr></thead>
+              <thead><tr><th>Tournament</th><th>Sport</th><th>Format</th><th>Organizer</th><th>Status</th><th>Squads</th><th>Actions</th></tr></thead>
               <tbody>
                 {s.tournaments.map(t => (
                   <tr key={t.id}>

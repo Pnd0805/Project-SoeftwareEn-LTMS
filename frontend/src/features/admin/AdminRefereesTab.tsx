@@ -83,7 +83,7 @@ export function AdminRefereesTab() {
       {rows.length ? (
         <TableWrap label="External referee requests">
           <table>
-            <thead><tr><th>Referee</th><th>Tournament</th><th>Appointed by</th><th /></tr></thead>
+            <thead><tr><th>Referee</th><th>Tournament</th><th>Appointed by</th><th>Actions</th></tr></thead>
             <tbody>
               {rows.map(r => (
                 <tr key={`${r.id}-${r.tournament.id}`}>

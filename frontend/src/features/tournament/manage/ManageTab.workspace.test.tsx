@@ -36,6 +36,6 @@ it('retains an entry-notes draft through route tab changes and hides the inactiv
   await act(async () => { await router.navigate('/t/42/manage/progress') })
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(screen.queryByRole('button', { name: 'Edit entry notes' })).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Entry & filter' }))
+  fireEvent.click(screen.getByRole('link', { name: 'Entry & filter' }))
   expect(screen.getByLabelText(/Entry notes \(up to/)).toHaveValue('Bring a student card and consent form')
 })

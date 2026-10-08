@@ -85,6 +85,35 @@ beforeEach(() => {
   reviewMutate.mockImplementation(() => {})
 })
 
+it('keeps grouped Admin destinations as current-route links without reviewing a request', () => {
+  renderPage()
+  const nav = within(screen.getByRole('navigation', { name: 'Admin sections' }))
+  const reviews = within(nav.getByRole('group', { name: 'Reviews' }))
+  expect(reviews.getByRole('link', { name: 'Tournament requests' })).toHaveAttribute('aria-current', 'page')
+  expect(nav.getByRole('group', { name: 'Directory' })).toBeInTheDocument()
+  expect(nav.getByRole('group', { name: 'Governance' })).toBeInTheDocument()
+  fireEvent.click(reviews.getByRole('link', { name: 'Rule changes' }))
+  expect(reviews.getByRole('link', { name: 'Rule changes' })).toHaveAttribute('aria-current', 'page')
+  expect(reviews.getByRole('link', { name: 'Tournament requests' })).not.toHaveAttribute('aria-current')
+  expect(screen.getByRole('heading', { name: /Rule changes/ })).toBeInTheDocument()
+  expect(screen.queryByRole('article')).not.toBeInTheDocument()
+  expect(reviewMutate).not.toHaveBeenCalled()
+})
+
+it('explains approval once outside the queue while retaining individual request context and actions', () => {
+  renderPage()
+  const consequence = screen.getByText(/Approval creates a private tournament/)
+  const queue = screen.getByRole('region', { name: 'Tournament request queue' })
+  expect(queue).not.toContainElement(consequence)
+  const rows = within(queue).getAllByRole('article')
+  expect(rows).toHaveLength(2)
+  for (const row of rows) {
+    expect(within(row).getByText(/Requested by/)).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Approve' })).toBeEnabled()
+    expect(within(row).getByRole('button', { name: 'Decline' })).toBeEnabled()
+  }
+})
+
 it('keeps a named approval receipt after the request leaves the queue', () => {
   reviewMutate.mockImplementation((_vars, opts) => {
     requestQuery = { ...emptyList, data: { items: [] } }
