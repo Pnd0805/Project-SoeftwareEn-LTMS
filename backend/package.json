@@ -16,7 +16,9 @@
     "test:watch": "vitest",
     "test:slow": "vitest run --config vitest.slow.config.ts",
     "test:int": "vitest run --config vitest.integration.config.ts",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "perf": "npm run build && tsx perf/run.ts",
+    "perf:quick": "npm run build && PERF_QUICK=1 tsx perf/run.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",
