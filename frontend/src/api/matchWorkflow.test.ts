@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
 import * as api from './matchWorkflow'
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => { fetchMock.mockReset(); fetchMock.mockResolvedValue(new Response('{}')); vi.stubGlobal('fetch', fetchMock) })

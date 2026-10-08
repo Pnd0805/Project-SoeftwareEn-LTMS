@@ -1,10 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { MeDto } from '../../types/dto'
-const state = vi.hoisted(() => ({ profile: vi.fn(), prefs: vi.fn(), locked: false }))
+const state = vi.hoisted(() => ({ profile: vi.fn(), prefs: vi.fn(), emailPrefs: vi.fn(), locked: false }))
 vi.mock('../../hooks/useAuth', () => ({ useUpdateMe: () => ({ mutate: state.profile }) }))
 vi.mock('../../hooks/useQaFeatures', () => ({ useNotificationPreferences: () => ({
   query: { data: { categories: [{ key: 'critical', enabled: true, locked: true }, { key: 'community', enabled: true, locked: state.locked }] } }, save: { mutate: state.prefs },
+}), useEmailNotificationPreferences: () => ({
+  query: { data: { categories: [{ key: 'critical', enabled: true, locked: false }, { key: 'community', enabled: true, locked: false }] } },
+  save: { mutate: state.emailPrefs },
 }) }))
 import { NotificationSettings, ProfileSettings } from './ProfileSettings'
 beforeEach(() => { vi.clearAllMocks(); state.locked = false })
@@ -23,6 +26,16 @@ it('keeps critical updates enabled and changes only the selected category', () =
   expect(screen.getByLabelText('Critical notifications')).toBeDisabled()
   fireEvent.click(screen.getByLabelText('Community notifications'))
   expect(state.prefs).toHaveBeenCalledWith({ key: 'community', enabled: false })
+})
+it('allows disabling critical email while retaining mandatory in-app critical notifications', () => {
+  render(<NotificationSettings />)
+  const inApp = screen.getByLabelText('Critical notifications')
+  const email = screen.getByLabelText('Critical email notifications')
+  expect(inApp).toBeDisabled()
+  expect(email).not.toBeDisabled()
+  fireEvent.click(email)
+  expect(state.emailPrefs).toHaveBeenCalledWith({ key: 'critical', enabled: false })
+  expect(state.prefs).not.toHaveBeenCalled()
 })
 it('honors server locks on other categories too', () => {
   state.locked = true

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
-import { cancelJoinRequest, decideUserReport, getUserReports, reportUser, requestToJoin, reviewJoinRequest, setTeamVisibility, updateNotificationPreference } from './qaFeatures'
+import { cancelJoinRequest, decideUserReport, getUserReports, reportUser, requestToJoin, reviewJoinRequest, setTeamVisibility, updateNotificationPreference, updateEmailNotificationPreference } from './qaFeatures'
 const request = vi.fn<typeof fetch>()
 beforeEach(() => { request.mockReset().mockResolvedValue(new Response('{}', { status: 200 })); vi.stubGlobal('fetch', request) })
 afterEach(() => vi.unstubAllGlobals())
@@ -23,6 +23,11 @@ it('writes visibility and only the selected mutable notification category', asyn
   await updateNotificationPreference('community', false)
   expect(request.mock.calls.at(-1)?.[0]).toBe('/api/v1/me/notification-prefs')
   expect(body()).toEqual({ community: false })
+})
+it('saves email preferences through an independent endpoint, including critical', async () => {
+  await updateEmailNotificationPreference('critical', false)
+  expect(request.mock.calls.at(-1)?.[0]).toBe('/api/v1/me/email-notification-prefs')
+  expect(body()).toEqual({ critical: false })
 })
 it('passes report evidence keys and keeps review decisions distinct', async () => {
   await reportUser(12, '  Repeated spam  ', ['reports/9/evidence.png'])

@@ -27,6 +27,9 @@ export type NotificationCategory = 'critical' | 'team' | 'tournament' | 'match' 
 export interface NotificationPreferences { categories: Array<{ key: NotificationCategory; enabled: boolean; locked: boolean }> }
 export const getNotificationPreferences = () => live<NotificationPreferences>('/me/notification-prefs')
 export const updateNotificationPreference = (key: Exclude<NotificationCategory, 'critical'>, enabled: boolean) => live<NotificationPreferences>('/me/notification-prefs', 'PATCH', { [key]: enabled })
+export interface EmailNotificationPreferences { categories: Array<{ key: NotificationCategory; enabled: boolean; locked: boolean }>; delivery: { critical: 'immediate'; other: 'daily'; hourThailand: number } }
+export const getEmailNotificationPreferences = () => live<EmailNotificationPreferences>('/me/email-notification-prefs')
+export const updateEmailNotificationPreference = (key: NotificationCategory, enabled: boolean) => live<EmailNotificationPreferences>('/me/email-notification-prefs', 'PATCH', { [key]: enabled })
 
 export interface UserReport {
   id: number; reporter: UserRef; target: UserRef & { isAdmin: boolean }; reason: string; evidence: string[]

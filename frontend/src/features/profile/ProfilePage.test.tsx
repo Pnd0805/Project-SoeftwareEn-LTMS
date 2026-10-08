@@ -1,4 +1,7 @@
-vi.mock('../../hooks/useQaFeatures', () => ({ useNotificationPreferences: () => ({ query: { data: { categories: [] }, isPending: false, isError: false }, save: { isPending: false, isError: false } }) }))
+vi.mock('../../hooks/useQaFeatures', () => ({
+  useNotificationPreferences: () => ({ query: { data: { categories: [] }, isPending: false, isError: false }, save: { isPending: false, isError: false } }),
+  useEmailNotificationPreferences: () => ({ query: { data: { categories: [] }, isPending: false, isError: false }, save: { isPending: false, isError: false } }),
+}))
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'

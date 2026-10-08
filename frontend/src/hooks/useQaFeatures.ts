@@ -23,6 +23,13 @@ export function useNotificationPreferences() {
     onSuccess: data => { qc.setQueryData(['notificationPreferences'], data); void qc.invalidateQueries({ queryKey: ['notifications'] }) } })
   return { query, save }
 }
+export function useEmailNotificationPreferences() {
+  const qc = useQueryClient()
+  const query = useQuery({ queryKey: ['emailNotificationPreferences'], queryFn: api.getEmailNotificationPreferences, retry: retryPolicy })
+  const save = useMutation({ mutationFn: (v: { key: api.NotificationCategory; enabled: boolean }) => api.updateEmailNotificationPreference(v.key, v.enabled),
+    onSuccess: data => qc.setQueryData(['emailNotificationPreferences'], data) })
+  return { query, save }
+}
 export function useUserReports(page: number, enabled: boolean) {
   const qc = useQueryClient()
   const query = useQuery({ queryKey: ['userReports', page], queryFn: () => api.getUserReports(page), enabled, retry: retryPolicy })
