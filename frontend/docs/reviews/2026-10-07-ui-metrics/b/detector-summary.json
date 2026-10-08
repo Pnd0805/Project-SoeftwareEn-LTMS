@@ -1,0 +1,31 @@
+{
+  "total": 175,
+  "rules": {
+    "design-system-color": 54,
+    "design-system-font-size": 100,
+    "low-contrast": 1,
+    "extreme-negative-tracking": 1,
+    "tiny-text": 1,
+    "undersized-ui-text": 2,
+    "gpt-thin-border-wide-shadow": 1,
+    "design-system-radius": 12,
+    "overused-font": 1,
+    "dark-glow": 1,
+    "broken-image": 1
+  },
+  "files": {
+    "src/components/kit/Scorebug.test.tsx": 2,
+    "src/components/kit/chips.test.tsx": 4,
+    "src/features/auth/account-workspace.css": 7,
+    "src/features/home/Home.prototype.html": 78,
+    "src/features/match/MatchWorkflowPanel.tsx": 1,
+    "src/features/search/search-inbox-workspace.css": 5,
+    "src/mocks/match.mock.ts": 4,
+    "src/mocks/teamWrites.ts": 1,
+    "src/styles/prototype.css": 73
+  },
+  "severities": {
+    "advisory": 167,
+    "warning": 8
+  }
+}

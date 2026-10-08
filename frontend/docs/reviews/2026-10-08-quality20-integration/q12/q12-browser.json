@@ -1,0 +1,602 @@
+[
+  {
+    "name": "q12-register-blank-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-register-error-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-admin-blocked-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-comment-confirm-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 512.375,
+      "top": 143.8125,
+      "bottom": 656.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-denied-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 548.375,
+      "top": 125.8125,
+      "bottom": 674.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-restore-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 402.390625,
+      "top": 198.796875,
+      "bottom": 601.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-review-confirm-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 460.328125,
+      "top": 169.828125,
+      "bottom": 630.15625,
+      "confirmVisible": true
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "registerDraftRetained": true,
+    "targetConfirmed": true,
+    "cancellationSendsNothing": true,
+    "focusReturns": true,
+    "writes": [
+      {
+        "path": "/auth/register",
+        "method": "POST",
+        "body": {
+          "fullName": "Deliberate Student",
+          "email": "chosen@example.test",
+          "password": "password123",
+          "gender": "other",
+          "birthDate": "2002-06-04",
+          "facultyId": 2,
+          "departmentId": 8,
+          "year": 3
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42/restore",
+        "method": "POST",
+        "body": null
+      }
+    ],
+    "errors": []
+  },
+  {
+    "name": "q12-register-blank-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-register-error-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-admin-blocked-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-comment-confirm-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 512.375,
+      "top": 143.8125,
+      "bottom": 656.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-denied-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 548.375,
+      "top": 125.8125,
+      "bottom": 674.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-restore-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 402.390625,
+      "top": 198.796875,
+      "bottom": 601.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-review-confirm-1280-light",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 460.328125,
+      "top": 169.828125,
+      "bottom": 630.15625,
+      "confirmVisible": true
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "registerDraftRetained": true,
+    "targetConfirmed": true,
+    "cancellationSendsNothing": true,
+    "focusReturns": true,
+    "writes": [
+      {
+        "path": "/auth/register",
+        "method": "POST",
+        "body": {
+          "fullName": "Deliberate Student",
+          "email": "chosen@example.test",
+          "password": "password123",
+          "gender": "other",
+          "birthDate": "2002-06-04",
+          "facultyId": 2,
+          "departmentId": 8,
+          "year": 3
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42/restore",
+        "method": "POST",
+        "body": null
+      }
+    ],
+    "errors": []
+  },
+  {
+    "name": "q12-register-blank-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-register-error-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-admin-blocked-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-comment-confirm-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 512.375,
+      "top": 193.8125,
+      "bottom": 706.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-denied-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 548.375,
+      "top": 175.8125,
+      "bottom": 724.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-restore-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 402.390625,
+      "top": 248.796875,
+      "bottom": 651.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-review-confirm-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "dialog": {
+      "height": 460.328125,
+      "top": 219.828125,
+      "bottom": 680.15625,
+      "confirmVisible": true
+    }
+  },
+  {
+    "width": 1440,
+    "theme": "dark",
+    "registerDraftRetained": true,
+    "targetConfirmed": true,
+    "cancellationSendsNothing": true,
+    "focusReturns": true,
+    "writes": [
+      {
+        "path": "/auth/register",
+        "method": "POST",
+        "body": {
+          "fullName": "Deliberate Student",
+          "email": "chosen@example.test",
+          "password": "password123",
+          "gender": "other",
+          "birthDate": "2002-06-04",
+          "facultyId": 2,
+          "departmentId": 8,
+          "year": 3
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42/restore",
+        "method": "POST",
+        "body": null
+      }
+    ],
+    "errors": []
+  },
+  {
+    "name": "q12-register-blank-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-register-error-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-admin-blocked-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-comment-confirm-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 512.375,
+      "top": 193.8125,
+      "bottom": 706.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-denied-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 548.375,
+      "top": 175.8125,
+      "bottom": 724.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-restore-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 402.390625,
+      "top": 248.796875,
+      "bottom": 651.1875,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-review-confirm-1440-light",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 460.328125,
+      "top": 219.828125,
+      "bottom": 680.15625,
+      "confirmVisible": true
+    }
+  },
+  {
+    "width": 1440,
+    "theme": "light",
+    "registerDraftRetained": true,
+    "targetConfirmed": true,
+    "cancellationSendsNothing": true,
+    "focusReturns": true,
+    "writes": [
+      {
+        "path": "/auth/register",
+        "method": "POST",
+        "body": {
+          "fullName": "Deliberate Student",
+          "email": "chosen@example.test",
+          "password": "password123",
+          "gender": "other",
+          "birthDate": "2002-06-04",
+          "facultyId": 2,
+          "departmentId": 8,
+          "year": 3
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42/restore",
+        "method": "POST",
+        "body": null
+      }
+    ],
+    "errors": []
+  },
+  {
+    "name": "q12-register-blank-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-register-error-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-admin-blocked-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": null
+  },
+  {
+    "name": "q12-comment-confirm-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 539.984375,
+      "top": 152,
+      "bottom": 691.984375,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-denied-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 599.984375,
+      "top": 122,
+      "bottom": 721.984375,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-comment-restore-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 430,
+      "top": 207,
+      "bottom": 637,
+      "confirmVisible": true
+    }
+  },
+  {
+    "name": "q12-review-confirm-390-light",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "dialog": {
+      "height": 510.328125,
+      "top": 166.828125,
+      "bottom": 677.15625,
+      "confirmVisible": true
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "registerDraftRetained": true,
+    "targetConfirmed": true,
+    "cancellationSendsNothing": true,
+    "focusReturns": true,
+    "writes": [
+      {
+        "path": "/auth/register",
+        "method": "POST",
+        "body": {
+          "fullName": "Deliberate Student",
+          "email": "chosen@example.test",
+          "password": "password123",
+          "gender": "other",
+          "birthDate": "2002-06-04",
+          "facultyId": 2,
+          "departmentId": 8,
+          "year": 3
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42",
+        "method": "DELETE",
+        "body": {
+          "reason": "Reviewed target"
+        }
+      },
+      {
+        "path": "/admin/feedback/42/restore",
+        "method": "POST",
+        "body": null
+      }
+    ],
+    "errors": []
+  }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "theme": "dark",
+    "foreground": "bone",
+    "background": "panel-4",
+    "ratio": 8.321,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "bone-dim",
+    "background": "panel-3",
+    "ratio": 7.137,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "bone-faint",
+    "background": "panel-3",
+    "ratio": 5.035,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "red-text",
+    "background": "panel-3",
+    "ratio": 5.036,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "accent-ink",
+    "background": "teal",
+    "ratio": 7.132,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "accent-ink",
+    "background": "red",
+    "ratio": 5.227,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "teal",
+    "background": "panel",
+    "ratio": 6.042,
+    "minimum": 3,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "amber",
+    "background": "panel",
+    "ratio": 7.47,
+    "minimum": 3,
+    "pass": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "qr-ink",
+    "background": "qr-bg",
+    "ratio": 14.598,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "bone",
+    "background": "panel-4",
+    "ratio": 10.798,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "bone-dim",
+    "background": "panel-3",
+    "ratio": 6.57,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "bone-faint",
+    "background": "panel-3",
+    "ratio": 5.012,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "red-text",
+    "background": "panel-3",
+    "ratio": 7.351,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "accent-ink",
+    "background": "teal",
+    "ratio": 5.634,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "accent-ink",
+    "background": "red",
+    "ratio": 5.176,
+    "minimum": 4.5,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "teal",
+    "background": "panel",
+    "ratio": 5.634,
+    "minimum": 3,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "amber",
+    "background": "panel",
+    "ratio": 5.748,
+    "minimum": 3,
+    "pass": true
+  },
+  {
+    "theme": "light",
+    "foreground": "qr-ink",
+    "background": "qr-bg",
+    "ratio": 14.598,
+    "minimum": 4.5,
+    "pass": true
+  }
+]

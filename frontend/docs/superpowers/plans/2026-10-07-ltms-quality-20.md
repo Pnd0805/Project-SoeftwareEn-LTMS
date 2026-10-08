@@ -1,6 +1,6 @@
 # LTMS Quality 20 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking. The current request is for documents only; do not execute tasks from this plan until it is reviewed.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Q10–Q22 frontend implementation has been integrated locally. Q23 remains the acceptance gate; see [integration evidence](../notes/quality20/2026-10-08-integration.md).
 
 **Goal:** Raise each verified LTMS task surface toward 20/20 under a repeatable five-dimension rubric, targeting at least 18/20 and closing all 28 observed UI findings.
 
@@ -14,7 +14,7 @@
 
 ## Authorized two-worktree execution split (2026-10-08)
 
-Create both worktrees from the same `ltms-desktop-ux` base revision and the same captured dirty-working-tree snapshot. Do not commit, merge or push this program. Keep Q23 for the later integration/acceptance stage after the user has reviewed both worktrees.
+Both worktrees started from the same `ltms-desktop-ux` revision and captured dirty-working-tree snapshot. The user initially requested separate previews, then authorized local commits and integration on 2026-10-08. Their commits are now incorporated into `ltms-desktop-ux`. Q23 remains the quality acceptance stage.
 
 | Worktree | Assigned scope | File ownership rule |
 |---|---|---|
@@ -265,8 +265,8 @@ Q22 route, recovery and bundle evidence: [worker-quality.md](../notes/quality20/
 
 **Interfaces:** Consume the spec rubric and all Q10–Q22 evidence. Output a matrix with each surface's five scores, worst required state, screenshot/test link, open finding and remaining dependency.
 
-- [ ] **Step 1 — Inventory.** Enumerate the app route/role/task matrix from App.tsx and the review's per-surface list, including Guest, Player, Team Leader, Organizer, Referee and Admin.
-- [ ] **Step 2 — Run source gates.** Run npx tsc --noEmit -p tsconfig.app.json, npm run lint, npx vitest run and npm run build. Expected: each exits 0; record counts and any warnings.
+- [x] **Step 1 — Inventory.** Enumerate the app route/role/task matrix from App.tsx and the review's per-surface list, including Guest, Player, Team Leader, Organizer, Referee and Admin. See [Q23 acceptance inventory](../../reviews/2026-10-08-quality20-integration/Q23.md); 24 Route patterns plus conditional auth, mapped to the 28 spec surfaces. This inventory does not award missing scores or close rendered gates.
+- [x] **Step 2 — Run source gates.** Run npx tsc --noEmit -p tsconfig.app.json, npm run lint, npx vitest run and npm run build. Expected: each exits 0; record counts and any warnings. Integrated branch: 105 files / 760 tests; TypeScript, lint and build passed on 2026-10-08. Existing scrollTo notice and raw chunk-size warning remain; see integration evidence.
 - [ ] **Step 3 — Run rendered gates.** Check 1280×800 and 1440×900 in dark/light; normal, empty, long, loading, denied/unsupported, partial error and recoverable mutation failure where relevant; keyboard/focus/contrast. Check 390×844, 320px/reflow and a physical iPhone for Scan as the subsequent Mobile phase.
 - [ ] **Step 4 — Score honestly.** Apply five 0–4 dimensions separately to every surface and state. Publish the worst required result per surface, desktop and mobile progress separately, technical /20 separately and Nielsen /40 separately. Never fill missing evidence with a 4.
 - [ ] **Step 5 — Review and close.** Compare 28 original U findings and all 14 tickets with evidence. Any surface below 18, dimension below 3, open P1, missing backend context or unavailable device check remains open/unverified with a follow-up owner. Record the exact files changed against the starting dirty baseline. Do not call the overall program 100% until all applicable gates pass.

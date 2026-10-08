@@ -1,0 +1,743 @@
+{
+  "checks": [
+    {
+      "name": "preview-1280-dark",
+      "url": "http://127.0.0.1:5175/home/all?preview=t-fb",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Tournaments"
+      ],
+      "mainText": "TOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true
+    },
+    {
+      "name": "reduced-motion-1280-dark",
+      "durations": {
+        "animation": "none",
+        "transition": "0s"
+      }
+    },
+    {
+      "name": "report-1280-dark",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "0px none rgb(229, 220, 200)",
+        "background": "rgb(26, 23, 38)"
+      }
+    },
+    {
+      "name": "search-partial-1280-dark",
+      "url": "http://127.0.0.1:5176/search/Northside",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Search"
+      ],
+      "mainText": "SEARCH\n\nFind tournaments, teams and players.\n\nSearch terms\nTournament status\nOpen and active\nCompleted\n\n13 results loaded · Search in progress or incomplete\n\nUnable to search teams right now.\nRetry teams\nTournaments 7\nNorthside Community Championship for Engineering and Sporting Academies\nFootball · Single elimination · public\nNorthside Community C",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "partialSource": true
+    },
+    {
+      "name": "inbox-denied-1280-dark",
+      "url": "http://127.0.0.1:5176/inbox",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Inbox"
+      ],
+      "mainText": "INBOX\nUnread only\nUnable to load inbox\n\nFixture: this source is unavailable.\n\nRetry notifications\nACTION REQUESTS\nTeam invitations 1\nNorthside Community Sporting Team with a Long Registration Name\ninvited by Captain Northside Sporting Academy · expires Dec 01, 07:00 AM\nDecline\nAccept\nReferee appointments 1\nNorthside Community Championship for Engin",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "deniedContentHidden": true
+    },
+    {
+      "name": "preview-1280-light",
+      "url": "http://127.0.0.1:5175/home/all?preview=t-fb",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Tournaments"
+      ],
+      "mainText": "TOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true
+    },
+    {
+      "name": "reduced-motion-1280-light",
+      "durations": {
+        "animation": "none",
+        "transition": "0s"
+      }
+    },
+    {
+      "name": "report-1280-light",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "0px none rgb(42, 33, 23)",
+        "background": "rgb(241, 233, 216)"
+      }
+    },
+    {
+      "name": "search-partial-1280-light",
+      "url": "http://127.0.0.1:5176/search/Northside",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Search"
+      ],
+      "mainText": "SEARCH\n\nFind tournaments, teams and players.\n\nSearch terms\nTournament status\nOpen and active\nCompleted\n\n13 results loaded · Search in progress or incomplete\n\nUnable to search teams right now.\nRetry teams\nTournaments 7\nNorthside Community Championship for Engineering and Sporting Academies\nFootball · Single elimination · public\nNorthside Community C",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "partialSource": true
+    },
+    {
+      "name": "inbox-denied-1280-light",
+      "url": "http://127.0.0.1:5176/inbox",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Inbox"
+      ],
+      "mainText": "INBOX\nUnread only\nUnable to load inbox\n\nFixture: this source is unavailable.\n\nRetry notifications\nACTION REQUESTS\nTeam invitations 1\nNorthside Community Sporting Team with a Long Registration Name\ninvited by Captain Northside Sporting Academy · expires Dec 01, 07:00 AM\nDecline\nAccept\nReferee appointments 1\nNorthside Community Championship for Engin",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "deniedContentHidden": true
+    },
+    {
+      "name": "preview-1440-dark",
+      "url": "http://127.0.0.1:5175/home/all?preview=t-fb",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Tournaments"
+      ],
+      "mainText": "TOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true
+    },
+    {
+      "name": "reduced-motion-1440-dark",
+      "durations": {
+        "animation": "none",
+        "transition": "0s"
+      }
+    },
+    {
+      "name": "report-1440-dark",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "0px none rgb(229, 220, 200)",
+        "background": "rgb(26, 23, 38)"
+      }
+    },
+    {
+      "name": "search-partial-1440-dark",
+      "url": "http://127.0.0.1:5176/search/Northside",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Search"
+      ],
+      "mainText": "SEARCH\n\nFind tournaments, teams and players.\n\nSearch terms\nTournament status\nOpen and active\nCompleted\n\n13 results loaded · Search in progress or incomplete\n\nUnable to search teams right now.\nRetry teams\nTournaments 7\nNorthside Community Championship for Engineering and Sporting Academies\nFootball · Single elimination · public\nNorthside Community C",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "partialSource": true
+    },
+    {
+      "name": "inbox-denied-1440-dark",
+      "url": "http://127.0.0.1:5176/inbox",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Inbox"
+      ],
+      "mainText": "INBOX\nUnread only\nUnable to load inbox\n\nFixture: this source is unavailable.\n\nRetry notifications\nACTION REQUESTS\nTeam invitations 1\nNorthside Community Sporting Team with a Long Registration Name\ninvited by Captain Northside Sporting Academy · expires Dec 01, 07:00 AM\nDecline\nAccept\nReferee appointments 1\nNorthside Community Championship for Engin",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "deniedContentHidden": true
+    },
+    {
+      "name": "preview-1440-light",
+      "url": "http://127.0.0.1:5175/home/all?preview=t-fb",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Tournaments"
+      ],
+      "mainText": "TOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true
+    },
+    {
+      "name": "reduced-motion-1440-light",
+      "durations": {
+        "animation": "none",
+        "transition": "0s"
+      }
+    },
+    {
+      "name": "report-1440-light",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "0px none rgb(42, 33, 23)",
+        "background": "rgb(241, 233, 216)"
+      }
+    },
+    {
+      "name": "search-partial-1440-light",
+      "url": "http://127.0.0.1:5176/search/Northside",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Search"
+      ],
+      "mainText": "SEARCH\n\nFind tournaments, teams and players.\n\nSearch terms\nTournament status\nOpen and active\nCompleted\n\n13 results loaded · Search in progress or incomplete\n\nUnable to search teams right now.\nRetry teams\nTournaments 7\nNorthside Community Championship for Engineering and Sporting Academies\nFootball · Single elimination · public\nNorthside Community C",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "partialSource": true
+    },
+    {
+      "name": "inbox-denied-1440-light",
+      "url": "http://127.0.0.1:5176/inbox",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Inbox"
+      ],
+      "mainText": "INBOX\nUnread only\nUnable to load inbox\n\nFixture: this source is unavailable.\n\nRetry notifications\nACTION REQUESTS\nTeam invitations 1\nNorthside Community Sporting Team with a Long Registration Name\ninvited by Captain Northside Sporting Academy · expires Dec 01, 07:00 AM\nDecline\nAccept\nReferee appointments 1\nNorthside Community Championship for Engin",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "deniedContentHidden": true
+    },
+    {
+      "name": "preview-390-dark",
+      "url": "http://127.0.0.1:5175/home/all?preview=t-fb",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Tournaments"
+      ],
+      "mainText": "TOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true
+    },
+    {
+      "name": "reduced-motion-390-dark",
+      "durations": {
+        "animation": "none",
+        "transition": "0s"
+      }
+    },
+    {
+      "name": "report-390-dark",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "0px none rgb(229, 220, 200)",
+        "background": "rgb(26, 23, 38)"
+      }
+    },
+    {
+      "name": "search-partial-390-dark",
+      "url": "http://127.0.0.1:5176/search/Northside",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Search"
+      ],
+      "mainText": "SEARCH\n\nFind tournaments, teams and players.\n\nSearch terms\nTournament status\nOpen and active\nCompleted\n\n13 results loaded · Search in progress or incomplete\n\nUnable to search teams right now.\nRetry teams\nTournaments 7\nNorthside Community Championship for Engineering and Sporting Academies\nFootball · Single elimination · public\nNorthside Community C",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "partialSource": true
+    },
+    {
+      "name": "inbox-denied-390-dark",
+      "url": "http://127.0.0.1:5176/inbox",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Inbox"
+      ],
+      "mainText": "INBOX\nUnread only\nUnable to load inbox\n\nFixture: this source is unavailable.\n\nRetry notifications\nACTION REQUESTS\nTeam invitations 1\nNorthside Community Sporting Team with a Long Registration Name\ninvited by Captain Northside Sporting Academy · expires Dec 01, 07:00 AM\nDecline\nAccept\nReferee appointments 1\nNorthside Community Championship for Engin",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "deniedContentHidden": true
+    },
+    {
+      "name": "preview-390-light",
+      "url": "http://127.0.0.1:5175/home/all?preview=t-fb",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Tournaments"
+      ],
+      "mainText": "TOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true
+    },
+    {
+      "name": "reduced-motion-390-light",
+      "durations": {
+        "animation": "none",
+        "transition": "0s"
+      }
+    },
+    {
+      "name": "report-390-light",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "0px none rgb(42, 33, 23)",
+        "background": "rgb(241, 233, 216)"
+      }
+    },
+    {
+      "name": "search-partial-390-light",
+      "url": "http://127.0.0.1:5176/search/Northside",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Search"
+      ],
+      "mainText": "SEARCH\n\nFind tournaments, teams and players.\n\nSearch terms\nTournament status\nOpen and active\nCompleted\n\n13 results loaded · Search in progress or incomplete\n\nUnable to search teams right now.\nRetry teams\nTournaments 7\nNorthside Community Championship for Engineering and Sporting Academies\nFootball · Single elimination · public\nNorthside Community C",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "partialSource": true
+    },
+    {
+      "name": "inbox-denied-390-light",
+      "url": "http://127.0.0.1:5176/inbox",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Inbox"
+      ],
+      "mainText": "INBOX\nUnread only\nUnable to load inbox\n\nFixture: this source is unavailable.\n\nRetry notifications\nACTION REQUESTS\nTeam invitations 1\nNorthside Community Sporting Team with a Long Registration Name\ninvited by Captain Northside Sporting Academy · expires Dec 01, 07:00 AM\nDecline\nAccept\nReferee appointments 1\nNorthside Community Championship for Engin",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "deniedContentHidden": true
+    }
+  ],
+  "errors": []
+}

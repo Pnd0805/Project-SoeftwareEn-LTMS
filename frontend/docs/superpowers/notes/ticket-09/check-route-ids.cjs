@@ -1,0 +1,8 @@
+// DOM confirmation of legacy tournament ID routes. No API or product data writes.
+const {chromium}=require('playwright'),fs=require('node:fs'),assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Users/puriwat2953/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'}),checks=[];try{
+for(const [width,height] of [[1280,800],[1440,900],[390,844]])for(const theme of ['dark','light']){
+const context=await browser.newContext({viewport:{width,height},colorScheme:theme});await context.addInitScript(t=>localStorage.setItem('ltms-theme',t),theme);const p=await context.newPage();await p.route('**/api/v1/**',r=>r.abort());await p.goto('http://127.0.0.1:5175/login');await p.locator('h1').waitFor();await p.evaluate(async()=>{const s=await import('/src/shared/store.ts'),a=await import('/src/api/user.ts'),{numOf}=await import('/src/mocks/storeBridge.ts');s.login('u-play');a.setMockCurrentUser(numOf('u-play'));});
+for(const route of ['/mvp/t-fb','/watch/t-fb']){await p.goto('http://127.0.0.1:5175'+route);await p.locator('main').waitFor();await p.waitForTimeout(450);const result=await p.locator('main').evaluate(e=>({text:e.innerText.slice(0,220),overflow:document.documentElement.scrollWidth>innerWidth}));assert(!result.text.includes('No such tournament'));assert(!result.overflow);checks.push({route,width,theme,...result});}await context.close();
+}
+}finally{await browser.close();fs.writeFileSync(__dirname+'/route-id-confirmation.json',JSON.stringify(checks,null,2));}})().catch(e=>{console.error(e);process.exitCode=1});

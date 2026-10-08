@@ -1,0 +1,19 @@
+{
+  "id": "f226ae4e-b747-42cb-a6d4-ca9fa7092897",
+  "ok": true,
+  "result": {
+    "terminal": {
+      "handle": "term_ba6eb782-c9c7-41c0-bb18-07d795246539",
+      "tabId": "b157f5fe-3bdb-481e-9b8b-d132930a6d6f",
+      "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+      "title": "Luna max reviewer R02",
+      "executionHostId": "local",
+      "incarnationId": "ce49f7ea-b70a-4b87-8dee-fd36fb32ef62",
+      "hostPlatform": "darwin",
+      "surface": "visible"
+    }
+  },
+  "_meta": {
+    "runtimeId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c"
+  }
+}

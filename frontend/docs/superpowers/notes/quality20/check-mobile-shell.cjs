@@ -44,7 +44,11 @@ async function checkInteractions(page, id, width) {
   await search.fill('Campus Cup'); await search.press('Enter'); await page.waitForURL('**/search/Campus%20Cup');
   await page.evaluate(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Fixture camera unavailable', 'NotAllowedError'); }; });
   const scan = page.getByRole('button', { name: 'Scan', exact: true }); await scan.click(); const camera = page.getByRole('dialog', { name: 'Scan check-in QR' }); await camera.waitFor();
-  await camera.getByText('Camera unavailable', { exact: true }).first().waitFor(); await page.keyboard.press('Escape'); await camera.waitFor({ state: 'hidden' }); await page.waitForFunction(() => document.querySelector('.scan-trigger') === document.activeElement);
+  const failure = camera.getByRole('alert'); await failure.waitFor();
+  assert.match(await failure.innerText(), /Camera unavailable.*Fixture camera unavailable/);
+  assert.equal(await camera.getByRole('alert').count(), 1); assert.equal(await camera.getByRole('status').count(), 0);
+  await camera.getByRole('button', { name: 'Retry camera', exact: true }).waitFor(); await camera.getByLabel('Referee’s code').waitFor();
+  await page.keyboard.press('Escape'); await camera.waitFor({ state: 'hidden' }); await page.waitForFunction(() => document.querySelector('.scan-trigger') === document.activeElement);
   await page.evaluate(() => Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true }));
   const chooserPromise = page.waitForEvent('filechooser'); await scan.click(); const chooser = await chooserPromise;
   assert.equal(await chooser.element().getAttribute('capture'), 'environment'); assert.equal(await chooser.element().getAttribute('accept'), 'image/*'); assert.equal(await camera.count(), 0);

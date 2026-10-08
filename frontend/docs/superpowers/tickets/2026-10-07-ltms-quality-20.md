@@ -1,6 +1,6 @@
 # LTMS Quality 20 — local ticket register
 
-Status: proposed, unimplemented. Date: 2026-10-07. These Q10–Q23 tickets follow completed Minimal Street Ticket 09; they do not rewrite the old ticket history or create external tracker issues.
+Status: Q10–Q22 frontend implementation integrated locally on 2026-10-08. Q12 retains its historical feedback restoration dependency; Q23 quality acceptance remains open. [Integration evidence](../notes/quality20/2026-10-08-integration.md). These tickets follow completed Minimal Street Ticket 09; no external tracker issues were created.
 Source: [Quality 20 spec](../specs/2026-10-07-ltms-quality-20.md) and [UI metrics review](../../reviews/2026-10-07-ui-metrics/REVIEW.md).
 Plan: [Quality 20 implementation plan](../plans/2026-10-07-ltms-quality-20.md).
 
@@ -8,7 +8,7 @@ Plan: [Quality 20 implementation plan](../plans/2026-10-07-ltms-quality-20.md).
 
 Every applicable route/task surface is rescored under the spec's five × four-point rubric. Completion target is >=18/20 for each required desktop surface, then each required mobile surface, with no dimension <3, no unresolved P1 and no failed hard gate. Technical target is >=18/20, separately. “20/20” is earned through evidence, not assigned from appearance or from the earlier /10 score. The release score for a surface is its weakest required viewport/theme/state result.
 
-These tickets are frontend-only. Preserve existing endpoints, DTOs, payloads, hook contracts, server permissions, domain rules, and inherited working-tree edits. Any unsupported feedback lookup or other backend capability is recorded in FEAT-1-REMAINING.md. Do not mark blocked behavior complete by adding a fake client result. User requested planning documents now, not implementation or commits.
+These tickets are frontend-only. Preserve existing endpoints, DTOs, payloads, hook contracts, server permissions, domain rules, and inherited working-tree edits. Any unsupported feedback lookup or other backend capability is recorded in FEAT-1-REMAINING.md. Do not mark blocked behavior complete by adding a fake client result. The user subsequently authorized implementation, local commits and integration.
 
 | Ticket | Priority | Owns findings | Dependency | Reviewable outcome |
 |---|---|---|---|---|

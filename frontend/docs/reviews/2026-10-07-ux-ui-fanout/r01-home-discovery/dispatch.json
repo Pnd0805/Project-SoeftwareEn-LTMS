@@ -1,0 +1,85 @@
+{
+  "id": "9e578aa9-0236-49ba-b145-4cd5a2b2eed6",
+  "ok": true,
+  "result": {
+    "runId": "run_173b34c66cea",
+    "taskId": "task_19e6ee4f9177",
+    "dispatchId": "ctx_73b51eb6d493",
+    "state": "ready",
+    "stage": "input_accepted",
+    "turnStart": "observed",
+    "setup": {
+      "requested": "not_applicable",
+      "effective": "not_applicable",
+      "source": "existing_worktree",
+      "hookFound": false,
+      "startupPolicy": "start-immediately",
+      "state": "not_applicable"
+    },
+    "launch": {
+      "requested": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "effective": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      }
+    },
+    "mode": {
+      "mode": "terminal",
+      "preferred": "terminal",
+      "reason": "user_default",
+      "detail": "Started a terminal agent worker, the default for new agent tabs in your settings."
+    },
+    "timeoutMs": 60000,
+    "effects": [
+      {
+        "kind": "worktree",
+        "action": "reused",
+        "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux"
+      },
+      {
+        "kind": "setup",
+        "action": "not_applicable",
+        "state": "not_applicable"
+      },
+      {
+        "kind": "terminal",
+        "role": "agent",
+        "action": "reused",
+        "id": "term_60ad8da0-38f4-4571-af6d-6acddf156a5d"
+      },
+      {
+        "kind": "dispatch_input",
+        "role": "agent",
+        "id": "term_60ad8da0-38f4-4571-af6d-6acddf156a5d",
+        "state": "accepted"
+      }
+    ],
+    "prompt": {
+      "requestId": "30e7e23c-30ef-45b8-af0d-1b94fa79cd06",
+      "stages": [
+        "input_accepted",
+        "turn_started"
+      ],
+      "provider": "codex",
+      "observation": "supported",
+      "processIncarnation": "74c52a52-38fc-4542-89a1-24382b898154",
+      "generation": 84,
+      "baselineWorkingSequence": 1,
+      "baselineExplicitWorkingStartedAt": null,
+      "baselinePermissionSequence": 0
+    },
+    "residualResources": [],
+    "mutation": {
+      "requestId": "30e7e23c-30ef-45b8-af0d-1b94fa79cd06",
+      "replayed": false
+    }
+  },
+  "_meta": {
+    "runtimeId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c"
+  }
+}

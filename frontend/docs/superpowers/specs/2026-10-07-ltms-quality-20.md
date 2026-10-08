@@ -1,8 +1,8 @@
 # LTMS Quality 20 — UX/UI improvement specification
 
-Status: Draft for review. Date: 2026-10-07.
+Status: Q10–Q22 frontend implementation integrated locally on 2026-10-08. Q12's historical restore dependency and Q23 quality acceptance remain open. [Integration evidence](../notes/quality20/2026-10-08-integration.md).
 Authority: current LTMS Minimal Street design, the 2026-10-07 UI metrics review, and the user's request to bring every area as close to 20 as possible.
-Scope: frontend only, across Guest, Player, Team Leader, Organizer, Referee and Admin journeys. Desktop first, then mobile acceptance. This document proposes work; it does not mark implementation complete.
+Scope: frontend only, across Guest, Player, Team Leader, Organizer, Referee and Admin journeys. Desktop first, then mobile acceptance. Implementation evidence and final quality acceptance are tracked separately.
 
 ## Intent and current evidence
 
@@ -149,4 +149,4 @@ The starting figures below are the earlier expert /10 scores. The target uses th
 
 The frontend cannot prove the absence of a backend permission or fetch individual Admin feedback if no supported endpoint/data context supplies it. The plan must surface that as a dependency rather than alter the API. Physical iPhone checks cannot be replaced by a 390px emulator. The route-level 18/20 target is not awarded until applicable states, viewports and role boundaries are observed. Unverified MVP active voting and real Watch streaming stay explicitly unverified.
 
-Current local servers and inherited uncommitted Ticket 09/Scan files are user work. This spec does not authorize reverting them. New work stays under frontend/. No commit, push, deployment or external issue publication is requested here.
+Current local servers and inherited Ticket 09/Scan files are user work. New work stays under frontend/. The user subsequently authorized local commits and integration; the original work is preserved in the integration record. Push, deployment and external issue publication have not been performed.
