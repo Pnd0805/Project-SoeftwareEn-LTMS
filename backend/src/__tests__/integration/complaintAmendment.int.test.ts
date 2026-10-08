@@ -222,6 +222,120 @@ describe('คำขอแก้ไขทัวร์นาเมนต์ — �
   });
 
   /**
+   * FE-39 (ทาง ก · FE เลือก 8 ต.ค. 2569) — แอดมินอ่านผลกระทบของคำขอด้วยเลขคำขอ
+   *
+   * 🔴 ปัญหาเดิม: เส้น preview ของผู้จัดใช้ `requireOrganizer` ⇒ แอดมินที่ไม่ใช่ผู้จัด
+   *   **อนุมัติโดยมองไม่เห็นผลกระทบ** ซึ่งขัดกับเจตนาของ BE-36 ที่สร้าง preview มาเพื่อไม่ให้ใครเดา
+   *
+   * ★ ต้องเป็น integration — ด่านสิทธิ์ของเส้นนี้อยู่ใน service และคิดจากคณะของทัวร์
+   *   เทส unit ที่ mock repo จะไม่เห็นว่า root/คณะอื่นถูกปฏิเสธจริงไหม
+   */
+  describe('FE-39 — GET /admin/amendment-requests/:id/impact', () => {
+    const impact = (who: TestUser, id: number = amendment) =>
+      as(who).get(`/admin/amendment-requests/${id}/impact`);
+
+    it('แอดมินที่ครอบขอบเขต → 200 · อนุมัติได้ · ไม่มีสิ่งกีดขวาง', async () => {
+      const res = await impact(facAdmin);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        requestId: amendment,
+        tournamentId: tour,
+        status: 'pending',
+        requestedChanges: { maxTeams: 20 },
+        reason: 'มีทีมสนใจเยอะ',
+        selfRequested: false,
+        alreadyDecided: false,
+        canApprove: true,
+        blockers: [],
+      });
+      expect(res.body.tournamentName).toBeTruthy();
+    });
+
+    it('แอดมินมหาวิทยาลัย → 200 เหมือนกัน', async () => {
+      expect((await impact(uniAdmin)).status).toBe(200);
+    });
+
+    it.each([
+      ['ผู้ใช้ทั่วไป', () => stranger],
+      ['แอดมินคณะอื่น', () => otherFacAdmin],
+      ['ผู้จัดที่ยื่นเอง (ไม่ใช่แอดมิน)', () => organizer],
+    ])('%s → 403 INSUFFICIENT_ADMIN_SCOPE', async (_label, who) => {
+      const res = await impact(who());
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('INSUFFICIENT_ADMIN_SCOPE');
+    });
+
+    it('คำขอที่ไม่มีอยู่ → 404 AMENDMENT_NOT_FOUND', async () => {
+      const res = await impact(facAdmin, 99999999);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe('AMENDMENT_NOT_FOUND');
+    });
+
+    it('เลขคำขอไม่ใช่จำนวนเต็มบวก → 400 VALIDATION_FAILED', async () => {
+      const res = await as(facAdmin).get('/admin/amendment-requests/abc/impact');
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    /** ★ คำขอที่ตัดสินแล้วยังเปิดอ่านได้ (200) — FE ต้องเห็นว่าทำไมกดอนุมัติไม่ได้ */
+    it('คำขอที่ถูกปฏิเสธไปแล้ว → 200 · alreadyDecided · canApprove เป็น false', async () => {
+      expect((await as(facAdmin).post(`/amendment-requests/${amendment}/reject`).send({ reason: 'สนามไม่พอ' })).status).toBe(200);
+
+      const res = await impact(facAdmin);
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ status: 'rejected', alreadyDecided: true, canApprove: false });
+    });
+
+    /**
+     * 🔴 เคสที่เป็นเหตุผลทั้งหมดของ endpoint นี้ — ลดจำนวนทีมต่ำกว่าทีมที่อนุมัติแล้ว
+     *   แอดมินต้องเห็น **ก่อนกด** ว่าอนุมัติแล้วจะพัง ไม่ใช่กดแล้วได้ 409
+     */
+    it('คำขอที่อนุมัติแล้วจะพัง → canApprove false พร้อม blockers ที่บอกเหตุ', async () => {
+      await testDb().query("UPDATE tournament_amendment_requests SET requested_changes = ? WHERE tournament_amendment_request_id = ?",
+        [JSON.stringify({ eligibilityRules: [{ type: 'faculty', value: otherFaculty }] }), amendment]);
+
+      const res = await impact(facAdmin);
+      expect(res.status).toBe(200);
+      expect(res.body.canApprove).toBe(false);
+      expect(res.body.blockers.length).toBeGreaterThan(0);
+      expect(res.body.blockers[0]).toHaveProperty('code');
+      expect(res.body.blockers[0]).toHaveProperty('message');
+    });
+
+    /**
+     * 🔴 payload เก่าที่อ่านไม่ผ่านกฎปัจจุบัน → ยังตอบ 200 พร้อม blocker
+     *   ไม่ใช่ 400 เพราะคำถามของแอดมินคือ "ฉันอนุมัติได้ไหม" ไม่ใช่ "คำขอของฉันผิดรูปไหม"
+     *   (คำขอนี้ไม่ใช่ของเขา เขาแค่เป็นคนตรวจ)
+     */
+    it('payload ที่เก็บไว้อ่านไม่ผ่านกฎปัจจุบัน → 200 · canApprove false · ยังเห็นว่าขออะไร', async () => {
+      await testDb().query("UPDATE tournament_amendment_requests SET requested_changes = ? WHERE tournament_amendment_request_id = ?",
+        [JSON.stringify({ eligibilityRules: [{ ruleType: 'faculty', ruleValue: otherFaculty }] }), amendment]);
+
+      const res = await impact(facAdmin);
+      expect(res.status).toBe(200);
+      expect(res.body.canApprove).toBe(false);
+      expect(res.body.blockers.length).toBeGreaterThan(0);
+      expect(res.body.requestedChanges).toBeTruthy();
+    });
+
+    /**
+     * ★ ผลจากเส้นนี้ไม่ใช่ใบอนุญาต — ข้อมูลเปลี่ยนได้ระหว่างที่แอดมินอ่านอยู่
+     *   เทสนี้พิสูจน์ว่า approve ตรวจซ้ำเอง ไม่ได้เชื่อ canApprove ที่เคยตอบไปแล้ว
+     */
+    it('อ่านว่าอนุมัติได้ แล้วข้อมูลเปลี่ยน → กดอนุมัติยังถูกปฏิเสธ', async () => {
+      expect((await impact(facAdmin)).body.canApprove).toBe(true);
+
+      // เปลี่ยนคำขอให้กลายเป็นของที่อนุมัติไม่ได้ หลังจากอ่านไปแล้ว
+      await testDb().query("UPDATE tournament_amendment_requests SET requested_changes = ? WHERE tournament_amendment_request_id = ?",
+        [JSON.stringify({ eligibilityRules: [{ type: 'faculty', value: otherFaculty }] }), amendment]);
+
+      const res = await as(facAdmin).post(`/amendment-requests/${amendment}/approve`);
+      expect(res.status).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  /**
    * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — แอดมินที่เป็นผู้จัด อนุมัติคำขอของตัวเองได้
    *
    * มติ ค = **ไม่บล็อก** แต่ต้องไม่ให้ประวัติอ่านเหมือนมีคนที่สองตรวจ

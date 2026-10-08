@@ -105,6 +105,15 @@ export async function requestAmendment(req: Request, res: Response) {
  * 🆕 FE-39 (มติ ④ ก) — ดูผลกระทบก่อนยื่น · อ่านอย่างเดียว ไม่เขียนอะไรเลย
  * ★ 200 ไม่ใช่ 201 — ไม่ได้สร้างอะไรขึ้นมา
  */
+/**
+ * FE-39 — GET /admin/amendment-requests/:requestId/impact
+ * ★ ใช้ `parseId` กับ `requestId` ⇒ เลขพังได้ 400 VALIDATION_FAILED เหมือนทุกเส้น
+ */
+export async function getAmendmentImpact(req: Request, res: Response) {
+    res.status(200).json(await TournamentService.getAmendmentImpactForAdmin(
+        parseId(req.params['requestId'], 'รหัสคำขอแก้ไข') , req.user!.user_id));
+}
+
 export async function previewAmendmentImpact(req: Request, res: Response) {
     const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
     res.status(200).json(await TournamentService.previewAmendmentImpact(id, userId(req), req.body));

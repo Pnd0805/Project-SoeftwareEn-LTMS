@@ -830,6 +830,74 @@ async function getAmendmentForAdmin(amendmentId: number, userId: number) {
     return { amendment, tournament, admin };
 }
 
+/**
+ * FE-39 (ทาง ก · FE เลือกเมื่อ 8 ต.ค. 2569) — แอดมินอ่านผลกระทบของคำขอแก้ไข **ด้วยเลขคำขอ**
+ *
+ * 🔴 ปัญหาเดิม: เส้น preview ของผู้จัด (`POST /tournaments/:id/amendment-requests/preview`)
+ *   ใช้ `requireOrganizer` ⇒ แอดมินที่ไม่ใช่ผู้จัดกดดูไม่ได้ **ต้องอนุมัติโดยมองไม่เห็นผลกระทบ**
+ *   ซึ่งขัดกับเจตนาของ BE-36 ที่สร้าง preview ขึ้นมาเพื่อไม่ให้ใครต้องเดา
+ *
+ * ★ ใช้ payload ที่ยื่นไว้ในฐาน ไม่ได้รับ body จาก FE — แอดมินไม่ได้แก้คำขอ เขาแค่อ่าน
+ *   ⇒ เป็น GET และไม่มี schema ให้ปลอมค่าเข้ามาได้
+ * ★ ด่านสิทธิ์ใช้ `getAmendmentForAdmin` ตัวเดียวกับ approve/reject ไม่เขียนกฎซ้ำ
+ *   ⇒ root และแอดมินคณะที่ไม่มีคณะได้ 403 INSUFFICIENT_ADMIN_SCOPE อัตโนมัติ
+ *     (`adminOverseesTournament`: ไม่ใช่ university_wide และไม่ใช่ faculty ที่คณะตรงกัน = ไม่ผ่าน)
+ * ★ ด่านเนื้อหาใช้ชุดเดียวกับ `approveAmendment` **ทั้งหมด รวมด่านขอบเขตกฎคุณสมบัติ**
+ *   ซึ่ง preview ของผู้จัดไม่มี (ผู้จัดไม่ได้เป็นคนอนุมัติ) ⇒ สองเส้นนี้ตอบไม่เหมือนกันได้
+ *   และนั่นถูกต้อง: คำถามคนละคำถาม ("ยื่นได้ไหม" กับ "ฉันอนุมัติได้ไหม")
+ *
+ * ★ คำขอที่ถูกพิจารณาไปแล้ว → **200 พร้อม `alreadyDecided: true`** ไม่ใช่ 404/409
+ *   เพราะนี่เป็นการอ่าน · FE เปิดดูคำขอที่ตัดสินแล้วได้ตามปกติ และต้องเห็นว่าทำไมกดไม่ได้
+ * 🔴 ผลจากเส้นนี้ **ไม่ใช่ใบอนุญาต** — `approveAmendment` ตรวจทุกด่านซ้ำตอนกดจริง
+ *   เพราะข้อมูลเปลี่ยนได้ระหว่างที่แอดมินอ่านอยู่ (ทีมสมัครเพิ่ม · ทัวร์เปลี่ยนสถานะ)
+ */
+export async function getAmendmentImpactForAdmin(amendmentId: number, userId: number) {
+    const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
+
+    const blockers : { code : string; message : string; details : unknown }[] = [];
+    /**
+     * ★ อ่าน payload **ข้างใน** try ด้วย ต่างจาก approve/preview ที่ปล่อยให้ 400 เด้งออกไป
+     *   payload ถูกเก็บไว้ตั้งแต่วันที่ยื่น ⇒ ถ้ากฎ/ชนิดข้อมูลเปลี่ยนหลังจากนั้น
+     *   ใบเก่าจะอ่านไม่ผ่านแล้วแอดมินได้ 400 ทั้งที่คำถามของเขาคือ "ฉันอนุมัติได้ไหม"
+     *   ⇒ ตอบ 200 แล้วบอกว่าอนุมัติไม่ได้เพราะอะไร มีประโยชน์กว่า "คำขอของคุณผิดรูป"
+     *   (เจอตอนเขียนเทสของ FE-39 — เทสที่ใช้ชื่อฟิลด์ผิดได้ 400 แทนที่จะเป็น blocker)
+     */
+    let changes : AmendmentChanges | null = null;
+    try {
+        changes = validateAmendmentChanges(amendment.requested_changes);
+        validateAmendmentAgainstTournament(tournament, changes);
+        await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);
+        if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
+            await ensureEligibilityEditable(tournament);
+            if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, changes['eligibilityRules'] as EligibilityRule[])) eligibilityOutOfScope();
+        } else if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournament.tournament_id))) {
+            eligibilityOutOfScope();
+        }
+    } catch (err) {
+        // ★ จับเฉพาะ AppError — ฐานล่ม/บั๊กต้องเด้งเป็น 500 ตามเดิม ไม่กลายเป็น "blocker"
+        if(!(err instanceof AppError)) throw err;
+        blockers.push({ code : err.code, message : err.message, details : err.extra ?? null });
+    }
+
+    const alreadyDecided = amendment.tournament_amendment_request_status !== 'pending';
+
+    return {
+        requestId : amendment.tournament_amendment_request_id,
+        tournamentId : amendment.tournament_id,
+        tournamentName : amendment.tournament_name,
+        status : amendment.tournament_amendment_request_status,
+        // อ่านไม่ผ่าน → คืนของที่เก็บไว้ดิบ ๆ ให้แอดมินยังเห็นว่าคำขอนี้ขออะไร
+        requestedChanges : changes ?? amendment.requested_changes,
+        reason : amendment.request_reason,
+        // 🔴 selfRequested = แอดมินคนนี้เป็นคนยื่นเอง · อนุมัติเองได้ตามนโยบายทีม แต่ต้องขึ้นป้ายให้เห็น
+        //   (ชื่อฟิลด์เดียวกับในคิว `getPendingAmendments` ⇒ FE ใช้ตัวเดิมได้)
+        selfRequested : amendment.requested_by === userId,
+        alreadyDecided,
+        canApprove : blockers.length === 0 && !alreadyDecided,
+        blockers
+    };
+}
+
 export async function approveAmendment(amendmentId: number, userId: number) {
     const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
     const changes = validateAmendmentChanges(amendment.requested_changes);
