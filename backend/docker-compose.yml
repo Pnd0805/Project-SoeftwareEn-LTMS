@@ -5,6 +5,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ltms
+    # 🔴 A3 (8 ต.ค. 2569) — บังคับ UTC ที่ตัวเซิร์ฟเวอร์
+    #   ค่าตั้งต้นของ image คือ `SYSTEM` = ตามเครื่อง ⇒ ใครตั้ง TZ หรือรัน MySQL ของตัวเอง
+    #   `NOW()` / `INTERVAL` ในคิวรีของเราจะเพี้ยน 7 ชม. (integration แดง 23 ข้อตอนเจอจริง)
+    #   ★ แอปตั้ง `SET time_zone` ต่อ connection ไว้อีกชั้นแล้ว (config/db.ts) — ชั้นนี้ทำให้
+    #     เครื่องมือที่ต่อฐานตรง ๆ (mysql cli · perf · สคริปต์ seed) เห็นเวลาเดียวกันด้วย
+    command: --default-time-zone=+00:00
     # เปิดพอร์ตออกโฮสต์ — dev รัน backend บนเครื่อง (npm run dev / npm run migrate) จึงต้องถึง
     # mysql ทาง localhost ชื่อ `mysql` ใช้ได้เฉพาะ container ที่อยู่ในเน็ตเวิร์ก docker เดียวกัน
     # 🔴 6 ต.ค. — ก่อนหน้านี้ไฟล์นี้ไม่มี ports: เลย แต่ container ที่ทุกคนรันอยู่มี 3307
