@@ -8,6 +8,7 @@ import { Modal } from '../../components/kit/Modal'
 import { Icon } from '../../components/kit/Icon'
 import { Avatar } from '../../components/kit/Avatar'
 import type { AdminScopeDto } from '../../types/admin.dto'
+import { fmtDateTime } from '../../shared/dateFormat'
 const message = (error: unknown) => error instanceof Error ? error.message : 'Request failed.'
 export function AdminScopesTab() {
   const me = useMe(); const scopes = useAdminScopes(); const faculties = useFaculties()
@@ -83,7 +84,7 @@ export function AdminAuditTab() {
         <div className="hstack" style={{ flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
           <Avatar name={row.user.fullName} avatarUrl={row.user.avatarUrl} />
           <span><b>{row.user.fullName}</b><br /><span className="sub">User #{row.user.id}</span></span>
-          <span className="sub"><Icon name="clock" size={14} /> {new Date(row.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })} (UTC+7)</span>
+          <span className="sub"><Icon name="clock" size={14} /> {fmtDateTime(row.createdAt)}</span>
           <span className="tag">Record #{row.id}</span>
         </div>
         {row.details && Object.keys(row.details).length ? <details style={{ marginTop: 12 }}><summary>View details ({Object.keys(row.details).length})</summary>

@@ -48,6 +48,7 @@ import { minSquad, rosterLockOf } from '../../shared/rules'
 import type { BackendTeamDto, BackendTeamMemberDto } from '../../types/team.dto'
 import { TeamManage } from './TeamManage'
 import { TeamRecord } from './TeamRecord'
+import { fmtDateOnly } from '../../shared/dateFormat'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
 
@@ -324,7 +325,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                     </td>
                     {/* ช่องตัวจริง/ตัวสำรองหายไปพร้อม migration 019 — ทีมเป็นคลังผู้เล่น
                         ใครลงแข่งเลือกตอนสมัครแต่ละทัวร์แทน (application_players) */}
-                    <td className="sub">{new Date(member.joinedAt).toLocaleDateString()}</td>
+                    <td className="sub">{fmtDateOnly(member.joinedAt)}</td>
                     <td>
                       <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                         {isLeader && !captain && (USE_MOCK || data.officialStatus === "Official") ? (

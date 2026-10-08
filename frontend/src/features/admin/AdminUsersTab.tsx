@@ -17,6 +17,7 @@ import { usePublicUser } from '../../hooks/useUser'
 import { useFaculties } from '../../hooks/useReference'
 import { useGrantAdminScope, useRevokeAdminScope, useSuspendUser, useUsersForAdmin } from '../../hooks/useAdmin'
 import type { UserAdminViewDto } from '../../types/admin.dto'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 const PAGE = 40
 
@@ -200,7 +201,7 @@ export function AdminUsersTab() {
                           {u.isSuspended ? (
                             <span className="vstack" style={{ gap: 2 }}>
                               <Badge kind="crit">Suspended</Badge>
-                              {u.suspendedUntil ? <span className="sub">Until {new Date(u.suspendedUntil).toLocaleString()}</span> : <span className="sub">Permanent</span>}
+                              {u.suspendedUntil ? <span className="sub">Until {fmtDateTime(u.suspendedUntil)}</span> : <span className="sub">Permanent</span>}
                               {u.suspendedCategoryLabel ? <span className="sub">{u.suspendedCategoryLabel}</span> : null}
                               {u.suspendedReason ? <span className="sub">{u.suspendedReason}</span> : null}
                             </span>

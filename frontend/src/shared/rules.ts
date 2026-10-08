@@ -8,6 +8,7 @@
 import type {
   Format, Match, Pin, Registration, Rules, State, Team, Tournament, User,
 } from './types'
+import { fmtDate as formatDate } from './dateFormat'
 
 /** The prototype pins "now" so the seeded season always reads the same way. */
 export const NOW = () => new Date('2026-02-08T12:00:00').getTime()
@@ -134,12 +135,9 @@ export function ago(at: number | string, now = NOW()): string {
   if (d < 2592000) return Math.floor(d / 86400) + 'd ago'
   return Math.floor(d / 2592000) + 'mo ago'
 }
-export function fmtDate(iso: number | string): string {
-  const d = new Date(iso)
-  return isNaN(d.getTime())
-    ? 'Not set'
-    : d.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+/* รูปแบบวันที่มีที่เดียวคือ shared/dateFormat — ของเดิมตรงนี้ใช้ locale ของเบราว์เซอร์และไม่มีปี
+   หน้าจอเดียวกันจึงขึ้น "08 ต.ค. 22:45" บนเครื่องหนึ่งและ "Oct 08, 10:45 PM" บนอีกเครื่อง */
+export const fmtDate = (iso: number | string): string => formatDate(iso)
 
 /** A pin is taken the way a person has it — a Maps link, or a bare "lat, lng". */
 export function parsePin(text: string): Pin | null {

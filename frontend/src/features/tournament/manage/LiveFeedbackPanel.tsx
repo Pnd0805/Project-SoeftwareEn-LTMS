@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Badge, Panel } from '../../../components/kit/primitives'
 import { reportFeedback } from '../../../api/liveEngagement'
 import { useReviews } from '../../../hooks/useLiveEngagement'
+import { fmtDateTime } from '../../../shared/dateFormat'
 
 export function LiveFeedbackPanel({ tournamentId }: { tournamentId: number }) {
   const reviews = useReviews(tournamentId)
@@ -20,7 +21,7 @@ export function LiveFeedbackPanel({ tournamentId }: { tournamentId: number }) {
     {data?.items?.length === 0 ? <p className="sub">No reviews yet.</p> : null}
     {data?.items?.map(item => <div className="notif" key={item.id}>
       <span className="txt"><b>{item.rating}/5</b> {item.isReported ? <Badge kind="warn">Reported</Badge> : null}<br />
-        {item.content || 'No written review'}<br /><span className="tag">{new Date(item.createdAt).toLocaleString()}</span></span>
+        {item.content || 'No written review'}<br /><span className="tag">{fmtDateTime(item.createdAt)}</span></span>
       {!item.isReported ? <button className="btn ghost" type="button" disabled={report.isPending}
         onClick={async () => { try { await report.mutateAsync(item.id); setNotice('Review reported.') }
           catch (error) { setNotice(error instanceof Error ? error.message : 'Could not report review.') } }}>Report</button> : null}

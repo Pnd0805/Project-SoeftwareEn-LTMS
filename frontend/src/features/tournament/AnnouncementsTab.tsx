@@ -18,6 +18,7 @@ import { useCreateTournamentAnnouncement, useTournamentAnnouncements } from '../
 import { ApiError } from '../../api/client'
 import { createTournamentAnnouncementSchema, type CreateTournamentAnnouncementInput } from '../../schemas/tournament.schema'
 import type { Tournament } from '../../shared/types'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 
@@ -56,7 +57,7 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
         ) : list.length ? list.map(a => (
           <Panel quiet key={a.id}>
             <div className="spread">
-              <span className="tag"><em>//</em> Organizer · {new Date(a.createdAt).toLocaleDateString()}</span>
+              <span className="tag"><em>//</em> Organizer · {fmtDateTime(a.createdAt)}</span>
             </div>
             <h3 className="journey-heading">{a.title}</h3>
             <div className="tour-announcement-body">{a.body}</div>

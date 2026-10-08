@@ -22,15 +22,11 @@ import { useMyMatches } from '../../hooks/useMatch'
 import { mockHomeTasks, type HomeTaskFeed } from './homeTasks'
 import { RealHomeTasks } from './RealHomeTasks'
 import { TournamentPreview } from './TournamentPreview'
+import { fmtDateOnly } from '../../shared/dateFormat'
 
 const STAGES: [string, string][] = [['', 'All'], ['open', 'Open for entry'], ['competing', 'In progress'], ['finished', 'Finished']]
 
-function previewDate(value: string | null | undefined) {
-  if (!value) return 'Not available'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? 'Not available'
-    : new Intl.DateTimeFormat('en', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(date)
-}
+const previewDate = (value: string | null | undefined) => fmtDateOnly(value, 'Not available')
 
 function accessDenied(query: { isError: boolean; error?: unknown }) {
   const status = (query.error as { status?: unknown } | null)?.status

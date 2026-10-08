@@ -1,5 +1,6 @@
 import type { BackendMyInvitationDto, BackendMyTeamDto } from '../../types/team.dto'
 import type { HomeTask } from '../home/homeTasks'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 export function teamHomeTasks(
   invites: readonly BackendMyInvitationDto[],
@@ -14,9 +15,7 @@ export function teamHomeTasks(
         source: 'team' as const,
         label: 'Accept',
         context: invitation.team.name,
-        detail: `Expires ${new Date(invitation.expiresAt).toLocaleString('en-GB', {
-          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-        })}`,
+        detail: `Expires ${fmtDateTime(invitation.expiresAt)}`,
         urgency: 'urgent' as const,
         href: '/teams',
       })),

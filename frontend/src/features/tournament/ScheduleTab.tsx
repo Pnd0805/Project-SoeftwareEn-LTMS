@@ -18,6 +18,7 @@ import { TeamLinkView } from '../../components/kit/chips'
 import { useTournamentMatches } from '../../hooks/useMatch'
 import { matchStateOf, scoreText, toTeamView } from '../match/matchView'
 import type { MatchState } from '../../components/kit/viewModels'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 const stateLabels: Record<MatchState, string> = {
   scheduled: 'Scheduled', checkin: 'Check-in open', live: 'In progress', finished: 'Awaiting result',
@@ -86,7 +87,7 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
         <tbody>
           {filtered.map(m => (
             <tr key={m.id}>
-              <td className="num">{m.scheduledTime ? new Date(m.scheduledTime).toLocaleString() : '—'}</td>
+              <td className="num">{m.scheduledTime ? fmtDateTime(m.scheduledTime) : '—'}</td>
               <td className="tag">{m.tag}</td>
               <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
               <td className="tag">vs</td>

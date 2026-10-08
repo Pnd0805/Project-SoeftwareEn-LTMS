@@ -33,8 +33,8 @@ describe('teamHomeTasks', () => {
     ])
   })
 
-  it('shows the valid invitation expiry in concise English with the viewer local time', () => {
-    const expiresAt = new Date(2026, 9, 5, 12, 30).toISOString()
+  it('shows the valid invitation expiry in the app-wide date format, in Thailand time', () => {
+    const expiresAt = '2026-10-05T12:30:00+07:00'
 
     expect(teamHomeTasks([invitation(3, expiresAt)], [], now)).toEqual([
       {
@@ -42,7 +42,7 @@ describe('teamHomeTasks', () => {
         source: 'team',
         label: 'Accept',
         context: 'Northside FC',
-        detail: 'Expires 05 Oct, 12:30',
+        detail: 'Expires 5 Oct 2026, 12:30 (UTC+7)',
         urgency: 'urgent',
         href: '/teams',
       },

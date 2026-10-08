@@ -152,7 +152,7 @@ describe('Tournament preview from discovery', () => {
     await user.click(await screen.findByRole('button', { name: /Campus Cup.*You run this/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Campus Cup' })
     expect(within(dialog).getByText('16 teams')).toBeInTheDocument()
-    expect(within(dialog).getByText('Jan 10, 2027')).toBeInTheDocument()
+    expect(within(dialog).getByText('10 Jan 2027')).toBeInTheDocument()
     expect(within(dialog).getByText('Public')).toBeInTheDocument()
     expect(within(dialog).getByText('Visibility', { selector: 'dt' })).toBeInTheDocument()
     expect(within(dialog).queryByText('Phase', { selector: 'dt' })).not.toBeInTheDocument()

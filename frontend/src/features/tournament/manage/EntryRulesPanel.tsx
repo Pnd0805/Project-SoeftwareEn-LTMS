@@ -25,6 +25,7 @@ import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../sche
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
 import type { GenderRequirement } from '../../../types/enums'
 import type { Tournament } from '../../../shared/types'
+import { fmtDateTime } from '../../../shared/dateFormat'
 
 const YEARS = [1, 2, 3, 4, 5, 6, 7, 8]
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
@@ -101,7 +102,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     if (pendingApproval) {
       if (setPendingRules.isPending) return
       setPendingRules.mutate(toEligibilityRules(draftFaculties, draftYears), {
-        onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString()) },
+        onSuccess: () => { setOpen(false); setSentAt(fmtDateTime(new Date())) },
       })
       return
     }
@@ -117,7 +118,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         ...(scheduleNeedsFix ? { eventStartDate } : {}),
       },
     },
-    { onSuccess: () => { setOpen(false); setSentAt(new Date().toLocaleString()) } },
+    { onSuccess: () => { setOpen(false); setSentAt(fmtDateTime(new Date())) } },
     )
   }
 
@@ -196,7 +197,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                 <tbody>
                   {amendmentHistory.data.items.map(item => (
                     <tr key={item.id}>
-                      <td>{new Date(item.requestedAt).toLocaleString()}</td>
+                      <td>{fmtDateTime(item.requestedAt)}</td>
                       <td><code>{JSON.stringify(item.requestedChanges)}</code></td>
                       <td>{item.reason ?? '—'}</td>
                       <td><Badge kind={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'crit' : 'warn'}>{item.status}</Badge></td>
@@ -204,7 +205,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                         {item.rejectionReason ? <><b>{item.rejectionReason}</b><br /></> : null}
                         <span className="sub">
                           {item.reviewedBy ? `By ${item.reviewedBy.fullName}` : 'Not reviewed yet'}
-                          {item.reviewedAt ? ` · ${new Date(item.reviewedAt).toLocaleString()}` : ''}
+                          {item.reviewedAt ? ` · ${fmtDateTime(item.reviewedAt)}` : ''}
                         </span>
                       </td>
                     </tr>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MatchListItemDto } from '../../types/match.dto'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 export type UpcomingMatch = Pick<MatchListItemDto, 'id' | 'status' | 'scheduledTime' | 'venue'> & {
   teamA: { name: string } | null
@@ -44,9 +45,7 @@ export function NextMatchPanel({ matches, pending, failed, onRetry }: {
             <h3 className="disp">{next.teamB!.name}</h3>
           </div>
           <div className="home-next-details">
-            <time dateTime={next.scheduledTime!}>{new Intl.DateTimeFormat('en', {
-              month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-            }).format(new Date(next.scheduledTime!))}</time>
+            <time dateTime={next.scheduledTime!}>{fmtDateTime(next.scheduledTime)}</time>
             <span className="sub">{next.venue?.trim() || 'Venue not set'}</span>
           </div>
           <Link className="btn primary" to={`/m/${next.id}`}>View match</Link>

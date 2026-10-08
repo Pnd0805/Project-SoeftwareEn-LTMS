@@ -27,6 +27,7 @@ import { ApiError } from '../../api/client'
 import { createTournamentSchema, toEligibilityRules, type CreateTournamentInput } from '../../schemas/tournament.schema'
 import type { TournamentCreatedDto } from '../../types/tournament.dto'
 import { BracketFormatOptions, BracketFormatLabel, GenderRequirementOptions, GenderRequirementLabel } from '../../types/enums'
+import { fmtDate } from '../../shared/dateFormat'
 
 const ADMIT = [
   ['all', 'Every faculty'],
@@ -46,10 +47,7 @@ const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
 const asIdOrNull = (value: string) => (value === '' ? null : Number(value))
 const reviewDate = (value: string | undefined) => {
   if (!value) return 'Not set'
-  const date = new Date(value.includes('T') ? value : `${value}T00:00`)
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium', ...(value.includes('T') ? { timeStyle: 'short' as const } : {}),
-  }).format(date)
+  return fmtDate(value, value)
 }
 
 export function RequestPage() {

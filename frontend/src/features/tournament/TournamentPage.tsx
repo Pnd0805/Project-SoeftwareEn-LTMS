@@ -26,15 +26,10 @@ import { LiveCommunityTab } from './LiveCommunityTab'
 import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
+import { fmtDateOnly, fmtDateTime } from '../../shared/dateFormat'
 
-const registrationDateFormat = new Intl.DateTimeFormat('en-GB', {
-  dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok',
-})
-const registrationDate = (value: string | null | undefined) => {
-  if (!value) return 'Not specified'
-  const date = new Date(value)
-  return Number.isFinite(date.getTime()) ? `${registrationDateFormat.format(date)} (UTC+7)` : 'Unavailable'
-}
+const registrationDate = (value: string | null | undefined) =>
+  (value ? fmtDateTime(value, 'Unavailable') : 'Not specified')
 
 const PUBLIC_TABS = ['bracket', 'dashboard', 'schedule', 'leaderboard', 'announcements', 'community']
 
@@ -205,7 +200,7 @@ export function TournamentPage() {
         <Banner kind="ok" icon="check">
           <b>This tournament is closed.</b>{' '}
           {champion ? `${champion.name} won it. ` : tournamentData?.championTeamId === null ? 'No champion was assigned. ' : ''}
-          {tournamentData?.completedAt ? `Closed ${new Date(tournamentData.completedAt).toLocaleString()}.` : 'Results are final.'}
+          {tournamentData?.completedAt ? `Closed ${fmtDateTime(tournamentData.completedAt)}.` : 'Results are final.'}
         </Banner>
       ) : null}
 
@@ -250,7 +245,7 @@ export function TournamentPage() {
             <Facts rows={[
               ['Sport', t.sport],
               ['Format', formatName(t)],
-              ['Date', t.date],
+              ['Date', fmtDateOnly(t.date, t.date || 'Not set')],
               ['Registration opens', registrationDate(t.registrationStart)],
               ['Registration closes', registrationDate(t.registrationEnd)],
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],

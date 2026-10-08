@@ -1040,6 +1040,8 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .match-tabs .tab{flex-shrink:0;}
 .match-section{height:560px;overflow:auto;min-width:0;display:flex;flex-direction:column;gap:24px;scroll-margin-top:24px;}
 .match-section[hidden]{display:none;}
+/* กล่องแท็บสูงตายตัว 560px ทำให้ฟอร์มบันทึกผลต้องเลื่อนในกรอบ — เฉพาะตอนมีฟอร์มนี้ให้ยืดตามเนื้อหา รายชื่อผู้เล่นจะไล่ลงตามหน้า */
+.match-section:has(.match-result-form){height:auto;overflow:visible;}
 .match-section>.panel,.match-section>.banner{flex-shrink:0;}
 .match-lineup-frame{height:380px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0;background:var(--void-2);border:1px solid var(--line);border-radius:2px;}
 .match-lineup-frame .tblwrap{flex:1;min-height:0;overflow:auto;}
@@ -1054,9 +1056,9 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .match-result-form .match-stat-filters{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;}
 .match-stat-filters>.field{flex:1 1 200px;min-width:0;}
 .match-stat-filters>.sub{padding-bottom:8px;}
-.match-result-form{max-height:560px;}
+.match-result-form{max-height:none;}
 .match-result-form>h2,.match-result-form>.sub{flex-shrink:0;}
-.match-result-body{display:flex;flex-direction:column;gap:16px;min-height:0;overflow:auto;scroll-padding:8px;}
+.match-result-body{display:flex;flex-direction:column;gap:16px;min-height:0;overflow:visible;}
 .match-result-body>*{flex-shrink:0;}
 .match-page .match-result-form .tblwrap{max-height:none;overflow-x:auto;overflow-y:hidden;}
 .match-result-footer{display:flex;flex-direction:column;gap:12px;flex-shrink:0;}

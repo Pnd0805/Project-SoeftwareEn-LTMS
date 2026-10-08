@@ -28,6 +28,7 @@ import { ApiError, USE_MOCK } from '../../api/client'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
 import type { MatchDto } from '../../types/match.dto'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 /** datetime-local wants a local wall clock, not an ISO instant. */
 const toLocal = (iso: string | null) => {
@@ -38,7 +39,7 @@ const toLocal = (iso: string | null) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const toLocalReadable = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
+const toLocalReadable = (iso: string | null) => (iso ? fmtDateTime(iso) : '')
 
 const refereeRequestError = (error: unknown) => {
   if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Could not request this referee.'

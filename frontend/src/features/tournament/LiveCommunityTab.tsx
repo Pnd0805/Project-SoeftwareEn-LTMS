@@ -10,6 +10,7 @@ import { removeFeedbackByAdmin, restoreFeedbackByAdmin } from '../../api/liveEng
 import { useMe } from '../../hooks/useAuth'
 import { useCommentsLive, usePickemLeaderboard, useReviews } from '../../hooks/useLiveEngagement'
 import type { TournamentComment } from '../../types/liveEngagement.dto'
+import { fmtDateTime } from '../../shared/dateFormat'
 import './feedback-moderation.css'
 
 type FeedbackTarget = { id: number; tournamentId: number; kind: 'comment' | 'review'; author: string | null; content: string | null; rating?: number }
@@ -87,7 +88,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           <div className="statline"><div><span className="tag">Average</span><span className="v">{review.summary.average ?? '—'}</span></div>
             <div><span className="tag">Ratings</span><span className="v">{review.summary.count}</span></div></div>
           <div className="sub">{[5, 4, 3, 2, 1].map(stars => `${stars}★ ${review.summary.distribution[String(stars)] ?? 0}`).join(' · ')}</div>
-          {review.status === 'not_started' ? <p className="sub">Reviews open {review.opensAt ? new Date(review.opensAt).toLocaleString() : 'when the tournament starts'}.</p> : null}
+          {review.status === 'not_started' ? <p className="sub">Reviews open {review.opensAt ? fmtDateTime(review.opensAt) : 'when the tournament starts'}.</p> : null}
           {review.status === 'closed' ? <p className="sub">Reviews are closed.</p> : null}
           {review.mine ? <p className="sub">Your review: {review.mine.rating}/5 {review.mine.content}</p> : null}
           {!organizer && review.items?.map(item => <div className="notif" key={item.id}>
@@ -132,7 +133,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
             <b>{item.author.fullName}</b>
             {thread?.canModerate ? <span className="tag">#{item.id}</span> : null}
             {item.isMine ? <Badge kind="neutral">Yours</Badge> : null}
-            <span className="tag">{new Date(item.createdAt).toLocaleString()}</span>
+            <span className="tag">{fmtDateTime(item.createdAt)}</span>
           </div>
 
           <div style={{ fontSize: 15, lineHeight: 1.5, wordBreak: 'break-word', margin: '2px 0' }}>
@@ -198,7 +199,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
             <div className="panel quiet" style={{ padding: '12px 14px', border: '1px solid var(--amber)' }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{reportingComment.author.fullName}</div>
               <div style={{ margin: '6px 0', fontSize: 15 }}>{reportingComment.content}</div>
-              <span className="tag">{new Date(reportingComment.createdAt).toLocaleString()}</span>
+              <span className="tag">{fmtDateTime(reportingComment.createdAt)}</span>
             </div>
 
             <div className="field">

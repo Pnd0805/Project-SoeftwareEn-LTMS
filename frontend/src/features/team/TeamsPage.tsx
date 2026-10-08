@@ -23,6 +23,7 @@ import { useSportTypes } from '../../hooks/useReference'
 import { USE_MOCK } from '../../api/client'
 import { EnterTournamentButton } from '../tournament/EnterTournamentButton'
 import { useReviews } from '../../hooks/useLiveEngagement'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 const errorMessage = (error: unknown, fallback = 'Something went wrong.') =>
   error instanceof Error ? error.message : fallback
@@ -242,7 +243,7 @@ export function TeamsPage() {
                     <span>
                       <b>{invitation.team.name}</b><br />
                       <span className="sub">
-                        Invited by {invitation.invitedBy.fullName} · expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                        Invited by {invitation.invitedBy.fullName} · expires {fmtDateTime(invitation.expiresAt)}
                       </span>
                     </span>
                     <span className="hstack">

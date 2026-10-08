@@ -25,6 +25,7 @@ import {
 import { ApiError } from '../../../api/client'
 import type { BackendRefereeRequestDto, TournamentRefereeDto } from '../../../types/admin.dto'
 import type { MatchListItemDto } from '../../../types/match.dto'
+import { fmtDateTime } from '../../../shared/dateFormat'
 
 const requestError = (error: unknown) => {
   if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Could not send that request.'
@@ -38,7 +39,7 @@ const requestError = (error: unknown) => {
   return error.message
 }
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : null)
+const when = (iso: string | null) => (iso ? fmtDateTime(iso) : null)
 
 /** ชื่อคู่แข่ง — นัดรอบหลังยังไม่มีทีม เขียนว่ารออยู่แทนที่จะปล่อยว่าง */
 const pairing = (m: MatchListItemDto) =>
