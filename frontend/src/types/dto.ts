@@ -25,6 +25,19 @@ export interface RegisterResponse {
   id: number;
   fullName: string;
   email: string;
+  emailVerificationSent?: boolean;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  code: string;
+}
+export interface VerifyEmailResponse {
+  message: string;
+  emailVerified: boolean;
+}
+export interface ResendVerificationResponse {
+  message: string;
 }
 
 export interface LoginRequest {

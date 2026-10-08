@@ -1,0 +1,50 @@
+import express from 'express';
+import { matchFormatSchema } from '../schemas/match.schema.js';
+import * as TournamentController from '../controllers/tournament.controller.js';
+import * as TournamentPlayer from '../controllers/tournamentPlayer.controller.js';
+import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
+import { requireOrganizer, requireRequester } from '../middlewares/requireOrganizer.js';
+import { validate } from '../middlewares/validate.js';
+import {
+    amendmentRequestSchema,
+    createTournamentSchema,
+    updateTournamentSchema, setEligibilityRulesSchema } from '../schemas/tournament.schema.js';
+
+const router = express.Router();
+
+router.post('/', requireAuth, validate(createTournamentSchema), TournamentController.createTournament);
+router.get('/', TournamentController.getPublicTournaments);
+router.get('/:id', optionalAuth, TournamentController.getTournament);
+router.patch('/:id', requireAuth, requireOrganizer, validate(updateTournamentSchema), TournamentController.updateTournament);
+// 🆕 BO-N (มติ 5 ต.ค.) — ตั้งรูปแบบของทั้งทัวร์ + stamp ลงแมตช์ที่ยังไม่เริ่มในทรานแซกชันเดียว
+router.patch('/:id/format', requireAuth, requireOrganizer, validate(matchFormatSchema), TournamentController.setTournamentFormat);
+router.delete('/:id', requireAuth, requireRequester, TournamentController.deleteTournament);
+router.post('/:id/amendment-requests', requireAuth, requireOrganizer, validate(amendmentRequestSchema), TournamentController.requestAmendment);
+/**
+ * 🆕 FE-39 (มติ ④ ก) — dry run ของเส้นบน · ด่านสิทธิ์และ schema ชุดเดียวกันเป๊ะ
+ * ★ ต้องใช้ schema เดียวกัน ไม่ใช่ schema ที่หลวมกว่า — ไม่งั้น preview จะผ่านของที่ยื่นจริงไม่ผ่าน
+ * ★ POST ไม่ใช่ GET เพราะ body มี requestedChanges ที่เป็น object/array ซ้อนกัน
+ *   (ยังไม่เขียนอะไรลงฐาน — ดู previewAmendmentImpact)
+ */
+router.post('/:id/amendment-requests/preview', requireAuth, requireOrganizer, validate(amendmentRequestSchema), TournamentController.previewAmendmentImpact);
+// C09b — ผู้ยื่นคำขอดูคำขอแก้ไขของทัวร์ตัวเอง (FE-organizer-see-their-own 21 ก.ย.)
+router.get('/:id/amendment-requests', requireAuth, requireRequester, TournamentController.getTournamentAmendments);
+
+router.post('/:id/approve', requireAuth, TournamentController.approveTournament);
+router.post('/:id/reject', requireAuth, TournamentController.rejectTournament);
+router.post('/:id/publish', requireAuth, requireOrganizer, TournamentController.publishTournament);
+router.post('/:id/unpublish', requireAuth, requireOrganizer, TournamentController.unpublishTournament);
+// B1 — ORG ปิดทัวร์ (มติ 21 ก.ย. 1-ข)
+router.post('/:id/complete', requireAuth, requireOrganizer, TournamentController.completeTournament);
+router.post('/:id/open-registration', requireAuth, requireOrganizer, TournamentController.openRegistration);
+router.post('/:id/close-registration', requireAuth, requireOrganizer, TournamentController.closeRegistration);
+router.get('/:id/eligibility-rules', optionalAuth, TournamentController.getEligibilityRules);
+
+// RW06 — โปรไฟล์ในทัวร์: สถิติของผู้ใช้คนหนึ่งในทัวร์นี้ทัวร์เดียว
+// สาธารณะโดยเจตนา **ไม่ผูกกับสวิตช์ OD-46** เพราะเป็นข้อมูลการแข่งขัน ไม่ใช่ข้อมูลโปรไฟล์
+// (สายการแข่ง ผลแมตช์ รายชื่อลงสนาม และ GET /matches/:id/stats ก็สาธารณะอยู่แล้ว) — ดู OD-47
+router.get('/:id/players/:userId/stats', TournamentPlayer.getTournamentPlayerStats);
+// C17b — ORG แทนที่กฎคุณสมบัติทั้งชุด (เฉพาะ pending_approval · ผ่านแล้วใช้ C09 amendment)
+router.put('/:id/eligibility-rules', requireAuth, requireRequester, validate(setEligibilityRulesSchema), TournamentController.setEligibilityRules);
+
+export default router;

@@ -1,0 +1,104 @@
+import type { TournamentRow } from '../types/db.js';
+import type { UserRefDto } from './user.mapper.js';
+
+function toIso(value: Date | string | null): string | null {
+    if (value === null) return null;
+    return value instanceof Date ? value.toISOString() : value;
+}
+
+export type TournamentListDto = {
+    id: number;
+    name: string;
+    sportTypeId: number;
+    eventStartDate: string;
+    eventEndDate: string | null;
+    registrationOpen: boolean;
+    venue: string | null;
+    organizingFacultyId: number | null;
+};
+
+export function toTournamentListDto(row: Pick<TournamentRow, 'tournament_id' | 'name' | 'sport_type_id' | 'event_start_date' | 'event_end_date' | 'registration_open' | 'venue' | 'organizing_faculty_id'>): TournamentListDto {
+    return {
+        id: row.tournament_id,
+        name: row.name,
+        sportTypeId: row.sport_type_id,
+        eventStartDate: row.event_start_date,
+        eventEndDate: row.event_end_date,
+        registrationOpen: Boolean(row.registration_open),
+        venue: row.venue,
+        organizingFacultyId: row.organizing_faculty_id
+    };
+}
+
+export type TournamentDetailDto = {
+    id: number;
+    name: string;
+    description: string | null;
+    entryNotes: string | null;
+    sportTypeId: number;
+    bracketFormat: TournamentRow['bracket_format'];
+    /**
+     * 🆕 7 ต.ค. 2569 (รายงาน FE) — BO-N ที่ผู้จัดตั้งไว้ · null = กีฬานี้ไม่ได้แข่งเป็นรอบ
+     *   มีมาตั้งแต่ migration 044 และ POST/PATCH เขียนได้ แมตช์ก็สืบทอดถูก แต่ **ไม่เคยส่งออก**
+     *   ⇒ FE ตั้ง BO แล้วรีเฟรช ค่าหายไปจากจอ ทั้งที่ในฐานมีอยู่
+     * 🔴 นี่คือ "ค่าตั้งต้นของทัวร์" — แหล่งความจริงของการตรวจสกอร์คือ `bestOf` ของแต่ละแมตช์
+     *   (ดู types/db.ts) · แมตช์ที่ผู้จัดตั้งรูปแบบรายแมตช์ทีหลังจะไม่ตรงกับค่านี้ และถูกต้องแล้ว
+     */
+    bestOf: number | null;
+    scopeType: TournamentRow['scope_type'];
+    organizingFacultyId: number | null;
+    organizingDepartmentId: number | null;
+    status: TournamentRow['tournament_status'];
+    registrationOpen: boolean;
+    registrationStart: string | null;
+    registrationEnd: string | null;
+    eventStartDate: string;
+    eventEndDate: string | null;
+    maxTeams: number;
+    minTeams: number;
+    venue: string | null;
+    genderRequirement: TournamentRow['gender_requirement'];
+    minAge: number | null;
+    maxAge: number | null;
+    organizer: UserRefDto;
+    approvedTeamCount: number;
+    hasOpenComplaints: boolean;
+    championTeamId: number | null;   // B1 — มีค่าเมื่อ status = completed และมีแชมป์
+    completedAt: string | null;
+};
+
+/**
+ * `hasOpenComplaints` — OD-26 ข้อ 8 (มติ 27 ก.ย.): เรื่องร้องเรียนผลแมตช์ไม่บล็อกการปิดทัวร์
+ * แต่ต้องมองเห็นได้ ไม่งั้นทัวร์ที่ยังมีเรื่องค้างดูเหมือนจบเรียบร้อยทั้งที่ยังไม่เรียบร้อย
+ */
+export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto, approvedTeamCount: number, hasOpenComplaints = false): TournamentDetailDto {
+    return {
+        id: row.tournament_id,
+        name: row.name,
+        description: row.description,
+        entryNotes: row.entry_notes,
+        sportTypeId: row.sport_type_id,
+        bracketFormat: row.bracket_format,
+        bestOf: row.best_of,
+        scopeType: row.scope_type,
+        organizingFacultyId: row.organizing_faculty_id,
+        organizingDepartmentId: row.organizing_department_id,
+        status: row.tournament_status,
+        registrationOpen: Boolean(row.registration_open),
+        registrationStart: toIso(row.registration_start),
+        registrationEnd: toIso(row.registration_end),
+        eventStartDate: row.event_start_date,
+        eventEndDate: row.event_end_date,
+        maxTeams: row.max_teams,
+        minTeams: row.min_teams,
+        venue: row.venue,
+        genderRequirement: row.gender_requirement,
+        minAge: row.min_age,
+        maxAge: row.max_age,
+        championTeamId: row.champion_team_id ?? null,
+        completedAt: toIso(row.completed_at ?? null),
+        organizer,
+        approvedTeamCount,
+        hasOpenComplaints
+    };
+}

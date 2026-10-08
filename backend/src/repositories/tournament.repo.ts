@@ -1,0 +1,807 @@
+import pool from '../config/db.js';
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { TournamentRow, UserRow } from '../types/db.js';
+import * as RewardRepo from './reward.repo.js';
+
+export type CreateTournamentRecord = {
+    name: string;
+    sportTypeId: number;
+    bracketFormat: NonNullable<TournamentRow['bracket_format']>;
+    scopeType: Exclude<TournamentRow['scope_type'], 'university'>;
+    organizingFacultyId: number;
+    organizingDepartmentId: number | null;
+    requestedByUserId: number;
+    registrationStart: string;
+    registrationEnd: string;
+    eventStartDate: string;
+    eventEndDate: string;
+    maxTeams: number;
+    minTeams: number;
+    venue: string;
+    entryNotes: string | null;
+    genderRequirement: TournamentRow['gender_requirement'];
+    minAge: number | null;
+    maxAge: number | null;
+    disputeWindowHours: number | null;   // null = ใช้ค่าตั้งต้นของคอลัมน์ (24 ชม.)
+    bestOf: number | null;               // 🆕 BO-N · null = กีฬานี้ไม่ได้แข่งเป็นรอบ
+    eligibilityRules: EligibilityRule[];
+};
+
+export type EligibilityRule = { type: 'faculty' | 'year'; value: number };
+
+/** แทนที่กฎคุณสมบัติทั้งชุดของทัวร์ (ลบเก่า ใส่ใหม่) — ใช้ใน create / PUT ตรง / approve amendment */
+export async function replaceEligibilityRulesTx(conn: PoolConnection, tournamentId: number, rules: EligibilityRule[]): Promise<void> {
+    await conn.query('DELETE FROM tournament_eligibility_rules WHERE tournament_id = ?', [tournamentId]);
+    if (rules.length === 0) return;
+    await conn.query(
+        'INSERT INTO tournament_eligibility_rules (tournament_id, rule_type, rule_value) VALUES ?',
+        [rules.map(r => [tournamentId, r.type, r.value])]
+    );
+}
+
+export async function replaceEligibilityRules(tournamentId: number, userId: number, rules: EligibilityRule[]): Promise<void> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await replaceEligibilityRulesTx(conn, tournamentId, rules);
+        await insertAuditLog(conn, userId, 'tournament_eligibility_updated', 'tournament', tournamentId, { rules });
+        await conn.commit();
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+/** มีใบสมัครที่ยังมีผล (pending/approved) แล้วหรือยัง — ใช้ล็อกการแก้กฎคุณสมบัติ */
+export async function hasLiveApplications(tournamentId: number): Promise<boolean> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 1 FROM tournament_applications
+         WHERE tournament_id = ? AND tournament_application_status IN ('pending', 'approved') LIMIT 1`,
+        [tournamentId]
+    );
+    return rows.length > 0;
+}
+
+
+export async function countApplicationsByTournament(tournamentId: number): Promise<number> {
+    const [rows] = await pool.query<({ cnt: number } & RowDataPacket)[]>(
+        'SELECT COUNT(*) AS cnt FROM tournament_applications WHERE tournament_id = ?',
+        [tournamentId]
+    );
+    return Number(rows[0]?.cnt ?? 0);
+}
+
+export type TournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'tournament_status' | 'rejection_reason' | 'created_at'>;
+
+// `organizing_faculty_id` ต้องมี เพราะ service ใช้คิด canDecide ต่อแถว (adminCoversEligibility)
+export type AdminTournamentRequestRow = Pick<TournamentRow, 'tournament_id' | 'name' | 'sport_type_id' | 'event_start_date' | 'created_at' | 'organizing_faculty_id'> &
+    Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
+
+export type AmendmentRow = {
+    tournament_amendment_request_id: number;
+    tournament_id: number;
+    requested_by: number;
+    requested_changes: unknown;
+    request_reason: string | null;   // NULL = คำขอก่อน migration 020
+    tournament_amendment_request_status: 'pending' | 'approved' | 'rejected';
+    requested_at: Date;
+    reviewed_by: number | null;
+    reviewed_at: Date | null;
+    rejection_reason: string | null;
+    tournament_name: string;
+    tournament_status: TournamentRow['tournament_status'];
+    tournament_requested_by_user_id: number;
+    tournament_organizing_faculty_id: number | null;
+    tournament_event_start_date: string;
+    tournament_event_end_date: string | null;
+    tournament_registration_start: Date | null;
+    tournament_registration_end: Date | null;
+    tournament_min_teams: number;
+    tournament_max_teams: number;
+    tournament_gender_requirement: TournamentRow['gender_requirement'];
+    tournament_min_age: number | null;
+    tournament_max_age: number | null;
+};
+
+export type AdminAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'tournament_id' | 'requested_changes' | 'request_reason' | 'tournament_amendment_request_status' | 'requested_at' | 'tournament_name'> &
+    Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'>;
+
+export async function findTournamentById(id: number): Promise<TournamentRow | null> {
+    const [rows] = await pool.query<(TournamentRow & RowDataPacket)[]>(
+        'SELECT * FROM tournaments WHERE tournament_id = ? AND deleted_at IS NULL',
+        [id]
+    );
+    return rows[0] ?? null;
+}
+
+/**
+ * 🆕 BO-N (มติข้อ ⑤ · 5 ต.ค.) — มีแมตช์ของทัวร์นี้ "เริ่มแข่งไปแล้ว" หรือยัง
+ *
+ * ★ ล็อกที่ระดับ **ทัวร์** ไม่ใช่ระดับแมตช์ ตามมติ: "เปลี่ยนกลางทัวร์ไม่ได้ ต้องตั้งก่อนแมตช์แรกเริ่ม"
+ *   ⇒ แมตช์เดียวเริ่มแข่ง = ล็อกทั้งทัวร์ รวมแมตช์ที่ยังไม่ได้แข่งด้วย
+ *   เหตุ: ถ้าปล่อยให้เปลี่ยนรอบที่ยังไม่แข่งได้ ผู้จัดจะเปลี่ยนรูปแบบรอบชิงหลังเห็นว่าใครเข้าชิง
+ *   ซึ่งเป็นการเปลี่ยนกติกากลางเกม และใบทายผลที่ส่งไว้แล้วจะกลายเป็นใบที่เป็นไปไม่ได้
+ *
+ * 🔴 'checkin_open' **ไม่ใช่** เริ่มแข่ง — เปิดให้เช็คอินแล้วแต่ยังไม่เป่านกหวีด ยังแก้ได้
+ */
+export async function countStartedMatchesOfTournament(tournamentId: number): Promise<number> {
+    const [rows] = await pool.query<(RowDataPacket & { started: number })[]>(
+        `SELECT COUNT(*) AS started FROM matches
+          WHERE tournament_id = ?
+            AND (started_at IS NOT NULL
+                 OR match_status IN ('in_progress','completed','disputed','result_rejected'))`,
+        [tournamentId]
+    );
+    return Number(rows[0]?.started ?? 0);
+}
+
+/**
+ * ตั้งรูปแบบของทัวร์ **และ stamp ลงแมตช์ที่ยังไม่เริ่มทั้งหมด** ในทรานแซกชันเดียว
+ *
+ * ★ ทำสองอย่างพร้อมกันโดยเจตนา: ถ้าเขียนแค่ของทัวร์ แมตช์ที่สร้างสายไปแล้วจะยังถือค่าเก่า
+ *   แล้วผู้จัดจะเห็นว่า "ตั้งเป็น BO5 แล้ว" แต่กรรมการยังส่งผลแบบ BO3 ⇒ ขัดกันเงียบ ๆ
+ * 🔴 stamp แบบทับของเดิม (ไม่ใช่เฉพาะที่เป็น NULL) เพราะนี่คือการตั้งค่าใหม่ทั้งทัวร์
+ *   แมตช์ที่ผู้จัดตั้งค่าเฉพาะตัวไว้ (เช่นรอบชิง BO7) จะถูกทับด้วย ⇒ ต้องตั้งใหม่
+ *   ซึ่งถูกต้องกว่าการเก็บค่าเก่าไว้แบบที่ไม่มีใครเห็น
+ */
+export async function setTournamentBestOfTx(tournamentId: number, bestOf: number | null): Promise<void> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await conn.query(`UPDATE tournaments SET best_of = ? WHERE tournament_id = ?`, [bestOf, tournamentId]);
+        await conn.query(
+            `UPDATE matches SET best_of = ?
+              WHERE tournament_id = ? AND match_status IN ('scheduled','checkin_open')`,
+            [bestOf, tournamentId]
+        );
+        await conn.commit();
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+export async function insertTournament(data: CreateTournamentRecord): Promise<number> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+        `INSERT INTO tournaments
+            (name, description, entry_notes, sport_type_id, bracket_format, scope_type,
+             organizing_faculty_id, organizing_department_id, requested_by_user_id,
+             registration_start, registration_end, event_start_date, event_end_date,
+             max_teams, min_teams, venue, gender_requirement, min_age, max_age, dispute_window_hours,
+             best_of, tournament_status, registration_open)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IFNULL(?, DEFAULT(dispute_window_hours)), ?, 'pending_approval', FALSE)`,
+        [
+            data.name,
+            null,
+            data.entryNotes,
+            data.sportTypeId,
+            data.bracketFormat,
+            data.scopeType,
+            data.organizingFacultyId,
+            data.organizingDepartmentId,
+            data.requestedByUserId,
+            new Date(data.registrationStart),   // ISO 'Z' ผ่าน MySQL strict ไม่ได้ — ให้ mysql2 แปลง Date เอง
+            new Date(data.registrationEnd),
+            data.eventStartDate,
+            data.eventEndDate,
+            data.maxTeams,
+            data.minTeams,
+            data.venue,
+            data.genderRequirement,
+            data.minAge,
+            data.maxAge,
+            data.disputeWindowHours,
+            data.bestOf
+        ]
+        );
+        await replaceEligibilityRulesTx(conn, result.insertId, data.eligibilityRules);
+        await conn.commit();
+        return result.insertId;
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export async function findMyTournamentRequests(userId: number, offset: number, pageSize: number): Promise<{ rows: TournamentRequestRow[]; totalItems: number }> {
+    const [rows] = await pool.query<(TournamentRequestRow & RowDataPacket)[]>(
+        `SELECT tournament_id, name, tournament_status, rejection_reason, created_at
+         FROM tournaments
+         WHERE requested_by_user_id = ? AND deleted_at IS NULL
+         ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [userId, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        'SELECT COUNT(*) AS totalItems FROM tournaments WHERE requested_by_user_id = ? AND deleted_at IS NULL',
+        [userId]
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
+/**
+ * 🧹 7 ต.ค. 2569 — รวมกฎขอบเขตแอดมินให้เหลือที่เดียว (`utils/adminScope.adminScopeSqlOrNull`)
+ *
+ * เดิมไฟล์นี้มี `adminScopeWhere` ของตัวเอง ซึ่งเป็นสำเนาเก่าที่ **ไม่ตรงกับตัวจริง** 2 เคส:
+ *   ① `root` → ของเก่าได้ `organizing_faculty_id = NULL` ⇒ ไม่มีแถวตรง ⇒ **200 รายการว่าง**
+ *      แต่กฎกลางให้ `null` ⇒ ผู้เรียกต้องตอบ **403** · รายการว่างอ่านเหมือน "ไม่มีคำขอค้าง"
+ *      ซึ่งเป็นคำตอบผิด ไม่ใช่การปฏิเสธ (มติ OD-34 · หลักเดียวกับ FE-38)
+ *   ② แอดมินคณะที่ `faculty_id` เป็น NULL → ของเก่าก็ได้รายการว่างเหมือนกัน
+ *      กฎกลางกันไว้ตั้งแต่ตอนทำ B6 เพราะ "ข้อมูลไม่ครบ" ต้องไม่กลายเป็นคำตอบเงียบ ๆ
+ *
+ * ⇒ repository ไม่ตัดสินขอบเขตเองอีก · รับ scope ที่ service คิดมาแล้ว (รูปเดียวกับ
+ *   `feedback.repo.findRemovedFeedback`) เพราะ 403 เป็นเรื่องของ service ไม่ใช่ของ SQL
+ */
+export type AdminScopeSql = { clause: string; params: number[] };
+
+export async function findPendingTournamentRequests(scope: AdminScopeSql, offset: number, pageSize: number): Promise<{ rows: AdminTournamentRequestRow[]; totalItems: number }> {
+    const [rows] = await pool.query<(AdminTournamentRequestRow & RowDataPacket)[]>(
+        `SELECT t.tournament_id, t.name, t.sport_type_id, t.event_start_date, t.created_at, t.organizing_faculty_id,
+                u.user_id, u.full_name, u.profile_image_key
+         FROM tournaments t
+         JOIN users u ON u.user_id = t.requested_by_user_id
+         WHERE t.tournament_status = 'pending_approval' AND t.deleted_at IS NULL${scope.clause}
+         ORDER BY t.created_at ASC LIMIT ? OFFSET ?`,
+        [...scope.params, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems
+         FROM tournaments t
+         WHERE t.tournament_status = 'pending_approval' AND t.deleted_at IS NULL${scope.clause}`,
+        scope.params
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
+export type PublicTournamentFilters = {
+    sportTypeId?: number | undefined;
+    facultyId?: number | undefined;
+    query?: string | undefined;
+    status?: 'public' | 'completed' | undefined;   // B1: default public · completed = ทัวร์ที่จบแล้ว (ผลย้อนหลัง)
+};
+
+/** /me/tournaments (20 ก.ย.) — ทัวร์ที่ฉันเป็น ORG ทุกสถานะ (ยกเว้นที่ลบ) — การ์ดเต็มไม่ต้อง N+1 */
+export async function findTournamentsByOrganizer(userId: number, status: TournamentRow['tournament_status'] | undefined, offset: number, pageSize: number): Promise<{ rows: TournamentRow[]; totalItems: number }> {
+    const where = ['t.requested_by_user_id = ?', 't.deleted_at IS NULL'];
+    const params: Array<number | string> = [userId];
+    if (status !== undefined) { where.push('t.tournament_status = ?'); params.push(status); }
+    const whereSql = where.join(' AND ');
+    const [rows] = await pool.query<(TournamentRow & RowDataPacket)[]>(
+        `SELECT t.* FROM tournaments t WHERE ${whereSql} ORDER BY t.event_start_date DESC, t.tournament_id DESC LIMIT ? OFFSET ?`,
+        [...params, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM tournaments t WHERE ${whereSql}`, params
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
+export async function findPublicTournaments(filters: PublicTournamentFilters, offset: number, pageSize: number): Promise<{ rows: TournamentRow[]; totalItems: number }> {
+    const where = ['t.tournament_status = ?', 't.deleted_at IS NULL'];
+    const params: Array<number | string> = [filters.status ?? 'public'];
+    if (filters.sportTypeId !== undefined) {
+        where.push('t.sport_type_id = ?');
+        params.push(filters.sportTypeId);
+    }
+    if (filters.facultyId !== undefined) {
+        where.push('t.organizing_faculty_id = ?');
+        params.push(filters.facultyId);
+    }
+    if (filters.query !== undefined) {
+        where.push('t.name LIKE ?');
+        params.push(`%${filters.query}%`);
+    }
+    const whereSql = where.join(' AND ');
+    const [rows] = await pool.query<(TournamentRow & RowDataPacket)[]>(
+        `SELECT t.* FROM tournaments t WHERE ${whereSql}
+         ORDER BY t.event_start_date ASC, t.tournament_id DESC LIMIT ? OFFSET ?`,
+        [...params, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM tournaments t WHERE ${whereSql}`,
+        params
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
+export async function countApprovedTeams(tournamentId: number): Promise<number> {
+    const [rows] = await pool.query<({ total: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS total
+         FROM tournament_applications
+         WHERE tournament_id = ? AND tournament_application_status = 'approved'`,
+        [tournamentId]
+    );
+    return Number(rows[0]?.total ?? 0);
+}
+
+export async function countApprovedTeamsInConnection(conn: PoolConnection, tournamentId: number): Promise<number> {
+    const [rows] = await conn.query<({ total: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS total
+         FROM tournament_applications
+         WHERE tournament_id = ? AND tournament_application_status = 'approved'`,
+        [tournamentId]
+    );
+    return Number(rows[0]?.total ?? 0);
+}
+
+export async function findTournamentOrganizer(tournamentId: number): Promise<Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'> | null> {
+    const [rows] = await pool.query<(Pick<UserRow, 'user_id' | 'full_name' | 'profile_image_key'> & RowDataPacket)[]>(
+        `SELECT u.user_id, u.full_name, u.profile_image_key
+         FROM users u JOIN tournaments t ON t.requested_by_user_id = u.user_id
+         WHERE t.tournament_id = ? AND t.deleted_at IS NULL`,
+        [tournamentId]
+    );
+    return rows[0] ?? null;
+}
+
+export async function updateTournamentGeneral(tournamentId: number, userId: number, changes: { venue?: string | undefined; description?: string | null | undefined; entryNotes?: string | null | undefined }): Promise<boolean> {
+    const fields: string[] = [];
+    const values: Array<string | number | null> = [];
+    if (changes.venue !== undefined) {
+        fields.push('venue = ?');
+        values.push(changes.venue);
+    }
+    if (changes.description !== undefined) {
+        fields.push('description = ?');
+        values.push(changes.description);
+    }
+    if (changes.entryNotes !== undefined) {
+        fields.push('entry_notes = ?');
+        values.push(changes.entryNotes);
+    }
+    if (fields.length === 0) return false;
+    fields.push('updated_at = NOW()', 'updated_by = ?');
+    values.push(userId, tournamentId);
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournaments SET ${fields.join(', ')} WHERE tournament_id = ? AND deleted_at IS NULL`,
+        values
+    );
+    return result.affectedRows === 1;
+}
+
+export async function insertAmendmentRequest(tournamentId: number, userId: number, changes: Record<string, unknown>, reason: string): Promise<number> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `INSERT INTO tournament_amendment_requests
+            (tournament_id, requested_by, requested_changes, request_reason)
+         VALUES (?, ?, ?, ?)`,
+        [tournamentId, userId, JSON.stringify(changes), reason]
+    );
+    return result.insertId;
+}
+
+export async function findAmendmentById(id: number): Promise<AmendmentRow | null> {
+    const [rows] = await pool.query<(AmendmentRow & RowDataPacket)[]>(
+        `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_by,
+                ar.requested_changes, ar.request_reason, ar.tournament_amendment_request_status,
+                ar.requested_at, ar.reviewed_by, ar.reviewed_at, ar.rejection_reason,
+                t.name AS tournament_name, t.tournament_status,
+                t.requested_by_user_id AS tournament_requested_by_user_id,
+                t.organizing_faculty_id AS tournament_organizing_faculty_id,
+                t.event_start_date AS tournament_event_start_date,
+                t.event_end_date AS tournament_event_end_date,
+                t.registration_start AS tournament_registration_start,
+                t.registration_end AS tournament_registration_end,
+                t.min_teams AS tournament_min_teams, t.max_teams AS tournament_max_teams,
+                t.gender_requirement AS tournament_gender_requirement,
+                t.min_age AS tournament_min_age, t.max_age AS tournament_max_age
+         FROM tournament_amendment_requests ar
+         JOIN tournaments t ON t.tournament_id = ar.tournament_id
+         WHERE ar.tournament_amendment_request_id = ? AND t.deleted_at IS NULL`,
+        [id]
+    );
+    return rows[0] ?? null;
+}
+
+/**
+ * 🆕 BE-38 (7 ต.ค. 2569) — คำขอแก้ไขของทัวร์นี้ที่ยังรอพิจารณา (หนึ่งใบต่อทัวร์)
+ * ★ ไม่สนว่าใครยื่น — มีแต่ผู้จัดที่ยื่นได้ และโควตาคือ "หนึ่งเรื่องค้างต่อทัวร์"
+ *   เพราะคิวแอดมินเป็นของทัวร์ ไม่ใช่ของคน
+ */
+export async function findPendingAmendmentOfTournament(tournamentId: number): Promise<{ tournament_amendment_request_id: number } | null> {
+    const [rows] = await pool.query<({ tournament_amendment_request_id: number } & RowDataPacket)[]>(
+        `SELECT tournament_amendment_request_id FROM tournament_amendment_requests
+          WHERE tournament_id = ? AND tournament_amendment_request_status = 'pending' LIMIT 1`,
+        [tournamentId]
+    );
+    return rows[0] ?? null;
+}
+
+export async function findPendingAmendments(scope: AdminScopeSql, offset: number, pageSize: number): Promise<{ rows: AdminAmendmentRow[]; totalItems: number }> {
+    const [rows] = await pool.query<(AdminAmendmentRow & RowDataPacket)[]>(
+        `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_changes, ar.request_reason,
+                ar.tournament_amendment_request_status, ar.requested_at,
+                t.name AS tournament_name,
+                u.user_id, u.full_name, u.profile_image_key
+         FROM tournament_amendment_requests ar
+         JOIN tournaments t ON t.tournament_id = ar.tournament_id
+         JOIN users u ON u.user_id = ar.requested_by
+         WHERE ar.tournament_amendment_request_status = 'pending'
+           AND t.deleted_at IS NULL${scope.clause}
+         ORDER BY ar.requested_at ASC LIMIT ? OFFSET ?`,
+        [...scope.params, pageSize, offset]
+    );
+    const [count] = await pool.query<({ totalItems: number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems
+         FROM tournament_amendment_requests ar
+         JOIN tournaments t ON t.tournament_id = ar.tournament_id
+         WHERE ar.tournament_amendment_request_status = 'pending'
+           AND t.deleted_at IS NULL${scope.clause}`,
+        scope.params
+    );
+    return { rows, totalItems: Number(count[0]?.totalItems ?? 0) };
+}
+
+async function insertAuditLog(conn: PoolConnection, userId: number, actionType: string, entityType: string, entityId: number, details?: unknown): Promise<void> {
+    await conn.query(
+        `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details)
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, actionType, entityType, entityId, details === undefined ? null : JSON.stringify(details)]
+    );
+}
+
+/**
+ * 🔴 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — `selfApproved` = คนอนุมัติคือคนที่ขอจัดทัวร์เอง
+ *
+ * มติ ⑥ ค คือ "ทำได้ แต่ห้ามให้ประวัติอ่านเหมือนมีคนที่สองตรวจ"
+ * ⇒ ไม่บล็อก (จะทำให้ระบบที่มีแอดมินมหาวิทยาลัยคนเดียวตันทันที — root อนุมัติแทนไม่ได้
+ *   เพราะ `adminCoversEligibility` คืน false สำหรับ root ตาม OD-34) แต่บันทึกให้ตรงความจริง
+ * ★ ไม่ใช่ค่าที่คำนวณได้ทีหลังเสมอ — `approved_by` เทียบกับ `requested_by_user_id` ได้ตอนนี้
+ *   แต่ `requested_by_user_id` ของทัวร์เปลี่ยนมือได้ (โอนผู้จัด) ⇒ ป้ายต้องถูกตรึงไว้ตอนกด
+ * ★ เส้นทาง `autoApproveIfOwnScope` (มติ 18 ก.ย. ข้อ 8) ส่ง true มาด้วยโดยถูกต้อง —
+ *   นั่นคือกรณีที่ทีม**ตั้งใจ**ให้แอดมินอนุมัติทัวร์ตัวเองอยู่แล้ว · ป้ายนี้ไม่ได้ตัดสินว่าผิด
+ *   มันแค่ทำให้ audit log แยกสองกรณีนี้ออกจาก "มีคนที่สองตรวจจริง" ได้
+ */
+export async function approveTournament(tournamentId: number, adminId: number, selfApproved: boolean): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+             SET tournament_status = 'private', approved_by = ?, approved_at = NOW(),
+                 updated_at = NOW(), updated_by = ?
+             WHERE tournament_id = ? AND tournament_status = 'pending_approval' AND deleted_at IS NULL`,
+            [adminId, adminId, tournamentId]
+        );
+        if (result.affectedRows === 1) {
+            await insertAuditLog(conn, adminId, 'tournament_approved', 'tournament', tournamentId, { selfApproved });
+        }
+        await conn.commit();
+        return result.affectedRows === 1;
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export async function rejectTournament(tournamentId: number, adminId: number, reason: string): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+             SET tournament_status = 'rejected', rejection_reason = ?,
+                 updated_at = NOW(), updated_by = ?
+             WHERE tournament_id = ? AND tournament_status = 'pending_approval' AND deleted_at IS NULL`,
+            [reason, adminId, tournamentId]
+        );
+        if (result.affectedRows === 1) {
+            await insertAuditLog(conn, adminId, 'tournament_rejected', 'tournament', tournamentId, { reason });
+        }
+        await conn.commit();
+        return result.affectedRows === 1;
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export type AmendmentDecision = 'capacity_conflict' | 'not_found' | 'already_decided' | 'ok';
+
+const amendmentColumns: Record<string, string> = {
+    registrationStart: 'registration_start',
+    registrationEnd: 'registration_end',
+    eventStartDate: 'event_start_date',
+    eventEndDate: 'event_end_date',
+    minTeams: 'min_teams',
+    maxTeams: 'max_teams',
+    genderRequirement: 'gender_requirement',
+    minAge: 'min_age',
+    maxAge: 'max_age'
+};
+
+export async function approveAmendment(amendmentId: number, adminId: number, changes: Record<string, unknown>): Promise<AmendmentDecision> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [amendments] = await conn.query<(Pick<AmendmentRow, 'tournament_amendment_request_id' | 'tournament_id' | 'tournament_amendment_request_status' | 'requested_by'> & { max_teams: number } & RowDataPacket)[]>(
+            `SELECT ar.tournament_amendment_request_id, ar.tournament_id, ar.requested_by,
+                    ar.tournament_amendment_request_status, t.max_teams
+             FROM tournament_amendment_requests ar
+             JOIN tournaments t ON t.tournament_id = ar.tournament_id
+             WHERE ar.tournament_amendment_request_id = ? AND t.deleted_at IS NULL
+             FOR UPDATE`,
+            [amendmentId]
+        );
+        const amendment = amendments[0];
+        if (!amendment) {
+            await conn.rollback();
+            return 'not_found';
+        }
+        if (amendment.tournament_amendment_request_status !== 'pending') {
+            await conn.rollback();
+            return 'already_decided';
+        }
+
+        const approvedTeams = await countApprovedTeamsInConnection(conn, amendment.tournament_id);
+        if (typeof changes.maxTeams === 'number' && changes.maxTeams < approvedTeams) {
+            await conn.rollback();
+            return 'capacity_conflict';
+        }
+
+        const assignments: string[] = [];
+        const values: unknown[] = [];
+        for (const [key, column] of Object.entries(amendmentColumns)) {
+            if (Object.prototype.hasOwnProperty.call(changes, key)) {
+                assignments.push(`${column} = ?`);
+                const v = changes[key];
+                values.push((key === 'registrationStart' || key === 'registrationEnd') && typeof v === 'string' ? new Date(v) : v);
+            }
+        }
+        assignments.push('updated_at = NOW()', 'updated_by = ?');
+        values.push(adminId, amendment.tournament_id);
+        await conn.query(`UPDATE tournaments SET ${assignments.join(', ')} WHERE tournament_id = ?`, values);
+        if (Array.isArray(changes['eligibilityRules'])) {
+            await replaceEligibilityRulesTx(conn, amendment.tournament_id, changes['eligibilityRules'] as EligibilityRule[]);
+        }
+        await conn.query(
+            `UPDATE tournament_amendment_requests
+             SET tournament_amendment_request_status = 'approved', reviewed_by = ?, reviewed_at = NOW()
+             WHERE tournament_amendment_request_id = ?`,
+            [adminId, amendmentId]
+        );
+        /**
+         * 🔴 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — ป้าย "อนุมัติคำขอของตัวเอง"
+         *   อ่านค่า `requested_by` จากแถวที่ FOR UPDATE ไว้แล้ว ⇒ ไม่มีช่องให้คนอื่นแก้ระหว่างกลาง
+         *   ★ เทียบกับ `requested_by` ของ **คำขอ** ไม่ใช่ผู้จัดทัวร์ปัจจุบัน — คนที่ลงชื่อขอคือคนที่ต้องเทียบ
+         */
+        await insertAuditLog(conn, adminId, 'tournament_amendment_approved', 'tournament_amendment_request', amendmentId,
+            { changes, selfApproved : amendment.requested_by === adminId });
+        await conn.commit();
+        return 'ok';
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export async function rejectAmendment(amendmentId: number, adminId: number, reason: string): Promise<AmendmentDecision> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournament_amendment_requests
+             SET tournament_amendment_request_status = 'rejected', rejection_reason = ?,
+                 reviewed_by = ?, reviewed_at = NOW()
+             WHERE tournament_amendment_request_id = ? AND tournament_amendment_request_status = 'pending'`,
+            [reason, adminId, amendmentId]
+        );
+        if (result.affectedRows !== 1) {
+            const [exists] = await conn.query<RowDataPacket[]>(
+                'SELECT tournament_amendment_request_id FROM tournament_amendment_requests WHERE tournament_amendment_request_id = ?',
+                [amendmentId]
+            );
+            await conn.rollback();
+            return exists.length === 0 ? 'not_found' : 'already_decided';
+        }
+        await insertAuditLog(conn, adminId, 'tournament_amendment_rejected', 'tournament_amendment_request', amendmentId, { reason });
+        await conn.commit();
+        return 'ok';
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export type PublishDecision =
+    | { status: 'not_found' | 'invalid_status' }
+    | { status: 'referees_incomplete'; refereesAccepted: number }
+    | { status: 'ok' };
+
+export async function publishTournament(tournamentId: number, userId: number, refereesRequired: number): Promise<PublishDecision> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [tournaments] = await conn.query<(Pick<TournamentRow, 'tournament_status'> & RowDataPacket)[]>(
+            `SELECT tournament_status
+             FROM tournaments
+             WHERE tournament_id = ? AND deleted_at IS NULL
+             FOR UPDATE`,
+            [tournamentId]
+        );
+        const tournament = tournaments[0];
+        if (!tournament) {
+            await conn.rollback();
+            return { status: 'not_found' };
+        }
+        if (tournament.tournament_status !== 'private') {
+            await conn.rollback();
+            return { status: 'invalid_status' };
+        }
+
+        const [referees] = await conn.query<({ total: number } & RowDataPacket)[]>(
+            `SELECT COUNT(*) AS total
+             FROM (
+                 SELECT tr.*,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY tr.user_id
+                            ORDER BY tr.tournament_referee_id DESC
+                        ) AS row_num
+                 FROM tournament_referees tr
+                 WHERE tr.tournament_id = ?
+             ) latest
+             WHERE latest.row_num = 1
+               AND latest.removed_at IS NULL
+               AND latest.invitation_status = 'accepted'
+               AND (latest.is_external = 0 OR latest.external_approval_status = 'approved')`,
+            [tournamentId]
+        );
+        const refereesAccepted = Number(referees[0]?.total ?? 0);
+        if (refereesAccepted < refereesRequired) {
+            await conn.rollback();
+            return { status: 'referees_incomplete', refereesAccepted };
+        }
+
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+             SET tournament_status = 'public', updated_at = NOW(), updated_by = ?
+             WHERE tournament_id = ? AND tournament_status = 'private'`,
+            [userId, tournamentId]
+        );
+        if (result.affectedRows !== 1) {
+            await conn.rollback();
+            return { status: 'invalid_status' };
+        }
+        await conn.commit();
+        return { status: 'ok' };
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+export async function changeTournamentStatus(tournamentId: number, userId: number, from: TournamentRow['tournament_status'], to: TournamentRow['tournament_status']): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournaments
+         SET tournament_status = ?, updated_at = NOW(), updated_by = ?
+         WHERE tournament_id = ? AND tournament_status = ? AND deleted_at IS NULL`,
+        [to, userId, tournamentId, from]
+    );
+    return result.affectedRows === 1;
+}
+
+export async function changeRegistrationState(tournamentId: number, userId: number, open: boolean): Promise<boolean> {
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournaments
+         SET registration_open = ?, updated_at = NOW(), updated_by = ?
+         WHERE tournament_id = ? AND tournament_status = 'public'
+           AND registration_open = ? AND deleted_at IS NULL`,
+        [open, userId, tournamentId, !open]
+    );
+    return result.affectedRows === 1;
+}
+
+/** B1 — แมตช์ที่ยังไม่จบของทัวร์ (ทุกสถานะที่ไม่ใช่ completed) ใช้ตัดสินว่าปิดทัวร์ได้หรือยัง */
+export async function findUnfinishedMatchIds(tournamentId: number): Promise<{ match_id: number; match_status: string }[]> {
+    const [rows] = await pool.query<({ match_id: number; match_status: string } & RowDataPacket)[]>(
+        `SELECT match_id, match_status FROM matches WHERE tournament_id = ? AND match_status <> 'completed' ORDER BY match_id`,
+        [tournamentId]);
+    return rows;
+}
+
+/**
+ * B1 (มติ 21 ก.ย. 2-ง) — ปิดทัวร์ในทรานแซกชันเดียว:
+ *   status → completed + แชมป์ · championships +1 ให้รายชื่อลงแข่งของทีมแชมป์ · last_competed_at ของทุกทีม approved · audit
+ * คืน false ถ้าสถานะเปลี่ยนไปแล้ว (กดพร้อมกัน)
+ */
+export async function completeTournament(tournamentId: number, userId: number, championTeamId: number | null, sportTypeId: number): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [upd] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments SET tournament_status = 'completed', champion_team_id = ?, completed_at = NOW(), completed_by = ?, updated_at = NOW(), updated_by = ?
+             WHERE tournament_id = ? AND tournament_status IN ('public', 'private') AND deleted_at IS NULL`,
+            [championTeamId, userId, userId, tournamentId]);
+        if (upd.affectedRows === 0) { await conn.rollback(); return false; }
+
+        if (championTeamId !== null) {
+            await conn.query<ResultSetHeader>(
+                `INSERT INTO player_profile_stats (user_id, sport_type_id, matches_played, wins, losses, championships)
+                 SELECT ap.user_id, ?, 0, 0, 0, 1 FROM application_players ap
+                 JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+                 WHERE ta.tournament_id = ? AND ta.team_id = ? AND ta.tournament_application_status = 'approved'
+                 ON DUPLICATE KEY UPDATE championships = championships + 1, updated_at = NOW()`,
+                [sportTypeId, tournamentId, championTeamId]);
+        }
+        await conn.query<ResultSetHeader>(
+            `UPDATE teams t JOIN tournament_applications ta ON ta.team_id = t.team_id
+             SET t.last_competed_at = NOW()
+             WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'`,
+            [tournamentId]);
+        // OD-64 — ประเมินเหรียญสายสถิติ · ต้องอยู่ **หลัง** การบวก championships ข้างบน
+        // ไม่งั้นเหรียญแชมป์จะอ่านค่าก่อนบวก แล้วช้าไปหนึ่งทัวร์เสมอ
+        await RewardRepo.evaluateStatRewardsForTournamentTx(conn, tournamentId);
+
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'tournament_completed', 'tournament', ?, ?)`,
+            [userId, tournamentId, JSON.stringify({ championTeamId })]);
+        await conn.commit();
+        return true;
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+
+export async function softDeleteTournament(tournamentId: number, userId: number): Promise<boolean> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+             SET deleted_at = NOW(), deleted_by = ?, updated_at = NOW(), updated_by = ?, registration_open = FALSE
+             WHERE tournament_id = ?
+               AND deleted_at IS NULL
+               AND tournament_status IN ('pending_approval', 'rejected', 'private')`,
+            [userId, userId, tournamentId]
+        );
+        if (result.affectedRows === 0) {
+            await conn.rollback();
+            return false;
+        }
+        await insertAuditLog(conn, userId, 'tournament_deleted', 'tournament', tournamentId);
+        await conn.commit();
+        return true;
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
+/** C09b — คำขอแก้ไขทั้งหมดของทัวร์ (ผู้ยื่นคำขอดูสถานะ/เหตุผลที่ถูกปฏิเสธ) ล่าสุดก่อน — FE-organizer-see-their-own 21 ก.ย. */
+export type TournamentAmendmentRow = Pick<AmendmentRow, 'tournament_amendment_request_id' | 'requested_by' | 'requested_changes' | 'request_reason' |
+    'tournament_amendment_request_status' | 'requested_at' | 'reviewed_by' | 'reviewed_at' | 'rejection_reason'> & { reviewer_name: string | null };
+
+export async function findAmendmentsByTournament(tournamentId: number): Promise<TournamentAmendmentRow[]> {
+    const [rows] = await pool.query<(TournamentAmendmentRow & RowDataPacket)[]>(
+        `SELECT ar.tournament_amendment_request_id, ar.requested_by, ar.requested_changes, ar.request_reason, ar.tournament_amendment_request_status,
+                ar.requested_at, ar.reviewed_by, ar.reviewed_at, ar.rejection_reason, u.full_name AS reviewer_name
+         FROM tournament_amendment_requests ar
+         LEFT JOIN users u ON u.user_id = ar.reviewed_by
+         WHERE ar.tournament_id = ?
+         ORDER BY ar.requested_at DESC, ar.tournament_amendment_request_id DESC`,
+        [tournamentId]);
+    return rows;
+}

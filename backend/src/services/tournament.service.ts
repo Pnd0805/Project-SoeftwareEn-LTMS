@@ -1,0 +1,996 @@
+import * as z from 'zod';
+import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
+import type { MatchFormatInput } from '../schemas/match.schema.js';
+import * as AdminScopeRepo from '../repositories/adminScope.repo.js';
+import * as TournamentRefereeRepo from '../repositories/tournamentReferee.repo.js';
+import * as ApplicationRepo from '../repositories/application.repo.js';
+import * as DepartmentRepo from '../repositories/department.repo.js';
+import * as FacultyRepo from '../repositories/faculty.repo.js';
+import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import type { EligibilityRule } from '../repositories/tournament.repo.js';
+import { eligibilityRulesSchema } from '../schemas/tournament.schema.js';
+import * as UserRepo from '../repositories/user.repo.js';
+import { toTournamentDetailDto, toTournamentListDto } from '../mappers/tournament.mapper.js';
+import * as ComplaintRepo from '../repositories/matchResultComplaint.repo.js';
+import { toUserRef } from '../mappers/user.mapper.js';
+import { buildPagination } from '../utils/pagination.js';
+import { AppError } from '../utils/AppError.js';
+import { adminOverseesTournament, adminScopeSqlOrNull } from '../utils/adminScope.js';
+import { assertBestOfAllowed } from '../utils/matchFormat.js';
+import { isStudyYear , MIN_STUDY_YEAR , MAX_STUDY_YEAR } from '../utils/studyYear.js';
+import { genderAgeFailReason } from '../utils/hardFilter.js';
+import type { AdminScopeRow, TournamentRow } from '../types/db.js';
+import type { AmendmentRequestInput, CreateTournamentInput, UpdateTournamentInput, EligibilityRuleInput, SetEligibilityRulesInput } from '../schemas/tournament.schema.js';
+import { refereesNeededPerMatch } from './referee.service.js';
+import * as MatchRepo from '../repositories/match.repo.js';
+import * as MatchResultService from './matchResult.service.js';
+import { isRequesterOf } from '../middlewares/requireOrganizer.js';
+import * as NotificationService from './notification.service.js';
+
+const amendmentFieldSchema = z.object({
+    registrationStart: z.iso.datetime({ offset: true }).optional(),
+    registrationEnd: z.iso.datetime({ offset: true }).optional(),
+    eventStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    eventEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    minTeams: z.int().min(2).optional(),
+    maxTeams: z.int().min(2).optional(),
+    genderRequirement: z.enum(['any', 'male', 'female']).optional(),
+    minAge: z.int().min(0).max(120).nullable().optional(),
+    maxAge: z.int().min(0).max(120).nullable().optional(),
+    eligibilityRules: eligibilityRulesSchema.optional()
+}).catchall(z.unknown());
+
+const allowedAmendmentFields = new Set([
+    'registrationStart', 'registrationEnd', 'eventStartDate', 'eventEndDate',
+    'minTeams', 'maxTeams', 'genderRequirement', 'minAge', 'maxAge', 'eligibilityRules'
+]);
+
+/**
+ * กฎคุณสมบัติ (มติ 20 ก.ย. 2569 Q1-ค) — ตรวจแล้วคืนชุดที่สะอาด: คณะต้องมีจริง · ชั้นปี 1–8 · ตัดซ้ำ
+ */
+export async function normalizeEligibilityRules(rules: EligibilityRuleInput[] | undefined): Promise<EligibilityRule[]> {
+    if (!rules || rules.length === 0) return [];
+    const seen = new Set<string>();
+    const out: EligibilityRule[] = [];
+    for (const rule of rules) {
+        const key = `${rule.type}:${rule.value}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // 🔴 7 ต.ค. 2569 (BE-05) — เดิมเลข 8 ฮาร์ดโค้ดที่นี่ที่เดียว และตรวจแค่ขอบบน
+        //    ตอนนี้ใช้กฎกลางตัวเดียวกับตอนสมัครสมาชิก (utils/studyYear.ts) ⇒ สองที่เถียงกันไม่ได้
+        if (rule.type === 'year' && !isStudyYear(rule.value)) {
+            validationError(`ชั้นปีต้องอยู่ระหว่าง ${MIN_STUDY_YEAR}–${MAX_STUDY_YEAR}`,
+                            { eligibilityRules: `ชั้นปี ${rule.value} ไม่ถูกต้อง` });
+        }
+        if (rule.type === 'faculty' && !(await FacultyRepo.findFacultyById(rule.value))) {
+            validationError('ไม่พบคณะในกฎคุณสมบัติ', { eligibilityRules: `ไม่พบคณะ ${rule.value}` });
+        }
+        out.push({ type: rule.type, value: rule.value });
+    }
+    return out;
+}
+
+/**
+ * มติ 20 ก.ย. 2569 Q2-ข: แอดมินคณะ "รับผิดชอบ" ทัวร์ก็ต่อเมื่อคณะตัวเองเป็นผู้จัด **และ** กฎคณะจำกัดเฉพาะคณะตัวเอง
+ * ทัวร์ที่เปิดรับคณะอื่น/ไม่จำกัดคณะ → ต้องเป็น university_wide · ใช้ทั้ง auto-approve (C01), C04 approve, C11 approve amendment
+ */
+export function adminCoversEligibility(admin: AdminScopeRow, organizingFacultyId: number | null, rules: EligibilityRule[]): boolean {
+    if (admin.scope_type === 'university_wide') return true;
+    if (admin.scope_type !== 'faculty' || admin.faculty_id === null || admin.faculty_id !== organizingFacultyId) return false;
+    const facultyRules = rules.filter(r => r.type === 'faculty');
+    return facultyRules.length > 0 && facultyRules.every(r => r.value === admin.faculty_id);
+}
+
+function eligibilityOutOfScope(): never {
+    throw new AppError(403, 'ELIGIBILITY_OUT_OF_SCOPE',
+        'ทัวร์นาเมนต์นี้เปิดรับนอกคณะของคุณ (หรือไม่จำกัดคณะ) ต้องให้แอดมินระดับมหาวิทยาลัยพิจารณา');
+}
+
+async function currentRules(tournamentId: number): Promise<EligibilityRule[]> {
+    return (await ApplicationRepo.findEligibilityRules(tournamentId)).map(r => ({ type: r.rule_type, value: r.rule_value }));
+}
+
+type AmendmentChanges = Record<string, unknown>;
+
+function validationError(message: string, fields?: Record<string, string>): never {
+    throw new AppError(400, 'VALIDATION_FAILED', message, fields === undefined ? undefined : { fields });
+}
+
+function dateMilliseconds(value: Date | string | null): number | null {
+    if (value === null) return null;
+    const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+    return Number.isNaN(time) ? null : time;
+}
+
+function ensureSchedule(values: {
+    registrationStart: Date | string | null;
+    registrationEnd: Date | string | null;
+    eventStartDate: Date | string;
+    eventEndDate: Date | string | null;
+    minTeams: number;
+    maxTeams: number;
+}): void {
+    const registrationStart = dateMilliseconds(values.registrationStart);
+    const registrationEnd = dateMilliseconds(values.registrationEnd);
+    const eventStart = dateMilliseconds(values.eventStartDate);
+    const eventEnd = dateMilliseconds(values.eventEndDate);
+
+    if (registrationStart === null || registrationEnd === null || eventStart === null || eventEnd === null) {
+        throw new AppError(400, 'INVALID_DATE_RANGE', 'ช่วงวันเวลาไม่ถูกต้อง', { fields: { eventStartDate: 'วันเวลาไม่ถูกต้อง' } });
+    }
+    if (registrationStart >= registrationEnd) {
+        throw new AppError(400, 'INVALID_DATE_RANGE', 'ช่วงเวลารับสมัครไม่ถูกต้อง', { fields: { registrationEnd: 'ต้องอยู่หลัง registrationStart' } });
+    }
+    if (registrationEnd >= eventStart) {
+        throw new AppError(400, 'INVALID_DATE_RANGE', 'วันแข่งขันต้องอยู่หลังวันปิดรับสมัคร', { fields: { eventStartDate: 'ต้องอยู่หลัง registrationEnd' } });
+    }
+    if (eventStart > eventEnd) {
+        throw new AppError(400, 'INVALID_DATE_RANGE', 'ช่วงวันแข่งขันไม่ถูกต้อง', { fields: { eventEndDate: 'ต้องไม่อยู่ก่อน eventStartDate' } });
+    }
+    if (values.minTeams > values.maxTeams) {
+        validationError('จำนวนทีมขั้นต่ำต้องไม่มากกว่าจำนวนทีมสูงสุด', { minTeams: 'ต้องไม่มากกว่า maxTeams' });
+    }
+}
+
+function ensureAges(minAge: number | null | undefined, maxAge: number | null | undefined): void {
+    if (minAge !== null && minAge !== undefined && maxAge !== null && maxAge !== undefined && minAge > maxAge) {
+        validationError('อายุขั้นต่ำต้องไม่มากกว่าอายุสูงสุด', { minAge: 'ต้องไม่มากกว่า maxAge' });
+    }
+}
+
+async function ensureCreateReferences(input: CreateTournamentInput): Promise<void> {
+    const sport = await SportTypeRepo.findSportTypeById(input.sportTypeId);
+    if (!sport) validationError('ไม่พบชนิดกีฬา', { sportTypeId: 'ไม่พบชนิดกีฬานี้' });
+    // มติ 7 ต.ค. 2569 (②ก) — กีฬาที่ไม่ได้แข่งเป็นรอบ ตั้ง BO มาไม่ได้ · ใช้แถวกีฬาที่อ่านมาแล้ว ไม่ยิงซ้ำ
+    assertBestOfAllowed(sport, input.bestOf);
+
+    if (input.scopeType === 'faculty') {
+        if (input.organizingFacultyId === undefined || input.organizingFacultyId === null) {
+            validationError('ต้องระบุคณะที่จัดการแข่งขัน', { organizingFacultyId: 'จำเป็นสำหรับ scopeType=faculty' });
+        }
+        if (input.organizingDepartmentId !== undefined && input.organizingDepartmentId !== null) {
+            validationError('faculty scope ต้องไม่ระบุภาควิชา', { organizingDepartmentId: 'ต้องเป็น null หรือไม่ส่งมา' });
+        }
+        const faculty = await FacultyRepo.findFacultyById(input.organizingFacultyId);
+        if (!faculty) validationError('ไม่พบคณะที่จัดการแข่งขัน', { organizingFacultyId: 'ไม่พบคณะนี้' });
+        return;
+    }
+
+    if (input.organizingFacultyId === undefined || input.organizingFacultyId === null) {
+        validationError('ต้องระบุคณะที่จัดการแข่งขัน', { organizingFacultyId: 'จำเป็นสำหรับ scopeType=department' });
+    }
+    if (input.organizingDepartmentId === undefined || input.organizingDepartmentId === null) {
+        validationError('ต้องระบุภาควิชาที่จัดการแข่งขัน', { organizingDepartmentId: 'จำเป็นสำหรับ scopeType=department' });
+    }
+    const department = await DepartmentRepo.findDepartmentInFaculty(input.organizingFacultyId, input.organizingDepartmentId);
+    if (!department) {
+        validationError('ภาควิชาไม่อยู่ในคณะที่ระบุ', { organizingDepartmentId: 'ภาควิชาต้องอยู่ใน organizingFacultyId เดียวกัน' });
+    }
+}
+
+/** ย้ายไป utils/adminScope.ts แล้ว (มติ B6 6 ต.ค. 2569) — middleware ต้องใช้กฎเดียวกัน ห้ามเขียนซ้ำ */
+const canManageTournament = adminOverseesTournament;
+
+async function getTournamentAdmin(userId: number, tournament: TournamentRow): Promise<AdminScopeRow> {
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    if (!admin || !canManageTournament(admin, tournament)) {
+        throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์จัดการทัวร์นาเมนต์นี้');
+    }
+    return admin;
+}
+
+async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> {
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    if (!tournament) throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+    return tournament;
+}
+
+async function getVisibleTournament(tournamentId: number, userId?: number): Promise<TournamentRow> {
+    const tournament = await getTournamentOr404(tournamentId);
+    // completed = ผลย้อนหลังเป็นสาธารณะเหมือน public (B1 3-ก, 21 ก.ย.)
+    if (tournament.tournament_status === 'public' || tournament.tournament_status === 'completed') return tournament;
+
+    // ผู้ยื่นคำขอเห็นทัวร์ของตัวเองทุกสถานะ (รวม pending_approval/rejected/completed) ยกเว้นถูกลบอัตโนมัติ — FE-c17b 20 ก.ย.
+    if (userId !== undefined && isRequesterOf(tournament, userId)) {
+        return tournament;
+    }
+
+    if (userId !== undefined) {
+        const admin = await AdminScopeRepo.findAdminByUserId(userId);
+        if (admin && canManageTournament(admin, tournament)) return tournament;
+    }
+
+    /**
+     * FE-referee-cannot-read-invited-tournament (มติ 27 ก.ย. ทางเลือก ก) — กรรมการที่ถูกเชิญอ่านได้
+     *
+     * ลำดับที่ตัวสินค้ากำหนดเองคือ approve → แต่งตั้งกรรมการ → publish คำเชิญจึงมาถึงตอนทัวร์ยังเป็น
+     * `private` เกือบทุกครั้ง · เดิมกรรมการไม่อยู่ในรายชื่อผู้อ่าน หน้าที่แจ้งเตือน C1 ลิงก์ไปให้จึงตอบ 404
+     * จอบอกว่า "ไม่มีทัวร์นี้" ทั้งที่จดหมายในมือเพิ่งเอ่ยชื่อทัวร์นั้น — และกรรมการต้องตัดสินใจรับ/ไม่รับ
+     * โดยไม่เห็นว่าจะไปตัดสินอะไร ไม่รู้กีฬา วันแข่ง หรือสนาม
+     *
+     * เอาแถวล่าสุดเพราะคนหนึ่งอาจถูกเชิญ–ถอด–เชิญใหม่ · `removed_at` แล้วหมดสิทธิ์อ่าน
+     * ไม่กรอง `invitation_status` — คนที่ยัง `pending` คือคนที่ต้องเห็นที่สุด และคนที่ปฏิเสธไปแล้วก็ไม่เสียหาย
+     * เช็คท้ายสุดเพราะเป็นคิวรีเพิ่ม และเส้นทางที่พบบ่อยกว่า (ผู้ยื่นคำขอ/แอดมิน) จบไปก่อนแล้ว
+     *
+     * ★ ตัวนี้กั้น 2 เส้น: `GET /tournaments/:id` (C07) และ `GET /tournaments/:id/eligibility-rules` (C17)
+     *   เปิดทั้งคู่โดยเจตนา — กฎว่าใครลงแข่งได้เป็นข้อมูลที่กรรมการควรรู้ก่อนรับงาน
+     */
+    if (userId !== undefined && tournament.tournament_status !== 'auto_deleted') {
+        // กฎที่นี่คือ "มีแถวที่ยังไม่ถูกถอดอยู่ไหม" — pending ก็นับ ต่างจากอีกสองที่ต้อง active จริง
+        // เพราะกฎว่าใครลงแข่งได้เป็นข้อมูลที่คนถูกเชิญควรรู้ก่อนตัดสินว่าจะรับไหม
+        // แก้ 1 ต.ค. 2569 — เดิมดูแถวล่าสุดตาม id แถวเดียว ⇒ ถ้าแถวนั้นถูกถอดแต่แถวเก่ายังอยู่ ก็มองทัวร์ไม่เห็น
+        const refereeRows = await TournamentRefereeRepo.findActiveByTournamentAndUser(tournament.tournament_id, userId);
+        if (refereeRows.length > 0) return tournament;
+    }
+
+    throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+}
+
+/**
+ * A2 (6 ต.ค. 2569) — เปิดตัวตัดสิน "ใครมองเห็นทัวร์นี้" ให้ middleware ใช้ร่วม
+ *   requireVisibleTournamentForReads เอาไปกั้นการอ่านทุกเส้นใต้ /tournaments/:id และ /matches/:id
+ *   ⇒ กฎการมองเห็นมีที่เดียว ไม่ต้องเขียนซ้ำในแต่ละ controller (และไม่หลงลืมเส้นใหม่ในอนาคต)
+ */
+export const findVisibleTournament = getVisibleTournament;
+
+async function getDetail(tournament: TournamentRow): Promise<ReturnType<typeof toTournamentDetailDto>> {
+    const organizer = await TournamentRepo.findTournamentOrganizer(tournament.tournament_id);
+    if (!organizer) throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+    const approvedTeamCount = await TournamentRepo.countApprovedTeams(tournament.tournament_id);
+    const openComplaints = await ComplaintRepo.countOpenByTournament(tournament.tournament_id);
+    return toTournamentDetailDto(tournament, toUserRef(organizer), approvedTeamCount, openComplaints > 0);
+}
+
+/** ข้อ 9 (รายงาน FE 18 ก.ย.): สร้างใหม่ต้องไม่ใช่อดีต — ปิดรับสมัครยังไม่ผ่าน และวันแข่งไม่ก่อนวันนี้ (เวลาไทย) · ไม่ใช้กับ amendment */
+function ensureNotInPast(input: CreateTournamentInput): void {
+    const now = Date.now();
+    const todayThai = new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    if (new Date(input.registrationEnd).getTime() <= now) {
+        throw new AppError(400, 'TOURNAMENT_DATES_IN_PAST', 'วันปิดรับสมัครต้องอยู่ในอนาคต', { fields: { registrationEnd: 'ผ่านไปแล้ว' } });
+    }
+    if (input.eventStartDate < todayThai) {
+        throw new AppError(400, 'TOURNAMENT_DATES_IN_PAST', 'วันแข่งขันต้องไม่ก่อนวันนี้', { fields: { eventStartDate: 'ผ่านไปแล้ว' } });
+    }
+}
+
+/**
+ * ข้อ 8 (มติ 18 ก.ย. 2569): admin สร้างทัวร์ในขอบเขตตัวเองได้เลยไม่ต้องรออนุมัติ
+ *   university_wide → ทุกทัวร์ · faculty admin → ทัวร์ที่ organizing_faculty_id = คณะตัวเอง (scope department/faculty ของคณะนั้น)
+ *   นอกขอบเขต (หรือไม่ใช่ admin) → pending_approval ตามเดิม
+ */
+async function autoApproveIfOwnScope(tournamentId: number, userId: number, organizingFacultyId: number, rules: EligibilityRule[]): Promise<boolean> {
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    if (!admin) return false;
+    if (!adminCoversEligibility(admin, organizingFacultyId, rules)) return false;   // Q2-ข
+    // selfApproved = true โดยนิยามของเส้นทางนี้ — แอดมินอนุมัติทัวร์ที่ตัวเองสร้าง (BE-40 · มติ ⑥ ค)
+    return TournamentRepo.approveTournament(tournamentId, userId, true);
+}
+
+/**
+ * 🆕 BO-N (มติ 5 ต.ค.) — ผู้จัดตั้งรูปแบบ "แข่งหลายรอบ" ของ **ทั้งทัวร์**
+ *
+ * เขียนทั้งค่าของทัวร์และ stamp ลงแมตช์ที่ยังไม่เริ่มในทรานแซกชันเดียว (ดู repo)
+ * 🔴 ทับค่าที่ผู้จัดตั้งไว้เฉพาะแมตช์ด้วย — ตั้งทั้งทัวร์ทีหลังแล้วค่อยตั้งรอบชิงแยกอีกครั้ง
+ *
+ * มติข้อ ⑤: ล็อกเมื่อมีแมตช์ไหนของทัวร์เริ่มแข่งไปแล้ว (เหตุผลอยู่ใน match.service.setMatchFormat)
+ */
+export async function setTournamentFormat(tournamentId: number, input: MatchFormatInput, userId: number) {
+    const tournament = await getTournamentOr404(tournamentId);
+    // ★ ตรวจสิทธิ์ที่นี่ด้วยแม้ route จะมี requireOrganizer แล้ว — ฟังก์ชันนี้เขียนข้อมูลทั้งทัวร์
+    //   และ requireOrganizer ตรวจจาก req.params ซึ่งคนละทางกับ argument ที่ส่งเข้ามา
+    if (!isOrganizerOf(tournament, userId)) {
+        throw new AppError(403, "NOT_TOURNAMENT_ORGANIZER", "คุณไม่ใช่ผู้จัดของทัวร์นาเมนต์นี้");
+    }
+
+    const started = await TournamentRepo.countStartedMatchesOfTournament(tournamentId);
+    if (started > 0) {
+        throw new AppError(409, "MATCH_FORMAT_LOCKED",
+            "ทัวร์นาเมนต์นี้เริ่มแข่งไปแล้ว เปลี่ยนรูปแบบการแข่ง (BO) ไม่ได้ — ต้องตั้งก่อนแมตช์แรกเริ่มแข่ง",
+            { startedMatches: started });
+    }
+
+    // มติ 7 ต.ค. 2569 (②ก) — ธงอยู่ที่กีฬา ⇒ ต้องอ่านกีฬาของทัวร์นี้ ห้ามเดาจากชื่อ
+    const sport = await SportTypeRepo.findSportTypeById(tournament.sport_type_id);
+    if (sport) assertBestOfAllowed(sport, input.bestOf);
+
+    await TournamentRepo.setTournamentBestOfTx(tournamentId, input.bestOf);
+    return { id: tournamentId, bestOf: input.bestOf };
+}
+
+export async function createTournament(input: CreateTournamentInput, userId: number) {
+    ensureSchedule(input);
+    ensureNotInPast(input);
+    ensureAges(input.minAge, input.maxAge);
+    await ensureCreateReferences(input);
+    const eligibilityRules = await normalizeEligibilityRules(input.eligibilityRules);
+
+    const id = await TournamentRepo.insertTournament({
+        name: input.name,
+        sportTypeId: input.sportTypeId,
+        bracketFormat: input.bracketFormat,
+        // ★ ?? null — schema ใช้ .nullish() ⇒ ไม่ส่งคีย์มาเลย (undefined) ได้ผลเท่ากับ null
+        //   ซึ่งคือ "กีฬานี้ไม่ได้แข่งเป็นรอบ" ⇒ ผู้จัดฟุตบอล/บาสไม่ต้องรู้เรื่อง BO-N
+        bestOf: input.bestOf ?? null,
+        scopeType: input.scopeType,
+        organizingFacultyId: input.organizingFacultyId as number,
+        organizingDepartmentId: input.organizingDepartmentId ?? null,
+        requestedByUserId: userId,
+        registrationStart: input.registrationStart,
+        registrationEnd: input.registrationEnd,
+        eventStartDate: input.eventStartDate,
+        eventEndDate: input.eventEndDate,
+        maxTeams: input.maxTeams,
+        minTeams: input.minTeams,
+        venue: input.venue,
+        entryNotes: input.entryNotes ?? null,
+        genderRequirement: input.genderRequirement,
+        minAge: input.minAge ?? null,
+        maxAge: input.maxAge ?? null,
+        disputeWindowHours: input.disputeWindowHours ?? null,
+        eligibilityRules
+    });
+
+    const autoApproved = await autoApproveIfOwnScope(id, userId, input.organizingFacultyId as number, eligibilityRules);
+    return { id, status: autoApproved ? 'private' as const : 'pending_approval' as const, name: input.name, autoApproved };
+}
+
+export async function getMyTournamentRequests(userId: number, offset: number, page: number, pageSize: number) {
+    const { rows, totalItems } = await TournamentRepo.findMyTournamentRequests(userId, offset, pageSize);
+    return {
+        items: rows.map(row => ({
+            id: row.tournament_id,
+            name: row.name,
+            status: row.tournament_status,
+            rejectionReason: row.rejection_reason,
+            createdAt: row.created_at.toISOString()
+        })),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
+/**
+ * FE-admin-queue-shows-undecidable-rows (มติ 27 ก.ย. ทางเลือก ข) — คืนแถวเดิม แต่ติดป้ายว่ากดได้ไหม
+ *
+ * คิวกรองด้วย `organizing_faculty_id = ?` เงื่อนไขเดียว แต่ด่านอนุมัติเช็ค `adminCoversEligibility` เพิ่ม
+ * (ต้องมีกฎคณะและทุกข้อชี้มาคณะตัวเอง) สองกฎนี้ไม่ตรงกันโดยโครงสร้าง · และค่า default ของฟอร์มคือ
+ * "ทุกคณะ" = ไม่มีกฎคณะ ⇒ **คำขอที่กรอกตามปกติที่สุดจะโผล่ในคิวของแอดมินคณะแล้วกดไม่ได้ทุกแถว**
+ *
+ * เลือก "คืนแถวพร้อมเหตุผล" แทน "กรองออก" เพราะถ้ากรองออก แอดมินคณะจะไม่รู้เลยว่าคณะตัวเอง
+ * มีคำขอค้างอยู่ ไปตามแอดมินมหาวิทยาลัยก็ไม่ได้ — หลักเดียวกับทั้ง OD-26/28:
+ * ซ่อนแถวทำให้ปัญหามองไม่เห็น โชว์พร้อมเหตุผลทำให้มีคนรับผิดชอบ
+ *
+ * ผลพลอยได้: FE ไม่ต้องรู้ scope ของตัวเองอีก (`adminScope` บน GET /me ยังอยู่อีก branch)
+ */
+export async function getPendingTournamentRequests(userId: number, offset: number, page: number, pageSize: number) {
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    if (!admin) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิวคำขอทัวร์นาเมนต์');
+    /**
+     * 🧹 7 ต.ค. 2569 — ใช้กฎขอบเขตกลางตัวเดียว (เดิม repo มีสำเนาของตัวเอง ดูเหตุผลที่
+     *   `tournament.repo` เหนือ `findPendingTournamentRequests`)
+     * 🔴 `null` ⇒ **403 ไม่ใช่รายการว่าง** — root และแอดมินคณะที่ยังไม่ถูกตั้งคณะ ตกที่นี่
+     *   รายการว่างอ่านเหมือน "ไม่มีคำขอค้าง" ซึ่งเป็นคำตอบผิด ไม่ใช่การบอกว่าดูไม่ได้
+     */
+    const scope = adminScopeSqlOrNull(admin, 't');
+    if (scope === null) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิวคำขอทัวร์นาเมนต์');
+    const { rows, totalItems } = await TournamentRepo.findPendingTournamentRequests(scope, offset, pageSize);
+
+    // university_wide ตัดสินได้ทุกแถวอยู่แล้ว ไม่ต้องยิงหากฎเลย — และเป็นคนที่คิวยาวที่สุด
+    const rulesOf = admin.scope_type === 'university_wide'
+        ? null
+        : await ApplicationRepo.findEligibilityRulesOfMany(rows.map(r => r.tournament_id));
+
+    return {
+        items: rows.map(row => {
+            const canDecide = rulesOf === null || adminCoversEligibility(
+                admin, row.organizing_faculty_id,
+                (rulesOf.get(row.tournament_id) ?? []).map(r => ({ type: r.rule_type, value: r.rule_value })));
+            return {
+                id: row.tournament_id,
+                name: row.name,
+                requestedBy: toUserRef(row),
+                sportTypeId: row.sport_type_id,
+                eventStartDate: row.event_start_date,
+                createdAt: row.created_at.toISOString(),
+                canDecide,
+                // code เดียวกับที่ด่านโยน FE จึงใช้ข้อความเดิมที่ render อยู่แล้วได้
+                cannotDecideReason: canDecide ? null : 'ELIGIBILITY_OUT_OF_SCOPE' as const
+            };
+        }),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
+export async function approveTournament(tournamentId: number, userId: number) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const admin = await getTournamentAdmin(userId, tournament);
+    if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournamentId))) eligibilityOutOfScope();
+    if (tournament.tournament_status !== 'pending_approval') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ');
+    }
+    /**
+     * 🔴 BE-40 (มติ ⑥ ค) — QA รายงานแค่เส้นทาง amendment แต่ช่องเดียวกันอยู่ที่นี่ด้วย:
+     *   แอดมินที่เป็นคนขอจัดทัวร์เอง กดอนุมัติคำขอจัดทัวร์ของตัวเองได้
+     *   ⇒ ติดป้ายด้วยมาตรฐานเดียวกัน ไม่งั้นปิดช่องเดียวแล้วอีกช่องยังอ่านเหมือนมีคนตรวจ
+     */
+    if (!await TournamentRepo.approveTournament(tournamentId, userId, tournament.requested_by_user_id === userId)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
+    }
+    await NotificationService.notify({
+        userId: tournament.requested_by_user_id, type: 'tournament_decided',
+        title: 'คำขอจัดทัวร์นาเมนต์ได้รับการอนุมัติ',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ได้รับการอนุมัติแล้ว — ตั้งค่าและเปิดเผยแพร่ได้เลย`,
+        relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+    });
+    return { id: tournamentId, status: 'private' as const, organizerId: tournament.requested_by_user_id };
+}
+
+/**
+ * FE-reject-skips-eligibility-scope (มติ 27 ก.ย. ทางเลือก ก) — ด่านเดียวกับ approve
+ *
+ * เดิม approve เช็ค `adminCoversEligibility` แต่ reject ไม่เช็ค แอดมินคณะจึง "ปฏิเสธ" คำขอที่ตัวเอง
+ * "อนุมัติ" ไม่ได้ (403 ELIGIBILITY_OUT_OF_SCOPE) — คือคำขอที่ OD-15 Q2-ข ตั้งใจส่งให้แอดมินมหาวิทยาลัย
+ *
+ * ที่ทำให้ต้องแก้ไม่ใช่ความไม่สมมาตรเปล่า ๆ แต่เพราะ `rejected` เป็นปลายทางถาวร:
+ * ไม่มี route ไหนตั้งสถานะกลับเป็น `pending_approval` ได้ ทางออกเดียวของผู้จัดคือลบทิ้งแล้วกรอกใหม่ทั้งใบ
+ * หลักที่ยึดตลอด OD-26 คือ "การนิ่งเฉยต้องไม่มีอำนาจยับยั้ง" — ข้อนี้คืออีกด้านของเหรียญเดียวกัน
+ * คนที่ไม่มีอำนาจพูดว่า "ใช่" ต้องไม่มีอำนาจพูดว่า "ไม่" ที่ย้อนไม่ได้
+ */
+export async function rejectTournament(tournamentId: number, userId: number, reason: string) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const admin = await getTournamentAdmin(userId, tournament);
+    if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournamentId))) eligibilityOutOfScope();
+    if (tournament.tournament_status !== 'pending_approval') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ');
+    }
+    if (!await TournamentRepo.rejectTournament(tournamentId, userId, reason)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
+    }
+    await NotificationService.notify({
+        userId: tournament.requested_by_user_id, type: 'tournament_decided',
+        title: 'คำขอจัดทัวร์นาเมนต์ถูกปฏิเสธ',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ไม่ได้รับการอนุมัติ — เหตุผล: ${reason}`,
+        relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+    });
+    return { id: tournamentId, status: 'rejected' as const, reason };
+}
+
+const tournamentStatuses = new Set(['pending_approval', 'rejected', 'private', 'public', 'completed', 'auto_deleted']);
+
+/** GET /me/tournaments — การ์ดเต็มของทัวร์ที่ฉันจัด ทุกสถานะ (+ status, rejectionReason) */
+export async function getMyTournaments(userId: number, status: string | undefined, offset: number, page: number, pageSize: number) {
+    if (status !== undefined && !tournamentStatuses.has(status)) validationError('status ไม่ถูกต้อง', { status: 'ค่าที่ไม่รู้จัก' });
+    const { rows, totalItems } = await TournamentRepo.findTournamentsByOrganizer(userId, status as TournamentRow['tournament_status'] | undefined, offset, pageSize);
+    return {
+        items: rows.map(row => ({ ...toTournamentListDto(row), status: row.tournament_status, rejectionReason: row.rejection_reason, createdAt: row.created_at })),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
+export async function getPublicTournaments(filters: TournamentRepo.PublicTournamentFilters, offset: number, page: number, pageSize: number) {
+    const { rows, totalItems } = await TournamentRepo.findPublicTournaments(filters, offset, pageSize);
+    return {
+        items: rows.map(toTournamentListDto),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
+export async function getTournament(tournamentId: number, userId?: number) {
+    return getDetail(await getVisibleTournament(tournamentId, userId));
+}
+
+/**
+ * 🔴 BE-15 (แก้ 7 ต.ค. 2569) — ช่องที่ล็อกแล้วส่งมาได้ 200 แต่ค่าไม่เปลี่ยน
+ *
+ * `updateTournamentSchema` รับแค่ venue/description/entryNotes แล้วปิดท้ายด้วย `.passthrough()`
+ * ⇒ ส่ง `maxTeams` มาก็ผ่าน schema แล้วถูกเมินเงียบ ๆ ที่ repo · ผู้จัดเข้าใจว่าแก้สำเร็จ
+ *
+ * ★ ทำไมยังเก็บ `.passthrough()` ไว้ ไม่ใช้ `.strict()`
+ *   `.strict()` จะปฏิเสธ**ทุก**คีย์ที่ไม่รู้จัก ⇒ ถ้าหน้าแก้ทัวร์ของ FE ส่ง object ทั้งก้อน
+ *   กลับมา (pattern ที่พบบ่อย) จะพังทันทีทั้งจอ · ด่านนี้จึงปฏิเสธเฉพาะช่องที่ "มีความหมาย
+ *   แต่แก้ทางนี้ไม่ได้" และยังตัดคีย์แปลกอื่น ๆ ทิ้งเงียบเหมือนเดิม (มติ 7 ต.ค. ⑩ ข)
+ */
+const AMENDMENT_ONLY_FIELDS = new Set([
+    'registrationStart', 'registrationEnd', 'eventStartDate', 'eventEndDate',
+    'minTeams', 'maxTeams', 'genderRequirement', 'minAge', 'maxAge', 'eligibilityRules'
+]);
+
+/** แก้ไม่ได้เลยหลังสร้าง — ไม่มีแม้แต่ทาง amendment (เปลี่ยนแล้วสายและใบสมัครที่มีอยู่ไม่มีความหมาย) */
+const IMMUTABLE_FIELDS = new Set([
+    'sportTypeId', 'bracketFormat', 'scopeType', 'organizingFacultyId', 'organizingDepartmentId', 'bestOf'
+]);
+
+export async function updateTournament(tournamentId: number, userId: number, input: UpdateTournamentInput) {
+    const keys = Object.keys(input as Record<string, unknown>);
+    const amendmentFields = keys.filter(k => AMENDMENT_ONLY_FIELDS.has(k));
+    const immutableFields = keys.filter(k => IMMUTABLE_FIELDS.has(k));
+    if (amendmentFields.length > 0 || immutableFields.length > 0) {
+        throw new AppError(409, 'USE_AMENDMENT_REQUEST',
+            amendmentFields.length > 0
+                ? 'บางช่องแก้ทางนี้ไม่ได้ — ต้องยื่นคำขอแก้ไขให้แอดมินอนุมัติ'
+                : 'บางช่องแก้ไม่ได้หลังสร้างทัวร์นาเมนต์แล้ว',
+            { amendmentFields, immutableFields });
+    }
+
+    await TournamentRepo.updateTournamentGeneral(tournamentId, userId, input);
+    return getDetail(await getTournamentOr404(tournamentId));
+}
+
+/**
+ * 🔴 BE-36 (แก้ 7 ต.ค. 2569) — แก้เพศ/อายุแล้วทีมที่อนุมัติไปแล้วผิดกฎย้อนหลัง
+ *
+ * ของเดิม: กฎ "ห้ามแก้เงื่อนไขให้ทีมที่ผ่านแล้วผิดย้อนหลัง" ถูกบังคับ **2 ใน 3** เส้น
+ *   maxTeams          ✔ repo คืน capacity_conflict ถ้าน้อยกว่าทีมที่อนุมัติแล้ว
+ *   eligibilityRules  ✔ ensureEligibilityEditable (ชั้นปี/คณะ)
+ *   genderRequirement / minAge / maxAge  ✘ ไม่มีด่านอะไรเลย
+ * ⇒ ทัวร์ 22 กลายเป็นหญิงล้วนทันทีโดยทีมชาย 2 ทีมยังอยู่ในรายชื่อที่อนุมัติ (QA 7 ต.ค.)
+ *
+ * ★ ตรวจทั้งตอน**ยื่น**และตอน**อนุมัติ** — ยื่นคำขอที่ไม่มีทางอนุมัติได้ก็ไม่มีประโยชน์
+ *   และสถานะเปลี่ยนได้ระหว่างยื่นกับอนุมัติ ⇒ ด่านตอนอนุมัติเป็นตัวจริง ตอนยื่นคือบอกเร็ว
+ * ★ ใช้ `genderAgeFailReason` ตัวเดียวกับที่ใบสมัครใช้ (utils/hardFilter.ts) — ถ้าเขียนสูตร
+ *   ขึ้นใหม่ที่นี่ ทีมอาจผ่านตอนสมัครแล้วถูกตีว่าไม่ผ่านตอนแก้กฎ โดยไม่มีใครรู้ว่าสูตรไหนถูก
+ * ★ ทางออกของผู้จัดคือถอน/ปฏิเสธทีมที่ชนก่อน แล้วยื่นใหม่ — ระบบไม่ตีทีมที่อนุมัติแล้ว
+ *   กลับเป็น pending ให้เอง เพราะนั่นคือการถอนการอนุมัติของผู้จัด ซึ่งต้องเป็นคนตัดสิน
+ */
+const GENDER_AGE_FIELDS = ['genderRequirement', 'minAge', 'maxAge'] as const;
+
+async function assertAmendmentKeepsApprovedTeamsEligible(tournament: TournamentRow, changes: AmendmentChanges): Promise<void> {
+    if (!GENDER_AGE_FIELDS.some(f => Object.prototype.hasOwnProperty.call(changes, f))) return;
+
+    const registrationEnd = amendmentValue(changes, 'registrationEnd', tournament.registration_end);
+    if (registrationEnd === null) return;   // ยังไม่มีวันปิดรับสมัคร ⇒ ยังไม่มีทีมที่ผ่านตัวกรองได้
+
+    const rules = {
+        genderRequirement: amendmentValue(changes, 'genderRequirement', tournament.gender_requirement),
+        minAge: amendmentValue(changes, 'minAge', tournament.min_age),
+        maxAge: amendmentValue(changes, 'maxAge', tournament.max_age),
+        asOf: registrationEnd
+    };
+
+    const squads = await ApplicationRepo.findApprovedSquadsForFilter(tournament.tournament_id);
+    const affected = new Map<number, { teamId: number; teamName: string; players: { userId: number; fullName: string; reason: 'gender' | 'age' }[] }>();
+    for (const member of squads) {
+        const reason = genderAgeFailReason(member, rules);
+        if (reason === null) continue;
+        const entry = affected.get(member.team_id)
+            ?? { teamId: member.team_id, teamName: member.team_name, players: [] };
+        entry.players.push({ userId: member.user_id, fullName: member.full_name, reason });
+        affected.set(member.team_id, entry);
+    }
+
+    if (affected.size > 0) {
+        throw new AppError(409, 'AMENDMENT_BREAKS_APPROVED_TEAMS',
+            `การแก้นี้ทำให้ทีมที่อนุมัติไปแล้ว ${affected.size} ทีมผิดเงื่อนไขย้อนหลัง — ต้องถอนหรือปฏิเสธทีมที่ชนก่อน แล้วยื่นคำขอใหม่`,
+            { affectedTeamCount: affected.size, affectedTeams: [...affected.values()] });
+    }
+}
+
+/**
+ * มติ 6 ต.ค. 2569 (B7 ทางเลือก ก) — **API รับเฉพาะ object** ไม่เปิดให้ส่งเป็น JSON string
+ *   ด่าน zod (`amendmentRequestSchema`) ปฏิเสธ string ตั้งแต่ชั้น route แล้ว และ FE ส่ง object อยู่แล้ว
+ *   ถ้าวันหนึ่งจะเปิดรับ string ต้องคุยกับ FE ก่อน เพราะเป็นการเปลี่ยนสัญญา
+ *   และต้องตกลงด้วยว่า "string ที่พังรูป" ให้ตอบรหัสอะไร (ตอนนี้ตกที่ VALIDATION_FAILED ข้างล่าง)
+ *
+ * ★ branch string ที่นี่คือ **กันเหนียว ไม่ใช่เส้นทางที่ใช้งานจริง** — เก็บไว้เพราะราคาเท่า 4 บรรทัด
+ *   🔴 คอมเมนต์เดิม (ที่นี่และในเทส) อ้างว่า "อ่าน requested_changes จากฐานได้เป็น string จริง"
+ *     — ตรวจกับฐานจริงแล้วไม่ใช่: คอลัมน์เป็นชนิด json และตัวเชื่อม mysql2 แปลงให้เป็น object
+ *     ทุกทางที่โค้ดนี้ใช้ (query · execute · นิพจน์ JSON) · MySQL 8.4 · ตารางมี 0 แถว
+ *     ⇒ ไม่มีข้อมูลเก่าที่รูปทรงต่างค้างอยู่ด้วย
+ *   เหตุผลที่ยังเก็บไว้คือเหตุผลอื่น: เผื่อฐานที่ตั้งด้วยมือได้คอลัมน์เป็น text แทน json
+ *   และเผื่อสคริปต์/เทสที่เรียก service ตรงโดยไม่ผ่าน API (มีเทสล็อกเส้นนี้ไว้แล้ว)
+ */
+function normalizeChanges(value: unknown): AmendmentChanges {
+    if (typeof value === 'string') {
+        try {
+            const parsed: unknown = JSON.parse(value);
+            if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as AmendmentChanges;
+        } catch {
+            // fall through to the same validation error
+        }
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) return value as AmendmentChanges;
+    throw new AppError(400, 'VALIDATION_FAILED', 'ข้อมูล requestedChanges ไม่ถูกต้อง');
+}
+
+function validateAmendmentChanges(value: unknown): AmendmentChanges {
+    const changes = normalizeChanges(value);
+    const unknownFields = Object.keys(changes).filter(key => !allowedAmendmentFields.has(key));
+    if (unknownFields.length > 0) {
+        throw new AppError(400, 'AMENDMENT_FIELD_NOT_ALLOWED', 'ฟิลด์นี้ต้องแก้ผ่านการขออนุมัติรูปแบบที่รองรับ', { fields: unknownFields });
+    }
+    const parsed = amendmentFieldSchema.safeParse(changes);
+    if (!parsed.success) validationError('ข้อมูล amendment ไม่ถูกต้อง');
+    return changes;
+}
+
+function amendmentValue<T>(changes: AmendmentChanges, key: string, fallback: T): T {
+    return Object.prototype.hasOwnProperty.call(changes, key) ? changes[key] as T : fallback;
+}
+
+/**
+ * ข้อมูลเดิมของทัวร์ผิดกฎอยู่แล้วหรือไม่ — คืน error ตัวที่ผิด (null = ข้อมูลเดิมสะอาด)
+ *
+ * ใช้คู่กับ `validateAmendmentAgainstTournament` เท่านั้น ⇒ ไม่ส่งออกจากไฟล์นี้
+ * ตรวจ "ค่าเดิมล้วน" โดยไม่ผสมค่าที่ขอแก้ ⇒ บอกได้ว่าที่ผิดเป็นของเดิมหรือของที่ขอมา
+ */
+function preExistingDataConflict(tournament: TournamentRow): AppError | null {
+    try {
+        ensureSchedule({
+            registrationStart: tournament.registration_start,
+            registrationEnd: tournament.registration_end,
+            eventStartDate: tournament.event_start_date,
+            eventEndDate: tournament.event_end_date,
+            minTeams: tournament.min_teams,
+            maxTeams: tournament.max_teams
+        });
+        ensureAges(tournament.min_age, tournament.max_age);
+        return null;
+    } catch (err) {
+        return err instanceof AppError ? err : null;
+    }
+}
+
+/**
+ * 🔴 BE-39 (แก้ 7 ต.ค. 2569) — "คำขอแก้ไขถูกปฏิเสธด้วยข้อผิดพลาดที่ไม่เกี่ยวกับช่องที่ขอ"
+ *
+ * ของเดิม: ฟังก์ชันนี้ผสมค่าที่ขอแก้กับค่าเดิม แล้วตรวจทั้งชุด ซึ่ง**ถูกต้อง** — ห้ามอนุมัติ
+ *   คำขอที่พาทัวร์ไปอยู่ในสถานะที่ผิดกฎ แม้ต้นเหตุจะไม่ใช่ช่องที่ขอ
+ * แต่ข้อความที่ได้ชี้ไปที่ `eventStartDate`/`registrationEnd` ซึ่งผู้ขอ**ไม่ได้ขอแก้** และ
+ *   ไม่มีทางรู้ว่าต้องทำอะไร (ทัวร์ 14 ของ baseline: วันปิดรับสมัคร 30 พ.ย. อยู่หลังวันแข่ง 20 ต.ค.
+ *   ⇒ ขอเปลี่ยนแค่ genderRequirement ก็ได้ INVALID_DATE_RANGE)
+ *
+ * ★ ไม่ผ่อนด่าน — ยังปฏิเสธเหมือนเดิม แต่เปลี่ยน **รหัสและข้อความ** เมื่อพิสูจน์ได้ว่าข้อมูลเดิม
+ *   ผิดอยู่ก่อนแล้ว ⇒ FE แยกสองกรณีนี้ได้: "ค่าที่คุณกรอกผิด" กับ "ข้อมูลเดิมพัง ต้องแก้มาด้วย"
+ * ★ 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ MATCH_NOT_SCHEDULED ของ M09/M10: payload ที่ส่งมาไม่ผิด
+ *   สิ่งที่ผิดคือสถานะที่เก็บอยู่
+ */
+function validateAmendmentAgainstTournament(tournament: TournamentRow, changes: AmendmentChanges): void {
+    try {
+        ensureSchedule({
+            registrationStart: amendmentValue(changes, 'registrationStart', tournament.registration_start),
+            registrationEnd: amendmentValue(changes, 'registrationEnd', tournament.registration_end),
+            eventStartDate: amendmentValue(changes, 'eventStartDate', tournament.event_start_date),
+            eventEndDate: amendmentValue(changes, 'eventEndDate', tournament.event_end_date),
+            minTeams: amendmentValue(changes, 'minTeams', tournament.min_teams),
+            maxTeams: amendmentValue(changes, 'maxTeams', tournament.max_teams)
+        });
+        ensureAges(
+            amendmentValue(changes, 'minAge', tournament.min_age),
+            amendmentValue(changes, 'maxAge', tournament.max_age)
+        );
+    } catch (err) {
+        const existing = preExistingDataConflict(tournament);
+        // ข้อมูลเดิมสะอาด ⇒ ค่าที่ขอมาเป็นต้นเหตุจริง ส่ง error เดิมกลับไปตรง ๆ
+        if (existing === null) throw err;
+        throw new AppError(409, 'TOURNAMENT_DATA_CONFLICT',
+            `ข้อมูลเดิมของทัวร์นาเมนต์นี้ขัดกันเองอยู่แล้ว (${existing.message}) ` +
+            `จึงอนุมัติคำขอนี้ไม่ได้ — ต้องขอแก้ค่าที่ขัดกันมาในคำขอเดียวกันด้วย`,
+            {
+                // ช่องที่พังของเดิม (ไม่ใช่ช่องที่ผู้ขอกรอก) — FE เอาไปไฮไลต์ให้ผู้จัดเห็นว่าต้องเพิ่มอะไร
+                conflictingFields: (existing.extra?.['fields'] as Record<string, string> | undefined) ?? {},
+                requestedFields: Object.keys(changes)
+            });
+    }
+}
+
+async function ensureEligibilityEditable(tournament: TournamentRow): Promise<void> {
+    if (tournament.registration_open || await TournamentRepo.hasLiveApplications(tournament.tournament_id)) {
+        throw new AppError(409, 'ELIGIBILITY_LOCKED',
+            'แก้กฎคุณสมบัติไม่ได้แล้ว — เปิดรับสมัครหรือมีทีมสมัครแล้ว (ทีมที่ผ่านตัวกรองไปแล้วจะผิดกฎย้อนหลัง)');
+    }
+}
+
+/** PUT /tournaments/:id/eligibility-rules — แก้ตรงได้เฉพาะระหว่างรออนุมัติ · ผ่านอนุมัติแล้วต้องไป C09 amendment */
+export async function setEligibilityRules(tournament: TournamentRow, userId: number, input: SetEligibilityRulesInput) {
+    if (tournament.tournament_status !== 'pending_approval') {
+        throw new AppError(409, 'USE_AMENDMENT_REQUEST',
+            'ทัวร์นาเมนต์ผ่านการพิจารณาแล้ว การแก้กฎคุณสมบัติต้องยื่นคำขอแก้ไข (amendment) ให้แอดมินอนุมัติ');
+    }
+    await ensureEligibilityEditable(tournament);
+    const rules = await normalizeEligibilityRules(input.rules);
+    await TournamentRepo.replaceEligibilityRules(tournament.tournament_id, userId, rules);
+    return { items: rules.map(r => ({ ruleType: r.type, ruleValue: r.value })) };
+}
+
+/**
+ * 🆕 FE-39 (7 ต.ค. 2569 · มติ ④ ก) — ดูผลกระทบก่อนยื่น/ก่อนอนุมัติ (dry run)
+ *
+ * FE ขอมาว่า "ไม่มีสัญญาสำหรับดูผลกระทบล่วงหน้า" ⇒ ผู้จัดกับแอดมินต้องกดส่งจริงก่อน
+ * จึงจะรู้ว่าการแก้นี้ทำให้ทีมที่อนุมัติไปแล้วผิดเงื่อนไขย้อนหลังกี่ทีม
+ * ⇒ ปุ่มที่ "อาจจะพังหรือไม่พังก็ได้" ซึ่งคนกดต้องเดาเอง
+ *
+ * ★ ใช้ด่านตัวเดียวกับของจริงทั้งหมด ไม่เขียนกฎซ้ำ — `validateAmendmentAgainstTournament`
+ *   และ `assertAmendmentKeepsApprovedTeamsEligible` คือฟังก์ชันเดิมเป๊ะ
+ *   ⇒ ไม่มีทางที่ preview กับของจริงจะตอบไม่ตรงกัน เพราะเป็นโค้ดชุดเดียวกัน
+ *   🔴 ถ้าใครจะเพิ่มด่านใหม่ใน requestAmendment/approveAmendment ต้องเพิ่มที่นี่ด้วย
+ *      ไม่งั้น preview จะบอกว่า "ผ่าน" แล้วของจริงไม่ผ่าน ซึ่งแย่กว่าไม่มี preview เลย
+ *
+ * ★ ไม่เขียนอะไรลงฐานเลย และไม่ส่งแจ้งเตือน — เป็นการอ่านอย่างเดียว
+ * ★ คืน 200 เสมอ ไม่ throw แม้จะมีสิ่งกีดขวาง — เพราะ "มีผลกระทบ" คือ**คำตอบ**
+ *   ของ endpoint นี้ ไม่ใช่ความผิดพลาด (ของจริงยังตอบ 409 ตามเดิม ไม่เปลี่ยน)
+ * ★ `blockers` เป็น array ไม่ใช่ตัวเดียว — เผื่อวันหน้าตรวจได้หลายเรื่องในรอบเดียว
+ *   ตอนนี้ด่านแรกที่เจอจะหยุด จึงมีได้ไม่เกิน 1 ใบ และ FE ต้องไม่สมมติว่ามีแค่ใบเดียว
+ */
+export async function previewAmendmentImpact(tournamentId: number, userId: number, input: AmendmentRequestInput) {
+    void userId;   // ด่านสิทธิ์อยู่ที่ requireOrganizer บน route (เหมือน requestAmendment)
+    const tournament = await getTournamentOr404(tournamentId);
+    const changes = validateAmendmentChanges(input.requestedChanges);
+
+    const blockers : { code : string; message : string; details : unknown }[] = [];
+    try {
+        validateAmendmentAgainstTournament(tournament, changes);
+        await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);
+    } catch (err) {
+        // ★ จับเฉพาะ AppError — ข้อผิดพลาดของระบบ (ฐานล่ม ฯลฯ) ต้องเด้งขึ้นไปเป็น 500 ตามเดิม
+        if(!(err instanceof AppError)) throw err;
+        blockers.push({ code : err.code, message : err.message, details : err.extra ?? null });
+    }
+
+    /**
+     * ★ บอกด้วยว่ามีใบค้างอยู่หรือไม่ — ไม่ใช่ blocker ของ "เนื้อหา" แต่เป็นสิ่งที่จะทำให้
+     *   กดยื่นจริงแล้วได้ 409 AMENDMENT_ALREADY_PENDING ⇒ คนกดควรรู้ก่อน
+     *   แยกฟิลด์กันเพื่อให้ FE แสดงคนละแบบได้ (ใบค้าง = "รอผลใบเดิม" ไม่ใช่ "แก้ไม่ได้")
+     */
+    const pendingAmendment = await TournamentRepo.findPendingAmendmentOfTournament(tournamentId);
+
+    return {
+        canSubmit : blockers.length === 0 && pendingAmendment === null,
+        blockers,
+        pendingAmendmentId : pendingAmendment?.tournament_amendment_request_id ?? null
+    };
+}
+
+export async function requestAmendment(tournamentId: number, userId: number, input: AmendmentRequestInput) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const changes = validateAmendmentChanges(input.requestedChanges);
+    validateAmendmentAgainstTournament(tournament, changes);
+    await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);   // BE-36 — บอกเร็ว ด่านจริงอยู่ตอนอนุมัติ
+
+    /**
+     * 🔴 BE-38 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — ยื่นคำขอแก้ไขเนื้อหาเดิมซ้ำได้ 201 ทั้งสองครั้ง
+     *   และใบที่สองยังค้างหลังใบแรกอนุมัติแล้ว (baseline ทัวร์ 14 มี 3 ใบเหมือนกันค้างอยู่)
+     *   ⇒ แอดมินอ่านเรื่องเดียวกันหลายรอบ และอนุมัติใบที่สองจะทับการแก้ของใบแรกโดยไม่มีใครรู้
+     * ★ หนึ่งใบค้างต่อทัวร์ ไม่ใช่ต่อ "เนื้อหาที่เหมือนกัน" — เทียบเนื้อหา JSON จะเลี่ยงได้ง่าย
+     *   ด้วยการสลับลำดับคีย์ และผู้จัดก็ไม่ควรมีสองเรื่องค้างพร้อมกันอยู่แล้ว
+     * ★ ด่านที่กัน race จริงคือ UNIQUE ใน migration 048
+     */
+    const pendingAmendment = await TournamentRepo.findPendingAmendmentOfTournament(tournamentId);
+    if (pendingAmendment) {
+        throw new AppError(409, 'AMENDMENT_ALREADY_PENDING',
+            'ทัวร์นาเมนต์นี้มีคำขอแก้ไขรอแอดมินพิจารณาอยู่แล้ว — รอผล หรือให้แอดมินปฏิเสธใบเดิมก่อน',
+            { amendmentId: pendingAmendment.tournament_amendment_request_id });
+    }
+    if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
+        await ensureEligibilityEditable(tournament);
+        changes['eligibilityRules'] = await normalizeEligibilityRules(changes['eligibilityRules'] as EligibilityRuleInput[]);
+    }
+    const id = await TournamentRepo.insertAmendmentRequest(tournamentId, userId, changes, input.reason);
+    return { id, status: 'pending' as const };
+}
+
+/** C09b — GET /tournaments/:id/amendment-requests (ผู้ยื่นคำขอ) — ทุกสถานะ เห็น reason ของตัวเองและ rejectionReason ของแอดมิน */
+export async function getTournamentAmendments(tournamentId: number) {
+    const rows = await TournamentRepo.findAmendmentsByTournament(tournamentId);
+    return {
+        items: rows.map(row => ({
+            id: row.tournament_amendment_request_id,
+            requestedChanges: normalizeChanges(row.requested_changes),
+            reason: row.request_reason,
+            status: row.tournament_amendment_request_status,
+            requestedAt: row.requested_at.toISOString(),
+            reviewedAt: row.reviewed_at ? row.reviewed_at.toISOString() : null,
+            reviewedBy: row.reviewed_by === null ? null : { id: row.reviewed_by, name: row.reviewer_name },
+            /**
+             * 🆕 BE-40 (7 ต.ค. 2569 · มติ ⑥ ค) — คำขอนี้ถูกอนุมัติโดยคนที่ยื่นเอง
+             * ★ ต้องขึ้นบนจอ ไม่ใช่ซ่อนไว้ใน audit log ที่มีแต่แอดมินมหาวิทยาลัยเห็น
+             *   คนที่ต้องรู้ว่า "ข้อนี้ไม่มีคนที่สองตรวจ" คือคนที่อ่านประวัติของทัวร์
+             * ★ `false` ตอนยังไม่ถูกพิจารณา (reviewed_by = null) — ไม่ใช่ null
+             *   เพราะ FE เอาไปวางบนป้ายตรง ๆ และ "ยังไม่ตัดสิน" บอกด้วย `status` อยู่แล้ว
+             */
+            selfApproved: row.reviewed_by !== null && row.reviewed_by === row.requested_by,
+            rejectionReason: row.rejection_reason
+        }))
+    };
+}
+
+export async function getPendingAmendments(userId: number, offset: number, page: number, pageSize: number) {
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    if (!admin) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิว amendment');
+    // 🔴 เหตุผลเดียวกับคิวคำขอทัวร์ด้านบน — `null` ⇒ 403 ไม่ใช่รายการว่าง
+    const scope = adminScopeSqlOrNull(admin, 't');
+    if (scope === null) throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูคิว amendment');
+    const { rows, totalItems } = await TournamentRepo.findPendingAmendments(scope, offset, pageSize);
+    return {
+        items: rows.map(row => ({
+            id: row.tournament_amendment_request_id,
+            tournamentId: row.tournament_id,
+            tournamentName: row.tournament_name,
+            requestedBy: toUserRef(row),
+            requestedChanges: normalizeChanges(row.requested_changes),
+            reason: row.request_reason,
+            status: row.tournament_amendment_request_status,
+            requestedAt: row.requested_at.toISOString(),
+            /**
+             * 🆕 BE-40 (มติ ⑥ ค) — "คำขอนี้คุณยื่นเอง"
+             * ★ `row.user_id` คือผู้ยื่น (SELECT join บน `ar.requested_by`) ไม่ใช่ผู้จัดทัวร์
+             * ★ เตือน**ก่อน**กด — ป้ายหลังกดอย่างเดียวไม่ช่วยคนที่เผลอ · และไม่ได้บล็อก
+             *   เพราะถ้าบล็อก ระบบที่มีแอดมินมหาวิทยาลัยคนเดียวจะตัน (root อนุมัติแทนไม่ได้)
+             */
+            selfRequested: row.user_id === userId
+        })),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
+async function getAmendmentForAdmin(amendmentId: number, userId: number) {
+    const amendment = await TournamentRepo.findAmendmentById(amendmentId);
+    if (!amendment) throw new AppError(404, 'AMENDMENT_NOT_FOUND', 'ไม่พบคำขอแก้ไขทัวร์นาเมนต์นี้');
+    const tournament = await getTournamentOr404(amendment.tournament_id);
+    const admin = await getTournamentAdmin(userId, tournament);
+    return { amendment, tournament, admin };
+}
+
+export async function approveAmendment(amendmentId: number, userId: number) {
+    const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
+    const changes = validateAmendmentChanges(amendment.requested_changes);
+    validateAmendmentAgainstTournament(tournament, changes);
+    await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);   // BE-36 — ด่านจริง (สถานะเปลี่ยนได้หลังยื่น)
+    if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
+        await ensureEligibilityEditable(tournament);
+        if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, changes['eligibilityRules'] as EligibilityRule[])) eligibilityOutOfScope();
+    } else if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournament.tournament_id))) {
+        eligibilityOutOfScope();
+    }
+    const result = await TournamentRepo.approveAmendment(amendmentId, userId, changes);
+    if (result === 'not_found') throw new AppError(404, 'AMENDMENT_NOT_FOUND', 'ไม่พบคำขอแก้ไขทัวร์นาเมนต์นี้');
+    if (result === 'already_decided') throw new AppError(409, 'ALREADY_DECIDED', 'คำขอนี้ถูกพิจารณาไปแล้ว');
+    if (result === 'capacity_conflict') throw new AppError(409, 'TEAM_CAPACITY_CONFLICT', 'จำนวนทีมสูงสุดใหม่น้อยกว่าจำนวนทีมที่อนุมัติแล้ว');
+    return { id: amendmentId, status: 'approved' as const };
+}
+
+export async function rejectAmendment(amendmentId: number, userId: number, reason: string) {
+    await getAmendmentForAdmin(amendmentId, userId);
+    const result = await TournamentRepo.rejectAmendment(amendmentId, userId, reason);
+    if (result === 'not_found') throw new AppError(404, 'AMENDMENT_NOT_FOUND', 'ไม่พบคำขอแก้ไขทัวร์นาเมนต์นี้');
+    if (result === 'already_decided') throw new AppError(409, 'ALREADY_DECIDED', 'คำขอนี้ถูกพิจารณาไปแล้ว');
+    return { id: amendmentId, status: 'rejected' as const, reason };
+}
+
+export async function publishTournament(tournament: TournamentRow, userId: number) {
+    // ด่าน 1 ของ BR-10 (GUIDE/11 §10.2): pool ต้องมีกรรมการ active อย่างน้อยเท่ากับที่ 1 แมตช์ต้องใช้
+    // (ตอน publish ยังไม่มีแมตช์ → ใช้ default_mode ของกีฬาแทน mode รายแมตช์) · ด่าน 2 เช็คตอน M10 start ทีละแมตช์
+    const sport = await SportTypeRepo.findSportTypeById(tournament.sport_type_id);
+    const refereesRequired = (await refereesNeededPerMatch(tournament.sport_type_id))(sport?.default_mode ?? 'onsite');
+
+    const result = await TournamentRepo.publishTournament(tournament.tournament_id, userId, refereesRequired);
+    if (result.status === 'referees_incomplete') {
+        const refereesAccepted = result.refereesAccepted;
+        throw new AppError(409, 'REFEREES_INCOMPLETE',
+            `ต้องมีกรรมการที่พร้อมใช้งานอย่างน้อย ${refereesRequired} คนก่อนเปิดเผยแพร่`, { refereesAccepted, refereesRequired });
+    }
+    if (result.status !== 'ok') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
+    }
+    await NotificationService.notifyTournamentReferees(tournament.tournament_id, {
+        type: 'tournament_published',
+        title: 'ทัวร์นาเมนต์เปิดเผยแพร่แล้ว',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ที่คุณเป็นกรรมการ เปิดเผยแพร่แล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
+    return { id: tournament.tournament_id, status: 'public' as const };
+}
+
+/**
+ * B1 — POST /tournaments/:id/complete (มติ 21 ก.ย. 1-ข: ORG กดปิดเอง)
+ *   ต้องมีแมตช์และทุกแมตช์ completed (ไม่มี scheduled/disputed/result_rejected ค้าง)
+ *   แชมป์: elimination = ผู้ชนะแมตช์ที่ไม่มี next_match_id · round_robin = อันดับ 1 ของตาราง (เสมออันดับ 1 → ไม่มีแชมป์)
+ *   รอบชิงแพ้ทั้งคู่ → ปิดได้ แชมป์ null ไม่บวก championships (4-ก)
+ */
+export async function completeTournament(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้ปิดการแข่งขันไปแล้ว');
+    }
+    if (tournament.tournament_status !== 'public' && tournament.tournament_status !== 'private') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ปิดได้เฉพาะทัวร์ที่ผ่านการอนุมัติแล้ว');
+    }
+    // ข้อ 7 — จังหวะสุดท้ายที่มีคนมาเคาะประตู: รอบชิงและ round robin ไม่มีแมตช์ถัดไปมากระตุ้น
+    // ผลที่กรรมการส่งไว้แต่ไม่มีใครยืนยันจะถูกยืนยันตรงนี้ ปิดทัวร์จึงไม่ค้างเพราะคนลืมกดปุ่มเดียว
+    let unfinished = await TournamentRepo.findUnfinishedMatchIds(tournament.tournament_id);
+    if((await MatchResultService.autoVerifyDue(unfinished.map(m => m.match_id))).length > 0){
+        unfinished = await TournamentRepo.findUnfinishedMatchIds(tournament.tournament_id);
+    }
+    if (unfinished.length > 0) {
+        throw new AppError(409, 'MATCHES_UNFINISHED', `ยังมีแมตช์ที่ไม่จบ ${unfinished.length} แมตช์ ปิดทัวร์ไม่ได้`,
+            { matches: unfinished.map(m => ({ id: m.match_id, status: m.match_status })) });
+    }
+    if (await MatchRepo.countMatchesByTournament(tournament.tournament_id) === 0) {
+        throw new AppError(409, 'NO_MATCHES', 'ทัวร์นี้ยังไม่ได้สร้างสาย/ตารางแข่ง ปิดไม่ได้');
+    }
+
+    const championTeamId = await MatchResultService.resolveChampionTeamId(tournament);
+    if (!(await TournamentRepo.completeTournament(tournament.tournament_id, userId, championTeamId, tournament.sport_type_id))) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
+    }
+    return { id: tournament.tournament_id, status: 'completed' as const, championTeamId };
+}
+
+
+export async function deleteTournament(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status === 'public') {
+        throw new AppError(409, 'TOURNAMENT_MUST_BE_UNPUBLISHED', 'ต้อง unpublish ทัวร์นาเมนต์ก่อนลบ');
+    }
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์ที่ปิดการแข่งขันแล้วลบไม่ได้');
+    }
+    if (!['pending_approval', 'rejected', 'private'].includes(tournament.tournament_status)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์นี้ไม่สามารถลบได้');
+    }
+
+    const [applicationCount, matchCount] = await Promise.all([
+        TournamentRepo.countApplicationsByTournament(tournament.tournament_id),
+        MatchRepo.countMatchesByTournament(tournament.tournament_id)
+    ]);
+    if (applicationCount > 0 || matchCount > 0) {
+        throw new AppError(
+            409,
+            'TOURNAMENT_HAS_ACTIVITY',
+            'ลบทัวร์นาเมนต์ไม่ได้เพราะมีใบสมัครหรือแมตช์แล้ว',
+            { applications: applicationCount, matches: matchCount }
+        );
+    }
+
+    if (!await TournamentRepo.softDeleteTournament(tournament.tournament_id, userId)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว กรุณาลองใหม่');
+    }
+}
+
+export async function unpublishTournament(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status !== 'public') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ต้อง unpublish จากสถานะ public เท่านั้น');
+    }
+    if (tournament.registration_open) {
+        throw new AppError(409, 'REGISTRATION_OPEN', 'ต้องปิดรับสมัครก่อน unpublish');
+    }
+    if (!await TournamentRepo.changeTournamentStatus(tournament.tournament_id, userId, 'public', 'private')) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว');
+    }
+    return { id: tournament.tournament_id, status: 'private' as const };
+}
+
+export async function openRegistration(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status !== 'public' || tournament.registration_open) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์ต้องเป็น public และยังไม่เปิดรับสมัคร');
+    }
+    if (!await TournamentRepo.changeRegistrationState(tournament.tournament_id, userId, true)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะรับสมัครเปลี่ยนไปแล้ว');
+    }
+    await NotificationService.notifyTournamentTeamLeaders(tournament.tournament_id, {
+        type: 'registration_toggled',
+        title: 'เปิดรับสมัครแล้ว',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" เปิดรับสมัครแล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
+    return { id: tournament.tournament_id, registrationOpen: true as const };
+}
+
+export async function closeRegistration(tournament: TournamentRow, userId: number) {
+    if (tournament.tournament_status !== 'public' || !tournament.registration_open) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์ต้องเป็น public และกำลังเปิดรับสมัคร');
+    }
+    if (!await TournamentRepo.changeRegistrationState(tournament.tournament_id, userId, false)) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะรับสมัครเปลี่ยนไปแล้ว');
+    }
+    await NotificationService.notifyTournamentTeamLeaders(tournament.tournament_id, {
+        type: 'registration_toggled',
+        title: 'ปิดรับสมัครแล้ว',
+        message: `ทัวร์นาเมนต์ "${tournament.name}" ปิดรับสมัครแล้ว`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
+    return { id: tournament.tournament_id, registrationOpen: false as const };
+}
+
+export async function getEligibilityRules(tournamentId: number, userId?: number) {
+    await getVisibleTournament(tournamentId, userId);
+    const rows = await ApplicationRepo.findEligibilityRules(tournamentId);
+    return { items: rows.map(row => ({ ruleType: row.rule_type, ruleValue: row.rule_value })) };
+}

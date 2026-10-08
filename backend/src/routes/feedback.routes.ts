@@ -1,0 +1,46 @@
+import express from 'express';
+import { requireAuth, optionalAuth } from '../middlewares/requireAuth.js';
+import { requireAdmin_U } from '../middlewares/requireAdmin_U.js';
+import { requireAdmin } from '../middlewares/requireAdmin.js';
+import { requireOrganizer } from '../middlewares/requireOrganizer.js';
+import { validate } from '../middlewares/validate.js';
+import { organizerFeedbackSchema, mvpVoteSchema, tournamentCommentSchema } from '../schemas/feedback.schema.js';
+import * as Feedback from '../controllers/feedback.controller.js';
+
+// C6 — mount ที่ /tournaments · GET เปิดสาธารณะ (ล็อกอินแล้วได้ข้อมูลของตัวเองเพิ่ม)
+export const tournamentFeedbackRouter = express.Router();
+tournamentFeedbackRouter.post('/:id/feedback' , requireAuth , validate(organizerFeedbackSchema) , Feedback.submitOrganizerFeedback);
+tournamentFeedbackRouter.get('/:id/feedback' , optionalAuth , Feedback.getOrganizerFeedback);
+// C7 คอมเมนต์ทัวร์ (มติ 22 ก.ย. — ย้ายจากรายแมตช์) · คนละ 1 อัน ส่งซ้ำ = แก้
+tournamentFeedbackRouter.get('/:id/comments' , optionalAuth , Feedback.listTournamentComments);
+tournamentFeedbackRouter.post('/:id/comments' , requireAuth , validate(tournamentCommentSchema) , Feedback.postTournamentComment);
+tournamentFeedbackRouter.delete('/:id/comments/me' , requireAuth , Feedback.deleteOwnTournamentComment);
+// ผู้จัดลบความเห็นของคนอื่นในทัวร์ตัวเอง (มติ 23 ก.ย.) · body { reason } บังคับ — ต้องอยู่หลัง /comments/me ไม่งั้น 'me' โดนจับเป็น :cid
+tournamentFeedbackRouter.delete('/:id/comments/:cid' , requireAuth , requireOrganizer , Feedback.removeCommentByOrganizer);
+// ผู้จัดตรวจแล้วปล่อยผ่าน — ล้างธง report ให้หลุดจากคิว (มติ 30 ก.ย.) · ไม่มี body
+// ผู้จัดตรวจแล้วปล่อยผ่าน — ล้างธง report ให้หลุดจากคิว (มติ 30 ก.ย.) · ไม่มี body
+// ★ ไม่ใช้ requireOrganizer เพราะแอดมิน university_wide ก็กำกับดูแลได้ — ด่านอยู่ใน service ใช้เงื่อนไขเดียวกับ canModerate ของ E14
+tournamentFeedbackRouter.post('/:id/comments/:cid/dismiss-report' , requireAuth , Feedback.dismissCommentReport);
+
+// mount ที่ /matches — โหวต MVP ย้ายมาเป็นรายแมตช์ (มติ 26 ก.ย.) · path ยังเป็น /mvp-votes เหมือนเดิม
+// จึงยังเข้าข้อยกเว้นของ lockCompletedTournament (โหวตได้แม้ทัวร์ปิดไปแล้ว ถ้ายังไม่พ้น 24 ชม. หลังแมตช์จบ)
+export const matchMvpRouter = express.Router();
+matchMvpRouter.post('/:id/mvp-votes' , requireAuth , validate(mvpVoteSchema) , Feedback.castMvpVote);
+matchMvpRouter.get('/:id/mvp-votes' , optionalAuth , Feedback.getMvpVotes);
+
+// mount ที่ /feedback — report ใช้ร่วมกับคอมเมนต์ทัวร์ (C7) · ลบโดยแอดมินก็ใช้ /admin/feedback/:id ร่วมกัน
+export const feedbackRouter = express.Router();
+feedbackRouter.post('/:id/report' , requireAuth , Feedback.reportFeedback);
+
+// mount ที่ /admin — แอดมินทั้งมหาวิทยาลัยลบ (soft delete + audit)
+export const adminFeedbackRouter = express.Router();
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — ดูว่ามีอะไรถูกลบไปบ้าง
+ * ★ `requireAdmin` ไม่ใช่ `requireAdmin_U` โดยเจตนา — แอดมินคณะต้องเห็นของคณะตัวเองได้
+ *   แต่ **ลบ/กู้คืนยังเป็น requireAdmin_U ตามเดิม** (สองบรรทัดล่าง) ⇒ เห็นได้ ≠ แก้ได้
+ *   ขอบเขตการเห็นตัดสินใน service (ดู listRemovedFeedback) เพราะต้องแปลงเป็นเงื่อนไข SQL
+ * ★ ต้องประกาศก่อน '/feedback/:id' ไหม: ไม่ต้อง — คนละ method (GET vs DELETE/POST)
+ */
+adminFeedbackRouter.get('/feedback/removed' , requireAuth , requireAdmin , Feedback.listRemovedFeedback);
+adminFeedbackRouter.delete('/feedback/:id' , requireAuth , requireAdmin_U , Feedback.removeFeedback);   // body { reason? } ไม่บังคับ
+adminFeedbackRouter.post('/feedback/:id/restore' , requireAuth , requireAdmin_U , Feedback.restoreFeedback);   // คืนของที่ถูกลบ (เจ้าของอุทธรณ์)

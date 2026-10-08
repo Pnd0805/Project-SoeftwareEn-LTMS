@@ -29,7 +29,7 @@ export function refereeHomeTasks(
       key: `referee:request:${request.id}`,
       source: 'referee',
       label: 'Review',
-      context: `Tournament ${request.tournamentId} · Match ${request.matchA.id}`,
+      context: `Tournament ${request.tournamentId}${request.matchA ? ` · Match ${request.matchA.id}` : ' · Withdrawal'}`,
       urgency: 'ready',
       href: '/inbox',
     })

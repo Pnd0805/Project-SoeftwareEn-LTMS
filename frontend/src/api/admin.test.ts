@@ -186,7 +186,7 @@ describe("delivered admin-user contracts", () => {
   it("AR02 approves per person, not per request row", async () => {
     fetchMock.mockResolvedValueOnce(json({ userId: 42, identityStatus: "approved", tournamentsUpdated: 2 }));
 
-    await expect(reviewExternalReferee(42, { approve: true })).rejects.toMatchObject({ status: 404 });
+    await expect(reviewExternalReferee(42, { approve: true })).resolves.toBeUndefined();
     expect(lastRequest()).toEqual({ path: "/admin/referee-requests/42/approve", method: "POST", body: undefined });
   });
 
@@ -204,4 +204,16 @@ describe("delivered admin-user contracts", () => {
     await revokeAdminScope(10);
     expect(lastRequest()).toMatchObject({ path: '/admin/scopes/10', method: 'DELETE' });
   });
+});
+
+// HTTP success must not become a client-side NOT_FOUND after the decision.
+it.each([403, 409])('preserves a backend rejection of referee review (%s)', async status => {
+  fetchMock.mockResolvedValueOnce(apiError(status, 'REVIEW_BLOCKED'));
+  await expect(reviewExternalReferee(42, { approve: false, reason: 'Unclear document' })).rejects.toMatchObject({ status, code: 'REVIEW_BLOCKED' });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+it('resolves a successful rejection and sends its reason unchanged', async () => {
+  fetchMock.mockResolvedValueOnce(json({ userId: 42, identityStatus: 'rejected', tournamentsUpdated: 2 }));
+  await expect(reviewExternalReferee(42, { approve: false, reason: 'Unclear document' })).resolves.toBeUndefined();
+  expect(lastRequest()).toEqual({ path: '/admin/referee-requests/42/reject', method: 'POST', body: { reason: 'Unclear document' } });
 });

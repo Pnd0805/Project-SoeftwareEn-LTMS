@@ -1,0 +1,670 @@
+import * as FeedbackRepo from '../repositories/feedback.repo.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as AdminRepo from '../repositories/adminScope.repo.js';
+import * as MatchRepo from '../repositories/match.repo.js';
+import * as MatchResultRepo from '../repositories/matchResult.repo.js';
+import { MVP_VOTING_HOURS } from '../config/scoring.js';
+import type { MatchRow, TournamentRow } from '../types/db.js';
+import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
+import type { CommentListRow, FeedbackRow } from '../repositories/feedback.repo.js';
+import { toReviewItemDto, toReviewSummaryDto, toMvpCandidateDto, toMyReviewDto } from '../mappers/feedback.mapper.js';
+import * as NotificationService from './notification.service.js';
+import type { NotificationInput } from '../repositories/notification.repo.js';
+import { AppError } from '../utils/AppError.js';
+import { buildPagination } from '../utils/pagination.js';
+import { adminScopeSqlOrNull } from '../utils/adminScope.js';
+import { toUserRef } from '../mappers/user.mapper.js';
+
+/**
+ * C6 — "รีวิวจากผู้ลงแข่ง" (organizer_feedback) + "โหวต MVP" (mvp_vote) · spec 08 §4–5 · มติทีม 21 ก.ย. 2569 (แก้ข้อ 1–2 วันเดียวกัน)
+ * ★ ชื่อเรียก (ตกลง 23 ก.ย.): รีวิวจากผู้ลงแข่ง = ให้คะแนนการจัดงาน เฉพาะคนที่ลงแข่ง ข้อความเห็นแค่ผู้จัด
+ *   ต่างจาก "ความเห็นต่อทัวร์" (comment, C7 ในไฟล์เดียวกันนี้) ที่ใครก็เขียนได้และทุกคนเห็น
+ *   1. ให้คะแนนได้เฉพาะคนที่เกี่ยวข้อง (ผู้เล่นในรายชื่อ · หัวหน้าทีม) — ไม่รวมกรรมการ · ORG ให้คะแนนตัวเองไม่ได้
+ *   2. ให้คะแนนได้ตั้งแต่ทัวร์เริ่ม (มติ 22 ก.ย.) จนครบ 7 วันหลังปิดทัวร์
+ *      ทัวร์เริ่ม = ถึงวันเริ่มทัวร์ (event_start_date เวลาไทย) หรือมีแมตช์ที่แข่งจริงแล้ว อย่างไหนถึงก่อน
+ *   3. ส่งซ้ำ = เขียนทับ (รีวิวและโหวต MVP)
+ *   4. โหวต MVP ย้ายเป็น "รายแมตช์" (มติ 26 ก.ย.) — ดูหัวข้อ MVP ด้านล่าง ไม่ผูกกับเวลาปิดทัวร์อีกต่อไป
+ * + C7 คอมเมนต์ทัวร์ (มติ 22 ก.ย. — ย้ายจากรายแมตช์) อยู่ตารางเดียวกัน type 'comment' · ดูหัวข้อ "คอมเมนต์ทัวร์" ด้านล่าง
+ */
+/** รีวิวผู้จัดปิดรับกี่วันหลังทัวร์ปิด (OD-23 ข้อ 2) — เดิมผูกกับหน้าต่างโหวต MVP ตอนที่ MVP ยังเป็นระดับทัวร์ */
+export const REVIEW_CLOSING_DAYS = 7;
+
+async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> {
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    if (!tournament) {
+        throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+    }
+    return tournament;
+}
+
+/** ให้คะแนนได้ตลอด แต่ถ้าปิดทัวร์แล้ว ปิดรับเมื่อครบ 7 วันหลังปิดทัวร์ */
+export function feedbackClosesAt(tournament: TournamentRow): Date | null {
+    if (tournament.tournament_status !== 'completed' || !tournament.completed_at) return null;
+    return new Date(new Date(tournament.completed_at).getTime() + REVIEW_CLOSING_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/** วันเริ่มทัวร์ 00:00 เวลาไทย — event_start_date เป็น DATE (pool ตั้ง dateStrings จึงได้ 'YYYY-MM-DD') */
+export function feedbackOpensAt(tournament: TournamentRow): Date {
+    return new Date(`${String(tournament.event_start_date).slice(0, 10)}T00:00:00+07:00`);
+}
+
+export type FeedbackStatus = 'not_started' | 'open' | 'closed';
+
+/**
+ * 🆕 FE-1 (7 ต.ค. 2569 · FE เลือกทางเลือก ข) — `openedBy` บอกว่า "เปิดเพราะอะไร"
+ *
+ * ปัญหาที่ FE เจอ: `opensAt` คือ **วันเริ่มทัวร์ตามกำหนดการ** (event_start_date 00:00 เวลาไทย)
+ * แต่รีวิวเปิดได้ก่อนถึงวันนั้นด้วย ถ้ามีแมตช์ที่แข่งจริงแล้ว (มติ 22 ก.ย.)
+ * ⇒ มีสถานะที่ `status: 'open'` ขณะที่ `opensAt` **เป็นเวลาในอนาคต**
+ *   จอที่เขียนว่า "เปิดให้รีวิวได้ตั้งแต่ <opensAt>" จึงโกหกผู้ใช้ที่รีวิวได้อยู่แล้ว
+ *
+ * ทางเลือก ข = ไม่เปลี่ยนความหมายของ `opensAt` (ยังเป็นกำหนดการ) แต่ส่งมาด้วยว่า
+ * **ฟิลด์นั้นเชื่อเป็นป้ายได้ไหม**:
+ *   'event_start'  ถึงกำหนดการแล้ว ⇒ `opensAt` อยู่ในอดีต · FE วางบนป้ายได้ตรง ๆ
+ *   'completed'    ทัวร์ปิดแล้วแต่ยังไม่ถึงวันเริ่มตามกำหนดการ (ข้อมูลเพี้ยน/ยกเลิกแล้วปิด)
+ *   'first_match'  ยังไม่ถึงกำหนดการ แต่มีแมตช์แข่งจริงแล้ว ⇒ **ห้ามโชว์ `opensAt`**
+ *   null           ยังไม่เปิด (`not_started`) หรือปิดแล้ว (`closed`) — ไม่มี "เหตุที่เปิด"
+ *
+ * 🔴 นี่ **ไม่ใช่** "เหตุแรกสุดตามเวลา" — ระบบไม่เก็บว่าแมตช์แรกแข่งเมื่อไร จึงตอบไม่ได้ว่า
+ *   แมตช์แข่งก่อนหรือหลังวันเริ่มตามกำหนดการ · คำถามที่ตอบคือ "ตอนนี้เปิดเพราะอะไร"
+ *   ซึ่งเป็นคำถามที่ FE ต้องใช้จริง (จะโชว์ `opensAt` หรือไม่)
+ * ★ ลำดับกิ่งเรียง `event_start` ไว้ก่อน จึงไม่ยิง `hasPlayedMatch` ในเคสปกติ
+ *   (ทัวร์ที่เริ่มแล้ว = เกือบทั้งหมด) — ผลลัพธ์บูลีนเหมือนของเดิมเป๊ะ
+ */
+export type FeedbackOpenedBy = 'event_start' | 'completed' | 'first_match';
+
+export async function feedbackState(tournament: TournamentRow, now = new Date()):
+        Promise<{ status: FeedbackStatus; openedBy: FeedbackOpenedBy | null }> {
+    if (!isFeedbackOpen(tournament, now)) return { status: 'closed', openedBy: null };
+    if (now >= feedbackOpensAt(tournament)) return { status: 'open', openedBy: 'event_start' };
+    if (tournament.tournament_status === 'completed') return { status: 'open', openedBy: 'completed' };
+    return (await FeedbackRepo.hasPlayedMatch(tournament.tournament_id))
+        ? { status: 'open', openedBy: 'first_match' }
+        : { status: 'not_started', openedBy: null };
+}
+
+/** not_started = ทัวร์ยังไม่เริ่ม · open = ให้คะแนน/แก้ได้ · closed = เลย 7 วันหลังปิดทัวร์ */
+export async function feedbackStatus(tournament: TournamentRow, now = new Date()): Promise<FeedbackStatus> {
+    return (await feedbackState(tournament, now)).status;
+}
+
+/**
+ * ทัวร์ที่ completed ก่อนมี migration 022 ไม่มี completed_at (ข้อมูลเก่าเท่านั้น — ระบบจริงใส่ให้ตอนกด B1 เสมอ)
+ * ถือว่าเลย 7 วันไปแล้วแน่นอน → ปิดทั้งให้คะแนนและ MVP
+ */
+function isLegacyCompleted(tournament: TournamentRow): boolean {
+    return tournament.tournament_status === 'completed' && !tournament.completed_at;
+}
+
+function isFeedbackOpen(tournament: TournamentRow, now = new Date()): boolean {
+    if (isLegacyCompleted(tournament)) return false;
+    const closesAt = feedbackClosesAt(tournament);
+    return closesAt === null || now < closesAt;
+}
+
+async function assertFeedbackOpen(tournament: TournamentRow, now = new Date()): Promise<void> {
+    const status = await feedbackStatus(tournament, now);
+    if (status === 'closed') {
+        throw new AppError(409, 'FEEDBACK_CLOSED', `ปิดรับความเห็นแล้ว (ให้คะแนนได้ถึง ${REVIEW_CLOSING_DAYS} วันหลังปิดทัวร์)`,
+            { closesAt: feedbackClosesAt(tournament) });
+    }
+    if (status === 'not_started') {
+        throw new AppError(409, 'TOURNAMENT_NOT_STARTED', 'ให้คะแนนได้ตั้งแต่ทัวร์นาเมนต์เริ่มแข่ง',
+            { opensAt: feedbackOpensAt(tournament) });
+    }
+}
+
+/** ใครให้คะแนนทัวร์นี้ได้ — คืนเหตุผลที่ไม่ได้ ไว้ให้ FE ซ่อนฟอร์มได้ถูก */
+async function feedbackBlocker(tournament: TournamentRow, userId: number): Promise<AppError | null> {
+    if (tournament.requested_by_user_id === userId) {
+        return new AppError(403, 'ORGANIZER_CANNOT_REVIEW_OWN', 'ผู้จัดให้คะแนนทัวร์นาเมนต์ของตัวเองไม่ได้');
+    }
+    if (!(await FeedbackRepo.isTournamentParticipant(tournament.tournament_id, userId))) {
+        return new AppError(403, 'FEEDBACK_NOT_ALLOWED', 'ให้คะแนนได้เฉพาะผู้เล่นและหัวหน้าทีมที่ลงแข่งในทัวร์นาเมนต์นี้');
+    }
+    return null;
+}
+
+async function isUniversityAdmin(userId: number): Promise<boolean> {
+    const admin = await AdminRepo.findAdminByUserId(userId);
+    return admin?.scope_type === 'university_wide';
+}
+
+// ───────────────────────── Organizer feedback ─────────────────────────
+
+export async function submitOrganizerFeedback(tournamentId: number, userId: number, input: OrganizerFeedbackInput) {
+    const tournament = await getTournamentOr404(tournamentId);
+    await assertFeedbackOpen(tournament);
+    const blocker = await feedbackBlocker(tournament, userId);
+    if (blocker) throw blocker;
+
+    const existing = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
+    if (existing?.removed_at) {
+        throw new AppError(409, 'FEEDBACK_REMOVED', 'ความเห็นของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว ส่งใหม่ไม่ได้');
+    }
+
+    const content = input.content ? input.content : null;   // ข้อความว่าง = ไม่มีข้อความ
+    await FeedbackRepo.upsertOrganizerFeedback(tournamentId, userId, input.rating, content);
+    const saved = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
+    return { ...toMyReviewDto(saved!), isNew: existing === null };
+}
+
+/**
+ * ใครก็ดูค่าเฉลี่ยได้ · คนที่ล็อกอินเห็นของตัวเอง + canSubmit
+ * ORG เห็นข้อความทั้งหมดแต่ไม่เห็นชื่อ · แอดมินทั้งมหาวิทยาลัยเห็นชื่อด้วย (ใช้ตรวจ report)
+ */
+export async function getOrganizerFeedback(tournamentId: number, userId?: number) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const summary = toReviewSummaryDto(await FeedbackRepo.summarizeOrganizerFeedback(tournamentId));
+    const { status, openedBy } = await feedbackState(tournament);
+    const opensAt = feedbackOpensAt(tournament);
+    const closesAt = feedbackClosesAt(tournament);
+    if (userId === undefined) {
+        return { summary, status, openedBy, opensAt, closesAt, mine: null, canSubmit: false, items: null };
+    }
+
+    const mineRow = await FeedbackRepo.findOwn(tournamentId, userId, 'organizer_feedback');
+    const mine = mineRow && !mineRow.removed_at ? toMyReviewDto(mineRow) : null;
+    const canSubmit = status === 'open'
+        && !mineRow?.removed_at
+        && (await feedbackBlocker(tournament, userId)) === null;
+
+    const isOrganizer = tournament.requested_by_user_id === userId;
+    const isAdmin = !isOrganizer && await isUniversityAdmin(userId);
+    const items = isOrganizer || isAdmin
+        ? (await FeedbackRepo.listOrganizerFeedback(tournamentId)).map(row => toReviewItemDto(row, isAdmin))
+        : null;
+
+    return { summary, status, openedBy, opensAt, closesAt, mine, canSubmit, items };
+}
+
+// ───────────────────────── โหวต MVP รายแมตช์ (มติ 26 ก.ย. 2569 · OD-23 แก้) ─────────────────────────
+//   1  แทนที่ MVP ระดับทัวร์ทั้งหมด — ไม่มี /tournaments/:id/mvp-votes อีกแล้ว
+//   2  โหวตได้ทุกคนที่ล็อกอิน ยกเว้น "สมาชิกของสองทีมในแมตช์นั้น" (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม)
+//   3+4 เปิดทันทีที่แมตช์จบ (actual_end_time) · ปิดหลังจากนั้น MVP_VOTING_HOURS ชั่วโมง — ไม่เกี่ยวกับเวลาปิดทัวร์
+//   5  ผู้ถูกโหวต = คนที่เช็คอินสำเร็จในแมตช์นั้น · 6 แมตช์ที่ไม่ได้แข่งจริง (ชนะบาย/ปรับแพ้) ไม่มีโหวต
+//   +  ทัวร์ต้อง public หรือ completed (มติ 26 ก.ย. — กฎเดียวกับความเห็นต่อทัวร์และ Pick'em):
+//      ผู้จัด unpublish กลับเป็น private หรือทัวร์ถูกลบ → โหวตไม่ได้ (อ่านผลได้เหมือนหน้าแมตช์อื่น)
+//   7  ผลแมตช์ถูกแก้ย้อนหลัง โหวตยังอยู่ (MVP คือผลงานในสนาม ไม่ใช่ผลแพ้ชนะ) · 13 ส่งซ้ำ = เปลี่ยนคนที่โหวต
+//   ★ 10 ระหว่างเปิดโหวต ห้ามส่งจำนวนโหวตออกไปเลย (ทั้งรายคนและยอดรวม) — กันคนแห่โหวตตามคนที่นำอยู่
+
+async function getMatchOr404(matchId: number): Promise<MatchRow> {
+    const match = await MatchRepo.findById(matchId);
+    if (!match) {
+        throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้');
+    }
+    return match;
+}
+
+/** ช่วงโหวตของแมตช์ = ตั้งแต่เวลาที่แมตช์จบจริง ถึง +24 ชม. · ยังไม่จบ = ยังไม่เปิด */
+export function mvpWindow(match: Pick<MatchRow, 'actual_end_time'>, now = new Date()) {
+    if (!match.actual_end_time) return { opensAt: null, closesAt: null, isOpen: false };
+    const opensAt = new Date(match.actual_end_time);
+    const closesAt = new Date(opensAt.getTime() + MVP_VOTING_HOURS * 60 * 60 * 1000);
+    return { opensAt, closesAt, isOpen: now >= opensAt && now < closesAt };
+}
+
+/** จบโดยไม่มีการแข่งจริง (ชนะบาย/ปรับแพ้) → ไม่มี MVP (ข้อ 6) · ยังไม่ส่งผลไม่นับ — โหวตเปิดตั้งแต่แมตช์จบ ไม่ต้องรอผล */
+async function isDecidedWithoutPlay(matchId: number): Promise<boolean> {
+    const result = await MatchResultRepo.findVerifiedResultByMatchId(matchId);
+    return result?.match_result_status === 'walkover';
+}
+
+/** ลำดับการตรวจตามที่ตกลงไว้: จบหรือยัง → แข่งจริงไหม → ยังไม่หมดเวลา → คนโหวตมีสิทธิ์ไหม */
+async function assertVotable(match: MatchRow): Promise<void> {
+    const window = mvpWindow(match);
+    if (window.opensAt === null) {
+        throw new AppError(409, 'MVP_VOTING_NOT_OPEN', 'แมตช์นี้ยังไม่จบ โหวต MVP ไม่ได้');
+    }
+    if (await isDecidedWithoutPlay(match.match_id)) {
+        throw new AppError(409, 'MVP_NOT_AVAILABLE', 'แมตช์นี้ตัดสินโดยไม่มีการแข่งจริง จึงไม่มีการโหวต MVP');
+    }
+    if (!window.isOpen) {
+        throw new AppError(409, 'MVP_VOTING_CLOSED', `ปิดโหวต MVP แล้ว (โหวตได้ ${MVP_VOTING_HOURS} ชั่วโมงหลังแมตช์จบ)`,
+            { closesAt: window.closesAt });
+    }
+}
+
+export async function castMvpVote(matchId: number, userId: number, candidateId: number) {
+    const match = await getMatchOr404(matchId);
+    await assertVotable(match);
+
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    if (!tournament || !isOpenToPublic(tournament)) {
+        throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ โหวต MVP ไม่ได้');
+    }
+
+    if (await FeedbackRepo.isMemberOfMatchTeams(matchId, userId)) {
+        throw new AppError(403, 'MVP_VOTER_NOT_ELIGIBLE', 'สมาชิกของทีมที่ลงแข่งแมตช์นี้โหวต MVP ของแมตช์นี้ไม่ได้');
+    }
+
+    const candidates = await FeedbackRepo.findMvpCandidatesOfMatch(matchId);
+    if (!candidates.some(c => c.user_id === candidateId)) {
+        throw new AppError(422, 'MVP_CANDIDATE_NOT_ELIGIBLE', 'โหวตได้เฉพาะผู้เล่นที่เช็คอินลงแข่งในแมตช์นี้');
+    }
+
+    const existing = await FeedbackRepo.findOwnMatchVote(matchId, userId);
+    if (existing?.removed_at) {
+        throw new AppError(409, 'FEEDBACK_REMOVED', 'โหวตของคุณในแมตช์นี้ถูกผู้ดูแลระบบลบแล้ว โหวตใหม่ไม่ได้');
+    }
+    await FeedbackRepo.upsertMvpVote(match.tournament_id, matchId, userId, candidateId);
+    return {
+        isNew: existing === null,
+        matchId, votedForUserId: candidateId,
+        changed: existing !== null && existing.voted_for_user_id !== candidateId,
+    };
+}
+
+export async function getMvpVotes(matchId: number, userId?: number) {
+    const match = await getMatchOr404(matchId);
+    const window = mvpWindow(match);
+    const available = window.opensAt !== null && !(await isDecidedWithoutPlay(matchId));
+    // ประกาศผลได้ต่อเมื่อปิดโหวตแล้วเท่านั้น — ก่อนหน้านั้นห้ามให้ตัวเลขใด ๆ ออกไป (ข้อ 10)
+    const ended = available && window.closesAt !== null && !window.isOpen;
+
+    const rows = available ? await FeedbackRepo.findMvpCandidatesOfMatch(matchId) : [];
+    const stats = available && rows.length > 0 ? await FeedbackRepo.findMatchPlayerStats(matchId) : [];
+    const candidates = rows.map(r => toMvpCandidateDto(r, stats.filter(s => s.user_id === r.user_id), ended));
+    if (ended) candidates.sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0) || a.fullName.localeCompare(b.fullName, 'th'));
+
+    const top = ended ? Math.max(0, ...rows.map(r => Number(r.votes))) : 0;
+    const winners = ended && top > 0 ? candidates.filter(c => c.votes === top).map(c => c.userId) : [];
+
+    let mine: { votedForUserId: number } | null = null;
+    let canVote = false;
+    if (userId !== undefined) {
+        const own = await FeedbackRepo.findOwnMatchVote(matchId, userId);
+        const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+        mine = own && !own.removed_at ? { votedForUserId: own.voted_for_user_id! } : null;
+        canVote = window.isOpen && available && !own?.removed_at
+            && !!tournament && isOpenToPublic(tournament)
+            && !(await FeedbackRepo.isMemberOfMatchTeams(matchId, userId));
+    }
+
+    return {
+        matchId, window, candidates, winners,
+        ...(ended ? { totalVotes: rows.reduce((sum, r) => sum + Number(r.votes), 0) } : {}),
+        mine, canVote,
+    };
+}
+
+// ───────────────────────── คอมเมนต์ทัวร์ (C7 · มติ 22 ก.ย. 2569) ─────────────────────────
+//   ทุกคนที่ล็อกอินคอมเมนต์ได้ (รวมคนในทัวร์) · ทุกคนอ่านได้ · คนละ 1 อันต่อทัวร์ ส่งซ้ำ = แก้ · เจ้าของลบเองได้
+//   ทัวร์ต้อง public หรือ completed — private / รออนุมัติ ฯลฯ เขียนไม่ได้ และคนนอกอ่านไม่ได้ (เหมือนหน้าทัวร์)
+//   report: ใครล็อกอินก็ได้ ยกเว้นของตัวเอง (POST /feedback/:id/report) · ลบของคนอื่น: แอดมินเท่านั้น (DELETE /admin/feedback/:id)
+
+/** ทัวร์ที่คนนอกเข้าถึงได้ — ใช้ร่วมกันทั้งความเห็นต่อทัวร์ (ด้านล่าง) และโหวต MVP (ด้านบน) */
+function isOpenToPublic(tournament: TournamentRow): boolean {
+    return tournament.tournament_status === 'public' || tournament.tournament_status === 'completed';
+}
+
+function toCommentDto(row: CommentListRow, viewerId?: number, withReportFlag = false) {
+    return {
+        id: row.tournament_feedback_id,
+        tournamentId: row.tournament_id,
+        author: { id: row.user_id, fullName: row.author_name, avatarUrl: row.author_avatar },
+        content: row.content,
+        createdAt: row.created_at,
+        isMine: viewerId !== undefined && viewerId === row.user_id,
+        // ธง report เห็นได้เฉพาะคนที่ลบได้ (ผู้จัดของทัวร์ / แอดมินทั้งมหาวิทยาลัย) — มติ 23 ก.ย. ข้อ 6.4
+        // คนทั่วไปเห็นไม่ได้ ไม่งั้นกลายเป็นตราประจานที่ใครก็ตั้งให้คนอื่นได้ด้วยการกด report
+        // reportCleared มาคู่กัน (มติ 30 ก.ย.) — บอกคนกำกับดูแลว่าอันนี้เคยปล่อยผ่านไปแล้ว ไม่งั้นจะสับว่าทำไมธงไม่ขึ้น
+        ...(withReportFlag ? { isReported: Boolean(row.is_reported), reportCleared: row.report_cleared_at !== null } : {}),
+    };
+}
+
+/** ทัวร์ที่ไม่ได้เปิดเผยแพร่: เห็นเฉพาะผู้จัดกับแอดมินทั้งมหาวิทยาลัย — คนอื่น 404 เหมือนหน้าทัวร์ */
+async function assertCommentsVisible(tournament: TournamentRow, viewerId?: number): Promise<void> {
+    if (isOpenToPublic(tournament)) return;
+    if (viewerId !== undefined && (tournament.requested_by_user_id === viewerId || await isUniversityAdmin(viewerId))) return;
+    throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
+}
+
+/**
+ * ผู้จัดลบความเห็นไป แล้วเจ้าของเขียนใหม่ (revive) — ต้องบอกผู้จัด (มติ 1 ต.ค. 2569 · FE รายงาน 30 ก.ย.)
+ *
+ * `upsertComment` ไม่ล้าง `is_reported` ตอน revive (มติ 23 ก.ย. ข้อ 5-ก) โดยเจตนา — ความเห็นที่เคยถูกลบ
+ * แล้วถูกเขียนใหม่ **ควร** ถูกตรวจซ้ำ · แต่ผลข้างเคียงคือแถวนั้นกลับเข้าคิว `?reported=true` เอง
+ * โดยที่ **ไม่มีใครรายงานข้อความใหม่นี้** และไม่มีแจ้งเตือน ⇒ คิวโกหกว่ามีคนแจ้ง และผู้จัดอาจไม่เคยเปิดดูเลย
+ *
+ * ทางที่เลือกคือคงไว้ในคิวแต่แจ้งให้รู้ ไม่ใช่ล้างธง — เพราะการล้างธงทำให้การลบของผู้จัด
+ * ถูกพลิกกลับได้เงียบ ๆ ด้วยการเขียนใหม่ ซึ่งเป็นรูเดียวกับที่มติ 23 ก.ย. ปิดไป
+ *
+ * เกิดได้ครั้งเดียวต่อการลบหนึ่งครั้ง — revive แล้ว `removed_at` เป็น NULL การแก้ครั้งถัดไปไม่ใช่ revive อีก
+ * จึงไม่มีทางกลายเป็นสแปมใส่ผู้จัด
+ */
+async function notifyRewriteAfterRemoval(tournament: TournamentRow, authorUserId: number, stillFlagged: boolean): Promise<void> {
+    if (tournament.requested_by_user_id === authorUserId) return;   // ผู้จัดลบความเห็นตัวเองแล้วเขียนใหม่ ไม่ต้องแจ้งตัวเอง
+    const queueNote = stillFlagged
+        ? ' และยังค้างอยู่ในรายการที่ถูกรายงาน (?reported=true) เพราะธงจากรอบก่อนไม่ถูกล้าง'
+        : '';
+    await NotificationService.notify({
+        userId: tournament.requested_by_user_id, type: 'comment_rewritten_after_removal',
+        title: 'ความเห็นที่คุณลบถูกเขียนใหม่',
+        message: `เจ้าของความเห็นที่คุณลบในทัวร์นาเมนต์ "${tournament.name}" ส่งข้อความใหม่เข้ามาแล้ว${queueNote} — เปิดดูเพื่อตรวจว่าข้อความใหม่เหมาะสมหรือไม่`,
+        relatedEntityType: 'tournament', relatedEntityId: tournament.tournament_id,
+    });
+}
+
+/** 201 ครั้งแรก · 200 แก้ของเดิม (isNew ให้ controller เลือก status) */
+export async function postTournamentComment(tournamentId: number, userId: number, content: string) {
+    const tournament = await getTournamentOr404(tournamentId);
+    if (!isOpenToPublic(tournament)) {
+        throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ คอมเมนต์ไม่ได้');
+    }
+    const existing = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    const removedByOrganizer = removedByOrganizerOf(existing, tournament);
+    if (existing?.removed_at && !removedByOrganizer) {
+        throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกผู้ดูแลระบบลบแล้ว ส่งใหม่ไม่ได้');
+    }
+    await FeedbackRepo.upsertComment(tournamentId, userId, content, removedByOrganizer);
+    const saved = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    if (removedByOrganizer) await notifyRewriteAfterRemoval(tournament, userId, Boolean(existing?.is_reported));
+    return { ...toCommentDto(saved!, userId), isNew: existing === null };
+}
+
+/** `reportedOnly` (?reported=true) — คิวตรวจของผู้จัด/แอดมิน ปลายทางของแจ้งเตือน `comment_reported` */
+export async function listTournamentComments(tournamentId: number, viewerId: number | undefined, page: number, pageSize: number, offset: number,
+                                             reportedOnly = false) {
+    const tournament = await getTournamentOr404(tournamentId);
+    await assertCommentsVisible(tournament, viewerId);
+    const canModerate = viewerId !== undefined
+        && (tournament.requested_by_user_id === viewerId || await isUniversityAdmin(viewerId));
+    if (reportedOnly && !canModerate) {
+        throw new AppError(403, 'NOT_ORGANIZER', 'เฉพาะผู้จัดทัวร์นาเมนต์นี้และแอดมินเท่านั้นที่ดูรายการที่ถูกรายงานได้');
+    }
+    const { rows, totalItems } = await FeedbackRepo.listComments(tournamentId, offset, pageSize, reportedOnly);
+
+    let mine = null;
+    let canComment = false;
+    if (viewerId !== undefined) {
+        const own = await FeedbackRepo.findOwnComment(tournamentId, viewerId);
+        mine = own && !own.removed_at ? toCommentDto(own, viewerId) : null;
+        canComment = isOpenToPublic(tournament) && (!own?.removed_at || removedByOrganizerOf(own, tournament));
+    }
+    return {
+        items: rows.map(r => toCommentDto(r, viewerId, canModerate)),
+        mine, canComment, canModerate,
+        pagination: buildPagination(page, pageSize, totalItems),
+    };
+}
+
+/**
+ * ผู้จัดลบความเห็นในทัวร์ของตัวเอง (มติ 23 ก.ย. ข้อ 6) — ดูแลหน้างานตัวเองได้ ไม่ต้องรอแอดมิน
+ * แตะได้เฉพาะ `comment` · รีวิวจากผู้ลงแข่ง/โหวต MVP ลบไม่ได้ (เป็นการประเมินตัวผู้จัดเอง)
+ * กันลบคำวิจารณ์เงียบ ๆ: reason บังคับ · เขียน audit `comment_removed_by_organizer` พร้อมคนเขียน · แจ้งเจ้าของความเห็น · แอดมินคืนได้
+ */
+export async function removeCommentByOrganizer(tournamentId: number, feedbackId: number, orgUserId: number, reason: string) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback || feedback.tournament_id !== tournamentId) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้ในทัวร์นาเมนต์นี้');
+    }
+    if (feedback.feedback_type !== 'comment') {
+        throw new AppError(403, 'FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER',
+            'ผู้จัดลบได้เฉพาะความเห็นต่อทัวร์ — รีวิวจากผู้ลงแข่งและโหวต MVP ลบไม่ได้');
+    }
+    if (feedback.removed_at || !(await FeedbackRepo.softRemove(feedbackId, orgUserId, reason, {
+        actionType: 'comment_removed_by_organizer',
+        details: { tournamentId, authorUserId: feedback.user_id },
+    }))) {
+        throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
+    }
+
+    if (feedback.user_id !== orgUserId) {
+        await NotificationService.notify({
+            userId: feedback.user_id, type: 'comment_removed',
+            title: 'ความเห็นของคุณถูกลบ',
+            message: `ผู้จัดลบความเห็นของคุณในทัวร์นาเมนต์ "${tournament.name}" — เหตุผล: ${reason}`,
+            relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+        });
+    }
+}
+
+/**
+ * ผู้จัดลบ vs แอดมินลบ — แยกด้วย `removed_by` (มติ 23 ก.ย. ข้อ 6.6 ทาง ก)
+ *   ผู้จัดลบ  → เจ้าของเขียนใหม่ได้ (กันการปิดปากถาวรด้วยการกดปุ่มเดียว) — ผู้จัดลบซ้ำได้ถ้ายังไม่เหมาะสม
+ *   แอดมินลบ → ห้ามเขียนใหม่ในทัวร์นั้นอีก (บทลงโทษของระบบ ตาม OD-23/24 เดิม)
+ * ผู้จัดที่เป็นแอดมินด้วยแล้วลบผ่านเส้นแอดมิน = นับเป็นผู้จัดลบ (removed_by ตรงกัน) — ผ่อนปรนฝั่งผู้ใช้ไว้ก่อน
+ */
+function removedByOrganizerOf(own: { removed_at: Date | null; removed_by: number | null } | null, tournament: TournamentRow): boolean {
+    return own?.removed_at !== null && own?.removed_at !== undefined && own.removed_by === tournament.requested_by_user_id;
+}
+
+/** เจ้าของลบของตัวเอง → โพสต์ใหม่ได้ · ไม่มีให้ลบ → 404 · ถูกลบไปแล้ว → 409 (ลบเพื่อโพสต์ใหม่ไม่ได้) */
+export async function deleteOwnTournamentComment(tournamentId: number, userId: number): Promise<void> {
+    await getTournamentOr404(tournamentId);
+    const own = await FeedbackRepo.findOwnComment(tournamentId, userId);
+    if (!own) {
+        throw new AppError(404, 'COMMENT_NOT_FOUND', 'คุณยังไม่มีคอมเมนต์ในทัวร์นาเมนต์นี้');
+    }
+    if (own.removed_at) {
+        throw new AppError(409, 'COMMENT_REMOVED', 'คอมเมนต์ของคุณในทัวร์นาเมนต์นี้ถูกลบไปแล้ว');
+    }
+    await FeedbackRepo.deleteOwnComment(tournamentId, userId);
+}
+
+// ───────────────────────── report / ลบ ─────────────────────────
+
+
+/**
+ * คำนามที่ใช้เรียกของที่ถูกลบในข้อความแจ้งเตือน — แอดมินลบได้ทุกประเปท
+ * จะเขียนว่า "ความเห็น" เหมาหมดไม่ได้ — โหวต MVP ไม่มีข้อความ ส่วนรีวิวเป็นคนละอันกับคอมเมนต์สาธารณะ
+ */
+function feedbackNoun(type: FeedbackRow['feedback_type']): string {
+    if (type === 'mvp_vote') return 'โหวต MVP';
+    if (type === 'organizer_feedback') return 'รีวิวการจัดทัวร์นาเมนต์';
+    return 'ความเห็น';
+}
+
+/**
+ * แจ้งเจ้าของเมื่อแอดมินลบหรือคืน (แก้ 30 ก.ย. 2569)
+ * เดิมผู้จัดลบแล้วแจ้ง แต่แอดมินลบแล้วเงียบ — เจ้าของรู้ตอนส่งใหม่แล้วเจอ 409 เท่านั้น
+ * คนที่ถูกลบต้องรู้เหมือนกัน ไม่ว่าคนลบจะเป็นผู้จัดหรือแอดมิน ไม่งั้นอุทธรณ์ไม่ได้
+ * ตั้งใจไม่แจ้งตอนแอดมินทำกับของตัวเอง — กติกาเดียวกับตอนผู้จัดลบคอมเมนต์ตัวเอง
+ */
+async function notifyFeedbackAuthor(feedback: FeedbackRow, byUserId: number,
+                                    kind: 'removed' | 'restored', reason: string | null): Promise<void> {
+    const tellAuthor = feedback.user_id !== byUserId;
+    // ผู้จัดที่ลบไว้คือคนที่คำตัดสินถูกกลับ — ต้องรู้ด้วย (แก้ 30 ก.ย. 2569)
+    // ไม่มีช่องทางอื่นให้เขารู้เลย: restore ล้าง is_reported ด้วย คอมเมนต์จึงหลุดจากคิว ?reported=true
+    // กลับมาโผล่ปนของใหม่ และ audit_logs ผู้จัดเปิดไม่ได้ ⇒ จะลบซ้ำโดยเข้าใจว่าเจ้าของโพสต์ซ้ำ วนได้ไม่จบ
+    const tellRemover = kind === 'restored' && typeof feedback.removed_by === 'number'
+                     && feedback.removed_by !== byUserId          // แอดมินลบเองแล้วคืนเอง
+                     && feedback.removed_by !== feedback.user_id; // เจ้าของไม่ต้องได้สองใบ
+    if (!tellAuthor && !tellRemover) return;
+
+    const tournament = await TournamentRepo.findTournamentById(feedback.tournament_id);
+    // 'โหวต MVP' ลงท้ายด้วยอักษรลาติน — เว้นวรรคก่อนคำไทยที่ต่อท้าย ไม่ให้กลายเป็น "MVPของคุณ"
+    const raw = feedbackNoun(feedback.feedback_type);
+    const noun = /[A-Za-z]$/.test(raw) ? `${raw} ` : raw;
+    const where = tournament ? ` ในทัวร์นาเมนต์ "${tournament.name}"` : '';
+    const inputs: NotificationInput[] = [];
+
+    if (tellAuthor) {
+        inputs.push({
+            userId: feedback.user_id,
+            type: kind === 'removed' ? 'feedback_removed_by_admin' : 'feedback_restored',
+            title: kind === 'removed' ? `${noun}ของคุณถูกลบ` : `${noun}ของคุณกลับมาแสดงอีกครั้ง`,
+            message: kind === 'removed'
+                ? `ผู้ดูแลระบบลบ${noun}ของคุณ${where} — เหตุผล: ${reason}`
+                : `ผู้ดูแลระบบตรวจแล้วนำ${noun}ของคุณ${where}กลับมาแสดงอีกครั้ง`,
+            relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+        });
+    }
+
+    if (tellRemover) {
+        inputs.push({
+            userId: feedback.removed_by!,
+            type: 'feedback_restore_overridden',
+            title: `${noun}ที่คุณลบถูกนำกลับมาแสดง`,
+            message: `ผู้ดูแลระบบตรวจแล้วนำ${noun}ที่คุณลบ${where}กลับมาแสดง — ถ้ายังเห็นว่าไม่เหมาะสม กรุณาติดต่อผู้ดูแลระบบก่อนลบซ้ำ`,
+            relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+        });
+    }
+
+    await NotificationService.notify(inputs);
+}
+
+/**
+ * report ได้เฉพาะคนที่มองเห็นข้อความนั้น — organizer_feedback เห็นแค่ ORG ของทัวร์ · โหวต MVP ไม่มีข้อความให้ report
+ * comment (C7 คอมเมนต์ทัวร์) ใครที่ล็อกอินก็ report ได้ ยกเว้นของตัวเอง
+ */
+export async function reportFeedback(feedbackId: number, userId: number) {
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback || feedback.removed_at) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');
+    }
+    if (feedback.feedback_type === 'mvp_vote') {
+        throw new AppError(400, 'FEEDBACK_NOT_REPORTABLE', 'โหวต MVP ไม่มีข้อความให้รายงาน');
+    }
+    if (feedback.feedback_type === 'comment' && feedback.user_id === userId) {
+        throw new AppError(400, 'CANNOT_REPORT_OWN_COMMENT', 'รายงานคอมเมนต์ของตัวเองไม่ได้');
+    }
+    if (feedback.feedback_type === 'organizer_feedback') {
+        const tournament = await getTournamentOr404(feedback.tournament_id);
+        if (tournament.requested_by_user_id !== userId) {
+            throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');   // คนอื่นมองไม่เห็นอยู่แล้ว — ไม่บอกว่ามีอยู่จริง
+        }
+    }
+    // ตรวจแล้วปล่อยผ่านไปแล้ว = ไม่ขึ้นอีก (มติ 30 ก.ย. 2569) — คนเดิมกดซ้ำหรือคนอื่นกดต่อก็ไม่ส่งเรื่องใหม่
+    // จะกลับมาส่งได้อีกเมื่อเจ้าของแก้ข้อความ (upsertComment ล้าง report_cleared_at)
+    // ★ คืนค่าเดิมทุกครั้ง: คนกดต้องไม่รู้ว่าเรื่องนี้เคยถูกตัดสินไปแล้ว ไม่งั้นกลายเป็นการบอกสถานะการกำกับดูแลให้คนนอก
+    if (feedback.report_cleared_at) {
+        return { id: feedbackId, isReported: true };
+    }
+    if (!feedback.is_reported) {
+        await FeedbackRepo.markReported(feedbackId);
+        // ความเห็นต่อทัวร์เป็นของสาธารณะบนหน้าผู้จัด — คนดูแลคือผู้จัด (มติ 23 ก.ย. ข้อ 6.4) · แจ้งครั้งแรกครั้งเดียว ไม่ใช่ทุกคนที่กด
+        const tournament = feedback.feedback_type === 'comment' ? await TournamentRepo.findTournamentById(feedback.tournament_id) : null;
+        if (tournament && tournament.requested_by_user_id !== userId) {
+            await NotificationService.notify({
+                userId: tournament.requested_by_user_id, type: 'comment_reported',
+                title: 'มีคนรายงานความเห็นในทัวร์ของคุณ',
+                message: `มีผู้รายงานความเห็นในทัวร์นาเมนต์ "${tournament.name}" — เปิดรายการที่ถูกรายงาน (?reported=true) เพื่อตรวจและลบถ้าไม่เหมาะสม`,
+                relatedEntityType: 'tournament', relatedEntityId: feedback.tournament_id,
+            });
+        }
+    }
+    return { id: feedbackId, isReported: true };
+}
+
+/**
+ * ผู้จัดตรวจแล้วเห็นว่าความเห็นนี้ไม่ต้องลบ — ปล่อยผ่าน ล้างธงให้หลุดจากคิว (มติ 30 ก.ย. 2569)
+ * ด่านการอนุรักษ์ — ไม่ต้องใส่เหตุผล ต่างจากการลบที่ต้องใส่ เหตุผลบังคับมีไว้กันการลบเงียบ ๆ ไม่ใช่กันการไม่ลบ
+ * ★ ไม่แจ้งเจ้าของคอมเมนต์ — ธง report เป็นความลับของคนที่ลบได้ (มติ 23 ก.ย. ข้อ 6.4)
+ *   เจ้าของไม่เคยรู้ว่าถูกรายงาน การบอกตอนนี้เท่ากับเปิดเผยการรายงานที่ตัดสินไปแล้วว่าไม่มีมูล
+ */
+export async function dismissCommentReport(tournamentId: number, feedbackId: number, viewerId: number) {
+    // ★ ด่านเดียวกับ canModerate ของ E14 (แก้ 30 ก.ย. — เดิม requireOrganizer ทำให้แอดมินเห็นคิวแต่กดไม่ได้)
+    //   ใช้เงื่อนไขที่มีอยู่แล้วแทนการเขียนกฎใหม่ เพื่อไม่ให้ "คนที่เห็นคิว" กับ "คนที่กดได้" หลุดกันคนละทาง
+    //   ซึ่งเป็นสาเหตุเดิมของ FE-admin-queue-shows-undecidable-rows
+    const tournament = await getTournamentOr404(tournamentId);
+    if (tournament.requested_by_user_id !== viewerId && !(await isUniversityAdmin(viewerId))) {
+        throw new AppError(403, 'NOT_ORGANIZER', 'เฉพาะผู้จัดทัวร์นาเมนต์นี้และแอดมินเท่านั้นที่ปิดเรื่องที่ถูกรายงานได้');
+    }
+
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback || feedback.tournament_id !== tournamentId) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้ในทัวร์นาเมนต์นี้');
+    }
+    // ด่านเดียวกับ removeCommentByOrganizer — ผู้จัดดูแลความเห็นต่อทัวร์เท่านั้น รีวิวของตัวเองแตะไม่ได้
+    if (feedback.feedback_type !== 'comment') {
+        throw new AppError(403, 'FEEDBACK_NOT_REMOVABLE_BY_ORGANIZER',
+            'ผู้จัดกำกับดูแลได้เฉพาะความเห็นต่อทัวร์ — รีวิวจากผู้ลงแข่งและโหวต MVP ไม่ได้');
+    }
+    if (feedback.removed_at) {
+        throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
+    }
+    // ไม่ได้ถูกรายงานอยู่ (รวมกรณีตรวจไปแล้ว ธงจึงไม่เคยขึ้น) หรือผู้จัดอีกคนกดปล่อยผ่านไปก่อนเสี้ยววินาที
+    if (!feedback.is_reported || !(await FeedbackRepo.clearReported(feedbackId, viewerId, { tournamentId, authorUserId: feedback.user_id }))) {
+        throw new AppError(409, 'FEEDBACK_NOT_REPORTED', 'ความเห็นนี้ไม่ได้ถูกรายงานค้างอยู่');
+    }
+
+    return { id: feedbackId, isReported: false };
+}
+
+export async function removeFeedback(feedbackId: number, adminUserId: number, reason: string) {
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');
+    }
+    if (feedback.removed_at || !(await FeedbackRepo.softRemove(feedbackId, adminUserId, reason))) {
+        throw new AppError(409, 'FEEDBACK_ALREADY_REMOVED', 'ความเห็นนี้ถูกลบไปแล้ว');
+    }
+
+    await notifyFeedbackAuthor(feedback, adminUserId, 'removed', reason);
+}
+
+/** แอดมินคืนความเห็นที่ถูกลบ (มติ 23 ก.ย. ข้อ 6.3.3) — ใช้ตอนเจ้าของอุทธรณ์ว่าผู้จัดลบคำวิจารณ์ */
+/**
+ * 🆕 FE-38 (7 ต.ค. 2569 · มติ ค ก) — `GET /admin/feedback/removed`
+ *
+ * มติ ค ก: **การมองเห็น**แบ่งตามขอบเขต (มหาวิทยาลัยเห็นหมด · คณะเห็นของคณะตัวเอง)
+ * ส่วน**การลบและกู้คืน**คงไว้ที่แอดมินมหาวิทยาลัยเท่านั้นตามเดิม ไม่ขยายอำนาจใคร
+ *
+ * เหตุผลที่แยกสองเรื่องนี้ออกจากกัน (คุยกันแล้ว 7 ต.ค.):
+ *   ① ปัญหาที่แก้คือ "ลบไปแล้วหาไม่เจอ" ⇒ แก้ด้วยการมองเห็น ไม่ต้องแตะอำนาจ
+ *   ② แอดมินคณะอยู่ใกล้ผู้จัดมากกว่าแอดมินมหาวิทยาลัย — ให้เขาลบ/กู้รีวิวของทัวร์
+ *      คณะตัวเองได้ จะเปิดรูที่กฎ "ผู้จัดลบรีวิวตัวเองไม่ได้" ปิดอยู่กลับมาบางส่วน
+ *   ③ กฎ "อำนาจล่างไม่ย้อนอำนาจบน" ยังมีคำถามค้างสองข้อ (ของที่ *ผู้จัด* ลบ กู้ได้ไหม ·
+ *      ตัดสินจากสิทธิ์ตอนลบหรือสิทธิ์ปัจจุบัน) ⇒ ยังไม่ตัดสิน จึงไม่เปิดอำนาจไปก่อน
+ * ★ แอดมินคณะยัง **เห็น** ว่าในคณะตัวเองมีอะไรถูกลบ ซึ่งเป็นข้อมูลที่เขาควรรู้
+ *   ถ้าอยากกู้คืนให้ขอแอดมินมหาวิทยาลัย — ช้ากว่าแต่ไม่มีรูข้างบน
+ *
+ * 🔴 root อ่านไม่ได้ (403) — ไม่ใช่ได้รายการว่าง · เนื้อหาความเห็นที่ถูกลบเป็นข้อมูลที่
+ *   root ไม่ควรเห็นตามมติ OD-34 · กฎอยู่ที่ `adminScopeSqlOrNull` ที่เดียว
+ */
+export async function listRemovedFeedback(userId: number, offset: number, page: number, pageSize: number) {
+    const admin = await AdminRepo.findAdminByUserId(userId);
+    if (!admin) {
+        throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'คุณไม่มีสิทธิ์ดูรายการความเห็นที่ถูกลบ');
+    }
+    const scope = adminScopeSqlOrNull(admin, 't');
+    if (scope === null) {
+        throw new AppError(403, 'INSUFFICIENT_ADMIN_SCOPE', 'สิทธิ์ผู้ดูแลระบบของคุณไม่ครอบคลุมขอบเขตนี้');
+    }
+
+    const { rows, totalItems } = await FeedbackRepo.findRemovedFeedback(scope, offset, pageSize);
+    return {
+        items: rows.map(row => ({
+            id: row.tournament_feedback_id,
+            tournamentId: row.tournament_id,
+            tournamentName: row.tournament_name,
+            feedbackType: row.feedback_type,
+            content: row.content,
+            rating: row.rating,
+            author: toUserRef({ user_id: row.author_user_id, full_name: row.author_full_name,
+                                profile_image_key: row.author_profile_image_key }),
+            removedAt: row.removed_at.toISOString(),
+            removedBy: row.removed_by_user_id === null ? null
+                     : { id: row.removed_by_user_id, fullName: row.removed_by_full_name },
+            removalReason: row.removal_reason,
+            /**
+             * ★ บอกด้วยว่า "ใครลบ" ในเชิงบทบาท ไม่ใช่แค่ชื่อคน — แอดมินคณะต้องแยกได้ว่า
+             *   ของที่ผู้จัดลบ กับของที่แอดมินมหาวิทยาลัยลบ เป็นสองเรื่องคนละน้ำหนัก
+             *   (และเป็นข้อมูลที่ต้องใช้ถ้าวันหน้าทีมตัดสินเรื่องสิทธิ์กู้คืน)
+             */
+            removedByRole: row.removal_action === 'comment_removed_by_organizer' ? 'organizer' as const
+                         : row.removal_action === 'feedback_removed' ? 'admin' as const
+                         : null,
+            /** ★ กู้คืนได้เฉพาะแอดมินมหาวิทยาลัย — ส่งมาให้ FE ซ่อนปุ่มได้ตรง ๆ ไม่ต้องเดา */
+            canRestore: admin.scope_type === 'university_wide'
+        })),
+        pagination: buildPagination(page, pageSize, totalItems)
+    };
+}
+
+export async function restoreFeedback(feedbackId: number, adminUserId: number) {
+    const feedback = await FeedbackRepo.findById(feedbackId);
+    if (!feedback) {
+        throw new AppError(404, 'FEEDBACK_NOT_FOUND', 'ไม่พบความเห็นนี้');
+    }
+    if (!feedback.removed_at || !(await FeedbackRepo.restore(feedbackId, adminUserId))) {
+        throw new AppError(409, 'FEEDBACK_NOT_REMOVED', 'ความเห็นนี้ไม่ได้ถูกลบอยู่');
+    }
+
+    await notifyFeedbackAuthor(feedback, adminUserId, 'restored', null);
+
+    return { id: feedbackId, restored: true };
+}

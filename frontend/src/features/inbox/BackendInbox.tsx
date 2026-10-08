@@ -22,7 +22,19 @@ import {
 } from '../../hooks/useAdmin'
 import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
+import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 import '../search/search-inbox-workspace.css'
+
+const requestTarget = (request: BackendRefereeRequestDto) => request.matchA
+  ? `match #${request.matchA.id}` : `tournament #${request.tournamentId}`
+const requestRoute = (request: BackendRefereeRequestDto) => request.matchA
+  ? `/m/${request.matchA.id}` : `/t/${request.tournamentId}`
+const requestLabel = (request: BackendRefereeRequestDto) => {
+  if (request.type === 'ref_withdraw') return request.withdrawScope === 'tournament' || !request.matchA ? 'Tournament withdrawal' : 'Match withdrawal'
+  if (request.type === 'org_add_match') return 'Match assignment'
+  if (request.type === 'ref_transfer') return 'Match transfer'
+  return 'Match swap'
+}
 
 type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string } | null
 const denied = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && (error.status === 401 || error.status === 403)
@@ -152,24 +164,26 @@ export function BackendInbox() {
           {incoming.map(request => (
             <div className="inbox-request-row" key={request.id}>
               <div className="hstack">
-                <b>Match #{request.matchA.id}</b>
+                <b>{request.matchA ? `Match #${request.matchA.id}` : `Tournament #${request.tournamentId}`}</b>
                 <span className="sub">
-                  {request.type === 'org_add_match' ? 'The organizer asks you to take this match'
+                  {request.type === 'ref_withdraw' ? 'The referee requests a withdrawal'
+                    : request.type === 'org_add_match' ? 'The organizer asks you to take this match'
                     : request.type === 'org_swap' ? 'The organizer proposes a swap'
                     : request.type === 'ref_swap' ? 'Another referee proposes a swap'
                       : 'Another referee proposes a transfer'}
                   {request.matchB ? ` with match #${request.matchB.id}` : ''}
-                  {request.matchA.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
+                  {request.matchA?.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
+                  {request.reason ? ` · ${request.reason}` : ''}
                 </span>
               </div>
               <div className="hstack">
                 <button className="btn ghost" type="button"
-                  aria-label={`Open match #${request.matchA.id}`} onClick={() => navigate(`/m/${request.matchA.id}`)}>Open match</button>
+                  aria-label={`Open ${requestTarget(request)}`} onClick={() => navigate(requestRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
                 {request.matchB ? <button className="btn ghost" type="button"
                   aria-label={`Open second match #${request.matchB.id}`} onClick={() => navigate(`/m/${request.matchB!.id}`)}>Open second match</button> : null}
-                <button className="btn" type="button" aria-label={`Decline request #${request.id} for match #${request.matchA.id}`} disabled={declineRequest.isPending || acceptRequest.isPending}
+                <button className="btn" type="button" aria-label={`Decline request #${request.id} for ${requestTarget(request)}`} disabled={declineRequest.isPending || acceptRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
-                    onSuccess: () => setNotice({ kind: 'warn', text: `Declined match #${request.matchA.id}.` }),
+                    onSuccess: () => setNotice({ kind: 'warn', text: `Declined ${requestTarget(request)}.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
                   })}>Decline</button>
                 {/* R18 — เดิมขึ้น "You are officiating" ทุกครั้งที่คำขอตอบกลับมา 200 แต่ FR06
@@ -177,12 +191,12 @@ export function BackendInbox() {
                     เดียวกันถูก apply ไปก่อน (`refereeChangeRequest.repo.apply` ปิดใบที่
                     แตะแมตช์เดียวกันทั้งหมด) กรรมการจึงอ่านว่าได้คุมแล้วทั้งที่ไม่ได้คุม
                     — เชื่อสถานะที่ตอบกลับมา ไม่ใช่เชื่อว่าไม่ throw = สำเร็จ */}
-                <button className="btn primary" type="button" aria-label={`Accept request #${request.id} for match #${request.matchA.id}`} disabled={acceptRequest.isPending || declineRequest.isPending}
+                <button className="btn primary" type="button" aria-label={`Accept request #${request.id} for ${requestTarget(request)}`} disabled={acceptRequest.isPending || declineRequest.isPending}
                   onClick={() => acceptRequest.mutate(request.id, {
                     onSuccess: answered => setNotice(answered.status === 'applied'
-                      ? { kind: 'ok', text: `Request #${answered.id} applied. Open the matches to see the updated assignments.` }
+                      ? { kind: 'ok', text: answered.type === 'ref_withdraw' ? `Request #${answered.id} applied. Withdrawal approved.` : `Request #${answered.id} applied. Open the matches to see the updated assignments.` }
                       : { kind: 'warn', text: answered.status === 'open'
-                        ? 'Your acceptance was recorded. The other referee still needs to answer.'
+                        ? answered.type === 'ref_withdraw' ? 'Your answer was recorded. Withdrawal is still pending.' : 'Your acceptance was recorded. The other referee still needs to answer.'
                         : `Request #${answered.id} is ${answered.status}. Assignments were not changed by this answer.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
                   })}>Accept</button>
@@ -204,13 +218,13 @@ export function BackendInbox() {
       {outgoing.length ? <Panel quiet>
         <h3>Your referee requests</h3>
         {outgoing.map(request => <div className="inbox-request-row" key={request.id}>
-          <div>Request #{request.id} · {request.type === 'org_add_match' ? 'Match assignment'
-            : request.type === 'ref_transfer' ? 'Match transfer' : 'Match swap'} · Match #{request.matchA.id}
+          <div>Request #{request.id} · {requestLabel(request)} · {request.matchA ? `Match #${request.matchA.id}` : `Tournament #${request.tournamentId}`}
             {request.matchB ? ` / #${request.matchB.id}` : ''} | <Badge kind={request.status === 'applied' ? 'ok' : request.status === 'open' ? 'warn' : 'neutral'}>{request.status}</Badge></div>
+          {request.reason ? <p className="sub">Reason: {request.reason}</p> : null}
           <span className="sub">{request.refereeA.user.fullName}: {request.refereeA.status}
             {request.refereeB ? ` | ${request.refereeB.user.fullName}: ${request.refereeB.status}` : ''}</span>
           <div className="hstack">
-            <button className="btn ghost" type="button" aria-label={`Open match #${request.matchA.id} for request #${request.id}`} onClick={() => navigate(`/m/${request.matchA.id}`)}>Open match</button>
+            <button className="btn ghost" type="button" aria-label={`Open ${requestTarget(request)} for request #${request.id}`} onClick={() => navigate(requestRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
             {request.status === 'open' ? <button className="btn" type="button" aria-label={`Withdraw request #${request.id}`} disabled={cancelRequest.isPending}
               onClick={() => cancelRequest.mutate(request.id, {
                 onSuccess: () => setNotice({ kind: 'ok', text: `Request #${request.id} withdrawn.` }),

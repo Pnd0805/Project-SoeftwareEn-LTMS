@@ -85,7 +85,7 @@ describe('Account submissions with real hooks', () => {
     expect(container.querySelector('[name="fullName"]')).toHaveValue('Account Fixture')
     expect(container.querySelector('[name="email"]')).toHaveAccessibleDescription(/already registered/)
     rejectSubmit = false; submit(container)
-    await screen.findByRole('button', { name: /Sign in|เข้าสู่ระบบ/ })
+    await screen.findByRole('heading', { name: 'Verify email' })
     expect(submitted).toEqual(Array(2).fill({ fullName: 'Account Fixture', email: 'account@example.test', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
   })
 

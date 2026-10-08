@@ -9,7 +9,7 @@
  *
  * ⚠️ passwordForMock อยู่ใน user.mock.ts — auth.mock ใช้ read/write mockUsers ตรงนี้
  */
-import type { LoginResponse, RegisterResponse, RegisterRequest } from "../types/dto";
+import type { LoginResponse, RegisterResponse, RegisterRequest, VerifyEmailRequest, VerifyEmailResponse, ResendVerificationResponse } from "../types/dto";
 import { findStoreUserByEmail, isStoreUserSuspended } from "./storeUsers";
 import { mockUsers, takeNextMockUserId } from "./user.mock";
 import { mockDelay, mockReject } from "../api/client";
@@ -98,5 +98,17 @@ export async function mockRegister(input: RegisterRequest): Promise<RegisterResp
     id,
     fullName: input.fullName,
     email: input.email,
+    emailVerificationSent: false,
   });
+}
+
+export async function mockVerifyEmail(input: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+  if (input.code !== "123456") {
+    return mockReject(400, { code: "INVALID_OTP", message: "Invalid demo code. Use 123456." });
+  }
+  return mockDelay({ message: "Demo email verified.", emailVerified: true });
+}
+
+export async function mockResendVerification(): Promise<ResendVerificationResponse> {
+  return mockDelay({ message: "Demo request received. No email is sent." });
 }

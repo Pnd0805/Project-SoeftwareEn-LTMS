@@ -16,3 +16,6 @@ desktop.ini
 !.vscode/extensions.json
 .idea/
 *.swp
+
+# Dependencies in the combined repository
+node_modules/

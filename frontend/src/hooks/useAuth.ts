@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "../api/auth";
 import * as userApi from "../api/user";
 import { USE_MOCK } from "../api/client";
-import type { LoginRequest, RegisterRequest } from "../types/dto";
+import type { LoginRequest, RegisterRequest, VerifyEmailRequest } from "../types/dto";
 import type { User } from "../shared/types";
 import { getState, login as setLegacySession, signout as clearLegacySession } from "../shared/store";
 
@@ -73,6 +73,14 @@ export function useRegister() {
   return useMutation({
     mutationFn: (input: RegisterRequest) => authApi.register(input),
   });
+}
+
+export function useVerifyEmail() {
+  return useMutation({ mutationFn: (input: VerifyEmailRequest) => authApi.verifyEmail(input) });
+}
+
+export function useResendVerification() {
+  return useMutation({ mutationFn: (input: { email: string }) => authApi.resendVerification(input) });
 }
 
 export function useLogout() {

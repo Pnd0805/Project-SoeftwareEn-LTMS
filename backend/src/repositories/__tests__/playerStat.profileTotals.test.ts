@@ -1,0 +1,158 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({ query: vi.fn() }));
+vi.mock('../../config/db.js', () => ({ default: { query: mocks.query } }));
+
+import { findProfileTotals } from '../playerStat.repo.js';
+import { MVP_VOTING_HOURS, MVP_MIN_VOTES } from '../../config/scoring.js';
+
+beforeEach(() => vi.clearAllMocks());
+
+describe('findProfileTotals', () => {
+  it('reads active MVP votes, MVP times and follower count', async () => {
+    mocks.query
+      .mockResolvedValueOnce([[{ mvp_votes: 3, follower_count: 7 }], []])
+      .mockResolvedValueOnce([[{ mvp_times: 2 }], []]);
+
+    await expect(findProfileTotals(5)).resolves.toEqual({
+      mvp_votes: 3,
+      mvp_times: 2,
+      follower_count: 7,
+    });
+
+    const [sql, values] = mocks.query.mock.calls[0]!;
+    // ★ 4 ต.ค. — ห้ามดึงแต้ม Pick'em มาอีก โปรไฟล์สาธารณะไม่คืนแต้มรวมทุกทัวร์อีกแล้ว
+    expect(sql).not.toContain('total_points');
+    expect(sql).toContain("tf.feedback_type = 'mvp_vote'");
+    expect(sql).toContain('tf.removed_at IS NULL');
+    expect(sql).toContain('FROM follows f');
+    expect(values).toEqual([MVP_VOTING_HOURS, 5]);
+  });
+
+  /**
+   * OD-23 ข้อ 10 — `GET /users/:id/stats` เป็น endpoint สาธารณะไม่มี middleware
+   * ถ้านับโหวตของแมตช์ที่ยังเปิดโหวตอยู่ ใครก็ poll โปรไฟล์ดูเลขวิ่งได้ ทั้งที่หน้าแมตช์ตั้งใจไม่ส่งจำนวนโหวตออกไป
+   */
+  it('counts only votes from matches whose voting window has closed', async () => {
+    mocks.query
+      .mockResolvedValueOnce([[{ mvp_votes: 0, follower_count: 0 }], []])
+      .mockResolvedValueOnce([[{ mvp_times: 0 }], []]);
+    await findProfileTotals(5);
+
+    const [sql, values] = mocks.query.mock.calls[0]!;
+    expect(sql).toContain('LEFT JOIN matches m ON m.match_id = tf.match_id');
+    expect(sql).toContain('m.actual_end_time <= DATE_SUB(NOW(), INTERVAL ? HOUR)');
+    // โหวตระดับทัวร์ของเก่าไม่มีหน้าต่างเวลา ต้องยังนับอยู่
+    expect(sql).toContain('tf.match_id IS NULL');
+    // ชั่วโมงมาจาก config ไม่ใช่เลขฮาร์ดโค้ดในคิวรี
+    expect(sql).not.toContain('INTERVAL 24 HOUR');
+    expect(values[0]).toBe(MVP_VOTING_HOURS);
+  });
+
+  /**
+   * OD-60 (4 ต.ค. 2569) — `mvp_times` = จำนวนครั้งที่ได้เป็น MVP (ได้โหวตมากสุดในแมตช์นั้น)
+   * ต่างจาก `mvp_votes` ที่เป็นยอดโหวตดิบ ซึ่งโตตามจำนวนคนดู ไม่ใช่ตามฝีมือ
+   */
+  describe('mvp_times — ครั้งที่ได้เป็น MVP', () => {
+    beforeEach(() => {
+      mocks.query
+        .mockResolvedValueOnce([[{ mvp_votes: 0, follower_count: 0 }], []])
+        .mockResolvedValueOnce([[{ mvp_times: 0 }], []]);
+    });
+
+    it('★ เสมอที่อันดับหนึ่งได้ทั้งคู่ — ใช้ RANK() ไม่ใช่ ROW_NUMBER()/LIMIT 1 (มติ ①)', async () => {
+      await findProfileTotals(5);
+      const [sql] = mocks.query.mock.calls[1]!;
+
+      expect(sql).toContain('RANK() OVER (PARTITION BY tf.match_id ORDER BY COUNT(*) DESC)');
+      expect(sql).toContain('ranked.rnk = 1');
+      // ROW_NUMBER จะเลือกคนเดียวแบบสุ่มเมื่อเสมอ ⇒ ผู้เล่นเสียสิทธิ์โดยไม่มีกฎที่อธิบายได้
+      expect(sql).not.toContain('ROW_NUMBER');
+    });
+
+    it('★ นับเฉพาะแมตช์ที่ปิดโหวตแล้ว ด้วยเงื่อนไขชุดเดียวกับ mvp_votes (มติ ②)', async () => {
+      await findProfileTotals(5);
+      const [sql, values] = mocks.query.mock.calls[1]!;
+
+      expect(sql).toContain('m.actual_end_time IS NOT NULL');
+      expect(sql).toContain('m.actual_end_time <= DATE_SUB(NOW(), INTERVAL ? HOUR)');
+      expect(sql).toContain('tf.removed_at IS NULL');
+      expect(values[0]).toBe(MVP_VOTING_HOURS);
+      expect(sql).not.toContain('INTERVAL 24 HOUR');
+    });
+
+    it('★ ผลแมตช์ที่ถูกแก้/ยกทิ้งไม่กระทบ — ห้ามมีเงื่อนไขเรื่อง match_results (มติ ③)', async () => {
+      await findProfileTotals(5);
+      const [sql] = mocks.query.mock.calls[1]!;
+
+      expect(sql).not.toContain('match_results');
+      expect(sql).not.toContain('match_result_status');
+    });
+
+    it('โหวตระดับทัวร์ของเก่า (match_id NULL) ไม่เข้ามานับ — JOIN ปกติ ไม่ใช่ LEFT JOIN', async () => {
+      await findProfileTotals(5);
+      const [sql] = mocks.query.mock.calls[1]!;
+
+      expect(sql).toContain('JOIN matches m ON m.match_id = tf.match_id');
+      expect(sql).not.toContain('LEFT JOIN matches m ON m.match_id = tf.match_id');
+    });
+
+    /**
+     * ★★ มติ ①b — **ไม่มีใครโหวตเลย = ไม่มีใครได้ MVP** ไม่ใช่ "เสมอที่ 0 แล้วได้ทุกคน"
+     *
+     *   ข้อนี้ได้มาจากโครงข้อมูล: แต่ละแถวใน tournament_feedback คือ 1 โหวต
+     *   ⇒ COUNT(*) ของทุกกลุ่ม ≥ 1 เสมอ · คนที่ไม่มีโหวตไม่มีแถวให้จัดอันดับ
+     *
+     *   🔴 สิ่งที่จะพังมันคือการเปลี่ยนไปจัดอันดับจาก "รายชื่อผู้เล่นในแมตช์" แล้ว LEFT JOIN
+     *      โหวตเข้ามา (ซึ่งคนจะทำถ้าอยากโชว์ผู้เล่นทุกคนพร้อมยอดโหวต) — ตอนนั้นคนที่ไม่มีโหวต
+     *      จะได้ COUNT = 0 แล้ว **กลายเป็น rnk = 1 พร้อมกันทุกคน** ⇒ แมตช์ที่ไม่มีใครโหวต
+     *      จะแจก MVP ให้ผู้เล่นทั้งสองทีม
+     *   ⇒ เทสนี้ตรึงว่า "ตารางที่จัดอันดับ" ต้องเป็นตัวโหวตเอง และห้ามมี LEFT JOIN เลยในคิวรีนี้
+     *
+     *   ตรวจจริงแล้วบนฐานชั่วคราว od60b (ลบแล้ว):
+     *     แมตช์ปิดโหวตแต่ไม่มีใครโหวต → ไม่มีใครได้ · โหวตถูกลบหมด → ไม่มีใครได้
+     */
+    it('★ ไม่มีโหวตเลย = ไม่มีใครได้ MVP — จัดอันดับจากตัวโหวต ห้าม LEFT JOIN', async () => {
+      await findProfileTotals(5);
+      const [sql] = mocks.query.mock.calls[1]!;
+
+      // แถวที่เอามาจัดอันดับคือ "โหวต" ⇒ ไม่มีโหวต = ไม่มีแถว = ไม่มี rnk = 1
+      expect(sql).toContain('FROM tournament_feedback tf');
+      expect(sql).not.toContain('LEFT JOIN');
+      // ไม่มีการจัดอันดับจากรายชื่อผู้เล่น (ซึ่งจะทำให้คน 0 โหวตได้ rnk = 1)
+      expect(sql).not.toContain('application_players');
+      expect(sql).not.toContain('player_match_stats');
+    });
+
+    it('จัดอันดับเฉพาะแมตช์ที่คนนี้มีโหวต ไม่ใช่ทุกแมตช์ในระบบ', async () => {
+      await findProfileTotals(5);
+      const [sql, values] = mocks.query.mock.calls[1]!;
+
+      expect(sql).toContain('tf.match_id IN (SELECT match_id FROM tournament_feedback');
+      expect(values).toEqual([MVP_VOTING_HOURS, 5, MVP_MIN_VOTES, 5]);
+    });
+
+    /**
+     * ★★ มติ ④ (4 ต.ค.) — ต้องได้โหวตอย่างน้อย MVP_MIN_VOTES ใบ ถึงนับเป็น MVP
+     *
+     *   กันสองเคสที่ "ได้โหวตมากสุด" ไม่ได้แปลว่าเด่นจริง
+     *     โหวต 1 ใบ         → คนนั้นได้ MVP จากเสียงคนเดียว
+     *     โหวต 5 ใบ คนละคน  → เสมอที่อันดับหนึ่งทุกคน → MVP 5 คนจากโหวตคนละใบ
+     *
+     *   ★ ไม่ใช้สัดส่วน 20% โดยเจตนา — ไม่แก้เคสโหวตน้อย (1 ใบ = 100% ผ่านสบาย)
+     *     และสร้างหน้าผา: เสมอ 5 คน = 20% พอดีผ่านหมด · เสมอ 6 คน = 16.7% ไม่ผ่านเลย
+     */
+    it('★ ต้องถึงขั้นต่ำก่อนถึงนับเป็น MVP — HAVING ไม่ใช่สัดส่วน (มติ ④)', async () => {
+      await findProfileTotals(5);
+      const [sql, values] = mocks.query.mock.calls[1]!;
+
+      expect(sql).toContain('HAVING COUNT(*) >= ?');
+      expect(values).toContain(MVP_MIN_VOTES);
+      // ขั้นต่ำมาจาก config ไม่ใช่เลขฮาร์ดโค้ดในคิวรี
+      expect(sql).not.toContain('HAVING COUNT(*) >= 3');
+      // ไม่ได้ทำเป็นสัดส่วน — ไม่มีการหารด้วยยอดโหวตรวมของแมตช์
+      expect(sql).not.toContain('0.2');
+      expect(sql).not.toContain('/ total');
+    });
+  });
+});

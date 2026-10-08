@@ -4,7 +4,7 @@
  * component/hook ข้างนอกไม่รู้เลยว่าตอนนี้คุยกับ mock หรือ backend จริง
  */
 import { apiFetch, setAccessToken, USE_MOCK } from "./client";
-import type { RegisterRequest, RegisterResponse, LoginRequest, LoginResponse } from "../types/dto";
+import type { RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, VerifyEmailRequest, VerifyEmailResponse, ResendVerificationResponse } from "../types/dto";
 import * as authMock from "../mocks/auth.mock";
 
 export async function register(input: RegisterRequest): Promise<RegisterResponse> {
@@ -15,6 +15,16 @@ export async function register(input: RegisterRequest): Promise<RegisterResponse
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function verifyEmail(input: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+  if (USE_MOCK) return authMock.mockVerifyEmail(input);
+  return apiFetch<VerifyEmailResponse>("/auth/verify-email", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function resendVerification(input: { email: string }): Promise<ResendVerificationResponse> {
+  if (USE_MOCK) return authMock.mockResendVerification();
+  return apiFetch<ResendVerificationResponse>("/auth/resend-verification", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function login(input: LoginRequest): Promise<LoginResponse> {

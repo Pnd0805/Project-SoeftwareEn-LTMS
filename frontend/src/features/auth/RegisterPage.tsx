@@ -5,11 +5,13 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, useWatch } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { useRegister } from '../../hooks/useAuth'
 import { useDepartments, useFaculties } from '../../hooks/useReference'
-import { registerSchema, type RegisterInput } from '../../schemas/auth.schema'
+import { registerSchema, todayInThailand, type RegisterInput } from '../../schemas/auth.schema'
+import { VerifyEmailPage } from './VerifyEmailPage'
+import { recordRegistrationOtp } from './otpRequests'
 import './account-workspace.css'
 
 const defaultValues: Partial<RegisterInput> = {
@@ -20,6 +22,16 @@ const defaultValues: Partial<RegisterInput> = {
 }
 
 export function RegisterPage() {
+  const [params] = useSearchParams()
+  const location = useLocation()
+  const email = params.get('email') ?? ''
+  const sent: unknown = location.state?.emailVerificationSent
+  return params.get('step') === 'otp'
+    ? <VerifyEmailPage key={email} email={email} emailVerificationSent={typeof sent === 'boolean' ? sent : undefined} />
+    : <RegistrationForm />
+}
+
+function RegistrationForm() {
   const navigate = useNavigate()
   const register = useRegister()
   const faculties = useFaculties()
@@ -43,8 +55,10 @@ export function RegisterPage() {
       return
     }
     try {
-      await register.mutateAsync(values)
-      navigate('/login')
+      const response = await register.mutateAsync(values)
+      // backend ออกใบ OTP ก่อนส่งเมล แม้ SMTP ล้มเหลวก็ใช้โควตาไปแล้ว
+      recordRegistrationOtp(values.email)
+      navigate(`/register?step=otp&email=${encodeURIComponent(values.email)}`, { replace: true, state: { emailVerificationSent: response.emailVerificationSent } })
     } catch (error) {
       if (error instanceof ApiError && error.fields) {
         Object.entries(error.fields).forEach(([field, message]) => {
@@ -112,7 +126,7 @@ export function RegisterPage() {
             <div className="account-field">
               <label className="field">
                 <span className="label">Birth date</span>
-                <input type="date" autoComplete="bday" aria-invalid={!!form.formState.errors.birthDate}
+                <input type="date" max={todayInThailand()} autoComplete="bday" aria-invalid={!!form.formState.errors.birthDate}
                   aria-describedby={form.formState.errors.birthDate ? 'register-birth-error' : undefined} {...form.register('birthDate')} />
               </label>
               {form.formState.errors.birthDate && <span className="error" id="register-birth-error" role="alert">{form.formState.errors.birthDate.message}</span>}
@@ -156,7 +170,7 @@ export function RegisterPage() {
             <div className="account-field">
               <label className="field">
                 <span className="label">Year</span>
-                <input type="number" min={1} aria-invalid={!!form.formState.errors.year}
+                <input type="number" min={1} max={8} step={1} aria-invalid={!!form.formState.errors.year}
                   aria-describedby={form.formState.errors.year ? 'register-year-error' : undefined} {...form.register('year', { valueAsNumber: true })} />
               </label>
               {form.formState.errors.year && <span className="error" id="register-year-error" role="alert">{form.formState.errors.year.message}</span>}

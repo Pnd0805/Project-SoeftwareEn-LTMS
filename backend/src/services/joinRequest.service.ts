@@ -1,0 +1,106 @@
+import * as JoinRepo from '../repositories/joinRequest.repo.js';
+import * as TeamRepo from '../repositories/team.repo.js';
+import * as ApplicationRepo from '../repositories/application.repo.js';
+import { teamConflictMessage } from '../utils/teamConflict.js';
+import { AppError } from '../utils/AppError.js';
+import { checkTeam } from '../utils/checkExist.js';
+import { toJoinRequestDto, toMyJoinRequestDto } from '../mappers/team.mapper.js';
+import type { TeamRow } from '../types/db.js';
+
+/**
+ * ขอเข้าร่วมทีมสาธารณะ — มติ 20 ก.ย. 2569 (ทางเลือก ข: หัวหน้าทีมอนุมัติ)
+ * กฎการเข้าทีมชุดเดียวกับรับคำเชิญ (T13): CoI · โควตา 5 ทีม Unofficial · ยังไม่เป็นสมาชิก · ทีมต้อง public
+ * ทีม = คลังผู้เล่น (มติ 19 ก.ย.) — ไม่มีเพดานคลัง (Q3-ก) · เช็คซ้ำตอนอนุมัติ (T22) เพราะเวลาผ่านไปสถานะเปลี่ยนได้
+ */
+async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
+    if(team.deleted_at !== null){
+        throw new AppError(404 , 'TEAM_NOT_FOUND' , 'ไม่พบทีมนี้ในระบบ');
+    }
+    if(await TeamRepo.isMemberOf(team.team_id , userId)){
+        throw new AppError(409 , 'ALREADY_MEMBER' , 'คุณอยู่ในทีมนี้แล้ว');
+    }
+
+    const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(team.team_id , userId);
+    if(conflict){
+        throw new AppError(409 , 'TEAM_CONFLICT_OF_INTEREST' ,
+            teamConflictMessage(conflict , 'you') ,
+            { tournamentId : conflict.tournament_id , role : conflict.role ,
+              /** 🆕 8 ต.ค. — FE แยก "ถูกเชิญค้าง" กับ "เป็นกรรมการจริง" จากตรงนี้ ไม่ใช่จากข้อความ */
+              invitationStatus : conflict.invitation_status ,
+              expiresAt : conflict.expires_at === null ? null : conflict.expires_at.toISOString() });
+    }
+    if(await TeamRepo.countUnofficialTeamsByUser(userId) >= 5){
+        throw new AppError(422 , 'TEAM_QUOTA_EXCEEDED' , 'คุณมีทีม Unofficial ครบ 5 ทีมแล้ว');
+    }
+}
+
+/** T20 — POST /teams/:id/join-requests */
+export async function createJoinRequest(teamId : number , userId : number , message : string | undefined){
+    const team = await checkTeam(teamId);
+    if(team.visibility !== 'public'){
+        throw new AppError(409 , 'TEAM_PRIVATE' , 'ทีมนี้เป็นทีมส่วนตัว เข้าร่วมได้เฉพาะเมื่อได้รับคำเชิญจากหัวหน้าทีม');
+    }
+    if(team.leader_id === userId){
+        throw new AppError(409 , 'ALREADY_MEMBER' , 'คุณเป็นหัวหน้าทีมนี้อยู่แล้ว');
+    }
+    await ensureCanJoin(team , userId);
+    if(await JoinRepo.findPendingByTeamAndUser(teamId , userId)){
+        throw new AppError(409 , 'JOIN_REQUEST_PENDING' , 'คุณส่งคำขอเข้าร่วมทีมนี้ไปแล้ว รอหัวหน้าทีมตอบ');
+    }
+    const id = await JoinRepo.create(teamId , userId , message ?? null);
+    return { id , teamId , status : 'pending' as const };
+}
+
+/** T21 — GET /teams/:id/join-requests (หัวหน้าทีม) */
+export async function listJoinRequests(teamId : number){
+    return { items : (await JoinRepo.findPendingByTeam(teamId)).map(toJoinRequestDto) };
+}
+
+async function getPendingRequestOfTeam(teamId : number , requestId : number){
+    const request = await JoinRepo.findById(requestId);
+    if(!request || request.team_id !== teamId){
+        throw new AppError(404 , 'JOIN_REQUEST_NOT_FOUND' , 'ไม่พบคำขอเข้าร่วมทีมนี้');
+    }
+    if(request.team_join_request_status !== 'pending'){
+        throw new AppError(409 , 'JOIN_REQUEST_ALREADY_ANSWERED' , 'คำขอนี้ถูกตอบไปแล้ว');
+    }
+    return request;
+}
+
+/** T22 — POST /teams/:id/join-requests/:rid/approve (หัวหน้าทีม) — เช็คกฎซ้ำ ณ ตอนอนุมัติ */
+export async function approveJoinRequest(teamId : number , requestId : number , leaderUserId : number){
+    const team = await checkTeam(teamId);
+    const request = await getPendingRequestOfTeam(teamId , requestId);
+    await ensureCanJoin(team , request.user_id);
+    if(!(await JoinRepo.approve(requestId , teamId , request.user_id , leaderUserId))){
+        throw new AppError(409 , 'JOIN_REQUEST_ALREADY_ANSWERED' , 'คำขอนี้ถูกตอบไปแล้ว');
+    }
+    const updated = (await TeamRepo.findById(teamId))!;
+    return { id : requestId , userId : request.user_id , status : 'approved' as const , teamReadinessStatus : updated.readiness_status };
+}
+
+/** T23 — POST /teams/:id/join-requests/:rid/reject (หัวหน้าทีม) */
+export async function rejectJoinRequest(teamId : number , requestId : number , leaderUserId : number , reason : string | undefined){
+    await getPendingRequestOfTeam(teamId , requestId);
+    if(!(await JoinRepo.settle(requestId , 'rejected' , leaderUserId , reason ?? null))){
+        throw new AppError(409 , 'JOIN_REQUEST_ALREADY_ANSWERED' , 'คำขอนี้ถูกตอบไปแล้ว');
+    }
+    return { id : requestId , status : 'rejected' as const };
+}
+
+/** T24 — GET /me/join-requests */
+export async function listMyJoinRequests(userId : number){
+    return { items : (await JoinRepo.findByUser(userId)).map(toMyJoinRequestDto) };
+}
+
+/** T25 — DELETE /me/join-requests/:rid — ผู้ขอยกเลิกเอง */
+export async function cancelJoinRequest(requestId : number , userId : number){
+    const request = await JoinRepo.findById(requestId);
+    if(!request || request.user_id !== userId){
+        throw new AppError(404 , 'JOIN_REQUEST_NOT_FOUND' , 'ไม่พบคำขอเข้าร่วมทีมนี้');
+    }
+    if(request.team_join_request_status !== 'pending'){
+        throw new AppError(409 , 'JOIN_REQUEST_ALREADY_ANSWERED' , 'คำขอนี้ถูกตอบไปแล้ว ยกเลิกไม่ได้');
+    }
+    await JoinRepo.settle(requestId , 'cancelled' , null , null);
+}

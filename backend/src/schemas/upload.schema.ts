@@ -1,0 +1,29 @@
+import * as z from 'zod';
+
+export const presignUploadSchema = z.object({
+    // referee_identity = บัตรประชาชน/selfie ของกรรมการภายนอก (U12) — ผูกกับ user ไม่ต้องมี matchId/tournamentId
+    // avatar = รูปโปรไฟล์ผูกกับ userId จาก token เสมอ ไม่รับจาก body · team_logo ต้องส่ง teamId
+    // report_evidence = หลักฐานแนบคำร้องขอระงับผู้ใช้ (C2 POST /users/:id/report) — ผูกกับ userId ของผู้แจ้ง
+    //   ไม่ผูกกับ target เพราะคนแจ้งอัปรูปก่อนเลือกว่าจะแจ้งใคร และ key ต้องตรวจย้อนได้ว่าใครอัป (1 ต.ค. 69)
+    purpose: z.enum(['checkin_document', 'soft_filter_document', 'referee_identity', 'dispute_evidence', 'avatar', 'team_logo', 'report_evidence']),
+    contentType: z.enum(['image/jpeg', 'image/png']),
+    matchId: z.number().optional(),
+    tournamentId: z.number().optional(),
+    teamId: z.number().optional(),
+}).refine(
+    (data) => !['checkin_document', 'dispute_evidence'].includes(data.purpose) || data.matchId !== undefined,
+    { message: 'ต้องระบุ matchId เมื่อ purpose เป็น checkin_document หรือ dispute_evidence', path: ['matchId'] }
+).refine(
+    (data) => data.purpose !== 'soft_filter_document' || data.tournamentId !== undefined,
+    { message: 'ต้องระบุ tournamentId เมื่อ purpose เป็น soft_filter_document', path: ['tournamentId'] }
+).refine(
+    (data) => data.purpose !== 'team_logo' || data.teamId !== undefined,
+    { message: 'ต้องระบุ teamId เมื่อ purpose เป็น team_logo', path: ['teamId'] }
+);
+
+export type PresignUploadInput = z.infer<typeof presignUploadSchema>;
+
+// Part 4: ไฟล์ที่ไม่รองรับตอบ code เฉพาะ ไม่ใช่ VALIDATION_FAILED (ส่งเป็นอาร์กิวเมนต์ที่ 2 ของ validate())
+export const presignUploadErrorCodes = {
+    contentType: { code: 'UNSUPPORTED_FILE_TYPE', message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น' },
+};

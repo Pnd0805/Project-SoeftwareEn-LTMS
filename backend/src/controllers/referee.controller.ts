@@ -1,0 +1,64 @@
+import type { Request, Response } from 'express';
+import { parseId } from '../utils/parseId.js';
+import * as RefereeService from '../services/referee.service.js';
+
+export async function invite(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(201).json(await RefereeService.inviteReferee(tournamentId, req.user!.user_id, req.body));
+}
+
+export async function list(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await RefereeService.listTournamentReferees(tournamentId));
+}
+
+// F02b — รายชื่อกรรมการที่ใช้งานได้จริงของทัวร์นี้ สำหรับเลือกปลายทางคำขอโอน/แลกแมตช์
+export async function listAssignable(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await RefereeService.listAssignableReferees(tournamentId, req.user!.user_id));
+}
+
+export async function listMyInvitations(req : Request, res : Response){
+    res.status(200).json(await RefereeService.listMyRefereeInvitations(req.user!.user_id));
+}
+
+export async function listMyMatches(req : Request, res : Response){
+    const status = typeof req.query['status'] === 'string' ? req.query['status'] : undefined;
+    const upcoming = req.query['upcoming'] === 'true';
+    res.status(200).json(await RefereeService.listMyRefereeMatches(req.user!.user_id, { status, upcoming }));
+}
+
+export async function accept(req : Request, res : Response){
+    const invitationId = parseId(req.params['id'], 'รหัสคำเชิญ');
+    res.status(200).json(await RefereeService.acceptRefereeInvitation(invitationId, req.user!.user_id, req.body));
+}
+
+export async function decline(req : Request, res : Response){
+    const invitationId = parseId(req.params['id'], 'รหัสคำเชิญ');
+    await RefereeService.declineRefereeInvitation(invitationId, req.user!.user_id);
+    res.status(204).send();
+}
+
+export async function listByMatch(req : Request, res : Response){
+    const matchId = parseId(req.params['id'], 'รหัสแมตช์');
+    res.status(200).json(await RefereeService.listMatchReferees(matchId));
+}
+
+export async function unassignFromMatch(req : Request, res : Response){
+    const matchId = parseId(req.params['id'], 'รหัสแมตช์');
+    const tournamentRefereeId = parseId(req.params['rid'], 'รหัสกรรมการ', 'rid');
+    await RefereeService.unassignRefereeFromMatch(matchId, tournamentRefereeId);
+    res.status(204).send();
+}
+
+export async function removeFromTournament(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    const tournamentRefereeId = parseId(req.params['rid'], 'รหัสกรรมการ', 'rid');
+    res.status(200).json(await RefereeService.removeTournamentReferee(
+        tournamentId, tournamentRefereeId, req.user!.user_id, req.tournament!.sport_type_id));
+}
+
+export async function coverage(req : Request, res : Response){
+    const tournamentId = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await RefereeService.getRefereeCoverage(tournamentId, req.tournament!.sport_type_id));
+}

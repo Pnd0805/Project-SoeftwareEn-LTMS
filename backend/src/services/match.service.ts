@@ -1,0 +1,903 @@
+import * as MatchRepo from '../repositories/match.repo.js';
+import type { MatchFormatInput } from '../schemas/match.schema.js';
+import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as SportTypeRepo from '../repositories/sportType.repo.js';
+import * as RefereeService from './referee.service.js';
+import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
+import { CHECKIN_OPEN_BEFORE_MINUTES, CHECKIN_OPEN_AFTER_MINUTES, MATCH_START_BEFORE_MINUTES } from '../config/scoring.js';
+import { getPresignedDownloadUrl } from './upload.service.js';
+import * as WalkoverRepo from '../repositories/walkover.repo.js';
+import * as Walkover from './walkover.service.js';
+import * as MatchResultService from './matchResult.service.js';
+import * as NotificationService from './notification.service.js';
+
+/** ข้อความแจ้งเตือนต้องเป็นเวลาไทยเสมอ ไม่ว่า server จะตั้ง timezone อะไร */
+function formatThaiDateTime(date: Date): string {
+    return new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(date);
+}
+import { toMatchDetailDto, toMatchListItemDto, toCheckinListItemDto, toCheckinStatusApi, toLineupPlayerDto } from '../mappers/match.mapper.js';
+import { AppError } from '../utils/AppError.js';
+import { assertBestOfAllowed } from '../utils/matchFormat.js';
+import { signCheckinQr, verifyCheckinQr } from '../utils/checkinQr.js';
+import { buildPagination } from '../utils/pagination.js';
+import type { SubmitCheckinInput, ManualCheckinInput, ScheduleMatchInput } from '../schemas/match.schema.js';
+import type { MatchListFilters } from '../repositories/match.repo.js';
+import type { MatchRow } from '../types/db.js';
+import { timesOverlap } from '../utils/timeOverlap.js';
+
+export async function getTournamentMatches(
+    tournamentId: number,
+    filters: MatchListFilters,
+    page: number,
+    pageSize: number,
+    offset: number
+) {
+    const { rows, totalItems } = await MatchRepo.findMatchesByTournament(tournamentId, filters, offset, pageSize);
+    const data = rows.map(toMatchListItemDto);
+    const pagination = buildPagination(page, pageSize, totalItems);
+    return { items: data, pagination };
+}
+
+export async function getMatchDetail(match_id: number, userId?: number) {
+    const match = await MatchRepo.findMatchById(match_id);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    const canSeeRoomCode = userId !== undefined && match.room_code !== null && await isMatchStaffOrPlayer(match, userId);
+    return toMatchDetailDto(match, canSeeRoomCode);
+}
+
+/** B8 — คนที่เกี่ยวกับแมตช์โดยตรง: ผู้เล่นในรายชื่อลงแข่ง (application_players — มติ 19 ก.ย.) / กรรมการของแมตช์ / ORG ของทัวร์ */
+async function isMatchStaffOrPlayer(match: { match_id: number; tournament_id: number; team_a_id: number | null; team_b_id: number | null }, userId: number): Promise<boolean> {
+    if (await MatchRepo.isRegisteredPlayerOfMatch(userId, match.match_id)) return true;
+    if (await isRefereeOfMatch(match.match_id, userId, match.tournament_id)) return true;
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    return tournament !== null && tournament.requested_by_user_id === userId;
+}
+
+/** B8 — PUT /matches/:id/room-code: กรรมการของแมตช์หรือ ORG ตั้งรหัสห้องของแมตช์ online · null = ล้าง */
+export async function setRoomCode(matchId: number, userId: number, roomCode: string | null) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.mode !== 'online') {
+        throw new AppError(409, "MATCH_NOT_ONLINE", "รหัสห้องใช้ได้เฉพาะแมตช์ออนไลน์");
+    }
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    const isOrg = tournament !== null && tournament.requested_by_user_id === userId;
+    if (!isOrg && !(await isRefereeOfMatch(matchId, userId, match.tournament_id))) {
+        throw new AppError(403, "NOT_MATCH_STAFF", "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ตั้งรหัสห้องได้");
+    }
+    if (match.match_status === 'completed') {
+        throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้จบแล้ว");
+    }
+    await MatchRepo.updateRoomCode(matchId, roomCode);
+    return { matchId, roomCode };
+}
+
+/**
+ * /me/matches (20 ก.ย.) — แมตช์ของฉันทั้ง 2 บทบาท: ผู้เล่น (ทีมที่ฉันเป็นสมาชิกอยู่ในแมตช์) + กรรมการ (รับแมตช์แล้ว, B7)
+ * **เฉพาะแมตช์ที่ยังไม่จบ** (มติ 20 ก.ย.): "แมตช์ของฉัน" = ที่มีชื่อฉันลงแข่งตอนนี้ถึงอนาคต · ประวัติดูจากหน้าทัวร์/ทีม (M04 ?teamId=)
+ * ทำให้ใช้ roster ปัจจุบันได้ถูกต้องเสมอ (B6 ห้ามเปลี่ยนคนระหว่างทัวร์) · ?role=player|referee
+ */
+export async function listMyMatches(userId: number, filters: { role?: 'player' | 'referee' | undefined }) {
+    // ผู้เล่น = คนที่มีชื่อในรายชื่อลงแข่ง (application_players) ของทีมในแมตช์ — Q5-ก (20 ก.ย.) ไม่ใช่ทุกคนในคลังทีม
+    const player = (await MatchRepo.findMatchesOfPlayer(userId)).map(r => ({
+        id: r.match_id, role: 'player' as const, myTeamId: r.my_team_id,
+        tournament: { id: r.tournament_id, name: r.tournament_name, sportTypeId: r.sport_type_id },
+        round: r.round_number,
+        teamA: r.team_a_id !== null ? { id: r.team_a_id, name: r.team_a_name! } : null,
+        teamB: r.team_b_id !== null ? { id: r.team_b_id, name: r.team_b_name! } : null,
+        scheduledTime: r.scheduled_time, scheduledEndTime: r.scheduled_end_time, venue: r.venue, mode: r.mode, status: r.match_status,
+    }));
+    const referee = (await RefereeService.listMyRefereeMatches(userId, {})).items.map(m => ({ ...m, role: 'referee' as const, myTeamId: null }));
+    const found = [...player, ...referee]
+        .filter(m => filters.role === undefined || m.role === filters.role)
+        .filter(m => m.status !== 'completed')
+        .sort((a, b) => {
+            const ta = a.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER, tb = b.scheduledTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
+            return ta !== tb ? ta - tb : a.id - b.id;
+        });
+    const items = found.map(m => ({ ...m, conflictingMatchIds : conflictsWithin(found, m) }));
+    return { items };
+}
+
+/** แมตช์ที่ใช้เทียบการทับได้ — ต้องมีเวลาเริ่ม/จบ และยังต้องมีตัวไปอยู่ที่นั้นจริง */
+// status เป็น string กว้าง ๆ เพราะฝั่งกรรมการมาจาก DTO ของ referee.service ซึ่งคายเป็น string
+// ⇒ รับทั้งสองฝั่งโดยไม่ต้อง cast · ที่ใช้จริงมีค่าเดียวคือ 'finished'
+type MyMatchForConflict = { id : number; scheduledTime : Date | null; scheduledEndTime : Date | null; status : string };
+
+/**
+ * 🆕 ธงเวลาทับของ "ตัวเอง" ข้ามทุกทัวร์ (มติ 6 ต.ค. 2569 · ทางเลือก ก)
+ *
+ * 🔴 ช่องโหว่ที่ปิด: findConflictingMatch ตอน ORG จัดตารางตรวจ **ทีมกับสนาม** ข้ามทัวร์
+ *   แต่ไม่ได้ตรวจ **คน** · team_members UNIQUE แค่ (team_id, user_id) ⇒ คนเดียวอยู่ได้หลายทีม
+ *   ⇒ สมชายอยู่ทีม A (ทัวร์ 1) และทีม B (ทัวร์ 2) · ORG สองคนที่ไม่รู้จักกันจัดแมตช์เวลาเดียวกัน
+ *     ไม่มีด่านไหนเห็น และไม่มีใครรู้จนถึงวันแข่ง
+ *
+ * ★ ทำไมเป็น "คำเตือน" ไม่ใช่ "บล็อก" — ผู้เล่นไม่มีประตู "กดรับ" เหมือนกรรมการ
+ *   ทีมส่งชื่อลงแข่งแทนเขา ⇒ ไม่มีจุดไหนที่เจ้าตัวกดตัดสินใจให้ block ได้
+ *   และถ้าไปเตือน ORG ตอนจัดตาราง เท่ากับบอก ORG ว่าคนนี้ไปลงทัวร์อื่นด้วย = เอาข้อมูล
+ *   ของคนอื่นไปบอก ⇒ จุดที่ถูกต้องคือหน้าของเจ้าตัวเอง ซึ่งข้ามทัวร์อยู่แล้วและเป็นข้อมูลตัวเขา
+ *
+ * ★ ครอบทั้งสองบทบาท: ผู้เล่นชนผู้เล่น · ผู้เล่นชนงานกรรมการ · กรรมการชนกรรมการ
+ *   เพราะข้อจำกัดจริงคือ "ร่างกายเดียวอยู่สองที่พร้อมกันไม่ได้" ไม่เกี่ยวกับบทบาท
+ *
+ * 🔴 ไม่นับแมตช์ `finished` เป็นคู่ขัดแย้ง — แข่งจบแล้วรอผล เจ้าตัวไม่ต้องไปอยู่ที่นั้นอีก
+ *   (ยังอยู่ในลิสต์ เพราะลิสต์ตัดแค่ `completed` ตามมติ 20 ก.ย. — คนละเรื่องกัน)
+ *   แต่ยังนับแมตช์ที่เลยเวลาแล้วแต่ยัง `scheduled` เพราะอาจกำลังเริ่มช้า ⇒ ยังต้องไป
+ *   (เหตุผลเดียวกับ bookingsOfReferee ของด่านกรรมการ)
+ */
+function conflictsWithin(all : MyMatchForConflict[], me : MyMatchForConflict): number[] {
+    if(me.scheduledTime === null || me.scheduledEndTime === null) return [];
+    if(me.status === 'finished') return [];
+    return all
+        .filter(o => o.id !== me.id && o.status !== 'finished')
+        .filter(o => o.scheduledTime !== null && o.scheduledEndTime !== null)
+        .filter(o => timesOverlap(me.scheduledTime!, me.scheduledEndTime!, o.scheduledTime!, o.scheduledEndTime!))
+        .map(o => o.id);
+}
+
+/** วันที่ (ไทย UTC+7) ของ instant นี้ ในรูป YYYY-MM-DD — ไว้เทียบกับ DATE ของทัวร์ */
+function thaiDateOf(d: Date): string {
+    return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
+// M06 — ตั้ง/เลื่อนเวลาแมตช์ · กฎ (GUIDE/11 §4.1, มติ 15 ก.ย.):
+//   1. เฉพาะแมตช์ที่ยังไม่เริ่ม     2. อยู่ในช่วงวันของทัวร์ (ขยายวันต้องผ่าน C09)
+//   3. ไม่ซ้อนช่วงเวลากับแมตช์อื่นของทีม/สนามเดียวกัน
+//   4. ไม่พังลำดับสาย: แมตช์ก่อนหน้าต้องจบก่อนเริ่ม และต้องจบก่อนแมตช์ถัดไปเริ่ม
+//   กรรมการซ้อนเวลา "ไม่" block ที่นี่ (มติ Q6) — ORG ดูจาก F14 coverage.conflicts
+/**
+ * 🆕 BO-N (มติ 5 ต.ค.) — ผู้จัดตั้งรูปแบบของ **แมตช์เดียว** (เช่นรอบชิง BO7 ขณะที่รอบกลุ่ม BO3)
+ *
+ * มติข้อ ⑤: เปลี่ยนกลางทัวร์ไม่ได้ ⇒ ล็อกเมื่อมีแมตช์ของ **ทัวร์นั้น** เริ่มแข่งไปแล้วแม้แมตช์เดียว
+ * ★ ล็อกระดับทัวร์ ไม่ใช่ระดับแมตช์ โดยเจตนา — ถ้าล็อกแค่แมตช์ตัวเอง ผู้จัดจะเปลี่ยนรูปแบบ
+ *   รอบชิงหลังเห็นว่าใครเข้าชิงได้ ซึ่งเป็นการเปลี่ยนกติกากลางเกม และใบทายผลที่ส่งไว้แล้ว
+ *   จะกลายเป็นใบที่เป็นไปไม่ได้ (ทาย 4-2 ไว้ แล้วถูกเปลี่ยนเป็น BO3)
+ *
+ * 🔴 ไม่ตรวจว่าสกอร์ที่บันทึกไว้เข้ารูปแบบใหม่ไหม เพราะด่านล็อกข้างบนรับประกันแล้วว่า
+ *   ยังไม่มีแมตช์ไหนเริ่มแข่ง ⇒ ยังไม่มีผลที่บันทึกไว้ให้ขัดกับรูปแบบใหม่ได้
+ */
+export async function setMatchFormat(matchId: number, input: MatchFormatInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const started = await TournamentRepo.countStartedMatchesOfTournament(match.tournament_id);
+    if (started > 0) {
+        throw new AppError(409, "MATCH_FORMAT_LOCKED",
+            "ทัวร์นาเมนต์นี้เริ่มแข่งไปแล้ว เปลี่ยนรูปแบบการแข่ง (BO) ไม่ได้ — ต้องตั้งก่อนแมตช์แรกเริ่มแข่ง",
+            { startedMatches: started });
+    }
+
+    // มติ 7 ต.ค. 2569 (②ก) — ธงอยู่ที่กีฬา ⇒ แมตช์ → ทัวร์ → กีฬา
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    const sport = tournament ? await SportTypeRepo.findSportTypeById(tournament.sport_type_id) : null;
+    if (sport) assertBestOfAllowed(sport, input.bestOf);
+
+    await MatchRepo.updateMatchBestOf(matchId, input.bestOf);
+    return { id: matchId, bestOf: input.bestOf };
+}
+
+export async function scheduleMatch(matchId: number, input: ScheduleMatchInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.match_status !== 'scheduled') {
+        // code เดียวกับที่ refereeRequest.service ใช้ตอนแมตช์เปลี่ยนไม่ได้
+        throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว แก้เวลาหรือสนามไม่ได้");
+    }
+
+    // B9: ฟิลด์ที่ไม่ส่งมา = คงค่าเดิม · ครั้งแรก (ยังไม่เคยตั้ง) ต้องส่งครบ
+    const scheduledTime = input.scheduledTime !== undefined ? new Date(input.scheduledTime) : match.scheduled_time;
+    const scheduledEndTime = input.scheduledEndTime !== undefined ? new Date(input.scheduledEndTime) : match.scheduled_end_time;
+    const venue = input.venue ?? match.venue;
+    const missing = [
+        ...(scheduledTime === null ? ['scheduledTime'] : []),
+        ...(scheduledEndTime === null ? ['scheduledEndTime'] : []),
+        ...(venue === null ? ['venue'] : []),
+    ];
+    if (scheduledTime === null || scheduledEndTime === null || venue === null) {
+        // ★ ที่นี่ **payload ผิดจริง** (ตั้งครั้งแรกต้องส่งครบสามช่อง) ⇒ 400 และ `missing`
+        //   หมายถึงช่องในฟอร์มนี้ · ต่างจาก 409 MATCH_NOT_SCHEDULED ของด่านเช็คอิน/เริ่มแข่ง
+        //   ที่ `missing` หมายถึงช่องที่ต้องไปตั้งที่อื่น — ดู assertFixtureComplete
+        throw new AppError(400, "SCHEDULE_INCOMPLETE", "แมตช์นี้ยังไม่เคยตั้งเวลา ต้องระบุเวลาเริ่ม เวลาจบ และสนามให้ครบ", { missing });
+    }
+    if (scheduledEndTime <= scheduledTime) {
+        throw new AppError(400, "VALIDATION_FAILED", "เวลาจบต้องหลังเวลาเริ่ม", { fields: { scheduledEndTime: 'เวลาจบต้องหลังเวลาเริ่ม' } });
+    }
+
+    // 2. ช่วงวันของทัวร์
+    const tournament = await TournamentRepo.findTournamentById(match.tournament_id);
+    if (tournament) {
+        const start = thaiDateOf(scheduledTime), end = thaiDateOf(scheduledEndTime);
+        const lastDay = tournament.event_end_date ?? tournament.event_start_date;
+        if (start < tournament.event_start_date || end > lastDay) {
+            throw new AppError(409, "OUTSIDE_TOURNAMENT_DATES",
+                `แมตช์ต้องอยู่ระหว่าง ${tournament.event_start_date} ถึง ${lastDay} — ต้องการวันเพิ่มให้ขอแก้ไขทัวร์นาเมนต์ (C09)`,
+                { eventStartDate: tournament.event_start_date, eventEndDate: lastDay });
+        }
+    }
+
+    // 3. ทีม/สนามซ้อน
+    const conflict = await MatchRepo.findConflictingMatch(matchId, scheduledTime, scheduledEndTime, venue, match.team_a_id, match.team_b_id);
+    if (conflict) {
+        throw new AppError(409, "SCHEDULE_CONFLICT", "ทีมหรือสนามนี้มีนัดแข่งซ้อนช่วงเวลาดังกล่าว", { conflictingMatchId: conflict.match_id });
+    }
+
+    // 4. ลำดับสาย
+    for (const prev of await MatchRepo.findPredecessors(matchId)) {
+        const prevEnd = prev.scheduled_end_time ?? prev.scheduled_time;
+        if (prevEnd && prevEnd > scheduledTime) {
+            throw new AppError(409, "SCHEDULE_BREAKS_BRACKET",
+                `แมตช์ #${prev.match_id} (รอบก่อนหน้า) จบหลังเวลาเริ่มที่ตั้ง`, { blockingMatchId: prev.match_id });
+        }
+    }
+    if (match.next_match_id !== null) {
+        const next = await MatchRepo.findById(match.next_match_id);
+        if (next?.scheduled_time && next.scheduled_time < scheduledEndTime) {
+            throw new AppError(409, "SCHEDULE_BREAKS_BRACKET",
+                `แมตช์ #${next.match_id} (รอบถัดไป) เริ่มก่อนเวลาจบที่ตั้ง`, { blockingMatchId: next.match_id });
+        }
+    }
+
+    await MatchRepo.updateMatchSchedule(matchId, scheduledTime, scheduledEndTime, venue);
+    // แจ้งเฉพาะเมื่อมีอะไรเปลี่ยนจริง (กดบันทึกค่าเดิมซ้ำ ไม่ต้องรบกวนใคร) และบอกให้ตรงว่าเปลี่ยนอะไร
+    const timeChanged = match.scheduled_time === null || new Date(match.scheduled_time).getTime() !== scheduledTime.getTime()
+                     || match.scheduled_end_time === null || new Date(match.scheduled_end_time).getTime() !== scheduledEndTime.getTime();
+    const venueChanged = match.venue !== venue;
+    if (timeChanged || venueChanged) {
+        const title = match.scheduled_time === null ? 'นัดเวลาแข่งแล้ว'
+                    : timeChanged && venueChanged ? 'แมตช์เปลี่ยนเวลาและสนาม'
+                    : timeChanged ? 'แมตช์เปลี่ยนเวลา' : 'แมตช์เปลี่ยนสนาม';
+        await NotificationService.notifyMatchAudience(matchId, {
+            type: 'match_scheduled',
+            title,
+            message: `แมตช์ #${matchId} แข่ง ${formatThaiDateTime(scheduledTime)} ที่ ${venue}`,
+            relatedEntityType: 'match', relatedEntityId: matchId,
+        });
+    }
+    const updated = await MatchRepo.findMatchById(matchId);
+    return toMatchDetailDto(updated!);
+}
+
+/** ข้อความอธิบายว่าแมตช์ต้นทางค้างอยู่ด้วยเหตุอะไร — ให้ ORG อ่านแล้วรู้ว่าต้องไปทำอะไรต่อ */
+const BLOCK_REASON: Record<string, string> = {
+    scheduled       : 'ยังไม่เริ่มแข่ง',
+    checkin_open    : 'เปิดเช็คอินแล้ว แต่ยังไม่เริ่มแข่ง',
+    in_progress     : 'กำลังแข่งอยู่ ยังไม่มีการส่งผล',
+    disputed        : 'มีข้อโต้แย้งรอผู้จัดตัดสิน',
+    result_rejected : 'ผลถูกยกเลิก รอส่งผลใหม่',
+};
+
+// requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
+/**
+ * FE-open-checkin-organizer-only (มติ 27 ก.ย.) — กรรมการของแมตช์เปิดเช็คอินได้ด้วย
+ *
+ * `checkin_open` เป็นทางออกทางเดียวของ `scheduled` ทั้งวงจรแมตช์จึงเริ่มที่นี่เท่านั้น
+ * เดิมเปิดได้แค่ผู้จัด แต่คนที่ยืนอยู่หน้าโต๊ะคือกรรมการ — และกรรมการคุมทุกอย่าง
+ * ที่เกิดขึ้น "ข้างใน" หน้าต่างนี้อยู่แล้ว (เช็คอินด้วยมือ · อนุมัติ · ปฏิเสธ · กดเริ่มแข่ง)
+ * มีเครื่องมือครบมือแต่ไขประตูเองไม่ได้ ผู้จัดที่ติดอยู่อีกสนามจึงกลายเป็นจุดค้าง
+ * ของขั้นแรกสุด — ตระกูลเดียวกับ OD-26 และหนักกว่าเพราะไม่มีอะไรเกิดขึ้นได้เลยถ้าค้างตรงนี้
+ *
+ * ใช้กฎเดียวกับ `finishMatch` / `abandonMatch` / `startMatch` ที่กรรมการกดได้อยู่แล้ว
+ */
+export async function openCheckinMatch(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT",
+            "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่เปิดเช็คอินได้");
+    }
+
+    // เช็คก่อนทุกด่านที่ต้องยิงฐานข้อมูล และก่อนยิงแจ้งเตือน — ผู้เล่นต้องไม่ได้แจ้งเตือน
+    // "เปิดเช็คอินแล้ว" สำหรับแมตช์ที่ไม่มีเวลาไม่มีสนาม เพราะแจ้งเตือนเรียกคืนไม่ได้
+    assertFixtureComplete(match);
+    // BE-04 — และต้องอยู่ในหน้าต่างเวลาของแมตช์นี้ (เหตุผลเต็มที่ assertWithinSchedule)
+    assertWithinSchedule(match, { beforeMinutes : CHECKIN_OPEN_BEFORE_MINUTES, afterMinutes : CHECKIN_OPEN_AFTER_MINUTES }, 'เปิดเช็คอิน');
+
+    /**
+     * 🔴 BE-16 (แก้ 7 ต.ค. 2569 · มติ ④) — เปิดเช็คอินได้ทั้งที่แมตช์ยังไม่มีกรรมการ
+     *
+     * เส้นทางที่ QA เดินแล้วตาย:
+     *   ① ผู้จัดส่งคำขอให้กรรมการ 2 คน (ยังไม่ตอบ) → ② เปิดเช็คอิน 200
+     *   → ③ กรรมการกดรับ = 409 REQUEST_NO_LONGER_VALID
+     *   → ④ ส่งคำขอใหม่ = 409 MATCH_NOT_CHANGEABLE (เปลี่ยนกรรมการได้เฉพาะ 'scheduled')
+     *   → ⑤ กดเริ่มแข่ง = 409 INSUFFICIENT_REFEREES
+     *   ⇒ แมตช์ล็อกตาย ทางออกเดียวคือผู้จัดต้องนึกออกว่าให้ "ปิดเช็คอิน" ย้อนกลับก่อน
+     *
+     * ★ ปิดที่ **ทางเข้า** ไม่ใช่ผ่อนที่ `assertMatchChangeable` (มติ ④ — เหตุผลของผู้ตัดสินใจ:
+     *   "ถึง checkin_open กรรมการควรอยู่หน้างานแล้ว ไม่ใช่เวลาเปลี่ยนคน")
+     *   ⇒ ถ้าเข้าสู่ checkin_open ไม่ได้โดยไม่มีกรรมการครบ หน้าต่างที่ต้องผ่อนก็ไม่เกิดขึ้นเลย
+     *   🔴 ห้ามแก้ BE-16 ด้วยการผ่อน `assertMatchChangeable` ภายหลัง — จะได้แมตช์ที่
+     *      เปลี่ยนกรรมการกลางช่วงเช็คอิน ซึ่งเป็นสิ่งที่มติข้อนี้ปฏิเสธโดยตรง
+     *
+     * ★ ใช้รหัสเดียวกับด่านตอนกดเริ่มแข่ง (`INSUFFICIENT_REFEREES`) โดยเจตนา — เรื่องเดียวกัน
+     *   คนละจังหวะ · FE มีทางจัดการรหัสนี้อยู่แล้ว ไม่ต้องเพิ่มรหัสใหม่
+     * ★ ต้องอยู่ก่อน UPDATE และก่อนแจ้งเตือน — ผู้เล่นต้องไม่ได้ข่าว "เปิดเช็คอินแล้ว"
+     *   ของแมตช์ที่ยังเริ่มไม่ได้ เพราะแจ้งเตือนเรียกคืนไม่ได้ (เหตุผลเดียวกับ assertFixtureComplete)
+     */
+    const matchForReferees = await MatchRepo.findById(matchId);
+    if (!matchForReferees || !(await isRefereeSufficient(matchForReferees))) {
+        throw new AppError(409, "INSUFFICIENT_REFEREES",
+            "กรรมการของแมตช์นี้ยังไม่ครบ ยังเปิดเช็คอินไม่ได้ — ให้กรรมการตอบรับให้ครบ หรือหาคนเพิ่มก่อน (FR02)");
+    }
+
+    /**
+     * ข้อ 1 (มติ 25-26 ก.ย.) — ห้ามเดินหน้าทับแมตช์ต้นทางที่ยังไม่สรุป
+     *   ทีมไม่ครบ  : เปิดเช็คอินไปก็ไปตายตอนกด start และผู้เล่นได้แจ้งเตือนทั้งที่ยังไม่รู้ว่าใครแข่ง
+     *   ต้นทาง disputed : ทีมครบก็จริง (ผลเคย verified) แต่ถ้าปล่อยให้เปิดเช็คอิน ผู้จัดจะเสียสิทธิ์แก้ผล
+     *                     แมตช์ต้นทางทันที (NEXT_MATCH_STARTED) ทั้งที่ยังตัดสินข้อโต้แย้งไม่เสร็จ
+     * ทั้งสองกรณีคืน blockedBy เพื่อให้ FE ลิงก์ไปแมตช์ที่ติดได้เลย
+     */
+    // ข้อ 7 — ไม่มี scheduler จึงเช็ค auto-verify ตรงจังหวะที่มีคนมาเดินสายต่ออยู่แล้ว
+    // ผลที่กรรมการส่งไว้แต่ไม่มีใครยืนยันจะถูกยืนยันที่นี่ ทีมจึงไหลลงแมตช์นี้ทันก่อนโดนบล็อก
+    await MatchResultService.autoVerifyDue((await MatchRepo.findUnresolvedPredecessors(matchId)).map(b => b.match_id));
+
+    const blockers = await MatchRepo.findUnresolvedPredecessors(matchId);
+    const blockedBy = blockers.map(b => ({ matchId: b.match_id, status: b.match_status, reason: BLOCK_REASON[b.match_status] ?? 'ยังไม่จบ' }));
+    if (match.team_a_id === null || match.team_b_id === null) {
+        throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง ยังเปิดเช็คอินไม่ได้", { blockedBy });
+    }
+    if (blockers.some(b => b.match_status === 'disputed')) {
+        throw new AppError(409, "PREDECESSOR_DISPUTED",
+            "แมตช์ต้นทางยังมีข้อโต้แย้งที่ยังไม่ตัดสิน เปิดเช็คอินแมตช์นี้ไม่ได้", { blockedBy });
+    }
+
+    // UPDATE เฉพาะแถวที่ยัง scheduled — กันเปิดซ้ำตอนแข่งอยู่ (เดิมย้อนสถานะ in_progress กลับเป็น checkin_open ได้)
+    const opened = await MatchRepo.openMatchCheckin(matchId);
+    if (!opened) {
+        throw new AppError(409, "INVALID_STATUS_TRANSITION", "เปิดเช็คอินได้เฉพาะแมตช์ที่ยังไม่เริ่ม (สถานะ scheduled) เท่านั้น");
+    }
+
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'checkin_opened',
+        title: 'เปิดเช็คอินแล้ว',
+        message: `แมตช์ #${matchId} เปิดเช็คอินแล้ว เช็คอินก่อนเริ่มแข่งด้วย`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
+    const updated = await MatchRepo.findMatchById(matchId);
+    return { id: matchId, status: 'checkin_open', checkinOpenAt: updated!.checkin_open_at };
+}
+
+/** M18 — ORG ปิดเช็คอิน (checkin_open → scheduled, ล้างเช็คอิน) เพื่อไปเลื่อนด้วย M06 — requireOrganizerOfMatch เช็คสิทธิ์แล้ว */
+/**
+ * M18 ปิดเช็คอิน — เป็นการ "ถอน M09 กลับ" ไม่ใช่ขั้นถัดไป (ขั้นถัดไปคือ M10 เริ่มแมตช์)
+ * และมันลบ `match_checkins` ทุกแถวทิ้ง ผู้เล่นที่เช็คอินแล้วต้องทำใหม่หมด
+ *
+ * มติ 27 ก.ย. — กรรมการของแมตช์ปิดได้ **เฉพาะตอนที่ยังไม่มีใครเช็คอิน**
+ *   เหตุผลที่ต้องให้ปิดได้เลย : ตั้งแต่กรรมการเปิดเช็คอินเองได้ (M09) ก็ต้องถอนความพลาดของตัวเองได้
+ *                              เช่น เปิดผิดแมตช์ตอนคอร์ตติดกัน ไม่งั้นจุดค้างแค่ย้ายที่
+ *   เหตุผลที่ต้องจำกัด       : ปุ่มนี้ทำลายงานของคนอื่น การให้อำนาจล้างเช็คอิน 10 แถวโดยไม่มี
+ *                              ขั้นยืนยันใด ๆ ไม่สมกับ "ถอนความพลาดของตัวเอง" — มีคนเช็คอินแล้ว
+ *                              ให้เป็นเรื่องของผู้จัด ซึ่งรับผิดชอบตารางทั้งทัวร์อยู่แล้ว
+ */
+export async function closeCheckinMatch(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT",
+            "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ปิดเช็คอินได้");
+    }
+    if (!isOrganizer) {
+        const checkins = await MatchRepo.countCheckins(matchId);
+        if (checkins > 0) {
+            throw new AppError(409, "CHECKIN_NOT_EMPTY",
+                "มีผู้เล่นเช็คอินเข้ามาแล้ว การปิดเช็คอินจะลบรายการทั้งหมด ต้องให้ผู้จัดการแข่งขันเป็นผู้ปิด",
+                { checkins });
+        }
+    }
+
+    if (!(await Walkover.closeCheckin(matchId, userId))) {
+        throw new AppError(409, "INVALID_STATUS_TRANSITION", "ปิดเช็คอินได้เฉพาะแมตช์ที่กำลังเปิดเช็คอิน (สถานะ checkin_open) เท่านั้น");
+    }
+    return { id: matchId, status: 'scheduled' as const, checkinOpenAt: null };
+}
+
+/**
+ * M17 — ORG ตัดสินแมตช์ที่ทีมไม่มาตามนัด (GUIDE/11 §10.5): ฝั่งที่เช็คอินไม่ถึง min_members แพ้บาย · ไม่ถึงทั้งคู่ = แพ้ทั้งคู่
+ * ต่างจาก M10: ไม่ต้องรอกรรมการ (ไม่มีการแข่ง) และตัดสินแพ้ทั้งคู่ได้ — requireOrganizerOfMatch เช็คสิทธิ์แล้ว
+ */
+export async function forfeitMatch(matchId: number, orgUserId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "ตัดสินไม่มาตามนัดได้เฉพาะแมตช์ที่เปิดเช็คอินอยู่ — ทีมต้องมีโอกาสเช็คอินก่อน");
+    }
+    if (match.team_a_id === null || match.team_b_id === null) {
+        throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง");
+    }
+
+    const sport = await WalkoverRepo.findSportOfTournament(match.tournament_id);
+    const minMembers = sport?.min_members ?? 1;
+    const countA = await MatchRepo.countSuccessfulCheckins(matchId, match.team_a_id);
+    const countB = await MatchRepo.countSuccessfulCheckins(matchId, match.team_b_id);
+    const fullMatch = (await MatchRepo.findById(matchId))!;
+
+    const outcome = await Walkover.applyOrganizerForfeit(fullMatch, countA, countB, minMembers, orgUserId);
+    if (outcome === null) {
+        throw new AppError(409, "TEAMS_PRESENT", "ทั้งสองทีมเช็คอินครบขั้นต่ำแล้ว ให้กรรมการเริ่มแข่ง (M10) แทน",
+            { minMembers, checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } });
+    }
+    return { id: matchId, status: 'completed' as const, kind: outcome.kind, minMembers,
+             checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB }, walkovers: outcome.results };
+}
+
+// requireReferee (middleware) เช็คว่าเป็นกรรมการของแมตช์นี้ให้แล้วก่อนถึงตรงนี้
+export async function startMatch(matchId: number, userId: number){
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "ต้องเปิดเช็คอินก่อนถึงจะเริ่มแข่งได้");
+    }
+
+    // ตะแกรงกันแมตช์ที่เลยด่าน M09 มาก่อนกฎนี้มีผล (เปิดเช็คอินค้างไว้ตั้งแต่ก่อน 27 ก.ย.)
+    // ★ ต้องอยู่ก่อนการตัดสินไม่มาตามนัดด้านล่าง — ไม่งั้นทีมอาจถูกปรับแพ้บายในแมตช์ที่ไม่ควรเริ่มตั้งแต่ต้น
+    assertFixtureComplete(match);
+    /**
+     * BE-04 — ห้ามกดเริ่มก่อนเวลานัดเกิน MATCH_START_BEFORE_MINUTES
+     * ★ ไม่มีขอบบน (afterMinutes = null) โดยเจตนา — แมตช์ที่เริ่มสายต้องเริ่มได้เสมอ
+     *   ถ้าปิดประตูไว้ แมตช์ที่ล่าช้าจะค้างและไม่มีทางจบ ซึ่งแย่กว่าการเริ่มสาย
+     * ★ ต้องอยู่ก่อน `decideNoShow` ด้านล่าง — ไม่งั้นทีมแพ้บายในแมตช์ที่ยังไม่ถึงเวลา
+     */
+    assertWithinSchedule(match, { beforeMinutes : MATCH_START_BEFORE_MINUTES, afterMinutes : null }, 'เริ่มแข่ง');
+
+    if (match.team_a_id === null || match.team_b_id === null) {
+        throw new AppError(409, "MATCH_TEAMS_INCOMPLETE", "แมตช์นี้ยังไม่มีทีมครบทั้งสองฝั่ง");
+    }
+
+    // ด่าน 2 ของ BR-10 (GUIDE/11 §10.2): แมตช์นี้ต้องมีกรรมการ active ครบตามประเภท (on-site+stat = 2, อื่น = 1)
+    // ไม่ครบ → ORG ต้องหาคน (FR02) หรือเลื่อน (M06) — ระบบไม่ปล่อยให้แข่งโดยไม่มีกรรมการ
+    // เช็คก่อนนับเช็คอิน: กรรมการไม่ครบต้องไม่ทำให้ทีมไหนแพ้บาย
+    const fullMatch = await MatchRepo.findById(matchId);
+    if (!fullMatch || !(await isRefereeSufficient(fullMatch))) {
+        throw new AppError(409, "INSUFFICIENT_REFEREES", "กรรมการของแมตช์นี้ยังไม่ครบ ยังเริ่มแข่งไม่ได้");
+    }
+
+    // ทีมต้องมีผู้เล่นเช็คอิน >= sport_types.min_members — ฝั่งที่ไม่ถึงแพ้บาย (GUIDE/11 §10.4, มติ 17 ก.ย.)
+    const sport = await WalkoverRepo.findSportOfTournament(match.tournament_id);
+    const minMembers = sport?.min_members ?? 1;
+    const countA = await MatchRepo.countSuccessfulCheckins(matchId, match.team_a_id);
+    const countB = await MatchRepo.countSuccessfulCheckins(matchId, match.team_b_id);
+    const decision = Walkover.decideNoShow(fullMatch, countA, countB, minMembers);
+    if (decision === 'both_short') {
+        // ไม่มีฝ่ายไหนพร้อม — ไม่มีใครควรได้บาย ให้ ORG เลื่อน (M06) หรือรอ
+        throw new AppError(409, "INSUFFICIENT_CHECKINS", `ทั้งสองทีมมีผู้เล่นเช็คอินไม่ถึงขั้นต่ำ ${minMembers} คน`,
+            { minMembers, checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } });
+    }
+    if (decision !== null) {
+        const wo = await Walkover.applyNoShowWalkover(fullMatch, decision.winnerTeamId, decision.loserTeamId, userId);
+        return { id: matchId, status: 'completed', walkover: { ...wo, reason: 'insufficient_checkins', minMembers,
+                 checkedIn: { [match.team_a_id]: countA, [match.team_b_id]: countB } } };
+    }
+
+    if(!(await MatchRepo.markMatchStarted(matchId))){
+        throw new AppError(409, "INVALID_STATUS_TRANSITION", "แมตช์นี้ถูกเริ่มไปแล้ว");
+    }
+    return { id: matchId, status:'in_progress' };
+}
+
+/**
+ * OD-26 ข้อ 4 (มติ 26 ก.ย.) — กด "จบการแข่งขัน" · `in_progress → finished` พร้อมบันทึกเวลาจบจริง
+ * ทำไมต้องมีขั้นนี้: ตารางแข่งบอกได้แค่เวลาที่ "วางแผนไว้" กีฬาจบเร็วหรือช้ากว่าก็ได้ ระบบจึงไม่เคยรู้เวลาจบจริง
+ * และทุกกฎที่นับเวลาหลังแมตช์จบ (เส้นตายส่งผล · auto-verify · โหวต MVP รายแมตช์) เขียนไม่ได้เลยถ้าไม่มีค่านี้
+ * ใครกดได้: กรรมการของแมตช์ **หรือ** ผู้จัด (มติ Q4b) — ผู้จัดกดแทนได้คือสิ่งที่ทำให้การบังคับกดไม่กลายเป็นจุดค้างใหม่
+ */
+export async function finishMatch(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT", "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่กดจบการแข่งขันได้");
+    }
+
+    if (match.match_status !== 'in_progress') {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "กดจบการแข่งขันได้เฉพาะแมตช์ที่กำลังแข่งอยู่", { status: match.match_status });
+    }
+
+    if (!(await MatchRepo.markMatchFinished(matchId))) {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "สถานะแมตช์เปลี่ยนไปแล้ว");
+    }
+
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'match_finished',
+        title: 'แมตช์จบการแข่งขันแล้ว',
+        message: `แมตช์ #${matchId} จบการแข่งขันแล้ว รอการส่งผล`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
+
+    const updated = await MatchRepo.findMatchById(matchId);
+    return { id: matchId, status: 'finished' as const, actualEndTime: updated!.actual_end_time?.toISOString() ?? null };
+}
+
+/**
+ * M10c (มติ 27 ก.ย.) — ยกเลิกแมตช์กลางคัน แล้วกลับไปตั้งเวลาใหม่
+ *
+ * เดิม `in_progress` มีทางออกทางเดียวคือ "มีคนส่งผล" แต่เคสฝนตก/ไฟดับ **ไม่มีผลให้ส่ง**
+ * เพราะการแข่งขันไม่ได้เกิดจนจบ · เลื่อน (M06) ปิดเช็คอิน (M18) ปรับแพ้ (M17) ก็รับเฉพาะสถานะอื่น
+ * แมตช์จึงค้างถาวร — และไม่ควรไปใช้ทางของ OD-26 ข้อ 6 (ผู้จัดกรอกผลหลัง 24 ชม.)
+ * เพราะนั่นแปลว่า "แข่งจบแล้วไม่มีใครรายงาน" ซึ่งคนละเรื่องกัน
+ *
+ * ถ้าแข่งไปเกือบจบแล้วทั้งสองฝ่ายพอใจผลที่เป็นอยู่ ไม่ต้องใช้ทางนี้ — กดจบ (M10b) แล้วส่งผลตามปกติ
+ * ทางนี้มีไว้สำหรับกรณีที่ผลยังไม่ควรนับเท่านั้น
+ */
+export async function abandonMatch(matchId: number, userId: number, reason: string) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_MATCH_PARTICIPANT", "เฉพาะกรรมการของแมตช์นี้หรือผู้จัดการแข่งขันเท่านั้นที่ยกเลิกการแข่งขันได้");
+    }
+    if (match.match_status !== 'in_progress') {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "ยกเลิกกลางคันได้เฉพาะแมตช์ที่กำลังแข่งอยู่", { status: match.match_status });
+    }
+    if (!(await MatchRepo.abandonMatch(matchId, userId, reason))) {
+        throw new AppError(409, "MATCH_NOT_IN_PROGRESS", "สถานะแมตช์เปลี่ยนไปแล้ว");
+    }
+
+    // 🔴 BE-24 — การล้างตาราง (เวลา/สนาม) อยู่ใน `MatchRepo.abandonMatch` ทรานแซกชันเดียวกัน
+    //    เหตุผลเต็มอยู่ที่นั่น · แจ้งเตือนข้างล่างที่บอกว่า "รอผู้จัดนัดเวลาใหม่" จึงเป็นจริงแล้ว
+
+    await NotificationService.notifyMatchAudience(matchId, {
+        type: 'match_abandoned',
+        title: 'แมตช์ถูกยกเลิกกลางคัน',
+        message: `แมตช์ #${matchId} ยกเลิกกลางคัน — เหตุผล: ${reason} · รอผู้จัดนัดเวลาใหม่ แล้วต้องเช็คอินใหม่ในวันแข่งจริง`,
+        relatedEntityType: 'match', relatedEntityId: matchId,
+    });
+
+    return { id: matchId, status: 'scheduled' as const, checkinOpenAt: null };
+}
+
+/** M11/M13 — ORG ของทัวร์ และ/หรือ กรรมการของแมตช์นี้ (active + รับมอบหมายแมตช์นี้แล้ว) */
+/**
+ * FE-open-checkin-has-no-fixture-gate (มติ 27 ก.ย.) — แมตช์ต้องมีเวลาและสนามก่อนเข้าสู่วงจร
+ *
+ * แมตช์ที่ `createBracket` สร้างมาเกิดมาว่างทั้งสามช่อง และไม่มีจุดไหนในระบบบังคับให้ผู้จัดกรอก
+ * (`publishTournament` ก็ไม่บังคับ เพราะตอน publish ยังไม่มีแมตช์) · เดิม M09 กับ M10 ไม่เคยดูสามช่องนี้
+ * แมตช์จึงเดินได้ตลอดสาย `checkin_open → in_progress → finished → completed` โดยไม่มีบันทึกว่า
+ * แข่งเมื่อไรที่ไหน และพอพ้น `scheduled` แล้ว M06 ก็แก้ย้อนไม่ได้อีก — เสียถาวร
+ * (เกิดขึ้นจริงแล้วในฐานข้อมูล dev: แมตช์ 10/11/12 `completed` โดยทั้งสามช่องเป็น NULL)
+ *
+ * ใช้ code กับรูปร่าง `extra.missing` เดียวกับ M06 เพื่อให้ FE ใช้ตัวแสดงข้อความเดิมได้
+ * แต่เป็น 409 ไม่ใช่ 400 — M06 เป็นปัญหาของ payload ที่ส่งมา ส่วนตรงนี้ไม่มี payload เลย เป็นปัญหาสถานะ
+ */
+/**
+ * 🔴 BE-04 (แก้ 7 ต.ค. 2569) — เปิดเช็คอิน/เริ่มแข่งได้เฉพาะใกล้เวลานัด
+ *
+ * `assertFixtureComplete` ตอบได้แค่ว่า "มีเวลานัดไหม" ไม่ได้ตอบว่า "ถึงเวลาแล้วหรือยัง"
+ * ⇒ เปิดเช็คอินล่วงหน้า 3 สัปดาห์แล้วกดเริ่มได้ ทีมที่ยังไม่มาแพ้บายทั้งที่ยังไม่ถึงวันแข่ง
+ *   และผลชนะบายโต้แย้งไม่ได้ ⇒ ความเสียหายถาวร (QA 6 ต.ค.)
+ *
+ * ★ เรียกหลัง `assertFixtureComplete` เสมอ — ที่นี่ถือว่า `scheduled_time` มีค่าแล้ว
+ * ★ คืน 409 ไม่ใช่ 400 ด้วยเหตุผลเดียวกับ MATCH_NOT_SCHEDULED: ไม่มี payload ที่ผิด
+ *   สิ่งที่ผิดคือจังหวะเวลา · `extra` บอกหน้าต่างกลับไปให้ FE แสดง/ซ่อนปุ่มได้
+ */
+function assertWithinSchedule(
+    match : Pick<MatchRow, 'match_id' | 'scheduled_time'>,
+    window : { beforeMinutes : number; afterMinutes : number | null },
+    action : string,
+    now = Date.now()
+): void {
+    if (!match.scheduled_time) return;   // ไม่มีเวลานัด = หน้าที่ของ assertFixtureComplete ไม่ใช่ที่นี่
+    const scheduled = new Date(match.scheduled_time).getTime();
+    const opensAt = scheduled - window.beforeMinutes * 60_000;
+    const closesAt = window.afterMinutes === null ? null : scheduled + window.afterMinutes * 60_000;
+
+    if (now < opensAt) {
+        throw new AppError(409, "TOO_EARLY_FOR_MATCH",
+            `ยังไม่ถึงเวลา${action} — ทำได้ตั้งแต่ ${window.beforeMinutes} นาทีก่อนเวลานัด`,
+            { scheduledTime: new Date(scheduled).toISOString(), opensAt: new Date(opensAt).toISOString() });
+    }
+    if (closesAt !== null && now > closesAt) {
+        throw new AppError(409, "TOO_LATE_FOR_MATCH",
+            `เลยเวลา${action}แล้ว — ผู้จัดต้องนัดเวลาใหม่ก่อน`,
+            { scheduledTime: new Date(scheduled).toISOString(), closesAt: new Date(closesAt).toISOString() });
+    }
+}
+
+/**
+ * 🔴 7 ต.ค. 2569 — เดิมที่นี่ใช้รหัส `SCHEDULE_INCOMPLETE` ร่วมกับ `scheduleMatch`
+ *   ซึ่ง**เป็นคนละเรื่องกัน** แต่ FE แยกไม่ออกเพราะ `extra.missing` รูปเดียวกันเป๊ะ
+ *
+ *   400 `SCHEDULE_INCOMPLETE`  (scheduleMatch)  `missing` = ช่องที่ **คำขอนี้** ยังไม่ส่งมา
+ *                                               ⇒ ผู้ใช้ต้อง **กรอกในฟอร์มที่เปิดอยู่**
+ *   409 `MATCH_NOT_SCHEDULED`  (ที่นี่)          `missing` = ช่องที่ **แมตช์** ยังไม่ถูกตั้ง
+ *                                               ⇒ ผู้ใช้ต้อง **ไปตั้งตารางที่ M06 ก่อน**
+ *
+ *   ⇒ FE ที่มี handler กลางอ่าน `code` + `missing` เคยไฮไลต์ฟอร์มที่ไม่มีช่องนั้น
+ *     ในจอเช็คอินซึ่งไม่มีฟอร์มตั้งเวลาเลย
+ *
+ * ★ **ไม่ใช่รหัสใหม่** — `MATCH_NOT_SCHEDULED` (409) มีอยู่แล้วที่
+ *   `referee.service.assertSchedulable` และแปลว่า "แมตช์นี้ยังไม่ได้กำหนดเวลา" เหมือนกันเป๊ะ
+ *   ⇒ ที่นี่คือการ **เลิกใช้รหัสผิด** ไม่ใช่การเพิ่มของใหม่ให้ FE ต้องเรียนรู้
+ * ★ เข้ากฎที่ระบบใช้อยู่แล้ว: **อ่าน/ไม่มีของ = 404 · ลงมือในสถานะที่ไม่พร้อม = 409**
+ *   (`NO_ACTIVE_DISPUTE` และ `REFEREE_NOT_ASSIGNED` ทำตามนี้ทั้งคู่)
+ * ★ `extra.missing` คงรูปเดิมไว้ — FE ใช้บอกผู้จัดได้ว่าขาดอะไรก่อนพาไปหน้า M06
+ *   แต่เป็น **optional**: ของ `assertSchedulable` ไม่มี `extra` เลย (เช็คแค่เวลา ไม่เช็คสนาม)
+ *   ⇒ FE ต้องอ่านแบบ `extra?.missing` ไม่ใช่สมมติว่ามีเสมอ
+ * 🔴 ห้ามเอารหัสนี้ไปใช้กับ `scheduleMatch` — ที่นั่น payload ผิดจริง ต้องเป็น 400
+ */
+function assertFixtureComplete(match : Pick<MatchRow, 'scheduled_time' | 'scheduled_end_time' | 'venue'>): void {
+    const missing = [
+        ...(!match.scheduled_time ? ['scheduledTime'] : []),
+        ...(!match.scheduled_end_time ? ['scheduledEndTime'] : []),
+        ...(!match.venue ? ['venue'] : []),
+    ];
+    if (missing.length > 0) {
+        throw new AppError(409, "MATCH_NOT_SCHEDULED",
+            "แมตช์นี้ยังไม่ได้กำหนดเวลาแข่งและสนาม ต้องตั้งให้ครบก่อน (M06)", { missing });
+    }
+}
+
+async function findMatchRoles(matchId: number, tournamentId: number, userId: number) {
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    if (!tournament) {
+        throw new AppError(404, "TOURNAMENT_NOT_FOUND", "ไม่พบทัวร์นาเมนต์นี้");
+    }
+    const isOrganizer = tournament.requested_by_user_id === userId
+        && tournament.tournament_status !== 'pending_approval'
+        && tournament.tournament_status !== 'rejected';
+    const isReferee = await isRefereeOfMatch(matchId, userId, tournamentId);
+
+    return { isOrganizer, isReferee };
+}
+
+/**
+ * M19 — รายชื่อผู้เล่นที่ลงแข่งของทั้งสองทีม พร้อมสถานะเช็คอิน (มติ 19 ก.ย. 2569)
+ * เปิดสาธารณะเหมือน M03/M04 — เป็นข้อมูลการแข่งขัน ไม่ใช่รายชื่อสมาชิกภายในทีม
+ */
+export async function getMatchLineups(matchId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const rows = await MatchRepo.findLineupsByMatch(matchId);
+    const forTeam = (teamId: number | null) => {
+        if (teamId === null) return null;
+        const players = rows.filter(r => r.team_id === teamId);
+        // ทีมที่ถอนตัวหลังแมตช์นี้แข่งไปแล้ว — รายชื่อยังอยู่ ติดป้ายให้ FE แสดงว่าถอนตัวแล้ว
+        return { teamId, withdrawn: players[0]?.application_status === 'withdrawn', players: players.map(toLineupPlayerDto) };
+    };
+
+    return { matchId, teamA: forTeam(match.team_a_id), teamB: forTeam(match.team_b_id) };
+}
+
+export async function getMatchCheckins(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_ORGANIZER_OR_REFEREE", "คุณไม่มีสิทธิ์ดูรายการเช็คอินนี้");
+    }
+
+    // PDPA (NF-SE-03) — รูปบัตรเปิดดูได้เฉพาะกรรมการของแมตช์นี้ ORG เห็นรายการแต่ documentUrl = null
+    const rows = await MatchRepo.findCheckinsByMatch(matchId);
+    const items = await Promise.all(rows.map(async (row) => {
+        const documentUrl = isReferee && row.document_s3_key
+            ? await getPresignedDownloadUrl(row.document_s3_key)
+            : null;
+        return toCheckinListItemDto(row, documentUrl);
+    }));
+    return { items };
+}
+
+/** M20 — ผู้เล่นดูสถานะเช็คอินของตัวเองในแมตช์นี้ (null = ยังไม่ได้เช็คอิน) */
+export async function getMyCheckin(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    const row = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
+    if (!row) return { checkin: null };
+    return { checkin: { id: row.match_checkin_id, method: row.method, status: toCheckinStatusApi(row.match_checkin_status),
+                        rejectionReason: row.rejection_reason, note: row.note, checkedInAt: row.checked_in_at, verifiedAt: row.verified_at } };
+}
+
+/**
+ * M19 — กรรมการของแมตช์เช็คอินแทนผู้เล่น (กล้อง/เน็ต/QR ใช้ไม่ได้, UC-04 E2b) → method manual_by_referee, status exception (นับว่าเช็คอินแล้ว)
+ * ผู้เล่นต้องอยู่ใน roster และแมตช์ต้อง checkin_open · เคยเช็คอินแล้ว → 409
+ */
+export async function manualCheckin(matchId: number, refereeUserId: number, input: ManualCheckinInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
+    }
+    // ต้องเป็นคนที่ทีมส่งลงแข่ง (application_players) ไม่ใช่แค่อยู่ในคลังทีม — มติ 19 ก.ย. 2569
+    if (!(await MatchRepo.isRegisteredPlayerOfMatch(input.userId, matchId))) {
+        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "ผู้เล่นคนนี้ไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
+    }
+    const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId);
+    if (existing && existing.match_checkin_status !== 'rejected') {
+        throw new AppError(409, "ALREADY_CHECKED_IN", "ผู้เล่นคนนี้เช็คอินไปแล้ว", { status: toCheckinStatusApi(existing.match_checkin_status) });
+    }
+    const payload = { method: 'manual_by_referee' as const, status: 'exception' as const,
+                      documentType: null, documentS3Key: null, verifiedByRefereeId: refereeUserId, note: input.note ?? null };
+    // ถูก reject ไปแล้ว → เช็คอินใหม่ทับแถวเดิม (มติ 21 ก.ย. 2-ข) — ถ้าทับไม่ได้แปลว่ามีคนเช็คอินทับไปก่อน → 409 เหมือนเดิม
+    if (existing) {
+        if (!(await MatchRepo.reCheckin(existing.match_checkin_id, payload))) {
+            throw new AppError(409, "ALREADY_CHECKED_IN", "ผู้เล่นคนนี้เช็คอินไปแล้ว");
+        }
+    } else {
+        await MatchRepo.insertCheckin({ matchId, userId: input.userId, ...payload });
+    }
+    const checkin = (await MatchRepo.findCheckinByMatchAndUser(matchId, input.userId))!;
+    return { id: checkin.match_checkin_id, userId: input.userId, method: 'manual_by_referee' as const,
+             status: toCheckinStatusApi(checkin.match_checkin_status), note: checkin.note, checkedInAt: checkin.checked_in_at };
+}
+
+// M14 ยืนยันได้เฉพาะรูปที่รอตรวจ (pending) · M15 ปฏิเสธได้ทั้ง pending/success/exception (มติ 21 ก.ย. — เพิกถอน QR/manual ทีหลังได้)
+function checkinAlreadyDecided() {
+    return new AppError(409, "ALREADY_DECIDED", "รายการเช็คอินนี้ไม่ได้รอกรรมการตรวจ (ตรวจไปแล้ว หรือเป็นการเช็คอินด้วย QR) เปลี่ยนผลไม่ได้");
+}
+
+type DecidableStatus = 'pending' | 'success' | 'exception';
+async function findDecidableCheckinOfMatch(checkinId: number, matchId: number, allowed: readonly DecidableStatus[]) {
+    const checkin = await MatchRepo.findCheckinById(checkinId);
+    if (!checkin) {
+        throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้");
+    }
+    if(checkin.match_id !== matchId){
+        throw new AppError(404, "CHECKIN_NOT_FOUND", "ไม่พบรายการเช็คอินนี้ในแมตช์นี้");
+    }
+
+    // ตรวจได้ช่วงเปิดเช็คอินและระหว่างแข่ง (เผื่อคนมาช้า) — ก่อนเปิดหรือหลังจบแล้วตัดสินไม่ได้
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match || (match.match_status !== 'checkin_open' && match.match_status !== 'in_progress')) {
+        throw new AppError(409, "MATCH_NOT_CHANGEABLE", "แมตช์นี้ยังไม่เปิดเช็คอินหรือจบไปแล้ว ตรวจเช็คอินไม่ได้");
+    }
+
+    if (!(allowed as readonly string[]).includes(checkin.match_checkin_status)) {
+        throw checkin.match_checkin_status === 'rejected'
+            ? new AppError(409, "ALREADY_REJECTED", "รายการเช็คอินนี้ถูกปฏิเสธไปแล้ว")
+            : checkinAlreadyDecided();
+    }
+    return checkin;
+}
+
+export async function verifyCheckin(checkinId: number , matchId: number, userId: number){
+    await findDecidableCheckinOfMatch(checkinId, matchId, ['pending']);
+
+    // repo UPDATE เฉพาะแถวที่ยัง pending — กรรมการ 2 คนกดพร้อมกัน คนที่สองได้ 409
+    if (!(await MatchRepo.verifyCheckin(checkinId, userId))) {
+        throw checkinAlreadyDecided();
+    }
+    return { id: checkinId, status:'verified' }
+}
+
+/**
+ * M15 — ปฏิเสธได้ทั้งที่รอตรวจและที่ผ่านไปแล้ว (QR/manual ไม่มีใครตรวจก่อน กรรมการต้องถอนทีหลังได้ — มติ 21 ก.ย.)
+ * ถอนระหว่าง in_progress ไม่ย้อนผล M10 (ทีมไม่แพ้บายย้อนหลัง) แค่บันทึกว่าคนนี้ไม่ได้มา — มติ 21 ก.ย. ข้อ 3
+ */
+export async function rejectCheckin(checkinId: number, matchId: number, userId: number, reason: string){
+    await findDecidableCheckinOfMatch(checkinId, matchId, ['pending', 'success', 'exception']);
+
+    if (!(await MatchRepo.rejectCheckin(checkinId, userId, reason))) {
+        throw new AppError(409, "ALREADY_REJECTED", "รายการเช็คอินนี้ถูกปฏิเสธไปแล้ว");
+    }
+    return { id: checkinId, status: 'rejected', reason };
+}
+
+export async function getCheckinQr(matchId: number, userId: number) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
+    if (!isOrganizer && !isReferee) {
+        throw new AppError(403, "NOT_ORGANIZER_OR_REFEREE", "คุณไม่มีสิทธิ์ขอ QR เช็คอินของแมตช์นี้");
+    }
+
+    // QR ใช้เช็คอินได้เฉพาะตอนเปิดเช็คอิน — ออกให้ก่อนหรือหลังช่วงนั้นก็ใช้ไม่ได้อยู่ดี
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
+    }
+
+    const { qrPayload, expiresAt } = signCheckinQr(matchId);
+    return { qrPayload, expiresAt };
+}
+
+export async function submitCheckin(matchId: number, userId: number, input: SubmitCheckinInput) {
+    const match = await MatchRepo.findMatchById(matchId);
+    if (!match) {
+        throw new AppError(404, "MATCH_NOT_FOUND", "ไม่พบแมตช์นี้");
+    }
+
+    // กดซ้ำ = 200 ข้อมูลเดิมเสมอ แม้แมตช์จะเริ่มแข่งไปแล้ว (idempotent ตาม spec M12)
+    // ยกเว้นถูกกรรมการ reject ไปแล้ว → นับเป็นเช็คอินใหม่ทับแถวเดิม (มติ 21 ก.ย. 2-ข) ซึ่งต้องผ่านเงื่อนไขข้างล่างทั้งหมด
+    const existing = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
+    if (existing && existing.match_checkin_status !== 'rejected') {
+        return {
+            isNew: false,
+            data: {
+                id: existing.match_checkin_id,
+                status: toCheckinStatusApi(existing.match_checkin_status),
+                checkedInAt: existing.checked_in_at,
+            },
+        };
+    }
+
+    // เช็คอินใหม่ได้เฉพาะตอนเปิดเช็คอิน (M09) — ก่อนเปิดหรือหลังเริ่มแข่ง/จบแล้วไม่ได้
+    if (match.match_status !== 'checkin_open') {
+        throw new AppError(409, "CHECKIN_NOT_OPEN", "แมตช์นี้ยังไม่เปิดเช็คอิน หรือปิดเช็คอินไปแล้ว");
+    }
+
+    // วิธีเช็คอินต้องตรงโหมดแมตช์ (QA 21 ก.ย.): onsite = สแกน QR ที่สนาม · online = ส่งรูปบัตรให้กรรมการตรวจ
+    // ไม่งั้นคนที่ไม่ได้มาสนามส่งรูปแทน QR ได้ / คนแข่งออนไลน์ใช้ QR ที่ถูกแชร์ข้ามขั้นตรวจตัวตนได้
+    const expectedMethod = match.mode === 'online' ? 'photo_online' : 'qr_onsite';
+    if (input.method !== expectedMethod) {
+        throw new AppError(400, "CHECKIN_METHOD_MISMATCH",
+            match.mode === 'online' ? "แมตช์นี้แข่งออนไลน์ ต้องเช็คอินด้วยรูปบัตร (photo_online)"
+                                    : "แมตช์นี้แข่งที่สนาม ต้องเช็คอินด้วยการสแกน QR (qr_onsite)",
+            { mode: match.mode, expectedMethod });
+    }
+
+    // ต้องเป็นคนที่ทีมส่งลงแข่งในทัวร์นี้ (ไม่ใช่แค่เป็นสมาชิกทีม — มติ 19 ก.ย. 2569)
+    if (!(await MatchRepo.isRegisteredPlayerOfMatch(userId, matchId))) {
+        throw new AppError(403, "NOT_IN_APPROVED_ROSTER", "คุณไม่อยู่ในรายชื่อผู้เล่นที่ทีมส่งลงแข่งในแมตช์นี้");
+    }
+
+    let status: 'success' | 'pending';
+    let documentType: 'student_id' | 'national_id' | null = null;
+    let documentS3Key: string | null = null;
+
+    if (input.method === 'qr_onsite') {
+        verifyCheckinQr(input.qrPayload, matchId);
+        status = 'success';
+    } else {
+        documentType = input.documentType;
+        documentS3Key = input.documentS3Key;
+        status = 'pending'; // ยังไม่ได้ตรวจ รอกรรมการผ่าน M14/M15
+    }
+
+    let isNew: boolean;
+    if (existing) {
+        // แถว rejected → ทับ · false = มีคนเช็คอินทับไปก่อนแล้ว → คืนแถวปัจจุบันแบบ idempotent
+        isNew = await MatchRepo.reCheckin(existing.match_checkin_id, { method: input.method, status, documentType, documentS3Key });
+    } else {
+        const inserted = await MatchRepo.insertCheckin({ matchId, userId, method: input.method, status, documentType, documentS3Key });
+        // null = ชน UNIQUE(match_id, user_id) เพราะอีก request ที่ยิงพร้อมกัน insert ไปก่อน → คืนแถวนั้นแบบ idempotent
+        isNew = inserted !== null;
+    }
+    const checkin = await MatchRepo.findCheckinByMatchAndUser(matchId, userId);
+
+    return {
+        isNew,
+        data: {
+            id: checkin!.match_checkin_id,
+            status: toCheckinStatusApi(checkin!.match_checkin_status),
+            checkedInAt: checkin!.checked_in_at,
+        },
+    };
+}

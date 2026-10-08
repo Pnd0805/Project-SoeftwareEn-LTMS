@@ -338,11 +338,13 @@ export interface BackendRefereeIdentityDto {
 export interface BackendRefereeRequestDto {
   id: number;
   tournamentId: number;
-  type: "ref_transfer" | "ref_swap" | "org_add_match" | "org_swap";
+  type: "ref_transfer" | "ref_swap" | "org_add_match" | "org_swap" | "ref_withdraw";
+  withdrawScope?: "match" | "tournament" | null;
+  reason?: string | null;
   requestedBy: number;
   refereeA: { tournamentRefereeId: number; user: UserRefDto; status: string };
   refereeB: { tournamentRefereeId: number; user: UserRefDto; status: string } | null;
-  matchA: { id: number; roundNumber: number | null; scheduledTime: string | null; scheduledEndTime: string | null };
+  matchA: { id: number; roundNumber: number | null; scheduledTime: string | null; scheduledEndTime: string | null } | null;
   matchB: { id: number; roundNumber: number | null; scheduledTime: string | null; scheduledEndTime: string | null } | null;
   status: "open" | "applied" | "declined" | "cancelled";
   createdAt: string;

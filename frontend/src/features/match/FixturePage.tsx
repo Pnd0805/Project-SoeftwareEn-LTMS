@@ -86,7 +86,7 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
   const acceptedIds = new Set((assigned.data?.items ?? []).map(row => row.tournamentRefereeId))
   /* จับคำขอเข้ากับแมตช์ด้วย `matchA.id` ของคำขอนั้นเสมอ ไม่ใช่เดาจากลำดับ (R17) */
   const ofThisMatch = (status: 'open' | 'declined') => (requests.data?.items ?? []).filter(row =>
-    row.type === 'org_add_match' && row.matchA.id === match.id && row.status === status)
+    row.type === 'org_add_match' && row.matchA?.id === match.id && row.status === status)
   const openRequests = ofThisMatch('open')
   const pendingByReferee = new Map(openRequests.map(row => [row.refereeA.tournamentRefereeId, row]))
   /* R17 — คำขอที่ถูกปฏิเสธเคยหายไปทั้งแถว ผู้จัดจึงไม่รู้ว่าใครไม่รับ และเผลอขอคนเดิมซ้ำ */

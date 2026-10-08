@@ -1,0 +1,528 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Request, Response, NextFunction } from 'express';
+
+vi.mock('../../utils/parseId.js', () => ({
+  parseId: vi.fn(),
+}));
+
+vi.mock('../../repositories/tournament.repo.js', () => ({
+  findTournamentById: vi.fn(),
+}));
+
+vi.mock('../../repositories/match.repo.js', () => ({
+  findById: vi.fn(),
+}));
+
+vi.mock('../../utils/checkExist.js', () => ({
+  checkAnnouncement: vi.fn(),
+}));
+
+import { requireOrganizer, requireOrganizerOfMatch, requireOrganizerOfAnnouncement, requireRequester, isRequesterOf } from '../requireOrganizer.js';
+import { parseId } from '../../utils/parseId.js';
+import { findTournamentById } from '../../repositories/tournament.repo.js';
+import * as MatchRepo from '../../repositories/match.repo.js';
+import { checkAnnouncement } from '../../utils/checkExist.js';
+import { AppError } from '../../utils/AppError.js';
+import type { TournamentRow, MatchRow, UserRow, AnnouncementRow } from '../../types/db.js';
+
+const mockedParseId = vi.mocked(parseId);
+const mockedFindTournamentById = vi.mocked(findTournamentById);
+const mockedFindMatchById = vi.mocked(MatchRepo.findById);
+const mockedCheckAnnouncement = vi.mocked(checkAnnouncement);
+
+function makeReq(params: Record<string, string>, user?: UserRow): Request {
+  return { params, user } as unknown as Request;
+}
+
+function makeRes(): Response {
+  return {} as Response;
+}
+
+function makeUser(overrides: Partial<UserRow> = {}): UserRow {
+  return {
+    user_id: 1,
+    full_name: 'Test User',
+    email: 'test@example.com',
+    password_hash: 'hashed-password',
+    gender: 'other',
+    birth_date: '2000-01-01',
+    user_type: 'student',
+    faculty_id: null,
+    department_id: null,
+    year: null,
+    profile_image_key: null,
+    contact_info: null,
+    address: null,
+    is_suspended: 0,
+    suspended_reason: null,
+    suspended_until: null,
+    suspended_category: null,
+    total_points: 0,
+    notification_prefs: null, show_profile_stats: 1,
+    email_verified: 0,
+    token_version: 0,
+    profile_edit_log: null,
+    created_at: new Date(),
+    updated_at: null,
+    ...overrides,
+  };
+}
+
+const organizerUser = makeUser({ user_id: 5 });
+const otherUser = makeUser({ user_id: 99 });
+
+// NOTE: tournament_status is 'pending_approval' | 'rejected' | 'private' |
+// 'public' | 'completed' | 'auto_deleted' — 'public' is the valid "open for
+// business" baseline status here (there is no 'approved' value).
+const baseTournament: TournamentRow = {
+  tournament_id: 20,
+  name: 'Inter-Faculty Championship',
+  sport_type_id: 1,
+  bracket_format: 'single_elimination',
+  best_of: null,            // ทัวร์นี้ไม่ได้ตั้งรูปแบบ BO (กีฬาไม่ได้แข่งเป็นรอบ)
+  scope_type: 'university',
+  organizing_faculty_id: null,
+  organizing_department_id: null,
+  requested_by_user_id: 5,
+  organizer_external_approval_status: 'not_required',
+  organizer_external_reviewed_by: null,
+  organizer_external_reviewed_at: null,
+  organizer_external_rejection_reason: null,
+  organizer_external_verification_docs: null,
+  tournament_status: 'public',
+  registration_open: 1,
+  registration_start: null,
+  registration_end: null,
+  event_start_date: '2026-10-01',
+  event_end_date: null,
+  max_teams: 16,
+  min_teams: 4,
+  venue: null,
+  dispute_window_hours: 24,
+  gender_requirement: 'any',
+  min_age: null,
+  max_age: null,
+  description: null,
+  // คอลัมน์ที่เพิ่มมาทีหลัง — ผู้จัดปิดทัวร์ (ผม · 21 ก.ย.) และ entry_notes (SleepyCaTT1425 · 21 ก.ย.)
+  // ★ ก้อนนี้ต้องครบทุกคอลัมน์จึงคอมไพล์ผ่าน ⇒ เติม entry_notes ของเขาด้วย แต่ค่าไม่กำกวม
+  //   (null = ไม่มีหมายเหตุการสมัคร ซึ่งเป็นสภาพของทุกทัวร์ที่ไม่ได้กรอกช่องนี้)
+  entry_notes: null,
+  champion_team_id: null,   // ยังไม่ปิดทัวร์ (tournament_status ข้างบนไม่ใช่ completed)
+  completed_at: null,
+  completed_by: null,
+  rejection_reason: null,
+  approved_by: null,
+  approved_at: null,
+  created_at: new Date(),
+  updated_at: null,
+  updated_by: null,
+  deleted_at: null,
+  deleted_by: null,
+};
+
+const baseMatch: MatchRow = {
+  match_id: 30,
+  tournament_id: 20,
+  bracket_node_id: null,
+  next_match_id: null,
+  loser_next_match_id: null,
+  round_number: 1,
+  best_of: null,            // กีฬาไม่ได้แข่งเป็นรอบ — ไม่มีเพดานสกอร์
+  team_a_id: null,
+  team_b_id: null,
+  scheduled_time: null,
+  scheduled_end_time: null,
+  venue: null,
+  checkin_open_at: null,
+  started_at: null,
+  actual_end_time: null,
+  match_status: 'scheduled',
+  mode: 'onsite',
+  livestream_url: null,
+  room_code: null,          // null = แมตช์ onsite (mode ข้างบนเป็น onsite)
+  created_at: new Date(),
+  updated_at: null,
+};
+
+const baseAnnouncement: AnnouncementRow = {
+  announcement_id: 40,
+  tournament_id: 20,
+  match_id: null,
+  created_by: 5,
+  announcement_type: 'general',
+  title: 'Schedule update',
+  content: 'The opening match has moved to 10:00.',
+  created_at: new Date(),
+  updated_at: null,
+  updated_by: null,
+  deleted_at: null,
+  deleted_by: null,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('requireOrganizer middleware', () => {
+  it('calls next with NO_TOKEN when req.user is missing', async () => {
+    const req = makeReq({ id: '20' }, undefined);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+
+    await requireOrganizer(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(401);
+    expect(err.code).toBe('NO_TOKEN');
+    expect(mockedParseId).not.toHaveBeenCalled();
+  });
+
+  it('parses the tournament id from req.params using the Thai label', async () => {
+    const req = makeReq({ id: '20' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(20 as any);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizer(req, res, next);
+
+    expect(mockedParseId).toHaveBeenCalledWith('20', 'รหัสทัวร์นาเมนต์');
+    expect(mockedFindTournamentById).toHaveBeenCalledWith(20);
+  });
+
+  it('calls next with TOURNAMENT_NOT_FOUND when the tournament does not exist', async () => {
+    const req = makeReq({ id: '20' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(20 as any);
+    mockedFindTournamentById.mockResolvedValue(null);
+
+    await requireOrganizer(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(404);
+    expect(err.code).toBe('TOURNAMENT_NOT_FOUND');
+  });
+
+  it('calls next with NOT_ORGANIZER when the user did not request the tournament', async () => {
+    const req = makeReq({ id: '20' }, otherUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(20 as any);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizer(req, res, next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(403);
+    expect(err.code).toBe('NOT_ORGANIZER');
+    expect((req as any).tournament).toBeUndefined();
+  });
+
+  it.each(['pending_approval', 'rejected'] as const)(
+    'calls next with NOT_ORGANIZER when the tournament status is %s, even for the owner',
+    async (status) => {
+      const req = makeReq({ id: '20' }, organizerUser);
+      const res = makeRes();
+      const next = vi.fn() as NextFunction;
+      mockedParseId.mockReturnValue(20 as any);
+      mockedFindTournamentById.mockResolvedValue({
+        ...baseTournament,
+        tournament_status: status,
+      });
+
+      await requireOrganizer(req, res, next);
+
+      const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+      expect(err.status).toBe(403);
+      expect(err.code).toBe('NOT_ORGANIZER');
+    },
+  );
+
+  it.each(['private', 'public', 'completed', 'auto_deleted'] as const)(
+    'attaches req.tournament and calls next() for the owning organizer when status is %s',
+    async (status) => {
+      const req = makeReq({ id: '20' }, organizerUser);
+      const res = makeRes();
+      const next = vi.fn() as NextFunction;
+      mockedParseId.mockReturnValue(20 as any);
+      mockedFindTournamentById.mockResolvedValue({
+        ...baseTournament,
+        tournament_status: status,
+      });
+
+      await requireOrganizer(req, res, next);
+
+      expect((req as any).tournament).toEqual({ ...baseTournament, tournament_status: status });
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith();
+    },
+  );
+
+  it('rejects (does not call next) when parseId throws for a malformed id', async () => {
+    const req = makeReq({ id: 'not-a-number' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    const parseError = new AppError(400, 'INVALID_ID', 'รหัสทัวร์นาเมนต์ไม่ถูกต้อง');
+    mockedParseId.mockImplementation(() => {
+      throw parseError;
+    });
+
+    await expect(requireOrganizer(req, res, next)).rejects.toBe(parseError);
+    expect(next).not.toHaveBeenCalled();
+    expect(mockedFindTournamentById).not.toHaveBeenCalled();
+  });
+});
+
+describe('requireOrganizerOfMatch middleware', () => {
+  it('calls next with NO_TOKEN when req.user is missing', async () => {
+    const req = makeReq({ id: '30' }, undefined);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+
+    await requireOrganizerOfMatch(req, res, next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(401);
+    expect(err.code).toBe('NO_TOKEN');
+    expect(mockedParseId).not.toHaveBeenCalled();
+  });
+
+  it('parses the match id using the Thai label and looks up the match', async () => {
+    const req = makeReq({ id: '30' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(30 as any);
+    mockedFindMatchById.mockResolvedValue(baseMatch);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizerOfMatch(req, res, next);
+
+    expect(mockedParseId).toHaveBeenCalledWith('30', 'รหัสแมตช์');
+    expect(mockedFindMatchById).toHaveBeenCalledWith(30);
+  });
+
+  it('calls next with MATCH_NOT_FOUND when the match does not exist', async () => {
+    const req = makeReq({ id: '30' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(30 as any);
+    mockedFindMatchById.mockResolvedValue(null);
+
+    await requireOrganizerOfMatch(req, res, next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(404);
+    expect(err.code).toBe('MATCH_NOT_FOUND');
+    expect(mockedFindTournamentById).not.toHaveBeenCalled();
+  });
+
+  it('calls next with TOURNAMENT_NOT_FOUND when the match exists but its tournament does not', async () => {
+    const req = makeReq({ id: '30' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(30 as any);
+    mockedFindMatchById.mockResolvedValue(baseMatch);
+    mockedFindTournamentById.mockResolvedValue(null);
+
+    await requireOrganizerOfMatch(req, res, next);
+
+    expect(mockedFindTournamentById).toHaveBeenCalledWith(20);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(404);
+    expect(err.code).toBe('TOURNAMENT_NOT_FOUND');
+  });
+
+  it('calls next with NOT_ORGANIZER when the user is not the tournament organizer', async () => {
+    const req = makeReq({ id: '30' }, otherUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(30 as any);
+    mockedFindMatchById.mockResolvedValue(baseMatch);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizerOfMatch(req, res, next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(403);
+    expect(err.code).toBe('NOT_ORGANIZER');
+    expect((req as any).match).toBeUndefined();
+    expect((req as any).tournament).toBeUndefined();
+  });
+
+  it('attaches req.match and req.tournament and calls next() for the owning organizer', async () => {
+    const req = makeReq({ id: '30' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(30 as any);
+    mockedFindMatchById.mockResolvedValue(baseMatch);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizerOfMatch(req, res, next);
+
+    expect((req as any).match).toEqual(baseMatch);
+    expect((req as any).tournament).toEqual(baseTournament);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('rejects (does not call next) when parseId throws for a malformed id', async () => {
+    const req = makeReq({ id: 'not-a-number' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    const parseError = new AppError(400, 'INVALID_ID', 'รหัสแมตช์ไม่ถูกต้อง');
+    mockedParseId.mockImplementation(() => {
+      throw parseError;
+    });
+
+    await expect(requireOrganizerOfMatch(req, res, next)).rejects.toBe(parseError);
+    expect(next).not.toHaveBeenCalled();
+    expect(mockedFindMatchById).not.toHaveBeenCalled();
+  });
+});
+
+describe('requireOrganizerOfAnnouncement middleware', () => {
+  it('calls next with NO_TOKEN when req.user is missing', async () => {
+    const req = makeReq({ id: '40' }, undefined);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(401);
+    expect(err.code).toBe('NO_TOKEN');
+    expect(mockedParseId).not.toHaveBeenCalled();
+  });
+
+  it('parses the announcement id using the Thai label and looks up the announcement', async () => {
+    const req = makeReq({ id: '40' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(40 as any);
+    mockedCheckAnnouncement.mockResolvedValue(baseAnnouncement);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    expect(mockedParseId).toHaveBeenCalledWith('40', 'รหัสประกาศ');
+    expect(mockedCheckAnnouncement).toHaveBeenCalledWith(40);
+  });
+
+  it('calls next with the error (does not reject) when parseId throws for a malformed id', async () => {
+    const req = makeReq({ id: 'not-a-number' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    const parseError = new AppError(400, 'INVALID_ID', 'รหัสประกาศไม่ถูกต้อง');
+    mockedParseId.mockImplementation(() => {
+      throw parseError;
+    });
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(parseError);
+    expect(mockedCheckAnnouncement).not.toHaveBeenCalled();
+  });
+
+  it('calls next with ANNOUNCEMENT_NOT_FOUND when checkAnnouncement throws (does not reject)', async () => {
+    const req = makeReq({ id: '40' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    const notFoundError = new AppError(404, 'ANNOUNCEMENT_NOT_FOUND', 'ไม่พบประกาศนี้');
+    mockedParseId.mockReturnValue(40 as any);
+    mockedCheckAnnouncement.mockRejectedValue(notFoundError);
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(notFoundError);
+    expect(mockedFindTournamentById).not.toHaveBeenCalled();
+  });
+
+  it('calls next with TOURNAMENT_NOT_FOUND when the announcement exists but its tournament does not', async () => {
+    const req = makeReq({ id: '40' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(40 as any);
+    mockedCheckAnnouncement.mockResolvedValue(baseAnnouncement);
+    mockedFindTournamentById.mockResolvedValue(null);
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    expect(mockedFindTournamentById).toHaveBeenCalledWith(20);
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(404);
+    expect(err.code).toBe('TOURNAMENT_NOT_FOUND');
+  });
+
+  it('calls next with NOT_ORGANIZER when the user is not the tournament organizer', async () => {
+    const req = makeReq({ id: '40' }, otherUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(40 as any);
+    mockedCheckAnnouncement.mockResolvedValue(baseAnnouncement);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    const err = (next as ReturnType<typeof vi.fn>).mock.calls[0]![0] as AppError;
+    expect(err.status).toBe(403);
+    expect(err.code).toBe('NOT_ORGANIZER');
+    expect((req as any).announcement).toBeUndefined();
+    expect((req as any).tournament).toBeUndefined();
+  });
+
+  it('attaches req.announcement and req.tournament and calls next() for the owning organizer', async () => {
+    const req = makeReq({ id: '40' }, organizerUser);
+    const res = makeRes();
+    const next = vi.fn() as NextFunction;
+    mockedParseId.mockReturnValue(40 as any);
+    mockedCheckAnnouncement.mockResolvedValue(baseAnnouncement);
+    mockedFindTournamentById.mockResolvedValue(baseTournament);
+
+    await requireOrganizerOfAnnouncement(req, res, next);
+
+    expect((req as any).announcement).toEqual(baseAnnouncement);
+    expect((req as any).tournament).toEqual(baseTournament);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith();
+  });
+});
+
+describe('requireRequester middleware (C17b — FE-c17b 20 ก.ย.)', () => {
+  it.each(['pending_approval', 'private', 'public', 'rejected', 'completed'] as const)(
+    'lets the requester through while the tournament is %s', async (status) => {
+      mockedParseId.mockReturnValue(20);
+      mockedFindTournamentById.mockResolvedValue({ ...baseTournament, tournament_status: status });
+      const req = makeReq({ id: '20' }, organizerUser);
+      const next = vi.fn();
+      await requireRequester(req, makeRes(), next as NextFunction);
+      expect(next).toHaveBeenCalledWith();
+      expect(req.tournament).toEqual({ ...baseTournament, tournament_status: status });
+    });
+
+  it('403 NOT_ORGANIZER for anyone else, and for an auto_deleted tournament', async () => {
+    mockedParseId.mockReturnValue(20);
+    mockedFindTournamentById.mockResolvedValue({ ...baseTournament, tournament_status: 'pending_approval' });
+    const next = vi.fn();
+    await requireRequester(makeReq({ id: '20' }, otherUser), makeRes(), next as NextFunction);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 403, code: 'NOT_ORGANIZER' });
+    expect(isRequesterOf({ ...baseTournament, tournament_status: 'auto_deleted' }, organizerUser.user_id)).toBe(false);
+  });
+
+  it('401 without a user, 404 when the tournament does not exist', async () => {
+    const next = vi.fn();
+    await requireRequester(makeReq({ id: '20' }), makeRes(), next as NextFunction);
+    expect(next.mock.calls[0]![0]).toBeInstanceOf(AppError);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 401 });
+    mockedParseId.mockReturnValue(20);
+    mockedFindTournamentById.mockResolvedValue(null);
+    const next2 = vi.fn();
+    await requireRequester(makeReq({ id: '20' }, organizerUser), makeRes(), next2 as NextFunction);
+    expect(next2.mock.calls[0]![0]).toMatchObject({ status: 404, code: 'TOURNAMENT_NOT_FOUND' });
+  });
+});

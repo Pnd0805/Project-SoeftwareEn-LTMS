@@ -13,6 +13,41 @@ notices, verified on 2026-09-23. Individual entries in the "Backend blockers" se
 the exact commit and date against which they were verified; older hashes there
 are historical evidence, not the current backend reference.
 
+## NEW_UXUI_frontend compatibility tickets 1–3 — 2026-10-08
+
+- [x] Tournament-wide referee withdrawal history accepts `matchA: null`, shows
+  the withdrawal scope/reason/status, and opens its tournament rather than an
+  invented match. Other match consumers guard nullable requests.
+- [x] Admin external referee decisions return success after the delivered POST
+  succeeds, refresh the queue, and retain real server errors.
+- [x] Registration checks real calendar dates, the Bangkok day, and years 1–8.
+  The existing registration screen continues to verification via the delivered
+  `POST /auth/verify-email` and `POST /auth/resend-verification` contracts.
+  Verification preserves leading zeros and requires `emailVerified: true`.
+  Resend feedback is generic, with a 60-second cooldown and a local rolling
+  count of three requests/hour, including the initial registration OTP.
+- [ ] Backend delivery required: `POST /auth/register` still requires
+  `facultyId`, `departmentId`, and `year` for external emails at `BE_KN@240e9e6`.
+  A personal-details-only external signup needs an agreed backend contract;
+  frontend does not supply invented academic values.
+- [ ] Backend delivery required: `POST /auth/login` at `BE_KN@240e9e6` does not
+  enforce `email_verified`. The frontend verification flow does not establish
+  server enforcement. No backend authentication changes are made here.
+- [ ] Live acceptance: migration/role audit, actual SMTP delivery and expiry,
+  and authenticated workflow checks on the merged stack remain for Ticket 4.
+  Offline tests and intercepted browser fixtures do not close that gate.
+- [x] Ticket 4 source integration: `.gitignore` conflict resolved; combined
+  Compose build context, container MySQL port and SMTP defaults corrected.
+  Backend typecheck/build and 3,426 unit tests pass. Live execution is still open.
+- [ ] Backend delivery required: browser-reachable private presigned upload/doc
+  URLs in the Docker deployment. Compose uses internal `S3_ENDPOINT=http://minio:9000`,
+  which is also the signing endpoint at `BE_KN@240e9e6`; a host browser normally
+  cannot resolve it. `S3_PUBLIC_BASE` only covers public avatar/logo URLs. Preserve
+  signed URLs rather than rewriting their host on the frontend.
+
+Implementation and evidence: `docs/integration/2026-10-08-tickets-1-3/README.md`.
+Source merge/config evidence: `docs/integration/2026-10-08-ticket-4/README.md`.
+
 ## Check-in QR review and frontend delivery - 2026-10-02
 
 - [x] Source review: frontend `feat/1`; clean local backend `BE_KN@d96472f`;

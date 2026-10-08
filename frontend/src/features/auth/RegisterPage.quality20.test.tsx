@@ -120,6 +120,6 @@ it('retains a deliberate draft on server field error and submits the unchanged p
   expect(screen.getByLabelText('Birth date')).toHaveValue('2002-06-04')
   reject = false
   fireEvent.submit(container.querySelector('form')!)
-  await screen.findByText('Sign in destination')
+  await screen.findByRole('heading', { name: 'Verify email' })
   expect(submitted).toEqual(Array(2).fill({ fullName: 'Deliberate Student', email: 'chosen@example.test', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
 })

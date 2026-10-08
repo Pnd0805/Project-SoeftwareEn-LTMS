@@ -1,0 +1,178 @@
+import * as UserRepo from '../repositories/user.repo.js';
+import * as TeamRepo from '../repositories/team.repo.js';
+import * as StatRepo from '../repositories/playerStat.repo.js';
+import * as FollowRepo from '../repositories/follow.repo.js';
+import * as CareerRepo from '../repositories/career.repo.js';
+import * as UserReportRepo from '../repositories/userReport.repo.js';
+import * as AdminRepo from '../repositories/adminScope.repo.js';
+import * as UploadService from './upload.service.js';
+
+import { AppError } from '../utils/AppError.js';
+import { checkUser } from '../utils/checkExist.js';
+
+import { toPublicUserDto , toUserRef , toUserSearchDto , toMeDto, toGetMyInvitation} from '../mappers/user.mapper.js';
+import { toTeamRef } from '../mappers/team.mapper.js';
+import { toUserStatsDto , hiddenUserStatsDto } from '../mappers/stat.mapper.js';
+import { canSeeProfileStats } from '../utils/profileStats.js';
+import { toCareerTournamentDto } from '../mappers/career.mapper.js';
+import { toUserReportDto } from '../mappers/userReport.mapper.js';
+
+import type { UpdateMeInput } from '../schemas/user.schema.js';
+import type { UserRow } from '../types/db.js';
+
+export async function getUserById(userId: number, viewerUserId?: number) {
+    const user = await checkUser(userId);
+    const [teamRows, followerCount, isFollowing] = await Promise.all([
+        TeamRepo.findTeamsByUser(userId),
+        FollowRepo.countFollowers(userId),
+        viewerUserId !== undefined && viewerUserId !== userId
+            ? FollowRepo.isFollowing(viewerUserId, userId)
+            : Promise.resolve(false),
+    ]);
+    // OD-46 — บอกตั้งแต่หน้าโปรไฟล์ว่าสถิติถูกซ่อน FE จึงไม่ต้องยิงอีกสามเส้นแล้วค่อยพบว่าว่าง
+    const statsHidden = !(await canSeeProfileStats(user, viewerUserId));
+    return toPublicUserDto(user, teamRows.map(toTeamRef), followerCount, isFollowing, statsHidden);
+};
+
+
+export async function getUserStats(userId: number, viewerUserId?: number) {
+    const user = await checkUser(userId);
+    // OD-46 — ถามด่านก่อน "แล้วค่อยค้น" ไม่ใช่ค้นแล้วทิ้ง ⇒ โปรไฟล์ที่ปิดไว้ไม่กิน query สถิติเลย
+    if (!(await canSeeProfileStats(user, viewerUserId))) {
+        return hiddenUserStatsDto(userId);
+    }
+    const [userStat, totals] = await Promise.all([
+        StatRepo.findStatsByUser(userId),
+        StatRepo.findProfileTotals(userId),
+    ]);
+    return toUserStatsDto(userId, userStat, totals);
+}
+
+
+export async function followUser(followerUserId: number, followedUserId: number) {
+    if (followerUserId === followedUserId) {
+        throw new AppError(409, 'CANNOT_FOLLOW_SELF', 'ไม่สามารถติดตามตัวเองได้');
+    }
+    await checkUser(followedUserId);
+    await FollowRepo.followUser(followerUserId, followedUserId);
+    return {
+        userId: followedUserId,
+        isFollowing: true as const,
+        followerCount: await FollowRepo.countFollowers(followedUserId),
+    };
+}
+
+export async function unfollowUser(followerUserId: number, followedUserId: number) {
+    if (followerUserId === followedUserId) {
+        throw new AppError(409, 'CANNOT_FOLLOW_SELF', 'ไม่สามารถเลิกติดตามตัวเองได้');
+    }
+    await checkUser(followedUserId);
+    await FollowRepo.unfollowUser(followerUserId, followedUserId);
+    return {
+        userId: followedUserId,
+        isFollowing: false as const,
+        followerCount: await FollowRepo.countFollowers(followedUserId),
+    };
+}
+
+export async function getFollowers(userId: number) {
+    await checkUser(userId);
+    const rows = await FollowRepo.findFollowers(userId);
+    return { items: rows.map(toUserRef), count: rows.length };
+}
+
+export async function getFollowing(userId: number) {
+    await checkUser(userId);
+    const rows = await FollowRepo.findFollowing(userId);
+    return { items: rows.map(toUserRef), count: rows.length };
+}
+
+export async function getCareer(userId: number, viewerUserId?: number) {
+    const user = await checkUser(userId);
+    // OD-46 — ผลงานทัวร์ที่เคยลงแข่งผูกกับสวิตช์เดียวกับสถิติ · items เป็น null ไม่ใช่ [] โดยเจตนา
+    // [] อ่านได้ว่า "ไม่เคยลงแข่งเลย" ซึ่งเป็นคำตอบที่ผิดและหน้าจอแยกจากของจริงไม่ออก
+    if (!(await canSeeProfileStats(user, viewerUserId))) {
+        return { items: null, statsHidden: true };
+    }
+    // true = นับทัวร์ที่ทีมถอนตัวไปแล้วด้วย (มติ 5 ต.ค. — FE เลือกข้อ ก)
+    // เดิมเป็น false ⇒ U14 เงียบกับทัวร์ที่ถอน ขณะที่ RW06 นับ ⇒ สองหน้าตอบไม่ตรงกัน
+    const rows = await CareerRepo.findCareerByUser(userId, undefined, true);
+    return { items: rows.map(toCareerTournamentDto), statsHidden: false };
+}
+
+export async function searchUsers(userName : string){
+    if(userName.length < 3){
+        throw new AppError(400 , "QUERY_TOO_SHORT" , "กรุณาพิมพ์อย่างน้อย 3 ตัวอักษร");
+    }
+    const matchName = await UserRepo.searchByName(userName);
+    // BE-19 — ส่งคณะ/ชั้นปีมาด้วยเพื่อให้แยกคนชื่อซ้ำได้ (เหตุผลที่เลือกสองฟิลด์นี้อยู่ที่ repo)
+    const data = matchName.map(toUserSearchDto);
+    return { items : data};
+}
+
+/**
+ * FE-viewer-admin-scope-unknown — `GET /me` ต้องบอกสิทธิ์แอดมินของตัวผู้เรียกเอง
+ * เป็นการอ่านเพิ่มหนึ่งแถวจากคีย์ที่มีอยู่แล้ว · คนทั่วไปได้ `adminScope: null`
+ */
+export async function getMe(user : UserRow){
+    return toMeDto(user , await AdminRepo.findAdminByUserId(user.user_id));
+}
+
+export async function updateMe(userId : number , input : UpdateMeInput){
+    // null = ล้างรูป ไม่ต้องตรวจ · string = ต้องเป็น key ที่ user นี้อัปโหลดเองจริง ไม่งั้นใครก็ใส่ key ของคนอื่นมาได้ (FE-avatar-and-team-logo-uploads)
+    const previous = input.avatarUrl !== undefined ? await checkUser(userId) : null;
+    if(input.avatarUrl !== undefined && input.avatarUrl !== null){
+        await UploadService.validateAvatarKey(input.avatarUrl , userId);
+    }
+
+    await UserRepo.update(userId , input); //update users
+
+    // ลบรูปเก่าแบบ best-effort หลัง save สำเร็จเท่านั้น (มติข้อ 6) — ไม่ลบถ้าไม่ได้เปลี่ยนรูป หรือรูปเดิม/ใหม่เป็น key เดียวกัน
+    if(previous?.profile_image_key && previous.profile_image_key !== input.avatarUrl){
+        await UploadService.deleteObjectBestEffort(previous.profile_image_key);
+    }
+
+    const user = await checkUser(userId);
+    return toMeDto(user , await AdminRepo.findAdminByUserId(userId));
+}
+
+export async function getMyInvitation(userId : number){
+    const userInvitation = await UserRepo.getMyInvitation(userId);
+    return { items : userInvitation.map(toGetMyInvitation)};
+}
+
+// C2 — POST /users/:id/report — user ธรรมดายื่นคำร้องขอระงับ user/แอดมินคนอื่นได้ (ไม่ใช่แค่แอดมินสั่งระงับตรงๆ)
+export async function fileUserReport(reporterId : number , targetUserId : number , reason : string , evidence : string[]){
+    await checkUser(targetUserId);
+
+    if(targetUserId === reporterId){
+        throw new AppError(400 , "CANNOT_REPORT_SELF" , "ไม่สามารถแจ้งเรื่องเกี่ยวกับตัวเองได้");
+    }
+
+    // key ต้องเป็นของผู้แจ้งคนนี้เท่านั้น (กฎเดียวกับ dispute_evidence ใน matchResult/matchResultComplaint.service)
+    // ถ้าไม่ตรวจ ใครก็ยื่นคำร้องแนบ key ของคนอื่นได้ แล้วคิวแอดมินจะเซ็น presigned URL ให้ไฟล์นั้นออกมา
+    // ⇒ กลายเป็นช่องอ่านไฟล์ในถังผ่านคำร้องปลอม จึงต้องตรวจที่ขาเข้าคู่กับการเซ็นที่ขาออก
+    if(evidence.some(key => !key.startsWith(`report_evidence/${reporterId}/`))){
+        throw new AppError(400 , "VALIDATION_FAILED" , "ไฟล์หลักฐานไม่ใช่ไฟล์ที่คุณอัปโหลดไว้" ,
+            { fields : { evidence : 'ต้องเป็นไฟล์ที่อัปโหลดด้วย purpose report_evidence ของบัญชีคุณเอง' } });
+    }
+
+    /**
+     * 🔴 BE-38 (แก้ 7 ต.ค. 2569 · มติ ⑦ ค) — คนเดิมรายงานเป้าหมายเดิมซ้ำได้ 201 ทั้งสองครั้ง
+     *   ⇒ คิวแอดมินมีเรื่องเดียวกันหลายใบจากคนเดียวกัน และตัดสินใบหนึ่งแล้วอีกใบยังค้าง
+     * ★ ผูกกับ **คู่** (ผู้รายงาน, เป้าหมาย) — คนละคนรายงานคนเดียวกันยังได้ และควรได้
+     *   เพราะจำนวนผู้รายงานเป็นข้อมูลที่แอดมินใช้ตัดสิน
+     * ★ ตัดสินแล้ว (approved/rejected) รายงานใหม่ได้ — พฤติกรรมอาจเกิดซ้ำจริง
+     */
+    const pendingReport = await UserReportRepo.findPendingByPair(reporterId , targetUserId);
+    if(pendingReport){
+        throw new AppError(409 , "REPORT_ALREADY_PENDING" ,
+            "คุณรายงานผู้ใช้คนนี้ไว้แล้วและเรื่องยังรอแอดมินพิจารณา" ,
+            { reportId : pendingReport.user_report_id });
+    }
+
+    const reportId = await UserReportRepo.create(reporterId , targetUserId , reason , evidence);
+    const report = await UserReportRepo.findByIdJoined(reportId);
+    return toUserReportDto(report! , await UploadService.presignAll(report!.evidence));
+}
+

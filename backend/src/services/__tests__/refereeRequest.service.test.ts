@@ -1,0 +1,1080 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('../../repositories/refereeChangeRequest.repo.js', () => ({
+  create: vi.fn(),
+  findById: vi.fn(),
+  existsOpenFor: vi.fn(),
+  findListRowById: vi.fn(),
+  findByTournament: vi.fn(),
+  findPendingForUser: vi.fn(),
+  findCreatedByUser: vi.fn(),
+  answerSide: vi.fn(),
+  close: vi.fn(),
+  apply: vi.fn(),
+}));
+
+vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
+  findById: vi.fn(),
+}));
+
+vi.mock('../../repositories/matchReferee.repo.js', () => ({
+  findByTournamentReferees: vi.fn(),
+}));
+
+vi.mock('../../repositories/match.repo.js', () => ({
+  findById: vi.fn(),
+}));
+
+// 🆕 6 ต.ค. — revalidate() เช็คก่อนทุกอย่างว่าทัวร์ยังไม่จบ/ไม่ถูกลบ (มติ ฏ) และ FR09 ใช้หา ORG
+//   ไม่ mock ที่นี่ = เทสจะไปต่อฐานจริง แล้ว "ผ่าน" เฉพาะตอนที่เครื่องมี MySQL รันอยู่
+vi.mock('../../repositories/tournament.repo.js', () => ({
+  findTournamentById: vi.fn(),
+}));
+
+// FR09 — ด่าน "คนนี้เป็น ORG ของทัวร์นี้ไหม" อยู่ใน service ไม่ใช่ middleware (เส้น accept เป็นเส้นรวม)
+vi.mock('../../middlewares/requireOrganizer.js', () => ({
+  isOrganizerOf: vi.fn(),
+}));
+
+// referee.service.js is a sibling service refereeRequest.service.ts leans on for two
+// pure-ish helpers (assertSchedulable, isActiveReferee). Mocked wholesale so this suite
+// only exercises refereeRequest.service.ts's own orchestration/branching.
+vi.mock('../referee.service.js', () => ({
+  assertSchedulable: vi.fn(),
+  isActiveReferee: vi.fn(),
+  // 🆕 6 ต.ค. (ทางเลือก ก) — ด่านทับเวลาข้ามทัวร์ของฝั่งที่กำลังตอบรับ
+  assertNoCrossTournamentConflict: vi.fn(),
+  // createRefRequest หาแถวของตัวเองผ่านตัวนี้แล้ว ไม่ใช่ findLatest + isActiveReferee แยกสองก้อน (แก้ 1 ต.ค. 2569)
+  findActiveRefereeRow: vi.fn(),
+}));
+
+vi.mock('../../mappers/refereeRequest.mapper.js', () => ({
+  toRefereeRequestDto: vi.fn(),
+}));
+
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+}));
+
+import {
+  createRefRequest,
+  createRefWithdraw,
+  createOrgAddMatch,
+  createOrgSwap,
+  listMyRequests,
+  listTournamentRequests,
+  respondToRequest,
+  cancelRequest,
+} from '../refereeRequest.service.js';
+import * as ReqRepo from '../../repositories/refereeChangeRequest.repo.js';
+import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
+import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
+import * as MatchRepo from '../../repositories/match.repo.js';
+import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import { isOrganizerOf } from '../../middlewares/requireOrganizer.js';
+import { assertSchedulable, isActiveReferee, findActiveRefereeRow, assertNoCrossTournamentConflict } from '../referee.service.js';
+import { toRefereeRequestDto, type RefereeRequestDto } from '../../mappers/refereeRequest.mapper.js';
+import * as NotificationService from '../notification.service.js';
+
+const mockedReqRepo = vi.mocked(ReqRepo);
+const mockedRefRepo = vi.mocked(RefRepo);
+const mockedMatchRefRepo = vi.mocked(MatchRefRepo);
+const mockedMatchRepo = vi.mocked(MatchRepo);
+const mockedTournamentRepo = vi.mocked(TournamentRepo);
+const mockedIsOrganizerOf = vi.mocked(isOrganizerOf);
+const mockedAssertSchedulable = vi.mocked(assertSchedulable);
+const mockedIsActiveReferee = vi.mocked(isActiveReferee);
+const mockedFindActiveRefereeRow = vi.mocked(findActiveRefereeRow);
+const mockedCrossGuard = vi.mocked(assertNoCrossTournamentConflict);
+const mockedToDto = vi.mocked(toRefereeRequestDto);
+const mockedNotify = vi.mocked(NotificationService.notify);
+const mockedNotifyUsers = vi.mocked(NotificationService.notifyUsers);
+
+const HOUR = 3_600_000;
+const future = (ms: number) => new Date(Date.now() + ms);
+const past = (ms: number) => new Date(Date.now() - ms);
+
+function makeReferee(overrides: Record<string, unknown> = {}) {
+  return {
+    tournament_referee_id: 1,
+    tournament_id: 10,
+    user_id: 100,
+    removed_at: null,
+    ...overrides,
+  } as any;
+}
+
+function makeMatch(overrides: Record<string, unknown> = {}) {
+  return {
+    match_id: 1,
+    tournament_id: 10,
+    match_status: 'scheduled',
+    scheduled_time: future(HOUR),
+    scheduled_end_time: future(2 * HOUR),
+    ...overrides,
+  } as any;
+}
+
+/**
+ * DTO เต็มตัวสำหรับ mock ของ toRefereeRequestDto — ทับเฉพาะคีย์ที่เทสสนใจ
+ * ★ อยู่ในไฟล์นี้เพราะใช้ที่เดียว (ตาม rows.ts: ย้ายไปของกลางเมื่อ "พบว่าซ้ำจริง" เท่านั้น)
+ * ★ ชนิดเป็น RefereeRequestDto ⇒ วันที่ DTO เพิ่มฟิลด์ จะพังที่นี่ที่เดียว ไม่ใช่ทุกเทส
+ */
+function makeRequestDto(overrides: Partial<RefereeRequestDto> = {}): RefereeRequestDto {
+  return {
+    id: 500,
+    tournamentId: 10,
+    type: 'org_swap',
+    withdrawScope: null,
+    reason: null,
+    requestedBy: 999,
+    refereeA: {
+      tournamentRefereeId: 1,
+      user: { id: 100, fullName: 'กรรมการ A', avatarUrl: null },
+      status: 'pending',
+    },
+    refereeB: null,
+    matchA: null,
+    matchB: null,
+    status: 'open',
+    createdAt: '2026-10-01T00:00:00.000Z',
+    resolvedAt: null,
+    ...overrides,
+  };
+}
+
+function makeRequestRow(overrides: Record<string, unknown> = {}) {
+  return {
+    request_id: 500,
+    tournament_id: 10,
+    request_type: 'ref_transfer',
+    requested_by: 100,
+    referee_a_id: 1,
+    referee_b_id: 2,
+    match_a_id: 1,
+    match_b_id: null,
+    a_status: 'accepted',
+    b_status: 'pending',
+    request_status: 'open',
+    created_at: new Date(),
+    resolved_at: null,
+    ...overrides,
+  } as any;
+}
+
+/** Wires MatchRefRepo.findByTournamentReferees so acceptedMatchesOf(id) returns the given accepted match ids. */
+function mockAccepted(map: Record<number, number[]>) {
+  mockedMatchRefRepo.findByTournamentReferees.mockImplementation(async (ids: number[]) => {
+    const id = ids[0]!;
+    return (map[id] ?? []).map((matchId) => ({
+      tournament_referee_id: id,
+      match_id: matchId,
+      assignment_status: 'accepted',
+    })) as any;
+  });
+}
+
+/** Wires MatchRepo.findById to answer from a fixed set of matches, keyed by match_id. */
+function mockMatches(...matches: ReturnType<typeof makeMatch>[]) {
+  mockedMatchRepo.findById.mockImplementation(async (id: number) => matches.find((m) => m.match_id === id) ?? null);
+}
+
+/** Wires RefRepo.findById to answer from a fixed set of referees, keyed by tournament_referee_id. */
+function mockReferees(...referees: ReturnType<typeof makeReferee>[]) {
+  mockedRefRepo.findById.mockImplementation(async (id: number) =>
+    referees.find((r) => r.tournament_referee_id === id) ?? null,
+  );
+}
+
+beforeEach(() => {
+  // resetAllMocks (not clearAllMocks) — clearAllMocks only wipes call history and
+  // leaves queued mockResolvedValueOnce() values in place, which leaked between
+  // tests whenever a prior test threw before consuming a queued value.
+  vi.resetAllMocks();
+  // Sane happy-path defaults; individual tests override to force a branch.
+  mockedIsActiveReferee.mockReturnValue(true);
+  mockedAssertSchedulable.mockImplementation(() => {});
+  mockedCrossGuard.mockResolvedValue(undefined);
+  mockedReqRepo.existsOpenFor.mockResolvedValue(false);
+  mockedReqRepo.create.mockResolvedValue(500);
+  mockedReqRepo.findListRowById.mockResolvedValue({ request_id: 500 } as any);
+  mockedToDto.mockReturnValue(makeRequestDto());   // id 500 — ตรงกับ create/findListRowById ข้างบน
+  // ทัวร์ที่ยังเดินอยู่ = ค่าเริ่มต้นของเส้นปกติ (มติ ฏ — ทัวร์จบแล้วคำขอทุกชนิดไม่มีความหมาย)
+  mockedTournamentRepo.findTournamentById.mockResolvedValue({
+    tournament_id: 10, name: 'KU Cup', tournament_status: 'public',
+    deleted_at: null, requested_by_user_id: 900,
+  } as any);
+  mockedIsOrganizerOf.mockReturnValue(false);
+});
+
+// ───────────────────────────── createRefRequest (FR01) ─────────────────────────────
+
+describe('createRefRequest', () => {
+  const input = { myMatchId: 1, toTournamentRefereeId: 2 };
+
+  it('throws MATCH_NOT_FOUND when myMatchId does not exist', async () => {
+    mockedMatchRepo.findById.mockResolvedValue(null);
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' });
+    expect(mockedFindActiveRefereeRow).not.toHaveBeenCalled();
+  });
+
+  // ไม่มีแถวเลย · ถูกถอดไปแล้ว · ยังไม่ active — ทั้งสามรวมอยู่ใน findActiveRefereeRow ที่คืน null
+  it('throws NOT_TOURNAMENT_REFEREE when the caller has no usable referee row', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 403, code: 'NOT_TOURNAMENT_REFEREE' });
+  });
+
+  it('throws REFEREE_NOT_FOUND when the target referee is in a different tournament', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2, tournament_id: 999 }));
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 404, code: 'REFEREE_NOT_FOUND' });
+  });
+
+  it('throws REFEREE_NOT_ACTIVE when the target referee has not accepted / is not yet admin-approved', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    // เดิมต้องตอบ true ให้แถวของตัวเองก่อน แล้ว false ให้เป้าหมาย — ตอนนี้แถวของตัวเอง
+    // ไปอยู่ใน findActiveRefereeRow แล้ว isActiveReferee จึงถูกเรียกเฉพาะกับเป้าหมาย
+    mockedIsActiveReferee.mockReturnValueOnce(false);
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 409, code: 'REFEREE_NOT_ACTIVE' });
+  });
+
+  it('throws SAME_REFEREE when transferring/swapping with yourself', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 1 }));
+
+    await expect(createRefRequest(100, { ...input, toTournamentRefereeId: 1 })).rejects.toMatchObject({
+      status: 400,
+      code: 'SAME_REFEREE',
+    });
+  });
+
+  it('throws REFEREE_NOT_ASSIGNED when the caller is not currently assigned to their own match', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [] }); // caller has nothing accepted
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 409, code: 'REFEREE_NOT_ASSIGNED' });
+  });
+
+  it.each([
+    ['match_status is not scheduled', makeMatch({ match_status: 'in_progress' })],
+    ['scheduled_time is missing', makeMatch({ scheduled_time: null })],
+    ['scheduled_end_time is missing', makeMatch({ scheduled_end_time: null })],
+    ['the match already started', makeMatch({ scheduled_time: past(HOUR) })],
+  ])('throws MATCH_NOT_CHANGEABLE when %s', async (_label, myMatch) => {
+    mockMatches(myMatch);
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [1] });
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 409, code: 'MATCH_NOT_CHANGEABLE' });
+  });
+
+  it('throws SAME_MATCH when swapping a match with itself', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [1] });
+
+    await expect(createRefRequest(100, { ...input, theirMatchId: 1 })).rejects.toMatchObject({
+      status: 400,
+      code: 'SAME_MATCH',
+    });
+  });
+
+  it('throws MATCH_NOT_FOUND when theirMatchId is not in the same tournament', async () => {
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2, tournament_id: 999 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [1] });
+
+    await expect(createRefRequest(100, { ...input, theirMatchId: 2 })).rejects.toMatchObject({
+      status: 404,
+      code: 'MATCH_NOT_FOUND',
+    });
+  });
+
+  it('throws REFEREE_NOT_ASSIGNED when the other referee is not assigned to theirMatchId', async () => {
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [1], 2: [] }); // b has nothing accepted
+
+    await expect(createRefRequest(100, { ...input, theirMatchId: 2 })).rejects.toMatchObject({
+      status: 409,
+      code: 'REFEREE_NOT_ASSIGNED',
+    });
+  });
+
+  it('throws REQUEST_ALREADY_OPEN when a duplicate open request already exists', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [1] });
+    mockedReqRepo.existsOpenFor.mockResolvedValue(true);
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 409, code: 'REQUEST_ALREADY_OPEN' });
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('propagates a schedule-conflict AppError from assertSchedulable', async () => {
+    mockMatches(makeMatch());
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2 }));
+    mockAccepted({ 1: [1], 2: [] });
+    mockedAssertSchedulable.mockImplementationOnce(() => {
+      throw Object.assign(new Error('conflict'), { status: 409, code: 'REFEREE_TIME_CONFLICT' });
+    });
+
+    await expect(createRefRequest(100, input)).rejects.toMatchObject({ status: 409, code: 'REFEREE_TIME_CONFLICT' });
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a ref_transfer request (no theirMatchId) and notifies the target referee', async () => {
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockAccepted({ 1: [1] });
+
+    const result = await createRefRequest(100, input);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith({
+      tournamentId: 10,
+      type: 'ref_transfer',
+      requestedBy: 100,
+      refereeAId: 1,
+      refereeBId: 2,
+      matchAId: 1,
+      matchBId: null,
+      aStatus: 'accepted',
+      bStatus: 'pending',
+    });
+    expect(mockedNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 200, type: 'referee_change_request', relatedEntityId: 1 }),
+    );
+    expect(result).toEqual(makeRequestDto());
+  });
+
+  it('creates a ref_swap request (with theirMatchId) and checks conflicts for both sides', async () => {
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockReferees(makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockAccepted({ 1: [1], 2: [2] });
+
+    await createRefRequest(100, { ...input, theirMatchId: 2 });
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ref_swap', matchAId: 1, matchBId: 2 }),
+    );
+    // conflict check runs for both referees when swapping (unlike org_add_match's single check)
+    expect(mockedAssertSchedulable).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ───────────────────────────── createOrgAddMatch (FR02) ─────────────────────────────
+
+describe('createOrgAddMatch', () => {
+  const input = { tournamentRefereeId: 1, matchId: 1 };
+
+  it('throws REFEREE_ALREADY_ASSIGNED when the referee already has this match', async () => {
+    mockReferees(makeReferee({ tournament_referee_id: 1 }));
+    mockMatches(makeMatch());
+    mockAccepted({ 1: [1] });
+
+    await expect(createOrgAddMatch(10, 999, input)).rejects.toMatchObject({
+      status: 409,
+      code: 'REFEREE_ALREADY_ASSIGNED',
+    });
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('throws REQUEST_ALREADY_OPEN when a duplicate open request exists', async () => {
+    mockReferees(makeReferee({ tournament_referee_id: 1 }));
+    mockMatches(makeMatch());
+    mockAccepted({ 1: [] });
+    mockedReqRepo.existsOpenFor.mockResolvedValue(true);
+
+    await expect(createOrgAddMatch(10, 999, input)).rejects.toMatchObject({
+      status: 409,
+      code: 'REQUEST_ALREADY_OPEN',
+    });
+  });
+
+  it('creates an org_add_match request and notifies the referee', async () => {
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockMatches(makeMatch());
+    mockAccepted({ 1: [] });
+
+    const result = await createOrgAddMatch(10, 999, input);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith({
+      tournamentId: 10,
+      type: 'org_add_match',
+      requestedBy: 999,
+      refereeAId: 1,
+      refereeBId: null,
+      matchAId: 1,
+      matchBId: null,
+      aStatus: 'pending',
+      bStatus: 'not_required',
+    });
+    expect(mockedNotify).toHaveBeenCalledWith(expect.objectContaining({ userId: 100 }));
+    expect(result).toEqual(makeRequestDto());
+  });
+});
+
+// ───────────────────────────── createOrgSwap (FR03) ─────────────────────────────
+
+describe('createOrgSwap', () => {
+  const input = { refereeAId: 1, matchAId: 1, refereeBId: 2, matchBId: 2 };
+
+  it('throws SAME_REFEREE when refereeAId === refereeBId', async () => {
+    await expect(createOrgSwap(10, 999, { ...input, refereeBId: 1 })).rejects.toMatchObject({
+      status: 400,
+      code: 'SAME_REFEREE',
+    });
+    expect(mockedRefRepo.findById).not.toHaveBeenCalled();
+  });
+
+  it('throws SAME_MATCH when matchAId === matchBId', async () => {
+    await expect(createOrgSwap(10, 999, { ...input, matchBId: 1 })).rejects.toMatchObject({
+      status: 400,
+      code: 'SAME_MATCH',
+    });
+  });
+
+  it('throws REFEREE_NOT_ASSIGNED when referee A is not assigned to matchA', async () => {
+    mockReferees(makeReferee({ tournament_referee_id: 1 }), makeReferee({ tournament_referee_id: 2 }));
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
+    mockAccepted({ 1: [], 2: [2] });
+
+    await expect(createOrgSwap(10, 999, input)).rejects.toMatchObject({ status: 409, code: 'REFEREE_NOT_ASSIGNED' });
+  });
+
+  it('only checks for a duplicate open request against referee A / matchA (not B)', async () => {
+    mockReferees(makeReferee({ tournament_referee_id: 1 }), makeReferee({ tournament_referee_id: 2 }));
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
+    mockAccepted({ 1: [1], 2: [2] });
+
+    await createOrgSwap(10, 999, input);
+
+    expect(mockedReqRepo.existsOpenFor).toHaveBeenCalledTimes(1);
+    expect(mockedReqRepo.existsOpenFor).toHaveBeenCalledWith(1, 1);
+  });
+
+  it('creates an org_swap request and notifies both referees via notifyUsers', async () => {
+    mockReferees(
+      makeReferee({ tournament_referee_id: 1, user_id: 100 }),
+      makeReferee({ tournament_referee_id: 2, user_id: 200 }),
+    );
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
+    mockAccepted({ 1: [1], 2: [2] });
+
+    const result = await createOrgSwap(10, 999, input);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith({
+      tournamentId: 10,
+      type: 'org_swap',
+      requestedBy: 999,
+      refereeAId: 1,
+      refereeBId: 2,
+      matchAId: 1,
+      matchBId: 2,
+      aStatus: 'pending',
+      bStatus: 'pending',
+    });
+    expect(mockedNotifyUsers).toHaveBeenCalledWith([100, 200], expect.objectContaining({ type: 'referee_change_request' }));
+    expect(result).toEqual(makeRequestDto());
+  });
+});
+
+// ───────────────────────────── listMyRequests / listTournamentRequests ─────────────────────────────
+
+describe('listMyRequests', () => {
+  it('maps incoming and outgoing rows independently', async () => {
+    const incomingRow = makeRequestRow({ request_id: 1 });
+    const outgoingRow = makeRequestRow({ request_id: 2 });
+    mockedReqRepo.findPendingForUser.mockResolvedValue([incomingRow]);
+    mockedReqRepo.findCreatedByUser.mockResolvedValue([outgoingRow]);
+    mockedToDto.mockImplementation((r) => makeRequestDto({ id: r.request_id }));
+
+    const result = await listMyRequests(100);
+
+    expect(mockedReqRepo.findPendingForUser).toHaveBeenCalledWith(100);
+    expect(mockedReqRepo.findCreatedByUser).toHaveBeenCalledWith(100);
+    expect(result).toEqual({
+      incoming: [makeRequestDto({ id: 1 })],
+      outgoing: [makeRequestDto({ id: 2 })],
+    });
+  });
+
+  it('returns empty arrays when there is nothing pending or created', async () => {
+    mockedReqRepo.findPendingForUser.mockResolvedValue([]);
+    mockedReqRepo.findCreatedByUser.mockResolvedValue([]);
+
+    const result = await listMyRequests(100);
+
+    expect(result).toEqual({ incoming: [], outgoing: [] });
+  });
+});
+
+describe('listTournamentRequests', () => {
+  it('passes an undefined status through unchanged', async () => {
+    mockedReqRepo.findByTournament.mockResolvedValue([]);
+
+    await listTournamentRequests(10);
+
+    expect(mockedReqRepo.findByTournament).toHaveBeenCalledWith(10, undefined);
+  });
+
+  it('filters by status and maps the rows', async () => {
+    mockedReqRepo.findByTournament.mockResolvedValue([makeRequestRow()]);
+    mockedToDto.mockReturnValue(makeRequestDto());
+
+    const result = await listTournamentRequests(10, 'open');
+
+    expect(mockedReqRepo.findByTournament).toHaveBeenCalledWith(10, 'open');
+    expect(result).toEqual({ items: [makeRequestDto()] });
+  });
+});
+
+// ───────────────────────────── respondToRequest (FR06/FR07) ─────────────────────────────
+
+describe('respondToRequest', () => {
+  it('throws REQUEST_NOT_FOUND when the request does not exist', async () => {
+    mockedReqRepo.findById.mockResolvedValue(null);
+
+    await expect(respondToRequest(500, 100, 'accepted')).rejects.toMatchObject({
+      status: 404,
+      code: 'REQUEST_NOT_FOUND',
+    });
+  });
+
+  it('throws REQUEST_CLOSED when the request is no longer open', async () => {
+    mockedReqRepo.findById.mockResolvedValue(makeRequestRow({ request_status: 'applied' }));
+
+    await expect(respondToRequest(500, 100, 'accepted')).rejects.toMatchObject({
+      status: 409,
+      code: 'REQUEST_CLOSED',
+    });
+  });
+
+  it('throws NOT_YOUR_REQUEST when the user is neither side, or is a side that already answered', async () => {
+    mockedReqRepo.findById.mockResolvedValue(makeRequestRow({ a_status: 'accepted', b_status: 'pending' }));
+    mockReferees(
+      makeReferee({ tournament_referee_id: 1, user_id: 100 }), // side a, but already 'accepted' not 'pending'
+      makeReferee({ tournament_referee_id: 2, user_id: 200 }),
+    );
+
+    await expect(respondToRequest(500, 999, 'accepted')).rejects.toMatchObject({
+      status: 403,
+      code: 'NOT_YOUR_REQUEST',
+    });
+  });
+
+  it('throws REQUEST_CLOSED (via answerSide race) when the side was answered concurrently', async () => {
+    const req = makeRequestRow({ referee_b_id: 2, b_status: 'pending' });
+    mockedReqRepo.findById.mockResolvedValue(req);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }), makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockedReqRepo.answerSide.mockResolvedValue(false);
+
+    await expect(respondToRequest(500, 200, 'accepted')).rejects.toMatchObject({ status: 409, code: 'REQUEST_CLOSED' });
+  });
+
+  it('on decline: records the answer, closes the request, notifies the requester, and returns the dto', async () => {
+    const req = makeRequestRow({ referee_b_id: 2, b_status: 'pending', requested_by: 100, match_a_id: 1 });
+    mockedReqRepo.findById.mockResolvedValue(req);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }), makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedReqRepo.close.mockResolvedValue(true);
+
+    const result = await respondToRequest(500, 200, 'declined');
+
+    expect(mockedReqRepo.answerSide).toHaveBeenCalledWith(500, 'b', 'declined');
+    expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'declined');
+    expect(mockedNotify).toHaveBeenCalledWith(expect.objectContaining({ userId: 100, relatedEntityId: 1 }));
+    expect(mockedReqRepo.apply).not.toHaveBeenCalled();
+    expect(result).toEqual(makeRequestDto());
+  });
+
+  it('on accept when the other side is still pending: does not apply and does not send the "success" notification', async () => {
+    const req = makeRequestRow({ referee_b_id: 2, a_status: 'pending', b_status: 'pending' });
+    mockedReqRepo.findById
+      .mockResolvedValueOnce(req) // loadOpenRequest
+      .mockResolvedValueOnce({ ...req, a_status: 'accepted', b_status: 'pending' } as any); // fresh re-fetch
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }), makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+
+    await respondToRequest(500, 100, 'accepted');
+
+    expect(mockedReqRepo.apply).not.toHaveBeenCalled();
+    expect(mockedNotify).not.toHaveBeenCalled();
+  });
+
+  it('on accept when both sides are now done: applies the change and sends the referee_assigned notification', async () => {
+    const req = makeRequestRow({
+      request_type: 'ref_transfer',
+      referee_a_id: 1,
+      referee_b_id: 2,
+      match_a_id: 1,
+      match_b_id: null,
+      a_status: 'accepted',
+      b_status: 'pending',
+      requested_by: 100,
+    });
+    const freshReq = { ...req, b_status: 'accepted' };
+    mockedReqRepo.findById
+      .mockResolvedValueOnce(req) // loadOpenRequest
+      .mockResolvedValueOnce(freshReq as any); // fresh re-fetch for the all-done check
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }), makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    // revalidate() for a ref_transfer needs both referees + matchA loadable and unassigned-conflict-free:
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockAccepted({ 1: [1], 2: [] });
+    mockedReqRepo.apply.mockResolvedValue(true);
+
+    const result = await respondToRequest(500, 200, 'accepted');
+
+    expect(mockedReqRepo.apply).toHaveBeenCalledWith(freshReq);
+    expect(mockedReqRepo.close).not.toHaveBeenCalled(); // only called on the cancel path
+    expect(mockedNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 100, type: 'referee_assigned', relatedEntityId: 1 }),
+    );
+    expect(result).toEqual(makeRequestDto());
+  });
+
+  it('includes the second match in the success message for a swap-type request', async () => {
+    const req = makeRequestRow({
+      request_type: 'ref_swap',
+      referee_a_id: 1,
+      referee_b_id: 2,
+      match_a_id: 1,
+      match_b_id: 2,
+      a_status: 'accepted',
+      b_status: 'pending', // side b (user 200) is the one about to answer
+      requested_by: 100,
+    });
+    const freshReq = { ...req, b_status: 'accepted' };
+    mockedReqRepo.findById.mockResolvedValueOnce(req).mockResolvedValueOnce(freshReq);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }), makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockMatches(makeMatch({ match_id: 1 }), makeMatch({ match_id: 2 }));
+    mockAccepted({ 1: [1], 2: [2] });
+    mockedReqRepo.apply.mockResolvedValue(true);
+
+    await respondToRequest(500, 200, 'accepted');
+
+    expect(mockedNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('#1') }),
+    );
+    expect(mockedNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('#2') }),
+    );
+  });
+
+  it('cancels the request with REQUEST_NO_LONGER_VALID when revalidation fails (e.g. the referee is no longer active)', async () => {
+    const req = makeRequestRow({
+      request_type: 'ref_transfer',
+      referee_a_id: 1,
+      referee_b_id: 2,
+      match_a_id: 1,
+      a_status: 'accepted',
+      b_status: 'pending', // side b (user 200) is the one about to answer
+    });
+    const freshReq = { ...req, b_status: 'accepted' };
+    mockedReqRepo.findById.mockResolvedValueOnce(req).mockResolvedValueOnce(freshReq);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }), makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockMatches(makeMatch({ match_id: 1 }));
+    // referee A is no longer active by the time everyone has answered
+    mockedIsActiveReferee.mockReturnValue(false);
+    mockedReqRepo.close.mockResolvedValue(true);
+
+    await expect(respondToRequest(500, 200, 'accepted')).rejects.toMatchObject({
+      status: 409,
+      code: 'REQUEST_NO_LONGER_VALID',
+    });
+    expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'cancelled');
+    expect(mockedReqRepo.apply).not.toHaveBeenCalled();
+  });
+
+  it('cancels the request with REQUEST_NO_LONGER_VALID when apply() reports the underlying data changed', async () => {
+    const req = makeRequestRow({
+      request_type: 'org_add_match',
+      referee_a_id: 1,
+      referee_b_id: null,
+      match_a_id: 1,
+      a_status: 'pending', // side a (user 100) is the one about to answer
+      b_status: 'not_required',
+    });
+    const freshReq = { ...req, a_status: 'accepted' };
+    mockedReqRepo.findById.mockResolvedValueOnce(req).mockResolvedValueOnce(freshReq);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockAccepted({ 1: [] });
+    mockedReqRepo.apply.mockResolvedValue(false); // DB state moved on since the request was created
+    mockedReqRepo.close.mockResolvedValue(true);
+
+    await expect(respondToRequest(500, 100, 'accepted')).rejects.toMatchObject({
+      status: 409,
+      code: 'REQUEST_NO_LONGER_VALID',
+    });
+    expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'cancelled');
+  });
+
+  it('lets a non-AppError from apply()/revalidate() propagate untouched, without closing the request', async () => {
+    const req = makeRequestRow({
+      request_type: 'org_add_match',
+      referee_a_id: 1,
+      referee_b_id: null,
+      match_a_id: 1,
+      a_status: 'pending', // side a (user 100) is the one about to answer
+      b_status: 'not_required',
+    });
+    const freshReq = { ...req, a_status: 'accepted' };
+    mockedReqRepo.findById.mockResolvedValueOnce(req).mockResolvedValueOnce(freshReq);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }));
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockAccepted({ 1: [] });
+    const dbError = new Error('connection lost');
+    mockedReqRepo.apply.mockRejectedValue(dbError);
+
+    await expect(respondToRequest(500, 100, 'accepted')).rejects.toBe(dbError);
+    expect(mockedReqRepo.close).not.toHaveBeenCalled();
+  });
+});
+
+// ───────────────────────────── cancelRequest (FR08) ─────────────────────────────
+
+describe('cancelRequest', () => {
+  it('throws REQUEST_NOT_FOUND when the request does not exist', async () => {
+    mockedReqRepo.findById.mockResolvedValue(null);
+
+    await expect(cancelRequest(500, 100)).rejects.toMatchObject({ status: 404, code: 'REQUEST_NOT_FOUND' });
+  });
+
+  it('throws REQUEST_CLOSED when the request is not open', async () => {
+    mockedReqRepo.findById.mockResolvedValue(makeRequestRow({ request_status: 'cancelled' }));
+
+    await expect(cancelRequest(500, 100)).rejects.toMatchObject({ status: 409, code: 'REQUEST_CLOSED' });
+  });
+
+  it('throws NOT_YOUR_REQUEST when the caller did not create the request', async () => {
+    mockedReqRepo.findById.mockResolvedValue(makeRequestRow({ requested_by: 100 }));
+
+    await expect(cancelRequest(500, 999)).rejects.toMatchObject({ status: 403, code: 'NOT_YOUR_REQUEST' });
+    expect(mockedReqRepo.close).not.toHaveBeenCalled();
+  });
+
+  it('closes the request as cancelled and returns nothing when the caller owns it', async () => {
+    mockedReqRepo.findById.mockResolvedValue(makeRequestRow({ requested_by: 100 }));
+    mockedReqRepo.close.mockResolvedValue(true);
+
+    const result = await cancelRequest(500, 100);
+
+    expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'cancelled');
+    expect(result).toBeUndefined();
+  });
+});
+
+// ───────────────────────────── createRefWithdraw (FR09) ─────────────────────────────
+
+/**
+ * FR09 (มติ 6 ต.ค. 2569) — กรรมการขอถอนตัว **ORG อนุมัติ**
+ *
+ * ช่องว่างที่ปิด: เดิมกรรมการที่ตอบรับไปแล้วออกได้ทางเดียวคือ ref_transfer/ref_swap
+ * ซึ่งต้องมีคนมารับช่วงและกดรับ ⇒ ทัวร์ที่ไม่มีคนอื่น = ไม่มีทางออก
+ * และถ้าถูกเชิญแบบ pool (ยังไม่มีแมตช์) ก็ไม่มีใบให้ยื่นด้วยซ้ำ
+ */
+describe('createRefWithdraw (FR09)', () => {
+  const matchInput = { scope: 'match' as const, matchId: 1, reason: 'ติดทัวร์อื่นเวลาทับกัน' };
+  const tourInput = { scope: 'tournament' as const, tournamentId: 10, reason: 'ป่วย ไปไม่ได้ทั้งทัวร์' };
+
+  it('ขอบเขต match — เขียนใบด้วย scope match · match_a_id ของแมตช์นั้น · เหตุผลที่ส่งมา', async () => {
+    mockMatches(makeMatch({ match_id: 1, tournament_id: 10 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedMatchRefRepo.findByTournamentReferees.mockResolvedValue([
+      { match_id: 1, assignment_status: 'accepted', scheduled_time: future(HOUR), scheduled_end_time: future(2 * HOUR) },
+    ] as any);
+
+    await createRefWithdraw(100, matchInput);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'ref_withdraw', withdrawScope: 'match', matchAId: 1, matchBId: null,
+      refereeBId: null, aStatus: 'accepted', bStatus: 'pending',
+      reason: 'ติดทัวร์อื่นเวลาทับกัน',
+    }));
+  });
+
+  /**
+   * ★ เคสที่เป็นเหตุผลหลักของขอบเขต 'tournament': ถูกเชิญแบบ pool ยังไม่มีแมตช์เลย
+   *   ⇒ ไม่มี matchId ให้อ้าง ⇒ ถ้ามีแต่ขอบเขตแมตช์ คนนี้จะออกไม่ได้ตลอดไป
+   */
+  it('ขอบเขต tournament — ไม่ต้องมีแมตช์เลยก็ยื่นได้ และ match_a_id เป็น null', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+
+    await createRefWithdraw(100, tourInput);
+
+    expect(mockedReqRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'ref_withdraw', withdrawScope: 'tournament', matchAId: null,
+    }));
+    // ไม่แตะแมตช์เลย — ไม่อ่าน ไม่ตรวจเวลา
+    expect(mockedMatchRepo.findById).not.toHaveBeenCalled();
+  });
+
+  it('ไม่ใช่กรรมการ active ของทัวร์นี้ ⇒ 403 NOT_TOURNAMENT_REFEREE', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(null);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 403, code: 'NOT_TOURNAMENT_REFEREE' });
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('ขอออกจากแมตช์ที่ตัวเองไม่ได้รับไว้ ⇒ 409 REFEREE_NOT_ASSIGNED', async () => {
+    mockMatches(makeMatch({ match_id: 1, tournament_id: 10 }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedMatchRefRepo.findByTournamentReferees.mockResolvedValue([]);
+
+    await expect(createRefWithdraw(100, matchInput))
+      .rejects.toMatchObject({ status: 409, code: 'REFEREE_NOT_ASSIGNED' });
+  });
+
+  /** กฎเดียวกับ ref_transfer — ถึงเวลาแข่งแล้วเปลี่ยนกรรมการไม่ได้ ไม่ตั้งเกณฑ์ใหม่ */
+  it('แมตช์ถึงเวลาแข่งแล้ว ⇒ 409 MATCH_NOT_CHANGEABLE', async () => {
+    mockMatches(makeMatch({ match_id: 1, tournament_id: 10, scheduled_time: past(HOUR) }));
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedMatchRefRepo.findByTournamentReferees.mockResolvedValue([
+      { match_id: 1, assignment_status: 'accepted', scheduled_time: past(HOUR), scheduled_end_time: future(HOUR) },
+    ] as any);
+
+    await expect(createRefWithdraw(100, matchInput))
+      .rejects.toMatchObject({ status: 409, code: 'MATCH_NOT_CHANGEABLE' });
+  });
+
+  /** มติ ฏ — ทัวร์จบแล้ว คำขอไม่มีความหมาย · ด่านนี้มาก่อนทุกอย่าง */
+  it('ทัวร์จบแล้ว ⇒ 409 TOURNAMENT_COMPLETED และไม่แตะอะไรต่อ', async () => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue({
+      tournament_id: 10, tournament_status: 'completed', deleted_at: null, requested_by_user_id: 900,
+    } as any);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_COMPLETED' });
+    expect(mockedFindActiveRefereeRow).not.toHaveBeenCalled();
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('มีใบที่ยังรอผู้จัดตอบอยู่แล้ว ⇒ 409 REQUEST_ALREADY_OPEN', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+    mockedReqRepo.existsOpenFor.mockResolvedValue(true);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 409, code: 'REQUEST_ALREADY_OPEN' });
+  });
+
+  /**
+   * 🔴 ด่านกันส่งซ้ำของใบระดับทัวร์ต้องถาม repo ด้วย matchAId = null
+   *   ถ้าส่งเลขแมตช์มั่ว ๆ ไป หรือ repo เทียบด้วย `match_a_id = NULL` (ซึ่งไม่เคยจริงใน SQL)
+   *   ด่านจะปล่อยผ่านทุกครั้งอย่างเงียบ ๆ แล้วกรรมการยื่นซ้ำได้ไม่จำกัด
+   */
+  it('ด่านกันส่งซ้ำของใบระดับทัวร์ ต้องถามด้วย matchAId = null', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+
+    await createRefWithdraw(100, tourInput);
+
+    expect(mockedReqRepo.existsOpenFor).toHaveBeenCalledWith(null, 1);
+  });
+
+  it('แจ้งเตือนไปที่ผู้จัด ไม่ใช่กรรมการอีกคน และมีเหตุผลอยู่ในข้อความ', async () => {
+    mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
+
+    await createRefWithdraw(100, tourInput);
+
+    expect(mockedNotify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 900,                       // requested_by_user_id ของทัวร์ = ORG
+      message: expect.stringContaining('ป่วย ไปไม่ได้ทั้งทัวร์'),
+    }));
+  });
+});
+
+// ───────────────────────────── FR09 · ด่านฝั่งผู้ตอบ ─────────────────────────────
+
+describe('respondToRequest — ref_withdraw (FR09)', () => {
+  const withdrawRow = (over: Record<string, unknown> = {}) => ({
+    request_id: 500, tournament_id: 10, request_type: 'ref_withdraw', withdraw_scope: 'tournament',
+    requested_by: 100, referee_a_id: 1, referee_b_id: null,
+    match_a_id: null, match_b_id: null,
+    a_status: 'accepted', b_status: 'pending', request_status: 'open',
+    request_reason: 'ป่วย', ...over,
+  } as any);
+
+  /**
+   * ★ ชนิดนี้เป็นชนิดเดียวที่ผู้ตอบไม่ใช่กรรมการ ⇒ sideOf มีสาขาแยก
+   *   ถ้าสาขานั้นหาย กรรมการคนอื่นจะตอบใบถอนตัวของเพื่อนได้ ซึ่งไม่ควรเกิดเลย
+   */
+  it('คนที่ไม่ใช่ผู้จัด ตอบใบถอนตัวไม่ได้ ⇒ 403', async () => {
+    mockedReqRepo.findById.mockResolvedValue(withdrawRow());
+    mockedIsOrganizerOf.mockReturnValue(false);
+
+    await expect(respondToRequest(500, 777, 'accepted'))
+      .rejects.toMatchObject({ status: 403, code: 'NOT_YOUR_REQUEST' });
+    expect(mockedReqRepo.answerSide).not.toHaveBeenCalled();
+  });
+
+  it('ผู้จัดตอบได้ และคำตอบถูกบันทึกลงฝั่ง b', async () => {
+    mockedReqRepo.findById.mockResolvedValue(withdrawRow());
+    mockedIsOrganizerOf.mockReturnValue(true);
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedReqRepo.close.mockResolvedValue(true);
+
+    await respondToRequest(500, 900, 'declined');
+
+    expect(mockedReqRepo.answerSide).toHaveBeenCalledWith(500, 'b', 'declined');
+    expect(mockedReqRepo.close).toHaveBeenCalledWith(500, 'declined');
+  });
+
+  it('ผู้จัดอนุมัติ ⇒ apply() ถูกเรียกด้วยใบนั้น', async () => {
+    mockedReqRepo.findById
+      .mockResolvedValueOnce(withdrawRow())
+      .mockResolvedValueOnce(withdrawRow({ b_status: 'accepted' }));
+    mockedIsOrganizerOf.mockReturnValue(true);
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedRefRepo.findById.mockResolvedValue(makeReferee());
+    mockedReqRepo.apply.mockResolvedValue(true);
+
+    await respondToRequest(500, 900, 'accepted');
+
+    expect(mockedReqRepo.apply).toHaveBeenCalledWith(expect.objectContaining({
+      request_type: 'ref_withdraw', withdraw_scope: 'tournament',
+    }));
+  });
+
+  /** ขอบเขตทัวร์ไม่ได้อ้างแมตช์ ⇒ revalidate ต้องไม่ไปอ่านแมตช์ (จะได้ 404 เพราะ match_a_id เป็น null) */
+  it('ขอบเขตทัวร์ — revalidate ไม่แตะแมตช์เลย', async () => {
+    mockedReqRepo.findById
+      .mockResolvedValueOnce(withdrawRow())
+      .mockResolvedValueOnce(withdrawRow({ b_status: 'accepted' }));
+    mockedIsOrganizerOf.mockReturnValue(true);
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedRefRepo.findById.mockResolvedValue(makeReferee());
+    mockedReqRepo.apply.mockResolvedValue(true);
+
+    await respondToRequest(500, 900, 'accepted');
+
+    expect(mockedMatchRepo.findById).not.toHaveBeenCalled();
+  });
+});
+
+// ───────── ด่านทับเวลาข้ามทัวร์ ตอนตอบคำขอ (ทางเลือก ก · 6 ต.ค. 2569) ─────────
+
+/**
+ * 🔴 เทสชุดนี้คุม "สายไฟ" ไม่ใช่ตัวด่าน (ตัวด่านมีเทสของตัวเองใน referee.service.test)
+ *   เขียนเพราะลอง mutation แล้วพบว่าถอดบรรทัดที่เรียกด่านออกจาก respondToRequest
+ *   เทสทั้งหมดยังเขียว = ด่านถูกทดสอบแต่ไม่มีอะไรยืนยันว่าถูกเรียก
+ *
+ * ★ ตรวจตอน "ตอบ" และตรวจ **เฉพาะฝั่งที่กำลังตอบ** โดยเจตนา
+ *   ถ้าไปตรวจตอนสร้าง ฝั่งที่ได้ error คือคนขอ ⇒ กลายเป็นการบอกคนขอว่าอีกฝ่าย
+ *   มีงานทับในทัวร์อื่น = เปิดตารางงานของคนอื่นให้เห็น
+ */
+describe('respondToRequest — ด่านข้ามทัวร์ (ทางเลือก ก)', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    request_id: 500, tournament_id: 10, withdraw_scope: null, requested_by: 999,
+    referee_a_id: 1, referee_b_id: 2, match_a_id: 1, match_b_id: null,
+    a_status: 'accepted', b_status: 'pending', request_status: 'open', request_reason: null,
+    ...over,
+  } as any);
+
+  beforeEach(() => {
+    mockedReqRepo.answerSide.mockResolvedValue(true);
+    mockedReqRepo.close.mockResolvedValue(true);
+    mockReferees(makeReferee({ tournament_referee_id: 1, user_id: 100 }),
+                 makeReferee({ tournament_referee_id: 2, user_id: 200 }));
+  });
+
+  it('ref_transfer — B ที่กดรับ ถูกตรวจด้วยแมตช์ A ที่เขาจะได้มา', async () => {
+    const matchA = makeMatch({ match_id: 1 });
+    mockMatches(matchA);
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_transfer' }));
+
+    await respondToRequest(500, 200, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(200, [matchA], []);
+  });
+
+  it('org_add_match — A ที่กดรับ ถูกตรวจด้วยแมตช์ที่ ORG ขอให้รับเพิ่ม', async () => {
+    const matchA = makeMatch({ match_id: 1 });
+    mockMatches(matchA);
+    mockedReqRepo.findById.mockResolvedValue(row({
+      request_type: 'org_add_match', a_status: 'pending', b_status: 'not_required', referee_b_id: null,
+    }));
+
+    await respondToRequest(500, 100, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(100, [matchA], []);
+  });
+
+  /** แลกแมตช์: B ได้ A และปล่อย B ⇒ แมตช์ที่ปล่อยต้องอยู่ใน exclude ไม่ใช่กันตัวเอง */
+  it('ref_swap — B ได้แมตช์ A และปล่อยแมตช์ B ⇒ ส่ง lose ไปด้วย', async () => {
+    const matchA = makeMatch({ match_id: 1 });
+    const matchB = makeMatch({ match_id: 2 });
+    mockMatches(matchA, matchB);
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_swap', match_b_id: 2 }));
+
+    await respondToRequest(500, 200, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(200, [matchA], [2]);
+  });
+
+  /** ถอนตัวไม่มีใครได้งานเพิ่ม (และผู้ตอบคือ ORG ไม่ใช่กรรมการ) ⇒ ไม่มีอะไรให้ตรวจ */
+  it('ref_withdraw — ไม่มีงานเพิ่ม ⇒ ด่านถูกเรียกด้วยรายการว่าง', async () => {
+    mockedReqRepo.findById.mockResolvedValue(row({
+      request_type: 'ref_withdraw', withdraw_scope: 'tournament',
+      referee_b_id: null, match_a_id: null,
+    }));
+    mockedIsOrganizerOf.mockReturnValue(true);
+
+    await respondToRequest(500, 900, 'accepted');
+
+    expect(mockedCrossGuard).toHaveBeenCalledWith(900, [], []);
+  });
+
+  /** 🔴 ด่านต้องมาก่อนการเขียน — ไม่ใช่ตรวจแล้วค่อยพบว่าเขียนไปแล้ว */
+  it('ด่านไม่ผ่าน ⇒ ไม่บันทึกคำตอบลงฐานเลย', async () => {
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_transfer' }));
+    mockedCrossGuard.mockRejectedValueOnce(
+      new AppErrorLike(409, 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT'));
+
+    await expect(respondToRequest(500, 200, 'accepted'))
+      .rejects.toMatchObject({ code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT' });
+    expect(mockedReqRepo.answerSide).not.toHaveBeenCalled();
+    expect(mockedReqRepo.apply).not.toHaveBeenCalled();
+  });
+
+  /** ปฏิเสธไม่ได้ทำให้ใครได้งานเพิ่ม ⇒ ไม่ต้องเสียเวลาอ่านตารางของใคร */
+  it('กดปฏิเสธ ⇒ ไม่เรียกด่านเลย', async () => {
+    mockMatches(makeMatch({ match_id: 1 }));
+    mockedReqRepo.findById.mockResolvedValue(row({ request_type: 'ref_transfer' }));
+
+    await respondToRequest(500, 200, 'declined');
+
+    expect(mockedCrossGuard).not.toHaveBeenCalled();
+  });
+});
+
+/** AppError ตัวจริงถูก mock ไม่ได้ในไฟล์นี้ — ใช้รูปร่างเดียวกันพอ (service แค่โยนต่อ) */
+class AppErrorLike extends Error {
+  constructor(public status: number, public code: string) { super(code); }
+}

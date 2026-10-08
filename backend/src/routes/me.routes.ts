@@ -1,0 +1,23 @@
+import express from 'express';
+import { requireAuth } from '../middlewares/requireAuth.js';
+import { getMe , patchMe , getMyInvitation, getMyFollowing } from '../controllers/user.controller.js';
+import * as TournamentController from '../controllers/tournament.controller.js';
+import { validate } from '../middlewares/validate.js';
+import { updateMeSchema } from '../schemas/user.schema.js';
+import * as TeamController from '../controllers/team.controller.js';
+
+const router = express.Router();
+
+router.get('/' , requireAuth , getMe)
+router.patch('/' , requireAuth , validate(updateMeSchema) , patchMe);
+router.get('/teams' , requireAuth , TeamController.getMyTeam);
+// T24/T25 — คำขอเข้าร่วมทีมที่ฉันส่ง / ยกเลิก
+router.get('/join-requests' , requireAuth , TeamController.listMyJoinRequests);
+router.delete('/join-requests/:rid' , requireAuth , TeamController.cancelJoinRequest);
+
+router.get('/invitations' , requireAuth , getMyInvitation);
+router.get('/following', requireAuth, getMyFollowing);
+router.get('/tournament-requests', requireAuth, TournamentController.getMyTournamentRequests);
+// FE-get-me-tournaments-full (20 ก.ย.) — การ์ดเต็มทุกสถานะ ?status=&page=
+router.get('/tournaments', requireAuth, TournamentController.getMyTournaments);
+export default router;

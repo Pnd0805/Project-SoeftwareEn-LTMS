@@ -1,0 +1,444 @@
+import type { SuspensionCategory } from '../utils/suspension.js';
+
+export type UserRow = {
+    user_id : number,
+    full_name : string,
+    email : string,
+    password_hash : string,
+    gender : 'male' | 'female' | 'other',
+    birth_date : string,
+    user_type : 'student' | 'staff' | 'external',
+    faculty_id : number | null,
+    department_id : number | null,
+    year : number | null,
+    profile_image_key : string | null,
+    contact_info : string | null,
+    address : string | null,
+    is_suspended : number,
+    suspended_reason : string | null,
+    suspended_category : SuspensionCategory | null,   // ประเภทที่ส่งให้เจ้าตัวเห็น (suspended_reason เป็นบันทึกภายใน ไม่ส่งออก)
+    suspended_until : Date | null,   // NULL = ถาวร · ดู utils/suspension.ts ห้ามอ่าน is_suspended ลอยๆ
+    total_points : number,
+    notification_prefs :  Record<string, boolean> | null,
+    email_verified : number,          // OD-53 · 1 = ยืนยันอีเมลแล้ว · ยังไม่คุมสิทธิ์อะไร (ไม่มี middleware ไหนอ่าน)
+    token_version : number,           // B1 (migration 046) · บัตรที่พกเลขรุ่นไม่ตรงกับค่านี้ใช้ไม่ได้ — เปลี่ยนรหัสผ่าน = บวก 1
+    show_profile_stats : number,      // OD-46 · 1 = เปิด (ค่าเริ่มต้น) · คุม stats/match-history/career ของหน้าโปรไฟล์เท่านั้น
+    profile_edit_log : unknown,
+    created_at : Date,
+    updated_at : Date | null,
+}
+
+export type FacultyRow = {   //format ที่จะรับมาจาก mysql2
+    faculty_id : number,
+    name : string
+}
+
+export type DepartmentRow = {
+    department_id : number,
+    faculty_id : number,
+    name : string
+}
+
+export type SportTypeRow = {
+    sport_type_id : number,
+    name : string,
+    min_members : number,
+    max_members : number,
+    default_mode : 'onsite' | 'online',
+    // migration 047 · 1 = กีฬานี้แข่งเป็นรอบ (BO-N) ⇒ ตั้ง best_of ได้ · 0 = นับแต้มในเกมเดียว
+    supports_best_of : number,
+    walkover_score : { winner : number, loser : number } | null ,  // สกอร์ชนะบาย (migration 011)
+    // OD-56 (migration 040) · เส้นสองเส้นของชั้นแต้ม Pick'em ของกีฬานี้
+    // ความหมาย = ความคลาดที่ยอมได้ **ต่อฝั่ง** (ไม่ใช่ผลรวมสองฝั่ง) · ฐานบังคับ close >= exact
+    pickem_tolerance_exact : number,
+    pickem_tolerance_close : number
+}
+
+export type SportStatDefinitionRow = {
+    sport_stat_definition_id : number,
+    sport_type_id : number,
+    stat_key : string,
+    stat_label_th : string,
+    data_type : 'integer'   // decimal/boolean ถอดออก 20 ก.ย. (migration 020, OD-18),
+    display_order : number
+}
+
+export type TeamRow = {
+    team_id : number,
+    name : string,
+    logo_key : string | null,   // migration 031
+    sport_type_id : number,
+    leader_id : number,
+    readiness_status : 'Forming' | 'Ready',
+    official_status : 'Unofficial' | 'Official',
+    visibility : 'private' | 'public',   // migration 017 — public = ขอเข้าร่วมได้
+    created_at : Date,
+    updated_at : Date | null,
+    last_competed_at : Date | null,
+    deleted_at : Date | null,
+    deleted_reason : 'no_registration' | 'leader_deleted' | 'inactive_6_months' | null
+}
+
+export type TeamJoinRequestRow = {
+    team_join_request_id : number,
+    team_id : number,
+    user_id : number,
+    message : string | null,
+    team_join_request_status : 'pending' | 'approved' | 'rejected' | 'cancelled',
+    reject_reason : string | null,
+    created_at : Date,
+    responded_at : Date | null,
+    responded_by : number | null
+}
+
+export type TournamentRow = {
+    tournament_id : number,
+    name : string,
+    description : string | null,
+    entry_notes : string | null,
+    sport_type_id : number,
+    bracket_format : 'single_elimination' | 'double_elimination' | 'round_robin' | null,
+    // 🆕 BO-N (migration 044) · ค่าตั้งต้นของทัวร์ที่ผู้จัดตั้ง — stamp ลง matches ตอนสร้างสาย
+    // null = กีฬานี้ไม่ได้แข่งเป็นรอบ (ฟุตบอล/บาสเกตบอล) ไม่ใช่ "ยังไม่ตั้ง"
+    // 🔴 แหล่งความจริงของการตรวจสกอร์/คิดแต้มคือ matches.best_of ไม่ใช่ตัวนี้
+    best_of : number | null,
+    scope_type : 'department' | 'faculty' | 'university',
+    organizing_faculty_id : number | null,
+    organizing_department_id : number | null,
+    requested_by_user_id : number,
+    organizer_external_approval_status : 'not_required' | 'pending' | 'approved' | 'rejected',
+    organizer_external_reviewed_by : number | null,
+    organizer_external_reviewed_at : Date | null,
+    organizer_external_rejection_reason : string | null,
+    organizer_external_verification_docs : unknown,
+    tournament_status : 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted',
+    registration_open : number,
+    registration_start : Date | null,
+    registration_end : Date | null,
+    event_start_date : string,
+    event_end_date : string | null,
+    max_teams : number,
+    min_teams : number,
+    venue : string | null,
+    dispute_window_hours : number,
+    gender_requirement : 'any' | 'male' | 'female',
+    min_age : number | null,
+    max_age : number | null,
+    rejection_reason : string | null,
+    approved_by : number | null,
+    approved_at : Date | null,
+    champion_team_id : number | null,   // B1 (migration 022)
+    completed_at : Date | null,
+    completed_by : number | null,
+    created_at : Date,
+    updated_at : Date | null,
+    updated_by : number | null,
+    deleted_at : Date | null,
+    deleted_by : number | null,
+}
+
+export type PlayerProfileStatRow = {
+    player_profile_stat_id : number,
+    user_id : number,
+    sport_type_id : number,
+    matches_played : number,
+    wins : number,
+    losses : number,
+    championships : number,
+    updated_at : Date
+}
+
+export type TournamentRefereeRow = {
+    tournament_referee_id : number,
+    tournament_id : number,
+    user_id : number,
+    invited_by : number,
+    invitation_status : 'pending' | 'accepted' | 'rejected',
+    is_external : number,                   
+    external_approval_status : 'not_required' | 'pending' | 'needs_docs' | 'approved' | 'rejected',
+    external_verification_docs : string[] | null,   // JSON array ของ S3 key
+    approved_by : number | null,
+    approved_at : Date | null,
+    external_rejection_reason : string | null,
+    created_at : Date,
+    /** BE-13 (migration 050) — คำเชิญหมดอายุเมื่อไหร่ · มีความหมายเฉพาะแถวที่ยัง pending */
+    expires_at : Date | null,
+    removed_at : Date | null,
+    removed_by : number | null
+}
+
+export type MatchRefereeRow = {
+    match_referee_id : number,
+    match_id : number,
+    tournament_referee_id : number,
+    assignment_status : 'pending' | 'accepted' | 'declined',
+    responded_at : Date | null,
+    created_at : Date
+}
+
+
+/**
+ * ★ 'ref_withdraw' (FR09 · migration 045 · 6 ต.ค. 2569) — กรรมการขอถอนตัว **ORG เป็นคนอนุมัติ**
+ *   ต่างจากอีกสี่ชนิดที่ปลายทางเป็นกรรมการอีกคน ⇒ ด่านตอบอยู่ที่ ORG ไม่ใช่ referee_b
+ *   ดู refereeRequest.service sideOf() ที่แยกสาขานี้ไว้
+ */
+export type RefereeRequestType = 'org_add_match' | 'ref_transfer' | 'ref_swap' | 'org_swap' | 'ref_withdraw';
+export type RefereeRequestSideStatus = 'not_required' | 'pending' | 'accepted' | 'declined';
+
+export type RefereeChangeRequestRow = {
+    request_id : number,
+    tournament_id : number,
+    request_type : RefereeRequestType,
+    /** มีค่าเฉพาะ `ref_withdraw` — 'match' = ออกจากแมตช์เดียว · 'tournament' = ออกทั้งทัวร์ */
+    withdraw_scope : 'match' | 'tournament' | null,
+    requested_by : number,
+    referee_a_id : number,
+    referee_b_id : number | null,
+    /**
+     * 🔴 NULL ได้ตั้งแต่ migration 045 — **เฉพาะ** `ref_withdraw` ขอบเขต 'tournament'
+     *   ซึ่งไม่ได้อ้างแมตช์ไหน · สี่ชนิดเดิมยังต้องมีค่าเสมอ และฐานบังคับด้วย
+     *   CHECK `chk_rcr_withdraw_shape` ⇒ อย่าเขียนโค้ดที่ปล่อย NULL ให้ชนิดอื่น
+     */
+    match_a_id : number | null,
+    match_b_id : number | null,
+    a_status : RefereeRequestSideStatus,
+    b_status : RefereeRequestSideStatus,
+    /** เหตุผล — บังคับสำหรับ `ref_withdraw` (ด่านอยู่ที่แอป) · NULL สำหรับสี่ชนิดเดิม */
+    request_reason : string | null,
+    request_status : 'open' | 'applied' | 'declined' | 'cancelled',
+    created_at : Date,
+    resolved_at : Date | null
+}
+
+export type MatchRow = {
+    match_id : number,
+    tournament_id : number,
+    bracket_node_id : number | null,
+    next_match_id : number | null,
+    loser_next_match_id : number | null,
+    round_number : number | null,
+    // 🆕 BO-N (migration 044) · รูปแบบที่ใช้จริงของแมตช์นี้ — ★ แหล่งความจริงของการตรวจสกอร์
+    // รอบแบ่งกลุ่มกับรอบชิงไม่จำเป็นต้องเหมือนกัน จึงเก็บต่อแมตช์ ไม่ใช่ต่อทัวร์
+    best_of : number | null,
+    team_a_id : number | null,
+    team_b_id : number | null,
+    scheduled_time : Date | null,
+    scheduled_end_time : Date | null,    
+    venue : string | null,
+    checkin_open_at : Date | null,
+    started_at : Date | null,          // เวลาเริ่มแข่งจริง (migration 026)
+    actual_end_time : Date | null,     // เวลาจบแข่งจริง — ฐานของนาฬิกาทุกกฎที่นับหลังแมตช์จบ
+    match_status : 'scheduled' | 'checkin_open' | 'in_progress' | 'finished' | 'completed' | 'disputed' | 'result_rejected',
+    mode : 'onsite' | 'online',
+    livestream_url : string | null,
+    room_code : string | null,          // แมตช์ online (migration 016)
+    created_at : Date,
+    updated_at : Date | null
+}
+
+
+export type TeamMemberRow = {
+    team_member_id : number,
+    team_id : number,
+    user_id : number,
+    joined_at : Date
+};
+
+
+export type TeamInvitationRow = {
+    team_invitation_id : number,
+    team_id : number,
+    invited_user_id : number,
+    invited_by_user_id : number,
+    team_invitation_status : 'pending' | 'accepted' | 'rejected' | 'expired',
+    created_at : Date,
+    expires_at : Date,
+    responded_at : Date | null
+};
+
+export type BracketNodeRow = {
+    bracket_node_id : number,
+    tournament_id : number,
+    node_code : string,
+    bracket_type : 'winners' | 'losers' | 'grand_final',
+    round : number | null,
+    match_number : number,
+    team_a_id : number | null,
+    team_b_id : number | null,
+    match_id : number | null,
+    created_at : Date,
+    updated_at : Date | null,
+};
+
+export type MatchCheckinRow = {
+    match_checkin_id : number,
+    match_id : number,
+    user_id : number,
+    method : 'qr_onsite' | 'photo_online' | 'manual_by_referee',
+    match_checkin_status : 'success' | 'rejected' | 'exception' | 'pending',
+    rejection_reason : string | null,
+    note : string | null,               // M19 เหตุผลที่กรรมการอนุโลม (migration 015)
+    document_type : 'student_id' | 'national_id' | null,
+    document_s3_key : string | null,
+    verified_by_referee_id : number | null,
+    checked_in_at : Date,
+    verified_at : Date | null,
+};
+
+export type TeamAdminRequestRow = {
+    team_admin_request_id : number,
+    team_id : number,
+    request_type : 'official_status' | 'leader_transfer',
+    requested_by : number,
+    target_user_id : number | null,
+    team_admin_request_status : 'pending' | 'approved' | 'rejected',
+    requested_at : Date,
+    reviewed_by : number | null,
+    reviewed_at : Date | null,
+    rejection_reason : string | null,
+    supporting_docs : string[] | null;
+}
+
+export type AdminScopeRow = {
+    admin_scope_id : number,
+    user_id : number,
+    scope_type : 'faculty' | 'university_wide' | 'root',
+    faculty_id : number | null,
+    created_at : Date,
+    created_by : number | null
+}
+
+export type PasswordResetTokenRow = {
+    password_reset_token_id : number,
+    user_id : number,
+    token_hash : string,   // ★ hash ไม่ใช่ token ดิบ
+    expires_at : Date,      // ★ ไม่มี created_at — นับอายุ/rate limit จาก expires_at ย้อนกลับ 1 ชม.
+    used_at : Date | null    // ★ ใช้ได้ครั้งเดียว
+}
+
+// OD-53 — โครงเหมือน PasswordResetTokenRow แต่มีสองคอลัมน์เกิน ด้วยเหตุคนละข้อ (migration 037)
+export type EmailVerificationOtpRow = {
+    email_verification_otp_id : number,
+    user_id : number,
+    code_hash : string,      // ★ bcrypt ของเลข 6 หลัก ไม่ใช่เลขดิบ
+    expires_at : Date,       // ★ TTL 10 นาที (สั้นกว่า reset token เพราะของมีแค่ 6 หลัก)
+    used_at : Date | null,   // ★ ใช้ได้ครั้งเดียว
+    attempt_count : number,  // ★ กรอกผิดครบโควตา = ใบนั้นตาย · 6 หลักเดาได้จริง ต้องมีตัวนับ
+    created_at : Date        // ★ มีจริงๆ — rate limit นับ 1 ชม. แต่ TTL 10 นาที อนุมานจาก expires_at ไม่ได้
+}
+
+export type UserReportRow = {
+    user_report_id : number,
+    reported_by : number,
+    target_user_id : number,
+    reason : string,
+    evidence : string[] | null,
+    user_report_status : 'pending' | 'approved' | 'rejected',
+    reviewed_by : number | null,
+    reviewed_at : Date | null,
+    rejection_reason : string | null,
+    created_at : Date
+}
+
+export type AuditLogRow = {
+    audit_log_id : number,
+    user_id : number,
+    action_type : string,
+    entity_type : string,
+    entity_id : number,
+    details : unknown,
+    created_at : Date
+}
+
+export type AnnouncementRow = {
+    announcement_id : number,
+    tournament_id : number,
+    match_id : number | null,
+    created_by : number,
+    announcement_type : 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream',
+    title : string,
+    content : string,
+    created_at : Date,
+    updated_at : Date | null,
+    updated_by : number | null,
+    deleted_at : Date | null,
+    deleted_by : number | null
+}
+
+export type MatchResultRow = {
+    match_result_id : number,
+    match_id : number,
+    winner_team_id : number | null,
+    score_data : Record<string , number> | null,
+    submitted_by_user_id : number,
+    submitted_role : 'team_leader' | 'referee' | 'organizer',
+    submitted_at : Date | null,        // เวลาส่งผลครั้งล่าสุด (migration 026) — created_at ไม่ขยับตอนส่งซ้ำ
+    match_result_status : 'submitted' | 'verified' | 'disputed' | 'rejected' | 'walkover',
+    dispute_reason : string| null,
+    dispute_claimed_winner_team_id : number | null,          // ผลที่ผู้ค้านเสนอว่าถูกต้อง (migration 027) — ไม่บังคับกรอก
+    dispute_claimed_score : Record<string, number> | null,
+    dispute_evidence : string[] | null,                      // S3 object key — ส่งออกเป็น presigned URL เสมอ
+    dispute_raised_by : number| null,
+    dispute_raised_at : Date| null,
+    dispute_resolved_by : number| null,
+    dispute_resolution : string| null,
+    dispute_resolved_at : Date| null,
+    verified_by_user_id : number| null,
+    verified_at : Date| null, 
+    amended_by_user_id : number| null,
+    amend_reason : string| null,
+    amended_at : Date| null,
+    created_at : Date
+}
+
+/** เรื่องร้องเรียนผลแมตช์ (migration 028 · OD-26 ข้อ 8) — คนละเส้นกับ dispute_* ใน match_results ไม่แตะ match_status */
+export type MatchResultComplaintRow = {
+    match_result_complaint_id : number,
+    match_id : number,
+    match_result_id : number,
+    filed_by : number,
+    reason : string,
+    claimed_winner_team_id : number | null,
+    claimed_score : Record<string , number> | null,
+    evidence : string[] | null,               // S3 object key — ส่งออกเป็น presigned URL เสมอ
+    complaint_status : 'open' | 'upheld' | 'no_merit',
+    organizer_statement : string | null,
+    organizer_statement_by : number | null,
+    organizer_statement_at : Date | null,
+    remedy : 'record_only' | 'amend_result' | null,
+    decided_by : number | null,
+    decision_note : string | null,
+    decided_at : Date | null,
+    filer_flagged : boolean,
+    created_at : Date,
+    updated_at : Date | null
+}
+
+export type PlayerMatchStatRow = {
+    player_match_stat_id : number,
+    match_id : number,
+    user_id : number,
+    team_id : number,
+    recorded_by_referee_id : number,
+    created_at : Date
+}
+
+export type PlayerMatchStatValueRow = {
+    player_match_stat_value_id : number,
+    player_match_stat_id : number,
+    sport_stat_definition_id : number,
+    value_int : number | null
+}
+
+export type TournamentStandingRow = {
+    standing_id : number,
+    tournament_id : number,
+    team_id : number,
+    played : number,
+    won : number,
+    lost : number,
+    points : number,
+    goals_for : number,       // B3 tie-break (migration 021)
+    goals_against : number,
+    updated_at : Date
+}

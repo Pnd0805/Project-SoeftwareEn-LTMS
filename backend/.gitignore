@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.test
+.env.perf
+perf/results/
+dist/
+coverage/
+src/playground/
+compose.bak
+docker-compose.override.yml
+*.tar
+TASK-*.md
+STATUS-*.md
+NOTICE-*.md

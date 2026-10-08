@@ -1,0 +1,267 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../notification.service.js', () => ({
+  notify: vi.fn(),
+  notifyUsers: vi.fn(),
+  notifyMatchAudience: vi.fn(),
+  notifyTournamentTeamLeaders: vi.fn(),
+  notifyTeamMembers: vi.fn(),
+  notifyTournamentReferees: vi.fn(),
+  notifyMatchResultParties: vi.fn(),
+}));
+
+vi.mock('../../repositories/user.repo.js', () => ({
+  findById: vi.fn(() => Promise.resolve({ user_id: 8, full_name: 'สมชาย ใจดี' })),
+}));
+
+vi.mock('../../repositories/application.repo.js', () => ({
+  findTeamTournamentConflictForUser: vi.fn(() => Promise.resolve(null)),
+}));
+
+vi.mock('../../repositories/invitation.repo.js', () => ({
+  createAcceptInvite: vi.fn(),
+  createRejectInvite: vi.fn(),
+}));
+
+vi.mock('../../repositories/team.repo.js', () => ({
+  findInvitationsById: vi.fn(),
+  countUnofficialTeamsByUser: vi.fn(),
+  findById: vi.fn(),
+  countMemberByTeamId: vi.fn(),
+}));
+
+vi.mock('../../repositories/sportType.repo.js', () => ({
+  findSportTypeById: vi.fn(async () => ({ sport_type_id: 1, min_members: 5, max_members: 11 })),
+}));
+
+vi.mock('../../utils/checkExist.js', () => ({
+  checkTeam: vi.fn(async () => ({ team_id: 10, sport_type_id: 1 })),   // ใช้โดย ensureTeamNotFull (เพดานสมาชิก)
+}));
+
+import * as invitationService from '../invitation.service.js';
+import * as InviteRepo from '../../repositories/invitation.repo.js';
+import * as TeamRepo from '../../repositories/team.repo.js';
+import { AppError } from '../../utils/AppError.js';
+import type { TeamInvitationRow, TeamRow } from '../../types/db.js';
+import * as ApplicationRepo from '../../repositories/application.repo.js';
+import { checkTeam } from '../../utils/checkExist.js';
+import * as NotificationService from '../notification.service.js';
+
+const mockedInviteRepo = vi.mocked(InviteRepo);
+const mockedTeamRepo = vi.mocked(TeamRepo);
+
+function makeInvitation(overrides: Partial<TeamInvitationRow> = {}): TeamInvitationRow {
+  return {
+    team_invitation_id: 55,
+    team_id: 10,
+    invited_user_id: 8,
+    invited_by_user_id: 5,
+    team_invitation_status: 'pending',
+    created_at: new Date('2026-01-01T00:00:00.000Z'),
+    // 7 days after the fake "now" set in beforeEach below.
+    expires_at: new Date('2026-01-08T00:00:00.000Z'),
+    responded_at: null,
+    ...overrides,
+  };
+}
+
+function makeTeam(overrides: Partial<TeamRow> = {}): TeamRow {
+  return {
+    team_id: 10,
+    name: 'Dream Team',
+    sport_type_id: 1,
+    leader_id: 5,
+    readiness_status: 'Forming',
+    official_status: 'Unofficial',
+    logo_key: null,
+    visibility: 'private',
+    created_at: new Date(),
+    updated_at: null,
+    last_competed_at: null,
+    deleted_at: null,
+    deleted_reason: null,
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(checkTeam).mockResolvedValue({ team_id: 10, sport_type_id: 1 } as never);
+  mockedTeamRepo.countMemberByTeamId.mockResolvedValue(3);
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('acceptInvitation', () => {
+  it('throws INVITATION_NOT_FOUND when the invitation does not exist', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(null);
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 404,
+      code: 'INVITATION_NOT_FOUND',
+    });
+    expect(mockedTeamRepo.countUnofficialTeamsByUser).not.toHaveBeenCalled();
+  });
+
+  it('throws FORBIDDEN when the invitation belongs to a different user', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation({ invited_user_id: 8 }));
+
+    await expect(invitationService.acceptInvitation(55, 999)).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN',
+    });
+    expect(mockedTeamRepo.countUnofficialTeamsByUser).not.toHaveBeenCalled();
+  });
+
+  it('throws INVITATION_EXPIRED when the invitation has already expired', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(
+      makeInvitation({ expires_at: new Date('2025-12-31T00:00:00.000Z') }),
+    );
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 410,
+      code: 'INVITATION_EXPIRED',
+    });
+    expect(mockedTeamRepo.countUnofficialTeamsByUser).not.toHaveBeenCalled();
+  });
+
+  it('throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(
+      makeInvitation({ team_invitation_status: 'accepted' }),
+    );
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 409,
+      code: 'INVITATION_ALREADY_ANSWERED',
+    });
+    expect(mockedTeamRepo.countUnofficialTeamsByUser).not.toHaveBeenCalled();
+  });
+
+  it('throws TEAM_QUOTA_EXCEEDED when the user already has 5 unofficial teams', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(5);
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 422,
+      code: 'TEAM_QUOTA_EXCEEDED',
+    });
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
+  });
+
+  it('throws TEAM_NOT_FOUND when the team no longer exists after accepting', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
+    mockedTeamRepo.findById.mockResolvedValue(null);
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 404,
+      code: 'TEAM_NOT_FOUND',
+    });
+    // The accept record is written before the team is re-fetched, so this
+    // still happens even though the overall call ends up rejecting.
+    expect(mockedInviteRepo.createAcceptInvite).toHaveBeenCalledWith(55, 10, 8);
+  });
+
+  it('accepts a valid pending invitation and returns the team status', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
+    mockedTeamRepo.findById.mockResolvedValue(makeTeam({ readiness_status: 'Forming' }));
+
+    const result = await invitationService.acceptInvitation(55, 8);
+
+    expect(mockedTeamRepo.countUnofficialTeamsByUser).toHaveBeenCalledWith(8);
+    expect(mockedInviteRepo.createAcceptInvite).toHaveBeenCalledWith(55, 10, 8);
+    expect(mockedTeamRepo.findById).toHaveBeenCalledWith(10);
+    expect(result).toEqual({ teamId: 10, teamReadinessStatus: 'Forming' });
+    // C1-ข — แจ้งหัวหน้าทีมว่ามีคนตอบรับ
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'team_invite_answered', relatedEntityType: 'team', relatedEntityId: 10,
+      message: expect.stringContaining('สมชาย ใจดี'),
+    }));
+  });
+
+  // CoI ประตูที่ 3 (GUIDE/10 F-19): ทีมสมัครทัวร์ที่คนนี้เป็น ORG/กรรมการไปแล้วระหว่างรอกดรับ
+  it('throws TEAM_CONFLICT_OF_INTEREST when the invitee is a referee of a tournament the team applied to', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
+    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce(
+      // invitation_status: 'accepted' = ความหมายเดิมของ fixture นี้ (เป็นกรรมการจริงแล้ว)
+      { tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'referee', invitation_status: 'accepted', expires_at: null });
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST',
+      extra: { tournamentId: 30, role: 'referee', invitationStatus: 'accepted', expiresAt: null },
+    });
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
+  });
+});
+
+describe('rejectInvitation', () => {
+  it('throws INVITATION_NOT_FOUND when the invitation does not exist', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(null);
+
+    await expect(invitationService.rejectInvitation(55, 8)).rejects.toMatchObject({
+      status: 404,
+      code: 'INVITATION_NOT_FOUND',
+    });
+    expect(mockedInviteRepo.createRejectInvite).not.toHaveBeenCalled();
+  });
+
+  it('throws FORBIDDEN when the invitation belongs to a different user', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation({ invited_user_id: 8 }));
+
+    await expect(invitationService.rejectInvitation(55, 999)).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN',
+    });
+    expect(mockedInviteRepo.createRejectInvite).not.toHaveBeenCalled();
+  });
+
+  it('throws INVITATION_ALREADY_ANSWERED when the invitation is no longer pending', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(
+      makeInvitation({ team_invitation_status: 'rejected' }),
+    );
+
+    await expect(invitationService.rejectInvitation(55, 8)).rejects.toMatchObject({
+      status: 409,
+      code: 'INVITATION_ALREADY_ANSWERED',
+    });
+    expect(mockedInviteRepo.createRejectInvite).not.toHaveBeenCalled();
+  });
+
+  it('does not check invitation expiry before rejecting', async () => {
+    // Unlike acceptInvitation, rejectInvitation has no expiry check at all —
+    // an expired-but-still-pending invitation can still be rejected.
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(
+      makeInvitation({ expires_at: new Date('2025-12-31T00:00:00.000Z') }),
+    );
+
+    await expect(invitationService.rejectInvitation(55, 8)).resolves.toBeUndefined();
+    expect(mockedInviteRepo.createRejectInvite).toHaveBeenCalledWith(55, 8);
+  });
+
+  it('rejects a pending invitation', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+
+    const result = await invitationService.rejectInvitation(55, 8);
+
+    expect(mockedInviteRepo.createRejectInvite).toHaveBeenCalledWith(55, 8);
+    expect(result).toBeUndefined();
+    expect(NotificationService.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'team_invite_answered' }));
+  });
+});
+
+// 🔴 BR-05 — ช่องว่างระหว่าง SRS กับโค้ด (ไม่ใช่ช่องว่างของเทส) · ต้องเคาะกับทีมก่อนแก้
+//   SRS: "ต้องตรวจเงื่อนไขนี้ทั้งตอนตอบรับคำเชิญและตอนอนุมัติทีม Official"
+//   ตอนอนุมัติ: มีแล้ว (adminScope.service approveTeamRequest → MEMBER_CONFLICT · มีเทส)
+//   ตอนตอบรับคำเชิญ: acceptInvitation / createAcceptInvite ไม่ได้เช็คว่าผู้ใช้อยู่ทีม Official อื่นในกีฬาเดียวกัน
+//   ⇒ คนที่อยู่ทีม Official ฟุตบอลแล้ว รับคำเชิญเข้าทีม Official ฟุตบอลอีกทีมได้
+//   ถ้าทีมยืนยันว่าต้องตาม SRS: เพิ่มด่านใน acceptInvitation (และ joinRequest) แล้วเปลี่ยน todo เป็นเทสจริง
+describe('acceptInvitation — BR-05 ทีม Official 1 ทีม/กีฬา', () => {
+  it.todo('422 เมื่อรับคำเชิญเข้าทีม Official ขณะที่อยู่ทีม Official อื่นในกีฬาเดียวกันแล้ว');
+  it.todo('รับได้เมื่อทีม Official อีกทีมเป็นคนละกีฬา');
+});
