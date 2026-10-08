@@ -26,8 +26,8 @@ export const removeFeedbackByAdmin = (id: number, reason?: string) =>
 export const restoreFeedbackByAdmin = (id: number) =>
   apiFetch<{ id: number; restored: true }>(`/admin/feedback/${id}/restore`, { method: 'POST' })
 export const getPredictionSummary = (id: number) => apiFetch<PredictionSummary>(`/matches/${id}/predictions/summary`)
-export const placePrediction = (id: number, teamId: number) =>
-  apiFetch<{ matchId: number; teamId: number; changed: boolean }>(`/matches/${id}/predictions`, { method: 'POST', ...json({ teamId }) })
+export const placePrediction = (id: number, scoreData: Record<string, number>) =>
+  apiFetch<{ matchId: number; teamId: number; scoreData: Record<string, number>; changed: boolean }>(`/matches/${id}/predictions`, { method: 'POST', ...json({ scoreData }) })
 export const cancelPrediction = (id: number) => apiFetch<void>(`/matches/${id}/predictions/me`, { method: 'DELETE' })
 export const getPickemHistory = () => apiFetch<PickemHistory>('/me/pickem')
 export const getPickemLeaderboard = (id: number) => apiFetch<PickemLeaderboard>(`/tournaments/${id}/pickem-leaderboard`)

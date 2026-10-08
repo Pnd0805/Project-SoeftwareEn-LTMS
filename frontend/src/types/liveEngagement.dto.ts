@@ -43,7 +43,7 @@ export interface PredictionSummary {
   closesAt: string | null;
   total: number;
   teams: Array<{ teamId: number; picks: number; percent: number }>;
-  mine: { teamId: number; pointsEarned: number | null; status: 'pending' | 'won' | 'lost' | 'void' } | null;
+  mine: { teamId: number; scoreData: Record<string, number> | null; pointsEarned: number | null; status: 'pending' | 'won' | 'lost' | 'void' } | null;
   canPredict: boolean;
 }
 export interface PickemHistory {
