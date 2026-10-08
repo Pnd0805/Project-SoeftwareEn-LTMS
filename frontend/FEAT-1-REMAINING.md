@@ -2562,3 +2562,17 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
 - Backend: no new endpoint needed for these UI changes. Existing Announcement
   producer and Profile MVP aggregate requests remain separately tracked in
   `TO-BACKEND-2026-10-01-frontend-workflows.md`.
+
+## Quality20 Q12: previously removed feedback context (2026-10-08)
+
+- [ ] Backend delivery required: an authorized source of identifiable previously
+  removed feedback (ID, tournament, author and available content/rating). Current
+  contracts provide visible tournament comments/reviews and mutations
+  `DELETE /admin/feedback/:id` and `POST /admin/feedback/:id/restore`, but no
+  supported removed-item lookup. Generic audit actor/entity IDs do not establish
+  the feedback author or content. No lookup route is guessed or added.
+- Frontend blocks raw-ID removal/restoration in Admin Feedback. Admins select
+  visible content in Tournament Community and review its context before removal.
+  The last successfully removed item's context remains locally available for a
+  confirmed restore while that Community view stays mounted. Earlier removals
+  remain unavailable; this moderation journey cannot claim 18/20 acceptance yet.

@@ -68,8 +68,8 @@ export function GlobalScanPhoto({ file, onClose, onRetry }: {
 
   const error = photoError ?? checkin.error
   return <Modal open onClose={onClose} label="Check in — on-site" title="Scan check-in QR">
-    <p role="status" className="sub">{checkin.pending ? 'Checking in…' : error ? 'Scan failed' : 'Reading QR…'}</p>
-    {error ? <Banner kind="crit">{error}</Banner> : null}
+    {error ? <div role="alert"><Banner kind="crit">{error}</Banner></div>
+      : <p role="status" className="sub">{checkin.pending ? 'Checking in…' : 'Reading QR…'}</p>}
     <div className="hstack">
       <button className="btn" type="button" onClick={onClose}>Cancel</button>
       {error ? <button className="btn primary" type="button" onClick={onRetry}>Take another photo</button> : null}

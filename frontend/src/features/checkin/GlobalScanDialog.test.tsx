@@ -69,3 +69,14 @@ it('finishes reading a captured photo under React StrictMode', async () => {
   ))
   expect(scanPhoto).toHaveBeenCalledTimes(1)
 })
+
+it('announces a failed photo once and exposes another capture without stale reading status', async () => {
+  scanPhoto.mockRejectedValue(new Error('unreadable'))
+  const retry = vi.fn()
+  render(<MemoryRouter><GlobalScanPhoto file={new File(['image'], 'qr.jpg', { type: 'image/jpeg' })}
+    onClose={() => {}} onRetry={retry} /></MemoryRouter>)
+  expect(await screen.findByRole('alert')).toHaveTextContent('No QR found')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Take another photo' }))
+  expect(retry).toHaveBeenCalledOnce()
+})

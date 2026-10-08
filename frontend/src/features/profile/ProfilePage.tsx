@@ -51,8 +51,11 @@ export function ProfilePage() {
       return <div className="account-workspace account-profile"><Empty icon="user" title="Profile data is unavailable" sub="The signed-in account is not present in the mock dataset." /></div>
     }
 
-    const userStats = statsQuery.data
     const byTour = careerByTournament(s, legacyUser.id)
+    const played = byTour.reduce((total, row) => total + row.p, 0)
+    const won = byTour.reduce((total, row) => total + row.w, 0)
+    const titles = byTour.length && byTour.every(row => row.finish && row.finish !== '—')
+      ? byTour.filter(row => row.finish === 'Champion').length : 'Unavailable'
     const picks = pickScore(s, legacyUser.id)
     const squads = s.teams.filter(team => team.members.includes(legacyUser.id))
     const mvpVotes = s.votes.filter(vote => vote.player === legacyUser.id).length
@@ -62,15 +65,16 @@ export function ProfilePage() {
       <div className="account-workspace account-profile">
         <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} user={currentUser} />
         {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
-        {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your identity loaded, but the statistics request failed." /> : null}
-        {userStats ? (
-          <div className="statline">
-            <Stat label="Matches played" value={userStats.overall.matchesPlayed} />
-            <Stat label="Won" value={userStats.overall.wins} />
-            <Stat label="Titles" value={userStats.overall.championCount} />
-            <Stat label="Tokens" value={picks.tokens} />
-          </div>
-        ) : null}
+        {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Additional statistics could not load. Your confirmed career record is shown below.">
+          <button className="btn" type="button" disabled={statsQuery.isFetching} onClick={() => void statsQuery.refetch()}>{statsQuery.isFetching ? 'Retrying stats…' : 'Retry stats'}</button>
+        </Empty> : null}
+        <p className="sub">Confirmed career record · the same matches listed by tournament below.</p>
+        <div className="statline">
+          <Stat label="Matches played" value={played} />
+          <Stat label="Won" value={won} />
+          <Stat label="Titles" value={titles} />
+          <Stat label="Tokens" value={picks.tokens} />
+        </div>
 
         <div className="split">
           <div>
@@ -122,7 +126,9 @@ export function ProfilePage() {
       <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : 'Student record'} user={currentUser} />
 
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
-      {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below. Retry when the server is ready." /> : null}
+      {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below.">
+        <button className="btn" type="button" disabled={statsQuery.isFetching} onClick={() => void statsQuery.refetch()}>{statsQuery.isFetching ? 'Retrying stats…' : 'Retry stats'}</button>
+      </Empty> : null}
       {stats ? (
         <>
           <div className="statline">
@@ -274,6 +280,6 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | string }) {
   return <div><span className="tag">{label}</span><span className="v">{value}</span></div>
 }

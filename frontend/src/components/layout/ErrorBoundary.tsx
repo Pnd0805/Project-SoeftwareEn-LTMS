@@ -9,7 +9,7 @@
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 
-type Props = { children: ReactNode; label?: string }
+type Props = { children: ReactNode; label?: string; resetKey?: string }
 type State = { error: Error | null }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -24,21 +24,31 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('[LTMS] render error', this.props.label ?? '', error, info.componentStack)
   }
 
+  componentDidUpdate(previous: Props) {
+    if (this.state.error && previous.resetKey !== this.props.resetKey) {
+      this.setState({ error: null })
+    }
+  }
+
   render() {
     const { error } = this.state
     if (!error) return this.props.children
+    const chunkFailed = error.name === 'ChunkLoadError'
+      || /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|Loading chunk .+ failed|Unable to preload CSS/i.test(error.message)
 
     return (
-      <div className="panel" style={{ display: 'grid', gap: 10, padding: 18 }}>
-        <span className="tag"><em>//</em> Something on this screen broke</span>
-        <b>{this.props.label ? `${this.props.label} could not be drawn.` : 'This part could not be drawn.'}</b>
+      <div className="panel" role="alert" style={{ display: 'grid', gap: 10, padding: 18 }}>
+        <span className="tag"><em>//</em> {chunkFailed ? 'Page files are unavailable' : 'Something on this screen broke'}</span>
+        <b>{this.props.label ?? 'This part'} could not {chunkFailed ? 'load' : 'be drawn'}.</b>
         <div className="sub">
-          The rest of the app still works — this is a bug in the screen, not in your data.
+          {chunkFailed ? 'Reload the page to try again, or return to tournaments.'
+            : 'The rest of the app still works — this is a bug in the screen, not in your data.'}
         </div>
-        <code className="sub" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{error.message}</code>
+        {!chunkFailed ? <code className="sub" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{error.message}</code> : null}
         <div className="hstack">
-          <button className="btn" type="button" onClick={() => this.setState({ error: null })}>Try again</button>
-          <button className="btn ghost" type="button" onClick={() => window.location.assign('/')}>Back to tournaments</button>
+          {chunkFailed ? <button className="btn" type="button" onClick={() => window.location.reload()}>Reload page</button>
+            : <button className="btn" type="button" onClick={() => this.setState({ error: null })}>Try again</button>}
+          <a className="btn ghost" href="/">Back to tournaments</a>
         </div>
       </div>
     )

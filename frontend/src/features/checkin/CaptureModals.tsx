@@ -12,10 +12,9 @@ import { Modal } from '../../components/kit/Modal'
  * ใหม่เองทุกครั้ง ไม่ต้องมี effect คอยรีเซ็ต (ซึ่ง react-hooks ห้ามด้วยเหตุผลที่ถูก:
  * setState ตรงๆ ใน effect ทำให้เรนเดอร์ซ้อน)
  */
-function useCamera(facing: 'user' | 'environment') {
+function useCamera(facing: 'user' | 'environment', attempt = 0) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
+  const [camera, setCamera] = useState({ attempt, error: null as string | null, ready: false })
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -31,10 +30,12 @@ function useCamera(facing: 'user' | 'environment') {
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
-          if (!cancelled) setReady(true)
+          if (!cancelled) setCamera({ attempt, error: null, ready: true })
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Camera unavailable')
+        stream?.getTracks().forEach(t => t.stop())
+        stream = null
+        if (!cancelled) setCamera({ attempt, error: e instanceof Error ? e.message : 'Camera unavailable', ready: false })
       }
     }
     void start()
@@ -42,9 +43,9 @@ function useCamera(facing: 'user' | 'environment') {
       cancelled = true
       stream?.getTracks().forEach(t => t.stop())
     }
-  }, [facing])
+  }, [facing, attempt])
 
-  return { videoRef, error, ready }
+  return { videoRef, error: camera.attempt === attempt ? camera.error : null, ready: camera.attempt === attempt && camera.ready }
 }
 
 const frameStyle: React.CSSProperties = {
@@ -78,12 +79,14 @@ export function QrScanModal(props: QrProps) {
 }
 
 function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionError }: QrProps) {
-  const { videoRef, error, ready } = useCamera('environment')
   const [typed, setTyped] = useState('')
   const [bad, setBad] = useState<string | null>(null)
   const [scanAttempt, setScanAttempt] = useState(0)
+  const [cameraAttempt, setCameraAttempt] = useState(0)
+  const { videoRef, error, ready } = useCamera('environment', cameraAttempt)
   const [scanState, setScanState] = useState<'starting' | 'scanning' | 'detected' | 'error'>('starting')
   const delivered = useRef(false)
+  const failure = pending ? null : submissionError ?? bad ?? (error ? `Camera unavailable — ${error} Enter the referee’s code or retry camera access.` : null)
 
   const submit = useCallback((token: string) => {
     // Preserve the case of signed payloads.
@@ -138,34 +141,26 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
 
   return (
     <>
-      <div style={frameStyle}>
+      <div style={{ ...frameStyle, ...(failure ? { aspectRatio: 'auto', height: 96 } : {}) }}>
         <video ref={videoRef} style={videoStyle} muted playsInline />
         {/* กรอบเล็ง — บอกว่าต้องเอา QR มาไว้ตรงไหน */}
         <span aria-hidden style={{
           position: 'absolute', width: '58%', aspectRatio: '1', border: '3px solid var(--teal)',
           boxShadow: '0 0 0 9999px rgba(0,0,0,.45)',
         }} />
-        {!ready ? (
+        {!ready && !failure ? (
           <span className="tag" style={{ position: 'absolute', bottom: 10 }}>
             {error ? 'Camera unavailable' : 'Starting camera…'}
           </span>
         ) : null}
       </div>
 
-      <span role="status" className="sub">
+      {failure ? <div role="alert"><Banner kind="crit">{failure}</Banner></div> : <span role="status" className="sub">
         {pending ? 'QR detected. Checking in…'
           : scanState === 'detected' ? 'QR detected. Scan again if check-in fails.'
             : scanState === 'error' ? 'Scanner unavailable'
               : !ready ? 'Starting camera…' : 'Scanning QR. Keep the whole code and its border visible; avoid glare.'}
-      </span>
-
-      {error ? (
-        <Banner kind="warn">
-          <b>Camera unavailable</b> — {error} Enter the referee’s code instead.
-        </Banner>
-      ) : null}
-      {bad ? <Banner kind="crit">{bad}</Banner> : null}
-      {submissionError ? <Banner kind="crit"><b>Check-in failed</b> {submissionError}</Banner> : null}
+      </span>}
 
       <Field label="Referee’s code" htmlFor="qr-manual">
         <input id="qr-manual" autoComplete="off" placeholder="Enter the referee’s code"
@@ -176,8 +171,8 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
         <button className="btn" type="button" onClick={onClose}>Cancel</button>
         {USE_MOCK ? <button className="btn" type="button" disabled={pending || !expectedToken}
           onClick={() => submit(expectedToken ?? '')}>Demo scan</button> : null}
-        <button className="btn" type="button" disabled={pending || !ready}
-          onClick={() => { delivered.current = false; setBad(null); setScanState('starting'); setScanAttempt(n => n + 1) }}>Scan again</button>
+        <button className="btn" type="button" disabled={pending || (!ready && !error)}
+          onClick={() => { delivered.current = false; setBad(null); setScanState('starting'); if (error) setCameraAttempt(n => n + 1); else setScanAttempt(n => n + 1) }}>{error ? 'Retry camera' : 'Scan again'}</button>
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => submit(typed)}>
           {pending ? 'Checking in…' : 'Check in'}

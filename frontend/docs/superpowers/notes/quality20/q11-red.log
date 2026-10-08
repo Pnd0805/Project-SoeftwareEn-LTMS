@@ -1,0 +1,1702 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx (9 tests | 7 failed) 220ms
+   × opens and focuses History for a settled verified result 171ms
+   × opens and focuses History for a settled walkover result 9ms
+   × links Review dispute to its supported task 9ms
+   × links Record result to its supported task 9ms
+   × links Open check-in to its supported task 4ms
+   × links Manage check-in to its supported task 6ms
+   × links Edit fixture to its supported task 5ms
+ ❯ src/features/profile/ProfilePage.test.tsx (9 tests | 1 failed) 205ms
+     × retries failed stats without replacing loaded account details 125ms
+ ❯ src/features/checkin/CaptureModals.test.tsx (7 tests | 3 failed) 1490ms
+   × does not report a camera as ready after video playback fails 13ms
+   × announces camera denial once and allows a new camera attempt with the manual draft retained 1006ms
+   × announces invalid manual input without stale detected/scanning status and keeps it editable 82ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/checkin/CaptureModals.test.tsx > does not report a camera as ready after video playback fails
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <span
+  class="sub"
+  role="status"
+>
+  Starting camera…
+</span> instead
+ ❯ src/features/checkin/CaptureModals.test.tsx:64:54
+     62|   await screen.findByText(/Playback unavailable/)
+     63|   expect(decoder.decode).not.toHaveBeenCalled()
+     64|   expect(screen.queryByText('Starting camera…')).not.toBeInTheDocument…
+       |                                                      ^
+     65|   expect(screen.getByRole('alert')).toHaveTextContent('Playback unavai…
+     66| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  src/features/checkin/CaptureModals.test.tsx > announces camera denial once and allows a new camera attempt with the manual draft retained
+TestingLibraryElementError: Unable to find role="alert"
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow-y: hidden; overflow-x: hidden;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mdata-base-ui-portal[39m=[32m""[39m
+    [33mid[39m=[32m"_r_d_"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33maria-hidden[39m=[32m"true"[39m
+      [33mdata-base-ui-inert[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+      [33mstyle[39m=[32m"position: fixed; inset: 0px; user-select: none; -webkit-user-select: none;"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"modal-bg"[39m
+      [33mdata-open[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"base-ui-_r_e_"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"modal match-capture-dialog"[39m
+        [33mdata-base-ui-focusable[39m=[32m""[39m
+        [33mdata-open[39m=[32m""[39m
+        [33mid[39m=[32m"_r_c_"[39m
+        [33mrole[39m=[32m"dialog"[39m
+        [33mstyle[39m=[32m"--nested-dialogs: 0;"[39m
+        [33mtabindex[39m=[32m"-1"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mCheck in — on-site[0m
+          [36m</span>[39m
+          [36m<h3[39m
+            [33mid[39m=[32m"base-ui-_r_e_"[39m
+            [33mstyle[39m=[32m"margin: 0px; font-size: 20px;"[39m
+          [36m>[39m
+            [0mScan check-in QR[0m
+          [36m</h3>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--void-2); border: 2px solid var(--ink); overflow: hidden; display: grid; place-items: center;"[39m
+          [36m>[39m
+            [36m<video[39m
+              [33mplaysinline[39m=[32m""[39m
+              [33mstyle[39m=[32m"width: 100%; height: 100%; object-fit: cover;"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"position: absolute; width: 58%; aspect-ratio: 1 / 1; border: 3px solid var(--teal); box-shadow: 0 0 0 9999px rgba(0,0,0,.45);"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+              [33mstyle[39m=[32m"position: absolute; bottom: 10px;"[39m
+            [36m>[39m
+              [0mCamera unavailable[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mStarting camera…[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"banner warn"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 4 2.5 20h19L12 4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 10v4M12 17h.01"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"grow"[39m
+            [36m>[39m
+              [36m<b>[39m
+                [0mCamera unavailable[0m
+              [36m</b>[39m
+              [0m — [0m
+              [0mPermission denied[0m
+              [0m Enter the referee’s code instead.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mfor[39m=[32m"qr-manual"[39m
+            [36m>[39m
+              [0mReferee’s code[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33mautocomplete[39m=[32m"off"[39m
+              [33mid[39m=[32m"qr-manual"[39m
+              [33mplaceholder[39m=[32m"Enter the referee’s code"[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mScan again[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn primary"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCheck in[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow-y: hidden; overflow-x: hidden;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mdata-base-ui-portal[39m=[32m""[39m
+    [33mid[39m=[32m"_r_d_"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33maria-hidden[39m=[32m"true"[39m
+      [33mdata-base-ui-inert[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+      [33mstyle[39m=[32m"position: fixed; inset: 0px; user-select: none; -webkit-user-select: none;"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"modal-bg"[39m
+      [33mdata-open[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"base-ui-_r_e_"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"modal match-capture-dialog"[39m
+        [33mdata-base-ui-focusable[39m=[32m""[39m
+        [33mdata-open[39m=[32m""[39m
+        [33mid[39m=[32m"_r_c_"[39m
+        [33mrole[39m=[32m"dialog"[39m
+        [33mstyle[39m=[32m"--nested-dialogs: 0;"[39m
+        [33mtabindex[39m=[32m"-1"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mCheck in — on-site[0m
+          [36m</span>[39m
+          [36m<h3[39m
+            [33mid[39m=[32m"base-ui-_r_e_"[39m
+            [33mstyle[39m=[32m"margin: 0px; font-size: 20px;"[39m
+          [36m>[39m
+            [0mScan check-in QR[0m
+          [36m</h3>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--void-2); border: 2px solid var(--ink); overflow: hidden; display: grid; place-items: center;"[39m
+          [36m>[39m
+            [36m<video[39m
+              [33mplaysinline[39m=[32m""[39m
+              [33mstyle[39m=[32m"width: 100%; height: 100%; object-fit: cover;"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"position: absolute; width: 58%; aspect-ratio: 1 / 1; border: 3px solid var(--teal); box-shadow: 0 0 0 9999px rgba(0,0,0,.45);"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+              [33mstyle[39m=[32m"position: absolute; bottom: 10px;"[39m
+            [36m>[39m
+              [0mCamera unavailable[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mStarting camera…[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"banner warn"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 4 2.5 20h19L12 4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 10v4M12 17h.01"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"grow"[39m
+            [36m>[39m
+              [36m<b>[39m
+                [0mCamera unavailable[0m
+              [36m</b>[39m
+              [0m — [0m
+              [0mPermission denied[0m
+              [0m Enter the referee’s code instead.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mfor[39m=[32m"qr-manual"[39m
+            [36m>[39m
+              [0mReferee’s code[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33mautocomplete[39m=[32m"off"[39m
+              [33mid[39m=[32m"qr-manual"[39m
+              [33mplaceholder[39m=[32m"Enter the referee’s code"[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mScan again[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn primary"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCheck in[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/checkin/CaptureModals.test.tsx:71:23
+     69|   vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValueOnce…
+     70|   render(<QrScanModal open expectedToken={null} onScanned={vi.fn()} pe…
+     71|   expect(await screen.findByRole('alert')).toHaveTextContent('Permissi…
+       |                       ^
+     72|   expect(screen.queryByText('Starting camera…')).not.toBeInTheDocument…
+     73|   fireEvent.change(screen.getByLabelText('Referee’s code'), { target: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  src/features/checkin/CaptureModals.test.tsx > announces invalid manual input without stale detected/scanning status and keeps it editable
+TestingLibraryElementError: Unable to find an accessible element with the role "alert"
+
+Here are the accessible roles:
+
+  presentation:
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"modal-bg"[39m
+    [33mdata-open[39m=[32m""[39m
+    [33mrole[39m=[32m"presentation"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  dialog:
+
+  Name "Scan check-in QR":
+  [36m<div[39m
+    [33maria-labelledby[39m=[32m"base-ui-_r_h_"[39m
+    [33maria-modal[39m=[32m"true"[39m
+    [33mclass[39m=[32m"modal match-capture-dialog"[39m
+    [33mdata-base-ui-focusable[39m=[32m""[39m
+    [33mdata-open[39m=[32m""[39m
+    [33mid[39m=[32m"_r_f_"[39m
+    [33mrole[39m=[32m"dialog"[39m
+    [33mstyle[39m=[32m"--nested-dialogs: 0;"[39m
+    [33mtabindex[39m=[32m"-1"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  [36m<em />[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Scan check-in QR":
+  [36m<h3[39m
+    [33mid[39m=[32m"base-ui-_r_h_"[39m
+    [33mstyle[39m=[32m"margin: 0px; font-size: 20px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  status:
+
+  Name "":
+  [36m<span[39m
+    [33mclass[39m=[32m"sub"[39m
+    [33mrole[39m=[32m"status"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Referee’s code":
+  [36m<input[39m
+    [33mautocomplete[39m=[32m"off"[39m
+    [33mid[39m=[32m"qr-manual"[39m
+    [33mplaceholder[39m=[32m"Enter the referee’s code"[39m
+    [33mvalue[39m=[32m"wrong"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Cancel":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Scan again":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Check in":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow-y: hidden; overflow-x: hidden;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mdata-base-ui-portal[39m=[32m""[39m
+    [33mid[39m=[32m"_r_g_"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33maria-hidden[39m=[32m"true"[39m
+      [33mdata-base-ui-inert[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+      [33mstyle[39m=[32m"position: fixed; inset: 0px; user-select: none; -webkit-user-select: none;"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"modal-bg"[39m
+      [33mdata-open[39m=[32m""[39m
+      [33mrole[39m=[32m"presentation"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"base-ui-_r_h_"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"modal match-capture-dialog"[39m
+        [33mdata-base-ui-focusable[39m=[32m""[39m
+        [33mdata-open[39m=[32m""[39m
+        [33mid[39m=[32m"_r_f_"[39m
+        [33mrole[39m=[32m"dialog"[39m
+        [33mstyle[39m=[32m"--nested-dialogs: 0;"[39m
+        [33mtabindex[39m=[32m"-1"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mCheck in — on-site[0m
+          [36m</span>[39m
+          [36m<h3[39m
+            [33mid[39m=[32m"base-ui-_r_h_"[39m
+            [33mstyle[39m=[32m"margin: 0px; font-size: 20px;"[39m
+          [36m>[39m
+            [0mScan check-in QR[0m
+          [36m</h3>[39m
+          [36m<div[39m
+            [33mstyle[39m=[32m"position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--void-2); border: 2px solid var(--ink); overflow: hidden; display: grid; place-items: center;"[39m
+          [36m>[39m
+            [36m<video[39m
+              [33mplaysinline[39m=[32m""[39m
+              [33mstyle[39m=[32m"width: 100%; height: 100%; object-fit: cover;"[39m
+            [36m/>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"position: absolute; width: 58%; aspect-ratio: 1 / 1; border: 3px solid var(--teal); box-shadow: 0 0 0 9999px rgba(0,0,0,.45);"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mScanning QR. Keep the whole code and its border visible; avoid glare.[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"banner crit"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 4 2.5 20h19L12 4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 10v4M12 17h.01"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"grow"[39m
+            [36m>[39m
+              [0mCode does not match the referee’s QR. Scan again.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mfor[39m=[32m"qr-manual"[39m
+            [36m>[39m
+              [0mReferee’s code[0m
+            [36m</label>[39m
+            [36m<input[39m
+              [33mautocomplete[39m=[32m"off"[39m
+              [33mid[39m=[32m"qr-manual"[39m
+              [33mplaceholder[39m=[32m"Enter the referee’s code"[39m
+              [33mvalue[39m=[32m"wrong"[39m
+            [36m/>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mScan again[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn primary"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCheck in[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mdata-base-ui-focus-guard[39m=[32m""[39m
+        [33mdata-base-ui-inert[39m=[32m""[39m
+        [33mdata-type[39m=[32m"inside"[39m
+        [33mstyle[39m=[32m"clip-path: inset(50%); overflow: hidden; white-space: nowrap; border: 0px; padding: 0px; width: 1px; height: 1px; margin: -1px; position: fixed; top: 0px; left: 0px;"[39m
+        [33mtabindex[39m=[32m"0"[39m
+      [36m/>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/checkin/CaptureModals.test.tsx:85:17
+     83|   fireEvent.change(screen.getByLabelText('Referee’s code'), { target: …
+     84|   fireEvent.click(screen.getByRole('button', { name: 'Check in' }))
+     85|   expect(screen.getByRole('alert')).toHaveTextContent('Code does not m…
+       |                 ^
+     86|   expect(screen.queryByRole('status')).not.toBeInTheDocument()
+     87|   expect(screen.getByLabelText('Referee’s code')).toHaveValue('wrong')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > opens and focuses History for a settled verified result
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > opens and focuses History for a settled walkover result
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "View history"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Next action":
+  [36m<h2 />[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"match-next-title"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Open overview":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Overview":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Overview"[39m
+    [33mclass[39m=[32m"match-section"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel vstack match-summary-frame match-next-step"[39m
+    [36m>[39m
+      [36m<h2>[39m
+        [0mNext action[0m
+      [36m</h2>[39m
+      [36m<strong[39m
+        [33mclass[39m=[32m"match-next-title"[39m
+      [36m>[39m
+        [0mResult settled[0m
+      [36m</strong>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mView History for the recorded outcome and decisions.[0m
+      [36m</p>[39m
+      [36m<button[39m
+        [33mclass[39m=[32m"btn primary"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0mOpen overview[0m
+      [36m</button>[39m
+    [36m</div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"Overview"[39m
+      [33mclass[39m=[32m"match-section"[39m
+      [33mtabindex[39m=[32m"0"[39m
+    [36m>[39m
+      [0m/m/9/overview[0m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx:20:26
+     18| it.each(['verified', 'walkover'] as const)('opens and focuses History …
+     19|   show({}, {}, { status })
+     20|   fireEvent.click(screen.getByRole('button', { name: 'View history' }))
+       |                          ^
+     21|   await waitFor(() => expect(screen.getByRole('region', { name: 'Histo…
+     22|   expect(screen.getByRole('region', { name: 'History' })).toHaveTextCo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > links Review dispute to its supported task
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Review dispute"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Next action":
+  [36m<h2 />[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"match-next-title"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Open overview":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Overview":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Overview"[39m
+    [33mclass[39m=[32m"match-section"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel vstack match-summary-frame match-next-step"[39m
+    [36m>[39m
+      [36m<h2>[39m
+        [0mNext action[0m
+      [36m</h2>[39m
+      [36m<strong[39m
+        [33mclass[39m=[32m"match-next-title"[39m
+      [36m>[39m
+        [0mReview the dispute[0m
+      [36m</strong>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mThe organizer reviews the recorded result and the dispute.[0m
+      [36m</p>[39m
+      [36m<button[39m
+        [33mclass[39m=[32m"btn primary"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0mOpen overview[0m
+      [36m</button>[39m
+    [36m</div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"Overview"[39m
+      [33mclass[39m=[32m"match-section"[39m
+      [33mtabindex[39m=[32m"0"[39m
+    [36m>[39m
+      [0m/m/9/overview[0m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx:33:26
+     31| ] as const)('links %s to its supported task', (label, match, can, path…
+     32|   show(match, can)
+     33|   fireEvent.click(screen.getByRole('button', { name: label }))
+       |                          ^
+     34|   expect(screen.getByRole('region')).toHaveTextContent(path)
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > links Record result to its supported task
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Record result"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Next action":
+  [36m<h2 />[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"match-next-title"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Open overview":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Overview":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Overview"[39m
+    [33mclass[39m=[32m"match-section"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel vstack match-summary-frame match-next-step"[39m
+    [36m>[39m
+      [36m<h2>[39m
+        [0mNext action[0m
+      [36m</h2>[39m
+      [36m<strong[39m
+        [33mclass[39m=[32m"match-next-title"[39m
+      [36m>[39m
+        [0mRecord the result[0m
+      [36m</strong>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mEnter the final score and player statistics, then review before sending.[0m
+      [36m</p>[39m
+      [36m<button[39m
+        [33mclass[39m=[32m"btn primary"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0mOpen overview[0m
+      [36m</button>[39m
+    [36m</div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"Overview"[39m
+      [33mclass[39m=[32m"match-section"[39m
+      [33mtabindex[39m=[32m"0"[39m
+    [36m>[39m
+      [0m/m/9/overview[0m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx:33:26
+     31| ] as const)('links %s to its supported task', (label, match, can, path…
+     32|   show(match, can)
+     33|   fireEvent.click(screen.getByRole('button', { name: label }))
+       |                          ^
+     34|   expect(screen.getByRole('region')).toHaveTextContent(path)
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > links Open check-in to its supported task
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Open check-in"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Next action":
+  [36m<h2 />[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"match-next-title"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Open overview":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Overview":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Overview"[39m
+    [33mclass[39m=[32m"match-section"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel vstack match-summary-frame match-next-step"[39m
+    [36m>[39m
+      [36m<h2>[39m
+        [0mNext action[0m
+      [36m</h2>[39m
+      [36m<strong[39m
+        [33mclass[39m=[32m"match-next-title"[39m
+      [36m>[39m
+        [0mOpen check-in[0m
+      [36m</strong>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mThe fixture must have a start time, end time and venue.[0m
+      [36m</p>[39m
+      [36m<button[39m
+        [33mclass[39m=[32m"btn primary"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0mOpen overview[0m
+      [36m</button>[39m
+    [36m</div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"Overview"[39m
+      [33mclass[39m=[32m"match-section"[39m
+      [33mtabindex[39m=[32m"0"[39m
+    [36m>[39m
+      [0m/m/9/overview[0m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx:33:26
+     31| ] as const)('links %s to its supported task', (label, match, can, path…
+     32|   show(match, can)
+     33|   fireEvent.click(screen.getByRole('button', { name: label }))
+       |                          ^
+     34|   expect(screen.getByRole('region')).toHaveTextContent(path)
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > links Manage check-in to its supported task
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Manage check-in"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Next action":
+  [36m<h2 />[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"match-next-title"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Open overview":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Overview":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Overview"[39m
+    [33mclass[39m=[32m"match-section"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel vstack match-summary-frame match-next-step"[39m
+    [36m>[39m
+      [36m<h2>[39m
+        [0mNext action[0m
+      [36m</h2>[39m
+      [36m<strong[39m
+        [33mclass[39m=[32m"match-next-title"[39m
+      [36m>[39m
+        [0mCheck readiness[0m
+      [36m</strong>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mReview check-ins and the assigned referees before starting.[0m
+      [36m</p>[39m
+      [36m<button[39m
+        [33mclass[39m=[32m"btn primary"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0mOpen overview[0m
+      [36m</button>[39m
+    [36m</div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"Overview"[39m
+      [33mclass[39m=[32m"match-section"[39m
+      [33mtabindex[39m=[32m"0"[39m
+    [36m>[39m
+      [0m/m/9/overview[0m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx:33:26
+     31| ] as const)('links %s to its supported task', (label, match, can, path…
+     32|   show(match, can)
+     33|   fireEvent.click(screen.getByRole('button', { name: label }))
+       |                          ^
+     34|   expect(screen.getByRole('region')).toHaveTextContent(path)
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  src/features/match/MatchNextStep.quality20.test.tsx > links Edit fixture to its supported task
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Edit fixture"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Next action":
+  [36m<h2 />[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong[39m
+    [33mclass[39m=[32m"match-next-title"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Open overview":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Overview":
+  [36m<section[39m
+    [33maria-label[39m=[32m"Overview"[39m
+    [33mclass[39m=[32m"match-section"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel vstack match-summary-frame match-next-step"[39m
+    [36m>[39m
+      [36m<h2>[39m
+        [0mNext action[0m
+      [36m</h2>[39m
+      [36m<strong[39m
+        [33mclass[39m=[32m"match-next-title"[39m
+      [36m>[39m
+        [0mSet the fixture[0m
+      [36m</strong>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mSet the time and venue before check-in opens.[0m
+      [36m</p>[39m
+      [36m<button[39m
+        [33mclass[39m=[32m"btn primary"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0mOpen overview[0m
+      [36m</button>[39m
+    [36m</div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"Overview"[39m
+      [33mclass[39m=[32m"match-section"[39m
+      [33mtabindex[39m=[32m"0"[39m
+    [36m>[39m
+      [0m/m/9/overview[0m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/match/MatchNextStep.quality20.test.tsx:33:26
+     31| ] as const)('links %s to its supported task', (label, match, can, path…
+     32|   show(match, can)
+     33|   fireEvent.click(screen.getByRole('button', { name: label }))
+       |                          ^
+     34|   expect(screen.getByRole('region')).toHaveTextContent(path)
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  src/features/profile/ProfilePage.test.tsx > ProfilePage real-mode boundary > retries failed stats without replacing loaded account details
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Retry stats"
+
+Here are the accessible roles:
+
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"account-profile-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Backend Profile":
+  [36m<h1[39m
+    [33mclass[39m=[32m"disp"[39m
+  [36m/>[39m
+
+  Name "Tournament history":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"account-email"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Upload photo":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"account-workspace account-profile"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"account-profile-heading"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"account-identity"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"avatar"[39m
+            [33mstyle[39m=[32m"width: 72px; height: 72px; font-size: 30.24px; overflow: hidden; border-radius: 2px; border: 2px solid var(--line-hot);"[39m
+          [36m>[39m
+            [0mB[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"account-identity-copy"[39m
+          [36m>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"disp"[39m
+            [36m>[39m
+              [0mBackend Profile[0m
+            [36m</h1>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mStudent record[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"account-email"[39m
+            [36m>[39m
+              [0mprofile@example.test[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"account-photo-actions"[39m
+            [36m>[39m
+              [36m<input[39m
+                [33maccept[39m=[32m"image/png,image/jpeg"[39m
+                [33maria-label[39m=[32m"Choose profile photo"[39m
+                [33mid[39m=[32m"profile-avatar-upload"[39m
+                [33mstyle[39m=[32m"display: none;"[39m
+                [33mtype[39m=[32m"file"[39m
+              [36m/>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"btn ghost"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"12"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"12"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 5v14M5 12h14"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [0m [0m
+                [0mUpload photo[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mPNG or JPEG. Upload a new photo to retry a failed save.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"empty"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"28"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"28"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-width[39m=[32m"1.7"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linecap[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"1.7"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linejoin[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"1.7"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<b>[39m
+          [0mStatistics are unavailable[0m
+        [36m</b>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sub"[39m
+        [36m>[39m
+          [0mYour account details are still available below. Retry when the server is ready.[0m
+        [36m</span>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"split"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Squads · [0m
+              [0m0[0m
+            [36m</span>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"empty"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"28"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"28"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"9"[39m
+                  [33mcy[39m=[32m"8"[39m
+                  [33mr[39m=[32m"3"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"17"[39m
+                  [33mcy[39m=[32m"9"[39m
+                  [33mr[39m=[32m"2.4"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15.5 14.2c2.4.4 4.5 2.4 4.5 5.8"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<b>[39m
+                [0mNot in a squad yet[0m
+              [36m</b>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"sub"[39m
+              [36m>[39m
+                [0mCreate a squad or accept an invitation from the Teams page.[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Pick'em history[0m
+            [36m</span>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"statline"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"tag"[39m
+                [36m>[39m
+                  [0mPoints[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"v"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"tag"[39m
+                [36m>[39m
+                  [0mCorrect[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"v"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"tag"[39m
+                [36m>[39m
+                  [0mSettled[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"v"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mNo predictions yet.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack player-career journey-data"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"journey-heading"[39m
+            [36m>[39m
+              [0mTournament history[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m MVP totals[0m
+            [36m</span>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mReceived-vote totals are not available from the server yet.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"rail"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Student record — the registry owns this[0m
+            [36m</span>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"facts"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mFaculty[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mEngineering[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mMajor[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mSoftware Engineering[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mYear[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0m3[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mAge[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0m22[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mGender[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mmale[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mRole[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mUser[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mThe Hard filter reads these values. Ask the registry if one is wrong.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Following[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/profile/ProfilePage.test.tsx:58:28
+     56|   it('retries failed stats without replacing loaded account details', …
+     57|     const view = render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+     58|     fireEvent.click(screen.getByRole('button', { name: 'Retry stats' }…
+       |                            ^
+     59|     expect(profileState.refetch).toHaveBeenCalledOnce()
+     60|     profileState.fetching = true
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  11 failed | 14 passed (25)
+   Start at  03:10:15
+   Duration  2.41s (transform 299ms, setup 316ms, import 541ms, tests 1.91s, environment 1.43s)

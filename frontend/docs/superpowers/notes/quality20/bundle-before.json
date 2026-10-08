@@ -1,0 +1,205 @@
+{
+  "chunks": [
+    {
+      "name": "esm-ni1Pr6Ff.js",
+      "bytes": 477555,
+      "gzip": 123248
+    },
+    {
+      "name": "index-BTGmvs1L.js",
+      "bytes": 944829,
+      "gzip": 267470
+    }
+  ],
+  "traces": [
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:54761/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 51.39999997615814,
+        "navigationId": 376,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.2999999523162842,
+        "domainLookupStart": 0.2999999523162842,
+        "domainLookupEnd": 0.2999999523162842,
+        "connectStart": 0.2999999523162842,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.2999999523162842,
+        "requestStart": 1.7999999523162842,
+        "responseStart": 3.6999999284744263,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 3.6999999284744263,
+        "responseEnd": 3.899999976158142,
+        "transferSize": 1526,
+        "encodedBodySize": 1226,
+        "decodedBodySize": 1226,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 9,
+        "domContentLoadedEventStart": 51.299999952316284,
+        "domContentLoadedEventEnd": 51.299999952316284,
+        "domComplete": 51.39999997615814,
+        "loadEventStart": 51.39999997615814,
+        "loadEventEnd": 51.39999997615814,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-BTGmvs1L.js",
+          "duration": 7.099999904632568,
+          "bytes": 944829
+        }
+      ]
+    },
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:54761/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 41.89999997615814,
+        "navigationId": 426,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.20000004768371582,
+        "domainLookupStart": 0.20000004768371582,
+        "domainLookupEnd": 0.20000004768371582,
+        "connectStart": 0.20000004768371582,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.20000004768371582,
+        "requestStart": 1.100000023841858,
+        "responseStart": 1.399999976158142,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1.399999976158142,
+        "responseEnd": 1.600000023841858,
+        "transferSize": 1526,
+        "encodedBodySize": 1226,
+        "decodedBodySize": 1226,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 4.800000071525574,
+        "domContentLoadedEventStart": 41.10000002384186,
+        "domContentLoadedEventEnd": 41.200000047683716,
+        "domComplete": 41.89999997615814,
+        "loadEventStart": 41.89999997615814,
+        "loadEventEnd": 41.89999997615814,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-BTGmvs1L.js",
+          "duration": 4.399999976158142,
+          "bytes": 944829
+        }
+      ]
+    },
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:54761/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 52.700000047683716,
+        "navigationId": 5641,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.30000007152557373,
+        "domainLookupStart": 0.30000007152557373,
+        "domainLookupEnd": 0.30000007152557373,
+        "connectStart": 0.30000007152557373,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.30000007152557373,
+        "requestStart": 1.9000000953674316,
+        "responseStart": 2.3000000715255737,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 2.3000000715255737,
+        "responseEnd": 2.5,
+        "transferSize": 1526,
+        "encodedBodySize": 1226,
+        "decodedBodySize": 1226,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 6.900000095367432,
+        "domContentLoadedEventStart": 52.60000002384186,
+        "domContentLoadedEventEnd": 52.700000047683716,
+        "domComplete": 52.700000047683716,
+        "loadEventStart": 52.700000047683716,
+        "loadEventEnd": 52.700000047683716,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-BTGmvs1L.js",
+          "duration": 11.5,
+          "bytes": 944829
+        }
+      ]
+    }
+  ]
+}

@@ -82,11 +82,13 @@ The old prototype.css owns many feature rules. Edit it sequentially after Q10 wh
 
 **Interfaces:** Preserve Tabs({ tabs, active, onPick }) and existing route/kit component props. Local button groups may expose aria-pressed; any true role=tab widgets must implement their complete selection/keyboard pattern. Shared color token for text on teal is the existing accent-ink/light-accent-ink pair.
 
-- [ ] **Step 1 — Write behavior tests.** Assert current navigation is announced, the selected local control exposes state, left/right or ordinary Tab behavior matches its chosen semantic pattern, and a Schedule action column has a nonempty accessible name.
-- [ ] **Step 2 — Run the new cases.** Run npx vitest run src/components/kit/Tabs.quality20.test.tsx src/components/layout/Shell.profile.test.tsx src/features/tournament/ScheduleTab.discovery.test.tsx. Expected: new semantic assertions fail before the fix, existing behavior remains visible.
-- [ ] **Step 3 — Implement.** Fix semantics and shared copy without renaming backend concepts. Use the correct text token on light teal headers; keep Barlow display, Geist work text and Rubik Dirt preview roles.
-- [ ] **Step 4 — Verify.** Rerun the same focused command and npx tsc --noEmit -p tsconfig.app.json. Expected: exit 0.
-- [ ] **Step 5 — Inspect.** Measure computed light Schedule header contrast >=4.5:1 at 1440/390, check dark theme and focus/current state with keyboard. Record screenshot and calculation in the task note.
+- [x] **Step 1 — Write behavior tests.** Assert current navigation is announced, the selected local control exposes state, left/right or ordinary Tab behavior matches its chosen semantic pattern, and a Schedule action column has a nonempty accessible name.
+- [x] **Step 2 — Run the new cases.** Run npx vitest run src/components/kit/Tabs.quality20.test.tsx src/components/layout/Shell.profile.test.tsx src/features/tournament/ScheduleTab.discovery.test.tsx. Expected: new semantic assertions fail before the fix, existing behavior remains visible.
+- [x] **Step 3 — Implement.** Fix semantics and shared copy without renaming backend concepts. Use the correct text token on light teal headers; keep Barlow display, Geist work text and Rubik Dirt preview roles.
+- [x] **Step 4 — Verify.** Rerun the same focused command and npx tsc --noEmit -p tsconfig.app.json. Expected: exit 0.
+- [x] **Step 5 — Inspect.** Measure computed light Schedule header contrast >=4.5:1 at 1440/390, check dark theme and focus/current state with keyboard. Record screenshot and calculation in the task note.
+
+Q10 implementation and rendered contrast/semantics evidence: [worker-layout.md](../notes/quality20/worker-layout.md). Full cross-role scoring remains Q23.
 
 ### Task Q11: Correct Next action, Scan recovery and Profile retry
 
@@ -94,11 +96,13 @@ The old prototype.css owns many feature rules. Edit it sequentially after Q10 wh
 
 **Interfaces:** MatchNextStep({ m, result }) remains unchanged. The derived action has label, supported href/section and focus target from the same Match state/viewer.can decision. Register no new Match capability. Profile Retry calls the existing statsQuery.refetch().
 
-- [ ] **Step 1 — Write failing cases.** Settled result says View history and opens History; Referee/Organizer/Player multi-role fixtures show only supported actions; denied camera does not announce Starting camera; invalid code is announced and remains editable; failed Profile stats exposes Retry and preserves account details.
-- [ ] **Step 2 — Run.** Run npx vitest run src/features/match/MatchNextStep.quality20.test.tsx src/features/checkin/CaptureModals.test.tsx src/features/profile/ProfilePage.test.tsx. Expected: the new assertions fail for the observed faults.
-- [ ] **Step 3 — Implement.** Use one action selection for copy/destination/focus. Derive Scan visible status with error precedence, provide one local asynchronous error announcement and compact the failed preview; keep photo/manual paths supported by the current implementation. Add Retry stats.
-- [ ] **Step 4 — Verify.** Rerun the focused command and TypeScript. Expected: exit 0 with unchanged API and Match permissions.
-- [ ] **Step 5 — Inspect.** Capture 1440 dark and 390 light camera denial/invalid states; confirm Cancel/Retry/input are reachable, Escape returns trigger focus, and no stale loading text appears.
+- [x] **Step 1 — Write failing cases.** Settled result says View history and opens History; Referee/Organizer/Player multi-role fixtures show only supported actions; denied camera does not announce Starting camera; invalid code is announced and remains editable; failed Profile stats exposes Retry and preserves account details.
+- [x] **Step 2 — Run.** Run npx vitest run src/features/match/MatchNextStep.quality20.test.tsx src/features/checkin/CaptureModals.test.tsx src/features/profile/ProfilePage.test.tsx. Expected: the new assertions fail for the observed faults.
+- [x] **Step 3 — Implement.** Use one action selection for copy/destination/focus. Derive Scan visible status with error precedence, provide one local asynchronous error announcement and compact the failed preview; keep photo/manual paths supported by the current implementation. Add Retry stats.
+- [x] **Step 4 — Verify.** Rerun the focused command and TypeScript. Expected: exit 0 with unchanged API and Match permissions.
+- [x] **Step 5 — Inspect.** Capture 1440 dark and 390 light camera denial/invalid states; confirm Cancel/Retry/input are reachable, Escape returns trigger focus, and no stale loading text appears.
+
+Q11 implementation and recovery evidence: [worker-quality.md](../notes/quality20/worker-quality.md). Physical iPhone camera and live backend remain unverified.
 
 ### Task Q12: Intentional Register fields and contextual Admin moderation
 
@@ -106,11 +110,13 @@ The old prototype.css owns many feature rules. Edit it sequentially after Q10 wh
 
 **Interfaces:** A valid submit still supplies RegisterInput to useRegister without changing its schema or API payload. Admin removeFeedbackByAdmin(id, reason) and restoreFeedbackByAdmin(id) signatures stay unchanged. Target context carries known id, author/tournament/excerpt where available; absent context blocks blind mutation.
 
-- [ ] **Step 1 — Write failing tests.** Untouched student fields cannot submit; a late faculty list does not auto-select a person’s identity; changing faculty invalidates prior department; a deliberate valid draft submits exactly the present payload shape; a raw ID with no target context cannot trigger Remove/Restore; a known selected target is named before mutation.
-- [ ] **Step 2 — Run.** Run npx vitest run src/features/auth/RegisterPage.quality20.test.tsx src/features/admin/AdminFeedbackTab.quality20.test.tsx. Expected: new assertions fail.
-- [ ] **Step 3 — Implement.** Use empty local draft values and map validated values through existing registerSchema. Do not alter server validation. Carry moderation context from an existing visible comment/review or audit record; require an identifying confirmation and existing role permission. If no supported source can identify restoration, expose that limitation and log the dependency.
-- [ ] **Step 4 — Verify.** Rerun focused tests, existing src/api/admin.contract.test.ts and src/api/liveEngagement.test.ts if present, plus TypeScript. Expected: exit 0, no API adapter/DTO change.
-- [ ] **Step 5 — Inspect.** Capture blank Register, field-error retention and contextual Admin confirmation. Record which moderation state remains unsupported, if any; do not award it an 18/20 yet.
+- [x] **Step 1 — Write failing tests.** Untouched student fields cannot submit; a late faculty list does not auto-select a person’s identity; changing faculty invalidates prior department; a deliberate valid draft submits exactly the present payload shape; a raw ID with no target context cannot trigger Remove/Restore; a known selected target is named before mutation.
+- [x] **Step 2 — Run.** Run npx vitest run src/features/auth/RegisterPage.quality20.test.tsx src/features/admin/AdminFeedbackTab.quality20.test.tsx. Expected: new assertions fail.
+- [x] **Step 3 — Implement.** Use empty local draft values and map validated values through existing registerSchema. Do not alter server validation. Carry moderation context from an existing visible comment/review or audit record; require an identifying confirmation and existing role permission. If no supported source can identify restoration, expose that limitation and log the dependency.
+- [x] **Step 4 — Verify.** Rerun focused tests, existing src/api/admin.contract.test.ts and src/api/liveEngagement.test.ts if present, plus TypeScript. Expected: exit 0, no API adapter/DTO change.
+- [x] **Step 5 — Inspect.** Capture blank Register, field-error retention and contextual Admin confirmation. Record which moderation state remains unsupported, if any; do not award it an 18/20 yet.
+
+Q12 frontend implementation and contextual moderation evidence: [worker-quality.md](../notes/quality20/worker-quality.md). Historical feedback restoration still needs a supported lookup; see FEAT-1-REMAINING.md. The moderation /20 acceptance score remains withheld.
 
 ### Task Q13: Task-first Tournament composition and preview fact labels
 
@@ -118,11 +124,13 @@ The old prototype.css owns many feature rules. Edit it sequentially after Q10 wh
 
 **Interfaces:** Current /t/:id/:tab/:sub routes, permission/organizer checks and preview props remain. Full details move to Overview/disclosure; visibility and phase labels use only supported source fields.
 
-- [ ] **Step 1 — Write failing behavior tests.** Working Bracket/Manage route presents local navigation then its own task before duplicate Details/Entry; Organizer sees organizer wording; Guest/denied route hides private work; preview labels Public as Visibility without invented phase.
-- [ ] **Step 2 — Run.** Run npx vitest run src/features/tournament/TournamentPage.quality20.test.tsx src/features/tournament/BracketTab.navigation.test.tsx src/features/home/HomePage.preview.test.tsx. Expected: new ordering/fact assertions fail.
-- [ ] **Step 3 — Implement.** Add compact identity/status strip and move generic facts behind Overview/disclosure. Retain all facts and current route behavior. Update preview fact labels from known data only.
-- [ ] **Step 4 — Verify.** Rerun focused tests and TypeScript. Expected: exit 0.
-- [ ] **Step 5 — Inspect.** At 1440×900 and 390×844 record document y of first bracket/task item and compare against old y857/y1689; confirm no missing information or horizontal page overflow.
+- [x] **Step 1 — Write failing behavior tests.** Working Bracket/Manage route presents local navigation then its own task before duplicate Details/Entry; Organizer sees organizer wording; Guest/denied route hides private work; preview labels Public as Visibility without invented phase.
+- [x] **Step 2 — Run.** Run npx vitest run src/features/tournament/TournamentPage.quality20.test.tsx src/features/tournament/BracketTab.navigation.test.tsx src/features/home/HomePage.preview.test.tsx. Expected: new ordering/fact assertions fail.
+- [x] **Step 3 — Implement.** Add compact identity/status strip and move generic facts behind Overview/disclosure. Retain all facts and current route behavior. Update preview fact labels from known data only.
+- [x] **Step 4 — Verify.** Rerun focused tests and TypeScript. Expected: exit 0.
+- [x] **Step 5 — Inspect.** At 1440×900 and 390×844 record document y of first bracket/task item and compare against old y857/y1689; confirm no missing information or horizontal page overflow.
+
+Q13 implementation and first-match measurements: [worker-layout.md](../notes/quality20/worker-layout.md). Q20 later reduced the 390px shell; full mobile acceptance remains Q23.
 
 ### Task Q14: Equal Home peers sized for their actual content
 
@@ -130,10 +138,12 @@ The old prototype.css owns many feature rules. Edit it sequentially after Q10 wh
 
 **Interfaces:** Existing feed/match props and 18px task count remain. Equal desktop outer height is a pair-level rule; long lists retain a bounded internal scroll.
 
-- [ ] **Step 1 — Record the observed failure.** With one task and no next match, measure current two equal 320px bodies and first Tournament card near y880. With many tasks, record current bounded behavior.
-- [ ] **Step 2 — Implement the proposed revision.** Use shared compact sparse-state sizing for both peers and a shared bounded size for dense states. Keep equal-height Desktop frames and natural-height stacked Mobile frames.
-- [ ] **Step 3 — Verify source behavior.** Run npx vitest run src/features/home/HomeWorkspace.test.tsx src/features/home/HomeTaskPanel.test.tsx src/features/home/NextMatchPanel.test.tsx and TypeScript. Expected: exit 0; counts, source errors and match selection unchanged.
-- [ ] **Step 4 — Inspect.** Compare 1280/1440 sparse and 30-task fixtures in both themes; equal heights hold, long tasks scroll, first Tournament card appears materially earlier in sparse state, Mobile has no fixed blank slab.
+- [x] **Step 1 — Record the observed failure.** With one task and no next match, measure current two equal 320px bodies and first Tournament card near y880. With many tasks, record current bounded behavior.
+- [x] **Step 2 — Implement the proposed revision.** Use shared compact sparse-state sizing for both peers and a shared bounded size for dense states. Keep equal-height Desktop frames and natural-height stacked Mobile frames.
+- [x] **Step 3 — Verify source behavior.** Run npx vitest run src/features/home/HomeWorkspace.test.tsx src/features/home/HomeTaskPanel.test.tsx src/features/home/NextMatchPanel.test.tsx and TypeScript. Expected: exit 0; counts, source errors and match selection unchanged.
+- [x] **Step 4 — Inspect.** Compare 1280/1440 sparse and 30-task fixtures in both themes; equal heights hold, long tasks scroll, first Tournament card appears materially earlier in sparse state, Mobile has no fixed blank slab.
+
+Q14 sparse/dense Home measurements: [worker-layout.md](../notes/quality20/worker-layout.md).
 
 ### Task Q15: Referee task board and score entry
 
@@ -227,11 +237,13 @@ Q20 implementation evidence: [worker-layout.md](../notes/quality20/worker-layout
 
 **Interfaces:** Mock totals use same-scope career facts; real-mode stats remain server-owned. MVP real voting model is per-match. Watch uses existing Match/Tournament routes only.
 
-- [ ] **Step 1 — Write failing tests.** Mock Profile totals agree with career or explicitly name different scope; mock MVP identifies Match MVP and closed eligibility correctly; Watch empty/unavailable view has a working View bracket/Open match route without a fake replay.
-- [ ] **Step 2 — Run.** Run npx vitest run src/features/profile/ProfilePage.test.tsx src/features/mvp/MvpPage.test.tsx src/features/watch/WatchPage.quality20.test.tsx. Expected: new facts/navigation cases fail.
-- [ ] **Step 3 — Implement.** Derive mock Profile confirmed played/won display from the same byTour rows rendered below, and show a title only from an established finish value; otherwise display unavailable. Align MVP mock scenario with the existing per-match model. Add supported Watch empty-state links. Leave the mock API return shape and real server stats untouched.
-- [ ] **Step 4 — Verify.** Rerun focused tests and TypeScript. Expected: exit 0.
-- [ ] **Step 5 — Inspect.** Compare mock/real-contract screenshots; mark active voting and real streaming unverified if not exercised.
+- [x] **Step 1 — Write failing tests.** Mock Profile totals agree with career or explicitly name different scope; mock MVP identifies Match MVP and closed eligibility correctly; Watch empty/unavailable view has a working View bracket/Open match route without a fake replay.
+- [x] **Step 2 — Run.** Run npx vitest run src/features/profile/ProfilePage.test.tsx src/features/mvp/MvpPage.test.tsx src/features/watch/WatchPage.quality20.test.tsx. Expected: new facts/navigation cases fail.
+- [x] **Step 3 — Implement.** Derive mock Profile confirmed played/won display from the same byTour rows rendered below, and show a title only from an established finish value; otherwise display unavailable. Align MVP mock scenario with the existing per-match model. Add supported Watch empty-state links. Leave the mock API return shape and real server stats untouched.
+- [x] **Step 4 — Verify.** Rerun focused tests and TypeScript. Expected: exit 0.
+- [x] **Step 5 — Inspect.** Compare mock/real-contract screenshots; mark active voting and real streaming unverified if not exercised.
+
+Q21 mock/real-contract evidence: [worker-quality.md](../notes/quality20/worker-quality.md). Live voting and streaming remain unverified.
 
 ### Task Q22: Route-level loading and error recovery
 
@@ -239,11 +251,13 @@ Q20 implementation evidence: [worker-layout.md](../notes/quality20/worker-layout
 
 **Interfaces:** Preserve all existing route paths and Guard/Shell permission gates. React.lazy modules must retain named exports via the existing component names. Suspense fallback is named and stays within the shell; ErrorBoundary still protects the route.
 
-- [ ] **Step 1 — Capture equivalent build baseline.** Record main and async chunks, gzip sizes, browser cold-load trace and route list on the current working tree.
-- [ ] **Step 2 — Write failing route tests.** Admin/Request/Match navigation renders a loading state before the chunk; a failed chunk gives retry/back; restricted routes still redirect/deny; healthy routes retain current heading.
-- [ ] **Step 3 — Run.** Run npx vitest run src/App.lazy.quality20.test.tsx. Expected: new lazy/failure assertions fail with current static imports.
-- [ ] **Step 4 — Implement.** Add route-level lazy boundaries for the heaviest routes, optional ManageTab split where justified, Suspense and stable error recovery. Preserve separate lazy ZXing loading.
-- [ ] **Step 5 — Verify.** Rerun focused tests, TypeScript and npm run build. Expected: pass; compare all chunks, not only the main file. Check the proposed <=200 kB gzip main target in an equivalent build, plus route navigation under cold load.
+- [x] **Step 1 — Capture equivalent build baseline.** Record main and async chunks, gzip sizes, browser cold-load trace and route list on the current working tree.
+- [x] **Step 2 — Write failing route tests.** Admin/Request/Match navigation renders a loading state before the chunk; a failed chunk gives retry/back; restricted routes still redirect/deny; healthy routes retain current heading.
+- [x] **Step 3 — Run.** Run npx vitest run src/App.lazy.quality20.test.tsx. Expected: new lazy/failure assertions fail with current static imports.
+- [x] **Step 4 — Implement.** Add route-level lazy boundaries for the heaviest routes, optional ManageTab split where justified, Suspense and stable error recovery. Preserve separate lazy ZXing loading.
+- [x] **Step 5 — Verify.** Rerun focused tests, TypeScript and npm run build. Expected: pass; compare all chunks, not only the main file. Check the proposed <=200 kB gzip main target in an equivalent build, plus route navigation under cold load.
+
+Q22 route, recovery and bundle evidence: [worker-quality.md](../notes/quality20/worker-quality.md). Integrated and cross-role acceptance remain Q23.
 
 ### Task Q23: Final per-surface and technical acceptance
 
@@ -259,4 +273,4 @@ Q20 implementation evidence: [worker-layout.md](../notes/quality20/worker-layout
 
 ## Execution and review rhythm
 
-After each ticket: focused test/inspection, one direct source review, evidence in its ticket note, then update its status. Q23 repeats full gates and independent visual/product review if a reviewer is available and authorized. The user asked for spec/ticket/plan artifacts in this turn; the current plan is ready for review, not executed. No commit or push is part of document preparation.
+After each ticket: focused test/inspection, one direct source review, evidence in its ticket note, then update its status. Q23 repeats full gates and independent visual/product review if a reviewer is available and authorized. Q10–Q22 frontend implementation is recorded in the two Quality20 worker commits and notes. Q23 remains the cross-role acceptance gate; historical feedback restoration, physical iPhone capture and live backend checks remain unverified. No push has been performed.

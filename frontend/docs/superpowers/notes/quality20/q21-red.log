@@ -1,0 +1,1340 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+ ❯ src/features/mvp/MvpPage.test.tsx (9 tests | 3 failed) 113ms
+     × shows selected-match facts without repurposing tournament votes or inventing a voting window 63ms
+     × does not show candidates for a match decided without play 4ms
+     × does not fall back to another match when the requested match is outside this tournament 3ms
+ ❯ src/features/profile/ProfilePage.test.tsx (11 tests | 2 failed) 167ms
+     × agrees with the confirmed tournament record instead of zero mock API totals 35ms
+     × does not fabricate a title fact with no confirmed career rows 5ms
+ ❯ src/features/watch/WatchPage.quality20.test.tsx (5 tests | 4 failed) 209ms
+   × offers a working bracket route when no match is available 48ms
+   × offers a working bracket route in real-mode unavailable state 5ms
+   × links to the featured match when video is absent and calls the list recorded matches 125ms
+   × does not turn an invalid real tournament ID into a bracket link 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/mvp/MvpPage.test.tsx > mock match MVP preview > shows selected-match facts without repurposing tournament votes or inventing a voting window
+TestingLibraryElementError: Unable to find an accessible element with the role "heading" and name "Match MVP"
+
+Here are the accessible roles:
+
+  button:
+
+  Name "VALORANT Campus League 2025":
+  [36m<button[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Vote":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn primary"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Tournament MVP":
+  [36m<h1[39m
+    [33mclass[39m=[32m"disp"[39m
+    [33mstyle[39m=[32m"font-size: 30px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"crumb"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"11"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"11"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m16 5-8 7 8 7"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linecap[39m=[32m"round"[39m
+            [33mstroke-linejoin[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"2"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [0m [0m
+        [0mVALORANT Campus League 2025[0m
+      [36m</button>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0m/[0m
+      [36m</span>[39m
+      [36m<span[39m
+        [33mstyle[39m=[32m"color: var(--bone);"[39m
+      [36m>[39m
+        [0mMVP[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"spread"[39m
+    [36m>[39m
+      [36m<h1[39m
+        [33mclass[39m=[32m"disp"[39m
+        [33mstyle[39m=[32m"font-size: 30px;"[39m
+      [36m>[39m
+        [0mTournament MVP[0m
+      [36m</h1>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"badge ok"[39m
+      [36m>[39m
+        [0mChampion · Byte Force[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"banner warn"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"16"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"16"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"m12 3.6 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.8l5.9-.8L12 3.6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.6"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"grow"[39m
+      [36m>[39m
+        [0mYou have [0m
+        [36m<b>[39m
+          [0mone vote for the whole tournament[0m
+        [36m</b>[39m
+        [0m. Candidates are ranked on the statistics referees recorded.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack match-mvp-candidates"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"match-mvp-row"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+        [36m>[39m
+          [0mM[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"match-mvp-name"[39m
+        [36m>[39m
+          [36m<b[39m
+            [33mstyle[39m=[32m"font-size: 15px;"[39m
+          [36m>[39m
+            [0mMongkol Thanit[0m
+          [36m</b>[39m
+          [36m<br />[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [0m102[0m
+            [0m · [0m
+            [0m2[0m
+            [0m assists[0m
+          [36m</span>[39m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tchip"[39m
+        [36m>[39m
+          [36m<i[39m
+            [33mstyle[39m=[32m"background: rgb(126, 87, 194);"[39m
+          [36m/>[39m
+          [0mRogue Unit[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"num"[39m
+          [33mstyle[39m=[32m"margin-left: auto;"[39m
+        [36m>[39m
+          [0m100[0m
+          [0m%[0m
+        [36m</span>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn primary"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mVote[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/mvp/MvpPage.test.tsx:39:19
+     37|   it('shows selected-match facts without repurposing tournament votes …
+     38|     const fixture = show()
+     39|     expect(screen.getByRole('heading', { name: 'Match MVP' })).toBeInT…
+       |                   ^
+     40|     expect(screen.getByText(/One vote per match/)).toBeInTheDocument()
+     41|     expect(screen.getByText(/Voting is unavailable in this preview/)).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  src/features/mvp/MvpPage.test.tsx > mock match MVP preview > does not show candidates for a match decided without play
+TestingLibraryElementError: Unable to find an element with the text: /Matches decided without play are not eligible/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"crumb"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"11"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"11"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m16 5-8 7 8 7"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linecap[39m=[32m"round"[39m
+            [33mstroke-linejoin[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"2"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [0m [0m
+        [0mVALORANT Campus League 2025[0m
+      [36m</button>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0m/[0m
+      [36m</span>[39m
+      [36m<span[39m
+        [33mstyle[39m=[32m"color: var(--bone);"[39m
+      [36m>[39m
+        [0mMVP[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"spread"[39m
+    [36m>[39m
+      [36m<h1[39m
+        [33mclass[39m=[32m"disp"[39m
+        [33mstyle[39m=[32m"font-size: 30px;"[39m
+      [36m>[39m
+        [0mTournament MVP[0m
+      [36m</h1>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"badge ok"[39m
+      [36m>[39m
+        [0mChampion · Byte Force[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"banner warn"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"16"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"16"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"m12 3.6 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.8l5.9-.8L12 3.6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.6"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"grow"[39m
+      [36m>[39m
+        [0mYou have [0m
+        [36m<b>[39m
+          [0mone vote for the whole tournament[0m
+        [36m</b>[39m
+        [0m. Candidates are ranked on the statistics referees recorded.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack match-mvp-candidates"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"match-mvp-row"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+        [36m>[39m
+          [0mM[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"match-mvp-name"[39m
+        [36m>[39m
+          [36m<b[39m
+            [33mstyle[39m=[32m"font-size: 15px;"[39m
+          [36m>[39m
+            [0mMongkol Thanit[0m
+          [36m</b>[39m
+          [36m<br />[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [0m102[0m
+            [0m · [0m
+            [0m2[0m
+            [0m assists[0m
+          [36m</span>[39m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tchip"[39m
+        [36m>[39m
+          [36m<i[39m
+            [33mstyle[39m=[32m"background: rgb(126, 87, 194);"[39m
+          [36m/>[39m
+          [0mRogue Unit[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"num"[39m
+          [33mstyle[39m=[32m"margin-left: auto;"[39m
+        [36m>[39m
+          [0m100[0m
+          [0m%[0m
+        [36m</span>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn primary"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mVote[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/mvp/MvpPage.test.tsx:52:19
+     50|   it('does not show candidates for a match decided without play', () =…
+     51|     show(undefined, true)
+     52|     expect(screen.getByText(/Matches decided without play are not elig…
+       |                   ^
+     53|     expect(screen.queryByText(/3.*1 assists/)).not.toBeInTheDocument()
+     54|     expect(screen.queryByRole('button', { name: 'Vote' })).not.toBeInT…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  src/features/mvp/MvpPage.test.tsx > mock match MVP preview > does not fall back to another match when the requested match is outside this tournament
+TestingLibraryElementError: Unable to find an element with the text: This match does not belong to this tournament. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"crumb"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"11"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"11"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m16 5-8 7 8 7"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linecap[39m=[32m"round"[39m
+            [33mstroke-linejoin[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"2"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [0m [0m
+        [0mVALORANT Campus League 2025[0m
+      [36m</button>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0m/[0m
+      [36m</span>[39m
+      [36m<span[39m
+        [33mstyle[39m=[32m"color: var(--bone);"[39m
+      [36m>[39m
+        [0mMVP[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"spread"[39m
+    [36m>[39m
+      [36m<h1[39m
+        [33mclass[39m=[32m"disp"[39m
+        [33mstyle[39m=[32m"font-size: 30px;"[39m
+      [36m>[39m
+        [0mTournament MVP[0m
+      [36m</h1>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"badge ok"[39m
+      [36m>[39m
+        [0mChampion · Byte Force[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"banner warn"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"16"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"16"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"m12 3.6 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.8l5.9-.8L12 3.6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.6"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"grow"[39m
+      [36m>[39m
+        [0mYou have [0m
+        [36m<b>[39m
+          [0mone vote for the whole tournament[0m
+        [36m</b>[39m
+        [0m. Candidates are ranked on the statistics referees recorded.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack match-mvp-candidates"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"match-mvp-row"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+        [36m>[39m
+          [0mM[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"match-mvp-name"[39m
+        [36m>[39m
+          [36m<b[39m
+            [33mstyle[39m=[32m"font-size: 15px;"[39m
+          [36m>[39m
+            [0mMongkol Thanit[0m
+          [36m</b>[39m
+          [36m<br />[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [0m102[0m
+            [0m · [0m
+            [0m2[0m
+            [0m assists[0m
+          [36m</span>[39m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tchip"[39m
+        [36m>[39m
+          [36m<i[39m
+            [33mstyle[39m=[32m"background: rgb(126, 87, 194);"[39m
+          [36m/>[39m
+          [0mRogue Unit[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"num"[39m
+          [33mstyle[39m=[32m"margin-left: auto;"[39m
+        [36m>[39m
+          [0m100[0m
+          [0m%[0m
+        [36m</span>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn primary"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mVote[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/mvp/MvpPage.test.tsx:58:19
+     56|   it('does not fall back to another match when the requested match is …
+     57|     show('unrelated')
+     58|     expect(screen.getByText('This match does not belong to this tourna…
+       |                   ^
+     59|     expect(screen.queryByText(/3.*1 assists/)).not.toBeInTheDocument()
+     60|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  src/features/profile/ProfilePage.test.tsx > Profile mock career facts > agrees with the confirmed tournament record instead of zero mock API totals
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  3
+Received:
+  Matches played0
+ ❯ src/features/profile/ProfilePage.test.tsx:80:69
+     78|     const view = show()
+     79|     const stats = view.container.querySelector<HTMLElement>('.statline…
+     80|     expect(within(stats).getByText('Matches played').parentElement).to…
+       |                                                                     ^
+     81|     expect(within(stats).getByText('Won').parentElement).toHaveTextCon…
+     82|     expect(within(stats).getByText('Titles').parentElement).toHaveText…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  src/features/profile/ProfilePage.test.tsx > Profile mock career facts > does not fabricate a title fact with no confirmed career rows
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  Unavailable
+Received:
+  Titles0
+ ❯ src/features/profile/ProfilePage.test.tsx:91:61
+     89|     const stats = view.container.querySelector<HTMLElement>('.statline…
+     90|     expect(within(stats).getByText('Matches played').parentElement).to…
+     91|     expect(within(stats).getByText('Titles').parentElement).toHaveText…
+       |                                                             ^
+     92|   })
+     93| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  src/features/watch/WatchPage.quality20.test.tsx > offers a working bracket route when no match is available
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "View bracket"
+
+There are no accessible roles. But there might be some inaccessible roles. If you wish to access them, then set the `hidden` option to `true`. Learn more about this here: https://testing-library.com/docs/dom-testing-library/api-queries#byrole
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"empty"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"28"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"28"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M4 6h7l-2 6 2 6H4V6ZM20 6h-7l2 6-2 6h7V6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<b>[39m
+        [0mNothing to watch yet[0m
+      [36m</b>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mMatches appear here once the bracket is drawn.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/watch/WatchPage.quality20.test.tsx:25:23
+     23|   show()
+     24|   expect(screen.getByText('Nothing to watch yet')).toBeInTheDocument()
+     25|   const link = screen.getByRole('link', { name: 'View bracket' })
+       |                       ^
+     26|   expect(link).toHaveAttribute('href', '/t/t-vlr/bracket')
+     27|   fireEvent.click(link)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  src/features/watch/WatchPage.quality20.test.tsx > offers a working bracket route in real-mode unavailable state
+TestingLibraryElementError: Unable to find an accessible element with the role "link" and name "View bracket"
+
+There are no accessible roles. But there might be some inaccessible roles. If you wish to access them, then set the `hidden` option to `true`. Learn more about this here: https://testing-library.com/docs/dom-testing-library/api-queries#byrole
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"empty"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"28"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"28"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M4 6h7l-2 6 2 6H4V6ZM20 6h-7l2 6-2 6h7V6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<b>[39m
+        [0mWatch is unavailable[0m
+      [36m</b>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mThe tournament watch view is not available yet. Open a match from the tournament bracket to see its details.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/watch/WatchPage.quality20.test.tsx:36:23
+     34|   expect(screen.getByText('Watch is unavailable')).toBeInTheDocument()
+     35|   expect(screen.queryByRole('link', { name: /replay/i })).not.toBeInTh…
+     36|   const link = screen.getByRole('link', { name: 'View bracket' })
+       |                       ^
+     37|   expect(link).toHaveAttribute('href', '/t/23/bracket')
+     38|   fireEvent.click(link)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+ FAIL  src/features/watch/WatchPage.quality20.test.tsx > links to the featured match when video is absent and calls the list recorded matches
+TestingLibraryElementError: Unable to find an accessible element with the role "region" and name "Recorded matches"
+
+Here are the accessible roles:
+
+  button:
+
+  Name "VALORANT Campus League 2025":
+  [36m<button[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Open":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Open":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Open":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Final":
+  [36m<h1[39m
+    [33mclass[39m=[32m"disp"[39m
+    [33mstyle[39m=[32m"font-size: 28px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "RGURogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"sb-name link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "BYTByte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"sb-name link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Lalita Boonrueang":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-72"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Manop Suwan":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-73"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Orawan Wattana":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-75"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Pipat Prasert":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-76"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Sirawit Kanchana":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-lead"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Mongkol Thanit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-play"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Kanya Duangjai":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-87"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Peerapat Nont":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/player/u-88"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Circuit Breakers":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-cir"[39m
+    [33mtitle[39m=[32m"Open Circuit Breakers"[39m
+  [36m/>[39m
+
+  Name "Nexus Five":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-nqx"[39m
+    [33mtitle[39m=[32m"Open Nexus Five"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Circuit Breakers":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-cir"[39m
+    [33mtitle[39m=[32m"Open Circuit Breakers"[39m
+  [36m/>[39m
+
+  Name "Nexus Five":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-nqx"[39m
+    [33mtitle[39m=[32m"Open Nexus Five"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-rgu"[39m
+    [33mtitle[39m=[32m"Open Rogue Unit"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<a[39m
+    [33mclass[39m=[32m"tchip link"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/team/t-byt"[39m
+    [33mtitle[39m=[32m"Open Byte Force"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "Match replays":
+  [36m<div[39m
+    [33maria-label[39m=[32m"Match replays"[39m
+    [33mclass[39m=[32m"tblwrap"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table />[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead />[39m
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Round Home Away Score Replay":
+  [36m<tr />[39m
+
+  Name "SF1 Rogue Unit vs Circuit Breakers 6 – 5 — Open":
+  [36m<tr />[39m
+
+  Name "SF2 Nexus Five vs Byte Force 8 – 13 — Open":
+  [36m<tr />[39m
+
+  Name "F1 Rogue Unit vs Byte Force 5 – 10 — Open":
+  [36m<tr />[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Round":
+  [36m<th />[39m
+
+  Name "Home":
+  [36m<th />[39m
+
+  Name "":
+  [36m<th />[39m
+
+  Name "Away":
+  [36m<th />[39m
+
+  Name "Score":
+  [36m<th />[39m
+
+  Name "Replay":
+  [36m<th />[39m
+
+  Name "":
+  [36m<th />[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "SF1":
+  [36m<td[39m
+    [33mclass[39m=[32m"tag"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<td />[39m
+
+  Name "vs":
+  [36m<td[39m
+    [33mclass[39m=[32m"tag"[39m
+  [36m/>[39m
+
+  Name "Circuit Breakers":
+  [36m<td />[39m
+
+  Name "6 – 5":
+  [36m<td[39m
+    [33mclass[39m=[32m"num"[39m
+  [36m/>[39m
+
+  Name "—":
+  [36m<td />[39m
+
+  Name "Open":
+  [36m<td />[39m
+
+  Name "SF2":
+  [36m<td[39m
+    [33mclass[39m=[32m"tag"[39m
+  [36m/>[39m
+
+  Name "Nexus Five":
+  [36m<td />[39m
+
+  Name "vs":
+  [36m<td[39m
+    [33mclass[39m=[32m"tag"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<td />[39m
+
+  Name "8 – 13":
+  [36m<td[39m
+    [33mclass[39m=[32m"num"[39m
+  [36m/>[39m
+
+  Name "—":
+  [36m<td />[39m
+
+  Name "Open":
+  [36m<td />[39m
+
+  Name "F1":
+  [36m<td[39m
+    [33mclass[39m=[32m"tag"[39m
+  [36m/>[39m
+
+  Name "Rogue Unit":
+  [36m<td />[39m
+
+  Name "vs":
+  [36m<td[39m
+    [33mclass[39m=[32m"tag"[39m
+  [36m/>[39m
+
+  Name "Byte Force":
+  [36m<td />[39m
+
+  Name "5 – 10":
+  [36m<td[39m
+    [33mclass[39m=[32m"num"[39m
+  [36m/>[39m
+
+  Name "—":
+  [36m<td />[39m
+
+  Name "Open":
+  [36m<td />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"crumb"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"11"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"11"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m16 5-8 7 8 7"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linecap[39m=[32m"round"[39m
+            [33mstroke-linejoin[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"2"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [0m [0m
+        [0mVALORANT Campus League 2025[0m
+      [36m</button>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0m/[0m
+      [36m</span>[39m
+      [36m<span[39m
+        [33mstyle[39m=[32m"color: var(--bone);"[39m
+      [36m>[39m
+        [0mWatch[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"spread"[39m
+    [36m>[39m
+      [36m<h1[39m
+        [33mclass[39m=[32m"disp"[39m
+        [33mstyle[39m=[32m"font-size: 28px;"[39m
+      [36m>[39m
+        [0mFinal[0m
+      [36m</h1>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"badge ok"[39m
+      [36m>[39m
+        [0mFull time[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"scorebug"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"sb-side "[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sb-flag"[39m
+          [33mstyle[39m=[32m"background: rgb(126, 87, 194);"[39m
+        [36m/>[39m
+        [36m<a[39m
+          [33mclass[39m=[32m"sb-name link"[39m
+          [33mdata-discover[39m=[32m"true"[39m
+          [33mhref[39m=[32m"/team/t-rgu"[39m
+          [33mtitle[39m=[32m"Open Rogue Unit"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sb-abbr"[39m
+          [36m>[39m
+            [0mRGU[0m
+          [36m</span>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sb-full"[39m
+          [36m>[39m
+            [0mRogue Unit[0m
+          [36m</span>[39m
+        [36m</a>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sb-score lost"[39m
+        [36m>[39m
+          [0m5[0m
+        [36m</span>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"sb-mid"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tag"[39m
+        [36m>[39m
+          [0mF1[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sb-clock"[39m
+        [36m>[39m
+          [0mFT[0m
+        [36m</span>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"sb-side away"[39m
+        [33mstyle[39m=[32m"view-transition-name: vt-team-t-byt;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sb-flag"[39m
+          [33mstyle[39m=[32m"background: rgb(255, 70, 85);"[39m
+        [36m/>[39m
+        [36m<a[39m
+          [33mclass[39m=[32m"sb-name link"[39m
+          [33mdata-discover[39m=[32m"true"[39m
+          [33mhref[39m=[32m"/team/t-byt"[39m
+          [33mtitle[39m=[32m"Open Byte Force"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sb-abbr"[39m
+          [36m>[39m
+            [0mBYT[0m
+          [36m</span>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sb-full"[39m
+          [36m>[39m
+            [0mByte Force[0m
+          [36m</span>[39m
+        [36m</a>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sb-score "[39m
+        [36m>[39m
+          [0m10[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"panel quiet vstack"[39m
+      [33mstyle[39m=[32m"align-items: center; padding: 34px 20px; text-align: center;"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"34"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"34"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M4 6h7l-2 6 2 6H4V6ZM20 6h-7l2 6-2 6h7V6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"disp"[39m
+        [33mstyle[39m=[32m"font-size: 21px;"[39m
+      [36m>[39m
+        [0mNo video available[0m
+      [36m</div>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mOpen the match to follow its recorded status.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"match-watch-pair"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"panel quiet vstack"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"tag"[39m
+        [36m>[39m
+          [36m<em>[39m
+            [0m//[0m
+          [36m</em>[39m
+          [0m What the system knows[0m
+        [36m</span>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"badge ok"[39m
+          [36m>[39m
+            [0mRecorded[0m
+          [36m</span>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mSirawit Kanchana[0m
+            [0m entered [0m
+            [0m5[0m
+            [0m–[0m
+            [0m10[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag num"[39m
+            [33mstyle[39m=[32m"width: 46px;"[39m
+          [36m/>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"tchip link"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/player/u-72"[39m
+          [36m>[39m
+            [36m<span>[39m
+              [0mLalita Boonrueang[0m
+            [36m</span>[39m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"tchip link"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/team/t-rgu"[39m
+            [33mtitle[39m=[32m"Open Rogue Unit"[39m
+          [36m>[39m
+   ...
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/watch/WatchPage.quality20.test.tsx:45:17
+     43|   show()
+     44|   expect(screen.getByText('No video available')).toBeInTheDocument()
+     45|   expect(screen.getByRole('region', { name: 'Recorded matches' })).toB…
+       |                 ^
+     46|   expect(screen.queryByRole('link', { name: /replay/i })).not.toBeInTh…
+     47|   fireEvent.click(screen.getByRole('link', { name: 'Open match' }))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯
+
+ FAIL  src/features/watch/WatchPage.quality20.test.tsx > does not turn an invalid real tournament ID into a bracket link
+TestingLibraryElementError: Unable to find an element with the text: No such tournament. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"empty"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"28"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"28"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M4 6h7l-2 6 2 6H4V6ZM20 6h-7l2 6-2 6h7V6Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<b>[39m
+        [0mWatch is unavailable[0m
+      [36m</b>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mThe tournament watch view is not available yet. Open a match from the tournament bracket to see its details.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../ltms-desktop-ux/frontend/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/watch/WatchPage.quality20.test.tsx:60:17
+     58| it('does not turn an invalid real tournament ID into a bracket link', …
+     59|   state.mock = false; show('invalid')
+     60|   expect(screen.getByText('No such tournament')).toBeInTheDocument()
+       |                 ^
+     61|   expect(screen.queryByRole('link', { name: 'View bracket' })).not.toB…
+     62| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  9 failed | 16 passed (25)
+   Start at  03:47:11
+   Duration  859ms (transform 276ms, setup 236ms, import 360ms, tests 490ms, environment 1.13s)
