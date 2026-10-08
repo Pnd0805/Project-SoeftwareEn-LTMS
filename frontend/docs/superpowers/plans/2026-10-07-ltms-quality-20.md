@@ -273,4 +273,6 @@ Q22 route, recovery and bundle evidence: [worker-quality.md](../notes/quality20/
 
 ## Execution and review rhythm
 
+2026-10-08 merged re-review: independent design/spec and technical/standards assessments recorded 27/40 UX and 15/20 technical sampled grades, with all release grades withheld. The user selected the two P1 fixes and collapsible mobile Admin navigation. [R01 badge contrast](../../../.scratch/quality20/issues/R01-badge-contrast.md) and [R02 mobile Admin sections](../../../.scratch/quality20/issues/R02-mobile-admin-sections.md) are implemented; [focused verification](../../reviews/2026-10-08-quality20-p1-fixes/README.md) records 763 tests and 36 rendered cases. Earlier 760-test evidence remains the immutable integration checkpoint. The remaining P2/P3 findings and Q23 acceptance remain open.
+
 After each ticket: focused test/inspection, one direct source review, evidence in its ticket note, then update its status. Q23 repeats full gates and independent visual/product review if a reviewer is available and authorized. Q10–Q22 frontend implementation is recorded in the two Quality20 worker commits and notes. Q23 remains the cross-role acceptance gate; historical feedback restoration, physical iPhone capture and live backend checks remain unverified. No push has been performed.

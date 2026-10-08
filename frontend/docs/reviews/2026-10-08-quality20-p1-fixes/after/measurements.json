@@ -1,0 +1,939 @@
+{
+  "phase": "after",
+  "origin": "http://localhost:5185",
+  "records": [
+    {
+      "name": "home",
+      "width": 320,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 320,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 403.359375,
+      "approveTop": 962.59375,
+      "navigationVisible": false,
+      "selectedRoute": "/admin/filters",
+      "workspaceFocused": true,
+      "keyboardToggle": true,
+      "resizeRestoresCollapsed": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 403.359375,
+      "approveTop": 962.59375,
+      "navigationVisible": false,
+      "selectedRoute": "/admin/filters",
+      "workspaceFocused": true,
+      "keyboardToggle": true,
+      "resizeRestoresCollapsed": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 403.359375,
+      "approveTop": 845.609375,
+      "navigationVisible": false,
+      "selectedRoute": "/admin/filters",
+      "workspaceFocused": true,
+      "keyboardToggle": true,
+      "resizeRestoresCollapsed": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 403.359375,
+      "approveTop": 845.609375,
+      "navigationVisible": false,
+      "selectedRoute": "/admin/filters",
+      "workspaceFocused": true,
+      "keyboardToggle": true,
+      "resizeRestoresCollapsed": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 424.171875,
+      "approveTop": 758.234375,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 424.171875,
+      "approveTop": 758.234375,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 384.984375,
+      "approveTop": 719.046875,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 384.984375,
+      "approveTop": 719.046875,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 700,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 700,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 700,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 344.171875,
+      "approveTop": 674.234375,
+      "navigationVisible": false,
+      "selectedRoute": "/admin/filters",
+      "workspaceFocused": true,
+      "keyboardToggle": true,
+      "resizeRestoresCollapsed": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 700,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 700,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 700,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 344.171875,
+      "approveTop": 674.234375,
+      "navigationVisible": false,
+      "selectedRoute": "/admin/filters",
+      "workspaceFocused": true,
+      "keyboardToggle": true,
+      "resizeRestoresCollapsed": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 701,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 701,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 701,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 464.171875,
+      "approveTop": 910.421875,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 701,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 701,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 5.176140834316318
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 5.63440037529697
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 701,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 464.171875,
+      "approveTop": 910.421875,
+      "navigationVisible": true,
+      "overflow": false
+    }
+  ],
+  "failures": []
+}

@@ -7,9 +7,9 @@
  * เรากรองล่วงหน้าไม่ได้ — `/me` ไม่บอกขอบเขตแอดมินของคนที่ล็อกอิน — แต่พอ server
  * ตอบมาแล้วต้องไม่ลืม ไม่ใช่ปล่อยให้กดซ้ำได้คำตอบเดิมทุกครั้ง
  */
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
 
 vi.mock('../../api/client', async original => ({
@@ -83,6 +83,54 @@ beforeEach(() => {
   reviewState.isError = false
   reviewState.error = null
   reviewMutate.mockImplementation(() => {})
+})
+
+afterEach(() => vi.unstubAllGlobals())
+
+const mobileAdmin = () => {
+  const events = new EventTarget()
+  vi.stubGlobal('matchMedia', vi.fn(() => ({
+    matches: true,
+    addEventListener: events.addEventListener.bind(events),
+    removeEventListener: events.removeEventListener.bind(events),
+  })))
+  return events
+}
+
+it('starts the mobile Admin at its queue with section navigation collapsed', () => {
+  mobileAdmin()
+  renderPage()
+  expect(screen.getByRole('button', { name: 'Sections: Tournament requests' })).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('navigation', { name: 'Admin sections' })).not.toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'Tournament request queue' })).toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(2)
+  expect(reviewMutate).not.toHaveBeenCalled()
+})
+
+it('opens every mobile Admin destination then collapses and focuses the selected workspace', async () => {
+  mobileAdmin()
+  renderPage()
+  fireEvent.click(screen.getByRole('button', { name: 'Sections: Tournament requests' }))
+  const nav = screen.getByRole('navigation', { name: 'Admin sections' })
+  expect(within(nav).getAllByRole('link')).toHaveLength(10)
+  fireEvent.click(within(nav).getByRole('link', { name: 'Rule changes' }))
+  expect(screen.getByRole('button', { name: 'Sections: Rule changes' })).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('navigation', { name: 'Admin sections' })).not.toBeInTheDocument()
+  const workspace = screen.getByRole('region', { name: 'Rule changes' })
+  await waitFor(() => expect(workspace).toHaveFocus())
+  expect(reviewMutate).not.toHaveBeenCalled()
+})
+
+it('shows all desktop destinations after resize and returns to collapsed mobile navigation', () => {
+  const media = mobileAdmin()
+  renderPage()
+  const resize = (matches: boolean) => act(() => media.dispatchEvent(Object.assign(new Event('change'), { matches })))
+  resize(false)
+  expect(screen.queryByRole('button', { name: /Sections:/ })).not.toBeInTheDocument()
+  expect(within(screen.getByRole('navigation', { name: 'Admin sections' })).getAllByRole('link')).toHaveLength(10)
+  resize(true)
+  expect(screen.getByRole('button', { name: 'Sections: Tournament requests' })).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('navigation', { name: 'Admin sections' })).not.toBeInTheDocument()
 })
 
 it('keeps grouped Admin destinations as current-route links without reviewing a request', () => {

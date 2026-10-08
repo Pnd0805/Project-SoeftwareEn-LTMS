@@ -12,10 +12,11 @@
  * ผ่าน API ที่ backend ยังไม่มี (โหมด mock ใช้ได้ นอกนั้น 501) · แท็บที่เหลืออ่าน store
  * เพราะ backend ยังไม่มี route ของคำขอจัดการแข่งและการเปลี่ยน hard filter
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Badge, Banner, Empty, Field, Panel, TableWrap } from '../../components/kit/primitives'
 import { adminChangeValue, adminFieldLabel, adminReadBlocked } from './adminView'
 import { Modal } from '../../components/kit/Modal'
+import { Icon } from '../../components/kit/Icon'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { TeamLinkView } from '../../components/kit/chips'
 import { decideFilterChange, decideTournament, useLtms } from '../../shared/store'
@@ -58,11 +59,46 @@ const TABS = [
   { key: 'feedback', label: 'Feedback' },
 ]
 
+function AdminNavigation({ tab, onNavigate }: { tab: string; onNavigate: () => void }) {
+  const [compact, setCompact] = useState(() => window.matchMedia?.('(max-width: 700px)').matches ?? false)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia?.('(max-width: 700px)')
+    if (!media) return
+    const change = (event: MediaQueryListEvent) => { setCompact(event.matches); setOpen(false) }
+    media.addEventListener('change', change)
+    return () => media.removeEventListener('change', change)
+  }, [])
+
+  return <div className="admin-section-picker">
+    {compact ? <button className="btn admin-sections-trigger" type="button" aria-controls="admin-sections"
+      aria-expanded={open} aria-label={`Sections: ${TABS.find(item => item.key === tab)?.label}`}
+      onClick={() => setOpen(value => !value)}>
+      <span><span className="sub">Sections</span><strong>{TABS.find(item => item.key === tab)?.label}</strong></span>
+      <Icon name="chev" size={18} />
+    </button> : null}
+    <nav id="admin-sections" className="admin-navigation" aria-label="Admin sections" hidden={compact && !open}>
+      {[{ name: 'Reviews', keys: ['requests', 'permanent', 'referees', 'filters', 'transfers'] },
+        { name: 'Directory', keys: ['tournaments', 'users'] },
+        { name: 'Governance', keys: ['scopes', 'audit', 'feedback'] }].map(group => <div className="admin-nav-group" role="group" aria-label={group.name} key={group.name}>
+        <h2>{group.name}</h2>
+        <div className="admin-nav-items">{TABS.filter(item => group.keys.includes(item.key)).map(item => <Link className={`tab ${tab === item.key ? 'on' : ''}`} key={item.key}
+          aria-current={tab === item.key ? 'page' : undefined} to={`/admin/${item.key}`} onClick={event => {
+            if (!compact || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+            setOpen(false)
+            requestAnimationFrame(onNavigate)
+          }}>{item.label}</Link>)}</div>
+      </div>)}
+    </nav>
+  </div>
+}
+
 export function AdminPage() {
   const s = useLtms()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
   const tab = TABS.some(t => t.key === tabParam) ? tabParam! : 'requests'
+  const workspace = useRef<HTMLElement>(null)
 
   /* สิทธิ์แอดมิน: โหมด mock อ่านจาก store · โหมดจริงถาม backend (ดู useAdminAccess)
      เดิมเช็คแต่ store ทำให้คนที่ล็อกอินกับ backend จริงโดนเด้ง 403 ทุกคน */
@@ -210,17 +246,9 @@ export function AdminPage() {
         </div>
       </div>
 
-      <nav className="admin-navigation" aria-label="Admin sections">
-        {[{ name: 'Reviews', keys: ['requests', 'permanent', 'referees', 'filters', 'transfers'] },
-          { name: 'Directory', keys: ['tournaments', 'users'] },
-          { name: 'Governance', keys: ['scopes', 'audit', 'feedback'] }].map(group => <div className="admin-nav-group" role="group" aria-label={group.name} key={group.name}>
-          <h2>{group.name}</h2>
-          <div className="admin-nav-items">{TABS.filter(item => group.keys.includes(item.key)).map(item => <Link className={`tab ${tab === item.key ? 'on' : ''}`} key={item.key}
-            aria-current={tab === item.key ? 'page' : undefined} to={`/admin/${item.key}`}>{item.label}</Link>)}</div>
-        </div>)}
-      </nav>
+      <AdminNavigation tab={tab} onNavigate={() => workspace.current?.focus()} />
       {decisionNotice ? <div role="status"><Banner kind={decisionNotice.kind}>{decisionNotice.text}</Banner></div> : null}
-      <section className="admin-workspace" aria-label={TABS.find(item => item.key === tab)?.label}>
+      <section ref={workspace} id="admin-workspace" className="admin-workspace" tabIndex={-1} aria-label={TABS.find(item => item.key === tab)?.label}>
 
       {tab === 'requests' && !USE_MOCK ? (
         <Panel>
