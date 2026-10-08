@@ -44,4 +44,9 @@ export const env = {
     SMTP_PASS : process.env["SMTP_PASS"],
     MAIL_FROM : process.env["MAIL_FROM"] || "no-reply@ltms.local",
     FRONTEND_URL : process.env["FRONTEND_URL"] || "http://localhost:8080",
+
+    // C2 (8 ต.ค. 2569) — คำขอที่ใช้เวลาเกินกี่ ms ถึงจะถูก log · 0 = ปิดสนิท
+    // ไม่ requireEnv ตามกฎเดิมของไฟล์นี้ — เพื่อนอีก 10+ คนต้องรันโปรเจกต์ได้โดยไม่ต้องตั้งอะไร
+    // 2000 มาจากของจริง: load test เจอคำขอค้างจน timeout 2,000+ ครั้ง โดย log ว่างเปล่า
+    SLOW_REQUEST_MS : Number(process.env["SLOW_REQUEST_MS"] ?? 2000),
 };

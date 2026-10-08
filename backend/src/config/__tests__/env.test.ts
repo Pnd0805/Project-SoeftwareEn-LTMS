@@ -91,6 +91,8 @@ describe("env - happy path", () => {
             SMTP_PASS: undefined,
             MAIL_FROM: "no-reply@ltms.local",
             FRONTEND_URL: "http://localhost:8080",
+            // C2 (8 ต.ค. 2569) — ไม่ตั้ง = 2000 ms · 0 = ปิดการ log คำขอช้าสนิท
+            SLOW_REQUEST_MS: 2000,
         });
     });
 
