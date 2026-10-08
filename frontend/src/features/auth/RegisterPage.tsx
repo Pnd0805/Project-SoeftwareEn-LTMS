@@ -4,10 +4,11 @@
  * Registration page wired to useRegister(), useVerifyEmail(), and useResendVerification().
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
+import { isKuEmail } from '../../shared/kuEmail'
 import { Icon } from '../../components/kit/Icon'
 import { useRegister, useVerifyEmail, useResendVerification } from '../../hooks/useAuth'
 import { useDepartments, useFaculties } from '../../hooks/useReference'
@@ -20,10 +21,12 @@ const defaultValues: RegisterInput = {
   password: '',
   gender: 'male',
   birthDate: '2000-01-01',
-  facultyId: 1,
-  departmentId: 1,
+  facultyId: 0,
+  departmentId: 0,
   year: 1,
 }
+
+const personalFields = ['email', 'fullName', 'password', 'gender', 'birthDate'] as const
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -34,7 +37,9 @@ export function RegisterPage() {
   const register = useRegister()
   const verifyEmail = useVerifyEmail()
   const resendVerification = useResendVerification()
-  const faculties = useFaculties()
+  const [accountStep, setAccountStep] = useState<'personal' | 'student'>('personal')
+  const [externalUnavailable, setExternalUnavailable] = useState(false)
+  const stepTitle = useRef<HTMLHeadingElement>(null)
 
   const [otpCode, setOtpCode] = useState('')
   const [otpError, setOtpError] = useState<string | null>(null)
@@ -61,17 +66,52 @@ export function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues,
   })
+  const emailRegistration = form.register('email')
+  const facultyRegistration = form.register('facultyId', { valueAsNumber: true })
+  const email = useWatch({ control: form.control, name: 'email' })
   const facultyId = useWatch({ control: form.control, name: 'facultyId' })
-  const departments = useDepartments(facultyId)
+  const departmentId = useWatch({ control: form.control, name: 'departmentId' })
+  const studentStep = step !== 'otp' && accountStep === 'student' && isKuEmail(email)
+  const faculties = useFaculties(studentStep)
+  const departments = useDepartments(studentStep && facultyId > 0 ? facultyId : undefined)
+  const referenceReady = faculties.isSuccess && departments.isSuccess
+    && faculties.data.items.some(item => item.id === facultyId)
+    && departments.data.items.some(item => item.id === departmentId)
 
   useEffect(() => {
-    const firstDepartment = departments.data?.items[0]
-    if (firstDepartment && !departments.data?.items.some(item => item.id === form.getValues('departmentId'))) {
-      form.setValue('departmentId', firstDepartment.id, { shouldValidate: true })
+    stepTitle.current?.focus()
+  }, [accountStep, step])
+
+  const showPersonal = () => {
+    setAccountStep('personal')
+    setExternalUnavailable(false)
+    form.clearErrors('root')
+  }
+
+  const handleAccountSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (register.isPending || form.formState.isSubmitting) return
+    form.clearErrors('root')
+    if (studentStep) {
+      if (!referenceReady) return
+      await form.handleSubmit(submit, errors => {
+        if (personalFields.some(field => errors[field])) setAccountStep('personal')
+      })(event)
+      return
     }
-  }, [departments.data, form])
+    const valid = await form.trigger([...personalFields], { shouldFocus: true })
+    if (!valid) return
+    if (isKuEmail(form.getValues('email'))) {
+      setExternalUnavailable(false)
+      setAccountStep('student')
+    } else {
+      // Current BE requires study fields for all emails. Never invent them for an external account.
+      setExternalUnavailable(true)
+    }
+  }
 
   const submit = async (values: RegisterInput) => {
+    if (!isKuEmail(values.email) || !referenceReady) return
     try {
       await register.mutateAsync(values)
       const now = Date.now()
@@ -83,6 +123,7 @@ export function RegisterPage() {
         Object.entries(error.fields).forEach(([field, message]) => {
           form.setError(field as keyof RegisterInput, { type: 'server', message })
         })
+        if (personalFields.some(field => error.fields?.[field])) setAccountStep('personal')
       } else {
         form.setError('root', { type: 'server', message: 'สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' })
       }
@@ -212,24 +253,34 @@ export function RegisterPage() {
         สมัครสมาชิกเพื่อเข้าระบบ LTMS
       </div>
 
-      <form className="vstack" style={{ gap: 12 }} onSubmit={event => { void form.handleSubmit(submit)(event) }}>
-        <label className="field">
-          <span className="label">ชื่อ-นามสกุล</span>
-          <input type="text" placeholder="สมชาย ใจดี" {...form.register('fullName')} />
-        </label>
-        {form.formState.errors.fullName && <span className="error">{form.formState.errors.fullName.message}</span>}
-
+      <h2 ref={stepTitle} tabIndex={-1} className="disp" style={{ fontSize: 20 }}>
+        {studentStep ? 'ขั้นตอนที่ 2: ข้อมูลนิสิต' : 'ขั้นตอนที่ 1: ข้อมูลส่วนตัว'}
+      </h2>
+      <form noValidate className="vstack" style={{ gap: 12 }} onSubmit={event => { void handleAccountSubmit(event) }}>
+        {!studentStep ? <>
         <label className="field">
           <span className="label">อีเมล</span>
-          <input type="email" placeholder="you@ku.th" {...form.register('email')} />
+          <input type="email" autoComplete="email" placeholder="you@example.com"
+            aria-invalid={!!form.formState.errors.email} aria-describedby={form.formState.errors.email ? 'register-email-error' : undefined}
+            {...emailRegistration} onChange={event => { void emailRegistration.onChange(event); setExternalUnavailable(false) }} />
         </label>
-        {form.formState.errors.email && <span className="error">{form.formState.errors.email.message}</span>}
+        {form.formState.errors.email && <span className="error" id="register-email-error">{form.formState.errors.email.message}</span>}
+
+        <label className="field">
+          <span className="label">ชื่อ-นามสกุล</span>
+          <input type="text" autoComplete="name" placeholder="สมชาย ใจดี"
+            aria-invalid={!!form.formState.errors.fullName} aria-describedby={form.formState.errors.fullName ? 'register-name-error' : undefined}
+            {...form.register('fullName')} />
+        </label>
+        {form.formState.errors.fullName && <span className="error" id="register-name-error">{form.formState.errors.fullName.message}</span>}
 
         <label className="field">
           <span className="label">รหัสผ่าน</span>
-          <input type="password" placeholder="••••••••" {...form.register('password')} />
+          <input type="password" autoComplete="new-password" placeholder="••••••••"
+            aria-invalid={!!form.formState.errors.password} aria-describedby={form.formState.errors.password ? 'register-password-error' : undefined}
+            {...form.register('password')} />
         </label>
-        {form.formState.errors.password && <span className="error">{form.formState.errors.password.message}</span>}
+        {form.formState.errors.password && <span className="error" id="register-password-error">{form.formState.errors.password.message}</span>}
 
         <label className="field">
           <span className="label">เพศ</span>
@@ -242,41 +293,68 @@ export function RegisterPage() {
 
         <label className="field">
           <span className="label">วันเกิด</span>
-          <input type="date" {...form.register('birthDate')} />
+          <input type="date" autoComplete="bday"
+            aria-invalid={!!form.formState.errors.birthDate} aria-describedby={form.formState.errors.birthDate ? 'register-birth-error' : undefined}
+            {...form.register('birthDate')} />
         </label>
-        {form.formState.errors.birthDate && <span className="error">{form.formState.errors.birthDate.message}</span>}
+        {form.formState.errors.birthDate && <span className="error" id="register-birth-error">{form.formState.errors.birthDate.message}</span>}
+
+        <p className="sub">อีเมล @ku.th จะกรอกข้อมูลนิสิตในขั้นตอนถัดไป</p>
+        {externalUnavailable ? <div className="banner warn" role="alert">การสมัครด้วยอีเมลภายนอกยังไม่เปิดใช้งาน กรุณาลองใหม่ภายหลัง</div> : null}
+        </> : <>
+        <p className="sub">สมัครด้วยอีเมล <b>{email}</b> กรุณากรอกข้อมูลนิสิตของคุณ</p>
+        {faculties.isPending ? <p className="sub" role="status">กำลังโหลดข้อมูลคณะ…</p> : null}
+        {facultyId > 0 && departments.isPending ? <p className="sub" role="status">กำลังโหลดข้อมูลสาขา…</p> : null}
+        {faculties.isError ? <div className="banner crit" role="alert">โหลดข้อมูลคณะไม่สำเร็จ <button type="button" className="btn" onClick={() => void faculties.refetch()}>ลองใหม่</button></div> : null}
+        {departments.isError ? <div className="banner crit" role="alert">โหลดข้อมูลสาขาไม่สำเร็จ <button type="button" className="btn" onClick={() => void departments.refetch()}>ลองใหม่</button></div> : null}
+        {faculties.isSuccess && !faculties.data.items.length ? <div className="banner warn" role="alert">ยังไม่มีข้อมูลคณะ กรุณาติดต่อผู้ดูแล</div> : null}
 
         <label className="field">
           <span className="label">คณะ</span>
-          <select {...form.register('facultyId', { valueAsNumber: true })} disabled={faculties.isLoading}>
+          <select {...facultyRegistration}
+            onChange={event => {
+              void facultyRegistration.onChange(event)
+              form.setValue('departmentId', 0)
+              form.clearErrors('departmentId')
+            }}
+            aria-invalid={!!form.formState.errors.facultyId} aria-describedby={form.formState.errors.facultyId ? 'register-faculty-error' : undefined}
+            disabled={faculties.isPending || faculties.isError || register.isPending}>
+            <option value={0}>เลือกคณะ</option>
             {faculties.data?.items.map(faculty => (
               <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
             ))}
           </select>
         </label>
-        {form.formState.errors.facultyId && <span className="error">{form.formState.errors.facultyId.message}</span>}
+        {form.formState.errors.facultyId && <span className="error" id="register-faculty-error">{form.formState.errors.facultyId.message}</span>}
 
         <label className="field">
-          <span className="label">ภาควิชา</span>
+          <span className="label">สาขา / ภาควิชา</span>
           <select {...form.register('departmentId', { valueAsNumber: true })}
-            disabled={departments.isLoading || !departments.data?.items.length}>
+            aria-invalid={!!form.formState.errors.departmentId} aria-describedby={form.formState.errors.departmentId ? 'register-department-error' : undefined}
+            disabled={facultyId <= 0 || departments.isPending || departments.isError || !departments.data?.items.length || register.isPending}>
+            <option value={0}>เลือกสาขา / ภาควิชา</option>
             {departments.data?.items.map(department => (
               <option key={department.id} value={department.id}>{department.name}</option>
             ))}
           </select>
         </label>
-        {form.formState.errors.departmentId && <span className="error">{form.formState.errors.departmentId.message}</span>}
+        {form.formState.errors.departmentId && <span className="error" id="register-department-error">{form.formState.errors.departmentId.message}</span>}
+        {departments.isSuccess && facultyId > 0 && !departments.data.items.length ? <div className="banner warn" role="alert">คณะนี้ยังไม่มีข้อมูลสาขา กรุณาเลือกคณะอื่นหรือติดต่อผู้ดูแล</div> : null}
 
         <label className="field">
           <span className="label">ชั้นปี</span>
-          <input type="number" min={1} max={8} {...form.register('year', { valueAsNumber: true })} />
+          <input type="number" min={1} max={8} disabled={register.isPending}
+            aria-invalid={!!form.formState.errors.year} aria-describedby={form.formState.errors.year ? 'register-year-error' : undefined}
+            {...form.register('year', { valueAsNumber: true })} />
         </label>
-        {form.formState.errors.year && <span className="error">{form.formState.errors.year.message}</span>}
+        {form.formState.errors.year && <span className="error" id="register-year-error">{form.formState.errors.year.message}</span>}
+        <button className="btn ghost" type="button" disabled={register.isPending} onClick={showPersonal}>ย้อนกลับไปข้อมูลส่วนตัว</button>
+        </>}
 
         {form.formState.errors.root && <span className="error">{form.formState.errors.root.message}</span>}
 
-        <button className="btn primary" type="submit" disabled={register.isPending}>
-          {register.isPending ? 'กำลังสมัครสมาชิก...' : 'สมัครสมาชิก'}
+        <button className="btn primary" type="submit" disabled={register.isPending || form.formState.isSubmitting || (studentStep && !referenceReady)}>
+          {register.isPending ? 'กำลังสมัครสมาชิก...' : studentStep || !isKuEmail(email) ? 'สมัครสมาชิก' : 'ถัดไป: ข้อมูลนิสิต'}
         </button>
       </form>
 
