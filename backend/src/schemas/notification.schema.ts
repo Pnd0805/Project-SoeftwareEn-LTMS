@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import { MUTABLE_CATEGORIES } from '../config/notificationCategories.js';
+import { EMAIL_CATEGORIES } from '../config/emailNotification.js';
 import type { MutableCategory } from '../config/notificationCategories.js';
 
 /** สร้าง shape จากรายชื่อหมวดตัวเดียวกับที่ service ใช้ — เพิ่มหมวดใหม่ที่เดียวแล้วที่นี่ตามเอง */
@@ -16,3 +17,9 @@ export const notificationPrefsSchema = z.strictObject(shape)
     .refine(v => Object.keys(v).length > 0, 'กรุณาระบุอย่างน้อยหนึ่งหมวด');
 
 export type NotificationPrefsInput = z.infer<typeof notificationPrefsSchema>;
+
+// Unlike the in-app preference, every email category (including critical) may be disabled.
+export const emailNotificationPrefsSchema = z.strictObject(
+    Object.fromEntries(EMAIL_CATEGORIES.map(key => [key, z.boolean().optional()])) as
+        Record<typeof EMAIL_CATEGORIES[number], z.ZodOptional<z.ZodBoolean>>
+).refine(input => Object.keys(input).length > 0, 'กรุณาระบุอย่างน้อยหนึ่งหมวด');

@@ -39,11 +39,16 @@ export const env = {
     // Password recovery — ทุกตัว **ห้าม requireEnv** โดยเจตนา เพื่อนอีก 10+ คนที่ไม่ได้ทำเรื่องนี้ต้องรันโปรเจกต์ได้
     // ปกติโดยไม่มี credential SMTP เลย · ไม่ตั้งค่า = ชี้ไป mailpit (localhost:1025) อัตโนมัติ
     SMTP_HOST : process.env["SMTP_HOST"] || "localhost",
-    SMTP_PORT : Number(process.env["SMTP_PORT"] ?? 1025),   // 1025 = mailpit
+    SMTP_PORT : Number(process.env["SMTP_PORT"] || 1025),   // 1025 = mailpit (blank .env value also defaults)
+    // For real SMTP relays (Brevo on port 587), require STARTTLS rather than sending credentials over plaintext.
+    // Defaults false to keep existing local Mailpit development working unchanged.
+    SMTP_REQUIRE_TLS : process.env["SMTP_REQUIRE_TLS"] === "true",
     SMTP_USER : process.env["SMTP_USER"],                    // undefined = ไม่ auth (mailpit ไม่ต้อง)
     SMTP_PASS : process.env["SMTP_PASS"],
     MAIL_FROM : process.env["MAIL_FROM"] || "no-reply@ltms.local",
     FRONTEND_URL : process.env["FRONTEND_URL"] || "http://localhost:8080",
+    // Explicit opt-in: existing deployments must not suddenly email all verified users.
+    EMAIL_NOTIFICATIONS_ENABLED : process.env["EMAIL_NOTIFICATIONS_ENABLED"] === "true",
 
     // C2 (8 ต.ค. 2569) — คำขอที่ใช้เวลาเกินกี่ ms ถึงจะถูก log · 0 = ปิดสนิท
     // ไม่ requireEnv ตามกฎเดิมของไฟล์นี้ — เพื่อนอีก 10+ คนต้องรันโปรเจกต์ได้โดยไม่ต้องตั้งอะไร

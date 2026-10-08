@@ -1,4 +1,5 @@
 import * as NotificationRepo from '../repositories/notification.repo.js';
+import { queueNotificationEmail } from './emailNotification.service.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import { MUTABLE_CATEGORIES, mutedTypes, resolvePrefs } from '../config/notificationCategories.js';
 import type { MutableCategory } from '../config/notificationCategories.js';
@@ -83,7 +84,13 @@ export async function notify(inputs: NotificationInput | NotificationInput[]): P
     const list = Array.isArray(inputs) ? inputs : [inputs];
     for (const input of list) {
         try {
-            await NotificationRepo.insertNotification(input);
+            const notificationId = await NotificationRepo.insertNotification(input);
+            try {
+                await queueNotificationEmail(notificationId, input.userId, input.type);
+            } catch (err) {
+                // An email failure must never undo the in-app notification or user action.
+                console.error(`[notify] คิวอีเมลไม่สำเร็จสำหรับ notification ${notificationId}`, err);
+            }
         } catch (err) {
             console.error(`[notify] ส่งแจ้งเตือน ${input.type} ให้ user ${input.userId} ไม่สำเร็จ`, err);
         }
