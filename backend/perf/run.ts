@@ -15,7 +15,7 @@ import { request, setTarget, type Res } from './lib/http.js';
 import { tokenFor } from './lib/token.js';
 import { Recorder, fmt, pct, type Summary } from './lib/stats.js';
 import { backgroundLoad, runLoad, type Action } from './lib/load.js';
-import { monitor, type ProcStats } from './lib/monitor.js';
+import { PROC_STATS_AVAILABLE, monitor, type ProcStats } from './lib/monitor.js';
 
 /**
  * npm run perf — Performance & Load Test ตาม SRS 3.2 (PF-01 … PF-06)
@@ -163,7 +163,15 @@ function pickMixed(vu: number): Action {
 
 let serverPid = 0, mysqldPid = 0;
 const watch = () => monitor([{ name: 'node (API)', pid: serverPid }, { name: 'mysqld', pid: mysqldPid }]);
-const procLine = (ps: ProcStats[]) => ps.map(p => `${p.name} CPU เฉลี่ย ${p.cpuAvg.toFixed(0)}% (สูงสุด ${p.cpuMax.toFixed(0)}%) · RAM สูงสุด ${p.rssMax.toFixed(0)} MB`).join(' · ');
+/**
+ * บรรทัด CPU/RAM ของโปรเซส — `—` เมื่อวัดไม่ได้
+ * 🔴 8 ต.ค. 2569 — เดิมเรียก `.toFixed(0)` บน NaN ตรง ๆ ⇒ รายงานเต็มไปด้วย `NaN%`
+ *   (monitor คืน NaN ตามเจตนาเมื่อไม่มี /proc — ตัวที่ผิดคือการพิมพ์ ไม่ใช่การวัด)
+ *   เหตุที่วัดไม่ได้อยู่ในหัวข้อ "สภาพแวดล้อม" ครั้งเดียว ไม่ซ้ำทุกช่อง
+ */
+const num = (v: number, unit: string, digits = 0) => (Number.isNaN(v) ? '—' : `${v.toFixed(digits)}${unit}`);
+const procLine = (ps: ProcStats[]) => ps.map(p =>
+    `${p.name} CPU เฉลี่ย ${num(p.cpuAvg, '%')} (สูงสุด ${num(p.cpuMax, '%')}) · RAM สูงสุด ${num(p.rssMax, ' MB')}`).join(' · ');
 
 function endpointTable(rows: Summary[]): string {
     const head = '| Endpoint | คำขอ | req/s | p50 | p95 | p99 | max | error | 4xx |\n|---|--:|--:|--:|--:|--:|--:|--:|--:|';
@@ -387,15 +395,50 @@ async function pf06(logPath: string) {
     const logLines = log.split('\n').filter(l => l.trim() !== '');
     const errorLines = logLines.filter(l => /error|exception|ECONN|ER_|timeout/i.test(l));
 
+    /**
+     * ★ บรรทัด `[slow]` จาก middleware C2 (`SLOW_REQUEST_MS` ค่าตั้งต้น 2000)
+     *
+     * 🔴 8 ต.ค. 2569 — เดิมด่านนี้นับแต่บรรทัดที่เป็น error ⇒ รายงานเขียนว่า
+     *   "บรรทัดที่เป็น error 0" ทั้งที่ log มีสัญญาณคอขวดอยู่ 9,647 บรรทัด
+     *   ซึ่งตรงกับข้อสังเกตใน PERF-RESULTS ว่า "ตรวจ log ใน PF-06 จับปัญหาแบบนี้ไม่ได้"
+     *   ⇒ เมื่อมี middleware แล้ว ด่านนี้ต้องอ่านมันด้วย ไม่งั้นของที่เพิ่มมาก็ไม่มีใครเห็น
+     *
+     * 🔴 **ไม่เอาไปตัดสินผ่าน/ไม่ผ่าน** — เกณฑ์ PF-06 ของ SRS คือ error rate เท่านั้น
+     *   และขั้น 1,000 VU (เกินเกณฑ์) ทำให้มีคำขอช้าเป็นเรื่องปกติที่คาดไว้แล้ว
+     *   ตัวเลขนี้มีไว้ "ชี้ว่า log จับอะไรได้" ไม่ใช่ด่านใหม่ที่ไม่มีใครตกลง
+     *
+     * 🔴 **ห้ามใช้จำนวนครั้งจัดอันดับคอขวด** — พอระบบอิ่มตัว ทุกเส้นเข้าคิวพร้อมกัน
+     *   ตัวเลขจะเกลี่ยเท่ากันหมด: รอบ 8 ต.ค. 2569 หกอันดับแรกอยู่ที่ 1,148–1,310 ครั้ง ต่างกันไม่ถึง 15%
+     *   ตัวที่แยก "คิวรีแพง" ออกจาก "คิวรีถูกแต่ติดคิว" ได้คือตารางราย endpoint ที่โหลดต่ำใน PF-01
+     */
+    const slowMs = Number(process.env['SLOW_REQUEST_MS'] ?? 2000);   // ค่าตั้งต้นเดียวกับ config/env.ts
+    const SLOW = /^\[slow\] (\d+)ms (\w+) (\S+)/;
+    // รวมเลข id ให้เป็น :id เหมือนตารางราย endpoint อื่น ๆ ไม่งั้น POST /matches/23|24|29/predictions
+    // จะแตกเป็นสิบแถวแถวละ 20 ครั้ง แล้วหลุดจากตารางสิบอันดับ ทั้งที่รวมกันเป็นตัวที่ช้าบ่อยที่สุด
+    const normPath = (p: string) => p.replace(/\/\d+/g, '/:id');
+    const slow = logLines.flatMap(l => {
+        const m = SLOW.exec(l);
+        return m ? [{ ms: Number(m[1]), ep: `${m[2]} ${normPath(m[3]!)}`, aborted: l.includes('ไม่ได้ส่งคำตอบ') }] : [];
+    });
+    const slowByEp = [...slow.reduce((acc, s) => {
+        const cur = acc.get(s.ep) ?? { count: 0, max: 0 };
+        acc.set(s.ep, { count: cur.count + 1, max: Math.max(cur.max, s.ms) });
+        return acc;
+    }, new Map<string, { count: number; max: number }>())].sort((a, b) => b[1].count - a[1].count);
+    const aborted = slow.filter(s => s.aborted).length;
+
     const req = recs.slice(0, 3);
     const total = req.reduce((s, r) => s + r.overall().count, 0);
     const errs = req.reduce((s, r) => s + r.overall().errors, 0);
     const rate = total ? errs / total : 0;
     results['pf06'] = { steps: steps.map((s, i) => ({ ...s, overall: recs[i]!.overall(), endpoints: recs[i]!.perEndpoint(), proc: procs[i], samples5xx: recs[i]!.samples5xx, samples4xx: recs[i]!.samples4xx })),
-                        log: { lines: logLines.length, errorLines: errorLines.length, sample: errorLines.slice(0, 20) }, durationMs: Date.now() - t0 };
+                        log: { lines: logLines.length, errorLines: errorLines.length, sample: errorLines.slice(0, 20),
+                               slow: { total: slow.length, aborted, byEndpoint: slowByEp.map(([ep, v]) => ({ ep, ...v })) } },
+                        durationMs: Date.now() - t0 };
     const s500 = recs[2]!.overall();
     verdicts.push({ id: 'PF-06', title: 'รองรับ 500 ผู้ใช้พร้อมกัน', target: 'error rate ≤ 1% · ไล่ขั้น + ตรวจ log ของ API',
-        measured: `error ${pct(rate)} (${errs}/${total.toLocaleString()} ในขั้น 100–500) · ขั้น 500: p95 ${fmt(s500.p95)} · log ผิดปกติ ${errorLines.length} บรรทัด`,
+        measured: `error ${pct(rate)} (${errs}/${total.toLocaleString()} ในขั้น 100–500) · ขั้น 500: p95 ${fmt(s500.p95)} · log ผิดปกติ ${errorLines.length} บรรทัด`
+            + ` · คำขอช้าเกิน ${slowMs} ms ${slow.length.toLocaleString()} ครั้ง (ไม่ใช่เกณฑ์ตัดสิน)`,
         pass: rate <= 0.01 && errorLines.length === 0,
         notes: [`ขั้น 1,000 VU (เกินเกณฑ์): error ${pct(recs[3]!.overall().errorRate)} · p95 ${fmt(recs[3]!.overall().p95)}`,
                 'ชุดคำขอผสม: อ่าน 92% + ทาย pick\'em 8% · เวลาคิด 1–3 วินาที'] });
@@ -404,6 +447,15 @@ async function pf06(logPath: string) {
         steps.map((s, i) => { const o = recs[i]!.overall(); return `| ${s.vus} VU${s.required ? '' : ' (สำรวจ)'} | ${s.holdMs / 1000} วิ | ${o.count.toLocaleString()} | ${o.rps.toFixed(0)} | ${fmt(o.p50)} | ${fmt(o.p95)} | ${fmt(o.p99)} | ${fmt(o.max)} | ${o.errors} | ${pct(o.errorRate)} | ${o.client4xx} | ${procLine(procs[i]!)} |`; }).join('\n') +
         `\n\n**ตรวจ log ของ API ระหว่าง PF-06:** ${logLines.length} บรรทัด · บรรทัดที่เป็น error ${errorLines.length}` +
         (errorLines.length ? `\n\n\`\`\`\n${errorLines.slice(0, 10).join('\n')}\n\`\`\`` : '') +
+        (slow.length
+            ? `\n\n**คำขอที่ช้าเกิน ${slowMs} ms (middleware \`slowRequestLog\`):** ${slow.length.toLocaleString()} ครั้ง` +
+              ` · ช้าสุด ${fmt(Math.max(...slow.map(s => s.ms)))}` +
+              ` · ไม่ได้ส่งคำตอบเพราะ client ยกเลิกก่อน ${aborted.toLocaleString()} ครั้ง` +
+              `\n\n🔴 ไม่ใช่เกณฑ์ตัดสิน PF-06 (SRS กำหนดแค่ error rate) · ขั้น 1,000 VU เกินเกณฑ์อยู่แล้วจึงมีคำขอช้าเป็นปกติ` +
+              ` · ★ ตอนระบบอิ่มตัวทุกเส้นเข้าคิวพร้อมกัน จำนวนครั้งจึงเกลี่ยเท่ากันหมด ⇒ **จัดอันดับคอขวดจากคอลัมน์ “ครั้งที่ช้า” ไม่ได้** — ใช้ช่อง “ช้าสุด” กับตารางราย endpoint ที่โหลดต่ำ (PF-01) แทน\n\n` +
+              `| Endpoint | ครั้งที่ช้า | ช้าสุด |\n|---|--:|--:|\n` +
+              slowByEp.slice(0, 10).map(([ep, v]) => `| \`${ep}\` | ${v.count.toLocaleString()} | ${fmt(v.max)} |`).join('\n')
+            : `\n\n**คำขอที่ช้าเกิน ${slowMs} ms:** ไม่มีเลย (middleware \`slowRequestLog\`)`) +
         `\n\n### ราย endpoint ที่ขั้น 500 VU\n\n${endpointTable(recs[2]!.perEndpoint())}` +
         `\n\n### ราย endpoint ที่ขั้น 1,000 VU (สำรวจ — เกินเกณฑ์)\n\n${endpointTable(recs[3]!.perEndpoint())}`);
 }
@@ -433,14 +485,23 @@ async function main() {
 
     const pool = perfPool();
     const [[vol]] = await pool.query<RowDataPacket[]>(
-        `SELECT (SELECT COUNT(*) FROM users) users, (SELECT COUNT(*) FROM tournaments) tours, (SELECT COUNT(*) FROM teams) teams,
+        `SELECT VERSION() mysql_version, @@global.time_zone global_tz,
+                (SELECT COUNT(*) FROM users) users, (SELECT COUNT(*) FROM tournaments) tours, (SELECT COUNT(*) FROM teams) teams,
                 (SELECT COUNT(*) FROM matches) matches, (SELECT COUNT(*) FROM pickem_predictions) picks,
                 (SELECT COUNT(*) FROM pickem_predictions WHERE points_earned IS NOT NULL) settled,
                 (SELECT COUNT(*) FROM match_checkins) checkins, (SELECT COUNT(*) FROM notifications) notifs`);
     await pool.end();
 
+    /**
+      * 🔴 8 ต.ค. 2569 — เดิมอ่านเวอร์ชันจาก `mysqld --version` ของ **เครื่อง**
+      *   เครื่องที่มี MySQL ติดตั้งไว้เองแต่วัดกับ Docker จะได้เวอร์ชันผิด
+      *   (รอบ 8 ต.ค. รายงานเขียน 8.0.44 ทั้งที่ฐานที่วัดคือ 8.4.11) ⇒ อ่านจาก connection ที่วัดจริง
+      * ★ `@@global.time_zone` อยู่ในบรรทัดนี้ด้วยเพราะมันเปลี่ยนผลของ `NOW()`/`INTERVAL`
+      *   ในคิวรีที่วัด (กฎกวาดทีม) ⇒ เป็นส่วนหนึ่งของสภาพแวดล้อม ไม่ใช่รายละเอียดปลีกย่อย
+      */
     const env = `${os.cpus().length} CPU (${os.cpus()[0]?.model ?? '?'}) · RAM ${(os.totalmem() / 2 ** 30).toFixed(1)} GB · Node ${process.version} · ` +
-        `MySQL ${execSafe('mysqld --version').replace(/^.*Ver\s+(\S+).*$/s, '$1')}`;
+        `MySQL ${vol!['mysql_version']} (ฐานที่วัดจริง · time_zone ${vol!['global_tz']})` +
+        (PROC_STATS_AVAILABLE ? '' : '\n- **CPU/RAM ของโปรเซสวัดไม่ได้บนเครื่องนี้** — `perf/lib/monitor.ts` อ่าน `/proc` ซึ่งมีแต่บน Linux ⇒ ช่อง CPU/RAM ในรายงานนี้เป็น `—` ทั้งหมด');
     const report = [
         `# ผลทดสอบประสิทธิภาพและโหลด (SRS 3.2 PF-01 – PF-06)`,
         `\nรันเมื่อ ${started.toISOString()}${QUICK ? ' · **โหมด PERF_QUICK (ย่อเวลา — ไม่ใช่ผลทางการ)**' : ''}\n`,
@@ -465,7 +526,5 @@ async function main() {
     say(`\n[perf] รายงาน: perf/results/report.md`);
     if (verdicts.some(v => v.pass === false)) process.exitCode = 1;
 }
-
-function execSafe(cmd: string): string { try { return execSync(cmd).toString().trim(); } catch { return '?'; } }
 
 main().catch(err => { console.error(err); process.exit(2); });
