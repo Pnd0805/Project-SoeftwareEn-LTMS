@@ -133,22 +133,26 @@ describe('two-step account registration', () => {
     expect(mockRegisterMutateAsync).not.toHaveBeenCalled()
   })
 
-  it.each(['person@gmail.com', 'person@notku.th', 'person@sub.ku.th'])('does not invent study details or call the unsupported external signup API for %s', async email => {
+  it.each(['person@gmail.com', 'person@notku.th', 'person@sub.ku.th'])('registers external %s with personal details only and opens OTP', async email => {
+    mockRegisterMutateAsync.mockResolvedValueOnce({ id: 99 })
+    reference.facultyError = true
     renderSignup(); fillPersonal(email)
     fireEvent.click(screen.getByRole('button', { name: 'สมัครสมาชิก' }))
-    await screen.findByText('การสมัครด้วยอีเมลภายนอกยังไม่เปิดใช้งาน กรุณาลองใหม่ภายหลัง')
+    await screen.findByText('ยืนยันรหัส OTP (Email Verification)')
     expect(screen.queryByLabelText('คณะ')).not.toBeInTheDocument()
     expect(reference.facultyHook).toHaveBeenLastCalledWith(false)
-    expect(mockRegisterMutateAsync).not.toHaveBeenCalled()
+    expect(mockRegisterMutateAsync).toHaveBeenCalledExactlyOnceWith({ fullName: 'QA Student', email, password: 'Password1', gender: 'male', birthDate: '2004-01-01' })
+    expect(readOtpRequests(email, Date.now())).toHaveLength(1)
   })
 
   it('does not submit stale study details after switching the email to external', async () => {
+    mockRegisterMutateAsync.mockResolvedValueOnce({ id: 99 })
     renderSignup(); fillPersonal(); await advance(); selectStudy()
     fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับไปข้อมูลส่วนตัว' }))
     fireEvent.change(screen.getByLabelText('อีเมล'), { target: { value: 'person@gmail.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'สมัครสมาชิก' }))
-    await screen.findByText('การสมัครด้วยอีเมลภายนอกยังไม่เปิดใช้งาน กรุณาลองใหม่ภายหลัง')
-    expect(mockRegisterMutateAsync).not.toHaveBeenCalled()
+    await screen.findByText('ยืนยันรหัส OTP (Email Verification)')
+    expect(mockRegisterMutateAsync).toHaveBeenCalledExactlyOnceWith({ fullName: 'QA Student', email: 'person@gmail.com', password: 'Password1', gender: 'male', birthDate: '2004-01-01' })
   })
 
   it('returns server email errors to the personal step without losing the draft', async () => {

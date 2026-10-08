@@ -181,9 +181,22 @@ export function useAmendmentRequests(enabled = true) {
   });
 }
 
+export function useAmendmentImpact(requestId: number) {
+  const me = useMe();
+  return useQuery({
+    queryKey: ['admin', 'amendmentImpact', me.data?.id, me.data?.adminScope, requestId],
+    queryFn: () => adminApi.getAmendmentImpact(requestId),
+    enabled: !USE_MOCK && canReadTournamentQueues(me.data?.adminScope) && requestId > 0,
+    retry: retryPolicy,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+}
+
 /** อนุมัติแล้ว backend เขียนค่าที่ขอลงทัวร์นาเมนต์ให้เลย — รายการนั้นจึงต้องอ่านใหม่ด้วย */
 function touchAmendments(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: adminKeys.amendments });
+  qc.invalidateQueries({ queryKey: ['admin', 'amendmentImpact'] });
   qc.invalidateQueries({ queryKey: ["tournaments"] });
   qc.invalidateQueries({ queryKey: ["tournament"] });
 }

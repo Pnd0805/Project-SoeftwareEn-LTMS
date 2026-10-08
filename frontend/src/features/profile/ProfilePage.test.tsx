@@ -15,9 +15,9 @@ const { updateProfile, uploadMock, profileState, mockUserState, identityState } 
     userType: 'student' as 'student' | 'staff' | 'external',
     gender: 'male' as const,
     birthDate: '2004-01-01',
-    facultyId: 2,
-    departmentId: 8,
-    year: 3,
+    facultyId: 2 as number | null,
+    departmentId: 8 as number | null,
+    year: 3 as number | null,
     totalPoints: 17,
   },
 }))
@@ -73,7 +73,14 @@ vi.mock('../player/PlayerPage', () => ({ CareerPanel: () => null }))
 import { ProfilePage } from './ProfilePage'
 
 describe('ProfilePage real-mode boundary', () => {
-  beforeEach(() => { mockUserState.userType = 'student'; identityState.status = 'approved' })
+  beforeEach(() => { mockUserState.userType = 'student'; identityState.status = 'approved'; mockUserState.facultyId = 2; mockUserState.departmentId = 8; mockUserState.year = 3 })
+  it('shows no invented student data for an external account with null academic fields', () => {
+    mockUserState.userType = 'external'; mockUserState.facultyId = null; mockUserState.departmentId = null; mockUserState.year = null
+    render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+    expect(screen.getAllByText('Not applicable')).toHaveLength(3)
+    expect(screen.queryByText(/#null/)).not.toBeInTheDocument()
+    mockUserState.facultyId = 2; mockUserState.departmentId = 8; mockUserState.year = 3
+  })
   it('keeps /me identity visible without a legacy user when stats fail', () => {
     render(<MemoryRouter><ProfilePage /></MemoryRouter>)
 

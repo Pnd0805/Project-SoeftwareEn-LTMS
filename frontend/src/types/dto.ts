@@ -17,9 +17,9 @@ export interface RegisterRequest {
   password: string;
   gender: Gender;
   birthDate: string; // "YYYY-MM-DD"
-  facultyId: number;
-  departmentId: number;
-  year: number;
+  facultyId?: number;
+  departmentId?: number;
+  year?: number;
 }
 export interface RegisterResponse {
   id: number;
@@ -52,9 +52,9 @@ export interface MeDto {
   userType: UserType;
   gender: Gender;
   birthDate: string;
-  facultyId: number;
-  departmentId: number;
-  year: number;
+  facultyId: number | null;
+  departmentId: number | null;
+  year: number | null;
   avatarUrl: string | null;
   contactInfo: string | null;
   address: string | null;
@@ -76,8 +76,8 @@ export interface UserRef {
 
 // U03 — ต้องไม่มี email/contactInfo/address โดยเด็ดขาด (คนละ mapper กับ MeDto)
 export interface PublicUserDto extends UserRef {
-  facultyId: number;
-  departmentId: number;
+  facultyId: number | null;
+  departmentId: number | null;
   teams: TeamRef[];
   /** OD-46 — เจ้าของปิดสถิติโปรไฟล์ไว้ ⇒ U04/U14/RW05 จะได้ null · รู้ได้ตั้งแต่ request แรก ไม่ต้องยิงสามเส้นก่อน */
   statsHidden?: boolean;

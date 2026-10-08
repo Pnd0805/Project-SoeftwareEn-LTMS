@@ -44,6 +44,7 @@ vi.mock('../../hooks/useAdmin', () => ({
   useRejectTeamRequest: () => idle,
   useExternalRefereeRequests: () => emptyList,
   useAmendmentRequests: (enabled: boolean) => amendmentRequests(enabled),
+  useAmendmentImpact: (id: number) => ({ isSuccess: true, isError: false, isFetching: false, isPending: false, refetch: vi.fn(), data: { requestId: id, tournamentId: 22, tournamentName: 'Self request', status: 'pending', requestedChanges: { maxTeams: 8 }, reason: null, selfRequested: true, alreadyDecided: false, canApprove: true, blockers: [] } }),
   useApproveAmendment: () => ({ ...idle, mutate: amendmentMutate, reset: vi.fn() }),
   useRejectAmendment: () => idle,
 }))

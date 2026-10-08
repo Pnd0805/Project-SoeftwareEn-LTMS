@@ -8,7 +8,8 @@ import { Modal } from '../../components/kit/Modal'
 import { ApiError } from '../../api/client'
 import { removeFeedbackByAdmin, restoreFeedbackByAdmin } from '../../api/liveEngagement'
 import { useMe } from '../../hooks/useAuth'
-import { useCommentsLive, usePickemLeaderboard, useReviews } from '../../hooks/useLiveEngagement'
+import { useCommentsLive, useReviews } from '../../hooks/useLiveEngagement'
+import { PickemLeaderboardPanel } from './PickemLeaderboardPanel'
 import type { TournamentComment } from '../../types/liveEngagement.dto'
 
 const messageOf = (error: unknown) => error instanceof ApiError ? error.message : 'Request failed. Please try again.'
@@ -32,7 +33,6 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
     setLastRemovedId(null); void qc.invalidateQueries({ queryKey: ['liveComments', tournamentId] }); void qc.invalidateQueries({ queryKey: ['liveReviews', tournamentId] })
   } })
   const reviews = useReviews(tournamentId)
-  const leaderboard = usePickemLeaderboard(tournamentId)
   const [params, setParams] = useSearchParams()
   const reported = params.get('reported') === 'true'
   const page = Math.max(1, Number(params.get('page')) || 1)
@@ -98,15 +98,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           </form> : !me.data && review.status === 'open' ? <p className="sub">Sign in to review this tournament.</p> : null}
         </> : null}
       </Panel>
-      <Panel quiet>
-        <span className="tag"><em>//</em> Pick'em leaderboard</span>
-        {leaderboard.isPending ? <p className="sub">Loading leaderboard…</p> : null}
-        {leaderboard.isError ? <p className="sub">Unable to load leaderboard.</p> : null}
-        {leaderboard.data?.items.length === 0 ? <p className="sub">No settled predictions yet.</p> : null}
-        {leaderboard.data?.items.map(row => <div className="spread" key={row.user.id}>
-          <span>#{row.rank} {row.user.fullName}</span><span>{row.points} points · {row.correct}/{row.settled}</span>
-        </div>)}
-      </Panel>
+      <PickemLeaderboardPanel key={tournamentId} tournamentId={tournamentId} />
     </div>
     <Panel quiet>
       <div className="spread"><span className="tag"><em>//</em> Tournament comments · {thread?.pagination.totalItems ?? 0}</span>

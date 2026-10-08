@@ -39,6 +39,7 @@ import { UserReportsTab } from './UserReportsTab'
 import { StalledWorkTab } from './StalledWorkTab'
 import { TournamentReviewDetails, TournamentReviewDisclosure } from './TournamentReviewDetails'
 import { IdentityDocs } from './IdentityDocs'
+import { AmendmentApprovalDialog } from './AmendmentApprovalDialog'
 import { displayDate } from '../../shared/display'
 import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 import type { BackendAmendmentRequestDto } from '../../types/tournament.dto'
@@ -476,14 +477,8 @@ export function AdminPage() {
         </Panel>
       ) : null}
 
-      <Modal open={canReadQueues && !amendments.isError && decisionViewerKey === queueViewerKey && !!approvingAmendment} onClose={() => !approveAmendment.isPending && setApprovingAmendment(null)} title="Approve amendment?">
-        <p>{approvingAmendment?.tournamentName}</p>
-        {approvingAmendment?.selfRequested ? <Banner kind="warn">You submitted this request. Approving it yourself will be recorded as approval by the requester.</Banner> : null}
-        {approvingAmendment ? <TournamentReviewDetails id={approvingAmendment.tournamentId} changes={approvingAmendment.requestedChanges} /> : null}
-        {approveAmendment.isError ? <Banner kind="crit">{(approveAmendment.error as Error).message}<ContractErrorDetails error={approveAmendment.error} /></Banner> : null}
-        <button className="btn" disabled={approveAmendment.isPending} onClick={() => setApprovingAmendment(null)}>Cancel</button>{' '}
-        <button className="btn primary" disabled={approveAmendment.isPending} onClick={() => approvingAmendment && approveAmendment.mutate(approvingAmendment.id, { onSuccess: () => setApprovingAmendment(null) })}>Confirm amendment approval</button>
-      </Modal>
+      {canReadQueues && !amendments.isError && decisionViewerKey === queueViewerKey && approvingAmendment ? <AmendmentApprovalDialog
+        key={`${queueViewerKey}-${approvingAmendment.id}`} request={approvingAmendment} approval={approveAmendment} onClose={() => setApprovingAmendment(null)} /> : null}
 
       <Modal open={canReadQueues && !amendments.isError && decisionViewerKey === queueViewerKey && !!rejectingAmendment} onClose={() => setRejectingAmendment(null)}
         label="Decline a change request" title={rejectingAmendment?.name ?? ''}>

@@ -36,6 +36,7 @@ import type {
 } from "../types/admin.dto";
 import type {
   BackendAmendmentRequestDto,
+  AmendmentImpactDto,
   BackendPendingTournamentRequestDto,
 } from "../types/tournament.dto";
 import {
@@ -753,6 +754,10 @@ export function getAmendmentRequests(): Promise<{
   pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }> {
   return apiFetch("/admin/amendment-requests");
+}
+
+export function getAmendmentImpact(requestId: number): Promise<AmendmentImpactDto> {
+  return apiFetch(`/admin/amendment-requests/${requestId}/impact`);
 }
 
 /** POST /amendment-requests/:id/approve — อนุมัติแล้ว backend เขียนค่าใหม่ลงทัวร์นาเมนต์ให้เลย */

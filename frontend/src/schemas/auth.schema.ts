@@ -6,8 +6,9 @@
  */
 import { z } from "zod";
 import { GenderEnum } from "../types/enums";
+import { isKuEmail } from '../shared/kuEmail';
 
-export const registerSchema = z.object({
+export const personalRegisterSchema = z.object({
   fullName: z
     .string()
     .min(2, { message: "ชื่อ-นามสกุลต้องมี 2-100 ตัวอักษร" })
@@ -21,9 +22,16 @@ export const registerSchema = z.object({
   // "YYYY-MM-DD" ตรงกับ birth_date DATE ในฝั่ง backend — ห้ามส่ง Date object
   birthDate: z.iso.date({ message: "รูปแบบวันเกิดไม่ถูกต้อง (YYYY-MM-DD)" })
     .refine(value => value <= new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }), "วันเกิดต้องไม่อยู่ในอนาคต"),
-  facultyId: z.number().int().positive({ message: "กรุณาเลือกคณะ" }),
-  departmentId: z.number().int().positive({ message: "กรุณาเลือกภาควิชา" }),
-  year: z.number().int().min(1, { message: "ชั้นปีต้องอยู่ระหว่าง 1-8" }).max(8, { message: "ชั้นปีต้องอยู่ระหว่าง 1-8" }),
+});
+export const registerSchema = personalRegisterSchema.extend({
+  facultyId: z.number().int().positive({ message: 'กรุณาเลือกคณะ' }).optional(),
+  departmentId: z.number().int().positive({ message: 'กรุณาเลือกภาควิชา' }).optional(),
+  year: z.number().int().min(1, { message: 'ชั้นปีต้องอยู่ระหว่าง 1-8' }).max(8, { message: 'ชั้นปีต้องอยู่ระหว่าง 1-8' }).optional(),
+}).superRefine((values, context) => {
+  if (!isKuEmail(values.email)) return
+  for (const [field, message] of [['facultyId', 'กรุณาเลือกคณะ'], ['departmentId', 'กรุณาเลือกภาควิชา'], ['year', 'กรุณาเลือกชั้นปี']] as const) {
+    if (values[field] === undefined) context.addIssue({ code: 'custom', path: [field], message })
+  }
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

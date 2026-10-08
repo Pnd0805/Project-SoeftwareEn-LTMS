@@ -228,6 +228,20 @@ export interface AmendmentPreviewDto {
   pendingAmendmentId: number | null;
 }
 
+/** GET /admin/amendment-requests/:requestId/impact — approval-time rules, without mutating. */
+export interface AmendmentImpactDto {
+  requestId: number;
+  tournamentId: number;
+  tournamentName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedChanges: Record<string, unknown>;
+  reason: string | null;
+  selfRequested: boolean;
+  alreadyDecided: boolean;
+  canApprove: boolean;
+  blockers: AmendmentPreviewDto['blockers'];
+}
+
 export interface InviteTournamentRefereeRequest {
   userId: number;
   /** backend บังคับช่องนี้ — ไม่ส่งถือว่า false ที่ชั้น api */

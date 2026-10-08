@@ -34,4 +34,4 @@ export const placePrediction = (id: number, scoreData: Record<string, number>) =
   apiFetch<{ matchId: number; teamId: number; changed: boolean }>(`/matches/${id}/predictions`, { method: 'POST', ...json({ scoreData }) })
 export const cancelPrediction = (id: number) => apiFetch<void>(`/matches/${id}/predictions/me`, { method: 'DELETE' })
 export const getPickemHistory = () => apiFetch<PickemHistory>('/me/pickem')
-export const getPickemLeaderboard = (id: number) => apiFetch<PickemLeaderboard>(`/tournaments/${id}/pickem-leaderboard`)
+export const getPickemLeaderboard = (id: number, page = 1, pageSize = 20) => apiFetch<PickemLeaderboard>(`/tournaments/${id}/pickem-leaderboard?page=${page}&pageSize=${pageSize}`)

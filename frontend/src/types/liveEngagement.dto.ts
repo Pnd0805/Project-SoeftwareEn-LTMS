@@ -75,4 +75,5 @@ export interface PickemHistory {
 }
 export interface PickemLeaderboard {
   items: Array<{ rank: number; user: { id: number; fullName: string; avatarUrl: string | null }; points: number; correct: number; settled: number }>;
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }

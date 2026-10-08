@@ -8,7 +8,7 @@ const { moderate, dismiss, report, state } = vi.hoisted(() => ({ moderate: vi.fn
 vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: 7 } }) }))
 vi.mock('../../hooks/useLiveEngagement', () => ({
   useReviews: () => ({ query: { data: { summary: { average: null, count: 0, distribution: {} }, mine: null, ...state.review }, isPending: false, isError: false }, submit: { isPending: false } }),
-  usePickemLeaderboard: () => ({ data: { items: [] }, isPending: false, isError: false }),
+  usePickemLeaderboard: () => ({ data: { items: [], pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } }, isPending: false, isError: false, refetch: vi.fn() }),
   useCommentsLive: () => ({
     query: { data: { items: [
       { id: 41, tournamentId: 23, author: { id: 7, fullName: 'Me' }, content: 'Mine', createdAt: '2026-09-23T00:00:00Z', isMine: true },

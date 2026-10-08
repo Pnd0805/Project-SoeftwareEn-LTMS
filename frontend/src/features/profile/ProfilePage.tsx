@@ -35,7 +35,7 @@ export function ProfilePage() {
   const followsQuery = useFollows(currentUser?.id)
   const teamsQuery = useBackendMyTeams()
   const facultiesQuery = useFaculties()
-  const departmentsQuery = useDepartments(currentUser?.facultyId)
+  const departmentsQuery = useDepartments(currentUser?.facultyId ?? undefined)
   const sportsQuery = useSportTypes()
   const pickem = usePickemHistory(!USE_MOCK && !!currentUser)
 
@@ -193,9 +193,9 @@ export function ProfilePage() {
           <Panel>
             <span className="tag"><em>//</em> {currentUser.userType === 'external' ? 'External record' : 'Student record — the registry owns this'}</span>
             <Facts rows={[
-              ['Faculty', faculty ?? `Faculty #${currentUser.facultyId}`],
-              ['Major', department ?? `Department #${currentUser.departmentId}`],
-              ['Year', String(currentUser.year)],
+              ['Faculty', currentUser.facultyId === null ? 'Not applicable' : faculty ?? `Faculty #${currentUser.facultyId}`],
+              ['Major', currentUser.departmentId === null ? 'Not applicable' : department ?? `Department #${currentUser.departmentId}`],
+              ['Year', currentUser.year === null ? 'Not applicable' : String(currentUser.year)],
               ['Age', String(ageOf(currentUser.birthDate))],
               ['Gender', currentUser.gender],
               ['Role', currentUser.userType === 'staff' ? 'Admin' : currentUser.userType === 'external' ? 'External' : 'User'],

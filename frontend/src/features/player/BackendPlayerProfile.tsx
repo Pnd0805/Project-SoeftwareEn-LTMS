@@ -32,7 +32,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
   const profile = usePublicUser(userId)
   const stats = useUserStats(userId)
   const faculties = useFaculties()
-  const departments = useDepartments(profile.data?.facultyId)
+  const departments = useDepartments(profile.data?.facultyId ?? undefined)
   const { data: currentUser } = useMe()
   const follow = useFollow(currentUser?.id, `player:${userId ?? ''}`)
 

@@ -12,7 +12,7 @@ import { isKuEmail } from '../../shared/kuEmail'
 import { Icon } from '../../components/kit/Icon'
 import { useRegister, useVerifyEmail, useResendVerification } from '../../hooks/useAuth'
 import { useDepartments, useFaculties } from '../../hooks/useReference'
-import { registerSchema, type RegisterInput } from '../../schemas/auth.schema'
+import { personalRegisterSchema, registerSchema, type RegisterInput } from '../../schemas/auth.schema'
 import { activeOtpRequests, readOtpRequests, saveOtpRequest, OTP_COOLDOWN_MS, OTP_REQUEST_LIMIT, OTP_WINDOW_MS } from './otpRequests'
 
 const defaultValues: RegisterInput = {
@@ -38,7 +38,6 @@ export function RegisterPage() {
   const verifyEmail = useVerifyEmail()
   const resendVerification = useResendVerification()
   const [accountStep, setAccountStep] = useState<'personal' | 'student'>('personal')
-  const [externalUnavailable, setExternalUnavailable] = useState(false)
   const stepTitle = useRef<HTMLHeadingElement>(null)
 
   const [otpCode, setOtpCode] = useState('')
@@ -69,7 +68,7 @@ export function RegisterPage() {
   const emailRegistration = form.register('email')
   const facultyRegistration = form.register('facultyId', { valueAsNumber: true })
   const email = useWatch({ control: form.control, name: 'email' })
-  const facultyId = useWatch({ control: form.control, name: 'facultyId' })
+  const facultyId = useWatch({ control: form.control, name: 'facultyId' }) ?? 0
   const departmentId = useWatch({ control: form.control, name: 'departmentId' })
   const studentStep = step !== 'otp' && accountStep === 'student' && isKuEmail(email)
   const faculties = useFaculties(studentStep)
@@ -84,7 +83,6 @@ export function RegisterPage() {
 
   const showPersonal = () => {
     setAccountStep('personal')
-    setExternalUnavailable(false)
     form.clearErrors('root')
   }
 
@@ -102,16 +100,15 @@ export function RegisterPage() {
     const valid = await form.trigger([...personalFields], { shouldFocus: true })
     if (!valid) return
     if (isKuEmail(form.getValues('email'))) {
-      setExternalUnavailable(false)
       setAccountStep('student')
     } else {
-      // Current BE requires study fields for all emails. Never invent them for an external account.
-      setExternalUnavailable(true)
+      // Strip even valid study values retained after Back; external accounts submit personal details only.
+      await submit(personalRegisterSchema.parse(form.getValues()))
     }
   }
 
   const submit = async (values: RegisterInput) => {
-    if (!isKuEmail(values.email) || !referenceReady) return
+    if (isKuEmail(values.email) && !referenceReady) return
     try {
       await register.mutateAsync(values)
       const now = Date.now()
@@ -262,7 +259,7 @@ export function RegisterPage() {
           <span className="label">อีเมล</span>
           <input type="email" autoComplete="email" placeholder="you@example.com"
             aria-invalid={!!form.formState.errors.email} aria-describedby={form.formState.errors.email ? 'register-email-error' : undefined}
-            {...emailRegistration} onChange={event => { void emailRegistration.onChange(event); setExternalUnavailable(false) }} />
+            {...emailRegistration} />
         </label>
         {form.formState.errors.email && <span className="error" id="register-email-error">{form.formState.errors.email.message}</span>}
 
@@ -299,8 +296,7 @@ export function RegisterPage() {
         </label>
         {form.formState.errors.birthDate && <span className="error" id="register-birth-error">{form.formState.errors.birthDate.message}</span>}
 
-        <p className="sub">อีเมล @ku.th จะกรอกข้อมูลนิสิตในขั้นตอนถัดไป</p>
-        {externalUnavailable ? <div className="banner warn" role="alert">การสมัครด้วยอีเมลภายนอกยังไม่เปิดใช้งาน กรุณาลองใหม่ภายหลัง</div> : null}
+        <p className="sub">นิสิต/บุคลากรใช้อีเมล @ku.th เพื่อรับสิทธิ์ภายในและกรอกข้อมูลนิสิตในขั้นตอนถัดไป อีเมลอื่นจะสมัครเป็นบุคคลภายนอก เปลี่ยนอีเมลหลังสมัครไม่ได้</p>
         </> : <>
         <p className="sub">สมัครด้วยอีเมล <b>{email}</b> กรุณากรอกข้อมูลนิสิตของคุณ</p>
         {faculties.isPending ? <p className="sub" role="status">กำลังโหลดข้อมูลคณะ…</p> : null}

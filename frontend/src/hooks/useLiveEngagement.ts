@@ -35,4 +35,4 @@ export function usePredictionLive(id?: number) {
   return { query, place, cancel }
 }
 export const usePickemHistory = (enabled: boolean) => useQuery({ queryKey: ['livePickemHistory'], queryFn: api.getPickemHistory, enabled, retry: retryPolicy })
-export const usePickemLeaderboard = (id?: number) => useQuery({ queryKey: ['livePickemLeaderboard', id], queryFn: () => api.getPickemLeaderboard(id!), enabled: !!id, retry: retryPolicy })
+export const usePickemLeaderboard = (id?: number, page = 1, pageSize = 20) => useQuery({ queryKey: ['livePickemLeaderboard', id, page, pageSize], queryFn: () => api.getPickemLeaderboard(id!, page, pageSize), enabled: !!id, retry: retryPolicy })

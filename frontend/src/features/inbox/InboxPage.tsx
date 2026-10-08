@@ -35,6 +35,8 @@ function notificationHref(n: NotificationDto): string | null {
 }
 
 function notificationIcon(type?: string): IconName {
+  if (type === 'tournament_auto_delete_warning') return 'warn'
+  if (type === 'tournament_auto_deleted') return 'trophy'
   if (type === 'comment_removed' || type === 'comment_reported' || type === 'comment_rewritten_after_removal') return 'shield'
   if (type === 'bracket_created' || type === 'bracket_redrawn') return 'trophy'
   if (type === 'pickem_cancelled') return 'star'
@@ -44,6 +46,8 @@ function notificationIcon(type?: string): IconName {
 }
 
 function notificationCategory(n: NotificationDto): string {
+  if (n.type === 'tournament_auto_delete_warning') return 'Critical alerts'
+  if (n.type === 'tournament_auto_deleted') return 'Tournament updates'
   if (n.type === 'tournament_announcement' || n.type === 'tournament_announcement_urgent') return 'Announcements'
   if (n.type?.startsWith('comment_')) return 'Comments and moderation'
   if (n.type?.startsWith('referee_')) return 'Referee updates'
@@ -97,7 +101,7 @@ export function InboxPage() {
       return <div className="notif" key={n.id}>
         <span className={`dot ${isRead ? 'read' : ''}`} />
         <Icon name={notificationIcon(n.type)} size={17} />
-        <span className="txt"><b>{n.title ?? 'Notification'}</b><br />{n.message}<br />
+        <span className="txt"><b>{n.title ?? (n.type === 'tournament_auto_delete_warning' ? 'Tournament closure warning' : n.type === 'tournament_auto_deleted' ? 'Tournament automatically closed' : 'Notification')}</b><br />{n.message}<br />
           <span className="tag">{age(n.createdAt)}</span></span>
         {!isRead ? <button className="btn ghost" type="button" disabled={markRead.isPending}
           onClick={() => markRead.mutate(n.id)}>Mark read</button> : null}

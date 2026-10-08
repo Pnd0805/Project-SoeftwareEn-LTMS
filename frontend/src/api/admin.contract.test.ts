@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
-import { getAdminScopes, getUsersForAdmin, getAuditLogs } from './admin'
+import { getAdminScopes, getUsersForAdmin, getAuditLogs, getAmendmentImpact } from './admin'
 import { deleteTournament } from './tournament'
 const request = vi.fn<typeof fetch>()
 const json = (data: unknown) => new Response(JSON.stringify(data), { status: 200 })
 beforeEach(() => { request.mockReset(); vi.stubGlobal('fetch', request) })
 afterEach(() => vi.unstubAllGlobals())
+it('reads the request-specific impact and propagates a forbidden response', async () => {
+  const impact = { requestId: 7, tournamentId: 22, status: 'approved', canApprove: false, alreadyDecided: true, blockers: [] }
+  request.mockResolvedValueOnce(json(impact))
+  expect(await getAmendmentImpact(7)).toEqual(impact)
+  expect(request.mock.calls[0][0]).toBe('/api/v1/admin/amendment-requests/7/impact')
+  request.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'INSUFFICIENT_ADMIN_SCOPE', message: 'Wrong faculty' } }), { status: 403 }))
+  await expect(getAmendmentImpact(7)).rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ADMIN_SCOPE' })
+})
 it('keeps all server pages before searching users locally', async () => {
  const row = { id: 1, fullName: 'Player', email: 'p@test', userType: 'student', facultyId: 1, isSuspended: false, suspendedReason: null, suspendedUntil: null, suspendedCategoryLabel: null, adminScope: null }
  request.mockResolvedValueOnce(json({ items: [row], pagination: { totalPages: 2 } })).mockResolvedValueOnce(json({ items: [{ ...row, id: 2 }], pagination: { totalPages: 2 } }))
