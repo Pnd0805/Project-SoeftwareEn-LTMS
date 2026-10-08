@@ -188,10 +188,13 @@ describe('acceptInvitation', () => {
   it('throws TEAM_CONFLICT_OF_INTEREST when the invitee is a referee of a tournament the team applied to', async () => {
     mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
     mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
-    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'referee' });
+    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce(
+      // invitation_status: 'accepted' = ความหมายเดิมของ fixture นี้ (เป็นกรรมการจริงแล้ว)
+      { tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'referee', invitation_status: 'accepted', expires_at: null });
 
     await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
-      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST', extra: { tournamentId: 30, role: 'referee' },
+      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST',
+      extra: { tournamentId: 30, role: 'referee', invitationStatus: 'accepted', expiresAt: null },
     });
     expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
   });

@@ -39,7 +39,7 @@ describe('createJoinRequest (T20)', () => {
   });
   it.each([
     ['ALREADY_MEMBER', () => vi.mocked(TeamRepo.isMemberOf).mockResolvedValueOnce({} as never), 409],
-    ['TEAM_CONFLICT_OF_INTEREST', () => vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 3, name: 'T', role: 'referee' }), 409],
+    ['TEAM_CONFLICT_OF_INTEREST', () => vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 3, name: 'T', role: 'referee', invitation_status: 'accepted', expires_at: null }), 409],
     ['TEAM_QUOTA_EXCEEDED', () => vi.mocked(TeamRepo.countUnofficialTeamsByUser).mockResolvedValueOnce(5), 422],
     ['JOIN_REQUEST_PENDING', () => vi.mocked(JoinRepo.findPendingByTeamAndUser).mockResolvedValueOnce(request()), 409],
   ])('%s blocks the request', async (code, arrange, status) => {

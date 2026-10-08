@@ -672,10 +672,13 @@ describe('createInvitation', () => {
   it('throws TEAM_CONFLICT_OF_INTEREST when the invitee organizes a tournament the team applied to', async () => {
     mockedCheckUser.mockResolvedValue(makeUser({ user_id: 8 }));
     mockedTeamRepo.isMemberOf.mockResolvedValue(null);
-    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce({ tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'organizer' });
+    vi.mocked(ApplicationRepo.findTeamTournamentConflictForUser).mockResolvedValueOnce(
+      // ผู้จัดไม่มีคำเชิญ ⇒ สองช่องใหม่เป็น null เสมอ
+      { tournament_id: 30, name: 'ฟุตบอลคณะ', role: 'organizer', invitation_status: null, expires_at: null });
 
     await expect(teamService.createInvitation(10, 8, 5)).rejects.toMatchObject({
-      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST', extra: { tournamentId: 30, role: 'organizer' },
+      status: 409, code: 'TEAM_CONFLICT_OF_INTEREST',
+      extra: { tournamentId: 30, role: 'organizer', invitationStatus: null, expiresAt: null },
     });
     expect(mockedTeamRepo.createInvitation).not.toHaveBeenCalled();
   });

@@ -2,6 +2,7 @@ import * as TeamRepo from '../repositories/team.repo.js';
 import * as SportRepo from '../repositories/sportType.repo.js';
 import * as UserRepo from '../repositories/user.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
+import { teamConflictMessage } from '../utils/teamConflict.js';
 import * as NotificationService from './notification.service.js';
 import * as UploadService from './upload.service.js';
 
@@ -296,8 +297,11 @@ export async function createInvitation(teamId : number , invitedUserId : number 
     const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(teamId , invitedUserId);
     if(conflict){
         throw new AppError(409 , "TEAM_CONFLICT_OF_INTEREST" ,
-            `ผู้ใช้นี้เป็น${conflict.role === 'organizer' ? 'ผู้จัด' : 'กรรมการ'}ของทัวร์นาเมนต์ "${conflict.name}" ที่ทีมนี้สมัครอยู่ เชิญเข้าทีมไม่ได้` ,
-            { tournamentId : conflict.tournament_id , role : conflict.role });
+            teamConflictMessage(conflict , 'invitee') ,
+            { tournamentId : conflict.tournament_id , role : conflict.role ,
+              /** 🆕 8 ต.ค. — FE แยก "ถูกเชิญค้าง" กับ "เป็นกรรมการจริง" จากตรงนี้ ไม่ใช่จากข้อความ */
+              invitationStatus : conflict.invitation_status ,
+              expiresAt : conflict.expires_at === null ? null : conflict.expires_at.toISOString() });
     }
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); 

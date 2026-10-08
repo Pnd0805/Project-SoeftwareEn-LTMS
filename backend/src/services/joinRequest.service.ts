@@ -1,6 +1,7 @@
 import * as JoinRepo from '../repositories/joinRequest.repo.js';
 import * as TeamRepo from '../repositories/team.repo.js';
 import * as ApplicationRepo from '../repositories/application.repo.js';
+import { teamConflictMessage } from '../utils/teamConflict.js';
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
 import { toJoinRequestDto, toMyJoinRequestDto } from '../mappers/team.mapper.js';
@@ -22,8 +23,11 @@ async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
     const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(team.team_id , userId);
     if(conflict){
         throw new AppError(409 , 'TEAM_CONFLICT_OF_INTEREST' ,
-            `คุณเป็น${conflict.role === 'organizer' ? 'ผู้จัด' : 'กรรมการ'}ของทัวร์นาเมนต์ "${conflict.name}" ที่ทีมนี้สมัครอยู่ เข้าร่วมทีมไม่ได้` ,
-            { tournamentId : conflict.tournament_id , role : conflict.role });
+            teamConflictMessage(conflict , 'you') ,
+            { tournamentId : conflict.tournament_id , role : conflict.role ,
+              /** 🆕 8 ต.ค. — FE แยก "ถูกเชิญค้าง" กับ "เป็นกรรมการจริง" จากตรงนี้ ไม่ใช่จากข้อความ */
+              invitationStatus : conflict.invitation_status ,
+              expiresAt : conflict.expires_at === null ? null : conflict.expires_at.toISOString() });
     }
     if(await TeamRepo.countUnofficialTeamsByUser(userId) >= 5){
         throw new AppError(422 , 'TEAM_QUOTA_EXCEEDED' , 'คุณมีทีม Unofficial ครบ 5 ทีมแล้ว');

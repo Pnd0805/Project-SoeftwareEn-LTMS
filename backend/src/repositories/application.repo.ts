@@ -311,28 +311,57 @@ export async function findRefereeConflictsAmongUsers(tournamentId: number, userI
  * ประตูที่ 3 ของ CoI (T09/T13): คนนี้จะเข้าทีมที่สมัครทัวร์ (pending/approved) ที่ตัวเองเป็น ORG หรือกรรมการ (pending/accepted) อยู่ไหม
  * คืนทัวร์แรกที่ชน (null = เข้าได้)
  */
+export type TeamTournamentConflictRow = {
+    tournament_id : number;
+    name : string;
+    role : 'organizer' | 'referee';
+    /** null เมื่อ role = 'organizer' — ผู้จัดไม่มีคำเชิญ จึงไม่มีสถานะและวันหมดอายุ */
+    invitation_status : 'pending' | 'accepted' | null;
+    expires_at : Date | null;
+};
+
+/**
+ * 🆕 8 ต.ค. 2569 (FE ขอ) — คืน `invitation_status` + `expires_at` มาด้วย
+ *
+ * เดิมคืนแค่ `{ tournament_id, name, role }` ⇒ จอคำเชิญเข้าทีม/ขอเข้าทีมแยกไม่ออกว่า
+ *   pending  = เขาแค่ **ถูกเชิญค้างไว้** → ให้เขาปฏิเสธ · ให้ผู้จัดยกเลิก · หรือรอหมดอายุ
+ *   accepted = เขา **เป็นกรรมการจริง** → ต้องเลิกบทบาทก่อน
+ * สองทางนี้ผู้ใช้ทำต่างกันคนละเรื่อง แต่ได้ข้อความเดียวกัน (ฝั่งสมัครทีมแก้ไปแล้วตอน BE-13
+ * — `findRefereeConflictsAmongUsers` · นี่คือประตูอีกบานของกฎเดียวกันที่ยังไม่ได้แก้)
+ *
+ * ★ เปลี่ยน EXISTS เป็น LEFT JOIN LATERAL เพื่อ **อ่านคอลัมน์จากแถวเดียวกับที่ใช้ตัดสิน**
+ *   เงื่อนไขในวงเล็บคงไว้ทุกตัวอักษร รวมถึง `MAX(tournament_referee_id)` ที่ไม่กรอง
+ *   `removed_at`/สถานะ — 🔴 **ห้ามถือโอกาสแก้ตรงนั้น** ยังไม่มีใครพิสูจน์ว่าสถานะนั้นเกิดได้จริง
+ *   (ถ้าแก้พลอยแล้วมันเปลี่ยนว่าใครสมัครได้ โดยไม่มีมติ)
+ */
 export async function findTeamTournamentConflictForUser(teamId: number, userId: number)
-    : Promise<{ tournament_id: number; name: string; role: 'organizer' | 'referee' } | null> {
-    const [rows] = await pool.query<({ tournament_id: number; name: string; role: 'organizer' | 'referee' } & RowDataPacket)[]>(
+    : Promise<TeamTournamentConflictRow | null> {
+    const [rows] = await pool.query<(TeamTournamentConflictRow & RowDataPacket)[]>(
         `SELECT t.tournament_id, t.name,
-                CASE WHEN t.requested_by_user_id = ? THEN 'organizer' ELSE 'referee' END AS role
+                CASE WHEN t.requested_by_user_id = ? THEN 'organizer' ELSE 'referee' END AS role,
+                CASE WHEN t.requested_by_user_id = ? THEN NULL ELSE ref.invitation_status END AS invitation_status,
+                CASE WHEN t.requested_by_user_id = ? THEN NULL ELSE ref.expires_at        END AS expires_at
          FROM tournament_applications a
          JOIN tournaments t ON t.tournament_id = a.tournament_id
+         LEFT JOIN LATERAL (
+             SELECT tr.invitation_status, tr.expires_at
+             FROM tournament_referees tr
+             WHERE tr.tournament_id = t.tournament_id AND tr.user_id = ? AND tr.removed_at IS NULL
+               AND tr.tournament_referee_id = (
+                   SELECT MAX(t2.tournament_referee_id) FROM tournament_referees t2
+                   WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)
+         ) ref ON TRUE
          WHERE a.team_id = ? AND a.tournament_application_status IN ('pending', 'approved')
            AND (t.requested_by_user_id = ?
-                OR EXISTS (SELECT 1 FROM tournament_referees tr
-                           WHERE tr.tournament_id = t.tournament_id AND tr.user_id = ? AND tr.removed_at IS NULL
-                             -- 🆕 BE-13 — เงื่อนไขเดียวกับ findRefereesAmongUsers (ประตูคนละบานของกฎเดียวกัน)
-                             AND (tr.invitation_status = 'accepted'
-                                  OR (tr.invitation_status = 'pending' AND (tr.expires_at IS NULL OR tr.expires_at > NOW())))
-                             AND tr.tournament_referee_id = (
-                                 SELECT MAX(t2.tournament_referee_id) FROM tournament_referees t2
-                                 WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)))
+                -- 🆕 BE-13 — เงื่อนไขเดียวกับ findRefereeConflictsAmongUsers (ประตูคนละบานของกฎเดียวกัน)
+                OR ref.invitation_status = 'accepted'
+                OR (ref.invitation_status = 'pending' AND (ref.expires_at IS NULL OR ref.expires_at > NOW())))
          LIMIT 1`,
-        [userId, teamId, userId, userId]
+        [userId, userId, userId, userId, teamId, userId]
     );
     return rows[0] ?? null;
 }
+
 
 /** A8: ORG หรือกรรมการ active ของทัวร์ที่ทีมนี้สมัคร (pending/approved) ดู roster ได้ — เช็คอินด้วยมือต้องมีรายชื่อ */
 export async function isTournamentStaffOfTeam(teamId: number, userId: number): Promise<boolean> {
