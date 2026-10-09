@@ -37,9 +37,16 @@ Conventions the api layer holds to:
 - Anything the backend still owes gets a `- [ ] Backend delivery required:` line in
   `FEAT-1-REMAINING.md`, with the route and what the frontend does meanwhile.
 
-## Backend (separate repo, not ours to edit)
+## Backend in Final_Present
 
-`C:\Users\DELL\Projects\ltms-backend-shokun2\backend` → `npm run dev`, port 8000.
+This checkout is the integrated development monorepo. Use `../backend` from
+`frontend/`; do not start or restore a sibling checkout for this branch. The
+2026-10-09 integration targets `feat/1@dd50305` and `BE_KN@000d9ec`, with 52
+migrations. The historical baseline notes below describe earlier QA snapshots,
+not the current development database. Do not restore a baseline merely to test
+this integration. See `docs/FINAL-PRESENT-SYNC-2026-10-09.md` for scope and evidence.
+
+`D:\Project-LTMS\ltms-final-present\backend` → `npm run dev`, port 8000.
 Docker containers `ltms-mysql` (root/secret, db `ltms`) and `ltms-minio` must be up first — without
 MySQL the server exits 4 on boot.
 
@@ -51,13 +58,13 @@ not take) and wastes a round of reporting. The order is always:
 
 ```bash
 docker start ltms-mysql ltms-minio
-cd D:/Project-LTMS/BE_KN/backend && npm run migrate && npm run dev
+cd D:/Project-LTMS/ltms-final-present/backend && npm run migrate && npm run dev
 ```
 
 **Then run the role audit, every time, and tell the user what it found before doing anything else:**
 
 ```bash
-python D:/Project-LTMS/ltms-frontend/frontend/scripts/audit-roles.py
+python D:/Project-LTMS/ltms-final-present/frontend/scripts/audit-roles.py
 ```
 
 The current baseline at `BE_KN@d5bda6d` includes the approved repairs and schema
@@ -85,9 +92,11 @@ clears tables before importing. To intentionally reset QA data, use the backend'
 `python ../database/qa-baseline.py restore` from its `backend/` directory. Restore
 replaces current database data; do not run it merely to inspect the baseline.
 
-`frontend/scripts/restore-qa.py` is the legacy repair wrapper for the September
-baseline. Do not repeat its repairs on the new baseline: their effects are already
-included. Keep it as historical tooling until compatibility is reviewed.
+`python frontend/scripts/restore-qa.py` (since 2026-10-05) does exactly that in one
+command: backend restore → `npm run migrate` → audit. It finds the backend repo itself
+(`LTMS_BACKEND_DIR`, sibling `ltms-backend-shokun2`, or `D:/Project-LTMS/BE_KN`). Its
+September repair steps run only with `--legacy-repairs`. Do not use that flag on the new
+baseline: those repairs are already included.
 
 The migrate and role-audit gates above still apply before live tests. With the
 schema-034 baseline migration should report `up to date (34 migrations)`.

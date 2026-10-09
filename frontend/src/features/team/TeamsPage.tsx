@@ -11,9 +11,11 @@
  * การจัดการรายชื่อ โลโก้ คำร้อง Official และการลบทีมอยู่ที่หน้าทีม (/team/:id)
  */
 import { useState } from 'react'
+import { MyJoinRequests } from './MyJoinRequests'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Empty, Field, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
+import { Avatar } from '../../components/kit/Avatar'
 import { Modal } from '../../components/kit/Modal'
 import {
   useAnswerBackendInvitation, useBackendMyInvitations, useBackendMyTeams, useCreateTeam,
@@ -68,7 +70,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
         minimum size follows from the sport.
       </div>
       <Field label="Name" htmlFor="nt-name">
-        <input id="nt-name" value={name} onChange={e => setName(e.target.value)} placeholder="Byte Force" />
+        <input id="nt-name" maxLength={150} value={name} onChange={e => setName(e.target.value)} placeholder="Byte Force" />
       </Field>
       <Field label="Sport" htmlFor="nt-sport">
         {sportTypes.isPending ? <div className="sub">Loading sports…</div>
@@ -89,7 +91,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
       <div className="hstack">
         <button className="btn" type="button" onClick={close}>Cancel</button>
         <button className="btn primary" type="button"
-          disabled={!name.trim() || sportTypeId === '' || create.isPending}
+          disabled={!name.trim() || name.trim().length > 150 || sportTypeId === '' || create.isPending}
           onClick={() => create.mutate({ name: name.trim(), sportTypeId: Number(sportTypeId) }, {
             onSuccess: team => {
               setName('')
@@ -104,6 +106,7 @@ function CreateTeamModal({ open, onClose }: { open: boolean; onClose: () => void
     </Modal>
   )
 }
+
 
 export function TeamsPage() {
   const navigate = useNavigate()
@@ -157,6 +160,7 @@ export function TeamsPage() {
         <div role="alert"><Banner kind="crit"><b>Couldn't answer the invitation.</b> {errorMessage(answerInvitation.error)}</Banner></div>
       ) : null}
 
+      {!USE_MOCK ? <MyJoinRequests /> : null}
       <div className="teams-workspace">
         <section className="vstack teams-list" aria-labelledby="teams-list">
           <div className="spread"><h2 id="teams-list" className="journey-heading">Your teams</h2>
@@ -184,7 +188,7 @@ export function TeamsPage() {
           <Panel key={team.id} className={`team-list-row ${team.role === 'leader' ? 'team-list-leader' : 'team-list-member'}`}>
             <div className="spread">
               <div className="vstack" style={{ gap: 5 }}>
-                <div className="team-list-identity">
+                <div className="team-list-identity"><Avatar name={team.name} avatarUrl={team.logoUrl} size={40} alt={team.name} />
                   <h3 className="disp team-list-name">{team.name}</h3>
                   {team.role === 'leader' ? <span className="team-leader-sticker">Leader</span> : null}
                 </div>

@@ -49,14 +49,17 @@ const SWEEP_REASON_TEXT = {
 /**
  * กวาดทีมร้าง (TM-07) แล้วแจ้งสมาชิกทุกคนของทีมที่เพิ่งถูกกวาด (มติ 30 ก.ย. 2569)
  *
- * การกวาดเป็น lazy ไม่มี cron — ทีมจึงหายไปจากลิสต์ตอนที่ใครสักคนเปิดหน้าทีม โดยที่ลูกทีมไม่ได้ทำอะไรเลย
- * ก่อนหน้านี้ทีมค้างอยู่ในลิสต์แต่กดอะไรก็ 404 ซึ่งอย่างน้อยยังเห็นว่ามีอยู่ · พอกรองออกแล้วทีมจะหายเงียบ
- * ถ้าไม่แจ้ง ลูกทีมจะไม่มีทางรู้ว่าทีมหายไปไหนและเพราะอะไร
- *
- * แจ้งทุกคนรวมหัวหน้า เพราะการกวาดไม่ได้เกิดจากการกดของใคร — ต่างจากตอนหัวหน้าลบทีมเอง
+ * แจ้งเพราะทีมหายไปเองโดยที่ลูกทีมไม่ได้ทำอะไรเลย — ถ้าไม่แจ้ง ลูกทีมจะไม่มีทางรู้ว่า
+ * ทีมหายไปไหนและเพราะอะไร · แจ้งทุกคนรวมหัวหน้า เพราะการกวาดไม่ได้เกิดจากการกดของใคร
  * แจ้งเตือนพังไม่ทำให้การกวาดที่สำเร็จแล้วกลายเป็น error (notify กลืน error ให้อยู่แล้ว)
+ *
+ * 🔴 มติ 8 ต.ค. 2569 — **ย้ายมารันตามเวลา (ชั่วโมงละครั้ง) ทับมติ 30 ก.ย. ที่ให้กวาดตอนมีคนเปิดหน้าทีม**
+ *   ของเดิมเรียกจาก `getTeamById()` และ `getMyTeam()` ⇒ คนอ่านเป็นคนจ่ายค่ากวาดทุกครั้ง
+ *   และค่านั้นโตตามจำนวนทีม (A2 ลดจาก ~40 วินาที เหลือ ~150 ms แต่โครงยังเหมือนเดิม)
+ *   ★ export ออกมาเพื่อให้ `jobs/` เรียก — **ห้ามเอากลับไปเรียกในเส้นอ่านอีก**
+ *     ถ้าเอากลับไป คอขวด P1 จะกลับมาทันทีโดยที่เทสทุกตัวยังเขียว
  */
-async function sweepAndNotify(){
+export async function sweepAndNotify(){
     const swept = await TeamRepo.sweepInactiveTeams();
 
     for(const team of swept){
@@ -71,7 +74,6 @@ async function sweepAndNotify(){
 }
 
 export async function getMyTeam(userId : number){
-    await sweepAndNotify();
     const data : MyTeam[] = [];
     const teams = await TeamRepo.findTeamsByUser(userId); //return TeamRow[]
     for(const team of teams){
@@ -95,7 +97,6 @@ export async function searchTeams(filters : { q? : string | undefined; sportType
 }
 
 export async function getTeamById(teamId : number){
-    await sweepAndNotify();
     const team = await checkTeam(teamId);
 
     const memberCount = await TeamRepo.countMemberByTeamId(teamId);

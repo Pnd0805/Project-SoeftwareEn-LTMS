@@ -3,10 +3,11 @@
  * DTOs; prototype-only career data remains available in mock mode.
  */
 import { BackendCareerPanel } from '../player/BackendCareerPanel'
+import { BackendMatchHistoryPanel } from '../player/BackendMatchHistoryPanel'
 import { Link } from 'react-router-dom'
 import { USE_MOCK } from '../../api/client'
 import { Badge, Empty, Facts, Panel, TableWrap } from '../../components/kit/primitives'
-import { TeamLink } from '../../components/kit/chips'
+import { TeamLink, TeamLinkView } from '../../components/kit/chips'
 import { useState } from 'react'
 import { useMe, useUpdateMe } from '../../hooks/useAuth'
 import { Icon } from '../../components/kit/Icon'
@@ -24,6 +25,8 @@ import { tour } from '../../shared/selectors'
 import { useLtms } from '../../shared/store'
 import { CareerPanel } from '../player/PlayerPage'
 import '../auth/account-workspace.css'
+import { ExternalIdentityBadge, ExternalIdentityPanel } from './ExternalIdentityPanel'
+import { ProfileSettings, NotificationSettings } from './ProfileSettings'
 
 export function ProfilePage() {
   const s = useLtms()
@@ -33,7 +36,7 @@ export function ProfilePage() {
   const followsQuery = useFollows(currentUser?.id)
   const teamsQuery = useBackendMyTeams()
   const facultiesQuery = useFaculties()
-  const departmentsQuery = useDepartments(currentUser?.facultyId)
+  const departmentsQuery = useDepartments(currentUser?.facultyId ?? undefined)
   const sportsQuery = useSportTypes()
   const pickem = usePickemHistory(!USE_MOCK && !!currentUser)
 
@@ -63,7 +66,7 @@ export function ProfilePage() {
 
     return (
       <div className="account-workspace account-profile">
-        <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : 'Student record'} user={currentUser} />
+        <ProfileHeading label={legacyUser.role === 'Admin' ? 'Administrator' : currentUser.userType === 'external' ? 'External' : 'Student record'} user={currentUser} isExternal={currentUser.userType === 'external'} />
         {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
         {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Additional statistics could not load. Your confirmed career record is shown below.">
           <button className="btn" type="button" disabled={statsQuery.isFetching} onClick={() => void statsQuery.refetch()}>{statsQuery.isFetching ? 'Retrying stats…' : 'Retry stats'}</button>
@@ -103,9 +106,9 @@ export function ProfilePage() {
             ) : null}
           </div>
           <div className="rail">
-            <Panel><span className="tag"><em>//</em> Student record — the registry owns this</span><Facts rows={[
+            <Panel><span className="tag"><em>//</em> {legacyUser.external ? 'External record' : 'Student record — the registry owns this'}</span><Facts rows={[
               ['Faculty', legacyUser.faculty], ['Major', legacyUser.major], ['Year', String(currentUser.year)],
-              ['Age', String(ageOf(currentUser.birthDate))], ['Gender', currentUser.gender], ['Role', currentUser.userType === 'staff' ? 'Admin' : 'User'],
+              ['Age', String(ageOf(currentUser.birthDate))], ['Gender', currentUser.gender], ['Role', currentUser.userType === 'staff' ? 'Admin' : (currentUser.userType === 'external' || legacyUser.external) ? 'External' : 'User'],
             ]} /></Panel>
             <Panel quiet><span className="tag"><em>//</em> Following · {follows.length}</span>{follows.length ? follows.map(key => <div className="sub" key={key}>{key.replace('team:', 'Squad · ').replace('player:', 'Player · ')}</div>) : <span className="sub">Nothing followed yet.</span>}</Panel>
             <Panel quiet><span className="tag"><em>//</em> MVP votes received</span><span className="v" style={{ fontFamily: 'var(--f-display)', fontSize: 30, color: 'var(--teal)' }}>{mvpVotes}</span></Panel>
@@ -123,13 +126,16 @@ export function ProfilePage() {
 
   return (
     <div className="account-workspace account-profile">
-      <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : 'Student record'} user={currentUser} />
+      <ProfileHeading label={currentUser.userType === 'staff' ? 'Administrator' : currentUser.userType === 'external' ? 'External' : 'Student record'} user={currentUser} isExternal={currentUser.userType === 'external'} />
 
+      {currentUser.userType === 'external' ? <ExternalIdentityPanel /> : null}
+      <ProfileSettings key={currentUser.id} user={currentUser} />
+      <NotificationSettings />
       {statsQuery.isPending ? <Panel quiet><span className="sub">Loading statistics…</span></Panel> : null}
       {statsQuery.isError ? <Empty title="Statistics are unavailable" sub="Your account details are still available below.">
         <button className="btn" type="button" disabled={statsQuery.isFetching} onClick={() => void statsQuery.refetch()}>{statsQuery.isFetching ? 'Retrying stats…' : 'Retry stats'}</button>
       </Empty> : null}
-      {stats ? (
+      {stats?.overall ? (
         <>
           <div className="statline">
             <Stat label="Matches played" value={stats.overall.matchesPlayed} />
@@ -137,7 +143,7 @@ export function ProfilePage() {
             <Stat label="Titles" value={stats.overall.championCount} />
             <Stat label="Points" value={currentUser.totalPoints} />
           </div>
-          {stats.bySport.length ? (
+          {stats.bySport?.length ? (
             <Panel quiet><span className="tag"><em>//</em> Statistics by sport</span><TableWrap label="My statistics by sport"><table>
               <thead><tr><th>Sport</th><th>Played</th><th>Wins</th><th>Losses</th></tr></thead>
               <tbody>{stats.bySport.map(row => <tr key={row.sportTypeId}><td>{row.sportName}</td><td className="num">{row.matchesPlayed}</td><td className="num">{row.wins}</td><td className="num">{row.losses}</td></tr>)}</tbody>
@@ -155,7 +161,7 @@ export function ProfilePage() {
             {!teamsQuery.isPending && !teamsQuery.isError && !teams.length ? <Empty icon="team" title="Not in a squad yet" sub="Create a squad or accept an invitation from the Teams page." /> : null}
             {teams.length ? (
               <TableWrap label="My squads"><table><thead><tr><th>Squad</th><th>Role</th><th>Sport</th><th>Members</th></tr></thead><tbody>
-                {teams.map(team => <tr key={team.id}><td><Link to={`/team/${team.id}`}>{team.name}</Link></td><td className="sub">{team.role === 'leader' ? 'Leader' : 'Player'}</td><td className="sub">{sports.get(team.sportTypeId) ?? `Sport #${team.sportTypeId}`}</td><td className="num">{team.memberCount}</td></tr>)}
+                {teams.map(team => <tr key={team.id}><td><TeamLinkView team={team} /></td><td className="sub">{team.role === 'leader' ? 'Leader' : 'Player'}</td><td className="sub">{sports.get(team.sportTypeId) ?? `Sport #${team.sportTypeId}`}</td><td className="num">{team.memberCount}</td></tr>)}
               </tbody></table></TableWrap>
             ) : null}
           </Panel>
@@ -173,19 +179,24 @@ export function ProfilePage() {
             </> : null}
           </Panel>
           <BackendCareerPanel userId={currentUser.id} />
-          <Panel quiet><span className="tag"><em>//</em> MVP totals</span><p className="sub">Received-vote totals are not available from the server yet.</p></Panel>
+          <BackendMatchHistoryPanel userId={currentUser.id} />
+          <Panel quiet><span className="tag"><em>//</em> MVP totals</span>
+            {stats?.mvpTimes != null ? <Stat label="MVP awards" value={stats.mvpTimes} /> : null}
+            {stats?.mvpVotes != null ? <Stat label="MVP votes received" value={stats.mvpVotes} /> : null}
+          </Panel>
+          <Link className="btn" to="/me/rewards">My rewards — manage profile display</Link>
         </div>
 
         <div className="rail">
           <Panel>
-            <span className="tag"><em>//</em> Student record — the registry owns this</span>
+            <span className="tag"><em>//</em> {currentUser.userType === 'external' ? 'External record' : 'Student record — the registry owns this'}</span>
             <Facts rows={[
-              ['Faculty', faculty ?? `Faculty #${currentUser.facultyId}`],
-              ['Major', department ?? `Department #${currentUser.departmentId}`],
-              ['Year', String(currentUser.year)],
+              ['Faculty', currentUser.facultyId === null ? 'Not applicable' : faculty ?? `Faculty #${currentUser.facultyId}`],
+              ['Major', currentUser.departmentId === null ? 'Not applicable' : department ?? `Department #${currentUser.departmentId}`],
+              ['Year', currentUser.year === null ? 'Not applicable' : String(currentUser.year)],
               ['Age', String(ageOf(currentUser.birthDate))],
               ['Gender', currentUser.gender],
-              ['Role', currentUser.userType === 'staff' ? 'Admin' : 'User'],
+              ['Role', currentUser.userType === 'staff' ? 'Admin' : currentUser.userType === 'external' ? 'External' : 'User'],
             ]} />
             <span className="sub">The Hard filter reads these values. Ask the registry if one is wrong.</span>
           </Panel>
@@ -202,12 +213,13 @@ export function ProfilePage() {
   )
 }
 
-function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
+function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDto; isExternal?: boolean }) {
   const updateMe = useUpdateMe()
   const [loading, setLoading] = useState<'upload' | 'remove' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const inputId = 'profile-avatar-upload'
+  const isExternalUser = isExternal ?? (user.userType === 'external')
 
   const pick = async (file: File | undefined) => {
     if (!file || loading || updateMe.isPending) return
@@ -250,7 +262,7 @@ function ProfileHeading({ label, user }: { label: string; user: MeDto }) {
         <Avatar name={user.fullName} avatarUrl={user.avatarUrl} size={72} alt={user.fullName}
           style={{ borderRadius: '2px', border: '2px solid var(--line-hot)' }} />
         <div className="account-identity-copy">
-          <h1 className="disp">{user.fullName}</h1>
+          <h1 className="disp">{user.fullName} {isExternalUser ? USE_MOCK ? <Badge kind="neutral">External</Badge> : <ExternalIdentityBadge /> : null}</h1>
           <p className="sub">{label}</p>
           <p className="account-email">{user.email}</p>
           <div className="account-photo-actions">

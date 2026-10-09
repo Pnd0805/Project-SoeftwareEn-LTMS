@@ -46,6 +46,9 @@ function makeReq(overrides: Overrides<Request> = {}): Request {
     return {
         params: { id: "42" },
         body: {},
+        // Express ใส่ req.query ให้ทุกคำขอเสมอ (อย่างน้อยเป็น {}) — ตัวช่วยนี้ต้องเหมือนของจริง
+        // ไม่งั้น controller ที่อ่าน query string จะพังในเทสทั้งที่ของจริงไม่พัง
+        query: {},
         user: { user_id: 7 },
         ...overrides,
     } as unknown as Request;
@@ -303,9 +306,18 @@ describe("getPickemLeaderboard", () => {
         const res = makeRes();
         await getPickemLeaderboard(req, res);
 
-        expect(svc.getLeaderboard).toHaveBeenCalledWith(5);
+        // B3 ② — ไม่ส่ง query = หน้า 1 ขนาด 20 (ค่าตั้งต้นของ parsePagination)
+        expect(svc.getLeaderboard).toHaveBeenCalledWith(5 , 0 , 1 , 20);
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    // 🔴 B3 ② — ถ้าใครลืมอ่าน query string ตารางจะติดอยู่หน้าแรกตลอดแบบไม่มี error
+    it("ส่ง page/pageSize จาก query ต่อให้ service เป็น offset/page/pageSize", async () => {
+        svc.getLeaderboard.mockResolvedValue({ items: [] , pagination: {} } as any);
+        const req = makeReq({ params: { id: "5" } as any , query: { page: "3" , pageSize: "25" } as any , user: undefined });
+        await getPickemLeaderboard(req, makeRes());
+        expect(svc.getLeaderboard).toHaveBeenCalledWith(5 , 50 , 3 , 25);
     });
 
     it("rejects with VALIDATION_FAILED for a bad tournament id", async () => {

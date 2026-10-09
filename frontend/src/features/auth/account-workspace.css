@@ -281,6 +281,15 @@
   min-width: 0;
 }
 
+.profile-settings .facts .f {
+  white-space: pre-wrap;
+}
+
+.profile-settings-dialog {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+}
+
 .account-profile .spread {
   flex-wrap: wrap;
   gap: 12px;

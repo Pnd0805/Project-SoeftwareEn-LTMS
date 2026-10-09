@@ -6,6 +6,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { Icon } from '../../components/kit/Icon'
@@ -25,6 +26,14 @@ const DEMO: Array<{ email: string; password: string; label: string; note: string
 export function LoginPage() {
   const navigate = useNavigate()
   const login = useLogin()
+  const [blockedUntil, setBlockedUntil] = useState(0)
+  const [now, setNow] = useState(Date.now)
+  const remaining = Math.max(0, Math.ceil((blockedUntil - now) / 1000))
+  useEffect(() => {
+    if (!blockedUntil) return
+    const timer = setInterval(() => { const time = Date.now(); setNow(time); if (time >= blockedUntil) clearInterval(timer) }, 1000)
+    return () => clearInterval(timer)
+  }, [blockedUntil])
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -33,39 +42,40 @@ export function LoginPage() {
       : { email: '', password: '' },
   })
 
-  const redirectAfterLogin = (userType: string) => {
+  const redirectAfterLogin = useCallback((userType: string) => {
     navigate(userType === 'staff' ? '/admin' : '/')
-  }
+  }, [navigate])
 
-  const submit = async (values: LoginInput) => {
+  const showError = useCallback((error: unknown) => {
+    if (error instanceof ApiError && error.code === 'TOO_MANY_LOGIN_ATTEMPTS') {
+      const seconds = error.extra.retryAfterSeconds
+      if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0) {
+        const time = Date.now(); setNow(time); setBlockedUntil(time + Math.ceil(seconds) * 1000)
+      }
+    }
+    if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => form.setError(field as keyof LoginInput, { type: 'server', message }))
+    else form.setError('root', { type: 'server', message: error instanceof Error ? error.message : 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
+  }, [form])
+
+  const submit = useCallback(async (values: LoginInput) => {
+    if (blockedUntil > Date.now() || login.isPending) return
     try {
       const result = await login.mutateAsync(values)
       redirectAfterLogin(result.user.userType)
     } catch (error) {
-      if (error instanceof ApiError && error.fields) {
-        Object.entries(error.fields).forEach(([field, message]) => {
-          form.setError(field as keyof LoginInput, { type: 'server', message })
-        })
-      } else {
-        form.setError('root', { type: 'server', message: 'Unable to sign in. Please try again.' })
-      }
+      showError(error)
     }
-  }
+  }, [blockedUntil, login, redirectAfterLogin, showError])
 
-  const quickLogin = async (email: string, password: string) => {
+  const quickLogin = useCallback(async (email: string, password: string) => {
+    if (blockedUntil > Date.now() || login.isPending) return
     try {
       const result = await login.mutateAsync({ email, password })
       redirectAfterLogin(result.user.userType)
     } catch (error) {
-      if (error instanceof ApiError && error.fields) {
-        Object.entries(error.fields).forEach(([field, message]) => {
-          form.setError(field as keyof LoginInput, { type: 'server', message })
-        })
-      } else {
-        form.setError('root', { type: 'server', message: 'Unable to sign in. Please try again.' })
-      }
+      showError(error)
     }
-  }
+  }, [blockedUntil, login, redirectAfterLogin, showError])
 
   return (
     <main className="auth account-workspace account-login"><div className="auth-card">
@@ -105,12 +115,15 @@ export function LoginPage() {
 
         {form.formState.errors.root && <span className="error" role="alert">{form.formState.errors.root.message}</span>}
 
-        <button className="btn primary" type="submit" disabled={login.isPending}>
+        {remaining > 0 ? <p role="status">Too many login attempts. Try again in {remaining} seconds.</p> : null}
+        <button className="btn primary" type="submit" disabled={login.isPending || remaining > 0}>
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </button>
         {login.isPending && <span className="sub" role="status">Signing in. Please wait.</span>}
       </form>
+      {(login.error as { code?: string } | null)?.code === 'EMAIL_NOT_VERIFIED' ? <Link className="btn" to={`/register?step=otp&email=${encodeURIComponent(form.getValues('email'))}`}>กลับไปยืนยันอีเมลด้วย OTP</Link> : null}
 
+      <Link className="btn ghost" to="/forgot-password">Forgot password?</Link>
       <div className="account-actions">
         <span className="sub">New to LTMS?</span>
         <Link className="btn ghost" to="/register">Create account</Link>

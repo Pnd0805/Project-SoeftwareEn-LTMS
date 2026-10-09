@@ -5,10 +5,11 @@
 import { useQuery } from "@tanstack/react-query";
 import * as referenceApi from "../api/reference";
 
-export function useFaculties() {
+export function useFaculties(enabled = true) {
   return useQuery({
     queryKey: ["faculties"],
     queryFn: referenceApi.getFaculties,
+    enabled,
     staleTime: Infinity,
   });
 }

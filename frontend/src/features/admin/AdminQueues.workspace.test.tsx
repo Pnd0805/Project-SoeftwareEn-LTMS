@@ -7,6 +7,7 @@ const referee = { id: 14, referee: { id: 33, fullName: 'Alex External', avatarUr
 const transfer = { id: 15, status: 'pending', team: { id: 11, name: 'Northside' }, currentLeader: { id: 34, fullName: 'Morgan' }, proposedLeader: { id: 35, fullName: 'Riley' } }
 const query = (row: unknown) => ({ data: { items: state.empty ? [] : [row] }, isError: !!state.error, error: state.error, isSuccess: !state.error, isPending: false, refetch: vi.fn() })
 vi.mock('../../hooks/useAdmin', () => ({
+  useRequestExternalRefereeDocs: () => ({ isPending: false, reset: vi.fn(), mutate: vi.fn() }),
   useExternalRefereeRequests: () => query(referee), useLeaderTransfers: () => query(transfer),
   useReviewExternalReferee: () => ({ mutate: state.decide, reset: vi.fn(), isPending: false }),
   useReviewLeaderTransfer: () => ({ mutate: state.decide, reset: vi.fn(), isPending: false }),
@@ -18,6 +19,7 @@ beforeEach(() => { state.error = null; state.empty = false; state.decide.mockRes
 it('hides a cached external referee and rejection dialog after source denial', () => {
   const view = render(<MemoryRouter><AdminRefereesTab /></MemoryRouter>)
   fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
   state.error = { status: 403 }; view.rerender(<MemoryRouter><AdminRefereesTab /></MemoryRouter>)
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.queryByText('Alex External')).not.toBeInTheDocument()

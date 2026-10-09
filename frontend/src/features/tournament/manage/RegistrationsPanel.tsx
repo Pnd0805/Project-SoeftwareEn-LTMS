@@ -27,6 +27,7 @@ import { useManageActive } from './ManageActivity'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
 import { useApplicationDetail, useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
+import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
 import { ApiError, USE_MOCK } from '../../../api/client'
 import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
 import { regsOf, team, user } from '../../../shared/selectors'
@@ -44,6 +45,7 @@ interface RegRow {
   /** id ของทีมในฝั่ง store — มีเฉพาะทางเดิม ใช้ผูก TeamLink และอวาตาร์ */
   teamStoreId: string | null
   teamName: string
+  teamLogoUrl: string | null
   status: 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'cancelled'
   /** null = ยังไม่ได้ตรวจ · true = ผ่าน · false = ไม่ผ่าน */
   hardFilterPassed: boolean | null
@@ -60,6 +62,7 @@ function rowsFromApi(apps: BackendTournamentApplicationDto[]): RegRow[] {
     applicationId: a.id,
     teamStoreId: null,
     teamName: a.team.name,
+    teamLogoUrl: a.team.logoUrl ?? null,
     status: a.status,
     hardFilterPassed: a.hardFilterPassed,
     hardFilterFails: [],
@@ -80,6 +83,7 @@ function rowsFromStore(s: State, t: Tournament): RegRow[] {
       applicationId: r.id,
       teamStoreId: r.team,
       teamName: tm?.name ?? '—',
+      teamLogoUrl: tm?.logo ?? (tm as { logoUrl?: string | null })?.logoUrl ?? null,
       status: r.status as RegRow['status'],
       hardFilterPassed: tm ? fails.length === 0 : null,
       hardFilterFails: fails.map(f => `${f.user.name} — ${f.rule}`),
@@ -155,7 +159,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
         {search || status !== 'all' ? <button className="btn ghost" type="button" onClick={() => { setSearch(''); setStatus('all') }}>Clear filters</button> : null}
       </div>
       <p className="sub" role="status">{filtered.length} of {rows.length} registrations</p>
-      {approve.isError ? <Banner kind="crit">Couldn't approve the team. {message(approve.error)}</Banner> : null}
+      {approve.isError ? <Banner kind="crit">Couldn't approve the team. {message(approve.error)}<ContractErrorDetails error={approve.error} /></Banner> : null}
       {approve.isSuccess ? <Banner kind="ok">Team approved.</Banner> : null}
       {filtered.length ? <TableWrap label="Registration list"><table>
         <thead><tr><th>Team</th><th>Status</th><th>Hard filter</th><th>Applied</th><th>Action</th></tr></thead>
@@ -163,7 +167,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
           const tm = r.teamStoreId ? team(s, r.teamStoreId) : null
           return <tr key={r.key}>
             <td><span className="hstack"><TeamCrestView size={28} team={tm ? toTeamView(tm)
-              : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: null }} /><b>{r.teamName}</b></span>
+              : { id: r.teamStoreId ?? '', name: r.teamName, code: r.teamName.slice(0, 3).toUpperCase(), color: null, logoUrl: r.teamLogoUrl }} /><b>{r.teamName}</b></span>
               {r.reason ? <p className="sub">{r.reason}</p> : null}</td>
             <td><Badge kind={r.status === 'approved' ? 'ok' : r.status === 'pending' ? 'warn' : r.status === 'rejected' ? 'crit' : 'neutral'}>{r.status}</Badge></td>
             <td><Badge kind={r.hardFilterPassed === false ? 'crit' : r.hardFilterPassed ? 'ok' : 'neutral'}>
@@ -171,7 +175,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
             <td className="sub">{r.at ? fmtDate(r.at) : '—'}</td>
             <td>{r.status === 'pending' ? <div className="hstack">
               <button className="btn" type="button" onClick={() => startReview(r)}>Review</button>
-              <button className="btn primary" type="button" disabled={r.applicationId === null || busy}
+              <button className="btn primary" type="button" disabled={r.applicationId === null || busy || r.hardFilterPassed === false}
                 onClick={() => { if (r.applicationId !== null) approve.mutate(r.applicationId) }}>{approve.isPending && approve.variables === r.applicationId ? 'Approving…' : 'Approve'}</button>
             </div> : tm ? <button className="btn ghost" type="button" onClick={() => navigate(`/team/${tm.id}`)}>View team</button> : '—'}</td>
           </tr>

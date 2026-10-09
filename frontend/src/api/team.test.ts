@@ -13,7 +13,7 @@ vi.mock("./client", async (importOriginal) => ({
 import {
   answerBackendInvitation, cancelTeamInvitation, createTeam, disbandTeam, getBackendMyInvitations,
   getBackendMyTeams, getBackendTeam, getBackendTeamMembers, inviteMember, kickMember,
-  requestOfficialStatus, setMemberPosition, transferLeader, updateTeam,
+  requestOfficialStatus, setMemberPosition, transferLeader, updateTeam, leaveTeam,
 } from "./team";
 
 const json = (body: unknown, status = 200) =>
@@ -32,6 +32,13 @@ const lastRequest = () => {
     body: init?.body ? JSON.parse(String(init.body)) : undefined,
   };
 };
+it('leaves through the authenticated self-membership route and preserves server lock errors', async () => {
+  fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+  await expect(leaveTeam(42)).resolves.toBeUndefined();
+  expect(lastRequest()).toMatchObject({ path: '/teams/42/members/me', method: 'DELETE' });
+  fetchMock.mockResolvedValueOnce(apiError(409, 'MEMBER_LOCKED_IN_TOURNAMENT'));
+  await expect(leaveTeam(42)).rejects.toMatchObject({ status: 409, code: 'MEMBER_LOCKED_IN_TOURNAMENT' });
+});
 
 describe("team reads", () => {
   it("GET /me/teams returns the signed-in user's teams", async () => {

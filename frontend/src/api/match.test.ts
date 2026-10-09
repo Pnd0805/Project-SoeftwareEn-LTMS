@@ -1,3 +1,4 @@
+import { setAccessToken } from './client';
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./client", async (importOriginal) => ({
@@ -5,14 +6,49 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings } from "./match";
+import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings, getMyMatches, overrideResult } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const fetchMock = vi.fn<typeof fetch>();
 
-beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => { setAccessToken("test-session"); fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
+afterEach(() => { setAccessToken(null); vi.unstubAllGlobals(); });
+
+describe('unfiltered personal schedule', () => {
+  const row = (id: number, role: 'player' | 'referee', conflicts: number[]) => ({
+    id, role, myTeamId: role === 'player' ? 3 : null,
+    tournament: { id: id + 20, name: `Tour ${id}`, sportTypeId: 1 }, round: 1,
+    teamA: { id: 3, name: 'A' }, teamB: { id: 4, name: 'B' },
+    scheduledTime: '2026-10-10T03:00:00Z', scheduledEndTime: '2026-10-10T04:00:00Z',
+    mode: 'online', venue: 'Room', status: 'scheduled', conflictingMatchIds: conflicts,
+  });
+  const serve = (rows: unknown[], failure = false) => fetchMock.mockImplementation(input => {
+    const url = String(input);
+    if (url.endsWith('/me/matches')) return Promise.resolve(failure ? json({ code: 'FORBIDDEN', message: 'Denied' }, 403) : json({ items: rows }));
+    if (url.endsWith('/me')) return Promise.resolve(json({ id: 9 }));
+    return Promise.resolve(json({ items: [], pagination: { totalPages: 1 } }));
+  });
+  it('keeps cross-role conflicts and server modes, including matches outside the enrichment cap', async () => {
+    const rows = Array.from({ length: 14 }, (_, i) => row(i + 1, i === 13 ? 'referee' : 'player', i === 0 ? [14] : i === 13 ? [1] : []));
+    serve(rows);
+    const result = await getMyMatches();
+    expect(result.items).toHaveLength(14);
+    expect(result.items.find(m => m.id === 1)).toMatchObject({ conflictingMatchIds: [14], mode: 'online', viewer: { roles: ['player'], myTeamId: 3 } });
+    expect(result.items.find(m => m.id === 14)).toMatchObject({ conflictingMatchIds: [1], viewer: { roles: ['referee'] } });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me/matches?'))).toBe(false);
+  });
+  it('merges two roles on one match and excludes a self conflict', async () => {
+    serve([row(1, 'player', [1, 2]), row(1, 'referee', [2]), row(2, 'referee', [1])]);
+    const result = await getMyMatches();
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({ conflictingMatchIds: [2], viewer: { roles: ['player', 'referee'] } });
+  });
+  it('propagates a personal schedule read failure instead of claiming there are no conflicts', async () => {
+    serve([], true);
+    await expect(getMyMatches()).rejects.toMatchObject({ status: 403, message: 'Denied' });
+  });
+});
 
 describe("match check-in contract", () => {
   const checkedInRow = {
@@ -209,10 +245,20 @@ describe("finish-then-submit contract (OD-26)", () => {
     return Promise.resolve(json({ error: { code: "NOT_FOUND", message: path } }, 404));
   };
 
-  it("keeps the result form closed while the match is being played, and offers Finish instead", async () => {
+  it('does not probe personal endpoints for a guest and keeps every write permission false', async () => {
+    setAccessToken(null)
+    fetchMock.mockImplementation(routeAs(REFEREE, "scheduled"))
+    const m = await getMatch(13)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me'))).toBe(false)
+    expect(m.viewer.myUserId).toBeNull()
+    expect(m.viewer.can.openCheckin).toBe(false)
+    expect(m.viewer.can.submitResult).toBe(false)
+  })
+
+  it("allows the referee to enter scores during play and finish before submitting", async () => {
     fetchMock.mockImplementation(routeAs(REFEREE, "in_progress"));
     const m = await getMatch(13);
-    expect(m.viewer.can.submitResult).toBe(false);
+    expect(m.viewer.can.submitResult).toBe(true);
     expect(m.viewer.can.finishMatch).toBe(true);
   });
 
@@ -244,3 +290,83 @@ describe("finish-then-submit contract (OD-26)", () => {
     expect((await getMatch(13)).viewer.can.openCheckin).toBe(true);
   });
 });
+
+/* OD-59 / OD-55 (4 ต.ค.) — S05 บอกตัวผู้บันทึกแบบมีเงื่อนไข และ S02b ให้กรรมการแก้ผล online */
+describe("result recorder and referee correction", () => {
+  const detail = {
+    id: 12, tournamentId: 21, round: 1,
+    teamA: { id: 9007, name: "A", sportTypeId: 3 }, teamB: { id: 9008, name: "B", sportTypeId: 3 },
+    status: "finished", mode: "online",
+  };
+  const route = (resultBody: Record<string, unknown>) => (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/matches/12/result")) return Promise.resolve(json(resultBody));
+    if (url.endsWith("/matches/12")) return Promise.resolve(json(detail));
+    return Promise.resolve(json({}));
+  };
+  const base = { matchId: 12, winnerTeamId: 9008, scoreData: { "9007": 1, "9008": 2 }, status: "submitted",
+    submittedRole: "team_leader", isAmended: false, amendedAt: null, amendReason: null, verifiedAt: null, isWalkover: false };
+
+  it("reads a missing submittedBy key as hidden, not as an unnamed person", async () => {
+    fetchMock.mockImplementation(route(base));
+    const r = await getResult(12);
+    expect(r.submittedByVisibility).toBe("hidden");
+    expect(r.createdAt).toBe("");
+  });
+
+  it("reads submittedBy: null as a deleted account and keeps submittedAt", async () => {
+    fetchMock.mockImplementation(route({ ...base, submittedBy: null, submittedAt: "2026-10-04T08:00:00.000Z" }));
+    const r = await getResult(12);
+    expect(r.submittedByVisibility).toBe("deleted");
+    expect(r.createdAt).toBe("2026-10-04T08:00:00.000Z");
+  });
+
+  it("names the recorder when S05 sends them", async () => {
+    fetchMock.mockImplementation(route({ ...base, submittedBy: { id: 9101, fullName: "Leader A", avatarUrl: null } }));
+    const r = await getResult(12);
+    expect(r.submittedByVisibility).toBe("shown");
+    expect(r.submittedBy.fullName).toBe("Leader A");
+  });
+
+  it("posts a correction to S02b keyed by team id, with the reason", async () => {
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/matches/12/result/override")) {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({ winnerTeamId: 9007, scoreData: { "9007": 3, "9008": 1 }, reason: "Real score 3-1" });
+        return Promise.resolve(json({ id: 5, matchId: 12, status: "submitted" }));
+      }
+      return route(base)(input);
+    });
+    await expect(overrideResult(12, { winnerTeamId: 9007, scoreData: { a: 3, b: 1 }, reason: "Real score 3-1" }))
+      .resolves.toMatchObject({ status: "submitted" });
+  });
+});
+
+/* OD-61 — teamA/teamB เป็น TeamRef ที่มี logoUrl แล้ว · ทีมไม่มีโลโก้ ≠ ช่องไม่มีทีม */
+describe("team logos on matches", () => {
+  it("carries a team's logo, keeps a logo-less team, and keeps an empty slot empty", async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/matches/10")) {
+        return Promise.resolve(json({
+          id: 10, tournamentId: 17, round: 1, status: "scheduled", mode: "onsite",
+          teamA: { id: 9003, name: "With logo", sportTypeId: 2, logoUrl: "http://localhost:9000/ltms-uploads/team_logo/9003/x.png" },
+          teamB: null,
+        }));
+      }
+      if (url.endsWith("/me")) return Promise.reject(new Error("signed out"));
+      return Promise.resolve(json({ items: [] }));
+    });
+    const m = await getMatch(10);
+    expect(m.teamA?.logoUrl).toBe("http://localhost:9000/ltms-uploads/team_logo/9003/x.png");
+    expect(m.teamB).toBeNull();
+  });
+});
+
+it('propagates private-match 404 without probing enrichment or using mock data', async () => {
+ setAccessToken(null)
+ fetchMock.mockResolvedValueOnce(json({ error: { code: 'MATCH_NOT_FOUND', message: 'Match not found' } }, 404))
+ await expect(getMatch(999)).rejects.toMatchObject({ status: 404, code: 'MATCH_NOT_FOUND' })
+ expect(fetchMock).toHaveBeenCalledTimes(1)
+})

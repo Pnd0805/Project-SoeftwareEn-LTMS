@@ -1,18 +1,19 @@
 /**
  * src/schemas/auth.schema.ts
- * ก็อปกฎมาจาก GUIDE/04 §6 (schemas/auth.schema.ts ฝั่ง backend) ตรงเป๊ะ
+ * อิงกฎสมัครสมาชิก Backend พร้อมข้อจำกัด UX วันเกิดและชั้นปี 1-8
  * เจตนา: frontend เช็คไว-ให้ user feedback ทันที / backend เช็คซ้ำเสมอ (ห้ามเชื่อ client)
  * ข้อความ error ใช้ภาษาไทยตาม NF-US-03 เหมือนฝั่ง backend
  */
 import { z } from "zod";
 import { GenderEnum } from "../types/enums";
+import { isKuEmail } from '../shared/kuEmail';
 
 // เทียบวันล้วนตามเวลาไทย เช่นเดียวกับ backend ไม่แปลงวันเกิดเป็นเที่ยงคืน UTC
 export function todayInThailand(): string {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-export const registerSchema = z.object({
+export const personalRegisterSchema = z.object({
   fullName: z
     .string()
     .min(2, { message: "ชื่อ-นามสกุลต้องมี 2-100 ตัวอักษร" })
@@ -26,9 +27,16 @@ export const registerSchema = z.object({
   // "YYYY-MM-DD" ตรงกับ birth_date DATE ในฝั่ง backend — ห้ามส่ง Date object
   birthDate: z.iso.date("Enter a valid birth date.")
     .refine(value => value <= todayInThailand(), "Birth date cannot be in the future."),
-  facultyId: z.number().int().positive({ message: "กรุณาเลือกคณะ" }),
-  departmentId: z.number().int().positive({ message: "กรุณาเลือกภาควิชา" }),
-  year: z.number().int("Enter a whole year.").min(1, "Year must be 1–8.").max(8, "Year must be 1–8."),
+});
+export const registerSchema = personalRegisterSchema.extend({
+  facultyId: z.number().int().positive({ message: 'กรุณาเลือกคณะ' }).optional(),
+  departmentId: z.number().int().positive({ message: 'กรุณาเลือกภาควิชา' }).optional(),
+  year: z.number().int().min(1, { message: 'ชั้นปีต้องอยู่ระหว่าง 1-8' }).max(8, { message: 'ชั้นปีต้องอยู่ระหว่าง 1-8' }).optional(),
+}).superRefine((values, context) => {
+  if (!isKuEmail(values.email)) return
+  for (const [field, message] of [['facultyId', 'กรุณาเลือกคณะ'], ['departmentId', 'กรุณาเลือกภาควิชา'], ['year', 'กรุณาเลือกชั้นปี']] as const) {
+    if (values[field] === undefined) context.addIssue({ code: 'custom', path: [field], message })
+  }
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

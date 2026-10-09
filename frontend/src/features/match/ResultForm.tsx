@@ -18,9 +18,11 @@
 import { useRef, useState } from 'react'
 import { Modal } from '../../components/kit/Modal'
 import { useMatchActive } from './MatchActivity'
-import { Banner, Field, Panel, TableWrap } from '../../components/kit/primitives'
+import { Banner, Panel, TableWrap } from '../../components/kit/primitives'
+import { ScoreInputs } from './ScoreInputs'
+import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { TeamChipView } from '../../components/kit/chips'
-import { useStatDefinitions, useSubmitResult, useSaveMatchStats } from '../../hooks/useMatch'
+import { useStatDefinitions, useSubmitResult, useSaveMatchStats, useFinishMatch } from '../../hooks/useMatch'
 import { toTeamView } from './matchView'
 import { checkResult } from './resultRules'
 import type { MatchDto, MatchTeamRef } from '../../types/match.dto'
@@ -31,6 +33,7 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
   const { data: defs } = useStatDefinitions(m.tournament.sportTypeId)
   const submit = useSubmitResult(m.id, m.tournamentId)
   const saveStats = useSaveMatchStats(m.id)
+  const finish = useFinishMatch(m.id, m.tournamentId)
 
   const [sa, setSa] = useState(0)
   const [sb, setSb] = useState(0)
@@ -42,8 +45,10 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'partial' | 'success'; text: string } | null>(null)
   const active = useMatchActive()
   const submitting = useRef(false)
-  const busy = saving || submit.isPending || saveStats.isPending
+  const busy = saving || submit.isPending || saveStats.isPending || finish.isPending
 
+  const [didFinish, setDidFinish] = useState(false)
+  const format = scoreFormatFromError(m, submit.error)
 
   const sides = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const statDefs = defs?.items ?? []
@@ -70,19 +75,26 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
     setSaving(true)
     setFeedback(null)
     let scoreSaved = false
+    let matchFinished = didFinish
     try {
-      await onSubmitUnsafe(() => { scoreSaved = true })
+      await onSubmitUnsafe(() => { scoreSaved = true }, () => { matchFinished = true })
       setFeedback({ kind: 'success', text: 'Result saved.' })
       setReview(false)
     } catch (error) {
       const detail = error instanceof Error ? error.message : 'Try again.'
       setFeedback({ kind: scoreSaved ? 'partial' : 'error', text: scoreSaved
         ? `Score saved. Player statistics were not saved. ${detail} Your numbers are retained; review and submit again.`
-        : `Result not saved. ${detail} Your draft is retained.` })
+        : `${matchFinished ? 'The match has ended. ' : ''}Result not saved. ${detail} Your draft is retained.` })
     } finally { submitting.current = false; setSaving(false) }
   }
 
-  const onSubmitUnsafe = async (onScoreSaved: () => void) => {
+  const onSubmitUnsafe = async (onScoreSaved: () => void, onFinished: () => void) => {
+    if (!validMatchScore(format, sa, sb)) return
+    if (m.status === 'in_progress' && m.viewer.can.finishMatch && !didFinish) {
+      await finish.mutateAsync()
+      setDidFinish(true)
+      onFinished()
+    }
     await submit.mutateAsync({
       winnerTeamId: winnerTeamId(),
       scoreData: {
@@ -105,7 +117,7 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
 
   /* OD-20: no match can finish level in any format. The on-field tiebreak is
      reflected in the aggregate score; Draw/Decider are not separate inputs. */
-  const blocked = level || !Number.isSafeInteger(sa) || !Number.isSafeInteger(sb) || sa < 0 || sb < 0 || sa > 999 || sb > 999
+  const blocked = !validMatchScore(format, sa, sb)
 
   /* สถิติที่ขัดกับสกอร์ — เช่นฟุตบอลที่มีแอสซิสต์ทั้งที่ไม่มีประตู
      ตรวจสดขณะกรอก คนกรอกจะได้เห็นก่อนกดส่ง ไม่ใช่โดนปฏิเสธทีหลัง */
@@ -158,16 +170,9 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
       </span>
 
       <div className="match-result-body" role="region" aria-label="Result entry fields" tabIndex={0}>
-      <div className="grid2 match-score-inputs">
-        <Field label={m.teamA?.name ?? 'Home'} htmlFor="sc-a">
-          <input id="sc-a" disabled={busy} aria-invalid={blocked} aria-describedby={blocked ? "result-blockers" : undefined} type="number" min={0} max={999} value={sa} onChange={e => setSa(Number(e.target.value))} />
-        </Field>
-        <Field label={m.teamB?.name ?? 'Away'} htmlFor="sc-b">
-          <input id="sc-b" disabled={busy} aria-invalid={blocked} type="number" min={0} max={999} value={sb} onChange={e => setSb(Number(e.target.value))} />
-        </Field>
-      </div>
+      <ScoreInputs match={{ ...m, ...format }} a={sa} b={sb} setA={setSa} setB={setSb} prefix="sc" disabled={busy} />
 
-      {blocked ? (
+      {level ? (
         <Banner kind="warn">
           <div id="result-blockers"><b>Every match needs a winner.</b> Finish the tiebreak, then enter the final score.
             {' '}<a href="#sc-a" onClick={e => { e.preventDefault(); document.getElementById('sc-a')?.focus() }}>Enter a winning score using whole numbers from 0 to 999.</a>
@@ -226,6 +231,7 @@ export function ResultForm({ m, visible = true }: { m: MatchDto; visible?: boole
         </>
       ) : null}
 
+      {finish.isError ? <Banner kind="crit">Could not finish the match. {finish.error instanceof Error ? finish.error.message : 'Try again.'}</Banner> : null}
       {submit.isError ? (
         <Banner kind="crit">
           Could not save the result.{' '}

@@ -1,10 +1,11 @@
+vi.mock('../../match/RefereeWithdrawal', () => ({ OrganizerWithdrawals: () => null }))
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useParams } from 'react-router-dom'
 import { expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
 
 vi.mock('../../../api/client', async original => ({ ...await original<typeof import('../../../api/client')>(), USE_MOCK: false }))
-vi.mock('../../../shared/store', () => ({ useLtms: () => ({}) }))
+vi.mock('../../../shared/store', () => ({ getState: () => ({}), useLtms: () => ({}) }))
 vi.mock('../CommunityTab', () => ({ feedbackOf: vi.fn() }))
 vi.mock('./SetupTrail', () => ({ SetupTrail: () => <div>Progress content</div> }))
 vi.mock('./DeleteTournamentPanel', () => ({ DeleteTournamentPanel: () => null }))
@@ -19,6 +20,7 @@ vi.mock('../../../hooks/useTournament', () => ({
   useEligibilityRules: () => ({ data: { items: [] }, isError: false }),
   useRequestFilterChange: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false }),
   useSetEligibilityRules: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false }),
+  usePreviewAmendment: () => ({ isPending: false, mutateAsync: vi.fn() }),
   useTournamentAmendmentRequests: () => ({ data: { items: [] }, isPending: false, isError: false }),
 }))
 vi.mock('../../../hooks/useReference', () => ({ useFaculties: () => ({ data: { items: [] } }) }))

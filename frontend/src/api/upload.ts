@@ -7,6 +7,7 @@ export const UPLOAD_IMAGE_ACCEPT = 'image/png,image/jpeg'
 export function imageUploadErrorMessage(error: unknown): string {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
   switch (code) {
+    case 'REFEREE_IDENTITY_KEY_INVALID': return 'เอกสารนี้ใช้ยืนยันตัวตนของบัญชีคุณไม่ได้ กรุณาอัปโหลดเอกสาร JPEG หรือ PNG ใหม่จากบัญชีนี้ แล้วส่งอีกครั้ง'
     case 'AVATAR_KEY_INVALID': return 'รูปโปรไฟล์นี้ใช้กับบัญชีของคุณไม่ได้ กรุณาอัปโหลดรูปใหม่'
     case 'TEAM_LOGO_KEY_INVALID': return 'โลโก้นี้ใช้กับทีมนี้ไม่ได้ กรุณาอัปโหลดรูปใหม่'
     case 'AVATAR_KEY_NOT_FOUND':
@@ -22,7 +23,7 @@ export function imageUploadErrorMessage(error: unknown): string {
 
 export async function uploadImage(
   file: File,
-  purpose: 'avatar' | 'team_logo' | 'dispute_evidence',
+  purpose: 'avatar' | 'team_logo' | 'dispute_evidence' | 'referee_identity' | 'report_evidence',
   options: { teamId?: number; matchId?: number } = {}
 ): Promise<string> {
   if (USE_MOCK) return shrinkImage(file)

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { MatchListItemDto } from '../../types/match.dto'
 
 vi.mock('../../api/client', async original => ({ ...await original<typeof import('../../api/client')>(), USE_MOCK: false }))
@@ -17,8 +17,11 @@ const item = (id: number, name: string, role: 'player' | 'organizer' | 'referee'
   viewer: { roles: [role] }, mode: 'onsite', resultStatus: null, score: null, scheduledTime: null,
 }) as MatchListItemDto
 beforeEach(() => {
+  // jsdom has no scrolling implementation; retain calls for restoration assertions.
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   query = { data: { items: [item(1, 'Campus Cup', 'player', 'scheduled'), item(2, 'Autumn Cup', 'organizer', 'in_progress')] }, isPending: false, isError: false, refetch }
 })
+afterEach(() => vi.restoreAllMocks())
 function mount() {
   const router = createMemoryRouter([
     { path: '/matches', element: <MatchesPage /> },
@@ -48,7 +51,7 @@ it('keeps filters and unrelated query parameters after visiting a match and goin
   expect(screen.getByRole('searchbox', { name: 'Search matches' })).toHaveValue('Campus')
   expect(router.state.location.search).toContain('keep=yes')
   expect(router.state.location.state?.matchListScroll).toBe(240)
-  vi.restoreAllMocks()
+  expect(window.scrollTo).toHaveBeenCalledWith({ top: 240, behavior: 'instant' })
 })
 it('keeps cached matches through a recoverable refresh failure, but hides them on denied access', () => {
   query = { ...query, isError: true, error: { status: 503, message: 'Retry later' } }

@@ -183,10 +183,10 @@ export function DrawPanel({ t }: { t: Tournament }) {
   const replace = () => {
     const teamIds = positions
       .map(id => byId.get(id)?.ref)
-      .filter((n): n is number => typeof n === 'number')
+      .filter((n): n is number | string => n !== undefined)
     if (!teamIds.length) return
     setConfirmReplace(false)
-    draw.mutate({ teamIds, replace: true })
+    draw.mutate({ teamIds: teamIds as number[], ...(live && alreadyDrawn ? { replace: true } : {}) })
   }
 
   const bracketInUseMatches = (() => {
@@ -208,7 +208,7 @@ export function DrawPanel({ t }: { t: Tournament }) {
         label={replaceKind === 'random' ? 'Random redraw' : 'Redraw the bracket'} title={t.name}>
         <ConfirmCard danger ok={replaceKind === 'random' ? 'Random redraw now' : 'Redraw now'}
           onCancel={() => setConfirmReplace(false)} onConfirm={replace}
-          body={<>
+          body={!alreadyDrawn ? <>Create the bracket in the randomized order previewed here? Registration remains controlled separately. Set fixtures and invite match referees afterward.</> : <>
             <b>This replaces every existing match atomically.</b> Schedules, match-specific referees,
             referee transfer requests and standings will be removed and rebuilt from the currently
             approved squads{replaceKind === 'random' ? ' in the randomized order previewed behind this dialog' : ''}.

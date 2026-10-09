@@ -1,4 +1,5 @@
 import { ApiError } from '../../api/client'
+import { refereeInvitationRecovery } from '../../shared/refereeRecovery'
 
 export type RegistrationMember = { userId: number; fullName: string }
 export type RegistrationMemberFailure = RegistrationMember & { reason: string }
@@ -22,7 +23,7 @@ export function registrationMemberFailures(error: ApiError, members: Registratio
   if (error.code === 'TEAM_CONFLICT_OF_INTEREST' && Array.isArray(error.extra.conflicts)) {
     for (const value of error.extra.conflicts) add(value, row => row.role === 'organizer'
       ? 'เป็นผู้จัดของทัวร์นี้ จึงห้ามเป็นสมาชิกทีมที่สมัคร'
-      : row.role === 'referee' ? 'เป็นกรรมการของทัวร์นี้ จึงห้ามเป็นสมาชิกทีมที่สมัคร'
+      : row.role === 'referee' ? `เป็นกรรมการของทัวร์นี้ จึงห้ามเป็นสมาชิกทีมที่สมัคร ${refereeInvitationRecovery(row)}`.trim()
         : 'มีบทบาทที่ขัดกับการสมัครทีมในทัวร์นี้')
   } else if (error.code === 'HARD_FILTER_FAILED' && Array.isArray(error.details)) {
     for (const value of error.details) add(value, row => typeof row.reason === 'string'

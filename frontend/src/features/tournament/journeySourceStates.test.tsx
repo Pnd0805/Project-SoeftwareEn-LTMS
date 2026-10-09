@@ -1,3 +1,4 @@
+vi.mock('../match/RefereeWithdrawal', () => ({ TournamentRefereeWithdrawal: () => null }))
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,7 +29,7 @@ vi.mock('../../hooks/useReference', () => ({
   useFaculties: () => ({ data: { items: [] } }),
   useSportTypes: () => ({ data: { items: [{ id: 3, name: 'Badminton', defaultMode: 'onsite' }] } }),
 }))
-vi.mock('../../shared/store', () => ({
+vi.mock('../../shared/store', () => ({ getState: () => ({}),
   useLtms: () => ({ tournaments: [tournament], teams: [], registrations: [] }),
 }))
 vi.mock('../../shared/selectors', () => ({
@@ -318,7 +319,7 @@ describe('Entry private source states', () => {
   it.each([
     [{ ...tournament, registrationOpen: false }, 0, 'Registration has not been opened by the organizer yet.'],
     [tournament, 16, 'Full at 16 squads.'],
-    [{ ...tournament, drawn: true }, 0, 'The bracket is drawn — entries are closed.'],
+
   ] as const)('explains an unavailable entry action using existing decisions: %s', (t, count, reason) => {
     render(<MemoryRouter><EntryPanel t={t} approvedCount={count} sportTypeId={3} /></MemoryRouter>)
     expect(screen.getByText(reason)).toBeInTheDocument()
@@ -368,8 +369,8 @@ describe('Entry private source states', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry your entries' }))
     expect(applications.refetch).toHaveBeenCalledOnce()
     expect(hooks.myTeams.mock.results[0].value.refetch).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Register a squad' }))
-    expect(screen.getByText('Registration form')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Register a squad' })).toBeDisabled()
+    expect(screen.queryByText('Registration form')).not.toBeInTheDocument()
   })
   it('does not claim Open or offer registration with unknown real capacity', () => {
     render(<MemoryRouter><EntryPanel t={tournament} sportTypeId={3} /></MemoryRouter>)

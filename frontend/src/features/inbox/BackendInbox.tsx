@@ -22,6 +22,10 @@ import {
 } from '../../hooks/useAdmin'
 import { useMyTournamentApplications } from '../../hooks/useTournament'
 import { ApiError } from '../../api/client'
+import { TeamChipView } from '../../components/kit/chips'
+import { RefereeConflictLink } from '../match/RefereeConflictLink'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+
 import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 import '../search/search-inbox-workspace.css'
 
@@ -36,7 +40,7 @@ const requestLabel = (request: BackendRefereeRequestDto) => {
   return 'Match swap'
 }
 
-type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string } | null
+type Notice = { kind: 'ok' | 'warn' | 'crit'; text: string; error?: unknown } | null
 const denied = (error: unknown) => typeof error === 'object' && error !== null && 'status' in error && (error.status === 401 || error.status === 403)
 
 /** ตอบคำขอแล้วเด้ง — บอกให้ตรงว่าเพราะอะไร ไม่ใช่ปล่อยเงียบ (R18) */
@@ -94,7 +98,7 @@ export function BackendInbox() {
         <Badge kind="neutral">{actionCount} {actionsSettled ? 'pending' : 'loaded'}</Badge>
       </div>
 
-      {notice ? <div role={notice.kind === 'crit' ? 'alert' : 'status'}><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
+      {notice ? <div role={notice.kind === 'crit' ? 'alert' : 'status'}><Banner kind={notice.kind}>{notice.text}<RefereeConflictLink error={notice.error} /><ContractErrorDetails error={notice.error} /></Banner></div> : null}
       {pending ? <p className="sub" role="status">Saving your answer…</p> : null}
       <div className="inbox-action-list" role="region" aria-label="Pending invitations and assignments" tabIndex={0}>
       {sources.map(({ label, query }) => query.isPending ? <Panel quiet key={label}><span className="sub" role="status">Loading {label}…</span></Panel>
@@ -107,7 +111,7 @@ export function BackendInbox() {
           {invites.map(invite => (
             <div className="inbox-request-row" key={invite.id}>
               <div className="hstack">
-                <b>{invite.team.name}</b>
+                <TeamChipView team={invite.team} />
                 <span className="sub">
                   invited by {invite.invitedBy.fullName} · expires {fmtDate(invite.expiresAt)}
                 </span>
@@ -116,12 +120,12 @@ export function BackendInbox() {
                 <button className="btn" type="button" aria-label={`Decline team invitation: ${invite.team.name}`} disabled={answerInvite.isPending}
                   onClick={() => answerInvite.mutate({ invitationId: invite.id, accept: false }, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined the invitation from ${invite.team.name}.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Decline</button>
                 <button className="btn primary" type="button" aria-label={`Accept team invitation: ${invite.team.name}`} disabled={answerInvite.isPending}
                   onClick={() => answerInvite.mutate({ invitationId: invite.id, accept: true }, {
                     onSuccess: () => setNotice({ kind: 'ok', text: `You joined ${invite.team.name}.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Accept</button>
               </div>
             </div>
@@ -150,7 +154,7 @@ export function BackendInbox() {
                     onSuccess: answered => setNotice({ kind: answered.requiresAdminApproval ? 'warn' : 'ok', text: answered.requiresAdminApproval
                       ? `Accepted ${invite.tournament.name}. Admin approval is still required.`
                       : `You are now eligible to officiate ${invite.tournament.name}.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => { setNotice({ kind: 'crit', text: answerError(error), error }); if (error instanceof ApiError && error.code === 'REFEREE_INVITATION_EXPIRED') void refereeInvites.refetch() },
                   })}>Accept</button>
               </div>
             </div>
@@ -173,9 +177,9 @@ export function BackendInbox() {
                       : 'Another referee proposes a transfer'}
                   {request.matchB ? ` with match #${request.matchB.id}` : ''}
                   {request.matchA?.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
-                  {request.reason ? ` · ${request.reason}` : ''}
                 </span>
               </div>
+              {request.reason ? <p>Withdrawal reason: {request.reason}</p> : null}
               <div className="hstack">
                 <button className="btn ghost" type="button"
                   aria-label={`Open ${requestTarget(request)}`} onClick={() => navigate(requestRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
@@ -184,7 +188,7 @@ export function BackendInbox() {
                 <button className="btn" type="button" aria-label={`Decline request #${request.id} for ${requestTarget(request)}`} disabled={declineRequest.isPending || acceptRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined ${requestTarget(request)}.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Decline</button>
                 {/* R18 — เดิมขึ้น "You are officiating" ทุกครั้งที่คำขอตอบกลับมา 200 แต่ FR06
                     คืนใบคำขอพร้อม `status` ซึ่งเป็น `cancelled` ได้ เมื่อมีใบอื่นบนแมตช์
@@ -198,7 +202,7 @@ export function BackendInbox() {
                       : { kind: 'warn', text: answered.status === 'open'
                         ? answered.type === 'ref_withdraw' ? 'Your answer was recorded. Withdrawal is still pending.' : 'Your acceptance was recorded. The other referee still needs to answer.'
                         : `Request #${answered.id} is ${answered.status}. Assignments were not changed by this answer.` }),
-                    onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                    onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
                   })}>Accept</button>
               </div>
             </div>
@@ -228,7 +232,7 @@ export function BackendInbox() {
             {request.status === 'open' ? <button className="btn" type="button" aria-label={`Withdraw request #${request.id}`} disabled={cancelRequest.isPending}
               onClick={() => cancelRequest.mutate(request.id, {
                 onSuccess: () => setNotice({ kind: 'ok', text: `Request #${request.id} withdrawn.` }),
-                onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
+                onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
               })}>Withdraw request</button> : null}
           </div>
         </div>)}
@@ -240,7 +244,7 @@ export function BackendInbox() {
           {[...waiting, ...decided].map(application => (
             <div className="inbox-request-row spread" key={application.id}>
               <span className="sub">
-                <b>{application.team.name}</b> → {application.tournament.name}
+                <TeamChipView team={application.team} /> → {application.tournament.name}
                 {application.rejectionReason ? ` · ${application.rejectionReason}` : ''}
               </span>
               {application.status === 'approved' ? <Badge kind="ok">In</Badge>

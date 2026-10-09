@@ -450,13 +450,30 @@ export function bracketFrontier(s: State, trId: string) {
 
 /** Registration is closed once the window has passed, whatever else is true. */
 export function regWindowClosed(tr: Tournament): string {
+  if (tr.registrationOpen !== undefined) {
+    if (tr.champion) return 'The tournament is finished — entries are closed.'
+    if (tr.status !== 'public') return 'Not open for registration yet.'
+    if (!tr.registrationOpen) return 'Registration has not been opened by the organizer yet.'
+    const now = Date.now()
+    if (tr.registrationStart && now < Date.parse(tr.registrationStart)) return 'Registration has not started yet.'
+    if (tr.registrationEnd && now > Date.parse(tr.registrationEnd)) return 'Registration has ended.'
+    return ''
+  }
   const start = new Date(tr.date + 'T00:00:00').getTime()
   return isFinite(start) && start <= NOW() ? 'The tournament has started — entries are closed.' : ''
 }
 
 /** finished / competing / open — a private or pending tournament has no lifecycle yet. */
-export const tourLifecycle = (t: Tournament) =>
-  t.champion ? 'finished' : t.drawn ? 'competing' : t.status === 'public' ? 'open' : 'other'
+export const registrationIsOpen = (t: Tournament, now = Date.now()) => {
+  if (t.status !== 'public' || t.champion) return false
+  if (t.registrationOpen === undefined) return !t.drawn
+  if (!t.registrationOpen) return false
+  const start = t.registrationStart ? Date.parse(t.registrationStart) : -Infinity
+  const end = t.registrationEnd ? Date.parse(t.registrationEnd) : Infinity
+  return now >= start && now <= end
+}
+export const tourLifecycle = (t: Tournament, now = Date.now()) =>
+  t.champion ? 'finished' : registrationIsOpen(t, now) ? 'open' : t.drawn ? 'competing' : 'other'
 
 /** A registration that would put this squad in the draw. */
 export const approvedRegs = (s: State, trId: string): Registration[] =>

@@ -24,7 +24,12 @@ import {
   useCancelTournamentRefereeRequest, useRequestMatchReferee, useTournamentRefereeRequests,
   useTournamentReferees,
 } from '../../hooks/useAdmin'
+import { useTournament } from '../../hooks/useTournament'
+import { MatchFormatPanel } from './MatchFormatPanel'
+import { RefereeCoverageWarnings } from '../tournament/manage/RefereeCoverageWarnings'
 import { ApiError, USE_MOCK } from '../../api/client'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+import { missingScheduleFields, scheduleErrorKind } from '../../shared/matchScheduleErrors'
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
 import type { MatchDto } from '../../types/match.dto'
@@ -58,19 +63,42 @@ const errorDetailId = (error: ApiError, key: string) => {
 
 /** Keep the server's scheduling decision visible instead of collapsing every rejection into one banner. */
 const scheduleError = (error: unknown) => {
-  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Please try again.'
-  if (error.code === 'MATCH_NOT_CHANGEABLE') return 'Check-in has opened or the match has already started, so its schedule is locked.'
-  if (error.code === 'SCHEDULE_INCOMPLETE') return error.message
-  if (error.code === 'OUTSIDE_TOURNAMENT_DATES') return 'The match must start and finish within the tournament dates.'
-  if (error.code === 'SCHEDULE_CONFLICT') {
+  if (!(error instanceof ApiError)) {
+    if (error instanceof Error) {
+      if (error.message.toLowerCase().includes('outside') || error.message.toLowerCase().includes('tournament dates')) {
+        return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
+      }
+      if (error.message.includes('end') && error.message.includes('start')) {
+        return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
+      }
+      return error.message
+    }
+    return 'กรุณาลองใหม่อีกครั้ง'
+  }
+  if (error.code === 'MATCH_NOT_CHANGEABLE') {
+    return 'แมตช์นี้เปิดเช็คอินหรือเริ่มแข่งไปแล้ว จึงไม่สามารถแก้ไขเวลาหรือสนามได้ (Check-in has opened or the match has already started, so its schedule is locked).'
+  }
+  if (scheduleErrorKind(error) === 'request') {
+    return 'ข้อมูลไม่ครบถ้วน: กรอกช่องที่ต้องระบุในฟอร์มตั้งตารางนี้ให้ครบ (Complete the required fields in this schedule form).'
+  }
+  if (error.code === 'VALIDATION_FAILED' || error.message?.toLowerCase().includes('validation')) {
+    if (error.message?.includes('end') && error.message?.includes('start')) {
+      return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)'
+    }
+    return 'ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ หรือรูปแบบเวลาไม่ถูกต้อง'
+  }
+  if (error.code === 'OUTSIDE_TOURNAMENT_DATES' || error.message?.toLowerCase().includes('outside') || error.message?.toLowerCase().includes('tournament dates')) {
+    return 'วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (วันและเวลาแข่งขันต้องอยู่ภายในช่วงเวลาจัดทัวร์นาเมนต์)'
+  }
+  if (error.code === 'SCHEDULE_CONFLICT' || error.message?.toLowerCase().includes('conflict')) {
     const id = errorDetailId(error, 'conflictingMatchId')
-    return `A squad or this venue already has an overlapping fixture${id ? ` (match #${id})` : ''}.`
+    return `ทีมหรือสนามนี้มีนัดแข่งซ้อนช่วงเวลาดังกล่าว (A squad or this venue already has an overlapping fixture${id ? ` (match #${id})` : ''}).`
   }
   if (error.code === 'SCHEDULE_BREAKS_BRACKET') {
     const id = errorDetailId(error, 'blockingMatchId')
-    return `This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}.`
+    return `ลำดับเวลาขัดแย้งกับสายการแข่ง (This time conflicts with the order of the bracket${id ? ` (match #${id})` : ''}).`
   }
-  return error.message
+  return error.message || 'เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง'
 }
 
 /** Real mode uses the consent-based FR02 flow; it never calls the removed bulk assignment route. */
@@ -107,7 +135,7 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
       {readError ? (
         <Banner kind="crit"><b>Could not load referee assignments.</b> Retry by reopening this fixture.</Banner>
       ) : null}
-      {request.isError ? <Banner kind="crit"><b>Request not sent.</b> {refereeRequestError(request.error)}</Banner> : null}
+      {request.isError ? <Banner kind="crit"><b>Request not sent.</b> {refereeRequestError(request.error)}<ContractErrorDetails error={request.error} /></Banner> : null}
       {cancel.isError || unassign.isError ? (
         <Banner kind="crit"><b>Could not update this assignment.</b>{' '}
           {refereeRequestError(cancel.error ?? unassign.error)}</Banner>
@@ -176,6 +204,8 @@ export function FixturePage() {
   const { id } = useParams()
   const matchId = id
   const { data: m, isPending, isError } = useMatch(matchId)
+  const tourQuery = useTournament(m?.tournament?.id)
+  const tourData = tourQuery.data
   const update = useUpdateMatch(matchId ?? 0, m?.tournamentId)
   const assign = useAssignReferees(matchId ?? 0, m?.tournamentId)
 
@@ -183,6 +213,8 @@ export function FixturePage() {
   const [finish, setFinish] = useState<string | null>(null)
   const [venue, setVenue] = useState<string | null>(null)
   const [refs, setRefs] = useState<number[] | null>(null)
+  const [clientError, setClientError] = useState<string | null>(null)
+  const [savedSuccess, setSavedSuccess] = useState(false)
 
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the fixture…</span></Panel>
@@ -191,6 +223,7 @@ export function FixturePage() {
   const kickoffVal = kickoff ?? toLocal(m.scheduledTime)
   const finishVal = finish ?? toLocal(m.scheduledEndTime ?? null)
   const venueVal = venue ?? (m.venue ?? '')
+  const serverMissing = scheduleErrorKind(update.error) === 'request' ? missingScheduleFields(update.error) : []
   const refsVal = refs ?? m.referees.map(r => r.id)
 
   /* `can.editFixture` รวมสองเรื่องไว้ด้วยกัน: เป็นผู้จัดไหม และแมตช์ยังแก้ได้ไหม
@@ -222,14 +255,57 @@ export function FixturePage() {
     })
 
   const save = async () => {
-    await update.mutateAsync({
-      scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
-      scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
-      venue: venueVal || null,
-    })
-    if (USE_MOCK) {
-      await assign.mutateAsync(refsVal)
-      navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
+    setClientError(null)
+    setSavedSuccess(false)
+    if (!kickoffVal) {
+      setClientError('กรุณาระบุเวลาเริ่มการแข่งขัน (Kick-off)')
+      return
+    }
+    if (!finishVal) {
+      setClientError('กรุณาระบุเวลาจบการแข่งขัน (End time)')
+      return
+    }
+    if (!venueVal || !venueVal.trim()) {
+      setClientError('กรุณาระบุสถานที่/สนามแข่งขัน (Venue)')
+      return
+    }
+    const kickoffDate = new Date(kickoffVal)
+    const finishDate = new Date(finishVal)
+    if (finishDate <= kickoffDate) {
+      setClientError('ไม่สามารถตั้งเวลาปิดก่อนเวลาเปิดได้ (เวลาจบการแข่งขันต้องอยู่หลังเวลาเริ่ม)')
+      return
+    }
+    if (tourData) {
+      const tourStart = tourData.eventStartDate ? new Date(tourData.eventStartDate) : null
+      const tourEnd = tourData.eventEndDate ? new Date(tourData.eventEndDate) : null
+      if (tourStart && !isNaN(tourStart.getTime()) && kickoffDate < tourStart) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${tourStart.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
+        return
+      }
+      if (tourEnd && !isNaN(tourEnd.getTime()) && kickoffDate > tourEnd) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
+        return
+      }
+      if (tourEnd && !isNaN(tourEnd.getTime()) && finishDate > tourEnd) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
+        return
+      }
+    }
+    try {
+      await update.mutateAsync({
+        scheduledTime: kickoffVal ? new Date(kickoffVal).toISOString() : null,
+        scheduledEndTime: finishVal ? new Date(finishVal).toISOString() : null,
+        venue: venueVal || null,
+      })
+      if (USE_MOCK) {
+        await assign.mutateAsync(refsVal)
+        setSavedSuccess(true)
+        navigate(`/t/${tournamentRouteId(m.tournament.id)}/schedule`)
+      } else {
+        setSavedSuccess(true)
+      }
+    } catch {
+      // Handled by update.isError
     }
   }
 
@@ -245,6 +321,8 @@ export function FixturePage() {
           : <Badge kind="neutral">Locked — {MatchStatusLabel[m.status]}</Badge>}
       </div>
 
+      <MatchFormatPanel key={m.id} match={m} />
+      {!USE_MOCK ? <RefereeCoverageWarnings tournamentId={m.tournamentId} matchId={m.id} /> : null}
       <Panel quiet className="match-fixture-form">
         <p className="sub">Times shown in {displayTimeZone()}.</p>
         <div className="spread">
@@ -259,15 +337,27 @@ export function FixturePage() {
             <div className="grid2">
               <Field label="Kick-off" htmlFor={`as-k-${m.id}`}>
                 <input id={`as-k-${m.id}`} type="datetime-local" value={kickoffVal}
-                  onChange={e => setKickoff(e.target.value)} />
+                  disabled={saving}
+                  aria-invalid={serverMissing.includes('scheduledTime') || undefined}
+                  aria-describedby={serverMissing.includes('scheduledTime') ? `as-k-error-${m.id}` : undefined}
+                  onChange={e => { update.reset(); setKickoff(e.target.value) }} />
+                {serverMissing.includes('scheduledTime') ? <span className="sub" id={`as-k-error-${m.id}`}>Kick-off is required in this schedule request.</span> : null}
               </Field>
               <Field label="End" htmlFor={`as-e-${m.id}`}>
                 <input id={`as-e-${m.id}`} type="datetime-local" value={finishVal}
-                  onChange={e => setFinish(e.target.value)} />
+                  disabled={saving}
+                  aria-invalid={serverMissing.includes('scheduledEndTime') || undefined}
+                  aria-describedby={serverMissing.includes('scheduledEndTime') ? `as-e-error-${m.id}` : undefined}
+                  onChange={e => { update.reset(); setFinish(e.target.value) }} />
+                {serverMissing.includes('scheduledEndTime') ? <span className="sub" id={`as-e-error-${m.id}`}>End is required in this schedule request.</span> : null}
               </Field>
               <Field label="Venue" htmlFor={`as-v-${m.id}`}>
-                <input id={`as-v-${m.id}`} value={venueVal} onChange={e => setVenue(e.target.value)}
+                <input id={`as-v-${m.id}`} value={venueVal} onChange={e => { update.reset(); setVenue(e.target.value) }}
+                  disabled={saving}
+                  aria-invalid={serverMissing.includes('venue') || undefined}
+                  aria-describedby={serverMissing.includes('venue') ? `as-v-error-${m.id}` : undefined}
                   placeholder="Court 9" />
+                {serverMissing.includes('venue') ? <span className="sub" id={`as-v-error-${m.id}`}>Venue is required in this schedule request.</span> : null}
               </Field>
             </div>
 
@@ -297,11 +387,11 @@ export function FixturePage() {
                   Referees tab first.
                 </div>
               ) : null}
-            </Field> : <RealRefereeAssignments match={m} />}
+            </Field> : <div id="referee-assignments"><RealRefereeAssignments match={m} /></div>}
 
-            {update.isError || assign.isError ? (
+            {clientError || update.isError || assign.isError ? (
               <Banner kind="crit">
-                <b>Could not save the fixture.</b> {scheduleError(update.error ?? assign.error)} Nothing was changed.
+                <b>บันทึกไม่สำเร็จ:</b> {clientError ?? scheduleError(update.error ?? assign.error)}
               </Banner>
             ) : null}
 
@@ -309,7 +399,11 @@ export function FixturePage() {
               disabled={saving} onClick={save}>
               {saving ? 'Saving…' : USE_MOCK ? 'Save this fixture' : 'Save schedule'}
             </button>
-            {!USE_MOCK && update.isSuccess ? <Banner kind="ok">Schedule saved. Referee requests can now be sent separately.</Banner> : null}
+            {savedSuccess ? (
+              <Banner kind="ok" icon="check">
+                <b>บันทึกเรียบร้อยแล้ว</b> บันทึกข้อมูลการแข่งขันสำเร็จ (Schedule saved. Referee requests can now be sent separately.)
+              </Banner>
+            ) : null}
           </>
         ) : (
           <>

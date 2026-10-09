@@ -126,6 +126,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
   }
 
   const saveEdit = () => {
+    if (!name.trim() || name.trim().length > 150) return
     setNotice(null)
     details.mutate(USE_MOCK ? { name: name.trim(), code: code.trim() } : { name: name.trim() }, {
       onSuccess: () => {
@@ -185,7 +186,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
 
       <Modal open={editing} onClose={() => setEditing(false)} className="team-dialog" title={`Edit ${data.name}`}>
         <Field label="Name — unique within the sport" htmlFor="team-name">
-          <input id="team-name" value={name} onChange={e => setName(e.target.value)} />
+          <input id="team-name" maxLength={150} value={name} onChange={e => setName(e.target.value)} />
         </Field>
         {/* backend ยังไม่มีคอลัมน์รหัสทีม (updateTeamSchema รับแค่ name) — แก้ได้เฉพาะโหมด mock */}
         {USE_MOCK ? (
@@ -198,7 +199,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
         <div className="hstack">
           <button className="btn" type="button" onClick={() => setEditing(false)}>Cancel</button>
           <button className="btn primary" type="button"
-            disabled={!name.trim() || !codeOk || !changed || details.isPending} onClick={saveEdit}>
+            disabled={!name.trim() || name.trim().length > 150 || !codeOk || !changed || details.isPending} onClick={saveEdit}>
             {details.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>

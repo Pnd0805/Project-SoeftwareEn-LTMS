@@ -153,6 +153,8 @@ export function RegisterForm({
         } else if (error.code === 'TEAM_CONFLICT_OF_INTEREST') {
           // The named causes appear below and beside members, including unchecked members.
           setServerDetails(conflictOfInterestDetails(error, memberRows).slice(-1))
+        } else if (error.code === 'ALREADY_APPLIED') {
+          setServerDetails(['This team already has a pending or approved application. Open its existing application instead of registering again; withdrawn, rejected and cancelled entries may be reapplied.'])
         }
       } else {
         setServerError({

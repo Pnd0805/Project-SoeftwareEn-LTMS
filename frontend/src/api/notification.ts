@@ -1,5 +1,6 @@
 import { apiFetch, mockDelay, USE_MOCK } from "./client";
 import type { NotificationDto, NotificationListResponse } from "../types/notification.dto";
+import type { BackendMatchDetailDto } from "../types/match.dto";
 import {
   getMockNotifications,
   markMockNotificationRead,
@@ -37,4 +38,16 @@ export async function markNotificationsRead(userId: number): Promise<{ updated: 
     return mockDelay(markMockNotificationsRead(userId));
   }
   return apiFetch<{ updated: number; unreadCount: number }>('/me/notifications/read-all', { method: 'POST' });
+}
+
+/** Read only the match context; avoid the lineup, referee and permissions fan-out of getMatch. */
+export async function getNotificationMatch(matchId: number) {
+  const match = await apiFetch<BackendMatchDetailDto>(`/matches/${matchId}`);
+  return {
+    id: match.id,
+    tournamentId: match.tournamentId,
+    teamA: match.teamA?.name ?? null,
+    teamB: match.teamB?.name ?? null,
+    round: match.round,
+  };
 }

@@ -24,7 +24,7 @@
 import { Avatar } from '../../components/kit/Avatar'
 import { useEffect, useRef, useState } from 'react'
 import { Tabs } from '@base-ui/react/tabs'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { ConfirmCard, Modal } from '../../components/kit/Modal'
@@ -49,6 +49,10 @@ import type { BackendTeamDto, BackendTeamMemberDto } from '../../types/team.dto'
 import { TeamManage } from './TeamManage'
 import { TeamRecord } from './TeamRecord'
 import { fmtDateOnly } from '../../shared/dateFormat'
+import { JoinRequestsPanel } from './JoinRequestsPanel'
+import { LeaveTeamPanel } from './LeaveTeamPanel'
+import { searchUserLabel } from '../../shared/display'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 
 type Notice = { kind: 'ok' | 'warn'; text: string } | null
 
@@ -93,10 +97,11 @@ export function TeamPage() {
   // เปลี่ยนทีม/สิทธิ์แล้วทิ้งแบบร่างส่วนตัว แต่สลับแท็บในทีมเดิมเก็บไว้
   return <TeamDetails key={`${data.id}:${isLeader}:${canReadPrivateTeamData}`} data={data}
     members={members} isLeader={isLeader} canReadPrivateTeamData={canReadPrivateTeamData}
-    userId={currentUser?.id} myApplications={myApplications} />
+    userId={currentUser?.id} myApplications={myApplications} myTeams={myTeams} />
 }
 
-function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, myApplications }: {
+function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, myApplications, myTeams }: {
+  myTeams: ReturnType<typeof useBackendMyTeams>
   data: BackendTeamDto
   members: ReturnType<typeof useBackendTeamMembers>
   isLeader: boolean
@@ -146,6 +151,7 @@ function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, 
   return (
     <>
       <div className="journey-crumb"><Crumb back={{ label: userId !== undefined ? 'Teams' : 'Tournaments', onClick: () => navigate(userId !== undefined ? '/teams' : '/') }}>{data.name}</Crumb></div>
+      {!USE_MOCK ? <JoinRequestsPanel teamId={data.id} visibility={data.visibility} leader={isLeader} member={!!myTeams.data?.items.some(x => x.id === data.id)} signedIn={userId !== undefined} membershipPending={myTeams.isPending || myTeams.isError} /> : null}
 
       <header className={`team-poster ${data.name.length > 60 ? 'long-name' : ''}`}>
         <div className="team-poster-identity">
@@ -232,6 +238,8 @@ function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, 
           canViewMembers={canReadPrivateTeamData} />
       )}
 
+      {!USE_MOCK && myTeams.data?.items.some(x => x.id === data.id) ? <LeaveTeamPanel teamId={data.id} name={data.name} leader={isLeader} /> : null}
+
       {storeTeam ? <TeamRecord t={storeTeam} /> : null}
     </>
   )
@@ -270,7 +278,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
         <span className="hstack" style={{ gap: 10 }}>
           {rows.length ? (
             <span className="sub">
-              {data.maxMembers !== null ? `Players ${squadSize} / ${data.maxMembers}`
+              {data.maxMembers != null ? `Players ${squadSize} · up to ${data.maxMembers} per tournament entry`
                 : minPlayers === undefined ? `Players ${squadSize}`
                   : squadSize >= minPlayers ? `Players ${squadSize} · ${minPlayers} needed to enter`
                     : `Players ${squadSize} of the ${minPlayers} needed to enter`}
@@ -432,7 +440,7 @@ function InvitePanel({ data, lockName, memberIds }: {
           <input id="team-invite-search" value={search} placeholder="Name or email" aria-label="Search users to invite" autoComplete="off"
             onChange={e => { setSearch(e.target.value); invite.reset(); setNotice(null) }} />
           {notice ? <div role="status"><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
-          {invite.isError ? <Banner kind="crit"><b>Couldn't send the invitation.</b> {errorMessage(invite.error)}</Banner> : null}
+          {invite.isError ? <Banner kind="crit"><b>Couldn't send the invitation.</b> {errorMessage(invite.error)}<ContractErrorDetails error={invite.error} /></Banner> : null}
           {!typed ? <span className="sub">Type at least three letters.</span> : null}
           {typed && users.isPending ? <span className="sub">Searching users…</span> : null}
           {typed && users.isError ? <span className="sub">{errorMessage(users.error)}</span> : null}
@@ -443,7 +451,7 @@ function InvitePanel({ data, lockName, memberIds }: {
                 <tbody>
                   {results.map(person => (
                     <tr key={person.id}>
-                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} />{person.fullName}</span></td>
+                      <td><span className="hstack"><Avatar name={person.fullName} avatarUrl={person.avatarUrl} /><Link to={`/player/${person.id}`} target="_blank" rel="noopener noreferrer">{person.fullName}</Link> <span className="sub">{searchUserLabel(person)}</span></span></td>
                       <td style={{ textAlign: 'right' }}>
                         <button className="btn primary" type="button" disabled={invite.isPending}
                           aria-label={`${invite.isPending && invite.variables?.userId === person.id ? 'Inviting' : 'Invite'} ${person.fullName}`}

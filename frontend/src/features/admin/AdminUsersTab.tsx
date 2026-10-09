@@ -67,6 +67,7 @@ export function AdminUsersTab() {
   const [suspending, setSuspending] = useState<UserAdminViewDto | null>(null)
   const [reason, setReason] = useState('')
   const [category, setCategory] = useState<'abusive_language' | 'cheating' | 'false_information' | 'spam' | 'other'>('other')
+  const [banType, setBanType] = useState<'temporary' | 'permanent'>('temporary')
   const [days, setDays] = useState('')
   const [adminChange, setAdminChange] = useState<{ row: UserAdminViewDto; giving: boolean } | null>(null)
   const [notice, setNotice] = useState<Notice>(null)
@@ -74,8 +75,13 @@ export function AdminUsersTab() {
   const scope = me?.adminScope?.scopeType
   const canGrant = USE_MOCK || scope === 'university_wide'
   const canRevoke = (u: UserAdminViewDto) => USE_MOCK || (scope === 'university_wide' && u.adminScopes[0]?.scopeType === 'faculty')
-  const canSuspend = (u: UserAdminViewDto) => USE_MOCK || scope === 'university_wide' || (scope === 'faculty' && !u.adminScopes.length && u.facultyId === me?.adminScope?.facultyId)
-  const validDays = days === '' || (Number.isInteger(Number(days)) && Number(days) >= 1 && Number(days) <= 90)
+  const canManageAccount = (u: UserAdminViewDto) => USE_MOCK || scope === 'university_wide' || (scope === 'faculty' && !u.adminScopes.length && u.facultyId === me?.adminScope?.facultyId)
+  const suspensionBlock = (u: UserAdminViewDto) => u.adminScopes.some(s => s.scopeType === 'root')
+    ? 'Root accounts cannot be suspended.'
+    : u.adminScopes.some(s => s.scopeType === 'university_wide')
+      ? 'Root must revoke University Admin rights before this account can be suspended.' : null
+  const canSuspend = (u: UserAdminViewDto) => canManageAccount(u) && !suspensionBlock(u)
+  const validDays = banType === 'permanent' || (days.trim() !== '' && Number.isInteger(Number(days)) && Number(days) >= 1 && Number(days) <= 90)
   const status = statusOf(users.error)
   const blocked = adminReadBlocked(users)
   const all = blocked ? [] : users.data?.items ?? []
@@ -106,10 +112,12 @@ export function AdminUsersTab() {
     if (!suspending || !maySuspend || busy || !reason.trim() || !validDays) return
     const target = suspending
     setNotice(null)
-    suspend.mutate({ userId: target.user.id, input: { suspend: true, reason: reason.trim(), category, days: days === '' ? undefined : Number(days) } }, {
+    const daysValue = banType === 'temporary' && days.trim() !== '' ? Number(days) : undefined
+    suspend.mutate({ userId: target.user.id, input: { suspend: true, reason: reason.trim(), category, days: daysValue } }, {
       onSuccess: () => {
         setSuspending(null)
         setReason('')
+        setDays('')
         setNotice({ kind: 'warn', text: `${target.user.fullName} is suspended — they can't sign in or be entered in a tournament.` })
       },
     })
@@ -210,13 +218,13 @@ export function AdminUsersTab() {
                         <td>
                           <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                             {u.isSuspended ? (
-                              <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)} onClick={() => reinstate(u)}>
+                              <button className="btn ghost" type="button" disabled={busy || self || !canManageAccount(u)} onClick={() => reinstate(u)}>
                                 Reinstate
                               </button>
                             ) : (
                               <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)}
-                                title={self ? "You can't suspend your own account" : !canSuspend(u) ? 'Outside your admin scope' : undefined}
-                                onClick={() => { suspend.reset(); setReason(''); setDays(''); setCategory('other'); setSuspending(u) }}>
+                                title={self ? "You can't suspend your own account" : suspensionBlock(u) ?? (!canSuspend(u) ? 'Outside your admin scope' : undefined)}
+                                onClick={() => { suspend.reset(); setReason(''); setBanType('temporary'); setDays(''); setCategory('other'); setSuspending(u) }}>
                                 Suspend
                               </button>
                             )}
@@ -235,6 +243,7 @@ export function AdminUsersTab() {
                               </button>
                             )}
                           </span>
+                          {!u.isSuspended && suspensionBlock(u) ? <span className="sub">{suspensionBlock(u)}</span> : null}
                         </td>
                       </tr>
                     )
@@ -268,9 +277,29 @@ export function AdminUsersTab() {
             <option value="false_information">False information or impersonation</option><option value="spam">Spam</option><option value="other">Other rule violation</option>
           </select>
         </Field>
-        <Field label="Days (1-90); leave blank for permanent suspension" htmlFor="suspend-days">
-          <input id="suspend-days" disabled={busy} type="number" min="1" max="90" step="1" value={days} onChange={e => setDays(e.target.value)} />
+        <Field label="ประเภทการระงับ (Suspension type)" htmlFor="suspend-type">
+          <select id="suspend-type" value={banType} onChange={e => {
+            const next = e.target.value as 'temporary' | 'permanent'
+            setBanType(next)
+            if (next === 'permanent') setDays('')
+          }}>
+            <option value="temporary">แบนชั่วคราว (1-90 วัน)</option>
+            <option value="permanent">แบนถาวร</option>
+          </select>
         </Field>
+        {banType === 'temporary' ? (
+          <Field label="Days (1-90) — กำหนดจำนวนวันระงับ *" htmlFor="suspend-days">
+            <input id="suspend-days" type="number" min="1" max="90" step="1" placeholder="ระบุจำนวนวัน (1-90 วัน)"
+              value={days} onChange={e => setDays(e.target.value)} required />
+            {days.trim() === '' ? (
+              <span className="sub" style={{ fontSize: 12, color: 'var(--amber)' }}>* จำเป็นต้องกำหนดจำนวนวันสำหรับการแบนชั่วคราว</span>
+            ) : null}
+          </Field>
+        ) : (
+          <div className="sub" style={{ padding: '4px 0', color: 'var(--amber)' }}>
+            * บัญชีนี้จะถูกแบนถาวรจนกว่าผู้ดูแลระบบจะปลดแบนด้วยตนเอง
+          </div>
+        )}
         {suspend.isError ? <Banner kind="crit">{errorMessage(suspend.error)}</Banner> : null}
         <div className="hstack">
           <button className="btn" type="button" disabled={busy} onClick={() => setSuspending(null)}>Cancel</button>

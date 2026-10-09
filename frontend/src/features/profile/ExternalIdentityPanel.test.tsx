@@ -1,0 +1,60 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../api/client'
+const { upload, submit, state } = vi.hoisted(() => ({ upload: vi.fn(), submit: vi.fn(), state: { status: 'pending', docsRequired: true } }))
+vi.mock('../../hooks/useAdmin', () => ({
+  useRefereeIdentity: () => ({ data: { ...state, tournaments: [{ id: 14, tournamentRefereeId: 8, name: 'Cup', externalApprovalStatus: 'pending' }], adminMessage: 'Please provide a clearer image' }, isPending: false, isError: false }),
+  useSubmitRefereeIdentityDocs: () => ({ mutateAsync: submit, isPending: false }),
+}))
+vi.mock('../../api/upload', async original => ({ ...await original<typeof import('../../api/upload')>(), uploadImage: upload }))
+import { ExternalIdentityBadge, ExternalIdentityPanel } from './ExternalIdentityPanel'
+const identityKey = 'referee_identity/9/00000000-0000-4000-8000-000000000009.png'
+beforeEach(() => { vi.clearAllMocks(); state.status = 'pending'; state.docsRequired = true; upload.mockResolvedValue(identityKey); submit.mockResolvedValue({ status: 'pending' }) })
+const show = () => render(<MemoryRouter><ExternalIdentityPanel /></MemoryRouter>)
+const pick = (files: File[]) => fireEvent.change(screen.getByLabelText('เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)'), { target: { files } })
+describe('External identity document flow', () => {
+  it('explains expired approval without requesting documents before a new invitation', () => {
+    state.status = 'expired'; state.docsRequired = false
+    show()
+    expect(screen.getByText('สถานะการตรวจ: External — Approval expired')).toBeInTheDocument()
+    expect(screen.getByText(/งานในทัวร์เดิมทำต่อได้จนจบ/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' })).not.toBeInTheDocument()
+    expect(submit).not.toHaveBeenCalled()
+    render(<ExternalIdentityBadge />)
+    expect(screen.getByText('External — Approval expired')).toBeInTheDocument()
+  })
+  it('uploads private identity files and submits object keys, then shows awaiting review', async () => {
+    show(); pick([new File(['png'], 'id.png', { type: 'image/png' })]); fireEvent.click(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' }))
+    await screen.findByText('ส่งเอกสารแล้ว รอผู้ดูแลระบบตรวจสอบ')
+    expect(upload).toHaveBeenCalledWith(expect.any(File), 'referee_identity')
+    expect(submit).toHaveBeenCalledWith([identityKey])
+  })
+  it('does not submit document keys if an upload fails', async () => {
+    upload.mockRejectedValueOnce(new Error('Storage unavailable'))
+    show(); pick([new File(['png'], 'id.png', { type: 'image/png' })]); fireEvent.click(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' }))
+    await screen.findByText('Storage unavailable'); expect(submit).not.toHaveBeenCalled()
+  })
+  it('recovers from 422 by uploading again and submitting a fresh API-returned key', async () => {
+    const freshKey = 'referee_identity/9/00000000-0000-4000-8000-000000000019.png'
+    upload.mockResolvedValueOnce(identityKey).mockResolvedValueOnce(freshKey)
+    submit.mockRejectedValueOnce(new ApiError(422, { code: 'REFEREE_IDENTITY_KEY_INVALID', message: 'Unrelated message', objectKeys: [identityKey] }))
+    show(); pick([new File(['png'], 'id.png', { type: 'image/png' })])
+    fireEvent.click(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' }))
+    await screen.findByText(/เอกสารนี้ใช้ยืนยันตัวตนของบัญชีคุณไม่ได้/)
+    expect(screen.queryByText('ส่งเอกสารแล้ว รอผู้ดูแลระบบตรวจสอบ')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' }))
+    await screen.findByText('ส่งเอกสารแล้ว รอผู้ดูแลระบบตรวจสอบ')
+    expect(upload).toHaveBeenCalledTimes(2)
+    expect(submit).toHaveBeenNthCalledWith(1, [identityKey])
+    expect(submit).toHaveBeenNthCalledWith(2, [freshKey])
+  })
+  it('blocks more than five files and rejects unsupported formats before upload', async () => {
+    show(); pick(Array.from({ length: 6 }, (_, i) => new File(['png'], `${i}.png`, { type: 'image/png' })))
+    expect(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' })).toBeDisabled()
+    pick([new File(['pdf'], 'id.pdf', { type: 'application/pdf' })]); fireEvent.click(screen.getByRole('button', { name: 'ส่งเอกสารให้ผู้ดูแล' }))
+    await waitFor(() => expect(upload).not.toHaveBeenCalled()); await screen.findByText('เลือกไฟล์ JPEG หรือ PNG เท่านั้น')
+    expect(submit).not.toHaveBeenCalled()
+  })
+})

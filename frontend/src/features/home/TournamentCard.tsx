@@ -1,3 +1,4 @@
+import { useNow } from '../../hooks/useNow'
 /**
  * src/features/home/TournamentCard.tsx
  *
@@ -13,10 +14,12 @@ import { Badge } from '../../components/kit/primitives'
 import { useLtms } from '../../shared/store'
 import { regsOf, team, user } from '../../shared/selectors'
 import type { Registration, Tournament } from '../../shared/types'
+import { registrationIsOpen } from '../../shared/rules'
 
 export type Rel = 'run' | 'playing' | null
 
 export function TournamentCard({ t, rel, entry, onPreview }: { t: Tournament; rel: Rel; entry?: Registration; onPreview?: () => void }) {
+  const currentTime = useNow()
   const s = useLtms()
   const navigate = useNavigate()
   const n = USE_MOCK ? regsOf(s, t.id).filter(r => r.status === 'approved').length : null
@@ -65,7 +68,7 @@ export function TournamentCard({ t, rel, entry, onPreview }: { t: Tournament; re
         <span className="tag">
           {champion ? `Champion: ${champion.code}`
             : t.champion ? 'Finished'
-              : t.drawn ? 'In progress' : 'Registration open'}
+              : registrationIsOpen(t, currentTime) ? 'Registration open' : t.drawn ? 'In progress' : 'Registration closed'}
         </span>
       </span>
     </button>

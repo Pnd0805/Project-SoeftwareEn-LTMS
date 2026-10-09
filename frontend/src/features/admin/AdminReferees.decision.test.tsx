@@ -1,3 +1,4 @@
+import { setAccessToken } from '../../api/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -10,10 +11,11 @@ const writes: Array<{ path: string; body: unknown }> = []
 const clients: QueryClient[] = []
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
 beforeEach(() => {
+  setAccessToken("test-token")
  decided = false; blocked = false; writes.length = 0
  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
   const path = new URL(String(input), 'http://localhost').pathname.replace('/api/v1', '')
-  if (path === '/admin/referee-requests') return json({ items: decided ? [] : [{ userId: 9054, user: { id: 9054, fullName: 'Alex External', email: 'alex@example.test', avatarUrl: null }, docs: [], tournaments: [{ id: 14, name: 'Campus Cup', tournamentRefereeId: 19 }], submittedAt: '2026-10-08T00:00:00Z' }] })
+  if (path === '/admin/referee-requests') return json({ items: decided ? [] : [{ userId: 9054, user: { id: 9054, fullName: 'Alex External', email: 'alex@example.test', avatarUrl: null }, docs: [], docsSubmitted: true, tournaments: [{ id: 14, name: 'Campus Cup', tournamentRefereeId: 19 }], submittedAt: '2026-10-08T00:00:00Z' }] })
   if (path.endsWith('/approve') || path.endsWith('/reject')) {
    writes.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined })
    if (blocked) return json({ error: { code: 'INSUFFICIENT_ADMIN_SCOPE', message: 'Scope does not permit this decision' } }, 403)

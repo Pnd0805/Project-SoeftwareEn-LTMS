@@ -131,8 +131,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
             : top?.kind === 'still-in' ? (
               <>
                 <span className="sub">
-                  An elimination bracket ranks squads by how far they got, so everyone still in shares first
-                  place until the next results decide it.
+                  These squads currently share the leading position in the published standings.
                 </span>
                 <div className="hstack" style={{ flexWrap: 'wrap', gap: 10 }}>
                   {top.teams.map(r => <TeamLinkView key={r.team.id} team={r.team} />)}
@@ -146,7 +145,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
                       <tr key={r.team.id}>
                         <td className="num">{r.rank}</td>
                         <td><TeamLinkView team={r.team} /></td>
-                        <td className="sub">{r.outLabel || `${r.won} won · ${r.points} pts`}</td>
+                        <td className="sub">{r.outLabel || (standings.data?.format === 'round_robin' ? `${r.won} won · ${r.points} pts` : `${r.won} won`)}</td>
                       </tr>
                     ))}
                   </tbody>

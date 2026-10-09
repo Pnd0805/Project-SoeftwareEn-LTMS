@@ -94,17 +94,18 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
    * ไม่ยอมให้ขอกรรมการเลยถ้า `scheduled_end_time` ว่าง — รางจึงเคยขึ้นว่าจัดเสร็จแล้ว
    * ทั้งที่ยังขอกรรมการไม่ได้สักคน
    */
+  const activeMatches = real ? apiMatches.filter(m => m.status !== 'completed') : (ms as ReturnType<typeof matchesOf>).filter(m => m.status !== 'confirmed')
   const ready = real
-    ? apiMatches.filter(m => m.venue && m.scheduledTime && m.scheduledEndTime)
-    : (ms as ReturnType<typeof matchesOf>).filter(m => m.venue && (m.refs || []).length >= need)
+    ? (activeMatches as typeof apiMatches).filter(m => m.venue && m.scheduledTime && m.scheduledEndTime)
+    : (activeMatches as ReturnType<typeof matchesOf>).filter(m => m.venue && (m.refs || []).length >= need)
   /* 30 ก.ย. — เดิมโหมดจริงนับแค่เวลากับสนาม ทั้งที่ชื่อขั้นบอก "and the officials": t23 ขึ้นว่าจัดครบ
      แล้วเลื่อนไป "Results come in" ขณะที่แมตช์ 13 มีกรรมการ 0 จาก 2 ซึ่ง M10 ไม่ยอมให้เริ่ม
      (INSUFFICIENT_REFEREES) — นับกรรมการจาก F14 coverage ตัวเดียวกับที่ backend ใช้ ไม่นับเองจากแถว */
   const coverage = useRefereeCoverage(real ? tournamentId : undefined)
   const uncovered = new Set(coverage.data?.uncoveredMatchIds ?? [])
-  const staffed = real && coverage.data ? apiMatches.filter(m => !uncovered.has(m.id)) : []
-  const fixturesSet = ms.length > 0 && ready.length === ms.length
-  const officialsSet = !real || (!!coverage.data && staffed.length === ms.length)
+  const staffed = real && coverage.data ? (activeMatches as typeof apiMatches).filter(m => !uncovered.has(m.id)) : []
+  const fixturesSet = ms.length > 0 && ready.length === activeMatches.length
+  const officialsSet = !real || (!!coverage.data && staffed.length === activeMatches.length)
   const done = real
     ? apiMatches.filter(m => m.status === 'completed')
     : (ms as ReturnType<typeof matchesOf>).filter(m => m.status === 'confirmed')
@@ -139,7 +140,7 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       title: 'Open it to the public',
       note: t.status === 'public' ? 'Squads can find it. Registration is controlled separately.'
         : t.status === 'pending' ? 'An admin has the request. Nothing to do until they answer it.'
-          : 'Nobody can register while it is private, and LTMS deletes a private tournament on its match date.',
+          : 'It is private. Publish it when you are ready for people to find it.',
       cta: t.status === 'private'
         ? (
           <button className="btn primary" type="button" disabled={publish.isPending}
@@ -190,15 +191,19 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
       ),
     },
     {
-      state: fixturesSet && officialsSet ? 'done' : 'idle',
+      // Completed results satisfy this prerequisite even when a walkover never
+      // had a fixture or referees. The completion endpoint remains authoritative.
+      state: allPlayed || (fixturesSet && officialsSet) ? 'done' : 'idle',
       title: 'Set every fixture',
-      note: !ms.length
+      note: allPlayed
+        ? 'Every result is confirmed. Completed matches need no further fixture or referee setup.'
+        : !ms.length
         ? 'Kick-off, end time, venue and the officials, one match at a time.'
-        : `${ready.length} of ${ms.length} have a kick-off, an end time and a venue on them. `
+        : `${ready.length} of ${activeMatches.length} remaining matches have a kick-off, an end time and a venue on them. `
           + (!real ? ''
             : coverage.isError ? 'Whether each has its referees could not be checked right now.'
               : !coverage.data ? 'Checking the referees on each match…'
-                : `${staffed.length} of ${ms.length} have all their referees.`),
+                : `${staffed.length} of ${activeMatches.length} remaining matches have all their referees.`),
       /* เวลากับสนามครบแล้วแต่กรรมการยังขาด — งานที่เหลืออยู่ในแผงกรรมการรายแมตช์ของหน้า Draw ไม่ใช่หน้าตาราง */
       cta: fixturesSet && real
         ? <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/manage/${formatOf(t) === 'roundrobin' ? 'referees' : 'draw'}`)}>Ask referees for each match</button>

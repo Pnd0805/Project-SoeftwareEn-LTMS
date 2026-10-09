@@ -1,3 +1,4 @@
+import { USE_MOCK } from './api/client'
 /**
  * src/App.tsx
  *
@@ -16,6 +17,7 @@ import { isGuest } from './shared/selectors'
 import { useMe } from './hooks/useAuth'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
+import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
 import { HomePage } from './features/home/HomePage'
 
 const TournamentPage = lazy(() => import('./features/tournament/TournamentPage').then(module => ({ default: module.TournamentPage })))
@@ -33,6 +35,7 @@ const ProfilePage = lazy(() => import('./features/profile/ProfilePage').then(mod
 const AdminPage = lazy(() => import('./features/admin/AdminPage').then(module => ({ default: module.AdminPage })))
 const RequestPage = lazy(() => import('./features/request/RequestPage').then(module => ({ default: module.RequestPage })))
 const SearchPage = lazy(() => import('./features/search/SearchPage').then(module => ({ default: module.SearchPage })))
+const RewardsPage = lazy(() => import('./features/rewards/RewardsPage').then(module => ({ default: module.RewardsPage })))
 
 /* every route a Guest may open without signing in — bracket, schedule, search,
    a squad or player profile, and the tournament page itself (visibleTo still
@@ -40,6 +43,7 @@ const SearchPage = lazy(() => import('./features/search/SearchPage').then(module
 const PUBLIC_PATHS = [
   /^\/$/, /^\/home/, /^\/t\//, /^\/m\//, /^\/checkin\//, /^\/mvp\//,
   /^\/team\//, /^\/player\//, /^\/watch\//, /^\/search/, /^\/login$/,
+  /^\/register/, /^\/verify-email/, /^\/reset-password$/, /^\/forgot-password$/,
 ]
 
 function routeSection(pathname: string) {
@@ -65,8 +69,9 @@ function Guard({ children, currentUser, isLoading }: {
 }) {
   const s = useLtms()
   const location = useLocation()
+
   const signedIn = !!currentUser
-  const guest = isGuest(s)
+  const guest = USE_MOCK && isGuest(s)
   const isPublic = PUBLIC_PATHS.some(p => p.test(location.pathname))
   if (isLoading) return null
   if (!signedIn && !guest && !isPublic) return <Navigate to="/login" replace />
@@ -77,7 +82,11 @@ export default function App() {
   const { data: currentUser, isLoading } = useMe()
   const location = useLocation()
 
-  if (location.pathname === '/login' || location.pathname === '/register') {
+  if (location.pathname === '/reset-password' || location.pathname === '/forgot-password') {
+    return <><PasswordRecoveryPage key={location.pathname + location.search} reset={location.pathname === '/reset-password'} /><Toasts /></>
+  }
+
+  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/verify-email') {
     return (
       <>
         {location.pathname === '/login' ? <LoginPage /> : <RegisterPage />}
@@ -115,6 +124,7 @@ export default function App() {
           <Route path="/matches" element={currentUser ? <MatchesPage /> : <Navigate to="/login" replace />} />
           <Route path="/inbox" element={currentUser ? <InboxPage /> : <Navigate to="/login" replace />} />
           <Route path="/me" element={currentUser ? <ProfilePage /> : <Navigate to="/login" replace />} />
+          <Route path="/me/rewards" element={currentUser ? <RewardsPage /> : <Navigate to="/login" replace />} />
           <Route path="/request" element={currentUser ? <RequestPage /> : <Navigate to="/login" replace />} />
           <Route path="/admin" element={currentUser ? <AdminPage /> : <Navigate to="/login" replace />} />
           <Route path="/admin/:tab" element={currentUser ? <AdminPage /> : <Navigate to="/login" replace />} />

@@ -41,6 +41,8 @@ export interface TournamentDto {
 }
 
 export interface TournamentDetailDto extends TournamentDto {
+  /** Tournament default only; score validation must use each match's format. */
+  bestOf?: number | null;
   eligibilityRules: EligibilityRuleDto[];
   referees: TournamentRefereeDto[];
   applications: TournamentApplicationDto[];
@@ -135,6 +137,7 @@ export interface TournamentListResponse {
 export interface CreateTournamentRequest {
   name: string;
   sportTypeId: number;
+  bestOf?: 1 | 3 | 5 | 7 | null;
   bracketFormat?: BracketFormat | null;
   /** MVP รับแค่สองค่านี้ — 'university' ยังรอ Change Management */
   scopeType: Exclude<TournamentScopeType, "university">;
@@ -219,6 +222,26 @@ export interface AmendmentRequestPayload {
   eligibilityRules?: BackendEligibilityRuleInput[];
 }
 
+export interface AmendmentPreviewDto {
+  canSubmit: boolean;
+  blockers: Array<{ code: string; message: string; details: Record<string, unknown> | null }>;
+  pendingAmendmentId: number | null;
+}
+
+/** GET /admin/amendment-requests/:requestId/impact — approval-time rules, without mutating. */
+export interface AmendmentImpactDto {
+  requestId: number;
+  tournamentId: number;
+  tournamentName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedChanges: Record<string, unknown>;
+  reason: string | null;
+  selfRequested: boolean;
+  alreadyDecided: boolean;
+  canApprove: boolean;
+  blockers: AmendmentPreviewDto['blockers'];
+}
+
 export interface InviteTournamentRefereeRequest {
   userId: number;
   /** backend บังคับช่องนี้ — ไม่ส่งถือว่า false ที่ชั้น api */
@@ -249,6 +272,7 @@ export interface ReviewTournamentApplicationRequest {
 }
 
 export interface TournamentAnnouncementDto {
+  type?: 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream';
   id: number;
   tournamentId: number;
   authorId: number;
@@ -262,6 +286,7 @@ export interface TournamentAnnouncementListResponse {
 }
 
 export interface CreateTournamentAnnouncementRequest {
+  type?: 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream';
   title: string;
   body: string;
 }
@@ -301,6 +326,7 @@ export interface CompleteTournamentResponse {
 
 /** C09b — organizer-visible amendment history, newest first. */
 export interface TournamentAmendmentHistoryItemDto {
+  selfApproved?: boolean;
   id: number;
   requestedChanges: Record<string, unknown>;
   reason: string | null;
@@ -345,6 +371,8 @@ export interface BackendPendingTournamentRequestDto {
 
 /** GET /admin/amendment-requests — คำขอแก้ไขทัวร์นาเมนต์ที่รอ Admin */
 export interface BackendAmendmentRequestDto {
+  selfRequested?: boolean;
+  reason?: string | null;
   id: number;
   tournamentId: number;
   tournamentName: string;

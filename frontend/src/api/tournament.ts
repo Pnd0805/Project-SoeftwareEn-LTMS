@@ -139,6 +139,11 @@ export async function getTournament(id: number): Promise<TournamentDetailDto> {
  * กับ `private` เดิมประกาศชนิดเป็น `TournamentDto` ทั้งที่ของจริงมีสี่ช่อง คนเรียกจึง
  * มองไม่เห็น `autoApproved` และหน้าจอเขียน "รอแอดมิน" ให้ทุกคนแม้คนที่ผ่านแล้ว
  */
+export function setTournamentFormat(id: number, bestOf: number | null): Promise<{ id: number; bestOf: number | null }> {
+  if (USE_MOCK) throw new Error('Tournament BO settings need the live server.');
+  return apiFetch(`/tournaments/${id}/format`, { method: 'PATCH', body: JSON.stringify({ bestOf }) });
+}
+
 export async function createTournament(input: CreateTournamentRequest): Promise<TournamentCreatedDto> {
   if (USE_MOCK) {
     const tournament: TournamentDto = {
@@ -234,13 +239,12 @@ export async function inviteReferee(id: number, input: InviteTournamentRefereeRe
     mockTournamentReferees.push(referee);
     return tournamentMockDelay(referee);
   }
-  /* inviteRefereeSchema บังคับ isExternal (ไม่ใช่ optional) และรับ matchIds
+  /* Server classifies external status; matchIds select offered matches.
      ไม่ส่ง matchIds = เชิญเข้า pool เฉยๆ ยังคุมแมตช์ไหนไม่ได้จนกว่าจะมอบหมาย */
   return apiFetch(`/tournaments/${id}/referees`, {
     method: "POST",
     body: JSON.stringify({
       userId: input.userId,
-      isExternal: input.isExternal ?? false,
       matchIds: input.matchIds ?? [],
     }),
   });
@@ -546,6 +550,13 @@ export async function requestFilterChange(
 }
 
 /** C09b — every amendment submitted by this tournament's organizer, newest first. */
+export function previewAmendment(id: number, input: { changes: AmendmentRequestPayload; reason: string }): Promise<import('../types/tournament.dto').AmendmentPreviewDto> {
+  return apiFetch(`/tournaments/${id}/amendment-requests/preview`, {
+    method: 'POST', body: JSON.stringify({ requestedChanges: input.changes, reason: input.reason.trim() }),
+  });
+}
+
+/** C09b — every amendment submitted by this tournament's organizer, newest first. */
 export function getTournamentAmendmentRequests(
   id: number,
 ): Promise<{ items: import('../types/tournament.dto').TournamentAmendmentHistoryItemDto[] }> {
@@ -625,7 +636,7 @@ export function getApplicationDetail(
 /** PATCH /announcements/:id — ผู้จัดแก้ประกาศ */
 export function updateAnnouncement(
   announcementId: number,
-  input: { title?: string; body?: string },
+  input: { title?: string; body?: string; type?: 'general' | 'schedule_change' | 'venue_change' | 'result' | 'livestream' },
 ): Promise<TournamentAnnouncementDto> {
   return apiFetch(`/announcements/${announcementId}`, { method: "PATCH", body: JSON.stringify(input) });
 }

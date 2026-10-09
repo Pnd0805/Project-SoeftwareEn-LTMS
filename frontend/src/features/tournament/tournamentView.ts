@@ -52,14 +52,15 @@ export const CHAMPION_UNKNOWN = "finished"
 
 /** Keep the entry form aligned with the backend's explicit registration lifecycle. */
 export function registrationClosedReason(t: Tournament, approved: number, realMode: boolean): string {
-  if (t.drawn) return 'The bracket is drawn — entries are closed.'
+  if (t.champion) return 'The tournament is finished — entries are closed.'
+  if (!realMode && t.drawn) return 'The bracket is drawn — entries are closed.'
   if (t.status !== 'public') return 'Not open for registration yet.'
   if (realMode && t.registrationOpen !== true) return 'Registration has not been opened by the organizer yet.'
   if (approved >= t.cap) return `Full at ${t.cap} squads.`
   return regWindowClosed(t)
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10)
+const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
 
 export function tournamentView(
   dto: TournamentDto | TournamentDetailDto,
@@ -75,14 +76,10 @@ export function tournamentView(
     : dto.status === 'private' ? 'private' : dto.status === 'public' ? 'public' : 'public'
   const referees = 'referees' in dto ? dto.referees.map(referee => String(referee.userId)) : []
 
-  /* สถานะของรายการ backend มีแค่ pending_approval/private/public/completed
-     ไม่มีคำว่า "กำลังแข่ง" — ดูจากวันแข่งแทน ซึ่งเป็นสิ่งที่คนอ่านเองอยู่แล้ว
-     (และรายการจาก GET /tournaments ไม่ส่ง status มาด้วยซ้ำ) */
-  const today = todayIso()
-  const lastDay = dto.eventEndDate ?? dto.eventStartDate
-  const started = dto.eventStartDate <= today
-  const over = lastDay < today
-  const finished = dto.status === "completed" || over
+  // Only the server's completed status closes a tournament. Passing the last
+  // scheduled date does not prove its results were confirmed or it was closed.
+  const started = dto.eventStartDate <= todayIso()
+  const finished = dto.status === "completed"
 
   return {
     id: String(dto.id),
@@ -91,10 +88,11 @@ export function tournamentView(
     format,
     channel: sport?.defaultMode === 'online' ? 'online' : 'onsite',
     status,
-    registrationOpen: dto.registrationOpen,
+    registrationOpen: dto.registrationOpen ?? false,
     registrationStart: dto.registrationStart,
     registrationEnd: dto.registrationEnd,
     date: dto.eventStartDate,
+    eventEndDate: dto.eventEndDate,
     venue: dto.venue ?? '',
     entryNotes: dto.entryNotes ?? undefined,
     pin: null,

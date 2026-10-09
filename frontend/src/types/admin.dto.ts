@@ -65,6 +65,9 @@ export interface ReviewTournamentRequest {
  *    ให้เรียงด้วย `tournament_referee_id DESC` แทน (รีวิว schema รอบแรกเจอ)
  */
 export interface TournamentRefereeDto {
+  status?: BackendTournamentRefereeDto['status'];
+  /** Invitation write response only: count, never another referee's private schedule. */
+  crossTournamentWarnings?: number;
   id: number;
   tournamentId: number;
   user: UserRefDto;
@@ -114,6 +117,14 @@ export interface RefereeCoverageDto {
   /** แมตช์ที่กรรมการยังไม่ครบ (โหมดจริงเท่านั้น) — ยอดรวมข้างบนบอกไม่ได้ว่าขาดที่นัดไหน
    *  รางของผู้จัดจึงเคยนับว่า "จัดนัดครบ" ทั้งที่แมตช์ยังไม่มีกรรมการสักคน */
   uncoveredMatchIds?: number[];
+  /** Accepted work outside this tournament; only local match IDs and counts are disclosed. */
+  crossTournamentConflicts?: CrossTournamentConflictDto[];
+}
+
+export interface CrossTournamentConflictDto {
+  userId: number;
+  matchId: number;
+  conflictCount: number;
 }
 
 // ══════════════ สิทธิ์ผู้ดูแล — ตาราง `admin_scopes` ══════════════
@@ -184,6 +195,7 @@ export interface AuditLogDto {
 }
 
 export interface AuditLogQuery {
+  page?: number;
   entityType?: string;
   entityId?: number;
   userId?: number;
@@ -193,10 +205,12 @@ export interface AuditLogQuery {
 // ══════════════ คำร้องทีม Official — FR-TM-06, FR-TM-08 ══════════════
 
 export interface OfficialTeamRequestDto {
+  supportingDocs?: string[];
   id: number;
   team: {
     id: number;
     name: string;
+    logoUrl?: string | null;
     sportTypeId?: number;
   };
   requestedBy: UserRefDto;
@@ -245,7 +259,13 @@ export interface ExternalRefereeRequestDto {
   invitedBy: UserRefDto | null;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
+  docs?: string[];
+  docsSubmitted?: boolean;
 }
+
+export type RefereeWithdrawalInput =
+  | { scope: 'match'; matchId: number; reason: string }
+  | { scope: 'tournament'; tournamentId: number; reason: string };
 
 /** ไม่อนุมัติต้องระบุเหตุผล (SDS 7.4 — ทุกการปฏิเสธต้องระบุเหตุผล) */
 export interface ReviewExternalRefereeRequest {
@@ -272,6 +292,7 @@ export interface BackendRefereeCoverageDto {
   }>;
   /** กรรมการที่มีแมตช์เวลาซ้อนกัน — เตือนเฉยๆ ไม่บล็อก */
   conflicts: Array<{ userId: number; matchIds: number[] }>;
+  crossTournamentConflicts?: CrossTournamentConflictDto[];
 }
 
 /** GET /tournaments/:id/referees — F02 */
@@ -281,7 +302,7 @@ export interface BackendTournamentRefereeDto {
   invitationStatus: "pending" | "accepted" | "rejected";
   isExternal: boolean;
   externalApprovalStatus: "not_required" | "pending" | "needs_docs" | "approved" | "rejected";
-  status: "pending" | "pending_admin" | "active" | "declined" | "rejected_by_admin" | "removed";
+  status: "pending" | "expired" | "pending_admin" | "active" | "declined" | "rejected_by_admin" | "removed";
 }
 
 export interface BackendTournamentRefereeListDto {
@@ -314,13 +335,14 @@ export interface BackendExternalRefereeQueueItem {
   user: UserRefDto & { email: string };
   /** S3 key ดิบ — ต้องขอ presign เองก่อนเปิดดู */
   docs: string[];
+  docsSubmitted: boolean;
   tournaments: Array<{ id: number; name: string; tournamentRefereeId: number }>;
   submittedAt: string;
 }
 
 /** GET /me/referee-identity — U11 */
 export interface BackendRefereeIdentityDto {
-  status: "none" | "pending" | "needs_docs" | "approved" | "rejected";
+  status: "none" | "pending" | "needs_docs" | "approved" | "expired" | "rejected";
   approvedAt: string | null;
   expiresAt: string | null;
   adminMessage: string | null;

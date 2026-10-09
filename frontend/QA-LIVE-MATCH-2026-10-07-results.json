@@ -1,0 +1,78 @@
+{
+  "timestamp": "2026-10-06T21:21:58.998Z",
+  "origin": "http://127.0.0.1:5193",
+  "mode": "SSR-loaded frontend adapters with real API; no browser",
+  "artifacts": {
+    "tourId": 30,
+    "teamId": 9008,
+    "matchId": 15,
+    "applications": [
+      {
+        "role": "leader",
+        "id": 39
+      },
+      {
+        "role": "leaderB",
+        "id": 40
+      }
+    ]
+  },
+  "results": [
+    {
+      "name": "frontend draw adapter against live API",
+      "result": "PASS"
+    },
+    {
+      "name": "drawn match inherits persisted tournament BO5",
+      "result": "PASS"
+    },
+    {
+      "name": "frontend whole-tournament format updates actual match",
+      "result": "PASS"
+    },
+    {
+      "name": "single match format override and null clearing",
+      "result": "PASS"
+    },
+    {
+      "name": "real guest getMatch skips personal API reads",
+      "result": "PASS"
+    },
+    {
+      "name": "private match 404 stops frontend enrichment",
+      "result": "PASS"
+    },
+    {
+      "name": "private tournament legitimate access: organizer",
+      "result": "PASS"
+    },
+    {
+      "name": "private tournament legitimate access: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "private tournament legitimate access: referee",
+      "result": "PASS"
+    },
+    {
+      "name": "frontend audit actor mapper and page2",
+      "result": "PASS"
+    },
+    {
+      "name": "external identity read contract",
+      "result": "PASS"
+    },
+    {
+      "name": "withdraw only new test entry 39",
+      "result": "PASS"
+    },
+    {
+      "name": "withdraw only new test entry 40",
+      "result": "PASS"
+    },
+    {
+      "name": "restore tournament private and registration closed",
+      "result": "PASS"
+    }
+  ]
+}

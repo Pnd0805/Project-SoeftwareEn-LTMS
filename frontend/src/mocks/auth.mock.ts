@@ -10,6 +10,7 @@
  * ⚠️ passwordForMock อยู่ใน user.mock.ts — auth.mock ใช้ read/write mockUsers ตรงนี้
  */
 import type { LoginResponse, RegisterResponse, RegisterRequest, VerifyEmailRequest, VerifyEmailResponse, ResendVerificationResponse } from "../types/dto";
+import { isKuEmail } from '../shared/kuEmail';
 import { findStoreUserByEmail, isStoreUserSuspended } from "./storeUsers";
 import { mockUsers, takeNextMockUserId } from "./user.mock";
 import { mockDelay, mockReject } from "../api/client";
@@ -71,24 +72,24 @@ export async function mockRegister(input: RegisterRequest): Promise<RegisterResp
   }
 
   const id = takeNextMockUserId();
+  const internal = isKuEmail(email);
   mockUsers.push({
     id,
     fullName: input.fullName,
     email,
     gender: input.gender,
     birthDate: input.birthDate,
-    facultyId: input.facultyId,
-    departmentId: input.departmentId,
-    year: input.year,
+    facultyId: internal ? input.facultyId ?? null : null,
+    departmentId: internal ? input.departmentId ?? null : null,
+    year: internal ? input.year ?? null : null,
     avatarUrl: null,
     contactInfo: null,
     address: null,
     totalPoints: 0,
     notificationPrefs: null,
     createdAt: new Date().toISOString(),
-    // GUIDE/04 §12: A01 ไม่รับ userType จาก request แต่ DB บังคับ NOT NULL
-    // backend ตั้ง 'student' ไปก่อน (ดู GUIDE/07) — mock ทำตามเดียวกันเพื่อพฤติกรรมตรงกัน
-    userType: "student",
+    // BE owns the real classification; mock mode mirrors its exact email-domain rule.
+    userType: internal ? 'student' : 'external',
     passwordForMock: input.password,
   });
 

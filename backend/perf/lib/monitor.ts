@@ -1,10 +1,17 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 /**
  * อ่าน CPU / หน่วยความจำของโปรเซส (เซิร์ฟเวอร์ Node · mysqld) จาก /proc ทุก 1 วินาที — Linux เท่านั้น
  * บนเครื่องที่ไม่มี /proc (macOS/Windows) จะคืนค่าว่างเงียบ ๆ ไม่ทำให้การวัดล้ม
  */
 const TICKS = 100;   // CLK_TCK ของ Linux แทบทุกเครื่อง
+
+/**
+ * เครื่องนี้อ่าน /proc ได้ไหม — รายงานใช้ค่านี้บอกผู้อ่านว่า "วัดไม่ได้" แทนที่จะพิมพ์ NaN
+ * 🔴 8 ต.ค. 2569 — รอบที่รันบน Windows ได้รายงานที่มีคำว่า `NaN%` กระจายทั้งไฟล์
+ *   ซึ่งอ่านเหมือนสคริปต์พัง ทั้งที่ monitor ออกแบบมาให้คืนค่าว่างเงียบ ๆ ตามเจตนาเดิม
+ */
+export const PROC_STATS_AVAILABLE = existsSync('/proc/self/stat');
 
 function cpuTicks(pid: number): number | null {
     try {

@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+vi.mock('./MyJoinRequests', () => ({ MyJoinRequests: () => null }))
+import { render } from '../../test/renderWithQueryClient'
+import { fireEvent, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BackendMyInvitationDto, BackendMyTeamDto } from '../../types/team.dto'

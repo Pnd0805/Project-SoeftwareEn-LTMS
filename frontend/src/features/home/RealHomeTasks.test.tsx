@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { fetchAdminRequests, state } = vi.hoisted(() => ({
   fetchAdminRequests: vi.fn(),
   state: {
-    currentUser: { id: 7 } as { id: number } | undefined,
+    currentUser: { id: 7, adminScope: { scopeType: 'university_wide' } } as { id: number; adminScope?: { scopeType: string } } | undefined,
     invitations: { data: { items: [{
       id: 3,
       team: { id: 8, name: 'Northside FC', sportTypeId: 1 },
@@ -84,7 +84,7 @@ function renderHome() {
 
 describe('real Home tasks', () => {
   beforeEach(() => {
-    state.currentUser = { id: 7 }
+    state.currentUser = { id: 7, adminScope: { scopeType: 'university_wide' } }
     state.invitations.isPending = false
     state.invitations.isError = false
     state.invitations.refetch.mockReset()

@@ -7,7 +7,7 @@ vi.mock('../../repositories/pickem.repo.js', () => ({
   findMine: vi.fn(() => Promise.resolve(null)),
   countByTeam: vi.fn(() => Promise.resolve([])),
   findHistory: vi.fn(() => Promise.resolve([])),
-  findLeaderboard: vi.fn(() => Promise.resolve([])),
+  findLeaderboard: vi.fn(() => Promise.resolve({ rows: [] , totalItems: 0 })),
   findTotalPoints: vi.fn(() => Promise.resolve(0)),
   findMyStanding: vi.fn(() => Promise.resolve(null)),
 }));
@@ -254,20 +254,89 @@ describe('getSummary', () => {
   });
 });
 
-describe('leaderboard', () => {
-  it('ties share a rank (1,1,3)', async () => {
+/**
+ * B3 ① + ② (มติ 8 ต.ค. 2569) — แบ่งหน้า + จำผลไว้ 5 วินาที
+ *
+ * ★ สองเรื่องที่เทสชุดนี้ตรึงไว้ และ **เทสเดิมจับไม่ได้**
+ *   1. อันดับต้องมาจาก SQL (คิดจากคนทั้งทัวร์) ไม่ใช่จากลำดับแถวในหน้านั้น
+ *      ของเดิม service นับเองจาก index ⇒ ถ้าปล่อยไว้ หน้า 2 จะเริ่มนับ 1 ใหม่แบบเงียบ ๆ
+ *   2. แคชต้องไม่ข้ามหน้า/ข้ามทัวร์กัน และต้องหมดอายุจริง
+ */
+describe('leaderboard — แบ่งหน้า + แคช 5 วิ', () => {
+  const lbRow = (o: Record<string, unknown> = {}) =>
+    ({ user_id: 1, full_name: 'ก', profile_image_key: null, points: 20, correct: 2, settled: 2, rank_no: 1, ...o });
+  const repoReturns = (rows: Record<string, unknown>[], totalItems: number) =>
+    vi.mocked(PickemRepo.findLeaderboard).mockResolvedValue({ rows: rows as never, totalItems });
+
+  beforeEach(() => {
+    Service.clearLeaderboardCache();
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20 } as never);
-    vi.mocked(PickemRepo.findLeaderboard).mockResolvedValue([
-      { user_id: 1, full_name: 'ก', profile_image_key: null, points: 20, correct: 2, settled: 2 },
-      { user_id: 2, full_name: 'ข', profile_image_key: null, points: 20, correct: 2, settled: 3 },
-      { user_id: 3, full_name: 'ค', profile_image_key: null, points: 10, correct: 1, settled: 1 },
-    ]);
+  });
+
+  it('เสมอได้อันดับเดียวกัน (1,1,3) — ค่าที่ SQL จัดมาถูกส่งต่อตรง ๆ', async () => {
+    repoReturns([lbRow({ user_id: 1, rank_no: 1 }), lbRow({ user_id: 2, rank_no: 1, settled: 3 }),
+                 lbRow({ user_id: 3, rank_no: 3, points: 10, correct: 1, settled: 1 })], 3);
     const { items } = await Service.getLeaderboard(20);
     expect(items.map(i => i.rank)).toEqual([1, 1, 3]);
   });
+
+  /** 🔴 เคสที่จับ "นับอันดับจาก index" ได้ — ถ้าใครเขียนกลับไปแบบเดิม หน้า 2 จะได้ 1,1,3 */
+  it('หน้า 2 ต้องคงอันดับของทั้งทัวร์ ไม่เริ่มนับ 1 ใหม่', async () => {
+    repoReturns([lbRow({ user_id: 21, rank_no: 21 }), lbRow({ user_id: 22, rank_no: 21 }),
+                 lbRow({ user_id: 23, rank_no: 23 })], 45);
+    const { items } = await Service.getLeaderboard(20 , 20 , 2 , 20);
+    expect(items.map(i => i.rank)).toEqual([21, 21, 23]);
+  });
+
+  it('ส่ง pagination ตามสัญญากลางของโปรเจกต์', async () => {
+    repoReturns([lbRow()], 45);
+    const { pagination } = await Service.getLeaderboard(20 , 20 , 2 , 20);
+    expect(pagination).toEqual({ page: 2, pageSize: 20, totalItems: 45, totalPages: 3 });
+  });
+
+  it('ส่ง offset/pageSize ลง repo ตรงตามที่รับมา', async () => {
+    repoReturns([], 0);
+    await Service.getLeaderboard(20 , 40 , 3 , 20);
+    expect(PickemRepo.findLeaderboard).toHaveBeenCalledWith(20 , 40 , 20);
+  });
+
   it('404 for an unknown tournament', async () => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(null);
     expect(await errOf(Service.getLeaderboard(999))).toMatchObject({ status: 404 });
+  });
+
+  it('เปิดซ้ำหน้าเดิมภายใน 5 วิ → ไม่ยิงฐานซ้ำ', async () => {
+    repoReturns([lbRow()], 1);
+    const first = await Service.getLeaderboard(20);
+    vi.advanceTimersByTime(4_999);
+    const second = await Service.getLeaderboard(20);
+    expect(PickemRepo.findLeaderboard).toHaveBeenCalledTimes(1);
+    expect(second).toBe(first);
+  });
+
+  it('พ้น 5 วิ → ยิงฐานใหม่', async () => {
+    repoReturns([lbRow()], 1);
+    await Service.getLeaderboard(20);
+    vi.advanceTimersByTime(5_000);
+    await Service.getLeaderboard(20);
+    expect(PickemRepo.findLeaderboard).toHaveBeenCalledTimes(2);
+  });
+
+  it('คนละหน้า / คนละขนาดหน้า / คนละทัวร์ → คนละแคช', async () => {
+    repoReturns([lbRow()], 1);
+    await Service.getLeaderboard(20 , 0 , 1 , 20);
+    await Service.getLeaderboard(20 , 20 , 2 , 20);
+    await Service.getLeaderboard(20 , 0 , 1 , 50);
+    await Service.getLeaderboard(21 , 0 , 1 , 20);
+    expect(PickemRepo.findLeaderboard).toHaveBeenCalledTimes(4);
+  });
+
+  /** ★ ด่านทัวร์ต้องทำงานทุกครั้ง แม้ตอนได้ของจากแคช — ไม่งั้นทัวร์ที่ถูกลบจะยังคืนตารางอันดับต่ออีก 5 วิ */
+  it('ตอนได้ของจากแคช ยังต้องเช็คว่าทัวร์มีอยู่', async () => {
+    repoReturns([lbRow()], 1);
+    await Service.getLeaderboard(20);
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(null);
+    expect(await errOf(Service.getLeaderboard(20))).toMatchObject({ status: 404 });
   });
 });
 

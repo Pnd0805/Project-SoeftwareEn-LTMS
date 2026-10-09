@@ -1,3 +1,4 @@
+import { setAccessToken } from '../../api/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -7,6 +8,7 @@ import { SearchPage } from './SearchPage'
 vi.mock('../../api/client', async original => ({ ...await original<typeof import('../../api/client')>(), USE_MOCK: false }))
 let client: QueryClient, failTeams: boolean, failPlayers: boolean, pendingTeams: boolean, empty: boolean
 beforeEach(() => {
+  setAccessToken("test-token")
   failTeams = failPlayers = pendingTeams = empty = false
   client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {

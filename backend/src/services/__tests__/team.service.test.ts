@@ -285,16 +285,22 @@ describe('createTeam', () => {
   });
 });
 
-describe('getMyTeam', () => {
-  // มติ 30 ก.ย. 2569 — TM-07 กวาดทีมตอนมีคนเปิดหน้า ไม่มี cron ⇒ ลูกทีมไม่ได้ทำอะไรเลยแต่ทีมหาย
+/**
+ * TM-07 กวาดทีมร้าง
+ *
+ * 🔴 มติ 8 ต.ค. 2569 — **ย้ายมารันตามเวลา (ชั่วโมงละครั้ง) ทับมติ 30 ก.ย.** ที่ให้กวาดตอนมีคนเปิดหน้าทีม
+ *   เทสสองข้อแรกเคยเรียกผ่าน `getMyTeam()` เพราะนั่นคือทางเดียวที่การกวาดเกิดขึ้น
+ *   ตอนนี้เรียก `sweepAndNotify()` ตรง ๆ — **สิ่งที่ตรึงไว้ยังเป็นเรื่องเดิม** (ลูกทีมต้องรู้ว่าทีมหายเพราะอะไร)
+ *   เปลี่ยนแค่ว่าใครเป็นคนเรียก
+ */
+describe('sweepAndNotify — งานเบื้องหลัง', () => {
   it('tells every member of a team the sweep just closed, with the reason', async () => {
     mockedTeamRepo.sweepInactiveTeams.mockResolvedValue([
       { teamId: 91, name: 'ทีมหมี', reason: 'no_registration' },
     ]);
     mockedTeamRepo.findTeamMemberById.mockResolvedValue([{ user_id: 5 }, { user_id: 6 }] as never);
-    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
 
-    await teamService.getMyTeam(5);
+    await teamService.sweepAndNotify();
 
     expect(NotificationService.notifyUsers).toHaveBeenCalledWith([5, 6], expect.objectContaining({
       type: 'team_deleted',
@@ -310,9 +316,8 @@ describe('getMyTeam', () => {
       { teamId: 92, name: 'ทีมร้าง', reason: 'inactive_6_months' },
     ]);
     mockedTeamRepo.findTeamMemberById.mockResolvedValue([{ user_id: 5 }] as never);
-    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
 
-    await teamService.getMyTeam(5);
+    await teamService.sweepAndNotify();
 
     expect(vi.mocked(NotificationService.notifyUsers).mock.calls[0]![1]).toMatchObject({
       message: expect.stringContaining('6 เดือน'),
@@ -320,8 +325,23 @@ describe('getMyTeam', () => {
   });
 
   it('sends nothing when the sweep closed nothing', async () => {
+    mockedTeamRepo.sweepInactiveTeams.mockResolvedValue([]);
+    await teamService.sweepAndNotify();
+    expect(NotificationService.notifyUsers).not.toHaveBeenCalled();
+  });
+});
+
+describe('getMyTeam', () => {
+  /**
+   * 🔴 ด่านกันของเก่ากลับมา (มติ 8 ต.ค. 2569)
+   *   ถ้าใครเอา `sweepAndNotify()` กลับไปใส่ในเส้นอ่าน คอขวด P1 จะกลับมาทันที
+   *   (perf 8 ต.ค.: `GET /teams/:id` p95 13.22 วินาที) โดยที่เทสอื่น ๆ **ยังเขียวหมด**
+   *   ⇒ ต้องมีเทสที่พูดเรื่องนี้ตรง ๆ ไม่ใช่หวังว่าจะมีคนจำได้
+   */
+  it('🔴 ไม่กวาดทีมในเส้นอ่าน — การกวาดย้ายไปงานเบื้องหลังแล้ว', async () => {
     mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
     await teamService.getMyTeam(5);
+    expect(mockedTeamRepo.sweepInactiveTeams).not.toHaveBeenCalled();
     expect(NotificationService.notifyUsers).not.toHaveBeenCalled();
   });
 

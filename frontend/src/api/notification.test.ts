@@ -5,7 +5,7 @@ vi.mock('./client', async importOriginal => ({
   USE_MOCK: false,
 }))
 
-import { getNotifications, markNotificationRead, markNotificationsRead } from './notification'
+import { getNotificationMatch, getNotifications, markNotificationRead, markNotificationsRead } from './notification'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -17,6 +17,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('notification API in real mode', () => {
+  it('reads only the existing match detail endpoint for display context', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      id: 5, tournamentId: 11, teamA: { id: 1, name: 'Engineering' }, teamB: null, round: 2,
+    }), { status: 200 }))
+    expect(await getNotificationMatch(5)).toEqual({ id: 5, tournamentId: 11, teamA: 'Engineering', teamB: null, round: 2 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/matches/5')
+  })
+
   it('reads the C1 page and updates only this account through C1 routes', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ items: [], unreadCount: 0, pagination: { page: 2, pageSize: 20, totalItems: 0, totalPages: 0 } }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ id: 4, isRead: true }), { status: 200 }))

@@ -20,6 +20,7 @@ import { me } from '../../shared/selectors'
 import { useLogout, useMe } from '../../hooks/useAuth'
 import { useNotifications } from '../../hooks/useNotifications'
 import type { MeDto } from '../../types/dto'
+import { UserTypeLabel } from '../../types/enums'
 import { USE_MOCK } from '../../api/client'
 import { useAdminAccess } from '../../hooks/useAdmin'
 import { canShowAdminNav } from './adminNav'
@@ -139,16 +140,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
   /* `userType: staff` describes employment, not admin authorization. The
      backend queue is guarded by admin_scopes and is the current capability
      check until GET /me exposes scopes directly. */
-  const adminAccess = useAdminAccess(!!currentUser)
+  const adminAccess = useAdminAccess(!!currentUser?.adminScope)
   const logout = useLogout()
   const { data: notificationData } = useNotifications(currentUser?.id)
   const unreadCount = notificationData?.unreadCount
     ?? notificationData?.items?.filter(notification => !(notification.isRead ?? notification.read)).length ?? 0
-  const nav = useNav(unreadCount, currentUser, adminAccess.data === true)
+  const nav = useNav(unreadCount, currentUser ?? undefined, adminAccess.data === true)
   const location = useLocation()
   const navigate = useNavigate()
   const n = unreadCount
   const displayName = currentUser?.fullName ?? (USE_MOCK ? u?.name : '') ?? ''
+  const displayRole = canShowAdminNav(USE_MOCK, u?.role, adminAccess.data === true)
+    ? 'Admin'
+    : currentUser?.userType ? UserTypeLabel[currentUser.userType] : (USE_MOCK ? u?.role : undefined)
 
   /* the first tab stop — standard on GitHub, Wikipedia, gov.uk */
   const skip = (
@@ -203,7 +207,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="sub" style={{ fontSize: 12 }}>Signed in as</div>
         <div className="account-name" style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{displayName}</div>
         {compact ? <div className="menu-theme"><span>Appearance</span><ThemeButton /></div> : null}
-        <button className="btn ghost" type="button" style={{ width: '100%' }}
+        {displayRole ? <p className="sub">Role: {displayRole}</p> : null}
+          <button className="btn ghost" type="button" style={{ width: '100%' }}
           onClick={() => { setMenuOpen(false); void logout.mutateAsync().finally(() => navigate('/login')) }}>
           <Icon name="out" size={13} /> Log out
         </button>

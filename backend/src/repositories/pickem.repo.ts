@@ -204,22 +204,52 @@ export async function findHistory(userId: number): Promise<MyPickRow[]> {
     return rows;
 }
 
-export type LeaderboardRow = { user_id: number; full_name: string; profile_image_key: string | null; points: number; correct: number; settled: number };
+export type LeaderboardRow = { user_id: number; full_name: string; profile_image_key: string | null; points: number; correct: number; settled: number; rank_no: number };
 
-/** อันดับในทัวร์ = แต้มจากแมตช์ของทัวร์นี้ที่ตัดสินแล้ว (มากสุดก่อน · เท่ากัน → ทายถูกมากกว่า → ชื่อ) */
-export async function findLeaderboard(tournamentId: number): Promise<LeaderboardRow[]> {
-    const [rows] = await pool.query<(LeaderboardRow & RowDataPacket)[]>(
-        `SELECT u.user_id, u.full_name, u.profile_image_key,
-                SUM(p.points_earned) AS points, SUM(p.points_earned > 0) AS correct, COUNT(*) AS settled
-         FROM pickem_predictions p
-         JOIN matches m ON m.match_id = p.match_id
-         JOIN users u ON u.user_id = p.user_id
-         WHERE m.tournament_id = ? AND p.points_earned IS NOT NULL
-         GROUP BY u.user_id, u.full_name, u.profile_image_key
-         ORDER BY points DESC, correct DESC, u.full_name`,
-        [tournamentId]
+/**
+ * อันดับในทัวร์ = แต้มจากแมตช์ของทัวร์นี้ที่ตัดสินแล้ว (มากสุดก่อน · เท่ากัน → ทายถูกมากกว่า → ชื่อ)
+ *
+ * 🔴 B3 / perf P2 (8 ต.ค. 2569) — เดิมคืน **ทุกคน** ไม่มีแบ่งหน้า
+ *   4,000 คน = 477 KB ต่อคำขอ · ทัวร์ใหญ่ 30,000 คน ≈ 3.5 MB ต่อคำขอ
+ *   และเป็นหน้าที่คนเปิดบ่อยที่สุดในวันแข่ง (วัดได้ว่าแพงกว่าทุก endpoint 8–14 เท่า)
+ *
+ * ★ **อันดับต้องคิดจากคนทั้งทัวร์ ไม่ใช่จากคนในหน้านั้น**
+ *   ถ้าปล่อยให้ service นับอันดับจากลำดับแถวที่ได้มา (เดิมทำแบบนั้น) หน้า 2 จะเริ่มนับ 1 ใหม่
+ *   ⇒ ย้ายการจัดอันดับมาอยู่ใน SQL ด้วย `RANK() OVER` ซึ่งคิดก่อน LIMIT
+ *
+ * ★ ใช้ `RANK()` ไม่ใช่ `DENSE_RANK()` — กฎของเราคือเสมอแล้วข้ามเลข (1,1,3)
+ *   `DENSE_RANK()` จะได้ (1,1,2) ซึ่งผิดกฎและจะไม่ตรงกับ `findMyStanding()`
+ *   window ORDER BY มีแค่ points/correct ให้ตรงกับกฎเสมอ — `full_name` อยู่ใน ORDER BY ชั้นนอก
+ *   (ถ้าเอา full_name เข้า window ด้วย คนที่แต้มเท่ากันจะได้อันดับไม่เท่ากัน)
+ *
+ * ★ `COUNT(*) OVER ()` นับจำนวนคนทั้งทัวร์ในคิวรีเดียวกัน — ไม่ต้องยิง COUNT แยกอีกรอบ
+ *   (ค่านี้คือจำนวนแถวหลัง GROUP BY ก่อน LIMIT ตามที่ pagination ต้องใช้)
+ */
+export async function findLeaderboard(tournamentId: number , offset = 0 , pageSize = 20): Promise<{ rows: LeaderboardRow[]; totalItems: number }> {
+    const [rows] = await pool.query<(LeaderboardRow & RowDataPacket & { total_items: number })[]>(
+        `WITH totals AS (
+             SELECT p.user_id,
+                    SUM(p.points_earned) AS points, SUM(p.points_earned > 0) AS correct, COUNT(*) AS settled
+               FROM pickem_predictions p
+               JOIN matches m ON m.match_id = p.match_id
+              WHERE m.tournament_id = ? AND p.points_earned IS NOT NULL
+              GROUP BY p.user_id
+         )
+         SELECT u.user_id, u.full_name, u.profile_image_key, t.points, t.correct, t.settled,
+                RANK() OVER (ORDER BY t.points DESC, t.correct DESC) AS rank_no,
+                COUNT(*) OVER () AS total_items
+           FROM totals t
+           JOIN users u ON u.user_id = t.user_id
+          ORDER BY t.points DESC, t.correct DESC, u.full_name
+          LIMIT ? OFFSET ?`,
+        [tournamentId , pageSize , offset]
     );
-    return rows.map(r => ({ ...r, points: Number(r.points), correct: Number(r.correct), settled: Number(r.settled) }));
+    return {
+        rows: rows.map(r => ({ user_id: r.user_id , full_name: r.full_name , profile_image_key: r.profile_image_key ,
+                               points: Number(r.points) , correct: Number(r.correct) , settled: Number(r.settled) ,
+                               rank_no: Number(r.rank_no) })),
+        totalItems: Number(rows[0]?.total_items ?? 0),
+    };
 }
 
 export type MyStandingRow = { points: number; correct: number; settled: number; rank_no: number };

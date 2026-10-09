@@ -1,6 +1,11 @@
+import { Modal } from '../../components/kit/Modal'
 import { RefereeMatchRequest } from './RefereeMatchRequest'
+import { ScoreInputs } from './ScoreInputs'
+import { scoreFormatFromError, validMatchScore } from './scoreFormat'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
 import { MatchWorkflowPanel } from './MatchWorkflowPanel'
-import { resultRecorder } from './resultAttribution'
+import { canConfirm, confirmerName, confirmerOf, resultRecorder, type Confirmer } from './resultAttribution'
+import { ResultOverride } from './ResultOverride'
 /**
  * src/features/match/MatchPage.tsx
  *
@@ -22,6 +27,9 @@ import { MatchMvpVoting } from '../mvp/MvpPage'
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getMatchDispute } from '../../api/matchWorkflow'
+import { useMe } from '../../hooks/useAuth'
 import {
   Badge, Banner, Crumb, Empty, Facts, Field, MatchStateBadge, Panel, TableWrap,
 } from '../../components/kit/primitives'
@@ -32,6 +40,7 @@ import {
   useResolveDispute, useResult, useSetLivestream, useStartMatch, useVerifyResult, useFinishMatch,
 } from '../../hooks/useMatch'
 import { ApiError, USE_MOCK } from '../../api/client'
+import { scheduleErrorKind } from '../../shared/matchScheduleErrors'
 import { useLtms } from '../../shared/store'
 import { findStoreMatch, tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
@@ -87,14 +96,14 @@ const lifecycleError = (error: unknown) => {
   if (code === 'NOT_ORGANIZER') return 'Only the organizer of this tournament can do that.'
   if (code === 'NOT_REFEREE') return 'Only a referee assigned to this match can do that.'
   if (code === 'INVALID_STATUS_TRANSITION') return 'This match has already moved past that step. Reload to see where it stands.'
-  if (code === 'INSUFFICIENT_REFEREES') return 'This match still needs its referees in place before it can start.'
+  if (code === 'INSUFFICIENT_REFEREES') return 'This match needs enough accepted referees before opening check-in or starting. Complete the referee appointments first.'
   if (code === 'INSUFFICIENT_CHECKINS') return 'Both squads are below the minimum number of checked-in players. The match has not started. Wait for more players to check in or ask the organizer to reschedule.'
   if (code === 'CHECKIN_NOT_OPEN') return 'Check-in is not open for this match.'
   if (code === 'MATCH_TEAMS_INCOMPLETE') return 'This match is still waiting on an earlier round for one of its places.'
   if (code === 'TEAMS_PRESENT') return 'Both squads met the minimum, so this is not a no-show — a referee starts it.'
   if (code === 'NOT_MATCH_PARTICIPANT') return 'Only this match’s referees or the organizer can do that.'
   if (code === 'MATCH_NOT_IN_PROGRESS') return 'This match is not being played right now. Reload to see where it stands.'
-  if (code === 'SCHEDULE_INCOMPLETE') return 'The fixture is not complete yet — set the kick-off, end time and venue first.'
+  if (scheduleErrorKind(error) === 'match') return 'The match schedule is not ready.'
   if (code === 'PREDECESSOR_DISPUTED') return 'An earlier match that feeds this one is still disputed. It has to be settled first.'
   return error instanceof Error ? error.message : 'Something went wrong.'
 }
@@ -141,7 +150,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
           {/* R19 — เปิดเช็คอินก่อนจัดนัดให้ครบไม่ได้: กรรมการยังขอไม่ได้เลยถ้าไม่มีเวลาจบ
               (FR02 `assertMatchChangeable`) และพอเปิดเช็คอินไปแล้วก็แก้นัดไม่ได้อีก M06
               รับเฉพาะแมตช์ `scheduled` — กดตอนนี้คือขังตัวเองไว้กับนัดที่ยังไม่เสร็จ
-              ฝั่ง backend มีด่านเดียวกันแล้ว (`409 SCHEDULE_INCOMPLETE` + `missing[]` ตั้งแต่ 7a4499c)
+              ฝั่ง backend มีด่านเดียวกันแล้ว (`409 MATCH_NOT_SCHEDULED` + optional `missing[]`)
               ปุ่มที่ปิดไว้ตรงนี้จึงแค่บอกล่วงหน้า ไม่ใช่ด่านเดียวที่มี */}
           {!fixtureComplete ? (
             <Banner kind="warn">
@@ -279,6 +288,9 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
         <Banner kind="crit">
           <b>That did not go through.</b>{' '}
           {lifecycleError(failed.error)}
+          <ContractErrorDetails error={failed.error} />
+          {isOrganizer && scheduleErrorKind(failed.error) === 'match' ? <button className="btn" type="button"
+            onClick={() => navigate(`/m/${m.id}/fixture`)}>Set the fixture</button> : null}
         </Banner>
       ) : null}
     </Panel>
@@ -349,12 +361,15 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
   const [sb, setSb] = useState(s.b ?? 0)
   const [note, setNote] = useState('')
   const resolve = useResolveDispute(m.id, m.tournamentId)
-  const disputedBy = result.disputeRaisedBy?.fullName ?? 'A team'
+  const [decision, setDecision] = useState<Parameters<typeof resolve.mutate>[0] | null>(null)
+  const disputedBy = result.disputeRaisedBy?.fullName ?? 'A participant'
   /* คำตัดสินทุกแบบต้องมีเหตุผล ทั้งสองทีมอ่าน · เสมอไม่มีผู้ชนะให้บันทึก (backend บังคับ
      winnerTeamId เป็น int) จึงแก้เป็นสกอร์เสมอไม่ได้ ต้องเลือกทางอื่นแทน */
   const noteMissing = !note.trim()
   const blocked = resolve.isPending || noteMissing
   const level = sa === sb
+  const format = scoreFormatFromError(m, resolve.error)
+  const invalidScore = !validMatchScore(format, sa, sb)
 
   return (
     <Panel>
@@ -369,16 +384,9 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
 
       {USE_MOCK ? (
         <>
-          <div className="grid2" style={{ maxWidth: 420 }}>
-            <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
-              <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
-            </Field>
-            <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
-              <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
-            </Field>
-          </div>
+          <ScoreInputs match={{ ...m, ...format }} a={sa} b={sb} setA={setSa} setB={setSb} prefix="rs" disabled={resolve.isPending} />
           <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
-            disabled={resolve.isPending || level}
+            disabled={resolve.isPending || invalidScore}
             title={level ? 'A corrected score still needs a winner' : undefined}
             onClick={() => resolve.mutate({
               resolution: `Organizer recorded ${sa}–${sb}`,
@@ -408,19 +416,12 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
               </Banner>
             </div>
           ) : null}
-          <div className="grid2" style={{ maxWidth: 420 }}>
-            <Field label={m.teamA?.name ?? 'Home'} htmlFor="rs-a">
-              <input id="rs-a" type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} />
-            </Field>
-            <Field label={m.teamB?.name ?? 'Away'} htmlFor="rs-b">
-              <input id="rs-b" type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} />
-            </Field>
-          </div>
+          <ScoreInputs match={{ ...m, ...format }} a={sa} b={sb} setA={setSa} setB={setSb} prefix="rs" disabled={resolve.isPending} />
           <span className="hstack">
-            <button className="btn primary" type="button" disabled={blocked || level}
+            <button className="btn primary" type="button" disabled={blocked || invalidScore}
               title={noteMissing ? 'Write the reason first'
                 : level ? 'A corrected score still needs a winner' : undefined}
-              onClick={() => resolve.mutate({
+              onClick={() => setDecision({
                 decision: 'amend',
                 resolution: note.trim(),
                 winnerTeamId: sa > sb ? m.teamA?.id ?? null : m.teamB?.id ?? null,
@@ -430,12 +431,12 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
             </button>
             <button className="btn" type="button" disabled={blocked}
               title={noteMissing ? 'Write the reason first' : undefined}
-              onClick={() => resolve.mutate({ decision: 'uphold', resolution: note.trim() })}>
+              onClick={() => setDecision({ decision: 'uphold', resolution: note.trim() })}>
               Keep the recorded score
             </button>
             <button className="btn crit" type="button" disabled={blocked}
               title={noteMissing ? 'Write the reason first' : undefined}
-              onClick={() => resolve.mutate({ decision: 'reject', resolution: note.trim() })}>
+              onClick={() => setDecision({ decision: 'reject', resolution: note.trim() })}>
               Throw the result out
             </button>
           </span>
@@ -447,6 +448,12 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
         </>
       )}
 
+      <Modal open={decision !== null} title="Confirm final dispute decision" onClose={() => !resolve.isPending && setDecision(null)}>
+        <Banner kind="warn">{decision?.decision === 'amend' ? `Replace the result with ${decision.scoreData?.a}–${decision.scoreData?.b}. The result is final and the bracket and statistics update.` : decision?.decision === 'uphold' ? 'Keep the recorded result as final. The dispute will close.' : 'Reject the result and undo its effects on the bracket and statistics. A new result must be recorded.'}</Banner>
+        <p style={{ whiteSpace: 'pre-wrap' }}>Reason: {decision?.resolution}</p>
+        {resolve.isError ? <Banner kind="crit">{resolve.error instanceof Error ? resolve.error.message : 'Decision failed.'}</Banner> : null}
+        <button className="btn" disabled={resolve.isPending} onClick={() => setDecision(null)}>Cancel</button>{' '}<button className="btn danger" disabled={resolve.isPending} onClick={() => decision && resolve.mutate(decision, { onSuccess: () => setDecision(null) })}>Confirm final decision</button>
+      </Modal>
       {resolve.isError ? (
         <Banner kind="crit">
           <b>That did not go through.</b>{' '}
@@ -467,20 +474,19 @@ function ResolvePanel({ m, result }: { m: MatchDto; result: MatchResultDto }) {
  * `MATCH_RESULT_ALREADY_VERIFIED` (มีคนเซ็นไปแล้วระหว่างที่เราเปิดหน้าอยู่) ·
  * `DISPUTE_WINDOW_CLOSED` · `DISPUTE_ALREADY_ACTIVE`
  */
-function SignOffError({ verify, dispute, mode }: {
+function SignOffError({ verify, dispute, who }: {
   verify: { isError: boolean; error: unknown }
   dispute: { isError: boolean; error: unknown }
-  mode: MatchDto['mode']
+  who: Confirmer
 }) {
   const failed = verify.isError ? verify.error : dispute.isError ? dispute.error : null
   if (failed === null) return null
   const code = failed instanceof ApiError ? failed.code : ''
+  const signer = confirmerName(who)
   const hint = code === 'SAME_PERSON_CANNOT_VERIFY'
-    ? `The same person cannot both record and confirm a result. ${
-      mode === 'onsite' ? "The winning team's leader" : 'The match referee'} has to confirm this one.`
+    ? `The same person cannot both record and confirm a result. ${signer[0].toUpperCase()}${signer.slice(1)} has to confirm this one.`
     : code === 'WRONG_SUBMITTER_ROLE'
-      ? `On a ${mode} match this is not yours to sign. ${
-        mode === 'onsite' ? "The winning team's leader confirms" : 'The match referee confirms'}.`
+      ? `This one is not yours to sign — ${signer} confirms it.`
       : code === 'MATCH_RESULT_ALREADY_VERIFIED'
         ? 'Somebody signed this off while the page was open. Reload to see where it stands.'
         : failed instanceof Error ? failed.message : 'Something went wrong.'
@@ -495,19 +501,34 @@ function SignOffError({ verify, dispute, mode }: {
 /** The one thing this person can do to this match, if anything. */
 function ActionPanel({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   const eligible = !!m.teamA && !!m.teamB && m.viewer.can.submitResult
-    && (!result || result.status === 'rejected') && m.status !== 'in_progress' && m.status !== 'disputed'
+    && (!result || result.status === 'rejected') && m.status !== 'disputed'
   const [visited, setVisited] = useState(eligible)
   if (eligible && !visited) setVisited(true)
+  const correcting = visited && !USE_MOCK && m.mode === 'onsite'
+    && result?.status === 'submitted' && m.viewer.roles.includes('referee')
   return <>
-    <ActionStatus m={m} result={result} />
-    {visited ? <ResultForm m={m} visible={eligible} /> : null}
+    <ActionStatus m={m} result={result} allowCorrection={!visited} />
+    {visited ? <ResultForm m={m} visible={eligible || correcting} /> : null}
   </>
 }
-function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
+function ActionStatus({ m, result, allowCorrection }: { m: MatchDto; result?: MatchResultDto; allowCorrection: boolean }) {
   const can = m.viewer.can
   const verify = useVerifyResult(m.id, m.tournamentId)
   const dispute = useDisputeResult(m.id, m.tournamentId)
   const [reason, setReason] = useState('')
+  /* OD-58 — แอดมินทั้งมหาวิทยาลัยตัดสินข้อโต้แย้งได้หลัง 48 ชม. นับจากเวลาค้าน · ขอบเขตอ่าน S03b
+     ตรงกับขอบเขตกด S04 เป๊ะ (ฟังก์ชันเวลาเดียวกัน) จึงเปิดแผงตัดสินเมื่ออ่าน S03b สำเร็จ ไม่คำนวณเวลาเอง
+     — เดิมเปิดให้แต่ผู้จัด เพราะแอดมินกดได้แต่อ่านเรื่องไม่ได้ ปุ่มที่กดโดยไม่มีข้อมูลคือปุ่มที่ตัดสินมั่ว */
+  const me = useMe()
+  const universityAdmin = me.data?.adminScope?.scopeType === 'university_wide'
+  const disputed = result?.status === 'disputed' || m.status === 'disputed'
+  const adminRead = useQuery({
+    queryKey: ['matchDispute', m.id],
+    queryFn: () => getMatchDispute(m.id),
+    enabled: universityAdmin && !can.resolveDispute && disputed,
+    retry: false,
+  })
+  const adminMayRule = universityAdmin && adminRead.isSuccess
 
   if (!m.teamA || !m.teamB) {
     return (
@@ -519,10 +540,11 @@ function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
   }
 
   if (result?.status === 'disputed') {
-    return can.resolveDispute ? <ResolvePanel m={m} result={result} /> : (
+    return can.resolveDispute || adminMayRule ? <ResolvePanel m={m} result={result} /> : (
       <Banner kind="crit">
-        <b>Under dispute.</b> {result.disputeRaisedBy?.fullName ?? 'A team'} contested this result.
+        <b>Under dispute.</b> {result.disputeRaisedBy?.fullName ?? 'A participant'} contested this result.
         The organizer decides.
+        {universityAdmin ? ' University-wide admins can rule on it 48 hours after it was raised.' : ''}
       </Banner>
     )
   }
@@ -599,16 +621,32 @@ function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
        isLeaderOfTeam(winner_team_id)) — เดิมโชว์แผงนี้ให้หัวหน้าทั้งสองฝั่ง ฝั่งที่แพ้จึง
        อ่านว่า "You won, so you confirm" แล้วกดไปเจอ 403 WRONG_SUBMITTER_ROLE
        ฝั่งที่แพ้ต้องตกไปแผง Waiting ข้างล่าง ซึ่งมีช่องโต้แย้งให้ตามดีไซน์ */
-    const iConfirm = can.verifyResult
-      && (m.mode !== 'onsite' || result.winnerTeamId === m.viewer.myTeamId)
+    /* OD-55 — ผู้ยืนยันขึ้นกับว่าใครเขียนผล (submittedRole) ไม่ใช่โหมดอย่างเดียว */
+    const confirmer = confirmerOf(m.mode, result.submittedRole)
+    const iConfirm = canConfirm(m, result)
+    /* S02b — กรรมการของแมตช์ online แก้ผลได้ตราบที่ยัง submitted (รวมผลที่ตัวเองเพิ่งแก้) */
+    const correction = m.mode === 'online' && m.viewer.roles.includes('referee')
+      ? <ResultOverride m={m} result={result} />
+      : allowCorrection && !USE_MOCK && m.mode === 'onsite' && m.viewer.roles.includes('referee')
+        ? <details><summary>Correct submitted result</summary><p className="sub">Resubmit the corrected result before verification. The server rechecks your referee assignment and the current result status.</p><ResultForm m={m} /></details> : null
+    const isRefereeOrSubmitter = m.viewer.roles.includes('referee') || (m.viewer.myUserId !== null && result.submittedBy?.id === m.viewer.myUserId)
+    const savedBanner = isRefereeOrSubmitter ? (
+      <Banner kind="ok" icon="check">
+        <b>บันทึกเรียบร้อยแล้ว</b> บันทึกผลการแข่งขันเรียบร้อยแล้ว (รอการยืนยันผล)
+      </Banner>
+    ) : null
+
     if (iConfirm) {
       return (
         <Panel>
           <span className="tag"><em>//</em> Your confirmation</span>
+          {savedBanner}
           <Banner kind="warn">
-            {m.mode === 'onsite'
+            {confirmer === 'winning_leader'
               ? <><b>You won, so you confirm.</b> The losing side does not sign off — they raise a dispute instead.</>
-              : <><b>You are the referee.</b> Check the submitted score against the record before confirming.</>}
+              : confirmer === 'referee'
+                ? <><b>You are the referee.</b> Check the submitted score against the record before confirming.</>
+                : <><b>The referee entered this result.</b> Either team leader can accept it — confirming means your side agrees with it, even if you lost. If you don&apos;t, dispute it instead.</>}
           </Banner>
           {USE_MOCK && can.disputeResult ? (
             <Field label="Reason, if you are disputing instead" htmlFor="dp-why">
@@ -629,16 +667,18 @@ function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               {verify.isPending ? 'Confirming…' : 'Confirm result'}
             </button>
           </div>
-          <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
+          <SignOffError verify={verify} dispute={dispute} who={confirmer} />
+          {correction}
         </Panel>
       )
     }
     return (
       <Panel quiet>
         <span className="tag"><em>//</em> Waiting</span>
+        {savedBanner}
+        {correction}
         <div className="sub">
-          Entered by {resultRecorder(result)}. Waiting on the{' '}
-          {m.mode === 'onsite' ? 'winning team leader' : 'referee'} to confirm.
+          Entered by {resultRecorder(result)}. Waiting on {confirmerName(confirmer)} to confirm.
         </div>
         {USE_MOCK && can.disputeResult ? (
           <>
@@ -651,24 +691,29 @@ function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
               onClick={() => dispute.mutate({ reason: reason.trim(), teamId: m.viewer.myTeamId ?? 0 })}>
               Dispute this result
             </button>
-            <SignOffError verify={verify} dispute={dispute} mode={m.mode} />
+            <SignOffError verify={verify} dispute={dispute} who={confirmer} />
           </>
         ) : null}
       </Panel>
     )
   }
 
-  /* กำลังแข่ง — ยังส่งผลไม่ได้จนกว่าจะกดจบ (OD-26 · S01 ตอบ MATCH_NOT_FINISHED)
-     เดิมฟอร์มผลเปิดตรงนี้ให้กรรมการกรอกครบทุกช่องแล้วค่อยเด้ง พร้อมข้อความว่า "ต้องกดจบ
-     การแข่งขันก่อน" ทั้งที่ไม่มีปุ่มจบให้กดที่ไหนเลย — บอกลำดับให้ถูกตั้งแต่ก่อนเริ่มกรอก */
+  /* กำลังแข่ง — สามารถใส่คะแนนและสถิติได้เลย และการกดส่งผลคะแนนจะจบการแข่งขัน (finish match) ให้โดยอัตโนมัติ */
   if (m.status === 'in_progress') {
+    if (can.submitResult) {
+      return (
+        <>
+          <Banner kind="warn">
+            <b>การแข่งขันกำลังดำเนินอยู่:</b> คุณสามารถกรอกผลคะแนนและสถิติได้ทันที การกดส่งผลจะจบการแข่งขันให้โดยอัตโนมัติ
+          </Banner>
+        </>
+      )
+    }
     return (
       <Panel quiet>
         <span className="tag"><em>//</em> Being played</span>
         <div className="sub">
-          {can.finishMatch
-            ? 'The result form opens once the match is finished — use Finish the match above when play ends.'
-            : `The result is recorded after the ${m.mode === 'onsite' ? 'referee' : 'referee or organizer'} finishes the match.`}
+          The match is currently in progress. The score will be recorded after the {m.mode === 'onsite' ? 'referee' : 'referee or organizer'} finishes the match.
         </div>
       </Panel>
     )
@@ -686,6 +731,7 @@ function ActionStatus({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
         <div className="sub">
           A result was recorded and one of the squads is disputing it. Only the organizer, this
           match&apos;s referees and the two squad leaders can see the score while that is settled.
+          {universityAdmin ? ' As a university-wide admin you can read and rule on it once 48 hours have passed since it was raised.' : ''}
         </div>
       </Panel>
     )
@@ -752,18 +798,26 @@ export function MatchPage() {
   if (!matchId || isError) return <Empty icon="warn" title="No such match" />
   if (isPending) return <Panel quiet><span className="sub">Loading the match…</span></Panel>
 
-  const tab = TABS.includes(tabParam ?? '') ? tabParam! : 'overview'
+  const tab = tabParam === 'pickem' ? 'community' : TABS.includes(tabParam ?? '') ? tabParam! : 'overview'
   /* ใบผล (S05) เปิดให้เฉพาะผู้จัด กรรมการของแมตช์ และหัวหน้าสองทีม คนอื่นได้ 404
      เดิมเขียน `?? null` ทับ ผู้เล่นธรรมดาจึงเห็นป้ายเป็น "Check-in open" ขณะที่หัวหน้าทีม
      เห็น "Awaiting confirmation" ทั้งที่ M05 ส่ง resultStatus มาให้ทุกคนอยู่แล้ว (B5) */
   const state = matchStateOf({ ...m, resultStatus: result?.status ?? m.resultStatus })
   /* ผลที่ผู้จัดยกทิ้งยังมีสกอร์เดิมติดมาในใบ แต่มันไม่นับแล้ว — วาดขึ้น scorebug ต่อเท่ากับ
      ประกาศสกอร์ที่เพิ่งถูกยกเลิกว่าเป็นผลของแมตช์ */
-  const sc = result?.status === 'rejected' ? { a: null, b: null, decider: null } : scoreOf(result, m)
+  const sc = result?.status === 'rejected'
+    ? { a: null, b: null, decider: null }
+    : (result?.status === 'submitted' && result?.originalScoreData)
+      ? scoreOf({ ...result, scoreData: result.originalScoreData }, m)
+      : scoreOf(result, m)
   const settled = isSettled(result)
   const winnerId = settled ? result?.winnerTeamId ?? null : null
   const isInLineup = m.viewer.myUserId !== null
     && [m.teamA, m.teamB].some(team => team?.players.some(player => player.id === m.viewer.myUserId))
+
+  const hasOverride = result?.status === 'submitted' && !!result?.overriddenScoreData
+  const ovA = result?.overriddenScoreData?.a ?? (m.teamA ? result?.overriddenScoreData?.[String(m.teamA.id)] : null)
+  const ovB = result?.overriddenScoreData?.b ?? (m.teamB ? result?.overriddenScoreData?.[String(m.teamB.id)] : null)
 
   return (
     <div className="match-page">
@@ -783,6 +837,14 @@ export function MatchPage() {
             linkTeams={!USE_MOCK || !!findStoreMatch(matchId)}
           />
       </div>
+          {hasOverride ? (
+            <Banner kind="warn" icon="clock">
+              <b>มีการแก้ไขคะแนน:</b> มีการแก้คะแนนเป็น{' '}
+              <b>{m.teamA?.name ?? 'ทีม A'} {ovA !== undefined && ovA !== null ? String(ovA) : '—'} - {ovB !== undefined && ovB !== null ? String(ovB) : '—'} {m.teamB?.name ?? 'ทีม B'}</b>
+              {result?.overrideReason ? ` (เหตุผล: “${result.overrideReason}”)` : ''}
+              {' — '}คะแนนบนสุดจะยังคงเป็นคะแนนเดิมจนกว่าจะได้รับการยืนยันผล
+            </Banner>
+          ) : null}
       <div className="match-summary-pair">
         <MatchNextStep m={m} result={result} />
         <div className="match-details">
@@ -860,11 +922,12 @@ export function MatchPage() {
                   {team.players.length ? (
                     <TableWrap label={`${team.name} lineup`}>
                       <table>
-                        <thead><tr><th>Player</th><th>Check-in</th></tr></thead>
+                        <thead><tr><th>Player</th><th>Role</th><th>Check-in</th></tr></thead>
                         <tbody>
                           {team.players.map(player => (
                             <tr key={player.id}>
                               <td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td>
+                              <td>{player.isCaptain ? <Badge kind="warn">Captain</Badge> : <span className="sub">Member</span>}</td>
                               <td>{player.checkinStatus === 'checked_in' ? <Badge kind="ok">Checked in</Badge>
                                 : player.checkinStatus === 'pending_verification' ? <Badge kind="warn">Pending verification</Badge>
                                   : player.checkinStatus === 'rejected' ? <Badge kind="crit">Rejected</Badge>

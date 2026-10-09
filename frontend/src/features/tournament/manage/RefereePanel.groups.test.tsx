@@ -1,9 +1,11 @@
-import { render, screen, within } from '@testing-library/react'
+import { render } from '../../../test/renderWithQueryClient'
+import { screen, within } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
 import { ApiError } from '../../../api/client'
 const source = vi.hoisted(() => ({ error: null as Error | null, acceptedCount: 1 }))
 vi.mock('../../../hooks/useAdmin', () => ({
+  useRefereeCoverage: () => ({ data: undefined }),
   useTournamentReferees: () => ({ data: { acceptedCount: source.acceptedCount, awaitingAdminCount: 1, items: [
     { id: 1, user: { id: 7, fullName: 'Active Referee' }, isActive: true, invitationStatus: 'accepted' },
     { id: 2, user: { id: 8, fullName: 'Invited Referee' }, isActive: false, invitationStatus: 'pending' },

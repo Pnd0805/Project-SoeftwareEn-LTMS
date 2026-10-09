@@ -1,7 +1,365 @@
-# `feat/1` — Current Frontend Integration Plan
+# Final_Present — Current Integration
 
-Frontend branch: `feat/1`
+Frontend branch: `Final_Present`
 API base path: `/api/v1`
+
+## Final_Present sync — 2026-10-09
+
+- [x] Verified and integrated the 40 missing `feat/1` commits through `dd50305`
+  and 7 missing `BE_KN` commits through `000d9ec`, preserving presentation UI.
+- [x] Backend build/unit/MySQL integration checks, 52 migrations and C1–C8 audit.
+- [x] Frontend build/lint and 1,097 regression assertions; live API reads through
+  Vite verified. Exact process results and evidence are in the current report.
+- [x] [Current integration report](docs/FINAL-PRESENT-SYNC-2026-10-09.md).
+- [ ] Browser/device, real SMTP and upstream OTP-enforcement acceptance remain
+  open as documented in that report. No commit or push requested/performed.
+
+The records below are historical `feat/1` implementation/QA snapshots, with their
+original dates and environments; their results do not replace current evidence.
+
+## Round 7 — historical implementation, 2026-10-08
+
+- [x] Verified ls-remote/fetch `BE_KN@000d9ec798b0774e304abee228ab1172ff1edb51`; Round 7 + reviewer impact (`ce5f79f`) + focused fixture script are already pushed by BE.
+- [x] Pick'em server pagination/query keys/navigation/refresh; preserve global ranks and ties; acknowledge BE cache up to 5 seconds. Loading/error/missing-pagination response does not masquerade as an empty/full leaderboard.
+- [x] External signup submits only personal data, even after returning from internal student fields; KU still requires step two/reference reads. Domain classification warning and nullable academic profile handling added; OTP unchanged.
+- [x] New closure warning/closure notification labels, categories, icons and tournament links; critical settings remain immutable, tournament settings remain mutable.
+- [x] FE-39 option A implemented: request-ID impact on opening admin confirmation; scope/actor cache isolation; current stored payload/reason/self-request warning; real blockers/affected teams; no approval during loading/refresh/error/already-decided states. Approval still rechecks at BE.
+- [x] Hourly job/BR-03 and migration 052 staff classification acknowledged. FE permissions remain based on adminScope, not a staff label.
+- [x] BE delivered focused 9054 script and updated baseline/canonical 9053 key at `000d9ec`. The earlier request for a BE script is resolved.
+- [x] Full developer checks: **101 files / 681 tests**, lint, TypeScript/build, diff check; existing main chunk warning (952.83 kB). Isolated Vite 5197 registration/changed modules HTTP 200. No browser/manual QA performed.
+- [x] Implementation commit `6f6f658`; task-owned Vite PID 1824 stopped. Unrelated notice files/handover deletions preserved; no FE push requested in this task.
+- [x] [Current To-Backend response](TO-BACKEND-2026-10-08-qa-round7-response.md). Original FE-01–FE-43: **42 implemented / 1 partial**, FE-10 browser timing remains partial. This describes implementation, not QA sign-off.
+- [ ] Runtime operator applies latest migrations and focused fixture to the existing QA DB; rerun minio-init and verify 9054 object, preserve missing 9053 object. No DB/BE mutations performed by FE in this task.
+- [ ] Await BE merge of real SMTP and server enforcement of email verification in login/protected access. Current fetched login still issues tokens without email_verified gate.
+- [ ] Authenticated API/browser/device/MinIO preview/expiry and FE-10 timing acceptance remain separate work.
+
+## Account registration steps — historical before Round 7, 2026-10-08
+
+External registration blocker below was resolved by Round 7; retain this section as the prior implementation record.
+
+- [x] Verified remote/fetched `BE_KN@240e9e62ca5aa5c429e9e7159414692c2052ae45`; inspected register schema/service and exact @ku.th classification.
+- [x] Personal details in step one; internal email alone advances to a separate student-details step. Back retains the draft in memory; no password persistence in URL/storage.
+- [x] Submit only after valid student details and successful reference reads; no automatic faculty/department ID 1. Changing faculty clears the old department; loading/empty/error/retry states included.
+- [x] Server errors for personal fields return to step one; successful registration retains the existing OTP flow.
+- [ ] External personal-only registration requires BE conditional fields/service/nullable contract. Current BE still requires facultyId/departmentId/year for all emails; FE does not post an invalid body or invent academic values.
+- [x] [Registration contract handoff](TO-BACKEND-2026-10-08-registration-two-step.md). This additional feature does not change original FE-01–FE-43 implementation counts.
+- [x] Implementation `31d52f0`: final 99 files / 659 tests passed, lint/TypeScript/build/diff check passed; existing main 949.00 kB warning. Isolated Vite 5196 registration route/changed modules HTTP 200, task-owned server stopped.
+- [ ] Authenticated external registration and SMTP/OTP acceptance after BE delivery; no browser/manual QA performed for this implementation.
+
+## QA Response Round 6 — historical implementation, 2026-10-08
+
+FE-39 route and focused fixture script below were delivered after this snapshot; see Round 7 above.
+
+- [x] Verified remote/fetched BE_KN@4b51af59850899fc999032f6d7632979b791ae0e and current source.
+- [x] Flat TEAM_CONFLICT_OF_INTEREST metadata drives pending/accepted/organizer recovery across invite, accept and join request. Accepted team admission never suggests waiting for expiry or unchecking a registration player.
+- [x] Canonical 9053 missing-file key in tests; valid 9054 stays a separate fixture. No client object-key construction.
+- [x] REFEREE_IDENTITY_KEY_INVALID recovery: fresh presign/upload on retry and unchanged API-returned keys; selected files retained, no false success on rejection.
+- [x] FE-39 option A selected: request-ID impact read when opening review details. DB/MinIO environment supplied to BE for focused fixture population.
+- [x] [Round 6 To-Backend](TO-BACKEND-2026-10-08-qa-round6-response.md); original checklist remains 41 implemented / 2 partial (FE-10 timing, FE-39 reviewer impact).
+- [x] Implementation commit `1a7d519`; full suite 98 files / 639 tests passed with 2 workers, lint/TypeScript/build/diff check passed. Initial concurrent QR test timeout passed in isolation and on the full rerun; no QR code/timeout edits. Existing main 944.22 kB chunk warning.
+- [x] Isolated Vite 5195 root/changed modules HTTP 200; task-owned server stopped. No browser/manual QA or new authenticated API acceptance pass claimed.
+- [ ] BE must deliver reviewer-authorized impact route/schema before FE-39 can close.
+- [ ] BE focused fixture population/canonical DB keys and authenticated MinIO preview/expiry acceptance.
+- [ ] FE-10 timing and authenticated browser/device acceptance remain open; latest owner clarification: waiting for BE to merge real SMTP instead of simulated mail, then verify OTP delivery/enforcement. Other decisions await team.
+- [ ] OTP bypass still open (owner report 8 Oct, verified BE_KN@240e9e6): login issues tokens and loadUser accepts them without email_verified enforcement. SMTP setup alone does not close this production blocker. [Updated BE evidence](TO-BACKEND-2026-10-06-otp-login-bypass.md).
+
+## Error/status conflict follow-up — historical implementation, 2026-10-07
+
+- [x] Read ERROR-CODES-status-conflicts-2026-10-07; verified/fetched `BE_KN@77039f6b0abb4767e194cde825dc5555cadf9c8f`. BE already implemented option A after the notice snapshot.
+- [x] Distinguish schedule form 400 SCHEDULE_INCOMPLETE from lifecycle/FR02 409 MATCH_NOT_SCHEDULED without parsing server messages.
+- [x] Form highlights only known missing request fields; accessible descriptions and draft-edit error reset. Inputs remain locked while saving.
+- [x] Lifecycle recovery explains organizer scheduling and links organizer to the fixture editor; referees receive organizer guidance. FR02 handles absent optional missing metadata.
+- [x] Legacy 409 SCHEDULE_INCOMPLETE remains supported for an older running backend; it never becomes a 400 form-field error.
+- [x] Target-user 404 remains an API error without clearing the session; no code-based USER_NOT_FOUND login redirect. NO_ACTIVE_DISPUTE/REFEREE_NOT_ASSIGNED keep existing endpoint/status semantics.
+- [x] [Updated contract and BE handoff](TO-BACKEND-2026-10-07-error-status-response.md).
+- [x] Implementation commit `579309f`; final 97 files / 618 tests, lint, TypeScript/build and diff check passed. Existing main 943.27 kB warning; isolated Vite 5195/changed modules HTTP 200 and task-owned server stopped.
+- [ ] Original FE-39 reviewer impact remains undelivered. Team invitation conflict metadata was subsequently delivered/integrated in Round 6 above.
+- [ ] Authenticated runtime/browser/real-device acceptance and FE-10 performance timing remain open; no browser/manual QA requested this round.
+
+## QA Response Round 5 — historical implementation, 2026-10-07
+
+- [x] Read Round 5; verified ls-remote/fetched `BE_KN@234e4a15183ac9f64f66d2242afc531623ee02f1` and inspected source at that ref.
+- [x] openedBy explains event_start/first_match/completed from the delivered field; future opensAt is not presented as the opening date for first_match/completed. canSubmit remains server-owned.
+- [x] Root/unassigned Faculty queue tabs hidden, queries disabled, direct URLs explain access; 403 is an error, never an empty queue.
+- [x] Queue cache separates actor/scope; stale rows and confirmations hidden after scope changes or queue errors. Root scope/audit/oversight access retained.
+- [x] IdentityDocs preserves the new 9054 PNG presigned URL and existing 9053 missing-file recovery; no key-prefix assumption.
+- [x] BE fixture delivery acknowledged; no BE edits, seed reload, migration rerun or browser/manual QA performed. User's prior migration confirmation retained.
+- [ ] Existing local DB/bucket fixture 9054 population and real preview/expiry acceptance remain unverified.
+- [ ] FE-39 reviewer-authorized pre-approval impact still requires BE delivery; Round 5 added neither contract, while Round 6 subsequently delivered team invitation metadata above.
+- [ ] FE-10 browser performance timing and remaining authenticated/browser/device acceptance.
+- [x] Original checklist remains 41 implemented / 2 partial; [Round 5 response](TO-BACKEND-2026-10-07-qa-round5-response.md).
+- [x] Implementation committed in `65da597`. Final developer checks: 97 files / 599 tests, lint, TypeScript/build and diff check passed; existing main 941.47 kB chunk warning. Isolated Vite 5195/changed modules HTTP 200, task-owned server stopped.
+
+## QA Response Round 4 — historical implementation, 2026-10-07
+
+- [x] Read Round 4; verified ls-remote/fetched `BE_KN@7e37d9374d5a6ae42370a6d6a58ed5d1e2a5cec9`.
+- [x] ALREADY_APPLIED recovery distinguishes active team applications from player conflicts.
+- [x] Referee expired status survives the adapter, has explicit copy and allows re-invitation.
+- [x] REFEREE_INVITATION_EXPIRED recovery displays supplied deadline and refreshes stale inbox.
+- [x] Structured pending/accepted conflict recovery and deadline feedback; no message parsing.
+- [x] Own-result recovery uses resultStatus/mode; onsite submitted-result resubmission is available to assigned referees, verified results cannot use it.
+- [x] Preserve server outLabel/null and published rank/order; do not add elimination labels to round robin.
+- [x] Organizer amendment preview uses the exact current payload; no submission before a successful matching preview; editing invalidates it. All blockers and pending request shown separately.
+- [x] Paginated removed feedback with content/reason/actor; Faculty/University reads, Root denied, restoration only from delivered canRestore with confirmation and cache refresh.
+- [x] User confirms migrations completed; FE did not run migrations or change BE files.
+- [ ] FE-39 full admin pre-approval impact: delivered preview requires organizer; request a reviewer-authorized read contract or metadata on queue rows.
+- [x] openedBy and valid second MinIO fixture delivered in Round 5; FE integration above. Runtime acceptance is separate.
+- [ ] Browser/manual QA skipped at user request; live API acceptance was not rerun this round.
+- [x] Current status and BE handoff: [Round 4 response](TO-BACKEND-2026-10-07-qa-round4-response.md).
+- [x] Developer verification: 96 files / 576 tests, lint, TypeScript/build and diff check passed; existing 939.31 kB chunk warning. Isolated Vite 5194/changed modules HTTP 200, then stopped.
+
+## Notice / QA implementation — 2026-10-07 (historical initial round)
+
+- [x] Read today's TO-FE, TO-team and FE-01–FE-43. Verified/fetched
+  `BE_KN@8d161a6d25b1ebc501e1412bde37b911cfdea4de`.
+- [x] Implemented 36 FE issues; 5 partial and 2 blocked by missing BE routes/DTO.
+  Full issue-by-issue status: [FE-QA-ACTION-LIST-2026-10-07.md](FE-QA-ACTION-LIST-2026-10-07.md).
+- [x] Server-owned BO capability and legacy null clearing; Root/University Admin
+  Suspend protection; expired referee identity and 30-day UI reminder.
+- [x] Registration windows/status refresh; completed-match fixture progress;
+  real completed status instead of date-based completion; completed withdrawal guard.
+- [x] Team public/admission management, profile/contact/statistics settings,
+  notification preferences, user-report evidence + admin queue, read-only oversight,
+  paginated audit history and reported-feedback moderation per tournament.
+- [x] Approval/draw/dispute confirmations, announcement CRUD/types/trim,
+  readable dates/copy, accessible validation/stat inputs, guest/session/cache gates.
+- [x] Developer validation: **92 files / 543 tests**, lint, TypeScript/production build
+  and diff check pass. Main bundle 924.20 kB; existing >500 kB warning remains.
+- [x] Isolated Vite port 5193: app routes and changed modules HTTP 200, then stopped.
+- [x] Local contract note: [API-CONTRACT-2026-10-07.md](API-CONTRACT-2026-10-07.md).
+  BE handoff: [TO-BACKEND-2026-10-07-frontend-qa-response.md](TO-BACKEND-2026-10-07-frontend-qa-response.md).
+- [ ] BE self-leave, eliminated-round standings, richer safe user search,
+  affected-team count, global feedback/deleted-history listing and DOB/year validation.
+- [x] Migration 046/047 verified in running local QA; 66 authenticated API/adapters checks passed.
+  [Live evidence and BE findings](QA-LIVE-2026-10-07.md). Audit Faculty permission gate fixed;
+  4 files / 25 focused tests, lint and build passed (main 924.47 kB).
+- [ ] SMTP/OTP and team decisions (B2/B4/cancellation/type backfill/rewards).
+- [ ] Live authenticated acceptance, reload/role/privacy/MinIO/token reset,
+  mobile/light/manual/online/real-device QA. API now running, but no browser surface
+  is connected; API integration does not close browser/device acceptance.
+
+## External referee change integration — 2026-10-06
+
+- [x] Read External To-FE; verified/fetched BE_KN@29a6aec (includes 4703e35).
+  Inspected server-owned F01 classification and AR01/AR02 docsSubmitted gate.
+- [x] Invitation option A: no editable classification; remove faculty/userType
+  inference and candidate profile dependency. Display returned F01 isExternal
+  after invitation, retain server classification in the pool and warning counts.
+- [x] AR01 docsSubmitted preserved through per-tournament adapter rows; one queue
+  with waiting-docs / waiting-review badges. Missing field shows unknown/Retry.
+- [x] Approve disabled unless docsSubmitted is true; Request documents/Reject
+  remain usable without documents. DOCS_NOT_SUBMITTED has actionable copy/refetch.
+- [x] Answered BE questions 1–5 in
+  `TO-BACKEND-2026-10-06-external-referee-response.md`; cancellation/expiry are
+  recommendations awaiting team decisions, not speculative implementation.
+- [x] Focused API/UI verification: 3 files / 35 tests passed.
+- [x] Full suite: 80 files / 494 tests passed; lint, production build and diff
+  check passed. Isolated Vite port 5191 served Admin, Manage and both changed
+  UI modules HTTP 200, then was stopped. Existing >500 kB main-bundle warning
+  remains. HTTP smoke checks do not establish authenticated browser acceptance.
+- [ ] Live invitation/classification/reload and no-docs -> submit -> review
+  acceptance, request-docs/reject and stale 409; private document reads still
+  need BE delivery. See the response for details.
+
+## OTP login bypass report — 2026-10-06
+
+- [x] Verified/fetched remote BE_KN@29a6aec: login checks credentials and
+  suspension, then issues a token without checking `email_verified`; auth loader
+  also omits this gate. The user's bypass is consistent with current source.
+- [x] Removed Login link from pending OTP; show a verification instruction.
+  Login button is available only after successful OTP verification in this step.
+- [x] Developer verification: 7 Auth UI tests, lint, build and diff check passed;
+  existing main-bundle size warning remains. Backend enforcement is still open.
+- [ ] Backend enforcement and old-token rejection are required; frontend link
+  removal does not prevent direct `/login` or direct login API access. See
+  `TO-BACKEND-2026-10-06-otp-login-bypass.md` for proposed contract and regressions.
+- [ ] Live acceptance: deny login before verification, accept after valid OTP;
+  wrong/expired OTP and previously-issued tokens must not bypass the gate.
+
+## F14 / U04 backend reply integration — 2026-10-06
+
+- [x] Read `FE-Notice/TO-FE-2026-10-06-f14-cross-tournament-and-u04.md`;
+  verified remote BE_KN and fetched `c524726fe9a5d0d81ab8168847178b450f6dedb3`
+  into this frontend checkout. Inspected organizer-only F14 route/service and
+  U04 approved/withdrawn result-stat writes. Backend working tree was not changed.
+- [x] F14 DTO/adapter retains only `userId`, local `matchId`, `conflictCount`;
+  absent additive field defaults to an empty list for older running servers.
+- [x] Organizer Manage -> Referees displays every affected local match, referee
+  name (ID fallback), count of overlapping outside matches, round and Bangkok
+  start/end times when available. Links open the local Fixture for schedule or
+  assignment changes; no outside tournament/match details are requested or shown.
+- [x] Fixture displays the current match's warning; coverage refreshes after
+  schedule/assignment/result changes, on entry/focus and every 30 seconds while active.
+  Warning does not disable schedule saves or change staffing/publication rules.
+- [x] Required coverage loading/error/Retry and enrichment failure/Retry remain
+  explicit; enrichment failure keeps ID-based warnings visible.
+- [x] U04 option A is delivered by backend; retain API totals and award behavior.
+  No FE recount or local database rewrite is performed.
+- [x] Developer tests: full suite 79 files / 485 tests passed; additional schedule
+  invalidation regression 1 file / 1 test passed (486 tests across 80 files).
+- [x] Lint, production build and diff check passed. Vite on isolated port 5190
+  served Manage, Fixture and the warning module HTTP 200; the owned server was
+  stopped. Existing >500 kB main-bundle warning remains. HTTP delivery is not
+  live authenticated browser/API acceptance.
+- [ ] Live acceptance: reschedule to create a conflict, inspect Referees and
+  Fixture, reload, resolve by rescheduling/reassignment and verify warning removal;
+  include several local matches for one referee and organizer privacy checks.
+- [ ] Local U04 acceptance: withdraw before result verification and compare U04
+  with U14/RW05. Historical totals are not automatically backfilled; report any
+  pre-fix mismatch to BE for an agreed recount, without resetting a user's database.
+
+## Latest To-FE / To-Team follow-up — 2026-10-06
+
+- [x] Verified/fetched remote `BE_KN@7add50c47d48f1ba6c566836ff7ffbe098df148e`.
+- [x] Personal schedule uses unfiltered `/me/matches` conflict IDs across roles;
+  visible match/time/role links, missing-time warning and required-read error/Retry.
+  Server rows remain visible beyond enrichment limits; duplicate roles are merged.
+- [x] Referee acceptance preserves the cross-tournament error and offers the
+  returned existing-match link to the delivered withdrawal flow; no automatic release.
+- [x] Successful invitation displays the server warning count without another
+  tournament's details. Current pool invitations have no offered matches (count 0).
+- [x] RW05 match history on own/public profiles retains wins/losses/scores and
+  withdrawn badges, distinguishes privacy/empty/failure states and refreshes after
+  result writes. U14 withdrawn display already delivered; U04 totals remain unchanged.
+- [x] Updated To-Backend with ID/summary answers, F14 count-only field request,
+  U04 recommendation and cancellation impact inventory.
+- [x] F14 crossTournamentConflicts: delivered in BE_KN@eba889a and integrated
+  in organizer Referees and per-match Fixture; see the follow-up below.
+- [x] U04 counting semantics: BE_KN@c524726 implements option A, including
+  withdrawn applications at result verification. FE continues displaying U04 totals.
+- [ ] U04 local-data acceptance/backfill and tournament cancellation decision
+  remain separate open items; older totals are not automatically recounted.
+- [ ] Authorized External identity document reads and optional rewards contracts/assets.
+- [ ] Live-browser acceptance: cross-role/time warnings and links, missing times,
+  refusal/withdrawal recovery, invitation warning success, withdrawn win/history/privacy.
+- [x] Developer validation: 78 files / 478 tests passed; lint and production build
+  passed. Isolated Vite 127.0.0.1:5189 served Matches/Profile and new modules HTTP 200,
+  then was stopped. Existing >500 kB main-bundle warning remains.
+
+## FE Checklist delivery — 2026-10-06
+
+Current contract for this delivery: remote `BE_KN@63045d17188cec87577122dc4146de423073abbf`,
+verified with `git ls-remote` and fetched on 2026-10-06. The references below this
+section describe earlier reviews, not the contract used for this delivery.
+
+- [x] A1/A2: email OTP, six-character string (including leading zeros), resend
+  cooldown 60 seconds and 3/hour quota copy. A successful resend response is
+  described as an accepted request; it does not promise email delivery.
+- [x] A3/D1: public `/reset-password?token=<64 hex>` and `/forgot-password`,
+  password/confirmation validation, expired-link feedback and login navigation.
+  Calls the delivered auth routes; no login is required to open either form.
+- [x] A4/A5/B4: retain online referee Edit result, assignable transfer targets
+  including referees with no assignments, and university-admin dispute read gate.
+- [x] A6/B1/C4: `/me/rewards`, catalogue and public displayed rewards; trophy
+  fallback for missing artwork, Hide checkbox sends `isDisplayed: false`.
+  Refresh on entry/focus, every 30 seconds while active and after result writes;
+  refreshed IDs replace the list even when the item count is unchanged.
+- [x] B2/B3/OD-69: Pick'em sends team-ID `scoreData`. Match `pickemTolerance`
+  controls rule text; sport `pickemPoints` controls points and settled tier labels.
+  Result/prediction/correction/organizer/complaint forms share server-provided BO
+  score choices. `bestOf: null` retains unrestricted integer scores.
+- [x] OD-69 BO setup: optional field when creating VALORANT/RoV/Badminton;
+  fixture has separate whole-tournament and single-match writes. Whole-tournament
+  overwrite requires review confirmation. Lock after any match starts, check all
+  tournament matches, handle `MATCH_FORMAT_LOCKED` and both score-format errors.
+  Removed the incorrect per-browser localStorage lock and swallowed write errors.
+- [x] B5: preserve logos through shared match/standings views and complete missing
+  Inbox invitations, own/public-profile squads, both admin team queues, tournament
+  entries, champion and runner-up displays. Shared marks handle absent/broken logos
+  separately from a missing team slot.
+- [x] C1/C2/C3: own/public profile distinguish MVP awards and votes; result reads
+  distinguish hidden/deleted submitters and retain submitted time; urgent and
+  ordinary announcement notifications both open Announcements.
+- [x] FR09 compatibility: nullable `matchA`, withdrawal type/scope/reason, safe
+  Inbox/fixture/planner reads and recipient decision controls. This closes the
+  breaking-read change, not the entire withdrawal feature.
+- [x] Developer verification: `npm.cmd test -- --maxWorkers=2` passed 70 files /
+  446 tests; lint and production build passed. Vite started on 127.0.0.1:5188;
+  reset-password HTML returned HTTP 200. Existing >500 kB main-bundle warning.
+- [x] Local Auth acceptance reported by the user on 2026-10-06: verification
+  and recovery email received, password reset completed with a different password,
+  new-password login accepted, old-password login rejected, used reset link
+  rejected, and incorrect/expired OTP rejected. Email evidence is from local
+  Mailpit; external SMTP/inbox delivery is not established by this check.
+- [x] OTP quota-feedback fix (2026-10-06), verified against fetched remote
+  BE_KN@29a6aec: AV02 intentionally returns identical HTTP 200 at quota, so FE
+  tracks browser requests per email in a rolling hour, including registration.
+  After 3 accepted requests show an explicit quota warning, retry wait and disabled
+  resend; cooldown and history survive reload. Clears stale success text at quota.
+  Server issuance history on other browsers is unknown; this is local UI feedback,
+  not a claim that each accepted request sent an email or that server quota is known.
+- [x] OTP developer regressions: 7 tests cover 60-second cooldown, rolling-hour
+  release, three-request warning, reload, per-email isolation, failed requests
+  and leading-zero string submission. These are not live Mailpit acceptance.
+- [ ] Remaining Auth acceptance: resend cooldown (60 seconds) and quota
+  (3/hour, including no additional email when exhausted), leading-zero OTP,
+  and an expired reset link. These cases were not reported as tested.
+- [ ] Other live acceptance: BO save/reload and concurrent lock; each logo
+  route with an uploaded image; reward visibility/revocation as owner and guest;
+  university-admin deadline/permission checks and urgent announcement navigation.
+  No connected browser was available for agent inspection. The Auth checks above
+  are user-reported acceptance; HTTP HTML delivery alone is not browser acceptance.
+- [x] Local DB migrations through 045 applied on 2026-10-06 during OTP recovery.
+- [x] FR09 UI: referee withdrawal for one future match or the whole tournament,
+  5–500-character reason, pending-consent copy, outgoing history/cancellation,
+  organizer queue/history and confirmed approve/decline with assignment refresh.
+  Whole-tournament withdrawal is available from the tournament page after active
+  referee access is checked; approved External pool referees also have it in Profile.
+- [x] External profile badge reads `/me/referee-identity` and distinguishes none,
+  pending, needs_docs, approved, rejected, loading and errors; mock mode does not
+  infer approval from user category. Refresh on focus and every 30 seconds.
+- [x] External identity documents UI: JPEG/PNG 1–5 files uploaded using the
+  `referee_identity` purpose before submitting keys to U12. Supports initial
+  submission/resubmission and Admin request-docs with a reason of up to 500 characters.
+  Admin sees document count/filenames and the organizer sees needs_docs correctly.
+- [x] AR01 document links (BE_KN `462fdb1`, 20-minute presigned URLs): the admin
+  queue links each file by name and previews images (`features/admin/IdentityDocs.tsx`).
+  A failed image load says the document could not be opened and offers Refresh
+  queue — never "no documents". Links older than 18 minutes prompt a refresh.
+  "Submitted but no link" is shown apart from "nothing submitted". Live 6 Oct:
+  the seed file for 9053 returns 404 from MinIO and the queue shows the
+  could-not-open state. A PDF failure cannot be detected across origins, so
+  PDFs rely on the expiry notice.
+- [ ] Live acceptance for the new identity/docs and FR09 flows, including
+  organizer decisions, cancellation, duplicate/stale requests and cross-tournament
+  conflicts, remains deferred. Developer checks do not close these cases.
+- [x] Amendment change display: replace raw JSON in organizer history and raw
+  keys/object strings in Admin review with field labels, dates, counts and
+  eligibility descriptions. Existing 9 tests, lint/build and sample values passed.
+- [ ] User visual acceptance for the revised amendment Changes display (deferred).
+- [x] U04 withdrawn totals and F14 cross-tournament coverage fields delivered
+  and consumed; see the current F14/U04 section for remaining live acceptance.
+- [ ] Backend/product follow-up: optional reward criteria/progress/artwork
+  contracts and tournament cancellation decision. See the handoff below.
+
+Handoff: `TO-BACKEND-2026-10-06-frontend-checklist-response.md`.
+
+### Final frontend workflow verification — 2026-10-06
+
+- [x] Identity/docs and withdrawal delivery checked against fetched remote
+  `BE_KN@8a75156f8102a2a091301817d62275ad3a00f1ab`.
+- [x] Full suite: 74 files / 464 tests passed; lint and production build passed.
+  Vite started on 127.0.0.1:5189; Profile, tournament referee management and new
+  component modules returned HTTP 200. The owned verification server was stopped.
+  Existing >500 kB main-bundle warning remains. These checks do not establish
+  real-browser acceptance; the deferred cases above remain open.
+
+### External decision error follow-up — 2026-10-06
+
+- [x] Reproduced from user report and source: the real API adapter threw a
+  synthetic 404 after a successful AR02/AR03 response. Decisions now resolve
+  without inventing a request-detail DTO; real backend errors still propagate.
+  Queue, referee coverage, match permissions and notifications are refreshed.
+  Rows for the same person in different tournaments now have distinct keys.
+- [x] Developer checks: 23 focused API/UI tests, lint and production build passed.
+  API-backed UI tests cover Approve and Reject, the success notice and removal of
+  all affected pending tournament rows. Existing bundle-size warning remains.
+- [x] User confirmed the External Approve retest succeeded on 2026-10-06 after
+  the synthetic 404 fix. Close the reported Admin decision error.
+- [x] User confirmed assignment -> External acceptance -> match management
+  access succeeds on 2026-10-06. Close this External workflow acceptance.
+- [ ] Remaining External acceptance: Reject with reason and organizer active-count
+  persistence after reload. These outcomes have not been separately confirmed.
 
 **Current backend source reference: remote `BE_KN@cd71437`**, checked with
 `git ls-remote` and `git fetch origin BE_KN` on 2026-10-02 for the QR review below.
@@ -2582,7 +2940,8 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
   mutation failures visible. Uses the existing moderation endpoint.
 - [x] Admin Audit logs use cards, actor avatars/names, action and entity badges,
   explicit Bangkok time, and expandable labeled detail fields. Search and entity
-  filters apply to the latest 100 returned records; no global totals are inferred.
+  filters apply to the current server page; 7 Oct follow-up added pagination.
+  No global search totals are inferred.
 - [x] Profile image deletion button reads `Remove Photo`; the existing null-avatar
   request and upload behavior are preserved.
 - [x] Real-mode Match has a `Vote MVP` tab at `/m/:id/mvp`, scoped directly to that
@@ -2600,14 +2959,25 @@ referees; do not rewrite baseline dates or roles just to make a test pass.
 
 ## Quality20 Q12: previously removed feedback context (2026-10-08)
 
-- [ ] Backend delivery required: an authorized source of identifiable previously
-  removed feedback (ID, tournament, author and available content/rating). Current
-  contracts provide visible tournament comments/reviews and mutations
-  `DELETE /admin/feedback/:id` and `POST /admin/feedback/:id/restore`, but no
-  supported removed-item lookup. Generic audit actor/entity IDs do not establish
-  the feedback author or content. No lookup route is guessed or added.
-- Frontend blocks raw-ID removal/restoration in Admin Feedback. Admins select
-  visible content in Tournament Community and review its context before removal.
-  The last successfully removed item's context remains locally available for a
-  confirmed restore while that Community view stays mounted. Earlier removals
-  remain unavailable; this moderation journey cannot claim 18/20 acceptance yet.
+- [x] Delivered and integrated in Final_Present on 2026-10-09: paginated
+  `GET /admin/feedback/removed` supplies removed content, author, tournament,
+  moderation reason and actor. Admin Feedback now uses RemovedFeedbackPanel,
+  with Faculty/University scope gates and server-provided `canRestore`.
+  Raw-ID moderation remains unavailable; restoration requires reviewing an item
+  and confirming the action. Live browser acceptance remains separate from
+  unit/API integration checks; the older missing-endpoint blocker is resolved.
+
+## 2026-10-07: Connected browser follow-up
+
+- [x] Chrome real-mode QA: guest entry filter, seeded login/reload/logout,
+  profile/preferences persistence, Faculty gates, University audit pagination,
+  cross-role audit cache hiding, private tournament/match denial, organizer
+  announcement create/edit/validation/delete-cancel and MinIO image preview.
+- [x] Fix Profile checkbox layout and private-tournament announcement wording.
+  Focused regression: 6 files / 27 tests passed.
+- [x] Restore QA preferences/contact, remove only the browser-created QA
+  announcement, reset viewport override and log out the final QA account.
+- [ ] Browser file upload/expiry, network waterfall, SMTP/reset/expired identity,
+  join conflicts/dispute decisions, mobile/light/manual/online/real-device QA.
+- Exact coverage and capture limitations: [QA-BROWSER-2026-10-07.md](QA-BROWSER-2026-10-07.md).
+  BE handoff priorities: [TO-BACKEND-2026-10-07-frontend-qa-response.md](TO-BACKEND-2026-10-07-frontend-qa-response.md).

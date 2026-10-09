@@ -84,7 +84,7 @@ export async function searchUsers(q: string): Promise<UserSearchResult> {
   }
   if (USE_MOCK) {
     /* ค้นจากคนใน seed ทั้งหมด ด้วย id ชุดเดียวกับทีมและคำเชิญ (ดู mocks/storeUsers.ts) */
-    return mockDelay({ items: searchStoreUsers(q) });
+    return mockDelay({ items: searchStoreUsers(q).map(user => ({ ...user, facultyName: null, year: null })) });
   }
   return apiFetch<UserSearchResult>(`/users/search?q=${encodeURIComponent(q)}`);
 }
@@ -92,8 +92,34 @@ export async function searchUsers(q: string): Promise<UserSearchResult> {
 export interface CareerTournamentDto {
   tournament: { id: number; name: string; sportTypeId: number; status: string };
   team: { id: number; name: string }; played: number; wins: number; losses: number; champion: boolean;
+  /** U14 includes withdrawn teams while preserving matches already played. */
+  withdrawn?: boolean;
 }
-export function getUserCareer(userId: number): Promise<{ items: CareerTournamentDto[] }> {
+/** OD-46 — เจ้าของปิดสถิติไว้ ⇒ `items: null, statsHidden: true` (null ไม่ใช่ [] ที่อ่านว่า "ไม่เคยลงแข่ง") */
+export function getUserCareer(userId: number): Promise<{ items: CareerTournamentDto[] | null; statsHidden?: boolean }> {
   if (USE_MOCK) return mockDelay({ items: [] });
   return apiFetch(`/users/${userId}/career`);
+}
+
+/** RW05; RW06 uses the same match row mapper. */
+export interface UserMatchHistoryDto {
+  matchId: number;
+  tournament: { id: number; name: string; sportTypeId: number };
+  team: { id: number; name: string };
+  opponent: { id: number; name: string } | null;
+  roundNumber: number | null;
+  scheduledTime: string | null;
+  startedAt: string | null;
+  playedAt: string | null;
+  venue: string | null;
+  mode: 'onsite' | 'online';
+  scoreData: Record<string, number> | null;
+  result: 'win' | 'loss' | null;
+  withdrawn: boolean;
+  playerStats: Array<{ statKey: string; statLabelTh: string; value: number | null }>;
+}
+
+export function getUserMatchHistory(userId: number): Promise<{ items: UserMatchHistoryDto[] | null; statsHidden: boolean }> {
+  if (USE_MOCK) return mockDelay({ items: [], statsHidden: false });
+  return apiFetch(`/users/${userId}/match-history`);
 }

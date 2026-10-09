@@ -4,6 +4,18 @@ import { conflictOfInterestDetails, registrationMemberFailures } from './registr
 const members = [{ userId: 1, fullName: 'Alice' }, { userId: 2, fullName: 'Bob' }]
 
 describe('registration member feedback', () => {
+  it('distinguishes pending invitations from accepted referee roles using structured metadata', () => {
+    const error = new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Do not parse this message', conflicts: [
+      { userId: 1, role: 'referee', invitationStatus: 'pending', expiresAt: '2026-10-14T03:00:00Z' },
+      { userId: 2, role: 'referee', invitationStatus: 'accepted', expiresAt: null },
+    ] })
+    const rows = registrationMemberFailures(error, members)
+    expect(rows[0].reason).toContain('14/10/2026, 10:00:00')
+    expect(rows[0].reason).toContain('invitee to decline')
+    expect(rows[0].reason).toContain('organizer to cancel')
+    expect(rows[1].reason).toContain('Change the team membership')
+    expect(rows[1].reason).not.toContain('awaiting a response')
+  })
   it('names all organizer/referee conflicts from the actual conflicts array', () => {
     const error = new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'conflict', conflicts: [
       { userId: 1, role: 'organizer' }, { userId: 2, role: 'referee' },

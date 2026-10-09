@@ -23,7 +23,7 @@ beforeEach(() => {
     if (path === '/auth/register') {
       submitted.push(JSON.parse(String(init?.body)))
       return reject ? json({ error: { code: 'VALIDATION_FAILED', message: 'Fixture rejected', fields: { email: 'Email already registered' } } }, 422)
-        : json({ id: 9, fullName: 'Deliberate Student', email: 'chosen@example.test' })
+        : json({ id: 9, fullName: 'Deliberate Student', email: 'chosen@ku.th' })
     }
     if (path === '/faculties') {
       if (holdFaculties) await new Promise<void>(resolve => { releaseFaculties = resolve })
@@ -47,12 +47,14 @@ function show() {
   </Routes></MemoryRouter></QueryClientProvider>)
 }
 function fillAccount() {
-  for (const [label, value] of Object.entries({ 'Full name': 'Deliberate Student', Email: 'chosen@example.test', Password: 'password123' }))
+  for (const [label, value] of Object.entries({ 'Full name': 'Deliberate Student', Email: 'chosen@ku.th', Password: 'password123' }))
     fireEvent.change(screen.getByLabelText(label), { target: { value } })
 }
 async function chooseStudent() {
   fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
   fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
+  await screen.findByRole('option', { name: 'Engineering' })
   fireEvent.change(screen.getByLabelText('Faculty'), { target: { value: '2' } })
   await screen.findByRole('option', { name: 'Software Engineering' })
   fireEvent.change(screen.getByLabelText('Department'), { target: { value: '8' } })
@@ -61,12 +63,9 @@ async function chooseStudent() {
 
 it('starts with unchosen student fields and does not submit invented values', async () => {
   const { container } = show()
-  await screen.findByRole('option', { name: 'Engineering' })
+  expect(screen.queryByLabelText('Faculty')).not.toBeInTheDocument()
   expect(screen.getByLabelText('Gender')).toHaveValue('')
   expect(screen.getByLabelText('Birth date')).toHaveValue('')
-  expect(screen.getByLabelText('Faculty')).toHaveValue('')
-  expect(screen.getByLabelText('Department')).toHaveValue('')
-  expect(screen.getByLabelText('Year')).toHaveValue(null)
   fillAccount()
   fireEvent.submit(container.querySelector('form')!)
   await waitFor(() => expect(screen.getByLabelText('Gender')).toHaveAttribute('aria-invalid', 'true'))
@@ -76,30 +75,35 @@ it('starts with unchosen student fields and does not submit invented values', as
 it('does not select an identity when faculty reference data arrives late', async () => {
   holdFaculties = true
   show()
-  await waitFor(() => expect(releaseFaculties).toBeDefined())
   fillAccount()
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
+  fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
+  await waitFor(() => expect(releaseFaculties).toBeDefined())
   releaseFaculties!()
   await screen.findByRole('option', { name: 'Engineering' })
   expect(screen.getByLabelText('Faculty')).toHaveValue('')
   expect(screen.getByLabelText('Department')).toHaveValue('')
+  fireEvent.click(screen.getByRole('button', { name: 'Back to personal details' }))
   expect(screen.getByLabelText('Full name')).toHaveValue('Deliberate Student')
 })
 
 it('clears the old department immediately when faculty changes, even before the new list arrives', async () => {
   const { container } = show()
+  fillAccount()
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
+  fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
   await screen.findByRole('option', { name: 'Science' })
   fireEvent.change(screen.getByLabelText('Faculty'), { target: { value: '1' } })
   await screen.findByRole('option', { name: 'Mathematics' })
   fireEvent.change(screen.getByLabelText('Department'), { target: { value: '1' } })
-  fillAccount()
-  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
-  fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
   fireEvent.change(screen.getByLabelText('Year'), { target: { value: '3' } })
   holdDepartments = true
   fireEvent.change(screen.getByLabelText('Faculty'), { target: { value: '2' } })
   expect(screen.getByLabelText('Department')).toHaveValue('')
   fireEvent.submit(container.querySelector('form')!)
-  await waitFor(() => expect(screen.getByLabelText('Department')).toHaveAttribute('aria-invalid', 'true'))
+  expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled()
   expect(submitted).toEqual([])
   await waitFor(() => expect(releaseDepartments).toBeDefined())
   releaseDepartments!()
@@ -110,16 +114,17 @@ it('clears the old department immediately when faculty changes, even before the 
 it('retains a deliberate draft on server field error and submits the unchanged payload on retry', async () => {
   reject = true
   const { container } = show()
-  await screen.findByRole('option', { name: 'Engineering' })
   fillAccount(); await chooseStudent()
   fireEvent.submit(container.querySelector('form')!)
   await screen.findByText('Email already registered')
   expect(screen.getByLabelText('Email')).toHaveAccessibleDescription('Email already registered')
-  expect(screen.getByLabelText('Department')).toHaveValue('8')
   expect(screen.getByLabelText('Gender')).toHaveValue('other')
   expect(screen.getByLabelText('Birth date')).toHaveValue('2002-06-04')
   reject = false
+  fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
+  await screen.findByRole('heading', { name: 'Step 2: Student details' })
+  expect(screen.getByLabelText('Department')).toHaveValue('8')
   fireEvent.submit(container.querySelector('form')!)
   await screen.findByRole('heading', { name: 'Verify email' })
-  expect(submitted).toEqual(Array(2).fill({ fullName: 'Deliberate Student', email: 'chosen@example.test', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
+  expect(submitted).toEqual(Array(2).fill({ fullName: 'Deliberate Student', email: 'chosen@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
 })

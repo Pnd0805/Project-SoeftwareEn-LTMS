@@ -193,6 +193,13 @@
   margin: 4px 0 8px;
   max-width: 72ch;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inbox-page .inbox-match-context {
+  display: block;
+  margin-top: 4px;
+  color: var(--bone-dim);
 }
 
 .inbox-page .inbox-row-actions {

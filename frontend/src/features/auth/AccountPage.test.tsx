@@ -71,32 +71,41 @@ describe('Account submissions with real hooks', () => {
   it('retains faculty/department and the registration draft after rejection, then submits the original payload', async () => {
     rejectSubmit = true
     const { container } = show('/register')
+    for (const [name, value] of Object.entries({ fullName: 'Account Fixture', email: 'account@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04' }))
+      fireEvent.change(container.querySelector(`[name="${name}"]`)!, { target: { value } })
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
     await screen.findByRole('option', { name: 'Engineering' })
     fireEvent.change(container.querySelector('[name="facultyId"]')!, { target: { value: '2' } })
     await screen.findByRole('option', { name: 'Software Engineering' })
     fireEvent.change(container.querySelector('[name="departmentId"]')!, { target: { value: '8' } })
-    for (const [name, value] of Object.entries({ fullName: 'Account Fixture', email: 'account@example.test', password: 'password123', gender: 'other', birthDate: '2002-06-04', year: '3' })) {
+    for (const [name, value] of Object.entries({ year: '3' })) {
       fireEvent.change(container.querySelector(`[name="${name}"]`)!, { target: { value } })
     }
     submit(container)
     await screen.findByText(/This email is already registered/)
-    expect(container.querySelector('[name="departmentId"]')).toHaveValue('8')
-    expect(container.querySelector('[name="facultyId"]')).toHaveValue('2')
     expect(container.querySelector('[name="fullName"]')).toHaveValue('Account Fixture')
     expect(container.querySelector('[name="email"]')).toHaveAccessibleDescription(/already registered/)
-    rejectSubmit = false; submit(container)
+    rejectSubmit = false
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
+    await screen.findByRole('heading', { name: 'Step 2: Student details' })
+    expect(container.querySelector('[name="departmentId"]')).toHaveValue('8')
+    expect(container.querySelector('[name="facultyId"]')).toHaveValue('2')
+    submit(container)
     await screen.findByRole('heading', { name: 'Verify email' })
-    expect(submitted).toEqual(Array(2).fill({ fullName: 'Account Fixture', email: 'account@example.test', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
+    expect(submitted).toEqual(Array(2).fill({ fullName: 'Account Fixture', email: 'account@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
   })
 
   it('makes failed reference data visible and offers retry without erasing the draft', async () => {
     referenceFailure = true
     const { container } = show('/register')
-    fireEvent.change(container.querySelector('[name="fullName"]')!, { target: { value: 'Retained draft' } })
+    for (const [name, value] of Object.entries({ fullName: 'Retained draft', email: 'account@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04' }))
+      fireEvent.change(container.querySelector(`[name="${name}"]`)!, { target: { value } })
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
     await screen.findByText('Unable to load faculties.')
     referenceFailure = false
     fireEvent.click(screen.getByRole('button', { name: 'Retry faculties' }))
     await screen.findByRole('option', { name: 'Engineering' })
+    fireEvent.click(screen.getByRole('button', { name: 'Back to personal details' }))
     expect(container.querySelector('[name="fullName"]')).toHaveValue('Retained draft')
     expect(submitted).toEqual([])
   })

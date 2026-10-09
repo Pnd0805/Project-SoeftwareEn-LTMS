@@ -26,6 +26,34 @@ describe('findMyStanding — กฎอันดับต้องตรงกั
     expect(sql).not.toContain('o.settled');
   });
 
+  /**
+   * 🔴 B3 ② (8 ต.ค. 2569) — อันดับย้ายมาคิดใน SQL เพราะต้องคิด **ก่อน** LIMIT
+   *   ถ้าใครเปลี่ยนเป็น DENSE_RANK() จะได้ (1,1,2) ซึ่งผิดกฎเสมอของเรา และจะไม่ตรงกับ findMyStanding
+   *   ถ้าเอา full_name เข้า window ด้วย คนแต้มเท่ากันจะได้อันดับไม่เท่ากัน
+   */
+  it('จัดอันดับใน SQL ด้วย RANK() ตามแต้มและจำนวนที่ทายถูกเท่านั้น', async () => {
+    mocks.query.mockResolvedValueOnce([[], []]);
+    await findLeaderboard(20);
+    const [sql] = mocks.query.mock.calls[0]!;
+    expect(sql).toMatch(/RANK\(\)\s*OVER\s*\(\s*ORDER BY t\.points DESC, t\.correct DESC\s*\)/);
+    expect(sql).not.toContain('DENSE_RANK');
+    expect(sql).not.toMatch(/OVER\s*\([^)]*full_name/);
+  });
+
+  it('นับจำนวนคนทั้งทัวร์ในคิวรีเดียวกัน และแบ่งหน้าด้วย LIMIT/OFFSET', async () => {
+    mocks.query.mockResolvedValueOnce([[], []]);
+    await findLeaderboard(20 , 40 , 25);
+    const [sql , params] = mocks.query.mock.calls[0]!;
+    expect(sql).toContain('COUNT(*) OVER ()');
+    expect(sql).toContain('LIMIT ? OFFSET ?');
+    expect(params).toEqual([20 , 25 , 40]);     // ทัวร์ → ขนาดหน้า → offset (สลับกันจะได้หน้าผิด)
+  });
+
+  it('ไม่มีใครทายเลย → totalItems เป็น 0 ไม่ใช่ undefined', async () => {
+    mocks.query.mockResolvedValueOnce([[], []]);
+    expect(await findLeaderboard(20)).toEqual({ rows: [] , totalItems: 0 });
+  });
+
   it('ทั้งสองคิวรีกรองด้วยเงื่อนไขชุดเดียวกัน — ทัวร์เดียวกัน และนับเฉพาะที่ตัดสินแล้ว', async () => {
     mocks.query.mockResolvedValueOnce([[], []]);
     await findMyStanding(20, 5);

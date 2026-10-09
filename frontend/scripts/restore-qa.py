@@ -1,13 +1,19 @@
 """
-LEGACY: repairs the September baseline. BE_KN@d5bda6d already includes these
-repairs in schema-034 qa-baseline.sql; use the backend qa-baseline.py restore
-for that baseline, followed by the workspace migration/audit verification gates.
-Do not reapply this wrapper without reviewing compatibility.
+Default (since 2026-10-05): the schema-034 baseline flow only —
+backend `qa-baseline.py restore` → `npm run migrate` → `audit-roles.py`.
+BE_KN@d5bda6d's qa-baseline.sql already includes the September repairs, so the
+eight repair steps below run only with `--legacy-repairs` (September baseline).
+
+    python frontend/scripts/restore-qa.py                   ย้อน + migrate + audit (ใช้อันนี้)
+    python frontend/scripts/restore-qa.py --legacy-repairs  ของเดิม 8 ขั้น — เฉพาะ baseline 21 ก.ย.
+
+LEGACY (ข้างล่าง): repairs the September baseline. Do not reapply them to the
+schema-034 baseline without reviewing compatibility.
 
 frontend/scripts/restore-qa.py — ย้อนฐานกลับ QA baseline แล้วซ่อมให้ใช้งานได้ ในคำสั่งเดียว
 
-    python frontend/scripts/restore-qa.py               ย้อน + ซ่อม + ตรวจ
-    python frontend/scripts/restore-qa.py --no-restore  ซ่อม + ตรวจอย่างเดียว (เช่น รอบที่แล้ว backend ยังไม่เปิด)
+    python frontend/scripts/restore-qa.py --legacy-repairs               ย้อน + ซ่อม + ตรวจ
+    python frontend/scripts/restore-qa.py --legacy-repairs --no-restore  ซ่อม + ตรวจอย่างเดียว (เช่น รอบที่แล้ว backend ยังไม่เปิด)
 
 ทำไมไม่ใช้ `python database/qa-baseline.py restore` ตรงๆ: baseline ถูกเก็บ 21 ก.ย. และ
 ย้อนแล้วได้ฐานที่ backend ปัจจุบันใช้ไม่ได้ — เจอจริง 30 ก.ย. หลังย้อนแล้วไม่ได้ migrate
@@ -42,8 +48,16 @@ import urllib.request
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_BACKEND = os.path.abspath(os.path.join(HERE, "..", "..", "Project-SoeftwareEn-LTMS"))
-BACKEND_DIR = os.environ.get("LTMS_BACKEND_DIR", DEFAULT_BACKEND)
+# repo backend อยู่คนละที่ในแต่ละเครื่อง — ค่าตายตัวค่าเดียวเคยชี้ไปโฟลเดอร์ที่ไม่มีอยู่จริง แล้ว
+# subprocess ล้มด้วย WinError 267 ซึ่งไม่บอกเลยว่าหาอะไรไม่เจอ · ไล่หาที่ที่มี qa-baseline.py จริง
+BACKEND_CANDIDATES = [
+    os.environ.get("LTMS_BACKEND_DIR", ""),
+    os.path.abspath(os.path.join(HERE, "..", "..")),
+    os.path.abspath(os.path.join(HERE, "..", "..", "..", "ltms-backend-shokun2")),
+    "D:/Project-LTMS/BE_KN",
+]
+BACKEND_DIR = next((d for d in BACKEND_CANDIDATES
+                    if d and os.path.isfile(os.path.join(d, "database", "qa-baseline.py"))), "")
 API = os.environ.get("LTMS_API_BASE", "http://localhost:8000/api/v1")
 CONTAINER = os.environ.get("LTMS_MYSQL_CONTAINER", "ltms-mysql")
 PASSWORD = os.environ.get("LTMS_MYSQL_PASSWORD", "secret")
@@ -434,12 +448,37 @@ def backfill_champions() -> bool:
     return ok
 
 
+def baseline_only() -> int:
+    """baseline schema-034 รวมการซ่อมไว้แล้ว — ซ่อมซ้ำอาจไปทับข้อมูลที่ backend ตั้งใจใส่"""
+    print(f"backend: {BACKEND_DIR}")
+    if "--no-restore" not in sys.argv:
+        step("1/3 ย้อนฐานกลับ QA baseline")
+        code, out = run([sys.executable, os.path.join("database", "qa-baseline.py"), "restore"], BACKEND_DIR)
+        print("\n".join("   " + l for l in out.strip().splitlines()))
+        if code != 0:
+            return 2
+    step("2/3 npm run migrate")
+    if not migrate():
+        return 4
+    step("3/3 audit-roles.py")
+    return subprocess.run([sys.executable, os.path.join(HERE, "audit-roles.py")]).returncode
+
+
 def main() -> int:
     try:
         query("SELECT 1")
     except (RuntimeError, FileNotFoundError) as e:
         print(f"ต่อฐานข้อมูลไม่ได้ ({CONTAINER}) — เปิด Docker แล้ว `docker start ltms-mysql ltms-minio` ก่อน\n{e}")
         return 2
+
+    if not BACKEND_DIR:
+        print("หา repo backend ไม่เจอ (ต้องมี database/qa-baseline.py) — ลองแล้ว:\n   "
+              + "\n   ".join(d for d in BACKEND_CANDIDATES if d)
+              + "\nตั้ง LTMS_BACKEND_DIR ให้ชี้ไปที่ root ของ repo backend")
+        return 2
+
+    if "--legacy-repairs" not in sys.argv:
+        return baseline_only()
 
     if "--no-restore" not in sys.argv:
         step("1/8 ย้อนฐานกลับ QA baseline")

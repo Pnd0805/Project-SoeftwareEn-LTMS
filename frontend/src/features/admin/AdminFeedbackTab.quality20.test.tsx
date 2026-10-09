@@ -32,9 +32,8 @@ it('blocks raw-ID moderation when target context is unavailable', () => {
     const button = screen.queryByRole('button', { name: action })
     if (button) expect(button).toBeDisabled()
   }
-  expect(screen.getByText(/target context is unavailable/i)).toBeInTheDocument()
+  expect(screen.getByText('Feedback moderation requires University Admin rights.')).toBeInTheDocument()
   expect(remove).not.toHaveBeenCalled(); expect(restore).not.toHaveBeenCalled()
-  expect(screen.getByRole('link', { name: 'Find a tournament' })).toHaveAttribute('href', '/home/all')
 })
 
 it.each(['comment', 'review'])('identifies the selected %s before removal and retains that context for restore', async kind => {

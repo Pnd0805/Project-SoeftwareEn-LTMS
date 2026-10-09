@@ -97,6 +97,8 @@ describe("env - happy path", () => {
             DB_POOL_SIZE: 10,
             // C4 — ไม่ตั้ง = 65 วินาที (ยาวกว่า idle timeout ตั้งต้นของ nginx ที่ 60)
             KEEP_ALIVE_TIMEOUT_MS: 65_000,
+            JOB_INTERVAL_MS: 3_600_000,        // งานเบื้องหลังรายชั่วโมง (มติ 8 ต.ค.)
+            JOB_STARTUP_DELAY_MS: 10_000,
         });
     });
 

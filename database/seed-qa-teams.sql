@@ -22,8 +22,9 @@ DELETE FROM users WHERE user_id BETWEEN 9051 AND 9054;
 -- ผู้ใช้
 INSERT INTO users (user_id, full_name, email, password_hash, gender, birth_date, user_type,
                    faculty_id, department_id, year, is_suspended, suspended_reason) VALUES
-  (9051, 'วีระชัย นกหวีดทอง', 'referee3@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1990-04-12', 'staff', 1, 1, NULL, 0, NULL),
-  (9052, 'อรทัย กฎกติกา', 'referee4@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '1992-08-03', 'staff', 2, 6, NULL, 0, NULL),
+  -- กรรมการไม่ใช่แอดมิน ⇒ 'student' ตามโดเมน @ku.th (มติ 8 ต.ค. 2569)
+  (9051, 'วีระชัย นกหวีดทอง', 'referee3@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1990-04-12', 'student', 1, 1, NULL, 0, NULL),
+  (9052, 'อรทัย กฎกติกา', 'referee4@ku.th', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'female', '1992-08-03', 'student', 2, 6, NULL, 0, NULL),
   (9053, 'สมเกียรติ ภายนอก', 'referee.ext@outside.org', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1988-01-20', 'external', NULL, NULL, NULL, 0, NULL),
   -- 🆕 7 ต.ค. 2569 — กรรมการภายนอกคนที่สอง เอกสารของเขา "เปิดดูได้จริง" (ของ 9053 เปิดไม่ได้โดยเจตนา)
   (9054, 'ประเสริฐ เอกสารครบ', 'referee.ext2@outside.org', '$2b$10$eUyNQe7sveuCPEvnbiG0cOEUK3IXaBcfOZn84oV1y2shc2lj0Ys/e', 'male', '1986-03-09', 'external', NULL, NULL, NULL, 0, NULL),

@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import { MIN_STUDY_YEAR , MAX_STUDY_YEAR } from '../utils/studyYear.js';
+import { isKuEmail } from '../utils/kuEmail.js';
 
 /**
  * วันนี้ตามเวลาไทยในรูป YYYY-MM-DD
@@ -24,12 +25,36 @@ const registerSchema = z.object({
     //    และอายุติดลบนั้นถูกใช้ตัดสิน Hard Filter (min_age/max_age) จริง
     birthDate : z.iso.date('รูปแบบวันเกิดไม่ถูกต้อง ต้องเป็น YYYY-MM-DD')
         .refine(v => v <= todayInThailand() , 'วันเกิดต้องไม่อยู่ในอนาคต'),
-    facultyId : z.int('รหัสคณะต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกคณะ'),
-    departmentId : z.int('รหัสภาควิชาต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกภาควิชา'),
+    // 🔴 มติ 8 ต.ค. 2569 — สามช่องนี้บังคับ **เฉพาะคนในมหาวิทยาลัย**
+    //   ของเดิมบังคับทุกคน ⇒ คนนอกที่ไม่มีคณะ/ภาควิชา/ชั้นปี **สมัครไม่ได้เลย**
+    //   (คอลัมน์ในฐานเป็น NULL ได้มาตั้งแต่ schema.sql:62-64 แล้ว — ที่บังคับไว้คือชั้นนี้ชั้นเดียว)
+    //   ★ FE: อีเมล @ku.th ⇒ พาไปหน้าสมัครขั้นสองเพื่อกรอกสามช่องนี้ แล้วค่อยยิงครั้งเดียวตอนจบ
+    facultyId : z.int('รหัสคณะต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกคณะ').optional(),
+    departmentId : z.int('รหัสภาควิชาต้องเป็นจำนวนเต็ม').positive('กรุณาเลือกภาควิชา').optional(),
     // 🔴 BE-05 — เดิม positive() เฉย ๆ ⇒ ชั้นปี 99 สมัครได้ · ใช้กฎกลางตัวเดียวกับกฎคุณสมบัติ
     year : z.int('ชั้นปีต้องเป็นจำนวนเต็ม')
         .min(MIN_STUDY_YEAR , `ชั้นปีต้องอยู่ระหว่าง ${MIN_STUDY_YEAR}–${MAX_STUDY_YEAR}`)
         .max(MAX_STUDY_YEAR , `ชั้นปีต้องอยู่ระหว่าง ${MIN_STUDY_YEAR}–${MAX_STUDY_YEAR}`)
+        .optional()
+})
+/**
+ * คนใน (@ku.th) ต้องกรอกคณะ · ภาควิชา · ชั้นปี ให้ครบ
+ *
+ * ★ ใช้ `isKuEmail` ตัวเดียวกับที่ service ใช้เขียน `user_type` — ห้ามเขียนกฎโดเมนซ้ำที่นี่
+ *   ไม่งั้นวันหนึ่งจะมีคนแก้ลิสต์โดเมนที่เดียว แล้ว "ต้องกรอกไหม" กับ "เป็นคนในไหม"
+ *   ตอบไม่เหมือนกันแบบเงียบ ๆ (เหตุผลเดียวกับที่ `kuEmail.ts` อยู่ใน utils/)
+ * ★ ข้อความเท่าเดิมทุกช่อง และยิง issue แยกต่อช่อง ⇒ รูป `{ fields: {...} }` ที่ FE ใช้ไม่เปลี่ยน
+ */
+.superRefine((val , ctx) => {
+    if(!isKuEmail(val.email)) return;
+    const required = [
+        ['facultyId' , val.facultyId , 'กรุณาเลือกคณะ'] ,
+        ['departmentId' , val.departmentId , 'กรุณาเลือกภาควิชา'] ,
+        ['year' , val.year , 'กรุณาเลือกชั้นปี'] ,
+    ] as const;
+    for(const [path , value , message] of required){
+        if(value === undefined) ctx.addIssue({ code : 'custom' , path : [path] , message });
+    }
 });
 
 const loginSchema = z.object({

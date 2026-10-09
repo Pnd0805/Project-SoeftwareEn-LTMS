@@ -216,6 +216,8 @@ async function invalidateTournament(queryClient: ReturnType<typeof useQueryClien
     queryClient.invalidateQueries({ queryKey: ["match"] }),
     queryClient.invalidateQueries({ queryKey: ["matches"] }),
     queryClient.invalidateQueries({ queryKey: ["standings"] }),
+    queryClient.invalidateQueries({ queryKey: ["me", "applications"] }),
+    queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   ]);
   void id;
 }
@@ -298,6 +300,15 @@ export function useTournamentAnnouncements(tournamentId: TournamentRef | undefin
   });
 }
 
+export function useEditAnnouncement(tournamentId: TournamentRef) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { id: number; input: Parameters<typeof tournamentApi.updateAnnouncement>[1] }) => tournamentApi.updateAnnouncement(v.id, v.input), onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements', tournamentId] }) });
+}
+export function useDeleteAnnouncement(tournamentId: TournamentRef) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: tournamentApi.deleteAnnouncement, onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements', tournamentId] }) });
+}
+
 export function useSubmitTournamentFeedback(tournamentId: TournamentRef) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (input: SubmitTournamentFeedbackRequest) => tournamentApi.submitFeedback(tournamentId, input), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
@@ -315,4 +326,8 @@ export function useRequestFilterChange(tournamentId: TournamentRef) {
       tournamentApi.requestFilterChange(tournamentId, input),
     onSuccess: () => invalidateTournament(queryClient, tournamentId),
   });
+}
+
+export function usePreviewAmendment(tournamentId: number) {
+  return useMutation({ mutationFn: (input: { changes: AmendmentRequestPayload; reason: string }) => tournamentApi.previewAmendment(tournamentId, input) });
 }

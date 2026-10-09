@@ -1,3 +1,4 @@
+import { useNow } from '../../hooks/useNow'
 /**
  * src/features/admin/AdminPage.tsx
  *
@@ -14,7 +15,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Badge, Banner, Empty, Field, Panel, TableWrap } from '../../components/kit/primitives'
-import { adminChangeValue, adminFieldLabel, adminReadBlocked } from './adminView'
+import { adminReadBlocked } from './adminView'
 import { Modal } from '../../components/kit/Modal'
 import { Icon } from '../../components/kit/Icon'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -36,6 +37,16 @@ import { AdminScopesTab, AdminAuditTab } from './AdminGovernanceTab'
 import { LeaderTransfersTab } from './LeaderTransfersTab'
 import { AdminUsersTab } from './AdminUsersTab'
 import { AdminFeedbackTab } from './AdminFeedbackTab'
+import { UserReportsTab } from './UserReportsTab'
+import { StalledWorkTab } from './StalledWorkTab'
+import { TournamentReviewDetails, TournamentReviewDisclosure } from './TournamentReviewDetails'
+import { IdentityDocs } from './IdentityDocs'
+import { AmendmentApprovalDialog } from './AmendmentApprovalDialog'
+import { displayDate } from '../../shared/display'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+import type { BackendAmendmentRequestDto } from '../../types/tournament.dto'
+import { useMe } from '../../hooks/useAuth'
+import { canReadTournamentQueues } from '../../shared/adminQueueAccess'
 
 /** คำตอบที่ C02/C03 ปฏิเสธมา — อ่านเป็นภาษาของหน้านี้ ไม่ใช่ข้อความดิบของ backend */
 const tournamentDecisionError = (error: unknown) => {
@@ -53,13 +64,15 @@ const TABS = [
   { key: 'filters', label: 'Rule changes' },
   { key: 'tournaments', label: 'Tournaments' },
   { key: 'users', label: 'Users' },
+  { key: 'user-reports', label: 'User reports' },
+  { key: 'stalled', label: 'Stalled work' },
   { key: 'scopes', label: 'Admin rights' },
   { key: 'transfers', label: 'Leader transfers' },
   { key: 'audit', label: 'Audit logs' },
   { key: 'feedback', label: 'Feedback' },
 ]
 
-function AdminNavigation({ tab, onNavigate }: { tab: string; onNavigate: () => void }) {
+function AdminNavigation({ tab, tabs, onNavigate }: { tab: string; tabs: typeof TABS; onNavigate: () => void }) {
   const [compact, setCompact] = useState(() => window.matchMedia?.('(max-width: 700px)').matches ?? false)
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -80,9 +93,9 @@ function AdminNavigation({ tab, onNavigate }: { tab: string; onNavigate: () => v
     <nav id="admin-sections" className="admin-navigation" aria-label="Admin sections" hidden={compact && !open}>
       {[{ name: 'Reviews', keys: ['requests', 'permanent', 'referees', 'filters', 'transfers'] },
         { name: 'Directory', keys: ['tournaments', 'users'] },
-        { name: 'Governance', keys: ['scopes', 'audit', 'feedback'] }].map(group => <div className="admin-nav-group" role="group" aria-label={group.name} key={group.name}>
+        { name: 'Governance', keys: ['scopes', 'audit', 'feedback', 'user-reports', 'stalled'] }].map(group => <div className="admin-nav-group" role="group" aria-label={group.name} key={group.name}>
         <h2>{group.name}</h2>
-        <div className="admin-nav-items">{TABS.filter(item => group.keys.includes(item.key)).map(item => <Link className={`tab ${tab === item.key ? 'on' : ''}`} key={item.key}
+        <div className="admin-nav-items">{tabs.filter(item => group.keys.includes(item.key)).map(item => <Link className={`tab ${tab === item.key ? 'on' : ''}`} key={item.key}
           aria-current={tab === item.key ? 'page' : undefined} to={`/admin/${item.key}`} onClick={event => {
             if (!compact || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
             setOpen(false)
@@ -94,19 +107,27 @@ function AdminNavigation({ tab, onNavigate }: { tab: string; onNavigate: () => v
 }
 
 export function AdminPage() {
+  const clockNow = useNow()
   const s = useLtms()
   const navigate = useNavigate()
   const { tab: tabParam } = useParams()
-  const tab = TABS.some(t => t.key === tabParam) ? tabParam! : 'requests'
+  const me = useMe()
+  const canReadQueues = USE_MOCK || canReadTournamentQueues(me.data?.adminScope)
+  const queueViewerKey = JSON.stringify([me.data?.id, me.data?.adminScope])
+  const [decisionViewerKey, setDecisionViewerKey] = useState('')
+  const tabs = canReadQueues ? TABS : TABS.filter(t => t.key !== 'requests' && t.key !== 'filters')
+  const tab = TABS.some(t => t.key === tabParam) ? tabParam! : canReadQueues ? 'requests' : 'tournaments'
   const workspace = useRef<HTMLElement>(null)
 
   /* สิทธิ์แอดมิน: โหมด mock อ่านจาก store · โหมดจริงถาม backend (ดู useAdminAccess)
      เดิมเช็คแต่ store ทำให้คนที่ล็อกอินกับ backend จริงโดนเด้ง 403 ทุกคน */
   const adminAccess = useAdminAccess()
   const teamRequestsQuery = useTeamRequests()
-  const tournamentRequestsQuery = usePendingTournamentRequests()
+  const tournamentRequestsQuery = usePendingTournamentRequests(canReadQueues)
   const reviewTournamentReq = useReviewTournamentRequest()
   const [rejectingTournament, setRejectingTournament] = useState<{ id: number; name: string } | null>(null)
+  const [approvingTournament, setApprovingTournament] = useState<{ id: number; name: string } | null>(null)
+  const [approvingOfficial, setApprovingOfficial] = useState<OfficialTeamRequestDto | null>(null)
   const [tournamentReason, setTournamentReason] = useState('')
   /* คำขอที่ server บอกแล้วว่าเกินขอบเขตของเรา — เก็บไว้ต่อแถว ไม่ใช่แถบรวมที่บอกไม่ได้
      ว่าแถวไหนเพิ่งพัง */
@@ -115,8 +136,9 @@ export function AdminPage() {
   /* รายการทัวร์นาเมนต์ของ backend — GET /tournaments คืนเฉพาะที่เป็น public
      (ยังไม่มีเส้นที่ให้แอดมินเห็นทุกสถานะ ดู FEAT-1-REMAINING) */
   const publicTournaments = useTournaments()
-  const amendments = useAmendmentRequests()
+  const amendments = useAmendmentRequests(canReadQueues)
   const approveAmendment = useApproveAmendment()
+  const [approvingAmendment, setApprovingAmendment] = useState<BackendAmendmentRequestDto | null>(null)
   const rejectAmendment = useRejectAmendment()
   const [rejectingAmendment, setRejectingAmendment] = useState<{ id: number; name: string } | null>(null)
   const [amendmentReason, setAmendmentReason] = useState('')
@@ -159,18 +181,20 @@ export function AdminPage() {
   const requestsBlocked = adminReadBlocked(tournamentRequestsQuery)
   const teamBlocked = adminReadBlocked(teamRequestsQuery)
   const amendmentsBlocked = adminReadBlocked(amendments)
-  const backendRequests = requestsBlocked ? [] : tournamentRequestsQuery.data?.items ?? []
+  const backendRequests = !canReadQueues || requestsBlocked ? [] : tournamentRequestsQuery.data?.items ?? []
   const requests = USE_MOCK ? s.tournaments.filter(t => t.status === 'pending') : []
   const requestCount = USE_MOCK ? requests.length : backendRequests.length
 
   const decideTournamentRequest = (id: number, approve: boolean, reason?: string) => {
     const name = backendRequests.find(row => row.id === id)?.name ?? `Request #${id}`
+    if (!canReadQueues || tournamentRequestsQuery.isError || decisionViewerKey !== queueViewerKey) return
     reviewTournamentReq.mutate(
       { requestId: id, input: { approve, rejectionReason: reason } },
       {
         onSuccess: () => {
           setDecisionNotice({ kind: approve ? 'ok' : 'warn', text: `${approve ? 'Approved' : 'Declined'} ${name}.` })
           setRejectingTournament(null)
+          setApprovingTournament(null)
           setTournamentReason('')
           setAboveScope(current => current.filter(x => x !== id))
         },
@@ -182,7 +206,9 @@ export function AdminPage() {
            แล้วบอกว่าต้องให้ใครตัดสิน ดีกว่าปล่อยให้กดซ้ำแล้วได้คำตอบเดิมทุกครั้ง
            (ดู BACKEND-GAPS `FE-admin-queue-shows-undecidable-rows`) */
         onError: error => {
+          if ((error as { code?: string }).code === 'INVALID_STATUS_TRANSITION') setApprovingTournament(null)
           if ((error as { code?: string }).code === 'ELIGIBILITY_OUT_OF_SCOPE') {
+            setApprovingTournament(null)
             setAboveScope(current => current.includes(id) ? current : [...current, id])
           }
         },
@@ -203,7 +229,7 @@ export function AdminPage() {
     setTeamNotice(null)
     rejectTeamReq.reset()
     approveTeamReq.mutate(r.id, {
-      onSuccess: () => setTeamNotice({ kind: 'ok', text: `${r.team.name} is now an Official squad.` }),
+      onSuccess: () => { setApprovingOfficial(null); setTeamNotice({ kind: 'ok', text: `${r.team.name} is now an Official squad.` }) },
     })
   }
 
@@ -228,7 +254,7 @@ export function AdminPage() {
   }
 
   const filters = s.tournaments.filter(t => t.filterChangeRequest)
-  const amendmentRows = amendmentsBlocked ? [] : amendments.data?.items.filter(a => a.status === 'pending') ?? []
+  const amendmentRows = !canReadQueues || amendmentsBlocked ? [] : amendments.data?.items.filter(a => a.status === 'pending') ?? []
   const filterCount = USE_MOCK ? filters.length : amendmentRows.length
 
   return (
@@ -246,19 +272,36 @@ export function AdminPage() {
         </div>
       </div>
 
-      <AdminNavigation tab={tab} onNavigate={() => workspace.current?.focus()} />
+      <AdminNavigation tab={tab} tabs={tabs} onNavigate={() => workspace.current?.focus()} />
       {decisionNotice ? <div role="status"><Banner kind={decisionNotice.kind}>{decisionNotice.text}</Banner></div> : null}
       <section ref={workspace} id="admin-workspace" className="admin-workspace" tabIndex={-1} aria-label={TABS.find(item => item.key === tab)?.label}>
+      {!canReadQueues && (tab === 'requests' || tab === 'filters') ? <Panel quiet>
+        <h3>Tournament queue access unavailable</h3>
+        {me.isPending ? <p>Checking your admin scope…</p> : me.isError ? <Banner kind="crit">Could not verify your admin scope. <button className="btn" onClick={() => void me.refetch()}>Retry admin scope</button></Banner>
+          : <p>These queues require University Admin rights or Faculty Admin rights with an assigned faculty. Root cannot read or decide these requests.</p>}
+      </Panel> : null}
+      <Modal className="admin-decision-dialog" open={tab === 'requests' && canReadQueues && !requestsBlocked && decisionViewerKey === queueViewerKey && !!approvingTournament && backendRequests.some(row => row.id === approvingTournament.id)} title={`Approve ${approvingTournament?.name ?? ''}?`} onClose={() => !reviewTournamentReq.isPending && setApprovingTournament(null)}>
+        <p>The applicant becomes Organizer and the tournament becomes Private. Publishing is a separate action.</p>
+        {reviewTournamentReq.isError ? <Banner kind="crit">{tournamentDecisionError(reviewTournamentReq.error)}</Banner> : null}
+        <button className="btn" disabled={reviewTournamentReq.isPending} onClick={() => setApprovingTournament(null)}>Cancel</button>{' '}<button className="btn primary" disabled={reviewTournamentReq.isPending} onClick={() => approvingTournament && decideTournamentRequest(approvingTournament.id, true)}>Confirm approval</button>
+      </Modal>
+      <Modal className="admin-decision-dialog" open={tab === 'permanent' && !teamBlocked && !!approvingOfficial && permanentRows.some(row => row.id === approvingOfficial.id)} title={`Approve Official status for ${approvingOfficial?.team.name ?? ''}?`} onClose={() => !approveTeamReq.isPending && setApprovingOfficial(null)}>
+        <p>The team becomes Official after the server checks its members. Review the supporting documents first.</p>
+        {approveTeamReq.isError ? <Banner kind="crit">{(approveTeamReq.error as Error).message}</Banner> : null}
+        <button className="btn" disabled={approveTeamReq.isPending} onClick={() => setApprovingOfficial(null)}>Cancel</button>{' '}<button className="btn primary" disabled={approveTeamReq.isPending} onClick={() => approvingOfficial && approveOfficial(approvingOfficial)}>Confirm Official approval</button>
+      </Modal>
+      {tab === 'user-reports' ? <UserReportsTab /> : null}
+      {tab === 'stalled' ? <StalledWorkTab /> : null}
 
-      {tab === 'requests' && !USE_MOCK ? (
+      {tab === 'requests' && !USE_MOCK && canReadQueues ? (
         <Panel>
           <h2>Tournament requests <span className="sub">{tournamentRequestsQuery.data && !requestsBlocked ? backendRequests.length : '—'}</span></h2>
           <p className="sub admin-queue-explanation">Approval creates a private tournament for this Organizer. Appoint referees before publication.</p>
           {tournamentRequestsQuery.isPending ? <div className="sub">Loading requests…</div> : null}
           {tournamentRequestsQuery.isError ? (
             <Banner kind="crit">
-              <b>Couldn't load the queue.</b> {(tournamentRequestsQuery.error as Error).message}{' '}
-              <button className="btn" type="button" onClick={() => void tournamentRequestsQuery.refetch()}>Try again</button>
+              {(tournamentRequestsQuery.error as { status?: number }).status === 403 ? <><b>Queue access denied.</b> Your current admin scope cannot read this queue. Ask Root to check your admin assignment.</> : <><b>Couldn't load the queue.</b> {(tournamentRequestsQuery.error as Error).message}{' '}
+              <button className="btn" type="button" onClick={() => void tournamentRequestsQuery.refetch()}>Try again</button></>}
             </Banner>
           ) : null}
           {reviewTournamentReq.isError && !reviewTournamentReq.isPending
@@ -277,9 +320,10 @@ export function AdminPage() {
                     <h3>{r.name}</h3><Badge kind="neutral">{sportName(r.sportTypeId)}</Badge><Badge kind="warn">Pending</Badge>
                     {outOfScope ? <Badge kind="warn">Above your scope</Badge> : null}
                   </span>
-                  <span className="tag">{fmtDate(r.eventStartDate)}</span>
+                  <span className="tag">{displayDate(r.eventStartDate)}</span>
                 </div>
                 <div className="sub">Requested by {r.requestedBy.fullName} · asked on {fmtDate(r.createdAt)}</div>
+                <TournamentReviewDisclosure id={r.id} />
                 {outOfScope ? (
                   <Banner kind="warn" icon="clock">
                     <b>This one is not yours to approve.</b> It admits entrants from outside your faculty, or
@@ -289,21 +333,21 @@ export function AdminPage() {
                 ) : null}
                 <div className="hstack">
                   <button className="btn danger" type="button" disabled={reviewTournamentReq.isPending}
-                    onClick={() => { setTournamentReason(''); setRejectingTournament({ id: r.id, name: r.name }) }}>Decline</button>
+                    onClick={() => { setDecisionViewerKey(queueViewerKey); setTournamentReason(''); setRejectingTournament({ id: r.id, name: r.name }) }}>Decline</button>
                   {/* ปุ่มที่รู้อยู่แล้วว่าจะได้ 403 เดิมกลับมา ไม่ควรยังกดได้ */}
                   <button className="btn primary" type="button" disabled={reviewTournamentReq.isPending || outOfScope}
                     title={outOfScope ? 'A university admin has to approve this one' : undefined}
-                    onClick={() => decideTournamentRequest(r.id, true)}>Approve</button>
+                    onClick={() => { setDecisionViewerKey(queueViewerKey); setApprovingTournament({ id: r.id, name: r.name }) }}>Approve</button>
                 </div>
               </div>
             )
           })}
           </div>
-          {tournamentRequestsQuery.isSuccess && !backendRequests.length ? <div className="sub">Nothing waiting.</div> : null}
+          {!requestsBlocked && tournamentRequestsQuery.isSuccess && !backendRequests.length ? <div className="sub">Nothing waiting.</div> : null}
         </Panel>
       ) : null}
 
-      <Modal className="admin-decision-dialog" open={tab === 'requests' && !!rejectingTournament && backendRequests.some(row => row.id === rejectingTournament.id)} onClose={() => { if (!reviewTournamentReq.isPending) setRejectingTournament(null) }}
+      <Modal className="admin-decision-dialog" open={tab === 'requests' && canReadQueues && decisionViewerKey === queueViewerKey && !!rejectingTournament && backendRequests.some(row => row.id === rejectingTournament.id)} onClose={() => { if (!reviewTournamentReq.isPending) setRejectingTournament(null) }}
         label="Decline a request to organize" title={rejectingTournament?.name ?? ''}>
         <Field label="Reason — sent back to the person who asked" htmlFor="tournament-reject-reason">
           <textarea id="tournament-reject-reason" rows={3} disabled={reviewTournamentReq.isPending} value={tournamentReason}
@@ -388,13 +432,14 @@ export function AdminPage() {
           {permanentRows.length ? (
             <TableWrap label="Official squad requests">
               <table>
-                <thead><tr><th>Squad</th><th>Asked by</th><th>When</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Squad</th><th>Asked by</th><th>When</th><th>Documents</th><th /></tr></thead>
                 <tbody>
                   {permanentRows.map(r => (
                     <tr key={r.id}>
-                      <td><TeamLinkView team={{ id: r.team.id, name: r.team.name }} /></td>
+                      <td><TeamLinkView team={r.team} /></td>
                       <td className="sub">{r.requestedBy.fullName}</td>
                       <td className="tag">{fmtDate(r.createdAt)}</td>
+                      <td><IdentityDocs docs={r.supportingDocs} docsSubmitted={!!r.supportingDocs?.length} fetchedAt={teamRequestsQuery.dataUpdatedAt} now={clockNow} onRefresh={() => void teamRequestsQuery.refetch()} refreshing={teamRequestsQuery.isFetching} /></td>
                       <td>
                         <span className="hstack" style={{ gap: 6 }}>
                           <button className="btn ghost" type="button" disabled={busyRequestId !== undefined}
@@ -402,7 +447,7 @@ export function AdminPage() {
                             Reject
                           </button>
                           <button className="btn primary" type="button" disabled={busyRequestId !== undefined}
-                            onClick={() => approveOfficial(r)}>
+                            onClick={() => { approveTeamReq.reset(); setApprovingOfficial(r) }}>
                             {busyRequestId === r.id && approveTeamReq.isPending ? 'Approving…' : 'Approve'}
                           </button>
                         </span>
@@ -434,7 +479,7 @@ export function AdminPage() {
 
       {tab === 'referees' ? <AdminRefereesTab /> : null}
 
-      {tab === 'filters' && !USE_MOCK ? (
+      {tab === 'filters' && !USE_MOCK && canReadQueues ? (
         <Panel>
           <h2>Rule changes <span className="sub">{amendments.data && !amendmentsBlocked ? amendmentRows.length : '—'}</span></h2>
           <div className="sub">
@@ -443,12 +488,12 @@ export function AdminPage() {
           {amendments.isPending ? <div className="sub">Loading requests…</div> : null}
           {amendments.isError ? (
             <Banner kind="crit">
-              <b>Couldn't load the queue.</b> {(amendments.error as Error).message}{' '}
-              <button className="btn" type="button" onClick={() => void amendments.refetch()}>Try again</button>
+              {(amendments.error as { status?: number }).status === 403 ? <><b>Queue access denied.</b> Your current admin scope cannot read this queue. Ask Root to check your admin assignment.</> : <><b>Couldn't load the queue.</b> {(amendments.error as Error).message}{' '}
+              <button className="btn" type="button" onClick={() => void amendments.refetch()}>Try again</button></>}
             </Banner>
           ) : null}
           {approveAmendment.isError ? (
-            <Banner kind="crit"><b>The decision did not go through.</b> {(approveAmendment.error as Error).message}</Banner>
+            <Banner kind="crit"><b>The decision did not go through.</b> {(approveAmendment.error as Error).message}<ContractErrorDetails error={approveAmendment.error} /></Banner>
           ) : null}
           <div className="admin-review-list admin-change-list" role="region" aria-label="Rule change queue" tabIndex={0}>
           {amendmentRows.map(request => (
@@ -458,37 +503,30 @@ export function AdminPage() {
                 <div className="hstack"><Badge kind="warn">Pending changes</Badge><span className="tag">{fmtDate(request.requestedAt)}</span></div>
                 <div className="sub">Asked by {request.requestedBy.fullName}</div>
               </div>
-              <TableWrap label={`Requested changes for ${request.tournamentName}`}>
-                <table>
-                  <thead><tr><th>Field</th><th>Asked for</th></tr></thead>
-                  <tbody>
-                    {Object.entries(request.requestedChanges).map(([field, value]) => (
-                      <tr key={field}>
-                        <td className="sub">{adminFieldLabel(field)}</td>
-                        <td className="admin-change-value">{adminChangeValue(value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableWrap>
+              {request.selfRequested ? <Badge kind="warn">You submitted this request</Badge> : null}
+              <p style={{ whiteSpace: 'pre-wrap' }}>Reason: {request.reason ?? 'Not provided'}</p>
+              <TournamentReviewDetails id={request.tournamentId} changes={request.requestedChanges} />
+
               <div className="hstack">
                 <button className="btn danger" type="button" disabled={rejectAmendment.isPending}
-                  onClick={() => { setAmendmentReason(''); setRejectingAmendment({ id: request.id, name: request.tournamentName }) }}>
+                  onClick={() => { setDecisionViewerKey(queueViewerKey); setAmendmentReason(''); setRejectingAmendment({ id: request.id, name: request.tournamentName }) }}>
                   Decline
                 </button>
                 <button className="btn primary" type="button" disabled={approveAmendment.isPending}
-                  onClick={() => approveAmendment.mutate(request.id, { onSuccess: () => setDecisionNotice({ kind: 'ok', text: `Approved changes for ${request.tournamentName}.` }) })}>
+                  onClick={() => { setDecisionViewerKey(queueViewerKey); approveAmendment.reset(); setApprovingAmendment(request) }}>
                   {approveAmendment.isPending ? 'Approving…' : 'Approve the change'}
                 </button>
               </div>
             </div>
           ))}
           </div>
-          {amendments.isSuccess && !amendmentRows.length ? <div className="sub">Nothing waiting.</div> : null}
+          {!amendmentsBlocked && amendments.isSuccess && !amendmentRows.length ? <div className="sub">Nothing waiting.</div> : null}
         </Panel>
       ) : null}
 
-      <Modal className="admin-decision-dialog" open={tab === 'filters' && !!rejectingAmendment && amendmentRows.some(row => row.id === rejectingAmendment.id)} onClose={() => { if (!rejectAmendment.isPending) setRejectingAmendment(null) }}
+      {tab === 'filters' && canReadQueues && !amendmentsBlocked && decisionViewerKey === queueViewerKey && approvingAmendment ? <AmendmentApprovalDialog key={`${queueViewerKey}-${approvingAmendment.id}`} request={approvingAmendment} approval={approveAmendment} onApproved={() => setDecisionNotice({ kind: 'ok', text: `Approved changes for ${approvingAmendment.tournamentName}.` })} onClose={() => setApprovingAmendment(null)} /> : null}
+
+      <Modal className="admin-decision-dialog" open={tab === 'filters' && canReadQueues && decisionViewerKey === queueViewerKey && !!rejectingAmendment && amendmentRows.some(row => row.id === rejectingAmendment.id)} onClose={() => { if (!rejectAmendment.isPending) setRejectingAmendment(null) }}
         label="Decline a change request" title={rejectingAmendment?.name ?? ''}>
         <Field label="Reason — sent back to the organizer" htmlFor="amendment-reject-reason">
           <textarea id="amendment-reject-reason" rows={3} disabled={rejectAmendment.isPending} value={amendmentReason}

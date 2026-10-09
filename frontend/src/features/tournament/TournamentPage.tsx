@@ -6,6 +6,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Facts, Panel, VenueLine } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
+import { TeamChipView } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
 import { USE_MOCK } from '../../api/client'
 import { useEligibilityRules, useTournament, useTournamentTeams } from '../../hooks/useTournament'
@@ -26,7 +27,9 @@ import { LiveCommunityTab } from './LiveCommunityTab'
 import { EntryPanel } from './EntryPanel'
 import { ManageTab } from './manage/ManageTab'
 import { tournamentView } from './tournamentView'
-import { fmtDateOnly, fmtDateTime } from '../../shared/dateFormat'
+import { fmtDateTime } from '../../shared/dateFormat'
+import { TournamentRefereeWithdrawal } from '../match/RefereeWithdrawal'
+import { dateRange } from '../../shared/display'
 
 const registrationDate = (value: string | null | undefined) =>
   (value ? fmtDateTime(value, 'Unavailable') : 'Not specified')
@@ -213,7 +216,7 @@ export function TournamentPage() {
           </div>
         </div>
         <div className="hstack">
-          {champion ? <Badge kind="ok">{`Champion · ${champion.name}`}</Badge>
+          {champion ? <Badge kind="ok">Champion · <TeamChipView team={{ id: champion.id, name: champion.name, logoUrl: 'logoUrl' in champion && typeof champion.logoUrl === 'string' ? champion.logoUrl : 'logo' in champion && typeof champion.logo === 'string' ? champion.logo : null }} /></Badge>
             : completed ? <Badge kind="ok">Completed</Badge>
             : t.status === 'public' ? <Badge kind="ok">Public</Badge>
               : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
@@ -231,7 +234,10 @@ export function TournamentPage() {
         </div>
       </header>
 
+      {winner.data?.runnerUpTeam ? <Panel quiet><span className="tag">Runner-up</span><TeamChipView team={winner.data.runnerUpTeam} /></Panel> : null}
+
       <div className="tour-page">
+        {!USE_MOCK && currentUser && !org && !completed && tournamentId ? <TournamentRefereeWithdrawal tournamentId={tournamentId} /> : null}
         <nav className="tabs" aria-label="Tournament sections">
           {tabs.map(k => <Link key={k} to={`/t/${t.id}/${k}`} className={`tab ${tab === k ? 'on' : ''}`}
             aria-current={tab === k ? 'page' : undefined}>{k[0].toUpperCase() + k.slice(1)}</Link>)}
@@ -245,7 +251,8 @@ export function TournamentPage() {
             <Facts rows={[
               ['Sport', t.sport],
               ['Format', formatName(t)],
-              ['Date', fmtDateOnly(t.date, t.date || 'Not set')],
+              ...(!USE_MOCK && tournamentData?.bestOf !== undefined ? [['Tournament BO default', tournamentData.bestOf == null ? 'No BO limit' : `BO${tournamentData.bestOf} (individual matches can differ)`] as [string, string]] : []),
+              ['Date', dateRange(t.date, t.eventEndDate)],
               ['Registration opens', registrationDate(t.registrationStart)],
               ['Registration closes', registrationDate(t.registrationEnd)],
               ['Venue', <VenueLine name={t.venue} pin={t.pin} />],

@@ -7,6 +7,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { USE_MOCK, retryPolicy } from "../api/client";
 import * as adminApi from "../api/admin";
+import { useMe } from './useAuth';
+import { canReadTournamentQueues } from '../shared/adminQueueAccess';
 import type { TeamRef } from "../mocks/teamBridge";
 import type {
   ReviewTournamentRequest,
@@ -65,9 +67,11 @@ export function useMyRefereeInvitations() {
 }
 
 export function useTournamentRequests() {
+  const me = useMe();
   return useQuery({
-    queryKey: adminKeys.tournamentRequests,
+    queryKey: [...adminKeys.tournamentRequests, 'legacy', me.data?.id, me.data?.adminScope],
     queryFn: adminApi.getTournamentRequests,
+    enabled: USE_MOCK || canReadTournamentQueues(me.data?.adminScope),
     retry: retryPolicy,
   });
 }
@@ -95,6 +99,39 @@ function touchRefereeRequests(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["match"] });
   qc.invalidateQueries({ queryKey: ["matches"] });
   qc.invalidateQueries({ queryKey: ["notifications"] });
+  qc.invalidateQueries({ queryKey: ['refereeIdentity'] });
+}
+
+export function useRefereeIdentity(enabled = true) {
+  return useQuery({ queryKey: ['refereeIdentity'], queryFn: adminApi.getMyRefereeIdentity,
+    enabled: !USE_MOCK && enabled, retry: retryPolicy, refetchInterval: enabled ? 30000 : false });
+}
+
+export function useSubmitRefereeIdentityDocs() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: adminApi.submitRefereeIdentityDocs,
+    onSuccess: () => { touchRefereeRequests(qc); qc.invalidateQueries({ queryKey: adminKeys.externalReferees }); } });
+}
+
+export function useRequestExternalRefereeDocs() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { userId: number; reason: string }) => adminApi.requestExternalRefereeDocs(v.userId, v.reason),
+    onSuccess: () => { touchRefereeRequests(qc); qc.invalidateQueries({ queryKey: adminKeys.externalReferees }); } });
+}
+
+export function useRequestRefereeWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: adminApi.requestRefereeWithdrawal, onSuccess: () => touchRefereeRequests(qc) });
+}
+
+/** F02b — ปลายทางที่โอนแมตช์ให้ได้ รวมกรรมการที่ยังไม่มีแมตช์ */
+export function useAssignableReferees(tournamentId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["referees", tournamentId, "assignable"] as const,
+    queryFn: () => adminApi.getAssignableReferees(tournamentId as number),
+    enabled: enabled && tournamentId !== undefined,
+    retry: retryPolicy,
+  });
 }
 
 export function useRequestRefereeTransfer() {
@@ -134,18 +171,32 @@ export function useDeclineRefereeRequest() {
 }
 
 /** GET /admin/amendment-requests — คำขอแก้ไขรายการที่รอแอดมิน (C09) */
-export function useAmendmentRequests() {
+export function useAmendmentRequests(enabled = true) {
+  const me = useMe();
   return useQuery({
-    queryKey: adminKeys.amendments,
+    queryKey: [...adminKeys.amendments, me.data?.id, me.data?.adminScope],
     queryFn: adminApi.getAmendmentRequests,
-    enabled: !USE_MOCK,
+    enabled: !USE_MOCK && enabled && canReadTournamentQueues(me.data?.adminScope),
     retry: retryPolicy,
+  });
+}
+
+export function useAmendmentImpact(requestId: number) {
+  const me = useMe();
+  return useQuery({
+    queryKey: ['admin', 'amendmentImpact', me.data?.id, me.data?.adminScope, requestId],
+    queryFn: () => adminApi.getAmendmentImpact(requestId),
+    enabled: !USE_MOCK && canReadTournamentQueues(me.data?.adminScope) && requestId > 0,
+    retry: retryPolicy,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
 /** อนุมัติแล้ว backend เขียนค่าที่ขอลงทัวร์นาเมนต์ให้เลย — รายการนั้นจึงต้องอ่านใหม่ด้วย */
 function touchAmendments(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: adminKeys.amendments });
+  qc.invalidateQueries({ queryKey: ['admin', 'amendmentImpact'] });
   qc.invalidateQueries({ queryKey: ["tournaments"] });
   qc.invalidateQueries({ queryKey: ["tournament"] });
 }
@@ -169,10 +220,11 @@ export function useRejectAmendment() {
 
 /** คิวคำขอจัดทัวร์นาเมนต์ตามรูปที่ backend ตอบจริง — ใช้กับหน้า Admin ในโหมดจริง */
 export function usePendingTournamentRequests(enabled = true) {
+  const me = useMe();
   return useQuery({
-    queryKey: adminKeys.tournamentRequests,
+    queryKey: [...adminKeys.tournamentRequests, me.data?.id, me.data?.adminScope],
     queryFn: adminApi.getPendingTournamentRequests,
-    enabled: !USE_MOCK && enabled,
+    enabled: !USE_MOCK && enabled && canReadTournamentQueues(me.data?.adminScope),
     retry: retryPolicy,
   });
 }
@@ -229,6 +281,8 @@ export function useRefereeCoverage(tournamentId: TeamRef | undefined) {
     queryFn: () => adminApi.getRefereeCoverage(tournamentId as TeamRef),
     enabled: tournamentId !== undefined,
     retry: retryPolicy,
+    refetchOnMount: 'always',
+    refetchInterval: 30_000,
   });
 }
 
@@ -249,10 +303,11 @@ export function useAdminScopes() {
   return useQuery({ queryKey: adminKeys.scopes, queryFn: adminApi.getAdminScopes, retry: retryPolicy });
 }
 
-export function useAuditLogs(query: AuditLogQuery = {}) {
+export function useAuditLogs(query: AuditLogQuery = {}, enabled = true) {
   return useQuery({
     queryKey: adminKeys.audit(query),
     queryFn: () => adminApi.getAuditLogs(query),
+    enabled,
     retry: retryPolicy,
   });
 }
@@ -375,8 +430,11 @@ export function useReviewExternalReferee() {
     mutationFn: (v: { requestId: TeamRef; input: ReviewExternalRefereeRequest }) =>
       adminApi.reviewExternalReferee(v.requestId, v.input),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['refereeIdentity'] });
       qc.invalidateQueries({ queryKey: adminKeys.externalReferees });
       qc.invalidateQueries({ queryKey: ["referees"] });
+      qc.invalidateQueries({ queryKey: ["match"] });
+      qc.invalidateQueries({ queryKey: ["matches"] });
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });

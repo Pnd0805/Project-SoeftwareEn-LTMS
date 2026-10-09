@@ -59,6 +59,7 @@ export interface PlayerRef {
   id: number;
   fullName: string;
   avatarUrl: string | null;
+  isCaptain?: boolean;
   checkinStatus?: MatchLineupCheckinStatus;
   checkedInAt?: string | null;
 }
@@ -69,6 +70,7 @@ export interface BackendMatchLineupPlayerDto {
   userId: number;
   fullName: string;
   avatarUrl: string | null;
+  isCaptain?: boolean;
   checkinStatus: MatchLineupCheckinStatus;
   checkedInAt: string | null;
 }
@@ -160,6 +162,11 @@ export interface MatchDto {
    * เป็นแค่ "เปิดเช็คอิน"
    */
   resultStatus: MatchResultStatus | null;
+  /** Format การแข่ง (Best of N) เช่น 1, 3, 5, 7 */
+  bestOf?: number | null;
+  possibleScores?: [number, number][];
+  pickemTolerance?: { spotOn: number; close: number };
+  startedAt?: string | null;
   /** สิ่งที่คนที่กำลังดูอยู่ทำได้ */
   viewer: MatchViewerContext;
 }
@@ -240,6 +247,8 @@ export interface MatchViewerContext {
  * ถ้าไม่มี tournamentName / score / checkedIn ติดมาด้วย หน้า list ต้องยิงเพิ่มอีก 3 request ต่อแถว
  */
 export interface MatchListItemDto extends MatchDto {
+  /** From unfiltered GET /me/matches; undefined means this row was not assessed. */
+  conflictingMatchIds?: number[];
   /**
    * สกอร์ถูกดึงขึ้นมาจาก match_results.score_data ให้แล้ว — null = ยังไม่มีผล
    * หน้า list ต้องการแค่ตัวเลข ไม่ต้องการ MatchResultDto ทั้งก้อน
@@ -251,6 +260,22 @@ export interface MatchListItemDto extends MatchDto {
    * ถ้าไม่มีก็ตีความเหมือนเดิมทุกอย่าง จึงเป็น optional ไม่ใช่ null
    */
   outcome?: MatchOutcome | null;
+}
+
+export interface BackendMyMatchDto {
+  id: number;
+  role: 'player' | 'referee';
+  myTeamId: number | null;
+  tournament: { id: number; name: string; sportTypeId: number };
+  round: number | null;
+  teamA: { id: number; name: string; logoUrl?: string | null } | null;
+  teamB: { id: number; name: string; logoUrl?: string | null } | null;
+  scheduledTime: string | null;
+  scheduledEndTime: string | null;
+  venue: string | null;
+  mode: Mode;
+  status: MatchStatus;
+  conflictingMatchIds: number[];
 }
 
 /**
@@ -277,6 +302,12 @@ export interface MatchResultDto {
   /** โครงสร้างคงที่ ไม่แตกตารางเหมือน player stats — shape ขึ้นกับชนิดกีฬา */
   scoreData: Record<string, unknown> | null;
   submittedBy: PlayerRef;
+  /**
+   * OD-59 — S05 ส่งชื่อผู้บันทึกให้เฉพาะผู้จัด กรรมการ หัวหน้าสองทีม และแอดมินที่ถึงคิวตัดสิน
+   * สามกรณีหน้าจอต้องพูดคนละแบบ: `hidden` ไม่มีคีย์ (ไม่มีสิทธิ์รู้) · `deleted` คีย์เป็น null
+   * (บัญชีผู้ส่งถูกลบ) · `shown` มีชื่อ — เดิมรวบเป็น "—" ทั้งหมด จึงขึ้น "Entered by —"
+   */
+  submittedByVisibility?: "shown" | "hidden" | "deleted";
   submittedRole: ResultSubmittedRole;
   status: MatchResultStatus;
 
@@ -295,6 +326,13 @@ export interface MatchResultDto {
   amendReason: string | null;
   /** isAmended = (amendedAt !== null) — ไม่มี boolean แยก */
   amendedAt: string | null;
+
+  /** เมื่อกรรมการแก้ผลที่ submitted — สกอร์เดิมก่อนแก้ */
+  originalScoreData?: Record<string, unknown> | null;
+  /** สกอร์ใหม่ที่แก้รอการยืนยัน */
+  overriddenScoreData?: Record<string, unknown> | null;
+  overrideReason?: string | null;
+  overriddenAt?: string | null;
 
   createdAt: string;
 }
@@ -462,7 +500,7 @@ export interface StandingRowDto {
    * ป้ายบอกว่าจบตรงไหน เช่น "Quarter-final" หรือ "Champion"
    * server เป็นคนตั้งชื่อรอบ เพราะต้องรู้ว่าสายมีกี่รอบ
    */
-  outLabel: string;
+  outLabel: string | null;
 }
 
 export interface StandingsDto {
@@ -487,6 +525,11 @@ export interface BackendTeamRef {
   id: number;
   name: string;
   sportTypeId: number;
+  /**
+   * OD-61 (4 ต.ค.) — URL สาธารณะพร้อมใช้ ไม่ใช่ object key · null = ทีมยังไม่อัปโลโก้
+   * ⚠️ อย่าปนกับ teamA === null (ช่องไม่มีทีม — บาย/ยังไม่รู้คู่) ทีมไม่มีโลโก้ยังต้องวาดพร้อมรูปแทน
+   */
+  logoUrl?: string | null;
 }
 
 export interface BackendPagination {
@@ -545,6 +588,7 @@ export interface BackendMatchListItemDto extends BackendMatchResultSummary {
   scheduledEndTime: string | null;
   venue: string | null;
   status: MatchStatus;
+  bestOf?: number | null;
 }
 
 /**
@@ -569,6 +613,9 @@ export interface BackendRefereeMatchDto {
 
 /** GET /matches/:id — ฟิลด์ผลสรุปชุดเดียวกับ M04 */
 export interface BackendMatchDetailDto extends BackendMatchListItemDto {
+  possibleScores?: [number, number][];
+  pickemTolerance?: { spotOn: number; close: number };
+  startedAt?: string | null;
   tournamentId: number;
   checkinOpenAt: string | null;
   mode: Mode;
@@ -687,7 +734,9 @@ export interface BackendVerifiedResultDto {
 /** GET /matches/:id/result — 404 ระหว่างที่ผลถูกโต้แย้ง */
 export interface BackendResultDto {
   submittedRole?: ResultSubmittedRole;
+  /** OD-59 — ไม่มีคีย์ = ผู้ดูไม่มีสิทธิ์รู้ · null = บัญชีผู้ส่งถูกลบ (submittedAt ยังมีค่า) */
   submittedBy?: PlayerRef | null;
+  submittedAt?: string;
   isAutoVerified?: boolean;
   matchId: number;
   winnerTeamId: number | null;
@@ -715,6 +764,10 @@ export interface BackendResultDto {
   disputeResolution?: string | null;
   disputeResolvedBy?: PlayerRef | null;
   disputeResolvedAt?: string | null;
+  originalScoreData?: Record<string, number> | null;
+  overriddenScoreData?: Record<string, number> | null;
+  overrideReason?: string | null;
+  overriddenAt?: string | null;
 }
 
 export interface BackendDisputeRequest {
@@ -775,6 +828,7 @@ export interface BackendBracketDto {
 
 /** GET /tournaments/:id/standings */
 export interface BackendStandingDto {
+  outLabel: string | null;
   team: BackendTeamRef;
   played: number;
   wins: number;

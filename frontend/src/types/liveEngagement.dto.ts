@@ -1,6 +1,7 @@
 export interface ReviewSummary {
   summary: { average: number | null; count: number; distribution: Record<string, number> };
   status: 'not_started' | 'open' | 'closed';
+  openedBy: 'event_start' | 'completed' | 'first_match' | null;
   opensAt: string | null;
   closesAt: string | null;
   mine: { id: number; rating: number; content: string | null; createdAt: string } | null;
@@ -36,6 +37,25 @@ export interface CommentPage {
   pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }
 
+export interface RemovedFeedbackItem {
+  id: number;
+  tournamentId: number;
+  tournamentName: string;
+  feedbackType: 'comment' | 'organizer_feedback' | 'mvp_vote';
+  content: string | null;
+  rating: number | null;
+  author: { id: number; fullName: string; avatarUrl: string | null };
+  removedAt: string;
+  removedBy: { id: number; fullName: string } | null;
+  removalReason: string | null;
+  removedByRole: 'organizer' | 'admin' | null;
+  canRestore: boolean;
+}
+export interface RemovedFeedbackPage {
+  items: RemovedFeedbackItem[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}
+
 export interface PredictionSummary {
   matchId: number;
   isOpen: boolean;
@@ -43,7 +63,8 @@ export interface PredictionSummary {
   closesAt: string | null;
   total: number;
   teams: Array<{ teamId: number; picks: number; percent: number }>;
-  mine: { teamId: number; scoreData: Record<string, number> | null; pointsEarned: number | null; status: 'pending' | 'won' | 'lost' | 'void' } | null;
+  /** OD-56 — ทายเป็นสกอร์ (teamId = ผู้ชนะที่ระบบอนุมานจากสกอร์) · pointsEarned เป็น 10/7/4/0 ไม่ใช่ 10/0 */
+  mine: { teamId: number; scoreData?: Record<string, number> | null; pointsEarned: number | null; status: 'pending' | 'won' | 'lost' | 'void' } | null;
   canPredict: boolean;
 }
 export interface PickemHistory {
@@ -54,4 +75,5 @@ export interface PickemHistory {
 }
 export interface PickemLeaderboard {
   items: Array<{ rank: number; user: { id: number; fullName: string; avatarUrl: string | null }; points: number; correct: number; settled: number }>;
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
 }

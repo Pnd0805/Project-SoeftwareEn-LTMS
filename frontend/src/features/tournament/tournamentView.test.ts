@@ -37,3 +37,9 @@ describe('registration lifecycle view', () => {
     })
   })
 })
+
+it('does not mark an overdue public tournament finished until the server closes it', () => {
+  const dto = { id: 5, name: 'Overdue cup', status: 'public', eventStartDate: '2020-01-01', eventEndDate: '2020-01-02', referees: [], sportTypeId: 1 } as unknown as TournamentDto
+  expect(tournamentView(dto).champion).toBeNull()
+  expect(tournamentView({ ...dto, status: 'completed' }).champion).not.toBeNull()
+})

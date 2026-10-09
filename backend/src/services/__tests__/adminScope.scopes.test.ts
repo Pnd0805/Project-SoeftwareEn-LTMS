@@ -26,6 +26,8 @@ vi.mock('../../utils/imageUrl.js', () => ({
 vi.mock('../../repositories/user.repo.js', () => ({
   findById: vi.fn(),
   suspendUser: vi.fn(() => Promise.resolve(1)),
+  // มติ 8 ต.ค. 2569 — grantScope/revokeScope เขียน users.user_type (staff ตอนได้ยศ)
+  updateUserType: vi.fn(() => Promise.resolve()),
   hasActivePublicTournamentAsOrganizer: vi.fn(() => Promise.resolve(false)),
   hasApprovedApplicationAsLeader: vi.fn(() => Promise.resolve(false)),
 }));

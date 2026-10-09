@@ -6,7 +6,7 @@
  */
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Empty, Field, Panel, Tabs } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useLtms } from '../../shared/store'
@@ -22,6 +22,7 @@ import { tournamentView } from '../tournament/tournamentView'
 import { useSportTypes } from '../../hooks/useReference'
 import { useSearchTeams } from '../../hooks/useTeam'
 import './search-inbox-workspace.css'
+import { searchUserLabel } from '../../shared/display'
 
 export function SearchPage() {
   const s = useLtms()
@@ -95,6 +96,8 @@ export function SearchPage() {
           { key: 'players', label: `Players ${players.length}` },
         ]} />
       </div> : null}
+
+      {!currentUser && needle ? <Panel quiet>Sign in to search for players. <Link to="/login">Sign in</Link></Panel> : null}
 
       {!needle ? (
         <Empty icon="search" title="Type to search"
@@ -194,7 +197,7 @@ export function SearchPage() {
           {players.map(u => (
             <button className="who" type="button" key={u.id} aria-label={`Open player: ${u.fullName}`} onClick={() => navigate(`/player/${u.id}`)}>
               <Avatar name={u.fullName} avatarUrl={u.avatarUrl} />
-              <span className="meta"><b>{u.fullName}</b></span>
+              <span className="meta"><b>{u.fullName}</b><span className="sub">{searchUserLabel(u)}</span></span>
               <Icon name="chev" size={13} />
             </button>
           ))}

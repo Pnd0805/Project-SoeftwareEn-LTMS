@@ -1,3 +1,5 @@
+import { useSearchUsers } from '../../hooks/useUser'
+import { statusLabel, searchUserLabel } from '../../shared/display'
 import { useState } from 'react'
 import { adminReadBlocked } from './adminView'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
@@ -9,11 +11,14 @@ import { Icon } from '../../components/kit/Icon'
 import { Avatar } from '../../components/kit/Avatar'
 import type { AdminScopeDto } from '../../types/admin.dto'
 import { fmtDateTime } from '../../shared/dateFormat'
+import { USE_MOCK } from '../../api/client'
 const message = (error: unknown) => error instanceof Error ? error.message : 'Request failed.'
 export function AdminScopesTab() {
   const me = useMe(); const scopes = useAdminScopes(); const faculties = useFaculties()
   const grant = useGrantAdminScope(); const revoke = useRevokeAdminScope()
   const [userId, setUserId] = useState(''); const [facultyId, setFacultyId] = useState('')
+  const [searchUser, setSearchUser] = useState('')
+  const found = useSearchUsers(searchUser, !!me.data?.adminScope)
   const [review, setReview] = useState(false); const [removing, setRemoving] = useState<AdminScopeDto | null>(null)
   const [notice, setNotice] = useState('')
   const actor = me.data?.adminScope?.scopeType
@@ -36,16 +41,21 @@ export function AdminScopesTab() {
         onClick={() => { revoke.reset(); setRemoving(row) }}>Revoke</button></div>)}
     {scopes.isSuccess && !rows.length ? <p>No admin rights in your scope.</p> : null}
     </div>
-    {canGrant && !blocked ? <div className="admin-grant-form"><h3>Grant rights</h3><Field label="User ID" htmlFor="grant-user"><input id="grant-user" disabled={busy} type="number" min="1" step="1" value={userId} onChange={e => setUserId(e.target.value)} /></Field>
+    {canGrant && !blocked ? <div className="admin-grant-form"><h3>Grant rights</h3><Field label="Find a user by name" htmlFor="grant-search"><input id="grant-search" type="search" placeholder="At least 3 characters" value={searchUser} onChange={e => setSearchUser(e.target.value)} /></Field>
+      {found.isFetching ? <p>Searching users…</p> : null}
+      {found.isError ? <Banner kind="crit">{message(found.error)} <button className="btn" onClick={() => void found.refetch()}>Retry search</button></Banner> : null}
+      {found.data?.items.map(u => <button className="btn ghost" key={u.id} onClick={() => { setUserId(String(u.id)); setSearchUser(u.fullName) }}>{u.fullName} · {searchUserLabel(u)}</button>)}
+      {found.isSuccess && !found.data.items.length ? <p>No matching users.</p> : null}
+<Field label="User ID" htmlFor="grant-user"><input id="grant-user" disabled={busy} type="number" min="1" step="1" value={userId} onChange={e => setUserId(e.target.value)} /></Field>
       {target === 'faculty' ? <Field label="Faculty" htmlFor="grant-faculty"><select id="grant-faculty" disabled={busy} value={facultyId} onChange={e => setFacultyId(e.target.value)}><option value="">Choose faculty</option>{faculties.data?.items.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></Field> : null}
       <button className="btn primary" disabled={!valid || busy} onClick={() => { grant.reset(); setReview(true) }}>Review grant</button></div> : null}
     <Modal className="admin-decision-dialog" open={review && !blocked && canGrant} onClose={() => !busy && setReview(false)} title="Grant admin rights">
-      <p>Grant {target} rights to user #{userId}{target === 'faculty' ? ` in ${facultyName(Number(facultyId))}` : ''}?</p>
+      <p>Grant {statusLabel(target)} rights to user #{userId}{target === 'faculty' ? ` in ${facultyName(Number(facultyId))}` : ''}?</p>
       {grant.error ? <Banner kind="crit">{message(grant.error)}</Banner> : null}
       <button className="btn" disabled={busy} onClick={() => setReview(false)}>Cancel</button><button className="btn primary" disabled={busy || !valid} onClick={() => grant.mutate({ userId: Number(userId), scopeType: target, ...(target === 'faculty' ? { facultyId: Number(facultyId) } : {}) }, { onSuccess: () => { setNotice(`Granted ${target.replaceAll('_', ' ')} rights to user #${userId}${target === 'faculty' ? ` in ${facultyName(Number(facultyId))}` : ''}.`); setReview(false); setUserId('') } })}>{grant.isPending ? 'Saving…' : 'Confirm grant'}</button>
     </Modal>
     <Modal className="admin-decision-dialog" open={!!removing && canGrant && rows.some(row => row.id === removing.id && row.scopeType === target && row.user.id !== me.data?.id)} onClose={() => !busy && setRemoving(null)} title="Revoke admin rights">
-      <p>Remove {removing?.scopeType} rights from {removing?.user.fullName}?</p>
+      <p>Remove {removing ? statusLabel(removing.scopeType) : ''} rights from {removing?.user.fullName}?</p>
       {revoke.error ? <Banner kind="crit">{message(revoke.error)}</Banner> : null}
       <button className="btn" disabled={busy} onClick={() => setRemoving(null)}>Cancel</button><button className="btn danger" disabled={busy} onClick={() => removing && revoke.mutate(removing.id, { onSuccess: () => { setNotice(`Revoked ${removing.scopeType.replaceAll('_', ' ')} rights from ${removing.user.fullName}.`); setRemoving(null) } })}>{revoke.isPending ? 'Saving…' : 'Confirm revoke'}</button>
     </Modal>
@@ -56,9 +66,14 @@ const detailValue = (value: unknown): string => value === null ? 'Not specified'
   : typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
 
 export function AdminAuditTab() {
-  const logs = useAuditLogs({ limit: 100 })
+  const me = useMe()
+  const scope = me.data?.adminScope?.scopeType
+  const canRead = USE_MOCK || scope === 'root' || scope === 'university_wide'
+  const [page, setPage] = useState(1)
+  const logs = useAuditLogs({ page }, canRead)
   const [search, setSearch] = useState('')
   const [entity, setEntity] = useState('')
+  if (!canRead) return <Panel quiet><h3>Audit logs</h3><p>Audit logs are available to Root and University Admin only.</p></Panel>
   const items = adminReadBlocked(logs) ? [] : logs.data?.items ?? []
   const types = [...new Set(items.map(row => row.entityType))].sort()
   const visible = items.filter(row => (!entity || row.entityType === entity) &&
@@ -66,7 +81,7 @@ export function AdminAuditTab() {
       .join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
   return <Panel quiet className="admin-audit">
     <div className="spread"><h2>Audit logs</h2>{logs.data && !adminReadBlocked(logs) ? <Badge kind="neutral">{items.length} records loaded</Badge> : null}</div>
-    <p className="sub">Latest 100 records. Search and filters apply to these records. Read access requires Root or University Admin rights.</p>
+    <p className="sub">Browse every page. Search and filters apply to the current page. Read access requires Root or University Admin rights.</p>
     <div className="grid2">
       <Field label="Search audit logs" htmlFor="audit-search"><input id="audit-search" type="search" placeholder="Action, person, entity ID or details" value={search} onChange={event => setSearch(event.target.value)} /></Field>
       <Field label="Entity type" htmlFor="audit-entity"><select id="audit-entity" value={entity} onChange={event => setEntity(event.target.value)}><option value="">All entities</option>{types.map(type => <option key={type} value={type}>{readable(type)}</option>)}</select></Field>
@@ -80,6 +95,7 @@ export function AdminAuditTab() {
         <div className="spread" style={{ flexWrap: 'wrap', gap: 8 }}>
           <span className="hstack"><Icon name="shield" size={20} /><b title={row.actionType}>{readable(row.actionType)}</b></span>
           <Badge kind="neutral">{readable(row.entityType)} #{row.entityId}</Badge>
+          {row.details?.selfApproved === true ? <Badge kind="warn">Approved by the requester</Badge> : null}
         </div>
         <div className="hstack" style={{ flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
           <Avatar name={row.user.fullName} avatarUrl={row.user.avatarUrl} />
@@ -94,5 +110,6 @@ export function AdminAuditTab() {
         </details> : <p className="sub">No additional details recorded.</p>}
       </article>)}
     </div>
+    <div className="hstack"><button className="btn" disabled={page <= 1 || logs.isFetching} onClick={() => setPage(p => p - 1)}>Previous page</button><span>Page {page} of {logs.data?.pagination?.totalPages ?? 1}</span><button className="btn" disabled={!logs.data?.pagination || page >= logs.data.pagination.totalPages || logs.isFetching} onClick={() => setPage(p => p + 1)}>Next page</button></div>
   </Panel>
 }

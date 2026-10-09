@@ -218,6 +218,8 @@ export interface BackendMyTeamDto {
   officialStatus: "Unofficial" | "Official";
   memberCount: number;
   role: "leader" | "member";
+  /** OD-61 (4 ต.ค.) — URL สาธารณะ · null = ยังไม่อัปโลโก้ */
+  logoUrl?: string | null;
 }
 
 export interface BackendTeamDto {
@@ -250,7 +252,7 @@ export interface BackendTeamListResponse<T> {
 
 export interface BackendMyInvitationDto {
   id: number;
-  team: { id: number; name: string; sportTypeId: number };
+  team: { id: number; name: string; sportTypeId: number; logoUrl?: string | null };
   invitedBy: UserRefDto;
   expiresAt: string;
 }

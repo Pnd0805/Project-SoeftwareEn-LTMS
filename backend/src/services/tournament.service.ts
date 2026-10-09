@@ -830,6 +830,74 @@ async function getAmendmentForAdmin(amendmentId: number, userId: number) {
     return { amendment, tournament, admin };
 }
 
+/**
+ * FE-39 (ทาง ก · FE เลือกเมื่อ 8 ต.ค. 2569) — แอดมินอ่านผลกระทบของคำขอแก้ไข **ด้วยเลขคำขอ**
+ *
+ * 🔴 ปัญหาเดิม: เส้น preview ของผู้จัด (`POST /tournaments/:id/amendment-requests/preview`)
+ *   ใช้ `requireOrganizer` ⇒ แอดมินที่ไม่ใช่ผู้จัดกดดูไม่ได้ **ต้องอนุมัติโดยมองไม่เห็นผลกระทบ**
+ *   ซึ่งขัดกับเจตนาของ BE-36 ที่สร้าง preview ขึ้นมาเพื่อไม่ให้ใครต้องเดา
+ *
+ * ★ ใช้ payload ที่ยื่นไว้ในฐาน ไม่ได้รับ body จาก FE — แอดมินไม่ได้แก้คำขอ เขาแค่อ่าน
+ *   ⇒ เป็น GET และไม่มี schema ให้ปลอมค่าเข้ามาได้
+ * ★ ด่านสิทธิ์ใช้ `getAmendmentForAdmin` ตัวเดียวกับ approve/reject ไม่เขียนกฎซ้ำ
+ *   ⇒ root และแอดมินคณะที่ไม่มีคณะได้ 403 INSUFFICIENT_ADMIN_SCOPE อัตโนมัติ
+ *     (`adminOverseesTournament`: ไม่ใช่ university_wide และไม่ใช่ faculty ที่คณะตรงกัน = ไม่ผ่าน)
+ * ★ ด่านเนื้อหาใช้ชุดเดียวกับ `approveAmendment` **ทั้งหมด รวมด่านขอบเขตกฎคุณสมบัติ**
+ *   ซึ่ง preview ของผู้จัดไม่มี (ผู้จัดไม่ได้เป็นคนอนุมัติ) ⇒ สองเส้นนี้ตอบไม่เหมือนกันได้
+ *   และนั่นถูกต้อง: คำถามคนละคำถาม ("ยื่นได้ไหม" กับ "ฉันอนุมัติได้ไหม")
+ *
+ * ★ คำขอที่ถูกพิจารณาไปแล้ว → **200 พร้อม `alreadyDecided: true`** ไม่ใช่ 404/409
+ *   เพราะนี่เป็นการอ่าน · FE เปิดดูคำขอที่ตัดสินแล้วได้ตามปกติ และต้องเห็นว่าทำไมกดไม่ได้
+ * 🔴 ผลจากเส้นนี้ **ไม่ใช่ใบอนุญาต** — `approveAmendment` ตรวจทุกด่านซ้ำตอนกดจริง
+ *   เพราะข้อมูลเปลี่ยนได้ระหว่างที่แอดมินอ่านอยู่ (ทีมสมัครเพิ่ม · ทัวร์เปลี่ยนสถานะ)
+ */
+export async function getAmendmentImpactForAdmin(amendmentId: number, userId: number) {
+    const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
+
+    const blockers : { code : string; message : string; details : unknown }[] = [];
+    /**
+     * ★ อ่าน payload **ข้างใน** try ด้วย ต่างจาก approve/preview ที่ปล่อยให้ 400 เด้งออกไป
+     *   payload ถูกเก็บไว้ตั้งแต่วันที่ยื่น ⇒ ถ้ากฎ/ชนิดข้อมูลเปลี่ยนหลังจากนั้น
+     *   ใบเก่าจะอ่านไม่ผ่านแล้วแอดมินได้ 400 ทั้งที่คำถามของเขาคือ "ฉันอนุมัติได้ไหม"
+     *   ⇒ ตอบ 200 แล้วบอกว่าอนุมัติไม่ได้เพราะอะไร มีประโยชน์กว่า "คำขอของคุณผิดรูป"
+     *   (เจอตอนเขียนเทสของ FE-39 — เทสที่ใช้ชื่อฟิลด์ผิดได้ 400 แทนที่จะเป็น blocker)
+     */
+    let changes : AmendmentChanges | null = null;
+    try {
+        changes = validateAmendmentChanges(amendment.requested_changes);
+        validateAmendmentAgainstTournament(tournament, changes);
+        await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);
+        if (Object.prototype.hasOwnProperty.call(changes, 'eligibilityRules')) {
+            await ensureEligibilityEditable(tournament);
+            if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, changes['eligibilityRules'] as EligibilityRule[])) eligibilityOutOfScope();
+        } else if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournament.tournament_id))) {
+            eligibilityOutOfScope();
+        }
+    } catch (err) {
+        // ★ จับเฉพาะ AppError — ฐานล่ม/บั๊กต้องเด้งเป็น 500 ตามเดิม ไม่กลายเป็น "blocker"
+        if(!(err instanceof AppError)) throw err;
+        blockers.push({ code : err.code, message : err.message, details : err.extra ?? null });
+    }
+
+    const alreadyDecided = amendment.tournament_amendment_request_status !== 'pending';
+
+    return {
+        requestId : amendment.tournament_amendment_request_id,
+        tournamentId : amendment.tournament_id,
+        tournamentName : amendment.tournament_name,
+        status : amendment.tournament_amendment_request_status,
+        // อ่านไม่ผ่าน → คืนของที่เก็บไว้ดิบ ๆ ให้แอดมินยังเห็นว่าคำขอนี้ขออะไร
+        requestedChanges : changes ?? amendment.requested_changes,
+        reason : amendment.request_reason,
+        // 🔴 selfRequested = แอดมินคนนี้เป็นคนยื่นเอง · อนุมัติเองได้ตามนโยบายทีม แต่ต้องขึ้นป้ายให้เห็น
+        //   (ชื่อฟิลด์เดียวกับในคิว `getPendingAmendments` ⇒ FE ใช้ตัวเดิมได้)
+        selfRequested : amendment.requested_by === userId,
+        alreadyDecided,
+        canApprove : blockers.length === 0 && !alreadyDecided,
+        blockers
+    };
+}
+
 export async function approveAmendment(amendmentId: number, userId: number) {
     const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
     const changes = validateAmendmentChanges(amendment.requested_changes);
@@ -993,4 +1061,65 @@ export async function getEligibilityRules(tournamentId: number, userId?: number)
     await getVisibleTournament(tournamentId, userId);
     const rows = await ApplicationRepo.findEligibilityRules(tournamentId);
     return { items: rows.map(row => ({ ruleType: row.rule_type, ruleValue: row.rule_value })) };
+}
+
+/**
+ * BR-03 ส่วนที่ 1 — ปิดทัวร์ที่ยัง private เมื่อถึงวันแข่ง แล้วแจ้งผู้จัด
+ *
+ * ★ **ที่ตัดสินเอง (บอกไว้):** แจ้งผู้จัด "ตอนที่ปิด" ด้วย
+ *   คำถามที่ยังไม่มีมติคือ "แจ้งล่วงหน้ากี่วัน" ซึ่งยังไม่ทำ
+ *   แต่การปิดโดยไม่บอกอะไรเลยจะทำให้ทัวร์หายไปเฉย ๆ โดยผู้จัดไม่รู้สาเหตุ
+ *   ⇒ ใช้หลักเดียวกับการกวาดทีม (มติ 30 ก.ย.) ที่ต้องบอกลูกทีมว่าทีมหายเพราะอะไร
+ *
+ * แจ้งเตือนพังไม่ทำให้การปิดที่สำเร็จแล้วกลายเป็น error (notifyUsers กลืน error ให้อยู่แล้ว)
+ */
+export async function sweepAutoDeleteTournaments(){
+    const swept = await TournamentRepo.sweepPrivatePastDueTournaments();
+
+    for(const t of swept){
+        await NotificationService.notifyUsers([t.organizerId] , {
+            type : 'tournament_auto_deleted',
+            title : `ทัวร์นาเมนต์ "${t.name}" ถูกปิดอัตโนมัติ`,
+            message : 'ทัวร์นาเมนต์นี้ถูกปิดอัตโนมัติเพราะยังไม่ได้เผยแพร่ (ยังเป็นส่วนตัว) จนถึงวันเริ่มการแข่งขัน',
+            relatedEntityType : 'tournament', relatedEntityId : t.tournamentId
+        });
+    }
+
+    return swept;
+}
+
+/**
+ * BR-03 ส่วนที่ 2 — เตือนผู้จัด 7 วันก่อนทัวร์จะถูกปิดอัตโนมัติ (มติ 8 ต.ค. 2569)
+ *
+ * ★ ข้อความต้องบอก **ทางออก** ไม่ใช่แค่คำเตือน — สิ่งที่ผู้จัดต้องทำคือกดเผยแพร่
+ * ★ แจ้งเตือนหมวด critical (ปิดไม่ได้) ต่างจากตัวที่แจ้งตอนปิดไปแล้ว
+ *   เพราะอันนี้ยังแก้ทันถ้ารู้ — เกณฑ์ critical คือ "มีเส้นตายที่วัดได้ ไม่รู้แล้วเสียสิทธิ์ถาวร"
+ * ★ จำว่าเตือนแล้ว **ก่อน** ส่ง ถ้าจำไม่ติด (รอบอื่นชิงไปก่อน) ก็ไม่ส่ง ⇒ ไม่มีทางส่งซ้ำ
+ */
+export const AUTO_DELETE_WARNING_DAYS = 7;
+
+export async function warnBeforeAutoDelete(){
+    const targets = await TournamentRepo.findTournamentsToWarnBeforeAutoDelete(AUTO_DELETE_WARNING_DAYS);
+    const warned : number[] = [];
+
+    for(const t of targets){
+        if(!await TournamentRepo.markAutoDeleteWarned(t.tournamentId)) continue;
+
+        await NotificationService.notifyUsers([t.organizerId] , {
+            type : 'tournament_auto_delete_warning',
+            title : `ทัวร์นาเมนต์ "${t.name}" ยังไม่ได้เผยแพร่`,
+            message : `วันเริ่มแข่งคือ ${t.eventStartDate} — ถ้ายังไม่กดเผยแพร่ก่อนถึงวันนั้น ระบบจะปิดทัวร์นี้อัตโนมัติ`,
+            relatedEntityType : 'tournament', relatedEntityId : t.tournamentId
+        });
+        warned.push(t.tournamentId);
+    }
+
+    return warned;
+}
+
+/** BR-03 ส่วนที่ 3 — ทัวร์ที่ปิดไปเกิน 4 ปี ⇒ soft delete (เหตุผลทั้งหมดอยู่ใน repo) */
+export const TOURNAMENT_RETENTION_YEARS = 4;
+
+export async function purgeExpiredTournaments(){
+    return TournamentRepo.purgeTournamentsClosedOver(TOURNAMENT_RETENTION_YEARS);
 }

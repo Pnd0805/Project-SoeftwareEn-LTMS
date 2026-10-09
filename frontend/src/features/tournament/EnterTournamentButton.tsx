@@ -1,3 +1,4 @@
+import { registrationIsOpen } from '../../shared/rules'
 /**
  * src/features/tournament/EnterTournamentButton.tsx
  *
@@ -36,8 +37,9 @@ export function EnterTournamentButton({ team, variant = 'ghost' }: {
   )
 
   const options = (tournaments.data?.items ?? [])
-    .filter(dto => dto.registrationOpen && dto.sportTypeId === team.sportTypeId && !entered.has(dto.id))
+    .filter(dto => dto.sportTypeId === team.sportTypeId && !entered.has(dto.id))
     .map(dto => tournamentView(dto, [], [], sportTypes.data?.items ?? []))
+    .filter(t => registrationIsOpen(t))
 
   if (tournaments.isPending) {
     return <button className={`btn ${variant}`} type="button" disabled>Loading tournaments…</button>

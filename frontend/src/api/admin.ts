@@ -1,3 +1,4 @@
+import type { BackendPagination } from '../types/match.dto';
 /**
  * src/api/admin.ts — Person 4 (Admin · Organizer approval · Referee)
  *
@@ -35,6 +36,7 @@ import type {
 } from "../types/admin.dto";
 import type {
   BackendAmendmentRequestDto,
+  AmendmentImpactDto,
   BackendPendingTournamentRequestDto,
 } from "../types/tournament.dto";
 import {
@@ -224,6 +226,7 @@ export async function getTournamentReferees(
       approvedAt: null,
       createdAt: "",
       removedAt: row.status === "removed" ? "removed" : null,
+      status: row.status,
       removedBy: null,
       isActive: row.status === "active",
     })),
@@ -252,6 +255,7 @@ export async function getRefereeCoverage(tournamentId: TeamRef): Promise<Referee
     shortfall: Math.max(required - accepted, 0),
     blocksStatRecording: raw.uncovered.length > 0,
     uncoveredMatchIds: raw.uncovered.map(m => m.matchId),
+    crossTournamentConflicts: (raw.crossTournamentConflicts ?? []).map(({ userId, matchId, conflictCount }) => ({ userId, matchId, conflictCount })),
   };
 }
 
@@ -320,12 +324,11 @@ export async function appointReferee(
       .find((r) => r.user.id === input.userId && r.invitationStatus === "pending");
     return row ? mockDelay(row) : notFound<TournamentRefereeDto>("คำเชิญที่เพิ่งสร้าง");
   }
-  /* inviteRefereeSchema บังคับ isExternal และรับ matchIds (ว่าง = เข้า pool เฉยๆ) */
+  /* Server classifies external status; empty matchIds invites to the pool. */
   return apiFetch(`/tournaments/${tournamentId}/referees`, {
     method: "POST",
     body: JSON.stringify({
       userId: input.userId,
-      isExternal: input.isExternal ?? false,
       matchIds: input.matchIds ?? [],
     }),
   });
@@ -429,12 +432,14 @@ export async function getExternalRefereeRequests(): Promise<{ items: ExternalRef
         invitedBy: null,
         status: "pending" as const,
         createdAt: row.submittedAt,
+        docs: row.docs,
+        docsSubmitted: row.docsSubmitted,
       })),
     ),
   };
 }
 
-/** SDS PATCH /admin/requests/{id} — อนุมัติหรือไม่อนุมัติ (ไม่อนุมัติต้องมีเหตุผล) */
+/** AR02/AR03 — approve or reject a person's identity; refresh reads after success. */
 export async function reviewExternalReferee(
   requestId: TeamRef, input: ReviewExternalRefereeRequest,
 ): Promise<void> {
@@ -531,10 +536,15 @@ export async function suspendUser(
 // ══════════════ Audit — FR-TC-05 ══════════════
 
 /** BE_KN C2 admin-user contract. */
-export async function getAuditLogs(query: AuditLogQuery = {}): Promise<{ items: AuditLogDto[] }> {
+export async function getAuditLogs(query: AuditLogQuery = {}): Promise<{ items: AuditLogDto[]; pagination?: BackendPagination }> {
   if (USE_MOCK) return mockDelay({ items: storeAuditLogs() });
   const params = new URLSearchParams();
   for (const key of ['entityType', 'entityId', 'userId'] as const) if (query[key] !== undefined) params.set(key, String(query[key]));
+  if (query.page !== undefined) {
+    params.set('page', String(query.page)); params.set('pageSize', '20');
+    const response = await apiFetch<{ items: Array<Omit<AuditLogDto, 'user'> & { actor: { id: number; fullName: string } }>; pagination: BackendPagination }>(`/admin/audit-logs?${params}`);
+    return { ...response, items: response.items.map(({ actor, ...row }) => ({ ...row, user: { ...actor, avatarUrl: null } })) };
+  }
   const rows = await readAdminPages<Omit<AuditLogDto, 'user'> & { actor: { id: number; fullName: string } }>(`/admin/audit-logs?${params}`, query.limit);
   return { items: rows.slice(0, query.limit ?? rows.length).map(({ actor, ...row }) => ({ ...row, user: { ...actor, avatarUrl: null } })) };
 }
@@ -566,7 +576,6 @@ export function inviteBackendReferee(
     method: "POST",
     body: JSON.stringify({
       userId: input.userId,
-      isExternal: input.isExternal ?? false,
       matchIds: input.matchIds ?? [],
     }),
   });
@@ -621,6 +630,23 @@ export function requestRefereeSwap(
   });
 }
 
+/**
+ * F02b GET /tournaments/:id/referees/assignable — ปลายทางที่โอน/แลกแมตช์ให้ได้ (OD-59 · 4 ต.ค.)
+ *
+ * คืนกรรมการที่ "ใช้งานได้จริง" ทุกคน รวมคนที่ยังไม่มีแมตช์ (ว่างที่สุด) — เดิม FE รวบปลายทางจาก
+ * รายชื่อกรรมการของแมตช์อื่น คนที่ยังไม่ได้รับแมตช์จึงไม่โผล่เลย · ไม่รวมตัวผู้เรียก · เรียงจากว่างไปยุ่ง
+ * ผู้จัดหรือกรรมการที่ใช้งานได้ของทัวร์เท่านั้น — คนนอก 403 NOT_TOURNAMENT_REFEREE ไม่ใช่ลิสต์ว่าง
+ */
+export interface AssignableRefereeDto {
+  id: number;
+  user: { id: number; fullName: string; avatarUrl: string | null };
+  upcomingMatchCount: number;
+}
+export function getAssignableReferees(tournamentId: number): Promise<{ items: AssignableRefereeDto[] }> {
+  if (USE_MOCK) return mockDelay({ items: [] }); // ข้อมูลจำลองไม่มีพูลกรรมการระดับทัวร์ให้เลือก
+  return apiFetch(`/tournaments/${tournamentId}/referees/assignable`);
+}
+
 /** FR01 POST /referee-requests — กรรมการขอโอน (ไม่ส่ง theirMatchId) หรือแลกแมตช์ */
 export function requestRefereeTransfer(input: {
   myMatchId: number;
@@ -665,6 +691,10 @@ export function cancelRefereeRequest(requestId: number): Promise<void> {
 /** U11 GET /me/referee-identity — สถานะการตรวจตัวตนของฉัน */
 export function getMyRefereeIdentity(): Promise<BackendRefereeIdentityDto> {
   return apiFetch("/me/referee-identity");
+}
+
+export function requestRefereeWithdrawal(input: import('../types/admin.dto').RefereeWithdrawalInput): Promise<BackendRefereeRequestDto> {
+  return apiFetch('/referee-requests/withdraw', { method: 'POST', body: JSON.stringify(input) });
 }
 
 /** U12 PUT /me/referee-identity/docs — ส่งเอกสาร 1–5 ไฟล์ (S3 key จาก presign) */
@@ -726,6 +756,10 @@ export function getAmendmentRequests(): Promise<{
   return apiFetch("/admin/amendment-requests");
 }
 
+export function getAmendmentImpact(requestId: number): Promise<AmendmentImpactDto> {
+  return apiFetch(`/admin/amendment-requests/${requestId}/impact`);
+}
+
 /** POST /amendment-requests/:id/approve — อนุมัติแล้ว backend เขียนค่าใหม่ลงทัวร์นาเมนต์ให้เลย */
 export function approveAmendmentRequest(amendmentId: number): Promise<{ id: number; status: string }> {
   return apiFetch(`/amendment-requests/${amendmentId}/approve`, { method: "POST" });
@@ -743,7 +777,7 @@ export function rejectAmendmentRequest(
 }
 
 export interface LeaderTransferDto {
-  id: number; team: { id: number; name: string; sportTypeId: number };
+  id: number; team: { id: number; name: string; sportTypeId: number; logoUrl?: string | null };
   currentLeader: { id: number; fullName: string; avatarUrl: string | null };
   proposedLeader: { id: number; fullName: string; avatarUrl: string | null };
   status: 'pending' | 'approved' | 'rejected'; createdAt: string;

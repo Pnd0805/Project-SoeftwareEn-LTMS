@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "../api/auth";
 import * as userApi from "../api/user";
-import { USE_MOCK } from "../api/client";
+import { ApiError, USE_MOCK, hasAccessToken, setAccessToken } from "../api/client";
 import type { LoginRequest, RegisterRequest, VerifyEmailRequest } from "../types/dto";
 import type { User } from "../shared/types";
 import { getState, login as setLegacySession, signout as clearLegacySession } from "../shared/store";
@@ -13,7 +13,17 @@ import { getState, login as setLegacySession, signout as clearLegacySession } fr
 export function useMe() {
   return useQuery({
     queryKey: ["me"],
-    queryFn: userApi.getMe,
+    queryFn: async () => {
+      if (!USE_MOCK && !hasAccessToken()) return null;
+      try { return await userApi.getMe(); }
+      catch (error) {
+        if (!USE_MOCK && error instanceof ApiError && error.status === 401) {
+          setAccessToken(null);
+          return null;
+        }
+        throw error;
+      }
+    },
     retry: false, // 401 ไม่ต้อง retry — แปลว่ายังไม่ได้ล็อกอิน ไม่ใช่ network error
     /**
      * ห้ามยิงใหม่ตอนมี observer เพิ่ม ไม่งั้นผู้ที่ยังไม่ล็อกอินจะเจอหน้าขาวถาวร
@@ -64,6 +74,7 @@ export function useLogin() {
       }
       // Wait until the authenticated profile is in the cache before LoginPage
       // navigates. This avoids rendering the destination with the old 401 state.
+      qc.clear(); // A new session must never reuse the previous account's private data.
       await qc.fetchQuery({ queryKey: ["me"], queryFn: userApi.getMe });
     },
   });
@@ -101,10 +112,18 @@ export function useUpdateMe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: import("../types/dto").UpdateMeRequest) => userApi.updateMe(input),
-    onSuccess: () => {
+    onSuccess: (user) => {
+      qc.setQueryData(["me"], user);
       qc.invalidateQueries({ queryKey: ["me"] });
       qc.invalidateQueries({ queryKey: ["users"] });
       qc.invalidateQueries({ queryKey: ["teams"] });
     },
   });
+}
+export function useForgotPassword() {
+  return useMutation({ mutationFn: authApi.forgotPassword });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: authApi.resetPassword });
 }

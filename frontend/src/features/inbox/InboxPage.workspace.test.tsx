@@ -1,3 +1,4 @@
+import { setAccessToken } from '../../api/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -16,6 +17,7 @@ let client: QueryClient
 const writes: { path: string; method: string; body: unknown }[] = []
 
 beforeEach(() => {
+  setAccessToken("test-token")
   read = joined = mutationFailure = pendingEntries = emptyQueues = false; sourceFailure = ''; writes.length = 0
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     const path = new URL(url, 'http://localhost').pathname.replace('/api/v1', '')

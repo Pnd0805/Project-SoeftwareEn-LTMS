@@ -1,3 +1,4 @@
+import { setAccessToken } from '../../api/client'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -19,7 +20,7 @@ vi.mock('../../api/reference', async original => ({ ...await original<typeof imp
 
 import { HomePage } from './HomePage'
 
-const cup = { id: 71, name: 'Campus Cup', sportTypeId: 1, venue: 'Main court', eventStartDate: '2027-01-10' }
+const cup = { id: 71, name: 'Campus Cup', sportTypeId: 1, venue: 'Main court', eventStartDate: '2027-01-10', registrationOpen: true, status: 'public', registrationStart: '2026-01-01', registrationEnd: '2027-01-01' }
 
 function renderHome(path = '/home/all?source=inbox') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -33,6 +34,7 @@ function renderHome(path = '/home/all?source=inbox') {
 
 describe('Tournament preview from discovery', () => {
   beforeEach(() => {
+  setAccessToken("test-token")
     vi.resetAllMocks()
     api.list.mockResolvedValue({ items: [cup] })
     api.mine.mockResolvedValue({ items: [] })

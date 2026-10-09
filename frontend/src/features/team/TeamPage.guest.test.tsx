@@ -1,4 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+vi.mock('./JoinRequestsPanel', () => ({ JoinRequestsPanel: () => null }))
+vi.mock('./LeaveTeamPanel', () => ({ LeaveTeamPanel: () => null }))
+import { render } from '../../test/renderWithQueryClient'
+import { fireEvent, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

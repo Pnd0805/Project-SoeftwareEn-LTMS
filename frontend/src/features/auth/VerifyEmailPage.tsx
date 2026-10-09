@@ -108,7 +108,6 @@ export function VerifyEmailPage({ email: initialEmail, emailVerificationSent }: 
           <button className="btn ghost" type="button" disabled={pending || cooldown > 0 || limited} onClick={() => void requestCode()}>
             {resend.isPending ? 'Requesting…' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
           </button>
-          <Link to="/login">Sign in</Link>
         </div>
         <p className="sub">Up to 3 code requests per hour. Wait 60s between requests.</p>
         {limited && <p className="sub" role="status">Request limit reached. Try again in {Math.max(1, Math.ceil((times[0] + OTP_WINDOW_MS - now) / 60000))} min.</p>}

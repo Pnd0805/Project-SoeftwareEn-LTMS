@@ -8,7 +8,8 @@ import { Modal } from '../../components/kit/Modal'
 import { ApiError } from '../../api/client'
 import { removeFeedbackByAdmin, restoreFeedbackByAdmin } from '../../api/liveEngagement'
 import { useMe } from '../../hooks/useAuth'
-import { useCommentsLive, usePickemLeaderboard, useReviews } from '../../hooks/useLiveEngagement'
+import { useCommentsLive, useReviews } from '../../hooks/useLiveEngagement'
+import { PickemLeaderboardPanel } from './PickemLeaderboardPanel'
 import type { TournamentComment } from '../../types/liveEngagement.dto'
 import { fmtDateTime } from '../../shared/dateFormat'
 import './feedback-moderation.css'
@@ -40,7 +41,6 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
     setLastRemoved(null); setAdminConfirmation(null); setNotice(`Feedback #${target.id} restored.`); refreshFeedback(target.tournamentId)
   } })
   const reviews = useReviews(tournamentId)
-  const leaderboard = usePickemLeaderboard(tournamentId)
   const [params, setParams] = useSearchParams()
   const reported = params.get('reported') === 'true'
   const page = Math.max(1, Number(params.get('page')) || 1)
@@ -88,7 +88,11 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           <div className="statline"><div><span className="tag">Average</span><span className="v">{review.summary.average ?? '—'}</span></div>
             <div><span className="tag">Ratings</span><span className="v">{review.summary.count}</span></div></div>
           <div className="sub">{[5, 4, 3, 2, 1].map(stars => `${stars}★ ${review.summary.distribution[String(stars)] ?? 0}`).join(' · ')}</div>
-          {review.status === 'not_started' ? <p className="sub">Reviews open {review.opensAt ? fmtDateTime(review.opensAt) : 'when the tournament starts'}.</p> : null}
+          {review.status === 'not_started' ? <p className="sub">Reviews are not open yet. {review.opensAt ? `Scheduled tournament start: ${new Date(review.opensAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}. ` : ''}Availability follows the tournament’s played-match status.</p> : null}
+          {review.status === 'open' ? <p className="sub">{review.openedBy === 'first_match' ? 'Reviews are open because competitive play has begun.'
+            : review.openedBy === 'completed' ? 'Reviews are open because the tournament has completed.'
+              : review.openedBy === 'event_start' && review.opensAt ? `Reviews have been open since the scheduled tournament start: ${new Date(review.opensAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}.`
+                : 'Reviews are open.'}</p> : null}
           {review.status === 'closed' ? <p className="sub">Reviews are closed.</p> : null}
           {review.mine ? <p className="sub">Your review: {review.mine.rating}/5 {review.mine.content}</p> : null}
           {!organizer && review.items?.map(item => <div className="notif" key={item.id}>
@@ -109,15 +113,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           </form> : !me.data && review.status === 'open' ? <p className="sub">Sign in to review this tournament.</p> : null}
         </> : null}
       </Panel></section>
-      <section role="region" aria-label="Prediction leaderboard" tabIndex={0}><Panel quiet>
-        <h2 className="journey-heading">Pick'em leaderboard</h2>
-        {leaderboard.isPending ? <p className="sub">Loading leaderboard…</p> : null}
-        {leaderboard.isError ? <p className="sub">Unable to load leaderboard.</p> : null}
-        {leaderboard.data?.items.length === 0 ? <p className="sub">No settled predictions yet.</p> : null}
-        {leaderboard.data?.items.map(row => <div className="spread" key={row.user.id}>
-          <span>#{row.rank} {row.user.fullName}</span><span>{row.points} points · {row.correct}/{row.settled}</span>
-        </div>)}
-      </Panel></section>
+      <section role="region" aria-label="Prediction leaderboard" tabIndex={0}><PickemLeaderboardPanel key={tournamentId} tournamentId={tournamentId} /></section>
     </div>
     <Panel quiet>
       <div className="spread"><h2 className="journey-heading">Tournament comments · {thread?.pagination.totalItems ?? 0}</h2>

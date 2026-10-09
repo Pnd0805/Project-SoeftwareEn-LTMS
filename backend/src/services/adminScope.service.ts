@@ -16,7 +16,7 @@ import { suspensionEndsAt } from '../utils/suspension.js';
 import type { SuspensionCategory } from '../utils/suspension.js';
 import { getPresignedDownloadUrl , presignAll } from './upload.service.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
-import { isExternalEmail } from '../utils/kuEmail.js';
+import { isExternalEmail , isKuEmail } from '../utils/kuEmail.js';
 import type { AdminScopeRow } from '../types/db.js';
 
 export async function getAllOfficialRequest(offset : number , page : number , pageSize : number){
@@ -364,6 +364,17 @@ export async function grantScope(admin : AdminScopeRow , targetUserId : number ,
     }
 
     const scopeId = await AdminRepo.createAdminScope(targetUserId , scopeType , facultyId ?? null , admin.user_id);
+
+    /**
+     * มติ 8 ต.ค. 2569 — `users.user_type` = 'staff' สำหรับคนที่ถือยศ
+     *
+     * 🔴 ก่อนมตินี้ 'staff' เป็นค่าร้าง: ไม่มีโค้ดไหนเขียน (ตั้งแต่มติ 6 ต.ค. ที่ให้คิดจากอีเมล)
+     *   และไม่มีโค้ดไหนอ่านไปตัดสินอะไร ⇒ มตินี้ทำให้มันมีความหมายและไปถึงได้จริง
+     * ★ ไม่มีใครอ่าน `user_type` ไปให้สิทธิ์ — สิทธิ์มาจากตาราง `admin_scopes` เหมือนเดิม
+     *   คอลัมน์นี้เป็น "ป้ายบอกสถานะ" ⇒ เขียนพลาดไม่ทำให้ใครได้สิทธิ์เกิน แต่ทำให้ข้อมูลโกหก
+     */
+    await UserRepo.updateUserType(targetUserId , 'staff');
+
     await AuditLogRepo.insertAuditLog(admin.user_id , 'admin_scope_granted' , 'admin_scope' , scopeId , { targetUserId , scopeType , facultyId : facultyId ?? null });
 
     const created = await AdminRepo.findAdminScopeById(scopeId);
@@ -397,6 +408,26 @@ export async function revokeScope(admin : AdminScopeRow , scopeId : number){
     }
 
     await AdminRepo.deleteAdminScope(scopeId);
+
+    /**
+     * ถอดยศ → `user_type` กลับไปเป็นค่าตามโดเมนอีเมล (มติ 8 ต.ค. 2569)
+     *
+     * 🔴 **ไม่ตั้งเป็น 'student' ตรง ๆ** — ถ้าวันหนึ่งมีแอดมินที่เป็นบัญชีภายนอก
+     *   (ตอนนี้ `grantScope` กันไว้ด้วย EXTERNAL_ACCOUNT_CANNOT_BE_ADMIN แต่แถวที่ตั้งผ่าน
+     *   DB/seed ไม่ผ่านด่านนั้น) การลดเป็น 'student' จะทำให้ระบบบอกว่าคนนอกเป็นนิสิต
+     *   ⇒ คิดจาก `isKuEmail` ตัวเดียวกับที่ `auth.service` ใช้ตอนสมัคร ไม่เขียนกฎใหม่
+     *
+     * ★ ลดเฉพาะเมื่อ **ไม่เหลือยศใบไหนแล้ว** — ตอนนี้ `grantScope` บังคับคนละ 1 ใบ
+     *   (ADMIN_SCOPE_ALREADY_EXISTS) ⇒ ผ่าน API จะไม่มีทางเหลือ แต่แถวที่ตั้งผ่าน DB มีได้
+     *   เช็คไว้ให้ถูกทั้งสองทาง ราคาคือคิวรีเดียว
+     */
+    if(!await AdminRepo.findAdminByUserId(scope.user_id)){
+        const target = await UserRepo.findById(scope.user_id);
+        if(target){
+            await UserRepo.updateUserType(scope.user_id , isKuEmail(target.email) ? 'student' : 'external');
+        }
+    }
+
     await AuditLogRepo.insertAuditLog(admin.user_id , 'admin_scope_revoked' , 'admin_scope' , scopeId , { targetUserId : scope.user_id , scopeType : scope.scope_type });
 
     return { id : scopeId };

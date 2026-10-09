@@ -8,6 +8,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Badge, Facts, Panel } from '../../components/kit/primitives'
+import { TeamChipView } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
 import { me, regsOf, squadsFor, team } from '../../shared/selectors'
 import { minSquad, ruleSummary, teamReady } from '../../shared/rules'
@@ -71,7 +72,8 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
   const myTeams = privateApplicable ? (backendTeams.data?.items ?? [])
     .filter(x => x.role === 'leader' && (sportTypeId === undefined || x.sportTypeId === sportTypeId))
     : []
-  const backendReady = myTeams.filter(x => x.readinessStatus === 'Ready')
+  const enteredIds = new Set((myApplications.data?.items ?? []).filter(a => a.tournament.id === Number(t.id) && (a.status === 'approved' || a.status === 'pending')).map(a => a.team.id))
+  const backendReady = myTeams.filter(x => x.readinessStatus === 'Ready' && !enteredIds.has(x.id))
   const backendForming = myTeams.filter(x => x.readinessStatus !== 'Ready')
   const backendEntries = privateApplicable ? (myApplications.data?.items ?? [])
     .filter(a => a.tournament.id === Number(t.id) && a.status !== 'withdrawn' && a.status !== 'cancelled')
@@ -122,7 +124,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
 
         {backendEntries.map(a => (
           <div className="spread" key={a.id}>
-            <span className="sub">{a.team.name}</span>
+            <TeamChipView team={a.team} />
             {a.status === 'approved' ? <Badge kind="ok">In</Badge>
               : a.status === 'rejected' ? <Badge kind="crit">{a.rejectionReason ?? 'Rejected'}</Badge>
                 : <Badge kind="warn">Waiting on the organizer</Badge>}
@@ -147,7 +149,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
           </div>
         ) : teamFailure ? teamFailure : can.length || backendReady.length ? (
           <div className="hstack">
-            <button className="btn primary" type="button" onClick={() => setOpen(true)}>Register a squad</button>
+            <button className="btn primary" type="button" disabled={!USE_MOCK && (myApplications.isPending || myApplications.isError)} onClick={() => setOpen(true)}>Register a squad</button>
           </div>
         ) : forming.length ? (
           <div className="sub">
@@ -159,6 +161,8 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
           </div>
         ) : privateApplicable && backendTeams.isPending ? (
           <div className="sub">Loading the squads you lead…</div>
+        ) : !USE_MOCK && backendEntries.some(a => a.status === 'approved' || a.status === 'pending') ? (
+          <div className="sub">Your entry is shown above. The organizer reviews pending applications.</div>
         ) : !USE_MOCK ? (
           <div className="sub">You need a squad you lead, in this sport, with Ready status before you can enter.</div>
         ) : null}

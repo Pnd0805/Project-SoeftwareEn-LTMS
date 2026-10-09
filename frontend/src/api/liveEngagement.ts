@@ -25,9 +25,11 @@ export const removeFeedbackByAdmin = (id: number, reason?: string) =>
   apiFetch<void>(`/admin/feedback/${id}`, { method: 'DELETE', ...json({ reason }) })
 export const restoreFeedbackByAdmin = (id: number) =>
   apiFetch<{ id: number; restored: true }>(`/admin/feedback/${id}/restore`, { method: 'POST' })
+export const getRemovedFeedback = (page = 1) =>
+  apiFetch<import('../types/liveEngagement.dto').RemovedFeedbackPage>(`/admin/feedback/removed?page=${page}&pageSize=20`)
 export const getPredictionSummary = (id: number) => apiFetch<PredictionSummary>(`/matches/${id}/predictions/summary`)
 export const placePrediction = (id: number, scoreData: Record<string, number>) =>
   apiFetch<{ matchId: number; teamId: number; scoreData: Record<string, number>; changed: boolean }>(`/matches/${id}/predictions`, { method: 'POST', ...json({ scoreData }) })
 export const cancelPrediction = (id: number) => apiFetch<void>(`/matches/${id}/predictions/me`, { method: 'DELETE' })
 export const getPickemHistory = () => apiFetch<PickemHistory>('/me/pickem')
-export const getPickemLeaderboard = (id: number) => apiFetch<PickemLeaderboard>(`/tournaments/${id}/pickem-leaderboard`)
+export const getPickemLeaderboard = (id: number, page = 1, pageSize = 20) => apiFetch<PickemLeaderboard>(`/tournaments/${id}/pickem-leaderboard?page=${page}&pageSize=${pageSize}`)

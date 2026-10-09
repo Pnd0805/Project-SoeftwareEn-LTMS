@@ -187,6 +187,17 @@ export function useKickMember(teamId: TeamRef) {
   });
 }
 
+export function useLeaveTeam(teamId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => teamApi.leaveTeam(teamId),
+    onSuccess: async () => {
+      qc.removeQueries({ queryKey: teamKeys.backendMembers(teamId), exact: true });
+      await Promise.all(["teams", "team", "me", "users"].map(key => qc.invalidateQueries({ queryKey: [key] })));
+    },
+  });
+}
+
 export function useInviteMember(teamId: TeamRef) {
   const qc = useQueryClient();
   return useMutation({

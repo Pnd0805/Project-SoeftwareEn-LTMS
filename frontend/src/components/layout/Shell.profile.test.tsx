@@ -143,7 +143,7 @@ describe('Shell profile shortcut', () => {
     await user.click(screen.getByRole('button', { name: 'Open navigation menu' }))
     await user.click(within(screen.getByRole('dialog', { name: 'LTMS menu' })).getByRole('button', { name: 'Log out' }))
     expect(logout).toHaveBeenCalledOnce()
-    expect(screen.getByText('Other screen')).toBeInTheDocument()
+    expect(await screen.findByText('Other screen')).toBeInTheDocument()
   })
 
   it('preserves the search draft when the viewport changes between mobile and desktop', () => {

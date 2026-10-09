@@ -78,7 +78,7 @@ function EliminationTable({ rows }: { rows: StandingRowDto[] }) {
             <tr key={r.team.id}>
               <td className="num">{r.rank}</td>
               <td><TeamLinkView team={r.team} /></td>
-              <td>{r.outLabel || '—'}</td>
+              <td>{r.outLabel ?? 'Outcome not decided yet'}</td>
               <td className="num">{r.played}</td>
               <td className="num">{r.won}</td>
               <td><FormGuide form={r.form} /></td>
@@ -87,8 +87,7 @@ function EliminationTable({ rows }: { rows: StandingRowDto[] }) {
         </tbody>
       </table>
       <span className="sub">
-        Ranked by how far a squad went, not by points. Squads out in the same round share a position,
-        and there is no tiebreaker between them.
+        Positions follow the published standings. Elimination rounds are shown when available.
       </span>
     </TableWrap>
   )

@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { dismissCommentReport, voteMvp, getComments, getMvp, getPredictionSummary, getReviews, placePrediction, postComment, removeCommentByOrganizer, restoreFeedbackByAdmin, submitReview } from './liveEngagement'
+import { dismissCommentReport, voteMvp, getComments, getMvp, getPredictionSummary, getReviews, placePrediction, postComment, removeCommentByOrganizer, restoreFeedbackByAdmin, submitReview, getPickemLeaderboard } from './liveEngagement'
 
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock) })
 afterEach(() => vi.unstubAllGlobals())
 
 describe('BE_KN C6/C7 request contract', () => {
+  it('requests leaderboard pages explicitly and preserves global tied ranks', async () => {
+    const data = { items: [{ rank: 20, user: { id: 24, fullName: 'Tied player', avatarUrl: null }, points: 10, correct: 1, settled: 1 }], pagination: { page: 2, pageSize: 20, totalItems: 21, totalPages: 2 } }
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(data), { status: 200 }))
+    expect(await getPickemLeaderboard(23, 2)).toEqual(data)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/tournaments/23/pickem-leaderboard?page=2&pageSize=20')
+  })
   it('uses tournament-scoped reviews/comments and match-scoped predictions', async () => {
     fetchMock.mockImplementation(async () => new Response('{}', { status: 200 }))
     await getReviews(23)

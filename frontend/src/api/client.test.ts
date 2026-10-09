@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch } from "./client";
+import { apiFetch, hasAccessToken, setAccessToken } from "./client";
 
 const response = (body: unknown, status = 200) => new Response(
   body === undefined ? null : JSON.stringify(body),
   { status, headers: { "Content-Type": "application/json" } },
 );
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); setAccessToken(null); });
 
 describe("apiFetch", () => {
+  it('preserves a missing target user as 404 without clearing the current session', async () => {
+    setAccessToken('existing-session')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code: 'USER_NOT_FOUND', message: 'Target missing' } }, 404)))
+    await expect(apiFetch('/users/999')).rejects.toMatchObject({ status: 404, code: 'USER_NOT_FOUND' })
+    expect(hasAccessToken()).toBe(true)
+  })
   it("accepts a 204 invitation decline without attempting JSON parsing", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
@@ -53,3 +59,12 @@ describe("apiFetch", () => {
     await expect(apiFetch("/teams/9/members")).rejects.toMatchObject({ status: 403, code: "FORBIDDEN" });
   });
 });
+
+it('preserves the bestOf field error delivered by the backend error envelope', async () => {
+ vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code: 'BEST_OF_NOT_SUPPORTED', message: 'Sport does not support BO', fields: { bestOf: 'Choose no BO limit' } } }, 400)))
+ await expect(apiFetch('/matches/23/format', { method: 'PATCH' })).rejects.toMatchObject({ code: 'BEST_OF_NOT_SUPPORTED', fields: { bestOf: 'Choose no BO limit' } })
+})
+it('retains token-version expiry as the existing 401 TOKEN_EXPIRED contract', async () => {
+ vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code: 'TOKEN_EXPIRED', message: 'Session expired' } }, 401)))
+ await expect(apiFetch('/me')).rejects.toMatchObject({ status: 401, code: 'TOKEN_EXPIRED' })
+})

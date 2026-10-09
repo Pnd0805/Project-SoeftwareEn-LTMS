@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
+import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 
 vi.mock('../../api/client', async original => ({
   ...await original<typeof import('../../api/client')>(),
@@ -21,29 +22,35 @@ const idle = { isPending: false, isError: false, isSuccess: false, error: null, 
 const acceptMutate = vi.fn()
 const declineMutate = vi.fn()
 const cancelMutate = vi.fn()
+const appointmentMutate = vi.fn()
+const refreshAppointments = vi.fn()
+const answerTeam = vi.fn()
+let teamInvitations: Array<{ id: number; team: { id: number; name: string; logoUrl: null }; invitedBy: { fullName: string }; expiresAt: string }> = []
+let appointments: Array<{ id: number; tournament: { id: number; name: string }; isExternal: boolean; createdAt: string }> = []
 let outgoing: typeof request[] = []
 
-const request = {
+const request: BackendRefereeRequestDto = {
   id: 91, tournamentId: 23, type: 'org_add_match', requestedBy: 9201,
   refereeA: { tournamentRefereeId: 34, user: { id: 9002, fullName: 'Somying', avatarUrl: null }, status: 'pending' },
   refereeB: null,
   matchA: { id: 30, roundNumber: 1, scheduledTime: '2026-11-20T03:00:00.000Z', scheduledEndTime: '2026-11-20T05:00:00.000Z' },
   matchB: null, status: 'open', createdAt: '2026-09-22T00:00:00.000Z', resolvedAt: null,
 }
+let incoming: BackendRefereeRequestDto[] = [request]
 
 vi.mock('../../hooks/useTeam', () => ({
-  useBackendMyInvitations: () => ({ data: { items: [] }, isPending: false }),
-  useAnswerBackendInvitation: () => idle,
+  useBackendMyInvitations: () => ({ data: { items: teamInvitations }, isPending: false }),
+  useAnswerBackendInvitation: () => ({ ...idle, mutate: answerTeam }),
 }))
 vi.mock('../../hooks/useTournament', () => ({
   useMyTournamentApplications: () => ({ data: { items: [] }, isPending: false }),
 }))
 vi.mock('../../hooks/useAdmin', () => ({
   useCancelRefereeRequest: () => ({ ...idle, mutate: cancelMutate }),
-  useAcceptRefereeInvitation: () => idle,
+  useAcceptRefereeInvitation: () => ({ ...idle, mutate: appointmentMutate }),
   useDeclineRefereeInvitation: () => idle,
-  useMyRefereeInvitations: () => ({ data: { items: [] }, isPending: false }),
-  useMyRefereeRequests: () => ({ data: { incoming: [request], outgoing }, isPending: false }),
+  useMyRefereeInvitations: () => ({ data: { items: appointments }, isPending: false, refetch: refreshAppointments }),
+  useMyRefereeRequests: () => ({ data: { incoming, outgoing }, isPending: false }),
   useAcceptRefereeRequest: () => ({ ...idle, mutate: acceptMutate }),
   useDeclineRefereeRequest: () => ({ ...idle, mutate: declineMutate }),
 }))
@@ -53,9 +60,46 @@ import { BackendInbox } from './BackendInbox'
 const renderInbox = () => render(<MemoryRouter><BackendInbox /></MemoryRouter>)
 const clickAccept = () => fireEvent.click(screen.getByRole('button', { name: /^Accept request/ }))
 
-beforeEach(() => { vi.clearAllMocks(); outgoing = [] })
+beforeEach(() => { vi.clearAllMocks(); outgoing = []; incoming = [request]; appointments = []; teamInvitations = [] })
+
+it.each(['pending', 'accepted'])('shows %s referee recovery after team invitation acceptance is refused', status => {
+ incoming = []
+ teamInvitations = [{ id: 51, team: { id: 42, name: 'Campus FC', logoUrl: null }, invitedBy: { fullName: 'Leader' }, expiresAt: '2026-12-01T09:00:00Z' }]
+ answerTeam.mockImplementation((_input, options) => options.onError(new ApiError(409, { code: 'TEAM_CONFLICT_OF_INTEREST', message: 'Unrelated text', role: 'referee', invitationStatus: status, expiresAt: status === 'pending' ? '2026-10-15T09:00:00Z' : null })))
+ renderInbox(); fireEvent.click(screen.getByRole('button', { name: /^Accept team invitation/ }))
+ expect(answerTeam).toHaveBeenCalledWith({ invitationId: 51, accept: true }, expect.any(Object))
+ if (status === 'pending') expect(screen.getByText(/awaiting a response until 15\/10\/2026, 16:00:00/)).toBeInTheDocument()
+ else expect(screen.getByText(/Waiting for the invitation to expire will not resolve/)).toBeInTheDocument()
+ expect(screen.queryByText(/You joined/)).not.toBeInTheDocument()
+})
+
+it('recovers from a referee invitation expiring between reading and accepting it', () => {
+ incoming = []; appointments = [{ id: 34, tournament: { id: 23, name: 'Campus cup' }, isExternal: false, createdAt: '2026-10-07T03:00:00Z' }]
+ appointmentMutate.mockImplementation((_id, options) => options.onError(new ApiError(409, { code: 'REFEREE_INVITATION_EXPIRED', message: 'Invitation expired', expiresAt: '2026-10-14T03:00:00Z' })))
+ renderInbox(); fireEvent.click(screen.getByRole('button', { name: /^Accept referee invitation/ }))
+ expect(screen.getByText(/Refresh your invitations and ask the organizer for a new invitation/)).toBeInTheDocument()
+ expect(refreshAppointments).toHaveBeenCalledOnce()
+ expect(screen.queryByText(/You are now eligible/)).not.toBeInTheDocument()
+})
 
 describe('answering a match assignment request', () => {
+  it('preserves the BE cross-tournament message and links the conflicting match', () => {
+    acceptMutate.mockImplementation((_id, opts) => opts.onError(new ApiError(409, {
+      code: 'REFEREE_TIME_CONFLICT_CROSS_TOURNAMENT', message: 'Your existing match overlaps this invitation.', conflictsWith: { matchId: 8 },
+    })));
+    renderInbox(); clickAccept();
+    expect(screen.getByText('Your existing match overlaps this invitation.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open match #8 to request withdrawal/ })).toHaveAttribute('href', '/m/8');
+    expect(screen.queryByText(/You are officiating/)).not.toBeInTheDocument();
+  });
+  it('renders a tournament withdrawal without matchA and lets the receiving organizer decide', () => {
+    incoming = [{ ...request, type: 'ref_withdraw', matchA: null, withdrawScope: 'tournament', reason: 'Cannot attend this tournament' }]
+    renderInbox()
+    expect(screen.getByText('Tournament #23')).toBeInTheDocument()
+    expect(screen.getByText(/Cannot attend this tournament/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Open tournament/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Accept request/ })).toBeInTheDocument()
+  })
   it('confirms the assignment only when the request actually applied', () => {
     acceptMutate.mockImplementation((_id, opts) =>
       opts.onSuccess({ ...request, status: 'applied', resolvedAt: '2026-09-22T02:00:00.000Z' }))

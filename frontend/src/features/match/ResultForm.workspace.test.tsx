@@ -4,8 +4,10 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import type { MatchDto } from '../../types/match.dto'
 const submit = vi.fn()
 const stats = vi.fn()
+const finish = vi.fn()
 const idle = { isPending: false, isError: false, error: null }
 vi.mock('../../hooks/useMatch', () => ({
+  useFinishMatch: () => ({ mutateAsync: finish, isPending: false }),
   useSubmitResult: () => ({ ...idle, mutateAsync: submit }),
   useSaveMatchStats: () => ({ ...idle, mutateAsync: stats }),
   useStatDefinitions: () => ({ data: { items: [{ statKey: 'points', statLabelTh: 'Points' }] } }),
@@ -17,8 +19,25 @@ const m = {
   teamA: { id: 101, name: 'Engineering', players: [{ id: 1, fullName: 'Player One' }] },
   teamB: { id: 102, name: 'Science', players: [] },
 } as unknown as MatchDto
-beforeEach(() => { submit.mockReset().mockResolvedValue({}); stats.mockReset().mockResolvedValue({}) })
+beforeEach(() => { submit.mockReset().mockResolvedValue({}); stats.mockReset().mockResolvedValue({}); finish.mockReset().mockResolvedValue({}) })
 function mount(match = m) { render(<MemoryRouter><ResultForm m={match} /></MemoryRouter>) }
+
+it('finishes before submitting and retries the retained result without finishing twice', async () => {
+  submit.mockRejectedValueOnce(new Error('Result temporarily unavailable')).mockResolvedValue({})
+  mount({ ...m, status: 'in_progress', viewer: { ...m.viewer, can: { ...m.viewer.can, finishMatch: true } } })
+  fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText('Points for Player One'), { target: { value: '3' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Review result' }))
+  const send = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Submit result' }))
+  send()
+  await waitFor(() => expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent('The match has ended. Result not saved.'))
+  expect(finish.mock.invocationCallOrder[0]).toBeLessThan(submit.mock.invocationCallOrder[0])
+  expect(screen.getByLabelText('Engineering')).toHaveValue(3)
+  send()
+  await screen.findByText('Result saved.')
+  expect(finish).toHaveBeenCalledOnce()
+  expect(submit).toHaveBeenCalledTimes(2)
+})
 it('reviews team-associated scores before sending the unchanged result payload', async () => {
   mount()
   fireEvent.change(screen.getByLabelText('Engineering'), { target: { value: '3' } })

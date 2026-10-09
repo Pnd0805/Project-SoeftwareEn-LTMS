@@ -19,22 +19,22 @@ import { useManageActive } from './ManageActivity'
 import { Badge, Banner, Facts, Field, Panel, TableWrap } from '../../../components/kit/primitives'
 import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
-import { useEligibilityRules, useSaveEntryNotes, useRequestFilterChange, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
+import { useEligibilityRules, useSaveEntryNotes, useRequestFilterChange, usePreviewAmendment, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
 import { useFaculties } from '../../../hooks/useReference'
 import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
 import type { GenderRequirement } from '../../../types/enums'
 import type { Tournament } from '../../../shared/types'
 import { fmtDateTime } from '../../../shared/dateFormat'
+import { formatAmendmentChanges } from '../../../shared/amendmentChanges'
+import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
+import { ApiError } from '../../../api/client'
 
 const YEARS = [1, 2, 3, 4, 5, 6, 7, 8]
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 const amendmentErrorMessage = (error: unknown) => {
   const value = error as { code?: unknown; message?: unknown } | null
-  if (value?.code === 'INVALID_DATE_RANGE') {
-    return `${typeof value.message === 'string' ? value.message : 'The tournament schedule is invalid.'} `
-      + 'The server checks the existing schedule with every amendment. Correct the first match date below and send both changes together.'
-  }
+  if (value?.code === 'TOURNAMENT_DATA_CONFLICT') return `${typeof value.message === 'string' ? value.message : 'The existing tournament data conflicts.'} Include corrections to the existing conflicting fields in the same request.`
   return errorMessage(error)
 }
 const toggle = (list: number[], value: number) =>
@@ -51,6 +51,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const rules = useEligibilityRules(tournamentId)
   const faculties = useFaculties()
   const requestChange = useRequestFilterChange(tournamentId)
+  const preview = usePreviewAmendment(tournamentId)
   const setPendingRules = useSetEligibilityRules(tournamentId)
   const amendmentHistory = useTournamentAmendmentRequests(tournamentId)
 
@@ -82,6 +83,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
 
   const startEditing = () => {
     requestChange.reset()
+    preview.reset()
     setPendingRules.reset()
     setReason('')
     setDraftFaculties(currentFaculties)
@@ -98,6 +100,23 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
     && organizingFacultyId != null
     && draftFaculties[0] === organizingFacultyId
 
+  const proposed = {
+    reason: reason.trim(),
+    changes: {
+      eligibilityRules: toEligibilityRules(draftFaculties, draftYears),
+      genderRequirement: gender,
+      minAge: minAge === '' ? null : Number(minAge),
+      maxAge: maxAge === '' ? null : Number(maxAge),
+      ...(scheduleNeedsFix ? { eventStartDate } : {}),
+    },
+  }
+  const validAges = [minAge, maxAge].every(value => value === '' || (Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 120))
+    && (minAge === '' || maxAge === '' || Number(minAge) <= Number(maxAge))
+  const validDraft = !!reason.trim() && reason.trim().length <= 1000 && validAges
+    && (!scheduleNeedsFix || correctedScheduleIsValid)
+  const previewCurrent = preview.isSuccess && JSON.stringify(preview.variables) === JSON.stringify(proposed)
+  const busy = preview.isPending || requestChange.isPending || setPendingRules.isPending
+
   const send = () => {
     if (pendingApproval) {
       if (setPendingRules.isPending) return
@@ -106,17 +125,10 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
       })
       return
     }
-    if (requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)) return
+    if (busy || !validDraft || !previewCurrent || !preview.data?.canSubmit) return
     requestChange.mutate({
       rules: null,
-      reason,
-      changes: {
-        eligibilityRules: toEligibilityRules(draftFaculties, draftYears),
-        genderRequirement: gender,
-        minAge: minAge === '' ? null : Number(minAge),
-        maxAge: maxAge === '' ? null : Number(maxAge),
-        ...(scheduleNeedsFix ? { eventStartDate } : {}),
-      },
+      ...proposed,
     },
     { onSuccess: () => { setOpen(false); setSentAt(fmtDateTime(new Date())) } },
     )
@@ -198,7 +210,14 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
                   {amendmentHistory.data.items.map(item => (
                     <tr key={item.id}>
                       <td>{fmtDateTime(item.requestedAt)}</td>
-                      <td><code>{JSON.stringify(item.requestedChanges)}</code></td>
+                      <td>
+                        {item.selfApproved ? <Badge kind="warn">Approved by the requester</Badge> : null}
+                        <div className="vstack" style={{ gap: 6, minWidth: 200, overflowWrap: 'anywhere' }}>
+                          {formatAmendmentChanges(item.requestedChanges, facultyName).map(change => (
+                            <div key={change.field}><b>{change.label}:</b> {change.value}</div>
+                          ))}
+                        </div>
+                      </td>
                       <td>{item.reason ?? '—'}</td>
                       <td><Badge kind={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'crit' : 'warn'}>{item.status}</Badge></td>
                       <td>
@@ -233,7 +252,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         </div>
       </Modal>
 
-      <Modal open={active && open} onClose={() => setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
+      <Modal open={active && open} onClose={() => !busy && setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
         <div className="sub">
           {pendingApproval
             ? 'This request is still awaiting approval, so faculty and year rules can be corrected directly.'
@@ -305,22 +324,31 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
 
         {/* บังคับกรอก เพราะ amendmentRequestSchema บังคับ — ปล่อยว่างแล้วเด้ง 400 ทั้งใบ */}
         {!pendingApproval ? <Field label="Why the change is needed — the admin reads this" htmlFor="er-why">
-          <textarea id="er-why" rows={3} value={reason} onChange={e => setReason(e.target.value)}
+          <textarea id="er-why" rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Two faculties merged their intakes, so the year rule now excludes half the entrants." />
         </Field> : null}
 
+        {!pendingApproval ? <div className="vstack">
+          <button className="btn" type="button" disabled={busy || !validDraft} onClick={() => preview.mutate(proposed)}>{preview.isPending ? 'Checking impact…' : 'Preview impact'}</button>
+          {preview.isError ? <Banner kind="crit">Could not check impact. {errorMessage(preview.error)} Try preview again.</Banner> : null}
+          {previewCurrent && preview.data ? <>
+            {preview.data.pendingAmendmentId !== null ? <Banner kind="warn">Amendment #{preview.data.pendingAmendmentId} is still pending. Wait for its decision before submitting another request.</Banner> : null}
+            {preview.data.blockers.map((blocker, index) => <Banner kind="crit" key={`${blocker.code}:${index}`}>{blocker.message}<ContractErrorDetails error={new ApiError(409, { ...blocker.details, code: blocker.code, message: blocker.message })} /></Banner>)}
+            {preview.data.canSubmit ? <p role="status">No blocking impact found. The server will check again when you send this request.</p> : null}
+          </> : <p className="sub">Preview the current changes before sending. Editing a field requires another preview.</p>}
+        </div> : null}
         {requestChange.isError ? (
-          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}</Banner>
+          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}<ContractErrorDetails error={requestChange.error} /></Banner>
         ) : null}
         {setPendingRules.isError ? (
           <Banner kind="crit"><b>Couldn&apos;t save the conditions.</b> {errorMessage(setPendingRules.error)}</Banner>
         ) : null}
 
         <div className="hstack">
-          <button className="btn" type="button" onClick={() => setOpen(false)}>Cancel</button>
+          <button className="btn" type="button" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
           <button className="btn primary" type="button"
             disabled={pendingApproval ? setPendingRules.isPending
-              : requestChange.isPending || !reason.trim() || (scheduleNeedsFix && !correctedScheduleIsValid)}
+              : busy || !validDraft || !previewCurrent || !preview.data?.canSubmit}
             onClick={send}>
             {pendingApproval
               ? setPendingRules.isPending ? 'Saving…' : 'Save conditions'

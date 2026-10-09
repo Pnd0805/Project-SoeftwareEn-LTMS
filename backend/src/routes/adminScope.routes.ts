@@ -21,6 +21,10 @@ router.post('/team-requests/:id/reject-transfer' , requireAuth , requireAdmin_U 
 router.post('/teams/:id/transfer-leader' , requireAuth , requireAdmin_U , validate(transferLeaderSchema) , Admin.transferLeaderByAdmin);
 router.get('/tournament-requests', requireAuth, TournamentController.getPendingTournamentRequests);
 router.get('/amendment-requests', requireAuth, TournamentController.getPendingAmendments);
+// FE-39 (ทาง ก) — ผลกระทบของคำขอหนึ่งใบ สำหรับคนที่กำลังตรวจ · ด่านขอบเขตอยู่ใน service
+// ★ ไม่ใส่ requireAdmin ที่นี่ ให้เหมือนบรรทัดบน: คนที่ไม่ใช่แอดมินจะได้ 403 INSUFFICIENT_ADMIN_SCOPE
+//   จาก service ซึ่งเป็นด่านที่รู้เรื่องคณะของทัวร์ด้วย (requireAdmin รู้แค่ว่าเป็นแอดมินไหม)
+router.get('/amendment-requests/:requestId/impact', requireAuth, TournamentController.getAmendmentImpact);
 
 // C2 — Admin user surface
 router.get('/users' , requireAuth , requireAdmin , Admin.listUsers);

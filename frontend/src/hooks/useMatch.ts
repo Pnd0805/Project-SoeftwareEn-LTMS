@@ -52,6 +52,9 @@ export const matchKeys = {
  * เรียกตัวนี้ใน onSuccess ของทุก mutation ที่แตะผล จะได้ไม่ลืมสัก key
  */
 function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef) {
+  qc.invalidateQueries({ queryKey: ['referees'] });
+  qc.invalidateQueries({ queryKey: ['users'] });
+  qc.invalidateQueries({ queryKey: ['rewards'] });
   qc.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
   qc.invalidateQueries({ queryKey: matchKeys.result(matchId) });
   /* สถิติเปลี่ยนไปพร้อมผลเสมอ เพราะ ResultForm ส่งสองคำขอติดกัน */
@@ -90,6 +93,7 @@ function touchMatch(qc: QueryClient, matchId: MatchRef, tournamentId?: MatchRef)
 
 /** Schedule/check-in-state writes change match views, never results or standings. */
 function touchMatchSchedule(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['referees'] });
   /* Invalidate both numeric and legacy route-id variants until every screen uses one id system. */
   qc.invalidateQueries({ queryKey: matchKeys.all });
   qc.invalidateQueries({ queryKey: ["matches"] });
@@ -133,7 +137,7 @@ export function useTournamentMatches(tournamentId: MatchRef | undefined) {
 
 /** หน้า /matches — แมตช์ที่ฉันต้องทำอะไรสักอย่าง */
 export function useMyMatches(enabled = true) {
-  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, enabled, retry: retryPolicy });
+  return useQuery({ queryKey: matchKeys.mine, queryFn: matchApi.getMyMatches, enabled, retry: retryPolicy, refetchInterval: 30_000 });
 }
 
 /**
@@ -248,6 +252,16 @@ export function useSubmitResult(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SubmitResultRequest) => matchApi.submitResult(matchId, input),
+    onSuccess: () => touchMatch(qc, matchId, tournamentId),
+  });
+}
+
+/** S02b — กรรมการแก้ผล online · ผลกลับไปรอการยืนยัน จึงแตะทั้งแมตช์และผลเหมือนการส่งผล */
+export function useOverrideResult(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { winnerTeamId: number; scoreData: Record<string, unknown>; reason: string }) =>
+      matchApi.overrideResult(matchId, input),
     onSuccess: () => touchMatch(qc, matchId, tournamentId),
   });
 }
@@ -413,4 +427,15 @@ export function useTournamentMatchReferees(matchIds: number[]) {
     queryKey: matchKeys.referees(id), queryFn: () => matchApi.getMatchReferees(id),
     enabled: !USE_MOCK, retry: retryPolicy,
   })) });
+}
+
+export function useSetMatchFormat(matchId: MatchRef, tournamentId?: MatchRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { bestOf: number | null }) => matchApi.setMatchFormat(matchId, body),
+    onSuccess: () => {
+      touchMatch(qc, matchId, tournamentId);
+      qc.invalidateQueries({ queryKey: ['livePrediction', Number(matchId)] });
+    },
+  });
 }

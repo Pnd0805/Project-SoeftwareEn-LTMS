@@ -5,7 +5,7 @@
  * `invitee ≠ inviter` → `409 ORGANIZER_CANNOT_BE_REFEREE` · รายชื่อค้นหาเคยคืนตัวผู้จัด
  * เองมาด้วย กดเชิญได้แล้วได้ 409 ดิบ — ปุ่มที่รู้อยู่แล้วว่าพังต้องไม่ถูกแสดง
  */
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../api/client'
 import type { Tournament } from '../../../shared/types'
@@ -21,6 +21,7 @@ vi.mock('../../../shared/store', async original => ({
 
 const ME = 9201
 let appointState: { isPending: boolean; isError: boolean; error: unknown; mutate: ReturnType<typeof vi.fn> }
+let existing: Array<{ id: number; user: { id: number }; invitationStatus: string; status: string }> = []
 
 vi.mock('../../../hooks/useAuth', () => ({ useMe: () => ({ data: { id: ME } }) }))
 vi.mock('../../../hooks/useUser', () => ({
@@ -31,9 +32,14 @@ vi.mock('../../../hooks/useUser', () => ({
     ] },
     isFetching: false, isError: false, error: null,
   }),
+  usePublicUser: (id?: number) => ({
+    data: id === 9003 ? { id: 9003, facultyId: 1, departmentId: 1 } : null,
+    isPending: false,
+    isError: false,
+  }),
 }))
 vi.mock('../../../hooks/useAdmin', () => ({
-  useTournamentReferees: () => ({ data: { items: [] } }),
+  useTournamentReferees: () => ({ data: { items: existing } }),
   useAppointReferee: () => appointState,
   useRemoveReferee: () => ({ isPending: false, isError: false, error: null, mutate: vi.fn() }),
 }))
@@ -44,10 +50,26 @@ const tournament = { id: 23, name: 'QA Cup', channel: 'onsite' } as unknown as T
 const renderFinder = () => render(<RefereeFinder t={tournament} open onClose={() => {}} />)
 
 beforeEach(() => {
+  existing = []
   appointState = { isPending: false, isError: false, error: null, mutate: vi.fn() }
 })
 
+it('offers a person again after the server computes their pending invitation as expired', () => {
+ existing = [{ id: 31, user: { id: 9003 }, invitationStatus: 'pending', status: 'expired' }]
+ renderFinder()
+ expect(screen.getByRole('button', { name: 'Invite to officiate' })).toBeEnabled()
+ fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
+ expect(appointState.mutate.mock.calls[0][0]).toEqual({ userId: 9003 })
+})
+
 describe('the organizer looking for referees', () => {
+  it('shows invitation success with a privacy-preserving warning count', () => {
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: true, crossTournamentWarnings: 2 }));
+    renderFinder();
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }));
+    expect(screen.getByText(/Invitation sent.*overlapping 2 offered matches/)).toBeInTheDocument();
+    expect(screen.queryByText('เชิญไม่สำเร็จ')).not.toBeInTheDocument();
+  });
   it('is not offered their own account', () => {
     renderFinder()
     expect(screen.queryByText('ปกรณ์ ใจดี')).not.toBeInTheDocument()
@@ -62,5 +84,29 @@ describe('the organizer looking for referees', () => {
     })
     renderFinder()
     expect(screen.getByText(/You organize this tournament, so you cannot also officiate it/)).toBeInTheDocument()
+  })
+
+  it('leaves classification to the server without manual toggle or faculty-based inference', () => {
+    renderFinder()
+    expect(screen.queryByLabelText(/เชิญเป็นกรรมการภายนอก/)).not.toBeInTheDocument()
+    expect(screen.getByText(/ระบบจะตรวจจับสถานะกรรมการ \(ภายใน\/ภายนอก\) ให้อัตโนมัติ/)).toBeInTheDocument()
+    expect(screen.getByText(/ระบบกำหนดภายใน\/ภายนอกเมื่อส่งคำเชิญ/)).toBeInTheDocument()
+    expect(screen.queryByText('Internal')).not.toBeInTheDocument()
+    expect(screen.queryByText('External')).not.toBeInTheDocument()
+  })
+
+  it('uses returned External classification even though the legacy request field is false', () => {
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: true, crossTournamentWarnings: 0 }))
+    renderFinder()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
+    expect(appointState.mutate).toHaveBeenCalledWith({ userId: 9003 }, expect.anything())
+    expect(screen.getByText(/External — ต้องส่งเอกสาร/)).toBeInTheDocument()
+  })
+
+  it('displays Internal only after the server confirms it', () => {
+    appointState.mutate.mockImplementation((_input, options) => options.onSuccess({ isExternal: false }))
+    renderFinder()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to officiate' }))
+    expect(screen.getByText(/Internal — ระบบจัดเป็นกรรมการภายใน/)).toBeInTheDocument()
   })
 })
