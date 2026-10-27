@@ -48,6 +48,7 @@ export function NotificationSettings() {
     {query.isError ? <Banner kind="crit">{query.error instanceof Error ? query.error.message : 'Request failed.'} <button className="btn" onClick={() => void query.refetch()}>Retry</button></Banner> : null}
     {save.isError ? <Banner kind="crit">{save.error.message}</Banner> : null}
     {save.isSuccess ? <p role="status">Preference saved.</p> : null}
-    {query.data?.categories.map(c => <label className="profile-checkbox profile-preference" key={c.key}><span>{label(c.key)}{c.locked ? ' — always on' : ''}</span><input type="checkbox" aria-label={`${label(c.key)} notifications`} checked={c.enabled} disabled={c.locked || c.key === 'critical' || save.isPending} onChange={e => { if (c.key !== 'critical' && !c.locked) save.mutate({ key: c.key, enabled: e.target.checked }) }} /></label>)}
+    {/* หลายช่องต่อแถว — เดิมหนึ่งบรรทัดต่อหนึ่งหมวด ชื่ออยู่ซ้ายสุด ติ๊กอยู่ขวาสุด ห่างกันทั้งจอ */}
+    {query.data?.categories.length ? <div className="profile-preference-grid">{query.data.categories.map(c => <label className="profile-checkbox profile-preference" key={c.key}><span>{label(c.key)}{c.locked ? ' — always on' : ''}</span><input type="checkbox" aria-label={`${label(c.key)} notifications`} checked={c.enabled} disabled={c.locked || c.key === 'critical' || save.isPending} onChange={e => { if (c.key !== 'critical' && !c.locked) save.mutate({ key: c.key, enabled: e.target.checked }) }} /></label>)}</div> : null}
   </Panel>
 }

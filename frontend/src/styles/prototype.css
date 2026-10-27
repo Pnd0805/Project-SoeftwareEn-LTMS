@@ -1404,3 +1404,32 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .tour-schedule tbody+tbody .tour-round-row th{border-top:12px solid var(--void-2);}
 .match-list-groups-scroll{gap:32px;}
 .bcol-head{text-align:center;border-left:0;border-top:3px solid var(--teal);border-radius:0 0 var(--r) var(--r);}
+/* Tournaments filters scroll with the page: sticky at 60px slid under a 64-100px top bar and the Stage row overlapped it */
+.home-toolbar{position:static;}
+/* Notification preferences: several per row, tick beside its label (was one per row, label far left, tick far right) */
+.profile-preference-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.profile-preference-grid .profile-preference{flex-direction:row-reverse;justify-content:flex-end;gap:10px;padding:12px 14px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--panel);min-height:48px;cursor:pointer;}
+.profile-preference-grid .profile-preference:has(input:disabled){cursor:default;opacity:.85;}
+.profile-preference-grid .profile-preference input[type="checkbox"]{width:18px;height:18px;accent-color:var(--teal);}
+/* Dashboard match rows: teams, score and Open on one line; time and round underneath */
+.tour-match-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"teams state open" "meta state open";
+  column-gap:16px;row-gap:2px;align-items:center;padding:10px 0;}
+.tour-match-item>.tour-match-teams{grid-area:teams;margin:0;}
+.tour-match-item>.tour-match-meta{grid-area:meta;font-size:13px;}
+.tour-match-item>.tour-match-state{grid-area:state;}
+.tour-match-item>.tour-match-state .num{font-size:18px;font-weight:700;}
+.tour-match-item>.tour-match-open{grid-area:open;}
+/* Approved teams: each team a small card — name in full weight, a real button rather than faint text */
+.tour-team-list>.spread{border:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:12px 14px;align-items:center;}
+.tour-team-list>.spread>span:first-child{color:var(--bone);font-weight:650;}
+.tour-team-list>.spread>span:first-child .sub{font-weight:400;}
+.tour-team-list>.spread>.btn.ghost{border:1px solid var(--line-hot);min-height:36px;padding:6px 12px;}
+.tour-team-list{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+.tour-team-list>.spread{flex-wrap:nowrap;gap:12px;}
+.tour-team-list>.spread>span:first-child{min-width:0;overflow-wrap:anywhere;}
+.tour-team-list>.spread>.btn{flex:none;}
+/* rows share columns: the score sits right after the longest team pair, aligned down the list */
+.tour-match-list-body{display:grid;grid-template-columns:minmax(0,max-content) auto auto;column-gap:24px;justify-content:start;}
+.tour-match-list-body>.tour-match-item{grid-column:1/-1;grid-template-columns:subgrid;}

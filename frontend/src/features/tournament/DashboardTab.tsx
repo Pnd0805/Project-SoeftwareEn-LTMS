@@ -29,22 +29,20 @@ function MatchList({ title, list, empty, showScore }: {
   if (!list.length && !empty) return null
   return (
     <Panel quiet className="tour-match-list">
-      <div className="spread"><h2 className="journey-heading">{title}</h2><span className="num sub">{list.length}</span></div>
+      {/* จำนวนแมตช์อยู่ติดหัวข้อ — เดิมเลขลอยอยู่มุมขวาโดยไม่มีคำบอกว่าคืออะไร */}
+      <h2 className="journey-heading">{title} <span className="tag" aria-label={`${list.length} ${list.length === 1 ? 'match' : 'matches'}`}>· {list.length}</span></h2>
       {list.length ? (
         <div className="tour-match-list-body" role="region" aria-label={title} tabIndex={0}>
           {list.map(m => (
+            /* ทีม · สกอร์ · ปุ่ม อยู่บรรทัดเดียวกัน เวลาเป็นบรรทัดรองใต้ทีม — เดิมเวลาอยู่บน สกอร์ลอยขวาสุด ทีมอยู่อีกบรรทัด */
             <div className="tour-match-item" key={m.id}>
-              <div className="spread">
-                <span className="sub">{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
-                <span className="hstack">
-                  {showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}
-                  <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
-                </span>
-              </div>
               <div className="tour-match-teams">
                 <TeamLinkView team={toTeamView(m.teamA)} /><span className="sub">vs</span>
                 <TeamLinkView team={toTeamView(m.teamB)} />
               </div>
+              <span className="sub tour-match-meta">{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
+              <span className="tour-match-state">{showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}</span>
+              <button className="btn ghost tour-match-open" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
             </div>
           ))}
         </div>
