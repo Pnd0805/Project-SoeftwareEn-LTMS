@@ -1287,3 +1287,12 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .pickem-split-bar{height:12px;border-radius:999px;background:var(--amber);overflow:hidden;display:flex;}
 .pickem-split-bar>span{display:block;height:100%;background:var(--teal);}
 .pickem-split-bar.empty{background:var(--panel-3);}
+
+/* ── Bracket lines (UI plan, 27 Oct): one thin solid style, three meanings ──────────────────
+   winner path (elimination) · rule between rounds (round robin, nobody advances) ·
+   highlighted team's path (any format). Same weight everywhere so the views read as one family. */
+svg.bconn path{stroke:var(--line-hot);stroke-width:1.5;stroke-linejoin:round;}
+svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
+.bcol-head{text-align:center;padding-bottom:8px;border-bottom:1px solid var(--line);}
+.bracket-rr .bcol{position:relative;}
+.bracket-rr .bcol+.bcol::before{content:'';position:absolute;top:0;bottom:0;left:-24px;border-left:1px solid var(--line);}

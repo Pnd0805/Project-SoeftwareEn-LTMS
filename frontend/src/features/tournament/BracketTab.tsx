@@ -5,6 +5,11 @@
  * it. A round robin has no bracket at all: it gets a matchday list, and the
  * table lives on the leaderboard tab. Double elimination shows two trees and a
  * single grand final, with no bracket reset.
+ *
+ * Lines (UI plan 27 Oct) — one thin solid style, three meanings:
+ *   elimination   winner path to the next match
+ *   round robin   a rule between rounds only, never a winner path: nobody advances
+ *   any format    "Highlight team" joins that team's matches round by round
  */
 import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -106,19 +111,21 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
   )
 }
 
-function ApiBracket({ matches, host }: { matches: MatchListItemDto[]; host: React.RefObject<HTMLDivElement | null> }) {
+function ApiBracket({ matches, host, roundRobin }: {
+  matches: MatchListItemDto[]; host: React.RefObject<HTMLDivElement | null>; roundRobin: boolean
+}) {
   const rounds = [...new Set(matches.map(match => match.roundNumber ?? 0))].sort((a, b) => a - b)
   const teams = [...new Map(matches.flatMap(m => [m.teamA, m.teamB]).filter(t => t !== null)
     .map(t => [String(t.id), { id: String(t.id), name: t.name }])).values()]
   return (
     <BracketWorkspace teams={teams}>
     <div ref={host}>
-        <div className="bracket">
+        <div className={`bracket${roundRobin ? ' bracket-rr' : ''}`}>
           {rounds.map(round => (
             <div className="bcol" key={round}>
               {/* roundNumber ของ backend เริ่มที่ 1 อยู่แล้ว — เดิม +1 ทำให้หัวคอลัมน์
                   เป็น "Round 2" ขณะที่การ์ดข้างในเขียนว่า "Round 1" */}
-              <div className="tag" style={{ textAlign: 'center' }}><em>//</em> Round {round}</div>
+              <div className="tag bcol-head"><em>//</em> Round {round}</div>
               {matches.filter(match => (match.roundNumber ?? 0) === round).map(match => (
                 <ApiBracketNode key={match.id} m={match} />
               ))}
@@ -168,12 +175,21 @@ function BracketNode({ m }: { m: Match }) {
 }
 
 /**
- * Winner-path connectors only: one elbow per match that has a next match in the
- * same box. Losers-bracket and grand-final edges cross boxes and are left
- * unconnected — ponytail: add a second pass if that is ever wanted.
+ * Winner-path connectors plus the highlighted team's path, one elbow each.
+ * Losers-bracket and grand-final edges cross boxes and are left unconnected —
+ * ponytail: add a second pass if that is ever wanted.
  *
- * The elbows are measured off laid-out boxes, so any reflow invalidates them.
+ * The elbows are measured off laid-out boxes, so any reflow invalidates them;
+ * a highlight change only swaps classes, so class mutations redraw too.
  */
+const elbow = (from: HTMLElement, to: HTMLElement, rect: DOMRect) => {
+  const a = from.getBoundingClientRect(), b = to.getBoundingClientRect()
+  const x1 = a.right - rect.left, y1 = a.top + a.height / 2 - rect.top
+  const x2 = b.left - rect.left, y2 = b.top + b.height / 2 - rect.top
+  const mx = (x1 + x2) / 2
+  return `M${x1},${y1} H${mx} V${y2} H${x2}`
+}
+
 function useBracketLines(deps: unknown) {
   const host = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
@@ -182,19 +198,24 @@ function useBracketLines(deps: unknown) {
         box.querySelector('svg.bconn')?.remove()
         const rect = box.getBoundingClientRect()
         const paths: string[] = []
-        box.querySelectorAll<HTMLElement>('.bnode[data-mid]').forEach(node => {
-          const nextId = node.dataset.next
-          const target = nextId ? box.querySelector<HTMLElement>(`.bnode[data-mid="${nextId}"]`) : null
-          if (!target) return
-          const a = node.getBoundingClientRect(), b = target.getBoundingClientRect()
-          const x1 = a.right - rect.left, y1 = a.top + a.height / 2 - rect.top
-          const x2 = b.left - rect.left, y2 = b.top + b.height / 2 - rect.top
-          const mx = (x1 + x2) / 2
-          paths.push(`<path d="M${x1},${y1} H${mx} V${y2} H${x2}"/>`)
+        // พบกันหมดไม่มีใครเข้ารอบต่อ — ห้ามลากเส้นผู้ชนะ แม้ข้อมูลจะมี next ติดมา
+        if (!box.classList.contains('bracket-rr')) {
+          box.querySelectorAll<HTMLElement>('.bnode[data-mid]').forEach(node => {
+            const nextId = node.dataset.next
+            const target = nextId ? box.querySelector<HTMLElement>(`.bnode[data-mid="${nextId}"]`) : null
+            if (target) paths.push(`<path d="${elbow(node, target, rect)}"/>`)
+          })
+        }
+        // เส้นของทีมที่เลือก: ต่อแมตช์ของทีมนั้นตามลำดับคอลัมน์ (หนึ่งรอบมีได้นัดเดียว)
+        const mine = [...box.querySelectorAll<HTMLElement>('.bnode.tour-highlight')]
+        mine.slice(1).forEach((node, i) => {
+          const prev = mine[i]
+          if (prev.closest('.bcol') !== node.closest('.bcol')) paths.push(`<path class="team-path" d="${elbow(prev, node, rect)}"/>`)
         })
         if (!paths.length) return
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
         svg.setAttribute('class', 'bconn')
+        svg.setAttribute('aria-hidden', 'true')
         svg.innerHTML = paths.join('')
         box.prepend(svg)
       })
@@ -203,8 +224,11 @@ function useBracketLines(deps: unknown) {
     // ข้อความไฮไลต์และชื่อยาวอาจเปลี่ยนความสูงหลังวัดครั้งแรก
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(draw)
     host.current?.querySelectorAll('.bnode').forEach(node => observer?.observe(node))
+    // เปลี่ยนทีมที่ไฮไลต์ = เปลี่ยน class ของการ์ด ไม่ได้เปลี่ยนขนาดเสมอไป
+    const classes = typeof MutationObserver === 'undefined' ? null : new MutationObserver(draw)
+    if (host.current) classes?.observe(host.current, { subtree: true, attributes: true, attributeFilter: ['class'] })
     addEventListener('resize', draw)
-    return () => { observer?.disconnect(); removeEventListener('resize', draw) }
+    return () => { observer?.disconnect(); classes?.disconnect(); removeEventListener('resize', draw) }
   }, [deps])
   return host
 }
@@ -212,7 +236,7 @@ function useBracketLines(deps: unknown) {
 function Column({ label, list }: { label: string; list: Match[] }) {
   return (
     <div className="bcol">
-      <div className="tag" style={{ textAlign: 'center' }}><em>//</em> {label}</div>
+      <div className="tag bcol-head"><em>//</em> {label}</div>
       {list.map(m => <BracketNode key={m.id} m={m} />)}
     </div>
   )
@@ -237,7 +261,7 @@ function RealBracketTab({ t }: { t: Tournament }) {
   }
   if (!matches.data?.items.length) return <Empty title="No matches yet" sub="Matches will appear here once the fixtures are drawn." />
   if (!hasValidBracket(t, matches.data.items)) return <Empty title="No valid bracket yet" sub="Double elimination needs at least four approved squads before the bracket can be drawn." />
-  return <ApiBracket matches={matches.data.items} host={host} />
+  return <ApiBracket matches={matches.data.items} host={host} roundRobin={formatOf(t) === 'roundrobin'} />
 }
 
 function MockBracketTab({ t }: { t: Tournament }) {
@@ -252,7 +276,7 @@ function MockBracketTab({ t }: { t: Tournament }) {
 
   if (apiTournamentId !== undefined) {
     if (apiMatches.isPending) return <Panel quiet><span className="sub">Loading the bracket…</span></Panel>
-    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} host={host} />
+    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} host={host} roundRobin={rr} />
   }
 
   if (!t.drawn) {
