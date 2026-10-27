@@ -502,8 +502,8 @@ export function AdminPage() {
                 <h3>{request.tournamentName}</h3>
                 <div className="hstack"><Badge kind="warn">Pending changes</Badge><span className="tag">{fmtDate(request.requestedAt)}</span></div>
                 <div className="sub">Asked by {request.requestedBy.fullName}</div>
+                {request.selfRequested ? <Badge kind="warn">You submitted this request</Badge> : null}
               </div>
-              {request.selfRequested ? <Badge kind="warn">You submitted this request</Badge> : null}
               <p style={{ whiteSpace: 'pre-wrap' }}>Reason: {request.reason ?? 'Not provided'}</p>
               <TournamentReviewDetails id={request.tournamentId} changes={request.requestedChanges} />
 

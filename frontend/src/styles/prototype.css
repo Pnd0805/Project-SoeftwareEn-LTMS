@@ -1327,3 +1327,38 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .tour-dashboard-pair>.tour-match-list{height:auto;}
 .tour-match-list-body{flex:none;overflow:visible;}
 .tour-dashboard-pair>:last-child:nth-child(odd){grid-column:1/-1;}
+
+/* ── Remaining slice 3/4 pages (UI plan, 27 Oct): no capped boxes, named grid areas ─────────
+   Tables keep sideways scrolling for narrow screens; their height follows the rows. */
+.matches-page .tblwrap,.match-page .tblwrap,.checkin-page .tblwrap,.match-fixture-page .tblwrap,
+.admin-workspace .tblwrap,.admin-review-item .tblwrap{max-height:none;overflow-y:hidden;}
+.admin-review-list,.admin-rights-list,.admin-transfer-list,.admin-audit-list{max-height:none;overflow:visible;}
+.admin-rights:has(.admin-grant-form)>.admin-rights-list,.admin-grant-form{height:auto;overflow:visible;}
+.admin-workspace :is(input:not([type=checkbox]):not([type=radio]),select){height:44px;min-height:44px;}
+.admin-grant-form .btn,.admin-workspace .grid2 .btn{min-height:44px;}
+/* Rule-change card: who / why / details on one line, the change table under them, buttons in one row */
+@media(min-width:901px){
+  .admin-change-item{grid-template-columns:minmax(200px,1fr) minmax(0,1.4fr) minmax(260px,1fr);
+    grid-template-areas:"who why facts" "change change facts" "actions actions facts";}
+  .admin-change-item>.admin-change-identity{grid-area:who;}
+  .admin-change-item>p{grid-area:why;margin:0;}
+  .admin-change-item>.facts{grid-area:facts;}
+  .admin-change-item>.tblwrap{grid-area:change;}
+  .admin-change-item>.hstack:last-child{grid-area:actions;flex-direction:row;align-items:center;align-self:start;}
+}
+/* Action cells keep their buttons on one line, right-aligned, like the schedule table */
+/* only cells that hold nothing but a row of buttons — cells with notes keep wrapping */
+.admin-workspace td:last-child:has(>.hstack>.btn):not(:has(>:not(.hstack))):not(:has(>.hstack>:not(.btn))){width:1%;white-space:nowrap;}
+.admin-workspace td:last-child:not(:has(>:not(.hstack)))>.hstack:not(:has(>:not(.btn))){flex-wrap:nowrap;justify-content:flex-end;}
+.admin-users table{min-width:1000px;}
+/* Match details sizes to its content; the pair still matches heights through the grid */
+.match-summary-frame{height:auto;overflow:visible;}
+/* Check-in squads: two tables side by side must fit their half without sideways scrolling */
+.checkin-squad-frame{height:auto;}
+.checkin-squad-frame table{min-width:0;}
+/* Team record / player career: as many equal columns as there are figures — a fixed 4 left
+   empty cells (painted in the divider colour) when a profile has 6 */
+.team-record>.statline,.player-career>.statline{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+/* Request form and tournament manage filters: inputs and selects the same 44px */
+.organizer-request-form :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select),
+.organizer-filters :is(input,select){height:44px;min-height:44px;}
