@@ -1,8 +1,9 @@
 /**
  * src/features/tournament/ScheduleTab.tsx — owned by slice 3
  *
- * Every fixture in one table. Wide tables still scroll inside .tblwrap when the
- * rail narrows their column. The organizer gets a Fixture control on any match
+ * Every fixture in one table, grouped by round. The page is the only scroll
+ * area: the table grows with its rows instead of scrolling inside a 520px box
+ * (UI plan slice 3/4, 27 Oct). Below 768px each row becomes a card. The organizer gets a Fixture control on any match
  * that has not started — kick-off, venue and officials are set there.
  *
  * SRS FR-MM-03: แสดงตารางแข่งขันของทัวร์นาเมนต์ พร้อมสถานะแมตช์
@@ -42,6 +43,11 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
     .some(name => name?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())))
     && (!round || String(m.roundNumber ?? 'null') === round) && (!state || matchStateOf(m) === state))
   const filtering = !!search || !!round || !!state
+  const groups = [...filtered.reduce((acc, m) => {
+    const key = String(m.roundNumber ?? 'null')
+    acc.set(key, [...(acc.get(key) ?? []), m])
+    return acc
+  }, new Map<string, typeof filtered>())].sort(([a], [b]) => (a === 'null' ? 1 : b === 'null' ? -1 : Number(a) - Number(b)))
   const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined
   const failure = isError ? (
     <div className="vstack" role="alert">
@@ -81,23 +87,27 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
       <table>
         <thead>
           <tr>
-            <th>Kick-off</th><th>Round</th><th>Home</th><th aria-label="Versus" /><th>Away</th><th>Score</th><th>State</th><th>Actions</th>
+            <th>Kick-off</th><th>Home</th><th aria-label="Versus" /><th>Away</th><th>Score</th><th>State</th><th>Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {filtered.map(m => (
+        {/* แบ่งตามรอบแทนการเลื่อนในกล่อง — ตารางยาวยังอ่านเป็นช่วง ๆ ได้ และรู้ว่าอยู่รอบไหนโดยไม่ต้องดูคอลัมน์ */}
+        {groups.map(([key, rows]) => (
+          <tbody key={key}>
+            <tr className="tour-round-row">
+              <th colSpan={7} scope="rowgroup">{key === 'null' ? 'Round not assigned' : `Round ${key}`} · {rows.length} {rows.length === 1 ? 'match' : 'matches'}</th>
+            </tr>
+            {rows.map(m => (
             <tr key={m.id}>
-              <td className="num">{m.scheduledTime ? fmtDateTime(m.scheduledTime) : '—'}</td>
-              <td className="tag">{m.tag}</td>
-              <td><TeamLinkView team={toTeamView(m.teamA)} /></td>
-              <td className="tag">vs</td>
-              <td><TeamLinkView team={toTeamView(m.teamB)} /></td>
-              <td className="num">{scoreText(m)}</td>
+              <td className="num" data-label="Kick-off">{m.scheduledTime ? fmtDateTime(m.scheduledTime) : '—'}</td>
+              <td data-label="Home"><TeamLinkView team={toTeamView(m.teamA)} /></td>
+              <td className="tag tour-vs">vs</td>
+              <td data-label="Away"><TeamLinkView team={toTeamView(m.teamB)} /></td>
+              <td className="num" data-label="Score">{scoreText(m)}</td>
               {/* รายการแมตช์แนบ resultStatus มาแล้ว — เดิมบังคับเป็น null ทุกแถว
                   นัดที่ยืนยันผลไปแล้วเลยขึ้น "Awaiting confirmation" ค้างตลอด */}
-              <td><MatchStateBadge state={matchStateOf(m)} /></td>
-              <td>
-                <span className="hstack" style={{ gap: 8 }}>
+              <td data-label="State"><MatchStateBadge state={matchStateOf(m)} /></td>
+              <td className="tour-actions">
+                <span className="hstack">
                   <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
                   {m.viewer.can.editFixture
                     ? <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}/fixture`)}>Fixture</button>
@@ -105,8 +115,9 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
                 </span>
               </td>
             </tr>
-          ))}
-        </tbody>
+            ))}
+          </tbody>
+        ))}
       </table>
       </TableWrap>
       )}

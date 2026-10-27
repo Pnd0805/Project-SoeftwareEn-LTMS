@@ -308,7 +308,8 @@ describe('Schedule source states', () => {
         <Route path="/m/:id" element={<div>Match detail destination</div>} />
       </Routes>
     </MemoryRouter>)
-    expect(screen.getByText('Round 1')).toBeInTheDocument()
+    // ตารางวันแข่งจัดกลุ่มตามรอบแล้ว (แผน UI 27 ต.ค.) — fixture นี้ไม่มี roundNumber จึงอยู่กลุ่ม "ยังไม่กำหนดรอบ"
+    expect(screen.getByRole('rowheader', { name: 'Round not assigned · 1 match' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry schedule' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(screen.getByText('Match detail destination')).toBeInTheDocument()

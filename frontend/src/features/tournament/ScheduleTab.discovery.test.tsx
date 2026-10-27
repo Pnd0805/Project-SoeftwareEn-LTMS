@@ -38,14 +38,18 @@ it('intersects local team, round and state filters, clears no matches and opens 
   fireEvent.change(screen.getByRole('searchbox', { name: 'Search schedule' }), { target: { value: 'northside' } })
   fireEvent.change(screen.getByLabelText('Round filter'), { target: { value: '2' } })
   fireEvent.change(screen.getByLabelText('Match state filter'), { target: { value: 'scheduled' } })
-  expect(within(table).getAllByRole('row')).toHaveLength(2)
+  // หัวตาราง + หัวกลุ่ม "Round 2" + แมตช์ที่ผ่านตัวกรอง 1 แถว
+  expect(within(table).getAllByRole('row')).toHaveLength(3)
+  expect(within(table).getByRole('rowheader', { name: 'Round 2 · 1 match' })).toBeInTheDocument()
   expect(within(table).getByText('Eastside FC')).toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('Match state filter'), { target: { value: 'live' } })
   expect(screen.getByText('No matching matches')).toBeInTheDocument()
   expect(screen.queryByRole('table')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
   expect(screen.getByRole('searchbox', { name: 'Search schedule' })).toHaveValue('')
-  expect(screen.getAllByRole('row')).toHaveLength(4)
+  // หัวตาราง + หัวกลุ่ม 2 รอบ + 3 แมตช์ · รอบเรียงจากน้อยไปมาก
+  expect(screen.getAllByRole('row')).toHaveLength(6)
+  expect(screen.getAllByRole('rowheader').map(h => h.textContent)).toEqual(['Round 1 · 2 matches', 'Round 2 · 1 match'])
   expect(getMatches).toHaveBeenCalledExactlyOnceWith(42)
   const row = screen.getByText('Eastside FC').closest('tr')!
   fireEvent.click(within(row).getByRole('button', { name: 'Open' }))

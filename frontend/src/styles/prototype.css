@@ -798,8 +798,24 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .tour-schedule,.tour-leaderboard,.tour-bracket{min-width:0;}
 .tour-schedule-filters{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr));gap:16px;}
 .tour-clear{align-self:flex-start;}
-.tour-schedule>.tblwrap,.tour-leaderboard>.tblwrap{max-height:520px;}
-.tour-schedule thead,.tour-leaderboard thead{position:sticky;top:0;z-index:1;background:var(--panel);}
+/* slice 3 (UI plan 27 Oct): the page is the only scroll area — no 520px box around the schedule or standings.
+   The schedule is grouped by round instead, and turns into cards below 768px. */
+.tour-round-row th{background:var(--void-2);color:var(--bone);font-family:var(--f-mono);font-size:13px;
+  letter-spacing:.04em;text-transform:uppercase;padding:10px 16px;border-bottom:2px solid var(--line);}
+.tour-schedule td.tour-actions{width:1%;white-space:nowrap;text-align:right;}
+.tour-schedule td.tour-actions .hstack{gap:8px;justify-content:flex-end;flex-wrap:nowrap;}
+@media(max-width:768px){
+  .tour-schedule .tblwrap{overflow:visible;}
+  .tour-schedule table,.tour-schedule tbody,.tour-schedule tr,.tour-schedule td,.tour-schedule th{display:block;width:auto;}
+  .tour-schedule thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .tour-schedule tbody{margin-bottom:16px;}
+  .tour-schedule tbody tr:not(.tour-round-row){border:1px solid var(--line);border-radius:var(--r);margin-top:8px;padding:8px 0;}
+  .tour-schedule td{border:0;padding:6px 16px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;}
+  .tour-schedule td[data-label]::before{content:attr(data-label);font-family:var(--f-mono);font-size:12px;color:var(--bone-faint);}
+  .tour-schedule td.tour-vs{display:none;}
+  .tour-schedule td.tour-actions{width:auto;display:block;text-align:left;}
+  .tour-schedule td.tour-actions .hstack{justify-content:flex-start;flex-wrap:wrap;}
+}
 .tour-dashboard{gap:24px;}
 .tour-dashboard-pair>.panel{min-width:0;min-height:164px;}
 .tour-dashboard-pair>.tour-match-list{height:280px;}
