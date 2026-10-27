@@ -1391,3 +1391,16 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .match-lineup-frame{height:auto;}
 .match-lineup-frame .tblwrap{flex:none;overflow-y:hidden;}
 .match-lineup-frame table{min-width:0;}
+
+/* ── Group headings (UI plan, 28 Oct): one band style so a heading never reads as another data row ──
+   Teal-ghost band + teal edge + mono caps, from the theme tokens, so dark and light both follow. */
+.tour-round-row th,.match-list-group>h3,.inbox-requests .panel>h3,.inbox-notifications>section>h2,.bcol-head{
+  background:var(--teal-ghost);border-left:4px solid var(--teal);border-bottom:0;color:var(--bone);
+  font-family:var(--f-mono);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:10px 14px;margin:0;border-radius:0 var(--r) var(--r) 0;line-height:1.3;}
+:is(.match-list-group>h3,.inbox-requests .panel>h3,.inbox-notifications>section>h2) :is(.sub,.tag){
+  color:var(--bone-dim);font-family:var(--f-mono);font-size:12px;font-weight:600;letter-spacing:.04em;}
+/* breathing room between one group's last row and the next heading */
+.tour-schedule tbody+tbody .tour-round-row th{border-top:12px solid var(--void-2);}
+.match-list-groups-scroll{gap:32px;}
+.bcol-head{text-align:center;border-left:0;border-top:3px solid var(--teal);border-radius:0 0 var(--r) var(--r);}
