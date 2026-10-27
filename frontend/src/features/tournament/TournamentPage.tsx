@@ -283,16 +283,8 @@ export function TournamentPage() {
               feedback={entryFeedback} />
           </section> : null}
         </div>
-        </details>
-        <section className="tour-workspace" aria-label="Tournament workspace">
-          {tab === 'bracket' ? <BracketTab t={t} /> : null}
-          {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
-          {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
-          {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
-          {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
-          {tab === 'community' ? USE_MOCK ? <CommunityTab t={t} org={org} /> : <LiveCommunityTab tournamentId={tournamentId!} organizer={org} /> : null}
-          {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}
-        </section>
+        {/* ทีมที่ผ่าน/กติกา/หมายเหตุการสมัคร เป็นเรื่องการสมัครทั้งหมด — เดิมต่อท้ายทุกแท็บ
+            ตอนนี้อยู่ใน Details & entry ที่เดียว (แผน UI 28 ต.ค.) */}
         <div className="tour-support">
 
           {!USE_MOCK && !rulesConfirmed ? <section role="region" aria-label="Entry rules" tabIndex={0}><Panel quiet>
@@ -317,7 +309,7 @@ export function TournamentPage() {
                 {sportTypes.data?.items.find(sport => sport.id === approvedTeam.sportTypeId)?.name
                   ?? `Sport #${approvedTeam.sportTypeId}`}
               </span></span>
-              <button className="btn ghost" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
+              <button className="btn primary" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
             </div>)}</div> : null}
           </Panel></section> : null}
 
@@ -328,6 +320,16 @@ export function TournamentPage() {
             </Panel></section>
           ) : null}
         </div>
+        </details>
+        <section className="tour-workspace" aria-label="Tournament workspace">
+          {tab === 'bracket' ? <BracketTab t={t} /> : null}
+          {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
+          {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
+          {tab === 'leaderboard' ? <LeaderboardTab tournamentId={t.id} /> : null}
+          {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
+          {tab === 'community' ? USE_MOCK ? <CommunityTab t={t} org={org} /> : <LiveCommunityTab tournamentId={tournamentId!} organizer={org} /> : null}
+          {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}
+        </section>
       </div>
     </>
   )

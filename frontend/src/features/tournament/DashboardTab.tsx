@@ -34,14 +34,13 @@ function MatchList({ title, list, empty, showScore }: {
       {list.length ? (
         <div className="tour-match-list-body" role="region" aria-label={title} tabIndex={0}>
           {list.map(m => (
-            /* ทีม · สกอร์ · ปุ่ม อยู่บรรทัดเดียวกัน เวลาเป็นบรรทัดรองใต้ทีม — เดิมเวลาอยู่บน สกอร์ลอยขวาสุด ทีมอยู่อีกบรรทัด */
+            /* แบบป้ายสกอร์: ทีมเหย้าชิดขวา · สกอร์กลาง · ทีมเยือนชิดซ้าย — สมมาตรรอบสกอร์และเต็มกล่อง
+               (เดิมชิดซ้ายทั้งแถว เหลือที่ว่างครึ่งขวา) · เวลา/รอบเป็นบรรทัดรองกึ่งกลางใต้คู่ */
             <div className="tour-match-item" key={m.id}>
-              <div className="tour-match-teams">
-                <TeamLinkView team={toTeamView(m.teamA)} /><span className="sub">vs</span>
-                <TeamLinkView team={toTeamView(m.teamB)} />
-              </div>
-              <span className="sub tour-match-meta">{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
-              <span className="tour-match-state">{showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}</span>
+              <span className="tour-match-a"><TeamLinkView team={toTeamView(m.teamA)} /></span>
+              <span className="tour-match-mid">{showScore ? <span className="num">{scoreOf(m)}</span> : <span className="sub">vs</span>}</span>
+              <span className="tour-match-b"><TeamLinkView team={toTeamView(m.teamB)} /></span>
+              <span className="sub tour-match-meta">{showScore ? null : <MatchStateBadge state={stateOf(m)} />}{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
               <button className="btn ghost tour-match-open" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
             </div>
           ))}
