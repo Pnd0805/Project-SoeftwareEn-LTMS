@@ -1256,3 +1256,34 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .tour-context[open] summary{margin-bottom:12px;}
 .tour-context .tour-overview-frame{height:auto;max-height:360px;}
 @media(max-width:900px){.tour-identity-compact h1{font-size:28px;}.tour-page{gap:16px;}.tour-page>.tabs{gap:8px 20px;}.tour-context .tour-overview-frame{max-height:none;}}
+
+/* ── slice 3/4 UI plan, phase 3 (27 Oct): bars line up, one scroll area per page ─────────────
+   H6: controls that share a bar are the same height (44px, WCAG 2.5.8 / Apple HIG) so their
+   bottom edges meet. H4: tab content grows with the page instead of scrolling in a fixed box. */
+.tour-schedule-filters :is(input,select),
+.match-list-toolbar :is(input,select),
+.teams-filters :is(input,select),
+.admin-user-toolbar input{height:44px;min-height:44px;}
+.match-list-toolbar .btn,.admin-user-toolbar .btn,.tour-schedule-count .btn{min-height:44px;}
+.tour-schedule-count{gap:12px;flex-wrap:wrap;justify-content:flex-end;}
+.match-list-toolbar .sub{padding-bottom:0;min-height:44px;display:flex;align-items:center;}
+.admin-user-toolbar>input{flex:1 1 240px;min-width:0;}
+.admin-user-filters{display:flex;gap:8px;flex-wrap:wrap;}
+@media(max-width:600px){.admin-user-filters{width:100%;}}
+
+.match-context-links{margin-top:-8px;}
+.match-section{height:auto;min-height:320px;overflow:visible;}
+
+/* Team tabs share the underline style of every other tab bar in the app */
+.team-tab-bar{gap:24px;border-bottom:2px solid var(--line);}
+.team-tab{min-height:44px;padding:12px 0;border-radius:0;background:none;color:var(--bone-faint);
+  font-size:14px;font-weight:600;border-bottom:4px solid transparent;margin-bottom:-2px;}
+.team-tab:hover{background:none;color:var(--bone-dim);}
+.team-tab[data-active]{background:none;color:var(--bone);border-bottom-color:var(--teal);}
+.team-tab-panel{height:auto;min-height:440px;overflow:visible;}
+
+/* Pick'em split: two colours sized by share, numbers always printed beside it */
+.pickem-split{display:flex;flex-direction:column;gap:8px;}
+.pickem-split-bar{height:12px;border-radius:999px;background:var(--amber);overflow:hidden;display:flex;}
+.pickem-split-bar>span{display:block;height:100%;background:var(--teal);}
+.pickem-split-bar.empty{background:var(--panel-3);}

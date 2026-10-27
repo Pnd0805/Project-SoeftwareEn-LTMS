@@ -68,7 +68,10 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
     <Panel quiet className="tour-schedule">
       {failure}
       <div className="spread"><h2 className="journey-heading">Schedule</h2>
-        <span className="sub" role="status">{filtered.length} of {ms.length} matches</span>
+        <span className="hstack tour-schedule-count">
+          {filtering ? <button className="btn ghost" type="button" onClick={() => { setSearch(''); setRound(''); setState('') }}>Clear filters</button> : null}
+          <span className="sub" role="status">{filtered.length} of {ms.length} matches</span>
+        </span>
       </div>
       <div className="tour-schedule-filters">
         <Field label="Team" htmlFor="schedule-search"><input id="schedule-search" type="search" aria-label="Search schedule"
@@ -81,7 +84,6 @@ export function ScheduleTab({ tournamentId }: { tournamentId: number | string })
           <option value="">All states</option>{Object.entries(stateLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select></Field>
       </div>
-      {filtering ? <button className="btn ghost tour-clear" type="button" onClick={() => { setSearch(''); setRound(''); setState('') }}>Clear filters</button> : null}
       {!filtered.length ? <Empty icon="search" title="No matching matches" sub="Try another team, round or state." /> : (
       <TableWrap label="Tournament schedule">
       <table>

@@ -171,8 +171,8 @@ export function AdminUsersTab() {
         <>
           <div className="admin-user-toolbar">
             <input type="search" value={query} placeholder="Name, email or faculty" aria-label="Search users"
-              style={{ flex: '1 1 240px' }}
               onChange={e => { setQuery(e.target.value); setLimit(PAGE) }} />
+            <div className="admin-user-filters" role="group" aria-label="Filter users">
             {FILTERS.map(f => (
               <button key={f.key} type="button" className={`btn ${filter === f.key ? 'primary' : 'ghost'}`}
                 aria-pressed={filter === f.key}
@@ -180,6 +180,7 @@ export function AdminUsersTab() {
                 {f.label} · {all.filter(u => inFilter(u, f.key)).length}
               </button>
             ))}
+            </div>
           </div>
 
           {!found.length ? <div className="sub">Nobody matches that.</div> : (

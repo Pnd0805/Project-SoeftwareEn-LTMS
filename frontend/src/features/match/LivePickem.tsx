@@ -92,13 +92,22 @@ export function LivePickem({ match }: { match: MatchDto }) {
     {!data?.canPredict && error ? <p className="sub" role="alert">{error instanceof Error ? error.message : 'Could not update prediction.'}</p> : null}
     {rules ? <div className="sub">How points work for this match:<ul>{rules.map(line => <li key={line}>{line}</li>)}</ul></div> : null}
     {format.bestOf != null ? <p className="sub">Best of {format.bestOf}: the winning side must reach {Math.ceil(format.bestOf / 2)}.</p> : null}
-    <div className="grid2">{[teamA, teamB].filter(team => team !== null).map(team => {
-      const share = data?.teams.find(row => row.teamId === team.id)
-      return <div key={team.id} className="spread">
-        <span>{team.name}{mine?.teamId === team.id ? ' · your pick' : ''}</span>
-        <b>{share?.percent ?? 0}%</b>
+    {/* สัดส่วนคนทายเป็นแถบสองสี มีตัวเลขกำกับเสมอ — ไม่บอกด้วยสีอย่างเดียว (WCAG 1.4.1) */}
+    {teamA && teamB ? (() => {
+      const pctA = data?.teams.find(row => row.teamId === teamA.id)?.percent ?? 0
+      const pctB = data?.teams.find(row => row.teamId === teamB.id)?.percent ?? 0
+      const empty = !data?.total
+      return <div className="pickem-split">
+        <div className="spread">
+          <span>{teamA.name}{mine?.teamId === teamA.id ? ' · your pick' : ''} <b>{pctA}%</b></span>
+          <span><b>{pctB}%</b> {teamB.name}{mine?.teamId === teamB.id ? ' · your pick' : ''}</span>
+        </div>
+        <div className={`pickem-split-bar${empty ? ' empty' : ''}`} role="img"
+          aria-label={empty ? 'No predictions yet' : `${teamA.name} ${pctA}%, ${teamB.name} ${pctB}%`}>
+          {empty ? null : <span style={{ width: `${pctA}%` }} />}
+        </div>
       </div>
-    })}</div>
+    })() : null}
     {!data?.canPredict && data?.isOpen ? <p className="sub">Sign in as an eligible spectator to predict this match.</p> : null}
   </Panel>
 }

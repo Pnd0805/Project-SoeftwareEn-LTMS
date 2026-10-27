@@ -826,6 +826,12 @@ export function MatchPage() {
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
         <MatchStateBadge state={state} />
       </div>
+      {/* ปุ่มนำทางอยู่ใต้หัวเรื่อง — เดิมอยู่ระหว่างกล่องสรุปกับแถบแท็บ แยกแท็บออกจากหัวหน้าไกลขึ้นอีกแถว */}
+      <nav className="match-context-links" aria-label="Match navigation">
+        <button className="btn ghost" type="button" onClick={() => navigate(location.state?.matchListHref || '/matches', { state: { matchListScroll: location.state?.matchListScroll, matchListRegions: location.state?.matchListRegions } })}>Back to matches</button>
+        <button className="btn ghost" type="button" onClick={() => navigate(`/t/${tournamentRouteId(m.tournament.id)}/bracket`)}>View bracket</button>
+        {m.nextMatchId ? <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.nextMatchId}`, { state: location.state })}>Next match</button> : null}
+      </nav>
 
       <div className="match-scoreboard">
           <ScorebugView
@@ -869,11 +875,6 @@ export function MatchPage() {
           </Panel>
         </div>
       </div>
-      <nav className="match-context-links" aria-label="Match navigation">
-        <button className="btn ghost" type="button" onClick={() => navigate(location.state?.matchListHref || '/matches', { state: { matchListScroll: location.state?.matchListScroll, matchListRegions: location.state?.matchListRegions } })}>Back to matches</button>
-        <button className="btn ghost" type="button" onClick={() => navigate(`/t/${tournamentRouteId(m.tournament.id)}/bracket`)}>View bracket</button>
-        {m.nextMatchId ? <button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.nextMatchId}`, { state: location.state })}>Next match</button> : null}
-      </nav>
       <nav className="tabs match-tabs" aria-label="Match sections">
         {TABS.map(x => <button className={`tab ${tab === x ? 'on' : ''}`} type="button" key={x} aria-current={tab === x ? 'page' : undefined}
           onClick={() => navigate(`/m/${m.id}/${x}`, { state: location.state })}>
