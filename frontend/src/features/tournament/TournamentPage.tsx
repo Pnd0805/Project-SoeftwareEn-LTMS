@@ -246,7 +246,7 @@ export function TournamentPage() {
             aria-current={tab === k ? 'page' : undefined}>{k[0].toUpperCase() + k.slice(1)}</Link>)}
         </nav>
         <details className="tour-context" open={!tabParam}>
-          <summary>Details & entry</summary>
+          <summary>Details, entry & approved teams</summary>
         <div className={`tour-overview${completed ? ' tour-overview-closed' : ''}`}>
           <section className="tour-overview-frame" aria-label="Tournament details" tabIndex={0}>
           <Panel className="tour-details">

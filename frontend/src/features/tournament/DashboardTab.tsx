@@ -34,13 +34,14 @@ function MatchList({ title, list, empty, showScore }: {
       {list.length ? (
         <div className="tour-match-list-body" role="region" aria-label={title} tabIndex={0}>
           {list.map(m => (
-            /* แบบป้ายสกอร์: ทีมเหย้าชิดขวา · สกอร์กลาง · ทีมเยือนชิดซ้าย — สมมาตรรอบสกอร์และเต็มกล่อง
-               (เดิมชิดซ้ายทั้งแถว เหลือที่ว่างครึ่งขวา) · เวลา/รอบเป็นบรรทัดรองกึ่งกลางใต้คู่ */
+            /* ทีม · สกอร์ · ปุ่ม อยู่บรรทัดเดียวกัน เวลาเป็นบรรทัดรองใต้ทีม — เดิมเวลาอยู่บน สกอร์ลอยขวาสุด ทีมอยู่อีกบรรทัด */
             <div className="tour-match-item" key={m.id}>
-              <span className="tour-match-a"><TeamLinkView team={toTeamView(m.teamA)} /></span>
-              <span className="tour-match-mid">{showScore ? <span className="num">{scoreOf(m)}</span> : <span className="sub">vs</span>}</span>
-              <span className="tour-match-b"><TeamLinkView team={toTeamView(m.teamB)} /></span>
-              <span className="sub tour-match-meta">{showScore ? null : <MatchStateBadge state={stateOf(m)} />}{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
+              <div className="tour-match-teams">
+                <TeamLinkView team={toTeamView(m.teamA)} /><span className="sub">vs</span>
+                <TeamLinkView team={toTeamView(m.teamB)} />
+              </div>
+              <span className="sub tour-match-meta">{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
+              <span className="tour-match-state">{showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}</span>
               <button className="btn ghost tour-match-open" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
             </div>
           ))}
@@ -113,9 +114,9 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
       <MatchList title="Awaiting a decision" list={s.attention} />
       <MatchList title="Up next" list={s.upNext} empty="No fixtures left to play." />
       <MatchList title="Latest results" list={s.latest} empty="No confirmed results yet." showScore />
-
-      </div>
-      <Panel quiet>
+      {/* Top of the table อยู่กริดเดียวกับรายการแมตช์ — ทุกกล่องกว้างครึ่งเดียวเท่ากัน ไม่มีกล่องรายการไหน
+          ถูกยืดเต็มแถวจนเนื้อหากองชิดซ้าย (แผน UI 28 ต.ค.) · ถ้าจำนวนกล่องเป็นคี่ ตารางนี้ (ท้ายสุดเสมอ) จะยืดเต็มแถวแทน */}
+      <Panel quiet className="tour-top-table">
         <div className="spread">
           <h2 className="journey-heading"> {top?.kind === 'still-in' ? `Still in the running · ${top.teams.length}` : 'Top of the table'}
           </h2>
@@ -150,6 +151,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
               </TableWrap>
             ) : <span className="sub">Positions appear once a result is confirmed.</span>}
       </Panel>
+      </div>
     </div>
   )
 }

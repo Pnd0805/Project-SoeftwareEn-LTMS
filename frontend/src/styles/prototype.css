@@ -1433,23 +1433,6 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 /* rows share columns: the score sits right after the longest team pair, aligned down the list */
 .tour-match-list-body{display:grid;grid-template-columns:minmax(0,max-content) auto auto;column-gap:24px;justify-content:start;}
 .tour-match-list-body>.tour-match-item{grid-column:1/-1;grid-template-columns:subgrid;}
-/* Dashboard match rows as a scoreboard (UI plan, 28 Oct): home right-aligned · score centred · away
-   left-aligned, so the row is balanced across the full panel; time/round centred beneath. Every row
-   uses the same template, so the scores line up down the list without shared columns. */
-.tour-match-list-body{display:flex;flex-direction:column;}
-.tour-match-list-body>.tour-match-item{grid-column:auto;}
-.tour-match-item{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto auto;
-  grid-template-areas:"a mid b state open" "meta meta meta state open";column-gap:16px;row-gap:4px;align-items:center;padding:12px 0;}
-.tour-match-item>.tour-match-a{grid-area:a;justify-self:end;text-align:right;min-width:0;}
-.tour-match-item>.tour-match-mid{grid-area:mid;justify-self:center;min-width:64px;text-align:center;}
-.tour-match-item>.tour-match-mid .num{font-size:20px;font-weight:700;}
-.tour-match-item>.tour-match-b{grid-area:b;justify-self:start;min-width:0;}
-.tour-match-item>.tour-match-meta{grid-area:meta;justify-self:center;font-size:13px;}
-.tour-match-item>.tour-match-state{grid-area:state;}
-.tour-match-item>.tour-match-state:empty{display:none;}
-.tour-match-item>.tour-match-open{grid-area:open;}
 /* Entry sections inside Details & entry */
 .tour-context>.tour-support{margin-top:24px;}
 .tour-team-list>.spread>.btn.primary{min-height:36px;padding:6px 14px;}
-.tour-match-item{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;grid-template-areas:"a mid b open" "meta meta meta open";}
-.tour-match-item>.tour-match-meta{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;text-align:center;}

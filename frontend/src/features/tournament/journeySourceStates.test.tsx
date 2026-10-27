@@ -398,7 +398,7 @@ describe('Quality20 tournament task order', () => {
     </Routes></MemoryRouter>)
     const link = screen.getByRole('link', { name: 'Bracket' })
     expect(link).toHaveAttribute('aria-current', 'page')
-    const summary = screen.getByText('Details & entry', { selector: 'summary' })
+    const summary = screen.getByText('Details, entry & approved teams', { selector: 'summary' })
     expect(summary.closest('details')).not.toHaveAttribute('open')
     expect(link.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByText('Bracket content')).toBeInTheDocument()
