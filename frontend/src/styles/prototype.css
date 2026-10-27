@@ -1458,3 +1458,17 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 /* tables: alternate rows are banded so each row reads as its own strip */
 tbody tr:not(.tour-round-row):nth-child(even)>td{background:color-mix(in srgb,var(--panel-2) 70%,transparent);}
 .inbox-page .inbox-notifications .notif{align-items:center;}
+/* Dashboard strips (UI plan, 28 Oct): every strip has the same top and bottom padding — the old
+   separator-list rules removed it from the first row and the border from the last. */
+.tour-match-item:first-child{padding-top:12px;}
+.tour-match-item:last-child{border-bottom:1px solid var(--line);}
+/* The pair as a match card: both teams stacked, a "VS" tag bridging them on the left, instead of
+   a "vs" hanging off the end of the first line. Markup order is team A · vs · team B. */
+.tour-match-item>.tour-match-teams{display:grid;grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:"vs a" "vs b";column-gap:12px;row-gap:4px;align-items:center;}
+.tour-match-teams>:nth-child(1){grid-area:a;}
+.tour-match-teams>:nth-child(2){grid-area:vs;align-self:stretch;display:flex;align-items:center;justify-content:center;
+  padding:0 6px;border:1px solid var(--line-hot);border-radius:var(--r);font-family:var(--f-mono);font-size:11px;
+  font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bone-dim);}
+.tour-match-teams>:nth-child(3){grid-area:b;}
+.tour-match-item>.tour-match-meta{margin-top:4px;}
