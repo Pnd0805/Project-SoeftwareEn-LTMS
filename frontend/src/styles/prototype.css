@@ -1311,3 +1311,14 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .tour-team-list>.spread{padding:8px 0;border-bottom:1px solid var(--line);min-width:0;}
 /* Wide trees still scroll sideways (arrow buttons drive it); height follows the bracket. */
 .tour-bracket-scroll{max-height:none;overflow-x:auto;overflow-y:hidden;}
+
+/* ── Alignment pass (UI plan, 27 Oct): shared edges, equal pairs, one scroll area ───────────
+   Side-by-side boxes start and end on the same lines and are the same height; headings in
+   adjacent columns share a baseline; lists grow with the page instead of scrolling in a box. */
+.tour-overview{align-items:stretch;}
+.tour-overview-frame,.tour-context .tour-overview-frame{height:auto;max-height:none;overflow:visible;}
+.tour-overview-frame .tour-entry{min-height:0;}
+@media(max-width:900px){.tour-overview-frame{height:auto;}}
+.match-list-groups-scroll,.match-bucket-scroll{max-height:none;overflow:visible;}
+/* /teams: the rail drops its box so "Invitations" sits on the same line as "Your teams" */
+.teams-work-rail .panel{padding:0;border:0;background:none;}

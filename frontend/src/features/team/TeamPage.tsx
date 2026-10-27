@@ -151,8 +151,6 @@ function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, 
   return (
     <>
       <div className="journey-crumb"><Crumb back={{ label: userId !== undefined ? 'Teams' : 'Tournaments', onClick: () => navigate(userId !== undefined ? '/teams' : '/') }}>{data.name}</Crumb></div>
-      {!USE_MOCK ? <JoinRequestsPanel teamId={data.id} visibility={data.visibility} leader={isLeader} member={!!myTeams.data?.items.some(x => x.id === data.id)} signedIn={userId !== undefined} membershipPending={myTeams.isPending || myTeams.isError} /> : null}
-
       <header className={`team-poster ${data.name.length > 60 ? 'long-name' : ''}`}>
         <div className="team-poster-identity">
           {storeTeam && !storeTeam.logo ? <TeamCrestView team={toTeamView(storeTeam)} size={64} />
@@ -211,6 +209,8 @@ function TeamDetails({ data, members, isLeader, canReadPrivateTeamData, userId, 
         </Banner>
       ) : null}
 
+      {/* ชื่อทีมต้องมาก่อน — เดิมกล่องตั้งค่าการมองเห็น/ขอเข้าร่วมอยู่เหนือหัวทีม ตาเจอการตั้งค่าก่อนรู้ว่าอยู่หน้าทีมไหน */}
+      {!USE_MOCK ? <JoinRequestsPanel teamId={data.id} visibility={data.visibility} leader={isLeader} member={!!myTeams.data?.items.some(x => x.id === data.id)} signedIn={userId !== undefined} membershipPending={myTeams.isPending || myTeams.isError} /> : null}
       {isLeader ? (
         <Tabs.Root className="team-workspace-tabs" value={activeTab} onValueChange={setActiveTab}>
           <Tabs.List className="team-tab-bar" aria-label="Team workspace" activateOnFocus>
