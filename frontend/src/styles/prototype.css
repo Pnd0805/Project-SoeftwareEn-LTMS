@@ -1322,3 +1322,8 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .match-list-groups-scroll,.match-bucket-scroll{max-height:none;overflow:visible;}
 /* /teams: the rail drops its box so "Invitations" sits on the same line as "Your teams" */
 .teams-work-rail .panel{padding:0;border:0;background:none;}
+/* Dashboard (UI plan, 27 Oct): lists are capped at a few matches, so they size to their content
+   instead of a 280px box with empty space; an odd box out spans the row rather than leaving a hole. */
+.tour-dashboard-pair>.tour-match-list{height:auto;}
+.tour-match-list-body{flex:none;overflow:visible;}
+.tour-dashboard-pair>:last-child:nth-child(odd){grid-column:1/-1;}
