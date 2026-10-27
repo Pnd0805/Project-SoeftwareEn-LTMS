@@ -36,10 +36,40 @@ jobs:
       - name: Compile with tsc
         run: npm run build
 
-      # 🔴 ยังไม่เปิด job typecheck (tsconfig ตัวเต็ม ซึ่งรวมไฟล์เทสด้วย)
-      #   เพราะยังมี error ค้าง 9 ตัวในไฟล์เทสของสามคน (แจ้งแยกฉบับแล้ว 5 ต.ค.)
-      #   เปิดตอนนี้ = CI แดงค้าง ซึ่งจะสอนให้ทุกคนเรียนรู้ที่จะมองข้าม CI
-      #   ซึ่งแย่กว่าไม่มี ⇒ เปิดเมื่อ npm run typecheck เหลือ 0
+  # ─────────────────────────────────────────────────────────────────────
+  # 5 ต.ค. เขียนไว้ว่า "ยังไม่เปิด job นี้ เพราะมี error ค้าง 9 ตัวในไฟล์เทสของสามคน
+  # ⇒ เปิดเมื่อ npm run typecheck เหลือ 0" — 27 ต.ค. error ทั้ง 9 ตัวหายแล้ว จึงเปิดตามเงื่อนไขเดิม
+  #
+  # ★ ต่างจาก job build ตรงขอบเขต ไม่ใช่ความเข้มงวด:
+  #     build  = tsconfig.build.json → เฉพาะ src/ ที่ขึ้น production
+  #     ตัวนี้ = tsconfig.json (src/ + ไฟล์เทสทั้งหมด) แล้วต่อด้วย perf/tsconfig.json
+  #   ⇒ ไฟล์เทสและสคริปต์ perf เพิ่งมีด่านใน CI ครั้งแรกวันนี้ (เดิมพังได้โดยไม่มีสัญญาณ
+  #   เพราะ vitest ไม่ compile และ perf ไม่มีใครรันบน CI)
+  # 🔴 ถ้า job นี้แดงค้าง **ห้ามปิดทิ้ง** ให้แก้ error หรือถอยเป็น tsc --noEmit อย่างเดียวก่อน
+  #   CI ที่คนเรียนรู้ที่จะมองข้าม แย่กว่าไม่มี CI
+  typecheck:
+    name: Typecheck (src + tests + perf)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ไม่ต้องมีฐานข้อมูลและไม่ต้องมี .env เหมือน job build
+      - name: Typecheck
+        run: npm run typecheck
 
   test:
     name: Unit tests (fast)
