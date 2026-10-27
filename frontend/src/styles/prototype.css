@@ -1362,3 +1362,12 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 /* Request form and tournament manage filters: inputs and selects the same 44px */
 .organizer-request-form :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select),
 .organizer-filters :is(input,select){height:44px;min-height:44px;}
+/* Home filters (UI plan, 27 Oct): the search input carries a label above it, so the row aligns on
+   the bottom edge and every control is 44px — the sport chips were 52px and sat 17px higher. */
+.home-toolbar{align-items:flex-end;}
+.home-toolbar input{height:44px;min-height:44px;}
+.home-toolbar .chips .btn{height:44px;min-height:44px;padding-top:0;padding-bottom:0;}
+.home-stage{align-items:center;}
+.home-stage .segmented{padding:0;}
+.home-stage .segmented button{min-height:42px;}
+.home-stage .segmented button{height:42px;padding-top:0;padding-bottom:0;}
