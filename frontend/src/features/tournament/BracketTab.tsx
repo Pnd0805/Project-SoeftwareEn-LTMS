@@ -91,7 +91,8 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
         onClick={() => navigate(`/m/${m.id}`)} />
       <span id={`bracket-match-${m.id}`}>
       <span className="bhead">
-        <span className="tag"><em>//</em> {m.tag || m.stage}</span>
+        {/* รอบอยู่ที่หัวคอลัมน์แล้ว — บนการ์ดเหลือไว้ให้โปรแกรมอ่านหน้าจอเท่านั้น ไม่พูดซ้ำบนจอ */}
+        <span className="bround">{m.tag || m.stage}</span>
         <MatchStateBadge state={state} />
       </span>
       {/* บายมีสกอร์ประจำกีฬาติดมาด้วย (บาส 20-0 แบด 2-0) ถ้าไม่บอกก็ดูเหมือนแข่งจริง */}
@@ -121,16 +122,19 @@ function ApiBracket({ matches, host, roundRobin }: {
     <BracketWorkspace teams={teams}>
     <div ref={host}>
         <div className={`bracket${roundRobin ? ' bracket-rr' : ''}`}>
-          {rounds.map(round => (
+          {rounds.map(round => {
+            const inRound = matches.filter(match => (match.roundNumber ?? 0) === round)
+            return (
             <div className="bcol" key={round}>
               {/* roundNumber ของ backend เริ่มที่ 1 อยู่แล้ว — เดิม +1 ทำให้หัวคอลัมน์
-                  เป็น "Round 2" ขณะที่การ์ดข้างในเขียนว่า "Round 1" */}
-              <div className="tag bcol-head"><em>//</em> Round {round}</div>
-              {matches.filter(match => (match.roundNumber ?? 0) === round).map(match => (
+                  เป็น "Round 2" ขณะที่การ์ดข้างในเขียนว่า "Round 1" · ใช้ชื่อรอบของแมตช์ถ้ามี (เช่น Final) */}
+              <div className="tag bcol-head"><em>//</em> {inRound[0]?.tag || `Round ${round}`}</div>
+              {inRound.map(match => (
                 <ApiBracketNode key={match.id} m={match} />
               ))}
             </div>
-          ))}
+            )
+          })}
         </div>
     </div>
     </BracketWorkspace>

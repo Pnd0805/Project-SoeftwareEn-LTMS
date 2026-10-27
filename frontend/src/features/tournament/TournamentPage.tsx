@@ -307,7 +307,7 @@ export function TournamentPage() {
               <button className="btn ghost" type="button" onClick={() => void approvedTeams.refetch()}>Retry approved teams</button>
             </> : null}
             {capacityConfirmed && approvedTeams.data?.items.length === 0 ? <span className="sub">No teams have been approved yet.</span> : null}
-            {!approvedAccessLost ? approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>
+            {!approvedAccessLost ? <div className="tour-team-list">{approvedTeams.data?.items.map(approvedTeam => <div className="spread" key={approvedTeam.id}>
               {/* ชื่อกีฬาอยู่ใน sportTypes ที่หน้านี้ดึงมาอยู่แล้ว — เขียน "Sport #3" ทิ้งไว้
                   เป็นรหัสภายในที่ไม่มีความหมายกับคนอ่าน */}
               <span>{approvedTeam.name}<br /><span className="sub">
@@ -315,7 +315,7 @@ export function TournamentPage() {
                   ?? `Sport #${approvedTeam.sportTypeId}`}
               </span></span>
               <button className="btn ghost" type="button" onClick={() => navigate(`/team/${approvedTeam.id}`)}>View team</button>
-            </div>) : null}
+            </div>)}</div> : null}
           </Panel></section> : null}
 
           {t.entryNotes ? (

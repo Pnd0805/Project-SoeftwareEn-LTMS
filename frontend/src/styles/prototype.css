@@ -1296,3 +1296,18 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .bcol-head{text-align:center;padding-bottom:8px;border-bottom:1px solid var(--line);}
 .bracket-rr .bcol{position:relative;}
 .bracket-rr .bcol+.bcol::before{content:'';position:absolute;top:0;bottom:0;left:-24px;border-left:1px solid var(--line);}
+
+/* ── Bracket cards and support sections (UI plan, 27 Oct): fewer boxes, one scroll area ─────
+   The round already heads each column, so cards keep it for screen readers only. Card headers
+   go neutral so only the status badge carries colour. Approved teams grow with the page in a
+   grid instead of scrolling inside a 280px box. */
+.bnode .bround{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.tour-bracket-scroll .bhead{background:var(--void-2);color:var(--bone);justify-content:flex-end;
+  padding:6px 8px;border-bottom:1px solid var(--line);}
+.tour-bracket-scroll .bnode.act .bhead{box-shadow:inset 3px 0 0 var(--red);}
+.tour-support>section{height:auto;overflow:visible;}
+.tour-support>section:only-child{grid-column:1/-1;}
+.tour-team-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px 24px;}
+.tour-team-list>.spread{padding:8px 0;border-bottom:1px solid var(--line);min-width:0;}
+/* Wide trees still scroll sideways (arrow buttons drive it); height follows the bracket. */
+.tour-bracket-scroll{max-height:none;overflow-x:auto;overflow-y:hidden;}
