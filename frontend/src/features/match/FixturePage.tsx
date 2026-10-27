@@ -33,7 +33,7 @@ import { missingScheduleFields, scheduleErrorKind } from '../../shared/matchSche
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
 import type { MatchDto } from '../../types/match.dto'
-import { fmtDateTime } from '../../shared/dateFormat'
+import { fmtDateOnly, fmtDateTime } from '../../shared/dateFormat'
 
 /** datetime-local wants a local wall clock, not an ISO instant. */
 const toLocal = (iso: string | null) => {
@@ -279,15 +279,15 @@ export function FixturePage() {
       const tourStart = tourData.eventStartDate ? new Date(tourData.eventStartDate) : null
       const tourEnd = tourData.eventEndDate ? new Date(tourData.eventEndDate) : null
       if (tourStart && !isNaN(tourStart.getTime()) && kickoffDate < tourStart) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${tourStart.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${fmtDateOnly(tourData.eventStartDate)})`)
         return
       }
       if (tourEnd && !isNaN(tourEnd.getTime()) && kickoffDate > tourEnd) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${fmtDateOnly(tourData.eventEndDate)})`)
         return
       }
       if (tourEnd && !isNaN(tourEnd.getTime()) && finishDate > tourEnd) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${tourEnd.toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' })})`)
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${fmtDateOnly(tourData.eventEndDate)})`)
         return
       }
     }

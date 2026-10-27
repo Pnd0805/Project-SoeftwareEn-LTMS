@@ -7,6 +7,7 @@ import { useMe } from '../../hooks/useAuth'
 import { Banner, Panel } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import type { RemovedFeedbackItem } from '../../types/liveEngagement.dto'
+import { fmtDateTime } from '../../shared/dateFormat'
 
 export function RemovedFeedbackPanel() {
   const qc = useQueryClient()
@@ -31,7 +32,7 @@ export function RemovedFeedbackPanel() {
       <div><b>Feedback #{row.id} · {row.feedbackType}</b> · <Link to={`/t/${row.tournamentId}`}>{row.tournamentName}</Link></div>
       <p>Author: {row.author.fullName}{row.rating !== null ? ` · Rating ${row.rating}/5` : ''}</p>
       <p style={{ whiteSpace: 'pre-wrap' }}>{row.content ?? 'No written content'}</p>
-      <p className="sub">Removed {new Date(row.removedAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })} (UTC+7) by {row.removedBy?.fullName ?? 'Not recorded'} · {row.removedByRole ?? 'Role not recorded'}</p>
+      <p className="sub">Removed {fmtDateTime(row.removedAt)} by {row.removedBy?.fullName ?? 'Not recorded'} · {row.removedByRole ?? 'Role not recorded'}</p>
       <p>Reason: {row.removalReason ?? 'Not recorded'}</p>
       {row.canRestore ? <button className="btn" disabled={restore.isPending} onClick={() => { restore.reset(); setSelected(row) }}>Review restoration</button> : null}
     </article>) : null}
