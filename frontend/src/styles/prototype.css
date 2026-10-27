@@ -1371,3 +1371,23 @@ svg.bconn path.team-path{stroke:var(--teal);stroke-width:2;}
 .home-stage .segmented{padding:0;}
 .home-stage .segmented button{min-height:42px;}
 .home-stage .segmented button{height:42px;padding-top:0;padding-bottom:0;}
+.home-section-head{align-items:center;margin:8px 0 16px;}
+.home-section-head h2{margin:0;}
+/* Status beside what it describes (UI plan, 27 Oct): a small badge 700–900px from its label made the
+   eye travel across the row. Titles carry their status inline; list rows lead with it in a fixed
+   column so every label starts on the same line, like the Home "Needs you" rows. */
+.page-title-row{gap:12px;align-items:center;flex-wrap:wrap;}
+.page-title-row h1{margin:0;}
+.inbox-heading{gap:12px;align-items:center;}
+/* status column = widest badge actually shown: the panel owns the columns, rows share them (subgrid) */
+.inbox-requests .panel:has(>.inbox-entry-row){display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:16px;}
+.inbox-requests .panel:has(>.inbox-entry-row)>:not(.inbox-entry-row){grid-column:1/-1;}
+.inbox-requests .inbox-request-row.inbox-entry-row{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;}
+.inbox-requests .inbox-entry-row>.badge{justify-self:start;}
+@media(max-width:600px){.inbox-requests .panel:has(>.inbox-entry-row){grid-template-columns:minmax(0,1fr);}.inbox-requests .inbox-request-row.inbox-entry-row{row-gap:6px;}}
+/* Match tables a notch tighter so paired tables fit their half without sideways scrolling
+   (lineups needed 360px in a 292px half at 1024px); lineup boxes grow with the roster. */
+:is(.match-page,.checkin-page,.match-fixture-page) :is(th,td){padding:8px 12px;}
+.match-lineup-frame{height:auto;}
+.match-lineup-frame .tblwrap{flex:none;overflow-y:hidden;}
+.match-lineup-frame table{min-width:0;}

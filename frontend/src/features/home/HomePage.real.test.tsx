@@ -79,8 +79,11 @@ describe('real Home audience branches', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Request tournament' })).toBeInTheDocument()
     const panel = screen.getByRole('heading', { name: 'Needs you' }).closest('section')!
-    const discovery = screen.getByRole('heading', { name: 'Tournaments' }).closest('#tournaments')!
-    expect(screen.getByRole('heading', { level: 2, name: 'Tournaments' })).toBeInTheDocument()
+    // Home แสดงแค่ทัวร์ที่เปิดรับ/กำลังแข่ง + ลิงก์ไปหน้า Tournaments (แผน UI 27 ต.ค.) — ค้นหา/ตัวกรองอยู่หน้านั้นที่เดียว
+    const discovery = screen.getByRole('heading', { name: 'Open and in progress' }).closest('#tournaments')!
+    expect(screen.getByRole('heading', { level: 2, name: 'Open and in progress' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /See all tournaments/ })).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Name, sport or venue…')).not.toBeInTheDocument()
     expect(panel.compareDocumentPosition(discovery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Browse tournaments' })).toHaveAttribute('href', '#tournaments')
   })

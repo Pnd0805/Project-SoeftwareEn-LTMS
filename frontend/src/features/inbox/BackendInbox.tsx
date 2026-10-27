@@ -93,7 +93,7 @@ export function BackendInbox() {
   return (
     <div className="inbox-requests">
     <section className="inbox-needs-action" aria-label="Needs action">
-      <div className="spread">
+      <div className="hstack inbox-heading">
         <h2 className="disp">Needs action</h2>
         <Badge kind="neutral">{actionCount} {actionsSettled ? 'pending' : 'loaded'}</Badge>
       </div>
@@ -242,15 +242,16 @@ export function BackendInbox() {
         <Panel quiet>
           <h3>Your team entries <span className="tag">{waiting.length + decided.length}</span></h3>
           {[...waiting, ...decided].map(application => (
-            <div className="inbox-request-row spread" key={application.id}>
+            /* สถานะนำหน้าเหมือนแถว Needs you บนหน้า Home — เดิมป้ายเล็กอยู่สุดขอบขวา ห่างจากข้อความ ~700px */
+            <div className="inbox-request-row inbox-entry-row" key={application.id}>
+              {application.status === 'approved' ? <Badge kind="ok">Approved</Badge>
+                : application.status === 'rejected' ? <Badge kind="crit">Rejected</Badge>
+                  : application.status === 'pending' ? <Badge kind="warn">Waiting on the organizer</Badge>
+                    : <Badge kind="neutral">{application.status}</Badge>}
               <span className="sub">
                 <TeamChipView team={application.team} /> → {application.tournament.name}
                 {application.rejectionReason ? ` · ${application.rejectionReason}` : ''}
               </span>
-              {application.status === 'approved' ? <Badge kind="ok">In</Badge>
-                : application.status === 'rejected' ? <Badge kind="crit">Rejected</Badge>
-                  : application.status === 'pending' ? <Badge kind="warn">Waiting on the organizer</Badge>
-                    : <Badge kind="neutral">{application.status}</Badge>}
             </div>
           ))}
         </Panel>

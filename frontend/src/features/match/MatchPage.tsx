@@ -822,7 +822,8 @@ export function MatchPage() {
   return (
     <div className="match-page">
       <Crumb back={{ label: m.tournament.name, onClick: () => navigate(`/t/${tournamentRouteId(m.tournament.id)}`) }}>{m.tag}</Crumb>
-      <div className="spread">
+      {/* สถานะอยู่ติดชื่อแมตช์ — เดิมอยู่สุดขอบขวา ห่างจากชื่อเกือบ 900px ตาต้องวิ่งข้ามหน้าเพื่อจับคู่ */}
+      <div className="hstack page-title-row">
         <h1 className="disp" style={{ fontSize: 28 }}>{m.stage}</h1>
         <MatchStateBadge state={state} />
       </div>

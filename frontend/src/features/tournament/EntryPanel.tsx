@@ -116,7 +116,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
         {mineIn.map(r => (
           <div className="spread" key={r.id}>
             <span className="sub">{team(s, r.team)?.name}</span>
-            {r.status === 'approved' ? <Badge kind="ok">In</Badge>
+            {r.status === 'approved' ? <Badge kind="ok">Approved</Badge>
               : r.status === 'rejected' ? <Badge kind="crit">Rejected by the hard filter</Badge>
                 : <Badge kind="warn">Waiting on the organizer</Badge>}
           </div>
@@ -125,7 +125,7 @@ export function EntryPanel({ t, applications, approvedCount, sportTypeId, confir
         {backendEntries.map(a => (
           <div className="spread" key={a.id}>
             <TeamChipView team={a.team} />
-            {a.status === 'approved' ? <Badge kind="ok">In</Badge>
+            {a.status === 'approved' ? <Badge kind="ok">Approved</Badge>
               : a.status === 'rejected' ? <Badge kind="crit">{a.rejectionReason ?? 'Rejected'}</Badge>
                 : <Badge kind="warn">Waiting on the organizer</Badge>}
           </div>

@@ -209,18 +209,21 @@ export function TournamentPage() {
 
       <header className={`spread tour-identity${tabParam ? ' tour-identity-compact' : ''}`}>
         <div>
-          <h1 className="disp">{t.name}</h1>
+          {/* สถานะทัวร์อยู่ติดชื่อ ไม่ลอยไปขอบขวา — ขวาเหลือไว้ให้ปุ่มการกระทำ */}
+          <div className="hstack page-title-row">
+            <h1 className="disp">{t.name}</h1>
+            {champion ? <Badge kind="ok">Champion · <TeamChipView team={{ id: champion.id, name: champion.name, logoUrl: 'logoUrl' in champion && typeof champion.logoUrl === 'string' ? champion.logoUrl : 'logo' in champion && typeof champion.logo === 'string' ? champion.logo : null }} /></Badge>
+              : completed ? <Badge kind="ok">Completed</Badge>
+              : t.status === 'public' ? <Badge kind="ok">Public</Badge>
+                : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
+                  : <Badge kind="warn">Pending review</Badge>}
+          </div>
           <p className="sub">{t.sport} · {formatName(t)} · {t.channel === 'onsite' ? 'On-site' : t.channel}</p>
           <div className="tag" style={{ marginTop: 6 }}>
             {org ? <><em>//</em> You run this tournament</> : `Run by ${organizerName ?? user(s, t.organizer)?.name ?? '—'}`}
           </div>
         </div>
         <div className="hstack">
-          {champion ? <Badge kind="ok">Champion · <TeamChipView team={{ id: champion.id, name: champion.name, logoUrl: 'logoUrl' in champion && typeof champion.logoUrl === 'string' ? champion.logoUrl : 'logo' in champion && typeof champion.logo === 'string' ? champion.logo : null }} /></Badge>
-            : completed ? <Badge kind="ok">Completed</Badge>
-            : t.status === 'public' ? <Badge kind="ok">Public</Badge>
-              : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
-                : <Badge kind="warn">Pending review</Badge>}
           {USE_MOCK && champion ? (
             <button className="btn primary" type="button" onClick={() => navigate(`/mvp/${t.id}`)}>
               <Icon name="star" size={12} /> {USE_MOCK ? 'Vote MVP' : 'Match MVP'}

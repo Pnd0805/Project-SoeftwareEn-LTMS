@@ -140,6 +140,8 @@ export function HomePage() {
   }
   const idsIn = (key: string) => new Set(cats.find(category => category.key === key)?.items.map(t => t.id) ?? [])
   const categorized = buildHomeCategories(visible, idsIn('mine'), idsIn('playing'), idsIn('open'))
+  const teaserMode = signedIn && homeDestination
+  const teaser = all.filter(t => ['open', 'competing'].includes(tourLifecycle(t, currentTime))).slice(0, 6)
   cats = categorized.categories
   const tab = cats.find(c => c.key === tabParam) ? tabParam! : 'all'
 
@@ -190,8 +192,13 @@ export function HomePage() {
       ) : null}
       {signedIn && homeDestination && USE_MOCK ? <MockHomeWorkspace feeds={taskFeeds} /> : null}
       {signedIn && homeDestination && !USE_MOCK ? <RealHomeTasks /> : null}
-      {signedIn && homeDestination
-        ? <h2 id="tournaments" className="disp tournament-destination-title" style={{ fontSize: 30, marginTop: 0 }}>Tournaments</h2>
+      {/* หน้า Home แสดงแค่ทัวร์ที่ยังเกี่ยวข้อง (เปิดรับสมัคร/กำลังแข่ง) หัวข้อขนาดเดียวกับ Needs you
+          ค้นหาและตัวกรองทั้งหมดอยู่หน้า Tournaments ที่เดียว — เดิมยกหน้า Tournaments ทั้งหน้ามาต่อท้าย (แผน UI 27 ต.ค.) */}
+      {teaserMode
+        ? <div className="spread home-section-head">
+            <h2 id="tournaments" className="h-sec">Open and in progress</h2>
+            <button className="btn ghost" type="button" onClick={() => navigate('/home/all')}>See all tournaments <Icon name="chev" size={11} /></button>
+          </div>
         : <h1 id="tournaments" className="disp tournament-destination-title" style={{ fontSize: 36, marginTop: 0 }}>Tournaments</h1>}
       {tournamentsPending ? <Panel quiet><span className="sub" role="status">Loading tournaments…</span></Panel> : null}
       {!USE_MOCK && apiError ? (
@@ -201,6 +208,14 @@ export function HomePage() {
         </div>
       ) : null}
 
+      {teaserMode ? (teaser.length ? (
+        <div className="grid3">
+          {teaser.map(t => <TournamentCard key={t.id} t={t} rel={categorized.relations.get(t.id) ?? null}
+            entry={entries.get(t.id)} onPreview={() => selectPreview(t.id)} />)}
+        </div>
+      ) : tournamentsPending || (!USE_MOCK && apiError) ? null : (
+        <Empty title="Nothing open right now" sub="No tournament is taking entries or being played at the moment. See all tournaments for finished ones." />
+      )) : <>
       <div className="toolbar home-toolbar">
         <span className="field">
           <label htmlFor="home-find" className="tag">Find one · {visible.length} of {all.length}</label>
@@ -251,6 +266,7 @@ export function HomePage() {
       ) : visible.length || tournamentsPending || (!USE_MOCK && apiError) ? null : (
         <Empty title="No tournaments yet" sub={signedIn ? 'Request one to get started.' : 'Check back for upcoming tournaments.'} />
       )}
+      </>}
       <TournamentPreview open={!!preview} name={preview?.name ?? ''} sport={previewSport ?? 'Sport not available'}
         facts={previewFacts} href={`/t/${preview?.id}${previewMine ? '/manage' : ''}`}
         onClose={() => selectPreview(null)} />
