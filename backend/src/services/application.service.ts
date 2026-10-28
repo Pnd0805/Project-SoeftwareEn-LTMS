@@ -63,6 +63,20 @@ export async function getApplicationDetail(applicationId: number, userId: number
     return toApplicationDetailDto(app, softFilterDocumentUrls, players);
 }
 
+/**
+ * ทัวร์ที่ถูกยกเลิก (migration 053 · มติ 28 ต.ค.) — ใบสมัครแช่แข็งไว้ตามเดิม ไม่ยกเลิก/ถอน/อนุมัติ/ปฏิเสธ
+ *   เส้น /applications/:id อยู่นอก /tournaments/:id ⇒ lockCompletedTournament ไม่ครอบ ต้องกันที่นี่เอง
+ *   ไม่ต้องถอนเพื่อปลดล็อกผู้เล่น — ผู้เล่นถูกปลดล็อกแล้วตั้งแต่ยกเลิก (application.repo กรองทัวร์ cancelled)
+ *   และถ้าปล่อยให้ถอนได้ ทีมจะหลุดจากสายตอนแอดมินกู้คืน ซึ่งขัดกับ "กู้คืนแล้วเดินต่อจากจุดเดิม"
+ * วางหลังด่านสิทธิ์ ⇒ คนที่ไม่เกี่ยวยังได้ 403 เหมือนเดิม ไม่ได้รู้สถานะทัวร์
+ */
+function assertTournamentNotCancelled(app: { tournament_id: number; tournament_status: string }): void {
+    if (app.tournament_status === 'cancelled') {
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว ใบสมัครถูกพักไว้ตามเดิม',
+            { tournamentId: app.tournament_id });
+    }
+}
+
 export async function cancelApplication(applicationId: number, userId: number) {
     const app = await ApplicationRepo.findApplicationById(applicationId);
     if (!app) {
@@ -73,6 +87,7 @@ export async function cancelApplication(applicationId: number, userId: number) {
     if (!isTeamLeader){
         throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
     }
+    assertTournamentNotCancelled(app);
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
@@ -93,6 +108,7 @@ export async function withdrawApplication(applicationId: number, userId: number)
     if (!isTeamLeader){
         throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
     }
+    assertTournamentNotCancelled(app);
     if (app.tournament_status === 'completed'){
         throw new AppError(409, "TOURNAMENT_COMPLETED", "ทัวร์นาเมนต์นี้ปิดการแข่งขันแล้ว ถอนตัวไม่ได้");
     }
@@ -163,6 +179,7 @@ export async function approveApplication(applicationId: number,userId: number) {
     if (!isOrganizer){
         throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
+    assertTournamentNotCancelled(app);
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
@@ -209,6 +226,7 @@ export async function rejectApplication(applicationId: number, userId: number, r
     if (!isOrganizer){
         throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
+    assertTournamentNotCancelled(app);
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }

@@ -876,6 +876,18 @@ describe('createRefWithdraw (FR09)', () => {
     expect(mockedReqRepo.create).not.toHaveBeenCalled();
   });
 
+  /** migration 053 — ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ เปลี่ยนกรรมการไม่ได้จนกว่าจะกู้คืน */
+  it('ทัวร์ถูกยกเลิก ⇒ 409 TOURNAMENT_CANCELLED และไม่แตะอะไรต่อ', async () => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue({
+      tournament_id: 10, tournament_status: 'cancelled', deleted_at: null, requested_by_user_id: 900,
+    } as any);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED' });
+    expect(mockedFindActiveRefereeRow).not.toHaveBeenCalled();
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
   it('มีใบที่ยังรอผู้จัดตอบอยู่แล้ว ⇒ 409 REQUEST_ALREADY_OPEN', async () => {
     mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
     mockedReqRepo.existsOpenFor.mockResolvedValue(true);

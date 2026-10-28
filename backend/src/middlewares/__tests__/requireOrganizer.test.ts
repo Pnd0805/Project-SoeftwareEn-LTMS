@@ -110,6 +110,10 @@ const baseTournament: TournamentRow = {
   champion_team_id: null,   // ยังไม่ปิดทัวร์ (tournament_status ข้างบนไม่ใช่ completed)
   completed_at: null,
   completed_by: null,
+  cancelled_at: null,
+  cancelled_by: null,
+  cancel_reason: null,
+  cancelled_from_status: null,
   rejection_reason: null,
   approved_by: null,
   approved_at: null,

@@ -48,6 +48,12 @@ export const NOTIFICATION_CATEGORY = {
     // ★ อันนี้ **critical** ต่างจากตัวบนที่แจ้งตอนปิดไปแล้ว — ตอนนี้ผู้จัดยังกดเผยแพร่ทันถ้ารู้
     //   เส้นตายที่วัดได้คือ `event_start_date` · ไม่รู้แล้วทัวร์หายถาวร
     tournament_auto_delete_warning: 'critical',
+    // ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. 2569) — critical ด้วยเกณฑ์เดียวกับ `application_decided`:
+    //   ทีมที่สมัครไว้ต้องรู้เร็วพอจะไปสมัครทัวร์อื่นทัน (เส้นตายคือ `registration_end` ของทัวร์อื่น)
+    //   และกรรมการ/ผู้เล่นต้องไม่ไปสนามตามนัดเดิม
+    tournament_cancelled: 'critical',
+    // กู้คืนแล้วแมตช์ที่นัดไว้กลับมาเดินต่อ — ไม่รู้ = ไม่ไปตามนัด = แพ้บาย (M10) เหมือน `match_scheduled`
+    tournament_restored: 'critical',
     registration_toggled: 'critical',    // `registration_start`–`registration_end` — ปิดรับสมัครแล้วสมัครไม่ได้อีก
     application_decided: 'critical',     // ถูกปฏิเสธแล้วยังไปสมัครทัวร์อื่นทันถ้ารู้เร็ว — เส้นตายคือ `registration_end` ของทัวร์อื่น
     application_withdrawn: 'tournament',

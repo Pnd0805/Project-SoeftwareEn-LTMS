@@ -25,6 +25,9 @@ router.get('/amendment-requests', requireAuth, TournamentController.getPendingAm
 // ★ ไม่ใส่ requireAdmin ที่นี่ ให้เหมือนบรรทัดบน: คนที่ไม่ใช่แอดมินจะได้ 403 INSUFFICIENT_ADMIN_SCOPE
 //   จาก service ซึ่งเป็นด่านที่รู้เรื่องคณะของทัวร์ด้วย (requireAdmin รู้แค่ว่าเป็นแอดมินไหม)
 router.get('/amendment-requests/:requestId/impact', requireAuth, TournamentController.getAmendmentImpact);
+// ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. ข้อ 8) — แอดมินมหาวิทยาลัยกู้คืนทัวร์ที่ถูกยกเลิก
+// ★ อยู่ใต้ /admin ไม่ใช่ /tournaments/:id/restore เพราะ lockCompletedTournament กันทุก write ของทัวร์ที่ถูกยกเลิก
+router.post('/tournaments/:id/restore', requireAuth, requireAdmin_U, TournamentController.restoreCancelledTournament);
 
 // C2 — Admin user surface
 router.get('/users' , requireAuth , requireAdmin , Admin.listUsers);

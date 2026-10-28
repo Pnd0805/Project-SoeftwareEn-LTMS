@@ -46,6 +46,10 @@ function makeRow(overrides: Partial<TournamentRow> = {}): TournamentRow {
         champion_team_id: null,
         completed_at: null,
         completed_by: null,
+        cancelled_at: null,
+        cancelled_by: null,
+        cancel_reason: null,
+        cancelled_from_status: null,
         created_at: new Date('2026-03-20T00:00:00.000Z'),
         updated_at: null,
         updated_by: null,
@@ -159,6 +163,7 @@ describe('toTournamentDetailDto', () => {
             approvedTeamCount: 12,
             championTeamId: null,
             completedAt: null,
+            cancellation: null,
             hasOpenComplaints: false,
         });
     });
@@ -208,6 +213,41 @@ describe('toTournamentDetailDto', () => {
             );
 
             expect(dto.championTeamId).toBeNull();
+        });
+    });
+
+    // migration 053 — ยกเลิกทัวร์: ป้าย + เหตุผล + ใครกด (มติ 28 ต.ค. ข้อ 7)
+    describe('cancellation', () => {
+        const CANCELLED_AT = new Date('2026-10-28T03:00:00.000Z');
+
+        it('is null for a tournament that is not cancelled', () => {
+            expect(toTournamentDetailDto(makeRow(), ORGANIZER, 0).cancellation).toBeNull();
+        });
+
+        it('is null when status is not cancelled even if stale cancel columns remain', () => {
+            const dto = toTournamentDetailDto(
+                makeRow({ tournament_status: 'public', cancelled_at: CANCELLED_AT, cancel_reason: 'old', cancelled_by: 21 }),
+                ORGANIZER, 0);
+            expect(dto.cancellation).toBeNull();
+        });
+
+        it('reports organizer when the requester cancelled it', () => {
+            const dto = toTournamentDetailDto(
+                makeRow({ tournament_status: 'cancelled', requested_by_user_id: 21, cancelled_by: 21,
+                          cancelled_at: CANCELLED_AT, cancel_reason: 'สนามปิดซ่อม', cancelled_from_status: 'public' }),
+                ORGANIZER, 0);
+            expect(dto.status).toBe('cancelled');
+            expect(dto.cancellation).toEqual({ cancelledAt: '2026-10-28T03:00:00.000Z', reason: 'สนามปิดซ่อม', cancelledBy: 'organizer' });
+        });
+
+        it('reports admin when someone else cancelled it — never exposes the admin user id', () => {
+            const dto = toTournamentDetailDto(
+                makeRow({ tournament_status: 'cancelled', requested_by_user_id: 21, cancelled_by: 99,
+                          cancelled_at: CANCELLED_AT, cancel_reason: 'ผู้จัดติดต่อไม่ได้', cancelled_from_status: 'private' }),
+                ORGANIZER, 0);
+            expect(dto.cancellation).toEqual({ cancelledAt: '2026-10-28T03:00:00.000Z', reason: 'ผู้จัดติดต่อไม่ได้', cancelledBy: 'admin' });
+            expect(JSON.stringify(dto)).not.toContain('99');
+            expect(JSON.stringify(dto)).not.toContain('cancelled_from_status');
         });
     });
 
@@ -404,6 +444,7 @@ describe('toTournamentDetailDto', () => {
                 'approvedTeamCount',
                 'bestOf',
                 'bracketFormat',
+                'cancellation',
                 'championTeamId',
                 'completedAt',
                 'description',

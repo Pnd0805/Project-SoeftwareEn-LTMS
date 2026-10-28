@@ -186,6 +186,10 @@ function makeTournament(overrides: Partial<TournamentRow> = {}): TournamentRow {
     champion_team_id: null,     // ยังไม่ปิดทัวร์
     completed_at: null,
     completed_by: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancel_reason: null,
+    cancelled_from_status: null,
     tournament_status: 'public',
     registration_open: 1,
     registration_start: null,
@@ -450,6 +454,32 @@ describe('cancelApplication', () => {
     // ใบสมัครตาย → ปลดล็อกผู้เล่นให้ไปทีมอื่นในทัวร์เดียวกันได้ (มติ 19 ก.ย. 2569)
     expect(mockedApplicationRepo.deletePlayersByApplication).toHaveBeenCalledWith(100);
     expect(result).toEqual({ id: 100, status: 'cancelled' });
+  });
+});
+
+// migration 053 · มติ 28 ต.ค. — ใบสมัครของทัวร์ที่ถูกยกเลิกแช่แข็งไว้ (เส้น /applications/:id อยู่นอก lock middleware)
+describe('application actions on a cancelled tournament', () => {
+  it.each([
+    ['cancelApplication', 5, { tournament_application_status: 'pending' }],
+    ['withdrawApplication', 5, { tournament_application_status: 'approved' }],
+    ['approveApplication', 7, { tournament_application_status: 'pending' }],
+  ] as const)('%s → 409 TOURNAMENT_CANCELLED and nothing written', async (fn, actor, o) => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(makeApplicationDetail({ tournament_status: 'cancelled', ...o }));
+    await expect((applicationService[fn] as (id: number, u: number) => Promise<unknown>)(100, actor))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED', extra: { tournamentId: 20 } });
+    expect(mockedApplicationRepo.updateApplicationStatus).not.toHaveBeenCalled();
+    expect(mockedApplicationRepo.approveApplicationWithinQuota).not.toHaveBeenCalled();
+  });
+
+  it('rejectApplication → 409 TOURNAMENT_CANCELLED', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(makeApplicationDetail({ tournament_status: 'cancelled' }));
+    await expect(applicationService.rejectApplication(100, 7, 'x')).rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED' });
+    expect(mockedApplicationRepo.rejectApplicationInDb).not.toHaveBeenCalled();
+  });
+
+  it('a non-leader still gets 403 first — the guard sits after the permission check', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(makeApplicationDetail({ tournament_status: 'cancelled', team_leader_id: 999 }));
+    await expect(applicationService.cancelApplication(100, 5)).rejects.toMatchObject({ status: 403, code: 'NOT_TEAM_LEADER' });
   });
 });
 

@@ -6,10 +6,16 @@ import * as MatchRepo from '../repositories/match.repo.js';
 const WRITE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 /** เส้นทางที่ยังใช้ได้หลังปิดทัวร์ (ประกาศปิดงาน · C6 ให้คะแนน/โหวต MVP ซึ่งเปิดหลังปิดทัวร์เท่านั้น · C7 คอมเมนต์ทัวร์) */
 const ALLOWED_AFTER_COMPLETE = [/^\/announcements/, /^\/feedback\/?$/, /^\/mvp-votes\/?$/, /^\/comments(\/(me|\d+))?\/?$/];   // Express ไม่ strict — '/feedback/' ก็เข้า route เดียวกัน
+/**
+ * เส้นทางที่ยังใช้ได้หลังยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค.) — ประกาศ · รีวิวผู้จัด (7 วัน — feedback.service) · ความเห็น
+ * ★ ไม่มี mvp-votes — MVP เป็นรางวัลของทัวร์ที่แข่งจบ ทัวร์ที่ถูกยกเลิกไม่มีการโหวต
+ */
+const ALLOWED_AFTER_CANCEL = [/^\/announcements/, /^\/feedback\/?$/, /^\/comments(\/(me|\d+))?\/?$/];
 
 /**
  * Tournament lifecycle guard mounted before child routers.
  * - completed: block writes (except announcements)
+ * - cancelled: block writes (except announcements · feedback · comments) — "แช่แข็ง" ทุกอย่างไว้จนกว่าแอดมินจะกู้คืน
  * - soft-deleted: hide `/tournaments/:id/*` and `/matches/:id/*` behind 404
  * Direct `GET /tournaments/:id` is left to the tournament route itself to avoid a duplicate lookup.
  */
@@ -39,6 +45,12 @@ export async function lockCompletedTournament(req : Request, res : Response, nex
         }
 
         if(!WRITE.has(req.method)) return next();
+
+        if(tournament.tournament_status === 'cancelled'){
+            if(ALLOWED_AFTER_CANCEL.some(re => re.test(req.path))) return next();
+            return next(new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว แก้ไขอะไรไม่ได้จนกว่าผู้ดูแลระบบจะกู้คืน',
+                                     { tournamentId, cancelledAt : tournament.cancelled_at }));
+        }
         if(ALLOWED_AFTER_COMPLETE.some(re => re.test(req.path))) return next();
 
         if(tournament.tournament_status === 'completed'){

@@ -73,3 +73,45 @@ describe('lockCompletedTournament', () => {
     expect(next2).toHaveBeenCalledWith();
   });
 });
+
+// migration 053 · มติ 28 ต.ค. — ยกเลิกแล้ว "แช่แข็ง": ปิดทุก write ยกเว้น ประกาศ · รีวิวผู้จัด · ความเห็น
+describe('lockCompletedTournament — cancelled', () => {
+  const cancelledAt = new Date('2026-10-28T03:00:00Z');
+  beforeEach(() => {
+    vi.mocked(findTournamentById).mockResolvedValue({ tournament_id: 50, tournament_status: 'cancelled', cancelled_at: cancelledAt } as never);
+  });
+
+  it.each([
+    ['POST', '/api/v1/tournaments/50', '50', '/publish'],
+    ['POST', '/api/v1/tournaments/50', '50', '/cancel'],          // ยกเลิกซ้ำ
+    ['POST', '/api/v1/tournaments/50', '50', '/generate-bracket'],
+    ['PATCH', '/api/v1/tournaments/50', '50', '/'],
+    ['DELETE', '/api/v1/tournaments/50', '50', '/'],
+    ['POST', '/api/v1/tournaments/50', '50', '/applications'],    // สมัครใหม่
+    ['POST', '/api/v1/tournaments/50', '50', '/mvp-votes'],       // MVP ไม่มีในทัวร์ที่ถูกยกเลิก
+    ['POST', '/api/v1/matches/7', '7', '/result'],                // ส่งผล
+    ['POST', '/api/v1/matches/7', '7', '/check-in'],
+    ['POST', '/api/v1/matches/7', '7', '/mvp-votes'],
+    ['PUT', '/api/v1/matches/7', '7', '/pickem'],                 // ทายผล
+  ])('%s %s%s → 409 TOURNAMENT_CANCELLED', async (method, base, id, path) => {
+    const next = vi.fn();
+    await lockCompletedTournament(req(method, base, id, path), res, next as NextFunction);
+    expect(next.mock.calls[0]![0]).toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED', extra: { tournamentId: 50, cancelledAt } });
+  });
+
+  it('lets reads, announcements, organizer reviews and comments through', async () => {
+    for (const r of [
+      req('GET', '/api/v1/tournaments/50', '50', '/matches'),
+      req('GET', '/api/v1/matches/7', '7', '/'),
+      req('POST', '/api/v1/tournaments/50', '50', '/announcements'),
+      req('POST', '/api/v1/tournaments/50', '50', '/feedback'),
+      req('POST', '/api/v1/tournaments/50', '50', '/comments'),
+      req('DELETE', '/api/v1/tournaments/50', '50', '/comments/me'),
+      req('DELETE', '/api/v1/tournaments/50', '50', '/comments/12'),
+    ]) {
+      const next = vi.fn();
+      await lockCompletedTournament(r, res, next as NextFunction);
+      expect(next).toHaveBeenCalledWith();
+    }
+  });
+});

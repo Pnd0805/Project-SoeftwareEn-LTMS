@@ -70,14 +70,15 @@ export async function rejectTournament(req: Request, res: Response) {
 export async function getPublicTournaments(req: Request, res: Response) {
     const { newpage, newpageSize, offset } = parsePagination(req.query['page'], req.query['pageSize']);
     const status = req.query['status'];
-    if (status !== undefined && status !== 'public' && status !== 'completed') {
-        throw new AppError(400, 'VALIDATION_FAILED', 'status ต้องเป็น public หรือ completed', { fields: { status: 'public | completed' } });
+    if (status !== undefined && status !== 'public' && status !== 'completed' && status !== 'cancelled') {
+        throw new AppError(400, 'VALIDATION_FAILED', 'status ต้องเป็น public, completed หรือ cancelled',
+            { fields: { status: 'public | completed | cancelled' } });
     }
     const filters = {
         sportTypeId: optionalPositiveInt(req.query['sportTypeId'], 'sportTypeId'),
         facultyId: optionalPositiveInt(req.query['facultyId'], 'facultyId'),
         query: optionalQuery(req.query['q']),
-        status: status as 'public' | 'completed' | undefined
+        status: status as 'public' | 'completed' | 'cancelled' | undefined
     };
     res.status(200).json(await TournamentService.getPublicTournaments(filters, offset, newpage, newpageSize));
 }
@@ -127,6 +128,17 @@ export async function completeTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.completeTournament(req.tournament!, userId(req)));
 }
 
+/** ยกเลิกทัวร์ (migration 053) — ด่านสิทธิ์อยู่ใน service เพราะแอดมินมหาวิทยาลัยกดได้ด้วย ไม่ใช่แค่ผู้จัด */
+export async function cancelTournament(req: Request, res: Response) {
+    const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await TournamentService.cancelTournament(id, userId(req), req.body.reason));
+}
+
+/** POST /admin/tournaments/:id/restore — อยู่ใต้ /admin เพราะ lockCompletedTournament กันทุก write ใต้ /tournaments/:id */
+export async function restoreCancelledTournament(req: Request, res: Response) {
+    const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
+    res.status(200).json(await TournamentService.restoreCancelledTournament(id, userId(req)));
+}
 
 export async function deleteTournament(req: Request, res: Response) {
     await TournamentService.deleteTournament(req.tournament!, userId(req));

@@ -19,7 +19,7 @@ import { buildPagination } from '../utils/pagination.js';
  */
 
 type CutoffReason = 'teams_not_set' | 'checkin_open' | 'match_started' | 'time_passed';
-type ClosedReason = CutoffReason | 'tournament_not_public';
+type ClosedReason = CutoffReason | 'tournament_not_public' | 'tournament_cancelled';
 
 /** เหตุผลที่ทายไม่ได้ตอนนี้ (null = ยังทายได้) */
 export function cutoffReason(match: MatchRow, now = new Date()): CutoffReason | null {
@@ -33,6 +33,7 @@ export function cutoffReason(match: MatchRow, now = new Date()): CutoffReason | 
 
 const CLOSED_MESSAGE: Record<ClosedReason, string> = {
     tournament_not_public: 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ ทายผลไม่ได้',
+    tournament_cancelled: 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว ทายผลไม่ได้',
     teams_not_set: 'แมตช์นี้ยังไม่รู้ทั้งสองทีม (รอผลรอบก่อน) ยังทายไม่ได้',
     checkin_open: 'ปิดทายผลแล้ว — แมตช์เปิดเช็คอินแล้ว',
     match_started: 'ปิดทายผลแล้ว — แมตช์เริ่มหรือจบไปแล้ว',
@@ -45,8 +46,13 @@ async function getMatchOr404(matchId: number): Promise<MatchRow> {
     return match;
 }
 
-/** เหตุผลของแมตช์มาก่อน (แมตช์จบแล้วบอกว่าจบ) แล้วค่อยดูว่าทัวร์ยังเปิดเผยแพร่อยู่ไหม */
+/**
+ * เหตุผลของแมตช์มาก่อน (แมตช์จบแล้วบอกว่าจบ) แล้วค่อยดูว่าทัวร์ยังเปิดเผยแพร่อยู่ไหม
+ * ★ ยกเว้นทัวร์ที่ถูกยกเลิก (migration 053) — บอกก่อนทุกเหตุ เพราะแมตช์ถูกแช่แข็งค้างไว้
+ *   (เช่น ค้างที่ checkin_open) ถ้าบอกว่า "เปิดเช็คอินแล้ว" จะทำให้เข้าใจว่าแมตช์ยังเดินอยู่
+ */
 function closedReason(match: MatchRow, tournament: TournamentRow | null): ClosedReason | null {
+    if (tournament?.tournament_status === 'cancelled') return 'tournament_cancelled';
     return cutoffReason(match) ?? (tournament?.tournament_status === 'public' ? null : 'tournament_not_public');
 }
 
@@ -54,6 +60,7 @@ function assertOpen(match: MatchRow, tournament: TournamentRow | null): void {
     const reason = closedReason(match, tournament);
     if (reason === 'teams_not_set') throw new AppError(409, 'PICKEM_TEAMS_NOT_SET', CLOSED_MESSAGE[reason]);
     if (reason === 'tournament_not_public') throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', CLOSED_MESSAGE[reason]);
+    if (reason === 'tournament_cancelled') throw new AppError(409, 'TOURNAMENT_CANCELLED', CLOSED_MESSAGE[reason]);
     if (reason) throw new AppError(409, 'PICKEM_CLOSED', CLOSED_MESSAGE[reason], { reason });
 }
 
@@ -65,9 +72,13 @@ async function conflictOf(match: MatchRow, tournament: TournamentRow | null, use
     return null;
 }
 
-/** สถานะของการทาย — void = แมตช์จบโดยไม่มีผลยืนยัน (ชนะบาย/ปรับแพ้/แมตช์ตาย) จึงไม่ได้ไม่เสีย */
-export function pickStatus(pick: Pick<PredictionRow, 'points_earned'>, matchStatus: string): 'pending' | 'won' | 'lost' | 'void' {
-    if (pick.points_earned === null) return matchStatus === 'completed' ? 'void' : 'pending';
+/**
+ * สถานะของการทาย — void = แมตช์จบโดยไม่มีผลยืนยัน (ชนะบาย/ปรับแพ้/แมตช์ตาย) จึงไม่ได้ไม่เสีย
+ * ทัวร์ที่ถูกยกเลิก (migration 053 · มติ 28 ต.ค. ข้อ 6) ใบที่ยังไม่ตัดสินก็เป็น void — คิดตอนอ่าน ไม่เขียนลงฐาน
+ *   ⇒ แอดมินกู้คืนแล้วใบกลับเป็น pending เองโดยไม่ต้องย้อนอะไร · ใบที่ได้แต้มไปแล้วคงเดิม (won/lost)
+ */
+export function pickStatus(pick: Pick<PredictionRow, 'points_earned'>, matchStatus: string, tournamentStatus?: string): 'pending' | 'won' | 'lost' | 'void' {
+    if (pick.points_earned === null) return matchStatus === 'completed' || tournamentStatus === 'cancelled' ? 'void' : 'pending';
     return pick.points_earned > 0 ? 'won' : 'lost';
 }
 
@@ -175,7 +186,7 @@ export async function getSummary(matchId: number, viewerId?: number) {
     if (viewerId !== undefined) {
         const own = await PickemRepo.findMine(viewerId, matchId);
         mine = own ? { teamId: own.predicted_winner_team_id, scoreData: own.predicted_score_data,
-                       pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
+                       pointsEarned: own.points_earned, status: pickStatus(own, match.match_status, tournament?.tournament_status) } : null;
         canPredict = reason === null && (await conflictOf(match, tournament, viewerId)) === null;
     }
 
@@ -185,10 +196,11 @@ export async function getSummary(matchId: number, viewerId?: number) {
 export async function getMine(matchId: number, userId: number) {
     const match = await getMatchOr404(matchId);
     const own = await PickemRepo.findMine(userId, matchId);
+    const tournament = own ? await TournamentRepo.findTournamentById(match.tournament_id) : null;
     // OD-56 — คืน scoreData กลับมาด้วย เพราะ FE ต้องเอาไปเติมฟอร์มตอนแก้การทาย
     // null = แถวก่อน migration 038 (ทายแค่ฝั่ง ไม่มีสกอร์เก่าให้เติม)
     return own ? { matchId, teamId: own.predicted_winner_team_id, scoreData: own.predicted_score_data,
-                   pointsEarned: own.points_earned, status: pickStatus(own, match.match_status) } : null;
+                   pointsEarned: own.points_earned, status: pickStatus(own, match.match_status, tournament?.tournament_status) } : null;
 }
 
 function toHistoryItem(row: MyPickRow) {
@@ -201,7 +213,7 @@ function toHistoryItem(row: MyPickRow) {
         scoreData: row.predicted_score_data,   // OD-56 · null = แถวก่อน migration 038
         scheduledTime: row.scheduled_time,
         pointsEarned: row.points_earned,
-        status: pickStatus(row, row.match_status),
+        status: pickStatus(row, row.match_status, row.tournament_status),
         createdAt: row.created_at,
     };
 }

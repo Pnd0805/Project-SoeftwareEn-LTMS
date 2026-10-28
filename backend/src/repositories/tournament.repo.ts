@@ -265,7 +265,7 @@ export type PublicTournamentFilters = {
     sportTypeId?: number | undefined;
     facultyId?: number | undefined;
     query?: string | undefined;
-    status?: 'public' | 'completed' | undefined;   // B1: default public · completed = ทัวร์ที่จบแล้ว (ผลย้อนหลัง)
+    status?: 'public' | 'completed' | 'cancelled' | undefined;   // B1: default public · completed = ทัวร์ที่จบแล้ว (ผลย้อนหลัง) · cancelled = ถูกยกเลิก (migration 053)
 };
 
 /** /me/tournaments (20 ก.ย.) — ทัวร์ที่ฉันเป็น ORG ทุกสถานะ (ยกเว้นที่ลบ) — การ์ดเต็มไม่ต้อง N+1 */
@@ -879,6 +879,82 @@ export async function sweepPrivatePastDueTournaments() : Promise<AutoDeletedTour
     return swept;
 }
 
+
+/**
+ * ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. 2569) — ทรานแซกชันเดียว: ล็อกแถว → เปลี่ยนสถานะ → audit
+ *
+ * ★ "แช่แข็ง" ไม่ใช่ "ล้าง" — ไม่แตะแมตช์ ใบสมัคร ผล แต้ม สถิติ เหรียญ แม้แต่แถวเดียว (มติข้อ 6 + คำตอบเรื่องแมตช์ค้าง)
+ *   ผลที่ยืนยันแล้วอยู่เป็นประวัติ · แมตช์ที่ยังไม่จบค้างอยู่สถานะเดิม และไม่มีใครเขียนต่อได้เพราะ lockCompletedTournament
+ *   ⇒ กู้คืนแล้วทุกอย่างเดินต่อจากจุดเดิมได้ทันที ไม่ต้องจำสถานะรายแมตช์
+ * ★ ปิดรับสมัครด้วย และ **กู้คืนแล้วไม่เปิดให้เอง** — ผู้จัดต้องตัดสินใจเปิดใหม่ (ช่วงเวลาสมัครอาจหมดไปแล้ว)
+ * ★ อ่านสถานะด้วย FOR UPDATE ก่อน เพื่อเก็บ "สถานะก่อนยกเลิก" ที่แน่นอน แทนที่จะพึ่งลำดับการ assign ใน UPDATE
+ *
+ * คืน null ถ้าสถานะเปลี่ยนไปแล้ว / ยกเลิกไม่ได้ (กดพร้อมกัน) · คืนสถานะเดิมถ้าสำเร็จ
+ */
+export async function cancelTournament(
+    tournamentId: number, userId: number, reason: string, byRole: 'organizer' | 'admin'
+): Promise<{ fromStatus: 'private' | 'public' } | null> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [rows] = await conn.query<(Pick<TournamentRow, 'tournament_status'> & RowDataPacket)[]>(
+            `SELECT tournament_status FROM tournaments WHERE tournament_id = ? AND deleted_at IS NULL FOR UPDATE`,
+            [tournamentId]);
+        const fromStatus = rows[0]?.tournament_status;
+        if (fromStatus !== 'private' && fromStatus !== 'public') { await conn.rollback(); return null; }
+
+        await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+                SET tournament_status = 'cancelled', cancelled_from_status = ?, cancelled_at = NOW(), cancelled_by = ?,
+                    cancel_reason = ?, registration_open = FALSE, updated_at = NOW(), updated_by = ?
+              WHERE tournament_id = ?`,
+            [fromStatus, userId, reason, userId, tournamentId]);
+        await insertAuditLog(conn, userId, 'tournament_cancelled', 'tournament', tournamentId, { reason, fromStatus, byRole });
+        await conn.commit();
+        return { fromStatus };
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+
+/**
+ * แอดมินกู้คืนทัวร์ที่ถูกยกเลิก — กลับไปสถานะก่อนยกเลิก (public/private) · ล้างข้อมูลการยกเลิก · audit
+ * เหตุผลเดิมเก็บไว้ใน audit (ทั้งตอนยกเลิกและตอนกู้คืน) ⇒ ตามย้อนได้ว่าเคยถูกยกเลิกเพราะอะไร
+ * คืน null ถ้าไม่ได้อยู่ในสถานะ cancelled
+ */
+export async function restoreCancelledTournament(
+    tournamentId: number, adminUserId: number
+): Promise<{ restoredTo: 'private' | 'public' } | null> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [rows] = await conn.query<(Pick<TournamentRow, 'tournament_status' | 'cancelled_from_status' | 'cancel_reason' | 'cancelled_at'> & RowDataPacket)[]>(
+            `SELECT tournament_status, cancelled_from_status, cancel_reason, cancelled_at
+               FROM tournaments WHERE tournament_id = ? AND deleted_at IS NULL FOR UPDATE`,
+            [tournamentId]);
+        const row = rows[0];
+        if (!row || row.tournament_status !== 'cancelled' || row.cancelled_from_status === null) { await conn.rollback(); return null; }
+
+        await conn.query<ResultSetHeader>(
+            `UPDATE tournaments
+                SET tournament_status = ?, cancelled_from_status = NULL, cancelled_at = NULL, cancelled_by = NULL,
+                    cancel_reason = NULL, updated_at = NOW(), updated_by = ?
+              WHERE tournament_id = ?`,
+            [row.cancelled_from_status, adminUserId, tournamentId]);
+        await insertAuditLog(conn, adminUserId, 'tournament_restored', 'tournament', tournamentId,
+            { restoredTo: row.cancelled_from_status, previousReason: row.cancel_reason, cancelledAt: row.cancelled_at });
+        await conn.commit();
+        return { restoredTo: row.cancelled_from_status };
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
 
 export async function softDeleteTournament(tournamentId: number, userId: number): Promise<boolean> {
     const conn = await pool.getConnection();

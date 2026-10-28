@@ -204,6 +204,35 @@ describe('ทัวร์ที่ไม่ได้เปิดเผยแพ�
   });
 });
 
+// migration 053 · มติ 28 ต.ค. ข้อ 6 — ยกเลิกแล้วใบที่ยังไม่ตัดสินเป็น void · ใบที่ได้แต้มแล้วคงเดิม
+describe('ทัวร์ที่ถูกยกเลิก', () => {
+  const cancelled = { tournament_id: 20, requested_by_user_id: 7, tournament_status: 'cancelled' } as never;
+  beforeEach(() => vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(cancelled));
+
+  it('predict and cancel → 409 TOURNAMENT_CANCELLED, nothing written', async () => {
+    expect(await errOf(Service.predict(1, 50, WIN_11))).toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED' });
+    expect(await errOf(Service.cancelPrediction(1, 50))).toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED' });
+    expect(PickemRepo.upsert).not.toHaveBeenCalled();
+    expect(PickemRepo.remove).not.toHaveBeenCalled();
+  });
+
+  it('closedReason tournament_cancelled beats the frozen match reason (e.g. stuck at checkin_open)', async () => {
+    vi.mocked(MatchRepo.findById).mockResolvedValue(match({ match_status: 'checkin_open' }));
+    expect(await Service.getSummary(1, 50)).toMatchObject({ isOpen: false, closedReason: 'tournament_cancelled', canPredict: false });
+  });
+
+  it('an unsettled pick reads as void in summary, getMine and history', async () => {
+    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 11, predicted_score_data: null, points_earned: null } as never);
+    expect((await Service.getSummary(1, 50)).mine).toMatchObject({ status: 'void' });
+    expect(await Service.getMine(1, 50)).toMatchObject({ status: 'void' });
+  });
+
+  it('a pick already scored keeps won/lost', async () => {
+    vi.mocked(PickemRepo.findMine).mockResolvedValue({ predicted_winner_team_id: 11, predicted_score_data: null, points_earned: 10 } as never);
+    expect(await Service.getMine(1, 50)).toMatchObject({ status: 'won' });
+  });
+});
+
 describe('cancelPrediction', () => {
   it('removes before cutoff', async () => {
     await Service.cancelPrediction(1, 50);
@@ -221,6 +250,14 @@ describe('pickStatus', () => {
     [10, 'completed', 'won'], [0, 'completed', 'lost'],
   ] as const)('points %s on a %s match → %s', (points, status, expected) => {
     expect(Service.pickStatus({ points_earned: points }, status)).toBe(expected);
+  });
+
+  it.each([
+    [null, 'scheduled', 'cancelled', 'void'], [null, 'checkin_open', 'cancelled', 'void'],
+    [10, 'completed', 'cancelled', 'won'], [0, 'completed', 'cancelled', 'lost'],
+    [null, 'scheduled', 'public', 'pending'],   // กู้คืนแล้ว → กลับเป็น pending เอง
+  ] as const)('points %s on a %s match in a %s tournament → %s', (points, status, tStatus, expected) => {
+    expect(Service.pickStatus({ points_earned: points }, status, tStatus)).toBe(expected);
   });
 });
 

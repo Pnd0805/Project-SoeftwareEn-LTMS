@@ -371,6 +371,19 @@ describe("getPublicTournaments", () => {
         );
     });
 
+    it("accepts status: 'cancelled' (migration 053 — ทัวร์ที่ถูกยกเลิก ทุกคนเปิดดูได้)", async () => {
+        svc.getPublicTournaments.mockResolvedValue({ items: [] } as any);
+
+        await getPublicTournaments(makeReq({ query: { status: "cancelled" } }), makeRes());
+
+        expect(svc.getPublicTournaments).toHaveBeenCalledWith(
+            expect.objectContaining({ status: "cancelled" }),
+            0,
+            1,
+            20,
+        );
+    });
+
     it("forwards status: undefined when no status query is given (not required)", async () => {
         svc.getPublicTournaments.mockResolvedValue({ items: [] } as any);
 
@@ -390,8 +403,8 @@ describe("getPublicTournaments", () => {
         await expect(getPublicTournaments(req, makeRes())).rejects.toMatchObject({
             status: 400,
             code: "VALIDATION_FAILED",
-            message: "status ต้องเป็น public หรือ completed",
-            extra: { fields: { status: "public | completed" } },
+            message: "status ต้องเป็น public, completed หรือ cancelled",
+            extra: { fields: { status: "public | completed | cancelled" } },
         });
         expect(svc.getPublicTournaments).not.toHaveBeenCalled();
     });
@@ -417,7 +430,7 @@ describe("getPublicTournaments", () => {
         const req = makeReq({ query: { status: "bogus", sportTypeId: "also-bad" } });
 
         await expect(getPublicTournaments(req, makeRes())).rejects.toMatchObject({
-            message: "status ต้องเป็น public หรือ completed",
+            message: "status ต้องเป็น public, completed หรือ cancelled",
         });
     });
 

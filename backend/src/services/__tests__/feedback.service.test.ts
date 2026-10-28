@@ -236,6 +236,45 @@ describe('submitOrganizerFeedback — มติ C6 ข้อ 1–3', () => {
         expect(await Service.getOrganizerFeedback(20, 5)).toMatchObject({ status: 'open', openedBy: 'first_match' });
       });
 
+      // migration 053 · มติ 28 ต.ค. — ทัวร์ที่ถูกยกเลิก: รีวิวผู้จัดเปิด 7 วันนับจากวันยกเลิก
+      describe('ทัวร์ที่ถูกยกเลิก', () => {
+        const CANCELLED_AT = new Date('2026-09-25T00:00:00Z');
+        const cancelled = (o: Record<string, unknown> = {}) =>
+          tournament({ tournament_status: 'cancelled', completed_at: null, cancelled_at: CANCELLED_AT, event_start_date: '2026-10-15', ...o });
+
+        it('closesAt = cancelled_at + 7 วัน', () => {
+          expect(Service.feedbackClosesAt(cancelled())).toEqual(new Date('2026-10-02T00:00:00Z'));
+        });
+
+        it("ยกเลิกก่อนวันเริ่ม → open + openedBy 'cancelled' (ไม่ยิงหาแมตช์ · ห้ามโชว์ opensAt)", async () => {
+          vi.setSystemTime(new Date('2026-09-26T00:00:00Z'));
+          expect(await Service.feedbackState(cancelled())).toEqual({ status: 'open', openedBy: 'cancelled' });
+          expect(FeedbackRepo.hasPlayedMatch).not.toHaveBeenCalled();
+        });
+
+        it("ยกเลิกหลังวันเริ่ม → 'event_start' ตามลำดับกิ่งเดิม", async () => {
+          vi.setSystemTime(new Date('2026-09-26T00:00:00Z'));
+          expect(await Service.feedbackState(cancelled({ event_start_date: '2026-09-01' })))
+            .toEqual({ status: 'open', openedBy: 'event_start' });
+        });
+
+        it('เลย 7 วันหลังยกเลิก → closed และส่งรีวิวไม่ได้', async () => {
+          vi.setSystemTime(new Date('2026-10-02T00:00:01Z'));
+          expect(await Service.feedbackState(cancelled())).toEqual({ status: 'closed', openedBy: null });
+          vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(cancelled());
+          vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+          expect(await errOf(Service.submitOrganizerFeedback(20, 5, { rating: 1 }))).toMatchObject({ status: 409, code: 'FEEDBACK_CLOSED' });
+        });
+
+        it('ทีมที่สมัครไว้รีวิวผู้จัดได้ภายใน 7 วัน', async () => {
+          vi.setSystemTime(new Date('2026-09-26T00:00:00Z'));
+          vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(cancelled());
+          vi.mocked(FeedbackRepo.isTournamentParticipant).mockResolvedValue(true);
+          vi.mocked(FeedbackRepo.findOwn).mockResolvedValueOnce(null).mockResolvedValueOnce(feedbackRow({ rating: 2 }));
+          await expect(Service.submitOrganizerFeedback(20, 5, { rating: 2 })).resolves.toMatchObject({ rating: 2, isNew: true });
+        });
+      });
+
       /** ★ ทัวร์ที่ completed โดยไม่มี completed_at (ข้อมูลก่อน migration 022) ปิดไปแล้วแน่นอน */
       it('ทัวร์เก่าที่ completed แต่ไม่มี completed_at → closed + null', async () => {
         expect(await Service.feedbackState(tournament({ completed_at: null })))
@@ -607,6 +646,14 @@ describe('tournament comments (C7)', () => {
   it('allowed after the tournament is completed', async () => {
     vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(null).mockResolvedValueOnce(commentRow());
     await expect(Service.postTournamentComment(20, 50, 'x')).resolves.toMatchObject({ isNew: true });
+  });
+
+  // migration 053 · มติ 28 ต.ค. — ยกเลิกแล้วยังคุยกันได้ (ถามเรื่องการยกเลิก) ทั้งเขียนและอ่านแบบไม่ล็อกอิน
+  it('allowed on a cancelled tournament, and anonymous readers can list them', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'cancelled', completed_at: null }));
+    vi.mocked(FeedbackRepo.findOwnComment).mockResolvedValueOnce(null).mockResolvedValueOnce(commentRow());
+    await expect(Service.postTournamentComment(20, 50, 'ทำไมยกเลิก')).resolves.toMatchObject({ isNew: true });
+    await expect(Service.listTournamentComments(20, undefined, 1, 20, 0)).resolves.toBeDefined();
   });
 
   it.each(['private', 'pending_approval', 'rejected', 'auto_deleted'])('%s tournament → 409 TOURNAMENT_NOT_PUBLIC', async (status) => {
