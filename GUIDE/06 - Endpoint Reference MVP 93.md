@@ -745,6 +745,9 @@
 > **code เฉพาะต่อ field:** `validate(schema, { field: { code, message } })` — ถ้า field นั้นไม่ผ่านจะตอบ code ที่ระบุแทน `VALIDATION_FAILED` (ยังมี `fields` ครบ)
 > ไม่ส่งอาร์กิวเมนต์ที่ 2 = ทำงานเหมือนเดิมทุกอย่าง · endpoint อื่นที่ Part 4 มี `*_REASON_REQUIRED` (U10, T18, C05, S03, S08) ใช้วิธีเดียวกันได้
 | ~~`RATE_LIMITED`~~ | ~~429~~ | — | 🔴 **ไม่มี endpoint ไหนโยน code นี้แล้วตั้งแต่ 4 ต.ค.** · A04 เลิกโยน (OD-54) · AV02 เลิกโยน (OD-57) · ไม่มี middleware `rateLimit` อยู่จริงใน `src/middlewares/` (เอกสารเคยระบุไว้ผิด) · **การกัน rate limit ยังทำงานอยู่ทั้งสองที่ แค่ไม่ประกาศ** ⇒ ถ้า FE ยัง handle code นี้อยู่ ลบออกได้ |
+| `INVALID_JSON` | 400 | ข้อมูลที่ส่งมาไม่ใช่ JSON ที่ถูกต้อง | `errorHandler` — body เสียก่อนถึง route (เดิมได้ 500 `INTERNAL_ERROR` · แก้ 29 ต.ค.) |
+| `PAYLOAD_TOO_LARGE` | 413 | ข้อมูลที่ส่งมามีขนาดใหญ่เกินกำหนด | `errorHandler` — body เกิน 100kb · extra `{limitBytes}` (เดิมได้ 500 · แก้ 29 ต.ค.) |
+| `INVALID_REQUEST_BODY` | 4xx | อ่านข้อมูลที่ส่งมาไม่ได้ | `errorHandler` — เหตุอื่นของ body เช่น charset ไม่รองรับ (415) · status ตามที่ body-parser บอก (แก้ 29 ต.ค.) |
 | `INTERNAL_ERROR` | 500 | เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง | `errorHandler` (**ห้ามใส่ stack trace**) |
 
 **กฎตั้งชื่อ code ใหม่** (Part 4 §13):
