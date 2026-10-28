@@ -320,7 +320,7 @@ describe('POST /admin/tournaments/:id/restore — แอดมินกู้ค
   it('กลับเป็นสถานะเดิม · ล้างข้อมูลการยกเลิก · รับสมัครยังปิด · audit เก็บเหตุผลเดิม · แจ้งทุกคน (รวมผู้จัด) ยกเว้นแอดมิน', async () => {
     const res = await restore(uniAdmin);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ id: tour, status: 'public', registrationOpen: false, issues: { deletedTeams: [], playersLeftTeam: [] } });
+    expect(res.body).toEqual({ id: tour, status: 'public', registrationOpen: false, issues: { deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false } });
     expect(await tournamentRow()).toMatchObject({
       tournament_status: 'public', cancelled_from_status: null, cancel_reason: null, cancelled_by: null, cancelled_at: null, registration_open: 0,
     });

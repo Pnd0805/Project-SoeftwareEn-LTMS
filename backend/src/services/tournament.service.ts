@@ -1208,18 +1208,42 @@ export async function restoreCancelledTournament(tournamentId: number, adminUser
     });
 
     // ทีมที่เปลี่ยนไประหว่างถูกยกเลิก — บอกทั้งแอดมิน (ใน response) และผู้จัด (คนที่ต้องจัดการต่อ)
+    // ระหว่างถูกยกเลิก ทีม/สนาม/กรรมการถูกปล่อยให้ใช้ที่อื่นได้ (OD-69 ข้อ 9 + ผลกระทบลูกโซ่ ②③)
+    //   ⇒ กู้คืนแล้วอาจชนกับของที่จองไปแล้ว · มติ 28 ต.ค.: กู้คืนได้ + รายงาน ให้ผู้จัดจัดเวลาใหม่เอง
+    //   (ตอนผู้จัดแก้เวลา findConflictingMatch กันไม่ให้ชนซ้ำอยู่แล้ว)
     const issues = await TournamentRepo.findRestoreIssues(tournamentId);
-    if (issues.deletedTeams.length > 0 || issues.playersLeftTeam.length > 0) {
-        const parts = [
-            ...(issues.deletedTeams.length > 0
-                ? [`ทีมที่ถูกลบไปแล้ว: ${issues.deletedTeams.map(t => t.teamName).join(', ')}`] : []),
-            ...(issues.playersLeftTeam.length > 0
-                ? [`ผู้เล่นในรายชื่อที่ออกจากทีมไปแล้ว: ${issues.playersLeftTeam.map(p => `${p.fullName} (${p.teamName})`).join(', ')}`] : []),
-        ];
+    const matchList = (ids: number[]) => ids.map(id => `#${id}`).join(', ');
+    const parts = [
+        ...(issues.deletedTeams.length > 0
+            ? [`ทีมที่ถูกลบไปแล้ว: ${issues.deletedTeams.map(t => t.teamName).join(', ')}`] : []),
+        ...(issues.playersLeftTeam.length > 0
+            ? [`ผู้เล่นในรายชื่อที่ออกจากทีมไปแล้ว: ${issues.playersLeftTeam.map(p => `${p.fullName} (${p.teamName})`).join(', ')}`] : []),
+        ...(issues.scheduleConflicts.some(c => c.venue)
+            ? [`แมตช์ที่สนามถูกทัวร์อื่นจองเวลาเดียวกัน: ${matchList(issues.scheduleConflicts.filter(c => c.venue).map(c => c.matchId))}`] : []),
+        ...(issues.scheduleConflicts.some(c => c.team)
+            ? [`แมตช์ที่ทีมไปมีนัดทัวร์อื่นเวลาเดียวกัน: ${matchList(issues.scheduleConflicts.filter(c => c.team).map(c => c.matchId))}`] : []),
+        ...(issues.refereeConflicts.length > 0
+            ? [`กรรมการที่ไปรับงานอื่นเวลาเดียวกัน: ${issues.refereeConflicts.map(r => `${r.fullName} (แมตช์ #${r.matchId})`).join(', ')}`] : []),
+        ...(issues.pastMatches.length > 0
+            ? [`แมตช์ที่เลยเวลานัดแล้ว ${issues.pastMatches.length} แมตช์`] : []),
+    ];
+    if (parts.length > 0) {
         await NotificationService.notify({
             userId: tournament.requested_by_user_id, type: 'tournament_restored',
-            title: `ทัวร์นาเมนต์ "${tournament.name}" มีทีมที่ต้องตรวจก่อนแข่งต่อ`,
-            message: `ระหว่างที่ทัวร์ถูกยกเลิกมีการเปลี่ยนแปลง — ${parts.join(' · ')}`,
+            title: `ทัวร์นาเมนต์ "${tournament.name}" มีเรื่องที่ต้องจัดการก่อนแข่งต่อ`,
+            message: `ระหว่างที่ทัวร์ถูกยกเลิกมีการเปลี่ยนแปลง — ${parts.join(' · ')} — กรุณาจัดเวลา/สนามใหม่` +
+                     (issues.eventEnded ? ' (วันจัดทัวร์ผ่านไปแล้ว ต้องยื่นขอแก้วันทัวร์ก่อน)' : ''),
+            relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+        });
+    }
+    // กรรมการที่งานชน — ต้องรู้ด้วยว่าตอนนี้ถือสองงานเวลาเดียวกัน (ไม่บอกรายละเอียดของอีกทัวร์ — เขารู้อยู่แล้ว)
+    const conflictedReferees = new Map<number, number[]>();
+    for (const r of issues.refereeConflicts) conflictedReferees.set(r.userId, [...(conflictedReferees.get(r.userId) ?? []), r.matchId]);
+    for (const [refUserId, matchIds] of conflictedReferees) {
+        await NotificationService.notify({
+            userId: refUserId, type: 'tournament_restored',
+            title: `งานกรรมการชนเวลา — ทัวร์นาเมนต์ "${tournament.name}" กลับมาจัดต่อ`,
+            message: `แมตช์ ${matchList(matchIds)} ที่คุณรับไว้ ชนเวลากับงานกรรมการอื่นที่คุณรับไประหว่างทัวร์นี้ถูกยกเลิก — กรุณาติดต่อผู้จัดเพื่อเปลี่ยนเวลาหรือเปลี่ยนกรรมการ`,
             relatedEntityType: 'tournament', relatedEntityId: tournamentId,
         });
     }

@@ -18,6 +18,7 @@ import {
  *   ⑤ หน้าแมตช์ของฉัน             — โชว์แมตช์ที่ถูกแช่แข็งเป็น "กำลังจะแข่ง" ตลอดไป
  *   ⑥ กล่องคำเชิญกรรมการ          — ขึ้นคำเชิญที่กดรับไม่ได้
  *   ⑦ กู้คืน                       — ทีม/ผู้เล่นที่เปลี่ยนไประหว่างถูกยกเลิก ต้องถูกรายงาน (มติ 28 ต.ค.)
+ *   ⑧ กู้คืนหลังของถูกจองไปแล้ว     — สนาม/ทีม/กรรมการที่ถูกปล่อยไปใช้ที่อื่น + เวลานัดที่ผ่านไปแล้ว (มติ 28 ต.ค. รอบ 2)
  * ทุกข้อพิสูจน์สองทาง: "ก่อนยกเลิกยังเป็นแบบเดิม" และ "หลังยกเลิกถูกตัดออก" (+ กู้คืนแล้วกลับมา)
  */
 
@@ -194,7 +195,7 @@ describe('⑦ กู้คืน — รายงานทีมที่เป�
   it('ไม่มีอะไรเปลี่ยน → issues ว่าง · ไม่มีแจ้งเตือนพิเศษถึงผู้จัด', async () => {
     await cancelX();
     const res = await restoreX();
-    expect(res.body.issues).toEqual({ deletedTeams: [], playersLeftTeam: [] });
+    expect(res.body.issues).toEqual({ deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false });
     expect(await one<{ n: number }>(`SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND type = 'tournament_restored'`, [orgX.id]))
       .toEqual({ n: 1 });
   });
@@ -217,5 +218,102 @@ describe('⑦ กู้คืน — รายงานทีมที่เป�
     expect(messages).toHaveLength(2);   // แจ้งทั่วไป 1 + แจ้งเรื่องทีมที่ต้องตรวจ 1
     expect(messages[1]).toContain('ทีมที่ถูกลบไปแล้ว');
     expect(messages[1]).toContain('ออกจากทีมไปแล้ว');
+  });
+});
+
+describe('⑧ กู้คืนหลังของถูกจองไปแล้ว — รายงานแมตช์ที่ชน (มติ 28 ต.ค. รอบ 2)', () => {
+  const plusHour = (d: Date) => new Date(d.getTime() + 3600_000).toISOString();
+  /** ผู้จัด Y จัดแมตช์ทีม (teamA ?? ทีมใหม่) กับทีมใหม่ ที่เวลา/สนามที่กำหนด — ผ่านด่านจริงของระบบ */
+  async function bookInY(o: { at: Date; venue: string; useTeamA?: boolean }) {
+    const other = await createTeam({ leader: (await createUser()).id, sportTypeId: sport });
+    const first = o.useTeamA ? teamA : await createTeam({ leader: (await createUser()).id, sportTypeId: sport });
+    const m = await createMatch({ tournamentId: tourY, teamA: first, teamB: other });
+    const res = await as(orgY).patch(`/matches/${m}/schedule`).send({ scheduledTime: o.at.toISOString(), scheduledEndTime: plusHour(o.at), venue: o.venue });
+    expect(res.status).toBeLessThan(300);
+    return m;
+  }
+  const orgRestoreNote = async () => (await one<{ message: string }>(
+    `SELECT message FROM notifications WHERE user_id = ? AND type = 'tournament_restored' ORDER BY notification_id DESC LIMIT 1`, [orgX.id]))?.message ?? '';
+
+  it('สนามถูกทัวร์อื่นจองเวลาเดียวกัน → scheduleConflicts venue · ผู้จัดได้แจ้ง #แมตช์', async () => {
+    await cancelX();
+    await bookInY({ at: T, venue: SHARED_VENUE });
+    const res = await restoreX();
+    expect(res.status).toBe(200);
+    expect(res.body.issues.scheduleConflicts).toEqual([{ matchId: matchX, venue: true, team: false }]);
+    expect(await orgRestoreNote()).toContain(`#${matchX}`);
+  });
+
+  it('ทีมไปมีนัดทัวร์อื่นเวลาเดียวกัน (คนละสนาม) → scheduleConflicts team', async () => {
+    await cancelX();
+    await bookInY({ at: T, venue: 'สนามอื่นไกลออกไป', useTeamA: true });
+    const res = await restoreX();
+    expect(res.body.issues.scheduleConflicts).toEqual([{ matchId: matchX, venue: false, team: true }]);
+  });
+
+  it('เวลาเดียวกันแต่คนละสนามคนละทีม · หรือสนามเดียวกันแต่คนละเวลา → ไม่ชน', async () => {
+    await cancelX();
+    await bookInY({ at: T, venue: 'สนามอื่นไกลออกไป' });
+    await bookInY({ at: new Date(T.getTime() + 2 * 3600_000), venue: SHARED_VENUE });
+    expect((await restoreX()).body.issues.scheduleConflicts).toEqual([]);
+  });
+
+  it('ต่อท้ายพอดี (จบ 11:00 อีกนัดเริ่ม 11:00) → ไม่ชน (ช่วง [start, end) เหมือนด่านจัดตาราง)', async () => {
+    await cancelX();
+    await bookInY({ at: new Date(T.getTime() + 3600_000), venue: SHARED_VENUE });
+    expect((await restoreX()).body.issues.scheduleConflicts).toEqual([]);
+  });
+
+  it('ของที่ชนอยู่ในทัวร์อื่นที่ถูกยกเลิกเหมือนกัน → ไม่นับ (ถูกแช่แข็งทั้งคู่)', async () => {
+    const m = await bookInY({ at: T, venue: 'สนามชั่วคราว' });
+    await testDb().query('UPDATE matches SET venue = ? WHERE match_id = ?', [SHARED_VENUE, m]);   // จำลองว่าจองไว้ก่อน
+    await cancelX();
+    await testDb().query(`UPDATE tournaments SET tournament_status = 'cancelled', cancelled_from_status = 'public' WHERE tournament_id = ?`, [tourY]);
+    expect((await restoreX()).body.issues.scheduleConflicts).toEqual([]);
+  });
+
+  it('กรรมการไปรับงานทัวร์อื่นเวลาเดียวกัน → refereeConflicts · ผู้จัดเห็นชื่อ · กรรมการได้แจ้งเตือนของตัวเอง', async () => {
+    await cancelX();
+    const matchY = await createMatch({ tournamentId: tourY, teamA: null, teamB: null, scheduledAt: T, venue: 'สนามอีกที่' });
+    const inv = await addTournamentReferee({ tournamentId: tourY, userId: referee.id, invitedBy: orgY.id, invitationStatus: 'pending' });
+    await insert('match_referees', { match_id: matchY, tournament_referee_id: inv, assignment_status: 'pending' });
+    expect((await as(referee).post(`/referee-invitations/${inv}/accept`).send({ matchIds: [matchY] })).status).toBeLessThan(300);
+
+    const res = await restoreX();
+    expect(res.body.issues.refereeConflicts).toEqual([{ matchId: matchX, userId: referee.id, fullName: expect.any(String) }]);
+    const toRef = await one<{ message: string }>(
+      `SELECT message FROM notifications WHERE user_id = ? AND type = 'tournament_restored' AND title LIKE '%ชนเวลา%'`, [referee.id]);
+    expect(toRef!.message).toContain(`#${matchX}`);
+  });
+
+  it('เวลานัดผ่านไปแล้ว → pastMatches · วันทัวร์ยังไม่จบ eventEnded = false', async () => {
+    await cancelX();
+    const yesterday = new Date(Date.now() - 86_400_000);
+    await testDb().query('UPDATE matches SET scheduled_time = ?, scheduled_end_time = ? WHERE match_id = ?',
+      [yesterday, new Date(yesterday.getTime() + 3600_000), matchX]);
+    const res = await restoreX();
+    expect(res.body.issues.pastMatches.map((p: { matchId: number }) => p.matchId)).toEqual([matchX]);
+    expect(res.body.issues.eventEnded).toBe(false);
+    expect(await orgRestoreNote()).toContain('เลยเวลานัดแล้ว 1 แมตช์');
+  });
+
+  it('วันจัดทัวร์ผ่านไปแล้ว → eventEnded = true และบอกผู้จัดให้ขอแก้วันก่อน', async () => {
+    await cancelX();
+    await testDb().query('UPDATE tournaments SET event_start_date = CURDATE() - INTERVAL 5 DAY, event_end_date = CURDATE() - INTERVAL 4 DAY WHERE tournament_id = ?', [tourX]);
+    await testDb().query('UPDATE matches SET scheduled_time = NOW() - INTERVAL 5 DAY, scheduled_end_time = NOW() - INTERVAL 5 DAY + INTERVAL 1 HOUR WHERE match_id = ?', [matchX]);
+    const res = await restoreX();
+    expect(res.body.issues.eventEnded).toBe(true);
+    expect(await orgRestoreNote()).toContain('ต้องยื่นขอแก้วันทัวร์ก่อน');
+  });
+
+  it('ทางออกมีจริง: หลังกู้คืนผู้จัดย้ายแมตช์ที่ชนไปช่องว่างได้ · ย้ายกลับไปช่องที่ชนไม่ได้', async () => {
+    await cancelX();
+    await bookInY({ at: T, venue: SHARED_VENUE });
+    await restoreX();
+    const toConflict = await as(orgX).patch(`/matches/${matchX}/schedule`).send({ scheduledTime: T.toISOString(), scheduledEndTime: plusHour(T), venue: SHARED_VENUE });
+    expect(toConflict.status).toBe(409);
+    expect(toConflict.body.error.code).toBe('SCHEDULE_CONFLICT');
+    const later = new Date(T.getTime() + 3 * 3600_000);
+    expect((await as(orgX).patch(`/matches/${matchX}/schedule`).send({ scheduledTime: later.toISOString(), scheduledEndTime: plusHour(later), venue: SHARED_VENUE })).status).toBeLessThan(300);
   });
 });

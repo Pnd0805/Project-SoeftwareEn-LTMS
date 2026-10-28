@@ -16,7 +16,7 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   findTournamentById: vi.fn(),
   cancelTournament: vi.fn(async () => ({ fromStatus: 'public' })),
   restoreCancelledTournament: vi.fn(async () => ({ restoredTo: 'public' })),
-  findRestoreIssues: vi.fn(async () => ({ deletedTeams: [], playersLeftTeam: [] })),
+  findRestoreIssues: vi.fn(async () => ({ deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false })),
 }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(async () => null) }));
 vi.mock('../../repositories/match.repo.js', () => ({}));
@@ -38,6 +38,7 @@ import * as NotificationService from '../notification.service.js';
 import type { TournamentRow } from '../../types/db.js';
 
 const ORG = 7;
+const NO_ISSUES = { deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false };
 const tournament = (o: Partial<TournamentRow> = {}) => ({
   tournament_id: 50, name: 'Cup', requested_by_user_id: ORG, tournament_status: 'public', ...o,
 }) as unknown as TournamentRow;
@@ -131,6 +132,51 @@ describe('cancelTournament (POST /tournaments/:id/cancel)', () => {
   });
 });
 
+// มติ 28 ต.ค. (รอบ 2) — ระหว่างถูกยกเลิก สนาม/ทีม/กรรมการถูกจองที่อื่นได้ ⇒ กู้คืนได้ + รายงานแมตช์ที่ชน
+describe('restoreCancelledTournament — แมตช์ที่ชนกับของที่จองไประหว่างถูกยกเลิก', () => {
+  beforeEach(() => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'cancelled' }));
+  });
+  const orgMessage = () => (vi.mocked(NotificationService.notify).mock.calls
+    .map(c => c[0] as { userId: number; message: string }).find(n => n.userId === ORG))?.message ?? '';
+
+  it('สนามชน + ทีมชน → ผู้จัดได้รายการแมตช์แยกตามเหตุ · ไม่มีข้อมูลทัวร์อื่น', async () => {
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({
+      ...NO_ISSUES, scheduleConflicts: [{ matchId: 11, venue: true, team: false }, { matchId: 12, venue: true, team: true }],
+    });
+    await Service.restoreCancelledTournament(50, 99);
+    expect(orgMessage()).toContain('สนามถูกทัวร์อื่นจองเวลาเดียวกัน: #11, #12');
+    expect(orgMessage()).toContain('ทีมไปมีนัดทัวร์อื่นเวลาเดียวกัน: #12');
+    expect(orgMessage()).toContain('จัดเวลา/สนามใหม่');
+  });
+
+  it('กรรมการชน → ผู้จัดเห็นชื่อ + กรรมการคนนั้นได้แจ้งเตือนของตัวเอง (รวมแมตช์ทั้งหมดในฉบับเดียว)', async () => {
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({
+      ...NO_ISSUES, refereeConflicts: [{ matchId: 11, userId: 70, fullName: 'กรรมการเอ' }, { matchId: 12, userId: 70, fullName: 'กรรมการเอ' }],
+    });
+    await Service.restoreCancelledTournament(50, 99);
+    expect(orgMessage()).toContain('กรรมการเอ (แมตช์ #11)');
+    const toRef = vi.mocked(NotificationService.notify).mock.calls.map(c => c[0] as { userId: number; message: string }).filter(n => n.userId === 70);
+    expect(toRef).toHaveLength(1);
+    expect(toRef[0]!.message).toContain('#11, #12');
+  });
+
+  it('แมตช์เลยเวลา + วันทัวร์ผ่านไปแล้ว → บอกจำนวน และบอกให้ขอแก้วันทัวร์ก่อน', async () => {
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({
+      ...NO_ISSUES, pastMatches: [{ matchId: 11, scheduledTime: new Date(0) }, { matchId: 12, scheduledTime: new Date(0) }], eventEnded: true,
+    });
+    await Service.restoreCancelledTournament(50, 99);
+    expect(orgMessage()).toContain('เลยเวลานัดแล้ว 2 แมตช์');
+    expect(orgMessage()).toContain('ต้องยื่นขอแก้วันทัวร์ก่อน');
+  });
+
+  it('eventEnded อย่างเดียว (ไม่มีแมตช์ค้าง) ไม่ใช่ปัญหา → ไม่มีแจ้งเตือนพิเศษ', async () => {
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({ ...NO_ISSUES, eventEnded: true });
+    await Service.restoreCancelledTournament(50, 99);
+    expect(NotificationService.notify).not.toHaveBeenCalled();
+  });
+});
+
 describe('restoreCancelledTournament (POST /admin/tournaments/:id/restore)', () => {
   beforeEach(() => {
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'cancelled' }));
@@ -138,7 +184,7 @@ describe('restoreCancelledTournament (POST /admin/tournaments/:id/restore)', () 
 
   it('restores to the previous status and reports registration stays closed', async () => {
     await expect(Service.restoreCancelledTournament(50, 99)).resolves.toEqual({
-      id: 50, status: 'public', registrationOpen: false, issues: { deletedTeams: [], playersLeftTeam: [] },
+      id: 50, status: 'public', registrationOpen: false, issues: { deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false },
     });
     expect(TournamentRepo.restoreCancelledTournament).toHaveBeenCalledWith(50, 99);
     expect(NotificationService.notify).not.toHaveBeenCalled();   // ไม่มีปัญหา ⇒ ไม่มีแจ้งเตือนพิเศษถึงผู้จัด
@@ -147,6 +193,7 @@ describe('restoreCancelledTournament (POST /admin/tournaments/:id/restore)', () 
   // มติ 28 ต.ค. — กู้คืนได้ + บอกว่าทีมไหนมีปัญหา (ทีมถูกลบ / คนในรายชื่อออกจากทีม ระหว่างถูกยกเลิก)
   it('reports teams that changed while cancelled, and tells the organizer with names', async () => {
     const issues = {
+      ...NO_ISSUES,
       deletedTeams: [{ teamId: 3, teamName: 'ทีมหาย' }],
       playersLeftTeam: [{ teamId: 4, teamName: 'ทีมสี่', userId: 41, fullName: 'สมชาย' }],
     };
@@ -159,7 +206,7 @@ describe('restoreCancelledTournament (POST /admin/tournaments/:id/restore)', () 
   });
 
   it('only deleted teams → message mentions just that part', async () => {
-    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({ deletedTeams: [{ teamId: 3, teamName: 'ทีมหาย' }], playersLeftTeam: [] });
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({ ...NO_ISSUES, deletedTeams: [{ teamId: 3, teamName: 'ทีมหาย' }] });
     await Service.restoreCancelledTournament(50, 99);
     const sent = vi.mocked(NotificationService.notify).mock.calls[0]![0] as { message: string };
     expect(sent.message).toContain('ทีมที่ถูกลบไปแล้ว');
