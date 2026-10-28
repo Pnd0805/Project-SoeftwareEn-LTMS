@@ -87,10 +87,12 @@ describe("env - happy path", () => {
 
             SMTP_HOST: "localhost",
             SMTP_PORT: 1025,
+            SMTP_REQUIRE_TLS: false,
             SMTP_USER: undefined,
             SMTP_PASS: undefined,
             MAIL_FROM: "no-reply@ltms.local",
             FRONTEND_URL: "http://localhost:8080",
+            EMAIL_NOTIFICATIONS_ENABLED: false,
             // C2 (8 ต.ค. 2569) — ไม่ตั้ง = 2000 ms · 0 = ปิดการ log คำขอช้าสนิท
             SLOW_REQUEST_MS: 2000,
             // C3 — ไม่ตั้ง = 10 (ค่าตั้งต้นเดิมของ mysql2) ⇒ พฤติกรรมไม่เปลี่ยนสำหรับคนที่ไม่ตั้ง

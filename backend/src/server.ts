@@ -3,6 +3,7 @@ import app from './app.js';
 import { configureKeepAlive } from './config/keepAlive.js';
 import { startScheduler } from './jobs/scheduler.js';
 import { backgroundJobs } from './jobs/index.js';
+import { startEmailNotificationWorker } from './services/emailNotification.worker.js';
 
 const PORT = env.PORT;
 
@@ -18,3 +19,7 @@ configureKeepAlive(server);
 // 🔴 ต้องอยู่ที่นี่ ไม่ใช่ app.ts — app.ts ถูก import โดยเทส integration ทุกไฟล์
 //   ถ้าตั้ง timer ที่นั่น ทุกไฟล์เทสจะมีงานเบื้องหลังวิ่งแข่งกับเทส
 startScheduler(backgroundJobs);
+
+// ตัวเดินคิวอีเมลจากสาขา feat/email-notifications-be-20261008
+// คนละเรื่องกับ startScheduler ด้านบน จึงเก็บไว้ทั้งคู่ตอน merge
+startEmailNotificationWorker();
