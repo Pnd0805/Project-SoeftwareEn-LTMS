@@ -82,7 +82,24 @@ docker exec ltms-mysql sh -c "mysql -uroot -p<DB_PASSWORD> --default-character-s
 ```
 
 ไฟล์นี้ **ลบและสร้างทุกตารางใหม่** ข้อมูลเดิมในฐานจะหายทั้งหมด และรันซ้ำได้ทุกครั้งที่อยากคืนข้อมูลกลับเป็นค่าเริ่มต้น
-ไม่ต้องรัน migration เพิ่ม (ไฟล์อยู่ที่ `050` เท่ากับโค้ดใน branch นี้)
+
+**แล้วรัน migration ต่อทันที** (`demo-seed.sql` อยู่ที่ migration `050` แต่โค้ดตอนนี้ต้องการถึง `053`
+ถ้าข้าม: งานเบื้องหลังจะ error ทุกชั่วโมง และปุ่มยกเลิกทัวร์จะพัง) — สามคำสั่งนี้ใช้ได้ทั้ง bash, PowerShell และ cmd:
+
+```bash
+docker cp ../database/migrations/. ltms-mysql:/tmp/migrations
+```
+
+```bash
+docker cp ../database/demo-apply-migrations.sql ltms-mysql:/tmp/demo-apply-migrations.sql
+```
+
+```bash
+docker exec ltms-mysql sh -c "mysql -uroot -p<DB_PASSWORD> --default-character-set=utf8mb4 ltms < /tmp/demo-apply-migrations.sql"
+```
+
+🔴 สามคำสั่งนี้ต้องรัน **ทุกครั้งที่โหลด `demo-seed.sql` ใหม่** และรันได้ครั้งเดียวต่อการโหลดหนึ่งครั้ง
+(รันซ้ำโดยไม่โหลดข้อมูลใหม่ก่อนจะขึ้น `Duplicate column` — ไม่เสียหาย แค่โหลดข้อมูลแล้วรันใหม่)
 
 อย่าส่งไฟล์เข้า `docker exec -i` ด้วยไปป์ของ PowerShell ตัวอักษรไทยจะเพี้ยน ให้ใช้วิธี `docker cp` ข้างบน
 
