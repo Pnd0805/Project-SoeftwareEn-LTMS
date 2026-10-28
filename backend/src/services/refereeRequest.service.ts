@@ -49,6 +49,9 @@ async function loadLiveTournament(tournamentId : number): Promise<TournamentRow>
     if(t.tournament_status === 'completed'){
         throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้จบแล้ว เปลี่ยนกรรมการไม่ได้');
     }
+    if(t.tournament_status === 'cancelled'){   // migration 053 — ทัวร์ที่ถูกยกเลิกแช่แข็งไว้
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว เปลี่ยนกรรมการไม่ได้');
+    }
     return t;
 }
 
@@ -109,6 +112,9 @@ export async function createRefRequest(userId : number, input : RefRequestInput)
     const myMatch = await MatchRepo.findById(input.myMatchId);
     if(!myMatch) throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้');
     const tournamentId = myMatch.tournament_id;
+    // ยกเลิกทัวร์ (OD-69) — เดิมสร้างคำขอได้และแจ้งกรรมการอีกคน แล้วไปติดด่านตอนตอบรับ
+    //   ⇒ กันตั้งแต่ตอนยื่น (ทัวร์ที่ปิดแล้วไม่เคยเจอเพราะแมตช์จบหมดแล้วทุกแมตช์)
+    await loadLiveTournament(tournamentId);
 
     // A = ตัวเรา — แถวที่นับเป็นกรรมการใช้งานได้ ไม่ใช่แถวล่าสุดตาม id (แก้ 1 ต.ค. 2569)
     const a = await findActiveRefereeRow(tournamentId, userId);

@@ -29,7 +29,9 @@ export const NOTIFICATION_CATEGORY = {
     // ── ทีม ──
     team_invited: 'critical',            // `team_invitations.expires_at` — คำเชิญหมดอายุใน 7 วัน (migration 013)
     team_invite_answered: 'team',
-    team_member_removed: 'team',
+    // ถูกเอาออกจากทีม — critical 28 ต.ค. 2569 (OD-69 รอบ 5 · ผู้ใช้เลือก)
+    //   คนที่ถูกเอาออกเสียที่ในใบสมัครที่ยังรอผล ⇒ ต้องไปหาทีมใหม่ให้ทัน `registration_end` (เกณฑ์เดียวกับ `team_deleted`)
+    team_member_removed: 'critical',
     team_deleted: 'critical',            // เส้นตายคือ `registration_end` ของทัวร์ที่ใบสมัครค้าง — ทีมหายแล้วต้องไปหาทีมใหม่สมัครให้ทัน (เกณฑ์เดียวกันกับ `application_decided`)
                                          // ★ การกวาดทีมร้าง (TM-07) เกิดขึ้นโดยลูกทีมไม่ได้ทำอะไรเลย ปิดหมวดนี้แล้วทีมหายเงียบ 100%
     squad_below_minimum: 'critical',     // ต้องเติมคนก่อนแมตช์เริ่ม ไม่งั้น M10 ปรับแพ้บายทันที (`sport_types.min_members`)
@@ -48,9 +50,16 @@ export const NOTIFICATION_CATEGORY = {
     // ★ อันนี้ **critical** ต่างจากตัวบนที่แจ้งตอนปิดไปแล้ว — ตอนนี้ผู้จัดยังกดเผยแพร่ทันถ้ารู้
     //   เส้นตายที่วัดได้คือ `event_start_date` · ไม่รู้แล้วทัวร์หายถาวร
     tournament_auto_delete_warning: 'critical',
+    // ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. 2569) — critical ด้วยเกณฑ์เดียวกับ `application_decided`:
+    //   ทีมที่สมัครไว้ต้องรู้เร็วพอจะไปสมัครทัวร์อื่นทัน (เส้นตายคือ `registration_end` ของทัวร์อื่น)
+    //   และกรรมการ/ผู้เล่นต้องไม่ไปสนามตามนัดเดิม
+    tournament_cancelled: 'critical',
     registration_toggled: 'critical',    // `registration_start`–`registration_end` — ปิดรับสมัครแล้วสมัครไม่ได้อีก
     application_decided: 'critical',     // ถูกปฏิเสธแล้วยังไปสมัครทัวร์อื่นทันถ้ารู้เร็ว — เส้นตายคือ `registration_end` ของทัวร์อื่น
-    application_withdrawn: 'tournament',
+    // ทีมถอนตัว — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอ)
+    //   ลูกทีมของทีมที่ถอน: เสียสิทธิ์ทัวร์นี้ ต้องไปหาที่สมัครอื่นให้ทัน `registration_end` (เกณฑ์เดียวกับ `application_decided`)
+    //   ผู้จัด: แมตช์ของทีมนั้นถูกตัดสินบายไปแล้ว ต้องจัดตาราง/กรรมการรอบถัดไปใหม่
+    application_withdrawn: 'critical',
     // ★ OD-49 — ประกาศของผู้จัดถูกแยกเป็นสองชนิดตอนยิง เพราะ `announcement_type` เดียวคุมสองความหมายที่คนละขั้ว
     //   ถ้าใช้ชนิดเดียว ต้องเลือกระหว่าง "คนแพ้บายเพราะไม่รู้ว่าเลื่อนเวลา" กับ "ปิดข่าวถ่ายทอดสดไม่ได้เลย"
     //   คนตัดสินว่าประกาศไหนด่วนคือ `announcement.service.ts` ตอนยิง — ที่นี่แค่บอกว่าปิดได้หรือไม่ได้
@@ -64,7 +73,10 @@ export const NOTIFICATION_CATEGORY = {
     checkin_opened: 'critical',          // หน้าต่างเช็คอินปิดตอนกรรมการกด start — เช็คอินไม่ทันคือไม่ได้ลงแข่ง
     match_finished: 'critical',          // เริ่มนาฬิกา `SUBMIT_ESCALATION_HOURS` (24 ชม. ต้องส่งผล) และ `MVP_VOTING_HOURS`
     match_abandoned: 'match',            // ★ ก้ำกึ่ง — ล้างเช็คอินจริง แต่เวลานัดใหม่จะมาทาง `match_scheduled` ซึ่ง critical อยู่แล้ว
-    match_walkover: 'match',             // ★ ก้ำกึ่ง — ผลตัดสินไปแล้ว รู้ช้าก็เปลี่ยนอะไรไม่ได้
+    // ชนะบาย — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอให้ "ทีมถอนตัว" เป็น critical)
+    //   นี่คือแจ้งเตือนที่ **คู่แข่ง** ของทีมที่ถอนได้รับ — ทีมที่ชนะบายถูกเลื่อนเข้าแมตช์รอบถัดไป
+    //   ซึ่งอาจนัดเวลาไว้แล้ว ⇒ ไม่รู้ = ไม่ไปแข่งรอบถัดไป = แพ้บายต่อ (M10) — เส้นตายคือ `scheduled_time` ของแมตช์ถัดไป
+    match_walkover: 'critical',
     bracket_created: 'match',
     bracket_redrawn: 'critical',         // คู่แข่งเปลี่ยนและเวลาที่นัดไว้เดิมถูกยกเลิกทั้งหมด — ยึดตารางเก่าคือไปผิดวัน
 
@@ -85,9 +97,16 @@ export const NOTIFICATION_CATEGORY = {
     // OD-55 — กรรมการเขียนผลทับของที่หัวหน้าทีมส่งมา (โหมด online)
     // critical เพราะนาฬิกาค้านเริ่มใหม่ตรงนี้ ถ้าปิดได้แล้วไม่เห็น = ถูกเปลี่ยนผลโดยไม่รู้ตัวจนหมดเวลาค้าน
     result_overridden: 'critical',
-    result_resolved: 'result',
+    // ผู้จัดตัดสินข้อพิพาทแล้ว — critical 28 ต.ค. 2569 (OD-69 รอบ 5 · ผู้ใช้เลือก)
+    //   ผลเป็นที่สุด และผู้ชนะอาจเปลี่ยน ⇒ คนที่ต้องไปแข่งรอบถัดไปต้องรู้ (`scheduled_time` ของแมตช์ถัดไป)
+    //   และยื่นร้องเรียนได้ก่อนปิดทัวร์เท่านั้น — เหตุผลเดียวกับ `result_verified`
+    result_resolved: 'critical',
     match_result_complaint_filed: 'critical',  // ผู้จัดมี 48 ชม. แนบความเห็น แล้วขึ้นแอดมินอัตโนมัติ
-    match_result_complaint_decided: 'result',
+    // แอดมินตัดสินเรื่องร้องเรียน — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอ "แก้ผลหลังอนุมัติ")
+    //   ทางเดียวที่ผลที่ยืนยันแล้วถูกแก้ได้คือ amend_result ตรงนี้ ⇒ ผู้ชนะเปลี่ยน = คนที่ต้องไปแข่งรอบถัดไปเปลี่ยน
+    //   ★ ทั้งชนิดเป็น critical (รวมกรณีไม่มีมูล/บันทึกไว้) — แยกชนิดใหม่เฉพาะ amend ต้องให้ FE รู้จักชนิดใหม่
+    //     ไม่คุ้มก่อนส่ง · ข้อเสียคือคนที่ปิดหมวด 'result' ยังได้คำตัดสินแบบไม่แก้ผลด้วย (นาน ๆ ครั้ง)
+    match_result_complaint_decided: 'critical',
 
     // ── ชุมชน ──
     comment_removed: 'community',

@@ -178,6 +178,7 @@ export async function unsettleTx(conn: PoolConnection, matchId: number): Promise
 export type MyPickRow = PredictionRow & {
     tournament_id: number;
     tournament_name: string;
+    tournament_status: string;   // ยกเลิกทัวร์ (migration 053) — ใบที่ยังไม่ตัดสินของทัวร์ที่ถูกยกเลิกเป็น void
     match_status: string;
     team_a_id: number | null;
     team_a_name: string | null;
@@ -189,7 +190,7 @@ export type MyPickRow = PredictionRow & {
 
 export async function findHistory(userId: number): Promise<MyPickRow[]> {
     const [rows] = await pool.query<(MyPickRow & RowDataPacket)[]>(
-        `SELECT p.*, m.tournament_id, t.name AS tournament_name, m.match_status, m.scheduled_time,
+        `SELECT p.*, m.tournament_id, t.name AS tournament_name, t.tournament_status, m.match_status, m.scheduled_time,
                 m.team_a_id, ta.name AS team_a_name, m.team_b_id, tb.name AS team_b_name, pt.name AS predicted_team_name
          FROM pickem_predictions p
          JOIN matches m ON m.match_id = p.match_id

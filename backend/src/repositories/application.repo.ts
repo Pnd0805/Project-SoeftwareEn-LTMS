@@ -1,4 +1,18 @@
 import pool from '../config/db.js';
+
+/**
+ * ทัวร์ที่ "จบชีวิตแล้ว" — ไม่มีแมตช์ให้แข่งอีก (OD-69 รอบ 5 · 28 ต.ค. 2569)
+ *   completed     ปิดการแข่งขันแล้ว
+ *   cancelled     ถูกยกเลิก (migration 053)
+ *   auto_deleted  ระบบปิดเพราะไม่เผยแพร่จนถึงวันแข่ง (BR-03)
+ *
+ * 🔴 ใบสมัครของทัวร์พวกนี้ค้างสถานะ `approved`/`pending` ตลอดไป (ไม่มีใครไปเปลี่ยน) ⇒ ถ้าไม่ตัดออก
+ *   ด่าน "รายชื่อที่ยังมีชีวิต" นับว่ายังแข่งอยู่ ⇒ หลังทีมแข่งจบสักทัวร์ หัวหน้าเอาคนออก/ลบทีมไม่ได้อีกเลย
+ *   และลูกทีมออกจากทีมเองก็ไม่ได้ (leaveTeam ใช้ด่านเดียวกัน) — ถอนก็ไม่ได้เพราะทัวร์ปิดแล้ว = ไม่มีทางออก
+ * ★ ตัดออกจาก "ด่านล็อก" และ "การลบรายชื่อ" เท่านั้น — รายชื่อของทัวร์พวกนี้ **ห้ามลบ**
+ *   เพราะประวัติการแข่ง/สถิติอาชีพอ่านจาก `application_players` (career.repo · matchHistory.repo)
+ */
+const DEAD_TOURNAMENT_STATUSES = `('completed', 'cancelled', 'auto_deleted')`;
 import type { TeamRow } from '../types/db.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
@@ -99,7 +113,7 @@ export type ApplicationDetailRow = {
     soft_filter_documents: string[] | null;
     tournament_id: number;
     tournament_requested_by_user_id: number;
-    tournament_status: 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted';
+    tournament_status: 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted' | 'cancelled';
     team_id: number;
     team_name: string;
     sport_type_id: number;
@@ -352,6 +366,9 @@ export async function findTeamTournamentConflictForUser(teamId: number, userId: 
                    WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)
          ) ref ON TRUE
          WHERE a.team_id = ? AND a.tournament_application_status IN ('pending', 'approved')
+           -- ทัวร์ที่จบชีวิตแล้ว (ปิด/ยกเลิก/ระบบปิด) ไม่มีการแข่งอีก ⇒ ไม่มีผลประโยชน์ให้ทับซ้อน (OD-69 รอบ 4–5)
+           --   เดิมผู้จัด/กรรมการของทัวร์ที่ปิดแล้ว เข้าทีมที่เคยสมัครทัวร์นั้นไม่ได้ตลอดไป
+           AND t.tournament_status NOT IN ${DEAD_TOURNAMENT_STATUSES}
            AND (t.requested_by_user_id = ?
                 -- 🆕 BE-13 — เงื่อนไขเดียวกับ findRefereeConflictsAmongUsers (ประตูคนละบานของกฎเดียวกัน)
                 OR ref.invitation_status = 'accepted'
@@ -566,6 +583,8 @@ export type LiveSquadRow = {
 /**
  * ทัวร์ที่ "ยังมีชีวิต" (pending/approved) ซึ่งทีมนี้ส่งคนนี้ลงแข่งไว้
  * ใช้ตอนหัวหน้าทีมจะเอาคนออกจากทีม (มติ 19 ก.ย. 2569) — userId = undefined คือดูทั้งทีม (ตอนลบทีม)
+ * ★ ทัวร์ที่จบชีวิตแล้ว (ปิด/ยกเลิก/ระบบปิด) ไม่นับ — ดู DEAD_TOURNAMENT_STATUSES ด้านบน
+ *   ใบสมัครค้างสถานะเดิมไว้เป็นประวัติ จึงต้องกรองที่สถานะทัวร์แทน
  */
 export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Promise<LiveSquadRow[]> {
     const [rows] = await pool.query<(LiveSquadRow & RowDataPacket)[]>(
@@ -576,6 +595,7 @@ export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Pro
          FROM tournament_applications ta
          JOIN tournaments t ON t.tournament_id = ta.tournament_id
          WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')
+           AND t.tournament_status NOT IN ${DEAD_TOURNAMENT_STATUSES}
            AND (? IS NULL OR EXISTS (SELECT 1 FROM application_players ap
                                       WHERE ap.tournament_application_id = ta.tournament_application_id
                                         AND ap.user_id = ?))`,
@@ -584,23 +604,30 @@ export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Pro
     return rows;
 }
 
-/** คนออกจากทีม → ตัดชื่อออกจากรายชื่อที่ส่งลงแข่งของใบสมัครที่ยังมีชีวิต */
+/**
+ * คนออกจากทีม → ตัดชื่อออกจากรายชื่อที่ส่งลงแข่งของใบสมัครที่ยังมีชีวิต
+ * ★ ไม่แตะรายชื่อของทัวร์ที่จบชีวิตแล้ว — เป็นประวัติว่าใครเคยลงแข่ง (สถิติอาชีพ/ประวัติแมตช์อ่านจากตารางนี้)
+ */
 export async function deletePlayerFromLiveSquads(teamId: number, userId: number): Promise<number> {
     const [result] = await pool.query<ResultSetHeader>(
         `DELETE ap FROM application_players ap
          JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
-         WHERE ta.team_id = ? AND ap.user_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+         JOIN tournaments t ON t.tournament_id = ta.tournament_id
+         WHERE ta.team_id = ? AND ap.user_id = ? AND ta.tournament_application_status IN ('pending', 'approved')
+           AND t.tournament_status NOT IN ${DEAD_TOURNAMENT_STATUSES}`,
         [teamId, userId]
     );
     return result.affectedRows;
 }
 
-/** ลบทีม → ปลดล็อกผู้เล่นทุกคนของทีมนั้นในทุกใบสมัครที่ยังมีชีวิต */
+/** ลบทีม → ปลดล็อกผู้เล่นทุกคนของทีมนั้นในทุกใบสมัครที่ยังมีชีวิต (ไม่แตะทัวร์ที่จบชีวิตแล้ว — เหตุผลเดียวกับข้างบน) */
 export async function deleteAllPlayersOfTeamSquads(teamId: number): Promise<number> {
     const [result] = await pool.query<ResultSetHeader>(
         `DELETE ap FROM application_players ap
          JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
-         WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')`,
+         JOIN tournaments t ON t.tournament_id = ta.tournament_id
+         WHERE ta.team_id = ? AND ta.tournament_application_status IN ('pending', 'approved')
+           AND t.tournament_status NOT IN ${DEAD_TOURNAMENT_STATUSES}`,
         [teamId]
     );
     return result.affectedRows;

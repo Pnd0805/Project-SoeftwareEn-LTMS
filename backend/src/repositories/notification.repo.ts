@@ -170,6 +170,35 @@ export async function findTournamentSquadsAndLeaders(tournamentId: number): Prom
     return rows.map(r => r.user_id);
 }
 
+/**
+ * ทุกคนที่ทัวร์นี้มีผลกับเขา — ใช้ตอนยกเลิกทัวร์ (มติ 28 ต.ค. 2569 ข้อ 5)
+ *   หัวหน้าทีมทุกทีมที่สมัคร (pending + approved — คนที่ยังรอผลก็ต้องรู้ว่าไม่ต้องรอแล้ว)
+ *   ผู้เล่นในรายชื่อลงแข่งของทีมที่ผ่าน · กรรมการที่ยังไม่ถูกถอด (ตอบรับแล้ว + ยังรอตอบ)
+ *   คนที่ทายผล Pick'em ในทัวร์นี้ · และผู้จัดเอง (service ตัดคนที่กดออกเอง)
+ */
+export async function findTournamentCancellationAudience(tournamentId: number): Promise<number[]> {
+    const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(
+        `SELECT t.leader_id AS user_id
+           FROM tournament_applications ta JOIN teams t ON t.team_id = ta.team_id
+          WHERE ta.tournament_id = ? AND ta.tournament_application_status IN ('pending', 'approved')
+         UNION
+         SELECT ap.user_id
+           FROM application_players ap
+           JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+          WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved'
+         UNION
+         SELECT tr.user_id FROM tournament_referees tr
+          WHERE tr.tournament_id = ? AND tr.invitation_status IN ('pending', 'accepted') AND tr.removed_at IS NULL
+         UNION
+         SELECT p.user_id FROM pickem_predictions p JOIN matches m ON m.match_id = p.match_id
+          WHERE m.tournament_id = ?
+         UNION
+         SELECT requested_by_user_id FROM tournaments WHERE tournament_id = ?`,
+        [tournamentId, tournamentId, tournamentId, tournamentId, tournamentId]
+    );
+    return rows.map(r => r.user_id);
+}
+
 /** กรรมการที่ตอบรับเป็นกรรมการของทัวร์นี้แล้ว และยังไม่ถูกถอดออก */
 export async function findTournamentReferees(tournamentId: number): Promise<number[]> {
     const [rows] = await pool.query<({ user_id: number } & RowDataPacket)[]>(

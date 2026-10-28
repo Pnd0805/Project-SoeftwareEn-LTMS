@@ -65,6 +65,8 @@ export type TournamentDetailDto = {
     hasOpenComplaints: boolean;
     championTeamId: number | null;   // B1 — มีค่าเมื่อ status = completed และมีแชมป์
     completedAt: string | null;
+    /** migration 053 — มีค่าเมื่อ status = cancelled เท่านั้น · `cancelledBy` บอกว่าผู้จัดหรือแอดมินเป็นคนกด */
+    cancellation: { cancelledAt: string | null; reason: string | null; cancelledBy: 'organizer' | 'admin' } | null;
 };
 
 /**
@@ -97,6 +99,10 @@ export function toTournamentDetailDto(row: TournamentRow, organizer: UserRefDto,
         maxAge: row.max_age,
         championTeamId: row.champion_team_id ?? null,
         completedAt: toIso(row.completed_at ?? null),
+        cancellation: row.tournament_status === 'cancelled'
+            ? { cancelledAt: toIso(row.cancelled_at ?? null), reason: row.cancel_reason ?? null,
+                cancelledBy: row.cancelled_by === row.requested_by_user_id ? 'organizer' : 'admin' }
+            : null,
         organizer,
         approvedTeamCount,
         hasOpenComplaints

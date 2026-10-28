@@ -47,6 +47,7 @@ async function amendability(matchId : number): Promise<{ canAmend : boolean , bl
 
     const tour = await findTournamentById(match.tournament_id);
     if(tour?.tournament_status === 'completed') return { canAmend : false , blockedBy : 'TOURNAMENT_COMPLETED' };
+    if(tour?.tournament_status === 'cancelled') return { canAmend : false , blockedBy : 'TOURNAMENT_CANCELLED' };   // migration 053
 
     const startedId = await findStartedNextMatchId(match);
     if(startedId !== null) return { canAmend : false , blockedBy : 'NEXT_MATCH_STARTED' };

@@ -256,6 +256,8 @@ async function pf04() {
         for (const m of hot.slice(16, 21)) {
             // ค่าก่อนยืนยัน — ต้องอ่านสำเร็จ (ถ้า timeout ระหว่างโหลดแล้วได้ 0 จะเทียบผิด) ⇒ ลองซ้ำจนได้ 200
             const okGet = async (p: string) => { for (;;) { const r = await request('GET', p); if (r.status === 200) return r.body; } };
+            // ★ ตั้งแต่ B3 ① ตารางอันดับ **แบ่งหน้า** (ค่าตั้งต้น 20 แถว) ⇒ `items` คือหน้าแรก ไม่ใช่ทุกคน
+            //   ค่านี้จึงเป็น "ผลรวม settled ของ 20 แถวแรก" ไม่ใช่ของทั้งทัวร์ — ใช้เทียบได้ แต่ห้ามเอาไปเทียบกับจำนวนใบทั้งหมด
             const before = ((await okGet(`/tournaments/${HOT_TOUR}/pickem-leaderboard`)).items as { settled: number }[]).reduce((s, r) => s + r.settled, 0);
             const standingsBefore = JSON.stringify(await okGet(`/tournaments/${HOT_TOUR}/standings`));
             const [[{ c }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS c FROM pickem_predictions WHERE match_id = ?', [m.id]) as any;
@@ -281,7 +283,15 @@ async function pf04() {
                 const at = performance.now() - t0;
                 const node = (b.body?.nodes ?? []).find((n: any) => n.matchId === m.next);
                 if (!seen.bracket && node && (node.teamA?.id === m.a || node.teamB?.id === m.a)) seen.bracket = at;
-                if (!seen.leaderboard && (l.body?.items ?? []).reduce((x: number, r: { settled: number }) => x + r.settled, 0) >= before + c) seen.leaderboard = at;
+                /* 🔴 27 ต.ค. 2569 — ของเดิมรอให้ผลรวมถึง `before + c` ซึ่ง **เป็นไปไม่ได้ตั้งแต่ B3 ①**
+                 *   `c` คือจำนวนใบทายของแมตช์นี้ทั้งหมด (~4,000 ใบ) แต่ `items` มีแค่ 20 แถวแรกของตาราง
+                 *   ⇒ เงื่อนไขไม่มีวันเป็นจริง · รอจนครบ 15 วินาทีแล้วบันทึกเป็น NaN ⇒ PF-04 ตกทุกแมตช์
+                 *   ทั้งที่ระบบอัปเดตตรงเวลา (สายและตารางคะแนนในแถวเดียวกันขึ้น ~240 ms)
+                 * ★ ที่ถูกคือรอแค่ "ผลรวมของหน้าแรกเพิ่มขึ้น" และมันเพิ่มแน่นอน เพราะ PREDICTORS ทั้ง 4,000 คน
+                 *   ทายครบทุกแมตช์รอบแรก ⇒ ทุกแถวบนหน้าแรกได้ settled +1 พร้อมกัน (หน้าแรกเพิ่มขึ้น 20 พอดี)
+                 *   และเพราะทุกคน settled เท่ากัน ผลรวมจึงไม่ขึ้นกับว่าใครติดหน้าแรก ⇒ ไม่แกว่งตามการสลับอันดับ */
+                const settledOnPage = (l.body?.items ?? []).reduce((x: number, r: { settled: number }) => x + r.settled, 0);
+                if (!seen.leaderboard && l.status === 200 && settledOnPage > before) seen.leaderboard = at;
                 if (!seen.standings && JSON.stringify(s.body) !== standingsBefore) seen.standings = at;
                 if (!seen.bracket || !seen.leaderboard || !seen.standings) await sleep(250);
             }
@@ -298,7 +308,8 @@ async function pf04() {
     verdicts.push({ id: 'PF-04', title: 'ตารางอันดับ/สายอัปเดตหลังยืนยันผล', target: '≤ 10 วินาที หลังผลถูกยืนยัน',
         measured: `ช้าสุด ${fmt(worst)} (จากกดยืนยันถึงหน้าอ่านเห็นผล)`, pass: worst <= 10_000,
         notes: [`${samples.length} แมตช์ · แต่ละครั้งตัดสินแต้ม pick'em ~4,000 ใบในทรานแซกชันเดียวกัน · วัดระหว่างโหลดพื้นหลัง 100 VU (p95 พื้นหลัง ${fmt(bgRec.overall().p95)})`,
-                'ระบบอัปเดตแบบ synchronous (ธุรกรรมเดียวกับการยืนยัน) ⇒ เวลาที่วัดได้ ≈ เวลาของคำขอยืนยัน + รอบ poll ถัดไป (ทุก 250 ms)'] });
+                'ระบบอัปเดตแบบ synchronous (ธุรกรรมเดียวกับการยืนยัน) ⇒ เวลาที่วัดได้ ≈ เวลาของคำขอยืนยัน + รอบ poll ถัดไป (ทุก 250 ms)',
+                'ยกเว้นตารางอันดับ pick\'em ที่ **จำผลไว้ 5 วินาที** (B3 ②) ⇒ ตัวเลขช่องนั้นรวมเวลารอแคชหมดอายุด้วย ไม่ใช่เวลาที่ฐานข้อมูลใช้คิด'] });
     sections.push(`## PF-04 — ตารางอันดับและสายอัปเดตหลังยืนยันผล\n\nเกณฑ์: ≤ 10 วินาที · จับเวลาตั้งแต่ส่ง \`POST /matches/:id/result/verify\` จนคำขออ่านเห็นผลใหม่ (poll ทุก 250 ms) · ระหว่างนั้นมีโหลดอ่านพื้นหลัง 100 VU\n\n` +
         `| แมตช์ | คำขอยืนยัน | ใบ pick'em ที่ตัดสิน | สาย (ผู้ชนะไปรอบถัดไป) | ตารางอันดับ pick'em | ตารางคะแนน |\n|--:|--:|--:|--:|--:|--:|\n` +
         samples.map(s => `| ${s.match} | ${fmt(s.verifyMs)} | ${s.settled.toLocaleString()} | ${fmt(s.bracketMs)} | ${fmt(s.leaderboardMs)} | ${fmt(s.standingsMs)} |`).join('\n') +
@@ -468,7 +479,18 @@ async function main() {
     info = await seedBulk();
     const srv = await startServer();
     serverPid = srv.proc.pid!;
-    try { mysqldPid = Number(execSync('pgrep -xo mysqld').toString().trim()) || 0; } catch { mysqldPid = 0; }
+    // ★ pid ของ mysqld เอาไปใช้ได้ที่เดียวคือ monitor() ซึ่งอ่าน /proc ⇒ เครื่องที่ไม่มี /proc หาไปก็ไม่ได้ใช้
+    //   และ `pgrep` ไม่มีบน Windows ⇒ ของเดิมพ่น "'pgrep' is not recognized" ออก stderr ทุกครั้งที่รันบนวินโดวส์
+    //   catch รับไว้อยู่แล้วจึงไม่เคยพัง แต่คนอ่าน log เข้าใจผิดว่า perf มีปัญหา
+    // 🔴 ถึงรันบน Linux ก็ยังเป็น 0 ได้ เมื่อ MySQL อยู่ใน container — pgrep บน host มองไม่เห็นโปรเซสใน namespace นั้น
+    //   ⇒ ช่อง CPU/RAM ของ mysqld ที่ว่าง ไม่ได้แปลว่าฐานไม่ทำงาน แปลว่า "วัดไม่ถึง" เท่านั้น
+    mysqldPid = 0;
+    if(PROC_STATS_AVAILABLE){
+        // stderr ของ pgrep ทิ้งไปเลย — กรณีหาไม่เจอเป็นเรื่องปกติ ไม่ใช่ความผิดพลาดที่ต้องรายงาน
+        try {
+            mysqldPid = Number(execSync('pgrep -xo mysqld' , { stdio : ['ignore' , 'pipe' , 'ignore'] }).toString().trim()) || 0;
+        } catch { mysqldPid = 0; }
+    }
 
     try {
         const extra: number[] = [];
@@ -501,7 +523,12 @@ async function main() {
       */
     const env = `${os.cpus().length} CPU (${os.cpus()[0]?.model ?? '?'}) · RAM ${(os.totalmem() / 2 ** 30).toFixed(1)} GB · Node ${process.version} · ` +
         `MySQL ${vol!['mysql_version']} (ฐานที่วัดจริง · time_zone ${vol!['global_tz']})` +
-        (PROC_STATS_AVAILABLE ? '' : '\n- **CPU/RAM ของโปรเซสวัดไม่ได้บนเครื่องนี้** — `perf/lib/monitor.ts` อ่าน `/proc` ซึ่งมีแต่บน Linux ⇒ ช่อง CPU/RAM ในรายงานนี้เป็น `—` ทั้งหมด');
+        (PROC_STATS_AVAILABLE ? '' : '\n- **CPU/RAM ของโปรเซสวัดไม่ได้บนเครื่องนี้** — `perf/lib/monitor.ts` อ่าน `/proc` ซึ่งมีแต่บน Linux ⇒ ช่อง CPU/RAM ในรายงานนี้เป็น `—` ทั้งหมด') +
+        // ★ แยกกับบรรทัดบน: เครื่อง Linux ที่อ่าน /proc ได้ แต่ MySQL อยู่ใน container จะเห็น node มีเลขแต่ mysqld ว่าง
+        //   ถ้าไม่เขียนกำกับ คนอ่านจะสรุปว่า "ฐานแทบไม่ใช้ CPU" ซึ่งไม่ใช่สิ่งที่ตัวเลขนี้บอก
+        (PROC_STATS_AVAILABLE && mysqldPid === 0
+            ? '\n- **CPU/RAM ของ mysqld วัดไม่ถึงในรอบนี้** — หา pid ของ mysqld บนเครื่องนี้ไม่เจอ (ปกติเพราะฐานรันอยู่ใน container) ⇒ ช่อง mysqld เป็น `—` · **ไม่ได้แปลว่าฐานไม่ทำงาน**'
+            : '');
     const report = [
         `# ผลทดสอบประสิทธิภาพและโหลด (SRS 3.2 PF-01 – PF-06)`,
         `\nรันเมื่อ ${started.toISOString()}${QUICK ? ' · **โหมด PERF_QUICK (ย่อเวลา — ไม่ใช่ผลทางการ)**' : ''}\n`,

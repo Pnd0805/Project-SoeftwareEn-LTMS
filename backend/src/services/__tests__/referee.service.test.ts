@@ -63,6 +63,7 @@ import * as refereeService from '../referee.service.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
 import * as MatchRefRepo from '../../repositories/matchReferee.repo.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
+import * as TournamentRepoForCancel from '../../repositories/tournament.repo.js';
 import * as SportTypeRepo from '../../repositories/sportType.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import * as NotificationService from '../notification.service.js';
@@ -465,6 +466,18 @@ describe('listMyRefereeInvitations', () => {
 });
 
 describe('acceptRefereeInvitation', () => {
+  // migration 053 — ทัวร์ที่ถูกยกเลิกรับคำเชิญไม่ได้ (ปฏิเสธยังได้)
+  it('throws TOURNAMENT_CANCELLED when the tournament was cancelled, and does not answer the invitation', async () => {
+    mockedRefRepo.findById.mockResolvedValue(makeInvitation());
+    vi.mocked(TournamentRepoForCancel.findTournamentById).mockResolvedValueOnce({ tournament_id: 20, tournament_status: 'cancelled' } as never);
+
+    await expect(refereeService.acceptRefereeInvitation(1, 8, acceptNone)).rejects.toMatchObject({
+      status: 409,
+      code: 'TOURNAMENT_CANCELLED',
+    });
+    expect(mockedRefRepo.accept).not.toHaveBeenCalled();
+  });
+
   it('throws INVITATION_NOT_FOUND when the invitation does not exist', async () => {
     mockedRefRepo.findById.mockResolvedValue(null);
 

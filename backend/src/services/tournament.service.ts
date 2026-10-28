@@ -27,6 +27,7 @@ import * as MatchRepo from '../repositories/match.repo.js';
 import * as MatchResultService from './matchResult.service.js';
 import { isRequesterOf } from '../middlewares/requireOrganizer.js';
 import * as NotificationService from './notification.service.js';
+import * as NotificationRepo from '../repositories/notification.repo.js';
 
 const amendmentFieldSchema = z.object({
     registrationStart: z.iso.datetime({ offset: true }).optional(),
@@ -189,7 +190,10 @@ async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> 
 async function getVisibleTournament(tournamentId: number, userId?: number): Promise<TournamentRow> {
     const tournament = await getTournamentOr404(tournamentId);
     // completed = ผลย้อนหลังเป็นสาธารณะเหมือน public (B1 3-ก, 21 ก.ย.)
-    if (tournament.tournament_status === 'public' || tournament.tournament_status === 'completed') return tournament;
+    // cancelled = ทุกคนเปิดดูได้ อ่านอย่างเดียว พร้อมป้ายและเหตุผล (migration 053 · มติ 28 ต.ค. ข้อ 7)
+    //   คนที่เคยสมัครหรือเคยทายผลต้องตามเรื่องได้ ไม่ใช่ทัวร์หายไปเฉย ๆ
+    if (tournament.tournament_status === 'public' || tournament.tournament_status === 'completed'
+        || tournament.tournament_status === 'cancelled') return tournament;
 
     // ผู้ยื่นคำขอเห็นทัวร์ของตัวเองทุกสถานะ (รวม pending_approval/rejected/completed) ยกเว้นถูกลบอัตโนมัติ — FE-c17b 20 ก.ย.
     if (userId !== undefined && isRequesterOf(tournament, userId)) {
@@ -900,6 +904,16 @@ export async function getAmendmentImpactForAdmin(amendmentId: number, userId: nu
 
 export async function approveAmendment(amendmentId: number, userId: number) {
     const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
+    // ทัวร์ที่ถูกยกเลิก/ปิดแล้ว — อนุมัติคำขอแก้ไขที่ค้างอยู่ไม่ได้ (จะไปแก้ข้อมูลทัวร์ที่จบไปแล้ว) · ปฏิเสธได้ตามปกติ
+    //   completed เติม OD-69 รอบ 5 — เดิมไม่มีด่าน ⇒ แก้วัน/จำนวนทีม/กฎคุณสมบัติของทัวร์ที่จบแล้วได้
+    if (tournament.tournament_status === 'cancelled') {
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว อนุมัติคำขอแก้ไขไม่ได้',
+            { tournamentId: tournament.tournament_id });
+    }
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้ปิดการแข่งขันแล้ว อนุมัติคำขอแก้ไขไม่ได้',
+            { tournamentId: tournament.tournament_id });
+    }
     const changes = validateAmendmentChanges(amendment.requested_changes);
     validateAmendmentAgainstTournament(tournament, changes);
     await assertAmendmentKeepsApprovedTeamsEligible(tournament, changes);   // BE-36 — ด่านจริง (สถานะเปลี่ยนได้หลังยื่น)
@@ -1115,6 +1129,69 @@ export async function warnBeforeAutoDelete(){
     }
 
     return warned;
+}
+
+// ───────────────────────── ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. 2569) ─────────────────────────
+//   ปัญหาที่แก้: ทัวร์ที่มีทีมสมัครหรือจับสายแล้วแต่จัดต่อไม่ได้ เดิมไม่มีทางออก (ลบไม่ได้ · ปิดไม่ได้)
+//   1 ยกเลิก ≠ ลบ — สถานะใหม่ `cancelled` ทัวร์ยังอยู่ให้ดูย้อนหลัง · "ลบ" เดิมยังใช้กับทัวร์ที่ยังไม่มีอะไรเกิด
+//   2 ผู้จัด + แอดมินมหาวิทยาลัยกดได้ (แอดมินกดแทนได้เผื่อผู้จัดหายไป — หลักเดียวกับ OD-26)
+//   3 ยกเลิกได้จนกว่าจะปิดทัวร์ · ทัวร์ที่ยังไม่อนุมัติให้ใช้ "ลบ" แทน
+//   4 เหตุผลบังคับ 1–255 ตัวอักษร ทุกคนที่เกี่ยวข้องเห็น
+//   5 แจ้งทุกคนที่ทัวร์มีผลกับเขา (หัวหน้าทีม · ผู้เล่นในรายชื่อ · กรรมการ · คนที่ทายผล · ผู้จัด) ยกเว้นคนที่กดเอง
+//   6 แช่แข็ง ไม่ล้าง — ผล แต้ม สถิติ เหรียญ ที่เกิดแล้วอยู่ครบ · แมตช์ที่ยังไม่จบค้างไว้ตามเดิม ใบทายที่ยังไม่ตัดสินเป็น void
+//   7 ทุกคนเปิดดูได้ · 9 ผู้เล่นไม่ถูกล็อกกับทัวร์ที่ถูกยกเลิก (application.repo)
+//   ✂ ข้อ 8 (แอดมินกู้คืน) ตัดออก 28 ต.ค. — "ยกเลิกคือจบ" กันกดผิดด้วยการยืนยันหลายชั้นที่ FE แทน
+//     เหตุผล: กู้คืนทำให้ต้องรับมือของที่ถูกจองไประหว่างนั้น (สนาม/ทีม/กรรมการชน) = จุดเกิดบั๊กลูกโซ่เพิ่ม (OD-69)
+//   หลังยกเลิก: ความเห็นต่อทัวร์ + ประกาศ + รีวิวผู้จัด (7 วัน) ยังใช้ได้ ที่เหลือล็อกหมด (lockCompletedTournament)
+
+/** ผู้จัดของทัวร์ที่อนุมัติแล้ว หรือแอดมินทั้งมหาวิทยาลัย · root ไม่นับ — root แต่งตั้งและตรวจสอบ ไม่กดแทนแอดมิน */
+async function cancellerRoleOf(tournament: TournamentRow, userId: number): Promise<'organizer' | 'admin' | null> {
+    if (isOrganizerOf(tournament, userId)) return 'organizer';
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    return admin?.scope_type === 'university_wide' ? 'admin' : null;
+}
+
+/** แจ้งเรื่องยกเลิกถึงทุกคนที่ทัวร์มีผลกับเขา — ไม่ส่งหาคนที่กดเอง (รู้อยู่แล้ว) */
+async function notifyTournamentAudience(
+    tournamentId: number, exceptUserId: number,
+    content: { type: 'tournament_cancelled'; title: string; message: string }
+): Promise<void> {
+    try {
+        const audience = (await NotificationRepo.findTournamentCancellationAudience(tournamentId)).filter(id => id !== exceptUserId);
+        await NotificationService.notifyUsers(audience, { ...content, relatedEntityType: 'tournament', relatedEntityId: tournamentId });
+    } catch (err) {
+        console.error(`[notify] หาผู้รับเรื่อง ${content.type} ของทัวร์ ${tournamentId} ไม่สำเร็จ`, err);
+    }
+}
+
+export async function cancelTournament(tournamentId: number, userId: number, reason: string) {
+    const tournament = await getTournamentOr404(tournamentId);
+    const role = await cancellerRoleOf(tournament, userId);
+    if (!role) {
+        throw new AppError(403, 'NOT_ORGANIZER', 'ยกเลิกทัวร์นาเมนต์ได้เฉพาะผู้จัดของทัวร์นี้หรือแอดมินมหาวิทยาลัย');
+    }
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์ที่ปิดการแข่งขันแล้วยกเลิกไม่ได้');
+    }
+    if (tournament.tournament_status === 'cancelled') {
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกไปแล้ว');
+    }
+    if (tournament.tournament_status !== 'public' && tournament.tournament_status !== 'private') {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION',
+            'ยกเลิกได้เฉพาะทัวร์นาเมนต์ที่ผ่านการอนุมัติแล้ว — ทัวร์ที่ยังไม่อนุมัติให้ใช้การลบแทน');
+    }
+
+    const result = await TournamentRepo.cancelTournament(tournamentId, userId, reason, role);
+    if (!result) {
+        throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'สถานะทัวร์นาเมนต์เปลี่ยนไปแล้ว กรุณาลองใหม่');
+    }
+
+    await notifyTournamentAudience(tournamentId, userId, {
+        type: 'tournament_cancelled',
+        title: `ทัวร์นาเมนต์ "${tournament.name}" ถูกยกเลิก`,
+        message: `${role === 'organizer' ? 'ผู้จัด' : 'ผู้ดูแลระบบ'}ยกเลิกทัวร์นาเมนต์นี้ — เหตุผล: ${reason}`,
+    });
+    return { id: tournamentId, status: 'cancelled' as const, fromStatus: result.fromStatus, reason, cancelledBy: role };
 }
 
 /** BR-03 ส่วนที่ 3 — ทัวร์ที่ปิดไปเกิน 4 ปี ⇒ soft delete (เหตุผลทั้งหมดอยู่ใน repo) */
