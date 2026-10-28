@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import s3 from '../config/s3.js';
 import { env } from '../config/env.js';
@@ -240,6 +240,45 @@ export async function deleteObjectBestEffort(objectKey: string): Promise<void> {
     } catch (error) {
         console.error(`deleteObjectBestEffort: failed to delete ${objectKey}`, error);
     }
+}
+
+/**
+ * ลบแบบ "รู้ผล" — คืน true เมื่อที่เก็บไฟล์ตอบว่าลบแล้ว · false เมื่อลบไม่สำเร็จ (เขียน log ไว้)
+ * (OD-70) ใช้กับงานที่ต้องรู้ก่อนว่าไฟล์หายจริง แล้วค่อยทิ้งคีย์ในฐาน
+ *   ต่างจาก deleteObjectBestEffort ที่กลืน error ⇒ ผู้เรียกแยกไม่ออกว่าลบสำเร็จไหม
+ * ★ S3 ลบคีย์ที่ไม่มีอยู่แล้วก็ตอบสำเร็จ ⇒ เรียกซ้ำได้ ไม่ต้องเช็คก่อนว่ามีไฟล์ไหม
+ */
+export async function deleteObjectConfirmed(objectKey: string): Promise<boolean> {
+    try {
+        await s3.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
+        return true;
+    } catch (error) {
+        console.error(`deleteObjectConfirmed: failed to delete ${objectKey}`, error);
+        return false;
+    }
+}
+
+/**
+ * ไฟล์ทั้งหมดใต้ prefix (ไล่ทีละหน้า 1,000 ไฟล์ตามที่ S3 ให้) — อ่านอย่างเดียว ไม่ลบอะไร
+ * (OD-70) ใช้หาไฟล์ยืนยันตัวตนที่ไม่มีแถวไหนชี้ถึงแล้ว
+ */
+export async function listObjectsByPrefix(prefix: string): Promise<{ key: string; lastModified: Date | null }[]> {
+    const out: { key: string; lastModified: Date | null }[] = [];
+    let token: string | undefined;
+    do {
+        const page = await s3.send(new ListObjectsV2Command({ Bucket: env.S3_BUCKET, Prefix: prefix, ContinuationToken: token }));
+        for (const obj of page.Contents ?? []) {
+            if (obj.Key) out.push({ key: obj.Key, lastModified: obj.LastModified ?? null });
+        }
+        token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return out;
+}
+
+/** รูป key ของเอกสารยืนยันตัวตน (ทุก user) — ให้งานกวาดลบเฉพาะไฟล์รูปร่างนี้ ไม่แตะอย่างอื่นใต้ prefix เดียวกัน */
+export const REFEREE_IDENTITY_PREFIX = 'referee_identity/';
+export function isRefereeIdentityKey(objectKey: string): boolean {
+    return /^referee_identity\/\d+\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png)$/i.test(objectKey);
 }
 
 export async function validateTeamLogoKey(objectKey: string, teamId: number): Promise<void> {
