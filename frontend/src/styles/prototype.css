@@ -1472,3 +1472,13 @@ tbody tr:not(.tour-round-row):nth-child(even)>td{background:color-mix(in srgb,va
   font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bone-dim);}
 .tour-match-teams>:nth-child(3){grid-area:b;}
 .tour-match-item>.tour-match-meta{margin-top:4px;}
+/* Empty states centre their icon and message in the box (they sat at the top of a 260px box) */
+.empty{justify-content:center;}
+/* Inbox strips: the Inbox stylesheet set padding 16px 0, so text touched the strip's edges */
+.inbox-requests .panel .inbox-request-row,.inbox-page .inbox-notifications .notif{padding:14px 18px;}
+/* Match tab bar: the active underline overhangs 2px, so the scrolling bar showed a scroll bar of its
+   own on every match page. It never scrolls vertically; sideways swipe stays for phones, no bar. */
+.match-tabs{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
+.match-tabs::-webkit-scrollbar{display:none;}
+/* Match cards on /matches: team A hugs the centred "vs" from the left as team B does from the right */
+.matches-page .refcard-teams>:first-child{justify-self:end;text-align:right;}
