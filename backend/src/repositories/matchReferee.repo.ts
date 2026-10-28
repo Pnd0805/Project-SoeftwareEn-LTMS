@@ -71,6 +71,10 @@ export async function findAcceptedByUsers(userIds : number[]): Promise<MyReferee
          LEFT JOIN teams tb ON tb.team_id = m.team_b_id
          WHERE tr.user_id IN (?) AND mr.assignment_status = 'accepted'
            AND t.deleted_at IS NULL
+           -- ยกเลิกทัวร์ (OD-69): แมตช์ที่ยังไม่ได้แข่งถูกแช่แข็งไว้ ⇒ ไม่ใช่งานที่ต้องไปคุม
+           --   ไม่ตัดออก = กรรมการรับแมตช์ทัวร์อื่นเวลาเดียวกันไม่ได้ + หน้าแมตช์ของฉันโชว์เป็น "กำลังจะแข่ง" ตลอดไป
+           --   แมตช์ที่แข่งไปแล้วยังอยู่ (เป็นประวัติ) · กู้คืนแล้วกลับมาเอง
+           AND (t.tournament_status <> 'cancelled' OR m.match_status IN ('completed', 'finished'))
          ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`, [userIds]);
     return rows;
 }

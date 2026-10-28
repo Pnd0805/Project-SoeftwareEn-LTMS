@@ -956,6 +956,35 @@ export async function restoreCancelledTournament(
     }
 }
 
+export type RestoreIssues = {
+    deletedTeams: { teamId: number; teamName: string }[];
+    playersLeftTeam: { teamId: number; teamName: string; userId: number; fullName: string }[];
+};
+
+/**
+ * สิ่งที่เปลี่ยนไประหว่างทัวร์ถูกยกเลิก — ใช้ตอนกู้คืน (มติ 28 ต.ค.: กู้คืนได้ + บอกว่าทีมไหนมีปัญหา)
+ *   ยกเลิกแล้วผู้เล่นถูกปลดล็อก (ข้อ 9) ⇒ ทีมที่ผ่านอาจถูกลบ หรือคนในรายชื่อลงแข่งออกจากทีมไปแล้ว
+ *   รายชื่อลงแข่งของทัวร์ที่ถูกยกเลิก **ไม่ถูกลบ** (application.repo) ⇒ คนที่ออกไปแล้วยังอยู่ในรายชื่อ
+ * ★ รายงานอย่างเดียว ไม่แก้อะไร — ผู้จัดตัดสินเอง (ตัดสินชนะบาย / ปล่อยไว้)
+ */
+export async function findRestoreIssues(tournamentId: number): Promise<RestoreIssues> {
+    const [deleted] = await pool.query<({ teamId: number; teamName: string } & RowDataPacket)[]>(
+        `SELECT ta.team_id AS teamId, tm.name AS teamName
+           FROM tournament_applications ta JOIN teams tm ON tm.team_id = ta.team_id
+          WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved' AND tm.deleted_at IS NOT NULL
+          ORDER BY ta.team_id`, [tournamentId]);
+    const [left] = await pool.query<({ teamId: number; teamName: string; userId: number; fullName: string } & RowDataPacket)[]>(
+        `SELECT ta.team_id AS teamId, tm.name AS teamName, ap.user_id AS userId, u.full_name AS fullName
+           FROM application_players ap
+           JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
+           JOIN teams tm ON tm.team_id = ta.team_id
+           JOIN users u ON u.user_id = ap.user_id
+          WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved' AND tm.deleted_at IS NULL
+            AND NOT EXISTS (SELECT 1 FROM team_members m WHERE m.team_id = ta.team_id AND m.user_id = ap.user_id)
+          ORDER BY ta.team_id, ap.user_id`, [tournamentId]);
+    return { deletedTeams: [...deleted], playersLeftTeam: [...left] };
+}
+
 export async function softDeleteTournament(tournamentId: number, userId: number): Promise<boolean> {
     const conn = await pool.getConnection();
     try {

@@ -1206,7 +1206,24 @@ export async function restoreCancelledTournament(tournamentId: number, adminUser
         title: `ทัวร์นาเมนต์ "${tournament.name}" กลับมาจัดต่อ`,
         message: 'ผู้ดูแลระบบกู้คืนทัวร์นาเมนต์นี้แล้ว — แมตช์ที่นัดไว้กลับมาตามกำหนดเดิม กรุณาตรวจตารางแข่งอีกครั้ง',
     });
-    return { id: tournamentId, status: result.restoredTo, registrationOpen: false };
+
+    // ทีมที่เปลี่ยนไประหว่างถูกยกเลิก — บอกทั้งแอดมิน (ใน response) และผู้จัด (คนที่ต้องจัดการต่อ)
+    const issues = await TournamentRepo.findRestoreIssues(tournamentId);
+    if (issues.deletedTeams.length > 0 || issues.playersLeftTeam.length > 0) {
+        const parts = [
+            ...(issues.deletedTeams.length > 0
+                ? [`ทีมที่ถูกลบไปแล้ว: ${issues.deletedTeams.map(t => t.teamName).join(', ')}`] : []),
+            ...(issues.playersLeftTeam.length > 0
+                ? [`ผู้เล่นในรายชื่อที่ออกจากทีมไปแล้ว: ${issues.playersLeftTeam.map(p => `${p.fullName} (${p.teamName})`).join(', ')}`] : []),
+        ];
+        await NotificationService.notify({
+            userId: tournament.requested_by_user_id, type: 'tournament_restored',
+            title: `ทัวร์นาเมนต์ "${tournament.name}" มีทีมที่ต้องตรวจก่อนแข่งต่อ`,
+            message: `ระหว่างที่ทัวร์ถูกยกเลิกมีการเปลี่ยนแปลง — ${parts.join(' · ')}`,
+            relatedEntityType: 'tournament', relatedEntityId: tournamentId,
+        });
+    }
+    return { id: tournamentId, status: result.restoredTo, registrationOpen: false, issues };
 }
 
 /** BR-03 ส่วนที่ 3 — ทัวร์ที่ปิดไปเกิน 4 ปี ⇒ soft delete (เหตุผลทั้งหมดอยู่ใน repo) */

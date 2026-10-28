@@ -228,6 +228,8 @@ export async function findPendingInvitationsByUser(userId : number)
            -- 🆕 BE-13 — ใบที่เลยกำหนดแล้วกดตอบไม่ได้ จึงต้องไม่ขึ้นในรายการให้หลงกด
            AND (tr.expires_at IS NULL OR tr.expires_at > NOW())
            AND t.deleted_at IS NULL
+           -- ยกเลิกทัวร์ (OD-69): กดรับไม่ได้ ⇒ ไม่ขึ้นในกล่องให้หลงกด · ใบยังอยู่ กู้คืนแล้วกลับมาเอง
+           AND t.tournament_status <> 'cancelled'
          ORDER BY tr.created_at DESC`, [userId]);
     return rows;
 }

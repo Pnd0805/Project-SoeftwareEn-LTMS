@@ -16,6 +16,7 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   findTournamentById: vi.fn(),
   cancelTournament: vi.fn(async () => ({ fromStatus: 'public' })),
   restoreCancelledTournament: vi.fn(async () => ({ restoredTo: 'public' })),
+  findRestoreIssues: vi.fn(async () => ({ deletedTeams: [], playersLeftTeam: [] })),
 }));
 vi.mock('../../repositories/adminScope.repo.js', () => ({ findAdminByUserId: vi.fn(async () => null) }));
 vi.mock('../../repositories/match.repo.js', () => ({}));
@@ -136,8 +137,33 @@ describe('restoreCancelledTournament (POST /admin/tournaments/:id/restore)', () 
   });
 
   it('restores to the previous status and reports registration stays closed', async () => {
-    await expect(Service.restoreCancelledTournament(50, 99)).resolves.toEqual({ id: 50, status: 'public', registrationOpen: false });
+    await expect(Service.restoreCancelledTournament(50, 99)).resolves.toEqual({
+      id: 50, status: 'public', registrationOpen: false, issues: { deletedTeams: [], playersLeftTeam: [] },
+    });
     expect(TournamentRepo.restoreCancelledTournament).toHaveBeenCalledWith(50, 99);
+    expect(NotificationService.notify).not.toHaveBeenCalled();   // ไม่มีปัญหา ⇒ ไม่มีแจ้งเตือนพิเศษถึงผู้จัด
+  });
+
+  // มติ 28 ต.ค. — กู้คืนได้ + บอกว่าทีมไหนมีปัญหา (ทีมถูกลบ / คนในรายชื่อออกจากทีม ระหว่างถูกยกเลิก)
+  it('reports teams that changed while cancelled, and tells the organizer with names', async () => {
+    const issues = {
+      deletedTeams: [{ teamId: 3, teamName: 'ทีมหาย' }],
+      playersLeftTeam: [{ teamId: 4, teamName: 'ทีมสี่', userId: 41, fullName: 'สมชาย' }],
+    };
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce(issues);
+    await expect(Service.restoreCancelledTournament(50, 99)).resolves.toMatchObject({ issues });
+    const sent = vi.mocked(NotificationService.notify).mock.calls[0]![0] as { userId: number; type: string; message: string };
+    expect(sent).toMatchObject({ userId: ORG, type: 'tournament_restored', relatedEntityId: 50 });
+    expect(sent.message).toContain('ทีมหาย');
+    expect(sent.message).toContain('สมชาย (ทีมสี่)');
+  });
+
+  it('only deleted teams → message mentions just that part', async () => {
+    vi.mocked(TournamentRepo.findRestoreIssues).mockResolvedValueOnce({ deletedTeams: [{ teamId: 3, teamName: 'ทีมหาย' }], playersLeftTeam: [] });
+    await Service.restoreCancelledTournament(50, 99);
+    const sent = vi.mocked(NotificationService.notify).mock.calls[0]![0] as { message: string };
+    expect(sent.message).toContain('ทีมที่ถูกลบไปแล้ว');
+    expect(sent.message).not.toContain('ออกจากทีม');
   });
 
   it('notifies everyone (including the organizer) except the admin, type tournament_restored', async () => {

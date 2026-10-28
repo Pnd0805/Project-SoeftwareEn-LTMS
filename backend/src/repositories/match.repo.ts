@@ -154,6 +154,9 @@ export async function findConflictingMatch(
         `SELECT match_id FROM matches
          WHERE match_id != ?
            AND match_status <> 'completed'
+           -- ยกเลิกทัวร์ (OD-69): แมตช์ที่ถูกแช่แข็งไม่ได้ใช้สนาม/ทีมจริง ⇒ ไม่ควรบล็อกการจัดตารางของทัวร์อื่น
+           AND NOT EXISTS (SELECT 1 FROM tournaments t
+                            WHERE t.tournament_id = matches.tournament_id AND t.tournament_status = 'cancelled')
            AND scheduled_time IS NOT NULL
            AND (
                 (scheduled_end_time IS NOT NULL AND scheduled_time < ? AND ? < scheduled_end_time)
@@ -553,6 +556,8 @@ export async function findMatchesOfPlayer(userId: number): Promise<MyPlayerMatch
          LEFT JOIN teams ta_team ON ta_team.team_id = m.team_a_id
          LEFT JOIN teams tb ON tb.team_id = m.team_b_id
          WHERE ap.user_id = ?
+           -- ยกเลิกทัวร์ (OD-69): ซ่อนแมตช์ที่ยังไม่ได้แข่ง (ถูกแช่แข็ง) · ที่แข่งแล้วยังเป็นประวัติ — กฎเดียวกับฝั่งกรรมการ
+           AND (t.tournament_status <> 'cancelled' OR m.match_status IN ('completed', 'finished'))
          GROUP BY m.match_id, m.round_number, m.scheduled_time, m.scheduled_end_time, m.venue, m.mode, m.match_status,
                   t.tournament_id, t.name, t.sport_type_id, ta_team.team_id, ta_team.name, tb.team_id, tb.name
          ORDER BY m.scheduled_time IS NULL, m.scheduled_time, m.match_id`,

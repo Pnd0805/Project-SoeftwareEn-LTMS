@@ -112,6 +112,9 @@ export async function createRefRequest(userId : number, input : RefRequestInput)
     const myMatch = await MatchRepo.findById(input.myMatchId);
     if(!myMatch) throw new AppError(404, 'MATCH_NOT_FOUND', 'ไม่พบแมตช์นี้');
     const tournamentId = myMatch.tournament_id;
+    // ยกเลิกทัวร์ (OD-69) — เดิมสร้างคำขอได้และแจ้งกรรมการอีกคน แล้วไปติดด่านตอนตอบรับ
+    //   ⇒ กันตั้งแต่ตอนยื่น (ทัวร์ที่ปิดแล้วไม่เคยเจอเพราะแมตช์จบหมดแล้วทุกแมตช์)
+    await loadLiveTournament(tournamentId);
 
     // A = ตัวเรา — แถวที่นับเป็นกรรมการใช้งานได้ ไม่ใช่แถวล่าสุดตาม id (แก้ 1 ต.ค. 2569)
     const a = await findActiveRefereeRow(tournamentId, userId);
