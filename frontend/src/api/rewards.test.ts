@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apiFetch, hasAccessToken, setAccessToken } from './client'
-import { getRewards, getMyRewards, setRewardDisplayed, redeemReward } from './rewards'
-import { mockRedeemReward, mockUsers } from '../mocks/rewards.mock'
+import { setAccessToken } from './client'
+import { getRewards, setRewardDisplayed, redeemReward } from './rewards'
+import { mockRedeemReward } from '../mocks/rewards.mock'
 
 const response = (body: unknown, status = 200) =>
   new Response(body === undefined ? null : JSON.stringify(body), {
