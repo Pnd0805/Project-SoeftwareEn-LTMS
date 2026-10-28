@@ -9,33 +9,28 @@ import {
   useUserRewards,
 } from '../../hooks/useRewards'
 import { ApiError } from '../../api/client'
-import { Badge, Banner } from '../../components/kit/primitives'
+import { Badge, Banner, Empty, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import type { RewardDto } from '../../api/rewards'
 import './rewards.css'
 
-function getBadgeTier(reward: RewardDto): 'bronze' | 'silver' | 'gold' | 'achievement' | 'emerald' {
+function getBadgeTier(reward: RewardDto): 'gold' | 'achievement' | 'standard' {
   if (reward.pointsRequired === null) return 'achievement'
   const name = reward.name.toLowerCase()
   const key = (reward.iconKey ?? '').toLowerCase()
-  if (name.includes('gold') || key.includes('gold') || (reward.pointsRequired && reward.pointsRequired >= 200)) {
+  if (name.includes('gold') || key.includes('gold') || (reward.pointsRequired && reward.pointsRequired >= 150)) {
     return 'gold'
   }
-  if (name.includes('silver') || key.includes('silver') || (reward.pointsRequired && reward.pointsRequired >= 80)) {
-    return 'silver'
-  }
-  if (name.includes('bronze') || key.includes('bronze')) {
-    return 'bronze'
-  }
-  return 'emerald'
+  return 'standard'
 }
 
 function RewardBadgeEmblem({ reward }: { reward: RewardDto }) {
   const tier = getBadgeTier(reward)
+  const iconName = tier === 'gold' || tier === 'achievement' ? 'star' : 'trophy'
   return (
-    <div className={`badge-emblem ${tier}`}>
+    <div className={`badge-card-emblem ${tier}`}>
       <span role="img" aria-label="Reward badge">
-        <Icon name={tier === 'gold' || tier === 'achievement' ? 'star' : 'trophy'} size={26} />
+        <Icon name={iconName} size={22} />
       </span>
     </div>
   )
@@ -48,7 +43,7 @@ function RewardName({ reward }: { reward: RewardDto }) {
       <span role="img" aria-label="Reward badge" style={{ display: 'none' }}>
         <Icon name="trophy" size={28} />
       </span>
-      <b className="reward-card-name">{reward.name}</b>
+      <b className="badge-card-title">{reward.name}</b>
     </span>
   )
 }
@@ -56,11 +51,9 @@ function RewardName({ reward }: { reward: RewardDto }) {
 export function PublicRewards({ userId }: { userId: number }) {
   const rewards = useUserRewards(userId)
   return (
-    <div className="panel quiet vstack" style={{ gap: '16px' }}>
-      <div className="hstack" style={{ alignItems: 'center', gap: '8px' }}>
-        <span className="tag">Showcase</span>
-        <h3 style={{ margin: 0 }}>Rewards</h3>
-      </div>
+    <Panel quiet>
+      <span className="tag"><em>//</em> Showcase</span>
+      <h3>Rewards</h3>
       {rewards.isPending ? <p className="sub">Loading rewards…</p> : null}
       {rewards.isError ? (
         <Banner kind="crit">
@@ -73,20 +66,20 @@ export function PublicRewards({ userId }: { userId: number }) {
       {rewards.isSuccess && !rewards.data.items.length ? (
         <p className="sub">No displayed rewards.</p>
       ) : null}
-      <div className="rewards-grid">
+      <div className="badge-grid">
         {rewards.data?.items.map((row) => (
-          <div className="reward-card is-owned" key={row.id}>
-            <div className="reward-card-top">
+          <div className="badge-card is-owned" key={row.id}>
+            <div className="badge-card-header">
               <RewardBadgeEmblem reward={row} />
-              <div className="reward-card-info">
+              <div className="badge-card-content">
                 <RewardName reward={row} />
-                {row.description ? <p className="reward-card-desc">{row.description}</p> : null}
+                {row.description ? <p className="badge-card-desc">{row.description}</p> : null}
               </div>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </Panel>
   )
 }
 
@@ -170,51 +163,46 @@ export function RewardsPage() {
   )
 
   return (
-    <div className="rewards-container">
-      {/* Header with Title and Back to Profile */}
-      <div className="rewards-header">
-        <div className="rewards-header-title">
-          <span className="tag">Store & Badges</span>
-          <h1 className="disp">My rewards</h1>
-          <p className="sub" style={{ marginTop: '2px' }}>
+    <div className="account-workspace rewards-workspace">
+      {/* Header and Back Link */}
+      <div className="spread" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <span className="tag"><em>//</em> Rewards & Badges</span>
+          <h1 className="disp" style={{ margin: '4px 0 6px 0' }}>My rewards</h1>
+          <p className="sub">
             เหรียญที่ได้รับจะแสดงบนโปรไฟล์อัตโนมัติ เลือกซ่อนได้ เหรียญอาจถูกริบเมื่อผลการแข่งขันเปลี่ยน
           </p>
         </div>
-        <Link className="btn ghost" to="/me" style={{ alignSelf: 'flex-start' }}>
+        <Link className="btn ghost" to="/me" style={{ gap: 6, display: 'inline-flex', alignItems: 'center' }}>
           <Icon name="chevL" size={13} /> Back to profile
         </Link>
       </div>
 
-      {/* Hero Points Card */}
-      <div className="rewards-hero-card">
-        <div className="rewards-hero-left">
-          <span className="tag" style={{ color: '#2dd4bf' }}>ยอดแต้มสะสมของฉัน</span>
-          <div className="rewards-points-display">
-            <span className="rewards-points-number">{totalPoints}</span>
-            <span className="rewards-points-unit">แต้ม</span>
-          </div>
-          <p className="sub" style={{ maxWidth: '520px', lineHeight: 1.5 }}>
-            สะสมแต้มจากการทายผล Pick'em และกิจกรรมการแข่งขัน เพื่อนำมาแลกรับ Badge พิเศษ
-          </p>
+      {/* LTMS Minimal Street Points Statline */}
+      <div className="statline">
+        <div>
+          <span className="tag"><em>//</em> ยอดแต้มสะสมของฉัน</span>
+          <span className="v">{totalPoints}</span>
+          <span className="sub">แต้มสำหรับแลกซื้อ</span>
         </div>
-
-        <div className="rewards-hero-stats">
-          <div className="rewards-stat-pill">
-            <span className="val">{ownedIds.size}</span>
-            <span className="lbl">เหรียญของฉัน</span>
-          </div>
-          <div className="rewards-stat-pill">
-            <span className="val">{purchasableRewards.length}</span>
-            <span className="lbl">เปิดให้แลก</span>
-          </div>
-          <div className="rewards-stat-pill">
-            <span className="val">{achievementRewards.length}</span>
-            <span className="lbl">เหรียญความสำเร็จ</span>
-          </div>
+        <div>
+          <span className="tag"><em>//</em> Badges held</span>
+          <span className="v">{ownedIds.size}</span>
+          <span className="sub">ครอบครองแล้ว</span>
+        </div>
+        <div>
+          <span className="tag"><em>//</em> In store</span>
+          <span className="v">{purchasableRewards.length}</span>
+          <span className="sub">รายการที่เปิดให้แลก</span>
+        </div>
+        <div>
+          <span className="tag"><em>//</em> Achievements</span>
+          <span className="v">{achievementRewards.length}</span>
+          <span className="sub">ความสำเร็จทั้งหมด</span>
         </div>
       </div>
 
-      {/* Action / Error Banners */}
+      {/* Feedback banners */}
       {display.error ? (
         <Banner kind="crit">
           {display.error instanceof Error ? display.error.message : 'Unable to change display.'}
@@ -225,20 +213,15 @@ export function RewardsPage() {
       {redeemSuccessMsg ? <Banner kind="ok">{redeemSuccessMsg}</Banner> : null}
       {redeemError ? <Banner kind="crit">{redeemError}</Banner> : null}
 
-      {/* Section 1: Earned rewards */}
-      <section className="rewards-section">
-        <div className="rewards-section-header">
-          <div className="rewards-section-title-wrap">
-            <div className="rewards-section-icon">
-              <Icon name="trophy" size={20} />
-            </div>
-            <div>
-              <h2>Earned rewards</h2>
-              <span className="sub">เหรียญรางวัลที่คุณปลดล็อคหรือแลกรับมาแล้ว</span>
-            </div>
+      {/* Earned rewards */}
+      <Panel>
+        <div className="spread">
+          <div>
+            <span className="tag"><em>//</em> Collection</span>
+            <h2 style={{ margin: '2px 0 0 0' }}>Earned rewards</h2>
           </div>
           {rewards.data?.items.length ? (
-            <Badge kind="ok">{rewards.data.items.length} ใบ</Badge>
+            <Badge kind="ok">{rewards.data.items.length} badges</Badge>
           ) : null}
         </div>
 
@@ -253,23 +236,23 @@ export function RewardsPage() {
         ) : null}
 
         {rewards.isSuccess && !rewards.data.items.length ? (
-          <div className="reward-empty-card">
-            <Icon name="trophy" size={32} />
-            <b>No earned rewards yet.</b>
-            <p className="sub">ร่วมกิจกรรมการแข่งขันหรือนำแต้มมาแลกรับ Badge เพื่อเริ่มสะสมคอลเลกชันของคุณ</p>
-          </div>
+          <Empty
+            icon="trophy"
+            title="No earned rewards yet."
+            sub="ร่วมกิจกรรมการแข่งขันหรือนำแต้มมาแลกรับ Badge เพื่อเริ่มสะสมคอลเลกชันของคุณ"
+          />
         ) : null}
 
         {rewards.data?.items.length ? (
-          <div className="rewards-grid">
+          <div className="badge-grid" style={{ marginTop: 12 }}>
             {rewards.data.items.map((row) => (
-              <div className="reward-card is-owned" key={row.id}>
-                <div className="reward-card-top">
+              <div className="badge-card is-owned" key={row.id}>
+                <div className="badge-card-header">
                   <RewardBadgeEmblem reward={row} />
-                  <div className="reward-card-info">
+                  <div className="badge-card-content">
                     <RewardName reward={row} />
-                    {row.description ? <p className="reward-card-desc">{row.description}</p> : null}
-                    <p className="sub" style={{ fontSize: '12px', marginTop: '4px' }}>
+                    {row.description ? <p className="badge-card-desc">{row.description}</p> : null}
+                    <p className="sub" style={{ fontSize: 12, marginTop: 4 }}>
                       Earned{' '}
                       {new Date(row.earnedAt).toLocaleString('en-GB', {
                         timeZone: 'Asia/Bangkok',
@@ -278,11 +261,11 @@ export function RewardsPage() {
                   </div>
                 </div>
 
-                <div className="reward-card-bottom">
+                <div className="badge-card-footer">
                   <Badge kind={row.isDisplayed ? 'ok' : 'neutral'}>
                     {row.isDisplayed ? 'Displayed on profile' : 'Hidden from profile'}
                   </Badge>
-                  <label className="profile-toggle-label">
+                  <label className="hstack sub" style={{ cursor: 'pointer', gap: 6 }}>
                     <input
                       type="checkbox"
                       checked={!row.isDisplayed}
@@ -298,21 +281,12 @@ export function RewardsPage() {
             ))}
           </div>
         ) : null}
-      </section>
+      </Panel>
 
-      {/* Section 2: Reward catalogue */}
-      <section className="rewards-section" style={{ marginTop: '12px' }}>
-        <div className="rewards-section-header">
-          <div className="rewards-section-title-wrap">
-            <div className="rewards-section-icon">
-              <Icon name="star" size={20} />
-            </div>
-            <div>
-              <h2>Reward catalogue</h2>
-              <span className="sub">รายการเหรียญตราทั้งหมดในระบบ</span>
-            </div>
-          </div>
-        </div>
+      {/* Reward catalogue - Divided into 2 clear Minimal Street groups */}
+      <Panel quiet>
+        <span className="tag"><em>//</em> Catalogue</span>
+        <h2 style={{ margin: '2px 0 0 0' }}>Reward catalogue</h2>
 
         {catalogue.isPending ? <p className="sub">Loading catalogue…</p> : null}
         {catalogue.isError ? (
@@ -325,28 +299,26 @@ export function RewardsPage() {
         ) : null}
 
         {catalogue.isSuccess && !catalogue.data.items.length ? (
-          <div className="reward-empty-card">
-            <Icon name="star" size={32} />
-            <b>No rewards available yet.</b>
-            <p className="sub">ยังไม่มีรายการเหรียญในแคตตาล็อกขณะนี้</p>
-          </div>
+          <Empty
+            icon="star"
+            title="No rewards available yet."
+            sub="ยังไม่มีรายการเหรียญในแคตตาล็อกขณะนี้"
+          />
         ) : null}
 
         {catalogue.isSuccess && catalogue.data.items.length > 0 ? (
-          <div className="vstack" style={{ gap: '32px' }}>
+          <div className="vstack" style={{ gap: 28, marginTop: 8 }}>
             {/* Group 1: แลกได้ด้วยแต้ม */}
-            <div className="vstack" style={{ gap: '16px' }}>
-              <div className="hstack" style={{ alignItems: 'center', gap: '10px' }}>
-                <span className="tag" style={{ color: '#f59e0b' }}>ร้านค้าแลก Badge</span>
-                <h3 style={{ margin: 0, fontSize: '18px' }}>แลกได้ด้วยแต้ม</h3>
+            <div className="vstack" style={{ gap: 12 }}>
+              <div className="hstack" style={{ alignItems: 'center', gap: 8 }}>
+                <span className="tag"><em>//</em> ร้านค้าแลก Badge</span>
+                <h3 style={{ margin: 0, fontSize: 18 }}>แลกได้ด้วยแต้ม</h3>
               </div>
 
               {!purchasableRewards.length ? (
-                <div className="reward-empty-card" style={{ padding: '24px' }}>
-                  <p className="sub">ยังไม่มีรายการที่เปิดให้แลกด้วยแต้มในขณะนี้</p>
-                </div>
+                <p className="sub">ยังไม่มีรายการที่เปิดให้แลกด้วยแต้มในขณะนี้</p>
               ) : (
-                <div className="rewards-grid">
+                <div className="badge-grid">
                   {purchasableRewards.map((row) => {
                     const isOwned = ownedIds.has(row.id)
                     const required = row.pointsRequired ?? 0
@@ -355,19 +327,19 @@ export function RewardsPage() {
                     const isProcessing = redeemingId === row.id || redeemMutation.isPending
 
                     return (
-                      <div className={`reward-card ${isOwned ? 'is-owned' : ''}`} key={row.id}>
-                        <div className="reward-card-top">
+                      <div className={`badge-card ${isOwned ? 'is-owned' : ''}`} key={row.id}>
+                        <div className="badge-card-header">
                           <RewardBadgeEmblem reward={row} />
-                          <div className="reward-card-info">
+                          <div className="badge-card-content">
                             <RewardName reward={row} />
                             {row.description ? (
-                              <p className="reward-card-desc">{row.description}</p>
+                              <p className="badge-card-desc">{row.description}</p>
                             ) : null}
                           </div>
                         </div>
 
-                        <div className="reward-card-bottom">
-                          <span className="reward-card-price">
+                        <div className="badge-card-footer">
+                          <span className="badge-card-price">
                             🪙 {required} แต้ม
                           </span>
                           {isOwned ? (
@@ -396,37 +368,35 @@ export function RewardsPage() {
             </div>
 
             {/* Group 2: ได้จากความสำเร็จ */}
-            <div className="vstack" style={{ gap: '16px' }}>
-              <div className="hstack" style={{ alignItems: 'center', gap: '10px' }}>
-                <span className="tag" style={{ color: '#a855f7' }}>ความสำเร็จในการแข่งขัน</span>
-                <h3 style={{ margin: 0, fontSize: '18px' }}>ได้จากความสำเร็จ</h3>
+            <div className="vstack" style={{ gap: 12 }}>
+              <div className="hstack" style={{ alignItems: 'center', gap: 8 }}>
+                <span className="tag"><em>//</em> ความสำเร็จในการแข่งขัน</span>
+                <h3 style={{ margin: 0, fontSize: 18 }}>ได้จากความสำเร็จ</h3>
               </div>
 
               {!achievementRewards.length ? (
-                <div className="reward-empty-card" style={{ padding: '24px' }}>
-                  <p className="sub">ไม่มีรายการเหรียญความสำเร็จ</p>
-                </div>
+                <p className="sub">ไม่มีรายการเหรียญความสำเร็จ</p>
               ) : (
-                <div className="rewards-grid">
+                <div className="badge-grid">
                   {achievementRewards.map((row) => {
                     const isOwned = ownedIds.has(row.id)
                     return (
-                      <div className={`reward-card ${isOwned ? 'is-owned' : ''}`} key={row.id}>
-                        <div className="reward-card-top">
+                      <div className={`badge-card ${isOwned ? 'is-owned' : ''}`} key={row.id}>
+                        <div className="badge-card-header">
                           <RewardBadgeEmblem reward={row} />
-                          <div className="reward-card-info">
+                          <div className="badge-card-content">
                             <RewardName reward={row} />
                             {row.description ? (
-                              <p className="reward-card-desc">{row.description}</p>
+                              <p className="badge-card-desc">{row.description}</p>
                             ) : null}
-                            <p className="sub" style={{ fontSize: '12px', marginTop: '4px' }}>
+                            <p className="sub" style={{ fontSize: 12, marginTop: 4 }}>
                               ได้จากการทำตามเงื่อนไขความสำเร็จในการแข่งขัน
                             </p>
                           </div>
                         </div>
 
-                        <div className="reward-card-bottom">
-                          <span className="tag" style={{ margin: 0 }}>รางวัลทัวร์นาเมนต์</span>
+                        <div className="badge-card-footer">
+                          <span className="tag" style={{ margin: 0 }}><em>//</em> Achievement</span>
                           {isOwned ? (
                             <Badge kind="ok">ปลดล็อคแล้ว</Badge>
                           ) : (
@@ -441,7 +411,7 @@ export function RewardsPage() {
             </div>
           </div>
         ) : null}
-      </section>
+      </Panel>
     </div>
   )
 }

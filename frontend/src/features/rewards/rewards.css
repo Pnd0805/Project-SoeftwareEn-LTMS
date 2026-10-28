@@ -1,339 +1,119 @@
-/* src/features/rewards/rewards.css — Modern Badge Store & Showcase */
+/* src/features/rewards/rewards.css — LTMS Minimal Street Theme */
 
-.rewards-container {
+.rewards-workspace {
+  min-width: 0;
+  color: var(--bone);
+  font-family: var(--f-ui);
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-bottom: 48px;
+  gap: 20px;
 }
 
-/* Header & Navigation */
-.rewards-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding-bottom: 8px;
-}
-
-.rewards-header-title {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rewards-header-title h1 {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Hero Points Banner */
-.rewards-hero-card {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%);
-  border: 1px solid rgba(20, 184, 166, 0.35);
-  border-radius: 16px;
-  padding: 28px 32px;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+/* Badge Cards Grid using LTMS Angular Card Style */
+.badge-grid {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
-  align-items: center;
-}
-
-@media (max-width: 768px) {
-  .rewards-hero-card {
-    grid-template-columns: 1fr;
-    padding: 20px;
-  }
-}
-
-.rewards-hero-card::after {
-  content: '';
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.25) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.rewards-hero-left {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rewards-points-display {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.rewards-points-number {
-  font-family: var(--f-display, inherit);
-  font-size: 48px;
-  font-weight: 900;
-  line-height: 1;
-  color: #2dd4bf;
-  text-shadow: 0 0 24px rgba(45, 212, 191, 0.3);
-}
-
-.rewards-points-unit {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--bone-dim, #94a3b8);
-}
-
-.rewards-hero-stats {
-  display: flex;
-  gap: 24px;
-  padding-left: 24px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-@media (max-width: 768px) {
-  .rewards-hero-stats {
-    border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    padding-left: 0;
-    padding-top: 16px;
-  }
-}
-
-.rewards-stat-pill {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.rewards-stat-pill .val {
-  font-size: 24px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.rewards-stat-pill .lbl {
-  font-size: 13px;
-  color: var(--bone-dim, #94a3b8);
-}
-
-/* Sections */
-.rewards-section {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
 
-.rewards-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.rewards-section-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.rewards-section-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #2dd4bf;
-}
-
-.rewards-section-title-wrap h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-/* Cards Grid */
-.rewards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px;
-}
-
-/* Individual Badge Card */
-.reward-card {
-  position: relative;
-  background: var(--panel, #181b20);
-  border: 1px solid var(--line, #282d35);
-  border-radius: 14px;
-  padding: 20px;
+.badge-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 16px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  gap: 14px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.reward-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(45, 212, 191, 0.4);
-  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45), 0 0 12px rgba(45, 212, 191, 0.1);
+.badge-card:hover {
+  border-color: var(--line-hot);
 }
 
-.reward-card.is-owned {
-  border-color: rgba(45, 212, 191, 0.25);
-  background: linear-gradient(180deg, rgba(20, 184, 166, 0.04) 0%, var(--panel, #181b20) 100%);
+.badge-card.is-owned {
+  background: var(--panel-2);
+  border-color: var(--teal);
 }
 
-.reward-card-top {
+.badge-card-header {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   align-items: flex-start;
 }
 
-/* Badge Emblem Styling */
-.badge-emblem {
-  position: relative;
-  width: 56px;
-  height: 56px;
+.badge-card-emblem {
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.08), 0 4px 10px rgba(0, 0, 0, 0.3);
+  border-radius: var(--r);
+  display: grid;
+  place-items: center;
+  background: var(--panel-3);
+  border: 1px solid var(--line-hot);
+  color: var(--bone);
 }
 
-.badge-emblem.bronze {
-  background: linear-gradient(135deg, #78350f 0%, #451a03 100%);
-  border-color: #b45309;
-  color: #fde68a;
-  box-shadow: 0 0 16px rgba(180, 83, 9, 0.3);
+.badge-card.is-owned .badge-card-emblem {
+  background: var(--teal-ghost);
+  border-color: var(--teal);
+  color: var(--teal);
 }
 
-.badge-emblem.silver {
-  background: linear-gradient(135deg, #475569 0%, #1e293b 100%);
-  border-color: #94a3b8;
-  color: #f8fafc;
-  box-shadow: 0 0 16px rgba(148, 163, 184, 0.3);
+.badge-card-emblem.gold {
+  background: var(--amber-ghost);
+  border-color: var(--amber);
+  color: var(--amber);
 }
 
-.badge-emblem.gold {
-  background: linear-gradient(135deg, #b45309 0%, #713f12 100%);
-  border-color: #fbbf24;
-  color: #fef08a;
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.35);
+.badge-card-emblem.achievement {
+  background: var(--panel-3);
+  border-color: var(--line-hot);
+  color: var(--bone);
 }
 
-.badge-emblem.emerald {
-  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
-  border-color: #34d399;
-  color: #a7f3d0;
-  box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
+.badge-card.is-owned .badge-card-emblem.achievement {
+  background: var(--teal-ghost);
+  border-color: var(--teal);
+  color: var(--teal);
 }
 
-.badge-emblem.achievement {
-  background: linear-gradient(135deg, #4c1d95 0%, #2e1065 100%);
-  border-color: #a855f7;
-  color: #e9d5ff;
-  box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
-}
-
-.reward-card-info {
+.badge-card-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1;
+  gap: 4px;
   min-width: 0;
+  flex: 1;
 }
 
-.reward-card-name {
-  font-size: 16px;
+.badge-card-title {
+  font-size: 15px;
   font-weight: 700;
-  color: var(--bone, #f1f5f9);
+  color: var(--bone);
   line-height: 1.3;
 }
 
-.reward-card-desc {
+.badge-card-desc {
   font-size: 13px;
-  color: var(--bone-dim, #94a3b8);
+  color: var(--bone-dim);
   line-height: 1.5;
   margin: 0;
 }
 
-.reward-card-bottom {
+.badge-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 14px;
-  border-top: 1px solid var(--line, #282d35);
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
   margin-top: auto;
-  gap: 12px;
 }
 
-.reward-card-price {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.badge-card-price {
+  font-family: var(--f-ui);
   font-weight: 700;
-  font-size: 15px;
-  color: #f59e0b;
-}
-
-/* Custom Styled Toggle */
-.profile-toggle-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 13px;
-  color: var(--bone-dim, #94a3b8);
-  transition: color 0.15s ease;
-}
-
-.profile-toggle-label:hover {
-  color: #fff;
-}
-
-.profile-toggle-label input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: #2dd4bf;
-  width: 16px;
-  height: 16px;
-}
-
-/* Empty State Card */
-.reward-empty-card {
-  background: var(--panel, #181b20);
-  border: 1px dashed var(--line, #2d333b);
-  border-radius: 14px;
-  padding: 36px 20px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--bone-dim, #94a3b8);
-}
-
-.reward-empty-card p {
-  margin: 0;
+  font-size: 14px;
+  color: var(--amber);
 }
