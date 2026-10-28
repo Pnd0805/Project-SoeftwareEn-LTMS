@@ -711,7 +711,7 @@
 | `CHECKIN_REJECT_REASON_REQUIRED` | 400 | กรุณาระบุเหตุผลที่ปฏิเสธการยืนยันตัวตน | `validate(schema, rejectCheckinErrorCodes)` (M15) มากับ `fields` |
 | `CHECKIN_METHOD_MISMATCH` | 400 | M12: วิธีเช็คอินไม่ตรงโหมดแมตช์ (onsite→qr_onsite · online→photo_online) — extra `{mode, expectedMethod}` |
 | `BRACKET_IN_USE` | 409 | M01 replace: สายเดิมมีแมตช์ที่เริ่ม/เช็คอิน/มีผลแล้ว จับฉลากใหม่ไม่ได้ — extra `{matches}` |
-| `TOURNAMENT_COMPLETED` | 409 | ทัวร์ปิดแล้ว (C14b) — write ใต้ /tournaments/:id, /matches/:id, P08 ทำไม่ได้อีก · extra `{tournamentId, completedAt}` |
+| `TOURNAMENT_COMPLETED` | 409 | ทัวร์ปิดแล้ว (C14b) — write ใต้ /tournaments/:id, /matches/:id, P08 ทำไม่ได้อีก · extra `{tournamentId, completedAt}` · **(OD-69 รอบ 5)** อนุมัติ/ปฏิเสธ/ยกเลิกใบสมัคร และอนุมัติคำขอแก้ไข ก็ได้ code นี้ (extra `{tournamentId}`) |
 | `TOURNAMENT_CANCELLED` | 409 | ทัวร์ถูกยกเลิก (C14c · OD-69) — write ใต้ /tournaments/:id, /matches/:id ทำไม่ได้ (ยกเว้นประกาศ · รีวิวผู้จัด · ความเห็น) · /applications/:id ทุกปุ่ม · รับคำเชิญกรรมการ · คำขอเปลี่ยนกรรมการ · อนุมัติคำขอแก้ไข · ยกเลิกซ้ำ · extra `{tournamentId, cancelledAt?}` |
 | `MATCHES_UNFINISHED` | 409 | C14b: ยังมีแมตช์ไม่จบ — extra `{matches:[{id,status}]}` |
 | `NO_MATCHES` | 409 | C14b: ยังไม่สร้างสาย ปิดไม่ได้ |

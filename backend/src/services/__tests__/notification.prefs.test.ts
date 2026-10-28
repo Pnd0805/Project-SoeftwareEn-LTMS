@@ -68,6 +68,9 @@ describe('ตารางหมวด — ความครบถ้วนแ�
     ['tournament_cancelled', 'ยกเลิกทัวร์'],
     ['match_scheduled', 'เลื่อนเวลา/ย้ายสนาม'],
     ['tournament_announcement_urgent', 'ประกาศเลื่อนเวลา/ย้ายสนาม'],
+    // OD-69 รอบ 5 — ผู้ใช้เลือกเพิ่ม
+    ['result_resolved', 'ผู้จัดตัดสินข้อพิพาท — ผลเป็นที่สุด ผู้ชนะอาจเปลี่ยน'],
+    ['team_member_removed', 'ถูกเอาออกจากทีม — ต้องไปหาทีมใหม่ให้ทันวันปิดรับสมัคร'],
   ])('%s เป็น critical (%s)', (type) => {
     expect(categoryOf(type)).toBe('critical');
   });

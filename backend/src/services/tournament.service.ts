@@ -904,9 +904,14 @@ export async function getAmendmentImpactForAdmin(amendmentId: number, userId: nu
 
 export async function approveAmendment(amendmentId: number, userId: number) {
     const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
-    // ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ (migration 053) — อนุมัติคำขอแก้ไขที่ค้างอยู่ไม่ได้ · ปฏิเสธได้ตามปกติ
+    // ทัวร์ที่ถูกยกเลิก/ปิดแล้ว — อนุมัติคำขอแก้ไขที่ค้างอยู่ไม่ได้ (จะไปแก้ข้อมูลทัวร์ที่จบไปแล้ว) · ปฏิเสธได้ตามปกติ
+    //   completed เติม OD-69 รอบ 5 — เดิมไม่มีด่าน ⇒ แก้วัน/จำนวนทีม/กฎคุณสมบัติของทัวร์ที่จบแล้วได้
     if (tournament.tournament_status === 'cancelled') {
         throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว อนุมัติคำขอแก้ไขไม่ได้',
+            { tournamentId: tournament.tournament_id });
+    }
+    if (tournament.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้ปิดการแข่งขันแล้ว อนุมัติคำขอแก้ไขไม่ได้',
             { tournamentId: tournament.tournament_id });
     }
     const changes = validateAmendmentChanges(amendment.requested_changes);

@@ -29,7 +29,9 @@ export const NOTIFICATION_CATEGORY = {
     // ── ทีม ──
     team_invited: 'critical',            // `team_invitations.expires_at` — คำเชิญหมดอายุใน 7 วัน (migration 013)
     team_invite_answered: 'team',
-    team_member_removed: 'team',
+    // ถูกเอาออกจากทีม — critical 28 ต.ค. 2569 (OD-69 รอบ 5 · ผู้ใช้เลือก)
+    //   คนที่ถูกเอาออกเสียที่ในใบสมัครที่ยังรอผล ⇒ ต้องไปหาทีมใหม่ให้ทัน `registration_end` (เกณฑ์เดียวกับ `team_deleted`)
+    team_member_removed: 'critical',
     team_deleted: 'critical',            // เส้นตายคือ `registration_end` ของทัวร์ที่ใบสมัครค้าง — ทีมหายแล้วต้องไปหาทีมใหม่สมัครให้ทัน (เกณฑ์เดียวกันกับ `application_decided`)
                                          // ★ การกวาดทีมร้าง (TM-07) เกิดขึ้นโดยลูกทีมไม่ได้ทำอะไรเลย ปิดหมวดนี้แล้วทีมหายเงียบ 100%
     squad_below_minimum: 'critical',     // ต้องเติมคนก่อนแมตช์เริ่ม ไม่งั้น M10 ปรับแพ้บายทันที (`sport_types.min_members`)
@@ -95,7 +97,10 @@ export const NOTIFICATION_CATEGORY = {
     // OD-55 — กรรมการเขียนผลทับของที่หัวหน้าทีมส่งมา (โหมด online)
     // critical เพราะนาฬิกาค้านเริ่มใหม่ตรงนี้ ถ้าปิดได้แล้วไม่เห็น = ถูกเปลี่ยนผลโดยไม่รู้ตัวจนหมดเวลาค้าน
     result_overridden: 'critical',
-    result_resolved: 'result',
+    // ผู้จัดตัดสินข้อพิพาทแล้ว — critical 28 ต.ค. 2569 (OD-69 รอบ 5 · ผู้ใช้เลือก)
+    //   ผลเป็นที่สุด และผู้ชนะอาจเปลี่ยน ⇒ คนที่ต้องไปแข่งรอบถัดไปต้องรู้ (`scheduled_time` ของแมตช์ถัดไป)
+    //   และยื่นร้องเรียนได้ก่อนปิดทัวร์เท่านั้น — เหตุผลเดียวกับ `result_verified`
+    result_resolved: 'critical',
     match_result_complaint_filed: 'critical',  // ผู้จัดมี 48 ชม. แนบความเห็น แล้วขึ้นแอดมินอัตโนมัติ
     // แอดมินตัดสินเรื่องร้องเรียน — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอ "แก้ผลหลังอนุมัติ")
     //   ทางเดียวที่ผลที่ยืนยันแล้วถูกแก้ได้คือ amend_result ตรงนี้ ⇒ ผู้ชนะเปลี่ยน = คนที่ต้องไปแข่งรอบถัดไปเปลี่ยน

@@ -477,6 +477,24 @@ describe('application actions on a cancelled tournament', () => {
     expect(mockedApplicationRepo.rejectApplicationInDb).not.toHaveBeenCalled();
   });
 
+  // OD-69 รอบ 5 — ทัวร์ที่ปิดแล้วก็แก้ใบสมัครไม่ได้ (เดิมอนุมัติทีมเข้าทัวร์ที่จบไปแล้วได้)
+  it.each([
+    ['cancelApplication', 5, { tournament_application_status: 'pending' }],
+    ['approveApplication', 7, { tournament_application_status: 'pending' }],
+  ] as const)('%s on a completed tournament → 409 TOURNAMENT_COMPLETED', async (fn, actor, o) => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(makeApplicationDetail({ tournament_status: 'completed', ...o }));
+    await expect((applicationService[fn] as (id: number, u: number) => Promise<unknown>)(100, actor))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_COMPLETED' });
+    expect(mockedApplicationRepo.updateApplicationStatus).not.toHaveBeenCalled();
+    expect(mockedApplicationRepo.approveApplicationWithinQuota).not.toHaveBeenCalled();
+  });
+
+  it('rejectApplication on a completed tournament → 409 TOURNAMENT_COMPLETED', async () => {
+    mockedApplicationRepo.findApplicationById.mockResolvedValue(makeApplicationDetail({ tournament_status: 'completed' }));
+    await expect(applicationService.rejectApplication(100, 7, 'x')).rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_COMPLETED' });
+    expect(mockedApplicationRepo.rejectApplicationInDb).not.toHaveBeenCalled();
+  });
+
   it('a non-leader still gets 403 first — the guard sits after the permission check', async () => {
     mockedApplicationRepo.findApplicationById.mockResolvedValue(makeApplicationDetail({ tournament_status: 'cancelled', team_leader_id: 999 }));
     await expect(applicationService.cancelApplication(100, 5)).rejects.toMatchObject({ status: 403, code: 'NOT_TEAM_LEADER' });
