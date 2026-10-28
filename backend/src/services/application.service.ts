@@ -67,7 +67,7 @@ export async function getApplicationDetail(applicationId: number, userId: number
  * ทัวร์ที่ถูกยกเลิก (migration 053 · มติ 28 ต.ค.) — ใบสมัครแช่แข็งไว้ตามเดิม ไม่ยกเลิก/ถอน/อนุมัติ/ปฏิเสธ
  *   เส้น /applications/:id อยู่นอก /tournaments/:id ⇒ lockCompletedTournament ไม่ครอบ ต้องกันที่นี่เอง
  *   ไม่ต้องถอนเพื่อปลดล็อกผู้เล่น — ผู้เล่นถูกปลดล็อกแล้วตั้งแต่ยกเลิก (application.repo กรองทัวร์ cancelled)
- *   และถ้าปล่อยให้ถอนได้ ทีมจะหลุดจากสายตอนแอดมินกู้คืน ซึ่งขัดกับ "กู้คืนแล้วเดินต่อจากจุดเดิม"
+ *   และใบสมัครเป็นประวัติว่าใครเคยได้แข่ง — ไม่ควรเปลี่ยนหลังทัวร์จบชีวิตไปแล้ว
  * วางหลังด่านสิทธิ์ ⇒ คนที่ไม่เกี่ยวยังได้ 403 เหมือนเดิม ไม่ได้รู้สถานะทัวร์
  */
 function assertTournamentNotCancelled(app: { tournament_id: number; tournament_status: string }): void {

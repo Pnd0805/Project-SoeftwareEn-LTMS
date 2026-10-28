@@ -15,7 +15,7 @@ const ALLOWED_AFTER_CANCEL = [/^\/announcements/, /^\/feedback\/?$/, /^\/comment
 /**
  * Tournament lifecycle guard mounted before child routers.
  * - completed: block writes (except announcements)
- * - cancelled: block writes (except announcements · feedback · comments) — "แช่แข็ง" ทุกอย่างไว้จนกว่าแอดมินจะกู้คืน
+ * - cancelled: block writes (except announcements · feedback · comments) — "แช่แข็ง" ทุกอย่างไว้เป็นประวัติ
  * - soft-deleted: hide `/tournaments/:id/*` and `/matches/:id/*` behind 404
  * Direct `GET /tournaments/:id` is left to the tournament route itself to avoid a duplicate lookup.
  */
@@ -48,7 +48,7 @@ export async function lockCompletedTournament(req : Request, res : Response, nex
 
         if(tournament.tournament_status === 'cancelled'){
             if(ALLOWED_AFTER_CANCEL.some(re => re.test(req.path))) return next();
-            return next(new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว แก้ไขอะไรไม่ได้จนกว่าผู้ดูแลระบบจะกู้คืน',
+            return next(new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว แก้ไขอะไรไม่ได้อีก',
                                      { tournamentId, cancelledAt : tournament.cancelled_at }));
         }
         if(ALLOWED_AFTER_COMPLETE.some(re => re.test(req.path))) return next();

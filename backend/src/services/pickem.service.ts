@@ -75,7 +75,7 @@ async function conflictOf(match: MatchRow, tournament: TournamentRow | null, use
 /**
  * สถานะของการทาย — void = แมตช์จบโดยไม่มีผลยืนยัน (ชนะบาย/ปรับแพ้/แมตช์ตาย) จึงไม่ได้ไม่เสีย
  * ทัวร์ที่ถูกยกเลิก (migration 053 · มติ 28 ต.ค. ข้อ 6) ใบที่ยังไม่ตัดสินก็เป็น void — คิดตอนอ่าน ไม่เขียนลงฐาน
- *   ⇒ แอดมินกู้คืนแล้วใบกลับเป็น pending เองโดยไม่ต้องย้อนอะไร · ใบที่ได้แต้มไปแล้วคงเดิม (won/lost)
+ *   ใบที่ได้แต้มไปแล้วคงเดิม (won/lost)
  */
 export function pickStatus(pick: Pick<PredictionRow, 'points_earned'>, matchStatus: string, tournamentStatus?: string): 'pending' | 'won' | 'lost' | 'void' {
     if (pick.points_earned === null) return matchStatus === 'completed' || tournamentStatus === 'cancelled' ? 'void' : 'pending';

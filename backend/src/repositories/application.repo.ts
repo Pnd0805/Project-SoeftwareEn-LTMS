@@ -567,7 +567,7 @@ export type LiveSquadRow = {
  * ทัวร์ที่ "ยังมีชีวิต" (pending/approved) ซึ่งทีมนี้ส่งคนนี้ลงแข่งไว้
  * ใช้ตอนหัวหน้าทีมจะเอาคนออกจากทีม (มติ 19 ก.ย. 2569) — userId = undefined คือดูทั้งทีม (ตอนลบทีม)
  * ★ ทัวร์ที่ถูกยกเลิก (migration 053) ไม่นับ — มติ 28 ต.ค. ข้อ 9: ยกเลิกแล้วปลดล็อกผู้เล่นทันที
- *   ใบสมัครยังค้างสถานะเดิมไว้ (แช่แข็ง เพื่อให้กู้คืนได้) จึงต้องกรองที่สถานะทัวร์แทน
+ *   ใบสมัครยังค้างสถานะเดิมไว้ (แช่แข็งเป็นประวัติ) จึงต้องกรองที่สถานะทัวร์แทน
  */
 export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Promise<LiveSquadRow[]> {
     const [rows] = await pool.query<(LiveSquadRow & RowDataPacket)[]>(
@@ -589,7 +589,7 @@ export async function findLiveSquadsOfTeam(teamId: number, userId?: number): Pro
 
 /**
  * คนออกจากทีม → ตัดชื่อออกจากรายชื่อที่ส่งลงแข่งของใบสมัครที่ยังมีชีวิต
- * ★ ไม่แตะรายชื่อของทัวร์ที่ถูกยกเลิก — เป็นประวัติว่าใครเคยลงชื่อ (มติ 28 ต.ค. ข้อ 6) และต้องอยู่ครบเผื่อกู้คืน
+ * ★ ไม่แตะรายชื่อของทัวร์ที่ถูกยกเลิก — เป็นประวัติว่าใครเคยลงชื่อ (มติ 28 ต.ค. ข้อ 6)
  */
 export async function deletePlayerFromLiveSquads(teamId: number, userId: number): Promise<number> {
     const [result] = await pool.query<ResultSetHeader>(

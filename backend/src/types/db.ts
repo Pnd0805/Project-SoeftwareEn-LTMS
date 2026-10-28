@@ -134,7 +134,7 @@ export type TournamentRow = {
     cancelled_at : Date | null,
     cancelled_by : number | null,
     cancel_reason : string | null,
-    cancelled_from_status : 'private' | 'public' | null,   // สถานะก่อนยกเลิก — กู้คืนกลับไปที่นี่
+    cancelled_from_status : 'private' | 'public' | null,   // สถานะก่อนยกเลิก — เก็บเป็นประวัติ (ระบบกู้คืนตัดออกแล้ว)
     created_at : Date,
     updated_at : Date | null,
     updated_by : number | null,

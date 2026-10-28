@@ -885,9 +885,9 @@ export async function sweepPrivatePastDueTournaments() : Promise<AutoDeletedTour
  *
  * ★ "แช่แข็ง" ไม่ใช่ "ล้าง" — ไม่แตะแมตช์ ใบสมัคร ผล แต้ม สถิติ เหรียญ แม้แต่แถวเดียว (มติข้อ 6 + คำตอบเรื่องแมตช์ค้าง)
  *   ผลที่ยืนยันแล้วอยู่เป็นประวัติ · แมตช์ที่ยังไม่จบค้างอยู่สถานะเดิม และไม่มีใครเขียนต่อได้เพราะ lockCompletedTournament
- *   ⇒ กู้คืนแล้วทุกอย่างเดินต่อจากจุดเดิมได้ทันที ไม่ต้องจำสถานะรายแมตช์
- * ★ ปิดรับสมัครด้วย และ **กู้คืนแล้วไม่เปิดให้เอง** — ผู้จัดต้องตัดสินใจเปิดใหม่ (ช่วงเวลาสมัครอาจหมดไปแล้ว)
- * ★ อ่านสถานะด้วย FOR UPDATE ก่อน เพื่อเก็บ "สถานะก่อนยกเลิก" ที่แน่นอน แทนที่จะพึ่งลำดับการ assign ใน UPDATE
+ *   ⇒ ทุกอย่างอยู่ครบเป็นประวัติ · ส่วนอื่นของระบบที่หา "แมตช์ที่ยังไม่จบ" ต้องตัดทัวร์ cancelled ออกเอง (OD-69 ผลกระทบลูกโซ่)
+ * ★ ปิดรับสมัครด้วย · ยกเลิกแล้วย้อนไม่ได้ (ตัดระบบกู้คืนออก 28 ต.ค.)
+ * ★ อ่านสถานะด้วย FOR UPDATE ก่อน เพื่อเก็บ "สถานะก่อนยกเลิก" ที่แน่นอน (บันทึกไว้เป็นประวัติ) แทนที่จะพึ่งลำดับการ assign ใน UPDATE
  *
  * คืน null ถ้าสถานะเปลี่ยนไปแล้ว / ยกเลิกไม่ได้ (กดพร้อมกัน) · คืนสถานะเดิมถ้าสำเร็จ
  */
@@ -918,131 +918,6 @@ export async function cancelTournament(
     } finally {
         conn.release();
     }
-}
-
-/**
- * แอดมินกู้คืนทัวร์ที่ถูกยกเลิก — กลับไปสถานะก่อนยกเลิก (public/private) · ล้างข้อมูลการยกเลิก · audit
- * เหตุผลเดิมเก็บไว้ใน audit (ทั้งตอนยกเลิกและตอนกู้คืน) ⇒ ตามย้อนได้ว่าเคยถูกยกเลิกเพราะอะไร
- * คืน null ถ้าไม่ได้อยู่ในสถานะ cancelled
- */
-export async function restoreCancelledTournament(
-    tournamentId: number, adminUserId: number
-): Promise<{ restoredTo: 'private' | 'public' } | null> {
-    const conn = await pool.getConnection();
-    try {
-        await conn.beginTransaction();
-        const [rows] = await conn.query<(Pick<TournamentRow, 'tournament_status' | 'cancelled_from_status' | 'cancel_reason' | 'cancelled_at'> & RowDataPacket)[]>(
-            `SELECT tournament_status, cancelled_from_status, cancel_reason, cancelled_at
-               FROM tournaments WHERE tournament_id = ? AND deleted_at IS NULL FOR UPDATE`,
-            [tournamentId]);
-        const row = rows[0];
-        if (!row || row.tournament_status !== 'cancelled' || row.cancelled_from_status === null) { await conn.rollback(); return null; }
-
-        await conn.query<ResultSetHeader>(
-            `UPDATE tournaments
-                SET tournament_status = ?, cancelled_from_status = NULL, cancelled_at = NULL, cancelled_by = NULL,
-                    cancel_reason = NULL, updated_at = NOW(), updated_by = ?
-              WHERE tournament_id = ?`,
-            [row.cancelled_from_status, adminUserId, tournamentId]);
-        await insertAuditLog(conn, adminUserId, 'tournament_restored', 'tournament', tournamentId,
-            { restoredTo: row.cancelled_from_status, previousReason: row.cancel_reason, cancelledAt: row.cancelled_at });
-        await conn.commit();
-        return { restoredTo: row.cancelled_from_status };
-    } catch (err) {
-        await conn.rollback();
-        throw err;
-    } finally {
-        conn.release();
-    }
-}
-
-export type RestoreIssues = {
-    deletedTeams: { teamId: number; teamName: string }[];
-    playersLeftTeam: { teamId: number; teamName: string; userId: number; fullName: string }[];
-    /** แมตช์ที่ยังไม่แข่งซึ่งเวลาทับกับแมตช์ของทัวร์อื่นที่จองไประหว่างถูกยกเลิก — สนามเดียวกัน และ/หรือ ทีมเดียวกัน */
-    scheduleConflicts: { matchId: number; venue: boolean; team: boolean }[];
-    /** กรรมการที่รับแมตช์นี้ไว้ แต่ไปรับแมตช์ทัวร์อื่นเวลาทับกันระหว่างถูกยกเลิก */
-    refereeConflicts: { matchId: number; userId: number; fullName: string }[];
-    /** แมตช์ที่ยังไม่แข่งแต่เวลานัดผ่านไปแล้ว — ต้องจัดเวลาใหม่ */
-    pastMatches: { matchId: number; scheduledTime: Date }[];
-    /** วันจบทัวร์ผ่านไปแล้ว ⇒ จัดเวลาใหม่ต้องขอแก้วันทัวร์ (C09) ก่อน ไม่งั้นติด OUTSIDE_TOURNAMENT_DATES */
-    eventEnded: boolean;
-};
-
-/**
- * "เวลาทับ" แบบเดียวกับ findConflictingMatch — ช่วง [start, end) · แมตช์ที่ไม่มีเวลาจบถือเป็นจุดเวลา
- * ★ ข้อมูลของทัวร์อื่น (ชื่อทัวร์ · เลขแมตช์ · ใครจอง) ไม่ถูกส่งออกไป — บอกแค่ว่าแมตช์ของ "เรา" ชนด้วยเหตุอะไร
- *   หลักเดียวกับคำเตือนตอนเชิญกรรมการ (referee.service): ตารางของทัวร์อื่นไม่ใช่ข้อมูลของผู้จัดคนนี้
- */
-const OVERLAP = `o.scheduled_time IS NOT NULL
-             AND o.scheduled_time < COALESCE(m.scheduled_end_time, m.scheduled_time + INTERVAL 1 SECOND)
-             AND m.scheduled_time < COALESCE(o.scheduled_end_time, o.scheduled_time + INTERVAL 1 SECOND)`;
-/** แมตช์ของทัวร์อื่นที่ยัง "ใช้ของจริง" อยู่ — ไม่นับทัวร์ที่ถูกยกเลิก/ลบ (มันถูกแช่แข็งเหมือนกัน) */
-const OTHER_LIVE = `o.tournament_id <> m.tournament_id
-             AND EXISTS (SELECT 1 FROM tournaments ot WHERE ot.tournament_id = o.tournament_id
-                          AND ot.tournament_status <> 'cancelled' AND ot.deleted_at IS NULL)`;
-
-/**
- * สิ่งที่เปลี่ยนไประหว่างทัวร์ถูกยกเลิก — ใช้ตอนกู้คืน (มติ 28 ต.ค.: กู้คืนได้ + บอกว่าทีมไหนมีปัญหา)
- *   ยกเลิกแล้วผู้เล่นถูกปลดล็อก (ข้อ 9) ⇒ ทีมที่ผ่านอาจถูกลบ หรือคนในรายชื่อลงแข่งออกจากทีมไปแล้ว
- *   รายชื่อลงแข่งของทัวร์ที่ถูกยกเลิก **ไม่ถูกลบ** (application.repo) ⇒ คนที่ออกไปแล้วยังอยู่ในรายชื่อ
- * ★ รายงานอย่างเดียว ไม่แก้อะไร — ผู้จัดตัดสินเอง (ตัดสินชนะบาย / ปล่อยไว้)
- */
-export async function findRestoreIssues(tournamentId: number): Promise<RestoreIssues> {
-    const [deleted] = await pool.query<({ teamId: number; teamName: string } & RowDataPacket)[]>(
-        `SELECT ta.team_id AS teamId, tm.name AS teamName
-           FROM tournament_applications ta JOIN teams tm ON tm.team_id = ta.team_id
-          WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved' AND tm.deleted_at IS NOT NULL
-          ORDER BY ta.team_id`, [tournamentId]);
-    const [left] = await pool.query<({ teamId: number; teamName: string; userId: number; fullName: string } & RowDataPacket)[]>(
-        `SELECT ta.team_id AS teamId, tm.name AS teamName, ap.user_id AS userId, u.full_name AS fullName
-           FROM application_players ap
-           JOIN tournament_applications ta ON ta.tournament_application_id = ap.tournament_application_id
-           JOIN teams tm ON tm.team_id = ta.team_id
-           JOIN users u ON u.user_id = ap.user_id
-          WHERE ta.tournament_id = ? AND ta.tournament_application_status = 'approved' AND tm.deleted_at IS NULL
-            AND NOT EXISTS (SELECT 1 FROM team_members m WHERE m.team_id = ta.team_id AND m.user_id = ap.user_id)
-          ORDER BY ta.team_id, ap.user_id`, [tournamentId]);
-
-    // ★ ตรวจเฉพาะแมตช์ที่ยังไม่เริ่ม (scheduled/checkin_open) — แมตช์ที่เริ่ม/จบแล้วเลื่อนไม่ได้และไม่ต้องไปที่ไหนอีก
-    const [sched] = await pool.query<({ matchId: number; venue: number; team: number } & RowDataPacket)[]>(
-        `SELECT m.match_id AS matchId,
-                EXISTS (SELECT 1 FROM matches o WHERE ${OTHER_LIVE} AND o.match_status <> 'completed' AND ${OVERLAP}
-                           AND m.venue IS NOT NULL AND o.venue = m.venue) AS venue,
-                EXISTS (SELECT 1 FROM matches o WHERE ${OTHER_LIVE} AND o.match_status <> 'completed' AND ${OVERLAP}
-                           AND (o.team_a_id IN (m.team_a_id, m.team_b_id) OR o.team_b_id IN (m.team_a_id, m.team_b_id))) AS team
-           FROM matches m
-          WHERE m.tournament_id = ? AND m.match_status IN ('scheduled', 'checkin_open') AND m.scheduled_time IS NOT NULL
-         HAVING venue OR team
-          ORDER BY m.match_id`, [tournamentId]);
-    const [refs] = await pool.query<({ matchId: number; userId: number; fullName: string } & RowDataPacket)[]>(
-        `SELECT DISTINCT m.match_id AS matchId, tr.user_id AS userId, u.full_name AS fullName
-           FROM matches m
-           JOIN match_referees mr ON mr.match_id = m.match_id AND mr.assignment_status = 'accepted'
-           JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id AND tr.removed_at IS NULL
-           JOIN users u ON u.user_id = tr.user_id
-           JOIN tournament_referees tr2 ON tr2.user_id = tr.user_id AND tr2.removed_at IS NULL
-           JOIN match_referees mr2 ON mr2.tournament_referee_id = tr2.tournament_referee_id AND mr2.assignment_status = 'accepted'
-           JOIN matches o ON o.match_id = mr2.match_id
-          WHERE m.tournament_id = ? AND m.match_status IN ('scheduled', 'checkin_open') AND m.scheduled_time IS NOT NULL
-            AND ${OTHER_LIVE} AND o.match_status NOT IN ('completed', 'finished') AND ${OVERLAP}
-          ORDER BY m.match_id, tr.user_id`, [tournamentId]);
-    const [past] = await pool.query<({ matchId: number; scheduledTime: Date } & RowDataPacket)[]>(
-        `SELECT match_id AS matchId, scheduled_time AS scheduledTime FROM matches
-          WHERE tournament_id = ? AND match_status IN ('scheduled', 'checkin_open')
-            AND scheduled_time IS NOT NULL AND scheduled_time < NOW()
-          ORDER BY scheduled_time, match_id`, [tournamentId]);
-    const [ended] = await pool.query<({ ended: number } & RowDataPacket)[]>(
-        `SELECT COALESCE(event_end_date, event_start_date) < CURDATE() AS ended FROM tournaments WHERE tournament_id = ?`,
-        [tournamentId]);
-
-    return {
-        deletedTeams: [...deleted], playersLeftTeam: [...left],
-        scheduleConflicts: sched.map(r => ({ matchId: r.matchId, venue: Boolean(r.venue), team: Boolean(r.team) })),
-        refereeConflicts: [...refs],
-        pastMatches: [...past],
-        eventEnded: Boolean(ended[0]?.ended),
-    };
 }
 
 export async function softDeleteTournament(tournamentId: number, userId: number): Promise<boolean> {

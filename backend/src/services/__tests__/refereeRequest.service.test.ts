@@ -888,7 +888,7 @@ describe('createRefWithdraw (FR09)', () => {
     expect(mockedReqRepo.create).not.toHaveBeenCalled();
   });
 
-  /** migration 053 — ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ เปลี่ยนกรรมการไม่ได้จนกว่าจะกู้คืน */
+  /** migration 053 — ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ เปลี่ยนกรรมการไม่ได้ */
   it('ทัวร์ถูกยกเลิก ⇒ 409 TOURNAMENT_CANCELLED และไม่แตะอะไรต่อ', async () => {
     mockedTournamentRepo.findTournamentById.mockResolvedValue({
       tournament_id: 10, tournament_status: 'cancelled', deleted_at: null, requested_by_user_id: 900,

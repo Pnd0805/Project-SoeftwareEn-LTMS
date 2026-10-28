@@ -17,9 +17,8 @@ import {
  *   ④ ขอโอน/แลกแมตช์กรรมการ     — ยื่นได้ แจ้งอีกคน แล้วไปติดตอนตอบ
  *   ⑤ หน้าแมตช์ของฉัน             — โชว์แมตช์ที่ถูกแช่แข็งเป็น "กำลังจะแข่ง" ตลอดไป
  *   ⑥ กล่องคำเชิญกรรมการ          — ขึ้นคำเชิญที่กดรับไม่ได้
- *   ⑦ กู้คืน                       — ทีม/ผู้เล่นที่เปลี่ยนไประหว่างถูกยกเลิก ต้องถูกรายงาน (มติ 28 ต.ค.)
- *   ⑧ กู้คืนหลังของถูกจองไปแล้ว     — สนาม/ทีม/กรรมการที่ถูกปล่อยไปใช้ที่อื่น + เวลานัดที่ผ่านไปแล้ว (มติ 28 ต.ค. รอบ 2)
- * ทุกข้อพิสูจน์สองทาง: "ก่อนยกเลิกยังเป็นแบบเดิม" และ "หลังยกเลิกถูกตัดออก" (+ กู้คืนแล้วกลับมา)
+ *   ⑦ ปลดล็อก                       — ลบทีมที่เคยผ่าน/ลงแข่งแล้วได้ (เดิมติด TEAM_LOCKED_IN_TOURNAMENT)
+ * ทุกข้อพิสูจน์สองทาง: "ก่อนยกเลิกยังเป็นแบบเดิม" และ "หลังยกเลิกถูกตัดออก"
  */
 
 let orgX: TestUser;
@@ -43,7 +42,6 @@ let T: Date;
 const SHARED_VENUE = 'สนามกลางมหาวิทยาลัย';
 const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
 const cancelX = () => as(orgX).post(`/tournaments/${tourX}/cancel`).send({ reason: 'ทดสอบผลกระทบ' });
-const restoreX = () => as(uniAdmin).post(`/admin/tournaments/${tourX}/restore`).send({});
 /** รายการจาก response ไม่ว่าจะเป็น array ตรง ๆ หรือ { items } */
 const list = (body: unknown): Array<Record<string, any>> =>
   (Array.isArray(body) ? body : (body as { items: unknown[] }).items) as Array<Record<string, any>>;
@@ -82,7 +80,7 @@ beforeEach(async () => {
 });
 
 describe('① หน้างานค้างของแอดมิน — แมตช์พิพาทของทัวร์ที่ถูกยกเลิก', () => {
-  it('ก่อนยกเลิก: แมตช์พิพาทเลยกำหนดขึ้นในงานค้าง · หลังยกเลิก: หายไป · กู้คืน: กลับมา', async () => {
+  it('ก่อนยกเลิก: แมตช์พิพาทเลยกำหนดขึ้นในงานค้าง · หลังยกเลิก: หายไป', async () => {
     const disputed = await createMatch({ tournamentId: tourX, teamA, teamB, status: 'disputed' });
     await insert('match_results', {
       match_id: disputed, submitted_by_user_id: referee.id, submitted_role: 'referee', match_result_status: 'disputed',
@@ -93,8 +91,6 @@ describe('① หน้างานค้างของแอดมิน — �
     expect(await stalled()).toContain(disputed);
     await cancelX();
     expect(await stalled()).not.toContain(disputed);
-    await restoreX();
-    expect(await stalled()).toContain(disputed);
   });
 });
 
@@ -156,13 +152,11 @@ describe('④ ขอโอน/แลกแมตช์กรรมการ — 
 });
 
 describe('⑤ หน้าแมตช์ของฉัน — ไม่โชว์แมตช์ที่ถูกแช่แข็ง', () => {
-  it('ผู้เล่น (/me/matches): ก่อนเห็น · หลังยกเลิกไม่เห็น · กู้คืนเห็นอีก', async () => {
+  it('ผู้เล่น (/me/matches): ก่อนเห็น · หลังยกเลิกไม่เห็น', async () => {
     const mine = async () => matchIdsOf((await as(playerA).get('/me/matches')).body);
     expect(await mine()).toContain(matchX);
     await cancelX();
     expect(await mine()).not.toContain(matchX);
-    await restoreX();
-    expect(await mine()).toContain(matchX);
   });
 
   it('กรรมการ (/me/matches และ /me/referee-matches): แมตช์ที่ยังไม่แข่งหาย · แมตช์ที่แข่งจบแล้วยังอยู่เป็นประวัติ', async () => {
@@ -179,141 +173,27 @@ describe('⑤ หน้าแมตช์ของฉัน — ไม่โช�
 });
 
 describe('⑥ กล่องคำเชิญกรรมการ', () => {
-  it('คำเชิญที่ยังไม่ตอบของทัวร์ที่ถูกยกเลิกไม่ขึ้น · กู้คืนแล้วกลับมา', async () => {
+  it('คำเชิญที่ยังไม่ตอบของทัวร์ที่ถูกยกเลิกไม่ขึ้น', async () => {
     const invitee = await createUser();
     const inv = await addTournamentReferee({ tournamentId: tourX, userId: invitee.id, invitedBy: orgX.id, invitationStatus: 'pending' });
     const ids = async () => list((await as(invitee).get('/me/referee-invitations')).body).map(i => i['id']);
     expect(await ids()).toContain(inv);
     await cancelX();
     expect(await ids()).not.toContain(inv);
-    await restoreX();
-    expect(await ids()).toContain(inv);
   });
 });
 
-describe('⑦ กู้คืน — รายงานทีมที่เปลี่ยนไประหว่างถูกยกเลิก (มติ 28 ต.ค.)', () => {
-  it('ไม่มีอะไรเปลี่ยน → issues ว่าง · ไม่มีแจ้งเตือนพิเศษถึงผู้จัด', async () => {
-    await cancelX();
-    const res = await restoreX();
-    expect(res.body.issues).toEqual({ deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false });
-    expect(await one<{ n: number }>(`SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND type = 'tournament_restored'`, [orgX.id]))
-      .toEqual({ n: 1 });
-  });
+describe('⑦ ปลดล็อก — ลบทีมที่เคยผ่านได้หลังยกเลิก', () => {
+  it('ก่อนยกเลิก: ลบทีมที่ผ่านแล้วไม่ได้ · หลังยกเลิก: ลบได้ · ใบสมัคร/รายชื่อของทัวร์ที่ถูกยกเลิกยังอยู่เป็นประวัติ', async () => {
+    const locked = await as(leaderB).delete(`/teams/${teamB}`);
+    expect(locked.status).toBe(409);
+    expect(locked.body.error.code).toBe('TEAM_LOCKED_IN_TOURNAMENT');
 
-  it('ทีมถูกลบ + ผู้เล่นออกจากทีม ระหว่างถูกยกเลิก → กู้คืนได้ · บอกแอดมินใน response · บอกผู้จัดเป็นแจ้งเตือน', async () => {
     await cancelX();
-    // ปลดล็อกแล้ว (ข้อ 9) — สองอย่างนี้ทำได้เพราะทัวร์ถูกยกเลิก
     expect((await as(leaderB).delete(`/teams/${teamB}`)).status).toBeLessThan(300);
-    expect((await as(leaderA).delete(`/teams/${teamA}/members/${playerA.id}`)).status).toBeLessThan(300);
-
-    const res = await restoreX();
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe('public');
-    expect(res.body.issues.deletedTeams).toEqual([{ teamId: teamB, teamName: expect.any(String) }]);
-    expect(res.body.issues.playersLeftTeam).toEqual([{ teamId: teamA, teamName: expect.any(String), userId: playerA.id, fullName: expect.any(String) }]);
-
-    const notes = await testDb().query(
-      `SELECT message FROM notifications WHERE user_id = ? AND type = 'tournament_restored' ORDER BY notification_id`, [orgX.id]);
-    const messages = (notes[0] as { message: string }[]).map(n => n.message);
-    expect(messages).toHaveLength(2);   // แจ้งทั่วไป 1 + แจ้งเรื่องทีมที่ต้องตรวจ 1
-    expect(messages[1]).toContain('ทีมที่ถูกลบไปแล้ว');
-    expect(messages[1]).toContain('ออกจากทีมไปแล้ว');
-  });
-});
-
-describe('⑧ กู้คืนหลังของถูกจองไปแล้ว — รายงานแมตช์ที่ชน (มติ 28 ต.ค. รอบ 2)', () => {
-  const plusHour = (d: Date) => new Date(d.getTime() + 3600_000).toISOString();
-  /** ผู้จัด Y จัดแมตช์ทีม (teamA ?? ทีมใหม่) กับทีมใหม่ ที่เวลา/สนามที่กำหนด — ผ่านด่านจริงของระบบ */
-  async function bookInY(o: { at: Date; venue: string; useTeamA?: boolean }) {
-    const other = await createTeam({ leader: (await createUser()).id, sportTypeId: sport });
-    const first = o.useTeamA ? teamA : await createTeam({ leader: (await createUser()).id, sportTypeId: sport });
-    const m = await createMatch({ tournamentId: tourY, teamA: first, teamB: other });
-    const res = await as(orgY).patch(`/matches/${m}/schedule`).send({ scheduledTime: o.at.toISOString(), scheduledEndTime: plusHour(o.at), venue: o.venue });
-    expect(res.status).toBeLessThan(300);
-    return m;
-  }
-  const orgRestoreNote = async () => (await one<{ message: string }>(
-    `SELECT message FROM notifications WHERE user_id = ? AND type = 'tournament_restored' ORDER BY notification_id DESC LIMIT 1`, [orgX.id]))?.message ?? '';
-
-  it('สนามถูกทัวร์อื่นจองเวลาเดียวกัน → scheduleConflicts venue · ผู้จัดได้แจ้ง #แมตช์', async () => {
-    await cancelX();
-    await bookInY({ at: T, venue: SHARED_VENUE });
-    const res = await restoreX();
-    expect(res.status).toBe(200);
-    expect(res.body.issues.scheduleConflicts).toEqual([{ matchId: matchX, venue: true, team: false }]);
-    expect(await orgRestoreNote()).toContain(`#${matchX}`);
-  });
-
-  it('ทีมไปมีนัดทัวร์อื่นเวลาเดียวกัน (คนละสนาม) → scheduleConflicts team', async () => {
-    await cancelX();
-    await bookInY({ at: T, venue: 'สนามอื่นไกลออกไป', useTeamA: true });
-    const res = await restoreX();
-    expect(res.body.issues.scheduleConflicts).toEqual([{ matchId: matchX, venue: false, team: true }]);
-  });
-
-  it('เวลาเดียวกันแต่คนละสนามคนละทีม · หรือสนามเดียวกันแต่คนละเวลา → ไม่ชน', async () => {
-    await cancelX();
-    await bookInY({ at: T, venue: 'สนามอื่นไกลออกไป' });
-    await bookInY({ at: new Date(T.getTime() + 2 * 3600_000), venue: SHARED_VENUE });
-    expect((await restoreX()).body.issues.scheduleConflicts).toEqual([]);
-  });
-
-  it('ต่อท้ายพอดี (จบ 11:00 อีกนัดเริ่ม 11:00) → ไม่ชน (ช่วง [start, end) เหมือนด่านจัดตาราง)', async () => {
-    await cancelX();
-    await bookInY({ at: new Date(T.getTime() + 3600_000), venue: SHARED_VENUE });
-    expect((await restoreX()).body.issues.scheduleConflicts).toEqual([]);
-  });
-
-  it('ของที่ชนอยู่ในทัวร์อื่นที่ถูกยกเลิกเหมือนกัน → ไม่นับ (ถูกแช่แข็งทั้งคู่)', async () => {
-    const m = await bookInY({ at: T, venue: 'สนามชั่วคราว' });
-    await testDb().query('UPDATE matches SET venue = ? WHERE match_id = ?', [SHARED_VENUE, m]);   // จำลองว่าจองไว้ก่อน
-    await cancelX();
-    await testDb().query(`UPDATE tournaments SET tournament_status = 'cancelled', cancelled_from_status = 'public' WHERE tournament_id = ?`, [tourY]);
-    expect((await restoreX()).body.issues.scheduleConflicts).toEqual([]);
-  });
-
-  it('กรรมการไปรับงานทัวร์อื่นเวลาเดียวกัน → refereeConflicts · ผู้จัดเห็นชื่อ · กรรมการได้แจ้งเตือนของตัวเอง', async () => {
-    await cancelX();
-    const matchY = await createMatch({ tournamentId: tourY, teamA: null, teamB: null, scheduledAt: T, venue: 'สนามอีกที่' });
-    const inv = await addTournamentReferee({ tournamentId: tourY, userId: referee.id, invitedBy: orgY.id, invitationStatus: 'pending' });
-    await insert('match_referees', { match_id: matchY, tournament_referee_id: inv, assignment_status: 'pending' });
-    expect((await as(referee).post(`/referee-invitations/${inv}/accept`).send({ matchIds: [matchY] })).status).toBeLessThan(300);
-
-    const res = await restoreX();
-    expect(res.body.issues.refereeConflicts).toEqual([{ matchId: matchX, userId: referee.id, fullName: expect.any(String) }]);
-    const toRef = await one<{ message: string }>(
-      `SELECT message FROM notifications WHERE user_id = ? AND type = 'tournament_restored' AND title LIKE '%ชนเวลา%'`, [referee.id]);
-    expect(toRef!.message).toContain(`#${matchX}`);
-  });
-
-  it('เวลานัดผ่านไปแล้ว → pastMatches · วันทัวร์ยังไม่จบ eventEnded = false', async () => {
-    await cancelX();
-    const yesterday = new Date(Date.now() - 86_400_000);
-    await testDb().query('UPDATE matches SET scheduled_time = ?, scheduled_end_time = ? WHERE match_id = ?',
-      [yesterday, new Date(yesterday.getTime() + 3600_000), matchX]);
-    const res = await restoreX();
-    expect(res.body.issues.pastMatches.map((p: { matchId: number }) => p.matchId)).toEqual([matchX]);
-    expect(res.body.issues.eventEnded).toBe(false);
-    expect(await orgRestoreNote()).toContain('เลยเวลานัดแล้ว 1 แมตช์');
-  });
-
-  it('วันจัดทัวร์ผ่านไปแล้ว → eventEnded = true และบอกผู้จัดให้ขอแก้วันก่อน', async () => {
-    await cancelX();
-    await testDb().query('UPDATE tournaments SET event_start_date = CURDATE() - INTERVAL 5 DAY, event_end_date = CURDATE() - INTERVAL 4 DAY WHERE tournament_id = ?', [tourX]);
-    await testDb().query('UPDATE matches SET scheduled_time = NOW() - INTERVAL 5 DAY, scheduled_end_time = NOW() - INTERVAL 5 DAY + INTERVAL 1 HOUR WHERE match_id = ?', [matchX]);
-    const res = await restoreX();
-    expect(res.body.issues.eventEnded).toBe(true);
-    expect(await orgRestoreNote()).toContain('ต้องยื่นขอแก้วันทัวร์ก่อน');
-  });
-
-  it('ทางออกมีจริง: หลังกู้คืนผู้จัดย้ายแมตช์ที่ชนไปช่องว่างได้ · ย้ายกลับไปช่องที่ชนไม่ได้', async () => {
-    await cancelX();
-    await bookInY({ at: T, venue: SHARED_VENUE });
-    await restoreX();
-    const toConflict = await as(orgX).patch(`/matches/${matchX}/schedule`).send({ scheduledTime: T.toISOString(), scheduledEndTime: plusHour(T), venue: SHARED_VENUE });
-    expect(toConflict.status).toBe(409);
-    expect(toConflict.body.error.code).toBe('SCHEDULE_CONFLICT');
-    const later = new Date(T.getTime() + 3 * 3600_000);
-    expect((await as(orgX).patch(`/matches/${matchX}/schedule`).send({ scheduledTime: later.toISOString(), scheduledEndTime: plusHour(later), venue: SHARED_VENUE })).status).toBeLessThan(300);
+    expect(await one(`SELECT tournament_application_status AS s FROM tournament_applications WHERE tournament_id = ? AND team_id = ?`, [tourX, teamB]))
+      .toEqual({ s: 'approved' });
+    expect(await one('SELECT COUNT(*) AS n FROM application_players WHERE tournament_id = ? AND user_id = ?', [tourX, leaderB.id]))
+      .toEqual({ n: 1 });
   });
 });

@@ -904,9 +904,9 @@ export async function getAmendmentImpactForAdmin(amendmentId: number, userId: nu
 
 export async function approveAmendment(amendmentId: number, userId: number) {
     const { amendment, tournament, admin } = await getAmendmentForAdmin(amendmentId, userId);
-    // ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ (migration 053) — อนุมัติคำขอแก้ไขที่ค้างอยู่ไม่ได้จนกว่าจะกู้คืน · ปฏิเสธได้ตามปกติ
+    // ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ (migration 053) — อนุมัติคำขอแก้ไขที่ค้างอยู่ไม่ได้ · ปฏิเสธได้ตามปกติ
     if (tournament.tournament_status === 'cancelled') {
-        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว อนุมัติคำขอแก้ไขไม่ได้จนกว่าจะกู้คืน',
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว อนุมัติคำขอแก้ไขไม่ได้',
             { tournamentId: tournament.tournament_id });
     }
     const changes = validateAmendmentChanges(amendment.requested_changes);
@@ -1134,7 +1134,9 @@ export async function warnBeforeAutoDelete(){
 //   4 เหตุผลบังคับ 1–255 ตัวอักษร ทุกคนที่เกี่ยวข้องเห็น
 //   5 แจ้งทุกคนที่ทัวร์มีผลกับเขา (หัวหน้าทีม · ผู้เล่นในรายชื่อ · กรรมการ · คนที่ทายผล · ผู้จัด) ยกเว้นคนที่กดเอง
 //   6 แช่แข็ง ไม่ล้าง — ผล แต้ม สถิติ เหรียญ ที่เกิดแล้วอยู่ครบ · แมตช์ที่ยังไม่จบค้างไว้ตามเดิม ใบทายที่ยังไม่ตัดสินเป็น void
-//   7 ทุกคนเปิดดูได้ · 8 แอดมินกู้คืนได้ · 9 ผู้เล่นไม่ถูกล็อกกับทัวร์ที่ถูกยกเลิก (application.repo)
+//   7 ทุกคนเปิดดูได้ · 9 ผู้เล่นไม่ถูกล็อกกับทัวร์ที่ถูกยกเลิก (application.repo)
+//   ✂ ข้อ 8 (แอดมินกู้คืน) ตัดออก 28 ต.ค. — "ยกเลิกคือจบ" กันกดผิดด้วยการยืนยันหลายชั้นที่ FE แทน
+//     เหตุผล: กู้คืนทำให้ต้องรับมือของที่ถูกจองไประหว่างนั้น (สนาม/ทีม/กรรมการชน) = จุดเกิดบั๊กลูกโซ่เพิ่ม (OD-69)
 //   หลังยกเลิก: ความเห็นต่อทัวร์ + ประกาศ + รีวิวผู้จัด (7 วัน) ยังใช้ได้ ที่เหลือล็อกหมด (lockCompletedTournament)
 
 /** ผู้จัดของทัวร์ที่อนุมัติแล้ว หรือแอดมินทั้งมหาวิทยาลัย · root ไม่นับ — root แต่งตั้งและตรวจสอบ ไม่กดแทนแอดมิน */
@@ -1144,10 +1146,10 @@ async function cancellerRoleOf(tournament: TournamentRow, userId: number): Promi
     return admin?.scope_type === 'university_wide' ? 'admin' : null;
 }
 
-/** แจ้งเรื่องยกเลิก/กู้คืนถึงทุกคนที่ทัวร์มีผลกับเขา — ไม่ส่งหาคนที่กดเอง (รู้อยู่แล้ว) */
+/** แจ้งเรื่องยกเลิกถึงทุกคนที่ทัวร์มีผลกับเขา — ไม่ส่งหาคนที่กดเอง (รู้อยู่แล้ว) */
 async function notifyTournamentAudience(
     tournamentId: number, exceptUserId: number,
-    content: { type: 'tournament_cancelled' | 'tournament_restored'; title: string; message: string }
+    content: { type: 'tournament_cancelled'; title: string; message: string }
 ): Promise<void> {
     try {
         const audience = (await NotificationRepo.findTournamentCancellationAudience(tournamentId)).filter(id => id !== exceptUserId);
@@ -1185,69 +1187,6 @@ export async function cancelTournament(tournamentId: number, userId: number, rea
         message: `${role === 'organizer' ? 'ผู้จัด' : 'ผู้ดูแลระบบ'}ยกเลิกทัวร์นาเมนต์นี้ — เหตุผล: ${reason}`,
     });
     return { id: tournamentId, status: 'cancelled' as const, fromStatus: result.fromStatus, reason, cancelledBy: role };
-}
-
-/**
- * แอดมินกู้คืนทัวร์ที่ถูกยกเลิก (มติข้อ 8) — กลับไปสถานะเดิม และทุกอย่างเดินต่อจากจุดที่แช่แข็งไว้
- * รับสมัครยังปิดอยู่ — ผู้จัดต้องเปิดใหม่เองถ้าต้องการ (ช่วงเวลาสมัครอาจผ่านไปแล้ว)
- */
-export async function restoreCancelledTournament(tournamentId: number, adminUserId: number) {
-    const tournament = await getTournamentOr404(tournamentId);
-    if (tournament.tournament_status !== 'cancelled') {
-        throw new AppError(409, 'TOURNAMENT_NOT_CANCELLED', 'ทัวร์นาเมนต์นี้ไม่ได้ถูกยกเลิก จึงกู้คืนไม่ได้');
-    }
-    const result = await TournamentRepo.restoreCancelledTournament(tournamentId, adminUserId);
-    if (!result) {
-        throw new AppError(409, 'TOURNAMENT_NOT_CANCELLED', 'ทัวร์นาเมนต์นี้ไม่ได้ถูกยกเลิก จึงกู้คืนไม่ได้');
-    }
-
-    await notifyTournamentAudience(tournamentId, adminUserId, {
-        type: 'tournament_restored',
-        title: `ทัวร์นาเมนต์ "${tournament.name}" กลับมาจัดต่อ`,
-        message: 'ผู้ดูแลระบบกู้คืนทัวร์นาเมนต์นี้แล้ว — แมตช์ที่นัดไว้กลับมาตามกำหนดเดิม กรุณาตรวจตารางแข่งอีกครั้ง',
-    });
-
-    // ทีมที่เปลี่ยนไประหว่างถูกยกเลิก — บอกทั้งแอดมิน (ใน response) และผู้จัด (คนที่ต้องจัดการต่อ)
-    // ระหว่างถูกยกเลิก ทีม/สนาม/กรรมการถูกปล่อยให้ใช้ที่อื่นได้ (OD-69 ข้อ 9 + ผลกระทบลูกโซ่ ②③)
-    //   ⇒ กู้คืนแล้วอาจชนกับของที่จองไปแล้ว · มติ 28 ต.ค.: กู้คืนได้ + รายงาน ให้ผู้จัดจัดเวลาใหม่เอง
-    //   (ตอนผู้จัดแก้เวลา findConflictingMatch กันไม่ให้ชนซ้ำอยู่แล้ว)
-    const issues = await TournamentRepo.findRestoreIssues(tournamentId);
-    const matchList = (ids: number[]) => ids.map(id => `#${id}`).join(', ');
-    const parts = [
-        ...(issues.deletedTeams.length > 0
-            ? [`ทีมที่ถูกลบไปแล้ว: ${issues.deletedTeams.map(t => t.teamName).join(', ')}`] : []),
-        ...(issues.playersLeftTeam.length > 0
-            ? [`ผู้เล่นในรายชื่อที่ออกจากทีมไปแล้ว: ${issues.playersLeftTeam.map(p => `${p.fullName} (${p.teamName})`).join(', ')}`] : []),
-        ...(issues.scheduleConflicts.some(c => c.venue)
-            ? [`แมตช์ที่สนามถูกทัวร์อื่นจองเวลาเดียวกัน: ${matchList(issues.scheduleConflicts.filter(c => c.venue).map(c => c.matchId))}`] : []),
-        ...(issues.scheduleConflicts.some(c => c.team)
-            ? [`แมตช์ที่ทีมไปมีนัดทัวร์อื่นเวลาเดียวกัน: ${matchList(issues.scheduleConflicts.filter(c => c.team).map(c => c.matchId))}`] : []),
-        ...(issues.refereeConflicts.length > 0
-            ? [`กรรมการที่ไปรับงานอื่นเวลาเดียวกัน: ${issues.refereeConflicts.map(r => `${r.fullName} (แมตช์ #${r.matchId})`).join(', ')}`] : []),
-        ...(issues.pastMatches.length > 0
-            ? [`แมตช์ที่เลยเวลานัดแล้ว ${issues.pastMatches.length} แมตช์`] : []),
-    ];
-    if (parts.length > 0) {
-        await NotificationService.notify({
-            userId: tournament.requested_by_user_id, type: 'tournament_restored',
-            title: `ทัวร์นาเมนต์ "${tournament.name}" มีเรื่องที่ต้องจัดการก่อนแข่งต่อ`,
-            message: `ระหว่างที่ทัวร์ถูกยกเลิกมีการเปลี่ยนแปลง — ${parts.join(' · ')} — กรุณาจัดเวลา/สนามใหม่` +
-                     (issues.eventEnded ? ' (วันจัดทัวร์ผ่านไปแล้ว ต้องยื่นขอแก้วันทัวร์ก่อน)' : ''),
-            relatedEntityType: 'tournament', relatedEntityId: tournamentId,
-        });
-    }
-    // กรรมการที่งานชน — ต้องรู้ด้วยว่าตอนนี้ถือสองงานเวลาเดียวกัน (ไม่บอกรายละเอียดของอีกทัวร์ — เขารู้อยู่แล้ว)
-    const conflictedReferees = new Map<number, number[]>();
-    for (const r of issues.refereeConflicts) conflictedReferees.set(r.userId, [...(conflictedReferees.get(r.userId) ?? []), r.matchId]);
-    for (const [refUserId, matchIds] of conflictedReferees) {
-        await NotificationService.notify({
-            userId: refUserId, type: 'tournament_restored',
-            title: `งานกรรมการชนเวลา — ทัวร์นาเมนต์ "${tournament.name}" กลับมาจัดต่อ`,
-            message: `แมตช์ ${matchList(matchIds)} ที่คุณรับไว้ ชนเวลากับงานกรรมการอื่นที่คุณรับไประหว่างทัวร์นี้ถูกยกเลิก — กรุณาติดต่อผู้จัดเพื่อเปลี่ยนเวลาหรือเปลี่ยนกรรมการ`,
-            relatedEntityType: 'tournament', relatedEntityId: tournamentId,
-        });
-    }
-    return { id: tournamentId, status: result.restoredTo, registrationOpen: false, issues };
 }
 
 /** BR-03 ส่วนที่ 3 — ทัวร์ที่ปิดไปเกิน 4 ปี ⇒ soft delete (เหตุผลทั้งหมดอยู่ใน repo) */

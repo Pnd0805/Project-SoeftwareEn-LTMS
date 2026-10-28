@@ -255,7 +255,7 @@ describe('pickStatus', () => {
   it.each([
     [null, 'scheduled', 'cancelled', 'void'], [null, 'checkin_open', 'cancelled', 'void'],
     [10, 'completed', 'cancelled', 'won'], [0, 'completed', 'cancelled', 'lost'],
-    [null, 'scheduled', 'public', 'pending'],   // กู้คืนแล้ว → กลับเป็น pending เอง
+    [null, 'scheduled', 'public', 'pending'],   // ทัวร์ปกติ → ยัง pending
   ] as const)('points %s on a %s match in a %s tournament → %s', (points, status, tStatus, expected) => {
     expect(Service.pickStatus({ points_earned: points }, status, tStatus)).toBe(expected);
   });

@@ -25,7 +25,7 @@ export async function findStalledDisputes(): Promise<number[]>{
            JOIN match_results r ON r.match_id = m.match_id
            JOIN tournaments t ON t.tournament_id = m.tournament_id
           WHERE m.match_status = 'disputed'
-            -- ยกเลิกทัวร์ (OD-69): แมตช์ถูกแช่แข็ง ไม่มีใครวินิจฉัยได้จนกว่าจะกู้คืน ⇒ ไม่นับเป็นงานค้าง
+            -- ยกเลิกทัวร์ (OD-69): แมตช์ถูกแช่แข็ง ไม่มีใครวินิจฉัยได้อีก ⇒ ไม่นับเป็นงานค้าง
             AND t.tournament_status <> 'cancelled'
             AND r.dispute_raised_at IS NOT NULL
             AND r.dispute_resolved_at IS NULL

@@ -12,7 +12,7 @@ import {
  *   ผู้จัด / แอดมินมหาวิทยาลัยกดยกเลิก (เหตุผลบังคับ) → สถานะ cancelled · ทุกอย่าง "แช่แข็ง" ไม่ล้าง
  *   แจ้งทุกคนที่ทัวร์มีผลกับเขา ยกเว้นคนกด · ทุกคนเปิดดูได้ · ผู้เล่นถูกปลดล็อก
  *   ยังใช้ได้: ความเห็น · ประกาศ · รีวิวผู้จัด (7 วัน) — ที่เหลือ 409 TOURNAMENT_CANCELLED
- *   แอดมินกู้คืน → กลับสถานะเดิม เดินต่อจากจุดเดิม (รับสมัครยังปิด)
+ *   ยกเลิกแล้วย้อนไม่ได้ (ตัดระบบกู้คืนออก 28 ต.ค. — กันกดผิดด้วยการยืนยันหลายชั้นที่ FE)
  *
  * ★ ต้องเป็น integration เพราะการ "แช่แข็ง" กระจายอยู่หลายชั้น (middleware · service · SQL ของ repo)
  *   unit ที่ mock repo ทิ้งจะไม่เห็นว่าเส้นไหนหลุด
@@ -39,7 +39,6 @@ let invitationId: number;
 
 const reasonText = 'สนามปิดซ่อมกะทันหัน';
 const cancel = (who: TestUser, reason: unknown = reasonText, id = tour) => as(who).post(`/tournaments/${id}/cancel`).send({ reason });
-const restore = (who: TestUser, id = tour) => as(who).post(`/admin/tournaments/${id}/restore`).send({});
 const tournamentRow = (id = tour) => one<{
   tournament_status: string; cancelled_from_status: string | null; cancel_reason: string | null;
   cancelled_by: number | null; cancelled_at: Date | null; registration_open: number;
@@ -160,11 +159,10 @@ describe('POST /tournaments/:id/cancel — ใครกดได้ · เมื
     expect((await tournamentRow())!.cancel_reason).toBe('ข'.repeat(255));
   });
 
-  it('ทัวร์ private (อนุมัติแล้วแต่ยังไม่เผยแพร่) ยกเลิกได้ และกู้คืนกลับเป็น private', async () => {
+  it('ทัวร์ private (อนุมัติแล้วแต่ยังไม่เผยแพร่) ยกเลิกได้ · บันทึกสถานะเดิมเป็นประวัติ', async () => {
     await testDb().query(`UPDATE tournaments SET tournament_status = 'private' WHERE tournament_id = ?`, [tour]);
     expect((await cancel(organizer)).body.fromStatus).toBe('private');
-    expect((await restore(uniAdmin)).body).toMatchObject({ status: 'private' });
-    expect((await tournamentRow())!.tournament_status).toBe('private');
+    expect(await tournamentRow()).toMatchObject({ tournament_status: 'cancelled', cancelled_from_status: 'private' });
   });
 
   it('ทัวร์ที่ปิดแล้ว → 409 TOURNAMENT_COMPLETED', async () => {
@@ -291,14 +289,11 @@ describe('หลังยกเลิก — ที่ยังใช้ได�
 });
 
 describe("หลังยกเลิก — Pick'em: ใบที่ยังไม่ตัดสินเป็น void", () => {
-  it('summary + ของตัวเอง บอก void และ closedReason = tournament_cancelled · กู้คืนแล้วกลับเป็น pending', async () => {
+  it('summary + ของตัวเอง บอก void และ closedReason = tournament_cancelled', async () => {
     await cancel(organizer);
     const summary = await as(picker).get(`/matches/${match}/predictions/summary`);
     expect(summary.body).toMatchObject({ isOpen: false, closedReason: 'tournament_cancelled', mine: { status: 'void' } });
     expect((await as(picker).get(`/matches/${match}/predictions/me`)).body).toMatchObject({ status: 'void' });
-
-    await restore(uniAdmin);
-    expect((await as(picker).get(`/matches/${match}/predictions/me`)).body).toMatchObject({ status: 'pending' });
   });
 });
 
@@ -314,51 +309,26 @@ describe('หลังยกเลิก — ผู้เล่นถูกป�
   });
 });
 
-describe('POST /admin/tournaments/:id/restore — แอดมินกู้คืน', () => {
+// มติ 28 ต.ค. — "ยกเลิกคือจบ" ตัดระบบกู้คืนออก ⇒ ต้องไม่มีทางไหนพาทัวร์ที่ถูกยกเลิกกลับมาได้
+describe('ยกเลิกแล้วย้อนไม่ได้', () => {
   beforeEach(async () => { expect((await cancel(organizer)).status).toBe(200); });
 
-  it('กลับเป็นสถานะเดิม · ล้างข้อมูลการยกเลิก · รับสมัครยังปิด · audit เก็บเหตุผลเดิม · แจ้งทุกคน (รวมผู้จัด) ยกเว้นแอดมิน', async () => {
-    const res = await restore(uniAdmin);
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ id: tour, status: 'public', registrationOpen: false, issues: { deletedTeams: [], playersLeftTeam: [], scheduleConflicts: [], refereeConflicts: [], pastMatches: [], eventEnded: false } });
-    expect(await tournamentRow()).toMatchObject({
-      tournament_status: 'public', cancelled_from_status: null, cancel_reason: null, cancelled_by: null, cancelled_at: null, registration_open: 0,
-    });
-
-    const audit = await one<{ details: unknown }>(
-      `SELECT details FROM audit_logs WHERE action_type = 'tournament_restored' AND entity_id = ?`, [tour]);
-    expect(audit!.details).toMatchObject({ restoredTo: 'public', previousReason: reasonText });
-
-    const notified = await notifiedOf('tournament_restored');
-    expect(notified).toContain(organizer.id);
-    expect(notified).toContain(picker.id);
-    expect(notified).not.toContain(uniAdmin.id);
-  });
-
-  it('กู้คืนแล้วเดินต่อจากจุดเดิม — ทายผลได้ · ใบสมัครถอนได้ · หน้าทัวร์ไม่มีป้ายยกเลิก', async () => {
-    await restore(uniAdmin);
-    expect((await as(fan).post(`/matches/${match}/predictions`).send({ scoreData: { [teamA]: 0, [teamB]: 2 } })).status).toBeLessThan(300);
-    expect((await as(leaderC).post(`/applications/${appC}/cancel`)).status).toBeLessThan(300);
-    expect((await anon.get(`/tournaments/${tour}`)).body.cancellation).toBeNull();
-  });
-
-  it.each([
-    ['ผู้จัด', () => organizer],
-    ['แอดมินคณะ', () => facultyAdmin],
-    ['คนทั่วไป', () => fan],
-  ])('🔒 %s กู้คืนไม่ได้ → 403', async (_label, who) => {
-    expect((await restore(who())).status).toBe(403);
+  it('ไม่มีเส้นกู้คืนแล้ว (แอดมินมหาวิทยาลัยเรียกได้ 404)', async () => {
+    expect((await as(uniAdmin).post(`/admin/tournaments/${tour}/restore`).send({})).status).toBe(404);
     expect((await tournamentRow())!.tournament_status).toBe('cancelled');
   });
 
-  it('ทัวร์ที่ไม่ได้ถูกยกเลิก → 409 TOURNAMENT_NOT_CANCELLED', async () => {
-    await restore(uniAdmin);
-    const res = await restore(uniAdmin);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe('TOURNAMENT_NOT_CANCELLED');
+  it('ผู้จัดเผยแพร่/ยกเลิกเผยแพร่/ปิดทัวร์ ไม่ได้ → 409 TOURNAMENT_CANCELLED · สถานะไม่เปลี่ยน', async () => {
+    for (const path of ['publish', 'unpublish', 'complete']) {
+      const res = await as(organizer).post(`/tournaments/${tour}/${path}`);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('TOURNAMENT_CANCELLED');
+    }
+    expect((await tournamentRow())!.tournament_status).toBe('cancelled');
   });
 
-  it('ไม่มีทัวร์นี้ → 404', async () => {
-    expect((await restore(uniAdmin, 999_999)).status).toBe(404);
+  it('แอดมินอนุมัติซ้ำ (เส้นอนุมัติคำขอจัดทัวร์) ไม่ได้ · สถานะไม่เปลี่ยน', async () => {
+    expect((await as(uniAdmin).post(`/tournaments/${tour}/approve`)).status).toBe(409);
+    expect((await tournamentRow())!.tournament_status).toBe('cancelled');
   });
 });

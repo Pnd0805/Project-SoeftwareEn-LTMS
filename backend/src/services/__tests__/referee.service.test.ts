@@ -466,7 +466,7 @@ describe('listMyRefereeInvitations', () => {
 });
 
 describe('acceptRefereeInvitation', () => {
-  // migration 053 — ทัวร์ที่ถูกยกเลิกรับคำเชิญไม่ได้ (ปฏิเสธยังได้) · ใบยังค้าง pending ไว้เผื่อกู้คืน
+  // migration 053 — ทัวร์ที่ถูกยกเลิกรับคำเชิญไม่ได้ (ปฏิเสธยังได้)
   it('throws TOURNAMENT_CANCELLED when the tournament was cancelled, and does not answer the invitation', async () => {
     mockedRefRepo.findById.mockResolvedValue(makeInvitation());
     vi.mocked(TournamentRepoForCancel.findTournamentById).mockResolvedValueOnce({ tournament_id: 20, tournament_status: 'cancelled' } as never);

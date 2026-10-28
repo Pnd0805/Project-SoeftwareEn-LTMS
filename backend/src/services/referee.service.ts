@@ -371,7 +371,6 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
     /**
      * ทัวร์ที่ถูกยกเลิก (migration 053) — รับคำเชิญไม่ได้ (ไม่มีงานให้ทำ และจะได้แมตช์ที่แช่แข็งอยู่ไปถือ)
      * ★ ปฏิเสธยังกดได้ — เคลียร์คำเชิญออกจากกล่องของตัวเองได้ ไม่เปลี่ยนอะไรในทัวร์
-     * ★ ใบยังค้าง pending ⇒ ถ้าแอดมินกู้คืนก่อนหมดอายุ ก็กลับมากดรับได้ตามเดิม
      */
     const inviteTournament = await TournamentRepo.findTournamentById(invitation.tournament_id);
     if(inviteTournament?.tournament_status === 'cancelled'){

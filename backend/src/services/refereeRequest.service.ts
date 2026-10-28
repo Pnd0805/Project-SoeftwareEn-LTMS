@@ -49,7 +49,7 @@ async function loadLiveTournament(tournamentId : number): Promise<TournamentRow>
     if(t.tournament_status === 'completed'){
         throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้จบแล้ว เปลี่ยนกรรมการไม่ได้');
     }
-    if(t.tournament_status === 'cancelled'){   // migration 053 — แช่แข็งไว้จนกว่าแอดมินจะกู้คืน
+    if(t.tournament_status === 'cancelled'){   // migration 053 — ทัวร์ที่ถูกยกเลิกแช่แข็งไว้
         throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว เปลี่ยนกรรมการไม่ได้');
     }
     return t;

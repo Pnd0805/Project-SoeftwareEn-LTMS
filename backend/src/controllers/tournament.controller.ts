@@ -134,12 +134,6 @@ export async function cancelTournament(req: Request, res: Response) {
     res.status(200).json(await TournamentService.cancelTournament(id, userId(req), req.body.reason));
 }
 
-/** POST /admin/tournaments/:id/restore — อยู่ใต้ /admin เพราะ lockCompletedTournament กันทุก write ใต้ /tournaments/:id */
-export async function restoreCancelledTournament(req: Request, res: Response) {
-    const id = parseId(req.params['id'], 'รหัสทัวร์นาเมนต์');
-    res.status(200).json(await TournamentService.restoreCancelledTournament(id, userId(req)));
-}
-
 export async function deleteTournament(req: Request, res: Response) {
     await TournamentService.deleteTournament(req.tournament!, userId(req));
     res.status(204).send();
