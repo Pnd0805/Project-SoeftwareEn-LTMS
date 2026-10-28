@@ -352,6 +352,9 @@ export async function findTeamTournamentConflictForUser(teamId: number, userId: 
                    WHERE t2.tournament_id = tr.tournament_id AND t2.user_id = tr.user_id)
          ) ref ON TRUE
          WHERE a.team_id = ? AND a.tournament_application_status IN ('pending', 'approved')
+           -- ยกเลิกทัวร์ (OD-69 · มติ 28 ต.ค.): ทัวร์ที่ถูกยกเลิกไม่มีการแข่งอีกแล้ว ⇒ ไม่มีผลประโยชน์ให้ทับซ้อน
+           --   ปลดเหมือนข้อ 9 (ผู้เล่นถูกปลดล็อก) — ผู้จัด/กรรมการของทัวร์นั้นเข้าทีมที่เคยสมัครได้
+           AND t.tournament_status <> 'cancelled'
            AND (t.requested_by_user_id = ?
                 -- 🆕 BE-13 — เงื่อนไขเดียวกับ findRefereeConflictsAmongUsers (ประตูคนละบานของกฎเดียวกัน)
                 OR ref.invitation_status = 'accepted'

@@ -54,7 +54,10 @@ export const NOTIFICATION_CATEGORY = {
     tournament_cancelled: 'critical',
     registration_toggled: 'critical',    // `registration_start`–`registration_end` — ปิดรับสมัครแล้วสมัครไม่ได้อีก
     application_decided: 'critical',     // ถูกปฏิเสธแล้วยังไปสมัครทัวร์อื่นทันถ้ารู้เร็ว — เส้นตายคือ `registration_end` ของทัวร์อื่น
-    application_withdrawn: 'tournament',
+    // ทีมถอนตัว — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอ)
+    //   ลูกทีมของทีมที่ถอน: เสียสิทธิ์ทัวร์นี้ ต้องไปหาที่สมัครอื่นให้ทัน `registration_end` (เกณฑ์เดียวกับ `application_decided`)
+    //   ผู้จัด: แมตช์ของทีมนั้นถูกตัดสินบายไปแล้ว ต้องจัดตาราง/กรรมการรอบถัดไปใหม่
+    application_withdrawn: 'critical',
     // ★ OD-49 — ประกาศของผู้จัดถูกแยกเป็นสองชนิดตอนยิง เพราะ `announcement_type` เดียวคุมสองความหมายที่คนละขั้ว
     //   ถ้าใช้ชนิดเดียว ต้องเลือกระหว่าง "คนแพ้บายเพราะไม่รู้ว่าเลื่อนเวลา" กับ "ปิดข่าวถ่ายทอดสดไม่ได้เลย"
     //   คนตัดสินว่าประกาศไหนด่วนคือ `announcement.service.ts` ตอนยิง — ที่นี่แค่บอกว่าปิดได้หรือไม่ได้
@@ -68,7 +71,10 @@ export const NOTIFICATION_CATEGORY = {
     checkin_opened: 'critical',          // หน้าต่างเช็คอินปิดตอนกรรมการกด start — เช็คอินไม่ทันคือไม่ได้ลงแข่ง
     match_finished: 'critical',          // เริ่มนาฬิกา `SUBMIT_ESCALATION_HOURS` (24 ชม. ต้องส่งผล) และ `MVP_VOTING_HOURS`
     match_abandoned: 'match',            // ★ ก้ำกึ่ง — ล้างเช็คอินจริง แต่เวลานัดใหม่จะมาทาง `match_scheduled` ซึ่ง critical อยู่แล้ว
-    match_walkover: 'match',             // ★ ก้ำกึ่ง — ผลตัดสินไปแล้ว รู้ช้าก็เปลี่ยนอะไรไม่ได้
+    // ชนะบาย — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอให้ "ทีมถอนตัว" เป็น critical)
+    //   นี่คือแจ้งเตือนที่ **คู่แข่ง** ของทีมที่ถอนได้รับ — ทีมที่ชนะบายถูกเลื่อนเข้าแมตช์รอบถัดไป
+    //   ซึ่งอาจนัดเวลาไว้แล้ว ⇒ ไม่รู้ = ไม่ไปแข่งรอบถัดไป = แพ้บายต่อ (M10) — เส้นตายคือ `scheduled_time` ของแมตช์ถัดไป
+    match_walkover: 'critical',
     bracket_created: 'match',
     bracket_redrawn: 'critical',         // คู่แข่งเปลี่ยนและเวลาที่นัดไว้เดิมถูกยกเลิกทั้งหมด — ยึดตารางเก่าคือไปผิดวัน
 
@@ -91,7 +97,11 @@ export const NOTIFICATION_CATEGORY = {
     result_overridden: 'critical',
     result_resolved: 'result',
     match_result_complaint_filed: 'critical',  // ผู้จัดมี 48 ชม. แนบความเห็น แล้วขึ้นแอดมินอัตโนมัติ
-    match_result_complaint_decided: 'result',
+    // แอดมินตัดสินเรื่องร้องเรียน — ปรับเป็น critical 28 ต.ค. 2569 (OD-69 รอบ 4 · ผู้ใช้ขอ "แก้ผลหลังอนุมัติ")
+    //   ทางเดียวที่ผลที่ยืนยันแล้วถูกแก้ได้คือ amend_result ตรงนี้ ⇒ ผู้ชนะเปลี่ยน = คนที่ต้องไปแข่งรอบถัดไปเปลี่ยน
+    //   ★ ทั้งชนิดเป็น critical (รวมกรณีไม่มีมูล/บันทึกไว้) — แยกชนิดใหม่เฉพาะ amend ต้องให้ FE รู้จักชนิดใหม่
+    //     ไม่คุ้มก่อนส่ง · ข้อเสียคือคนที่ปิดหมวด 'result' ยังได้คำตัดสินแบบไม่แก้ผลด้วย (นาน ๆ ครั้ง)
+    match_result_complaint_decided: 'critical',
 
     // ── ชุมชน ──
     comment_removed: 'community',

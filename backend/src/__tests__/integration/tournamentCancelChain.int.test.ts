@@ -18,6 +18,7 @@ import {
  *   ⑤ หน้าแมตช์ของฉัน             — โชว์แมตช์ที่ถูกแช่แข็งเป็น "กำลังจะแข่ง" ตลอดไป
  *   ⑥ กล่องคำเชิญกรรมการ          — ขึ้นคำเชิญที่กดรับไม่ได้
  *   ⑦ ปลดล็อก                       — ลบทีมที่เคยผ่าน/ลงแข่งแล้วได้ (เดิมติด TEAM_LOCKED_IN_TOURNAMENT)
+ *   ⑧ ผลประโยชน์ทับซ้อน              — ผู้จัด/กรรมการของทัวร์ที่ถูกยกเลิก เข้าทีมที่เคยสมัครได้ (มติ 28 ต.ค. รอบ 4 · ตรงกับข้อ 9)
  * ทุกข้อพิสูจน์สองทาง: "ก่อนยกเลิกยังเป็นแบบเดิม" และ "หลังยกเลิกถูกตัดออก"
  */
 
@@ -195,5 +196,35 @@ describe('⑦ ปลดล็อก — ลบทีมที่เคยผ่�
       .toEqual({ s: 'approved' });
     expect(await one('SELECT COUNT(*) AS n FROM application_players WHERE tournament_id = ? AND user_id = ?', [tourX, leaderB.id]))
       .toEqual({ n: 1 });
+  });
+});
+
+describe('⑧ ผลประโยชน์ทับซ้อน — ปลดเหมือนผู้เล่น (มติ 28 ต.ค. รอบ 4)', () => {
+  const invite = (to: TestUser) => as(leaderA).post(`/teams/${teamA}/invitations`).send({ invitedUserId: to.id });
+
+  it.each([
+    ['ผู้จัดของทัวร์', () => orgX],
+    ['กรรมการที่ตอบรับแล้ว', () => referee],
+  ])('%s: ก่อนยกเลิกเชิญเข้าทีมไม่ได้ (กฎเดิมยังทำงาน) · หลังยกเลิกเชิญได้และกดรับได้จริง', async (_label, who) => {
+    const blocked = await invite(who());
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.error.code).toBe('TEAM_CONFLICT_OF_INTEREST');
+
+    await cancelX();
+    expect((await invite(who())).status).toBeLessThan(300);
+    const inv = await one<{ id: number }>(
+      `SELECT team_invitation_id AS id FROM team_invitations WHERE team_id = ? AND invited_user_id = ? ORDER BY team_invitation_id DESC LIMIT 1`,
+      [teamA, who().id]);
+    expect((await as(who()).post(`/invitations/${inv!.id}/accept`)).status).toBeLessThan(300);
+    expect(await one('SELECT 1 AS x FROM team_members WHERE team_id = ? AND user_id = ?', [teamA, who().id])).toEqual({ x: 1 });
+  });
+
+  it('ทัวร์อื่นที่ยังจัดอยู่ กฎเดิมยังกันเหมือนเดิม', async () => {
+    // ทีม A สมัครทัวร์ Y ด้วย → ผู้จัด Y ยังเข้าทีม A ไม่ได้ แม้ทัวร์ X ถูกยกเลิกแล้ว
+    await insert('tournament_applications', { tournament_id: tourY, team_id: teamA, tournament_application_status: 'pending' });
+    await cancelX();
+    const res = await invite(orgY);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('TEAM_CONFLICT_OF_INTEREST');
   });
 });
