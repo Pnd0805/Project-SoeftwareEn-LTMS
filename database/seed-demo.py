@@ -534,6 +534,10 @@ def main():
     api("PATCH", f"/admin/users/{BANNED}/suspend", ADMIN,
         {"suspended": True, "reason": "ส่งข้อความรบกวนซ้ำในช่องความเห็นหลายรายการ", "days": 30, "category": "spam"})
 
+    step("QA: badminton Double Elimination (4 approved teams, no bracket) + badge tester")
+    with open(os.path.join(HERE, "qa-fixture-badminton-badges.sql"), encoding="utf-8") as fixture:
+        sql(fixture.read())
+
     step("สรุป")
     for row in sql("""SELECT t.tournament_id, t.tournament_status, t.registration_open,
                 (SELECT COUNT(*) FROM tournament_applications a WHERE a.tournament_id=t.tournament_id),
