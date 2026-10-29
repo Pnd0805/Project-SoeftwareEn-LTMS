@@ -131,6 +131,27 @@ describe('สมัครสมาชิกและยืนยันอีเ�
     expect(await verified(email)).toBe(false);
   });
 
+  /**
+   * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 8 — เดิมนับครั้งที่ผิด "หลัง" เทียบรหัส
+   *   ⇒ ยิงพร้อมกันหลายคำขอ ทุกคำขอผ่านด่าน 5 ครั้งก่อนที่ตัวนับจะขึ้น ⇒ ได้เดาเกินโควตา
+   */
+  it('🔴 ยิงรหัสผิดพร้อมกัน 20 คำขอ → นับได้ไม่เกิน 5 · ใบนั้นตาย รหัสที่ถูกก็ใช้ไม่ได้แล้ว', async () => {
+    const email = 'otp-race@test.local';
+    await anon.post('/auth/register').send(registration(email));
+    const right = otpIn(email);
+    const wrong = right === '000000' ? '111111' : '000000';
+
+    const codes = await Promise.all(Array.from({ length: 20 },
+      () => anon.post('/auth/verify-email').send({ email, code: wrong }).then(r => r.status)));
+    expect(new Set(codes)).toEqual(new Set([400]));
+
+    const row = await one<{ attempt_count: number }>(
+      `SELECT o.attempt_count FROM email_verification_otps o JOIN users u ON u.user_id = o.user_id WHERE u.email = ?`, [email]);
+    expect(row!.attempt_count).toBe(5);
+    expect((await anon.post('/auth/verify-email').send({ email, code: right })).status).toBe(400);
+    expect(await verified(email)).toBe(false);
+  });
+
   it('🔒 OTP ใช้ได้กับอีเมลที่ได้รับเท่านั้น — เอารหัสของตัวเองไปยืนยันอีเมลคนอื่นไม่ได้', async () => {
     await anon.post('/auth/register').send(registration('attacker@test.local'));
     await anon.post('/auth/register').send(registration('victim@test.local'));

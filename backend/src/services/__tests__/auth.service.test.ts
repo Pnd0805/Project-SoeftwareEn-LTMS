@@ -34,7 +34,7 @@ vi.mock('../../repositories/emailVerification.repo.js', () => ({
   countIssuedWithinLastHour: vi.fn(),
   invalidateAllForUser: vi.fn(),
   markUsed: vi.fn(),
-  bumpAttempt: vi.fn(),
+  claimAttempt: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('../../utils/password.js', () => ({
@@ -697,7 +697,10 @@ describe('auth.service verifyEmail()', () => {
     expect(mockedEmailVerifyRepo.markUsed).toHaveBeenCalledWith(7);
     expect(mockedUserRepo.markEmailVerified).toHaveBeenCalledWith(1);
     expect(mockedEmailVerifyRepo.invalidateAllForUser).toHaveBeenCalledWith(1);
-    expect(mockedEmailVerifyRepo.bumpAttempt).not.toHaveBeenCalled();
+    // จองสิทธิ์ก่อนเทียบ แม้ครั้งที่ถูก (ใบปิดทันทีอยู่แล้ว ไม่เสียอะไร)
+    expect(mockedEmailVerifyRepo.claimAttempt).toHaveBeenCalledWith(7, 5);
+    expect(mockedEmailVerifyRepo.claimAttempt.mock.invocationCallOrder[0])
+      .toBeLessThan(mockedVerifyPassword.mock.invocationCallOrder[0]!);
   });
 
   it('ส่งโควตา 5 ครั้งลงไปให้ SQL กรอง — ด่านกันเดาต้องไม่หายไป', async () => {
@@ -718,7 +721,19 @@ describe('auth.service verifyEmail()', () => {
     await expect(authService.verifyEmail('test@example.com', '000000'))
       .rejects.toMatchObject({ status: 400, code: 'INVALID_OTP' });
 
-    expect(mockedEmailVerifyRepo.bumpAttempt).toHaveBeenCalledWith(7);
+    expect(mockedEmailVerifyRepo.claimAttempt).toHaveBeenCalledWith(7, 5);
+    expect(mockedUserRepo.markEmailVerified).not.toHaveBeenCalled();
+  });
+
+  // 🔴 bug hunt 30 ต.ค. ข้อ 8 — จองสิทธิ์ไม่ได้ (คำขออื่นที่ยิงพร้อมกันใช้โควตาหมดแล้ว) = ไม่เทียบเลย
+  it('จองสิทธิ์เดาไม่ได้ → ไม่เทียบรหัส · INVALID_OTP แม้รหัสจะถูก', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([otpRow]);
+    mockedEmailVerifyRepo.claimAttempt.mockResolvedValueOnce(false);
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    await expect(authService.verifyEmail('test@example.com', '123456')).rejects.toMatchObject({ code: 'INVALID_OTP' });
+    expect(mockedVerifyPassword).not.toHaveBeenCalled();
     expect(mockedUserRepo.markEmailVerified).not.toHaveBeenCalled();
   });
 
@@ -729,7 +744,7 @@ describe('auth.service verifyEmail()', () => {
     await expect(authService.verifyEmail('test@example.com', '123456'))
       .rejects.toMatchObject({ code: 'INVALID_OTP' });
 
-    expect(mockedEmailVerifyRepo.bumpAttempt).not.toHaveBeenCalled();
+    expect(mockedEmailVerifyRepo.claimAttempt).not.toHaveBeenCalled();
   });
 
   it('ยืนยันซ้ำ → 200 เหมือนเดิม ไม่แตะตาราง OTP เลย (idempotent)', async () => {

@@ -181,19 +181,17 @@ export async function verifyEmail(email : string , code : string) : Promise<{ me
   // ใบที่กรอกผิดครบ OTP_MAX_ATTEMPTS จะไม่อยู่ในผลเลย (กรองที่ SQL)
   const candidates = await emailVerifyRepo.findActiveByUser(user.user_id , OTP_MAX_ATTEMPTS);
 
+  // ★ จองสิทธิ์เดาก่อนเทียบทุกครั้ง (claimAttempt) — ครบโควตาแล้วใบนั้นตาย
+  //   ถ้าไม่นับ ด่านกันเดาหายไปทั้งหมด — 6 หลักยิงรัวไม่จำกัดคือเดาออกได้ในหลักล้านครั้ง
+  // 🔴 bug hunt 30 ต.ค. ข้อ 8 — เดิมนับ "หลัง" เทียบ ⇒ ยิงพร้อมกันหลายคำขอผ่านด่าน 5 ครั้งได้ทุกคำขอ
   for(const row of candidates){
+    if(!await emailVerifyRepo.claimAttempt(row.email_verification_otp_id , OTP_MAX_ATTEMPTS)) continue;
     if(await verifyPassword(code , row.code_hash)){
       await emailVerifyRepo.markUsed(row.email_verification_otp_id);
       await userRepo.markEmailVerified(user.user_id);
       await emailVerifyRepo.invalidateAllForUser(user.user_id);   // ล้างใบที่เหลือทั้งหมด
       return SUCCESS;
     }
-  }
-
-  // กรอกผิด ⇒ นับขึ้นทุกใบที่เปิดอยู่ (ปกติมีใบเดียว) — ครบโควตาแล้วใบนั้นตาย
-  // ★ ถ้าไม่นับ ด่านกันเดาหายไปทั้งหมด — 6 หลักยิงรัวไม่จำกัดคือเดาออกได้ในหลักล้านครั้ง
-  for(const row of candidates){
-    await emailVerifyRepo.bumpAttempt(row.email_verification_otp_id);
   }
 
   throw INVALID_OTP();

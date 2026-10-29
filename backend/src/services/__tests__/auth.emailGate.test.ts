@@ -31,7 +31,7 @@ vi.mock('../../repositories/passwordReset.repo.js', () => ({
 }));
 vi.mock('../../repositories/emailVerification.repo.js', () => ({
   create: vi.fn(), findActiveByUser: vi.fn(), countIssuedWithinLastHour: vi.fn(),
-  invalidateAllForUser: vi.fn(), markUsed: vi.fn(), bumpAttempt: vi.fn(),
+  invalidateAllForUser: vi.fn(), markUsed: vi.fn(), claimAttempt: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock('../../utils/password.js', () => ({ hashPassword: vi.fn(), verifyPassword: vi.fn() }));
 vi.mock('../../utils/token.js', () => ({ signToken: vi.fn() }));
