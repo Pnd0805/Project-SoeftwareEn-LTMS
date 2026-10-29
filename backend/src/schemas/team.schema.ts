@@ -55,8 +55,14 @@ export type createTeamInvited = z.infer<typeof createTeamInvitedSchema>;
 
 //Team request
 
+/**
+ * bug hunt 30 ต.ค. 2569 ข้อ 5 — เดิมไม่จำกัดจำนวนและความยาวเลย (ส่ง array ใหญ่แค่ไหนก็ได้ลงคอลัมน์ JSON)
+ * ★ จำกัดแค่ขนาด ไม่ตรวจรูป key — หน้าเว็บส่งเป็น "ข้อความทีละบรรทัด" (ชื่อเอกสาร/ลิงก์) ไม่ใช่ S3 key
+ *   (ไม่มี purpose อัปโหลดสำหรับเอกสารนี้) ⇒ ตรวจรูป key = หน้าเว็บส่งไม่ผ่านทุกครั้ง · ดูรายงาน bug hunt ข้อ 5
+ */
 export const requestSchema = z.object({
-    supportingDocs : z.array(z.string())
+    supportingDocs : z.array(z.string().trim().min(1).max(500, 'เอกสารแต่ละรายการยาวได้ไม่เกิน 500 ตัวอักษร'))
+                      .max(10, 'แนบเอกสารได้ไม่เกิน 10 รายการ')
 })
 
 

@@ -61,7 +61,8 @@ export const submitCheckinSchema = z.discriminatedUnion('method', [
     z.object({
         method: z.literal('photo_online'),
         documentType: z.enum(['student_id', 'national_id']),
-        documentS3Key: z.string().min(1, 'กรุณาระบุ documentS3Key'),
+        // bug hunt 30 ต.ค. ข้อ 4 — คอลัมน์เป็น VARCHAR(255) · ไม่จำกัด = ยาวเกินแล้วฐานโยน error กลายเป็น 500 แทน 400
+        documentS3Key: z.string().min(1, 'กรุณาระบุ documentS3Key').max(255, 'documentS3Key ยาวได้ไม่เกิน 255 ตัวอักษร'),
     }),
 ]);
 
