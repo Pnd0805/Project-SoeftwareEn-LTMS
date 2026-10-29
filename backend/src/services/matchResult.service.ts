@@ -134,6 +134,7 @@ export async function verifyMatchResult(matchId : number , userid : number){
         message : `ผลการแข่งขันแมตช์ #${matchId} ได้รับการยืนยันแล้ว`,
         relatedEntityType : 'match', relatedEntityId : matchId,
     }, { exceptUserId : userid });
+    await notifyFollowersResultVerified(matchId);
     return toVerifiedResultDto(ver_matchRes! , match!);
 }
 
@@ -246,9 +247,27 @@ export async function autoVerifyDue(matchIds : number[]): Promise<number[]>{
             message : `ไม่มีผู้โต้แย้งผลแมตช์ #${matchId} ระบบจึงยืนยันผลให้แล้ว หากไม่ถูกต้องยังโต้แย้งได้ตามกำหนดของทัวร์นาเมนต์`,
             relatedEntityType : 'match', relatedEntityId : matchId,
         });
+        await notifyFollowersResultVerified(matchId);
         verified.push(matchId);
     }
     return verified;
+}
+
+/**
+ * OD-72 (FR-FN-02) จังหวะ ② — ผู้ติดตามนักกีฬา: ผลได้รับการยืนยัน
+ * 🔴 เรียกจาก **สองจุด**: ยืนยันด้วยมือ (verifyMatchResult) และยืนยันอัตโนมัติ (autoVerifyDue)
+ *    ทำแค่จุดแรก = ผลที่ไม่มีใครค้าน (กรณีปกติที่สุด) เงียบ และเทสส่วนใหญ่ยืนยันด้วยมือจึงไม่มีใครเห็น
+ * ★ ชนิดเดียวกันทั้งสองจุด — ผู้ติดตามไม่ต้องสนใจว่าใครเป็นคนยืนยัน
+ * ★ ยังไม่ยิงตอน result_resolved / แก้ผลหลังร้องเรียน — เอกสารเขียนว่า "ได้รับการยืนยัน" เท่านั้น
+ * ⚠️ จำนวนแถวโตตามจำนวนผู้ติดตาม (fan-out)
+ */
+async function notifyFollowersResultVerified(matchId : number): Promise<void>{
+    await NotificationService.notifyMatchFollowers(matchId, {
+        type : 'followed_player_result_verified',
+        title : 'ผลแมตช์ของนักกีฬาที่คุณติดตามออกแล้ว',
+        message : `ผลแมตช์ #${matchId} ได้รับการยืนยันแล้ว`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    });
 }
 
 /** เส้นตาย = อันไหนถึงก่อนระหว่าง "ก่อนแมตช์ถัดไปเริ่ม 15 นาที" กับ "X ชม.หลังส่งผล" */

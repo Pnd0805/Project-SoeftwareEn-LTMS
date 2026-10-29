@@ -34,6 +34,11 @@ export async function unfollowUser(req: Request, res: Response) {
     res.status(200).json(await UserService.unfollowUser(req.user!.user_id, userId));
 }
 
+export async function setFollowNotify(req: Request, res: Response) {
+    const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
+    res.status(200).json(await UserService.setFollowNotify(req.user!.user_id, userId, req.body.notifyEnabled));
+}
+
 export async function getFollowers(req: Request, res: Response) {
     const userId = parseId(req.params['id'], 'รหัสผู้ใช้');
     res.status(200).json(await UserService.getFollowers(userId));

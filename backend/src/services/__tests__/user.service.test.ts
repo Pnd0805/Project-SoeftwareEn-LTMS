@@ -19,6 +19,8 @@ vi.mock('../../repositories/follow.repo.js', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
   isFollowing: vi.fn(),
+  findNotifyEnabled: vi.fn(),
+  setNotifyEnabled: vi.fn(),
   countFollowers: vi.fn(),
   findFollowers: vi.fn(),
   findFollowing: vi.fn(),
@@ -181,6 +183,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockedFollowRepo.countFollowers.mockResolvedValue(0);
   mockedFollowRepo.isFollowing.mockResolvedValue(false);
+  mockedFollowRepo.findNotifyEnabled.mockResolvedValue(null);
   mockedFollowRepo.findFollowers.mockResolvedValue([]);
   mockedFollowRepo.findFollowing.mockResolvedValue([]);
   mockedCareerRepo.findCareerByUser.mockResolvedValue([]);
@@ -208,7 +211,7 @@ describe('getUserById', () => {
     expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [
       { id: 1, name: 'Team A' },
       { id: 2, name: 'Team B' },
-    ], 0, false, false);
+    ], 0, false, false, false);
     expect(result).toEqual({ id: 1, teams: [] });
   });
 
@@ -229,7 +232,7 @@ describe('getUserById', () => {
     await userService.getUserById(1);
 
     expect(mockedToTeamRef).not.toHaveBeenCalled();
-    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, false, false);
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, false, false, false);
   });
 });
 
@@ -305,13 +308,34 @@ describe('C8 profile engagement', () => {
     mockedCheckUser.mockResolvedValue(baseUser);
     mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
     mockedFollowRepo.countFollowers.mockResolvedValue(12);
-    mockedFollowRepo.isFollowing.mockResolvedValue(true);
+    mockedFollowRepo.findNotifyEnabled.mockResolvedValue(false);   // ติดตามอยู่ · กระดิ่งปิด
     mockedToPublicUserDto.mockReturnValue({ id: 1, followerCount: 12, isFollowing: true } as any);
 
     await userService.getUserById(1, 99);
 
-    expect(mockedFollowRepo.isFollowing).toHaveBeenCalledWith(99, 1);
-    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 12, true, false);
+    expect(mockedFollowRepo.findNotifyEnabled).toHaveBeenCalledWith(99, 1);
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 12, true, false, false);
+  });
+
+  // OD-72 — กระดิ่งรายคน
+  it('ติดตามและเปิดกระดิ่ง → isFollowing true · notifyEnabled true', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
+    mockedFollowRepo.findNotifyEnabled.mockResolvedValue(true);
+
+    await userService.getUserById(1, 99);
+
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, true, false, true);
+  });
+
+  it('ดูโปรไฟล์ตัวเอง → ไม่ถามกระดิ่ง · false ทั้งคู่', async () => {
+    mockedCheckUser.mockResolvedValue(baseUser);
+    mockedTeamRepo.findTeamsByUser.mockResolvedValue([]);
+
+    await userService.getUserById(1, 1);
+
+    expect(mockedFollowRepo.findNotifyEnabled).not.toHaveBeenCalled();
+    expect(mockedToPublicUserDto).toHaveBeenCalledWith(baseUser, [], 0, false, false, false);
   });
 
   it('returns MVP, Pickem and follower totals through stats', async () => {
@@ -343,6 +367,7 @@ describe('C8 profile engagement', () => {
       userId: 2,
       isFollowing: true,
       followerCount: 4,
+      notifyEnabled: false,
     });
 
     expect(mockedFollowRepo.followUser).toHaveBeenCalledWith(1, 2);
@@ -377,16 +402,41 @@ describe('C8 profile engagement', () => {
       followed_at: new Date(),
     };
     mockedFollowRepo.findFollowers.mockResolvedValue([row]);
-    mockedFollowRepo.findFollowing.mockResolvedValue([row]);
+    mockedFollowRepo.findFollowing.mockResolvedValue([{ ...row, notify_enabled: 1 }]);
     mockedToUserRef.mockReturnValue({ id: 2, fullName: 'Alice', avatarUrl: null });
 
     await expect(userService.getFollowers(1)).resolves.toEqual({
       items: [{ id: 2, fullName: 'Alice', avatarUrl: null }],
       count: 1,
     });
+    // OD-72 — รายชื่อ "กำลังติดตาม" มีกระดิ่งของแต่ละคน · รายชื่อผู้ติดตามไม่มี
     await expect(userService.getFollowing(1)).resolves.toEqual({
-      items: [{ id: 2, fullName: 'Alice', avatarUrl: null }],
+      items: [{ id: 2, fullName: 'Alice', avatarUrl: null, notifyEnabled: true }],
       count: 1,
+    });
+  });
+
+  describe('OD-72 setFollowNotify — เปิด/ปิดกระดิ่ง', () => {
+    it('ติดตามอยู่ → ตั้งค่าแล้วคืนสถานะ', async () => {
+      mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+      mockedFollowRepo.findNotifyEnabled.mockResolvedValue(false);
+
+      await expect(userService.setFollowNotify(1, 2, true))
+        .resolves.toEqual({ userId: 2, isFollowing: true, notifyEnabled: true });
+      expect(mockedFollowRepo.setNotifyEnabled).toHaveBeenCalledWith(1, 2, true);
+    });
+
+    it('🔴 ยังไม่ได้ติดตาม → 404 NOT_FOLLOWING · ไม่เขียนอะไรเลย', async () => {
+      mockedCheckUser.mockResolvedValue(makeUser({ user_id: 2 }));
+
+      await expect(userService.setFollowNotify(1, 2, true)).rejects.toMatchObject({ status: 404, code: 'NOT_FOLLOWING' });
+      expect(mockedFollowRepo.setNotifyEnabled).not.toHaveBeenCalled();
+      expect(mockedFollowRepo.followUser).not.toHaveBeenCalled();
+    });
+
+    it('ตัวเอง → 409 CANNOT_FOLLOW_SELF', async () => {
+      await expect(userService.setFollowNotify(1, 1, true)).rejects.toMatchObject({ status: 409, code: 'CANNOT_FOLLOW_SELF' });
+      expect(mockedFollowRepo.setNotifyEnabled).not.toHaveBeenCalled();
     });
   });
 

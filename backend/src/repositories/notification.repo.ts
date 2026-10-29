@@ -140,6 +140,33 @@ export async function findMatchAudience(matchId: number): Promise<number[]> {
     return rows.map(r => r.user_id);
 }
 
+/**
+ * OD-72 (FR-FN-02) — คนที่ติดตามผู้เล่นในรายชื่อลงแข่งของแมตช์นี้ **และเปิดกระดิ่งของคู่นั้นไว้**
+ *
+ * โครงเดียวกับ findMatchAudience ช่วงผู้เล่น แล้วต่อ `follows`
+ * ★ DISTINCT — ติดตามผู้เล่น 3 คนในแมตช์เดียว ต้องได้ชื่อเดียว ไม่ใช่ 3
+ * ★ notify_enabled = 1 — กระดิ่งกรอง "ตอนเขียน" (อยู่ที่ความสัมพันธ์ ไม่ใช่ที่ผู้รับ)
+ *   ต่างจากหมวด `community` ที่กรอง "ตอนอ่าน" (mutedTypes) โดยเจตนา — ดู OD-72 · อย่ารวมเป็นที่เดียว
+ * ★ เฉพาะทัวร์ public/completed — ทัวร์ที่ยังไม่เผยแพร่ คนนอกเปิดดูไม่ได้ (getVisibleTournament)
+ *   ไม่ควรได้แจ้งเตือนชี้ไปแมตช์ที่เปิดแล้วเจอ 404
+ * ★ ยังไม่ตัดคนที่เกี่ยวกับแมตช์ออก — ทำที่ service (notifyMatchFollowers)
+ */
+export async function findMatchFollowers(matchId: number): Promise<number[]> {
+    const [rows] = await pool.query<({ follower_user_id: number } & RowDataPacket)[]>(
+        `SELECT DISTINCT f.follower_user_id
+         FROM matches m
+         JOIN tournaments t ON t.tournament_id = m.tournament_id AND t.tournament_status IN ('public', 'completed')
+         JOIN tournament_applications ta ON ta.tournament_id = m.tournament_id
+              AND ta.team_id IN (m.team_a_id, m.team_b_id)
+              AND ta.tournament_application_status = 'approved'
+         JOIN application_players ap ON ap.tournament_application_id = ta.tournament_application_id
+         JOIN follows f ON f.followed_user_id = ap.user_id AND f.notify_enabled = 1
+         WHERE m.match_id = ?`,
+        [matchId]
+    );
+    return rows.map(r => r.follower_user_id);
+}
+
 // ---- C1-ข ผู้รับของ event ระดับทัวร์ ----
 
 /** หัวหน้าทีมที่ใบสมัครยังมีชีวิต (pending/approved) ในทัวร์นี้ */

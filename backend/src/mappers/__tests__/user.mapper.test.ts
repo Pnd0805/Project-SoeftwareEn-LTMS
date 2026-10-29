@@ -140,8 +140,14 @@ describe('toPublicUserDto', () => {
       teams,
       followerCount: 0,
       isFollowing: false,
+      notifyEnabled: false,
       statsHidden: false,
     });
+  });
+
+  // OD-72 — กระดิ่งรายคน ส่งต่อตามที่ service บอก
+  it('ส่ง notifyEnabled ต่อออกไป', () => {
+    expect(toPublicUserDto(baseUserRow as any, [], 3, true, false, true)).toMatchObject({ isFollowing: true, notifyEnabled: true });
   });
 
   /**

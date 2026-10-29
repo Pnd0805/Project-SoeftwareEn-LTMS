@@ -111,6 +111,29 @@ export async function notifyMatchAudience(matchId: number, content: Omit<Notific
     }
 }
 
+/**
+ * OD-72 (FR-FN-02 · UC-05 ขั้น 5) — ผู้ติดตามนักกีฬาในแมตช์นี้ที่เปิดกระดิ่งไว้
+ *
+ * ★ ตัดคนที่เกี่ยวกับแมตช์ออก (ผู้เล่นในรายชื่อ · กรรมการที่รับแมตช์ · หัวหน้าทั้งสองทีม)
+ *   คนกลุ่มนี้ได้ข่าวแมตช์ผ่านชนิดของตัวเองอยู่แล้ว ⇒ ไม่ตัด = เรื่องเดียวกันสองฉบับคนละชนิด
+ *   (หัวหน้าทีมที่ไม่ได้ลงรายชื่อได้ `result_verified` ผ่าน notifyMatchResultParties — จึงต้องตัดด้วย)
+ * ★ ไม่แตะผู้รับชุดเดิมของ notifyMatchAudience / notifyMatchResultParties เลย
+ * ★ กลืน error เหมือนตัวอื่นในไฟล์ — การเริ่มแข่ง/ยืนยันผลต้องไม่ล้มเพราะหาผู้ติดตามไม่สำเร็จ
+ */
+export async function notifyMatchFollowers(matchId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
+    try {
+        const [followers, audience, parties] = await Promise.all([
+            NotificationRepo.findMatchFollowers(matchId),
+            NotificationRepo.findMatchAudience(matchId),
+            NotificationRepo.findMatchResultParties(matchId),
+        ]);
+        const involved = new Set([...audience, ...parties.leaderIds, ...parties.refereeIds]);
+        await notifyUsers(followers.filter(id => !involved.has(id)), content);
+    } catch (err) {
+        console.error(`[notify] หาผู้ติดตามของแมตช์ ${matchId} ไม่สำเร็จ`, err);
+    }
+}
+
 /** หัวหน้าทีมทุกทีมที่ยังสมัครอยู่ในทัวร์นี้ (pending/approved) */
 export async function notifyTournamentTeamLeaders(tournamentId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
     try {

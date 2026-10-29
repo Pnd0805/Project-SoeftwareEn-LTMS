@@ -21,6 +21,7 @@ vi.mock('../notification.service.js', () => ({
   notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
   notifyTournamentTeamLeaders: vi.fn(),
   notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+  notifyMatchFollowers: vi.fn(),
 }));
 vi.mock('../referee.service.js', () => ({ listMyRefereeMatches: vi.fn() }));
 vi.mock('../../repositories/matchReferee.repo.js', () => ({}));
@@ -34,6 +35,7 @@ import * as MatchService from '../match.service.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as Walkover from '../walkover.service.js';
 import { isRefereeSufficient } from '../../middlewares/requireReferee.js';
+import * as NotificationService from '../notification.service.js';
 
 const REFEREE = 9002;
 const START = new Date('2026-10-01T10:00:00Z');
@@ -115,5 +117,46 @@ describe('startMatch — fixture gate (M10)', () => {
   it('still refuses when the match has no referees', async () => {
     vi.mocked(isRefereeSufficient).mockResolvedValue(false);
     expect(await errOf(MatchService.startMatch(1, REFEREE))).toMatchObject({ code: 'INSUFFICIENT_REFEREES' });
+  });
+});
+
+/**
+ * OD-72 (FR-FN-02) จังหวะ ① — แจ้งผู้ติดตามตอนแมตช์เริ่มแข่งจริง
+ * 🔴 ต้องยิงหลัง markMatchStarted สำเร็จเท่านั้น — แพ้บาย/กดเริ่มซ้ำต้องไม่มีแจ้งเตือน "เริ่มแล้ว"
+ */
+describe('startMatch — OD-72 แจ้งผู้ติดตาม', () => {
+  it('เริ่มได้ → ยิง followed_player_match_started ของแมตช์นี้ ครั้งเดียว · หลัง markMatchStarted', async () => {
+    await MatchService.startMatch(1, REFEREE);
+
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledTimes(1);
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(1, expect.objectContaining({
+      type: 'followed_player_match_started', relatedEntityType: 'match', relatedEntityId: 1,
+    }));
+    expect(vi.mocked(MatchRepo.markMatchStarted).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(NotificationService.notifyMatchFollowers).mock.invocationCallOrder[0]!);
+  });
+
+  it('🔴 กดเริ่มซ้ำ (markMatchStarted ได้ false) → 409 · ไม่แจ้งผู้ติดตาม', async () => {
+    vi.mocked(MatchRepo.markMatchStarted).mockResolvedValue(false);
+
+    expect(await errOf(MatchService.startMatch(1, REFEREE))).toMatchObject({ status: 409, code: 'INVALID_STATUS_TRANSITION' });
+    expect(NotificationService.notifyMatchFollowers).not.toHaveBeenCalled();
+  });
+
+  it('🔴 คนไม่พอ → แพ้บาย · แมตช์ไม่ได้แข่งจริง ⇒ ไม่แจ้งว่า "เริ่มแล้ว"', async () => {
+    vi.mocked(Walkover.decideNoShow).mockReturnValue({ winnerTeamId: 11, loserTeamId: 12 } as never);
+    vi.mocked(Walkover.applyNoShowWalkover).mockResolvedValue({} as never);
+
+    await MatchService.startMatch(1, REFEREE);
+
+    expect(MatchRepo.markMatchStarted).not.toHaveBeenCalled();
+    expect(NotificationService.notifyMatchFollowers).not.toHaveBeenCalled();
+  });
+
+  it('ไม่ระบุชื่อนักกีฬาในข้อความ — หนึ่งฉบับอาจครอบหลายคน', async () => {
+    await MatchService.startMatch(1, REFEREE);
+    const content = vi.mocked(NotificationService.notifyMatchFollowers).mock.calls[0]![1];
+    expect(content.title).toBe('แมตช์ของนักกีฬาที่คุณติดตามเริ่มแล้ว');
+    expect(content.message).toBe('แมตช์ #1 กำลังแข่งอยู่');
   });
 });

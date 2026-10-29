@@ -116,6 +116,10 @@ export const NOTIFICATION_CATEGORY = {
     feedback_restored: 'community',
     feedback_restore_overridden: 'community',
     pickem_cancelled: 'community',
+    // OD-72 (FR-FN-02) — ผู้ติดตามไม่ได้ลงแข่ง ไม่รู้ก็ไม่เสียสิทธิ์อะไร ⇒ ไม่ใช่ critical
+    //   แยกสองชนิดโดยเจตนา: บางคนอยากรู้แค่ผล ไม่อยากรู้ตอนเริ่ม (แยกทีหลังไม่ได้ — ชนิดเก่าค้างในฐาน)
+    followed_player_match_started: 'community',
+    followed_player_result_verified: 'community',
     // `satisfies` ไม่ใช่ `: Record<string , NotificationCategory>` — ต้องได้ทั้งสองอย่าง:
     //   ตรวจว่าทุกค่าเป็นหมวดที่มีจริง (เหมือน Record) และ **เก็บชื่อคีย์ไว้เป็น literal** ให้ NotificationType ใช้ได้
     // ถ้าใส่เป็น type annotation คีย์จะกลายเป็น `string` แล้ว union จะไม่กันอะไรเลย
