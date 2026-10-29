@@ -69,6 +69,70 @@ export async function grantReward(userId: number, rewardId: number): Promise<boo
     return result.affectedRows > 0;
 }
 
+export async function ownsReward(userId: number, rewardId: number): Promise<boolean> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+        'SELECT user_reward_id FROM user_rewards WHERE user_id = ? AND reward_id = ?',
+        [userId, rewardId]
+    );
+    return rows.length > 0;
+}
+
+export type RedeemResult =
+    | { status: 'redeemed'; totalPoints: number }
+    | { status: 'already_owned' }
+    | { status: 'insufficient_points'; totalPoints: number };
+
+export async function redeemTx(userId: number, rewardId: number, pointsRequired: number): Promise<RedeemResult> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        // total_points is spendable balance, not SUM(prediction points). Rebuilding it would refund purchases.
+        // A conditional UPDATE serializes spending with both redemption and Pick'em settlement.
+        const [debit] = await conn.query<ResultSetHeader>(
+            `UPDATE users SET total_points = total_points - ?
+              WHERE user_id = ? AND total_points >= ?`,
+            [pointsRequired, userId, pointsRequired]
+        );
+        if (debit.affectedRows === 0) {
+            // A simultaneous purchase may have acquired this badge and spent the remaining points.
+            const [owned] = await conn.query<RowDataPacket[]>(
+                'SELECT user_reward_id FROM user_rewards WHERE user_id = ? AND reward_id = ? FOR UPDATE',
+                [userId, rewardId]
+            );
+            const [balances] = await conn.query<({ total_points: number } & RowDataPacket)[]>(
+                'SELECT total_points FROM users WHERE user_id = ? FOR UPDATE', [userId]
+            );
+            await conn.rollback();
+            return owned.length > 0
+                ? { status: 'already_owned' }
+                : { status: 'insufficient_points', totalPoints: balances[0]?.total_points ?? 0 };
+        }
+        const [grant] = await conn.query<ResultSetHeader>(
+            'INSERT IGNORE INTO user_rewards (user_id, reward_id) VALUES (?, ?)', [userId, rewardId]
+        );
+        if (grant.affectedRows === 0) {
+            await conn.rollback();
+            return { status: 'already_owned' };
+        }
+        await conn.query<ResultSetHeader>(
+            `INSERT INTO point_transactions (user_id, amount, source, ref_id)
+             VALUES (?, ?, 'reward_redeem', ?)`, [userId, -pointsRequired, rewardId]
+        );
+        const [balances] = await conn.query<({ total_points: number } & RowDataPacket)[]>(
+            'SELECT total_points FROM users WHERE user_id = ?', [userId]
+        );
+        const balance = balances[0];
+        if (!balance) throw new Error('Redemption user disappeared within its transaction');
+        await conn.commit();
+        return { status: 'redeemed', totalPoints: balance.total_points };
+    } catch (error) {
+        await conn.rollback();
+        throw error;
+    } finally {
+        conn.release();
+    }
+}
+
 // ───────────────────────── OD-64 · ตัวแจกเหรียญ ─────────────────────────
 // ทุกฟังก์ชันรับ `conn` เพราะต้องทำงานในทรานแซกชันของคนเรียก (ปิดทัวร์ / ตัดสินผลแมตช์)
 // `grantReward` ตัวเดิมใช้ `pool` จึงเข้าทรานแซกชันไม่ได้ — คงไว้ให้คนที่เรียกนอก tx ใช้ต่อ

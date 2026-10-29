@@ -6,6 +6,8 @@ vi.mock('../../repositories/reward.repo.js', () => ({
     listUserRewards: vi.fn(),
     setDisplayed: vi.fn(),
     grantReward: vi.fn(),
+    ownsReward: vi.fn(),
+    redeemTx: vi.fn(),
 }));
 vi.mock('../../utils/checkExist.js', () => ({ checkUser: vi.fn() }));
 
@@ -20,6 +22,59 @@ beforeEach(() => {
     vi.clearAllMocks();
     repo.listActiveRewards.mockResolvedValue([]);
     repo.listUserRewards.mockResolvedValue([]);
+});
+
+describe('badge redemption', () => {
+    const badge = {
+        reward_id: 7, reward_type: 'badge', name: 'Badge', description: null,
+        points_required: 30, criteria: null, icon_key: null, is_active: true,
+        created_at: new Date(), updated_at: null,
+    } satisfies RewardRepo.RewardRow;
+
+    beforeEach(() => {
+        repo.findActiveRewardById.mockResolvedValue(badge);
+        repo.ownsReward.mockResolvedValue(false);
+        repo.redeemTx.mockResolvedValue({ status: 'redeemed', totalPoints: 20 });
+    });
+
+    it('returns the charged price and committed balance', async () => {
+        await expect(RewardService.redeemReward(1, 7)).resolves.toEqual({ rewardId: 7, pointsSpent: 30, totalPoints: 20 });
+        expect(repo.redeemTx).toHaveBeenCalledWith(1, 7, 30);
+    });
+
+    it('rejects a missing or inactive reward before checking ownership', async () => {
+        repo.findActiveRewardById.mockResolvedValue(null);
+        await expect(RewardService.redeemReward(1, 7)).rejects.toMatchObject({ status: 404, code: 'REWARD_NOT_FOUND' });
+        expect(repo.ownsReward).not.toHaveBeenCalled();
+        expect(repo.redeemTx).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        { points_required: null }, { points_required: 0 }, { points_required: -10 },
+        { criteria: { stat: 'wins', gte: 1 } }, { reward_type: 'achievement' as const },
+    ])('does not sell an automatic or invalid reward %j', async (values) => {
+        repo.findActiveRewardById.mockResolvedValue({ ...badge, ...values });
+        await expect(RewardService.redeemReward(1, 7)).rejects.toMatchObject({ status: 409, code: 'REWARD_NOT_PURCHASABLE' });
+        expect(repo.redeemTx).not.toHaveBeenCalled();
+    });
+
+    it('rejects ownership before spending', async () => {
+        repo.ownsReward.mockResolvedValue(true);
+        await expect(RewardService.redeemReward(1, 7)).rejects.toMatchObject({ status: 409, code: 'REWARD_ALREADY_OWNED' });
+        expect(repo.redeemTx).not.toHaveBeenCalled();
+    });
+
+    it('maps a concurrent duplicate to the same ownership error', async () => {
+        repo.redeemTx.mockResolvedValue({ status: 'already_owned' });
+        await expect(RewardService.redeemReward(1, 7)).rejects.toMatchObject({ status: 409, code: 'REWARD_ALREADY_OWNED' });
+    });
+
+    it('returns the actual balance and price on insufficient points', async () => {
+        repo.redeemTx.mockResolvedValue({ status: 'insufficient_points', totalPoints: 12 });
+        await expect(RewardService.redeemReward(1, 7)).rejects.toMatchObject({
+            status: 409, code: 'INSUFFICIENT_POINTS', extra: { pointsRequired: 30, totalPoints: 12 },
+        });
+    });
 });
 
 describe('reward.service', () => {

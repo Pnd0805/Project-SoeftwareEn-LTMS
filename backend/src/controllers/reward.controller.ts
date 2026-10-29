@@ -19,3 +19,8 @@ export async function setMyRewardDisplayed(req: Request, res: Response) {
     const rewardId = parseId(req.params['id'], 'รหัสรางวัล');
     res.status(200).json(await RewardService.setMyRewardDisplayed(req.user!.user_id, rewardId, req.body.isDisplayed));
 }
+
+export async function redeemReward(req: Request, res: Response) {
+    const rewardId = parseId(req.params['id'], 'รหัสรางวัล');
+    res.status(200).json(await RewardService.redeemReward(req.user!.user_id, rewardId));
+}
