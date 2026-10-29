@@ -83,8 +83,8 @@ docker exec ltms-mysql sh -c "mysql -uroot -p<DB_PASSWORD> --default-character-s
 
 ไฟล์นี้ **ลบและสร้างทุกตารางใหม่** ข้อมูลเดิมในฐานจะหายทั้งหมด และรันซ้ำได้ทุกครั้งที่อยากคืนข้อมูลกลับเป็นค่าเริ่มต้น
 
-**แล้วรัน migration ต่อทันที** (`demo-seed.sql` อยู่ที่ migration `050` แต่โค้ดตอนนี้ต้องการถึง `053`
-ถ้าข้าม: งานเบื้องหลังจะ error ทุกชั่วโมง และปุ่มยกเลิกทัวร์จะพัง) — สามคำสั่งนี้ใช้ได้ทั้ง bash, PowerShell และ cmd:
+**แล้วรัน migration ต่อทันที** (`demo-seed.sql` อยู่ที่ migration `050` แต่โค้ดตอนนี้ต้องการถึง `054`
+ถ้าข้าม: งานเบื้องหลังจะ error ทุกชั่วโมง ปุ่มยกเลิกทัวร์จะพัง และแอดมินอนุมัติ/ปฏิเสธกรรมการไม่ได้) — สามคำสั่งนี้ใช้ได้ทั้ง bash, PowerShell และ cmd:
 
 ```bash
 docker cp ../database/migrations/. ltms-mysql:/tmp/migrations

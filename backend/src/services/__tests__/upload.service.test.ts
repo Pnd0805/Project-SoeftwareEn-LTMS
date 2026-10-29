@@ -192,3 +192,54 @@ describe('STORAGE_UNAVAILABLE — แยก "ที่เก็บไฟล์�
     await expectAppError(uploadService.validateAvatarKey(avatarKey, 9001), 422, 'AVATAR_KEY_NOT_FOUND');
   });
 });
+
+// ───────── OD-70 — ตัวช่วยลบภาพยืนยันตัวตนกรรมการ ─────────
+describe('deleteObjectConfirmed — ลบแบบรู้ผล', () => {
+  it('S3 ตอบสำเร็จ → true · ส่งคำสั่งลบคีย์นั้นคีย์เดียว', async () => {
+    s3Send.mockResolvedValueOnce({});
+    await expect(uploadService.deleteObjectConfirmed('referee_identity/1/x.jpg')).resolves.toBe(true);
+    expect(s3Send.mock.calls.at(-1)![0].input).toMatchObject({ Key: 'referee_identity/1/x.jpg' });
+  });
+
+  it('S3 พัง → false (ไม่ throw · เขียน log)', async () => {
+    s3Send.mockRejectedValueOnce(new Error('minio down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(uploadService.deleteObjectConfirmed('referee_identity/1/x.jpg')).resolves.toBe(false);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
+describe('listObjectsByPrefix — ไล่ทุกหน้า', () => {
+  it('ต่อหน้าด้วย ContinuationToken จนครบ · ส่ง prefix ทุกหน้า', async () => {
+    const d = new Date('2026-10-01T00:00:00Z');
+    s3Send
+      .mockResolvedValueOnce({ Contents: [{ Key: 'referee_identity/1/a.jpg', LastModified: d }], IsTruncated: true, NextContinuationToken: 't2' })
+      .mockResolvedValueOnce({ Contents: [{ Key: 'referee_identity/2/b.png' }], IsTruncated: false });
+    await expect(uploadService.listObjectsByPrefix('referee_identity/')).resolves.toEqual([
+      { key: 'referee_identity/1/a.jpg', lastModified: d },
+      { key: 'referee_identity/2/b.png', lastModified: null },
+    ]);
+    const inputs = s3Send.mock.calls.slice(-2).map(c => c[0].input);
+    expect(inputs[0]).toMatchObject({ Prefix: 'referee_identity/', ContinuationToken: undefined });
+    expect(inputs[1]).toMatchObject({ Prefix: 'referee_identity/', ContinuationToken: 't2' });
+  });
+
+  it('ไม่มีไฟล์ → []', async () => {
+    s3Send.mockResolvedValueOnce({ IsTruncated: false });
+    await expect(uploadService.listObjectsByPrefix('referee_identity/')).resolves.toEqual([]);
+  });
+});
+
+describe('isRefereeIdentityKey — รูปชื่อไฟล์ยืนยันตัวตนเท่านั้น', () => {
+  it.each([
+    ['referee_identity/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', true],
+    ['referee_identity/12/0b2f3c4d-1234-4abc-8def-0123456789ab.PNG', true],
+    ['referee_identity/12/readme.txt', false],
+    ['referee_identity/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', false],
+    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', false],
+    ['referee_identity/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg.bak', false],
+  ])('%s → %s', (k, expected) => {
+    expect(uploadService.isRefereeIdentityKey(k)).toBe(expected);
+  });
+});

@@ -6,6 +6,7 @@ import { getIdentityState } from './refereeIdentity.service.js';
 import type { AdminReviewRow } from '../repositories/tournamentReferee.repo.js';
 import type { RejectExternalRefereeInput } from '../schemas/referee.schema.js';
 import * as NotificationService from './notification.service.js';
+import * as RefereeDocs from './refereeDocs.service.js';
 import { presignAll } from './upload.service.js';
 
 /**
@@ -87,7 +88,9 @@ export async function approveExternalReferee(userId : number, adminUserId : numb
         throw new AppError(409, 'DOCS_NOT_SUBMITTED',
             'ผู้ใช้นี้ยังไม่ได้ส่งเอกสารยืนยันตัวตน อนุมัติไม่ได้ — ต้องรอให้เขาส่งเอกสารก่อน');
     }
+    const keysBefore = await RefRepo.findDocKeysOfUser(userId);
     const affected = await RefRepo.approveUser(userId, adminUserId);
+    await RefereeDocs.deleteDocsNoLongerReferenced(userId, keysBefore);   // OD-70 — ภาพหมดหน้าที่ตั้งแต่ตัดสิน
     await NotificationService.notify({
         userId, type : 'referee_external_decided',
         title : 'ยืนยันตัวตนกรรมการผ่านแล้ว',
@@ -103,7 +106,9 @@ export async function requestDocsFromExternalReferee(userId : number, adminUserI
     if(state.status !== 'pending'){
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
     }
+    const keysBefore = await RefRepo.findDocKeysOfUser(userId);
     const affected = await RefRepo.requestDocsFromUser(userId, adminUserId, input.reason);
+    await RefereeDocs.deleteDocsNoLongerReferenced(userId, keysBefore);   // OD-70 — ชุดเก่าใช้ไม่ได้แล้ว user ต้องส่งใหม่
     await NotificationService.notify({
         userId, type : 'referee_external_decided',
         title : 'แอดมินขอเอกสารยืนยันตัวตนเพิ่ม',
@@ -123,7 +128,9 @@ export async function rejectExternalReferee(userId : number, adminUserId : numbe
     if(state.status === 'none' || state.status === 'rejected'){
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่มีการยืนยันตัวตนที่จะปฏิเสธ');
     }
+    const keysBefore = await RefRepo.findDocKeysOfUser(userId);
     const affected = await RefRepo.rejectUser(userId, adminUserId, input.reason);
+    await RefereeDocs.deleteDocsNoLongerReferenced(userId, keysBefore);   // OD-70
     await NotificationService.notify({
         userId, type : 'referee_external_decided',
         title : 'ยืนยันตัวตนกรรมการไม่ผ่าน',

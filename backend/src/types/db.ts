@@ -169,7 +169,9 @@ export type TournamentRefereeRow = {
     /** BE-13 (migration 050) — คำเชิญหมดอายุเมื่อไหร่ · มีความหมายเฉพาะแถวที่ยัง pending */
     expires_at : Date | null,
     removed_at : Date | null,
-    removed_by : number | null
+    removed_by : number | null,
+    /** migration 054 (OD-70) — เวลาที่ไฟล์เอกสารยืนยันตัวตนถูกลบ · NULL = ยังไม่ถูกลบ/ไม่เคยส่ง */
+    docs_purged_at : Date | null
 }
 
 export type MatchRefereeRow = {

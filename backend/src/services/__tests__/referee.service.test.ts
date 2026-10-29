@@ -135,6 +135,7 @@ function makeInvitation(overrides: Partial<TournamentRefereeRow> = {}): Tourname
     created_at: new Date(),
     removed_at: null,
     removed_by: null,
+    docs_purged_at: null,
     ...overrides,
   };
 }
