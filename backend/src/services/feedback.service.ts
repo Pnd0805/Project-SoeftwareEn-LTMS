@@ -37,10 +37,16 @@ async function getTournamentOr404(tournamentId: number): Promise<TournamentRow> 
     return tournament;
 }
 
-/** ให้คะแนนได้ตลอด แต่ถ้าปิดทัวร์แล้ว ปิดรับเมื่อครบ 7 วันหลังปิดทัวร์ */
+/**
+ * ให้คะแนนได้ตลอด แต่ถ้าปิดทัวร์แล้ว ปิดรับเมื่อครบ 7 วันหลังปิดทัวร์
+ * ทัวร์ที่ถูกยกเลิก (migration 053 · มติ 28 ต.ค.) นับ 7 วันจากวันยกเลิกแทน — ทีมที่สมัครไว้รีวิวผู้จัดได้
+ */
 export function feedbackClosesAt(tournament: TournamentRow): Date | null {
-    if (tournament.tournament_status !== 'completed' || !tournament.completed_at) return null;
-    return new Date(new Date(tournament.completed_at).getTime() + REVIEW_CLOSING_DAYS * 24 * 60 * 60 * 1000);
+    const endedAt = tournament.tournament_status === 'completed' ? tournament.completed_at
+        : tournament.tournament_status === 'cancelled' ? tournament.cancelled_at
+        : null;
+    if (!endedAt) return null;
+    return new Date(new Date(endedAt).getTime() + REVIEW_CLOSING_DAYS * 24 * 60 * 60 * 1000);
 }
 
 /** วันเริ่มทัวร์ 00:00 เวลาไทย — event_start_date เป็น DATE (pool ตั้ง dateStrings จึงได้ 'YYYY-MM-DD') */
@@ -63,6 +69,7 @@ export type FeedbackStatus = 'not_started' | 'open' | 'closed';
  *   'event_start'  ถึงกำหนดการแล้ว ⇒ `opensAt` อยู่ในอดีต · FE วางบนป้ายได้ตรง ๆ
  *   'completed'    ทัวร์ปิดแล้วแต่ยังไม่ถึงวันเริ่มตามกำหนดการ (ข้อมูลเพี้ยน/ยกเลิกแล้วปิด)
  *   'first_match'  ยังไม่ถึงกำหนดการ แต่มีแมตช์แข่งจริงแล้ว ⇒ **ห้ามโชว์ `opensAt`**
+ *   'cancelled'    ทัวร์ถูกยกเลิกก่อนถึงวันเริ่มตามกำหนดการ (migration 053) ⇒ เปิด 7 วันหลังยกเลิก · ห้ามโชว์ `opensAt`
  *   null           ยังไม่เปิด (`not_started`) หรือปิดแล้ว (`closed`) — ไม่มี "เหตุที่เปิด"
  *
  * 🔴 นี่ **ไม่ใช่** "เหตุแรกสุดตามเวลา" — ระบบไม่เก็บว่าแมตช์แรกแข่งเมื่อไร จึงตอบไม่ได้ว่า
@@ -71,13 +78,14 @@ export type FeedbackStatus = 'not_started' | 'open' | 'closed';
  * ★ ลำดับกิ่งเรียง `event_start` ไว้ก่อน จึงไม่ยิง `hasPlayedMatch` ในเคสปกติ
  *   (ทัวร์ที่เริ่มแล้ว = เกือบทั้งหมด) — ผลลัพธ์บูลีนเหมือนของเดิมเป๊ะ
  */
-export type FeedbackOpenedBy = 'event_start' | 'completed' | 'first_match';
+export type FeedbackOpenedBy = 'event_start' | 'completed' | 'first_match' | 'cancelled';
 
 export async function feedbackState(tournament: TournamentRow, now = new Date()):
         Promise<{ status: FeedbackStatus; openedBy: FeedbackOpenedBy | null }> {
     if (!isFeedbackOpen(tournament, now)) return { status: 'closed', openedBy: null };
     if (now >= feedbackOpensAt(tournament)) return { status: 'open', openedBy: 'event_start' };
     if (tournament.tournament_status === 'completed') return { status: 'open', openedBy: 'completed' };
+    if (tournament.tournament_status === 'cancelled') return { status: 'open', openedBy: 'cancelled' };
     return (await FeedbackRepo.hasPlayedMatch(tournament.tournament_id))
         ? { status: 'open', openedBy: 'first_match' }
         : { status: 'not_started', openedBy: null };
@@ -290,12 +298,20 @@ export async function getMvpVotes(matchId: number, userId?: number) {
 
 // ───────────────────────── คอมเมนต์ทัวร์ (C7 · มติ 22 ก.ย. 2569) ─────────────────────────
 //   ทุกคนที่ล็อกอินคอมเมนต์ได้ (รวมคนในทัวร์) · ทุกคนอ่านได้ · คนละ 1 อันต่อทัวร์ ส่งซ้ำ = แก้ · เจ้าของลบเองได้
-//   ทัวร์ต้อง public หรือ completed — private / รออนุมัติ ฯลฯ เขียนไม่ได้ และคนนอกอ่านไม่ได้ (เหมือนหน้าทัวร์)
+//   ทัวร์ต้อง public, completed หรือ cancelled (migration 053) — private / รออนุมัติ ฯลฯ เขียนไม่ได้ และคนนอกอ่านไม่ได้ (เหมือนหน้าทัวร์)
 //   report: ใครล็อกอินก็ได้ ยกเว้นของตัวเอง (POST /feedback/:id/report) · ลบของคนอื่น: แอดมินเท่านั้น (DELETE /admin/feedback/:id)
 
-/** ทัวร์ที่คนนอกเข้าถึงได้ — ใช้ร่วมกันทั้งความเห็นต่อทัวร์ (ด้านล่าง) และโหวต MVP (ด้านบน) */
+/** ทัวร์ที่คนนอกเข้าถึงได้และยังโหวต MVP ได้ (ด้านบน) */
 function isOpenToPublic(tournament: TournamentRow): boolean {
     return tournament.tournament_status === 'public' || tournament.tournament_status === 'completed';
+}
+
+/**
+ * ทัวร์ที่คอมเมนต์ได้ — เหมือน isOpenToPublic + ทัวร์ที่ถูกยกเลิก (migration 053 · มติ 28 ต.ค.)
+ * ★ แยกจาก MVP โดยเจตนา: ยกเลิกแล้วยังคุยกันได้ (ถามเรื่องการยกเลิก) แต่ไม่มีการโหวต MVP
+ */
+function isOpenForComments(tournament: TournamentRow): boolean {
+    return isOpenToPublic(tournament) || tournament.tournament_status === 'cancelled';
 }
 
 function toCommentDto(row: CommentListRow, viewerId?: number, withReportFlag = false) {
@@ -315,7 +331,7 @@ function toCommentDto(row: CommentListRow, viewerId?: number, withReportFlag = f
 
 /** ทัวร์ที่ไม่ได้เปิดเผยแพร่: เห็นเฉพาะผู้จัดกับแอดมินทั้งมหาวิทยาลัย — คนอื่น 404 เหมือนหน้าทัวร์ */
 async function assertCommentsVisible(tournament: TournamentRow, viewerId?: number): Promise<void> {
-    if (isOpenToPublic(tournament)) return;
+    if (isOpenForComments(tournament)) return;
     if (viewerId !== undefined && (tournament.requested_by_user_id === viewerId || await isUniversityAdmin(viewerId))) return;
     throw new AppError(404, 'TOURNAMENT_NOT_FOUND', 'ไม่พบทัวร์นาเมนต์นี้');
 }
@@ -349,7 +365,7 @@ async function notifyRewriteAfterRemoval(tournament: TournamentRow, authorUserId
 /** 201 ครั้งแรก · 200 แก้ของเดิม (isNew ให้ controller เลือก status) */
 export async function postTournamentComment(tournamentId: number, userId: number, content: string) {
     const tournament = await getTournamentOr404(tournamentId);
-    if (!isOpenToPublic(tournament)) {
+    if (!isOpenForComments(tournament)) {
         throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ คอมเมนต์ไม่ได้');
     }
     const existing = await FeedbackRepo.findOwnComment(tournamentId, userId);
@@ -380,7 +396,7 @@ export async function listTournamentComments(tournamentId: number, viewerId: num
     if (viewerId !== undefined) {
         const own = await FeedbackRepo.findOwnComment(tournamentId, viewerId);
         mine = own && !own.removed_at ? toCommentDto(own, viewerId) : null;
-        canComment = isOpenToPublic(tournament) && (!own?.removed_at || removedByOrganizerOf(own, tournament));
+        canComment = isOpenForComments(tournament) && (!own?.removed_at || removedByOrganizerOf(own, tournament));
     }
     return {
         items: rows.map(r => toCommentDto(r, viewerId, canModerate)),

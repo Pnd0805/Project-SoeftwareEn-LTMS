@@ -63,6 +63,25 @@ export async function getApplicationDetail(applicationId: number, userId: number
     return toApplicationDetailDto(app, softFilterDocumentUrls, players);
 }
 
+/**
+ * ทัวร์ที่ถูกยกเลิก หรือปิดการแข่งขันแล้ว — ใบสมัครเป็นประวัติ ไม่ยกเลิก/ถอน/อนุมัติ/ปฏิเสธอีก
+ *   เส้น /applications/:id อยู่นอก /tournaments/:id ⇒ lockCompletedTournament ไม่ครอบ ต้องกันที่นี่เอง
+ *   cancelled (migration 053 · มติ 28 ต.ค.) · completed (OD-69 รอบ 5 — เดิมอนุมัติทีมเข้าทัวร์ที่จบไปแล้วได้)
+ *   ไม่ต้องถอน/ยกเลิกเพื่อปลดล็อกผู้เล่น — application.repo ไม่นับทัวร์ที่จบชีวิตแล้วเป็นรายชื่อที่ยังมีชีวิตอยู่แล้ว
+ *   ใบที่ค้าง pending ตอนทัวร์จบ ค้างไว้อย่างนั้น ไม่ล็อกใคร (หน้าทัวร์บอกสถานะอยู่แล้ว)
+ * วางหลังด่านสิทธิ์ ⇒ คนที่ไม่เกี่ยวยังได้ 403 เหมือนเดิม ไม่ได้รู้สถานะทัวร์
+ */
+function assertTournamentStillRunning(app: { tournament_id: number; tournament_status: string }): void {
+    if (app.tournament_status === 'cancelled') {
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว ใบสมัครถูกพักไว้ตามเดิม',
+            { tournamentId: app.tournament_id });
+    }
+    if (app.tournament_status === 'completed') {
+        throw new AppError(409, 'TOURNAMENT_COMPLETED', 'ทัวร์นาเมนต์นี้ปิดการแข่งขันแล้ว ใบสมัครแก้ไขไม่ได้อีก',
+            { tournamentId: app.tournament_id });
+    }
+}
+
 export async function cancelApplication(applicationId: number, userId: number) {
     const app = await ApplicationRepo.findApplicationById(applicationId);
     if (!app) {
@@ -73,6 +92,7 @@ export async function cancelApplication(applicationId: number, userId: number) {
     if (!isTeamLeader){
         throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
     }
+    assertTournamentStillRunning(app);
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
@@ -93,6 +113,7 @@ export async function withdrawApplication(applicationId: number, userId: number)
     if (!isTeamLeader){
         throw new AppError(403, "NOT_TEAM_LEADER", "คุณไม่ใช่หัวหน้าทีมนี้");
     }
+    assertTournamentStillRunning(app);
     if (app.tournament_status === 'completed'){
         throw new AppError(409, "TOURNAMENT_COMPLETED", "ทัวร์นาเมนต์นี้ปิดการแข่งขันแล้ว ถอนตัวไม่ได้");
     }
@@ -163,6 +184,7 @@ export async function approveApplication(applicationId: number,userId: number) {
     if (!isOrganizer){
         throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
+    assertTournamentStillRunning(app);
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }
@@ -209,6 +231,7 @@ export async function rejectApplication(applicationId: number, userId: number, r
     if (!isOrganizer){
         throw new AppError(403, "NOT_ORGANIZER", "คุณไม่ใช่ผู้จัดการแข่งขันของทัวร์นาเมนต์นี้");
     }
+    assertTournamentStillRunning(app);
     if (app.tournament_application_status !== "pending"){
         throw new AppError(409, "ALREADY_DECIDED", "คำขอนี้ถูกพิจารณาไปแล้ว ยกเลิกไม่ได้");
     }

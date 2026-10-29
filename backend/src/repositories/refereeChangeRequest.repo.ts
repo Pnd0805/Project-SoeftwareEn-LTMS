@@ -92,7 +92,7 @@ const LIST_SELECT = `
 const NOT_EXPIRED = `
     (r.match_a_id IS NULL OR ma.scheduled_time > NOW())
     AND (mb.scheduled_time IS NULL OR mb.scheduled_time > NOW())
-    AND t.tournament_status <> 'completed' AND t.deleted_at IS NULL`;
+    AND t.tournament_status NOT IN ('completed', 'cancelled') AND t.deleted_at IS NULL`;   // cancelled: migration 053
 
 export async function findListRowById(requestId : number): Promise<RefereeRequestListRow | null>{
     const [rows] = await pool.query<(RefereeRequestListRow & RowDataPacket)[]>(

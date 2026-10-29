@@ -1,0 +1,569 @@
+[
+  {
+    "name": "teams-1280-dark",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(30, 27, 42)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 118.375,
+    "tableRegions": []
+  },
+  {
+    "name": "team-1280-dark",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "56px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(38, 34, 52)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 471.734375,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      }
+    ]
+  },
+  {
+    "name": "player-1280-dark",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 347.515625,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      }
+    ]
+  },
+  {
+    "name": "interaction-1280-dark",
+    "filter": true,
+    "inviteFocus": true,
+    "confirmations": true,
+    "escapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "teams-1280-light",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(255, 255, 255)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 118.375,
+    "tableRegions": []
+  },
+  {
+    "name": "team-1280-light",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "56px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(248, 244, 236)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 471.734375,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      }
+    ]
+  },
+  {
+    "name": "player-1280-light",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 347.515625,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      }
+    ]
+  },
+  {
+    "name": "interaction-1280-light",
+    "filter": true,
+    "inviteFocus": true,
+    "confirmations": true,
+    "escapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "teams-1440-dark",
+    "overflow": false,
+    "viewport": 1440,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(30, 27, 42)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 118.375,
+    "tableRegions": []
+  },
+  {
+    "name": "team-1440-dark",
+    "overflow": false,
+    "viewport": 1440,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "56px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(38, 34, 52)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 471.734375,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 1090,
+        "scrollWidth": 1090
+      }
+    ]
+  },
+  {
+    "name": "player-1440-dark",
+    "overflow": false,
+    "viewport": 1440,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 347.515625,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 1090,
+        "scrollWidth": 1090
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 1090,
+        "scrollWidth": 1090
+      }
+    ]
+  },
+  {
+    "name": "interaction-1440-dark",
+    "filter": true,
+    "inviteFocus": true,
+    "confirmations": true,
+    "escapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "teams-1440-light",
+    "overflow": false,
+    "viewport": 1440,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(255, 255, 255)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 118.375,
+    "tableRegions": []
+  },
+  {
+    "name": "team-1440-light",
+    "overflow": false,
+    "viewport": 1440,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "56px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(248, 244, 236)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 471.734375,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 1090,
+        "scrollWidth": 1090
+      }
+    ]
+  },
+  {
+    "name": "player-1440-light",
+    "overflow": false,
+    "viewport": 1440,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 347.515625,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 1090,
+        "scrollWidth": 1090
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 1090,
+        "scrollWidth": 1090
+      }
+    ]
+  },
+  {
+    "name": "interaction-1440-light",
+    "filter": true,
+    "inviteFocus": true,
+    "confirmations": true,
+    "escapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "teams-390-dark",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "40px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(30, 27, 42)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 98.640625,
+    "tableRegions": []
+  },
+  {
+    "name": "team-390-dark",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "36px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(38, 34, 52)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 224,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      }
+    ]
+  },
+  {
+    "name": "player-390-dark",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "36px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 270,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      }
+    ]
+  },
+  {
+    "name": "interaction-390-dark",
+    "filter": true,
+    "inviteFocus": true,
+    "confirmations": true,
+    "escapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "teams-390-light",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "40px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(255, 255, 255)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 98.640625,
+    "tableRegions": []
+  },
+  {
+    "name": "team-390-light",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "36px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(248, 244, 236)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 224,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      }
+    ]
+  },
+  {
+    "name": "player-390-light",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "36px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 270,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      }
+    ]
+  },
+  {
+    "name": "interaction-390-light",
+    "filter": true,
+    "inviteFocus": true,
+    "confirmations": true,
+    "escapeReturn": true,
+    "errors": []
+  },
+  {
+    "name": "long-team-1280-dark",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "40px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(38, 34, 52)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 850,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      }
+    ]
+  },
+  {
+    "name": "long-player-1280-dark",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "40px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 920,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 958,
+        "scrollWidth": 958
+      }
+    ]
+  },
+  {
+    "name": "long-team-390-light",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "28px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgb(248, 244, 236)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 224,
+    "tableRegions": [
+      {
+        "label": "Team members",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      }
+    ]
+  },
+  {
+    "name": "long-player-390-light",
+    "overflow": false,
+    "viewport": 390,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "28px",
+    "body": "rgb(42, 33, 23)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(90, 78, 54)",
+    "headingWidth": 270,
+    "tableRegions": [
+      {
+        "label": "Player tournament history",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      },
+      {
+        "label": "Player teams",
+        "focusable": true,
+        "clientWidth": 300,
+        "scrollWidth": 560
+      }
+    ]
+  },
+  {
+    "name": "partial-source",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(30, 27, 42)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 118.375,
+    "tableRegions": []
+  },
+  {
+    "name": "partial-source-privacy",
+    "requests": [
+      "/me",
+      "/sport-types",
+      "/me/teams",
+      "/me/invitations",
+      "/me/applications",
+      "/me",
+      "/admin/scopes",
+      "/me/notifications",
+      "/me/invitations",
+      "/me/invitations"
+    ],
+    "errors": []
+  },
+  {
+    "name": "restricted",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "56px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgb(38, 34, 52)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 314.984375,
+    "tableRegions": []
+  },
+  {
+    "name": "restricted-privacy",
+    "requests": [
+      "/me",
+      "/teams/41",
+      "/sport-types"
+    ],
+    "errors": []
+  },
+  {
+    "name": "public-player",
+    "overflow": false,
+    "viewport": 1280,
+    "font": "\"Barlow Condensed\", Impact, sans-serif",
+    "fontSize": "48px",
+    "body": "rgb(229, 220, 200)",
+    "background": "rgba(0, 0, 0, 0)",
+    "secondary": "rgb(199, 187, 160)",
+    "headingWidth": 270.859375,
+    "tableRegions": []
+  },
+  {
+    "name": "public-player-privacy",
+    "requests": [
+      "/me",
+      "/users/7",
+      "/users/7/stats",
+      "/faculties",
+      "/users/7/career",
+      "/sport-types",
+      "/faculties/1/departments",
+      "/users/7/stats",
+      "/users/7/stats",
+      "/users/7/stats"
+    ],
+    "errors": []
+  },
+  {
+    "name": "team-record-1280-dark",
+    "keyboardScroll": true,
+    "clientWidth": 958,
+    "scrollWidth": 958,
+    "scrollLeft": 0,
+    "focused": true,
+    "documentOverflow": false
+  },
+  {
+    "name": "team-record-390-light",
+    "keyboardScroll": true,
+    "clientWidth": 300,
+    "scrollWidth": 840,
+    "scrollLeft": 72,
+    "focused": true,
+    "documentOverflow": false
+  }
+]

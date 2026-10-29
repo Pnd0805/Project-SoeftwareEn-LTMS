@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-10-07T08:18:41.055Z",
+  "backendRef": "7aae61f",
+  "origin": "http://127.0.0.1:5193",
+  "mode": "real backend with SSR-loaded FE adapters",
+  "artifacts": {
+    "teamId": 9034,
+    "tournamentId": 27,
+    "applicationId": 36,
+    "matchesBeforeWithdrawal": []
+  },
+  "results": [
+    {
+      "name": "PATCH /me null clear and readback",
+      "result": "PASS"
+    },
+    {
+      "name": "profile new length limits",
+      "result": "PASS"
+    },
+    {
+      "name": "safe search returns faculty/year without private contact fields",
+      "result": "PASS"
+    },
+    {
+      "name": "leader self-leave is refused",
+      "result": "PASS"
+    },
+    {
+      "name": "member self-leave returns 204 and removes own team entry",
+      "result": "PASS"
+    },
+    {
+      "name": "non-member self-leave is 404",
+      "result": "PASS"
+    },
+    {
+      "name": "detail exposes stored tournament bestOf",
+      "result": "PASS"
+    },
+    {
+      "name": "immutable and amendment fields reject silent tournament PATCH",
+      "result": "PASS"
+    },
+    {
+      "name": "approved tournament membership lock is preserved on self-leave",
+      "result": "PASS"
+    },
+    {
+      "name": "tournament has no matches before withdrawal",
+      "result": "PASS"
+    },
+    {
+      "name": "same team and players can reapply before any match is played",
+      "result": "FAIL",
+      "status": 409,
+      "code": "PLAYER_ALREADY_REGISTERED",
+      "message": "มีผู้เล่นที่ถูกส่งลงแข่งทัวร์นาเมนต์นี้กับทีมอื่นไปแล้ว"
+    },
+    {
+      "name": "self-leave works after withdrawal unlock",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/cleanup disposable QA state",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/cleanup disposable QA state",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/cleanup disposable QA state",
+      "result": "PASS"
+    }
+  ]
+}

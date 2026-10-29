@@ -5,6 +5,12 @@ vi.mock('../../repositories/tournamentReferee.repo.js', () => ({
   approveUser: vi.fn(),
   requestDocsFromUser: vi.fn(),
   rejectUser: vi.fn(),
+  findDocKeysOfUser: vi.fn(async () => []),
+}));
+
+// OD-70 — ลบไฟล์ตอนตัดสิน · ทดสอบตัวลบจริงแยกที่ refereeDocs.service.test.ts
+vi.mock('../refereeDocs.service.js', () => ({
+  deleteDocsNoLongerReferenced: vi.fn(async () => 0),
 }));
 
 vi.mock('../../repositories/user.repo.js', () => ({
@@ -36,6 +42,7 @@ import {
   requestDocsFromExternalReferee,
   rejectExternalReferee,
 } from '../refereeAdmin.service.js';
+import * as RefereeDocsForTest from '../refereeDocs.service.js';
 import * as RefRepo from '../../repositories/tournamentReferee.repo.js';
 import * as UserRepo from '../../repositories/user.repo.js';
 import { toUserRef } from '../../mappers/user.mapper.js';
@@ -493,5 +500,41 @@ describe('listPendingExternalReferees — ต้องเป็น presigned URL
       ['https://s3/a.jpg?signed'],
       ['https://s3/b.jpg?signed'],
     ]);
+  });
+});
+
+/**
+ * OD-70 (งาน ⑥) — ตัดสินแล้วลบภาพบัตรด้วย
+ * เดิม repo ล้างแค่คีย์ในฐาน ⇒ ไฟล์ใน MinIO ค้างโดยไม่มีอะไรชี้ถึง
+ * ★ ต้องอ่านคีย์ **ก่อน** ตัดสิน (หลังตัดสินคีย์หายไปแล้ว) แล้วค่อยลบ **หลัง** ตัดสิน
+ */
+describe('ตัดสินแล้วลบภาพบัตร (OD-70)', () => {
+  const mockedDocs = vi.mocked(RefereeDocsForTest);
+  beforeEach(() => {
+    mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
+    mockedRefRepo.findDocKeysOfUser.mockResolvedValue(['referee_identity/1/a.jpg', 'referee_identity/1/b.png']);
+  });
+
+  it.each([
+    ['อนุมัติ', 'approveUser', () => approveExternalReferee(1, 99), { status: 'pending', docsSubmitted: true }],
+    ['ขอเอกสารใหม่', 'requestDocsFromUser', () => requestDocsFromExternalReferee(1, 99, { reason: 'ไม่ชัด' }), { status: 'pending' }],
+    ['ปฏิเสธ', 'rejectUser', () => rejectExternalReferee(1, 99, { reason: 'ปลอม' }), { status: 'pending' }],
+  ] as const)('%s → อ่านคีย์ก่อนตัดสิน แล้วส่งคีย์ชุดนั้นไปลบหลังตัดสิน', async (_label, repoFn, call, state) => {
+    mockedGetIdentityState.mockResolvedValue(state as any);
+    (mockedRefRepo[repoFn] as any).mockResolvedValue(1);
+    await call();
+
+    const readAt = mockedRefRepo.findDocKeysOfUser.mock.invocationCallOrder[0]!;
+    const decideAt = (mockedRefRepo[repoFn] as any).mock.invocationCallOrder[0]!;
+    const deleteAt = mockedDocs.deleteDocsNoLongerReferenced.mock.invocationCallOrder[0]!;
+    expect(readAt).toBeLessThan(decideAt);
+    expect(decideAt).toBeLessThan(deleteAt);
+    expect(mockedDocs.deleteDocsNoLongerReferenced).toHaveBeenCalledWith(1, ['referee_identity/1/a.jpg', 'referee_identity/1/b.png']);
+  });
+
+  it('ตัดสินไม่ผ่านด่าน (เช่นไม่ได้รอตรวจ) → ไม่ลบอะไร', async () => {
+    mockedGetIdentityState.mockResolvedValue({ status: 'none' } as any);
+    await expect(approveExternalReferee(1, 99)).rejects.toMatchObject({ code: 'NOT_PENDING_REVIEW' });
+    expect(mockedDocs.deleteDocsNoLongerReferenced).not.toHaveBeenCalled();
   });
 });

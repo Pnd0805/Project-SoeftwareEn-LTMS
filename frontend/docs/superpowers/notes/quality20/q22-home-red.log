@@ -1,0 +1,30 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+ ❯ src/App.lazy.quality20.test.tsx (39 tests | 1 failed) 215ms
+     × retains Home filters when navigating from root into a Home category 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/App.lazy.quality20.test.tsx > route loading with existing permission boundaries > retains Home filters when navigating from root into a Home category
+Error: expect(element).toHaveValue(Faculty cup)
+
+Expected the element to have value:
+  Faculty cup
+Received:
+
+ ❯ src/App.lazy.quality20.test.tsx:114:57
+    112|     fireEvent.change(screen.getByLabelText('Home filter'), { target: {…
+    113|     fireEvent.click(screen.getByRole('link', { name: 'All category fix…
+    114|     expect(await screen.findByLabelText('Home filter')).toHaveValue('F…
+       |                                                         ^
+    115|   })
+    116| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 38 passed (39)
+   Start at  04:22:34
+   Duration  553ms (transform 34ms, setup 44ms, import 38ms, tests 215ms, environment 205ms)

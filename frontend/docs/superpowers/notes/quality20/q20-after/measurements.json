@@ -1,0 +1,4030 @@
+[
+  {
+    "id": "guest-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 114,
+      "bottom": 2120.265625,
+      "width": 390,
+      "height": 2006.265625
+    },
+    "firstContent": {
+      "top": 126,
+      "bottom": 162,
+      "width": 358,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 114,
+      "width": 390,
+      "height": 114
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "leader-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3434.5625,
+      "width": 390,
+      "height": 3318.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-leader-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3434.5625,
+      "width": 390,
+      "height": 3318.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Teams"
+  },
+  {
+    "id": "keyboard-leader-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "organizer-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3538.265625,
+      "width": 390,
+      "height": 3422.671875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 223.59375,
+      "width": 358,
+      "height": 96
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-organizer-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3538.265625,
+      "width": 390,
+      "height": 3422.671875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 223.59375,
+      "width": 358,
+      "height": 96
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    }
+  },
+  {
+    "id": "keyboard-organizer-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "referee-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1803.359375,
+      "width": 390,
+      "height": 1687.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1771.359375,
+      "width": 358,
+      "height": 1643.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-referee-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1803.359375,
+      "width": 390,
+      "height": 1687.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1771.359375,
+      "width": 358,
+      "height": 1643.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Matches"
+  },
+  {
+    "id": "keyboard-referee-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "admin-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1730.53125,
+      "width": 390,
+      "height": 1614.9375
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1698.53125,
+      "width": 358,
+      "height": 1570.9375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournament requests"
+  },
+  {
+    "id": "menu-admin-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1730.53125,
+      "width": 390,
+      "height": 1614.9375
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1698.53125,
+      "width": 358,
+      "height": 1570.9375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 96.03125,
+      "bottom": 747.953125,
+      "width": 350,
+      "height": 651.921875
+    },
+    "current": "Tournament requests"
+  },
+  {
+    "id": "keyboard-admin-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Admin",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "bracket-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1602.546875,
+      "width": 390,
+      "height": 1486.953125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 754.34375,
+      "bottom": 867.53125,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": null,
+    "current": "Bracket"
+  },
+  {
+    "id": "menu-bracket-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1602.546875,
+      "width": 390,
+      "height": 1486.953125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 754.34375,
+      "bottom": 867.53125,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Bracket"
+  },
+  {
+    "id": "keyboard-bracket-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "guest-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 114,
+      "bottom": 2120.265625,
+      "width": 390,
+      "height": 2006.265625
+    },
+    "firstContent": {
+      "top": 126,
+      "bottom": 162,
+      "width": 358,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 114,
+      "width": 390,
+      "height": 114
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "leader-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3434.5625,
+      "width": 390,
+      "height": 3318.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-leader-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3434.5625,
+      "width": 390,
+      "height": 3318.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Teams"
+  },
+  {
+    "id": "keyboard-leader-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "organizer-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3538.265625,
+      "width": 390,
+      "height": 3422.671875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 223.59375,
+      "width": 358,
+      "height": 96
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-organizer-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3538.265625,
+      "width": 390,
+      "height": 3422.671875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 223.59375,
+      "width": 358,
+      "height": 96
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    }
+  },
+  {
+    "id": "keyboard-organizer-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "referee-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1803.359375,
+      "width": 390,
+      "height": 1687.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1771.359375,
+      "width": 358,
+      "height": 1643.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-referee-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1803.359375,
+      "width": 390,
+      "height": 1687.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1771.359375,
+      "width": 358,
+      "height": 1643.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Matches"
+  },
+  {
+    "id": "keyboard-referee-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "admin-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1730.53125,
+      "width": 390,
+      "height": 1614.9375
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1698.53125,
+      "width": 358,
+      "height": 1570.9375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournament requests"
+  },
+  {
+    "id": "menu-admin-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1730.53125,
+      "width": 390,
+      "height": 1614.9375
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1698.53125,
+      "width": 358,
+      "height": 1570.9375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 96.03125,
+      "bottom": 747.953125,
+      "width": 350,
+      "height": 651.921875
+    },
+    "current": "Tournament requests"
+  },
+  {
+    "id": "keyboard-admin-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Admin",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "bracket-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1602.546875,
+      "width": 390,
+      "height": 1486.953125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 754.34375,
+      "bottom": 867.53125,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": null,
+    "current": "Bracket"
+  },
+  {
+    "id": "menu-bracket-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1602.546875,
+      "width": 390,
+      "height": 1486.953125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 358,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 754.34375,
+      "bottom": 867.53125,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Bracket"
+  },
+  {
+    "id": "keyboard-bracket-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "guest-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 114,
+      "bottom": 2164.265625,
+      "width": 320,
+      "height": 2050.265625
+    },
+    "firstContent": {
+      "top": 126,
+      "bottom": 162,
+      "width": 288,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 114,
+      "width": 320,
+      "height": 114
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "leader-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3588.75,
+      "width": 320,
+      "height": 3473.15625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 288,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-leader-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3588.75,
+      "width": 320,
+      "height": 3473.15625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 288,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Teams"
+  },
+  {
+    "id": "keyboard-leader-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "organizer-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3840.84375,
+      "width": 320,
+      "height": 3725.25
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 259.59375,
+      "width": 288,
+      "height": 132
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-organizer-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3840.84375,
+      "width": 320,
+      "height": 3725.25
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 259.59375,
+      "width": 288,
+      "height": 132
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    }
+  },
+  {
+    "id": "keyboard-organizer-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "referee-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1831.359375,
+      "width": 320,
+      "height": 1715.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1799.359375,
+      "width": 288,
+      "height": 1671.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-referee-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1831.359375,
+      "width": 320,
+      "height": 1715.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1799.359375,
+      "width": 288,
+      "height": 1671.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Matches"
+  },
+  {
+    "id": "keyboard-referee-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "admin-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1791.421875,
+      "width": 320,
+      "height": 1675.828125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1759.421875,
+      "width": 288,
+      "height": 1631.828125
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournament requests"
+  },
+  {
+    "id": "menu-admin-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1791.421875,
+      "width": 320,
+      "height": 1675.828125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1759.421875,
+      "width": 288,
+      "height": 1631.828125
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 96.03125,
+      "bottom": 747.953125,
+      "width": 280,
+      "height": 651.921875
+    },
+    "current": "Tournament requests"
+  },
+  {
+    "id": "keyboard-admin-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Admin",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "bracket-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1696.734375,
+      "width": 320,
+      "height": 1581.140625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 169.1875,
+      "width": 288,
+      "height": 41.59375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 848.53125,
+      "bottom": 961.71875,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": null,
+    "current": "Bracket"
+  },
+  {
+    "id": "menu-bracket-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1696.734375,
+      "width": 320,
+      "height": 1581.140625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 169.1875,
+      "width": 288,
+      "height": 41.59375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 848.53125,
+      "bottom": 961.71875,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Bracket"
+  },
+  {
+    "id": "keyboard-bracket-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "guest-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 114,
+      "bottom": 2164.265625,
+      "width": 320,
+      "height": 2050.265625
+    },
+    "firstContent": {
+      "top": 126,
+      "bottom": 162,
+      "width": 288,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 114,
+      "width": 320,
+      "height": 114
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "leader-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3588.75,
+      "width": 320,
+      "height": 3473.15625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 288,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-leader-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3588.75,
+      "width": 320,
+      "height": 3473.15625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 159.390625,
+      "width": 288,
+      "height": 31.796875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Teams"
+  },
+  {
+    "id": "keyboard-leader-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "organizer-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3840.84375,
+      "width": 320,
+      "height": 3725.25
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 259.59375,
+      "width": 288,
+      "height": 132
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-organizer-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 3840.84375,
+      "width": 320,
+      "height": 3725.25
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 259.59375,
+      "width": 288,
+      "height": 132
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    }
+  },
+  {
+    "id": "keyboard-organizer-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "referee-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1831.359375,
+      "width": 320,
+      "height": 1715.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1799.359375,
+      "width": 288,
+      "height": 1671.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-referee-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1831.359375,
+      "width": 320,
+      "height": 1715.765625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1799.359375,
+      "width": 288,
+      "height": 1671.765625
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Matches"
+  },
+  {
+    "id": "keyboard-referee-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "admin-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1791.421875,
+      "width": 320,
+      "height": 1675.828125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1759.421875,
+      "width": 288,
+      "height": 1631.828125
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournament requests"
+  },
+  {
+    "id": "menu-admin-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1791.421875,
+      "width": 320,
+      "height": 1675.828125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 1759.421875,
+      "width": 288,
+      "height": 1631.828125
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 96.03125,
+      "bottom": 747.953125,
+      "width": 280,
+      "height": 651.921875
+    },
+    "current": "Tournament requests"
+  },
+  {
+    "id": "keyboard-admin-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Admin",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "bracket-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1696.734375,
+      "width": 320,
+      "height": 1581.140625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 169.1875,
+      "width": 288,
+      "height": 41.59375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 848.53125,
+      "bottom": 961.71875,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": null,
+    "current": "Bracket"
+  },
+  {
+    "id": "menu-bracket-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 1696.734375,
+      "width": 320,
+      "height": 1581.140625
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 169.1875,
+      "width": 288,
+      "height": 41.59375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": {
+      "top": 848.53125,
+      "bottom": 961.71875,
+      "width": 240,
+      "height": 113.1875
+    },
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Bracket"
+  },
+  {
+    "id": "keyboard-bracket-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "guest-1280-dark",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1280,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1280-dark",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1359.5,
+      "width": 1048,
+      "height": 1295.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1000,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1280-dark",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1186.0625,
+      "width": 1048,
+      "height": 1122.46875
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1138.0625,
+      "width": 1000,
+      "height": 1050.46875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "guest-1280-light",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1280,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1280-light",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1359.5,
+      "width": 1048,
+      "height": 1295.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1000,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1280-light",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1186.0625,
+      "width": 1048,
+      "height": 1122.46875
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1138.0625,
+      "width": 1000,
+      "height": 1050.46875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "guest-1440-dark",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1440,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1440-dark",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1337.5,
+      "width": 1180,
+      "height": 1273.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1132,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1440-dark",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1146.875,
+      "width": 1180,
+      "height": 1083.28125
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1098.875,
+      "width": 1132,
+      "height": 1011.28125
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "guest-1440-light",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1440,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1440-light",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1337.5,
+      "width": 1180,
+      "height": 1273.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1132,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1440-light",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1146.875,
+      "width": 1180,
+      "height": 1083.28125
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1098.875,
+      "width": 1132,
+      "height": 1011.28125
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  }
+]

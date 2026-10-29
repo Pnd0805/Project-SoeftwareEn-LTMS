@@ -1,0 +1,133 @@
+/**
+ * src/features/watch/WatchPage.tsx
+ *
+ * The guest-facing live view. There is no video to stream locally, so what is
+ * "live" here is the state itself — the scoreline, and the commentary the system
+ * can actually derive from what referees recorded. Stream *ingest* is out of
+ * scope; these screens assume a stream URL exists.
+ */
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Badge, Crumb, Empty, Panel, StatusBadge, TableWrap } from '../../components/kit/primitives'
+import { Icon } from '../../components/kit/Icon'
+import { Scorebug } from '../../components/kit/Scorebug'
+import { PlayerLink, TeamLink } from '../../components/kit/chips'
+import { useLtms } from '../../shared/store'
+import { matchesOf, user } from '../../shared/selectors'
+import { routeTour } from '../../mocks/routeIds'
+import { matchStage, matchTag } from '../../shared/rules'
+import { USE_MOCK } from '../../api/client'
+import { parseBackendId } from '../../api/ids'
+
+export function WatchPage() {
+  const { id } = useParams()
+  if (USE_MOCK) return <MockWatchPage />
+  const tournamentId = parseBackendId(id)
+  return <Empty icon="match" title="Watch is unavailable" sub="The tournament watch view is not available yet. Open a match from the tournament bracket to see its details.">
+    {tournamentId ? <Link className="btn" to={`/t/${tournamentId}/bracket`}>View bracket</Link>
+      : <Link className="btn" to="/home/all">Find a tournament</Link>}
+  </Empty>
+}
+
+function MockWatchPage() {
+  const s = useLtms()
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const t = routeTour(s, id)
+
+  if (!t) return <Empty icon="warn" title="No such tournament" />
+
+  const ms = matchesOf(s, t.id).filter(m => m.a && m.b)
+  const live = ms.filter(m => m.status === 'scheduled' || m.status === 'pending')
+  const done = ms.filter(m => m.status === 'confirmed' && m.note !== 'bye')
+  const feature = live[0] ?? done[done.length - 1]
+
+  if (!feature) {
+    return <Empty icon="match" title="Nothing to watch yet" sub="Matches appear here once the bracket is drawn.">
+      <Link className="btn" to={`/t/${t.id}/bracket`}>View bracket</Link>
+    </Empty>
+  }
+  const isLive = feature.status !== 'confirmed'
+
+  return (
+    <>
+      <Crumb back={{ label: t.name, onClick: () => navigate(`/t/${t.id}`) }}>Watch</Crumb>
+      <div className="spread">
+        <h1 className="disp" style={{ fontSize: 28 }}>{matchStage(s, feature)}</h1>
+        {isLive ? <Badge kind="warn">{feature.status === 'pending' ? 'Awaiting confirmation' : 'Scheduled'}</Badge> : <Badge kind="ok">Full time</Badge>}
+      </div>
+
+      <Scorebug m={feature} />
+
+      <Panel quiet style={{ alignItems: 'center', padding: '34px 20px', textAlign: 'center' }}>
+        <Icon name="match" size={34} />
+        <div className="disp" style={{ fontSize: 21 }}>
+          {feature.replay ? `Replay — ${feature.venue || 'the venue'}` : 'No video available'}
+        </div>
+        <span className="sub">{feature.replay ? <a href={feature.replay} target="_blank" rel="noopener noreferrer">Watch replay</a> : 'Open the match to follow its recorded status.'}</span>
+        <div className="hstack">
+          <Link className="btn primary" to={`/m/${feature.id}`}>Open match</Link>
+          <Link className="btn" to={`/t/${t.id}/bracket`}>View bracket</Link>
+        </div>
+      </Panel>
+
+      <div className="match-watch-pair">
+        <Panel quiet>
+          <span className="tag"><em>//</em> What the system knows</span>
+          {feature.enteredBy ? (
+            <div className="hstack">
+              <Badge kind="ok">Recorded</Badge>
+              <span className="sub">{user(s, feature.enteredBy)?.name} entered {feature.sa}–{feature.sb}</span>
+            </div>
+          ) : null}
+          {Object.entries(feature.stats || {}).map(([pid, st]) => (
+            <div className="hstack" key={pid}>
+              <span className="tag num" style={{ width: 46 }}>
+                {st.goals ? `${st.goals}G` : ''}{st.assists ? ` ${st.assists}A` : ''}
+              </span>
+              <PlayerLink id={pid} />
+              <TeamLink id={st.team} />
+            </div>
+          ))}
+          <div className="hstack">
+            <Badge kind={feature.status === 'confirmed' ? 'ok' : 'warn'}>{feature.status}</Badge>
+            <span className="sub">{feature.checkedIn.length} player{feature.checkedIn.length === 1 ? '' : 's'} checked in</span>
+          </div>
+        </Panel>
+
+        <Panel quiet>
+          <span className="tag"><em>//</em> Elsewhere in this tournament</span>
+          {ms.filter(m => m.id !== feature.id).slice(0, 6).map(m => (
+            <div className="hstack" style={{ justifyContent: 'space-between' }} key={m.id}>
+              <span className="hstack"><TeamLink id={m.a} /><span className="tag">vs</span><TeamLink id={m.b} /></span>
+              <span className="hstack"><span className="num">{m.sa ?? '—'} – {m.sb ?? '—'}</span><StatusBadge m={m} /></span>
+            </div>
+          ))}
+        </Panel>
+      </div>
+
+      {done.length ? (
+        <>
+          <span className="tag"><em>//</em> Recorded matches · {done.length}</span>
+          <TableWrap label="Recorded matches">
+            <table>
+              <thead><tr><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>Replay</th><th /></tr></thead>
+              <tbody>
+                {done.map(m => (
+                  <tr key={m.id}>
+                    <td className="tag">{matchTag(s, m)}</td>
+                    <td><TeamLink id={m.a} /></td>
+                    <td className="tag">vs</td>
+                    <td><TeamLink id={m.b} /></td>
+                    <td className="num">{m.sa} – {m.sb}</td>
+                    <td>{m.replay ? <a href={m.replay} target="_blank" rel="noopener">Replay</a> : <span className="sub">—</span>}</td>
+                    <td><button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </>
+      ) : null}
+    </>
+  )
+}

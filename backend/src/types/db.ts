@@ -111,7 +111,7 @@ export type TournamentRow = {
     organizer_external_reviewed_at : Date | null,
     organizer_external_rejection_reason : string | null,
     organizer_external_verification_docs : unknown,
-    tournament_status : 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted',
+    tournament_status : 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted' | 'cancelled',
     registration_open : number,
     registration_start : Date | null,
     registration_end : Date | null,
@@ -130,6 +130,11 @@ export type TournamentRow = {
     champion_team_id : number | null,   // B1 (migration 022)
     completed_at : Date | null,
     completed_by : number | null,
+    // ยกเลิกทัวร์ (migration 053) — NULL ทั้งหมด = ไม่ได้ถูกยกเลิก
+    cancelled_at : Date | null,
+    cancelled_by : number | null,
+    cancel_reason : string | null,
+    cancelled_from_status : 'private' | 'public' | null,   // สถานะก่อนยกเลิก — เก็บเป็นประวัติ (ระบบกู้คืนตัดออกแล้ว)
     created_at : Date,
     updated_at : Date | null,
     updated_by : number | null,
@@ -164,7 +169,9 @@ export type TournamentRefereeRow = {
     /** BE-13 (migration 050) — คำเชิญหมดอายุเมื่อไหร่ · มีความหมายเฉพาะแถวที่ยัง pending */
     expires_at : Date | null,
     removed_at : Date | null,
-    removed_by : number | null
+    removed_by : number | null,
+    /** migration 054 (OD-70) — เวลาที่ไฟล์เอกสารยืนยันตัวตนถูกลบ · NULL = ยังไม่ถูกลบ/ไม่เคยส่ง */
+    docs_purged_at : Date | null
 }
 
 export type MatchRefereeRow = {

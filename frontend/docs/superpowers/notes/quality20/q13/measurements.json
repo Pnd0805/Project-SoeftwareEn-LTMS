@@ -1,0 +1,622 @@
+[
+  {
+    "name": "bracket",
+    "width": 1440,
+    "theme": "dark",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1370.78125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 135.390625,
+        "height": 36,
+        "width": 386.359375
+      },
+      {
+        "text": "Details",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Bracket",
+        "y": 426.578125,
+        "height": 30.796875,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 1127.375,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · On-site\n\nRun by Thanwa Sirichai\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nDetails & entry\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "organizer",
+    "width": 1440,
+    "theme": "dark",
+    "url": "/t/42/manage/referees",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1311.953125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Northside Street Cup",
+        "y": 135.390625,
+        "height": 36,
+        "width": 314.4375
+      },
+      {
+        "text": "Details",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Referees",
+        "y": 497.96875,
+        "height": 32.1875,
+        "width": 90.671875
+      },
+      {
+        "text": "Invitations and responses",
+        "y": 586.15625,
+        "height": 26.390625,
+        "width": 206.171875
+      },
+      {
+        "text": "Accepted appointments",
+        "y": 586.15625,
+        "height": 26.390625,
+        "width": 189.34375
+      },
+      {
+        "text": "Approved teams",
+        "y": 1068.546875,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry notes",
+        "y": 1068.546875,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Referee",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Referee",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · On-site\n\n// You run this tournament\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nManage\nDetails & entry\nProgress\nRegistrations\nEntry & filter\nDraw\nReferees\nFeedback\nReferees\n6 of 2 accepted\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee\nAPPROVED TEAMS\nDistrict 1 FC\nFootball\nView team\nDistrict 2 FC\nFootball\nView team\nDistrict 3 FC\nFootball\nView team\nDistrict 4 FC\nFootball\nView team\nDistrict 5 FC\nFootball\nView team\nDistrict 6 FC\nFootball\nView team\nDistrict 7 FC\nFootball\nView te"
+  },
+  {
+    "name": "bracket",
+    "width": 1440,
+    "theme": "light",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1370.78125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 135.390625,
+        "height": 36,
+        "width": 386.359375
+      },
+      {
+        "text": "Details",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Bracket",
+        "y": 426.578125,
+        "height": 30.796875,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 1127.375,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · On-site\n\nRun by Thanwa Sirichai\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nDetails & entry\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "organizer",
+    "width": 1440,
+    "theme": "light",
+    "url": "/t/42/manage/referees",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1311.953125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Northside Street Cup",
+        "y": 135.390625,
+        "height": 36,
+        "width": 314.4375
+      },
+      {
+        "text": "Details",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 399.578125,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Referees",
+        "y": 497.96875,
+        "height": 32.1875,
+        "width": 90.671875
+      },
+      {
+        "text": "Invitations and responses",
+        "y": 586.15625,
+        "height": 26.390625,
+        "width": 206.171875
+      },
+      {
+        "text": "Accepted appointments",
+        "y": 586.15625,
+        "height": 26.390625,
+        "width": 189.34375
+      },
+      {
+        "text": "Approved teams",
+        "y": 1068.546875,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry notes",
+        "y": 1068.546875,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Referee",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Referee",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · On-site\n\n// You run this tournament\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nManage\nDetails & entry\nProgress\nRegistrations\nEntry & filter\nDraw\nReferees\nFeedback\nReferees\n6 of 2 accepted\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee\nAPPROVED TEAMS\nDistrict 1 FC\nFootball\nView team\nDistrict 2 FC\nFootball\nView team\nDistrict 3 FC\nFootball\nView team\nDistrict 4 FC\nFootball\nView team\nDistrict 5 FC\nFootball\nView team\nDistrict 6 FC\nFootball\nView team\nDistrict 7 FC\nFootball\nView te"
+  },
+  {
+    "name": "bracket",
+    "width": 390,
+    "theme": "dark",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 1514.953125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 390.578125,
+        "height": 28,
+        "width": 300.484375
+      },
+      {
+        "text": "Details",
+        "y": 738.34375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1273.9375,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Bracket",
+        "y": 754.34375,
+        "height": 28.59375,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 1526.734375,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · On-site\n\nRun by Thanwa Sirichai\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nDetails & entry\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "organizer",
+    "width": 390,
+    "theme": "dark",
+    "url": "/t/42/manage/referees",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2075.953125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Northside Street Cup",
+        "y": 390.578125,
+        "height": 28,
+        "width": 246
+      },
+      {
+        "text": "Details",
+        "y": 695.15625,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1267.75,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Referees",
+        "y": 785.546875,
+        "height": 32.1875,
+        "width": 90.671875
+      },
+      {
+        "text": "Invitations and responses",
+        "y": 921.734375,
+        "height": 26.390625,
+        "width": 206.171875
+      },
+      {
+        "text": "Accepted appointments",
+        "y": 1305.734375,
+        "height": 26.390625,
+        "width": 189.34375
+      },
+      {
+        "text": "Approved teams",
+        "y": 1783.734375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry notes",
+        "y": 2087.734375,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Referee",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Referee",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · On-site\n\n// You run this tournament\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nManage\nDetails & entry\nProgress\nRegistrations\nEntry & filter\nDraw\nReferees\nFeedback\nReferees\n6 of 2 accepted\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee\nAPPROVED TEAMS\nDistrict 1 FC\nFootball\nView team\nDistrict 2 FC\nFootball\nView team\nDistrict 3 FC\nFootball\nView team\nDistrict 4 FC\nFootball\nView team\nDistrict 5 FC\nFootball\nView team\nDistrict 6 FC\nFootball\nView team\nDistrict 7 FC\nFootball\nView te"
+  },
+  {
+    "name": "bracket",
+    "width": 390,
+    "theme": "light",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 1514.953125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 390.578125,
+        "height": 28,
+        "width": 300.484375
+      },
+      {
+        "text": "Details",
+        "y": 738.34375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1273.9375,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Bracket",
+        "y": 754.34375,
+        "height": 28.59375,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 1526.734375,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · On-site\n\nRun by Thanwa Sirichai\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nDetails & entry\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "organizer",
+    "width": 390,
+    "theme": "light",
+    "url": "/t/42/manage/referees",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2075.953125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Northside Street Cup",
+        "y": 390.578125,
+        "height": 28,
+        "width": 246
+      },
+      {
+        "text": "Details",
+        "y": 695.15625,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1267.75,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Referees",
+        "y": 785.546875,
+        "height": 32.1875,
+        "width": 90.671875
+      },
+      {
+        "text": "Invitations and responses",
+        "y": 921.734375,
+        "height": 26.390625,
+        "width": 206.171875
+      },
+      {
+        "text": "Accepted appointments",
+        "y": 1305.734375,
+        "height": 26.390625,
+        "width": 189.34375
+      },
+      {
+        "text": "Approved teams",
+        "y": 1783.734375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry notes",
+        "y": 2087.734375,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstMatch": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Referee",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Referee",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Action",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · On-site\n\n// You run this tournament\nPublic\nBracket\nDashboard\nSchedule\nLeaderboard\nAnnouncements\nCommunity\nManage\nDetails & entry\nProgress\nRegistrations\nEntry & filter\nDraw\nReferees\nFeedback\nReferees\n6 of 2 accepted\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee\nAPPROVED TEAMS\nDistrict 1 FC\nFootball\nView team\nDistrict 2 FC\nFootball\nView team\nDistrict 3 FC\nFootball\nView team\nDistrict 4 FC\nFootball\nView team\nDistrict 5 FC\nFootball\nView team\nDistrict 6 FC\nFootball\nView team\nDistrict 7 FC\nFootball\nView te"
+  }
+]

@@ -1,0 +1,10 @@
+locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('heading', { name: 'Request a tournament', exact: true }) to be visible[22m
+
+    at /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend/docs/superpowers/notes/quality20/check-q22.cjs:89:86 {
+  log: [
+    "  - waiting for getByRole('heading', { name: 'Request a tournament', exact: true }) to be visible"
+  ],
+  name: 'TimeoutError'
+}

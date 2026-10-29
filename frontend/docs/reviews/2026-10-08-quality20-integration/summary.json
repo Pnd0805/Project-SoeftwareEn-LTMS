@@ -1,0 +1,61 @@
+{
+  "targetBranch": "ltms-desktop-ux",
+  "sourceHead": "68155bb93409598cc0a967055e25e40cd7e327ce",
+  "workerCommits": [
+    "29d1568",
+    "5e31ae7"
+  ],
+  "routePatterns": [
+    "/",
+    "/home/:tab",
+    "/t/:id",
+    "/t/:id/:tab",
+    "/t/:id/:tab/:sub",
+    "/m/:id",
+    "/m/:id/fixture",
+    "/m/:id/:tab",
+    "/checkin/:id",
+    "/mvp/:id",
+    "/team/:id",
+    "/player/:id",
+    "/watch/:id",
+    "/search",
+    "/search/:q",
+    "/register",
+    "/teams",
+    "/matches",
+    "/inbox",
+    "/me",
+    "/request",
+    "/admin",
+    "/admin/:tab",
+    "*"
+  ],
+  "conditionalAuthPaths": [
+    "/login",
+    "/register"
+  ],
+  "browserRecords": {
+    "q11": 6,
+    "q12": 40,
+    "q22": 59,
+    "shell": 88,
+    "mobileInteractions": 24
+  },
+  "totalBrowserRecords": 217,
+  "captures": 154,
+  "apiAdapterDtoSchemaChangedPaths": [],
+  "sourceGates": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "vitest": {
+      "files": 105,
+      "tests": 760,
+      "failed": 0
+    },
+    "build": "passed"
+  },
+  "formalReleaseScore20": null,
+  "physicalIPhone": "unverified",
+  "liveBackend": "unverified"
+}

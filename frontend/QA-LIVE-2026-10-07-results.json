@@ -1,0 +1,228 @@
+{
+  "timestamp": "2026-10-06T21:19:05.163Z",
+  "origin": "http://127.0.0.1:5193",
+  "mode": "real API via Vite proxy and SSR-loaded frontend client/qaFeatures; no browser",
+  "artifacts": {
+    "teamId": 9036,
+    "tournamentId": 29,
+    "applicationId": 37,
+    "announcementId": 5,
+    "reportId": 2
+  },
+  "results": [
+    {
+      "name": "login and /me: user",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: leader",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: organizer",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: root",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: external",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: refereeA",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: refereeB",
+      "result": "PASS"
+    },
+    {
+      "name": "guest /me rejected",
+      "result": "PASS"
+    },
+    {
+      "name": "server sport capabilities",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: user",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: user",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: root",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: root",
+      "result": "PASS"
+    },
+    {
+      "name": "Root suspension protection",
+      "result": "PASS"
+    },
+    {
+      "name": "Faculty cannot suspend University Admin",
+      "result": "PASS"
+    },
+    {
+      "name": "profile hidden stats and contact save",
+      "result": "PASS"
+    },
+    {
+      "name": "notification preference update",
+      "result": "PASS"
+    },
+    {
+      "name": "team public visibility",
+      "result": "PASS"
+    },
+    {
+      "name": "own join request cancellation",
+      "result": "PASS"
+    },
+    {
+      "name": "leader request rejection and reason",
+      "result": "PASS"
+    },
+    {
+      "name": "leader queue and approval",
+      "result": "PASS"
+    },
+    {
+      "name": "football creation rejects BO with field details",
+      "result": "PASS"
+    },
+    {
+      "name": "new tournament pending approval",
+      "result": "PASS"
+    },
+    {
+      "name": "guest pending tournament hidden",
+      "result": "PASS"
+    },
+    {
+      "name": "admin tournament approval",
+      "result": "PASS"
+    },
+    {
+      "name": "guest private tournament hidden",
+      "result": "PASS"
+    },
+    {
+      "name": "referee invitation acceptance: refereeA",
+      "result": "PASS"
+    },
+    {
+      "name": "referee invitation acceptance: refereeB",
+      "result": "PASS"
+    },
+    {
+      "name": "publish tournament",
+      "result": "PASS"
+    },
+    {
+      "name": "open registration",
+      "result": "PASS"
+    },
+    {
+      "name": "guest public tournament access",
+      "result": "PASS"
+    },
+    {
+      "name": "tournament detail omits bestOf",
+      "result": "BLOCKED",
+      "owner": "BE",
+      "message": "POST persists BO but GET detail does not expose it; verify match DTO separately"
+    },
+    {
+      "name": "application appears in personal entries",
+      "result": "PASS"
+    },
+    {
+      "name": "organizer approves tournament entry",
+      "result": "PASS"
+    },
+    {
+      "name": "approved team appears in tournament",
+      "result": "PASS"
+    },
+    {
+      "name": "whole tournament BO update response",
+      "result": "PASS"
+    },
+    {
+      "name": "announcement type and edit",
+      "result": "PASS"
+    },
+    {
+      "name": "delete newly created announcement",
+      "result": "PASS"
+    },
+    {
+      "name": "withdraw newly approved entry",
+      "result": "PASS"
+    },
+    {
+      "name": "upload private report evidence and review rejection",
+      "result": "PASS"
+    },
+    {
+      "name": "audit pagination: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "audit pagination: root",
+      "result": "PASS"
+    },
+    {
+      "name": "audit pagination: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "logout endpoint",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/close test state 1",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/close test state 2",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/close test state 3",
+      "result": "PASS"
+    }
+  ]
+}

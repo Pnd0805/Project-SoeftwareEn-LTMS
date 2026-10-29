@@ -1,0 +1,132 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 343.765625,
+      "firstActionInitiallyVisible": true,
+      "height": 2734
+    },
+    "readReceipt": {
+      "top": 151.984375,
+      "bottom": 203.984375
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2239,
+      "firstSelectedPlayerY": 494.5625
+    },
+    "dense": {
+      "height": 440,
+      "scrollHeight": 5177,
+      "rows": 32,
+      "keyboard": {
+        "scrollTop": 4712,
+        "lastControlFocused": true,
+        "visible": true
+      }
+    }
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 343.765625,
+      "firstActionInitiallyVisible": true,
+      "height": 2734
+    },
+    "readReceipt": {
+      "top": 151.984375,
+      "bottom": 203.984375
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2239,
+      "firstSelectedPlayerY": 494.5625
+    }
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 343.765625,
+      "firstActionInitiallyVisible": true,
+      "height": 2758
+    },
+    "readReceipt": {
+      "top": 151.984375,
+      "bottom": 203.984375
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2239,
+      "firstSelectedPlayerY": 494.5625
+    }
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 343.765625,
+      "firstActionInitiallyVisible": true,
+      "height": 2758
+    },
+    "readReceipt": {
+      "top": 151.984375,
+      "bottom": 203.984375
+    },
+    "search": {
+      "total": "19 results",
+      "height": 2239,
+      "firstSelectedPlayerY": 494.5625
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 708.15625,
+      "firstActionInitiallyVisible": true,
+      "height": 4627
+    },
+    "readReceipt": {
+      "top": 410.78125,
+      "bottom": 462.78125
+    },
+    "search": {
+      "total": "19 results",
+      "height": 3593,
+      "firstSelectedPlayerY": 835.546875
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "errors": [],
+    "inbox": {
+      "firstActionY": 708.15625,
+      "firstActionInitiallyVisible": true,
+      "height": 4627
+    },
+    "readReceipt": {
+      "top": 410.78125,
+      "bottom": 462.78125
+    },
+    "search": {
+      "total": "19 results",
+      "height": 3593,
+      "firstSelectedPlayerY": 835.546875
+    }
+  }
+]

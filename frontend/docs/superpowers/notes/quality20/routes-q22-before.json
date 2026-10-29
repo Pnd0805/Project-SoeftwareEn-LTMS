@@ -1,0 +1,30 @@
+{
+  "paths": [
+    "/",
+    "/home/:tab",
+    "/t/:id",
+    "/t/:id/:tab",
+    "/t/:id/:tab/:sub",
+    "/m/:id",
+    "/m/:id/fixture",
+    "/m/:id/:tab",
+    "/checkin/:id",
+    "/mvp/:id",
+    "/team/:id",
+    "/player/:id",
+    "/watch/:id",
+    "/search",
+    "/search/:q",
+    "/register",
+    "/teams",
+    "/matches",
+    "/inbox",
+    "/me",
+    "/request",
+    "/admin",
+    "/admin/:tab",
+    "*"
+  ],
+  "publicPaths": "const PUBLIC_PATHS = [\n  /^\\/$/, /^\\/home/, /^\\/t\\//, /^\\/m\\//, /^\\/checkin\\//, /^\\/mvp\\//,\n  /^\\/team\\//, /^\\/player\\//, /^\\/watch\\//, /^\\/search/, /^\\/login$/,\n]\n\n",
+  "guard": "function Guard({ children, currentUser, isLoading }: {\n  children: React.ReactNode\n  currentUser: ReturnType<typeof useMe>['data']\n  isLoading: boolean\n}) {\n  const s = useLtms()\n  const location = useLocation()\n  const signedIn = !!currentUser\n  const guest = isGuest(s)\n  const isPublic = PUBLIC_PATHS.some(p => p.test(location.pathname))\n  if (isLoading) return null\n  if (!signedIn && !guest && !isPublic) return <Navigate to=\"/login\" replace />\n  return <>{children}</>\n}\n\n"
+}

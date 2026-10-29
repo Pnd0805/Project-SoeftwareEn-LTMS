@@ -7,6 +7,7 @@ import { requireOrganizer, requireRequester } from '../middlewares/requireOrgani
 import { validate } from '../middlewares/validate.js';
 import {
     amendmentRequestSchema,
+    cancelTournamentSchema,
     createTournamentSchema,
     updateTournamentSchema, setEligibilityRulesSchema } from '../schemas/tournament.schema.js';
 
@@ -36,6 +37,8 @@ router.post('/:id/publish', requireAuth, requireOrganizer, TournamentController.
 router.post('/:id/unpublish', requireAuth, requireOrganizer, TournamentController.unpublishTournament);
 // B1 — ORG ปิดทัวร์ (มติ 21 ก.ย. 1-ข)
 router.post('/:id/complete', requireAuth, requireOrganizer, TournamentController.completeTournament);
+// ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค.) — ไม่ใส่ requireOrganizer เพราะแอดมินมหาวิทยาลัยกดแทนได้ · ด่านอยู่ใน service
+router.post('/:id/cancel', requireAuth, validate(cancelTournamentSchema), TournamentController.cancelTournament);
 router.post('/:id/open-registration', requireAuth, requireOrganizer, TournamentController.openRegistration);
 router.post('/:id/close-registration', requireAuth, requireOrganizer, TournamentController.closeRegistration);
 router.get('/:id/eligibility-rules', optionalAuth, TournamentController.getEligibilityRules);

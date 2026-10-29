@@ -1,0 +1,98 @@
+[
+  {
+    "reviewer": "r01-home-discovery",
+    "taskId": "task_19e6ee4f9177",
+    "dispatchId": "ctx_73b51eb6d493",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_60ad8da0-38f4-4571-af6d-6acddf156a5d"
+  },
+  {
+    "reviewer": "r02-team-player",
+    "taskId": "task_d7ead9dd71b5",
+    "dispatchId": "ctx_4af583fc15a2",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_ba6eb782-c9c7-41c0-bb18-07d795246539"
+  },
+  {
+    "reviewer": "r03-tournament-public",
+    "taskId": "task_6620f757b4fd",
+    "dispatchId": "ctx_a741263c1ca8",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_ddbbc868-ca13-470e-88bb-51f7decff5dd"
+  },
+  {
+    "reviewer": "r04-organizer",
+    "taskId": "task_be31294ca285",
+    "dispatchId": "ctx_f857502d3ba2",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_272b37ad-5939-4517-a7bf-1aa267bf7270"
+  },
+  {
+    "reviewer": "r05-match-referee",
+    "taskId": "task_ba75f9c3e4d2",
+    "dispatchId": "ctx_15331026937e",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_1b90c4a4-91d4-4c83-9d38-0d9901ff938d"
+  },
+  {
+    "reviewer": "r06-checkin-mvp-watch",
+    "taskId": "task_41beb9519cd0",
+    "dispatchId": "ctx_d07000f85399",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_2699368e-8f9f-436d-b965-e970a03f02f5"
+  },
+  {
+    "reviewer": "r07-admin",
+    "taskId": "task_f114c5c1ecaf",
+    "dispatchId": "ctx_b8769ad314b4",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_6f9d6947-b26f-49d3-8cfe-25d6ea8cb69c"
+  },
+  {
+    "reviewer": "r08-account",
+    "taskId": "task_1a73ad10b0c0",
+    "dispatchId": "ctx_0784a9e40f4b",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_b892dc4f-c12f-455e-8d3a-19addb1c6450"
+  },
+  {
+    "reviewer": "r09-search-inbox",
+    "taskId": "task_d69d56330d5d",
+    "dispatchId": "ctx_7a96f4e3b8eb",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_b641eb34-451b-4d7c-a7f6-1f0de041cf64"
+  },
+  {
+    "reviewer": "r10-access-responsive",
+    "taskId": "task_43389eba3f42",
+    "dispatchId": "ctx_7661465850d1",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_5ae3b78f-b2db-4c83-93e6-15fa2271863c"
+  },
+  {
+    "reviewer": "r11-first-use-consistency",
+    "taskId": "task_4a182a8e6093",
+    "dispatchId": "ctx_a59be37728ec",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_93b908ec-60db-46e6-8be5-aa6bf0336e93"
+  },
+  {
+    "reviewer": "r12-technical-evidence",
+    "taskId": "task_5d91586d4899",
+    "dispatchId": "ctx_2b7686a926a1",
+    "state": "ready",
+    "turnStart": "observed",
+    "terminal": "term_5a79d7d5-a9ab-45c1-afd8-38e9f74d0b9f"
+  }
+]

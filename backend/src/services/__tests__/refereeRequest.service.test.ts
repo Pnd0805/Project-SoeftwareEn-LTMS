@@ -876,6 +876,30 @@ describe('createRefWithdraw (FR09)', () => {
     expect(mockedReqRepo.create).not.toHaveBeenCalled();
   });
 
+  /** OD-69 — ขอโอน/แลกแมตช์ (เส้น /referee-requests อยู่นอก lock middleware) ต้องกันตั้งแต่ตอนยื่น ไม่ใช่ไปติดตอนตอบ */
+  it('ขอโอน/แลกในทัวร์ที่ถูกยกเลิก ⇒ 409 TOURNAMENT_CANCELLED ไม่สร้างคำขอ ไม่แจ้งใคร', async () => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue({
+      tournament_id: 10, tournament_status: 'cancelled', deleted_at: null, requested_by_user_id: 900,
+    } as any);
+    mockMatches(makeMatch());
+
+    await expect(createRefRequest(100, { myMatchId: 1, toTournamentRefereeId: 2, theirMatchId: null, reason: 'x' } as any))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED' });
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
+  /** migration 053 — ทัวร์ที่ถูกยกเลิกแช่แข็งไว้ เปลี่ยนกรรมการไม่ได้ */
+  it('ทัวร์ถูกยกเลิก ⇒ 409 TOURNAMENT_CANCELLED และไม่แตะอะไรต่อ', async () => {
+    mockedTournamentRepo.findTournamentById.mockResolvedValue({
+      tournament_id: 10, tournament_status: 'cancelled', deleted_at: null, requested_by_user_id: 900,
+    } as any);
+
+    await expect(createRefWithdraw(100, tourInput))
+      .rejects.toMatchObject({ status: 409, code: 'TOURNAMENT_CANCELLED' });
+    expect(mockedFindActiveRefereeRow).not.toHaveBeenCalled();
+    expect(mockedReqRepo.create).not.toHaveBeenCalled();
+  });
+
   it('มีใบที่ยังรอผู้จัดตอบอยู่แล้ว ⇒ 409 REQUEST_ALREADY_OPEN', async () => {
     mockedFindActiveRefereeRow.mockResolvedValue(makeReferee());
     mockedReqRepo.existsOpenFor.mockResolvedValue(true);

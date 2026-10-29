@@ -1,0 +1,1874 @@
+[
+  {
+    "name": "search-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-empty-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-failed-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-loading-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "read-outcome-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-outcome-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-denied-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-failed-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "entries-failed-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "interactions-1280-dark",
+    "keyboardOrder": true,
+    "keyboardActivation": true,
+    "outcomesRetained": true,
+    "deniedCacheHidden": true,
+    "dialogs": "Search and Inbox do not introduce dialogs",
+    "errors": [],
+    "writes": [
+      {
+        "path": "/me/notifications/31/read",
+        "method": "PATCH",
+        "body": null
+      },
+      {
+        "path": "/invitations/12/accept",
+        "method": "POST",
+        "body": null
+      },
+      {
+        "path": "/referee-invitations/17/decline",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "search-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-empty-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-failed-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-loading-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "read-outcome-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-outcome-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-denied-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-failed-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "entries-failed-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "interactions-1280-light",
+    "keyboardOrder": true,
+    "keyboardActivation": true,
+    "outcomesRetained": true,
+    "deniedCacheHidden": true,
+    "dialogs": "Search and Inbox do not introduce dialogs",
+    "errors": [],
+    "writes": [
+      {
+        "path": "/me/notifications/31/read",
+        "method": "PATCH",
+        "body": null
+      },
+      {
+        "path": "/invitations/12/accept",
+        "method": "POST",
+        "body": null
+      },
+      {
+        "path": "/referee-invitations/17/decline",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "search-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-empty-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-failed-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-loading-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "read-outcome-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-outcome-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-denied-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-failed-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "entries-failed-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "interactions-1440-dark",
+    "keyboardOrder": true,
+    "keyboardActivation": true,
+    "outcomesRetained": true,
+    "deniedCacheHidden": true,
+    "dialogs": "Search and Inbox do not introduce dialogs",
+    "errors": [],
+    "writes": [
+      {
+        "path": "/me/notifications/31/read",
+        "method": "PATCH",
+        "body": null
+      },
+      {
+        "path": "/invitations/12/accept",
+        "method": "POST",
+        "body": null
+      },
+      {
+        "path": "/referee-invitations/17/decline",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "search-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-empty-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-failed-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-loading-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "read-outcome-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-outcome-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-denied-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-failed-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "entries-failed-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "interactions-1440-light",
+    "keyboardOrder": true,
+    "keyboardActivation": true,
+    "outcomesRetained": true,
+    "deniedCacheHidden": true,
+    "dialogs": "Search and Inbox do not introduce dialogs",
+    "errors": [],
+    "writes": [
+      {
+        "path": "/me/notifications/31/read",
+        "method": "PATCH",
+        "body": null
+      },
+      {
+        "path": "/invitations/12/accept",
+        "method": "POST",
+        "body": null
+      },
+      {
+        "path": "/referee-invitations/17/decline",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "search-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-empty-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-failed-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-loading-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "read-outcome-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-outcome-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-denied-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-failed-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "entries-failed-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "interactions-390-dark",
+    "keyboardOrder": true,
+    "keyboardActivation": true,
+    "outcomesRetained": true,
+    "deniedCacheHidden": true,
+    "dialogs": "Search and Inbox do not introduce dialogs",
+    "errors": [],
+    "writes": [
+      {
+        "path": "/me/notifications/31/read",
+        "method": "PATCH",
+        "body": null
+      },
+      {
+        "path": "/invitations/12/accept",
+        "method": "POST",
+        "body": null
+      },
+      {
+        "path": "/referee-invitations/17/decline",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "search-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-empty-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-failed-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "search-loading-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "read-outcome-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-outcome-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "inbox-denied-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "answer-failed-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "entries-failed-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px",
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px",
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "interactions-390-light",
+    "keyboardOrder": true,
+    "keyboardActivation": true,
+    "outcomesRetained": true,
+    "deniedCacheHidden": true,
+    "dialogs": "Search and Inbox do not introduce dialogs",
+    "errors": [],
+    "writes": [
+      {
+        "path": "/me/notifications/31/read",
+        "method": "PATCH",
+        "body": null
+      },
+      {
+        "path": "/invitations/12/accept",
+        "method": "POST",
+        "body": null
+      },
+      {
+        "path": "/referee-invitations/17/decline",
+        "method": "POST",
+        "body": null
+      }
+    ]
+  },
+  {
+    "name": "mock-inbox-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-read-outcome-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-outcome-1280-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-interactions-1280-dark",
+    "mockOnlyActions": true,
+    "retainedOutcome": true,
+    "network": 0,
+    "errors": []
+  },
+  {
+    "name": "mock-inbox-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-read-outcome-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-outcome-1280-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-interactions-1280-light",
+    "mockOnlyActions": true,
+    "retainedOutcome": true,
+    "network": 0,
+    "errors": []
+  },
+  {
+    "name": "mock-inbox-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-read-outcome-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-outcome-1440-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-interactions-1440-dark",
+    "mockOnlyActions": true,
+    "retainedOutcome": true,
+    "network": 0,
+    "errors": []
+  },
+  {
+    "name": "mock-inbox-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-read-outcome-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-outcome-1440-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-interactions-1440-light",
+    "mockOnlyActions": true,
+    "retainedOutcome": true,
+    "network": 0,
+    "errors": []
+  },
+  {
+    "name": "mock-inbox-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-read-outcome-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-outcome-390-dark",
+    "theme": "dark",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-interactions-390-dark",
+    "mockOnlyActions": true,
+    "retainedOutcome": true,
+    "network": 0,
+    "errors": []
+  },
+  {
+    "name": "mock-inbox-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-read-outcome-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-outcome-390-light",
+    "theme": "light",
+    "overflow": false,
+    "gap": "24px",
+    "padding": [
+      "20px"
+    ],
+    "principalFont": "\"Barlow Condensed\", Impact, sans-serif",
+    "radius": [
+      "2px"
+    ],
+    "unnamedButtons": 0,
+    "dialogs": 0
+  },
+  {
+    "name": "mock-interactions-390-light",
+    "mockOnlyActions": true,
+    "retainedOutcome": true,
+    "network": 0,
+    "errors": []
+  }
+]

@@ -1,0 +1,119 @@
+/* src/features/rewards/rewards.css — LTMS Minimal Street Theme */
+
+.rewards-workspace {
+  min-width: 0;
+  color: var(--bone);
+  font-family: var(--f-ui);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Badge Cards Grid using LTMS Angular Card Style */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.badge-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.badge-card:hover {
+  border-color: var(--line-hot);
+}
+
+.badge-card.is-owned {
+  background: var(--panel-2);
+  border-color: var(--teal);
+}
+
+.badge-card-header {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.badge-card-emblem {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--r);
+  display: grid;
+  place-items: center;
+  background: var(--panel-3);
+  border: 1px solid var(--line-hot);
+  color: var(--bone);
+}
+
+.badge-card.is-owned .badge-card-emblem {
+  background: var(--teal-ghost);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.badge-card-emblem.gold {
+  background: var(--amber-ghost);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.badge-card-emblem.achievement {
+  background: var(--panel-3);
+  border-color: var(--line-hot);
+  color: var(--bone);
+}
+
+.badge-card.is-owned .badge-card-emblem.achievement {
+  background: var(--teal-ghost);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.badge-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.badge-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bone);
+  line-height: 1.3;
+}
+
+.badge-card-desc {
+  font-size: 13px;
+  color: var(--bone-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.badge-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+}
+
+.badge-card-price {
+  font-family: var(--f-ui);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--amber);
+}

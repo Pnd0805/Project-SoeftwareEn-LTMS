@@ -1,0 +1,386 @@
+[
+  {
+    "stack": "real-contract",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 1000,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Invites",
+        "width": 1000,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Manage",
+        "width": 1000,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 67.796875,
+      "dangerFromTop": 279.96875,
+      "usedHeight": 354.359375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "retained"
+    },
+    "roleLossHidesPrivateWork": true
+  },
+  {
+    "stack": "real-contract",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 1000,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Invites",
+        "width": 1000,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Manage",
+        "width": 1000,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 67.796875,
+      "dangerFromTop": 279.96875,
+      "usedHeight": 354.359375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "retained"
+    },
+    "roleLossHidesPrivateWork": true
+  },
+  {
+    "stack": "real-contract",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 1132,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Invites",
+        "width": 1132,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Manage",
+        "width": 1132,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 67.796875,
+      "dangerFromTop": 279.96875,
+      "usedHeight": 354.359375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "retained"
+    },
+    "roleLossHidesPrivateWork": true
+  },
+  {
+    "stack": "real-contract",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 1132,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Invites",
+        "width": 1132,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      },
+      {
+        "tab": "Manage",
+        "width": 1132,
+        "height": 440,
+        "top": 518.96875,
+        "scrollHeight": 438,
+        "recordY": null
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 67.796875,
+      "dangerFromTop": 279.96875,
+      "usedHeight": 354.359375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "retained"
+    },
+    "roleLossHidesPrivateWork": true
+  },
+  {
+    "stack": "real-contract",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 342,
+        "height": 601.578125,
+        "top": 955.9375,
+        "scrollHeight": 600,
+        "recordY": null
+      },
+      {
+        "tab": "Invites",
+        "width": 342,
+        "height": 310.578125,
+        "top": 955.9375,
+        "scrollHeight": 309,
+        "recordY": null
+      },
+      {
+        "tab": "Manage",
+        "width": 342,
+        "height": 502.375,
+        "top": 955.9375,
+        "scrollHeight": 500,
+        "recordY": null
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 65.59375,
+      "dangerFromTop": 437.375,
+      "usedHeight": 481.375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "retained"
+    },
+    "roleLossHidesPrivateWork": true
+  },
+  {
+    "stack": "real-contract",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 342,
+        "height": 601.578125,
+        "top": 955.9375,
+        "scrollHeight": 600,
+        "recordY": null
+      },
+      {
+        "tab": "Invites",
+        "width": 342,
+        "height": 310.578125,
+        "top": 955.9375,
+        "scrollHeight": 309,
+        "recordY": null
+      },
+      {
+        "tab": "Manage",
+        "width": 342,
+        "height": 502.375,
+        "top": 955.9375,
+        "scrollHeight": 500,
+        "recordY": null
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 65.59375,
+      "dangerFromTop": 437.375,
+      "usedHeight": 481.375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "retained"
+    },
+    "roleLossHidesPrivateWork": true
+  },
+  {
+    "stack": "mock-record",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 1000,
+        "height": 440,
+        "top": 586.96875,
+        "scrollHeight": 510,
+        "recordY": 1042.96875
+      },
+      {
+        "tab": "Invites",
+        "width": 1000,
+        "height": 440,
+        "top": 586.96875,
+        "scrollHeight": 438,
+        "recordY": 1042.96875
+      },
+      {
+        "tab": "Manage",
+        "width": 1000,
+        "height": 440,
+        "top": 586.96875,
+        "scrollHeight": 438,
+        "recordY": 1042.96875
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 67.796875,
+      "dangerFromTop": 279.96875,
+      "usedHeight": 354.359375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "unavailable: roster locked"
+    }
+  },
+  {
+    "stack": "mock-record",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 1132,
+        "height": 440,
+        "top": 586.96875,
+        "scrollHeight": 510,
+        "recordY": 1042.96875
+      },
+      {
+        "tab": "Invites",
+        "width": 1132,
+        "height": 440,
+        "top": 586.96875,
+        "scrollHeight": 438,
+        "recordY": 1042.96875
+      },
+      {
+        "tab": "Manage",
+        "width": 1132,
+        "height": 440,
+        "top": 586.96875,
+        "scrollHeight": 438,
+        "recordY": 1042.96875
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 67.796875,
+      "dangerFromTop": 279.96875,
+      "usedHeight": 354.359375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "unavailable: roster locked"
+    }
+  },
+  {
+    "stack": "mock-record",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "errors": [],
+    "panels": [
+      {
+        "tab": "Members",
+        "width": 342,
+        "height": 874.578125,
+        "top": 865.765625,
+        "scrollHeight": 873,
+        "recordY": 1756.34375
+      },
+      {
+        "tab": "Invites",
+        "width": 342,
+        "height": 376.984375,
+        "top": 865.765625,
+        "scrollHeight": 375,
+        "recordY": 1258.75
+      },
+      {
+        "tab": "Manage",
+        "width": 342,
+        "height": 478.375,
+        "top": 865.765625,
+        "scrollHeight": 476,
+        "recordY": 1360.140625
+      }
+    ],
+    "manage": {
+      "firstActionFromTop": 65.59375,
+      "dangerFromTop": 413.375,
+      "usedHeight": 457.375
+    },
+    "keyboardAndDraft": {
+      "keyboard": true,
+      "draft": "unavailable: roster locked"
+    }
+  }
+]

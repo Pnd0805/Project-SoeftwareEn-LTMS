@@ -1,0 +1,428 @@
+[
+  {
+    "r": "/",
+    "w": 390,
+    "measure": {
+      "headings": [
+        {
+          "x": 24,
+          "y": 341.359375,
+          "width": 71.96875,
+          "height": 36,
+          "text": "Home"
+        },
+        {
+          "x": 24,
+          "y": 411.5625,
+          "width": 96.078125,
+          "height": 38.390625,
+          "text": "Needs you"
+        },
+        {
+          "x": 24,
+          "y": 805.953125,
+          "width": 342,
+          "height": 38.390625,
+          "text": "Next match"
+        },
+        {
+          "x": 24,
+          "y": 1208.34375,
+          "width": 342,
+          "height": 30,
+          "text": "Tournaments"
+        }
+      ],
+      "tabs": {
+        "x": 24,
+        "y": 1479.53125,
+        "width": 342,
+        "height": 58,
+        "text": "AllOpen for entryIn progressFinished"
+      },
+      "bracket": null,
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 12,
+          "y": 261.171875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        }
+      ]
+    }
+  },
+  {
+    "r": "/t/t-fb/bracket",
+    "w": 390,
+    "measure": {
+      "headings": [
+        {
+          "x": 24,
+          "y": 386.96875,
+          "width": 342,
+          "height": 72,
+          "text": "Faculty Football Cup 2026"
+        },
+        {
+          "x": 45,
+          "y": 623.953125,
+          "width": 300,
+          "height": 28.59375,
+          "text": "Details"
+        },
+        {
+          "x": 45,
+          "y": 1007.953125,
+          "width": 62.0625,
+          "height": 28.59375,
+          "text": "Entry"
+        },
+        {
+          "x": 45,
+          "y": 1530.734375,
+          "width": 216.8125,
+          "height": 28.59375,
+          "text": "Bracket"
+        },
+        {
+          "x": 45,
+          "y": 2315.125,
+          "width": 300,
+          "height": 28.59375,
+          "text": "Entry notes"
+        }
+      ],
+      "tabs": null,
+      "bracket": {
+        "x": 45,
+        "y": 1689.125,
+        "width": 300,
+        "height": 560,
+        "text": "// Quarter-final// QF1ConfirmedMedicine0Science2//"
+      },
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 12,
+          "y": 261.171875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        }
+      ]
+    }
+  },
+  {
+    "r": "/checkin/m-127",
+    "w": 390,
+    "measure": {
+      "headings": [
+        {
+          "x": 24,
+          "y": 394.96875,
+          "width": 94.578125,
+          "height": 28,
+          "text": "Check in"
+        },
+        {
+          "x": 45,
+          "y": 467.96875,
+          "width": 300,
+          "height": 38.390625,
+          "text": "Player readiness"
+        }
+      ],
+      "tabs": null,
+      "bracket": null,
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 12,
+          "y": 261.171875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        }
+      ]
+    }
+  },
+  {
+    "r": "/m/m-127",
+    "w": 390,
+    "measure": {
+      "headings": [
+        {
+          "x": 24,
+          "y": 394.96875,
+          "width": 162.671875,
+          "height": 28,
+          "text": "Quarter-final"
+        },
+        {
+          "x": 45,
+          "y": 605.75,
+          "width": 300,
+          "height": 38.390625,
+          "text": "Next action"
+        },
+        {
+          "x": 45,
+          "y": 949.75,
+          "width": 300,
+          "height": 38.390625,
+          "text": "Match details"
+        }
+      ],
+      "tabs": null,
+      "bracket": null,
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 12,
+          "y": 261.171875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        },
+        {
+          "x": 45,
+          "y": 843.359375,
+          "width": 133.765625,
+          "height": 40.390625,
+          "text": "Open overview"
+        }
+      ]
+    }
+  },
+  {
+    "w": 390,
+    "interaction": "settled match primary action",
+    "url": "http://127.0.0.1:5175/m/553078/overview",
+    "active": []
+  },
+  {
+    "w": 390,
+    "interaction": "preview Escape",
+    "dialogCount": 1,
+    "url": "http://127.0.0.1:5175/"
+  },
+  {
+    "r": "/",
+    "w": 1440,
+    "measure": {
+      "headings": [
+        {
+          "x": 256,
+          "y": 89.78125,
+          "width": 71.96875,
+          "height": 36,
+          "text": "Home"
+        },
+        {
+          "x": 256,
+          "y": 159.984375,
+          "width": 96.078125,
+          "height": 38.390625,
+          "text": "Needs you"
+        },
+        {
+          "x": 834,
+          "y": 159.984375,
+          "width": 554,
+          "height": 38.390625,
+          "text": "Next match"
+        },
+        {
+          "x": 256,
+          "y": 562.375,
+          "width": 1132,
+          "height": 30,
+          "text": "Tournaments"
+        }
+      ],
+      "tabs": {
+        "x": 302.953125,
+        "y": 732.765625,
+        "width": 408.640625,
+        "height": 58,
+        "text": "AllOpen for entryIn progressFinished"
+      },
+      "bracket": null,
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 1138.1875,
+          "y": 8.796875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        }
+      ]
+    }
+  },
+  {
+    "r": "/t/t-fb/bracket",
+    "w": 1440,
+    "measure": {
+      "headings": [
+        {
+          "x": 256,
+          "y": 135.390625,
+          "width": 643.921875,
+          "height": 60,
+          "text": "Faculty Football Cup 2026"
+        },
+        {
+          "x": 277,
+          "y": 317.1875,
+          "width": 512,
+          "height": 30.796875,
+          "text": "Details"
+        },
+        {
+          "x": 855,
+          "y": 317.1875,
+          "width": 66.84375,
+          "height": 30.796875,
+          "text": "Entry"
+        },
+        {
+          "x": 277,
+          "y": 782.578125,
+          "width": 216.8125,
+          "height": 30.796875,
+          "text": "Bracket"
+        },
+        {
+          "x": 277,
+          "y": 1483.375,
+          "width": 512,
+          "height": 30.796875,
+          "text": "Entry notes"
+        }
+      ],
+      "tabs": null,
+      "bracket": {
+        "x": 277,
+        "y": 857.375,
+        "width": 1090,
+        "height": 560,
+        "text": "// Quarter-final// QF1ConfirmedMedicine0Science2//"
+      },
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 1138.1875,
+          "y": 8.796875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        }
+      ]
+    }
+  },
+  {
+    "r": "/checkin/m-127",
+    "w": 1440,
+    "measure": {
+      "headings": [
+        {
+          "x": 256,
+          "y": 143.390625,
+          "width": 94.578125,
+          "height": 28,
+          "text": "Check in"
+        },
+        {
+          "x": 277,
+          "y": 216.390625,
+          "width": 1090,
+          "height": 38.390625,
+          "text": "Player readiness"
+        }
+      ],
+      "tabs": null,
+      "bracket": null,
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 1138.1875,
+          "y": 8.796875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        }
+      ]
+    }
+  },
+  {
+    "r": "/m/m-127",
+    "w": 1440,
+    "measure": {
+      "headings": [
+        {
+          "x": 256,
+          "y": 143.390625,
+          "width": 162.671875,
+          "height": 28,
+          "text": "Quarter-final"
+        },
+        {
+          "x": 277,
+          "y": 337.015625,
+          "width": 512,
+          "height": 38.390625,
+          "text": "Next action"
+        },
+        {
+          "x": 855,
+          "y": 337.015625,
+          "width": 512,
+          "height": 38.390625,
+          "text": "Match details"
+        }
+      ],
+      "tabs": null,
+      "bracket": null,
+      "overflow": false,
+      "firstCard": null,
+      "buttons": [
+        {
+          "x": 1138.1875,
+          "y": 8.796875,
+          "width": 91.8125,
+          "height": 44,
+          "text": " Scan"
+        },
+        {
+          "x": 277,
+          "y": 574.625,
+          "width": 133.765625,
+          "height": 40.390625,
+          "text": "Open overview"
+        }
+      ]
+    }
+  },
+  {
+    "w": 1440,
+    "interaction": "settled match primary action",
+    "url": "http://127.0.0.1:5175/m/553078/overview",
+    "active": []
+  },
+  {
+    "w": 1440,
+    "interaction": "preview Escape",
+    "dialogCount": 1,
+    "url": "http://127.0.0.1:5175/"
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "name": "admin-loading",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "admin-loaded",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "request-loading",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "request-loaded",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "match-loading",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "match-loaded",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "chunk-failure",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  }
+]

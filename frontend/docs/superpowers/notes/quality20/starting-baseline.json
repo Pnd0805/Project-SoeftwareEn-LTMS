@@ -1,0 +1,19 @@
+{
+  "head": "4130a3d5eec7356b1b74d95ac403579225cd8447",
+  "branch": "ltms-q11-q12-quality",
+  "status": " M frontend/.scratch/ltms-minimal-street/issues/09-desktop-acceptance.md\n M frontend/docs/superpowers/plans/2026-10-05-ltms-minimal-street.md\n M frontend/docs/superpowers/tickets/2026-10-05-ltms-minimal-street.md\n M frontend/src/components/kit/Icon.tsx\n M frontend/src/components/layout/Shell.profile.test.tsx\n M frontend/src/components/layout/Shell.tsx\n M frontend/src/features/tournament/LiveCommunityTab.tsx\n M frontend/src/hooks/useMatch.ts\n M frontend/src/styles/prototype.css\n?? frontend/.impeccable/critique/\n?? frontend/.impeccable/design.json\n?? frontend/DESIGN.md\n?? frontend/docs/reviews/\n?? frontend/docs/superpowers/notes/2026-10-05-ltms-minimal-street-acceptance.md\n?? frontend/docs/superpowers/notes/ticket-09/\n?? frontend/docs/superpowers/plans/2026-10-07-ltms-quality-20.md\n?? frontend/docs/superpowers/specs/2026-10-07-ltms-quality-20.md\n?? frontend/docs/superpowers/tickets/2026-10-07-ltms-quality-20.md\n?? frontend/src/features/checkin/GlobalScanDialog.test.tsx\n?? frontend/src/features/checkin/GlobalScanDialog.tsx\n?? frontend/src/features/checkin/scanMatchId.test.ts\n?? frontend/src/features/checkin/scanMatchId.ts\n?? frontend/src/features/checkin/scanQrPhoto.test.ts\n?? frontend/src/features/checkin/scanQrPhoto.ts\n",
+  "hashes": {
+    "src/App.tsx": "cebc9e6a3aa6f56c035dd93fc9af73cc3d88a26fcba4aa2556d17f55e0e38d1c",
+    "src/features/match/MatchNextStep.tsx": "0a1dd401b3452ba505195c4b46d5aa550672b069873afdbed5993bb7f9a3ad2b",
+    "src/features/checkin/CaptureModals.tsx": "37a0c6fbfca84c6d771adc8b352de03ce7a63d83ead748690ae74834c3522139",
+    "src/features/checkin/GlobalScanDialog.tsx": "92e6a249662d367d05bfa0d8964671c062a72606ffc5dcdfb059568c70a4f32c",
+    "src/features/profile/ProfilePage.tsx": "0488b405ad59a7ee586088ff5f3493fedc7bb75ba704ce4d8f70ec0706e3145d",
+    "src/features/auth/RegisterPage.tsx": "2cdf7a7636eef64fdc52a8d12a4fb1d5f692f384988d4953784ad263b833d532",
+    "src/features/admin/AdminFeedbackTab.tsx": "e853c65b21f0be4c28c7cffbb5e163238cbdbdc977e18d55b09ee68db07ae49b",
+    "src/features/tournament/LiveCommunityTab.tsx": "6f13e3a61a40565a7901936a0eb434925accffd0ad7738cbec0570565071df05",
+    "src/features/mvp/MvpPage.tsx": "17a68a995b95b69312fd32fbb09a250d53cc561bd9021a5f69bef2081acaaf5d",
+    "src/features/watch/WatchPage.tsx": "bbdba4d308c29429ab90151b4b868120c6dd2d858f3d772074477617a0175323",
+    "src/components/layout/ErrorBoundary.tsx": "62dbbfb5679cfde05705c7cdddf1fb063f25234d16efe9bf9e8fcb0d30981cf8",
+    "src/styles/prototype.css": "75c63567bfed21b6808c8c46ce517364763e51f7b3f6668f257c01ae49eb6947"
+  }
+}

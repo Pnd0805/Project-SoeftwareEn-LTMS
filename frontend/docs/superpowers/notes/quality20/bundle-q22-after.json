@@ -1,0 +1,390 @@
+{
+  "chunks": [
+    {
+      "name": "AdminPage-CPYVVw5b.js",
+      "bytes": 37992,
+      "gzip": 9335
+    },
+    {
+      "name": "Avatar-COKnu6UZ.js",
+      "bytes": 547,
+      "gzip": 391
+    },
+    {
+      "name": "CheckinPage-B9M8Gceo.js",
+      "bytes": 32174,
+      "gzip": 10436
+    },
+    {
+      "name": "EnterTournamentButton-44yT8HQl.js",
+      "bytes": 1123,
+      "gzip": 618
+    },
+    {
+      "name": "FixturePage-DDAhc1hY.js",
+      "bytes": 5736,
+      "gzip": 2305
+    },
+    {
+      "name": "InboxPage-DzKbg6eV.js",
+      "bytes": 4980,
+      "gzip": 1890
+    },
+    {
+      "name": "MatchPage-CjZtdMoB.js",
+      "bytes": 45690,
+      "gzip": 12750
+    },
+    {
+      "name": "MatchesPage-Bev7YR1y.js",
+      "bytes": 12031,
+      "gzip": 3787
+    },
+    {
+      "name": "MvpPage-D8opFdzC.js",
+      "bytes": 5183,
+      "gzip": 1964
+    },
+    {
+      "name": "PlayerPage-ChjrgEvS.js",
+      "bytes": 7461,
+      "gzip": 2095
+    },
+    {
+      "name": "ProfilePage-BwvDpDje.js",
+      "bytes": 7470,
+      "gzip": 2427
+    },
+    {
+      "name": "RegisterForm-D_lZCDj_.js",
+      "bytes": 9173,
+      "gzip": 3545
+    },
+    {
+      "name": "RequestPage-D6ezYY6Y.js",
+      "bytes": 12950,
+      "gzip": 3997
+    },
+    {
+      "name": "Scorebug-b0p7kiO1.js",
+      "bytes": 2018,
+      "gzip": 809
+    },
+    {
+      "name": "SearchPage-DUuxGil6.js",
+      "bytes": 6120,
+      "gzip": 1894
+    },
+    {
+      "name": "TeamPage-BowEHZXh.js",
+      "bytes": 42205,
+      "gzip": 12763
+    },
+    {
+      "name": "TeamsPage-DAiPz4eU.js",
+      "bytes": 12284,
+      "gzip": 3521
+    },
+    {
+      "name": "TournamentPage-B4WtPVIi.js",
+      "bytes": 81480,
+      "gzip": 21315
+    },
+    {
+      "name": "WatchPage-Cn8CdBMA.js",
+      "bytes": 4621,
+      "gzip": 1572
+    },
+    {
+      "name": "career-C61xISiU.js",
+      "bytes": 1748,
+      "gzip": 765
+    },
+    {
+      "name": "chips-C8fkov3c.js",
+      "bytes": 1980,
+      "gzip": 770
+    },
+    {
+      "name": "esm-ni1Pr6Ff.js",
+      "bytes": 477555,
+      "gzip": 123248
+    },
+    {
+      "name": "index-Bt6jU0YY.js",
+      "bytes": 523188,
+      "gzip": 154633
+    },
+    {
+      "name": "matchTime-CF3-pkla.js",
+      "bytes": 278,
+      "gzip": 211
+    },
+    {
+      "name": "matchView-D0gMrqAs.js",
+      "bytes": 1542,
+      "gzip": 709
+    },
+    {
+      "name": "primitives-CRhl0Ibg.js",
+      "bytes": 97266,
+      "gzip": 33406
+    },
+    {
+      "name": "resultRules-Dh1XfBLj.js",
+      "bytes": 7389,
+      "gzip": 2747
+    },
+    {
+      "name": "routeIds-CE-XcIUl.js",
+      "bytes": 439,
+      "gzip": 305
+    },
+    {
+      "name": "teamBridge-DPvDnFb_.js",
+      "bytes": 2813,
+      "gzip": 1154
+    },
+    {
+      "name": "tournament.schema-D7oF5fXM.js",
+      "bytes": 4828,
+      "gzip": 1666
+    },
+    {
+      "name": "upload-2yhaOgju.js",
+      "bytes": 2781,
+      "gzip": 1175
+    },
+    {
+      "name": "useLiveEngagement-Bq4JJUUh.js",
+      "bytes": 2562,
+      "gzip": 888
+    },
+    {
+      "name": "useUser-BThLRZOY.js",
+      "bytes": 3414,
+      "gzip": 1325
+    }
+  ],
+  "traces": [
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:61189/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 31.5,
+        "navigationId": 2061,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.20000004768371582,
+        "domainLookupStart": 0.20000004768371582,
+        "domainLookupEnd": 0.20000004768371582,
+        "connectStart": 0.20000004768371582,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.20000004768371582,
+        "requestStart": 2.5,
+        "responseStart": 4.200000047683716,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 4.200000047683716,
+        "responseEnd": 4.5,
+        "transferSize": 1688,
+        "encodedBodySize": 1388,
+        "decodedBodySize": 1388,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 8.100000023841858,
+        "domContentLoadedEventStart": 31.5,
+        "domContentLoadedEventEnd": 31.5,
+        "domComplete": 31.5,
+        "loadEventStart": 31.5,
+        "loadEventEnd": 31.5,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-Bt6jU0YY.js",
+          "duration": 4.5,
+          "bytes": 523188
+        },
+        {
+          "name": "primitives-CRhl0Ibg.js",
+          "duration": 5.399999976158142,
+          "bytes": 97266
+        },
+        {
+          "name": "teamBridge-DPvDnFb_.js",
+          "duration": 5.699999928474426,
+          "bytes": 2813
+        }
+      ]
+    },
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:61189/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 28.300000071525574,
+        "navigationId": 2004,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.30000007152557373,
+        "domainLookupStart": 0.30000007152557373,
+        "domainLookupEnd": 0.30000007152557373,
+        "connectStart": 0.30000007152557373,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.30000007152557373,
+        "requestStart": 1.2000000476837158,
+        "responseStart": 1.4000000953674316,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1.4000000953674316,
+        "responseEnd": 1.5,
+        "transferSize": 1688,
+        "encodedBodySize": 1388,
+        "decodedBodySize": 1388,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 5,
+        "domContentLoadedEventStart": 28.200000047683716,
+        "domContentLoadedEventEnd": 28.200000047683716,
+        "domComplete": 28.300000071525574,
+        "loadEventStart": 28.300000071525574,
+        "loadEventEnd": 28.300000071525574,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "scripts": [
+        {
+          "name": "teamBridge-DPvDnFb_.js",
+          "duration": 4.799999952316284,
+          "bytes": 2813
+        },
+        {
+          "name": "primitives-CRhl0Ibg.js",
+          "duration": 4.600000023841858,
+          "bytes": 97266
+        },
+        {
+          "name": "index-Bt6jU0YY.js",
+          "duration": 3.799999952316284,
+          "bytes": 523188
+        }
+      ]
+    },
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:61189/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 32.199999928474426,
+        "navigationId": 3561,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.19999992847442627,
+        "domainLookupStart": 0.19999992847442627,
+        "domainLookupEnd": 0.19999992847442627,
+        "connectStart": 0.19999992847442627,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.19999992847442627,
+        "requestStart": 1.1999999284744263,
+        "responseStart": 1.600000023841858,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1.600000023841858,
+        "responseEnd": 1.600000023841858,
+        "transferSize": 1688,
+        "encodedBodySize": 1388,
+        "decodedBodySize": 1388,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 5.100000023841858,
+        "domContentLoadedEventStart": 32.10000002384186,
+        "domContentLoadedEventEnd": 32.10000002384186,
+        "domComplete": 32.199999928474426,
+        "loadEventStart": 32.199999928474426,
+        "loadEventEnd": 32.199999928474426,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      },
+      "scripts": [
+        {
+          "name": "teamBridge-DPvDnFb_.js",
+          "duration": 8.100000023841858,
+          "bytes": 2813
+        },
+        {
+          "name": "primitives-CRhl0Ibg.js",
+          "duration": 7.899999976158142,
+          "bytes": 97266
+        },
+        {
+          "name": "index-Bt6jU0YY.js",
+          "duration": 8,
+          "bytes": 523188
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "timestamp": "2026-10-07T08:22:55.345Z",
+  "application": [
+    {
+      "tournament_application_id": 36,
+      "tournament_id": 27,
+      "team_id": 9034,
+      "hard_filter_passed": 1,
+      "hard_filter_details": [
+        {
+          "passed": true,
+          "userId": 9101,
+          "fullName": "ผู้เล่น เอหนึ่ง"
+        },
+        {
+          "passed": true,
+          "userId": 9003,
+          "fullName": "มานะ ไร้ทีม"
+        }
+      ],
+      "soft_filter_documents": [],
+      "tournament_application_status": "withdrawn",
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "rejection_reason": null,
+      "applied_at": "2026-10-07T01:18:40.000Z"
+    }
+  ],
+  "players": [],
+  "matches": [],
+  "indexes": [
+    {
+      "Table": "tournament_applications",
+      "Non_unique": 0,
+      "Key_name": "PRIMARY",
+      "Seq_in_index": 1,
+      "Column_name": "tournament_application_id",
+      "Collation": "A",
+      "Cardinality": 29,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "tournament_applications",
+      "Non_unique": 0,
+      "Key_name": "tournament_id",
+      "Seq_in_index": 1,
+      "Column_name": "tournament_id",
+      "Collation": "A",
+      "Cardinality": 14,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "tournament_applications",
+      "Non_unique": 0,
+      "Key_name": "tournament_id",
+      "Seq_in_index": 2,
+      "Column_name": "team_id",
+      "Collation": "A",
+      "Cardinality": 29,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "tournament_applications",
+      "Non_unique": 1,
+      "Key_name": "team_id",
+      "Seq_in_index": 1,
+      "Column_name": "team_id",
+      "Collation": "A",
+      "Cardinality": 15,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    },
+    {
+      "Table": "tournament_applications",
+      "Non_unique": 1,
+      "Key_name": "reviewed_by",
+      "Seq_in_index": 1,
+      "Column_name": "reviewed_by",
+      "Collation": "A",
+      "Cardinality": 1,
+      "Sub_part": null,
+      "Packed": null,
+      "Null": "YES",
+      "Index_type": "BTREE",
+      "Comment": "",
+      "Index_comment": "",
+      "Visible": "YES",
+      "Expression": null
+    }
+  ]
+}

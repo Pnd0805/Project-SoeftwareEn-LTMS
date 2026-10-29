@@ -83,7 +83,7 @@ export async function makeAdmin(userId: number, scope: 'faculty' | 'university_w
 
 // ───────────────────────────── ทัวร์นาเมนต์ ─────────────────────────────
 
-type TournamentStatus = 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted';
+type TournamentStatus = 'pending_approval' | 'rejected' | 'private' | 'public' | 'completed' | 'auto_deleted' | 'cancelled';
 
 export async function createTournament(o: {
     organizer: number; sportTypeId: number; facultyId?: number | null;

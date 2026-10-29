@@ -1,0 +1,1208 @@
+[
+  {
+    "name": "match-1280-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "lineup-1280-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [
+      {
+        "height": 380,
+        "width": 467
+      },
+      {
+        "height": 380,
+        "width": 467
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "result-review-1280-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "stats-1280-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "checkin-1280-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [
+      {
+        "height": 360,
+        "width": 488
+      },
+      {
+        "height": 360,
+        "width": 488
+      }
+    ],
+    "squadFrames": [
+      {
+        "height": 440,
+        "width": 488
+      },
+      {
+        "height": 440,
+        "width": 488
+      }
+    ]
+  },
+  {
+    "name": "watch-unavailable-1280-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "fixture-denied-1280-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "matches-1280-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "interactions-1280-dark",
+    "draftRetained": true,
+    "footer": {
+      "bottom": 600.078125,
+      "viewport": 800
+    },
+    "qr": [
+      "rgb(229, 220, 200)",
+      "rgb(10, 8, 16)"
+    ],
+    "writes": [],
+    "errors": []
+  },
+  {
+    "name": "fixture-1280-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "match-1280-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "lineup-1280-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [
+      {
+        "height": 380,
+        "width": 467
+      },
+      {
+        "height": 380,
+        "width": 467
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "result-review-1280-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "stats-1280-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 488
+      },
+      {
+        "height": 320,
+        "width": 488
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "checkin-1280-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [
+      {
+        "height": 360,
+        "width": 488
+      },
+      {
+        "height": 360,
+        "width": 488
+      }
+    ],
+    "squadFrames": [
+      {
+        "height": 440,
+        "width": 488
+      },
+      {
+        "height": 440,
+        "width": 488
+      }
+    ]
+  },
+  {
+    "name": "watch-unavailable-1280-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "fixture-denied-1280-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "matches-1280-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "interactions-1280-light",
+    "draftRetained": true,
+    "footer": {
+      "bottom": 600.078125,
+      "viewport": 800
+    },
+    "qr": [
+      "rgb(229, 220, 200)",
+      "rgb(10, 8, 16)"
+    ],
+    "writes": [],
+    "errors": []
+  },
+  {
+    "name": "fixture-1280-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "match-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "lineup-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [
+      {
+        "height": 380,
+        "width": 533
+      },
+      {
+        "height": 380,
+        "width": 533
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "result-review-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "stats-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "checkin-1440-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [
+      {
+        "height": 360,
+        "width": 554
+      },
+      {
+        "height": 360,
+        "width": 554
+      }
+    ],
+    "squadFrames": [
+      {
+        "height": 440,
+        "width": 554
+      },
+      {
+        "height": 440,
+        "width": 554
+      }
+    ]
+  },
+  {
+    "name": "dispute-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "history-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "mvp-1440-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "watch-unavailable-1440-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "fixture-denied-1440-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "matches-1440-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "interactions-1440-dark",
+    "draftRetained": true,
+    "footer": {
+      "bottom": 650.078125,
+      "viewport": 900
+    },
+    "qr": [
+      "rgb(229, 220, 200)",
+      "rgb(10, 8, 16)"
+    ],
+    "writes": [],
+    "errors": []
+  },
+  {
+    "name": "fixture-1440-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "match-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "lineup-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [
+      {
+        "height": 380,
+        "width": 533
+      },
+      {
+        "height": 380,
+        "width": 533
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "result-review-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "stats-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "checkin-1440-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [
+      {
+        "height": 360,
+        "width": 554
+      },
+      {
+        "height": 360,
+        "width": 554
+      }
+    ],
+    "squadFrames": [
+      {
+        "height": 440,
+        "width": 554
+      },
+      {
+        "height": 440,
+        "width": 554
+      }
+    ]
+  },
+  {
+    "name": "dispute-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "history-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "mvp-1440-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 554
+      },
+      {
+        "height": 320,
+        "width": 554
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "watch-unavailable-1440-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "fixture-denied-1440-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "matches-1440-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "interactions-1440-light",
+    "draftRetained": true,
+    "footer": {
+      "bottom": 650.078125,
+      "viewport": 900
+    },
+    "qr": [
+      "rgb(229, 220, 200)",
+      "rgb(10, 8, 16)"
+    ],
+    "writes": [],
+    "errors": []
+  },
+  {
+    "name": "fixture-1440-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "match-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "lineup-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [
+      {
+        "height": 380,
+        "width": 300
+      },
+      {
+        "height": 380,
+        "width": 300
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "result-review-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "stats-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "checkin-390-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [
+      {
+        "height": 420,
+        "width": 342
+      },
+      {
+        "height": 420,
+        "width": 342
+      }
+    ],
+    "squadFrames": [
+      {
+        "height": 440,
+        "width": 342
+      },
+      {
+        "height": 440,
+        "width": 342
+      }
+    ]
+  },
+  {
+    "name": "dispute-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "history-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "mvp-390-dark",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "watch-unavailable-390-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "fixture-denied-390-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "matches-390-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "interactions-390-dark",
+    "draftRetained": true,
+    "footer": {
+      "bottom": 660.46875,
+      "viewport": 844
+    },
+    "qr": [
+      "rgb(229, 220, 200)",
+      "rgb(10, 8, 16)"
+    ],
+    "writes": [],
+    "errors": []
+  },
+  {
+    "name": "fixture-390-dark",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "match-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "lineup-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [
+      {
+        "height": 380,
+        "width": 300
+      },
+      {
+        "height": 380,
+        "width": 300
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "result-review-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "stats-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [
+      {
+        "height": 0,
+        "width": 0
+      },
+      {
+        "height": 0,
+        "width": 0
+      }
+    ],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "checkin-390-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [
+      {
+        "height": 420,
+        "width": 342
+      },
+      {
+        "height": 420,
+        "width": 342
+      }
+    ],
+    "squadFrames": [
+      {
+        "height": 440,
+        "width": 342
+      },
+      {
+        "height": 440,
+        "width": 342
+      }
+    ]
+  },
+  {
+    "name": "dispute-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "history-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "mvp-390-light",
+    "overflow": false,
+    "summary": [
+      {
+        "height": 320,
+        "width": 342
+      },
+      {
+        "height": 320,
+        "width": 342
+      }
+    ],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "watch-unavailable-390-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "fixture-denied-390-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "matches-390-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  },
+  {
+    "name": "interactions-390-light",
+    "draftRetained": true,
+    "footer": {
+      "bottom": 660.46875,
+      "viewport": 844
+    },
+    "qr": [
+      "rgb(229, 220, 200)",
+      "rgb(10, 8, 16)"
+    ],
+    "writes": [],
+    "errors": []
+  },
+  {
+    "name": "fixture-390-light",
+    "overflow": false,
+    "summary": [],
+    "lineups": [],
+    "checkinFrames": [],
+    "squadFrames": []
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "backend": {
+    "context": ".",
+    "dockerfile_exists": true
+  },
+  "nginx": {
+    "context": "../frontend/",
+    "dockerfile_exists": true
+  },
+  "container_defaults": {
+    "database_port": 3306,
+    "smtp_host": "mailpit",
+    "smtp_port": 1025
+  }
+}

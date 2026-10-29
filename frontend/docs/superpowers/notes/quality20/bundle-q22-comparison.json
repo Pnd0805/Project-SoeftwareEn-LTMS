@@ -1,0 +1,52 @@
+{
+  "before": {
+    "main": {
+      "name": "index-Vecq8EhE.js",
+      "bytes": 945753,
+      "gzip": 267808
+    },
+    "allJsGzipBytes": 391056,
+    "chunkCount": 2,
+    "homeInitialJsBytes": 945753,
+    "homeInitialJsGzipBytes": 267808,
+    "homeInitialScripts": [
+      "index-Vecq8EhE.js"
+    ],
+    "coldHomeDclSamplesMs": [
+      49.800000071525574,
+      39.89999997615814,
+      39.89999997615814
+    ],
+    "medianColdHomeDclMs": 39.89999997615814
+  },
+  "after": {
+    "main": {
+      "name": "index-Bt6jU0YY.js",
+      "bytes": 523188,
+      "gzip": 154633
+    },
+    "allJsGzipBytes": 420416,
+    "chunkCount": 33,
+    "homeInitialJsBytes": 623267,
+    "homeInitialJsGzipBytes": 189193,
+    "homeInitialScripts": [
+      "index-Bt6jU0YY.js",
+      "primitives-CRhl0Ibg.js",
+      "teamBridge-DPvDnFb_.js"
+    ],
+    "coldHomeDclSamplesMs": [
+      31.5,
+      28.200000047683716,
+      32.10000002384186
+    ],
+    "medianColdHomeDclMs": 31.5
+  },
+  "comparison": {
+    "mainGzipReductionPercent": 42.259753256064045,
+    "allJsGzipIncreasePercent": 7.50787610981547,
+    "homeInitialJsReductionPercent": 34.098332228393666,
+    "mainUnder200000GzipBytes": true,
+    "scannerChunkUnchanged": true
+  },
+  "conditions": "Same machine and Chromium executable, production dist served by the same no-compression localhost harness, three new browser contexts per build. Byte comparisons use Node gzip consistently. Timings are local lab observations; no LCP/INP or faster-experience claim."
+}

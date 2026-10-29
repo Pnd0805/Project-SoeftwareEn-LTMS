@@ -1,0 +1,986 @@
+[
+  {
+    "id": "player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-390-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "long-account-player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 758.5625,
+      "width": 390,
+      "height": 642.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 726.5625,
+      "width": 358,
+      "height": 598.96875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 95.234375,
+      "bottom": 748.765625,
+      "width": 350,
+      "height": 653.53125
+    }
+  },
+  {
+    "id": "enlarged-text-player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 181.578125,
+      "bottom": 824.546875,
+      "width": 390,
+      "height": 642.96875
+    },
+    "firstContent": {
+      "top": 193.578125,
+      "bottom": 792.546875,
+      "width": 358,
+      "height": 598.96875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 181.578125,
+      "width": 390,
+      "height": 181.578125
+    },
+    "scan": {
+      "top": 28.1875,
+      "bottom": 72.1875,
+      "width": 115.9375,
+      "height": 44
+    },
+    "profile": {
+      "top": 28.1875,
+      "bottom": 72.1875,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 100.390625,
+      "bottom": 171.578125,
+      "width": 366,
+      "height": 71.1875
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "interactions-player-390-dark",
+    "headerKeyboardOrder": true,
+    "themePersists": true,
+    "searchDraftSurvivesResize": true,
+    "resizeClosesMenu": true,
+    "inboxAndSearchNavigation": true,
+    "secureCameraRecovery": true,
+    "insecureFileChooser": true,
+    "longAccount": true,
+    "simulatedDoubleText": true,
+    "logout": true,
+    "physicalIPhone": "unverified"
+  },
+  {
+    "id": "player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2675.671875,
+      "width": 390,
+      "height": 2560.078125
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 358,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 350,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-390-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "long-account-player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 758.5625,
+      "width": 390,
+      "height": 642.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 726.5625,
+      "width": 358,
+      "height": 598.96875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 95.234375,
+      "bottom": 748.765625,
+      "width": 350,
+      "height": 653.53125
+    }
+  },
+  {
+    "id": "enlarged-text-player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 181.578125,
+      "bottom": 824.546875,
+      "width": 390,
+      "height": 642.96875
+    },
+    "firstContent": {
+      "top": 193.578125,
+      "bottom": 792.546875,
+      "width": 358,
+      "height": 598.96875
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 181.578125,
+      "width": 390,
+      "height": 181.578125
+    },
+    "scan": {
+      "top": 28.1875,
+      "bottom": 72.1875,
+      "width": 115.9375,
+      "height": 44
+    },
+    "profile": {
+      "top": 28.1875,
+      "bottom": 72.1875,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 100.390625,
+      "bottom": 171.578125,
+      "width": 366,
+      "height": 71.1875
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "interactions-player-390-light",
+    "headerKeyboardOrder": true,
+    "themePersists": true,
+    "searchDraftSurvivesResize": true,
+    "resizeClosesMenu": true,
+    "inboxAndSearchNavigation": true,
+    "secureCameraRecovery": true,
+    "insecureFileChooser": true,
+    "longAccount": true,
+    "simulatedDoubleText": true,
+    "logout": true,
+    "physicalIPhone": "unverified"
+  },
+  {
+    "id": "player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-320-dark",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to light mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "long-account-player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 854.953125,
+      "width": 320,
+      "height": 739.359375
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 822.953125,
+      "width": 288,
+      "height": 695.359375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 83.234375,
+      "bottom": 760.765625,
+      "width": 280,
+      "height": 677.53125
+    }
+  },
+  {
+    "id": "enlarged-text-player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 233.578125,
+      "bottom": 972.9375,
+      "width": 320,
+      "height": 739.359375
+    },
+    "firstContent": {
+      "top": 245.578125,
+      "bottom": 940.9375,
+      "width": 288,
+      "height": 695.359375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 233.578125,
+      "width": 320,
+      "height": 233.578125
+    },
+    "scan": {
+      "top": 100.390625,
+      "bottom": 144.390625,
+      "width": 115.9375,
+      "height": 44
+    },
+    "profile": {
+      "top": 100.390625,
+      "bottom": 144.390625,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 152.390625,
+      "bottom": 223.578125,
+      "width": 296,
+      "height": 71.1875
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "interactions-player-320-dark",
+    "headerKeyboardOrder": true,
+    "themePersists": true,
+    "searchDraftSurvivesResize": true,
+    "resizeClosesMenu": true,
+    "inboxAndSearchNavigation": true,
+    "secureCameraRecovery": true,
+    "insecureFileChooser": true,
+    "longAccount": true,
+    "simulatedDoubleText": true,
+    "logout": true,
+    "physicalIPhone": "unverified"
+  },
+  {
+    "id": "player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "menu-player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 2785.5625,
+      "width": 320,
+      "height": 2669.96875
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 171.59375,
+      "width": 288,
+      "height": 44
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 119.234375,
+      "bottom": 724.765625,
+      "width": 280,
+      "height": 605.53125
+    },
+    "current": "Home"
+  },
+  {
+    "id": "keyboard-player-320-light",
+    "namedDialog": true,
+    "initialCloseFocus": true,
+    "focusContained": true,
+    "escapeReturns": true,
+    "targets": [
+      {
+        "label": "Close",
+        "height": 44
+      },
+      {
+        "label": "Home",
+        "height": 46.390625
+      },
+      {
+        "label": "Tournaments",
+        "height": 46.390625
+      },
+      {
+        "label": "Teams1",
+        "height": 46.390625
+      },
+      {
+        "label": "Matches",
+        "height": 46.390625
+      },
+      {
+        "label": "Inbox1",
+        "height": 46.390625
+      },
+      {
+        "label": "Profile",
+        "height": 46.390625
+      },
+      {
+        "label": "Switch to dark mode",
+        "height": 44
+      },
+      {
+        "label": " Log out",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "id": "long-account-player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 115.59375,
+      "bottom": 854.953125,
+      "width": 320,
+      "height": 739.359375
+    },
+    "firstContent": {
+      "top": 127.59375,
+      "bottom": 822.953125,
+      "width": 288,
+      "height": 695.359375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 115.59375,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 8,
+      "bottom": 52,
+      "width": 82.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 8,
+      "bottom": 52,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 60,
+      "bottom": 105.59375,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": {
+      "top": 83.234375,
+      "bottom": 760.765625,
+      "width": 280,
+      "height": 677.53125
+    }
+  },
+  {
+    "id": "enlarged-text-player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 233.578125,
+      "bottom": 972.9375,
+      "width": 320,
+      "height": 739.359375
+    },
+    "firstContent": {
+      "top": 245.578125,
+      "bottom": 940.9375,
+      "width": 288,
+      "height": 695.359375
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 233.578125,
+      "width": 320,
+      "height": 233.578125
+    },
+    "scan": {
+      "top": 100.390625,
+      "bottom": 144.390625,
+      "width": 115.9375,
+      "height": 44
+    },
+    "profile": {
+      "top": 100.390625,
+      "bottom": 144.390625,
+      "width": 44,
+      "height": 44
+    },
+    "search": {
+      "top": 152.390625,
+      "bottom": 223.578125,
+      "width": 296,
+      "height": 71.1875
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "interactions-player-320-light",
+    "headerKeyboardOrder": true,
+    "themePersists": true,
+    "searchDraftSurvivesResize": true,
+    "resizeClosesMenu": true,
+    "inboxAndSearchNavigation": true,
+    "secureCameraRecovery": true,
+    "insecureFileChooser": true,
+    "longAccount": true,
+    "simulatedDoubleText": true,
+    "logout": true,
+    "physicalIPhone": "unverified"
+  }
+]

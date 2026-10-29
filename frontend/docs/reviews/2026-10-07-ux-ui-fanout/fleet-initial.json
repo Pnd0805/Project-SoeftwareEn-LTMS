@@ -1,0 +1,960 @@
+{
+  "id": "4485d279-cec9-4d2f-bc9d-0eeae4f53cca",
+  "ok": true,
+  "result": {
+    "workers": [
+      {
+        "dispatchId": "ctx_a59be37728ec",
+        "taskId": "task_4a182a8e6093",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_93b908ec-60db-46e6-8be5-aa6bf0336e93",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_2b36911c2a04",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_93b908ec-60db-46e6-8be5-aa6bf0336e93",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@fca0eb39:f6bd1e86-ce40-4c29-9aff-80715b9130e9",
+          "originDispatchId": "ctx_a59be37728ec",
+          "ownerDispatchId": "ctx_a59be37728ec",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_a59be37728ec",
+          "dispatchId": "ctx_a59be37728ec",
+          "taskId": "task_4a182a8e6093",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355677570,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355677570
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_0784a9e40f4b",
+        "taskId": "task_1a73ad10b0c0",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_b892dc4f-c12f-455e-8d3a-19addb1c6450",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_4f960c056890",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_b892dc4f-c12f-455e-8d3a-19addb1c6450",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@f977d2f8:8292a856-e274-4b2e-a058-05ca41077b99",
+          "originDispatchId": "ctx_0784a9e40f4b",
+          "ownerDispatchId": "ctx_0784a9e40f4b",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_0784a9e40f4b",
+          "dispatchId": "ctx_0784a9e40f4b",
+          "taskId": "task_1a73ad10b0c0",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355675981,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355675981
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_15331026937e",
+        "taskId": "task_ba75f9c3e4d2",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_1b90c4a4-91d4-4c83-9d38-0d9901ff938d",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_e55b93dd13e1",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_1b90c4a4-91d4-4c83-9d38-0d9901ff938d",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@798d16a3:f4191be9-9b0e-48f1-b265-31b83187d433",
+          "originDispatchId": "ctx_15331026937e",
+          "ownerDispatchId": "ctx_15331026937e",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_15331026937e",
+          "dispatchId": "ctx_15331026937e",
+          "taskId": "task_ba75f9c3e4d2",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355569333,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355569333
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_2b7686a926a1",
+        "taskId": "task_5d91586d4899",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_5a79d7d5-a9ab-45c1-afd8-38e9f74d0b9f",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_8e533a1ba876",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_5a79d7d5-a9ab-45c1-afd8-38e9f74d0b9f",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@d0c4a8e6:12fdcdc2-2e02-4c82-b084-87017c54ad4e",
+          "originDispatchId": "ctx_2b7686a926a1",
+          "ownerDispatchId": "ctx_2b7686a926a1",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_2b7686a926a1",
+          "dispatchId": "ctx_2b7686a926a1",
+          "taskId": "task_5d91586d4899",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355678633,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355678633
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_7a96f4e3b8eb",
+        "taskId": "task_d69d56330d5d",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_b641eb34-451b-4d7c-a7f6-1f0de041cf64",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_d0056e74aa88",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_b641eb34-451b-4d7c-a7f6-1f0de041cf64",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@5a16da65:4cf43dc8-5d12-44e7-aba3-a27c6ae25696",
+          "originDispatchId": "ctx_7a96f4e3b8eb",
+          "ownerDispatchId": "ctx_7a96f4e3b8eb",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_7a96f4e3b8eb",
+          "dispatchId": "ctx_7a96f4e3b8eb",
+          "taskId": "task_d69d56330d5d",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355580941,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355580941
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_7661465850d1",
+        "taskId": "task_43389eba3f42",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_5ae3b78f-b2db-4c83-93e6-15fa2271863c",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_fab90ad443f3",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_5ae3b78f-b2db-4c83-93e6-15fa2271863c",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@2266dee8:aea010b3-ba23-4766-b538-9c723cce7a02",
+          "originDispatchId": "ctx_7661465850d1",
+          "ownerDispatchId": "ctx_7661465850d1",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_7661465850d1",
+          "dispatchId": "ctx_7661465850d1",
+          "taskId": "task_43389eba3f42",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355597458,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355597458
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_d07000f85399",
+        "taskId": "task_41beb9519cd0",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_2699368e-8f9f-436d-b965-e970a03f02f5",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_f3dc58e765c7",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_2699368e-8f9f-436d-b965-e970a03f02f5",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@0670dcdb:02883477-bcbf-4e9f-b80b-fd43a2c14c87",
+          "originDispatchId": "ctx_d07000f85399",
+          "ownerDispatchId": "ctx_d07000f85399",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_d07000f85399",
+          "dispatchId": "ctx_d07000f85399",
+          "taskId": "task_41beb9519cd0",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355674736,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355674736
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_b8769ad314b4",
+        "taskId": "task_f114c5c1ecaf",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_6f9d6947-b26f-49d3-8cfe-25d6ea8cb69c",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_090b8f2af595",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_6f9d6947-b26f-49d3-8cfe-25d6ea8cb69c",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@f0796c16:653d2bd9-f86b-434e-b504-ac401268fd93",
+          "originDispatchId": "ctx_b8769ad314b4",
+          "ownerDispatchId": "ctx_b8769ad314b4",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_b8769ad314b4",
+          "dispatchId": "ctx_b8769ad314b4",
+          "taskId": "task_f114c5c1ecaf",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "waiting"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355667466,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355667466
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_a741263c1ca8",
+        "taskId": "task_6620f757b4fd",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_ddbbc868-ca13-470e-88bb-51f7decff5dd",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_c9410ce88da8",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_ddbbc868-ca13-470e-88bb-51f7decff5dd",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@b0cf6dab:174b6021-7840-4bc2-84f3-74fb2e67b7ae",
+          "originDispatchId": "ctx_a741263c1ca8",
+          "ownerDispatchId": "ctx_a741263c1ca8",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_a741263c1ca8",
+          "dispatchId": "ctx_a741263c1ca8",
+          "taskId": "task_6620f757b4fd",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355100003,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355100003
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_4af583fc15a2",
+        "taskId": "task_d7ead9dd71b5",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_ba6eb782-c9c7-41c0-bb18-07d795246539",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_fa885bf5fe3a",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_ba6eb782-c9c7-41c0-bb18-07d795246539",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@17b93fcb:ce49f7ea-b70a-4b87-8dee-fd36fb32ef62",
+          "originDispatchId": "ctx_4af583fc15a2",
+          "ownerDispatchId": "ctx_4af583fc15a2",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_4af583fc15a2",
+          "dispatchId": "ctx_4af583fc15a2",
+          "taskId": "task_d7ead9dd71b5",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791354957908,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791354957908
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_f857502d3ba2",
+        "taskId": "task_be31294ca285",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_272b37ad-5939-4517-a7bf-1aa267bf7270",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_56ee8abc909c",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_272b37ad-5939-4517-a7bf-1aa267bf7270",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@2f47dad7:6d1adee3-dbbe-463d-915e-eeff7a72b3d1",
+          "originDispatchId": "ctx_f857502d3ba2",
+          "ownerDispatchId": "ctx_f857502d3ba2",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_f857502d3ba2",
+          "dispatchId": "ctx_f857502d3ba2",
+          "taskId": "task_be31294ca285",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355639043,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355639043
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      },
+      {
+        "dispatchId": "ctx_73b51eb6d493",
+        "taskId": "task_19e6ee4f9177",
+        "runId": "run_173b34c66cea",
+        "workerState": "ready",
+        "dispatchStatus": "dispatched",
+        "agentTerminalHandle": "term_60ad8da0-38f4-4571-af6d-6acddf156a5d",
+        "terminalState": "retained",
+        "resource": {
+          "id": "wtr_63b83670bcb3",
+          "ownershipState": "external",
+          "releaseState": "not_requested",
+          "retainedReason": "external_terminal",
+          "terminalHandle": "term_60ad8da0-38f4-4571-af6d-6acddf156a5d",
+          "worktreeId": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+          "endpointId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c",
+          "endpointIncarnation": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux@@c0c006ad:74c52a52-38fc-4542-89a1-24382b898154",
+          "originDispatchId": "ctx_73b51eb6d493",
+          "ownerDispatchId": "ctx_73b51eb6d493",
+          "releaseRequestedAt": null,
+          "releaseCompletedAt": null,
+          "releaseError": null,
+          "recoveryAttemptCount": 0,
+          "lastRecoveryAt": null,
+          "archive": {
+            "source": null,
+            "status": null
+          }
+        },
+        "projection": {
+          "id": "ctx_73b51eb6d493",
+          "dispatchId": "ctx_73b51eb6d493",
+          "taskId": "task_19e6ee4f9177",
+          "runId": "run_173b34c66cea",
+          "role": "worker",
+          "parent": null,
+          "provider": {
+            "id": "codex",
+            "model": "gpt-6-luna"
+          },
+          "host": {
+            "kind": "local",
+            "id": "local"
+          },
+          "workspace": {
+            "id": "b1410c56-fe27-4fa6-926e-c16322006d14::/Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+            "kind": "folder_or_worktree"
+          },
+          "stage": {
+            "worker": "ready",
+            "dispatch": "dispatched",
+            "detail": "input_accepted",
+            "activity": "working"
+          },
+          "outcome": "in_progress",
+          "liveness": {
+            "verdict": "live",
+            "observedAt": 1791355562491,
+            "source": "agent_status"
+          },
+          "evidence": {
+            "durable": true,
+            "liveStatus": "fresh",
+            "lastObservedAt": 1791355562491
+          },
+          "resource": {
+            "state": "external"
+          },
+          "nextAction": {
+            "kind": "none",
+            "argv": []
+          },
+          "attention": {
+            "categories": [],
+            "requiresAction": false
+          }
+        }
+      }
+    ],
+    "counts": {
+      "retained": 12
+    },
+    "page": {
+      "limit": 100,
+      "total": 12,
+      "hasMore": false,
+      "nextCursor": null
+    },
+    "scope": {
+      "run": "run_173b34c66cea",
+      "source": "flag"
+    }
+  },
+  "_meta": {
+    "runtimeId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c"
+  }
+}

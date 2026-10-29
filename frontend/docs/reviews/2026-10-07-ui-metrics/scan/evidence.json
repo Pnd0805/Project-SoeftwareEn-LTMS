@@ -1,0 +1,46 @@
+[
+  {
+    "viewport": "1440x900",
+    "theme": "dark",
+    "before": "// Check in — on-site\nScan check-in QR\nCamera unavailable\nStarting camera…\nCamera unavailable — Permission denied Enter the referee’s code instead.\nReferee’s code\nCancel\nDemo scan\nScan again\nCheck in",
+    "after": "// Check in — on-site\nScan check-in QR\nCamera unavailable\nStarting camera…\nCamera unavailable — Permission denied Enter the referee’s code instead.\nCheck-in failed This is not an LTMS Check-in QR. Scan again.\nReferee’s code\nCancel\nDemo scan\nScan again\nCheck in",
+    "geometry": {
+      "width": 1440,
+      "pageWidth": 1440,
+      "dialog": {
+        "x": 410,
+        "y": 63,
+        "width": 620,
+        "height": 774
+      },
+      "status": [
+        "No scheduled match",
+        "Starting camera…"
+      ],
+      "alerts": []
+    },
+    "focusAfterEscape": "<button class=\"scan-trigger\" type=\"button\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M8 4H4v4M16 4h4v4M4 16v4h4M20 16v4h-4M7 12h10\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"></path></svg> Scan</button>"
+  },
+  {
+    "viewport": "390x844",
+    "theme": "light",
+    "before": "// Check in — on-site\nScan check-in QR\nCamera unavailable\nStarting camera…\nCamera unavailable — Permission denied Enter the referee’s code instead.\nReferee’s code\nCancel\nDemo scan\nScan again\nCheck in",
+    "after": "// Check in — on-site\nScan check-in QR\nCamera unavailable\nStarting camera…\nCamera unavailable — Permission denied Enter the referee’s code instead.\nCheck-in failed This is not an LTMS Check-in QR. Scan again.\nReferee’s code\nCancel\nDemo scan\nScan again\nCheck in",
+    "geometry": {
+      "width": 390,
+      "pageWidth": 390,
+      "dialog": {
+        "x": 20,
+        "y": 59.078125,
+        "width": 358,
+        "height": 725.828125
+      },
+      "status": [
+        "No scheduled match",
+        "Starting camera…"
+      ],
+      "alerts": []
+    },
+    "focusAfterEscape": "<button class=\"scan-trigger\" type=\"button\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\"><path d=\"M8 4H4v4M16 4h4v4M4 16v4h4M20 16v4h-4M7 12h10\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"></path></svg> Scan</button>"
+  }
+]

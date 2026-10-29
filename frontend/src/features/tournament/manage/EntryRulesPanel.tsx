@@ -1,0 +1,361 @@
+/**
+ * src/features/tournament/manage/EntryRulesPanel.tsx
+ *
+ * The hard filter as the server actually holds it — คณะ ชั้นปี เพศ อายุ
+ *
+ * โหมด mock ใช้ `EntryFilterPanel` ตัวเดิมที่อ่าน/เขียน store ส่วนหน้านี้คือของจริง:
+ * อ่านจาก `GET /tournaments/:id/eligibility-rules` + รายละเอียดทัวร์ และเขียนผ่าน
+ * คำขอแก้ไข (C09) ซึ่งต้องให้แอดมินอนุมัติอีกทีตามดีไซน์ของฟีเจอร์นี้
+ *
+ * ── สามด่านที่ backend กั้นไว้ และหน้านี้ต้องพูดถึงให้ครบ ────────────────────
+ * 1. ทัวร์ที่ยังรออนุมัติแก้ตรงได้ด้วย C17b — แต่เปิดหน้านี้ไม่ได้อยู่ดี เพราะ
+ *    `GET /tournaments/:id` ตอบ 404 ให้เจ้าของจนกว่าจะอนุมัติ (ดู BACKEND-GAPS)
+ * 2. อนุมัติแล้วต้องไป C09 · ตรงนี้ทำ
+ * 3. เปิดรับสมัครหรือมีทีมสมัครแล้ว = ล็อก (409 ELIGIBILITY_LOCKED) เพราะทีมที่
+ *    ผ่านตัวกรองไปแล้วจะกลายเป็นผิดกฎย้อนหลัง
+ */
+import { useState } from 'react'
+import { useManageActive } from './ManageActivity'
+import { Badge, Banner, Facts, Field, Panel, TableWrap } from '../../../components/kit/primitives'
+import { Icon } from '../../../components/kit/Icon'
+import { Modal } from '../../../components/kit/Modal'
+import { useEligibilityRules, useSaveEntryNotes, useRequestFilterChange, usePreviewAmendment, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
+import { useFaculties } from '../../../hooks/useReference'
+import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
+import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
+import type { GenderRequirement } from '../../../types/enums'
+import type { Tournament } from '../../../shared/types'
+import { fmtDateTime } from '../../../shared/dateFormat'
+import { formatAmendmentChanges } from '../../../shared/amendmentChanges'
+import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
+import { ApiError } from '../../../api/client'
+
+const YEARS = [1, 2, 3, 4, 5, 6, 7, 8]
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
+const amendmentErrorMessage = (error: unknown) => {
+  const value = error as { code?: unknown; message?: unknown } | null
+  if (value?.code === 'TOURNAMENT_DATA_CONFLICT') return `${typeof value.message === 'string' ? value.message : 'The existing tournament data conflicts.'} Include corrections to the existing conflicting fields in the same request.`
+  return errorMessage(error)
+}
+const toggle = (list: number[], value: number) =>
+  list.includes(value) ? list.filter(x => x !== value) : [...list, value].sort((a, b) => a - b)
+
+export function EntryRulesPanel({ t }: { t: Tournament }) {
+  const active = useManageActive()
+  const saveNotes = useSaveEntryNotes(t.id)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [notes, setNotes] = useState(t.entryNotes ?? '')
+  const tournamentId = Number(t.id)
+  /* ทั้งสองคำขอนี้หน้าทัวร์นาเมนต์ดึงไปแล้ว — อ่านซ้ำได้จากแคช ไม่ได้ยิงเพิ่ม */
+  const detail = useTournament(tournamentId)
+  const rules = useEligibilityRules(tournamentId)
+  const faculties = useFaculties()
+  const requestChange = useRequestFilterChange(tournamentId)
+  const preview = usePreviewAmendment(tournamentId)
+  const setPendingRules = useSetEligibilityRules(tournamentId)
+  const amendmentHistory = useTournamentAmendmentRequests(tournamentId)
+
+  const currentFaculties = (rules.data?.items ?? []).filter(r => r.ruleType === 'faculty').map(r => r.ruleValue)
+  const currentYears = (rules.data?.items ?? []).filter(r => r.ruleType === 'year').map(r => r.ruleValue)
+  const facultyName = (id: number) => (faculties.data?.items ?? []).find(f => f.id === id)?.name ?? `คณะ #${id}`
+
+  const [open, setOpen] = useState(false)
+  const [sentAt, setSentAt] = useState<string | null>(null)
+  const [draftFaculties, setDraftFaculties] = useState<number[]>([])
+  const [draftYears, setDraftYears] = useState<number[]>([])
+  const [gender, setGender] = useState<GenderRequirement>('any')
+  const [minAge, setMinAge] = useState('')
+  const [maxAge, setMaxAge] = useState('')
+  /* ช่องเหตุผลกลับมาแล้วตั้งแต่ migration 020 — รอบก่อนเราถอดทิ้งเพราะ
+     `tournament_amendment_requests` มีแต่ `rejection_reason` ของแอดมิน ตอนนี้มี
+     `request_reason` ของผู้ขอ และ schema บังคับ ไม่กรอกคือ 400 */
+  const [reason, setReason] = useState('')
+  const [eventStartDate, setEventStartDate] = useState('')
+
+  const registrationOpen = detail.data?.registrationOpen ?? false
+  const organizingFacultyId = detail.data?.organizingFacultyId ?? null
+  const registrationEnd = detail.data?.registrationEnd ?? null
+  const currentEventStartDate = detail.data?.eventStartDate ?? ''
+  const scheduleNeedsFix = !!detail.data
+    && !registrationClosesBeforeEvent(registrationEnd, currentEventStartDate)
+  const correctedScheduleIsValid = registrationClosesBeforeEvent(registrationEnd, eventStartDate)
+  const pendingApproval = detail.data?.status === 'pending_approval'
+
+  const startEditing = () => {
+    requestChange.reset()
+    preview.reset()
+    setPendingRules.reset()
+    setReason('')
+    setDraftFaculties(currentFaculties)
+    setDraftYears(currentYears)
+    setGender(detail.data?.genderRequirement ?? 'any')
+    setMinAge(detail.data?.minAge == null ? '' : String(detail.data.minAge))
+    setMaxAge(detail.data?.maxAge == null ? '' : String(detail.data.maxAge))
+    setEventStartDate(currentEventStartDate)
+    setOpen(true)
+  }
+
+  /* กติกาเดียวกับ adminCoversEligibility ของ backend — คนตัดสินเปลี่ยนตามจำนวนคณะ */
+  const goesToFacultyAdmin = draftFaculties.length === 1
+    && organizingFacultyId != null
+    && draftFaculties[0] === organizingFacultyId
+
+  const proposed = {
+    reason: reason.trim(),
+    changes: {
+      eligibilityRules: toEligibilityRules(draftFaculties, draftYears),
+      genderRequirement: gender,
+      minAge: minAge === '' ? null : Number(minAge),
+      maxAge: maxAge === '' ? null : Number(maxAge),
+      ...(scheduleNeedsFix ? { eventStartDate } : {}),
+    },
+  }
+  const validAges = [minAge, maxAge].every(value => value === '' || (Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 120))
+    && (minAge === '' || maxAge === '' || Number(minAge) <= Number(maxAge))
+  const validDraft = !!reason.trim() && reason.trim().length <= 1000 && validAges
+    && (!scheduleNeedsFix || correctedScheduleIsValid)
+  const previewCurrent = preview.isSuccess && JSON.stringify(preview.variables) === JSON.stringify(proposed)
+  const busy = preview.isPending || requestChange.isPending || setPendingRules.isPending
+
+  const send = () => {
+    if (pendingApproval) {
+      if (setPendingRules.isPending) return
+      setPendingRules.mutate(toEligibilityRules(draftFaculties, draftYears), {
+        onSuccess: () => { setOpen(false); setSentAt(fmtDateTime(new Date())) },
+      })
+      return
+    }
+    if (busy || !validDraft || !previewCurrent || !preview.data?.canSubmit) return
+    requestChange.mutate({
+      rules: null,
+      ...proposed,
+    },
+    { onSuccess: () => { setOpen(false); setSentAt(fmtDateTime(new Date())) } },
+    )
+  }
+
+  return (
+    <>
+      <div className="organizer-entry-grid">
+        <Panel quiet>
+          <div className="who">
+            <span className="avatar" style={{ background: 'var(--teal)' }}><Icon name="bell" size={13} /></span>
+            <span className="meta">
+              <b>Soft filter</b>
+              <span className="tag">Entry notes — the system shows them, it never checks them</span>
+            </span>
+          </div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{t.entryNotes || 'No entry notes published.'}</div>
+          <button className="btn ghost" type="button" onClick={() => {
+            saveNotes.reset(); setNotes(t.entryNotes ?? ''); setNotesOpen(true)
+          }}>Edit entry notes</button>
+        </Panel>
+
+        <Panel quiet>
+          <div className="who">
+            <span className="avatar" style={{ background: 'var(--red)' }}><Icon name="shield" size={13} /></span>
+            <span className="meta">
+              <b>Hard filter</b>
+              <span className="tag">Checked against every player on the squad list, with no override</span>
+            </span>
+            {registrationOpen ? <Badge kind="warn">Locked</Badge> : null}
+          </div>
+
+          <Facts rows={[
+            ['Faculties', currentFaculties.length ? currentFaculties.map(facultyName).join(' · ') : 'Every faculty'],
+            ['Years of study', currentYears.length ? currentYears.map(y => `Year ${y}`).join(' · ') : 'Every year'],
+            ['Gender', GenderRequirementLabel[detail.data?.genderRequirement ?? 'any']],
+            ['Age', detail.data?.minAge == null && detail.data?.maxAge == null
+              ? 'Any age'
+              : `${detail.data?.minAge ?? '—'} to ${detail.data?.maxAge ?? '—'}`],
+          ]} />
+
+          {rules.isError ? (
+            <Banner kind="crit"><b>Couldn&apos;t read the conditions.</b> {errorMessage(rules.error)}</Banner>
+          ) : null}
+
+          {sentAt ? (
+            <Banner kind="ok" icon="check">
+              {pendingApproval
+                ? <><b>Saved on {sentAt}.</b> The pending tournament now carries these conditions.</>
+                : <><b>Sent to an admin on {sentAt}.</b> The conditions above stay as they are until the
+                  request is approved. Its current decision appears in the history below.</>}
+            </Banner>
+          ) : null}
+
+          {registrationOpen ? (
+            <Banner kind="warn" icon="clock">
+              <b>Entry is open, so the conditions are frozen.</b> Squads have already been checked
+              against them; changing them now would put a squad that passed in breach after the fact.
+            </Banner>
+          ) : (
+            <button className="btn ghost" type="button" style={{ alignSelf: 'flex-start' }} onClick={startEditing}>
+              <Icon name="plus" size={14} /> {pendingApproval ? 'Correct conditions' : 'Request a change'}
+            </button>
+          )}
+        </Panel>
+
+        <Panel quiet>
+          <span className="tag"><em>//</em> Amendment history</span>
+          {amendmentHistory.isPending ? <span className="sub">Loading requests…</span> : null}
+          {amendmentHistory.isError ? (
+            <Banner kind="crit"><b>Couldn&apos;t load amendment history.</b> {errorMessage(amendmentHistory.error)}</Banner>
+          ) : null}
+          {amendmentHistory.data?.items.length === 0 ? <span className="sub">No amendment requests yet.</span> : null}
+          {amendmentHistory.data?.items.length ? (
+            <TableWrap>
+              <table>
+                <thead><tr><th>Requested</th><th>Changes</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead>
+                <tbody>
+                  {amendmentHistory.data.items.map(item => (
+                    <tr key={item.id}>
+                      <td>{fmtDateTime(item.requestedAt)}</td>
+                      <td>
+                        {item.selfApproved ? <Badge kind="warn">Approved by the requester</Badge> : null}
+                        <div className="vstack" style={{ gap: 6, minWidth: 200, overflowWrap: 'anywhere' }}>
+                          {formatAmendmentChanges(item.requestedChanges, facultyName).map(change => (
+                            <div key={change.field}><b>{change.label}:</b> {change.value}</div>
+                          ))}
+                        </div>
+                      </td>
+                      <td>{item.reason ?? '—'}</td>
+                      <td><Badge kind={item.status === 'approved' ? 'ok' : item.status === 'rejected' ? 'crit' : 'warn'}>{item.status}</Badge></td>
+                      <td>
+                        {item.rejectionReason ? <><b>{item.rejectionReason}</b><br /></> : null}
+                        <span className="sub">
+                          {item.reviewedBy ? `By ${item.reviewedBy.fullName}` : 'Not reviewed yet'}
+                          {item.reviewedAt ? ` · ${fmtDateTime(item.reviewedAt)}` : ''}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          ) : null}
+        </Panel>
+      </div>
+
+      <Modal open={active && notesOpen} onClose={() => { if (!saveNotes.isPending) setNotesOpen(false) }} label="Entry notes" title={t.name}>
+        <Field label="Entry notes (up to 2,000 characters)" htmlFor="entry-notes">
+          <textarea id="entry-notes" rows={5} maxLength={2000} value={notes} disabled={saveNotes.isPending}
+            onChange={e => setNotes(e.target.value)} />
+        </Field>
+        <span className="sub">Applicants can read these notes. Leave this blank to remove them.</span>
+        {saveNotes.isError ? <Banner kind="crit">{errorMessage(saveNotes.error)}</Banner> : null}
+        <div className="hstack">
+          <button className="btn" disabled={saveNotes.isPending} onClick={() => setNotesOpen(false)}>Cancel</button>
+          <button className="btn primary" disabled={saveNotes.isPending || notes.trim().length > 2000}
+            onClick={() => saveNotes.mutate(notes, { onSuccess: () => setNotesOpen(false) })}>
+            {saveNotes.isPending ? 'Saving...' : 'Save entry notes'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={active && open} onClose={() => !busy && setOpen(false)} label="Request a change to the entry conditions" title={t.name}>
+        <div className="sub">
+          {pendingApproval
+            ? 'This request is still awaiting approval, so faculty and year rules can be corrected directly.'
+            : 'These were approved with the tournament, so an admin has to approve the change too. Nothing moves until they do.'}
+        </div>
+
+        <span className="tag"><em>//</em> Faculties — tick none to open it to every faculty</span>
+        <div className="grid2">
+          {(faculties.data?.items ?? []).map(f => (
+            <label key={f.id} className="hstack" style={{ gap: 8, alignItems: 'center' }}>
+              <input type="checkbox" checked={draftFaculties.includes(f.id)}
+                onChange={() => setDraftFaculties(list => toggle(list, f.id))} />
+              <span>{f.name}</span>
+            </label>
+          ))}
+        </div>
+
+        {!pendingApproval && scheduleNeedsFix ? (
+          <Banner kind="crit" icon="warn">
+            <b>The saved schedule prevents every amendment.</b> Registration closes at{' '}
+            {registrationEnd ?? 'an unknown time'}, but the first match date is {currentEventStartDate || 'missing'}.
+            The backend requires the first match date to begin after registration closes. Choose a valid date;
+            it will be listed in this same request for the admin to approve.
+            <Field label="Correct first match date" htmlFor="er-event-start">
+              <input id="er-event-start" type="date" value={eventStartDate}
+                onChange={e => setEventStartDate(e.target.value)} />
+            </Field>
+            {eventStartDate && !correctedScheduleIsValid ? (
+              <span className="sub">Choose a date whose start is after the registration closing time.</span>
+            ) : null}
+          </Banner>
+        ) : null}
+
+        <span className="tag"><em>//</em> Years of study — tick none to accept every year</span>
+        <div className="hstack" style={{ flexWrap: 'wrap', gap: 14 }}>
+          {YEARS.map(y => (
+            <label key={y} className="hstack" style={{ gap: 6, alignItems: 'center' }}>
+              <input type="checkbox" checked={draftYears.includes(y)}
+                onChange={() => setDraftYears(list => toggle(list, y))} />
+              <span>Year {y}</span>
+            </label>
+          ))}
+        </div>
+
+        {!pendingApproval ? <div className="grid2">
+          <Field label="Gender" htmlFor="er-gender">
+            <select id="er-gender" value={gender} onChange={e => setGender(e.target.value as GenderRequirement)}>
+              {GenderRequirementOptions.map(x => <option key={x} value={x}>{GenderRequirementLabel[x]}</option>)}
+            </select>
+          </Field>
+          <Field label="Minimum age" htmlFor="er-lo">
+            <input id="er-lo" type="number" min={0} max={120} value={minAge} onChange={e => setMinAge(e.target.value)} />
+          </Field>
+          <Field label="Maximum age" htmlFor="er-hi">
+            <input id="er-hi" type="number" min={0} max={120} value={maxAge} onChange={e => setMaxAge(e.target.value)} />
+          </Field>
+        </div> : null}
+
+        {!pendingApproval ? <Banner kind={goesToFacultyAdmin ? 'ok' : 'warn'} icon={goesToFacultyAdmin ? 'check' : 'clock'}>
+          {goesToFacultyAdmin
+            ? <><b>{facultyName(draftFaculties[0]!)}&apos;s admin can decide this.</b> It stays inside the
+              faculty running the tournament.</>
+            : <><b>A university admin has to decide this.</b> {draftFaculties.length === 0
+              ? 'Admitting every faculty is above a faculty admin’s scope.'
+              : draftFaculties.length > 1
+                ? `Admitting ${draftFaculties.length} faculties is above a faculty admin’s scope.`
+                : 'The faculty admitted is not the one running the tournament.'}</>}
+        </Banner> : null}
+
+        {/* บังคับกรอก เพราะ amendmentRequestSchema บังคับ — ปล่อยว่างแล้วเด้ง 400 ทั้งใบ */}
+        {!pendingApproval ? <Field label="Why the change is needed — the admin reads this" htmlFor="er-why">
+          <textarea id="er-why" rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)}
+            placeholder="Two faculties merged their intakes, so the year rule now excludes half the entrants." />
+        </Field> : null}
+
+        {!pendingApproval ? <div className="vstack">
+          <button className="btn" type="button" disabled={busy || !validDraft} onClick={() => preview.mutate(proposed)}>{preview.isPending ? 'Checking impact…' : 'Preview impact'}</button>
+          {preview.isError ? <Banner kind="crit">Could not check impact. {errorMessage(preview.error)} Try preview again.</Banner> : null}
+          {previewCurrent && preview.data ? <>
+            {preview.data.pendingAmendmentId !== null ? <Banner kind="warn">Amendment #{preview.data.pendingAmendmentId} is still pending. Wait for its decision before submitting another request.</Banner> : null}
+            {preview.data.blockers.map((blocker, index) => <Banner kind="crit" key={`${blocker.code}:${index}`}>{blocker.message}<ContractErrorDetails error={new ApiError(409, { ...blocker.details, code: blocker.code, message: blocker.message })} /></Banner>)}
+            {preview.data.canSubmit ? <p role="status">No blocking impact found. The server will check again when you send this request.</p> : null}
+          </> : <p className="sub">Preview the current changes before sending. Editing a field requires another preview.</p>}
+        </div> : null}
+        {requestChange.isError ? (
+          <Banner kind="crit"><b>Couldn&apos;t send the request.</b> {amendmentErrorMessage(requestChange.error)}<ContractErrorDetails error={requestChange.error} /></Banner>
+        ) : null}
+        {setPendingRules.isError ? (
+          <Banner kind="crit"><b>Couldn&apos;t save the conditions.</b> {errorMessage(setPendingRules.error)}</Banner>
+        ) : null}
+
+        <div className="hstack">
+          <button className="btn" type="button" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+          <button className="btn primary" type="button"
+            disabled={pendingApproval ? setPendingRules.isPending
+              : busy || !validDraft || !previewCurrent || !preview.data?.canSubmit}
+            onClick={send}>
+            {pendingApproval
+              ? setPendingRules.isPending ? 'Saving…' : 'Save conditions'
+              : requestChange.isPending ? 'Sending…' : 'Send to an admin'}
+          </button>
+        </div>
+      </Modal>
+    </>
+  )
+}

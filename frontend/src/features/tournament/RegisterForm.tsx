@@ -1,0 +1,355 @@
+/**
+ * src/features/tournament/RegisterForm.tsx
+ *
+ * One registration form, two doors — from the tournament page or from a squad.
+ * `options` is what the tournament field may still be changed to; a single entry
+ * means the choice was made by the door you came in through, so it is stated
+ * rather than offered.
+ *
+ * The Squad list is picked here, and the Hard filter is checked against those
+ * players only — a member left off cannot fail it, because they are not entering.
+ */
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Banner, Field, TableWrap } from '../../components/kit/primitives'
+import { Modal } from '../../components/kit/Modal'
+import { useLtms } from '../../shared/store'
+import { useApplyToTournament } from '../../hooks/useTournament'
+import { useBackendMyTeams, useBackendTeamMembers } from '../../hooks/useTeam'
+import { useSportTypes } from '../../hooks/useReference'
+import { ApiError, USE_MOCK } from '../../api/client'
+import { applyToTournamentSchema, type ApplyToTournamentInput } from '../../schemas/tournament.schema'
+import { user } from '../../shared/selectors'
+import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
+import type { Team, Tournament } from '../../shared/types'
+import { numOf } from '../../mocks/storeBridge'
+import { conflictOfInterestDetails, registrationMemberFailures } from './registrationErrors'
+import type { RegistrationMemberFailure } from './registrationErrors'
+import { fmtDateOnly } from '../../shared/dateFormat'
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
+
+/** What the organizer wrote about entering — shown, never checked by the system. */
+function EntryNotesBlock({ tr }: { tr: Tournament }) {
+  const notes = (tr.entryNotes ?? '').trim()
+  if (!notes) return null
+  return (
+    <Banner kind="warn">
+      <b>Soft filter from the organizer.</b> The system does not check these — they do, when they review your squad.
+      <br />{notes}
+    </Banner>
+  )
+}
+
+export function RegisterForm({
+  team: tm, options, tournament, sportTypeId, backendTeam, open, onClose, feedback,
+}: {
+  /** ทีมจาก store — มีเฉพาะโหมด mock · โหมดจริงเลือกทีมจาก GET /me/teams ในฟอร์มนี้เอง */
+  team?: Team
+  options: Tournament[]
+  tournament: Tournament
+  /** กีฬาของรายการ — กรองทีมให้เหลือเฉพาะกีฬาเดียวกัน (backend ยังไม่ตรวจข้อนี้ให้) */
+  sportTypeId?: number
+  /**
+   * เข้ามาทางประตูของทีม — ทีมถูกเลือกมาแล้ว เหลือให้เลือกแค่รายการแข่ง
+   * (ประตูของรายการแข่งทำกลับกัน: รายการถูกล็อก เลือกทีมเอา)
+   */
+  backendTeam?: { id: number; name: string }
+  open: boolean
+  onClose: () => void
+  /** Source refresh feedback supplied by the entry surface; keeps draft recovery in the dialog. */
+  feedback?: ReactNode
+}) {
+  const s = useLtms()
+  const [trId, setTrId] = useState(tournament.id)
+  const [squad, setSquad] = useState<string[]>(tm?.members ?? [])
+  const [serverError, setServerError] = useState<{ message: string; uncertain: boolean } | null>(null)
+  const [serverDetails, setServerDetails] = useState<string[]>([])
+  const [failedContext, setFailedContext] = useState<{ teamId: number; tournamentId: string } | null>(null)
+  /* 422 HARD_FILTER_FAILED ส่งรายชื่อคนที่ไม่ผ่านมาให้ด้วย — ต้องบอกว่าใครและเพราะอะไร
+     ไม่งั้นหัวหน้าทีมเห็นแค่ "สมาชิกบางคนไม่ผ่านเงื่อนไข" แล้วแก้อะไรไม่ถูก */
+  const [blockedMembers, setBlockedMembers] = useState<RegistrationMemberFailure[]>([])
+  /* หาในตัวเลือกที่ส่งเข้ามาก่อน แล้วค่อยถอยไปหาใน store (โหมด mock)
+     ถ้าอ่านจาก store อย่างเดียว การเปลี่ยนรายการในโหมดจริงจะไม่มีผลอะไรเลย */
+  const tr = options.find(o => o.id === trId) ?? s.tournaments.find(t => t.id === trId) ?? tournament
+  // Eligibility checks selected players; role conflicts check all team members.
+  // Real mode displays server decisions rather than guessing profile conditions.
+  const fails = useMemo(() => USE_MOCK && tm ? hardFilter(s, tm, tr, squad) : [], [s, tm, tr, squad])
+  const shut = regWindowClosed(tr)
+  const locked = options.length < 2
+  /* ชั้น API รับได้ทั้ง id ตัวเลขและ id ของ store — ส่งตัวที่หน้าถืออยู่ */
+  const apply = useApplyToTournament(tr.id)
+  const backendTeams = useBackendMyTeams()
+  const { control, register, handleSubmit, setError, setValue, formState: { errors, isSubmitting } } = useForm<ApplyToTournamentInput>({
+    resolver: zodResolver(applyToTournamentSchema),
+    defaultValues: {
+      teamId: backendTeam ? backendTeam.id
+        : tm ? (Number.isFinite(Number(tm.id)) ? Number(tm.id) : numOf(tm.id))
+          : 0,
+    },
+  })
+  const selectedTeamId = useWatch({ control, name: 'teamId' })
+  const eligibleTeams = (backendTeams.data?.items ?? []).filter(team =>
+    team.role === 'leader'
+    && team.readinessStatus === 'Ready'
+    && (sportTypeId === undefined || team.sportTypeId === sportTypeId))
+
+  useEffect(() => {
+    if (backendTeam) return
+    if (!USE_MOCK && eligibleTeams.length && !eligibleTeams.some(team => team.id === selectedTeamId)) {
+      setValue('teamId', eligibleTeams[0].id, { shouldValidate: true })
+    }
+  }, [backendTeam, eligibleTeams, selectedTeamId, setValue])
+
+  const toggle = (id: string) =>
+    setSquad(cur => (cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]))
+
+  /**
+   * ── รายชื่อที่ลงแข่ง (P01 · migration 018) ────────────────────────────────
+   * ทีมกลายเป็นคลังผู้เล่น ใบสมัครถึงต้องระบุว่าใครลงแข่งจริง เดิมตรงนี้เขียนว่า
+   * "backend จะตรวจทั้งทีมให้ตอนกดส่ง" ซึ่งใช้ไม่ได้แล้ว — ไม่ส่ง playerIds มา
+   * ใบสมัครเด้ง VALIDATION_FAILED ทุกใบ
+   * จำนวนต้องอยู่ในช่วงของกีฬานั้น และส่งแล้วแก้ไม่ได้ จึงต้องเห็นช่วงก่อนกดส่ง
+   */
+  const teamMembers = useBackendTeamMembers(USE_MOCK ? undefined : selectedTeamId || undefined)
+  const sports = useSportTypes()
+  const sport = (sports.data?.items ?? []).find(x => x.id === sportTypeId)
+  const memberRows = teamMembers.data?.items ?? []
+  const currentFailure = failedContext?.teamId === selectedTeamId && failedContext?.tournamentId === tr.id
+  const memberFailures = currentFailure ? blockedMembers : []
+  /* ผูกรายชื่อที่ติ๊กไว้กับทีมที่ติ๊กมัน — เปลี่ยนทีมแล้วรายชื่อเดิมเป็นของอีกทีม
+     เก็บคู่กันไว้แล้วอ่านเทียบ จะได้ไม่ต้องล้างด้วย effect และไม่มีทางส่งข้ามทีม */
+  const [picked, setPicked] = useState<{ teamId: number; ids: number[] }>({ teamId: 0, ids: [] })
+  const playerIds = picked.teamId === selectedTeamId ? picked.ids : []
+  const togglePlayer = (id: number) => setPicked(() => ({
+    teamId: selectedTeamId,
+    ids: playerIds.includes(id) ? playerIds.filter(x => x !== id) : [...playerIds, id],
+  }))
+  const tooFew = sport !== undefined && playerIds.length < sport.minMembers
+  const tooMany = sport !== undefined && playerIds.length > sport.maxMembers
+  const squadReady = !USE_MOCK && playerIds.length > 0 && !tooFew && !tooMany
+  const selectedCount = USE_MOCK ? squad.length : playerIds.length
+
+  const submit = async (input: ApplyToTournamentInput) => {
+    setServerError(null)
+    setServerDetails([])
+    setBlockedMembers([])
+    setFailedContext({ teamId: selectedTeamId, tournamentId: tr.id })
+    try {
+      await apply.mutateAsync(USE_MOCK ? input : { ...input, playerIds })
+      onClose()
+    } catch (error) {
+      if (error instanceof ApiError && error.fields) {
+        Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ApplyToTournamentInput, { type: 'server', message }))
+      }
+      if (error instanceof ApiError) {
+        setServerError({ message: error.message, uncertain: false })
+        setBlockedMembers(registrationMemberFailures(error, memberRows))
+        if (error.code === 'SQUAD_SIZE_INVALID') {
+          setServerDetails([
+            `Selected ${String(error.extra.submitted ?? playerIds.length)} players; this sport requires ${String(error.extra.minMembers ?? '?')}-${String(error.extra.maxMembers ?? '?')}.`,
+          ])
+        } else if (error.code === 'TEAM_CONFLICT_OF_INTEREST') {
+          // The named causes appear below and beside members, including unchecked members.
+          setServerDetails(conflictOfInterestDetails(error, memberRows).slice(-1))
+        } else if (error.code === 'ALREADY_APPLIED') {
+          setServerDetails(['This team already has a pending or approved application. Open its existing application instead of registering again; withdrawn, rejected and cancelled entries may be reapplied.'])
+        }
+      } else {
+        setServerError({
+          message: 'Could not confirm registration. Check your entries before retrying.',
+          uncertain: true,
+        })
+      }
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} className="tour-registration-dialog"
+      title={tm ? `Register ${tm.name}` : backendTeam ? `Register ${backendTeam.name}` : 'Register a squad'}>
+      <form className="tour-registration-form" onSubmit={handleSubmit(submit)}>
+      <div className="tour-registration-body vstack" role="region" aria-label="Registration details" tabIndex={0}>
+      <section className="vstack" aria-label="Team and tournament">
+      <h2 className="journey-heading">Team</h2>
+      {feedback}
+      <input type="hidden" {...register('teamId', { valueAsNumber: true })} />
+      {!USE_MOCK && backendTeam ? (
+        <Field label="Team">
+          <div className="sub">{backendTeam.name}</div>
+        </Field>
+      ) : null}
+      {!USE_MOCK && !backendTeam ? (
+        <Field label="Team" htmlFor="rg-team">
+          {backendTeams.isPending ? <div className="sub">Loading your eligible teams…</div>
+            : backendTeams.isError ? <div className="sub">Unable to load your teams. <button className="btn ghost" type="button" onClick={() => backendTeams.refetch()}>Try again</button></div>
+              : eligibleTeams.length ? (
+                <select id="rg-team" value={selectedTeamId} onChange={event => setValue('teamId', Number(event.target.value), { shouldValidate: true })}>
+                  {eligibleTeams.map(team => <option key={team.id} value={team.id}>{team.name} · {team.memberCount} members</option>)}
+                </select>
+              ) : <div className="sub">You need a team you lead with Ready status before registering.</div>}
+        </Field>
+      ) : null}
+      {locked ? (
+        <Field label="Tournament">
+          <div className="sub">{tr.name} — {tr.sport} · {tr.channel}</div>
+        </Field>
+      ) : (
+        <Field label="Tournament" htmlFor="rg-tour">
+          <select id="rg-tour" value={trId} onChange={e => setTrId(e.target.value)}>
+            {options.map(x => <option key={x.id} value={x.id}>{x.name} — {x.sport}</option>)}
+          </select>
+        </Field>
+      )}
+
+      </section>
+      <section className="vstack" aria-label="Players">
+      <h2 className="journey-heading">Players</h2>
+
+      {USE_MOCK ? <><span className="tag">
+        <em>//</em> Who is entering — the entry rules are checked against these players only
+      </span>
+      <TableWrap label="Players to enter">
+        <table>
+          <thead><tr><th>In</th><th>Player</th><th>Faculty</th><th>Year</th><th>Age</th></tr></thead>
+          <tbody>
+            {(tm?.members ?? []).map(id => {
+              const u = user(s, id)
+              if (!u) return null
+              return (
+                <tr key={id}>
+                  <td>
+                    <input type="checkbox" checked={squad.includes(id)} onChange={() => toggle(id)}
+                      aria-label={`Enter ${u.name}`} />
+                  </td>
+                  <td>{u.name}{tm?.leader === id ? <span className="tag"> · leader</span> : null}</td>
+                  <td className="sub">{u.faculty}</td>
+                  <td className="num">{u.year}</td>
+                  <td className="num">{ageOf(u.dob)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </TableWrap></> : (
+        <>
+          <span className="tag">
+            <em>//</em> Who is entering{sport ? ` — ${sport.minMembers} to ${sport.maxMembers} players` : ''}
+          </span>
+          <div className="sub">
+            The squad is fixed once you send it, and a player entered here cannot enter this tournament
+            with another squad. Entry rules apply to selected players. Organizer/referee conflicts
+            apply to everyone in the team, including members left off this squad.
+          </div>
+          {!selectedTeamId ? <div className="sub">Choose a team first.</div>
+            : teamMembers.isPending ? <div className="sub">Loading the team…</div>
+              : teamMembers.isError ? (
+                <div className="hstack">
+                  <span className="sub">{errorMessage(teamMembers.error)}</span>
+                  <button className="btn ghost" type="button" onClick={() => void teamMembers.refetch()}>Try again</button>
+                </div>
+              ) : !memberRows.length ? <div className="sub">This team has no members yet.</div> : (
+                <TableWrap label="Players to enter">
+                  <table>
+                    <thead><tr><th>In</th><th>Player</th><th>Joined</th><th>Registration issue</th></tr></thead>
+                    <tbody>
+                      {memberRows.map(member => (
+                        <tr key={member.userId} style={memberFailures.some(f => f.userId === member.userId)
+                          ? { background: 'color-mix(in srgb, var(--red) 10%, transparent)' } : undefined}>
+                          <td>
+                            <input type="checkbox" checked={playerIds.includes(member.userId)}
+                              onChange={() => togglePlayer(member.userId)}
+                              aria-label={`Enter ${member.fullName}`} />
+                          </td>
+                          <td>{member.fullName}</td>
+                          <td className="sub">{fmtDateOnly(member.joinedAt)}</td>
+                          <td>{memberFailures.filter(f => f.userId === member.userId).map(f =>
+                            <div key={f.reason} style={{ color: 'var(--red)' }}>{f.reason}</div>)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableWrap>
+              )}
+          {/* บอกก่อนกดส่ง ดีกว่าปล่อยให้ไปเจอ 400 จาก service ที่เทียบ min/max ให้ */}
+          {memberRows.length && sport && (tooFew || tooMany) ? (
+            <Banner kind="warn">
+              <b>{playerIds.length} selected.</b> {sport.name} takes {sport.minMembers} to {sport.maxMembers}
+              {tooFew ? ` — ${sport.minMembers - playerIds.length} more to go.` : ' — too many.'}
+            </Banner>
+          ) : null}
+        </>
+      )}
+
+      </section>
+      {tr.entryNotes ? <h2 className="journey-heading">Entry notes</h2> : null}
+      <EntryNotesBlock tr={tr} />
+
+      {serverError && currentFailure ? (
+        <div role="alert">
+        <Banner kind="crit">
+          {serverError.uncertain ? <b>{serverError.message}</b>
+            : <><b>Registration could not be submitted.</b><br />{serverError.message}</>}
+          {memberFailures.length ? (
+            <>
+              <br /><br />
+              <b>{new Set(memberFailures.map(f => f.userId)).size} player{new Set(memberFailures.map(f => f.userId)).size === 1 ? '' : 's'} blocked this submission:</b>
+              <br />
+              {memberFailures.map(fail => (
+                <span key={`${fail.userId}:${fail.reason}`}>
+                  {fail.fullName} — {fail.reason}<br />
+                </span>
+              ))}
+              These are the issues reported for your last submission. Correct them and submit again;
+              further checks may report additional issues.
+            </>
+          ) : null}
+          {serverDetails.length ? (
+            <>
+              <br /><br />
+              {serverDetails.map(detail => <span key={detail}>{detail}<br /></span>)}
+            </>
+          ) : null}
+        </Banner>
+        </div>
+      ) : null}
+      {shut ? <Banner kind="crit"><b>{shut}</b></Banner>
+        : USE_MOCK && fails.length ? (
+          <Banner kind="crit">
+            <b>The hard filter refuses this squad list.</b> Nobody can override it — leave the named players
+            off, or enter a different tournament.
+            <br />
+            {fails.map((f, i) => (
+              <span key={i}>{f.user.name} — {f.rule}: needs {String(f.need)}, has {String(f.got)}<br /></span>
+            ))}
+          </Banner>
+        ) : USE_MOCK ? (
+          <Banner kind="ok">
+            {`All ${squad.length} entering players clear the entry conditions${ruleSummary(tr.rules) ? ` (${ruleSummary(tr.rules)})` : ''}. The organizer reviews it next.`}
+          </Banner>
+        ) : (
+          <p className="sub">
+            {`Entry rules: ${ruleSummary(tr.rules) || 'open to everybody'}. The server checks the ${playerIds.length} player${playerIds.length === 1 ? '' : 's'} you entered, for entry rules; organizer/referee conflicts are checked against the whole team.`}
+          </p>
+        )}
+
+      </div>
+      <footer className="tour-registration-footer">
+      <p className="sub" role="status" aria-label="Selected players">
+        {selectedCount} selected{sport ? ` · ${sport.minMembers}–${sport.maxMembers} players` : ''}
+      </p>
+      <div className="hstack">
+        <button className="btn" type="button" onClick={onClose}>Cancel</button>
+        {errors.teamId?.message ? <span className="sub" role="alert">{errors.teamId.message}</span> : null}
+        <button className="btn primary" type="submit"
+          disabled={!!fails.length || !!shut
+            || (USE_MOCK ? !squad.length : !squadReady)
+            || isSubmitting || apply.isPending}>
+          Submit registration
+        </button>
+      </div>
+      </footer>
+      </form>
+    </Modal>
+  )
+}

@@ -1,0 +1,3353 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-ticket-08b/frontend
+
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx (11 tests | 11 failed) 5282ms
+   × retains a named mark-read result when the unread row disappears 82ms
+   × retains the mark-all result when all notification rows disappear 27ms
+   × retains the team acceptance result after the invitation disappears 19ms
+   × shows a recoverable mutation failure for Accept team invitation: Byte Force 18ms
+   × shows a recoverable mutation failure for Decline referee invitation: Autumn Cup 17ms
+   × does not claim an external referee is eligible before admin approval 16ms
+   × keeps application loading separate from an empty action queue 1003ms
+   × offers recovery for failed entries without claiming the action queue is empty 1006ms
+   × hides cached private rows after access denial at /me/notifications 1034ms
+   × hides cached private rows after access denial at /me/invitations 1032ms
+   × hides cached private rows after access denial at /me/referee-invitations 1025ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > retains a named mark-read result when the unread row disappears
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Mark read: Court changed"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox · 1 unread":
+  <h1
+    class="disp"
+    style="font-size: 32px;"
+  />
+
+  Name "Announcements 1 on this page":
+  <h2
+    style="font-size: 20px;"
+  />
+
+  Name "Action requests":
+  <h2
+    class="disp"
+    style="font-size: 24px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Unread only":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Mark all read":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Mark read":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Open":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Announcements":
+  <section
+    aria-label="Announcements"
+    class="panel quiet"
+  />
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  <em />
+
+  Name "":
+  <em />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Team invitations ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Byte Force
+          </b>
+          <span
+            class="sub"
+          >
+            invited by
+            Lee Captain
+             · expires
+            Dec 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:46:26
+     44| it('retains a named mark-read result when the unread row disappears', …
+     45|   draw(); await screen.findByText('Court changed')
+     46|   fireEvent.click(screen.getByRole('button', { name: 'Mark read: Court…
+       |                          ^
+     47|   await waitFor(() => expect(screen.queryByText('Court changed')).not.…
+     48|   expect(screen.getByRole('status')).toHaveTextContent('Marked read: C…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > retains the mark-all result when all notification rows disappear
+TestingLibraryElementError: Unable to find an accessible element with the role "status"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox":
+  <h1
+    class="disp"
+    style="font-size: 32px;"
+  />
+
+  Name "Action requests":
+  <h2
+    class="disp"
+    style="font-size: 24px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Unread only":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  <em />
+
+  Name "":
+  <em />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+      </span>
+    </div>
+    <div
+      class="empty"
+    >
+      <svg
+        aria-hidden="true"
+        fill="none"
+        height="28"
+        viewBox="0 0 24 24"
+        width="28"
+      >
+        <path
+          d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+          stroke="currentColor"
+          stroke-linejoin="round"
+          stroke-width="1.7"
+        />
+        <path
+          d="M10 18a2 2 0 0 0 4 0"
+          stroke="currentColor"
+          stroke-width="1.7"
+        />
+      </svg>
+      <b>
+        Nothing here yet
+      </b>
+      <span
+        class="sub"
+      >
+        Approvals, results and announcements land here.
+      </span>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Team invitations ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Byte Force
+          </b>
+          <span
+            class="sub"
+          >
+            invited by
+            Lee Captain
+             · expires
+            Dec 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:56:17
+     54|   fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }…
+     55|   await waitFor(() => expect(screen.queryByText('Court changed')).not.…
+     56|   expect(screen.getByRole('status')).toHaveTextContent('All notificati…
+       |                 ^
+     57|   expect(writes).toEqual([{ path: '/me/notifications/read-all', method…
+     58| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > retains the team acceptance result after the invitation disappears
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Accept team invitation: Byte Force"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox · 1 unread":
+  <h1
+    class="disp"
+    style="font-size: 32px;"
+  />
+
+  Name "Announcements 1 on this page":
+  <h2
+    style="font-size: 20px;"
+  />
+
+  Name "Action requests":
+  <h2
+    class="disp"
+    style="font-size: 24px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Unread only":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Mark all read":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Mark read":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Open":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Announcements":
+  <section
+    aria-label="Announcements"
+    class="panel quiet"
+  />
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  <em />
+
+  Name "":
+  <em />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Team invitations ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Byte Force
+          </b>
+          <span
+            class="sub"
+          >
+            invited by
+            Lee Captain
+             · expires
+            Dec 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:62:26
+     60| it('retains the team acceptance result after the invitation disappears…
+     61|   draw(); await screen.findByText('Byte Force')
+     62|   fireEvent.click(screen.getByRole('button', { name: 'Accept team invi…
+       |                          ^
+     63|   await waitFor(() => expect(screen.queryByText('Byte Force')).not.toB…
+     64|   expect(screen.getByRole('status')).toHaveTextContent('You joined Byt…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > shows a recoverable mutation failure for Accept team invitation: Byte Force
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Accept team invitation: Byte Force"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox · 1 unread":
+  <h1
+    class="disp"
+    style="font-size: 32px;"
+  />
+
+  Name "Announcements 1 on this page":
+  <h2
+    style="font-size: 20px;"
+  />
+
+  Name "Action requests":
+  <h2
+    class="disp"
+    style="font-size: 24px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Unread only":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Mark all read":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Mark read":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Open":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Announcements":
+  <section
+    aria-label="Announcements"
+    class="panel quiet"
+  />
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  <em />
+
+  Name "":
+  <em />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Team invitations ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Byte Force
+          </b>
+          <span
+            class="sub"
+          >
+            invited by
+            Lee Captain
+             · expires
+            Dec 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:70:26
+     68| it.each(['Accept team invitation: Byte Force', 'Decline referee invita…
+     69|   mutationFailure = true; draw(); await screen.findByText('Autumn Cup')
+     70|   fireEvent.click(screen.getByRole('button', { name }))
+       |                          ^
+     71|   expect(await screen.findByRole('alert')).toHaveTextContent('Invitati…
+     72|   expect(screen.getByRole('button', { name })).toBeEnabled()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > shows a recoverable mutation failure for Decline referee invitation: Autumn Cup
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Decline referee invitation: Autumn Cup"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox · 1 unread":
+  <h1
+    class="disp"
+    style="font-size: 32px;"
+  />
+
+  Name "Announcements 1 on this page":
+  <h2
+    style="font-size: 20px;"
+  />
+
+  Name "Action requests":
+  <h2
+    class="disp"
+    style="font-size: 24px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Unread only":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Mark all read":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Mark read":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Open":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Announcements":
+  <section
+    aria-label="Announcements"
+    class="panel quiet"
+  />
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  <em />
+
+  Name "":
+  <em />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Team invitations ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Byte Force
+          </b>
+          <span
+            class="sub"
+          >
+            invited by
+            Lee Captain
+             · expires
+            Dec 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:70:26
+     68| it.each(['Accept team invitation: Byte Force', 'Decline referee invita…
+     69|   mutationFailure = true; draw(); await screen.findByText('Autumn Cup')
+     70|   fireEvent.click(screen.getByRole('button', { name }))
+       |                          ^
+     71|   expect(await screen.findByRole('alert')).toHaveTextContent('Invitati…
+     72|   expect(screen.getByRole('button', { name })).toBeEnabled()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > does not claim an external referee is eligible before admin approval
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Accept referee invitation: Autumn Cup"
+
+Here are the accessible roles:
+
+  heading:
+
+  Name "Inbox · 1 unread":
+  <h1
+    class="disp"
+    style="font-size: 32px;"
+  />
+
+  Name "Announcements 1 on this page":
+  <h2
+    style="font-size: 20px;"
+  />
+
+  Name "Action requests":
+  <h2
+    class="disp"
+    style="font-size: 24px;"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "Unread only":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Mark all read":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Mark read":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Open":
+  <button
+    class="btn ghost"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  Name "Decline":
+  <button
+    class="btn"
+    type="button"
+  />
+
+  Name "Accept":
+  <button
+    class="btn primary"
+    type="button"
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Announcements":
+  <section
+    aria-label="Announcements"
+    class="panel quiet"
+  />
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  <em />
+
+  Name "":
+  <em />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Team invitations ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Byte Force
+          </b>
+          <span
+            class="sub"
+          >
+            invited by
+            Lee Captain
+             · expires
+            Dec 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:77:26
+     75| it('does not claim an external referee is eligible before admin approv…
+     76|   draw(); await screen.findByText('Autumn Cup')
+     77|   fireEvent.click(screen.getByRole('button', { name: 'Accept referee i…
+       |                          ^
+     78|   expect(await screen.findByRole('status')).toHaveTextContent('Admin a…
+     79|   expect(screen.queryByText(/now eligible to officiate/)).not.toBeInTh…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > keeps application loading separate from an empty action queue
+TestingLibraryElementError: Unable to find an element with the text: Loading entry decisions…. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:86:24
+     84|   pendingEntries = true; joined = true
+     85|   client.setQueryData(['referees', 'me', 'invitations'], { items: [] })
+     86|   draw(); await screen.findByText('Loading entry decisions…')
+       |                        ^
+     87|   expect(screen.queryByText('Nothing waiting on you')).not.toBeInTheDo…
+     88| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > offers recovery for failed entries without claiming the action queue is empty
+TestingLibraryElementError: Unable to find role="button" and name "Retry entry decisions"
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="spread"
+    >
+      <h1
+        class="disp"
+        style="font-size: 32px;"
+      >
+        Inbox
+        · 1 unread
+      </h1>
+      <span
+        class="hstack"
+      >
+        <button
+          class="btn ghost"
+          type="button"
+        >
+          Unread only
+        </button>
+        <button
+          class="btn"
+          type="button"
+        >
+          Mark all read
+        </button>
+      </span>
+    </div>
+    <div
+      class="vstack"
+    >
+      <section
+        aria-label="Announcements"
+        class="panel quiet"
+      >
+        <h2
+          style="font-size: 20px;"
+        >
+          Announcements
+
+          <span
+            class="tag"
+          >
+            1
+             on this page
+          </span>
+        </h2>
+        <div
+          class="notif"
+        >
+          <span
+            class="dot "
+          />
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="17"
+            viewBox="0 0 24 24"
+            width="17"
+          >
+            <path
+              d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.7"
+            />
+            <path
+              d="M10 18a2 2 0 0 0 4 0"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+          </svg>
+          <span
+            class="txt"
+          >
+            <b>
+              Court changed
+            </b>
+            <br />
+            Use court B.
+            <br />
+            <span
+              class="tag"
+            >
+              5d ago
+            </span>
+          </span>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Mark read
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Open
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
+      class="spread"
+    >
+      <h2
+        class="disp"
+        style="font-size: 24px;"
+      >
+        Action requests
+      </h2>
+    </div>
+    <div
+      class="panel vstack"
+    >
+      <span
+        class="tag"
+      >
+        <em>
+          //
+        </em>
+         Referee appointments ·
+        1
+      </span>
+      <div
+        class="vstack"
+        style="gap: 8px;"
+      >
+        <div
+          class="hstack"
+        >
+          <b>
+            Autumn Cup
+          </b>
+          <span
+            class="badge warn"
+          >
+            External — needs admin approval
+          </span>
+          <span
+            class="sub"
+          >
+            invited
+            Oct 01, 07:00 AM
+          </span>
+        </div>
+        <div
+          class="hstack"
+        >
+          <button
+            class="btn"
+            type="button"
+          >
+            Decline
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:92:30
+     90| it('offers recovery for failed entries without claiming the action que…
+     91|   sourceFailure = '/me/applications'; joined = true; draw()
+     92|   const retry = await screen.findByRole('button', { name: 'Retry entry…
+       |                              ^
+     93|   expect(screen.queryByText('Nothing waiting on you')).not.toBeInTheDo…
+     94|   sourceFailure = ''; fireEvent.click(retry)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > hides cached private rows after access denial at /me/notifications
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <b>
+  Court changed
+</b> instead
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="spread"
+      >
+        <h1
+          class="disp"
+          style="font-size: 32px;"
+        >
+          Inbox
+          · 1 unread
+        </h1>
+        <span
+          class="hstack"
+        >
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Unread only
+          </button>
+          <button
+            class="btn"
+            type="button"
+          >
+            Mark all read
+          </button>
+        </span>
+      </div>
+      <div
+        class="empty"
+      >
+        <svg
+          aria-hidden="true"
+          fill="none"
+          height="28"
+          viewBox="0 0 24 24"
+          width="28"
+        >
+          <path
+            d="M12 4 2.5 20h19L12 4Z"
+            stroke="currentColor"
+            stroke-linejoin="round"
+            stroke-width="1.7"
+          />
+          <path
+            d="M12 10v4M12 17h.01"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-width="1.7"
+          />
+        </svg>
+        <b>
+          Unable to load inbox
+        </b>
+        <span
+          class="sub"
+        >
+          This source is unavailable.
+        </span>
+      </div>
+      <div
+        class="vstack"
+      >
+        <section
+          aria-label="Announcements"
+          class="panel quiet"
+        >
+          <h2
+            style="font-size: 20px;"
+          >
+            Announcements
+
+            <span
+              class="tag"
+            >
+              1
+               on this page
+            </span>
+          </h2>
+          <div
+            class="notif"
+          >
+            <span
+              class="dot "
+            />
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="17"
+              viewBox="0 0 24 24"
+              width="17"
+            >
+              <path
+                d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+                stroke="currentColor"
+                stroke-linejoin="round"
+                stroke-width="1.7"
+              />
+              <path
+                d="M10 18a2 2 0 0 0 4 0"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+            </svg>
+            <span
+              class="txt"
+            >
+              <b>
+                Court changed
+              </b>
+              <br />
+              Use court B.
+              <br />
+              <span
+                class="tag"
+              >
+                5d ago
+              </span>
+            </span>
+            <button
+              class="btn ghost"
+              type="button"
+            >
+              Mark read
+            </button>
+            <button
+              class="btn ghost"
+              type="button"
+            >
+              Open
+            </button>
+          </div>
+        </section>
+      </div>
+      <div
+        class="spread"
+      >
+        <h2
+          class="disp"
+          style="font-size: 24px;"
+        >
+          Action requests
+        </h2>
+      </div>
+      <div
+        class="panel vstack"
+      >
+        <span
+          class="tag"
+        >
+          <em>
+            //
+          </em>
+           Team invitations ·
+          1
+        </span>
+        <div
+          class="vstack"
+          style="gap: 8px;"
+        >
+          <div
+            class="hstack"
+          >
+            <b>
+              Byte Force
+            </b>
+            <span
+              class="sub"
+            >
+              invited by
+              Lee Captain
+               · expires
+              Dec 01, 07:00 AM
+            </span>
+          </div>
+          <div
+            class="hstack"
+          >
+            <button
+              class="btn"
+              type="button"
+            >
+              Decline
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        class="panel vstack"
+      >
+        <span
+          class="tag"
+        >
+          <em>
+            //
+          </em>
+           Referee appointments ·
+          1
+        </span>
+        <div
+          class="vstack"
+          style="gap: 8px;"
+        >
+          <div
+            class="hstack"
+          >
+            <b>
+              Autumn Cup
+            </b>
+            <span
+              class="badge warn"
+            >
+              External — needs admin approval
+            </span>
+            <span
+              class="sub"
+            >
+              invited
+              Oct 01, 07:00 AM
+            </span>
+          </div>
+          <div
+            class="hstack"
+          >
+            <button
+              class="btn"
+              type="button"
+            >
+              Decline
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:102:165
+    100|   sourceFailure = source
+    101|   await client.invalidateQueries()
+    102|   await waitFor(() => expect(screen.queryByText(source === '/me/notifi…
+       |                                                                                                                                                                     ^
+    103|   expect(screen.getByRole('alert')).toHaveTextContent('unavailable')
+    104|   expect(screen.queryByText('Nothing here yet')).not.toBeInTheDocument…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > hides cached private rows after access denial at /me/invitations
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <b>
+  Byte Force
+</b> instead
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="spread"
+      >
+        <h1
+          class="disp"
+          style="font-size: 32px;"
+        >
+          Inbox
+          · 1 unread
+        </h1>
+        <span
+          class="hstack"
+        >
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Unread only
+          </button>
+          <button
+            class="btn"
+            type="button"
+          >
+            Mark all read
+          </button>
+        </span>
+      </div>
+      <div
+        class="vstack"
+      >
+        <section
+          aria-label="Announcements"
+          class="panel quiet"
+        >
+          <h2
+            style="font-size: 20px;"
+          >
+            Announcements
+
+            <span
+              class="tag"
+            >
+              1
+               on this page
+            </span>
+          </h2>
+          <div
+            class="notif"
+          >
+            <span
+              class="dot "
+            />
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="17"
+              viewBox="0 0 24 24"
+              width="17"
+            >
+              <path
+                d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+                stroke="currentColor"
+                stroke-linejoin="round"
+                stroke-width="1.7"
+              />
+              <path
+                d="M10 18a2 2 0 0 0 4 0"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+            </svg>
+            <span
+              class="txt"
+            >
+              <b>
+                Court changed
+              </b>
+              <br />
+              Use court B.
+              <br />
+              <span
+                class="tag"
+              >
+                5d ago
+              </span>
+            </span>
+            <button
+              class="btn ghost"
+              type="button"
+            >
+              Mark read
+            </button>
+            <button
+              class="btn ghost"
+              type="button"
+            >
+              Open
+            </button>
+          </div>
+        </section>
+      </div>
+      <div
+        class="spread"
+      >
+        <h2
+          class="disp"
+          style="font-size: 24px;"
+        >
+          Action requests
+        </h2>
+      </div>
+      <div
+        class="panel vstack"
+      >
+        <span
+          class="tag"
+        >
+          <em>
+            //
+          </em>
+           Team invitations ·
+          1
+        </span>
+        <div
+          class="vstack"
+          style="gap: 8px;"
+        >
+          <div
+            class="hstack"
+          >
+            <b>
+              Byte Force
+            </b>
+            <span
+              class="sub"
+            >
+              invited by
+              Lee Captain
+               · expires
+              Dec 01, 07:00 AM
+            </span>
+          </div>
+          <div
+            class="hstack"
+          >
+            <button
+              class="btn"
+              type="button"
+            >
+              Decline
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        class="panel vstack"
+      >
+        <span
+          class="tag"
+        >
+          <em>
+            //
+          </em>
+           Referee appointments ·
+          1
+        </span>
+        <div
+          class="vstack"
+          style="gap: 8px;"
+        >
+          <div
+            class="hstack"
+          >
+            <b>
+              Autumn Cup
+            </b>
+            <span
+              class="badge warn"
+            >
+              External — needs admin approval
+            </span>
+            <span
+              class="sub"
+            >
+              invited
+              Oct 01, 07:00 AM
+            </span>
+          </div>
+          <div
+            class="hstack"
+          >
+            <button
+              class="btn"
+              type="button"
+            >
+              Decline
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:102:165
+    100|   sourceFailure = source
+    101|   await client.invalidateQueries()
+    102|   await waitFor(() => expect(screen.queryByText(source === '/me/notifi…
+       |                                                                                                                                                                     ^
+    103|   expect(screen.getByRole('alert')).toHaveTextContent('unavailable')
+    104|   expect(screen.queryByText('Nothing here yet')).not.toBeInTheDocument…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  src/features/inbox/InboxPage.workspace.test.tsx > hides cached private rows after access denial at /me/referee-invitations
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <b>
+  Autumn Cup
+</b> instead
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="spread"
+      >
+        <h1
+          class="disp"
+          style="font-size: 32px;"
+        >
+          Inbox
+          · 1 unread
+        </h1>
+        <span
+          class="hstack"
+        >
+          <button
+            class="btn ghost"
+            type="button"
+          >
+            Unread only
+          </button>
+          <button
+            class="btn"
+            type="button"
+          >
+            Mark all read
+          </button>
+        </span>
+      </div>
+      <div
+        class="vstack"
+      >
+        <section
+          aria-label="Announcements"
+          class="panel quiet"
+        >
+          <h2
+            style="font-size: 20px;"
+          >
+            Announcements
+
+            <span
+              class="tag"
+            >
+              1
+               on this page
+            </span>
+          </h2>
+          <div
+            class="notif"
+          >
+            <span
+              class="dot "
+            />
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="17"
+              viewBox="0 0 24 24"
+              width="17"
+            >
+              <path
+                d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5 1.5 5h-15S6 14 6 10Z"
+                stroke="currentColor"
+                stroke-linejoin="round"
+                stroke-width="1.7"
+              />
+              <path
+                d="M10 18a2 2 0 0 0 4 0"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+            </svg>
+            <span
+              class="txt"
+            >
+              <b>
+                Court changed
+              </b>
+              <br />
+              Use court B.
+              <br />
+              <span
+                class="tag"
+              >
+                5d ago
+              </span>
+            </span>
+            <button
+              class="btn ghost"
+              type="button"
+            >
+              Mark read
+            </button>
+            <button
+              class="btn ghost"
+              type="button"
+            >
+              Open
+            </button>
+          </div>
+        </section>
+      </div>
+      <div
+        class="spread"
+      >
+        <h2
+          class="disp"
+          style="font-size: 24px;"
+        >
+          Action requests
+        </h2>
+      </div>
+      <div
+        class="panel vstack"
+      >
+        <span
+          class="tag"
+        >
+          <em>
+            //
+          </em>
+           Team invitations ·
+          1
+        </span>
+        <div
+          class="vstack"
+          style="gap: 8px;"
+        >
+          <div
+            class="hstack"
+          >
+            <b>
+              Byte Force
+            </b>
+            <span
+              class="sub"
+            >
+              invited by
+              Lee Captain
+               · expires
+              Dec 01, 07:00 AM
+            </span>
+          </div>
+          <div
+            class="hstack"
+          >
+            <button
+              class="btn"
+              type="button"
+            >
+              Decline
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        class="panel vstack"
+      >
+        <span
+          class="tag"
+        >
+          <em>
+            //
+          </em>
+           Referee appointments ·
+          1
+        </span>
+        <div
+          class="vstack"
+          style="gap: 8px;"
+        >
+          <div
+            class="hstack"
+          >
+            <b>
+              Autumn Cup
+            </b>
+            <span
+              class="badge warn"
+            >
+              External — needs admin approval
+            </span>
+            <span
+              class="sub"
+            >
+              invited
+              Oct 01, 07:00 AM
+            </span>
+          </div>
+          <div
+            class="hstack"
+          >
+            <button
+              class="btn"
+              type="button"
+            >
+              Decline
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+ ❯ src/features/inbox/InboxPage.workspace.test.tsx:102:165
+    100|   sourceFailure = source
+    101|   await client.invalidateQueries()
+    102|   await waitFor(() => expect(screen.queryByText(source === '/me/notifi…
+       |                                                                                                                                                                     ^
+    103|   expect(screen.getByRole('alert')).toHaveTextContent('unavailable')
+    104|   expect(screen.queryByText('Nothing here yet')).not.toBeInTheDocument…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed (11)
+   Start at  23:48:11
+   Duration  5.88s (transform 118ms, setup 64ms, import 148ms, tests 5.28s, environment 327ms)

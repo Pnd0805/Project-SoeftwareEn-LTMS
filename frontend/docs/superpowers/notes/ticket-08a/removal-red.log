@@ -1,0 +1,511 @@
+RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-ticket-08a/frontend
+
+ ❯ src/features/profile/ProfilePage.test.tsx (8 tests | 1 failed | 7 skipped) 78ms
+     × shows removal progress, prevents duplicate actions and announces completion 77ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/profile/ProfilePage.test.tsx > Profile avatar controls > shows removal progress, prevents duplicate actions and announces completion
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Removing…"
+
+Here are the accessible roles:
+
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"account-profile-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  img:
+
+  Name "Backend Profile":
+  [36m<img[39m
+    [33malt[39m=[32m"Backend Profile"[39m
+    [33msrc[39m=[32m"https://storage.test/profile.png"[39m
+    [33mstyle[39m=[32m"width: 100%; height: 100%; object-fit: cover;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Backend Profile":
+  [36m<h1[39m
+    [33mclass[39m=[32m"disp"[39m
+  [36m/>[39m
+
+  Name "Tournament history":
+  [36m<h2[39m
+    [33mclass[39m=[32m"journey-heading"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"account-email"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"sub"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Uploading…":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "Remove Photo":
+  [36m<button[39m
+    [33mclass[39m=[32m"btn ghost"[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  emphasis:
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  Name "":
+  [36m<em />[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"account-workspace account-profile"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"account-profile-heading"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"account-identity"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"avatar"[39m
+            [33mstyle[39m=[32m"width: 72px; height: 72px; font-size: 30.24px; overflow: hidden; border-radius: 2px; border: 2px solid var(--line-hot);"[39m
+          [36m>[39m
+            [36m<img[39m
+              [33malt[39m=[32m"Backend Profile"[39m
+              [33msrc[39m=[32m"https://storage.test/profile.png"[39m
+              [33mstyle[39m=[32m"width: 100%; height: 100%; object-fit: cover;"[39m
+            [36m/>[39m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"account-identity-copy"[39m
+          [36m>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"disp"[39m
+            [36m>[39m
+              [0mBackend Profile[0m
+            [36m</h1>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mStudent record[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"account-email"[39m
+            [36m>[39m
+              [0mprofile@example.test[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"account-photo-actions"[39m
+            [36m>[39m
+              [36m<input[39m
+                [33maccept[39m=[32m"image/png,image/jpeg"[39m
+                [33maria-label[39m=[32m"Choose profile photo"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mid[39m=[32m"profile-avatar-upload"[39m
+                [33mstyle[39m=[32m"display: none;"[39m
+                [33mtype[39m=[32m"file"[39m
+              [36m/>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"btn ghost"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"12"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"12"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 5v14M5 12h14"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [0m [0m
+                [0mUploading…[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"btn ghost"[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mRemove Photo[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mPNG or JPEG. Upload a new photo to retry a failed save.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"empty"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"28"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"28"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-width[39m=[32m"1.7"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linecap[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"1.7"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+            [33mstroke[39m=[32m"currentColor"[39m
+            [33mstroke-linejoin[39m=[32m"round"[39m
+            [33mstroke-width[39m=[32m"1.7"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<b>[39m
+          [0mStatistics are unavailable[0m
+        [36m</b>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"sub"[39m
+        [36m>[39m
+          [0mYour account details are still available below. Retry when the server is ready.[0m
+        [36m</span>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"split"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Squads · [0m
+              [0m0[0m
+            [36m</span>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"empty"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"28"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"28"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"9"[39m
+                  [33mcy[39m=[32m"8"[39m
+                  [33mr[39m=[32m"3"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"17"[39m
+                  [33mcy[39m=[32m"9"[39m
+                  [33mr[39m=[32m"2.4"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M15.5 14.2c2.4.4 4.5 2.4 4.5 5.8"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<b>[39m
+                [0mNot in a squad yet[0m
+              [36m</b>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"sub"[39m
+              [36m>[39m
+                [0mCreate a squad or accept an invitation from the Teams page.[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Pick'em history[0m
+            [36m</span>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"statline"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"tag"[39m
+                [36m>[39m
+                  [0mPoints[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"v"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"tag"[39m
+                [36m>[39m
+                  [0mCorrect[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"v"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"tag"[39m
+                [36m>[39m
+                  [0mSettled[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"v"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mNo predictions yet.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack player-career journey-data"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"journey-heading"[39m
+            [36m>[39m
+              [0mTournament history[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m MVP totals[0m
+            [36m</span>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mReceived-vote totals are not available from the server yet.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"rail"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Student record — the registry owns this[0m
+            [36m</span>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"facts"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mFaculty[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mEngineering[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mMajor[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mSoftware Engineering[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mYear[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0m3[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mAge[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0m22[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mGender[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mmale[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"k"[39m
+                [36m>[39m
+                  [0mRole[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"f"[39m
+                [36m>[39m
+                  [0mUser[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mThe Hard filter reads these values. Ask the registry if one is wrong.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"panel quiet vstack"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"tag"[39m
+            [36m>[39m
+              [36m<em>[39m
+                [0m//[0m
+              [36m</em>[39m
+              [0m Following[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/features/profile/ProfilePage.test.tsx:131:19
+    129|     show()
+    130|     fireEvent.click(screen.getByRole('button', { name: 'Remove Photo' …
+    131|     expect(screen.getByRole('button', { name: 'Removing…' })).toBeDisa…
+       |                   ^
+    132|     expect(screen.getByRole('button', { name: 'Remove Photo' })).toBeD…
+    133|     finish()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  23:57:37
+   Duration  582ms (transform 65ms, setup 65ms, import 76ms, tests 78ms, environment 304ms)

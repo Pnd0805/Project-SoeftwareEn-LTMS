@@ -368,6 +368,16 @@ export async function acceptRefereeInvitation(invitationId : number, userId : nu
             { expiresAt : invitation.expires_at === null ? null : invitation.expires_at.toISOString() });
     }
 
+    /**
+     * ทัวร์ที่ถูกยกเลิก (migration 053) — รับคำเชิญไม่ได้ (ไม่มีงานให้ทำ และจะได้แมตช์ที่แช่แข็งอยู่ไปถือ)
+     * ★ ปฏิเสธยังกดได้ — เคลียร์คำเชิญออกจากกล่องของตัวเองได้ ไม่เปลี่ยนอะไรในทัวร์
+     */
+    const inviteTournament = await TournamentRepo.findTournamentById(invitation.tournament_id);
+    if(inviteTournament?.tournament_status === 'cancelled'){
+        throw new AppError(409, 'TOURNAMENT_CANCELLED', 'ทัวร์นาเมนต์นี้ถูกยกเลิกแล้ว รับคำเชิญไม่ได้',
+            { tournamentId : invitation.tournament_id });
+    }
+
     // เลือกได้เฉพาะแมตช์ที่ ORG เสนอมาเท่านั้น — [] = เข้าทัวร์แบบ pool
     const offered = await MatchRefRepo.findByTournamentReferees([invitationId]);
     const chosenIds = [...new Set(input.matchIds)];

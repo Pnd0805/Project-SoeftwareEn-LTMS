@@ -1,0 +1,438 @@
+/**
+ * src/features/request/RequestPage.tsx
+ *
+ * Requesting a tournament is one form in three groups: Tournament, Schedule,
+ * and Eligibility. The entry conditions are set here
+ * and only here — after an admin approves them, changing them means asking again
+ * with a reason.
+ *
+ * ── ช่วงเวลาที่ backend บังคับ (tournament.service ensureSchedule) ──────────
+ * เปิดรับสมัคร < ปิดรับสมัคร < วันแข่งวันแรก ≤ วันแข่งวันสุดท้าย และต้องส่งครบทั้งสี่
+ * ช่องเวลาในเบราว์เซอร์ไม่มีโซนเวลา จึงแปลงเป็น ISO ตอนอ่านค่า เพราะ API รับเฉพาะแบบมีโซนเวลา
+ *
+ * ── ระดับการแข่งขันกับหน่วยงานที่จัด (ensureCreateReferences) ───────────────
+ * ระดับคณะ: ต้องมีคณะ และห้ามส่งภาควิชา · ระดับภาควิชา: ต้องมีทั้งคณะและภาควิชาในคณะนั้น
+ * กฎคู่นี้ทำให้ `scopeType` ไม่ใช่คำถาม — ฟอร์มถามแค่คณะกับภาควิชา แล้วคิดระดับเอง
+ * 'university' มีในฐานข้อมูลแต่ยังไม่เปิดใช้ใน MVP จึงไม่มีทางไปถึง
+ */
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useForm, useWatch } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Banner, Field, Panel } from '../../components/kit/primitives'
+import { useCreateTournament } from '../../hooks/useTournament'
+import { useDepartments, useFaculties, useSportTypes } from '../../hooks/useReference'
+import { useMe } from '../../hooks/useAuth'
+import { ApiError } from '../../api/client'
+import { createTournamentSchema, toEligibilityRules, type CreateTournamentInput } from '../../schemas/tournament.schema'
+import type { TournamentCreatedDto } from '../../types/tournament.dto'
+import { BracketFormatOptions, BracketFormatLabel, GenderRequirementOptions, GenderRequirementLabel } from '../../types/enums'
+import { fmtDate } from '../../shared/dateFormat'
+
+const ADMIT = [
+  ['all', 'Every faculty'],
+  ['own', 'Only the faculty running it'],
+  ['pick', 'Choose faculties'],
+] as const
+type AdmitMode = (typeof ADMIT)[number][0]
+/** คณะที่รับจริงตามโหมด — ใช้ทั้งตอนแสดงผลและตอนส่ง จะได้ไม่มีสองสูตรให้เพี้ยนกันได้ */
+const admittedOf = (mode: AdmitMode, organiser: number | null | undefined, picked: number[]) =>
+  mode === 'pick' ? picked : mode === 'own' && organiser != null ? [organiser] : []
+
+const pad = (n: number) => String(n).padStart(2, '0')
+const asLocalDateTime = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+const asDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
+const asIdOrNull = (value: string) => (value === '' ? null : Number(value))
+const reviewDate = (value: string | undefined) => {
+  if (!value) return 'Not set'
+  return fmtDate(value, value)
+}
+
+export function RequestPage() {
+  const navigate = useNavigate()
+  const { data: me } = useMe()
+  const { data: sports } = useSportTypes()
+  const { data: faculties } = useFaculties()
+  const create = useCreateTournament()
+  const [sent, setSent] = useState<TournamentCreatedDto | null>(null)
+  const { register, handleSubmit, setError, control, reset, setValue, formState: { errors, isSubmitting } } = useForm<CreateTournamentInput>({
+    resolver: zodResolver(createTournamentSchema),
+    defaultValues: {
+      sportTypeId: 1,
+      bracketFormat: 'single_elimination',
+      scopeType: 'faculty',
+      organizingFacultyId: null,
+      organizingDepartmentId: null,
+      registrationStart: asLocalDateTime(inDays(1)),
+      registrationEnd: asLocalDateTime(inDays(14)),
+      eventStartDate: asDate(inDays(21)),
+      eventEndDate: asDate(inDays(22)),
+      maxTeams: 8,
+      minTeams: 2,
+      venue: '',
+      genderRequirement: 'any',
+      eligibilityFacultyIds: [],
+      eligibilityYears: [],
+    },
+  })
+  /**
+   * "ระดับการแข่งขัน" ไม่ได้ถามแยกอีกแล้ว — มันคือคำตอบของช่องภาควิชา
+   *
+   * ensureCreateReferences ของ backend บังคับไว้แน่นจนไม่มีทางเลือกที่สี่: ระดับคณะ
+   * = มีคณะ ห้ามมีภาควิชา · ระดับภาควิชา = มีทั้งคู่และภาควิชาต้องอยู่ในคณะนั้น
+   * สองคำถามจึงมีคำตอบที่ถูกต้องอยู่ชุดเดียว ถามซ้ำได้แต่ผิดคู่กันเอง (เลือกระดับคณะ
+   * แล้วทิ้งภาควิชาค้างไว้ = 400) `scopeType` ยังเป็นช่องของ backend อยู่ จึงเก็บไว้
+   * ในฟอร์มแล้วตั้งค่าให้ตรงกับภาควิชาทุกครั้งที่ภาควิชาเปลี่ยน
+   */
+  const organizingFacultyId = useWatch({ control, name: 'organizingFacultyId' })
+  const sportId = useWatch({ control, name: 'sportTypeId' })
+  const boSport = sports?.items.find(s => s.id === sportId)?.supportsBestOf === true
+  const organizingDepartmentId = useWatch({ control, name: 'organizingDepartmentId' })
+  const { data: departments } = useDepartments(organizingFacultyId ?? undefined)
+  /* สองช่องนี้คุมค่าเอง ไม่ได้ผ่าน register — setValue เฉยๆ จะไม่ตรวจซ้ำให้ ข้อความ
+     "กรุณาเลือกคณะที่จัดการแข่งขัน" จึงค้างอยู่ต่อหน้าช่องที่เพิ่งเลือกไปแล้ว และอ่านเหมือน
+     ระบบไม่ยอมให้สร้าง ต้องสั่ง shouldValidate เองแทนสิ่งที่ register เคยทำให้ */
+  const pickDepartment = (value: string) => {
+    const id = asIdOrNull(value)
+    setValue('organizingDepartmentId', id, { shouldValidate: true })
+    setValue('scopeType', id === null ? 'faculty' : 'department', { shouldValidate: true })
+  }
+  /* เปลี่ยนคณะแล้วภาควิชาเดิมอยู่คนละคณะ — backend ตอบ 400 ถ้าปล่อยค้างไว้ */
+  const pickFaculty = (value: string) => {
+    setValue('organizingFacultyId', asIdOrNull(value), { shouldValidate: true })
+    pickDepartment('')
+  }
+  /**
+   * คณะถูกถามสองครั้งในฟอร์มเดียว และคนละความหมายกัน: ด้านบนคือ "คณะไหนเป็นผู้จัด"
+   * ตรงนี้คือ "คณะไหนสมัครได้" กางรายชื่อคณะทิ้งไว้ทั้งสองที่แล้วอ่านเหมือนถามซ้ำ
+   * จึงถามเป็นสามทางก่อน แล้วค่อยกางรายชื่อเฉพาะตอนเลือก "เจาะจง"
+   * ค่าตั้งต้นคือรับทุกคณะเหมือนเดิม — ตั้งเป็น "เฉพาะคณะผู้จัด" ให้เองจะกลายเป็นตัดคนอื่น
+   * ทิ้งโดยที่ผู้จัดไม่ได้สั่ง ซึ่งพลาดแล้วเจ็บกว่าคำขอไปเข้าคิวแอดมินมหาวิทยาลัย
+   */
+  const [admit, setAdmit] = useState<AdmitMode>('all')
+  const pickedFaculties = useWatch({ control, name: 'eligibilityFacultyIds' }) ?? []
+  const admittedYears = useWatch({ control, name: 'eligibilityYears' }) ?? []
+  /* โหมด own ไม่เก็บสำเนา id ไว้ — อ่านจากช่องผู้จัดสดๆ เปลี่ยนคณะผู้จัดแล้วกฎตามไปเอง */
+  const admittedFaculties = admittedOf(admit, organizingFacultyId, pickedFaculties)
+  const toggleIn = (field: 'eligibilityFacultyIds' | 'eligibilityYears', list: number[], value: number) =>
+    setValue(field, list.includes(value) ? list.filter(x => x !== value) : [...list, value].sort((a, b) => a - b))
+  /**
+   * ใครเป็นคนตัดสินคำขอนี้ (มติ 20 ก.ย. Q2-ข) — แอดมินคณะพิจารณาได้ก็ต่อเมื่อคณะ
+   * ตัวเองเป็นผู้จัด **และ** กฎคณะจำกัดเฉพาะคณะนั้นคณะเดียว นอกนั้นเป็นเรื่องของ
+   * แอดมินระดับมหาวิทยาลัย (`403 ELIGIBILITY_OUT_OF_SCOPE` ถ้าแอดมินคณะฝืนกด)
+   * บอกไว้ตั้งแต่ตอนกรอก ผู้จัดจะได้รู้ว่าติ๊กคณะที่สองแล้วคิวเปลี่ยนมือ
+   */
+  const ownFacultyOnly = admittedFaculties.length === 1
+    && organizingFacultyId != null
+    && admittedFaculties[0] === organizingFacultyId
+  const facultyName = (id: number) => (faculties?.items ?? []).find(f => f.id === id)?.name ?? `คณะ #${id}`
+  const draft = useWatch({ control })
+  const entryFaculties = admittedFaculties.length ? admittedFaculties.map(facultyName).join(', ') : 'Every faculty'
+  const entryYears = admittedYears.length ? admittedYears.map(year => `Year ${year}`).join(', ') : 'Every year'
+  const entryAge = draft.minAge != null && draft.maxAge != null ? `${draft.minAge}–${draft.maxAge} years`
+    : draft.minAge != null ? `${draft.minAge}+ years` : draft.maxAge != null ? `Up to ${draft.maxAge} years` : 'Any age'
+
+  if (!me) return null
+  const submit = async (input: CreateTournamentInput) => {
+    try {
+      /* ระดับคณะห้ามมีภาควิชาติดไปด้วย แม้ผู้ใช้เคยเลือกไว้ก่อนสลับระดับ */
+      const base = input.scopeType === 'faculty' ? { ...input, organizingDepartmentId: null } : input
+      /* สองลิสต์ของฟอร์มไม่ใช่ช่องของ backend — ยุบเป็น eligibilityRules ก่อนส่ง
+         และไม่ส่งช่องนั้นเลยถ้าไม่ได้จำกัดอะไร (ลิสต์ว่างกับไม่ส่งมีผลเท่ากัน) */
+      const { eligibilityFacultyIds, eligibilityYears, bestOf, ...other } = base
+      const rest = boSport ? { ...other, ...(bestOf == null ? {} : { bestOf }) } : other
+      /* คิดคณะจากโหมดอีกรอบตรงนี้ ไม่ได้หยิบลิสต์ที่ติ๊กไว้ไปตรงๆ — คนที่ติ๊กเจาะจงแล้วสลับ
+         กลับไป "ทุกคณะ" ยังมีค่าค้างในฟอร์ม ถ้าส่งค่านั้นไปคำขอจะจำกัดคณะโดยไม่ได้ตั้งใจ */
+      const rules = toEligibilityRules(
+        admittedOf(admit, base.organizingFacultyId, eligibilityFacultyIds ?? []),
+        eligibilityYears,
+      )
+      /* จบที่หน้ายืนยัน ไม่เด้งไปหน้าทัวร์นาเมนต์เอง เพราะสองทางนี้มีขั้นถัดไปคนละอย่าง
+         — ใบที่ผ่านแล้วต้องไปตั้งกรรมการ ส่วนใบที่เข้าคิวยังทำอะไรไม่ได้ */
+      setSent(await create.mutateAsync(rules.length ? { ...rest, eligibilityRules: rules } : rest))
+    } catch (error) {
+      if (error instanceof ApiError && error.fields) {
+        Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof CreateTournamentInput, { type: 'server', message }))
+      }
+    }
+  }
+  const fieldError = (field: keyof CreateTournamentInput) => errors[field]?.message
+  /* server ตอบ error รายช่องก็จริง แต่ถ้ามันชี้ไปช่องที่ฟอร์มไม่มี ผู้ใช้จะไม่เห็นอะไรเลย
+     แถบนี้จึงบอกไว้เสมอเมื่อส่งไม่สำเร็จ */
+  const sendError = create.isError
+    ? (create.error instanceof Error ? create.error.message : 'ส่งคำขอไม่สำเร็จ กรุณาลองใหม่')
+    : null
+
+  if (sent) {
+    return (
+      <>
+        <div className="spread">
+          <div>
+            <div className="tag"><em>//</em> {sent.autoApproved ? 'Approved on the spot' : 'An admin decides'}</div>
+            <h1 className="disp" style={{ fontSize: 32, marginTop: 6 }}>
+              {sent.autoApproved ? 'Tournament created' : 'Request sent'}
+            </h1>
+          </div>
+        </div>
+        <Panel>
+          {/* แอดมินที่จัดในขอบเขตตัวเองไม่ต้องรอใคร (autoApproveIfOwnScope · มติ 18 ก.ย. ข้อ 8)
+              หน้านี้เคยเขียน "อยู่กับแอดมินแล้ว" ให้ทุกคน คนที่ระบบอนุมัติให้ไปแล้วจึงนั่งรอ
+              ตัวเองอยู่ตรงนี้ ทั้งที่ทัวร์พร้อมให้ตั้งกรรมการตั้งแต่วินาทีที่กดส่ง */}
+          {sent.autoApproved ? (
+            <>
+              <Banner kind="ok">
+                <b>{sent.name} is yours to run.</b> You are an admin for this one, so it skipped the
+                approval queue and is already a Private draft.
+              </Banner>
+              <div className="sub">
+                Next: appoint the referees, then open it to the public. It stays private — and invisible
+                to entrants — until you publish it.
+              </div>
+            </>
+          ) : (
+            <>
+              <Banner kind="ok"><b>{sent.name} is with an admin.</b> Nothing else is needed from you right now.</Banner>
+              <div className="sub">
+                Approved, it becomes your Private draft under Tournaments: appoint the referees, then open it
+                to the public. Until then the page is visible to you and the admin only.
+              </div>
+            </>
+          )}
+          <div className="hstack">
+            <button className="btn" type="button" onClick={() => navigate('/')}>Back to tournaments</button>
+            {/* C06 ให้ผู้ยื่นคำขออ่านทัวร์ของตัวเองได้ทุกสถานะ (FE-c17b 20 ก.ย.) ทั้งใบที่รอคิว
+                และใบที่ผ่านแล้ว จึงพาไปดูได้จริงทั้งสองทาง */}
+            <button className="btn" type="button" onClick={() => navigate(`/t/${sent.id}`)}>
+              Open the tournament
+            </button>
+            <button className="btn primary" type="button" onClick={() => { setSent(null); reset() }}>
+              {sent.autoApproved ? 'Create another' : 'Request another'}
+            </button>
+          </div>
+        </Panel>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="spread organizer-request-heading">
+        <div>
+          <h1 className="disp">Request a tournament</h1>
+          <p className="sub">Set the details and entry rules, then send for approval.</p>
+        </div>
+      </div>
+
+      <div className="split organizer-request">
+        <form id="tournament-request" onSubmit={handleSubmit(submit)} className="organizer-request-form">
+          {sendError ? <Banner kind="crit"><b>Could not send the request.</b> {sendError}</Banner> : null}
+
+          <Panel className="request-field-group">
+            <h2>Tournament</h2>
+            <Field label="Name" htmlFor="rq-name">
+              <input id="rq-name" {...register('name')} placeholder="Faculty Football Cup 2026" aria-invalid={!!errors.name} aria-describedby={errors.name ? "rq-error-name" : undefined} />
+              {fieldError('name') ? <span className="sub" id="rq-error-name">{fieldError('name')}</span> : null}
+            </Field>
+            <div className="grid2">
+              <Field label="Sport" htmlFor="rq-sport">
+                <select id="rq-sport" {...register('sportTypeId', { valueAsNumber: true })} aria-invalid={!!errors.sportTypeId} aria-describedby={errors.sportTypeId ? "rq-error-sportTypeId" : undefined}>
+                  {(sports?.items ?? []).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+              {fieldError('sportTypeId') ? <span className="sub" id="rq-error-sportTypeId">{fieldError('sportTypeId')}</span> : null}
+              </Field>
+              <Field label="Format — fixed once the draw is made" htmlFor="rq-format">
+                <select id="rq-format" {...register('bracketFormat')} aria-invalid={!!errors.bracketFormat} aria-describedby={errors.bracketFormat ? "rq-error-bracketFormat" : undefined}>
+                  {BracketFormatOptions.map(f => <option key={f} value={f}>{BracketFormatLabel[f]}</option>)}
+                </select>
+              {fieldError('bracketFormat') ? <span className="sub" id="rq-error-bracketFormat">{fieldError('bracketFormat')}</span> : null}
+              </Field>
+              {boSport ? <Field label="BO format — fixed after the first match starts" htmlFor="rq-bo">
+                <select id="rq-bo" {...register('bestOf', { setValueAs: value => value === '' ? null : Number(value) })} aria-invalid={!!errors.bestOf} aria-describedby={errors.bestOf ? "rq-error-bestOf" : undefined}>
+                  <option value="">No BO limit</option>{[1, 3, 5, 7].map(n => <option key={n} value={n}>BO{n}</option>)}
+                </select>
+              {fieldError('bestOf') ? <span className="sub" id="rq-error-bestOf">{fieldError('bestOf')}</span> : null}
+              </Field> : null}
+              {/* ช่องล่างรับค่าว่างได้จริง ช่องบนรับไม่ได้ — สองช่องติดกันที่หน้าตาเหมือนกัน
+                  แต่กฎคนละอย่าง ต้องบอกตั้งแต่ก่อนกดส่ง ไม่ใช่รอให้กดแล้วค่อยขึ้นสีแดง */}
+              <Field label="Organising faculty — who puts it on" htmlFor="rq-fac">
+                <select id="rq-fac" value={organizingFacultyId ?? ''} aria-invalid={!!errors.organizingFacultyId} aria-describedby={errors.organizingFacultyId ? "rq-error-organizingFacultyId" : undefined}
+                  onChange={e => pickFaculty(e.target.value)}>
+                  <option value="">Choose a faculty — required</option>
+                  {(faculties?.items ?? []).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+                {fieldError('organizingFacultyId') ? <span className="sub" id="rq-error-organizingFacultyId">{fieldError('organizingFacultyId')}</span>
+                  : organizingFacultyId == null
+                    ? <span className="sub">Required: the organising faculty cannot be left blank.</span>
+                    : null}
+              </Field>
+              <Field label="Organising department — optional" htmlFor="rq-dept">
+                <select id="rq-dept" value={organizingDepartmentId ?? ''} disabled={organizingFacultyId == null}
+                  aria-invalid={!!errors.organizingDepartmentId} aria-describedby={errors.organizingDepartmentId ? "rq-error-organizingDepartmentId" : undefined}
+                  onChange={e => pickDepartment(e.target.value)}>
+                  <option value="">The whole faculty</option>
+                  {(departments?.items ?? []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                {fieldError('organizingDepartmentId') ? <span className="sub" id="rq-error-organizingDepartmentId">{fieldError('organizingDepartmentId')}</span> : null}
+                {fieldError('scopeType') ? <span className="sub" id="rq-error-scopeType">{fieldError('scopeType')}</span> : null}
+              </Field>
+              <Field label="Squad cap" htmlFor="rq-cap">
+                <input id="rq-cap" type="number" min={2} max={64} {...register('maxTeams', { valueAsNumber: true })} aria-invalid={!!errors.maxTeams} aria-describedby={errors.maxTeams ? "rq-error-maxTeams" : undefined} />
+                {fieldError('maxTeams') ? <span className="sub" id="rq-error-maxTeams">{fieldError('maxTeams')}</span> : null}
+              </Field>
+              <Field label="Minimum squads" htmlFor="rq-min-teams">
+                <input id="rq-min-teams" type="number" min={1} {...register('minTeams', { valueAsNumber: true })} aria-invalid={!!errors.minTeams} aria-describedby={errors.minTeams ? "rq-error-minTeams" : undefined} />
+                {fieldError('minTeams') ? <span className="sub" id="rq-error-minTeams">{fieldError('minTeams')}</span> : null}
+              </Field>
+            </div>
+          </Panel>
+
+          <Panel className="request-field-group">
+            <h2>Schedule</h2>
+            <div className="sub">
+              Entry must open and close before the first match date.
+            </div>
+            <div className="grid2">
+              <Field label="Entry opens" htmlFor="rq-reg-start">
+                <input id="rq-reg-start" type="datetime-local"
+                  {...register('registrationStart')} aria-invalid={!!errors.registrationStart} aria-describedby={errors.registrationStart ? "rq-error-registrationStart" : undefined} />
+                {fieldError('registrationStart') ? <span className="sub" id="rq-error-registrationStart">{fieldError('registrationStart')}</span> : null}
+              </Field>
+              <Field label="Entry closes" htmlFor="rq-reg-end">
+                <input id="rq-reg-end" type="datetime-local"
+                  {...register('registrationEnd')} aria-invalid={!!errors.registrationEnd} aria-describedby={errors.registrationEnd ? "rq-error-registrationEnd" : undefined} />
+                {fieldError('registrationEnd') ? <span className="sub" id="rq-error-registrationEnd">{fieldError('registrationEnd')}</span> : null}
+              </Field>
+              <Field label="First match date" htmlFor="rq-date">
+                <input id="rq-date" type="date" {...register('eventStartDate')} aria-invalid={!!errors.eventStartDate} aria-describedby={errors.eventStartDate ? "rq-error-eventStartDate" : undefined} />
+                {fieldError('eventStartDate') ? <span className="sub" id="rq-error-eventStartDate">{fieldError('eventStartDate')}</span> : null}
+              </Field>
+              <Field label="Last match date" htmlFor="rq-date-end">
+                <input id="rq-date-end" type="date" {...register('eventEndDate')} aria-invalid={!!errors.eventEndDate} aria-describedby={errors.eventEndDate ? "rq-error-eventEndDate" : undefined} />
+                {fieldError('eventEndDate') ? <span className="sub" id="rq-error-eventEndDate">{fieldError('eventEndDate')}</span> : null}
+              </Field>
+              <Field label="Default venue" htmlFor="rq-venue">
+                <input id="rq-venue" {...register('venue')} placeholder="Main Stadium" aria-invalid={!!errors.venue} aria-describedby={errors.venue ? "rq-error-venue" : undefined} />
+                {fieldError('venue') ? <span className="sub" id="rq-error-venue">{fieldError('venue')}</span> : null}
+              </Field>
+            </div>
+          </Panel>
+
+          <Panel className="request-field-group">
+            <h2>Eligibility</h2>
+            <Banner kind="warn">
+              <b>Optional rules apply to every player, with no override.</b>{' '}
+              One failing player rejects the squad. Changes after approval need an admin.
+            </Banner>
+            <div className="grid2">
+              <Field label="Gender" htmlFor="rq-gender">
+                <select id="rq-gender" {...register('genderRequirement')} aria-invalid={!!errors.genderRequirement} aria-describedby={errors.genderRequirement ? "rq-error-genderRequirement" : undefined}>
+                  {GenderRequirementOptions.map(x => <option key={x} value={x}>{GenderRequirementLabel[x]}</option>)}
+                </select>
+              {fieldError('genderRequirement') ? <span className="sub" id="rq-error-genderRequirement">{fieldError('genderRequirement')}</span> : null}
+              </Field>
+              {/* ขอบเขตเดียวกับ backend (optionalAge = int 0–120) — ไม่ใส่ min/max ไว้
+                  ลูกศรของเบราว์เซอร์กดลงไปติดลบได้ แล้วค่อยไปเด้ง 400 ตอนกดส่ง */}
+              <Field label="Minimum age" htmlFor="rq-lo">
+                <input id="rq-lo" type="number" min={0} max={120}
+                  {...register('minAge', { setValueAs: value => value === '' ? null : Number(value) })} aria-invalid={!!errors.minAge} aria-describedby={errors.minAge ? "rq-error-minAge" : undefined} />
+                {fieldError('minAge') ? <span className="sub" id="rq-error-minAge">{fieldError('minAge')}</span> : null}
+              </Field>
+              <Field label="Maximum age" htmlFor="rq-hi">
+                <input id="rq-hi" type="number" min={0} max={120}
+                  {...register('maxAge', { setValueAs: value => value === '' ? null : Number(value) })} aria-invalid={!!errors.maxAge} aria-describedby={errors.maxAge ? "rq-error-maxAge" : undefined} />
+              {fieldError('maxAge') ? <span className="sub" id="rq-error-maxAge">{fieldError('maxAge')}</span> : null}
+              </Field>
+            </div>
+
+            <span className="tag"><em>//</em> Which faculties may enter</span>
+            <div className="sub">
+              Who can enter, separate from who organises it.
+            </div>
+            <span className="segmented" role="radiogroup" aria-label="Which faculties may enter">
+              {ADMIT.map(([value, label]) => (
+                <button key={value} type="button" role="radio" aria-checked={admit === value}
+                  className={admit === value ? 'on' : ''} onClick={() => setAdmit(value)}>{label}</button>
+              ))}
+            </span>
+            {admit === 'pick' ? (
+              <div className="grid2">
+                {(faculties?.items ?? []).map(f => (
+                  <label key={f.id} className="hstack" style={{ gap: 8, alignItems: 'center' }}>
+                    <input type="checkbox" checked={pickedFaculties.includes(f.id)}
+                      onChange={() => toggleIn('eligibilityFacultyIds', pickedFaculties, f.id)} />
+                    <span>{f.name}</span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
+
+            <span className="tag"><em>//</em> Years of study — tick none to accept every year</span>
+            <div className="hstack" style={{ flexWrap: 'wrap', gap: 14 }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(y => (
+                <label key={y} className="hstack" style={{ gap: 6, alignItems: 'center' }}>
+                  <input type="checkbox" checked={admittedYears.includes(y)}
+                    onChange={() => toggleIn('eligibilityYears', admittedYears, y)} />
+                  <span>Year {y}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* ใครตัดสินคำขอนี้เปลี่ยนตามจำนวนคณะที่ติ๊ก — บอกก่อนกดส่ง ไม่ใช่ให้ไปรู้
+                ตอนคำขอค้างอยู่ในคิวที่ผิดคน
+                ⚠️ ค่าตั้งต้นคือ "ทุกคณะ" ซึ่งเกินขอบเขตแอดมินคณะเสมอ แอดมินคณะที่กรอก
+                ฟอร์มตามค่าตั้งต้นจึงเข้าคิวทุกครั้ง แล้วอ่านว่าระบบไม่ยอม auto-approve
+                ให้ตัวเอง — ประโยคที่สองของแต่ละกรณีมีไว้ผูกเรื่องนี้เข้าด้วยกัน
+                เราไม่รู้ว่าคนกรอกเป็นแอดมินระดับไหน `/me` ไม่บอก และไม่มีเส้นให้ถาม
+                (ดู BACKEND-GAPS `FE-viewer-admin-scope-unknown`) จึงเขียนเป็นเงื่อนไข
+                "ถ้าคนนั้นคือคุณ" แทนการทึกทักว่าใช่หรือไม่ใช่ */}
+            <Banner kind={ownFacultyOnly ? 'ok' : 'warn'} icon={ownFacultyOnly ? 'check' : 'clock'}>
+              {admit === 'own' && organizingFacultyId == null ? (
+                <><b>Choose the organising faculty above first.</b> Until then, entry admits every faculty.</>
+              ) : ownFacultyOnly ? (
+                <><b>{facultyName(admittedFaculties[0]!)}&apos;s admin decides this one.</b> If that admin is you, it skips
+                  the queue and is approved when sent.</>
+              ) : admittedFaculties.length === 0 ? (
+                <><b>A university admin decides this one.</b> Open to every faculty: a faculty admin sending this one still waits in the queue.
+                  For faculty approval, choose <em>Only the faculty running it</em>.</>
+              ) : admittedFaculties.length > 1 ? (
+                <><b>A university admin decides this one.</b> It admits {admittedFaculties.length} faculties,
+                  so no single faculty&apos;s admin can approve it — including their own faculty&apos;s.</>
+              ) : (
+                <><b>A university admin decides this one.</b> It admits {facultyName(admittedFaculties[0]!)},
+                  which is not the faculty running it.</>
+              )}
+            </Banner>
+          </Panel>
+        </form>
+
+        <aside className="rail request-review" aria-label="Request review summary" tabIndex={0}>
+          <Panel quiet>
+            <h2>Review your request</h2>
+            <dl className="request-review-facts">
+              <div><dt>Tournament</dt><dd>{draft.name?.trim() || 'Name not set'}</dd>
+                <dd>{sports?.items.find(s => s.id === draft.sportTypeId)?.name ?? 'Sport not set'} · {draft.bracketFormat ? BracketFormatLabel[draft.bracketFormat] : 'Format not set'}</dd>
+                <dd>{draft.minTeams ?? '—'}–{draft.maxTeams ?? '—'} squads</dd></div>
+              <div><dt>Organiser</dt><dd>{organizingFacultyId == null ? 'Choose a faculty' : facultyName(organizingFacultyId)}</dd>
+                <dd>{organizingDepartmentId == null ? 'Whole faculty' : departments?.items.find(d => d.id === organizingDepartmentId)?.name ?? `Department #${organizingDepartmentId}`}</dd></div>
+              <div><dt>Entry window</dt><dd>{reviewDate(draft.registrationStart)} to {reviewDate(draft.registrationEnd)}</dd></div>
+              <div><dt>Match dates & venue</dt><dd>{reviewDate(draft.eventStartDate)} to {reviewDate(draft.eventEndDate)}</dd><dd>{draft.venue?.trim() || 'Venue not set'}</dd></div>
+              <div><dt>Who can enter</dt><dd>{entryFaculties} · {entryYears}</dd>
+                <dd>{GenderRequirementLabel[draft.genderRequirement ?? 'any']} · {entryAge}</dd></div>
+            </dl>
+            <h3>After approval</h3>
+            <p className="sub">Your Private draft needs referees before you publish it. LTMS deletes private tournaments on their match date.</p>
+            <p className="sub">The server validates your request when you send it.</p>
+          </Panel>
+        </aside>
+        <div className="hstack request-actions">
+          <button className="btn" type="button" onClick={() => navigate('/')}>Cancel</button>
+          <button className="btn primary" type="submit" form="tournament-request" disabled={isSubmitting || create.isPending}>
+            {create.isPending ? 'Sending…' : 'Send the request'}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}

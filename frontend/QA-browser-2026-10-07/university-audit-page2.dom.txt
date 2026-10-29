@@ -1,0 +1,226 @@
+- button "Skip to the main content"
+- navigation:
+  - generic: LTMS
+  - button "Tournaments":
+    - generic: Tournaments
+  - button "Admin":
+    - generic: Admin
+  - button "Teams":
+    - generic: Teams
+  - button "Matches":
+    - generic: Matches
+  - button "Inbox 14":
+    - generic: Inbox
+    - generic: "14"
+  - button "Profile":
+    - generic: Profile
+  - emphasis: //
+  - text: Signed in as
+  - generic: สมชาย ใจดี
+  - generic: "Role: Admin"
+  - button "Log out":
+    - text: Log out
+- textbox "Search":
+  - /placeholder: Search tournaments, teams, players…
+- button "Switch to light mode":
+- button "Notifications, 14 unread":
+  - generic: "14"
+- link "Open my profile":
+  - /url: /me
+  - text: ส
+- main:
+  - emphasis: //
+  - text: System administration
+  - heading "Admin" [level=1]
+  - generic: 2 to organize
+  - generic: 2 permanent
+  - generic: 1 external referee
+  - generic: 3 change requests
+  - button "Requests to organize"
+  - button "Permanent squads"
+  - button "External referees"
+  - button "Hard-filter changes"
+  - button "All tournaments"
+  - button "Users"
+  - button "User reports"
+  - button "Stalled work"
+  - button "Admin rights"
+  - button "Leader transfers"
+  - button "Audit logs"
+  - button "Feedback"
+  - heading "Audit logs" [level=3]:
+    - text: Audit logs
+  - generic: 18 records loaded
+  - paragraph: Browse every page. Search and filters apply to the current page. Read access requires Root or University Admin rights.
+  - generic: Search audit logs
+  - searchbox "Search audit logs"
+  - generic: Entity type
+  - combobox "Entity type":
+    - option "All entities" [selected]
+    - option "Match"
+    - option "Tournament"
+  - article:
+    - generic "match_result_verified": Match Result Verified
+    - generic: "Match #9"
+    - generic: ณ
+    - text: ณัฐธิดา ใจดี
+    - generic: "User #9225"
+    - text: 18/09/2026, 14:48:48 (UTC+7)
+    - generic: "Record #18"
+    - generic "View details (2)"
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #20"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 18/09/2026, 11:39:21 (UTC+7)
+    - generic: "Record #17"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "match_result_verified": Match Result Verified
+    - generic: "Match #6"
+    - generic: Q
+    - text: QA C1
+    - generic: "User #9105"
+    - text: 18/09/2026, 11:39:21 (UTC+7)
+    - generic: "Record #16"
+    - generic "View details (2)"
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #19"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 18/09/2026, 11:39:20 (UTC+7)
+    - generic: "Record #15"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #18"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 18/09/2026, 11:06:32 (UTC+7)
+    - generic: "Record #14"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #17"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 18/09/2026, 11:06:32 (UTC+7)
+    - generic: "Record #13"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #16"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 18/09/2026, 11:06:31 (UTC+7)
+    - generic: "Record #12"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #14"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 18/09/2026, 10:25:44 (UTC+7)
+    - generic: "Record #11"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "match_result_verified": Match Result Verified
+    - generic: "Match #5"
+    - generic: ผ
+    - text: ผู้เล่น เอหนึ่ง
+    - generic: "User #9101"
+    - text: 18/09/2026, 09:24:07 (UTC+7)
+    - generic: "Record #10"
+    - generic "View details (2)"
+  - article:
+    - generic "match_result_verified": Match Result Verified
+    - generic: "Match #4"
+    - generic: Q
+    - text: QA C1
+    - generic: "User #9105"
+    - text: 17/09/2026, 22:44:44 (UTC+7)
+    - generic: "Record #9"
+    - generic "View details (2)"
+  - article:
+    - generic "match_result_verified": Match Result Verified
+    - generic: "Match #3"
+    - generic: ผ
+    - text: ผู้เล่น เอหนึ่ง
+    - generic: "User #9101"
+    - text: 17/09/2026, 22:44:44 (UTC+7)
+    - generic: "Record #8"
+    - generic "View details (2)"
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #13"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 17/09/2026, 22:42:28 (UTC+7)
+    - generic: "Record #7"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "match_result_verified": Match Result Verified
+    - generic: "Match #2"
+    - generic: ผ
+    - text: ผู้เล่น เอหนึ่ง
+    - generic: "User #9101"
+    - text: 17/09/2026, 22:39:17 (UTC+7)
+    - generic: "Record #6"
+    - generic "View details (2)"
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #12"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 17/09/2026, 22:36:47 (UTC+7)
+    - generic: "Record #5"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #10"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 17/09/2026, 22:30:52 (UTC+7)
+    - generic: "Record #4"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #6"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 17/09/2026, 21:11:31 (UTC+7)
+    - generic: "Record #3"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #4"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 17/09/2026, 21:04:43 (UTC+7)
+    - generic: "Record #2"
+    - paragraph: No additional details recorded.
+  - article:
+    - generic "tournament_approved": Tournament Approved
+    - generic: "Tournament #2"
+    - generic: ส
+    - text: สมชาย ใจดี
+    - generic: "User #9001"
+    - text: 17/09/2026, 21:00:40 (UTC+7)
+    - generic: "Record #1"
+    - paragraph: No additional details recorded.
+  - button "Previous page"
+  - generic: Page 2 of 2
+  - button "Next page" [disabled]

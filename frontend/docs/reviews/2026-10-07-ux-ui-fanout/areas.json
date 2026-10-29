@@ -1,0 +1,50 @@
+[
+  {
+    "id": "r01-home-discovery",
+    "title": "Home, shared shell, discovery and Tournament preview"
+  },
+  {
+    "id": "r02-team-player",
+    "title": "Teams, Team management and public Player"
+  },
+  {
+    "id": "r03-tournament-public",
+    "title": "Public Tournament, participation and Community"
+  },
+  {
+    "id": "r04-organizer",
+    "title": "Organizer request and all Manage work"
+  },
+  {
+    "id": "r05-match-referee",
+    "title": "Matches, fixture editing, referee result and dispute workflow"
+  },
+  {
+    "id": "r06-checkin-mvp-watch",
+    "title": "Check-in, QR, voting and Watch"
+  },
+  {
+    "id": "r07-admin",
+    "title": "Every Admin group and working queue"
+  },
+  {
+    "id": "r08-account",
+    "title": "Login, Register and Profile"
+  },
+  {
+    "id": "r09-search-inbox",
+    "title": "Search and Inbox communication/action requests"
+  },
+  {
+    "id": "r10-access-responsive",
+    "title": "Cross-app keyboard, accessibility and responsive usability"
+  },
+  {
+    "id": "r11-first-use-consistency",
+    "title": "Cross-app first-use, information architecture, copy and visual consistency"
+  },
+  {
+    "id": "r12-technical-evidence",
+    "title": "Independent detector/browser technical audit (Assessment B)"
+  }
+]

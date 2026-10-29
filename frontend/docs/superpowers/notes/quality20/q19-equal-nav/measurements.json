@@ -1,0 +1,1856 @@
+[
+  {
+    "id": "requests-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 734.890625,
+      "bottom": 1138.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 758.234375,
+      "height": 40.390625,
+      "bottom": 798.625,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 517.0625,
+      "height": 302.5625,
+      "bottom": 819.625,
+      "left": 277,
+      "right": 744
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "filters-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 734.890625,
+      "bottom": 1138.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 701.734375,
+      "height": 40.390625,
+      "bottom": 742.125,
+      "left": 1045.390625,
+      "right": 1213.984375
+    },
+    "firstItem": {
+      "top": 517.0625,
+      "height": 246.0625,
+      "bottom": 763.125,
+      "left": 277,
+      "right": 1235
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 3027,
+      "items": 12
+    },
+    "current": "Rule changes",
+    "groupCount": 3
+  },
+  {
+    "id": "scopes-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 560,
+      "bottom": 963.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Admin rights",
+    "groupCount": 3
+  },
+  {
+    "id": "users-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 732.875,
+      "bottom": 1136.046875,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": {
+      "top": 627.453125,
+      "height": 40.390625,
+      "bottom": 667.84375,
+      "left": 1121.96875,
+      "right": 1219
+    },
+    "userTable": {
+      "top": 578.65625,
+      "height": 480,
+      "bottom": 1058.65625,
+      "left": 277,
+      "right": 1235
+    },
+    "queue": null,
+    "current": "Users",
+    "groupCount": 3
+  },
+  {
+    "id": "transfers-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 694.890625,
+      "bottom": 1098.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Leader transfers",
+    "groupCount": 3
+  },
+  {
+    "id": "audit-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 783.28125,
+      "bottom": 1186.453125,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Audit logs",
+    "groupCount": 3
+  },
+  {
+    "id": "decline-failed-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 802.890625,
+      "bottom": 1206.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 826.234375,
+      "height": 40.390625,
+      "bottom": 866.625,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 585.0625,
+      "height": 302.5625,
+      "bottom": 887.625,
+      "left": 277,
+      "right": 744
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "requests-denied-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "interactions-1280-dark",
+    "keyboardQueue": true,
+    "failedDeclineDraft": true,
+    "dialogEscapeReturn": true,
+    "cachedDenialHidden": true,
+    "writes": [
+      {
+        "path": "/tournaments/50/reject",
+        "method": "POST",
+        "body": {
+          "reason": "Needs a confirmed venue"
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "requests-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 734.890625,
+      "bottom": 1138.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 758.234375,
+      "height": 40.390625,
+      "bottom": 798.625,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 517.0625,
+      "height": 302.5625,
+      "bottom": 819.625,
+      "left": 277,
+      "right": 744
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "filters-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 734.890625,
+      "bottom": 1138.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 701.734375,
+      "height": 40.390625,
+      "bottom": 742.125,
+      "left": 1045.390625,
+      "right": 1213.984375
+    },
+    "firstItem": {
+      "top": 517.0625,
+      "height": 246.0625,
+      "bottom": 763.125,
+      "left": 277,
+      "right": 1235
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 3027,
+      "items": 12
+    },
+    "current": "Rule changes",
+    "groupCount": 3
+  },
+  {
+    "id": "scopes-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 560,
+      "bottom": 963.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Admin rights",
+    "groupCount": 3
+  },
+  {
+    "id": "users-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 732.875,
+      "bottom": 1136.046875,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": {
+      "top": 627.453125,
+      "height": 40.390625,
+      "bottom": 667.84375,
+      "left": 1121.96875,
+      "right": 1219
+    },
+    "userTable": {
+      "top": 578.65625,
+      "height": 480,
+      "bottom": 1058.65625,
+      "left": 277,
+      "right": 1235
+    },
+    "queue": null,
+    "current": "Users",
+    "groupCount": 3
+  },
+  {
+    "id": "transfers-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 694.890625,
+      "bottom": 1098.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Leader transfers",
+    "groupCount": 3
+  },
+  {
+    "id": "audit-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 783.28125,
+      "bottom": 1186.453125,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Audit logs",
+    "groupCount": 3
+  },
+  {
+    "id": "decline-failed-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 184.390625,
+      "bottom": 387.171875,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 403.171875,
+      "height": 802.890625,
+      "bottom": 1206.0625,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 826.234375,
+      "height": 40.390625,
+      "bottom": 866.625,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 585.0625,
+      "height": 302.5625,
+      "bottom": 887.625,
+      "left": 277,
+      "right": 744
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "requests-denied-1280-light",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "interactions-1280-light",
+    "keyboardQueue": true,
+    "failedDeclineDraft": true,
+    "dialogEscapeReturn": true,
+    "cachedDenialHidden": true,
+    "writes": [
+      {
+        "path": "/tournaments/50/reject",
+        "method": "POST",
+        "body": {
+          "reason": "Needs a confirmed venue"
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "requests-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 734.890625,
+      "bottom": 1098.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": {
+      "top": 719.046875,
+      "height": 40.390625,
+      "bottom": 759.4375,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 477.875,
+      "height": 302.5625,
+      "bottom": 780.4375,
+      "left": 277,
+      "right": 810
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "filters-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 734.890625,
+      "bottom": 1098.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": {
+      "top": 662.546875,
+      "height": 40.390625,
+      "bottom": 702.9375,
+      "left": 1177.40625,
+      "right": 1346
+    },
+    "firstItem": {
+      "top": 477.875,
+      "height": 246.0625,
+      "bottom": 723.9375,
+      "left": 277,
+      "right": 1367
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 3027,
+      "items": 12
+    },
+    "current": "Rule changes",
+    "groupCount": 3
+  },
+  {
+    "id": "scopes-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Admin rights",
+    "groupCount": 3
+  },
+  {
+    "id": "users-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 732.875,
+      "bottom": 1096.859375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": {
+      "top": 588.265625,
+      "height": 40.390625,
+      "bottom": 628.65625,
+      "left": 1253.96875,
+      "right": 1351
+    },
+    "userTable": {
+      "top": 539.46875,
+      "height": 480,
+      "bottom": 1019.46875,
+      "left": 277,
+      "right": 1367
+    },
+    "queue": null,
+    "current": "Users",
+    "groupCount": 3
+  },
+  {
+    "id": "transfers-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 694.890625,
+      "bottom": 1058.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Leader transfers",
+    "groupCount": 3
+  },
+  {
+    "id": "audit-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 783.28125,
+      "bottom": 1147.265625,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Audit logs",
+    "groupCount": 3
+  },
+  {
+    "id": "decline-failed-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 802.890625,
+      "bottom": 1166.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": {
+      "top": 787.046875,
+      "height": 40.390625,
+      "bottom": 827.4375,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 545.875,
+      "height": 302.5625,
+      "bottom": 848.4375,
+      "left": 277,
+      "right": 810
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "requests-denied-1440-dark",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "interactions-1440-dark",
+    "keyboardQueue": true,
+    "failedDeclineDraft": true,
+    "dialogEscapeReturn": true,
+    "cachedDenialHidden": true,
+    "writes": [
+      {
+        "path": "/tournaments/50/reject",
+        "method": "POST",
+        "body": {
+          "reason": "Needs a confirmed venue"
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "requests-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 734.890625,
+      "bottom": 1098.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": {
+      "top": 719.046875,
+      "height": 40.390625,
+      "bottom": 759.4375,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 477.875,
+      "height": 302.5625,
+      "bottom": 780.4375,
+      "left": 277,
+      "right": 810
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "filters-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 734.890625,
+      "bottom": 1098.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": {
+      "top": 662.546875,
+      "height": 40.390625,
+      "bottom": 702.9375,
+      "left": 1177.40625,
+      "right": 1346
+    },
+    "firstItem": {
+      "top": 477.875,
+      "height": 246.0625,
+      "bottom": 723.9375,
+      "left": 277,
+      "right": 1367
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 3027,
+      "items": 12
+    },
+    "current": "Rule changes",
+    "groupCount": 3
+  },
+  {
+    "id": "scopes-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Admin rights",
+    "groupCount": 3
+  },
+  {
+    "id": "users-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 732.875,
+      "bottom": 1096.859375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": {
+      "top": 588.265625,
+      "height": 40.390625,
+      "bottom": 628.65625,
+      "left": 1253.96875,
+      "right": 1351
+    },
+    "userTable": {
+      "top": 539.46875,
+      "height": 480,
+      "bottom": 1019.46875,
+      "left": 277,
+      "right": 1367
+    },
+    "queue": null,
+    "current": "Users",
+    "groupCount": 3
+  },
+  {
+    "id": "transfers-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 694.890625,
+      "bottom": 1058.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Leader transfers",
+    "groupCount": 3
+  },
+  {
+    "id": "audit-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 783.28125,
+      "bottom": 1147.265625,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Audit logs",
+    "groupCount": 3
+  },
+  {
+    "id": "decline-failed-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 802.890625,
+      "bottom": 1166.875,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": {
+      "top": 787.046875,
+      "height": 40.390625,
+      "bottom": 827.4375,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 545.875,
+      "height": 302.5625,
+      "bottom": 848.4375,
+      "left": 277,
+      "right": 810
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "requests-denied-1440-light",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "interactions-1440-light",
+    "keyboardQueue": true,
+    "failedDeclineDraft": true,
+    "dialogEscapeReturn": true,
+    "cachedDenialHidden": true,
+    "writes": [
+      {
+        "path": "/tournaments/50/reject",
+        "method": "POST",
+        "body": {
+          "reason": "Needs a confirmed venue"
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "requests-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 771.890625,
+      "bottom": 1936.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": {
+      "top": 1646.078125,
+      "height": 44,
+      "bottom": 1690.078125,
+      "left": 153.8125,
+      "right": 244.609375
+    },
+    "firstItem": {
+      "top": 1319.21875,
+      "height": 387.859375,
+      "bottom": 1707.078125,
+      "left": 41,
+      "right": 349
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 9409,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "filters-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 749.390625,
+      "bottom": 1913.71875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": {
+      "top": 1789.578125,
+      "height": 44,
+      "bottom": 1833.578125,
+      "left": 153.8125,
+      "right": 322.40625
+    },
+    "firstItem": {
+      "top": 1296.71875,
+      "height": 553.859375,
+      "bottom": 1850.578125,
+      "left": 41,
+      "right": 349
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 5802,
+      "items": 12
+    },
+    "current": "Rule changes",
+    "groupCount": 3
+  },
+  {
+    "id": "scopes-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 926.890625,
+      "bottom": 2091.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Admin rights",
+    "groupCount": 3
+  },
+  {
+    "id": "users-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 862.984375,
+      "bottom": 2027.3125,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": {
+      "top": 1519.109375,
+      "height": 44,
+      "bottom": 1563.109375,
+      "left": 967.96875,
+      "right": 1065
+    },
+    "userTable": {
+      "top": 1470.3125,
+      "height": 480,
+      "bottom": 1950.3125,
+      "left": 41,
+      "right": 349
+    },
+    "queue": null,
+    "current": "Users",
+    "groupCount": 3
+  },
+  {
+    "id": "transfers-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 731.890625,
+      "bottom": 1896.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Leader transfers",
+    "groupCount": 3
+  },
+  {
+    "id": "audit-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 902.078125,
+      "bottom": 2066.40625,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Audit logs",
+    "groupCount": 3
+  },
+  {
+    "id": "decline-failed-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 887.890625,
+      "bottom": 2052.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": {
+      "top": 1713.078125,
+      "height": 44,
+      "bottom": 1757.078125,
+      "left": 153.8125,
+      "right": 244.609375
+    },
+    "firstItem": {
+      "top": 1386.21875,
+      "height": 387.859375,
+      "bottom": 1774.078125,
+      "left": 41,
+      "right": 349
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 9409,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "requests-denied-390-dark",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 560,
+      "bottom": 1724.328125,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "interactions-390-dark",
+    "keyboardQueue": true,
+    "failedDeclineDraft": true,
+    "dialogEscapeReturn": true,
+    "cachedDenialHidden": true,
+    "writes": [
+      {
+        "path": "/tournaments/50/reject",
+        "method": "POST",
+        "body": {
+          "reason": "Needs a confirmed venue"
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "requests-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 771.890625,
+      "bottom": 1936.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": {
+      "top": 1646.078125,
+      "height": 44,
+      "bottom": 1690.078125,
+      "left": 153.8125,
+      "right": 244.609375
+    },
+    "firstItem": {
+      "top": 1319.21875,
+      "height": 387.859375,
+      "bottom": 1707.078125,
+      "left": 41,
+      "right": 349
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 9409,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "filters-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 749.390625,
+      "bottom": 1913.71875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": {
+      "top": 1789.578125,
+      "height": 44,
+      "bottom": 1833.578125,
+      "left": 153.8125,
+      "right": 322.40625
+    },
+    "firstItem": {
+      "top": 1296.71875,
+      "height": 553.859375,
+      "bottom": 1850.578125,
+      "left": 41,
+      "right": 349
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 5802,
+      "items": 12
+    },
+    "current": "Rule changes",
+    "groupCount": 3
+  },
+  {
+    "id": "scopes-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 926.890625,
+      "bottom": 2091.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Admin rights",
+    "groupCount": 3
+  },
+  {
+    "id": "users-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 862.984375,
+      "bottom": 2027.3125,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": {
+      "top": 1519.109375,
+      "height": 44,
+      "bottom": 1563.109375,
+      "left": 967.96875,
+      "right": 1065
+    },
+    "userTable": {
+      "top": 1470.3125,
+      "height": 480,
+      "bottom": 1950.3125,
+      "left": 41,
+      "right": 349
+    },
+    "queue": null,
+    "current": "Users",
+    "groupCount": 3
+  },
+  {
+    "id": "transfers-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 731.890625,
+      "bottom": 1896.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Leader transfers",
+    "groupCount": 3
+  },
+  {
+    "id": "audit-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 902.078125,
+      "bottom": 2066.40625,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Audit logs",
+    "groupCount": 3
+  },
+  {
+    "id": "decline-failed-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 887.890625,
+      "bottom": 2052.21875,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": {
+      "top": 1713.078125,
+      "height": 44,
+      "bottom": 1757.078125,
+      "left": 153.8125,
+      "right": 244.609375
+    },
+    "firstItem": {
+      "top": 1386.21875,
+      "height": 387.859375,
+      "bottom": 1774.078125,
+      "left": 41,
+      "right": 349
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 9409,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "requests-denied-390-light",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "navigation": {
+      "top": 517.15625,
+      "height": 631.171875,
+      "bottom": 1148.328125,
+      "left": 24,
+      "right": 366
+    },
+    "workspace": {
+      "top": 1164.328125,
+      "height": 560,
+      "bottom": 1724.328125,
+      "left": 24,
+      "right": 366
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "interactions-390-light",
+    "keyboardQueue": true,
+    "failedDeclineDraft": true,
+    "dialogEscapeReturn": true,
+    "cachedDenialHidden": true,
+    "writes": [
+      {
+        "path": "/tournaments/50/reject",
+        "method": "POST",
+        "body": {
+          "reason": "Needs a confirmed venue"
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "empty",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 0,
+      "scrollHeight": 0,
+      "items": 0
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  },
+  {
+    "id": "faculty-denied",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": {
+      "top": 163.59375,
+      "height": 184.390625,
+      "bottom": 347.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "workspace": {
+      "top": 363.984375,
+      "height": 560,
+      "bottom": 923.984375,
+      "left": 256,
+      "right": 1388
+    },
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "current": "Permanent squads",
+    "groupCount": 3
+  },
+  {
+    "id": "access-denied",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "navigation": null,
+    "workspace": null,
+    "firstAction": null,
+    "firstItem": null,
+    "userAction": null,
+    "userTable": null,
+    "queue": null,
+    "groupCount": 0
+  }
+]

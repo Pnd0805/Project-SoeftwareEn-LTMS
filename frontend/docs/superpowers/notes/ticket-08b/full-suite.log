@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-ticket-08b/frontend
+
+Not implemented: Window's scrollTo() method
+
+ Test Files  95 passed (95)
+      Tests  646 passed (646)
+   Start at  00:03:11
+   Duration  10.81s (transform 3.79s, setup 8.80s, import 11.13s, tests 22.58s, environment 43.81s)

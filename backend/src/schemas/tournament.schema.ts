@@ -62,6 +62,11 @@ export const rejectTournamentSchema = z.object({
 
 export const amendmentRejectSchema = rejectTournamentSchema;
 
+// ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. ข้อ 4) — เหตุผลบังคับ ทุกคนที่เกี่ยวข้องเห็น · 255 = ขนาดคอลัมน์ cancel_reason
+export const cancelTournamentSchema = z.object({
+    reason: z.string().trim().min(1, 'กรุณาระบุเหตุผลที่ยกเลิกทัวร์นาเมนต์').max(255, 'เหตุผลยาวได้ไม่เกิน 255 ตัวอักษร')
+});
+
 export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentSchema>;
 export type AmendmentRequestInput = z.infer<typeof amendmentRequestSchema>;

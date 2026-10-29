@@ -1,0 +1,10 @@
+- button "Skip to the main content"
+- generic: LTMS
+- link "Tournaments":
+  - /url: /
+- link "Search":
+  - /url: /search
+- button "Switch to light mode":
+- button "Sign in"
+- main:
+  - generic: No such match

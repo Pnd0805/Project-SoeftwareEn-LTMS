@@ -1,0 +1,966 @@
+{
+  "phase": "before",
+  "origin": "http://localhost:5185",
+  "records": [
+    {
+      "name": "home",
+      "width": 320,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 320,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 966.140625,
+      "approveTop": 1525.375,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 966.140625,
+      "approveTop": 1525.375,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 966.140625,
+      "approveTop": 1408.390625,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 966.140625,
+      "approveTop": 1408.390625,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 424.171875,
+      "approveTop": 758.234375,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 424.171875,
+      "approveTop": 758.234375,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 384.984375,
+      "approveTop": 719.046875,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 384.984375,
+      "approveTop": 719.046875,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 700,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 700,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 700,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 906.953125,
+      "approveTop": 1237.015625,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 700,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 700,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 700,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 906.953125,
+      "approveTop": 1237.015625,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 701,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 701,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(234, 70, 88)",
+          "ratio": 5.227327735368611
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(10, 8, 16)",
+          "background": "rgb(58, 174, 124)",
+          "ratio": 7.132238030118758
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 701,
+      "height": 844,
+      "theme": "dark",
+      "errors": [],
+      "headingTop": 464.171875,
+      "approveTop": 910.421875,
+      "navigationVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "home",
+      "width": 701,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "navigationMenuOpened": true,
+      "badges": [
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "1",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "team",
+      "width": 701,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "badges": [
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "L",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(194, 59, 87)",
+          "ratio": 3.424675261048393
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        },
+        {
+          "text": "W",
+          "foreground": "rgb(30, 23, 15)",
+          "background": "rgb(18, 118, 78)",
+          "ratio": 3.146138059464966
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "admin",
+      "width": 701,
+      "height": 844,
+      "theme": "light",
+      "errors": [],
+      "headingTop": 464.171875,
+      "approveTop": 910.421875,
+      "navigationVisible": true,
+      "overflow": false
+    }
+  ],
+  "failures": [
+    "320/dark: mobile section disclosure absent",
+    "home/320/light: 1 contrast 3.42",
+    "home/320/light: 1 contrast 3.42",
+    "team/320/light: W contrast 3.15",
+    "team/320/light: W contrast 3.15",
+    "team/320/light: L contrast 3.42",
+    "team/320/light: W contrast 3.15",
+    "team/320/light: W contrast 3.15",
+    "320/light: mobile section disclosure absent",
+    "390/dark: mobile section disclosure absent",
+    "home/390/light: 1 contrast 3.42",
+    "home/390/light: 1 contrast 3.42",
+    "team/390/light: W contrast 3.15",
+    "team/390/light: W contrast 3.15",
+    "team/390/light: L contrast 3.42",
+    "team/390/light: W contrast 3.15",
+    "team/390/light: W contrast 3.15",
+    "390/light: mobile section disclosure absent",
+    "home/1280/light: 1 contrast 3.42",
+    "home/1280/light: 1 contrast 3.42",
+    "home/1280/light: 1 contrast 3.42",
+    "team/1280/light: W contrast 3.15",
+    "team/1280/light: W contrast 3.15",
+    "team/1280/light: L contrast 3.42",
+    "team/1280/light: W contrast 3.15",
+    "team/1280/light: W contrast 3.15",
+    "home/1440/light: 1 contrast 3.42",
+    "home/1440/light: 1 contrast 3.42",
+    "home/1440/light: 1 contrast 3.42",
+    "team/1440/light: W contrast 3.15",
+    "team/1440/light: W contrast 3.15",
+    "team/1440/light: L contrast 3.42",
+    "team/1440/light: W contrast 3.15",
+    "team/1440/light: W contrast 3.15",
+    "700/dark: mobile section disclosure absent",
+    "home/700/light: 1 contrast 3.42",
+    "home/700/light: 1 contrast 3.42",
+    "team/700/light: W contrast 3.15",
+    "team/700/light: W contrast 3.15",
+    "team/700/light: L contrast 3.42",
+    "team/700/light: W contrast 3.15",
+    "team/700/light: W contrast 3.15",
+    "700/light: mobile section disclosure absent",
+    "home/701/light: 1 contrast 3.42",
+    "home/701/light: 1 contrast 3.42",
+    "team/701/light: W contrast 3.15",
+    "team/701/light: W contrast 3.15",
+    "team/701/light: L contrast 3.42",
+    "team/701/light: W contrast 3.15",
+    "team/701/light: W contrast 3.15"
+  ]
+}

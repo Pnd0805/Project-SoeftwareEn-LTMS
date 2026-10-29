@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+
+ Test Files  5 passed (5)
+      Tests  36 passed (36)
+   Start at  03:54:03
+   Duration  1.23s (transform 707ms, setup 623ms, import 1.05s, tests 851ms, environment 2.68s)

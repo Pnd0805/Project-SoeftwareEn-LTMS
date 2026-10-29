@@ -1,0 +1,6 @@
+{
+  "handle": "term_6f9d6947-b26f-49d3-8cfe-25d6ea8cb69c",
+  "command": "codex --model gpt-6-luna -c model_reasoning_effort=\"max\" -C /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+  "newForThisReview": true,
+  "launchMethod": "custom argv; stock Orca effort validator rejects supported max"
+}

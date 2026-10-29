@@ -1,0 +1,329 @@
+[
+  {
+    "name": "admin-loading",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "admin-loaded",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "request-loading",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "request-loaded",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "match-loading",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "match-loaded",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "chunk-failure",
+    "width": 1280,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "chunk-document-retry",
+    "width": 1280,
+    "theme": "dark",
+    "documents": 2,
+    "retainedRouteAndQuery": true
+  },
+  {
+    "name": "admin-loading",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "admin-loaded",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "request-loading",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "request-loaded",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "match-loading",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "match-loaded",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "chunk-failure",
+    "width": 1280,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "chunk-document-retry",
+    "width": 1280,
+    "theme": "light",
+    "documents": 2,
+    "retainedRouteAndQuery": true
+  },
+  {
+    "name": "admin-loading",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "admin-loaded",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "request-loading",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "request-loaded",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "match-loading",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "match-loaded",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "chunk-failure",
+    "width": 1440,
+    "theme": "dark",
+    "overflow": false
+  },
+  {
+    "name": "chunk-document-retry",
+    "width": 1440,
+    "theme": "dark",
+    "documents": 2,
+    "retainedRouteAndQuery": true
+  },
+  {
+    "name": "admin-loading",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "admin-loaded",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "request-loading",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "request-loaded",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "match-loading",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "match-loaded",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "chunk-failure",
+    "width": 1440,
+    "theme": "light",
+    "overflow": false
+  },
+  {
+    "name": "chunk-document-retry",
+    "width": 1440,
+    "theme": "light",
+    "documents": 2,
+    "retainedRouteAndQuery": true
+  },
+  {
+    "name": "root-home-category-retains-filter",
+    "filter": "Football"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/",
+    "heading": "Home"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/home/all",
+    "heading": "Tournaments"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/t/t-vlr",
+    "heading": "VALORANT Campus League 2025"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/t/t-vlr/bracket",
+    "heading": "VALORANT Campus League 2025"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/t/t-vlr/manage/setup",
+    "heading": "403 — not yours to manage"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/m/m-137",
+    "heading": "Semi-final"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/m/m-137/fixture",
+    "heading": "403 — not yours to set"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/m/m-137/progress",
+    "heading": "Semi-final"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/checkin/m-137",
+    "heading": "Check in"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/mvp/t-vlr",
+    "heading": "Match MVP"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/team/t-byt",
+    "heading": "Byte Force"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/player/u-play",
+    "heading": "Mongkol Thanit"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/watch/t-vlr",
+    "heading": "Final"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/search",
+    "heading": "Search"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/search/cup",
+    "heading": "Search"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/teams",
+    "heading": "Teams"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/matches",
+    "heading": "Matches"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/inbox",
+    "heading": "Inbox · 2 unread"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/me",
+    "heading": "Rattana Admin"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/request",
+    "heading": "Request a tournament"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/admin",
+    "heading": "Admin"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/admin/users",
+    "heading": "Admin"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/register",
+    "heading": "Create account"
+  },
+  {
+    "name": "route-smoke",
+    "route": "/login",
+    "heading": "Sign in"
+  },
+  {
+    "name": "anonymous-private-redirect",
+    "adminChunkFetched": false
+  },
+  {
+    "name": "signed-in-non-admin-denied"
+  }
+]

@@ -1,0 +1,47 @@
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
+import { cancelJoinRequest, decideUserReport, getUserReports, reportUser, requestToJoin, reviewJoinRequest, setTeamVisibility, updateNotificationPreference } from './qaFeatures'
+const request = vi.fn<typeof fetch>()
+beforeEach(() => { request.mockReset().mockResolvedValue(new Response('{}', { status: 200 })); vi.stubGlobal('fetch', request) })
+afterEach(() => vi.unstubAllGlobals())
+const body = () => JSON.parse(String(request.mock.calls.at(-1)?.[1]?.body))
+it('requests admission and reviews it through leader endpoints, never inviting automatically', async () => {
+  await requestToJoin(42, '  Interested in joining  ')
+  expect(request.mock.calls[0][0]).toBe('/api/v1/teams/42/join-requests')
+  expect(body()).toEqual({ message: 'Interested in joining' })
+  await reviewJoinRequest(42, 7, false, 'Squad full')
+  expect(request.mock.calls[1][0]).toBe('/api/v1/teams/42/join-requests/7/reject')
+  expect(body()).toEqual({ reason: 'Squad full' })
+  await reviewJoinRequest(42, 8, true)
+  expect(request.mock.calls[2][0]).toBe('/api/v1/teams/42/join-requests/8/approve')
+  await cancelJoinRequest(9)
+  expect(request.mock.calls[3]).toEqual(['/api/v1/me/join-requests/9', expect.objectContaining({ method: 'DELETE' })])
+})
+it('writes visibility and only the selected mutable notification category', async () => {
+  await setTeamVisibility(42, 'public')
+  expect(body()).toEqual({ visibility: 'public' })
+  await updateNotificationPreference('community', false)
+  expect(request.mock.calls.at(-1)?.[0]).toBe('/api/v1/me/notification-prefs')
+  expect(body()).toEqual({ community: false })
+})
+it('passes report evidence keys and keeps review decisions distinct', async () => {
+  await reportUser(12, '  Repeated spam  ', ['reports/9/evidence.png'])
+  expect(body()).toEqual({ reason: 'Repeated spam', evidence: ['reports/9/evidence.png'] })
+  await decideUserReport(6, true, { category: 'spam', days: 7 })
+  expect(request.mock.calls.at(-1)?.[0]).toBe('/api/v1/admin/user-reports/6/approve')
+  expect(body()).toEqual({ category: 'spam', days: 7 })
+  await decideUserReport(6, false, { reason: 'Insufficient evidence' })
+  expect(body()).toEqual({ reason: 'Insufficient evidence' })
+})
+it('keeps paginated queue metadata and surfaces protected-account rejection', async () => {
+  const page = { items: [], pagination: { page: 2, pageSize: 20, totalItems: 41, totalPages: 3 } }
+  request.mockResolvedValueOnce(new Response(JSON.stringify(page)))
+  expect(await getUserReports(2)).toEqual(page)
+  expect(request.mock.calls[0][0]).toContain('page=2&pageSize=20')
+  request.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'CANNOT_SUSPEND_ROOT', message: 'Root cannot be suspended' } }), { status: 403 }))
+  await expect(decideUserReport(6, true, { category: 'other' })).rejects.toMatchObject({ status: 403, code: 'CANNOT_SUSPEND_ROOT', message: 'Root cannot be suspended' })
+})
+it('rejects invalid IDs before making any request', () => {
+  expect(() => requestToJoin(Number.NaN, '')).toThrow('Invalid database ID')
+  expect(request).not.toHaveBeenCalled()
+})

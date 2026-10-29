@@ -1,0 +1,1830 @@
+[
+  {
+    "id": "guest-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 108,
+      "bottom": 2142.265625,
+      "width": 390,
+      "height": 2034.265625
+    },
+    "firstContent": {
+      "top": 132,
+      "bottom": 168,
+      "width": 342,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 108,
+      "width": 390,
+      "height": 108
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 2906.859375,
+      "width": 390,
+      "height": 2588.078125
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 386.78125,
+      "width": 342,
+      "height": 44
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "leader-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 3696.9375,
+      "width": 390,
+      "height": 3378.15625
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 374.578125,
+      "width": 342,
+      "height": 31.796875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Teams"
+  },
+  {
+    "id": "organizer-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 3793.453125,
+      "width": 390,
+      "height": 3474.671875
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 438.78125,
+      "width": 342,
+      "height": 96
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "referee-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 2062.546875,
+      "width": 390,
+      "height": 1743.765625
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 2014.546875,
+      "width": 342,
+      "height": 1671.765625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Matches"
+  },
+  {
+    "id": "admin-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 1984.21875,
+      "width": 390,
+      "height": 1665.4375
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 1936.21875,
+      "width": 342,
+      "height": 1593.4375
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "bracket-390-dark",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 1833.734375,
+      "width": 390,
+      "height": 1514.953125
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 374.578125,
+      "width": 342,
+      "height": 31.796875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournaments"
+  },
+  {
+    "id": "guest-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 108,
+      "bottom": 2142.265625,
+      "width": 390,
+      "height": 2034.265625
+    },
+    "firstContent": {
+      "top": 132,
+      "bottom": 168,
+      "width": 342,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 108,
+      "width": 390,
+      "height": 108
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 2906.859375,
+      "width": 390,
+      "height": 2588.078125
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 386.78125,
+      "width": 342,
+      "height": 44
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "leader-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 3696.9375,
+      "width": 390,
+      "height": 3378.15625
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 374.578125,
+      "width": 342,
+      "height": 31.796875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Teams"
+  },
+  {
+    "id": "organizer-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 3793.453125,
+      "width": 390,
+      "height": 3474.671875
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 438.78125,
+      "width": 342,
+      "height": 96
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "referee-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 2062.546875,
+      "width": 390,
+      "height": 1743.765625
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 2014.546875,
+      "width": 342,
+      "height": 1671.765625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Matches"
+  },
+  {
+    "id": "admin-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 1984.21875,
+      "width": 390,
+      "height": 1665.4375
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 1936.21875,
+      "width": 342,
+      "height": 1593.4375
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "bracket-390-light",
+    "width": 390,
+    "overflow": false,
+    "main": {
+      "top": 318.78125,
+      "bottom": 1833.734375,
+      "width": 390,
+      "height": 1514.953125
+    },
+    "firstContent": {
+      "top": 342.78125,
+      "bottom": 374.578125,
+      "width": 342,
+      "height": 31.796875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 203.1875,
+      "width": 390,
+      "height": 203.1875
+    },
+    "header": {
+      "top": 203.1875,
+      "bottom": 318.78125,
+      "width": 390,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 264.78125,
+      "bottom": 308.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 266.78125,
+      "bottom": 306.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 211.1875,
+      "bottom": 256.78125,
+      "width": 366,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournaments"
+  },
+  {
+    "id": "guest-320-dark",
+    "width": 320,
+    "overflow": true,
+    "main": {
+      "top": 126.78125,
+      "bottom": 2249.046875,
+      "width": 320,
+      "height": 2122.265625
+    },
+    "firstContent": {
+      "top": 150.78125,
+      "bottom": 186.78125,
+      "width": 272,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 126.78125,
+      "width": 320,
+      "height": 126.78125
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 3156.75,
+      "width": 320,
+      "height": 2793.96875
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 482.78125,
+      "width": 272,
+      "height": 96
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "leader-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 3956.734375,
+      "width": 320,
+      "height": 3593.953125
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 418.578125,
+      "width": 272,
+      "height": 31.796875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Teams"
+  },
+  {
+    "id": "organizer-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 4160.828125,
+      "width": 320,
+      "height": 3798.046875
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 518.78125,
+      "width": 272,
+      "height": 132
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "referee-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 2106.546875,
+      "width": 320,
+      "height": 1743.765625
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 2058.546875,
+      "width": 272,
+      "height": 1671.765625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Matches"
+  },
+  {
+    "id": "admin-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 2125.796875,
+      "width": 320,
+      "height": 1763.015625
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 2077.796875,
+      "width": 272,
+      "height": 1691.015625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "bracket-320-dark",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 1971.921875,
+      "width": 320,
+      "height": 1609.140625
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 428.375,
+      "width": 272,
+      "height": 41.59375
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournaments"
+  },
+  {
+    "id": "guest-320-light",
+    "width": 320,
+    "overflow": true,
+    "main": {
+      "top": 126.78125,
+      "bottom": 2249.046875,
+      "width": 320,
+      "height": 2122.265625
+    },
+    "firstContent": {
+      "top": 150.78125,
+      "bottom": 186.78125,
+      "width": 272,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 126.78125,
+      "width": 320,
+      "height": 126.78125
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 3156.75,
+      "width": 320,
+      "height": 2793.96875
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 482.78125,
+      "width": 272,
+      "height": 96
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "leader-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 3956.734375,
+      "width": 320,
+      "height": 3593.953125
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 418.578125,
+      "width": 272,
+      "height": 31.796875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Teams"
+  },
+  {
+    "id": "organizer-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 4160.828125,
+      "width": 320,
+      "height": 3798.046875
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 518.78125,
+      "width": 272,
+      "height": 132
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "referee-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 2106.546875,
+      "width": 320,
+      "height": 1743.765625
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 2058.546875,
+      "width": 272,
+      "height": 1671.765625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Matches"
+  },
+  {
+    "id": "admin-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 2125.796875,
+      "width": 320,
+      "height": 1763.015625
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 2077.796875,
+      "width": 272,
+      "height": 1691.015625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "bracket-320-light",
+    "width": 320,
+    "overflow": false,
+    "main": {
+      "top": 362.78125,
+      "bottom": 1971.921875,
+      "width": 320,
+      "height": 1609.140625
+    },
+    "firstContent": {
+      "top": 386.78125,
+      "bottom": 428.375,
+      "width": 272,
+      "height": 41.59375
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 247.1875,
+      "width": 320,
+      "height": 247.1875
+    },
+    "header": {
+      "top": 247.1875,
+      "bottom": 362.78125,
+      "width": 320,
+      "height": 115.59375
+    },
+    "scan": {
+      "top": 308.78125,
+      "bottom": 352.78125,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 310.78125,
+      "bottom": 350.78125,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 255.1875,
+      "bottom": 300.78125,
+      "width": 296,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Tournaments"
+  },
+  {
+    "id": "guest-1280-dark",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1280,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1280-dark",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1359.5,
+      "width": 1048,
+      "height": 1295.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1000,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1280-dark",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1186.0625,
+      "width": 1048,
+      "height": 1122.46875
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1138.0625,
+      "width": 1000,
+      "height": 1050.46875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "guest-1280-light",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1280,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1280-light",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1359.5,
+      "width": 1048,
+      "height": 1295.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1000,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1280-light",
+    "width": 1280,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1186.0625,
+      "width": 1048,
+      "height": 1122.46875
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1138.0625,
+      "width": 1000,
+      "height": 1050.46875
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 800,
+      "width": 232,
+      "height": 800
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1048,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "guest-1440-dark",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1440,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1440-dark",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1337.5,
+      "width": 1180,
+      "height": 1273.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1132,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1440-dark",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1146.875,
+      "width": 1180,
+      "height": 1083.28125
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1098.875,
+      "width": 1132,
+      "height": 1011.28125
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  },
+  {
+    "id": "guest-1440-light",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 66.390625,
+      "bottom": 986.734375,
+      "width": 1180,
+      "height": 920.34375
+    },
+    "firstContent": {
+      "top": 90.390625,
+      "bottom": 126.390625,
+      "width": 1132,
+      "height": 36
+    },
+    "sidebar": null,
+    "header": {
+      "top": 0,
+      "bottom": 66.390625,
+      "width": 1440,
+      "height": 66.390625
+    },
+    "scan": null,
+    "profile": null,
+    "search": null,
+    "firstMatch": null,
+    "menu": null
+  },
+  {
+    "id": "player-1440-light",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1337.5,
+      "width": 1180,
+      "height": 1273.90625
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 127.984375,
+      "width": 1132,
+      "height": 40.390625
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Home"
+  },
+  {
+    "id": "admin-1440-light",
+    "width": 1440,
+    "overflow": false,
+    "main": {
+      "top": 63.59375,
+      "bottom": 1146.875,
+      "width": 1180,
+      "height": 1083.28125
+    },
+    "firstContent": {
+      "top": 87.59375,
+      "bottom": 1098.875,
+      "width": 1132,
+      "height": 1011.28125
+    },
+    "sidebar": {
+      "top": 0,
+      "bottom": 900,
+      "width": 232,
+      "height": 900
+    },
+    "header": {
+      "top": 0,
+      "bottom": 63.59375,
+      "width": 1208,
+      "height": 63.59375
+    },
+    "scan": {
+      "top": 8.796875,
+      "bottom": 52.796875,
+      "width": 90.46875,
+      "height": 44
+    },
+    "profile": {
+      "top": 10.796875,
+      "bottom": 50.796875,
+      "width": 40,
+      "height": 40
+    },
+    "search": {
+      "top": 8,
+      "bottom": 53.59375,
+      "width": 300,
+      "height": 45.59375
+    },
+    "firstMatch": null,
+    "menu": null,
+    "current": "Admin"
+  }
+]

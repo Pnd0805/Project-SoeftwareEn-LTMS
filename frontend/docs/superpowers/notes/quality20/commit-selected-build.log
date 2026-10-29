@@ -1,0 +1,58 @@
+
+> my-app@0.0.0 build
+> tsc -b && vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 711 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                              1.38 kB │ gzip:   0.68 kB
+dist/assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2    7.42 kB
+dist/assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2      8.00 kB
+dist/assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2       15.08 kB
+dist/assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2      16.51 kB
+dist/assets/geist-latin-wght-normal-BgDaEnEv.woff2          29.40 kB
+dist/assets/TournamentPage-BkVGtZDW.css                      0.29 kB │ gzip:   0.19 kB
+dist/assets/search-inbox-workspace-_eIm1MMB.css              3.15 kB │ gzip:   0.88 kB
+dist/assets/index-DRvg0ktM.css                             111.00 kB │ gzip:  20.85 kB
+dist/assets/matchTime-CF3-pkla.js                            0.27 kB │ gzip:   0.21 kB
+dist/assets/routeIds-B2K9I-_D.js                             0.43 kB │ gzip:   0.30 kB
+dist/assets/Avatar-DDuxwRLO.js                               0.54 kB │ gzip:   0.39 kB
+dist/assets/EnterTournamentButton-C9YusNCu.js                1.12 kB │ gzip:   0.62 kB
+dist/assets/matchView-DuZeaa-o.js                            1.54 kB │ gzip:   0.71 kB
+dist/assets/career-BoNvXJnZ.js                               1.74 kB │ gzip:   0.76 kB
+dist/assets/chips-Co4gURDC.js                                1.98 kB │ gzip:   0.77 kB
+dist/assets/Scorebug-C8OAsCeN.js                             2.01 kB │ gzip:   0.81 kB
+dist/assets/useLiveEngagement-C92UmGsK.js                    2.56 kB │ gzip:   0.88 kB
+dist/assets/upload-Baad3AOp.js                               2.78 kB │ gzip:   1.17 kB
+dist/assets/teamBridge-xB8PdphT.js                           2.81 kB │ gzip:   1.15 kB
+dist/assets/useUser-Dbx29eAg.js                              3.41 kB │ gzip:   1.32 kB
+dist/assets/WatchPage-CHhXt7Je.js                            4.62 kB │ gzip:   1.57 kB
+dist/assets/tournament.schema-BRvJATpl.js                    4.83 kB │ gzip:   1.67 kB
+dist/assets/InboxPage-DbkZJPSX.js                            4.98 kB │ gzip:   1.89 kB
+dist/assets/MvpPage-JSMEL7k6.js                              5.18 kB │ gzip:   1.96 kB
+dist/assets/FixturePage-dp8O8vxC.js                          5.73 kB │ gzip:   2.31 kB
+dist/assets/SearchPage-SA4sTiOi.js                           6.12 kB │ gzip:   1.89 kB
+dist/assets/resultRules-CVFaaoS0.js                          7.38 kB │ gzip:   2.75 kB
+dist/assets/PlayerPage-BBAHva2m.js                           7.46 kB │ gzip:   2.09 kB
+dist/assets/ProfilePage-BQQDwFir.js                          7.47 kB │ gzip:   2.43 kB
+dist/assets/RegisterForm-TGB-OwZJ.js                         9.17 kB │ gzip:   3.55 kB
+dist/assets/MatchesPage-B1xYCEoR.js                         12.03 kB │ gzip:   3.79 kB
+dist/assets/TeamsPage-C22zgjAm.js                           12.28 kB │ gzip:   3.52 kB
+dist/assets/RequestPage-DBGMFAJA.js                         12.95 kB │ gzip:   3.99 kB
+dist/assets/AdminPage-gI8rXVCU.js                           37.99 kB │ gzip:   9.32 kB
+dist/assets/TeamPage-213bJUie.js                            42.16 kB │ gzip:  12.80 kB
+dist/assets/CheckinPage-B7fWcNPI.js                         44.55 kB │ gzip:  14.13 kB
+dist/assets/MatchPage-ClNzFuIv.js                           45.68 kB │ gzip:  12.79 kB
+dist/assets/TournamentPage-DCiawD2f.js                      81.49 kB │ gzip:  21.34 kB
+dist/assets/primitives-DU_R7dTG.js                          97.07 kB │ gzip:  33.65 kB
+dist/assets/esm-ni1Pr6Ff.js                                477.55 kB │ gzip: 125.22 kB
+dist/assets/index-DEhNGU3s.js                              507.85 kB │ gzip: 152.05 kB
+
+✓ built in 273ms
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

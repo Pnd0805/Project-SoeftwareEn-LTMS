@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-09",
+  "provenance": "Summary of observed tool results from this integration run",
+  "branch": "Final_Present",
+  "committed": false,
+  "pushed": false,
+  "refs": {
+    "HEAD": "8d990b1a2dee3e0c34d258e2ce4f5a822cf27a5c",
+    "origin/Final_Present": "8d990b1a2dee3e0c34d258e2ce4f5a822cf27a5c",
+    "origin/feat/1": "dd50305ca1dfce13c887c120b9abf03fa613aa44",
+    "origin/BE_KN": "000d9ec798b0774e304abee228ab1172ff1edb51"
+  },
+  "snapshotAudit": {
+    "backend": { "upstreamFiles": 491, "missing": [], "modified": ["backend/docker-compose.yml"] },
+    "database": { "upstreamFiles": 68, "missing": [], "modified": [] },
+    "presentationAssetsAndCSS": { "modified": ["frontend/src/styles/prototype.css"], "change": "Three additive checkbox/preference rules" }
+  },
+  "frontend": {
+    "command": "npm.cmd test -- --maxWorkers=4 --reporter=default --reporter=json",
+    "filesPassed": 150,
+    "testsPassed": 1097,
+    "testsFailed": 0,
+    "nativeTestExitCode": 0,
+    "unhandledErrors": 0,
+    "warnings": [],
+    "durationSeconds": 94.57,
+    "lintExitCode": 0,
+    "buildExitCode": 0
+  },
+  "backend": {
+    "unitTests": { "filesPassed": 170, "testsPassed": 3467, "todo": 4, "exitCode": 0 },
+    "integrationTests": { "filesPassed": 28, "testsPassed": 655, "testsSkipped": 1, "testsFailed": 0, "exitCode": 0 },
+    "testDatabase": "ltms_final_present_test",
+    "typecheckExitCode": 0,
+    "buildExitCode": 0
+  },
+  "development": {
+    "migrations": 52,
+    "roleAudit": { "C1": 0, "C2": 0, "C3": 0, "C4": 0, "C5": 0, "C6": 0, "C7": 0, "C8": 0 },
+    "restored": false,
+    "reseeded": false,
+    "frontend": "http://127.0.0.1:5173/",
+    "backend": "http://localhost:8000",
+    "useMock": false
+  },
+  "apiSmoke": {
+    "base": "http://127.0.0.1:5173/api/v1",
+    "checksPassed": 22,
+    "publicReads": ["/sport-types", "/faculties", "/tournaments", "/tournaments/11", "/tournaments/11/pickem-leaderboard?page=1&pageSize=20"],
+    "universityAdminReads": ["/me", "/me/notification-prefs", "/me/rewards", "/me/matches", "/admin/tournament-requests", "/admin/feedback/removed?page=1&pageSize=20", "/admin/user-reports?page=1&pageSize=20"],
+    "facultyAdminReads": ["/me", "/admin/feedback/removed?page=1&pageSize=20"],
+    "rootReads": ["/me", "/admin/oversight/stalled"],
+    "loginCount": 3,
+    "logoutCount": 3,
+    "readAndLoginStatus": 200,
+    "logoutStatus": 204
+  },
+  "browserVerification": { "performed": false, "reason": "Computer-use inventory returned no available browsers" },
+  "openAcceptance": ["Browser layouts and authenticated interactions", "Real camera QR scanning", "MinIO identity preview/expiry and fixture 9054", "FE-10 timing", "Real SMTP delivery", "Upstream email_verified login/protected-access enforcement"]
+}

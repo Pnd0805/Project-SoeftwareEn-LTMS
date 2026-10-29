@@ -1,0 +1,157 @@
+/**
+ * src/features/tournament/DashboardTab.tsx — owned by slice 3
+ *
+ * The tournament at a glance: how far it has got, what is on now, what is
+ * waiting on a decision, what comes next, and who leads the table — or, while
+ * an elimination bracket is still running, who is still in it.
+ *
+ * SDS FR-DL-01 (GET /tournaments/{id}/dashboard) — backend ยังไม่มี route นี้
+ * หน้านี้จึงสรุปจาก useTournamentMatches + useStandings ซึ่ง Schedule กับ
+ * Leaderboard อ่านอยู่แล้ว ไม่ได้ดึงข้อมูลชุดใหม่ (ดู dashboardView.ts)
+ */
+import { useNavigate } from 'react-router-dom'
+import { Banner, Empty, MatchStateBadge, Panel, TableWrap } from '../../components/kit/primitives'
+import { TeamLinkView } from '../../components/kit/chips'
+import { useStandings, useTournamentMatches } from '../../hooks/useMatch'
+import { toTeamView } from '../match/matchView'
+import { fmtDate } from '../../shared/rules'
+import {
+  STATE_ORDER, scoreOf, stateOf, summarizeMatches, topOfTable, type DashboardMatch,
+} from './dashboardView'
+
+function MatchList({ title, list, empty, showScore }: {
+  title: string
+  list: DashboardMatch[]
+  empty?: string
+  showScore?: boolean
+}) {
+  const navigate = useNavigate()
+  if (!list.length && !empty) return null
+  return (
+    <Panel quiet className="tour-match-list">
+      {/* จำนวนแมตช์อยู่ติดหัวข้อ — เดิมเลขลอยอยู่มุมขวาโดยไม่มีคำบอกว่าคืออะไร */}
+      <h2 className="journey-heading">{title} <span className="tag" aria-label={`${list.length} ${list.length === 1 ? 'match' : 'matches'}`}>· {list.length}</span></h2>
+      {list.length ? (
+        <div className="tour-match-list-body" role="region" aria-label={title} tabIndex={0}>
+          {list.map(m => (
+            /* ทีม · สกอร์ · ปุ่ม อยู่บรรทัดเดียวกัน เวลาเป็นบรรทัดรองใต้ทีม — เดิมเวลาอยู่บน สกอร์ลอยขวาสุด ทีมอยู่อีกบรรทัด */
+            <div className="tour-match-item" key={m.id}>
+              <div className="tour-match-teams">
+                <TeamLinkView team={toTeamView(m.teamA)} /><span className="sub">vs</span>
+                <TeamLinkView team={toTeamView(m.teamB)} />
+              </div>
+              <span className="sub tour-match-meta">{m.scheduledTime ? fmtDate(m.scheduledTime) : 'Time not set'} · {m.tag || m.stage}</span>
+              <span className="tour-match-state">{showScore ? <span className="num">{scoreOf(m)}</span> : <MatchStateBadge state={stateOf(m)} />}</span>
+              <button className="btn ghost tour-match-open" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button>
+            </div>
+          ))}
+        </div>
+      ) : <span className="sub">{empty}</span>}
+    </Panel>
+  )
+}
+
+export function DashboardTab({ tournamentId }: { tournamentId: number | string }) {
+  const navigate = useNavigate()
+  const matches = useTournamentMatches(tournamentId)
+  const standings = useStandings(tournamentId)
+
+  if (matches.isPending) return <Panel quiet><span className="sub">Loading the dashboard…</span></Panel>
+  if (matches.isError) {
+    return (
+      <Banner kind="crit">
+        <b>Couldn't load the dashboard.</b> {matches.error instanceof Error ? matches.error.message : ''}{' '}
+        <button className="btn ghost" type="button" onClick={() => void matches.refetch()}>Try again</button>
+      </Banner>
+    )
+  }
+
+  const s = summarizeMatches(matches.data?.items ?? [])
+  if (!s.total) {
+    return <Empty icon="clock" title="Nothing to summarise yet" sub="The dashboard fills in once the bracket is drawn." />
+  }
+
+  const pct = Math.round((s.finished / s.total) * 100)
+  const decisions = s.byState.disputed + s.byState.pending
+  const top = standings.data ? topOfTable(standings.data.rows, standings.data.format) : null
+
+  return (
+    <div className="tour-dashboard vstack">
+      <div className="statline">
+        <div><span className="tag">Matches</span><span className="v">{s.total}</span></div>
+        <div><span className="tag">Confirmed</span><span className="v">{s.finished}</span></div>
+        <div><span className="tag">On now</span><span className="v">{s.onNow.length}</span></div>
+        <div><span className="tag">Awaiting a decision</span><span className="v">{decisions}</span></div>
+      </div>
+
+      <div className="tour-dashboard-pair">
+      <Panel quiet>
+        <div className="spread">
+          <h2 className="journey-heading">Progress</h2>
+          <span className="sub">{s.finished} of {s.total} confirmed · {pct}%</span>
+        </div>
+        <div role="progressbar" aria-label="Matches confirmed" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
+          style={{ height: 8, background: 'var(--panel-3)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: 'var(--teal)' }} />
+        </div>
+        <span className="sub">{s.stage ? `Now playing: ${s.stage}` : 'Every match is confirmed.'}</span>
+      </Panel>
+
+      <Panel quiet>
+        <h2 className="journey-heading">Match status</h2>
+        <div className="hstack" style={{ flexWrap: 'wrap', gap: 12 }}>
+          {STATE_ORDER.filter(k => s.byState[k] > 0).map(k => (
+            <span className="hstack" style={{ gap: 6 }} key={k}>
+              <MatchStateBadge state={k} /><b className="num">{s.byState[k]}</b>
+            </span>
+          ))}
+        </div>
+      </Panel>
+
+      </div>
+      <div className="tour-dashboard-pair">
+      <MatchList title="On now" list={s.onNow} />
+      <MatchList title="Awaiting a decision" list={s.attention} />
+      <MatchList title="Up next" list={s.upNext} empty="No fixtures left to play." />
+      <MatchList title="Latest results" list={s.latest} empty="No confirmed results yet." showScore />
+      {/* Top of the table อยู่กริดเดียวกับรายการแมตช์ — ทุกกล่องกว้างครึ่งเดียวเท่ากัน ไม่มีกล่องรายการไหน
+          ถูกยืดเต็มแถวจนเนื้อหากองชิดซ้าย (แผน UI 28 ต.ค.) · ถ้าจำนวนกล่องเป็นคี่ ตารางนี้ (ท้ายสุดเสมอ) จะยืดเต็มแถวแทน */}
+      <Panel quiet className="tour-top-table">
+        <div className="spread">
+          <h2 className="journey-heading"> {top?.kind === 'still-in' ? `Still in the running · ${top.teams.length}` : 'Top of the table'}
+          </h2>
+          <button className="btn ghost" type="button" onClick={() => navigate(`/t/${tournamentId}/leaderboard`)}>
+            Full leaderboard
+          </button>
+        </div>
+        {standings.isPending ? <span className="sub">Loading the table…</span>
+          : standings.isError ? <span className="sub">The table isn't available right now.</span>
+            : top?.kind === 'still-in' ? (
+              <>
+                <span className="sub">
+                  These squads currently share the leading position in the published standings.
+                </span>
+                <div className="hstack" style={{ flexWrap: 'wrap', gap: 10 }}>
+                  {top.teams.map(r => <TeamLinkView key={r.team.id} team={r.team} />)}
+                </div>
+              </>
+            ) : top?.rows.length ? (
+              <TableWrap label="Top of the table">
+                <table>
+                  <tbody>
+                    {top.rows.map(r => (
+                      <tr key={r.team.id}>
+                        <td className="num">{r.rank}</td>
+                        <td><TeamLinkView team={r.team} /></td>
+                        <td className="sub">{r.outLabel || (standings.data?.format === 'round_robin' ? `${r.won} won · ${r.points} pts` : `${r.won} won`)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableWrap>
+            ) : <span className="sub">Positions appear once a result is confirmed.</span>}
+      </Panel>
+      </div>
+    </div>
+  )
+}

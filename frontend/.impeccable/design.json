@@ -1,0 +1,975 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T03:34:31.213950+00:00",
+  "title": "LTMS Minimal Street",
+  "extensions": {
+    "colorMeta": {
+      "void": {
+        "role": "neutral",
+        "displayName": "Void",
+        "tonalRamp": [
+          "oklch(15.000% 0.02025 293.545)",
+          "oklch(26.429% 0.02025 293.545)",
+          "oklch(37.857% 0.02025 293.545)",
+          "oklch(49.286% 0.02025 293.545)",
+          "oklch(60.714% 0.02025 293.545)",
+          "oklch(72.143% 0.02025 293.545)",
+          "oklch(83.571% 0.02025 293.545)",
+          "oklch(95.000% 0.02025 293.545)"
+        ]
+      },
+      "void-2": {
+        "role": "neutral",
+        "displayName": "Void 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.02934 292.949)",
+          "oklch(26.429% 0.02934 292.949)",
+          "oklch(37.857% 0.02934 292.949)",
+          "oklch(49.286% 0.02934 292.949)",
+          "oklch(60.714% 0.02934 292.949)",
+          "oklch(72.143% 0.02934 292.949)",
+          "oklch(83.571% 0.02934 292.949)",
+          "oklch(95.000% 0.02934 292.949)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "tonalRamp": [
+          "oklch(15.000% 0.02882 293.202)",
+          "oklch(26.429% 0.02882 293.202)",
+          "oklch(37.857% 0.02882 293.202)",
+          "oklch(49.286% 0.02882 293.202)",
+          "oklch(60.714% 0.02882 293.202)",
+          "oklch(72.143% 0.02882 293.202)",
+          "oklch(83.571% 0.02882 293.202)",
+          "oklch(95.000% 0.02882 293.202)"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Panel 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.03353 294.189)",
+          "oklch(26.429% 0.03353 294.189)",
+          "oklch(37.857% 0.03353 294.189)",
+          "oklch(49.286% 0.03353 294.189)",
+          "oklch(60.714% 0.03353 294.189)",
+          "oklch(72.143% 0.03353 294.189)",
+          "oklch(83.571% 0.03353 294.189)",
+          "oklch(95.000% 0.03353 294.189)"
+        ]
+      },
+      "panel-3": {
+        "role": "neutral",
+        "displayName": "Panel 3",
+        "tonalRamp": [
+          "oklch(15.000% 0.03958 294.359)",
+          "oklch(26.429% 0.03958 294.359)",
+          "oklch(37.857% 0.03958 294.359)",
+          "oklch(49.286% 0.03958 294.359)",
+          "oklch(60.714% 0.03958 294.359)",
+          "oklch(72.143% 0.03958 294.359)",
+          "oklch(83.571% 0.03958 294.359)",
+          "oklch(95.000% 0.03958 294.359)"
+        ]
+      },
+      "panel-4": {
+        "role": "neutral",
+        "displayName": "Panel 4",
+        "tonalRamp": [
+          "oklch(15.000% 0.05026 294.776)",
+          "oklch(26.429% 0.05026 294.776)",
+          "oklch(37.857% 0.05026 294.776)",
+          "oklch(49.286% 0.05026 294.776)",
+          "oklch(60.714% 0.05026 294.776)",
+          "oklch(72.143% 0.05026 294.776)",
+          "oklch(83.571% 0.05026 294.776)",
+          "oklch(95.000% 0.05026 294.776)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "tonalRamp": [
+          "oklch(15.000% 0.04615 296.098)",
+          "oklch(26.429% 0.04615 296.098)",
+          "oklch(37.857% 0.04615 296.098)",
+          "oklch(49.286% 0.04615 296.098)",
+          "oklch(60.714% 0.04615 296.098)",
+          "oklch(72.143% 0.04615 296.098)",
+          "oklch(83.571% 0.04615 296.098)",
+          "oklch(95.000% 0.04615 296.098)"
+        ]
+      },
+      "line-hot": {
+        "role": "neutral",
+        "displayName": "Line Hot",
+        "tonalRamp": [
+          "oklch(15.000% 0.05805 300.649)",
+          "oklch(26.429% 0.05805 300.649)",
+          "oklch(37.857% 0.05805 300.649)",
+          "oklch(49.286% 0.05805 300.649)",
+          "oklch(60.714% 0.05805 300.649)",
+          "oklch(72.143% 0.05805 300.649)",
+          "oklch(83.571% 0.05805 300.649)",
+          "oklch(95.000% 0.05805 300.649)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "oklch(15.000% 0.03228 317.203)",
+          "oklch(26.429% 0.03228 317.203)",
+          "oklch(37.857% 0.03228 317.203)",
+          "oklch(49.286% 0.03228 317.203)",
+          "oklch(60.714% 0.03228 317.203)",
+          "oklch(72.143% 0.03228 317.203)",
+          "oklch(83.571% 0.03228 317.203)",
+          "oklch(95.000% 0.03228 317.203)"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone",
+        "tonalRamp": [
+          "oklch(15.000% 0.02852 86.649)",
+          "oklch(26.429% 0.02852 86.649)",
+          "oklch(37.857% 0.02852 86.649)",
+          "oklch(49.286% 0.02852 86.649)",
+          "oklch(60.714% 0.02852 86.649)",
+          "oklch(72.143% 0.02852 86.649)",
+          "oklch(83.571% 0.02852 86.649)",
+          "oklch(95.000% 0.02852 86.649)"
+        ]
+      },
+      "bone-dim": {
+        "role": "neutral",
+        "displayName": "Bone Dim",
+        "tonalRamp": [
+          "oklch(15.000% 0.03927 86.892)",
+          "oklch(26.429% 0.03927 86.892)",
+          "oklch(37.857% 0.03927 86.892)",
+          "oklch(49.286% 0.03927 86.892)",
+          "oklch(60.714% 0.03927 86.892)",
+          "oklch(72.143% 0.03927 86.892)",
+          "oklch(83.571% 0.03927 86.892)",
+          "oklch(95.000% 0.03927 86.892)"
+        ]
+      },
+      "bone-faint": {
+        "role": "neutral",
+        "displayName": "Bone Faint",
+        "tonalRamp": [
+          "oklch(15.000% 0.03878 82.098)",
+          "oklch(26.429% 0.03878 82.098)",
+          "oklch(37.857% 0.03878 82.098)",
+          "oklch(49.286% 0.03878 82.098)",
+          "oklch(60.714% 0.03878 82.098)",
+          "oklch(72.143% 0.03878 82.098)",
+          "oklch(83.571% 0.03878 82.098)",
+          "oklch(95.000% 0.03878 82.098)"
+        ]
+      },
+      "accent-ink": {
+        "role": "neutral",
+        "displayName": "Accent Ink",
+        "tonalRamp": [
+          "oklch(15.000% 0.01778 296.098)",
+          "oklch(26.429% 0.01778 296.098)",
+          "oklch(37.857% 0.01778 296.098)",
+          "oklch(49.286% 0.01778 296.098)",
+          "oklch(60.714% 0.01778 296.098)",
+          "oklch(72.143% 0.01778 296.098)",
+          "oklch(83.571% 0.01778 296.098)",
+          "oklch(95.000% 0.01778 296.098)"
+        ]
+      },
+      "red": {
+        "role": "secondary",
+        "displayName": "Red",
+        "tonalRamp": [
+          "oklch(15.000% 0.19952 18.980)",
+          "oklch(26.429% 0.19952 18.980)",
+          "oklch(37.857% 0.19952 18.980)",
+          "oklch(49.286% 0.19952 18.980)",
+          "oklch(60.714% 0.19952 18.980)",
+          "oklch(72.143% 0.19952 18.980)",
+          "oklch(83.571% 0.19952 18.980)",
+          "oklch(95.000% 0.19952 18.980)"
+        ]
+      },
+      "red-text": {
+        "role": "secondary",
+        "displayName": "Red Text",
+        "tonalRamp": [
+          "oklch(15.000% 0.17682 15.123)",
+          "oklch(26.429% 0.17682 15.123)",
+          "oklch(37.857% 0.17682 15.123)",
+          "oklch(49.286% 0.17682 15.123)",
+          "oklch(60.714% 0.17682 15.123)",
+          "oklch(72.143% 0.17682 15.123)",
+          "oklch(83.571% 0.17682 15.123)",
+          "oklch(95.000% 0.17682 15.123)"
+        ]
+      },
+      "red-ghost": {
+        "role": "secondary",
+        "displayName": "Red Ghost",
+        "tonalRamp": [
+          "oklch(15.000% 0.04571 5.370)",
+          "oklch(26.429% 0.04571 5.370)",
+          "oklch(37.857% 0.04571 5.370)",
+          "oklch(49.286% 0.04571 5.370)",
+          "oklch(60.714% 0.04571 5.370)",
+          "oklch(72.143% 0.04571 5.370)",
+          "oklch(83.571% 0.04571 5.370)",
+          "oklch(95.000% 0.04571 5.370)"
+        ]
+      },
+      "red-lift": {
+        "role": "secondary",
+        "displayName": "Red Lift",
+        "tonalRamp": [
+          "oklch(15.000% 0.19965 16.293)",
+          "oklch(26.429% 0.19965 16.293)",
+          "oklch(37.857% 0.19965 16.293)",
+          "oklch(49.286% 0.19965 16.293)",
+          "oklch(60.714% 0.19965 16.293)",
+          "oklch(72.143% 0.19965 16.293)",
+          "oklch(83.571% 0.19965 16.293)",
+          "oklch(95.000% 0.19965 16.293)"
+        ]
+      },
+      "red-lift-2": {
+        "role": "secondary",
+        "displayName": "Red Lift 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.16223 13.503)",
+          "oklch(26.429% 0.16223 13.503)",
+          "oklch(37.857% 0.16223 13.503)",
+          "oklch(49.286% 0.16223 13.503)",
+          "oklch(60.714% 0.16223 13.503)",
+          "oklch(72.143% 0.16223 13.503)",
+          "oklch(83.571% 0.16223 13.503)",
+          "oklch(95.000% 0.16223 13.503)"
+        ]
+      },
+      "red-press": {
+        "role": "secondary",
+        "displayName": "Red Press",
+        "tonalRamp": [
+          "oklch(15.000% 0.18319 18.924)",
+          "oklch(26.429% 0.18319 18.924)",
+          "oklch(37.857% 0.18319 18.924)",
+          "oklch(49.286% 0.18319 18.924)",
+          "oklch(60.714% 0.18319 18.924)",
+          "oklch(72.143% 0.18319 18.924)",
+          "oklch(83.571% 0.18319 18.924)",
+          "oklch(95.000% 0.18319 18.924)"
+        ]
+      },
+      "red-ghost-2": {
+        "role": "secondary",
+        "displayName": "Red Ghost 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.05816 4.545)",
+          "oklch(26.429% 0.05816 4.545)",
+          "oklch(37.857% 0.05816 4.545)",
+          "oklch(49.286% 0.05816 4.545)",
+          "oklch(60.714% 0.05816 4.545)",
+          "oklch(72.143% 0.05816 4.545)",
+          "oklch(83.571% 0.05816 4.545)",
+          "oklch(95.000% 0.05816 4.545)"
+        ]
+      },
+      "teal": {
+        "role": "primary",
+        "displayName": "Teal",
+        "tonalRamp": [
+          "oklch(15.000% 0.12806 160.987)",
+          "oklch(26.429% 0.12806 160.987)",
+          "oklch(37.857% 0.12806 160.987)",
+          "oklch(49.286% 0.12806 160.987)",
+          "oklch(60.714% 0.12806 160.987)",
+          "oklch(72.143% 0.12806 160.987)",
+          "oklch(83.571% 0.12806 160.987)",
+          "oklch(95.000% 0.12806 160.987)"
+        ]
+      },
+      "teal-ghost": {
+        "role": "primary",
+        "displayName": "Teal Ghost",
+        "tonalRamp": [
+          "oklch(15.000% 0.04047 162.470)",
+          "oklch(26.429% 0.04047 162.470)",
+          "oklch(37.857% 0.04047 162.470)",
+          "oklch(49.286% 0.04047 162.470)",
+          "oklch(60.714% 0.04047 162.470)",
+          "oklch(72.143% 0.04047 162.470)",
+          "oklch(83.571% 0.04047 162.470)",
+          "oklch(95.000% 0.04047 162.470)"
+        ]
+      },
+      "amber": {
+        "role": "tertiary",
+        "displayName": "Amber",
+        "tonalRamp": [
+          "oklch(15.000% 0.13942 82.324)",
+          "oklch(26.429% 0.13942 82.324)",
+          "oklch(37.857% 0.13942 82.324)",
+          "oklch(49.286% 0.13942 82.324)",
+          "oklch(60.714% 0.13942 82.324)",
+          "oklch(72.143% 0.13942 82.324)",
+          "oklch(83.571% 0.13942 82.324)",
+          "oklch(95.000% 0.13942 82.324)"
+        ]
+      },
+      "amber-ghost": {
+        "role": "tertiary",
+        "displayName": "Amber Ghost",
+        "tonalRamp": [
+          "oklch(15.000% 0.03597 83.395)",
+          "oklch(26.429% 0.03597 83.395)",
+          "oklch(37.857% 0.03597 83.395)",
+          "oklch(49.286% 0.03597 83.395)",
+          "oklch(60.714% 0.03597 83.395)",
+          "oklch(72.143% 0.03597 83.395)",
+          "oklch(83.571% 0.03597 83.395)",
+          "oklch(95.000% 0.03597 83.395)"
+        ]
+      },
+      "azurite": {
+        "role": "neutral",
+        "displayName": "Azurite",
+        "tonalRamp": [
+          "oklch(15.000% 0.06336 161.036)",
+          "oklch(26.429% 0.06336 161.036)",
+          "oklch(37.857% 0.06336 161.036)",
+          "oklch(49.286% 0.06336 161.036)",
+          "oklch(60.714% 0.06336 161.036)",
+          "oklch(72.143% 0.06336 161.036)",
+          "oklch(83.571% 0.06336 161.036)",
+          "oklch(95.000% 0.06336 161.036)"
+        ]
+      },
+      "crystal": {
+        "role": "neutral",
+        "displayName": "Crystal",
+        "tonalRamp": [
+          "oklch(15.000% 0.04256 165.058)",
+          "oklch(26.429% 0.04256 165.058)",
+          "oklch(37.857% 0.04256 165.058)",
+          "oklch(49.286% 0.04256 165.058)",
+          "oklch(60.714% 0.04256 165.058)",
+          "oklch(72.143% 0.04256 165.058)",
+          "oklch(83.571% 0.04256 165.058)",
+          "oklch(95.000% 0.04256 165.058)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15.000% 0.01778 296.098)",
+          "oklch(26.429% 0.01778 296.098)",
+          "oklch(37.857% 0.01778 296.098)",
+          "oklch(49.286% 0.01778 296.098)",
+          "oklch(60.714% 0.01778 296.098)",
+          "oklch(72.143% 0.01778 296.098)",
+          "oklch(83.571% 0.01778 296.098)",
+          "oklch(95.000% 0.01778 296.098)"
+        ]
+      },
+      "qr-bg": {
+        "role": "neutral",
+        "displayName": "Qr Bg",
+        "tonalRamp": [
+          "oklch(15.000% 0.02852 86.649)",
+          "oklch(26.429% 0.02852 86.649)",
+          "oklch(37.857% 0.02852 86.649)",
+          "oklch(49.286% 0.02852 86.649)",
+          "oklch(60.714% 0.02852 86.649)",
+          "oklch(72.143% 0.02852 86.649)",
+          "oklch(83.571% 0.02852 86.649)",
+          "oklch(95.000% 0.02852 86.649)"
+        ]
+      },
+      "qr-ink": {
+        "role": "neutral",
+        "displayName": "Qr Ink",
+        "tonalRamp": [
+          "oklch(15.000% 0.01778 296.098)",
+          "oklch(26.429% 0.01778 296.098)",
+          "oklch(37.857% 0.01778 296.098)",
+          "oklch(49.286% 0.01778 296.098)",
+          "oklch(60.714% 0.01778 296.098)",
+          "oklch(72.143% 0.01778 296.098)",
+          "oklch(83.571% 0.01778 296.098)",
+          "oklch(95.000% 0.01778 296.098)"
+        ]
+      },
+      "light-void": {
+        "role": "neutral",
+        "displayName": "Light Void",
+        "tonalRamp": [
+          "oklch(15.000% 0.01144 84.578)",
+          "oklch(26.429% 0.01144 84.578)",
+          "oklch(37.857% 0.01144 84.578)",
+          "oklch(49.286% 0.01144 84.578)",
+          "oklch(60.714% 0.01144 84.578)",
+          "oklch(72.143% 0.01144 84.578)",
+          "oklch(83.571% 0.01144 84.578)",
+          "oklch(95.000% 0.01144 84.578)"
+        ]
+      },
+      "light-void-2": {
+        "role": "neutral",
+        "displayName": "Light Void 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.02418 85.789)",
+          "oklch(26.429% 0.02418 85.789)",
+          "oklch(37.857% 0.02418 85.789)",
+          "oklch(49.286% 0.02418 85.789)",
+          "oklch(60.714% 0.02418 85.789)",
+          "oklch(72.143% 0.02418 85.789)",
+          "oklch(83.571% 0.02418 85.789)",
+          "oklch(95.000% 0.02418 85.789)"
+        ]
+      },
+      "light-panel": {
+        "role": "neutral",
+        "displayName": "Light Panel",
+        "tonalRamp": [
+          "oklch(15.000% 0.00000 89.876)",
+          "oklch(26.429% 0.00000 89.876)",
+          "oklch(37.857% 0.00000 89.876)",
+          "oklch(49.286% 0.00000 89.876)",
+          "oklch(60.714% 0.00000 89.876)",
+          "oklch(72.143% 0.00000 89.876)",
+          "oklch(83.571% 0.00000 89.876)",
+          "oklch(95.000% 0.00000 89.876)"
+        ]
+      },
+      "light-panel-2": {
+        "role": "neutral",
+        "displayName": "Light Panel 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.01144 84.578)",
+          "oklch(26.429% 0.01144 84.578)",
+          "oklch(37.857% 0.01144 84.578)",
+          "oklch(49.286% 0.01144 84.578)",
+          "oklch(60.714% 0.01144 84.578)",
+          "oklch(72.143% 0.01144 84.578)",
+          "oklch(83.571% 0.01144 84.578)",
+          "oklch(95.000% 0.01144 84.578)"
+        ]
+      },
+      "light-panel-3": {
+        "role": "neutral",
+        "displayName": "Light Panel 3",
+        "tonalRamp": [
+          "oklch(15.000% 0.03112 86.462)",
+          "oklch(26.429% 0.03112 86.462)",
+          "oklch(37.857% 0.03112 86.462)",
+          "oklch(49.286% 0.03112 86.462)",
+          "oklch(60.714% 0.03112 86.462)",
+          "oklch(72.143% 0.03112 86.462)",
+          "oklch(83.571% 0.03112 86.462)",
+          "oklch(95.000% 0.03112 86.462)"
+        ]
+      },
+      "light-panel-4": {
+        "role": "neutral",
+        "displayName": "Light Panel 4",
+        "tonalRamp": [
+          "oklch(15.000% 0.05087 86.881)",
+          "oklch(26.429% 0.05087 86.881)",
+          "oklch(37.857% 0.05087 86.881)",
+          "oklch(49.286% 0.05087 86.881)",
+          "oklch(60.714% 0.05087 86.881)",
+          "oklch(72.143% 0.05087 86.881)",
+          "oklch(83.571% 0.05087 86.881)",
+          "oklch(95.000% 0.05087 86.881)"
+        ]
+      },
+      "light-line": {
+        "role": "neutral",
+        "displayName": "Light Line",
+        "tonalRamp": [
+          "oklch(15.000% 0.03871 85.342)",
+          "oklch(26.429% 0.03871 85.342)",
+          "oklch(37.857% 0.03871 85.342)",
+          "oklch(49.286% 0.03871 85.342)",
+          "oklch(60.714% 0.03871 85.342)",
+          "oklch(72.143% 0.03871 85.342)",
+          "oklch(83.571% 0.03871 85.342)",
+          "oklch(95.000% 0.03871 85.342)"
+        ]
+      },
+      "light-line-hot": {
+        "role": "neutral",
+        "displayName": "Light Line Hot",
+        "tonalRamp": [
+          "oklch(15.000% 0.06851 85.829)",
+          "oklch(26.429% 0.06851 85.829)",
+          "oklch(37.857% 0.06851 85.829)",
+          "oklch(49.286% 0.06851 85.829)",
+          "oklch(60.714% 0.06851 85.829)",
+          "oklch(72.143% 0.06851 85.829)",
+          "oklch(83.571% 0.06851 85.829)",
+          "oklch(95.000% 0.06851 85.829)"
+        ]
+      },
+      "light-hairline": {
+        "role": "neutral",
+        "displayName": "Light Hairline",
+        "tonalRamp": [
+          "oklch(15.000% 0.05063 82.021)",
+          "oklch(26.429% 0.05063 82.021)",
+          "oklch(37.857% 0.05063 82.021)",
+          "oklch(49.286% 0.05063 82.021)",
+          "oklch(60.714% 0.05063 82.021)",
+          "oklch(72.143% 0.05063 82.021)",
+          "oklch(83.571% 0.05063 82.021)",
+          "oklch(95.000% 0.05063 82.021)"
+        ]
+      },
+      "light-bone": {
+        "role": "neutral",
+        "displayName": "Light Bone",
+        "tonalRamp": [
+          "oklch(15.000% 0.02248 69.503)",
+          "oklch(26.429% 0.02248 69.503)",
+          "oklch(37.857% 0.02248 69.503)",
+          "oklch(49.286% 0.02248 69.503)",
+          "oklch(60.714% 0.02248 69.503)",
+          "oklch(72.143% 0.02248 69.503)",
+          "oklch(83.571% 0.02248 69.503)",
+          "oklch(95.000% 0.02248 69.503)"
+        ]
+      },
+      "light-bone-dim": {
+        "role": "neutral",
+        "displayName": "Light Bone Dim",
+        "tonalRamp": [
+          "oklch(15.000% 0.04015 84.247)",
+          "oklch(26.429% 0.04015 84.247)",
+          "oklch(37.857% 0.04015 84.247)",
+          "oklch(49.286% 0.04015 84.247)",
+          "oklch(60.714% 0.04015 84.247)",
+          "oklch(72.143% 0.04015 84.247)",
+          "oklch(83.571% 0.04015 84.247)",
+          "oklch(95.000% 0.04015 84.247)"
+        ]
+      },
+      "light-bone-faint": {
+        "role": "neutral",
+        "displayName": "Light Bone Faint",
+        "tonalRamp": [
+          "oklch(15.000% 0.04707 83.479)",
+          "oklch(26.429% 0.04707 83.479)",
+          "oklch(37.857% 0.04707 83.479)",
+          "oklch(49.286% 0.04707 83.479)",
+          "oklch(60.714% 0.04707 83.479)",
+          "oklch(72.143% 0.04707 83.479)",
+          "oklch(83.571% 0.04707 83.479)",
+          "oklch(95.000% 0.04707 83.479)"
+        ]
+      },
+      "light-accent-ink": {
+        "role": "neutral",
+        "displayName": "Light Accent Ink",
+        "tonalRamp": [
+          "oklch(15.000% 0.00000 89.876)",
+          "oklch(26.429% 0.00000 89.876)",
+          "oklch(37.857% 0.00000 89.876)",
+          "oklch(49.286% 0.00000 89.876)",
+          "oklch(60.714% 0.00000 89.876)",
+          "oklch(72.143% 0.00000 89.876)",
+          "oklch(83.571% 0.00000 89.876)",
+          "oklch(95.000% 0.00000 89.876)"
+        ]
+      },
+      "light-red": {
+        "role": "secondary",
+        "displayName": "Light Red",
+        "tonalRamp": [
+          "oklch(15.000% 0.17101 12.609)",
+          "oklch(26.429% 0.17101 12.609)",
+          "oklch(37.857% 0.17101 12.609)",
+          "oklch(49.286% 0.17101 12.609)",
+          "oklch(60.714% 0.17101 12.609)",
+          "oklch(72.143% 0.17101 12.609)",
+          "oklch(83.571% 0.17101 12.609)",
+          "oklch(95.000% 0.17101 12.609)"
+        ]
+      },
+      "light-red-text": {
+        "role": "secondary",
+        "displayName": "Light Red Text",
+        "tonalRamp": [
+          "oklch(15.000% 0.14465 11.854)",
+          "oklch(26.429% 0.14465 11.854)",
+          "oklch(37.857% 0.14465 11.854)",
+          "oklch(49.286% 0.14465 11.854)",
+          "oklch(60.714% 0.14465 11.854)",
+          "oklch(72.143% 0.14465 11.854)",
+          "oklch(83.571% 0.14465 11.854)",
+          "oklch(95.000% 0.14465 11.854)"
+        ]
+      },
+      "light-red-ghost": {
+        "role": "secondary",
+        "displayName": "Light Red Ghost",
+        "tonalRamp": [
+          "oklch(15.000% 0.02170 359.660)",
+          "oklch(26.429% 0.02170 359.660)",
+          "oklch(37.857% 0.02170 359.660)",
+          "oklch(49.286% 0.02170 359.660)",
+          "oklch(60.714% 0.02170 359.660)",
+          "oklch(72.143% 0.02170 359.660)",
+          "oklch(83.571% 0.02170 359.660)",
+          "oklch(95.000% 0.02170 359.660)"
+        ]
+      },
+      "light-red-lift": {
+        "role": "secondary",
+        "displayName": "Light Red Lift",
+        "tonalRamp": [
+          "oklch(15.000% 0.16115 9.536)",
+          "oklch(26.429% 0.16115 9.536)",
+          "oklch(37.857% 0.16115 9.536)",
+          "oklch(49.286% 0.16115 9.536)",
+          "oklch(60.714% 0.16115 9.536)",
+          "oklch(72.143% 0.16115 9.536)",
+          "oklch(83.571% 0.16115 9.536)",
+          "oklch(95.000% 0.16115 9.536)"
+        ]
+      },
+      "light-red-lift-2": {
+        "role": "secondary",
+        "displayName": "Light Red Lift 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.14525 7.584)",
+          "oklch(26.429% 0.14525 7.584)",
+          "oklch(37.857% 0.14525 7.584)",
+          "oklch(49.286% 0.14525 7.584)",
+          "oklch(60.714% 0.14525 7.584)",
+          "oklch(72.143% 0.14525 7.584)",
+          "oklch(83.571% 0.14525 7.584)",
+          "oklch(95.000% 0.14525 7.584)"
+        ]
+      },
+      "light-red-press": {
+        "role": "secondary",
+        "displayName": "Light Red Press",
+        "tonalRamp": [
+          "oklch(15.000% 0.15258 12.551)",
+          "oklch(26.429% 0.15258 12.551)",
+          "oklch(37.857% 0.15258 12.551)",
+          "oklch(49.286% 0.15258 12.551)",
+          "oklch(60.714% 0.15258 12.551)",
+          "oklch(72.143% 0.15258 12.551)",
+          "oklch(83.571% 0.15258 12.551)",
+          "oklch(95.000% 0.15258 12.551)"
+        ]
+      },
+      "light-red-ghost-2": {
+        "role": "secondary",
+        "displayName": "Light Red Ghost 2",
+        "tonalRamp": [
+          "oklch(15.000% 0.03717 1.015)",
+          "oklch(26.429% 0.03717 1.015)",
+          "oklch(37.857% 0.03717 1.015)",
+          "oklch(49.286% 0.03717 1.015)",
+          "oklch(60.714% 0.03717 1.015)",
+          "oklch(72.143% 0.03717 1.015)",
+          "oklch(83.571% 0.03717 1.015)",
+          "oklch(95.000% 0.03717 1.015)"
+        ]
+      },
+      "light-teal": {
+        "role": "primary",
+        "displayName": "Light Teal",
+        "tonalRamp": [
+          "oklch(15.000% 0.10767 160.071)",
+          "oklch(26.429% 0.10767 160.071)",
+          "oklch(37.857% 0.10767 160.071)",
+          "oklch(49.286% 0.10767 160.071)",
+          "oklch(60.714% 0.10767 160.071)",
+          "oklch(72.143% 0.10767 160.071)",
+          "oklch(83.571% 0.10767 160.071)",
+          "oklch(95.000% 0.10767 160.071)"
+        ]
+      },
+      "light-teal-ghost": {
+        "role": "primary",
+        "displayName": "Light Teal Ghost",
+        "tonalRamp": [
+          "oklch(15.000% 0.01906 157.860)",
+          "oklch(26.429% 0.01906 157.860)",
+          "oklch(37.857% 0.01906 157.860)",
+          "oklch(49.286% 0.01906 157.860)",
+          "oklch(60.714% 0.01906 157.860)",
+          "oklch(72.143% 0.01906 157.860)",
+          "oklch(83.571% 0.01906 157.860)",
+          "oklch(95.000% 0.01906 157.860)"
+        ]
+      },
+      "light-amber": {
+        "role": "tertiary",
+        "displayName": "Light Amber",
+        "tonalRamp": [
+          "oklch(15.000% 0.08719 81.293)",
+          "oklch(26.429% 0.08719 81.293)",
+          "oklch(37.857% 0.08719 81.293)",
+          "oklch(49.286% 0.08719 81.293)",
+          "oklch(60.714% 0.08719 81.293)",
+          "oklch(72.143% 0.08719 81.293)",
+          "oklch(83.571% 0.08719 81.293)",
+          "oklch(95.000% 0.08719 81.293)"
+        ]
+      },
+      "light-amber-ghost": {
+        "role": "tertiary",
+        "displayName": "Light Amber Ghost",
+        "tonalRamp": [
+          "oklch(15.000% 0.02928 87.544)",
+          "oklch(26.429% 0.02928 87.544)",
+          "oklch(37.857% 0.02928 87.544)",
+          "oklch(49.286% 0.02928 87.544)",
+          "oklch(60.714% 0.02928 87.544)",
+          "oklch(72.143% 0.02928 87.544)",
+          "oklch(83.571% 0.02928 87.544)",
+          "oklch(95.000% 0.02928 87.544)"
+        ]
+      },
+      "light-azurite": {
+        "role": "neutral",
+        "displayName": "Light Azurite",
+        "tonalRamp": [
+          "oklch(15.000% 0.05820 151.201)",
+          "oklch(26.429% 0.05820 151.201)",
+          "oklch(37.857% 0.05820 151.201)",
+          "oklch(49.286% 0.05820 151.201)",
+          "oklch(60.714% 0.05820 151.201)",
+          "oklch(72.143% 0.05820 151.201)",
+          "oklch(83.571% 0.05820 151.201)",
+          "oklch(95.000% 0.05820 151.201)"
+        ]
+      },
+      "light-crystal": {
+        "role": "neutral",
+        "displayName": "Light Crystal",
+        "tonalRamp": [
+          "oklch(15.000% 0.05927 89.642)",
+          "oklch(26.429% 0.05927 89.642)",
+          "oklch(37.857% 0.05927 89.642)",
+          "oklch(49.286% 0.05927 89.642)",
+          "oklch(60.714% 0.05927 89.642)",
+          "oklch(72.143% 0.05927 89.642)",
+          "oklch(83.571% 0.05927 89.642)",
+          "oklch(95.000% 0.05927 89.642)"
+        ]
+      },
+      "light-ink": {
+        "role": "neutral",
+        "displayName": "Light Ink",
+        "tonalRamp": [
+          "oklch(15.000% 0.01866 70.279)",
+          "oklch(26.429% 0.01866 70.279)",
+          "oklch(37.857% 0.01866 70.279)",
+          "oklch(49.286% 0.01866 70.279)",
+          "oklch(60.714% 0.01866 70.279)",
+          "oklch(72.143% 0.01866 70.279)",
+          "oklch(83.571% 0.01866 70.279)",
+          "oklch(95.000% 0.01866 70.279)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Existing display role"
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Existing title role"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Existing body role"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Existing label role"
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Existing button role"
+      },
+      "preview": {
+        "displayName": "Preview",
+        "purpose": "Tournament preview only"
+      }
+    },
+    "shadows": [
+      {
+        "name": "lift",
+        "value": "0 14px 30px -16px rgba(0,0,0,.9)",
+        "purpose": "Existing dialog lift"
+      },
+      {
+        "name": "hard",
+        "value": "4px 4px 0 var(--ink)",
+        "purpose": "Existing identity/sticker accent"
+      },
+      {
+        "name": "hard-sm",
+        "value": "2px 2px 0 var(--ink)",
+        "purpose": "Existing identity/sticker accent"
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-feedback",
+        "value": "150ms ease",
+        "purpose": "Background/color on existing controls"
+      },
+      {
+        "name": "champion-stamp",
+        "value": "400ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "Existing decorative champion moment"
+      },
+      {
+        "name": "reduced-motion",
+        "value": "none",
+        "purpose": "Immediate animation/transition suppression"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "shell-stack",
+        "value": "820px"
+      },
+      {
+        "name": "journey-stack",
+        "value": "900px"
+      },
+      {
+        "name": "compact-dialogs",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Supported primary action",
+      "html": "<button class=\"ds-button\" type=\"button\">Open match</button>",
+      "css": ".ds-button{font:600 14px var(--f-ui,Arial,sans-serif);padding:8px 16px;min-height:40px;color:var(--accent-ink,#0A0810);background:var(--teal,#3AAE7C);border:1px solid var(--teal,#3AAE7C);border-radius:var(--r,2px);box-shadow:2px 2px 0 var(--ink,#0A0810);cursor:pointer;transition:background .15s ease,color .15s ease}.ds-button:hover{background:var(--bone,#E5DCC8);color:var(--void,#14121C)}.ds-button:disabled{opacity:.5;cursor:not-allowed}.ds-button:focus-visible,.ds-input:focus-visible,.ds-region:focus-visible{outline:3px solid var(--teal,#3AAE7C);outline-offset:2px;}"
+    },
+    {
+      "name": "Workspace panel",
+      "kind": "card",
+      "refersTo": "workspace-panel",
+      "description": "Calm working surface",
+      "html": "<section class=\"ds-panel\"><h2>Needs you</h2><p>Review the pending invitation.</p></section>",
+      "css": ".ds-panel{padding:20px;background:var(--panel,#1E1B2A);color:var(--bone,#E5DCC8);border:1px solid var(--line,#362F49);border-radius:var(--r,2px);font:14px/1.6 var(--f-ui,Arial,sans-serif)}.ds-panel h2{margin:0;font:700 24px var(--f-display,Arial,sans-serif)}.ds-panel p{margin:12px 0 0;color:var(--bone-dim,#C7BBA0)}"
+    },
+    {
+      "name": "Working input",
+      "kind": "input",
+      "refersTo": "typography.body",
+      "description": "Labelled account field",
+      "html": "<label class=\"ds-field\">Email<input class=\"ds-input\" type=\"email\" autocomplete=\"email\"></label>",
+      "css": ".ds-field{display:grid;gap:6px;color:var(--bone,#E5DCC8);font:14px var(--f-ui,Arial,sans-serif)}.ds-input{min-height:44px;padding:8px 12px;font:16px var(--f-ui,Arial,sans-serif);color:var(--bone,#E5DCC8);background:var(--panel-2,#262234);border:1px solid var(--line-hot,#7C6F94);border-radius:var(--r,2px)}.ds-input:hover{border-color:var(--bone-dim,#C7BBA0)}.ds-input[aria-invalid=true]{border-color:var(--red-text,#FF6E80)}.ds-button:focus-visible,.ds-input:focus-visible,.ds-region:focus-visible{outline:3px solid var(--teal,#3AAE7C);outline-offset:2px;}"
+    },
+    {
+      "name": "Status badge",
+      "kind": "chip",
+      "refersTo": "colors.amber",
+      "description": "Word plus caution fill",
+      "html": "<span class=\"ds-badge\">Pending</span>",
+      "css": ".ds-badge{display:inline-flex;padding:1px 8px;gap:6px;font:600 13px var(--f-ui,Arial,sans-serif);background:var(--amber,#D9A430);color:var(--accent-ink,#0A0810);border-radius:var(--r,2px)}"
+    },
+    {
+      "name": "Bounded region",
+      "kind": "custom",
+      "refersTo": "workspace-panel",
+      "description": "Long working queue",
+      "html": "<section class=\"ds-region\" role=\"region\" aria-label=\"Pending work\" tabindex=\"0\"><p>Review Northside Community Championship.</p><p>Review the squad invitation.</p></section>",
+      "css": ".ds-region{height:320px;overflow:auto;overscroll-behavior:contain;padding:16px;background:var(--panel,#1E1B2A);color:var(--bone,#E5DCC8);border:1px solid var(--line,#362F49);border-radius:var(--r,2px);font:14px/1.6 var(--f-ui,Arial,sans-serif)}.ds-region p{padding:12px 0;border-bottom:1px solid var(--line,#362F49)}.ds-button:focus-visible,.ds-input:focus-visible,.ds-region:focus-visible{outline:3px solid var(--teal,#3AAE7C);outline-offset:2px;}"
+    },
+    {
+      "name": "Dialog surface",
+      "kind": "custom",
+      "refersTo": "modal",
+      "description": "Static visual anatomy; use shared Modal in React",
+      "html": "<section class=\"ds-modal\"><h2>Review request</h2><p>Confirm the venue before approving.</p></section>",
+      "css": ".ds-modal{width:min(560px,100%);max-height:86vh;overflow:auto;padding:24px;background:var(--panel,#1E1B2A);color:var(--bone,#E5DCC8);border:1px solid var(--line-hot,#7C6F94);border-radius:var(--r,2px);box-shadow:var(--lift,0 14px 30px -16px rgba(0,0,0,.9));font:14px/1.6 var(--f-ui,Arial,sans-serif)}.ds-modal h2{font:700 24px var(--f-display,Arial,sans-serif);margin:0}.ds-modal p{margin:12px 0 0}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Supporting action",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Cancel</button>",
+      "css": ".ds-secondary{font:600 14px var(--f-ui,Arial,sans-serif);min-height:40px;padding:8px 16px;border:1px solid var(--line-hot,#7C6F94);border-radius:var(--r,2px);background:var(--panel-3,#302B41);color:var(--bone,#E5DCC8);cursor:pointer}.ds-secondary:hover{background:var(--panel-4,#3D3653)}.ds-secondary:active{background:var(--panel-2,#262234)}.ds-secondary:focus-visible{outline:3px solid var(--teal,#3AAE7C);outline-offset:2px}.ds-secondary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Danger button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Explicit destructive action",
+      "html": "<button class=\"ds-danger\" type=\"button\">Decline</button>",
+      "css": ".ds-danger{font:600 14px var(--f-ui,Arial,sans-serif);min-height:40px;padding:8px 16px;border:1px solid var(--red,#EA4658);border-radius:var(--r,2px);background:var(--red,#EA4658);color:var(--accent-ink,#0A0810);cursor:pointer}.ds-danger:hover{background:var(--red-lift,#FF5A70)}.ds-danger:focus-visible{outline:3px solid var(--teal,#3AAE7C);outline-offset:2px}.ds-danger:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Sidebar navigation",
+      "kind": "nav",
+      "refersTo": "colors.teal",
+      "description": "Permitted route parent, active in teal",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Example navigation\"><a href=\"#home\" aria-current=\"page\">Home</a><a href=\"#tournaments\">Tournaments</a></nav>",
+      "css": ".ds-nav{display:grid;width:232px;background:var(--panel,#1E1B2A);font:600 14px var(--f-ui,Arial,sans-serif)}.ds-nav a{padding:12px 16px;min-height:20px;color:var(--bone-dim,#C7BBA0);text-decoration:none;border-left:2px solid transparent}.ds-nav a:hover{background:var(--panel-2,#262234);color:var(--bone,#E5DCC8)}.ds-nav a[aria-current]{background:var(--teal,#3AAE7C);color:var(--accent-ink,#0A0810);border-left-color:var(--ink,#0A0810)}.ds-nav a:focus-visible{outline:3px solid var(--teal,#3AAE7C);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Minimal Street",
+    "overview": "The approved B workspace uses A's Tournament discovery and plum/cream palette. Condensed lettering and angular edges carry the retro street identity; working controls use a calm, readable sans serif. Tournament previews alone use the approved wall texture and pasted word strips.",
+    "keyCharacteristics": [
+      "232px desktop sidebar",
+      "Short English actions",
+      "2px corners",
+      "Bounded queues",
+      "Explicit source/access states"
+    ],
+    "rules": [
+      {
+        "name": "Source Truth",
+        "body": "Loading, denied and unavailable data never become a fabricated empty or successful state. Color reinforces a named state; it does not establish permission.",
+        "section": "colors"
+      },
+      {
+        "name": "Preview Exception",
+        "body": "self-hosted Rubik Dirt appears only in Tournament preview word strips: 48px/1.3, 32px for long titles; narrow variants use 36px/24px. Tracking stays at -.02em. Facts retain the UI face. Long names wrap rather than enlarge the page.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do reuse the CSS tokens, existing kit contracts and feature stylesheets.",
+      "Do keep labels short and put the problem and recovery in error text.",
+      "Do retain drafts through recoverable source/mutation failures and hide content on actual denial.",
+      "Do keep unavailable capabilities explicit and preserve API/DTO/payload/access contracts."
+    ],
+    "donts": [
+      "Don't add decorative metrics or actions unsupported by delivered data.",
+      "Don't apply wall texture, Rubik Dirt or sticker rotations to ordinary forms and queues.",
+      "Don't equate fixture/browser evidence with live backend or device acceptance."
+    ]
+  }
+}

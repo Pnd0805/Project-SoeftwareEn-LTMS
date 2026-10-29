@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q11-q12-quality/frontend
+
+Not implemented: Window's scrollTo() method
+
+ Test Files  103 passed (103)
+      Tests  697 passed (697)
+   Start at  03:51:25
+   Duration  11.19s (transform 3.65s, setup 8.87s, import 11.24s, tests 24.29s, environment 43.54s)

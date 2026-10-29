@@ -1,0 +1,140 @@
+[
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "frames": [
+      {
+        "width": 467,
+        "height": 360,
+        "top": 432.078125,
+        "left": 277
+      },
+      {
+        "width": 467,
+        "height": 360,
+        "top": 432.078125,
+        "left": 768
+      }
+    ],
+    "overflow": false,
+    "keyboardScroll": true,
+    "rows": 48,
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "frames": [
+      {
+        "width": 467,
+        "height": 360,
+        "top": 432.078125,
+        "left": 277
+      },
+      {
+        "width": 467,
+        "height": 360,
+        "top": 432.078125,
+        "left": 768
+      }
+    ],
+    "overflow": false,
+    "keyboardScroll": true,
+    "rows": 48,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "frames": [
+      {
+        "width": 533,
+        "height": 360,
+        "top": 482.484375,
+        "left": 277
+      },
+      {
+        "width": 533,
+        "height": 360,
+        "top": 482.484375,
+        "left": 834
+      }
+    ],
+    "overflow": false,
+    "keyboardScroll": true,
+    "rows": 48,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "frames": [
+      {
+        "width": 533,
+        "height": 360,
+        "top": 482.484375,
+        "left": 277
+      },
+      {
+        "width": 533,
+        "height": 360,
+        "top": 482.484375,
+        "left": 834
+      }
+    ],
+    "overflow": false,
+    "keyboardScroll": true,
+    "rows": 48,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "frames": [
+      {
+        "width": 300,
+        "height": 360,
+        "top": 454.03125,
+        "left": 45
+      },
+      {
+        "width": 300,
+        "height": 360,
+        "top": 838.03125,
+        "left": 45
+      }
+    ],
+    "overflow": false,
+    "keyboardScroll": true,
+    "rows": 48,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "frames": [
+      {
+        "width": 300,
+        "height": 360,
+        "top": 454.03125,
+        "left": 45
+      },
+      {
+        "width": 300,
+        "height": 360,
+        "top": 838.03125,
+        "left": 45
+      }
+    ],
+    "overflow": false,
+    "keyboardScroll": true,
+    "rows": 48,
+    "errors": []
+  }
+]

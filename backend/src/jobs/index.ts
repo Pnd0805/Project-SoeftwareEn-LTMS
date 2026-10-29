@@ -1,6 +1,7 @@
 import type { Job } from './scheduler.js';
 import { sweepAndNotify } from '../services/team.service.js';
 import { purgeExpiredTournaments, sweepAutoDeleteTournaments, warnBeforeAutoDelete } from '../services/tournament.service.js';
+import { purgeRefereeIdentityDocs, sweepOrphanRefereeDocs } from '../services/refereeDocs.service.js';
 
 /**
  * ทะเบียนงานเบื้องหลัง (มติ 8 ต.ค. 2569)
@@ -18,4 +19,7 @@ export const backgroundJobs : Job[] = [
     { name : 'ปิดทัวร์ที่ยังไม่เผยแพร่จนถึงวันแข่ง (BR-03)' , run : sweepAutoDeleteTournaments },
     { name : 'ลบทัวร์ที่ปิดไปเกิน 4 ปี (BR-03)' , run : purgeExpiredTournaments },
     { name : 'กวาดทีมร้าง (TM-07 · BR-06)' , run : sweepAndNotify },
+    // OD-70 (งาน ⑥) — ลำดับไม่สำคัญ ไม่เกี่ยวกับงานกวาดทีม/ทัวร์ · ③ ต่อท้าย ② เพราะ ② ลบไฟล์แล้วปิดแถวไปก่อน
+    { name : 'ลบภาพยืนยันตัวตนกรรมการของทัวร์ที่จบแล้ว' , run : purgeRefereeIdentityDocs },
+    { name : 'ลบภาพยืนยันตัวตนกรรมการที่ไม่มีแถวชี้ถึง (OD-70)' , run : sweepOrphanRefereeDocs },
 ];

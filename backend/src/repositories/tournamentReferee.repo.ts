@@ -228,6 +228,8 @@ export async function findPendingInvitationsByUser(userId : number)
            -- 🆕 BE-13 — ใบที่เลยกำหนดแล้วกดตอบไม่ได้ จึงต้องไม่ขึ้นในรายการให้หลงกด
            AND (tr.expires_at IS NULL OR tr.expires_at > NOW())
            AND t.deleted_at IS NULL
+           -- ยกเลิกทัวร์ (OD-69): กดรับไม่ได้ ⇒ ไม่ขึ้นในกล่องให้หลงกด
+           AND t.tournament_status <> 'cancelled'
          ORDER BY tr.created_at DESC`, [userId]);
     return rows;
 }
@@ -309,6 +311,15 @@ export async function accept(tournamentRefereeId : number, acceptedMatchIds : nu
         conn.release();
     }
 }
+
+/**
+ * OD-70 — แถวที่การตัดสินครั้งนี้ล้างคีย์เอกสาร ได้ docs_purged_at = เวลาที่ล้าง
+ * ★ ต้องอยู่ **ก่อน** `external_verification_docs = NULL` ใน SET — MySQL ประเมินซ้ายไปขวา
+ *   ถ้าสลับ IF จะเห็นค่า NULL ที่เพิ่งตั้ง แล้วไม่บันทึกเวลาเลย
+ * ★ แถวที่ไม่มีคีย์อยู่แล้วคงค่าเดิม — ไม่บันทึกว่า "ถูกล้าง" ให้แถวที่ไม่เคยมีเอกสาร
+ * ตัวไฟล์ถูกลบตามหลังโดย refereeDocs.service (deleteDocsNoLongerReferenced) · ถ้าลบพลาด งานกวาดไฟล์เก็บให้
+ */
+const MARK_DOCS_PURGED = 'docs_purged_at = IF(external_verification_docs IS NULL, docs_purged_at, NOW())';
 
 // ─────────────── การยืนยันตัวตนกรรมการภายนอก — คิดเป็น "ต่อคน" แม้คอลัมน์อยู่ต่อแถว ───────────────
 // ทุกแถว tournament_referees ของ user คนหนึ่งสะท้อนสถานะเดียวกัน (GUIDE/10 §8 F-16/F-17)
@@ -414,7 +425,7 @@ export async function approveUser(userId : number, adminUserId : number): Promis
         const [result] = await pool.query<ResultSetHeader>(
             `UPDATE tournament_referees
              SET external_approval_status = 'approved', approved_by = ?, approved_at = NOW(),
-                 external_verification_docs = NULL, external_rejection_reason = NULL
+                 ${MARK_DOCS_PURGED}, external_verification_docs = NULL, external_rejection_reason = NULL
              WHERE user_id = ? AND is_external = 1 AND removed_at IS NULL
                AND external_approval_status IN ('pending', 'needs_docs')`,
             [adminUserId, userId]);
@@ -436,7 +447,7 @@ export async function requestDocsFromUser(userId : number, adminUserId : number,
     const [result] = await pool.query<ResultSetHeader>(
         `UPDATE tournament_referees
          SET external_approval_status = 'needs_docs', approved_by = ?, approved_at = NOW(),
-             external_verification_docs = NULL, external_rejection_reason = ?
+             ${MARK_DOCS_PURGED}, external_verification_docs = NULL, external_rejection_reason = ?
          WHERE user_id = ? AND is_external = 1 AND removed_at IS NULL AND external_approval_status = 'pending'`,
         [adminUserId, reason, userId]);
     return result.affectedRows;
@@ -450,7 +461,7 @@ export async function rejectUser(userId : number, adminUserId : number, reason :
     const [result] = await pool.query<ResultSetHeader>(
         `UPDATE tournament_referees
          SET external_approval_status = 'rejected', approved_by = ?, approved_at = NOW(),
-             external_verification_docs = NULL, external_rejection_reason = ?
+             ${MARK_DOCS_PURGED}, external_verification_docs = NULL, external_rejection_reason = ?
          WHERE user_id = ? AND is_external = 1
            AND external_approval_status IN ('pending', 'needs_docs', 'approved')`,
         [adminUserId, reason, userId]);
@@ -518,4 +529,78 @@ export async function removeAllByUser(tournamentId : number, userId : number, re
          WHERE tournament_id = ? AND user_id = ? AND removed_at IS NULL`,
         [removedBy, tournamentId, userId]);
     return result.affectedRows;
+}
+
+// ─────────────── OD-70 — ลบภาพยืนยันตัวตนกรรมการเมื่อหมดหน้าที่ ───────────────
+
+/** ทัวร์ที่จบชีวิตแล้ว (ปิด · ยกเลิก · ระบบปิด) — ตรงกับ DEAD_TOURNAMENT_STATUSES ของ application.repo */
+const ENDED_STATUSES = `('completed', 'cancelled', 'auto_deleted')`;
+
+/** คีย์เอกสารทุกตัวที่แถวไหนก็ได้ของ user คนนี้ยังชี้อยู่ (ไม่ซ้ำ) */
+export async function findDocKeysOfUser(userId : number): Promise<string[]>{
+    const [rows] = await pool.query<(Pick<TournamentRefereeRow, 'external_verification_docs'> & RowDataPacket)[]>(
+        `SELECT external_verification_docs FROM tournament_referees
+         WHERE user_id = ? AND external_verification_docs IS NOT NULL`, [userId]);
+    return [...new Set(rows.flatMap(r => r.external_verification_docs ?? []))];
+}
+
+export type PurgeableDocsRow = Pick<TournamentRefereeRow, 'tournament_referee_id' | 'user_id'> & { external_verification_docs : string[] };
+
+/**
+ * แถวที่ยังถือคีย์เอกสาร แต่ทัวร์จบไปแล้วเกิน `retentionDays` วัน (ใบสั่งงาน ⑥ ขั้น 2)
+ *
+ * ★ ส่วนใหญ่คือแถวที่แอดมิน **ยังไม่เคยตัดสิน** หรือ **ถูกถอดก่อนตัดสิน** — แถวที่ตัดสินแล้วไม่มีคีย์อยู่แล้ว
+ * "จบ" = ปิด · ยกเลิก · ระบบปิด (ข้อ 2.1) นับจากวันปิด/วันยกเลิก · ระบบปิดไม่มีเวลาปิด ⇒ ใช้วันแข่ง
+ *   + ทัวร์ที่ถูกลบ (deleted_at) — ไม่อยู่ในใบสั่งงาน แต่ไม่งั้นไฟล์ของทัวร์ที่ถูกลบค้างตลอดไป
+ * 🔴 คนที่ยังรอตรวจอยู่ในทัวร์ที่ยังจัดอยู่ ห้ามแตะ (ข้อห้าม 5) — แอดมินจะเปิดดูแล้วไฟล์หาย
+ *   (และ service เช็คซ้ำระดับคีย์: ไฟล์ที่แถวอื่นยังชี้อยู่ไม่ถูกลบ)
+ */
+export async function findPurgeableIdentityDocRows(retentionDays : number): Promise<PurgeableDocsRow[]>{
+    const [rows] = await pool.query<(PurgeableDocsRow & RowDataPacket)[]>(
+        `SELECT tr.tournament_referee_id, tr.user_id, tr.external_verification_docs
+         FROM tournament_referees tr
+         JOIN tournaments t ON t.tournament_id = tr.tournament_id
+         WHERE tr.external_verification_docs IS NOT NULL AND tr.docs_purged_at IS NULL
+           AND ( (t.tournament_status IN ${ENDED_STATUSES}
+                  AND COALESCE(t.completed_at, t.cancelled_at, t.event_end_date, t.event_start_date) < NOW() - INTERVAL ? DAY)
+              OR (t.deleted_at IS NOT NULL AND t.deleted_at < NOW() - INTERVAL ? DAY) )
+           AND NOT EXISTS (
+               SELECT 1 FROM tournament_referees o
+               JOIN tournaments ot ON ot.tournament_id = o.tournament_id
+               WHERE o.user_id = tr.user_id AND o.is_external = 1 AND o.removed_at IS NULL
+                 AND o.external_approval_status IN ('pending', 'needs_docs')
+                 AND ot.deleted_at IS NULL AND ot.tournament_status NOT IN ${ENDED_STATUSES})
+         ORDER BY tr.tournament_referee_id`, [retentionDays, retentionDays]);
+    return rows;
+}
+
+/** คีย์ที่แถว **อื่น** ของ user กลุ่มนี้ยังชี้อยู่ — ไฟล์พวกนี้ยังลบไม่ได้แม้แถวที่เข้าเกณฑ์จะชี้ถึงด้วย */
+export async function findDocKeysOnOtherRows(userIds : number[], excludeRowIds : number[]): Promise<Set<string>>{
+    if(userIds.length === 0) return new Set();
+    const [rows] = await pool.query<(Pick<TournamentRefereeRow, 'external_verification_docs'> & RowDataPacket)[]>(
+        `SELECT external_verification_docs FROM tournament_referees
+         WHERE user_id IN (?) AND external_verification_docs IS NOT NULL
+           AND tournament_referee_id NOT IN (?)`, [userIds, excludeRowIds.length ? excludeRowIds : [0]]);
+    return new Set(rows.flatMap(r => r.external_verification_docs ?? []));
+}
+
+/**
+ * ปิดแถวหลังลบไฟล์ครบแล้ว — ล้างคีย์ + บันทึกเวลา · **ไม่แตะผลการตรวจ** (ข้อ 2.3)
+ * ★ เงื่อนไขคีย์ต้องยังเหมือนตอนอ่าน — ถ้าระหว่างนั้น user ส่งเอกสารใหม่เข้าแถวนี้ (submitDocsForUser) จะไม่ไปล้างของใหม่
+ */
+export async function closePurgedDocsRow(tournamentRefereeId : number, docsAtRead : string[]): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE tournament_referees
+         SET external_verification_docs = NULL, docs_purged_at = NOW()
+         WHERE tournament_referee_id = ? AND docs_purged_at IS NULL
+           AND external_verification_docs = CAST(? AS JSON)`,
+        [tournamentRefereeId, JSON.stringify(docsAtRead)]);
+    return result.affectedRows === 1;
+}
+
+/** คีย์เอกสารทุกตัวที่ยังมีแถวชี้อยู่ (ทั้งระบบ) — งานกวาดไฟล์ใช้ตัดสินว่าไฟล์ไหนไม่มีเจ้าของ */
+export async function findAllReferencedIdentityKeys(): Promise<Set<string>>{
+    const [rows] = await pool.query<(Pick<TournamentRefereeRow, 'external_verification_docs'> & RowDataPacket)[]>(
+        `SELECT external_verification_docs FROM tournament_referees WHERE external_verification_docs IS NOT NULL`);
+    return new Set(rows.flatMap(r => r.external_verification_docs ?? []));
 }
