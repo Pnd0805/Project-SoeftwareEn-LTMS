@@ -69,6 +69,7 @@ import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { signToken } from '../../utils/token.js';
 import { sendPasswordResetEmail , sendEmailVerificationOtp } from '../mail.service.js';
 import { AppError } from '../../utils/AppError.js';
+import { env } from '../../config/env.js';
 import type { RegisterInput } from '../../schemas/auth.schema.js';
 import type { UserRow, PasswordResetTokenRow } from '../../types/db.js';
 
@@ -134,6 +135,7 @@ const kuRegisterInput: RegisterInput = {
 };
 
 beforeEach(() => {
+  env.REQUIRE_EMAIL_VERIFIED = false;   // ค่าตั้งต้นของ .env.example · บางเทสสลับเป็น true เอง
   vi.clearAllMocks();
 });
 
@@ -231,7 +233,18 @@ describe('auth.service register()', () => {
     expect(mockedUserRepo.overwriteUnverified).not.toHaveBeenCalled();
   });
 
-  it('overwrites the pending row instead of failing when the email is unverified', async () => {
+  // 🔴 bug hunt 30 ต.ค. ข้อ 2 — ด่านปิด = คนไม่ยืนยันใช้งานได้จริง ⇒ ทับ = ยึดบัญชี
+  it('🔴 ด่านยืนยันอีเมลปิด → อีเมลที่ยังไม่ยืนยันถือว่าซ้ำ · ไม่ทับรหัสผ่าน', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = false;
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
+
+    await expect(authService.register(registerInput)).rejects.toMatchObject({ status: 400, code: 'EMAIL_ALREADY_REGISTERED' });
+    expect(mockedUserRepo.overwriteUnverified).not.toHaveBeenCalled();
+    expect(mockedUserRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('overwrites the pending row instead of failing when the email is unverified (ด่านเปิด)', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
     mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
     mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
     mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);
@@ -255,6 +268,7 @@ describe('auth.service register()', () => {
   });
 
   it('rejects when the pending row got verified between the read and the overwrite', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
     mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
     mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
     mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);

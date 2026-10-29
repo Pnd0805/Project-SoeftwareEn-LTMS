@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { env } from '../../config/env.js';
 import { anon, as } from './helpers/api.js';
 import { insert, one, testDb } from './helpers/db.js';
 import { mailbox } from './helpers/mailbox.js';
@@ -44,6 +45,8 @@ const verified = async (email: string) =>
  *   ของ process · หายเมื่อรีสตาร์ท · เพดานคูณตามจำนวน process)
  * ★ ตัวนับถูกล้างใน `setup/perFile.ts` ทุกเทส ⇒ เทสอื่นที่ยิงรหัสผิดไม่กวนกัน
  */
+afterEach(() => { env.REQUIRE_EMAIL_VERIFIED = false; });   // บางเทสเปิดด่านเอง · ค่าของ .env.test คือปิด
+
 describe('จำกัดจำนวนครั้งที่ล็อกอินผิด (BE-06)', () => {
   const PASSWORD = 'Passw0rd-123';
   const wrongLogin = (email: string) => anon.post('/auth/login').send({ email, password: 'ผิดแน่นอน-123' });
@@ -142,7 +145,9 @@ describe('สมัครสมาชิกและยืนยันอีเ�
    *   สมัคร → ไม่กรอก OTP → กลับมาสมัครใหม่ → "อีเมลนี้ถูกใช้แล้ว กรุณาเข้าสู่ระบบ"
    *   ทั้งที่ **เข้าสู่ระบบไม่ได้** (เมื่อด่านเปิด) และอีเมลนั้นเป็นของเขาเอง
    */
-  it('สมัครซ้ำด้วยอีเมลที่ยังไม่ยืนยัน → 201 ทับใบเดิม · ยังมีบัญชีเดียว · รหัสใหม่ใช้ได้', async () => {
+  // 🔴 bug hunt 30 ต.ค. ข้อ 2 — ทับใบเดิมได้เฉพาะตอนด่านเปิด (ด่านปิด = ยึดบัญชีได้ · เทสถัดไป)
+  it('ด่านเปิด: สมัครซ้ำด้วยอีเมลที่ยังไม่ยืนยัน → 201 ทับใบเดิม · ยังมีบัญชีเดียว · รหัสใหม่ใช้ได้', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
     const email = 'dup@test.local';
     expect((await anon.post('/auth/register').send(registration(email))).status).toBe(201);
     const firstId = (await one<{ user_id: number }>('SELECT user_id FROM users WHERE email = ?', [email]))!.user_id;
@@ -162,8 +167,42 @@ describe('สมัครสมาชิกและยืนยันอีเ�
 
     // 🔴 ที่สำคัญสุด: รหัสผ่านรอบใหม่ต้องใช้ล็อกอินได้จริง
     //   ถ้าไม่ทับ password_hash เขาจะล็อกอินด้วยรหัสที่เพิ่งตั้งไม่ได้ และหาสาเหตุไม่เจอ
+    //   ด่านเปิดอยู่ ⇒ ยังเข้าไม่ได้จนกว่าจะยืนยัน แต่ได้ 403 EMAIL_NOT_VERIFIED (ด่านนี้อยู่หลังด่านรหัสผ่าน = รหัสถูก)
     const login = await anon.post('/auth/login').send({ email, password: 'Passw0rd-999' });
-    expect(login.status).toBe(200);
+    expect(login.status).toBe(403);
+    expect(login.body.error.code).toBe('EMAIL_NOT_VERIFIED');
+  });
+
+  /**
+   * 🔴 bug hunt 30 ต.ค. ข้อ 2 — ด่านปิด (ค่าตั้งต้น) คนที่ไม่ยืนยันใช้งานได้เต็มที่
+   *   เดิม: คนร้ายสมัครด้วยอีเมลเหยื่อ → ทับรหัสผ่าน → ล็อกอินเป็นเหยื่อได้ทันที และเหยื่อไม่ถูกเด้งออก
+   */
+  it('🔴 ด่านปิด: สมัครซ้ำด้วยอีเมลที่ยังไม่ยืนยัน → 400 EMAIL_ALREADY_REGISTERED · รหัสเดิมยังใช้ได้ · คนร้ายเข้าไม่ได้', async () => {
+    const email = 'victim-unverified@test.local';
+    expect((await anon.post('/auth/register').send(registration(email))).status).toBe(201);
+    const before = (await one<{ full_name: string; password_hash: string }>(
+      'SELECT full_name , password_hash FROM users WHERE email = ?', [email]))!;
+
+    const hijack = await anon.post('/auth/register')
+      .send({ ...registration(email), fullName: 'คนที่พยายามยึดบัญชี', password: 'Hijack-123' });
+    expect(hijack.status).toBe(400);
+    expect(hijack.body.error.code).toBe('EMAIL_ALREADY_REGISTERED');
+
+    expect(await one('SELECT full_name , password_hash FROM users WHERE email = ?', [email])).toEqual(before);
+    expect((await anon.post('/auth/login').send({ email, password: 'Hijack-123' })).status).toBe(401);
+    expect((await anon.post('/auth/login').send({ email, password: registration(email).password })).status).toBe(200);
+  });
+
+  it('🔴 ทับใบเดิมแล้ว บัตรเก่าที่ล็อกอินค้างไว้ใช้ไม่ได้ (token_version)', async () => {
+    const email = 'dup-token@test.local';
+    expect((await anon.post('/auth/register').send(registration(email))).status).toBe(201);
+    const oldToken = (await anon.post('/auth/login').send({ email, password: registration(email).password })).body.accessToken;
+    expect((await as({ token: oldToken }).get('/me')).status).toBe(200);
+
+    env.REQUIRE_EMAIL_VERIFIED = true;   // เปิดด่านทีหลัง (มีบัตรค้างจากตอนด่านปิด)
+    expect((await anon.post('/auth/register').send({ ...registration(email), password: 'Passw0rd-999' })).status).toBe(201);
+
+    expect((await as({ token: oldToken }).get('/me')).status).toBe(401);
   });
 
   it('สมัครซ้ำด้วยอีเมลที่ยืนยันแล้ว → 400 EMAIL_ALREADY_REGISTERED · ข้อมูลเดิมไม่ถูกแตะ', async () => {

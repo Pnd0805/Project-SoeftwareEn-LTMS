@@ -65,12 +65,15 @@ export async function create(data: NewUser): Promise<number>{
  *   ถ้าไม่ขยับ แถวที่เพิ่งสมัครใหม่จะถูกกวาดทิ้งทันทีเพราะ created_at เป็นของรอบแรก
  * ★ ไม่แตะ `user_id` ⇒ ใบ OTP เก่าที่ผูกอยู่ยังถูกล้างด้วย invalidateAllForUser ตามปกติ
  *   และโควตา 3 ใบ/ชม. เดินต่อจากรอบก่อน (กันถล่มเมลใส่อีเมลคนอื่น — **มีเทสตรึงไว้**)
+ * 🔴 bug hunt 30 ต.ค. ข้อ 2 — บวก token_version ในคำสั่งเดียวกับการเขียนรหัสใหม่ (แบบเดียวกับ updatePassword)
+ *   รหัสผ่านเปลี่ยน = บัตรเก่าทุกใบต้องใช้ไม่ได้ · ไม่บวก = คนที่ล็อกอินค้างไว้ไม่ถูกเด้งออกและไม่รู้ตัว
  */
 export async function overwriteUnverified(userId : number , data: NewUser): Promise<boolean>{
     const [ result ] = await pool.query<ResultSetHeader>(
         `UPDATE users SET full_name = ? , password_hash = ? , gender = ? , birth_date = ? ,
                           user_type = ? , faculty_id = ? , department_id = ? , year = ? ,
-                          created_at = NOW() , updated_at = NOW()
+                          created_at = NOW() , updated_at = NOW() ,
+                          token_version = token_version + 1
           WHERE user_id = ? AND email_verified = 0`,
         [data.fullName , data.passwordHash , data.gender , data.birthDate , data.userType ,
          data.facultyId , data.departmentId , data.year , userId]);
