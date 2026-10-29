@@ -1,4 +1,4 @@
-import { randomBytes , randomInt } from 'crypto';
+import { createHash , randomBytes , randomInt } from 'crypto';
 import * as userRepo from '../repositories/user.repo.js';
 import * as passwordResetRepo from '../repositories/passwordReset.repo.js';
 import * as emailVerifyRepo from '../repositories/emailVerification.repo.js';
@@ -312,7 +312,7 @@ export async function forgotPassword(email : string) : Promise<{ message : strin
   }
 
   const rawToken = randomBytes(32).toString('hex');   // ★ ห้าม randomUUID — เดาง่ายกว่า
-  const tokenHash = await hashPassword(rawToken);
+  const tokenHash = hashResetToken(rawToken);
   const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
   await passwordResetRepo.invalidateAllForUser(user.user_id);   // ไม่ควรมีหลายใบใช้ได้พร้อมกัน
@@ -331,24 +331,29 @@ export async function forgotPassword(email : string) : Promise<{ message : strin
 // ★ ข้อความเดียวกันทั้ง 4 เคส (ไม่มี/ผิด/ใช้แล้ว/หมดอายุ) — แยกข้อความ = บอกคนเดา token ว่าเดาใกล้แค่ไหน
 const INVALID_RESET_TOKEN = () => new AppError(400 , 'INVALID_RESET_TOKEN' , 'ลิงก์ไม่ถูกต้องหรือหมดอายุ กรุณาขอลิงก์ใหม่');
 
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 7 — hash ของลิงก์รีเซ็ตเป็น SHA-256 ไม่ใช่ bcrypt
+ *   token สุ่ม 32 ไบต์ เดาไม่ได้อยู่แล้ว ⇒ ไม่ต้องใช้ bcrypt (ที่ทำให้ช้าโดยเจตนาเพื่อรหัสผ่านที่คนตั้ง)
+ *   และ hash เดิมทุกครั้ง ⇒ ค้นในฐานด้วย WHERE ได้ตรง ๆ ไม่ต้องกวาดทุกใบมาเทียบทีละใบ
+ * ★ ลิงก์ที่ออกก่อนเปลี่ยน (hash แบบ bcrypt) ใช้ไม่ได้แล้ว — อายุ 1 ชม. อยู่แล้ว ขอใหม่ได้
+ */
+function hashResetToken(rawToken : string) : string {
+  return createHash('sha256').update(rawToken).digest('hex');
+}
+
 export async function resetPassword(token : string , newPassword : string) : Promise<{ message : string }>{
-  // ไม่มี user_id มาก่อน (รับแค่ token ดิบ) — ต้องกวาดทุกใบที่ยังใช้ได้มา verifyPassword ทีละแถว
-  const candidates = await passwordResetRepo.findAllActive();
-
-  let matchedUserId : number | null = null;
-  for(const row of candidates){
-    if(await verifyPassword(token , row.token_hash)){
-      matchedUserId = row.user_id;
-      break;
-    }
-  }
-
-  if(matchedUserId === null){
+  const row = await passwordResetRepo.findActiveByHash(hashResetToken(token));
+  if(!row){
     throw INVALID_RESET_TOKEN();
   }
 
-  const user = await userRepo.findById(matchedUserId);
+  const user = await userRepo.findById(row.user_id);
   if(!user || isCurrentlySuspended(user)){
+    throw INVALID_RESET_TOKEN();
+  }
+
+  // จองใบนี้ก่อนเปลี่ยนรหัส — ยิงพร้อมกันสองครั้งด้วยลิงก์เดียว คนที่สองได้ข้อความเดียวกับลิงก์ใช้แล้ว
+  if(await passwordResetRepo.markUsed(row.password_reset_token_id) === 0){
     throw INVALID_RESET_TOKEN();
   }
 

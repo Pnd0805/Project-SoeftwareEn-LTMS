@@ -374,6 +374,22 @@ describe('ลืมรหัสผ่าน → ลิงก์ในเมล �
     expect((await anon.post('/auth/login').send({ email: user.email, password: 'NewPass-456' })).status).toBe(200);
   });
 
+  // 🔴 bug hunt 30 ต.ค. ข้อ 7 — ค้นตรงด้วย SHA-256 + จองใบด้วย used_at IS NULL ⇒ ยิงพร้อมกันได้ผลครั้งเดียว
+  it('🔴 ยิงลิงก์เดียวพร้อมกัน 5 คำขอ → สำเร็จครั้งเดียว · ในฐานเก็บ SHA-256 ไม่ใช่ token ดิบ', async () => {
+    const user = await createUserWithPassword('OldPass-123');
+    await anon.post('/auth/forgot-password').send({ email: user.email });
+    const token = resetTokenIn(user.email);
+
+    const stored = await one<{ token_hash: string }>(
+      'SELECT token_hash FROM password_reset_tokens WHERE user_id = ? ORDER BY password_reset_token_id DESC LIMIT 1', [user.id]);
+    expect(stored!.token_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored!.token_hash).not.toBe(token);
+
+    const codes = (await Promise.all(Array.from({ length: 5 }, (_, i) =>
+      anon.post('/auth/reset-password').send({ token, newPassword: `NewPass-45${i}` }).then(r => r.status)))).sort();
+    expect(codes).toEqual([200, 400, 400, 400, 400]);
+  });
+
   it('ขอลิงก์ใหม่ → ลิงก์เก่าใช้ไม่ได้ทันที', async () => {
     const user = await createUserWithPassword('OldPass-123');
     await anon.post('/auth/forgot-password').send({ email: user.email });
