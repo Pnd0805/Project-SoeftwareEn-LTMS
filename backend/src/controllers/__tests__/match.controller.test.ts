@@ -20,6 +20,14 @@ vi.mock("../../services/match.service.js", () => ({
     rejectCheckin: vi.fn(),
     getCheckinQr: vi.fn(),
     submitCheckin: vi.fn(),
+    setRoomCode: vi.fn(),
+    listMyMatches: vi.fn(),
+    setMatchFormat: vi.fn(),
+    getMyCheckin: vi.fn(),
+    manualCheckin: vi.fn(),
+    finishMatch: vi.fn(),
+    abandonMatch: vi.fn(),
+    getMatchLineups: vi.fn(),
 }));
 
 vi.mock("../../services/bracket.service.js", () => ({
@@ -45,6 +53,14 @@ import {
     rejectCheckin,
     getCheckinQr,
     submitCheckin,
+    setRoomCode,
+    listMyMatches,
+    setMatchFormat,
+    getMyCheckin,
+    manualCheckin,
+    finishMatch,
+    abandonMatch,
+    getMatchLineups,
 } from "../match.controller.js";
 import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
@@ -61,6 +77,14 @@ const svc = {
     rejectCheckin: vi.mocked(MatchService.rejectCheckin),
     getCheckinQr: vi.mocked(MatchService.getCheckinQr),
     submitCheckin: vi.mocked(MatchService.submitCheckin),
+    setRoomCode: vi.mocked(MatchService.setRoomCode),
+    listMyMatches: vi.mocked(MatchService.listMyMatches),
+    setMatchFormat: vi.mocked(MatchService.setMatchFormat),
+    getMyCheckin: vi.mocked(MatchService.getMyCheckin),
+    manualCheckin: vi.mocked(MatchService.manualCheckin),
+    finishMatch: vi.mocked(MatchService.finishMatch),
+    abandonMatch: vi.mocked(MatchService.abandonMatch),
+    getMatchLineups: vi.mocked(MatchService.getMatchLineups),
 };
 
 const bracketSvc = {
@@ -664,5 +688,255 @@ describe("characterization: the two different labels for a match id", () => {
         await expect(getMatchDetail(req, makeRes())).rejects.toMatchObject({
             extra: { fields: { id: "รหัสการเเข่งขันต้องเป็นจำนวนเต็มบวก" } },
         });
+    });
+});
+
+// ============================================================================
+// Handlers added after the original suite (room code, my matches, format,
+// manual check-in, finish/abandon, lineups)
+// ============================================================================
+
+describe("setRoomCode", () => {
+    it("forwards matchId, user_id and roomCode, responds 200", async () => {
+        const payload = { roomCode: "ABC123" };
+        svc.setRoomCode.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await setRoomCode(makeReq({ body: { roomCode: "ABC123" } }), res);
+
+        expect(svc.setRoomCode).toHaveBeenCalledWith(42, 7, "ABC123");
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("rejects a bad id with the double-เ label and never calls the service", async () => {
+        const req = makeReq({ params: { id: "0" } as any, body: { roomCode: "X" } });
+
+        await expect(setRoomCode(req, makeRes())).rejects.toMatchObject({
+            code: "VALIDATION_FAILED",
+            extra: { fields: { id: "รหัสการเเข่งขันต้องเป็นจำนวนเต็มบวก" } },
+        });
+        expect(svc.setRoomCode).not.toHaveBeenCalled();
+    });
+
+    it("propagates a service error (e.g. not the referee)", async () => {
+        const err = new AppError(403, "FORBIDDEN", "x");
+        svc.setRoomCode.mockRejectedValue(err);
+
+        await expect(setRoomCode(makeReq({ body: { roomCode: "X" } }), makeRes())).rejects.toBe(err);
+    });
+});
+
+describe("listMyMatches", () => {
+    it.each(["player", "referee"])("passes role=%s through", async (role) => {
+        svc.listMyMatches.mockResolvedValue([] as any);
+
+        const res = makeRes();
+        await listMyMatches(makeReq({ query: { role } as any }), res);
+
+        expect(svc.listMyMatches).toHaveBeenCalledWith(7, { role });
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith([]);
+    });
+
+    it.each([
+        ["missing", undefined],
+        ["unknown role", "organizer"],
+        ["wrong case", "Player"],
+        ["empty string", ""],
+        ["repeated key (array)", ["player", "referee"]],
+    ])("drops role when it is %s", async (_label, role) => {
+        svc.listMyMatches.mockResolvedValue([] as any);
+
+        await listMyMatches(makeReq({ query: (role === undefined ? {} : { role }) as any }), makeRes());
+
+        expect(svc.listMyMatches).toHaveBeenCalledWith(7, { role: undefined });
+    });
+
+    it("does not read params — the route has no :id", async () => {
+        svc.listMyMatches.mockResolvedValue([] as any);
+        await listMyMatches(makeReq({ params: {} as any }), makeRes());
+        expect(svc.listMyMatches).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("setMatchFormat", () => {
+    it("forwards matchId and the whole body, responds 200", async () => {
+        const body = { bestOf: 3 };
+        const payload = { matchId: 42, bestOf: 3 };
+        svc.setMatchFormat.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await setMatchFormat(makeReq({ body }), res);
+
+        expect(svc.setMatchFormat).toHaveBeenCalledWith(42, body);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("does not pass the user (permission is checked by requireOrganizerOfMatch)", async () => {
+        svc.setMatchFormat.mockResolvedValue({} as any);
+        await setMatchFormat(makeReq({ body: { bestOf: 1 } }), makeRes());
+        expect(svc.setMatchFormat.mock.calls[0]).toHaveLength(2);
+    });
+
+    it("bad-id error uses the single-เ label (same as scheduleMatch)", async () => {
+        const req = makeReq({ params: { id: "abc" } as any });
+
+        await expect(setMatchFormat(req, makeRes())).rejects.toMatchObject({
+            extra: { fields: { id: "รหัสการแข่งขันต้องเป็นจำนวนเต็มบวก" } },
+        });
+        expect(svc.setMatchFormat).not.toHaveBeenCalled();
+    });
+});
+
+describe("getMyCheckin", () => {
+    it("forwards matchId and user_id, responds 200", async () => {
+        const payload = { status: "PENDING" };
+        svc.getMyCheckin.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await getMyCheckin(makeReq(), res);
+
+        expect(svc.getMyCheckin).toHaveBeenCalledWith(42, 7);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("rejects a bad id", async () => {
+        await expect(getMyCheckin(makeReq({ params: { id: "-1" } as any }), makeRes()))
+            .rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+        expect(svc.getMyCheckin).not.toHaveBeenCalled();
+    });
+});
+
+describe("manualCheckin", () => {
+    it("forwards matchId, user_id and body, responds 201 (created)", async () => {
+        const body = { userId: 15, note: "QR ใช้ไม่ได้" };
+        const payload = { checkinId: 3 };
+        svc.manualCheckin.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await manualCheckin(makeReq({ body }), res);
+
+        expect(svc.manualCheckin).toHaveBeenCalledWith(42, 7, body);
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("rejects a bad id", async () => {
+        await expect(manualCheckin(makeReq({ params: { id: "1.5" } as any }), makeRes()))
+            .rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+        expect(svc.manualCheckin).not.toHaveBeenCalled();
+    });
+
+    it("propagates a service error (e.g. check-in closed)", async () => {
+        const err = new AppError(409, "CHECKIN_CLOSED", "x");
+        svc.manualCheckin.mockRejectedValue(err);
+        await expect(manualCheckin(makeReq(), makeRes())).rejects.toBe(err);
+    });
+});
+
+describe("finishMatch / abandonMatch — guarded req.user", () => {
+    it("finishMatch forwards matchId and user_id, responds 200", async () => {
+        const payload = { status: "FINISHED" };
+        svc.finishMatch.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await finishMatch(makeReq(), res);
+
+        expect(svc.finishMatch).toHaveBeenCalledWith(42, 7);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("abandonMatch forwards matchId, user_id and reason, responds 200", async () => {
+        const payload = { status: "ABANDONED" };
+        svc.abandonMatch.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await abandonMatch(makeReq({ body: { reason: "ไฟดับ" } }), res);
+
+        expect(svc.abandonMatch).toHaveBeenCalledWith(42, 7, "ไฟดับ");
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("abandonMatch passes reason as undefined when the body has none", async () => {
+        svc.abandonMatch.mockResolvedValue({} as any);
+        await abandonMatch(makeReq({ body: {} }), makeRes());
+        expect(svc.abandonMatch).toHaveBeenCalledWith(42, 7, undefined);
+    });
+
+    it.each([
+        ["finishMatch", finishMatch, "finishMatch"],
+        ["abandonMatch", abandonMatch, "abandonMatch"],
+    ] as const)("%s rejects with 404 USER_NOT_FOUND when req.user is absent", async (_n, handler, key) => {
+        await expect(handler(makeReq({ user: undefined }), makeRes())).rejects.toMatchObject({
+            status: 404,
+            code: "USER_NOT_FOUND",
+        });
+        expect(svc[key]).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["finishMatch", finishMatch],
+        ["abandonMatch", abandonMatch],
+    ] as const)("%s checks auth before parsing the id", async (_n, handler) => {
+        const req = makeReq({ user: undefined, params: { id: "bad" } as any });
+        await expect(handler(req, makeRes())).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
+    });
+
+    it.each([
+        ["finishMatch", finishMatch],
+        ["abandonMatch", abandonMatch],
+    ] as const)("%s rejects a bad id when logged in", async (_n, handler) => {
+        await expect(handler(makeReq({ params: { id: "x" } as any }), makeRes()))
+            .rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    });
+});
+
+describe("getMatchLineups", () => {
+    it("forwards only matchId (public read), responds 200", async () => {
+        const payload = { home: [], away: [] };
+        svc.getMatchLineups.mockResolvedValue(payload as any);
+
+        const res = makeRes();
+        await getMatchLineups(makeReq({ user: undefined }), res);
+
+        expect(svc.getMatchLineups).toHaveBeenCalledWith(42);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(payload);
+    });
+
+    it("rejects a bad id", async () => {
+        await expect(getMatchLineups(makeReq({ params: { id: "abc" } as any }), makeRes()))
+            .rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+        expect(svc.getMatchLineups).not.toHaveBeenCalled();
+    });
+});
+
+describe("unguarded req.user! handlers added later", () => {
+    // Same pattern as forfeitMatch above: these use `req.user!` with no guard, so a
+    // missing user surfaces as a TypeError rather than the 404 the guarded handlers give.
+    it.each([
+        ["setRoomCode", setRoomCode],
+        ["listMyMatches", listMyMatches],
+        ["getMyCheckin", getMyCheckin],
+        ["manualCheckin", manualCheckin],
+    ] as const)("characterization: %s throws a TypeError when req.user is absent", async (_n, handler) => {
+        await expect(handler(makeReq({ user: undefined }), makeRes())).rejects.toBeInstanceOf(TypeError);
+    });
+});
+
+describe("openCheckinMatch / closeCheckinMatch — missing req.user", () => {
+    it.each([
+        ["openCheckinMatch", openCheckinMatch, "openCheckinMatch"],
+        ["closeCheckinMatch", closeCheckinMatch, "closeCheckinMatch"],
+    ] as const)("%s rejects with 404 USER_NOT_FOUND before parsing the id", async (_n, handler, key) => {
+        const req = makeReq({ user: undefined, params: { id: "bad" } as any });
+
+        await expect(handler(req, makeRes())).rejects.toMatchObject({ status: 404, code: "USER_NOT_FOUND" });
+        expect(svc[key]).not.toHaveBeenCalled();
     });
 });

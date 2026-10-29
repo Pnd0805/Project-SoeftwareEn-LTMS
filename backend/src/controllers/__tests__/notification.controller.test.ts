@@ -13,12 +13,22 @@ vi.mock("../../services/notification.service.js", () => ({
     updateMyNotificationPrefs: vi.fn(),     // OD-43
 }));
 
+vi.mock("../../services/emailNotification.service.js", () => ({
+    getEmailPreferences: vi.fn(),
+    updateEmailPreferences: vi.fn(),
+}));
+
 import * as NotificationService from "../../services/notification.service.js";
+import * as EmailService from "../../services/emailNotification.service.js";
 import { AppError } from "../../utils/AppError.js";
 import {
     getMyNotifications,
     markNotificationRead,
     markAllNotificationsRead,
+    getMyNotificationPrefs,
+    updateMyNotificationPrefs,
+    getMyEmailNotificationPrefs,
+    updateMyEmailNotificationPrefs,
 } from "../notification.controller.js";
 import type { Overrides } from '../../__tests__/helpers/overrides.js';
 
@@ -26,6 +36,13 @@ const svc = {
     listMyNotifications: vi.mocked(NotificationService.listMyNotifications),
     markMyNotificationRead: vi.mocked(NotificationService.markMyNotificationRead),
     markAllMyNotificationsRead: vi.mocked(NotificationService.markAllMyNotificationsRead),
+    getMyNotificationPrefs: vi.mocked(NotificationService.getMyNotificationPrefs),
+    updateMyNotificationPrefs: vi.mocked(NotificationService.updateMyNotificationPrefs),
+};
+
+const emailSvc = {
+    getEmailPreferences: vi.mocked(EmailService.getEmailPreferences),
+    updateEmailPreferences: vi.mocked(EmailService.updateEmailPreferences),
 };
 
 function makeRes() {
@@ -209,5 +226,112 @@ describe("markAllNotificationsRead", () => {
         await expect(markAllNotificationsRead(makeReq(), res)).rejects.toBe(err);
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).not.toHaveBeenCalled();
+    });
+});
+
+// OD-43 — hidden categories are shown again only with includeMuted=true (history view)
+describe("getMyNotifications — includeMuted", () => {
+    it.each([
+        ["true", true],
+        ["false", false],
+        ["1", false],
+        ["TRUE", false],
+    ])("includeMuted=%s → %s", async (raw, expected) => {
+        svc.listMyNotifications.mockResolvedValue([] as any);
+
+        await getMyNotifications(makeReq({ query: { includeMuted: raw } as any }), makeRes());
+
+        expect(svc.listMyNotifications.mock.calls[0]![5]).toBe(expected);
+    });
+
+    it("unread and includeMuted are independent of each other", async () => {
+        svc.listMyNotifications.mockResolvedValue([] as any);
+
+        await getMyNotifications(makeReq({ query: { unread: "true", includeMuted: "true" } as any }), makeRes());
+
+        expect(svc.listMyNotifications).toHaveBeenCalledWith(7, true, 1, 20, 0, true);
+    });
+});
+
+describe("in-app notification prefs (OD-43)", () => {
+    it("getMyNotificationPrefs reads the caller's prefs, responds 200", async () => {
+        const prefs = { match: true, team: false };
+        svc.getMyNotificationPrefs.mockResolvedValue(prefs as any);
+
+        const res = makeRes();
+        await getMyNotificationPrefs(makeReq(), res);
+
+        expect(svc.getMyNotificationPrefs).toHaveBeenCalledWith(7);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(prefs);
+    });
+
+    it("updateMyNotificationPrefs forwards the body as the patch, responds 200", async () => {
+        const body = { team: false };
+        const updated = { match: true, team: false };
+        svc.updateMyNotificationPrefs.mockResolvedValue(updated as any);
+
+        const res = makeRes();
+        await updateMyNotificationPrefs(makeReq({ body }), res);
+
+        expect(svc.updateMyNotificationPrefs).toHaveBeenCalledWith(7, body);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(updated);
+    });
+
+    it("updateMyNotificationPrefs propagates a service error", async () => {
+        const err = new AppError(400, "VALIDATION_FAILED", "x");
+        svc.updateMyNotificationPrefs.mockRejectedValue(err);
+        await expect(updateMyNotificationPrefs(makeReq({ body: {} }), makeRes())).rejects.toBe(err);
+    });
+});
+
+describe("email notification prefs", () => {
+    it("getMyEmailNotificationPrefs reads the caller's email prefs, responds 200", async () => {
+        const prefs = { enabled: true, digest: "daily" };
+        emailSvc.getEmailPreferences.mockResolvedValue(prefs as any);
+
+        const res = makeRes();
+        await getMyEmailNotificationPrefs(makeReq(), res);
+
+        expect(emailSvc.getEmailPreferences).toHaveBeenCalledWith(7);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(prefs);
+    });
+
+    it("updateMyEmailNotificationPrefs forwards the body as the patch, responds 200", async () => {
+        const body = { enabled: false };
+        emailSvc.updateEmailPreferences.mockResolvedValue({ enabled: false } as any);
+
+        const res = makeRes();
+        await updateMyEmailNotificationPrefs(makeReq({ body }), res);
+
+        expect(emailSvc.updateEmailPreferences).toHaveBeenCalledWith(7, body);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ enabled: false });
+    });
+
+    it("email prefs do not touch the in-app prefs service", async () => {
+        emailSvc.getEmailPreferences.mockResolvedValue({} as any);
+        await getMyEmailNotificationPrefs(makeReq(), makeRes());
+        expect(svc.getMyNotificationPrefs).not.toHaveBeenCalled();
+    });
+});
+
+describe("prefs handlers — missing req.user", () => {
+    it.each([
+        ["getMyNotificationPrefs", getMyNotificationPrefs],
+        ["updateMyNotificationPrefs", updateMyNotificationPrefs],
+        ["getMyEmailNotificationPrefs", getMyEmailNotificationPrefs],
+        ["updateMyEmailNotificationPrefs", updateMyEmailNotificationPrefs],
+    ] as const)("%s rejects with 404 USER_NOT_FOUND and calls no service", async (_n, handler) => {
+        await expect(handler(makeReq({ user: undefined, body: {} }), makeRes())).rejects.toMatchObject({
+            status: 404,
+            code: "USER_NOT_FOUND",
+        });
+        expect(svc.getMyNotificationPrefs).not.toHaveBeenCalled();
+        expect(svc.updateMyNotificationPrefs).not.toHaveBeenCalled();
+        expect(emailSvc.getEmailPreferences).not.toHaveBeenCalled();
+        expect(emailSvc.updateEmailPreferences).not.toHaveBeenCalled();
     });
 });

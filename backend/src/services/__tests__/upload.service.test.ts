@@ -16,9 +16,21 @@ vi.mock('../../repositories/tournament.repo.js', () => ({
   findTournamentById: vi.fn(),
 }));
 
+vi.mock('../../repositories/team.repo.js', () => ({
+  findById: vi.fn(),
+}));
+
+vi.mock('../../middlewares/requireReferee.js', () => ({
+  isRefereeOfMatch: vi.fn(),
+  isTeamLeaderOfMatch: vi.fn(),
+}));
+
 import * as uploadService from '../upload.service.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
+import * as TeamRepo from '../../repositories/team.repo.js';
+import { isRefereeOfMatch, isTeamLeaderOfMatch } from '../../middlewares/requireReferee.js';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AppError } from '../../utils/AppError.js';
 
 const checkinInput = { purpose: 'checkin_document', contentType: 'image/jpeg', matchId: 1 } as never;
@@ -244,16 +256,385 @@ describe('isRefereeIdentityKey — รูปชื่อไฟล์ยืนย
   });
 });
 
-describe('isCheckinDocumentKey — รูปชื่อไฟล์รูปบัตรเช็คอินเท่านั้น (OD-73)', () => {
+// ─────────────────────────── paths not covered above ───────────────────────────
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+const putInput = () => (vi.mocked(getSignedUrl).mock.calls.at(-1)![1] as { input: Record<string, unknown> }).input;
+
+describe('createPresignedUpload — checkin_document without matchId', () => {
+  it('400 VALIDATION_FAILED and no lookup', async () => {
+    await expectAppError(
+      uploadService.createPresignedUpload({ purpose: 'checkin_document', contentType: 'image/jpeg' } as never, 9001),
+      400, 'VALIDATION_FAILED');
+    expect(MatchRepo.findMatchById).not.toHaveBeenCalled();
+  });
+});
+
+describe('createPresignedUpload — referee_identity and avatar (bound to the caller)', () => {
+  it.each(['referee_identity', 'avatar'])('%s: key is <purpose>/<userId>/<uuid>.<ext>, no DB lookup', async (purpose) => {
+    const result = await uploadService.createPresignedUpload({ purpose, contentType: 'image/png' } as never, 9001);
+
+    expect(result.objectKey).toMatch(new RegExp(`^${purpose}/9001/${UUID}\\.png$`));
+    expect(MatchRepo.findMatchById).not.toHaveBeenCalled();
+    expect(TournamentRepo.findTournamentById).not.toHaveBeenCalled();
+    expect(TeamRepo.findById).not.toHaveBeenCalled();
+  });
+
+  it('avatar ignores any id in the body — the key is always the caller\'s', async () => {
+    const result = await uploadService.createPresignedUpload(
+      { purpose: 'avatar', contentType: 'image/jpeg', teamId: 5, matchId: 6, tournamentId: 7 } as never, 9001);
+    expect(result.objectKey).toMatch(/^avatar\/9001\//);
+  });
+
+  it('referee_identity keys are accepted by isRefereeIdentityKey (one shape, end to end)', async () => {
+    const { objectKey } = await uploadService.createPresignedUpload(
+      { purpose: 'referee_identity', contentType: 'image/jpeg' } as never, 9001);
+    expect(uploadService.isRefereeIdentityKey(objectKey)).toBe(true);
+    expect(() => uploadService.validateRefereeIdentityKeys([objectKey], 9001)).not.toThrow();
+  });
+});
+
+describe('createPresignedUpload — signed PUT command', () => {
+  it('signs a PutObject for the configured bucket, generated key and content type, valid 20 minutes', async () => {
+    const result = await uploadService.createPresignedUpload({ purpose: 'avatar', contentType: 'image/jpeg' } as never, 9001);
+
+    expect(putInput()).toEqual({ Bucket: 'ltms-test', Key: result.objectKey, ContentType: 'image/jpeg' });
+    expect(vi.mocked(getSignedUrl).mock.calls.at(-1)![2]).toEqual({ expiresIn: 1200 });
+    expect(result.objectKey.endsWith('.jpg')).toBe(true);
+  });
+
+  it('generates a different key for every request', async () => {
+    const a = await uploadService.createPresignedUpload({ purpose: 'avatar', contentType: 'image/png' } as never, 9001);
+    const b = await uploadService.createPresignedUpload({ purpose: 'avatar', contentType: 'image/png' } as never, 9001);
+    expect(a.objectKey).not.toBe(b.objectKey);
+  });
+});
+
+describe('createPresignedUpload — dispute_evidence', () => {
+  const input = (o: Record<string, unknown> = {}) =>
+    ({ purpose: 'dispute_evidence', contentType: 'image/png', matchId: 1, ...o }) as never;
+
+  beforeEach(() => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ tournament_id: 20, match_status: 'completed' }));
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(false as never);
+    vi.mocked(isTeamLeaderOfMatch).mockResolvedValue(false as never);
+  });
+
+  it('a referee of the match gets a key bound to the match', async () => {
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true as never);
+
+    const result = await uploadService.createPresignedUpload(input(), 9001);
+
+    expect(isRefereeOfMatch).toHaveBeenCalledWith(1, 9001, 20);
+    expect(isTeamLeaderOfMatch).not.toHaveBeenCalled();   // short-circuits once the referee check passes
+    expect(result.objectKey).toMatch(new RegExp(`^dispute_evidence/1/${UUID}\\.png$`));
+  });
+
+  it('a team leader of the match is also allowed', async () => {
+    vi.mocked(isTeamLeaderOfMatch).mockResolvedValue(true as never);
+
+    const result = await uploadService.createPresignedUpload(input(), 9001);
+
+    expect(isTeamLeaderOfMatch).toHaveBeenCalledWith(1, 9001);
+    expect(result.objectKey).toMatch(/^dispute_evidence\/1\//);
+  });
+
+  it('anyone else is refused with 403 WRONG_SUBMITTER_ROLE', async () => {
+    await expectAppError(uploadService.createPresignedUpload(input(), 9001), 403, 'WRONG_SUBMITTER_ROLE');
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('does not depend on match status (dispute is allowed before and after verify)', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(match({ tournament_id: 20, match_status: 'scheduled' }));
+    vi.mocked(isRefereeOfMatch).mockResolvedValue(true as never);
+
+    await expect(uploadService.createPresignedUpload(input(), 9001)).resolves.toHaveProperty('objectKey');
+  });
+
+  it('400 when matchId is missing', async () => {
+    await expectAppError(uploadService.createPresignedUpload(input({ matchId: undefined }), 9001), 400, 'VALIDATION_FAILED');
+    expect(MatchRepo.findMatchById).not.toHaveBeenCalled();
+  });
+
+  it('404 MATCH_NOT_FOUND for an unknown match, before any role check', async () => {
+    vi.mocked(MatchRepo.findMatchById).mockResolvedValue(null);
+
+    await expectAppError(uploadService.createPresignedUpload(input(), 9001), 404, 'MATCH_NOT_FOUND');
+    expect(isRefereeOfMatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('createPresignedUpload — team_logo', () => {
+  const input = (o: Record<string, unknown> = {}) =>
+    ({ purpose: 'team_logo', contentType: 'image/jpeg', teamId: 30, ...o }) as never;
+
+  it('the team leader gets a key bound to the team', async () => {
+    vi.mocked(TeamRepo.findById).mockResolvedValue({ team_id: 30, leader_id: 9001 } as never);
+
+    const result = await uploadService.createPresignedUpload(input(), 9001);
+
+    expect(TeamRepo.findById).toHaveBeenCalledWith(30);
+    expect(result.objectKey).toMatch(new RegExp(`^team_logo/30/${UUID}\\.jpg$`));
+  });
+
+  it('a member who is not the leader is refused with 403 NOT_TEAM_LEADER', async () => {
+    vi.mocked(TeamRepo.findById).mockResolvedValue({ team_id: 30, leader_id: 1 } as never);
+    await expectAppError(uploadService.createPresignedUpload(input(), 9001), 403, 'NOT_TEAM_LEADER');
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('404 TEAM_NOT_FOUND for an unknown team', async () => {
+    vi.mocked(TeamRepo.findById).mockResolvedValue(null as never);
+    await expectAppError(uploadService.createPresignedUpload(input(), 9001), 404, 'TEAM_NOT_FOUND');
+  });
+
+  it('400 when teamId is missing', async () => {
+    await expectAppError(uploadService.createPresignedUpload(input({ teamId: undefined }), 9001), 400, 'VALIDATION_FAILED');
+    expect(TeamRepo.findById).not.toHaveBeenCalled();
+  });
+});
+
+describe('createPresignedUpload — soft_filter_document errors', () => {
+  it('400 when tournamentId is missing', async () => {
+    await expectAppError(
+      uploadService.createPresignedUpload({ purpose: 'soft_filter_document', contentType: 'image/png' } as never, 9001),
+      400, 'VALIDATION_FAILED');
+    expect(TournamentRepo.findTournamentById).not.toHaveBeenCalled();
+  });
+
+  it('404 TOURNAMENT_NOT_FOUND for an unknown tournament', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(null as never);
+    await expectAppError(
+      uploadService.createPresignedUpload({ purpose: 'soft_filter_document', contentType: 'image/png', tournamentId: 20 } as never, 9001),
+      404, 'TOURNAMENT_NOT_FOUND');
+  });
+
+  it('the generated key passes validateSoftFilterDocuments for the same user and tournament', async () => {
+    vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue({ tournament_id: 20 } as never);
+    const { objectKey } = await uploadService.createPresignedUpload(
+      { purpose: 'soft_filter_document', contentType: 'image/jpeg', tournamentId: 20 } as never, 9001);
+    s3Send.mockResolvedValueOnce({ ContentType: 'image/jpeg' });
+
+    await expect(uploadService.validateSoftFilterDocuments([objectKey], 20, 9001)).resolves.toBeUndefined();
+  });
+});
+
+describe('validateSoftFilterDocuments — more paths', () => {
+  const key = (n: number) => `soft_filter_document/20/9001/${String(n).repeat(8)}-1111-4111-8111-111111111111.png`;
+
+  it('accepts an empty list without calling storage', async () => {
+    await expect(uploadService.validateSoftFilterDocuments([], 20, 9001)).resolves.toBeUndefined();
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('checks every key with a HEAD on the configured bucket', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'image/png' }).mockResolvedValueOnce({ ContentType: 'image/png' });
+
+    await uploadService.validateSoftFilterDocuments([key(1), key(2)], 20, 9001);
+
+    expect(s3Send).toHaveBeenCalledTimes(2);
+    expect(s3Send.mock.calls.map(c => c[0].input)).toEqual([
+      { Bucket: 'ltms-test', Key: key(1) },
+      { Bucket: 'ltms-test', Key: key(2) },
+    ]);
+  });
+
+  it('one bad key in the list rejects all of them before storage is touched', async () => {
+    const err = await uploadService.validateSoftFilterDocuments([key(1), 'soft_filter_document/20/9001/x.png'], 20, 9001)
+      .catch(e => e);
+    expect(err).toMatchObject({ status: 422, code: 'SOFT_FILTER_DOCUMENT_INVALID', extra: { objectKey: 'soft_filter_document/20/9001/x.png' } });
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('reports contentType: null when storage returns no content type', async () => {
+    s3Send.mockResolvedValueOnce({});
+    const err = await uploadService.validateSoftFilterDocuments([key(1)], 20, 9001).catch(e => e);
+    expect(err).toMatchObject({ code: 'SOFT_FILTER_DOCUMENT_INVALID', extra: { objectKey: key(1), contentType: null } });
+  });
+
   it.each([
-    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', undefined, true],
-    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.PNG', 12, true],
-    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', 13, false],   // คนละแมตช์
-    ['checkin_document/123/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', 12, false],  // 12 ต้องไม่จับ 123
-    ['checkin_document/12/readme.txt', undefined, false],
-    ['avatar/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', undefined, false],
-    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg.bak', undefined, false],
-  ])('%s (แมตช์ %s) → %s', (k, matchId, expected) => {
-    expect(uploadService.isCheckinDocumentKey(k, matchId)).toBe(expected);
+    ['name NoSuchKey', { name: 'NoSuchKey' }],
+    ['httpStatusCode 404 only', { $metadata: { httpStatusCode: 404 } }],
+  ])('treats %s as "not uploaded" (422)', async (_l, error) => {
+    s3Send.mockRejectedValueOnce(error);
+    await expectAppError(uploadService.validateSoftFilterDocuments([key(1)], 20, 9001), 422, 'SOFT_FILTER_DOCUMENT_NOT_FOUND');
+  });
+
+  it.each([
+    ['null', null],
+    ['a string', 'boom'],
+  ])('treats a non-object error (%s) as storage unavailable (503)', async (_l, error) => {
+    s3Send.mockRejectedValueOnce(error);
+    await expectAppError(uploadService.validateSoftFilterDocuments([key(1)], 20, 9001), 503, 'STORAGE_UNAVAILABLE');
+  });
+
+  it('accepts .png keys and upper-case uuids (regex is case-insensitive)', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'image/png' });
+    await expect(uploadService.validateSoftFilterDocuments(
+      ['soft_filter_document/20/9001/ABCDEF12-1111-4111-8111-111111111111.PNG'], 20, 9001)).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['other tournament', 'soft_filter_document/21/9001/11111111-1111-4111-8111-111111111111.jpg'],
+    ['uuid not v4', 'soft_filter_document/20/9001/11111111-1111-1111-8111-111111111111.jpg'],
+    ['wrong extension', 'soft_filter_document/20/9001/11111111-1111-4111-8111-111111111111.gif'],
+    ['path traversal suffix', 'soft_filter_document/20/9001/11111111-1111-4111-8111-111111111111.jpg/../x'],
+  ])('rejects key with %s', async (_l, bad) => {
+    await expectAppError(uploadService.validateSoftFilterDocuments([bad], 20, 9001), 422, 'SOFT_FILTER_DOCUMENT_INVALID');
+  });
+});
+
+describe('getPresignedDownloadUrl', () => {
+  it('signs a GetObject for the key with the same 20-minute expiry', async () => {
+    await expect(uploadService.getPresignedDownloadUrl('avatar/1/a.png')).resolves.toBe('https://s3/signed');
+
+    const [, command, options] = vi.mocked(getSignedUrl).mock.calls.at(-1)!;
+    expect((command as { input: unknown }).input).toEqual({ Bucket: 'ltms-test', Key: 'avatar/1/a.png' });
+    expect(options).toEqual({ expiresIn: 1200 });
+  });
+});
+
+describe('validateAvatarKey — more paths', () => {
+  const own = 'avatar/9001/22222222-2222-4222-8222-222222222222.png';
+
+  it('accepts an own key whose object exists as an image', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'image/png' });
+    await expect(uploadService.validateAvatarKey(own, 9001)).resolves.toBeUndefined();
+    expect(s3Send.mock.calls[0]![0].input).toEqual({ Bucket: 'ltms-test', Key: own });
+  });
+
+  it.each([
+    ['another user\'s avatar', 'avatar/9002/22222222-2222-4222-8222-222222222222.png'],
+    ['a team logo key', 'team_logo/9001/22222222-2222-4222-8222-222222222222.png'],
+    ['a key without a uuid', 'avatar/9001/me.png'],
+    ['a prefix-only match', 'avatar/90011/22222222-2222-4222-8222-222222222222.png'],
+  ])('rejects %s with 422 AVATAR_KEY_INVALID and no storage call', async (_l, bad) => {
+    const err = await uploadService.validateAvatarKey(bad, 9001).catch(e => e);
+    expect(err).toMatchObject({ status: 422, code: 'AVATAR_KEY_INVALID', extra: { objectKey: bad } });
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('rejects an object without a content type as not found', async () => {
+    s3Send.mockResolvedValueOnce({});
+    await expectAppError(uploadService.validateAvatarKey(own, 9001), 422, 'AVATAR_KEY_NOT_FOUND');
+  });
+});
+
+describe('validateRefereeIdentityKeys (A1)', () => {
+  const own = (ext = 'jpg') => `referee_identity/9001/33333333-3333-4333-8333-333333333333.${ext}`;
+
+  it('accepts the caller\'s own keys (jpg and png) without touching storage', () => {
+    expect(() => uploadService.validateRefereeIdentityKeys([own('jpg'), own('png')], 9001)).not.toThrow();
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('accepts an empty list', () => {
+    expect(() => uploadService.validateRefereeIdentityKeys([], 9001)).not.toThrow();
+  });
+
+  it('rejects another user\'s avatar used as an identity document', () => {
+    const stolen = 'avatar/1234/33333333-3333-4333-8333-333333333333.jpg';
+    expect(() => uploadService.validateRefereeIdentityKeys([stolen], 9001)).toThrow(
+      expect.objectContaining({ status: 422, code: 'REFEREE_IDENTITY_KEY_INVALID' }),
+    );
+  });
+
+  it('rejects another applicant\'s identity document', () => {
+    const other = 'referee_identity/1234/33333333-3333-4333-8333-333333333333.jpg';
+    expect(() => uploadService.validateRefereeIdentityKeys([other], 9001)).toThrow(AppError);
+  });
+
+  it('lists only the invalid keys in extra.objectKeys', () => {
+    const bad1 = 'referee_identity/9001/not-a-uuid.jpg';
+    const bad2 = 'referee_identity/9001/33333333-3333-4333-8333-333333333333.gif';
+
+    let caught: AppError | undefined;
+    try {
+      uploadService.validateRefereeIdentityKeys([own(), bad1, own('png'), bad2], 9001);
+    } catch (e) {
+      caught = e as AppError;
+    }
+
+    expect(caught?.extra).toEqual({ objectKeys: [bad1, bad2] });
+  });
+
+  it('does not let user 900 use user 9001\'s keys (no prefix match on the id)', () => {
+    expect(() => uploadService.validateRefereeIdentityKeys([own()], 900)).toThrow(AppError);
+  });
+});
+
+describe('deleteObjectBestEffort', () => {
+  it('sends a DeleteObject for the key on the configured bucket', async () => {
+    s3Send.mockResolvedValueOnce({});
+
+    await expect(uploadService.deleteObjectBestEffort('avatar/1/old.png')).resolves.toBeUndefined();
+    expect(s3Send.mock.calls[0]![0].input).toEqual({ Bucket: 'ltms-test', Key: 'avatar/1/old.png' });
+  });
+
+  it('swallows a storage error and logs it with the key (never throws)', async () => {
+    const boom = new Error('minio down');
+    s3Send.mockRejectedValueOnce(boom);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(uploadService.deleteObjectBestEffort('avatar/1/old.png')).resolves.toBeUndefined();
+
+    expect(spy).toHaveBeenCalledWith('deleteObjectBestEffort: failed to delete avatar/1/old.png', boom);
+    spy.mockRestore();
+  });
+});
+
+describe('listObjectsByPrefix — more paths', () => {
+  it('skips entries that have no Key', async () => {
+    s3Send.mockResolvedValueOnce({ Contents: [{}, { Key: 'referee_identity/1/a.jpg' }], IsTruncated: false });
+    await expect(uploadService.listObjectsByPrefix('referee_identity/')).resolves.toEqual([
+      { key: 'referee_identity/1/a.jpg', lastModified: null },
+    ]);
+  });
+
+  it('stops when IsTruncated is true but no continuation token is given', async () => {
+    s3Send.mockResolvedValueOnce({ Contents: [], IsTruncated: true });
+    await uploadService.listObjectsByPrefix('referee_identity/');
+    expect(s3Send).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates a storage failure (read-only, caller decides)', async () => {
+    s3Send.mockRejectedValueOnce(new Error('minio down'));
+    await expect(uploadService.listObjectsByPrefix('referee_identity/')).rejects.toThrow('minio down');
+  });
+});
+
+describe('validateTeamLogoKey', () => {
+  const own = 'team_logo/30/44444444-4444-4444-8444-444444444444.jpg';
+
+  it('accepts a key for this team whose object exists as an image', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'image/jpeg' });
+    await expect(uploadService.validateTeamLogoKey(own, 30)).resolves.toBeUndefined();
+    expect(s3Send.mock.calls[0]![0].input).toEqual({ Bucket: 'ltms-test', Key: own });
+  });
+
+  it.each([
+    ['another team', 'team_logo/31/44444444-4444-4444-8444-444444444444.jpg'],
+    ['an avatar key', 'avatar/30/44444444-4444-4444-8444-444444444444.jpg'],
+    ['a prefix-only id match', 'team_logo/300/44444444-4444-4444-8444-444444444444.jpg'],
+    ['a webp file', 'team_logo/30/44444444-4444-4444-8444-444444444444.webp'],
+  ])('rejects a key for %s with 422 TEAM_LOGO_KEY_INVALID and no storage call', async (_l, bad) => {
+    const err = await uploadService.validateTeamLogoKey(bad, 30).catch(e => e);
+    expect(err).toMatchObject({ status: 422, code: 'TEAM_LOGO_KEY_INVALID', extra: { objectKey: bad } });
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('422 TEAM_LOGO_KEY_NOT_FOUND when the object was never uploaded', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'NotFound', $metadata: { httpStatusCode: 404 } });
+    await expectAppError(uploadService.validateTeamLogoKey(own, 30), 422, 'TEAM_LOGO_KEY_NOT_FOUND');
+  });
+
+  it('422 TEAM_LOGO_KEY_NOT_FOUND when the stored object is not an image', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'text/html' });
+    await expectAppError(uploadService.validateTeamLogoKey(own, 30), 422, 'TEAM_LOGO_KEY_NOT_FOUND');
+  });
+
+  it('503 STORAGE_UNAVAILABLE when storage itself fails', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'TimeoutError', $metadata: { httpStatusCode: 500 } });
+    await expectAppError(uploadService.validateTeamLogoKey(own, 30), 503, 'STORAGE_UNAVAILABLE');
   });
 });
