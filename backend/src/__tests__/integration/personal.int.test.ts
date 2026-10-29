@@ -253,3 +253,34 @@ describe('ประกาศ — แก้/ลบได้เฉพาะผู�
   });
 });
 
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 6 — ค้นหาผู้ใช้แล้วสืบอีเมลได้
+ *   เดิม `%` `_` ไม่ถูก escape (พิมพ์ `%%%` ได้ทุกคน) และค้นอีเมลแบบขึ้นต้น (ไล่ทีละตัวรู้ว่าอีเมลไหนของใคร)
+ */
+describe('U06 ค้นหาผู้ใช้ — สืบอีเมลไม่ได้', () => {
+  it.each(['%%%', '___', '%_%'])('พิมพ์ %s → ไม่ได้รายชื่อทุกคน', async (q) => {
+    const res = await as(bob).get(`/users/search?q=${encodeURIComponent(q)}`);
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual([]);
+  });
+
+  it('ต้นอีเมล → ไม่เจอ (ไล่ทีละตัวไม่ได้) · ทั้งอีเมล / ทั้งหน้า @ → เจอ', async () => {
+    const carol = await createUser({ fullName: 'คนไม่มีชื่อซ้ำ', email: 'carol-6710501234@ku.th' });
+    const ids = async (q: string) =>
+      ((await as(bob).get(`/users/search?q=${encodeURIComponent(q)}`)).body.items as { id: number }[]).map(i => i.id);
+
+    expect(await ids('carol-671')).not.toContain(carol.id);
+    expect(await ids('carol-6710501234@ku.th')).toContain(carol.id);
+    expect(await ids('CAROL-6710501234')).toContain(carol.id);   // ไม่สนตัวพิมพ์เล็กใหญ่ (collation ของคอลัมน์)
+  });
+
+  it('ชื่อบางส่วนยังค้นได้เหมือนเดิม · ชื่อที่มี % จริงก็ค้นเจอแบบตรงตัว', async () => {
+    const pct = await createUser({ fullName: 'ร้อย%เปอร์เซ็นต์' });
+    const ids = async (q: string) =>
+      ((await as(bob).get(`/users/search?q=${encodeURIComponent(q)}`)).body.items as { id: number }[]).map(i => i.id);
+
+    expect(await ids('lic')).toContain(alice.id);                 // Alice ทดสอบ
+    expect(await ids('ย%เ')).toEqual([pct.id]);
+  });
+});
+

@@ -50,11 +50,20 @@ export async function markUsed(otpId : number) : Promise<number>{
     return result.affectedRows;
 }
 
-// นับขึ้นที่ฐานด้วย `+ 1` ไม่ใช่อ่านค่ามาบวกในแอปแล้วเขียนกลับ — ยิงพร้อมกันหลายเส้นจะนับหายไป
-export async function bumpAttempt(otpId : number) : Promise<number>{
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 8 — "จองสิทธิ์เดาหนึ่งครั้ง" ก่อนเทียบรหัส (แทน bumpAttempt ที่นับหลังเทียบ)
+ *
+ * เดิม: อ่านจำนวนครั้ง → เทียบรหัส → ค่อยนับเพิ่ม ⇒ ยิงพร้อมกัน 50 คำขอ ทุกคำขอผ่านด่าน 5 ครั้ง
+ *   ก่อนที่ตัวนับจะขึ้น ⇒ ได้เดาเกินโควตา
+ * ตอนนี้: UPDATE แบบมีเงื่อนไข `attempt_count < ?` ในคำสั่งเดียว — MySQL ล็อกแถวให้ ⇒ ผ่านได้ไม่เกินโควตาจริง
+ *   คืน false = ใบนี้หมดสิทธิ์แล้ว (ครบโควตา/ใช้แล้ว/หมดอายุ) ไม่ต้องเทียบ
+ * ★ นับทั้งครั้งที่ถูกด้วย — ไม่เสียอะไร เพราะกรอกถูกแล้วใบนั้นถูกปิดทันที
+ */
+export async function claimAttempt(otpId : number , maxAttempts : number) : Promise<boolean>{
     const [ result ] = await pool.query<ResultSetHeader>(
         `UPDATE email_verification_otps SET attempt_count = attempt_count + 1
-          WHERE email_verification_otp_id = ?`,
-        [otpId]);
-    return result.affectedRows;
+          WHERE email_verification_otp_id = ? AND attempt_count < ?
+            AND used_at IS NULL AND expires_at > NOW()`,
+        [otpId , maxAttempts]);
+    return result.affectedRows === 1;
 }

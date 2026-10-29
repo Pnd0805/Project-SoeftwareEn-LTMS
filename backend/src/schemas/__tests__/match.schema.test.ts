@@ -254,6 +254,13 @@ describe('createBracketSchema', () => {
 });
 
 describe('submitCheckinSchema', () => {
+  // bug hunt 30 ต.ค. ข้อ 4 — คอลัมน์ VARCHAR(255) · เกินต้องได้ 400 ไม่ใช่ 500 จากฐาน
+  it('documentS3Key ยาวได้ไม่เกิน 255 ตัว', () => {
+    const body = (k: string) => ({ method: 'photo_online', documentType: 'student_id', documentS3Key: k });
+    expect(submitCheckinSchema.safeParse(body('k'.repeat(255))).success).toBe(true);
+    expect(submitCheckinSchema.safeParse(body('k'.repeat(256))).success).toBe(false);
+  });
+
   it('accepts a valid qr_onsite payload', () => {
     const result = submitCheckinSchema.safeParse({ method: 'qr_onsite', qrPayload: 'signed-payload-abc' });
     expect(result.success).toBe(true);

@@ -95,4 +95,16 @@ export const env = {
      * 🔴 ไม่ตั้งต่ำกว่า 1 ชม. — งานกวาดรันชั่วโมงละครั้ง ตั้งต่ำกว่านั้นไม่ได้ผลเร็วขึ้น
      */
     UNVERIFIED_ACCOUNT_TTL_HOURS : Number(process.env["UNVERIFIED_ACCOUNT_TTL_HOURS"] ?? 24),
+
+    /**
+     * 🔴 30 ต.ค. 2569 (bug hunt ข้อ 1) — จำนวนชั้นของ reverse proxy ที่อยู่หน้า backend (express `trust proxy`)
+     *
+     * ใน docker-compose ทุกคำขอผ่าน nginx ก่อน ⇒ ไม่ตั้ง = `req.ip` เป็นไอพีของ nginx ตัวเดียวสำหรับทุกคน
+     *   ⇒ ตัวจำกัดล็อกอิน "60 ครั้งต่อไอพี" กลายเป็น "60 ครั้งทั้งเว็บ" — คนเดียวกดผิดรัว ๆ ล็อกทุกคนได้ 15 นาที
+     * ★ 0 (ค่าตั้งต้น) = ไม่เชื่อ header ใด ๆ — ถูกเมื่อรัน backend ตรง ๆ (npm run dev)
+     *   🔴 ห้ามตั้งเมื่อไม่มี proxy จริง: client ต่อตรงแล้วปลอม `X-Forwarded-For` หลบตัวจำกัดได้
+     * ★ 1 = มี nginx หนึ่งชั้น (docker-compose ตั้งให้แล้ว) · nginx ต่อไอพีจริงไว้ท้าย header ด้วย
+     *   `$proxy_add_x_forwarded_for` ⇒ express หยิบตัวท้ายสุด ค่าที่ client ปลอมมาข้างหน้าไม่มีผล
+     */
+    TRUST_PROXY : Number(process.env["TRUST_PROXY"] ?? 0),
 };

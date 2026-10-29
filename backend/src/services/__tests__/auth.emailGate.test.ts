@@ -26,12 +26,12 @@ vi.mock('../../repositories/user.repo.js', () => ({
 vi.mock('../../repositories/faculty.repo.js', () => ({ findFacultyById: vi.fn() }));
 vi.mock('../../repositories/department.repo.js', () => ({ findDepartmentInFaculty: vi.fn() }));
 vi.mock('../../repositories/passwordReset.repo.js', () => ({
-  create: vi.fn(), findActiveByUser: vi.fn(), findAllActive: vi.fn(),
+  create: vi.fn(), findActiveByUser: vi.fn(), findActiveByHash: vi.fn(),
   countIssuedWithinLastHour: vi.fn(), invalidateAllForUser: vi.fn(), markUsed: vi.fn(),
 }));
 vi.mock('../../repositories/emailVerification.repo.js', () => ({
   create: vi.fn(), findActiveByUser: vi.fn(), countIssuedWithinLastHour: vi.fn(),
-  invalidateAllForUser: vi.fn(), markUsed: vi.fn(), bumpAttempt: vi.fn(),
+  invalidateAllForUser: vi.fn(), markUsed: vi.fn(), claimAttempt: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock('../../utils/password.js', () => ({ hashPassword: vi.fn(), verifyPassword: vi.fn() }));
 vi.mock('../../utils/token.js', () => ({ signToken: vi.fn() }));

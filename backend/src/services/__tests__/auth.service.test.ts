@@ -22,7 +22,7 @@ vi.mock('../../repositories/department.repo.js', () => ({
 vi.mock('../../repositories/passwordReset.repo.js', () => ({
   create: vi.fn(),
   findActiveByUser: vi.fn(),
-  findAllActive: vi.fn(),
+  findActiveByHash: vi.fn(),
   countIssuedWithinLastHour: vi.fn(),
   invalidateAllForUser: vi.fn(),
   markUsed: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('../../repositories/emailVerification.repo.js', () => ({
   countIssuedWithinLastHour: vi.fn(),
   invalidateAllForUser: vi.fn(),
   markUsed: vi.fn(),
-  bumpAttempt: vi.fn(),
+  claimAttempt: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('../../utils/password.js', () => ({
@@ -69,6 +69,8 @@ import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { signToken } from '../../utils/token.js';
 import { sendPasswordResetEmail , sendEmailVerificationOtp } from '../mail.service.js';
 import { AppError } from '../../utils/AppError.js';
+import { createHash } from 'crypto';
+import { env } from '../../config/env.js';
 import type { RegisterInput } from '../../schemas/auth.schema.js';
 import type { UserRow, PasswordResetTokenRow } from '../../types/db.js';
 
@@ -134,6 +136,7 @@ const kuRegisterInput: RegisterInput = {
 };
 
 beforeEach(() => {
+  env.REQUIRE_EMAIL_VERIFIED = false;   // ค่าตั้งต้นของ .env.example · บางเทสสลับเป็น true เอง
   vi.clearAllMocks();
 });
 
@@ -231,7 +234,18 @@ describe('auth.service register()', () => {
     expect(mockedUserRepo.overwriteUnverified).not.toHaveBeenCalled();
   });
 
-  it('overwrites the pending row instead of failing when the email is unverified', async () => {
+  // 🔴 bug hunt 30 ต.ค. ข้อ 2 — ด่านปิด = คนไม่ยืนยันใช้งานได้จริง ⇒ ทับ = ยึดบัญชี
+  it('🔴 ด่านยืนยันอีเมลปิด → อีเมลที่ยังไม่ยืนยันถือว่าซ้ำ · ไม่ทับรหัสผ่าน', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = false;
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
+
+    await expect(authService.register(registerInput)).rejects.toMatchObject({ status: 400, code: 'EMAIL_ALREADY_REGISTERED' });
+    expect(mockedUserRepo.overwriteUnverified).not.toHaveBeenCalled();
+    expect(mockedUserRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('overwrites the pending row instead of failing when the email is unverified (ด่านเปิด)', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
     mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
     mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
     mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);
@@ -255,6 +269,7 @@ describe('auth.service register()', () => {
   });
 
   it('rejects when the pending row got verified between the read and the overwrite', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
     mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
     mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
     mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);
@@ -330,7 +345,9 @@ describe('auth.service login()', () => {
       code: 'INVALID_CREDENTIALS',
     });
 
-    expect(mockedVerifyPassword).not.toHaveBeenCalled();
+    // bug hunt 30 ต.ค. — ยังรัน bcrypt กับ hash หลอก ให้เวลาตอบเท่ากรณีรหัสผิด (จับเวลาแล้วรู้ไม่ได้ว่าอีเมลมีจริง)
+    expect(mockedVerifyPassword).toHaveBeenCalledTimes(1);
+    expect(mockedVerifyPassword).toHaveBeenCalledWith('whatever', expect.stringMatching(/^\$2b\$10\$/));
     expect(mockedSignToken).not.toHaveBeenCalled();
   });
 
@@ -402,7 +419,7 @@ describe('auth.service forgotPassword()', () => {
     const result = await authService.forgotPassword(baseUser.email);
 
     expect(mockedPasswordResetRepo.invalidateAllForUser).toHaveBeenCalledWith(baseUser.user_id);
-    expect(mockedPasswordResetRepo.create).toHaveBeenCalledWith(baseUser.user_id, 'hashed-raw-token', expect.any(Date));
+    expect(mockedPasswordResetRepo.create).toHaveBeenCalledWith(baseUser.user_id, expect.stringMatching(/^[0-9a-f]{64}$/), expect.any(Date));
     expect(mockedSendPasswordResetEmail).toHaveBeenCalledTimes(1);
     expect(mockedSendPasswordResetEmail).toHaveBeenCalledWith(baseUser.email, baseUser.full_name, expect.any(String));
     expect(result).toEqual({ message: expect.any(String) });
@@ -422,8 +439,10 @@ describe('auth.service forgotPassword()', () => {
     const tokenHashPersisted = mockedPasswordResetRepo.create.mock.calls[0]?.[1];
 
     expect(rawTokenSentInEmail).toEqual(expect.any(String));
-    expect(tokenHashPersisted).toBe('hashed-raw-token');
+    // 🔴 bug hunt ข้อ 7 — SHA-256 ของ token ดิบ (ค้นในฐานด้วย WHERE ได้) ไม่ใช่ bcrypt
+    expect(tokenHashPersisted).toBe(createHash('sha256').update(rawTokenSentInEmail!).digest('hex'));
     expect(tokenHashPersisted).not.toBe(rawTokenSentInEmail);
+    expect(mockedHashPassword).not.toHaveBeenCalled();
   });
 
   it('อีเมลที่ไม่มีในระบบ: ตอบ body เหมือนกัน แต่ไม่ส่งเมลและไม่สร้าง token', async () => {
@@ -515,9 +534,11 @@ describe('auth.service forgotPassword()', () => {
 });
 
 describe('auth.service resetPassword()', () => {
+  const sha = (t: string) => createHash('sha256').update(t).digest('hex');
+  beforeEach(() => { mockedPasswordResetRepo.markUsed.mockResolvedValue(1); });
+
   it('token ถูกต้อง + รหัสผ่านผ่านกฎ: ตั้งรหัสใหม่ และล้าง token อื่นๆ ของคนนั้นทั้งหมด', async () => {
-    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
-    mockedVerifyPassword.mockResolvedValue(true);
+    mockedPasswordResetRepo.findActiveByHash.mockResolvedValue(baseResetToken);
     mockedUserRepo.findById.mockResolvedValue(baseUser);
     mockedHashPassword.mockResolvedValue('new-hashed-password');
     mockedUserRepo.updatePassword.mockResolvedValue(1);
@@ -525,14 +546,18 @@ describe('auth.service resetPassword()', () => {
 
     const result = await authService.resetPassword('raw-token', 'newpassword1');
 
+    // 🔴 bug hunt ข้อ 7 — ค้นตรงด้วย SHA-256 ใบเดียว ไม่กวาดทุกใบมา bcrypt
+    expect(mockedPasswordResetRepo.findActiveByHash).toHaveBeenCalledWith(sha('raw-token'));
+    expect(mockedVerifyPassword).not.toHaveBeenCalled();
+    expect(mockedPasswordResetRepo.markUsed).toHaveBeenCalledWith(baseResetToken.password_reset_token_id);
     expect(mockedUserRepo.updatePassword).toHaveBeenCalledWith(baseUser.user_id, 'new-hashed-password');
     expect(mockedPasswordResetRepo.invalidateAllForUser).toHaveBeenCalledWith(baseUser.user_id);
     expect(result).toEqual({ message: expect.any(String) });
     expect(result).not.toHaveProperty('accessToken');
   });
 
-  it('token ที่ไม่มีในระบบ (ไม่มีแถว active เลย): 400 INVALID_RESET_TOKEN', async () => {
-    mockedPasswordResetRepo.findAllActive.mockResolvedValue([]);
+  it('token ที่ไม่มีในระบบ / ใช้แล้ว / หมดอายุ (ค้นไม่เจอ): 400 INVALID_RESET_TOKEN', async () => {
+    mockedPasswordResetRepo.findActiveByHash.mockResolvedValue(null);
 
     await expect(authService.resetPassword('unknown-token', 'newpassword1')).rejects.toMatchObject({
       status: 400,
@@ -541,37 +566,22 @@ describe('auth.service resetPassword()', () => {
     expect(mockedUserRepo.updatePassword).not.toHaveBeenCalled();
   });
 
-  it('token ที่ไม่ตรงกับ hash ของแถว active ใดเลย (ครอบคลุมทั้งกรณีใช้ไปแล้ว/หมดอายุ — ไม่อยู่ใน findAllActive() แล้ว): 400 ข้อความเดียวกัน', async () => {
-    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
-    mockedVerifyPassword.mockResolvedValue(false);
-
-    const err1: AppError = await authService.resetPassword('wrong-token', 'newpassword1').catch((e) => e);
-    mockedPasswordResetRepo.findAllActive.mockResolvedValue([]);
-    const err2: AppError = await authService.resetPassword('expired-or-used-token', 'newpassword1').catch((e) => e);
-
-    expect(err1.status).toBe(400);
-    expect(err1.code).toBe('INVALID_RESET_TOKEN');
-    expect(err2.status).toBe(400);
-    expect(err2.code).toBe('INVALID_RESET_TOKEN');
-    expect(err1.message).toBe(err2.message);
-  });
-
-  it('response ไม่มี accessToken', async () => {
-    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
-    mockedVerifyPassword.mockResolvedValue(true);
+  it('🔴 ยิงพร้อมกันด้วยลิงก์เดียว — คนที่จองใบไม่ได้ (markUsed = 0) ได้ข้อความเดียวกับลิงก์ใช้แล้ว · ไม่เปลี่ยนรหัส', async () => {
+    mockedPasswordResetRepo.findActiveByHash.mockResolvedValue(baseResetToken);
     mockedUserRepo.findById.mockResolvedValue(baseUser);
-    mockedHashPassword.mockResolvedValue('new-hashed-password');
-    mockedUserRepo.updatePassword.mockResolvedValue(1);
-    mockedPasswordResetRepo.invalidateAllForUser.mockResolvedValue(1);
+    mockedPasswordResetRepo.markUsed.mockResolvedValue(0);
 
-    const result = await authService.resetPassword('raw-token', 'newpassword1');
+    const err: AppError = await authService.resetPassword('raw-token', 'newpassword1').catch((e) => e);
+    mockedPasswordResetRepo.findActiveByHash.mockResolvedValue(null);
+    const used: AppError = await authService.resetPassword('raw-token', 'newpassword1').catch((e) => e);
 
-    expect(result).not.toHaveProperty('accessToken');
+    expect(err.code).toBe('INVALID_RESET_TOKEN');
+    expect(err.message).toBe(used.message);
+    expect(mockedUserRepo.updatePassword).not.toHaveBeenCalled();
   });
 
   it('บัญชีถูกระงับ + token ที่ออกก่อนถูกระงับ: ใช้ไม่ได้ (400 INVALID_RESET_TOKEN)', async () => {
-    mockedPasswordResetRepo.findAllActive.mockResolvedValue([baseResetToken]);
-    mockedVerifyPassword.mockResolvedValue(true);
+    mockedPasswordResetRepo.findActiveByHash.mockResolvedValue(baseResetToken);
     mockedUserRepo.findById.mockResolvedValue({ ...baseUser, is_suspended: 1 });
 
     await expect(authService.resetPassword('raw-token', 'newpassword1')).rejects.toMatchObject({
@@ -579,6 +589,7 @@ describe('auth.service resetPassword()', () => {
       code: 'INVALID_RESET_TOKEN',
     });
     expect(mockedUserRepo.updatePassword).not.toHaveBeenCalled();
+    expect(mockedPasswordResetRepo.markUsed).not.toHaveBeenCalled();
   });
 });
 
@@ -683,7 +694,10 @@ describe('auth.service verifyEmail()', () => {
     expect(mockedEmailVerifyRepo.markUsed).toHaveBeenCalledWith(7);
     expect(mockedUserRepo.markEmailVerified).toHaveBeenCalledWith(1);
     expect(mockedEmailVerifyRepo.invalidateAllForUser).toHaveBeenCalledWith(1);
-    expect(mockedEmailVerifyRepo.bumpAttempt).not.toHaveBeenCalled();
+    // จองสิทธิ์ก่อนเทียบ แม้ครั้งที่ถูก (ใบปิดทันทีอยู่แล้ว ไม่เสียอะไร)
+    expect(mockedEmailVerifyRepo.claimAttempt).toHaveBeenCalledWith(7, 5);
+    expect(mockedEmailVerifyRepo.claimAttempt.mock.invocationCallOrder[0])
+      .toBeLessThan(mockedVerifyPassword.mock.invocationCallOrder[0]!);
   });
 
   it('ส่งโควตา 5 ครั้งลงไปให้ SQL กรอง — ด่านกันเดาต้องไม่หายไป', async () => {
@@ -704,7 +718,19 @@ describe('auth.service verifyEmail()', () => {
     await expect(authService.verifyEmail('test@example.com', '000000'))
       .rejects.toMatchObject({ status: 400, code: 'INVALID_OTP' });
 
-    expect(mockedEmailVerifyRepo.bumpAttempt).toHaveBeenCalledWith(7);
+    expect(mockedEmailVerifyRepo.claimAttempt).toHaveBeenCalledWith(7, 5);
+    expect(mockedUserRepo.markEmailVerified).not.toHaveBeenCalled();
+  });
+
+  // 🔴 bug hunt 30 ต.ค. ข้อ 8 — จองสิทธิ์ไม่ได้ (คำขออื่นที่ยิงพร้อมกันใช้โควตาหมดแล้ว) = ไม่เทียบเลย
+  it('จองสิทธิ์เดาไม่ได้ → ไม่เทียบรหัส · INVALID_OTP แม้รหัสจะถูก', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.findActiveByUser.mockResolvedValue([otpRow]);
+    mockedEmailVerifyRepo.claimAttempt.mockResolvedValueOnce(false);
+    mockedVerifyPassword.mockResolvedValue(true);
+
+    await expect(authService.verifyEmail('test@example.com', '123456')).rejects.toMatchObject({ code: 'INVALID_OTP' });
+    expect(mockedVerifyPassword).not.toHaveBeenCalled();
     expect(mockedUserRepo.markEmailVerified).not.toHaveBeenCalled();
   });
 
@@ -715,7 +741,7 @@ describe('auth.service verifyEmail()', () => {
     await expect(authService.verifyEmail('test@example.com', '123456'))
       .rejects.toMatchObject({ code: 'INVALID_OTP' });
 
-    expect(mockedEmailVerifyRepo.bumpAttempt).not.toHaveBeenCalled();
+    expect(mockedEmailVerifyRepo.claimAttempt).not.toHaveBeenCalled();
   });
 
   it('ยืนยันซ้ำ → 200 เหมือนเดิม ไม่แตะตาราง OTP เลย (idempotent)', async () => {
