@@ -1,5 +1,7 @@
 # ไฟล์ตัวอย่างที่ต้อง "มีอยู่จริง" ใน MinIO
 
+> Since 2026-10-30, the default restore uses the original demo accounts (`admin@ku.th`). The 9053/9054 instructions below apply to the legacy QA dataset; those accounts are not part of the restored demo base. See the badminton/badge section at the end for current additions.
+
 โฟลเดอร์นี้ถูก mount เข้า container `ltms-minio-init` (ดู `backend/docker-compose.yml`)
 แล้ว `mc cp` ขึ้น bucket ให้อัตโนมัติตอน `docker compose up -d`
 
@@ -68,7 +70,7 @@ docker exec ltms-minio mc ls --recursive local/ltms-uploads/referee_identity/
 
 | สถานการณ์ | ทำอะไร |
 |---|---|
-restore `database/qa-baseline.sql` ใหม่ทั้งก้อน | **ไม่ต้องทำอะไรเพิ่ม** — 8 ต.ค. เติม 9054 เข้าไปในตัว baseline แล้ว และแก้คีย์ของ 9053 ให้ถูกรูปด้วย |
+| restore `database/qa-baseline.sql` | Uses the demo dataset with the badminton/badge additions. The legacy 9053/9054 pair is not included. |
 ฐานมีข้อมูลที่ทำไว้แล้ว ไม่อยาก restore ทับ | `mysql ... ltms < database/qa-fixture-9054.sql` |
 
 ```bash
@@ -79,7 +81,7 @@ mysql -h 127.0.0.1 -P 3307 -u root -p ltms < database/qa-fixture-9054.sql
 ★ `qa-fixture-9054.sql` **รันซ้ำได้** และ**ลอกเลขทัวร์มาจากแถวของ 9053 เอง** ไม่ฮาร์ดโค้ด
   (เลขทัวร์ของแต่ละเครื่องไม่เหมือนกัน — บางเครื่อง restore baseline บางเครื่อง seed เอง)
 ★ ท้ายไฟล์พิมพ์ตารางตรวจผลให้ว่าได้ครบ 3 อย่างหรือยัง ⇒ ไม่ต้องไปไล่ query เอง
-🔴 ต้องรัน **หลัง** `npm run migrate` — baseline เป็น dump ที่เก่ากว่า migration 036
+Run legacy QA add-on scripts only on a compatible legacy QA dataset after migrations. The current default restore is the demo dataset.
 
 ### ฝั่ง MinIO ต้องสั่งเองหนึ่งครั้ง
 
@@ -101,9 +103,10 @@ docker exec ltms-minio mc ls --recursive local/ltms-uploads/referee_identity/
 ## QA: badminton draw and badge points (2026-10-30)
 
 - Canonical additive seed: `database/qa-fixture-badminton-badges.sql`. Embedded verbatim in both `qa-baseline.sql` and `demo-seed.sql`; `seed-demo.py` applies it after creating the demo. Keep the embedded blocks in sync when editing.
+- Restore base (updated 2026-10-30): `qa-baseline.sql` now uses the original **demo dataset** from `demo-seed.sql`, preserving `admin@ku.th`, `root@ku.th`, `org1@ku.th`, original teams and tournaments. Only the requested badminton/badge fixture is added. `audit-roles.py` remains the role-consistency check; it does not select a dataset.
 - Restore QA: `python database/qa-baseline.py restore`, then `cd backend && npm run migrate`, then `python frontend/scripts/audit-roles.py` from the repo root. The frontend restore wrapper performs the same sequence. Restoring replaces the database; use only the QA database you intend to reset.
 - Existing migrated local database: apply only `qa-fixture-badminton-badges.sql` using MySQL. Reapplying preserves existing brackets, applications and spent points; a full restore returns the initial blank bracket and credit.
 - Tournament: `Badminton Double Elim - Random Bracket Test (4 Teams)`. Organizer: `org1@ku.th` / `abcd1234`. Four approved teams with two registered players each: วิศวะ Smashers, Sci Shuttle, เกษตรตบสนั่น, BBA Birdies. Registration is closed; no matches or bracket nodes are inserted. Two accepted internal referees are separate from organizer and players.
 - Badge account: `badge.tester@ku.th` / `abcd1234`, initially **5,000 points** with exactly one `admin_adjustment` ledger credit and no owned badges. Purchases debit both wallet and ledger normally. The credit is a QA allowance, not Pick'em winnings.
-- IDs are resolved by email and team/tournament identity, never copied across datasets. The original local tournament remains #13; QA baseline already uses #13, so find the restored tournament by its name. Future event dates are calculated when loading the seed.
+- IDs are resolved by email and team/tournament identity. The restored demo-based snapshot has the additional tournament at #12; an existing local dataset may use another ID, so find it by name. Future event dates for the added tournament are calculated when loading the seed.
 - The fixture supports schema-034 before migrations and current schema. New fixture accounts use a documented pre-cutover creation date so migration 055 verifies them; current-schema application sets verification directly.
