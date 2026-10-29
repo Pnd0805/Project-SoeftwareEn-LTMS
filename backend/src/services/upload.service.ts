@@ -13,6 +13,7 @@ import type { PresignUploadInput } from '../schemas/upload.schema.js';
 const CONTENT_TYPE_EXTENSION: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
+    'application/pdf': 'pdf',   // เฉพาะ team_official_document — schema กันชนิดอื่นไว้แล้ว
 };
 
 const SOFT_FILTER_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
@@ -65,7 +66,8 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
         entityId = input.matchId;
     } else if (input.purpose === 'avatar') {
         entityId = userId; // ไม่รับ userId จาก body เด็ดขาด — กันส่ง key ไปเป็นรูปของคนอื่น
-    } else if (input.purpose === 'team_logo') {
+    } else if (input.purpose === 'team_logo' || input.purpose === 'team_official_document') {
+        // เอกสารคำขอ Official ใช้กฎเดียวกับโลโก้ — หัวหน้าทีมของทีมนั้นเท่านั้น
         if (input.teamId === undefined) {
             throw new AppError(400, "VALIDATION_FAILED", "ต้องระบุ teamId");
         }
@@ -292,6 +294,44 @@ export function isCheckinDocumentKey(objectKey: string, matchId?: number): boole
     return new RegExp(
         `^checkin_document/${match}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`, 'i'
     ).test(objectKey);
+}
+
+/**
+ * 30 ต.ค. 2569 — เอกสารประกอบคำขอเป็นทีม Official (T15) เปลี่ยนจาก "ข้อความ" เป็น "ไฟล์ที่อัปโหลดจริง"
+ *
+ * เดิม: หน้าเว็บส่งข้อความทีละบรรทัด แต่คิวแอดมิน (T16) เซ็นทุกบรรทัดเป็นลิงก์ไฟล์ ⇒ แอดมินเปิดไม่ได้ทุกใบ
+ * ★ ตรวจสองชั้นแบบโลโก้ทีม: รูป key ต้องเป็นของทีมนี้ (`team_official_document/<teamId>/<uuid>.(jpg|png|pdf)`)
+ *   และไฟล์ต้องมีอยู่จริงบนที่เก็บ — ไม่งั้นแนบ key ของทีมอื่นหรือ key ที่ไม่มีไฟล์ แล้วแอดมินเปิดไม่ได้อีก
+ */
+const OFFICIAL_DOC_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+export const TEAM_OFFICIAL_DOCUMENT_PREFIX = 'team_official_document/';
+export function isTeamOfficialDocumentKey(objectKey: string, teamId?: number): boolean {
+    const team = teamId === undefined ? '\\d+' : String(teamId);
+    return new RegExp(
+        `^team_official_document/${team}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png|pdf)$`, 'i'
+    ).test(objectKey);
+}
+
+export async function validateTeamOfficialDocumentKeys(objectKeys: string[], teamId: number): Promise<void> {
+    const invalid = objectKeys.filter(key => !isTeamOfficialDocumentKey(key, teamId));
+    if (invalid.length > 0) {
+        throw new AppError(422, 'TEAM_OFFICIAL_DOC_INVALID',
+            'เอกสารต้องเป็นไฟล์ที่อัปโหลดสำหรับทีมนี้ — อัปโหลดไฟล์ใหม่แล้วส่งอีกครั้ง', { objectKeys: invalid });
+    }
+    await Promise.all(objectKeys.map(async (objectKey) => {
+        try {
+            const metadata = await s3.send(new HeadObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));
+            if (!metadata.ContentType || !OFFICIAL_DOC_CONTENT_TYPES.has(metadata.ContentType)) {
+                throw new AppError(422, 'TEAM_OFFICIAL_DOC_NOT_FOUND', 'ไม่พบไฟล์เอกสารที่อัปโหลดไว้ กรุณาอัปโหลดใหม่', { objectKey });
+            }
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            if (isObjectNotFound(error)) {
+                throw new AppError(422, 'TEAM_OFFICIAL_DOC_NOT_FOUND', 'ไม่พบไฟล์เอกสารที่อัปโหลดไว้ กรุณาอัปโหลดใหม่', { objectKey });
+            }
+            throw new AppError(503, 'STORAGE_UNAVAILABLE', 'ไม่สามารถตรวจสอบไฟล์ที่อัปโหลดได้ในขณะนี้');
+        }
+    }));
 }
 
 export async function validateTeamLogoKey(objectKey: string, teamId: number): Promise<void> {

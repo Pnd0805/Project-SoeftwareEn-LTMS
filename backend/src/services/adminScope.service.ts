@@ -14,7 +14,7 @@ import { buildPagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import { suspensionEndsAt } from '../utils/suspension.js';
 import type { SuspensionCategory } from '../utils/suspension.js';
-import { getPresignedDownloadUrl , presignAll } from './upload.service.js';
+import { getPresignedDownloadUrl , presignAll , isTeamOfficialDocumentKey } from './upload.service.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
 import { isExternalEmail , isKuEmail } from '../utils/kuEmail.js';
 import type { AdminScopeRow } from '../types/db.js';
@@ -23,9 +23,15 @@ export async function getAllOfficialRequest(offset : number , page : number , pa
     const { rows , totalItems } = await AdminRepo.findAllOfficialRequests(offset , pageSize);
 
     const pagination = buildPagination(page , pageSize , totalItems)
-    // เอกสารออกเป็น presigned URL เสมอ ไม่ส่ง S3 key ดิบ — เหมือนหลักฐานการค้านผลและรูปบัตรเช็คอิน
-    const data = await Promise.all(rows.map(async row =>
-        toGetOfficialRequest(row , await Promise.all((row.supporting_docs ?? []).map(key => getPresignedDownloadUrl(key))))));
+    /**
+     * เอกสารที่เป็นไฟล์ของทีมนั้นออกเป็น presigned URL — ไม่ส่ง S3 key ดิบ (เหมือนหลักฐานค้านผลและรูปบัตรเช็คอิน)
+     * ★ 30 ต.ค. 2569 — คำขอที่ยื่นก่อนมีการอัปโหลดไฟล์ เก็บเป็น **ข้อความ** (ชื่อเอกสาร/ลิงก์ภายนอก)
+     *   เดิมเซ็นทุกบรรทัดเป็นลิงก์ไฟล์ ⇒ แอดมินเปิดไม่ได้ทุกใบ และลิงก์ Drive ที่หัวหน้าทีมวางไว้หายไป
+     *   ⇒ เซ็นเฉพาะ key ที่เป็นไฟล์เอกสารของทีมนั้นจริง · ที่เหลือส่งเป็นข้อความตามเดิม (FE ทำลิงก์ให้เฉพาะ http(s))
+     */
+    const docOut = (row : (typeof rows)[number]) => Promise.all((row.supporting_docs ?? []).map(doc =>
+        isTeamOfficialDocumentKey(doc , row.team_id) ? getPresignedDownloadUrl(doc) : Promise.resolve(doc)));
+    const data = await Promise.all(rows.map(async row => toGetOfficialRequest(row , await docOut(row))));
     return { items : data , pagination}
 }
 

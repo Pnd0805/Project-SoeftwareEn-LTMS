@@ -10,7 +10,9 @@ vi.mock('../notification.service.js', () => ({
   notifyMatchResultParties: vi.fn(),
 }));
 
-vi.mock('../upload.service.js', () => ({
+vi.mock('../upload.service.js', async (orig) => ({
+  // ตัวจริง — ตัดสินว่าบรรทัดไหนเป็นไฟล์เอกสารของทีม ต้องไม่ถูก mock ทิ้ง
+  isTeamOfficialDocumentKey: (await orig<typeof import('../upload.service.js')>()).isTeamOfficialDocumentKey,
   getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),
   presignAll: vi.fn((keys: string[] | null) =>
     Promise.resolve((keys ?? []).map((key) => `https://s3/${key}?signed`))),
@@ -118,18 +120,35 @@ describe('adminScope.service getAllOfficialRequest()', () => {
    * แอดมินจึงตัดสินโดยไม่เห็นเอกสารเลย (แก้ 27 ก.ย.) · ออกเป็น presigned URL เสมอ ไม่ส่ง S3 key ดิบ
    */
   it('turns the submitted documents into presigned URLs and never returns the raw key', async () => {
+    const team = officialRequestRow.team_id;
+    const cert = `team_official_document/${team}/0b2f3c4d-1234-4abc-8def-0123456789ab.png`;
+    const letter = `team_official_document/${team}/1b2f3c4d-1234-4abc-8def-0123456789ab.pdf`;
     mockedAdminRepo.findAllOfficialRequests.mockResolvedValue({
-      rows: [{ ...officialRequestRow, supporting_docs: ['team_docs/10/cert.png', 'team_docs/10/letter.png'] }],
+      rows: [{ ...officialRequestRow, supporting_docs: [cert, letter] }],
       totalItems: 1,
     } as any);
 
     const result = await getAllOfficialRequest(0, 1, 20);
 
-    expect(result.items[0]!.supportingDocs).toEqual([
-      'https://s3/team_docs/10/cert.png?signed',
-      'https://s3/team_docs/10/letter.png?signed',
-    ]);
-    expect(JSON.stringify(result.items)).not.toContain('"team_docs/10/cert.png"');
+    expect(result.items[0]!.supportingDocs).toEqual([`https://s3/${cert}?signed`, `https://s3/${letter}?signed`]);
+    expect(JSON.stringify(result.items)).not.toContain(`"${cert}"`);
+  });
+
+  /**
+   * 30 ต.ค. 2569 — คำขอที่ยื่นก่อนมีการอัปโหลดไฟล์ เก็บเป็นข้อความ (ชื่อเอกสาร/ลิงก์ภายนอก)
+   * เดิมเซ็นทุกบรรทัดเป็นลิงก์ไฟล์ ⇒ แอดมินเปิดไม่ได้ และลิงก์ Drive ที่วางไว้หายไป
+   */
+  it('ข้อความเก่า / ลิงก์ภายนอก / ไฟล์ของทีมอื่น → ส่งเป็นข้อความตามเดิม ไม่เซ็นลิงก์', async () => {
+    const otherTeam = `team_official_document/${officialRequestRow.team_id + 1}/0b2f3c4d-1234-4abc-8def-0123456789ab.png`;
+    const docs = ['Club registration letter 2026', 'https://drive.google.com/file/d/abc/view', otherTeam];
+    mockedAdminRepo.findAllOfficialRequests.mockResolvedValue({
+      rows: [{ ...officialRequestRow, supporting_docs: docs }],
+      totalItems: 1,
+    } as any);
+
+    const result = await getAllOfficialRequest(0, 1, 20);
+
+    expect(result.items[0]!.supportingDocs).toEqual(docs);
   });
 
   it('returns an empty items array and totalPages 0 when there are no requests', async () => {

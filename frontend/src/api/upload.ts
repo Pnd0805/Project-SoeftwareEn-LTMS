@@ -2,6 +2,9 @@ import { apiFetch, ApiError, USE_MOCK } from './client'
 import { shrinkImage } from '../mocks/imageInput'
 
 export const UPLOAD_IMAGE_ACCEPT = 'image/png,image/jpeg'
+/** เอกสารคำขอทีม Official (T15) — ชนิดเดียวที่ backend รับ PDF (M16 `team_official_document`) */
+export const OFFICIAL_DOC_ACCEPT = 'application/pdf,image/png,image/jpeg'
+const OFFICIAL_DOC_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg'])
 
 /** ข้อความของการบันทึกรูปใช้ร่วมกันทั้ง avatar และโลโก้ รวมกรณี HMR เปลี่ยนคลาส ApiError */
 export function imageUploadErrorMessage(error: unknown): string {
@@ -13,6 +16,8 @@ export function imageUploadErrorMessage(error: unknown): string {
     case 'AVATAR_KEY_NOT_FOUND':
     case 'TEAM_LOGO_KEY_NOT_FOUND': return 'ไม่พบไฟล์รูปที่อัปโหลดไว้ กรุณาเลือกไฟล์และอัปโหลดใหม่'
     case 'NOT_TEAM_LEADER': return 'เฉพาะหัวหน้าทีมเท่านั้นที่เปลี่ยนโลโก้ได้'
+    case 'TEAM_OFFICIAL_DOC_INVALID': return 'เอกสารนี้ใช้กับคำขอของทีมนี้ไม่ได้ กรุณาอัปโหลดไฟล์ใหม่'
+    case 'TEAM_OFFICIAL_DOC_NOT_FOUND': return 'ไม่พบไฟล์เอกสารที่อัปโหลดไว้ กรุณาเลือกไฟล์และอัปโหลดใหม่'
     case 'UNSUPPORTED_FILE_TYPE': return 'กรุณาเลือกไฟล์ PNG หรือ JPEG เท่านั้น'
     case 'STORAGE_UNAVAILABLE': return 'ระบบจัดเก็บรูปไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง'
     case 'UPLOAD_FAILED': return 'อัปโหลดรูปไม่สำเร็จ กรุณาลองอัปโหลดใหม่'
@@ -41,9 +46,34 @@ export async function uploadImage(
     throw new ApiError(400, { code: 'VALIDATION_FAILED', message: 'A valid match is required for evidence upload.' })
   }
 
+  return presignAndPut(file, contentType, {
+    purpose, contentType,
+    ...(purpose === 'team_logo' ? { teamId: options.teamId } : {}),
+    ...(purpose === 'dispute_evidence' ? { matchId: options.matchId } : {}),
+  })
+}
+
+/**
+ * เอกสารประกอบคำขอทีม Official — 30 ต.ค. 2569 เปลี่ยนจาก "พิมพ์ข้อความ" เป็น "อัปโหลดไฟล์"
+ * (เดิมคิวแอดมินเซ็นทุกบรรทัดเป็นลิงก์ไฟล์ ⇒ แอดมินเปิดไม่ได้ทุกใบ) · รับ PDF / PNG / JPEG
+ * ★ โหมด mock ไม่มีที่เก็บไฟล์ — คืนชื่อไฟล์ไว้แสดงในคิวแอดมินจำลอง
+ */
+export async function uploadTeamOfficialDocument(file: File, teamId: number): Promise<string> {
+  if (!OFFICIAL_DOC_TYPES.has(file.type)) {
+    throw new ApiError(400, { code: 'UNSUPPORTED_FILE_TYPE', message: 'กรุณาเลือกไฟล์ PDF, PNG หรือ JPEG เท่านั้น' })
+  }
+  if (USE_MOCK) return file.name
+  if (!Number.isSafeInteger(teamId) || teamId < 1) {
+    throw new ApiError(400, { code: 'VALIDATION_FAILED', message: 'ไม่พบทีมที่จะยื่นเอกสาร กรุณาเปิดหน้าทีมใหม่' })
+  }
+  return presignAndPut(file, file.type, { purpose: 'team_official_document', contentType: file.type, teamId })
+}
+
+/** ขอ URL อัปโหลด (M16) แล้ว PUT ไฟล์ขึ้นที่เก็บ · คืน object key เมื่อ PUT สำเร็จเท่านั้น */
+async function presignAndPut(file: File, contentType: string, body: Record<string, unknown>): Promise<string> {
   const presign = await apiFetch<{ uploadUrl: string; objectKey: string }>('/uploads/presign', {
     method: 'POST',
-    body: JSON.stringify({ purpose, contentType, ...(purpose === 'team_logo' ? { teamId: options.teamId } : {}), ...(purpose === 'dispute_evidence' ? { matchId: options.matchId } : {}) }),
+    body: JSON.stringify(body),
   })
 
   let put: Response

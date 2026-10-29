@@ -5,8 +5,10 @@ export const presignUploadSchema = z.object({
     // avatar = รูปโปรไฟล์ผูกกับ userId จาก token เสมอ ไม่รับจาก body · team_logo ต้องส่ง teamId
     // report_evidence = หลักฐานแนบคำร้องขอระงับผู้ใช้ (C2 POST /users/:id/report) — ผูกกับ userId ของผู้แจ้ง
     //   ไม่ผูกกับ target เพราะคนแจ้งอัปรูปก่อนเลือกว่าจะแจ้งใคร และ key ต้องตรวจย้อนได้ว่าใครอัป (1 ต.ค. 69)
-    purpose: z.enum(['checkin_document', 'soft_filter_document', 'referee_identity', 'dispute_evidence', 'avatar', 'team_logo', 'report_evidence']),
-    contentType: z.enum(['image/jpeg', 'image/png']),
+    // team_official_document = เอกสารประกอบคำขอเป็นทีม Official (T15) — ต้องส่ง teamId · หัวหน้าทีมเท่านั้น (30 ต.ค. 69)
+    purpose: z.enum(['checkin_document', 'soft_filter_document', 'referee_identity', 'dispute_evidence', 'avatar', 'team_logo', 'report_evidence', 'team_official_document']),
+    // ★ PDF รับเฉพาะ team_official_document (refine ข้างล่าง) — ชนิดอื่นเป็นรูปที่ต้องพรีวิว/แสดงในหน้าเว็บ
+    contentType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
     matchId: z.number().optional(),
     tournamentId: z.number().optional(),
     teamId: z.number().optional(),
@@ -17,13 +19,17 @@ export const presignUploadSchema = z.object({
     (data) => data.purpose !== 'soft_filter_document' || data.tournamentId !== undefined,
     { message: 'ต้องระบุ tournamentId เมื่อ purpose เป็น soft_filter_document', path: ['tournamentId'] }
 ).refine(
-    (data) => data.purpose !== 'team_logo' || data.teamId !== undefined,
-    { message: 'ต้องระบุ teamId เมื่อ purpose เป็น team_logo', path: ['teamId'] }
+    (data) => !['team_logo', 'team_official_document'].includes(data.purpose) || data.teamId !== undefined,
+    { message: 'ต้องระบุ teamId เมื่อ purpose เป็น team_logo หรือ team_official_document', path: ['teamId'] }
+).refine(
+    // 🔴 ห้ามเปิด PDF ให้ทุกชนิด — รูปโปรไฟล์/โลโก้/รูปบัตรต้องเป็นรูปภาพเท่านั้น
+    (data) => data.contentType !== 'application/pdf' || data.purpose === 'team_official_document',
+    { message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น', path: ['contentType'] }
 );
 
 export type PresignUploadInput = z.infer<typeof presignUploadSchema>;
 
 // Part 4: ไฟล์ที่ไม่รองรับตอบ code เฉพาะ ไม่ใช่ VALIDATION_FAILED (ส่งเป็นอาร์กิวเมนต์ที่ 2 ของ validate())
 export const presignUploadErrorCodes = {
-    contentType: { code: 'UNSUPPORTED_FILE_TYPE', message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น' },
+    contentType: { code: 'UNSUPPORTED_FILE_TYPE', message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น (เอกสารคำขอทีม Official รับ PDF ด้วย)' },
 };

@@ -6,7 +6,8 @@
  *
  * ชื่อทีมส่งผ่าน PATCH /teams/:id { name } (FR-TM-04 · 409 TEAM_NAME_TAKEN)
  * รหัสทีมมีเฉพาะโหมด mock; โลโก้จริงอัปโหลดแล้วส่ง logoKey ให้ backend
- * คำร้อง Official ส่ง supportingDocs ตาม team.schema.ts (400 OFFICIAL_DOCS_REQUIRED)
+ * คำร้อง Official: อัปโหลดไฟล์เอกสาร (M16 team_official_document) แล้วส่ง key เป็น supportingDocs (400 OFFICIAL_DOCS_REQUIRED)
+ *   30 ต.ค. 2569 — เดิมพิมพ์เป็นข้อความ แต่คิวแอดมินเซ็นทุกบรรทัดเป็นลิงก์ไฟล์ ⇒ แอดมินเปิดเอกสารไม่ได้
  * ลบทีมได้เฉพาะทีมที่ยังไม่เคยลงแข่ง (FR-TM-05) — backend ยังไม่ตรวจข้อนี้ โหมด mock ตอบ 409
  */
 import { useState } from 'react'
@@ -17,7 +18,7 @@ import { ConfirmCard, Modal } from '../../components/kit/Modal'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { useDisbandTeam, useRequestOfficialStatus, useUpdateTeam } from '../../hooks/useTeam'
 import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
-import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
+import { uploadImage, uploadTeamOfficialDocument, UPLOAD_IMAGE_ACCEPT, OFFICIAL_DOC_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
 import { useLtms } from '../../shared/store'
 import type { Team } from '../../shared/types'
 import type { BackendTeamDto } from '../../types/team.dto'
@@ -26,6 +27,9 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 const lockedTournamentsOf = (error: unknown) => error instanceof ApiError && Array.isArray(error.extra.tournaments)
   ? error.extra.tournaments as Array<{ tournamentId: number; name: string }>
   : []
+
+/** เพดานเดียวกับ backend (team.schema.ts requestSchema) */
+const MAX_OFFICIAL_DOCS = 10
 
 /** รหัสทีมสั้นๆ ที่ใช้บนชิปและตราทีม — ตัวอักษรหรือตัวเลข 2–3 ตัว */
 const CODE_PATTERN = /^[A-Za-z0-9]{2,3}$/
@@ -98,7 +102,9 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
   const disband = useDisbandTeam(data.id)
   const details = useUpdateTeam(data.id)
   const [asking, setAsking] = useState(false)
-  const [docs, setDocs] = useState('')
+  const [docFiles, setDocFiles] = useState<File[]>([])
+  const [docUploading, setDocUploading] = useState(false)
+  const [docErr, setDocErr] = useState<string | null>(null)
   const [disbanding, setDisbanding] = useState(false)
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
@@ -112,7 +118,31 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
   /* FR-TM-05 — ทีมที่เคยได้ที่นั่งในรายการแข่งแล้วลบไม่ได้ โหมด mock รู้ล่วงหน้าจึงปิดปุ่มไว้ */
   const competed = !!storeTeam
     && s.registrations.some(r => r.team === storeTeam.id && r.status === 'approved')
-  const docList = docs.split('\n').map(x => x.trim()).filter(Boolean)
+  const addDocs = (picked: FileList | null) => {
+    setDocErr(null)
+    const next = [...docFiles, ...Array.from(picked ?? [])]
+    if (next.length > MAX_OFFICIAL_DOCS) setDocErr(`แนบเอกสารได้ไม่เกิน ${MAX_OFFICIAL_DOCS} ไฟล์`)
+    setDocFiles(next.slice(0, MAX_OFFICIAL_DOCS))
+  }
+
+  /** อัปโหลดทีละไฟล์ก่อน แล้วค่อยยื่นคำขอด้วย key ที่ได้ — ไฟล์ไหนพลาด ไม่ยื่นคำขอ */
+  const sendOfficial = async () => {
+    if (!docFiles.length || docUploading) return
+    setDocErr(null)
+    setDocUploading(true)
+    try {
+      const keys: string[] = []
+      for (const file of docFiles) keys.push(await uploadTeamOfficialDocument(file, data.id))
+      await official.mutateAsync({ supportingDocs: keys })
+      setAsking(false)
+      setDocFiles([])
+      setNotice('Official status requested. Awaiting admin review.')
+    } catch (e) {
+      setDocErr(imageUploadErrorMessage(e))
+    } finally {
+      setDocUploading(false)
+    }
+  }
 
   const codeOk = !USE_MOCK || CODE_PATTERN.test(code.trim())
   const changed = name.trim() !== data.name
@@ -210,22 +240,29 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
           For standing clubs, not for squads avoiding the deadline. An admin decides, and checks that no
           member already plays for another Official squad in this sport.
         </div>
-        <Field label="Supporting documents — one link or reference per line" htmlFor="official-docs">
-          <textarea id="official-docs" rows={3} value={docs} onChange={e => setDocs(e.target.value)}
-            placeholder="Club registration letter 2026" />
+        <Field label={`Supporting documents — PDF, PNG or JPEG, up to ${MAX_OFFICIAL_DOCS} files`} htmlFor="official-docs">
+          <input id="official-docs" type="file" multiple accept={OFFICIAL_DOC_ACCEPT} disabled={docUploading}
+            onChange={e => { addDocs(e.target.files); e.target.value = '' }} />
         </Field>
-        {official.isError ? <Banner kind="crit">{errorMessage(official.error)}</Banner> : null}
+        {docFiles.length ? (
+          <ul className="stack" aria-label="Chosen documents" style={{ gap: 4, margin: 0, paddingLeft: 18 }}>
+            {docFiles.map((file, index) => (
+              <li key={`${file.name}-${index}`}>
+                <span className="hstack" style={{ gap: 6 }}>
+                  <span style={{ overflowWrap: 'anywhere' }}>{file.name}</span>
+                  <button className="btn ghost" type="button" disabled={docUploading} aria-label={`Remove ${file.name}`}
+                    onClick={() => setDocFiles(docFiles.filter((_, i) => i !== index))}>Remove</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {docErr ? <Banner kind="crit">{docErr}</Banner> : null}
         <div className="hstack">
-          <button className="btn" type="button" onClick={() => setAsking(false)}>Cancel</button>
-          <button className="btn primary" type="button" disabled={!docList.length || official.isPending}
-            onClick={() => official.mutate({ supportingDocs: docList }, {
-              onSuccess: () => {
-                setAsking(false)
-                setDocs('')
-                setNotice('Official status requested. Awaiting admin review.')
-              },
-            })}>
-            {official.isPending ? 'Sending…' : 'Send request'}
+          <button className="btn" type="button" disabled={docUploading} onClick={() => setAsking(false)}>Cancel</button>
+          <button className="btn primary" type="button" disabled={!docFiles.length || docUploading || official.isPending}
+            onClick={() => { void sendOfficial() }}>
+            {docUploading || official.isPending ? 'Sending…' : 'Send request'}
           </button>
         </div>
       </Modal>
