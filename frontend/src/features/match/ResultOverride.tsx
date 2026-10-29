@@ -54,7 +54,7 @@ export function ResultOverride({ m, result }: { m: MatchDto; result: MatchResult
         </button>
         <span className="sub">
           Use this when you know the right score. If you don&apos;t, or the problem isn&apos;t the score
-          (an ineligible player, suspected cheating, a disconnect that needs a replay), use Dispute this
+          (an ineligible player, suspected cheating, a disconnect that needs a match restart), use Dispute this
           result instead so the organizer decides.
         </span>
       </div>

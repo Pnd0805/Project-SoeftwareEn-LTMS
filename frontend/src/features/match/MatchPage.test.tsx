@@ -102,6 +102,17 @@ const renderPage = () => render(
     </MemoryRouter>
   </QueryClientProvider>,
 )
+
+it('shows Watch the match and plays its YouTube video inside the match page', () => {
+  match = baseMatch()
+  match.replayUrl = 'https://youtu.be/M7lc1UVf-VE'
+  result = undefined
+  renderPage()
+  fireEvent.click(screen.getByRole('button', { name: 'Watch the match' }))
+  expect(screen.getByTitle('Watch the match')).toHaveAttribute('src', 'https://www.youtube.com/embed/M7lc1UVf-VE?playsinline=1')
+  expect(screen.queryByRole('link', { name: /watch.*replay/i })).not.toBeInTheDocument()
+  expect(screen.queryByText(/^Replay$/)).not.toBeInTheDocument()
+})
 it('keeps cancelled match history readable while suppressing role-based and result actions', () => {
   match = baseMatch()
   match.tournament.status = 'cancelled'

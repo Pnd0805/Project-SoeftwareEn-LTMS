@@ -215,8 +215,10 @@ describe('RegisterPage OTP flow', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Verify email' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Email')).toHaveValue('newuser@ku.th')
-    expect(screen.getByLabelText('Code')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toHaveTextContent('ne***@ku.th')
+    expect(screen.queryByRole('textbox', { name: 'Email' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Code' })).toBeInTheDocument()
+    expect(screen.getAllByRole('textbox', { name: /^Code digit / })).toHaveLength(6)
     expect(screen.getByRole('button', { name: 'Verify email' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument()
@@ -231,7 +233,7 @@ describe('RegisterPage OTP flow', () => {
       </MemoryRouter>
     )
 
-    const otpInput = screen.getByLabelText('Code')
+    const otpInput = screen.getByRole('textbox', { name: 'Code digit 1' })
     fireEvent.change(otpInput, { target: { value: '007431' } })
 
     const verifyBtn = screen.getByRole('button', { name: 'Verify email' })

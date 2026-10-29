@@ -3,6 +3,14 @@
 Frontend branch: `ui-polish-s34`
 API base path: `/api/v1`
 
+## In-site match video — 2026-10-30
+
+- [x] Replace video UI wording with Match video / Watch the match and add an inline, responsive YouTube player to the Match page. Preserve the existing organizer permission gate and video API contracts.
+- [x] Current-source review: backend M04/M05 mappers return `livestreamUrl`; FE maps it to the existing video alias. The former UI warning that saved links disappear on reload is obsolete and removed. Historical R14/R22 records below do not supersede this source review.
+- [x] Frontend verification before sync: **156 files / 1,203 tests passed**, TypeScript, lint, production build and whitespace checks passed. After integrating upstream `95259be` through merge `46d5344`: **157 files / 1,209 tests passed**, TypeScript, lint, production build and whitespace checks passed.
+- [ ] Live/browser/device playback, persistence after reload and provider embedding permission remain acceptance checks. The real tournament-wide Watch view remains unsupported; no new backend capability is assumed.
+- Verification and implementation scope: [Match follow-up plan](docs/superpowers/plans/2026-10-05-ltms-minimal-street.md).
+
 ## Player follow bell — 2026-10-29
 
 - [x] Required frontend handoff: shared Player follow/bell controls, opt-in Off default, confirmed preference updates, mock persistence and recoverable errors. Guest/self controls are hidden.

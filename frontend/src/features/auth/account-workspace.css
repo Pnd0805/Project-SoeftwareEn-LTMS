@@ -27,6 +27,19 @@
   width: min(760px, 100%);
 }
 
+.account-login .account-forgot-password {
+  align-self: flex-start;
+  padding: 2px 0;
+  color: var(--teal);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.account-login .account-forgot-password:hover {
+  text-decoration: underline;
+}
+
 .account-workspace .account-brand {
   display: flex;
   align-items: center;
@@ -91,6 +104,34 @@
 
 .account-workspace [aria-invalid="true"] {
   border-color: var(--red-text);
+}
+
+.account-verify .otp-code-fields {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(4px, 1.5vw, 10px);
+  width: 100%;
+  max-width: 360px;
+}
+
+.account-verify .otp-email-display {
+  color: var(--bone);
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.account-verify .otp-code-fields input {
+  width: 100%;
+  height: 52px;
+  padding: 0;
+  text-align: center;
+  font: 650 24px/1 var(--f-mono);
+  caret-color: var(--teal);
+}
+
+.account-verify .otp-code-fields input[data-filled="true"]:not([aria-invalid="true"]) {
+  border-color: var(--teal);
 }
 
 .account-workspace .error {

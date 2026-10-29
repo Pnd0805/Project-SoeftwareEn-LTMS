@@ -128,7 +128,7 @@ export function LoginPage() {
         {login.isPending && <span className="sub" role="status">Signing in. Please wait.</span>}
       </form>
 
-      <Link className="btn ghost" to="/forgot-password">Forgot password?</Link>
+      <Link className="account-forgot-password" to="/forgot-password">Forgot password?</Link>
       <div className="account-actions">
         <span className="sub">New to LTMS?</span>
         <Link className="btn ghost" to="/register">Create account</Link>

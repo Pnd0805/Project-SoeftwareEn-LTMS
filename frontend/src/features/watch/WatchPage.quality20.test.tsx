@@ -48,11 +48,13 @@ it('links to the featured match when video is absent and calls the list recorded
   expect(screen.getByRole('heading', { name: 'Match destination' })).toBeInTheDocument()
 })
 
-it('only offers a replay when the match contains a real replay URL', () => {
+it('offers an inline match player when a YouTube video is available', () => {
   const matches = state.fixture!.matches.filter(m => m.tour === 't-vlr' && m.a && m.b && m.note !== 'bye')
-  matches[matches.length - 1].replay = 'https://example.test/recorded-match'
+  matches[matches.length - 1].replay = 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
   show()
-  expect(screen.getByRole('link', { name: 'Watch replay' })).toHaveAttribute('href', 'https://example.test/recorded-match')
+  fireEvent.click(screen.getByRole('button', { name: 'Watch the match' }))
+  expect(screen.getByTitle('Watch the match')).toHaveAttribute('src', 'https://www.youtube.com/embed/M7lc1UVf-VE?playsinline=1')
+  expect(screen.queryByText(/replay/i)).not.toBeInTheDocument()
 })
 
 it('does not turn an invalid real tournament ID into a bracket link', () => {

@@ -8,7 +8,6 @@
  */
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Crumb, Empty, Panel, StatusBadge, TableWrap } from '../../components/kit/primitives'
-import { Icon } from '../../components/kit/Icon'
 import { Scorebug } from '../../components/kit/Scorebug'
 import { PlayerLink, TeamLink } from '../../components/kit/chips'
 import { useLtms } from '../../shared/store'
@@ -17,6 +16,7 @@ import { routeTour } from '../../mocks/routeIds'
 import { matchStage, matchTag } from '../../shared/rules'
 import { USE_MOCK } from '../../api/client'
 import { parseBackendId } from '../../api/ids'
+import { MatchVideo } from './MatchVideo'
 
 export function WatchPage() {
   const { id } = useParams()
@@ -59,11 +59,8 @@ function MockWatchPage() {
       <Scorebug m={feature} />
 
       <Panel quiet style={{ alignItems: 'center', padding: '34px 20px', textAlign: 'center' }}>
-        <Icon name="match" size={34} />
-        <div className="disp" style={{ fontSize: 21 }}>
-          {feature.replay ? `Replay — ${feature.venue || 'the venue'}` : 'No video available'}
-        </div>
-        <span className="sub">{feature.replay ? <a href={feature.replay} target="_blank" rel="noopener noreferrer">Watch replay</a> : 'Open the match to follow its recorded status.'}</span>
+        <MatchVideo key={feature.id} url={feature.replay} />
+        {!feature.replay ? <span className="sub">Open the match to follow its recorded status.</span> : null}
         <div className="hstack">
           <Link className="btn primary" to={`/m/${feature.id}`}>Open match</Link>
           <Link className="btn" to={`/t/${t.id}/bracket`}>View bracket</Link>
@@ -110,7 +107,7 @@ function MockWatchPage() {
           <span className="tag"><em>//</em> Recorded matches · {done.length}</span>
           <TableWrap label="Recorded matches">
             <table>
-              <thead><tr><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>Replay</th><th /></tr></thead>
+              <thead><tr><th>Round</th><th>Home</th><th /><th>Away</th><th>Score</th><th>Match video</th><th /></tr></thead>
               <tbody>
                 {done.map(m => (
                   <tr key={m.id}>
@@ -119,7 +116,7 @@ function MockWatchPage() {
                     <td className="tag">vs</td>
                     <td><TeamLink id={m.b} /></td>
                     <td className="num">{m.sa} – {m.sb}</td>
-                    <td>{m.replay ? <a href={m.replay} target="_blank" rel="noopener">Replay</a> : <span className="sub">—</span>}</td>
+                    <td>{m.replay ? <Link to={`/m/${m.id}`}>Watch the match</Link> : <span className="sub">—</span>}</td>
                     <td><button className="btn ghost" type="button" onClick={() => navigate(`/m/${m.id}`)}>Open</button></td>
                   </tr>
                 ))}

@@ -53,6 +53,7 @@ import { SocialBar } from './SocialBar'
 import { LivePickem } from './LivePickem'
 import { StatSheet } from './StatSheet'
 import type { MatchDto, MatchResultDto, MatchTeamRef } from '../../types/match.dto'
+import { MatchVideo } from '../watch/MatchVideo'
 
 const TABS = ['overview', 'lineup', 'stats', 'progress', 'community', ...(!USE_MOCK ? ['mvp'] : [])]
 
@@ -297,43 +298,33 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
   )
 }
 
-/**
- * Organizer only: the replay link once the match is done.
- *
- * ลิงก์ที่บันทึกแล้วไม่ขึ้นที่หน้าแมตช์ เพราะ E12 เขียนลง `matches.livestream_url` ได้ แต่
- * ไม่มี endpoint ไหนอ่านคืน — M05 ไม่ได้ส่งช่องนี้มา (ยืนยันจาก source: `livestream_url`
- * ที่ backend โผล่แค่ใน UPDATE ของ E12) ทำเท่าที่ทำได้: ค่าที่เพิ่งกดบันทึกมาจากคำตอบของ
- * E12 เอง หน้าจอจึงขึ้นลิงก์ให้เห็นทันทีในรอบนี้ และบอกตรงๆ ว่ารีเฟรชแล้วจะหาย
- * ของจริงต้องรอ backend ส่ง `livestreamUrl` มากับ M04/M05 (FE-replay-link-write-only)
- */
+/** Organizer video editing retains the existing completed-result permission gate. */
 function OrganizerTools({ m, result }: { m: MatchDto; result?: MatchResultDto }) {
-  const [replay, setReplay] = useState(m.replayUrl ?? '')
+  const [videoUrl, setVideoUrl] = useState(m.replayUrl ?? '')
   const setLivestream = useSetLivestream(m.id)
   const settled = isSettled(result)
   /* ค่าที่ server ยืนยันแล้วในรอบนี้ — ไม่ใช่สิ่งที่ยังพิมพ์อยู่ในช่อง */
-  const saved = setLivestream.data?.youtubeUrl ?? m.replayUrl ?? null
+  const saved = setLivestream.isSuccess ? setLivestream.data?.youtubeUrl ?? null : m.replayUrl ?? null
 
   if (!settled) return null
   return (
     <Panel quiet>
-      <span className="tag"><em>//</em> Replay link — organizer only</span>
+      <span className="tag"><em>//</em> Match video link — organizer only</span>
       <Field label="Link to video of this match" htmlFor={`rp-${m.id}`}>
-        <input id={`rp-${m.id}`} value={replay} onChange={e => setReplay(e.target.value)} placeholder="https://…" />
+        <input id={`rp-${m.id}`} value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" />
       </Field>
       <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
         disabled={setLivestream.isPending}
-        onClick={() => setLivestream.mutate(replay || null)}>
-        {setLivestream.isPending ? 'Saving…' : 'Save replay link'}
+        onClick={() => setLivestream.mutate(videoUrl || null)}>
+        {setLivestream.isPending ? 'Saving…' : 'Save match video link'}
       </button>
       {setLivestream.isSuccess && saved ? (
         <Banner kind="ok" icon="check">
-          <b>Saved.</b> <a href={saved} target="_blank" rel="noopener">{saved}</a>{' '}
-          — it is stored on the match, but the server does not send it back yet, so it disappears
-          from this page on reload. Reported to the backend team.
+          <b>Match video link saved.</b>
         </Banner>
       ) : null}
       {setLivestream.isSuccess && !saved ? (
-        <Banner kind="ok" icon="check"><b>The replay link was cleared.</b></Banner>
+        <Banner kind="ok" icon="check"><b>The match video link was cleared.</b></Banner>
       ) : null}
       {setLivestream.isError ? (
         <Banner kind="crit">
@@ -893,10 +884,7 @@ export function MatchPage() {
               </> : null}
               {m.replayUrl ? (
                 <Panel quiet>
-                  <span className="tag"><em>//</em> Replay</span>
-                  <a className="btn primary" style={{ alignSelf: 'flex-start' }} href={m.replayUrl} target="_blank" rel="noopener">
-                    <Icon name="match" size={13} /> Watch the replay
-                  </a>
+                  <MatchVideo key={m.id} url={m.replayUrl} />
                 </Panel>
               ) : null}
               {m.tournament.status !== 'cancelled' && (m.viewer.can.manageCheckin || isInLineup) ? (

@@ -232,6 +232,41 @@
 
 **Completion evidence:** [Ticket 09 acceptance](../notes/2026-10-05-ltms-minimal-street-acceptance.md), 2026-10-07. All 25 routes accounted for; 282 fresh captures / 318 records across both desktop sizes/themes and 390px usability. Full suite: 96 files / 655 tests; TypeScript/lint/build and 49 frozen filenames/hashes pass. One detector/initial inspection, one token correction batch and one confirmation; direct implementer audit: 16/20. DESIGN.md and schemaVersion 2 sidecar written. Existing report-reason contract mismatch, bundle warning and live/device/mobile acceptance remain explicitly reported. Original evidence is retained in the subsequent [Quality20 integration cleanup](../notes/quality20/2026-10-08-integration.md); no push.
 
+## Shared-branch integration — 2026-10-30
+
+- Backed up all 20 pending files (including four excluded `TODO/` documents) outside the checkout, retained safety stash `1eb60e5`, and created backup branch `backup/ui-polish-s34-before-pull-20261030-f65e7ed` at the original HEAD `f65e7ed`.
+- Pulled the configured `origin/ui-polish-s34` upstream at `95259be` with a merge, producing `46d5344`. Restored the pending work without conflicts; all 20 restored files matched their pre-pull SHA-256 hashes before this evidence update. Teammate Official-document upload changes remain intact.
+- Post-integration full frontend regression: **157 files / 1,209 tests passed**; TypeScript, lint, production build and whitespace checks passed. Frontend-only commit authorized; exclude `TODO/`, retain the safety stash, and do not push. Existing browser/device acceptance gaps below remain open.
+
+## Match follow-up — in-site video viewing, 2026-10-30
+
+User-approved scope: replace video UI wording Replay/Watch the replay with Match video/Watch the match and allow viewing inside LTMS. Direct review confirmed that current M04/M05 return `livestreamUrl`; existing API aliases and E12 write payloads remain unchanged.
+
+- [x] Add a shared, responsive YouTube iframe player opened by Watch the match. Closing it or leaving the active Match section removes the iframe. Preserve shared start timestamps and offer a YouTube fallback link while the player is open.
+- [x] Construct trusted embed URLs from supported YouTube hosts and validated video IDs. No provider/player loads before the viewer activates Watch. Unsupported safe links remain external and unsafe URLs are not rendered as links/iframes.
+- [x] Replace video labels in the Match page, organizer editor and mock Watch page; keep organizer/result permission gates and existing API paths/payloads. Remove the obsolete visible claim that saved URLs disappear on reload.
+- [x] Verification: full frontend suite **156 files / 1,203 tests passed**, including supported/unsafe URLs, shared timestamps, inline open/close, hidden-section unloading and the Match-page integration. TypeScript, lint, production build and whitespace checks passed.
+- [ ] Live/browser/device playback acceptance: browser host and native Computer Use pipe remain unavailable. jsdom verifies player markup/interactions, not remote video availability or embedding permission. The real tournament-wide Watch route remains at its existing unavailable boundary; real viewing is on the Match page.
+- Reference: [YouTube embedded player documentation](https://developers.google.com/youtube/player_parameters). No Backend edits. Frontend commit authorized on 30 October after upstream integration; exclude `TODO/`. No push requested.
+
+## Account follow-up — compact password-recovery link, 2026-10-30
+
+- [x] User-approved change: show Forgot password as a small text link without button framing/background. Preserve `/forgot-password` navigation and scope the 13px styling to the Login page.
+- [x] Existing Auth suite: **7 files / 59 tests passed**; production TypeScript/build, lint and whitespace checks passed. Two OTP copy assertions were aligned with the current OTP wording without reverting the existing page edits.
+- Backend and API contracts unchanged. Frontend commit authorized on 30 October after upstream integration; exclude `TODO/`. No push requested. Fresh browser rendering remains unavailable in this session.
+
+## Account follow-up — six-box OTP entry, 2026-10-30
+
+User-approved scope: split the verification code into six boxes like the supplied reference, retaining the existing dark account page; then show the destination email partially masked and non-editable. Direct review confirmed that verification still submits the original full email and a single six-digit string to the existing API; resend cooldown and quota remain unchanged.
+
+- [x] Add six labeled numeric-entry boxes with automatic forward focus, whole-code paste/autofill from any box, arrow/backspace/delete editing and error focus on the first empty box. Preserve leading zeros and require explicit Verify submission.
+- [x] Retain server-confirmed success, failure retry, disabled fields during requests, verification-context reset, and existing resend behavior. Scope responsive styling to `.account-verify`.
+- [x] Replace the email input with masked text (for example `pr***@ku.th`); do not expose the full address in a hidden input, tooltip or accessibility label. Verify/resend still use the original full address. Invalid email contexts direct focus to the existing registration-recovery link.
+- [x] Auth regression suite after email masking: **7 files / 59 tests passed**, including short-address masking and unchanged verify/resend payloads; TypeScript, lint, production build and whitespace checks passed.
+- [x] Final full frontend regression after email masking (`npx.cmd vitest run --maxWorkers=4`): **155 files / 1,184 tests passed**.
+- [ ] Fresh visual/device acceptance: browser access host and native Computer Use pipe unavailable. Component interactions are verified in jsdom; no live email/Backend change or device autofill acceptance claimed.
+- Frontend commit authorized on 30 October after upstream integration. All edits remain inside `frontend/`; `TODO/` is preserved and excluded from the commit. No push requested.
+
 ## Bracket follow-up — reference layout, 2026-10-30
 
 User-approved scope: simplify Bracket to match the supplied reference while retaining the dark theme. Direct review confirmed that supported bracket metadata supplies lane/slot ordering, while current match data remains authoritative for teams, scores and winner progression.
