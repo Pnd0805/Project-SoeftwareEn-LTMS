@@ -243,3 +243,17 @@ describe('isRefereeIdentityKey — รูปชื่อไฟล์ยืนย
     expect(uploadService.isRefereeIdentityKey(k)).toBe(expected);
   });
 });
+
+describe('isCheckinDocumentKey — รูปชื่อไฟล์รูปบัตรเช็คอินเท่านั้น (OD-73)', () => {
+  it.each([
+    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', undefined, true],
+    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.PNG', 12, true],
+    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', 13, false],   // คนละแมตช์
+    ['checkin_document/123/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', 12, false],  // 12 ต้องไม่จับ 123
+    ['checkin_document/12/readme.txt', undefined, false],
+    ['avatar/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', undefined, false],
+    ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg.bak', undefined, false],
+  ])('%s (แมตช์ %s) → %s', (k, matchId, expected) => {
+    expect(uploadService.isCheckinDocumentKey(k, matchId)).toBe(expected);
+  });
+});

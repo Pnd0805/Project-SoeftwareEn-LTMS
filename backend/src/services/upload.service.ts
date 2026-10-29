@@ -281,6 +281,19 @@ export function isRefereeIdentityKey(objectKey: string): boolean {
     return /^referee_identity\/\d+\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png)$/i.test(objectKey);
 }
 
+/**
+ * OD-73 — รูป key ของรูปบัตรตอนเช็คอินออนไลน์: `checkin_document/<matchId>/<uuid v4>.(jpg|png)` (createPresignedUpload)
+ * ส่ง matchId มา = ต้องเป็นของแมตช์นั้นเป๊ะ · ไม่ส่ง = แมตช์ไหนก็ได้ (งานกวาดไฟล์)
+ * ★ งานลบใช้ตัวนี้กันลบไฟล์ที่ไม่ใช่รูปเช็คอิน — ตอนเช็คอิน key ยังไม่ถูกตรวจรูปร่าง (แถวอาจชี้ไฟล์ชนิดอื่น)
+ */
+export const CHECKIN_DOCUMENT_PREFIX = 'checkin_document/';
+export function isCheckinDocumentKey(objectKey: string, matchId?: number): boolean {
+    const match = matchId === undefined ? '\\d+' : String(matchId);
+    return new RegExp(
+        `^checkin_document/${match}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`, 'i'
+    ).test(objectKey);
+}
+
 export async function validateTeamLogoKey(objectKey: string, teamId: number): Promise<void> {
     const expectedKey = new RegExp(
         `^team_logo/${teamId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`,
