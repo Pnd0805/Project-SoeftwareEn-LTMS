@@ -115,9 +115,23 @@ describe('presignUploadErrorCodes', () => {
   it('carries the UNSUPPORTED_FILE_TYPE code and matching Thai message for the contentType field', () => {
     expect(presignUploadErrorCodes.contentType).toEqual({
       code: 'UNSUPPORTED_FILE_TYPE',
-      message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น',
+      message: 'รองรับเฉพาะไฟล์ JPEG และ PNG เท่านั้น (เอกสารคำขอทีม Official รับ PDF ด้วย)',
     });
   });
+
+  // 30 ต.ค. 2569 — เอกสารคำขอทีม Official
+  it('team_official_document ต้องมี teamId · รับ PDF ได้', () => {
+    expect(presignUploadSchema.safeParse({ purpose: 'team_official_document', contentType: 'application/pdf', teamId: 3 }).success).toBe(true);
+    expect(presignUploadSchema.safeParse({ purpose: 'team_official_document', contentType: 'image/png', teamId: 3 }).success).toBe(true);
+    expect(presignUploadSchema.safeParse({ purpose: 'team_official_document', contentType: 'application/pdf' }).success).toBe(false);
+  });
+
+  it.each(['avatar', 'team_logo', 'checkin_document', 'referee_identity', 'dispute_evidence', 'report_evidence', 'soft_filter_document'])(
+    '🔴 %s รับ PDF ไม่ได้ — PDF เปิดเฉพาะเอกสาร Official', (purpose) => {
+      const res = presignUploadSchema.safeParse({ purpose, contentType: 'application/pdf', teamId: 1, matchId: 1, tournamentId: 1 });
+      expect(res.success).toBe(false);
+      expect(res.error!.issues.map(i => i.path[0])).toContain('contentType');
+    });
 
   // มติ 26 ก.ย. — หลักฐานประกอบการโต้แย้งผล ใช้กลไกอัปโหลดเดิม ผูกกับแมตช์เหมือนรูปเช็คอิน
   it('accepts dispute_evidence with a matchId and rejects it without one', () => {

@@ -365,6 +365,9 @@ export async function createOfficialRequest(userId : number , teamId : number , 
             "มีคำขอเป็นทีม Official ของทีมนี้รอแอดมินพิจารณาอยู่แล้ว" ,
             { requestId : pendingOfficial.team_admin_request_id });
     }
+    // 30 ต.ค. 2569 — เอกสารต้องเป็นไฟล์ที่อัปโหลดสำหรับทีมนี้จริง (เดิมรับข้อความอะไรก็ได้ ⇒ แอดมินเปิดไม่ได้)
+    // ★ ตรวจหลังด่าน 409 สองด่าน — ทีมที่ขอไม่ได้อยู่แล้วไม่ต้องไปถามที่เก็บไฟล์
+    await UploadService.validateTeamOfficialDocumentKeys(docs , teamId);
     const requestId = await TeamRepo.createOfficialRequest(teamId ,userId ,docs);
     const OfficialReq = await TeamRepo.findOfficialRequestById(requestId);
     return getTeamOfficialRequestDto(OfficialReq!);

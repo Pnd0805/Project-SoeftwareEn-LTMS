@@ -72,6 +72,11 @@ vi.mock('../../mappers/user.mapper.js', () => ({
   toUserRef: vi.fn(),
 }));
 
+// 30 ต.ค. — เอกสารคำขอ Official ต้องเป็นไฟล์ที่อัปโหลดจริง (HEAD ที่เก็บไฟล์) ⇒ mock แค่ตัวตรวจ ที่เหลือของจริง
+vi.mock('../upload.service.js', async (orig) => ({
+  ...(await orig<typeof import('../upload.service.js')>()),
+  validateTeamOfficialDocumentKeys: vi.fn(),
+}));
 vi.mock('../../utils/checkExist.js', () => ({
   checkTeam: vi.fn(),
   checkUser: vi.fn(),
@@ -106,6 +111,7 @@ import type {
 } from '../../types/db.js';
 import { userRef } from '../../__tests__/helpers/rows.js';
 
+import * as UploadService from '../upload.service.js';
 const mockedTeamRepo = vi.mocked(TeamRepo);
 const mockedSportRepo = vi.mocked(SportRepo);
 const mockedUserRepo = vi.mocked(UserRepo);
@@ -795,12 +801,27 @@ describe('createOfficialRequest', () => {
     mockedTeamRepo.findOfficialRequestById.mockResolvedValue(officialRequestRow);
     mockedGetTeamOfficialRequestDto.mockReturnValue({ id: 77 } as any);
 
-    const result = await teamService.createOfficialRequest(5, 10, ['doc1.pdf']);
+    const doc = 'team_official_document/10/0b2f3c4d-1234-4abc-8def-0123456789ab.pdf';
+    const result = await teamService.createOfficialRequest(5, 10, [doc]);
 
     expect(mockedCheckTeam).toHaveBeenCalledWith(10);
-    expect(mockedTeamRepo.createOfficialRequest).toHaveBeenCalledWith(10, 5, ['doc1.pdf']);
+    // 30 ต.ค. — ตรวจว่าเป็นไฟล์ของทีมนี้ก่อนบันทึก
+    expect(UploadService.validateTeamOfficialDocumentKeys).toHaveBeenCalledWith([doc], 10);
+    expect(vi.mocked(UploadService.validateTeamOfficialDocumentKeys).mock.invocationCallOrder[0])
+      .toBeLessThan(mockedTeamRepo.createOfficialRequest.mock.invocationCallOrder[0]!);
+    expect(mockedTeamRepo.createOfficialRequest).toHaveBeenCalledWith(10, 5, [doc]);
     expect(mockedGetTeamOfficialRequestDto).toHaveBeenCalledWith(officialRequestRow);
     expect(result).toEqual({ id: 77 });
+  });
+
+  it('เอกสารไม่ผ่านการตรวจ (ไม่ใช่ไฟล์ของทีมนี้) → ไม่บันทึกคำขอ', async () => {
+    mockedCheckTeam.mockResolvedValue(baseTeamRow);
+    vi.mocked(UploadService.validateTeamOfficialDocumentKeys)
+      .mockRejectedValueOnce(new AppError(422, 'TEAM_OFFICIAL_DOC_INVALID', 'x'));
+
+    await expect(teamService.createOfficialRequest(5, 10, ['Club registration letter 2026']))
+      .rejects.toMatchObject({ status: 422, code: 'TEAM_OFFICIAL_DOC_INVALID' });
+    expect(mockedTeamRepo.createOfficialRequest).not.toHaveBeenCalled();
   });
 
   it('throws OFFICIAL_DOCS_REQUIRED with a supportingDocs field when no docs are attached', async () => {
