@@ -39,11 +39,16 @@ export const env = {
     // Password recovery — ทุกตัว **ห้าม requireEnv** โดยเจตนา เพื่อนอีก 10+ คนที่ไม่ได้ทำเรื่องนี้ต้องรันโปรเจกต์ได้
     // ปกติโดยไม่มี credential SMTP เลย · ไม่ตั้งค่า = ชี้ไป mailpit (localhost:1025) อัตโนมัติ
     SMTP_HOST : process.env["SMTP_HOST"] || "localhost",
-    SMTP_PORT : Number(process.env["SMTP_PORT"] ?? 1025),   // 1025 = mailpit
+    SMTP_PORT : Number(process.env["SMTP_PORT"] || 1025),   // 1025 = mailpit (blank .env value also defaults)
+    // For real SMTP relays (Brevo on port 587), require STARTTLS rather than sending credentials over plaintext.
+    // Defaults false to keep existing local Mailpit development working unchanged.
+    SMTP_REQUIRE_TLS : process.env["SMTP_REQUIRE_TLS"] === "true",
     SMTP_USER : process.env["SMTP_USER"],                    // undefined = ไม่ auth (mailpit ไม่ต้อง)
     SMTP_PASS : process.env["SMTP_PASS"],
     MAIL_FROM : process.env["MAIL_FROM"] || "no-reply@ltms.local",
     FRONTEND_URL : process.env["FRONTEND_URL"] || "http://localhost:8080",
+    // Explicit opt-in: existing deployments must not suddenly email all verified users.
+    EMAIL_NOTIFICATIONS_ENABLED : process.env["EMAIL_NOTIFICATIONS_ENABLED"] === "true",
 
     // C2 (8 ต.ค. 2569) — คำขอที่ใช้เวลาเกินกี่ ms ถึงจะถูก log · 0 = ปิดสนิท
     // ไม่ requireEnv ตามกฎเดิมของไฟล์นี้ — เพื่อนอีก 10+ คนต้องรันโปรเจกต์ได้โดยไม่ต้องตั้งอะไร
@@ -66,4 +71,28 @@ export const env = {
     JOB_INTERVAL_MS : Number(process.env["JOB_INTERVAL_MS"] ?? 3_600_000),
     // หน่วงรอบแรกหลังเซิร์ฟเวอร์ขึ้น เพื่อไม่แย่ง connection กับคำขอชุดแรก
     JOB_STARTUP_DELAY_MS : Number(process.env["JOB_STARTUP_DELAY_MS"] ?? 10_000),
+
+    /**
+     * OD-53 (29 ต.ค. 2569) — บังคับยืนยันอีเมลก่อนใช้งาน · **ตั้งต้นเป็น false โดยเจตนา**
+     *
+     * 🔴 เปิดเป็น true ได้เฉพาะเมื่อ "ส่งเมลออกได้จริงบนเครื่องนั้น" เท่านั้น
+     *   ไม่งั้นคนสมัครใหม่จะรอ OTP ที่ไม่มีทางมาถึง ⇒ **สมัครไม่ได้ทั้งระบบ**
+     *   เครื่องพัฒนาชี้ไป mailpit (http://127.0.0.1:8025) ก็นับว่าส่งได้จริง
+     *
+     * ★ ทำเป็นสวิตช์ไม่ใช่ฝังในโค้ด เพราะวันเปิดจริงยังไม่แน่ (รอบัญชี Brevo ของทีม)
+     *   และถ้าเปิดแล้วพบปัญหาตอนสาธิต ต้องปิดกลับได้ทันทีโดยไม่ต้องแก้โค้ดและ deploy ใหม่
+     *
+     * ★ คุมสองที่พร้อมกันโดยตั้งใจ — ด่านล็อกอิน และการกรองผลค้นหาผู้ใช้
+     *   ถ้าคุมแค่ล็อกอิน จะเกิดสภาพ "ใช้งานได้แต่ไม่มีใครค้นเจอ" ซึ่งอธิบายกับผู้ใช้ไม่ได้
+     */
+    REQUIRE_EMAIL_VERIFIED : process.env["REQUIRE_EMAIL_VERIFIED"] === "true",
+
+    /**
+     * ลบบัญชีที่สมัครแล้วไม่ยืนยันอีเมลภายในกี่ชั่วโมง (0 = ไม่ลบเลย)
+     *
+     * ★ 24 ชม. — ให้โอกาสคนที่ตั้งใจกลับมาทำต่อวันรุ่งขึ้น และสั้นพอที่จะตอบได้ว่า
+     *   "เก็บข้อมูลไว้เท่าที่จำเป็นต่อการสมัครให้เสร็จ" (หลักการเดียวกับงานลบภาพยืนยันตัวตน · OD-70)
+     * 🔴 ไม่ตั้งต่ำกว่า 1 ชม. — งานกวาดรันชั่วโมงละครั้ง ตั้งต่ำกว่านั้นไม่ได้ผลเร็วขึ้น
+     */
+    UNVERIFIED_ACCOUNT_TTL_HOURS : Number(process.env["UNVERIFIED_ACCOUNT_TTL_HOURS"] ?? 24),
 };

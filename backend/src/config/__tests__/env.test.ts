@@ -87,10 +87,12 @@ describe("env - happy path", () => {
 
             SMTP_HOST: "localhost",
             SMTP_PORT: 1025,
+            SMTP_REQUIRE_TLS: false,
             SMTP_USER: undefined,
             SMTP_PASS: undefined,
             MAIL_FROM: "no-reply@ltms.local",
             FRONTEND_URL: "http://localhost:8080",
+            EMAIL_NOTIFICATIONS_ENABLED: false,
             // C2 (8 ต.ค. 2569) — ไม่ตั้ง = 2000 ms · 0 = ปิดการ log คำขอช้าสนิท
             SLOW_REQUEST_MS: 2000,
             // C3 — ไม่ตั้ง = 10 (ค่าตั้งต้นเดิมของ mysql2) ⇒ พฤติกรรมไม่เปลี่ยนสำหรับคนที่ไม่ตั้ง
@@ -99,6 +101,11 @@ describe("env - happy path", () => {
             KEEP_ALIVE_TIMEOUT_MS: 65_000,
             JOB_INTERVAL_MS: 3_600_000,        // งานเบื้องหลังรายชั่วโมง (มติ 8 ต.ค.)
             JOB_STARTUP_DELAY_MS: 10_000,
+            // OD-53 (29 ต.ค.) — 🔴 ไม่ตั้ง = **ปิด** ด่านบังคับยืนยันอีเมล
+            //   ค่าตั้งต้นต้องเป็น false เสมอ: เครื่องที่ส่งเมลไม่ได้แล้วเผลอเปิดด่าน
+            //   จะทำให้ "สมัครใหม่ไม่ได้ทั้งระบบ" เพราะ OTP ไม่มีทางมาถึง
+            REQUIRE_EMAIL_VERIFIED: false,
+            UNVERIFIED_ACCOUNT_TTL_HOURS: 24,  // ลบบัญชีที่ไม่ยืนยันหลัง 24 ชม. (เหตุผล: ข้อมูลส่วนบุคคล)
         });
     });
 

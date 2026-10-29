@@ -19,3 +19,6 @@ desktop.ini
 
 # Dependencies in the combined repository
 node_modules/
+
+# Local-only narration output
+/local-audio/redeem-badge/

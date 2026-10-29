@@ -231,3 +231,51 @@ INSERT INTO team_admin_requests (team_id, request_type, requested_by, team_admin
                                  supporting_docs, reviewed_by, reviewed_at) VALUES
   (9020, 'official_status', 9201, 'approved', JSON_ARRAY('official/9020-approval.jpg'), 9001, NOW()),
   (9021, 'official_status', 9213, 'pending', JSON_ARRAY('official/9021-club-letter.jpg'), NULL, NULL);
+
+
+-- =====================================================================
+-- OD-53 (29 ต.ค. 2569) — ติดธงยืนยันอีเมลให้บัญชีที่ไฟล์นี้สร้าง
+-- =====================================================================
+-- 🔴 ต้องมีบรรทัดนี้ ไม่ใช่พึ่ง migration 055
+--   migration รัน **ก่อน** seed ⇒ บัญชีที่ไฟล์นี้เพิ่งสร้างจะเป็น email_verified = 0 (DEFAULT ของ migration 037)
+--   ⇒ เมื่อเปิดสวิตช์ REQUIRE_EMAIL_VERIFIED **บัญชีเดโม/ทดสอบทุกใบจะล็อกอินไม่ได้**
+-- ★ ตั้งทุกแถวโดยไม่กรองวันที่ — ไฟล์นี้เป็นข้อมูลทดสอบ/สาธิตทั้งก้อน ไม่ใช่ข้อมูลผู้ใช้จริง
+-- ★ รันซ้ำได้ ไม่มีผลข้างเคียง
+UPDATE users SET email_verified = 1 WHERE email_verified = 0;
+
+
+-- =====================================================================
+-- OD-71 (29 ต.ค. 2569) — แจกแต้มตั้งต้นให้บัญชีที่ไฟล์นี้สร้าง เพื่อให้ "แลกแต้มซื้อ Badge" สาธิตได้
+-- =====================================================================
+-- ทำไมต้องมี: migration 056 เติม Badge ที่ขายได้ (30 / 100 / 300 แต้ม) แต่ **ทุกบัญชีมี total_points = 0**
+--   ⇒ กดแลกในหน้าจอจะได้ 409 INSUFFICIENT_POINTS ทุกครั้ง · ฟีเจอร์ทำงานถูกแต่ **สาธิตไม่ได้**
+--   แต้มจริงได้จากการทาย Pick'em เท่านั้น (10/7/4 แต้มต่อใบ) ⇒ ต้องเดินหลายแมตช์ก่อนจะซื้อได้ใบเดียว
+--
+-- 🔴 ต้องอยู่ในไฟล์ seed ไม่ใช่ใน migration — seed รัน **หลัง** migrate
+--   บัญชีที่ไฟล์นี้เพิ่งสร้างจะเป็น 0 ตาม DEFAULT ของตาราง ⇒ migration ครอบไม่ถึง
+--   (กับดักเดียวกับธง email_verified ของ OD-53)
+--
+-- ★ ทำไม 150 — ให้สาธิตได้ "ทั้งซื้อสำเร็จและแต้มไม่พอ" ด้วยบัญชีเดียว
+--     บรอนซ์ 30 + ซิลเวอร์ 100 = 130 ⇒ ซื้อได้ทั้งสองใบ
+--     โกลด์ 300 ⇒ ซื้อไม่ได้ ⇒ เห็นข้อความ "ขาดอีก N แต้ม" ของจริง
+--
+-- ★ ลงรายการใน point_transactions ด้วย ไม่ใช่แก้ยอดลอย ๆ
+--   source 'admin_adjustment' เป็นค่าที่ฐานมีไว้อยู่แล้ว ⇒ ตรวจย้อนได้ว่าแต้มมาจากไหน
+--   และยอดในกระเป๋ากับสมุดบัญชีไม่ขัดกัน
+--
+-- ★ รันซ้ำได้ — ทั้งสองคำสั่งใช้เงื่อนไขเดียวกัน (ยังไม่มีรายการ admin_adjustment ของคนนั้น)
+--   ⇒ รอบที่สองไม่ทำอะไรเลย ไม่มีการแจกซ้ำ
+--
+-- 🔴 ไฟล์นี้เป็นข้อมูลทดสอบ/สาธิตทั้งก้อน จึงแจกทุกแถวโดยไม่กรอง — **ห้ามรันกับฐานที่มีผู้ใช้จริง**
+-- =====================================================================
+
+UPDATE users u
+   SET u.total_points = u.total_points + 150
+ WHERE NOT EXISTS (SELECT 1 FROM point_transactions pt
+                    WHERE pt.user_id = u.user_id AND pt.source = 'admin_adjustment');
+
+INSERT INTO point_transactions (user_id, amount, source, ref_id)
+SELECT u.user_id, 150, 'admin_adjustment', NULL
+  FROM users u
+ WHERE NOT EXISTS (SELECT 1 FROM point_transactions pt
+                    WHERE pt.user_id = u.user_id AND pt.source = 'admin_adjustment');

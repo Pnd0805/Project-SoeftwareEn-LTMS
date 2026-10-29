@@ -12,3 +12,4 @@ rewardsRouter.get('/', Reward.listRewards);
 userRewardsRouter.get('/:id/rewards', Reward.listPublicUserRewards);
 meRewardsRouter.get('/rewards', requireAuth, Reward.listMyRewards);
 meRewardsRouter.patch('/rewards/:id/display', requireAuth, validate(updateRewardDisplaySchema), Reward.setMyRewardDisplayed);
+meRewardsRouter.post('/rewards/:id/redeem', requireAuth, Reward.redeemReward);

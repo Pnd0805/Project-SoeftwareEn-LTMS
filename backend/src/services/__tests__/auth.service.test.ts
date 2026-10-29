@@ -7,6 +7,8 @@ vi.mock('../../repositories/user.repo.js', () => ({
   create: vi.fn(),
   updatePassword: vi.fn(),
   markEmailVerified: vi.fn(),
+  overwriteUnverified: vi.fn(),
+  purgeUnverifiedOlderThan: vi.fn(),
 }));
 
 vi.mock('../../repositories/faculty.repo.js', () => ({
@@ -211,8 +213,13 @@ describe('auth.service register()', () => {
     );
   });
 
-  it('throws EMAIL_ALREADY_REGISTERED when the email is already in use', async () => {
-    mockedUserRepo.findByEmail.mockResolvedValue(baseUser);
+  /**
+   * OD-53 (29 ต.ค. 2569) — เทสนี้เคยส่ง `baseUser` ที่ `email_verified: 0` เข้าไป
+   * ตอนนี้ต้องเป็นบัญชีที่ **ยืนยันแล้ว** เพราะอีเมลที่ยังไม่ยืนยันไม่ถือว่าซ้ำอีกต่อไป
+   * (ดูเทสถัดไปซึ่งตรึงกฎใหม่ไว้) — ไม่ใช่การผ่อนด่าน แต่เป็นการแยกสองเคสที่เคยปนกัน
+   */
+  it('throws EMAIL_ALREADY_REGISTERED when a verified account already uses the email', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, email_verified: 1 });
 
     await expect(authService.register(registerInput)).rejects.toMatchObject({
       status: 400,
@@ -220,6 +227,45 @@ describe('auth.service register()', () => {
     });
 
     expect(mockedFindFacultyById).not.toHaveBeenCalled();
+    expect(mockedUserRepo.create).not.toHaveBeenCalled();
+    expect(mockedUserRepo.overwriteUnverified).not.toHaveBeenCalled();
+  });
+
+  it('overwrites the pending row instead of failing when the email is unverified', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
+    mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
+    mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);
+    mockedHashPassword.mockResolvedValue('new-hash');
+    mockedUserRepo.overwriteUnverified.mockResolvedValue(true);
+
+    const result = await authService.register(registerInput);
+
+    // ใช้แถวเดิม ไม่สร้างแถวใหม่ (ไม่งั้นชน UNIQUE ของอีเมล)
+    expect(mockedUserRepo.create).not.toHaveBeenCalled();
+    expect(result.id).toBe(77);
+
+    // 🔴 รหัสผ่านใหม่ต้องถูกเขียนทับ — ถ้าไม่ทับ เขาจะล็อกอินด้วยรหัสที่เพิ่งตั้งไม่ได้
+    expect(mockedUserRepo.overwriteUnverified).toHaveBeenCalledWith(
+      77,
+      expect.objectContaining({ passwordHash: 'new-hash', fullName: registerInput.fullName }),
+    );
+
+    // ออก OTP ใบใหม่ให้แถวเดิม (ตัวออกใบล้างใบเก่าให้เองอยู่แล้ว)
+    expect(mockedEmailVerifyRepo.create).toHaveBeenCalled();
+  });
+
+  it('rejects when the pending row got verified between the read and the overwrite', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
+    mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
+    mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);
+    mockedHashPassword.mockResolvedValue('new-hash');
+    // ด่าน `email_verified = 0` ใน UPDATE ไม่โดนแถวใด = มีคนยืนยันไปแล้วระหว่างนี้
+    mockedUserRepo.overwriteUnverified.mockResolvedValue(false);
+
+    await expect(authService.register(registerInput)).rejects.toMatchObject({
+      status: 400,
+      code: 'EMAIL_ALREADY_REGISTERED',
+    });
     expect(mockedUserRepo.create).not.toHaveBeenCalled();
   });
 

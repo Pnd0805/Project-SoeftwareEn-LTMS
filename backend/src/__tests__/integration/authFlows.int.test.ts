@@ -136,13 +136,54 @@ describe('สมัครสมาชิกและยืนยันอีเ�
     expect(await verified('victim@test.local')).toBe(false);
   });
 
-  it('สมัครซ้ำด้วยอีเมลเดิม → 400 EMAIL_ALREADY_REGISTERED · ไม่มีบัญชีที่สอง', async () => {
+  /**
+   * OD-53 (29 ต.ค. 2569) — เทสนี้เคยคาด 400 สำหรับการสมัครซ้ำ **ทุกกรณี**
+   * ตอนนี้แยกเป็นสองเคสตามสถานะการยืนยัน เพราะของเดิมทำให้เกิดทางตัน:
+   *   สมัคร → ไม่กรอก OTP → กลับมาสมัครใหม่ → "อีเมลนี้ถูกใช้แล้ว กรุณาเข้าสู่ระบบ"
+   *   ทั้งที่ **เข้าสู่ระบบไม่ได้** (เมื่อด่านเปิด) และอีเมลนั้นเป็นของเขาเอง
+   */
+  it('สมัครซ้ำด้วยอีเมลที่ยังไม่ยืนยัน → 201 ทับใบเดิม · ยังมีบัญชีเดียว · รหัสใหม่ใช้ได้', async () => {
     const email = 'dup@test.local';
     expect((await anon.post('/auth/register').send(registration(email))).status).toBe(201);
-    const again = await anon.post('/auth/register').send(registration(email));
+    const firstId = (await one<{ user_id: number }>('SELECT user_id FROM users WHERE email = ?', [email]))!.user_id;
+
+    const again = await anon.post('/auth/register')
+      .send({ ...registration(email), fullName: 'ชื่อใหม่ หลังสมัครซ้ำ', password: 'Passw0rd-999' });
+    expect(again.status).toBe(201);
+
+    // 🔴 ต้องเป็นแถวเดิม ไม่ใช่บัญชีที่สอง (ไม่งั้นชน UNIQUE ของอีเมล)
+    const row = (await one<{ user_id: number; full_name: string; n: number }>(
+      'SELECT user_id , full_name , (SELECT COUNT(*) FROM users WHERE email = ?) AS n FROM users WHERE email = ?',
+      [email, email]))!;
+    expect(row.n).toBe(1);
+    expect(row.user_id).toBe(firstId);
+    // ข้อมูลต้องถูกทับด้วยของรอบใหม่ ไม่ใช่คงของเก่าไว้
+    expect(row.full_name).toBe('ชื่อใหม่ หลังสมัครซ้ำ');
+
+    // 🔴 ที่สำคัญสุด: รหัสผ่านรอบใหม่ต้องใช้ล็อกอินได้จริง
+    //   ถ้าไม่ทับ password_hash เขาจะล็อกอินด้วยรหัสที่เพิ่งตั้งไม่ได้ และหาสาเหตุไม่เจอ
+    const login = await anon.post('/auth/login').send({ email, password: 'Passw0rd-999' });
+    expect(login.status).toBe(200);
+  });
+
+  it('สมัครซ้ำด้วยอีเมลที่ยืนยันแล้ว → 400 EMAIL_ALREADY_REGISTERED · ข้อมูลเดิมไม่ถูกแตะ', async () => {
+    const email = 'dup-verified@test.local';
+    expect((await anon.post('/auth/register').send(registration(email))).status).toBe(201);
+    expect((await anon.post('/auth/verify-email').send({ email, code: otpIn(email) })).status).toBe(200);
+    expect(await verified(email)).toBe(true);
+
+    const again = await anon.post('/auth/register')
+      .send({ ...registration(email), fullName: 'คนที่พยายามยึดบัญชี', password: 'Hijack-123' });
     expect(again.status).toBe(400);
     expect(again.body.error.code).toBe('EMAIL_ALREADY_REGISTERED');
-    expect((await one<{ n: number }>('SELECT COUNT(*) AS n FROM users WHERE email = ?', [email]))!.n).toBe(1);
+
+    // 🔴 ด่านนี้คือตัวกันการยึดบัญชี — ชื่อและรหัสผ่านเดิมต้องไม่เปลี่ยน
+    const row = (await one<{ full_name: string; n: number }>(
+      'SELECT full_name , (SELECT COUNT(*) FROM users WHERE email = ?) AS n FROM users WHERE email = ?',
+      [email, email]))!;
+    expect(row.n).toBe(1);
+    expect(row.full_name).not.toBe('คนที่พยายามยึดบัญชี');
+    expect((await anon.post('/auth/login').send({ email, password: 'Hijack-123' })).status).toBe(401);
   });
 
   it('คนใน: ภาควิชาไม่อยู่ในคณะที่เลือก → 400 · ไม่สร้างบัญชี', async () => {

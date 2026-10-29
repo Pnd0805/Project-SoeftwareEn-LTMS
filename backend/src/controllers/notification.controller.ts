@@ -3,6 +3,7 @@ import { parseId } from '../utils/parseId.js';
 import { AppError } from '../utils/AppError.js';
 import { parsePagination } from '../utils/pagination.js';
 import * as NotificationService from '../services/notification.service.js';
+import * as EmailService from '../services/emailNotification.service.js';
 
 export async function getMyNotifications(req: Request, res: Response) {
     if (!req.user) {
@@ -30,6 +31,16 @@ export async function updateMyNotificationPrefs(req: Request, res: Response) {
         throw new AppError(404, "USER_NOT_FOUND", "ไม่พบผู้ใช้นี้ในระบบ");
     }
     res.status(200).json(await NotificationService.updateMyNotificationPrefs(req.user.user_id, req.body));
+}
+
+export async function getMyEmailNotificationPrefs(req: Request, res: Response) {
+    if (!req.user) throw new AppError(404, 'USER_NOT_FOUND', 'ไม่พบผู้ใช้นี้');
+    res.status(200).json(await EmailService.getEmailPreferences(req.user.user_id));
+}
+
+export async function updateMyEmailNotificationPrefs(req: Request, res: Response) {
+    if (!req.user) throw new AppError(404, 'USER_NOT_FOUND', 'ไม่พบผู้ใช้นี้');
+    res.status(200).json(await EmailService.updateEmailPreferences(req.user.user_id, req.body));
 }
 
 export async function markNotificationRead(req: Request, res: Response) {

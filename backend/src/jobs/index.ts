@@ -1,5 +1,6 @@
 import type { Job } from './scheduler.js';
 import { sweepAndNotify } from '../services/team.service.js';
+import { purgeUnverifiedAccounts } from '../services/auth.service.js';
 import { purgeExpiredTournaments, sweepAutoDeleteTournaments, warnBeforeAutoDelete } from '../services/tournament.service.js';
 import { purgeRefereeIdentityDocs, sweepOrphanRefereeDocs } from '../services/refereeDocs.service.js';
 
@@ -19,6 +20,9 @@ export const backgroundJobs : Job[] = [
     { name : 'ปิดทัวร์ที่ยังไม่เผยแพร่จนถึงวันแข่ง (BR-03)' , run : sweepAutoDeleteTournaments },
     { name : 'ลบทัวร์ที่ปิดไปเกิน 4 ปี (BR-03)' , run : purgeExpiredTournaments },
     { name : 'กวาดทีมร้าง (TM-07 · BR-06)' , run : sweepAndNotify },
+    // OD-53 — ลบบัญชีที่สมัครแล้วไม่ยืนยันอีเมลเกินกำหนด (เหตุผลเรื่องข้อมูลส่วนบุคคล ไม่ใช่พื้นที่)
+    //   ★ ลำดับไม่สำคัญกับงานนี้ — ไม่เกี่ยวกับการกวาดทีม/ทัวร์ และบัญชีที่ยังไม่ยืนยันไม่มีทีม
+    { name : 'ลบบัญชีที่ไม่ยืนยันอีเมลเกินกำหนด (OD-53)' , run : purgeUnverifiedAccounts },
     // OD-70 (งาน ⑥) — ลำดับไม่สำคัญ ไม่เกี่ยวกับงานกวาดทีม/ทัวร์ · ③ ต่อท้าย ② เพราะ ② ลบไฟล์แล้วปิดแถวไปก่อน
     { name : 'ลบภาพยืนยันตัวตนกรรมการของทัวร์ที่จบแล้ว' , run : purgeRefereeIdentityDocs },
     { name : 'ลบภาพยืนยันตัวตนกรรมการที่ไม่มีแถวชี้ถึง (OD-70)' , run : sweepOrphanRefereeDocs },

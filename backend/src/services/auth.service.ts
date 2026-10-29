@@ -7,6 +7,7 @@ import { signToken } from '../utils/token.js';
 import { AppError } from '../utils/AppError.js';
 import type { RegisterInput } from '../schemas/auth.schema.js';
 import { authConfig } from '../config/auth.js';
+import { env } from '../config/env.js';
 import { isCurrentlySuspended , suspendedError } from '../utils/suspension.js';
 import { isExternalEmail } from '../utils/kuEmail.js';
 import { sendPasswordResetEmail , sendEmailVerificationOtp } from './mail.service.js';
@@ -61,8 +62,18 @@ async function issueEmailVerificationOtp(userId : number , email : string , full
 
 
 export async function register(input: RegisterInput) {
+  /**
+   * OD-53 (29 ต.ค. 2569) — อีเมลซ้ำที่ **ยังไม่ยืนยัน** ไม่ถือว่าซ้ำ แต่ให้เขียนทับใบเดิม
+   *
+   * ของเดิมปฏิเสธทุกกรณี ⇒ คนที่สมัครแล้วไม่กรอก OTP แล้วกลับมาสมัครใหม่ จะเจอ
+   * "อีเมลนี้ถูกใช้แล้ว กรุณาเข้าสู่ระบบ" ทั้งที่ **เข้าสู่ระบบไม่ได้** และอีเมลเป็นของเขาเอง
+   * ⇒ ทางตัน ต้องรอให้งานกวาดลบแถวทิ้งก่อน (ตั้งต้น 24 ชม.)
+   *
+   * 🔴 ปฏิเสธเหมือนเดิมเมื่อ `email_verified = 1` — ไม่งั้นใครก็ยึดบัญชีคนอื่นได้
+   *   ด้วยการสมัครด้วยอีเมลนั้นแล้วตั้งรหัสใหม่ (ดูด่านซ้ำใน userRepo.overwriteUnverified)
+   */
   const existing = await userRepo.findByEmail(input.email);
-  if (existing) {
+  if (existing && existing.email_verified === 1) {
     throw new AppError(400, 'EMAIL_ALREADY_REGISTERED',
       'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ',
       { fields: { email: 'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ' } });
@@ -102,8 +113,26 @@ export async function register(input: RegisterInput) {
 
   const passwordHash = await hashPassword(input.password)
 
-  const newId = await userRepo.create({fullName : input.fullName , email : input.email , passwordHash : passwordHash ,
-    gender : input.gender , birthDate : input.birthDate , userType , facultyId , departmentId , year});
+  const fields = {fullName : input.fullName , email : input.email , passwordHash : passwordHash ,
+    gender : input.gender , birthDate : input.birthDate , userType , facultyId , departmentId , year};
+
+  /**
+   * ★ ทับใบเดิมถ้ามี (ยังไม่ยืนยัน) — ทับ **ทุกช่อง** เพราะเขาอาจกรอกไม่เหมือนรอบแรก
+   *   โดยเฉพาะรหัสผ่าน ถ้าไม่ทับเขาจะล็อกอินด้วยรหัสที่เพิ่งตั้งไม่ได้และหาสาเหตุไม่เจอ
+   * 🔴 ถ้าทับไม่สำเร็จ (affectedRows = 0) แปลว่ามีคนยืนยันแถวนั้นไปแล้วระหว่างนี้
+   *   ⇒ ปฏิเสธเหมือนอีเมลซ้ำ ไม่ใช่สร้างแถวใหม่ (จะชน UNIQUE อยู่ดี)
+   */
+  let newId : number;
+  if(existing){
+    if(!await userRepo.overwriteUnverified(existing.user_id , fields)){
+      throw new AppError(400, 'EMAIL_ALREADY_REGISTERED',
+        'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ',
+        { fields: { email: 'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ' } });
+    }
+    newId = existing.user_id;
+  }else{
+    newId = await userRepo.create(fields);
+  }
 
   // OD-53 — ส่ง OTP หลังสร้างบัญชีสำเร็จแล้ว · สมัครสำเร็จไม่ขึ้นกับผลการส่งเมล
   // ถ้าส่งเมลก่อนแล้วค่อยสร้าง user เวลาที่ SMTP ล่มจะกลายเป็น "สมัครไม่ได้เพราะเมลพัง"
@@ -216,6 +245,23 @@ export async function login(email: string, password: string) {
     throw suspendedError(user)
   }
 
+  /**
+   * OD-53 (29 ต.ค. 2569) — ด่านบังคับยืนยันอีเมล · เปิด/ปิดด้วย `REQUIRE_EMAIL_VERIFIED`
+   *
+   * ★ อยู่ **หลัง** ด่านรหัสผ่านโดยเจตนา — ถ้าเช็คก่อน คนที่กรอกรหัสผิดจะได้ข้อความ
+   *   "ยังไม่ยืนยันอีเมล" ซึ่งยืนยันให้คนนอกรู้ว่าอีเมลนี้มีบัญชีอยู่จริง
+   * ★ และอยู่ **หลัง** ด่านระงับ เพราะการถูกระงับเป็นเรื่องที่ต้องรู้ก่อน (ติดต่อผู้ดูแล)
+   *   ส่วนการยืนยันอีเมลเป็นเรื่องที่เจ้าตัวแก้เองได้
+   *
+   * 🔴 ตอบ 403 ไม่ใช่ 401 — 401 ทำให้ FE เข้าใจว่า "รหัสผิด" แล้วให้กรอกใหม่วนไปเรื่อย ๆ
+   *   โดยไม่มีทางหลุด · `email` ส่งกลับไปเพื่อให้ FE ยิง resend-verification ต่อได้ทันที
+   */
+  if(env.REQUIRE_EMAIL_VERIFIED && user.email_verified !== 1){
+    throw new AppError(403 , 'EMAIL_NOT_VERIFIED' ,
+      'กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ — กดขอรหัสยืนยันใหม่ได้จากหน้ายืนยันอีเมล' ,
+      { email : user.email });
+  }
+
   const accessToken = signToken(user.user_id , user.token_version)
   return { accessToken : accessToken, expiresIn: authConfig.expireIn, tokenType: "Bearer" as const ,
            user: { id: user.user_id , fullName : user.full_name , userType: user.user_type }}
@@ -304,4 +350,20 @@ export async function resetPassword(token : string , newPassword : string) : Pro
   await passwordResetRepo.invalidateAllForUser(user.user_id);   // ล้างใบที่เหลือ (รวมใบที่ใช้ไปแล้ว) ทั้งหมด
 
   return { message : 'ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่' };
+}
+
+/**
+ * OD-53 (29 ต.ค. 2569) — งานเบื้องหลัง: ลบบัญชีที่สมัครแล้วไม่ยืนยันอีเมลเกินกำหนด
+ *
+ * ★ เหตุผลคือ **ข้อมูลส่วนบุคคล** ไม่ใช่พื้นที่ฐานข้อมูล — แถวหนึ่งเก็บชื่อ อีเมล วันเกิด เพศ
+ *   คณะ ภาควิชา ชั้นปี ของคนที่สมัครไม่สำเร็จและไม่เคยพิสูจน์ว่าอีเมลเป็นของตน
+ *   (หลักการเดียวกับ OD-70 ที่ลบภาพยืนยันตัวตนกรรมการเมื่อหมดหน้าที่)
+ *
+ * 🔴 ผลข้างเคียงที่ต้องยอมรับ: คนที่กลับมาหลังแถวถูกลบแล้วกด "ขอรหัสใหม่" จะได้ 200
+ *   ตามปกติ (เส้นนั้นตอบเหมือนกันทุกกรณีกันการกวาดหาอีเมล) **แต่ไม่มีเมลมา**
+ *   ⇒ แก้ที่ฝั่ง FE ด้วยข้อความ "ไม่ได้รับรหัสภายใน 10 นาที? สมัครใหม่ด้วยอีเมลเดิมได้เลย"
+ *     ซึ่งใช้ได้จริงเพราะอีเมลว่างแล้ว · **ไม่ใช่ทางตันทางเทคนิค แต่เป็นเรื่องบอกผู้ใช้ให้รู้**
+ */
+export async function purgeUnverifiedAccounts(){
+  return userRepo.purgeUnverifiedOlderThan(env.UNVERIFIED_ACCOUNT_TTL_HOURS);
 }
