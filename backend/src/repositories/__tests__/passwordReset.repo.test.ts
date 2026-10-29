@@ -30,15 +30,19 @@ describe('passwordReset.repo', () => {
     );
   });
 
-  it('findAllActive — ไม่กรองตาม user_id เลย (reset-password รู้แค่ token ดิบ ไม่รู้ user_id มาก่อน)', async () => {
-    const rows = [{ password_reset_token_id: 1, user_id: 1, token_hash: 'h', expires_at: new Date(), used_at: null }];
-    mocks.query.mockResolvedValueOnce([rows, []]);
+  it('findActiveByHash — ค้นตรงด้วย hash ใบเดียว (bug hunt ข้อ 7 · ไม่กวาดทุกใบมาเทียบ)', async () => {
+    const row = { password_reset_token_id: 1, user_id: 1, token_hash: 'h', expires_at: new Date(), used_at: null };
+    mocks.query.mockResolvedValueOnce([[row], []]);
 
-    await expect(passwordResetRepo.findAllActive()).resolves.toEqual(rows);
+    await expect(passwordResetRepo.findActiveByHash('h')).resolves.toEqual(row);
     const [sql, params] = mocks.query.mock.calls[0]!;
-    expect(sql).toContain('WHERE used_at IS NULL AND expires_at > NOW()');
-    expect(sql).not.toContain('user_id = ?');
-    expect(params).toBeUndefined();
+    expect(sql).toContain('WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW()');
+    expect(params).toEqual(['h']);
+  });
+
+  it('findActiveByHash — ไม่เจอ → null', async () => {
+    mocks.query.mockResolvedValueOnce([[], []]);
+    await expect(passwordResetRepo.findActiveByHash('nope')).resolves.toBeNull();
   });
 
   it('countIssuedWithinLastHour — นับแถวที่ expires_at > NOW() รวมที่ used_at ถูกตั้งแล้วด้วย (rate limit คือ "ขอกี่ครั้ง")', async () => {
@@ -65,7 +69,7 @@ describe('passwordReset.repo', () => {
 
     await expect(passwordResetRepo.markUsed(10)).resolves.toBe(1);
     expect(mocks.query).toHaveBeenCalledWith(
-      expect.stringContaining('SET used_at = NOW() WHERE password_reset_token_id = ?'),
+      expect.stringContaining('SET used_at = NOW() WHERE password_reset_token_id = ? AND used_at IS NULL'),
       [10],
     );
   });

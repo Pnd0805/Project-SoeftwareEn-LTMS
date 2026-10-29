@@ -9,7 +9,7 @@ import {
     countIssuedWithinLastHour,
     invalidateAllForUser,
     markUsed,
-    bumpAttempt,
+    claimAttempt,
 } from '../emailVerification.repo.js';
 
 beforeEach(() => vi.clearAllMocks());
@@ -71,16 +71,24 @@ describe('countIssuedWithinLastHour — ต้องนับจาก created_a
     });
 });
 
-describe('bumpAttempt — ต้องนับขึ้นที่ฐาน', () => {
-    it('ใช้ attempt_count = attempt_count + 1 ไม่ใช่เขียนค่าที่อ่านมาจากแอป', async () => {
+describe('claimAttempt — จองสิทธิ์เดาที่ฐานในคำสั่งเดียว (bug hunt ข้อ 8)', () => {
+    it('นับขึ้นที่ฐาน + มีเงื่อนไขโควตาในคำสั่งเดียวกัน', async () => {
         mocks.query.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
-        await bumpAttempt(7);
+        await expect(claimAttempt(7, 5)).resolves.toBe(true);
 
         const [sql, params] = mocks.query.mock.calls[0]!;
         // ★ อ่านค่ามาบวกในแอปแล้วเขียนกลับ จะนับหายเมื่อยิงพร้อมกันหลายเส้น
         //   ซึ่งคือท่าที่คนเดา OTP จะใช้พอดี — ยิงรัวขนานกัน
         expect(sql).toContain('attempt_count = attempt_count + 1');
-        expect(params).toEqual([7]);
+        // 🔴 เงื่อนไขโควตาต้องอยู่ใน UPDATE เอง — แยกไปเช็คก่อน = ยิงพร้อมกันแล้วผ่านทุกคำขอ
+        expect(sql).toContain('attempt_count < ?');
+        expect(sql).toContain('used_at IS NULL');
+        expect(params).toEqual([7, 5]);
+    });
+
+    it('ไม่โดนแถว = หมดสิทธิ์ → false', async () => {
+        mocks.query.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+        await expect(claimAttempt(7, 5)).resolves.toBe(false);
     });
 });
 

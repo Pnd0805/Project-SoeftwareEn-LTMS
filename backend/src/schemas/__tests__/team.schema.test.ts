@@ -99,6 +99,15 @@ describe('requestSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  // bug hunt 30 ต.ค. ข้อ 5 — เดิมไม่จำกัดเลย
+  it('ไม่เกิน 10 รายการ · แต่ละรายการไม่เกิน 500 ตัว · ห้ามรายการว่าง', () => {
+    expect(requestSchema.safeParse({ supportingDocs: Array.from({ length: 10 }, (_, i) => `doc${i}`) }).success).toBe(true);
+    expect(requestSchema.safeParse({ supportingDocs: Array.from({ length: 11 }, (_, i) => `doc${i}`) }).success).toBe(false);
+    expect(requestSchema.safeParse({ supportingDocs: ['x'.repeat(500)] }).success).toBe(true);
+    expect(requestSchema.safeParse({ supportingDocs: ['x'.repeat(501)] }).success).toBe(false);
+    expect(requestSchema.safeParse({ supportingDocs: ['   '] }).success).toBe(false);
+  });
+
   it('rejects supportingDocs that is not an array', () => {
     const result = requestSchema.safeParse({ supportingDocs: 'doc1.pdf' });
     expect(result.success).toBe(false);

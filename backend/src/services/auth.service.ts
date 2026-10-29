@@ -1,4 +1,4 @@
-import { randomBytes , randomInt } from 'crypto';
+import { createHash , randomBytes , randomInt } from 'crypto';
 import * as userRepo from '../repositories/user.repo.js';
 import * as passwordResetRepo from '../repositories/passwordReset.repo.js';
 import * as emailVerifyRepo from '../repositories/emailVerification.repo.js';
@@ -73,7 +73,16 @@ export async function register(input: RegisterInput) {
    *   ด้วยการสมัครด้วยอีเมลนั้นแล้วตั้งรหัสใหม่ (ดูด่านซ้ำใน userRepo.overwriteUnverified)
    */
   const existing = await userRepo.findByEmail(input.email);
-  if (existing && existing.email_verified === 1) {
+  /**
+   * 🔴 30 ต.ค. 2569 (bug hunt ข้อ 2) — ทับใบเดิมได้ **เฉพาะตอนด่าน REQUIRE_EMAIL_VERIFIED เปิด**
+   *   ด่านปิด = คนที่ไม่ยืนยันล็อกอินและใช้งานได้เต็มที่ (มีทีม ใบสมัคร แต้ม)
+   *   ⇒ ถ้ายอมให้ทับ ใครก็สมัครด้วยอีเมลของเขา ตั้งรหัสใหม่ แล้ว **เข้าบัญชีเขาได้ทันที**
+   *   ด่านปิดจึงตอบเหมือนอีเมลซ้ำ — ไม่เป็นทางตัน เพราะเจ้าของล็อกอินด้วยรหัสเดิมได้อยู่แล้ว
+   *   (ลืมรหัสก็ใช้ลืมรหัสผ่านได้ตามปกติ)
+   * ★ ด่านเปิด = ทับได้ตามเดิม · คนร้ายทับแล้วก็ล็อกอินไม่ได้ เพราะ OTP ไปที่อีเมลของเจ้าของ
+   * ★ หลักเดียวกับงานกวาดบัญชี (purgeUnverifiedAccounts): พฤติกรรมของ "บัญชีไม่ยืนยัน" ต้องดูสวิตช์เสมอ
+   */
+  if (existing && (existing.email_verified === 1 || !env.REQUIRE_EMAIL_VERIFIED)) {
     throw new AppError(400, 'EMAIL_ALREADY_REGISTERED',
       'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ',
       { fields: { email: 'อีเมลนี้ถูกใช้สมัครสมาชิกแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ' } });
@@ -172,19 +181,17 @@ export async function verifyEmail(email : string , code : string) : Promise<{ me
   // ใบที่กรอกผิดครบ OTP_MAX_ATTEMPTS จะไม่อยู่ในผลเลย (กรองที่ SQL)
   const candidates = await emailVerifyRepo.findActiveByUser(user.user_id , OTP_MAX_ATTEMPTS);
 
+  // ★ จองสิทธิ์เดาก่อนเทียบทุกครั้ง (claimAttempt) — ครบโควตาแล้วใบนั้นตาย
+  //   ถ้าไม่นับ ด่านกันเดาหายไปทั้งหมด — 6 หลักยิงรัวไม่จำกัดคือเดาออกได้ในหลักล้านครั้ง
+  // 🔴 bug hunt 30 ต.ค. ข้อ 8 — เดิมนับ "หลัง" เทียบ ⇒ ยิงพร้อมกันหลายคำขอผ่านด่าน 5 ครั้งได้ทุกคำขอ
   for(const row of candidates){
+    if(!await emailVerifyRepo.claimAttempt(row.email_verification_otp_id , OTP_MAX_ATTEMPTS)) continue;
     if(await verifyPassword(code , row.code_hash)){
       await emailVerifyRepo.markUsed(row.email_verification_otp_id);
       await userRepo.markEmailVerified(user.user_id);
       await emailVerifyRepo.invalidateAllForUser(user.user_id);   // ล้างใบที่เหลือทั้งหมด
       return SUCCESS;
     }
-  }
-
-  // กรอกผิด ⇒ นับขึ้นทุกใบที่เปิดอยู่ (ปกติมีใบเดียว) — ครบโควตาแล้วใบนั้นตาย
-  // ★ ถ้าไม่นับ ด่านกันเดาหายไปทั้งหมด — 6 หลักยิงรัวไม่จำกัดคือเดาออกได้ในหลักล้านครั้ง
-  for(const row of candidates){
-    await emailVerifyRepo.bumpAttempt(row.email_verification_otp_id);
   }
 
   throw INVALID_OTP();
@@ -230,9 +237,18 @@ export async function resendEmailVerification(email : string) : Promise<{ messag
 }
 
 
+/**
+ * bug hunt 30 ต.ค. 2569 (ข้อเล็ก) — hash หลอกไว้เทียบเมื่อไม่พบอีเมล ให้เวลาตอบเท่ากับกรณีรหัสผิด
+ *   เดิมอีเมลที่ไม่มีในระบบตอบทันที (ไม่ได้รัน bcrypt) ⇒ จับเวลาแล้วรู้ว่าอีเมลไหนสมัครไว้
+ * ★ cost 10 เท่ากับ SALT_ROUND ของรหัสจริง (utils/password.ts) — ต่างกัน = เวลาต่างกันอีก
+ * ★ ไม่ใช่รหัสของใคร ไม่มีใคร "ล็อกอินด้วยรหัสนี้" ได้ เพราะไม่มีแถวผู้ใช้ให้เข้า
+ */
+const TIMING_DUMMY_HASH = '$2b$10$Z6xpPqNtsSD0ZHGPCUbk6e2zQV1.aNs.Rwj7SL/q0cydqhoe1x7We';
+
 export async function login(email: string, password: string) {
   const user = await userRepo.findByEmail(email);
   if(!user){
+    await verifyPassword(password , TIMING_DUMMY_HASH);
     throw new AppError(401 , 'INVALID_CREDENTIALS' , "อีเมลหรือรหัสผ่านไม่ถูกต้อง")
   }
 
@@ -305,7 +321,7 @@ export async function forgotPassword(email : string) : Promise<{ message : strin
   }
 
   const rawToken = randomBytes(32).toString('hex');   // ★ ห้าม randomUUID — เดาง่ายกว่า
-  const tokenHash = await hashPassword(rawToken);
+  const tokenHash = hashResetToken(rawToken);
   const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
   await passwordResetRepo.invalidateAllForUser(user.user_id);   // ไม่ควรมีหลายใบใช้ได้พร้อมกัน
@@ -324,24 +340,29 @@ export async function forgotPassword(email : string) : Promise<{ message : strin
 // ★ ข้อความเดียวกันทั้ง 4 เคส (ไม่มี/ผิด/ใช้แล้ว/หมดอายุ) — แยกข้อความ = บอกคนเดา token ว่าเดาใกล้แค่ไหน
 const INVALID_RESET_TOKEN = () => new AppError(400 , 'INVALID_RESET_TOKEN' , 'ลิงก์ไม่ถูกต้องหรือหมดอายุ กรุณาขอลิงก์ใหม่');
 
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 7 — hash ของลิงก์รีเซ็ตเป็น SHA-256 ไม่ใช่ bcrypt
+ *   token สุ่ม 32 ไบต์ เดาไม่ได้อยู่แล้ว ⇒ ไม่ต้องใช้ bcrypt (ที่ทำให้ช้าโดยเจตนาเพื่อรหัสผ่านที่คนตั้ง)
+ *   และ hash เดิมทุกครั้ง ⇒ ค้นในฐานด้วย WHERE ได้ตรง ๆ ไม่ต้องกวาดทุกใบมาเทียบทีละใบ
+ * ★ ลิงก์ที่ออกก่อนเปลี่ยน (hash แบบ bcrypt) ใช้ไม่ได้แล้ว — อายุ 1 ชม. อยู่แล้ว ขอใหม่ได้
+ */
+function hashResetToken(rawToken : string) : string {
+  return createHash('sha256').update(rawToken).digest('hex');
+}
+
 export async function resetPassword(token : string , newPassword : string) : Promise<{ message : string }>{
-  // ไม่มี user_id มาก่อน (รับแค่ token ดิบ) — ต้องกวาดทุกใบที่ยังใช้ได้มา verifyPassword ทีละแถว
-  const candidates = await passwordResetRepo.findAllActive();
-
-  let matchedUserId : number | null = null;
-  for(const row of candidates){
-    if(await verifyPassword(token , row.token_hash)){
-      matchedUserId = row.user_id;
-      break;
-    }
-  }
-
-  if(matchedUserId === null){
+  const row = await passwordResetRepo.findActiveByHash(hashResetToken(token));
+  if(!row){
     throw INVALID_RESET_TOKEN();
   }
 
-  const user = await userRepo.findById(matchedUserId);
+  const user = await userRepo.findById(row.user_id);
   if(!user || isCurrentlySuspended(user)){
+    throw INVALID_RESET_TOKEN();
+  }
+
+  // จองใบนี้ก่อนเปลี่ยนรหัส — ยิงพร้อมกันสองครั้งด้วยลิงก์เดียว คนที่สองได้ข้อความเดียวกับลิงก์ใช้แล้ว
+  if(await passwordResetRepo.markUsed(row.password_reset_token_id) === 0){
     throw INVALID_RESET_TOKEN();
   }
 

@@ -106,6 +106,7 @@ describe("env - happy path", () => {
             //   จะทำให้ "สมัครใหม่ไม่ได้ทั้งระบบ" เพราะ OTP ไม่มีทางมาถึง
             REQUIRE_EMAIL_VERIFIED: false,
             UNVERIFIED_ACCOUNT_TTL_HOURS: 24,  // ลบบัญชีที่ไม่ยืนยันหลัง 24 ชม. (เหตุผล: ข้อมูลส่วนบุคคล)
+            TRUST_PROXY: 0,                    // bug hunt ข้อ 1 — ไม่ตั้ง = ไม่เชื่อ X-Forwarded-For (docker-compose ตั้ง 1)
         });
     });
 

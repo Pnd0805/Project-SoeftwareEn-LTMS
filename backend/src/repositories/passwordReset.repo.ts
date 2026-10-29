@@ -9,8 +9,7 @@ export async function create(userId : number , tokenHash : string , expiresAt : 
     return result.insertId;
 }
 
-// ไม่มี token_hash ซ้ำกันให้ WHERE ตรงๆ ได้ (bcrypt hash ต่างกันทุกครั้งแม้ plain เดียวกัน)
-// ต้องดึงแถวที่ "ยังมีสิทธิ์ใช้ได้" ทั้งหมดมาก่อน แล้วค่อย verifyPassword ทีละแถวที่ service
+// ใบที่ยังใช้ได้ของ user คนเดียว
 export async function findActiveByUser(userId : number) : Promise<PasswordResetTokenRow[]>{
     const [ rows ] = await pool.query<(PasswordResetTokenRow & RowDataPacket)[]>(
         `SELECT * FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL AND expires_at > NOW()`,
@@ -18,11 +17,16 @@ export async function findActiveByUser(userId : number) : Promise<PasswordResetT
     return rows;
 }
 
-// reset-password รับแค่ token ดิบ ไม่รู้ user_id มาก่อน — ต้องกวาดทุกคนที่ยังใช้ได้มา verifyPassword ทีละแถว
-export async function findAllActive() : Promise<PasswordResetTokenRow[]>{
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 7 — ค้นตรงด้วย hash ของ token (แทน findAllActive ที่กวาดทุกใบมา bcrypt ทีละใบ)
+ *   เดิมทุกคำขอ reset-password เทียบ bcrypt กับลิงก์ทุกใบในระบบ ⇒ มีคนขอลิงก์ไว้เยอะ = เดาครั้งเดียวกิน CPU หลายร้อยรอบ
+ *   token เป็นค่าสุ่ม 32 ไบต์อยู่แล้ว (เดาไม่ได้) ⇒ เก็บ SHA-256 พอ ไม่ต้องใช้ bcrypt ที่ออกแบบมาสำหรับรหัสผ่านที่คนตั้ง
+ */
+export async function findActiveByHash(tokenHash : string) : Promise<PasswordResetTokenRow | null>{
     const [ rows ] = await pool.query<(PasswordResetTokenRow & RowDataPacket)[]>(
-        `SELECT * FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > NOW()`);
-    return rows;
+        `SELECT * FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1`,
+        [tokenHash]);
+    return rows[0] ?? null;
 }
 
 // ไม่มี created_at — token มีอายุคงที่ 1 ชม. เสมอ ⇒ แถวที่ "ยังไม่หมดอายุ" ตอนนี้ก็คือแถวที่ "ออกภายใน 1 ชม.ที่แล้ว"
@@ -42,9 +46,10 @@ export async function invalidateAllForUser(userId : number) : Promise<number>{
     return result.affectedRows;
 }
 
+// ★ `used_at IS NULL` = จองใบนี้ — ยิง reset พร้อมกันสองครั้งด้วยลิงก์เดียว ต้องสำเร็จครั้งเดียว (คืน 0 = มีคนใช้ไปก่อนแล้ว)
 export async function markUsed(tokenId : number) : Promise<number>{
     const [ result ] = await pool.query<ResultSetHeader>(
-        `UPDATE password_reset_tokens SET used_at = NOW() WHERE password_reset_token_id = ?`,
+        `UPDATE password_reset_tokens SET used_at = NOW() WHERE password_reset_token_id = ? AND used_at IS NULL`,
         [tokenId]);
     return result.affectedRows;
 }
