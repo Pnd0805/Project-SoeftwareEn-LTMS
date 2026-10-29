@@ -687,3 +687,58 @@ export async function clearBracketTx(conn: PoolConnection, tournamentId: number)
     await q(`DELETE FROM tournament_standings WHERE tournament_id = ?`);
     return { matchesDeleted: m.affectedRows, nodesDeleted: n.affectedRows };
 }
+
+// ---- OD-73 ลบรูปบัตรตอนเช็คอินออนไลน์เมื่อหมดหน้าที่ ----
+
+const CHECKIN_DOC_ENDED_TOURNAMENT = `('completed', 'cancelled', 'auto_deleted')`;
+
+export type PurgeableCheckinDocRow = { match_checkin_id : number; match_id : number; document_s3_key : string };
+
+/**
+ * แถวเช็คอินที่ยังถือรูปบัตร และหมดหน้าที่เกิน `retentionDays` วันแล้ว — ข้อใดข้อหนึ่ง:
+ *   ① แมตช์ completed (ผลเป็นที่สุดแล้ว) · นับจากเวลาจบจริง → เวลาจบตามตาราง → เวลานัด
+ *   ② ทัวร์จบ/ถูกยกเลิก/ถูกปิด — แมตช์ที่ค้างไม่จบ (ถูกแช่แข็งตอนยกเลิกทัวร์) ก็ต้องลบได้
+ *   ③ ทัวร์ถูกลบ
+ * ★ แมตช์ disputed ยังไม่ completed ⇒ รูปอยู่ต่อจนตัดสินเสร็จ (อาจต้องใช้ตรวจตัวผู้เล่น)
+ */
+export async function findPurgeableCheckinDocs(retentionDays : number): Promise<PurgeableCheckinDocRow[]>{
+    const [rows] = await pool.query<(PurgeableCheckinDocRow & RowDataPacket)[]>(
+        `SELECT mc.match_checkin_id, mc.match_id, mc.document_s3_key
+         FROM match_checkins mc
+         JOIN matches m ON m.match_id = mc.match_id
+         JOIN tournaments t ON t.tournament_id = m.tournament_id
+         WHERE mc.document_s3_key IS NOT NULL
+           AND ( (m.match_status = 'completed'
+                  AND COALESCE(m.actual_end_time, m.scheduled_end_time, m.scheduled_time) < NOW() - INTERVAL ? DAY)
+              OR (t.tournament_status IN ${CHECKIN_DOC_ENDED_TOURNAMENT}
+                  AND COALESCE(t.completed_at, t.cancelled_at, t.event_end_date, t.event_start_date) < NOW() - INTERVAL ? DAY)
+              OR (t.deleted_at IS NOT NULL AND t.deleted_at < NOW() - INTERVAL ? DAY) )
+         ORDER BY mc.match_checkin_id`, [retentionDays, retentionDays, retentionDays]);
+    return rows;
+}
+
+/**
+ * ล้างคีย์หลังลบไฟล์แล้ว · ไม่แตะผลเช็คอิน (สถานะ · ชนิดบัตร · ผู้ตรวจ · เวลา) — ยังเป็นหลักฐานว่าเช็คอินแล้ว
+ * ★ เงื่อนไขคีย์ต้องยังเหมือนตอนอ่าน — กันไปล้างรูปใหม่ที่เพิ่งส่งทับ (reCheckin)
+ */
+export async function clearCheckinDocument(checkinId : number, keyAtRead : string): Promise<boolean>{
+    const [result] = await pool.query<ResultSetHeader>(
+        `UPDATE match_checkins SET document_s3_key = NULL WHERE match_checkin_id = ? AND document_s3_key = ?`,
+        [checkinId, keyAtRead]);
+    return result.affectedRows === 1;
+}
+
+/** คีย์รูปบัตรที่ยังมีแถวเช็คอินชี้อยู่ — งานกวาดไฟล์ไม่มีเจ้าของใช้กันลบผิด */
+export async function findAllReferencedCheckinDocKeys(): Promise<Set<string>>{
+    const [rows] = await pool.query<({ document_s3_key : string } & RowDataPacket)[]>(
+        `SELECT DISTINCT document_s3_key FROM match_checkins WHERE document_s3_key IS NOT NULL`);
+    return new Set(rows.map(r => r.document_s3_key));
+}
+
+/** แถวทุกแถวที่ชี้คีย์เหล่านี้ — ไฟล์ที่แถวซึ่งยังไม่หมดหน้าที่ชี้อยู่ด้วย ต้องยังไม่ลบ */
+export async function findCheckinRowsByDocKeys(keys : string[]): Promise<{ match_checkin_id : number; document_s3_key : string }[]>{
+    if(keys.length === 0) return [];
+    const [rows] = await pool.query<({ match_checkin_id : number; document_s3_key : string } & RowDataPacket)[]>(
+        `SELECT match_checkin_id, document_s3_key FROM match_checkins WHERE document_s3_key IN (?)`, [keys]);
+    return rows;
+}

@@ -3,6 +3,7 @@ import { sweepAndNotify } from '../services/team.service.js';
 import { purgeUnverifiedAccounts } from '../services/auth.service.js';
 import { purgeExpiredTournaments, sweepAutoDeleteTournaments, warnBeforeAutoDelete } from '../services/tournament.service.js';
 import { purgeRefereeIdentityDocs, sweepOrphanRefereeDocs } from '../services/refereeDocs.service.js';
+import { purgeCheckinDocuments, sweepOrphanCheckinDocs } from '../services/checkinDocs.service.js';
 
 /**
  * ทะเบียนงานเบื้องหลัง (มติ 8 ต.ค. 2569)
@@ -26,4 +27,7 @@ export const backgroundJobs : Job[] = [
     // OD-70 (งาน ⑥) — ลำดับไม่สำคัญ ไม่เกี่ยวกับงานกวาดทีม/ทัวร์ · ③ ต่อท้าย ② เพราะ ② ลบไฟล์แล้วปิดแถวไปก่อน
     { name : 'ลบภาพยืนยันตัวตนกรรมการของทัวร์ที่จบแล้ว' , run : purgeRefereeIdentityDocs },
     { name : 'ลบภาพยืนยันตัวตนกรรมการที่ไม่มีแถวชี้ถึง (OD-70)' , run : sweepOrphanRefereeDocs },
+    // OD-73 — รูปบัตรตอนเช็คอินออนไลน์ · ลำดับเดียวกับ OD-70: ① ลบไฟล์แล้วล้างคีย์ไปก่อน ② ค่อยกวาดไฟล์ไม่มีเจ้าของ
+    { name : 'ลบรูปบัตรเช็คอินของแมตช์ที่จบเกิน 3 วัน (OD-73)' , run : purgeCheckinDocuments },
+    { name : 'ลบรูปบัตรเช็คอินที่ไม่มีแถวชี้ถึง (OD-73)' , run : sweepOrphanCheckinDocs },
 ];
