@@ -70,3 +70,14 @@ INSERT INTO `team_members` (`team_member_id`, `team_id`, `user_id`, `position`, 
 INSERT INTO `team_members` (`team_member_id`, `team_id`, `user_id`, `position`, `joined_at`) VALUES (9014,9010,9106,'starter','2026-09-17 15:42:26');
 INSERT INTO `team_members` (`team_member_id`, `team_id`, `user_id`, `position`, `joined_at`) VALUES (9015,9011,9107,'starter','2026-09-17 15:42:27');
 INSERT INTO `team_members` (`team_member_id`, `team_id`, `user_id`, `position`, `joined_at`) VALUES (9016,9011,9108,'starter','2026-09-17 15:42:27');
+
+
+-- =====================================================================
+-- OD-53 (29 ต.ค. 2569) — ติดธงยืนยันอีเมลให้บัญชีที่ไฟล์นี้สร้าง
+-- =====================================================================
+-- 🔴 ต้องมีบรรทัดนี้ ไม่ใช่พึ่ง migration 055
+--   migration รัน **ก่อน** seed ⇒ บัญชีที่ไฟล์นี้เพิ่งสร้างจะเป็น email_verified = 0 (DEFAULT ของ migration 037)
+--   ⇒ เมื่อเปิดสวิตช์ REQUIRE_EMAIL_VERIFIED **บัญชีเดโม/ทดสอบทุกใบจะล็อกอินไม่ได้**
+-- ★ ตั้งทุกแถวโดยไม่กรองวันที่ — ไฟล์นี้เป็นข้อมูลทดสอบ/สาธิตทั้งก้อน ไม่ใช่ข้อมูลผู้ใช้จริง
+-- ★ รันซ้ำได้ ไม่มีผลข้างเคียง
+UPDATE users SET email_verified = 1 WHERE email_verified = 0;

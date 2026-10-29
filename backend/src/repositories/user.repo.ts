@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import { notSuspendedSql , suspendedSql } from '../utils/suspension.js';
+import { emailVerifiedSql } from '../utils/emailVerification.js';
 import type { SuspensionCategory } from '../utils/suspension.js';
 import type { RowDataPacket , ResultSetHeader} from 'mysql2';
 
@@ -45,6 +46,76 @@ export async function create(data: NewUser): Promise<number>{
     return result.insertId;
 }
 
+/**
+ * OD-53 (29 ต.ค. 2569) — สมัครซ้ำด้วยอีเมลเดิมที่ **ยังไม่ยืนยัน** = เขียนทับใบเดิมทั้งชุด
+ *
+ * ทำไมต้องมี: `register` ปฏิเสธอีเมลซ้ำด้วย 400 EMAIL_ALREADY_REGISTERED
+ *   ⇒ คนที่สมัครแล้วไม่กรอก OTP แล้วกลับมาสมัครใหม่ จะเจอ "อีเมลนี้ถูกใช้แล้ว กรุณาเข้าสู่ระบบ"
+ *     ทั้งที่ **เข้าสู่ระบบไม่ได้** (ด่านเปิด) และอีเมลนั้นเป็นของเขาเอง ⇒ ทางตัน
+ *
+ * 🔴 เงื่อนไข `email_verified = 0` เป็นด่านความปลอดภัย **ห้ามถอด**
+ *   ถ้าทับแถวที่ยืนยันแล้วได้ ใครก็ยึดบัญชีคนอื่นได้ด้วยการสมัครด้วยอีเมลนั้นแล้วตั้งรหัสใหม่
+ *   ★ ส่วนการทับใบที่ "ยังไม่ยืนยัน" ของคนอื่น ไม่ใช่ช่องโหว่ — ยังไม่มีใครพิสูจน์ได้ว่า
+ *     อีเมลนั้นเป็นของตน ⇒ เจ้าของจริงต้องเอาคืนได้ (มาตรฐานเดียวกับเว็บทั่วไป)
+ *
+ * 🔴 ทับ **ทุกช่อง** ไม่ใช่แค่ปล่อยผ่าน — เขาอาจกรอกไม่เหมือนรอบแรก
+ *   โดยเฉพาะ `password_hash`: ถ้าไม่ทับ เขาจะล็อกอินด้วยรหัสที่เพิ่งตั้งไม่ได้ **และหาสาเหตุไม่เจอ**
+ *
+ * ★ `created_at = NOW()` ด้วย — งานกวาดบัญชีค้างตัดสินจากคอลัมน์นี้
+ *   ถ้าไม่ขยับ แถวที่เพิ่งสมัครใหม่จะถูกกวาดทิ้งทันทีเพราะ created_at เป็นของรอบแรก
+ * ★ ไม่แตะ `user_id` ⇒ ใบ OTP เก่าที่ผูกอยู่ยังถูกล้างด้วย invalidateAllForUser ตามปกติ
+ *   และโควตา 3 ใบ/ชม. เดินต่อจากรอบก่อน (กันถล่มเมลใส่อีเมลคนอื่น — **มีเทสตรึงไว้**)
+ */
+export async function overwriteUnverified(userId : number , data: NewUser): Promise<boolean>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET full_name = ? , password_hash = ? , gender = ? , birth_date = ? ,
+                          user_type = ? , faculty_id = ? , department_id = ? , year = ? ,
+                          created_at = NOW() , updated_at = NOW()
+          WHERE user_id = ? AND email_verified = 0`,
+        [data.fullName , data.passwordHash , data.gender , data.birthDate , data.userType ,
+         data.facultyId , data.departmentId , data.year , userId]);
+    return result.affectedRows > 0;
+}
+
+/**
+ * OD-53 — ลบบัญชีที่สมัครแล้วไม่ยืนยันอีเมลเกินกำหนด (งานเบื้องหลัง · ค่าตั้งต้น 24 ชม.)
+ *
+ * ★ เหตุผลที่ลบ ไม่ใช่เรื่องพื้นที่ (แถวละ ~400 ไบต์ ไม่มีผลอะไร) แต่เป็นเรื่อง
+ *   **ข้อมูลส่วนบุคคล** — ชื่อ อีเมล วันเกิด เพศ คณะ ภาควิชา ของคนที่สมัครไม่สำเร็จ
+ *   และไม่เคยพิสูจน์ว่าอีเมลเป็นของตน ไม่มีเหตุให้เก็บไว้ตลอดไป
+ *   (หลักการเดียวกับ OD-70 ที่ลบภาพยืนยันตัวตนกรรมการเมื่อหมดหน้าที่)
+ *
+ * 🔴 ต้องลบใบ OTP ก่อนแล้วค่อยลบ user — `email_verification_otps` มี FK ไป `users`
+ *   **แบบไม่มี ON DELETE CASCADE** (migration 037) ⇒ ลบ user ตรง ๆ จะติด FK error
+ * 🔴 ทำใน transaction เดียว — ถ้าลบใบ OTP สำเร็จแล้วลบ user พลาด จะเหลือบัญชีที่ไม่มีใบ OTP
+ *   ⇒ เจ้าตัวกด "ขอรหัสใหม่" ได้ (ยังมีแถว) แต่โควตาและประวัติหายไป
+ *
+ * ★ บัญชีที่ยังไม่ยืนยันล็อกอินไม่ได้ (เมื่อด่านเปิด) ⇒ ไม่มีทีม ใบสมัคร ใบทาย หรือแต้มผูกอยู่
+ *   ⇒ ลบได้โดยไม่ชน FK อื่นในบรรดา 59 ตารางที่อ้างถึง `users` · **มีเทส integration ตรึงข้อนี้**
+ */
+export async function purgeUnverifiedOlderThan(hours : number) : Promise<number>{
+    if(hours <= 0) return 0;
+
+    const conn = await pool.getConnection();
+    try{
+        await conn.beginTransaction();
+        const SCOPE = `SELECT user_id FROM users
+                        WHERE email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR`;
+
+        await conn.query(`DELETE FROM email_verification_otps WHERE user_id IN (${SCOPE})` , [hours]);
+        const [ result ] = await conn.query<ResultSetHeader>(
+            `DELETE FROM users WHERE email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR` , [hours]);
+
+        await conn.commit();
+        return result.affectedRows;
+    }catch(err){
+        await conn.rollback();
+        throw err;
+    }finally{
+        conn.release();
+    }
+}
+
 
 /**
  * เปลี่ยน user_type (มติ 8 ต.ค. 2569) — 'staff' = คนที่ถือยศแอดมิน/root
@@ -81,6 +152,7 @@ export async function searchByName(userName : string) : Promise<UserSearchRow[]>
            FROM users u
            LEFT JOIN faculties f ON f.faculty_id = u.faculty_id
           WHERE (u.full_name LIKE ? OR u.email LIKE ?) AND ${notSuspendedSql('u')}
+            AND ${emailVerifiedSql('u')}
           ORDER BY u.full_name LIMIT 20` , [`%${userName}%`, `${userName}%`]);
     return rows;
 }; 
@@ -175,6 +247,8 @@ export async function searchUsersAdmin(filters : { q? : string | undefined; facu
     if(filters.facultyId !== undefined){ where.push('u.faculty_id = ?'); params.push(filters.facultyId); }
     // filters.suspended ถามถึงสถานะ *ตอนนี้* — คนที่หมดกำหนดแล้วต้องไม่โผล่ในลิสต์ "ถูกระงับ" ทั้งที่ธงยังค้างเป็น 1
     if(filters.suspended !== undefined){ where.push(filters.suspended ? suspendedSql('u') : notSuspendedSql('u')); }
+    // OD-53 — ซ่อนบัญชีที่ยังไม่ยืนยันเมื่อด่านเปิด (ดู utils/emailVerification.ts)
+    where.push(emailVerifiedSql('u'));
     const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
     const [ rows ] = await pool.query<(AdminUserRow & RowDataPacket)[]>(
