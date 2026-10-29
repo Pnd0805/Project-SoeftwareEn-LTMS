@@ -17,6 +17,7 @@ vi.mock('../notification.service.js', () => ({
   notifyTeamMembers: vi.fn(),
   notifyTournamentReferees: vi.fn(),
   notifyMatchResultParties: vi.fn(),
+  notifyMatchFollowers: vi.fn(),
 }));
 vi.mock('../../repositories/matchResult.repo.js', () => ({
   findmatchResultByMatchId: vi.fn(),
@@ -100,6 +101,19 @@ describe('verifyMatchResult (S02)', () => {
     await expect(Service.verifyMatchResult(1, 7)).rejects.toThrow('deadlock');
     expect(Walkover.resolveIfOpponentWithdrawn).not.toHaveBeenCalled();
     expect(NotificationService.notifyMatchResultParties).not.toHaveBeenCalled();
+    expect(NotificationService.notifyMatchFollowers).not.toHaveBeenCalled();
+  });
+
+  // OD-72 (FR-FN-02) จังหวะ ② — จุดที่ 1 ของ 2 (ยืนยันด้วยมือ)
+  it('OD-72: แจ้งผู้ติดตามด้วย followed_player_result_verified · ผู้รับชุดเดิมไม่เปลี่ยน', async () => {
+    await Service.verifyMatchResult(1, 7);
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledTimes(1);
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(1, expect.objectContaining({
+      type: 'followed_player_result_verified',
+      title: 'ผลแมตช์ของนักกีฬาที่คุณติดตามออกแล้ว',
+      message: 'ผลแมตช์ #1 ได้รับการยืนยันแล้ว',
+    }));
+    expect(NotificationService.notifyMatchResultParties).toHaveBeenCalledTimes(1);
   });
 });
 

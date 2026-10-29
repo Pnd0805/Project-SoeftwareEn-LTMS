@@ -492,6 +492,19 @@ export async function startMatch(matchId: number, userId: number){
     if(!(await MatchRepo.markMatchStarted(matchId))){
         throw new AppError(409, "INVALID_STATUS_TRANSITION", "แมตช์นี้ถูกเริ่มไปแล้ว");
     }
+    /**
+     * OD-72 (FR-FN-02) จังหวะ ① — ผู้ติดตามนักกีฬา: แมตช์เริ่มแข่งจริง
+     * 🔴 ต้องอยู่หลัง markMatchStarted เท่านั้น — UPDATE แบบมีเงื่อนไขตัวนั้นคือตัวกันยิงซ้ำ
+     *    (กดซ้ำทีละครั้งติด CHECKIN_NOT_OPEN ตั้งแต่บรรทัดแรก · ที่ผ่านด่านสถานะมาได้คือ "กดพร้อมกัน" ตัวนี้ให้ผ่านแค่คนเดียว)
+     *    และทางแพ้บายข้างบน return ไปก่อนแล้ว ⇒ แมตช์ที่ไม่ได้แข่งจริงไม่มีแจ้งเตือน "เริ่มแล้ว"
+     * ⚠️ จำนวนแถวโตตามจำนวนผู้ติดตาม (fan-out) — ตอนนี้ข้อมูลน้อย notify เขียนเป็นชุดอยู่แล้ว
+     */
+    await NotificationService.notifyMatchFollowers(matchId, {
+        type : 'followed_player_match_started',
+        title : 'แมตช์ของนักกีฬาที่คุณติดตามเริ่มแล้ว',
+        message : `แมตช์ #${matchId} กำลังแข่งอยู่`,
+        relatedEntityType : 'match', relatedEntityId : matchId,
+    });
     return { id: matchId, status:'in_progress' };
 }
 

@@ -22,16 +22,17 @@ import type { UserRow } from '../types/db.js';
 
 export async function getUserById(userId: number, viewerUserId?: number) {
     const user = await checkUser(userId);
-    const [teamRows, followerCount, isFollowing] = await Promise.all([
+    // OD-72 — คิวรีเดียวได้ทั้ง "ติดตามไหม" และ "กระดิ่งเปิดไหม" · null = ยังไม่ได้ติดตาม
+    const [teamRows, followerCount, notify] = await Promise.all([
         TeamRepo.findTeamsByUser(userId),
         FollowRepo.countFollowers(userId),
         viewerUserId !== undefined && viewerUserId !== userId
-            ? FollowRepo.isFollowing(viewerUserId, userId)
-            : Promise.resolve(false),
+            ? FollowRepo.findNotifyEnabled(viewerUserId, userId)
+            : Promise.resolve(null),
     ]);
     // OD-46 — บอกตั้งแต่หน้าโปรไฟล์ว่าสถิติถูกซ่อน FE จึงไม่ต้องยิงอีกสามเส้นแล้วค่อยพบว่าว่าง
     const statsHidden = !(await canSeeProfileStats(user, viewerUserId));
-    return toPublicUserDto(user, teamRows.map(toTeamRef), followerCount, isFollowing, statsHidden);
+    return toPublicUserDto(user, teamRows.map(toTeamRef), followerCount, notify !== null, statsHidden, notify === true);
 };
 
 
@@ -59,7 +60,25 @@ export async function followUser(followerUserId: number, followedUserId: number)
         userId: followedUserId,
         isFollowing: true as const,
         followerCount: await FollowRepo.countFollowers(followedUserId),
+        // OD-72 — ติดตามใหม่ได้ false เสมอ (มติข้อ 1) · กดติดตามซ้ำ (INSERT IGNORE) ไม่รีเซ็ตกระดิ่ง จึงอ่านค่าจริง
+        notifyEnabled: (await FollowRepo.findNotifyEnabled(followerUserId, followedUserId)) === true,
     };
+}
+
+/**
+ * OD-72 — เปิด/ปิดกระดิ่งของคนที่ติดตามอยู่ (FR-FN-02)
+ * 🔴 ยังไม่ได้ติดตาม = 404 NOT_FOLLOWING · **ไม่สร้างแถวติดตามให้เอง** — การติดตามต้องเป็นการกดของผู้ใช้เท่านั้น
+ */
+export async function setFollowNotify(followerUserId: number, followedUserId: number, notifyEnabled: boolean) {
+    if (followerUserId === followedUserId) {
+        throw new AppError(409, 'CANNOT_FOLLOW_SELF', 'ไม่สามารถติดตามตัวเองได้');
+    }
+    await checkUser(followedUserId);
+    if ((await FollowRepo.findNotifyEnabled(followerUserId, followedUserId)) === null) {
+        throw new AppError(404, 'NOT_FOLLOWING', 'ยังไม่ได้ติดตามผู้ใช้นี้ — กดติดตามก่อนถึงจะเปิดกระดิ่งได้');
+    }
+    await FollowRepo.setNotifyEnabled(followerUserId, followedUserId, notifyEnabled);
+    return { userId: followedUserId, isFollowing: true as const, notifyEnabled };
 }
 
 export async function unfollowUser(followerUserId: number, followedUserId: number) {
@@ -84,7 +103,7 @@ export async function getFollowers(userId: number) {
 export async function getFollowing(userId: number) {
     await checkUser(userId);
     const rows = await FollowRepo.findFollowing(userId);
-    return { items: rows.map(toUserRef), count: rows.length };
+    return { items: rows.map(r => ({ ...toUserRef(r), notifyEnabled: r.notify_enabled === 1 })), count: rows.length };
 }
 
 export async function getCareer(userId: number, viewerUserId?: number) {

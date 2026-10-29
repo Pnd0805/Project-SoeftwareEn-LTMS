@@ -20,3 +20,8 @@ export const updateMeSchema = z.object({
 });
 
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;
+
+// OD-72 — เปิด/ปิดกระดิ่งของคนที่ติดตามอยู่ (ทรงเดียวกับ updateRewardDisplaySchema)
+export const followNotifySchema = z.object({
+   notifyEnabled : z.boolean(),
+});

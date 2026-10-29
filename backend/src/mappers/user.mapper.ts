@@ -100,6 +100,8 @@ export type PublicUserDto = {
   teams: TeamRef[],
   followerCount: number,
   isFollowing: boolean,
+  /** OD-72 — กระดิ่งของคนที่ดูอยู่ต่อโปรไฟล์นี้ · false เมื่อยังไม่ติดตาม / ไม่ได้ล็อกอิน / ดูของตัวเอง */
+  notifyEnabled: boolean,
   /**
    * OD-46 — เจ้าของโปรไฟล์ปิดสถิติไว้ และคนที่ดูอยู่ไม่ใช่เจ้าตัว/แอดมิน
    * มีในหน้าโปรไฟล์ด้วยเพื่อให้ FE รู้ตั้งแต่ request แรกว่าจะซ่อนแท็บสถิติ/ประวัติแมตช์เลยดีไหม
@@ -168,7 +170,8 @@ export function toPublicUserDto(
   team: TeamRef[],
   followerCount = 0,
   isFollowing = false,
-  statsHidden = false
+  statsHidden = false,
+  notifyEnabled = false
 ): PublicUserDto {
   return {
     id: row.user_id,
@@ -179,6 +182,7 @@ export function toPublicUserDto(
     teams: team,
     followerCount,
     isFollowing,
+    notifyEnabled,
     statsHidden,
   };
 }

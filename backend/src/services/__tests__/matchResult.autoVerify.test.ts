@@ -4,6 +4,7 @@ vi.mock('../notification.service.js', () => ({
   notify: vi.fn(), notifyUsers: vi.fn(), notifyMatchAudience: vi.fn(),
   notifyTournamentTeamLeaders: vi.fn(),
   notifyTeamMembers: vi.fn(), notifyTournamentReferees: vi.fn(), notifyMatchResultParties: vi.fn(),
+  notifyMatchFollowers: vi.fn(),
 }));
 vi.mock('../../repositories/matchResult.repo.js', () => ({
   findmatchResultByMatchId: vi.fn(), verifyMatchResult: vi.fn(), findStandings: vi.fn(() => Promise.resolve([])),
@@ -54,10 +55,18 @@ describe('autoVerifyDue', () => {
     expect(NotificationService.notifyMatchResultParties).toHaveBeenCalledWith(7, expect.objectContaining({ type: 'result_auto_verified' }));
   });
 
+  // OD-72 (FR-FN-02) จังหวะ ② — จุดที่ 2 ของ 2 · จุดที่ลืมกันบ่อยที่สุด (ผลที่ไม่มีใครค้าน = กรณีปกติ)
+  it('OD-72: ยืนยันอัตโนมัติก็แจ้งผู้ติดตาม — ชนิดเดียวกับยืนยันด้วยมือ', async () => {
+    await Service.autoVerifyDue([7]);
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledTimes(1);
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(7, expect.objectContaining({ type: 'followed_player_result_verified' }));
+  });
+
   it('leaves it alone before the deadline', async () => {
     vi.mocked(ResRepo.findmatchResultByMatchId).mockResolvedValue(result({ submitted_at: hoursAgo(23) }));
     await expect(Service.autoVerifyDue([7])).resolves.toEqual([]);
     expect(ResRepo.verifyMatchResult).not.toHaveBeenCalled();
+    expect(NotificationService.notifyMatchFollowers).not.toHaveBeenCalled();
   });
 
   // ★ โหมด online หัวหน้าทีมเป็นคนส่ง = คู่กรณี ระบบต้องไม่รับรองคำอ้างที่ไม่มีคนกลางยืนยัน
