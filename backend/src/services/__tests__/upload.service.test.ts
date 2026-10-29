@@ -638,3 +638,60 @@ describe('validateTeamLogoKey', () => {
     await expectAppError(uploadService.validateTeamLogoKey(own, 30), 503, 'STORAGE_UNAVAILABLE');
   });
 });
+
+// ───────────── 30 ต.ค. 2569 — เอกสารคำขอทีม Official (team_official_document) ─────────────
+
+describe('createPresignedUpload — team_official_document', () => {
+  const input = (o: Record<string, unknown> = {}) =>
+    ({ purpose: 'team_official_document', contentType: 'application/pdf', teamId: 30, ...o }) as never;
+
+  it('หัวหน้าทีมได้ key ของทีมนั้น · PDF ได้นามสกุล .pdf', async () => {
+    vi.mocked(TeamRepo.findById).mockResolvedValue({ team_id: 30, leader_id: 9001 } as never);
+    const result = await uploadService.createPresignedUpload(input(), 9001);
+    expect(result.objectKey).toMatch(new RegExp(`^team_official_document/30/${UUID}\.pdf$`));
+  });
+
+  it('ไม่ใช่หัวหน้าทีม → 403 NOT_TEAM_LEADER', async () => {
+    vi.mocked(TeamRepo.findById).mockResolvedValue({ team_id: 30, leader_id: 1 } as never);
+    await expectAppError(uploadService.createPresignedUpload(input(), 9001), 403, 'NOT_TEAM_LEADER');
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('validateTeamOfficialDocumentKeys', () => {
+  const own = 'team_official_document/30/44444444-4444-4444-8444-444444444444.pdf';
+
+  it('ไฟล์ของทีมนี้ที่มีอยู่จริง (PDF / รูป) → ผ่าน', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'application/pdf' }).mockResolvedValueOnce({ ContentType: 'image/png' });
+    await expect(uploadService.validateTeamOfficialDocumentKeys(
+      [own, 'team_official_document/30/55555555-5555-4555-8555-555555555555.png'], 30)).resolves.toBeUndefined();
+    expect(s3Send).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['ข้อความแบบเดิม', 'Club registration letter 2026'],
+    ['ทีมอื่น', 'team_official_document/31/44444444-4444-4444-8444-444444444444.pdf'],
+    ['เลขทีมแค่ขึ้นต้นตรง', 'team_official_document/300/44444444-4444-4444-8444-444444444444.pdf'],
+    ['โลโก้ทีม', 'team_logo/30/44444444-4444-4444-8444-444444444444.png'],
+    ['ไฟล์ docx', 'team_official_document/30/44444444-4444-4444-8444-444444444444.docx'],
+  ])('%s → 422 TEAM_OFFICIAL_DOC_INVALID · ไม่ถามที่เก็บไฟล์', async (_l, bad) => {
+    const err = await uploadService.validateTeamOfficialDocumentKeys([own, bad], 30).catch(e => e);
+    expect(err).toMatchObject({ status: 422, code: 'TEAM_OFFICIAL_DOC_INVALID', extra: { objectKeys: [bad] } });
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('ไม่มีไฟล์จริง → 422 TEAM_OFFICIAL_DOC_NOT_FOUND', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'NotFound', $metadata: { httpStatusCode: 404 } });
+    await expectAppError(uploadService.validateTeamOfficialDocumentKeys([own], 30), 422, 'TEAM_OFFICIAL_DOC_NOT_FOUND');
+  });
+
+  it('ไฟล์ที่เก็บไว้ไม่ใช่ PDF/รูป → 422 TEAM_OFFICIAL_DOC_NOT_FOUND', async () => {
+    s3Send.mockResolvedValueOnce({ ContentType: 'text/html' });
+    await expectAppError(uploadService.validateTeamOfficialDocumentKeys([own], 30), 422, 'TEAM_OFFICIAL_DOC_NOT_FOUND');
+  });
+
+  it('ที่เก็บไฟล์ล่ม → 503 STORAGE_UNAVAILABLE', async () => {
+    s3Send.mockRejectedValueOnce({ name: 'TimeoutError', $metadata: { httpStatusCode: 500 } });
+    await expectAppError(uploadService.validateTeamOfficialDocumentKeys([own], 30), 503, 'STORAGE_UNAVAILABLE');
+  });
+});
