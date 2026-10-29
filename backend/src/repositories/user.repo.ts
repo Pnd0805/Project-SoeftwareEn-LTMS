@@ -92,24 +92,50 @@ export async function overwriteUnverified(userId : number , data: NewUser): Prom
  *
  * ★ บัญชีที่ยังไม่ยืนยันล็อกอินไม่ได้ (เมื่อด่านเปิด) ⇒ ไม่มีทีม ใบสมัคร ใบทาย หรือแต้มผูกอยู่
  *   ⇒ ลบได้โดยไม่ชน FK อื่นในบรรดา 59 ตารางที่อ้างถึง `users` · **มีเทส integration ตรึงข้อนี้**
+ *   🔴 ยกเว้นบัญชีที่สมัครตอนด่านยังปิด (ใช้งานได้ตามปกติ) หรือถูกคนอื่นเชิญเข้าทีม ⇒ อาจมีข้อมูลผูกอยู่
+ *      ⇒ ลบทีละบัญชี ชน FK ก็ข้าม (deleteUnverifiedUser) · ผู้เรียก (purgeUnverifiedAccounts) ก็ไม่รันตอนด่านปิด
  */
 export async function purgeUnverifiedOlderThan(hours : number) : Promise<number>{
     if(hours <= 0) return 0;
 
+    const [ rows ] = await pool.query<({ user_id : number } & RowDataPacket)[]>(
+        `SELECT user_id FROM users WHERE email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR` , [hours]);
+
+    let removed = 0;
+    let skipped = 0;
+    for(const { user_id } of rows){
+        const outcome = await deleteUnverifiedUser(user_id , hours);
+        if(outcome === 'deleted') removed++;
+        if(outcome === 'referenced') skipped++;
+    }
+    if(skipped > 0){
+        console.warn(`[purge-unverified] ข้าม ${skipped} บัญชีที่ยังมีข้อมูลผูกอยู่ (ทีม/ใบสมัคร/คำเชิญ ฯลฯ) — ไม่ลบ`);
+    }
+    return removed;
+}
+
+/**
+ * ลบทีละบัญชี ไม่ใช่ DELETE ก้อนเดียว (แก้ 29 ต.ค. 2569)
+ *   เดิมคำสั่งเดียวลบทุกบัญชี ⇒ บัญชีเดียวที่มีข้อมูลผูกอยู่ (ชน FK) ทำให้ **ทั้งรอบล้ม ไม่มีใครถูกลบเลย** และ error ทุกชั่วโมง
+ *   ⇒ บัญชีที่ชน FK ข้ามไป (ไม่ลบข้อมูลของคนอื่นตามไปด้วย) · ที่เหลือลบต่อได้
+ * ★ เช็คเงื่อนไขซ้ำตอน DELETE — เจ้าตัวอาจยืนยันอีเมลระหว่างที่งานกำลังวน ⇒ ลบไม่ถึงแถว ย้อนใบ OTP กลับ
+ */
+async function deleteUnverifiedUser(userId : number , hours : number) : Promise<'deleted' | 'gone' | 'referenced'>{
     const conn = await pool.getConnection();
     try{
         await conn.beginTransaction();
-        const SCOPE = `SELECT user_id FROM users
-                        WHERE email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR`;
-
-        await conn.query(`DELETE FROM email_verification_otps WHERE user_id IN (${SCOPE})` , [hours]);
+        await conn.query(`DELETE FROM email_verification_otps WHERE user_id = ?` , [userId]);
         const [ result ] = await conn.query<ResultSetHeader>(
-            `DELETE FROM users WHERE email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR` , [hours]);
-
+            `DELETE FROM users WHERE user_id = ? AND email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR` , [userId , hours]);
+        if(result.affectedRows === 0){
+            await conn.rollback();
+            return 'gone';
+        }
         await conn.commit();
-        return result.affectedRows;
+        return 'deleted';
     }catch(err){
         await conn.rollback();
+        if((err as { errno? : number }).errno === 1451) return 'referenced';   // ER_ROW_IS_REFERENCED_2
         throw err;
     }finally{
         conn.release();

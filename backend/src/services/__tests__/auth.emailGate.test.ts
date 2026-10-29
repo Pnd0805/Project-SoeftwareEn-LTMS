@@ -121,7 +121,16 @@ describe('ด่านบังคับยืนยันอีเมลตอ�
 });
 
 describe('งานกวาดบัญชีที่ไม่ยืนยันอีเมล', () => {
-  it('ส่งค่า TTL จาก env เข้า repo', async () => {
+  // 🔴 29 ต.ค. — ด่านปิด = คนที่ไม่ยืนยันใช้งานได้ตามปกติ เป็นผู้ใช้จริง ⇒ ห้ามลบ
+  it('🔴 ด่านปิด → ไม่ลบอะไรเลย ไม่แตะ repo', async () => {
+    mockEnv.REQUIRE_EMAIL_VERIFIED = false;
+
+    await expect(authService.purgeUnverifiedAccounts()).resolves.toBe(0);
+    expect(mockedUserRepo.purgeUnverifiedOlderThan).not.toHaveBeenCalled();
+  });
+
+  it('ส่งค่า TTL จาก env เข้า repo (ด่านเปิด)', async () => {
+    mockEnv.REQUIRE_EMAIL_VERIFIED = true;
     mockedUserRepo.purgeUnverifiedOlderThan.mockResolvedValue(3);
 
     await expect(authService.purgeUnverifiedAccounts()).resolves.toBe(3);
@@ -129,6 +138,7 @@ describe('งานกวาดบัญชีที่ไม่ยืนยั�
   });
 
   it('ตั้ง TTL เป็น 0 = ปิดงานกวาด (repo เป็นคนกันไว้ แต่ค่าต้องส่งถึง)', async () => {
+    mockEnv.REQUIRE_EMAIL_VERIFIED = true;
     mockEnv.UNVERIFIED_ACCOUNT_TTL_HOURS = 0;
     mockedUserRepo.purgeUnverifiedOlderThan.mockResolvedValue(0);
 
