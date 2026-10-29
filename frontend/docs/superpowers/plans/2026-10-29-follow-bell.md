@@ -18,6 +18,7 @@ The reviewed implementation choice is to show the bell only after following. Unt
 - [x] Share controls between real and mock public Player profiles. Hide controls for Guests/self and hide the bell until following. Explain the opt-in default and the Community settings gate. Retain state on failure, permit retry and prevent concurrent writes.
 - [x] Add API, persistence and rendered React regressions for supported/legacy servers, both toggle directions, pending/error recovery, missing follows and Guest/self boundaries.
 - [x] Collect full developer checks: 155 files / 1,163 tests passed, TypeScript, lint, production build and whitespace checks passed. Delivery includes the frontend implementation and backend handoff; backend files and `TODO/` are excluded.
+- [x] Compare with TASK-BE round 2: required frontend API/default/visibility behavior matches; correct the handoff to distinguish bell write-time filtering from Community read-time filtering. No backend changes.
 - [ ] Backend delivery/live notification fan-out and rendered browser/device acceptance.
 
 ## Verification

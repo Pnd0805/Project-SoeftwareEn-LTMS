@@ -30,6 +30,21 @@ The requested routes, fields, notification linking and delivery evidence are doc
 
 No backend changes are included in this work. Capability becomes available when the documented fields and route are deployed together; no frontend environment toggle is needed.
 
+## Cross-check against TASK-BE round 2
+
+Read `TASK-BE-2026-10-29-follower-notifications.md` (29 October, round 2) after implementation and before push. The required frontend behavior matches:
+
+| Backend decision / contract | Frontend behavior |
+| --- | --- |
+| Bell defaults Off, opt-in per followed player | New/mock legacy follows start Off; bell stays hidden until following |
+| PATCH changes the preference, never creates a follow | API sends only `{ notifyEnabled }`; missing relationship is handled as NOT_FOLLOWING |
+| Boolean preference in POST/following reads | Confirmed boolean drives state; missing data remains unavailable |
+| Two event types: actual match start and verified result | UI wording describes those events; existing Inbox uses title/message and match links |
+| Bell filters writes; Community filters reads through mutedTypes | FE changes only the bell, links to existing Community settings and leaves notification filtering to the server |
+| Turning the bell off does not remove old notifications | Bell mutation updates following preferences only; it does not delete or filter Inbox entries |
+
+One wording error was found in the initial TO-BACKEND note: Community Off was described as suppressing creation. The note now specifies read-time filtering and retroactive visibility, with bell filtering at write time. No production frontend code or backend file needed changing for this correction. Backend event hooks, migration and notification fan-out remain backend responsibilities; their local test commands were not run by this frontend task.
+
 ## Checks
 
 - API and rendered control first pass: 3 files / 14 tests passed.
