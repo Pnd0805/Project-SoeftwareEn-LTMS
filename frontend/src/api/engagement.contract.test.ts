@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
-import { follow, unfollow, getFollows } from './engagement'
+import { follow, unfollow, getFollows, setFollowNotifications } from './engagement'
 import { getUserCareer } from './user'
 import { getLeaderTransfers, reviewLeaderTransfer } from './admin'
 const request = vi.fn<typeof fetch>(); const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
@@ -9,6 +9,25 @@ it('reads player IDs from the authenticated following list', async () => {
  request.mockResolvedValueOnce(json({ items: [{ id: 42, fullName: 'Player', avatarUrl: null }], count: 1 }))
  expect(await getFollows(9)).toMatchObject({ targets: ['player:42'] })
  expect(request.mock.calls[0][0]).toBe('/api/v1/me/following')
+})
+it('preserves delivered notification preferences and sends the exact PATCH contract', async () => {
+ request.mockResolvedValueOnce(json({ items: [{ id: 42, fullName: 'Player', avatarUrl: null, notifyEnabled: false }] }))
+ const current = await getFollows(9)
+ expect(current.notifications).toEqual({ 'player:42': false })
+ request.mockResolvedValueOnce(json({ userId: 42, isFollowing: true, notifyEnabled: true }))
+ await expect(setFollowNotifications(9, 'player:42', true, current)).resolves.toMatchObject({ notifyEnabled: true })
+ expect(request.mock.calls[1]).toEqual(['/api/v1/users/42/follow', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ notifyEnabled: true }) })])
+})
+it('does not send a PATCH for an unfollowed player or a server without notification fields', async () => {
+ await expect(setFollowNotifications(9, 'player:42', true, { targets: [] })).rejects.toMatchObject({ code: 'NOT_FOLLOWING' })
+ await expect(setFollowNotifications(9, 'player:42', true, { targets: ['player:42'] })).rejects.toMatchObject({ status: 501, code: 'ENDPOINT_UNAVAILABLE' })
+ expect(request).not.toHaveBeenCalled()
+})
+it('does not confirm an incomplete or unrelated successful PATCH response', async () => {
+ const current = { targets: ['player:42'], notifications: { 'player:42': false } }
+ request.mockResolvedValueOnce(json({})).mockResolvedValueOnce(json({ userId: 99, isFollowing: true, notifyEnabled: true }))
+ await expect(setFollowNotifications(9, 'player:42', true, current)).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
+ await expect(setFollowNotifications(9, 'player:42', true, current)).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
 })
 it('follows and unfollows real numeric users then refreshes the list', async () => {
  request.mockImplementation(async url => json(String(url).includes('/me/following') ? { items: [] } : {}))

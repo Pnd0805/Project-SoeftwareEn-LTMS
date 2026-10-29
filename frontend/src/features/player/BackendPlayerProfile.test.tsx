@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../rewards/RewardsPage', () => ({ PublicRewards: () => null }))
 
 const state = vi.hoisted(() => ({
+  viewer: undefined as number | undefined,
   profile: {} as Record<string, unknown>,
   stats: {} as Record<string, unknown>,
   career: {} as Record<string, unknown>,
@@ -19,7 +20,7 @@ vi.mock('../../hooks/useUser', () => ({
   useUserCareer: () => ({ isPending: false, isSuccess: true, error: null, data: state.career, refetch: vi.fn() }),
   useFollow: () => ({ isFollowing: false, isLoading: false, error: null, toggle: { mutate: vi.fn(), isPending: false, error: null } }),
 }))
-vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: undefined }) }))
+vi.mock('../../hooks/useAuth', () => ({ useMe: () => ({ data: state.viewer === undefined ? undefined : { id: state.viewer } }) }))
 vi.mock('../../hooks/useReference', () => ({
   useFaculties: () => ({ data: { items: [] } }),
   useDepartments: () => ({ data: { items: [] } }),
@@ -31,12 +32,21 @@ import { BackendPlayerProfile } from './BackendPlayerProfile'
 const renderPage = () => render(<MemoryRouter><BackendPlayerProfile userId={9002} /></MemoryRouter>)
 
 beforeEach(() => {
+  state.viewer = undefined
   state.profile = { id: 9002, fullName: 'Somying', avatarUrl: null, facultyId: 1, departmentId: 1, teams: [] }
   state.stats = {
     userId: 9002, overall: { matchesPlayed: 5, wins: 3, losses: 2, winRate: 0.6, championCount: 0 },
     bySport: [], mvpVotes: 8, mvpTimes: 2,
   }
   state.career = { items: [] }
+})
+it('does not show following or bell controls to guests or the profile owner', () => {
+  const view = renderPage()
+  expect(screen.queryByRole('group', { name: 'Player following' })).not.toBeInTheDocument()
+  view.unmount()
+  state.viewer = 9002
+  renderPage()
+  expect(screen.queryByRole('group', { name: 'Player following' })).not.toBeInTheDocument()
 })
 
 describe('a player who hides their profile stats', () => {

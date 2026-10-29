@@ -14,7 +14,7 @@ import { routeUser } from '../../mocks/routeIds'
 import { ageOf, statLabels, teamReady } from '../../shared/rules'
 import { careerBySport, careerByTournament } from '../../shared/career'
 import { useMe } from '../../hooks/useAuth'
-import { useFollow } from '../../hooks/useUser'
+import { PlayerFollowControls } from './PlayerFollowControls'
 import { parseBackendId } from '../../api/ids'
 import { USE_MOCK } from '../../api/client'
 import { BackendPlayerProfile } from './BackendPlayerProfile'
@@ -86,7 +86,6 @@ export function PlayerPage() {
   const backendUserId = USE_MOCK ? undefined : parseBackendId(id)
   const p = USE_MOCK ? routeUser(s, id) : null
   const { data: currentUser } = useMe()
-  const follow = useFollow(currentUser?.id, `player:${p?.id ?? id ?? ''}`)
 
   if (!USE_MOCK) {
     return <BackendPlayerProfile userId={backendUserId} />
@@ -122,15 +121,8 @@ export function PlayerPage() {
             </span>
           </div>
         </div>
-        {currentUser ? (
-          <button
-            className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`}
-            type="button"
-            onClick={() => follow.toggle.mutate()}
-            disabled={follow.toggle.isPending}
-          >
-            {follow.isFollowing ? 'Following' : 'Follow player'}
-          </button>
+        {currentUser && s.session !== p.id ? (
+          <PlayerFollowControls key={`${currentUser.id}:${p.id}`} viewerId={currentUser.id} playerId={p.id} />
         ) : null}
       </header>
 

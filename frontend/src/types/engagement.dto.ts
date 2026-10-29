@@ -1,6 +1,14 @@
 export interface FollowListDto {
   targets: string[]
-  items?: { id: number; fullName: string; avatarUrl: string | null }[]
+  items?: { id: number; fullName: string; avatarUrl: string | null; notifyEnabled?: boolean }[]
+  /** Missing means this server has not delivered follower notifications yet. */
+  notifications?: Record<string, boolean>
+}
+
+export interface FollowNotificationDto {
+  userId: number
+  isFollowing: true
+  notifyEnabled: boolean
 }
 
 export interface MvpVoteDto {

@@ -89,6 +89,8 @@ export interface UserRef {
 
 // U03 — ต้องไม่มี email/contactInfo/address โดยเด็ดขาด (คนละ mapper กับ MeDto)
 export interface PublicUserDto extends UserRef {
+  isFollowing?: boolean;
+  notifyEnabled?: boolean;
   facultyId: number | null;
   departmentId: number | null;
   teams: TeamRef[];

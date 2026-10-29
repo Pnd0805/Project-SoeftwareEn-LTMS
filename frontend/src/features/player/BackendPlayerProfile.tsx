@@ -24,7 +24,8 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Crumb, Empty, Panel, TableWrap } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import { useMe } from '../../hooks/useAuth'
-import { useFollow, usePublicUser, useUserStats } from '../../hooks/useUser'
+import { usePublicUser, useUserStats } from '../../hooks/useUser'
+import { PlayerFollowControls } from './PlayerFollowControls'
 import { useDepartments, useFaculties } from '../../hooks/useReference'
 
 export function BackendPlayerProfile({ userId }: { userId: number | undefined }) {
@@ -34,7 +35,6 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
   const faculties = useFaculties()
   const departments = useDepartments(profile.data?.facultyId ?? undefined)
   const { data: currentUser } = useMe()
-  const follow = useFollow(currentUser?.id, `player:${userId ?? ''}`)
 
   if (userId === undefined) {
     return (
@@ -83,14 +83,10 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
           </div>
         </div>
         {currentUser && currentUser.id !== p.id ? (
-          <button className={`btn ${follow.isFollowing ? 'ghost' : 'primary'}`} type="button"
-            onClick={() => follow.toggle.mutate()} disabled={follow.isLoading || !!follow.error || follow.toggle.isPending}>
-            {follow.isFollowing ? 'Following' : 'Follow player'}
-          </button>
+          <PlayerFollowControls key={`${currentUser.id}:${p.id}`} viewerId={currentUser.id} playerId={String(p.id)} />
         ) : null}
       </header>
 
-      {follow.error || follow.toggle.error ? <p role="alert">{(follow.error ?? follow.toggle.error) instanceof Error ? (follow.error ?? follow.toggle.error as Error)?.message : "Following request failed."}</p> : null}
       {currentUser && currentUser.id !== userId ? <ReportUserButton userId={userId} name={p.fullName} /> : null}
       <Panel quiet className="player-teams journey-data">
         <h2 className="journey-heading">Teams <span className="journey-count">{p.teams.length}</span></h2>

@@ -3,6 +3,15 @@
 Frontend branch: `ui-polish-s34`
 API base path: `/api/v1`
 
+## Player follow bell — 2026-10-29
+
+- [x] Required frontend handoff: shared Player follow/bell controls, opt-in Off default, confirmed preference updates, mock persistence and recoverable errors. Guest/self controls are hidden.
+- [x] Developer checks: 155 files / 1,163 tests, TypeScript, lint, production build and whitespace checks passed.
+- [ ] Backend delivery required: `PATCH /users/:id/follow` with `{ notifyEnabled: boolean }`, response `{ userId, isFollowing: true, notifyEnabled }`, and `notifyEnabled` in following items / public profile / POST follow. Current real UI displays an unavailable bell and sends no PATCH until a server boolean confirms support.
+- [ ] Live notification fan-out / Community-category gate and browser/device acceptance remain open. Optional Following-list bell is deferred.
+- Backend handoff for the shared branch: [TO-BACKEND — follow bell](TO-BACKEND-2026-10-29-follow-bell.md). Backend requirements remain open after publication.
+- [QA report](docs/QA-FOLLOW-BELL-2026-10-29.md) · [Implementation plan](docs/superpowers/plans/2026-10-29-follow-bell.md). Delivery is frontend-only and excludes `TODO/`.
+
 ## Cancellation and email-gate preparation — 2026-10-29
 
 - [x] Frontend cancellation confirmation, explicit cancelled history, locked writes, search/notification/review wording and completed-entry decision guards implemented.

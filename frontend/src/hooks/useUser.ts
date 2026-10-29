@@ -4,7 +4,8 @@
  * hook owns public profiles, stats, and authenticated user search.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { retryPolicy } from "../api/client";
+import { ApiError, retryPolicy } from "../api/client";
+import type { FollowListDto } from '../types/engagement.dto';
 import * as userApi from "../api/user";
 import * as engagementApi from "../api/engagement";
 
@@ -57,19 +58,44 @@ export function useFollow(
 
       return isFollowing
         ? engagementApi.unfollow(userId as number, target)
-        : engagementApi.follow(userId as number, target)
+        : engagementApi.follow(userId as number, target, follows.data)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey })
+    onSuccess: data => {
+      queryClient.setQueryData(queryKey, data)
+      void queryClient.invalidateQueries({ queryKey, refetchType: 'none' })
       if (target.startsWith("player:")) queryClient.invalidateQueries({ queryKey: ["users", Number(target.slice(7))] })
+    },
+  })
+
+  const notifications = useMutation({
+    mutationFn: (enabled: boolean) => engagementApi.setFollowNotifications(userId as number, target, enabled, follows.data ?? { targets: [] }),
+    onSuccess: result => {
+      queryClient.setQueryData<FollowListDto>(queryKey, current => current ? {
+        ...current, notifications: { ...current.notifications, [target]: result.notifyEnabled },
+        items: current.items?.map(item => `player:${item.id}` === target ? { ...item, notifyEnabled: result.notifyEnabled } : item),
+      } : current)
+      if (target.startsWith('player:')) void queryClient.invalidateQueries({ queryKey: ['users', Number(target.slice(7))] })
+    },
+    onError: error => {
+      if (error instanceof ApiError && error.code === 'NOT_FOLLOWING') {
+        queryClient.setQueryData<FollowListDto>(queryKey, current => current ? {
+          ...current, targets: current.targets.filter(value => value !== target),
+          items: current.items?.filter(item => `player:${item.id}` !== target),
+          notifications: Object.fromEntries(Object.entries(current.notifications ?? {}).filter(([key]) => key !== target)),
+        } : current)
+        void queryClient.invalidateQueries({ queryKey })
+      }
     },
   })
 
   return {
     isFollowing: follows.data?.targets.includes(target) ?? false,
-    isLoading: follows.isLoading,
+    notifyEnabled: follows.data?.notifications?.[target],
+    isLoading: follows.isPending || follows.isFetching,
     error: follows.error,
+    refetch: follows.refetch,
     toggle,
+    notifications,
   }
 }
 
