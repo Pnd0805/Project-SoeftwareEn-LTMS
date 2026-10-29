@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const { currentUser, logout } = vi.hoisted(() => ({
   logout: vi.fn(async () => undefined),
   currentUser: { value: { id: 9, fullName: 'Narin', avatarUrl: 'https://example.test/avatar.png' } as {
-    id: number; fullName: string; avatarUrl: string | null
+    id: number; fullName: string; avatarUrl: string | null; totalPoints?: number
   } | undefined },
 }))
 
@@ -48,7 +48,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('Shell profile shortcut', () => {
   beforeEach(() => {
-    currentUser.value = { id: 9, fullName: 'Narin', avatarUrl: 'https://example.test/avatar.png' }
+    currentUser.value = { id: 9, fullName: 'Narin', avatarUrl: 'https://example.test/avatar.png', totalPoints: 17 }
     document.documentElement.dataset.theme = 'dark'
     localStorage.removeItem('ltms-theme')
     logout.mockClear()
@@ -59,6 +59,13 @@ describe('Shell profile shortcut', () => {
     const home = screen.getByRole('link', { name: 'Home' })
     const tournaments = screen.getByRole('link', { name: 'Tournaments' })
     expect(home).toHaveAttribute('aria-current', 'page')
+    const rewards = screen.getByRole('link', { name: /^My rewards\b/ })
+    fireEvent.click(rewards)
+    expect(rewards).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Profile' })).not.toHaveAttribute('aria-current')
+    fireEvent.click(screen.getByRole('link', { name: 'Profile' }))
+    expect(screen.getByText('My profile screen')).toBeInTheDocument()
+    expect(rewards).not.toHaveAttribute('aria-current')
     expect(tournaments).not.toHaveAttribute('aria-current')
     fireEvent.click(tournaments)
     expect(screen.getByText('Other screen')).toBeInTheDocument()
@@ -84,6 +91,15 @@ describe('Shell profile shortcut', () => {
     expect(screen.getByRole('link', { name: 'Inbox' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('shows the current points after My rewards, including zero and updated balances', () => {
+    currentUser.value = { ...currentUser.value!, totalPoints: 0 }
+    const view = showShell()
+    expect(screen.getByRole('link', { name: /^My rewards\b/ })).toHaveTextContent('My rewards · 0 pts')
+    currentUser.value = { ...currentUser.value!, totalPoints: 1234 }
+    view.rerender(<MemoryRouter><Shell><div>Updated screen</div></Shell></MemoryRouter>)
+    expect(screen.getByRole('link', { name: /^My rewards\b/ })).toHaveTextContent('My rewards · 1,234 pts')
+  })
+
   it('opens /me from the signed-in avatar and falls back to the initial if the image fails', () => {
     showShell()
     const link = screen.getByRole('link', { name: 'Open my profile' })
@@ -107,6 +123,7 @@ describe('Shell profile shortcut', () => {
     currentUser.value = undefined
     showShell()
     expect(screen.queryByRole('link', { name: 'Open my profile' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^My rewards\b/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Scan' })).not.toBeInTheDocument()
   })
 
@@ -189,10 +206,11 @@ describe('Shell profile shortcut', () => {
     ['/m/9', 'Matches'],
     ['/checkin/9', 'Matches'],
     ['/t/2', 'Tournaments'],
+    ['/me/rewards', 'My rewards'],
   ])('marks the %s parent section active', (path, label) => {
     showShell(path)
-    expect(screen.getByRole('link', { name: label })).toHaveClass('on')
-    expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: new RegExp(`^${label}\\b`) })).toHaveClass('on')
+    expect(screen.getByRole('link', { name: new RegExp(`^${label}\\b`) })).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps the skip control, navigation, search, notifications, and profile in keyboard order', async () => {

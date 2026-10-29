@@ -232,6 +232,26 @@
 
 **Completion evidence:** [Ticket 09 acceptance](../notes/2026-10-05-ltms-minimal-street-acceptance.md), 2026-10-07. All 25 routes accounted for; 282 fresh captures / 318 records across both desktop sizes/themes and 390px usability. Full suite: 96 files / 655 tests; TypeScript/lint/build and 49 frozen filenames/hashes pass. One detector/initial inspection, one token correction batch and one confirmation; direct implementer audit: 16/20. DESIGN.md and schemaVersion 2 sidecar written. Existing report-reason contract mismatch, bundle warning and live/device/mobile acceptance remain explicitly reported. Original evidence is retained in the subsequent [Quality20 integration cleanup](../notes/quality20/2026-10-08-integration.md); no push.
 
+## Bracket follow-up — reference layout, 2026-10-30
+
+User-approved scope: simplify Bracket to match the supplied reference while retaining the dark theme. Direct review confirmed that supported bracket metadata supplies lane/slot ordering, while current match data remains authoritative for teams, scores and winner progression.
+
+- [x] Compact match cards, separate score cells, winning-row highlight, shared heading baseline and Bangkok schedule metadata; retain match/team navigation and horizontal scrolling.
+- [x] Split real double elimination into upper/lower lanes with Grand final, retain matches during metadata failure, and redraw actual progression after same-size data refreshes. Preserve round-robin semantics.
+- [x] Focused verification: **26 files / 184 tests passed**, TypeScript/lint/production build passed. Full regression outcome and acceptance boundaries: [Bracket QA](../../QA-BRACKET-2026-10-30.md).
+- [ ] Fresh visual browser verification: browser host and native pipe unavailable. No pixel/device acceptance claimed.
+- Commit authorized on 30 October: frontend paths only in the FE commit; existing database fixtures in a separate BE/database commit; exclude `TODO/`. No push requested.
+
+## Account follow-up — My rewards navigation, 2026-10-29
+
+User-approved scope: move the My rewards entry from Profile into the signed-in sidebar and reduce the reward controls shown in the supplied screenshot; then add the current point balance after the menu label and show displayed badge logos to the right of profile names. Direct review confirmed that the existing `/me/rewards` route and reward API contracts can remain unchanged.
+
+- [x] Add My rewards to shared desktop/mobile navigation, give it its own active section and remove the Profile-page entry.
+- [x] Reduce reward buttons to 32px minimum height and the display checkbox to 16px; shorten its visible label while retaining the full reward name in its accessible label. Allow card actions to wrap at narrow widths.
+- [x] Append the confirmed `/me.totalPoints` balance to My rewards, including zero. Reuse the shared reward emblem for icon-only badges beside the name on the account and real public profiles; filter by `isDisplayed` and refresh through existing reward cache invalidation. Remove the former public reward cards.
+- [x] Verification: layout/rewards/profile/player suite **11 files / 111 tests passed**, including balance updates, profile placement and hide/show refresh; TypeScript, lint, production build and `git diff --check` passed. All changes remain under `frontend/`; no backend files or contracts changed.
+- [ ] Fresh visual browser verification: unavailable because both the browser access host and native Computer Use pipe were unavailable. No rendered-browser acceptance is claimed. Frontend commit authorized on 30 October, excluding `TODO/`; no push requested.
+
 ## Review and publication state
 
 Tasks 1–7, 8A and 8B are complete with the evidence recorded above. The user authorized separate Orca workers on 2026-10-06 and local integration into `ltms-desktop-ux` on 2026-10-07. The combined code passes 96 files / 655 tests, TypeScript, lint and build; 49 frozen hashes are unchanged. Task 9 is complete at the documented frontend acceptance scope; live backend/device acceptance and full mobile redesign remain open. There are ten active local tickets; the original 08 document is a compatibility index. Worker worktrees/branches are retained. Push and deployment remain prohibited.

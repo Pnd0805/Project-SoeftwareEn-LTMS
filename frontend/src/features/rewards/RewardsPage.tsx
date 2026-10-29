@@ -6,35 +6,13 @@ import {
   useRedeemReward,
   useRewardCatalogue,
   useRewardDisplay,
-  useUserRewards,
 } from '../../hooks/useRewards'
 import { ApiError } from '../../api/client'
 import { Badge, Banner, Empty, Panel } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
 import type { RewardDto } from '../../api/rewards'
+import { RewardBadgeEmblem } from './RewardBadgeEmblem'
 import './rewards.css'
-
-function getBadgeTier(reward: RewardDto): 'gold' | 'achievement' | 'standard' {
-  if (reward.pointsRequired === null) return 'achievement'
-  const name = reward.name.toLowerCase()
-  const key = (reward.iconKey ?? '').toLowerCase()
-  if (name.includes('gold') || key.includes('gold') || (reward.pointsRequired && reward.pointsRequired >= 150)) {
-    return 'gold'
-  }
-  return 'standard'
-}
-
-function RewardBadgeEmblem({ reward }: { reward: RewardDto }) {
-  const tier = getBadgeTier(reward)
-  const iconName = tier === 'gold' || tier === 'achievement' ? 'star' : 'trophy'
-  return (
-    <div className={`badge-card-emblem ${tier}`}>
-      <span role="img" aria-label="Reward badge">
-        <Icon name={iconName} size={22} />
-      </span>
-    </div>
-  )
-}
 
 function RewardName({ reward }: { reward: RewardDto }) {
   // Retain accessibility label for tests and screen readers
@@ -45,41 +23,6 @@ function RewardName({ reward }: { reward: RewardDto }) {
       </span>
       <b className="badge-card-title">{reward.name}</b>
     </span>
-  )
-}
-
-export function PublicRewards({ userId }: { userId: number }) {
-  const rewards = useUserRewards(userId)
-  return (
-    <Panel quiet>
-      <span className="tag"><em>//</em> Showcase</span>
-      <h3>Rewards</h3>
-      {rewards.isPending ? <p className="sub">Loading rewards…</p> : null}
-      {rewards.isError ? (
-        <Banner kind="crit">
-          Unable to load rewards.{' '}
-          <button className="btn" onClick={() => void rewards.refetch()}>
-            Retry
-          </button>
-        </Banner>
-      ) : null}
-      {rewards.isSuccess && !rewards.data.items.length ? (
-        <p className="sub">No displayed rewards.</p>
-      ) : null}
-      <div className="badge-grid">
-        {rewards.data?.items.map((row) => (
-          <div className="badge-card is-owned" key={row.id}>
-            <div className="badge-card-header">
-              <RewardBadgeEmblem reward={row} />
-              <div className="badge-card-content">
-                <RewardName reward={row} />
-                {row.description ? <p className="badge-card-desc">{row.description}</p> : null}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
   )
 }
 
@@ -265,16 +208,17 @@ export function RewardsPage() {
                   <Badge kind={row.isDisplayed ? 'ok' : 'neutral'}>
                     {row.isDisplayed ? 'Displayed on profile' : 'Hidden from profile'}
                   </Badge>
-                  <label className="hstack sub" style={{ cursor: 'pointer', gap: 6 }}>
+                  <label className="reward-display-toggle">
                     <input
                       type="checkbox"
+                      aria-label={`Hide ${row.name} from profile`}
                       checked={!row.isDisplayed}
                       disabled={display.isPending || rewards.isFetching}
                       onChange={(e) =>
                         display.mutate({ id: row.id, isDisplayed: !e.target.checked })
                       }
                     />
-                    Hide {row.name} from profile
+                    <span>Hide from profile</span>
                   </label>
                 </div>
               </div>

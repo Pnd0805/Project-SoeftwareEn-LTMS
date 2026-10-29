@@ -12,20 +12,23 @@
  *   any format    "Highlight team" joins that team's matches round by round
  */
 import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Empty, Field, MatchStateBadge, Panel, StatusBadge } from '../../components/kit/primitives'
 import { Icon } from '../../components/kit/Icon'
-import { TeamLinkView } from '../../components/kit/chips'
+import { TeamCrestView } from '../../components/kit/chips'
 import { useTournamentMatches } from '../../hooks/useMatch'
 import { matchStateOf, outcomeNote, toTeamView } from '../match/matchView'
 import { useLtms } from '../../shared/store'
 import { matchesOf, isOrg, regsOf, team } from '../../shared/selectors'
-import { TeamMarkView } from '../../components/kit/chips'
 import { formatName, formatOf, matchStage, matchTag, nextOf, roundName } from '../../shared/rules'
 import type { Match, Tournament } from '../../shared/types'
 import type { MatchListItemDto } from '../../types/match.dto'
 import { USE_MOCK } from '../../api/client'
 import { hasValidBracket } from './hasValidBracket'
+import { useTournamentBracket } from '../../hooks/useTournamentBracket'
+import { doubleBracketColumns, roundColumns } from './bracketPresentation'
+import type { BracketColumn } from './bracketPresentation'
+import './bracket.css'
 
 const HighlightTeam = createContext('')
 
@@ -80,8 +83,10 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
   /* ช่องที่ว่างถาวรเพราะอีกฝั่งบายผ่าน ไม่ใช่ "ยังไม่รู้ว่าใคร" — TBD จึงผิด */
   const slot = (t: MatchListItemDto['teamA']) =>
     t === null && m.outcome?.kind === 'bye'
-      ? <span className="sub">BYE</span>
-      : <TeamLinkView team={toTeamView(t)} />
+      ? <span className="nm sub">BYE</span>
+      : t ? <Link className="bracket-team" to={`/team/${t.id}`} aria-label={t.name} title={t.name}>
+        <TeamCrestView team={toTeamView(t)} size={20} /><span className="nm">{t.name}</span>
+      </Link> : <span className="nm sub">TBD</span>
 
   return (
     <div className={`bnode tour-api-node ${state === 'disputed' ? 'act' : ''} ${highlighted ? 'tour-highlight' : ''}`}
@@ -89,14 +94,9 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
       {/* แยกปุ่มเปิดแมตช์กับลิงก์ทีม ให้ keyboard เลือกปลายทางได้โดยไม่ซ้อน control */}
       <button className="tour-node-open" type="button" aria-labelledby={`bracket-match-${m.id}`}
         onClick={() => navigate(`/m/${m.id}`)} />
-      <span id={`bracket-match-${m.id}`}>
-      <span className="bhead">
-        {/* รอบอยู่ที่หัวคอลัมน์แล้ว — บนการ์ดเหลือไว้ให้โปรแกรมอ่านหน้าจอเท่านั้น ไม่พูดซ้ำบนจอ */}
-        <span className="bround">{m.tag || m.stage}</span>
-        <MatchStateBadge state={state} />
-      </span>
-      {/* บายมีสกอร์ประจำกีฬาติดมาด้วย (บาส 20-0 แบด 2-0) ถ้าไม่บอกก็ดูเหมือนแข่งจริง */}
-      {note ? <span className="sub" style={{ padding: '0 8px' }}>{note}</span> : null}
+      <span className="bracket-match-content" id={`bracket-match-${m.id}`}>
+      <span className="bround">{m.tag || m.stage}</span>
+      <span className="bracket-match-teams">
       {/* สกอร์มาจากผลของแต่ละนัด — ขีดกลางแปลว่ายังไม่มีผล ไม่ใช่ศูนย์ */}
       <span className={`brow ${winner === 'a' ? 'win' : winner === 'b' ? 'lose' : ''}`}>
         {slot(m.teamA)}
@@ -106,37 +106,60 @@ function ApiBracketNode({ m }: { m: MatchListItemDto }) {
         {slot(m.teamB)}
         <span className="sc">{m.score?.b ?? '—'}</span>
       </span>
+      </span>
+      <span className="bracket-match-meta">
+        <MatchStateBadge state={state} />
+        {note ? <span className="bracket-outcome">{note}</span> : null}
+      </span>
+      <MatchDate value={m.scheduledTime} />
       {highlighted ? <span className="tour-highlight-label">Highlighted team: {highlighted.name}</span> : null}
       </span>
     </div>
   )
 }
 
-function ApiBracket({ matches, host, roundRobin }: {
-  matches: MatchListItemDto[]; host: React.RefObject<HTMLDivElement | null>; roundRobin: boolean
+function MatchDate({ value }: { value?: string | null }) {
+  const date = value ? new Date(value) : null
+  const known = date && Number.isFinite(date.getTime())
+  return <span className="bracket-match-date"><Icon name="clock" size={11} />
+    {known ? <time dateTime={value!} title="Bangkok time (UTC+7)">{new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok',
+    }).format(date)}</time> : 'Time TBC'}
+  </span>
+}
+
+function ApiColumns({ columns, roundRobin = false }: { columns: BracketColumn[]; roundRobin?: boolean }) {
+  return <div className={`bracket${roundRobin ? ' bracket-rr' : ''}`}>
+    {columns.map(column => <div className="bcol" key={column.key}>
+      <h3 className="bcol-head">{column.label}</h3>
+      <div className="bcol-matches">{column.matches.map(match => <ApiBracketNode key={match.id} m={match} />)}</div>
+    </div>)}
+  </div>
+}
+
+function ApiBracket({ matches, host, format, tournamentId }: {
+  matches: MatchListItemDto[]; host: React.RefObject<HTMLDivElement | null>; format: string; tournamentId: number
 }) {
-  const rounds = [...new Set(matches.map(match => match.roundNumber ?? 0))].sort((a, b) => a - b)
+  const roundRobin = format === 'roundrobin'
+  const double = format === 'double'
+  const structure = useTournamentBracket(tournamentId, double && !USE_MOCK && Number.isSafeInteger(tournamentId) && tournamentId > 0)
+  const lanes = double && structure.data ? doubleBracketColumns(matches, structure.data) : null
   const teams = [...new Map(matches.flatMap(m => [m.teamA, m.teamB]).filter(t => t !== null)
     .map(t => [String(t.id), { id: String(t.id), name: t.name }])).values()]
   return (
     <BracketWorkspace teams={teams}>
-    <div ref={host}>
-        <div className={`bracket${roundRobin ? ' bracket-rr' : ''}`}>
-          {rounds.map(round => {
-            const inRound = matches.filter(match => (match.roundNumber ?? 0) === round)
-            return (
-            <div className="bcol" key={round}>
-              {/* roundNumber ของ backend เริ่มที่ 1 อยู่แล้ว — เดิม +1 ทำให้หัวคอลัมน์
-                  เป็น "Round 2" ขณะที่การ์ดข้างในเขียนว่า "Round 1" · ใช้ชื่อรอบของแมตช์ถ้ามี (เช่น Final) */}
-              <div className="tag bcol-head"><em>//</em> {inRound[0]?.tag || `Round ${round}`}</div>
-              {inRound.map(match => (
-                <ApiBracketNode key={match.id} m={match} />
-              ))}
-            </div>
-            )
-          })}
-        </div>
+    {double && structure.isFetching && !structure.data ? <p className="sub" role="status">Loading upper/lower bracket…</p> : null}
+    {double && structure.isError ? <p className="sub" role="alert">{structure.data
+      ? 'Could not refresh upper/lower sections. Showing the last available layout.'
+      : 'Bracket sections are unavailable. Matches are shown by round.'} <button className="btn" type="button" onClick={() => void structure.refetch()}>Retry bracket sections</button></p> : null}
+    <div ref={host} className="bracket-canvas">
+      {lanes ? <>
+        {lanes.upper.length ? <section aria-label="Winners bracket"><h3 className="bracket-lane-title">Upper bracket</h3><ApiColumns columns={lanes.upper} /></section> : null}
+        {lanes.lower.length ? <section aria-label="Losers bracket"><h3 className="bracket-lane-title">Lower bracket</h3><ApiColumns columns={lanes.lower} /></section> : null}
+        {lanes.other.length ? <section aria-label="Other matches"><h3 className="bracket-lane-title">Other matches</h3><ApiColumns columns={lanes.other} /></section> : null}
+      </> : <ApiColumns columns={roundColumns(matches, roundRobin)} roundRobin={roundRobin} />}
     </div>
+    <p className="bracket-timezone">Times shown in Bangkok (UTC+7). Green rows mark the winning team.</p>
     </BracketWorkspace>
   )
 }
@@ -154,9 +177,9 @@ function BracketNode({ m }: { m: Match }) {
       <span className={`brow ${win ? 'win' : lose ? 'lose' : ''}`}>
         {/* ใช้ตราเดียวกับที่อื่นทั้งแอป จะได้ขึ้นโลโก้ทีมด้วยถ้าหัวหน้าทีมตั้งไว้ */}
         {t
-          ? <TeamMarkView team={{ id: t.id, name: t.name, code: t.code, color: t.color, logoUrl: t.logo ?? null }} />
-          : <i style={{ background: 'var(--hairline)' }} />}
-        <span className="nm">{t ? t.name : 'TBD'}</span>
+          ? <TeamCrestView team={{ id: t.id, name: t.name, code: t.code, color: t.color, logoUrl: t.logo ?? null }} size={20} />
+          : <span className="bracket-empty-crest" />}
+        <span className="nm" title={t?.name}>{t ? t.name : 'TBD'}</span>
         <span className="sc">{score ?? '—'}</span>
       </span>
     )
@@ -167,12 +190,13 @@ function BracketNode({ m }: { m: Match }) {
       className={`bnode ${m.status === 'disputed' || m.status === 'pending' ? 'act' : ''} ${highlighted ? 'tour-highlight' : ''}`}
       type="button" data-mid={m.id} data-next={nextOf(s, m)?.id} onClick={() => navigate(`/m/${m.id}`)}
     >
-      <span className="bhead">
-        <span className="tag"><em>//</em> {matchTag(s, m)}</span>
-        <StatusBadge m={m} />
-      </span>
+      <span className="bround">{matchTag(s, m)}</span>
+      <span className="bracket-match-teams">
       {row(m.a, m.sa, decided && (m.sa ?? 0) > (m.sb ?? 0), decided && (m.sa ?? 0) < (m.sb ?? 0))}
       {row(m.b, m.sb, decided && (m.sb ?? 0) > (m.sa ?? 0), decided && (m.sb ?? 0) < (m.sa ?? 0))}
+      </span>
+      <span className="bracket-match-meta"><StatusBadge m={m} /></span>
+      <MatchDate value={m.kickoff} />
       {highlighted ? <span className="tour-highlight-label">Highlighted team: {highlighted.name}</span> : null}
     </button>
   )
@@ -180,16 +204,22 @@ function BracketNode({ m }: { m: Match }) {
 
 /**
  * Winner-path connectors plus the highlighted team's path, one elbow each.
- * Losers-bracket and grand-final edges cross boxes and are left unconnected —
- * ponytail: add a second pass if that is ever wanted.
+ * ใช้ nextMatchId จริงข้ามสายได้ด้วย โดยยึดกึ่งกลางแถวทีม ไม่ใช่ส่วนวันที่/สถานะ
  *
  * The elbows are measured off laid-out boxes, so any reflow invalidates them;
  * a highlight change only swaps classes, so class mutations redraw too.
  */
 const elbow = (from: HTMLElement, to: HTMLElement, rect: DOMRect) => {
-  const a = from.getBoundingClientRect(), b = to.getBoundingClientRect()
+  const a = (from.querySelector('.bracket-match-teams') ?? from).getBoundingClientRect()
+  const b = (to.querySelector('.bracket-match-teams') ?? to).getBoundingClientRect()
   const x1 = a.right - rect.left, y1 = a.top + a.height / 2 - rect.top
-  const x2 = b.left - rect.left, y2 = b.top + b.height / 2 - rect.top
+  const y2 = b.top + b.height / 2 - rect.top
+  // สายล่างอาจจบคอลัมน์เดียวกับ Grand final จึงอ้อมขอบขวา ไม่ลากทับการ์ด
+  if (b.left <= a.left) {
+    const x2 = b.right - rect.left, mx = Math.max(x1, x2) + 20
+    return `M${x1},${y1} H${mx} V${y2} H${x2}`
+  }
+  const x2 = b.left - rect.left
   const mx = (x1 + x2) / 2
   return `M${x1},${y1} H${mx} V${y2} H${x2}`
 }
@@ -198,39 +228,42 @@ function useBracketLines(deps: unknown) {
   const host = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const draw = () => {
-      host.current?.querySelectorAll<HTMLElement>('.bracket').forEach(box => {
-        box.querySelector('svg.bconn')?.remove()
-        const rect = box.getBoundingClientRect()
-        const paths: string[] = []
-        // พบกันหมดไม่มีใครเข้ารอบต่อ — ห้ามลากเส้นผู้ชนะ แม้ข้อมูลจะมี next ติดมา
-        if (!box.classList.contains('bracket-rr')) {
-          box.querySelectorAll<HTMLElement>('.bnode[data-mid]').forEach(node => {
-            const nextId = node.dataset.next
-            const target = nextId ? box.querySelector<HTMLElement>(`.bnode[data-mid="${nextId}"]`) : null
-            if (target) paths.push(`<path d="${elbow(node, target, rect)}"/>`)
-          })
-        }
-        // เส้นของทีมที่เลือก: ต่อแมตช์ของทีมนั้นตามลำดับคอลัมน์ (หนึ่งรอบมีได้นัดเดียว)
-        const mine = [...box.querySelectorAll<HTMLElement>('.bnode.tour-highlight')]
-        mine.slice(1).forEach((node, i) => {
-          const prev = mine[i]
-          if (prev.closest('.bcol') !== node.closest('.bcol')) paths.push(`<path class="team-path" d="${elbow(prev, node, rect)}"/>`)
-        })
-        if (!paths.length) return
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svg.setAttribute('class', 'bconn')
-        svg.setAttribute('aria-hidden', 'true')
-        svg.innerHTML = paths.join('')
-        box.prepend(svg)
+      const box = host.current
+      if (!box) return
+      box.querySelector('svg.bconn')?.remove()
+      const rect = box.getBoundingClientRect()
+      const paths: string[] = []
+      // พบกันหมดไม่มีใครเข้ารอบต่อ — ห้ามลากเส้นผู้ชนะ แม้ข้อมูลจะมี next ติดมา
+      box.querySelectorAll<HTMLElement>('.bnode[data-mid]').forEach(node => {
+        if (node.closest('.bracket-rr')) return
+        const nextId = node.dataset.next
+        const target = nextId ? box.querySelector<HTMLElement>(`.bnode[data-mid="${nextId}"]`) : null
+        if (target) paths.push(`<path${node.classList.contains('tour-highlight') && target.classList.contains('tour-highlight') ? ' class="team-path"' : ''} d="${elbow(node, target, rect)}"/>`)
       })
+      // พบกันหมดเชื่อมเฉพาะเส้นทีมที่เลือก ไม่ตีความว่าเป็นการเลื่อนสาย
+      const mine = [...box.querySelectorAll<HTMLElement>('.bracket-rr .bnode.tour-highlight')]
+      mine.slice(1).forEach((node, i) => {
+        const prev = mine[i]
+        if (prev.closest('.bcol') !== node.closest('.bcol')) paths.push(`<path class="team-path" d="${elbow(prev, node, rect)}"/>`)
+      })
+      if (!paths.length) return
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('class', 'bconn')
+      svg.setAttribute('aria-hidden', 'true')
+      svg.innerHTML = paths.join('')
+      box.prepend(svg)
     }
     draw()
     // ข้อความไฮไลต์และชื่อยาวอาจเปลี่ยนความสูงหลังวัดครั้งแรก
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(draw)
-    host.current?.querySelectorAll('.bnode').forEach(node => observer?.observe(node))
+    if (host.current) observer?.observe(host.current)
     // เปลี่ยนทีมที่ไฮไลต์ = เปลี่ยน class ของการ์ด ไม่ได้เปลี่ยนขนาดเสมอไป
-    const classes = typeof MutationObserver === 'undefined' ? null : new MutationObserver(draw)
-    if (host.current) classes?.observe(host.current, { subtree: true, attributes: true, attributeFilter: ['class'] })
+    const classes = typeof MutationObserver === 'undefined' ? null : new MutationObserver(records => {
+      // รอผังแบ่งสายแล้วอาจเปลี่ยน DOM แต่การวาด svg ของเราเองต้องไม่สั่งวาดวนซ้ำ
+      if (records.some(record => record.type === 'attributes' || [...record.addedNodes, ...record.removedNodes]
+        .some(node => !(node instanceof SVGElement && node.classList.contains('bconn'))))) draw()
+    })
+    if (host.current) classes?.observe(host.current, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] })
     addEventListener('resize', draw)
     return () => { observer?.disconnect(); classes?.disconnect(); removeEventListener('resize', draw) }
   }, [deps])
@@ -240,8 +273,8 @@ function useBracketLines(deps: unknown) {
 function Column({ label, list }: { label: string; list: Match[] }) {
   return (
     <div className="bcol">
-      <div className="tag bcol-head"><em>//</em> {label}</div>
-      {list.map(m => <BracketNode key={m.id} m={m} />)}
+      <h3 className="bcol-head">{label}</h3>
+      <div className="bcol-matches">{list.map(m => <BracketNode key={m.id} m={m} />)}</div>
     </div>
   )
 }
@@ -254,7 +287,7 @@ function RealBracketTab({ t }: { t: Tournament }) {
   const id = Number(t.id)
   const validId = Number.isSafeInteger(id) && id > 0
   const matches = useTournamentMatches(validId ? id : undefined)
-  const host = useBracketLines(matches.data?.items.length ?? 0)
+  const host = useBracketLines(matches.data?.items)
   if (!validId) return <Empty title="Invalid tournament ID" />
   if (matches.isPending) return <Panel quiet><span className="sub">Loading the bracket…</span></Panel>
   if (matches.isError) {
@@ -265,7 +298,7 @@ function RealBracketTab({ t }: { t: Tournament }) {
   }
   if (!matches.data?.items.length) return <Empty title="No matches yet" sub="Matches will appear here once the fixtures are drawn." />
   if (!hasValidBracket(t, matches.data.items)) return <Empty title="No valid bracket yet" sub="Double elimination needs at least four approved squads before the bracket can be drawn." />
-  return <ApiBracket matches={matches.data.items} host={host} roundRobin={formatOf(t) === 'roundrobin'} />
+  return <ApiBracket matches={matches.data.items} host={host} format={formatOf(t)} tournamentId={id} />
 }
 
 function MockBracketTab({ t }: { t: Tournament }) {
@@ -274,13 +307,13 @@ function MockBracketTab({ t }: { t: Tournament }) {
   const ms = matchesOf(s, t.id)
   const apiTournamentId = Number.isInteger(Number(t.id)) ? Number(t.id) : undefined
   const apiMatches = useTournamentMatches(apiTournamentId)
-  /* useBracketLines ใช้ deps เพื่อ re-draw เมื่อข้อมูลเปลี่ยน — ใช้จำนวนแมตช์จาก API ถ้ามี */
-  const host = useBracketLines(apiMatches.data?.items.length ?? ms.length)
+  /* วาดใหม่เมื่อข้อมูลเปลี่ยน แม้จำนวนแมตช์เท่าเดิมหลังจับสายใหม่ */
+  const host = useBracketLines(apiMatches.data?.items ?? ms)
   const rr = formatOf(t) === 'roundrobin'
 
   if (apiTournamentId !== undefined) {
     if (apiMatches.isPending) return <Panel quiet><span className="sub">Loading the bracket…</span></Panel>
-    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} host={host} roundRobin={rr} />
+    if (apiMatches.data?.items.length) return <ApiBracket matches={apiMatches.data.items} host={host} format={formatOf(t)} tournamentId={apiTournamentId} />
   }
 
   if (!t.drawn) {
@@ -302,7 +335,7 @@ function MockBracketTab({ t }: { t: Tournament }) {
   if (rr) {
     const days = [...new Set(ms.map(m => m.round))].sort((a, b) => a - b)
     return (
-      <BracketWorkspace teams={teams}><div ref={host}>
+      <BracketWorkspace teams={teams}><div ref={host} className="bracket-canvas">
         {days.map(d => (
           <div key={d}>
             <div className="tag" style={{ marginTop: 8 }}>
@@ -323,30 +356,23 @@ function MockBracketTab({ t }: { t: Tournament }) {
     const lb = ms.filter(m => m.bracket === 'L')
     const gf = ms.filter(m => m.bracket === 'GF')
     return (
-      <BracketWorkspace teams={teams}><div ref={host}>
-        <div className="tag"><em>//</em> Winners bracket</div>
+      <BracketWorkspace teams={teams}><div ref={host} className="bracket-canvas">
+        <h3 className="bracket-lane-title">Upper bracket</h3>
         <div className="bracket">
           {byRound(wb).map((c, i) => <Column key={i} label={matchStage(s, c[0])} list={c} />)}
+          {gf.length ? <Column label="Grand final" list={gf} /> : null}
         </div>
-        <div className="tag" style={{ marginTop: 10 }}>
-          <em>//</em> Losers bracket — a first loss sends you here, a second sends you home
-        </div>
+        <h3 className="bracket-lane-title">Lower bracket</h3>
         <div className="bracket">
           {byRound(lb).map((c, i) => <Column key={i} label={matchStage(s, c[0])} list={c} />)}
         </div>
-        {gf.length ? (
-          <>
-            <div className="tag" style={{ marginTop: 10 }}><em>//</em> Grand final — one match, no bracket reset</div>
-            <div className="grid2">{gf.map(m => <BracketNode key={m.id} m={m} />)}</div>
-          </>
-        ) : null}
       </div></BracketWorkspace>
     )
   }
 
   const cols = Array.from({ length: t.rounds }, (_, r) => ms.filter(m => m.round === r))
   return (
-    <BracketWorkspace teams={teams}><div ref={host}>
+    <BracketWorkspace teams={teams}><div ref={host} className="bracket-canvas">
       <div className="bracket">
         {cols.map((c, r) => <Column key={r} label={roundName(r, t.rounds)} list={c} />)}
       </div>

@@ -1,4 +1,4 @@
-export type NavSection = '/' | '/home/all' | '/teams' | '/matches' | '/inbox' | '/me' | '/admin'
+export type NavSection = '/' | '/home/all' | '/teams' | '/matches' | '/inbox' | '/me/rewards' | '/me' | '/admin'
 
 const isRouteOrChild = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`)
@@ -9,6 +9,7 @@ export function navSection(pathname: string): NavSection | null {
   if (['/teams', '/team'].some(route => isRouteOrChild(pathname, route))) return '/teams'
   if (['/matches', '/m', '/checkin'].some(route => isRouteOrChild(pathname, route))) return '/matches'
   if (isRouteOrChild(pathname, '/inbox')) return '/inbox'
+  if (isRouteOrChild(pathname, '/me/rewards')) return '/me/rewards'
   if (isRouteOrChild(pathname, '/me')) return '/me'
   if (isRouteOrChild(pathname, '/admin')) return '/admin'
   return null

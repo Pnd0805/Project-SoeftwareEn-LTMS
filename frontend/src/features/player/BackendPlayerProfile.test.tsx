@@ -4,7 +4,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-vi.mock('../rewards/RewardsPage', () => ({ PublicRewards: () => null }))
+vi.mock('../rewards/ProfileRewardBadges', () => ({ ProfileRewardBadges: () => null }))
 
 const state = vi.hoisted(() => ({
   viewer: undefined as number | undefined,

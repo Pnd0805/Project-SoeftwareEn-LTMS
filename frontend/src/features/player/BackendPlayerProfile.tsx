@@ -16,7 +16,7 @@
  */
 import { BackendCareerPanel } from './BackendCareerPanel'
 import { BackendMatchHistoryPanel } from './BackendMatchHistoryPanel'
-import { PublicRewards } from '../rewards/RewardsPage'
+import { ProfileRewardBadges } from '../rewards/ProfileRewardBadges'
 import { ReportUserButton } from './ReportUserButton'
 import { TeamChipView } from '../../components/kit/chips'
 import { Avatar } from '../../components/kit/Avatar'
@@ -74,7 +74,10 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
         <div className="player-identity-main">
           <Avatar name={p.fullName} avatarUrl={p.avatarUrl} size={60} alt={p.fullName} />
           <div className="vstack player-identity-copy">
-            <h1 className="disp">{p.fullName}</h1>
+            <div className="profile-name-row">
+              <h1 className="disp">{p.fullName}</h1>
+              <ProfileRewardBadges userId={p.id} />
+            </div>
             <span className="hstack">
               {facultyName ? <span className="tag">{facultyName}</span> : null}
               {departmentName ? <span className="tag">{departmentName}</span> : null}
@@ -142,7 +145,6 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
       </Panel>
       <BackendCareerPanel userId={userId} />
       <BackendMatchHistoryPanel userId={userId} />
-      <PublicRewards userId={userId} />
     </>
   )
 }

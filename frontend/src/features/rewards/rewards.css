@@ -9,10 +9,17 @@
   gap: 20px;
 }
 
+.account-workspace.rewards-workspace .btn {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* Badge Cards Grid using LTMS Angular Card Style */
 .badge-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 16px;
 }
 
@@ -73,6 +80,39 @@
   color: var(--bone);
 }
 
+.profile-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.profile-name-row > .disp {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-reward-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-card-emblem.compact {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+}
+
+.badge-card-emblem.compact.gold {
+  color: var(--amber);
+}
+
 .badge-card.is-owned .badge-card-emblem.achievement {
   background: var(--teal-ghost);
   border-color: var(--teal);
@@ -103,12 +143,40 @@
 
 .badge-card-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
   margin-top: auto;
+}
+
+.reward-display-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--bone-dim);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+/* กฎฟอร์มบัญชีให้ input สูง 44px จึงต้องกำหนดขนาด checkbox แยกจากช่องกรอก */
+.reward-display-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex: 0 0 16px;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.reward-display-toggle:has(input:disabled) {
+  cursor: default;
+  opacity: .6;
 }
 
 .badge-card-price {

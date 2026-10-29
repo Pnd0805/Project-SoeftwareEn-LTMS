@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -31,6 +31,7 @@ vi.mock('../../hooks/useAuth', () => ({
 }))
 
 import { RewardsPage } from './RewardsPage'
+import { ProfileRewardBadges } from './ProfileRewardBadges'
 
 const earnedBadge = {
   id: 1,
@@ -74,7 +75,7 @@ const achievementBadge = {
   iconKey: null,
 }
 
-function page() {
+function page(withProfileBadges = false) {
   const qc = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -84,6 +85,7 @@ function page() {
   render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
+        {withProfileBadges ? <ProfileRewardBadges userId={mockUser.id} /> : null}
         <RewardsPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -95,12 +97,42 @@ beforeEach(() => {
   mockUser = { id: 9, totalPoints: 100 }
   mockRefetchMe.mockReset()
   api.mine.mockReset().mockResolvedValue({ items: [earnedBadge] })
+  api.public.mockReset().mockResolvedValue({ items: [] })
   api.catalogue.mockReset().mockResolvedValue({ items: [] })
   api.display.mockReset().mockResolvedValue({ rewardId: 1, isDisplayed: false })
   api.redeem.mockReset().mockResolvedValue({ rewardId: 2, pointsSpent: 50, totalPoints: 50 })
 })
 
 describe('rewards display and revocation', () => {
+  it('shows only displayed reward logos beside a profile name, without visible names or descriptions', async () => {
+    api.public.mockResolvedValue({ items: [earnedBadge, { ...earnedBadge, id: 2, name: 'Hidden award', isDisplayed: false }] })
+    page(true)
+    const badges = await screen.findByRole('group', { name: 'Displayed rewards' })
+    expect(within(badges).getAllByRole('img')).toHaveLength(1)
+    expect(within(badges).getByRole('img', { name: 'First win' })).toHaveAttribute('title', 'First win')
+    expect(within(badges).queryByRole('img', { name: 'Hidden award' })).not.toBeInTheDocument()
+    expect(badges.textContent).toBe('')
+  })
+
+  it('refreshes profile logos after hiding and showing a reward', async () => {
+    api.public.mockResolvedValue({ items: [earnedBadge] })
+    page(true)
+    await screen.findByRole('img', { name: 'First win' })
+    const hide = await screen.findByRole('checkbox', { name: 'Hide First win from profile' })
+    await waitFor(() => expect(hide).toBeEnabled())
+    api.mine.mockResolvedValue({ items: [{ ...earnedBadge, isDisplayed: false }] })
+    api.public.mockResolvedValue({ items: [] })
+    fireEvent.click(hide)
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'Displayed rewards' })).not.toBeInTheDocument())
+    await waitFor(() => expect(hide).toBeChecked())
+    await waitFor(() => expect(hide).toBeEnabled())
+    api.mine.mockResolvedValue({ items: [earnedBadge] })
+    api.public.mockResolvedValue({ items: [earnedBadge] })
+    fireEvent.click(hide)
+    expect(await screen.findByRole('img', { name: 'First win' })).toBeInTheDocument()
+    expect(api.display).toHaveBeenLastCalledWith(1, true)
+  })
+
   it('shows earned rewards by default, supplies artwork fallback, and sends false when Hide is checked', async () => {
     page()
     const hide = await screen.findByRole('checkbox', { name: 'Hide First win from profile' })

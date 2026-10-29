@@ -1,4 +1,5 @@
 vi.mock('../../hooks/useQaFeatures', () => ({ useNotificationPreferences: () => ({ query: { data: { categories: [] }, isPending: false, isError: false }, save: { isPending: false, isError: false } }) }))
+vi.mock('../../hooks/useRewards', () => ({ useUserRewards: () => ({ data: { items: profileState.rewards } }) }))
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +9,7 @@ const { updateProfile, uploadMock, profileState, mockUserState, identityState } 
   identityState: { status: 'approved' },
   updateProfile: vi.fn(),
   uploadMock: vi.fn(),
-  profileState: { avatarUrl: null as string | null, refetch: vi.fn(), fetching: false, mock: false, fixture: null as State | null },
+  profileState: { avatarUrl: null as string | null, refetch: vi.fn(), fetching: false, mock: false, fixture: null as State | null, rewards: [] as import('../../api/rewards').UserRewardDto[] },
   mockUserState: {
     id: 9,
     fullName: 'Backend Profile',
@@ -74,7 +75,7 @@ vi.mock('../player/PlayerPage', () => ({ CareerPanel: () => null }))
 import { ProfilePage } from './ProfilePage'
 import { SEED } from '../../shared/seed'
 
-beforeEach(() => { profileState.mock = false; profileState.fixture = null })
+beforeEach(() => { profileState.mock = false; profileState.fixture = null; profileState.rewards = [] })
 
 describe('Profile mock career facts', () => {
   const show = (finishKnown = true, empty = false) => {
@@ -114,6 +115,19 @@ describe('Profile mock career facts', () => {
 })
 
 describe('ProfilePage real-mode boundary', () => {
+  it('places displayed badge logos beside the profile name', () => {
+    profileState.rewards = [{
+      id: 1, type: 'badge', name: 'First win', description: 'Win a match', pointsRequired: null,
+      criteria: null, iconKey: 'trophy', earnedAt: '2026-10-01T00:00:00Z', isDisplayed: true,
+    }]
+    render(<MemoryRouter><ProfilePage /></MemoryRouter>)
+    const name = screen.getByRole('heading', { level: 1, name: 'Backend Profile' })
+    const nameRow = name.parentElement!
+    expect(within(nameRow).getByRole('img', { name: 'First win' })).toBeInTheDocument()
+    expect(within(nameRow).queryByText('First win')).not.toBeInTheDocument()
+    expect(within(nameRow).queryByText('Win a match')).not.toBeInTheDocument()
+  })
+
   it('retries failed stats without replacing loaded account details', () => {
     const view = render(<MemoryRouter><ProfilePage /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: 'Retry stats' }))

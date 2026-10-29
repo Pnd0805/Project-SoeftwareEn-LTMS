@@ -27,7 +27,7 @@ import { canShowAdminNav } from './adminNav'
 import { navSection } from './navSection'
 import { GlobalScanDialog, GlobalScanPhoto } from '../../features/checkin/GlobalScanDialog'
 
-interface NavItem { to: string; icon: IconName; label: string; pill?: number }
+interface NavItem { to: string; icon: IconName; label: string; pill?: number; points?: number }
 
 function useNav(unreadCount: number, currentUser: MeDto | undefined, backendHasAdminAccess: boolean): NavItem[] {
   const s = useLtms()
@@ -49,6 +49,7 @@ function useNav(unreadCount: number, currentUser: MeDto | undefined, backendHasA
   items.push({ to: '/teams', icon: 'team', label: 'Teams', pill: USE_MOCK ? invites : undefined })
   items.push({ to: '/matches', icon: 'match', label: 'Matches' })
   items.push({ to: '/inbox', icon: 'bell', label: 'Inbox', pill: unreadCount })
+  items.push({ to: '/me/rewards', icon: 'star', label: 'My rewards', points: currentUser?.totalPoints })
   items.push({ to: '/me', icon: 'user', label: 'Profile' })
   return items
 }
@@ -199,7 +200,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           onClick={() => setMenuOpen(false)}
           >
           <Icon name={item.icon} />
-          <span>{item.label}</span>
+          <span>{item.label}{item.points !== undefined ? <small> · {item.points.toLocaleString('en-US')} pts</small> : null}</span>
           {item.pill ? <span className="pill">{item.pill}</span> : null}
         </Link>
       ))}

@@ -27,6 +27,7 @@ import { CareerPanel } from '../player/PlayerPage'
 import '../auth/account-workspace.css'
 import { ExternalIdentityBadge, ExternalIdentityPanel } from './ExternalIdentityPanel'
 import { ProfileSettings, NotificationSettings } from './ProfileSettings'
+import { ProfileRewardBadges } from '../rewards/ProfileRewardBadges'
 
 export function ProfilePage() {
   const s = useLtms()
@@ -184,7 +185,6 @@ export function ProfilePage() {
             {stats?.mvpTimes != null ? <Stat label="MVP awards" value={stats.mvpTimes} /> : null}
             {stats?.mvpVotes != null ? <Stat label="MVP votes received" value={stats.mvpVotes} /> : null}
           </Panel>
-          <Link className="btn" to="/me/rewards">My rewards — manage profile display</Link>
         </div>
 
         <div className="rail">
@@ -262,7 +262,10 @@ function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDt
         <Avatar name={user.fullName} avatarUrl={user.avatarUrl} size={72} alt={user.fullName}
           style={{ borderRadius: '2px', border: '2px solid var(--line-hot)' }} />
         <div className="account-identity-copy">
-          <h1 className="disp">{user.fullName} {isExternalUser ? USE_MOCK ? <Badge kind="neutral">External</Badge> : <ExternalIdentityBadge /> : null}</h1>
+          <div className="profile-name-row">
+            <h1 className="disp">{user.fullName} {isExternalUser ? USE_MOCK ? <Badge kind="neutral">External</Badge> : <ExternalIdentityBadge /> : null}</h1>
+            <ProfileRewardBadges userId={user.id} />
+          </div>
           <p className="sub">{label}</p>
           <p className="account-email">{user.email}</p>
           <div className="account-photo-actions">
