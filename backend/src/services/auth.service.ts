@@ -237,9 +237,18 @@ export async function resendEmailVerification(email : string) : Promise<{ messag
 }
 
 
+/**
+ * bug hunt 30 ต.ค. 2569 (ข้อเล็ก) — hash หลอกไว้เทียบเมื่อไม่พบอีเมล ให้เวลาตอบเท่ากับกรณีรหัสผิด
+ *   เดิมอีเมลที่ไม่มีในระบบตอบทันที (ไม่ได้รัน bcrypt) ⇒ จับเวลาแล้วรู้ว่าอีเมลไหนสมัครไว้
+ * ★ cost 10 เท่ากับ SALT_ROUND ของรหัสจริง (utils/password.ts) — ต่างกัน = เวลาต่างกันอีก
+ * ★ ไม่ใช่รหัสของใคร ไม่มีใคร "ล็อกอินด้วยรหัสนี้" ได้ เพราะไม่มีแถวผู้ใช้ให้เข้า
+ */
+const TIMING_DUMMY_HASH = '$2b$10$Z6xpPqNtsSD0ZHGPCUbk6e2zQV1.aNs.Rwj7SL/q0cydqhoe1x7We';
+
 export async function login(email: string, password: string) {
   const user = await userRepo.findByEmail(email);
   if(!user){
+    await verifyPassword(password , TIMING_DUMMY_HASH);
     throw new AppError(401 , 'INVALID_CREDENTIALS' , "อีเมลหรือรหัสผ่านไม่ถูกต้อง")
   }
 

@@ -345,7 +345,9 @@ describe('auth.service login()', () => {
       code: 'INVALID_CREDENTIALS',
     });
 
-    expect(mockedVerifyPassword).not.toHaveBeenCalled();
+    // bug hunt 30 ต.ค. — ยังรัน bcrypt กับ hash หลอก ให้เวลาตอบเท่ากรณีรหัสผิด (จับเวลาแล้วรู้ไม่ได้ว่าอีเมลมีจริง)
+    expect(mockedVerifyPassword).toHaveBeenCalledTimes(1);
+    expect(mockedVerifyPassword).toHaveBeenCalledWith('whatever', expect.stringMatching(/^\$2b\$10\$/));
     expect(mockedSignToken).not.toHaveBeenCalled();
   });
 
