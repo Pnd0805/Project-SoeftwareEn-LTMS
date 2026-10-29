@@ -37,7 +37,7 @@ function notificationHref(n: NotificationDto): string | null {
 }
 
 function notificationIcon(type?: string): IconName {
-  if (type === 'tournament_auto_delete_warning') return 'warn'
+  if (type === 'tournament_auto_delete_warning' || type === 'tournament_cancelled') return 'warn'
   if (type === 'tournament_auto_deleted') return 'trophy'
   if (type === 'comment_removed' || type === 'comment_reported' || type === 'comment_rewritten_after_removal') return 'shield'
   if (type === 'bracket_created' || type === 'bracket_redrawn') return 'trophy'
@@ -48,7 +48,7 @@ function notificationIcon(type?: string): IconName {
 }
 
 function notificationCategory(n: NotificationDto): string {
-  if (n.type === 'tournament_auto_delete_warning') return 'Critical alerts'
+  if (n.type === 'tournament_auto_delete_warning' || n.type === 'tournament_cancelled') return 'Critical alerts'
   if (n.type === 'tournament_auto_deleted') return 'Tournament updates'
   if (n.type === 'tournament_announcement' || n.type === 'tournament_announcement_urgent') return 'Announcements'
   if (n.type?.startsWith('comment_')) return 'Comments and moderation'

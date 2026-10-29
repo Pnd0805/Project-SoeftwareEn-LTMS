@@ -853,7 +853,7 @@ export function MatchPage() {
             </Banner>
           ) : null}
       <div className="match-summary-pair">
-        <MatchNextStep m={m} result={result} />
+        {m.tournament.status === 'cancelled' ? <Panel quiet><h2>Tournament cancelled</h2><p className="sub">Match actions are locked. History remains available.</p></Panel> : <MatchNextStep m={m} result={result} />}
         <div className="match-details">
           <Panel className="match-summary-frame">
             <h2>Match details</h2>
@@ -884,11 +884,13 @@ export function MatchPage() {
       </nav>
 
           <MatchSection key={`${m.id}-${m.viewer.myUserId}-overview`} active={tab === 'overview'} label="Overview">
-              <MatchLifecycle m={m} />
-              {!USE_MOCK ? <RefereeMatchRequest m={m} /> : null}
-              <ActionPanel m={m} result={result} />
-              {!USE_MOCK ? <MatchWorkflowPanel m={m} result={result} /> : null}
-              {m.viewer.roles.includes('organizer') ? <OrganizerTools m={m} result={result} /> : null}
+              {m.tournament.status !== 'cancelled' ? <>
+                <MatchLifecycle m={m} />
+                {!USE_MOCK ? <RefereeMatchRequest m={m} /> : null}
+                <ActionPanel m={m} result={result} />
+                {!USE_MOCK ? <MatchWorkflowPanel m={m} result={result} /> : null}
+                {m.viewer.roles.includes('organizer') ? <OrganizerTools m={m} result={result} /> : null}
+              </> : null}
               {m.replayUrl ? (
                 <Panel quiet>
                   <span className="tag"><em>//</em> Replay</span>
@@ -897,7 +899,7 @@ export function MatchPage() {
                   </a>
                 </Panel>
               ) : null}
-              {m.viewer.can.manageCheckin || isInLineup ? (
+              {m.tournament.status !== 'cancelled' && (m.viewer.can.manageCheckin || isInLineup) ? (
                 <Panel quiet>
                   <span className="tag"><em>//</em> Check-in</span>
                   <div className="hstack">
@@ -950,7 +952,7 @@ export function MatchPage() {
           <MatchSection key={`${m.id}-${m.viewer.myUserId}-progress`} active={tab === 'progress'} label="History"><ResultTrail m={m} result={result} /></MatchSection>
 
           <MatchSection key={`${m.id}-${m.viewer.myUserId}-community`} active={tab === 'community'} label="Community"><MatchCommunity matchId={matchId} match={m} /></MatchSection>
-          <MatchSection key={`${m.id}-${m.viewer.myUserId}-mvp`} active={tab === 'mvp'} label="MVP">{!USE_MOCK ? <Panel quiet><h2>Match MVP</h2><MatchMvpVoting key={m.id} matchId={m.id} teamNames={Object.fromEntries([m.teamA, m.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></Panel> : null}</MatchSection>
+          <MatchSection key={`${m.id}-${m.viewer.myUserId}-mvp`} active={tab === 'mvp'} label="MVP">{!USE_MOCK ? <Panel quiet><h2>Match MVP</h2><MatchMvpVoting key={m.id} matchId={m.id} readOnly={m.tournament.status === 'cancelled'} teamNames={Object.fromEntries([m.teamA, m.teamB].filter(team => team !== null).map(team => [team.id, team.name]))} /></Panel> : null}</MatchSection>
 
     </div>
   )

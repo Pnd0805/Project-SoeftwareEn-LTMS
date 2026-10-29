@@ -10,7 +10,7 @@
 export type Role = 'Admin' | 'User'
 export type Channel = 'onsite' | 'online'
 export type Format = 'single' | 'double' | 'roundrobin'
-export type TourStatus = 'pending' | 'private' | 'public'
+export type TourStatus = 'pending' | 'private' | 'public' | 'cancelled'
 export type MatchStatus = 'scheduled' | 'pending' | 'confirmed' | 'disputed' | 'void'
 export type RegStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn'
 export type InviteStatus = 'pending' | 'accepted' | 'declined'

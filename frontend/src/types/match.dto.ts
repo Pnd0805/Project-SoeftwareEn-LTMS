@@ -117,6 +117,7 @@ export interface MatchDto {
   tournament: {
     id: number;
     name: string;
+    status?: import('./enums').TournamentStatus;
     /** ทีมที่ได้แชมป์ — null ถ้ายังไม่จบ */
     championTeamId: number | null;
     /** ชนิดกีฬา — ตัวกำหนดว่าแมตช์นี้เก็บสถิติอะไรบ้าง */

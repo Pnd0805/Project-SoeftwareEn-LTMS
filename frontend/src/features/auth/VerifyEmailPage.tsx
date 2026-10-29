@@ -109,6 +109,7 @@ export function VerifyEmailPage({ email: initialEmail, emailVerificationSent }: 
             {resend.isPending ? 'Requesting…' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
           </button>
         </div>
+        <p className="sub">No code within 10 minutes? <Link to="/register">Register again with the same email.</Link></p>
         <p className="sub">Up to 3 code requests per hour. Wait 60s between requests.</p>
         {limited && <p className="sub" role="status">Request limit reached. Try again in {Math.max(1, Math.ceil((times[0] + OTP_WINDOW_MS - now) / 60000))} min.</p>}
       </form>

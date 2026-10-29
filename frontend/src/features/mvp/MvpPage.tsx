@@ -55,7 +55,7 @@ function LiveTournamentMvp({ tournamentId }: { tournamentId: number }) {
   </>
 }
 
-export function MatchMvpVoting({ matchId, teamNames = {} }: { matchId: number; teamNames?: Record<number, string> }) {
+export function MatchMvpVoting({ matchId, teamNames = {}, readOnly = false }: { matchId: number; teamNames?: Record<number, string>; readOnly?: boolean }) {
   const meQuery = useMe()
   const mvp = useMvpLive(matchId)
   if (mvp.query.isPending) return <Panel quiet>Loading MVP votes...</Panel>
@@ -64,8 +64,8 @@ export function MatchMvpVoting({ matchId, teamNames = {} }: { matchId: number; t
   const data = mvp.query.data
   if (!data) return <Empty icon="star" title="No MVP data available" />
   return <>
-    <Banner kind={data.window.isOpen ? 'ok' : 'warn'} icon="star">
-      {data.window.isOpen ? `Voting closes ${data.window.closesAt ? matchTime(data.window.closesAt) : 'soon'}.`
+    <Banner kind={!readOnly && data.window.isOpen ? 'ok' : 'warn'} icon="star">
+      {readOnly ? 'Voting is locked because the tournament was cancelled.' : data.window.isOpen ? `Voting closes ${data.window.closesAt ? matchTime(data.window.closesAt) : 'soon'}.`
         : data.window.opensAt ? 'Voting is closed.' : 'Voting is unavailable until the backend provides an eligible voting window. Matches decided without play are not eligible.'}
     </Banner>
     {mvp.vote.isError ? <p className="sub" role="alert">{mvp.vote.error instanceof Error ? mvp.vote.error.message : 'Could not save your vote.'}</p> : null}
@@ -78,7 +78,7 @@ export function MatchMvpVoting({ matchId, teamNames = {} }: { matchId: number; t
           {!data.window.isOpen && candidate.votes !== undefined ? <span className="num">{candidate.votes} votes</span> : null}
           {!data.window.isOpen && data.winners.includes(candidate.userId) ? <Badge kind="ok">Winner</Badge> : null}
           {data.mine?.votedForUserId === candidate.userId ? <Badge kind="ok">Your vote</Badge> : null}
-          {meQuery.data && data.canVote ? <button className="btn primary" type="button" disabled={mvp.vote.isPending}
+          {!readOnly && meQuery.data && data.canVote ? <button className="btn primary" type="button" disabled={mvp.vote.isPending}
             onClick={() => mvp.vote.mutate(candidate.userId)}>{data.mine ? 'Change vote' : 'Vote'}</button> : null}
         </span>
       </div>)}</Panel>}

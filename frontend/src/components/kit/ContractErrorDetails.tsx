@@ -12,6 +12,8 @@ const record = (value: unknown): Record<string, unknown> => value && typeof valu
 export function ContractErrorDetails({ error }: { error: unknown }) {
   if (!(error instanceof ApiError)) return null
   const e = error.extra
+  if (error.code === 'TOURNAMENT_CANCELLED' || (error.code === 'RESULT_NOT_CHANGEABLE' && e.blockedBy === 'TOURNAMENT_CANCELLED')) return <p>This tournament was cancelled. Its history is available, but this action is locked. Refresh to see its current status.</p>
+  if (error.code === 'TOURNAMENT_COMPLETED') return <p>This tournament is completed. Entries can no longer be changed. Refresh to see its final status.</p>
   if (scheduleErrorKind(error) === 'match') return <div>
     <p>The organizer must complete the match schedule before retrying this action.</p>
     {missingScheduleFields(error).length ? <p>Missing schedule fields: {missingScheduleFields(error).map(key => scheduleFieldLabels[key]).join(', ')}.</p> : null}

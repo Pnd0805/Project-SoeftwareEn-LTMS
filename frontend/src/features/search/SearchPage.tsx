@@ -27,7 +27,7 @@ import { searchUserLabel } from '../../shared/display'
 export function SearchPage() {
   const s = useLtms()
   const { data: currentUser } = useMe()
-  const [tournamentStatus, setTournamentStatus] = useState<'public' | 'completed'>('public')
+  const [tournamentStatus, setTournamentStatus] = useState<'public' | 'completed' | 'cancelled'>('public')
   const [category, setCategory] = useState('all')
   const tournamentQuery = useTournaments({ status: tournamentStatus })
   const sportTypes = useSportTypes()
@@ -81,9 +81,10 @@ export function SearchPage() {
         </Field>
         <Field label="Tournament status" htmlFor="se-status">
           <select id="se-status" value={tournamentStatus}
-            onChange={e => setTournamentStatus(e.target.value as 'public' | 'completed')}>
+            onChange={e => setTournamentStatus(e.target.value as 'public' | 'completed' | 'cancelled')}>
             <option value="public">Open and active</option>
             <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </Field>
       </Panel>

@@ -25,6 +25,12 @@ const summary = (mine: PredictionSummary['mine'] = null): PredictionSummary => (
 
 describe('LivePickem', () => {
   beforeEach(() => { vi.resetAllMocks(); live.data = summary() })
+  it('blocks predictions for a cancelled tournament even if the prediction summary is stale', () => {
+    render(<LivePickem match={{ ...match, tournament: { ...match.tournament, status: 'cancelled' } }} />)
+    expect(screen.getByText('Predictions closed: tournament cancelled.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Predict score' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cancel prediction' })).not.toBeInTheDocument()
+  })
 
   it('sends the predicted score keyed by team id, not a team pick', async () => {
     const user = userEvent.setup()

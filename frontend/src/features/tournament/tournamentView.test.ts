@@ -12,6 +12,12 @@ const tournament: Tournament = {
 }
 
 describe('registration lifecycle view', () => {
+  it('keeps cancelled history distinct from a public tournament and closes entries', () => {
+    const view = tournamentView({ status: 'cancelled', eventStartDate: '2099-01-01', sportTypeId: 1 } as TournamentDto)
+    expect(view.status).toBe('cancelled')
+    expect(view.champion).toBeNull()
+    expect(registrationClosedReason({ ...tournament, status: 'cancelled' }, 0, true)).toContain('cancelled')
+  })
   it('keeps a public tournament closed until the organizer explicitly opens registration', () => {
     expect(registrationClosedReason(tournament, 0, true))
       .toBe('Registration has not been opened by the organizer yet.')

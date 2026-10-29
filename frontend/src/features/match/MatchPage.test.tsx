@@ -102,6 +102,17 @@ const renderPage = () => render(
     </MemoryRouter>
   </QueryClientProvider>,
 )
+it('keeps cancelled match history readable while suppressing role-based and result actions', () => {
+  match = baseMatch()
+  match.tournament.status = 'cancelled'
+  match.status = 'finished'
+  result = undefined
+  renderPage()
+  expect(screen.getByRole('heading', { name: 'Tournament cancelled' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Match details' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Review result' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /check-in/i })).not.toBeInTheDocument()
+})
 
 it('retains a result draft across section navigation and browser Back', async () => {
   match = baseMatch()

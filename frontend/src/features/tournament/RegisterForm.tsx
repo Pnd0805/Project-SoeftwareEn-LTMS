@@ -24,7 +24,7 @@ import { user } from '../../shared/selectors'
 import { ageOf, hardFilter, regWindowClosed, ruleSummary } from '../../shared/rules'
 import type { Team, Tournament } from '../../shared/types'
 import { numOf } from '../../mocks/storeBridge'
-import { conflictOfInterestDetails, registrationMemberFailures } from './registrationErrors'
+import { closedTournamentRegistrationMessage, conflictOfInterestDetails, registrationMemberFailures } from './registrationErrors'
 import type { RegistrationMemberFailure } from './registrationErrors'
 import { fmtDateOnly } from '../../shared/dateFormat'
 
@@ -144,7 +144,7 @@ export function RegisterForm({
         Object.entries(error.fields).forEach(([field, message]) => setError(field as keyof ApplyToTournamentInput, { type: 'server', message }))
       }
       if (error instanceof ApiError) {
-        setServerError({ message: error.message, uncertain: false })
+        setServerError({ message: closedTournamentRegistrationMessage(error) ?? error.message, uncertain: false })
         setBlockedMembers(registrationMemberFailures(error, memberRows))
         if (error.code === 'SQUAD_SIZE_INVALID') {
           setServerDetails([

@@ -12,12 +12,19 @@ vi.mock('../../hooks/useMatch', () => ({ useTournamentMatches: () => ({ data: { 
   { id: 14, status: 'finished', teamA: { id: 3, name: 'C' }, teamB: { id: 4, name: 'D' } },
 ] }, isPending: false, isError: false }) }))
 vi.mock('../../hooks/useLiveEngagement', () => ({ useMvpLive: mvp }))
-import { MvpPage } from './MvpPage'
+import { MatchMvpVoting, MvpPage } from './MvpPage'
 import { SEED } from '../../shared/seed'
 beforeEach(() => {
   vi.clearAllMocks(); state.signedIn = true; state.canVote = true; state.open = true; state.mock = false; state.fixture = null
   mvp.mockImplementation(() => ({ query: { data: { window: { isOpen: state.open, opensAt: '2026-10-01T00:00:00Z', closesAt: '2026-10-02T00:00:00Z' },
     candidates: [{ userId: 9002, fullName: 'Candidate', teamId: 1, avatarUrl: null, stats: [{ statKey: 'goals', statLabelTh: 'Goals', value: 3 }], votes: 8 }], winners: [9002], mine: null, canVote: state.canVote }, isPending: false, isError: false }, vote: { mutate: vote, isPending: false, isError: false } }))
+})
+
+it('keeps MVP candidates readable but hides voting for a cancelled tournament with stale voting data', () => {
+  render(<MatchMvpVoting matchId={13} readOnly />)
+  expect(screen.getByText('Candidate')).toBeInTheDocument()
+  expect(screen.getByText('Voting is locked because the tournament was cancelled.')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Vote' })).not.toBeInTheDocument()
 })
 
 describe('mock match MVP preview', () => {

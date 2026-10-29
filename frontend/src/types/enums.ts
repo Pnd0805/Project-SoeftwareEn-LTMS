@@ -166,7 +166,7 @@ export const ExternalApprovalStatusLabel: Record<ExternalApprovalStatus, string>
 };
 
 // tournaments.tournament_status
-export const TournamentStatusEnum = z.enum(["pending_approval", "rejected", "private", "public", "completed", "auto_deleted"]);
+export const TournamentStatusEnum = z.enum(["pending_approval", "rejected", "private", "public", "completed", "cancelled", "auto_deleted"]);
 export type TournamentStatus = z.infer<typeof TournamentStatusEnum>;
 export const TournamentStatusOptions = TournamentStatusEnum.options;
 export const TournamentStatusLabel: Record<TournamentStatus, string> = {
@@ -175,6 +175,7 @@ export const TournamentStatusLabel: Record<TournamentStatus, string> = {
   "private": "Private (draft)",
   "public": "Public",
   "completed": "Completed",
+  "cancelled": "Cancelled",
   "auto_deleted": "Auto-deleted",
 };
 

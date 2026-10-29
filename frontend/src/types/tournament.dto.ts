@@ -52,6 +52,7 @@ export interface TournamentDetailDto extends TournamentDto {
   /** C14b: populated when the organizer explicitly closes the tournament. */
   championTeamId: number | null;
   completedAt: string | null;
+  cancellation?: { cancelledAt: string | null; reason: string | null; cancelledBy: 'organizer' | 'admin' } | null;
 }
 
 export interface EligibilityRuleDto {

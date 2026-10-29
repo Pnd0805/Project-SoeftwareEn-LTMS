@@ -20,9 +20,9 @@ const t = { id: '42', name: 'Campus Cup', entryNotes: 'Bring a student ID' } as 
 const row = (id: number, name: string, status: string) => ({
   id, team: { id: id + 100, name }, status, hardFilterPassed: true, appliedAt: null,
 })
-function renderPanel() {
+function renderPanel(tournament = t) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
-  render(<QueryClientProvider client={client}><MemoryRouter><RegistrationsPanel t={t} /></MemoryRouter></QueryClientProvider>)
+  render(<QueryClientProvider client={client}><MemoryRouter><RegistrationsPanel t={tournament} /></MemoryRouter></QueryClientProvider>)
   return client
 }
 beforeEach(() => {
@@ -34,6 +34,14 @@ beforeEach(() => {
   detail.mockReset().mockResolvedValue({ id: 1, players: [{ userId: 7, fullName: 'Alex North', avatarUrl: null }] })
   approve.mockReset().mockResolvedValue({})
   reject.mockReset().mockRejectedValue(new ApiError(409, { code: 'CONFLICT', message: 'Decision could not be saved' }))
+})
+it.each(['completed', 'cancelled'])('keeps %s entries readable without decision buttons', async status => {
+  renderPanel({ ...t, status: status === 'cancelled' ? 'cancelled' : 'public', champion: status === 'completed' ? 'finished' : null })
+  await screen.findByText('Northside FC')
+  expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Review' })).not.toBeInTheDocument()
+  expect(approve).not.toHaveBeenCalled()
+  expect(reject).not.toHaveBeenCalled()
 })
 it('intersects team search and status locally, includes withdrawn/cancelled entries and clears no results', async () => {
   renderPanel()

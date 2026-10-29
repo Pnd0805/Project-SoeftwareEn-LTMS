@@ -604,7 +604,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
       .catch(() => ({ items: [] as BackendMatchRefereeDto[] })),
     hasAccessToken() ? apiFetch<{ id: number }>("/me").catch(() => null) : Promise.resolve(null),
     raw.tournamentId
-      ? apiFetch<{ name: string; sportTypeId: number; organizer?: { id: number } }>(`/tournaments/${raw.tournamentId}`)
+      ? apiFetch<{ name: string; sportTypeId: number; status?: import('../types/enums').TournamentStatus; organizer?: { id: number } }>(`/tournaments/${raw.tournamentId}`)
         .catch(() => null)
       : Promise.resolve(null),
     apiFetch<BackendMatchLineupsDto>(`/matches/${matchId}/lineups`),
@@ -623,6 +623,7 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
     dto.tournament = {
       ...dto.tournament,
       name: tournament.name,
+      status: tournament.status,
       sportTypeId: tournament.sportTypeId ?? dto.tournament.sportTypeId,
     };
   }
@@ -688,6 +689,10 @@ export async function getMatch(matchId: MatchRef): Promise<MatchDto> {
   };
 
   const approvedPlayers = [dto.teamA, dto.teamB].flatMap((team) => team?.players ?? []);
+  if (tournament?.status === 'cancelled') {
+    // แมตช์ยังคงสถานะเดิมเพื่อเก็บประวัติ แต่ทุกคำสั่งถูกแช่แข็งตามสถานะทัวร์
+    for (const key of Object.keys(dto.viewer.can) as Array<keyof typeof dto.viewer.can>) dto.viewer.can[key] = false;
+  }
   dto.lineupSize = approvedPlayers.length;
   dto.checkedIn = approvedPlayers.filter((player) => player.checkinStatus === "checked_in").length;
 

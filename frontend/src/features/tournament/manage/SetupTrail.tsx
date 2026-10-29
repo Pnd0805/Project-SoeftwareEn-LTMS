@@ -14,6 +14,7 @@
  * ('t-bkb') ปุ่ม Open to public กับ Generate bracket จึงกดแล้วเงียบ ไม่มีอะไรเกิดขึ้น
  */
 import { useState } from 'react'
+import { CancelTournamentPanel } from './CancelTournamentPanel'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Banner, Panel, Trail } from '../../../components/kit/primitives'
 import { ConfirmCard, Modal } from '../../../components/kit/Modal'
@@ -47,6 +48,10 @@ const unfinishedMatches = (error: unknown): Array<{ id: number; status: string }
 }
 
 export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
+  return <><SetupProgress t={t} onAppoint={onAppoint} /><CancelTournamentPanel t={t} /></>
+}
+
+function SetupProgress({ t, onAppoint }: { t: Tournament; onAppoint: () => void }) {
   const active = useManageActive()
   const s = useLtms()
   const navigate = useNavigate()
@@ -109,8 +114,8 @@ export function SetupTrail({ t, onAppoint }: { t: Tournament; onAppoint: () => v
   const done = real
     ? apiMatches.filter(m => m.status === 'completed')
     : (ms as ReturnType<typeof matchesOf>).filter(m => m.status === 'confirmed')
-  /* backend ไม่มีทางปิดรายการ (ดู FEAT-1-REMAINING) — "จบแล้ว" คือทุกนัดยืนยันผลครบ
-     ไม่ใช่ t.champion ที่ tournamentView เดาจากวันแข่งที่ผ่านไปแล้ว */
+  /* ผลครบเป็นเงื่อนไขก่อนเปิดปุ่ม Close tournament ไม่ได้แปลว่าทัวร์ถูกปิดแล้ว
+     สถานะ completed เกิดหลังผู้จัดยืนยันปิดและ backend ตรวจซ้ำสำเร็จเท่านั้น */
   const allPlayed = real ? ms.length > 0 && done.length === ms.length : !!t.champion
 
   /* ยอดตอบรับมาจาก acceptedCount ของ GET /tournaments/:id/referees (FEAT-1-REMAINING)

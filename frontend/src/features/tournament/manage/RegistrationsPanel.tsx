@@ -119,8 +119,9 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const denied = (error: unknown) => error instanceof ApiError && [401, 403, 404].includes(error.status)
   const message = (error: unknown) => error instanceof Error ? error.message : 'Try again.'
   const busy = approve.isPending || reject.isPending
-  const reviewCurrent = !!review && rows.some(r => r.key === review.key && r.status === 'pending')
-  const reviewBlocked = !review || review.applicationId === null || busy || (!USE_MOCK && denied(applicationDetail.error))
+  const closed = t.status === 'cancelled' || !!t.champion
+  const reviewCurrent = !closed && !!review && rows.some(r => r.key === review.key && r.status === 'pending')
+  const reviewBlocked = closed || !review || review.applicationId === null || busy || (!USE_MOCK && denied(applicationDetail.error))
 
   if (!USE_MOCK && !applications.data && applications.isPending) return <Panel><span className="sub">Loading registrations…</span></Panel>
   if (!USE_MOCK && applications.isError && (!applications.data || denied(applications.error))) return <Panel>
@@ -173,7 +174,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
             <td><Badge kind={r.hardFilterPassed === false ? 'crit' : r.hardFilterPassed ? 'ok' : 'neutral'}>
               {r.hardFilterPassed === false ? 'Failed' : r.hardFilterPassed ? 'Passed' : 'Not checked'}</Badge></td>
             <td className="sub">{r.at ? fmtDate(r.at) : '—'}</td>
-            <td>{r.status === 'pending' ? <div className="hstack">
+            <td>{r.status === 'pending' && !closed ? <div className="hstack">
               <button className="btn" type="button" onClick={() => startReview(r)}>Review</button>
               <button className="btn primary" type="button" disabled={r.applicationId === null || busy || r.hardFilterPassed === false}
                 onClick={() => { if (r.applicationId !== null) approve.mutate(r.applicationId) }}>{approve.isPending && approve.variables === r.applicationId ? 'Approving…' : 'Approve'}</button>

@@ -44,9 +44,10 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
 }) {
   const checkin = useCheckin(m.id)
   const verify = useVerifyCheckin(m.id)
-  const isRef = m.viewer.can.manageCheckin
+  const frozen = m.tournament?.status === 'cancelled'
+  const isRef = m.viewer.can.manageCheckin || (frozen && m.viewer.roles.some(role => role === 'referee' || role === 'organizer'))
   /* ตัดสินการเช็คอินของคนอื่นได้ไหม — คนละเรื่องกับการดูคอนโซล ดู can.verifyCheckin */
-  const canJudge = m.viewer.can.verifyCheckin
+  const canJudge = !frozen && m.viewer.can.verifyCheckin
   const verifiedIds = new Set(checkins.filter(row => row.status === 'success').map(row => row.user.id))
   const inCount = team.players.filter(player => verifiedIds.has(player.id)).length
 
@@ -140,7 +141,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
                         : null}
                   </td>
                   <td>
-                    {((notYet && missingState === 'ready') || rejected) && isMe ? (
+                    {!frozen && ((notYet && missingState === 'ready') || rejected) && isMe ? (
                       /* ยืนยันตัวตนก่อนเสมอ — on-site สแกน QR · online ถ่ายรูปคู่บัตร
                          ถูกปฏิเสธแล้วก็เช็คอินใหม่ได้ (M12 · OD-19 ข้อ 2) */
                       <button className="btn primary" type="button" disabled={checkin.isPending}
@@ -191,7 +192,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
       </TableWrap>
 
       <QrScanModal
-        open={capture !== null && m.mode === 'onsite'}
+        open={!frozen && capture !== null && m.mode === 'onsite'}
         onClose={closeCapture}
         expectedToken={m.checkinToken}
         pending={checkin.isPending}
@@ -206,7 +207,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
       />
 
       <IdPhotoModal
-        open={capture !== null && m.mode === 'online'}
+        open={!frozen && capture !== null && m.mode === 'online'}
         onClose={closeCapture}
         pending={checkin.isPending}
         onSubmit={({ photo, documentType }) => {
@@ -219,7 +220,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
       />
 
       <ManualVerifyModal
-        open={!!manual}
+        open={!frozen && !!manual}
         onClose={() => setManual(null)}
         playerName={manual?.name ?? ''}
         pending={checkin.isPending}
@@ -235,7 +236,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
       />
 
       <RevokeCheckinModal
-        open={!!revoke}
+        open={!frozen && !!revoke}
         onClose={() => setRevoke(null)}
         playerName={revoke?.name ?? ''}
         method={revoke?.method ?? ''}
@@ -250,7 +251,7 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
       />
 
       <ReviewPhotoModal
-        open={!!review}
+        open={!frozen && !!review}
         onClose={() => setReview(null)}
         playerName={review?.name ?? ''}
         photo={review?.photo ?? null}
@@ -283,11 +284,12 @@ function SquadPanel({ m, team, checkins, rosterReadState, myCheckinReadState }: 
 function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: MatchCheckinDto[]; readState: CheckinReadState }) {
   const checkin = useCheckin(m.id)
   const verify = useVerifyCheckin(m.id)
-  const isRef = m.viewer.can.manageCheckin
-  const canJudge = m.viewer.can.verifyCheckin
+  const frozen = m.tournament?.status === 'cancelled'
+  const isRef = m.viewer.can.manageCheckin || (frozen && m.viewer.roles.some(role => role === 'referee' || role === 'organizer'))
+  const canJudge = !frozen && m.viewer.can.verifyCheckin
   const myId = m.viewer.myUserId
   const mine = myId === null ? undefined : checkins.find(c => c.user.id === myId)
-  const canCheckIn = myId !== null
+  const canCheckIn = !frozen && myId !== null
     && [m.teamA, m.teamB].some(team => team?.players.some(player => player.id === myId))
     && (!mine || mine.status === 'rejected')
   const [capture, setCapture] = useState(false)
@@ -392,7 +394,7 @@ function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: Mat
       ) : isRef ? <span className="sub">Nobody has checked in yet.</span> : null}
 
       <QrScanModal
-        open={capture && m.mode === 'onsite'}
+        open={!frozen && capture && m.mode === 'onsite'}
         onClose={() => setCapture(false)}
         expectedToken={null}
         pending={checkin.isPending}
@@ -404,7 +406,7 @@ function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: Mat
       />
 
       <IdPhotoModal
-        open={capture && m.mode === 'online'}
+        open={!frozen && capture && m.mode === 'online'}
         onClose={() => setCapture(false)}
         pending={checkin.isPending}
         onSubmit={({ photo, documentType }) => checkin.mutate(
@@ -414,7 +416,7 @@ function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: Mat
       />
 
       <ReviewPhotoModal
-        open={!!review}
+        open={!frozen && !!review}
         onClose={() => setReview(null)}
         playerName={review?.name ?? ''}
         photo={review?.photo ?? null}
@@ -432,7 +434,7 @@ function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: Mat
       />
 
       <ManualVerifyModal
-        open={!!manual}
+        open={!frozen && !!manual}
         onClose={() => setManual(null)}
         playerName={manual?.name ?? ''}
         pending={checkin.isPending}
@@ -447,7 +449,7 @@ function CheckinConsole({ m, checkins, readState }: { m: MatchDto; checkins: Mat
       />
 
       <RevokeCheckinModal
-        open={!!revoke}
+        open={!frozen && !!revoke}
         onClose={() => setRevoke(null)}
         playerName={revoke?.name ?? ''}
         method={revoke?.method ?? ''}
@@ -499,8 +501,9 @@ export function CheckinPage() {
   const squads = [m.teamA, m.teamB].filter(Boolean) as MatchTeamRef[]
   const total = squads.reduce((n, t) => n + t.players.length, 0)
   const done = checkins.filter(c => c.status === 'success').length
-  const isRef = m.viewer.can.manageCheckin
-  const canJudge = m.viewer.can.verifyCheckin
+  const frozen = m.tournament?.status === 'cancelled'
+  const isRef = m.viewer.can.manageCheckin || (frozen && m.viewer.roles.some(role => role === 'referee' || role === 'organizer'))
+  const canJudge = !frozen && m.viewer.can.verifyCheckin
   const rosterReadState: CheckinReadState = !isRef
     ? 'private'
     : checkinsQuery.isError
@@ -524,6 +527,7 @@ export function CheckinPage() {
         <h1 className="disp" style={{ fontSize: 28 }}>Check in</h1>
         <Badge kind="warn">{m.mode === 'onsite' ? 'On-site' : 'Online'}</Badge>
       </div>
+      {frozen ? <Banner kind="warn"><b>Tournament cancelled.</b> Check-in and room changes are locked. Saved check-in history remains available.</Banner> : null}
 
       <div className="checkin-summary-pair">
         <Panel className="checkin-summary-frame">
@@ -536,11 +540,11 @@ export function CheckinPage() {
           {m.checkinOpenAt ? <p className="sub">Check-in opens {matchTime(m.checkinOpenAt)}</p> : null}
           <p className="sub">{m.mode === 'onsite' ? 'Players scan the referee’s QR using their own account.' : 'Players submit their own identity photo for referee review.'}</p>
         </Panel>
-      {isRef && m.mode === 'onsite' && m.status === 'checkin_open' ? (
+      {!frozen && isRef && m.mode === 'onsite' && m.status === 'checkin_open' ? (
         <CheckinQrPanel key={m.id} matchId={m.id} mockToken={m.checkinToken} done={done} total={fullRosterKnown ? total : 0} countsKnown={rosterReadState === 'ready'} />
       ) : null}
 
-      {isRef && m.mode === 'online' ? (
+      {!frozen && isRef && m.mode === 'online' ? (
         <Panel className="checkin-summary-frame">
           <div className="spread">
             <h2>Match room</h2>
@@ -565,14 +569,14 @@ export function CheckinPage() {
 
       </div>
 
-      {!isRef && m.mode === 'online' && m.roomCode ? (
+      {(!isRef || frozen) && m.mode === 'online' && m.roomCode ? (
         <Banner kind="ok" icon="check">
           <b>Room code</b>{' '}
           <span style={{ fontFamily: 'var(--f-mono)', fontSize: 16, letterSpacing: '.05em' }}>{m.roomCode}</span>
         </Banner>
       ) : null}
 
-      {isRef && !canJudge ? (
+      {!frozen && isRef && !canJudge ? (
         <Banner kind="warn">
           <b>You can open and close check-in, but not judge it.</b> Confirming a photo, rejecting a
           check-in and checking a player in by hand belong to this match&apos;s referees.
@@ -620,7 +624,7 @@ export function CheckinPage() {
       {everyoneIn ? (
         <Panel>
           <Banner kind="ok" icon="check"><b>Everyone is through.</b> All listed players are verified.</Banner>
-          {m.viewer.can.submitResult ? (
+          {!frozen && m.viewer.can.submitResult ? (
             <button className="btn primary" type="button" style={{ alignSelf: 'flex-start' }}
               onClick={() => navigate(`/m/${m.id}`)}>Record the result</button>
           ) : null}

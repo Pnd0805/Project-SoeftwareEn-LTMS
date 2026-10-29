@@ -29,6 +29,7 @@ export function LivePickem({ match }: { match: MatchDto }) {
   if (prediction.query.isPending) return <Panel quiet><span className="sub">Loading Pick'em…</span></Panel>
   if (prediction.query.isError) return <Empty icon="warn" title="Unable to load Pick'em" sub={prediction.query.error instanceof Error ? prediction.query.error.message : undefined} />
   const busy = prediction.place.isPending || prediction.cancel.isPending
+  const cancelled = match.tournament.status === 'cancelled'
   const error = prediction.place.error ?? prediction.cancel.error
   const { teamA, teamB } = match
   const mine = data?.mine ?? null
@@ -49,7 +50,7 @@ export function LivePickem({ match }: { match: MatchDto }) {
   const unchanged = ready && mine?.scoreData?.[String(teamA.id)] === scoreA && mine?.scoreData?.[String(teamB.id)] === scoreB
   const pickedTeam = mine ? [teamA, teamB].find(team => team?.id === mine.teamId) ?? null : null
   const submit = () => {
-    if (!ready) return
+    if (!ready || cancelled) return
     prediction.place.mutate({ [String(teamA.id)]: scoreA, [String(teamB.id)]: scoreB }, {
       onSuccess: () => setDraft({ a: null, b: null }),
     })
@@ -59,14 +60,14 @@ export function LivePickem({ match }: { match: MatchDto }) {
       {mine ? <Badge kind={mine.status === 'won' ? 'ok' : mine.status === 'lost' ? 'crit' : 'neutral'}>
         {settled ? `${pickLabel(mine.pointsEarned ?? 0, sport?.pickemPoints)} · +${mine.pointsEarned} points` : mine.status === 'void' ? 'Void' : mine.status}
       </Badge> : null}</div>
-    {!data?.isOpen ? <p className="sub">Predictions closed{data?.closedReason ? `: ${data.closedReason.replaceAll('_', ' ')}` : ''}.</p> : null}
+    {cancelled || !data?.isOpen ? <p className="sub">Predictions closed{cancelled ? ': tournament cancelled' : data?.closedReason ? `: ${data.closedReason.replaceAll('_', ' ')}` : ''}.</p> : null}
     {data?.closesAt ? <p className="sub">Scheduled kick-off: {matchTime(data.closesAt)}</p> : null}
     {mine ? <p><b>Your prediction:</b>{' '}
       {mine.scoreData && teamA && teamB
         ? `${teamA.name} ${saved(teamA.id)} – ${saved(teamB.id)} ${teamB.name}`
         : `${pickedTeam?.name ?? 'Team'} to win`}
     </p> : null}
-    {data?.canPredict && teamA && teamB ? <form className="vstack" onSubmit={event => { event.preventDefault(); submit() }}>
+    {!cancelled && data?.canPredict && teamA && teamB ? <form className="vstack" onSubmit={event => { event.preventDefault(); submit() }}>
       <span className="sub">Predict the final score. The side with the higher score is your pick to win.</span>
       <div className="grid2 match-score-inputs">
         <Field label={teamA.name} htmlFor="pk-a">

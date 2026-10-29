@@ -28,7 +28,8 @@ export function TournamentCard({ t, rel, entry, onPreview }: { t: Tournament; re
   const edge = rel === 'run' ? 'var(--red)' : rel === 'playing' ? 'var(--teal)' : null
   const champion = USE_MOCK && t.champion ? team(s, t.champion) : null
 
-  const status = t.status === 'public' ? <Badge kind="ok">Public</Badge>
+  const status = t.status === 'cancelled' ? <Badge kind="crit">Cancelled</Badge>
+    : t.status === 'public' ? <Badge kind="ok">Public</Badge>
     : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
       : <Badge kind="warn">Pending review</Badge>
 
@@ -41,7 +42,7 @@ export function TournamentCard({ t, rel, entry, onPreview }: { t: Tournament; re
         ...(edge ? { boxShadow: `var(--sheen),0 0 0 1px ${edge}` } : {}),
       }}
       aria-haspopup={onPreview ? 'dialog' : undefined}
-      onClick={onPreview ?? (() => navigate(`/t/${t.id}${rel === 'run' ? '/manage' : ''}`))}
+      onClick={onPreview ?? (() => navigate(`/t/${t.id}${rel === 'run' && t.status !== 'cancelled' ? '/manage' : ''}`))}
     >
       <span className="cap" aria-hidden="true"><b>{t.sport}</b></span>
       <span className="spread">{status}<span className="tag">{t.sport}</span></span>

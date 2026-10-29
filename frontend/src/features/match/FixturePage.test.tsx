@@ -83,10 +83,19 @@ beforeEach(() => {
   requestReferee.mockReset()
   updateError = null
   updateReset.mockClear()
+  match.tournament.status = 'public'
   match.tournament.sportName = 'Volleyball'
 })
 
 describe('real-mode fixture referee consent flow', () => {
+  it('keeps a cancelled fixture readable without schedule or assignment writes', () => {
+    match.tournament.status = 'cancelled'
+    renderPage()
+    expect(screen.getByText('Tournament cancelled.')).toBeInTheDocument()
+    expect(screen.getByText('Kick-off')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save schedule' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Send request|Assign/ })).not.toBeInTheDocument()
+  })
   it('marks only missing request fields from 400 and clears stale errors when the draft changes', () => {
     updateError = new ApiError(400, { code: 'SCHEDULE_INCOMPLETE', message: 'Unrelated text', missing: ['venue', 'venue', 'unknown'] })
     renderPage()

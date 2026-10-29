@@ -52,6 +52,7 @@ export const CHAMPION_UNKNOWN = "finished"
 
 /** Keep the entry form aligned with the backend's explicit registration lifecycle. */
 export function registrationClosedReason(t: Tournament, approved: number, realMode: boolean): string {
+  if (t.status === 'cancelled') return 'The tournament was cancelled — entries are closed.'
   if (t.champion) return 'The tournament is finished — entries are closed.'
   if (!realMode && t.drawn) return 'The bracket is drawn — entries are closed.'
   if (t.status !== 'public') return 'Not open for registration yet.'
@@ -73,6 +74,7 @@ export function tournamentView(
   const format = dto.bracketFormat === 'double_elimination' ? 'double'
     : dto.bracketFormat === 'round_robin' ? 'roundrobin' : 'single'
   const status = dto.status === 'pending_approval' ? 'pending'
+    : dto.status === 'cancelled' ? 'cancelled'
     : dto.status === 'private' ? 'private' : dto.status === 'public' ? 'public' : 'public'
   const referees = 'referees' in dto ? dto.referees.map(referee => String(referee.userId)) : []
 

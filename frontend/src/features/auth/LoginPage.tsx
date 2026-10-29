@@ -47,6 +47,12 @@ export function LoginPage() {
   }, [navigate])
 
   const showError = useCallback((error: unknown) => {
+    if (error instanceof ApiError && error.status === 403 && error.code === 'EMAIL_NOT_VERIFIED') {
+      const email = typeof error.extra.email === 'string' && error.extra.email.trim()
+        ? error.extra.email : form.getValues('email')
+      navigate(`/register?step=otp&email=${encodeURIComponent(email)}`, { replace: true })
+      return
+    }
     if (error instanceof ApiError && error.code === 'TOO_MANY_LOGIN_ATTEMPTS') {
       const seconds = error.extra.retryAfterSeconds
       if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0) {
@@ -55,7 +61,7 @@ export function LoginPage() {
     }
     if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => form.setError(field as keyof LoginInput, { type: 'server', message }))
     else form.setError('root', { type: 'server', message: error instanceof Error ? error.message : 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
-  }, [form])
+  }, [form, navigate])
 
   const submit = useCallback(async (values: LoginInput) => {
     if (blockedUntil > Date.now() || login.isPending) return
@@ -121,7 +127,6 @@ export function LoginPage() {
         </button>
         {login.isPending && <span className="sub" role="status">Signing in. Please wait.</span>}
       </form>
-      {(login.error as { code?: string } | null)?.code === 'EMAIL_NOT_VERIFIED' ? <Link className="btn" to={`/register?step=otp&email=${encodeURIComponent(form.getValues('email'))}`}>กลับไปยืนยันอีเมลด้วย OTP</Link> : null}
 
       <Link className="btn ghost" to="/forgot-password">Forgot password?</Link>
       <div className="account-actions">

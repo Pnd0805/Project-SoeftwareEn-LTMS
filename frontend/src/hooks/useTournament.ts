@@ -21,7 +21,7 @@ export const tournamentKeys = {
   application: (id: number) => ["application", id] as const,
 };
 
-export function useTournaments(filters: { status?: Extract<TournamentStatus, "public" | "completed">; sportTypeId?: number } = {}) {
+export function useTournaments(filters: { status?: Extract<TournamentStatus, "public" | "completed" | "cancelled">; sportTypeId?: number } = {}) {
   return useQuery({
     queryKey: tournamentKeys.list(filters),
     queryFn: () => tournamentApi.getTournaments(filters),
@@ -267,6 +267,21 @@ export function useCompleteTournament(tournamentId: number) {
   return useMutation({
     mutationFn: () => tournamentApi.completeTournament(tournamentId),
     onSuccess: () => invalidateTournament(queryClient, tournamentId),
+  });
+}
+
+export function useCancelTournament(tournamentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reason: string) => tournamentApi.cancelTournament(tournamentId, reason),
+    onSuccess: async () => {
+      await invalidateTournament(queryClient, tournamentId);
+      // งานส่วนตัวและคำเชิญต้องหายจากคิวทันทีหลังยกเลิกทัวร์
+      await queryClient.invalidateQueries({ queryKey: ['me'] });
+      await queryClient.invalidateQueries({ queryKey: ['referees'] });
+      await Promise.all(['liveReviews', 'livePrediction', 'liveMvp', 'admin'].map(key =>
+        queryClient.invalidateQueries({ queryKey: [key] })));
+    },
   });
 }
 

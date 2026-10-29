@@ -98,7 +98,7 @@ function findTournament(id: number): TournamentDto | undefined {
   return mockTournaments.find((item) => item.id === id && item.deletedAt === null);
 }
 
-export async function getTournaments(params: { status?: "public" | "completed"; sportTypeId?: number; facultyId?: number; q?: string } = {}): Promise<TournamentListResponse> {
+export async function getTournaments(params: { status?: "public" | "completed" | "cancelled"; sportTypeId?: number; facultyId?: number; q?: string } = {}): Promise<TournamentListResponse> {
   if (USE_MOCK) {
     const items = mockTournaments.filter((item) =>
       item.deletedAt === null &&
@@ -107,7 +107,7 @@ export async function getTournaments(params: { status?: "public" | "completed"; 
     );
     return tournamentMockDelay({ items });
   }
-  /* C06 รองรับรายการสาธารณะที่กำลังแข่ง (public) และจบแล้ว (completed). */
+  /* C06 แยกรายการที่ยังจัดอยู่ จบแล้ว และยกเลิกแล้วตามตัวกรองของ backend */
   const query = new URLSearchParams();
   if (params.status !== undefined) query.set("status", params.status);
   if (params.sportTypeId !== undefined) query.set("sportTypeId", String(params.sportTypeId));
@@ -465,6 +465,12 @@ export async function drawTournament(
 /** C14b — organizer explicitly closes a tournament after every match is completed. */
 export function completeTournament(id: number): Promise<import('../types/tournament.dto').CompleteTournamentResponse> {
   return apiFetch(`/tournaments/${id}/complete`, { method: "POST" });
+}
+
+/** OD-69 — permanent cancellation; never simulated as successful in mock mode. */
+export function cancelTournament(id: number, reason: string): Promise<{ id: number; status: 'cancelled'; fromStatus: 'public' | 'private'; reason: string; cancelledBy: 'organizer' | 'admin' }> {
+  if (USE_MOCK) throw new ApiError(501, { code: 'ENDPOINT_UNAVAILABLE', message: 'Tournament cancellation requires the live server.' });
+  return apiFetch(`/tournaments/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
 }
 
 /** POST /tournaments/:id/announcements — ผู้จัดเท่านั้น · แจ้งหัวหน้าทีมที่ได้ที่นั่ง */

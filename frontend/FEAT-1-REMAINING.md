@@ -1,7 +1,17 @@
-# Final_Present — Current Integration
+# ui-polish-s34 — Current Verification
 
-Frontend branch: `Final_Present`
+Frontend branch: `ui-polish-s34`
 API base path: `/api/v1`
+
+## Cancellation and email-gate preparation — 2026-10-29
+
+- [x] Frontend cancellation confirmation, explicit cancelled history, locked writes, search/notification/review wording and completed-entry decision guards implemented.
+- [x] Prepared `EMAIL_NOT_VERIFIED` Login → OTP routing and missing-code registration recovery.
+- [x] Real API smoke for four roles (85 successful requests), cancellation flow on new empty QA tournament 12, 54 migrations and C1–C8 role audit clean.
+- [x] Frontend TypeScript, lint, production build and final regression suite: 153 files / 1,150 tests passed.
+- [ ] Browser/device acceptance, multi-team cancellation fan-out and live email-gate enforcement remain open. The matching backend gate arrived in the user's pull to `10eedf2`; no backend files were edited by this frontend work.
+- [x] Post-pull review: no incoming frontend overlap; TypeScript and 3 files / 20 focused regressions passed again. Local commit authorized; exclude `frontend/TODO/`. Push not requested.
+- Evidence and final developer-check results: [current QA report](docs/QA-UI-POLISH-S34-2026-10-29.md).
 
 ## Final_Present sync — 2026-10-09
 

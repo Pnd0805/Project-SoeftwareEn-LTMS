@@ -247,7 +247,8 @@ export function FixturePage() {
    * `checkedIn` ยังเป็น 0 หน้าจึงโชว์ฟอร์มให้แก้ แล้วกด Save ไปเจอ 409 MATCH_NOT_CHANGEABLE
    * ส่วนคำขอกรรมการ (FR02) ก็ใช้เงื่อนไขเดียวกันนี้ที่ `assertMatchChangeable`
    */
-  const open = m.status === 'scheduled'
+  const cancelled = m.tournament.status === 'cancelled'
+  const open = !cancelled && m.status === 'scheduled'
   const toggle = (uid: number) =>
     setRefs(cur => {
       const now = cur ?? m.referees.map(r => r.id)
@@ -408,12 +409,12 @@ export function FixturePage() {
         ) : (
           <>
             <Banner kind="neutral">
-              <b>This fixture is set.</b> The server only lets the kick-off, venue and match
+              {cancelled ? <><b>Tournament cancelled.</b> Fixtures and referee assignments are locked. Saved details remain available.</> : <><b>This fixture is set.</b> The server only lets the kick-off, venue and match
               referees change while the match is still scheduled — this one is{' '}
               {MatchStatusLabel[m.status].toLowerCase()}.{' '}
               {m.status === 'checkin_open'
                 ? 'Close check-in from the match page first if it needs to move.'
-                : 'It cannot be moved any more.'}
+                : 'It cannot be moved any more.'}</>}
             </Banner>
             <Facts rows={[
               ['Kick-off', m.scheduledTime ? matchTime(m.scheduledTime) : '—'],

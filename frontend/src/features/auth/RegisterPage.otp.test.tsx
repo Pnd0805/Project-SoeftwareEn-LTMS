@@ -43,6 +43,11 @@ const verify = (container: HTMLElement, code = '007431') => {
   fireEvent.change(screen.getByLabelText('Code'), { target: { value: code } })
   fireEvent.submit(container.querySelector('form')!)
 }
+it('offers registration recovery when a resend cannot deliver a code', () => {
+  show()
+  expect(screen.getByText(/No code within 10 minutes/)).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Register again with the same email.' })).toHaveAttribute('href', '/register')
+})
 it('keeps leading zeros, waits for server confirmation, then lets the user sign in', async () => {
   const { container } = show(); verify(container)
   await screen.findByRole('heading', { name: 'Email verified' })

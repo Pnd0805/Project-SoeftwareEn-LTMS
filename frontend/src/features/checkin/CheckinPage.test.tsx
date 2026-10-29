@@ -54,12 +54,23 @@ function renderPage() {
 beforeEach(() => {
   refetch.mockReset()
   mutation.mutate.mockReset()
+  match.tournament = { id: 3, name: 'Test cup', status: 'public', championTeamId: null, sportTypeId: 1, sportName: 'Football' }
   match.mode = 'onsite'
   match.teamB = null
   match.roomCode = null
   checkinsQuery = {
     data: undefined, isPending: true, isFetching: true, isError: false, refetch,
   }
+})
+
+it('keeps cancelled check-in history readable and removes manual and room writes', () => {
+  match.tournament.status = 'cancelled'
+  match.mode = 'online'
+  checkinsQuery = { data: { items: [] }, isPending: false, isFetching: false, isError: false, refetch }
+  renderPage()
+  expect(screen.getByText('Tournament cancelled.')).toBeInTheDocument()
+  expect(screen.getByText('Checked Player')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Verify manually|Save|Take the photo|Record the result/ })).not.toBeInTheDocument()
 })
 
 it('does not announce complete check-in from cached data after access is denied', () => {

@@ -14,6 +14,22 @@ const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => { setAccessToken("test-session"); fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => { setAccessToken(null); vi.unstubAllGlobals(); });
+it.each(['scheduled', 'checkin_open', 'in_progress', 'finished'])('freezes %s match capabilities when its tournament is cancelled', async status => {
+  fetchMock.mockImplementation(async input => {
+    const path = new URL(String(input), 'http://localhost').pathname.replace('/api/v1', '');
+    if (path === '/matches/9') return json({ id: 9, tournamentId: 42, sportTypeId: 3, round: 1, status, mode: 'onsite', teamA: null, teamB: null });
+    if (path === '/me') return json({ id: 7 });
+    if (path === '/tournaments/42') return json({ id: 42, name: 'Cancelled cup', status: 'cancelled', sportTypeId: 3, organizer: { id: 7 } });
+    if (path === '/matches/9/referees') return json({ items: [{ referee: { id: 7, fullName: 'Referee' } }] });
+    if (path === '/matches/9/lineups') return json({ teamA: null, teamB: null });
+    return json({ items: [] });
+  });
+  const match = await getMatch(9);
+  expect(match.status).toBe(status);
+  expect(match.tournament.status).toBe('cancelled');
+  expect(match.viewer.roles).toEqual(['referee', 'organizer']);
+  expect(Object.values(match.viewer.can).every(value => value === false)).toBe(true);
+});
 
 describe('unfiltered personal schedule', () => {
   const row = (id: number, role: 'player' | 'referee', conflicts: number[]) => ({

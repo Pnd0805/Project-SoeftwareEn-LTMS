@@ -118,6 +118,8 @@ export function TournamentPage() {
     ? isOrg(s, t)
     : !!currentUser && tournamentData?.organizer?.id === currentUser.id
   const completed = tournamentData?.status === 'completed'
+  const cancelled = t.status === 'cancelled'
+  const closed = completed || cancelled
 
   /**
    * Organizer is scoped per tournament and several people hold it at once.
@@ -143,12 +145,12 @@ export function TournamentPage() {
     )
   }
 
-  if (tabParam === 'manage' && completed) {
+  if (tabParam === 'manage' && closed) {
     return (
       <>
         <Crumb back={{ label: t.name, onClick: () => navigate(`/t/${t.id}`) }} />
-        <Empty icon="trophy" title="This tournament is closed"
-          sub="Results are final and editing is locked. You can still publish a closing announcement.">
+        <Empty icon={cancelled ? 'warn' : 'trophy'} title={cancelled ? 'This tournament was cancelled' : 'This tournament is closed'}
+          sub="Editing is locked. You can still publish an announcement.">
           <button className="btn primary" type="button" onClick={() => navigate(`/t/${t.id}/announcements`)}>
             Open announcements
           </button>
@@ -157,7 +159,7 @@ export function TournamentPage() {
     )
   }
 
-  const tabs = [...PUBLIC_TABS, ...(org && !completed ? ['manage'] : [])]
+  const tabs = [...PUBLIC_TABS, ...(org && !closed ? ['manage'] : [])]
   const tab = tabs.includes(tabParam ?? '') ? tabParam! : 'bracket'
   const approved = tournamentId === undefined
     ? regsOf(s, t.id).filter(r => r.status === 'approved')
@@ -206,6 +208,11 @@ export function TournamentPage() {
           {tournamentData?.completedAt ? `Closed ${fmtDateTime(tournamentData.completedAt)}.` : 'Results are final.'}
         </Banner>
       ) : null}
+      {cancelled ? <Banner kind="crit" icon="warn">
+        <b>Tournament cancelled.</b> This cannot be undone. History remains available.
+        {tournamentData?.cancellation?.reason ? <p>Reason: {tournamentData.cancellation.reason}</p> : null}
+        {tournamentData?.cancellation?.cancelledAt ? <p>Cancelled {fmtDateTime(tournamentData.cancellation.cancelledAt)}.</p> : null}
+      </Banner> : null}
 
       <header className={`spread tour-identity${tabParam ? ' tour-identity-compact' : ''}`}>
         <div>
@@ -213,6 +220,7 @@ export function TournamentPage() {
           <div className="hstack page-title-row">
             <h1 className="disp">{t.name}</h1>
             {champion ? <Badge kind="ok">Champion · <TeamChipView team={{ id: champion.id, name: champion.name, logoUrl: 'logoUrl' in champion && typeof champion.logoUrl === 'string' ? champion.logoUrl : 'logo' in champion && typeof champion.logo === 'string' ? champion.logo : null }} /></Badge>
+              : cancelled ? <Badge kind="crit">Cancelled</Badge>
               : completed ? <Badge kind="ok">Completed</Badge>
               : t.status === 'public' ? <Badge kind="ok">Public</Badge>
                 : t.status === 'private' ? <Badge kind="neutral">Private</Badge>
@@ -240,14 +248,14 @@ export function TournamentPage() {
       {winner.data?.runnerUpTeam ? <Panel quiet><span className="tag">Runner-up</span><TeamChipView team={winner.data.runnerUpTeam} /></Panel> : null}
 
       <div className="tour-page">
-        {!USE_MOCK && currentUser && !org && !completed && tournamentId ? <TournamentRefereeWithdrawal tournamentId={tournamentId} /> : null}
+        {!USE_MOCK && currentUser && !org && !closed && tournamentId ? <TournamentRefereeWithdrawal tournamentId={tournamentId} /> : null}
         <nav className="tabs" aria-label="Tournament sections">
           {tabs.map(k => <Link key={k} to={`/t/${t.id}/${k}`} className={`tab ${tab === k ? 'on' : ''}`}
             aria-current={tab === k ? 'page' : undefined}>{k[0].toUpperCase() + k.slice(1)}</Link>)}
         </nav>
         <details className="tour-context" open={!tabParam}>
           <summary>Details, entry & approved teams</summary>
-        <div className={`tour-overview${completed ? ' tour-overview-closed' : ''}`}>
+        <div className={`tour-overview${closed ? ' tour-overview-closed' : ''}`}>
           <section className="tour-overview-frame" aria-label="Tournament details" tabIndex={0}>
           <Panel className="tour-details">
             <h2 className="journey-heading">Details</h2>
@@ -273,7 +281,7 @@ export function TournamentPage() {
             ]} />
           </Panel>
           </section>
-          {!completed ? <section className="tour-overview-frame" aria-label="Tournament entry" tabIndex={0}>
+          {!closed ? <section className="tour-overview-frame" aria-label="Tournament entry" tabIndex={0}>
           {/* ส่งยอดทีมที่ผ่านการอนุมัติลงไปด้วย — โหมดจริง detail ไม่มี applications
               แผงสมัครเลยตกไปนับจาก store แล้วขึ้น "0 of 4" ทั้งที่มีทีมเข้าแล้ว */}
           <EntryPanel t={t} organizer={org} applications={tournamentData?.applications}

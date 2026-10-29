@@ -78,6 +78,19 @@ function pending() {
   return { data: undefined, isPending: true, isError: false, error: null, refetch: vi.fn() }
 }
 const httpError = (status: number) => new ApiError(status, { code: 'TEST_ERROR', message: 'Read failed' })
+it('shows cancelled history to a guest with its reason and no entry or manage actions', () => {
+  hooks.tournament.mockReturnValue(ready({ ...dto, status: 'cancelled', cancellation: {
+    reason: 'Venue unavailable', cancelledAt: '2026-10-29T09:00:00Z', cancelledBy: 'organizer',
+  } }))
+  detail()
+  expect(screen.getByText('Tournament cancelled.')).toBeInTheDocument()
+  expect(screen.getByText('Reason: Venue unavailable')).toBeInTheDocument()
+  expect(screen.getByText(/Cancelled .*UTC\+7/)).toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Tournament entry' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Manage' })).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Community' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Announcements' })).toBeInTheDocument()
+})
 function search(q = 'Campus') {
   return render(<MemoryRouter initialEntries={[`/search/${q}`]}>
     <Routes><Route path="/search/:q" element={<SearchPage />} /></Routes>
@@ -108,6 +121,11 @@ beforeEach(() => {
 })
 
 describe('Search applicable source states', () => {
+  it('offers a cancelled filter backed by the cancelled list query', () => {
+    search()
+    fireEvent.change(screen.getByLabelText('Tournament status'), { target: { value: 'cancelled' } })
+    expect(hooks.tournaments).toHaveBeenLastCalledWith({ status: 'cancelled' })
+  })
   it('shows genuine Guest public-empty results despite a disabled pending player read', () => {
     search()
     expect(screen.getByText('Nothing matched “Campus”')).toBeInTheDocument()

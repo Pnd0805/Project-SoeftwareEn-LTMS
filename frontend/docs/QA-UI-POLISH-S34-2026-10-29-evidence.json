@@ -1,0 +1,508 @@
+{
+  "date": "2026-10-29",
+  "branch": "ui-polish-s34",
+  "baseCommit": "a031a1e",
+  "mode": "real",
+  "proxy": "http://127.0.0.1:5173/api/v1",
+  "backend": "http://localhost:8000",
+  "migrations": 54,
+  "roleAudit": "C1-C8 clean",
+  "smoke": [
+    {
+      "path": "/sport-types",
+      "status": 200,
+      "count": 5
+    },
+    {
+      "path": "/faculties",
+      "status": 200,
+      "count": 8
+    },
+    {
+      "path": "/tournaments",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments?status=completed",
+      "status": 200,
+      "count": 1
+    },
+    {
+      "path": "/tournaments?status=cancelled",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/me",
+      "status": 200
+    },
+    {
+      "path": "/me/teams",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/tournaments",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/me/matches",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/referee-invitations",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/referee-requests",
+      "status": 200
+    },
+    {
+      "path": "/me/applications",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/notifications",
+      "status": 200,
+      "count": 20
+    },
+    {
+      "path": "/tournaments",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/11/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/11/matches",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/11/announcements",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/8/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/8/matches",
+      "status": 200,
+      "count": 3
+    },
+    {
+      "path": "/tournaments/8/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8/announcements",
+      "status": 200,
+      "count": 2
+    },
+    {
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/me",
+      "status": 200
+    },
+    {
+      "path": "/me/teams",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/tournaments",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/matches",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/referee-invitations",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/referee-requests",
+      "status": 200
+    },
+    {
+      "path": "/me/applications",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/notifications",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/11/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/11/matches",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/11/announcements",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/8/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/8/matches",
+      "status": 200,
+      "count": 3
+    },
+    {
+      "path": "/tournaments/8/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8/announcements",
+      "status": 200,
+      "count": 2
+    },
+    {
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/me",
+      "status": 200
+    },
+    {
+      "path": "/me/teams",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/tournaments",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/matches",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/me/referee-invitations",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/referee-requests",
+      "status": 200
+    },
+    {
+      "path": "/me/applications",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/notifications",
+      "status": 200,
+      "count": 20
+    },
+    {
+      "path": "/tournaments",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/11/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/11/matches",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/11/announcements",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/8/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/8/matches",
+      "status": 200,
+      "count": 3
+    },
+    {
+      "path": "/tournaments/8/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8/announcements",
+      "status": 200,
+      "count": 2
+    },
+    {
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/me",
+      "status": 200
+    },
+    {
+      "path": "/me/teams",
+      "status": 200,
+      "count": 1
+    },
+    {
+      "path": "/me/tournaments",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/matches",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/me/referee-invitations",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/me/referee-requests",
+      "status": 200
+    },
+    {
+      "path": "/me/applications",
+      "status": 200,
+      "count": 3
+    },
+    {
+      "path": "/me/notifications",
+      "status": 200,
+      "count": 20
+    },
+    {
+      "path": "/tournaments",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/11/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/11/matches",
+      "status": 200,
+      "count": 6
+    },
+    {
+      "path": "/tournaments/11/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/11/announcements",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8",
+      "status": 200
+    },
+    {
+      "path": "/tournaments/8/teams",
+      "status": 200,
+      "count": 4
+    },
+    {
+      "path": "/tournaments/8/matches",
+      "status": 200,
+      "count": 3
+    },
+    {
+      "path": "/tournaments/8/eligibility-rules",
+      "status": 200,
+      "count": 0
+    },
+    {
+      "path": "/tournaments/8/announcements",
+      "status": 200,
+      "count": 2
+    }
+  ],
+  "cancellation": {
+    "id": 12,
+    "name": "QA cancellation 2026-10-29T14:07:01.785Z",
+    "reason": "QA only: verify permanent cancellation of an empty test tournament",
+    "cancellation": {
+      "cancelledAt": "2026-10-29T14:07:01.000Z",
+      "reason": "QA only: verify permanent cancellation of an empty test tournament",
+      "cancelledBy": "organizer"
+    },
+    "evidence": [
+      {
+        "path": "/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/tournaments",
+        "method": "POST",
+        "status": 201
+      },
+      {
+        "path": "/tournaments/12/approve",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/tournaments/12/teams",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/tournaments/12/matches",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/tournaments/12/cancel",
+        "method": "POST",
+        "status": 400,
+        "code": "VALIDATION_FAILED"
+      },
+      {
+        "path": "/tournaments/12/cancel",
+        "method": "POST",
+        "status": 403,
+        "code": "NOT_ORGANIZER"
+      },
+      {
+        "path": "/tournaments/12/cancel",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/tournaments/12",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/tournaments/12/cancel",
+        "method": "POST",
+        "status": 409,
+        "code": "TOURNAMENT_CANCELLED"
+      },
+      {
+        "path": "/tournaments/12",
+        "method": "PATCH",
+        "status": 409,
+        "code": "TOURNAMENT_CANCELLED"
+      },
+      {
+        "path": "/tournaments?status=cancelled",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/tournaments",
+        "method": "GET",
+        "status": 200
+      }
+    ]
+  }
+}

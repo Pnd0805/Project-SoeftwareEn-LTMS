@@ -1,7 +1,7 @@
 export interface ReviewSummary {
   summary: { average: number | null; count: number; distribution: Record<string, number> };
   status: 'not_started' | 'open' | 'closed';
-  openedBy: 'event_start' | 'completed' | 'first_match' | null;
+  openedBy: 'event_start' | 'completed' | 'first_match' | 'cancelled' | null;
   opensAt: string | null;
   closesAt: string | null;
   mine: { id: number; rating: number; content: string | null; createdAt: string } | null;

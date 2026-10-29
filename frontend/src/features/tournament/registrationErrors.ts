@@ -10,6 +10,12 @@ const ruleNames: Record<string, string> = {
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' ? value as Record<string, unknown> : null
 
+export function closedTournamentRegistrationMessage(error: ApiError): string | null {
+  if (error.code === 'TOURNAMENT_CANCELLED') return 'This tournament was cancelled. Registration, cancellation and withdrawal are locked. Refresh to view its history.'
+  if (error.code === 'TOURNAMENT_COMPLETED') return 'This tournament is completed. Entries can no longer be changed.'
+  return null
+}
+
 /** Names and causes come from the server; member rows only resolve returned user IDs. */
 export function registrationMemberFailures(error: ApiError, members: RegistrationMember[] = []): RegistrationMemberFailure[] {
   const name = (id: number, value?: unknown) => typeof value === 'string' && value.trim()
