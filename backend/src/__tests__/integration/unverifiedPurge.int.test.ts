@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { one, testDb } from './helpers/db.js';
-import { createUser } from './helpers/factories.js';
+import { createSportType, createTeam, createUser } from './helpers/factories.js';
 import { purgeUnverifiedOlderThan } from '../../repositories/user.repo.js';
 
 /**
@@ -77,3 +77,29 @@ describe('งานกวาดบัญชีที่ไม่ยืนยั�
         await expect(purgeUnverifiedOlderThan(24)).resolves.toBe(0);
     });
 });
+
+/**
+ * 🔴 29 ต.ค. 2569 — เดิม DELETE ก้อนเดียว ⇒ บัญชีเดียวที่มีข้อมูลผูกอยู่ทำให้ทั้งรอบล้ม (ER_ROW_IS_REFERENCED)
+ *   ไม่มีใครถูกลบเลย และ error ซ้ำทุกชั่วโมง · เจอจริงตอนลองรัน: บัญชีหนึ่งเป็นหัวหน้าทีม อีกบัญชีไม่มีอะไร → ไม่ถูกลบทั้งคู่
+ */
+describe('ลบทีละบัญชี — บัญชีที่มีข้อมูลผูกอยู่ไม่ขวางคนอื่น', () => {
+    it('🔴 บัญชีที่เป็นหัวหน้าทีม → ข้าม (ไม่ล้ม) · บัญชีที่ไม่มีอะไรผูก → ลบตามปกติ', async () => {
+        const idle = await agedUser(30, false);
+        await addOtp(idle.id);
+        const active = await agedUser(30, false);
+        await addOtp(active.id);
+        await createTeam({ leader: active.id, sportTypeId: await createSportType() });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        await expect(purgeUnverifiedOlderThan(24)).resolves.toBe(1);
+
+        expect(await exists(idle.id)).toBe(false);
+        expect(await exists(active.id)).toBe(true);
+        // ใบ OTP ของคนที่ถูกข้ามต้องยังอยู่ (ย้อน transaction ของบัญชีนั้นทั้งก้อน)
+        const otps = await one<{ c: number }>('SELECT COUNT(*) AS c FROM email_verification_otps WHERE user_id = ?', [active.id]);
+        expect(otps!.c).toBe(1);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('ข้าม 1 บัญชี'));
+        warn.mockRestore();
+    });
+});
+

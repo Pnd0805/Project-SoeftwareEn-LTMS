@@ -365,5 +365,11 @@ export async function resetPassword(token : string , newPassword : string) : Pro
  *     ซึ่งใช้ได้จริงเพราะอีเมลว่างแล้ว · **ไม่ใช่ทางตันทางเทคนิค แต่เป็นเรื่องบอกผู้ใช้ให้รู้**
  */
 export async function purgeUnverifiedAccounts(){
+  /**
+   * 🔴 29 ต.ค. 2569 (UserNaito เคาะ) — ลบเฉพาะตอนเปิดด่าน REQUIRE_EMAIL_VERIFIED
+   *   ด่านปิด = คนที่ยังไม่ยืนยันล็อกอินและใช้งานได้ตามปกติ ⇒ เขาเป็นผู้ใช้จริง ไม่ใช่ "สมัครไม่สำเร็จ"
+   *   เดิมงานนี้ลบไม่ดูสวิตช์ ⇒ บัญชีที่ใช้งานอยู่หายเงียบหลัง 24 ชม. หรือถ้ามีข้อมูลผูกอยู่ ทั้งรอบล้ม FK
+   */
+  if(!env.REQUIRE_EMAIL_VERIFIED) return 0;
   return userRepo.purgeUnverifiedOlderThan(env.UNVERIFIED_ACCOUNT_TTL_HOURS);
 }
