@@ -158,7 +158,7 @@ export async function updateUserType(userId : number , userType : 'student' | 's
     await pool.query(`UPDATE users SET user_type = ? WHERE user_id = ?` , [userType , userId]);
 }
 
-/** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ขึ้นต้น) · ไม่คืนอีเมลใน response จึงเดาอีเมลคนอื่นจากผลลัพธ์ไม่ได้ */
+/** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ตรงทั้งอีเมล / ตรงทั้งหน้า @) · ไม่คืนอีเมลใน response */
 export type UserSearchRow = Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key' | 'year'> & {
     faculty_name : string | null;
 };
@@ -180,11 +180,24 @@ export async function searchByName(userName : string) : Promise<UserSearchRow[]>
         `SELECT u.user_id , u.full_name , u.profile_image_key , u.year , f.name AS faculty_name
            FROM users u
            LEFT JOIN faculties f ON f.faculty_id = u.faculty_id
-          WHERE (u.full_name LIKE ? OR u.email LIKE ?) AND ${notSuspendedSql('u')}
+          WHERE (u.full_name LIKE ? OR u.email = ? OR SUBSTRING_INDEX(u.email , '@' , 1) = ?)
+            AND ${notSuspendedSql('u')}
             AND ${emailVerifiedSql('u')}
-          ORDER BY u.full_name LIMIT 20` , [`%${userName}%`, `${userName}%`]);
+          ORDER BY u.full_name LIMIT 20` , [`%${escapeLike(userName)}%`, userName, userName]);
     return rows;
-}; 
+};
+
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 6 — ค้นหาผู้ใช้แล้วสืบอีเมลได้
+ *   ① `%` `_` ไม่ถูก escape ⇒ พิมพ์ `%%%` (ผ่านด่าน 3 ตัวอักษร) ได้รายชื่อ 20 คนแรกโดยไม่ต้องรู้ชื่อ
+ *   ② เดิมค้นอีเมลแบบ "ขึ้นต้นด้วย" ⇒ ไล่ทีละตัวอักษรแล้วรู้ว่าอีเมลไหนเป็นของใคร (โปรไฟล์ไม่โชว์อีเมล)
+ *   ⇒ ชื่อยังค้นบางส่วนได้เหมือนเดิม · อีเมลต้อง **ตรงทั้งอีเมล** หรือ **ตรงทั้งส่วนหน้า @** (เช่นรหัสนิสิต)
+ *     เชิญด้วยอีเมล/รหัสนิสิตยังทำได้ แต่สืบทีละตัวไม่ได้แล้ว
+ * ★ backslash ต้อง escape ก่อน — ไม่งั้น `\%` ที่ผู้ใช้พิมพ์จะกลายเป็นตัว escape ของเราเอง
+ */
+export function escapeLike(value : string) : string {
+    return value.replace(/[\\%_]/g , ch => `\\${ch}`);
+}
 
 /**
  * B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — เปลี่ยนรหัสผ่านแล้วบัตรเก่าทุกใบต้องใช้ไม่ได้
