@@ -7,7 +7,7 @@ vi.mock('../../repositories/feedback.repo.js', () => ({
   isTournamentInsider: vi.fn(),
   findMvpCandidatesOfMatch: vi.fn(() => Promise.resolve([])),
   findMatchPlayerStats: vi.fn(() => Promise.resolve([])),
-  isMemberOfMatchTeams: vi.fn(() => Promise.resolve(false)),
+  findMvpVoterConflict: vi.fn(() => Promise.resolve(null)),
   findOwnMatchVote: vi.fn(() => Promise.resolve(null)),
   findOwn: vi.fn(() => Promise.resolve(null)),
   upsertOrganizerFeedback: vi.fn(),
@@ -75,7 +75,7 @@ beforeEach(() => {
   vi.mocked(FeedbackRepo.listComments).mockResolvedValue({ rows: [], totalItems: 0 });
   vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue([]);
   vi.mocked(FeedbackRepo.findMatchPlayerStats).mockResolvedValue([]);
-  vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
+  vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue(null);
   vi.mocked(FeedbackRepo.findOwnMatchVote).mockResolvedValue(null);
   vi.mocked(MatchRepo.findById).mockResolvedValue(match());
   vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue(null);
@@ -339,7 +339,7 @@ describe('castMvpVote (รายแมตช์)', () => {
   beforeEach(() => {
     vi.mocked(MatchRepo.findById).mockResolvedValue(match());
     vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue(null);
-    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
+    vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue(null);
     vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue(candidates);
     vi.mocked(FeedbackRepo.findOwnMatchVote).mockReset().mockResolvedValue(null);
     vi.mocked(TournamentRepo.findTournamentById).mockResolvedValue(tournament({ tournament_status: 'public', completed_at: null }));
@@ -373,9 +373,28 @@ describe('castMvpVote (รายแมตช์)', () => {
   });
 
   it('403 for a member of either team — even one who did not play', async () => {
-    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(true);
+    vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue('team_member');
     expect(await errOf(Service.castMvpVote(7, 9, 101))).toMatchObject({ status: 403, code: 'MVP_VOTER_NOT_ELIGIBLE' });
     expect(FeedbackRepo.upsertMvpVote).not.toHaveBeenCalled();
+  });
+
+  // มติ 30 ต.ค. 2569 — ORG และกรรมการของแมตช์โหวตไม่ได้ด้วย · ★ เหตุผลต่างกันต้องได้ข้อความต่างกัน
+  it.each([
+    ['organizer' as const, 'ผู้จัด'],
+    ['referee' as const, 'กรรมการ'],
+  ])('403 for the %s of the match, with a message that says which role', async (reason, word) => {
+    vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue(reason);
+    const err = await errOf(Service.castMvpVote(7, 9, 101));
+    expect(err).toMatchObject({ status: 403, code: 'MVP_VOTER_NOT_ELIGIBLE', extra: { reason } });
+    expect((err as unknown as { message : string }).message).toContain(word);
+    expect(FeedbackRepo.upsertMvpVote).not.toHaveBeenCalled();
+  });
+
+  // ★ หัวใจของมติ 30 ต.ค. — คนนอกที่ไม่เกี่ยวข้องกับแมตช์ **โหวตได้** (ไม่ต้องอยู่ในรายชื่อลงแข่งของทัวร์)
+  it('an unrelated logged-in user can vote — being outside the tournament is not a conflict', async () => {
+    vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue(null);
+    await expect(Service.castMvpVote(7, 9999, 101)).resolves.toMatchObject({ isNew: true });
+    expect(FeedbackRepo.upsertMvpVote).toHaveBeenCalledWith(20, 7, 9999, 101);
   });
 
   it('409 MVP_VOTING_NOT_OPEN before the match is finished', async () => {
@@ -418,7 +437,7 @@ describe('getMvpVotes (รายแมตช์)', () => {
   beforeEach(() => {
     vi.mocked(MatchRepo.findById).mockResolvedValue(match());
     vi.mocked(MatchResultRepo.findVerifiedResultByMatchId).mockResolvedValue(null);
-    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(false);
+    vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue(null);
     vi.mocked(FeedbackRepo.findMvpCandidatesOfMatch).mockResolvedValue(candidates);
     vi.mocked(FeedbackRepo.findMatchPlayerStats).mockResolvedValue([
       { user_id: 101, stat_key: 'goals', stat_label_th: 'ประตู', value: 2 },
@@ -479,7 +498,7 @@ describe('getMvpVotes (รายแมตช์)', () => {
     vi.mocked(FeedbackRepo.findOwnMatchVote).mockResolvedValue(feedbackRow({ feedback_type: 'mvp_vote', voted_for_user_id: 102 }));
     expect(await Service.getMvpVotes(7, 50)).toMatchObject({ mine: { votedForUserId: 102 }, canVote: true });
     expect(await Service.getMvpVotes(7)).toMatchObject({ mine: null, canVote: false });
-    vi.mocked(FeedbackRepo.isMemberOfMatchTeams).mockResolvedValue(true);
+    vi.mocked(FeedbackRepo.findMvpVoterConflict).mockResolvedValue('team_member');
     expect((await Service.getMvpVotes(7, 9)).canVote).toBe(false);
   });
 

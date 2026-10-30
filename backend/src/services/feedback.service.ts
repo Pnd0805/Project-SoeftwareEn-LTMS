@@ -6,7 +6,7 @@ import * as MatchResultRepo from '../repositories/matchResult.repo.js';
 import { MVP_VOTING_HOURS } from '../config/scoring.js';
 import type { MatchRow, TournamentRow } from '../types/db.js';
 import type { OrganizerFeedbackInput } from '../schemas/feedback.schema.js';
-import type { CommentListRow, FeedbackRow } from '../repositories/feedback.repo.js';
+import type { CommentListRow, FeedbackRow, MvpVoterConflict } from '../repositories/feedback.repo.js';
 import { toReviewItemDto, toReviewSummaryDto, toMvpCandidateDto, toMyReviewDto } from '../mappers/feedback.mapper.js';
 import * as NotificationService from './notification.service.js';
 import type { NotificationInput } from '../repositories/notification.repo.js';
@@ -188,7 +188,10 @@ export async function getOrganizerFeedback(tournamentId: number, userId?: number
 
 // ───────────────────────── โหวต MVP รายแมตช์ (มติ 26 ก.ย. 2569 · OD-23 แก้) ─────────────────────────
 //   1  แทนที่ MVP ระดับทัวร์ทั้งหมด — ไม่มี /tournaments/:id/mvp-votes อีกแล้ว
-//   2  โหวตได้ทุกคนที่ล็อกอิน ยกเว้น "สมาชิกของสองทีมในแมตช์นั้น" (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม)
+//   2  โหวตได้ทุกคนที่ล็อกอิน ยกเว้น "คนที่มีส่วนเกี่ยวข้องกับแมตช์นั้น" — มติ 30 ต.ค. 2569 ขยายจากมติ 26 ก.ย.
+//      ① ORG ของทัวร์นั้น  ② กรรมการของแมตช์นั้น  ③ สมาชิกของสองทีมในแมตช์นั้น (กันทั้งทีม ไม่ใช่แค่คนที่ลงสนาม)
+//      🔴 กฎชุดนี้อยู่สองที่และต้องตรงกัน: `FeedbackRepo.findMvpVoterConflict` (ตอนกดโหวต)
+//         กับ `mvpEligibleVoterSql()` (ตอนนับคะแนน) — ดูเหตุผลเต็มใน utils/mvpVoter.ts
 //   3+4 เปิดทันทีที่แมตช์จบ (actual_end_time) · ปิดหลังจากนั้น MVP_VOTING_HOURS ชั่วโมง — ไม่เกี่ยวกับเวลาปิดทัวร์
 //   5  ผู้ถูกโหวต = คนที่เช็คอินสำเร็จในแมตช์นั้น · 6 แมตช์ที่ไม่ได้แข่งจริง (ชนะบาย/ปรับแพ้) ไม่มีโหวต
 //   +  ทัวร์ต้อง public หรือ completed (มติ 26 ก.ย. — กฎเดียวกับความเห็นต่อทัวร์และ Pick'em):
@@ -218,6 +221,16 @@ async function isDecidedWithoutPlay(matchId: number): Promise<boolean> {
     return result?.match_result_status === 'walkover';
 }
 
+/**
+ * ข้อความบอกเหตุที่โหวตไม่ได้ — คนละข้อความต่อบทบาท
+ * ★ "โหวตไม่ได้" เฉย ๆ ทำให้คนเข้าใจว่าระบบพัง · บอกบทบาทไปเลยว่าเพราะเกี่ยวข้องกับแมตช์นี้
+ */
+function mvpVoterConflictMessage(conflict : MvpVoterConflict): string {
+    if (conflict === 'organizer') return 'คุณเป็นผู้จัดทัวร์นาเมนต์นี้ จึงโหวต MVP ของแมตช์ในทัวร์นี้ไม่ได้';
+    if (conflict === 'referee') return 'คุณเป็นกรรมการของแมตช์นี้ จึงโหวต MVP ของแมตช์นี้ไม่ได้';
+    return 'สมาชิกของทีมที่ลงแข่งแมตช์นี้โหวต MVP ของแมตช์นี้ไม่ได้';
+}
+
 /** ลำดับการตรวจตามที่ตกลงไว้: จบหรือยัง → แข่งจริงไหม → ยังไม่หมดเวลา → คนโหวตมีสิทธิ์ไหม */
 async function assertVotable(match: MatchRow): Promise<void> {
     const window = mvpWindow(match);
@@ -242,8 +255,10 @@ export async function castMvpVote(matchId: number, userId: number, candidateId: 
         throw new AppError(409, 'TOURNAMENT_NOT_PUBLIC', 'ทัวร์นาเมนต์นี้ไม่ได้เปิดเผยแพร่ โหวต MVP ไม่ได้');
     }
 
-    if (await FeedbackRepo.isMemberOfMatchTeams(matchId, userId)) {
-        throw new AppError(403, 'MVP_VOTER_NOT_ELIGIBLE', 'สมาชิกของทีมที่ลงแข่งแมตช์นี้โหวต MVP ของแมตช์นี้ไม่ได้');
+    const voterConflict = await FeedbackRepo.findMvpVoterConflict(matchId, userId);
+    if (voterConflict !== null) {
+        throw new AppError(403, 'MVP_VOTER_NOT_ELIGIBLE', mvpVoterConflictMessage(voterConflict),
+            { reason: voterConflict });
     }
 
     const candidates = await FeedbackRepo.findMvpCandidatesOfMatch(matchId);
@@ -286,7 +301,7 @@ export async function getMvpVotes(matchId: number, userId?: number) {
         mine = own && !own.removed_at ? { votedForUserId: own.voted_for_user_id! } : null;
         canVote = window.isOpen && available && !own?.removed_at
             && !!tournament && isOpenToPublic(tournament)
-            && !(await FeedbackRepo.isMemberOfMatchTeams(matchId, userId));
+            && (await FeedbackRepo.findMvpVoterConflict(matchId, userId)) === null;
     }
 
     return {

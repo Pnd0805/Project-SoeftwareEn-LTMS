@@ -148,18 +148,49 @@ export async function findMatchPlayerStats(matchId: number): Promise<MatchPlayer
     return rows;
 }
 
-/** โหวตไม่ได้ถ้าอยู่ในทีมใดทีมหนึ่งของแมตช์ (ข้อ 2 — กันทั้งทีม ไม่ใช่แค่รายชื่อที่ลงแข่ง · หัวหน้าทีมนับด้วย) */
-export async function isMemberOfMatchTeams(matchId: number, userId: number): Promise<boolean> {
-    const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT 1 FROM matches m JOIN team_members tm ON tm.team_id IN (m.team_a_id, m.team_b_id)
-         WHERE m.match_id = ? AND tm.user_id = ?
-         UNION ALL
-         SELECT 1 FROM matches m JOIN teams t ON t.team_id IN (m.team_a_id, m.team_b_id)
-         WHERE m.match_id = ? AND t.leader_id = ?
+/** ทำไมคนนี้โหวต MVP แมตช์นี้ไม่ได้ — `null` = โหวตได้ */
+export type MvpVoterConflict = 'organizer' | 'referee' | 'team_member';
+
+/**
+ * ด่าน "มีส่วนเกี่ยวข้องกับแมตช์นี้ไหม" (มติ 30 ต.ค. 2569 · แทน `isMemberOfMatchTeams` เดิม)
+ *
+ * โหวตได้ทุกคนที่ล็อกอิน ยกเว้นสามกลุ่ม: ORG ของทัวร์ · กรรมการของแมตช์นี้ · คนในสองทีมที่ลงแข่ง
+ * ★ คืน **เหตุผล** ไม่ใช่ boolean — เพื่อบอกผู้ใช้ได้ว่าทำไมโหวตไม่ได้
+ *   "คุณเป็นกรรมการแมตช์นี้" กับ "คุณอยู่ในทีมที่ลงแข่ง" คนละเรื่องกันในสายตาคนใช้งาน
+ * ★ ทีมนับทั้งสมาชิกและหัวหน้าทีม และนับทั้งทีม ไม่ใช่แค่รายชื่อที่ลงแข่ง (ข้อ 2 มติ 26 ก.ย.)
+ *
+ * 🔴 ชุดเงื่อนไขต้องตรงกับ `mvpEligibleVoterSql()` (utils/mvpVoter.ts) ที่ใช้ตอนนับคะแนน
+ *   แก้ที่นี่แล้วไม่แก้ที่นั่น = "กดโหวตผ่าน แต่โหวตไม่ถูกนับ" ซึ่งคือข้อเสียที่เพิ่งแก้ไป
+ * 🔴 คนเดียวเข้าได้หลายกลุ่มพร้อมกัน (ORG ที่เป็นหัวหน้าทีมด้วยก็มีได้) ⇒ ต้อง `ORDER BY` ให้ชัด
+ *   `UNION ALL` ไม่รับประกันลำดับแถว ⇒ `LIMIT 1` เปล่า ๆ จะได้เหตุผลสลับไปมาโดยไม่มีอะไรเปลี่ยน
+ *   เอา ORG ก่อน เพราะเป็นบทบาทที่อธิบายได้ชัดที่สุดว่าทำไมโหวตไม่ได้
+ */
+export async function findMvpVoterConflict(matchId: number, userId: number): Promise<MvpVoterConflict | null> {
+    const [rows] = await pool.query<({ conflict: MvpVoterConflict } & RowDataPacket)[]>(
+        `SELECT c.conflict FROM (
+            SELECT 'organizer' AS conflict
+              FROM matches m JOIN tournaments t ON t.tournament_id = m.tournament_id
+             WHERE m.match_id = ? AND t.requested_by_user_id = ?
+             UNION ALL
+            SELECT 'referee' AS conflict
+              FROM match_referees mr
+              JOIN tournament_referees tr ON tr.tournament_referee_id = mr.tournament_referee_id
+             WHERE mr.match_id = ? AND mr.assignment_status = 'accepted'
+               AND tr.removed_at IS NULL AND tr.user_id = ?
+             UNION ALL
+            SELECT 'team_member' AS conflict
+              FROM matches m JOIN team_members tm ON tm.team_id IN (m.team_a_id, m.team_b_id)
+             WHERE m.match_id = ? AND tm.user_id = ?
+             UNION ALL
+            SELECT 'team_member' AS conflict
+              FROM matches m JOIN teams te ON te.team_id IN (m.team_a_id, m.team_b_id)
+             WHERE m.match_id = ? AND te.leader_id = ?
+         ) c
+         ORDER BY FIELD(c.conflict, 'organizer', 'referee', 'team_member')
          LIMIT 1`,
-        [matchId, userId, matchId, userId]
+        [matchId, userId, matchId, userId, matchId, userId, matchId, userId]
     );
-    return rows.length > 0;
+    return rows[0]?.conflict ?? null;
 }
 
 /** โหวตของคนนี้ในแมตช์นี้ (รวมที่แอดมินลบแล้ว) */
