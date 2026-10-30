@@ -252,6 +252,7 @@
 User-approved scope: align the withdrawal-history checkbox on the left with an explanation of what it includes; show individual Hard filter results beside submitted players in the entry-review dialog.
 
 - [x] Reuse the existing checkbox styling inside a left-aligned wrapper. Associate the explanation with the input; preserve the existing open/history filtering and withdrawal decisions.
+- [x] Status-wording follow-up: show รอพิจารณา / อนุมัติแล้ว / ปฏิเสธแล้ว / ยกเลิกแล้ว in withdrawal badges and feedback while preserving API status values. Focused withdrawal checks: **2 files / 4 tests passed**; TypeScript, lint and whitespace checks passed.
 - [x] Render Passed/Failed with the backend-provided failure reason using `GET /applications/:id` snapshot results, matched by `userId` rather than array order. Missing/malformed results show Not reported; team-level success is not substituted for missing player results. Mock mode uses its existing Hard filter rules.
 - [x] Focused verification: **4 files / 18 tests passed**, including mismatched result order, absent/malformed details, missing failure reason and the checkbox's accessible explanation. TypeScript and lint passed. API contracts, permissions and Backend files unchanged.
 - [x] Full frontend regression: **164 files / 1,284 tests passed** (`npx.cmd vitest run --maxWorkers=4`); production build and whitespace checks passed.

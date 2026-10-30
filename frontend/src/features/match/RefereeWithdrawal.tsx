@@ -7,6 +7,12 @@ import { fmtDateTime } from '../../shared/dateFormat'
 import './referee-withdrawal.css'
 
 const message = (e: unknown) => e instanceof Error ? e.message : 'ส่งคำขอไม่สำเร็จ กรุณาลองใหม่'
+const withdrawalStatusLabel: Record<BackendRefereeRequestDto['status'], string> = {
+  open: 'รอพิจารณา',
+  applied: 'อนุมัติแล้ว',
+  declined: 'ปฏิเสธแล้ว',
+  cancelled: 'ยกเลิกแล้ว',
+}
 
 export function RefereeWithdrawal({ tournamentId, tournamentName, matchId }: { tournamentId: number; tournamentName?: string; matchId?: number }) {
   const mutation = useRequestRefereeWithdrawal()
@@ -36,7 +42,7 @@ export function RefereeWithdrawal({ tournamentId, tournamentName, matchId }: { t
         <button className="btn danger" disabled={!valid || mutation.isPending} onClick={() => {
           if (!valid || mutation.isPending) return
           mutation.mutate(scope === 'match' && matchId ? { scope, matchId, reason: reason.trim() } : { scope: 'tournament', tournamentId, reason: reason.trim() }, {
-            onSuccess: r => { setNotice(`ส่งคำขอ #${r.id} แล้ว สถานะ: ${r.status === 'open' ? 'รอผู้จัดพิจารณา' : r.status}`); setOpen(false) },
+            onSuccess: r => { setNotice(`ส่งคำขอ #${r.id} แล้ว สถานะ: ${withdrawalStatusLabel[r.status]}`); setOpen(false) },
           })
         }}>{mutation.isPending ? 'Sending…' : 'Send withdrawal request'}</button>
       </div>
@@ -80,7 +86,7 @@ export function OrganizerWithdrawals({ tournamentId }: { tournamentId: number })
       <b>{r.refereeA.user.fullName} · {r.withdrawScope === 'tournament' ? 'ถอนจากทั้งทัวร์' : `ถอนจากแมตช์ #${r.matchA?.id ?? '—'}`}</b>
       <div style={{ whiteSpace: 'pre-wrap' }}>เหตุผล: {r.reason ?? 'ไม่ระบุ'}</div>
       <div className="sub">ยื่นเมื่อ {fmtDateTime(r.createdAt)}</div>
-      <Badge kind={r.status === 'open' ? 'warn' : r.status === 'applied' ? 'ok' : 'neutral'}>{r.status}</Badge>
+      <Badge kind={r.status === 'open' ? 'warn' : r.status === 'applied' ? 'ok' : 'neutral'}>{withdrawalStatusLabel[r.status]}</Badge>
       {r.status === 'open' ? <div className="hstack">
         <button className="btn danger" disabled={busy} onClick={() => { accept.reset(); decline.reset(); setSelected({ request: r, approve: false }) }}>Decline withdrawal</button>
         <button className="btn primary" disabled={busy} onClick={() => { accept.reset(); decline.reset(); setSelected({ request: r, approve: true }) }}>Approve withdrawal</button>
@@ -94,7 +100,7 @@ export function OrganizerWithdrawals({ tournamentId }: { tournamentId: number })
       <button className="btn primary" disabled={busy} onClick={() => {
         if (!selected || busy) return
         const mutation = selected.approve ? accept : decline
-        mutation.mutate(selected.request.id, { onSuccess: r => { setNotice({ kind: r.status === 'applied' || r.status === 'declined' ? 'ok' : 'warn', text: `คำขอ #${r.id}: ${r.status === 'applied' ? 'อนุมัติการถอนตัวแล้ว' : r.status === 'declined' ? 'ปฏิเสธแล้ว' : `สถานะ ${r.status} กรุณาตรวจข้อมูลล่าสุด`}` }); setSelected(null) } })
+        mutation.mutate(selected.request.id, { onSuccess: r => { setNotice({ kind: r.status === 'applied' || r.status === 'declined' ? 'ok' : 'warn', text: `คำขอ #${r.id}: ${r.status === 'applied' ? 'อนุมัติการถอนตัวแล้ว' : r.status === 'declined' ? 'ปฏิเสธแล้ว' : `${withdrawalStatusLabel[r.status]} กรุณาตรวจข้อมูลล่าสุด`}` }); setSelected(null) } })
       }}>{busy ? 'Saving…' : 'Confirm decision'}</button>
     </Modal>
   </Panel>
