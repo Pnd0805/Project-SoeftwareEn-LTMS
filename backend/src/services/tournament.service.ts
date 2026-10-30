@@ -104,6 +104,14 @@ function dateMilliseconds(value: Date | string | null): number | null {
     return Number.isNaN(time) ? null : time;
 }
 
+/**
+ * วันที่ตามเวลาไทย (YYYY-MM-DD) ของ timestamp
+ * ★ eventStartDate (วันที่ล้วน) ถูก dateMilliseconds อ่านเป็นเที่ยงคืน UTC ของวันนั้น ⇒ ได้วันเดิมกลับมา (00:00Z + 7 ชม. = วันเดียวกัน)
+ */
+function thaiDateOf(ms: number): string {
+    return new Date(ms + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 function ensureSchedule(values: {
     registrationStart: Date | string | null;
     registrationEnd: Date | string | null;
@@ -123,8 +131,18 @@ function ensureSchedule(values: {
     if (registrationStart >= registrationEnd) {
         throw new AppError(400, 'INVALID_DATE_RANGE', 'ช่วงเวลารับสมัครไม่ถูกต้อง', { fields: { registrationEnd: 'ต้องอยู่หลัง registrationStart' } });
     }
-    if (registrationEnd >= eventStart) {
-        throw new AppError(400, 'INVALID_DATE_RANGE', 'วันแข่งขันต้องอยู่หลังวันปิดรับสมัคร', { fields: { eventStartDate: 'ต้องอยู่หลัง registrationEnd' } });
+    /**
+     * 🔴 แก้ 30 ต.ค. 2569 (ผู้ใช้ขอ) — **วันแข่งวันแรกต้องไม่ก่อนวันปิดรับสมัคร** (วันเดียวกันได้)
+     *   เดิมเทียบ timestamp: `registrationEnd >= eventStart` โดย eventStartDate (วันที่ล้วน) ถูกอ่านเป็นเที่ยงคืน UTC
+     *   ⇒ ปิดรับสมัครวันเดียวกับวันแข่งวันแรกไม่ได้เลย แม้จะปิดตอน 08:00 แล้วแข่ง 13:00
+     *   และขอบจริงเพี้ยนไป 7 ชม. (ปิด 06:59 เวลาไทยของวันแข่งได้ · 07:00 ไม่ได้)
+     * ⇒ เทียบเป็น **วันที่ตามเวลาไทย**: วันของ registrationEnd ≤ eventStartDate
+     * ★ เวลาไทยตายตัว +07:00 แบบเดียวกับ `todayThai` ใน ensureNotInPast (ไม่มีเวลาออมแสง)
+     * ★ ไม่ได้เทียบกับเวลาแมตช์ — ปิดรับสมัครเย็นวันแข่งแต่แมตช์แรกตอนเช้าก็ผ่านด่านนี้ได้
+     *   ผู้จัดต้องปิดรับสมัครก่อนจับสายอยู่แล้ว (จับสายใช้ทีมที่ approved ณ ตอนนั้น)
+     */
+    if (thaiDateOf(registrationEnd) > thaiDateOf(eventStart)) {
+        throw new AppError(400, 'INVALID_DATE_RANGE', 'วันแข่งวันแรกต้องไม่ก่อนวันปิดรับสมัคร', { fields: { eventStartDate: 'ต้องไม่ก่อนวันของ registrationEnd' } });
     }
     if (eventStart > eventEnd) {
         throw new AppError(400, 'INVALID_DATE_RANGE', 'ช่วงวันแข่งขันไม่ถูกต้อง', { fields: { eventEndDate: 'ต้องไม่อยู่ก่อน eventStartDate' } });

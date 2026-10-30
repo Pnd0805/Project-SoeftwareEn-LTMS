@@ -21,7 +21,7 @@ import { Icon } from '../../../components/kit/Icon'
 import { Modal } from '../../../components/kit/Modal'
 import { useEligibilityRules, useSaveEntryNotes, useRequestFilterChange, usePreviewAmendment, useSetEligibilityRules, useTournament, useTournamentAmendmentRequests } from '../../../hooks/useTournament'
 import { useFaculties } from '../../../hooks/useReference'
-import { registrationClosesBeforeEvent, toEligibilityRules } from '../../../schemas/tournament.schema'
+import { registrationClosesByEventDay, toEligibilityRules } from '../../../schemas/tournament.schema'
 import { GenderRequirementLabel, GenderRequirementOptions } from '../../../types/enums'
 import type { GenderRequirement } from '../../../types/enums'
 import type { Tournament } from '../../../shared/types'
@@ -77,8 +77,8 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
   const registrationEnd = detail.data?.registrationEnd ?? null
   const currentEventStartDate = detail.data?.eventStartDate ?? ''
   const scheduleNeedsFix = !!detail.data
-    && !registrationClosesBeforeEvent(registrationEnd, currentEventStartDate)
-  const correctedScheduleIsValid = registrationClosesBeforeEvent(registrationEnd, eventStartDate)
+    && !registrationClosesByEventDay(registrationEnd, currentEventStartDate)
+  const correctedScheduleIsValid = registrationClosesByEventDay(registrationEnd, eventStartDate)
   const pendingApproval = detail.data?.status === 'pending_approval'
 
   const startEditing = () => {
@@ -274,14 +274,14 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
           <Banner kind="crit" icon="warn">
             <b>The saved schedule prevents every amendment.</b> Registration closes at{' '}
             {registrationEnd ?? 'an unknown time'}, but the first match date is {currentEventStartDate || 'missing'}.
-            The backend requires the first match date to begin after registration closes. Choose a valid date;
+            The first match date must be on or after the day registration closes. Choose a valid date;
             it will be listed in this same request for the admin to approve.
             <Field label="Correct first match date" htmlFor="er-event-start">
               <input id="er-event-start" type="date" value={eventStartDate}
                 onChange={e => setEventStartDate(e.target.value)} />
             </Field>
             {eventStartDate && !correctedScheduleIsValid ? (
-              <span className="sub">Choose a date whose start is after the registration closing time.</span>
+              <span className="sub">Choose the closing day or any later date.</span>
             ) : null}
           </Banner>
         ) : null}

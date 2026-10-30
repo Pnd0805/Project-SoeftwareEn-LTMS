@@ -65,12 +65,25 @@ export const toEligibilityRules = (
   ...years.map((value) => ({ type: "year" as const, value })),
 ];
 
-/** Mirrors backend `ensureSchedule`: a date-only event starts at 00:00 UTC. */
-export const registrationClosesBeforeEvent = (registrationEnd: string | null, eventStartDate: string): boolean => {
-  if (!registrationEnd || !eventStartDate) return false;
-  const registrationEndMs = new Date(registrationEnd).getTime();
-  const eventStartMs = new Date(eventStartDate).getTime();
-  return Number.isFinite(registrationEndMs) && Number.isFinite(eventStartMs) && registrationEndMs < eventStartMs;
+/**
+ * วันที่ตามเวลาไทย (YYYY-MM-DD) ของวันเวลาปิดรับสมัคร
+ * ★ ค่าจาก `<input type="datetime-local">` ไม่มีเขตเวลา (เช่น `2026-10-05T17:00`) = เวลาไทยที่ผู้ใช้พิมพ์ ⇒ ตัดวันที่ได้เลย
+ *   ค่าจาก backend มีเขตเวลา (`…Z` / `+07:00`) ⇒ แปลงเป็นเวลาไทย +07:00 ก่อนตัดวันที่
+ */
+const thaiDateOf = (value: string): string | null => {
+  if (/^\d{4}-\d{2}-\d{2}T[^Z+-]*$/.test(value)) return value.slice(0, 10);
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? new Date(ms + 7 * 3600 * 1000).toISOString().slice(0, 10) : null;
+};
+
+/**
+ * ตรงกับ backend `ensureSchedule` — แก้ 30 ต.ค. 2569: **วันแข่งวันแรกต้องไม่ก่อนวันปิดรับสมัคร** (วันเดียวกันได้)
+ * เดิมเทียบเวลาปิดรับสมัครกับเที่ยงคืน UTC ของวันแข่ง ⇒ ปิดรับสมัครวันเดียวกับวันแข่งวันแรกไม่ได้
+ */
+export const registrationClosesByEventDay = (registrationEnd: string | null, eventStartDate: string): boolean => {
+  if (!registrationEnd || !/^\d{4}-\d{2}-\d{2}$/.test(eventStartDate)) return false;
+  const closeDay = thaiDateOf(registrationEnd);
+  return closeDay !== null && closeDay <= eventStartDate;
 };
 
 export const createTournamentSchema = tournamentFieldsSchema.refine((value) => value.minTeams <= value.maxTeams, {
@@ -79,8 +92,8 @@ export const createTournamentSchema = tournamentFieldsSchema.refine((value) => v
 }).refine((value) => new Date(value.registrationStart) < new Date(value.registrationEnd), {
   message: "วันปิดรับสมัครต้องอยู่หลังวันเปิดรับสมัคร",
   path: ["registrationEnd"],
-}).refine((value) => registrationClosesBeforeEvent(value.registrationEnd, value.eventStartDate), {
-  message: "วันแข่งวันแรกต้องอยู่หลังวันปิดรับสมัคร",
+}).refine((value) => registrationClosesByEventDay(value.registrationEnd, value.eventStartDate), {
+  message: "วันแข่งวันแรกต้องไม่ก่อนวันปิดรับสมัคร",
   path: ["eventStartDate"],
 }).refine((value) => value.eventEndDate >= value.eventStartDate, {
   message: "วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่มต้น",

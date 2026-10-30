@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * BR-01 — การสร้างทัวร์นาเมนต์ต้องได้รับอนุญาตจากส่วนกลางคณะหรือ อบก. เสมอ ผู้ใช้สร้างเองโดยตรงไม่ได้
@@ -169,6 +169,8 @@ describe('createTournament — TOURNAMENT_DATES_IN_PAST', () => {
    *   createTournament เรียก ensureSchedule ก่อน ซึ่งบังคับ registrationEnd < eventStart
    *   แล้ว ensureNotInPast บังคับ registrationEnd > now
    *   ⇒ eventStart > now เสมอ ⇒ eventStartDate ไม่มีทางก่อนวันนี้ได้
+   *   ★ 30 ต.ค. — ผ่อนเป็น "วันของ registrationEnd ≤ eventStartDate (เวลาไทย)" แล้ว ข้อสรุปยังจริง:
+   *     registrationEnd อยู่ในอนาคต ⇒ วันของมัน ≥ วันนี้ ⇒ eventStartDate ≥ วันนี้ (เวลาไทย)
    *   ของจริงจะได้ INVALID_DATE_RANGE จาก ensureSchedule ก่อน ไม่ใช่ TOURNAMENT_DATES_IN_PAST
    * ★ เทสนี้ล็อก "ความจริง" ไว้ ไม่ใช่ล็อกสิ่งที่เราคิดว่าเกิด — ถ้าวันหนึ่งมีคนสลับลำดับ
    *   สองด่านนี้ หรือผ่อน ensureSchedule ให้แข่งวันเดียวกับวันปิดรับสมัครได้ เทสนี้จะแดง
@@ -196,6 +198,39 @@ describe('createTournament — TOURNAMENT_DATES_IN_PAST', () => {
    *   เจอจริงตอนรันชุดเทสเวลา 02:16 — แดงทั้งที่ไม่มีใครแก้โค้ดส่วนนั้นเลย
    *   ⇒ ตรึงเวลาด้วย fake timer ให้เป็นเวลากลางวัน แล้วเทสอ่านกฎเดิมได้ตรงทุกเวลาที่รัน
    */
+  /**
+   * 🔴 30 ต.ค. 2569 (ผู้ใช้ขอ) — วันแข่งวันแรก **ต้องไม่ก่อน** วันปิดรับสมัคร (วันเดียวกันได้) · เทียบเป็นวันที่ตามเวลาไทย
+   *   เดิมเทียบ timestamp กับเที่ยงคืน UTC ของวันแข่ง ⇒ ปิดรับสมัครวันเดียวกับวันแข่งไม่ได้เลย
+   */
+  describe('วันแข่งวันแรก ≥ วันปิดรับสมัคร (เวลาไทย)', () => {
+    const at = (thai: string) => new Date(`${thai}+07:00`).toISOString();
+    beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-11-01T03:00:00Z')); });
+    afterEach(() => { vi.useRealTimers(); });
+    const create = (registrationEnd: string, eventStartDate: string) => Service.createTournament(
+      input({ registrationStart: at('2026-11-01T12:00:00'), registrationEnd, eventStartDate, eventEndDate: '2026-11-25' }), 9);
+
+    it.each([
+      ['ปิดเช้าวันแข่ง', '2026-11-20T08:00:00'],
+      ['ปิดดึกวันแข่ง 23:30 (UTC ยังเป็นวันเดียวกัน)', '2026-11-20T23:30:00'],
+      ['ปิดวันก่อนแข่ง', '2026-11-19T17:00:00'],
+    ])('🔴 %s → สร้างได้', async (_label, close) => {
+      await expect(create(at(close), '2026-11-20')).resolves.toMatchObject({ id: 77 });
+    });
+
+    it.each([
+      ['ปิดหลังวันแข่งวันแรก 1 วัน', '2026-11-21T08:00:00'],
+      // ★ 00:30 ไทยของวันที่ 21 = 17:30 UTC ของวันที่ 20 — ถ้าเทียบด้วยวันที่ UTC จะผ่านผิด ๆ
+      ['ปิด 00:30 ของวันถัดไป (วัน UTC ยังเป็นวันแข่ง)', '2026-11-21T00:30:00'],
+    ])('%s → 400 INVALID_DATE_RANGE', async (_label, close) => {
+      await expect(create(at(close), '2026-11-20')).rejects.toMatchObject({ status: 400, code: 'INVALID_DATE_RANGE' });
+      expect(TournamentRepo.insertTournament).not.toHaveBeenCalled();
+    });
+
+    it('★ ปิดรับสมัครบ่ายวันนี้ แข่งวันนี้ = สร้างได้ (เดิมทำไม่ได้)', async () => {
+      await expect(create(at('2026-11-01T17:00:00'), '2026-11-01')).resolves.toMatchObject({ id: 77 });
+    });
+  });
+
   it('ปิดรับสมัครวันนี้ แข่งพรุ่งนี้ = สร้างได้', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-07T03:00:00Z'));   // 10:00 เวลาไทย — ห่างเที่ยงคืน UTC เกิน 0.2 วัน

@@ -40,7 +40,8 @@ describe('EntryRulesPanel amendment schedule', () => {
     detail.current = {
       registrationOpen: false,
       registrationEnd: '2026-10-05T17:00:00+07:00',
-      eventStartDate: '2026-10-05',
+      // 30 ต.ค. — วันเดียวกับวันปิดรับสมัครใช้ได้แล้ว ⇒ ตารางที่ "พัง" ต้องเป็นวันแข่งก่อนวันปิดรับสมัคร
+      eventStartDate: '2026-10-04',
       organizingFacultyId: 1,
       genderRequirement: 'any', minAge: null, maxAge: null,
     }
@@ -69,6 +70,13 @@ describe('EntryRulesPanel amendment schedule', () => {
       eligibilityRules: [],
       genderRequirement: 'any',
     })
+  })
+
+  it('treats a first match date on the registration closing day as valid (30 ต.ค.)', () => {
+    detail.current = { ...detail.current, eventStartDate: '2026-10-05' }
+    renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Request a change' }))
+    expect(screen.queryByText('The saved schedule prevents every amendment.')).not.toBeInTheDocument()
   })
 
   it('does not add a schedule change when the stored schedule is already valid', async () => {

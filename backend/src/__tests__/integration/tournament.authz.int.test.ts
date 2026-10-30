@@ -103,6 +103,30 @@ describe('BR-01 + BR-02 — ผู้ยื่นยังไม่เป็น�
     expect(res.body.status).toBe('pending_approval');
     expect(await statusOf(res.body.id)).toBe('pending_approval');
   });
+
+  /**
+   * 🔴 30 ต.ค. 2569 — วันแข่งวันแรก ≥ วันปิดรับสมัคร (วันเดียวกันได้ · เทียบวันที่ตามเวลาไทย)
+   *   เดิมเทียบเวลาปิดรับสมัครกับเที่ยงคืน UTC ของวันแข่ง ⇒ ปิดรับสมัครวันเดียวกับวันแข่งได้ 400
+   */
+  it.each([
+    ['ปิดรับสมัครเช้าวันแข่งวันแรก', '08:00', 0, 201],
+    ['ปิดรับสมัครดึกวันแข่งวันแรก', '23:30', 0, 201],
+    ['ปิดรับสมัครหลังวันแข่งวันแรก 1 วัน', '08:00', 1, 400],
+  ])('%s → %s', async (_label, time, closeAfterDays, status) => {
+    const day = 24 * 3600 * 1000;
+    const thaiDate = (d: number) => new Date(Date.now() + 7 * 3600 * 1000 + d * day).toISOString().slice(0, 10);
+    const event = thaiDate(20);
+    const res = await as(orgA).post('/tournaments').send({
+      name: 'ฟุตบอลคณะ', sportTypeId: sport, bracketFormat: 'single_elimination',
+      scopeType: 'faculty', organizingFacultyId: faculty,
+      registrationStart: new Date(Date.now() + day).toISOString(),
+      registrationEnd: `${thaiDate(20 + Number(closeAfterDays))}T${time}:00+07:00`,
+      eventStartDate: event, eventEndDate: thaiDate(22),
+      maxTeams: 16, minTeams: 4, venue: 'สนามกลาง', genderRequirement: 'any',
+    });
+    expect(res.status).toBe(status);
+    if (status === 400) expect(res.body.error.code).toBe('INVALID_DATE_RANGE');
+  });
 });
 
 // ───────────────────────────── อนุมัติทัวร์ — เช็คสิทธิ์ใน service ไม่ใช่ middleware ─────────────────────────────
