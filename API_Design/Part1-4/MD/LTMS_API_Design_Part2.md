@@ -156,6 +156,8 @@
 | C17 | TC-01 | `GET /tournaments/:id/eligibility-rules` | — | เงื่อนไขคุณสมบัติ | — | MVP |
 | C18 | TC-05 | `GET /admin/tournaments/archived` | ADM-f | ข้อมูลย้อนหลังก่อนถึงกำหนดลบ | — | Sprint #2 |
 | — | TC-04 | *(ไม่มี endpoint)* | SYS | **BR-03** ถึงวันแข่งแต่ยัง private | → `auto_deleted` | MVP |
+| — | TC-04 | *(ไม่มี endpoint)* | SYS | **OD-80** ยังรออนุมัติจนเลยวันปิดรับสมัคร (C04 ตอบ 409 `REGISTRATION_PERIOD_ENDED`) | `pending_approval → auto_deleted` | MVP |
+| — | TC-04 | *(ไม่มี endpoint)* | SYS | **OD-81** public ถึงวันแข่ง + ไม่มีแมตช์ + ทีมอนุมัติ < `min_teams` · ใบ pending → `cancelled` · เตือนผู้จัด 3 วันก่อน | `public → auto_deleted` | MVP |
 | — | TC-05 | *(ไม่มี endpoint)* | SYS | **BR-03** ครบ 4 ปีหลังจบ | → ลบข้อมูล | Sprint #2 |
 | — | — | *(ไม่มี endpoint)* | SYS | แมตช์สุดท้าย verified | → `completed` | MVP |
 

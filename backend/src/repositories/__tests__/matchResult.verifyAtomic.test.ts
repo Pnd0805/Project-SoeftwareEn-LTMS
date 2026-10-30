@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   syncNodeTeamsFromMatchTx: vi.fn(),
   settleTx: vi.fn(),
   evaluatePickemRewardsTx: vi.fn(),
+  evaluateStatRewardsForTournamentTx: vi.fn(),
 }));
 
 vi.mock('../../config/db.js', () => ({
@@ -40,7 +41,10 @@ vi.mock('../match.repo.js', () => ({ findById: mocks.matchFindById }));
 vi.mock('../tournament.repo.js', () => ({ findTournamentById: mocks.findTournamentById }));
 vi.mock('../bracketNode.repo.js', () => ({ syncNodeTeamsFromMatchTx: mocks.syncNodeTeamsFromMatchTx }));
 vi.mock('../pickem.repo.js', () => ({ settleTx: mocks.settleTx, unsettleTx: vi.fn() }));
-vi.mock('../reward.repo.js', () => ({ evaluatePickemRewardsTx: mocks.evaluatePickemRewardsTx }));
+vi.mock('../reward.repo.js', () => ({
+  evaluatePickemRewardsTx: mocks.evaluatePickemRewardsTx,
+  evaluateStatRewardsForTournamentTx: mocks.evaluateStatRewardsForTournamentTx,
+}));
 
 import { verifyMatchResult } from '../matchResult.repo.js';
 
@@ -121,6 +125,19 @@ describe('verifyMatchResult — ธุรกรรมเดียวครบท
     expect(mocks.evaluatePickemRewardsTx).toHaveBeenCalledWith(expect.anything(), 70);
   });
 
+  // OD-79 (30 ต.ค. 2569) — เหรียญสายสถิติประเมินตอนยืนยันผล ไม่ต้องรอปิดทัวร์ (QA ข้อ 15 "ชนะแล้วยังไม่ได้เหรียญ")
+  it('② เหรียญสายสถิติประเมินในธุรกรรมเดียวกัน · **หลัง** บวก player_profile_stats', async () => {
+    await verifyMatchResult(100, 70, 7, 3);
+    expect(mocks.evaluateStatRewardsForTournamentTx).toHaveBeenCalledTimes(1);
+    expect(mocks.evaluateStatRewardsForTournamentTx).toHaveBeenCalledWith(expect.anything(), 20);
+    const statsOrders = mocks.connQuery.mock.calls
+      .map((c, i) => [String(c[0]), mocks.connQuery.mock.invocationCallOrder[i]!] as const)
+      .filter(([sql]) => sql.includes('INSERT INTO player_profile_stats'))
+      .map(([, order]) => order);
+    expect(statsOrders).toHaveLength(2);
+    expect(mocks.evaluateStatRewardsForTournamentTx.mock.invocationCallOrder[0]!).toBeGreaterThan(Math.max(...statsOrders));
+  });
+
   it('commit ครั้งเดียวหลังทุกขั้น และเขียน audit เมื่อมีคนกดยืนยัน', async () => {
     await verifyMatchResult(100, 70, 7, 3);
     expect(mocks.beginTransaction).toHaveBeenCalledTimes(1);
@@ -141,6 +158,7 @@ describe('verifyMatchResult — ธุรกรรมเดียวครบท
 describe('verifyMatchResult — ③ ล้มกลางทาง = ย้อนทั้งก้อน', () => {
   it.each([
     ["Pick'em", () => mocks.settleTx.mockRejectedValueOnce(new Error('pickem down'))],
+    ['เหรียญสายสถิติ', () => mocks.evaluateStatRewardsForTournamentTx.mockRejectedValueOnce(new Error('reward down'))],
     ['ซิงก์สาย', () => mocks.syncNodeTeamsFromMatchTx.mockRejectedValueOnce(new Error('node sync failed'))],
     ['ตารางคะแนน', () => mocks.connQuery.mockImplementation(async (sql: unknown) => {
       if (String(sql).includes('tournament_standings')) throw new Error('standings deadlock');

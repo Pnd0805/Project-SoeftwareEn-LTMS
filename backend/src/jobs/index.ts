@@ -1,7 +1,9 @@
 import type { Job } from './scheduler.js';
 import { sweepAndNotify } from '../services/team.service.js';
 import { purgeUnverifiedAccounts } from '../services/auth.service.js';
-import { purgeExpiredTournaments, sweepAutoDeleteTournaments, warnBeforeAutoDelete } from '../services/tournament.service.js';
+import { purgeExpiredTournaments, sweepAutoDeleteTournaments, sweepUnapprovedPastRegistration,
+         sweepUnderfilledPublicTournaments, warnBeforeAutoDelete,
+         warnUnderfilledPublicTournaments } from '../services/tournament.service.js';
 import { purgeRefereeIdentityDocs, sweepOrphanRefereeDocs } from '../services/refereeDocs.service.js';
 import { purgeCheckinDocuments, sweepOrphanCheckinDocs } from '../services/checkinDocs.service.js';
 
@@ -19,6 +21,12 @@ export const backgroundJobs : Job[] = [
     //   (คิวรีเตือนตัดทัวร์ที่ถึงวันแข่งแล้วออกอยู่แล้ว ⇒ ไม่มีทางได้ทั้งคำเตือนและคำปิดในรอบเดียว)
     { name : 'เตือนผู้จัดล่วงหน้าก่อนปิดทัวร์ (BR-03)' , run : warnBeforeAutoDelete },
     { name : 'ปิดทัวร์ที่ยังไม่เผยแพร่จนถึงวันแข่ง (BR-03)' , run : sweepAutoDeleteTournaments },
+    // OD-80 — ลำดับไม่สำคัญกับงานข้างบน (คนละสถานะ) · ไว้ติดกันเพราะเป็นเรื่อง "ปิดทัวร์อัตโนมัติ" เหมือนกัน
+    { name : 'ปิดคำขอจัดทัวร์ที่ไม่ได้อนุมัติทันวันปิดรับสมัคร (OD-80)' , run : sweepUnapprovedPastRegistration },
+    // OD-81 — ทัวร์ public ที่ทีมไม่ครบ · เตือนก่อนปิด ด้วยเหตุผลเดียวกับคู่ BR-03 ข้างบน
+    //   ★ ต้องอยู่ **ก่อน** "กวาดทีมร้าง" — ใบ pending ที่ถูกยกเลิกตรงนี้ ไม่ควรช่วยให้ทีมรอดรอบกวาดนี้
+    { name : 'เตือนผู้จัด 3 วันก่อนปิดทัวร์ public ที่ทีมไม่ครบ (OD-81)' , run : warnUnderfilledPublicTournaments },
+    { name : 'ปิดทัวร์ public ที่ทีมไม่ครบเมื่อถึงวันแข่ง (OD-81)' , run : sweepUnderfilledPublicTournaments },
     { name : 'ลบทัวร์ที่ปิดไปเกิน 4 ปี (BR-03)' , run : purgeExpiredTournaments },
     { name : 'กวาดทีมร้าง (TM-07 · BR-06)' , run : sweepAndNotify },
     // OD-53 — ลบบัญชีที่สมัครแล้วไม่ยืนยันอีเมลเกินกำหนด (เหตุผลเรื่องข้อมูลส่วนบุคคล ไม่ใช่พื้นที่)

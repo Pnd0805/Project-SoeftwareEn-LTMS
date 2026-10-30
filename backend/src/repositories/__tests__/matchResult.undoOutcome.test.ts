@@ -38,9 +38,10 @@ vi.mock('../match.repo.js', () => ({}));
 vi.mock('../tournament.repo.js', () => ({}));
 vi.mock('../bracketNode.repo.js', () => ({ syncNodeTeamsFromMatchTx : vi.fn() }));
 vi.mock('../pickem.repo.js', () => ({ settleTx : vi.fn(), unsettleTx : vi.fn() }));
-vi.mock('../reward.repo.js', () => ({ evaluatePickemRewardsTx : vi.fn() }));
+vi.mock('../reward.repo.js', () => ({ evaluatePickemRewardsTx : vi.fn() , evaluateStatRewardsForTournamentTx : vi.fn() }));
 
 import { rejectMatchResult } from '../matchResult.repo.js';
+import * as RewardRepo from '../reward.repo.js';
 
 const match = {
     match_id : 70, tournament_id : 20, team_a_id : 5, team_b_id : 6,
@@ -49,6 +50,7 @@ const match = {
 
 beforeEach(() => {
     mocks.query.mockClear();
+    vi.mocked(RewardRepo.evaluateStatRewardsForTournamentTx).mockClear();
     mocks.query.mockImplementation(() => Promise.resolve([[], []]));
 });
 
@@ -88,5 +90,22 @@ describe('undoOutcomeTx — การถอนสถิติผู้เล่�
         const touched = mocks.query.mock.calls.some(([sql]) =>
             typeof sql === 'string' && sql.includes('player_profile_stats'));
         expect(touched).toBe(false);
+    });
+});
+
+/**
+ * OD-79 (30 ต.ค. 2569) — เหรียญสายสถิติแจกตั้งแต่ยืนยันผลแล้ว ⇒ ปฏิเสธผลที่เคย verify ต้องประเมินใหม่ (ริบได้)
+ *   ถ้าไม่ประเมิน คนที่ wins ลดจาก 10 เหลือ 9 จะถือเหรียญ "ชนะ 10 แมตช์" ค้าง
+ */
+describe('undoOutcomeTx — ประเมินเหรียญสายสถิติใหม่หลังถอนสถิติ', () => {
+    it('ปฏิเสธผลที่เคย verify → ประเมินเหรียญของทัวร์นั้น 1 ครั้ง', async () => {
+        await rejectMatchResult(900, match, 5, 1, 3, 9, 'ยกเลิกผล', true);
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).toHaveBeenCalledTimes(1);
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).toHaveBeenCalledWith(expect.anything(), 20);
+    });
+
+    it('ผลที่ยังไม่เคย verify → สถิติไม่ขยับ ไม่ต้องประเมิน', async () => {
+        await rejectMatchResult(900, match, 5, 1, 3, 9, 'ยกเลิกผล', false);
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).not.toHaveBeenCalled();
     });
 });

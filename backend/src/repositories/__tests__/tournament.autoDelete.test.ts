@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('../../config/db.js', () => ({ default: { query: mocks.query } }));
 
 import { findTournamentsToWarnBeforeAutoDelete, markAutoDeleteWarned, purgeTournamentsClosedOver,
-         sweepPrivatePastDueTournaments } from '../tournament.repo.js';
+         sweepPrivatePastDueTournaments, sweepUnapprovedPastRegistrationTournaments } from '../tournament.repo.js';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -116,5 +116,39 @@ describe('purgeTournamentsClosedOver — วันปิดทัวร์แล
         expect(sql).toContain('deleted_by = NULL');
         expect(sql).not.toMatch(/DELETE\s+FROM/i);
         expect(sql).toContain('deleted_at IS NULL');          // ไม่ลบซ้ำของที่ลบแล้ว
+    });
+});
+
+/**
+ * OD-80 (30 ต.ค. 2569) — ด่านเดียวกับข้างบน: UPDATE ต้องเช็คสถานะซ้ำ
+ *   นอกจากกันรอบงานซ้อน ยังกัน admin กดอนุมัติแทรกระหว่าง SELECT กับ UPDATE
+ *   ถ้าหลุด: ทัวร์ที่เพิ่งอนุมัติ (private) จะถูกปิดทับเป็น auto_deleted
+ */
+describe('sweepUnapprovedPastRegistrationTournaments — ด่านกันรอบซ้อน / อนุมัติแทรก', () => {
+    it('SELECT ใช้ registration_end <= NOW() และสำรองด้วยวันแข่งเมื่อไม่มีวันปิดรับสมัคร', async () => {
+        mocks.query.mockResolvedValueOnce([[], []]);
+        await sweepUnapprovedPastRegistrationTournaments();
+        const [selectSql] = mocks.query.mock.calls[0]!;
+        expect(selectSql).toContain("tournament_status = 'pending_approval'");
+        expect(selectSql).toContain('registration_end <= NOW()');
+        expect(selectSql).toContain('registration_end IS NULL AND event_start_date <= CURDATE()');
+        expect(mocks.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('UPDATE ต้องยังเช็คสถานะ pending_approval และ deleted_at อีกครั้ง', async () => {
+        mocks.query
+            .mockResolvedValueOnce([[{ tournament_id: 7, name: 'ทัวร์', requested_by_user_id: 3 }], []])
+            .mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+        expect(await sweepUnapprovedPastRegistrationTournaments()).toEqual([{ tournamentId: 7, name: 'ทัวร์', organizerId: 3 }]);
+        const [updateSql] = mocks.query.mock.calls[1]!;
+        expect(updateSql).toContain("SET tournament_status = 'auto_deleted'");
+        expect(updateSql).toContain("tournament_status = 'pending_approval' AND deleted_at IS NULL");
+    });
+
+    it('UPDATE ไม่ติด (admin อนุมัติแทรก / อีกรอบชิงไป) → ไม่คืนทัวร์นั้น ⇒ ไม่แจ้งผู้จัด', async () => {
+        mocks.query
+            .mockResolvedValueOnce([[{ tournament_id: 7, name: 'ทัวร์', requested_by_user_id: 3 }], []])
+            .mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+        expect(await sweepUnapprovedPastRegistrationTournaments()).toEqual([]);
     });
 });

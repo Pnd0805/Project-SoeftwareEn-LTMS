@@ -18,6 +18,7 @@ vi.mock('../tournament.repo.js', () => ({ findTournamentById: vi.fn(() => Promis
 
 import { amendMatchResult } from '../matchResult.repo.js';
 import * as PickemRepo from '../pickem.repo.js';
+import * as RewardRepo from '../reward.repo.js';
 import type { MatchRow } from '../../types/db.js';
 
 const WINNER = 10, LOSER = 11;
@@ -85,5 +86,37 @@ describe('amendMatchResult — ต้องคิดแต้ม Pick\'em ให
 
         expect(PickemRepo.unsettleTx).toHaveBeenCalledTimes(1);
         expect(PickemRepo.settleTx).toHaveBeenCalledWith(mocks.conn, 1, LOSER, NEW_SCORE, 1);
+    });
+});
+
+/**
+ * OD-79 (30 ต.ค. 2569) — เหรียญสายสถิติใน amend
+ *   🔴 เดิม (OD-67) ประเมินในกิ่ง "ผู้ชนะเดิม" ซึ่งสถิติไม่ขยับ ส่วนกิ่ง "สลับผู้ชนะ" ที่สถิติเปลี่ยนจริงกลับไม่ประเมิน
+ *   ★ สลับผู้ชนะต้องประเมิน **ครั้งเดียว** หลัง apply — ถ้าประเมินหลัง undo ด้วย คนที่ matches_played ถึงเกณฑ์พอดี
+ *     จะถูกริบแล้วแจกใหม่ในทรานแซกชันเดียว ⇒ earned_at ใหม่ และ is_displayed ที่ผู้ใช้เลือกไว้หาย
+ */
+describe('amendMatchResult — เหรียญสายสถิติ (OD-79)', () => {
+    it('สลับผู้ชนะ → ประเมิน 1 ครั้ง หลัง settle ผลใหม่', async () => {
+        const order: string[] = [];
+        vi.mocked(PickemRepo.settleTx).mockImplementation(async () => { order.push('settle'); });
+        vi.mocked(RewardRepo.evaluateStatRewardsForTournamentTx).mockImplementation(async () => {
+            order.push('stat'); return { granted: 0, revoked: 0 };
+        });
+
+        await amendMatchResult(100, match, WINNER, LOSER, NEW_SCORE, 1, 3, 7, 'เปลี่ยนผู้ชนะ', true);
+
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).toHaveBeenCalledTimes(1);
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).toHaveBeenCalledWith(mocks.conn, 50);
+        expect(order).toEqual(['settle', 'stat']);
+    });
+
+    it('ผู้ชนะเดิม แก้แค่สกอร์ → สถิติไม่ขยับ ไม่ต้องประเมิน', async () => {
+        await amendMatchResult(100, match, WINNER, WINNER, NEW_SCORE, 1, 3, 7, 'แก้สกอร์', true);
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).not.toHaveBeenCalled();
+    });
+
+    it('ผลยังไม่เคย verify → apply ครั้งแรก ประเมิน 1 ครั้ง', async () => {
+        await amendMatchResult(100, match, WINNER, WINNER, NEW_SCORE, 1, 3, 7, 'แก้สกอร์', false);
+        expect(RewardRepo.evaluateStatRewardsForTournamentTx).toHaveBeenCalledTimes(1);
     });
 });
