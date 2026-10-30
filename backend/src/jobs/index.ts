@@ -28,6 +28,6 @@ export const backgroundJobs : Job[] = [
     { name : 'ลบภาพยืนยันตัวตนกรรมการของทัวร์ที่จบแล้ว' , run : purgeRefereeIdentityDocs },
     { name : 'ลบภาพยืนยันตัวตนกรรมการที่ไม่มีแถวชี้ถึง (OD-70)' , run : sweepOrphanRefereeDocs },
     // OD-73 — รูปบัตรตอนเช็คอินออนไลน์ · ลำดับเดียวกับ OD-70: ① ลบไฟล์แล้วล้างคีย์ไปก่อน ② ค่อยกวาดไฟล์ไม่มีเจ้าของ
-    { name : 'ลบรูปบัตรเช็คอินของแมตช์ที่จบเกิน 3 วัน (OD-73)' , run : purgeCheckinDocuments },
+    { name : 'ลบรูปบัตรเช็คอินที่หมดเวลาโต้แย้ง/ร้องเรียนแล้ว (OD-73 · QA D2)' , run : purgeCheckinDocuments },
     { name : 'ลบรูปบัตรเช็คอินที่ไม่มีแถวชี้ถึง (OD-73)' , run : sweepOrphanCheckinDocs },
 ];

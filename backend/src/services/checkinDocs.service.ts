@@ -9,7 +9,7 @@ import * as UploadService from './upload.service.js';
  *   หลักการเดียวกับ OD-70 (ภาพบัตรกรรมการ) — ข้อมูลส่วนบุคคล เก็บเท่าที่จำเป็น
  *
  * ลบสองทาง:
- *   ① แถวที่ยังถือรูป แต่แมตช์/ทัวร์จบไปเกิน 3 วัน — purgeCheckinDocuments
+ *   ① แถวที่ยังถือรูป แต่หมดเวลาโต้แย้ง/ร้องเรียนแล้ว (กฎ QA 30 ต.ค. · ดู MatchRepo.findPurgeableCheckinDocs) — purgeCheckinDocuments
  *   ② ไฟล์ที่ไม่มีแถวไหนชี้ถึง (ส่งทับ · อัปแล้วไม่กดส่ง · ทัวร์ถูกลบทั้งแถว) — sweepOrphanCheckinDocs
  *
  * ★ ลบแค่ไฟล์กับคีย์ **ไม่แตะผลเช็คอิน** (สถานะ · ชนิดบัตร · กรรมการที่ตรวจ · เวลา) — ยังเป็นหลักฐานว่าใครเช็คอิน
@@ -17,8 +17,18 @@ import * as UploadService from './upload.service.js';
  * ★ ไม่ทำกับรูปโปรไฟล์/โลโก้ทีม — สองอย่างนั้นลบรูปเก่าตอนเปลี่ยนรูปอยู่แล้ว และไม่ใช่เอกสารยืนยันตัวตน (ผู้ใช้เคาะ 29 ต.ค.)
  */
 
-/** เก็บรูปต่อกี่วันหลังแมตช์จบ (เผื่อเรื่องโต้แย้งผล/ตรวจตัวผู้เล่นย้อนหลัง) — ผู้ใช้เคาะ 29 ต.ค. · เปลี่ยนที่นี่ที่เดียว */
+/**
+ * ระยะกันชน **หลังหมดเวลาโต้แย้ง** (verified_at + dispute_window_hours) — และหลังทัวร์ถูกยกเลิก/ลบ
+ * 🔴 QA 30 ต.ค. 2569 (D2) — เดิม (OD-73 · 29 ต.ค.) นับ 3 วัน "จากแมตช์จบ" ⇒ รูปหายทั้งที่ยังโต้แย้ง/ร้องเรียนได้
+ *   ชื่อเดิมยังสื่อความ (เก็บต่ออีกกี่วัน) จึงคงชื่อไว้ · กฎเต็มอยู่ที่ MatchRepo.findPurgeableCheckinDocs
+ */
 export const CHECKIN_DOCS_RETENTION_DAYS = 3;
+
+/**
+ * ทางสำรอง: แมตช์ที่ **ไม่เคยมีผลยืนยัน** (ค้าง · แพ้บาย · ผลถูกยกทิ้ง) ลบเมื่อจบเกินกี่วัน
+ * ★ ไม่มีค่านี้ = รูปของแมตช์พวกนั้นค้างตลอดกาล (แถวยังถือคีย์ งานกวาดไฟล์ไม่มีเจ้าของจึงไม่เก็บ)
+ */
+export const CHECKIN_DOCS_UNVERIFIED_FALLBACK_DAYS = 30;
 
 /**
  * ② ไฟล์ที่ไม่มีแถวชี้ถึงต้องเก่ากว่านี้ก่อนถึงจะลบ
@@ -28,7 +38,7 @@ export const CHECKIN_DOCS_RETENTION_DAYS = 3;
 export const ORPHAN_CHECKIN_DOCS_GRACE_DAYS = 1;
 
 /**
- * ① งานเบื้องหลัง — แถวเช็คอินที่ยังถือรูป แต่หมดหน้าที่เกิน CHECKIN_DOCS_RETENTION_DAYS วัน
+ * ① งานเบื้องหลัง — แถวเช็คอินที่ยังถือรูป แต่หมดหน้าที่แล้ว (กฎอยู่ที่ MatchRepo.findPurgeableCheckinDocs)
  *
  * 🔴 ลำดับ: **ลบไฟล์ก่อน แล้วค่อยล้างคีย์** — ล้างก่อนแล้วลบพลาด = ไฟล์ค้างโดยไม่มีใครรู้ว่าอยู่ไหน
  *    (② จะเก็บได้ก็จริง แต่ไม่ควรพึ่งตาข่ายชั้นสองเป็นทางหลัก)
@@ -38,7 +48,7 @@ export const ORPHAN_CHECKIN_DOCS_GRACE_DAYS = 1;
  * คืนจำนวนแถวที่ล้าง (ให้ log ของ scheduler มีตัวเลขเหมือนงานอื่น)
  */
 export async function purgeCheckinDocuments(): Promise<number>{
-    const rows = await MatchRepo.findPurgeableCheckinDocs(CHECKIN_DOCS_RETENTION_DAYS);
+    const rows = await MatchRepo.findPurgeableCheckinDocs(CHECKIN_DOCS_RETENTION_DAYS, CHECKIN_DOCS_UNVERIFIED_FALLBACK_DAYS);
     if(rows.length === 0) return 0;
 
     const purgeable = new Set(rows.map(r => r.match_checkin_id));

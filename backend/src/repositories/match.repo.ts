@@ -690,30 +690,47 @@ export async function clearBracketTx(conn: PoolConnection, tournamentId: number)
 
 // ---- OD-73 ลบรูปบัตรตอนเช็คอินออนไลน์เมื่อหมดหน้าที่ ----
 
-const CHECKIN_DOC_ENDED_TOURNAMENT = `('completed', 'cancelled', 'auto_deleted')`;
+/** ทัวร์ที่ไม่มีอะไรให้โต้แย้ง/ร้องเรียนต่อแล้ว — ยกเลิก หรือถูกปิดอัตโนมัติ (ไม่ใช่ completed: ร้องเรียนยังค้างได้) */
+const CHECKIN_DOC_DEAD_TOURNAMENT = `('cancelled', 'auto_deleted')`;
 
 export type PurgeableCheckinDocRow = { match_checkin_id : number; match_id : number; document_s3_key : string };
 
 /**
- * แถวเช็คอินที่ยังถือรูปบัตร และหมดหน้าที่เกิน `retentionDays` วันแล้ว — ข้อใดข้อหนึ่ง:
- *   ① แมตช์ completed (ผลเป็นที่สุดแล้ว) · นับจากเวลาจบจริง → เวลาจบตามตาราง → เวลานัด
- *   ② ทัวร์จบ/ถูกยกเลิก/ถูกปิด — แมตช์ที่ค้างไม่จบ (ถูกแช่แข็งตอนยกเลิกทัวร์) ก็ต้องลบได้
- *   ③ ทัวร์ถูกลบ
- * ★ แมตช์ disputed ยังไม่ completed ⇒ รูปอยู่ต่อจนตัดสินเสร็จ (อาจต้องใช้ตรวจตัวผู้เล่น)
+ * แถวเช็คอินที่ยังถือรูปบัตร และหมดหน้าที่แล้ว
+ *
+ * 🔴 QA 30 ต.ค. 2569 (D2) — **แทนที่กฎเดิมของ OD-73** ("แมตช์ completed เกิน 3 วัน นับจากแมตช์จบ")
+ *   ระยะโต้แย้งเริ่มนับตอน **ยืนยันผล** ไม่ใช่ตอนแมตช์จบ และผู้จัดตั้งได้ถึง 72 ชม.
+ *   ส่วนการร้องเรียนผลยื่นได้จนกว่าทัวร์จะปิด ⇒ กฎเดิมลบรูปทั้งที่เรื่องยังมาถึงได้
+ *
+ * ลบได้เมื่อเข้าข้อใดข้อหนึ่ง:
+ *   ① ผลยืนยันแล้ว · `verified_at + dispute_window_hours ของทัวร์ + bufferDays` ผ่านไปแล้ว
+ *      · และ **ไม่มีข้อโต้แย้งค้าง** (ผล disputed) · **ไม่มีเรื่องร้องเรียนที่ยังไม่จบ** (complaint open)
+ *   ② ทางสำรอง — แมตช์ที่ **ไม่เคยมีผลยืนยัน** (ค้าง · ยกเลิก · แพ้บาย) จบเกิน `fallbackDays` วัน
+ *      · ไม่มีเรื่องค้างเหมือนข้อ ① · ★ ไม่มีข้อนี้ = รูปของแมตช์พวกนั้นค้างตลอดกาล
+ *        (sweepOrphanCheckinDocs ช่วยไม่ได้ เพราะแถวยังถือคีย์อยู่)
+ *   ③ ทัวร์ถูกยกเลิก/ปิดอัตโนมัติ/ถูกลบ เกิน `bufferDays` — ไม่มีอะไรให้โต้แย้งหรือร้องเรียนต่อแล้ว
+ *      (แมตช์ที่ถูกแช่แข็งตอนยกเลิกทัวร์ก็ลบได้)
  */
-export async function findPurgeableCheckinDocs(retentionDays : number): Promise<PurgeableCheckinDocRow[]>{
+export async function findPurgeableCheckinDocs(bufferDays : number, fallbackDays : number): Promise<PurgeableCheckinDocRow[]>{
+    const NOTHING_PENDING = `NOT EXISTS (SELECT 1 FROM match_results d WHERE d.match_id = m.match_id AND d.match_result_status = 'disputed')
+                    AND NOT EXISTS (SELECT 1 FROM match_result_complaints c WHERE c.match_id = m.match_id AND c.complaint_status = 'open')`;
     const [rows] = await pool.query<(PurgeableCheckinDocRow & RowDataPacket)[]>(
         `SELECT mc.match_checkin_id, mc.match_id, mc.document_s3_key
          FROM match_checkins mc
          JOIN matches m ON m.match_id = mc.match_id
          JOIN tournaments t ON t.tournament_id = m.tournament_id
          WHERE mc.document_s3_key IS NOT NULL
-           AND ( (m.match_status = 'completed'
-                  AND COALESCE(m.actual_end_time, m.scheduled_end_time, m.scheduled_time) < NOW() - INTERVAL ? DAY)
-              OR (t.tournament_status IN ${CHECKIN_DOC_ENDED_TOURNAMENT}
-                  AND COALESCE(t.completed_at, t.cancelled_at, t.event_end_date, t.event_start_date) < NOW() - INTERVAL ? DAY)
+           AND ( ( EXISTS (SELECT 1 FROM match_results v
+                            WHERE v.match_id = m.match_id AND v.match_result_status = 'verified' AND v.verified_at IS NOT NULL
+                              AND v.verified_at + INTERVAL t.dispute_window_hours HOUR + INTERVAL ? DAY < NOW())
+                   AND ${NOTHING_PENDING} )
+              OR ( NOT EXISTS (SELECT 1 FROM match_results v WHERE v.match_id = m.match_id AND v.match_result_status = 'verified')
+                   AND COALESCE(m.actual_end_time, m.scheduled_end_time, m.scheduled_time) < NOW() - INTERVAL ? DAY
+                   AND ${NOTHING_PENDING} )
+              OR (t.tournament_status IN ${CHECKIN_DOC_DEAD_TOURNAMENT}
+                  AND COALESCE(t.cancelled_at, t.event_end_date, t.event_start_date) < NOW() - INTERVAL ? DAY)
               OR (t.deleted_at IS NOT NULL AND t.deleted_at < NOW() - INTERVAL ? DAY) )
-         ORDER BY mc.match_checkin_id`, [retentionDays, retentionDays, retentionDays]);
+         ORDER BY mc.match_checkin_id`, [bufferDays, fallbackDays, bufferDays, bufferDays]);
     return rows;
 }
 
