@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { rateLimitEmail, resetEmailRateLimit } from '../rateLimitEmail.js';
+import { rateLimitEmail, resetEmailRateLimit, MAX_PER_IP } from '../rateLimitEmail.js';
 import { AppError } from '../../utils/AppError.js';
 
 /**
@@ -9,7 +9,6 @@ import { AppError } from '../../utils/AppError.js';
  */
 
 const WINDOW_MS = 60 * 60 * 1000;
-const MAX_PER_IP = 20;
 
 function call(ip: string | undefined = '10.0.0.1') {
     const req = { ip } as unknown as Request;

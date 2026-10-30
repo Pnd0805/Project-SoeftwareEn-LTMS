@@ -4,7 +4,7 @@ import { all, insert, testDb } from './helpers/db.js';
 import {
   createFaculty, createMatch, createSportType, createTeam, createTournament, createUser, type TestUser,
 } from './helpers/factories.js';
-import { resetEmailRateLimit } from '../../middlewares/rateLimitEmail.js';
+import { resetEmailRateLimit, MAX_PER_IP } from '../../middlewares/rateLimitEmail.js';
 
 /**
  * แก้ตามรายงาน QA 30 ต.ค. 2569 — ชุด A และ B
@@ -30,8 +30,8 @@ describe('QA ข้อ 1 — เพดานการขออีเมลต่
    * 🔴 การโจมตีจริงคือ "อีเมลใหม่ทุกครั้ง" ⇒ เพดานต่อบัญชีกันไม่ได้เลย
    *   เทสนี้จึงใช้อีเมลไม่ซ้ำทุกคำขอ เหมือนสคริปต์ของจริง
    */
-  it('สมัครด้วยอีเมลใหม่รัว ๆ จาก IP เดียว → ครบ 20 แล้วได้ 429', async () => {
-    for (let i = 0; i < 20; i++) {
+  it(`สมัครด้วยอีเมลใหม่รัว ๆ จาก IP เดียว → ครบ ${MAX_PER_IP} แล้วได้ 429`, async () => {
+    for (let i = 0; i < MAX_PER_IP; i++) {
       const res = await api().post('/api/v1/auth/register').send(registerBody(`rl${i}@outside.org`));
       expect(res.status).toBe(201);
     }
@@ -46,7 +46,7 @@ describe('QA ข้อ 1 — เพดานการขออีเมลต่
   });
 
   it('โควตาใช้ร่วมกันข้ามเส้น — ขอรหัสใหม่กินโควตาเดียวกับสมัคร', async () => {
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < MAX_PER_IP; i++) {
       await api().post('/api/v1/auth/resend-verification').send({ email: `none${i}@outside.org` });
     }
     const blocked = await api().post('/api/v1/auth/register').send(registerBody('after-resend@outside.org'));
@@ -54,7 +54,7 @@ describe('QA ข้อ 1 — เพดานการขออีเมลต่
   });
 
   it('ลืมรหัสผ่านก็อยู่ในโควตาเดียวกัน', async () => {
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < MAX_PER_IP; i++) {
       await api().post('/api/v1/auth/forgot-password').send({ email: `fp${i}@outside.org` });
     }
     const blocked = await api().post('/api/v1/auth/forgot-password').send({ email: 'fp-over@outside.org' });
@@ -63,7 +63,7 @@ describe('QA ข้อ 1 — เพดานการขออีเมลต่
 
   // ★ คำขอที่รูปแบบผิดต้องไม่กินโควตาของใคร (เหตุผลเดียวกับที่ rateLimitLogin วางหลัง validate)
   it('payload ผิดรูปแบบไม่กินโควตา', async () => {
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < MAX_PER_IP + 5; i++) {
       const res = await api().post('/api/v1/auth/register').send({ email: 'ไม่ใช่อีเมล' });
       expect(res.status).toBe(400);
     }
