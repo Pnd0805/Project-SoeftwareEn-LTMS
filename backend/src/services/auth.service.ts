@@ -23,6 +23,14 @@ const OTP_TTL_MINUTES = 10;                  // สั้นกว่า reset t
 const OTP_TTL_MS = OTP_TTL_MINUTES * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;                  // กรอกผิดครบ 5 = ใบนั้นตาย ขอใหม่เท่านั้น
 const OTP_RATE_LIMIT_PER_HOUR = 3;           // ตัวเลขเดียวกับ reset — ไม่มีเหตุให้คนจำสองตัวเลข
+/**
+ * FR-UM-06 (SRS เทียบโค้ด 30 ต.ค. 2569) — ขอรหัสใหม่ต้องห่างจากใบล่าสุดอย่างน้อย 60 วินาที
+ * เดิมหน่วงแค่ปุ่มในหน้าเว็บ ⇒ ยิง API ตรงได้รัว ๆ ตราบใดที่โควตา 3 ใบ/ชม. ยังเหลือ
+ * ★ ใช้ที่ `resendEmailVerification` อย่างเดียว — **เลือกไม่ใส่ที่ `register`** (ไม่ใช่ลืม):
+ *   register มีเพดานต่อบัญชี (OTP_RATE_LIMIT_PER_HOUR) และต่อไอพีคุมอยู่แล้ว
+ *   และคนที่พิมพ์ข้อมูลผิดแล้วกดสมัครแก้ใหม่ทันที จะสมัครไม่ได้ถ้าบังคับ 60 วิ ตรงนั้น
+ */
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
 
 /**
  * ★ randomInt ไม่ใช่ Math.random — ต้องเป็น CSPRNG เพราะสิ่งนี้คุ้มกันการเข้าถึงบัญชี
@@ -250,6 +258,10 @@ export async function resendEmailVerification(email : string) : Promise<{ messag
   // ★ ห้ามเปลี่ยนกลับไปโยน error — ดูเหตุผลในคอมเมนต์หัวฟังก์ชัน (มีเทสตรึงไว้)
   const issuedCount = await emailVerifyRepo.countIssuedWithinLastHour(user.user_id);
   if(issuedCount >= OTP_RATE_LIMIT_PER_HOUR){
+    return SUCCESS;
+  }
+  // FR-UM-06 — ใบล่าสุดยังไม่ถึง 60 วินาที → เงียบเหมือนด่านโควตา (ตอบ SUCCESS ก้อนเดิม ห้ามโยน error เหตุผลเดียวกัน)
+  if(await emailVerifyRepo.countIssuedWithinSeconds(user.user_id , OTP_RESEND_COOLDOWN_SECONDS) > 0){
     return SUCCESS;
   }
 
