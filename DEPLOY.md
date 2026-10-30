@@ -69,6 +69,16 @@ docker compose up -d --build --no-deps backend nginx
 docker compose up -d --build
 ```
 
+**โควตาพื้นที่ของที่เก็บไฟล์ (ตั้งให้อัตโนมัติ)** — service `minio-init` ตั้ง `mc quota set` ให้ bucket ตอน `docker compose up`
+(ค่าตั้งต้น **5GiB** · เปลี่ยนได้ด้วย `S3_BUCKET_QUOTA=10GiB` ใน `backend/.env`)
+เหตุผล: ลิงก์อัปโหลดของระบบจำกัดขนาด **ต่อไฟล์** ไม่ได้ และเบราว์เซอร์อัปตรงเข้า MinIO ไม่ผ่าน nginx
+⇒ ไม่มีโควตา = มีคนอัปไฟล์ใหญ่ ๆ จนดิสก์เต็ม แล้วทั้งระบบล่ม (ฐานข้อมูลอยู่เครื่องเดียวกัน)
+ถ้าใช้ MinIO/S3 ตัวอื่นที่ไม่ได้ขึ้นด้วย compose นี้ ต้องตั้งเอง:
+
+```bash
+mc quota set <alias>/<bucket> --size 5GiB
+```
+
 ### 4. โหลดข้อมูลเดโม
 
 รอให้ `ltms-mysql` ขึ้นสถานะ healthy ก่อน (`docker ps`) แล้วรันจากโฟลเดอร์ `backend/` สองคำสั่งนี้ใช้ได้เหมือนกันทั้ง bash, PowerShell และ cmd:

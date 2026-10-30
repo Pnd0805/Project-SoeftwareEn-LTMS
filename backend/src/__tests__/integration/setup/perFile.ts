@@ -50,6 +50,9 @@ beforeEach(async () => {
      */
     const { resetLoginRateLimit } = await import('../../../middlewares/rateLimitLogin.js');
     resetLoginRateLimit();
+    // QA 30 ต.ค. (D1) — ตัวนับของ /uploads/presign ค้างข้ามเทสได้แบบเดียวกัน
+    const { resetPresignRateLimit } = await import('../../../middlewares/rateLimitPresign.js');
+    resetPresignRateLimit();
 });
 
 afterAll(async () => {
