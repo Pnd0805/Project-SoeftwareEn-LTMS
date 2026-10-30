@@ -102,7 +102,7 @@ export function InboxPage() {
     </div>
     {notice ? <div role={notice.kind === 'crit' ? 'alert' : 'status'}><Banner kind={notice.kind}>{notice.text}</Banner></div> : null}
     {markRead.isPending || markAllRead.isPending ? <p className="sub" role="status">Marking notifications read…</p> : null}
-    {!USE_MOCK ? <BackendInbox /> : null}
+    {!USE_MOCK ? <BackendInbox userId={userId} /> : null}
     <section className="inbox-updates" aria-label="Updates">
     <h2 className="disp">Updates</h2>
     {isLoading ? <Panel quiet><span className="sub" role="status">Loading notifications…</span></Panel> : null}

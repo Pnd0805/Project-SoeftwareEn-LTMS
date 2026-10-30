@@ -30,6 +30,13 @@ import { needsIdentityDocs } from '../profile/identityDocs'
 
 import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 import '../search/search-inbox-workspace.css'
+import { NotificationMatchMessage } from './NotificationMatchMessage'
+
+/** ใช้ context/cache เดียวกับแจ้งเตือนปกติ; อ่านชื่อไม่ได้ยังเปิดแมตช์ด้วย ID เดิมได้ */
+function RequestMatch({ userId, matchId }: { userId?: number; matchId: number }) {
+  return userId !== undefined ? <NotificationMatchMessage userId={userId} matchId={matchId}
+    message={`Match #${matchId}`} className="inbox-request-match" /> : <>Match #{matchId}</>
+}
 
 const requestTarget = (request: BackendRefereeRequestDto) => request.matchA
   ? `match #${request.matchA.id}` : `tournament #${request.tournamentId}`
@@ -58,7 +65,7 @@ const answerError = (error: unknown) => {
   return error instanceof Error ? error.message : 'That did not go through. Try again.'
 }
 
-export function BackendInbox() {
+export function BackendInbox({ userId }: { userId?: number }) {
   const navigate = useNavigate()
   const [notice, setNotice] = useState<Notice>(null)
   const [docsFor, setDocsFor] = useState<string | null>(null)
@@ -179,14 +186,14 @@ export function BackendInbox() {
           {incoming.map(request => (
             <div className="inbox-request-row" key={request.id}>
               <div className="hstack">
-                <b>{request.matchA ? `Match #${request.matchA.id}` : `Tournament #${request.tournamentId}`}</b>
+                <b>{request.matchA ? <RequestMatch userId={userId} matchId={request.matchA.id} /> : `Tournament #${request.tournamentId}`}</b>
                 <span className="sub">
                   {request.type === 'ref_withdraw' ? 'The referee requests a withdrawal'
                     : request.type === 'org_add_match' ? 'The organizer asks you to take this match'
                     : request.type === 'org_swap' ? 'The organizer proposes a swap'
                     : request.type === 'ref_swap' ? 'Another referee proposes a swap'
                       : 'Another referee proposes a transfer'}
-                  {request.matchB ? ` with match #${request.matchB.id}` : ''}
+                  {request.matchB ? <> with <RequestMatch userId={userId} matchId={request.matchB.id} /></> : null}
                   {request.matchA?.scheduledTime ? ` · ${fmtDate(request.matchA.scheduledTime)}` : ''}
                 </span>
               </div>
@@ -233,8 +240,8 @@ export function BackendInbox() {
       {outgoing.length ? <Panel quiet>
         <h3>Your referee requests</h3>
         {outgoing.map(request => <div className="inbox-request-row" key={request.id}>
-          <div>Request #{request.id} · {requestLabel(request)} · {request.matchA ? `Match #${request.matchA.id}` : `Tournament #${request.tournamentId}`}
-            {request.matchB ? ` / #${request.matchB.id}` : ''} | <Badge kind={request.status === 'applied' ? 'ok' : request.status === 'open' ? 'warn' : 'neutral'}>{request.status}</Badge></div>
+          <div>Request #{request.id} · {requestLabel(request)} · {request.matchA ? <RequestMatch userId={userId} matchId={request.matchA.id} /> : `Tournament #${request.tournamentId}`}
+            {request.matchB ? <> / <RequestMatch userId={userId} matchId={request.matchB.id} /></> : null} | <Badge kind={request.status === 'applied' ? 'ok' : request.status === 'open' ? 'warn' : 'neutral'}>{request.status}</Badge></div>
           {request.reason ? <p className="sub">Reason: {request.reason}</p> : null}
           <span className="sub">{request.refereeA.user.fullName}: {request.refereeA.status}
             {request.refereeB ? ` | ${request.refereeB.user.fullName}: ${request.refereeB.status}` : ''}</span>

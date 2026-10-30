@@ -232,6 +232,13 @@
 
 **Completion evidence:** [Ticket 09 acceptance](../notes/2026-10-05-ltms-minimal-street-acceptance.md), 2026-10-07. All 25 routes accounted for; 282 fresh captures / 318 records across both desktop sizes/themes and 390px usability. Full suite: 96 files / 655 tests; TypeScript/lint/build and 49 frozen filenames/hashes pass. One detector/initial inspection, one token correction batch and one confirmation; direct implementer audit: 16/20. DESIGN.md and schemaVersion 2 sidecar written. Existing report-reason contract mismatch, bundle warning and live/device/mobile acceptance remain explicitly reported. Original evidence is retained in the subsequent [Quality20 integration cleanup](../notes/quality20/2026-10-08-integration.md); no push.
 
+## Inbox follow-up — named referee-request matches, 2026-10-31
+
+- [x] Replace bare match IDs in incoming/outgoing referee-request cards with the same team names, tournament and round context used by ordinary Inbox notices. Include both matches for swaps. Preserve request status, consent actions and numeric navigation targets.
+- [x] Reuse account-scoped `useNotificationMatch` reads/cache via `NotificationMatchMessage`. Repeated requests for one match share context requests. Missing or denied context retains the original numeric reference and working navigation; no Backend/API contract changes.
+- [x] Inbox verification: **7 files / 57 tests passed**, TypeScript, lint, production build and whitespace checks passed. Final full frontend regression: **165 files / 1,287 tests passed**.
+- [ ] User manual browser/device acceptance remains. Frontend commit authorized; exclude `TODO/`, do not push. Prior Organizer follow-up committed as `e994ec1`.
+
 ## Organizer follow-up — withdrawal history and player Hard filter, 2026-10-31
 
 User-approved scope: align the withdrawal-history checkbox on the left with an explanation of what it includes; show individual Hard filter results beside submitted players in the entry-review dialog.
