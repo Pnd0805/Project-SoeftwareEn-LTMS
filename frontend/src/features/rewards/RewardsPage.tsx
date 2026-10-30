@@ -8,7 +8,8 @@ import {
   useRewardDisplay,
 } from '../../hooks/useRewards'
 import { ApiError } from '../../api/client'
-import { Badge, Banner, Empty, Panel } from '../../components/kit/primitives'
+import { Badge, Banner, Empty, Facts, Panel } from '../../components/kit/primitives'
+import { Modal } from '../../components/kit/Modal'
 import { Icon } from '../../components/kit/Icon'
 import type { RewardDto } from '../../api/rewards'
 import { RewardBadgeEmblem } from './RewardBadgeEmblem'
@@ -44,6 +45,8 @@ export function RewardsPage() {
   const redeemMutation = useRedeemReward()
 
   const [redeemingId, setRedeemingId] = useState<number | null>(null)
+  /* แต้มหักทันที เดิมกดปุ่มเดียวก็ซื้อเลย — ต้องผ่านหน้าสรุปแล้วยืนยันอีกชั้น (เอกสารแก้ UI ข้อ 11) */
+  const [confirming, setConfirming] = useState<{ reward: RewardDto; step: 1 | 2 } | null>(null)
   const [redeemSuccessMsg, setRedeemSuccessMsg] = useState<string | null>(null)
   const [redeemError, setRedeemError] = useState<string | null>(null)
 
@@ -294,7 +297,7 @@ export function RewardsPage() {
                               className={`btn ${isAffordable ? 'primary' : ''}`}
                               disabled={!isAffordable || isProcessing}
                               aria-disabled={!isAffordable || isProcessing}
-                              onClick={() => handleRedeem(row)}
+                              onClick={() => setConfirming({ reward: row, step: 1 })}
                             >
                               {isProcessing && redeemingId === row.id
                                 ? 'กำลังแลก…'
@@ -356,6 +359,31 @@ export function RewardsPage() {
           </div>
         ) : null}
       </Panel>
+
+      <Modal className="reward-confirm" open={!!confirming} onClose={() => setConfirming(null)}
+        label={`ขั้นที่ ${confirming?.step ?? 1} จาก 2`}
+        title={confirming?.step === 2 ? 'ยืนยันการใช้แต้ม' : 'ตรวจสอบการแลกเหรียญ'}>
+        {confirming?.step === 1 ? <>
+          <Facts rows={[
+            ['เหรียญ', confirming.reward.name],
+            ['แต้มที่ใช้', `${confirming.reward.pointsRequired} แต้ม`],
+            ['แต้มคงเหลือหลังแลก', `${totalPoints - (confirming.reward.pointsRequired ?? 0)} แต้ม`],
+          ]} />
+          <div className="hstack">
+            <button className="btn" type="button" onClick={() => setConfirming(null)}>ยกเลิก</button>
+            <button className="btn primary" type="button" onClick={() => setConfirming({ ...confirming, step: 2 })}>ถัดไป</button>
+          </div>
+        </> : null}
+        {confirming?.step === 2 ? <>
+          <p>ระบบจะหัก {confirming.reward.pointsRequired} แต้มเพื่อแลก &quot;{confirming.reward.name}&quot; ทันทีเมื่อกดยืนยัน</p>
+          <div className="hstack">
+            <button className="btn" type="button" onClick={() => setConfirming({ ...confirming, step: 1 })}>ย้อนกลับ</button>
+            <button className="btn primary" type="button" onClick={() => { handleRedeem(confirming.reward); setConfirming(null) }}>
+              ยืนยันใช้ {confirming.reward.pointsRequired} แต้ม
+            </button>
+          </div>
+        </> : null}
+      </Modal>
     </div>
   )
 }

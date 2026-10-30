@@ -276,7 +276,7 @@ function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDt
               <Icon name="plus" size={12} /> {loading === 'remove' ? 'Removing…' : loading ? 'Uploading…' : user.avatarUrl ? 'Change photo' : 'Upload photo'}
             </button>
             {user.avatarUrl ? (
-              <button className="btn ghost" type="button"
+              <button className="btn danger" type="button"
                 disabled={!!loading || updateMe.isPending} onClick={removeAvatar}>
                 Remove Photo
               </button>

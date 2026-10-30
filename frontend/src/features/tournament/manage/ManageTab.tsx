@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Panel, TableWrap } from '../../../components/kit/primitives'
+import { Badge, Banner, Empty, Panel, TableWrap } from '../../../components/kit/primitives'
 import { ManageActivity } from './ManageActivity'
 import { USE_MOCK } from '../../../api/client'
 import { useLtms } from '../../../shared/store'
@@ -22,6 +22,7 @@ import { MatchRefereePlanner } from './MatchRefereePlanner'
 import { RefereeFinder, RefereePanel } from './RefereePanel'
 import { RegistrationsPanel } from './RegistrationsPanel'
 import { SetupTrail } from './SetupTrail'
+import { awaitingApproval } from './awaitingApproval'
 import { LiveFeedbackPanel } from './LiveFeedbackPanel'
 import { OrganizerWithdrawals } from '../../match/RefereeWithdrawal'
 
@@ -78,8 +79,21 @@ function ManageWorkspace({ t, sub }: { t: Tournament; sub?: string }) {
   /* ไม่ mount ทุกแผงพร้อมกัน เพราะบางแผงอ่านข้อมูลส่วนตัวเมื่อเปิดครั้งแรก */
   if (!visited.includes(active)) setVisited([...visited, active])
 
+  /* ก่อน admin อนุมัติ route ของผู้จัดตอบ 403 ทุกเส้น — ไม่เปิดแผงพวกนี้เลย ผู้จัดจะได้ไม่เห็น
+     "คุณไม่ใช่ผู้จัดการแข่งขัน" ในทัวร์ของตัวเอง (เอกสารแก้ UI ข้อ 4) */
+  const locked = awaitingApproval(t)
+  const lockedPanel = <Empty icon="clock" title="Available after admin approval"
+    sub="This section opens once the tournament is approved." />
+
   return (
     <div className="organizer-workspace">
+      {locked ? (
+        <Banner kind={t.status === 'pending' ? 'warn' : 'crit'} icon={t.status === 'pending' ? 'clock' : undefined}>
+          {t.status === 'pending'
+            ? <><b>Waiting for admin approval.</b> An admin still has to confirm this tournament. You can review the entry rules or delete the request meanwhile.</>
+            : <><b>An admin rejected this request.</b> It can't be managed. Delete it and send a new request if you still want to run it.</>}
+        </Banner>
+      ) : null}
       <nav className="tabs organizer-tabs" aria-label="Manage sections">
         {subtabs.map(k => <Link key={k} to={`/t/${t.id}/manage/${k}`} className={`tab ${k === active ? 'on' : ''}`}
           aria-current={k === active ? 'page' : undefined} aria-controls={`manage-${k}`}
@@ -88,17 +102,17 @@ function ManageWorkspace({ t, sub }: { t: Tournament; sub?: string }) {
       {subtabs.filter(k => visited.includes(k)).map(k => <ManageActivity.Provider key={k} value={active === k}>
         <section id={`manage-${k}`} className="organizer-section" aria-label={LABELS[k]} hidden={active !== k} inert={active !== k}>
       {k === 'progress' ? <><SetupTrail t={t} onAppoint={() => setFinder(k)} />{!USE_MOCK ? <DeleteTournamentPanel t={t} /> : null}</> : null}
-      {k === 'registrations' ? <RegistrationsPanel t={t} /> : null}
+      {k === 'registrations' ? locked ? lockedPanel : <RegistrationsPanel t={t} /> : null}
       {k === 'entry' ? <EntryFilterPanel t={t} /> : null}
       {/* จับสายเสร็จแล้วงานถัดไปคือหาคนคุมทุกนัด — R10: ต้องทำได้ตรงนี้เลย รวมถึงนัด
           รอบหลังที่ยังไม่รู้คู่ ไม่ใช่ไล่เปิดหน้า Fixture ทีละแมตช์ (โหมด mock ไม่มีเส้น
           FR02 ให้เรียก แผงนี้จึงขึ้นเฉพาะทัวร์ที่มาจาก API) */}
-      {k === 'draw' ? <DrawPanel t={t} /> : null}
-      {k === 'draw' && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
-      {k === 'referees' ? <><RefereePanel t={t} onAppoint={() => setFinder(k)} />
+      {k === 'draw' ? locked ? lockedPanel : <DrawPanel t={t} /> : null}
+      {k === 'draw' && !USE_MOCK && !locked ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}
+      {k === 'referees' ? locked ? lockedPanel : <><RefereePanel t={t} onAppoint={() => setFinder(k)} />
         {!USE_MOCK && liveTournamentId ? <OrganizerWithdrawals tournamentId={liveTournamentId} /> : null}
         {!showDraw && !USE_MOCK ? <MatchRefereePlanner tournamentId={liveTournamentId} /> : null}</> : null}
-      {k === 'feedback' ? USE_MOCK ? <FeedbackPanel t={t} /> : <LiveFeedbackPanel tournamentId={liveTournamentId!} /> : null}
+      {k === 'feedback' ? locked ? lockedPanel : USE_MOCK ? <FeedbackPanel t={t} /> : <LiveFeedbackPanel tournamentId={liveTournamentId!} /> : null}
         </section>
       </ManageActivity.Provider>)}
       <RefereeFinder t={t} open={finder === active} onClose={() => setFinder(null)} />

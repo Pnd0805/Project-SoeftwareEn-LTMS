@@ -29,6 +29,7 @@ import type {
   SaveMatchStatsRequest,
 } from "../types/match.dto";
 import type { MatchRef } from "../mocks/storeBridge";
+import { openCheckinKey } from "./matchKeys";
 
 // ══════════════ query keys ══════════════
 
@@ -373,6 +374,7 @@ export function useSetLivestream(matchId: MatchRef) {
 export function useOpenMatchCheckin(matchId: MatchRef, tournamentId?: MatchRef) {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: openCheckinKey(matchId),
     mutationFn: () => matchApi.openMatchCheckin(Number(matchId)),
     onSuccess: () => {
       touchMatch(qc, matchId, tournamentId);

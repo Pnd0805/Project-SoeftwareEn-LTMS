@@ -51,7 +51,7 @@ function fillAccount() {
     fireEvent.change(screen.getByLabelText(label), { target: { value } })
 }
 async function chooseStudent() {
-  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } })
   fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
   fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
   await screen.findByRole('option', { name: 'Engineering' })
@@ -76,7 +76,7 @@ it('does not select an identity when faculty reference data arrives late', async
   holdFaculties = true
   show()
   fillAccount()
-  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } })
   fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
   fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
   await waitFor(() => expect(releaseFaculties).toBeDefined())
@@ -91,7 +91,7 @@ it('does not select an identity when faculty reference data arrives late', async
 it('clears the old department immediately when faculty changes, even before the new list arrives', async () => {
   const { container } = show()
   fillAccount()
-  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } })
   fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '2002-06-04' } })
   fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
   await screen.findByRole('option', { name: 'Science' })
@@ -118,7 +118,7 @@ it('retains a deliberate draft on server field error and submits the unchanged p
   fireEvent.submit(container.querySelector('form')!)
   await screen.findByText('Email already registered')
   expect(screen.getByLabelText('Email')).toHaveAccessibleDescription('Email already registered')
-  expect(screen.getByLabelText('Gender')).toHaveValue('other')
+  expect(screen.getByLabelText('Gender')).toHaveValue('female')
   expect(screen.getByLabelText('Birth date')).toHaveValue('2002-06-04')
   reject = false
   fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
@@ -126,5 +126,15 @@ it('retains a deliberate draft on server field error and submits the unchanged p
   expect(screen.getByLabelText('Department')).toHaveValue('8')
   fireEvent.submit(container.querySelector('form')!)
   await screen.findByRole('heading', { name: 'Verify email' })
-  expect(submitted).toEqual(Array(2).fill({ fullName: 'Deliberate Student', email: 'chosen@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
+  expect(submitted).toEqual(Array(2).fill({ fullName: 'Deliberate Student', email: 'chosen@ku.th', password: 'password123', gender: 'female', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
+})
+
+it('offers students male and female only, and clears Other when the email turns into a KU one', () => {
+  show()
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'guest@example.com' } })
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'other' } })
+  expect(screen.getByLabelText('Gender')).toHaveValue('other')
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'student@ku.th' } })
+  expect(screen.queryByRole('option', { name: 'Other' })).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Gender')).toHaveValue('')
 })

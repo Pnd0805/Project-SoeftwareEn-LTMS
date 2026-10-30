@@ -110,7 +110,7 @@ it('prevents duplicate verify submissions while pending', async () => {
 })
 it('moves registration to OTP, keeps delivery failure truthful and does not retain the password', async () => {
   const { container } = show('/register')
-  for (const [label, value] of Object.entries({ 'Full name': 'Test Student', Email: 'chosen@ku.th', Password: 'password123', Gender: 'other', 'Birth date': '2002-06-04' }))
+  for (const [label, value] of Object.entries({ 'Full name': 'Test Student', Email: 'chosen@ku.th', Password: 'password123', Gender: 'female', 'Birth date': '2002-06-04' }))
     fireEvent.change(screen.getByLabelText(label), { target: { value } })
   fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
   await screen.findByRole('option', { name: 'Engineering' })
@@ -126,7 +126,7 @@ it('moves registration to OTP, keeps delivery failure truthful and does not reta
   expect(screen.getByLabelText('Location')).toHaveTextContent('/register?step=otp&email=chosen%40ku.th')
   expect(screen.getByLabelText('Location')).not.toHaveTextContent('password123')
   expect(JSON.stringify(localStorage)).not.toContain('password123')
-  expect(posts).toEqual([{ path: '/auth/register', body: { fullName: 'Test Student', email: 'chosen@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 } }])
+  expect(posts).toEqual([{ path: '/auth/register', body: { fullName: 'Test Student', email: 'chosen@ku.th', password: 'password123', gender: 'female', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 } }])
 })
 it('shows the hourly limit until the oldest request leaves the rolling window', () => {
   const now = Date.now()

@@ -15,7 +15,8 @@ import { useNow } from '../../hooks/useNow'
  */
 import { useEffect, useRef, useState } from 'react'
 import { Badge, Banner, Empty, Field, Panel, TableWrap } from '../../components/kit/primitives'
-import { adminReadBlocked } from './adminView'
+import { adminQueueDenied, adminReadBlocked } from './adminView'
+import { AdminQueueDenied } from './AdminQueueDenied'
 import { Modal } from '../../components/kit/Modal'
 import { Icon } from '../../components/kit/Icon'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -220,7 +221,6 @@ export function AdminPage() {
      ใช้ store (FEAT-1-REMAINING: fallback เฉพาะที่ backend ยังไม่มี) */
   const permanentRows = (teamBlocked ? [] : teamRequestsQuery.data?.items ?? []).filter(r => r.status === 'pending')
   const externalPending = adminReadBlocked(externalQuery) ? 0 : externalQuery.data?.items.length ?? 0
-  const teamReqStatus = (teamRequestsQuery.error as { status?: number } | null)?.status
   const busyRequestId = approveTeamReq.isPending ? approveTeamReq.variables
     : rejectTeamReq.isPending ? rejectTeamReq.variables?.requestId : undefined
   const approveError = approveTeamReq.error as (Error & { code?: string }) | null
@@ -414,11 +414,8 @@ export function AdminPage() {
           {teamRequestsQuery.isPending ? <div className="sub">Loading requests…</div> : null}
 
           {teamRequestsQuery.isError ? (
-            teamReqStatus === 401 || teamReqStatus === 403 ? (
-              <Banner kind="warn">
-                <b>This queue is for university-wide admins.</b>{' '}
-                {teamReqStatus === 401 ? 'Sign in again to continue.' : 'Your admin scope does not cover official-squad requests.'}
-              </Banner>
+            adminQueueDenied(teamRequestsQuery.error) ? (
+              <AdminQueueDenied error={teamRequestsQuery.error} queue="official-squad requests" />
             ) : (
               <Banner kind="crit">
                 <b>Couldn't load the requests.</b> {(teamRequestsQuery.error as Error).message}{' '}
@@ -442,7 +439,7 @@ export function AdminPage() {
                       <td><IdentityDocs docs={r.supportingDocs} docsSubmitted={!!r.supportingDocs?.length} fetchedAt={teamRequestsQuery.dataUpdatedAt} now={clockNow} onRefresh={() => void teamRequestsQuery.refetch()} refreshing={teamRequestsQuery.isFetching} /></td>
                       <td>
                         <span className="hstack" style={{ gap: 6 }}>
-                          <button className="btn ghost" type="button" disabled={busyRequestId !== undefined}
+                          <button className="btn danger" type="button" disabled={busyRequestId !== undefined}
                             onClick={() => openReject(r)}>
                             Reject
                           </button>

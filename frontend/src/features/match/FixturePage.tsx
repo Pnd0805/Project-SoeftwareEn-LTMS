@@ -167,10 +167,10 @@ function RealRefereeAssignments({ match }: { match: MatchDto }) {
                         ) : <Badge kind="neutral">Available</Badge>}</td>
                     <td style={{ textAlign: 'right' }}>
                       {isAccepted ? (
-                        <button className="btn ghost" type="button" disabled={busy}
+                        <button className="btn danger" type="button" disabled={busy}
                           onClick={() => unassign.mutate(referee.id)}>Remove</button>
                       ) : pending ? (
-                        <button className="btn ghost" type="button" disabled={busy}
+                        <button className="btn danger" type="button" disabled={busy}
                           onClick={() => cancel.mutate(pending.id)}>Cancel request</button>
                       ) : (
                         /* เดิมปิดปุ่มทันทีที่ครบ `needed` — แต่ `needed` เป็นขั้นต่ำของ BR-10

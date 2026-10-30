@@ -26,6 +26,7 @@ import { ResultOverride } from './ResultOverride'
 import { MatchMvpVoting } from '../mvp/MvpPage'
 import { Avatar } from '../../components/kit/Avatar'
 import { useState } from 'react'
+import { useIsMutating } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getMatchDispute } from '../../api/matchWorkflow'
@@ -41,6 +42,8 @@ import {
 } from '../../hooks/useMatch'
 import { ApiError, USE_MOCK } from '../../api/client'
 import { scheduleErrorKind } from '../../shared/matchScheduleErrors'
+import { lifecycleError } from './lifecycleError'
+import { openCheckinKey } from '../../hooks/matchKeys'
 import { useLtms } from '../../shared/store'
 import { findStoreMatch, tournamentRouteId } from '../../mocks/storeBridge'
 import { matchStateOf, toTeamView } from './matchView'
@@ -91,23 +94,6 @@ function scoreOf(r?: MatchResultDto, m?: MatchDto) {
  * ใครกดอะไรได้ backend เป็นคนตัดสินเสมอ (requireOrganizerOfMatch /
  * requireReferee) ตรงนี้แค่ไม่โชว์ปุ่มที่รู้อยู่แล้วว่าจะเด้ง
  */
-/** วงจรชีวิตแมตช์เด้งได้หลายเหตุ — บอกให้ตรงว่าเหตุไหน (R19/R20) */
-const lifecycleError = (error: unknown) => {
-  const code = error instanceof ApiError ? error.code : null
-  if (code === 'NOT_ORGANIZER') return 'Only the organizer of this tournament can do that.'
-  if (code === 'NOT_REFEREE') return 'Only a referee assigned to this match can do that.'
-  if (code === 'INVALID_STATUS_TRANSITION') return 'This match has already moved past that step. Reload to see where it stands.'
-  if (code === 'INSUFFICIENT_REFEREES') return 'This match needs enough accepted referees before opening check-in or starting. Complete the referee appointments first.'
-  if (code === 'INSUFFICIENT_CHECKINS') return 'Both squads are below the minimum number of checked-in players. The match has not started. Wait for more players to check in or ask the organizer to reschedule.'
-  if (code === 'CHECKIN_NOT_OPEN') return 'Check-in is not open for this match.'
-  if (code === 'MATCH_TEAMS_INCOMPLETE') return 'This match is still waiting on an earlier round for one of its places.'
-  if (code === 'TEAMS_PRESENT') return 'Both squads met the minimum, so this is not a no-show — a referee starts it.'
-  if (code === 'NOT_MATCH_PARTICIPANT') return 'Only this match’s referees or the organizer can do that.'
-  if (code === 'MATCH_NOT_IN_PROGRESS') return 'This match is not being played right now. Reload to see where it stands.'
-  if (scheduleErrorKind(error) === 'match') return 'The match schedule is not ready.'
-  if (code === 'PREDECESSOR_DISPUTED') return 'An earlier match that feeds this one is still disputed. It has to be settled first.'
-  return error instanceof Error ? error.message : 'Something went wrong.'
-}
 
 function MatchLifecycle({ m }: { m: MatchDto }) {
   const navigate = useNavigate()
@@ -116,6 +102,8 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
   /* ครบสามช่องหรือยัง — กฎเดียวกับที่ M06 บังคับตอนตั้งนัดครั้งแรก (SCHEDULE_INCOMPLETE) */
   const fixtureComplete = !!m.scheduledTime && !!m.scheduledEndTime && !!m.venue
   const openCheckin = useOpenMatchCheckin(m.id, m.tournamentId)
+  /* ปุ่มนี้กับปุ่มใน Next action ยิงเส้นเดียวกัน — กดฝั่งหนึ่งอีกฝั่งต้องรออยู่ด้วย */
+  const opening = useIsMutating({ mutationKey: openCheckinKey(m.id) }) > 0
   const closeCheckin = useCloseMatchCheckin(m.id, m.tournamentId)
   const start = useStartMatch(m.id, m.tournamentId)
   const forfeit = useForfeitMatch(m.id, m.tournamentId)
@@ -134,7 +122,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
      (start กับ forfeit ฝั่ง backend ก็ตอบ 409 MATCH_TEAMS_INCOMPLETE อยู่แล้ว) */
   if (!m.teamA || !m.teamB) return null
 
-  const busy = openCheckin.isPending || closeCheckin.isPending || start.isPending || forfeit.isPending
+  const busy = opening || closeCheckin.isPending || start.isPending || forfeit.isPending
     || finish.isPending
   const failed = [openCheckin, closeCheckin, start, forfeit, finish].find(x => x.isError)
 
@@ -166,7 +154,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
             disabled={busy || !fixtureComplete}
             title={fixtureComplete ? undefined : 'Set the kick-off, end time and venue first'}
             onClick={() => openCheckin.mutate()}>
-            {openCheckin.isPending ? 'Opening…' : 'Open check-in'}
+            {opening ? 'Opening…' : 'Open check-in'}
           </button>
           {!fixtureComplete ? (
             <button className="btn" type="button" style={{ alignSelf: 'flex-start' }}
@@ -222,7 +210,7 @@ function MatchLifecycle({ m }: { m: MatchDto }) {
                 </button>
                 {confirmForfeit ? (
                   <>
-                    <button className="btn crit" type="button" disabled={busy}
+                    <button className="btn danger" type="button" disabled={busy}
                       onClick={() => { setConfirmForfeit(false); forfeit.mutate() }}>
                       {forfeit.isPending ? 'Settling…' : 'Yes — settle it as a no-show'}
                     </button>

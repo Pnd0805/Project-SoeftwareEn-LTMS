@@ -2,6 +2,10 @@
 export const adminReadBlocked = (query: { isError?: boolean; error?: unknown }) => query.isError
   && [401, 403, 404, 501].includes((query.error as { status?: number } | null)?.status ?? 0)
 
+/** 401/403 ของคิว — ใช้เลือกว่าจะแสดง AdminQueueDenied แทน error ทั่วไป */
+export const adminQueueDenied = (error: unknown) =>
+  [401, 403].includes((error as { status?: number } | null)?.status ?? 0)
+
 export const adminFieldLabel = (key: string) => {
   const words = key.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ')
   return words.charAt(0).toUpperCase() + words.slice(1).toLowerCase()

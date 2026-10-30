@@ -44,7 +44,7 @@ function CommentBlock({ m, onClose }: { m: Match; onClose: () => void }) {
                   <br />{c.text}
                 </span>
                 {canRemove
-                  ? <button className="btn ghost" type="button" onClick={() => comments.remove.mutate(c.id)}
+                  ? <button className="btn danger" type="button" onClick={() => comments.remove.mutate(c.id)}
                     disabled={comments.remove.isPending}>Remove</button>
                   : null}
               </div>

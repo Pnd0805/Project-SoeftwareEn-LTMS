@@ -28,13 +28,13 @@ export function JoinRequestsPanel({ teamId, visibility, leader, member, signedIn
       {team.isError ? <Banner kind="crit">{team.error instanceof Error ? team.error.message : 'Request failed.'} <button className="btn" onClick={() => void team.refetch()}>Retry requests</button></Banner> : null}
       {team.data?.items.filter(r => r.status === 'pending').map(r => <article className="panel quiet" key={r.id}>
         <Link to={`/player/${r.user.id}`}>{r.user.fullName}</Link><p style={{ whiteSpace: 'pre-wrap' }}>{r.message || 'No message'}</p>
-        <button className="btn" disabled={action.isPending} onClick={() => { action.reset(); setReason(''); setReview({ row: r, approve: false }) }}>Reject request</button>{' '}
+        <button className="btn danger" disabled={action.isPending} onClick={() => { action.reset(); setReason(''); setReview({ row: r, approve: false }) }}>Reject request</button>{' '}
         <button className="btn primary" disabled={action.isPending} onClick={() => { action.reset(); setReview({ row: r, approve: true }) }}>Review admission</button>
       </article>)}
       {team.isSuccess && !team.data.items.some(r => r.status === 'pending') ? <p>No pending join requests.</p> : null}
     </> : member ? <p>You are already a member.</p> : !signedIn ? <p><Link to="/login">Sign in</Link> to request admission.</p> : <>
       {mine.isError ? <Banner kind="crit">Could not check your pending requests. <button className="btn" onClick={() => void mine.refetch()}>Retry</button></Banner> : null}
-      {own ? <><p>Pending leader review.</p><button className="btn" disabled={action.isPending} onClick={() => act({ kind: 'cancel', id: own.id })}>Cancel join request</button></>
+      {own ? <><p>Pending leader review.</p><button className="btn danger" disabled={action.isPending} onClick={() => act({ kind: 'cancel', id: own.id })}>Cancel join request</button></>
         : visibility === 'public' ? <><Field label="Message to the leader (optional)" htmlFor={`join-message-${teamId}`}><textarea id={`join-message-${teamId}`} maxLength={255} value={message} onChange={e => setMessage(e.target.value)} /></Field><button className="btn primary" disabled={membershipPending || mine.isPending || mine.isError || action.isPending} onClick={() => act({ kind: 'join', message })}>Request to join</button></> : <p>This squad is private. Ask the leader for an invitation.</p>}
     </>}
     <Modal open={!!review} title={`${review?.approve ? 'Admit' : 'Reject'} ${review?.row.user.fullName ?? ''}?`} onClose={() => !action.isPending && setReview(null)}>

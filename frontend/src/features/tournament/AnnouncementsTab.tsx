@@ -19,6 +19,7 @@ import { ApiError, USE_MOCK } from '../../api/client'
 import { createTournamentAnnouncementSchema, type CreateTournamentAnnouncementInput } from '../../schemas/tournament.schema'
 import type { Tournament } from '../../shared/types'
 import { fmtDateTime } from '../../shared/dateFormat'
+import { awaitingApproval } from './manage/awaitingApproval'
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.'
 
@@ -35,6 +36,8 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )
   const fieldErrors = !!(errors.title || errors.body)
+  /* ก่อน admin อนุมัติ backend ตอบ NOT_ORGANIZER ซึ่งอ่านเหมือน "ไม่ใช่เจ้าของทัวร์" — บอกเหตุจริงตั้งแต่ก่อนกรอกฟอร์ม */
+  const locked = awaitingApproval(t)
 
   const post = async (input: CreateTournamentAnnouncementInput) => {
     try { if (editing !== null) await edit.mutateAsync({ id: editing, input }); else await publish.mutateAsync(input); reset(); setOpen(false); setEditing(null) }
@@ -46,11 +49,18 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
       <div className="spread"><h2 className="journey-heading">Announcements</h2>
       {org ? (
         <div className="hstack" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn primary" type="button" onClick={() => { publish.reset(); edit.reset(); setEditing(null); reset({ title: '', body: '', type: 'general' }); setOpen(true) }}>
+          <button className="btn primary" type="button" disabled={locked} onClick={() => { publish.reset(); edit.reset(); setEditing(null); reset({ title: '', body: '', type: 'general' }); setOpen(true) }}>
             <Icon name="bell" size={13} /> Post an announcement
           </button>
         </div>
       ) : null}</div>
+      {org && locked ? (
+        <Banner kind={t.status === 'pending' ? 'warn' : 'crit'} icon={t.status === 'pending' ? 'clock' : undefined}>
+          {t.status === 'pending'
+            ? <><b>Waiting for admin approval.</b> You can post announcements once an admin approves this tournament.</>
+            : <><b>An admin rejected this request.</b> Announcements can't be posted on it.</>}
+        </Banner>
+      ) : null}
 
       {announcements.isPending ? <Panel quiet><span className="sub">Loading announcements…</span></Panel>
         : announcements.isError ? (
@@ -71,7 +81,7 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
           </Panel>
         )) : <Empty icon="bell" title="Nothing announced yet" />}
 
-      <Modal open={open} onClose={() => !publish.isPending && !edit.isPending && setOpen(false)} label={editing === null ? 'Post an announcement' : 'Edit announcement'} title={t.name}>
+      <Modal className="announcement-dialog" open={open} onClose={() => !publish.isPending && !edit.isPending && setOpen(false)} label={editing === null ? 'Post an announcement' : 'Edit announcement'} title={t.name}>
         <form onSubmit={handleSubmit(post)}>
         <Field label="Announcement type" htmlFor="an-type"><select id="an-type" {...register('type')}>{['general', 'schedule_change', 'venue_change', 'result', 'livestream'].map(type => <option key={type} value={type}>{type.replaceAll('_', ' ')}</option>)}</select></Field>
         <Field label="Headline" htmlFor="an-title">
@@ -84,7 +94,7 @@ export function AnnouncementsTab({ t, org }: { t: Tournament; org: boolean }) {
             placeholder="What changed, and what people should do about it." />
           {errors.body?.message ? <span className="sub" id="an-body-error">{errors.body.message}</span> : null}
         </Field>
-        <Banner kind="warn">
+        <Banner kind="crit">
           This appears on the tournament page immediately for people who can access it and notifies approved team leaders.
           You can edit or remove it later; notifications already delivered may have been read.
         </Banner>

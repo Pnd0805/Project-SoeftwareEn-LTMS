@@ -16,7 +16,7 @@ test.describe("ยื่นคำขอจัดทัวร์", () => {
     await page.getByLabel("Sport").selectOption({ label: "แบดมินตัน" })
     await page.getByLabel(/^Format/).selectOption({ label: "Single elimination" })
     await page.getByLabel(/^Organising faculty/).selectOption({ label: "คณะวิศวกรรมศาสตร์" })
-    await page.getByLabel("Squad cap").fill("8")
+    await page.getByLabel("Maximum squads").fill("8")
     await page.getByLabel("Minimum squads").fill("2")
     await page.getByLabel("Entry opens").fill(regStart)
     await page.getByLabel("Entry closes").fill(regEnd)
@@ -43,7 +43,7 @@ test.describe("ยื่นคำขอจัดทัวร์", () => {
     await page.getByLabel("Name").fill(name)
     await page.getByLabel("Sport").selectOption({ label: "แบดมินตัน" })
     await page.getByLabel(/^Organising faculty/).selectOption({ label: "คณะวิศวกรรมศาสตร์" })
-    await page.getByLabel("Squad cap").fill("8")
+    await page.getByLabel("Maximum squads").fill("8")
     await page.getByLabel("Minimum squads").fill("2")
     await page.getByLabel("Entry opens").fill(regEnd)     // สลับกัน
     await page.getByLabel("Entry closes").fill(regStart)

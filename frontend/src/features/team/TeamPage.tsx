@@ -344,7 +344,7 @@ function RosterPanel({ data, members, isLeader, lockName, minPlayers, canViewMem
                           </button>
                         ) : null}
                         {isLeader && !captain ? (
-                          <button className="btn ghost" type="button" disabled={!!lockName || kick.isPending}
+                          <button className="btn danger" type="button" disabled={!!lockName || kick.isPending}
                             aria-label={`${kick.isPending && kick.variables === member.userId ? 'Removing' : 'Remove'} ${member.fullName}`}
                             title={lockName ? `Locked while ${lockName} is under way` : undefined}
                             onClick={() => { kick.reset(); setNotice(null); setRemoving(member) }}>

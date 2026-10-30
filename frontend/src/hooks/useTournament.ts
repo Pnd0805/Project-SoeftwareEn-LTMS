@@ -249,6 +249,14 @@ export function usePublishTournament(tournamentId: TournamentRef) {
   return useMutation({ mutationFn: () => tournamentApi.publishTournament(tournamentId), onSuccess: () => invalidateTournament(queryClient, tournamentId) });
 }
 
+export function useUnpublishTournament(tournamentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => tournamentApi.unpublishTournament(tournamentId),
+    onSuccess: () => invalidateTournament(queryClient, tournamentId),
+  });
+}
+
 export function useOpenTournamentRegistration(tournamentId: number) {
   const queryClient = useQueryClient();
   return useMutation({

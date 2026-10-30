@@ -323,7 +323,7 @@ export function RefereePanel({ t, onAppoint }: { t: Tournament; onAppoint: () =>
                       </td>
                       <td><RefereeState r={r} /></td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn ghost" type="button" disabled={busy}
+                        <button className="btn danger" type="button" disabled={busy}
                           onClick={() => { setNotice(null); setRemoving(r) }}>
                           {busy ? 'Removing…' : removeLabel(r)}
                         </button>

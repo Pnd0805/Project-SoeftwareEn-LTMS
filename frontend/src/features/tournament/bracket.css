@@ -162,10 +162,9 @@
 }
 
 .tour-bracket .bracket-match-meta .badge {
-  padding: 0;
+  padding: 0 8px;
   border: 0;
-  background: var(--void-2);
-  font: 500 12px/20px var(--f-ui);
+  font: 600 12px/20px var(--f-ui);
   letter-spacing: 0;
   text-transform: none;
 }

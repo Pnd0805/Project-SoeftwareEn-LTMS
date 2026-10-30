@@ -175,7 +175,7 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
               {r.hardFilterPassed === false ? 'Failed' : r.hardFilterPassed ? 'Passed' : 'Not checked'}</Badge></td>
             <td className="sub">{r.at ? fmtDate(r.at) : '—'}</td>
             <td>{r.status === 'pending' && !closed ? <div className="hstack">
-              <button className="btn" type="button" onClick={() => startReview(r)}>Review</button>
+              <button className="btn primary" type="button" onClick={() => startReview(r)}>Review</button>
               <button className="btn primary" type="button" disabled={r.applicationId === null || busy || r.hardFilterPassed === false}
                 onClick={() => { if (r.applicationId !== null) approve.mutate(r.applicationId) }}>{approve.isPending && approve.variables === r.applicationId ? 'Approving…' : 'Approve'}</button>
             </div> : tm ? <button className="btn ghost" type="button" onClick={() => navigate(`/team/${tm.id}`)}>View team</button> : '—'}</td>

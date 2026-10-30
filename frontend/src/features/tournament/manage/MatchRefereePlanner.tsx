@@ -89,7 +89,7 @@ function MatchRow({ tournamentId, match, pool, openRequests, declinedRequests, b
             <span key={`a-${r.id}`} className="hstack" style={{ gap: 6 }}>
               <Badge kind="ok">Accepted</Badge>{r.user.fullName}
               {changeable ? (
-                <button className="btn ghost" type="button" disabled={working}
+                <button className="btn danger" type="button" disabled={working}
                   onClick={() => unassign.mutate(r.id)}>Remove</button>
               ) : null}
             </span>

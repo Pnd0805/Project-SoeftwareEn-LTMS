@@ -277,7 +277,7 @@ export function RequestPage() {
                 {fieldError('organizingDepartmentId') ? <span className="sub" id="rq-error-organizingDepartmentId">{fieldError('organizingDepartmentId')}</span> : null}
                 {fieldError('scopeType') ? <span className="sub" id="rq-error-scopeType">{fieldError('scopeType')}</span> : null}
               </Field>
-              <Field label="Squad cap" htmlFor="rq-cap">
+              <Field label="Maximum squads" htmlFor="rq-cap">
                 <input id="rq-cap" type="number" min={2} max={64} {...register('maxTeams', { valueAsNumber: true })} aria-invalid={!!errors.maxTeams} aria-describedby={errors.maxTeams ? "rq-error-maxTeams" : undefined} />
                 {fieldError('maxTeams') ? <span className="sub" id="rq-error-maxTeams">{fieldError('maxTeams')}</span> : null}
               </Field>
@@ -359,7 +359,7 @@ export function RequestPage() {
             {admit === 'pick' ? (
               <div className="grid2">
                 {(faculties?.items ?? []).map(f => (
-                  <label key={f.id} className="hstack" style={{ gap: 8, alignItems: 'center' }}>
+                  <label key={f.id} className="check-option">
                     <input type="checkbox" checked={pickedFaculties.includes(f.id)}
                       onChange={() => toggleIn('eligibilityFacultyIds', pickedFaculties, f.id)} />
                     <span>{f.name}</span>
@@ -371,7 +371,7 @@ export function RequestPage() {
             <span className="tag"><em>//</em> Years of study — tick none to accept every year</span>
             <div className="hstack" style={{ flexWrap: 'wrap', gap: 14 }}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map(y => (
-                <label key={y} className="hstack" style={{ gap: 6, alignItems: 'center' }}>
+                <label key={y} className="check-option">
                   <input type="checkbox" checked={admittedYears.includes(y)}
                     onChange={() => toggleIn('eligibilityYears', admittedYears, y)} />
                   <span>Year {y}</span>

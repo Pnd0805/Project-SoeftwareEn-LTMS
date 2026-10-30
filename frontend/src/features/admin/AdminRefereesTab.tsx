@@ -129,7 +129,7 @@ export function AdminRefereesTab() {
                   <td>
                     <span className="hstack" style={{ gap: 6, justifyContent: 'flex-end' }}>
                       {!USE_MOCK ? <button className="btn" type="button" disabled={busyId !== undefined} onClick={() => { requestDocs.reset(); review.reset(); setAskingDocs(true); setReason(''); setRejecting(r) }}>Request documents</button> : null}
-                      <button className="btn ghost" type="button" disabled={busyId !== undefined}
+                      <button className="btn danger" type="button" disabled={busyId !== undefined}
                         onClick={() => { review.reset(); requestDocs.reset(); setAskingDocs(false); setReason(''); setRejecting(r) }}>
                         Reject
                       </button>

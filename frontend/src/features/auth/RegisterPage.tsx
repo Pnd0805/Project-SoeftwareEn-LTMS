@@ -78,6 +78,10 @@ function RegistrationForm() {
   }
 
   const personalFields = ['email', 'fullName', 'password', 'gender', 'birthDate'] as const
+  /* เลือก Other ไว้ก่อนแล้วค่อยแก้อีเมลเป็น @ku.th — ตัวเลือกหายแต่ค่าเดิมยังค้างในฟอร์ม ต้องล้างให้เลือกใหม่ */
+  useEffect(() => {
+    if (isKuEmail(email) && form.getValues('gender') === 'other') form.setValue('gender', '' as RegisterInput['gender'])
+  }, [email, form])
   const referenceReady = faculties.isSuccess && departments.isSuccess
     && faculties.data.items.some(item => item.id === facultyId)
     && departments.data.items.some(item => item.id === departmentId)
@@ -142,7 +146,8 @@ function RegistrationForm() {
                   <option value="">Choose gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  {/* นิสิตเลือกได้แค่ชาย/หญิง — บัญชีภายนอกยังเลือก Other ได้ (เอกสารแก้ UI ข้อ 2) */}
+                  {!isKuEmail(email) ? <option value="other">Other</option> : null}
                 </select>
               </label>
               {form.formState.errors.gender && <span className="error" id="register-gender-error" role="alert">{form.formState.errors.gender.message}</span>}

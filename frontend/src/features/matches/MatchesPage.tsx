@@ -207,7 +207,7 @@ function AppointmentRow({ invite, onDone }: {
         </Banner>
       ) : null}
       <div className="hstack">
-        <button className="btn" type="button" disabled={pending}
+        <button className="btn danger" type="button" disabled={pending}
           onClick={() => decline.mutate(invite.id, {
             onSuccess: () => onDone({ kind: 'warn', text: `Declined the appointment for ${invite.tournament.name}.` }),
           })}>

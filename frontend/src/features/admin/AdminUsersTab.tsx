@@ -223,14 +223,14 @@ export function AdminUsersTab() {
                                 Reinstate
                               </button>
                             ) : (
-                              <button className="btn ghost" type="button" disabled={busy || self || !canSuspend(u)}
+                              <button className="btn danger" type="button" disabled={busy || self || !canSuspend(u)}
                                 title={self ? "You can't suspend your own account" : suspensionBlock(u) ?? (!canSuspend(u) ? 'Outside your admin scope' : undefined)}
                                 onClick={() => { suspend.reset(); setReason(''); setBanType('temporary'); setDays(''); setCategory('other'); setSuspending(u) }}>
                                 Suspend
                               </button>
                             )}
                             {admin ? (
-                              <button className="btn ghost" type="button" disabled={busy || self || !canRevoke(u)}
+                              <button className="btn danger" type="button" disabled={busy || self || !canRevoke(u)}
                                 title={self ? "You can't revoke your own rights" : undefined}
                                 onClick={() => { revoke.reset(); setAdminChange({ row: u, giving: false }) }}>
                                 Revoke admin

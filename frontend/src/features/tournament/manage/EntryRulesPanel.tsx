@@ -262,7 +262,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         <span className="tag"><em>//</em> Faculties — tick none to open it to every faculty</span>
         <div className="grid2">
           {(faculties.data?.items ?? []).map(f => (
-            <label key={f.id} className="hstack" style={{ gap: 8, alignItems: 'center' }}>
+            <label key={f.id} className="check-option">
               <input type="checkbox" checked={draftFaculties.includes(f.id)}
                 onChange={() => setDraftFaculties(list => toggle(list, f.id))} />
               <span>{f.name}</span>
@@ -289,7 +289,7 @@ export function EntryRulesPanel({ t }: { t: Tournament }) {
         <span className="tag"><em>//</em> Years of study — tick none to accept every year</span>
         <div className="hstack" style={{ flexWrap: 'wrap', gap: 14 }}>
           {YEARS.map(y => (
-            <label key={y} className="hstack" style={{ gap: 6, alignItems: 'center' }}>
+            <label key={y} className="check-option">
               <input type="checkbox" checked={draftYears.includes(y)}
                 onChange={() => setDraftYears(list => toggle(list, y))} />
               <span>Year {y}</span>

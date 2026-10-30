@@ -84,7 +84,7 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
       <p className="sub" role="status">{attachments.length} of 5 files</p>
       <div className="match-evidence-grid">{attachments.map(({ key, file }, i) => <div className="match-evidence-item" key={key}>
         <EvidencePreview file={file} /><b>{file.name}</b><span className="sub">Uploaded</span>
-        <button type="button" className="btn ghost" disabled={busy} onClick={() => { setAttachments(previous => previous.filter(item => item.key !== key)); setUploadError('') }}>Remove attachment {i + 1}</button>
+        <button type="button" className="btn danger" disabled={busy} onClick={() => { setAttachments(previous => previous.filter(item => item.key !== key)); setUploadError('') }}>Remove attachment {i + 1}</button>
       </div>)}</div>
       {uploading ? <p role="status">Uploading evidence...</p> : null}
       {uploadError || error ? <div role="alert">{uploadError || errorText(error)}<ContractErrorDetails error={error} /></div> : null}
@@ -105,7 +105,7 @@ function OrganizerDecision({ m, pending, error, submit }: { m: MatchDto; pending
     {outcome === 'result' ? <Scores m={m} a={a} b={b} setA={setA} setB={setB} disabled={pending} error={error} /> : <Banner kind="warn">Neither team advances. Confirm this decision only after checking both teams.</Banner>}
     <label>Required explanation<textarea aria-label="Organizer decision reason" maxLength={1000} disabled={pending} value={reason} onChange={e => setReason(e.target.value)} /></label>
     {error ? <p role="alert">{errorText(error)}</p> : null}
-    <button className="btn" type="button" disabled={pending || !allowed} onClick={() => setConfirm(true)}>Review organizer decision</button>
+    <button className="btn primary" type="button" disabled={pending || !allowed} onClick={() => setConfirm(true)}>Review organizer decision</button>
     {confirm ? <div><p>Confirm {outcome === 'result' ? `${m.teamA?.name} ${a} - ${b} ${m.teamB?.name}` : 'both teams forfeit'}? Reason: {reason}</p>
       <button className="btn" type="button" disabled={pending} onClick={() => setConfirm(false)}>Cancel decision</button>
       <button className="btn danger" type="button" disabled={pending || !allowed} onClick={async () => {
@@ -166,7 +166,7 @@ export function MatchWorkflowPanel({ m, result }: { m: MatchDto; result?: MatchR
       <p className="sub">Use this when play cannot continue. This returns the match to Scheduled; the organizer then sets a new fixture.</p>
       <label>Reason<textarea aria-label="Abandon reason" maxLength={500} value={abandonReason} disabled={flow.abandon.isPending} onChange={e => setAbandonReason(e.target.value)} /></label>
       {flow.abandon.isError ? <p role="alert">{errorText(flow.abandon.error)}</p> : null}
-      <button className="btn" type="button" disabled={!abandonReason.trim() || flow.abandon.isPending} onClick={() => setAbandonConfirm(true)}>Review abandonment</button>
+      <button className="btn primary" type="button" disabled={!abandonReason.trim() || flow.abandon.isPending} onClick={() => setAbandonConfirm(true)}>Review abandonment</button>
       {abandonConfirm ? <><p>Confirm abandonment? Play will stop and the fixture must be rescheduled.</p>
         <button className="btn" type="button" disabled={flow.abandon.isPending} onClick={() => setAbandonConfirm(false)}>Cancel abandonment</button>
         <button className="btn danger" type="button" disabled={flow.abandon.isPending || !abandonReason.trim()} onClick={async () => { try { await flow.abandon.mutateAsync(abandonReason.trim()); setAbandonConfirm(false) } catch { /* keep mutation error */ } }}>Confirm abandonment</button></> : null}

@@ -251,7 +251,7 @@ export function TeamsPage() {
                       </span>
                     </span>
                     <span className="hstack">
-                      <button className="btn ghost" type="button" disabled={answerInvitation.isPending}
+                      <button className="btn danger" type="button" disabled={answerInvitation.isPending}
                         onClick={() => {
                           setNotice(null)
                           answerInvitation.mutate({ invitationId: invitation.id, accept: false }, {
@@ -298,7 +298,7 @@ export function TeamsPage() {
                         onClick={() => cancelApplication.mutate(application.id)}>Cancel</button>
                     ) : null}
                     {application.status === 'approved' ? (
-                      <button className="btn ghost" type="button" disabled={withdrawApplication.isPending}
+                      <button className="btn danger" type="button" disabled={withdrawApplication.isPending}
                         onClick={() => USE_MOCK ? withdrawApplication.mutate(application.id)
                           : setWithdrawPrompt({ applicationId: application.id, tournamentId: application.tournament.id, name: application.tournament.name })}>Withdraw</button>
                     ) : null}
@@ -328,7 +328,7 @@ export function TeamsPage() {
         {reviewBeforeWithdraw.query.isError ? <p className="sub">Could not check review eligibility. You can still withdraw.</p> : null}
         {withdrawApplication.isError ? <p className="sub" role="alert">{errorMessage(withdrawApplication.error)}</p> : null}
         <div className="hstack"><button className="btn ghost" type="button" onClick={() => setWithdrawPrompt(null)}>Cancel</button>
-          <button className="btn" type="button" disabled={withdrawApplication.isPending || reviewBeforeWithdraw.query.isPending}
+          <button className="btn danger" type="button" disabled={withdrawApplication.isPending || reviewBeforeWithdraw.query.isPending}
             onClick={() => void finishWithdrawal().catch(() => {})}>{reviewBeforeWithdraw.query.data?.status === 'open' ? 'Skip review and withdraw' : 'Withdraw'}</button></div>
       </Modal>
 

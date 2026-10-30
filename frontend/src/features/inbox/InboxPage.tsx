@@ -110,13 +110,13 @@ export function InboxPage() {
       const href = notificationHref(n)
       const isRead = n.isRead ?? n.read ?? false
       const label = n.title ?? n.message ?? 'Notification'
-      return <div className="notif" key={n.id}>
+      return <div className={`notif ${isRead ? 'is-read' : 'is-unread'}`} key={n.id}>
         <span className={`dot ${isRead ? 'read' : ''}`} aria-hidden="true" />
         <Icon name={notificationIcon(n.type)} size={17} />
         <span className="txt"><b>{n.title ?? (n.type === 'tournament_auto_delete_warning' ? 'Tournament closure warning' : n.type === 'tournament_auto_deleted' ? 'Tournament automatically closed' : 'Notification')}</b>{!USE_MOCK && n.relatedEntityType === 'match' && Number.isSafeInteger(n.relatedEntityId) && n.relatedEntityId! > 0
           ? <NotificationMatchMessage userId={currentUser.id} matchId={n.relatedEntityId!} message={n.message} />
           : <span className="inbox-message">{n.message}</span>}
-          <span className="tag">{isRead ? 'Read' : 'Unread'} · <time dateTime={n.createdAt} title={n.createdAt}>{age(n.createdAt)}</time></span></span>
+          <span className="tag">{isRead ? 'Read' : <b className="inbox-unread-mark">Unread</b>} · <time dateTime={n.createdAt} title={n.createdAt}>{age(n.createdAt)}</time></span></span>
         <div className="inbox-row-actions">
         {!isRead ? <button className="btn ghost" type="button" aria-label={`Mark read: ${label}`} disabled={markRead.isPending || markAllRead.isPending}
           onClick={() => { setNotice(null); markRead.mutate(n.id, {

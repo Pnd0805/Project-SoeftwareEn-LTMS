@@ -71,7 +71,7 @@ describe('Account submissions with real hooks', () => {
   it('retains faculty/department and the registration draft after rejection, then submits the original payload', async () => {
     rejectSubmit = true
     const { container } = show('/register')
-    for (const [name, value] of Object.entries({ fullName: 'Account Fixture', email: 'account@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04' }))
+    for (const [name, value] of Object.entries({ fullName: 'Account Fixture', email: 'account@ku.th', password: 'password123', gender: 'female', birthDate: '2002-06-04' }))
       fireEvent.change(container.querySelector(`[name="${name}"]`)!, { target: { value } })
     fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
     await screen.findByRole('option', { name: 'Engineering' })
@@ -92,13 +92,13 @@ describe('Account submissions with real hooks', () => {
     expect(container.querySelector('[name="facultyId"]')).toHaveValue('2')
     submit(container)
     await screen.findByRole('heading', { name: 'Verify email' })
-    expect(submitted).toEqual(Array(2).fill({ fullName: 'Account Fixture', email: 'account@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
+    expect(submitted).toEqual(Array(2).fill({ fullName: 'Account Fixture', email: 'account@ku.th', password: 'password123', gender: 'female', birthDate: '2002-06-04', facultyId: 2, departmentId: 8, year: 3 }))
   })
 
   it('makes failed reference data visible and offers retry without erasing the draft', async () => {
     referenceFailure = true
     const { container } = show('/register')
-    for (const [name, value] of Object.entries({ fullName: 'Retained draft', email: 'account@ku.th', password: 'password123', gender: 'other', birthDate: '2002-06-04' }))
+    for (const [name, value] of Object.entries({ fullName: 'Retained draft', email: 'account@ku.th', password: 'password123', gender: 'female', birthDate: '2002-06-04' }))
       fireEvent.change(container.querySelector(`[name="${name}"]`)!, { target: { value } })
     fireEvent.click(screen.getByRole('button', { name: 'Next: Student details' }))
     await screen.findByText('Unable to load faculties.')

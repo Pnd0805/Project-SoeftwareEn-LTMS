@@ -1,5 +1,10 @@
+import { useIsMutating } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Panel } from '../../components/kit/primitives'
+import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+import { Banner, Panel } from '../../components/kit/primitives'
+import { openCheckinKey } from '../../hooks/matchKeys'
+import { useOpenMatchCheckin } from '../../hooks/useMatch'
+import { lifecycleError } from './lifecycleError'
 import type { MatchDto, MatchResultDto } from '../../types/match.dto'
 import { matchTime } from './matchTime'
 
@@ -7,6 +12,11 @@ export function MatchNextStep({ m, result }: { m: MatchDto; result?: MatchResult
   const navigate = useNavigate()
   const location = useLocation()
   const can = m.viewer.can
+  const openCheckin = useOpenMatchCheckin(m.id, m.tournamentId)
+  const opening = useIsMutating({ mutationKey: openCheckinKey(m.id) }) > 0
+  /* เปิดเช็คอินจากปุ่มนี้ได้เลย — เดิมปุ่มนี้แค่พาไปหา Open check-in อีกปุ่มใน Overview
+     จึงต้องกดสองครั้ง และ error ก็ไปขึ้นไกลจากปุ่มที่กด (เอกสารแก้ UI ข้อ 10) */
+  let opensCheckin = false
   let title = 'Follow the match'
   let note = 'Available actions appear in Overview. Your permissions are set by the tournament.'
   let action = { label: 'Open overview', path: `/m/${m.id}/overview`, focus: '.match-section[aria-label="Overview"]' }
@@ -35,8 +45,14 @@ export function MatchNextStep({ m, result }: { m: MatchDto; result?: MatchResult
     title = 'Check readiness'; note = 'Review check-ins and the assigned referees before starting.'
     action = { label: 'Manage check-in', path: `/checkin/${m.id}`, focus: 'main h1' }
   } else if (can.openCheckin) {
-    title = 'Open check-in'; note = 'The fixture must have a start time, end time and venue.'
-    action.label = 'Open check-in'
+    if (m.scheduledTime && m.scheduledEndTime && m.venue) {
+      title = 'Open check-in'; note = 'Both squads can then confirm they are here. The fixture can no longer be changed.'
+      action.label = 'Open check-in'
+      opensCheckin = true
+    } else {
+      title = 'Set the fixture'; note = 'The fixture needs a start time, end time and venue before check-in opens.'
+      action = { label: 'Edit fixture', path: `/m/${m.id}/fixture`, focus: 'main h1' }
+    }
   } else if (can.manageCheckin) {
     title = 'Manage check-in'; note = 'Open the console to review player readiness.'
     action = { label: 'Manage check-in', path: `/checkin/${m.id}`, focus: 'main h1' }
@@ -47,7 +63,8 @@ export function MatchNextStep({ m, result }: { m: MatchDto; result?: MatchResult
   return <Panel className="match-summary-frame match-next-step">
     <h2>Next action</h2><strong className="match-next-title">{title}</strong>
     <p className="sub">{note}</p>
-    <button className="btn primary" type="button" onClick={() => {
+    <button className="btn primary" type="button" disabled={opensCheckin && opening} onClick={() => {
+      if (opensCheckin) { openCheckin.mutate(); return }
       navigate(action.path, { state: location.state })
       requestAnimationFrame(() => {
         const focus = () => {
@@ -62,7 +79,13 @@ export function MatchNextStep({ m, result }: { m: MatchDto; result?: MatchResult
         observer.observe(document.body, { childList: true, subtree: true })
         setTimeout(() => observer.disconnect(), 5000)
       })
-    }}>{action.label}</button>
+    }}>{opensCheckin && opening ? 'Opening…' : action.label}</button>
+    {opensCheckin && openCheckin.isError ? (
+      <Banner kind="crit">
+        <b>That did not go through.</b> {lifecycleError(openCheckin.error)}
+        <ContractErrorDetails error={openCheckin.error} />
+      </Banner>
+    ) : null}
     {m.checkinOpenAt && ['scheduled', 'checkin_open'].includes(m.status) ? <div className="match-time-note">Check-in opens <b>{matchTime(m.checkinOpenAt)}</b></div> : null}
   </Panel>
 }

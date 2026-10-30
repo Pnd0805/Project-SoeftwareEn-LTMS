@@ -22,7 +22,7 @@ export function ReportUserButton({ userId, name }: { userId: number; name: strin
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not submit report.') } finally { setBusy(false) }
   }
   return <>
-    <button className="btn ghost" onClick={() => { report.reset(); setError(''); setOpen(true) }}>Report user</button>
+    <button className="btn danger" onClick={() => { report.reset(); setError(''); setOpen(true) }}>Report user</button>
     {sent ? <span role="status">Report sent for admin review.</span> : null}
     <Modal open={open} title={`Report ${name}`} onClose={() => !busy && !report.isPending && setOpen(false)}>
       <p>An admin will review the report. Reporting does not immediately suspend this account.</p>

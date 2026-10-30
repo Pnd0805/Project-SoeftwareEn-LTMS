@@ -6,6 +6,7 @@ import { Banner, Field, Panel } from '../../../components/kit/primitives'
 import { useCancelTournament } from '../../../hooks/useTournament'
 import type { Tournament } from '../../../shared/types'
 import { useManageActive } from './ManageActivity'
+import { useRegistrationStarted } from './useRegistrationStarted'
 
 export function CancelTournamentPanel({ t }: { t: Tournament }) {
   const active = useManageActive()
@@ -14,8 +15,10 @@ export function CancelTournamentPanel({ t }: { t: Tournament }) {
   const [reason, setReason] = useState('')
   const [name, setName] = useState('')
   const submitting = useRef(false)
+  const started = useRegistrationStarted(t)
   const valid = reason.trim().length > 0 && reason.trim().length <= 255 && name === t.name
-  if (USE_MOCK || t.champion || !['public', 'private'].includes(t.status)) return null
+  /* ก่อนเริ่มรับสมัครไม่มีใครเสียหาย ใช้การลบแทน (DeleteTournamentPanel) */
+  if (USE_MOCK || t.champion || !started || !['public', 'private'].includes(t.status)) return null
 
   return <Panel quiet>
     <h2>Cancel tournament</h2>

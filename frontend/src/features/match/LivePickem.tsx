@@ -86,7 +86,7 @@ export function LivePickem({ match }: { match: MatchDto }) {
         <button className="btn primary" type="submit" disabled={!ready || busy || unchanged}>
           {mine ? 'Update prediction' : 'Predict score'}
         </button>
-        {mine ? <button className="btn ghost" type="button" disabled={busy}
+        {mine ? <button className="btn danger" type="button" disabled={busy}
           onClick={() => prediction.cancel.mutate(undefined, { onSuccess: () => setDraft({ a: null, b: null }) })}>Cancel prediction</button> : null}
       </div>
     </form> : null}
@@ -103,7 +103,7 @@ export function LivePickem({ match }: { match: MatchDto }) {
           <span>{teamA.name}{mine?.teamId === teamA.id ? ' · your pick' : ''} <b>{pctA}%</b></span>
           <span><b>{pctB}%</b> {teamB.name}{mine?.teamId === teamB.id ? ' · your pick' : ''}</span>
         </div>
-        <div className={`pickem-split-bar${empty ? ' empty' : ''}`} role="img"
+        <div className={`pickem-split-bar${empty ? ' is-empty' : ''}`} role="img"
           aria-label={empty ? 'No predictions yet' : `${teamA.name} ${pctA}%, ${teamB.name} ${pctB}%`}>
           {empty ? null : <span style={{ width: `${pctA}%` }} />}
         </div>

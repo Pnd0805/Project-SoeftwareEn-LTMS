@@ -87,7 +87,17 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
         {review ? <>
           <div className="statline"><div><span className="tag">Average</span><span className="v">{review.summary.average ?? '—'}</span></div>
             <div><span className="tag">Ratings</span><span className="v">{review.summary.count}</span></div></div>
-          <div className="sub">{[5, 4, 3, 2, 1].map(stars => `${stars}★ ${review.summary.distribution[String(stars)] ?? 0}`).join(' · ')}</div>
+          {/* แถวละระดับดาว + แถบสัดส่วน — เดิมเป็นข้อความบรรทัดเดียว "5★ 0 · 4★ 0" อ่านยาก (เอกสารแก้ UI ข้อ 5) */}
+          <ul className="review-dist" aria-label="Ratings by stars">
+            {[5, 4, 3, 2, 1].map(stars => {
+              const count = review.summary.distribution[String(stars)] ?? 0
+              return <li key={stars}>
+                <span className="review-dist-stars">{stars} ★</span>
+                <span className="review-dist-bar" aria-hidden="true"><i style={{ width: `${review.summary.count ? (count / review.summary.count) * 100 : 0}%` }} /></span>
+                <b className="num">{count}</b>
+              </li>
+            })}
+          </ul>
           {review.status === 'not_started' ? <p className="sub">Reviews are not open yet. {review.opensAt ? `Scheduled tournament start: ${new Date(review.opensAt).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })}. ` : ''}Availability follows the tournament’s played-match status.</p> : null}
           {review.status === 'open' ? <p className="sub">{review.openedBy === 'first_match' ? 'Reviews are open because competitive play has begun.'
             : review.openedBy === 'cancelled' ? 'Reviews are open for 7 days after the tournament was cancelled.'
@@ -98,7 +108,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           {review.mine ? <p className="sub">Your review: {review.mine.rating}/5 {review.mine.content}</p> : null}
           {!organizer && review.items?.map(item => <div className="notif" key={item.id}>
             <span className="txt"><b>#{item.id} · {item.rating}/5</b> {item.author?.fullName}<br />{item.content}</span>
-            <button className="btn ghost" type="button" disabled={adminBusy || !me.data} onClick={() => confirmAdmin({ id: item.id, tournamentId, kind: 'review', author: item.author?.fullName ?? null, content: item.content, rating: item.rating }, 'remove')}>Remove</button>
+            <button className="btn danger" type="button" disabled={adminBusy || !me.data} onClick={() => confirmAdmin({ id: item.id, tournamentId, kind: 'review', author: item.author?.fullName ?? null, content: item.content, rating: item.rating }, 'remove')}>Remove</button>
           </div>)}
           {review.canSubmit ? <form className="vstack" onSubmit={async event => {
             event.preventDefault()
@@ -140,13 +150,13 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
           </div>
 
           <div className="hstack" style={{ gap: 8, marginTop: 4 }}>
-            {thread?.canModerate && item.isReported ? <button className="btn ghost" type="button" disabled={busy}
+            {thread?.canModerate && item.isReported ? <button className="btn danger" type="button" disabled={busy}
               onClick={async () => {
                 try { await comments.dismiss.mutateAsync(item.id); setNotice('Report dismissed. The comment remains visible.') }
                 catch (error) { setNotice(messageOf(error)) }
               }}>{comments.dismiss.isPending ? 'Dismissing...' : 'Dismiss report'}</button> : null}
             {item.isMine ? (
-              <button className="btn ghost" type="button" disabled={busy} style={{ padding: '2px 8px', fontSize: 13 }}
+              <button className="btn danger" type="button" disabled={busy} style={{ padding: '2px 8px', fontSize: 13 }}
                 onClick={async () => {
                   try { await comments.removeMine.mutateAsync(); setNotice('Your comment was removed.') }
                   catch (error) { setNotice(messageOf(error)) }
@@ -166,7 +176,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
                   </button>
                 ) : null}
                 {thread?.canModerate ? (
-                  <button className="btn ghost" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
+                  <button className="btn danger" type="button" style={{ padding: '2px 8px', fontSize: 13 }}
                     onClick={() => {
                       if (organizer) { setRemoving(item); setReason('') }
                       else confirmAdmin({ id: item.id, tournamentId, kind: 'comment', author: item.author.fullName, content: item.content }, 'remove')
@@ -288,7 +298,7 @@ export function LiveCommunityTab({ tournamentId, organizer }: { tournamentId: nu
         <Field label="Reason (required, 1–255 characters)" htmlFor="remove-reason"><textarea id="remove-reason" maxLength={255} value={reason} onChange={event => setReason(event.target.value)} /></Field>
         <span className="sub">The author will see this reason in their notification.</span>
         <span className="hstack"><button className="btn" type="button" disabled={busy} onClick={() => setRemoving(null)}>Cancel</button>
-          <button className="btn primary" type="submit" disabled={!reason.trim() || busy}>Remove comment</button></span>
+          <button className="btn danger" type="submit" disabled={!reason.trim() || busy}>Remove comment</button></span>
       </form></Modal> : null}
       {thread?.canComment && !reported ? <form className="vstack" onSubmit={async event => {
         event.preventDefault()

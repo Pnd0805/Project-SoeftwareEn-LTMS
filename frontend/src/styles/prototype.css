@@ -1286,7 +1286,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .pickem-split{display:flex;flex-direction:column;gap:8px;}
 .pickem-split-bar{height:12px;border-radius:999px;background:var(--amber);overflow:hidden;display:flex;}
 .pickem-split-bar>span{display:block;height:100%;background:var(--teal);}
-.pickem-split-bar.empty{background:var(--panel-3);}
+.pickem-split-bar.is-empty{background:var(--track);}
 
 /* ── Bracket lines (UI plan, 27 Oct): one thin solid style, three meanings ──────────────────
    winner path (elimination) · rule between rounds (round robin, nobody advances) ·
@@ -1482,3 +1482,65 @@ tbody tr:not(.tour-round-row):nth-child(even)>td{background:color-mix(in srgb,va
 .match-tabs::-webkit-scrollbar{display:none;}
 /* Match cards on /matches: team A hugs the centred "vs" from the left as team B does from the right */
 .matches-page .refcard-teams>:first-child{justify-self:end;text-align:right;}
+/* Checkbox + label on one line, the box centred on the text (UI doc 3: it sat above the label) */
+.check-option{display:inline-flex;flex-direction:row;align-items:center;gap:8px;min-height:32px;cursor:pointer;}
+.check-option input[type=checkbox]{flex:none;width:18px;height:18px;margin:0;padding:0;accent-color:var(--teal);}
+/* Review stars: one row per rating with a proportion bar (UI doc 5: was a single run-on line) */
+.review-dist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.review-dist li{display:grid;grid-template-columns:44px minmax(0,1fr) 32px;align-items:center;gap:10px;font-size:15px;}
+.review-dist-stars{font-weight:600;color:var(--bone);white-space:nowrap;}
+.review-dist-bar{height:10px;border-radius:var(--r);overflow:hidden;}
+.review-dist-bar i{display:block;height:100%;background:var(--amber);}
+.review-dist b{text-align:right;}
+/* Announcement dialog: the fields, the notice and the buttons touched (UI doc 6). Red in both themes. */
+.announcement-dialog form{display:flex;flex-direction:column;gap:16px;}
+.announcement-dialog .banner{border-color:var(--red);box-shadow:none;}
+/* Inbox: unread and read rows must differ at a glance, not only by a 6px dot (UI doc 12) */
+.inbox-page .notif{grid-template-columns:10px 20px minmax(0,1fr) auto;}
+.inbox-page .notif .dot{margin-top:0;align-self:center;}
+.inbox-page .inbox-notifications .notif.is-unread{background:var(--red-ghost);border-color:color-mix(in srgb,var(--red) 60%,transparent);border-left:4px solid var(--red);}
+.inbox-page .notif.is-unread .dot{width:10px;height:10px;border-radius:50%;}
+.inbox-page .notif.is-unread .txt b{font-weight:700;}
+.inbox-unread-mark{color:var(--teal);font-weight:700;}
+.inbox-page .inbox-notifications .notif.is-read{background:transparent;}
+.inbox-page .notif.is-read .txt b{font-weight:500;color:var(--bone-dim);}
+.inbox-page .notif.is-read .inbox-message{color:var(--bone-faint);}
+/* User search: results float attached under the input like Google's list (UI doc 14) */
+.search-dropdown{position:relative;}
+.search-dropdown-panel{position:absolute;z-index:6;top:100%;left:0;right:0;margin-top:-1px;background:var(--panel);
+  border:1px solid var(--line-hot);border-top:0;border-radius:0 0 var(--r) var(--r);box-shadow:0 8px 20px rgba(0,0,0,.28);padding:6px 0;}
+.search-dropdown-panel ul{list-style:none;margin:0;padding:0;}
+.search-dropdown-panel li{display:flex;align-items:center;gap:12px;padding:8px 14px;cursor:pointer;}
+.search-dropdown-panel li>span{display:flex;flex-direction:column;min-width:0;}
+.search-dropdown-panel li.on{background:var(--panel-3);}
+.search-dropdown-note{margin:0;padding:10px 14px;font-size:14px;color:var(--bone-dim);}
+/* The sidebar brand line and the top bar line must meet as one straight line (UI doc 7). Both get a fixed
+   height: a min-height lets the bar grow with its contents, and then the two lines part */
+@media (min-width:821px){
+  .sb{padding-top:0;}
+  .sb .brand{box-sizing:border-box;height:64px;padding:0 16px;position:sticky;top:0;z-index:1;background:var(--panel);}
+  .tb{box-sizing:border-box;height:64px;}
+  .tb .tbin{box-sizing:border-box;height:100%;padding-top:0;padding-bottom:0;}
+}
+/* Back link: icon and label on one line, level with the page name beside it */
+.crumb button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.journey-crumb .crumb{align-items:baseline;}
+/* Refusal and error frames read red in both themes */
+.banner.crit{border-color:var(--red);}
+/* Inbox: a plain red dot and a red label mark unread; read rows carry no dot at all */
+.inbox-page .notif .dot.read{box-shadow:none;background:transparent;}
+.inbox-page .notif.is-unread .dot{background:var(--red);}
+.inbox-page .notif .txt b.inbox-unread-mark{display:inline-block;font-size:12px;font-weight:700;line-height:1.5;padding:0 8px;
+  border-radius:var(--r);background:var(--red);color:var(--accent-ink);}
+/* Buttons wrap between words only: table cells set overflow-wrap:anywhere, which split "Open" into "Ope/n" */
+.btn{overflow-wrap:normal;}
+/* Bar tracks: panel-3 vanished on the beige panels in light mode. One track colour, derived from the line token */
+:root{--track:color-mix(in srgb,var(--line-hot) 45%,transparent);}
+.review-dist-bar,.progress-track{background:var(--track);}
+.progress-track{height:8px;border-radius:var(--r);overflow:hidden;}
+/* On short windows the sidebar is a flex column taller than the screen, so its children shrank instead of scrolling:
+   the 64px brand was squeezed and its line rose above the top bar line. Children keep their size and the sidebar
+   scrolls. The brand stays pinned so the line never moves; no scroll bar, it would cut the line short of the border */
+.sb>*{flex-shrink:0;}
+.sb{overscroll-behavior:contain;scrollbar-width:none;}
+.sb::-webkit-scrollbar{display:none;}

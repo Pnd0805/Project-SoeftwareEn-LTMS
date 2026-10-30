@@ -85,7 +85,7 @@ function TeamLogoControl({ teamId, logo }: { teamId: number; logo?: string | nul
         <Icon name="plus" size={12} /> {loading ? 'Uploading…' : logo ? 'Change logo' : 'Add a logo'}
       </button>
       {logo ? (
-        <button className="btn ghost" type="button" disabled={loading || update.isPending}
+        <button className="btn danger" type="button" disabled={loading || update.isPending}
           onClick={removeLogo}>
           Remove logo
         </button>
@@ -250,7 +250,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
               <li key={`${file.name}-${index}`}>
                 <span className="hstack" style={{ gap: 6 }}>
                   <span style={{ overflowWrap: 'anywhere' }}>{file.name}</span>
-                  <button className="btn ghost" type="button" disabled={docUploading} aria-label={`Remove ${file.name}`}
+                  <button className="btn danger" type="button" disabled={docUploading} aria-label={`Remove ${file.name}`}
                     onClick={() => setDocFiles(docFiles.filter((_, i) => i !== index))}>Remove</button>
                 </span>
               </li>

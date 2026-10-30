@@ -2,15 +2,29 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { Tournament } from '../../../shared/types'
-const { cancel } = vi.hoisted(() => ({ cancel: vi.fn() }))
+const { cancel, applications } = vi.hoisted(() => ({ cancel: vi.fn(), applications: vi.fn() }))
 vi.mock('../../../api/client', async original => ({ ...await original<typeof import('../../../api/client')>(), USE_MOCK: false }))
-vi.mock('../../../api/tournament', async original => ({ ...await original<typeof import('../../../api/tournament')>(), cancelTournament: cancel }))
+vi.mock('../../../api/tournament', async original => ({ ...await original<typeof import('../../../api/tournament')>(), cancelTournament: cancel, getTournamentApplications: applications }))
 import { CancelTournamentPanel } from './CancelTournamentPanel'
-const t = { id: '42', name: 'Campus Cup', status: 'public', champion: null } as Tournament
+const t = { id: '42', name: 'Campus Cup', status: 'public', champion: null, registrationOpen: true } as Tournament
 function show(tournament = t) {
   return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}><CancelTournamentPanel t={tournament} /></QueryClientProvider>)
 }
-beforeEach(() => { cancel.mockReset().mockResolvedValue({ id: 42, status: 'cancelled' }) })
+beforeEach(() => {
+  cancel.mockReset().mockResolvedValue({ id: 42, status: 'cancelled' })
+  applications.mockReset().mockResolvedValue({ items: [] })
+})
+it('stays hidden until registration has started — deleting is the path before that', async () => {
+  show({ ...t, registrationOpen: false })
+  await waitFor(() => expect(applications).toHaveBeenCalled())
+  await new Promise(resolve => setTimeout(resolve))
+  expect(screen.queryByRole('button', { name: 'Cancel tournament' })).not.toBeInTheDocument()
+})
+it('appears once a squad has applied, even after registration closes', async () => {
+  applications.mockResolvedValue({ items: [{ id: 1 }] })
+  show({ ...t, registrationOpen: false })
+  expect(await screen.findByRole('button', { name: 'Cancel tournament' })).toBeInTheDocument()
+})
 it('requires a nonblank reason and an exact name before sending the trimmed reason', async () => {
   show()
   fireEvent.click(screen.getByRole('button', { name: 'Cancel tournament' }))

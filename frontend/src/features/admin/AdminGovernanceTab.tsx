@@ -1,5 +1,5 @@
-import { useSearchUsers } from '../../hooks/useUser'
-import { statusLabel, searchUserLabel } from '../../shared/display'
+import { statusLabel } from '../../shared/display'
+import { GrantUserSearch } from './GrantUserSearch'
 import { useState } from 'react'
 import { adminReadBlocked } from './adminView'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
@@ -17,8 +17,6 @@ export function AdminScopesTab() {
   const me = useMe(); const scopes = useAdminScopes(); const faculties = useFaculties()
   const grant = useGrantAdminScope(); const revoke = useRevokeAdminScope()
   const [userId, setUserId] = useState(''); const [facultyId, setFacultyId] = useState('')
-  const [searchUser, setSearchUser] = useState('')
-  const found = useSearchUsers(searchUser, !!me.data?.adminScope)
   const [review, setReview] = useState(false); const [removing, setRemoving] = useState<AdminScopeDto | null>(null)
   const [notice, setNotice] = useState('')
   const actor = me.data?.adminScope?.scopeType
@@ -37,15 +35,11 @@ export function AdminScopesTab() {
     {notice ? <div role="status"><Banner kind="ok">{notice}</Banner></div> : null}
     <div className="admin-rights-list" role="region" aria-label="Admin rights in your scope" tabIndex={0}>
     {rows.map(row => <div className="admin-right-row" key={row.id}><span><b>{row.user.fullName}</b><br /><span className="sub">{row.scopeType.replaceAll('_', ' ')}{row.facultyId ? ` · ${facultyName(row.facultyId)}` : ''}</span></span>
-      <button className="btn ghost" disabled={busy || row.user.id === me.data?.id || row.scopeType !== target || !canGrant}
+      <button className="btn danger" disabled={busy || row.user.id === me.data?.id || row.scopeType !== target || !canGrant}
         onClick={() => { revoke.reset(); setRemoving(row) }}>Revoke</button></div>)}
     {scopes.isSuccess && !rows.length ? <p>No admin rights in your scope.</p> : null}
     </div>
-    {canGrant && !blocked ? <div className="admin-grant-form"><h3>Grant rights</h3><Field label="Find a user by name" htmlFor="grant-search"><input id="grant-search" type="search" placeholder="At least 3 characters" value={searchUser} onChange={e => setSearchUser(e.target.value)} /></Field>
-      {found.isFetching ? <p>Searching users…</p> : null}
-      {found.isError ? <Banner kind="crit">{message(found.error)} <button className="btn" onClick={() => void found.refetch()}>Retry search</button></Banner> : null}
-      {found.data?.items.map(u => <button className="btn ghost" key={u.id} onClick={() => { setUserId(String(u.id)); setSearchUser(u.fullName) }}>{u.fullName} · {searchUserLabel(u)}</button>)}
-      {found.isSuccess && !found.data.items.length ? <p>No matching users.</p> : null}
+    {canGrant && !blocked ? <div className="admin-grant-form"><h3>Grant rights</h3><GrantUserSearch enabled={!!me.data?.adminScope} onPick={u => setUserId(String(u.id))} />
 <Field label="User ID" htmlFor="grant-user"><input id="grant-user" disabled={busy} type="number" min="1" step="1" value={userId} onChange={e => setUserId(e.target.value)} /></Field>
       {target === 'faculty' ? <Field label="Faculty" htmlFor="grant-faculty"><select id="grant-faculty" disabled={busy} value={facultyId} onChange={e => setFacultyId(e.target.value)}><option value="">Choose faculty</option>{faculties.data?.items.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></Field> : null}
       <button className="btn primary" disabled={!valid || busy} onClick={() => { grant.reset(); setReview(true) }}>Review grant</button></div> : null}

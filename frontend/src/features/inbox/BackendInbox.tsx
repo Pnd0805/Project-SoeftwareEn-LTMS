@@ -117,7 +117,7 @@ export function BackendInbox() {
                 </span>
               </div>
               <div className="hstack">
-                <button className="btn" type="button" aria-label={`Decline team invitation: ${invite.team.name}`} disabled={answerInvite.isPending}
+                <button className="btn danger" type="button" aria-label={`Decline team invitation: ${invite.team.name}`} disabled={answerInvite.isPending}
                   onClick={() => answerInvite.mutate({ invitationId: invite.id, accept: false }, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined the invitation from ${invite.team.name}.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
@@ -144,7 +144,7 @@ export function BackendInbox() {
                 <span className="sub">invited {fmtDate(invite.createdAt)}</span>
               </div>
               <div className="hstack">
-                <button className="btn" type="button" aria-label={`Decline referee invitation: ${invite.tournament.name}`} disabled={declineReferee.isPending || acceptReferee.isPending}
+                <button className="btn danger" type="button" aria-label={`Decline referee invitation: ${invite.tournament.name}`} disabled={declineReferee.isPending || acceptReferee.isPending}
                   onClick={() => declineReferee.mutate(invite.id, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined ${invite.tournament.name}.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error) }),
@@ -185,7 +185,7 @@ export function BackendInbox() {
                   aria-label={`Open ${requestTarget(request)}`} onClick={() => navigate(requestRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
                 {request.matchB ? <button className="btn ghost" type="button"
                   aria-label={`Open second match #${request.matchB.id}`} onClick={() => navigate(`/m/${request.matchB!.id}`)}>Open second match</button> : null}
-                <button className="btn" type="button" aria-label={`Decline request #${request.id} for ${requestTarget(request)}`} disabled={declineRequest.isPending || acceptRequest.isPending}
+                <button className="btn danger" type="button" aria-label={`Decline request #${request.id} for ${requestTarget(request)}`} disabled={declineRequest.isPending || acceptRequest.isPending}
                   onClick={() => declineRequest.mutate(request.id, {
                     onSuccess: () => setNotice({ kind: 'warn', text: `Declined ${requestTarget(request)}.` }),
                     onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),
@@ -229,7 +229,7 @@ export function BackendInbox() {
             {request.refereeB ? ` | ${request.refereeB.user.fullName}: ${request.refereeB.status}` : ''}</span>
           <div className="hstack">
             <button className="btn ghost" type="button" aria-label={`Open ${requestTarget(request)} for request #${request.id}`} onClick={() => navigate(requestRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
-            {request.status === 'open' ? <button className="btn" type="button" aria-label={`Withdraw request #${request.id}`} disabled={cancelRequest.isPending}
+            {request.status === 'open' ? <button className="btn danger" type="button" aria-label={`Withdraw request #${request.id}`} disabled={cancelRequest.isPending}
               onClick={() => cancelRequest.mutate(request.id, {
                 onSuccess: () => setNotice({ kind: 'ok', text: `Request #${request.id} withdrawn.` }),
                 onError: error => setNotice({ kind: 'crit', text: answerError(error), error }),

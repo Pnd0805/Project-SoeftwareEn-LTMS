@@ -84,6 +84,8 @@ export interface Tournament {
   channel: Channel
   status: TourStatus
   /** Backend lifecycle flag; omitted by legacy/mock tournament records. */
+  /** สถานะจริงจาก backend — `status` ยุบ rejected เป็น public จึงแยกทัวร์ที่ถูกปฏิเสธไม่ได้ */
+  serverStatus?: string
   registrationOpen?: boolean
   registrationStart?: string | null
   registrationEnd?: string | null

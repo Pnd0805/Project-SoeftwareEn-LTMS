@@ -163,7 +163,26 @@ describe('rewards display and revocation', () => {
   })
 })
 
+/** ผ่านหน้าสรุปแล้วยืนยันอีกชั้น — สองขั้นก่อนหักแต้มจริง */
+function confirmRedeem() {
+  fireEvent.click(screen.getByRole('button', { name: 'ถัดไป' }))
+  fireEvent.click(screen.getByRole('button', { name: 'ยืนยันใช้ 50 แต้ม' }))
+}
+
 describe('badge store and redeem rules', () => {
+  it('spends nothing until both confirmation steps are passed, and either step can back out', async () => {
+    page()
+    fireEvent.click(await screen.findByRole('button', { name: 'แลก (50 แต้ม)' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('50 แต้ม')
+    expect(api.redeem).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'ถัดไป' }))
+    expect(api.redeem).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ยกเลิก' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(api.redeem).not.toHaveBeenCalled()
+  })
+
   beforeEach(() => {
     api.catalogue.mockResolvedValue({
       items: [shopBadgeAffordable, shopBadgeExpensive, achievementBadge],
@@ -222,6 +241,7 @@ describe('badge store and redeem rules', () => {
     page()
     const redeemBtn = await screen.findByRole('button', { name: 'แลก (50 แต้ม)' })
     fireEvent.click(redeemBtn)
+    confirmRedeem()
 
     await waitFor(() => expect(api.redeem).toHaveBeenCalledWith(2))
     expect(
@@ -241,6 +261,7 @@ describe('badge store and redeem rules', () => {
     page()
     const redeemBtn = await screen.findByRole('button', { name: 'แลก (50 แต้ม)' })
     fireEvent.click(redeemBtn)
+    confirmRedeem()
 
     expect(
       await screen.findByText('แต้มไม่พอสำหรับแลก "Bronze Supporter" (ขาดอีก 40 แต้ม)'),
@@ -259,6 +280,7 @@ describe('badge store and redeem rules', () => {
 
     const redeemBtn = await screen.findByRole('button', { name: 'แลก (50 แต้ม)' })
     fireEvent.click(redeemBtn)
+    confirmRedeem()
 
     expect(
       await screen.findByText(
@@ -284,6 +306,7 @@ describe('badge store and redeem rules', () => {
 
     const redeemBtn = await screen.findByRole('button', { name: 'แลก (50 แต้ม)' })
     fireEvent.click(redeemBtn)
+    confirmRedeem()
 
     expect(
       await screen.findByText('คุณครอบครองเหรียญรางวัลนี้อยู่แล้ว'),

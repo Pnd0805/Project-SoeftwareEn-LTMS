@@ -90,6 +90,7 @@ export function tournamentView(
     format,
     channel: sport?.defaultMode === 'online' ? 'online' : 'onsite',
     status,
+    serverStatus: dto.status,
     registrationOpen: dto.registrationOpen ?? false,
     registrationStart: dto.registrationStart,
     registrationEnd: dto.registrationEnd,

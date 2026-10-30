@@ -11,7 +11,7 @@ export function MyJoinRequests() {
     {query.isPending ? <p>Loading requests…</p> : null}
     {query.isError ? <Banner kind="crit">{query.error instanceof Error ? query.error.message : 'Request failed.'} <button className="btn" onClick={() => void query.refetch()}>Retry</button></Banner> : null}
     {cancel.isError ? <Banner kind="crit">{cancel.error.message}</Banner> : null}
-    {query.data?.items.map(r => <div className="spread" key={r.id}><span><Link to={`/team/${r.team.id}`}>{r.team.name}</Link> · {r.status.charAt(0).toUpperCase() + r.status.slice(1)}{r.rejectReason ? <p>{r.rejectReason}</p> : null}</span>{r.status === 'pending' ? <button className="btn" disabled={cancel.isPending} onClick={() => cancel.mutate(r.id)}>Cancel request</button> : null}</div>)}
+    {query.data?.items.map(r => <div className="spread" key={r.id}><span><Link to={`/team/${r.team.id}`}>{r.team.name}</Link> · {r.status.charAt(0).toUpperCase() + r.status.slice(1)}{r.rejectReason ? <p>{r.rejectReason}</p> : null}</span>{r.status === 'pending' ? <button className="btn danger" disabled={cancel.isPending} onClick={() => cancel.mutate(r.id)}>Cancel request</button> : null}</div>)}
     {query.isSuccess && !query.data.items.length ? <p>No join requests yet. Find a public squad in Search.</p> : null}
   </Panel>
 }

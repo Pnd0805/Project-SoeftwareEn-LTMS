@@ -34,7 +34,7 @@ export function RemovedFeedbackPanel() {
       <p style={{ whiteSpace: 'pre-wrap' }}>{row.content ?? 'No written content'}</p>
       <p className="sub">Removed {fmtDateTime(row.removedAt)} by {row.removedBy?.fullName ?? 'Not recorded'} · {row.removedByRole ?? 'Role not recorded'}</p>
       <p>Reason: {row.removalReason ?? 'Not recorded'}</p>
-      {row.canRestore ? <button className="btn" disabled={restore.isPending} onClick={() => { restore.reset(); setSelected(row) }}>Review restoration</button> : null}
+      {row.canRestore ? <button className="btn primary" disabled={restore.isPending} onClick={() => { restore.reset(); setSelected(row) }}>Review restoration</button> : null}
     </article>) : null}
     <div className="hstack"><button className="btn" disabled={page <= 1 || removed.isFetching || restore.isPending} onClick={() => setPage(p => p - 1)}>Previous removed feedback</button><span>Page {page} of {removed.data?.pagination.totalPages ?? 1}</span><button className="btn" disabled={!removed.isSuccess || removed.isFetching || restore.isPending || page >= removed.data.pagination.totalPages} onClick={() => setPage(p => p + 1)}>Next removed feedback</button></div>
     <Modal open={!!selected} onClose={() => !restore.isPending && setSelected(null)} title="Restore this feedback?">

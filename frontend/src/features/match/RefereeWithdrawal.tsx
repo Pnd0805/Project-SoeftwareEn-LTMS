@@ -18,7 +18,7 @@ export function RefereeWithdrawal({ tournamentId, matchId }: { tournamentId: num
     <h3>ขอถอนตัวจากหน้าที่กรรมการ</h3>
     <div className="sub">ยังรับผิดชอบงานเดิมจนกว่าผู้จัดจะอนุมัติคำขอ</div>
     {notice ? <Banner kind="ok">{notice}</Banner> : null}
-    <button className="btn" onClick={() => { mutation.reset(); setReason(''); setOpen(true) }}>Request withdrawal</button>
+    <button className="btn danger" onClick={() => { mutation.reset(); setReason(''); setOpen(true) }}>Request withdrawal</button>
     <Modal open={open} onClose={() => { if (!mutation.isPending) setOpen(false) }} label="Request referee withdrawal" title="ยืนยันคำขอถอนตัว">
       <Field label="ขอบเขตการถอนตัว" htmlFor={`withdraw-scope-${tournamentId}-${matchId ?? 'all'}`}>
         <select id={`withdraw-scope-${tournamentId}-${matchId ?? 'all'}`} value={scope} disabled={mutation.isPending} onChange={e => setScope(e.target.value as 'match' | 'tournament')}>
@@ -32,7 +32,7 @@ export function RefereeWithdrawal({ tournamentId, matchId }: { tournamentId: num
       </Field>
       {mutation.isError ? <Banner kind="crit">{message(mutation.error)}</Banner> : null}
       <div className="hstack"><button className="btn" disabled={mutation.isPending} onClick={() => setOpen(false)}>Cancel</button>
-        <button className="btn primary" disabled={!valid || mutation.isPending} onClick={() => {
+        <button className="btn danger" disabled={!valid || mutation.isPending} onClick={() => {
           if (!valid || mutation.isPending) return
           mutation.mutate(scope === 'match' && matchId ? { scope, matchId, reason: reason.trim() } : { scope: 'tournament', tournamentId, reason: reason.trim() }, {
             onSuccess: r => { setNotice(`ส่งคำขอ #${r.id} แล้ว สถานะ: ${r.status === 'open' ? 'รอผู้จัดพิจารณา' : r.status}`); setOpen(false) },
@@ -77,7 +77,7 @@ export function OrganizerWithdrawals({ tournamentId }: { tournamentId: number })
       <div className="sub">ยื่นเมื่อ {fmtDateTime(r.createdAt)}</div>
       <Badge kind={r.status === 'open' ? 'warn' : r.status === 'applied' ? 'ok' : 'neutral'}>{r.status}</Badge>
       {r.status === 'open' ? <div className="hstack">
-        <button className="btn" disabled={busy} onClick={() => { accept.reset(); decline.reset(); setSelected({ request: r, approve: false }) }}>Decline withdrawal</button>
+        <button className="btn danger" disabled={busy} onClick={() => { accept.reset(); decline.reset(); setSelected({ request: r, approve: false }) }}>Decline withdrawal</button>
         <button className="btn primary" disabled={busy} onClick={() => { accept.reset(); decline.reset(); setSelected({ request: r, approve: true }) }}>Approve withdrawal</button>
       </div> : null}
     </div>)}

@@ -90,8 +90,7 @@ export function DashboardTab({ tournamentId }: { tournamentId: number | string }
           <h2 className="journey-heading">Progress</h2>
           <span className="sub">{s.finished} of {s.total} confirmed · {pct}%</span>
         </div>
-        <div role="progressbar" aria-label="Matches confirmed" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
-          style={{ height: 8, background: 'var(--panel-3)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
+        <div className="progress-track" role="progressbar" aria-label="Matches confirmed" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
           <div style={{ width: `${pct}%`, height: '100%', background: 'var(--teal)' }} />
         </div>
         <span className="sub">{s.stage ? `Now playing: ${s.stage}` : 'Every match is confirmed.'}</span>
