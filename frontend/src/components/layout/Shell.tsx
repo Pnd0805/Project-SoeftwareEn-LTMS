@@ -209,10 +209,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="account-name" style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 8px' }}>{displayName}</div>
         {compact ? <div className="menu-theme"><span>Appearance</span><ThemeButton /></div> : null}
         {displayRole ? <p className="sub">Role: {displayRole}</p> : null}
-          <button className="btn danger" type="button" style={{ width: '100%' }}
+        <button className="btn danger logout-button" type="button" aria-describedby="shell-logout-note"
           onClick={() => { setMenuOpen(false); void logout.mutateAsync().finally(() => navigate('/login')) }}>
-          <Icon name="out" size={13} /> Log out of all devices
+          <Icon name="out" size={13} /> Log out
         </button>
+        <p className="sub logout-note" id="shell-logout-note">Signs out of all devices</p>
       </div>
     </nav>
   )

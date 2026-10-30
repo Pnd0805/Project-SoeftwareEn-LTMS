@@ -467,6 +467,8 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
   font-family:var(--f-mono);font-size:12px;font-weight:700;padding:0 4px;line-height:1.35;
   min-height:0;}
 .sb .foot{margin-top:auto;padding:16px 16px 0;border-top:2px solid var(--ink);}
+.sb .logout-button{width:auto;min-height:32px;padding:4px 10px;font-size:13px;line-height:20px;}
+.sb .logout-note{margin:6px 0 0;font-size:12px;line-height:1.5;}
 
 .tb{border-bottom:2px solid var(--ink);position:sticky;top:0;background:var(--panel);z-index:4;}
 /* the bar bleeds the full column so its edge reads as an edge, but its contents
@@ -775,6 +777,7 @@ svg.bconn path{fill:none;stroke:var(--azurite);stroke-width:2;}
 .shell-menu .sb .item{min-height:44px;}
 .shell-menu .sb .foot{margin-top:16px;padding:16px 0 0;}
 .shell-menu .account-name{overflow-wrap:anywhere;}
+.shell-menu .logout-button{min-height:44px;}
 .menu-theme{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 .tour-identity{align-items:flex-start;margin-bottom:24px;gap:20px;}
