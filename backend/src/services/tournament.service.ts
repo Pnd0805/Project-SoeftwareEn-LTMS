@@ -1159,6 +1159,62 @@ export async function sweepUnapprovedPastRegistration(){
 }
 
 /**
+ * OD-81 (30 ต.ค. 2569 · เอกสารแก้ UI ข้อ 3) — ทัวร์ public ที่ทีมไม่ครบเมื่อถึงวันแข่ง ⇒ ปิดอัตโนมัติ
+ *
+ * มติผู้ใช้: ทีมไม่ครบ = ไม่มีแมตช์ + ทีมที่อนุมัติ < min_teams · ใบ pending → cancelled
+ *   แจ้ง ผู้จัด · กรรมการ · ทีมที่สมัคร · เตือนล่วงหน้า 3 วัน
+ *
+ * ★ หาผู้รับ **ก่อน** ปิด — หลังปิด ใบ pending กลายเป็น cancelled แล้ว หัวหน้าทีมที่ยังรอผลจะหลุดจากรายชื่อ
+ *   ใช้รายชื่อชุดเดียวกับยกเลิกทัวร์ (OD-69): หัวหน้าทีมที่สมัคร (pending + approved) · ผู้เล่นของทีมที่ผ่าน ·
+ *   กรรมการที่ยังไม่ถูกถอด · ผู้จัด (คนทายผลไม่มี เพราะทัวร์ที่เข้าเกณฑ์ไม่มีแมตช์)
+ * ★ ปิดไม่ติด (ผู้จัดอนุมัติทีมจนครบ / จับสายแทรก) ⇒ ไม่แจ้งใคร
+ */
+export async function sweepUnderfilledPublicTournaments(){
+    const swept: number[] = [];
+    for (const t of await TournamentRepo.findUnderfilledPublicTournamentsDue()) {
+        let audience: number[] = [t.organizerId];
+        try {
+            audience = await NotificationRepo.findTournamentCancellationAudience(t.tournamentId);
+        } catch (err) {
+            console.error(`[notify] หาผู้รับเรื่องปิดทัวร์ ${t.tournamentId} อัตโนมัติไม่สำเร็จ — แจ้งแค่ผู้จัด`, err);
+        }
+        if (!await TournamentRepo.autoDeleteUnderfilledPublicTournament(t.tournamentId)) continue;
+
+        await NotificationService.notifyUsers(audience, {
+            type: 'tournament_auto_deleted',
+            title: `ทัวร์นาเมนต์ "${t.name}" ถูกปิดอัตโนมัติ`,
+            message: `ทัวร์นาเมนต์นี้ถูกปิดอัตโนมัติเพราะถึงวันแข่งแล้ว ทีมที่อนุมัติมี ${t.approvedTeams} ทีม ไม่ครบขั้นต่ำ ${t.minTeams} ทีม — ใบสมัครที่ยังรอพิจารณาถูกยกเลิกแล้ว`,
+            relatedEntityType: 'tournament', relatedEntityId: t.tournamentId,
+        });
+        swept.push(t.tournamentId);
+    }
+    return swept;
+}
+
+/**
+ * OD-81 — เตือนผู้จัด 3 วันก่อนทัวร์ public ที่ทีมไม่ครบจะถูกปิด (มติผู้ใช้ 3 วัน)
+ *   ★ เตือนเฉพาะผู้จัด — คนที่ทำให้ทัวร์รอดได้คือผู้จัด (อนุมัติทีมที่รออยู่ หรือยกเลิกทัวร์เอง)
+ *   ★ จำว่าเตือนแล้ว **ก่อน** ส่ง (หลักเดียวกับ warnBeforeAutoDelete)
+ */
+export const UNDERFILLED_WARNING_DAYS = 3;
+
+export async function warnUnderfilledPublicTournaments(){
+    const warned: number[] = [];
+    for (const t of await TournamentRepo.findUnderfilledPublicTournamentsToWarn(UNDERFILLED_WARNING_DAYS)) {
+        if (!await TournamentRepo.markAutoDeleteWarned(t.tournamentId)) continue;
+
+        await NotificationService.notifyUsers([t.organizerId], {
+            type: 'tournament_auto_delete_warning',
+            title: `ทัวร์นาเมนต์ "${t.name}" ทีมยังไม่ครบ`,
+            message: `วันเริ่มแข่งคือ ${t.eventStartDate} — ตอนนี้ทีมที่อนุมัติมี ${t.approvedTeams} ทีม ขั้นต่ำ ${t.minTeams} ทีม ถ้าถึงวันแข่งยังไม่ครบและยังไม่จับสาย ระบบจะปิดทัวร์นี้อัตโนมัติ`,
+            relatedEntityType: 'tournament', relatedEntityId: t.tournamentId,
+        });
+        warned.push(t.tournamentId);
+    }
+    return warned;
+}
+
+/**
  * BR-03 ส่วนที่ 2 — เตือนผู้จัด 7 วันก่อนทัวร์จะถูกปิดอัตโนมัติ (มติ 8 ต.ค. 2569)
  *
  * ★ ข้อความต้องบอก **ทางออก** ไม่ใช่แค่คำเตือน — สิ่งที่ผู้จัดต้องทำคือกดเผยแพร่

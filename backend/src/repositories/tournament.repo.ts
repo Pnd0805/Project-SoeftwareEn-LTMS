@@ -693,9 +693,10 @@ export async function publishTournament(tournamentId: number, userId: number, re
             return { status: 'referees_incomplete', refereesAccepted };
         }
 
+        // OD-81 — ล้างป้าย "เตือนแล้ว" ของ BR-03 (private) ⇒ คำเตือน "ทีมไม่ครบ" 3 วันก่อนแข่งของทัวร์ public ยังส่งได้
         const [result] = await conn.query<ResultSetHeader>(
             `UPDATE tournaments
-             SET tournament_status = 'public', updated_at = NOW(), updated_by = ?
+             SET tournament_status = 'public', auto_delete_warned_at = NULL, updated_at = NOW(), updated_by = ?
              WHERE tournament_id = ? AND tournament_status = 'private'`,
             [userId, tournamentId]
         );
@@ -936,6 +937,100 @@ export async function sweepUnapprovedPastRegistrationTournaments() : Promise<Aut
         }
     }
     return swept;
+}
+
+/**
+ * OD-81 (30 ต.ค. 2569 · เอกสารแก้ UI ข้อ 3) — ทัวร์ public ที่ "ทีมไม่ครบ" เมื่อถึงวันแข่ง ⇒ 'auto_deleted'
+ *
+ * "ทีมไม่ครบ" (มติผู้ใช้) = ยังไม่มีแมตช์เลย **และ** ทีมที่อนุมัติแล้วน้อยกว่า `min_teams`
+ *   ⇒ ทัวร์ที่ทีมครบแต่ผู้จัดยังไม่จับสาย (ทัวร์ 6 ในฐานเดโม) **ไม่ถูกปิด** — เป็นหน้าที่ผู้จัด
+ *   ⇒ ทัวร์ที่มีแมตช์แล้ว ไม่ถูกแตะ ไม่ว่าทีมจะเหลือกี่ทีม
+ * ★ เขียนเงื่อนไขครั้งเดียวแล้วใช้ทั้ง SELECT ของงานปิด · ของคำเตือน · และ UPDATE
+ *   ⇒ สามจุดตัดสิน "ทีมไม่ครบ" ตรงกันเสมอ · `t` คือ alias ของ tournaments ในทุกคำสั่ง
+ */
+const PUBLIC_UNDERFILLED_SQL =
+    `t.tournament_status = 'public'
+     AND t.deleted_at IS NULL
+     AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.tournament_id = t.tournament_id)
+     AND (SELECT COUNT(*) FROM tournament_applications ta
+           WHERE ta.tournament_id = t.tournament_id AND ta.tournament_application_status = 'approved') < t.min_teams`;
+
+export type UnderfilledPublicTournament = {
+    tournamentId : number , name : string , organizerId : number , eventStartDate : string ,
+    minTeams : number , approvedTeams : number
+};
+
+type UnderfilledRow = { tournament_id : number , name : string , requested_by_user_id : number , event_start_date : string ,
+                        min_teams : number , approved_teams : number } & RowDataPacket;
+
+const UNDERFILLED_COLUMNS =
+    `t.tournament_id , t.name , t.requested_by_user_id , t.event_start_date , t.min_teams ,
+     (SELECT COUNT(*) FROM tournament_applications ta
+       WHERE ta.tournament_id = t.tournament_id AND ta.tournament_application_status = 'approved') AS approved_teams`;
+
+const toUnderfilled = (r : UnderfilledRow) : UnderfilledPublicTournament => ({
+    tournamentId : r.tournament_id , name : r.name , organizerId : r.requested_by_user_id , eventStartDate : r.event_start_date ,
+    minTeams : r.min_teams , approvedTeams : Number(r.approved_teams)
+});
+
+/** ผู้สมัครของงานปิด — ถึงวันแข่งแล้ว (CURDATE() เหตุผลเดียวกับ sweepPrivatePastDueTournaments) */
+export async function findUnderfilledPublicTournamentsDue() : Promise<UnderfilledPublicTournament[]> {
+    const [ rows ] = await pool.query<UnderfilledRow[]>(
+        `SELECT ${UNDERFILLED_COLUMNS} FROM tournaments t
+          WHERE ${PUBLIC_UNDERFILLED_SQL} AND t.event_start_date <= CURDATE()`);
+    return rows.map(toUnderfilled);
+}
+
+/**
+ * ผู้สมัครของคำเตือน 3 วัน (มติผู้ใช้) — ยังไม่ถึงวันแข่ง · ใช้ `auto_delete_warned_at` กันเตือนซ้ำ (ด่านเดียวกับ BR-03)
+ *   ★ ตัดทัวร์ที่ถึงวันแข่งแล้วออก เหตุผลเดียวกับ findTournamentsToWarnBeforeAutoDelete
+ *   ★ publishTournament ล้าง `auto_delete_warned_at` ⇒ ทัวร์ที่เคยได้คำเตือนตอนยัง private แล้วค่อยเผยแพร่ ยังได้คำเตือนนี้
+ */
+export async function findUnderfilledPublicTournamentsToWarn(daysAhead : number) : Promise<UnderfilledPublicTournament[]> {
+    const [ rows ] = await pool.query<UnderfilledRow[]>(
+        `SELECT ${UNDERFILLED_COLUMNS} FROM tournaments t
+          WHERE ${PUBLIC_UNDERFILLED_SQL}
+            AND t.auto_delete_warned_at IS NULL
+            AND t.event_start_date > CURDATE()
+            AND t.event_start_date <= CURDATE() + INTERVAL ? DAY`,
+        [daysAhead]);
+    return rows.map(toUnderfilled);
+}
+
+/**
+ * ปิดทัวร์ public ที่ทีมไม่ครบ — ทรานแซกชันเดียว: เปลี่ยนสถานะ → ใบสมัครที่ค้าง pending เป็น 'cancelled' (มติผู้ใช้)
+ *
+ * ★ UPDATE เช็คเงื่อนไข "ทีมไม่ครบ" ซ้ำทั้งก้อน — ระหว่าง SELECT กับตรงนี้ ผู้จัดอาจอนุมัติทีมจนครบ
+ *   หรือจับสายไปแล้ว ⇒ ต้องไม่ปิดทับ (และกันรอบงานซ้อน เหมือนตัวอื่น)
+ * ★ ใบที่ approved แล้ว **ไม่แตะ** — เป็นประวัติ (หลักเดียวกับยกเลิกทัวร์ OD-69) · ผู้เล่นไม่ติดล็อกเพราะ
+ *   application.repo ถือว่าทัวร์ auto_deleted ตายแล้ว
+ * ★ 'cancelled' ไม่ใช่ 'rejected' — ทีมไม่ได้ถูกผู้จัดปฏิเสธ แค่ทัวร์ไม่ได้จัด
+ *
+ * คืน null เมื่อไม่ได้ปิด (เงื่อนไขไม่จริงแล้ว / อีกรอบชิงไป) ⇒ service ต้องไม่แจ้งใคร
+ */
+export async function autoDeleteUnderfilledPublicTournament(tournamentId : number) : Promise<{ cancelledApplications : number } | null> {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [ closed ] = await conn.query<ResultSetHeader>(
+            `UPDATE tournaments t
+                SET t.tournament_status = 'auto_deleted' , t.registration_open = FALSE , t.updated_at = NOW()
+              WHERE t.tournament_id = ? AND ${PUBLIC_UNDERFILLED_SQL}`,
+            [tournamentId]);
+        if (closed.affectedRows !== 1) { await conn.rollback(); return null; }
+
+        const [ apps ] = await conn.query<ResultSetHeader>(
+            `UPDATE tournament_applications SET tournament_application_status = 'cancelled'
+              WHERE tournament_id = ? AND tournament_application_status = 'pending'`,
+            [tournamentId]);
+        await conn.commit();
+        return { cancelledApplications : apps.affectedRows };
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 }
 
 
