@@ -1,0 +1,51 @@
+.schedule-date-input {
+  position: relative;
+  min-width: 0;
+}
+
+.organizer-request-form .schedule-date-input > input[type="text"] {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.schedule-date-picker-button {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--bone-dim);
+  cursor: pointer;
+}
+
+.schedule-date-picker-button:hover {
+  color: var(--bone);
+  background: var(--panel-3);
+}
+
+.schedule-date-picker-button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: -3px;
+}
+
+.organizer-request-form .schedule-date-input > input.schedule-date-native[type] {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.schedule-date-native-fallback {
+  margin-top: 8px;
+}

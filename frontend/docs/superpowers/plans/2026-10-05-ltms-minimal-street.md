@@ -232,6 +232,14 @@
 
 **Completion evidence:** [Ticket 09 acceptance](../notes/2026-10-05-ltms-minimal-street-acceptance.md), 2026-10-07. All 25 routes accounted for; 282 fresh captures / 318 records across both desktop sizes/themes and 390px usability. Full suite: 96 files / 655 tests; TypeScript/lint/build and 49 frozen filenames/hashes pass. One detector/initial inspection, one token correction batch and one confirmation; direct implementer audit: 16/20. DESIGN.md and schemaVersion 2 sidecar written. Existing report-reason contract mismatch, bundle warning and live/device/mobile acceptance remain explicitly reported. Original evidence is retained in the subsequent [Quality20 integration cleanup](../notes/quality20/2026-10-08-integration.md); no push.
 
+## Request follow-up — consistent schedule date format, 2026-10-31
+
+- [x] Show all four Request schedule fields in the same English date / 24-hour Bangkok format as the review summary: `31 Oct 2026, 02:28 (UTC+7)` or `31 Oct 2026` for calendar days. Retain keyboard entry and a calendar button, with a native-input fallback when `showPicker` is unavailable.
+- [x] Interpret selected/typed date-times as Bangkok wall time with an explicit offset; calendar days remain `YYYY-MM-DD`. Defaults use the actual instant and Bangkok calendar day independently of the browser timezone. Preserve API field names, payload types, existing ordering rules and field-error focus.
+- [x] Reject impossible typed calendar dates using the existing schema's date format validation; retain invalid text for correction rather than submitting an old date. Component/form regressions cover native/fallback picking, clearing, 24-hour parsing, matching summary text, unchanged submit payload and invalid-date rejection.
+- [x] Full frontend regression: **168 files / 1,315 tests passed**, including the form's summary/payload agreement, native/fallback calendar controls and invalid-date rejection. TypeScript, lint, production build and whitespace checks passed.
+- [ ] Browser/device acceptance remains for the user's manual test. Frontend commit authorized; exclude `TODO/`, do not push. No Backend edits.
+
 ## Inbox follow-up — named referee-request matches, 2026-10-31
 
 - [x] Replace bare match IDs in incoming/outgoing referee-request cards with the same team names, tournament and round context used by ordinary Inbox notices. Include both matches for swaps. Preserve request status, consent actions and numeric navigation targets.

@@ -6,7 +6,8 @@ import {
   TournamentStatusEnum,
 } from "../types/enums";
 
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)");
+// ช่องวันที่พิมพ์ได้เองต้องกันวันที่ไม่มีจริง เช่น 31 ก.พ. เหมือน native date input เดิม
+const dateSchema = z.iso.date({ error: "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)" });
 
 /**
  * ช่อง datetime-local ของเบราว์เซอร์ให้ค่ามาแบบ "2026-09-18T21:00" ซึ่งไม่มีโซนเวลา

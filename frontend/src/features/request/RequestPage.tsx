@@ -8,7 +8,7 @@
  *
  * ── ช่วงเวลาที่ backend บังคับ (tournament.service ensureSchedule) ──────────
  * เปิดรับสมัคร < ปิดรับสมัคร < วันแข่งวันแรก ≤ วันแข่งวันสุดท้าย และต้องส่งครบทั้งสี่
- * ช่องเวลาในเบราว์เซอร์ไม่มีโซนเวลา จึงแปลงเป็น ISO ตอนอ่านค่า เพราะ API รับเฉพาะแบบมีโซนเวลา
+ * ช่องเวลาแสดงเวลาไทยเหมือนกล่องสรุป เก็บวันแข่งเป็น YYYY-MM-DD และเวลารับสมัครเป็น ISO ที่มีโซนเวลา
  *
  * ── ระดับการแข่งขันกับหน่วยงานที่จัด (ensureCreateReferences) ───────────────
  * ระดับคณะ: ต้องมีคณะ และห้ามส่งภาควิชา · ระดับภาควิชา: ต้องมีทั้งคณะและภาควิชาในคณะนั้น
@@ -17,7 +17,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Banner, Field, Panel } from '../../components/kit/primitives'
 import { useCreateTournament } from '../../hooks/useTournament'
@@ -27,7 +27,9 @@ import { ApiError } from '../../api/client'
 import { createTournamentSchema, toEligibilityRules, type CreateTournamentInput } from '../../schemas/tournament.schema'
 import type { TournamentCreatedDto } from '../../types/tournament.dto'
 import { BracketFormatOptions, BracketFormatLabel, GenderRequirementOptions, GenderRequirementLabel } from '../../types/enums'
-import { fmtDate } from '../../shared/dateFormat'
+import { fmtDate, thaiCalendarDay } from '../../shared/dateFormat'
+import { ScheduleDateInput } from './ScheduleDateInput'
+import { parseScheduleDate } from './scheduleDate'
 
 const ADMIT = [
   ['all', 'Every faculty'],
@@ -39,15 +41,17 @@ type AdmitMode = (typeof ADMIT)[number][0]
 const admittedOf = (mode: AdmitMode, organiser: number | null | undefined, picked: number[]) =>
   mode === 'pick' ? picked : mode === 'own' && organiser != null ? [organiser] : []
 
-const pad = (n: number) => String(n).padStart(2, '0')
-const asLocalDateTime = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-const asDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
+const defaultDateTime = (days: number) => {
+  const date = inDays(days)
+  date.setUTCSeconds(0, 0)
+  return date.toISOString()
+}
 const asIdOrNull = (value: string) => (value === '' ? null : Number(value))
-const reviewDate = (value: string | undefined) => {
+const reviewDate = (value: string | undefined, withTime = false) => {
   if (!value) return 'Not set'
-  return fmtDate(value, value)
+  const parsed = parseScheduleDate(value, withTime)
+  return parsed ? fmtDate(parsed) : 'Invalid date'
 }
 
 export function RequestPage() {
@@ -65,10 +69,10 @@ export function RequestPage() {
       scopeType: 'faculty',
       organizingFacultyId: null,
       organizingDepartmentId: null,
-      registrationStart: asLocalDateTime(inDays(1)),
-      registrationEnd: asLocalDateTime(inDays(14)),
-      eventStartDate: asDate(inDays(21)),
-      eventEndDate: asDate(inDays(22)),
+      registrationStart: defaultDateTime(1),
+      registrationEnd: defaultDateTime(14),
+      eventStartDate: thaiCalendarDay(inDays(21))!,
+      eventEndDate: thaiCalendarDay(inDays(22))!,
       maxTeams: 8,
       minTeams: 2,
       venue: '',
@@ -295,21 +299,23 @@ export function RequestPage() {
             </div>
             <div className="grid2">
               <Field label="Entry opens" htmlFor="rq-reg-start">
-                <input id="rq-reg-start" type="datetime-local"
-                  {...register('registrationStart')} aria-invalid={!!errors.registrationStart} aria-describedby={errors.registrationStart ? "rq-error-registrationStart" : undefined} />
+                <Controller control={control} name="registrationStart" render={({ field }) => <ScheduleDateInput {...field} id="rq-reg-start" label="Entry opens" withTime
+                  aria-invalid={!!errors.registrationStart} aria-describedby={errors.registrationStart ? "rq-error-registrationStart" : undefined} />} />
                 {fieldError('registrationStart') ? <span className="sub" id="rq-error-registrationStart">{fieldError('registrationStart')}</span> : null}
               </Field>
               <Field label="Entry closes" htmlFor="rq-reg-end">
-                <input id="rq-reg-end" type="datetime-local"
-                  {...register('registrationEnd')} aria-invalid={!!errors.registrationEnd} aria-describedby={errors.registrationEnd ? "rq-error-registrationEnd" : undefined} />
+                <Controller control={control} name="registrationEnd" render={({ field }) => <ScheduleDateInput {...field} id="rq-reg-end" label="Entry closes" withTime
+                  aria-invalid={!!errors.registrationEnd} aria-describedby={errors.registrationEnd ? "rq-error-registrationEnd" : undefined} />} />
                 {fieldError('registrationEnd') ? <span className="sub" id="rq-error-registrationEnd">{fieldError('registrationEnd')}</span> : null}
               </Field>
               <Field label="First match date" htmlFor="rq-date">
-                <input id="rq-date" type="date" {...register('eventStartDate')} aria-invalid={!!errors.eventStartDate} aria-describedby={errors.eventStartDate ? "rq-error-eventStartDate" : undefined} />
+                <Controller control={control} name="eventStartDate" render={({ field }) => <ScheduleDateInput {...field} id="rq-date" label="First match date"
+                  aria-invalid={!!errors.eventStartDate} aria-describedby={errors.eventStartDate ? "rq-error-eventStartDate" : undefined} />} />
                 {fieldError('eventStartDate') ? <span className="sub" id="rq-error-eventStartDate">{fieldError('eventStartDate')}</span> : null}
               </Field>
               <Field label="Last match date" htmlFor="rq-date-end">
-                <input id="rq-date-end" type="date" {...register('eventEndDate')} aria-invalid={!!errors.eventEndDate} aria-describedby={errors.eventEndDate ? "rq-error-eventEndDate" : undefined} />
+                <Controller control={control} name="eventEndDate" render={({ field }) => <ScheduleDateInput {...field} id="rq-date-end" label="Last match date"
+                  aria-invalid={!!errors.eventEndDate} aria-describedby={errors.eventEndDate ? "rq-error-eventEndDate" : undefined} />} />
                 {fieldError('eventEndDate') ? <span className="sub" id="rq-error-eventEndDate">{fieldError('eventEndDate')}</span> : null}
               </Field>
               <Field label="Default venue" htmlFor="rq-venue">
@@ -416,7 +422,7 @@ export function RequestPage() {
                 <dd>{draft.minTeams ?? '—'}–{draft.maxTeams ?? '—'} squads</dd></div>
               <div><dt>Organiser</dt><dd>{organizingFacultyId == null ? 'Choose a faculty' : facultyName(organizingFacultyId)}</dd>
                 <dd>{organizingDepartmentId == null ? 'Whole faculty' : departments?.items.find(d => d.id === organizingDepartmentId)?.name ?? `Department #${organizingDepartmentId}`}</dd></div>
-              <div><dt>Entry window</dt><dd>{reviewDate(draft.registrationStart)} to {reviewDate(draft.registrationEnd)}</dd></div>
+              <div><dt>Entry window</dt><dd>{reviewDate(draft.registrationStart, true)} to {reviewDate(draft.registrationEnd, true)}</dd></div>
               <div><dt>Match dates & venue</dt><dd>{reviewDate(draft.eventStartDate)} to {reviewDate(draft.eventEndDate)}</dd><dd>{draft.venue?.trim() || 'Venue not set'}</dd></div>
               <div><dt>Who can enter</dt><dd>{entryFaculties} · {entryYears}</dd>
                 <dd>{GenderRequirementLabel[draft.genderRequirement ?? 'any']} · {entryAge}</dd></div>
