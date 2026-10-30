@@ -385,6 +385,11 @@ export async function resetPassword(token : string , newPassword : string) : Pro
  *   ⇒ แก้ที่ฝั่ง FE ด้วยข้อความ "ไม่ได้รับรหัสภายใน 10 นาที? สมัครใหม่ด้วยอีเมลเดิมได้เลย"
  *     ซึ่งใช้ได้จริงเพราะอีเมลว่างแล้ว · **ไม่ใช่ทางตันทางเทคนิค แต่เป็นเรื่องบอกผู้ใช้ให้รู้**
  */
+/** QA 30 ต.ค. (C3) — บัตรทุกใบของผู้ใช้คนนี้ใช้ไม่ได้ทันที (ทุกเครื่อง) · เหตุผลอยู่ที่ auth.controller logout */
+export async function logout(userId : number) : Promise<void>{
+  await userRepo.bumpTokenVersion(userId);
+}
+
 export async function purgeUnverifiedAccounts(){
   /**
    * 🔴 29 ต.ค. 2569 (UserNaito เคาะ) — ลบเฉพาะตอนเปิดด่าน REQUIRE_EMAIL_VERIFIED
