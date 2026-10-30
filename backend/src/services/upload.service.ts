@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import s3 from '../config/s3.js';
+import s3, { s3Public } from '../config/s3.js';
 import { env } from '../config/env.js';
 import * as MatchRepo from '../repositories/match.repo.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
@@ -100,7 +100,7 @@ export async function createPresignedUpload(input: PresignUploadInput, userId: n
         Key: objectKey,
         ContentType: input.contentType,
     });
-    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
+    const uploadUrl = await getSignedUrl(s3Public, command, { expiresIn: EXPIRES_IN_SECONDS });
 
     return { uploadUrl, objectKey, expiresIn: EXPIRES_IN_SECONDS };
 }
@@ -163,7 +163,7 @@ export async function validateSoftFilterDocuments(objectKeys: string[], tourname
 // (กฎรวม Part 3 ข้อ 11: "ทุก response ที่มีรูปต้องเป็น presigned URL ไม่ใช่ S3 key ดิบ")
 export async function getPresignedDownloadUrl(objectKey: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey });
-    return getSignedUrl(s3, command, { expiresIn: EXPIRES_IN_SECONDS });
+    return getSignedUrl(s3Public, command, { expiresIn: EXPIRES_IN_SECONDS });
 }
 
 // คอลัมน์ JSON ที่เก็บ "array ของ S3 key" แล้วอาจเป็น NULL (evidence, supporting_docs, dispute_evidence)

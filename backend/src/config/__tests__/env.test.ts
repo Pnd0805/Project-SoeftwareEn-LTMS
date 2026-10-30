@@ -78,6 +78,7 @@ describe("env - happy path", () => {
             PORT: 3000,
 
             S3_ENDPOINT: "http://localhost:9000",
+	    S3_PUBLIC_ENDPOINT: "http://localhost:9000",
             S3_REGION: "us-east-1",
             S3_ACCESS_KEY_ID: "minioadmin",
             S3_SECRET_ACCESS_KEY: "minioadmin",
