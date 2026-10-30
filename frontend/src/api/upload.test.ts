@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
 import { ApiError, setAccessToken } from './client'
-import { imageUploadErrorMessage, uploadImage, uploadTeamOfficialDocument } from './upload'
+import { imageUploadErrorMessage, uploadImage, uploadRefereeIdentityDocument, uploadTeamOfficialDocument } from './upload'
 import { IMAGE_UPLOAD_MAX_BYTES, PDF_UPLOAD_MAX_BYTES } from '../shared/uploadLimits'
 
 const fetchMock = vi.fn()
@@ -42,6 +42,20 @@ describe('real image uploads', () => {
     expect(await uploadImage(png(), 'referee_identity')).toBe(key)
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ purpose: 'referee_identity', contentType: 'image/png' })
     expect(fetchMock.mock.calls[1][1].headers).toEqual({ 'Content-Type': 'image/png' })
+  })
+  // 31 ต.ค. 2569 — ผู้ใช้แจ้ง "เอกสารส่งเป็น pdf ไม่ได้" · backend เปิด PDF ให้ referee_identity แล้ว
+  it('uploads a PDF identity document with its real MIME type', async () => {
+    const key = 'referee_identity/9/00000000-0000-4000-8000-000000000009.pdf'
+    const pdf = new File(['%PDF'], 'id.pdf', { type: 'application/pdf' })
+    fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/private-identity', objectKey: key }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+    expect(await uploadRefereeIdentityDocument(pdf)).toBe(key)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ purpose: 'referee_identity', contentType: 'application/pdf' })
+    expect(fetchMock.mock.calls[1][1].headers).toEqual({ 'Content-Type': 'application/pdf' })
+  })
+  it.each(['image/gif', 'text/plain'])('rejects %s identity documents before presign', async type => {
+    await expect(uploadRefereeIdentityDocument(new File(['x'], 'id', { type }))).rejects.toMatchObject({ code: 'UNSUPPORTED_FILE_TYPE' })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
   it.each(['image/png', 'image/jpeg'])('keeps %s MIME and returns the key only after PUT succeeds', async contentType => {
     const file = new File(['image'], 'photo', { type: contentType })

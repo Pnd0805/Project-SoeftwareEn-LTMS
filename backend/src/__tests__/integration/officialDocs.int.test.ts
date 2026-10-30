@@ -7,6 +7,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * ★ S3 ถูกบล็อกใน integration ⇒ จำลอง "ไฟล์ที่มีอยู่จริง" ด้วยชุด key · ตรวจรูป key ใช้ตัวจริง
  */
 const stored = vi.hoisted(() => new Set<string>());
+// ลิงก์อัปโหลดไม่ต่อที่เก็บไฟล์จริง (integration บล็อก S3) — เทสพิสูจน์แค่ว่าผ่านด่านชนิดไฟล์และ key ผูกกับใคร
+vi.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: vi.fn(async (_client: unknown, command: { input: { Key: string } }) => `https://s3.test/${command.input.Key}?signed`),
+}));
 vi.mock('../../services/upload.service.js', async (orig) => {
   const real = await orig<typeof import('../../services/upload.service.js')>();
   const { AppError } = await import('../../utils/AppError.js');
@@ -97,11 +101,18 @@ describe('T16 GET /admin/team-requests — แอดมินเปิดเอ�
   });
 });
 
-describe('M16 POST /uploads/presign — PDF เปิดเฉพาะเอกสาร Official', () => {
-  it.each(['avatar', 'referee_identity'])('🔴 %s + PDF → 400 UNSUPPORTED_FILE_TYPE', async (purpose) => {
-    const res = await as(leader).post('/uploads/presign').send({ purpose, contentType: 'application/pdf' });
+describe('M16 POST /uploads/presign — PDF เปิดเฉพาะ "เอกสาร" (Official · ยืนยันตัวตนกรรมการ)', () => {
+  it('🔴 avatar + PDF → 400 UNSUPPORTED_FILE_TYPE', async () => {
+    const res = await as(leader).post('/uploads/presign').send({ purpose: 'avatar', contentType: 'application/pdf' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('UNSUPPORTED_FILE_TYPE');
+  });
+
+  // 31 ต.ค. 2569 — ผู้ใช้แจ้ง "เอกสารส่งเป็น pdf ไม่ได้" ⇒ referee_identity รับ PDF · key ลงท้าย .pdf ใต้ user ของคนขอ
+  it('referee_identity + PDF → 200 · key referee_identity/<userId>/<uuid>.pdf', async () => {
+    const res = await as(leader).post('/uploads/presign').send({ purpose: 'referee_identity', contentType: 'application/pdf' });
+    expect(res.status).toBe(200);
+    expect(res.body.objectKey).toMatch(new RegExp(`^referee_identity/${leader.id}/[0-9a-f-]+\\.pdf$`));
   });
 
   it('team_logo + PDF → 400 UNSUPPORTED_FILE_TYPE', async () => {

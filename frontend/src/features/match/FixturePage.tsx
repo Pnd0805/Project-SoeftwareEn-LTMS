@@ -33,7 +33,7 @@ import { missingScheduleFields, scheduleErrorKind } from '../../shared/matchSche
 import { tournamentRouteId } from '../../mocks/storeBridge'
 import { MatchStatusLabel } from '../../types/enums'
 import type { MatchDto } from '../../types/match.dto'
-import { fmtDateOnly, fmtDateTime } from '../../shared/dateFormat'
+import { fmtDateOnly, fmtDateTime, thaiCalendarDay } from '../../shared/dateFormat'
 
 /** datetime-local wants a local wall clock, not an ISO instant. */
 const toLocal = (iso: string | null) => {
@@ -277,18 +277,23 @@ export function FixturePage() {
       return
     }
     if (tourData) {
-      const tourStart = tourData.eventStartDate ? new Date(tourData.eventStartDate) : null
-      const tourEnd = tourData.eventEndDate ? new Date(tourData.eventEndDate) : null
-      if (tourStart && !isNaN(tourStart.getTime()) && kickoffDate < tourStart) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${fmtDateOnly(tourData.eventStartDate)})`)
+      /* 31 ต.ค. 2569 — เทียบ "วันไทย" กับวันแข่ง (DATE ล้วน) ตรงกับ backend (M06 · thaiDateOf)
+         เดิม `new Date(eventStartDate)` = เที่ยงคืน UTC = 07:00 ไทย ⇒ เตะก่อน 7 โมงของวันแรกไม่ผ่าน
+         และวันสุดท้ายหลัง 7 โมงก็ไม่ผ่าน · ไม่มีวันจบ ⇒ ใช้วันเริ่มเป็นวันสุดท้าย (เหมือน backend) */
+      const startDay = tourData.eventStartDate ? tourData.eventStartDate.slice(0, 10) : null
+      const lastDay = (tourData.eventEndDate ?? tourData.eventStartDate)?.slice(0, 10) ?? null
+      const kickoffDay = thaiCalendarDay(kickoffDate)
+      const finishDay = thaiCalendarDay(finishDate)
+      if (startDay && kickoffDay && kickoffDay < startDay) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่ก่อนวันเริ่มทัวร์นาเมนต์: ${fmtDateOnly(startDay)})`)
         return
       }
-      if (tourEnd && !isNaN(tourEnd.getTime()) && kickoffDate > tourEnd) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${fmtDateOnly(tourData.eventEndDate)})`)
+      if (lastDay && kickoffDay && kickoffDay > lastDay) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${fmtDateOnly(lastDay)})`)
         return
       }
-      if (tourEnd && !isNaN(tourEnd.getTime()) && finishDate > tourEnd) {
-        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${fmtDateOnly(tourData.eventEndDate)})`)
+      if (lastDay && finishDay && finishDay > lastDay) {
+        setClientError(`วันนี้ไม่อยู่ในขอบเขตการจัดแข่งทัวร์นาเมนต์ (เวลาจบต้องไม่อยู่หลังวันสิ้นสุดทัวร์นาเมนต์: ${fmtDateOnly(lastDay)})`)
         return
       }
     }

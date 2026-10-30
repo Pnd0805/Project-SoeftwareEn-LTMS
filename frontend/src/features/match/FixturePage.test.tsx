@@ -87,6 +87,48 @@ beforeEach(() => {
   match.tournament.sportName = 'Volleyball'
 })
 
+/**
+ * 31 ต.ค. 2569 — ขอบวันตามเวลาไทย (ผู้ใช้: "วันที่ 31 ต้อง 7 โมงขึ้นไปถึงนับเป็นวัน 31" — kickoff)
+ *   ทัวร์ 2026-09-01 ถึง 2026-10-15 · ค่าที่ใส่เป็นเวลาไทยแบบ ISO (+07:00) ⇒ ผลไม่ขึ้นกับโซนของเครื่องที่รันเทส
+ */
+describe('fixture dates use Thai calendar days', () => {
+  const thai = (iso: string) => new Date(iso).toISOString()
+  const setTimes = (kickoffIso: string, endIso: string) => {
+    // datetime-local ของเครื่องนี้ — แปลงจากจุดเวลาไทยเป็นเวลาท้องถิ่นของเครื่องที่รันเทส
+    const local = (iso: string) => {
+      const d = new Date(iso); const pad = (n: number) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+    fireEvent.change(screen.getByLabelText('Kick-off'), { target: { value: local(kickoffIso) } })
+    fireEvent.change(screen.getByLabelText('End'), { target: { value: local(endIso) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save schedule' }))
+  }
+
+  it('accepts a kick-off before 07:00 Thai time on the first tournament day', async () => {
+    renderPage()
+    setTimes('2026-09-01T06:00:00+07:00', '2026-09-01T06:45:00+07:00')
+    await waitFor(() => expect(updateAsync).toHaveBeenCalledWith(expect.objectContaining({ scheduledTime: thai('2026-09-01T06:00:00+07:00') })))
+    expect(screen.queryByText(/ขอบเขตการจัดแข่ง/)).not.toBeInTheDocument()
+  })
+
+  it('accepts an evening match on the last tournament day', async () => {
+    renderPage()
+    setTimes('2026-10-15T18:00:00+07:00', '2026-10-15T20:00:00+07:00')
+    await waitFor(() => expect(updateAsync).toHaveBeenCalledWith(expect.objectContaining({ scheduledEndTime: thai('2026-10-15T20:00:00+07:00') })))
+  })
+
+  it.each([
+    ['the night before the first day', '2026-08-31T23:30:00+07:00', '2026-09-01T00:30:00+07:00', /ก่อนวันเริ่มทัวร์นาเมนต์/],
+    ['just after midnight following the last day', '2026-10-16T00:10:00+07:00', '2026-10-16T01:00:00+07:00', /เวลาเริ่มต้องไม่อยู่หลังวันสิ้นสุด/],
+    ['an end time that runs past the last day', '2026-10-15T23:00:00+07:00', '2026-10-16T00:30:00+07:00', /เวลาจบต้องไม่อยู่หลังวันสิ้นสุด/],
+  ])('rejects %s', (_label, kickoff, end, message) => {
+    renderPage()
+    setTimes(kickoff, end)
+    expect(screen.getByText(message)).toBeInTheDocument()
+    expect(updateAsync).not.toHaveBeenCalled()
+  })
+})
+
 describe('real-mode fixture referee consent flow', () => {
   it('keeps a cancelled fixture readable without schedule or assignment writes', () => {
     match.tournament.status = 'cancelled'

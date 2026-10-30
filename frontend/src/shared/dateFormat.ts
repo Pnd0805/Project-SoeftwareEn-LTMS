@@ -52,3 +52,19 @@ export function fmtDateOnly(value: DateInput, fallback = 'Not set'): string {
 export function fmtDate(value: DateInput, fallback = 'Not set'): string {
   return isCalendarDay(value) ? fmtDateOnly(value, fallback) : fmtDateTime(value, fallback)
 }
+
+const thaiDayParts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TIME_ZONE })
+
+/**
+ * วันในปฏิทินไทย (`YYYY-MM-DD`) ของจุดเวลานี้ — ใช้เทียบกับวันแข่งของทัวร์ (DATE ล้วน)
+ *
+ * 🔴 31 ต.ค. 2569 — ห้ามเทียบด้วย `new Date('2026-10-31')` เพราะ JS อ่านวันล้วนเป็นเที่ยงคืน **UTC**
+ *   = 07:00 เวลาไทย ⇒ เวลาเตะ 00:00–06:59 ของวันแรกถูกบอกว่า "ก่อนวันเริ่มทัวร์"
+ *   และวันสุดท้ายหลัง 07:00 ถูกบอกว่า "หลังวันสิ้นสุด" — ต้องแปลงจุดเวลาเป็นวันไทยก่อนแล้วเทียบสตริงวัน
+ */
+export function thaiCalendarDay(value: DateInput): string | null {
+  const date = toDate(value)
+  if (!date) return null
+  const parts = Object.fromEntries(thaiDayParts.formatToParts(date).map(p => [p.type, p.value]))
+  return `${parts.year}-${parts.month}-${parts.day}`
+}

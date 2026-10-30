@@ -363,33 +363,25 @@ describe('rejectExternalReferee', () => {
 });
 
 /**
- * 🆕 ด่านใหม่ 6 ต.ค. 2569 (ทางเลือก ข) — ห้ามอนุมัติคนที่ยังไม่ส่งเอกสาร
- *
- * 🔴 ช่องที่ปิด: resolveApprovalForAccept ตั้งสถานะ `pending` ให้ตั้งแต่ตอน **กดรับคำเชิญ**
- *   แม้ไม่มีเอกสารแนบมาเลย ⇒ คนนั้นโผล่ในคิวแอดมินทันทีโดยมี docs: []
- *   แล้วด่านเดิมเช็คแค่สถานะ ⇒ แอดมินกด "อนุมัติ" ได้โดยไม่เคยเห็นเอกสารอะไร
- *   และผลนั้นใช้ได้ 1 ปี ก็อปไปทุกทัวร์ที่เขาจะเข้าต่อจากนั้น ⇒ ผลกระจายต่อเอง
+ * 🔄 31 ต.ค. 2569 (ผู้ใช้สั่ง) — ยกเลิกด่าน DOCS_NOT_SUBMITTED ของ 6 ต.ค. (ทางเลือก ข)
+ *   แอดมินมหาวิทยาลัยอนุมัติได้แม้ยังไม่มีเอกสาร / เอกสารเปิดไม่ได้ — ความรับผิดชอบอยู่ที่คนกด
  */
-describe('approveExternalReferee — ต้องส่งเอกสารก่อน (DOCS_NOT_SUBMITTED)', () => {
+describe('approveExternalReferee — อนุมัติได้แม้ยังไม่ส่งเอกสาร (31 ต.ค.)', () => {
   it.each(['pending', 'needs_docs'] as const)(
-    'สถานะ %s แต่ยังไม่ส่งเอกสาร = 409 และไม่อนุมัติ ไม่แจ้งเตือน',
+    'สถานะ %s แต่ยังไม่ส่งเอกสาร → อนุมัติได้ · แจ้งเตือนผู้ใช้',
     async (status) => {
       mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
       mockedGetIdentityState.mockResolvedValue({ status, docsSubmitted: false } as any);
+      mockedRefRepo.approveUser.mockResolvedValue(1 as any);
 
-      await expect(approveExternalReferee(1, 99)).rejects.toMatchObject({
-        status: 409, code: 'DOCS_NOT_SUBMITTED',
-      });
-      expect(mockedRefRepo.approveUser).not.toHaveBeenCalled();
-      expect(mockedNotify).not.toHaveBeenCalled();
+      await expect(approveExternalReferee(1, 99)).resolves.toMatchObject({ identityStatus: 'approved' });
+      expect(mockedRefRepo.approveUser).toHaveBeenCalledWith(1, 99);
+      expect(mockedNotify).toHaveBeenCalledTimes(1);
     },
   );
 
-  /**
-   * ★ ด่านนี้ต้องมาหลังด่านสถานะ — คนที่ถูกปฏิเสธไปแล้ว (rejected) ก็ไม่มีเอกสารเหมือนกัน
-   *   ถ้าสลับลำดับ เขาจะได้ DOCS_NOT_SUBMITTED ซึ่งบอกให้ "ส่งเอกสาร" ทั้งที่เรื่องจบไปแล้ว
-   */
-  it('คนที่ถูกปฏิเสธไปแล้ว ยังได้ NOT_PENDING_REVIEW ไม่ใช่ DOCS_NOT_SUBMITTED', async () => {
+  /** ★ ด่านสถานะยังอยู่ — คนที่ถูกปฏิเสธไปแล้วอนุมัติซ้ำไม่ได้ */
+  it('คนที่ถูกปฏิเสธไปแล้ว ยังได้ NOT_PENDING_REVIEW', async () => {
     mockedUserRepo.findById.mockResolvedValue({ user_id: 1 } as any);
     mockedGetIdentityState.mockResolvedValue({ status: 'rejected', docsSubmitted: false } as any);
 

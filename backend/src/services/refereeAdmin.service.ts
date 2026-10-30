@@ -77,17 +77,11 @@ export async function approveExternalReferee(userId : number, adminUserId : numb
         throw new AppError(409, 'NOT_PENDING_REVIEW', 'ผู้ใช้นี้ไม่ได้อยู่ระหว่างรอตรวจ');
     }
     /**
-     * 🔴 มติ 6 ต.ค. 2569 (ทางเลือก ข) — ห้ามอนุมัติคนที่ยังไม่ส่งเอกสาร
-     *   เดิมด่านนี้เช็คแค่สถานะ ⇒ คนที่กดรับคำเชิญแล้วแต่ยังไม่ส่งเอกสารเลย
-     *   ก็ถูกกดอนุมัติได้ = "ยืนยันตัวตน" โดยไม่เคยเห็นเอกสารอะไร
-     *   และผลนั้นใช้ได้ 1 ปี ก็อปไปทุกทัวร์ที่เขาจะเข้าต่อจากนั้น (resolveApprovalForAccept)
-     *   ⇒ ไม่ใช่แค่ขั้นตอนไม่ครบ แต่ผลมันกระจายต่อเอง
-     * ★ ไม่ใช่การซ่อนเขาจากคิว — คิวยังโชว์พร้อมธง `docsSubmitted` ให้แอดมินเห็นว่าใครค้างอยู่
+     * 🔄 31 ต.ค. 2569 (ผู้ใช้สั่ง) — **ยกเลิก**ด่าน "ห้ามอนุมัติคนที่ยังไม่ส่งเอกสาร" (DOCS_NOT_SUBMITTED · มติ 6 ต.ค. ทางเลือก ข)
+     *   แอดมินมหาวิทยาลัยรู้จักตัวบุคคลจากช่องทางอื่นได้ (เช่นเอกสารเปิดไม่ได้ / ตรวจตัวจริงแล้ว) ⇒ อนุมัติเลยได้
+     *   ⚠ ข้อแลกที่รับไว้: ผลอนุมัติใช้ได้ 1 ปีและก็อปไปทุกทัวร์ที่เขาเข้าต่อ (resolveApprovalForAccept)
+     *     ⇒ ความรับผิดชอบอยู่ที่แอดมินที่กด · คิวยังโชว์ธง `docsSubmitted` ให้เห็นก่อนกด
      */
-    if(!state.docsSubmitted){
-        throw new AppError(409, 'DOCS_NOT_SUBMITTED',
-            'ผู้ใช้นี้ยังไม่ได้ส่งเอกสารยืนยันตัวตน อนุมัติไม่ได้ — ต้องรอให้เขาส่งเอกสารก่อน');
-    }
     const keysBefore = await RefRepo.findDocKeysOfUser(userId);
     const affected = await RefRepo.approveUser(userId, adminUserId);
     await RefereeDocs.deleteDocsNoLongerReferenced(userId, keysBefore);   // OD-70 — ภาพหมดหน้าที่ตั้งแต่ตัดสิน

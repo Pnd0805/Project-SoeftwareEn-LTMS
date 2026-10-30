@@ -706,7 +706,7 @@ describe('warnBeforeAutoDelete', () => {
 
     await expect(Service.warnBeforeAutoDelete()).resolves.toEqual([50]);
 
-    expect(TournamentRepo.findTournamentsToWarnBeforeAutoDelete).toHaveBeenCalledWith(Service.AUTO_DELETE_WARNING_DAYS);
+    expect(TournamentRepo.findTournamentsToWarnBeforeAutoDelete).toHaveBeenCalledWith(Service.AUTO_DELETE_WARNING_DAYS, expect.any(Date));
     expect(Service.AUTO_DELETE_WARNING_DAYS).toBe(7);
     expect(NotificationService.notifyUsers).toHaveBeenCalledTimes(1);
     expect(NotificationService.notifyUsers).toHaveBeenCalledWith([7], expect.objectContaining({

@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Banner, Field } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
-import { imageUploadErrorMessage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
+import { imageUploadErrorMessage, IDENTITY_DOC_ACCEPT } from '../../api/upload'
 import { useSubmitRefereeIdentityDocs } from '../../hooks/useAdmin'
 import { uploadIdentityDocs } from './identityDocs'
 
@@ -35,8 +35,8 @@ export function ExternalDocsPrompt({ tournament, onClose, onSent }: {
     <Modal open onClose={close} label="External referee" title="Send identity documents">
       <p>You accepted {tournament}. An admin must verify your identity before you can officiate.</p>
       <Banner kind="neutral">This step is optional. To attach documents later, go to your <Link to="/me">Profile page</Link>.</Banner>
-      <Field label="Documents (JPEG/PNG, 1–5 files)" htmlFor="external-docs-files">
-        <input id="external-docs-files" type="file" accept={UPLOAD_IMAGE_ACCEPT} multiple disabled={sending}
+      <Field label="Documents (PDF/JPEG/PNG, 1–5 files)" htmlFor="external-docs-files">
+        <input id="external-docs-files" type="file" accept={IDENTITY_DOC_ACCEPT} multiple disabled={sending}
           onChange={e => { setFiles(Array.from(e.target.files ?? [])); setError('') }} />
       </Field>
       {files.map((f, i) => <div className="sub" key={`${i}:${f.name}`}>{f.name}</div>)}

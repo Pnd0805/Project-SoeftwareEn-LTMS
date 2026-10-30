@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { thaiDateOf, thaiDatePlusDays } from '../utils/thaiDate.js';
 import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type { TournamentRow, UserRow } from '../types/db.js';
 import * as RewardRepo from './reward.repo.js';
@@ -793,7 +794,7 @@ export async function completeTournament(tournamentId: number, userId: number, c
 /**
  * BR-03 ส่วนที่ 2 — ทัวร์ที่ยัง private และใกล้ถึงวันแข่ง (ยังเตือนไม่ได้)
  *
- * ★ ตัดทัวร์ที่ **ถึงวันแข่งแล้ว** ออก (`event_start_date > CURDATE())
+ * ★ ตัดทัวร์ที่ **ถึงวันแข่งแล้ว** ออก (`event_start_date > วันนี้ตามเวลาไทย`)
  *   เพราะพวกนั้นเป็นงานของ sweepPrivatePastDueTournaments() ที่ปิดเลย
  *   ถ้าไม่ตัด ผู้จัดจะได้ "อีก 0 วันจะถูกปิด" กับ "ถูกปิดแล้ว" ในรอบงานเดียวกัน
  *
@@ -805,16 +806,16 @@ export async function completeTournament(tournamentId: number, userId: number, c
 //   คอลัมน์ชนิด DATE จึงกลับมาเป็น YYYY-MM-DD ตรง ๆ (types/db.ts ก็ประกาศแบบนี้ทั้งไฟล์)
 export type TournamentToWarn = { tournamentId : number , name : string , organizerId : number , eventStartDate : string };
 
-export async function findTournamentsToWarnBeforeAutoDelete(daysAhead : number) : Promise<TournamentToWarn[]> {
+export async function findTournamentsToWarnBeforeAutoDelete(daysAhead : number, now : Date = new Date()) : Promise<TournamentToWarn[]> {
     const [ rows ] = await pool.query<({ tournament_id : number , name : string , requested_by_user_id : number , event_start_date : string } & RowDataPacket)[]>(
         `SELECT tournament_id , name , requested_by_user_id , event_start_date
            FROM tournaments
           WHERE tournament_status = 'private'
             AND deleted_at IS NULL
             AND auto_delete_warned_at IS NULL
-            AND event_start_date > CURDATE()
-            AND event_start_date <= CURDATE() + INTERVAL ? DAY`,
-        [daysAhead]);
+            AND event_start_date > ?
+            AND event_start_date <= ?`,
+        [thaiDateOf(now), thaiDatePlusDays(now, daysAhead)]);
 
     return rows.map(r => ({ tournamentId : r.tournament_id , name : r.name ,
                             organizerId : r.requested_by_user_id , eventStartDate : r.event_start_date }));
@@ -869,11 +870,10 @@ export async function purgeTournamentsClosedOver(years : number) : Promise<numbe
  *     · แจ้งเตือนผู้จัดล่วงหน้ากี่วันก่อนถึงกำหนด
  *     · "ลบข้อมูลเมื่อครบ 4 ปี" นับจากอะไร และเป็นลบจริงหรือ soft delete
  *
- * ★ "ถึงวันแข่ง" เทียบกับ `event_start_date ซึ่งเป็นชนิด DATE ⇒ ทัวร์ที่เริ่ม "วันนี้" เข้าเกณฑ์ด้วย
- *   ใช้ CURDATE() เพราะอ่านเจตนาได้ตรง (เทียบวันกับวัน)
- *   🔴 ตรวจแล้วว่า NOW() ให้ผล **เท่ากันเป๊ะ** กับคอลัมน์ชนิด DATE เพราะ MySQL เลื่อน DATE
- *     ขึ้นเป็นเที่ยงคืนของวันนั้นก่อนเทียบ ⇒ นี่ไม่ใช่เรื่องถูก/ผิด แต่เป็นเรื่องอ่านรู้เรื่อง
- *     (เคยเขียนคอมเมนต์ไว้ว่า NOW() จะทำให้พลาด ซึ่งไม่จริง — mutation ทดสอบแล้วไม่ต่างกัน)
+ * ★ "ถึงวันแข่ง" เทียบ `event_start_date (DATE) กับ **วันนี้ตามเวลาไทย** (utils/thaiDate) ⇒ ทัวร์ที่เริ่ม "วันนี้" เข้าเกณฑ์ด้วย
+ *   🔴 31 ต.ค. 2569 — เดิมใช้ CURDATE() ซึ่งเป็นวัน **UTC** (pool ตั้ง time_zone UTC) ⇒ ช่วง 00:00–06:59 ไทย
+ *     ยังนับเป็นเมื่อวาน — ทัวร์ที่เริ่มวันที่ 31 ถูกปิดตอน 07:00 ของวันนั้น · ทุกงานในไฟล์นี้เปลี่ยนตามกันหมด
+ *   ★ รับ `now` เป็นพารามิเตอร์ (ค่าตั้งต้น = ตอนนี้) ⇒ เทสตรึงเวลาเป็นตี 1 ไทยได้โดยไม่ต้องรอให้นาฬิกาจริงถึง
  * ★ ไม่แตะ `deleted_at — คอลัมน์นั้นหมายถึง "มีคนลบ" และคู่กับ `deleted_by
  *   ส่วน auto_deleted เป็นสถานะของตัวทัวร์เอง ซึ่งฝั่งอ่านซ่อนให้อยู่แล้ว
  * ★ ปิดรับสมัครด้วย เพื่อไม่ให้มีใบสมัครใหม่วิ่งเข้าหาทัวร์ที่ตายแล้ว
@@ -883,13 +883,13 @@ export async function purgeTournamentsClosedOver(years : number) : Promise<numbe
  */
 export type AutoDeletedTournament = { tournamentId : number , name : string , organizerId : number };
 
-export async function sweepPrivatePastDueTournaments() : Promise<AutoDeletedTournament[]> {
+export async function sweepPrivatePastDueTournaments(now : Date = new Date()) : Promise<AutoDeletedTournament[]> {
     const [ candidates ] = await pool.query<({ tournament_id : number , name : string , requested_by_user_id : number } & RowDataPacket)[]>(
         `SELECT tournament_id , name , requested_by_user_id
            FROM tournaments
           WHERE tournament_status = 'private'
             AND deleted_at IS NULL
-            AND event_start_date <= CURDATE()`);
+            AND event_start_date <= ?`, [thaiDateOf(now)]);
 
     const swept : AutoDeletedTournament[] = [];
     for(const t of candidates){
@@ -916,13 +916,13 @@ export async function sweepPrivatePastDueTournaments() : Promise<AutoDeletedTour
  * ★ ไม่มีใบสมัครให้จัดการ — ทัวร์ที่ยังไม่อนุมัติเปิดรับสมัครไม่ได้ (BR-01)
  * ★ UPDATE เช็คสถานะซ้ำ กันรอบทำงานซ้อน และกัน admin กดอนุมัติแทรกระหว่าง SELECT กับ UPDATE
  */
-export async function sweepUnapprovedPastRegistrationTournaments() : Promise<AutoDeletedTournament[]> {
+export async function sweepUnapprovedPastRegistrationTournaments(now : Date = new Date()) : Promise<AutoDeletedTournament[]> {
     const [ candidates ] = await pool.query<({ tournament_id : number , name : string , requested_by_user_id : number } & RowDataPacket)[]>(
         `SELECT tournament_id , name , requested_by_user_id
            FROM tournaments
           WHERE tournament_status = 'pending_approval'
             AND deleted_at IS NULL
-            AND (registration_end <= NOW() OR (registration_end IS NULL AND event_start_date <= CURDATE()))`);
+            AND (registration_end <= ? OR (registration_end IS NULL AND event_start_date <= ?))`, [now, thaiDateOf(now)]);
 
     const swept : AutoDeletedTournament[] = [];
     for(const t of candidates){
@@ -973,11 +973,11 @@ const toUnderfilled = (r : UnderfilledRow) : UnderfilledPublicTournament => ({
     minTeams : r.min_teams , approvedTeams : Number(r.approved_teams)
 });
 
-/** ผู้สมัครของงานปิด — ถึงวันแข่งแล้ว (CURDATE() เหตุผลเดียวกับ sweepPrivatePastDueTournaments) */
-export async function findUnderfilledPublicTournamentsDue() : Promise<UnderfilledPublicTournament[]> {
+/** ผู้สมัครของงานปิด — ถึงวันแข่งแล้ว (วันไทย เหตุผลเดียวกับ sweepPrivatePastDueTournaments) */
+export async function findUnderfilledPublicTournamentsDue(now : Date = new Date()) : Promise<UnderfilledPublicTournament[]> {
     const [ rows ] = await pool.query<UnderfilledRow[]>(
         `SELECT ${UNDERFILLED_COLUMNS} FROM tournaments t
-          WHERE ${PUBLIC_UNDERFILLED_SQL} AND t.event_start_date <= CURDATE()`);
+          WHERE ${PUBLIC_UNDERFILLED_SQL} AND t.event_start_date <= ?`, [thaiDateOf(now)]);
     return rows.map(toUnderfilled);
 }
 
@@ -986,14 +986,14 @@ export async function findUnderfilledPublicTournamentsDue() : Promise<Underfille
  *   ★ ตัดทัวร์ที่ถึงวันแข่งแล้วออก เหตุผลเดียวกับ findTournamentsToWarnBeforeAutoDelete
  *   ★ publishTournament ล้าง `auto_delete_warned_at` ⇒ ทัวร์ที่เคยได้คำเตือนตอนยัง private แล้วค่อยเผยแพร่ ยังได้คำเตือนนี้
  */
-export async function findUnderfilledPublicTournamentsToWarn(daysAhead : number) : Promise<UnderfilledPublicTournament[]> {
+export async function findUnderfilledPublicTournamentsToWarn(daysAhead : number, now : Date = new Date()) : Promise<UnderfilledPublicTournament[]> {
     const [ rows ] = await pool.query<UnderfilledRow[]>(
         `SELECT ${UNDERFILLED_COLUMNS} FROM tournaments t
           WHERE ${PUBLIC_UNDERFILLED_SQL}
             AND t.auto_delete_warned_at IS NULL
-            AND t.event_start_date > CURDATE()
-            AND t.event_start_date <= CURDATE() + INTERVAL ? DAY`,
-        [daysAhead]);
+            AND t.event_start_date > ?
+            AND t.event_start_date <= ?`,
+        [thaiDateOf(now), thaiDatePlusDays(now, daysAhead)]);
     return rows.map(toUnderfilled);
 }
 

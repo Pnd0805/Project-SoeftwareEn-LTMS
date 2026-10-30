@@ -84,15 +84,17 @@ describe('markAutoDeleteWarned — ด่านกันเตือนซ้ำ
 describe('findTournamentsToWarnBeforeAutoDelete — เงื่อนไขที่ต้องมีครบ', () => {
     it('กรองทั้งสถานะ · ยังไม่เคยเตือน · ยังไม่ถึงวันแข่ง · อยู่ในช่วงกี่วันที่ส่งมา', async () => {
         mocks.query.mockResolvedValueOnce([[], []]);
-        await findTournamentsToWarnBeforeAutoDelete(7);
+        // 🔴 31 ต.ค. 2569 — ตี 1 ของวันที่ 31 ตามเวลาไทย = 18:00Z ของวันที่ 30 ⇒ "วันนี้" ต้องเป็น 31 ไม่ใช่ 30
+        await findTournamentsToWarnBeforeAutoDelete(7, new Date('2026-10-31T01:00:00+07:00'));
 
         const [sql, params] = mocks.query.mock.calls[0]!;
         expect(sql).toContain("tournament_status = 'private'");
         expect(sql).toContain('auto_delete_warned_at IS NULL');
-        expect(sql).toContain('event_start_date > CURDATE()');          // ถึงวันแข่งแล้วเป็นงานของตัวที่ปิดเลย
-        expect(sql).toContain('event_start_date <= CURDATE() + INTERVAL ? DAY');
+        expect(sql).toContain('event_start_date > ?');          // ถึงวันแข่งแล้วเป็นงานของตัวที่ปิดเลย
+        expect(sql).toContain('event_start_date <= ?');
+        expect(sql).not.toContain('CURDATE()');                 // วัน UTC — ห้ามกลับมา
         expect(sql).toContain('deleted_at IS NULL');
-        expect(params).toEqual([7]);
+        expect(params).toEqual(['2026-10-31', '2026-11-07']);
     });
 });
 
@@ -127,11 +129,13 @@ describe('purgeTournamentsClosedOver — วันปิดทัวร์แล
 describe('sweepUnapprovedPastRegistrationTournaments — ด่านกันรอบซ้อน / อนุมัติแทรก', () => {
     it('SELECT ใช้ registration_end <= NOW() และสำรองด้วยวันแข่งเมื่อไม่มีวันปิดรับสมัคร', async () => {
         mocks.query.mockResolvedValueOnce([[], []]);
-        await sweepUnapprovedPastRegistrationTournaments();
-        const [selectSql] = mocks.query.mock.calls[0]!;
+        const now = new Date('2026-10-31T01:00:00+07:00');
+        await sweepUnapprovedPastRegistrationTournaments(now);
+        const [selectSql, params] = mocks.query.mock.calls[0]!;
         expect(selectSql).toContain("tournament_status = 'pending_approval'");
-        expect(selectSql).toContain('registration_end <= NOW()');
-        expect(selectSql).toContain('registration_end IS NULL AND event_start_date <= CURDATE()');
+        expect(selectSql).toContain('registration_end <= ?');
+        expect(selectSql).toContain('registration_end IS NULL AND event_start_date <= ?');
+        expect(params).toEqual([now, '2026-10-31']);   // วันไทย ไม่ใช่วัน UTC (30)
         expect(mocks.query).toHaveBeenCalledTimes(1);
     });
 

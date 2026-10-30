@@ -3,8 +3,9 @@ import { shrinkImage } from '../mocks/imageInput'
 import { assertUploadSize } from '../shared/uploadLimits'
 
 export const UPLOAD_IMAGE_ACCEPT = 'image/png,image/jpeg'
-/** เอกสารคำขอทีม Official (T15) — ชนิดเดียวที่ backend รับ PDF (M16 `team_official_document`) */
+/** "เอกสาร" ที่ backend รับ PDF (M16): คำขอทีม Official (T15) · ยืนยันตัวตนกรรมการภายนอก (U12 — 31 ต.ค. 2569) */
 export const OFFICIAL_DOC_ACCEPT = 'application/pdf,image/png,image/jpeg'
+export const IDENTITY_DOC_ACCEPT = OFFICIAL_DOC_ACCEPT
 const OFFICIAL_DOC_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg'])
 
 /** ข้อความของการบันทึกรูปใช้ร่วมกันทั้ง avatar และโลโก้ รวมกรณี HMR เปลี่ยนคลาส ApiError */
@@ -12,7 +13,7 @@ export function imageUploadErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'status' in error && error.status === 429) return 'ขออัปโหลดถี่เกินไป กรุณารอสักครู่แล้วลองใหม่'
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
   switch (code) {
-    case 'REFEREE_IDENTITY_KEY_INVALID': return 'เอกสารนี้ใช้ยืนยันตัวตนของบัญชีคุณไม่ได้ กรุณาอัปโหลดเอกสาร JPEG หรือ PNG ใหม่จากบัญชีนี้ แล้วส่งอีกครั้ง'
+    case 'REFEREE_IDENTITY_KEY_INVALID': return 'เอกสารนี้ใช้ยืนยันตัวตนของบัญชีคุณไม่ได้ กรุณาอัปโหลดเอกสาร PDF, JPEG หรือ PNG ใหม่จากบัญชีนี้ แล้วส่งอีกครั้ง'
     case 'AVATAR_KEY_INVALID': return 'รูปโปรไฟล์นี้ใช้กับบัญชีของคุณไม่ได้ กรุณาอัปโหลดรูปใหม่'
     case 'TEAM_LOGO_KEY_INVALID': return 'โลโก้นี้ใช้กับทีมนี้ไม่ได้ กรุณาอัปโหลดรูปใหม่'
     case 'AVATAR_KEY_NOT_FOUND':
@@ -71,6 +72,19 @@ export async function uploadTeamOfficialDocument(file: File, teamId: number): Pr
     throw new ApiError(400, { code: 'VALIDATION_FAILED', message: 'ไม่พบทีมที่จะยื่นเอกสาร กรุณาเปิดหน้าทีมใหม่' })
   }
   return presignAndPut(file, file.type, { purpose: 'team_official_document', contentType: file.type, teamId })
+}
+
+/**
+ * เอกสารยืนยันตัวตนกรรมการภายนอก — 31 ต.ค. 2569 รับ PDF ด้วย (ผู้ใช้แจ้ง "ส่งเป็น pdf ไม่ได้")
+ * ★ ไม่ผ่าน uploadImage เพราะตัวนั้นรับแค่รูป · คิวแอดมิน (IdentityDocs) แสดง PDF เป็นลิงก์เปิดไฟล์อยู่แล้ว
+ */
+export async function uploadRefereeIdentityDocument(file: File): Promise<string> {
+  assertUploadSize(file)
+  if (!OFFICIAL_DOC_TYPES.has(file.type)) {
+    throw new ApiError(400, { code: 'UNSUPPORTED_FILE_TYPE', message: 'กรุณาเลือกไฟล์ PDF, PNG หรือ JPEG เท่านั้น' })
+  }
+  if (USE_MOCK) return file.type === 'application/pdf' ? file.name : shrinkImage(file)
+  return presignAndPut(file, file.type, { purpose: 'referee_identity', contentType: file.type })
 }
 
 /** ขอ URL อัปโหลด (M16) แล้ว PUT ไฟล์ขึ้นที่เก็บ · คืน object key เมื่อ PUT สำเร็จเท่านั้น */

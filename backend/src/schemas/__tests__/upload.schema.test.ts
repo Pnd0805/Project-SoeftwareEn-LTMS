@@ -126,8 +126,13 @@ describe('presignUploadErrorCodes', () => {
     expect(presignUploadSchema.safeParse({ purpose: 'team_official_document', contentType: 'application/pdf' }).success).toBe(false);
   });
 
-  it.each(['avatar', 'team_logo', 'checkin_document', 'referee_identity', 'dispute_evidence', 'report_evidence', 'soft_filter_document'])(
-    '🔴 %s รับ PDF ไม่ได้ — PDF เปิดเฉพาะเอกสาร Official', (purpose) => {
+  // 31 ต.ค. 2569 — เอกสารยืนยันตัวตนกรรมการภายนอกรับ PDF ด้วย (ผู้ใช้แจ้ง "ส่งเป็น pdf ไม่ได้")
+  it('referee_identity รับ PDF ได้ (ไม่ต้องมี id อื่น)', () => {
+    expect(presignUploadSchema.safeParse({ purpose: 'referee_identity', contentType: 'application/pdf' }).success).toBe(true);
+  });
+
+  it.each(['avatar', 'team_logo', 'checkin_document', 'dispute_evidence', 'report_evidence', 'soft_filter_document'])(
+    '🔴 %s รับ PDF ไม่ได้ — PDF เปิดเฉพาะ "เอกสาร" (Official · ยืนยันตัวตนกรรมการ)', (purpose) => {
       const res = presignUploadSchema.safeParse({ purpose, contentType: 'application/pdf', teamId: 1, matchId: 1, tournamentId: 1 });
       expect(res.success).toBe(false);
       expect(res.error!.issues.map(i => i.path[0])).toContain('contentType');

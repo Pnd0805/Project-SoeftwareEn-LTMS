@@ -3,6 +3,10 @@ import { as } from './helpers/api.js';
 import { all, one, testDb } from './helpers/db.js';
 import { createFaculty, createSportType, createTournament, createUser, makeAdmin, type TestUser } from './helpers/factories.js';
 import { sweepAutoDeleteTournaments, sweepUnapprovedPastRegistration } from '../../services/tournament.service.js';
+import { thaiDatePlusDays } from '../../utils/thaiDate.js';
+
+/** วันไทย (YYYY-MM-DD) — 31 ต.ค. 2569: เดิมใช้ CURDATE() (วัน UTC) */
+const day = (offsetDays: number) => thaiDatePlusDays(Date.now(), offsetDays);
 
 /**
  * OD-80 (30 ต.ค. 2569 · เอกสารแก้ UI ข้อ 9) — คำขอจัดทัวร์ที่ admin ไม่อนุมัติจนเลยวันปิดรับสมัคร ⇒ 'auto_deleted'
@@ -17,7 +21,7 @@ let sport: number;
 let organizer: TestUser;
 
 /** ทัวร์สถานะที่ต้องการ · regEndSql = นิพจน์ SQL ของ registration_end (หรือ NULL) */
-async function tour(status: string, regEndSql: string, eventStart = 'CURDATE() + INTERVAL 10 DAY'): Promise<number> {
+async function tour(status: string, regEndSql: string, eventStart = `'${day(10)}'`): Promise<number> {
     const id = await createTournament({ organizer: organizer.id, sportTypeId: sport, facultyId: faculty, status: 'pending_approval' });
     await testDb().query(
         `UPDATE tournaments SET tournament_status = ?, registration_start = NOW() - INTERVAL 5 DAY,
@@ -54,8 +58,8 @@ describe('OD-80 — ปิดคำขอที่ไม่ได้อนุม
     });
 
     it.each([
-        ['วันแข่งผ่านไปแล้ว → ปิด', 'CURDATE() - INTERVAL 1 DAY', 'auto_deleted'],
-        ['วันแข่งยังไม่ถึง → ไม่แตะ', 'CURDATE() + INTERVAL 1 DAY', 'pending_approval'],
+        ['วันแข่งผ่านไปแล้ว → ปิด', `'${day(-1)}'`, 'auto_deleted'],
+        ['วันแข่งยังไม่ถึง → ไม่แตะ', `'${day(1)}'`, 'pending_approval'],
     ])('ไม่มีวันปิดรับสมัคร (ข้อมูลเก่า) · %s', async (_label, eventStart, expected) => {
         const id = await tour('pending_approval', 'NULL', eventStart);
         await sweepUnapprovedPastRegistration();
@@ -99,7 +103,7 @@ describe('OD-80 — ปิดคำขอที่ไม่ได้อนุม
 
     /** งาน BR-03 เดิมยังไม่แตะ pending_approval — สองงานแยกกัน ไม่ซ้อนกัน */
     it('งาน BR-03 (private ถึงวันแข่ง) ยังไม่แตะคำขอที่รออนุมัติ', async () => {
-        const id = await tour('pending_approval', 'NOW() - INTERVAL 1 DAY', 'CURDATE() - INTERVAL 1 DAY');
+        const id = await tour('pending_approval', 'NOW() - INTERVAL 1 DAY', `'${day(-1)}'`);
         await sweepAutoDeleteTournaments();
         expect(await statusOf(id)).toBe('pending_approval');
     });
@@ -126,7 +130,7 @@ describe('OD-80 — อนุมัติคำขอที่เลยวัน
     });
 
     it('ไม่มีวันปิดรับสมัคร + วันแข่งผ่านไปแล้ว → 409 เหมือนกัน (เกณฑ์เดียวกับงาน)', async () => {
-        const id = await tour('pending_approval', 'NULL', 'CURDATE() - INTERVAL 1 DAY');
+        const id = await tour('pending_approval', 'NULL', `'${day(-1)}'`);
         const res = await as(admin).post(`/tournaments/${id}/approve`);
         expect(res.status).toBe(409);
         expect(res.body.error.code).toBe('REGISTRATION_PERIOD_ENDED');
@@ -144,5 +148,16 @@ describe('OD-80 — อนุมัติคำขอที่เลยวัน
         const res = await as(admin).post(`/tournaments/${id}/approve`);
         expect(res.status).toBe(409);
         expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION');
+    });
+});
+
+/** 🔴 31 ต.ค. 2569 — คำขอที่ไม่มีวันปิดรับสมัคร ใช้วันแข่งแทน ⇒ นับวันไทย · ตรึงเวลาเอง */
+describe('OD-80 — นับวันตามเวลาไทย', () => {
+    it('ไม่มีวันปิดรับสมัคร · ตี 1 ไทยของวันแข่ง → ปิด · 23:30 ไทยของวันก่อนหน้า → ยังไม่ปิด', async () => {
+        const id = await tour('pending_approval', 'NULL', "'2030-01-10'");
+        await sweepUnapprovedPastRegistration(new Date('2030-01-09T23:30:00+07:00'));
+        expect(await statusOf(id)).toBe('pending_approval');
+        await sweepUnapprovedPastRegistration(new Date('2030-01-10T01:00:00+07:00'));
+        expect(await statusOf(id)).toBe('auto_deleted');
     });
 });
