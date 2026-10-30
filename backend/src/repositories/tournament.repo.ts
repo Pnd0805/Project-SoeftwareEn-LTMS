@@ -905,6 +905,39 @@ export async function sweepPrivatePastDueTournaments() : Promise<AutoDeletedTour
     return swept;
 }
 
+/**
+ * OD-80 (30 ต.ค. 2569 · เอกสารแก้ UI ข้อ 9) — คำขอจัดทัวร์ที่ admin ไม่อนุมัติจนเลยวันปิดรับสมัคร ⇒ 'auto_deleted'
+ *
+ * 🔴 เดิมไม่มีงานไหนแตะ `pending_approval` ⇒ คำขอค้างรออนุมัติตลอดไป ทั้งที่อนุมัติไปก็รับสมัครไม่ทันแล้ว
+ * ★ สถานะ auto_deleted เหมือน BR-03 (มติผู้ใช้ 30 ต.ค.) — ฝั่งอ่านซ่อนให้อยู่แล้ว · ไม่แตะ deleted_at (เหตุผลเดียวกับข้างบน)
+ * ★ "เลยวันปิดรับสมัคร" = `registration_end <= NOW()` — ตรงกับด่านอนุมัติใน service (`registrationEnded`)
+ *   คอลัมน์ยอม NULL ⇒ ไม่มีวันปิดรับสมัคร ให้ใช้วันแข่งแทน (เกณฑ์เดียวกับ sweepPrivatePastDueTournaments)
+ * ★ ไม่มีใบสมัครให้จัดการ — ทัวร์ที่ยังไม่อนุมัติเปิดรับสมัครไม่ได้ (BR-01)
+ * ★ UPDATE เช็คสถานะซ้ำ กันรอบทำงานซ้อน และกัน admin กดอนุมัติแทรกระหว่าง SELECT กับ UPDATE
+ */
+export async function sweepUnapprovedPastRegistrationTournaments() : Promise<AutoDeletedTournament[]> {
+    const [ candidates ] = await pool.query<({ tournament_id : number , name : string , requested_by_user_id : number } & RowDataPacket)[]>(
+        `SELECT tournament_id , name , requested_by_user_id
+           FROM tournaments
+          WHERE tournament_status = 'pending_approval'
+            AND deleted_at IS NULL
+            AND (registration_end <= NOW() OR (registration_end IS NULL AND event_start_date <= CURDATE()))`);
+
+    const swept : AutoDeletedTournament[] = [];
+    for(const t of candidates){
+        const [ result ] = await pool.query<ResultSetHeader>(
+            `UPDATE tournaments
+                SET tournament_status = 'auto_deleted' , registration_open = FALSE , updated_at = NOW()
+              WHERE tournament_id = ? AND tournament_status = 'pending_approval' AND deleted_at IS NULL`,
+            [t.tournament_id]);
+
+        if(result.affectedRows === 1){
+            swept.push({ tournamentId : t.tournament_id , name : t.name , organizerId : t.requested_by_user_id });
+        }
+    }
+    return swept;
+}
+
 
 /**
  * ยกเลิกทัวร์ (migration 053 · มติ 28 ต.ค. 2569) — ทรานแซกชันเดียว: ล็อกแถว → เปลี่ยนสถานะ → audit

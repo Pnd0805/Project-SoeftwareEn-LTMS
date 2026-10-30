@@ -167,6 +167,9 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
     await PickemRepo.settleTx(conn, match.match_id, winnerId, score, sportId);
     // OD-64 — แต้มเพิ่งเปลี่ยน ประเมินเหรียญ "นักทายแม่น" ใหม่ (แจกหรือริบ)
     await RewardRepo.evaluatePickemRewardsTx(conn, match.match_id);
+    // OD-79 (30 ต.ค. 2569) — เหรียญสายสถิติประเมินตอนยืนยันผลด้วย ไม่ต้องรอปิดทัวร์
+    //   ★ ต้องอยู่ **หลัง** บวก player_profile_stats ข้างบน ไม่งั้นอ่านค่าก่อนบวก
+    await RewardRepo.evaluateStatRewardsForTournamentTx(conn, match.tournament_id);
 }
 
 /**
@@ -191,7 +194,7 @@ async function applyOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId 
  *     ไม่ใช่สองแถวที่มีรายชื่อคนละชุด ⇒ ชุดคนที่ถูกลดเลข ตรงกับชุดที่ถูกบวกเสมอ
  */
 async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId : number, loserId : number, sportId : number, point : number,
-                             score : Record<string, number> | null){
+                             score : Record<string, number> | null, reevaluateStatRewards = true){
     for(const [teamId, nextId] of [[winnerId, match.next_match_id], [loserId, match.loser_next_match_id]] as const){
         if(nextId === null) continue;
         await conn.query<ResultSetHeader>(`UPDATE matches SET team_a_id = NULL WHERE match_id = ? AND team_a_id = ?`, [nextId, teamId]);
@@ -216,6 +219,10 @@ async function undoOutcomeTx(conn : PoolConnection, match : MatchRow, winnerId :
     await PickemRepo.unsettleTx(conn, match.match_id);
     // OD-64 — ถอนแต้มแล้วต้องประเมินใหม่ด้วย ไม่งั้นเหรียญค้างทั้งที่เงื่อนไขไม่จริงแล้ว
     await RewardRepo.evaluatePickemRewardsTx(conn, match.match_id);
+    // OD-79 — เหรียญสายสถิติแจกระหว่างทัวร์แล้ว ⇒ ถอนผล (reject/amend) ต้องประเมินใหม่ด้วย ไม่งั้นเหรียญค้าง
+    //   ★ amend ที่สลับผู้ชนะส่ง false เพราะ applyOutcomeTx ประเมินต่อทันที
+    //     ถ้าประเมินตรงกลาง คนที่ matches_played ถึงเกณฑ์พอดีจะถูกริบแล้วแจกใหม่ ⇒ earned_at กับ is_displayed หาย
+    if(reevaluateStatRewards) await RewardRepo.evaluateStatRewardsForTournamentTx(conn, match.tournament_id);
 }
 
 function loserOf(match : MatchRow, winnerId : number): number{
@@ -418,7 +425,7 @@ export async function amendMatchResult(matchResId : number , match : MatchRow , 
         // เคย verify แล้วและผู้ชนะเปลี่ยน → ถอนของเดิมก่อน · ยังไม่เคย verify → ใส่ผลใหม่เลย (เท่ากับ verify ด้วยค่าที่ ORG แก้)
         // ผู้ชนะเดิมแต่สกอร์เปลี่ยน → สาย/stats ไม่ขยับ แก้เฉพาะประตูในตาราง (B3)
         if(wasVerified && oldWinnerId !== newWinnerId){
-            await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point, oldScore);
+            await undoOutcomeTx(conn, match, oldWinnerId, loserOf(match, oldWinnerId), sportId, point, oldScore, false);
             await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point, newScore);
         }else if(wasVerified){
             await standingsTx(conn, match.tournament_id, newWinnerId, loserOf(match, newWinnerId), point, oldScore, -1);
@@ -440,14 +447,9 @@ export async function amendMatchResult(matchResId : number , match : MatchRow , 
             await PickemRepo.settleTx(conn, match.match_id, newWinnerId, newScore, sportId);
             // OD-64 — ประเมินครั้งเดียวหลังคิดแต้มใหม่เสร็จ (ถอนแล้วให้ใหม่ในจังหวะเดียว)
             await RewardRepo.evaluatePickemRewardsTx(conn, match.match_id);
-
-            // OD-67 — เหรียญสายสถิติต้องประเมินที่นี่ด้วย ไม่ใช่แค่ตอนปิดทัวร์
-            //
-            // ★ ปกติ amend เกิดก่อนปิดทัวร์ ⇒ ยังไม่มีเหรียญให้ค้าง การประเมินที่นี่ไม่เปลี่ยนอะไร
-            //   แต่ S13e (คำวินิจฉัยเรื่องร้องเรียน) **ตั้งใจให้ทำได้แม้ทัวร์ปิดแล้ว**
-            //   ⇒ สถิติเปลี่ยนหลังแจกเหรียญไปแล้ว และไม่มี hook อื่นเหลือ
-            //   ⇒ ผู้ชนะเดิมถือเหรียญค้าง · ผู้ชนะใหม่ไม่มีใครแจกให้ตลอดไป
-            await RewardRepo.evaluateStatRewardsForTournamentTx(conn, match.tournament_id);
+            // OD-67 → OD-79 — กิ่งนี้ผู้ชนะเดิม player_profile_stats ไม่ขยับ ⇒ ไม่ต้องประเมินเหรียญสายสถิติ
+            //   🔴 เดิมการประเมินของ OD-67 อยู่ที่กิ่งนี้ ซึ่งสถิติไม่เปลี่ยน ส่วนกิ่ง "สลับผู้ชนะ" ที่สถิติเปลี่ยนจริงไม่ได้ประเมิน
+            //     ตอนนี้ย้ายไปอยู่ใน applyOutcomeTx / undoOutcomeTx ⇒ ครอบคลุมทุกเส้น รวม S13e หลังปิดทัวร์
         }else{
             await applyOutcomeTx(conn, match, newWinnerId, loserOf(match, newWinnerId), sportId, point, newScore);
         }

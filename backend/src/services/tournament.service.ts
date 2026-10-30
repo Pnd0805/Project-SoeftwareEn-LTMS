@@ -423,12 +423,28 @@ export async function getPendingTournamentRequests(userId: number, offset: numbe
     };
 }
 
+/**
+ * OD-80 — เลยวันปิดรับสมัครแล้ว · เกณฑ์เดียวกับ `sweepUnapprovedPastRegistrationTournaments` (repo)
+ *   ไม่มีวันปิดรับสมัคร (ข้อมูลเก่า — ensureSchedule บังคับให้มีแล้ว) ⇒ ใช้ "ถึงวันแข่ง" แทน
+ *   ★ เทียบวันแบบ UTC ให้ตรงกับ CURDATE() ของ pool (time_zone = UTC) ไม่ใช่วันไทย — ด่านกับงานต้องตัดสินตรงกัน
+ */
+function registrationEnded(tournament: TournamentRow, now = Date.now()): boolean {
+    if (tournament.registration_end !== null) return new Date(tournament.registration_end).getTime() <= now;
+    return new Date(now).toISOString().slice(0, 10) >= tournament.event_start_date;
+}
+
 export async function approveTournament(tournamentId: number, userId: number) {
     const tournament = await getTournamentOr404(tournamentId);
     const admin = await getTournamentAdmin(userId, tournament);
     if (!adminCoversEligibility(admin, tournament.organizing_faculty_id, await currentRules(tournamentId))) eligibilityOutOfScope();
     if (tournament.tournament_status !== 'pending_approval') {
         throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ทัวร์นาเมนต์นี้ไม่ได้อยู่ในสถานะรออนุมัติ');
+    }
+    // OD-80 — งานปิดคำขอที่เลยวันรันชั่วโมงละครั้ง ⇒ ช่วงก่อนงานรอบถัดไป admin ยังกดอนุมัติคำขอที่รับสมัครไม่ทันแล้วได้
+    if (registrationEnded(tournament)) {
+        throw new AppError(409, 'REGISTRATION_PERIOD_ENDED',
+            'คำขอนี้เลยวันปิดรับสมัครแล้ว อนุมัติไม่ได้ — ผู้จัดต้องยื่นคำขอใหม่พร้อมกำหนดวันใหม่',
+            { tournamentId });
     }
     /**
      * 🔴 BE-40 (มติ ⑥ ค) — QA รายงานแค่เส้นทาง amendment แต่ช่องเดียวกันอยู่ที่นี่ด้วย:
@@ -1113,6 +1129,28 @@ export async function sweepAutoDeleteTournaments(){
             type : 'tournament_auto_deleted',
             title : `ทัวร์นาเมนต์ "${t.name}" ถูกปิดอัตโนมัติ`,
             message : 'ทัวร์นาเมนต์นี้ถูกปิดอัตโนมัติเพราะยังไม่ได้เผยแพร่ (ยังเป็นส่วนตัว) จนถึงวันเริ่มการแข่งขัน',
+            relatedEntityType : 'tournament', relatedEntityId : t.tournamentId
+        });
+    }
+
+    return swept;
+}
+
+/**
+ * OD-80 (30 ต.ค. 2569 · เอกสารแก้ UI ข้อ 9) — ปิดคำขอจัดทัวร์ที่ admin ไม่อนุมัติทันวันปิดรับสมัคร แล้วแจ้งผู้จัด
+ *
+ * ★ ใช้ชนิด `tournament_auto_deleted` เดิม (FE แสดงอยู่แล้ว) แต่ **ข้อความบอกเหตุใหม่**
+ *   ข้อความของ BR-03 บอกว่า "ยังไม่ได้เผยแพร่" ซึ่งผิดสำหรับคำขอที่ยังไม่ได้อนุมัติ — ผู้จัดไม่ได้ทำอะไรพลาด
+ * ★ ไม่เตือนล่วงหน้า — คนที่ต้องลงมือคือ admin ไม่ใช่ผู้จัด
+ */
+export async function sweepUnapprovedPastRegistration(){
+    const swept = await TournamentRepo.sweepUnapprovedPastRegistrationTournaments();
+
+    for(const t of swept){
+        await NotificationService.notifyUsers([t.organizerId] , {
+            type : 'tournament_auto_deleted',
+            title : `คำขอจัดทัวร์นาเมนต์ "${t.name}" ถูกปิดอัตโนมัติ`,
+            message : 'คำขอนี้ถูกปิดอัตโนมัติเพราะผู้ดูแลระบบไม่ได้อนุมัติทันวันปิดรับสมัคร — ถ้ายังต้องการจัด ให้ยื่นคำขอใหม่พร้อมกำหนดวันใหม่',
             relatedEntityType : 'tournament', relatedEntityId : t.tournamentId
         });
     }
