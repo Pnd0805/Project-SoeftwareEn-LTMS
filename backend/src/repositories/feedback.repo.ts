@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { mvpEligibleVoterSql } from '../utils/mvpVoter.js';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 // C6 — ตาราง tournament_feedback มีอยู่แล้ว (ตารางเดียวรองรับ comment / organizer_feedback / mvp_vote)
@@ -115,7 +116,8 @@ export async function findMvpCandidatesOfMatch(matchId: number): Promise<MvpCand
                 COALESCE(ta.team_id, ps.team_id) AS team_id,
                 (SELECT COUNT(*) FROM tournament_feedback f
                   WHERE f.match_id = c.match_id AND f.feedback_type = 'mvp_vote'
-                    AND f.voted_for_user_id = u.user_id AND f.removed_at IS NULL) AS votes
+                    AND f.voted_for_user_id = u.user_id AND f.removed_at IS NULL
+                    AND ${mvpEligibleVoterSql('f')}) AS votes
          FROM match_checkins c
          JOIN matches m ON m.match_id = c.match_id
          JOIN users u ON u.user_id = c.user_id

@@ -444,6 +444,27 @@ describe('เซสชัน', () => {
   });
 
   /**
+   * 🔴 QA 30 ต.ค. 2569 (C3) — แทนที่ BE-07 · เดิม logout ตอบ 204 เฉย ๆ token ใช้ต่อได้ 7 วัน
+   * ★ ออกจากทุกเครื่องพร้อมกัน (เลขรุ่นเป็นของผู้ใช้ ไม่ใช่ของเครื่อง) — ข้อจำกัดที่เจ้าของงานยอมรับ
+   */
+  it('🔴 logout แล้ว token ใบนั้นใช้ไม่ได้ · เครื่องอื่นก็หลุด · ล็อกอินใหม่ได้ตามปกติ', async () => {
+    const user = await createUserWithPassword('Passw0rd-123');
+    const login = () => anon.post('/auth/login').send({ email: user.email, password: 'Passw0rd-123' });
+    const phone = (await login()).body.accessToken as string;
+    const laptop = (await login()).body.accessToken as string;
+    expect((await as({ token: phone }).get('/me')).status).toBe(200);
+
+    expect((await as({ token: phone }).post('/auth/logout')).status).toBe(204);
+
+    const after = await as({ token: phone }).get('/me');
+    expect(after.status).toBe(401);
+    expect(after.body.error.code).toBe('TOKEN_EXPIRED');
+    expect((await as({ token: laptop }).get('/me')).status).toBe(401);
+    const fresh = (await login()).body.accessToken as string;
+    expect((await as({ token: fresh }).get('/me')).status).toBe(200);
+  });
+
+  /**
    * B1 — แก้แล้ว 6 ต.ค. 2569 (เดิมเป็น it.fails) · มติ ทางเลือก ข "เลขรุ่นของบัตร"
    *
    * เดิม: ตั้งรหัสผ่านใหม่แล้ว บัตรที่ออกก่อนหน้ายังใช้ได้จนหมดอายุเอง

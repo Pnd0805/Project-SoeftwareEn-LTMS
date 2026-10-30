@@ -8,6 +8,7 @@ vi.mock('../../services/auth.service.js', () => ({
   verifyEmail: vi.fn(),
   resendEmailVerification: vi.fn(),
   resetPassword: vi.fn(),
+  logout: vi.fn(),
 }));
 
 import { register, login, logout, forgotPassword, resetPassword, verifyEmail, resendVerification } from '../auth.controller.js';
@@ -86,17 +87,17 @@ describe('auth.controller login()', () => {
 });
 
 describe('auth.controller logout()', () => {
-  it('responds 204 with no body and does not call the auth service', async () => {
-    const req = {} as Request;
+  // 🔴 QA 30 ต.ค. (C3) — แทนที่ BE-07: logout ต้องทำให้ token ใช้ไม่ได้ (บวก token_version ของผู้ใช้คนนั้น)
+  it('ยกเลิก token ของผู้ใช้ที่กด แล้วตอบ 204 ไม่มี body', async () => {
+    const req = { user: { user_id: 42 } } as unknown as Request;
     const res = makeRes();
 
     await logout(req, res);
 
+    expect(mockedAuthService.logout).toHaveBeenCalledWith(42);
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalledWith();
     expect(res.json).not.toHaveBeenCalled();
-    expect(mockedAuthService.register).not.toHaveBeenCalled();
-    expect(mockedAuthService.login).not.toHaveBeenCalled();
   });
 });
 

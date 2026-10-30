@@ -34,8 +34,10 @@ beforeEach(() => {
 });
 
 describe('ค่าคงที่ที่ผู้ใช้เคาะ', () => {
-  it('เก็บ 3 วันหลังแมตช์จบ · ไฟล์ไม่มีเจ้าของรอ 1 วัน', () => {
+  // QA 30 ต.ค. (D2) — 3 วันเป็น "กันชนหลังหมดเวลาโต้แย้ง" แล้ว ไม่ใช่ "หลังแมตช์จบ" · ทางสำรอง 30 วัน
+  it('กันชนหลังหมดเวลาโต้แย้ง 3 วัน · ทางสำรองแมตช์ที่ไม่เคยยืนยัน 30 วัน · ไฟล์ไม่มีเจ้าของรอ 1 วัน', () => {
     expect(Docs.CHECKIN_DOCS_RETENTION_DAYS).toBe(3);
+    expect(Docs.CHECKIN_DOCS_UNVERIFIED_FALLBACK_DAYS).toBe(30);
     expect(Docs.ORPHAN_CHECKIN_DOCS_GRACE_DAYS).toBe(1);
   });
 });
@@ -46,7 +48,7 @@ describe('purgeCheckinDocuments', () => {
 
     await expect(Docs.purgeCheckinDocuments()).resolves.toBe(1);
 
-    expect(repo.findPurgeableCheckinDocs).toHaveBeenCalledWith(3);
+    expect(repo.findPurgeableCheckinDocs).toHaveBeenCalledWith(3, 30);
     expect(upload.deleteObjectConfirmed.mock.invocationCallOrder[0])
       .toBeLessThan(repo.clearCheckinDocument.mock.invocationCallOrder[0]!);
     expect(repo.clearCheckinDocument).toHaveBeenCalledWith(1, key(7, 1));

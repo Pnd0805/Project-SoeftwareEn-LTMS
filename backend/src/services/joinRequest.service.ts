@@ -4,6 +4,7 @@ import * as ApplicationRepo from '../repositories/application.repo.js';
 import { teamConflictMessage } from '../utils/teamConflict.js';
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
+import { assertNoOfficialConflict } from '../utils/officialConflict.js';
 import { toJoinRequestDto, toMyJoinRequestDto } from '../mappers/team.mapper.js';
 import type { TeamRow } from '../types/db.js';
 
@@ -19,6 +20,8 @@ async function ensureCanJoin(team : TeamRow , userId : number): Promise<void>{
     if(await TeamRepo.isMemberOf(team.team_id , userId)){
         throw new AppError(409 , 'ALREADY_MEMBER' , 'คุณอยู่ในทีมนี้แล้ว');
     }
+    // 🔴 QA 30 ต.ค. (C1 · BR-05) — ใช้ทั้งตอนขอ (บอกเร็ว) และตอนหัวหน้าอนุมัติ (ด่านจริง)
+    await assertNoOfficialConflict(team , userId , 'you');
 
     const conflict = await ApplicationRepo.findTeamTournamentConflictForUser(team.team_id , userId);
     if(conflict){

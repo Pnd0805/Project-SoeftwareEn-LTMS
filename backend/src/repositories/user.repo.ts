@@ -199,6 +199,11 @@ export function escapeLike(value : string) : string {
     return value.replace(/[\\%_]/g , ch => `\\${ch}`);
 }
 
+/** QA 30 ต.ค. (C3) — logout: บัตรทุกใบที่ออกก่อนหน้านี้ใช้ไม่ได้ (requireAuth เทียบเลขรุ่นทุกคำขอ) */
+export async function bumpTokenVersion(userId : number) : Promise<void>{
+    await pool.query(`UPDATE users SET token_version = token_version + 1 WHERE user_id = ?` , [userId]);
+}
+
 /**
  * B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — เปลี่ยนรหัสผ่านแล้วบัตรเก่าทุกใบต้องใช้ไม่ได้
  *

@@ -415,3 +415,22 @@ export async function findOfficialMemberConflict(teamId : number , sportId : num
                                                           ,[ teamId , sportId , 'Official']);
     return rows;
 }
+
+/**
+ * 🔴 QA 30 ต.ค. 2569 (C1 · BR-05) — "ผู้ใช้คนนี้คนเดียว" ยังเป็นสมาชิกทีม Official อื่นในกีฬาเดียวกันไหม
+ *
+ * findOfficialMemberConflict ข้างบนตอบคำถาม "ทั้งทีมนี้มีใครชนบ้าง" (ใช้ตอนแอดมินอนุมัติ)
+ * แต่หลังอนุมัติแล้วไม่มีใครตรวจอีก ⇒ คนในทีม Official A เข้าทีม Official B กีฬาเดียวกันได้ผ่านคำเชิญ/คำขอเข้าร่วม
+ * ⇒ ตัวนี้ใช้ตอน "คนหนึ่งคนกำลังจะเข้าทีม" — คนละคำถาม จึงแยกฟังก์ชัน ไม่เรียกตัวเดิม
+ * ★ ถูกเอาออกจากทีม = แถว team_members ถูกลบ ⇒ ไม่ติดเอง · ทีมที่ถูกลบ (deleted_at) ไม่นับ
+ */
+export async function findOfficialConflictForUser(userId : number , sportTypeId : number , exceptTeamId : number)
+    : Promise<{ teamId : number ; teamName : string } | null>{
+    const [ rows ] = await pool.query<({ team_id : number ; name : string } & RowDataPacket)[]>(
+        `SELECT t.team_id , t.name
+           FROM team_members tm JOIN teams t ON t.team_id = tm.team_id
+          WHERE tm.user_id = ? AND t.sport_type_id = ? AND t.official_status = 'Official'
+            AND t.deleted_at IS NULL AND t.team_id <> ?
+          ORDER BY t.team_id LIMIT 1` , [userId , sportTypeId , exceptTeamId]);
+    return rows[0] ? { teamId : rows[0].team_id , teamName : rows[0].name } : null;
+}

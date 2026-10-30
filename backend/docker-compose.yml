@@ -50,6 +50,8 @@ services:
     container_name: ltms-minio-init
     depends_on:
       - minio
+    # 🔴 QA 30 ต.ค. (D1) — โควตาของ bucket กัน "อัปไฟล์จนดิสก์เต็มทั้งระบบพัง" (ลิงก์อัปโหลดแบบ PUT จำกัดขนาดต่อไฟล์ไม่ได้)
+    #   ปรับด้วย S3_BUCKET_QUOTA ใน .env (ค่าตั้งต้น 5GiB) · ดู DEPLOY.md ขั้น 3
     # 🆕 7 ต.ค. — mount ไฟล์ตัวอย่าง เพื่ออัปขึ้น bucket ตอน init (ดู database/fixtures/README.md)
     volumes:
       - ../database/fixtures:/fixtures:ro
@@ -59,6 +61,7 @@ services:
       mc mb --ignore-existing local/${S3_BUCKET:-ltms-uploads};
       mc anonymous set download local/${S3_BUCKET:-ltms-uploads}/avatar;
       mc anonymous set download local/${S3_BUCKET:-ltms-uploads}/team_logo;
+      mc quota set local/${S3_BUCKET:-ltms-uploads} --size ${S3_BUCKET_QUOTA:-5GiB};
       mc cp /fixtures/referee-identity-9054.png local/${S3_BUCKET:-ltms-uploads}/referee_identity/9054/00000000-0000-4000-8000-000000009054.png;
       "
     restart: "no"

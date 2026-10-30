@@ -15,6 +15,7 @@ import { buildPagination } from '../utils/pagination.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam, checkUser } from '../utils/checkExist.js';
+import { assertNoOfficialConflict } from '../utils/officialConflict.js';
 
 export async function createTeam(input : TeamInput , leaderId : number){
 
@@ -277,6 +278,10 @@ export async function leaveTeam(userId : number , teamId : number){
 export async function createInvitation(teamId : number , invitedUserId : number , invitedByUserId : number){
     await checkUser(invitedUserId);
     // ทีม = คลังผู้เล่น (มติ 19 ก.ย.) — เพิ่มคนเข้าคลังได้เสมอ ไม่มีเพดาน (Q3-ก) · เพดานจริงอยู่ที่ตอนส่งรายชื่อลงแข่ง P01
+
+    // QA 30 ต.ค. (C1 · BR-05) — บอกหัวหน้าทีมตั้งแต่ตอนเชิญ · ด่านจริงอยู่ตอนกดรับ (acceptInvitation)
+    const inviterTeam = await TeamRepo.findById(teamId);
+    if(inviterTeam) await assertNoOfficialConflict(inviterTeam , invitedUserId , 'invitee');
 
     const member = await TeamRepo.isMemberOf(teamId , invitedUserId);
     if(member){

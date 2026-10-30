@@ -8,6 +8,7 @@ import * as NotificationService from './notification.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
+import { assertNoOfficialConflict } from '../utils/officialConflict.js';
 
 export async function acceptInvitation(invitedId : number , userId : number){
     const invitation = await TeamRepo.findInvitationsById(invitedId);
@@ -37,6 +38,9 @@ export async function acceptInvitation(invitedId : number , userId : number){
     if(!invitedTeam || invitedTeam.deleted_at !== null){
         throw new AppError(404 , "TEAM_NOT_FOUND" , "ทีมที่เชิญคุณถูกลบไปแล้ว");
     }
+
+    // 🔴 QA 30 ต.ค. (C1 · BR-05) — ด่านจริงของคำเชิญ: ระหว่างเชิญ→กดรับ อาจไปเข้าทีม Official อื่นมาแล้ว
+    await assertNoOfficialConflict(invitedTeam , userId , 'you');
 
     const countUnofficialTeam = await TeamRepo.countUnofficialTeamsByUser(userId);
     if(countUnofficialTeam >= 5){
