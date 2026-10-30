@@ -102,3 +102,43 @@ export async function applyWithWholeTeam(leaderEmail: string, tournamentId: numb
     playerIds: list.map(m => m.userId),
   })
 }
+
+/**
+ * ทัวร์ที่ "พร้อมจัดสาย": เปิดรับสมัคร → ทีม b1 กับ b2 สมัครและผู้จัดอนุมัติ → ปิดรับสมัคร
+ * ยังไม่จัดสาย — ให้เทสกดจัดสายเองผ่านหน้าจอ
+ */
+export async function createDrawReadyTournament() {
+  const t = await createOpenTournament()
+  const org = await loginToken("org1@ku.th")
+  for (const [leader, teamId] of [["b1.lead@ku.th", 1], ["b2.lead@ku.th", 2]] as const) {
+    const app = await applyWithWholeTeam(leader, t.id, teamId)
+    await api("POST", `/applications/${app.id}/approve`, org)
+  }
+  await api("POST", `/tournaments/${t.id}/close-registration`, org)
+  return t
+}
+
+/** ทัวร์ที่ผ่านแอดมินแล้ว (private) — ยังไม่เชิญกรรมการ */
+export async function createApprovedTournament(organizerEmail = "org1@ku.th") {
+  const t = await requestTournament(organizerEmail)
+  await api("POST", `/tournaments/${t.id}/approve`, await loginToken("admin@ku.th"))
+  return t
+}
+
+export async function createTeam(leaderEmail: string, name: string, sportTypeId = 3) {
+  return api<{ id: number; name: string }>("POST", "/teams", await loginToken(leaderEmail), { name, sportTypeId })
+}
+
+/** ลบทีม (soft delete) — ใช้เก็บกวาดหลังเทส · ลบไม่ได้ก็ไม่ต้องแดง */
+export async function deleteTeam(leaderEmail: string, teamId: number) {
+  await api("DELETE", `/teams/${teamId}`, await loginToken(leaderEmail)).catch(() => undefined)
+}
+
+export type MatchState = { status: string; resultStatus: string | null }
+
+/** สถานะปัจจุบันของแมตช์ — เทสที่ใช้แมตช์ใน seed เช็คก่อนว่ายังเป็นสถานะตั้งต้นอยู่ไหม */
+export async function matchState(matchId: number, viewerEmail: string): Promise<MatchState> {
+  const m = await api<{ status: string; result?: { status?: string } | null; resultStatus?: string | null }>(
+    "GET", `/matches/${matchId}`, await loginToken(viewerEmail))
+  return { status: m.status, resultStatus: m.resultStatus ?? m.result?.status ?? null }
+}

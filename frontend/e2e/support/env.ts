@@ -19,6 +19,23 @@ export const USERS = {
   leader2: { email: "b2.lead@ku.th", teamId: 2, teamName: "Sci Shuttle" },
   referee1: { email: "ref1@ku.th", userId: 21 },
   referee2: { email: "ref2@ku.th", userId: 22 },
+  referee3: { email: "ref3@ku.th", userId: 23 },                 // กรรมการที่ยังว่าง — ใช้ทดสอบตอบรับคำเชิญ
+  newbie: { email: "newbie@ku.th" },                             // มีทีมเดียว — ใช้สร้างทีมใหม่ (ลบทิ้งหลังเทส)
+  viewer: { email: "viewer1@ku.th", userId: 31, name: "ชนาธิป แฟนกีฬา" }, // ไม่มีทีม — ใช้เป็นผู้ถูกเชิญ
+} as const
+
+/** บัญชีที่ถูกระงับใน seed (ถึง 7 พ.ย. 2569) — ไม่อยู่ใน USERS เพราะล็อกอินไม่ได้โดยเจตนา */
+export const SUSPENDED_EMAIL = "banned@ku.th"
+
+/**
+ * แมตช์ใน seed ที่เทสผลการแข่งใช้ — ทำได้ "ครั้งเดียวต่อการล้างฐาน" (ยืนยัน/ตัดสินแล้วย้อนไม่ได้)
+ * ถ้าสถานะไม่ตรง เทสจะ skip พร้อมบอกให้ restore ข้อมูล QA
+ */
+export const SEED_MATCHES = {
+  /** แบดมินตัน Faculty League R1 · วิศวะ Smashers 2–1 Sci Shuttle · กรรมการส่งผลแล้ว รอผู้ชนะยืนยัน */
+  awaitingConfirmation: { id: 5, winnerLeader: "b1.lead@ku.th", loserLeader: "b2.lead@ku.th" },
+  /** แบดมินตันกระชับมิตร R2 · BBA Birdies vs Sci Shuttle · มีข้อโต้แย้งรอผู้จัด (org1) ตัดสิน */
+  disputed: { id: 13, organizer: "org1@ku.th" },
 } as const
 
 /** ทัวร์ใน seed ที่เป็น private (ผู้เยี่ยมชมต้องมองไม่เห็น) */
