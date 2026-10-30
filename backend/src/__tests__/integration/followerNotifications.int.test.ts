@@ -228,6 +228,33 @@ describe('② ผลได้รับการยืนยัน — สอง�
     expect(await notes(leaderB, VERIFIED)).toHaveLength(0);
   });
 
+  /**
+   * 🔴 FR-FN-02 (30 ต.ค. · ฝ่ายเอกสารตรวจเจอ) — จังหวะผลยืนยัน ผู้เล่นธรรมดาไม่ได้ result_verified (ส่งแค่หัวหน้า + กรรมการ)
+   *   เดิมตัวกันซ้ำตัดผู้เล่นทุกคนออกด้วย ⇒ ผู้เล่นที่ลงแข่งและติดตามเพื่อนไม่ได้ข่าวผลเลย
+   */
+  it('🔴 ผู้เล่นในรายชื่อ (ไม่ใช่หัวหน้า) ติดตามเพื่อนร่วมแมตช์ → ผลยืนยันได้ฉบับผู้ติดตาม · กรรมการไม่ได้', async () => {
+    const { match, teamA, teamB } = await setup({ status: 'finished' });
+    await follow(p1, p2, true);
+    await follow(referee, p3, true);
+    await submitResult(match, teamA, teamB);
+
+    expect((await as(leaderA).post(`/matches/${match}/result/verify`)).status).toBe(200);
+
+    expect(await notes(p1, 'result_verified')).toHaveLength(0);   // ผู้เล่นไม่อยู่ในผู้รับชุดเดิม
+    expect(await notes(p1, VERIFIED)).toHaveLength(1);
+    expect(await notes(referee, VERIFIED)).toHaveLength(0);
+  });
+
+  it('ผู้เล่นคนเดิม · ยืนยันอัตโนมัติ → ได้ฉบับผู้ติดตามเหมือนกัน', async () => {
+    const { match, teamA, teamB } = await setup({ status: 'finished' });
+    await follow(p1, p2, true);
+    await submitResult(match, teamA, teamB);
+    await testDb().query('UPDATE match_results SET submitted_at = NOW() - INTERVAL 25 HOUR WHERE match_id = ?', [match]);
+
+    expect(await autoVerifyDue([match])).toEqual([match]);
+    expect(await notes(p1, VERIFIED)).toHaveLength(1);
+  });
+
   it('★ ผู้รับชุดเดิมไม่เปลี่ยน — คู่กรณียังได้ result_verified เหมือนเดิม', async () => {
     const { match, teamA, teamB } = await setup({ status: 'finished' });
     await follow(fan, p1, true);

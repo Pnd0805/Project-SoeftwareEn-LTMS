@@ -114,17 +114,29 @@ export async function notifyMatchAudience(matchId: number, content: Omit<Notific
 /**
  * OD-72 (FR-FN-02 · UC-05 ขั้น 5) — ผู้ติดตามนักกีฬาในแมตช์นี้ที่เปิดกระดิ่งไว้
  *
- * ★ ตัดคนที่เกี่ยวกับแมตช์ออก (ผู้เล่นในรายชื่อ · กรรมการที่รับแมตช์ · หัวหน้าทั้งสองทีม)
- *   คนกลุ่มนี้ได้ข่าวแมตช์ผ่านชนิดของตัวเองอยู่แล้ว ⇒ ไม่ตัด = เรื่องเดียวกันสองฉบับคนละชนิด
- *   (หัวหน้าทีมที่ไม่ได้ลงรายชื่อได้ `result_verified` ผ่าน notifyMatchResultParties — จึงต้องตัดด้วย)
+ * ★ ตัดคนที่ "ได้ข่าวเรื่องเดียวกันผ่านชนิดของตัวเองอยู่แล้ว" ออก ⇒ ไม่ตัด = เรื่องเดียวกันสองฉบับคนละชนิด
+ * 🔴 แก้ 30 ต.ค. 2569 (FR-FN-02 · ฝ่ายเอกสารตรวจเจอ) — **สองจังหวะมีผู้รับ "ของตัวเอง" ไม่เท่ากัน จึงตัดไม่เท่ากัน**
+ *   เดิมตัดชุดเดียวกันทั้งสองจังหวะ (ผู้เล่น + หัวหน้า + กรรมการ) ซึ่งถูกเฉพาะจังหวะแมตช์เริ่ม
+ *   ⇒ ตอนผลยืนยัน ผู้เล่นธรรมดาที่ลงแข่งและติดตามเพื่อนอยู่ **ไม่ได้อะไรเลย** — ถูกตัดเพราะ "ถือว่าได้ของตัวเองแล้ว"
+ *      ทั้งที่ notifyMatchResultParties ส่งแค่หัวหน้าทีม + กรรมการ ไม่ได้ส่งผู้เล่น
+ *
+ *   | จังหวะ                 | excludeAudience | ตัดออก                                   | เพราะได้ข่าวผ่าน              |
+ *   | แมตช์เริ่ม (startMatch) | true            | ผู้เล่นในรายชื่อ · หัวหน้าทีม · กรรมการ  | notifyMatchAudience (+หัวหน้า) |
+ *   | ผลยืนยัน (มือ/อัตโนมัติ) | false           | หัวหน้าทีม · กรรมการ                     | notifyMatchResultParties      |
+ *
+ *   ★ ให้ผู้เรียกบอกเอง (บังคับส่ง ไม่มีค่าตั้งต้น) — จุดยิงใหม่ในอนาคตต้องคิดว่าผู้รับชุดเดิมของจังหวะนั้นคือใคร
  * ★ ไม่แตะผู้รับชุดเดิมของ notifyMatchAudience / notifyMatchResultParties เลย
  * ★ กลืน error เหมือนตัวอื่นในไฟล์ — การเริ่มแข่ง/ยืนยันผลต้องไม่ล้มเพราะหาผู้ติดตามไม่สำเร็จ
  */
-export async function notifyMatchFollowers(matchId: number, content: Omit<NotificationInput, 'userId'>): Promise<void> {
+export async function notifyMatchFollowers(
+    matchId: number,
+    content: Omit<NotificationInput, 'userId'>,
+    options: { excludeAudience: boolean }
+): Promise<void> {
     try {
         const [followers, audience, parties] = await Promise.all([
             NotificationRepo.findMatchFollowers(matchId),
-            NotificationRepo.findMatchAudience(matchId),
+            options.excludeAudience ? NotificationRepo.findMatchAudience(matchId) : Promise.resolve([] as number[]),
             NotificationRepo.findMatchResultParties(matchId),
         ]);
         const involved = new Set([...audience, ...parties.leaderIds, ...parties.refereeIds]);

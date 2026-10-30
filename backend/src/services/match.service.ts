@@ -504,7 +504,7 @@ export async function startMatch(matchId: number, userId: number){
         title : 'แมตช์ของนักกีฬาที่คุณติดตามเริ่มแล้ว',
         message : `แมตช์ #${matchId} กำลังแข่งอยู่`,
         relatedEntityType : 'match', relatedEntityId : matchId,
-    });
+    }, { excludeAudience : true });   // ผู้เล่น/กรรมการรู้เรื่องแมตช์นี้ผ่าน notifyMatchAudience อยู่แล้ว
     return { id: matchId, status:'in_progress' };
 }
 

@@ -181,27 +181,38 @@ describe('notify helpers (C1-ข)', () => {
 
     it('ส่งให้ผู้ติดตามที่ไม่เกี่ยวกับแมตช์ · ผู้จัดที่ติดตามผู้เล่นก็ได้ (ไม่อยู่ในผู้รับของผลชุดเดิม)', async () => {
       vi.mocked(NotificationRepo.findMatchFollowers).mockResolvedValue([501, 502, 99]);
-      await NotificationService.notifyMatchFollowers(42, content);
+      await NotificationService.notifyMatchFollowers(42, content, { excludeAudience: true });
       expect(NotificationRepo.findMatchFollowers).toHaveBeenCalledWith(42);
       expect(sentTo()).toEqual([99, 501, 502]);
     });
 
-    it('🔴 ผู้เล่น · กรรมการ · หัวหน้าทีม ที่ติดตามคนในแมตช์ → ไม่ได้ฉบับของผู้ติดตาม (กันเรื่องเดียวสองฉบับ)', async () => {
+    it('🔴 จังหวะแมตช์เริ่ม (excludeAudience) — ผู้เล่น · กรรมการ · หัวหน้าทีม ไม่ได้ฉบับผู้ติดตาม', async () => {
       vi.mocked(NotificationRepo.findMatchFollowers).mockResolvedValue([101, 900, 10, 20, 501]);
-      await NotificationService.notifyMatchFollowers(42, content);
+      await NotificationService.notifyMatchFollowers(42, content, { excludeAudience: true });
       expect(sentTo()).toEqual([501]);
+    });
+
+    /**
+     * 🔴 FR-FN-02 (30 ต.ค.) — จังหวะผลยืนยัน notifyMatchResultParties ส่งแค่หัวหน้าทีม + กรรมการ
+     *   เดิมตัดผู้เล่นด้วย ⇒ ผู้เล่นธรรมดาที่ติดตามเพื่อนไม่ได้ข่าวผลเลย
+     */
+    it('🔴 จังหวะผลยืนยัน (ไม่ excludeAudience) — ผู้เล่นธรรมดาได้ · หัวหน้าทีมกับกรรมการไม่ได้ · ไม่ต้องถามรายชื่อผู้เล่น', async () => {
+      vi.mocked(NotificationRepo.findMatchFollowers).mockResolvedValue([101, 900, 10, 20, 501]);
+      await NotificationService.notifyMatchFollowers(42, content, { excludeAudience: false });
+      expect(sentTo()).toEqual([101, 501]);
+      expect(NotificationRepo.findMatchAudience).not.toHaveBeenCalled();
     });
 
     it('ไม่มีผู้ติดตาม → ไม่เขียนอะไร', async () => {
       vi.mocked(NotificationRepo.findMatchFollowers).mockResolvedValue([]);
-      await NotificationService.notifyMatchFollowers(42, content);
+      await NotificationService.notifyMatchFollowers(42, content, { excludeAudience: true });
       expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
     });
 
     it('🔴 หาผู้ติดตามไม่สำเร็จ → กลืน error (การเริ่มแข่ง/ยืนยันผลต้องไม่ล้ม)', async () => {
       vi.mocked(NotificationRepo.findMatchFollowers).mockRejectedValue(new Error('db down'));
       const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      await expect(NotificationService.notifyMatchFollowers(42, content)).resolves.toBeUndefined();
+      await expect(NotificationService.notifyMatchFollowers(42, content, { excludeAudience: false })).resolves.toBeUndefined();
       expect(NotificationRepo.insertNotification).not.toHaveBeenCalled();
       spy.mockRestore();
     });
