@@ -4,6 +4,7 @@ import { Modal } from '../../components/kit/Modal'
 import { useAcceptRefereeRequest, useAssignableReferees, useDeclineRefereeRequest, useRequestRefereeWithdrawal, useTournamentRefereeRequests } from '../../hooks/useAdmin'
 import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 import { fmtDateTime } from '../../shared/dateFormat'
+import './referee-withdrawal.css'
 
 const message = (e: unknown) => e instanceof Error ? e.message : 'ส่งคำขอไม่สำเร็จ กรุณาลองใหม่'
 
@@ -66,7 +67,11 @@ export function OrganizerWithdrawals({ tournamentId }: { tournamentId: number })
   const rows = (requests.data?.items ?? []).filter(r => r.type === 'ref_withdraw' && (history || r.status === 'open'))
   return <Panel quiet>
     <h3>คำขอถอนตัวกรรมการ</h3>
-    <label><input type="checkbox" checked={history} onChange={e => setHistory(e.target.checked)} /> แสดงประวัติที่ตัดสินแล้ว</label>
+    <div className="withdrawal-history-filter">
+      <label className="check-option"><input type="checkbox" checked={history} aria-describedby={`withdrawal-history-help-${tournamentId}`}
+        onChange={e => setHistory(e.target.checked)} /> แสดงประวัติที่ตัดสินแล้ว</label>
+      <p className="sub" id={`withdrawal-history-help-${tournamentId}`}>ติ๊กเพื่อแสดงคำขอที่อนุมัติ ปฏิเสธ หรือยกเลิกแล้ว รวมกับคำขอที่รอพิจารณา</p>
+    </div>
     {requests.isPending ? <span className="sub">Loading withdrawal requests…</span> : null}
     {requests.isError ? <Banner kind="crit">{message(requests.error)} <button className="btn" onClick={() => void requests.refetch()}>Retry</button></Banner> : null}
     {notice ? <Banner kind={notice.kind}>{notice.text}</Banner> : null}

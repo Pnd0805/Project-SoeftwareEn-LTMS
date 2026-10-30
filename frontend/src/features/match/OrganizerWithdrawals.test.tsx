@@ -14,6 +14,9 @@ beforeEach(() => {
 })
 it('shows the withdrawal reason and requires organizer confirmation before applying', () => {
   render(<OrganizerWithdrawals tournamentId={14} />)
+  const history = screen.getByRole('checkbox', { name: 'แสดงประวัติที่ตัดสินแล้ว' })
+  expect(history).not.toBeChecked()
+  expect(history).toHaveAccessibleDescription('ติ๊กเพื่อแสดงคำขอที่อนุมัติ ปฏิเสธ หรือยกเลิกแล้ว รวมกับคำขอที่รอพิจารณา')
   expect(screen.getByText('เหตุผล: Unable to attend the tournament')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Approve withdrawal' }))
   expect(accept).not.toHaveBeenCalled()

@@ -41,6 +41,7 @@ import { regsOf, team, user } from '../../../shared/selectors'
 import { fmtDate, hardFilter } from '../../../shared/rules'
 import type { State, Tournament } from '../../../shared/types'
 import type { BackendTournamentApplicationDto } from '../../../types/tournament.dto'
+import { PlayerHardFilter } from './PlayerHardFilter'
 
 /**
  * ใบสมัครหนึ่งใบ ไม่ว่าจะมาจาก API หรือ store
@@ -132,6 +133,8 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const closed = t.status === 'cancelled' || !!t.champion
   const reviewCurrent = !closed && !!review && rows.some(r => r.key === review.key && r.status === 'pending')
   const reviewBlocked = closed || !review || review.applicationId === null || busy || (!USE_MOCK && denied(applicationDetail.error))
+  const reviewTeam = USE_MOCK && review?.teamStoreId ? team(s, review.teamStoreId) : undefined
+  const mockPlayerFailures = reviewTeam && review ? hardFilter(s, reviewTeam, t, review.squad) : undefined
 
   if (!USE_MOCK && !applications.data && applications.isPending) return <Panel><span className="sub">Loading registrations…</span></Panel>
   if (!USE_MOCK && applications.isError && (!applications.data || denied(applications.error))) return <Panel>
@@ -242,11 +245,13 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
           {!USE_MOCK && applicationDetail.isError ? <Banner kind="crit">Unable to load the submitted players. {message(applicationDetail.error)}{' '}
             <button className="btn ghost" type="button" onClick={() => void applicationDetail.refetch()}>Try again</button></Banner> : null}
           {!USE_MOCK && applicationDetail.data && !denied(applicationDetail.error) ? applicationDetail.data.players.length ?
-            <TableWrap label="Submitted players"><table><thead><tr><th>Player</th></tr></thead><tbody>{applicationDetail.data.players.map(player =>
-              <tr key={player.userId}><td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td></tr>)}</tbody></table></TableWrap>
+            <TableWrap label="Submitted players"><table><thead><tr><th>Player</th><th>Hard filter</th></tr></thead><tbody>{applicationDetail.data.players.map(player =>
+              <tr key={player.userId}><td><span className="hstack"><Avatar name={player.fullName} avatarUrl={player.avatarUrl} />{player.fullName}</span></td>
+                <td><PlayerHardFilter details={applicationDetail.data?.hardFilterDetails} userId={player.userId} /></td></tr>)}</tbody></table></TableWrap>
             : <p className="sub">This application no longer has a locked player list.</p> : null}
-          {USE_MOCK && review?.squad.length ? <TableWrap label="Submitted players"><table><thead><tr><th>Player</th><th>Faculty</th><th>Year</th></tr></thead><tbody>
-            {review.squad.map(id => { const p = user(s, id); return p ? <tr key={id}><td>{p.name}</td><td>{p.faculty}</td><td>{p.year}</td></tr> : null })}
+          {USE_MOCK && review?.squad.length ? <TableWrap label="Submitted players"><table><thead><tr><th>Player</th><th>Hard filter</th><th>Faculty</th><th>Year</th></tr></thead><tbody>
+            {review.squad.map(id => { const p = user(s, id); const failures = mockPlayerFailures?.filter(failure => failure.user.id === id)
+              return p ? <tr key={id}><td>{p.name}</td><td><PlayerHardFilter result={failures ? { passed: !failures.length, reason: failures.map(failure => `${failure.rule} (required: ${failure.need}; submitted: ${failure.got})`).join('; ') || undefined } : undefined} /></td><td>{p.faculty}</td><td>{p.year}</td></tr> : null })}
           </tbody></table></TableWrap> : null}
         </section>
         <section className="vstack organizer-review-reason">

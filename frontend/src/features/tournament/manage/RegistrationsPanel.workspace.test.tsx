@@ -33,7 +33,7 @@ beforeEach(() => {
     row(3, 'Northside Juniors', 'withdrawn'), row(4, 'Westside FC', 'rejected'),
     row(5, 'Eastside FC', 'cancelled'),
   ] })
-  detail.mockReset().mockResolvedValue({ id: 1, players: [{ userId: 7, fullName: 'Alex North', avatarUrl: null }] })
+  detail.mockReset().mockResolvedValue({ id: 1, players: [{ userId: 7, fullName: 'Alex North', avatarUrl: null }], hardFilterDetails: [{ userId: 7, fullName: 'Alex North', passed: true }] })
   approve.mockReset().mockResolvedValue({})
   reject.mockReset().mockRejectedValue(new ApiError(409, { code: 'CONFLICT', message: 'Decision could not be saved' }))
 })
@@ -85,6 +85,42 @@ it('opens review at its readable details instead of jumping to the rejection inp
   await screen.findByText('Northside FC')
   fireEvent.click(screen.getByRole('button', { name: 'Review' }))
   await waitFor(() => expect(screen.getByRole('region', { name: 'Entry review details' })).toHaveFocus())
+})
+
+it('shows each submitted player’s server Hard filter result by user ID with its failure reason', async () => {
+  detail.mockResolvedValue({ id: 1,
+    players: [{ userId: 7, fullName: 'Alex North', avatarUrl: null }, { userId: 8, fullName: 'Sam South', avatarUrl: null }],
+    hardFilterDetails: [{ userId: 8, fullName: 'Sam South', passed: false, reason: 'age' }, { userId: 7, fullName: 'Alex North', passed: true }],
+  })
+  renderPanel(); await screen.findByText('Northside FC')
+  fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Northside FC' })
+  await within(dialog).findByText('Sam South')
+  expect(within(dialog).getByRole('columnheader', { name: 'Hard filter' })).toBeInTheDocument()
+  expect(within(within(dialog).getByRole('row', { name: /Alex North/ })).getByText('Passed')).toBeInTheDocument()
+  const failed = within(dialog).getByRole('row', { name: /Sam South/ })
+  expect(within(failed).getByText('Failed')).toBeInTheDocument()
+  expect(within(failed).getByText('Failed: Age')).toBeInTheDocument()
+})
+
+it('does not infer a player passed from the team badge when their result is absent or malformed', async () => {
+  detail.mockResolvedValue({ id: 1,
+    players: [{ userId: 7, fullName: 'Alex North', avatarUrl: null }, { userId: 8, fullName: 'Sam South', avatarUrl: null }],
+    hardFilterDetails: [null, { userId: 7, passed: 'true' }, { userId: 999, passed: true }],
+  })
+  renderPanel(); await screen.findByText('Northside FC'); fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Northside FC' }); await within(dialog).findByText('Sam South')
+  expect(within(dialog).getByText('Hard filter passed')).toBeInTheDocument()
+  expect(within(dialog).getAllByText('Not reported')).toHaveLength(2)
+  expect(within(dialog).queryByText('Passed')).not.toBeInTheDocument()
+})
+
+it('keeps a failed player visible when the backend supplies no failure reason', async () => {
+  detail.mockResolvedValue({ id: 1, players: [{ userId: 7, fullName: 'Alex North', avatarUrl: null }], hardFilterDetails: [{ userId: 7, passed: false }] })
+  renderPanel(); await screen.findByText('Northside FC'); fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Northside FC' })
+  expect(await within(dialog).findByText('Failure reason not provided.')).toBeInTheDocument()
+  expect(within(dialog).getByText('Failed')).toBeInTheDocument()
 })
 
 it('allows closing registration when tournament is public and open', async () => {

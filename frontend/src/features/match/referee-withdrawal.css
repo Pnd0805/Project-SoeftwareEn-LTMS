@@ -1,0 +1,16 @@
+.withdrawal-history-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.withdrawal-history-filter .check-option {
+  max-width: 100%;
+}
+
+.withdrawal-history-filter p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}

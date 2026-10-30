@@ -232,6 +232,16 @@
 
 **Completion evidence:** [Ticket 09 acceptance](../notes/2026-10-05-ltms-minimal-street-acceptance.md), 2026-10-07. All 25 routes accounted for; 282 fresh captures / 318 records across both desktop sizes/themes and 390px usability. Full suite: 96 files / 655 tests; TypeScript/lint/build and 49 frozen filenames/hashes pass. One detector/initial inspection, one token correction batch and one confirmation; direct implementer audit: 16/20. DESIGN.md and schemaVersion 2 sidecar written. Existing report-reason contract mismatch, bundle warning and live/device/mobile acceptance remain explicitly reported. Original evidence is retained in the subsequent [Quality20 integration cleanup](../notes/quality20/2026-10-08-integration.md); no push.
 
+## Organizer follow-up — withdrawal history and player Hard filter, 2026-10-31
+
+User-approved scope: align the withdrawal-history checkbox on the left with an explanation of what it includes; show individual Hard filter results beside submitted players in the entry-review dialog.
+
+- [x] Reuse the existing checkbox styling inside a left-aligned wrapper. Associate the explanation with the input; preserve the existing open/history filtering and withdrawal decisions.
+- [x] Render Passed/Failed with the backend-provided failure reason using `GET /applications/:id` snapshot results, matched by `userId` rather than array order. Missing/malformed results show Not reported; team-level success is not substituted for missing player results. Mock mode uses its existing Hard filter rules.
+- [x] Focused verification: **4 files / 18 tests passed**, including mismatched result order, absent/malformed details, missing failure reason and the checkbox's accessible explanation. TypeScript and lint passed. API contracts, permissions and Backend files unchanged.
+- [x] Full frontend regression: **164 files / 1,284 tests passed** (`npx.cmd vitest run --maxWorkers=4`); production build and whitespace checks passed.
+- [ ] Fresh browser/device acceptance remains for the user's manual test. Frontend commit authorized on 31 October; exclude `TODO/` and do not push.
+
 ## Shared-branch integration — 2026-10-30
 
 - Backed up all 20 pending files (including four excluded `TODO/` documents) outside the checkout, retained safety stash `1eb60e5`, and created backup branch `backup/ui-polish-s34-before-pull-20261030-f65e7ed` at the original HEAD `f65e7ed`.
