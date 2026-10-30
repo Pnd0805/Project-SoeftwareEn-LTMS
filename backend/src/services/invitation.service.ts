@@ -27,7 +27,18 @@ export async function acceptInvitation(invitedId : number , userId : number){
         throw new AppError(409 , 'INVITATION_ALREADY_ANSWERED' , 'คําเชิญนี้ถูกตอบรับ/ปฏิเสธไปแล้ว ยกเลิกไม่ได้');
     }
 
-    const countUnofficialTeam = await TeamRepo.countUnofficialTeamsByUser(userId); 
+    /**
+     * 🔴 30 ต.ค. 2569 (QA ข้อ 9) — ทีมที่ถูกลบแล้วยังมีคำเชิญค้าง pending อยู่
+     *   `deleteTeam` เป็น soft delete (ตั้ง `deleted_at`) และไม่ได้ยกเลิกคำเชิญ
+     *   ⇒ ผู้ถูกเชิญกดรับได้ แล้วไปพังข้างในเป็น 500 ตอนหาชนิดกีฬาของทีมที่ถูกลบ
+     * ★ ตอบ 404 เหมือนที่ `joinRequest.service` ทำกับทีมที่ถูกลบ — กติกาเดียวกันทั้งสองเส้นทาง
+     */
+    const invitedTeam = await TeamRepo.findById(invitation['team_id']);
+    if(!invitedTeam || invitedTeam.deleted_at !== null){
+        throw new AppError(404 , "TEAM_NOT_FOUND" , "ทีมที่เชิญคุณถูกลบไปแล้ว");
+    }
+
+    const countUnofficialTeam = await TeamRepo.countUnofficialTeamsByUser(userId);
     if(countUnofficialTeam >= 5){
         throw new AppError(422 , "TEAM_QUOTA_EXCEEDED" , "คุณมีทีม Unofficial ครบ 5 ทีมแล้ว");
     }

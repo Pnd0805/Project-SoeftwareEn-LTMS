@@ -695,3 +695,57 @@ describe('validateTeamOfficialDocumentKeys', () => {
     await expectAppError(uploadService.validateTeamOfficialDocumentKeys([own], 30), 503, 'STORAGE_UNAVAILABLE');
   });
 });
+
+/**
+ * QA 30 ต.ค. 2569 ข้อ 4 — ตรวจ key รูปบัตรเช็คอินก่อนบันทึกลงแถว
+ * เดิม `submitCheckin` รับ key มาตรง ๆ ⇒ ส่ง key ของไฟล์คนอื่นมาเป็นบัตรตัวเองได้
+ */
+describe('validateCheckinDocumentKey (QA 30 ต.ค. ข้อ 4)', () => {
+  const own = (matchId = 1, ext = 'jpg') =>
+    `checkin_document/${matchId}/44444444-4444-4444-8444-444444444444.${ext}`;
+
+  beforeEach(() => {
+    s3Send.mockReset();
+    s3Send.mockResolvedValue({ ContentType: 'image/jpeg' });
+  });
+
+  it('accepts a key of this match whose file exists', async () => {
+    await expect(uploadService.validateCheckinDocumentKey(own(), 1)).resolves.toBeUndefined();
+    expect(s3Send).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a key that belongs to another match — without touching storage', async () => {
+    await expect(uploadService.validateCheckinDocumentKey(own(2), 1)).rejects.toMatchObject({
+      status: 422, code: 'CHECKIN_DOCUMENT_KEY_INVALID',
+    });
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it("rejects someone else's avatar passed off as a check-in document", async () => {
+    const stolen = 'avatar/1234/44444444-4444-4444-8444-444444444444.jpg';
+    await expect(uploadService.validateCheckinDocumentKey(stolen, 1)).rejects.toMatchObject({
+      status: 422, code: 'CHECKIN_DOCUMENT_KEY_INVALID',
+    });
+    expect(s3Send).not.toHaveBeenCalled();
+  });
+
+  it('rejects a well-formed key whose file was never uploaded', async () => {
+    s3Send.mockRejectedValue(Object.assign(new Error('nope'), { name: 'NotFound', $metadata: { httpStatusCode: 404 } }));
+    await expect(uploadService.validateCheckinDocumentKey(own(), 1)).rejects.toMatchObject({
+      status: 422, code: 'CHECKIN_DOCUMENT_NOT_FOUND',
+    });
+  });
+
+  it('rejects a non-image file stored under a valid-looking key', async () => {
+    s3Send.mockResolvedValue({ ContentType: 'application/pdf' });
+    await expect(uploadService.validateCheckinDocumentKey(own(), 1)).rejects.toMatchObject({
+      status: 422, code: 'CHECKIN_DOCUMENT_NOT_FOUND',
+    });
+  });
+
+  // 🔴 ข้อจำกัดที่รู้ตัว — key ไม่มีรหัสผู้ใช้ ⇒ รูปของเพื่อนร่วมทีมในแมตช์เดียวกันยังผ่าน
+  //   ตรึงไว้เป็นเทสเพื่อให้เห็นชัดว่าเป็นพฤติกรรมที่ยอมรับแล้ว ไม่ใช่ช่องที่ไม่มีใครเห็น
+  it('still accepts a team-mate key of the same match (known limitation)', async () => {
+    await expect(uploadService.validateCheckinDocumentKey(own(1, 'png'), 1)).resolves.toBeUndefined();
+  });
+});

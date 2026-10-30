@@ -159,6 +159,12 @@ export async function deleteTeam(teamId : number , byUserId? : number){
     const members = await TeamRepo.findTeamMemberById(teamId);
     const affected = await TeamRepo.deleteTeam(teamId);
 
+    // 30 ต.ค. 2569 (QA ข้อ 9) — ปิดคำเชิญที่ยังค้าง ไม่งั้นมันโผล่ในหน้า "คำเชิญของฉัน" ของทีมที่ไม่มีแล้ว
+    //   ★ หลังลบทีมเสมอ ไม่ใช่ก่อน — ถ้าลบทีมไม่สำเร็จ คำเชิญต้องไม่ถูกปิดทิ้งฟรี ๆ
+    if(affected > 0){
+        await TeamRepo.cancelPendingInvitationsOfTeam(teamId);
+    }
+
     // แจ้งลูกทีม (มติ 30 ก.ย. 2569) — ไม่แจ้งหัวหน้าที่เป็นคนกด กติกาเดียวกับตอนผู้จัดลบความเห็นของตัวเอง
     if(affected > 0){
         await NotificationService.notifyUsers(members.map(m => m.user_id).filter(id => id !== byUserId) , {

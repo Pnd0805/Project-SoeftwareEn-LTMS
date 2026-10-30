@@ -131,6 +131,27 @@ export async function register(input: RegisterInput) {
    * 🔴 ถ้าทับไม่สำเร็จ (affectedRows = 0) แปลว่ามีคนยืนยันแถวนั้นไปแล้วระหว่างนี้
    *   ⇒ ปฏิเสธเหมือนอีเมลซ้ำ ไม่ใช่สร้างแถวใหม่ (จะชน UNIQUE อยู่ดี)
    */
+  /**
+   * 🔴 30 ต.ค. 2569 (QA ข้อ 1) — เพดานต่อบัญชีสำหรับการสมัครซ้ำด้วยอีเมลเดิม
+   *
+   * มาถึงตรงนี้ได้แปลว่าด่านเปิดอยู่และอีเมลนั้นยังไม่ยืนยัน (ดูด่านด้านบน)
+   * ⇒ ของเดิมออก OTP ใบใหม่ **ทุกครั้งไม่มีเพดาน** และการออกใบใหม่ **ยกเลิกใบเก่าทุกใบ**
+   *   ⇒ ยิงซ้ำ ๆ ได้สองผลพร้อมกัน: ① ถล่มอีเมลของเหยื่อ ② รหัสที่เหยื่อเพิ่งได้รับใช้ไม่ได้ทุกครั้ง
+   *     ⇒ **เหยื่อสมัครไม่สำเร็จตลอดไป** ทั้งที่อีเมลเป็นของเขาเอง
+   *
+   * ★ ต้องเช็ค **ก่อน** `overwriteUnverified` — ไม่งั้นชื่อ/รหัสผ่านของเหยื่อถูกทับไปแล้วถึงจะหยุด
+   * ★ ตอบเหมือนสำเร็จ (ไม่โยน error) ด้วยเหตุผลเดียวกับ `resendEmailVerification`:
+   *   ถ้าตอบต่างกัน คนนอกจะใช้เส้นนี้กวาดหาว่าอีเมลไหนค้างยืนยันอยู่
+   * 🔴 ผลที่ตามมา: ผู้ใช้จริงที่สมัครซ้ำเกินโควตาจะได้ 201 แต่ไม่มีเมล — เหมือนกับเส้นขอรหัสใหม่
+   *   FE มีข้อความ "ไม่ได้รับรหัสภายใน 10 นาที?" อยู่แล้ว ซึ่งครอบกรณีนี้ด้วย
+   */
+  if(existing){
+    const issuedCount = await emailVerifyRepo.countIssuedWithinLastHour(existing.user_id);
+    if(issuedCount >= OTP_RATE_LIMIT_PER_HOUR){
+      return { id : existing.user_id , fullName : input.fullName , email : input.email , emailVerificationSent : true };
+    }
+  }
+
   let newId : number;
   if(existing){
     if(!await userRepo.overwriteUnverified(existing.user_id , fields)){

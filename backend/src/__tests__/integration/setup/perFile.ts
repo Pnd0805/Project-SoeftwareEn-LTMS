@@ -50,6 +50,16 @@ beforeEach(async () => {
      */
     const { resetLoginRateLimit } = await import('../../../middlewares/rateLimitLogin.js');
     resetLoginRateLimit();
+
+    /**
+     * 🆕 QA 30 ต.ค. 2569 ข้อ 1 — ล้างตัวนับของด่านจำกัดการขออีเมล ด้วยเหตุผลเดียวกับข้างบน
+     *
+     * 🔴 ตัวนี้นับ **ทุกคำขอ** (ไม่ใช่เฉพาะที่ล้มเหลว) และคีย์เป็น IP ล้วน
+     *   ⇒ ทุกเทสในชุด integration ออกจากไอพีเดียวกันหมด ⇒ ไม่ล้าง = ไฟล์ที่สมัครสมาชิกหลายครั้ง
+     *     จะทำให้เทสถัดไปได้ 429 แทนผลที่มันทดสอบ (เจอจริงตอนเพิ่มด่านนี้: authFlows แดง 11 เคสรวด)
+     */
+    const { resetEmailRateLimit } = await import('../../../middlewares/rateLimitEmail.js');
+    resetEmailRateLimit();
 });
 
 afterAll(async () => {

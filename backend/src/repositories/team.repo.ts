@@ -88,6 +88,22 @@ export async function deleteTeam(teamId : number){
     return result.affectedRows;
 }
 
+/**
+ * 30 ต.ค. 2569 (QA ข้อ 9) — ปิดคำเชิญที่ยังค้างของทีมที่ถูกลบ
+ *
+ * ทีมเป็น soft delete ⇒ คำเชิญเดิมยังเป็น `pending` และโผล่ในหน้า "คำเชิญของฉัน" ต่อไป
+ * ⇒ ผู้ถูกเชิญเห็นคำเชิญของทีมที่ไม่มีอยู่แล้ว กดรับก็ไม่ได้ ⇒ ค้างอยู่อย่างนั้นจนหมดอายุ 7 วัน
+ * ★ ใช้สถานะ `rejected` เพราะ enum ไม่มีค่า "ถูกยกเลิกเพราะทีมถูกลบ" — การเพิ่มค่า enum ใหม่
+ *   ต้องมี migration และ FE ต้องรู้จักค่าใหม่ ซึ่งไม่คุ้มกับความต่างที่ผู้ใช้แทบไม่เห็น
+ *   🔴 ถ้าวันหนึ่งหน้าจอต้องแยก "ปฏิเสธเอง" กับ "ทีมถูกลบ" ค่อยเพิ่ม enum พร้อม migration
+ */
+export async function cancelPendingInvitationsOfTeam(teamId : number){
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE team_invitations SET team_invitation_status = 'rejected' , responded_at = NOW()
+          WHERE team_id = ? AND team_invitation_status = 'pending'` , [teamId]);
+    return result.affectedRows;
+}
+
 // TM-07 / BR-06 — กวาดทีมไม่ใช้งานแบบ lazy (ไม่มี cron) เรียกก่อน query จริงใน T02/T03 (GUIDE/12)
 // เปลี่ยนชื่อทีมตอนลบด้วย เพื่อปล่อย UNIQUE(name, sport_type_id) ให้ตั้งชื่อซ้ำได้ (มติ GUIDE/12 ข้อ "ฟื้นทีมที่ถูกปิดได้ไหม")
 // เช็ค "เคยแข่ง" ผ่าน MAX(matches.updated_at) แทนการเขียน teams.last_competed_at ตรงๆ — เลี่ยงไม่ต้องแก้โค้ดฝั่ง Matches/Results

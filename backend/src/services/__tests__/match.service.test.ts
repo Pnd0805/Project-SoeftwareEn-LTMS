@@ -49,6 +49,9 @@ vi.mock('../../middlewares/requireReferee.js', () => ({
 
 vi.mock('../upload.service.js', () => ({
   getPresignedDownloadUrl: vi.fn((key: string) => Promise.resolve(`https://s3/${key}?signed`)),
+  // QA 30 ต.ค. ข้อ 4 — submitCheckin ตรวจ key รูปบัตรก่อนบันทึก · ตัวจริงยิง HeadObject ไปที่ S3
+  //   เทสชุดนี้เป็น unit จึง mock ให้ผ่าน · ด่านจริงมีเทสของตัวเองใน upload.service.test.ts
+  validateCheckinDocumentKey: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../../mappers/match.mapper.js', () => ({
@@ -71,7 +74,7 @@ import * as matchService from '../match.service.js';
 import * as MatchRepo from '../../repositories/match.repo.js';
 import * as TournamentRepo from '../../repositories/tournament.repo.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../../middlewares/requireReferee.js';
-import { getPresignedDownloadUrl } from '../upload.service.js';
+import { getPresignedDownloadUrl, validateCheckinDocumentKey } from '../upload.service.js';
 import { AppError } from '../../utils/AppError.js';
 import * as NotificationService from '../notification.service.js';
 
@@ -618,6 +621,9 @@ describe('submitCheckin (M12)', () => {
 
     await expect(matchService.submitCheckin(1, 9001, { method: 'photo_online', documentType: 'student_id', documentS3Key: 'k' } as never)).resolves.toMatchObject({ isNew: true, data: { id: 8 } });
     expect(MatchRepo.insertCheckin).toHaveBeenCalledWith(expect.objectContaining({ method: 'photo_online', status: 'pending', documentS3Key: 'k' }));
+    // 🔴 QA 30 ต.ค. ข้อ 4 — ตรึงการต่อสาย: key ต้องถูกตรวจกับ **แมตช์นี้** ก่อนบันทึก
+    //   ถ้าใครลบบรรทัดตรวจออก เทสนี้แดงทันที (ตัวด่านเองมีเทสของมันใน upload.service.test.ts)
+    expect(validateCheckinDocumentKey).toHaveBeenCalledWith('k', 1);
   });
 
   it('a rejected check-in cannot be redone once the match has started', async () => {

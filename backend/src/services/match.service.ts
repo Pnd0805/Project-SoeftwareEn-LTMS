@@ -5,7 +5,7 @@ import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as RefereeService from './referee.service.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
 import { CHECKIN_OPEN_BEFORE_MINUTES, CHECKIN_OPEN_AFTER_MINUTES, MATCH_START_BEFORE_MINUTES } from '../config/scoring.js';
-import { getPresignedDownloadUrl } from './upload.service.js';
+import { getPresignedDownloadUrl, validateCheckinDocumentKey } from './upload.service.js';
 import * as WalkoverRepo from '../repositories/walkover.repo.js';
 import * as Walkover from './walkover.service.js';
 import * as MatchResultService from './matchResult.service.js';
@@ -889,6 +889,9 @@ export async function submitCheckin(matchId: number, userId: number, input: Subm
         verifyCheckinQr(input.qrPayload, matchId);
         status = 'success';
     } else {
+        // 🔴 30 ต.ค. 2569 (QA ข้อ 4) — ตรวจ key ก่อนบันทึก ไม่งั้นส่ง key ของไฟล์คนอื่นมาเป็นบัตรตัวเองได้
+        //   แล้วกรรมการจะเปิดไฟล์นั้นตอนตรวจ · เหตุผลเต็มอยู่ที่ validateCheckinDocumentKey
+        await validateCheckinDocumentKey(input.documentS3Key, matchId);
         documentType = input.documentType;
         documentS3Key = input.documentS3Key;
         status = 'pending'; // ยังไม่ได้ตรวจ รอกรรมการผ่าน M14/M15

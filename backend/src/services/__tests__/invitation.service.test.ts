@@ -143,6 +143,8 @@ describe('acceptInvitation', () => {
 
   it('throws TEAM_QUOTA_EXCEEDED when the user already has 5 unofficial teams', async () => {
     mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    // QA 30 ต.ค. ข้อ 9 — ด่านทีมถูกลบมาก่อนด่านโควตา จึงต้องมีทีมที่ยังอยู่จริง
+    mockedTeamRepo.findById.mockResolvedValue(makeTeam());
     mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(5);
 
     await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
@@ -152,7 +154,11 @@ describe('acceptInvitation', () => {
     expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
   });
 
-  it('throws TEAM_NOT_FOUND when the team no longer exists after accepting', async () => {
+  /**
+   * QA 30 ต.ค. 2569 ข้อ 9 — เดิมด่านนี้อยู่ **หลัง** `createAcceptInvite` ⇒ แถวสมาชิกถูกเขียนไปแล้ว
+   * ถึงจะพบว่าทีมหาย · ตอนนี้ย้ายมาก่อน ⇒ ไม่มีการเขียนอะไรเลยเมื่อทีมไม่อยู่
+   */
+  it('throws TEAM_NOT_FOUND without writing anything when the team is gone', async () => {
     mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
     mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
     mockedTeamRepo.findById.mockResolvedValue(null);
@@ -161,9 +167,20 @@ describe('acceptInvitation', () => {
       status: 404,
       code: 'TEAM_NOT_FOUND',
     });
-    // The accept record is written before the team is re-fetched, so this
-    // still happens even though the overall call ends up rejecting.
-    expect(mockedInviteRepo.createAcceptInvite).toHaveBeenCalledWith(55, 10, 8);
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
+  });
+
+  /** ทีมถูก soft delete — คำเชิญเก่ายังค้าง pending อยู่ กดรับแล้วต้องไม่พังเป็น 500 */
+  it('throws TEAM_NOT_FOUND when the inviting team was soft-deleted', async () => {
+    mockedTeamRepo.findInvitationsById.mockResolvedValue(makeInvitation());
+    mockedTeamRepo.countUnofficialTeamsByUser.mockResolvedValue(2);
+    mockedTeamRepo.findById.mockResolvedValue(makeTeam({ deleted_at: new Date() }));
+
+    await expect(invitationService.acceptInvitation(55, 8)).rejects.toMatchObject({
+      status: 404,
+      code: 'TEAM_NOT_FOUND',
+    });
+    expect(mockedInviteRepo.createAcceptInvite).not.toHaveBeenCalled();
   });
 
   it('accepts a valid pending invitation and returns the team status', async () => {

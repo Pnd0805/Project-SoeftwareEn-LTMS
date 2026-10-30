@@ -268,6 +268,40 @@ describe('auth.service register()', () => {
     expect(mockedEmailVerifyRepo.create).toHaveBeenCalled();
   });
 
+  /**
+   * 🔴 QA 30 ต.ค. ข้อ 1 — เพดานต่อบัญชีตอนสมัครซ้ำ
+   * การออก OTP ใบใหม่ "ยกเลิกใบเก่าทุกใบ" ⇒ ยิงซ้ำรัว ๆ ทำให้รหัสที่เหยื่อได้รับใช้ไม่ได้ทุกครั้ง
+   * ⇒ เหยื่อสมัครไม่สำเร็จตลอดไป · ต้องหยุด **ก่อน** เขียนทับแถว ไม่งั้นข้อมูลเขาถูกทับไปแล้ว
+   */
+  it('🔴 เกินโควตา OTP ต่อชั่วโมง → ไม่ทับแถวเดิมและไม่ออกใบใหม่ แต่ตอบเหมือนสำเร็จ', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
+    mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(3);
+
+    const result = await authService.register(registerInput);
+
+    expect(result).toMatchObject({ id: 77, emailVerificationSent: true });
+    // 🔴 สองข้อนี้คือหัวใจ — ข้อมูลของเจ้าของอีเมลต้องไม่ถูกแตะ และใบเก่าต้องไม่ถูกยกเลิก
+    expect(mockedUserRepo.overwriteUnverified).not.toHaveBeenCalled();
+    expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalled();
+    expect(mockedUserRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('ยังไม่เกินโควตา → ทับแถวเดิมและออกใบใหม่ตามปกติ', async () => {
+    env.REQUIRE_EMAIL_VERIFIED = true;
+    mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });
+    mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(2);
+    mockedFindFacultyById.mockResolvedValue({ faculty_id: 1, name: 'Engineering' } as never);
+    mockedFindDepartmentInFaculty.mockResolvedValue({ department_id: 2, name: 'CPE', faculty_id: 1 } as never);
+    mockedHashPassword.mockResolvedValue('new-hash');
+    mockedUserRepo.overwriteUnverified.mockResolvedValue(true);
+
+    await authService.register(registerInput);
+
+    expect(mockedUserRepo.overwriteUnverified).toHaveBeenCalled();
+    expect(mockedEmailVerifyRepo.create).toHaveBeenCalled();
+  });
+
   it('rejects when the pending row got verified between the read and the overwrite', async () => {
     env.REQUIRE_EMAIL_VERIFIED = true;
     mockedUserRepo.findByEmail.mockResolvedValue({ ...baseUser, user_id: 77, email_verified: 0 });

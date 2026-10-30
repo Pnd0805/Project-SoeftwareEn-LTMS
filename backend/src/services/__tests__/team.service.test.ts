@@ -31,6 +31,8 @@ vi.mock('../../repositories/team.repo.js', () => ({
   countMemberByTeamId: vi.fn(),
   update: vi.fn(),
   deleteTeam: vi.fn(),
+  // QA 30 ต.ค. ข้อ 9 — ลบทีมแล้วปิดคำเชิญที่ยังค้าง · ไม่ใส่ = เทส deleteTeam พังทั้งกลุ่ม
+  cancelPendingInvitationsOfTeam: vi.fn(() => Promise.resolve(0)),
   isMemberOf: vi.fn(),
   // 🆕 BE-10 (7 ต.ค. 2569) — ด่านกันคำขอซ้ำ · ไม่ใส่ = ไฟล์นี้พังทั้งไฟล์
   expireStaleInvitations: vi.fn(() => Promise.resolve(0)),

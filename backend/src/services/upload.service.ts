@@ -286,7 +286,7 @@ export function isRefereeIdentityKey(objectKey: string): boolean {
 /**
  * OD-73 — รูป key ของรูปบัตรตอนเช็คอินออนไลน์: `checkin_document/<matchId>/<uuid v4>.(jpg|png)` (createPresignedUpload)
  * ส่ง matchId มา = ต้องเป็นของแมตช์นั้นเป๊ะ · ไม่ส่ง = แมตช์ไหนก็ได้ (งานกวาดไฟล์)
- * ★ งานลบใช้ตัวนี้กันลบไฟล์ที่ไม่ใช่รูปเช็คอิน — ตอนเช็คอิน key ยังไม่ถูกตรวจรูปร่าง (แถวอาจชี้ไฟล์ชนิดอื่น)
+ * ★ งานลบใช้ตัวนี้กันลบไฟล์ที่ไม่ใช่รูปเช็คอิน
  */
 export const CHECKIN_DOCUMENT_PREFIX = 'checkin_document/';
 export function isCheckinDocumentKey(objectKey: string, matchId?: number): boolean {
@@ -294,6 +294,30 @@ export function isCheckinDocumentKey(objectKey: string, matchId?: number): boole
     return new RegExp(
         `^checkin_document/${match}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`, 'i'
     ).test(objectKey);
+}
+
+/**
+ * 30 ต.ค. 2569 (QA ข้อ 4) — ตรวจ key รูปบัตรก่อนบันทึกลงแถวเช็คอิน
+ *
+ * เดิม `submitCheckin` รับ `documentS3Key` มาตรง ๆ โดยตรวจแค่ความยาวไม่เกิน 255
+ * ⇒ ส่ง key ของไฟล์อื่นมาเป็นบัตรของตัวเองได้ (avatar ของคนอื่น · รูปจากแมตช์อื่น)
+ *   แล้วกรรมการจะได้ลิงก์เปิดไฟล์นั้นตอนตรวจ — ช่องเดียวกับที่ปิดไปแล้วในเอกสารยืนยันตัวตนกรรมการ
+ *
+ * ★ ตรวจสองชั้นแบบเดียวกับโลโก้ทีม/เอกสารทีม Official: รูป key ต้องเป็นของ **แมตช์นี้**
+ *   และไฟล์ต้องมีอยู่จริงบนที่เก็บ (ไม่งั้นกรรมการกดดูแล้วไม่มีไฟล์ ตรวจไม่ได้ ต้องไล่ถามกันใหม่)
+ *
+ * 🔴 ที่ยังปิดไม่ได้ด้วยวิธีนี้: key เป็น `checkin_document/<matchId>/<uuid>` **ไม่มีรหัสผู้ใช้อยู่ในนั้น**
+ *   ⇒ รูปของ **เพื่อนร่วมทีมในแมตช์เดียวกัน** ยังผ่านด่านนี้
+ *   ปิดสนิทต้องเปลี่ยนรูป key เป็น `checkin_document/<matchId>/<userId>/<uuid>` (แบบเดียวกับ soft filter)
+ *   ซึ่งทำให้ไฟล์ที่อัปไว้ก่อนหน้านี้ใช้ไม่ได้ทั้งหมด ⇒ ยังไม่ทำในรอบนี้ · ความเสี่ยงที่เหลือจำกัดอยู่ในทีมเดียวกัน
+ */
+export async function validateCheckinDocumentKey(objectKey: string, matchId: number): Promise<void> {
+    if (!isCheckinDocumentKey(objectKey, matchId)) {
+        throw new AppError(422, 'CHECKIN_DOCUMENT_KEY_INVALID',
+            'รูปบัตรต้องเป็นไฟล์ที่คุณอัปโหลดสำหรับแมตช์นี้ — ขอลิงก์อัปโหลดใหม่แล้วส่งอีกครั้ง', { objectKey });
+    }
+    await assertImageObjectExists(objectKey, 'CHECKIN_DOCUMENT_NOT_FOUND',
+        'ไม่พบรูปบัตรที่อัปโหลดไว้ กรุณาอัปโหลดใหม่');
 }
 
 /**
