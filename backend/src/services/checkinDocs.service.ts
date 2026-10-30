@@ -18,17 +18,25 @@ import * as UploadService from './upload.service.js';
  */
 
 /**
- * ระยะกันชน **หลังหมดเวลาโต้แย้ง** (verified_at + dispute_window_hours) — และหลังทัวร์ถูกยกเลิก/ลบ
- * 🔴 QA 30 ต.ค. 2569 (D2) — เดิม (OD-73 · 29 ต.ค.) นับ 3 วัน "จากแมตช์จบ" ⇒ รูปหายทั้งที่ยังโต้แย้ง/ร้องเรียนได้
- *   ชื่อเดิมยังสื่อความ (เก็บต่ออีกกี่วัน) จึงคงชื่อไว้ · กฎเต็มอยู่ที่ MatchRepo.findPurgeableCheckinDocs
+ * 🔴 ตรวจ SRS/SDS 30 ต.ค. 2569 (ข้อ 1.1) — NF-SE-03 เป็น **เส้นตาย** ไม่ใช่ "เก็บต่อให้ครบ"
+ *   ① ลบภายใน 72 ชม. หลังหมดเวลาโต้แย้ง · ② ไม่มีผลยืนยัน ลบภายใน 30 วันหลังแมตช์สิ้นสุด
+ *   เดิมเริ่มลบได้ **หลัง** 3 วัน / 30 วัน แล้วรอรอบงาน ⇒ ลบจริงเลยเส้นตายเสมอ
+ *   ⇒ เริ่มลบได้ก่อนเส้นตาย `CHECKIN_DOCS_SAFETY_MARGIN_HOURS` (มติผู้ใช้ 30 ต.ค.: 48 ชม. หลังหมดโต้แย้ง)
+ *   งานรันชั่วโมงละครั้ง ⇒ ลบพลาด/เซิร์ฟเวอร์ดับ ยังมีอีก ~24 รอบให้ลองใหม่ก่อนเลยเส้นตาย
+ * ★ ทางทัวร์ถูกยกเลิก/ลบ ใช้ระยะเดียวกับ ① (NF-SE-03 ไม่ได้กำหนดแยก)
  */
-export const CHECKIN_DOCS_RETENTION_DAYS = 3;
+export const CHECKIN_DOCS_DELETE_DEADLINE_HOURS = 72;
+export const CHECKIN_DOCS_UNVERIFIED_DEADLINE_DAYS = 30;
+export const CHECKIN_DOCS_SAFETY_MARGIN_HOURS = 24;
+
+/** เริ่มลบได้เมื่อหมดเวลาโต้แย้งไปแล้วกี่ชั่วโมง (= 48) */
+export const CHECKIN_DOCS_RETENTION_HOURS = CHECKIN_DOCS_DELETE_DEADLINE_HOURS - CHECKIN_DOCS_SAFETY_MARGIN_HOURS;
 
 /**
- * ทางสำรอง: แมตช์ที่ **ไม่เคยมีผลยืนยัน** (ค้าง · แพ้บาย · ผลถูกยกทิ้ง) ลบเมื่อจบเกินกี่วัน
+ * ทางสำรอง: แมตช์ที่ **ไม่เคยมีผลยืนยัน** (ค้าง · แพ้บาย · ผลถูกยกทิ้ง) เริ่มลบได้เมื่อจบไปกี่ชั่วโมง (= 29 วัน)
  * ★ ไม่มีค่านี้ = รูปของแมตช์พวกนั้นค้างตลอดกาล (แถวยังถือคีย์ งานกวาดไฟล์ไม่มีเจ้าของจึงไม่เก็บ)
  */
-export const CHECKIN_DOCS_UNVERIFIED_FALLBACK_DAYS = 30;
+export const CHECKIN_DOCS_UNVERIFIED_FALLBACK_HOURS = CHECKIN_DOCS_UNVERIFIED_DEADLINE_DAYS * 24 - CHECKIN_DOCS_SAFETY_MARGIN_HOURS;
 
 /**
  * ② ไฟล์ที่ไม่มีแถวชี้ถึงต้องเก่ากว่านี้ก่อนถึงจะลบ
@@ -48,7 +56,7 @@ export const ORPHAN_CHECKIN_DOCS_GRACE_DAYS = 1;
  * คืนจำนวนแถวที่ล้าง (ให้ log ของ scheduler มีตัวเลขเหมือนงานอื่น)
  */
 export async function purgeCheckinDocuments(): Promise<number>{
-    const rows = await MatchRepo.findPurgeableCheckinDocs(CHECKIN_DOCS_RETENTION_DAYS, CHECKIN_DOCS_UNVERIFIED_FALLBACK_DAYS);
+    const rows = await MatchRepo.findPurgeableCheckinDocs(CHECKIN_DOCS_RETENTION_HOURS, CHECKIN_DOCS_UNVERIFIED_FALLBACK_HOURS);
     if(rows.length === 0) return 0;
 
     const purgeable = new Set(rows.map(r => r.match_checkin_id));

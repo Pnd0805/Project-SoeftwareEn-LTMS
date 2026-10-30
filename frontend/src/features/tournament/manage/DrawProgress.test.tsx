@@ -27,6 +27,7 @@ vi.mock('../../../hooks/useTournament', () => ({
   useCompleteTournament: () => ({ mutate: complete, isPending: false, isError: false }),
   useDrawTournament: () => drawState.current,
   useOpenTournamentRegistration: () => ({ mutate: openRegistration, isPending: false, isError: false }),
+  // 0f23ff5 เพิ่มปุ่มปิดรับสมัครในแถบนี้ — ไม่มีตัวนี้ทุกเทสในไฟล์พังตั้งแต่ render
   useCloseTournamentRegistration: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   usePublishTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useTournamentApplications: () => ({ data: { items: [] } }),

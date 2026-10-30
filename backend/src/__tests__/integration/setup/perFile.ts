@@ -23,19 +23,22 @@ vi.mock('../../../config/mail.js', async () => {
 });
 
 // ═══ S3 → บล็อก (เหมือน unit test) ═══
-vi.mock('../../../config/s3.js', () => ({
-    default: new Proxy({}, {
+// ★ e748a10 เพิ่มตัวเชื่อมที่สอง `s3Public` (ใช้ทำลิงก์อัปโหลด) — ต้องบล็อกด้วย ไม่งั้น import ได้ undefined แล้วทุก presign ตอบ 500
+//   มีตัวเชื่อมใหม่อีก: เพิ่มชื่อใน return ท้ายบล็อกนี้
+vi.mock('../../../config/s3.js', () => {
+    const blocked = (client: string) => new Proxy({}, {
         get(_t, prop) {
             if (typeof prop === 'symbol' || prop === 'then') return undefined;
             return () => {
                 throw new Error(
-                    `[integration] เทสแตะ S3 (${String(prop)}) — integration test ไม่ต่อ MinIO/S3 จริง\n` +
+                    `[integration] เทสแตะ S3 (${client}.${String(prop)}) — integration test ไม่ต่อ MinIO/S3 จริง\n` +
                     `  ให้ mock upload.service ในไฟล์เทสนั้น เช่น\n` +
                     `  vi.mock('../../services/upload.service.js', async (orig) => ({ ...(await orig()), presignAll: vi.fn(async () => []) }))`);
             };
         },
-    }),
-}));
+    });
+    return { default: blocked('s3'), s3Public: blocked('s3Public') };
+});
 
 beforeEach(async () => {
     await resetDb();

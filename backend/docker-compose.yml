@@ -87,6 +87,8 @@ services:
       # 3307 is the published host port; containers connect to MySQL on 3306.
       - DB_PORT=3306
       - S3_ENDPOINT=http://minio:9000
+      - S3_PUBLIC_ENDPOINT=${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      - S3_PUBLIC_BASE=${S3_PUBLIC_BASE:-http://localhost:9000/ltms-uploads}
       - SMTP_HOST=${SMTP_HOST:-mailpit}
       - SMTP_PORT=${SMTP_PORT:-1025}
       # 🔴 ทุกคำขอผ่าน nginx หนึ่งชั้น — ไม่ตั้ง = ตัวจำกัดล็อกอินนับทุกคนเป็นไอพีเดียว (env.ts TRUST_PROXY)

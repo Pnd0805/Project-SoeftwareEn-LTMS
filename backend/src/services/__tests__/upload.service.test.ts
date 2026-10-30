@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const s3Send = vi.hoisted(() => vi.fn());
-vi.mock('../../config/s3.js', () => ({ default: { send: s3Send } }));
+vi.mock('../../config/s3.js', () => ({ default: { send: s3Send }, s3Public: { send: s3Send } }));
 vi.mock('../../config/env.js', () => ({ env: { S3_BUCKET: 'ltms-test' } }));
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn(() => Promise.resolve('https://s3/signed')),

@@ -34,21 +34,27 @@ beforeEach(() => {
 });
 
 describe('ค่าคงที่ที่ผู้ใช้เคาะ', () => {
-  // QA 30 ต.ค. (D2) — 3 วันเป็น "กันชนหลังหมดเวลาโต้แย้ง" แล้ว ไม่ใช่ "หลังแมตช์จบ" · ทางสำรอง 30 วัน
-  it('กันชนหลังหมดเวลาโต้แย้ง 3 วัน · ทางสำรองแมตช์ที่ไม่เคยยืนยัน 30 วัน · ไฟล์ไม่มีเจ้าของรอ 1 วัน', () => {
-    expect(Docs.CHECKIN_DOCS_RETENTION_DAYS).toBe(3);
-    expect(Docs.CHECKIN_DOCS_UNVERIFIED_FALLBACK_DAYS).toBe(30);
+  // ตรวจ SRS/SDS 30 ต.ค. (ข้อ 1.1) — NF-SE-03 เป็นเส้นตาย "ลบภายใน" ⇒ เริ่มลบก่อนเส้นตาย 24 ชม. (มติผู้ใช้: 48 ชม.)
+  it('เริ่มลบ 48 ชม. หลังหมดเวลาโต้แย้ง · ทางสำรอง 29 วัน · ไฟล์ไม่มีเจ้าของรอ 1 วัน', () => {
+    expect(Docs.CHECKIN_DOCS_RETENTION_HOURS).toBe(48);
+    expect(Docs.CHECKIN_DOCS_UNVERIFIED_FALLBACK_HOURS).toBe(29 * 24);
     expect(Docs.ORPHAN_CHECKIN_DOCS_GRACE_DAYS).toBe(1);
+  });
+
+  // 🔴 งานรันชั่วโมงละครั้ง — ต้องเหลือเวลาให้ลองใหม่ก่อนเส้นตายของ NF-SE-03 อย่างน้อยหลายรอบ
+  it('เริ่มลบได้ก่อนเส้นตาย NF-SE-03 (72 ชม. · 30 วัน) อย่างน้อย 1 รอบงาน', () => {
+    expect(Docs.CHECKIN_DOCS_RETENTION_HOURS + 1).toBeLessThanOrEqual(Docs.CHECKIN_DOCS_DELETE_DEADLINE_HOURS);
+    expect(Docs.CHECKIN_DOCS_UNVERIFIED_FALLBACK_HOURS + 1).toBeLessThanOrEqual(Docs.CHECKIN_DOCS_UNVERIFIED_DEADLINE_DAYS * 24);
   });
 });
 
 describe('purgeCheckinDocuments', () => {
-  it('ส่งจำนวนวันเข้า repo · ลบไฟล์ก่อนแล้วค่อยล้างคีย์', async () => {
+  it('ส่งจำนวนชั่วโมงเข้า repo · ลบไฟล์ก่อนแล้วค่อยล้างคีย์', async () => {
     repo.findPurgeableCheckinDocs.mockResolvedValue([row(1, 7, key(7, 1))]);
 
     await expect(Docs.purgeCheckinDocuments()).resolves.toBe(1);
 
-    expect(repo.findPurgeableCheckinDocs).toHaveBeenCalledWith(3, 30);
+    expect(repo.findPurgeableCheckinDocs).toHaveBeenCalledWith(48, 29 * 24);
     expect(upload.deleteObjectConfirmed.mock.invocationCallOrder[0])
       .toBeLessThan(repo.clearCheckinDocument.mock.invocationCallOrder[0]!);
     expect(repo.clearCheckinDocument).toHaveBeenCalledWith(1, key(7, 1));

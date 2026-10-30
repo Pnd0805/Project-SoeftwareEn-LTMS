@@ -702,35 +702,36 @@ export type PurgeableCheckinDocRow = { match_checkin_id : number; match_id : num
  *   ระยะโต้แย้งเริ่มนับตอน **ยืนยันผล** ไม่ใช่ตอนแมตช์จบ และผู้จัดตั้งได้ถึง 72 ชม.
  *   ส่วนการร้องเรียนผลยื่นได้จนกว่าทัวร์จะปิด ⇒ กฎเดิมลบรูปทั้งที่เรื่องยังมาถึงได้
  *
- * ลบได้เมื่อเข้าข้อใดข้อหนึ่ง:
- *   ① ผลยืนยันแล้ว · `verified_at + dispute_window_hours ของทัวร์ + bufferDays` ผ่านไปแล้ว
- *      · และ **ไม่มีข้อโต้แย้งค้าง** (ผล disputed) · **ไม่มีเรื่องร้องเรียนที่ยังไม่จบ** (complaint open)
- *   ② ทางสำรอง — แมตช์ที่ **ไม่เคยมีผลยืนยัน** (ค้าง · ยกเลิก · แพ้บาย) จบเกิน `fallbackDays` วัน
- *      · ไม่มีเรื่องค้างเหมือนข้อ ① · ★ ไม่มีข้อนี้ = รูปของแมตช์พวกนั้นค้างตลอดกาล
- *        (sweepOrphanCheckinDocs ช่วยไม่ได้ เพราะแถวยังถือคีย์อยู่)
- *   ③ ทัวร์ถูกยกเลิก/ปิดอัตโนมัติ/ถูกลบ เกิน `bufferDays` — ไม่มีอะไรให้โต้แย้งหรือร้องเรียนต่อแล้ว
- *      (แมตช์ที่ถูกแช่แข็งตอนยกเลิกทัวร์ก็ลบได้)
+ * ลบได้เมื่อ **ไม่มีเรื่องค้าง** (ผล disputed · เรื่องร้องเรียน open) **และ** เข้าข้อใดข้อหนึ่ง:
+ *   ① ผลยืนยันแล้ว · `verified_at + dispute_window_hours ของทัวร์ + bufferHours` ผ่านไปแล้ว
+ *   ② ทางสำรอง — แมตช์ที่ **ไม่เคยมีผลยืนยัน** (ค้าง · ยกเลิก · แพ้บาย) จบเกิน `fallbackHours`
+ *      ★ ไม่มีข้อนี้ = รูปของแมตช์พวกนั้นค้างตลอดกาล (sweepOrphanCheckinDocs ช่วยไม่ได้ เพราะแถวยังถือคีย์อยู่)
+ *   ③ ทัวร์ถูกยกเลิก/ปิดอัตโนมัติ/ถูกลบ เกิน `bufferHours` (แมตช์ที่ถูกแช่แข็งตอนยกเลิกทัวร์ก็ลบได้)
+ *
+ * 🔴 ตรวจ SRS/SDS 30 ต.ค. 2569 (ข้อ 1.2) — เดิม "ไม่มีเรื่องค้าง" ครอบแค่ ①② ⇒ ทาง ③ ลบรูปทั้งที่ยังมีเรื่องค้าง
+ *   NF-SE-03 ให้พักลบเมื่อมีเรื่องค้าง **ทุกทาง** ⇒ ย้ายเงื่อนไขขึ้นมาครอบทั้งก้อน
+ *   ★ ข้อโต้แย้งในทัวร์ที่ถูกยกเลิกตัดสินต่อไม่ได้ (lockCompletedTournament) — cancelTournament จึงปิดให้ตอนยกเลิก
+ *     (มติผู้ใช้ 30 ต.ค.) ไม่งั้นรูปค้างตลอดไป · เรื่องร้องเรียนยังตัดสินได้หลังยกเลิก จึงพักลบรอได้
+ * 🔴 ข้อ 1.1 — ค่าทั้งหมดเป็น **ชั่วโมง** และเป็น "เริ่มลบได้" ไม่ใช่เส้นตาย ⇒ service ตั้งให้ก่อนเส้นตายของ NF-SE-03 พอให้งานรายชั่วโมงลบทัน
  */
-export async function findPurgeableCheckinDocs(bufferDays : number, fallbackDays : number): Promise<PurgeableCheckinDocRow[]>{
-    const NOTHING_PENDING = `NOT EXISTS (SELECT 1 FROM match_results d WHERE d.match_id = m.match_id AND d.match_result_status = 'disputed')
-                    AND NOT EXISTS (SELECT 1 FROM match_result_complaints c WHERE c.match_id = m.match_id AND c.complaint_status = 'open')`;
+export async function findPurgeableCheckinDocs(bufferHours : number, fallbackHours : number): Promise<PurgeableCheckinDocRow[]>{
     const [rows] = await pool.query<(PurgeableCheckinDocRow & RowDataPacket)[]>(
         `SELECT mc.match_checkin_id, mc.match_id, mc.document_s3_key
          FROM match_checkins mc
          JOIN matches m ON m.match_id = mc.match_id
          JOIN tournaments t ON t.tournament_id = m.tournament_id
          WHERE mc.document_s3_key IS NOT NULL
-           AND ( ( EXISTS (SELECT 1 FROM match_results v
-                            WHERE v.match_id = m.match_id AND v.match_result_status = 'verified' AND v.verified_at IS NOT NULL
-                              AND v.verified_at + INTERVAL t.dispute_window_hours HOUR + INTERVAL ? DAY < NOW())
-                   AND ${NOTHING_PENDING} )
+           AND NOT EXISTS (SELECT 1 FROM match_results d WHERE d.match_id = m.match_id AND d.match_result_status = 'disputed')
+           AND NOT EXISTS (SELECT 1 FROM match_result_complaints c WHERE c.match_id = m.match_id AND c.complaint_status = 'open')
+           AND ( EXISTS (SELECT 1 FROM match_results v
+                          WHERE v.match_id = m.match_id AND v.match_result_status = 'verified' AND v.verified_at IS NOT NULL
+                            AND v.verified_at + INTERVAL t.dispute_window_hours HOUR + INTERVAL ? HOUR < NOW())
               OR ( NOT EXISTS (SELECT 1 FROM match_results v WHERE v.match_id = m.match_id AND v.match_result_status = 'verified')
-                   AND COALESCE(m.actual_end_time, m.scheduled_end_time, m.scheduled_time) < NOW() - INTERVAL ? DAY
-                   AND ${NOTHING_PENDING} )
+                   AND COALESCE(m.actual_end_time, m.scheduled_end_time, m.scheduled_time) < NOW() - INTERVAL ? HOUR )
               OR (t.tournament_status IN ${CHECKIN_DOC_DEAD_TOURNAMENT}
-                  AND COALESCE(t.cancelled_at, t.event_end_date, t.event_start_date) < NOW() - INTERVAL ? DAY)
-              OR (t.deleted_at IS NOT NULL AND t.deleted_at < NOW() - INTERVAL ? DAY) )
-         ORDER BY mc.match_checkin_id`, [bufferDays, fallbackDays, bufferDays, bufferDays]);
+                  AND COALESCE(t.cancelled_at, t.event_end_date, t.event_start_date) < NOW() - INTERVAL ? HOUR)
+              OR (t.deleted_at IS NOT NULL AND t.deleted_at < NOW() - INTERVAL ? HOUR) )
+         ORDER BY mc.match_checkin_id`, [bufferHours, fallbackHours, bufferHours, bufferHours]);
     return rows;
 }
 
