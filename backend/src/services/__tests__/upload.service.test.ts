@@ -247,6 +247,7 @@ describe('isRefereeIdentityKey — รูปชื่อไฟล์ยืนย
   it.each([
     ['referee_identity/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', true],
     ['referee_identity/12/0b2f3c4d-1234-4abc-8def-0123456789ab.PNG', true],
+    ['referee_identity/12/0b2f3c4d-1234-4abc-8def-0123456789ab.pdf', true],   // 31 ต.ค. 2569 — งานลบต้องเก็บ PDF ด้วย
     ['referee_identity/12/readme.txt', false],
     ['referee_identity/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', false],
     ['checkin_document/12/0b2f3c4d-1234-4abc-8def-0123456789ab.jpg', false],
@@ -523,8 +524,8 @@ describe('validateAvatarKey — more paths', () => {
 describe('validateRefereeIdentityKeys (A1)', () => {
   const own = (ext = 'jpg') => `referee_identity/9001/33333333-3333-4333-8333-333333333333.${ext}`;
 
-  it('accepts the caller\'s own keys (jpg and png) without touching storage', () => {
-    expect(() => uploadService.validateRefereeIdentityKeys([own('jpg'), own('png')], 9001)).not.toThrow();
+  it('accepts the caller\'s own keys (jpg, png and pdf) without touching storage', () => {
+    expect(() => uploadService.validateRefereeIdentityKeys([own('jpg'), own('png'), own('pdf')], 9001)).not.toThrow();
     expect(s3Send).not.toHaveBeenCalled();
   });
 

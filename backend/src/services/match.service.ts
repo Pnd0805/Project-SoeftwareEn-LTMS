@@ -1,4 +1,5 @@
 import * as MatchRepo from '../repositories/match.repo.js';
+import { thaiDateOf } from '../utils/thaiDate.js';
 import type { MatchFormatInput } from '../schemas/match.schema.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
 import * as AdminScopeRepo from '../repositories/adminScope.repo.js';
@@ -141,10 +142,6 @@ function conflictsWithin(all : MyMatchForConflict[], me : MyMatchForConflict): n
         .map(o => o.id);
 }
 
-/** วันที่ (ไทย UTC+7) ของ instant นี้ ในรูป YYYY-MM-DD — ไว้เทียบกับ DATE ของทัวร์ */
-function thaiDateOf(d: Date): string {
-    return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
 
 // requireOrganizerOfMatch (middleware) เช็คสิทธิ์ organizer ให้แล้วก่อนถึงตรงนี้
 // M06 — ตั้ง/เลื่อนเวลาแมตช์ · กฎ (GUIDE/11 §4.1, มติ 15 ก.ย.):

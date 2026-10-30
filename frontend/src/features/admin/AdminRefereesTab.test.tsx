@@ -22,18 +22,23 @@ const pending = { items: [{
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('external referee decision with the real API adapter', () => {
-  it('keeps people without documents visible, disables Approve and retains Request documents/Reject', async () => {
+  /* 31 ต.ค. 2569 — ผู้ใช้สั่ง: แอดมินอนุมัติได้แม้ไม่มีเอกสาร (backend ยกเลิก DOCS_NOT_SUBMITTED)
+     ปุ่มต้องบอกว่า "ไม่มีเอกสาร" ให้เห็นก่อนกด · Reject / Request documents ยังอยู่ */
+  it('lets an admin approve someone without documents, labelled so they know', async () => {
     const queue = { items: pending.items.map(row => ({ ...row, docs: [], docsSubmitted: false })) }
-    const fetchMock = vi.fn<typeof fetch>(async () => json(queue))
+    const fetchMock = vi.fn<typeof fetch>(async (url, init) =>
+      String(url).endsWith('/approve') && init?.method === 'POST' ? json({ userId: 42, identityStatus: 'approved' }) : json(queue))
     vi.stubGlobal('fetch', fetchMock)
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
     render(<QueryClientProvider client={client}><MemoryRouter><AdminRefereesTab /></MemoryRouter></QueryClientProvider>)
-    const buttons = await screen.findAllByRole('button', { name: 'Approve' })
+    const buttons = await screen.findAllByRole('button', { name: 'Approve without documents' })
     expect(screen.getAllByText('รอเอกสารจากผู้สมัคร')).toHaveLength(2)
-    for (const button of buttons) { expect(button).toBeDisabled(); fireEvent.click(button) }
+    for (const button of buttons) expect(button).toBeEnabled()
     for (const button of screen.getAllByRole('button', { name: 'Reject' })) expect(button).toBeEnabled()
     for (const button of screen.getAllByRole('button', { name: 'Request documents' })) expect(button).toBeEnabled()
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
+    fireEvent.click(buttons[0]!)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+      String(url).endsWith('/admin/referee-requests/42/approve') && init?.method === 'POST')).toBe(true))
     client.clear()
   })
 
@@ -42,28 +47,10 @@ describe('external referee decision with the real API adapter', () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => json(queue)))
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={client}><MemoryRouter><AdminRefereesTab /></MemoryRouter></QueryClientProvider>)
-    for (const button of await screen.findAllByRole('button', { name: 'Approve' })) expect(button).toBeDisabled()
+    for (const button of await screen.findAllByRole('button', { name: 'Approve without documents' })) expect(button).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     expect(screen.getAllByText('ตรวจสถานะเอกสารไม่ได้')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
-    client.clear()
-  })
-
-  it('explains DOCS_NOT_SUBMITTED and refreshes stale submitted flags after 409', async () => {
-    let attempted = false
-    const fetchMock = vi.fn<typeof fetch>(async (url, init) => {
-      if (String(url).endsWith('/approve') && init?.method === 'POST') {
-        attempted = true
-        return json({ error: { code: 'DOCS_NOT_SUBMITTED', message: 'No docs' } }, 409)
-      }
-      return json(attempted ? { items: pending.items.map(row => ({ ...row, docs: [], docsSubmitted: false })) } : pending)
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-    render(<QueryClientProvider client={client}><MemoryRouter><AdminRefereesTab /></MemoryRouter></QueryClientProvider>)
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Approve' }))[0])
-    expect(await screen.findByText(/ผู้ใช้นี้ยังไม่ได้ส่งเอกสารยืนยันตัวตน อนุมัติไม่ได้/)).toBeInTheDocument()
-    await waitFor(() => { for (const button of screen.getAllByRole('button', { name: 'Approve' })) expect(button).toBeDisabled() })
-    expect(screen.getAllByText('รอเอกสารจากผู้สมัคร')).toHaveLength(2)
     client.clear()
   })
 

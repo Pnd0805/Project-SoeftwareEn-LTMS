@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { thaiDateOf } from '../utils/thaiDate.js';
 import { isOrganizerOf } from '../middlewares/requireOrganizer.js';
 import type { MatchFormatInput } from '../schemas/match.schema.js';
 import * as AdminScopeRepo from '../repositories/adminScope.repo.js';
@@ -104,13 +105,8 @@ function dateMilliseconds(value: Date | string | null): number | null {
     return Number.isNaN(time) ? null : time;
 }
 
-/**
- * วันที่ตามเวลาไทย (YYYY-MM-DD) ของ timestamp
- * ★ eventStartDate (วันที่ล้วน) ถูก dateMilliseconds อ่านเป็นเที่ยงคืน UTC ของวันนั้น ⇒ ได้วันเดิมกลับมา (00:00Z + 7 ชม. = วันเดียวกัน)
- */
-function thaiDateOf(ms: number): string {
-    return new Date(ms + 7 * 3600 * 1000).toISOString().slice(0, 10);
-}
+// thaiDateOf (utils/thaiDate) — eventStartDate (วันที่ล้วน) ถูก dateMilliseconds อ่านเป็นเที่ยงคืน UTC ของวันนั้น
+//   ⇒ ได้วันเดิมกลับมา (00:00Z + 7 ชม. = วันเดียวกัน)
 
 function ensureSchedule(values: {
     registrationStart: Date | string | null;
@@ -267,7 +263,7 @@ async function getDetail(tournament: TournamentRow): Promise<ReturnType<typeof t
 /** ข้อ 9 (รายงาน FE 18 ก.ย.): สร้างใหม่ต้องไม่ใช่อดีต — ปิดรับสมัครยังไม่ผ่าน และวันแข่งไม่ก่อนวันนี้ (เวลาไทย) · ไม่ใช้กับ amendment */
 function ensureNotInPast(input: CreateTournamentInput): void {
     const now = Date.now();
-    const todayThai = new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    const todayThai = thaiDateOf(now);
     if (new Date(input.registrationEnd).getTime() <= now) {
         throw new AppError(400, 'TOURNAMENT_DATES_IN_PAST', 'วันปิดรับสมัครต้องอยู่ในอนาคต', { fields: { registrationEnd: 'ผ่านไปแล้ว' } });
     }
@@ -426,11 +422,11 @@ export async function getPendingTournamentRequests(userId: number, offset: numbe
 /**
  * OD-80 — เลยวันปิดรับสมัครแล้ว · เกณฑ์เดียวกับ `sweepUnapprovedPastRegistrationTournaments` (repo)
  *   ไม่มีวันปิดรับสมัคร (ข้อมูลเก่า — ensureSchedule บังคับให้มีแล้ว) ⇒ ใช้ "ถึงวันแข่ง" แทน
- *   ★ เทียบวันแบบ UTC ให้ตรงกับ CURDATE() ของ pool (time_zone = UTC) ไม่ใช่วันไทย — ด่านกับงานต้องตัดสินตรงกัน
+ *   ★ เทียบ **วันไทย** ตรงกับงาน (repo รับวันไทยเป็นพารามิเตอร์แล้ว · 31 ต.ค. 2569 — เดิมทั้งคู่ใช้วัน UTC)
  */
 function registrationEnded(tournament: TournamentRow, now = Date.now()): boolean {
     if (tournament.registration_end !== null) return new Date(tournament.registration_end).getTime() <= now;
-    return new Date(now).toISOString().slice(0, 10) >= tournament.event_start_date;
+    return thaiDateOf(now) >= tournament.event_start_date;
 }
 
 export async function approveTournament(tournamentId: number, userId: number) {
@@ -1121,8 +1117,8 @@ export async function getEligibilityRules(tournamentId: number, userId?: number)
  *
  * แจ้งเตือนพังไม่ทำให้การปิดที่สำเร็จแล้วกลายเป็น error (notifyUsers กลืน error ให้อยู่แล้ว)
  */
-export async function sweepAutoDeleteTournaments(){
-    const swept = await TournamentRepo.sweepPrivatePastDueTournaments();
+export async function sweepAutoDeleteTournaments(now = new Date()){
+    const swept = await TournamentRepo.sweepPrivatePastDueTournaments(now);
 
     for(const t of swept){
         await NotificationService.notifyUsers([t.organizerId] , {
@@ -1143,8 +1139,8 @@ export async function sweepAutoDeleteTournaments(){
  *   ข้อความของ BR-03 บอกว่า "ยังไม่ได้เผยแพร่" ซึ่งผิดสำหรับคำขอที่ยังไม่ได้อนุมัติ — ผู้จัดไม่ได้ทำอะไรพลาด
  * ★ ไม่เตือนล่วงหน้า — คนที่ต้องลงมือคือ admin ไม่ใช่ผู้จัด
  */
-export async function sweepUnapprovedPastRegistration(){
-    const swept = await TournamentRepo.sweepUnapprovedPastRegistrationTournaments();
+export async function sweepUnapprovedPastRegistration(now = new Date()){
+    const swept = await TournamentRepo.sweepUnapprovedPastRegistrationTournaments(now);
 
     for(const t of swept){
         await NotificationService.notifyUsers([t.organizerId] , {
@@ -1169,9 +1165,9 @@ export async function sweepUnapprovedPastRegistration(){
  *   กรรมการที่ยังไม่ถูกถอด · ผู้จัด (คนทายผลไม่มี เพราะทัวร์ที่เข้าเกณฑ์ไม่มีแมตช์)
  * ★ ปิดไม่ติด (ผู้จัดอนุมัติทีมจนครบ / จับสายแทรก) ⇒ ไม่แจ้งใคร
  */
-export async function sweepUnderfilledPublicTournaments(){
+export async function sweepUnderfilledPublicTournaments(now = new Date()){
     const swept: number[] = [];
-    for (const t of await TournamentRepo.findUnderfilledPublicTournamentsDue()) {
+    for (const t of await TournamentRepo.findUnderfilledPublicTournamentsDue(now)) {
         let audience: number[] = [t.organizerId];
         try {
             audience = await NotificationRepo.findTournamentCancellationAudience(t.tournamentId);
@@ -1198,9 +1194,9 @@ export async function sweepUnderfilledPublicTournaments(){
  */
 export const UNDERFILLED_WARNING_DAYS = 3;
 
-export async function warnUnderfilledPublicTournaments(){
+export async function warnUnderfilledPublicTournaments(now = new Date()){
     const warned: number[] = [];
-    for (const t of await TournamentRepo.findUnderfilledPublicTournamentsToWarn(UNDERFILLED_WARNING_DAYS)) {
+    for (const t of await TournamentRepo.findUnderfilledPublicTournamentsToWarn(UNDERFILLED_WARNING_DAYS, now)) {
         if (!await TournamentRepo.markAutoDeleteWarned(t.tournamentId)) continue;
 
         await NotificationService.notifyUsers([t.organizerId], {
@@ -1224,8 +1220,8 @@ export async function warnUnderfilledPublicTournaments(){
  */
 export const AUTO_DELETE_WARNING_DAYS = 7;
 
-export async function warnBeforeAutoDelete(){
-    const targets = await TournamentRepo.findTournamentsToWarnBeforeAutoDelete(AUTO_DELETE_WARNING_DAYS);
+export async function warnBeforeAutoDelete(now = new Date()){
+    const targets = await TournamentRepo.findTournamentsToWarnBeforeAutoDelete(AUTO_DELETE_WARNING_DAYS, now);
     const warned : number[] = [];
 
     for(const t of targets){

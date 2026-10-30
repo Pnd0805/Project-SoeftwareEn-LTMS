@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { useRefereeIdentity, useSubmitRefereeIdentityDocs } from '../../hooks/useAdmin'
-import { imageUploadErrorMessage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
+import { imageUploadErrorMessage, IDENTITY_DOC_ACCEPT } from '../../api/upload'
 import { RefereeWithdrawal } from '../match/RefereeWithdrawal'
 import { uploadIdentityDocs } from './identityDocs'
 
@@ -48,8 +48,8 @@ export function ExternalIdentityPanel() {
       {identity.status === 'approved' || identity.status === 'expired' ? identity.tournaments.filter(t => t.externalApprovalStatus === 'approved').map(t => <RefereeWithdrawal key={t.tournamentRefereeId} tournamentId={t.id} tournamentName={t.name} />) : null}
       {identity.docsSubmitted && !identity.docsRequired ? <div className="sub">ได้รับเอกสารแล้ว ไม่ต้องส่งซ้ำระหว่างรอตรวจ</div> : null}
       {identity.docsRequired && identity.tournaments.length > 0 ? <>
-        <Field label="เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)" htmlFor="ref-identity-files">
-          <input key={selection} id="ref-identity-files" type="file" accept={UPLOAD_IMAGE_ACCEPT} multiple disabled={busy || submit.isPending}
+        <Field label="เอกสารยืนยันตัวตน (PDF/JPEG/PNG 1–5 ไฟล์)" htmlFor="ref-identity-files">
+          <input key={selection} id="ref-identity-files" type="file" accept={IDENTITY_DOC_ACCEPT} multiple disabled={busy || submit.isPending}
             onChange={e => { setFiles(Array.from(e.target.files ?? [])); setError(''); setNotice('') }} />
         </Field>
         {files.map((f, i) => <div className="sub" key={`${i}:${f.name}`}>{f.name}</div>)}

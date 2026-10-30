@@ -4,6 +4,7 @@ import {
   addTournamentReferee, createFaculty, createMatch, createSportType, createTeam, createTournament, createUser, type TestUser,
 } from './helpers/factories.js';
 import { autoDeleteUnderfilledPublicTournament, publishTournament } from '../../repositories/tournament.repo.js';
+import { thaiDatePlusDays } from '../../utils/thaiDate.js';
 import {
   sweepAutoDeleteTournaments, sweepUnderfilledPublicTournaments, UNDERFILLED_WARNING_DAYS, warnUnderfilledPublicTournaments,
 } from '../../services/tournament.service.js';
@@ -22,7 +23,8 @@ let faculty: number;
 let sport: number;
 let organizer: TestUser;
 
-const day = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+// 31 ต.ค. 2569 — วันไทย ไม่ใช่วัน UTC (ช่วง 00:00–06:59 ไทย สองอย่างนี้คนละวัน)
+const day = (offsetDays: number) => thaiDatePlusDays(Date.now(), offsetDays);
 
 /** ทัวร์ public · min_teams = 4 · วันแข่งตามที่ส่ง */
 async function tour(startDate: string, status = 'public'): Promise<number> {
@@ -221,5 +223,21 @@ describe('OD-81 — เตือนผู้จัด 3 วันก่อนป
     expect(await statusOf(id)).toBe('public');
 
     expect(await warnUnderfilledPublicTournaments()).toContain(id);
+  });
+});
+
+/** 🔴 31 ต.ค. 2569 — ขอบวันตามเวลาไทย (เหตุผลเดียวกับ tournamentAutoDelete.int.test.ts) · ตรึงเวลาเอง */
+describe('OD-81 — นับวันตามเวลาไทย', () => {
+  it('ตี 1 ไทยของวันแข่ง → ปิด · 23:30 ไทยของวันก่อนหน้า → ยังไม่ปิด', async () => {
+    const id = await tour('2030-01-10');
+    await sweepUnderfilledPublicTournaments(new Date('2030-01-09T23:30:00+07:00'));
+    expect(await statusOf(id)).toBe('public');
+    await sweepUnderfilledPublicTournaments(new Date('2030-01-10T01:00:00+07:00'));
+    expect(await statusOf(id)).toBe('auto_deleted');
+  });
+
+  it('เตือน 3 วัน นับจากวันไทย — ตี 1 ไทยของวันที่ 7 ทัวร์วันที่ 10 อยู่ในช่วงแล้ว', async () => {
+    const id = await tour('2030-01-10');
+    expect(await warnUnderfilledPublicTournaments(new Date('2030-01-07T01:00:00+07:00'))).toContain(id);
   });
 });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { all, one, testDb } from './helpers/db.js';
 import { createFaculty, createSportType, createTournament, createUser, type TestUser } from './helpers/factories.js';
+import { thaiDatePlusDays } from '../../utils/thaiDate.js';
 import { AUTO_DELETE_WARNING_DAYS, purgeExpiredTournaments, sweepAutoDeleteTournaments,
          TOURNAMENT_RETENTION_YEARS, warnBeforeAutoDelete } from '../../services/tournament.service.js';
 
@@ -22,7 +23,8 @@ let faculty: number;
 let sport: number;
 let organizer: TestUser;
 
-const day = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+// 31 ต.ค. 2569 — วันไทย ไม่ใช่วัน UTC (ช่วง 00:00–06:59 ไทย สองอย่างนี้คนละวัน)
+const day = (offsetDays: number) => thaiDatePlusDays(Date.now(), offsetDays);
 const TODAY = day(0);
 const YESTERDAY = day(-1);
 const TOMORROW = day(1);
@@ -289,5 +291,27 @@ describe('BR-03 ส่วนที่ 3 — ลบทัวร์ที่ปิ
     it('ค่าคงที่ที่ใช้คือ 4 ปี และ 7 วัน ตามมติ', () => {
         expect(TOURNAMENT_RETENTION_YEARS).toBe(4);
         expect(AUTO_DELETE_WARNING_DAYS).toBe(7);
+    });
+});
+
+/**
+ * 🔴 31 ต.ค. 2569 — ขอบวันตามเวลาไทย (ผู้ใช้แจ้ง: "วันที่ 31 ต้อง 7 โมงขึ้นไปถึงนับว่าเป็นวัน 31")
+ *   เดิมใช้ CURDATE() ซึ่งเป็นวัน UTC ⇒ ตี 1 ไทยของวันที่ 10 ยังเป็นวันที่ 9 ใน UTC
+ *   ★ ส่ง `now` ตรึงเวลาเอง — ผลไม่ขึ้นกับว่าเทสรันตอนกี่โมง
+ */
+describe('BR-03 — นับวันตามเวลาไทย (ตี 1 ของวันแข่งต้องถือว่าถึงวันแข่งแล้ว)', () => {
+    const START = '2030-01-10';
+
+    it('ตี 1 ไทยของวันแข่ง → ปิดแล้ว · 23:30 ไทยของวันก่อนหน้า → ยังไม่ปิด', async () => {
+        const id = await tour('private', START);
+        await sweepAutoDeleteTournaments(new Date('2030-01-09T23:30:00+07:00'));
+        expect(await statusOf(id)).toBe('private');
+        await sweepAutoDeleteTournaments(new Date('2030-01-10T01:00:00+07:00'));
+        expect(await statusOf(id)).toBe('auto_deleted');
+    });
+
+    it('เตือน 7 วัน นับจากวันไทย — ตี 1 ไทยของวันที่ 3 ทัวร์วันที่ 10 อยู่ในช่วงแล้ว', async () => {
+        const id = await tour('private', START);
+        expect(await warnBeforeAutoDelete(new Date('2030-01-03T01:00:00+07:00'))).toContain(id);
     });
 });

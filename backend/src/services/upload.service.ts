@@ -13,7 +13,7 @@ import type { PresignUploadInput } from '../schemas/upload.schema.js';
 const CONTENT_TYPE_EXTENSION: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
-    'application/pdf': 'pdf',   // เฉพาะ team_official_document — schema กันชนิดอื่นไว้แล้ว
+    'application/pdf': 'pdf',   // เฉพาะ team_official_document / referee_identity (31 ต.ค. 69) — schema กันชนิดอื่นไว้แล้ว
 };
 
 const SOFT_FILTER_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
@@ -221,7 +221,7 @@ export async function validateAvatarKey(objectKey: string, userId: number): Prom
  * ★ รูป key มาจาก `createPresignedUpload` ที่เดียว: `referee_identity/<userId>/<uuid v4>.<ext>`
  */
 const REFEREE_IDENTITY_KEY = (userId: number) => new RegExp(
-    `^referee_identity/${userId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png)$`,
+    `^referee_identity/${userId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png|pdf)$`,
     'i'
 );
 
@@ -280,7 +280,7 @@ export async function listObjectsByPrefix(prefix: string): Promise<{ key: string
 /** รูป key ของเอกสารยืนยันตัวตน (ทุก user) — ให้งานกวาดลบเฉพาะไฟล์รูปร่างนี้ ไม่แตะอย่างอื่นใต้ prefix เดียวกัน */
 export const REFEREE_IDENTITY_PREFIX = 'referee_identity/';
 export function isRefereeIdentityKey(objectKey: string): boolean {
-    return /^referee_identity\/\d+\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png)$/i.test(objectKey);
+    return /^referee_identity\/\d+\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|pdf)$/i.test(objectKey);
 }
 
 /**
