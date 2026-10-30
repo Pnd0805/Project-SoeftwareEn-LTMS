@@ -92,9 +92,9 @@ const DAY = 24;
  *   ⇒ ลบเมื่อ verified_at + dispute_window_hours + 3 วัน ผ่านไปแล้ว และไม่มีเรื่องค้าง
  */
 describe('① งานเบื้องหลัง — หมดเวลาโต้แย้ง + กันชน และไม่มีเรื่องค้าง', () => {
-  it('🔴 เทส 1: ยืนยันผลแล้ว หมดเวลาโต้แย้ง (24 ชม.) + กันชน 3 วัน → ลบไฟล์ · ล้างคีย์ · **ผลเช็คอินไม่เปลี่ยน**', async () => {
+  it('🔴 เทส 1: ยืนยันผลแล้ว หมดเวลาโต้แย้ง (24 ชม.) + 48 ชม. → ลบไฟล์ · ล้างคีย์ · **ผลเช็คอินไม่เปลี่ยน**', async () => {
     const { match, teamA } = await onlineMatch({ status: 'completed', endedDaysAgo: 10 });
-    await result(match, teamA, { verifiedHoursAgo: 4 * DAY + 1 });
+    await result(match, teamA, { verifiedHoursAgo: 24 + 48 + 1 });   // ข้อ 1.1: ยังเหลือ 23 ชม. ก่อนเส้นตาย 72 ชม.
     const id = await checkinRow(match, playerA, docKey(match, 1));
 
     expect(await purgeCheckinDocuments()).toBe(1);
@@ -106,16 +106,16 @@ describe('① งานเบื้องหลัง — หมดเวลา�
   it('🔴 เทส 2: ยังไม่หมดเวลาโต้แย้ง (ผู้จัดตั้ง 72 ชม.) → ไม่ลบ แม้แมตช์จบไปนานแล้ว', async () => {
     const { tour, match, teamA } = await onlineMatch({ status: 'completed', endedDaysAgo: 10 });
     await testDb().query('UPDATE tournaments SET dispute_window_hours = 72 WHERE tournament_id = ?', [tour]);
-    await result(match, teamA, { verifiedHoursAgo: 4 * DAY + 1 });   // 72 ชม. + 3 วัน = 6 วัน ยังไม่ถึง
+    await result(match, teamA, { verifiedHoursAgo: 72 + 47 });   // 72 ชม. + 48 ชม. = 120 ชม. ยังไม่ถึง
     const id = await checkinRow(match, playerA, docKey(match, 1));
 
     expect(await purgeCheckinDocuments()).toBe(0);
     expect((await rowOf(id))!.key).toBe(docKey(match, 1));
   });
 
-  it('หมดเวลาโต้แย้งแล้วแต่ยังไม่พ้นกันชน 3 วัน → ไม่ลบ', async () => {
+  it('หมดเวลาโต้แย้งแล้วแต่ยังไม่พ้น 48 ชม. → ไม่ลบ', async () => {
     const { match, teamA } = await onlineMatch({ status: 'completed', endedDaysAgo: 10 });
-    await result(match, teamA, { verifiedHoursAgo: 3 * DAY });   // 24 ชม. + 3 วัน = 4 วัน ยังไม่ถึง
+    await result(match, teamA, { verifiedHoursAgo: 24 + 47 });   // 24 ชม. + 48 ชม. = 72 ชม. ยังไม่ถึง
     await checkinRow(match, playerA, docKey(match, 1));
 
     expect(await purgeCheckinDocuments()).toBe(0);
@@ -143,9 +143,10 @@ describe('① งานเบื้องหลัง — หมดเวลา�
     expect(await purgeCheckinDocuments()).toBe(0);
   });
 
-  it('🔴 เทส 5: ไม่เคยยืนยันผล · จบเกิน 30 วัน → ลบตามทางสำรอง (ไม่ค้างตลอดไป) · 29 วันยังไม่ลบ', async () => {
-    const old = await onlineMatch({ status: 'finished', endedDaysAgo: 31 });
-    const recent = await onlineMatch({ status: 'finished', endedDaysAgo: 29 });
+  // ข้อ 1.1 — เส้นตาย "ลบภายใน 30 วัน" ⇒ ครบ 30 วันต้องลบไปแล้ว · เริ่มลบที่ 29 วัน
+  it('🔴 เทส 5: ไม่เคยยืนยันผล · จบไป 30 วัน → ลบตามทางสำรอง (ไม่ค้างตลอดไป) · 28 วันยังไม่ลบ', async () => {
+    const old = await onlineMatch({ status: 'finished', endedDaysAgo: 30 });
+    const recent = await onlineMatch({ status: 'finished', endedDaysAgo: 28 });
     await result(old.match, old.teamA, { status: 'submitted' });
     await checkinRow(old.match, playerA, docKey(old.match, 1));
     await checkinRow(recent.match, playerA, docKey(recent.match, 1));
@@ -171,6 +172,43 @@ describe('① งานเบื้องหลัง — หมดเวลา�
 
     expect(await purgeCheckinDocuments()).toBe(1);
     expect(await rowOf(id)).toMatchObject({ key: null, status: 'pending' });
+  });
+
+  it('ทัวร์ถูกยกเลิกไป 1 วัน (ยังไม่พ้น 48 ชม.) → ยังไม่ลบ', async () => {
+    const { tour, match } = await onlineMatch({ status: 'checkin_open', tournamentStatus: 'cancelled' });
+    await testDb().query(
+      `UPDATE tournaments SET cancelled_at = NOW() - INTERVAL 1 DAY, cancelled_from_status = 'public' WHERE tournament_id = ?`, [tour]);
+    await checkinRow(match, playerA, docKey(match, 1), 'pending');
+
+    expect(await purgeCheckinDocuments()).toBe(0);
+  });
+
+  /**
+   * 🔴 ตรวจ SRS/SDS 30 ต.ค. (ข้อ 1.2) — เดิมทางทัวร์ยกเลิก/ถูกลบ ข้ามเงื่อนไข "ไม่มีเรื่องค้าง"
+   *   NF-SE-03 ให้พักลบเมื่อมีเรื่องค้าง ทุกทาง
+   */
+  it('🔴 ทัวร์ถูกยกเลิกไป 4 วัน แต่ยังมีเรื่องร้องเรียนค้าง → ไม่ลบ · ตัดสินแล้วค่อยลบ', async () => {
+    const { tour, match, teamA } = await onlineMatch({ status: 'completed', tournamentStatus: 'cancelled' });
+    await testDb().query(
+      `UPDATE tournaments SET cancelled_at = NOW() - INTERVAL 4 DAY, cancelled_from_status = 'public' WHERE tournament_id = ?`, [tour]);
+    const res = await result(match, teamA, { verifiedHoursAgo: 5 * DAY });
+    const complaint = await insert('match_result_complaints', {
+      match_id: match, match_result_id: res, filed_by: playerB.id, reason: 'นับประตูผิด', complaint_status: 'open',
+    });
+    await checkinRow(match, playerA, docKey(match, 1));
+
+    expect(await purgeCheckinDocuments()).toBe(0);
+    await testDb().query(`UPDATE match_result_complaints SET complaint_status = 'no_merit' WHERE match_result_complaint_id = ?`, [complaint]);
+    expect(await purgeCheckinDocuments()).toBe(1);
+  });
+
+  it('🔴 ทัวร์ถูกลบไป 4 วัน แต่ผลยังถูกโต้แย้งค้าง → ไม่ลบ', async () => {
+    const { tour, match, teamA } = await onlineMatch({ status: 'disputed' });
+    await testDb().query(`UPDATE tournaments SET deleted_at = NOW() - INTERVAL 4 DAY WHERE tournament_id = ?`, [tour]);
+    await result(match, teamA, { status: 'disputed' });
+    await checkinRow(match, playerA, docKey(match, 1));
+
+    expect(await purgeCheckinDocuments()).toBe(0);
   });
 
   it('ทัวร์ถูกลบไป 4 วัน → ลบ', async () => {

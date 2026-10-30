@@ -1045,6 +1045,41 @@ export async function autoDeleteUnderfilledPublicTournament(tournamentId : numbe
  *
  * คืน null ถ้าสถานะเปลี่ยนไปแล้ว / ยกเลิกไม่ได้ (กดพร้อมกัน) · คืนสถานะเดิมถ้าสำเร็จ
  */
+/**
+ * OD-82 (30 ต.ค. 2569 · ตรวจ SRS/SDS ข้อ 1.2 · มติผู้ใช้) — ปิดข้อโต้แย้งที่ค้างตอนยกเลิกทัวร์
+ *
+ * ปัญหา: NF-SE-03 พักลบรูปบัตรเช็คอินเมื่อมีข้อโต้แย้งค้าง แต่หลังยกเลิกทัวร์ `lockCompletedTournament`
+ *   บล็อกการตัดสิน ⇒ ข้อโต้แย้งค้างตลอดไป ⇒ รูปบัตรถูกพักลบตลอดไป
+ * ⇒ ถือว่าข้อโต้แย้ง "จบไปพร้อมทัวร์" โดย **ไม่เปลี่ยนผลการแข่ง** (ยังคงหลักแช่แข็งของ OD-69):
+ *   · ผลที่เคยยืนยันแล้ว → กลับเป็น `verified` / แมตช์ `completed` — เหมือน uphold แต่ไม่คิดผลซ้ำ (คิดไปแล้วตอนยืนยัน)
+ *   · ผลที่ยังไม่เคยยืนยัน → `rejected` / แมตช์ `result_rejected` — เหมือน reject แต่ไม่ต้องถอนอะไร (ยังไม่เคยคิด)
+ *   ⇒ สถิติ · แต้ม · Pick'em · เหรียญ ไม่ขยับเลย
+ * ★ หลักฐานการปิด: `dispute_resolution` + `dispute_resolved_by` (คนที่กดยกเลิก) + audit_logs ต่อแมตช์
+ * ★ เรื่องร้องเรียน (complaints) **ไม่ปิด** — ตัดสินได้หลังยกเลิก (route อยู่นอก lock) งานลบรูปพักรอได้
+ */
+async function closePendingDisputesOnCancelTx(conn: PoolConnection, tournamentId: number, userId: number, reason: string): Promise<void> {
+    const [disputes] = await conn.query<({ match_result_id: number; match_id: number; was_verified: number } & RowDataPacket)[]>(
+        `SELECT mr.match_result_id, mr.match_id, (mr.verified_at IS NOT NULL) AS was_verified
+           FROM match_results mr JOIN matches m ON m.match_id = mr.match_id
+          WHERE m.tournament_id = ? AND mr.match_result_status = 'disputed'
+          FOR UPDATE`,
+        [tournamentId]);
+    const note = `ปิดอัตโนมัติเพราะทัวร์นาเมนต์ถูกยกเลิก — ${reason}`;
+    for (const d of disputes) {
+        const closedAs = d.was_verified ? 'verified' : 'rejected';
+        await conn.query<ResultSetHeader>(
+            `UPDATE match_results
+                SET match_result_status = ?, dispute_resolved_by = ?, dispute_resolution = ?, dispute_resolved_at = NOW()
+              WHERE match_result_id = ? AND match_result_status = 'disputed'`,
+            [closedAs, userId, note, d.match_result_id]);
+        await conn.query<ResultSetHeader>(
+            `UPDATE matches SET match_status = ?, updated_at = NOW() WHERE match_id = ?`,
+            [closedAs === 'verified' ? 'completed' : 'result_rejected', d.match_id]);
+        await insertAuditLog(conn, userId, 'match_dispute_closed_by_cancel', 'match', d.match_id,
+            { matchResultId: d.match_result_id, closedAs, reason });
+    }
+}
+
 export async function cancelTournament(
     tournamentId: number, userId: number, reason: string, byRole: 'organizer' | 'admin'
 ): Promise<{ fromStatus: 'private' | 'public' } | null> {
@@ -1064,6 +1099,7 @@ export async function cancelTournament(
               WHERE tournament_id = ?`,
             [fromStatus, userId, reason, userId, tournamentId]);
         await insertAuditLog(conn, userId, 'tournament_cancelled', 'tournament', tournamentId, { reason, fromStatus, byRole });
+        await closePendingDisputesOnCancelTx(conn, tournamentId, userId, reason);
         await conn.commit();
         return { fromStatus };
     } catch (err) {
