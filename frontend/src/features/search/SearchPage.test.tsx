@@ -24,6 +24,7 @@ vi.mock('../../hooks/useUser', () => ({
 
 /* ชื่อกีฬามาจาก GET /sport-types — id 3 คือแบดมินตันหลัง backend renumber (migration 010) */
 vi.mock('../../hooks/useReference', () => ({
+  useFaculties: () => ({ data: { items: [] } }),
   useSportTypes: () => ({
     data: { items: [{ id: 3, name: 'Badminton', minMembers: 2, maxMembers: 4, defaultMode: 'onsite' }] },
   }),

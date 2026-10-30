@@ -76,6 +76,10 @@
   width: 100%;
 }
 
+.search-page .search-filter-help {
+  grid-column: 1 / -1;
+}
+
 .search-page h2,
 .inbox-page .inbox-notifications h2,
 .inbox-requests h3 {

@@ -6,6 +6,7 @@ import { ScoreInputs } from './ScoreInputs'
 import { scoreFormatFromError, validMatchScore } from './scoreFormat'
 import { Badge, Banner, Panel } from '../../components/kit/primitives'
 import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
+import { assertUploadSize } from '../../shared/uploadLimits'
 import { useMe } from '../../hooks/useAuth'
 import { useMatchWorkflow } from '../../hooks/useMatchWorkflow'
 import type { MatchDto, MatchResultDto } from '../../types/match.dto'
@@ -77,7 +78,7 @@ export function ResultChallengeForm({ m, title, pending, error, submit }: {
           setUploadError('')
           if (files.length + keys.length > 5) { setUploadError('Attach no more than 5 files.'); return }
           setUploading(true)
-          try { for (const file of files) { const key = await uploadImage(file, 'dispute_evidence', { matchId: m.id }); setAttachments(previous => [...previous, { key, file }]) } }
+          try { files.forEach(assertUploadSize); for (const file of files) { const key = await uploadImage(file, 'dispute_evidence', { matchId: m.id }); setAttachments(previous => [...previous, { key, file }]) } }
           catch (failure) { setUploadError(imageUploadErrorMessage(failure)) }
           finally { setUploading(false) }
         }} /></label>

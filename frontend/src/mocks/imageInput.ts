@@ -11,8 +11,9 @@
  * — คนละทาง แต่ฟิลด์ `logoUrl` เดียวกันรองรับทั้งสองแบบ
  */
 
+import { assertUploadSize, IMAGE_UPLOAD_MAX_BYTES } from '../shared/uploadLimits'
 /** ขนาดสูงสุดของไฟล์ที่ยอมรับก่อนย่อ — กันไฟล์ใหญ่จนเบราว์เซอร์ค้างตอน decode */
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+export const MAX_UPLOAD_BYTES = IMAGE_UPLOAD_MAX_BYTES
 
 export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif'
 
@@ -26,10 +27,7 @@ export function shrinkImage(file: File, max = 256): Promise<string> {
       reject(new Error('เลือกได้เฉพาะไฟล์รูปภาพ'))
       return
     }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      reject(new Error('ไฟล์ใหญ่เกิน 8MB — เลือกรูปที่เล็กกว่านี้'))
-      return
-    }
+    try { assertUploadSize(file) } catch (error) { reject(error); return }
     const reader = new FileReader()
     reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'))
     reader.onload = () => {

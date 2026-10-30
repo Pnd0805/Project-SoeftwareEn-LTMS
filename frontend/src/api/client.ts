@@ -81,6 +81,7 @@ const readStoredToken = (): string | null => {
 
 let accessToken: string | null = readStoredToken();
 export const hasAccessToken = () => accessToken !== null;
+export const SESSION_EXPIRED_EVENT = 'ltms:session-expired';
 export function setAccessToken(token: string | null): void {
   accessToken = token;
   try {
@@ -92,6 +93,7 @@ export function setAccessToken(token: string | null): void {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const requestToken = accessToken;
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
@@ -103,10 +105,17 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
+    // คำตอบเก่าจาก session ก่อนหน้าไม่ควรทำให้บัญชีที่เพิ่งเข้าสู่ระบบหลุด
+    if (res.status === 401 && requestToken && accessToken === requestToken) {
+      setAccessToken(null);
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
     const errorBody = body && typeof body === "object" && "error" in body
       ? (body as ApiErrorResponse).error
       : body as ApiErrorBody | null;
-    throw new ApiError(res.status, errorBody ?? { code: "UNKNOWN", message: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ" });
+    throw new ApiError(res.status, path === '/uploads/presign' && res.status === 429
+      ? { ...errorBody, code: errorBody?.code ?? 'RATE_LIMITED', message: 'ขออัปโหลดถี่เกินไป กรุณารอสักครู่แล้วลองใหม่' }
+      : errorBody ?? { code: "UNKNOWN", message: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ" });
   }
   return body as T;
 }

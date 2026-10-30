@@ -5,6 +5,7 @@ import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { useRefereeIdentity, useSubmitRefereeIdentityDocs } from '../../hooks/useAdmin'
 import { imageUploadErrorMessage, uploadImage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
 import { RefereeWithdrawal } from '../match/RefereeWithdrawal'
+import { assertUploadSize } from '../../shared/uploadLimits'
 
 const statusLabel = { none: 'External', pending: 'External — Pending', needs_docs: 'External — Needs documents', approved: 'External (Approve)', expired: 'External — Approval expired', rejected: 'External — Rejected' }
 export function ExternalIdentityBadge() {
@@ -28,6 +29,7 @@ export function ExternalIdentityPanel() {
     if (busy || submit.isPending || !files.length || files.length > 5 || !identity?.docsRequired) return
     setBusy(true); setError(''); setNotice('')
     try {
+      files.forEach(assertUploadSize)
       if (files.some(f => !['image/png', 'image/jpeg'].includes(f.type))) throw new Error('เลือกไฟล์ JPEG หรือ PNG เท่านั้น')
       const keys: string[] = []
       for (const file of files) keys.push(await uploadImage(file, 'referee_identity'))

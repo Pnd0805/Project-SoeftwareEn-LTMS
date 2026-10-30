@@ -1,5 +1,6 @@
 import { apiFetch, ApiError, USE_MOCK } from './client'
 import { shrinkImage } from '../mocks/imageInput'
+import { assertUploadSize } from '../shared/uploadLimits'
 
 export const UPLOAD_IMAGE_ACCEPT = 'image/png,image/jpeg'
 /** เอกสารคำขอทีม Official (T15) — ชนิดเดียวที่ backend รับ PDF (M16 `team_official_document`) */
@@ -8,6 +9,7 @@ const OFFICIAL_DOC_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg'
 
 /** ข้อความของการบันทึกรูปใช้ร่วมกันทั้ง avatar และโลโก้ รวมกรณี HMR เปลี่ยนคลาส ApiError */
 export function imageUploadErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'status' in error && error.status === 429) return 'ขออัปโหลดถี่เกินไป กรุณารอสักครู่แล้วลองใหม่'
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
   switch (code) {
     case 'REFEREE_IDENTITY_KEY_INVALID': return 'เอกสารนี้ใช้ยืนยันตัวตนของบัญชีคุณไม่ได้ กรุณาอัปโหลดเอกสาร JPEG หรือ PNG ใหม่จากบัญชีนี้ แล้วส่งอีกครั้ง'
@@ -31,6 +33,7 @@ export async function uploadImage(
   purpose: 'avatar' | 'team_logo' | 'dispute_evidence' | 'referee_identity' | 'report_evidence',
   options: { teamId?: number; matchId?: number } = {}
 ): Promise<string> {
+  assertUploadSize(file)
   if (USE_MOCK) return shrinkImage(file)
 
   // ไม่เปลี่ยน MIME label ของ GIF/WebP ให้เป็น JPEG โดยที่เนื้อไฟล์ยังเป็นชนิดเดิม
@@ -59,6 +62,7 @@ export async function uploadImage(
  * ★ โหมด mock ไม่มีที่เก็บไฟล์ — คืนชื่อไฟล์ไว้แสดงในคิวแอดมินจำลอง
  */
 export async function uploadTeamOfficialDocument(file: File, teamId: number): Promise<string> {
+  assertUploadSize(file)
   if (!OFFICIAL_DOC_TYPES.has(file.type)) {
     throw new ApiError(400, { code: 'UNSUPPORTED_FILE_TYPE', message: 'กรุณาเลือกไฟล์ PDF, PNG หรือ JPEG เท่านั้น' })
   }

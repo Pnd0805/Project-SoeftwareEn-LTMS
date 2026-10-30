@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { retryPolicy } from '../api/client'
 import * as api from '../api/liveEngagement'
+import { useTournamentPolling } from './tournamentPolling'
 
 export function useReviews(id?: number) {
   const qc = useQueryClient()
@@ -35,4 +36,7 @@ export function usePredictionLive(id?: number) {
   return { query, place, cancel }
 }
 export const usePickemHistory = (enabled: boolean) => useQuery({ queryKey: ['livePickemHistory'], queryFn: api.getPickemHistory, enabled, retry: retryPolicy })
-export const usePickemLeaderboard = (id?: number, page = 1, pageSize = 20) => useQuery({ queryKey: ['livePickemLeaderboard', id, page, pageSize], queryFn: () => api.getPickemLeaderboard(id!, page, pageSize), enabled: !!id, retry: retryPolicy })
+export function usePickemLeaderboard(id?: number, page = 1, pageSize = 20) {
+  const polling = useTournamentPolling()
+  return useQuery({ ...polling, queryKey: ['livePickemLeaderboard', id, page, pageSize], queryFn: () => api.getPickemLeaderboard(id!, page, pageSize), enabled: !!id })
+}

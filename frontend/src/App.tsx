@@ -15,6 +15,7 @@ import { Toasts } from './components/kit/Toasts'
 import { useLtms } from './shared/store'
 import { isGuest } from './shared/selectors'
 import { useMe } from './hooks/useAuth'
+import { useSessionExpiry } from './hooks/useSessionExpiry'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
@@ -79,6 +80,7 @@ function Guard({ children, currentUser, isLoading }: {
 }
 
 export default function App() {
+  useSessionExpiry()
   const { data: currentUser, isLoading } = useMe()
   const location = useLocation()
 

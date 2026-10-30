@@ -19,6 +19,7 @@ import { ApiError, USE_MOCK } from '../../api/client'
 import { useDisbandTeam, useRequestOfficialStatus, useUpdateTeam } from '../../hooks/useTeam'
 import { IMAGE_ACCEPT, shrinkImage } from '../../mocks/imageInput'
 import { uploadImage, uploadTeamOfficialDocument, UPLOAD_IMAGE_ACCEPT, OFFICIAL_DOC_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
+import { assertUploadSize } from '../../shared/uploadLimits'
 import { useLtms } from '../../shared/store'
 import type { Team } from '../../shared/types'
 import type { BackendTeamDto } from '../../types/team.dto'
@@ -132,6 +133,7 @@ export function TeamManage({ data, storeTeam }: { data: BackendTeamDto; storeTea
     setDocUploading(true)
     try {
       const keys: string[] = []
+      docFiles.forEach(assertUploadSize)
       for (const file of docFiles) keys.push(await uploadTeamOfficialDocument(file, data.id))
       await official.mutateAsync({ supportingDocs: keys })
       setAsking(false)

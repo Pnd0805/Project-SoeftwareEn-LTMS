@@ -42,6 +42,7 @@ import {
   nextTournamentMockId,
 } from "../mocks/tournament.mock";
 import { findStoreTeam } from "../mocks/teamBridge";
+import { normalizeTournamentFilters, type TournamentFilters } from './tournamentFilters';
 
 const notFound = <T>(message: string): Promise<T> =>
   mockReject(404, { code: "NOT_FOUND", message });
@@ -98,12 +99,21 @@ function findTournament(id: number): TournamentDto | undefined {
   return mockTournaments.find((item) => item.id === id && item.deletedAt === null);
 }
 
-export async function getTournaments(params: { status?: "public" | "completed" | "cancelled"; sportTypeId?: number; facultyId?: number; q?: string } = {}): Promise<TournamentListResponse> {
+export async function getTournaments(filters: TournamentFilters = {}): Promise<TournamentListResponse> {
+  const params = normalizeTournamentFilters(filters);
   if (USE_MOCK) {
+    const now = Date.now();
     const items = mockTournaments.filter((item) =>
       item.deletedAt === null &&
       (!params.status || item.status === params.status) &&
-      (params.sportTypeId === undefined || item.sportTypeId === params.sportTypeId),
+      (params.sportTypeId === undefined || item.sportTypeId === params.sportTypeId) &&
+      (params.facultyId === undefined || item.organizingFacultyId === params.facultyId) &&
+      (!params.q || item.name.toLowerCase().includes(params.q.toLowerCase())) &&
+      (!params.startFrom || !!item.eventStartDate && item.eventStartDate.slice(0, 10) >= params.startFrom) &&
+      (!params.startTo || !!item.eventStartDate && item.eventStartDate.slice(0, 10) <= params.startTo) &&
+      (!params.registration || (item.registrationOpen &&
+        (!item.registrationStart || Date.parse(item.registrationStart) <= now) &&
+        (!item.registrationEnd || Date.parse(item.registrationEnd) >= now)) === (params.registration === 'open')),
     );
     return tournamentMockDelay({ items });
   }
@@ -113,6 +123,9 @@ export async function getTournaments(params: { status?: "public" | "completed" |
   if (params.sportTypeId !== undefined) query.set("sportTypeId", String(params.sportTypeId));
   if (params.facultyId !== undefined) query.set("facultyId", String(params.facultyId));
   if (params.q) query.set("q", params.q);
+  if (params.registration) query.set('registration', params.registration);
+  if (params.startFrom) query.set('startFrom', params.startFrom);
+  if (params.startTo) query.set('startTo', params.startTo);
   return apiFetch(`/tournaments${query.size ? `?${query}` : ""}`);
 }
 

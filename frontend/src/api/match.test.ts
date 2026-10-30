@@ -143,8 +143,8 @@ describe("match check-in contract", () => {
 
   it("presigns and uploads an online photo before submitting its object key", async () => {
     fetchMock
-      .mockResolvedValueOnce(json({ uploadUrl: "https://upload.test/checkin", objectKey: "checkins/12/id.jpg" }))
       .mockResolvedValueOnce(new Response(new Blob(["photo"], { type: "image/jpeg" })))
+      .mockResolvedValueOnce(json({ uploadUrl: "https://upload.test/checkin", objectKey: "checkins/12/id.jpg" }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(json({ id: 53, status: "pending", checkedInAt: "2026-09-21T11:01:00.000Z" }, 201));
 
@@ -153,12 +153,23 @@ describe("match check-in contract", () => {
       documentS3Key: "data:image/jpeg;base64,cGhvdG8=",
     })).resolves.toMatchObject({ id: 53, method: "photo_online", status: "exception" });
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/uploads/presign");
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("/uploads/presign");
     expect(fetchMock.mock.calls[2]?.[0]).toBe("https://upload.test/checkin");
     expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
       method: "photo_online", documentType: "student_id", documentS3Key: "checkins/12/id.jpg",
     });
   });
+
+  it('rejects an oversized online check-in photo before requesting an upload link', async () => {
+    const blob = new Blob([], { type: 'image/jpeg' })
+    Object.defineProperty(blob, 'size', { value: 5 * 1024 * 1024 + 1 })
+    const response = new Response()
+    vi.spyOn(response, 'blob').mockResolvedValue(blob)
+    fetchMock.mockResolvedValueOnce(response)
+    await expect(checkin(12, { method: 'photo_online', documentType: 'student_id', documentS3Key: 'data:image/jpeg;base64,large' })).rejects.toThrow('5 MB')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/^data:/)
+  })
 });
 
 describe("S12 standings contract", () => {

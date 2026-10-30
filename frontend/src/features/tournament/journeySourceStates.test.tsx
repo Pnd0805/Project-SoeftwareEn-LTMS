@@ -124,7 +124,7 @@ describe('Search applicable source states', () => {
   it('offers a cancelled filter backed by the cancelled list query', () => {
     search()
     fireEvent.change(screen.getByLabelText('Tournament status'), { target: { value: 'cancelled' } })
-    expect(hooks.tournaments).toHaveBeenLastCalledWith({ status: 'cancelled' })
+    expect(hooks.tournaments).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'cancelled', q: 'Campus' }), true)
   })
   it('shows genuine Guest public-empty results despite a disabled pending player read', () => {
     search()

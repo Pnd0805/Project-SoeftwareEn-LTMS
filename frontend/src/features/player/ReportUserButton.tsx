@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Banner, Field } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
 import { useReportUser } from '../../hooks/useQaFeatures'
-import { uploadImage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
+import { uploadImage, UPLOAD_IMAGE_ACCEPT, imageUploadErrorMessage } from '../../api/upload'
+import { assertUploadSize } from '../../shared/uploadLimits'
 export function ReportUserButton({ userId, name }: { userId: number; name: string }) {
   const report = useReportUser(userId)
   const [open, setOpen] = useState(false)
@@ -15,11 +16,12 @@ export function ReportUserButton({ userId, name }: { userId: number; name: strin
     if (!reason.trim() || busy || report.isPending || files.length > 5) return
     setBusy(true); setError('')
     try {
+      files.forEach(assertUploadSize)
       const evidence = []
       for (const f of files) evidence.push(await uploadImage(f, 'report_evidence'))
       await report.mutateAsync({ reason, evidence })
       setSent(true); setOpen(false); setReason(''); setFiles([])
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not submit report.') } finally { setBusy(false) }
+    } catch (e) { setError(imageUploadErrorMessage(e)) } finally { setBusy(false) }
   }
   return <>
     <button className="btn danger" onClick={() => { report.reset(); setError(''); setOpen(true) }}>Report user</button>

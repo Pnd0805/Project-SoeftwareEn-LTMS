@@ -15,6 +15,7 @@
  *   **ตัวเรียกไม่ต้องแก้เลย** เพราะ signature ตั้งตาม use case ไม่ได้ตั้งตาม URL
  */
 import { ApiError, hasAccessToken, apiFetch, mockDelay, mockReject, USE_MOCK } from "./client";
+import { assertUploadSize } from '../shared/uploadLimits';
 import type {
   MatchDto,
   MatchListItemDto,
@@ -490,6 +491,8 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
  */
 async function uploadCheckinPhoto(matchId: number, dataUrl: string): Promise<string> {
   const contentType = dataUrl.slice(5, dataUrl.indexOf(";")) || "image/jpeg";
+  const blob = await (await fetch(dataUrl)).blob();
+  assertUploadSize(blob);
   const presign = await apiFetch<{ uploadUrl: string; objectKey: string }>("/uploads/presign", {
     method: "POST",
     body: JSON.stringify({
@@ -498,7 +501,6 @@ async function uploadCheckinPhoto(matchId: number, dataUrl: string): Promise<str
       matchId,
     }),
   });
-  const blob = await (await fetch(dataUrl)).blob();
   const put = await fetch(presign.uploadUrl, { method: "PUT", body: blob, headers: { "Content-Type": contentType } });
   if (!put.ok) {
     throw new ApiError(put.status, { code: "UPLOAD_FAILED", message: "อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่" });

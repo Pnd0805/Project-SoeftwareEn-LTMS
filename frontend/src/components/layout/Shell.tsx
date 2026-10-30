@@ -211,7 +211,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {displayRole ? <p className="sub">Role: {displayRole}</p> : null}
           <button className="btn danger" type="button" style={{ width: '100%' }}
           onClick={() => { setMenuOpen(false); void logout.mutateAsync().finally(() => navigate('/login')) }}>
-          <Icon name="out" size={13} /> Log out
+          <Icon name="out" size={13} /> Log out of all devices
         </button>
       </div>
     </nav>

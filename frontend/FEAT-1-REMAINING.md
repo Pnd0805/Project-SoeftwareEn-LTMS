@@ -3,6 +3,16 @@
 Frontend branch: `ui-polish-s34`
 API base path: `/api/v1`
 
+## TASK-FE handoffs — 2026-10-30
+
+- [x] PF-04: active Bracket, schedule/matches, standings and Pick'em leaderboard refresh every 10 seconds; stop for hidden tabs, terminal tournaments and failed requests. Lifecycle status is refreshed alongside the visible workspace.
+- [x] FR-TR-01: debounced server-side tournament search, sport/faculty/registration/start-date filters, normalized cache keys and field-level 400 date validation. The current backend already supports the agreed query parameters.
+- [x] QA-D: all-device logout wording and session/cache invalidation after an authenticated 401 from any API; late responses from old tokens preserve a new login.
+- [x] QA-D: centralized image/PDF size limits (5/10 MiB), rejection before presign, batch preflight and specific upload 429 feedback. Existing upload protocol and QR behavior preserved.
+- [x] Frontend verification: **161 files / 1,251 tests passed**, TypeScript, lint, production build and whitespace checks passed. Changes are frontend-only; exclude `TODO/`, user will push.
+- [ ] Rendered/browser/device and live backend acceptance remain open. Computer Use stopped because it could not confidently determine Chrome's current URL; no subsequent browser actions or live API/DB operations were performed.
+- Evidence: [30 October task plan](docs/superpowers/plans/2026-10-30-task-fe.md).
+
 ## In-site match video — 2026-10-30
 
 - [x] Replace video UI wording with Match video / Watch the match and add an inline, responsive YouTube player to the Match page. Preserve the existing organizer permission gate and video API contracts.

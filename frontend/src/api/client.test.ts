@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch, hasAccessToken, setAccessToken } from "./client";
+import { apiFetch, hasAccessToken, setAccessToken, SESSION_EXPIRED_EVENT } from "./client";
 
 const response = (body: unknown, status = 200) => new Response(
   body === undefined ? null : JSON.stringify(body),
@@ -67,4 +67,23 @@ it('preserves the bestOf field error delivered by the backend error envelope', a
 it('retains token-version expiry as the existing 401 TOKEN_EXPIRED contract', async () => {
  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code: 'TOKEN_EXPIRED', message: 'Session expired' } }, 401)))
  await expect(apiFetch('/me')).rejects.toMatchObject({ status: 401, code: 'TOKEN_EXPIRED' })
+})
+
+it('expires the authenticated session on a 401 from any endpoint', async () => {
+  const expired = vi.fn(); window.addEventListener(SESSION_EXPIRED_EVENT, expired)
+  setAccessToken('revoked-token')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code: 'TOKEN_EXPIRED', message: 'Expired' } }, 401)))
+  await expect(apiFetch('/notifications')).rejects.toMatchObject({ status: 401 })
+  expect(hasAccessToken()).toBe(false); expect(expired).toHaveBeenCalledOnce()
+  window.removeEventListener(SESSION_EXPIRED_EVENT, expired)
+})
+
+it('does not expire a new login when a late 401 belongs to the previous token', async () => {
+  let finish!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(() => new Promise<Response>(resolve => { finish = resolve })))
+  setAccessToken('old-token'); const pending = apiFetch('/notifications')
+  setAccessToken('new-token'); finish(response({ error: { code: 'TOKEN_EXPIRED', message: 'Old session' } }, 401))
+  await expect(pending).rejects.toMatchObject({ status: 401 })
+  expect(hasAccessToken()).toBe(true)
+  expect(sessionStorage.getItem('ltms.access-token')).toBe('new-token')
 })

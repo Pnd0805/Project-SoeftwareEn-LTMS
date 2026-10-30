@@ -30,6 +30,7 @@ import type {
 } from "../types/match.dto";
 import type { MatchRef } from "../mocks/storeBridge";
 import { openCheckinKey } from "./matchKeys";
+import { useTournamentPolling } from './tournamentPolling';
 
 // ══════════════ query keys ══════════════
 
@@ -128,11 +129,13 @@ export function useCheckinQr(matchId: number) {
 }
 
 export function useTournamentMatches(tournamentId: MatchRef | undefined) {
+  const polling = useTournamentPolling();
   return useQuery({
+    ...polling,
     queryKey: matchKeys.byTournament(tournamentId as MatchRef),
     queryFn: () => matchApi.getTournamentMatches(tournamentId as MatchRef),
     enabled: tournamentId !== undefined,
-    retry: retryPolicy,
+    retry: polling.retry,
   });
 }
 
@@ -183,11 +186,13 @@ export function useTournamentWinner(tournamentId: MatchRef | undefined, enabled 
 }
 
 export function useStandings(tournamentId: MatchRef | undefined) {
+  const polling = useTournamentPolling();
   return useQuery({
+    ...polling,
     queryKey: matchKeys.standings(tournamentId as MatchRef),
     queryFn: () => matchApi.getStandings(tournamentId as MatchRef),
     enabled: tournamentId !== undefined,
-    retry: retryPolicy,
+    retry: polling.retry,
   });
 }
 

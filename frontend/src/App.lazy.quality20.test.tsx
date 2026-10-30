@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { Link, MemoryRouter } from 'react-router-dom'
 import { lazy, Suspense, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const state = vi.hoisted(() => ({
   signedIn: true, guest: false, authLoading: false, admin: true,
@@ -56,7 +57,7 @@ vi.mock('./features/search/SearchPage', () => ({ SearchPage: () => <h1>Search fi
 
 import App from './App'
 import { ErrorBoundary } from './components/layout/ErrorBoundary'
-function page(route: string) { return render(<MemoryRouter initialEntries={[route]}><App /></MemoryRouter>) }
+function page(route: string) { return render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={[route]}><App /></MemoryRouter></QueryClientProvider>) }
 async function loaded() { await act(async () => state.release()) }
 beforeEach(() => {
   state.signedIn = true; state.guest = false; state.authLoading = false; state.admin = true

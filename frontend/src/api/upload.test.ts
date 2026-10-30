@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./client', async original => ({ ...await original<typeof import('./client')>(), USE_MOCK: false }))
 import { ApiError, setAccessToken } from './client'
-import { imageUploadErrorMessage, uploadImage } from './upload'
+import { imageUploadErrorMessage, uploadImage, uploadTeamOfficialDocument } from './upload'
+import { IMAGE_UPLOAD_MAX_BYTES, PDF_UPLOAD_MAX_BYTES } from '../shared/uploadLimits'
 
 const fetchMock = vi.fn()
 const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status })
@@ -11,6 +12,29 @@ beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock); set
 afterEach(() => { setAccessToken(null); vi.unstubAllGlobals() })
 
 describe('real image uploads', () => {
+  it.each(['avatar', 'team_logo', 'dispute_evidence', 'referee_identity', 'report_evidence'] as const)('rejects oversized %s before presign', async purpose => {
+    const file = png(); Object.defineProperty(file, 'size', { value: IMAGE_UPLOAD_MAX_BYTES + 1 })
+    await expect(uploadImage(file, purpose, { teamId: 7, matchId: 13 })).rejects.toThrow('5 MB')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+  it.each([['image/png', IMAGE_UPLOAD_MAX_BYTES, '5 MB'], ['application/pdf', PDF_UPLOAD_MAX_BYTES, '10 MB']] as const)('rejects oversized official %s documents before presign', async (type, limit, message) => {
+    const file = new File(['x'], 'doc', { type }); Object.defineProperty(file, 'size', { value: limit + 1 })
+    await expect(uploadTeamOfficialDocument(file, 7)).rejects.toThrow(message)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+  it.each([['image/png', IMAGE_UPLOAD_MAX_BYTES], ['application/pdf', PDF_UPLOAD_MAX_BYTES]] as const)('accepts %s at exactly the size limit', async (type, limit) => {
+    const file = new File(['x'], 'doc', { type }); Object.defineProperty(file, 'size', { value: limit })
+    fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/doc', objectKey: 'doc/key' })).mockResolvedValueOnce(new Response(null, { status: 200 }))
+    await expect(uploadTeamOfficialDocument(file, 7)).resolves.toBe('doc/key')
+  })
+  it('explains upload throttling and never sends a PUT after 429', async () => {
+    fetchMock.mockResolvedValueOnce(json({ error: { code: 'RATE_LIMITED', message: 'Raw limit' } }, 429))
+    let error: unknown
+    try { await uploadImage(png(), 'avatar') } catch (failure) { error = failure }
+    expect(imageUploadErrorMessage(error)).toContain('ขออัปโหลดถี่เกินไป')
+    expect(error).toMatchObject({ status: 429, message: expect.stringContaining('รอสักครู่') })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
   it('uploads identity documents under the authenticated user without sending backend credentials to storage', async () => {
     const key = 'referee_identity/9/00000000-0000-4000-8000-000000000009.png'
     fetchMock.mockResolvedValueOnce(json({ uploadUrl: 'https://storage.test/private-identity', objectKey: key }))

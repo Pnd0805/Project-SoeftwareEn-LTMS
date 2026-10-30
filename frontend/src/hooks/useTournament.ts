@@ -12,28 +12,34 @@ import type {
   CreateTournamentAnnouncementRequest,
   SubmitTournamentFeedbackRequest,
 } from "../types/tournament.dto";
-import type { TournamentStatus } from "../types/enums";
+import { normalizeTournamentFilters, type TournamentFilters } from '../api/tournamentFilters';
+import { tournamentRefreshInterval } from './tournamentPolling';
 
 export const tournamentKeys = {
   all: ["tournaments"] as const,
-  list: (filters: { status?: string; sportTypeId?: number } = {}) => ["tournaments", "list", filters] as const,
+  list: (filters: TournamentFilters = {}) => ["tournaments", "list", normalizeTournamentFilters(filters)] as const,
   detail: (id: number) => ["tournament", id] as const,
   application: (id: number) => ["application", id] as const,
 };
 
-export function useTournaments(filters: { status?: Extract<TournamentStatus, "public" | "completed" | "cancelled">; sportTypeId?: number } = {}) {
+export function useTournaments(filters: TournamentFilters = {}, enabled = true) {
+  const normalized = normalizeTournamentFilters(filters);
   return useQuery({
-    queryKey: tournamentKeys.list(filters),
-    queryFn: () => tournamentApi.getTournaments(filters),
+    queryKey: tournamentKeys.list(normalized),
+    queryFn: () => tournamentApi.getTournaments(normalized),
+    enabled,
+    retry: false,
   });
 }
 
-export function useTournament(id: number | undefined) {
+export function useTournament(id: number | undefined, refresh = false) {
   return useQuery({
     queryKey: tournamentKeys.detail(id as number),
     queryFn: () => tournamentApi.getTournament(id as number),
     enabled: id !== undefined,
     retry: false,
+    refetchInterval: query => tournamentRefreshInterval(query.state.data?.status, refresh, query.state.error),
+    refetchIntervalInBackground: false,
   });
 }
 

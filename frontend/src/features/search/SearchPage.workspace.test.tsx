@@ -20,15 +20,68 @@ beforeEach(() => {
       : path === '/users/search' ? { items: empty ? [] : [{ id: 8, fullName: 'Campus Player', avatarUrl: null }] }
       : path === '/teams' ? { items: empty ? [] : [{ id: 9, name: 'Campus Team', sportTypeId: 1, readinessStatus: 'Ready', memberCount: 4, logoUrl: null }] }
       : path === '/tournaments' ? { items: empty ? [] : [{ id: 42, name: 'Campus Cup', sportTypeId: 999, bracketFormat: 'single_elimination', status: 'public', eventStartDate: '2099-10-01', maxTeams: 8 }] }
+      : path === '/sport-types' ? { items: [{ id: 3, name: 'Badminton' }] }
+      : path === '/faculties' ? { items: [{ id: 9, name: 'Engineering' }] }
       : { items: [] }
     return new Response(JSON.stringify(data))
   }))
 })
 afterEach(() => { client.clear(); vi.unstubAllGlobals() })
-const draw = () => render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/search/Campus']}><Routes>
+const draw = (initial = '/search/Campus') => render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[initial]}><Routes>
   <Route path="/search/:q" element={<SearchPage />} /><Route path="/team/9" element={<div>Team destination</div>} />
+  <Route path="/search" element={<SearchPage />} />
   <Route path="/player/8" element={<div>Player destination</div>} />
 </Routes></MemoryRouter></QueryClientProvider>)
+
+const tournamentRequests = () => vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url), 'http://localhost'))
+  .filter(url => url.pathname.endsWith('/tournaments'))
+
+it('searches tournaments using filters without requiring a keyword', async () => {
+  draw('/search?registration=open')
+  expect(await screen.findByText('Campus Cup')).toBeInTheDocument()
+  expect(tournamentRequests().at(-1)?.searchParams.get('registration')).toBe('open')
+  expect(tournamentRequests().at(-1)?.searchParams.has('q')).toBe(false)
+  expect(screen.queryByText('Campus Team')).not.toBeInTheDocument()
+})
+
+it('sends the search term to the server and renders its results without filtering the returned page again', async () => {
+  draw('/search/ServerQuery')
+  await screen.findByText('Campus Cup')
+  expect(tournamentRequests().at(-1)?.searchParams.get('q')).toBe('ServerQuery')
+})
+
+it('debounces typing and keeps the agreed filter names in server requests', async () => {
+  draw(); await screen.findByText('Campus Cup')
+  const input = screen.getByRole('searchbox', { name: 'Search terms' })
+  fireEvent.change(input, { target: { value: 'New' } })
+  fireEvent.change(input, { target: { value: 'New Cup' } })
+  expect(tournamentRequests().map(url => url.searchParams.get('q'))).toEqual(['Campus'])
+  await waitFor(() => expect(tournamentRequests().at(-1)?.searchParams.get('q')).toBe('New Cup'))
+  expect(tournamentRequests().some(url => url.searchParams.get('q') === 'New')).toBe(false)
+  fireEvent.change(screen.getByLabelText('Sport'), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText('Organizing faculty'), { target: { value: '9' } })
+  fireEvent.change(screen.getByLabelText('Registration'), { target: { value: 'open' } })
+  fireEvent.change(screen.getByLabelText('Starts on or after'), { target: { value: '2026-11-01' } })
+  fireEvent.change(screen.getByLabelText('Starts on or before'), { target: { value: '2026-11-30' } })
+  await waitFor(() => expect(Object.fromEntries(tournamentRequests().at(-1)!.searchParams)).toEqual({
+    q: 'New Cup', status: 'public', sportTypeId: '3', facultyId: '9', registration: 'open', startFrom: '2026-11-01', startTo: '2026-11-30',
+  }))
+})
+
+it('restores filters from the URL and shows date validation beside the invalid field', async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation((...args) => String(args[0]).includes('/tournaments?')
+    ? Promise.resolve(new Response(JSON.stringify({ error: { code: 'VALIDATION_FAILED', message: 'Invalid dates', fields: { startFrom: 'Must not be after end date' } } }), { status: 400 }))
+    : original(...args))
+  draw('/search/Campus?registration=closed&startFrom=2026-11-30&startTo=2026-11-01')
+  const message = await screen.findByRole('alert')
+  expect(message).toHaveTextContent('Must not be after end date')
+  expect(screen.getByLabelText('Starts on or after')).toHaveAttribute('aria-invalid', 'true')
+  expect(screen.getByLabelText('Starts on or after')).toHaveAccessibleDescription('Must not be after end date')
+  expect(screen.getByLabelText('Registration')).toHaveValue('closed')
+  expect(screen.queryByText('Unable to load tournaments. Try again.')).not.toBeInTheDocument()
+  expect(await screen.findByText('Campus Team')).toBeInTheDocument()
+})
 
 it('filters by counted categories and restores all results without changing the query', async () => {
   draw()

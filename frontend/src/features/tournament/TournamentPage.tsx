@@ -30,6 +30,7 @@ import { tournamentView } from './tournamentView'
 import { fmtDateTime } from '../../shared/dateFormat'
 import { TournamentRefereeWithdrawal } from '../match/RefereeWithdrawal'
 import { dateRange } from '../../shared/display'
+import { TournamentRefreshContext } from '../../hooks/tournamentPolling'
 
 const registrationDate = (value: string | null | undefined) =>
   (value ? fmtDateTime(value, 'Unavailable') : 'Not specified')
@@ -41,7 +42,8 @@ export function TournamentPage() {
   const navigate = useNavigate()
   const { id, tab: tabParam, sub } = useParams()
   const tournamentId = parseBackendId(id)
-  const tournamentQuery = useTournament(tournamentId)
+  const refresh = ['bracket', 'schedule', 'leaderboard', 'community'].includes(tabParam ?? 'bracket')
+  const tournamentQuery = useTournament(tournamentId, refresh)
   const { data: tournamentData, isPending } = tournamentQuery
   const approvedTeams = useTournamentTeams(tournamentId)
   const eligibility = useEligibilityRules(tournamentId)
@@ -330,6 +332,7 @@ export function TournamentPage() {
         </div>
         </details>
         <section className="tour-workspace" aria-label="Tournament workspace">
+          <TournamentRefreshContext.Provider value={{ enabled: refresh && !tournamentQuery.isError, status: tournamentData?.status }}>
           {tab === 'bracket' ? <BracketTab t={t} /> : null}
           {tab === 'dashboard' ? <DashboardTab tournamentId={t.id} /> : null}
           {tab === 'schedule' ? <ScheduleTab tournamentId={t.id} /> : null}
@@ -337,6 +340,7 @@ export function TournamentPage() {
           {tab === 'announcements' ? <AnnouncementsTab t={t} org={org} /> : null}
           {tab === 'community' ? USE_MOCK ? <CommunityTab t={t} org={org} /> : <LiveCommunityTab tournamentId={tournamentId!} organizer={org} /> : null}
           {tab === 'manage' ? <ManageTab t={t} sub={sub} /> : null}
+          </TournamentRefreshContext.Provider>
         </section>
       </div>
     </>
