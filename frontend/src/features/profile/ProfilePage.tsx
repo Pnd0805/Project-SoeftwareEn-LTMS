@@ -264,7 +264,6 @@ function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDt
         <div className="account-identity-copy">
           <div className="profile-name-row">
             <h1 className="disp">{user.fullName} {isExternalUser ? USE_MOCK ? <Badge kind="neutral">External</Badge> : <ExternalIdentityBadge /> : null}</h1>
-            <ProfileRewardBadges userId={user.id} />
           </div>
           <p className="sub">{label}</p>
           <p className="account-email">{user.email}</p>
@@ -291,6 +290,7 @@ function ProfileHeading({ label, user, isExternal }: { label: string; user: MeDt
           <p className="sub">{USE_MOCK ? 'Choose a photo from your device.' : 'PNG or JPEG. Upload a new photo to retry a failed save.'}</p>
         </div>
       </div>
+      <ProfileRewardBadges userId={user.id} own />
     </header>
   )
 }

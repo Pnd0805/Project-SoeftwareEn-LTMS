@@ -250,7 +250,7 @@ export function TournamentPage() {
       {winner.data?.runnerUpTeam ? <Panel quiet><span className="tag">Runner-up</span><TeamChipView team={winner.data.runnerUpTeam} /></Panel> : null}
 
       <div className="tour-page">
-        {!USE_MOCK && currentUser && !org && !closed && tournamentId ? <TournamentRefereeWithdrawal tournamentId={tournamentId} /> : null}
+        {!USE_MOCK && currentUser && !org && !closed && tournamentId ? <TournamentRefereeWithdrawal tournamentId={tournamentId} tournamentName={t.name} /> : null}
         <nav className="tabs" aria-label="Tournament sections">
           {tabs.map(k => <Link key={k} to={`/t/${t.id}/${k}`} className={`tab ${tab === k ? 'on' : ''}`}
             aria-current={tab === k ? 'page' : undefined}>{k[0].toUpperCase() + k.slice(1)}</Link>)}

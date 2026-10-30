@@ -25,6 +25,8 @@ import { ApiError } from '../../api/client'
 import { TeamChipView } from '../../components/kit/chips'
 import { RefereeConflictLink } from '../match/RefereeConflictLink'
 import { ContractErrorDetails } from '../../components/kit/ContractErrorDetails'
+import { ExternalDocsPrompt } from '../profile/ExternalDocsPrompt'
+import { needsIdentityDocs } from '../profile/identityDocs'
 
 import type { BackendRefereeRequestDto } from '../../types/admin.dto'
 import '../search/search-inbox-workspace.css'
@@ -33,6 +35,9 @@ const requestTarget = (request: BackendRefereeRequestDto) => request.matchA
   ? `match #${request.matchA.id}` : `tournament #${request.tournamentId}`
 const requestRoute = (request: BackendRefereeRequestDto) => request.matchA
   ? `/m/${request.matchA.id}` : `/t/${request.tournamentId}`
+/** คำขอถอนตัวที่ส่งถึงผู้จัด ตัดสินได้ที่แท็บกรรมการ ไม่ใช่หน้าแมตช์หรือหน้าทัวร์ */
+const incomingRoute = (request: BackendRefereeRequestDto) => request.type === 'ref_withdraw'
+  ? `/t/${request.tournamentId}/manage/referees` : requestRoute(request)
 const requestLabel = (request: BackendRefereeRequestDto) => {
   if (request.type === 'ref_withdraw') return request.withdrawScope === 'tournament' || !request.matchA ? 'Tournament withdrawal' : 'Match withdrawal'
   if (request.type === 'org_add_match') return 'Match assignment'
@@ -56,6 +61,7 @@ const answerError = (error: unknown) => {
 export function BackendInbox() {
   const navigate = useNavigate()
   const [notice, setNotice] = useState<Notice>(null)
+  const [docsFor, setDocsFor] = useState<string | null>(null)
 
   const teamInvites = useBackendMyInvitations()
   const answerInvite = useAnswerBackendInvitation()
@@ -92,6 +98,8 @@ export function BackendInbox() {
 
   return (
     <div className="inbox-requests">
+    {docsFor ? <ExternalDocsPrompt tournament={docsFor} onClose={() => setDocsFor(null)}
+      onSent={name => { setDocsFor(null); setNotice({ kind: 'ok', text: `Documents sent for ${name}. An admin will review them.` }) }} /> : null}
     <section className="inbox-needs-action" aria-label="Needs action">
       <div className="hstack inbox-heading">
         <h2 className="disp">Needs action</h2>
@@ -151,9 +159,12 @@ export function BackendInbox() {
                   })}>Decline</button>
                 <button className="btn primary" type="button" aria-label={`Accept referee invitation: ${invite.tournament.name}`} disabled={acceptReferee.isPending || declineReferee.isPending}
                   onClick={() => acceptReferee.mutate(invite.id, {
-                    onSuccess: answered => setNotice({ kind: answered.requiresAdminApproval ? 'warn' : 'ok', text: answered.requiresAdminApproval
-                      ? `Accepted ${invite.tournament.name}. Admin approval is still required.`
-                      : `You are now eligible to officiate ${invite.tournament.name}.` }),
+                    onSuccess: answered => {
+                      setNotice({ kind: answered.requiresAdminApproval ? 'warn' : 'ok', text: answered.requiresAdminApproval
+                        ? `Accepted ${invite.tournament.name}. Admin approval is still required.`
+                        : `You are now eligible to officiate ${invite.tournament.name}.` })
+                      if (needsIdentityDocs(answered)) setDocsFor(invite.tournament.name)
+                    },
                     onError: error => { setNotice({ kind: 'crit', text: answerError(error), error }); if (error instanceof ApiError && error.code === 'REFEREE_INVITATION_EXPIRED') void refereeInvites.refetch() },
                   })}>Accept</button>
               </div>
@@ -182,7 +193,7 @@ export function BackendInbox() {
               {request.reason ? <p>Withdrawal reason: {request.reason}</p> : null}
               <div className="hstack">
                 <button className="btn ghost" type="button"
-                  aria-label={`Open ${requestTarget(request)}`} onClick={() => navigate(requestRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
+                  aria-label={`Open ${requestTarget(request)}`} onClick={() => navigate(incomingRoute(request))}>{request.matchA ? 'Open match' : 'Open tournament'}</button>
                 {request.matchB ? <button className="btn ghost" type="button"
                   aria-label={`Open second match #${request.matchB.id}`} onClick={() => navigate(`/m/${request.matchB!.id}`)}>Open second match</button> : null}
                 <button className="btn danger" type="button" aria-label={`Decline request #${request.id} for ${requestTarget(request)}`} disabled={declineRequest.isPending || acceptRequest.isPending}

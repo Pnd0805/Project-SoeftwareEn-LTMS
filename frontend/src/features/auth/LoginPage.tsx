@@ -13,6 +13,7 @@ import { Icon } from '../../components/kit/Icon'
 import { useLogin } from '../../hooks/useAuth'
 import { loginSchema, type LoginInput } from '../../schemas/auth.schema'
 import { continueAsGuest, resetDemo } from '../../shared/store'
+import { suspensionNotice } from './suspensionNotice'
 import './account-workspace.css'
 
 const DEMO: Array<{ email: string; password: string; label: string; note: string }> = [
@@ -59,7 +60,8 @@ export function LoginPage() {
         const time = Date.now(); setNow(time); setBlockedUntil(time + Math.ceil(seconds) * 1000)
       }
     }
-    if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => form.setError(field as keyof LoginInput, { type: 'server', message }))
+    if (error instanceof ApiError && error.code === 'ACCOUNT_SUSPENDED') form.setError('root', { type: 'server', message: suspensionNotice(error) })
+    else if (error instanceof ApiError && error.fields) Object.entries(error.fields).forEach(([field, message]) => form.setError(field as keyof LoginInput, { type: 'server', message }))
     else form.setError('root', { type: 'server', message: error instanceof Error ? error.message : 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' })
   }, [form, navigate])
 

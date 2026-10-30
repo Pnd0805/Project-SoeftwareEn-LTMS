@@ -104,14 +104,24 @@ beforeEach(() => {
 })
 
 describe('rewards display and revocation', () => {
-  it('shows only displayed reward logos beside a profile name, without visible names or descriptions', async () => {
+  it('shows only displayed rewards in the profile showcase, grouped and named, without descriptions', async () => {
     api.public.mockResolvedValue({ items: [earnedBadge, { ...earnedBadge, id: 2, name: 'Hidden award', isDisplayed: false }] })
     page(true)
     const badges = await screen.findByRole('group', { name: 'Displayed rewards' })
     expect(within(badges).getAllByRole('img')).toHaveLength(1)
     expect(within(badges).getByRole('img', { name: 'First win' })).toHaveAttribute('title', 'First win')
     expect(within(badges).queryByRole('img', { name: 'Hidden award' })).not.toBeInTheDocument()
-    expect(badges.textContent).toBe('')
+    expect(within(badges).getByRole('region', { name: 'Achievements' })).toHaveTextContent('First win')
+    expect(within(badges).getByRole('region', { name: 'Badges' })).toHaveTextContent('None on show')
+    expect(badges).not.toHaveTextContent(earnedBadge.description ?? 'no description')
+  })
+
+  it('files a reward bought with points under Badges and one earned by play under Achievements', async () => {
+    api.public.mockResolvedValue({ items: [earnedBadge, { ...earnedBadge, id: 2, name: 'Bronze Supporter', pointsRequired: 30 }] })
+    page(true)
+    const shown = await screen.findByRole('group', { name: 'Displayed rewards' })
+    expect(within(shown).getByRole('region', { name: 'Badges' })).toHaveTextContent('Bronze Supporter')
+    expect(within(shown).getByRole('region', { name: 'Achievements' })).toHaveTextContent('First win')
   })
 
   it('refreshes profile logos after hiding and showing a reward', async () => {

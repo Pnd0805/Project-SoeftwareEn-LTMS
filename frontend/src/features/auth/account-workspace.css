@@ -214,8 +214,17 @@
 }
 
 .account-profile .account-profile-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px 32px;
   border: 2px solid var(--line-hot);
   background: var(--panel);
+}
+
+.account-profile .account-identity {
+  flex: 1 1 320px;
 }
 
 .account-profile .account-identity {

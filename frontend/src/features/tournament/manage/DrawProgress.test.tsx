@@ -27,6 +27,7 @@ vi.mock('../../../hooks/useTournament', () => ({
   useCompleteTournament: () => ({ mutate: complete, isPending: false, isError: false }),
   useDrawTournament: () => drawState.current,
   useOpenTournamentRegistration: () => ({ mutate: openRegistration, isPending: false, isError: false }),
+  useCloseTournamentRegistration: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   usePublishTournament: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useTournamentApplications: () => ({ data: { items: [] } }),
   useTournamentTeams: () => ({

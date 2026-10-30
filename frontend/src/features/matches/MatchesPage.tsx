@@ -21,6 +21,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { RefereeConflictLink } from '../match/RefereeConflictLink'
+import { ExternalDocsPrompt } from '../profile/ExternalDocsPrompt'
+import { needsIdentityDocs } from '../profile/identityDocs'
+import { USE_MOCK } from '../../api/client'
 import { Badge, Banner, Empty, Panel, MatchStateBadge, TableWrap } from '../../components/kit/primitives'
 import { matchTime } from '../match/matchTime'
 import { Icon } from '../../components/kit/Icon'
@@ -184,9 +187,10 @@ function RefQuickCard({ m, onClose, selectedBucket }: { m: MatchListItemDto; onC
  * (decline ตอบ 204 ไม่มี body) · ผลลัพธ์ส่งกลับให้ผู้เรียกแสดง เพราะพอตอบแล้วแถวนี้
  * หายจากรายการทันทีหลัง invalidate ข้อความสำเร็จจึงอยู่ในแถวไม่ได้
  */
-function AppointmentRow({ invite, onDone }: {
+function AppointmentRow({ invite, onDone, onDocsNeeded }: {
   invite: MyRefereeInvitationDto
   onDone: (notice: { kind: 'ok' | 'warn'; text: string }) => void
+  onDocsNeeded: (tournament: string) => void
 }) {
   const accept = useAcceptRefereeInvitation()
   const decline = useDeclineRefereeInvitation()
@@ -215,12 +219,15 @@ function AppointmentRow({ invite, onDone }: {
         </button>
         <button className="btn primary" type="button" disabled={pending}
           onClick={() => accept.mutate(invite.id, {
-            onSuccess: res => onDone({
-              kind: 'ok',
-              text: res?.requiresAdminApproval
-                ? `Accepted — an admin still has to approve you as an external referee for ${invite.tournament.name}.`
-                : `Accepted — you can now officiate ${invite.tournament.name}.`,
-            }),
+            onSuccess: res => {
+              onDone({
+                kind: 'ok',
+                text: res?.requiresAdminApproval
+                  ? `Accepted — an admin still has to approve you as an external referee for ${invite.tournament.name}.`
+                  : `Accepted — you can now officiate ${invite.tournament.name}.`,
+              })
+              if (!USE_MOCK && needsIdentityDocs(res)) onDocsNeeded(invite.tournament.name)
+            },
           })}>
           {accept.isPending ? 'Accepting…' : 'Accept appointment'}
         </button>
@@ -239,6 +246,7 @@ function AppointmentRow({ invite, onDone }: {
 function RefereeInvites() {
   const { data, isPending, isError, error, refetch } = useMyRefereeInvitations()
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
+  const [docsFor, setDocsFor] = useState<string | null>(null)
   const invites = data?.items ?? []
   const status = (error as { status?: number } | null)?.status
 
@@ -277,10 +285,12 @@ function RefereeInvites() {
             Officiating is not a role and not a permission — accepting makes you eligible for this
             tournament only, and the organizer still assigns you match by match.
           </div>
-          <AppointmentRow invite={inv} onDone={setNotice} />
+          <AppointmentRow invite={inv} onDone={setNotice} onDocsNeeded={setDocsFor} />
         </div>
       ))}
       {!invites.length ? <span className="sub">No appointments left to answer.</span> : null}
+      {docsFor ? <ExternalDocsPrompt tournament={docsFor} onClose={() => setDocsFor(null)}
+        onSent={name => { setDocsFor(null); setNotice({ kind: 'ok', text: `Documents sent for ${name}. An admin will review them.` }) }} /> : null}
     </Panel>
   )
 }

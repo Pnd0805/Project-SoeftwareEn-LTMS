@@ -27,6 +27,8 @@ function notificationHref(n: NotificationDto): string | null {
   // BE_KN Notice C: pending invitations grant private-tournament read access.
   // Open the tournament so referees can inspect eligibility before accepting.
   if (n.relatedEntityType === 'tournament') {
+    // ชนิด referee_change_request ใช้ร่วมกับผลที่ส่งกลับให้กรรมการซึ่งเข้าหน้าจัดการไม่ได้ · มีแค่หัวข้อที่แยกได้ว่าเป็นคำขอถึงผู้จัด
+    if (n.type === 'referee_change_request' && n.title === 'กรรมการขอถอนตัว') return `/t/${id}/manage/referees`
     return n.type === 'comment_reported'
       ? `/t/${id}/community?reported=true`
       : (n.type === 'comment_removed' || n.type === 'comment_rewritten_after_removal') ? `/t/${id}/community` : (n.type === 'tournament_announcement' || n.type === 'tournament_announcement_urgent') ? `/t/${id}/announcements` : `/t/${id}`

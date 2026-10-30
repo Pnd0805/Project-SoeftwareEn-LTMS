@@ -6,8 +6,9 @@
  * again from nothing. Locked the moment the first match starts — a check-in, a
  * recorded score or a kick-off that has come round all count as started.
  *
- * Positions are paired i / size-1-i, the same seeding buildSingle uses, so the
- * pairing shown here is exactly the pairing a submit produces.
+ * Live tournaments pair positions through drawPairs, the same order the backend
+ * builds. Mock tournaments stay on i / size-1-i, the seeding buildSingle uses, so
+ * the pairing shown here is exactly the pairing a submit produces.
  *
  * ── ทีมที่ลงแข่งมาจากไหน ──────────────────────────────────────────────────
  * เดิมรับ `approved: Registration[]` จาก ManageTab ซึ่งอ่านจาก store เสมอ แปลว่า
@@ -29,6 +30,7 @@ import { matchesOf, regsOf, team } from '../../../shared/selectors'
 import { drawStarted, formatOf } from '../../../shared/rules'
 import type { Tournament } from '../../../shared/types'
 import { checkDraw } from '../../match/resultRules'
+import { drawPairs, pairKey } from './drawPairs'
 import { randomizeDraw } from './drawRandom'
 import { useManageActive } from './ManageActivity'
 
@@ -66,13 +68,13 @@ export function DrawPanel({ t }: { t: Tournament }) {
 
   /* สายที่จับไว้แล้ว — รอบแรกเรียงตามช่อง เพื่อให้ค่าเริ่มต้นคือของเดิม ไม่ใช่ของใหม่ */
   const order: (string | null)[] = []
+  const drawnFirstRound = live ? (tournamentMatches.data?.items ?? [])
+    .filter(m => m.roundNumber === 1)
+    .sort((a, b) => a.id - b.id) : []
   if (live) {
-    const drawnFirstRound = (tournamentMatches.data?.items ?? [])
-      .filter(m => m.roundNumber === 1)
-      .sort((a, b) => a.id - b.id)
-    drawnFirstRound.forEach((m, i) => {
-      order[i * 2] = m.teamA ? String(m.teamA.id) : null
-      order[i * 2 + 1] = m.teamB ? String(m.teamB.id) : null
+    drawnFirstRound.forEach(m => {
+      if (m.teamA) order.push(String(m.teamA.id))
+      if (m.teamB) order.push(String(m.teamB.id))
     })
   } else {
     const first = t.drawn ? matchesOf(s, t.id).filter(m => m.round === 0).sort((a, b) => a.slot - b.slot) : []
@@ -131,7 +133,12 @@ export function DrawPanel({ t }: { t: Tournament }) {
   const size = 1 << Math.ceil(Math.log2(Math.max(2, positions.length)))
   const byId = new Map(entries.map(e => [e.id, e]))
 
-  const slot = (i: number) => positions[i] === undefined
+  const pairs = live ? drawPairs(positions.length, size)
+    : Array.from({ length: size >> 1 }, (_, i): [number, number | null] => [i, size - 1 - i])
+  /* เลขแมตช์เดียวกับหน้าอื่น — ใช้ id จริงเมื่อคู่นี้ถูกบันทึกแล้ว ถ้ายังไม่มีแมตช์ไม่มีเลขให้อ้าง */
+  const savedIds = new Map(drawnFirstRound.map(m => [pairKey(m.teamA && String(m.teamA.id), m.teamB && String(m.teamB.id)), m.id]))
+
+  const slot = (i: number | null) => i === null || positions[i] === undefined
     ? <span className="brow"><span className="nm sub">— bye —</span></span>
     : (
       <span className="brow">
@@ -268,13 +275,16 @@ export function DrawPanel({ t }: { t: Tournament }) {
         <>
           <div className="bracket" style={{ padding: '12px 0' }}>
             <div className="bcol">
-              {Array.from({ length: size >> 1 }, (_, i) => (
-                <div className="bnode" key={i}>
-                  <span className="bhead"><span className="tag"><em>//</em> Match {i + 1}</span></span>
-                  {slot(i)}
-                  {slot(size - 1 - i)}
-                </div>
-              ))}
+              {pairs.map(([a, b], i) => {
+                const savedId = b === null ? undefined : savedIds.get(pairKey(positions[a], positions[b]))
+                return (
+                  <div className="bnode" key={i}>
+                    <span className="bhead"><span className="tag"><em>//</em> {savedId ? `Match #${savedId}` : `Pairing ${i + 1}`}</span></span>
+                    {slot(a)}
+                    {slot(b)}
+                  </div>
+                )
+              })}
             </div>
           </div>
           {replacementUnavailable ? null : (

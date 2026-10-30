@@ -92,6 +92,11 @@ it.each(['Accept team invitation: Byte Force', 'Decline referee invitation: Autu
 it('does not claim an external referee is eligible before admin approval', async () => {
   draw(); await screen.findByText('Autumn Cup')
   fireEvent.click(screen.getByRole('button', { name: 'Accept referee invitation: Autumn Cup' }))
+  const docs = await screen.findByRole('dialog')
+  expect(within(docs).getByText(/This step is optional/)).toBeInTheDocument()
+  expect(within(docs).getByRole('link', { name: 'Profile page' })).toHaveAttribute('href', '/me')
+  fireEvent.click(within(docs).getByRole('button', { name: 'Skip for now' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(await screen.findByRole('status')).toHaveTextContent('Admin approval is still required')
   expect(screen.queryByText(/now eligible to officiate/)).not.toBeInTheDocument()
   expect(writes).toEqual([{ path: '/referee-invitations/17/accept', method: 'POST', body: null }])

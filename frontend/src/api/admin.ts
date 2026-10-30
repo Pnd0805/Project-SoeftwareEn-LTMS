@@ -371,7 +371,7 @@ export async function getMyRefereeInvitations(): Promise<{ items: MyRefereeInvit
 /** F05: POST /referee-invitations/:id/accept — ตอบรับคำเชิญเป็นกรรมการ */
 export async function acceptRefereeInvitation(
   invitationId: TeamRef,
-): Promise<{ id: number | string; invitationStatus: string; requiresAdminApproval?: boolean }> {
+): Promise<{ id: number | string; invitationStatus: string; requiresAdminApproval?: boolean; docsRequired?: boolean }> {
   if (USE_MOCK) {
     const inviteId = storeRefInviteIdOf(invitationId);
     /* backend คืน requiresAdminApproval เมื่อคำเชิญเป็นบุคคลภายนอก — ตอบเหมือนกัน */

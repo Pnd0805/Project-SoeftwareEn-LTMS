@@ -17,6 +17,14 @@ it('routes an unverified login to OTP using the email returned by the server', a
   await act(async () => { fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!) })
   expect(screen.getByLabelText('Destination')).toHaveTextContent('/register?step=otp&email=canonical%40example.test')
 })
+it('tells a suspended user how long the suspension lasts', async () => {
+  state.login.mockRejectedValue(new ApiError(403, { code: 'ACCOUNT_SUSPENDED', message: 'Suspended', suspendedUntil: new Date(Date.now() + 3 * 86_400_000).toISOString() }))
+  render(<MemoryRouter><LoginPage /></MemoryRouter>)
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'qa@ku.th' } })
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+  await act(async () => { fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!) })
+  expect(screen.getByRole('alert')).toHaveTextContent('เหลืออีก 3 วัน')
+})
 it('keeps an invalid password on the login form', async () => {
   state.login.mockRejectedValue(new ApiError(401, { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' }))
   render(<MemoryRouter initialEntries={['/login']}><LoginPage /><Location /></MemoryRouter>)

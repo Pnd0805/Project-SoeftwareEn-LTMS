@@ -4,6 +4,12 @@ import type { IScannerControls } from '@zxing/browser'
 import { USE_MOCK } from '../../api/client'
 import { Badge, Banner, Field } from '../../components/kit/primitives'
 import { Modal } from '../../components/kit/Modal'
+import { CameraBlocked } from './CameraBlocked'
+import { watchCameraPermission } from './cameraPermission'
+import { scanQrPhoto } from './scanQrPhoto'
+
+const QR_VIDEO: MediaTrackConstraints = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+const isDenied = (e: unknown) => ['NotAllowedError', 'PermissionDeniedError'].includes((e as { name?: string } | null)?.name ?? '')
 
 /**
  * Open the camera; QR capture requests enough detail for signed payloads.
@@ -14,7 +20,8 @@ import { Modal } from '../../components/kit/Modal'
  */
 function useCamera(facing: 'user' | 'environment', attempt = 0) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const [camera, setCamera] = useState({ attempt, error: null as string | null, ready: false })
+  const [camera, setCamera] = useState({ attempt, error: null as string | null, denied: false, ready: false })
+  const recovered = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -23,29 +30,40 @@ function useCamera(facing: 'user' | 'environment', attempt = 0) {
     const start = async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support camera access.')
-        stream = await navigator.mediaDevices.getUserMedia({ video: facing === 'environment'
-          ? { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-          : { facingMode: facing } })
+        stream = await navigator.mediaDevices.getUserMedia({ video: facing === 'environment' ? QR_VIDEO : { facingMode: facing } })
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
-          if (!cancelled) setCamera({ attempt, error: null, ready: true })
+          if (!cancelled) setCamera({ attempt, error: null, denied: false, ready: true })
         }
       } catch (e) {
         stream?.getTracks().forEach(t => t.stop())
         stream = null
-        if (!cancelled) setCamera({ attempt, error: e instanceof Error ? e.message : 'Camera unavailable', ready: false })
+        if (!cancelled) setCamera({ attempt, error: e instanceof Error ? e.message : 'Camera unavailable', denied: isDenied(e), ready: false })
       }
     }
     void start()
+    const held = recovered
     return () => {
       cancelled = true
       stream?.getTracks().forEach(t => t.stop())
+      held.current?.getTracks().forEach(t => t.stop())
+      held.current = null
     }
   }, [facing, attempt])
 
-  return { videoRef, error: camera.attempt === attempt ? camera.error : null, ready: camera.attempt === attempt && camera.ready }
+  /** สตรีมจาก `<usermedia>` — browser เป็นคนเปิดกล้องให้ เราแค่รับมาแสดงและปิดตอนจบ */
+  const adopt = useCallback(async (stream: MediaStream) => {
+    if (!videoRef.current) { stream.getTracks().forEach(t => t.stop()); return }
+    recovered.current = stream
+    videoRef.current.srcObject = stream
+    await videoRef.current.play()
+    setCamera({ attempt, error: null, denied: false, ready: true })
+  }, [attempt])
+
+  const current = camera.attempt === attempt
+  return { videoRef, adopt, error: current ? camera.error : null, denied: current && camera.denied, ready: current && camera.ready }
 }
 
 const frameStyle: React.CSSProperties = {
@@ -83,10 +101,14 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
   const [bad, setBad] = useState<string | null>(null)
   const [scanAttempt, setScanAttempt] = useState(0)
   const [cameraAttempt, setCameraAttempt] = useState(0)
-  const { videoRef, error, ready } = useCamera('environment', cameraAttempt)
+  const { videoRef, adopt, error, denied, ready } = useCamera('environment', cameraAttempt)
   const [scanState, setScanState] = useState<'starting' | 'scanning' | 'detected' | 'error'>('starting')
+  const [reading, setReading] = useState(false)
   const delivered = useRef(false)
-  const failure = pending ? null : submissionError ?? bad ?? (error ? `Camera unavailable — ${error} Enter the referee’s code or retry camera access.` : null)
+  const photoInput = useRef<HTMLInputElement | null>(null)
+  const failure = pending ? null : submissionError ?? bad ?? (error && !denied ? `Camera unavailable — ${error} Enter the referee’s code or retry camera access.` : null)
+
+  useEffect(() => { if (denied) return watchCameraPermission(() => setCameraAttempt(n => n + 1)) }, [denied])
 
   const submit = useCallback((token: string) => {
     // Preserve the case of signed payloads.
@@ -139,9 +161,17 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
     return () => { cancelled = true; controls?.stop() }
   }, [ready, pending, scanAttempt, videoRef])
 
+  /* กล้องของเครื่องผ่าน file input ไม่ต้องใช้สิทธิ์กล้องของเว็บ จึงยังสแกนได้แม้ถูกบล็อก */
+  const readPhoto = async (file: File) => {
+    setBad(null); setReading(true)
+    try { submit(await scanQrPhoto(file)) }
+    catch { setBad('No QR found in the photo. Take another photo.') }
+    finally { setReading(false) }
+  }
+
   return (
     <>
-      <div style={{ ...frameStyle, ...(failure ? { aspectRatio: 'auto', height: 96 } : {}) }}>
+      <div style={{ ...frameStyle, ...(failure || denied ? { aspectRatio: 'auto', height: 96 } : {}) }}>
         <video ref={videoRef} style={videoStyle} muted playsInline />
         {/* กรอบเล็ง — บอกว่าต้องเอา QR มาไว้ตรงไหน */}
         <span aria-hidden style={{
@@ -150,12 +180,13 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
         }} />
         {!ready && !failure ? (
           <span className="tag" style={{ position: 'absolute', bottom: 10 }}>
-            {error ? 'Camera unavailable' : 'Starting camera…'}
+            {error ? 'Camera blocked' : 'Starting camera…'}
           </span>
         ) : null}
       </div>
 
-      {failure ? <div role="alert"><Banner kind="crit">{failure}</Banner></div> : <span role="status" className="sub">
+      {denied ? <CameraBlocked video={QR_VIDEO} onStream={stream => void adopt(stream)} /> : null}
+      {failure ? <div role="alert"><Banner kind="crit">{failure}</Banner></div> : denied ? null : <span role="status" className="sub">
         {pending ? 'QR detected. Checking in…'
           : scanState === 'detected' ? 'QR detected. Scan again if check-in fails.'
             : scanState === 'error' ? 'Scanner unavailable'
@@ -167,10 +198,19 @@ function QrScanBody({ onClose, expectedToken, onScanned, pending, submissionErro
           value={typed} onChange={e => setTyped(e.target.value)} />
       </Field>
 
+      <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden aria-label="QR photo"
+        onChange={event => {
+          const file = event.currentTarget.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void readPhoto(file)
+        }} />
+
       <div className="hstack">
         <button className="btn" type="button" onClick={onClose}>Cancel</button>
         {USE_MOCK ? <button className="btn" type="button" disabled={pending || !expectedToken}
           onClick={() => submit(expectedToken ?? '')}>Demo scan</button> : null}
+        {error ? <button className="btn" type="button" disabled={pending || reading}
+          onClick={() => photoInput.current?.click()}>{reading ? 'Reading photo…' : 'Use a photo of the QR'}</button> : null}
         <button className="btn" type="button" disabled={pending || (!ready && !error)}
           onClick={() => { delivered.current = false; setBad(null); setScanState('starting'); if (error) setCameraAttempt(n => n + 1); else setScanAttempt(n => n + 1) }}>{error ? 'Retry camera' : 'Scan again'}</button>
         <button className="btn primary" type="button" disabled={pending}

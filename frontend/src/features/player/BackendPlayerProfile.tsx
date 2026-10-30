@@ -76,7 +76,6 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
           <div className="vstack player-identity-copy">
             <div className="profile-name-row">
               <h1 className="disp">{p.fullName}</h1>
-              <ProfileRewardBadges userId={p.id} />
             </div>
             <span className="hstack">
               {facultyName ? <span className="tag">{facultyName}</span> : null}
@@ -85,6 +84,7 @@ export function BackendPlayerProfile({ userId }: { userId: number | undefined })
             </span>
           </div>
         </div>
+        <ProfileRewardBadges userId={p.id} />
         {currentUser && currentUser.id !== p.id ? (
           <PlayerFollowControls key={`${currentUser.id}:${p.id}`} viewerId={currentUser.id} playerId={String(p.id)} />
         ) : null}

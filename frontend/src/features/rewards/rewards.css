@@ -50,34 +50,120 @@
   align-items: flex-start;
 }
 
-.badge-card-emblem {
-  width: 44px;
-  height: 44px;
+/* ตราเหรียญ: รูปกรอบบอกตระกูล · สีกับน้ำหนักกรอบบอกระดับ */
+.reward-emblem {
+  --tier: var(--tier-bronze);
+  position: relative;
   flex-shrink: 0;
-  border-radius: var(--r);
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
-  background: var(--panel-3);
-  border: 1px solid var(--line-hot);
-  color: var(--bone);
+  color: var(--tier);
 }
 
-.badge-card.is-owned .badge-card-emblem {
-  background: var(--teal-ghost);
-  border-color: var(--teal);
-  color: var(--teal);
+.reward-emblem.silver { --tier: var(--tier-silver); }
+.reward-emblem.gold { --tier: var(--tier-gold); }
+.reward-emblem.legend { --tier: var(--tier-legend); }
+
+.reward-emblem-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.badge-card-emblem.gold {
-  background: var(--amber-ghost);
-  border-color: var(--amber);
-  color: var(--amber);
+.reward-emblem-frame .outer {
+  fill: color-mix(in srgb, var(--tier) 14%, var(--panel));
+  stroke: var(--tier);
+  stroke-width: 2;
 }
 
-.badge-card-emblem.achievement {
-  background: var(--panel-3);
-  border-color: var(--line-hot);
-  color: var(--bone);
+.reward-emblem-frame .inner {
+  fill: none;
+  stroke: var(--tier);
+  stroke-width: 1;
+}
+
+/* ระดับสูงสุดเป็นตราทึบ เห็นต่างแม้ไม่ดูสี */
+.reward-emblem.legend { color: var(--accent-ink); }
+.reward-emblem.legend .reward-emblem-frame .outer { fill: var(--tier); }
+
+.reward-emblem-glyph {
+  position: relative;
+  width: 46%;
+  height: 46%;
+}
+
+/* ยังไม่ได้รับ — เห็นว่าเป็นรางวัลอะไรแต่ไม่แย่งสายตาจากของที่มีแล้ว */
+.badge-card:not(.is-owned) .reward-emblem {
+  filter: grayscale(1);
+  opacity: .55;
+}
+
+/* สองการ์ดแยกหมวด · ที่แคบกว่าสองการ์ดจะซ้อนกันเองโดยไม่ต้องมี media query */
+.reward-showcase {
+  flex: 1 1 360px;
+  max-width: 600px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 12px;
+}
+
+.reward-showcase-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.reward-showcase-group h2 {
+  margin: 0;
+}
+
+.reward-showcase-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 12px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reward-showcase-list li {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.reward-showcase-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--bone-dim);
+  overflow-wrap: anywhere;
+}
+
+.reward-showcase-more {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+
+.reward-showcase-empty {
+  margin: 0;
+  font-size: 13px;
 }
 
 .profile-name-row {
@@ -92,31 +178,6 @@
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.profile-reward-badges {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-.badge-card-emblem.compact {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  background: transparent;
-  color: var(--teal);
-}
-
-.badge-card-emblem.compact.gold {
-  color: var(--amber);
-}
-
-.badge-card.is-owned .badge-card-emblem.achievement {
-  background: var(--teal-ghost);
-  border-color: var(--teal);
-  color: var(--teal);
 }
 
 .badge-card-content {

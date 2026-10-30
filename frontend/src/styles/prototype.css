@@ -33,6 +33,7 @@
   --red-press:#C22E42; --red-ghost-2:#3A1620;
   --teal:#3AAE7C; --teal-ghost:#0F2A1E;                /* Silver Tree, deepened to jewel emerald */
   --amber:#D9A430; --amber-ghost:#2E2410;
+  --tier-bronze:#D08F5E; --tier-silver:#C3CBD8; --tier-gold:#E9BC45; --tier-legend:#3DCB9B;
   /* graphics only — neither clears 4.5:1 on the raised surfaces, so neither may
      carry text. They fill bands, flags and stripes. */
   --azurite:#3D6B54; --crystal:#2C4A3D;
@@ -70,6 +71,7 @@
   --red-press:#A32E47; --red-ghost-2:#F2D2DA;
   --teal:#12764E; --teal-ghost:#E1EFE6;
   --amber:#806124; --amber-ghost:#FAF1DC;
+  --tier-bronze:#8C5426; --tier-silver:#5C6877; --tier-gold:#8A6A0E; --tier-legend:#0B6B4F;
   --azurite:#6B8F73; --crystal:#C7B78D;
   --ink:#1E170F;
 
@@ -96,6 +98,7 @@
     --red-press:#A32E47; --red-ghost-2:#F2D2DA;
     --teal:#12764E; --teal-ghost:#E1EFE6;
     --amber:#806124; --amber-ghost:#FAF1DC;
+  --tier-bronze:#8C5426; --tier-silver:#5C6877; --tier-gold:#8A6A0E; --tier-legend:#0B6B4F;
     --azurite:#6B8F73; --crystal:#C7B78D;
     --ink:#1E170F;
     --lift:0 14px 30px -16px rgba(42,33,23,.34);
@@ -1547,3 +1550,20 @@ tbody tr:not(.tour-round-row):nth-child(even)>td{background:color-mix(in srgb,va
 .sb>*{flex-shrink:0;}
 .sb{overscroll-behavior:contain;scrollbar-width:none;}
 .sb::-webkit-scrollbar{display:none;}
+
+/* input{width:100%} โดน checkbox ด้วย เลยกลายเป็นกรอบยาวเต็มแถว · แก้ที่ตัว input ให้ครบทุกจุด
+   label ที่ห่อ checkbox กว้างเท่าข้อความ ไม่งั้นกดพื้นที่ว่างท้ายแถวแล้วติ๊กโดยไม่ตั้งใจ */
+input[type=checkbox],input[type=radio]{flex:none;width:18px;height:18px;margin:0;padding:0;accent-color:var(--teal);cursor:pointer;}
+label:has(>input[type=checkbox]):not(.check-option,.profile-checkbox,.profile-preference,.reward-display-toggle){
+  display:inline-flex;flex-direction:row;align-items:center;gap:8px;width:fit-content;max-width:100%;cursor:pointer;}
+label:has(>input[type=checkbox]:disabled){cursor:default;}
+
+/* Panel เป็น flex แนวตั้ง ลูกจึงยืดเต็มกว้าง · ปุ่มควรกว้างเท่าข้อความ */
+.vstack>.btn,.main>.btn{align-self:flex-start;}
+/* ปุ่มที่วางติดกันในหน้าต่างยืนยันอยู่แถวเดียวกัน ส่วนเนื้อหาอื่นคงเต็มแถว */
+.modal>.vstack:has(>.btn){flex-direction:row;flex-wrap:wrap;align-items:flex-start;}
+.modal>.vstack:has(>.btn)>:not(.btn){flex:0 0 100%;min-width:0;}
+
+/* ปุ่มนี้ browser เป็นคนวาด · กฎของ <usermedia> ห้าม opacity ต่ำกว่า 1 และสีตัดกันต้องถึง 3:1 ไม่งั้นกดไม่ติด */
+usermedia.camera-permission-control{align-self:flex-start;padding:8px 16px;font-size:14px;background:var(--teal);color:var(--accent-ink);
+  border:1px solid var(--teal);border-radius:var(--r);cursor:pointer;}

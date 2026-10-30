@@ -115,17 +115,18 @@ describe('Profile mock career facts', () => {
 })
 
 describe('ProfilePage real-mode boundary', () => {
-  it('places displayed badge logos beside the profile name', () => {
+  it('shows displayed rewards in the top profile frame, apart from the name row', () => {
     profileState.rewards = [{
       id: 1, type: 'badge', name: 'First win', description: 'Win a match', pointsRequired: null,
       criteria: null, iconKey: 'trophy', earnedAt: '2026-10-01T00:00:00Z', isDisplayed: true,
     }]
     render(<MemoryRouter><ProfilePage /></MemoryRouter>)
     const name = screen.getByRole('heading', { level: 1, name: 'Backend Profile' })
-    const nameRow = name.parentElement!
-    expect(within(nameRow).getByRole('img', { name: 'First win' })).toBeInTheDocument()
-    expect(within(nameRow).queryByText('First win')).not.toBeInTheDocument()
-    expect(within(nameRow).queryByText('Win a match')).not.toBeInTheDocument()
+    const showcase = screen.getByRole('group', { name: 'Displayed rewards' })
+    expect(name.closest('.account-profile-heading')).toContainElement(showcase)
+    expect(name.parentElement).not.toContainElement(showcase)
+    expect(within(showcase).getByRole('img', { name: 'First win' })).toBeInTheDocument()
+    expect(within(showcase).queryByText('Win a match')).not.toBeInTheDocument()
   })
 
   it('retries failed stats without replacing loaded account details', () => {

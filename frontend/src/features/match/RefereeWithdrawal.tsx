@@ -7,7 +7,7 @@ import { fmtDateTime } from '../../shared/dateFormat'
 
 const message = (e: unknown) => e instanceof Error ? e.message : 'ส่งคำขอไม่สำเร็จ กรุณาลองใหม่'
 
-export function RefereeWithdrawal({ tournamentId, matchId }: { tournamentId: number; matchId?: number }) {
+export function RefereeWithdrawal({ tournamentId, tournamentName, matchId }: { tournamentId: number; tournamentName?: string; matchId?: number }) {
   const mutation = useRequestRefereeWithdrawal()
   const [open, setOpen] = useState(false)
   const [scope, setScope] = useState<'match' | 'tournament'>(matchId ? 'match' : 'tournament')
@@ -15,15 +15,15 @@ export function RefereeWithdrawal({ tournamentId, matchId }: { tournamentId: num
   const [notice, setNotice] = useState('')
   const valid = reason.trim().length >= 5 && reason.trim().length <= 500
   return <Panel quiet>
-    <h3>ขอถอนตัวจากหน้าที่กรรมการ</h3>
+    <h3>ขอถอนตัวจากหน้าที่กรรมการ{tournamentName ? ` · ${tournamentName}` : ''}</h3>
     <div className="sub">ยังรับผิดชอบงานเดิมจนกว่าผู้จัดจะอนุมัติคำขอ</div>
     {notice ? <Banner kind="ok">{notice}</Banner> : null}
-    <button className="btn danger" onClick={() => { mutation.reset(); setReason(''); setOpen(true) }}>Request withdrawal</button>
+    <button className="btn danger" aria-label={tournamentName ? `Request withdrawal from ${tournamentName}` : undefined} onClick={() => { mutation.reset(); setReason(''); setOpen(true) }}>Request withdrawal</button>
     <Modal open={open} onClose={() => { if (!mutation.isPending) setOpen(false) }} label="Request referee withdrawal" title="ยืนยันคำขอถอนตัว">
       <Field label="ขอบเขตการถอนตัว" htmlFor={`withdraw-scope-${tournamentId}-${matchId ?? 'all'}`}>
         <select id={`withdraw-scope-${tournamentId}-${matchId ?? 'all'}`} value={scope} disabled={mutation.isPending} onChange={e => setScope(e.target.value as 'match' | 'tournament')}>
           {matchId ? <option value="match">เฉพาะแมตช์ #{matchId}</option> : null}
-          <option value="tournament">ทั้งทัวร์นาเมนต์ #{tournamentId}</option>
+          <option value="tournament">ทั้งทัวร์นาเมนต์ {tournamentName ?? `#${tournamentId}`}</option>
         </select>
       </Field>
       <Banner kind="warn">{scope === 'match' ? `ขอออกจากแมตช์ #${matchId} โดยยังเป็นกรรมการของทัวร์` : 'ขอออกจากทัวร์นี้และงานกรรมการที่เกี่ยวข้องทั้งหมด'} · การส่งคำขอยังไม่ถอนคุณออกทันที</Banner>
@@ -44,7 +44,7 @@ export function RefereeWithdrawal({ tournamentId, matchId }: { tournamentId: num
 }
 
 /** This referee-readable endpoint also verifies active tournament membership, including an unassigned pool referee. */
-export function TournamentRefereeWithdrawal({ tournamentId }: { tournamentId: number }) {
+export function TournamentRefereeWithdrawal({ tournamentId, tournamentName }: { tournamentId: number; tournamentName?: string }) {
   const membership = useAssignableReferees(tournamentId)
   if (membership.isPending) return <span className="sub">Checking referee access…</span>
   if (membership.isError) {
@@ -52,7 +52,7 @@ export function TournamentRefereeWithdrawal({ tournamentId }: { tournamentId: nu
     if (status === 401 || status === 403) return null
     return <Banner kind="crit">ตรวจสิทธิ์กรรมการไม่สำเร็จ <button className="btn" onClick={() => void membership.refetch()}>Retry</button></Banner>
   }
-  return <RefereeWithdrawal tournamentId={tournamentId} />
+  return <RefereeWithdrawal tournamentId={tournamentId} tournamentName={tournamentName} />
 }
 
 export function OrganizerWithdrawals({ tournamentId }: { tournamentId: number }) {

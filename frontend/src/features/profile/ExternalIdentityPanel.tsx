@@ -3,9 +3,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Banner, Field, Panel } from '../../components/kit/primitives'
 import { useRefereeIdentity, useSubmitRefereeIdentityDocs } from '../../hooks/useAdmin'
-import { imageUploadErrorMessage, uploadImage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
+import { imageUploadErrorMessage, UPLOAD_IMAGE_ACCEPT } from '../../api/upload'
 import { RefereeWithdrawal } from '../match/RefereeWithdrawal'
-import { assertUploadSize } from '../../shared/uploadLimits'
+import { uploadIdentityDocs } from './identityDocs'
 
 const statusLabel = { none: 'External', pending: 'External — Pending', needs_docs: 'External — Needs documents', approved: 'External (Approve)', expired: 'External — Approval expired', rejected: 'External — Rejected' }
 export function ExternalIdentityBadge() {
@@ -29,11 +29,7 @@ export function ExternalIdentityPanel() {
     if (busy || submit.isPending || !files.length || files.length > 5 || !identity?.docsRequired) return
     setBusy(true); setError(''); setNotice('')
     try {
-      files.forEach(assertUploadSize)
-      if (files.some(f => !['image/png', 'image/jpeg'].includes(f.type))) throw new Error('เลือกไฟล์ JPEG หรือ PNG เท่านั้น')
-      const keys: string[] = []
-      for (const file of files) keys.push(await uploadImage(file, 'referee_identity'))
-      await submit.mutateAsync(keys)
+      await submit.mutateAsync(await uploadIdentityDocs(files))
       setNotice('ส่งเอกสารแล้ว รอผู้ดูแลระบบตรวจสอบ'); setFiles([]); setSelection(n => n + 1)
     } catch (e) { setError(imageUploadErrorMessage(e)) } finally { setBusy(false) }
   }
@@ -49,7 +45,7 @@ export function ExternalIdentityPanel() {
       {identity.adminMessage ? <Banner kind="warn">ข้อความจากผู้ดูแล: {identity.adminMessage}</Banner> : null}
       {identity.status === 'rejected' ? <div className="sub">ติดต่อผู้จัดให้เชิญใหม่ก่อนส่งเอกสารอีกครั้ง</div> : null}
       {identity.tournaments.map(t => <div key={t.tournamentRefereeId}><Link to={`/t/${t.id}`}>{t.name}</Link> · {t.externalApprovalStatus}</div>)}
-      {identity.status === 'approved' || identity.status === 'expired' ? identity.tournaments.filter(t => t.externalApprovalStatus === 'approved').map(t => <RefereeWithdrawal key={t.tournamentRefereeId} tournamentId={t.id} />) : null}
+      {identity.status === 'approved' || identity.status === 'expired' ? identity.tournaments.filter(t => t.externalApprovalStatus === 'approved').map(t => <RefereeWithdrawal key={t.tournamentRefereeId} tournamentId={t.id} tournamentName={t.name} />) : null}
       {identity.docsSubmitted && !identity.docsRequired ? <div className="sub">ได้รับเอกสารแล้ว ไม่ต้องส่งซ้ำระหว่างรอตรวจ</div> : null}
       {identity.docsRequired && identity.tournaments.length > 0 ? <>
         <Field label="เอกสารยืนยันตัวตน (JPEG/PNG 1–5 ไฟล์)" htmlFor="ref-identity-files">
