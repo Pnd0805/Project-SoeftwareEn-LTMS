@@ -138,3 +138,9 @@ it('offers students male and female only, and clears Other when the email turns 
   expect(screen.queryByRole('option', { name: 'Other' })).not.toBeInTheDocument()
   expect(screen.getByLabelText('Gender')).toHaveValue('')
 })
+
+it('offers a way back to sign in from step 1', () => {
+  show()
+  fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }))
+  expect(screen.getByText('Sign in destination')).toBeInTheDocument()
+})

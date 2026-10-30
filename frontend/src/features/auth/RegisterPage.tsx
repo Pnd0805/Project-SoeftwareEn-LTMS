@@ -211,13 +211,18 @@ function RegistrationForm() {
               {form.formState.errors.year && <span className="error" id="register-year-error" role="alert">{form.formState.errors.year.message}</span>}
             </div>
           </div>
-          <button className="btn ghost" type="button" disabled={register.isPending} onClick={() => { setAccountStep('personal'); form.clearErrors('root') }}>Back to personal details</button>
         </fieldset>}
         {form.formState.errors.root && <span className="error" role="alert">{form.formState.errors.root.message}</span>}
 
-        <button className="btn primary" type="submit" disabled={register.isPending || form.formState.isSubmitting || (studentStep && !referenceReady)}>
-          {register.isPending ? 'Creating account…' : studentStep || !isKuEmail(email) ? 'Create account' : 'Next: Student details'}
-        </button>
+        {/* ปุ่มย้อนกลับกับปุ่มหลักอยู่แถวเดียวกัน แบ่งครึ่งกันทั้งสองขั้น */}
+        <div className="account-step-actions">
+          {studentStep
+            ? <button className="btn" type="button" disabled={register.isPending} onClick={() => { setAccountStep('personal'); form.clearErrors('root') }}>Back to personal details</button>
+            : <button className="btn" type="button" disabled={register.isPending} onClick={() => navigate('/login')}>Back to sign in</button>}
+          <button className="btn primary" type="submit" disabled={register.isPending || form.formState.isSubmitting || (studentStep && !referenceReady)}>
+            {register.isPending ? 'Creating account…' : studentStep || !isKuEmail(email) ? 'Create account' : 'Next: Student details'}
+          </button>
+        </div>
         {register.isPending && <span className="sub" role="status">Creating your account. Please wait.</span>}
       </form>
 
