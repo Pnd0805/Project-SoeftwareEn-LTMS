@@ -131,7 +131,7 @@ describe('startMatch — OD-72 แจ้งผู้ติดตาม', () => {
     expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledTimes(1);
     expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(1, expect.objectContaining({
       type: 'followed_player_match_started', relatedEntityType: 'match', relatedEntityId: 1,
-    }));
+    }), { excludeAudience: true });   // FR-FN-02 — ผู้เล่น/กรรมการได้ข่าวแมตช์ผ่านชนิดของตัวเองแล้ว
     expect(vi.mocked(MatchRepo.markMatchStarted).mock.invocationCallOrder[0])
       .toBeLessThan(vi.mocked(NotificationService.notifyMatchFollowers).mock.invocationCallOrder[0]!);
   });

@@ -267,7 +267,9 @@ async function notifyFollowersResultVerified(matchId : number): Promise<void>{
         title : 'ผลแมตช์ของนักกีฬาที่คุณติดตามออกแล้ว',
         message : `ผลแมตช์ #${matchId} ได้รับการยืนยันแล้ว`,
         relatedEntityType : 'match', relatedEntityId : matchId,
-    });
+    // 🔴 FR-FN-02 (30 ต.ค.) — ไม่ตัดผู้เล่น: notifyMatchResultParties ส่งแค่หัวหน้าทีม + กรรมการ
+    //   ตัดผู้เล่นด้วย = ผู้เล่นธรรมดาที่ติดตามเพื่อนไม่ได้ข่าวผลเลย
+    }, { excludeAudience : false });
 }
 
 /** เส้นตาย = อันไหนถึงก่อนระหว่าง "ก่อนแมตช์ถัดไปเริ่ม 15 นาที" กับ "X ชม.หลังส่งผล" */

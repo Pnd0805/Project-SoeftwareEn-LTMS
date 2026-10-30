@@ -59,7 +59,7 @@ describe('autoVerifyDue', () => {
   it('OD-72: ยืนยันอัตโนมัติก็แจ้งผู้ติดตาม — ชนิดเดียวกับยืนยันด้วยมือ', async () => {
     await Service.autoVerifyDue([7]);
     expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledTimes(1);
-    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(7, expect.objectContaining({ type: 'followed_player_result_verified' }));
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(7, expect.objectContaining({ type: 'followed_player_result_verified' }), { excludeAudience: false });
   });
 
   it('leaves it alone before the deadline', async () => {

@@ -21,6 +21,19 @@ function optionalQuery(value: unknown): string | undefined {
     return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 }
 
+/**
+ * FR-TR-01 (30 ต.ค. 2569) — วันที่ของตัวกรอง `YYYY-MM-DD` ต้องเป็นวันที่มีจริง (2026-02-30 ไม่ผ่าน)
+ * 🔴 รูปแบบผิด = 400 VALIDATION_FAILED · ไม่ใช่ 500 และไม่ใช่รายการว่าง (ผู้ใช้จะเข้าใจว่า "ไม่มีทัวร์")
+ */
+function optionalDate(value: unknown, field: string): string | undefined {
+    if (value === undefined) return undefined;
+    const bad = () => new AppError(400, 'VALIDATION_FAILED', 'พารามิเตอร์ไม่ถูกต้อง', { fields: { [field]: 'ต้องเป็นวันที่รูปแบบ YYYY-MM-DD' } });
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw bad();
+    const date = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw bad();
+    return value;
+}
+
 /** 🆕 BO-N — ผู้จัดตั้งรูปแบบของทั้งทัวร์ · สิทธิ์ตรวจทั้งที่ route (requireOrganizer) และใน service */
 export async function setTournamentFormat(req: Request, res: Response) {
     if (!req.user) {
@@ -74,11 +87,26 @@ export async function getPublicTournaments(req: Request, res: Response) {
         throw new AppError(400, 'VALIDATION_FAILED', 'status ต้องเป็น public, completed หรือ cancelled',
             { fields: { status: 'public | completed | cancelled' } });
     }
+    // FR-TR-01 (30 ต.ค.) — ตัวกรองใหม่ 3 ตัว · ชื่อพารามิเตอร์ตรงกับใบงาน FE (เปลี่ยนต้องบอกเขาก่อน)
+    const registration = req.query['registration'];
+    if (registration !== undefined && registration !== 'open' && registration !== 'closed') {
+        throw new AppError(400, 'VALIDATION_FAILED', 'registration ต้องเป็น open หรือ closed',
+            { fields: { registration: 'open | closed' } });
+    }
+    const startFrom = optionalDate(req.query['startFrom'], 'startFrom');
+    const startTo = optionalDate(req.query['startTo'], 'startTo');
+    if (startFrom !== undefined && startTo !== undefined && startFrom > startTo) {
+        throw new AppError(400, 'VALIDATION_FAILED', 'startFrom ต้องไม่หลัง startTo',
+            { fields: { startFrom: 'ต้องไม่หลัง startTo' } });
+    }
     const filters = {
         sportTypeId: optionalPositiveInt(req.query['sportTypeId'], 'sportTypeId'),
         facultyId: optionalPositiveInt(req.query['facultyId'], 'facultyId'),
         query: optionalQuery(req.query['q']),
-        status: status as 'public' | 'completed' | 'cancelled' | undefined
+        status: status as 'public' | 'completed' | 'cancelled' | undefined,
+        registration: registration as 'open' | 'closed' | undefined,
+        startFrom,
+        startTo,
     };
     res.status(200).json(await TournamentService.getPublicTournaments(filters, offset, newpage, newpageSize));
 }

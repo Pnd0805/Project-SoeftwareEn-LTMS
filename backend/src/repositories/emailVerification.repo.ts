@@ -34,6 +34,16 @@ export async function countIssuedWithinLastHour(userId : number) : Promise<numbe
     return rows[0]!.cnt;
 }
 
+// FR-UM-06 — ใบที่ออกภายใน N วินาทีล่าสุด (cooldown ของการขอรหัสใหม่)
+// ★ นับด้วยนาฬิกาฐาน (NOW()) ไม่ใช่เวลาฝั่งแอป — created_at เขียนด้วย CURRENT_TIMESTAMP ของฐานอยู่แล้ว
+export async function countIssuedWithinSeconds(userId : number , seconds : number) : Promise<number>{
+    const [ rows ] = await pool.query<({ cnt : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS cnt FROM email_verification_otps
+          WHERE user_id = ? AND created_at > NOW() - INTERVAL ? SECOND`,
+        [userId , seconds]);
+    return rows[0]!.cnt;
+}
+
 // ออกใบใหม่ต้องล้างใบเก่าก่อน — ไม่ควรมีหลายใบใช้ได้พร้อมกัน (ถ้ามี ผู้ใช้จะกรอกใบเก่าแล้วผ่าน
 // ทั้งที่เพิ่งกดขอใหม่ และตัวนับกันเดาก็กระจายไปหลายใบ ทำให้เดาได้มากกว่าโควตาที่ตั้งไว้)
 export async function invalidateAllForUser(userId : number) : Promise<number>{

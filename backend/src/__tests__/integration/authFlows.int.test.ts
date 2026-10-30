@@ -47,6 +47,14 @@ const verified = async (email: string) =>
  */
 afterEach(() => { env.REQUIRE_EMAIL_VERIFIED = false; });   // บางเทสเปิดด่านเอง · ค่าของ .env.test คือปิด
 
+/** ใบ OTP ของอีเมลนี้ทั้งหมด (ทุกสถานะ) */
+const otpCount = async (email: string) => (await one<{ c: number }>(
+  `SELECT COUNT(*) AS c FROM email_verification_otps o JOIN users u ON u.user_id = o.user_id WHERE u.email = ?`, [email]))!.c;
+/** ย้อนเวลาออกใบ OTP ของอีเมลนี้ — ทดสอบ cooldown 60 วิ โดยไม่ต้องรอจริง */
+const ageOtps = (email: string, seconds: number) => testDb().query(
+  `UPDATE email_verification_otps o JOIN users u ON u.user_id = o.user_id
+      SET o.created_at = o.created_at - INTERVAL ? SECOND WHERE u.email = ?`, [seconds, email]);
+
 describe('จำกัดจำนวนครั้งที่ล็อกอินผิด (BE-06)', () => {
   const PASSWORD = 'Passw0rd-123';
   const wrongLogin = (email: string) => anon.post('/auth/login').send({ email, password: 'ผิดแน่นอน-123' });
@@ -338,9 +346,32 @@ describe('สมัครสมาชิกและยืนยันอีเ�
   it('ขอรหัสใหม่ → รหัสใหม่ใช้ได้', async () => {
     const email = 'resend@test.local';
     await anon.post('/auth/register').send(registration(email));
+    await ageOtps(email, 61);   // FR-UM-06 — พ้น cooldown 60 วิ ของใบที่ออกตอนสมัคร
     expect((await anon.post('/auth/resend-verification').send({ email })).status).toBeLessThan(300);
     expect((await anon.post('/auth/verify-email').send({ email, code: otpIn(email) })).status).toBe(200);
     expect(await verified(email)).toBe(true);
+  });
+
+  /**
+   * FR-UM-06 (SRS เทียบโค้ด 30 ต.ค.) — ขอรหัสใหม่ต้องห่างจากใบล่าสุดอย่างน้อย 60 วินาที
+   * เดิมหน่วงแค่ปุ่มในหน้าเว็บ ⇒ ยิง API ตรงได้รัว ๆ จนครบโควตา 3 ใบ/ชม.
+   */
+  it('🔴 ขอรหัสใหม่ห่างกันไม่ถึง 60 วิ → ตอบ 200 เหมือนเดิม แต่ไม่มีใบใหม่ในฐาน · เกิน 60 วิ ได้ใบใหม่', async () => {
+    const email = 'cooldown@test.local';
+    await anon.post('/auth/register').send(registration(email));
+    await ageOtps(email, 61);
+    const first = await anon.post('/auth/resend-verification').send({ email });
+    expect(await otpCount(email)).toBe(2);
+
+    const tooSoon = await anon.post('/auth/resend-verification').send({ email });
+    expect(tooSoon.status).toBe(200);
+    expect(await otpCount(email)).toBe(2);
+    // 🔴 รูปร่างคำตอบต้องเหมือนกันทุกตัวอักษร — ไม่บอกคนนอกว่าติด cooldown
+    expect(tooSoon.body).toEqual(first.body);
+
+    await ageOtps(email, 61);
+    expect((await anon.post('/auth/resend-verification').send({ email })).status).toBe(200);
+    expect(await otpCount(email)).toBe(3);
   });
 
   it('ขอรหัสใหม่ด้วยอีเมลที่ไม่มีในระบบ → ตอบเหมือนกันทุกตัวอักษร (ไม่บอกว่ามีบัญชีไหม)', async () => {

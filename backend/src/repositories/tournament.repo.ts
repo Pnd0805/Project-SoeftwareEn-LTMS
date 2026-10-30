@@ -266,7 +266,23 @@ export type PublicTournamentFilters = {
     facultyId?: number | undefined;
     query?: string | undefined;
     status?: 'public' | 'completed' | 'cancelled' | undefined;   // B1: default public · completed = ทัวร์ที่จบแล้ว (ผลย้อนหลัง) · cancelled = ถูกยกเลิก (migration 053)
+    registration?: 'open' | 'closed' | undefined;                // FR-TR-01 — ดูเงื่อนไขที่ REGISTRATION_OPEN_SQL
+    startFrom?: string | undefined;                              // FR-TR-01 — YYYY-MM-DD รวมวันขอบ (event_start_date >=)
+    startTo?: string | undefined;                                // FR-TR-01 — YYYY-MM-DD รวมวันขอบ (event_start_date <=)
 };
+
+/**
+ * FR-TR-01 (30 ต.ค. 2569) — "กำลังเปิดรับสมัคร" = **เงื่อนไขเดียวกับที่ใช้ตัดสินตอนกดสมัครจริง** (application.service P01)
+ *   ผู้จัดเปิดรับสมัครแล้ว (`registration_open`) **และ** ตอนนี้อยู่ในช่วง [registration_start, registration_end]
+ *   ★ ไม่ดูแค่วันที่ตามที่ใบงานเสนอ — ไม่งั้นรายการจะขึ้นว่า "เปิด" ทั้งที่กดสมัครแล้วได้ REGISTRATION_CLOSED
+ * ★ ตัดสินเรื่องวันที่ว่าง (NULL): **ไม่ได้ตั้ง = ไม่มีขอบด้านนั้น** — ตรงกับตอนสมัคร
+ *   ⇒ เปิดธงไว้ + ไม่ตั้งวันเลย = open · ธงปิด = closed เสมอไม่ว่าวันจะเป็นอะไร · ไม่มีแถวไหนหายเงียบเพราะ NULL
+ *   (closed คือ NOT ของ open ทั้งก้อน — ใช้ COALESCE ไม่ให้ NULL ทำให้ทั้งเงื่อนไขเป็น NULL)
+ * ★ คิดด้วย NOW() ของฐาน ไม่ใช่เวลาฝั่งแอป (time_zone ตรึงเป็น UTC ที่ config/db.ts)
+ */
+const REGISTRATION_OPEN_SQL = `(t.registration_open = TRUE
+    AND COALESCE(t.registration_start <= NOW(), TRUE)
+    AND COALESCE(t.registration_end >= NOW(), TRUE))`;
 
 /** /me/tournaments (20 ก.ย.) — ทัวร์ที่ฉันเป็น ORG ทุกสถานะ (ยกเว้นที่ลบ) — การ์ดเต็มไม่ต้อง N+1 */
 export async function findTournamentsByOrganizer(userId: number, status: TournamentRow['tournament_status'] | undefined, offset: number, pageSize: number): Promise<{ rows: TournamentRow[]; totalItems: number }> {
@@ -298,6 +314,16 @@ export async function findPublicTournaments(filters: PublicTournamentFilters, of
     if (filters.query !== undefined) {
         where.push('t.name LIKE ?');
         params.push(`%${filters.query}%`);
+    }
+    if (filters.registration === 'open') where.push(REGISTRATION_OPEN_SQL);
+    if (filters.registration === 'closed') where.push(`NOT ${REGISTRATION_OPEN_SQL}`);
+    if (filters.startFrom !== undefined) {
+        where.push('t.event_start_date >= ?');
+        params.push(filters.startFrom);
+    }
+    if (filters.startTo !== undefined) {
+        where.push('t.event_start_date <= ?');
+        params.push(filters.startTo);
     }
     const whereSql = where.join(' AND ');
     const [rows] = await pool.query<(TournamentRow & RowDataPacket)[]>(

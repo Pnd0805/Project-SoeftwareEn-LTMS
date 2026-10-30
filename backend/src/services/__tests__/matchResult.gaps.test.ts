@@ -222,7 +222,7 @@ describe('autoVerifyDue — skips', () => {
     await expect(Service.autoVerifyDue([7])).resolves.toEqual([7]);
     expect(Repo.verifyMatchResult).toHaveBeenCalledWith(900, 7, null, expect.any(Number));
     expect(Walkover.resolveIfOpponentWithdrawn).toHaveBeenCalledTimes(2);
-    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(7, expect.objectContaining({ type: 'followed_player_result_verified' }));
+    expect(NotificationService.notifyMatchFollowers).toHaveBeenCalledWith(7, expect.objectContaining({ type: 'followed_player_result_verified' }), { excludeAudience: false });
   });
 });
 

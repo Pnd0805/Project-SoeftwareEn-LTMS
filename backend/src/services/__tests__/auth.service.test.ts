@@ -32,6 +32,7 @@ vi.mock('../../repositories/emailVerification.repo.js', () => ({
   create: vi.fn(),
   findActiveByUser: vi.fn(),
   countIssuedWithinLastHour: vi.fn(),
+  countIssuedWithinSeconds: vi.fn(() => Promise.resolve(0)),
   invalidateAllForUser: vi.fn(),
   markUsed: vi.fn(),
   claimAttempt: vi.fn(() => Promise.resolve(true)),
@@ -835,6 +836,21 @@ describe('auth.service resendEmailVerification()', () => {
     // การกันยังทำงานครบ — เอาออกแค่การประกาศ
     expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalled();
     expect(mockedSendEmailVerificationOtp).not.toHaveBeenCalled();
+  });
+
+  // FR-UM-06 (30 ต.ค.) — ใบล่าสุดยังไม่ถึง 60 วิ → เงียบเหมือนด่านโควตา
+  it('★ ขอซ้ำภายใน 60 วินาที → ตอบก้อนเดิม ไม่ออกใบใหม่ ไม่ส่งเมล · ถามฐานด้วย 60', async () => {
+    mockedUserRepo.findByEmail.mockResolvedValue(unverifiedUser);
+    mockedEmailVerifyRepo.countIssuedWithinLastHour.mockResolvedValue(1);
+    mockedEmailVerifyRepo.countIssuedWithinSeconds.mockResolvedValueOnce(1);
+
+    const cooled = await authService.resendEmailVerification('test@example.com');
+
+    expect(mockedEmailVerifyRepo.countIssuedWithinSeconds).toHaveBeenCalledWith(unverifiedUser.user_id, 60);
+    expect(mockedEmailVerifyRepo.create).not.toHaveBeenCalled();
+    expect(mockedSendEmailVerificationOtp).not.toHaveBeenCalled();
+    mockedUserRepo.findByEmail.mockResolvedValue(null);
+    expect(cooled).toEqual(await authService.resendEmailVerification('nobody@example.com'));
   });
 
   it('★ เกินโควตา ต้องได้ก้อนตอบ "เท่ากันเป๊ะ" กับอีเมลที่ไม่มีในระบบ', async () => {

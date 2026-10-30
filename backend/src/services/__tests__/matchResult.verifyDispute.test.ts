@@ -112,7 +112,7 @@ describe('verifyMatchResult (S02)', () => {
       type: 'followed_player_result_verified',
       title: 'ผลแมตช์ของนักกีฬาที่คุณติดตามออกแล้ว',
       message: 'ผลแมตช์ #1 ได้รับการยืนยันแล้ว',
-    }));
+    }), { excludeAudience: false });   // 🔴 FR-FN-02 — ไม่ตัดผู้เล่น (notifyMatchResultParties ไม่ได้ส่งให้ผู้เล่น)
     expect(NotificationService.notifyMatchResultParties).toHaveBeenCalledTimes(1);
   });
 });
