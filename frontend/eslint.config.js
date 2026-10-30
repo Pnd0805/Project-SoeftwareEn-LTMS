@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -40,6 +40,16 @@ export default defineConfig([
           message: 'Format displayed dates with fmtDateTime/fmtDateOnly from src/shared/dateFormat.ts.',
         },
       ],
+    },
+  },
+  // E2E (Playwright) รันใน Node ไม่ใช่ React — `use()` ของ fixture ไม่ใช่ React hook
+  // และไม่มี component ให้ react-refresh ตรวจ
+  {
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: { globals: globals.node },
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])
