@@ -6,7 +6,7 @@ vi.mock("./client", async (importOriginal) => ({
   USE_MOCK: false,
 }));
 
-import { checkin, getCheckins, getMatch, getMatchLineups, getResult, getStandings, getMyMatches, overrideResult } from "./match";
+import { checkin, composeMyMatches, getCheckins, getMatch, getMatchLineups, getResult, getStandings, getMyMatches, overrideResult } from "./match";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -32,6 +32,24 @@ it.each(['scheduled', 'checkin_open', 'in_progress', 'finished'])('freezes %s ma
 });
 
 describe('unfiltered personal schedule', () => {
+  it('discovers a tournament whose active application is beyond the first page', async () => {
+    fetchMock.mockImplementation(async input => {
+      const url = new URL(String(input), 'http://localhost');
+      const path = url.pathname.replace('/api/v1', '');
+      if (path === '/me') return json({ id: 9 });
+      if (path === '/me/applications') {
+        const items = url.searchParams.has('page')
+          ? [{ id: 21, tournament: { id: 999, name: 'New cup' }, team: { id: 3 }, status: 'pending' }]
+          : Array.from({ length: 20 }, (_, id) => ({ id, tournament: { id, name: 'Old cup' }, team: { id: 3 }, status: 'withdrawn' }));
+        return json({ items, pagination: { totalPages: 2 } });
+      }
+      return json({ items: [] });
+    });
+
+    await composeMyMatches();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/tournaments/999/matches'))).toBe(true);
+  });
+
   const row = (id: number, role: 'player' | 'referee', conflicts: number[]) => ({
     id, role, myTeamId: role === 'player' ? 3 : null,
     tournament: { id: id + 20, name: `Tour ${id}`, sportTypeId: 1 }, round: 1,

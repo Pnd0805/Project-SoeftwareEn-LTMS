@@ -16,6 +16,7 @@
  */
 import { ApiError, hasAccessToken, apiFetch, mockDelay, mockReject, USE_MOCK } from "./client";
 import { assertUploadSize } from '../shared/uploadLimits';
+import { getMyApplications } from './tournament';
 import type {
   MatchDto,
   MatchListItemDto,
@@ -312,7 +313,7 @@ export async function composeMyMatches(): Promise<{ items: MatchListItemDto[] }>
 
   const [teams, applications, requests, publicTournaments, refereeMatches, ownMatches] = await Promise.all([
     safe(apiFetch<{ items: Array<{ id: number; role: string; sportTypeId: number }> }>("/me/teams"), { items: [] }),
-    safe(apiFetch<{ items: Array<{ tournament: { id: number; name: string }; team: { id: number }; status: string }> }>("/me/applications"), { items: [] }),
+    safe(getMyApplications(), { items: [] }),
     safe(apiFetch<{ items: Array<{ id: number; name: string; status: string }> }>("/me/tournament-requests"), { items: [] }),
     safe(apiFetch<{ items: Array<{ id: number; name: string }> }>("/tournaments"), { items: [] }),
     /* B7 (`c43f497`): กรรมการอ่านแมตช์ของตัวเองได้ตรงๆ แล้ว */

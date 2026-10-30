@@ -70,6 +70,34 @@ describe("apply to a tournament", () => {
 });
 
 describe("application lists", () => {
+  it.each([0, 20, 21, 41, 121])("returns all %i personal applications across backend pages", async total => {
+    const items = Array.from({ length: total }, (_, index) => ({
+      id: index + 1, tournament: { id: index + 1, name: `Cup ${index + 1}` },
+      team: { id: 3, name: "Squad" }, status: "pending", rejectionReason: null,
+      appliedAt: "2026-10-30T00:00:00Z",
+    }));
+    const pages = Math.max(1, Math.ceil(total / 20));
+    fetchMock.mockImplementation(async input => {
+      const url = new URL(String(input), "http://localhost");
+      const page = Number(url.searchParams.get("page") ?? 1);
+      return json({ items: items.slice((page - 1) * 20, page * 20),
+        pagination: { page, pageSize: 20, totalItems: total, totalPages: Math.ceil(total / 20) } });
+    });
+
+    const result = await getMyApplications();
+    expect(result.items.map(item => item.id)).toEqual(items.map(item => item.id));
+    expect(fetchMock).toHaveBeenCalledTimes(pages);
+    expect(fetchMock.mock.calls.map(([url]) => Number(new URL(String(url), "http://localhost").searchParams.get("page") ?? 1)))
+      .toEqual(Array.from({ length: pages }, (_, index) => index + 1));
+  });
+
+  it("rejects a later page failure instead of presenting a partial application list", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [{ id: 1 }], pagination: { totalPages: 2 } }))
+      .mockResolvedValueOnce(apiError(503, "SERVICE_UNAVAILABLE"));
+
+    await expect(getMyApplications()).rejects.toMatchObject({ status: 503, code: "SERVICE_UNAVAILABLE" });
+  });
+
   it("GET /me/applications", async () => {
     fetchMock.mockResolvedValueOnce(json({ items: [] }));
 

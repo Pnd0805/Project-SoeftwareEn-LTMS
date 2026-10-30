@@ -43,6 +43,8 @@ import {
 } from "../mocks/tournament.mock";
 import { findStoreTeam } from "../mocks/teamBridge";
 import { normalizeTournamentFilters, type TournamentFilters } from './tournamentFilters';
+import type { BackendMyApplicationsResponse } from '../types/tournament.dto';
+import type { BackendPagination } from '../types/match.dto';
 
 const notFound = <T>(message: string): Promise<T> =>
   mockReject(404, { code: "NOT_FOUND", message });
@@ -323,8 +325,18 @@ export async function getTournamentTeams(id: number): Promise<import('../types/t
 }
 
 /** Current backend contract: applications led by the signed-in user. */
-export async function getMyApplications(): Promise<import('../types/tournament.dto').BackendMyApplicationsResponse> {
-  if (!USE_MOCK) return apiFetch("/me/applications");
+export async function getMyApplications(): Promise<BackendMyApplicationsResponse> {
+  if (!USE_MOCK) {
+    const items: BackendMyApplicationsResponse['items'] = [];
+    for (let page = 1; ; page++) {
+      const response = await apiFetch<BackendMyApplicationsResponse & {
+        pagination?: Pick<BackendPagination, 'totalPages'>;
+      }>(page === 1 ? '/me/applications' : `/me/applications?page=${page}`);
+      items.push(...response.items);
+      // Callers decide whether a team has entered from this complete list, not just the first 20.
+      if (page >= (response.pagination?.totalPages ?? 1)) return { items };
+    }
+  }
   return tournamentMockDelay({ items: mockTournamentApplications.map(item => ({
     id: item.id,
     tournament: { id: item.tournamentId, name: findTournament(item.tournamentId)?.name ?? "Tournament" },
