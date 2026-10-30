@@ -5,6 +5,7 @@ vi.mock('../../config/db.js', () => ({ default: { query: mocks.query } }));
 
 import { findProfileTotals } from '../playerStat.repo.js';
 import { MVP_VOTING_HOURS, MVP_MIN_VOTES } from '../../config/scoring.js';
+import { mvpEligibleVoterSql } from '../../utils/mvpVoter.js';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -120,8 +121,18 @@ describe('findProfileTotals', () => {
       expect(sql).toContain('FROM tournament_feedback tf');
       expect(sql).not.toContain('LEFT JOIN');
       // ไม่มีการจัดอันดับจากรายชื่อผู้เล่น (ซึ่งจะทำให้คน 0 โหวตได้ rnk = 1)
-      expect(sql).not.toContain('application_players');
+      // ★ QA 30 ต.ค. (C2) — application_players มีได้ **เฉพาะในด่านกรองผู้โหวต** (EXISTS) ไม่ใช่เป็นแหล่งแถวที่จัดอันดับ
+      const withoutVoterGate = String(sql).replace(mvpEligibleVoterSql('tf'), '');
+      expect(withoutVoterGate).not.toContain('application_players');
       expect(sql).not.toContain('player_match_stats');
+    });
+
+    // 🔴 QA 30 ต.ค. (C2) — บัญชีปลอมที่ไม่ได้ลงแข่งต้องไม่ถูกนับ ทั้ง mvp_votes และ mvp_times
+    it('นับเฉพาะผู้โหวตที่อยู่ในรายชื่อลงแข่งของทัวร์ — ทั้งยอดโหวตและจำนวนครั้งที่ได้ MVP', async () => {
+      await findProfileTotals(5);
+      expect(mocks.query.mock.calls[0]![0]).toContain(mvpEligibleVoterSql('tf'));
+      expect(mocks.query.mock.calls[1]![0]).toContain(mvpEligibleVoterSql('tf'));
+      expect(mvpEligibleVoterSql('tf')).not.toContain('email_verified');
     });
 
     it('จัดอันดับเฉพาะแมตช์ที่คนนี้มีโหวต ไม่ใช่ทุกแมตช์ในระบบ', async () => {

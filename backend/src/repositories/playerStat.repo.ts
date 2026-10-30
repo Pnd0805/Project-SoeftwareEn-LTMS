@@ -3,6 +3,7 @@ import type { RowDataPacket } from 'mysql2';
 
 import type { PlayerMatchStatRow, PlayerProfileStatRow , SportTypeRow } from '../types/db.js';
 import { MVP_VOTING_HOURS, MVP_MIN_VOTES } from '../config/scoring.js';
+import { mvpEligibleVoterSql } from '../utils/mvpVoter.js';
 
 export type UserSportStatRow =
     Pick<PlayerProfileStatRow , 'sport_type_id' | 'matches_played' | 'wins' | 'losses' | 'championships'> 
@@ -63,6 +64,7 @@ export async function findProfileTotals(userId: number): Promise<UserProfileTota
              WHERE tf.voted_for_user_id = u.user_id
                AND tf.feedback_type = 'mvp_vote'
                AND tf.removed_at IS NULL
+               AND ${mvpEligibleVoterSql('tf')}
                AND (tf.match_id IS NULL
                     OR (m.actual_end_time IS NOT NULL
                         AND m.actual_end_time <= DATE_SUB(NOW(), INTERVAL ? HOUR)))) AS mvp_votes,
@@ -124,6 +126,7 @@ async function countMvpTimes(userId: number): Promise<number> {
               JOIN matches m ON m.match_id = tf.match_id
              WHERE tf.feedback_type = 'mvp_vote'
                AND tf.removed_at IS NULL
+               AND ${mvpEligibleVoterSql('tf')}
                AND m.actual_end_time IS NOT NULL
                AND m.actual_end_time <= DATE_SUB(NOW(), INTERVAL ? HOUR)
                AND tf.match_id IN (SELECT match_id FROM tournament_feedback
