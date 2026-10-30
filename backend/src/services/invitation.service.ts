@@ -8,6 +8,7 @@ import * as NotificationService from './notification.service.js';
 
 import { AppError } from '../utils/AppError.js';
 import { checkTeam } from '../utils/checkExist.js';
+import { assertNoOfficialConflict } from '../utils/officialConflict.js';
 
 export async function acceptInvitation(invitedId : number , userId : number){
     const invitation = await TeamRepo.findInvitationsById(invitedId);
@@ -26,6 +27,10 @@ export async function acceptInvitation(invitedId : number , userId : number){
     if(invitation.team_invitation_status !== 'pending'){
         throw new AppError(409 , 'INVITATION_ALREADY_ANSWERED' , 'คําเชิญนี้ถูกตอบรับ/ปฏิเสธไปแล้ว ยกเลิกไม่ได้');
     }
+
+    // 🔴 QA 30 ต.ค. (C1 · BR-05) — ด่านจริงของคำเชิญ: ระหว่างเชิญ→กดรับ อาจไปเข้าทีม Official อื่นมาแล้ว
+    const targetTeam = await TeamRepo.findById(invitation['team_id']);
+    if(targetTeam) await assertNoOfficialConflict(targetTeam , userId , 'you');
 
     const countUnofficialTeam = await TeamRepo.countUnofficialTeamsByUser(userId); 
     if(countUnofficialTeam >= 5){
