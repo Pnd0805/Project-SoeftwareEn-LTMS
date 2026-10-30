@@ -5,14 +5,16 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../api/client'
 import type { Tournament } from '../../../shared/types'
 
-const { applications, detail, approve, reject } = vi.hoisted(() => ({
+const { applications, detail, approve, reject, closeReg, openReg } = vi.hoisted(() => ({
   applications: vi.fn(), detail: vi.fn(), approve: vi.fn(), reject: vi.fn(),
+  closeReg: vi.fn(), openReg: vi.fn(),
 }))
 vi.mock('../../../api/client', async original => ({ ...await original<typeof import('../../../api/client')>(), USE_MOCK: false }))
 vi.mock('../../../api/tournament', async original => ({
   ...await original<typeof import('../../../api/tournament')>(),
   getTournamentApplications: applications, getApplicationDetail: detail,
   approveApplication: approve, rejectApplication: reject,
+  closeRegistration: closeReg, openRegistration: openReg,
 }))
 import { RegistrationsPanel } from './RegistrationsPanel'
 
@@ -83,4 +85,24 @@ it('opens review at its readable details instead of jumping to the rejection inp
   await screen.findByText('Northside FC')
   fireEvent.click(screen.getByRole('button', { name: 'Review' }))
   await waitFor(() => expect(screen.getByRole('region', { name: 'Entry review details' })).toHaveFocus())
+})
+
+it('allows closing registration when tournament is public and open', async () => {
+  closeReg.mockReset().mockResolvedValue({ id: 42, registrationOpen: false })
+  renderPanel({ ...t, status: 'public', registrationOpen: true })
+  await screen.findByText('Northside FC')
+  expect(screen.getByText('Registration open')).toBeInTheDocument()
+  const btn = screen.getByRole('button', { name: 'Close registration' })
+  fireEvent.click(btn)
+  await waitFor(() => expect(closeReg).toHaveBeenCalledWith(42))
+})
+
+it('allows opening registration when tournament is public and closed', async () => {
+  openReg.mockReset().mockResolvedValue({ id: 42, registrationOpen: true })
+  renderPanel({ ...t, status: 'public', registrationOpen: false })
+  await screen.findByText('Northside FC')
+  expect(screen.getByText('Registration closed')).toBeInTheDocument()
+  const btn = screen.getByRole('button', { name: 'Open registration' })
+  fireEvent.click(btn)
+  await waitFor(() => expect(openReg).toHaveBeenCalledWith(42))
 })

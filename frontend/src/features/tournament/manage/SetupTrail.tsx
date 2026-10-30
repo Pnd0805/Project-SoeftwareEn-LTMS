@@ -21,7 +21,7 @@ import { ConfirmCard, Modal } from '../../../components/kit/Modal'
 import type { TrailStep } from '../../../components/kit/primitives'
 import { useLtms } from '../../../shared/store'
 import {
-  useCompleteTournament, useDrawTournament, useOpenTournamentRegistration, usePublishTournament,
+  useCompleteTournament, useDrawTournament, useOpenTournamentRegistration, useCloseTournamentRegistration, usePublishTournament,
   useTournamentApplications, useTournamentTeams,
 } from '../../../hooks/useTournament'
 import { useTournamentMatches } from '../../../hooks/useMatch'
@@ -72,6 +72,7 @@ function SetupProgress({ t, onAppoint }: { t: Tournament; onAppoint: () => void 
   const real = tournamentId !== undefined
   const complete = useCompleteTournament(tournamentId ?? 0)
   const openRegistration = useOpenTournamentRegistration(tournamentId ?? 0)
+  const closeRegistration = useCloseTournamentRegistration(tournamentId ?? 0)
   const approvedTeams = useTournamentTeams(tournamentId)
   const applications = useTournamentApplications(tournamentId)
   const backendMatches = useTournamentMatches(tournamentId)
@@ -157,23 +158,36 @@ function SetupProgress({ t, onAppoint }: { t: Tournament; onAppoint: () => void 
     },
     ...(real ? [{
       state: (t.registrationOpen || applicationCount > 0 || approvedCount > 0 || bracketDrawn) ? 'done' as const : 'idle' as const,
-      title: 'Open registration',
+      title: t.registrationOpen ? 'Registration open' : 'Open registration',
       note: t.registrationOpen
         ? 'Squads can submit applications now.'
         : applicationCount > 0 || approvedCount > 0 || bracketDrawn
           ? 'Registration was opened and is now closed.'
           : 'Publishing makes the tournament visible, but does not let squads apply until registration is opened.',
-      cta: t.status === 'public' && !t.registrationOpen ? (
-        <button className="btn primary" type="button" disabled={openRegistration.isPending}
-          onClick={() => openRegistration.mutate()}>
-          {openRegistration.isPending ? 'Opening registration…' : 'Open registration'}
-        </button>
+      cta: t.status === 'public' ? (
+        t.registrationOpen ? (
+          <button className="btn" type="button" disabled={closeRegistration.isPending}
+            onClick={() => closeRegistration.mutate()}>
+            {closeRegistration.isPending ? 'Closing registration…' : 'Close registration'}
+          </button>
+        ) : (
+          <button className="btn primary" type="button" disabled={openRegistration.isPending}
+            onClick={() => openRegistration.mutate()}>
+            {openRegistration.isPending ? 'Opening registration…' : 'Open registration'}
+          </button>
+        )
       ) : undefined,
     }] : []),
     {
       state: approvedCount >= minimumTeams ? 'done' : 'idle',
       title: 'Approve the squads',
       note: `${approvedCount} approved · ${pendingCount} waiting on you · need ${minimumTeams} · cap ${t.cap}. Registration may remain open; redraw uses the currently approved squads until matches are in use.`,
+      cta: t.status === 'public' && t.registrationOpen ? (
+        <button className="btn" type="button" disabled={closeRegistration.isPending}
+          onClick={() => closeRegistration.mutate()}>
+          {closeRegistration.isPending ? 'Closing registration…' : 'Close registration'}
+        </button>
+      ) : undefined,
     },
     {
       state: bracketDrawn ? 'done' : 'idle',
@@ -278,6 +292,7 @@ function SetupProgress({ t, onAppoint }: { t: Tournament; onAppoint: () => void 
 
       {publish.isError ? <Banner kind="crit"><b>Couldn't open it to the public.</b> {errorMessage(publish.error)}</Banner> : null}
       {openRegistration.isError ? <Banner kind="crit"><b>Couldn't open registration.</b> {errorMessage(openRegistration.error)}</Banner> : null}
+      {closeRegistration.isError ? <Banner kind="crit"><b>Couldn't close registration.</b> {errorMessage(closeRegistration.error)}</Banner> : null}
       {draw.isPending ? <Banner kind="neutral"><b>Drawing the bracket…</b> Refreshing the saved matches before progress advances.</Banner> : null}
       {draw.isError ? <Banner kind="crit"><b>Couldn't draw the bracket.</b> {errorMessage(draw.error)}</Banner> : null}
       {complete.isError ? (

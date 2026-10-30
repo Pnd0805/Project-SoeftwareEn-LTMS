@@ -26,7 +26,14 @@ import { toTeamView } from '../../../components/kit/viewModels'
 import { useManageActive } from './ManageActivity'
 import { Modal } from '../../../components/kit/Modal'
 import { useLtms } from '../../../shared/store'
-import { useApplicationDetail, useApproveRegistration, useRejectRegistration, useTournamentApplications } from '../../../hooks/useTournament'
+import {
+  useApplicationDetail,
+  useApproveRegistration,
+  useCloseTournamentRegistration,
+  useOpenTournamentRegistration,
+  useRejectRegistration,
+  useTournamentApplications,
+} from '../../../hooks/useTournament'
 import { ContractErrorDetails } from '../../../components/kit/ContractErrorDetails'
 import { ApiError, USE_MOCK } from '../../../api/client'
 import { reviewTournamentApplicationSchema, type ReviewTournamentApplicationInput } from '../../../schemas/tournament.schema'
@@ -114,6 +121,9 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
   const apiId = tournamentId ?? t.id
   const approve = useApproveRegistration(apiId)
   const reject = useRejectRegistration(apiId)
+  const openReg = useOpenTournamentRegistration(tournamentId ?? 0)
+  const closeReg = useCloseTournamentRegistration(tournamentId ?? 0)
+  const regBusy = openReg.isPending || closeReg.isPending
   const { register, handleSubmit, setError, reset, formState: { errors } } =
     useForm<ReviewTournamentApplicationInput>({ resolver: zodResolver(reviewTournamentApplicationSchema) })
   const denied = (error: unknown) => error instanceof ApiError && [401, 403, 404].includes(error.status)
@@ -143,9 +153,42 @@ export function RegistrationsPanel({ t }: { t: Tournament }) {
 
   return <>
     <Panel className="organizer-registrations">
-      <div className="spread"><h2>Registrations</h2>
-        <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} approved · ${pend.length} pending`}</Badge>
+      <div className="spread">
+        <div>
+          <h2>Registrations</h2>
+          <div className="hstack" style={{ marginTop: '0.25rem', gap: '0.5rem', alignItems: 'center' }}>
+            <Badge kind={t.registrationOpen ? 'ok' : 'neutral'}>
+              {t.registrationOpen ? 'Registration open' : 'Registration closed'}
+            </Badge>
+            <Badge kind={pend.length ? 'warn' : 'neutral'}>{`${approved.length} approved · ${pend.length} pending`}</Badge>
+          </div>
+        </div>
+        {!closed && t.status === 'public' && tournamentId ? (
+          <div className="hstack">
+            {t.registrationOpen ? (
+              <button
+                className="btn"
+                type="button"
+                disabled={regBusy}
+                onClick={() => closeReg.mutate()}
+              >
+                {closeReg.isPending ? 'Closing registration…' : 'Close registration'}
+              </button>
+            ) : (
+              <button
+                className="btn primary"
+                type="button"
+                disabled={regBusy}
+                onClick={() => openReg.mutate()}
+              >
+                {openReg.isPending ? 'Opening registration…' : 'Open registration'}
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
+      {closeReg.isError ? <Banner kind="crit">Couldn't close registration. {message(closeReg.error)}</Banner> : null}
+      {openReg.isError ? <Banner kind="crit">Couldn't open registration. {message(openReg.error)}</Banner> : null}
       {!USE_MOCK && applications.isError ? <Banner kind="warn">
         Showing saved registrations. {message(applications.error)}{' '}
         <button className="btn ghost" type="button" onClick={() => void applications.refetch()}>Try again</button>

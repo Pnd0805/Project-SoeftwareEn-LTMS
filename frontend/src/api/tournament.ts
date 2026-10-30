@@ -605,11 +605,21 @@ export function unpublishTournament(id: number): Promise<{ id: number; status: s
 
 /** POST /tournaments/:id/open-registration — ผู้จัด */
 export function openRegistration(id: number): Promise<{ id: number; registrationOpen: boolean }> {
+  if (USE_MOCK) {
+    const tournament = findTournament(id);
+    if (tournament) tournament.registrationOpen = true;
+    return tournamentMockDelay({ id, registrationOpen: true });
+  }
   return apiFetch(`/tournaments/${id}/open-registration`, { method: "POST" });
 }
 
 /** POST /tournaments/:id/close-registration — ผู้จัด · หยุดรับใบสมัครใหม่; ไม่ใช่ prerequisite ของ draw/redraw */
 export function closeRegistration(id: number): Promise<{ id: number; registrationOpen: boolean }> {
+  if (USE_MOCK) {
+    const tournament = findTournament(id);
+    if (tournament) tournament.registrationOpen = false;
+    return tournamentMockDelay({ id, registrationOpen: false });
+  }
   return apiFetch(`/tournaments/${id}/close-registration`, { method: "POST" });
 }
 
