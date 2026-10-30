@@ -1,6 +1,8 @@
 import * as MatchRepo from '../repositories/match.repo.js';
 import type { MatchFormatInput } from '../schemas/match.schema.js';
 import * as TournamentRepo from '../repositories/tournament.repo.js';
+import * as AdminScopeRepo from '../repositories/adminScope.repo.js';
+import { adminOverseesTournament } from '../utils/adminScope.js';
 import * as SportTypeRepo from '../repositories/sportType.repo.js';
 import * as RefereeService from './referee.service.js';
 import { isRefereeOfMatch, isRefereeSufficient } from '../middlewares/requireReferee.js';
@@ -700,6 +702,17 @@ export async function getMatchLineups(matchId: number) {
     return { matchId, teamA: forTeam(match.team_a_id), teamB: forTeam(match.team_b_id) };
 }
 
+/**
+ * ตรวจ SRS/SDS 30 ต.ค. 2569 (ข้อ 1.3 · FR-PV-04) — Admin อ่านผลเช็คอินตามขอบเขตได้ **โดยไม่เห็นรูปบัตร**
+ *   ขอบเขตใช้กฎเดียวกับทุกที่ (`adminOverseesTournament`): มหาวิทยาลัย = ทุกทัวร์ · คณะ = ทัวร์ที่คณะเป็นเจ้าภาพ · root = ไม่มี (OD-34)
+ */
+async function isAdminOverseeingTournament(userId: number, tournamentId: number): Promise<boolean> {
+    const admin = await AdminScopeRepo.findAdminByUserId(userId);
+    if (!admin) return false;
+    const tournament = await TournamentRepo.findTournamentById(tournamentId);
+    return !!tournament && adminOverseesTournament(admin, tournament);
+}
+
 export async function getMatchCheckins(matchId: number, userId: number) {
     const match = await MatchRepo.findMatchById(matchId);
     if (!match) {
@@ -707,11 +720,12 @@ export async function getMatchCheckins(matchId: number, userId: number) {
     }
 
     const { isOrganizer, isReferee } = await findMatchRoles(matchId, match.tournament_id, userId);
-    if (!isOrganizer && !isReferee) {
+    if (!isOrganizer && !isReferee && !await isAdminOverseeingTournament(userId, match.tournament_id)) {
         throw new AppError(403, "NOT_ORGANIZER_OR_REFEREE", "คุณไม่มีสิทธิ์ดูรายการเช็คอินนี้");
     }
 
-    // PDPA (NF-SE-03) — รูปบัตรเปิดดูได้เฉพาะกรรมการของแมตช์นี้ ORG เห็นรายการแต่ documentUrl = null
+    // PDPA (NF-SE-03) — รูปบัตรเปิดดูได้เฉพาะกรรมการของแมตช์นี้ ORG / Admin เห็นรายการแต่ documentUrl = null
+    //   ★ DTO ไม่มีคีย์ไฟล์ — documentUrl เป็นทางเดียวที่เปิดรูปได้ ⇒ ตัดตัวนี้ตัวเดียวพอ
     const rows = await MatchRepo.findCheckinsByMatch(matchId);
     const items = await Promise.all(rows.map(async (row) => {
         const documentUrl = isReferee && row.document_s3_key

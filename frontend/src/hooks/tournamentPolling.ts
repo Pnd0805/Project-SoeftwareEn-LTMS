@@ -1,7 +1,13 @@
 import { createContext, useContext } from 'react'
 import { retryPolicy, USE_MOCK } from '../api/client'
 
-export const TOURNAMENT_REFRESH_MS = 10_000
+/**
+ * PF-04 / FR-DL-02 — ผู้ชมต้องเห็นผลภายใน 10 วินาทีหลังยืนยันผล
+ * ตรวจ SRS/SDS 30 ต.ค. 2569 (ข้อ 1.4): เดิม 10 วินาที ⇒ กรณีแย่สุดรอรอบเกือบ 10 วินาที + เวลาเรียก API/แสดงผล = เกิน SLA
+ * 5 วินาที ⇒ กรณีแย่สุด ~5 วินาที + เวลาเรียก API ยังเหลือเผื่อในกรอบ 10 วินาที
+ */
+export const TOURNAMENT_REFRESH_MS = 5_000
+export const TOURNAMENT_REFRESH_SLA_MS = 10_000
 export const TournamentRefreshContext = createContext<{ enabled: boolean; status?: string }>({ enabled: false })
 
 export function tournamentRefreshInterval(status: string | undefined, enabled: boolean, error: unknown) {

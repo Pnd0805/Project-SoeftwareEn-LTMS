@@ -13,7 +13,7 @@ import { useTournamentMatches, useStandings } from './useMatch'
 import { useTournamentBracket } from './useTournamentBracket'
 import { usePickemLeaderboard } from './useLiveEngagement'
 import { useTournament } from './useTournament'
-import { TournamentRefreshContext, TOURNAMENT_REFRESH_MS } from './tournamentPolling'
+import { TournamentRefreshContext, TOURNAMENT_REFRESH_MS, TOURNAMENT_REFRESH_SLA_MS } from './tournamentPolling'
 
 let client: QueryClient
 let status: string, active: boolean
@@ -37,6 +37,22 @@ it('refreshes all four board sources within 10 seconds for an idle spectator', a
   for (const fn of [api.matches, api.bracket, api.standings, api.leaderboard]) expect(fn).toHaveBeenCalledTimes(1)
   await tick()
   for (const fn of [api.matches, api.bracket, api.standings, api.leaderboard]) expect(fn).toHaveBeenCalledTimes(2)
+})
+
+// ตรวจ SRS/SDS 30 ต.ค. (ข้อ 1.4) — กรณีแย่สุด: ผลถูกยืนยันทันทีหลังรอบดึงข้อมูล ⇒ ต้องรอทั้งรอบ
+//   รอบต้องสั้นพอให้เหลือเวลาเรียก API/แสดงผลในกรอบ PF-04 (ให้ครึ่งหนึ่งของ SLA)
+it('leaves at least half of the 10-second PF-04 budget for the request and render', () => {
+  expect(TOURNAMENT_REFRESH_SLA_MS).toBe(10_000)
+  expect(TOURNAMENT_REFRESH_MS * 2).toBeLessThanOrEqual(TOURNAMENT_REFRESH_SLA_MS)
+})
+
+it('shows a result verified right after a poll within the 10-second budget, even with a slow response', async () => {
+  const hook = renderHook(useBoards, { wrapper }); await settle()
+  expect(hook.result.current.matches.data).toEqual({ items: [] })
+  // ผลถูกยืนยันหลังรอบแรกจบพอดี · เซิร์ฟเวอร์ตอบช้า 3 วินาที
+  api.matches.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ items: [{ id: 7 }] }), 3_000)))
+  await act(async () => { await vi.advanceTimersByTimeAsync(TOURNAMENT_REFRESH_SLA_MS - 1_000) })
+  expect(hook.result.current.matches.data).toEqual({ items: [{ id: 7 }] })
 })
 
 it('stops for hidden browser tabs and inactive workspaces and resumes when visible', async () => {
