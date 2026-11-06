@@ -1,0 +1,6 @@
+{
+  // ตรวจชนิดสคริปต์ perf แยกจาก src (tsconfig หลักมี rootDir ./src) — npx tsc -p perf
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "rootDir": "..", "noEmit": true },
+  "include": ["./**/*.ts"]
+}

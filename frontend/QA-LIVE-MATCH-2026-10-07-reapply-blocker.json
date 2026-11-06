@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-10-06T21:21:18.490Z",
+  "origin": "http://127.0.0.1:5193",
+  "mode": "SSR-loaded frontend adapters with real API; no browser",
+  "artifacts": {
+    "tourId": 29,
+    "teamId": 9036,
+    "applications": []
+  },
+  "results": [
+    {
+      "name": "match scenario stopped",
+      "result": "FAIL",
+      "status": 409,
+      "code": "PLAYER_ALREADY_REGISTERED",
+      "message": "มีผู้เล่นที่ถูกส่งลงแข่งทัวร์นาเมนต์นี้กับทีมอื่นไปแล้ว"
+    },
+    {
+      "name": "restore tournament private and registration closed",
+      "result": "PASS"
+    }
+  ]
+}

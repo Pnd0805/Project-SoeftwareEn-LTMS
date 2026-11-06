@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-07T08:11:04.277Z",
+  "migrations": [
+    {
+      "name": "046_user_token_version.sql"
+    },
+    {
+      "name": "047_sport_supports_best_of.sql"
+    },
+    {
+      "name": "048_unique_pending_requests.sql"
+    }
+  ],
+  "tournament29": [],
+  "matches29": []
+}

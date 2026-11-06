@@ -1,0 +1,833 @@
+{
+  "checks": [
+    {
+      "name": "confirm-report-1280-dark",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "1px solid rgb(217, 164, 48)",
+        "amber": "#D9A430"
+      },
+      "option": {
+        "radius": "2px",
+        "background": "rgb(48, 43, 65)"
+      }
+    },
+    {
+      "name": "confirmed-keyboard-1280-dark",
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        }
+      ],
+      "escapeClosed": true,
+      "returnFocus": true,
+      "skip": {
+        "text": "Skip to the main content",
+        "outline": "solid"
+      }
+    },
+    {
+      "name": "confirmed-qr-1280-dark",
+      "url": "http://127.0.0.1:5176/checkin/100",
+      "width": 1280,
+      "height": 800,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Check in"
+      ],
+      "mainText": "MATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n5\n\nof 48 players verified\n\nCheck-in opens 1 Oct 2099, 15:30 GMT+7\n\nPlayers scan the referee’s QR using their own account.\n\nCheck-in QR\nQR payload\nVerified: 5 / 48\nExpires in 20:00 · renews automatically before expiry\nRefresh QR\nNorthside Community Championship Football Team\n5 of 24 in\nPLAYER\tHOW\tST",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "qr": [
+        "rgb(229, 220, 200)",
+        "rgb(10, 8, 16)"
+      ]
+    },
+    {
+      "name": "confirm-report-1280-light",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "1px solid rgb(128, 97, 36)",
+        "amber": "#806124"
+      },
+      "option": {
+        "radius": "2px",
+        "background": "rgb(240, 230, 208)"
+      }
+    },
+    {
+      "name": "confirmed-keyboard-1280-light",
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        }
+      ],
+      "escapeClosed": true,
+      "returnFocus": true,
+      "skip": {
+        "text": "Skip to the main content",
+        "outline": "solid"
+      }
+    },
+    {
+      "name": "confirmed-qr-1280-light",
+      "url": "http://127.0.0.1:5176/checkin/100",
+      "width": 1280,
+      "height": 800,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Check in"
+      ],
+      "mainText": "MATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n5\n\nof 48 players verified\n\nCheck-in opens 1 Oct 2099, 15:30 GMT+7\n\nPlayers scan the referee’s QR using their own account.\n\nCheck-in QR\nQR payload\nVerified: 5 / 48\nExpires in 20:00 · renews automatically before expiry\nRefresh QR\nNorthside Community Championship Football Team\n5 of 24 in\nPLAYER\tHOW\tST",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "qr": [
+        "rgb(229, 220, 200)",
+        "rgb(10, 8, 16)"
+      ]
+    },
+    {
+      "name": "confirm-report-1440-dark",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "1px solid rgb(217, 164, 48)",
+        "amber": "#D9A430"
+      },
+      "option": {
+        "radius": "2px",
+        "background": "rgb(48, 43, 65)"
+      }
+    },
+    {
+      "name": "confirmed-keyboard-1440-dark",
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        }
+      ],
+      "escapeClosed": true,
+      "returnFocus": true,
+      "skip": {
+        "text": "Skip to the main content",
+        "outline": "solid"
+      }
+    },
+    {
+      "name": "confirmed-qr-1440-dark",
+      "url": "http://127.0.0.1:5176/checkin/100",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Check in"
+      ],
+      "mainText": "MATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n5\n\nof 48 players verified\n\nCheck-in opens 1 Oct 2099, 15:30 GMT+7\n\nPlayers scan the referee’s QR using their own account.\n\nCheck-in QR\nQR payload\nVerified: 5 / 48\nExpires in 20:00 · renews automatically before expiry\nRefresh QR\nNorthside Community Championship Football Team\n5 of 24 in\nPLAYER\tHOW\tST",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "qr": [
+        "rgb(229, 220, 200)",
+        "rgb(10, 8, 16)"
+      ]
+    },
+    {
+      "name": "confirm-report-1440-light",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "1px solid rgb(128, 97, 36)",
+        "amber": "#806124"
+      },
+      "option": {
+        "radius": "2px",
+        "background": "rgb(240, 230, 208)"
+      }
+    },
+    {
+      "name": "confirmed-keyboard-1440-light",
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        }
+      ],
+      "escapeClosed": true,
+      "returnFocus": true,
+      "skip": {
+        "text": "Skip to the main content",
+        "outline": "solid"
+      }
+    },
+    {
+      "name": "confirmed-qr-1440-light",
+      "url": "http://127.0.0.1:5176/checkin/100",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Check in"
+      ],
+      "mainText": "MATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n5\n\nof 48 players verified\n\nCheck-in opens 1 Oct 2099, 15:30 GMT+7\n\nPlayers scan the referee’s QR using their own account.\n\nCheck-in QR\nQR payload\nVerified: 5 / 48\nExpires in 20:00 · renews automatically before expiry\nRefresh QR\nNorthside Community Championship Football Team\n5 of 24 in\nPLAYER\tHOW\tST",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "qr": [
+        "rgb(229, 220, 200)",
+        "rgb(10, 8, 16)"
+      ]
+    },
+    {
+      "name": "confirm-report-390-dark",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "1px solid rgb(217, 164, 48)",
+        "amber": "#D9A430"
+      },
+      "option": {
+        "radius": "2px",
+        "background": "rgb(48, 43, 65)"
+      }
+    },
+    {
+      "name": "confirmed-keyboard-390-dark",
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        }
+      ],
+      "escapeClosed": true,
+      "returnFocus": true,
+      "skip": {
+        "text": "Skip to the main content",
+        "outline": "solid"
+      }
+    },
+    {
+      "name": "confirmed-qr-390-dark",
+      "url": "http://127.0.0.1:5176/checkin/100",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "overflow": false,
+      "h1": [
+        "Check in"
+      ],
+      "mainText": "MATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n5\n\nof 48 players verified\n\nCheck-in opens 1 Oct 2099, 15:30 GMT+7\n\nPlayers scan the referee’s QR using their own account.\n\nCheck-in QR\nQR payload\nVerified: 5 / 48\nExpires in 20:00 · renews automatically before expiry\nRefresh QR\nNorthside Community Championship Football Team\n5 of 24 in\nPLAYER\tHOW\tST",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#14121C",
+        "panel": "#1E1B2A",
+        "panel-3": "#302B41",
+        "bone": "#E5DCC8",
+        "bone-dim": "#C7BBA0",
+        "bone-faint": "#AA9C83",
+        "teal": "#3AAE7C",
+        "accent-ink": "#0A0810",
+        "red-text": "#FF6E80",
+        "amber": "#D9A430",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "qr": [
+        "rgb(229, 220, 200)",
+        "rgb(10, 8, 16)"
+      ]
+    },
+    {
+      "name": "confirm-report-390-light",
+      "url": "http://127.0.0.1:5176/t/42/community",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Northside Street Cup"
+      ],
+      "mainText": "TOURNAMENTS\n/\nNORTHSIDE STREET CUP\nNORTHSIDE STREET CUP\n\nFootball · Single elimination · onsite\n\nRun by Street League\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2099-10-01\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nNorthside Stadium\nPLAYED\nonsite\nENTRY\nopen to everybody\nSQUADS IN\n4 of 32\nRUN BY\nStreet",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "dialog": true,
+      "quote": {
+        "border": "1px solid rgb(128, 97, 36)",
+        "amber": "#806124"
+      },
+      "option": {
+        "radius": "2px",
+        "background": "rgb(240, 230, 208)"
+      }
+    },
+    {
+      "name": "confirmed-keyboard-390-light",
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Cancel"
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "text": "Decline the request"
+        },
+        {
+          "inside": true,
+          "tag": "TEXTAREA",
+          "text": "Acceptance fixture draft"
+        }
+      ],
+      "escapeClosed": true,
+      "returnFocus": true,
+      "skip": {
+        "text": "Skip to the main content",
+        "outline": "solid"
+      }
+    },
+    {
+      "name": "confirmed-qr-390-light",
+      "url": "http://127.0.0.1:5176/checkin/100",
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "overflow": false,
+      "h1": [
+        "Check in"
+      ],
+      "mainText": "MATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n5\n\nof 48 players verified\n\nCheck-in opens 1 Oct 2099, 15:30 GMT+7\n\nPlayers scan the referee’s QR using their own account.\n\nCheck-in QR\nQR payload\nVerified: 5 / 48\nExpires in 20:00 · renews automatically before expiry\nRefresh QR\nNorthside Community Championship Football Team\n5 of 24 in\nPLAYER\tHOW\tST",
+      "unnamedButtons": 0,
+      "tokens": {
+        "void": "#F8F4EC",
+        "panel": "#FFFFFF",
+        "panel-3": "#F0E6D0",
+        "bone": "#2A2117",
+        "bone-dim": "#5A4E36",
+        "bone-faint": "#6E5F42",
+        "teal": "#12764E",
+        "accent-ink": "#FFFFFF",
+        "red-text": "#8A1C38",
+        "amber": "#806124",
+        "qr-bg": "#E5DCC8",
+        "qr-ink": "#0A0810"
+      },
+      "qr": [
+        "rgb(229, 220, 200)",
+        "rgb(10, 8, 16)"
+      ]
+    }
+  ],
+  "errors": []
+}

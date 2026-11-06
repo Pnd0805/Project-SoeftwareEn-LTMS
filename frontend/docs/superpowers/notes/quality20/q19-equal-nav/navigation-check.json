@@ -1,0 +1,620 @@
+[
+  {
+    "width": 1280,
+    "theme": "dark",
+    "groups": [
+      {
+        "name": "Reviews",
+        "width": 332.65625,
+        "top": 203.78125,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournament requests",
+            "left": 273,
+            "top": 254.171875,
+            "bottom": 278.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Permanent squads",
+            "left": 273,
+            "top": 278.171875,
+            "bottom": 302.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "External referees",
+            "left": 273,
+            "top": 302.171875,
+            "bottom": 326.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Rule changes",
+            "left": 273,
+            "top": 326.171875,
+            "bottom": 350.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Leader transfers",
+            "left": 273,
+            "top": 350.171875,
+            "bottom": 374.171875,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Directory",
+        "width": 332.671875,
+        "top": 203.78125,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournaments",
+            "left": 605.65625,
+            "top": 254.171875,
+            "bottom": 278.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Users",
+            "left": 605.65625,
+            "top": 278.171875,
+            "bottom": 302.171875,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Governance",
+        "width": 332.65625,
+        "top": 203.78125,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Admin rights",
+            "left": 938.328125,
+            "top": 254.171875,
+            "bottom": 278.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Audit logs",
+            "left": 938.328125,
+            "top": 278.171875,
+            "bottom": 302.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Feedback",
+            "left": 938.328125,
+            "top": 302.171875,
+            "bottom": 326.171875,
+            "fontSize": "14px"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "groups": [
+      {
+        "name": "Reviews",
+        "width": 332.65625,
+        "top": 203.78125,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournament requests",
+            "left": 273,
+            "top": 254.171875,
+            "bottom": 278.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Permanent squads",
+            "left": 273,
+            "top": 278.171875,
+            "bottom": 302.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "External referees",
+            "left": 273,
+            "top": 302.171875,
+            "bottom": 326.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Rule changes",
+            "left": 273,
+            "top": 326.171875,
+            "bottom": 350.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Leader transfers",
+            "left": 273,
+            "top": 350.171875,
+            "bottom": 374.171875,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Directory",
+        "width": 332.671875,
+        "top": 203.78125,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournaments",
+            "left": 605.65625,
+            "top": 254.171875,
+            "bottom": 278.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Users",
+            "left": 605.65625,
+            "top": 278.171875,
+            "bottom": 302.171875,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Governance",
+        "width": 332.65625,
+        "top": 203.78125,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Admin rights",
+            "left": 938.328125,
+            "top": 254.171875,
+            "bottom": 278.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Audit logs",
+            "left": 938.328125,
+            "top": 278.171875,
+            "bottom": 302.171875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Feedback",
+            "left": 938.328125,
+            "top": 302.171875,
+            "bottom": 326.171875,
+            "fontSize": "14px"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "theme": "dark",
+    "groups": [
+      {
+        "name": "Reviews",
+        "width": 376.65625,
+        "top": 164.59375,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournament requests",
+            "left": 273,
+            "top": 214.984375,
+            "bottom": 238.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Permanent squads",
+            "left": 273,
+            "top": 238.984375,
+            "bottom": 262.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "External referees",
+            "left": 273,
+            "top": 262.984375,
+            "bottom": 286.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Rule changes",
+            "left": 273,
+            "top": 286.984375,
+            "bottom": 310.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Leader transfers",
+            "left": 273,
+            "top": 310.984375,
+            "bottom": 334.984375,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Directory",
+        "width": 376.671875,
+        "top": 164.59375,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournaments",
+            "left": 649.65625,
+            "top": 214.984375,
+            "bottom": 238.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Users",
+            "left": 649.65625,
+            "top": 238.984375,
+            "bottom": 262.984375,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Governance",
+        "width": 376.65625,
+        "top": 164.59375,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Admin rights",
+            "left": 1026.328125,
+            "top": 214.984375,
+            "bottom": 238.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Audit logs",
+            "left": 1026.328125,
+            "top": 238.984375,
+            "bottom": 262.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Feedback",
+            "left": 1026.328125,
+            "top": 262.984375,
+            "bottom": 286.984375,
+            "fontSize": "14px"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "theme": "light",
+    "groups": [
+      {
+        "name": "Reviews",
+        "width": 376.65625,
+        "top": 164.59375,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournament requests",
+            "left": 273,
+            "top": 214.984375,
+            "bottom": 238.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Permanent squads",
+            "left": 273,
+            "top": 238.984375,
+            "bottom": 262.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "External referees",
+            "left": 273,
+            "top": 262.984375,
+            "bottom": 286.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Rule changes",
+            "left": 273,
+            "top": 286.984375,
+            "bottom": 310.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Leader transfers",
+            "left": 273,
+            "top": 310.984375,
+            "bottom": 334.984375,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Directory",
+        "width": 376.671875,
+        "top": 164.59375,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournaments",
+            "left": 649.65625,
+            "top": 214.984375,
+            "bottom": 238.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Users",
+            "left": 649.65625,
+            "top": 238.984375,
+            "bottom": 262.984375,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Governance",
+        "width": 376.65625,
+        "top": 164.59375,
+        "height": 182.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Admin rights",
+            "left": 1026.328125,
+            "top": 214.984375,
+            "bottom": 238.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Audit logs",
+            "left": 1026.328125,
+            "top": 238.984375,
+            "bottom": 262.984375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Feedback",
+            "left": 1026.328125,
+            "top": 262.984375,
+            "bottom": 286.984375,
+            "fontSize": "14px"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "groups": [
+      {
+        "name": "Reviews",
+        "width": 340,
+        "top": 518.15625,
+        "height": 283.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournament requests",
+            "left": 41,
+            "top": 568.546875,
+            "bottom": 612.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Permanent squads",
+            "left": 41,
+            "top": 612.546875,
+            "bottom": 656.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "External referees",
+            "left": 41,
+            "top": 656.546875,
+            "bottom": 700.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Rule changes",
+            "left": 41,
+            "top": 700.546875,
+            "bottom": 744.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Leader transfers",
+            "left": 41,
+            "top": 744.546875,
+            "bottom": 788.546875,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Directory",
+        "width": 340,
+        "top": 801.546875,
+        "height": 151.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournaments",
+            "left": 41,
+            "top": 851.9375,
+            "bottom": 895.9375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Users",
+            "left": 41,
+            "top": 895.9375,
+            "bottom": 939.9375,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Governance",
+        "width": 340,
+        "top": 952.9375,
+        "height": 194.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Admin rights",
+            "left": 41,
+            "top": 1003.328125,
+            "bottom": 1047.328125,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Audit logs",
+            "left": 41,
+            "top": 1047.328125,
+            "bottom": 1091.328125,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Feedback",
+            "left": 41,
+            "top": 1091.328125,
+            "bottom": 1135.328125,
+            "fontSize": "14px"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "groups": [
+      {
+        "name": "Reviews",
+        "width": 340,
+        "top": 518.15625,
+        "height": 283.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournament requests",
+            "left": 41,
+            "top": 568.546875,
+            "bottom": 612.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Permanent squads",
+            "left": 41,
+            "top": 612.546875,
+            "bottom": 656.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "External referees",
+            "left": 41,
+            "top": 656.546875,
+            "bottom": 700.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Rule changes",
+            "left": 41,
+            "top": 700.546875,
+            "bottom": 744.546875,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Leader transfers",
+            "left": 41,
+            "top": 744.546875,
+            "bottom": 788.546875,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Directory",
+        "width": 340,
+        "top": 801.546875,
+        "height": 151.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Tournaments",
+            "left": 41,
+            "top": 851.9375,
+            "bottom": 895.9375,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Users",
+            "left": 41,
+            "top": 895.9375,
+            "bottom": 939.9375,
+            "fontSize": "14px"
+          }
+        ]
+      },
+      {
+        "name": "Governance",
+        "width": 340,
+        "top": 952.9375,
+        "height": 194.390625,
+        "headingSize": "24px",
+        "links": [
+          {
+            "name": "Admin rights",
+            "left": 41,
+            "top": 1003.328125,
+            "bottom": 1047.328125,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Audit logs",
+            "left": 41,
+            "top": 1047.328125,
+            "bottom": 1091.328125,
+            "fontSize": "14px"
+          },
+          {
+            "name": "Feedback",
+            "left": 41,
+            "top": 1091.328125,
+            "bottom": 1135.328125,
+            "fontSize": "14px"
+          }
+        ]
+      }
+    ]
+  }
+]

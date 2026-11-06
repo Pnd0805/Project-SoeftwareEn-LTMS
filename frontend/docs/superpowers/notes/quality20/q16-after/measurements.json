@@ -1,0 +1,210 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "request": {
+      "height": 1718.65625,
+      "firstFieldY": 289.578125,
+      "sendY": 1865.859375,
+      "headings": [
+        "Tournament",
+        "Schedule",
+        "Eligibility"
+      ],
+      "reviewStyle": {
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(26, 23, 38)"
+      }
+    },
+    "staffing": "Referees\n6 accepted\n2 required per match\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee",
+    "retainedDraftAfterFailure": true,
+    "failedWrites": [
+      {
+        "name": "Community Cup",
+        "sportTypeId": 1,
+        "bracketFormat": "single_elimination",
+        "scopeType": "faculty",
+        "organizingFacultyId": 1,
+        "organizingDepartmentId": null,
+        "registrationStart": "2026-10-09T04:13:00+07:00",
+        "registrationEnd": "2026-10-22T04:13:00+07:00",
+        "eventStartDate": "2026-10-29",
+        "eventEndDate": "2026-10-30",
+        "maxTeams": 8,
+        "minTeams": 2,
+        "venue": "Court 1",
+        "genderRequirement": "any",
+        "minAge": null,
+        "maxAge": null,
+        "eligibilityRules": [
+          {
+            "type": "faculty",
+            "value": 1
+          },
+          {
+            "type": "year",
+            "value": 2
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "request": {
+      "height": 1718.65625,
+      "firstFieldY": 289.578125,
+      "sendY": 1865.859375,
+      "headings": [
+        "Tournament",
+        "Schedule",
+        "Eligibility"
+      ],
+      "reviewStyle": {
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(241, 233, 216)"
+      }
+    },
+    "staffing": "Referees\n6 accepted\n2 required per match\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee",
+    "retainedDraftAfterFailure": true,
+    "failedWrites": [
+      {
+        "name": "Community Cup",
+        "sportTypeId": 1,
+        "bracketFormat": "single_elimination",
+        "scopeType": "faculty",
+        "organizingFacultyId": 1,
+        "organizingDepartmentId": null,
+        "registrationStart": "2026-10-09T04:13:00+07:00",
+        "registrationEnd": "2026-10-22T04:13:00+07:00",
+        "eventStartDate": "2026-10-29",
+        "eventEndDate": "2026-10-30",
+        "maxTeams": 8,
+        "minTeams": 2,
+        "venue": "Court 1",
+        "genderRequirement": "any",
+        "minAge": null,
+        "maxAge": null,
+        "eligibilityRules": [
+          {
+            "type": "faculty",
+            "value": 1
+          },
+          {
+            "type": "year",
+            "value": 2
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "request": {
+      "height": 1742.65625,
+      "firstFieldY": 289.578125,
+      "sendY": 1889.859375,
+      "headings": [
+        "Tournament",
+        "Schedule",
+        "Eligibility"
+      ],
+      "reviewStyle": {
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(26, 23, 38)"
+      }
+    },
+    "staffing": "Referees\n6 accepted\n2 required per match\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee",
+    "retainedDraftAfterFailure": true,
+    "failedWrites": [
+      {
+        "name": "Community Cup",
+        "sportTypeId": 1,
+        "bracketFormat": "single_elimination",
+        "scopeType": "faculty",
+        "organizingFacultyId": 1,
+        "organizingDepartmentId": null,
+        "registrationStart": "2026-10-09T04:13:00+07:00",
+        "registrationEnd": "2026-10-22T04:13:00+07:00",
+        "eventStartDate": "2026-10-29",
+        "eventEndDate": "2026-10-30",
+        "maxTeams": 8,
+        "minTeams": 2,
+        "venue": "Court 1",
+        "genderRequirement": "any",
+        "minAge": null,
+        "maxAge": null,
+        "eligibilityRules": [
+          {
+            "type": "faculty",
+            "value": 1
+          },
+          {
+            "type": "year",
+            "value": 2
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "request": {
+      "height": 3350.671875,
+      "firstFieldY": 556.765625,
+      "sendY": 3761.453125,
+      "headings": [
+        "Tournament",
+        "Schedule",
+        "Eligibility"
+      ],
+      "reviewStyle": {
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(241, 233, 216)"
+      }
+    },
+    "staffing": "Referees\n6 accepted\n2 required per match\nEach onsite match needs 2. An accepted appointment joins the pool; match assignments are separate.\nInvitations and responses\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 7 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 8 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 9 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 10 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 11 Northside Community League\n\tInvited — waiting\tWithdraw invitation\n\nR\nReferee 12 Northside Community League\n· external\n\tInvited — waiting\tWithdraw invitation\nAccepted appointments\n6 shown\nREFEREE\tSTATE\tACTION\n\nR\nReferee 1 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 2 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 3 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 4 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 5 Northside Community League\n\tAccepted\tRemove\n\nR\nReferee 6 Northside Community League\n\tAccepted\tRemove\nAppoint a referee",
+    "retainedDraftAfterFailure": true,
+    "failedWrites": [
+      {
+        "name": "Community Cup",
+        "sportTypeId": 1,
+        "bracketFormat": "single_elimination",
+        "scopeType": "faculty",
+        "organizingFacultyId": 1,
+        "organizingDepartmentId": null,
+        "registrationStart": "2026-10-09T04:13:00+07:00",
+        "registrationEnd": "2026-10-22T04:13:00+07:00",
+        "eventStartDate": "2026-10-29",
+        "eventEndDate": "2026-10-30",
+        "maxTeams": 8,
+        "minTeams": 2,
+        "venue": "Court 1",
+        "genderRequirement": "any",
+        "minAge": null,
+        "maxAge": null,
+        "eligibilityRules": [
+          {
+            "type": "faculty",
+            "value": 1
+          },
+          {
+            "type": "year",
+            "value": 2
+          }
+        ]
+      }
+    ],
+    "errors": []
+  }
+]

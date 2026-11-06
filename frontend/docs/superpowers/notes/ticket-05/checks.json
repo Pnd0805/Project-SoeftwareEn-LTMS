@@ -1,0 +1,488 @@
+[
+  {
+    "name": "registrations-1280-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-1280-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "interactions-1280-dark",
+    "draftRetained": true,
+    "reviewFooter": {
+      "top": 661.609375,
+      "bottom": 719,
+      "viewport": 800
+    },
+    "errors": [],
+    "writes": []
+  },
+  {
+    "name": "registrations-1280-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-1280-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "interactions-1280-light",
+    "draftRetained": true,
+    "reviewFooter": {
+      "top": 661.609375,
+      "bottom": 719,
+      "viewport": 800
+    },
+    "errors": [],
+    "writes": []
+  },
+  {
+    "name": "registrations-1440-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-start-1440-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-1440-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "entry-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 554
+      },
+      {
+        "height": 360,
+        "width": 554
+      }
+    ],
+    "panelPadding": []
+  },
+  {
+    "name": "referees-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 533
+      },
+      {
+        "height": 360,
+        "width": 533
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "referee-search-1440-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 533
+      },
+      {
+        "height": 360,
+        "width": 533
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "draw-1440-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "request-1440-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "interactions-1440-dark",
+    "draftRetained": true,
+    "reviewFooter": {
+      "top": 754.609375,
+      "bottom": 812,
+      "viewport": 900
+    },
+    "errors": [],
+    "writes": []
+  },
+  {
+    "name": "registrations-1440-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-start-1440-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-1440-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "entry-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 554
+      },
+      {
+        "height": 360,
+        "width": 554
+      }
+    ],
+    "panelPadding": []
+  },
+  {
+    "name": "referees-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 533
+      },
+      {
+        "height": 360,
+        "width": 533
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "referee-search-1440-light",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 533
+      },
+      {
+        "height": 360,
+        "width": 533
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "draw-1440-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "request-1440-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "interactions-1440-light",
+    "draftRetained": true,
+    "reviewFooter": {
+      "top": 754.609375,
+      "bottom": 812,
+      "viewport": 900
+    },
+    "errors": [],
+    "writes": []
+  },
+  {
+    "name": "registrations-390-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-start-390-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-390-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "entry-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 342
+      },
+      {
+        "height": 360,
+        "width": 342
+      }
+    ],
+    "panelPadding": []
+  },
+  {
+    "name": "referees-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 300
+      },
+      {
+        "height": 360,
+        "width": 300
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "referee-search-390-dark",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 300
+      },
+      {
+        "height": 360,
+        "width": 300
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "request-390-dark",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "interactions-390-dark",
+    "draftRetained": true,
+    "reviewFooter": {
+      "top": 683.796875,
+      "bottom": 780.796875,
+      "viewport": 844
+    },
+    "errors": [],
+    "writes": []
+  },
+  {
+    "name": "registrations-390-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-start-390-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "review-390-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "entry-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 342
+      },
+      {
+        "height": 360,
+        "width": 342
+      }
+    ],
+    "panelPadding": []
+  },
+  {
+    "name": "referees-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 300
+      },
+      {
+        "height": 360,
+        "width": 300
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "referee-search-390-light",
+    "overflow": false,
+    "panels": [
+      {
+        "height": 360,
+        "width": 300
+      },
+      {
+        "height": 360,
+        "width": 300
+      }
+    ],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "request-390-light",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "interactions-390-light",
+    "draftRetained": true,
+    "reviewFooter": {
+      "top": 683.796875,
+      "bottom": 780.796875,
+      "viewport": 844
+    },
+    "errors": [],
+    "writes": []
+  },
+  {
+    "name": "blocked-publish",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "blocked-publish-gate",
+    "noWrites": true
+  },
+  {
+    "name": "publish-confirm",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px",
+      "20px"
+    ]
+  },
+  {
+    "name": "publish-confirm-gate",
+    "noWrites": true
+  },
+  {
+    "name": "blocked-draw",
+    "overflow": false,
+    "panels": [],
+    "panelPadding": [
+      "20px"
+    ]
+  },
+  {
+    "name": "blocked-draw-gate",
+    "noWrites": true
+  }
+]

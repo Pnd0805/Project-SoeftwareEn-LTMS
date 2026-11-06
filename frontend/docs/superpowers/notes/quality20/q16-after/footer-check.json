@@ -1,0 +1,82 @@
+[
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "formHeight": 1597.875,
+    "firstFieldY": 289.578125,
+    "sendY": 1809.46875,
+    "sendBottom": 1849.859375,
+    "combinedHeight": 1662.265625,
+    "footerRows": [
+      1809.46875,
+      1809.46875
+    ],
+    "summaryBottom": 967.59375,
+    "summaryBeforeSubmit": true,
+    "color": "rgb(199, 187, 160)",
+    "background": "rgb(26, 23, 38)",
+    "overflow": false,
+    "reviewContrast": 9.24608789200706
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "formHeight": 1597.875,
+    "firstFieldY": 289.578125,
+    "sendY": 1809.46875,
+    "sendBottom": 1849.859375,
+    "combinedHeight": 1662.265625,
+    "footerRows": [
+      1809.46875,
+      1809.46875
+    ],
+    "summaryBottom": 967.59375,
+    "summaryBeforeSubmit": true,
+    "color": "rgb(90, 78, 54)",
+    "background": "rgb(241, 233, 216)",
+    "overflow": false,
+    "reviewContrast": 6.745127926797779
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "formHeight": 1621.875,
+    "firstFieldY": 289.578125,
+    "sendY": 1833.46875,
+    "sendBottom": 1873.859375,
+    "combinedHeight": 1686.265625,
+    "footerRows": [
+      1833.46875,
+      1833.46875
+    ],
+    "summaryBottom": 867.59375,
+    "summaryBeforeSubmit": true,
+    "color": "rgb(199, 187, 160)",
+    "background": "rgb(26, 23, 38)",
+    "overflow": false,
+    "reviewContrast": 9.24608789200706
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "formHeight": 2463.828125,
+    "firstFieldY": 556.765625,
+    "sendY": 3701.453125,
+    "sendBottom": 3745.453125,
+    "combinedHeight": 3290.671875,
+    "footerRows": [
+      3701.453125,
+      3701.453125
+    ],
+    "summaryBottom": 3677.453125,
+    "summaryBeforeSubmit": true,
+    "color": "rgb(90, 78, 54)",
+    "background": "rgb(241, 233, 216)",
+    "overflow": false,
+    "reviewContrast": 6.745127926797779
+  }
+]

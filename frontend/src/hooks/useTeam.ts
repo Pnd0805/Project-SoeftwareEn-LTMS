@@ -1,0 +1,268 @@
+/**
+ * src/hooks/useTeam.ts — Person 4 (Teams)
+ *
+ * ชั้นเดียวที่ feature component เรียก — ไม่มี component ไหน import api/team.ts ตรงๆ
+ *
+ * query key namespace ของสไลซ์ 4 ตาม PLAN.md: `team` `teams` `admin`
+ * (สไลซ์ 1 ใช้ `me`/`auth`/… · สไลซ์ 2 ใช้ `tournament*` · สไลซ์ 3 ใช้ `match*`)
+ *
+ * ── กฎ invalidate ที่พลาดไม่ได้ ────────────────────────────────────────────
+ * ตอบรับคำเชิญ = สมาชิกทีมเปลี่ยน + รายการทีมของฉันเปลี่ยน + คำเชิญเปลี่ยน
+ * อนุมัติคำร้อง Official = ทีมเปลี่ยนสถานะ + คิว Admin เปลี่ยน
+ * ทำเป็น helper ไว้ จะได้ไม่ลืมสัก key
+ */
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { retryPolicy } from "../api/client";
+import type { QueryClient } from "@tanstack/react-query";
+import * as teamApi from "../api/team";
+import type { TeamRef } from "../mocks/teamBridge";
+import type {
+  CreateTeamRequest,
+  UpdateTeamRequest,
+  SetMemberPositionRequest,
+  InviteMemberRequest,
+  RequestOfficialStatusRequest,
+  TransferLeaderRequest,
+  ReviewTeamRequestRequest,
+} from "../types/team.dto";
+
+export const teamKeys = {
+  all: ["teams"] as const,
+  mine: ["teams", "mine"] as const,
+  backendMine: ["teams", "backend", "mine"] as const,
+  detail: (id: TeamRef) => ["team", id] as const,
+  backendDetail: (id: number) => ["teams", "detail", id] as const,
+  backendMembers: (id: number) => ["teams", "detail", id, "members"] as const,
+  search: (q: string) => ["teams", "search", q] as const,
+  invitations: (id: TeamRef) => ["team", id, "invitations"] as const,
+  myInvitations: ["teams", "invitations", "mine"] as const,
+  adminRequests: ["admin", "teamRequests"] as const,
+  player: (id: TeamRef) => ["team", "player", id] as const,
+};
+
+/**
+ * ทุกอย่างที่แตะสมาชิกทีมสะเทือนหลายหน้าพร้อมกัน
+ *
+ * หน้าทีมอ่านผ่าน key ของ backend (`["teams", "detail", id]`, `["teams", "backend", …]`)
+ * แต่เดิม invalidate แค่ `["team", id]` กับ `["teams", "mine"]` หน้าทีมจึงไม่อัปเดตหลังถอน
+ * หรือเชิญผู้เล่น — ล้างทั้งสอง namespace ไปเลย เพราะ id ของทีมในโหมด mock มีได้สองระบบ
+ */
+function touchTeam(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ["teams"] });
+  qc.invalidateQueries({ queryKey: ["team"] });
+  /* การกระทำเหล่านี้แจ้งเตือนผู้ใช้ — กระดิ่งบน Shell ต้องอ่านใหม่ */
+  qc.invalidateQueries({ queryKey: ["notifications"] });
+}
+
+// ══════════════ queries ══════════════
+
+export function useMyTeams() {
+  return useQuery({ queryKey: teamKeys.mine, queryFn: teamApi.getMyTeams, retry: retryPolicy });
+}
+
+/** `origin/backend` API — use for screens migrated away from the legacy store. */
+export function useBackendMyTeams(enabled = true) {
+  return useQuery({
+    queryKey: teamKeys.backendMine,
+    queryFn: teamApi.getBackendMyTeams,
+    enabled,
+    retry: retryPolicy,
+  });
+}
+
+/** `origin/backend` API — team detail is public. */
+export function useBackendTeam(teamId: number | undefined) {
+  return useQuery({
+    queryKey: teamKeys.backendDetail(teamId ?? 0),
+    queryFn: () => teamApi.getBackendTeam(teamId as number),
+    enabled: teamId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+export function useSearchTeams(q: string, enabled = true) {
+  return useQuery({
+    queryKey: teamKeys.search(q.trim()),
+    queryFn: () => teamApi.searchBackendTeams({ q, visibility: "public" }),
+    enabled: enabled && q.trim().length > 0,
+    retry: retryPolicy,
+  });
+}
+
+/** `origin/backend` API — returns 403 when the viewer is not a team member. */
+export function useBackendTeamMembers(teamId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: teamKeys.backendMembers(teamId ?? 0),
+    queryFn: () => teamApi.getBackendTeamMembers(teamId as number),
+    enabled: teamId !== undefined && enabled,
+    retry: retryPolicy,
+  });
+}
+
+export function useBackendMyInvitations() {
+  return useQuery({ queryKey: ["teams", "backend", "invitations"], queryFn: teamApi.getBackendMyInvitations, retry: retryPolicy });
+}
+
+export function useAnswerBackendInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (value: { invitationId: number; accept: boolean }) => teamApi.answerBackendInvitation(value.invitationId, value.accept),
+    /* รับคำเชิญแล้วสมาชิกของทีมนั้นเปลี่ยนด้วย ไม่ใช่แค่รายการคำเชิญ */
+    onSuccess: () => touchTeam(qc),
+    onError: (error) => {
+      const status = (error as { status?: unknown } | null)?.status;
+      if (status === 403 || status === 409) {
+        void qc.invalidateQueries({ queryKey: ["teams", "backend", "invitations"] });
+      }
+    },
+  });
+}
+
+export function useTeam(teamId: TeamRef | undefined) {
+  return useQuery({
+    queryKey: teamKeys.detail(teamId as TeamRef),
+    queryFn: () => teamApi.getTeam(teamId as TeamRef),
+    enabled: teamId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+export function useMyInvitations() {
+  return useQuery({ queryKey: teamKeys.myInvitations, queryFn: teamApi.getMyInvitations, retry: retryPolicy });
+}
+
+export function useTeamInvitations(teamId: TeamRef | undefined) {
+  return useQuery({
+    queryKey: teamKeys.invitations(teamId as TeamRef),
+    queryFn: () => teamApi.getTeamInvitations(teamId as TeamRef),
+    enabled: teamId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+export function useTeamAdminRequests() {
+  return useQuery({ queryKey: teamKeys.adminRequests, queryFn: teamApi.getTeamAdminRequests, retry: retryPolicy });
+}
+
+export function usePlayerProfile(userId: TeamRef | undefined) {
+  return useQuery({
+    queryKey: teamKeys.player(userId as TeamRef),
+    queryFn: () => teamApi.getPlayerProfile(userId as TeamRef),
+    enabled: userId !== undefined,
+    retry: retryPolicy,
+  });
+}
+
+// ══════════════ mutations ══════════════
+
+export function useCreateTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateTeamRequest) => teamApi.createTeam(input),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useUpdateTeam(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateTeamRequest) => teamApi.updateTeam(teamId, input),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useSetMemberPosition(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SetMemberPositionRequest) => teamApi.setMemberPosition(teamId, input),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useKickMember(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: number) => teamApi.kickMember(teamId, userId),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useLeaveTeam(teamId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => teamApi.leaveTeam(teamId),
+    onSuccess: async () => {
+      qc.removeQueries({ queryKey: teamKeys.backendMembers(teamId), exact: true });
+      await Promise.all(["teams", "team", "me", "users"].map(key => qc.invalidateQueries({ queryKey: [key] })));
+    },
+  });
+}
+
+export function useInviteMember(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: InviteMemberRequest) => teamApi.inviteMember(teamId, input),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useCancelTeamInvitation(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: number) => teamApi.cancelTeamInvitation(teamId, invitationId),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+/** ตอบรับแล้วสมาชิกทีมเปลี่ยน — invalidate ทั้งคำเชิญและทีม */
+export function useAnswerInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { invitationId: TeamRef; accept: boolean }) =>
+      teamApi.answerInvitation(v.invitationId, v.accept),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useDisbandTeam(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => teamApi.disbandTeam(teamId),
+    onSuccess: () => touchTeam(qc),
+  });
+}
+
+export function useRequestOfficialStatus(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RequestOfficialStatusRequest) => teamApi.requestOfficialStatus(teamId, input),
+    onSuccess: () => {
+      touchTeam(qc);
+      qc.invalidateQueries({ queryKey: teamKeys.adminRequests });
+    },
+  });
+}
+
+export function useTransferLeader(teamId: TeamRef) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TransferLeaderRequest) => teamApi.transferLeader(teamId, input),
+    onSuccess: () => {
+      touchTeam(qc);
+      qc.invalidateQueries({ queryKey: teamKeys.adminRequests });
+    },
+  });
+}
+
+/** Admin ตัดสิน — ทีมเปลี่ยนสถานะและคิวสั้นลง */
+export function useReviewTeamRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { requestId: TeamRef; input: ReviewTeamRequestRequest }) =>
+      teamApi.reviewTeamRequest(v.requestId, v.input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: teamKeys.adminRequests });
+      qc.invalidateQueries({ queryKey: teamKeys.all });
+    },
+  });
+}

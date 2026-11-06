@@ -1,0 +1,134 @@
+[
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "registrationPayload": {
+      "fullName": "Test Student",
+      "email": "chosen@example.test",
+      "password": "password123",
+      "gender": "other",
+      "birthDate": "2002-06-04",
+      "facultyId": 2,
+      "departmentId": 8,
+      "year": 3
+    },
+    "leadingZeros": true,
+    "deliveryFailure": true,
+    "retry": true,
+    "resendCooldown": true,
+    "successFocus": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "registrationPayload": {
+      "fullName": "Test Student",
+      "email": "chosen@example.test",
+      "password": "password123",
+      "gender": "other",
+      "birthDate": "2002-06-04",
+      "facultyId": 2,
+      "departmentId": 8,
+      "year": 3
+    },
+    "leadingZeros": true,
+    "deliveryFailure": true,
+    "retry": true,
+    "resendCooldown": true,
+    "successFocus": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "registrationPayload": {
+      "fullName": "Test Student",
+      "email": "chosen@example.test",
+      "password": "password123",
+      "gender": "other",
+      "birthDate": "2002-06-04",
+      "facultyId": 2,
+      "departmentId": 8,
+      "year": 3
+    },
+    "leadingZeros": true,
+    "deliveryFailure": true,
+    "retry": true,
+    "resendCooldown": true,
+    "successFocus": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "registrationPayload": {
+      "fullName": "Test Student",
+      "email": "chosen@example.test",
+      "password": "password123",
+      "gender": "other",
+      "birthDate": "2002-06-04",
+      "facultyId": 2,
+      "departmentId": 8,
+      "year": 3
+    },
+    "leadingZeros": true,
+    "deliveryFailure": true,
+    "retry": true,
+    "resendCooldown": true,
+    "successFocus": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "registrationPayload": {
+      "fullName": "Test Student",
+      "email": "chosen@example.test",
+      "password": "password123",
+      "gender": "other",
+      "birthDate": "2002-06-04",
+      "facultyId": 2,
+      "departmentId": 8,
+      "year": 3
+    },
+    "leadingZeros": true,
+    "deliveryFailure": true,
+    "retry": true,
+    "resendCooldown": true,
+    "successFocus": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "registrationPayload": {
+      "fullName": "Test Student",
+      "email": "chosen@example.test",
+      "password": "password123",
+      "gender": "other",
+      "birthDate": "2002-06-04",
+      "facultyId": 2,
+      "departmentId": 8,
+      "year": 3
+    },
+    "leadingZeros": true,
+    "deliveryFailure": true,
+    "retry": true,
+    "resendCooldown": true,
+    "successFocus": true,
+    "overflow": false,
+    "pageErrors": []
+  }
+]

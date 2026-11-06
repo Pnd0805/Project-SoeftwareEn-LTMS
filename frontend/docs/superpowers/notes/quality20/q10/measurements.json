@@ -1,0 +1,1254 @@
+[
+  {
+    "name": "home",
+    "width": 1440,
+    "theme": "dark",
+    "url": "/",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1393.90625,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Home",
+        "y": 89.78125,
+        "height": 36,
+        "width": 71.96875
+      },
+      {
+        "text": "Needs you",
+        "y": 159.984375,
+        "height": 38.390625,
+        "width": 96.078125
+      },
+      {
+        "text": "Next match",
+        "y": 159.984375,
+        "height": 38.390625,
+        "width": 554
+      },
+      {
+        "text": "Tournaments",
+        "y": 562.375,
+        "height": 30,
+        "width": 1132
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Home",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "HOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress"
+  },
+  {
+    "name": "schedule",
+    "width": 1440,
+    "theme": "dark",
+    "url": "/t/t-fb/schedule",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1713.703125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 135.390625,
+        "height": 60,
+        "width": 643.921875
+      },
+      {
+        "text": "Details",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Schedule",
+        "y": 775.578125,
+        "height": 30.796875,
+        "width": 104.21875
+      },
+      {
+        "text": "Entry notes",
+        "y": 1470.296875,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Kick-off",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Round",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Home",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Away",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Score",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\tACTIONS\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "bracket",
+    "width": 1440,
+    "theme": "dark",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1722.78125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 135.390625,
+        "height": 60,
+        "width": 643.921875
+      },
+      {
+        "text": "Details",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Bracket",
+        "y": 778.578125,
+        "height": 30.796875,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 1479.375,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "team",
+    "width": 1440,
+    "theme": "dark",
+    "url": "/team/t-byt",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 2147.890625,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Byte Force",
+        "y": 168.390625,
+        "height": 56,
+        "width": 246.5625
+      },
+      {
+        "text": "Members 6",
+        "y": 607.96875,
+        "height": 30.796875,
+        "width": 115.03125
+      },
+      {
+        "text": "Invite players",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Sent invitations",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Manage team",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Record by sport",
+        "y": 1193.0625,
+        "height": 30.796875,
+        "width": 1090
+      },
+      {
+        "text": "Honours",
+        "y": 1439.953125,
+        "height": 30.796875,
+        "width": 1090
+      },
+      {
+        "text": "Results 2",
+        "y": 1605.546875,
+        "height": 30.796875,
+        "width": 1090
+      },
+      {
+        "text": "Tournament entries",
+        "y": 1883.53125,
+        "height": 30.796875,
+        "width": 1090
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Teams",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Player",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Joined",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Invited",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Status",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Date",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Sport",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Tournament",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      }
+    ],
+    "text": "TEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMEMBERS 6\nPlayers 6 · 5 needed to enter\nLocked until the tournament ends\nPLAYER\tJOINED\tACTIONS\n\nS\nSirawit Kanchana\n· captain\n\t1/28/2026\t\nProfile\n\n\nM\nMongkol Thanit\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nC\nChalermchai Ponsri\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nN\nNalin Pattama\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nK\nKanya Duangjai\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nP\nPeerapat Nont\n\t1/28/2026\t\nHand over\nRemove\nProfile\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tOUTCOME\tACTIONS\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\tACTIONS\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "home",
+    "width": 1440,
+    "theme": "light",
+    "url": "/",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1393.90625,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Home",
+        "y": 89.78125,
+        "height": 36,
+        "width": 71.96875
+      },
+      {
+        "text": "Needs you",
+        "y": 159.984375,
+        "height": 38.390625,
+        "width": 96.078125
+      },
+      {
+        "text": "Next match",
+        "y": 159.984375,
+        "height": 38.390625,
+        "width": 554
+      },
+      {
+        "text": "Tournaments",
+        "y": 562.375,
+        "height": 30,
+        "width": 1132
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Home",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "HOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress"
+  },
+  {
+    "name": "schedule",
+    "width": 1440,
+    "theme": "light",
+    "url": "/t/t-fb/schedule",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1713.703125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 135.390625,
+        "height": 60,
+        "width": 643.921875
+      },
+      {
+        "text": "Details",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Schedule",
+        "y": 775.578125,
+        "height": 30.796875,
+        "width": 104.21875
+      },
+      {
+        "text": "Entry notes",
+        "y": 1470.296875,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Kick-off",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Round",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Home",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Away",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Score",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\tACTIONS\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "bracket",
+    "width": 1440,
+    "theme": "light",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 1722.78125,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 135.390625,
+        "height": 60,
+        "width": 643.921875
+      },
+      {
+        "text": "Details",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 512
+      },
+      {
+        "text": "Entry",
+        "y": 317.1875,
+        "height": 30.796875,
+        "width": 66.84375
+      },
+      {
+        "text": "Bracket",
+        "y": 778.578125,
+        "height": 30.796875,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 1479.375,
+        "height": 30.796875,
+        "width": 512
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "team",
+    "width": 1440,
+    "theme": "light",
+    "url": "/team/t-byt",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 63.59375,
+      "height": 2147.890625,
+      "width": 1180
+    },
+    "headings": [
+      {
+        "text": "Byte Force",
+        "y": 168.390625,
+        "height": 56,
+        "width": 246.5625
+      },
+      {
+        "text": "Members 6",
+        "y": 607.96875,
+        "height": 30.796875,
+        "width": 115.03125
+      },
+      {
+        "text": "Invite players",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Sent invitations",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Manage team",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Record by sport",
+        "y": 1193.0625,
+        "height": 30.796875,
+        "width": 1090
+      },
+      {
+        "text": "Honours",
+        "y": 1439.953125,
+        "height": 30.796875,
+        "width": 1090
+      },
+      {
+        "text": "Results 2",
+        "y": 1605.546875,
+        "height": 30.796875,
+        "width": 1090
+      },
+      {
+        "text": "Tournament entries",
+        "y": 1883.53125,
+        "height": 30.796875,
+        "width": 1090
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Teams",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Player",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Joined",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Invited",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Status",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Date",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Sport",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Tournament",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      }
+    ],
+    "text": "TEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMEMBERS 6\nPlayers 6 · 5 needed to enter\nLocked until the tournament ends\nPLAYER\tJOINED\tACTIONS\n\nS\nSirawit Kanchana\n· captain\n\t1/28/2026\t\nProfile\n\n\nM\nMongkol Thanit\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nC\nChalermchai Ponsri\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nN\nNalin Pattama\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nK\nKanya Duangjai\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nP\nPeerapat Nont\n\t1/28/2026\t\nHand over\nRemove\nProfile\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tOUTCOME\tACTIONS\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\tACTIONS\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "home",
+    "width": 390,
+    "theme": "dark",
+    "url": "/",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2913,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Home",
+        "y": 346.78125,
+        "height": 36,
+        "width": 71.96875
+      },
+      {
+        "text": "Needs you",
+        "y": 418.78125,
+        "height": 38.390625,
+        "width": 96.078125
+      },
+      {
+        "text": "Next match",
+        "y": 813.171875,
+        "height": 38.390625,
+        "width": 342
+      },
+      {
+        "text": "Tournaments",
+        "y": 1215.5625,
+        "height": 30,
+        "width": 342
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Home",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "HOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress"
+  },
+  {
+    "name": "schedule",
+    "width": 390,
+    "theme": "dark",
+    "url": "/t/t-fb/schedule",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2315.34375,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 390.578125,
+        "height": 72,
+        "width": 342
+      },
+      {
+        "text": "Details",
+        "y": 627.5625,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1011.5625,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Schedule",
+        "y": 1534.34375,
+        "height": 28.59375,
+        "width": 96.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 2327.125,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Kick-off",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Round",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Home",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Away",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Score",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(10, 8, 16)",
+        "bg": "rgb(58, 174, 124)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\tACTIONS\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "bracket",
+    "width": 390,
+    "theme": "dark",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2302.953125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 390.578125,
+        "height": 72,
+        "width": 342
+      },
+      {
+        "text": "Details",
+        "y": 627.5625,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1011.5625,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Bracket",
+        "y": 1534.34375,
+        "height": 28.59375,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 2314.734375,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "team",
+    "width": 390,
+    "theme": "dark",
+    "url": "/team/t-byt",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2943.578125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Byte Force",
+        "y": 411.578125,
+        "height": 36,
+        "width": 158.515625
+      },
+      {
+        "text": "Members 6",
+        "y": 917.953125,
+        "height": 28.59375,
+        "width": 107.734375
+      },
+      {
+        "text": "Invite players",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Sent invitations",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Manage team",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Record by sport",
+        "y": 1584.34375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Honours",
+        "y": 2154.21875,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Results 2",
+        "y": 2317.609375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Tournament entries",
+        "y": 2929.390625,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Teams",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Player",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Joined",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Invited",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Status",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Date",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Sport",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      },
+      {
+        "text": "Tournament",
+        "fg": "rgb(199, 187, 160)",
+        "bg": "rgb(48, 43, 65)"
+      }
+    ],
+    "text": "TEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMEMBERS 6\nPlayers 6 · 5 needed to enter\nLocked until the tournament ends\nPLAYER\tJOINED\tACTIONS\n\nS\nSirawit Kanchana\n· captain\n\t1/28/2026\t\nProfile\n\n\nM\nMongkol Thanit\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nC\nChalermchai Ponsri\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nN\nNalin Pattama\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nK\nKanya Duangjai\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nP\nPeerapat Nont\n\t1/28/2026\t\nHand over\nRemove\nProfile\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tOUTCOME\tACTIONS\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\tACTIONS\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "home",
+    "width": 390,
+    "theme": "light",
+    "url": "/",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2913,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Home",
+        "y": 346.78125,
+        "height": 36,
+        "width": 71.96875
+      },
+      {
+        "text": "Needs you",
+        "y": 418.78125,
+        "height": 38.390625,
+        "width": 96.078125
+      },
+      {
+        "text": "Next match",
+        "y": 813.171875,
+        "height": 38.390625,
+        "width": 342
+      },
+      {
+        "text": "Tournaments",
+        "y": 1215.5625,
+        "height": 30,
+        "width": 342
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Home",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "HOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress"
+  },
+  {
+    "name": "schedule",
+    "width": 390,
+    "theme": "light",
+    "url": "/t/t-fb/schedule",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2315.34375,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 390.578125,
+        "height": 72,
+        "width": 342
+      },
+      {
+        "text": "Details",
+        "y": 627.5625,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1011.5625,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Schedule",
+        "y": 1534.34375,
+        "height": 28.59375,
+        "width": 96.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 2327.125,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Kick-off",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Round",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Home",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Away",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Score",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "State",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(255, 255, 255)",
+        "bg": "rgb(18, 118, 78)"
+      }
+    ],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\tACTIONS\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "bracket",
+    "width": 390,
+    "theme": "light",
+    "url": "/t/t-fb/bracket",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2302.953125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Faculty Football Cup 2026",
+        "y": 390.578125,
+        "height": 72,
+        "width": 342
+      },
+      {
+        "text": "Details",
+        "y": 627.5625,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Entry",
+        "y": 1011.5625,
+        "height": 28.59375,
+        "width": 62.0625
+      },
+      {
+        "text": "Bracket",
+        "y": 1534.34375,
+        "height": 28.59375,
+        "width": 211.78125
+      },
+      {
+        "text": "Entry notes",
+        "y": 2314.734375,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Tournaments",
+    "searchLandmark": true,
+    "headers": [],
+    "text": "TOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match."
+  },
+  {
+    "name": "team",
+    "width": 390,
+    "theme": "light",
+    "url": "/team/t-byt",
+    "errors": [],
+    "overflow": false,
+    "main": {
+      "y": 318.78125,
+      "height": 2943.578125,
+      "width": 390
+    },
+    "headings": [
+      {
+        "text": "Byte Force",
+        "y": 411.578125,
+        "height": 36,
+        "width": 158.515625
+      },
+      {
+        "text": "Members 6",
+        "y": 917.953125,
+        "height": 28.59375,
+        "width": 107.734375
+      },
+      {
+        "text": "Invite players",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Sent invitations",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Manage team",
+        "y": 0,
+        "height": 0,
+        "width": 0
+      },
+      {
+        "text": "Record by sport",
+        "y": 1584.34375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Honours",
+        "y": 2154.21875,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Results 2",
+        "y": 2317.609375,
+        "height": 28.59375,
+        "width": 300
+      },
+      {
+        "text": "Tournament entries",
+        "y": 2929.390625,
+        "height": 28.59375,
+        "width": 300
+      }
+    ],
+    "bracket": null,
+    "firstCard": null,
+    "homePanels": [],
+    "currentRoute": "Teams",
+    "searchLandmark": true,
+    "headers": [
+      {
+        "text": "Player",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Joined",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Invited",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Status",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Actions",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Date",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Sport",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      },
+      {
+        "text": "Tournament",
+        "fg": "rgb(90, 78, 54)",
+        "bg": "rgb(240, 230, 208)"
+      }
+    ],
+    "text": "TEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMEMBERS 6\nPlayers 6 · 5 needed to enter\nLocked until the tournament ends\nPLAYER\tJOINED\tACTIONS\n\nS\nSirawit Kanchana\n· captain\n\t1/28/2026\t\nProfile\n\n\nM\nMongkol Thanit\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nC\nChalermchai Ponsri\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nN\nNalin Pattama\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nK\nKanya Duangjai\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nP\nPeerapat Nont\n\t1/28/2026\t\nHand over\nRemove\nProfile\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tOUTCOME\tACTIONS\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\tACTIONS\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  }
+]

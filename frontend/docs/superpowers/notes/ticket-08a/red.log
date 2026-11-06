@@ -1,0 +1,1403 @@
+RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-ticket-08a/frontend
+
+ ❯ src/features/profile/ProfilePage.test.tsx (7 tests | 1 failed) 1108ms
+     × announces a successful save and clears the receipt when a retry fails 1009ms
+ ❯ src/features/auth/AccountPage.test.tsx (7 tests | 4 failed) 2154ms
+     × associates a rejected login field with its message and retains values for retry 9ms
+     × retains faculty/department and the registration draft after rejection, then submits the original payload 72ms
+     × makes failed reference data visible and offers retry without erasing the draft 1008ms
+     × blocks empty login fields without sending a request 1010ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/auth/AccountPage.test.tsx > Account submissions with real hooks > associates a rejected login field with its message and retains values for retry
+Error: expect(element).toHaveAttribute("aria-invalid", "true") // element.getAttribute("aria-invalid") === "true"
+
+Expected the element to have attribute:
+  aria-invalid="true"
+Received:
+  null
+ ❯ src/features/auth/AccountPage.test.tsx:63:19
+     61|     const message = await screen.findByText(/This email is already reg…
+     62|     const email = container.querySelector('input[name="email"]')!
+     63|     expect(email).toHaveAttribute('aria-invalid', 'true')
+       |                   ^
+     64|     expect(email).toHaveAccessibleDescription(message.textContent!)
+     65|     expect(email).toHaveValue('account@example.test')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/features/auth/AccountPage.test.tsx > Account submissions with real hooks > retains faculty/department and the registration draft after rejection, then submits the original payload
+Error: expect(element).toHaveAccessibleDescription()
+
+Expected element to have accessible description:
+  /already registered/
+Received:
+
+ ❯ src/features/auth/AccountPage.test.tsx:86:55
+     84|     expect(container.querySelector('[name="facultyId"]')).toHaveValue(…
+     85|     expect(container.querySelector('[name="fullName"]')).toHaveValue('…
+     86|     expect(container.querySelector('[name="email"]')).toHaveAccessible…
+       |                                                       ^
+     87|     rejectSubmit = false; submit(container)
+     88|     await screen.findByRole('button', { name: /Sign in|เข้าสู่ระบบ/ })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/features/auth/AccountPage.test.tsx > Account submissions with real hooks > makes failed reference data visible and offers retry without erasing the draft
+TestingLibraryElementError: Unable to find an element with the text: Unable to load faculties.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"auth"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"auth-card"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+          [33mstyle[39m=[32m"gap: 11px;"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mstyle[39m=[32m"width: 34px; height: 34px; background: var(--red); display: grid; place-items: center; clip-path: polygon(0 0,100% 0,100% 72%,72% 100%,0 100%);"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"19"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"19"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</span>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"disp"[39m
+            [33mstyle[39m=[32m"font-size: 30px;"[39m
+          [36m>[39m
+            [0mLTMS[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sub"[39m
+        [36m>[39m
+          [0mสมัครสมาชิกเพื่อเข้าระบบ LTMS[0m
+        [36m</div>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"vstack"[39m
+          [33mstyle[39m=[32m"gap: 12px;"[39m
+        [36m>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mชื่อ-นามสกุล[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"fullName"[39m
+              [33mplaceholder[39m=[32m"สมชาย ใจดี"[39m
+              [33mtype[39m=[32m"text"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mอีเมล[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"email"[39m
+              [33mplaceholder[39m=[32m"you@ku.th"[39m
+              [33mtype[39m=[32m"email"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mรหัสผ่าน[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"password"[39m
+              [33mplaceholder[39m=[32m"••••••••"[39m
+              [33mtype[39m=[32m"password"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mเพศ[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mname[39m=[32m"gender"[39m
+            [36m>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"male"[39m
+              [36m>[39m
+                [0mชาย[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"female"[39m
+              [36m>[39m
+                [0mหญิง[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"other"[39m
+              [36m>[39m
+                [0mอื่น ๆ[0m
+              [36m</option>[39m
+            [36m</select>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mวันเกิด[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"birthDate"[39m
+              [33mtype[39m=[32m"date"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mคณะ[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mname[39m=[32m"facultyId"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mภาควิชา[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mname[39m=[32m"departmentId"[39m
+            [36m>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"1"[39m
+              [36m>[39m
+                [0mMathematics[0m
+              [36m</option>[39m
+            [36m</select>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mชั้นปี[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mmin[39m=[32m"1"[39m
+              [33mname[39m=[32m"year"[39m
+              [33mtype[39m=[32m"number"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn primary"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mสมัครสมาชิก[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+          [33mstyle[39m=[32m"justify-content: space-between; gap: 8px;"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mมีบัญชีอยู่แล้ว?[0m
+          [36m</span>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn ghost"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/login"[39m
+          [36m>[39m
+            [0mเข้าสู่ระบบ[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"auth"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"auth-card"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+          [33mstyle[39m=[32m"gap: 11px;"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mstyle[39m=[32m"width: 34px; height: 34px; background: var(--red); display: grid; place-items: center; clip-path: polygon(0 0,100% 0,100% 72%,72% 100%,0 100%);"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"19"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"19"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</span>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"disp"[39m
+            [33mstyle[39m=[32m"font-size: 30px;"[39m
+          [36m>[39m
+            [0mLTMS[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sub"[39m
+        [36m>[39m
+          [0mสมัครสมาชิกเพื่อเข้าระบบ LTMS[0m
+        [36m</div>[39m
+        [36m<form[39m
+          [33mclass[39m=[32m"vstack"[39m
+          [33mstyle[39m=[32m"gap: 12px;"[39m
+        [36m>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mชื่อ-นามสกุล[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"fullName"[39m
+              [33mplaceholder[39m=[32m"สมชาย ใจดี"[39m
+              [33mtype[39m=[32m"text"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mอีเมล[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"email"[39m
+              [33mplaceholder[39m=[32m"you@ku.th"[39m
+              [33mtype[39m=[32m"email"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mรหัสผ่าน[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"password"[39m
+              [33mplaceholder[39m=[32m"••••••••"[39m
+              [33mtype[39m=[32m"password"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mเพศ[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mname[39m=[32m"gender"[39m
+            [36m>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"male"[39m
+              [36m>[39m
+                [0mชาย[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"female"[39m
+              [36m>[39m
+                [0mหญิง[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"other"[39m
+              [36m>[39m
+                [0mอื่น ๆ[0m
+              [36m</option>[39m
+            [36m</select>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mวันเกิด[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mname[39m=[32m"birthDate"[39m
+              [33mtype[39m=[32m"date"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mคณะ[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mname[39m=[32m"facultyId"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mภาควิชา[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mname[39m=[32m"departmentId"[39m
+            [36m>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"1"[39m
+              [36m>[39m
+                [0mMathematics[0m
+              [36m</option>[39m
+            [36m</select>[39m
+          [36m</label>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"field"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"label"[39m
+            [36m>[39m
+              [0mชั้นปี[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mmin[39m=[32m"1"[39m
+              [33mname[39m=[32m"year"[39m
+              [33mtype[39m=[32m"number"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn primary"[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mสมัครสมาชิก[0m
+          [36m</button>[39m
+        [36m</form>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"hstack"[39m
+          [33mstyle[39m=[32m"justify-content: space-between; gap: 8px;"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mมีบัญชีอยู่แล้ว?[0m
+          [36m</span>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn ghost"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mhref[39m=[32m"/login"[39m
+          [36m>[39m
+            [0mเข้าสู่ระบบ[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/auth/AccountPage.test.tsx:96:18
+     94|     const { container } = show('/register')
+     95|     fireEvent.change(container.querySelector('[name="fullName"]')!, { …
+     96|     await screen.findByText('Unable to load faculties.')
+       |                  ^
+     97|     referenceFailure = false
+     98|     fireEvent.click(screen.getByRole('button', { name: 'Retry facultie…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/features/auth/AccountPage.test.tsx > Account submissions with real hooks > blocks empty login fields without sending a request
+Error: expect(element).toHaveAttribute("aria-invalid", "true") // element.getAttribute("aria-invalid") === "true"
+
+Expected the element to have attribute:
+  aria-invalid="true"
+Received:
+  null
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"auth"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"auth-card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 11px;"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mstyle[39m=[32m"width: 34px; height: 34px; background: var(--red); display: grid; place-items: center; clip-path: polygon(0 0,100% 0,100% 72%,72% 100%,0 100%);"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"19"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"19"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.7"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"disp"[39m
+              [33mstyle[39m=[32m"font-size: 30px;"[39m
+            [36m>[39m
+              [0mLTMS[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mLocal Tournament Management System — sign in with your account.[0m
+          [36m</div>[39m
+          [36m<form[39m
+            [33mclass[39m=[32m"vstack"[39m
+            [33mstyle[39m=[32m"gap: 12px;"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"field"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"label"[39m
+              [36m>[39m
+                [0mอีเมล[0m
+              [36m</span>[39m
+              [36m<input[39m
+                [33mname[39m=[32m"email"[39m
+                [33mplaceholder[39m=[32m"you@ku.th"[39m
+                [33mtype[39m=[32m"email"[39m
+              [36m/>[39m
+            [36m</label>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"error"[39m
+            [36m>[39m
+              [0mรูปแบบอีเมลไม่ถูกต้อง[0m
+            [36m</span>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"field"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"label"[39m
+              [36m>[39m
+                [0mรหัสผ่าน[0m
+              [36m</span>[39m
+              [36m<input[39m
+                [33mname[39m=[32m"password"[39m
+                [33mplaceholder[39m=[32m"••••••••"[39m
+                [33mtype[39m=[32m"password"[39m
+              [36m/>[39m
+            [36m</label>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"error"[39m
+            [36m>[39m
+              [0mกรุณากรอกรหัสผ่าน[0m
+            [36m</span>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn primary"[39m
+              [33mtype[39m=[32m"submit"[39m
+            [36m>[39m
+              [0mเข้าสู่ระบบ[0m
+            [36m</button>[39m
+          [36m</form>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"justify-content: space-between; gap: 8px;"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mยังไม่มีบัญชี?[0m
+            [36m</span>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"btn ghost"[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mhref[39m=[32m"/register"[39m
+            [36m>[39m
+              [0mสมัครสมาชิก[0m
+            [36m</a>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"btn ghost"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mContinue as guest — browse without signing in[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+ ❯ src/features/auth/AccountPage.test.tsx:113:78
+    111|   it('blocks empty login fields without sending a request', async () =…
+    112|     const { container } = show('/login'); submit(container)
+    113|     await waitFor(() => expect(container.querySelector('[name="passwor…
+       |                                                                              ^
+    114|     expect(submitted).toEqual([])
+    115|   })
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/features/profile/ProfilePage.test.tsx > Profile avatar controls > announces a successful save and clears the receipt when a retry fails
+TestingLibraryElementError: Unable to find role="status"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"spread"[39m
+      [33mstyle[39m=[32m"align-items: flex-start;"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"hstack"[39m
+        [33mstyle[39m=[32m"gap: 18px; align-items: center;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+          [33mstyle[39m=[32m"width: 72px; height: 72px; font-size: 30.24px; overflow: hidden; border-radius: 50%; border: 2px solid var(--line);"[39m
+        [36m>[39m
+          [0mB[0m
+        [36m</span>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mStudent record[0m
+          [36m</div>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"disp"[39m
+            [33mstyle[39m=[32m"font-size: 32px; margin: 2px 0px 6px;"[39m
+          [36m>[39m
+            [0mBackend Profile[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 8px;"[39m
+          [36m>[39m
+            [36m<input[39m
+              [33maccept[39m=[32m"image/png,image/jpeg"[39m
+              [33maria-label[39m=[32m"Choose profile photo"[39m
+              [33mid[39m=[32m"profile-avatar-upload"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+              [33mtype[39m=[32m"file"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn ghost"[39m
+              [33mstyle[39m=[32m"padding: 2px 8px; font-size: 13px;"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"12"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"12"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 5v14M5 12h14"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [0m [0m
+              [0mUpload photo[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"badge neutral"[39m
+      [36m>[39m
+        [0mprofile@example.test[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"empty"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"28"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"28"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<b>[39m
+        [0mStatistics are unavailable[0m
+      [36m</b>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mYour account details are still available below. Retry when the server is ready.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"split"[39m
+    [36m>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Squads · [0m
+            [0m0[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"empty"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"28"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"28"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"9"[39m
+                [33mcy[39m=[32m"8"[39m
+                [33mr[39m=[32m"3"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"17"[39m
+                [33mcy[39m=[32m"9"[39m
+                [33mr[39m=[32m"2.4"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M15.5 14.2c2.4.4 4.5 2.4 4.5 5.8"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<b>[39m
+              [0mNot in a squad yet[0m
+            [36m</b>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mCreate a squad or accept an invitation from the Teams page.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Pick'em history[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"statline"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mPoints[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mCorrect[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mSettled[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mNo predictions yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack player-career journey-data"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"journey-heading"[39m
+          [36m>[39m
+            [0mTournament history[0m
+          [36m</h2>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m MVP totals[0m
+          [36m</span>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mReceived-vote totals are not available from the server yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Student record — the registry owns this[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"facts"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mFaculty[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mEngineering[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mMajor[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mSoftware Engineering[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mYear[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0m3[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mAge[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0m22[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mGender[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mmale[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mRole[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mUser[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mThe Hard filter reads these values. Ask the registry if one is wrong.[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Following[0m
+          [36m</span>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"spread"[39m
+      [33mstyle[39m=[32m"align-items: flex-start;"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"hstack"[39m
+        [33mstyle[39m=[32m"gap: 18px; align-items: center;"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"avatar"[39m
+          [33mstyle[39m=[32m"width: 72px; height: 72px; font-size: 30.24px; overflow: hidden; border-radius: 50%; border: 2px solid var(--line);"[39m
+        [36m>[39m
+          [0mB[0m
+        [36m</span>[39m
+        [36m<div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m [0m
+            [0mStudent record[0m
+          [36m</div>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"disp"[39m
+            [33mstyle[39m=[32m"font-size: 32px; margin: 2px 0px 6px;"[39m
+          [36m>[39m
+            [0mBackend Profile[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"hstack"[39m
+            [33mstyle[39m=[32m"gap: 8px;"[39m
+          [36m>[39m
+            [36m<input[39m
+              [33maccept[39m=[32m"image/png,image/jpeg"[39m
+              [33maria-label[39m=[32m"Choose profile photo"[39m
+              [33mid[39m=[32m"profile-avatar-upload"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+              [33mtype[39m=[32m"file"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"btn ghost"[39m
+              [33mstyle[39m=[32m"padding: 2px 8px; font-size: 13px;"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"12"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"12"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 5v14M5 12h14"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [0m [0m
+              [0mUpload photo[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"badge neutral"[39m
+      [36m>[39m
+        [0mprofile@example.test[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"empty"[39m
+    [36m>[39m
+      [36m<svg[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mfill[39m=[32m"none"[39m
+        [33mheight[39m=[32m"28"[39m
+        [33mviewBox[39m=[32m"0 0 24 24"[39m
+        [33mwidth[39m=[32m"28"[39m
+      [36m>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M6 3h12v4a6 6 0 0 1-12 0V3Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+        [36m<path[39m
+          [33md[39m=[32m"M12 13v4M9 21h6M10 17h4v4h-4v-4Z"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.7"[39m
+        [36m/>[39m
+      [36m</svg>[39m
+      [36m<b>[39m
+        [0mStatistics are unavailable[0m
+      [36m</b>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"sub"[39m
+      [36m>[39m
+        [0mYour account details are still available below. Retry when the server is ready.[0m
+      [36m</span>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"split"[39m
+    [36m>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Squads · [0m
+            [0m0[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"empty"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"28"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"28"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"9"[39m
+                [33mcy[39m=[32m"8"[39m
+                [33mr[39m=[32m"3"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"17"[39m
+                [33mcy[39m=[32m"9"[39m
+                [33mr[39m=[32m"2.4"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M15.5 14.2c2.4.4 4.5 2.4 4.5 5.8"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.7"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<b>[39m
+              [0mNot in a squad yet[0m
+            [36m</b>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sub"[39m
+            [36m>[39m
+              [0mCreate a squad or accept an invitation from the Teams page.[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Pick'em history[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"statline"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mPoints[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mCorrect[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"tag"[39m
+              [36m>[39m
+                [0mSettled[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"v"[39m
+              [36m>[39m
+                [0m0[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mNo predictions yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack player-career journey-data"[39m
+        [36m>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"journey-heading"[39m
+          [36m>[39m
+            [0mTournament history[0m
+          [36m</h2>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m MVP totals[0m
+          [36m</span>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mReceived-vote totals are not available from the server yet.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"rail"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Student record — the registry owns this[0m
+          [36m</span>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"facts"[39m
+          [36m>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mFaculty[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mEngineering[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mMajor[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mSoftware Engineering[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mYear[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0m3[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mAge[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0m22[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mGender[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mmale[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"k"[39m
+              [36m>[39m
+                [0mRole[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"f"[39m
+              [36m>[39m
+                [0mUser[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sub"[39m
+          [36m>[39m
+            [0mThe Hard filter reads these values. Ask the registry if one is wrong.[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"panel quiet vstack"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"tag"[39m
+          [36m>[39m
+            [36m<em>[39m
+              [0m//[0m
+            [36m</em>[39m
+            [0m Following[0m
+          [36m</span>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/profile/ProfilePage.test.tsx:115:25
+    113|   it('announces a successful save and clears the receipt when a retry …
+    114|     show(); pick()
+    115|     expect(await screen.findByRole('status')).toHaveTextContent('Photo…
+       |                         ^
+    116|     updateProfile.mockRejectedValueOnce({ code: 'AVATAR_KEY_NOT_FOUND'…
+    117|     pick()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  5 failed | 9 passed (14)
+   Start at  23:47:17
+   Duration  2.79s (transform 154ms, setup 155ms, import 222ms, tests 3.26s, environment 700ms)

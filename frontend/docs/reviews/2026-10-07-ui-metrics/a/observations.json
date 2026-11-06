@@ -1,0 +1,611 @@
+[
+  {
+    "name": "u-play-_-1440-dark",
+    "route": "/",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1458,
+      "headings": [
+        "Home",
+        "Needs you",
+        "Next match",
+        "Tournaments"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_home_all-1440-dark",
+    "route": "/home/all",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 989,
+      "headings": [
+        "Tournaments"
+      ]
+    }
+  },
+  {
+    "name": "u-play-__preview_t_fb-1440-dark",
+    "route": "/?preview=t-fb",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress\nFACULTY FOOTBALL CUP 2026\n\nFootball\n\nVenue\nMain Stadium\nStarts\nFeb 14, 2026\nCapacity\n8 teams\nStatus\nPublic\nClose\nOpen tournament",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1458,
+      "headings": [
+        "Home",
+        "Needs you",
+        "Next match",
+        "Tournaments",
+        "Faculty Football Cup 2026 "
+      ]
+    }
+  },
+  {
+    "name": "u-play-_teams-1440-dark",
+    "route": "/teams",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 912,
+      "headings": [
+        "Teams",
+        "Your teams",
+        "Engineering",
+        "Byte Force",
+        "Invitations",
+        "Entries"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_team_t_eng-1440-dark",
+    "route": "/team/t-eng",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\n/\nENGINEERING\nENG\nENGINEERING\nReady\nOfficial\nFootball\nLeader · Anan Suwan\nFollow this squad\nMEMBERS 9\nPlayers 9 · 7 needed to enter\nPLAYER\tJOINED\t\n\nS\nSirawit Kanchana\n\t4/14/2025\t\nProfile\n\n\nM\nMongkol Thanit\n\t4/14/2025\t\nProfile\n\n\nA\nAnan Suwan\n· captain\n\t4/14/2025\t\nProfile\n\n\nB\nBusaba Thongdee\n\t4/14/2025\t\nProfile\n\n\nC\nChaiwat Wattana\n\t4/14/2025\t\nProfile\n\n\nD\nDuangporn Prasert\n\t4/14/2025\t\nProfile\n\n\nE\nEkkarat Sae-Lim\n\t4/14/2025\t\nProfile\n\n\nF\nFonthip Rojjana\n\t4/14/2025\t\nProfile\n\n\nG\nGorn Chaicharoen\n\t4/14/2025\t\nProfile\nPlayed · all sports\n1\nWon\n0\nSports\n1\nBest finish\n1st\nForm\nL\nRECORD BY SPORT\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nWin rate\n0%\nGoals for\n0\nGoals against\n1\nRESULTS 1\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nJan 09, 02:00 PM\tFootball\tFaculty Football Cup 2026\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tL\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nFaculty Football Cup 2026\tFootball\tEntered\tQuarter-final\tOpen\nInter-Faculty Futsal 2026\tFutsal\tEntered\t—\tOpen\nFaculty Basketball Showdown\tBasketball\tEntered\t—\t\nSpring Faculty Cup 2026\tFootball\tEntered\tStill in\tOpen",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 2142,
+      "headings": [
+        "Engineering",
+        "Members 9",
+        "Record by sport",
+        "Results 1",
+        "Tournament entries"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_t_t_fb-1440-dark",
+    "route": "/t/t-fb",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1790,
+      "headings": [
+        "Faculty Football Cup 2026",
+        "Details",
+        "Entry",
+        "Bracket",
+        "Entry notes"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_t_t_fb_bracket-1440-dark",
+    "route": "/t/t-fb/bracket",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1790,
+      "headings": [
+        "Faculty Football Cup 2026",
+        "Details",
+        "Entry",
+        "Bracket",
+        "Entry notes"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_t_t_fb_community-1440-dark",
+    "route": "/t/t-fb/community",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nHOW IT WAS RUN\nNo ratings yet\nAverage\n—\nRatings\n0\nTELL THE ORGANIZER\nRating — 1 to 5\n5 out of 5\n4 out of 5\n3 out of 5\n2 out of 5\n1 out of 5\nWhat would you change?\nSend to the organizer\nMATCH THREADS · 1\nMATCH\tROUND\tCOMMENTS\t\n\nMedicine\nvs\nScience\n\tQF1\t2\tOpen the thread\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1679,
+      "headings": [
+        "Faculty Football Cup 2026",
+        "Details",
+        "Entry",
+        "How it was run",
+        "Tell the organizer",
+        "Match threads · 1",
+        "Entry notes"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_matches-1440-dark",
+    "route": "/matches",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nMATCHES\nSearch\nStatus\nAll statuses\nWaiting for teams\nScheduled\nCheck-in open\nIn progress\nFinished\nAwaiting confirmation\nConfirmed\nDisputed\nResult rejected\n5 of 5 matches\nYour team 5\nFaculty Football Cup 2026\nQuarter-final\nKICK-OFF\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tSTATE\t\n9 Jan 2026, 14:00 GMT+7\tFaculty Football Cup 2026\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\tOpen\nROV Online Clash 2026\nSemi-final\nKICK-OFF\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tSTATE\t\n2 Feb 2026, 14:00 GMT+7\tROV Online Clash 2026\t\nByte Force\n\tvs\t\nRogue Unit\n\t— – —\tScheduled\tOpen\nSpring Faculty Cup 2026\nSemi-final\nKICK-OFF\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tSTATE\t\n4 Feb 2026, 14:00 GMT+7\tSpring Faculty Cup 2026\t\nEngineering\n\tvs\t\nMedicine\n\t— – —\tScheduled\tOpen\nVALORANT Campus League 2025\nSemi-final\nKICK-OFF\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tSTATE\t\n20 Nov 2025, 14:00 GMT+7\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tConfirmed\tOpen\nVALORANT Campus League 2025\nFinal\nKICK-OFF\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\tSTATE\t\n22 Nov 2025, 14:00 GMT+7\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tConfirmed\tOpen",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 900,
+      "headings": [
+        "Matches",
+        "Your team 5",
+        "Faculty Football Cup 2026 Quarter-final",
+        "ROV Online Clash 2026 Semi-final",
+        "Spring Faculty Cup 2026 Semi-final",
+        "VALORANT Campus League 2025 Semi-final",
+        "VALORANT Campus League 2025 Final"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_m_m_127-1440-dark",
+    "route": "/m/m-127",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nFACULTY FOOTBALL CUP 2026\n/\nQF4\nQUARTER-FINAL\nConfirmed\nENG\nEngineering\n0\nQF4\nFT\nARC\nArchitecture\n1\nNext action\nResult settled\n\nView History for the recorded outcome and decisions.\n\nOpen overview\nMatch details\nKICK-OFF\n9 Jan 2026, 14:00 GMT+7\nEND\nNot set\nVENUE\nMain Stadium\nPLAYED\nonsite\nREFEREES\nKittipong Rojana, Nattapong Suk\nSTAGE\nQuarter-final\nBack to matches\nView bracket\nNext match\nOverview\nLineup\nStats\nHistory\nCommunity\nConfirmed. Architecture advanced.\n// Check-in\nGo to check-in\n16 of 16 checked in.",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1407,
+      "headings": [
+        "Quarter-final",
+        "Next action",
+        "Match details"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_checkin_m_127-1440-dark",
+    "route": "/checkin/m-127",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nMATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n\nYour identity check is shown beside your name. Other check-ins may be private.\n\nPlayers scan the referee’s QR using their own account.\n\nEngineering\n9 on the sheet\nPLAYER\tHOW\tSTATE\t\n\nS\nSirawit Kanchana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nM\nMongkol Thanit\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nA\nAnan Suwan\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nB\nBusaba Thongdee\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nC\nChaiwat Wattana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nD\nDuangporn Prasert\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nE\nEkkarat Sae-Lim\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nF\nFonthip Rojjana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nG\nGorn Chaicharoen\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\nArchitecture\n7 on the sheet\nPLAYER\tHOW\tSTATE\t\n\nK\nKitti Sae-Lim\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nS\nSudarat Rojjana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nA\nAnan Chaicharoen\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nB\nBusaba Boonrueang\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nC\nChaiwat Suwan\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nD\nDuangporn Thongdee\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nE\nEkkarat Wattana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1067,
+      "headings": [
+        "Check in",
+        "Player readiness"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_me-1440-dark",
+    "route": "/me",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1971,
+      "headings": [
+        "Mongkol Thanit",
+        "Career by sport",
+        "By tournament"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_home_all-1440-light",
+    "route": "/home/all",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 989,
+      "headings": [
+        "Tournaments"
+      ]
+    }
+  },
+  {
+    "name": "u-play-__preview_t_fb-1440-light",
+    "route": "/?preview=t-fb",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress\nFACULTY FOOTBALL CUP 2026\n\nFootball\n\nVenue\nMain Stadium\nStarts\nFeb 14, 2026\nCapacity\n8 teams\nStatus\nPublic\nClose\nOpen tournament",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1458,
+      "headings": [
+        "Home",
+        "Needs you",
+        "Next match",
+        "Tournaments",
+        "Faculty Football Cup 2026 "
+      ]
+    }
+  },
+  {
+    "name": "u-play-_teams-1440-light",
+    "route": "/teams",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 912,
+      "headings": [
+        "Teams",
+        "Your teams",
+        "Engineering",
+        "Byte Force",
+        "Invitations",
+        "Entries"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_t_t_fb_bracket-1440-light",
+    "route": "/t/t-fb/bracket",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1790,
+      "headings": [
+        "Faculty Football Cup 2026",
+        "Details",
+        "Entry",
+        "Bracket",
+        "Entry notes"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_me-1440-light",
+    "route": "/me",
+    "user": "u-play",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+    "metrics": {
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "scrollHeight": 1971,
+      "headings": [
+        "Mongkol Thanit",
+        "Career by sport",
+        "By tournament"
+      ]
+    }
+  },
+  {
+    "name": "u-lead-_team_t_byt-1280-dark",
+    "route": "/team/t-byt",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMEMBERS 6\nPlayers 6 · 5 needed to enter\nLocked until the tournament ends\nPLAYER\tJOINED\t\n\nS\nSirawit Kanchana\n· captain\n\t1/28/2026\t\nProfile\n\n\nM\nMongkol Thanit\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nC\nChalermchai Ponsri\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nN\nNalin Pattama\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nK\nKanya Duangjai\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nP\nPeerapat Nont\n\t1/28/2026\t\nHand over\nRemove\nProfile\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t",
+    "metrics": {
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "scrollHeight": 2211,
+      "headings": [
+        "Byte Force",
+        "Members 6",
+        "Invite players",
+        "Sent invitations",
+        "Manage team",
+        "Record by sport",
+        "Honours",
+        "Results 2",
+        "Tournament entries"
+      ]
+    }
+  },
+  {
+    "name": "u-lead-_team_t_byt-1280-dark-Invites",
+    "route": "/team/t-byt",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nINVITE PLAYERS\nPlayers join after accepting. Tournament entry rules still apply.\nAdding players is locked. Byte Force has an approved entry in ROV Online Clash 2026; the lock follows that application, even after the tournament closes.\nSent invitations\nINVITED\tSTATUS\t\nAnan Suwan\tWaiting\tCancel\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "u-lead-_team_t_byt-1280-dark-Manage",
+    "route": "/team/t-byt",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMANAGE TEAM\nEdit name & code\nAdd a logo\nRequest Official status\nDisband\nDisbanding is off — this squad has held a place in a tournament, so it stays on record.\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "u-lead-_teams-1280-dark",
+    "route": "/teams",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\nCreate a team\nYOUR TEAMS\n3 of 3 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nBadminton\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\nLEADER\n6 members · VALORANT\nReady\nUnofficial\nManage team\nFind tournament\nBYTE FORCE ACADEMY\nLEADER\n4 members · Badminton\nReady\nUnofficial\nManage team\nFind tournament\nINVITATIONS\n\nNo invitations right now.\n\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+    "metrics": {
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "scrollHeight": 843,
+      "headings": [
+        "Teams",
+        "Your teams",
+        "Engineering",
+        "Byte Force",
+        "Byte Force Academy",
+        "Invitations",
+        "Entries"
+      ]
+    }
+  },
+  {
+    "name": "u-lead-_team_t_byt-1280-light",
+    "route": "/team/t-byt",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMEMBERS 6\nPlayers 6 · 5 needed to enter\nLocked until the tournament ends\nPLAYER\tJOINED\t\n\nS\nSirawit Kanchana\n· captain\n\t1/28/2026\t\nProfile\n\n\nM\nMongkol Thanit\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nC\nChalermchai Ponsri\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nN\nNalin Pattama\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nK\nKanya Duangjai\n\t1/28/2026\t\nHand over\nRemove\nProfile\n\n\nP\nPeerapat Nont\n\t1/28/2026\t\nHand over\nRemove\nProfile\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t",
+    "metrics": {
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "scrollHeight": 2211,
+      "headings": [
+        "Byte Force",
+        "Members 6",
+        "Invite players",
+        "Sent invitations",
+        "Manage team",
+        "Record by sport",
+        "Honours",
+        "Results 2",
+        "Tournament entries"
+      ]
+    }
+  },
+  {
+    "name": "u-lead-_team_t_byt-1280-light-Invites",
+    "route": "/team/t-byt",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nINVITE PLAYERS\nPlayers join after accepting. Tournament entry rules still apply.\nAdding players is locked. Byte Force has an approved entry in ROV Online Clash 2026; the lock follows that application, even after the tournament closes.\nSent invitations\nINVITED\tSTATUS\t\nAnan Suwan\tWaiting\tCancel\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "u-lead-_team_t_byt-1280-light-Manage",
+    "route": "/team/t-byt",
+    "user": "u-lead",
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\nMatches\nInbox\nProfile\nSigned in as\nSirawit Kanchana\nLog out\nScan\nS\nTEAMS\n/\nBYTE FORCE\nBYT\nBYTE FORCE\nReady\nUnofficial\nVALORANT\nLeader · Sirawit Kanchana\nFollow this squad\nThe roster is locked by the approved entry in ROV Online Clash 2026. Players can't be added or removed — the squad that plays has to be the squad the entry rules were checked against.\nMembers\nInvites\nManage\nMANAGE TEAM\nEdit name & code\nAdd a logo\nRequest Official status\nDisband\nDisbanding is off — this squad has held a place in a tournament, so it stays on record.\nPlayed · all sports\n2\nWon\n2\nSports\n1\nBest finish\n1st\nForm\nW\nW\nRECORD BY SPORT\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nWin rate\n100%\nKills for\n23\nKills against\n13\nHONOURS\nVALORANT Campus League 2025\nChampions\nRESULTS 2\nDATE\tSPORT\tTOURNAMENT\tHOME\t\tAWAY\tSCORE\t\t\nNov 22, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nRogue Unit\n\tvs\t\nByte Force\n\t5 – 10\tW\tOpen\nNov 20, 02:00 PM\tVALORANT\tVALORANT Campus League 2025\t\nNexus Five\n\tvs\t\nByte Force\n\t8 – 13\tW\tOpen\nTOURNAMENT ENTRIES\nTOURNAMENT\tSPORT\tSTATUS\tFINISH\t\nVALORANT Campus League 2025\tVALORANT\tEntered\tChampion\tOpen\nROV Online Clash 2026\tROV\tEntered\tStill in\tOpen\nCampus Chess Ladder\tChess\tAwaiting review\t—\t"
+  },
+  {
+    "name": "u-play-_-390-dark",
+    "route": "/",
+    "user": "u-play",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+    "metrics": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 3225,
+      "headings": [
+        "Home",
+        "Needs you",
+        "Next match",
+        "Tournaments"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_teams-390-dark",
+    "route": "/teams",
+    "user": "u-play",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+    "metrics": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 1885,
+      "headings": [
+        "Teams",
+        "Your teams",
+        "Engineering",
+        "Byte Force",
+        "Invitations",
+        "Entries"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_t_t_fb_bracket-390-dark",
+    "route": "/t/t-fb/bracket",
+    "user": "u-play",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nBRACKET\n\nChoose a match to view details.\n\nHighlight team\nAll teams\nMedicine\nScience\nEducation\nLaw\nNursing\nBusiness Admin\nEngineering\nArchitecture\n// Quarter-final\n// QF1\nCONFIRMED\nMedicine\n0\nScience\n2\n// QF2\nCONFIRMED\nEducation\n1\nLaw\n0\n// QF3\nCONFIRMED\nNursing\n4\nBusiness Admin\n0\n// QF4\nCONFIRMED\nEngineering\n0\nArchitecture\n1\n// Semi-final\n// SF1\nDISPUTED\nScience\n2\nEducation\n1\n// SF2\nAWAITING CONFIRMATION\nNursing\n3\nArchitecture\n2\n// Final\n// F1\nWAITING ON TEAMS\nTBD\n—\nTBD\n—\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+    "metrics": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 2622,
+      "headings": [
+        "Faculty Football Cup 2026",
+        "Details",
+        "Entry",
+        "Bracket",
+        "Entry notes"
+      ]
+    }
+  },
+  {
+    "name": "u-play-_checkin_m_127-390-dark",
+    "route": "/checkin/m-127",
+    "user": "u-play",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nMATCH\n/\nCHECK-IN\nCHECK IN\nOn-site\nPlayer readiness\n\nYour identity check is shown beside your name. Other check-ins may be private.\n\nPlayers scan the referee’s QR using their own account.\n\nEngineering\n9 on the sheet\nPLAYER\tHOW\tSTATE\t\n\nS\nSirawit Kanchana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nM\nMongkol Thanit\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nA\nAnan Suwan\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nB\nBusaba Thongdee\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nC\nChaiwat Wattana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nD\nDuangporn Prasert\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nE\nEkkarat Sae-Lim\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nF\nFonthip Rojjana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nG\nGorn Chaicharoen\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\nArchitecture\n7 on the sheet\nPLAYER\tHOW\tSTATE\t\n\nK\nKitti Sae-Lim\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nS\nSudarat Rojjana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nA\nAnan Chaicharoen\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nB\nBusaba Boonrueang\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nC\nChaiwat Suwan\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nD\nDuangporn Thongdee\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t\n\nE\nEkkarat Wattana\n\tqr onsite · checked by Kittipong Rojana\tChecked in\t",
+    "metrics": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 1843,
+      "headings": [
+        "Check in",
+        "Player readiness"
+      ]
+    }
+  },
+  {
+    "name": "u-play-__preview_t_fb-390-light",
+    "route": "/?preview=t-fb",
+    "user": "u-play",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress\nFACULTY FOOTBALL CUP 2026\n\nFootball\n\nVenue\nMain Stadium\nStarts\nFeb 14, 2026\nCapacity\n8 teams\nStatus\nPublic\nClose\nOpen tournament",
+    "metrics": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 3225,
+      "headings": [
+        "Home",
+        "Needs you",
+        "Next match",
+        "Tournaments",
+        "Faculty Football Cup 2026 "
+      ]
+    }
+  },
+  {
+    "name": "u-play-_me-390-light",
+    "route": "/me",
+    "user": "u-play",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+    "metrics": {
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "scrollHeight": 3699,
+      "headings": [
+        "Mongkol Thanit",
+        "Career by sport",
+        "By tournament"
+      ]
+    }
+  },
+  {
+    "name": "guest-_-1280-light",
+    "route": "/",
+    "user": null,
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "text": "SKIP TO THE MAIN CONTENT\nLTMS\nTournaments\nSearch\nSign in\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nOpen for entry · 1\nOther tournaments · 5\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nRun by Thanwa Sirichai\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nRun by Thanwa Sirichai\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nRun by Thanwa Sirichai\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nRun by Thanwa Sirichai\n4 / 4 teams\nIn progress",
+    "metrics": {
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "scrollHeight": 987,
+      "headings": [
+        "Tournaments"
+      ]
+    }
+  },
+  {
+    "name": "guest-_login-1280-light",
+    "route": "/login",
+    "user": null,
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "text": "LTMS\nSIGN IN\n\nSign in or choose a demo role.\n\nEmail\nPassword\nSign in\nNew to LTMS?\nCreate account\nA\nAdmin\nApproves tournament requests, manages users and permanent squads\nO\nOrganizer\nOwns Faculty Football Cup 2026 — approve squads, draw, resolve disputes\nR\nReferee\nAppointed to the Football Cup — check in players, enter results\nT\nTeam Leader\nLeads Byte Force — invite players, register, confirm results\nP\nPlayer\nIn Byte Force with a pending invite; fails the age rule on purpose\nContinue as guest\nDemo data stays in this browser.\nReset demo data",
+    "metrics": {
+      "scrollWidth": 1280,
+      "innerWidth": 1280,
+      "scrollHeight": 1279,
+      "headings": [
+        "Sign in"
+      ]
+    }
+  }
+]

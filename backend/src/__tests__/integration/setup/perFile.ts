@@ -1,0 +1,77 @@
+import { afterAll, beforeEach, vi } from 'vitest';
+import { loadTestEnv } from './loadTestEnv.js';
+import { resetDb, closeTestDb } from '../helpers/db.js';
+import { mailbox } from '../helpers/mailbox.js';
+
+/**
+ * setup ของทุกไฟล์ *.int.test.ts — แทนที่ noRealIO.ts ของ unit test
+ *
+ *                 unit (noRealIO)      integration (ไฟล์นี้)
+ *   MySQL         บล็อก                 ✅ ต่อฐานเทสจริง (ltms_test)
+ *   SMTP          บล็อก                 แทนด้วย mailbox (เก็บเมลไว้ให้อ่าน ไม่ส่งจริง)
+ *   S3/MinIO      บล็อก                 บล็อก (เทสไหนต้องใช้ ให้ vi.mock ในไฟล์นั้นเอง)
+ *
+ * ★ ห้าม import อะไรจาก src/config/* ที่ระดับบนของไฟล์นี้
+ *   import ถูกยกขึ้นไปรันก่อน loadTestEnv() ⇒ config/env.ts จะอ่าน .env (ฐาน dev) แทน .env.test
+ */
+loadTestEnv();
+
+// ═══ SMTP → mailbox ═══
+vi.mock('../../../config/mail.js', async () => {
+    const { mailbox: box } = await import('../helpers/mailbox.js');
+    return { default: { sendMail: box.sendMail } };
+});
+
+// ═══ S3 → บล็อก (เหมือน unit test) ═══
+// ★ e748a10 เพิ่มตัวเชื่อมที่สอง `s3Public` (ใช้ทำลิงก์อัปโหลด) — ต้องบล็อกด้วย ไม่งั้น import ได้ undefined แล้วทุก presign ตอบ 500
+//   มีตัวเชื่อมใหม่อีก: เพิ่มชื่อใน return ท้ายบล็อกนี้
+vi.mock('../../../config/s3.js', () => {
+    const blocked = (client: string) => new Proxy({}, {
+        get(_t, prop) {
+            if (typeof prop === 'symbol' || prop === 'then') return undefined;
+            return () => {
+                throw new Error(
+                    `[integration] เทสแตะ S3 (${client}.${String(prop)}) — integration test ไม่ต่อ MinIO/S3 จริง\n` +
+                    `  ให้ mock upload.service ในไฟล์เทสนั้น เช่น\n` +
+                    `  vi.mock('../../services/upload.service.js', async (orig) => ({ ...(await orig()), presignAll: vi.fn(async () => []) }))`);
+            };
+        },
+    });
+    return { default: blocked('s3'), s3Public: blocked('s3Public') };
+});
+
+beforeEach(async () => {
+    await resetDb();
+    mailbox.clear();
+    /**
+     * 🆕 BE-06 (7 ต.ค. 2569) — ล้างตัวนับของด่านจำกัดการล็อกอินผิด
+     *
+     * ตัวนับอยู่ในหน่วยความจำของ **โมดูล** ไม่ใช่ของคำขอ ⇒ ค้างข้ามเทสในไฟล์เดียวกัน
+     * เทสที่ยิงรหัสผิดหลายครั้ง (authFlows) จะทำให้เทสถัดไปได้ 429 แทนผลที่มันทดสอบ
+     * ★ ล้างที่นี่ที่เดียว ไม่ใช่ไปใส่ทีละไฟล์ — ทุกไฟล์ที่ยิง /auth/login ได้ประโยชน์เท่ากัน
+     *   และคนเขียนเทสใหม่ไม่ต้องรู้ว่ามีตัวนับนี้อยู่
+     */
+    const { resetLoginRateLimit } = await import('../../../middlewares/rateLimitLogin.js');
+    resetLoginRateLimit();
+
+    /**
+     * 🆕 QA 30 ต.ค. 2569 ข้อ 1 — ล้างตัวนับของด่านจำกัดการขออีเมล ด้วยเหตุผลเดียวกับข้างบน
+     *
+     * 🔴 ตัวนี้นับ **ทุกคำขอ** (ไม่ใช่เฉพาะที่ล้มเหลว) และคีย์เป็น IP ล้วน
+     *   ⇒ ทุกเทสในชุด integration ออกจากไอพีเดียวกันหมด ⇒ ไม่ล้าง = ไฟล์ที่สมัครสมาชิกหลายครั้ง
+     *     จะทำให้เทสถัดไปได้ 429 แทนผลที่มันทดสอบ (เจอจริงตอนเพิ่มด่านนี้: authFlows แดง 11 เคสรวด)
+     */
+    const { resetEmailRateLimit } = await import('../../../middlewares/rateLimitEmail.js');
+    resetEmailRateLimit();
+
+    // QA 30 ต.ค. (D1) — ตัวนับของ /uploads/presign ค้างข้ามเทสได้แบบเดียวกัน
+    const { resetPresignRateLimit } = await import('../../../middlewares/rateLimitPresign.js');
+    resetPresignRateLimit();
+});
+
+afterAll(async () => {
+    await closeTestDb();
+    // pool ของแอป — import ตอนนี้ (ไม่ใช่ข้างบน) ด้วยเหตุผลเดียวกับคอมเมนต์หัวไฟล์
+    const { default: appPool } = await import('../../../config/db.js');
+    await appPool.end();
+});

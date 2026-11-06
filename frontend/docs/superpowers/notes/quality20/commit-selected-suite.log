@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /private/var/folders/q3/35z2wj3x32b29hyhl48crnf40000gn/T/ltms-quality-commit-i08h7cl3/selected-tree/frontend
+
+Not implemented: Window's scrollTo() method
+
+ Test Files  104 passed (104)
+      Tests  734 passed (734)
+   Start at  10:22:21
+   Duration  27.60s (transform 1.25s, setup 4.44s, import 4.57s, tests 13.72s, environment 25.92s)

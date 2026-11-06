@@ -1,0 +1,48 @@
+- button "Skip to the main content"
+- navigation:
+  - generic: LTMS
+  - button "Tournaments":
+    - generic: Tournaments
+  - button "Admin":
+    - generic: Admin
+  - button "Teams":
+    - generic: Teams
+  - button "Matches":
+    - generic: Matches
+  - button "Inbox":
+    - generic: Inbox
+  - button "Profile":
+    - generic: Profile
+  - emphasis: //
+  - text: Signed in as
+  - generic: อาจารย์วิศวะ
+  - generic: "Role: Admin"
+  - button "Log out":
+    - text: Log out
+- textbox "Search":
+  - /placeholder: Search tournaments, teams, players…
+- button "Switch to light mode":
+- button "Notifications, 0 unread":
+- link "Open my profile":
+  - /url: /me
+  - text: อ
+- main:
+  - emphasis: //
+  - text: System administration
+  - heading "Admin" [level=1]
+  - generic: 2 to organize
+  - generic: 3 change requests
+  - button "Requests to organize"
+  - button "Permanent squads"
+  - button "External referees"
+  - button "Hard-filter changes"
+  - button "All tournaments"
+  - button "Users"
+  - button "User reports"
+  - button "Stalled work"
+  - button "Admin rights"
+  - button "Leader transfers"
+  - button "Audit logs" [active]
+  - button "Feedback"
+  - heading "Audit logs" [level=3]
+  - paragraph: Audit logs are available to Root and University Admin only.

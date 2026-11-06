@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-q10-q20-layout/frontend
+
+
+ Test Files  3 passed (3)
+      Tests  14 passed (14)
+   Start at  03:12:17
+   Duration  1.03s (transform 228ms, setup 282ms, import 358ms, tests 453ms, environment 1.44s)

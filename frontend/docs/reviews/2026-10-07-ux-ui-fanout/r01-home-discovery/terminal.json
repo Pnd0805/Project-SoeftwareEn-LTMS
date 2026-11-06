@@ -1,0 +1,6 @@
+{
+  "handle": "term_60ad8da0-38f4-4571-af6d-6acddf156a5d",
+  "command": "codex --model gpt-6-luna -c model_reasoning_effort=\"max\"",
+  "launchMethod": "custom argv through Orca terminal; stock effort validator rejected max",
+  "newForThisReview": true
+}

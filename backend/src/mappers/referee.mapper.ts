@@ -1,0 +1,189 @@
+import type { UserRefDto } from './user.mapper.js';
+import { toUserRef } from './user.mapper.js';
+import type { TournamentRefereeListRow , MyRefereeInvitationRow , AssignableRefereeRow } from '../repositories/tournamentReferee.repo.js';
+import type { MatchRefereeListRow, InvitedMatchRow, MyRefereeMatchRow } from '../repositories/matchReferee.repo.js';
+import type { TournamentRefereeRow } from '../types/db.js';
+
+
+export type RefereeStatus =
+    'pending'            // รอ ref ตอบคำเชิญ
+  | 'expired'            // 🆕 BE-13 — เชิญแล้วไม่มีใครตอบจนเลยกำหนด (ไม่บล็อกใครอีกต่อไป)
+  | 'pending_admin'      // ★ ตอบรับแล้ว รอ admin ตรวจเอกสาร (คนนอกเท่านั้น)
+  | 'active'             // ใช้งานได้จริง คุมแมตช์ได้
+  | 'declined'           // ref ปฏิเสธเอง
+  | 'rejected_by_admin'  // admin ไม่อนุมัติ
+  | 'removed';           // ORG ถอด
+
+export type RefereeStatusFields =
+    Pick<TournamentRefereeRow, 'invitation_status' | 'is_external' | 'external_approval_status'>
+    & { removed_at? : Date | null }
+    /**
+     * 🆕 BE-13 — optional เพราะ query เก่าหลายตัวไม่ได้ SELECT คอลัมน์นี้มา
+     * ★ ไม่มีค่า ⇒ ถือว่า "ยังไม่หมดอายุ" ซึ่งเป็นพฤติกรรมเดิมเป๊ะ (ปลอดภัยโดยปริยาย)
+     */
+    & { expires_at? : Date | null };
+
+/**
+ * นิยามเดียวของ "กรรมการอยู่สถานะไหน" ทั้งระบบ
+ * services/referee.service.ts → isActiveReferee() เรียกฟังก์ชันนี้ ห้ามเขียนเงื่อนไขซ้ำที่อื่น
+ * (กฎอยู่ฝั่ง mapper เพราะ service เรียก mapper ได้ แต่ mapper เรียก service ไม่ได้)
+ */
+/** คำเชิญใบนี้เลยกำหนดแล้วหรือยัง — นิยามเดียวทั้งระบบ ห้ามเขียนเงื่อนไขซ้ำที่อื่น */
+export function isExpiredInvitation(row : { expires_at? : Date | null }, now = new Date()): boolean {
+    return row.expires_at != null && row.expires_at.getTime() <= now.getTime();
+}
+
+export function toRefereeStatus(row : RefereeStatusFields): RefereeStatus {
+    if(row.removed_at) return 'removed';
+    if(row.invitation_status === 'rejected') return 'declined';
+    /**
+     * 🆕 BE-13 (มติ ⑨ ง) — คำเชิญที่เลยกำหนดแล้วต้องไม่อ่านว่า "รอตอบ" อีก
+     * ★ ระบบไม่มี scheduler ⇒ แถวในฐานยังเป็น 'pending' ตลอดไป
+     *   "หมดอายุ" จึงเป็นสิ่งที่**คำนวณตอนอ่าน** ไม่ใช่สิ่งที่รอให้ใครมาเขียน
+     *   (รูปแบบเดียวกับ `findLiveInvitation` ของคำเชิญเข้าทีม)
+     */
+    if(row.invitation_status === 'pending'){
+        return isExpiredInvitation(row) ? 'expired' : 'pending';
+    }
+
+    if(row.is_external === 1){
+        if(row.external_approval_status === 'pending' || row.external_approval_status === 'needs_docs') return 'pending_admin';
+        if(row.external_approval_status === 'rejected') return 'rejected_by_admin';
+    }
+    return 'active';
+}
+
+/**
+ * F02b · OD-59 — ปลายทางที่เลือกได้สำหรับคำขอโอน/แลกแมตช์
+ *
+ * ★ มีแค่ 3 อย่างโดยเจตนา: id ของใบเชิญที่ใช้งานได้จริง · ตัวคน · ภาระงานที่ยังไม่เริ่ม
+ *   **ไม่มี** invitationStatus / isExternal / externalApprovalStatus — ทุกแถวที่คืนมาคือ active อยู่แล้ว
+ *   จึงไม่มีอะไรให้ FE ต้องกรองซ้ำ และไม่เปิดเรื่องเอกสารตัวตนของใครให้กรรมการอีกคนเห็น
+ */
+export type AssignableRefereeDto = {
+    id : number,
+    user : UserRefDto,
+    /** แมตช์ของทัวร์นี้ที่ยัง `scheduled` และเขาถืออยู่ — มากแปลว่างานแน่นแล้ว */
+    upcomingMatchCount : number,
+};
+
+export function toAssignableRefereeDto(row : AssignableRefereeRow): AssignableRefereeDto {
+    return {
+        id : row.tournament_referee_id,
+        user : toUserRef(row),
+        upcomingMatchCount : Number(row.upcoming_match_count),
+    };
+}
+
+export type TournamentRefereeDto = {
+    id : number,
+    user : UserRefDto,
+    invitationStatus : 'pending' | 'accepted' | 'rejected',
+    isExternal : boolean,
+    externalApprovalStatus : TournamentRefereeRow['external_approval_status'],
+    status : RefereeStatus
+};
+
+export function toTournamentRefereeDto(row : TournamentRefereeListRow): TournamentRefereeDto {
+    return {
+        id : row.tournament_referee_id,
+        user : toUserRef(row),
+        invitationStatus : row.invitation_status,
+        isExternal : row.is_external === 1,
+        externalApprovalStatus : row.external_approval_status,
+        status : toRefereeStatus(row)
+    };
+}
+
+export type TournamentRefDto = {
+    id : number,
+    name : string,
+    sportTypeId : number,
+    eventStartDate : string
+};
+
+/** แมตช์ที่เสนอมากับคำเชิญ — ref ใช้ตัดสินใจว่าจะรับอันไหน */
+export type InvitedMatchDto = {
+    id : number,
+    roundNumber : number | null,
+    scheduledTime : string | null,
+    scheduledEndTime : string | null,
+    venue : string | null,
+    mode : 'onsite' | 'online',
+    matchStatus : InvitedMatchRow['match_status'],
+    assignmentStatus : InvitedMatchRow['assignment_status']
+};
+
+export function toInvitedMatchDto(row : InvitedMatchRow): InvitedMatchDto {
+    return {
+        id : row.match_id,
+        roundNumber : row.round_number,
+        scheduledTime : row.scheduled_time?.toISOString() ?? null,
+        scheduledEndTime : row.scheduled_end_time?.toISOString() ?? null,
+        venue : row.venue,
+        mode : row.mode,
+        matchStatus : row.match_status,
+        assignmentStatus : row.assignment_status
+    };
+}
+
+export type MyRefereeInvitationDto = {
+    id : number,
+    tournament : TournamentRefDto,
+    isExternal : boolean,
+    matches : InvitedMatchDto[],
+    createdAt : string
+};
+
+export function toMyRefereeInvitationDto(row : MyRefereeInvitationRow, matches : InvitedMatchRow[]): MyRefereeInvitationDto {
+    return {
+        id : row.tournament_referee_id,
+        tournament : {
+            id : row.tournament_id,
+            name : row.name,
+            sportTypeId : row.sport_type_id,
+            eventStartDate : row.event_start_date
+        },
+        isExternal : row.is_external === 1,
+        matches : matches.map(toInvitedMatchDto),
+        createdAt : row.created_at.toISOString()
+    };
+}
+
+/** B7 — แถวใน GET /me/referee-matches */
+export type MyRefereeMatchDto = {
+    id : number,
+    tournament : { id : number, name : string, sportTypeId : number },
+    round : number | null,
+    teamA : { id : number, name : string } | null,
+    teamB : { id : number, name : string } | null,
+    scheduledTime : Date | null,
+    scheduledEndTime : Date | null,
+    venue : string | null,
+    mode : 'onsite' | 'online',
+    status : string
+};
+
+export function toMyRefereeMatchDto(row : MyRefereeMatchRow): MyRefereeMatchDto {
+    return {
+        id : row.match_id,
+        tournament : { id : row.tournament_id, name : row.tournament_name, sportTypeId : row.sport_type_id },
+        round : row.round_number,
+        teamA : row.team_a_id !== null ? { id : row.team_a_id, name : row.team_a_name! } : null,
+        teamB : row.team_b_id !== null ? { id : row.team_b_id, name : row.team_b_name! } : null,
+        scheduledTime : row.scheduled_time,
+        scheduledEndTime : row.scheduled_end_time,
+        venue : row.venue,
+        mode : row.mode,
+        status : row.match_status
+    };
+}
+
+export type MatchRefereeDto = {
+    tournamentRefereeId : number,
+    referee : UserRefDto
+};
+
+export function toMatchRefereeDto(row : MatchRefereeListRow): MatchRefereeDto {
+    return { tournamentRefereeId : row.tournament_referee_id, referee : toUserRef(row) };
+}

@@ -1,0 +1,45 @@
+[
+  {
+    "id": "requests-1280-dark",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "navigation": {
+      "top": 202.78125,
+      "height": 127.578125,
+      "bottom": 330.359375,
+      "left": 256,
+      "right": 1256
+    },
+    "workspace": {
+      "top": 346.359375,
+      "height": 734.890625,
+      "bottom": 1081.25,
+      "left": 256,
+      "right": 1256
+    },
+    "firstAction": {
+      "top": 701.421875,
+      "height": 40.390625,
+      "bottom": 741.8125,
+      "left": 393.8125,
+      "right": 484.609375
+    },
+    "firstItem": {
+      "top": 460.25,
+      "height": 302.5625,
+      "bottom": 762.8125,
+      "left": 277,
+      "right": 744
+    },
+    "userAction": null,
+    "userTable": null,
+    "queue": {
+      "height": 600,
+      "scrollHeight": 4404,
+      "items": 30
+    },
+    "current": "Tournament requests",
+    "groupCount": 3
+  }
+]

@@ -1,8 +1,12 @@
-# แผนภาพ ERD ฐานข้อมูล LTMS — ฉบับแปลเพื่อความเข้าใจ
+# แผนภาพ ERD ฐานข้อมูล LTMS — Legacy Reference (Superseded)
 
-[กลับไปยังดัชนีเอกสาร](README.md) · [English ERD source](LTMS_Database_ERD.md) · [ฐานข้อมูลฉบับหลัก](LTMS_Database_Design.md)
+> **สถานะ ณ 2026-09-15: Legacy / non-normative.** ไฟล์นี้ถูกสร้างจาก database design รุ่นเก่าก่อน SRS/SDS รุ่นล่าสุดและก่อน `database/schema.sql` ปัจจุบัน จึงมี assumptions ที่ไม่ตรงกับระบบปัจจุบัน เช่นจำนวนตาราง, MongoDB/bracket model และ referee model บางส่วน
+>
+> Product behavior ให้ยึด [`README.md`](README.md) และ domain specs ในโฟลเดอร์นี้ ส่วน physical schema ให้ยึด `database/schema.sql` + migrations จนกว่าจะมี ERD รุ่นใหม่ที่ sync แล้ว
 
-ไฟล์นี้เป็นฉบับภาษาไทยของ ERD ภาษาอังกฤษ โดยคงโครงสร้าง diagram และ field catalog เหมือนกันทั้งหมด แปลเฉพาะหัวข้อและคำอธิบายเพื่อช่วยให้สมาชิกในกลุ่มเข้าใจภาพรวมได้ง่ายขึ้น ส่วน LTMS_Database_ERD.md เป็น source of truth ของ ERD และ LTMS_Database_Design.md เป็น source หลักของ SQL, field definitions, constraints, lifecycle rules และการตัดสินใจระหว่างฐานข้อมูล
+[กลับไปยัง Central Specification](README.md)
+
+ไฟล์นี้เดิมเป็นฉบับภาษาไทยของ ERD ชุด legacy ที่อยู่ใน course-document workspace `01204341_SoftwareEngineer/docs/spec/` และคงไว้เพื่ออ้างอิงประวัติเท่านั้น ข้อความเดิมด้านล่างที่กล่าวถึง English ERD, 30-table design หรือ database source of truth ต้องตีความเป็นข้อมูลของ design รุ่นนั้น ไม่ใช่ current contract
 
 แผนภาพแบ่งตาม domain เพื่อให้เห็น MySQL ครบทั้ง 30 ตารางโดยไม่แน่นเกินไป ตาราง context อาจปรากฏซ้ำเพื่อแสดงความสัมพันธ์ข้าม domain แต่รายละเอียดและจำนวนตารางยังเหมือนกับฉบับภาษาอังกฤษ
 

@@ -1,0 +1,28 @@
+{
+  "base": "4130a3d5eec7356b1b74d95ac403579225cd8447",
+  "productPatch": "LiveCommunityTab theme tokens only; uncommitted",
+  "gates": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "exitCode": 0,
+      "log": "typescript.log"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "log": "lint.log"
+    },
+    {
+      "command": "VITE_USE_MOCK=false VITE_API_BASE_URL=/api/v1 npx vitest run --reporter=dot",
+      "exitCode": 0,
+      "files": 96,
+      "tests": 655,
+      "log": "vitest.log"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "log": "build.log"
+    }
+  ]
+}

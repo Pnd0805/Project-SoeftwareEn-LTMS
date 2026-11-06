@@ -1,0 +1,112 @@
+# ไฟล์ตัวอย่างที่ต้อง "มีอยู่จริง" ใน MinIO
+
+> Since 2026-10-30, the default restore uses the original demo accounts (`admin@ku.th`). The 9053/9054 instructions below apply to the legacy QA dataset; those accounts are not part of the restored demo base. See the badminton/badge section at the end for current additions.
+
+โฟลเดอร์นี้ถูก mount เข้า container `ltms-minio-init` (ดู `backend/docker-compose.yml`)
+แล้ว `mc cp` ขึ้น bucket ให้อัตโนมัติตอน `docker compose up -d`
+
+| ไฟล์ในโฟลเดอร์นี้ | ขึ้นไปเป็น object key | ใครใช้ |
+|---|---|---|
+| `referee-identity-9054.png` | `referee_identity/9054/00000000-0000-4000-8000-000000009054.png` | เอกสารยืนยันตัวตนของกรรมการภายนอก **9054** (`referee.ext2@outside.org`) |
+
+---
+
+## ทำไมต้องมี — เอกสารกรรมการภายนอกสองแบบคู่กัน
+
+| ผู้ใช้ | object key | อยู่ใน MinIO ไหม | ใช้ทดสอบอะไร |
+|---|---|---|---|
+| **9053** `referee.ext@outside.org` | `referee_identity/9053/…009053.jpg` | ❌ **ไม่มี โดยเจตนา** | ลิงก์ดูเอกสารตอบ 404 → จอต้องกู้สถานการณ์ได้ ไม่ใช่ขึ้นรูปแตกเงียบ ๆ |
+| **9054** `referee.ext2@outside.org` | `referee_identity/9054/…png` | ✅ มีจริง | ลิงก์ presigned ที่ **เปิดได้** และทดสอบว่า**หมดอายุ**ตามเวลาจริง (20 นาที) |
+
+🔴 **ห้ามอัปไฟล์ให้ของ 9053 มีอยู่** — ความ "ไม่มี" ของมันคือตัวทดสอบ
+เดิมมีแต่แถวที่เปิดไม่ได้ ⇒ ไม่มีใครรู้ว่าเส้นทาง "เปิดได้" ยังทำงานอยู่หรือพังไปแล้ว
+(FE แจ้งมา 7 ต.ค. 2569 และเลือกทางเลือก ข = เก็บ 9053 ไว้ ให้เพิ่มอันที่ใช้ได้มาคู่กัน)
+
+★ **ทั้งสองคีย์ตั้งตามรูปคีย์จริงที่ระบบสร้าง** ตอน `POST /uploads/presign`
+`referee_identity/<userId>/<uuid v4>.(jpg|png)` — ขีด**ล่าง** ไม่ใช่ขีดกลาง
+
+🔴 **แก้ 8 ต.ค. 2569** — คีย์ของ 9053 เดิมคือ `referee-identity/9053-id-card.jpg`
+(ชื่อที่ตั้งมือไว้ตั้งแต่ 18 ก.ย. ซึ่งไม่ตรงรูปจริง) · ตั้งแต่ด่าน **A1** บังคับรูปคีย์
+ตอนส่งเอกสาร คีย์เดิม**ส่งไม่ผ่านอีกต่อไป** (422 `REFEREE_IDENTITY_KEY_INVALID`)
+⇒ เปลี่ยนเป็นคีย์ที่รูปถูก **แต่ยังไม่มีไฟล์ใน MinIO** ⇒ ลิงก์ยังตอบ 404 เหมือนเดิมทุกประการ
+🙋 FE อ้างอิงคีย์เก่าในรายงาน QA ไปแล้ว — ต้องแจ้งเขาว่าคีย์เปลี่ยน (พฤติกรรมไม่เปลี่ยน)
+
+---
+
+## วิธีใช้
+
+```bash
+docker compose up -d                  # minio-init อัปไฟล์ให้เองแล้วจบ
+docker compose logs ltms-minio-init   # ควรเห็นบรรทัดของ `mc cp`
+```
+
+แล้วโหลด seed ตามลำดับเดิม — `seed-qa-base.sql` สร้างผู้ใช้ 9054 ให้,
+`seed-qa-flows.py` เชิญเขาเป็นกรรมการภายนอกของทัวร์แบดมินตัน (19) พร้อมแนบเอกสารนี้
+⇒ คิว `GET /admin/referee-requests` จะมีสองแถวให้เทียบกัน
+
+ตรวจว่าขึ้นจริงไหม (ถ้ามี `mc` ในเครื่อง) หรือเปิดหน้าเว็บ MinIO ที่ `http://localhost:9001`
+
+```bash
+docker exec ltms-minio mc ls --recursive local/ltms-uploads/referee_identity/
+```
+
+⚠️ `docker compose down -v` ลบ volume ของ MinIO ด้วย — `up` ใหม่แล้ว minio-init
+จะอัปไฟล์ให้เองอีกครั้ง แต่**ข้อมูลที่ผู้ใช้อัปเองระหว่างทดสอบจะหายหมด**
+
+---
+
+## เพิ่มไฟล์ใหม่
+
+1. วางไฟล์ไว้ในโฟลเดอร์นี้ (เล็ก ๆ — ไฟล์พวกนี้เข้า git)
+2. เติมบรรทัด `mc cp` ใน `minio-init` ของ `backend/docker-compose.yml`
+3. เติมตารางข้างบน และบอกในไฟล์ seed ว่าแถวไหนอ้างถึงมัน
+
+
+---
+
+## เติม fixture นี้ลงฐานที่มีข้อมูลอยู่แล้ว (8 ต.ค. 2569)
+
+ไฟล์ในโฟลเดอร์นี้แก้แค่ฝั่ง **MinIO** · แถวในฐาน (ผู้ใช้ 9054 · คำเชิญ · เอกสาร) เป็นอีกเรื่อง
+
+| สถานการณ์ | ทำอะไร |
+|---|---|
+| restore `database/qa-baseline.sql` | Uses the demo dataset with the badminton/badge additions. The legacy 9053/9054 pair is not included. |
+ฐานมีข้อมูลที่ทำไว้แล้ว ไม่อยาก restore ทับ | `mysql ... ltms < database/qa-fixture-9054.sql` |
+
+```bash
+# ฐานที่มีข้อมูลอยู่แล้ว (FE ขอมาแบบนี้ 8 ต.ค.)
+mysql -h 127.0.0.1 -P 3307 -u root -p ltms < database/qa-fixture-9054.sql
+```
+
+★ `qa-fixture-9054.sql` **รันซ้ำได้** และ**ลอกเลขทัวร์มาจากแถวของ 9053 เอง** ไม่ฮาร์ดโค้ด
+  (เลขทัวร์ของแต่ละเครื่องไม่เหมือนกัน — บางเครื่อง restore baseline บางเครื่อง seed เอง)
+★ ท้ายไฟล์พิมพ์ตารางตรวจผลให้ว่าได้ครบ 3 อย่างหรือยัง ⇒ ไม่ต้องไปไล่ query เอง
+Run legacy QA add-on scripts only on a compatible legacy QA dataset after migrations. The current default restore is the demo dataset.
+
+### ฝั่ง MinIO ต้องสั่งเองหนึ่งครั้ง
+
+```bash
+cd backend && docker compose up -d minio-init
+```
+
+🔴 ถ้า container `minio-init` รันจบไปก่อน `git pull` มันจะไม่รันใหม่เอง ⇒ ต้องสั่งซ้ำหลัง pull
+ตรวจว่าไฟล์ขึ้นจริง และ **ต้องไม่เห็นของ 9053**:
+
+```bash
+docker exec ltms-minio mc ls --recursive local/ltms-uploads/referee_identity/
+```
+
+★ `minio-init` ที่ `Exited (0)` เป็นหลักฐานระดับ setup เท่านั้น — ไม่ได้ยืนยันว่า object อยู่ใน bucket
+  (FE ตั้งข้อสังเกตนี้ไว้เอง 8 ต.ค. และถูกต้อง) ⇒ ต้องดูด้วย `mc ls` หรือหน้าเว็บ MinIO
+
+
+## QA: badminton draw and badge points (2026-10-30)
+
+- Canonical additive seed: `database/qa-fixture-badminton-badges.sql`. Embedded verbatim in both `qa-baseline.sql` and `demo-seed.sql`; `seed-demo.py` applies it after creating the demo. Keep the embedded blocks in sync when editing.
+- Restore base (updated 2026-10-30): `qa-baseline.sql` now uses the original **demo dataset** from `demo-seed.sql`, preserving `admin@ku.th`, `root@ku.th`, `org1@ku.th`, original teams and tournaments. Only the requested badminton/badge fixture is added. `audit-roles.py` remains the role-consistency check; it does not select a dataset.
+- Restore QA: `python database/qa-baseline.py restore`, then `cd backend && npm run migrate`, then `python frontend/scripts/audit-roles.py` from the repo root. The frontend restore wrapper performs the same sequence. Restoring replaces the database; use only the QA database you intend to reset.
+- Existing migrated local database: apply only `qa-fixture-badminton-badges.sql` using MySQL. Reapplying preserves existing brackets, applications and spent points; a full restore returns the initial blank bracket and credit.
+- Tournament: `Badminton Double Elim - Random Bracket Test (4 Teams)`. Organizer: `org1@ku.th` / `abcd1234`. Four approved teams with two registered players each: วิศวะ Smashers, Sci Shuttle, เกษตรตบสนั่น, BBA Birdies. Registration is closed; no matches or bracket nodes are inserted. Two accepted internal referees are separate from organizer and players.
+- Badge account: `badge.tester@ku.th` / `abcd1234`, initially **5,000 points** with exactly one `admin_adjustment` ledger credit and no owned badges. Purchases debit both wallet and ledger normally. The credit is a QA allowance, not Pick'em winnings.
+- IDs are resolved by email and team/tournament identity. The restored demo-based snapshot has the additional tournament at #12; an existing local dataset may use another ID, so find it by name. Future event dates for the added tournament are calculated when loading the seed.
+- The fixture supports schema-034 before migrations and current schema. New fixture accounts use a documented pre-cutover creation date so migration 055 verifies them; current-schema application sets verification directly.

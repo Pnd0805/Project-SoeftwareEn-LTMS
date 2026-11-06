@@ -1,0 +1,780 @@
+[
+  {
+    "name": "teams-1280-dark",
+    "overflow": false,
+    "visiblePanels": [],
+    "text": [
+      {
+        "text": "Byte Force",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "38px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "Byte Force Academy",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "38px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 7.132238030118758
+      }
+    ]
+  },
+  {
+    "name": "members-1280-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_5_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      }
+    ]
+  },
+  {
+    "name": "invites-1280-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_8_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      }
+    ]
+  },
+  {
+    "name": "manage-1280-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_9_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.132238030118758
+      }
+    ]
+  },
+  {
+    "name": "behavior-1280-dark",
+    "onePanel": true,
+    "draftRetained": true,
+    "shortcutFocus": true,
+    "keyboard": true,
+    "dialogEscapeReturn": true,
+    "memberHasNoLeaderTabs": true,
+    "errors": []
+  },
+  {
+    "name": "teams-1440-light",
+    "overflow": false,
+    "visiblePanels": [],
+    "text": [
+      {
+        "text": "Byte Force",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "38px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Byte Force Academy",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "38px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 5.63440037529697
+      }
+    ]
+  },
+  {
+    "name": "members-1440-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_5_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      }
+    ]
+  },
+  {
+    "name": "invites-1440-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_8_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      }
+    ]
+  },
+  {
+    "name": "manage-1440-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_9_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      }
+    ]
+  },
+  {
+    "name": "behavior-1440-light",
+    "onePanel": true,
+    "draftRetained": true,
+    "shortcutFocus": true,
+    "keyboard": true,
+    "dialogEscapeReturn": true,
+    "memberHasNoLeaderTabs": true,
+    "errors": []
+  },
+  {
+    "name": "teams-390-dark",
+    "overflow": false,
+    "visiblePanels": [],
+    "text": [
+      {
+        "text": "Byte Force",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "32px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "Byte Force Academy",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "32px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 7.132238030118758
+      }
+    ]
+  },
+  {
+    "name": "members-390-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_5_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      }
+    ]
+  },
+  {
+    "name": "invites-390-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_8_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      }
+    ]
+  },
+  {
+    "name": "manage-390-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_9_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(199, 187, 160)",
+        "background": "rgb(20, 18, 28)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 9.747417062478702
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.132238030118758
+      }
+    ]
+  },
+  {
+    "name": "behavior-390-dark",
+    "onePanel": true,
+    "draftRetained": true,
+    "shortcutFocus": true,
+    "keyboard": true,
+    "dialogEscapeReturn": true,
+    "memberHasNoLeaderTabs": true,
+    "errors": []
+  },
+  {
+    "name": "teams-390-light",
+    "overflow": false,
+    "visiblePanels": [],
+    "text": [
+      {
+        "text": "Byte Force",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "32px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Byte Force Academy",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "32px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 5.63440037529697
+      }
+    ]
+  },
+  {
+    "name": "members-390-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_5_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      }
+    ]
+  },
+  {
+    "name": "invites-390-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_8_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      }
+    ]
+  },
+  {
+    "name": "manage-390-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_9_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      }
+    ]
+  },
+  {
+    "name": "behavior-390-light",
+    "onePanel": true,
+    "draftRetained": true,
+    "shortcutFocus": true,
+    "keyboard": true,
+    "dialogEscapeReturn": true,
+    "memberHasNoLeaderTabs": true,
+    "errors": []
+  },
+  {
+    "name": "long-teams-1280-light",
+    "overflow": false,
+    "visiblePanels": [],
+    "text": [
+      {
+        "text": "Byte Force",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "38px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "NorthsideCommunityInterfacultyChampionshipSquadNorthsideCommunityInterfacultyChampionshipSquadNorthsideCommunityInterfacultyChampionshipSquad",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "38px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 5.63440037529697
+      }
+    ]
+  },
+  {
+    "name": "long-members-1280-light",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_3_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      }
+    ]
+  },
+  {
+    "name": "long-teams-390-dark",
+    "overflow": false,
+    "visiblePanels": [],
+    "text": [
+      {
+        "text": "Byte Force",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "32px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 7.132238030118758
+      },
+      {
+        "text": "NorthsideCommunityInterfacultyChampionshipSquadNorthsideCommunityInterfacultyChampionshipSquadNorthsideCommunityInterfacultyChampionshipSquad",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(229, 220, 200)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "32px",
+        "contrast": 14.598235301522557
+      },
+      {
+        "text": "Leader",
+        "color": "rgb(10, 8, 16)",
+        "background": "rgb(58, 174, 124)",
+        "font": "\"Barlow Condensed\", Impact, sans-serif",
+        "size": "20px",
+        "contrast": 7.132238030118758
+      }
+    ]
+  },
+  {
+    "name": "long-members-390-dark",
+    "overflow": false,
+    "visiblePanels": [
+      {
+        "id": "base-ui-_r_3_",
+        "inert": false
+      }
+    ],
+    "text": [
+      {
+        "text": "Members",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(18, 118, 78)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 5.63440037529697
+      },
+      {
+        "text": "Invites",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      },
+      {
+        "text": "Manage",
+        "color": "rgb(90, 78, 54)",
+        "background": "rgb(248, 244, 236)",
+        "font": "\"Geist Variable\", Geist, Arial, sans-serif",
+        "size": "15px",
+        "contrast": 7.426145679041537
+      }
+    ]
+  }
+]

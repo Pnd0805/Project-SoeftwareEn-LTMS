@@ -1,0 +1,77 @@
+[
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "geometry": {
+      "height": 423.578125,
+      "overflow": false,
+      "cancel": true,
+      "alerts": [
+        "This is not an LTMS Check-in QR. Scan again."
+      ]
+    },
+    "escapeReturnsFocus": true
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "geometry": {
+      "height": 423.578125,
+      "overflow": false,
+      "cancel": true,
+      "alerts": [
+        "This is not an LTMS Check-in QR. Scan again."
+      ]
+    },
+    "escapeReturnsFocus": true
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "geometry": {
+      "height": 423.578125,
+      "overflow": false,
+      "cancel": true,
+      "alerts": [
+        "This is not an LTMS Check-in QR. Scan again."
+      ]
+    },
+    "escapeReturnsFocus": true
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "geometry": {
+      "height": 423.578125,
+      "overflow": false,
+      "cancel": true,
+      "alerts": [
+        "This is not an LTMS Check-in QR. Scan again."
+      ]
+    },
+    "escapeReturnsFocus": true
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "geometry": {
+      "height": 499.96875,
+      "overflow": false,
+      "cancel": true,
+      "alerts": [
+        "This is not an LTMS Check-in QR. Scan again."
+      ]
+    },
+    "escapeReturnsFocus": true
+  },
+  {
+    "profileRetry": true,
+    "statsReads": 5,
+    "accountRetained": true
+  }
+]

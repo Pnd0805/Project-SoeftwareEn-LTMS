@@ -1,0 +1,181 @@
+{
+  "timestamp": "2026-10-06T21:16:32.081Z",
+  "origin": "http://127.0.0.1:5193",
+  "mode": "real API via Vite proxy and SSR-loaded frontend client/qaFeatures; no browser",
+  "artifacts": {
+    "teamId": 9034,
+    "tournamentId": 27
+  },
+  "results": [
+    {
+      "name": "login and /me: user",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: leader",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: organizer",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: root",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "login and /me: external",
+      "result": "PASS"
+    },
+    {
+      "name": "guest /me rejected",
+      "result": "PASS"
+    },
+    {
+      "name": "server sport capabilities",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: user",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: user",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: faculty",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: uni",
+      "result": "PASS"
+    },
+    {
+      "name": "report queue scope: root",
+      "result": "PASS"
+    },
+    {
+      "name": "oversight scope: root",
+      "result": "PASS"
+    },
+    {
+      "name": "Root suspension protection",
+      "result": "FAIL",
+      "code": "ERR_ASSERTION",
+      "message": "The validation function is expected to return \"true\". Received false\n\nCaught error:\n\nError: สิทธิ์ผู้ดูแลระบบของคุณไม่ครอบคลุมขอบเขตนี้"
+    },
+    {
+      "name": "University Admin suspension protection",
+      "result": "FAIL",
+      "code": "ERR_ASSERTION",
+      "message": "The validation function is expected to return \"true\". Received false\n\nCaught error:\n\nError: สิทธิ์ผู้ดูแลระบบของคุณไม่ครอบคลุมขอบเขตนี้"
+    },
+    {
+      "name": "profile hidden stats and contact save",
+      "result": "PASS"
+    },
+    {
+      "name": "notification preference update",
+      "result": "PASS"
+    },
+    {
+      "name": "team public visibility",
+      "result": "PASS"
+    },
+    {
+      "name": "own join request cancellation",
+      "result": "PASS"
+    },
+    {
+      "name": "leader request rejection and reason",
+      "result": "PASS"
+    },
+    {
+      "name": "leader queue and approval",
+      "result": "PASS"
+    },
+    {
+      "name": "football creation rejects BO with field details",
+      "result": "PASS"
+    },
+    {
+      "name": "new tournament pending approval",
+      "result": "PASS"
+    },
+    {
+      "name": "guest pending tournament hidden",
+      "result": "PASS"
+    },
+    {
+      "name": "admin tournament approval",
+      "result": "PASS"
+    },
+    {
+      "name": "guest private tournament hidden",
+      "result": "PASS"
+    },
+    {
+      "name": "publish tournament",
+      "result": "FAIL",
+      "status": 409,
+      "code": "REFEREES_INCOMPLETE",
+      "message": "ต้องมีกรรมการที่พร้อมใช้งานอย่างน้อย 2 คนก่อนเปิดเผยแพร่"
+    },
+    {
+      "name": "open registration",
+      "result": "FAIL",
+      "status": 409,
+      "code": "INVALID_STATUS_TRANSITION",
+      "message": "ทัวร์นาเมนต์ต้องเป็น public และยังไม่เปิดรับสมัคร"
+    },
+    {
+      "name": "guest public tournament and BO",
+      "result": "FAIL",
+      "status": 404,
+      "code": "TOURNAMENT_NOT_FOUND",
+      "message": "ไม่พบทัวร์นาเมนต์นี้"
+    },
+    {
+      "name": "scenario stopped",
+      "result": "FAIL",
+      "status": 409,
+      "code": "REGISTRATION_CLOSED",
+      "message": "ทัวร์นาเมนต์นี้ยังไม่เปิดรับสมัคร"
+    },
+    {
+      "name": "restore/close test state 1",
+      "result": "FAIL",
+      "status": 400,
+      "code": "VALIDATION_FAILED",
+      "message": "ข้อมูลบางช่องไม่ถูกต้อง กรุณาตรวจสอบและกรอกใหม่"
+    },
+    {
+      "name": "restore/close test state 2",
+      "result": "PASS"
+    },
+    {
+      "name": "restore/close test state 3",
+      "result": "FAIL",
+      "status": 409,
+      "code": "INVALID_STATUS_TRANSITION",
+      "message": "ทัวร์นาเมนต์ต้องเป็น public และกำลังเปิดรับสมัคร"
+    }
+  ]
+}

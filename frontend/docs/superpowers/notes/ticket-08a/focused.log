@@ -1,0 +1,7 @@
+RUN  v4.1.11 /Users/puriwat2953/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-ticket-08a/frontend
+
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  23:58:13
+   Duration  677ms (transform 232ms, setup 158ms, import 335ms, tests 531ms, environment 685ms)

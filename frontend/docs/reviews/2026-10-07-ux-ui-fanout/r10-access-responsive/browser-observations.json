@@ -1,0 +1,429 @@
+{
+  "previews": [
+    {
+      "route": "/",
+      "viewport": {
+        "width": 640,
+        "height": 400
+      },
+      "document": {
+        "clientWidth": 640,
+        "scrollWidth": 640,
+        "bodyScrollWidth": 640,
+        "scrollHeight": 2356
+      },
+      "activeName": "FOOTBALL Public Football FACULTY FOOTBALL CUP 2026 Engineering In the draw 8 / 8 teams In progress",
+      "activeTag": "BUTTON",
+      "activeRole": null,
+      "visibleTargetCount": 35,
+      "targetsBelow44": [
+        {
+          "name": "Log out",
+          "width": 113,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "Switch to light mode",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Notifications, 1 unread",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Open my profile",
+          "width": 40,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "Request tournament",
+          "width": 195,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "View matches",
+          "width": 128,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "All · 6",
+          "width": 36,
+          "height": 50,
+          "role": "button"
+        }
+      ],
+      "scrollRegions": [
+        {
+          "className": "chips",
+          "scrollWidth": 610,
+          "clientWidth": 592
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "document": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "scrollHeight": 3173
+      },
+      "activeName": "FOOTBALL Public Football FACULTY FOOTBALL CUP 2026 Engineering In the draw 8 / 8 teams In progress",
+      "activeTag": "BUTTON",
+      "activeRole": null,
+      "visibleTargetCount": 35,
+      "targetsBelow44": [
+        {
+          "name": "Log out",
+          "width": 113,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "Switch to light mode",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Notifications, 1 unread",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Open my profile",
+          "width": 40,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "Request tournament",
+          "width": 195,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "View matches",
+          "width": 128,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "All · 6",
+          "width": 36,
+          "height": 50,
+          "role": "button"
+        }
+      ],
+      "scrollRegions": [
+        {
+          "className": "chips",
+          "scrollWidth": 610,
+          "clientWidth": 342
+        },
+        {
+          "className": "segmented",
+          "scrollWidth": 407,
+          "clientWidth": 340
+        },
+        {
+          "className": "tabs",
+          "scrollWidth": 377,
+          "clientWidth": 342
+        }
+      ]
+    },
+    {
+      "route": "/ (tournament preview dialog)",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "document": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "scrollHeight": 3173
+      },
+      "activeName": "Tournament facts",
+      "activeTag": "DL",
+      "activeRole": "region",
+      "visibleTargetCount": 37,
+      "targetsBelow44": [
+        {
+          "name": "Log out",
+          "width": 113,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "Switch to light mode",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Notifications, 1 unread",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Open my profile",
+          "width": 40,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "Request tournament",
+          "width": 195,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "View matches",
+          "width": 128,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "All · 6",
+          "width": 36,
+          "height": 50,
+          "role": "button"
+        },
+        {
+          "name": "Close",
+          "width": 72,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "Open tournament",
+          "width": 174,
+          "height": 40,
+          "role": "a"
+        }
+      ],
+      "scrollRegions": [
+        {
+          "className": "chips",
+          "scrollWidth": 610,
+          "clientWidth": 342
+        },
+        {
+          "className": "segmented",
+          "scrollWidth": 407,
+          "clientWidth": 340
+        },
+        {
+          "className": "tabs",
+          "scrollWidth": 377,
+          "clientWidth": 342
+        }
+      ]
+    },
+    {
+      "route": "/search/Northside",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "document": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "scrollHeight": 3467
+      },
+      "activeName": "INPUT",
+      "activeTag": "INPUT",
+      "activeRole": null,
+      "visibleTargetCount": 33,
+      "targetsBelow44": [
+        {
+          "name": "Log out",
+          "width": 123,
+          "height": 40,
+          "role": "button"
+        },
+        {
+          "name": "Switch to light mode",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Notifications, 7 unread",
+          "width": 41,
+          "height": 41,
+          "role": "button"
+        },
+        {
+          "name": "Open my profile",
+          "width": 40,
+          "height": 40,
+          "role": "a"
+        },
+        {
+          "name": "Open and active Completed",
+          "width": 300,
+          "height": 43,
+          "role": "select"
+        }
+      ],
+      "scrollRegions": []
+    }
+  ],
+  "interactions": [
+    {
+      "name": "Signed-in shell skip to main",
+      "firstStop": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "document": {
+          "clientWidth": 1440,
+          "scrollWidth": 1440,
+          "bodyScrollWidth": 1440,
+          "scrollHeight": 1458
+        },
+        "activeName": "SKIP TO THE MAIN CONTENT",
+        "activeTag": "BUTTON",
+        "activeRole": null,
+        "visibleTargetCount": 35,
+        "targetsBelow44": [
+          {
+            "name": "Log out",
+            "width": 198,
+            "height": 40,
+            "role": "button"
+          },
+          {
+            "name": "Switch to light mode",
+            "width": 41,
+            "height": 41,
+            "role": "button"
+          },
+          {
+            "name": "Notifications, 1 unread",
+            "width": 41,
+            "height": 41,
+            "role": "button"
+          },
+          {
+            "name": "Open my profile",
+            "width": 40,
+            "height": 40,
+            "role": "a"
+          },
+          {
+            "name": "Request tournament",
+            "width": 195,
+            "height": 40,
+            "role": "button"
+          },
+          {
+            "name": "View matches",
+            "width": 128,
+            "height": 40,
+            "role": "a"
+          },
+          {
+            "name": "All · 6",
+            "width": 36,
+            "height": 50,
+            "role": "button"
+          }
+        ],
+        "scrollRegions": []
+      },
+      "afterActivate": {
+        "activeId": "main",
+        "activeTag": "MAIN",
+        "activeText": "HOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on y"
+      }
+    },
+    {
+      "name": "Mock tournament preview dialog",
+      "openerText": "FOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress",
+      "dialogDetails": {
+        "label": null,
+        "labelledby": "base-ui-_r_2_",
+        "title": "FACULTY FOOTBALL CUP 2026",
+        "firstFocused": true,
+        "activeText": "Venue\nMain Stadium\nStarts\nFeb 14, 2026\nCapacity\n8 teams\nStatus\nPublic",
+        "clientHeight": 550,
+        "scrollHeight": 550,
+        "overflowY": "hidden"
+      },
+      "after14Tabs": {
+        "inside": false,
+        "activeName": "Profile"
+      },
+      "afterEscape": {
+        "dialogCount": 0,
+        "activeText": "FOOTBALL Public Football FACULTY FOOTBALL CUP 2026 Engineering In the draw 8 / 8 teams In progress",
+        "activeTag": "BUTTON"
+      }
+    },
+    {
+      "name": "Mock tournament preview dialog at 390x844",
+      "details": {
+        "clientWidth": 350,
+        "scrollWidth": 350,
+        "clientHeight": 542,
+        "scrollHeight": 542,
+        "box": {
+          "left": 20,
+          "right": 370,
+          "top": 151,
+          "bottom": 693
+        },
+        "footer": [
+          {
+            "text": "Close",
+            "visible": true
+          },
+          {
+            "text": "Open tournament",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "Real fixture search keyboard path",
+      "initialFocus": {
+        "id": "se-q",
+        "tag": "INPUT"
+      },
+      "secondTab": {
+        "id": "se-status",
+        "tag": "SELECT"
+      },
+      "thirdTab": {
+        "text": "Open tournament: Northside Community Championship for Engineering and Sporting Academies",
+        "tag": "BUTTON"
+      },
+      "destination": "/t/42"
+    }
+  ],
+  "limitations": [
+    "Fixture handlers intercept all /api/v1 requests; no live backend was contacted.",
+    "The 640x400 viewport models the CSS viewport available at 200% zoom from a 1280x800 desktop; it does not change browser device scale."
+  ]
+}

@@ -1,0 +1,374 @@
+/**
+ * src/mocks/storeBridge.ts — Person 3, and temporary by design
+ *
+ * ── ปัญหาที่มันแก้ ─────────────────────────────────────────────────────────
+ * ระหว่างย้าย แอปมี id สองระบบที่คุยกันไม่รู้เรื่อง
+ *
+ *   shared/seed.ts   `m-130` `t-vb`   string สร้างตอน runtime
+ *   src/mocks/*      `301` `201`      ตัวเลข ตาม schema
+ *
+ * สไลซ์ 3 ย้ายไป API แล้ว แต่ BracketTab (สไลซ์ 2) · TeamPage (4) · WatchPage (1)
+ * ยังส่ง id แบบ store มาที่ `/m/:id` ของเรา ผลคือกดแล้วขึ้น "No such match"
+ * และเป็นทุกทิศ ไม่ใช่แค่ขาเข้า — กดบันทึก fixture แล้วเด้งไป `/t/201` ก็หาไม่เจอ
+ * เพราะ TournamentPage ยังอ่าน store
+ *
+ * ── ทำไมแก้ตรงนี้ ไม่ไปแก้ seed ────────────────────────────────────────────
+ * เปลี่ยน id ใน seed.ts ให้เป็นตัวเลขดูเหมือนตรงจุดกว่า แต่ลามหนัก: prototype
+ * ประกาศ id เป็น `string` ทั้งระบบ และ prefix `t-` ใช้ทั้งทัวร์นาเมนต์และทีม
+ * (`t-fb` เป็นทัวร์นาเมนต์ · `t-byt` เป็นทีม) แก้ทีเดียวสะเทือนทั้งสี่สไลซ์
+ *
+ * สะพานนี้อยู่ในไฟล์ของสไลซ์ 3 ล้วน **ไม่แตะโค้ดของใครเลย** และตายพร้อม
+ * `VITE_USE_MOCK=false` — พอ backend จริงมา id เป็นตัวเลขจาก DB ทั้งหมด
+ * ไฟล์นี้จะไม่ถูกเรียกอีก และลบทิ้งพร้อม store.ts ใน phase 2
+ *
+ * ── กติกาที่คัดลอกมา ───────────────────────────────────────────────────────
+ * `viewer.can` ข้างล่างคือกติกาเดิมของ MatchPage ก่อนย้าย ยกมาทั้งดุ้นโดยตั้งใจ
+ * เพื่อให้พฤติกรรมระหว่างช่วงเปลี่ยนผ่านเหมือนเดิมเป๊ะ — **ไม่ใช่กติกาจริง**
+ * ของจริง server เป็นคนตัดสิน (ดู MatchViewerContext ใน match.dto.ts)
+ */
+import { getState } from '../shared/store'
+import { isOrg, me, team, tour } from '../shared/selectors'
+import { NOW, SPORTS, formatOf, leaderboard, scoreUnit, statLabels, winnerId } from '../shared/rules'
+import type { Match as StoreMatch, State, Team as StoreTeam } from '../shared/types'
+import type { StatDefinition } from '../types/dto'
+import type {
+  MatchCheckinDto, MatchDto, MatchListItemDto, MatchResultDto, MatchTeamRef,
+  MatchViewerContext, PlayerMatchStatDto,
+  MatchViewerRole, PlayerRef, StandingsDto, StandingsFormat, FormResult,
+} from '../types/match.dto'
+
+/** id ที่มาจาก URL — ตัวเลขของ API หรือ string ของ store ก็ได้ */
+export type MatchRef = number | string
+
+/**
+ * เวลาอ้างอิงของ mock — คงที่ทั้ง session
+ *
+ * เดิมเรียก `new Date()` สดๆ ตรงจุดที่ store ไม่ได้เก็บเวลาไว้ ซึ่งพัง 2 ทาง
+ *   1. ค่าเปลี่ยนทุกครั้งที่ refetch → structural sharing ของ TanStack เทียบแล้วไม่เท่า
+ *      คืน object ใหม่ทุกรอบ ทุก component ที่ subscribe รีเรนเดอร์ทั้งที่ข้อมูลเท่าเดิม
+ *      (refetchOnWindowFocus เปิดอยู่ตามค่าเริ่มต้น — แค่สลับแท็บกลับมาก็โดน)
+ *   2. อะไรที่แสดงเป็น "เมื่อ x นาทีที่แล้ว" จะอ่านว่า "เมื่อสักครู่" ตลอดกาล
+ * ใช้ NOW() ตัวเดียวกับที่ seed ใช้ ทั้งชุดข้อมูลจึงอยู่บนเส้นเวลาเดียวกัน
+ */
+export const MOCK_NOW = new Date(NOW()).toISOString()
+
+/**
+ * store id เป็น string, DTO ต้องการ number — จับคู่ให้เสถียร
+ * seed เป็น deterministic (PRNG seed เดียว) ลำดับจึงเหมือนกันทุกเครื่อง
+ * ตัวเลขเริ่มที่ 100000 เพื่อไม่ชนกับ id ของ mock ที่เขียนมือ (301, 201, ...)
+ */
+/**
+ * ชื่อกีฬาใน store → sportTypeId ของ DTO
+ *
+ * `SPORTS` เรียงตรงกับ `mockSportTypes` (1..8) จึงใช้ลำดับแปลงได้ตรงๆ
+ * เดิมฮาร์ดโค้ดเป็น 0 ทุกแมตช์ ผลคือฟอร์มกรอกผลได้ชุดสถิติกลาง ("แต้ม" ช่องเดียว)
+ * แม้เป็นฟุตบอล — ช่องประตูกับแอสซิสต์จึงไม่เคยโผล่เลย
+ */
+export const sportTypeIdOf = (sport?: string | null): number => {
+  const i = sport ? SPORTS.indexOf(sport) : -1
+  return i >= 0 ? i + 1 : 0
+}
+
+/**
+ * นิยามสถิติรายกีฬา สร้างจากตาราง `SPORT_STATS` ที่ rules.ts ถืออยู่แล้ว
+ * จะได้ไม่ต้องเขียนซ้ำสองที่แล้วหลุดจากกันเมื่อเพิ่มกีฬาใหม่
+ */
+export function storeStatDefinitions(sportTypeId: number): StatDefinition[] {
+  const sport = SPORTS[sportTypeId - 1]
+  if (!sport) return []
+  const L = statLabels(sport)
+  const defs: StatDefinition[] = []
+  let order = 1
+  const push = (statKey: string, statLabelTh: string) => {
+    defs.push({ statDefinitionId: sportTypeId * 100 + order, statKey, statLabelTh, dataType: 'integer', displayOrder: order })
+    order += 1
+  }
+  /* ช่องคะแนนใช้ statKey ตามหน่วยของกีฬา — ฝั่งตรวจกฎ (resultRules) อ่านคีย์นี้ */
+  if (L.g) push(L.g === 'Goals' ? 'goals' : L.g === 'Kills' ? 'kills' : 'points', L.g)
+  if (L.a) push('assists', L.a)
+  L.extra.forEach(([k, label]) => push(k, label))
+  return defs
+}
+
+export const numOf = (storeId: string) => {
+  let h = 0
+  for (const c of storeId) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return 100000 + (h % 800000)
+}
+
+const asPlayer = (s: State, id: string | null): PlayerRef | null => {
+  const u = s.users.find(x => x.id === id)
+  return u ? { id: numOf(u.id), fullName: u.name, avatarUrl: null } : null
+}
+
+const asTeam = (s: State, t: StoreTeam | undefined, m: StoreMatch): MatchTeamRef | null => {
+  if (!t) return null
+  const named = m.lineup?.[t.id]?.starters?.length
+    ? [...m.lineup[t.id].starters, ...(m.lineup[t.id].subs ?? [])]
+    : t.members
+  return {
+    id: numOf(t.id),
+    name: t.name,
+    code: t.code,
+    color: t.color,
+    logoUrl: t.logo ?? null,
+    players: named.map(id => asPlayer(s, id)).filter(Boolean) as PlayerRef[],
+  }
+}
+
+/** กติกาเดิมของ MatchPage — ยกมาเพื่อให้ช่วงเปลี่ยนผ่านทำงานเหมือนเดิม */
+function viewerOf(s: State, m: StoreMatch): MatchViewerContext {
+  const u = me(s)
+  const t = tour(s, m.tour)
+  const onsite = t?.channel === 'onsite'
+  const isReferee = !!u && (m.refs ?? []).includes(u.id)
+  const org = isOrg(s, t)
+  const sides = [m.a, m.b].filter(Boolean) as string[]
+  const myTeam = u ? sides.find(x => team(s, x)?.members.includes(u.id)) ?? null : null
+  const anyLeader = !!u && sides.some(x => team(s, x)?.leader === u.id)
+  const win = m.status === 'pending' ? winnerId(m) : null
+  const leadsWinner = !!win && !!u && team(s, win)?.leader === u.id
+
+  const roles: MatchViewerRole[] = []
+  if (isReferee) roles.push('referee')
+  if (myTeam) roles.push('player')
+  if (org) roles.push('organizer')
+
+  return {
+    roles,
+    myUserId: u ? numOf(u.id) : null,
+    myTeamId: myTeam ? numOf(myTeam) : null,
+    isTeamLeader: anyLeader,
+    can: {
+      submitResult: m.status === 'scheduled' && ((onsite && isReferee) || (!onsite && anyLeader)),
+      verifyResult: m.status === 'pending' && (onsite ? leadsWinner : isReferee),
+      disputeResult: m.status === 'pending' && onsite && anyLeader,
+      resolveDispute: m.status === 'disputed' && org,
+      editFixture: org && m.status === 'scheduled' && !m.checkedIn.length,
+      /* โหมด prototype ไม่มี middleware ให้ติด — ผู้จัดเปิดเช็คอินได้เหมือนของจริง */
+      openCheckin: org && m.status === 'scheduled',
+      /* โหมดจำลองไม่มีสถานะ finished และ finishMatch() ตอบ 501 — ไม่โชว์ปุ่มที่รู้ว่าพัง */
+      finishMatch: false,
+      recordStats: isReferee,
+      manageCheckin: isReferee,
+      verifyCheckin: isReferee,
+    },
+  }
+}
+
+export function toMatchDto(s: State, m: StoreMatch): MatchDto {
+  const t = tour(s, m.tour)
+  const A = team(s, m.a), B = team(s, m.b)
+  const refs = (m.refs ?? []).map(r => asPlayer(s, r)).filter(Boolean) as PlayerRef[]
+  const pool = (t?.referees ?? []).map(r => asPlayer(s, r)).filter(Boolean) as PlayerRef[]
+  const lineup = [A, B].filter(Boolean).reduce(
+    (n, x) => n + (m.lineup?.[x!.id]?.starters?.length ?? x!.members.length), 0)
+
+  return {
+    id: numOf(m.id),
+    tournamentId: t ? numOf(t.id) : 0,
+    tournament: {
+      id: t ? numOf(t.id) : 0,
+      name: t?.name ?? '—',
+      championTeamId: t?.champion ? numOf(t.champion) : null,
+      sportTypeId: sportTypeIdOf(t?.sport),
+      sportName: t?.sport ?? '—',
+    },
+    bracketNodeId: null,
+    nextMatchId: m.winTo?.m ? numOf(m.winTo.m) : null,
+    loserNextMatchId: m.loseTo?.m ? numOf(m.loseTo.m) : null,
+    roundNumber: m.round,
+    teamA: asTeam(s, A, m),
+    teamB: asTeam(s, B, m),
+    scheduledTime: m.kickoff || null,
+    venue: m.venue || null,
+    checkinOpenAt: null,
+    /* store ยุบสถานะแมตช์กับสถานะผลไว้ด้วยกัน — แยกกลับตอนแปลง */
+    status: m.status === 'confirmed' ? 'completed'
+      : m.status === 'disputed' ? 'disputed'
+        : m.checkedIn.length ? 'checkin_open' : 'scheduled',
+    mode: t?.channel ?? 'onsite',
+    createdAt: MOCK_NOW,
+    updatedAt: null,
+    stage: m.stage ?? `Round ${m.round}`,
+    tag: m.tag ?? `R${m.round}-M${m.slot}`,
+    referees: refs,
+    availableReferees: pool,
+    roomCode: m.roomCode ?? null,
+    checkinToken: m.status === 'scheduled' || m.checkedIn.length ? `SEED-${m.id.toUpperCase()}` : null,
+    replayUrl: m.replay ?? null,
+    checkedIn: m.checkedIn.length,
+    lineupSize: lineup,
+    /* store เก็บสถานะแมตช์กับสถานะใบผลไว้ช่องเดียว — แยกกลับให้ตรงกับของ backend
+       'pending' ของ store = ส่งผลแล้วรออีกฝ่ายยืนยัน = submitted */
+    resultStatus: m.status === 'confirmed' ? 'verified'
+      : m.status === 'disputed' ? 'disputed'
+        : m.status === 'pending' ? 'submitted' : null,
+    viewer: viewerOf(s, m),
+  }
+}
+
+export function toListItem(s: State, m: StoreMatch): MatchListItemDto {
+  return {
+    ...toMatchDto(s, m),
+    score: m.sa === null && m.sb === null ? null : { a: m.sa, b: m.sb },
+    resultStatus: m.status === 'confirmed' ? 'verified'
+      : m.status === 'disputed' ? 'disputed'
+        : m.status === 'pending' ? 'submitted' : null,
+  }
+}
+
+/** ผลการแข่งขัน — store เก็บไว้บนตัวแมตช์ ไม่ได้แยกตาราง */
+export function toResultDto(s: State, m: StoreMatch): MatchResultDto | null {
+  if (m.status === 'scheduled' || !m.enteredBy) return null
+  const win = winnerId(m)
+  return {
+    id: numOf(m.id) + 1,
+    matchId: numOf(m.id),
+    winnerTeamId: win ? numOf(win) : null,
+    scoreData: { a: m.sa, b: m.sb, ...(m.decider ? { decider: m.decider } : {}) },
+    submittedBy: asPlayer(s, m.enteredBy) ?? { id: 0, fullName: '—', avatarUrl: null },
+    submittedRole: tour(s, m.tour)?.channel === 'onsite' ? 'referee' : 'team_leader',
+    status: m.status === 'confirmed' ? 'verified' : m.status === 'disputed' ? 'disputed' : 'submitted',
+    disputeReason: null,
+    disputeRaisedBy: asPlayer(s, m.disputedBy),
+    disputeRaisedAt: m.disputedBy ? MOCK_NOW : null,
+    disputeResolvedBy: null,
+    disputeResolution: null,
+    disputeResolvedAt: null,
+    verifiedBy: asPlayer(s, m.confirmedBy),
+    verifiedAt: m.confirmedBy ? MOCK_NOW : null,
+    amendedBy: null,
+    amendReason: null,
+    amendedAt: null,
+    createdAt: MOCK_NOW,
+  }
+}
+
+/** หาแมตช์ใน store จาก id รูปไหนก็ได้ — string ตรงๆ หรือเลขที่ numOf เคยแปลงไว้ */
+export function findStoreMatch(ref: MatchRef): StoreMatch | undefined {
+  const s = getState()
+  const raw = String(ref)
+  return s.matches.find(m => m.id === raw) ?? s.matches.find(m => numOf(m.id) === Number(ref))
+}
+
+export function findStoreTournamentMatches(ref: MatchRef): StoreMatch[] {
+  const s = getState()
+  const raw = String(ref)
+  const t = s.tournaments.find(x => x.id === raw) ?? s.tournaments.find(x => numOf(x.id) === Number(ref))
+  return t ? s.matches.filter(m => m.tour === t.id) : []
+}
+
+/**
+ * สถิติรายคนของแมตช์ในรูป DTO — สร้างจาก `m.stats` ที่ `matchWrites` เขียนไว้
+ * store เก็บ goals/assists เป็นช่องตรง ที่เหลืออยู่ใน `x` จึงต้องรวมกลับเป็น values
+ */
+export function storeStatDtos(ref: MatchRef): PlayerMatchStatDto[] {
+  const s = getState()
+  const m = findStoreMatch(ref)
+  if (!m) return []
+  return Object.entries(m.stats).map(([uid, st], i) => ({
+    id: numOf(m.id) + 1000 + i,
+    matchId: numOf(m.id),
+    player: asPlayer(s, uid) ?? { id: 0, fullName: '—', avatarUrl: null },
+    teamId: st.team ? numOf(st.team) : 0,
+    recordedByReferee: asPlayer(s, m.enteredBy ?? m.refs[0] ?? null) ?? { id: 0, fullName: '—', avatarUrl: null },
+    values: { goals: st.goals, assists: st.assists, ...st.x },   // x ทับได้ เพราะเก็บด้วย statKey จริง
+    createdAt: MOCK_NOW,
+  }))
+}
+
+/**
+ * การเช็คอินในรูป DTO — store เก็บแค่รายชื่อคนที่เช็คอินแล้ว ไม่มีวิธีหรือเอกสาร
+ * จึงรายงานเป็น qr_onsite/success ตามเส้นทางปกติ ส่วน exception ยังต้องใช้ fixture
+ */
+export function storeCheckinDtos(ref: MatchRef): MatchCheckinDto[] {
+  const s = getState()
+  const m = findStoreMatch(ref)
+  if (!m) return []
+  const online = tour(s, m.tour)?.channel === 'online'
+
+  /* คนที่มีหลักฐานบันทึกไว้ รวมกับคนที่ seed ใส่มาแบบไม่มีรายละเอียด
+     (seed เก่ามีแค่ `checkedIn` — ถือว่าผ่านแบบปกติ) */
+  const ids = [...new Set([...Object.keys(m.checkins ?? {}), ...m.checkedIn])]
+
+  return ids.map((uid, i) => {
+    const rec = m.checkins?.[uid]
+    return {
+      id: numOf(m.id) + 2000 + i,
+      matchId: numOf(m.id),
+      user: asPlayer(s, uid) ?? { id: 0, fullName: '—', avatarUrl: null },
+      method: rec?.method ?? (online ? ('photo_online' as const) : ('qr_onsite' as const)),
+      status: rec?.status ?? ('success' as const),
+      rejectionReason: rec?.rejectionReason ?? null,
+      /* store ไม่มีช่องเหตุผลที่กรรมการอนุโลมให้ — โหมด mock จึงว่างเสมอ */
+      note: null,
+      documentType: rec?.documentType ?? null,
+      /* mock เก็บรูปเป็น data URL ตรงๆ — ของจริงช่องนี้เป็น S3 key ที่ต้องขอ
+         presigned URL ก่อนแสดง (NF-SE-03) ผู้เรียกจึงไม่ควรถือว่าเปิดได้เสมอ */
+      documentS3Key: rec?.documentUrl ?? null,
+      verifiedByReferee: asPlayer(s, rec?.verifiedBy ?? m.refs[0] ?? null),
+      checkedInAt: rec ? new Date(rec.at).toISOString() : MOCK_NOW,
+      verifiedAt: (rec?.status ?? 'success') === 'exception' ? null : MOCK_NOW,
+    }
+  })
+}
+
+/**
+ * ตารางอันดับจาก seed — `leaderboard()` ใน rules.ts รู้จักทั้งสามฟอร์แมตอยู่แล้ว
+ * (คัดออกอ่านเป็นรอบที่ตกรอบ · พบกันหมดอ่านเป็นตารางคะแนน)
+ * ของจริง backend คำนวณตอนยืนยันผล (SRS FR-RS-05) นี่แค่ให้เดโมมีข้อมูลดู
+ */
+const FORMAT: Record<string, StandingsFormat> = {
+  single: 'single_elimination',
+  double: 'double_elimination',
+  roundrobin: 'round_robin',
+}
+
+export function findStoreStandings(ref: MatchRef): StandingsDto | null {
+  const s = getState()
+  const raw = String(ref)
+  const t = s.tournaments.find(x => x.id === raw) ?? s.tournaments.find(x => numOf(x.id) === Number(ref))
+  if (!t) return null
+  const blank: MatchTeamRef = { id: 0, name: '—', code: '—', color: null, logoUrl: null, players: [] }
+  return {
+    tournamentId: numOf(t.id),
+    format: FORMAT[formatOf(t)] ?? 'single_elimination',
+    scoreUnit: scoreUnit(t.sport),
+    updatedAt: MOCK_NOW,
+    rows: leaderboard(s, t).map(row => {
+      const tm = team(s, row.team)
+      return {
+        team: tm
+          ? { id: numOf(tm.id), name: tm.name, code: tm.code, color: tm.color, logoUrl: tm.logo ?? null, players: [] }
+          : blank,
+        rank: row.rank,
+        played: row.p,
+        won: row.w,
+        lost: row.l,
+        points: row.pts,
+        level: row.d,
+        scoredFor: row.gf,
+        scoredAgainst: row.ga,
+        scoreDifference: row.gd,
+        form: (row.form ?? []) as FormResult[],
+        outLabel: row.outLabel ?? '',
+      }
+    }),
+  }
+}
+
+/**
+ * id ที่ใช้ "เดินทาง" ไปหน้าทัวร์นาเมนต์ — คนละเรื่องกับ id ใน DTO
+ *
+ * `TournamentPage` เป็นของสไลซ์ 2 และยังอ่าน store ล้วน ส่ง id ตัวเลขไปมันหาไม่เจอ
+ * ตัวนี้แปลงกลับเป็น id ของ store ให้ถ้าแปลงได้ ไม่งั้นคืนตัวเลขตามเดิม
+ * ลบทิ้งพร้อมไฟล์นี้ตอนสไลซ์ 2 ย้ายเสร็จ
+ */
+export function tournamentRouteId(id: number | string): string {
+  const raw = String(id)
+  const hit = getState().tournaments.find(t => t.id === raw || numOf(t.id) === Number(id))
+  return hit ? hit.id : raw
+}
+
+export const storeState = getState

@@ -1,0 +1,98 @@
+[
+  {
+    "theme": "dark",
+    "foreground": "bone",
+    "background": "panel",
+    "contrast": 12.37
+  },
+  {
+    "theme": "dark",
+    "foreground": "bone-dim",
+    "background": "panel",
+    "contrast": 8.87
+  },
+  {
+    "theme": "dark",
+    "foreground": "bone-faint",
+    "background": "panel",
+    "contrast": 6.26
+  },
+  {
+    "theme": "dark",
+    "foreground": "bone",
+    "background": "void-2",
+    "contrast": 12.9
+  },
+  {
+    "theme": "dark",
+    "foreground": "bone-faint",
+    "background": "void-2",
+    "contrast": 6.52
+  },
+  {
+    "theme": "dark",
+    "foreground": "red-text",
+    "background": "panel",
+    "contrast": 6.26
+  },
+  {
+    "theme": "dark",
+    "foreground": "teal",
+    "background": "panel",
+    "contrast": 6.04
+  },
+  {
+    "theme": "dark",
+    "foreground": "accent-ink",
+    "background": "teal",
+    "contrast": 7.13
+  },
+  {
+    "theme": "light",
+    "foreground": "bone",
+    "background": "panel",
+    "contrast": 15.81
+  },
+  {
+    "theme": "light",
+    "foreground": "bone-dim",
+    "background": "panel",
+    "contrast": 8.15
+  },
+  {
+    "theme": "light",
+    "foreground": "bone-faint",
+    "background": "panel",
+    "contrast": 6.22
+  },
+  {
+    "theme": "light",
+    "foreground": "bone",
+    "background": "void-2",
+    "contrast": 13.09
+  },
+  {
+    "theme": "light",
+    "foreground": "bone-faint",
+    "background": "void-2",
+    "contrast": 5.15
+  },
+  {
+    "theme": "light",
+    "foreground": "red-text",
+    "background": "panel",
+    "contrast": 9.12
+  },
+  {
+    "theme": "light",
+    "foreground": "teal",
+    "background": "panel",
+    "contrast": 5.63
+  },
+  {
+    "theme": "light",
+    "foreground": "accent-ink",
+    "background": "teal",
+    "contrast": 5.63
+  }
+]

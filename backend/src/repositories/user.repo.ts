@@ -1,0 +1,354 @@
+import pool from "../config/db.js";
+import { notSuspendedSql , suspendedSql } from '../utils/suspension.js';
+import { emailVerifiedSql } from '../utils/emailVerification.js';
+import type { SuspensionCategory } from '../utils/suspension.js';
+import type { RowDataPacket , ResultSetHeader} from 'mysql2';
+
+import type { TeamInvitationRow, TeamRow, UserRow } from "../types/db.js";
+import type { UpdateMeInput } from "../schemas/user.schema.js";
+import type { UserRefDto } from "../mappers/user.mapper.js";
+import type { TeamRef } from "../mappers/team.mapper.js";
+
+export async function findByEmail(email : string): Promise<UserRow | null>{
+    const [rows] = await pool.query<(UserRow & RowDataPacket)[]>('SELECT * FROM users WHERE email = ?',[email]);
+    const user = rows[0];
+
+    return user ?? null;
+}
+
+export async function findById(userId : number): Promise<UserRow | null>{
+    const [ rows ] = await pool.query<(UserRow & RowDataPacket)[]>('SELECT * FROM users WHERE user_id = ?',[userId]);
+    const user = rows[0];
+
+    return user ?? null;
+}
+
+
+type NewUser = {
+  fullName: string;
+  email: string;
+  passwordHash: string;
+  gender: 'male' | 'female' | 'other';
+  birthDate: string;
+  userType: 'student' | 'external';   // ★ คิดจากโดเมนอีเมลที่ service (utils/kuEmail.ts) ไม่ใช่ repo
+  // 🔴 มติ 8 ต.ค. 2569 — คนนอกไม่มีคณะ/ภาควิชา/ชั้นปี ⇒ NULL ทั้งสามช่อง
+  //   คอลัมน์ในฐานเป็น NULL ได้อยู่แล้ว (schema.sql:62-64) ไม่ต้อง migration
+  facultyId: number | null;
+  departmentId: number | null;
+  year: number | null;
+};
+
+export async function create(data: NewUser): Promise<number>{
+    const [ result ] = await pool.query<(ResultSetHeader)>(`INSERT INTO users(full_name , email ,
+        password_hash , gender , birth_date , user_type , faculty_id , department_id , year) VALUES (? , ? , ? ,? ,? , ? , ? ,? ,?)`,
+       [data.fullName , data.email , data.passwordHash , data.gender , data.birthDate , data.userType , data.facultyId , data.departmentId ,data.year]);
+
+    return result.insertId;
+}
+
+/**
+ * OD-53 (29 ต.ค. 2569) — สมัครซ้ำด้วยอีเมลเดิมที่ **ยังไม่ยืนยัน** = เขียนทับใบเดิมทั้งชุด
+ *
+ * ทำไมต้องมี: `register` ปฏิเสธอีเมลซ้ำด้วย 400 EMAIL_ALREADY_REGISTERED
+ *   ⇒ คนที่สมัครแล้วไม่กรอก OTP แล้วกลับมาสมัครใหม่ จะเจอ "อีเมลนี้ถูกใช้แล้ว กรุณาเข้าสู่ระบบ"
+ *     ทั้งที่ **เข้าสู่ระบบไม่ได้** (ด่านเปิด) และอีเมลนั้นเป็นของเขาเอง ⇒ ทางตัน
+ *
+ * 🔴 เงื่อนไข `email_verified = 0` เป็นด่านความปลอดภัย **ห้ามถอด**
+ *   ถ้าทับแถวที่ยืนยันแล้วได้ ใครก็ยึดบัญชีคนอื่นได้ด้วยการสมัครด้วยอีเมลนั้นแล้วตั้งรหัสใหม่
+ *   ★ ส่วนการทับใบที่ "ยังไม่ยืนยัน" ของคนอื่น ไม่ใช่ช่องโหว่ — ยังไม่มีใครพิสูจน์ได้ว่า
+ *     อีเมลนั้นเป็นของตน ⇒ เจ้าของจริงต้องเอาคืนได้ (มาตรฐานเดียวกับเว็บทั่วไป)
+ *
+ * 🔴 ทับ **ทุกช่อง** ไม่ใช่แค่ปล่อยผ่าน — เขาอาจกรอกไม่เหมือนรอบแรก
+ *   โดยเฉพาะ `password_hash`: ถ้าไม่ทับ เขาจะล็อกอินด้วยรหัสที่เพิ่งตั้งไม่ได้ **และหาสาเหตุไม่เจอ**
+ *
+ * ★ `created_at = NOW()` ด้วย — งานกวาดบัญชีค้างตัดสินจากคอลัมน์นี้
+ *   ถ้าไม่ขยับ แถวที่เพิ่งสมัครใหม่จะถูกกวาดทิ้งทันทีเพราะ created_at เป็นของรอบแรก
+ * ★ ไม่แตะ `user_id` ⇒ ใบ OTP เก่าที่ผูกอยู่ยังถูกล้างด้วย invalidateAllForUser ตามปกติ
+ *   และโควตา 3 ใบ/ชม. เดินต่อจากรอบก่อน (กันถล่มเมลใส่อีเมลคนอื่น — **มีเทสตรึงไว้**)
+ * 🔴 bug hunt 30 ต.ค. ข้อ 2 — บวก token_version ในคำสั่งเดียวกับการเขียนรหัสใหม่ (แบบเดียวกับ updatePassword)
+ *   รหัสผ่านเปลี่ยน = บัตรเก่าทุกใบต้องใช้ไม่ได้ · ไม่บวก = คนที่ล็อกอินค้างไว้ไม่ถูกเด้งออกและไม่รู้ตัว
+ */
+export async function overwriteUnverified(userId : number , data: NewUser): Promise<boolean>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET full_name = ? , password_hash = ? , gender = ? , birth_date = ? ,
+                          user_type = ? , faculty_id = ? , department_id = ? , year = ? ,
+                          created_at = NOW() , updated_at = NOW() ,
+                          token_version = token_version + 1
+          WHERE user_id = ? AND email_verified = 0`,
+        [data.fullName , data.passwordHash , data.gender , data.birthDate , data.userType ,
+         data.facultyId , data.departmentId , data.year , userId]);
+    return result.affectedRows > 0;
+}
+
+/**
+ * OD-53 — ลบบัญชีที่สมัครแล้วไม่ยืนยันอีเมลเกินกำหนด (งานเบื้องหลัง · ค่าตั้งต้น 24 ชม.)
+ *
+ * ★ เหตุผลที่ลบ ไม่ใช่เรื่องพื้นที่ (แถวละ ~400 ไบต์ ไม่มีผลอะไร) แต่เป็นเรื่อง
+ *   **ข้อมูลส่วนบุคคล** — ชื่อ อีเมล วันเกิด เพศ คณะ ภาควิชา ของคนที่สมัครไม่สำเร็จ
+ *   และไม่เคยพิสูจน์ว่าอีเมลเป็นของตน ไม่มีเหตุให้เก็บไว้ตลอดไป
+ *   (หลักการเดียวกับ OD-70 ที่ลบภาพยืนยันตัวตนกรรมการเมื่อหมดหน้าที่)
+ *
+ * 🔴 ต้องลบใบ OTP ก่อนแล้วค่อยลบ user — `email_verification_otps` มี FK ไป `users`
+ *   **แบบไม่มี ON DELETE CASCADE** (migration 037) ⇒ ลบ user ตรง ๆ จะติด FK error
+ * 🔴 ทำใน transaction เดียว — ถ้าลบใบ OTP สำเร็จแล้วลบ user พลาด จะเหลือบัญชีที่ไม่มีใบ OTP
+ *   ⇒ เจ้าตัวกด "ขอรหัสใหม่" ได้ (ยังมีแถว) แต่โควตาและประวัติหายไป
+ *
+ * ★ บัญชีที่ยังไม่ยืนยันล็อกอินไม่ได้ (เมื่อด่านเปิด) ⇒ ไม่มีทีม ใบสมัคร ใบทาย หรือแต้มผูกอยู่
+ *   ⇒ ลบได้โดยไม่ชน FK อื่นในบรรดา 59 ตารางที่อ้างถึง `users` · **มีเทส integration ตรึงข้อนี้**
+ *   🔴 ยกเว้นบัญชีที่สมัครตอนด่านยังปิด (ใช้งานได้ตามปกติ) หรือถูกคนอื่นเชิญเข้าทีม ⇒ อาจมีข้อมูลผูกอยู่
+ *      ⇒ ลบทีละบัญชี ชน FK ก็ข้าม (deleteUnverifiedUser) · ผู้เรียก (purgeUnverifiedAccounts) ก็ไม่รันตอนด่านปิด
+ */
+export async function purgeUnverifiedOlderThan(hours : number) : Promise<number>{
+    if(hours <= 0) return 0;
+
+    const [ rows ] = await pool.query<({ user_id : number } & RowDataPacket)[]>(
+        `SELECT user_id FROM users WHERE email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR` , [hours]);
+
+    let removed = 0;
+    let skipped = 0;
+    for(const { user_id } of rows){
+        const outcome = await deleteUnverifiedUser(user_id , hours);
+        if(outcome === 'deleted') removed++;
+        if(outcome === 'referenced') skipped++;
+    }
+    if(skipped > 0){
+        console.warn(`[purge-unverified] ข้าม ${skipped} บัญชีที่ยังมีข้อมูลผูกอยู่ (ทีม/ใบสมัคร/คำเชิญ ฯลฯ) — ไม่ลบ`);
+    }
+    return removed;
+}
+
+/**
+ * ลบทีละบัญชี ไม่ใช่ DELETE ก้อนเดียว (แก้ 29 ต.ค. 2569)
+ *   เดิมคำสั่งเดียวลบทุกบัญชี ⇒ บัญชีเดียวที่มีข้อมูลผูกอยู่ (ชน FK) ทำให้ **ทั้งรอบล้ม ไม่มีใครถูกลบเลย** และ error ทุกชั่วโมง
+ *   ⇒ บัญชีที่ชน FK ข้ามไป (ไม่ลบข้อมูลของคนอื่นตามไปด้วย) · ที่เหลือลบต่อได้
+ * ★ เช็คเงื่อนไขซ้ำตอน DELETE — เจ้าตัวอาจยืนยันอีเมลระหว่างที่งานกำลังวน ⇒ ลบไม่ถึงแถว ย้อนใบ OTP กลับ
+ */
+async function deleteUnverifiedUser(userId : number , hours : number) : Promise<'deleted' | 'gone' | 'referenced'>{
+    const conn = await pool.getConnection();
+    try{
+        await conn.beginTransaction();
+        await conn.query(`DELETE FROM email_verification_otps WHERE user_id = ?` , [userId]);
+        const [ result ] = await conn.query<ResultSetHeader>(
+            `DELETE FROM users WHERE user_id = ? AND email_verified = 0 AND created_at < NOW() - INTERVAL ? HOUR` , [userId , hours]);
+        if(result.affectedRows === 0){
+            await conn.rollback();
+            return 'gone';
+        }
+        await conn.commit();
+        return 'deleted';
+    }catch(err){
+        await conn.rollback();
+        if((err as { errno? : number }).errno === 1451) return 'referenced';   // ER_ROW_IS_REFERENCED_2
+        throw err;
+    }finally{
+        conn.release();
+    }
+}
+
+
+/**
+ * เปลี่ยน user_type (มติ 8 ต.ค. 2569) — 'staff' = คนที่ถือยศแอดมิน/root
+ *
+ * ★ ที่เดียวที่เขียนคอลัมน์นี้นอกจากตอนสมัคร · ผู้เรียกคือ `adminScope.service`
+ *   ตอนแต่งตั้ง (→ 'staff') และตอนถอดยศ (→ ค่าตามโดเมนอีเมล)
+ * 🔴 ห้ามให้ repo เป็นคนตัดสินว่าควรเป็นค่าอะไร — กฎโดเมนอยู่ที่ `utils/kuEmail.ts` ที่เดียว
+ *   (repo เรียก service ไม่ได้ตามชั้นของโปรเจกต์ ⇒ ส่งค่าที่คิดแล้วเข้ามา)
+ */
+export async function updateUserType(userId : number , userType : 'student' | 'staff' | 'external') : Promise<void>{
+    await pool.query(`UPDATE users SET user_type = ? WHERE user_id = ?` , [userType , userId]);
+}
+
+/** U06 — ค้นจากชื่อ (บางส่วน) หรืออีเมล (ตรงทั้งอีเมล / ตรงทั้งหน้า @) · ไม่คืนอีเมลใน response */
+export type UserSearchRow = Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key' | 'year'> & {
+    faculty_name : string | null;
+};
+
+/**
+ * 🔴 BE-19 / FE-11 (แก้ 7 ต.ค. 2569 · มติ ⑫ ก) — ผลค้นหามีแค่ชื่อ แยกคนชื่อซ้ำไม่ได้
+ *
+ * ตอนเชิญเข้าทีม FE เจอ "วรรณิดา ทองคำ" สองแถวที่หน้าตาเหมือนกันทุกอย่าง
+ * ⇒ หัวหน้าทีมเชิญผิดคนแล้วไม่มีทางรู้
+ *
+ * ★ เพิ่ม **คณะและชั้นปี** ไม่ใช่อีเมล — สองอย่างนี้แสดงอยู่บนโปรไฟล์สาธารณะแล้ว
+ *   ⇒ ไม่ได้เปิดข้อมูลใหม่แม้แต่ฟิลด์เดียว · อีเมลปิดบางส่วน (som***@ku.th) แยกคนได้แม่นกว่า
+ *   แต่เป็นข้อมูลติดต่อ และเดาอีเมลเต็มจากชื่อได้ไม่ยาก ⇒ ไม่คุ้มกับที่ได้
+ *   (FE เขียนมาเองว่า "safe disambiguation data, not private contact data")
+ * ★ LEFT JOIN — บัญชีภายนอกและ root ไม่มีคณะ ต้องยังขึ้นในผลค้นหา
+ */
+export async function searchByName(userName : string) : Promise<UserSearchRow[]>{
+    const [ rows ] = await pool.query<(UserSearchRow & RowDataPacket)[]>(
+        `SELECT u.user_id , u.full_name , u.profile_image_key , u.year , f.name AS faculty_name
+           FROM users u
+           LEFT JOIN faculties f ON f.faculty_id = u.faculty_id
+          WHERE (u.full_name LIKE ? OR u.email = ? OR SUBSTRING_INDEX(u.email , '@' , 1) = ?)
+            AND ${notSuspendedSql('u')}
+            AND ${emailVerifiedSql('u')}
+          ORDER BY u.full_name LIMIT 20` , [`%${escapeLike(userName)}%`, userName, userName]);
+    return rows;
+};
+
+/**
+ * 🔴 bug hunt 30 ต.ค. 2569 ข้อ 6 — ค้นหาผู้ใช้แล้วสืบอีเมลได้
+ *   ① `%` `_` ไม่ถูก escape ⇒ พิมพ์ `%%%` (ผ่านด่าน 3 ตัวอักษร) ได้รายชื่อ 20 คนแรกโดยไม่ต้องรู้ชื่อ
+ *   ② เดิมค้นอีเมลแบบ "ขึ้นต้นด้วย" ⇒ ไล่ทีละตัวอักษรแล้วรู้ว่าอีเมลไหนเป็นของใคร (โปรไฟล์ไม่โชว์อีเมล)
+ *   ⇒ ชื่อยังค้นบางส่วนได้เหมือนเดิม · อีเมลต้อง **ตรงทั้งอีเมล** หรือ **ตรงทั้งส่วนหน้า @** (เช่นรหัสนิสิต)
+ *     เชิญด้วยอีเมล/รหัสนิสิตยังทำได้ แต่สืบทีละตัวไม่ได้แล้ว
+ * ★ backslash ต้อง escape ก่อน — ไม่งั้น `\%` ที่ผู้ใช้พิมพ์จะกลายเป็นตัว escape ของเราเอง
+ */
+export function escapeLike(value : string) : string {
+    return value.replace(/[\\%_]/g , ch => `\\${ch}`);
+}
+
+/** QA 30 ต.ค. (C3) — logout: บัตรทุกใบที่ออกก่อนหน้านี้ใช้ไม่ได้ (requireAuth เทียบเลขรุ่นทุกคำขอ) */
+export async function bumpTokenVersion(userId : number) : Promise<void>{
+    await pool.query(`UPDATE users SET token_version = token_version + 1 WHERE user_id = ?` , [userId]);
+}
+
+/**
+ * B1 (มติ 6 ต.ค. 2569 ทางเลือก ข) — เปลี่ยนรหัสผ่านแล้วบัตรเก่าทุกใบต้องใช้ไม่ได้
+ *
+ * บวก token_version ใน **คำสั่งเดียวกับการเขียนรหัสใหม่** ⇒ แยกกันไม่ได้
+ *   ⇒ ทุกเส้นทางที่เปลี่ยนรหัสผ่าน (วันนี้มีแค่ reset password · วันหน้าอาจมี "เปลี่ยนรหัสใน /me")
+ *     ได้ผลนี้อัตโนมัติโดยไม่มีใครต้องนึกถึง — รูปแบบเดียวกับที่ A2 ใช้ด่านเดียวแทนการไล่แก้ทีละที่
+ * 🔴 ห้ามแยกเป็นสอง UPDATE หรือย้ายการบวกไปที่ service — ถ้าแยก จะมีวันที่ใครเพิ่มเส้นทางใหม่
+ *   แล้วลืมบวก ⇒ บั๊กเดิมกลับมาแบบเงียบ ๆ ในเส้นทางเดียว
+ */
+export async function updatePassword(userId : number , passwordHash : string) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET password_hash = ? , token_version = token_version + 1 WHERE user_id = ?`,
+        [passwordHash , userId]);
+    return result.affectedRows;
+}
+
+// OD-53 — ไม่รวมกับ update() ข้างล่าง เพราะนั่นเป็นข้อมูลที่ "เจ้าตัวแก้เองได้"
+// ส่วนธงนี้เป็นข้อสรุปของระบบ ขึ้นได้ทางเดียวคือกรอก OTP ที่ระบบส่งไปถูก — ห้ามมีทางให้ตั้งเอง
+// ไม่เซ็ต updated_at — คอลัมน์นั้นหมายถึง "เจ้าตัวแก้โปรไฟล์เมื่อไหร่" การยืนยันอีเมลไม่ใช่การแก้โปรไฟล์
+export async function markEmailVerified(userId : number) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET email_verified = 1 WHERE user_id = ?`, [userId]);
+    return result.affectedRows;
+}
+
+export async function update(userId : number , input : UpdateMeInput) : Promise<number> {
+    const sets:string[] = [];
+    const values: unknown[] = [];
+
+    if(input.avatarUrl !== undefined){
+        sets.push('profile_image_key = ?');
+        values.push(input.avatarUrl);
+    }
+
+    if(input.contactInfo !== undefined){
+        sets.push('contact_info = ?');
+        values.push(input.contactInfo);
+    }
+
+    if(input.address !== undefined){
+        sets.push('address = ?');
+        values.push(input.address);
+    }
+
+    if(input.showProfileStats !== undefined){
+        sets.push('show_profile_stats = ?');
+        values.push(input.showProfileStats ? 1 : 0);
+    }
+
+    sets.push('updated_at = NOW()');
+
+    const [ result ] = await pool.query<ResultSetHeader>(`UPDATE users SET ${sets.join(', ')} WHERE user_id = ?`
+                                                        ,[ ...values , userId]);
+
+    return result.affectedRows;
+}
+
+// OD-43 — ตั้งค่าแจ้งเตือนรายหมวด · คอลัมน์ `notification_prefs` มีอยู่ใน schema แล้ว จึงไม่มี migration
+// เก็บเป็น JSON object ของหมวดที่ "ปิด" เท่านั้นก็พอ แต่เก็บครบทุกคีย์ให้อ่านง่ายกว่าเวลา debug
+
+/** อ่านเฉพาะคอลัมน์เดียว — ไม่ใช้ findById เพราะมันเป็น SELECT * ทั้งแถวเพื่อค่าตัวเดียว */
+export async function findNotificationPrefs(userId : number) : Promise<unknown>{
+    const [ rows ] = await pool.query<({ notification_prefs : unknown } & RowDataPacket)[]>(
+        'SELECT notification_prefs FROM users WHERE user_id = ?' , [userId]);
+
+    return rows[0]?.notification_prefs ?? null;
+}
+
+/** เขียนทับทั้งก้อน (ฝั่ง service รวมค่าเดิมกับค่าใหม่มาให้แล้ว) · คืน affectedRows ไว้ให้ service เช็คว่ามี user จริง */
+export async function updateNotificationPrefs(userId : number , prefs : Record<string , boolean>) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        'UPDATE users SET notification_prefs = ? , updated_at = NOW() WHERE user_id = ?' ,
+        [ JSON.stringify(prefs) , userId ]);
+
+    return result.affectedRows;
+}
+
+// C2 — GET /admin/users · LEFT JOIN admin_scopes เพื่อคืน adminScope ติดมาด้วย (ไม่ SELECT * เพราะ users/admin_scopes มี faculty_id ชื่อชนกัน)
+export type AdminUserRow = Pick<UserRow , 'user_id' | 'full_name' | 'email' | 'user_type' | 'faculty_id' | 'is_suspended' | 'suspended_reason' | 'suspended_until' | 'suspended_category'> & {
+    admin_scope_id : number | null , admin_scope_type : 'faculty' | 'university_wide' | 'root' | null , admin_scope_faculty_id : number | null
+};
+
+export async function searchUsersAdmin(filters : { q? : string | undefined; facultyId? : number | undefined; suspended? : boolean | undefined },
+                                        offset : number , pageSize : number) : Promise<{ rows : AdminUserRow[]; totalItems : number }>{
+    const where : string[] = [];
+    const params : unknown[] = [];
+    if(filters.q){ where.push('(u.full_name LIKE ? OR u.email LIKE ?)'); params.push(`%${filters.q}%` , `%${filters.q}%`); }
+    if(filters.facultyId !== undefined){ where.push('u.faculty_id = ?'); params.push(filters.facultyId); }
+    // filters.suspended ถามถึงสถานะ *ตอนนี้* — คนที่หมดกำหนดแล้วต้องไม่โผล่ในลิสต์ "ถูกระงับ" ทั้งที่ธงยังค้างเป็น 1
+    if(filters.suspended !== undefined){ where.push(filters.suspended ? suspendedSql('u') : notSuspendedSql('u')); }
+    // OD-53 — ซ่อนบัญชีที่ยังไม่ยืนยันเมื่อด่านเปิด (ดู utils/emailVerification.ts)
+    where.push(emailVerifiedSql('u'));
+    const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [ rows ] = await pool.query<(AdminUserRow & RowDataPacket)[]>(
+        `SELECT u.user_id , u.full_name , u.email , u.user_type , u.faculty_id , u.is_suspended , u.suspended_reason , u.suspended_until , u.suspended_category,
+                s.admin_scope_id , s.scope_type AS admin_scope_type , s.faculty_id AS admin_scope_faculty_id
+           FROM users u LEFT JOIN admin_scopes s ON s.user_id = u.user_id
+          ${whereSql}
+          ORDER BY u.user_id LIMIT ? OFFSET ?` , [...params , pageSize , offset]);
+    const [ count ] = await pool.query<({ totalItems : number } & RowDataPacket)[]>(
+        `SELECT COUNT(*) AS totalItems FROM users u ${whereSql}` , params);
+
+    return { rows , totalItems : Number(count[0]?.totalItems ?? 0) };
+}
+
+// ตอนปลด (suspended = false) ล้างทุกอย่างที่เกี่ยวกับโทษ — ไม่ปล่อยค้างให้โทษรอบหน้าสืบทอดกำหนด/ประเภทเก่ามาเงียบๆ
+export async function suspendUser(userId : number , suspended : boolean , reason : string | null ,
+                                   until : Date | null = null , category : SuspensionCategory | null = null) : Promise<number>{
+    const [ result ] = await pool.query<ResultSetHeader>(
+        `UPDATE users SET is_suspended = ? , suspended_reason = ? , suspended_until = ? , suspended_category = ? WHERE user_id = ?`,
+        [suspended ? 1 : 0 , reason , suspended ? until : null , suspended ? category : null , userId]);
+    return result.affectedRows;
+}
+
+// C2 ข้อ 3 — ห้ามระงับ ORG ที่มีทัวร์ public ค้างอยู่
+export async function hasActivePublicTournamentAsOrganizer(userId : number) : Promise<boolean>{
+    const [ rows ] = await pool.query<(RowDataPacket)[]>(
+        `SELECT 1 FROM tournaments WHERE requested_by_user_id = ? AND tournament_status = 'public' LIMIT 1`,[userId]);
+    return rows.length > 0;
+}
+
+// C2 ข้อ 3 — ห้ามระงับหัวหน้าทีมที่มีใบสมัคร approved ค้างอยู่ในทัวร์ public
+export async function hasApprovedApplicationAsLeader(userId : number) : Promise<boolean>{
+    const [ rows ] = await pool.query<(RowDataPacket)[]>(
+        `SELECT 1 FROM teams t
+           JOIN tournament_applications a ON a.team_id = t.team_id
+           JOIN tournaments tour ON tour.tournament_id = a.tournament_id
+          WHERE t.leader_id = ? AND a.tournament_application_status = 'approved' AND tour.tournament_status = 'public'
+          LIMIT 1`,[userId]);
+    return rows.length > 0;
+}
+
+export type MyInvitationRow = Pick<TeamInvitationRow , 'team_invitation_id' | 'expires_at'> &
+                              Pick<UserRow , 'user_id' | 'full_name' | 'profile_image_key'> &
+                              Pick<TeamRow , 'team_id' | 'name' | 'sport_type_id' | 'logo_key'>;
+
+export async function getMyInvitation(invitedUserId : number) : Promise<MyInvitationRow[]>{
+    const [ rows ] = await pool.query<(MyInvitationRow & RowDataPacket)[]>(`SELECT inv.team_invitation_id , inv.expires_at ,
+                                                                            u.user_id , u.full_name , u.profile_image_key  ,
+                                                                            t.team_id , t.name , t.sport_type_id , t.logo_key
+                                                                            FROM team_invitations inv JOIN teams t ON inv.team_id = t.team_id
+                                                                            JOIN users u ON u.user_id = inv.invited_by_user_id
+
+                                                                            WHERE inv.invited_user_id = ? AND inv.team_invitation_status = ? AND inv.expires_at > NOW()`
+                                                                            ,[invitedUserId , 'pending']);
+    return rows;
+}

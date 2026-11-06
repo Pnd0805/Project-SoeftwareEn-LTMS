@@ -1,0 +1,80 @@
+[
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "dark",
+    "demoRoles": 5,
+    "demoPendingDisabled": true,
+    "playerRedirect": "/",
+    "mockProfile": true,
+    "keyboardNativeFileChooser": true,
+    "overflow": false,
+    "errors": [],
+    "backendRequests": []
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "theme": "light",
+    "demoRoles": 5,
+    "demoPendingDisabled": true,
+    "playerRedirect": "/",
+    "mockProfile": true,
+    "keyboardNativeFileChooser": true,
+    "overflow": false,
+    "errors": [],
+    "backendRequests": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "demoRoles": 5,
+    "demoPendingDisabled": true,
+    "playerRedirect": "/",
+    "mockProfile": true,
+    "keyboardNativeFileChooser": true,
+    "overflow": false,
+    "errors": [],
+    "backendRequests": []
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "demoRoles": 5,
+    "demoPendingDisabled": true,
+    "playerRedirect": "/",
+    "mockProfile": true,
+    "keyboardNativeFileChooser": true,
+    "overflow": false,
+    "errors": [],
+    "backendRequests": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "demoRoles": 5,
+    "demoPendingDisabled": true,
+    "playerRedirect": "/",
+    "mockProfile": true,
+    "keyboardNativeFileChooser": true,
+    "overflow": false,
+    "errors": [],
+    "backendRequests": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "demoRoles": 5,
+    "demoPendingDisabled": true,
+    "playerRedirect": "/",
+    "mockProfile": true,
+    "keyboardNativeFileChooser": true,
+    "overflow": false,
+    "errors": [],
+    "backendRequests": []
+  }
+]

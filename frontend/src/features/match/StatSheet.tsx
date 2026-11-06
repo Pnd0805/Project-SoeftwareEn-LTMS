@@ -1,0 +1,63 @@
+/**
+ * src/features/match/StatSheet.tsx
+ *
+ * What was recorded, read back. Columns come from `sport_stat_definitions` for
+ * this sport, so a sport nobody wrote code for still renders its own figures.
+ *
+ * ⚠️ ทุกค่าเป็นจำนวนเต็ม เพราะ `player_match_stat_values` มีแค่ `value_int`
+ *    แม้ `sport_stat_definitions.data_type` จะรับ 'decimal' และ 'boolean' ก็ตาม
+ *    — schema gap ที่ schema.sql เขียนเตือนตัวเองไว้แล้ว
+ */
+import { Empty, Panel, TableWrap } from '../../components/kit/primitives'
+import { TeamChipView } from '../../components/kit/chips'
+import { useMatchStats, useStatDefinitions } from '../../hooks/useMatch'
+import { toTeamView } from './matchView'
+import type { MatchDto } from '../../types/match.dto'
+
+export function StatSheet({ m }: { m: MatchDto }) {
+  const { data: stats, isPending, isError, refetch } = useMatchStats(m.id)
+  const { data: defs, isError: defsError, isPending: defsPending, refetch: refetchDefs } = useStatDefinitions(m.tournament.sportTypeId)
+
+  if (isError || defsError) return <Empty icon="warn" title="Statistics unavailable" sub="Could not read the recorded statistics or column definitions."><button className="btn" type="button" onClick={() => { if (isError) void refetch(); if (defsError) void refetchDefs() }}>Try again</button></Empty>
+  if (isPending || defsPending) return <Panel quiet><span className="sub">Loading statistics…</span></Panel>
+
+  const rows = stats?.items ?? []
+  const cols = defs?.items ?? []
+
+  if (!rows.length) {
+    return <Empty icon="match" title="No statistics yet" sub="Recorded once the result is entered." />
+  }
+
+  const teamOf = (teamId: number) =>
+    m.teamA?.id === teamId ? m.teamA : m.teamB?.id === teamId ? m.teamB : null
+
+  return (
+    <Panel quiet className="match-stat-sheet">
+      <h2>Player statistics</h2>
+      <p className="sub">{m.tournament.sportName}</p>
+      <TableWrap label="Recorded player statistics">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th><th>Squad</th>
+              {cols.map(c => <th key={c.statKey}>{c.statLabelTh}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.id}>
+                <td>{r.player.fullName}</td>
+                <td><TeamChipView team={toTeamView(teamOf(r.teamId))} /></td>
+                {cols.map(c => <td className="num" key={c.statKey}>{r.values[c.statKey] ?? 0}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableWrap>
+      <span className="sub">
+        Recorded by {rows[0]?.recordedByReferee.fullName ?? '—'}. Corrections are audited
+        (FR-RS-07) — they are not silent edits.
+      </span>
+    </Panel>
+  )
+}

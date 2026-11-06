@@ -1,0 +1,4337 @@
+[
+  {
+    "label": "home",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Home"
+        },
+        {
+          "tag": "H2",
+          "text": "Needs you"
+        },
+        {
+          "tag": "H2",
+          "text": "Next match"
+        },
+        {
+          "tag": "H2",
+          "text": "Tournaments"
+        }
+      ],
+      "controls": 37,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Request tournament",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 1193.390625,
+          "y": 87.59375,
+          "width": 194.609375,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "View matches",
+          "class": "btn",
+          "x": 859,
+          "y": 464.984375,
+          "width": 127.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "All · 6",
+          "class": "tab on",
+          "disabled": false,
+          "x": 256,
+          "y": 814.765625,
+          "width": 36.140625,
+          "height": 50.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 7
+        }
+      ],
+      "passes": 41
+    }
+  },
+  {
+    "label": "home",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Home"
+        },
+        {
+          "tag": "H2",
+          "text": "Needs you"
+        },
+        {
+          "tag": "H2",
+          "text": "Next match"
+        },
+        {
+          "tag": "H2",
+          "text": "Tournaments"
+        }
+      ],
+      "controls": 37,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Request tournament",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 1193.390625,
+          "y": 87.59375,
+          "width": 194.609375,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "View matches",
+          "class": "btn",
+          "x": 859,
+          "y": 464.984375,
+          "width": 127.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "All · 6",
+          "class": "tab on",
+          "disabled": false,
+          "x": 256,
+          "y": 814.765625,
+          "width": 36.140625,
+          "height": 50.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 9
+        }
+      ],
+      "passes": 41
+    }
+  },
+  {
+    "label": "home",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Home"
+        },
+        {
+          "tag": "H2",
+          "text": "Needs you"
+        },
+        {
+          "tag": "H2",
+          "text": "Next match"
+        },
+        {
+          "tag": "H2",
+          "text": "Tournaments"
+        }
+      ],
+      "controls": 37,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Request tournament",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 171.390625,
+          "y": 339.171875,
+          "width": 194.609375,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "View matches",
+          "class": "btn",
+          "x": 45,
+          "y": 1114.953125,
+          "width": 127.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "All · 6",
+          "class": "tab on",
+          "disabled": false,
+          "x": 24,
+          "y": 1561.53125,
+          "width": 36.140625,
+          "height": 50.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 8
+        }
+      ],
+      "passes": 42
+    }
+  },
+  {
+    "label": "home",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nHOME\nRequest tournament\nNEEDS YOU\n1 task\nWaiting\n1 squad invitation waiting on you\naccepting shares your eligibility data with an organizer\nCircuit Breakers · squad invitation\nNEXT MATCH\n\nNo scheduled match\n\nYour next confirmed match will appear here.\n\nView matches\nTOURNAMENTS\nFind one · 6 of 6\nAll sports\nFootball\nFutsal\nROV\nVALORANT\nVolleyball\nStage\nAll\nOpen for entry\nIn progress\nFinished\nAll · 6\nYou're competing in · 5\nOther tournaments · 1\nFOOTBALL\nPublic\nFootball\nFACULTY FOOTBALL CUP 2026\nEngineering\nIn the draw\n8 / 8 teams\nIn progress\nVALORANT\nPublic\nVALORANT\nVALORANT CAMPUS LEAGUE 2025\nByte Force\nIn the draw\n4 / 8 teams\nChampion: BYT\nFUTSAL\nPublic\nFutsal\nINTER-FACULTY FUTSAL 2026\nEngineering\nIn the draw\n3 / 16 teams\nRegistration open\nVOLLEYBALL\nPublic\nVolleyball\nENGINEERING VOLLEYBALL CUP\nRun by Thanwa Sirichai\n4 / 8 teams\nIn progress\nROV\nPublic\nROV\nROV ONLINE CLASH 2026\nByte Force\nIn the draw\n4 / 8 teams\nIn progress\nFOOTBALL\nPublic\nFootball\nSPRING FACULTY CUP 2026\nEngineering\nIn the draw\n4 / 4 teams\nIn progress",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Home"
+        },
+        {
+          "tag": "H2",
+          "text": "Needs you"
+        },
+        {
+          "tag": "H2",
+          "text": "Next match"
+        },
+        {
+          "tag": "H2",
+          "text": "Tournaments"
+        }
+      ],
+      "controls": 37,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Request tournament",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 171.390625,
+          "y": 339.171875,
+          "width": 194.609375,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "View matches",
+          "class": "btn",
+          "x": 45,
+          "y": 1114.953125,
+          "width": 127.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "All · 6",
+          "class": "tab on",
+          "disabled": false,
+          "x": 24,
+          "y": 1561.53125,
+          "width": 36.140625,
+          "height": 50.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 10
+        }
+      ],
+      "passes": 42
+    }
+  },
+  {
+    "label": "home",
+    "focus": {
+      "tag": "BUTTON",
+      "text": "Skip to the main content",
+      "outline": "rgb(58, 174, 124) solid 3px",
+      "outlineOffset": "2px"
+    },
+    "preflight": {
+      "title": "[Human] LTMS Assessment B",
+      "script": true,
+      "mutable": true
+    },
+    "overlayLogs": [
+      "%c[impeccable] 6 anti-patterns found color: oklch(84% 0.19 80.46); font-weight: bold"
+    ],
+    "errors": [],
+    "blocked": []
+  },
+  {
+    "label": "teams",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/teams",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Teams"
+        },
+        {
+          "tag": "H2",
+          "text": "Your teams"
+        },
+        {
+          "tag": "H3",
+          "text": "Engineering"
+        },
+        {
+          "tag": "H3",
+          "text": "Byte Force"
+        },
+        {
+          "tag": "H2",
+          "text": "Invitations"
+        },
+        {
+          "tag": "H2",
+          "text": "Entries"
+        }
+      ],
+      "controls": 25,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Create a team",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 1236.71875,
+          "y": 91.390625,
+          "width": 151.28125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 277,
+          "y": 374.78125,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 277,
+          "y": 544.171875,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Decline",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 982.84375,
+          "y": 428.984375,
+          "width": 84.640625,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Accept invitation",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 1075.484375,
+          "y": 428.984375,
+          "width": 147.9375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Byte Force in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 1062.890625,
+          "y": 655.765625,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Withdraw",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1199.484375,
+          "y": 655.765625,
+          "width": 98.3125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Engineering United in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 1055.265625,
+          "y": 802.75,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Cancel",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1191.859375,
+          "y": 802.75,
+          "width": 80.71875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ],
+      "passes": 33
+    }
+  },
+  {
+    "label": "teams",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/teams",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Teams"
+        },
+        {
+          "tag": "H2",
+          "text": "Your teams"
+        },
+        {
+          "tag": "H3",
+          "text": "Engineering"
+        },
+        {
+          "tag": "H3",
+          "text": "Byte Force"
+        },
+        {
+          "tag": "H2",
+          "text": "Invitations"
+        },
+        {
+          "tag": "H2",
+          "text": "Entries"
+        }
+      ],
+      "controls": 25,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Create a team",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 1236.71875,
+          "y": 91.390625,
+          "width": 151.28125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 277,
+          "y": 374.78125,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 277,
+          "y": 544.171875,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Decline",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 982.84375,
+          "y": 428.984375,
+          "width": 84.640625,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Accept invitation",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 1075.484375,
+          "y": 428.984375,
+          "width": 147.9375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Byte Force in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 1062.890625,
+          "y": 655.765625,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Withdraw",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1199.484375,
+          "y": 655.765625,
+          "width": 98.3125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Engineering United in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 1055.265625,
+          "y": 802.75,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Cancel",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1191.859375,
+          "y": 802.75,
+          "width": 80.71875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 3
+        }
+      ],
+      "passes": 33
+    }
+  },
+  {
+    "label": "teams",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/teams",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Teams"
+        },
+        {
+          "tag": "H2",
+          "text": "Your teams"
+        },
+        {
+          "tag": "H3",
+          "text": "Engineering"
+        },
+        {
+          "tag": "H3",
+          "text": "Byte Force"
+        },
+        {
+          "tag": "H2",
+          "text": "Invitations"
+        },
+        {
+          "tag": "H2",
+          "text": "Entries"
+        }
+      ],
+      "controls": 25,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Create a team",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 214.71875,
+          "y": 339.171875,
+          "width": 151.28125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 45,
+          "y": 738.53125,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 45,
+          "y": 947.109375,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Decline",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 45,
+          "y": 1355.6875,
+          "width": 84.640625,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Accept invitation",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 137.640625,
+          "y": 1355.6875,
+          "width": 147.9375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Byte Force in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 125.046875,
+          "y": 1580.265625,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Withdraw",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 45,
+          "y": 1628.65625,
+          "width": 98.3125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Engineering United in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 117.421875,
+          "y": 1775.640625,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Cancel",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 254.015625,
+          "y": 1775.640625,
+          "width": 80.71875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ],
+      "passes": 33
+    }
+  },
+  {
+    "label": "teams",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/teams",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTEAMS\nCreate a team\nYOUR TEAMS\n2 of 2 teams\nSearch teams\nSport\nAll sports\nFootball\nVALORANT\nRole\nAll roles\nLeader\nMember\nENGINEERING\n9 members · Football\nReady\nOfficial\nMember\nView team\nBYTE FORCE\n6 members · VALORANT\nReady\nUnofficial\nMember\nView team\nINVITATIONS\nAccepting shares your faculty, year and date of birth with the organizer of any tournament this squad enters — that is how the eligibility check works.\nCircuit Breakers\nInvited by Nattapong Suwan · expires 10/14/2026\nDecline\nAccept invitation\nENTRIES\nByte Force\nInter-Faculty Futsal 2026\napproved\nView entry\nWithdraw\nEngineering United\nInter-Faculty Futsal 2026\npending\nView entry\nCancel",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Teams"
+        },
+        {
+          "tag": "H2",
+          "text": "Your teams"
+        },
+        {
+          "tag": "H3",
+          "text": "Engineering"
+        },
+        {
+          "tag": "H3",
+          "text": "Byte Force"
+        },
+        {
+          "tag": "H2",
+          "text": "Invitations"
+        },
+        {
+          "tag": "H2",
+          "text": "Entries"
+        }
+      ],
+      "controls": 25,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Create a team",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 214.71875,
+          "y": 339.171875,
+          "width": 151.28125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 45,
+          "y": 738.53125,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View team",
+          "class": "btn",
+          "disabled": false,
+          "x": 45,
+          "y": 947.109375,
+          "width": 127.734375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Decline",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 45,
+          "y": 1355.6875,
+          "width": 84.640625,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Accept invitation",
+          "class": "btn primary",
+          "disabled": false,
+          "x": 137.640625,
+          "y": 1355.6875,
+          "width": 147.9375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Byte Force in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 125.046875,
+          "y": 1580.265625,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Withdraw",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 45,
+          "y": 1628.65625,
+          "width": 98.3125,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View entry for Engineering United in Inter-Faculty Futsal 2026",
+          "class": "btn",
+          "disabled": false,
+          "x": 117.421875,
+          "y": 1775.640625,
+          "width": 128.59375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Cancel",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 254.015625,
+          "y": 1775.640625,
+          "width": 80.71875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 3
+        }
+      ],
+      "passes": 33
+    }
+  },
+  {
+    "label": "teams",
+    "focus": {
+      "tag": "BUTTON",
+      "text": "Skip to the main content",
+      "outline": "rgb(58, 174, 124) solid 3px",
+      "outlineOffset": "2px"
+    },
+    "preflight": {
+      "title": "[Human] LTMS Assessment B",
+      "script": true,
+      "mutable": true
+    },
+    "overlayLogs": [
+      "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+    ],
+    "errors": [],
+    "blocked": []
+  },
+  {
+    "label": "schedule",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/t/t-fb/schedule",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\t\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Faculty Football Cup 2026"
+        },
+        {
+          "tag": "H2",
+          "text": "Details"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry"
+        },
+        {
+          "tag": "H2",
+          "text": "Schedule"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry notes"
+        }
+      ],
+      "controls": 47,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tournaments",
+          "class": "",
+          "disabled": false,
+          "x": 256,
+          "y": 87.59375,
+          "width": 94.6875,
+          "height": 31.796875
+        },
+        {
+          "tag": "A",
+          "text": "Main Stadium",
+          "class": "",
+          "x": 694.71875,
+          "y": 577.984375,
+          "width": 94.28125,
+          "height": 32
+        },
+        {
+          "tag": "SELECT",
+          "text": "Round filter",
+          "class": "",
+          "disabled": false,
+          "x": 822,
+          "y": 845.171875,
+          "width": 264.5,
+          "height": 43
+        },
+        {
+          "tag": "SELECT",
+          "text": "Match state filter",
+          "class": "",
+          "disabled": false,
+          "x": 1102.5,
+          "y": 845.171875,
+          "width": 264.5,
+          "height": 43
+        },
+        {
+          "tag": "A",
+          "text": "Medicine",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 958.25,
+          "width": 86.15625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 958.25,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 951.5625,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1024.640625,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Law",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1024.640625,
+          "width": 52.890625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1017.953125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1091.03125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Business Admin",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1091.03125,
+          "width": 134.203125,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1084.34375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1157.421875,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1157.421875,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1150.734375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1223.8125,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1223.8125,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1217.125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1290.203125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1290.203125,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1283.515625,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1349.90625,
+          "width": 69.796875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Entry feedback",
+          "tabindex": "-1",
+          "x": 835,
+          "y": 297.1875,
+          "width": 552,
+          "height": 360
+        },
+        {
+          "name": "Tournament schedule",
+          "tabindex": "0",
+          "x": 277,
+          "y": 902.765625,
+          "width": 1090,
+          "height": 501.53125
+        },
+        {
+          "name": "Entry notes",
+          "tabindex": "0",
+          "x": 256,
+          "y": 1449.296875,
+          "width": 554,
+          "height": 280
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "empty-table-header",
+          "impact": "minor",
+          "description": "Ensure table headers have discernible text",
+          "help": "Table header text should not be empty",
+          "nodes": [
+            {
+              "target": [
+                "th:nth-child(4)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(8)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ],
+      "passes": 43
+    }
+  },
+  {
+    "label": "schedule",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/t/t-fb/schedule",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\t\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Faculty Football Cup 2026"
+        },
+        {
+          "tag": "H2",
+          "text": "Details"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry"
+        },
+        {
+          "tag": "H2",
+          "text": "Schedule"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry notes"
+        }
+      ],
+      "controls": 47,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tournaments",
+          "class": "",
+          "disabled": false,
+          "x": 256,
+          "y": 87.59375,
+          "width": 94.6875,
+          "height": 31.796875
+        },
+        {
+          "tag": "A",
+          "text": "Main Stadium",
+          "class": "",
+          "x": 694.71875,
+          "y": 577.984375,
+          "width": 94.28125,
+          "height": 32
+        },
+        {
+          "tag": "SELECT",
+          "text": "Round filter",
+          "class": "",
+          "disabled": false,
+          "x": 822,
+          "y": 845.171875,
+          "width": 264.5,
+          "height": 43
+        },
+        {
+          "tag": "SELECT",
+          "text": "Match state filter",
+          "class": "",
+          "disabled": false,
+          "x": 1102.5,
+          "y": 845.171875,
+          "width": 264.5,
+          "height": 43
+        },
+        {
+          "tag": "A",
+          "text": "Medicine",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 958.25,
+          "width": 86.15625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 958.25,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 951.5625,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1024.640625,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Law",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1024.640625,
+          "width": 52.890625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1017.953125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1091.03125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Business Admin",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1091.03125,
+          "width": 134.203125,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1084.34375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1157.421875,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1157.421875,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1150.734375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1223.8125,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1223.8125,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1217.125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 616.265625,
+          "y": 1290.203125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 815.546875,
+          "y": 1290.203125,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1283.515625,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 1272.03125,
+          "y": 1349.90625,
+          "width": 69.796875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Entry feedback",
+          "tabindex": "-1",
+          "x": 835,
+          "y": 297.1875,
+          "width": 552,
+          "height": 360
+        },
+        {
+          "name": "Tournament schedule",
+          "tabindex": "0",
+          "x": 277,
+          "y": 902.765625,
+          "width": 1090,
+          "height": 501.53125
+        },
+        {
+          "name": "Entry notes",
+          "tabindex": "0",
+          "x": 256,
+          "y": 1449.296875,
+          "width": 554,
+          "height": 280
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                "th:nth-child(1)"
+              ],
+              "html": "<th>Kick-off</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(2)"
+              ],
+              "html": "<th>Round</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(3)"
+              ],
+              "html": "<th>Home</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(5)"
+              ],
+              "html": "<th>Away</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(6)"
+              ],
+              "html": "<th>Score</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(7)"
+              ],
+              "html": "<th>State</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "empty-table-header",
+          "impact": "minor",
+          "description": "Ensure table headers have discernible text",
+          "help": "Table header text should not be empty",
+          "nodes": [
+            {
+              "target": [
+                "th:nth-child(4)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(8)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 3
+        }
+      ],
+      "passes": 43
+    }
+  },
+  {
+    "label": "schedule",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/t/t-fb/schedule",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\t\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Faculty Football Cup 2026"
+        },
+        {
+          "tag": "H2",
+          "text": "Details"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry"
+        },
+        {
+          "tag": "H2",
+          "text": "Schedule"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry notes"
+        }
+      ],
+      "controls": 47,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tournaments",
+          "class": "",
+          "disabled": false,
+          "x": 24,
+          "y": 339.171875,
+          "width": 94.6875,
+          "height": 31.796875
+        },
+        {
+          "tag": "A",
+          "text": "Main Stadium",
+          "class": "",
+          "x": 250.71875,
+          "y": 882.546875,
+          "width": 94.28125,
+          "height": 32
+        },
+        {
+          "tag": "SELECT",
+          "text": "Round filter",
+          "class": "",
+          "disabled": false,
+          "x": 45,
+          "y": 1686.515625,
+          "width": 142,
+          "height": 43
+        },
+        {
+          "tag": "SELECT",
+          "text": "Match state filter",
+          "class": "",
+          "disabled": false,
+          "x": 203,
+          "y": 1686.515625,
+          "width": 142,
+          "height": 43
+        },
+        {
+          "tag": "A",
+          "text": "Medicine",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1797,
+          "width": 86.15625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1797,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1790.3125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1863.390625,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Law",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1863.390625,
+          "width": 52.890625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1856.703125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1929.78125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Business Admin",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1929.78125,
+          "width": 134.203125,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1923.09375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1996.171875,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1996.171875,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1989.484375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 2062.5625,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 2062.5625,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 2055.875,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 2128.953125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 2128.953125,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 2122.265625,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 2188.65625,
+          "width": 69.796875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Entry feedback",
+          "tabindex": "-1",
+          "x": 25,
+          "y": 987.953125,
+          "width": 340,
+          "height": 360
+        },
+        {
+          "name": "Tournament schedule",
+          "tabindex": "0",
+          "x": 45,
+          "y": 1741.515625,
+          "width": 300,
+          "height": 501.53125
+        },
+        {
+          "name": "Entry notes",
+          "tabindex": "0",
+          "x": 24,
+          "y": 2288.046875,
+          "width": 342,
+          "height": 280
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "empty-table-header",
+          "impact": "minor",
+          "description": "Ensure table headers have discernible text",
+          "help": "Table header text should not be empty",
+          "nodes": [
+            {
+              "target": [
+                "th:nth-child(4)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(8)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 36
+        }
+      ],
+      "passes": 43
+    }
+  },
+  {
+    "label": "schedule",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/t/t-fb/schedule",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nTOURNAMENTS\n/\nFACULTY FOOTBALL CUP 2026\nFACULTY FOOTBALL CUP 2026\n\nFootball · Single elimination · onsite\n\nRun by Thanwa Sirichai\nPublic\nDETAILS\nSPORT\nFootball\nFORMAT\nSingle elimination\nDATE\n2026-02-14\nREGISTRATION OPENS\nNot specified\nREGISTRATION CLOSES\nNot specified\nVENUE\nMain Stadium\nPLAYED\nonsite\nENTRY\nage 18–25\nSQUADS IN\n8 of 8\nRUN BY\nThanwa Sirichai\nENTRY\nClosed\nSQUADS IN\n8 of 8\nENTRY RULES\nage 18–25\n\nThe bracket is drawn — entries are closed.\n\nbracket\ndashboard\nschedule\nleaderboard\nannouncements\ncommunity\nSCHEDULE\n7 of 7 matches\nTeam\nRound\nAll rounds\nRound 0\nRound 1\nRound 2\nState\nAll states\nScheduled\nCheck-in open\nIn progress\nAwaiting result\nAwaiting confirmation\nConfirmed\nDisputed\nResult thrown out\nWaiting on teams\nBye\nKICK-OFF\tROUND\tHOME\t\tAWAY\tSCORE\tSTATE\t\n1/9/2026, 2:00:00 PM\tQF1\t\nMedicine\n\tvs\t\nScience\n\t0 – 2\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF2\t\nEducation\n\tvs\t\nLaw\n\t1 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF3\t\nNursing\n\tvs\t\nBusiness Admin\n\t4 – 0\tConfirmed\t\nOpen\n\n1/9/2026, 2:00:00 PM\tQF4\t\nEngineering\n\tvs\t\nArchitecture\n\t0 – 1\tConfirmed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF1\t\nScience\n\tvs\t\nEducation\n\t2 – 1\tDisputed\t\nOpen\n\n1/12/2026, 2:00:00 PM\tSF2\t\nNursing\n\tvs\t\nArchitecture\n\t3 – 2\tAwaiting confirmation\t\nOpen\n\n1/14/2026, 2:00:00 PM\tF1\tTBD\tvs\tTBD\t— – —\tWaiting on teams\t\nOpen\nENTRY NOTES\nBring your own kit in two colours. Studs checked at the table 30 minutes before kick-off. Anyone late for the check-in table forfeits the toss, not the match.",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Faculty Football Cup 2026"
+        },
+        {
+          "tag": "H2",
+          "text": "Details"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry"
+        },
+        {
+          "tag": "H2",
+          "text": "Schedule"
+        },
+        {
+          "tag": "H2",
+          "text": "Entry notes"
+        }
+      ],
+      "controls": 47,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tournaments",
+          "class": "",
+          "disabled": false,
+          "x": 24,
+          "y": 339.171875,
+          "width": 94.6875,
+          "height": 31.796875
+        },
+        {
+          "tag": "A",
+          "text": "Main Stadium",
+          "class": "",
+          "x": 250.71875,
+          "y": 882.546875,
+          "width": 94.28125,
+          "height": 32
+        },
+        {
+          "tag": "SELECT",
+          "text": "Round filter",
+          "class": "",
+          "disabled": false,
+          "x": 45,
+          "y": 1686.515625,
+          "width": 142,
+          "height": 43
+        },
+        {
+          "tag": "SELECT",
+          "text": "Match state filter",
+          "class": "",
+          "disabled": false,
+          "x": 203,
+          "y": 1686.515625,
+          "width": 142,
+          "height": 43
+        },
+        {
+          "tag": "A",
+          "text": "Medicine",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1797,
+          "width": 86.15625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1797,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1790.3125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1863.390625,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Law",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1863.390625,
+          "width": 52.890625,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1856.703125,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1929.78125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Business Admin",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1929.78125,
+          "width": 134.203125,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1923.09375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 1996.171875,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 1996.171875,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 1989.484375,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Science",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 2062.5625,
+          "width": 78.625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Education",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 2062.5625,
+          "width": 91.921875,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 2055.875,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "A",
+          "text": "Nursing",
+          "class": "tchip link",
+          "x": 357.703125,
+          "y": 2128.953125,
+          "width": 77.40625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Architecture",
+          "class": "tchip link",
+          "x": 540.609375,
+          "y": 2128.953125,
+          "width": 108.09375,
+          "height": 24
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 2122.265625,
+          "width": 69.796875,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Open",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 959.59375,
+          "y": 2188.65625,
+          "width": 69.796875,
+          "height": 40.390625
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Entry feedback",
+          "tabindex": "-1",
+          "x": 25,
+          "y": 987.953125,
+          "width": 340,
+          "height": 360
+        },
+        {
+          "name": "Tournament schedule",
+          "tabindex": "0",
+          "x": 45,
+          "y": 1741.515625,
+          "width": 300,
+          "height": 501.53125
+        },
+        {
+          "name": "Entry notes",
+          "tabindex": "0",
+          "x": 24,
+          "y": 2288.046875,
+          "width": 342,
+          "height": 280
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                "th:nth-child(1)"
+              ],
+              "html": "<th>Kick-off</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(2)"
+              ],
+              "html": "<th>Round</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(3)"
+              ],
+              "html": "<th>Home</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(5)"
+              ],
+              "html": "<th>Away</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(6)"
+              ],
+              "html": "<th>Score</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(7)"
+              ],
+              "html": "<th>State</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1",
+              "any": [
+                {
+                  "id": "color-contrast",
+                  "data": {
+                    "fgColor": "#1e170f",
+                    "bgColor": "#12764e",
+                    "contrastRatio": 3.14,
+                    "fontSize": "9.8pt (13px)",
+                    "fontWeight": "bold",
+                    "messageKey": null,
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element has insufficient color contrast of 3.14 (foreground color: #1e170f, background color: #12764e, font size: 9.8pt (13px), font weight: bold). Expected contrast ratio of 4.5:1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "empty-table-header",
+          "impact": "minor",
+          "description": "Ensure table headers have discernible text",
+          "help": "Table header text should not be empty",
+          "nodes": [
+            {
+              "target": [
+                "th:nth-child(4)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            },
+            {
+              "target": [
+                "th:nth-child(8)"
+              ],
+              "html": "<th></th>",
+              "summary": "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              "any": [
+                {
+                  "id": "has-visible-text",
+                  "data": null,
+                  "message": "Element does not have text that is visible to screen readers"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                ".avatar"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 38
+        }
+      ],
+      "passes": 43
+    }
+  },
+  {
+    "label": "schedule",
+    "focus": {
+      "tag": "BUTTON",
+      "text": "Skip to the main content",
+      "outline": "rgb(58, 174, 124) solid 3px",
+      "outlineOffset": "2px"
+    },
+    "preflight": {
+      "title": "[Human] LTMS Assessment B",
+      "script": true,
+      "mutable": true
+    },
+    "overlayLogs": [
+      "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+    ],
+    "errors": [],
+    "blocked": []
+  },
+  {
+    "label": "profile",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/me",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Mongkol Thanit"
+        },
+        {
+          "tag": "H2",
+          "text": "Career by sport"
+        },
+        {
+          "tag": "H3",
+          "text": "By tournament"
+        }
+      ],
+      "controls": 19,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 293,
+          "y": 1567.09375,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Byte Force",
+          "class": "tchip link",
+          "x": 293,
+          "y": 1620.09375,
+          "width": 97.640625,
+          "height": 24
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Player tournament history",
+          "tabindex": "0",
+          "x": 277,
+          "y": 1092.859375,
+          "width": 655.625,
+          "height": 135.5625
+        },
+        {
+          "name": "My squads",
+          "tabindex": "0",
+          "x": 277,
+          "y": 1519.90625,
+          "width": 655.625,
+          "height": 141.1875
+        },
+        {
+          "name": "My tournament record",
+          "tabindex": "0",
+          "x": 277,
+          "y": 1764.6875,
+          "width": 655.625,
+          "height": 137.5625
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a[aria-label=\"Open my profile\"]"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ],
+      "passes": 41
+    }
+  },
+  {
+    "label": "profile",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/me",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Mongkol Thanit"
+        },
+        {
+          "tag": "H2",
+          "text": "Career by sport"
+        },
+        {
+          "tag": "H3",
+          "text": "By tournament"
+        }
+      ],
+      "controls": 19,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 16,
+          "y": 843.609375,
+          "width": 198,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 1242,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 1295,
+          "y": 10.296875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 1348,
+          "y": 10.796875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 293,
+          "y": 1567.09375,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Byte Force",
+          "class": "tchip link",
+          "x": 293,
+          "y": 1620.09375,
+          "width": 97.640625,
+          "height": 24
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Player tournament history",
+          "tabindex": "0",
+          "x": 277,
+          "y": 1092.859375,
+          "width": 655.625,
+          "height": 135.5625
+        },
+        {
+          "name": "My squads",
+          "tabindex": "0",
+          "x": 277,
+          "y": 1519.90625,
+          "width": 655.625,
+          "height": 141.1875
+        },
+        {
+          "name": "My tournament record",
+          "tabindex": "0",
+          "x": 277,
+          "y": 1764.6875,
+          "width": 655.625,
+          "height": 137.5625
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a[aria-label=\"Open my profile\"]"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 10
+        }
+      ],
+      "passes": 41
+    }
+  },
+  {
+    "label": "profile",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/me",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Mongkol Thanit"
+        },
+        {
+          "tag": "H2",
+          "text": "Career by sport"
+        },
+        {
+          "tag": "H3",
+          "text": "By tournament"
+        }
+      ],
+      "controls": 19,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 61,
+          "y": 2636.328125,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Byte Force",
+          "class": "tchip link",
+          "x": 61,
+          "y": 2689.328125,
+          "width": 97.640625,
+          "height": 24
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Player tournament history",
+          "tabindex": "0",
+          "x": 45,
+          "y": 1997.5,
+          "width": 300,
+          "height": 135.5625
+        },
+        {
+          "name": "My squads",
+          "tabindex": "0",
+          "x": 45,
+          "y": 2589.140625,
+          "width": 300,
+          "height": 141.1875
+        },
+        {
+          "name": "My tournament record",
+          "tabindex": "0",
+          "x": 45,
+          "y": 2833.921875,
+          "width": 300,
+          "height": 137.5625
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a[aria-label=\"Open my profile\"]"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 15
+        }
+      ],
+      "passes": 41
+    }
+  },
+  {
+    "label": "profile",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/me",
+      "bodyText": "SKIP TO THE MAIN CONTENT\nLTMS\nHome\nTournaments\nTeams\n1\nMatches\nInbox\n1\nProfile\nSigned in as\nMongkol Thanit\nLog out\nScan\n1\nM\nM\nMONGKOL THANIT\n\nStudent record\n\nplayer@ltms.test\n\nUpload photo\n\nChoose a photo from your device.\n\nMatches played\n0\nWon\n0\nTitles\n0\nTokens\n0\nCAREER BY SPORT\n\nEach sport has its own record.\n\nVALORANT\n1 tournament\nW\nW\nPlayed\n2\nWon\n2\nKills\n1\nAssists\n1\nFOOTBALL\n1 tournament\nL\nPlayed\n1\nWon\n0\nGoals\n0\nAssists\n0\nBy tournament\nTOURNAMENT\tSPORT\tPLAYED\tWON\tFINISH\nFaculty Football Cup 2026\tFootball\t1\t0\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\t2\tChampion\n// Pick'em\nCalls made\n0\nCorrect\n0\nHeld\n0\n// Squads · 2\nSQUAD\tROLE\tSPORT\n\nEngineering\n\tPlayer\tFootball\n\nByte Force\n\tPlayer\tVALORANT\n// Tournaments\nTOURNAMENT\tSPORT\tPLAYED\tFINISH\nFaculty Football Cup 2026\tFootball\t1\tQuarter-final\nVALORANT Campus League 2025\tVALORANT\t2\tChampion\n// Student record — the registry owns this\nFaculty\nEngineering\nMajor\nGeneral\nYear\n1\nAge\n16\nGender\nmale\nRole\nUser\n// Following · 0\nNothing followed yet.\n// MVP votes received\n1",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Mongkol Thanit"
+        },
+        {
+          "tag": "H2",
+          "text": "Career by sport"
+        },
+        {
+          "tag": "H3",
+          "text": "By tournament"
+        }
+      ],
+      "controls": 19,
+      "under44": [
+        {
+          "tag": "BUTTON",
+          "text": "Log out",
+          "class": "btn ghost",
+          "disabled": false,
+          "x": 111.96875,
+          "y": 151.1875,
+          "width": 113.109375,
+          "height": 40.390625
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Switch to light mode",
+          "class": "theme-toggle",
+          "disabled": false,
+          "x": 154.546875,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Notifications, 1 unread",
+          "class": "bell",
+          "disabled": false,
+          "x": 246.265625,
+          "y": 262.671875,
+          "width": 41,
+          "height": 41
+        },
+        {
+          "tag": "A",
+          "text": "Open my profile",
+          "class": "avatar",
+          "x": 338,
+          "y": 263.171875,
+          "width": 40,
+          "height": 40
+        },
+        {
+          "tag": "A",
+          "text": "Engineering",
+          "class": "tchip link",
+          "x": 61,
+          "y": 2636.328125,
+          "width": 105.515625,
+          "height": 24
+        },
+        {
+          "tag": "A",
+          "text": "Byte Force",
+          "class": "tchip link",
+          "x": 61,
+          "y": 2689.328125,
+          "width": 97.640625,
+          "height": 24
+        }
+      ],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": [
+        {
+          "name": "Player tournament history",
+          "tabindex": "0",
+          "x": 45,
+          "y": 1997.5,
+          "width": 300,
+          "height": 135.5625
+        },
+        {
+          "name": "My squads",
+          "tabindex": "0",
+          "x": 45,
+          "y": 2589.140625,
+          "width": 300,
+          "height": 141.1875
+        },
+        {
+          "name": "My tournament record",
+          "tabindex": "0",
+          "x": 45,
+          "y": 2833.921875,
+          "width": 300,
+          "height": 137.5625
+        }
+      ]
+    },
+    "axe": {
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "description": "Ensure all page content is contained by landmarks",
+          "help": "All page content should be contained by landmarks",
+          "nodes": [
+            {
+              "target": [
+                "form"
+              ],
+              "html": "<form style=\"display: contents;\"><input class=\"search\" placeholder=\"Search tournaments, teams, players…\" aria-label=\"Search\" value=\"\" style=\"\"></form>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            },
+            {
+              "target": [
+                "a[aria-label=\"Open my profile\"]"
+              ],
+              "html": "<a class=\"avatar\" aria-label=\"Open my profile\" href=\"/me\" data-discover=\"true\" style=\"text-decoration: none; overflow: hidden;\">M</a>",
+              "summary": "Fix any of the following:\n  Some page content is not contained by landmarks",
+              "any": [
+                {
+                  "id": "region",
+                  "data": {
+                    "isIframe": false
+                  },
+                  "message": "Some page content is not contained by landmarks"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 20
+        }
+      ],
+      "passes": 41
+    }
+  },
+  {
+    "label": "profile",
+    "focus": {
+      "tag": "BUTTON",
+      "text": "Skip to the main content",
+      "outline": "rgb(58, 174, 124) solid 3px",
+      "outlineOffset": "2px"
+    },
+    "preflight": {
+      "title": "[Human] LTMS Assessment B",
+      "script": true,
+      "mutable": true
+    },
+    "overlayLogs": [
+      "%c[impeccable] 1 anti-pattern found color: oklch(84% 0.19 80.46); font-weight: bold"
+    ],
+    "errors": [],
+    "blocked": []
+  },
+  {
+    "label": "login",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/login",
+      "bodyText": "LTMS\nSIGN IN\n\nSign in or choose a demo role.\n\nEmail\nPassword\nSign in\nNew to LTMS?\nCreate account\nA\nAdmin\nApproves tournament requests, manages users and permanent squads\nO\nOrganizer\nOwns Faculty Football Cup 2026 — approve squads, draw, resolve disputes\nR\nReferee\nAppointed to the Football Cup — check in players, enter results\nT\nTeam Leader\nLeads Byte Force — invite players, register, confirm results\nP\nPlayer\nIn Byte Force with a pending invite; fails the age rule on purpose\nContinue as guest\nDemo data stays in this browser.\nReset demo data",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Sign in"
+        }
+      ],
+      "controls": 11,
+      "under44": [],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [],
+      "incomplete": [],
+      "passes": 31
+    }
+  },
+  {
+    "label": "login",
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/login",
+      "bodyText": "LTMS\nSIGN IN\n\nSign in or choose a demo role.\n\nEmail\nPassword\nSign in\nNew to LTMS?\nCreate account\nA\nAdmin\nApproves tournament requests, manages users and permanent squads\nO\nOrganizer\nOwns Faculty Football Cup 2026 — approve squads, draw, resolve disputes\nR\nReferee\nAppointed to the Football Cup — check in players, enter results\nT\nTeam Leader\nLeads Byte Force — invite players, register, confirm results\nP\nPlayer\nIn Byte Force with a pending invite; fails the age rule on purpose\nContinue as guest\nDemo data stays in this browser.\nReset demo data",
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Sign in"
+        }
+      ],
+      "controls": 11,
+      "under44": [],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [],
+      "incomplete": [],
+      "passes": 31
+    }
+  },
+  {
+    "label": "login",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/login",
+      "bodyText": "LTMS\nSIGN IN\n\nSign in or choose a demo role.\n\nEmail\nPassword\nSign in\nNew to LTMS?\nCreate account\nA\nAdmin\nApproves tournament requests, manages users and permanent squads\nO\nOrganizer\nOwns Faculty Football Cup 2026 — approve squads, draw, resolve disputes\nR\nReferee\nAppointed to the Football Cup — check in players, enter results\nT\nTeam Leader\nLeads Byte Force — invite players, register, confirm results\nP\nPlayer\nIn Byte Force with a pending invite; fails the age rule on purpose\nContinue as guest\nDemo data stays in this browser.\nReset demo data",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Sign in"
+        }
+      ],
+      "controls": 11,
+      "under44": [],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [],
+      "incomplete": [],
+      "passes": 31
+    }
+  },
+  {
+    "label": "login",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "dom": {
+      "title": "LTMS — Local Tournament Management System",
+      "url": "http://127.0.0.1:5175/login",
+      "bodyText": "LTMS\nSIGN IN\n\nSign in or choose a demo role.\n\nEmail\nPassword\nSign in\nNew to LTMS?\nCreate account\nA\nAdmin\nApproves tournament requests, manages users and permanent squads\nO\nOrganizer\nOwns Faculty Football Cup 2026 — approve squads, draw, resolve disputes\nR\nReferee\nAppointed to the Football Cup — check in players, enter results\nT\nTeam Leader\nLeads Byte Force — invite players, register, confirm results\nP\nPlayer\nIn Byte Force with a pending invite; fails the age rule on purpose\nContinue as guest\nDemo data stays in this browser.\nReset demo data",
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false,
+      "headings": [
+        {
+          "tag": "H1",
+          "text": "Sign in"
+        }
+      ],
+      "controls": 11,
+      "under44": [],
+      "under24": [],
+      "badImages": [],
+      "scrollRegions": []
+    },
+    "axe": {
+      "violations": [],
+      "incomplete": [],
+      "passes": 31
+    }
+  },
+  {
+    "label": "login",
+    "focus": {
+      "tag": "INPUT",
+      "text": "",
+      "outline": "rgb(58, 174, 124) solid 2px",
+      "outlineOffset": "2px"
+    },
+    "preflight": {
+      "title": "[Human] LTMS Assessment B",
+      "script": true,
+      "mutable": true
+    },
+    "overlayLogs": [
+      "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+    ],
+    "errors": [],
+    "blocked": []
+  }
+]

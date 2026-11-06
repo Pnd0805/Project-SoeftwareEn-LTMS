@@ -1,0 +1,39 @@
+{
+  "id": "bd3d7717-af8f-408f-ad82-5900ef2fc4e6",
+  "ok": true,
+  "result": {
+    "terminal": {
+      "handle": "term_ddbbc868-ca13-470e-88bb-51f7decff5dd",
+      "status": "running",
+      "tail": [
+        "╭──────────────────────────────────────────────────────────────────────────╮",
+        "│ ✨ Update available! 0.160.0 -> 0.160.1                                  │",
+        "│ Run sh -c 'curl -fsSL https://chatgpt.com/codex/install.sh |             │",
+        "│ CODEX_NON_INTERACTIVE=1 sh' to update.                                   │",
+        "│                                                                          │",
+        "│ See full release notes:                                                  │",
+        "│ https://github.com/openai/codex/releases/latest                          │",
+        "╰──────────────────────────────────────────────────────────────────────────╯",
+        "⚠ Heads up, you have less than 50% of your 5h limit left. Run /status for a",
+        "  breakdown.",
+        "  >_ OpenAI Codex (v0.160.0)",
+        "     ~/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-ux",
+        "  You bring the idea. I’ll bring the brackets.",
+        "                                             ⚠ 5h limit: 45% left · /status",
+        "› Ask Codex to do anything",
+        "  GPT-6-Luna max · ~/orca/workspaces/Project-SoeftwareEn-LTMS/ltms-desktop-…",
+        "  ? for shortcuts                                  ⚠ 1 warning · f2 to view"
+      ],
+      "truncated": false,
+      "limited": false,
+      "oldestCursor": "0",
+      "nextCursor": "1",
+      "latestCursor": "1",
+      "returnedLineCount": 17,
+      "source": "screen"
+    }
+  },
+  "_meta": {
+    "runtimeId": "88f36874-e5c1-4d5c-87bc-7ff65953c25c"
+  }
+}

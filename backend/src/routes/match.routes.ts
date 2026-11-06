@@ -1,0 +1,44 @@
+import express from 'express';
+import * as Match from '../controllers/match.controller.js';
+import { requireAuth , optionalAuth } from '../middlewares/requireAuth.js';
+import { validate } from '../middlewares/validate.js';
+import { matchFormatSchema, scheduleMatchSchema, rejectCheckinSchema, rejectCheckinErrorCodes, createBracketSchema, submitCheckinSchema, manualCheckinSchema, roomCodeSchema, abandonMatchSchema } from '../schemas/match.schema.js';
+import { requireReferee } from '../middlewares/requireReferee.js';
+import { requireOrganizer, requireOrganizerOfMatch } from '../middlewares/requireOrganizer.js';
+
+const router = express.Router();
+
+router.post('/tournaments/:id/bracket' , requireAuth , requireOrganizer , validate(createBracketSchema) , Match.createBracket);
+router.get('/tournaments/:id/bracket' , Match.getBracket);
+router.get('/tournaments/:id/matches' , Match.getTournamentMatches);
+router.get('/matches/:id' , optionalAuth , Match.getMatchDetail);   // optionalAuth: roomCode เห็นเฉพาะคนในแมตช์
+// B8 — รหัสห้องแมตช์ออนไลน์ (กรรมการของแมตช์/ORG — เช็คใน service)
+router.put('/matches/:id/room-code' , requireAuth , validate(roomCodeSchema) , Match.setRoomCode);
+// /me/matches — แมตช์ของฉันทั้งผู้เล่นและกรรมการ
+router.get('/me/matches' , requireAuth , Match.listMyMatches);
+// M21 รายชื่อผู้เล่นที่ทีมส่งลงแข่ง + สถานะเช็คอิน — เปิดสาธารณะเหมือน M03/M04 (มติ 19 ก.ย. 2569)
+router.get('/matches/:id/lineups' , Match.getMatchLineups);
+router.patch('/matches/:id/schedule' , requireAuth , requireOrganizerOfMatch , validate(scheduleMatchSchema) , Match.scheduleMatch);
+// 🆕 BO-N (มติ 5 ต.ค.) — ตั้งรูปแบบของแมตช์เดียว · ล็อกเมื่อมีแมตช์ของทัวร์เริ่มแข่งแล้ว (มติข้อ ⑤)
+//   ★ เส้นนี้คือเหตุผลที่เก็บ best_of ต่อแมตช์ ไม่ใช่ต่อทัวร์ — รอบชิงต่างจากรอบกลุ่มได้
+router.patch('/matches/:id/format' , requireAuth , requireOrganizerOfMatch , validate(matchFormatSchema) , Match.setMatchFormat);
+// M09 — กรรมการของแมตช์ หรือ ผู้จัด (มติ 27 ก.ย.) · สิทธิ์ตรวจใน service เหมือน M10b/M10c
+router.post('/matches/:id/open-checkin'  , requireAuth , Match.openCheckinMatch);
+router.post('/matches/:id/start' , requireAuth , requireReferee , Match.startMatch);
+// จบการแข่งขัน — กรรมการของแมตช์ "หรือ" ผู้จัด (มติ Q4b) จึงตรวจสิทธิ์ใน service ไม่ใช้ middleware ที่รับบทบาทเดียว
+router.post('/matches/:id/finish' , requireAuth , Match.finishMatch);
+// ยกเลิกกลางคัน (ฝนตก/ไฟดับ) → กลับเป็น scheduled ให้ ORG ตั้งเวลาใหม่ด้วย M06 — กรรมการของแมตช์หรือ ORG
+router.post('/matches/:id/abandon' , requireAuth , validate(abandonMatchSchema) , Match.abandonMatch);
+// M18 ปิดเช็คอินกลับเป็น scheduled (ฝนตก → ไปเลื่อนด้วย M06) · M17 ORG ตัดสินทีมไม่มาตามนัด — GUIDE/11 §10.5
+// M18 — กรรมการของแมตช์ (เฉพาะตอนยังไม่มีใครเช็คอิน) หรือ ผู้จัด · สิทธิ์ตรวจใน service
+router.post('/matches/:id/close-checkin' , requireAuth , Match.closeCheckinMatch);
+router.post('/matches/:id/forfeit' , requireAuth , requireOrganizerOfMatch , Match.forfeitMatch);
+router.get('/matches/:id/checkins' , requireAuth , Match.getMatchCheckins);
+router.post('/matches/:id/checkins/:cid/verify' , requireAuth , requireReferee , Match.verifyCheckin);
+router.post('/matches/:id/checkins/:cid/reject' , requireAuth , requireReferee , validate(rejectCheckinSchema, rejectCheckinErrorCodes) , Match.rejectCheckin);
+router.get('/matches/:id/checkin-qr' , requireAuth , Match.getCheckinQr);
+router.post('/matches/:id/checkins' , requireAuth , validate(submitCheckinSchema) , Match.submitCheckin);
+// M20 ผู้เล่นดูเช็คอินตัวเอง · M19 กรรมการเช็คอินแทน (manual_by_referee) — FE gaps 19 ก.ย.
+router.get('/matches/:id/checkins/me' , requireAuth , Match.getMyCheckin);
+router.post('/matches/:id/checkins/manual' , requireAuth , requireReferee , validate(manualCheckinSchema) , Match.manualCheckin);
+export default router;

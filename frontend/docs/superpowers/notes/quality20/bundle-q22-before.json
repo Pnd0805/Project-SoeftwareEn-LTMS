@@ -1,0 +1,205 @@
+{
+  "chunks": [
+    {
+      "name": "esm-ni1Pr6Ff.js",
+      "bytes": 477555,
+      "gzip": 123248
+    },
+    {
+      "name": "index-Vecq8EhE.js",
+      "bytes": 945753,
+      "gzip": 267808
+    }
+  ],
+  "traces": [
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:59273/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 49.90000009536743,
+        "navigationId": 7783,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.30000007152557373,
+        "domainLookupStart": 0.30000007152557373,
+        "domainLookupEnd": 0.30000007152557373,
+        "connectStart": 0.30000007152557373,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.30000007152557373,
+        "requestStart": 1.5,
+        "responseStart": 3.200000047683716,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 3.200000047683716,
+        "responseEnd": 3.8000000715255737,
+        "transferSize": 1526,
+        "encodedBodySize": 1226,
+        "decodedBodySize": 1226,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 8.5,
+        "domContentLoadedEventStart": 49.700000047683716,
+        "domContentLoadedEventEnd": 49.800000071525574,
+        "domComplete": 49.90000009536743,
+        "loadEventStart": 49.90000009536743,
+        "loadEventEnd": 49.90000009536743,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-Vecq8EhE.js",
+          "duration": 8.5,
+          "bytes": 945753
+        }
+      ]
+    },
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:59273/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 40,
+        "navigationId": 1681,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.20000004768371582,
+        "domainLookupStart": 0.20000004768371582,
+        "domainLookupEnd": 0.20000004768371582,
+        "connectStart": 0.20000004768371582,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.20000004768371582,
+        "requestStart": 0.8999999761581421,
+        "responseStart": 1.2000000476837158,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1.2000000476837158,
+        "responseEnd": 1.399999976158142,
+        "transferSize": 1526,
+        "encodedBodySize": 1226,
+        "decodedBodySize": 1226,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 4.5,
+        "domContentLoadedEventStart": 39.89999997615814,
+        "domContentLoadedEventEnd": 39.89999997615814,
+        "domComplete": 40,
+        "loadEventStart": 40,
+        "loadEventEnd": 40,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-Vecq8EhE.js",
+          "duration": 3.700000047683716,
+          "bytes": 945753
+        }
+      ]
+    },
+    {
+      "heading": "Tournaments",
+      "navigation": {
+        "name": "http://127.0.0.1:59273/",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 40,
+        "navigationId": 3998,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.20000004768371582,
+        "domainLookupStart": 0.20000004768371582,
+        "domainLookupEnd": 0.20000004768371582,
+        "connectStart": 0.20000004768371582,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.20000004768371582,
+        "requestStart": 0.7999999523162842,
+        "responseStart": 1.2000000476837158,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1.2000000476837158,
+        "responseEnd": 1.2999999523162842,
+        "transferSize": 1526,
+        "encodedBodySize": 1226,
+        "decodedBodySize": 1226,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 4.399999976158142,
+        "domContentLoadedEventStart": 39.89999997615814,
+        "domContentLoadedEventEnd": 39.89999997615814,
+        "domComplete": 40,
+        "loadEventStart": 40,
+        "loadEventEnd": 40,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "scripts": [
+        {
+          "name": "index-Vecq8EhE.js",
+          "duration": 3.9000000953674316,
+          "bytes": 945753
+        }
+      ]
+    }
+  ]
+}

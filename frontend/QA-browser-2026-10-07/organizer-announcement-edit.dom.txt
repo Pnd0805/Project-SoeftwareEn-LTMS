@@ -1,0 +1,89 @@
+- button "Skip to the main content"
+- navigation:
+  - generic: LTMS
+  - button "Tournaments":
+    - generic: Tournaments
+  - button "Teams":
+    - generic: Teams
+  - button "Matches":
+    - generic: Matches
+  - button "Inbox 23":
+    - generic: Inbox
+    - generic: "23"
+  - button "Profile":
+    - generic: Profile
+  - emphasis: //
+  - text: Signed in as
+  - generic: สมหญิง รักเรียน
+  - generic: "Role: Student"
+  - button "Log out":
+    - text: Log out
+- textbox "Search":
+  - /placeholder: Search tournaments, teams, players…
+- button "Switch to light mode":
+- button "Notifications, 23 unread":
+  - generic: "23"
+- link "Open my profile":
+  - /url: /me
+  - text: ส
+- main:
+  - button "Tournaments":
+    - text: Tournaments
+  - generic: /
+  - generic: QA FE BO 2026-10-06T21-19-03-630Z
+  - emphasis: //
+  - text: แบดมินตัน · Single elimination · onsite
+  - heading "QA FE BO 2026-10-06T21-19-03-630Z" [level=1]
+  - emphasis: //
+  - text: You run this tournament
+  - generic: Private
+  - button "bracket"
+  - button "dashboard"
+  - button "schedule"
+  - button "leaderboard"
+  - button "announcements"
+  - button "community"
+  - button "Manage"
+  - button "Post an announcement":
+    - text: Post an announcement
+  - emphasis: //
+  - text: Organizer · 07/10/2026
+  - generic: QA Browser disposable announcement 2026-10-07
+  - generic: Local QA edit only. No real venue change.
+  - generic: venue change
+  - button "Edit announcement"
+  - button "Delete announcement"
+  - emphasis: //
+  - text: The details
+  - generic: Sport
+  - generic: แบดมินตัน
+  - generic: Format
+  - generic: Single elimination
+  - generic: Date
+  - generic: 8 Oct 2026 – 9 Oct 2026
+  - generic: Registration opens
+  - generic: 7 Oct 2026, 03:19 (UTC+7)
+  - generic: Registration closes
+  - generic: 8 Oct 2026, 04:19 (UTC+7)
+  - generic: Venue
+  - generic: Disposable QA venue
+  - generic: Played
+  - generic: onsite
+  - generic: Entry
+  - generic: open to everybody
+  - generic: Squads in
+  - text: "0"
+  - generic: of 4
+  - generic: Run by
+  - generic: สมหญิง รักเรียน
+  - emphasis: //
+  - text: Approved teams
+  - generic: No teams have been approved yet.
+  - emphasis: //
+  - text: Entry
+  - generic: Not open
+  - generic: Squads in
+  - text: "0"
+  - generic: of 4
+  - generic: Entry rules
+  - generic: open to everybody
